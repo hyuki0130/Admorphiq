@@ -83,11 +83,13 @@ ARC-AGI-3 is the first **interactive reasoning benchmark** — agents must explo
 - Dual head: action logits (5 actions) + coordinate logits (4096 = 64x64)
 - Total output: 4101 logits, trained with BCEWithLogitsLoss
 
-**World Model**
-- Predict next state given (current_state, action)
-- Experience buffer (~200K unique state-action pairs)
-- Hash-based deduplication for sample efficiency
-- Dynamic reset on level completion
+**World Model** (implemented, 1.6M params)
+- StateEncoder: CNN-based state embedding from 16-channel frames
+- ActionEmbedding: 8 action types + coordinate encoding
+- TransitionPredictor: predicts residual delta (next_state = current + delta)
+- ChangePredictor: binary classifier for state-change likelihood
+- Experience buffer (~200K unique state-action pairs, MD5 dedup)
+- Agent scoring: combined = alpha * perception + (1-alpha) * world_model (alpha=0.5)
 
 **Hypothesis Engine**
 - Option A: Quantized open-source LLM (Llama/Qwen ~8B with LoRA)
@@ -122,12 +124,15 @@ src/admorphiq/
 ├── perception/
 │   ├── cnn.py          # CNN backbone (4-layer, 34M params)
 │   └── model.py        # PerceptionModel (dual head: action + coord)
-├── world_model/        # State transition prediction (Phase 3)
+├── world_model/
+│   ├── encoder.py      # StateEncoder (CNN-based state embedding)
+│   ├── transition.py   # TransitionPredictor + ChangePredictor
+│   └── model.py        # WorldModel (1.6M params, residual delta)
 ├── hypothesis/         # Rule inference engine (Phase 4)
 ├── planner/            # Action planning & exploration (Phase 4)
 └── utils/
-    └── buffer.py       # ExperienceBuffer (hash dedup, 200K cap)
-tests/                  # 41 tests (types, perception, buffer, agent)
+    └── buffer.py       # ExperienceBuffer (hash dedup, 200K cap, next_frame)
+tests/                  # 69 tests (types, perception, buffer, agent, world model)
 configs/                # Configuration files
 notebooks/              # Experiment notebooks
 scripts/                # Helper scripts
@@ -161,9 +166,12 @@ scripts/                # Helper scripts
 - ~~Type abstractions: GameState, ActionType, GameAction, FrameData~~
 - ~~41 tests passing (types 8, perception 11, buffer 10, agent 12)~~
 
-### Phase 3: World Model
-- Train state transition predictor
-- Change prediction for smarter exploration
+### Phase 3: World Model ✅ Complete
+- ~~StateEncoder (CNN) + ActionEmbedding (8 types + coordinates) + TransitionPredictor (residual delta)~~
+- ~~ChangePredictor for smarter exploration (1.6M params total)~~
+- ~~Agent integration: combined = alpha * perception + (1-alpha) * world_model~~
+- ~~ExperienceBuffer extended with next_frame + sample_with_next()~~
+- ~~69 tests passing (41 existing + 28 new)~~
 
 ### Phase 4: Hypothesis Engine
 - Integrate offline LLM or program synthesis

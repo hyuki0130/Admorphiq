@@ -93,3 +93,62 @@ class TestExperienceBufferMaxlen:
         for i in range(10):
             buf.add(_make_frame(float(i)), 0, True)
         assert len(buf) == 5
+
+
+class TestExperienceBufferNextFrame:
+    def test_add_with_next_frame(self):
+        buf = ExperienceBuffer()
+        frame = _make_frame(0.0)
+        next_frame = _make_frame(1.0)
+        assert buf.add(frame, 0, True, next_frame=next_frame) is True
+        assert len(buf) == 1
+
+    def test_add_without_next_frame(self):
+        """Backward compatible: next_frame defaults to None."""
+        buf = ExperienceBuffer()
+        buf.add(_make_frame(0.0), 0, True)
+        assert len(buf) == 1
+
+    def test_sample_still_works_with_next_frame(self):
+        """Legacy sample() returns 3-tuple even when next_frame is stored."""
+        buf = ExperienceBuffer()
+        for i in range(5):
+            buf.add(_make_frame(float(i)), i, True, next_frame=_make_frame(float(i + 1)))
+        frames, actions, labels = buf.sample(3)
+        assert frames.shape == (3, 16, 64, 64)
+        assert actions.shape == (3,)
+        assert labels.shape == (3,)
+
+    def test_sample_with_next_shape(self):
+        buf = ExperienceBuffer()
+        for i in range(5):
+            buf.add(_make_frame(float(i)), i, True, next_frame=_make_frame(float(i + 1)))
+        result = buf.sample_with_next(3)
+        assert result is not None
+        frames, actions, labels, next_frames = result
+        assert frames.shape == (3, 16, 64, 64)
+        assert actions.shape == (3,)
+        assert labels.shape == (3,)
+        assert next_frames.shape == (3, 16, 64, 64)
+
+    def test_sample_with_next_returns_none_if_not_enough(self):
+        """Returns None if fewer entries have next_frame than batch_size."""
+        buf = ExperienceBuffer()
+        # Add entries without next_frame
+        buf.add(_make_frame(0.0), 0, True)
+        buf.add(_make_frame(1.0), 1, True)
+        # Only 1 entry with next_frame
+        buf.add(_make_frame(2.0), 2, True, next_frame=_make_frame(3.0))
+        result = buf.sample_with_next(2)
+        assert result is None
+
+    def test_sample_with_next_filters_none_entries(self):
+        """Only entries with next_frame are sampled."""
+        buf = ExperienceBuffer()
+        buf.add(_make_frame(0.0), 0, True)  # no next_frame
+        buf.add(_make_frame(1.0), 1, True, next_frame=_make_frame(2.0))
+        buf.add(_make_frame(3.0), 2, True, next_frame=_make_frame(4.0))
+        result = buf.sample_with_next(2)
+        assert result is not None
+        frames, actions, labels, next_frames = result
+        assert frames.shape[0] == 2

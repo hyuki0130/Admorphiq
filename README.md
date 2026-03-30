@@ -20,7 +20,14 @@ ARC-AGI-3 is the first interactive reasoning benchmark. Agents must explore unfa
 - Type abstractions for arcengine compatibility (GameState, ActionType, FrameData)
 - 41 tests passing (types 8, perception 11, buffer 10, agent 12)
 
-**Phase 3: World Model** -- Next
+**Phase 3: World Model** -- Complete
+
+- World Model (1.6M params): StateEncoder + ActionEmbedding + TransitionPredictor (residual delta) + ChangePredictor
+- Agent integration: combined score = alpha * perception + (1-alpha) * world_model (alpha=0.5)
+- Experience buffer extended with next_frame storage and sample_with_next()
+- 69 tests passing (41 existing + 28 new world model tests)
+
+**Phase 4: Hypothesis Engine** -- Next
 
 ## Project Structure
 
@@ -32,12 +39,15 @@ admorphiq/
 │   ├── perception/
 │   │   ├── cnn.py          # CNN backbone (4-layer, 34M params)
 │   │   └── model.py        # PerceptionModel (dual head: action + coord)
-│   ├── world_model/        # State transition prediction (Phase 3)
+│   ├── world_model/
+│   │   ├── encoder.py      # StateEncoder (CNN-based state embedding)
+│   │   ├── transition.py   # TransitionPredictor + ChangePredictor
+│   │   └── model.py        # WorldModel (1.6M params, residual delta)
 │   ├── hypothesis/         # Rule inference engine (Phase 4)
 │   ├── planner/            # Action planning & exploration (Phase 4)
 │   └── utils/
 │       └── buffer.py       # ExperienceBuffer (hash dedup, 200K cap)
-├── tests/                  # 41 tests (types, perception, buffer, agent)
+├── tests/                  # 69 tests (types, perception, buffer, agent, world model)
 ├── configs/                # Configuration files
 ├── notebooks/              # Experiment notebooks
 ├── scripts/                # Helper scripts
@@ -62,7 +72,7 @@ agent = AdmorphiqAgent()
 # Compatible with the ARC-AGI-3-Agents framework
 ```
 
-> Full integration with the arcengine runner will be available in Phase 3.
+> Full integration with the arcengine runner will be available in a future phase.
 
 ## Architecture
 
