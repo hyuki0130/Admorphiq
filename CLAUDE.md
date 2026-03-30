@@ -77,10 +77,11 @@ ARC-AGI-3 is the first **interactive reasoning benchmark** — agents must explo
 
 ### Layer Details
 
-**Perception Layer**
+**Perception Layer** (implemented)
 - Input: 16-channel one-hot encoded 64x64 frames
-- CNN backbone (4-layer, 32→64→128→256 channels)
-- Dual head: action probability + coordinate prediction (for ACTION6)
+- CNN backbone (5-layer, 16→32→64→128→256 channels, 34M params)
+- Dual head: action logits (5 actions) + coordinate logits (4096 = 64x64)
+- Total output: 4101 logits, trained with BCEWithLogitsLoss
 
 **World Model**
 - Predict next state given (current_state, action)
@@ -93,10 +94,11 @@ ARC-AGI-3 is the first **interactive reasoning benchmark** — agents must explo
 - Option B: Program synthesis — generate candidate rule programs
 - Option C: Neurosymbolic — neural intuition + symbolic rule extraction
 
-**Action Planner**
-- Change prediction bias: prefer actions likely to cause state changes
+**Action Planner** (implemented in AdmorphiqAgent)
 - Hierarchical sampling: action type first, then coordinates if ACTION6
 - Entropy regularization to encourage exploration
+- Change prediction bias: prefer actions likely to cause state changes
+- Level transition detection with automatic buffer/model reset
 
 ## Game Environment
 
@@ -115,13 +117,17 @@ ARC-AGI-3 is the first **interactive reasoning benchmark** — agents must explo
 
 ```
 src/admorphiq/
-├── agent.py            # Agent entry point
-├── perception/         # Frame encoding (CNN)
-├── world_model/        # State transition prediction
-├── hypothesis/         # Rule inference engine
-├── planner/            # Action planning & exploration
-└── utils/              # Shared utilities
-tests/                  # pytest test suite
+├── agent.py            # AdmorphiqAgent (is_done + choose_action)
+├── types.py            # GameState, ActionType, GameAction, FrameData
+├── perception/
+│   ├── cnn.py          # CNN backbone (4-layer, 34M params)
+│   └── model.py        # PerceptionModel (dual head: action + coord)
+├── world_model/        # State transition prediction (Phase 3)
+├── hypothesis/         # Rule inference engine (Phase 4)
+├── planner/            # Action planning & exploration (Phase 4)
+└── utils/
+    └── buffer.py       # ExperienceBuffer (hash dedup, 200K cap)
+tests/                  # 41 tests (types, perception, buffer, agent)
 configs/                # Configuration files
 notebooks/              # Experiment notebooks
 scripts/                # Helper scripts
@@ -148,9 +154,12 @@ scripts/                # Helper scripts
 - ~~Study official framework (arcprize/ARC-AGI-3-Agents)~~
 - ~~Analyze reference solution (DriesSmit/ARC3-solution)~~
 
-### Phase 2: Baseline Agent
-- Random agent → rule-based agent → simple CNN agent
-- Implement experience buffer and basic exploration
+### Phase 2: Baseline Agent ✅ Complete
+- ~~CNN perception backbone (16→32→64→128→256, dual head, 34M params)~~
+- ~~Experience buffer with MD5 hash deduplication (200K capacity)~~
+- ~~AdmorphiqAgent with hierarchical sampling + entropy regularization~~
+- ~~Type abstractions: GameState, ActionType, GameAction, FrameData~~
+- ~~41 tests passing (types 8, perception 11, buffer 10, agent 12)~~
 
 ### Phase 3: World Model
 - Train state transition predictor
