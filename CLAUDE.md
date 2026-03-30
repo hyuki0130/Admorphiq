@@ -100,21 +100,38 @@ ARC-AGI-3 is the first **interactive reasoning benchmark** — agents must explo
 
 ## Game Environment
 
-### Actions
-- ACTION1~5: Simple actions (no coordinates, e.g., move up/down)
-- ACTION6: Complex action (requires X/Y coordinates)
-- ACTION7: Cancel/undo
+### Agent Interface
+- Two required methods: `is_done()` and `choose_action(frame_data)`
+- `FrameData` contains: `frame[16][64][64]` (one-hot encoded), `available_actions`, `state`, `levels_completed`
+- `GameAction`: RESET=0, ACTION1-5 (simple, no coordinates), ACTION6 (complex, requires x/y), ACTION7 (simple, cancel/undo)
+- `MAX_ACTIONS = 80` per game
 
 ### Scoring
 - Per-game: 0~100% (100% = matching human-level performance)
 - Final: average across all games
 - Capped at 100% even if agent uses fewer moves than humans
 
+## Project Structure
+
+```
+src/admorphiq/
+├── agent.py            # Agent entry point
+├── perception/         # Frame encoding (CNN)
+├── world_model/        # State transition prediction
+├── hypothesis/         # Rule inference engine
+├── planner/            # Action planning & exploration
+└── utils/              # Shared utilities
+tests/                  # pytest test suite
+configs/                # Configuration files
+notebooks/              # Experiment notebooks
+scripts/                # Helper scripts
+```
+
 ## Tech Stack
 
 | Component | Technology |
 |-----------|-----------|
-| Language | Python 3.10+ |
+| Language | Python 3.12 |
 | Framework | ARC-AGI-3-Agents (official) |
 | Package manager | uv |
 | Deep learning | PyTorch |
@@ -125,10 +142,11 @@ ARC-AGI-3 is the first **interactive reasoning benchmark** — agents must explo
 
 ## Development Roadmap
 
-### Phase 1: Environment Understanding
-- Install arc-agi SDK, set up local development
-- Play games manually to understand structure
-- Study official framework (arcprize/ARC-AGI-3-Agents)
+### Phase 1: Environment Understanding ✅ Complete
+- ~~Install arc-agi SDK, set up local development~~
+- ~~Play games manually to understand structure~~
+- ~~Study official framework (arcprize/ARC-AGI-3-Agents)~~
+- ~~Analyze reference solution (DriesSmit/ARC3-solution)~~
 
 ### Phase 2: Baseline Agent
 - Random agent → rule-based agent → simple CNN agent
