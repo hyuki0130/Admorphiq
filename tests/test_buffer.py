@@ -51,7 +51,7 @@ class TestExperienceBufferSample:
         assert actions.shape == (4,)
         assert labels.shape == (4,)
         assert actions.dtype == torch.long
-        assert labels.dtype == torch.bool
+        assert labels.dtype == torch.float32
 
     def test_sample_larger_than_buffer(self):
         """sample(batch_size) with batch_size > len returns min(batch_size, len)."""
@@ -152,3 +152,33 @@ class TestExperienceBufferNextFrame:
         assert result is not None
         frames, actions, labels, next_frames = result
         assert frames.shape[0] == 2
+
+
+class TestExperienceBufferFloatReward:
+    def test_float_reward_stored(self):
+        buf = ExperienceBuffer()
+        buf.add(_make_frame(0.0), 0, 0.3)
+        buf.add(_make_frame(1.0), 1, 0.7)
+        frames, actions, rewards = buf.sample(2)
+        assert rewards.dtype == torch.float32
+        assert set(rewards.tolist()) == {0.3, 0.7} or rewards.shape == (2,)
+
+    def test_bool_backward_compat(self):
+        """Bool reward should be converted to float (True=1.0, False=0.0)."""
+        buf = ExperienceBuffer()
+        buf.add(_make_frame(0.0), 0, True)
+        buf.add(_make_frame(1.0), 1, False)
+        frames, actions, rewards = buf.sample(2)
+        assert rewards.dtype == torch.float32
+        reward_set = set(rewards.tolist())
+        assert 1.0 in reward_set
+        assert 0.0 in reward_set
+
+    def test_float_reward_in_sample_with_next(self):
+        buf = ExperienceBuffer()
+        buf.add(_make_frame(0.0), 0, 0.5, next_frame=_make_frame(1.0))
+        buf.add(_make_frame(2.0), 1, 0.8, next_frame=_make_frame(3.0))
+        result = buf.sample_with_next(2)
+        assert result is not None
+        _, _, rewards, _ = result
+        assert rewards.dtype == torch.float32

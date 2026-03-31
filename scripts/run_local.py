@@ -7,7 +7,7 @@ from arcengine import GameAction, GameState
 
 from admorphiq.adapter import AdmorphiqAdapter
 
-MAX_ACTIONS = 80
+MAX_ACTIONS = 500
 NUM_GAMES = 3
 
 

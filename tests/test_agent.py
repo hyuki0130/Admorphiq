@@ -173,3 +173,92 @@ class TestWorldModelIntegration:
         action = agent.choose_action([], fd)
         # Should still produce a valid action using perception only
         assert isinstance(action, GameAction)
+
+
+class TestComputeReward:
+    def test_frame_changed_reward(self):
+        from admorphiq.agent import REWARD_FRAME_CHANGED
+        agent = AdmorphiqAgent()
+        reward = agent._compute_reward(
+            frame_changed=True, prev_levels=0, curr_levels=0, state=GameState.PLAYING,
+        )
+        assert reward == REWARD_FRAME_CHANGED
+
+    def test_no_change_reward(self):
+        from admorphiq.agent import REWARD_NO_CHANGE
+        agent = AdmorphiqAgent()
+        reward = agent._compute_reward(
+            frame_changed=False, prev_levels=0, curr_levels=0, state=GameState.PLAYING,
+        )
+        assert reward == REWARD_NO_CHANGE
+
+    def test_level_up_reward(self):
+        from admorphiq.agent import REWARD_LEVEL_UP
+        agent = AdmorphiqAgent()
+        reward = agent._compute_reward(
+            frame_changed=True, prev_levels=0, curr_levels=1, state=GameState.PLAYING,
+        )
+        assert reward == REWARD_LEVEL_UP
+
+    def test_game_over_reward_clamped(self):
+        agent = AdmorphiqAgent()
+        reward = agent._compute_reward(
+            frame_changed=False, prev_levels=0, curr_levels=0, state=GameState.GAME_OVER,
+        )
+        assert reward >= 0.0  # clamped to 0 for BCE
+
+
+class TestSystematicExploration:
+    def test_early_steps_use_exploration(self):
+        """During first exploration_steps, agent should use systematic exploration."""
+        agent = AdmorphiqAgent(exploration_steps=10)
+        fd = _make_frame_data()
+        action = agent.choose_action([], fd)
+        # Should produce a valid action (explorer suggests untried actions)
+        assert isinstance(action, GameAction)
+        assert agent._step_count == 1
+
+    def test_explorer_cleared_on_level_change(self):
+        agent = AdmorphiqAgent()
+        # Play some steps to accumulate explorer state
+        for _ in range(3):
+            fd = _make_frame_data(score={"levels_completed": 0})
+            agent.choose_action([], fd)
+        # Explorer should have recorded actions
+        old_tried_count = sum(len(v) for v in agent.explorer.tried_actions.values())
+        assert old_tried_count > 0
+        # Trigger level transition — explorer is cleared then new action recorded
+        fd = _make_frame_data(score={"levels_completed": 1})
+        agent.choose_action([], fd)
+        # After reset, only 1 new action should be recorded (from this step)
+        new_tried_count = sum(len(v) for v in agent.explorer.tried_actions.values())
+        assert new_tried_count <= 1
+
+
+class TestMemoryReplay:
+    def test_memory_initialized(self):
+        agent = AdmorphiqAgent()
+        assert agent.memory is not None
+
+    def test_memory_on_level_complete(self):
+        agent = AdmorphiqAgent()
+        # Play some steps
+        for _ in range(3):
+            fd = _make_frame_data(score={"levels_completed": 0})
+            agent.choose_action([], fd)
+        # Trigger level completion
+        fd = _make_frame_data(score={"levels_completed": 1})
+        agent.choose_action([], fd)
+        # Memory should have saved a success sequence
+        assert len(agent.memory.success_sequences) == 1
+
+    def test_memory_on_game_over_resets(self):
+        agent = AdmorphiqAgent()
+        # Play some steps
+        for _ in range(3):
+            fd = _make_frame_data(score={"levels_completed": 0})
+            agent.choose_action([], fd)
+        # Game over should reset current sequence
+        fd = _make_frame_data(state=GameState.GAME_OVER)
+        agent.choose_action([], fd)
+        assert len(agent.memory.current_sequence) == 0

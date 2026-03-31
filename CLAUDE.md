@@ -182,6 +182,14 @@ scripts/
 - ~~ExperienceBuffer extended with next_frame + sample_with_next()~~
 - ~~69 tests passing (41 existing + 28 new)~~
 
+### Phase 3.5: Exploration Strategy Improvement — Failed
+- Level completion rewards (frame_changed=0.3, level_up=1.0, game_over=-0.5)
+- SystematicExplorer (untried action bonus, forced traversal)
+- GameMemory (success sequence replay)
+- Hotfixes: explorer diversity, train_frequency=20, MAX_ACTIONS=500
+- **Result**: 0 levels cleared on all 3 games despite 500 actions each
+- **Conclusion**: Change prediction approach has fundamental architectural limitations
+
 ### Phase 4: Hypothesis Engine
 - Integrate offline LLM or program synthesis
 - Hypothesis-verify loop
@@ -216,7 +224,9 @@ scripts/
 4. **Active Inference** — real-time adaptation via few-shot fine-tuning (Jack Cole, 34%)
 5. **Neurosymbolic** — neural perception + symbolic reasoning (Chollet's recommended direction)
 
-## Live Test Results (Phase 2.5)
+## Live Test Results
+
+### Phase 2.5 (Baseline, 80 actions)
 
 | Game | Layers | Actions | ms/action | Levels | Result |
 |------|--------|---------|-----------|--------|--------|
@@ -224,11 +234,21 @@ scripts/
 | LF52 | 2 | 80 | 463 | 0/10 | Failed |
 | BP35 | 2 | 80 | 454 | 0/9 | Failed |
 
+### Phase 3.5 (Exploration Improvements, 500 actions)
+
+| Game | Actions | Levels | ms/action | ACTION6 ratio |
+|------|---------|--------|-----------|---------------|
+| DC22 | 500 | 0/6 | 1308 | 484/500 |
+| LF52 | 500 | 0/10 | 1316 | 482/500 |
+| BP35 | 500 | 0/9 | 1279 | 481/500 |
+
 ### Lessons Learned
 - **Frame structure mismatch**: Actual frames are multi-layer with variable layer count and int8 color indices, not fixed 16ch one-hot as initially assumed
 - **Training bottleneck**: 440ms per action spent on training, only 8ms on inference -- training dominates runtime
-- **"Change prediction" alone is insufficient**: All 3 games stuck at level 0 -- need higher-level reasoning beyond predicting state changes
-- **Kaggle time budget is sufficient**: 6 hours allows 43K+ actions at current speed (80 actions/game = 500+ games)
+- **Kaggle time budget is sufficient**: 6 hours allows 43K+ actions at current speed
+- **Early diversity improved**: Action variety went from 1-2 types to 3-5 types, ACTION6 coordinate exploration realized
+- **Change prediction has fundamental limits**: CNN converges to ACTION6-only preference, 500 actions still 0 levels cleared
+- **Architectural redesign needed**: "Predict which action causes change" is insufficient for goal-directed behavior -- need higher-level reasoning about game rules and objectives
 
 ## What Doesn't Work
 
@@ -236,3 +256,4 @@ scripts/
 - Pure memorization / pattern matching (tasks are novel by design)
 - Ensembling existing solutions (doesn't generalize to private test set)
 - Brute force search without heuristics (search space too large)
+- **Change prediction as sole strategy** (tested Phase 2.5-3.5): CNN learns to predict which actions cause state changes, but converges to ACTION6-only preference without understanding game goals. 500 actions across 3 games, 0 levels cleared.

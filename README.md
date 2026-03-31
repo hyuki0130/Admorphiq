@@ -35,7 +35,11 @@ ARC-AGI-3 is the first interactive reasoning benchmark. Agents must explore unfa
 - Experience buffer extended with next_frame storage and sample_with_next()
 - 69 tests passing (41 existing + 28 new world model tests)
 
-**Phase 4: Hypothesis Engine** -- Next
+**Phase 3.5: Exploration Strategy Improvement** -- Failed
+
+- Reward shaping, SystematicExplorer, GameMemory, MAX_ACTIONS=500
+- Still 0 levels cleared -- change prediction approach has fundamental limits
+- **Next: architectural redesign needed**
 
 ## Project Structure
 
