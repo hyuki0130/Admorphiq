@@ -38,11 +38,9 @@ class ActionHead(nn.Module):
     def __init__(self) -> None:
         super().__init__()
         self.pool = nn.MaxPool2d(kernel_size=4)  # (B, 256, 16, 16)
-        self.fc = nn.Sequential(
-            nn.Linear(256 * 16 * 16, 512),
-            nn.ReLU(inplace=True),
-            nn.Linear(512, 5),
-        )
+        self.fc1 = nn.Linear(256 * 16 * 16, 512)
+        self.dropout = nn.Dropout(0.2)
+        self.fc2 = nn.Linear(512, 5)
 
     def forward(self, features: torch.Tensor) -> torch.Tensor:
         """Forward pass.
@@ -55,7 +53,8 @@ class ActionHead(nn.Module):
         """
         x = self.pool(features)          # (batch, 256, 16, 16)
         x = x.flatten(start_dim=1)       # (batch, 256*16*16)
-        return self.fc(x)                # (batch, 5)
+        x = self.dropout(torch.relu(self.fc1(x)))
+        return self.fc2(x)               # (batch, 5)
 
 
 class CoordinateHead(nn.Module):
@@ -68,9 +67,9 @@ class CoordinateHead(nn.Module):
             nn.ReLU(inplace=True),
             nn.Conv2d(128, 64, kernel_size=3, padding=1),   # (B, 64, 64, 64)
             nn.ReLU(inplace=True),
-            nn.Conv2d(64, 32, kernel_size=3, padding=1),    # (B, 32, 64, 64)
+            nn.Conv2d(64, 32, kernel_size=1),                 # (B, 32, 64, 64)
             nn.ReLU(inplace=True),
-            nn.Conv2d(32, 1, kernel_size=3, padding=1),     # (B, 1, 64, 64)
+            nn.Conv2d(32, 1, kernel_size=1),                 # (B, 1, 64, 64)
         )
 
     def forward(self, features: torch.Tensor) -> torch.Tensor:

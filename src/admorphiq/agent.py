@@ -13,26 +13,12 @@ import torch.nn.functional as F
 from .perception import PerceptionModel
 from .planner import GameMemory, SystematicExplorer
 from .types import ActionType, FrameData, GameAction, GameState
-from .utils import ExperienceBuffer
+from .utils import ExperienceBuffer, GameLogger
 from .world_model import WorldModel
 
 
-def _frame_to_tensor(frame: np.ndarray, raw_layers: np.ndarray | None = None) -> torch.Tensor:
-    """Convert frame data into (16, 64, 64) float one-hot tensor.
-
-    If raw_layers is provided (multi-layer frame), each layer is one-hot encoded
-    independently and merged via element-wise max. Otherwise, the single (64, 64)
-    index frame is one-hot encoded directly.
-    """
-    if raw_layers is not None and raw_layers.ndim == 3 and raw_layers.shape[0] > 1:
-        layers = []
-        for i in range(raw_layers.shape[0]):
-            t = torch.from_numpy(raw_layers[i].astype(np.int64))  # (64, 64)
-            onehot = F.one_hot(t.clamp(0, 15), num_classes=16)    # (64, 64, 16)
-            layers.append(onehot.permute(2, 0, 1).float())        # (16, 64, 64)
-        stacked = torch.stack(layers)          # (num_layers, 16, 64, 64)
-        return stacked.max(dim=0).values       # (16, 64, 64)
-
+def _frame_to_tensor(frame: np.ndarray) -> torch.Tensor:
+    """Convert (64, 64) canonical frame to (16, 64, 64) float one-hot tensor."""
     t = torch.from_numpy(frame.astype(np.int64))       # (64, 64)
     onehot = F.one_hot(t.clamp(0, 15), num_classes=16)  # (64, 64, 16)
     return onehot.permute(2, 0, 1).float()               # (16, 64, 64)
@@ -95,9 +81,12 @@ class AdmorphiqAgent:
         self.memory = GameMemory()
 
         self._prev_frame: torch.Tensor | None = None
+        self._prev_raw_frame: np.ndarray | None = None
         self._prev_action_idx: int | None = None
         self._step_count: int = 0
         self._last_levels_completed: int = 0
+        self._logger: GameLogger | None = None
+        self._last_loss: float | None = None
 
     def _reset_for_new_level(self, level_completed: bool = False) -> None:
         """Reset state for a new level."""
@@ -112,8 +101,13 @@ class AdmorphiqAgent:
             self.memory.on_level_reset()
 
         self._prev_frame = None
+        self._prev_raw_frame = None
         self._prev_action_idx = None
         self._step_count = 0
+
+    def set_logger(self, logger: GameLogger) -> None:
+        """Attach a GameLogger for structured JSONL logging."""
+        self._logger = logger
 
     @staticmethod
     def _compute_reward(frame_changed: bool) -> float:
@@ -133,27 +127,38 @@ class AdmorphiqAgent:
         if latest_frame.state in (GameState.NOT_PLAYED, GameState.GAME_OVER):
             if latest_frame.state == GameState.GAME_OVER:
                 self.memory.on_level_reset()
+                if self._logger is not None:
+                    self._logger.log_event("reset", {"reason": "game_over"})
             return GameAction.reset()
 
         # Detect level transition via score
         levels_completed = latest_frame.score.get("levels_completed", 0)
         if levels_completed > self._last_levels_completed:
+            if self._logger is not None:
+                self._logger.log_event("level_up", {"from": self._last_levels_completed, "to": levels_completed})
             self._last_levels_completed = levels_completed
             self._reset_for_new_level(level_completed=True)
 
         # Encode current frame
-        current_frame = _frame_to_tensor(latest_frame.frame, latest_frame.raw_layers).to(self.device)
+        current_frame = _frame_to_tensor(latest_frame.frame).to(self.device)
 
         # Record experience from previous step with binary reward
+        frame_changed = False
+        reward = 0.0
         if self._prev_frame is not None and self._prev_action_idx is not None:
             frame_changed = not torch.equal(self._prev_frame, current_frame)
             reward = self._compute_reward(frame_changed)
             self.buffer.add(
-                self._prev_frame.cpu(),
+                self._prev_frame.cpu().numpy().astype(bool),
                 self._prev_action_idx,
                 reward,
-                next_frame=current_frame.cpu(),
+                next_frame=current_frame.cpu().numpy().astype(bool),
             )
+            if self._logger is not None and self._prev_raw_frame is not None:
+                self._logger.log_frame_diff(
+                    self._step_count, self._prev_raw_frame,
+                    latest_frame.frame, self._prev_action_idx,
+                )
 
         # Build available actions mask
         available_mask = torch.zeros(1, 5, dtype=torch.bool, device=self.device)
@@ -197,6 +202,7 @@ class AdmorphiqAgent:
         # Bookkeeping
         state_hash = self.explorer.hash_frame(current_frame)
         self._prev_frame = current_frame
+        self._prev_raw_frame = latest_frame.frame
         self._prev_action_idx = idx
         self.explorer.record_action(state_hash, idx)
         self.memory.record_action(idx)
@@ -205,6 +211,23 @@ class AdmorphiqAgent:
         self._step_count += 1
         if self._step_count % self.train_frequency == 0 and len(self.buffer) >= self.batch_size:
             self._train_step()
+
+        # Log step
+        if self._logger is not None:
+            action_name = f"coord({idx - 5})" if idx >= 5 else f"A{idx + 1}"
+            top5_idx = np.argsort(perception_probs)[-5:][::-1]
+            top5 = {(f"coord({i - 5})" if i >= 5 else f"A{i + 1}"): round(float(perception_probs[i]), 4) for i in top5_idx}
+            self._logger.log_step(
+                self._step_count, action_name, extra={
+                    "action_idx": idx,
+                    "frame_changed": frame_changed,
+                    "reward": reward,
+                    "top5_probs": top5,
+                    "loss": self._last_loss,
+                    "buffer_size": len(self.buffer),
+                    "levels_completed": levels_completed,
+                },
+            )
 
         # Convert index to game action
         return self._idx_to_game_action(idx)
@@ -236,22 +259,17 @@ class AdmorphiqAgent:
         coord_logits = logits[:, 5:]
 
         action_probs = torch.sigmoid(action_logits)
-        action_entropy = -(
-            action_probs * torch.log(action_probs + 1e-8)
-            + (1 - action_probs) * torch.log(1 - action_probs + 1e-8)
-        ).mean()
+        action_entropy = action_probs.mean()
 
         coord_probs = torch.sigmoid(coord_logits)
-        coord_entropy = -(
-            coord_probs * torch.log(coord_probs + 1e-8)
-            + (1 - coord_probs) * torch.log(1 - coord_probs + 1e-8)
-        ).mean()
+        coord_entropy = coord_probs.mean()
 
         total_loss = loss - self.action_entropy_coeff * action_entropy - self.coord_entropy_coeff * coord_entropy
 
         self.optimizer.zero_grad()
         total_loss.backward()
         self.optimizer.step()
+        self._last_loss = round(float(total_loss.item()), 5)
 
     def _train_world_model_step(self) -> None:
         """One gradient step for the world model. Currently disabled for performance."""

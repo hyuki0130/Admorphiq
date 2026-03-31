@@ -116,8 +116,8 @@ class AdmorphiqAdapter(OfficialAgent):  # type: ignore[misc]
         raw_layers: np.ndarray | None = None
         if arr.ndim == 3:
             raw_layers = arr.copy()
-            # Use first layer as canonical (H, W) index frame
-            canonical = arr[0].astype(np.uint8)
+            # Use last layer as canonical — matches StochasticGoose convention
+            canonical = arr[-1].astype(np.uint8)
         elif arr.ndim == 2:
             canonical = arr.astype(np.uint8)
         else:
@@ -147,11 +147,15 @@ class AdmorphiqAdapter(OfficialAgent):  # type: ignore[misc]
         # --- Score ---
         score: dict[str, Any] = {}
         if hasattr(official_frame, "levels_completed"):
-            score["levels_completed"] = official_frame.levels_completed
-        elif hasattr(official_frame, "score") and isinstance(official_frame.score, dict):
-            score = official_frame.score
+            score["levels_completed"] = int(official_frame.levels_completed)
+        elif hasattr(official_frame, "score"):
+            raw_score = official_frame.score
+            if isinstance(raw_score, (int, float)):
+                score["levels_completed"] = int(raw_score)
+            elif isinstance(raw_score, dict):
+                score = raw_score
         if hasattr(official_frame, "win_levels"):
-            score["win_levels"] = official_frame.win_levels
+            score["win_levels"] = int(official_frame.win_levels)
 
         return FrameData(
             frame=canonical, state=state, score=score,

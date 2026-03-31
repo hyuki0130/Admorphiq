@@ -7,6 +7,7 @@ from arc_agi import Arcade, OperationMode
 from arcengine import GameAction
 
 from admorphiq.adapter import AdmorphiqAdapter
+from admorphiq.utils import GameLogger
 
 MAX_ACTIONS = 500
 
@@ -20,6 +21,8 @@ def run_game(arcade: Arcade, name: str, game_id: str) -> dict:
 
     adapter = AdmorphiqAdapter()
     agent = adapter._agent
+    logger = GameLogger(game_id=game_id, agent_name="admorphiq_cnn")
+    agent.set_logger(logger)
 
     env = arcade.make(game_id)
     if env is None:
@@ -89,6 +92,12 @@ def run_game(arcade: Arcade, name: str, game_id: str) -> dict:
         "first_20": first_20,
     }
 
+    logger.log_summary(
+        total_actions=action_count,
+        levels_cleared=obs.levels_completed if obs else 0,
+        elapsed=elapsed,
+    )
+    log(f"  Log saved: {logger.log_file}")
     log(f"  Result: {r['actions']} actions, {r['time']}s ({r['ms_per_action']}ms/act)")
     log(f"  Levels: {r['levels_completed']}/{r['win_levels']}")
     log(f"  Buffer: {r['buffer']}, First 20 unique: {r['first_20_unique']}")

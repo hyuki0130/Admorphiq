@@ -6,6 +6,7 @@ from arc_agi import Arcade, OperationMode
 from arcengine import GameAction, GameState
 
 from admorphiq.adapter import AdmorphiqAdapter
+from admorphiq.utils import GameLogger
 
 MAX_ACTIONS = 500
 NUM_GAMES = 3
@@ -20,6 +21,10 @@ def run_game(arcade: Arcade, game_id: str, adapter: AdmorphiqAdapter) -> dict:
     obs = env.observation_space
     if obs is None:
         return {"game_id": game_id, "error": "No observation after make()"}
+
+    # Attach logger to internal agent
+    logger = GameLogger(game_id=game_id, agent_name="admorphiq_cnn")
+    adapter._agent.set_logger(logger)
 
     start_time = time.time()
     action_count = 0
@@ -55,13 +60,21 @@ def run_game(arcade: Arcade, game_id: str, adapter: AdmorphiqAdapter) -> dict:
 
     elapsed = time.time() - start_time
 
+    levels = obs.levels_completed if obs else 0
+    logger.log_summary(
+        total_actions=action_count,
+        levels_cleared=levels,
+        elapsed=elapsed,
+    )
+    print(f"  Log saved: {logger.log_file}")
+
     return {
         "game_id": game_id,
         "actions": action_count,
         "elapsed_s": round(elapsed, 2),
         "ms_per_action": round(elapsed / max(action_count, 1) * 1000, 1),
         "state": obs.state.name if obs else "UNKNOWN",
-        "levels_completed": obs.levels_completed if obs else 0,
+        "levels_completed": levels,
         "win_levels": obs.win_levels if obs else 0,
     }
 

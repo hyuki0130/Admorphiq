@@ -6,6 +6,7 @@ import hashlib
 import random
 from collections import deque
 
+import numpy as np
 import torch
 
 
@@ -15,33 +16,36 @@ class ExperienceBuffer:
     Uses a fixed-size deque to bound memory usage. Duplicate experiences
     (same frame + action combination) are skipped to improve sample efficiency.
 
-    Reward is a float in [0.0, 1.0] range (generalizes the old bool frame_changed).
+    Frames are stored as bool numpy arrays to save memory.
+    Reward is a float in [0.0, 1.0] range.
     """
 
     def __init__(self, maxlen: int = 200_000) -> None:
-        self._buffer: deque[tuple[torch.Tensor, int, float, torch.Tensor | None]] = deque(maxlen=maxlen)
+        self._buffer: deque[tuple[np.ndarray, int, float, np.ndarray | None]] = deque(maxlen=maxlen)
         self._seen_hashes: set[str] = set()
 
     @staticmethod
-    def _hash(frame: torch.Tensor, action_idx: int) -> str:
-        frame_bytes = frame.cpu().numpy().tobytes()
+    def _hash(frame: np.ndarray, action_idx: int) -> str:
+        if hasattr(frame, 'numpy'):
+            frame = frame.numpy()
+        frame_bytes = frame.tobytes()
         action_bytes = int(action_idx).to_bytes(4, byteorder="little")
         return hashlib.md5(frame_bytes + action_bytes).hexdigest()
 
     def add(
         self,
-        frame: torch.Tensor,
+        frame: np.ndarray,
         action_idx: int,
         reward: float | bool,
-        next_frame: torch.Tensor | None = None,
+        next_frame: np.ndarray | None = None,
     ) -> bool:
         """Add an experience to the buffer. Skips duplicates.
 
         Args:
-            frame: Frame tensor of shape (16, 64, 64).
+            frame: Bool numpy array of shape (16, 64, 64).
             action_idx: Action index (0-based).
             reward: Reward value (float 0.0-1.0, or bool for backward compat).
-            next_frame: Next frame tensor of shape (16, 64, 64), or None.
+            next_frame: Bool numpy array of shape (16, 64, 64), or None.
 
         Returns:
             True if added, False if duplicate.
@@ -62,12 +66,14 @@ class ExperienceBuffer:
 
         Returns:
             Tuple of (frames, actions, rewards):
-                - frames: (batch_size, 16, 64, 64)
+                - frames: (batch_size, 16, 64, 64) float32
                 - actions: (batch_size,) int64
                 - rewards: (batch_size,) float32
         """
+        if len(self._buffer) == 0:
+            raise RuntimeError("Cannot sample from an empty buffer")
         batch = random.sample(list(self._buffer), min(batch_size, len(self._buffer)))
-        frames = torch.stack([b[0] for b in batch])
+        frames = torch.from_numpy(np.stack([b[0] for b in batch]).astype(np.float32))
         actions = torch.tensor([b[1] for b in batch], dtype=torch.long)
         rewards = torch.tensor([b[2] for b in batch], dtype=torch.float32)
         return frames, actions, rewards  # (B, 16, 64, 64), (B,), (B,)
@@ -84,19 +90,19 @@ class ExperienceBuffer:
 
         Returns:
             Tuple of (frames, actions, rewards, next_frames) or None:
-                - frames: (batch_size, 16, 64, 64)
+                - frames: (batch_size, 16, 64, 64) float32
                 - actions: (batch_size,) int64
                 - rewards: (batch_size,) float32
-                - next_frames: (batch_size, 16, 64, 64)
+                - next_frames: (batch_size, 16, 64, 64) float32
         """
         candidates = [b for b in self._buffer if b[3] is not None]
         if len(candidates) < batch_size:
             return None
         batch = random.sample(candidates, batch_size)
-        frames = torch.stack([b[0] for b in batch])
+        frames = torch.from_numpy(np.stack([b[0] for b in batch]).astype(np.float32))
         actions = torch.tensor([b[1] for b in batch], dtype=torch.long)
         rewards = torch.tensor([b[2] for b in batch], dtype=torch.float32)
-        next_frames = torch.stack([b[3] for b in batch])  # type: ignore[arg-type]
+        next_frames = torch.from_numpy(np.stack([b[3] for b in batch]).astype(np.float32))
         return frames, actions, rewards, next_frames
 
     def clear(self) -> None:
