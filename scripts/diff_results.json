@@ -1,8 +1,8 @@
 [
   {
-    "actions": 500,
-    "elapsed_s": 0.18,
-    "ms_per_action": 0.4,
+    "actions": 50000,
+    "elapsed_s": 3.68,
+    "ms_per_action": 0.1,
     "state": "NOT_FINISHED",
     "levels_completed": 0,
     "win_levels": 9,
@@ -26,16 +26,16 @@
     "title": "TU93"
   },
   {
-    "actions": 500,
-    "elapsed_s": 0.17,
-    "ms_per_action": 0.3,
+    "actions": 50000,
+    "elapsed_s": 12.04,
+    "ms_per_action": 0.2,
     "state": "NOT_FINISHED",
-    "levels_completed": 0,
+    "levels_completed": 1,
     "win_levels": 8,
     "game_type": "movement",
     "player_color": 0,
-    "states_discovered": 243,
-    "transitions_recorded": 259,
+    "states_discovered": 620,
+    "transitions_recorded": 2480,
     "analysis": {
       "player_color": 0,
       "direction_map": {
@@ -64,16 +64,16 @@
     "title": "AR25"
   },
   {
-    "actions": 500,
-    "elapsed_s": 0.05,
-    "ms_per_action": 0.1,
+    "actions": 50000,
+    "elapsed_s": 7.85,
+    "ms_per_action": 0.2,
     "state": "NOT_FINISHED",
     "levels_completed": 0,
     "win_levels": 8,
     "game_type": "movement",
     "player_color": 0,
-    "states_discovered": 476,
-    "transitions_recorded": 479,
+    "states_discovered": 44980,
+    "transitions_recorded": 47545,
     "analysis": {
       "player_color": 0,
       "direction_map": {
@@ -106,16 +106,16 @@
     "title": "RE86"
   },
   {
-    "actions": 500,
-    "elapsed_s": 0.09,
+    "actions": 50000,
+    "elapsed_s": 9.7,
     "ms_per_action": 0.2,
     "state": "NOT_FINISHED",
     "levels_completed": 0,
     "win_levels": 9,
     "game_type": "click",
     "player_color": null,
-    "states_discovered": 368,
-    "transitions_recorded": 367,
+    "states_discovered": 6230,
+    "transitions_recorded": 6230,
     "analysis": {
       "player_color": null,
       "direction_map": {},
@@ -127,16 +127,16 @@
     "title": "SU15"
   },
   {
-    "actions": 500,
-    "elapsed_s": 0.12,
-    "ms_per_action": 0.2,
+    "actions": 50000,
+    "elapsed_s": 6.31,
+    "ms_per_action": 0.1,
     "state": "NOT_FINISHED",
     "levels_completed": 0,
     "win_levels": 6,
     "game_type": "movement",
     "player_color": 10,
-    "states_discovered": 135,
-    "transitions_recorded": 162,
+    "states_discovered": 386,
+    "transitions_recorded": 772,
     "analysis": {
       "player_color": 10,
       "direction_map": {
@@ -157,16 +157,16 @@
     "title": "M0R0"
   },
   {
-    "actions": 500,
-    "elapsed_s": 0.05,
-    "ms_per_action": 0.1,
+    "actions": 50000,
+    "elapsed_s": 9.22,
+    "ms_per_action": 0.2,
     "state": "NOT_FINISHED",
-    "levels_completed": 0,
+    "levels_completed": 1,
     "win_levels": 5,
     "game_type": "movement",
     "player_color": 0,
-    "states_discovered": 414,
-    "transitions_recorded": 477,
+    "states_discovered": 18732,
+    "transitions_recorded": 44566,
     "analysis": {
       "player_color": 0,
       "direction_map": {
@@ -199,16 +199,16 @@
     "title": "CN04"
   },
   {
-    "actions": 500,
-    "elapsed_s": 0.06,
+    "actions": 50000,
+    "elapsed_s": 4.52,
     "ms_per_action": 0.1,
     "state": "NOT_FINISHED",
     "levels_completed": 1,
     "win_levels": 6,
     "game_type": "unknown",
     "player_color": null,
-    "states_discovered": 46,
-    "transitions_recorded": 46,
+    "states_discovered": 4826,
+    "transitions_recorded": 4826,
     "analysis": {
       "player_color": null,
       "direction_map": {},
@@ -220,16 +220,16 @@
     "title": "FT09"
   },
   {
-    "actions": 500,
-    "elapsed_s": 0.35,
-    "ms_per_action": 0.7,
+    "actions": 50000,
+    "elapsed_s": 12.67,
+    "ms_per_action": 0.3,
     "state": "NOT_FINISHED",
     "levels_completed": 0,
     "win_levels": 6,
     "game_type": "movement",
     "player_color": 0,
-    "states_discovered": 212,
-    "transitions_recorded": 256,
+    "states_discovered": 318,
+    "transitions_recorded": 636,
     "analysis": {
       "player_color": 0,
       "direction_map": {
@@ -250,16 +250,16 @@
     "title": "TR87"
   },
   {
-    "actions": 500,
-    "elapsed_s": 0.15,
+    "actions": 50000,
+    "elapsed_s": 16.59,
     "ms_per_action": 0.3,
     "state": "NOT_FINISHED",
     "levels_completed": 0,
     "win_levels": 6,
     "game_type": "unknown",
     "player_color": null,
-    "states_discovered": 304,
-    "transitions_recorded": 463,
+    "states_discovered": 6774,
+    "transitions_recorded": 18644,
     "analysis": {
       "player_color": null,
       "direction_map": {},
@@ -271,16 +271,16 @@
     "title": "SC25"
   },
   {
-    "actions": 500,
-    "elapsed_s": 0.04,
+    "actions": 50000,
+    "elapsed_s": 5.64,
     "ms_per_action": 0.1,
     "state": "NOT_FINISHED",
-    "levels_completed": 0,
+    "levels_completed": 1,
     "win_levels": 8,
     "game_type": "unknown",
     "player_color": null,
-    "states_discovered": 12,
-    "transitions_recorded": 12,
+    "states_discovered": 691,
+    "transitions_recorded": 691,
     "analysis": {
       "player_color": null,
       "direction_map": {},
@@ -292,16 +292,16 @@
     "title": "LP85"
   },
   {
-    "actions": 500,
-    "elapsed_s": 0.09,
+    "actions": 50000,
+    "elapsed_s": 11.17,
     "ms_per_action": 0.2,
     "state": "NOT_FINISHED",
     "levels_completed": 0,
     "win_levels": 6,
     "game_type": "hybrid",
     "player_color": 14,
-    "states_discovered": 358,
-    "transitions_recorded": 479,
+    "states_discovered": 3264,
+    "transitions_recorded": 13135,
     "analysis": {
       "player_color": 14,
       "direction_map": {
@@ -330,16 +330,16 @@
     "title": "DC22"
   },
   {
-    "actions": 500,
-    "elapsed_s": 0.12,
-    "ms_per_action": 0.2,
+    "actions": 50000,
+    "elapsed_s": 26.95,
+    "ms_per_action": 0.5,
     "state": "NOT_FINISHED",
-    "levels_completed": 0,
+    "levels_completed": 1,
     "win_levels": 6,
     "game_type": "hybrid",
     "player_color": 14,
-    "states_discovered": 365,
-    "transitions_recorded": 406,
+    "states_discovered": 9548,
+    "transitions_recorded": 15344,
     "analysis": {
       "player_color": 14,
       "direction_map": {
@@ -372,16 +372,16 @@
     "title": "SP80"
   },
   {
-    "actions": 500,
-    "elapsed_s": 0.05,
-    "ms_per_action": 0.1,
+    "actions": 50000,
+    "elapsed_s": 7.75,
+    "ms_per_action": 0.2,
     "state": "NOT_FINISHED",
     "levels_completed": 0,
     "win_levels": 7,
     "game_type": "hybrid",
     "player_color": 0,
-    "states_discovered": 388,
-    "transitions_recorded": 470,
+    "states_discovered": 6560,
+    "transitions_recorded": 22555,
     "analysis": {
       "player_color": 0,
       "direction_map": {
@@ -410,16 +410,16 @@
     "title": "KA59"
   },
   {
-    "actions": 500,
-    "elapsed_s": 0.11,
-    "ms_per_action": 0.2,
+    "actions": 50000,
+    "elapsed_s": 4.1,
+    "ms_per_action": 0.1,
     "state": "NOT_FINISHED",
     "levels_completed": 0,
     "win_levels": 7,
     "game_type": "unknown",
     "player_color": null,
-    "states_discovered": 288,
-    "transitions_recorded": 477,
+    "states_discovered": 1343,
+    "transitions_recorded": 3278,
     "analysis": {
       "player_color": null,
       "direction_map": {},
@@ -431,16 +431,16 @@
     "title": "G50T"
   },
   {
-    "actions": 500,
-    "elapsed_s": 0.4,
-    "ms_per_action": 0.8,
+    "actions": 50000,
+    "elapsed_s": 58.19,
+    "ms_per_action": 1.2,
     "state": "NOT_FINISHED",
     "levels_completed": 0,
     "win_levels": 8,
     "game_type": "unknown",
     "player_color": null,
-    "states_discovered": 72,
-    "transitions_recorded": 205,
+    "states_discovered": 68,
+    "transitions_recorded": 198,
     "analysis": {
       "player_color": null,
       "direction_map": {},
@@ -452,16 +452,16 @@
     "title": "SB26"
   },
   {
-    "actions": 500,
-    "elapsed_s": 0.35,
-    "ms_per_action": 0.7,
+    "actions": 50000,
+    "elapsed_s": 39.61,
+    "ms_per_action": 0.8,
     "state": "NOT_FINISHED",
     "levels_completed": 0,
     "win_levels": 10,
     "game_type": "click",
     "player_color": null,
-    "states_discovered": 116,
-    "transitions_recorded": 116,
+    "states_discovered": 306,
+    "transitions_recorded": 306,
     "analysis": {
       "player_color": null,
       "direction_map": {},
@@ -473,16 +473,16 @@
     "title": "LF52"
   },
   {
-    "actions": 500,
-    "elapsed_s": 0.95,
-    "ms_per_action": 1.9,
+    "actions": 50000,
+    "elapsed_s": 46.86,
+    "ms_per_action": 0.9,
     "state": "NOT_FINISHED",
     "levels_completed": 0,
     "win_levels": 9,
     "game_type": "hybrid",
     "player_color": 9,
-    "states_discovered": 70,
-    "transitions_recorded": 74,
+    "states_discovered": 17700,
+    "transitions_recorded": 22438,
     "analysis": {
       "player_color": 9,
       "direction_map": {
@@ -503,16 +503,16 @@
     "title": "BP35"
   },
   {
-    "actions": 500,
-    "elapsed_s": 0.02,
+    "actions": 50000,
+    "elapsed_s": 2.47,
     "ms_per_action": 0.0,
     "state": "NOT_FINISHED",
     "levels_completed": 0,
     "win_levels": 8,
     "game_type": "click",
     "player_color": null,
-    "states_discovered": 212,
-    "transitions_recorded": 212,
+    "states_discovered": 632,
+    "transitions_recorded": 632,
     "analysis": {
       "player_color": null,
       "direction_map": {},
@@ -524,16 +524,16 @@
     "title": "S5I5"
   },
   {
-    "actions": 500,
-    "elapsed_s": 0.06,
+    "actions": 50000,
+    "elapsed_s": 5.3,
     "ms_per_action": 0.1,
     "state": "NOT_FINISHED",
     "levels_completed": 0,
     "win_levels": 6,
     "game_type": "click",
     "player_color": null,
-    "states_discovered": 469,
-    "transitions_recorded": 468,
+    "states_discovered": 28840,
+    "transitions_recorded": 28839,
     "analysis": {
       "player_color": null,
       "direction_map": {},
@@ -545,16 +545,16 @@
     "title": "R11L"
   },
   {
-    "actions": 500,
-    "elapsed_s": 0.23,
-    "ms_per_action": 0.5,
+    "actions": 50000,
+    "elapsed_s": 8.8,
+    "ms_per_action": 0.2,
     "state": "NOT_FINISHED",
     "levels_completed": 0,
     "win_levels": 8,
     "game_type": "movement",
     "player_color": 1,
-    "states_discovered": 181,
-    "transitions_recorded": 243,
+    "states_discovered": 14323,
+    "transitions_recorded": 26237,
     "analysis": {
       "player_color": 1,
       "direction_map": {
@@ -579,16 +579,16 @@
     "title": "SK48"
   },
   {
-    "actions": 500,
-    "elapsed_s": 0.06,
+    "actions": 50000,
+    "elapsed_s": 5.31,
     "ms_per_action": 0.1,
     "state": "NOT_FINISHED",
     "levels_completed": 0,
     "win_levels": 9,
     "game_type": "movement",
     "player_color": 0,
-    "states_discovered": 453,
-    "transitions_recorded": 481,
+    "states_discovered": 30174,
+    "transitions_recorded": 47879,
     "analysis": {
       "player_color": 0,
       "direction_map": {
@@ -617,16 +617,16 @@
     "title": "WA30"
   },
   {
-    "actions": 500,
-    "elapsed_s": 0.06,
+    "actions": 50000,
+    "elapsed_s": 5.04,
     "ms_per_action": 0.1,
     "state": "NOT_FINISHED",
     "levels_completed": 0,
     "win_levels": 7,
     "game_type": "click",
     "player_color": null,
-    "states_discovered": 50,
-    "transitions_recorded": 50,
+    "states_discovered": 208,
+    "transitions_recorded": 208,
     "analysis": {
       "player_color": null,
       "direction_map": {},
@@ -638,16 +638,16 @@
     "title": "VC33"
   },
   {
-    "actions": 500,
-    "elapsed_s": 0.74,
-    "ms_per_action": 1.5,
+    "actions": 50000,
+    "elapsed_s": 16.66,
+    "ms_per_action": 0.3,
     "state": "NOT_FINISHED",
-    "levels_completed": 0,
+    "levels_completed": 1,
     "win_levels": 7,
     "game_type": "movement",
     "player_color": 9,
-    "states_discovered": 248,
-    "transitions_recorded": 266,
+    "states_discovered": 1259,
+    "transitions_recorded": 3777,
     "analysis": {
       "player_color": 9,
       "direction_map": {
@@ -672,16 +672,16 @@
     "title": "LS20"
   },
   {
-    "actions": 500,
-    "elapsed_s": 0.13,
-    "ms_per_action": 0.3,
+    "actions": 50000,
+    "elapsed_s": 3.97,
+    "ms_per_action": 0.1,
     "state": "NOT_FINISHED",
     "levels_completed": 0,
     "win_levels": 6,
     "game_type": "hybrid",
     "player_color": 2,
-    "states_discovered": 113,
-    "transitions_recorded": 163,
+    "states_discovered": 377,
+    "transitions_recorded": 1105,
     "analysis": {
       "player_color": 2,
       "direction_map": {
@@ -702,16 +702,16 @@
     "title": "CD82"
   },
   {
-    "actions": 500,
-    "elapsed_s": 0.05,
+    "actions": 50000,
+    "elapsed_s": 4.87,
     "ms_per_action": 0.1,
     "state": "NOT_FINISHED",
     "levels_completed": 0,
     "win_levels": 7,
     "game_type": "click",
     "player_color": null,
-    "states_discovered": 206,
-    "transitions_recorded": 206,
+    "states_discovered": 6946,
+    "transitions_recorded": 6946,
     "analysis": {
       "player_color": null,
       "direction_map": {},

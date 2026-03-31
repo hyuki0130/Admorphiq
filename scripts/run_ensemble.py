@@ -22,7 +22,7 @@ def main():
     envs = arcade.get_environments()
     print(f"  Games: {len(envs)}\n")
 
-    agent = EnsembleAgent(total_budget=5000)
+    agent = EnsembleAgent(total_budget=10000)
     results = []
     total_start = time.time()
 

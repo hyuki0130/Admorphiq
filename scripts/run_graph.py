@@ -7,7 +7,8 @@ from arcengine import GameAction, GameState
 
 from admorphiq.agent_graph import GraphAgent
 
-MAX_ACTIONS = 500
+MAX_ACTIONS = 50000  # effectively unlimited
+TIME_LIMIT = 300.0  # 5 minutes per game
 
 
 def run_game(arcade: Arcade, game_id: str, agent: GraphAgent) -> dict:
@@ -26,9 +27,29 @@ def run_game(arcade: Arcade, game_id: str, agent: GraphAgent) -> dict:
 
     start_time = time.time()
     action_count = 0
+    last_new_state_step = 0
+    last_state_count = 0
+    last_level_count = 0
+    STALE_THRESHOLD = 5000  # Give up if no new states for this many steps
 
     while action_count < MAX_ACTIONS:
+        elapsed = time.time() - start_time
+        if elapsed > TIME_LIMIT:
+            break
+
         if agent.is_done([], obs):
+            break
+
+        # Early termination: no progress for too long
+        stats = agent.get_stats()
+        current_states = stats["unique_states"]
+        current_levels = obs.levels_completed if obs else 0
+        if current_states > last_state_count or current_levels > last_level_count:
+            last_new_state_step = action_count
+            last_state_count = current_states
+            last_level_count = current_levels
+        elif action_count - last_new_state_step > STALE_THRESHOLD:
+            print(f"  Early stop: no new states for {STALE_THRESHOLD} steps at step {action_count}")
             break
 
         action = agent.choose_action([], obs)
@@ -46,12 +67,13 @@ def run_game(arcade: Arcade, game_id: str, agent: GraphAgent) -> dict:
 
         action_count += 1
 
-        if action_count % 50 == 0:
-            stats = agent.get_stats()
+        if action_count % 500 == 0:
             print(
                 f"  Step {action_count}: state={obs.state}, "
                 f"levels={obs.levels_completed}/{obs.win_levels}, "
-                f"states={stats['unique_states']}, edges={stats['total_edges']}"
+                f"states={stats['unique_states']}, edges={stats['total_edges']}, "
+                f"productive={stats.get('productive_actions', 0)}, "
+                f"t={elapsed:.1f}s"
             )
 
     elapsed = time.time() - start_time

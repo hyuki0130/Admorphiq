@@ -8,7 +8,8 @@ from arc_agi import Arcade, OperationMode
 
 from admorphiq.agent_diff import DiffAgent
 
-MAX_ACTIONS = 500
+MAX_ACTIONS = 50000  # effectively unlimited
+TIME_LIMIT = 300.0   # 5 minutes per game
 NUM_GAMES = 25
 
 
@@ -36,7 +37,7 @@ def main() -> None:
                 results.append({"game_id": game_id, "error": "make() returned None"})
                 continue
 
-            result = agent.play_game(env, max_actions=MAX_ACTIONS)
+            result = agent.play_game(env, max_actions=MAX_ACTIONS, time_limit=TIME_LIMIT)
             result["game_id"] = game_id
             result["title"] = title
             results.append(result)

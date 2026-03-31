@@ -802,6 +802,1331 @@ def strat_move_then_click_grid(env: Any, dir_actions: list[int], budget: int = 4
     return best, name, used
 
 
+# ─── Movement strategies (BFS navigation, wall mapping) ────────────
+
+def strat_bfs_navigate(env: Any, dir_actions: list[int], budget: int = 500) -> tuple[int, str, int]:
+    """BFS navigation: detect player, track position, navigate to unvisited grid cells."""
+    obs = reset(env)
+    used, best, name = 1, 0, ""
+    frame = get_frame(obs)
+
+    # Detect player color by trying each direction and seeing what moves
+    player_color = None
+    dir_map: dict[int, tuple[int, int]] = {}  # aid -> (dy, dx)
+
+    for aid in dir_actions[:4]:
+        f_before = get_frame(obs)
+        obs = act(env, aid)
+        used += 1
+        f_after = get_frame(obs)
+        if obs.levels_completed > best:
+            best = obs.levels_completed
+            name = "bfs_navigate"
+        if obs.state.name in ("WIN", "GAME_OVER"):
+            if obs.state.name == "GAME_OVER":
+                obs = reset(env)
+                used += 1
+            else:
+                return best, name, used
+            continue
+
+        for color in range(1, 16):
+            bm = f_before == color
+            am = f_after == color
+            bc, ac = int(bm.sum()), int(am.sum())
+            if bc > 0 and ac > 0 and bc < 2000:
+                b_c = np.array(np.where(bm)).mean(axis=1)
+                a_c = np.array(np.where(am)).mean(axis=1)
+                dy = float(a_c[0] - b_c[0])
+                dx = float(a_c[1] - b_c[1])
+                if abs(dy) > 0.3 or abs(dx) > 0.3:
+                    player_color = color
+                    dir_map[aid] = (int(np.sign(dy)), int(np.sign(dx)))
+                    break
+
+    if player_color is None:
+        # Fallback: just cycle through actions
+        obs = reset(env)
+        used += 1
+        for step in range(min(budget - used, 400)):
+            if obs.state.name == "WIN":
+                break
+            if obs.state.name == "GAME_OVER":
+                obs = reset(env)
+                used += 1
+                continue
+            obs = act(env, dir_actions[step % len(dir_actions)])
+            used += 1
+            if obs.levels_completed > best:
+                best = obs.levels_completed
+                name = "bfs_navigate_fallback"
+        return best, name, used
+
+    # Build visited grid (8x8 sectors of the 64x64 frame)
+    SECTOR = 8
+    visited_sectors: set[tuple[int, int]] = set()
+
+    def get_player_pos(frm: np.ndarray) -> tuple[int, int] | None:
+        pp = np.argwhere(frm == player_color)
+        if len(pp) == 0:
+            return None
+        c = pp.mean(axis=0)
+        return (int(c[0]), int(c[1]))
+
+    def pos_to_sector(py: int, px: int) -> tuple[int, int]:
+        return (py // SECTOR, px // SECTOR)
+
+    # Reset and start BFS navigation
+    obs = reset(env)
+    used += 1
+    frame = get_frame(obs)
+    pos = get_player_pos(frame)
+    if pos:
+        visited_sectors.add(pos_to_sector(pos[0], pos[1]))
+
+    # Map direction actions to deltas
+    # Infer: try all mapped directions
+    reverse_dir: dict[tuple[int, int], int] = {v: k for k, v in dir_map.items()}
+
+    stuck_count = 0
+    prev_pos = pos
+    target_sector: tuple[int, int] | None = None
+
+    for step in range(budget - used):
+        if used >= budget or obs.state.name == "WIN":
+            break
+        if obs.state.name == "GAME_OVER":
+            obs = reset(env)
+            used += 1
+            visited_sectors.clear()
+            frame = get_frame(obs)
+            pos = get_player_pos(frame)
+            if pos:
+                visited_sectors.add(pos_to_sector(pos[0], pos[1]))
+            stuck_count = 0
+            target_sector = None
+            continue
+
+        if obs.levels_completed > best:
+            best = obs.levels_completed
+            name = "bfs_navigate"
+            visited_sectors.clear()
+            target_sector = None
+
+        frame = get_frame(obs)
+        pos = get_player_pos(frame)
+
+        if pos:
+            cur_sector = pos_to_sector(pos[0], pos[1])
+            visited_sectors.add(cur_sector)
+
+            # Find nearest unvisited sector
+            if target_sector is None or target_sector in visited_sectors:
+                best_dist = float("inf")
+                for sy in range(64 // SECTOR):
+                    for sx in range(64 // SECTOR):
+                        if (sy, sx) not in visited_sectors:
+                            dist = abs(sy - cur_sector[0]) + abs(sx - cur_sector[1])
+                            if dist < best_dist:
+                                best_dist = dist
+                                target_sector = (sy, sx)
+
+            if target_sector is not None:
+                ty = target_sector[0] * SECTOR + SECTOR // 2
+                tx = target_sector[1] * SECTOR + SECTOR // 2
+                dy = ty - pos[0]
+                dx = tx - pos[1]
+
+                # Pick best action
+                chosen = None
+                if abs(dy) >= abs(dx):
+                    delta = (1 if dy > 0 else -1, 0)
+                    chosen = reverse_dir.get(delta)
+                if chosen is None:
+                    delta = (0, 1 if dx > 0 else -1)
+                    chosen = reverse_dir.get(delta)
+                if chosen is None:
+                    chosen = dir_actions[step % len(dir_actions)]
+
+                obs = act(env, chosen)
+                used += 1
+            else:
+                # All sectors visited, cycle actions
+                obs = act(env, dir_actions[step % len(dir_actions)])
+                used += 1
+
+            new_pos = get_player_pos(get_frame(obs))
+            if new_pos == prev_pos:
+                stuck_count += 1
+                if stuck_count >= 3:
+                    # Try a different direction
+                    alt = dir_actions[(step + stuck_count) % len(dir_actions)]
+                    obs = act(env, alt)
+                    used += 1
+                    stuck_count = 0
+            else:
+                stuck_count = 0
+            prev_pos = new_pos
+        else:
+            obs = act(env, dir_actions[step % len(dir_actions)])
+            used += 1
+
+        if obs.levels_completed > best:
+            best = obs.levels_completed
+            name = "bfs_navigate"
+
+    return best, name, used
+
+
+def strat_wall_map_navigate(env: Any, dir_actions: list[int], budget: int = 500) -> tuple[int, str, int]:
+    """Build a wall map by tracking which moves fail, then navigate around walls."""
+    obs = reset(env)
+    used, best, name = 1, 0, ""
+
+    # Wall map: (y, x, direction) -> blocked
+    walls: set[tuple[int, int, int]] = set()
+    prev_frame = get_frame(obs)
+    prev_hash = frame_hash(prev_frame)
+
+    # Track position via frame hashes and their associated frames
+    state_actions: dict[str, set[int]] = defaultdict(set)  # hash -> tried actions
+    state_results: dict[str, dict[int, str]] = defaultdict(dict)  # hash -> {aid: result_hash}
+
+    for step in range(budget - 1):
+        if used >= budget or obs.state.name == "WIN":
+            break
+        if obs.state.name == "GAME_OVER":
+            obs = reset(env)
+            used += 1
+            prev_frame = get_frame(obs)
+            prev_hash = frame_hash(prev_frame)
+            continue
+
+        if obs.levels_completed > best:
+            best = obs.levels_completed
+            name = "wall_map_nav"
+            state_actions.clear()
+            state_results.clear()
+
+        cur_hash = frame_hash(get_frame(obs))
+
+        # Pick action: prefer untried actions at this state
+        chosen = None
+        for aid in dir_actions:
+            if aid not in state_actions[cur_hash]:
+                chosen = aid
+                break
+
+        if chosen is None:
+            # All tried: pick action that led to least-revisited state
+            if state_results[cur_hash]:
+                # Count how many times we've been in each resulting state
+                min_visits = float("inf")
+                for aid, rh in state_results[cur_hash].items():
+                    v = len(state_actions.get(rh, set()))
+                    if v < min_visits:
+                        min_visits = v
+                        chosen = aid
+            if chosen is None:
+                chosen = dir_actions[step % len(dir_actions)]
+
+        obs = act(env, chosen)
+        used += 1
+        new_hash = frame_hash(get_frame(obs))
+
+        state_actions[cur_hash].add(chosen)
+        state_results[cur_hash][chosen] = new_hash
+
+        if obs.levels_completed > best:
+            best = obs.levels_completed
+            name = "wall_map_nav"
+
+    return best, name, used
+
+
+def strat_target_color_chase(env: Any, dir_actions: list[int], budget: int = 400) -> tuple[int, str, int]:
+    """Detect rare/goal colors in frame and chase them with movement actions."""
+    obs = reset(env)
+    used, best, name = 1, 0, ""
+    frame = get_frame(obs)
+
+    # Detect player by movement
+    player_color = None
+    dir_to_delta: dict[int, tuple[float, float]] = {}
+
+    for aid in dir_actions[:4]:
+        f_before = get_frame(obs)
+        obs = act(env, aid)
+        used += 1
+        f_after = get_frame(obs)
+        if obs.state.name in ("WIN", "GAME_OVER"):
+            if obs.levels_completed > best:
+                best = obs.levels_completed
+                name = "target_chase"
+            if obs.state.name == "GAME_OVER":
+                obs = reset(env)
+                used += 1
+            else:
+                return best, name, used
+            continue
+        for color in range(1, 16):
+            bm, am = f_before == color, f_after == color
+            bc, ac = int(bm.sum()), int(am.sum())
+            if 0 < bc < 2000 and ac > 0:
+                b_c = np.array(np.where(bm)).mean(axis=1)
+                a_c = np.array(np.where(am)).mean(axis=1)
+                dy, dx = float(a_c[0] - b_c[0]), float(a_c[1] - b_c[1])
+                if abs(dy) > 0.3 or abs(dx) > 0.3:
+                    player_color = color
+                    dir_to_delta[aid] = (dy, dx)
+                    break
+
+    if player_color is None:
+        return best, name, used
+
+    obs = reset(env)
+    used += 1
+    prev_levels = 0
+
+    for step in range(budget - used):
+        if used >= budget or obs.state.name == "WIN":
+            break
+        if obs.state.name == "GAME_OVER":
+            obs = reset(env)
+            used += 1
+            continue
+
+        if obs.levels_completed > prev_levels:
+            prev_levels = obs.levels_completed
+            if prev_levels > best:
+                best = prev_levels
+                name = "target_chase"
+
+        frame = get_frame(obs)
+        pp = np.argwhere(frame == player_color)
+        if len(pp) == 0:
+            obs = act(env, dir_actions[step % len(dir_actions)])
+            used += 1
+            continue
+
+        pc = pp.mean(axis=0)  # (y, x)
+
+        # Find nearest rare color target
+        rc = rare_colors(frame, max_count=500)
+        target_pos = None
+        for tc, _ in rc:
+            if tc == player_color:
+                continue
+            tp = np.argwhere(frame == tc)
+            if len(tp) > 0:
+                target_pos = tp.mean(axis=0)
+                break
+
+        if target_pos is None:
+            # No target: try all unique non-player colors
+            for c in np.unique(frame):
+                if c == 0 or c == player_color:
+                    continue
+                tp = np.argwhere(frame == c)
+                if len(tp) > 0:
+                    target_pos = tp.mean(axis=0)
+                    break
+
+        if target_pos is not None:
+            dy_want = target_pos[0] - pc[0]
+            dx_want = target_pos[1] - pc[1]
+
+            # Find action that moves closest to desired direction
+            best_dot = -float("inf")
+            best_aid = dir_actions[0]
+            for aid, (dy, dx) in dir_to_delta.items():
+                dot = dy * dy_want + dx * dx_want
+                if dot > best_dot:
+                    best_dot = dot
+                    best_aid = aid
+            obs = act(env, best_aid)
+            used += 1
+        else:
+            obs = act(env, dir_actions[step % len(dir_actions)])
+            used += 1
+
+        if obs.levels_completed > best:
+            best = obs.levels_completed
+            name = "target_chase"
+
+    return best, name, used
+
+
+def strat_systematic_grid_walk(env: Any, dir_actions: list[int], budget: int = 500) -> tuple[int, str, int]:
+    """Walk the 64x64 grid systematically in a lawnmower pattern."""
+    obs = reset(env)
+    used, best, name = 1, 0, ""
+
+    if len(dir_actions) < 2:
+        return best, name, used
+
+    # Assume first 4 actions are UP/DOWN/LEFT/RIGHT in some order
+    # We'll detect by trying each
+    action_deltas: dict[int, str] = {}
+    for aid in dir_actions[:4]:
+        f_before = get_frame(obs)
+        obs = act(env, aid)
+        used += 1
+        f_after = get_frame(obs)
+        diff = f_after.astype(float) - f_before.astype(float)
+        if obs.state.name == "GAME_OVER":
+            obs = reset(env)
+            used += 1
+            continue
+        if obs.state.name == "WIN":
+            if obs.levels_completed > best:
+                best = obs.levels_completed
+                name = "grid_walk"
+            return best, name, used
+
+        # Check where pixels changed
+        changed = np.argwhere(diff != 0)
+        if len(changed) > 0:
+            mean_delta_y = float(np.mean([f_after[y, x] for y, x in changed]) - np.mean([f_before[y, x] for y, x in changed]))
+            # Simple heuristic: look at centroid shift of changed pixels
+            before_changed = np.argwhere(f_before != f_after)
+            after_changed = before_changed
+            if len(before_changed) > 1:
+                # Compute mean position of changes
+                cy = float(before_changed[:, 0].mean())
+                cx = float(before_changed[:, 1].mean())
+                # Compute approximate direction from disappearing vs appearing pixels
+                # Just use the action index as proxy
+                pass
+
+    # Lawnmower: use pairs of actions
+    # Try each pair as (horizontal, vertical) and run lawnmower
+    obs = reset(env)
+    used += 1
+
+    # Simple strategy: alternate long horizontal runs with single vertical steps
+    a_horiz = dir_actions[0]
+    a_vert = dir_actions[1] if len(dir_actions) > 1 else dir_actions[0]
+    row_length = 30
+    reverse = False
+
+    for row in range(budget // (row_length + 1)):
+        if used >= budget or obs.state.name == "WIN":
+            break
+        # Horizontal sweep
+        h_act = dir_actions[2] if reverse and len(dir_actions) > 2 else a_horiz
+        for _ in range(row_length):
+            if used >= budget or obs.state.name == "WIN":
+                break
+            if obs.state.name == "GAME_OVER":
+                obs = reset(env)
+                used += 1
+                continue
+            obs = act(env, h_act)
+            used += 1
+            if obs.levels_completed > best:
+                best = obs.levels_completed
+                name = "grid_walk"
+        # Vertical step
+        if used < budget and obs.state.name not in ("WIN", "GAME_OVER"):
+            obs = act(env, a_vert)
+            used += 1
+            if obs.levels_completed > best:
+                best = obs.levels_completed
+                name = "grid_walk"
+        reverse = not reverse
+
+    return best, name, used
+
+
+# ─── Click strategies (effect learning, sequential) ────────────────
+
+def strat_click_progressive(env: Any, budget: int = 500) -> tuple[int, str, int]:
+    """Click strategy that tracks progression: which clicks advance the game state forward."""
+    obs = reset(env)
+    used, best, name = 1, 0, ""
+    frame = get_frame(obs)
+    initial_hash = frame_hash(frame)
+
+    # Phase 1: Sample clicks and track which ones cause "forward" progress
+    # (frame changes that don't revert to initial state)
+    forward_clicks: list[tuple[int, int, int]] = []  # (x, y, diff_size)
+    revert_clicks: list[tuple[int, int]] = []
+
+    # Click each unique color's positions
+    unique_colors = [c for c in np.unique(frame).tolist() if c != 0]
+
+    for color in unique_colors:
+        positions = np.argwhere(frame == color)
+        # Sample up to 5 positions per color
+        indices = np.random.choice(len(positions), min(5, len(positions)), replace=False)
+        for idx in indices:
+            if used >= budget // 3:
+                break
+            py, px = int(positions[idx][0]), int(positions[idx][1])
+            f_before = get_frame(obs)
+            obs = click(env, px, py)
+            used += 1
+            f_after = get_frame(obs)
+
+            if obs.levels_completed > best:
+                best = obs.levels_completed
+                name = f"click_prog_c{color}"
+            if obs.state.name == "WIN":
+                return best, name, used
+            if obs.state.name == "GAME_OVER":
+                obs = reset(env)
+                used += 1
+                frame = get_frame(obs)
+                continue
+
+            diff = frame_diff(f_before, f_after)
+            new_h = frame_hash(f_after)
+            if diff > 0:
+                if new_h == initial_hash:
+                    revert_clicks.append((px, py))
+                else:
+                    forward_clicks.append((px, py, diff))
+            frame = f_after
+
+    # Phase 2: Repeat forward clicks, and on each new frame, try clicking new rare colors
+    if forward_clicks:
+        forward_clicks.sort(key=lambda t: t[2], reverse=True)
+
+    for iteration in range(5):
+        if used >= budget:
+            break
+        obs = reset(env)
+        used += 1
+        frame = get_frame(obs)
+
+        # Apply known forward clicks
+        for fx, fy, _ in forward_clicks:
+            if used >= budget or obs.state.name in ("WIN", "GAME_OVER"):
+                break
+            obs = click(env, fx, fy)
+            used += 1
+            if obs.levels_completed > best:
+                best = obs.levels_completed
+                name = "click_progressive"
+            if obs.state.name == "GAME_OVER":
+                obs = reset(env)
+                used += 1
+
+        if obs.state.name == "WIN":
+            return best, name, used
+
+        # Try clicking new positions on the changed frame
+        frame = get_frame(obs)
+        rc = rare_colors(frame, max_count=300)
+        for color, cnt in rc:
+            positions = np.argwhere(frame == color)
+            for pos in positions[:3]:
+                if used >= budget:
+                    break
+                obs = click(env, int(pos[1]), int(pos[0]))
+                used += 1
+                if obs.levels_completed > best:
+                    best = obs.levels_completed
+                    name = f"click_prog_c{color}"
+                if obs.state.name == "WIN":
+                    return best, name, used
+                if obs.state.name == "GAME_OVER":
+                    obs = reset(env)
+                    used += 1
+                    break
+
+    return best, name, used
+
+
+def strat_click_color_order(env: Any, budget: int = 500) -> tuple[int, str, int]:
+    """Click colors in different orderings to find the right sequence."""
+    obs = reset(env)
+    used, best, name = 1, 0, ""
+    frame = get_frame(obs)
+
+    unique_colors = sorted([c for c in np.unique(frame).tolist() if c != 0])
+    if not unique_colors:
+        return best, name, used
+
+    # Try clicking center of each color in different orders
+    orders = [
+        unique_colors,
+        list(reversed(unique_colors)),
+        sorted(unique_colors, key=lambda c: int(np.sum(frame == c))),  # ascending count
+        sorted(unique_colors, key=lambda c: int(np.sum(frame == c)), reverse=True),  # descending
+    ]
+
+    for order in orders:
+        if used >= budget:
+            break
+        obs = reset(env)
+        used += 1
+        frame = get_frame(obs)
+
+        for color in order:
+            if used >= budget or obs.state.name in ("WIN", "GAME_OVER"):
+                break
+            positions = np.argwhere(frame == color)
+            if len(positions) == 0:
+                continue
+            # Click center of mass
+            center = positions.mean(axis=0)
+            cy, cx = int(round(center[0])), int(round(center[1]))
+            obs = click(env, cx, cy)
+            used += 1
+            if obs.levels_completed > best:
+                best = obs.levels_completed
+                name = f"click_order_c{color}"
+            if obs.state.name == "GAME_OVER":
+                obs = reset(env)
+                used += 1
+                frame = get_frame(obs)
+            elif obs.state.name == "WIN":
+                return best, name, used
+            else:
+                frame = get_frame(obs)
+
+        # Also try clicking ALL positions of each color
+        if best == 0:
+            obs = reset(env)
+            used += 1
+            frame = get_frame(obs)
+            for color in order:
+                if used >= budget or obs.state.name in ("WIN", "GAME_OVER"):
+                    break
+                positions = np.argwhere(frame == color)
+                for pos in positions:
+                    if used >= budget or obs.state.name in ("WIN", "GAME_OVER"):
+                        break
+                    obs = click(env, int(pos[1]), int(pos[0]))
+                    used += 1
+                    if obs.levels_completed > best:
+                        best = obs.levels_completed
+                        name = f"click_all_order_c{color}"
+                    if obs.state.name == "GAME_OVER":
+                        obs = reset(env)
+                        used += 1
+                        frame = get_frame(obs)
+                        break
+
+        if obs.state.name == "WIN":
+            return best, name, used
+
+    return best, name, used
+
+
+def strat_click_toggle_detect(env: Any, budget: int = 500) -> tuple[int, str, int]:
+    """Detect toggle-like click behavior: click, observe, if toggled back avoid repeats."""
+    obs = reset(env)
+    used, best, name = 1, 0, ""
+    frame = get_frame(obs)
+
+    # Map each clickable position to its effect
+    toggle_positions: set[tuple[int, int]] = set()
+    progress_positions: list[tuple[int, int]] = []
+
+    # Sample on 8x8 grid
+    for y in range(4, 64, 8):
+        for x in range(4, 64, 8):
+            if used >= budget // 4:
+                break
+            h_before = frame_hash(get_frame(obs))
+            obs = click(env, x, y)
+            used += 1
+            h_after = frame_hash(get_frame(obs))
+
+            if obs.levels_completed > best:
+                best = obs.levels_completed
+                name = "click_toggle"
+            if obs.state.name == "WIN":
+                return best, name, used
+            if obs.state.name == "GAME_OVER":
+                obs = reset(env)
+                used += 1
+                continue
+
+            if h_after != h_before:
+                # Click again to see if it toggles
+                h_before2 = h_after
+                obs = click(env, x, y)
+                used += 1
+                h_after2 = frame_hash(get_frame(obs))
+
+                if obs.state.name == "WIN":
+                    if obs.levels_completed > best:
+                        best = obs.levels_completed
+                        name = "click_toggle"
+                    return best, name, used
+                if obs.state.name == "GAME_OVER":
+                    obs = reset(env)
+                    used += 1
+                    continue
+
+                if h_after2 == h_before:
+                    toggle_positions.add((x, y))
+                else:
+                    progress_positions.append((x, y))
+
+    # Phase 2: Click progress positions only (avoid toggles), then explore neighbors
+    if progress_positions:
+        for iteration in range(3):
+            if used >= budget:
+                break
+            obs = reset(env)
+            used += 1
+
+            for px, py in progress_positions:
+                if used >= budget or obs.state.name in ("WIN", "GAME_OVER"):
+                    break
+                obs = click(env, px, py)
+                used += 1
+                if obs.levels_completed > best:
+                    best = obs.levels_completed
+                    name = "click_toggle_prog"
+                if obs.state.name == "GAME_OVER":
+                    obs = reset(env)
+                    used += 1
+                    break
+
+            if obs.state.name == "WIN":
+                return best, name, used
+
+            # Try neighbors of progress positions
+            frame = get_frame(obs)
+            for px, py in progress_positions:
+                for dx in range(-4, 5, 2):
+                    for dy in range(-4, 5, 2):
+                        nx, ny = max(0, min(63, px + dx)), max(0, min(63, py + dy))
+                        if (nx, ny) in toggle_positions:
+                            continue
+                        if used >= budget or obs.state.name in ("WIN", "GAME_OVER"):
+                            break
+                        obs = click(env, nx, ny)
+                        used += 1
+                        if obs.levels_completed > best:
+                            best = obs.levels_completed
+                            name = "click_toggle_neighbor"
+                    if used >= budget or obs.state.name in ("WIN", "GAME_OVER"):
+                        break
+                if obs.state.name == "GAME_OVER":
+                    obs = reset(env)
+                    used += 1
+                if obs.state.name == "WIN":
+                    return best, name, used
+
+    return best, name, used
+
+
+# ─── Hybrid/Transform/Unknown strategies ───────────────────────────
+
+def strat_move_collect(env: Any, dir_actions: list[int], budget: int = 500) -> tuple[int, str, int]:
+    """Move in each direction and click on any rare color encountered (collect items)."""
+    obs = reset(env)
+    used, best, name = 1, 0, ""
+    has_click = True  # assume 6 might be available
+
+    prev_levels = 0
+    last_good_sequence: list[int] = []
+    current_sequence: list[int] = []
+
+    for step in range(budget):
+        if used >= budget or obs.state.name == "WIN":
+            break
+        if obs.state.name == "GAME_OVER":
+            obs = reset(env)
+            used += 1
+            if best > prev_levels:
+                last_good_sequence = current_sequence[:]
+            current_sequence = []
+            # Replay known good sequence
+            for aid in last_good_sequence:
+                if used >= budget or obs.state.name in ("WIN", "GAME_OVER"):
+                    break
+                obs = act(env, aid)
+                used += 1
+            continue
+
+        if obs.levels_completed > best:
+            best = obs.levels_completed
+            name = "move_collect"
+
+        frame = get_frame(obs)
+        rc = rare_colors(frame, max_count=200)
+
+        if rc and has_click:
+            # Move toward rarest color, then click it
+            target_c, _ = rc[0]
+            tp = np.argwhere(frame == target_c)
+            if len(tp) > 0:
+                tc = tp.mean(axis=0)
+                cy, cx = int(round(tc[0])), int(round(tc[1]))
+                try:
+                    obs = click(env, cx, cy)
+                    used += 1
+                    current_sequence.append(-1)  # marker for click
+                    if obs.levels_completed > best:
+                        best = obs.levels_completed
+                        name = f"move_collect_c{target_c}"
+                    continue
+                except Exception:
+                    has_click = False
+
+        # Move in cycling direction
+        aid = dir_actions[step % len(dir_actions)]
+        obs = act(env, aid)
+        used += 1
+        current_sequence.append(aid)
+        if obs.levels_completed > best:
+            best = obs.levels_completed
+            name = "move_collect"
+
+    return best, name, used
+
+
+def strat_transform_detect(env: Any, avail_actions: list[int], budget: int = 500) -> tuple[int, str, int]:
+    """For transform games: try each action, detect which transforms the frame 'forward'."""
+    obs = reset(env)
+    used, best, name = 1, 0, ""
+    frame = get_frame(obs)
+    initial_hash = frame_hash(frame)
+
+    # Phase 1: Test each action's effect
+    action_effects: dict[int, list[int]] = defaultdict(list)  # aid -> [diff_sizes]
+
+    for aid in avail_actions:
+        if aid in (7, 8):
+            continue
+        for trial in range(3):
+            if used >= budget // 4:
+                break
+            f_before = get_frame(obs)
+            if aid == 6:
+                # Try clicking center of frame
+                obs = click(env, 32, 32)
+            else:
+                obs = act(env, aid)
+            used += 1
+            f_after = get_frame(obs)
+            diff = frame_diff(f_before, f_after)
+            action_effects[aid].append(diff)
+
+            if obs.levels_completed > best:
+                best = obs.levels_completed
+                name = f"transform_A{aid}"
+            if obs.state.name == "WIN":
+                return best, name, used
+            if obs.state.name == "GAME_OVER":
+                obs = reset(env)
+                used += 1
+
+    # Rank actions by average effect
+    ranked = sorted(action_effects.keys(),
+                    key=lambda a: np.mean(action_effects[a]) if action_effects[a] else 0,
+                    reverse=True)
+
+    if not ranked:
+        return best, name, used
+
+    # Phase 2: Apply most effective actions in sequence
+    for top_n in [1, 2, 3]:
+        if used >= budget:
+            break
+        obs = reset(env)
+        used += 1
+        top_actions = ranked[:top_n]
+
+        for step in range(min(200, budget - used)):
+            if obs.state.name == "WIN":
+                break
+            if obs.state.name == "GAME_OVER":
+                obs = reset(env)
+                used += 1
+                continue
+            aid = top_actions[step % len(top_actions)]
+            if aid == 6:
+                # Click center or rare color
+                frame = get_frame(obs)
+                rc = rare_colors(frame, max_count=500)
+                if rc:
+                    tp = np.argwhere(frame == rc[0][0])
+                    if len(tp) > 0:
+                        c = tp.mean(axis=0)
+                        obs = click(env, int(round(c[1])), int(round(c[0])))
+                    else:
+                        obs = click(env, 32, 32)
+                else:
+                    obs = click(env, 32, 32)
+            else:
+                obs = act(env, aid)
+            used += 1
+            if obs.levels_completed > best:
+                best = obs.levels_completed
+                name = f"transform_top{top_n}"
+
+    return best, name, used
+
+
+def strat_action5_special(env: Any, avail_actions: list[int], budget: int = 300) -> tuple[int, str, int]:
+    """Games with ACTION5: try it as a special/confirm action after other moves."""
+    if 5 not in avail_actions:
+        return 0, "", 0
+    obs = reset(env)
+    used, best, name = 1, 0, ""
+
+    dir_actions = [a for a in avail_actions if a not in (5, 6, 7, 8)]
+
+    # Pattern: move then press 5
+    for step in range(budget - 1):
+        if used >= budget or obs.state.name == "WIN":
+            break
+        if obs.state.name == "GAME_OVER":
+            obs = reset(env)
+            used += 1
+            continue
+
+        if step % 3 == 2:
+            # Press ACTION5 as confirm/special
+            obs = act(env, 5)
+        elif dir_actions:
+            obs = act(env, dir_actions[step % len(dir_actions)])
+        else:
+            obs = act(env, 5)
+        used += 1
+
+        if obs.levels_completed > best:
+            best = obs.levels_completed
+            name = "action5_special"
+
+    # Also try: just spam ACTION5
+    if best == 0:
+        obs = reset(env)
+        used += 1
+        for _ in range(min(50, budget - used)):
+            obs = act(env, 5)
+            used += 1
+            if obs.levels_completed > best:
+                best = obs.levels_completed
+                name = "action5_spam"
+            if obs.state.name in ("WIN", "GAME_OVER"):
+                break
+
+    return best, name, used
+
+
+def strat_click_only_raster_fine(env: Any, budget: int = 4100) -> tuple[int, str, int]:
+    """For click-only games (only ACTION6): fine-grained raster with level tracking."""
+    obs = reset(env)
+    used, best, name = 1, 0, ""
+
+    # Track which click patterns advance levels
+    level_click_sequences: list[list[tuple[int, int]]] = []
+    current_seq: list[tuple[int, int]] = []
+
+    for y in range(0, 64, 2):
+        for x in range(0, 64, 2):
+            if used >= budget or obs.state.name == "WIN":
+                return best, name, used
+            if obs.state.name == "GAME_OVER":
+                obs = reset(env)
+                used += 1
+                if current_seq:
+                    level_click_sequences.append(current_seq[:])
+                current_seq = []
+                # Replay known sequences
+                for seq in level_click_sequences:
+                    for sx, sy in seq:
+                        if used >= budget or obs.state.name in ("WIN", "GAME_OVER"):
+                            break
+                        obs = click(env, sx, sy)
+                        used += 1
+                continue
+
+            prev_levels = obs.levels_completed
+            obs = click(env, x, y)
+            used += 1
+            current_seq.append((x, y))
+
+            if obs.levels_completed > prev_levels:
+                level_click_sequences.append(current_seq[:])
+                current_seq = []
+
+            if obs.levels_completed > best:
+                best = obs.levels_completed
+                name = f"raster_fine_({y},{x})"
+
+    return best, name, used
+
+
+def strat_click_frame_adaptive(env: Any, budget: int = 500) -> tuple[int, str, int]:
+    """Click strategy that re-analyzes frame after each successful click."""
+    obs = reset(env)
+    used, best, name = 1, 0, ""
+
+    for iteration in range(budget):
+        if used >= budget or obs.state.name == "WIN":
+            break
+        if obs.state.name == "GAME_OVER":
+            obs = reset(env)
+            used += 1
+            continue
+
+        frame = get_frame(obs)
+        rc = rare_colors(frame, max_count=400)
+
+        clicked = False
+        for color, cnt in rc:
+            positions = np.argwhere(frame == color)
+            if len(positions) == 0:
+                continue
+            # Click each position of this rare color
+            for pos in positions:
+                if used >= budget or obs.state.name in ("WIN", "GAME_OVER"):
+                    break
+                py, px = int(pos[0]), int(pos[1])
+                f_before = get_frame(obs)
+                obs = click(env, px, py)
+                used += 1
+                clicked = True
+
+                if obs.levels_completed > best:
+                    best = obs.levels_completed
+                    name = f"adaptive_c{color}"
+
+                f_after = get_frame(obs)
+                if frame_diff(f_before, f_after) > 0:
+                    # Frame changed, re-analyze
+                    break
+
+            if obs.state.name in ("WIN", "GAME_OVER"):
+                break
+            # If frame changed, restart color analysis
+            if clicked:
+                break
+
+        if not clicked:
+            # No rare colors left, try grid click
+            gx = (iteration * 7) % 64
+            gy = (iteration * 11) % 64
+            obs = click(env, gx, gy)
+            used += 1
+            if obs.levels_completed > best:
+                best = obs.levels_completed
+                name = "adaptive_grid"
+
+    return best, name, used
+
+
+# ─── Targeted strategies for specific game patterns ────────────────
+
+def strat_dominant_action(env: Any, avail_actions: list[int], budget: int = 500) -> tuple[int, str, int]:
+    """Find the action that causes the most change, then spam it.
+    For games like TU93 where only one action really works."""
+    obs = reset(env)
+    used, best, name = 1, 0, ""
+
+    # Test each action's effect
+    action_diffs: dict[int, float] = {}
+    for aid in avail_actions:
+        if aid in (7, 8):
+            continue
+        total_diff = 0
+        trials = 3
+        for _ in range(trials):
+            f_before = get_frame(obs)
+            if aid == 6:
+                obs = click(env, 32, 32)
+            else:
+                obs = act(env, aid)
+            used += 1
+            f_after = get_frame(obs)
+            total_diff += frame_diff(f_before, f_after)
+            if obs.levels_completed > best:
+                best = obs.levels_completed
+                name = f"dominant_A{aid}"
+            if obs.state.name == "WIN":
+                return best, name, used
+            if obs.state.name == "GAME_OVER":
+                obs = reset(env)
+                used += 1
+        action_diffs[aid] = total_diff / trials
+
+    if not action_diffs:
+        return best, name, used
+
+    # Rank by effect
+    ranked = sorted(action_diffs.items(), key=lambda x: x[1], reverse=True)
+    top_aid = ranked[0][0]
+
+    # Spam the dominant action
+    obs = reset(env)
+    used += 1
+    for _ in range(budget - used):
+        if obs.state.name == "WIN":
+            break
+        if obs.state.name == "GAME_OVER":
+            obs = reset(env)
+            used += 1
+            continue
+        if top_aid == 6:
+            # Click at varying positions near center
+            frame = get_frame(obs)
+            rc = rare_colors(frame, max_count=500)
+            if rc:
+                tp = np.argwhere(frame == rc[0][0])
+                if len(tp) > 0:
+                    c = tp.mean(axis=0)
+                    obs = click(env, int(round(c[1])), int(round(c[0])))
+                else:
+                    obs = click(env, 32, 32)
+            else:
+                obs = click(env, 32, 32)
+        else:
+            obs = act(env, top_aid)
+        used += 1
+        if obs.levels_completed > best:
+            best = obs.levels_completed
+            name = f"dominant_A{top_aid}"
+
+    # Also try: dominant + second best alternating
+    if len(ranked) >= 2 and best == 0:
+        second_aid = ranked[1][0]
+        obs = reset(env)
+        used += 1
+        for step in range(min(300, budget - used)):
+            if obs.state.name == "WIN":
+                break
+            if obs.state.name == "GAME_OVER":
+                obs = reset(env)
+                used += 1
+                continue
+            aid = top_aid if step % 2 == 0 else second_aid
+            obs = act(env, aid)
+            used += 1
+            if obs.levels_completed > best:
+                best = obs.levels_completed
+                name = f"dominant_A{top_aid}_A{second_aid}"
+
+    return best, name, used
+
+
+def strat_navigate_to_rare(env: Any, player_color: int, dir_to_act: dict[str, int],
+                           budget: int = 500) -> tuple[int, str, int]:
+    """Navigate player toward rare colors, then click on them if ACTION6 available."""
+    obs = reset(env)
+    used, best, name = 1, 0, ""
+    prev_levels = 0
+
+    for step in range(budget - 1):
+        if used >= budget or obs.state.name == "WIN":
+            break
+        if obs.state.name == "GAME_OVER":
+            obs = reset(env)
+            used += 1
+            continue
+
+        if obs.levels_completed > prev_levels:
+            prev_levels = obs.levels_completed
+            if prev_levels > best:
+                best = prev_levels
+                name = "nav_to_rare"
+
+        frame = get_frame(obs)
+        pp = np.argwhere(frame == player_color)
+        if len(pp) == 0:
+            aids = list(dir_to_act.values())
+            if aids:
+                obs = act(env, aids[step % len(aids)])
+                used += 1
+            continue
+
+        pc = pp.mean(axis=0)  # (y, x)
+
+        # Find ALL rare colors and navigate to closest one
+        rc = rare_colors(frame, max_count=100)
+        target_pos = None
+        target_color = None
+        min_dist = float("inf")
+
+        for tc, cnt in rc:
+            if tc == player_color:
+                continue
+            tp = np.argwhere(frame == tc)
+            if len(tp) == 0:
+                continue
+            tc_center = tp.mean(axis=0)
+            dist = abs(tc_center[0] - pc[0]) + abs(tc_center[1] - pc[1])
+            if dist < min_dist:
+                min_dist = dist
+                target_pos = tc_center
+                target_color = tc
+
+        if target_pos is None:
+            # No rare target: try all non-bg non-player colors
+            for c in np.unique(frame):
+                if c == 0 or c == player_color:
+                    continue
+                tp = np.argwhere(frame == c)
+                if len(tp) > 0:
+                    tc_center = tp.mean(axis=0)
+                    dist = abs(tc_center[0] - pc[0]) + abs(tc_center[1] - pc[1])
+                    if dist < min_dist:
+                        min_dist = dist
+                        target_pos = tc_center
+                        target_color = c
+
+        if target_pos is not None:
+            dy = target_pos[0] - pc[0]
+            dx = target_pos[1] - pc[1]
+
+            # Navigate
+            if abs(dy) >= abs(dx):
+                aid = dir_to_act.get("DOWN") if dy > 0 else dir_to_act.get("UP")
+            else:
+                aid = dir_to_act.get("RIGHT") if dx > 0 else dir_to_act.get("LEFT")
+
+            if aid is None:
+                aids = list(dir_to_act.values())
+                aid = aids[step % len(aids)] if aids else None
+
+            if aid is not None:
+                obs = act(env, aid)
+                used += 1
+        else:
+            aids = list(dir_to_act.values())
+            if aids:
+                obs = act(env, aids[step % len(aids)])
+                used += 1
+
+        if obs.levels_completed > best:
+            best = obs.levels_completed
+            name = "nav_to_rare"
+
+    return best, name, used
+
+
+def strat_click_pixel_scan(env: Any, budget: int = 4000) -> tuple[int, str, int]:
+    """For click-only games: scan every pixel but reset on game_over and replay successes."""
+    obs = reset(env)
+    used, best, name = 1, 0, ""
+
+    # Track successful click sequences
+    success_clicks: list[tuple[int, int]] = []
+    current_level_clicks: list[tuple[int, int]] = []
+
+    # Scan with step 1 for thoroughness
+    for y in range(0, 64):
+        for x in range(0, 64):
+            if used >= budget:
+                return best, name, used
+            if obs.state.name == "WIN":
+                return best, name, used
+            if obs.state.name == "GAME_OVER":
+                obs = reset(env)
+                used += 1
+                current_level_clicks = []
+                # Replay known successes
+                for sx, sy in success_clicks:
+                    if used >= budget or obs.state.name in ("WIN", "GAME_OVER"):
+                        break
+                    obs = click(env, sx, sy)
+                    used += 1
+                continue
+
+            prev_levels = obs.levels_completed
+            prev_hash = frame_hash(get_frame(obs))
+            obs = click(env, x, y)
+            used += 1
+            new_hash = frame_hash(get_frame(obs))
+
+            if obs.levels_completed > prev_levels:
+                # This click sequence advanced a level
+                current_level_clicks.append((x, y))
+                success_clicks.extend(current_level_clicks)
+                current_level_clicks = []
+
+            elif new_hash != prev_hash:
+                # Frame changed, track this click
+                current_level_clicks.append((x, y))
+
+            if obs.levels_completed > best:
+                best = obs.levels_completed
+                name = f"pixel_scan_({y},{x})"
+
+    return best, name, used
+
+
+def strat_long_sustained(env: Any, avail_actions: list[int], budget: int = 1000) -> tuple[int, str, int]:
+    """Try each action sustained for very long periods (200+ steps each)."""
+    obs = reset(env)
+    used, best, name = 1, 0, ""
+
+    for aid in avail_actions:
+        if aid in (6, 7, 8):
+            continue
+        if used >= budget:
+            break
+        obs = reset(env)
+        used += 1
+        for _ in range(min(200, budget - used)):
+            if obs.state.name == "WIN":
+                break
+            if obs.state.name == "GAME_OVER":
+                obs = reset(env)
+                used += 1
+                continue
+            obs = act(env, aid)
+            used += 1
+            if obs.levels_completed > best:
+                best = obs.levels_completed
+                name = f"long_sustained_A{aid}"
+
+    return best, name, used
+
+
+def strat_extended_winner(env: Any, winning_aid: int, winning_aid2: int | None,
+                          length: int, budget: int = 2000) -> tuple[int, str, int]:
+    """When we know a zigzag works for level 1, extend it with more budget for more levels."""
+    obs = reset(env)
+    used, best, name = 1, 0, ""
+
+    for _ in range(budget):
+        if used >= budget or obs.state.name == "WIN":
+            break
+        if obs.state.name == "GAME_OVER":
+            obs = reset(env)
+            used += 1
+            continue
+
+        if winning_aid2 is not None:
+            # Zigzag pattern
+            for _ in range(length):
+                if used >= budget or obs.state.name in ("WIN", "GAME_OVER"):
+                    break
+                obs = act(env, winning_aid)
+                used += 1
+                if obs.levels_completed > best:
+                    best = obs.levels_completed
+                    name = f"extended_zig{length}_A{winning_aid}A{winning_aid2}"
+            for _ in range(length):
+                if used >= budget or obs.state.name in ("WIN", "GAME_OVER"):
+                    break
+                obs = act(env, winning_aid2)
+                used += 1
+                if obs.levels_completed > best:
+                    best = obs.levels_completed
+                    name = f"extended_zig{length}_A{winning_aid}A{winning_aid2}"
+        else:
+            # Sustained
+            obs = act(env, winning_aid)
+            used += 1
+            if obs.levels_completed > best:
+                best = obs.levels_completed
+                name = f"extended_sustained_A{winning_aid}"
+
+    return best, name, used
+
+
 # ─── Ensemble solver ────────────────────────────────────────────────
 
 class EnsembleAgent:
@@ -950,6 +2275,139 @@ class EnsembleAgent:
         if best_levels == 0 and has_click:
             remaining = min(4200, self.total_budget - total_actions)
             try_strat(strat_raster, label="raster", step_size=1, budget=remaining)
+
+        # === Strategy 16: BFS navigation (movement games) ===
+        if best_levels == 0 and dir_actions:
+            remaining = min(500, self.total_budget - total_actions)
+            try_strat(strat_bfs_navigate, dir_actions, label="bfs_navigate", budget=remaining)
+
+        # === Strategy 17: Wall map navigation ===
+        if best_levels == 0 and dir_actions:
+            remaining = min(500, self.total_budget - total_actions)
+            try_strat(strat_wall_map_navigate, dir_actions, label="wall_map_nav", budget=remaining)
+
+        # === Strategy 18: Target color chase ===
+        if best_levels == 0 and dir_actions:
+            remaining = min(400, self.total_budget - total_actions)
+            try_strat(strat_target_color_chase, dir_actions, label="target_chase", budget=remaining)
+
+        # === Strategy 19: Systematic grid walk ===
+        if best_levels == 0 and len(dir_actions) >= 2:
+            remaining = min(500, self.total_budget - total_actions)
+            try_strat(strat_systematic_grid_walk, dir_actions, label="grid_walk", budget=remaining)
+
+        # === Strategy 20: Click progressive (click games) ===
+        if best_levels == 0 and has_click:
+            remaining = min(500, self.total_budget - total_actions)
+            try_strat(strat_click_progressive, label="click_progressive", budget=remaining)
+
+        # === Strategy 21: Click color ordering ===
+        if best_levels == 0 and has_click:
+            remaining = min(500, self.total_budget - total_actions)
+            try_strat(strat_click_color_order, label="click_color_order", budget=remaining)
+
+        # === Strategy 22: Click toggle detection ===
+        if best_levels == 0 and has_click:
+            remaining = min(500, self.total_budget - total_actions)
+            try_strat(strat_click_toggle_detect, label="click_toggle", budget=remaining)
+
+        # === Strategy 23: Move + collect (hybrid) ===
+        if best_levels == 0 and dir_actions:
+            remaining = min(500, self.total_budget - total_actions)
+            try_strat(strat_move_collect, dir_actions, label="move_collect", budget=remaining)
+
+        # === Strategy 24: Transform detection ===
+        if best_levels == 0:
+            remaining = min(500, self.total_budget - total_actions)
+            try_strat(strat_transform_detect, avail, label="transform_detect", budget=remaining)
+
+        # === Strategy 25: ACTION5 special ===
+        if best_levels == 0 and 5 in avail:
+            remaining = min(300, self.total_budget - total_actions)
+            try_strat(strat_action5_special, avail, label="action5_special", budget=remaining)
+
+        # === Strategy 26: Click frame adaptive ===
+        if best_levels == 0 and has_click:
+            remaining = min(500, self.total_budget - total_actions)
+            try_strat(strat_click_frame_adaptive, label="click_adaptive", budget=remaining)
+
+        # === Strategy 27: Click-only fine raster ===
+        if best_levels == 0 and has_click and not dir_actions:
+            remaining = min(4100, self.total_budget - total_actions)
+            try_strat(strat_click_only_raster_fine, label="raster_fine", budget=remaining)
+
+        # === Strategy 28: Dominant action (find most effective, spam it) ===
+        if best_levels == 0:
+            remaining = min(500, self.total_budget - total_actions)
+            try_strat(strat_dominant_action, avail, label="dominant_action", budget=remaining)
+
+        # === Strategy 29: Navigate to rare colors (with player detection) ===
+        if best_levels == 0 and dir_to_act and player_color is not None:
+            remaining = min(500, self.total_budget - total_actions)
+            try_strat(strat_navigate_to_rare, player_color, dir_to_act, label="nav_to_rare", budget=remaining)
+
+        # === Strategy 30: Pixel-level scan for click-only games ===
+        if best_levels == 0 and has_click and not dir_actions:
+            remaining = min(4000, self.total_budget - total_actions)
+            try_strat(strat_click_pixel_scan, label="pixel_scan", budget=remaining)
+
+        # === Strategy 31: Long sustained (200+ steps per action) ===
+        if best_levels == 0 and dir_actions:
+            remaining = min(1000, self.total_budget - total_actions)
+            try_strat(strat_long_sustained, avail, label="long_sustained", budget=remaining)
+
+        # === EXTENSION: If strategy succeeded, try ALL strategies again for more levels ===
+        if best_levels > 0 and total_actions < self.total_budget:
+            remaining = self.total_budget - total_actions
+            if remaining > 500:
+                # First: extend winning strategy with large budget
+                if "zig" in best_strategy:
+                    parts = best_strategy.replace("zig", "").split("_")
+                    try:
+                        length = int(parts[0])
+                        a1 = int(parts[1].replace("A", ""))
+                        a2 = int(parts[2].replace("A", ""))
+                        ext_budget = min(2000, remaining)
+                        ext_levels, ext_name, ext_used = strat_extended_winner(env, a1, a2, length, budget=ext_budget)
+                        total_actions += ext_used
+                        strategies_tried.append({"name": f"extend_{best_strategy}", "levels": ext_levels, "actions": ext_used})
+                        if ext_levels > best_levels:
+                            best_levels = ext_levels
+                            best_strategy = ext_name
+                    except (ValueError, IndexError):
+                        pass
+                elif "sustained" in best_strategy:
+                    parts = best_strategy.split("_")
+                    try:
+                        aid = int(parts[-1].replace("A", ""))
+                        ext_budget = min(2000, self.total_budget - total_actions)
+                        ext_levels, ext_name, ext_used = strat_extended_winner(env, aid, None, 1, budget=ext_budget)
+                        total_actions += ext_used
+                        strategies_tried.append({"name": f"extend_{best_strategy}", "levels": ext_levels, "actions": ext_used})
+                        if ext_levels > best_levels:
+                            best_levels = ext_levels
+                            best_strategy = ext_name
+                    except (ValueError, IndexError):
+                        pass
+                elif "click" in best_strategy:
+                    # For click strategies, try click variants again with more budget
+                    for strat_fn, label in [
+                        (strat_click_rare, "ext_click_rare"),
+                        (strat_click_progressive, "ext_click_progressive"),
+                        (strat_click_frame_adaptive, "ext_click_adaptive"),
+                    ]:
+                        if total_actions >= self.total_budget:
+                            break
+                        ext_budget = min(500, self.total_budget - total_actions)
+                        try_strat(strat_fn, label=label, budget=ext_budget)
+
+                # Second: try graph explore and BFS with remaining budget (they don't reset)
+                remaining2 = self.total_budget - total_actions
+                if remaining2 > 500:
+                    try_strat(strat_graph_explore, avail, label="ext_graph_explore", budget=min(1000, remaining2))
+                remaining2 = self.total_budget - total_actions
+                if remaining2 > 500 and dir_actions:
+                    try_strat(strat_bfs_explore, dir_actions, label="ext_bfs_explore", budget=min(500, remaining2))
 
         if self._logger is not None:
             self._logger.log_summary(

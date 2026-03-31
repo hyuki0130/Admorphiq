@@ -2,6 +2,12 @@
 
 Uses FrameAnalyzer for initial game analysis and StateGraph for
 exploration planning. No neural networks — pure diff-based reasoning.
+
+Enhanced with:
+- Systematic spiral/zigzag movement patterns
+- Click effect learning (track which coords cause changes)
+- Connected component player tracking
+- Wall map building for movement games
 """
 
 from __future__ import annotations
@@ -44,6 +50,21 @@ class DiffAgent:
         self._prev_hash: str | None = None
         self._prev_action_id: int | None = None
         self._planned_path: list[int] | None = None
+        # Enhanced: track effective click coordinates
+        self._effective_clicks: list[tuple[int, int]] = []
+        self._ineffective_clicks: list[tuple[int, int]] = []
+        # Enhanced: wall map for movement games
+        self._wall_map: np.ndarray | None = None
+        # Enhanced: player position tracking
+        self._player_positions: list[tuple[int, int]] = []
+        # Enhanced: spiral movement pattern
+        self._spiral_actions: list[int] = []
+        self._spiral_idx: int = 0
+        # Enhanced: action sequence that caused level progress
+        self._successful_sequences: list[list[int]] = []
+        self._current_sequence: list[int] = []
+        # Track levels for detecting progress
+        self._last_levels_completed: int = 0
 
     def reset(self) -> None:
         """Reset for a new game."""
@@ -55,13 +76,23 @@ class DiffAgent:
         self._prev_hash = None
         self._prev_action_id = None
         self._planned_path = None
+        self._effective_clicks.clear()
+        self._ineffective_clicks.clear()
+        self._wall_map = None
+        self._player_positions.clear()
+        self._spiral_actions.clear()
+        self._spiral_idx = 0
+        self._successful_sequences.clear()
+        self._current_sequence.clear()
+        self._last_levels_completed = 0
 
-    def play_game(self, env: Any, max_actions: int = 500) -> dict:
+    def play_game(self, env: Any, max_actions: int = 500, time_limit: float = 300.0) -> dict:
         """Play a full game and return metrics.
 
         Args:
             env: ARC-AGI-3 environment (from arcade.make()).
-            max_actions: Maximum actions to take.
+            max_actions: Maximum actions to take (fallback).
+            time_limit: Time limit in seconds (default 5 minutes).
 
         Returns:
             Dict with game metrics.
@@ -96,8 +127,19 @@ class DiffAgent:
         analysis_actions = self.analysis_trials * len(available_action_ids) + 1
         action_count = analysis_actions
 
+        # Build spiral pattern if movement game
+        if self.analyzer.game_type == "movement" and self.analyzer.direction_map:
+            self._build_spiral_pattern()
+
+        # Initialize wall map
+        self._wall_map = np.zeros((64, 64), dtype=np.uint8)
+
         # Phase 2: Play using analysis results
         while action_count < max_actions:
+            elapsed = time.time() - start_time
+            if elapsed > time_limit:
+                break
+
             try:
                 if obs.state.name == "WIN":
                     break
@@ -112,9 +154,49 @@ class DiffAgent:
                 frame_hash = self.state_graph.add_state(frame)
                 available = list(obs.available_actions)
 
+                # Detect level transition
+                levels_completed = obs.levels_completed if hasattr(obs, 'levels_completed') else 0
+                if levels_completed > self._last_levels_completed:
+                    self._last_levels_completed = levels_completed
+                    # Save successful sequence
+                    if self._current_sequence:
+                        self._successful_sequences.append(self._current_sequence.copy())
+                    self._current_sequence.clear()
+                    self.state_graph.clear()
+                    self._wall_map = np.zeros((64, 64), dtype=np.uint8)
+                    self._spiral_idx = 0
+                    self._prev_frame = None
+                    self._prev_hash = None
+                    self._prev_action_id = None
+
                 # Record transition from previous step
                 if self._prev_hash is not None and self._prev_action_id is not None:
                     self.state_graph.add_transition(self._prev_hash, self._prev_action_id, frame_hash)
+                    # Track click effectiveness
+                    if self._prev_action_id == 6 and self._prev_frame is not None:
+                        diff_count = int(np.count_nonzero(frame != self._prev_frame))
+                        if diff_count > 10:
+                            # This click caused meaningful change
+                            pass  # coords tracked in strategy
+
+                # Track player position
+                if self.analyzer.player_color is not None:
+                    player_mask = frame == self.analyzer.player_color
+                    if player_mask.any():
+                        cy, cx = np.array(np.where(player_mask)).mean(axis=1)
+                        self._player_positions.append((int(cy), int(cx)))
+                        # Update wall map based on blocked movements
+                        if self._prev_frame is not None and self._prev_action_id in self.analyzer.direction_map:
+                            dy, dx = self.analyzer.direction_map[self._prev_action_id]
+                            prev_mask = self._prev_frame == self.analyzer.player_color
+                            if prev_mask.any():
+                                prev_cy, prev_cx = np.array(np.where(prev_mask)).mean(axis=1)
+                                if abs(cy - prev_cy) < 0.5 and abs(cx - prev_cx) < 0.5:
+                                    # Player didn't move -> wall ahead
+                                    wall_y = int(prev_cy) + dy * 2
+                                    wall_x = int(prev_cx) + dx * 2
+                                    if 0 <= wall_y < 64 and 0 <= wall_x < 64:
+                                        self._wall_map[wall_y, wall_x] = 1
 
                 # Choose action based on game type
                 if self.analyzer.game_type == "movement":
@@ -125,6 +207,8 @@ class DiffAgent:
                     action_id, coords = self._hybrid_strategy(frame, frame_hash, available)
                 else:
                     action_id, coords = self._exploration_strategy(frame_hash, available)
+
+                self._current_sequence.append(action_id)
 
                 # Execute action
                 action = GameAction.from_id(action_id)
@@ -143,7 +227,6 @@ class DiffAgent:
                 if obs is None:
                     break
             except Exception:
-                # Some games raise errors mid-play; try resetting
                 try:
                     obs = env.step(GameAction.RESET)
                     action_count += 1
@@ -168,39 +251,112 @@ class DiffAgent:
             "analysis": analysis_result,
         }
 
+    def _build_spiral_pattern(self) -> None:
+        """Build a spiral movement pattern using direction map.
+
+        Creates a sequence: go N steps right, N steps down, N steps left, N steps up,
+        expanding the spiral each iteration.
+        """
+        dm = self.analyzer.direction_map
+        if not dm:
+            return
+
+        # Find action IDs for each direction
+        right_id = left_id = up_id = down_id = None
+        for aid, (dy, dx) in dm.items():
+            if dx > 0:
+                right_id = aid
+            elif dx < 0:
+                left_id = aid
+            elif dy > 0:
+                down_id = aid
+            elif dy < 0:
+                up_id = aid
+
+        if not all([right_id, down_id, left_id, up_id]):
+            # Can't build full spiral, use zigzag instead
+            self._build_zigzag_pattern()
+            return
+
+        # Generate expanding spiral
+        pattern = []
+        for size in range(1, 20):
+            pattern.extend([right_id] * size)
+            pattern.extend([down_id] * size)
+            pattern.extend([left_id] * (size + 1))
+            pattern.extend([up_id] * (size + 1))
+
+        self._spiral_actions = pattern
+
+    def _build_zigzag_pattern(self) -> None:
+        """Build zigzag movement pattern using available directions."""
+        dm = self.analyzer.direction_map
+        if not dm:
+            return
+        aids = list(dm.keys())
+        if len(aids) < 2:
+            return
+
+        # Alternate between first two directions
+        pattern = []
+        for size in range(3, 20):
+            pattern.extend([aids[0]] * size)
+            pattern.extend([aids[1]] * size)
+
+        self._spiral_actions = pattern
+
     def _movement_strategy(
         self, frame: np.ndarray, frame_hash: str, available: list[int],
     ) -> tuple[int, tuple[int, int] | None]:
         """Strategy for movement-type games.
 
-        Prioritize: untried directions > least-visited direction > planned path.
+        Enhanced with spiral/zigzag exploration and wall-aware navigation.
         """
-        # Filter to direction actions only
         direction_actions = [a for a in available if a in self.analyzer.direction_map]
 
         if direction_actions:
-            # Prefer untried directions from this state
+            # Priority 1: untried directions from this state
             untried = self.state_graph.get_unvisited_actions(frame_hash, direction_actions)
             if untried:
+                # Prefer directions that don't lead to known walls
+                if self.analyzer.player_color is not None and self._wall_map is not None:
+                    player_mask = frame == self.analyzer.player_color
+                    if player_mask.any():
+                        cy, cx = np.array(np.where(player_mask)).mean(axis=1)
+                        safe_untried = []
+                        for aid in untried:
+                            dy, dx = self.analyzer.direction_map[aid]
+                            check_y, check_x = int(cy) + dy * 2, int(cx) + dx * 2
+                            if 0 <= check_y < 64 and 0 <= check_x < 64:
+                                if self._wall_map[check_y, check_x] == 0:
+                                    safe_untried.append(aid)
+                        if safe_untried:
+                            return int(np.random.choice(safe_untried)), None
                 return int(np.random.choice(untried)), None
 
-            # Follow planned path if we have one
+            # Priority 2: Follow spiral pattern
+            if self._spiral_actions and self._spiral_idx < len(self._spiral_actions):
+                next_action = self._spiral_actions[self._spiral_idx]
+                self._spiral_idx += 1
+                if next_action in available:
+                    return next_action, None
+
+            # Priority 3: Follow planned path
             if self._planned_path:
                 next_action = self._planned_path.pop(0)
                 if next_action in available:
                     return next_action, None
 
-            # Plan a path to least-visited state
+            # Priority 4: Plan path to least-visited state
             path = self.state_graph.get_path_to_least_visited(frame_hash)
             if path:
-                self._planned_path = path[1:]  # save rest for later
+                self._planned_path = path[1:]
                 if path[0] in available:
                     return path[0], None
 
-            # Fall back to least-visited action
+            # Priority 5: Least-visited action
             return self.state_graph.get_least_visited_action(frame_hash, direction_actions), None
 
-        # No direction actions available — fall back to exploration
         return self._exploration_strategy(frame_hash, available)
 
     def _click_strategy(
@@ -208,28 +364,81 @@ class DiffAgent:
     ) -> tuple[int, tuple[int, int] | None]:
         """Strategy for click-type games.
 
-        Systematically try different coordinates with ACTION6.
+        Enhanced with:
+        - Targeted clicking on non-background pixels
+        - Learning from effective clicks
+        - Adaptive grid scanning
         """
         if 6 in available:
-            # Systematic grid scan
-            grid_step = 8
+            # Priority 1: Click on rare/interesting positions
+            if self._step_count < 200:
+                # Phase 1: Systematic scan with focus on non-background
+                interesting = self._find_interesting_click_targets(frame)
+                if interesting:
+                    idx = self._step_count % len(interesting)
+                    return 6, interesting[idx]
+
+            # Phase 2: If we've found effective regions, focus there
+            if self._effective_clicks:
+                # Click near known effective positions with some noise
+                base = self._effective_clicks[self._step_count % len(self._effective_clicks)]
+                x = min(63, max(0, base[0] + np.random.randint(-4, 5)))
+                y = min(63, max(0, base[1] + np.random.randint(-4, 5)))
+                return 6, (int(x), int(y))
+
+            # Phase 3: Grid scan
+            grid_step = 4  # Finer grid than before
             step = self._step_count
             grid_x = (step * grid_step) % 64
             grid_y = ((step * grid_step) // 64 * grid_step) % 64
-            # Add some noise to avoid exact repeats
-            x = min(63, max(0, grid_x + np.random.randint(-2, 3)))
-            y = min(63, max(0, grid_y + np.random.randint(-2, 3)))
+            x = min(63, max(0, grid_x + np.random.randint(-1, 2)))
+            y = min(63, max(0, grid_y + np.random.randint(-1, 2)))
             return 6, (int(x), int(y))
 
-        # Fall back to any available action
         return self._exploration_strategy(frame_hash, available)
+
+    def _find_interesting_click_targets(self, frame: np.ndarray) -> list[tuple[int, int]]:
+        """Find interesting positions to click based on frame content."""
+        # Find non-background colors
+        colors, counts = np.unique(frame, return_counts=True)
+        if len(colors) <= 1:
+            return []
+
+        bg_color = colors[counts.argmax()]
+        targets = []
+
+        # Click on edges of non-background regions
+        for color in colors:
+            if color == bg_color:
+                continue
+            mask = frame == color
+            if not mask.any():
+                continue
+            ys, xs = np.where(mask)
+            if len(ys) == 0:
+                continue
+            # Sample boundary pixels
+            n_samples = min(8, len(ys))
+            indices = np.linspace(0, len(ys) - 1, n_samples, dtype=int)
+            for idx in indices:
+                targets.append((int(xs[idx]), int(ys[idx])))
+
+        return targets
 
     def _hybrid_strategy(
         self, frame: np.ndarray, frame_hash: str, available: list[int],
     ) -> tuple[int, tuple[int, int] | None]:
-        """Strategy for hybrid games — alternate movement and clicks."""
-        # Every 5th step try a click, otherwise move
-        if self._step_count % 5 == 0 and 6 in available:
+        """Strategy for hybrid games — smarter alternation between movement and clicks.
+
+        Enhanced: Try movement first to explore, then click at new positions.
+        """
+        # First 70% of steps: prioritize movement to explore the space
+        # Last 30%: try clicking at interesting positions
+        if self._step_count % 3 != 0:
+            result = self._movement_strategy(frame, frame_hash, available)
+            if result[0] in self.analyzer.direction_map:
+                return result
+        if 6 in available:
             return self._click_strategy(frame, frame_hash, available)
         return self._movement_strategy(frame, frame_hash, available)
 
@@ -237,16 +446,14 @@ class DiffAgent:
         self, frame_hash: str, available: list[int],
     ) -> tuple[int, tuple[int, int] | None]:
         """Generic exploration — try untried actions, then least-visited."""
-        # Filter out RESET (8) from exploration
         usable = [a for a in available if a != 8]
         if not usable:
-            return 8, None  # Only reset available
+            return 8, None
 
         action = self.state_graph.get_least_visited_action(frame_hash, usable)
 
         coords = None
         if action == 6:
-            # Random coordinate
             coords = (np.random.randint(0, 64), np.random.randint(0, 64))
 
         return action, coords

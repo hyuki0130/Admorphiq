@@ -69,6 +69,16 @@ class AdmorphiqAdapter(OfficialAgent):  # type: ignore[misc]
         internal_action = self._agent.choose_action([], internal_frame)
         return self._convert_action(internal_action)
 
+    def choose_action_with_data(self, frames: list[Any], latest_frame: Any) -> tuple[Any, dict | None]:
+        """Returns (action, data_dict) — data_dict is needed for ACTION6."""
+        internal_frame = self._convert_frame(latest_frame)
+        internal_action = self._agent.choose_action([], internal_frame)
+        action = self._convert_action(internal_action)
+        data = None
+        if internal_action.action_type == ActionType.ACTION6:
+            data = {"x": int(internal_action.x), "y": int(internal_action.y)}
+        return action, data
+
     # ------------------------------------------------------------------
     # Type conversion helpers
     # ------------------------------------------------------------------

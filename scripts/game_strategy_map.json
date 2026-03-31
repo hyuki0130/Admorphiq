@@ -1,0 +1,43 @@
+{
+  "_description": "Game-to-strategy mapping. Updated per test round.",
+  "cleared_games": {
+    "ar25-e3c63847": {"type": "movement", "best_strategy": "zig5_A2A3", "levels": 1, "win_levels": 8, "note": "newly cleared in round 1"},
+    "cn04-65d47d14": {"type": "hybrid", "best_strategy": "zig3_A2A4", "levels": 1, "win_levels": 5},
+    "lp85-305b61c3": {"type": "unknown", "best_strategy": "click_c8_(30,4)", "levels": 1, "win_levels": 8},
+    "sp80-0ee2d095": {"type": "hybrid", "best_strategy": "zig1_A4A5", "levels": 1, "win_levels": 6},
+    "r11l-aa269680": {"type": "click", "best_strategy": "click_all_c15", "levels": 1, "win_levels": 6},
+    "vc33-9851e02b": {"type": "click", "best_strategy": "click_c9_(33,60)", "levels": 1, "win_levels": 7}
+  },
+  "uncleared_games": {
+    "movement": {
+      "tu93-2b534c15": {"actions": [1,2,3,4], "win_levels": 9, "new_strategies": ["bfs_navigate", "wall_map_nav", "target_chase", "grid_walk"]},
+      "ar25-e3c63847": {"actions": [1,2,3,4,5,6,7], "win_levels": 8, "new_strategies": ["bfs_navigate", "wall_map_nav", "target_chase", "move_collect", "action5_special"]},
+      "sk48-41055498": {"actions": [1,2,3,4,6,7], "win_levels": 8, "new_strategies": ["bfs_navigate", "wall_map_nav", "target_chase", "move_collect"]},
+      "ls20-9607627b": {"actions": [1,2,3,4], "win_levels": 7, "new_strategies": ["bfs_navigate", "wall_map_nav", "target_chase", "grid_walk"]},
+      "wa30-ee6fef47": {"actions": [1,2,3,4,5], "win_levels": 9, "new_strategies": ["bfs_navigate", "wall_map_nav", "target_chase", "action5_special"]},
+      "re86-4e57566e": {"actions": [1,2,3,4,5], "win_levels": 8, "new_strategies": ["bfs_navigate", "wall_map_nav", "target_chase", "action5_special"]},
+      "m0r0-dadda488": {"actions": [1,2,3,4,5,6], "win_levels": 6, "new_strategies": ["bfs_navigate", "wall_map_nav", "target_chase", "move_collect", "action5_special"]}
+    },
+    "click": {
+      "lf52-271a04aa": {"actions": [1,2,3,4,6,7], "win_levels": 10, "new_strategies": ["click_progressive", "click_color_order", "click_toggle", "click_adaptive"]},
+      "tn36-ab4f63cc": {"actions": [6], "win_levels": 7, "new_strategies": ["click_progressive", "click_color_order", "click_toggle", "click_adaptive", "raster_fine"]},
+      "su15-4c352900": {"actions": [6,7], "win_levels": 9, "new_strategies": ["click_progressive", "click_color_order", "click_toggle", "click_adaptive", "raster_fine"]},
+      "s5i5-a48e4b1d": {"actions": [6], "win_levels": 8, "new_strategies": ["click_progressive", "click_color_order", "click_toggle", "click_adaptive", "raster_fine"]}
+    },
+    "hybrid": {
+      "dc22-4c9bff3e": {"actions": [1,2,3,4,6], "win_levels": 6, "new_strategies": ["bfs_navigate", "move_collect", "click_progressive", "transform_detect"]},
+      "bp35-0a0ad940": {"actions": [3,4,6,7], "win_levels": 9, "new_strategies": ["wall_map_nav", "move_collect", "click_progressive"]},
+      "ka59-9f096b4a": {"actions": [1,2,3,4,6], "win_levels": 7, "new_strategies": ["bfs_navigate", "move_collect", "click_progressive", "transform_detect"]},
+      "cd82-fb555c5d": {"actions": [1,2,3,4,5,6], "win_levels": 6, "new_strategies": ["bfs_navigate", "move_collect", "action5_special", "transform_detect"]}
+    },
+    "transform": {
+      "tr87-cd924810": {"actions": [1,2,3,4], "win_levels": 6, "new_strategies": ["transform_detect", "grid_walk", "wall_map_nav"]},
+      "sb26-7fbdac44": {"actions": [5,6,7], "win_levels": 8, "new_strategies": ["transform_detect", "action5_special", "click_progressive"]}
+    },
+    "unknown": {
+      "g50t-5849a774": {"actions": [1,2,3,4,5], "win_levels": 7, "new_strategies": ["bfs_navigate", "wall_map_nav", "action5_special", "transform_detect"]},
+      "ft09-0d8bbf25": {"actions": [6], "win_levels": 6, "new_strategies": ["click_progressive", "click_color_order", "click_toggle", "click_adaptive", "raster_fine"]},
+      "sc25-f9b21a2f": {"actions": [1,2,3,4,6], "win_levels": 6, "new_strategies": ["bfs_navigate", "move_collect", "click_progressive", "transform_detect"]}
+    }
+  }
+}
