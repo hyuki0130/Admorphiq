@@ -90,6 +90,12 @@ class AdmorphiqAgent:
         self._is_click_game: bool | None = None  # auto-detect: True if only ACTION6 available
         self._effective_coords: list[int] = []  # coord indices that caused frame changes
         self._no_change_streak: int = 0  # consecutive steps with no frame change
+        # Momentum tracking for movement games
+        self._action_change_counts: np.ndarray = np.zeros(5, dtype=np.float64)  # pixel change sum per simple action
+        self._action_try_counts: np.ndarray = np.zeros(5, dtype=np.float64)  # times each simple action was tried
+        self._last_big_change_action: int | None = None  # action that caused the biggest change
+        self._repeat_count: int = 0  # how many times we've repeated the current momentum action
+        self._max_repeat: int = 20  # max consecutive repeats before switching
 
     def _reset_for_new_level(self, level_completed: bool = False) -> None:
         """Reset state for a new level. Preserves model weights for transfer."""
@@ -108,6 +114,10 @@ class AdmorphiqAgent:
         self._step_count = 0
         self._effective_coords.clear()
         self._no_change_streak = 0
+        self._action_change_counts = np.zeros(5, dtype=np.float64)
+        self._action_try_counts = np.zeros(5, dtype=np.float64)
+        self._last_big_change_action = None
+        self._repeat_count = 0
 
     def set_logger(self, logger: GameLogger) -> None:
         """Attach a GameLogger for structured JSONL logging."""
@@ -177,6 +187,14 @@ class AdmorphiqAgent:
             else:
                 self._no_change_streak = 0
 
+            # Track pixel change magnitude per simple action (for momentum)
+            if self._prev_action_idx < 5 and self._prev_raw_frame is not None:
+                diff_count = int(np.count_nonzero(
+                    latest_frame.frame.astype(int) - self._prev_raw_frame.astype(int)
+                ))
+                self._action_change_counts[self._prev_action_idx] += diff_count
+                self._action_try_counts[self._prev_action_idx] += 1
+
             if self._logger is not None and self._prev_raw_frame is not None:
                 self._logger.log_frame_diff(
                     self._step_count, self._prev_raw_frame,
@@ -229,8 +247,8 @@ class AdmorphiqAgent:
         else:
             return GameAction.reset()
 
-        # Pure perception sampling (no world model / exploration blending)
-        idx = int(np.random.choice(4101, p=perception_probs))
+        # Action selection: momentum for movement games, perception for click games
+        idx = self._select_action(perception_probs, available_mask[0].cpu().numpy())
 
         # Bookkeeping
         state_hash = self.explorer.hash_frame(current_frame)
@@ -239,6 +257,8 @@ class AdmorphiqAgent:
         self._prev_action_idx = idx
         self.explorer.record_action(state_hash, idx)
         self.memory.record_action(idx)
+        if idx == self._last_big_change_action:
+            self._repeat_count += 1
 
         # Periodic training (perception only, no world model)
         self._step_count += 1
@@ -264,6 +284,52 @@ class AdmorphiqAgent:
 
         # Convert index to game action
         return self._idx_to_game_action(idx)
+
+    def _select_action(self, perception_probs: np.ndarray, simple_mask: np.ndarray) -> int:
+        """Select action using momentum for movement games, perception for click games.
+
+        For movement games: after initial exploration (50 steps), use momentum strategy
+        that repeats the most effective action direction. This helps navigate toward goals
+        instead of random wandering.
+        """
+        has_simple = simple_mask.any()
+
+        # Click games or early exploration: use pure perception
+        if self._is_click_game or self._step_count < 50 or not has_simple:
+            return int(np.random.choice(4101, p=perception_probs))
+
+        # Momentum strategy for movement games
+        # Every max_repeat steps or when stuck, pick a new direction
+        if (self._last_big_change_action is not None
+                and self._repeat_count < self._max_repeat
+                and self._no_change_streak < 3):
+            # Continue momentum: 70% repeat best action, 30% sample from perception
+            if np.random.random() < 0.7:
+                return self._last_big_change_action
+            return int(np.random.choice(4101, p=perception_probs))
+
+        # Pick new direction: choose the simple action with highest avg pixel change
+        avg_changes = np.zeros(5, dtype=np.float64)
+        for i in range(5):
+            if self._action_try_counts[i] > 0 and simple_mask[i]:
+                avg_changes[i] = self._action_change_counts[i] / self._action_try_counts[i]
+
+        if avg_changes.max() > 0:
+            # Softmax selection biased toward high-change actions
+            temp = 2.0
+            exp_vals = np.exp(avg_changes / max(avg_changes.max(), 1.0) * temp)
+            exp_vals *= simple_mask[:5].astype(float)
+            if exp_vals.sum() > 0:
+                probs = exp_vals / exp_vals.sum()
+                best = int(np.random.choice(5, p=probs))
+                self._last_big_change_action = best
+                self._repeat_count = 0
+                return best
+
+        # Fallback: perception sampling
+        self._repeat_count = 0
+        self._last_big_change_action = None
+        return int(np.random.choice(4101, p=perception_probs))
 
     @staticmethod
     def _get_coord_bias(frame: np.ndarray) -> np.ndarray:

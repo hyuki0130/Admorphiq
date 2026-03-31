@@ -289,3 +289,57 @@ scripts/
 - Ensembling existing solutions (doesn't generalize to private test set)
 - Brute force search without heuristics (search space too large)
 - **Change prediction as sole strategy** (tested Phase 2.5-3.5): CNN learns to predict which actions cause state changes, but converges to ACTION6-only preference without understanding game goals. 500 actions across 3 games, 0 levels cleared.
+
+## Agent Behavior Rules
+
+- **NEVER suggest stopping, pausing, or continuing in a "next session"**. Keep the infinite improvement loop running until the user explicitly says to stop.
+- **NEVER say** "오늘 많이 했다", "다음 세션에 이어서 하자", "여기서 마무리하자", or similar phrases.
+- The test→log→analyze→fix→retest loop runs indefinitely. Commit periodically but never use commits as a reason to stop.
+- All 4 strategies (CNN, Ensemble, Graph, Diff) run in parallel. Never abandon one unless the user approves with clear justification.
+
+## Current Status (2026-04-01)
+
+**Score: 9/25 games, 9/182 levels cleared**
+
+### Per-Strategy Results
+| Strategy | Games Cleared | Unique Games |
+|----------|--------------|-------------|
+| Ensemble | AR25, CN04, LP85, SP80, R11L, VC33 (6) | R11L, VC33 |
+| Diff | AR25, CN04, LP85, SP80, R11L, VC33, LS20 (7) | FT09 |
+| Graph | M0R0, CN04, LP85, LS20 (4) | M0R0 |
+| CNN | LP85 (1) | — |
+
+### Remaining 16 Games (TODO)
+DC22, TU93, RE86, SU15, TR87, SC25, KA59, G50T, SB26, LF52, BP35, S5I5, SK48, WA30, CD82, TN36
+
+### Active TODO per Team
+
+**CNN Team:**
+- Investigate why StochasticGoose gets 12.58% with same architecture but we get ~0%
+- Try lr adjustments (0.001, 0.0005), smaller buffer (1000-5000), epsilon-greedy
+- LP85 is only consistent clear — analyze what makes it solvable
+- Run 25-game full test when stable improvement found
+
+**Ensemble Team:**
+- Develop frame-analysis-based intelligent navigation (not blind zigzag)
+- Use FrameAnalyzer to detect player, walls, goals per game
+- Fix ACTION6 data= passing in ensemble (LF52, BP35, TN36 crash)
+- Focus on movement games (7 unsolved) — need wall avoidance + pathfinding
+
+**Graph Team:**
+- State expansion is working (states grow to 1000+) after fix
+- Need better ACTION6 coordinate exploration (16x16 → 32x32 grid)
+- State hash downsampling (64x64 → 16x16) to reduce state space
+- Escape mechanism when stuck in same states for N steps
+
+**Diff Team:**
+- 7 games cleared, strongest single strategy
+- Improve movement game strategies (BFS + wall mapping)
+- Click games need pattern recognition (click order matters)
+- Hybrid/transform games need specialized approaches
+
+### Game-Strategy Mapping (for final submission)
+Each game should use its best-performing strategy. Build a meta-agent that:
+1. Classifies game type in first 20 actions
+2. Selects optimal strategy based on classification
+3. Falls back to other strategies if primary fails

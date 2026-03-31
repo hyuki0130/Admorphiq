@@ -67,6 +67,8 @@ class DiffAgent:
         self._last_levels_completed: int = 0
         # Last click coordinates for tracking effectiveness
         self._last_click_coords: tuple[int, int] | None = None
+        # Global action counter (never resets, for coordinate generation)
+        self._global_step: int = 0
 
     def reset(self) -> None:
         """Reset for a new game."""
@@ -243,6 +245,7 @@ class DiffAgent:
                 self._prev_hash = frame_hash
                 self._prev_action_id = action_id
                 self._step_count += 1
+                self._global_step += 1
                 action_count += 1
 
                 if obs is None:
@@ -493,6 +496,12 @@ class DiffAgent:
 
         coords = None
         if action == 6:
-            coords = (np.random.randint(0, 64), np.random.randint(0, 64))
+            # Use global step for systematic grid coverage that doesn't reset
+            grid_step = 4
+            total_grid = (64 // grid_step) ** 2
+            grid_idx = self._global_step % total_grid
+            gx = (grid_idx % (64 // grid_step)) * grid_step + np.random.randint(0, grid_step)
+            gy = (grid_idx // (64 // grid_step)) * grid_step + np.random.randint(0, grid_step)
+            coords = (int(min(63, gx)), int(min(63, gy)))
 
         return action, coords
