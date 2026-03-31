@@ -413,6 +413,21 @@
         "actions": 51
       },
       {
+        "name": "smart_nav",
+        "levels": 0,
+        "actions": 800
+      },
+      {
+        "name": "explore_interact",
+        "levels": 0,
+        "actions": 776
+      },
+      {
+        "name": "seq_search",
+        "levels": 0,
+        "actions": 483
+      },
+      {
         "name": "bfs_explore",
         "levels": 0,
         "actions": 300
@@ -460,32 +475,12 @@
       {
         "name": "grid_walk",
         "levels": 0,
-        "actions": 500
+        "actions": 440
       },
       {
         "name": "move_collect",
         "levels": 0,
-        "actions": 500
-      },
-      {
-        "name": "transform_detect",
-        "levels": 0,
-        "actions": 500
-      },
-      {
-        "name": "dominant_action",
-        "levels": 0,
-        "actions": 501
-      },
-      {
-        "name": "nav_to_rare",
-        "levels": 0,
-        "actions": 500
-      },
-      {
-        "name": "long_sustained",
-        "levels": 0,
-        "actions": 18
+        "actions": 20
       }
     ],
     "title": "TU93"
@@ -1441,6 +1436,11 @@
         "actions": 110
       },
       {
+        "name": "seq_search",
+        "levels": 0,
+        "actions": 391
+      },
+      {
         "name": "pattern_repeat",
         "levels": 0,
         "actions": 400
@@ -1468,7 +1468,7 @@
       {
         "name": "click_progressive",
         "levels": 0,
-        "actions": 176
+        "actions": 171
       },
       {
         "name": "click_color_order",
@@ -1493,7 +1493,7 @@
       {
         "name": "raster_fine",
         "levels": 0,
-        "actions": 2132
+        "actions": 1746
       }
     ],
     "title": "SU15"
@@ -2249,6 +2249,11 @@
         "actions": 500
       },
       {
+        "name": "seq_search",
+        "levels": 0,
+        "actions": 422
+      },
+      {
         "name": "pattern_repeat",
         "levels": 0,
         "actions": 400
@@ -2276,7 +2281,7 @@
       {
         "name": "click_progressive",
         "levels": 0,
-        "actions": 81
+        "actions": 91
       },
       {
         "name": "click_color_order",
@@ -2301,7 +2306,7 @@
       {
         "name": "raster_fine",
         "levels": 0,
-        "actions": 1928
+        "actions": 1496
       }
     ],
     "title": "FT09"
@@ -2720,24 +2725,14 @@
         "actions": 105
       },
       {
-        "name": "bfs_explore",
+        "name": "smart_nav",
         "levels": 0,
-        "actions": 300
+        "actions": 800
       },
       {
-        "name": "wall_avoid",
+        "name": "explore_interact",
         "levels": 0,
-        "actions": 300
-      },
-      {
-        "name": "pattern_repeat",
-        "levels": 0,
-        "actions": 400
-      },
-      {
-        "name": "spiral",
-        "levels": 0,
-        "actions": 135
+        "actions": 335
       }
     ],
     "title": "TR87"
@@ -3156,6 +3151,21 @@
         "actions": 131
       },
       {
+        "name": "smart_nav",
+        "levels": 0,
+        "actions": 800
+      },
+      {
+        "name": "explore_interact",
+        "levels": 0,
+        "actions": 800
+      },
+      {
+        "name": "seq_search",
+        "levels": 0,
+        "actions": 488
+      },
+      {
         "name": "bfs_explore",
         "levels": 0,
         "actions": 300
@@ -3198,7 +3208,7 @@
       {
         "name": "raster",
         "levels": 0,
-        "actions": 2438
+        "actions": 350
       }
     ],
     "title": "SC25"
@@ -3207,7 +3217,7 @@
     "game_id": "lp85-305b61c3",
     "levels_completed": 1,
     "win_levels": 8,
-    "actions": 2565,
+    "actions": 2555,
     "strategy": "click_c8_(30,4)",
     "cleared": true,
     "strategies_tried": [
@@ -3224,7 +3234,7 @@
       {
         "name": "ext_click_progressive",
         "levels": 1,
-        "actions": 231
+        "actions": 221
       },
       {
         "name": "ext_click_adaptive",
@@ -3693,7 +3703,7 @@
         "actions": 105
       },
       {
-        "name": "bfs_explore",
+        "name": "smart_nav",
         "levels": 0,
         "actions": 43
       }
@@ -4265,44 +4275,19 @@
         "actions": 101
       },
       {
-        "name": "bfs_explore",
+        "name": "smart_nav",
         "levels": 0,
-        "actions": 300
+        "actions": 800
       },
       {
-        "name": "wall_avoid",
+        "name": "explore_interact",
         "levels": 0,
-        "actions": 300
+        "actions": 800
       },
       {
-        "name": "pattern_repeat",
+        "name": "seq_search",
         "levels": 0,
-        "actions": 400
-      },
-      {
-        "name": "spiral",
-        "levels": 0,
-        "actions": 200
-      },
-      {
-        "name": "click_diff",
-        "levels": 0,
-        "actions": 318
-      },
-      {
-        "name": "click_all_colors",
-        "levels": 0,
-        "actions": 67
-      },
-      {
-        "name": "all_combos",
-        "levels": 0,
-        "actions": 72
-      },
-      {
-        "name": "graph_explore",
-        "levels": 0,
-        "actions": 72
+        "actions": 129
       }
     ],
     "title": "KA59"
@@ -4857,6 +4842,21 @@
         "actions": 65
       },
       {
+        "name": "smart_nav",
+        "levels": 0,
+        "actions": 800
+      },
+      {
+        "name": "explore_interact",
+        "levels": 0,
+        "actions": 250
+      },
+      {
+        "name": "seq_search",
+        "levels": 0,
+        "actions": 600
+      },
+      {
         "name": "bfs_explore",
         "levels": 0,
         "actions": 300
@@ -4909,32 +4909,7 @@
       {
         "name": "wall_map_nav",
         "levels": 0,
-        "actions": 500
-      },
-      {
-        "name": "target_chase",
-        "levels": 0,
-        "actions": 400
-      },
-      {
-        "name": "click_progressive",
-        "levels": 0,
-        "actions": 181
-      },
-      {
-        "name": "click_color_order",
-        "levels": 0,
-        "actions": 500
-      },
-      {
-        "name": "click_toggle",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "move_collect",
-        "levels": 0,
-        "actions": 156
+        "actions": 138
       }
     ],
     "title": "SB26"
@@ -5353,6 +5328,21 @@
         "actions": 131
       },
       {
+        "name": "smart_nav",
+        "levels": 0,
+        "actions": 9
+      },
+      {
+        "name": "explore_interact",
+        "levels": 0,
+        "actions": 390
+      },
+      {
+        "name": "seq_search",
+        "levels": 0,
+        "actions": 514
+      },
+      {
         "name": "bfs_explore",
         "levels": 0,
         "actions": 300
@@ -5390,7 +5380,7 @@
       {
         "name": "raster",
         "levels": 0,
-        "actions": 1979
+        "actions": 1066
       }
     ],
     "title": "LF52"
@@ -5514,6 +5504,21 @@
         "actions": 17
       },
       {
+        "name": "smart_nav",
+        "levels": 0,
+        "actions": 800
+      },
+      {
+        "name": "explore_interact",
+        "levels": 0,
+        "actions": 729
+      },
+      {
+        "name": "seq_search",
+        "levels": 0,
+        "actions": 449
+      },
+      {
         "name": "bfs_explore",
         "levels": 0,
         "actions": 300
@@ -5561,32 +5566,7 @@
       {
         "name": "bfs_navigate",
         "levels": 0,
-        "actions": 500
-      },
-      {
-        "name": "wall_map_nav",
-        "levels": 0,
-        "actions": 500
-      },
-      {
-        "name": "target_chase",
-        "levels": 0,
-        "actions": 400
-      },
-      {
-        "name": "grid_walk",
-        "levels": 0,
-        "actions": 500
-      },
-      {
-        "name": "click_progressive",
-        "levels": 0,
-        "actions": 238
-      },
-      {
-        "name": "click_color_order",
-        "levels": 0,
-        "actions": 241
+        "actions": 401
       }
     ],
     "title": "BP35"
@@ -5603,6 +5583,11 @@
         "name": "click_rare",
         "levels": 0,
         "actions": 305
+      },
+      {
+        "name": "seq_search",
+        "levels": 0,
+        "actions": 469
       },
       {
         "name": "pattern_repeat",
@@ -5657,7 +5642,7 @@
       {
         "name": "raster_fine",
         "levels": 0,
-        "actions": 1782
+        "actions": 1313
       }
     ],
     "title": "S5I5"
@@ -5666,8 +5651,8 @@
     "game_id": "r11l-aa269680",
     "levels_completed": 1,
     "win_levels": 6,
-    "actions": 2775,
-    "strategy": "click_all_c15",
+    "actions": 1561,
+    "strategy": "seq_repeat",
     "cleared": true,
     "strategies_tried": [
       {
@@ -5676,34 +5661,9 @@
         "actions": 66
       },
       {
-        "name": "pattern_repeat",
-        "levels": 0,
-        "actions": 400
-      },
-      {
-        "name": "click_diff",
-        "levels": 0,
-        "actions": 320
-      },
-      {
-        "name": "click_all_colors",
+        "name": "seq_search",
         "levels": 1,
-        "actions": 211
-      },
-      {
-        "name": "ext_click_rare",
-        "levels": 0,
-        "actions": 66
-      },
-      {
-        "name": "ext_click_progressive",
-        "levels": 0,
-        "actions": 212
-      },
-      {
-        "name": "ext_click_adaptive",
-        "levels": 0,
-        "actions": 500
+        "actions": 495
       },
       {
         "name": "ext_graph_explore",
@@ -6965,14 +6925,9 @@
         "actions": 105
       },
       {
-        "name": "bfs_explore",
+        "name": "smart_nav",
         "levels": 0,
-        "actions": 300
-      },
-      {
-        "name": "wall_avoid",
-        "levels": 0,
-        "actions": 111
+        "actions": 411
       }
     ],
     "title": "LS20"
@@ -7552,6 +7507,11 @@
         "actions": 181
       },
       {
+        "name": "seq_search",
+        "levels": 0,
+        "actions": 503
+      },
+      {
         "name": "click_diff",
         "levels": 0,
         "actions": 320
@@ -7599,7 +7559,7 @@
       {
         "name": "raster_fine",
         "levels": 0,
-        "actions": 2441
+        "actions": 1938
       }
     ],
     "title": "TN36"

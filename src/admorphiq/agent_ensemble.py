@@ -39,9 +39,7 @@ def frame_hash(frame: np.ndarray) -> str:
 
 
 def click(env: Any, x: int, y: int) -> Any:
-    a6 = GameAction.ACTION6
-    a6.set_data({"x": x, "y": y})
-    return env.step(a6, data={"x": x, "y": y})
+    return env.step(GameAction.ACTION6, data={"x": int(x), "y": int(y)})
 
 
 def act(env: Any, aid: int) -> Any:
@@ -2127,6 +2125,375 @@ def strat_extended_winner(env: Any, winning_aid: int, winning_aid2: int | None,
     return best, name, used
 
 
+# ─── Smart strategies (state-aware) ────────────────────────────────
+
+def strat_smart_navigate(env: Any, dir_actions: list[int], has_click: bool,
+                         budget: int = 800) -> tuple[int, str, int]:
+    """Frame-analysis-based navigation: detect player, map directions, find goals, navigate."""
+    obs = reset(env)
+    used, best, name = 1, 0, ""
+
+    # Phase 1: Direction mapping (which action moves player which way)
+    direction_map: dict[int, tuple[float, float]] = {}  # aid -> (avg_dy, avg_dx)
+    player_color: int | None = None
+    player_move_counts: dict[int, int] = defaultdict(int)
+
+    for trial in range(2):
+        for aid in dir_actions[:5]:
+            f_before = get_frame(obs)
+            obs = act(env, aid)
+            used += 1
+            if obs.state.name == "WIN":
+                if obs.levels_completed > best:
+                    best = obs.levels_completed
+                    name = "smart_nav"
+                return best, name, used
+            if obs.state.name == "GAME_OVER":
+                obs = reset(env)
+                used += 1
+                continue
+            f_after = get_frame(obs)
+
+            for color in range(1, 16):
+                bm = f_before == color
+                am = f_after == color
+                bc, ac = int(bm.sum()), int(am.sum())
+                if 0 < bc < 2000 and ac > 0:
+                    b_c = np.array(np.where(bm)).mean(axis=1)
+                    a_c = np.array(np.where(am)).mean(axis=1)
+                    dy, dx = float(a_c[0] - b_c[0]), float(a_c[1] - b_c[1])
+                    if abs(dy) > 0.3 or abs(dx) > 0.3:
+                        player_move_counts[color] += 1
+                        if aid not in direction_map:
+                            direction_map[aid] = (dy, dx)
+                        else:
+                            # Average
+                            ody, odx = direction_map[aid]
+                            direction_map[aid] = ((ody + dy) / 2, (odx + dx) / 2)
+
+    if player_move_counts:
+        player_color = max(player_move_counts, key=player_move_counts.get)
+    else:
+        # No player detected - can't do smart navigation
+        return best, name, used
+
+    # Build wall map
+    wall_positions: set[tuple[int, int]] = set()  # (y, x) grid positions that block movement
+    failed_moves: dict[int, int] = defaultdict(int)  # aid -> fail count
+
+    # Phase 2: Navigate to goal colors
+    # Goal identification: rare colors that aren't the player
+    obs = reset(env)
+    used += 1
+    frame = get_frame(obs)
+
+    def get_player_center(frm: np.ndarray) -> tuple[float, float] | None:
+        pp = np.argwhere(frm == player_color)
+        if len(pp) == 0:
+            return None
+        return (float(pp[:, 0].mean()), float(pp[:, 1].mean()))
+
+    def find_goal_targets(frm: np.ndarray) -> list[tuple[int, float, float]]:
+        """Find goal targets: rare non-player non-bg colors, sorted by rarity."""
+        targets = []
+        for c, cnt in rare_colors(frm, max_count=500):
+            if c == player_color or c == 0:
+                continue
+            tp = np.argwhere(frm == c)
+            if len(tp) > 0:
+                cy, cx = float(tp[:, 0].mean()), float(tp[:, 1].mean())
+                targets.append((c, cy, cx))
+        return targets
+
+    def best_action_toward(py: float, px: float, ty: float, tx: float) -> int | None:
+        """Find action that moves player toward target."""
+        dy_want = ty - py
+        dx_want = tx - px
+
+        best_dot = -float("inf")
+        best_aid = None
+        for aid, (dy, dx) in direction_map.items():
+            dot = dy * dy_want + dx * dx_want
+            if dot > best_dot:
+                best_dot = dot
+                best_aid = aid
+        return best_aid
+
+    target_idx = 0
+    stuck_counter = 0
+    prev_pos: tuple[float, float] | None = None
+    last_frame_hash = ""
+
+    for step in range(budget - used):
+        if used >= budget or obs.state.name == "WIN":
+            break
+        if obs.state.name == "GAME_OVER":
+            obs = reset(env)
+            used += 1
+            stuck_counter = 0
+            prev_pos = None
+            continue
+
+        if obs.levels_completed > best:
+            best = obs.levels_completed
+            name = "smart_nav"
+            stuck_counter = 0
+            target_idx = 0
+
+        frame = get_frame(obs)
+        cur_hash = frame_hash(frame)
+        pos = get_player_center(frame)
+
+        if pos is None:
+            # Player not visible - try random action
+            obs = act(env, dir_actions[step % len(dir_actions)])
+            used += 1
+            continue
+
+        # Check if stuck
+        if prev_pos is not None:
+            dist = abs(pos[0] - prev_pos[0]) + abs(pos[1] - prev_pos[1])
+            if dist < 0.5:
+                stuck_counter += 1
+            else:
+                stuck_counter = 0
+
+        prev_pos = pos
+
+        # If stuck for too long, try different strategy
+        if stuck_counter > 5:
+            # Try clicking at current position if available
+            if has_click:
+                obs = click(env, int(round(pos[1])), int(round(pos[0])))
+                used += 1
+                if obs.levels_completed > best:
+                    best = obs.levels_completed
+                    name = "smart_nav_click"
+                stuck_counter = 0
+                continue
+            else:
+                # Try random direction
+                obs = act(env, dir_actions[np.random.randint(len(dir_actions))])
+                used += 1
+                stuck_counter = 0
+                continue
+
+        # Find targets
+        targets = find_goal_targets(frame)
+
+        if not targets:
+            # No rare colors - try navigating to unexplored areas
+            # Move in direction we haven't tried
+            obs = act(env, dir_actions[step % len(dir_actions)])
+            used += 1
+            continue
+
+        # Navigate to closest target
+        target_idx = target_idx % len(targets) if targets else 0
+        tc, ty, tx = targets[min(target_idx, len(targets) - 1)]
+
+        # Check proximity - if very close, try clicking it
+        dist_to_target = abs(pos[0] - ty) + abs(pos[1] - tx)
+        if dist_to_target < 4 and has_click:
+            obs = click(env, int(round(tx)), int(round(ty)))
+            used += 1
+            if obs.levels_completed > best:
+                best = obs.levels_completed
+                name = f"smart_nav_click_c{tc}"
+            if obs.state.name == "GAME_OVER":
+                obs = reset(env)
+                used += 1
+                target_idx += 1  # Try next target
+            continue
+
+        # Move toward target
+        aid = best_action_toward(pos[0], pos[1], ty, tx)
+        if aid is not None:
+            obs = act(env, aid)
+            used += 1
+        else:
+            obs = act(env, dir_actions[step % len(dir_actions)])
+            used += 1
+
+        if obs.levels_completed > best:
+            best = obs.levels_completed
+            name = "smart_nav"
+
+    return best, name, used
+
+
+def strat_explore_and_interact(env: Any, avail_actions: list[int],
+                               budget: int = 800) -> tuple[int, str, int]:
+    """Explore the environment systematically: move, observe changes, interact with objects.
+
+    Combines movement with click to discover game mechanics:
+    1. Move to each region of the map
+    2. Click on interesting objects found
+    3. Track which interactions cause progress
+    """
+    obs = reset(env)
+    used, best, name = 1, 0, ""
+
+    dir_actions = [a for a in avail_actions if a not in (6, 7, 8)]
+    has_click = 6 in avail_actions
+
+    if not dir_actions:
+        return best, name, used
+
+    # Track interaction history
+    interaction_success: list[tuple[int, int, int]] = []  # (x, y, color) that caused changes
+    visited_hashes: set[str] = set()
+
+    frame = get_frame(obs)
+    visited_hashes.add(frame_hash(frame))
+
+    # Explore in expanding circles
+    for radius in range(1, 20):
+        if used >= budget or obs.state.name == "WIN":
+            break
+
+        # Move in one direction for 'radius' steps
+        for dir_idx in range(len(dir_actions)):
+            if used >= budget or obs.state.name == "WIN":
+                break
+
+            aid = dir_actions[dir_idx]
+            for _ in range(radius):
+                if used >= budget or obs.state.name in ("WIN", "GAME_OVER"):
+                    break
+                obs = act(env, aid)
+                used += 1
+                if obs.levels_completed > best:
+                    best = obs.levels_completed
+                    name = "explore_interact"
+                if obs.state.name == "GAME_OVER":
+                    obs = reset(env)
+                    used += 1
+                    # Replay known successful interactions
+                    for sx, sy, sc in interaction_success:
+                        if used >= budget or obs.state.name in ("WIN", "GAME_OVER"):
+                            break
+                        obs = click(env, sx, sy)
+                        used += 1
+                    continue
+
+            # After moving, analyze frame and click on interesting things
+            if has_click and obs.state.name not in ("WIN", "GAME_OVER"):
+                frame = get_frame(obs)
+                cur_hash = frame_hash(frame)
+
+                if cur_hash not in visited_hashes:
+                    visited_hashes.add(cur_hash)
+
+                    # Click on rare colors in current frame
+                    rc = rare_colors(frame, max_count=200)
+                    for color, cnt in rc[:3]:
+                        positions = np.argwhere(frame == color)
+                        if len(positions) == 0:
+                            continue
+                        center = positions.mean(axis=0)
+                        cy, cx = int(round(center[0])), int(round(center[1]))
+
+                        if used >= budget or obs.state.name in ("WIN", "GAME_OVER"):
+                            break
+
+                        f_before = get_frame(obs)
+                        obs = click(env, cx, cy)
+                        used += 1
+                        f_after = get_frame(obs)
+
+                        if obs.levels_completed > best:
+                            best = obs.levels_completed
+                            name = f"explore_click_c{color}"
+
+                        if frame_diff(f_before, f_after) > 0:
+                            interaction_success.append((cx, cy, color))
+
+                        if obs.state.name == "GAME_OVER":
+                            obs = reset(env)
+                            used += 1
+                            break
+
+    return best, name, used
+
+
+def strat_action_sequence_search(env: Any, avail_actions: list[int],
+                                  budget: int = 600) -> tuple[int, str, int]:
+    """Try longer action sequences (length 4-8), looking for patterns that trigger level completion."""
+    obs = reset(env)
+    used, best, name = 1, 0, ""
+
+    usable = [a for a in avail_actions if a not in (7, 8)]
+    if not usable:
+        return best, name, used
+
+    # Try random sequences, but track which ones cause frame changes
+    best_change_seq: list[int] = []
+    best_change_total = 0
+
+    for trial in range(budget // 20):
+        if used >= budget or obs.state.name == "WIN":
+            break
+
+        obs = reset(env)
+        used += 1
+        seq_len = np.random.randint(4, 9)
+        seq = [usable[np.random.randint(len(usable))] for _ in range(seq_len)]
+
+        total_change = 0
+        for aid in seq:
+            if used >= budget or obs.state.name in ("WIN", "GAME_OVER"):
+                break
+            f_before = get_frame(obs)
+            if aid == 6:
+                # Random click
+                obs = click(env, np.random.randint(64), np.random.randint(64))
+            else:
+                obs = act(env, aid)
+            used += 1
+            f_after = get_frame(obs)
+            total_change += frame_diff(f_before, f_after)
+
+            if obs.levels_completed > best:
+                best = obs.levels_completed
+                name = f"seq_search_{seq_len}"
+
+        if total_change > best_change_total:
+            best_change_total = total_change
+            best_change_seq = seq[:]
+
+        if obs.state.name == "GAME_OVER":
+            obs = reset(env)
+            used += 1
+
+    # Repeat best sequence
+    if best_change_seq and best == 0:
+        for _ in range(5):
+            if used >= budget:
+                break
+            obs = reset(env)
+            used += 1
+            for repeat in range(10):
+                for aid in best_change_seq:
+                    if used >= budget or obs.state.name in ("WIN", "GAME_OVER"):
+                        break
+                    if aid == 6:
+                        obs = click(env, np.random.randint(64), np.random.randint(64))
+                    else:
+                        obs = act(env, aid)
+                    used += 1
+                    if obs.levels_completed > best:
+                        best = obs.levels_completed
+                        name = "seq_repeat"
+                if obs.state.name in ("WIN", "GAME_OVER"):
+                    break
+            if obs.state.name == "GAME_OVER":
+                obs = reset(env)
+                used += 1
+
+    return best, name, used
+
+
 # ─── Ensemble solver ────────────────────────────────────────────────
 
 class EnsembleAgent:
@@ -2225,6 +2592,21 @@ class EnsembleAgent:
                 remaining = min(105, self.total_budget - total_actions)
                 try_strat(strat_navigate, player_color, dir_to_act, tc,
                           label=f"nav_c{tc}", budget=remaining)
+
+        # === Strategy 5b: Smart navigate (frame-analysis based) ===
+        if best_levels == 0 and dir_actions:
+            remaining = min(800, self.total_budget - total_actions)
+            try_strat(strat_smart_navigate, dir_actions, has_click, label="smart_nav", budget=remaining)
+
+        # === Strategy 5c: Explore and interact ===
+        if best_levels == 0 and dir_actions:
+            remaining = min(800, self.total_budget - total_actions)
+            try_strat(strat_explore_and_interact, avail, label="explore_interact", budget=remaining)
+
+        # === Strategy 5d: Action sequence search ===
+        if best_levels == 0:
+            remaining = min(600, self.total_budget - total_actions)
+            try_strat(strat_action_sequence_search, avail, label="seq_search", budget=remaining)
 
         # === Strategy 6: BFS explore ===
         if best_levels == 0 and dir_actions:

@@ -58,10 +58,10 @@ class AdmorphiqAgent:
     def __init__(
         self,
         device: str = "cpu",
-        lr: float = 1e-4,
+        lr: float = 3e-4,
         batch_size: int = 64,
-        train_frequency: int = 5,
-        buffer_maxlen: int = 200_000,
+        train_frequency: int = 10,
+        buffer_maxlen: int = 50_000,
         action_entropy_coeff: float = 1e-4,
         coord_entropy_coeff: float = 1e-5,
     ) -> None:
@@ -87,12 +87,14 @@ class AdmorphiqAgent:
         self._last_levels_completed: int = 0
         self._logger: GameLogger | None = None
         self._last_loss: float | None = None
+        self._is_click_game: bool | None = None  # auto-detect: True if only ACTION6 available
+        self._effective_coords: list[int] = []  # coord indices that caused frame changes
+        self._no_change_streak: int = 0  # consecutive steps with no frame change
 
     def _reset_for_new_level(self, level_completed: bool = False) -> None:
-        """Reset state for a new level."""
+        """Reset state for a new level. Preserves model weights for transfer."""
         self.buffer.clear()
-        self.model = PerceptionModel().to(self.device)
-        self.optimizer = torch.optim.Adam(self.model.parameters(), lr=self.lr)
+        # Keep model weights — transfer learning across levels
         self.explorer.clear()
 
         if level_completed:
@@ -104,15 +106,27 @@ class AdmorphiqAgent:
         self._prev_raw_frame = None
         self._prev_action_idx = None
         self._step_count = 0
+        self._effective_coords.clear()
+        self._no_change_streak = 0
 
     def set_logger(self, logger: GameLogger) -> None:
         """Attach a GameLogger for structured JSONL logging."""
         self._logger = logger
 
     @staticmethod
-    def _compute_reward(frame_changed: bool) -> float:
-        """Binary reward: 1.0 if frame changed, 0.0 otherwise."""
-        return 1.0 if frame_changed else 0.0
+    def _compute_reward(frame_changed: bool, prev_raw: np.ndarray | None = None, curr_raw: np.ndarray | None = None) -> float:
+        """Magnitude-scaled reward: proportional to pixel change count.
+
+        Returns 0.0 for no change, scales up to 1.0 for large changes.
+        This helps the agent prefer actions with bigger impact.
+        """
+        if not frame_changed:
+            return 0.0
+        if prev_raw is not None and curr_raw is not None:
+            diff_count = int(np.count_nonzero(prev_raw.astype(int) - curr_raw.astype(int)))
+            # Scale: 1 pixel -> 0.1, 10+ pixels -> 0.5, 50+ -> 0.8, 100+ -> ~1.0
+            return min(1.0, 0.1 + 0.9 * (1.0 - np.exp(-diff_count / 30.0)))
+        return 1.0
 
     def is_done(self, frames: list[FrameData], latest_frame: FrameData) -> bool:
         """Check if the current game is complete."""
@@ -142,18 +156,27 @@ class AdmorphiqAgent:
         # Encode current frame
         current_frame = _frame_to_tensor(latest_frame.frame).to(self.device)
 
-        # Record experience from previous step with binary reward
+        # Record experience from previous step with magnitude-scaled reward
         frame_changed = False
         reward = 0.0
         if self._prev_frame is not None and self._prev_action_idx is not None:
             frame_changed = not torch.equal(self._prev_frame, current_frame)
-            reward = self._compute_reward(frame_changed)
+            reward = self._compute_reward(frame_changed, self._prev_raw_frame, latest_frame.frame)
             self.buffer.add(
                 self._prev_frame.cpu().numpy().astype(bool),
                 self._prev_action_idx,
                 reward,
                 next_frame=current_frame.cpu().numpy().astype(bool),
             )
+            # Track effective coords for click games
+            if frame_changed and self._prev_action_idx >= 5:
+                self._effective_coords.append(self._prev_action_idx)
+                self._no_change_streak = 0
+            elif not frame_changed:
+                self._no_change_streak += 1
+            else:
+                self._no_change_streak = 0
+
             if self._logger is not None and self._prev_raw_frame is not None:
                 self._logger.log_frame_diff(
                     self._step_count, self._prev_raw_frame,
@@ -169,6 +192,11 @@ class AdmorphiqAgent:
 
         if not available_mask.any() and not action6_available:
             return GameAction.reset()
+
+        # Auto-detect click-only games (like LP85)
+        if self._is_click_game is None:
+            has_simple = available_mask[0].any().item()
+            self._is_click_game = not has_simple and action6_available
 
         # Perception model forward pass
         self.model.eval()
@@ -186,6 +214,11 @@ class AdmorphiqAgent:
             mask_np[5:] = True
 
         perception_probs = perception_probs * mask_np
+
+        # For click games: bias coords toward non-background pixels
+        if self._is_click_game:
+            coord_bias = self._get_coord_bias(latest_frame.frame)
+            perception_probs[5:] = perception_probs[5:] * (1.0 + coord_bias * 9.0)
 
         # KEY: Scale coordinate probabilities by 1/4096 to prevent ACTION6 dominance
         perception_probs[5:] = perception_probs[5:] / 4096.0
@@ -231,6 +264,26 @@ class AdmorphiqAgent:
 
         # Convert index to game action
         return self._idx_to_game_action(idx)
+
+    @staticmethod
+    def _get_coord_bias(frame: np.ndarray) -> np.ndarray:
+        """Generate a 4096-element bias array favoring non-background pixels.
+
+        Pixels with color != 0 (background) get a boost, so click games
+        target colored objects rather than empty space.
+        """
+        # frame is (64, 64) with values 0-15
+        non_bg = (frame != 0).astype(np.float32)  # (64, 64)
+
+        # Dilate with 5x5 kernel using numpy (boost neighbors too)
+        padded = np.pad(non_bg, 2, mode="constant")
+        dilated = np.zeros_like(non_bg)
+        for dy in range(5):
+            for dx in range(5):
+                dilated = np.maximum(dilated, padded[dy:dy+64, dx:dx+64])
+
+        # Flatten to 4096 (y * 64 + x ordering)
+        return dilated.flatten()
 
     @staticmethod
     def _idx_to_game_action(idx: int) -> GameAction:

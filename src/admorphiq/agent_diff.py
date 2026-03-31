@@ -65,6 +65,8 @@ class DiffAgent:
         self._current_sequence: list[int] = []
         # Track levels for detecting progress
         self._last_levels_completed: int = 0
+        # Last click coordinates for tracking effectiveness
+        self._last_click_coords: tuple[int, int] | None = None
 
     def reset(self) -> None:
         """Reset for a new game."""
@@ -85,6 +87,7 @@ class DiffAgent:
         self._successful_sequences.clear()
         self._current_sequence.clear()
         self._last_levels_completed = 0
+        self._last_click_coords = None
 
     def play_game(self, env: Any, max_actions: int = 500, time_limit: float = 300.0) -> dict:
         """Play a full game and return metrics.
@@ -168,6 +171,24 @@ class DiffAgent:
                     self._prev_frame = None
                     self._prev_hash = None
                     self._prev_action_id = None
+                    self._effective_clicks.clear()
+                    self._ineffective_clicks.clear()
+                    self._step_count = 0
+                    # Re-analyze for new level
+                    try:
+                        re_analysis = self.analyzer.run_initial_analysis(
+                            env, available, num_trials=2,
+                        )
+                        obs = env.step(GameAction.RESET)
+                        action_count += len(available) * 2 + 1
+                        if obs is None:
+                            break
+                        if self.analyzer.game_type == "movement" and self.analyzer.direction_map:
+                            self._build_spiral_pattern()
+                        frame = _extract_frame(obs)
+                        frame_hash = self.state_graph.add_state(frame)
+                    except Exception:
+                        pass
 
                 # Record transition from previous step
                 if self._prev_hash is not None and self._prev_action_id is not None:
@@ -175,9 +196,8 @@ class DiffAgent:
                     # Track click effectiveness
                     if self._prev_action_id == 6 and self._prev_frame is not None:
                         diff_count = int(np.count_nonzero(frame != self._prev_frame))
-                        if diff_count > 10:
-                            # This click caused meaningful change
-                            pass  # coords tracked in strategy
+                        if diff_count > 5 and hasattr(self, '_last_click_coords') and self._last_click_coords is not None:
+                            self._effective_clicks.append(self._last_click_coords)
 
                 # Track player position
                 if self.analyzer.player_color is not None:
@@ -211,6 +231,7 @@ class DiffAgent:
                 self._current_sequence.append(action_id)
 
                 # Execute action
+                self._last_click_coords = coords if action_id == 6 else None
                 action = GameAction.from_id(action_id)
                 if action_id == 6 and coords is not None:
                     action.set_data({"x": coords[0], "y": coords[1]})
@@ -364,38 +385,56 @@ class DiffAgent:
     ) -> tuple[int, tuple[int, int] | None]:
         """Strategy for click-type games.
 
-        Enhanced with:
-        - Targeted clicking on non-background pixels
-        - Learning from effective clicks
-        - Adaptive grid scanning
+        Systematic approach:
+        1. Click every non-background pixel (most likely to be interactive)
+        2. Use effective click history to focus on productive regions
+        3. Fall back to fine grid scan
         """
         if 6 in available:
-            # Priority 1: Click on rare/interesting positions
-            if self._step_count < 200:
-                # Phase 1: Systematic scan with focus on non-background
-                interesting = self._find_interesting_click_targets(frame)
-                if interesting:
-                    idx = self._step_count % len(interesting)
-                    return 6, interesting[idx]
+            # Priority 1: If we have effective clicks, exploit them with variations
+            if self._effective_clicks and self._step_count > 50:
+                if self._step_count % 3 == 0:
+                    # Exploit: click near known effective positions
+                    base = self._effective_clicks[self._step_count % len(self._effective_clicks)]
+                    x = min(63, max(0, base[0] + np.random.randint(-3, 4)))
+                    y = min(63, max(0, base[1] + np.random.randint(-3, 4)))
+                    return 6, (int(x), int(y))
 
-            # Phase 2: If we've found effective regions, focus there
-            if self._effective_clicks:
-                # Click near known effective positions with some noise
-                base = self._effective_clicks[self._step_count % len(self._effective_clicks)]
-                x = min(63, max(0, base[0] + np.random.randint(-4, 5)))
-                y = min(63, max(0, base[1] + np.random.randint(-4, 5)))
-                return 6, (int(x), int(y))
+            # Priority 2: Click on non-background pixels systematically
+            targets = self._get_nonbackground_pixels(frame)
+            if targets:
+                idx = self._step_count % len(targets)
+                return 6, targets[idx]
 
-            # Phase 3: Grid scan
-            grid_step = 4  # Finer grid than before
-            step = self._step_count
-            grid_x = (step * grid_step) % 64
-            grid_y = ((step * grid_step) // 64 * grid_step) % 64
-            x = min(63, max(0, grid_x + np.random.randint(-1, 2)))
-            y = min(63, max(0, grid_y + np.random.randint(-1, 2)))
-            return 6, (int(x), int(y))
+            # Priority 3: Fine grid scan covering every 2 pixels
+            grid_step = 2
+            total_grid = (64 // grid_step) ** 2
+            grid_idx = self._step_count % total_grid
+            grid_x = (grid_idx % (64 // grid_step)) * grid_step + 1
+            grid_y = (grid_idx // (64 // grid_step)) * grid_step + 1
+            return 6, (int(grid_x), int(grid_y))
 
         return self._exploration_strategy(frame_hash, available)
+
+    def _get_nonbackground_pixels(self, frame: np.ndarray) -> list[tuple[int, int]]:
+        """Get all non-background pixel coordinates, sampled for coverage."""
+        colors, counts = np.unique(frame, return_counts=True)
+        if len(colors) <= 1:
+            return []
+
+        bg_color = colors[counts.argmax()]
+        non_bg = frame != bg_color
+        if not non_bg.any():
+            return []
+
+        ys, xs = np.where(non_bg)
+        if len(ys) == 0:
+            return []
+
+        # Sample up to 500 positions evenly distributed
+        n_samples = min(500, len(ys))
+        indices = np.linspace(0, len(ys) - 1, n_samples, dtype=int)
+        return [(int(xs[i]), int(ys[i])) for i in indices]
 
     def _find_interesting_click_targets(self, frame: np.ndarray) -> list[tuple[int, int]]:
         """Find interesting positions to click based on frame content."""
