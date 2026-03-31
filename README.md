@@ -20,6 +20,14 @@ ARC-AGI-3 is the first interactive reasoning benchmark. Agents must explore unfa
 - Type abstractions for arcengine compatibility (GameState, ActionType, FrameData)
 - 41 tests passing (types 8, perception 11, buffer 10, agent 12)
 
+**Phase 2.5: SDK Integration + Live Testing** -- Complete
+
+- arcengine 0.9.3 + arc-agi 0.9.6 integration
+- AdmorphiqAdapter: official Agent <-> internal Agent bridge
+- Frame conversion: multi-layer variable color index -> 16ch one-hot
+- Local game runner (`scripts/run_local.py`)
+- Live tested on 3 games (DC22, LF52, BP35) -- 0 levels cleared, bottleneck identified
+
 **Phase 3: World Model** -- Complete
 
 - World Model (1.6M params): StateEncoder + ActionEmbedding + TransitionPredictor (residual delta) + ChangePredictor
@@ -50,7 +58,8 @@ admorphiq/
 ├── tests/                  # 69 tests (types, perception, buffer, agent, world model)
 ├── configs/                # Configuration files
 ├── notebooks/              # Experiment notebooks
-├── scripts/                # Helper scripts
+├── scripts/
+│   └── run_local.py        # Local game runner (arcengine integration)
 ├── pyproject.toml
 └── CLAUDE.md               # Architecture & competition context
 ```
@@ -64,15 +73,18 @@ uv sync
 
 ## Usage
 
+```bash
+# Run agent on a local game
+python scripts/run_local.py
+```
+
 ```python
 from admorphiq.agent import AdmorphiqAgent
 
 agent = AdmorphiqAgent()
 # Agent implements is_done() and choose_action(frame_data)
-# Compatible with the ARC-AGI-3-Agents framework
+# Compatible with the ARC-AGI-3-Agents framework via AdmorphiqAdapter
 ```
-
-> Full integration with the arcengine runner will be available in a future phase.
 
 ## Architecture
 

@@ -34,5 +34,8 @@ Thumbs.db
 runs/
 data/
 
+# ARC-AGI SDK downloaded game environments
+environment_files/
+
 # OMC
 .omc/

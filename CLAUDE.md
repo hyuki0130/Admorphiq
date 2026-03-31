@@ -106,7 +106,8 @@ ARC-AGI-3 is the first **interactive reasoning benchmark** — agents must explo
 
 ### Agent Interface
 - Two required methods: `is_done()` and `choose_action(frame_data)`
-- `FrameData` contains: `frame[16][64][64]` (one-hot encoded), `available_actions`, `state`, `levels_completed`
+- `FrameData` contains: `frame[N][64][64]` (variable layers, int8 color index per cell), `available_actions`, `state`, `levels_completed`
+- **Frame structure** (corrected): NOT fixed 16ch one-hot. Games have variable layer count (1~N), each cell is an int8 color index. Our adapter converts to 16ch one-hot for the CNN.
 - `GameAction`: RESET=0, ACTION1-5 (simple, no coordinates), ACTION6 (complex, requires x/y), ACTION7 (simple, cancel/undo)
 - `MAX_ACTIONS = 80` per game
 
@@ -135,7 +136,8 @@ src/admorphiq/
 tests/                  # 69 tests (types, perception, buffer, agent, world model)
 configs/                # Configuration files
 notebooks/              # Experiment notebooks
-scripts/                # Helper scripts
+scripts/
+└── run_local.py        # Local game runner (arcengine integration)
 ```
 
 ## Tech Stack
@@ -143,7 +145,7 @@ scripts/                # Helper scripts
 | Component | Technology |
 |-----------|-----------|
 | Language | Python 3.12 |
-| Framework | ARC-AGI-3-Agents (official) |
+| Framework | arcengine 0.9.3 + arc-agi 0.9.6 |
 | Package manager | uv |
 | Deep learning | PyTorch |
 | LLM (offline) | TBD — Llama/Qwen/Mistral quantized |
@@ -165,6 +167,13 @@ scripts/                # Helper scripts
 - ~~AdmorphiqAgent with hierarchical sampling + entropy regularization~~
 - ~~Type abstractions: GameState, ActionType, GameAction, FrameData~~
 - ~~41 tests passing (types 8, perception 11, buffer 10, agent 12)~~
+
+### Phase 2.5: SDK Integration + Live Testing ✅ Complete
+- ~~arcengine 0.9.3 + arc-agi 0.9.6 installation and integration~~
+- ~~AdmorphiqAdapter: official Agent ↔ internal Agent bridge~~
+- ~~Frame conversion: multi-layer (1~N layers, int8 color index) → 16ch one-hot~~
+- ~~scripts/run_local.py: local game runner~~
+- ~~Live tested on 3 games (DC22/1L, LF52/2L, BP35/2L) — 0 levels cleared~~
 
 ### Phase 3: World Model ✅ Complete
 - ~~StateEncoder (CNN) + ActionEmbedding (8 types + coordinates) + TransitionPredictor (residual delta)~~
@@ -206,6 +215,20 @@ scripts/                # Helper scripts
 3. **LLM as Hypothesis Generator** — generate candidate programs, verify against examples
 4. **Active Inference** — real-time adaptation via few-shot fine-tuning (Jack Cole, 34%)
 5. **Neurosymbolic** — neural perception + symbolic reasoning (Chollet's recommended direction)
+
+## Live Test Results (Phase 2.5)
+
+| Game | Layers | Actions | ms/action | Levels | Result |
+|------|--------|---------|-----------|--------|--------|
+| DC22 | 1 | 80 | 552 | 0/6 | Failed |
+| LF52 | 2 | 80 | 463 | 0/10 | Failed |
+| BP35 | 2 | 80 | 454 | 0/9 | Failed |
+
+### Lessons Learned
+- **Frame structure mismatch**: Actual frames are multi-layer with variable layer count and int8 color indices, not fixed 16ch one-hot as initially assumed
+- **Training bottleneck**: 440ms per action spent on training, only 8ms on inference -- training dominates runtime
+- **"Change prediction" alone is insufficient**: All 3 games stuck at level 0 -- need higher-level reasoning beyond predicting state changes
+- **Kaggle time budget is sufficient**: 6 hours allows 43K+ actions at current speed (80 actions/game = 500+ games)
 
 ## What Doesn't Work
 

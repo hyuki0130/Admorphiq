@@ -12,11 +12,25 @@ from .utils import ExperienceBuffer
 from .world_model import WorldModel
 
 
-def _frame_to_tensor(frame: np.ndarray) -> torch.Tensor:
-    """One-hot encode a (64, 64) uint8 frame into (16, 64, 64) float tensor."""
-    t = torch.from_numpy(frame.astype(np.int64))  # (64, 64)
-    onehot = F.one_hot(t, num_classes=16)          # (64, 64, 16)
-    return onehot.permute(2, 0, 1).float()         # (16, 64, 64)
+def _frame_to_tensor(frame: np.ndarray, raw_layers: np.ndarray | None = None) -> torch.Tensor:
+    """Convert frame data into (16, 64, 64) float one-hot tensor.
+
+    If raw_layers is provided (multi-layer frame), each layer is one-hot encoded
+    independently and merged via element-wise max. Otherwise, the single (64, 64)
+    index frame is one-hot encoded directly.
+    """
+    if raw_layers is not None and raw_layers.ndim == 3 and raw_layers.shape[0] > 1:
+        layers = []
+        for i in range(raw_layers.shape[0]):
+            t = torch.from_numpy(raw_layers[i].astype(np.int64))  # (64, 64)
+            onehot = F.one_hot(t.clamp(0, 15), num_classes=16)    # (64, 64, 16)
+            layers.append(onehot.permute(2, 0, 1).float())        # (16, 64, 64)
+        stacked = torch.stack(layers)          # (num_layers, 16, 64, 64)
+        return stacked.max(dim=0).values       # (16, 64, 64)
+
+    t = torch.from_numpy(frame.astype(np.int64))       # (64, 64)
+    onehot = F.one_hot(t.clamp(0, 15), num_classes=16)  # (64, 64, 16)
+    return onehot.permute(2, 0, 1).float()               # (16, 64, 64)
 
 
 # Maps ACTION1~5 to indices 0~4 in the logit vector
@@ -177,7 +191,7 @@ class AdmorphiqAgent:
             self._reset_for_new_level()
 
         # Encode current frame
-        current_frame = _frame_to_tensor(latest_frame.frame).to(self.device)  # (16, 64, 64)
+        current_frame = _frame_to_tensor(latest_frame.frame, latest_frame.raw_layers).to(self.device)  # (16, 64, 64)
 
         # Record experience from previous step (with next_frame for world model)
         if self._prev_frame is not None and self._prev_action_idx is not None:

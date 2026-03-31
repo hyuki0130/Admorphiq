@@ -56,7 +56,8 @@ class GameAction:
 @dataclass
 class FrameData:
     """A single frame from the game environment."""
-    frame: np.ndarray  # (64, 64) uint8, values 0-15
+    frame: np.ndarray  # (64, 64) uint8, values 0-15 (canonical single-layer)
     state: GameState = GameState.PLAYING
     score: dict[str, Any] = field(default_factory=dict)
     available_actions: list[ActionType] = field(default_factory=list)
+    raw_layers: np.ndarray | None = None  # (num_layers, 64, 64) int8, original multi-layer data
