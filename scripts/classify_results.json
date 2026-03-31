@@ -1,0 +1,2347 @@
+[
+  {
+    "game_id": "dc22-4c9bff3e",
+    "num_layers": 1,
+    "frame_shape": [
+      1,
+      64,
+      64
+    ],
+    "available_actions": [
+      1,
+      2,
+      3,
+      4,
+      6
+    ],
+    "win_levels": 6,
+    "unique_colors": [
+      0,
+      2,
+      3,
+      4,
+      5,
+      8,
+      9,
+      11,
+      13,
+      14
+    ],
+    "color_counts": {
+      "0": 188,
+      "2": 80,
+      "3": 1216,
+      "4": 1256,
+      "5": 1190,
+      "8": 71,
+      "9": 71,
+      "11": 4,
+      "13": 16,
+      "14": 4
+    },
+    "type": "hybrid",
+    "details": {
+      "movement_mapping": {
+        "1": {
+          "direction": "UP",
+          "player_color": 14
+        },
+        "2": {
+          "direction": "DOWN",
+          "player_color": 14
+        },
+        "3": {
+          "direction": "LEFT",
+          "player_color": 14
+        },
+        "4": {
+          "direction": "RIGHT",
+          "player_color": 14
+        }
+      },
+      "player_colors": [
+        14
+      ]
+    },
+    "action_effects_summary": {
+      "1": {
+        "avg_changed_pixels": 9.0,
+        "movements": {
+          "14": {
+            "avg_delta_y": -2.0,
+            "avg_delta_x": 0.0,
+            "direction": "UP"
+          }
+        }
+      },
+      "2": {
+        "avg_changed_pixels": 9.0,
+        "movements": {
+          "14": {
+            "avg_delta_y": 2.0,
+            "avg_delta_x": 0.0,
+            "direction": "DOWN"
+          }
+        }
+      },
+      "3": {
+        "avg_changed_pixels": 9.0,
+        "movements": {
+          "14": {
+            "avg_delta_y": 0.0,
+            "avg_delta_x": -2.0,
+            "direction": "LEFT"
+          }
+        }
+      },
+      "4": {
+        "avg_changed_pixels": 9.0,
+        "movements": {
+          "14": {
+            "avg_delta_y": 0.0,
+            "avg_delta_x": 2.0,
+            "direction": "RIGHT"
+          }
+        }
+      },
+      "6": {
+        "avg_changed_pixels": 1.0,
+        "movements": {}
+      }
+    },
+    "title": "DC22",
+    "tags": [
+      "keyboard_click"
+    ],
+    "baseline_actions": [
+      64,
+      117,
+      59,
+      78,
+      324,
+      550
+    ]
+  },
+  {
+    "game_id": "lf52-271a04aa",
+    "num_layers": 2,
+    "frame_shape": [
+      2,
+      64,
+      64
+    ],
+    "available_actions": [
+      1,
+      2,
+      3,
+      4,
+      6,
+      7
+    ],
+    "win_levels": 10,
+    "unique_colors": [
+      0,
+      1,
+      5,
+      9,
+      10,
+      14
+    ],
+    "color_counts": {
+      "0": 724,
+      "1": 468,
+      "5": 172,
+      "9": 86,
+      "10": 2586,
+      "14": 60
+    },
+    "type": "click",
+    "details": {
+      "movement_mapping": {},
+      "player_colors": []
+    },
+    "action_effects_summary": {
+      "1": {
+        "avg_changed_pixels": 1.0,
+        "movements": {}
+      },
+      "2": {
+        "avg_changed_pixels": 1.0,
+        "movements": {}
+      },
+      "3": {
+        "avg_changed_pixels": 1.0,
+        "movements": {}
+      },
+      "4": {
+        "avg_changed_pixels": 1.0,
+        "movements": {}
+      },
+      "6": {
+        "avg_changed_pixels": 21.0,
+        "movements": {
+          "9": {
+            "avg_delta_y": -3.22,
+            "avg_delta_x": -4.48,
+            "direction": "LEFT"
+          }
+        }
+      },
+      "7": {
+        "avg_changed_pixels": 1.0,
+        "movements": {}
+      }
+    },
+    "title": "LF52",
+    "tags": [
+      "click"
+    ],
+    "baseline_actions": [
+      24,
+      81,
+      74,
+      86,
+      118,
+      148,
+      189,
+      116,
+      150,
+      225
+    ]
+  },
+  {
+    "game_id": "bp35-0a0ad940",
+    "num_layers": 2,
+    "frame_shape": [
+      2,
+      64,
+      64
+    ],
+    "available_actions": [
+      3,
+      4,
+      6,
+      7
+    ],
+    "win_levels": 9,
+    "unique_colors": [
+      0,
+      3,
+      5,
+      9,
+      10,
+      11,
+      14
+    ],
+    "color_counts": {
+      "0": 64,
+      "3": 178,
+      "5": 1894,
+      "9": 6,
+      "10": 1805,
+      "11": 2,
+      "14": 147
+    },
+    "type": "hybrid",
+    "details": {
+      "movement_mapping": {
+        "3": {
+          "direction": "LEFT",
+          "player_color": 11
+        },
+        "4": {
+          "direction": "RIGHT",
+          "player_color": 11
+        }
+      },
+      "player_colors": [
+        9,
+        11
+      ]
+    },
+    "action_effects_summary": {
+      "3": {
+        "avg_changed_pixels": 35.0,
+        "movements": {
+          "9": {
+            "avg_delta_y": 0.0,
+            "avg_delta_x": -2.33,
+            "direction": "LEFT"
+          },
+          "11": {
+            "avg_delta_y": 0.0,
+            "avg_delta_x": -5.0,
+            "direction": "LEFT"
+          }
+        }
+      },
+      "4": {
+        "avg_changed_pixels": 31.0,
+        "movements": {
+          "9": {
+            "avg_delta_y": 0.0,
+            "avg_delta_x": 2.0,
+            "direction": "RIGHT"
+          },
+          "11": {
+            "avg_delta_y": 0.0,
+            "avg_delta_x": 2.0,
+            "direction": "RIGHT"
+          }
+        }
+      },
+      "6": {
+        "avg_changed_pixels": 1.0,
+        "movements": {}
+      },
+      "7": {
+        "avg_changed_pixels": 1.0,
+        "movements": {}
+      }
+    },
+    "title": "BP35",
+    "tags": [
+      "keyboard_click"
+    ],
+    "baseline_actions": [
+      15,
+      72,
+      36,
+      31,
+      31,
+      48,
+      86,
+      155,
+      163
+    ]
+  },
+  {
+    "game_id": "m0r0-dadda488",
+    "num_layers": 1,
+    "frame_shape": [
+      1,
+      64,
+      64
+    ],
+    "available_actions": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "win_levels": 6,
+    "unique_colors": [
+      5,
+      10,
+      11,
+      12
+    ],
+    "color_counts": {
+      "5": 1453,
+      "10": 50,
+      "11": 1294,
+      "12": 1299
+    },
+    "type": "movement",
+    "details": {
+      "movement_mapping": {
+        "1": {
+          "direction": "UP",
+          "player_color": 10
+        },
+        "2": {
+          "direction": "DOWN",
+          "player_color": 10
+        }
+      },
+      "player_colors": [
+        10
+      ]
+    },
+    "action_effects_summary": {
+      "1": {
+        "avg_changed_pixels": 100.0,
+        "movements": {
+          "10": {
+            "avg_delta_y": -5.0,
+            "avg_delta_x": 0.0,
+            "direction": "UP"
+          }
+        }
+      },
+      "2": {
+        "avg_changed_pixels": 100.0,
+        "movements": {
+          "10": {
+            "avg_delta_y": 5.0,
+            "avg_delta_x": 0.0,
+            "direction": "DOWN"
+          }
+        }
+      },
+      "3": {
+        "avg_changed_pixels": 100.0,
+        "movements": {}
+      },
+      "4": {
+        "avg_changed_pixels": 100.0,
+        "movements": {}
+      },
+      "5": {
+        "avg_changed_pixels": 0.0,
+        "movements": {}
+      },
+      "6": {
+        "avg_changed_pixels": 0.0,
+        "movements": {}
+      }
+    },
+    "title": "M0R0",
+    "tags": [
+      "keyboard_click"
+    ],
+    "baseline_actions": [
+      30,
+      209,
+      83,
+      86,
+      436,
+      126
+    ]
+  },
+  {
+    "game_id": "g50t-5849a774",
+    "num_layers": 1,
+    "frame_shape": [
+      1,
+      64,
+      64
+    ],
+    "available_actions": [
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "win_levels": 7,
+    "unique_colors": [
+      0,
+      1,
+      5,
+      8,
+      9
+    ],
+    "color_counts": {
+      "0": 3006,
+      "1": 9,
+      "5": 880,
+      "8": 82,
+      "9": 119
+    },
+    "type": "unknown",
+    "details": {
+      "movement_mapping": {},
+      "player_colors": []
+    },
+    "action_effects_summary": {
+      "1": {
+        "avg_changed_pixels": 0.0,
+        "movements": {}
+      },
+      "2": {
+        "avg_changed_pixels": 0.0,
+        "movements": {}
+      },
+      "3": {
+        "avg_changed_pixels": 0.0,
+        "movements": {}
+      },
+      "4": {
+        "avg_changed_pixels": 0.0,
+        "movements": {}
+      },
+      "5": {
+        "avg_changed_pixels": 0.0,
+        "movements": {}
+      }
+    },
+    "title": "G50T",
+    "tags": [
+      "keyboard"
+    ],
+    "baseline_actions": [
+      51,
+      175,
+      86,
+      52,
+      96,
+      48,
+      67
+    ]
+  },
+  {
+    "game_id": "ar25-e3c63847",
+    "num_layers": 1,
+    "frame_shape": [
+      1,
+      64,
+      64
+    ],
+    "available_actions": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7
+    ],
+    "win_levels": 8,
+    "unique_colors": [
+      0,
+      4,
+      5,
+      9,
+      10,
+      11
+    ],
+    "color_counts": {
+      "0": 5,
+      "4": 45,
+      "5": 103,
+      "9": 3645,
+      "10": 189,
+      "11": 109
+    },
+    "type": "movement",
+    "details": {
+      "movement_mapping": {
+        "1": {
+          "direction": "UP",
+          "player_color": 5
+        },
+        "2": {
+          "direction": "DOWN",
+          "player_color": 5
+        },
+        "3": {
+          "direction": "LEFT",
+          "player_color": 5
+        },
+        "4": {
+          "direction": "RIGHT",
+          "player_color": 5
+        }
+      },
+      "player_colors": [
+        4,
+        5
+      ]
+    },
+    "action_effects_summary": {
+      "1": {
+        "avg_changed_pixels": 109.0,
+        "movements": {
+          "4": {
+            "avg_delta_y": -3.0,
+            "avg_delta_x": 0.0,
+            "direction": "UP"
+          },
+          "5": {
+            "avg_delta_y": -1.59,
+            "avg_delta_x": 0.34,
+            "direction": "UP"
+          }
+        }
+      },
+      "2": {
+        "avg_changed_pixels": 109.0,
+        "movements": {
+          "4": {
+            "avg_delta_y": 3.0,
+            "avg_delta_x": 0.0,
+            "direction": "DOWN"
+          },
+          "5": {
+            "avg_delta_y": 0.72,
+            "avg_delta_x": 0.34,
+            "direction": "DOWN"
+          }
+        }
+      },
+      "3": {
+        "avg_changed_pixels": 109.0,
+        "movements": {
+          "4": {
+            "avg_delta_y": 0.0,
+            "avg_delta_x": 3.0,
+            "direction": "RIGHT"
+          },
+          "5": {
+            "avg_delta_y": -0.44,
+            "avg_delta_x": -0.82,
+            "direction": "LEFT"
+          }
+        }
+      },
+      "4": {
+        "avg_changed_pixels": 109.0,
+        "movements": {
+          "4": {
+            "avg_delta_y": 0.0,
+            "avg_delta_x": -3.0,
+            "direction": "LEFT"
+          },
+          "5": {
+            "avg_delta_y": -0.44,
+            "avg_delta_x": 1.49,
+            "direction": "RIGHT"
+          }
+        }
+      },
+      "5": {
+        "avg_changed_pixels": 1.0,
+        "movements": {}
+      },
+      "6": {
+        "avg_changed_pixels": 0.0,
+        "movements": {}
+      },
+      "7": {
+        "avg_changed_pixels": 0.0,
+        "movements": {}
+      }
+    },
+    "title": "AR25",
+    "tags": [
+      "keyboard_click"
+    ],
+    "baseline_actions": [
+      17,
+      22,
+      103,
+      29,
+      29,
+      159,
+      152,
+      66
+    ]
+  },
+  {
+    "game_id": "sk48-41055498",
+    "num_layers": 1,
+    "frame_shape": [
+      1,
+      64,
+      64
+    ],
+    "available_actions": [
+      1,
+      2,
+      3,
+      4,
+      6,
+      7
+    ],
+    "win_levels": 8,
+    "unique_colors": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      8,
+      9,
+      14
+    ],
+    "color_counts": {
+      "0": 24,
+      "1": 16,
+      "2": 92,
+      "3": 28,
+      "4": 1384,
+      "5": 2412,
+      "6": 44,
+      "8": 32,
+      "9": 32,
+      "14": 32
+    },
+    "type": "movement",
+    "details": {
+      "movement_mapping": {
+        "1": {
+          "direction": "UP",
+          "player_color": 6
+        },
+        "3": {
+          "direction": "DOWN",
+          "player_color": 1
+        },
+        "4": {
+          "direction": "UP",
+          "player_color": 1
+        }
+      },
+      "player_colors": [
+        1,
+        3,
+        6
+      ]
+    },
+    "action_effects_summary": {
+      "1": {
+        "avg_changed_pixels": 66.0,
+        "movements": {
+          "1": {
+            "avg_delta_y": -1.69,
+            "avg_delta_x": 0.0,
+            "direction": "UP"
+          },
+          "3": {
+            "avg_delta_y": -1.57,
+            "avg_delta_x": 0.0,
+            "direction": "UP"
+          },
+          "6": {
+            "avg_delta_y": -1.5,
+            "avg_delta_x": 0.0,
+            "direction": "UP"
+          }
+        }
+      },
+      "2": {
+        "avg_changed_pixels": 0.0,
+        "movements": {}
+      },
+      "3": {
+        "avg_changed_pixels": 6.0,
+        "movements": {
+          "1": {
+            "avg_delta_y": 2.9,
+            "avg_delta_x": 1.42,
+            "direction": "DOWN"
+          }
+        }
+      },
+      "4": {
+        "avg_changed_pixels": 6.0,
+        "movements": {
+          "1": {
+            "avg_delta_y": -1.74,
+            "avg_delta_x": -0.25,
+            "direction": "UP"
+          }
+        }
+      },
+      "6": {
+        "avg_changed_pixels": 0.0,
+        "movements": {}
+      },
+      "7": {
+        "avg_changed_pixels": 0.0,
+        "movements": {}
+      }
+    },
+    "title": "SK48",
+    "tags": [
+      "keyboard_click"
+    ],
+    "baseline_actions": [
+      15,
+      32,
+      35,
+      113,
+      304,
+      42,
+      63,
+      92
+    ]
+  },
+  {
+    "game_id": "ls20-9607627b",
+    "num_layers": 1,
+    "frame_shape": [
+      1,
+      64,
+      64
+    ],
+    "available_actions": [
+      1,
+      2,
+      3,
+      4
+    ],
+    "win_levels": 7,
+    "unique_colors": [
+      0,
+      1,
+      3,
+      4,
+      5,
+      8,
+      9,
+      11,
+      12
+    ],
+    "color_counts": {
+      "0": 3,
+      "1": 2,
+      "3": 892,
+      "4": 2609,
+      "5": 439,
+      "8": 12,
+      "9": 45,
+      "11": 84,
+      "12": 10
+    },
+    "type": "movement",
+    "details": {
+      "movement_mapping": {
+        "1": {
+          "direction": "UP",
+          "player_color": 12
+        },
+        "3": {
+          "direction": "LEFT",
+          "player_color": 12
+        },
+        "4": {
+          "direction": "RIGHT",
+          "player_color": 12
+        }
+      },
+      "player_colors": [
+        9,
+        12
+      ]
+    },
+    "action_effects_summary": {
+      "1": {
+        "avg_changed_pixels": 52.0,
+        "movements": {
+          "9": {
+            "avg_delta_y": -1.67,
+            "avg_delta_x": 0.0,
+            "direction": "UP"
+          },
+          "12": {
+            "avg_delta_y": -5.0,
+            "avg_delta_x": 0.0,
+            "direction": "UP"
+          }
+        }
+      },
+      "2": {
+        "avg_changed_pixels": 2.0,
+        "movements": {}
+      },
+      "3": {
+        "avg_changed_pixels": 52.0,
+        "movements": {
+          "9": {
+            "avg_delta_y": 0.0,
+            "avg_delta_x": -1.67,
+            "direction": "LEFT"
+          },
+          "12": {
+            "avg_delta_y": 0.0,
+            "avg_delta_x": -5.0,
+            "direction": "LEFT"
+          }
+        }
+      },
+      "4": {
+        "avg_changed_pixels": 52.0,
+        "movements": {
+          "9": {
+            "avg_delta_y": 0.0,
+            "avg_delta_x": 1.67,
+            "direction": "RIGHT"
+          },
+          "12": {
+            "avg_delta_y": 0.0,
+            "avg_delta_x": 5.0,
+            "direction": "RIGHT"
+          }
+        }
+      }
+    },
+    "title": "LS20",
+    "tags": [
+      "keyboard"
+    ],
+    "baseline_actions": [
+      21,
+      123,
+      39,
+      92,
+      54,
+      108,
+      109
+    ]
+  },
+  {
+    "game_id": "ft09-0d8bbf25",
+    "num_layers": 1,
+    "frame_shape": [
+      1,
+      64,
+      64
+    ],
+    "available_actions": [
+      6
+    ],
+    "win_levels": 6,
+    "unique_colors": [
+      0,
+      2,
+      4,
+      5,
+      8,
+      9,
+      12
+    ],
+    "color_counts": {
+      "0": 64,
+      "2": 144,
+      "4": 496,
+      "5": 2160,
+      "8": 448,
+      "9": 720,
+      "12": 64
+    },
+    "type": "unknown",
+    "details": {
+      "movement_mapping": {},
+      "player_colors": []
+    },
+    "action_effects_summary": {
+      "6": {
+        "avg_changed_pixels": 0.0,
+        "movements": {}
+      }
+    },
+    "title": "FT09",
+    "tags": [],
+    "baseline_actions": [
+      17,
+      19,
+      15,
+      21,
+      65,
+      26
+    ]
+  },
+  {
+    "game_id": "ka59-9f096b4a",
+    "num_layers": 1,
+    "frame_shape": [
+      1,
+      64,
+      64
+    ],
+    "available_actions": [
+      1,
+      2,
+      3,
+      4,
+      6
+    ],
+    "win_levels": 7,
+    "unique_colors": [
+      0,
+      1,
+      2,
+      4,
+      5,
+      14,
+      15
+    ],
+    "color_counts": {
+      "0": 1,
+      "1": 607,
+      "2": 3249,
+      "4": 96,
+      "5": 1,
+      "14": 16,
+      "15": 126
+    },
+    "type": "hybrid",
+    "details": {
+      "movement_mapping": {
+        "1": {
+          "direction": "UP",
+          "player_color": 14
+        },
+        "2": {
+          "direction": "DOWN",
+          "player_color": 14
+        },
+        "3": {
+          "direction": "LEFT",
+          "player_color": 14
+        },
+        "4": {
+          "direction": "RIGHT",
+          "player_color": 14
+        }
+      },
+      "player_colors": [
+        14
+      ]
+    },
+    "action_effects_summary": {
+      "1": {
+        "avg_changed_pixels": 19.0,
+        "movements": {
+          "14": {
+            "avg_delta_y": -1.5,
+            "avg_delta_x": 0.0,
+            "direction": "UP"
+          }
+        }
+      },
+      "2": {
+        "avg_changed_pixels": 19.0,
+        "movements": {
+          "14": {
+            "avg_delta_y": 1.5,
+            "avg_delta_x": 0.0,
+            "direction": "DOWN"
+          }
+        }
+      },
+      "3": {
+        "avg_changed_pixels": 19.0,
+        "movements": {
+          "14": {
+            "avg_delta_y": 0.0,
+            "avg_delta_x": -1.5,
+            "direction": "LEFT"
+          }
+        }
+      },
+      "4": {
+        "avg_changed_pixels": 19.0,
+        "movements": {
+          "14": {
+            "avg_delta_y": 0.0,
+            "avg_delta_x": 1.5,
+            "direction": "RIGHT"
+          }
+        }
+      },
+      "6": {
+        "avg_changed_pixels": 1.0,
+        "movements": {}
+      }
+    },
+    "title": "KA59",
+    "tags": [
+      "keyboard_click"
+    ],
+    "baseline_actions": [
+      39,
+      175,
+      86,
+      47,
+      21,
+      132,
+      326
+    ]
+  },
+  {
+    "game_id": "cn04-65d47d14",
+    "num_layers": 1,
+    "frame_shape": [
+      1,
+      64,
+      64
+    ],
+    "available_actions": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "win_levels": 5,
+    "unique_colors": [
+      0,
+      4,
+      8,
+      10,
+      14
+    ],
+    "color_counts": {
+      "0": 135,
+      "4": 32,
+      "8": 36,
+      "10": 3749,
+      "14": 144
+    },
+    "type": "hybrid",
+    "details": {
+      "movement_mapping": {
+        "1": {
+          "direction": "UP",
+          "player_color": 8
+        },
+        "2": {
+          "direction": "DOWN",
+          "player_color": 8
+        },
+        "3": {
+          "direction": "LEFT",
+          "player_color": 8
+        },
+        "4": {
+          "direction": "RIGHT",
+          "player_color": 8
+        },
+        "5": {
+          "direction": "DIAG",
+          "player_color": 8
+        }
+      },
+      "player_colors": [
+        8
+      ]
+    },
+    "action_effects_summary": {
+      "1": {
+        "avg_changed_pixels": 198.0,
+        "movements": {
+          "8": {
+            "avg_delta_y": -1.5,
+            "avg_delta_x": 0.0,
+            "direction": "UP"
+          }
+        }
+      },
+      "2": {
+        "avg_changed_pixels": 198.0,
+        "movements": {
+          "8": {
+            "avg_delta_y": 1.5,
+            "avg_delta_x": 0.0,
+            "direction": "DOWN"
+          }
+        }
+      },
+      "3": {
+        "avg_changed_pixels": 144.0,
+        "movements": {
+          "8": {
+            "avg_delta_y": 0.0,
+            "avg_delta_x": -1.5,
+            "direction": "LEFT"
+          }
+        }
+      },
+      "4": {
+        "avg_changed_pixels": 144.0,
+        "movements": {
+          "8": {
+            "avg_delta_y": 0.0,
+            "avg_delta_x": 1.5,
+            "direction": "RIGHT"
+          }
+        }
+      },
+      "5": {
+        "avg_changed_pixels": 162.0,
+        "movements": {
+          "8": {
+            "avg_delta_y": 4.5,
+            "avg_delta_x": -4.5,
+            "direction": "DIAG"
+          }
+        }
+      },
+      "6": {
+        "avg_changed_pixels": 138.0,
+        "movements": {}
+      }
+    },
+    "title": "CN04",
+    "tags": [
+      "keyboard_click"
+    ],
+    "baseline_actions": [
+      16,
+      54,
+      69,
+      318,
+      208,
+      114
+    ]
+  },
+  {
+    "game_id": "sc25-f9b21a2f",
+    "num_layers": 1,
+    "frame_shape": [
+      1,
+      64,
+      64
+    ],
+    "available_actions": [
+      1,
+      2,
+      3,
+      4,
+      6
+    ],
+    "win_levels": 6,
+    "unique_colors": [
+      0,
+      2,
+      3,
+      5,
+      9,
+      10,
+      14,
+      15
+    ],
+    "color_counts": {
+      "0": 36,
+      "2": 169,
+      "3": 244,
+      "5": 3457,
+      "9": 22,
+      "10": 24,
+      "14": 128,
+      "15": 16
+    },
+    "type": "unknown",
+    "details": {
+      "movement_mapping": {},
+      "player_colors": []
+    },
+    "action_effects_summary": {
+      "1": {
+        "avg_changed_pixels": 0.0,
+        "movements": {}
+      },
+      "2": {
+        "avg_changed_pixels": 0.0,
+        "movements": {}
+      },
+      "3": {
+        "avg_changed_pixels": 0.0,
+        "movements": {}
+      },
+      "4": {
+        "avg_changed_pixels": 0.0,
+        "movements": {}
+      },
+      "6": {
+        "avg_changed_pixels": 0.0,
+        "movements": {}
+      }
+    },
+    "title": "SC25",
+    "tags": [
+      "keyboard_click"
+    ],
+    "baseline_actions": [
+      39,
+      5,
+      32,
+      33,
+      66,
+      41
+    ]
+  },
+  {
+    "game_id": "vc33-9851e02b",
+    "num_layers": 1,
+    "frame_shape": [
+      1,
+      64,
+      64
+    ],
+    "available_actions": [
+      6
+    ],
+    "win_levels": 7,
+    "unique_colors": [
+      0,
+      3,
+      4,
+      5,
+      7,
+      9,
+      11
+    ],
+    "color_counts": {
+      "0": 1216,
+      "3": 2580,
+      "4": 16,
+      "5": 168,
+      "7": 64,
+      "9": 32,
+      "11": 20
+    },
+    "type": "click",
+    "details": {
+      "movement_mapping": {},
+      "player_colors": []
+    },
+    "action_effects_summary": {
+      "6": {
+        "avg_changed_pixels": 1.0,
+        "movements": {
+          "4": {
+            "avg_delta_y": -2.74,
+            "avg_delta_x": 0.88,
+            "direction": "UP"
+          }
+        }
+      }
+    },
+    "title": "VC33",
+    "tags": [
+      "click"
+    ],
+    "baseline_actions": [
+      6,
+      13,
+      31,
+      59,
+      92,
+      24,
+      82
+    ]
+  },
+  {
+    "game_id": "tr87-cd924810",
+    "num_layers": 1,
+    "frame_shape": [
+      1,
+      64,
+      64
+    ],
+    "available_actions": [
+      1,
+      2,
+      3,
+      4
+    ],
+    "win_levels": 6,
+    "unique_colors": [
+      0,
+      1,
+      2,
+      3,
+      5,
+      7,
+      10
+    ],
+    "color_counts": {
+      "0": 14,
+      "1": 64,
+      "2": 1570,
+      "3": 1370,
+      "5": 320,
+      "7": 364,
+      "10": 394
+    },
+    "type": "transform",
+    "details": {
+      "movement_mapping": {},
+      "player_colors": []
+    },
+    "action_effects_summary": {
+      "1": {
+        "avg_changed_pixels": 13.0,
+        "movements": {}
+      },
+      "2": {
+        "avg_changed_pixels": 15.0,
+        "movements": {}
+      },
+      "3": {
+        "avg_changed_pixels": 28.0,
+        "movements": {}
+      },
+      "4": {
+        "avg_changed_pixels": 28.0,
+        "movements": {}
+      }
+    },
+    "title": "TR87",
+    "tags": [
+      "keyboard"
+    ],
+    "baseline_actions": [
+      37,
+      30,
+      39,
+      29,
+      63,
+      119
+    ]
+  },
+  {
+    "game_id": "cd82-fb555c5d",
+    "num_layers": 1,
+    "frame_shape": [
+      1,
+      64,
+      64
+    ],
+    "available_actions": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "win_levels": 6,
+    "unique_colors": [
+      0,
+      2,
+      3,
+      4,
+      5,
+      15
+    ],
+    "color_counts": {
+      "0": 164,
+      "2": 30,
+      "3": 359,
+      "4": 164,
+      "5": 3236,
+      "15": 143
+    },
+    "type": "hybrid",
+    "details": {
+      "movement_mapping": {
+        "3": {
+          "direction": "LEFT",
+          "player_color": 15
+        },
+        "4": {
+          "direction": "RIGHT",
+          "player_color": 15
+        }
+      },
+      "player_colors": [
+        2,
+        15
+      ]
+    },
+    "action_effects_summary": {
+      "1": {
+        "avg_changed_pixels": 1.0,
+        "movements": {}
+      },
+      "2": {
+        "avg_changed_pixels": 1.0,
+        "movements": {}
+      },
+      "3": {
+        "avg_changed_pixels": 201.0,
+        "movements": {
+          "2": {
+            "avg_delta_y": 1.51,
+            "avg_delta_x": -10.59,
+            "direction": "LEFT"
+          },
+          "15": {
+            "avg_delta_y": 0.78,
+            "avg_delta_x": -5.42,
+            "direction": "LEFT"
+          }
+        }
+      },
+      "4": {
+        "avg_changed_pixels": 201.0,
+        "movements": {
+          "2": {
+            "avg_delta_y": 1.51,
+            "avg_delta_x": 10.59,
+            "direction": "RIGHT"
+          },
+          "15": {
+            "avg_delta_y": 0.78,
+            "avg_delta_x": 5.52,
+            "direction": "RIGHT"
+          }
+        }
+      },
+      "5": {
+        "avg_changed_pixels": 1.0,
+        "movements": {}
+      },
+      "6": {
+        "avg_changed_pixels": 1.0,
+        "movements": {}
+      }
+    },
+    "title": "CD82",
+    "tags": [
+      "keyboard_click"
+    ],
+    "baseline_actions": [
+      41,
+      8,
+      30,
+      21,
+      19,
+      17
+    ]
+  },
+  {
+    "game_id": "sp80-0ee2d095",
+    "num_layers": 1,
+    "frame_shape": [
+      1,
+      64,
+      64
+    ],
+    "available_actions": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "win_levels": 6,
+    "unique_colors": [
+      1,
+      4,
+      6,
+      9,
+      11,
+      12,
+      14
+    ],
+    "color_counts": {
+      "1": 256,
+      "4": 12,
+      "6": 16,
+      "9": 80,
+      "11": 160,
+      "12": 3508,
+      "14": 64
+    },
+    "type": "hybrid",
+    "details": {
+      "movement_mapping": {
+        "1": {
+          "direction": "LEFT",
+          "player_color": 14
+        },
+        "2": {
+          "direction": "LEFT",
+          "player_color": 14
+        },
+        "3": {
+          "direction": "LEFT",
+          "player_color": 14
+        },
+        "4": {
+          "direction": "LEFT",
+          "player_color": 14
+        },
+        "5": {
+          "direction": "LEFT",
+          "player_color": 14
+        }
+      },
+      "player_colors": [
+        9,
+        14
+      ]
+    },
+    "action_effects_summary": {
+      "1": {
+        "avg_changed_pixels": 162.0,
+        "movements": {
+          "9": {
+            "avg_delta_y": -4.0,
+            "avg_delta_x": 0.0,
+            "direction": "UP"
+          },
+          "14": {
+            "avg_delta_y": 0.0,
+            "avg_delta_x": -1.0,
+            "direction": "LEFT"
+          }
+        }
+      },
+      "2": {
+        "avg_changed_pixels": 162.0,
+        "movements": {
+          "9": {
+            "avg_delta_y": 4.0,
+            "avg_delta_x": 0.0,
+            "direction": "DOWN"
+          },
+          "14": {
+            "avg_delta_y": 0.0,
+            "avg_delta_x": -1.0,
+            "direction": "LEFT"
+          }
+        }
+      },
+      "3": {
+        "avg_changed_pixels": 34.0,
+        "movements": {
+          "9": {
+            "avg_delta_y": 0.0,
+            "avg_delta_x": -4.0,
+            "direction": "LEFT"
+          },
+          "14": {
+            "avg_delta_y": 0.0,
+            "avg_delta_x": -1.0,
+            "direction": "LEFT"
+          }
+        }
+      },
+      "4": {
+        "avg_changed_pixels": 34.0,
+        "movements": {
+          "9": {
+            "avg_delta_y": 0.0,
+            "avg_delta_x": 4.0,
+            "direction": "RIGHT"
+          },
+          "14": {
+            "avg_delta_y": 0.0,
+            "avg_delta_x": -1.0,
+            "direction": "LEFT"
+          }
+        }
+      },
+      "5": {
+        "avg_changed_pixels": 82.0,
+        "movements": {
+          "14": {
+            "avg_delta_y": 0.0,
+            "avg_delta_x": -1.0,
+            "direction": "LEFT"
+          }
+        }
+      },
+      "6": {
+        "avg_changed_pixels": 2.0,
+        "movements": {
+          "14": {
+            "avg_delta_y": 0.0,
+            "avg_delta_x": -1.0,
+            "direction": "LEFT"
+          }
+        }
+      }
+    },
+    "title": "SP80",
+    "tags": [
+      "keyboard_click"
+    ],
+    "baseline_actions": [
+      11,
+      18,
+      17,
+      172,
+      102,
+      152
+    ]
+  },
+  {
+    "game_id": "r11l-aa269680",
+    "num_layers": 1,
+    "frame_shape": [
+      1,
+      64,
+      64
+    ],
+    "available_actions": [
+      6
+    ],
+    "win_levels": 6,
+    "unique_colors": [
+      0,
+      1,
+      2,
+      3,
+      5,
+      6,
+      15
+    ],
+    "color_counts": {
+      "0": 76,
+      "1": 17,
+      "2": 638,
+      "3": 12,
+      "5": 3318,
+      "6": 1,
+      "15": 34
+    },
+    "type": "click",
+    "details": {
+      "movement_mapping": {},
+      "player_colors": []
+    },
+    "action_effects_summary": {
+      "6": {
+        "avg_changed_pixels": 1.0,
+        "movements": {}
+      }
+    },
+    "title": "R11L",
+    "tags": [
+      "click"
+    ],
+    "baseline_actions": [
+      7,
+      28,
+      30,
+      20,
+      37,
+      45
+    ]
+  },
+  {
+    "game_id": "tn36-ab4f63cc",
+    "num_layers": 1,
+    "frame_shape": [
+      1,
+      64,
+      64
+    ],
+    "available_actions": [
+      6
+    ],
+    "win_levels": 7,
+    "unique_colors": [
+      0,
+      1,
+      4,
+      5,
+      9,
+      11
+    ],
+    "color_counts": {
+      "0": 353,
+      "1": 18,
+      "4": 550,
+      "5": 3015,
+      "9": 130,
+      "11": 30
+    },
+    "type": "click",
+    "details": {
+      "movement_mapping": {},
+      "player_colors": []
+    },
+    "action_effects_summary": {
+      "6": {
+        "avg_changed_pixels": 1.0,
+        "movements": {}
+      }
+    },
+    "title": "TN36",
+    "tags": [
+      "click"
+    ],
+    "baseline_actions": [
+      23,
+      22,
+      26,
+      37,
+      25,
+      56,
+      61
+    ]
+  },
+  {
+    "game_id": "su15-4c352900",
+    "num_layers": 1,
+    "frame_shape": [
+      1,
+      64,
+      64
+    ],
+    "available_actions": [
+      6,
+      7
+    ],
+    "win_levels": 9,
+    "unique_colors": [
+      0,
+      3,
+      4,
+      5,
+      9,
+      15
+    ],
+    "color_counts": {
+      "0": 69,
+      "3": 29,
+      "4": 631,
+      "5": 3290,
+      "9": 59,
+      "15": 18
+    },
+    "type": "click",
+    "details": {
+      "movement_mapping": {},
+      "player_colors": []
+    },
+    "action_effects_summary": {
+      "6": {
+        "avg_changed_pixels": 48.0,
+        "movements": {}
+      },
+      "7": {
+        "avg_changed_pixels": 0.0,
+        "movements": {}
+      }
+    },
+    "title": "SU15",
+    "tags": [
+      "click"
+    ],
+    "baseline_actions": [
+      18,
+      28,
+      50,
+      151,
+      18,
+      31,
+      50,
+      179,
+      41
+    ]
+  },
+  {
+    "game_id": "s5i5-a48e4b1d",
+    "num_layers": 1,
+    "frame_shape": [
+      1,
+      64,
+      64
+    ],
+    "available_actions": [
+      6
+    ],
+    "win_levels": 8,
+    "unique_colors": [
+      2,
+      3,
+      4,
+      5,
+      11,
+      13,
+      14
+    ],
+    "color_counts": {
+      "2": 72,
+      "3": 80,
+      "4": 72,
+      "5": 3797,
+      "11": 38,
+      "13": 8,
+      "14": 29
+    },
+    "type": "click",
+    "details": {
+      "movement_mapping": {},
+      "player_colors": []
+    },
+    "action_effects_summary": {
+      "6": {
+        "avg_changed_pixels": 1.0,
+        "movements": {}
+      }
+    },
+    "title": "S5I5",
+    "tags": [
+      "click"
+    ],
+    "baseline_actions": [
+      19,
+      57,
+      85,
+      203,
+      82,
+      30,
+      76,
+      56
+    ]
+  },
+  {
+    "game_id": "lp85-305b61c3",
+    "num_layers": 1,
+    "frame_shape": [
+      1,
+      64,
+      64
+    ],
+    "available_actions": [
+      6
+    ],
+    "win_levels": 8,
+    "unique_colors": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      8,
+      9,
+      10,
+      11,
+      14,
+      15
+    ],
+    "color_counts": {
+      "1": 48,
+      "2": 64,
+      "3": 1606,
+      "4": 1978,
+      "5": 32,
+      "8": 40,
+      "9": 64,
+      "10": 64,
+      "11": 32,
+      "14": 104,
+      "15": 64
+    },
+    "type": "unknown",
+    "details": {
+      "movement_mapping": {},
+      "player_colors": []
+    },
+    "action_effects_summary": {
+      "6": {
+        "avg_changed_pixels": 0.0,
+        "movements": {}
+      }
+    },
+    "title": "LP85",
+    "tags": [
+      "click"
+    ],
+    "baseline_actions": [
+      33,
+      22,
+      31,
+      23,
+      33,
+      34,
+      73,
+      173
+    ]
+  },
+  {
+    "game_id": "wa30-ee6fef47",
+    "num_layers": 1,
+    "frame_shape": [
+      1,
+      64,
+      64
+    ],
+    "available_actions": [
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "win_levels": 9,
+    "unique_colors": [
+      0,
+      1,
+      2,
+      4,
+      7,
+      9,
+      14
+    ],
+    "color_counts": {
+      "0": 4,
+      "1": 3920,
+      "2": 20,
+      "4": 36,
+      "7": 64,
+      "9": 40,
+      "14": 12
+    },
+    "type": "movement",
+    "details": {
+      "movement_mapping": {
+        "1": {
+          "direction": "UP",
+          "player_color": 14
+        },
+        "2": {
+          "direction": "DOWN",
+          "player_color": 14
+        },
+        "3": {
+          "direction": "LEFT",
+          "player_color": 14
+        },
+        "4": {
+          "direction": "RIGHT",
+          "player_color": 14
+        }
+      },
+      "player_colors": [
+        14
+      ]
+    },
+    "action_effects_summary": {
+      "1": {
+        "avg_changed_pixels": 32.0,
+        "movements": {
+          "14": {
+            "avg_delta_y": -4.0,
+            "avg_delta_x": 0.0,
+            "direction": "UP"
+          }
+        }
+      },
+      "2": {
+        "avg_changed_pixels": 32.0,
+        "movements": {
+          "14": {
+            "avg_delta_y": 3.0,
+            "avg_delta_x": 0.0,
+            "direction": "DOWN"
+          }
+        }
+      },
+      "3": {
+        "avg_changed_pixels": 32.0,
+        "movements": {
+          "14": {
+            "avg_delta_y": -0.5,
+            "avg_delta_x": -3.5,
+            "direction": "LEFT"
+          }
+        }
+      },
+      "4": {
+        "avg_changed_pixels": 32.0,
+        "movements": {
+          "14": {
+            "avg_delta_y": -0.5,
+            "avg_delta_x": 3.5,
+            "direction": "RIGHT"
+          }
+        }
+      },
+      "5": {
+        "avg_changed_pixels": 0.0,
+        "movements": {}
+      }
+    },
+    "title": "WA30",
+    "tags": [
+      "keyboard"
+    ],
+    "baseline_actions": [
+      125,
+      58,
+      259,
+      113,
+      499,
+      58,
+      186,
+      134,
+      132
+    ]
+  },
+  {
+    "game_id": "re86-4e57566e",
+    "num_layers": 1,
+    "frame_shape": [
+      1,
+      64,
+      64
+    ],
+    "available_actions": [
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "win_levels": 8,
+    "unique_colors": [
+      0,
+      4,
+      5,
+      9,
+      11,
+      15
+    ],
+    "color_counts": {
+      "0": 1,
+      "4": 64,
+      "5": 3862,
+      "9": 56,
+      "11": 49,
+      "15": 64
+    },
+    "type": "movement",
+    "details": {
+      "movement_mapping": {
+        "1": {
+          "direction": "UP",
+          "player_color": 9
+        },
+        "2": {
+          "direction": "DOWN",
+          "player_color": 9
+        },
+        "3": {
+          "direction": "LEFT",
+          "player_color": 9
+        },
+        "4": {
+          "direction": "RIGHT",
+          "player_color": 9
+        }
+      },
+      "player_colors": [
+        9
+      ]
+    },
+    "action_effects_summary": {
+      "1": {
+        "avg_changed_pixels": 61.0,
+        "movements": {
+          "9": {
+            "avg_delta_y": -2.79,
+            "avg_delta_x": 0.0,
+            "direction": "UP"
+          }
+        }
+      },
+      "2": {
+        "avg_changed_pixels": 61.0,
+        "movements": {
+          "9": {
+            "avg_delta_y": 2.79,
+            "avg_delta_x": 0.0,
+            "direction": "DOWN"
+          }
+        }
+      },
+      "3": {
+        "avg_changed_pixels": 61.0,
+        "movements": {
+          "9": {
+            "avg_delta_y": 0.0,
+            "avg_delta_x": -2.79,
+            "direction": "LEFT"
+          }
+        }
+      },
+      "4": {
+        "avg_changed_pixels": 61.0,
+        "movements": {
+          "9": {
+            "avg_delta_y": 0.0,
+            "avg_delta_x": 2.79,
+            "direction": "RIGHT"
+          }
+        }
+      },
+      "5": {
+        "avg_changed_pixels": 3.0,
+        "movements": {}
+      }
+    },
+    "title": "RE86",
+    "tags": [
+      "keyboard_click"
+    ],
+    "baseline_actions": [
+      28,
+      38,
+      198,
+      57,
+      84,
+      117,
+      328,
+      221
+    ]
+  },
+  {
+    "game_id": "sb26-7fbdac44",
+    "num_layers": 1,
+    "frame_shape": [
+      1,
+      64,
+      64
+    ],
+    "available_actions": [
+      5,
+      6,
+      7
+    ],
+    "win_levels": 8,
+    "unique_colors": [
+      0,
+      2,
+      4,
+      5,
+      8,
+      9,
+      11,
+      14,
+      15
+    ],
+    "color_counts": {
+      "0": 20,
+      "2": 80,
+      "4": 3628,
+      "5": 152,
+      "8": 72,
+      "9": 36,
+      "11": 36,
+      "14": 36,
+      "15": 36
+    },
+    "type": "transform",
+    "details": {
+      "movement_mapping": {},
+      "player_colors": []
+    },
+    "action_effects_summary": {
+      "5": {
+        "avg_changed_pixels": 1.0,
+        "movements": {}
+      },
+      "6": {
+        "avg_changed_pixels": 0.0,
+        "movements": {}
+      },
+      "7": {
+        "avg_changed_pixels": 0.0,
+        "movements": {}
+      }
+    },
+    "title": "SB26",
+    "tags": [
+      "keyboard_click"
+    ],
+    "baseline_actions": [
+      18,
+      16,
+      15,
+      15,
+      31,
+      24,
+      17,
+      17
+    ]
+  },
+  {
+    "game_id": "tu93-2b534c15",
+    "num_layers": 1,
+    "frame_shape": [
+      1,
+      64,
+      64
+    ],
+    "available_actions": [
+      1,
+      2,
+      3,
+      4
+    ],
+    "win_levels": 9,
+    "unique_colors": [
+      0,
+      2,
+      4,
+      5,
+      6,
+      9,
+      14
+    ],
+    "color_counts": {
+      "0": 261,
+      "2": 288,
+      "4": 1,
+      "5": 3465,
+      "6": 64,
+      "9": 8,
+      "14": 9
+    },
+    "type": "movement",
+    "details": {
+      "movement_mapping": {
+        "4": {
+          "direction": "RIGHT",
+          "player_color": 9
+        }
+      },
+      "player_colors": [
+        4,
+        9
+      ]
+    },
+    "action_effects_summary": {
+      "1": {
+        "avg_changed_pixels": 1.0,
+        "movements": {}
+      },
+      "2": {
+        "avg_changed_pixels": 1.0,
+        "movements": {}
+      },
+      "3": {
+        "avg_changed_pixels": 1.0,
+        "movements": {}
+      },
+      "4": {
+        "avg_changed_pixels": 8.0,
+        "movements": {
+          "4": {
+            "avg_delta_y": 0.0,
+            "avg_delta_x": 1.0,
+            "direction": "RIGHT"
+          },
+          "9": {
+            "avg_delta_y": 0.0,
+            "avg_delta_x": 1.0,
+            "direction": "RIGHT"
+          }
+        }
+      }
+    },
+    "title": "TU93",
+    "tags": [
+      "keyboard_click"
+    ],
+    "baseline_actions": [
+      19,
+      15,
+      34,
+      42,
+      76,
+      91,
+      47,
+      23,
+      31
+    ]
+  }
+]

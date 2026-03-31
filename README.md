@@ -39,31 +39,43 @@ ARC-AGI-3 is the first interactive reasoning benchmark. Agents must explore unfa
 
 - Reward shaping, SystematicExplorer, GameMemory, MAX_ACTIONS=500
 - Still 0 levels cleared -- change prediction approach has fundamental limits
-- **Next: architectural redesign needed**
+
+**Phase 4: Multi-Strategy Exploration** -- Complete
+
+- 3 parallel approaches: Graph-based (BFS), Frame Diff engine, improved CNN
+- Game classification: 25 games auto-classified (movement/click/hybrid/transform/unknown)
+- Best result: Frame diff solver cleared 4 games/4 levels across 25 games
+- Key insight: different strategies clear different games -- ensemble potential
 
 ## Project Structure
 
 ```
 admorphiq/
 ├── src/admorphiq/
-│   ├── agent.py            # AdmorphiqAgent (is_done + choose_action)
+│   ├── agent.py            # AdmorphiqAgent (CNN-based)
+│   ├── agent_graph.py      # GraphAgent (state graph + BFS)
+│   ├── agent_diff.py       # DiffAgent (frame diff engine)
+│   ├── adapter.py          # AdmorphiqAdapter (official ↔ internal bridge)
 │   ├── types.py            # GameState, ActionType, GameAction, FrameData
 │   ├── perception/
-│   │   ├── cnn.py          # CNN backbone (4-layer, 34M params)
-│   │   └── model.py        # PerceptionModel (dual head: action + coord)
-│   ├── world_model/
-│   │   ├── encoder.py      # StateEncoder (CNN-based state embedding)
-│   │   ├── transition.py   # TransitionPredictor + ChangePredictor
-│   │   └── model.py        # WorldModel (1.6M params, residual delta)
-│   ├── hypothesis/         # Rule inference engine (Phase 4)
-│   ├── planner/            # Action planning & exploration (Phase 4)
+│   │   ├── cnn.py          # CNN backbone (5-layer, 34M params)
+│   │   ├── model.py        # PerceptionModel (dual head)
+│   │   └── frame_analyzer.py  # FrameAnalyzer (frame diff detection)
+│   ├── world_model/        # State transition prediction (1.6M params)
+│   ├── planner/
+│   │   ├── explorer.py     # SystematicExplorer
+│   │   ├── graph_explorer.py  # GraphExplorer (BFS traversal)
+│   │   ├── state_graph.py  # StateGraph
+│   │   └── memory.py       # GameMemory (success replay)
+│   ├── hypothesis/         # Rule inference engine (Phase 5)
 │   └── utils/
 │       └── buffer.py       # ExperienceBuffer (hash dedup, 200K cap)
-├── tests/                  # 69 tests (types, perception, buffer, agent, world model)
+├── tests/                  # Test suite
 ├── configs/                # Configuration files
 ├── notebooks/              # Experiment notebooks
 ├── scripts/
-│   └── run_local.py        # Local game runner (arcengine integration)
+│   ├── run_local.py        # Local game runner
+│   └── play.py             # Interactive game play
 ├── pyproject.toml
 └── CLAUDE.md               # Architecture & competition context
 ```

@@ -1,0 +1,725 @@
+[
+  {
+    "actions": 500,
+    "elapsed_s": 0.18,
+    "ms_per_action": 0.4,
+    "state": "NOT_FINISHED",
+    "levels_completed": 0,
+    "win_levels": 9,
+    "game_type": "movement",
+    "player_color": 4,
+    "states_discovered": 50,
+    "transitions_recorded": 50,
+    "analysis": {
+      "player_color": 4,
+      "direction_map": {
+        "4": [
+          0,
+          1
+        ]
+      },
+      "game_type": "movement",
+      "wall_colors": [],
+      "actions_analyzed": 4
+    },
+    "game_id": "tu93-2b534c15",
+    "title": "TU93"
+  },
+  {
+    "actions": 500,
+    "elapsed_s": 0.17,
+    "ms_per_action": 0.3,
+    "state": "NOT_FINISHED",
+    "levels_completed": 0,
+    "win_levels": 8,
+    "game_type": "movement",
+    "player_color": 0,
+    "states_discovered": 243,
+    "transitions_recorded": 259,
+    "analysis": {
+      "player_color": 0,
+      "direction_map": {
+        "1": [
+          -1,
+          0
+        ],
+        "2": [
+          1,
+          0
+        ],
+        "3": [
+          0,
+          -1
+        ],
+        "4": [
+          0,
+          1
+        ]
+      },
+      "game_type": "movement",
+      "wall_colors": [],
+      "actions_analyzed": 7
+    },
+    "game_id": "ar25-e3c63847",
+    "title": "AR25"
+  },
+  {
+    "actions": 500,
+    "elapsed_s": 0.05,
+    "ms_per_action": 0.1,
+    "state": "NOT_FINISHED",
+    "levels_completed": 0,
+    "win_levels": 8,
+    "game_type": "movement",
+    "player_color": 0,
+    "states_discovered": 476,
+    "transitions_recorded": 479,
+    "analysis": {
+      "player_color": 0,
+      "direction_map": {
+        "1": [
+          -1,
+          0
+        ],
+        "2": [
+          1,
+          0
+        ],
+        "3": [
+          0,
+          -1
+        ],
+        "4": [
+          0,
+          1
+        ],
+        "5": [
+          -1,
+          0
+        ]
+      },
+      "game_type": "movement",
+      "wall_colors": [],
+      "actions_analyzed": 5
+    },
+    "game_id": "re86-4e57566e",
+    "title": "RE86"
+  },
+  {
+    "actions": 500,
+    "elapsed_s": 0.09,
+    "ms_per_action": 0.2,
+    "state": "NOT_FINISHED",
+    "levels_completed": 0,
+    "win_levels": 9,
+    "game_type": "click",
+    "player_color": null,
+    "states_discovered": 368,
+    "transitions_recorded": 367,
+    "analysis": {
+      "player_color": null,
+      "direction_map": {},
+      "game_type": "click",
+      "wall_colors": [],
+      "actions_analyzed": 2
+    },
+    "game_id": "su15-4c352900",
+    "title": "SU15"
+  },
+  {
+    "actions": 500,
+    "elapsed_s": 0.12,
+    "ms_per_action": 0.2,
+    "state": "NOT_FINISHED",
+    "levels_completed": 0,
+    "win_levels": 6,
+    "game_type": "movement",
+    "player_color": 10,
+    "states_discovered": 135,
+    "transitions_recorded": 162,
+    "analysis": {
+      "player_color": 10,
+      "direction_map": {
+        "1": [
+          -1,
+          0
+        ],
+        "2": [
+          1,
+          0
+        ]
+      },
+      "game_type": "movement",
+      "wall_colors": [],
+      "actions_analyzed": 6
+    },
+    "game_id": "m0r0-dadda488",
+    "title": "M0R0"
+  },
+  {
+    "actions": 500,
+    "elapsed_s": 0.05,
+    "ms_per_action": 0.1,
+    "state": "NOT_FINISHED",
+    "levels_completed": 0,
+    "win_levels": 5,
+    "game_type": "movement",
+    "player_color": 0,
+    "states_discovered": 414,
+    "transitions_recorded": 477,
+    "analysis": {
+      "player_color": 0,
+      "direction_map": {
+        "1": [
+          -1,
+          0
+        ],
+        "2": [
+          1,
+          0
+        ],
+        "3": [
+          0,
+          -1
+        ],
+        "4": [
+          0,
+          1
+        ],
+        "5": [
+          0,
+          1
+        ]
+      },
+      "game_type": "movement",
+      "wall_colors": [],
+      "actions_analyzed": 6
+    },
+    "game_id": "cn04-65d47d14",
+    "title": "CN04"
+  },
+  {
+    "actions": 500,
+    "elapsed_s": 0.06,
+    "ms_per_action": 0.1,
+    "state": "NOT_FINISHED",
+    "levels_completed": 1,
+    "win_levels": 6,
+    "game_type": "unknown",
+    "player_color": null,
+    "states_discovered": 46,
+    "transitions_recorded": 46,
+    "analysis": {
+      "player_color": null,
+      "direction_map": {},
+      "game_type": "unknown",
+      "wall_colors": [],
+      "actions_analyzed": 1
+    },
+    "game_id": "ft09-0d8bbf25",
+    "title": "FT09"
+  },
+  {
+    "actions": 500,
+    "elapsed_s": 0.35,
+    "ms_per_action": 0.7,
+    "state": "NOT_FINISHED",
+    "levels_completed": 0,
+    "win_levels": 6,
+    "game_type": "movement",
+    "player_color": 0,
+    "states_discovered": 212,
+    "transitions_recorded": 256,
+    "analysis": {
+      "player_color": 0,
+      "direction_map": {
+        "3": [
+          0,
+          1
+        ],
+        "4": [
+          0,
+          1
+        ]
+      },
+      "game_type": "movement",
+      "wall_colors": [],
+      "actions_analyzed": 4
+    },
+    "game_id": "tr87-cd924810",
+    "title": "TR87"
+  },
+  {
+    "actions": 500,
+    "elapsed_s": 0.15,
+    "ms_per_action": 0.3,
+    "state": "NOT_FINISHED",
+    "levels_completed": 0,
+    "win_levels": 6,
+    "game_type": "unknown",
+    "player_color": null,
+    "states_discovered": 304,
+    "transitions_recorded": 463,
+    "analysis": {
+      "player_color": null,
+      "direction_map": {},
+      "game_type": "unknown",
+      "wall_colors": [],
+      "actions_analyzed": 5
+    },
+    "game_id": "sc25-f9b21a2f",
+    "title": "SC25"
+  },
+  {
+    "actions": 500,
+    "elapsed_s": 0.04,
+    "ms_per_action": 0.1,
+    "state": "NOT_FINISHED",
+    "levels_completed": 0,
+    "win_levels": 8,
+    "game_type": "unknown",
+    "player_color": null,
+    "states_discovered": 12,
+    "transitions_recorded": 12,
+    "analysis": {
+      "player_color": null,
+      "direction_map": {},
+      "game_type": "unknown",
+      "wall_colors": [],
+      "actions_analyzed": 1
+    },
+    "game_id": "lp85-305b61c3",
+    "title": "LP85"
+  },
+  {
+    "actions": 500,
+    "elapsed_s": 0.09,
+    "ms_per_action": 0.2,
+    "state": "NOT_FINISHED",
+    "levels_completed": 0,
+    "win_levels": 6,
+    "game_type": "hybrid",
+    "player_color": 14,
+    "states_discovered": 358,
+    "transitions_recorded": 479,
+    "analysis": {
+      "player_color": 14,
+      "direction_map": {
+        "1": [
+          -1,
+          0
+        ],
+        "2": [
+          1,
+          0
+        ],
+        "3": [
+          0,
+          -1
+        ],
+        "4": [
+          0,
+          1
+        ]
+      },
+      "game_type": "hybrid",
+      "wall_colors": [],
+      "actions_analyzed": 5
+    },
+    "game_id": "dc22-4c9bff3e",
+    "title": "DC22"
+  },
+  {
+    "actions": 500,
+    "elapsed_s": 0.12,
+    "ms_per_action": 0.2,
+    "state": "NOT_FINISHED",
+    "levels_completed": 0,
+    "win_levels": 6,
+    "game_type": "hybrid",
+    "player_color": 14,
+    "states_discovered": 365,
+    "transitions_recorded": 406,
+    "analysis": {
+      "player_color": 14,
+      "direction_map": {
+        "1": [
+          0,
+          -1
+        ],
+        "2": [
+          0,
+          -1
+        ],
+        "3": [
+          0,
+          -1
+        ],
+        "4": [
+          0,
+          -1
+        ],
+        "5": [
+          0,
+          -1
+        ]
+      },
+      "game_type": "hybrid",
+      "wall_colors": [],
+      "actions_analyzed": 6
+    },
+    "game_id": "sp80-0ee2d095",
+    "title": "SP80"
+  },
+  {
+    "actions": 500,
+    "elapsed_s": 0.05,
+    "ms_per_action": 0.1,
+    "state": "NOT_FINISHED",
+    "levels_completed": 0,
+    "win_levels": 7,
+    "game_type": "hybrid",
+    "player_color": 0,
+    "states_discovered": 388,
+    "transitions_recorded": 470,
+    "analysis": {
+      "player_color": 0,
+      "direction_map": {
+        "1": [
+          0,
+          1
+        ],
+        "2": [
+          0,
+          1
+        ],
+        "3": [
+          0,
+          1
+        ],
+        "4": [
+          0,
+          1
+        ]
+      },
+      "game_type": "hybrid",
+      "wall_colors": [],
+      "actions_analyzed": 5
+    },
+    "game_id": "ka59-9f096b4a",
+    "title": "KA59"
+  },
+  {
+    "actions": 500,
+    "elapsed_s": 0.11,
+    "ms_per_action": 0.2,
+    "state": "NOT_FINISHED",
+    "levels_completed": 0,
+    "win_levels": 7,
+    "game_type": "unknown",
+    "player_color": null,
+    "states_discovered": 288,
+    "transitions_recorded": 477,
+    "analysis": {
+      "player_color": null,
+      "direction_map": {},
+      "game_type": "unknown",
+      "wall_colors": [],
+      "actions_analyzed": 5
+    },
+    "game_id": "g50t-5849a774",
+    "title": "G50T"
+  },
+  {
+    "actions": 500,
+    "elapsed_s": 0.4,
+    "ms_per_action": 0.8,
+    "state": "NOT_FINISHED",
+    "levels_completed": 0,
+    "win_levels": 8,
+    "game_type": "unknown",
+    "player_color": null,
+    "states_discovered": 72,
+    "transitions_recorded": 205,
+    "analysis": {
+      "player_color": null,
+      "direction_map": {},
+      "game_type": "unknown",
+      "wall_colors": [],
+      "actions_analyzed": 3
+    },
+    "game_id": "sb26-7fbdac44",
+    "title": "SB26"
+  },
+  {
+    "actions": 500,
+    "elapsed_s": 0.35,
+    "ms_per_action": 0.7,
+    "state": "NOT_FINISHED",
+    "levels_completed": 0,
+    "win_levels": 10,
+    "game_type": "click",
+    "player_color": null,
+    "states_discovered": 116,
+    "transitions_recorded": 116,
+    "analysis": {
+      "player_color": null,
+      "direction_map": {},
+      "game_type": "click",
+      "wall_colors": [],
+      "actions_analyzed": 6
+    },
+    "game_id": "lf52-271a04aa",
+    "title": "LF52"
+  },
+  {
+    "actions": 500,
+    "elapsed_s": 0.95,
+    "ms_per_action": 1.9,
+    "state": "NOT_FINISHED",
+    "levels_completed": 0,
+    "win_levels": 9,
+    "game_type": "hybrid",
+    "player_color": 9,
+    "states_discovered": 70,
+    "transitions_recorded": 74,
+    "analysis": {
+      "player_color": 9,
+      "direction_map": {
+        "3": [
+          0,
+          -1
+        ],
+        "4": [
+          0,
+          1
+        ]
+      },
+      "game_type": "hybrid",
+      "wall_colors": [],
+      "actions_analyzed": 4
+    },
+    "game_id": "bp35-0a0ad940",
+    "title": "BP35"
+  },
+  {
+    "actions": 500,
+    "elapsed_s": 0.02,
+    "ms_per_action": 0.0,
+    "state": "NOT_FINISHED",
+    "levels_completed": 0,
+    "win_levels": 8,
+    "game_type": "click",
+    "player_color": null,
+    "states_discovered": 212,
+    "transitions_recorded": 212,
+    "analysis": {
+      "player_color": null,
+      "direction_map": {},
+      "game_type": "click",
+      "wall_colors": [],
+      "actions_analyzed": 1
+    },
+    "game_id": "s5i5-a48e4b1d",
+    "title": "S5I5"
+  },
+  {
+    "actions": 500,
+    "elapsed_s": 0.06,
+    "ms_per_action": 0.1,
+    "state": "NOT_FINISHED",
+    "levels_completed": 0,
+    "win_levels": 6,
+    "game_type": "click",
+    "player_color": null,
+    "states_discovered": 469,
+    "transitions_recorded": 468,
+    "analysis": {
+      "player_color": null,
+      "direction_map": {},
+      "game_type": "click",
+      "wall_colors": [],
+      "actions_analyzed": 1
+    },
+    "game_id": "r11l-aa269680",
+    "title": "R11L"
+  },
+  {
+    "actions": 500,
+    "elapsed_s": 0.23,
+    "ms_per_action": 0.5,
+    "state": "NOT_FINISHED",
+    "levels_completed": 0,
+    "win_levels": 8,
+    "game_type": "movement",
+    "player_color": 1,
+    "states_discovered": 181,
+    "transitions_recorded": 243,
+    "analysis": {
+      "player_color": 1,
+      "direction_map": {
+        "1": [
+          -1,
+          0
+        ],
+        "3": [
+          1,
+          0
+        ],
+        "4": [
+          -1,
+          0
+        ]
+      },
+      "game_type": "movement",
+      "wall_colors": [],
+      "actions_analyzed": 6
+    },
+    "game_id": "sk48-41055498",
+    "title": "SK48"
+  },
+  {
+    "actions": 500,
+    "elapsed_s": 0.06,
+    "ms_per_action": 0.1,
+    "state": "NOT_FINISHED",
+    "levels_completed": 0,
+    "win_levels": 9,
+    "game_type": "movement",
+    "player_color": 0,
+    "states_discovered": 453,
+    "transitions_recorded": 481,
+    "analysis": {
+      "player_color": 0,
+      "direction_map": {
+        "1": [
+          -1,
+          0
+        ],
+        "2": [
+          1,
+          0
+        ],
+        "3": [
+          0,
+          -1
+        ],
+        "4": [
+          0,
+          1
+        ]
+      },
+      "game_type": "movement",
+      "wall_colors": [],
+      "actions_analyzed": 5
+    },
+    "game_id": "wa30-ee6fef47",
+    "title": "WA30"
+  },
+  {
+    "actions": 500,
+    "elapsed_s": 0.06,
+    "ms_per_action": 0.1,
+    "state": "NOT_FINISHED",
+    "levels_completed": 0,
+    "win_levels": 7,
+    "game_type": "click",
+    "player_color": null,
+    "states_discovered": 50,
+    "transitions_recorded": 50,
+    "analysis": {
+      "player_color": null,
+      "direction_map": {},
+      "game_type": "click",
+      "wall_colors": [],
+      "actions_analyzed": 1
+    },
+    "game_id": "vc33-9851e02b",
+    "title": "VC33"
+  },
+  {
+    "actions": 500,
+    "elapsed_s": 0.74,
+    "ms_per_action": 1.5,
+    "state": "NOT_FINISHED",
+    "levels_completed": 0,
+    "win_levels": 7,
+    "game_type": "movement",
+    "player_color": 9,
+    "states_discovered": 248,
+    "transitions_recorded": 266,
+    "analysis": {
+      "player_color": 9,
+      "direction_map": {
+        "1": [
+          -1,
+          0
+        ],
+        "3": [
+          0,
+          -1
+        ],
+        "4": [
+          0,
+          1
+        ]
+      },
+      "game_type": "movement",
+      "wall_colors": [],
+      "actions_analyzed": 4
+    },
+    "game_id": "ls20-9607627b",
+    "title": "LS20"
+  },
+  {
+    "actions": 500,
+    "elapsed_s": 0.13,
+    "ms_per_action": 0.3,
+    "state": "NOT_FINISHED",
+    "levels_completed": 0,
+    "win_levels": 6,
+    "game_type": "hybrid",
+    "player_color": 2,
+    "states_discovered": 113,
+    "transitions_recorded": 163,
+    "analysis": {
+      "player_color": 2,
+      "direction_map": {
+        "3": [
+          0,
+          -1
+        ],
+        "4": [
+          0,
+          1
+        ]
+      },
+      "game_type": "hybrid",
+      "wall_colors": [],
+      "actions_analyzed": 6
+    },
+    "game_id": "cd82-fb555c5d",
+    "title": "CD82"
+  },
+  {
+    "actions": 500,
+    "elapsed_s": 0.05,
+    "ms_per_action": 0.1,
+    "state": "NOT_FINISHED",
+    "levels_completed": 0,
+    "win_levels": 7,
+    "game_type": "click",
+    "player_color": null,
+    "states_discovered": 206,
+    "transitions_recorded": 206,
+    "analysis": {
+      "player_color": null,
+      "direction_map": {},
+      "game_type": "click",
+      "wall_colors": [],
+      "actions_analyzed": 1
+    },
+    "game_id": "tn36-ab4f63cc",
+    "title": "TN36"
+  }
+]

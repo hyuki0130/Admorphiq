@@ -120,24 +120,34 @@ ARC-AGI-3 is the first **interactive reasoning benchmark** — agents must explo
 
 ```
 src/admorphiq/
-├── agent.py            # AdmorphiqAgent (is_done + choose_action)
+├── agent.py            # AdmorphiqAgent (CNN-based, is_done + choose_action)
+├── agent_graph.py      # GraphAgent (state graph + BFS exploration)
+├── agent_diff.py       # DiffAgent (frame diff + state graph engine)
+├── adapter.py          # AdmorphiqAdapter (official Agent ↔ internal bridge)
 ├── types.py            # GameState, ActionType, GameAction, FrameData
+├── _types_internal.py  # Internal type definitions
 ├── perception/
-│   ├── cnn.py          # CNN backbone (4-layer, 34M params)
-│   └── model.py        # PerceptionModel (dual head: action + coord)
+│   ├── cnn.py          # CNN backbone (5-layer, 34M params)
+│   ├── model.py        # PerceptionModel (dual head: action + coord)
+│   └── frame_analyzer.py  # FrameAnalyzer (frame diff detection)
 ├── world_model/
 │   ├── encoder.py      # StateEncoder (CNN-based state embedding)
 │   ├── transition.py   # TransitionPredictor + ChangePredictor
 │   └── model.py        # WorldModel (1.6M params, residual delta)
-├── hypothesis/         # Rule inference engine (Phase 4)
-├── planner/            # Action planning & exploration (Phase 4)
+├── hypothesis/         # Rule inference engine (Phase 5)
+├── planner/
+│   ├── explorer.py     # SystematicExplorer (untried action bonus)
+│   ├── graph_explorer.py  # GraphExplorer (BFS state graph traversal)
+│   ├── state_graph.py  # StateGraph (state transition graph)
+│   └── memory.py       # GameMemory (success sequence replay)
 └── utils/
     └── buffer.py       # ExperienceBuffer (hash dedup, 200K cap, next_frame)
-tests/                  # 69 tests (types, perception, buffer, agent, world model)
+tests/                  # Test suite
 configs/                # Configuration files
 notebooks/              # Experiment notebooks
 scripts/
-└── run_local.py        # Local game runner (arcengine integration)
+├── run_local.py        # Local game runner (arcengine integration)
+└── play.py             # Interactive game play script
 ```
 
 ## Tech Stack
@@ -190,7 +200,16 @@ scripts/
 - **Result**: 0 levels cleared on all 3 games despite 500 actions each
 - **Conclusion**: Change prediction approach has fundamental architectural limitations
 
-### Phase 4: Hypothesis Engine
+### Phase 4: Multi-Strategy Exploration ✅ Complete
+- ~~4A: Graph-based exploration — state graph + BFS (agent_graph.py, graph_explorer.py)~~
+- ~~4B: StochasticGoose improvements — binary reward, coord /4096 scaling, train_freq=5, perception only~~
+- ~~4C: Frame diff engine — FrameAnalyzer + StateGraph + DiffAgent (agent_diff.py)~~
+- ~~Game classification: 25 games auto-classified (movement 7, click 6, hybrid 6, transform 2, unknown 4)~~
+- ~~Interactive play script (play.py)~~
+- **Best result**: Frame diff solver cleared 4 games/4 levels (25 games in 25s)
+- **Key insight**: Graph/Diff/CNN each clear different games — ensemble potential
+
+### Phase 5: Hypothesis Engine (was Phase 4)
 - Integrate offline LLM or program synthesis
 - Hypothesis-verify loop
 
@@ -242,13 +261,26 @@ scripts/
 | LF52 | 500 | 0/10 | 1316 | 482/500 |
 | BP35 | 500 | 0/9 | 1279 | 481/500 |
 
+### Phase 4 (Multi-Strategy Comparison, 25 games)
+
+| Approach | Games Cleared | Levels Cleared | Speed |
+|----------|---------------|----------------|-------|
+| CNN Phase 2.5 | 0 | 0 | 500ms/action |
+| CNN Phase 3.5 | 0 | 0 | 1300ms/action |
+| Frame Diff Solver | **4** | **4** | 25s / 25 games |
+| Graph-based | 1 | 1 | <1ms/action |
+| Frame Diff Engine | 1 | 1 | 0.6s/game |
+| CNN StochasticGoose | 0 | 0 (100 actions) | 154ms/action |
+
 ### Lessons Learned
 - **Frame structure mismatch**: Actual frames are multi-layer with variable layer count and int8 color indices, not fixed 16ch one-hot as initially assumed
 - **Training bottleneck**: 440ms per action spent on training, only 8ms on inference -- training dominates runtime
 - **Kaggle time budget is sufficient**: 6 hours allows 43K+ actions at current speed
 - **Early diversity improved**: Action variety went from 1-2 types to 3-5 types, ACTION6 coordinate exploration realized
 - **Change prediction has fundamental limits**: CNN converges to ACTION6-only preference, 500 actions still 0 levels cleared
-- **Architectural redesign needed**: "Predict which action causes change" is insufficient for goal-directed behavior -- need higher-level reasoning about game rules and objectives
+- **StochasticGoose gap explained**: Same architecture but 0% -- root cause was coordinate scaling (/4096 missing), reward=0.3 (not binary), low train frequency
+- **Game classification is key**: 25 games classified into movement(7), click(6), hybrid(6), transform(2), unknown(4) -- strategy should branch by type
+- **Ensemble potential**: Graph/Diff/CNN each clear different games -- combining strategies could improve coverage
 
 ## What Doesn't Work
 

@@ -132,92 +132,26 @@ class TestWorldModelIntegration:
         agent = AdmorphiqAgent()
         assert agent.world_model is not None
 
-    def test_alpha_parameter(self):
-        agent = AdmorphiqAgent(alpha=0.7)
-        assert agent.alpha == 0.7
-
-    def test_world_model_reset_on_level_change(self):
-        agent = AdmorphiqAgent()
-        original_wm_id = id(agent.world_model)
-
-        # Play some steps
-        for _ in range(3):
-            fd = _make_frame_data(score={"levels_completed": 0})
-            agent.choose_action([], fd)
-
-        # Trigger level transition
-        fd = _make_frame_data(score={"levels_completed": 1})
-        agent.choose_action([], fd)
-
-        # World model should be a new instance
-        assert id(agent.world_model) != original_wm_id
-
-    def test_wm_train_called_at_frequency(self):
-        agent = AdmorphiqAgent(train_frequency=2, batch_size=2)
-        # Fill buffer
-        for i in range(5):
-            fd = _make_frame_data(score={"levels_completed": 0})
-            agent.choose_action([], fd)
-
-        with patch.object(agent, "_train_world_model_step") as mock_wm_train:
-            agent._step_count = 1  # next step will be 2
-            fd = _make_frame_data(score={"levels_completed": 0})
-            agent.choose_action([], fd)
-            if len(agent.buffer) >= agent.batch_size:
-                mock_wm_train.assert_called_once()
-
-    def test_combined_probs_without_enough_buffer(self):
-        """With insufficient buffer, world model probs should be None (pure perception)."""
-        agent = AdmorphiqAgent(batch_size=100)  # large batch_size so WM won't activate
+    def test_pure_perception_mode(self):
+        """Phase 4 uses pure perception — no alpha/beta blending."""
+        agent = AdmorphiqAgent(batch_size=100)
         fd = _make_frame_data()
         action = agent.choose_action([], fd)
-        # Should still produce a valid action using perception only
         assert isinstance(action, GameAction)
 
 
 class TestComputeReward:
-    def test_frame_changed_reward(self):
-        from admorphiq.agent import REWARD_FRAME_CHANGED
+    def test_binary_reward_changed(self):
+        """Phase 4 uses binary reward: 1.0 if changed, 0.0 if not."""
         agent = AdmorphiqAgent()
-        reward = agent._compute_reward(
-            frame_changed=True, prev_levels=0, curr_levels=0, state=GameState.PLAYING,
-        )
-        assert reward == REWARD_FRAME_CHANGED
+        assert agent._compute_reward(True) == 1.0
 
-    def test_no_change_reward(self):
-        from admorphiq.agent import REWARD_NO_CHANGE
+    def test_binary_reward_unchanged(self):
         agent = AdmorphiqAgent()
-        reward = agent._compute_reward(
-            frame_changed=False, prev_levels=0, curr_levels=0, state=GameState.PLAYING,
-        )
-        assert reward == REWARD_NO_CHANGE
-
-    def test_level_up_reward(self):
-        from admorphiq.agent import REWARD_LEVEL_UP
-        agent = AdmorphiqAgent()
-        reward = agent._compute_reward(
-            frame_changed=True, prev_levels=0, curr_levels=1, state=GameState.PLAYING,
-        )
-        assert reward == REWARD_LEVEL_UP
-
-    def test_game_over_reward_clamped(self):
-        agent = AdmorphiqAgent()
-        reward = agent._compute_reward(
-            frame_changed=False, prev_levels=0, curr_levels=0, state=GameState.GAME_OVER,
-        )
-        assert reward >= 0.0  # clamped to 0 for BCE
+        assert agent._compute_reward(False) == 0.0
 
 
 class TestSystematicExploration:
-    def test_early_steps_use_exploration(self):
-        """During first exploration_steps, agent should use systematic exploration."""
-        agent = AdmorphiqAgent(exploration_steps=10)
-        fd = _make_frame_data()
-        action = agent.choose_action([], fd)
-        # Should produce a valid action (explorer suggests untried actions)
-        assert isinstance(action, GameAction)
-        assert agent._step_count == 1
-
     def test_explorer_cleared_on_level_change(self):
         agent = AdmorphiqAgent()
         # Play some steps to accumulate explorer state
