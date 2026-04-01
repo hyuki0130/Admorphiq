@@ -3546,6 +3546,10 @@ def strat_ls20_grid(env: Any, budget: int = 500000) -> tuple[int, str, int]:
             break
 
         # BFS with frame hashing — replay from current level start (reset)
+        # Cap per-level budget to avoid wasting actions on unsolvable levels
+        level_budget_start = used
+        level_budget_cap = 10000
+
         obs = reset(env)
         used += 1
         f0 = _get_frame(obs)
@@ -3554,11 +3558,11 @@ def strat_ls20_grid(env: Any, budget: int = 500000) -> tuple[int, str, int]:
         queue = _deque()
         queue.append([])
         found = False
-        max_nodes = 2000
-        max_depth = 25
+        max_nodes = 1000
+        max_depth = 20
         nodes = 0
 
-        while queue and not found and nodes < max_nodes and used < budget:
+        while queue and not found and nodes < max_nodes and used < budget and (used - level_budget_start) < level_budget_cap:
             seq = queue.popleft()
             if len(seq) >= max_depth:
                 continue
@@ -3570,7 +3574,7 @@ def strat_ls20_grid(env: Any, budget: int = 500000) -> tuple[int, str, int]:
                 used += 1
                 ok = True
                 for si in seq:
-                    if used >= budget:
+                    if used >= budget or (used - level_budget_start) >= level_budget_cap:
                         ok = False
                         break
                     obs = act(env, actions_list[si])

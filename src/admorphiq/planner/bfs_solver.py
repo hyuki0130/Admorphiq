@@ -201,28 +201,7 @@ class BFSSolver:
             cumulative_actions.extend(result)
             level += 1
 
-            # Add padding actions to complete level transition animation.
-            # Without this, the next level's BFS starts mid-transition and
-            # subsequent actions consume the previous level's step budget.
-            obs = self._replay_prefix(env, reset_action, cumulative_actions)
-            if obs is not None:
-                current_levels = get_levels_fn(obs)
-                expected = base_levels + level
-                if current_levels < expected:
-                    # Try padding with each simple action to find one that
-                    # completes the transition without hitting GAME_OVER
-                    for pad_count in range(5):
-                        pad_action = simple_actions[0] if simple_actions else 1
-                        obs = self._do_action(env, pad_action)
-                        if obs is None:
-                            break
-                        if hasattr(obs, 'state') and obs.state.name == 'GAME_OVER':
-                            # This padding action caused game over — undo it
-                            break
-                        cumulative_actions.append(pad_action)
-                        if get_levels_fn(obs) >= expected:
-                            break
-
+            # Verify by replaying
             obs = self._replay_prefix(env, reset_action, cumulative_actions)
             if obs is None:
                 break
@@ -234,7 +213,9 @@ class BFSSolver:
             if hasattr(obs, 'win_levels') and current_levels >= obs.win_levels:
                 break
 
-        # Final state
+        # Final state — replay to get accurate level count
+        # Do double replay to handle transition lag in levels_completed
+        self._replay_prefix(env, reset_action, cumulative_actions)
         obs = self._replay_prefix(env, reset_action, cumulative_actions)
         final_levels = get_levels_fn(obs) if obs else base_levels
         self.winning_actions = cumulative_actions
