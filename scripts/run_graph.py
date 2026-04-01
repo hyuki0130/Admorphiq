@@ -2,13 +2,58 @@
 
 import time
 
+import numpy as np
 from arc_agi import Arcade, OperationMode
 from arcengine import GameAction, GameState
 
 from admorphiq.agent_graph import GraphAgent
+from admorphiq.planner.toggle_solver import ToggleSolver
 
 MAX_ACTIONS = 100000  # effectively unlimited
 TIME_LIMIT = 600.0  # 10 minutes per game
+
+
+def _click(env, cx, cy):
+    action = GameAction.from_id(6)
+    action.set_data({"x": cx, "y": cy})
+    return env.step(action, data={"x": cx, "y": cy})
+
+
+def _get_frame(obs):
+    f = np.array(obs.frame)
+    return f[0] if f.ndim == 3 else f
+
+
+def _get_levels(obs):
+    return obs.levels_completed
+
+
+def try_toggle_solve(env, obs):
+    """Try toggle puzzle solver on click-only games. Returns (levels_completed, obs)."""
+    available = list(obs.available_actions)
+    if 6 not in available:
+        return 0, obs
+
+    solver = ToggleSolver(max_groups=13)
+    n = solver.discover_groups(env, GameAction.RESET, _click, _get_frame)
+
+    if n == 0 or n > 13:
+        # Reset to clean state after probing
+        obs = env.step(GameAction.RESET)
+        return 0, obs
+
+    combo = solver.brute_force_solve(env, GameAction.RESET, _click, _get_levels)
+    if combo:
+        # Apply the winning combo from a fresh reset
+        obs = env.step(GameAction.RESET)
+        obs = solver.apply_combo(env, _click)
+        levels = obs.levels_completed if obs else 0
+        print(f"  Toggle solver: L1 solved! clicks={sum(combo)}, levels={levels}/{obs.win_levels if obs else '?'}")
+        return levels, obs
+
+    # Reset to clean state
+    obs = env.step(GameAction.RESET)
+    return 0, obs
 
 
 def run_game(arcade: Arcade, game_id: str, agent: GraphAgent) -> dict:
@@ -21,9 +66,12 @@ def run_game(arcade: Arcade, game_id: str, agent: GraphAgent) -> dict:
     if obs is None:
         return {"game_id": game_id, "error": "No observation after make()"}
 
+    # Try toggle solver first (fast, works for TN36-like games)
+    toggle_levels, obs = try_toggle_solve(env, obs)
+
     # Fresh explorer per game
     agent.explorer.on_level_complete()
-    agent._last_levels_completed = 0
+    agent._last_levels_completed = toggle_levels
 
     start_time = time.time()
     action_count = 0

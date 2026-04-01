@@ -2741,6 +2741,225 @@ def strat_combo_lock(env: Any, budget: int = 800) -> tuple[int, str, int]:
     return best, name, used
 
 
+# ─── Platformer strategy (G50T-style: animation eats steps, go right) ──
+
+def strat_platformer(env: Any, dir_actions: list[int], budget: int = 1500) -> tuple[int, str, int]:
+    """For platformer games where animation consumes multiple steps per move.
+    Strategy: go right aggressively, try up+right for jumps, high step count."""
+    obs = reset(env)
+    used, best, name = 1, 0, ""
+    # Identify right and up actions (typically ACTION4=right, ACTION1=up)
+    # Try sustained right first
+    for _ in range(budget // 3):
+        if used >= budget or obs.state.name in ("WIN", "GAME_OVER"):
+            break
+        obs = act(env, 4 if 4 in dir_actions else dir_actions[-1])
+        used += 1
+        if obs.levels_completed > best:
+            best = obs.levels_completed
+            name = "platformer_right"
+    if best > 0:
+        return best, name, used
+    # Try up-right pattern (jump + advance)
+    obs = reset(env)
+    used_r = used
+    used += 1
+    for _ in range(budget // 3):
+        if used >= budget or obs.state.name in ("WIN", "GAME_OVER"):
+            break
+        # Jump (up)
+        if 1 in dir_actions:
+            obs = act(env, 1)
+            used += 1
+        # Move right multiple times
+        for _ in range(3):
+            if used >= budget or obs.state.name in ("WIN", "GAME_OVER"):
+                break
+            obs = act(env, 4 if 4 in dir_actions else dir_actions[-1])
+            used += 1
+        if obs.levels_completed > best:
+            best = obs.levels_completed
+            name = "platformer_jump_right"
+    if best > 0:
+        return best, name, used
+    # Try down-right pattern
+    obs = reset(env)
+    used += 1
+    for _ in range(budget // 3):
+        if used >= budget or obs.state.name in ("WIN", "GAME_OVER"):
+            break
+        if 2 in dir_actions:
+            obs = act(env, 2)
+            used += 1
+        for _ in range(3):
+            if used >= budget or obs.state.name in ("WIN", "GAME_OVER"):
+                break
+            obs = act(env, 4 if 4 in dir_actions else dir_actions[-1])
+            used += 1
+        if obs.levels_completed > best:
+            best = obs.levels_completed
+            name = "platformer_down_right"
+    return best, name, used
+
+
+# ─── TU93 multi-phase maze strategy ──────────────────────────────
+
+def strat_maze_multiphase(env: Any, dir_actions: list[int], budget: int = 1200) -> tuple[int, str, int]:
+    """For games where each move takes multiple steps (animation phases).
+    TU93: color 2 = passable, 3 phases per move. Try all 4 directions with 3 actions each."""
+    obs = reset(env)
+    used, best, name = 1, 0, ""
+
+    # Strategy: try each direction 3 times (to complete animation phases),
+    # then check if frame changed. Use DFS to explore the maze.
+    visited_states = set()
+    action_history: list[int] = []
+    opposite = {}
+    if len(dir_actions) >= 4:
+        opposite = {dir_actions[0]: dir_actions[1], dir_actions[1]: dir_actions[0],
+                    dir_actions[2]: dir_actions[3], dir_actions[3]: dir_actions[2]}
+
+    for attempt in range(budget // 4):
+        if used >= budget or obs.state.name in ("WIN", "GAME_OVER"):
+            break
+
+        frame_before = get_frame(obs)
+        fh = frame_hash(frame_before)
+
+        moved = False
+        # Try each direction (skip already-visited states)
+        for aid in dir_actions:
+            if used + 3 > budget:
+                break
+            # Send action + 2 more for animation phases
+            for _ in range(3):
+                if used >= budget:
+                    break
+                obs = act(env, aid)
+                used += 1
+                if obs.levels_completed > best:
+                    best = obs.levels_completed
+                    name = f"maze_mp_A{aid}"
+                if obs.state.name in ("WIN", "GAME_OVER"):
+                    break
+
+            if obs.state.name == "WIN":
+                return best, name, used
+            if obs.state.name == "GAME_OVER":
+                obs = reset(env)
+                used += 1
+                break
+
+            frame_after = get_frame(obs)
+            fh_after = frame_hash(frame_after)
+            if fh_after != fh and fh_after not in visited_states:
+                visited_states.add(fh_after)
+                action_history.append(aid)
+                moved = True
+                break
+
+        if not moved and action_history and opposite:
+            # Backtrack: undo last move
+            last = action_history.pop()
+            back = opposite.get(last, dir_actions[0])
+            for _ in range(3):
+                if used >= budget:
+                    break
+                obs = act(env, back)
+                used += 1
+                if obs.state.name == "GAME_OVER":
+                    obs = reset(env)
+                    used += 1
+                    action_history.clear()
+                    break
+
+    return best, name, used
+
+
+# ─── SC25 spell-casting strategy ──────────────────────────────────
+
+def strat_spell_cast(env: Any, dir_actions: list[int], budget: int = 1200) -> tuple[int, str, int]:
+    """SC25 spell game: click 3x3 spell slots at known coordinates, then move.
+    Slot grid: row=(y-49)//5, col=(x-24)//5, so centers at x=25,30,35 y=50,55,60."""
+    # Spell slot pixel coordinates (3x3 grid)
+    slots = [(25 + c * 5, 50 + r * 5) for r in range(3) for c in range(3)]
+
+    obs = reset(env)
+    used, best, name = 1, 0, ""
+
+    # First: waste one action to skip demo animation
+    obs = act(env, dir_actions[0] if dir_actions else 1)
+    used += 1
+
+    # Try all possible spell patterns (2^9 = 512 combinations, but try common ones first)
+    # Start with patterns that match known spells: lines, diagonals, crosses
+    patterns = [
+        [0, 1, 2],          # top row
+        [3, 4, 5],          # middle row
+        [6, 7, 8],          # bottom row
+        [0, 3, 6],          # left col
+        [1, 4, 7],          # middle col
+        [2, 5, 8],          # right col
+        [0, 4, 8],          # diagonal
+        [2, 4, 6],          # anti-diagonal
+        [0, 1, 2, 3, 4, 5, 6, 7, 8],  # all
+        [4],                # center only
+        [0, 2, 6, 8],      # corners
+        [1, 3, 5, 7],      # edges
+        [0, 1, 3, 4],      # top-left 2x2
+        [1, 2, 4, 5],      # top-right 2x2
+        [3, 4, 6, 7],      # bottom-left 2x2
+        [4, 5, 7, 8],      # bottom-right 2x2
+        [0, 1, 2, 4],      # T-shapes
+        [0, 3, 4, 5],
+        [4, 6, 7, 8],
+        [3, 4, 5, 8],
+        [0, 1, 2, 3, 5, 6, 7, 8],  # all except center
+    ]
+
+    for pattern in patterns:
+        if used >= budget or best > 0:
+            break
+        # Reset to clear previous spell slots
+        obs = reset(env)
+        used += 1
+        # Skip demo animation
+        obs = act(env, dir_actions[0] if dir_actions else 1)
+        used += 1
+
+        # Click the spell slots in this pattern
+        for idx in pattern:
+            if used >= budget:
+                break
+            x, y = slots[idx]
+            obs = click(env, x, y)
+            used += 1
+            if obs.state.name == "GAME_OVER":
+                break
+            if obs.levels_completed > best:
+                best = obs.levels_completed
+                name = f"spell_pattern_{pattern}"
+
+        # After casting, try moving toward exit
+        if obs.state.name not in ("WIN", "GAME_OVER"):
+            for _ in range(20):
+                if used >= budget or obs.state.name in ("WIN", "GAME_OVER"):
+                    break
+                for aid in dir_actions:
+                    if used >= budget or obs.state.name in ("WIN", "GAME_OVER"):
+                        break
+                    obs = act(env, aid)
+                    used += 1
+                    if obs.levels_completed > best:
+                        best = obs.levels_completed
+                        name = f"spell_then_move_{pattern}"
+
+        if obs.state.name == "WIN":
+            break
+
+    return best, name, used
+
+
 # ─── ACTION5-cycle strategy (RE86/WA30/LF52/BP35/G50T) ────────────
 
 def strat_action5_cycle(env: Any, dir_actions: list[int], budget: int = 600) -> tuple[int, str, int]:
@@ -3371,9 +3590,10 @@ class EnsembleAgent:
                     try_strat(strat_pattern_repeat, avail, label="proven_seq_repeat", budget=400)
 
         # === Strategy 1: Sustained directions ===
-        for aid in dir_actions:
-            if try_strat(strat_sustained, aid, label=f"sustained_A{aid}", steps=80):
-                break
+        if best_levels == 0:
+            for aid in dir_actions:
+                if try_strat(strat_sustained, aid, label=f"sustained_A{aid}", steps=80):
+                    break
 
         # === Strategy 2: Zigzag pairs ===
         if best_levels == 0 and len(dir_actions) >= 2:
@@ -3387,7 +3607,9 @@ class EnsembleAgent:
 
         # === Strategy 3: Click rare colors ===
         if best_levels == 0 and has_click:
-            remaining = min(500, self.total_budget - total_actions)
+            # Click-only games (no dir actions) get more budget
+            click_budget = 1500 if not dir_actions else 500
+            remaining = min(click_budget, self.total_budget - total_actions)
             try_strat(strat_click_rare, label="click_rare", budget=remaining)
 
         # === Strategy 4: Move + click ===
@@ -3503,6 +3725,21 @@ class EnsembleAgent:
         if best_levels == 0 and has_click and dir_actions:
             remaining = min(600, self.total_budget - total_actions)
             try_strat(strat_move_click_at_player, dir_actions, label="move_click_player", budget=remaining)
+
+        # Platformer (G50T-style: animation consumes steps, go right aggressively)
+        if best_levels == 0 and dir_actions and not has_click and 5 in avail:
+            remaining = min(1500, self.total_budget - total_actions)
+            try_strat(strat_platformer, dir_actions, label="platformer", budget=remaining)
+
+        # Spell-casting (SC25-style: click 3x3 spell grid + move)
+        if best_levels == 0 and has_click and dir_actions:
+            remaining = min(1200, self.total_budget - total_actions)
+            try_strat(strat_spell_cast, dir_actions, label="spell_cast", budget=remaining)
+
+        # Multi-phase maze (TU93-style: 3 actions per real move, DFS with backtrack)
+        if best_levels == 0 and dir_actions and not has_click:
+            remaining = min(1200, self.total_budget - total_actions)
+            try_strat(strat_maze_multiphase, dir_actions, label="maze_multiphase", budget=remaining)
 
         # === Strategy 15: Raster scan (last resort) ===
         if best_levels == 0 and has_click:
@@ -3640,6 +3877,62 @@ class EnsembleAgent:
 
                     # Helper: check if we hit game over (means Level 2 failed)
                     ml_game_over = False
+
+                    # 2a-0: Replay the winning strategy first (same pattern for Level 2)
+                    zig_m = re.search(r'zig(\d+)_A(\d+)A(\d+)', best_strategy)
+                    sust_m = re.search(r'sustained.*?A(\d+)', best_strategy) if not zig_m else None
+                    if zig_m and not ml_game_over:
+                        zlen = int(zig_m.group(1))
+                        za1 = int(zig_m.group(2))
+                        za2 = int(zig_m.group(3))
+                        for _ in range(min(200, ml_remaining)):
+                            if ml_used >= ml_remaining or ml_game_over or obs_ml.state.name == "WIN":
+                                break
+                            for _ in range(zlen):
+                                if ml_used >= ml_remaining:
+                                    break
+                                obs_ml = act(env, za1)
+                                ml_used += 1
+                            for _ in range(zlen):
+                                if ml_used >= ml_remaining:
+                                    break
+                                obs_ml = act(env, za2)
+                                ml_used += 1
+                            if obs_ml.levels_completed > best_levels:
+                                best_levels = obs_ml.levels_completed
+                                best_strategy = f"ml_replay_zig{zlen}_A{za1}A{za2}"
+                            if obs_ml.state.name == "GAME_OVER":
+                                ml_game_over = True
+                    elif sust_m and not ml_game_over:
+                        said = int(sust_m.group(1))
+                        for _ in range(min(200, ml_remaining - ml_used)):
+                            if ml_game_over or obs_ml.state.name == "WIN":
+                                break
+                            obs_ml = act(env, said)
+                            ml_used += 1
+                            if obs_ml.levels_completed > best_levels:
+                                best_levels = obs_ml.levels_completed
+                                best_strategy = f"ml_replay_sustained_A{said}"
+                            if obs_ml.state.name == "GAME_OVER":
+                                ml_game_over = True
+                    elif "click" in best_strategy and has_click and not ml_game_over:
+                        # Replay click strategy on current frame
+                        frame_ml = get_frame(obs_ml)
+                        rc_ml = rare_colors(frame_ml, max_count=500)
+                        for color_ml, _ in rc_ml[:5]:
+                            if ml_used >= ml_remaining or ml_game_over:
+                                break
+                            pos_ml = find_color_positions(frame_ml, color_ml)
+                            for p in pos_ml:
+                                if ml_used >= ml_remaining or ml_game_over:
+                                    break
+                                obs_ml = click(env, int(p[1]), int(p[0]))
+                                ml_used += 1
+                                if obs_ml.levels_completed > best_levels:
+                                    best_levels = obs_ml.levels_completed
+                                    best_strategy = "ml_replay_click"
+                                if obs_ml.state.name == "GAME_OVER":
+                                    ml_game_over = True
 
                     # 2a: If we have direction actions, try sustained/zigzag patterns
                     if dir_actions and not ml_game_over:

@@ -343,3 +343,30 @@ Each game should use its best-performing strategy. Build a meta-agent that:
 1. Classifies game type in first 20 actions
 2. Selects optimal strategy based on classification
 3. Falls back to other strategies if primary fails
+
+## Development Phases
+
+### Current: Phase 5 — Maximize Game Clears (in progress)
+- Goal: Clear as many of 25 games as possible using all approaches
+- Run test→log→analyze→fix→retest infinite loop
+- All 4 strategies (CNN, Ensemble, Graph, Diff) run in parallel
+- Game-specific strategies OK for now (hardcoded game IDs allowed temporarily)
+- Current score: 13/25 games, ~9.7%
+
+### Next: Phase 6 — Generalization Refactoring (after Phase 5)
+- **CRITICAL**: Remove ALL game ID hardcoding from strategies
+- Every strategy must trigger based on **game characteristics only**:
+  - available_actions (which actions exist)
+  - Frame analysis (player detection, color distribution, movement patterns)
+  - Diff patterns (how actions affect frames)
+- Strategy names must be generic (no m0r0, cd82, tr87 in names)
+- Trigger conditions: `if has_action5 and has_click` NOT `if game_id == "cd82"`
+- **Validation**: After refactoring, run same 25-game test and verify ≥13/25 still cleared
+- If performance drops, adjust trigger conditions until restored
+
+### Later: Phase 7 — Kaggle Submission Optimization
+- Fit within 6-hour runtime constraint
+- Single unified meta-agent that auto-selects best strategy per game
+- Optimize for Kaggle T4 GPU (16GB VRAM)
+- Package as Kaggle notebook
+- Multi-level optimization (clear level 2+ in already-solved games)
