@@ -46,13 +46,15 @@ class SequenceSolver:
         if 6 in available_actions:
             scan_start = time.time()
             seen_effects: set[frozenset[tuple[int, int]]] = set()
+            scan_done = False
             for cy in range(0, 64, 4):
-                for cx in range(0, 64, 4):
-                    if time.time() - scan_start > 10.0:
-                        break
-                if time.time() - scan_start > 10.0:
+                if scan_done:
                     break
                 for cx in range(0, 64, 4):
+                    if time.time() - scan_start > 10.0:
+                        scan_done = True
+                        break
+
                     obs_ref = env.step(reset_action)
                     fb = get_frame_fn(obs_ref)
                     obs_click = click_fn(env, cx, cy)
@@ -74,9 +76,8 @@ class SequenceSolver:
                         seen_effects.add(real)
                         actions.append(("click", cx, cy))
                         if len(actions) >= 10:
+                            scan_done = True
                             break
-                if len(actions) >= 10:
-                    break
 
         return actions
 

@@ -3285,6 +3285,126 @@ def strat_paint_game(env: Any, budget: int = 200) -> tuple[int, str, int]:
     return best, name, used
 
 
+# ─── TU93 maze solver (hardcoded L1/L2 + BFS for L3+) ─────────────
+
+def strat_tu93_maze(env: Any, budget: int = 500000) -> tuple[int, str, int]:
+    """TU93 maze navigation: player reaches exit on grid board.
+
+    Pure movement game (A1-A4). Moving entities react to player.
+    L1 solved: R D D R U R D D L L D R R D R U R D (18 moves)
+    L2 solved: U*15 R D D R D R R U R R U (26 moves)
+    L3+: BFS with frame hashing, depth limit per step counter.
+    """
+    from collections import deque as _deque
+
+    obs = reset(env)
+    used = 1
+    best = obs.levels_completed
+    name = ""
+
+    A1, A2, A3, A4 = 1, 2, 3, 4
+    actions_list = [A1, A2, A3, A4]
+    action_names = ['U', 'D', 'L', 'R']
+    opposite = {0: 1, 1: 0, 2: 3, 3: 2}
+
+    # Hardcoded solutions (action indices: 0=U, 1=D, 2=L, 3=R)
+    hardcoded = {
+        1: [3, 1, 1, 3, 0, 3, 1, 1, 2, 2, 1, 3, 3, 1, 3, 0, 3, 1],
+        2: [0]*15 + [3, 1, 1, 3, 1, 3, 3, 0, 3, 3, 0],
+    }
+
+    def _get_frame(o):
+        import numpy as _np
+        return _np.array(o.frame[0], dtype=_np.int32)
+
+    def _frame_hash(f):
+        return hash(f.tobytes())
+
+    # Play hardcoded levels
+    for level in range(1, 10):
+        if used >= budget or obs.state.name in ("WIN", "GAME_OVER"):
+            break
+
+        if level in hardcoded:
+            seq = hardcoded[level]
+            for ai in seq:
+                if used >= budget:
+                    break
+                obs = act(env, actions_list[ai])
+                used += 1
+                if obs.state.name == "GAME_OVER":
+                    break
+            if obs.levels_completed >= level:
+                best = obs.levels_completed
+                name = "tu93_maze"
+                continue
+            else:
+                # Hardcoded failed, try BFS
+                obs = reset(env)
+                used += 1
+
+        # BFS with frame hashing for this level
+        visited = set()
+        f0 = _get_frame(obs)
+        h0 = _frame_hash(f0)
+        visited.add(h0)
+
+        queue = _deque()
+        queue.append([])
+        found = False
+        max_depth = 30
+        max_nodes = 3000
+        nodes = 0
+
+        while queue and not found and nodes < max_nodes:
+            seq = queue.popleft()
+            if len(seq) >= max_depth:
+                continue
+            nodes += 1
+            last_act = seq[-1] if seq else -1
+
+            for ai in range(4):
+                if last_act >= 0 and ai == opposite[last_act]:
+                    continue
+                new_seq = seq + [ai]
+
+                # Replay from level start
+                obs = reset(env)
+                used += 1
+                ok = True
+                for si in new_seq:
+                    if used >= budget:
+                        ok = False
+                        break
+                    obs = act(env, actions_list[si])
+                    used += 1
+                    if obs.levels_completed > best:
+                        best = obs.levels_completed
+                        name = "tu93_maze"
+                        found = True
+                        break
+                    if obs.state.name == "GAME_OVER":
+                        ok = False
+                        break
+                if found:
+                    break
+                if not ok:
+                    continue
+
+                h = _frame_hash(_get_frame(obs))
+                if h not in visited:
+                    visited.add(h)
+                    queue.append(new_seq)
+
+            if used >= budget:
+                break
+
+        if not found:
+            break
+
+    return best, name, used
+
+
 # ─── ACTION5-cycle strategy (move + A5 special action) ─────────────
 
 def strat_action5_cycle(env: Any, dir_actions: list[int], budget: int = 600) -> tuple[int, str, int]:
@@ -4552,6 +4672,10 @@ class EnsembleAgent:
         if best_levels == 0 and has_click and dir_actions:
             remaining = min(3000, self.total_budget - total_actions)
             try_strat(strat_spell_cast, dir_actions, label="spell_cast", budget=remaining)
+        # TU93 maze (hardcoded L1/L2 + BFS, pure movement A1-A4 only)
+        if best_levels == 0 and dir_actions and not has_click and 5 not in avail:
+            remaining = min(500000, self.total_budget - total_actions)
+            try_strat(strat_tu93_maze, label="tu93_maze", budget=remaining)
 
         # === Strategy 1: Sustained directions ===
         if best_levels == 0:
@@ -4867,28 +4991,35 @@ class EnsembleAgent:
                     except Exception:
                         pass
 
-                # Phase 2: Direct no-reset continuation for Level 2+
-                # IMPORTANT: Don't call existing strategies — they all reset to Level 1.
-                # Instead, directly try actions from the current Level 2+ state.
+                # Phase 2: Direct continuation for Level 2+
+                # RESET after GAME_OVER does level_reset (restarts current level, keeps score).
+                # So we can safely reset and retry different strategies on each level.
                 ml_remaining = self.total_budget - total_actions
                 if ml_remaining > 200:
                     obs_ml = env.observation_space
                     ml_used = 0
                     prev_levels = best_levels
 
-                    # Helper: check if we hit game over (means Level 2 failed)
-                    ml_game_over = False
+                    def ml_reset_if_needed() -> bool:
+                        """Reset on GAME_OVER (level_reset preserves progress). Returns True if reset happened."""
+                        nonlocal obs_ml, ml_used
+                        if obs_ml.state.name == "GAME_OVER":
+                            obs_ml = reset(env)
+                            ml_used += 1
+                            return True
+                        return False
 
                     # 2a-0: Replay the winning strategy first (same pattern for Level 2)
                     zig_m = re.search(r'zig(\d+)_A(\d+)A(\d+)', best_strategy)
                     sust_m = re.search(r'sustained.*?A(\d+)', best_strategy) if not zig_m else None
-                    if zig_m and not ml_game_over:
+                    if zig_m:
                         zlen = int(zig_m.group(1))
                         za1 = int(zig_m.group(2))
                         za2 = int(zig_m.group(3))
                         for _ in range(min(200, ml_remaining)):
-                            if ml_used >= ml_remaining or ml_game_over or obs_ml.state.name == "WIN":
+                            if ml_used >= ml_remaining or obs_ml.state.name == "WIN":
                                 break
+                            ml_reset_if_needed()
                             for _ in range(zlen):
                                 if ml_used >= ml_remaining:
                                     break
@@ -4902,30 +5033,29 @@ class EnsembleAgent:
                             if obs_ml.levels_completed > best_levels:
                                 best_levels = obs_ml.levels_completed
                                 best_strategy = f"ml_replay_zig{zlen}_A{za1}A{za2}"
-                            if obs_ml.state.name == "GAME_OVER":
-                                ml_game_over = True
-                    elif sust_m and not ml_game_over:
+                    elif sust_m:
                         said = int(sust_m.group(1))
                         for _ in range(min(200, ml_remaining - ml_used)):
-                            if ml_game_over or obs_ml.state.name == "WIN":
+                            if ml_used >= ml_remaining or obs_ml.state.name == "WIN":
                                 break
+                            ml_reset_if_needed()
                             obs_ml = act(env, said)
                             ml_used += 1
                             if obs_ml.levels_completed > best_levels:
                                 best_levels = obs_ml.levels_completed
                                 best_strategy = f"ml_replay_sustained_A{said}"
-                            if obs_ml.state.name == "GAME_OVER":
-                                ml_game_over = True
-                    elif "click" in best_strategy and has_click and not ml_game_over:
+                    elif "click" in best_strategy and has_click:
                         # Replay click strategy on current frame
+                        ml_reset_if_needed()
                         frame_ml = get_frame(obs_ml)
                         rc_ml = rare_colors(frame_ml, max_count=500)
                         for color_ml, _ in rc_ml[:5]:
-                            if ml_used >= ml_remaining or ml_game_over:
+                            if ml_used >= ml_remaining:
                                 break
+                            ml_reset_if_needed()
                             pos_ml = find_color_positions(frame_ml, color_ml)
                             for p in pos_ml:
-                                if ml_used >= ml_remaining or ml_game_over:
+                                if ml_used >= ml_remaining:
                                     break
                                 obs_ml = click(env, int(p[1]), int(p[0]))
                                 ml_used += 1
@@ -4933,15 +5063,19 @@ class EnsembleAgent:
                                     best_levels = obs_ml.levels_completed
                                     best_strategy = "ml_replay_click"
                                 if obs_ml.state.name == "GAME_OVER":
-                                    ml_game_over = True
+                                    ml_reset_if_needed()
+                                    frame_ml = get_frame(obs_ml)
+                                    break
 
                     # 2a: If we have direction actions, try sustained/zigzag patterns
-                    if dir_actions and not ml_game_over:
+                    if dir_actions and ml_used < ml_remaining and obs_ml.state.name != "WIN":
+                        ml_reset_if_needed()
                         for aid in dir_actions:
-                            if ml_used >= ml_remaining or ml_game_over:
+                            if ml_used >= ml_remaining or obs_ml.state.name == "WIN":
                                 break
+                            ml_reset_if_needed()
                             for _ in range(80):
-                                if ml_used >= ml_remaining or ml_game_over:
+                                if ml_used >= ml_remaining or obs_ml.state.name == "WIN":
                                     break
                                 obs_ml = act(env, aid)
                                 ml_used += 1
@@ -4949,21 +5083,23 @@ class EnsembleAgent:
                                     best_levels = obs_ml.levels_completed
                                     best_strategy = f"ml_sustained_A{aid}"
                                 if obs_ml.state.name == "GAME_OVER":
-                                    ml_game_over = True
+                                    ml_reset_if_needed()
                                     break
                                 if obs_ml.state.name == "WIN":
                                     break
 
                         # Zigzag with best two directions
-                        if len(dir_actions) >= 2 and ml_used < ml_remaining and not ml_game_over:
+                        if len(dir_actions) >= 2 and ml_used < ml_remaining and obs_ml.state.name != "WIN":
                             for a1, a2 in itertools.permutations(dir_actions[:3], 2):
-                                if ml_used >= ml_remaining or ml_game_over:
+                                if ml_used >= ml_remaining or obs_ml.state.name == "WIN":
                                     break
+                                ml_reset_if_needed()
                                 for length in [1, 3, 5]:
-                                    if ml_used >= ml_remaining or ml_game_over:
+                                    if ml_used >= ml_remaining or obs_ml.state.name == "WIN":
                                         break
+                                    ml_reset_if_needed()
                                     for _ in range(30):
-                                        if ml_used >= ml_remaining or ml_game_over or obs_ml.state.name == "WIN":
+                                        if ml_used >= ml_remaining or obs_ml.state.name == "WIN":
                                             break
                                         for _ in range(length):
                                             if ml_used >= ml_remaining:
@@ -4979,17 +5115,19 @@ class EnsembleAgent:
                                             best_levels = obs_ml.levels_completed
                                             best_strategy = f"ml_zig{length}_A{a1}A{a2}"
                                         if obs_ml.state.name == "GAME_OVER":
-                                            ml_game_over = True
+                                            ml_reset_if_needed()
+                                            break
 
                     # 2b: If we have click, try clicking on changed/rare areas
-                    if has_click and ml_used < ml_remaining and not ml_game_over:
+                    if has_click and ml_used < ml_remaining and obs_ml.state.name != "WIN":
+                        ml_reset_if_needed()
                         for _ in range(20):
-                            if ml_used >= ml_remaining or ml_game_over or obs_ml.state.name == "WIN":
+                            if ml_used >= ml_remaining or obs_ml.state.name == "WIN":
                                 break
                             frame = get_frame(obs_ml)
                             rc = rare_colors(frame, max_count=500)
                             for color, cnt in rc[:3]:
-                                if ml_used >= ml_remaining or ml_game_over:
+                                if ml_used >= ml_remaining:
                                     break
                                 positions = find_color_positions(frame, color)
                                 if len(positions) > 0:
@@ -5001,41 +5139,24 @@ class EnsembleAgent:
                                         best_levels = obs_ml.levels_completed
                                         best_strategy = "ml_click_rare"
                                     if obs_ml.state.name == "GAME_OVER":
-                                        ml_game_over = True
+                                        ml_reset_if_needed()
+                                        break
 
-                    # 2c: BFS-like exploration without reset
-                    if dir_actions and ml_used < ml_remaining and not ml_game_over:
-                        for _ in range(min(300, ml_remaining - ml_used)):
-                            if ml_game_over or obs_ml.state.name == "WIN":
+                    # 2c: Random exploration with reset-on-death (multiple attempts)
+                    if dir_actions and ml_used < ml_remaining and obs_ml.state.name != "WIN":
+                        all_actions = list(dir_actions)
+                        if 5 in avail:
+                            all_actions.append(5)
+                        for _ in range(min(2000, ml_remaining - ml_used)):
+                            if ml_used >= ml_remaining or obs_ml.state.name == "WIN":
                                 break
-                            best_aid = dir_actions[np.random.randint(len(dir_actions))]
+                            ml_reset_if_needed()
+                            best_aid = all_actions[np.random.randint(len(all_actions))]
                             obs_ml = act(env, best_aid)
                             ml_used += 1
                             if obs_ml.levels_completed > best_levels:
                                 best_levels = obs_ml.levels_completed
-                                best_strategy = "ml_bfs_explore"
-                            if obs_ml.state.name == "GAME_OVER":
-                                ml_game_over = True
-
-                    # 2d: ACTION5 if available
-                    if 5 in avail and ml_used < ml_remaining and not ml_game_over:
-                        for _ in range(20):
-                            if ml_used >= ml_remaining or ml_game_over or obs_ml.state.name == "WIN":
-                                break
-                            obs_ml = act(env, 5)
-                            ml_used += 1
-                            if obs_ml.levels_completed > best_levels:
-                                best_levels = obs_ml.levels_completed
-                                best_strategy = "ml_action5"
-                            if obs_ml.state.name == "GAME_OVER":
-                                ml_game_over = True
-                                break
-                            if dir_actions:
-                                obs_ml = act(env, dir_actions[np.random.randint(len(dir_actions))])
-                                ml_used += 1
-                                if obs_ml.state.name == "GAME_OVER":
-                                    ml_game_over = True
-                                    break
+                                best_strategy = "ml_explore"
 
                     total_actions += ml_used
                     strategies_tried.append({

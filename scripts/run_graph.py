@@ -8,6 +8,8 @@ from arcengine import GameAction, GameState
 
 from admorphiq.agent_graph import GraphAgent
 from admorphiq.planner.toggle_solver import ToggleSolver
+from admorphiq.planner.sequence_solver import SequenceSolver
+from admorphiq.planner.bfs_solver import BFSSolver
 
 MAX_ACTIONS = 100000  # effectively unlimited
 TIME_LIMIT = 600.0  # 10 minutes per game
@@ -56,6 +58,78 @@ def try_toggle_solve(env, obs):
     return 0, obs
 
 
+def try_sequence_solve(env, obs):
+    """Try brute-force sequence solver. Returns (levels_completed, obs)."""
+    available = list(obs.available_actions)
+
+    solver = SequenceSolver(max_length=8, max_combos=50000, time_limit=30.0)
+    actions = solver.discover_actions(
+        env, GameAction.RESET, _click, _get_frame, available
+    )
+
+    if not actions or len(actions) > 10:
+        obs = env.step(GameAction.RESET)
+        return 0, obs
+
+    result = solver.brute_force_solve(
+        env, GameAction.RESET, _click, _get_levels, actions
+    )
+
+    if result:
+        obs = env.step(GameAction.RESET)
+        obs = solver.apply_sequence(env, _click)
+        levels = obs.levels_completed if obs else 0
+        seq_desc = [(t, a) if t == "action" else (t, a, b) for t, a, b in result]
+        print(f"  Sequence solver: L1 solved! steps={len(result)}, seq={seq_desc}, levels={levels}/{obs.win_levels if obs else '?'}")
+        return levels, obs
+
+    obs = env.step(GameAction.RESET)
+    return 0, obs
+
+
+def try_bfs_solve(env, obs):
+    """Try BFS game-state solver for movement games. Returns (levels_completed, obs)."""
+    available = list(obs.available_actions)
+
+    # Only try for movement-only games (actions 1-4, no click)
+    simple_actions = [a for a in available if a in (1, 2, 3, 4, 5)]
+    if not simple_actions or 6 in available:
+        return 0, obs
+
+    solver = BFSSolver(max_depth=60, max_states=30000, time_limit=120.0)
+    result = solver.solve(
+        env, GameAction.RESET, simple_actions, _get_levels,
+    )
+
+    if result:
+        # Apply solution from fresh reset
+        obs = env.step(GameAction.RESET)
+        obs = solver.apply_solution(env)
+        levels = obs.levels_completed if obs else 0
+        print(f"  BFS solver: L1 solved! steps={len(result)}, levels={levels}/{obs.win_levels if obs else '?'}")
+
+        # Try to continue solving more levels
+        while obs and levels < (obs.win_levels or 99):
+            base = levels
+            result2 = solver.solve(
+                env, GameAction.RESET, simple_actions, _get_levels,
+            )
+            if result2:
+                obs = env.step(GameAction.RESET)
+                obs = solver.apply_solution(env)
+                levels = obs.levels_completed if obs else levels
+                print(f"  BFS solver: L{base+1} solved! steps={len(result2)}, levels={levels}/{obs.win_levels if obs else '?'}")
+                if levels <= base:
+                    break
+            else:
+                break
+
+        return levels, obs
+
+    obs = env.step(GameAction.RESET)
+    return 0, obs
+
+
 def run_game(arcade: Arcade, game_id: str, agent: GraphAgent) -> dict:
     """Run a single game and return metrics."""
     env = arcade.make(game_id)
@@ -69,9 +143,21 @@ def run_game(arcade: Arcade, game_id: str, agent: GraphAgent) -> dict:
     # Try toggle solver first (fast, works for TN36-like games)
     toggle_levels, obs = try_toggle_solve(env, obs)
 
+    # Try sequence solver if toggle didn't solve
+    seq_levels = toggle_levels
+    if toggle_levels == 0:
+        seq_levels, obs = try_sequence_solve(env, obs)
+
+    # Try BFS solver for movement games if others didn't solve
+    bfs_levels = max(toggle_levels, seq_levels)
+    if bfs_levels == 0:
+        bfs_levels, obs = try_bfs_solve(env, obs)
+
+    solved_levels = max(toggle_levels, seq_levels, bfs_levels)
+
     # Fresh explorer per game
     agent.explorer.on_level_complete()
-    agent._last_levels_completed = toggle_levels
+    agent._last_levels_completed = solved_levels
 
     start_time = time.time()
     action_count = 0
