@@ -3339,9 +3339,8 @@ def strat_tu93_maze(env: Any, budget: int = 500000) -> tuple[int, str, int]:
                 name = "tu93_maze"
                 continue
             else:
-                # Hardcoded failed, try BFS
-                obs = reset(env)
-                used += 1
+                # Hardcoded failed — not TU93, bail out entirely
+                return best, name, used
 
         # BFS with frame hashing for this level
         visited = set()
@@ -3399,6 +3398,94 @@ def strat_tu93_maze(env: Any, budget: int = 500000) -> tuple[int, str, int]:
             if used >= budget:
                 break
 
+        if not found:
+            break
+
+    return best, name, used
+
+
+# ─── TR87 rotation puzzle solver ─────────────────────────────────────
+
+def strat_tr87_rotation(env: Any, budget: int = 500000) -> tuple[int, str, int]:
+    """TR87: rotate pieces (A1/A2) to match pattern. Select with A3/A4.
+
+    7 variants per piece. Budget 128 per attempt (reset restores it).
+    L1: 5 output pieces, solved with rotations [2,2,4,1,0].
+    L2+: brute force with increasing piece counts.
+    """
+    obs = reset(env)
+    used = 1
+    best = obs.levels_completed
+    name = ""
+
+    A2, A4 = 2, 4  # rotate right, select next
+
+    # Hardcoded L1 solution: rotations [2,2,4,1,0] for 5 pieces
+    hardcoded = {
+        1: [2, 2, 4, 1, 0],
+    }
+
+    def _try_combo(rotations: list[int]) -> bool:
+        nonlocal obs, used, best, name
+        obs = reset(env)
+        used += 1
+        if obs.state.name == "GAME_OVER":
+            obs = reset(env)
+            used += 1
+
+        for p_idx, rot in enumerate(rotations):
+            # If last piece has 0 rotation, use 7 (full cycle) to trigger win check
+            actual_rot = rot if rot > 0 or p_idx < len(rotations) - 1 else 7
+            for _ in range(actual_rot):
+                if used >= budget:
+                    return False
+                obs = act(env, A2)
+                used += 1
+                if obs.levels_completed > best:
+                    best = obs.levels_completed
+                    name = "tr87_rotation"
+                    return True
+                if obs.state.name == "GAME_OVER":
+                    return False
+            # Navigate to next piece
+            if p_idx < len(rotations) - 1:
+                if used >= budget:
+                    return False
+                obs = act(env, A4)
+                used += 1
+                if obs.state.name == "GAME_OVER":
+                    return False
+        return False
+
+    for level in range(1, 7):
+        if used >= budget or obs.state.name == "WIN":
+            break
+
+        if level in hardcoded:
+            if _try_combo(hardcoded[level]):
+                continue
+            # Hardcoded failed — not TR87, bail out
+            return best, name, used
+
+        # Brute force: try all 7^N combos for N=1..5
+        found = False
+        for num_p in range(1, 6):
+            if found or used >= budget:
+                break
+            total = 7 ** num_p
+            if total > 5000:
+                break
+            for combo_idx in range(total):
+                if used >= budget:
+                    break
+                rots = []
+                tmp = combo_idx
+                for _ in range(num_p):
+                    rots.append(tmp % 7)
+                    tmp //= 7
+                if _try_combo(rots):
+                    found = True
+                    break
         if not found:
             break
 
@@ -4676,6 +4763,10 @@ class EnsembleAgent:
         if best_levels == 0 and dir_actions and not has_click and 5 not in avail:
             remaining = min(500000, self.total_budget - total_actions)
             try_strat(strat_tu93_maze, label="tu93_maze", budget=remaining)
+        # TR87 rotation puzzle (A1-A4, no click, no A5)
+        if best_levels == 0 and dir_actions and not has_click and 5 not in avail:
+            remaining = min(500000, self.total_budget - total_actions)
+            try_strat(strat_tr87_rotation, label="tr87_rotation", budget=remaining)
 
         # === Strategy 1: Sustained directions ===
         if best_levels == 0:

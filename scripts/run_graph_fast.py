@@ -9,6 +9,7 @@ from arcengine import GameAction, GameState
 from admorphiq.agent_graph import GraphAgent
 from admorphiq.planner.toggle_solver import ToggleSolver
 from admorphiq.planner.sequence_solver import SequenceSolver
+from admorphiq.planner.bfs_solver import BFSSolver
 
 MAX_ACTIONS = 50000
 TIME_LIMIT = 120.0  # 2 minutes per game
@@ -88,6 +89,29 @@ def try_sequence_solve(env, obs):
     return 0, obs
 
 
+def try_bfs_solve(env, obs):
+    """Try BFS game-state solver for movement games. Returns (levels_completed, obs)."""
+    available = list(obs.available_actions)
+
+    simple_actions = [a for a in available if a in (1, 2, 3, 4, 5)]
+    if not simple_actions or 6 in available:
+        return 0, obs
+
+    solver = BFSSolver(max_depth=60, max_states=20000, time_limit=60.0)
+    levels, actions = solver.solve_all_levels(
+        env, GameAction.RESET, simple_actions, _get_levels,
+        total_time_limit=180.0,
+    )
+
+    if levels > 0:
+        obs = env.step(GameAction.RESET)
+        obs = solver.apply_solution(env, actions)
+        return levels, obs
+
+    obs = env.step(GameAction.RESET)
+    return 0, obs
+
+
 def run_game(arcade: Arcade, game_id: str, agent: GraphAgent) -> dict:
     env = arcade.make(game_id)
     if env is None:
@@ -104,7 +128,12 @@ def run_game(arcade: Arcade, game_id: str, agent: GraphAgent) -> dict:
     if toggle_levels == 0:
         seq_levels, obs = try_sequence_solve(env, obs)
 
-    solved_levels = max(toggle_levels, seq_levels)
+    # Try BFS solver for movement games
+    bfs_levels = max(toggle_levels, seq_levels)
+    if bfs_levels == 0:
+        bfs_levels, obs = try_bfs_solve(env, obs)
+
+    solved_levels = max(toggle_levels, seq_levels, bfs_levels)
     agent.explorer.on_level_complete()
     agent._last_levels_completed = solved_levels
 

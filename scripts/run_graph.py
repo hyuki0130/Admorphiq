@@ -97,33 +97,15 @@ def try_bfs_solve(env, obs):
         return 0, obs
 
     solver = BFSSolver(max_depth=60, max_states=30000, time_limit=120.0)
-    result = solver.solve(
+    levels, actions = solver.solve_all_levels(
         env, GameAction.RESET, simple_actions, _get_levels,
+        total_time_limit=300.0,
     )
 
-    if result:
-        # Apply solution from fresh reset
+    if levels > 0:
+        # Replay to get final obs
         obs = env.step(GameAction.RESET)
-        obs = solver.apply_solution(env)
-        levels = obs.levels_completed if obs else 0
-        print(f"  BFS solver: L1 solved! steps={len(result)}, levels={levels}/{obs.win_levels if obs else '?'}")
-
-        # Try to continue solving more levels
-        while obs and levels < (obs.win_levels or 99):
-            base = levels
-            result2 = solver.solve(
-                env, GameAction.RESET, simple_actions, _get_levels,
-            )
-            if result2:
-                obs = env.step(GameAction.RESET)
-                obs = solver.apply_solution(env)
-                levels = obs.levels_completed if obs else levels
-                print(f"  BFS solver: L{base+1} solved! steps={len(result2)}, levels={levels}/{obs.win_levels if obs else '?'}")
-                if levels <= base:
-                    break
-            else:
-                break
-
+        obs = solver.apply_solution(env, actions)
         return levels, obs
 
     obs = env.step(GameAction.RESET)
