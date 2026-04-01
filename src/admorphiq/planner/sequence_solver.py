@@ -6,6 +6,7 @@ attempts to find the winning combination.
 
 from __future__ import annotations
 
+import time
 from itertools import product
 
 import numpy as np
@@ -14,9 +15,10 @@ import numpy as np
 class SequenceSolver:
     """Solver that brute-forces short action sequences."""
 
-    def __init__(self, max_length: int = 8, max_combos: int = 50000) -> None:
+    def __init__(self, max_length: int = 8, max_combos: int = 50000, time_limit: float = 30.0) -> None:
         self.max_length = max_length
         self.max_combos = max_combos
+        self.time_limit = time_limit
         self.winning_sequence: list[tuple[str, int, int]] | None = None
 
     def discover_actions(
@@ -42,8 +44,14 @@ class SequenceSolver:
 
         # Discover distinct click regions (scan at 4px resolution)
         if 6 in available_actions:
+            scan_start = time.time()
             seen_effects: set[frozenset[tuple[int, int]]] = set()
             for cy in range(0, 64, 4):
+                for cx in range(0, 64, 4):
+                    if time.time() - scan_start > 10.0:
+                        break
+                if time.time() - scan_start > 10.0:
+                    break
                 for cx in range(0, 64, 4):
                     obs_ref = env.step(reset_action)
                     fb = get_frame_fn(obs_ref)
@@ -104,9 +112,13 @@ class SequenceSolver:
         # Get base level count
         obs = env.step(reset_action)
         base_levels = get_levels_fn(obs)
+        start_time = time.time()
 
         for length in range(1, max_len + 1):
             for seq in product(range(n), repeat=length):
+                if time.time() - start_time > self.time_limit:
+                    return None
+
                 obs = env.step(reset_action)
                 if obs is None:
                     continue
