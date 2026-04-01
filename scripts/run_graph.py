@@ -7,8 +7,8 @@ from arcengine import GameAction, GameState
 
 from admorphiq.agent_graph import GraphAgent
 
-MAX_ACTIONS = 50000  # effectively unlimited
-TIME_LIMIT = 300.0  # 5 minutes per game
+MAX_ACTIONS = 100000  # effectively unlimited
+TIME_LIMIT = 600.0  # 10 minutes per game
 
 
 def run_game(arcade: Arcade, game_id: str, agent: GraphAgent) -> dict:

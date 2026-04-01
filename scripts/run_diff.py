@@ -8,8 +8,8 @@ from arc_agi import Arcade, OperationMode
 
 from admorphiq.agent_diff import DiffAgent
 
-MAX_ACTIONS = 50000  # effectively unlimited
-TIME_LIMIT = 300.0   # 5 minutes per game
+MAX_ACTIONS = 100000  # effectively unlimited
+TIME_LIMIT = 600.0   # 10 minutes per game
 NUM_GAMES = 25
 
 

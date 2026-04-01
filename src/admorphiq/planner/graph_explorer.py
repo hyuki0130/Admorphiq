@@ -188,7 +188,16 @@ class GraphExplorer:
                     self._record_choice(state_hash, action_key)
                     return (6, gx, gy)
 
-        # Priority 3: Try ACTION6 at rare-color positions
+        # Priority 3: Try ACTION6 on non-background pixels
+        if action6_available:
+            nonbg = self._find_nonbackground_pixels(frame)
+            for nx, ny in nonbg:
+                action_key = self._action6_key(nx, ny)
+                if action_key not in tried:
+                    self._record_choice(state_hash, action_key)
+                    return (6, nx, ny)
+
+        # Priority 3b: Try ACTION6 at rare-color positions
         if action6_available:
             rare_coords = self._find_rare_color_positions(frame)
             for rx, ry in rare_coords:
@@ -364,6 +373,28 @@ class GraphExplorer:
         self.path_history.append((state_hash, action_key))
         self._prev_state_hash = state_hash
         self._prev_action_key = action_key
+
+    @staticmethod
+    def _find_nonbackground_pixels(frame: np.ndarray, max_positions: int = 64) -> list[tuple[int, int]]:
+        """Find positions of non-background pixels for targeted ACTION6."""
+        if frame.ndim == 3:
+            flat = frame[0]
+        else:
+            flat = frame
+
+        colors, counts = np.unique(flat, return_counts=True)
+        if len(colors) <= 1:
+            return []
+
+        bg_color = colors[counts.argmax()]
+        non_bg = flat != bg_color
+        if not non_bg.any():
+            return []
+
+        ys, xs = np.where(non_bg)
+        n_samples = min(max_positions, len(ys))
+        indices = np.linspace(0, len(ys) - 1, n_samples, dtype=int)
+        return [(int(xs[i]), int(ys[i])) for i in indices]
 
     @staticmethod
     def _find_rare_color_positions(frame: np.ndarray, max_positions: int = 16) -> list[tuple[int, int]]:
