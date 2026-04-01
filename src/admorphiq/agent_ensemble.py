@@ -2899,6 +2899,128 @@ def strat_sokoban_interact(env: Any, dir_actions: list[int], budget: int = 800) 
     return best, name, used
 
 
+# ─── Rotation puzzle (S5I5-style: click to rotate groups) ─────────
+
+def strat_click_rotation_puzzle(env: Any, budget: int = 800) -> tuple[int, str, int]:
+    """S5I5/TN36-style: click on control elements to rotate/transform groups.
+    Systematically try clicking each interactive position 1-4 times."""
+    obs = reset(env)
+    used = 1
+    best = obs.levels_completed
+    name = ""
+
+    # Phase 1: Find all clickable positions that cause changes
+    frame_init = get_frame(obs)
+    clickable: list[tuple[int, int, int]] = []  # (x, y, change_amount)
+
+    # Scan on 4x4 grid first (coarse)
+    for y in range(2, 64, 4):
+        for x in range(2, 64, 4):
+            if used >= budget // 3:
+                break
+            f_before = get_frame(obs)
+            obs = click(env, x, y)
+            used += 1
+            if obs.levels_completed > best:
+                best = obs.levels_completed
+                name = "rotation_puzzle"
+                if best > 0:
+                    return best, name, used
+            if obs.state.name == "GAME_OVER":
+                obs = reset(env)
+                used += 1
+                continue
+            f_after = get_frame(obs)
+            diff = frame_diff(f_before, f_after)
+            if diff > 0:
+                clickable.append((x, y, diff))
+                # Undo by clicking again (check if it returns to original)
+                obs = click(env, x, y)
+                used += 1
+                if obs.levels_completed > best:
+                    best = obs.levels_completed
+                    name = "rotation_puzzle"
+                if obs.state.name == "GAME_OVER":
+                    obs = reset(env)
+                    used += 1
+        if used >= budget // 3:
+            break
+
+    if not clickable or best > 0:
+        return best, name, used
+
+    # Sort by change amount (larger changes = more likely to be controls)
+    clickable.sort(key=lambda t: -t[2])
+    controls = clickable[:8]  # Top 8 most impactful click positions
+
+    # Phase 2: For each control, try clicking it 1-4 times from fresh state
+    # This brute-forces rotation orientations
+    for num_clicks_per_control in range(1, 5):
+        if used >= budget or best > 0:
+            break
+        obs = reset(env)
+        used += 1
+
+        for cx, cy, _ in controls:
+            if used >= budget or obs.state.name in ("WIN", "GAME_OVER"):
+                break
+            for _ in range(num_clicks_per_control):
+                if used >= budget:
+                    break
+                obs = click(env, cx, cy)
+                used += 1
+                if obs.levels_completed > best:
+                    best = obs.levels_completed
+                    name = "rotation_puzzle"
+                if obs.state.name in ("WIN", "GAME_OVER"):
+                    break
+
+        if obs.state.name == "GAME_OVER":
+            obs = reset(env)
+            used += 1
+
+    # Phase 3: Try individual controls with varying click counts
+    if best == 0 and len(controls) >= 2:
+        for i, (cx1, cy1, _) in enumerate(controls[:4]):
+            for n1 in range(1, 4):
+                if used >= budget or best > 0:
+                    break
+                obs = reset(env)
+                used += 1
+                for _ in range(n1):
+                    if used >= budget:
+                        break
+                    obs = click(env, cx1, cy1)
+                    used += 1
+                    if obs.levels_completed > best:
+                        best = obs.levels_completed
+                        name = "rotation_combo"
+                if obs.state.name in ("WIN", "GAME_OVER"):
+                    if obs.state.name == "GAME_OVER":
+                        obs = reset(env)
+                        used += 1
+                    continue
+
+                # Try second control
+                for cx2, cy2, _ in controls[:4]:
+                    if (cx2, cy2) == (cx1, cy1):
+                        continue
+                    if used >= budget or obs.state.name in ("WIN", "GAME_OVER"):
+                        break
+                    for n2 in range(1, 4):
+                        if used >= budget:
+                            break
+                        obs = click(env, cx2, cy2)
+                        used += 1
+                        if obs.levels_completed > best:
+                            best = obs.levels_completed
+                            name = "rotation_combo"
+                        if obs.state.name in ("WIN", "GAME_OVER"):
+                            break
+
+    return best, name, used
+
+
 # ─── Move + click at player position (KA59/hybrid style) ──────────
 
 def strat_move_click_at_player(env: Any, dir_actions: list[int],
@@ -3316,6 +3438,11 @@ class EnsembleAgent:
             remaining = min(600, self.total_budget - total_actions)
             try_strat(strat_click_then_confirm, label="click_confirm_early", budget=remaining)
 
+        # Rotation puzzle (S5I5/TN36-style)
+        if best_levels == 0 and has_click:
+            remaining = min(800, self.total_budget - total_actions)
+            try_strat(strat_click_rotation_puzzle, label="rotation_puzzle", budget=remaining)
+
         # M0R0 click-select-move
         if best_levels == 0 and has_click and dir_actions:
             remaining = min(600, self.total_budget - total_actions)
@@ -3475,6 +3602,7 @@ class EnsembleAgent:
                         (strat_click_progressive, "ml_click_prog", {"budget": 500}),
                         (strat_click_frame_adaptive, "ml_click_adaptive", {"budget": 500}),
                         (strat_m0r0_click_select_move, "ml_m0r0", {"budget": 500}),
+                        (strat_click_rotation_puzzle, "ml_rotation", {"budget": 500}),
                     ])
                     if dir_actions:
                         ml_strategies.append(
