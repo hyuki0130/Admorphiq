@@ -44,6 +44,9 @@ def click(env: Any, x: int, y: int) -> Any:
 
 
 def act(env: Any, aid: int) -> Any:
+    if aid == 6:
+        # ACTION6 requires x/y data — use center as default
+        return env.step(GameAction.ACTION6, data={"x": 32, "y": 32})
     return env.step(GameAction.from_id(aid))
 
 
@@ -2876,86 +2879,315 @@ def strat_maze_multiphase(env: Any, dir_actions: list[int], budget: int = 1200) 
     return best, name, used
 
 
-# ─── Spell-casting strategy (click grid slots + move) ────────────
+# ─── Button-click + move strategy (DC22-style) ────────────────────
 
-def strat_spell_cast(env: Any, dir_actions: list[int], budget: int = 1200) -> tuple[int, str, int]:
-    """Spell-casting game: click 3x3 spell slots at common grid coordinates, then move.
-    Tries slot grid at x=25,30,35 y=50,55,60 (common UI layout for spell patterns)."""
-    # Spell slot pixel coordinates (3x3 grid)
-    slots = [(25 + c * 5, 50 + r * 5) for r in range(3) for c in range(3)]
+def strat_button_click_move(env: Any, dir_actions: list[int], budget: int = 2000) -> tuple[int, str, int]:
+    """DC22-style game: click buttons to toggle barriers, then move to exit.
 
+    Mechanics (from source analysis):
+    - Click on sys_click sprites (buttons) to move a cursor or toggle barriers
+    - Click on jpug sprites to toggle barrier groups
+    - Walk over zbhi triggers to remove barriers
+    - Movement (A1-A4) to navigate to exit
+    - Step counter limits total actions per level
+
+    Strategy:
+    1. Detect clickable positions by scanning frame for small colored regions
+    2. Click each found position, then try all movement directions
+    3. Repeat with different click orderings
+    """
     obs = reset(env)
-    used, best, name = 1, 0, ""
+    if obs is None:
+        return 0, "button_click_move", 0
+    used = 1
+    best = 0
+    name = ""
 
-    # First: waste one action to skip demo animation
-    obs = act(env, dir_actions[0] if dir_actions else 1)
-    used += 1
+    f0 = get_frame(obs)
 
-    # Try all possible spell patterns (2^9 = 512 combinations, but try common ones first)
-    # Start with patterns that match known spells: lines, diagonals, crosses
-    patterns = [
-        [0, 1, 2],          # top row
-        [3, 4, 5],          # middle row
-        [6, 7, 8],          # bottom row
-        [0, 3, 6],          # left col
-        [1, 4, 7],          # middle col
-        [2, 5, 8],          # right col
-        [0, 4, 8],          # diagonal
-        [2, 4, 6],          # anti-diagonal
-        [0, 1, 2, 3, 4, 5, 6, 7, 8],  # all
-        [4],                # center only
-        [0, 2, 6, 8],      # corners
-        [1, 3, 5, 7],      # edges
-        [0, 1, 3, 4],      # top-left 2x2
-        [1, 2, 4, 5],      # top-right 2x2
-        [3, 4, 6, 7],      # bottom-left 2x2
-        [4, 5, 7, 8],      # bottom-right 2x2
-        [0, 1, 2, 4],      # T-shapes
-        [0, 3, 4, 5],
-        [4, 6, 7, 8],
-        [3, 4, 5, 8],
-        [0, 1, 2, 3, 5, 6, 7, 8],  # all except center
-    ]
+    # Phase 1: Find candidate click positions by looking for rare/small colored regions
+    # Buttons are typically small sprites (3-5px) at various positions
+    click_positions: list[tuple[int, int]] = []
 
-    for pattern in patterns:
+    # Method 1: Find centers of small colored clusters (rare colors = likely UI elements)
+    rc = rare_colors(f0, max_count=200)
+    for color, count in rc[:10]:
+        if count < 3 or count > 100:
+            continue
+        positions = find_color_positions(f0, color)
+        if len(positions) == 0:
+            continue
+        # Cluster positions and find centers
+        cy = int(np.mean(positions[:, 0]))
+        cx = int(np.mean(positions[:, 1]))
+        click_positions.append((cx, cy))
+        # Also add individual pixel positions for small clusters
+        if count <= 20:
+            for p in positions[::max(1, len(positions) // 5)]:
+                click_positions.append((int(p[1]), int(p[0])))
+
+    # Method 2: Grid scan at common button positions (every 4-8 pixels)
+    for y in range(4, 60, 8):
+        for x in range(4, 60, 8):
+            if f0[y, x] != 0 and f0[y, x] != f0[0, 0]:  # Not background
+                click_positions.append((x, y))
+
+    # Deduplicate (within 3px)
+    unique_clicks: list[tuple[int, int]] = []
+    for cx, cy in click_positions:
+        if not any(abs(cx - ux) <= 3 and abs(cy - uy) <= 3 for ux, uy in unique_clicks):
+            unique_clicks.append((cx, cy))
+
+    # Phase 2: For each click position, try clicking then moving
+    def _try_move_all(move_steps: int = 30) -> int:
+        """Try moving in all directions. Returns actions used."""
+        nonlocal obs, used, best, name
+        local_used = 0
+        for aid in dir_actions:
+            for _ in range(move_steps):
+                if used + local_used >= budget or obs.state.name in ("WIN", "GAME_OVER"):
+                    return local_used
+                obs = act(env, aid)
+                local_used += 1
+                if obs.levels_completed > best:
+                    best = obs.levels_completed
+                    name = "button_then_move"
+        return local_used
+
+    # Try just moving first (some levels might not need clicks)
+    move_used = _try_move_all(20)
+    used += move_used
+    if best > 0 or obs.state.name == "WIN":
+        return best, name, used
+
+    # Try each click position then move
+    for cx, cy in unique_clicks[:30]:
         if used >= budget or best > 0:
             break
-        # Reset to clear previous spell slots
         obs = reset(env)
         used += 1
-        # Skip demo animation
-        obs = act(env, dir_actions[0] if dir_actions else 1)
-        used += 1
 
-        # Click the spell slots in this pattern
-        for idx in pattern:
-            if used >= budget:
+        # Click the button
+        obs = click(env, cx, cy)
+        used += 1
+        if obs.levels_completed > best:
+            best = obs.levels_completed
+            name = f"button_click_{cx}_{cy}"
+        if obs.state.name in ("WIN", "GAME_OVER"):
+            continue
+
+        # Try moving after click
+        move_used = _try_move_all(15)
+        used += move_used
+
+    # Phase 3: Try clicking multiple buttons in sequence, then moving
+    for i in range(min(len(unique_clicks), 10)):
+        for j in range(i + 1, min(len(unique_clicks), 10)):
+            if used >= budget or best > 0:
                 break
-            x, y = slots[idx]
-            obs = click(env, x, y)
+            obs = reset(env)
             used += 1
-            if obs.state.name == "GAME_OVER":
-                break
+
+            # Click two buttons
+            cx1, cy1 = unique_clicks[i]
+            cx2, cy2 = unique_clicks[j]
+            obs = click(env, cx1, cy1)
+            used += 1
+            if obs.state.name in ("WIN", "GAME_OVER"):
+                continue
+            obs = click(env, cx2, cy2)
+            used += 1
             if obs.levels_completed > best:
                 best = obs.levels_completed
-                name = f"spell_pattern_{pattern}"
+                name = f"button_pair_{i}_{j}"
+            if obs.state.name in ("WIN", "GAME_OVER"):
+                continue
 
-        # After casting, try moving toward exit
-        if obs.state.name not in ("WIN", "GAME_OVER"):
-            for _ in range(20):
-                if used >= budget or obs.state.name in ("WIN", "GAME_OVER"):
-                    break
-                for aid in dir_actions:
+            # Move after clicking both
+            move_used = _try_move_all(15)
+            used += move_used
+        if best > 0:
+            break
+
+    # Phase 4: Interleave clicking and moving — click, move a bit, click, move more
+    if best == 0 and used < budget:
+        obs = reset(env)
+        used += 1
+        for cx, cy in unique_clicks[:15]:
+            if used >= budget or obs.state.name in ("WIN", "GAME_OVER"):
+                break
+            # Move a few steps
+            for aid in dir_actions:
+                for _ in range(5):
                     if used >= budget or obs.state.name in ("WIN", "GAME_OVER"):
                         break
                     obs = act(env, aid)
                     used += 1
                     if obs.levels_completed > best:
                         best = obs.levels_completed
-                        name = f"spell_then_move_{pattern}"
+                        name = "interleave_move"
+            # Click
+            if used < budget and obs.state.name not in ("WIN", "GAME_OVER"):
+                obs = click(env, cx, cy)
+                used += 1
+                if obs.levels_completed > best:
+                    best = obs.levels_completed
+                    name = f"interleave_click_{cx}_{cy}"
 
-        if obs.state.name == "WIN":
+        # Final move burst
+        if obs.state.name not in ("WIN", "GAME_OVER"):
+            move_used = _try_move_all(30)
+            used += move_used
+
+    return best, name, used
+
+
+# ─── Spell-casting strategy (click grid slots + move) ────────────
+
+def strat_spell_cast(env: Any, dir_actions: list[int], budget: int = 1500) -> tuple[int, str, int]:
+    """SC25-style spell-casting: click exact 3x3 spell slots, wait for animations, move to exit.
+
+    SC25 mechanics (from source analysis):
+    - 3x3 spell slot grid at display coords (25+col*5, 50+row*5)
+    - 3 known spells with fixed patterns:
+      * jzukcpajs (teleport): slots (0,0),(0,1),(1,0) = [0,1,3]
+      * fpokrvgln (size-change): slots (0,1),(1,0),(1,2),(2,1) = [1,3,5,7]
+      * aprnrzeyj (fireball): slots (0,1),(1,1),(2,1) = [1,4,7]
+    - Each slot toggle costs 1 action; auto-cast animation=8 frames; spell effect=4-8 frames
+    - Level 1 first input triggers demo animation if highlighted_spell is set
+    - Each level has action limit (sykpecmoq); exceeding = lose
+    - Must cast required spells then reach exit (pcohqadae sprite)
+    """
+    # Slot coordinates: index = row*3+col, value = (x, y) display coords
+    slots = [(25 + c * 5, 50 + r * 5) for r in range(3) for c in range(3)]
+
+    # The 3 known spell patterns (slot indices to toggle)
+    spell_patterns = {
+        "teleport": [0, 1, 3],      # jzukcpajs
+        "size": [1, 3, 5, 7],       # fpokrvgln (cross without center)
+        "fireball": [1, 4, 7],      # aprnrzeyj (middle column)
+    }
+
+    used = 0
+    best = 0
+    name = ""
+
+    def _cast_spell(pattern_indices: list[int]) -> int:
+        """Click spell slots and wait for animations. Returns actions used."""
+        nonlocal obs, used, best, name
+        local_used = 0
+        # Toggle the required slots
+        for idx in pattern_indices:
+            if used + local_used >= budget:
+                return local_used
+            x, y = slots[idx]
+            obs = click(env, x, y)
+            local_used += 1
+            if obs.levels_completed > best:
+                best = obs.levels_completed
+                name = f"spell_cast_{pattern_indices}"
+            if obs.state.name in ("WIN", "GAME_OVER"):
+                return local_used
+        # Wait for auto-cast animation (8 frames) + spell effect (up to 8 frames)
+        # These frames consume step() calls — any action we send is eaten by animation
+        for _ in range(20):
+            if used + local_used >= budget or obs.state.name in ("WIN", "GAME_OVER"):
+                break
+            obs = act(env, dir_actions[0])
+            local_used += 1
+            if obs.levels_completed > best:
+                best = obs.levels_completed
+                name = f"spell_cast_{pattern_indices}"
+        return local_used
+
+    def _move_to_exit(move_budget: int) -> int:
+        """Try moving in all directions to reach exit. Returns actions used."""
+        nonlocal obs, best, name
+        local_used = 0
+        # Aggressive directional movement — try each direction sustained
+        for aid in dir_actions:
+            for _ in range(30):
+                if local_used >= move_budget or obs.state.name in ("WIN", "GAME_OVER"):
+                    break
+                obs = act(env, aid)
+                local_used += 1
+                if obs.levels_completed > best:
+                    best = obs.levels_completed
+                    name = "spell_then_move"
+        # Also try zigzag patterns
+        if len(dir_actions) >= 2 and local_used < move_budget:
+            for a1, a2 in [(dir_actions[0], dir_actions[1]), (dir_actions[2], dir_actions[3])] if len(dir_actions) >= 4 else [(dir_actions[0], dir_actions[1])]:
+                for _ in range(20):
+                    if local_used >= move_budget or obs.state.name in ("WIN", "GAME_OVER"):
+                        break
+                    for _ in range(3):
+                        if local_used >= move_budget:
+                            break
+                        obs = act(env, a1)
+                        local_used += 1
+                    for _ in range(3):
+                        if local_used >= move_budget:
+                            break
+                        obs = act(env, a2)
+                        local_used += 1
+                    if obs.levels_completed > best:
+                        best = obs.levels_completed
+                        name = "spell_then_zigzag"
+        return local_used
+
+    # Try different spell sequences — some levels need 1 spell, others need multiple
+    # Single spells first, then pairs, then all 3
+    spell_sequences = [
+        # Single spells
+        ["teleport"], ["fireball"], ["size"],
+        # Pairs (each ordering)
+        ["teleport", "fireball"], ["fireball", "teleport"],
+        ["teleport", "size"], ["size", "teleport"],
+        ["fireball", "size"], ["size", "fireball"],
+        # Triple (most common orderings)
+        ["teleport", "fireball", "size"],
+        ["teleport", "size", "fireball"],
+        ["fireball", "teleport", "size"],
+    ]
+
+    for seq in spell_sequences:
+        if used >= budget or best > 0:
             break
+
+        obs = reset(env)
+        used += 1
+
+        # On level 1, first input triggers demo animation — send a dummy action to clear it
+        # Then wait for demo animation frames (~6-10 steps)
+        obs = act(env, dir_actions[0])
+        used += 1
+        for _ in range(12):
+            if used >= budget or obs.state.name in ("WIN", "GAME_OVER"):
+                break
+            obs = act(env, dir_actions[0])
+            used += 1
+
+        if obs.state.name in ("WIN", "GAME_OVER"):
+            continue
+
+        # Cast each spell in sequence
+        cast_ok = True
+        for spell_name in seq:
+            if used >= budget or obs.state.name in ("WIN", "GAME_OVER"):
+                break
+            pattern = spell_patterns[spell_name]
+            cast_used = _cast_spell(pattern)
+            used += cast_used
+            if obs.state.name == "GAME_OVER":
+                cast_ok = False
+                break
+
+        # Move to exit after casting
+        if cast_ok and obs.state.name not in ("WIN", "GAME_OVER"):
+            move_budget = min(150, budget - used)
+            if move_budget > 0:
+                move_used = _move_to_exit(move_budget)
+                used += move_used
 
     return best, name, used
 
@@ -3486,6 +3718,88 @@ def strat_continue_multilevel(env: Any, winning_fn, winning_args: tuple,
             break  # Strategy stopped working
 
     return total_levels, name, used
+
+
+def strat_multi_character(env: Any, dir_actions: list[int], budget: int = 2000) -> tuple[int, str, int]:
+    """For games where A5 switches between multiple characters/objects.
+    Move character 1 extensively → A5 → move character 2 → check win."""
+    obs = reset(env)
+    if obs is None:
+        return 0, "multi_char", 0
+    avail = sorted(obs.available_actions)
+    if 5 not in avail:
+        return 0, "multi_char", 0
+
+    used = 0
+    best_levels = 0
+
+    # Try different numbers of characters (2, 3, 4)
+    for num_chars in [2, 3, 4]:
+        for move_steps in [10, 20, 5]:
+            if used >= budget or best_levels > 0:
+                break
+
+            # Try each direction combination for each character (limit combos)
+            combos = list(itertools.product(dir_actions[:4], repeat=min(num_chars, 3)))[:20]
+            for dir_combo in combos:
+                if used >= budget or best_levels > 0:
+                    break
+
+                obs = reset(env)
+                used += 1
+
+                # For each character: move in assigned direction, then A5 to switch
+                for char_idx in range(num_chars):
+                    if used >= budget or best_levels > 0:
+                        break
+                    aid = dir_combo[char_idx % len(dir_combo)]
+
+                    # Move this character
+                    for _ in range(move_steps):
+                        if used >= budget:
+                            break
+                        obs = act(env, aid)
+                        used += 1
+                        if obs.levels_completed > best_levels:
+                            best_levels = obs.levels_completed
+                            return best_levels, "multi_char", used
+                        if obs.state.name in ("WIN", "GAME_OVER"):
+                            break
+
+                    if obs.state.name == "GAME_OVER":
+                        break
+
+                    # Switch to next character
+                    if char_idx < num_chars - 1 and used < budget:
+                        obs = act(env, 5)
+                        used += 1
+                        if obs.levels_completed > best_levels:
+                            best_levels = obs.levels_completed
+                            return best_levels, "multi_char", used
+
+    # Phase 2: Try sustained movement with periodic A5 (every N steps)
+    for switch_interval in [15, 30, 8]:
+        if used >= budget or best_levels > 0:
+            break
+        for aid in dir_actions[:2]:
+            if used >= budget or best_levels > 0:
+                break
+            obs = reset(env)
+            used += 1
+            for step in range(80):
+                if used >= budget or obs.state.name in ("WIN", "GAME_OVER"):
+                    break
+                if step > 0 and step % switch_interval == 0:
+                    obs = act(env, 5)
+                    used += 1
+                else:
+                    obs = act(env, aid)
+                    used += 1
+                if obs.levels_completed > best_levels:
+                    best_levels = obs.levels_completed
+                    return best_levels, "multi_char", used
+
+    return best_levels, "multi_char", used
 
 
 def strat_sidescroll_click(env: Any, dir_actions: list[int], budget: int = 1500) -> tuple[int, str, int]:
@@ -4286,6 +4600,11 @@ class EnsembleAgent:
             remaining = min(1200, self.total_budget - total_actions)
             try_strat(strat_spell_cast, dir_actions, label="spell_cast", budget=remaining)
 
+        # Button-click + move (DC22-style: click buttons to toggle barriers, then navigate)
+        if best_levels == 0 and has_click and dir_actions:
+            remaining = min(2000, self.total_budget - total_actions)
+            try_strat(strat_button_click_move, dir_actions, label="button_click_move", budget=remaining)
+
         # Multi-phase maze (3+ actions per real move, DFS with backtrack)
         if best_levels == 0 and dir_actions and not has_click:
             remaining = min(1200, self.total_budget - total_actions)
@@ -4405,6 +4724,11 @@ class EnsembleAgent:
         if best_levels == 0 and 5 in avail and dir_actions and not has_click:
             remaining = min(2000, self.total_budget - total_actions)
             try_strat(strat_grab_and_deliver, dir_actions, label="grab_deliver", budget=remaining)
+
+        # === Strategy 35b: Multi-character (A5 switches active character) ===
+        if best_levels == 0 and 5 in avail and dir_actions:
+            remaining = min(2000, self.total_budget - total_actions)
+            try_strat(strat_multi_character, dir_actions, label="multi_char", budget=remaining)
 
         # === Strategy 36: Click-select then move (multi-entity control) ===
         if best_levels == 0 and has_click and dir_actions:

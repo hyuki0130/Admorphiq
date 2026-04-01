@@ -1,4 +1,4 @@
-"""Run GraphAgent on all ARC-AGI-3 games — with toggle solver, faster limits."""
+"""Run GraphAgent on all ARC-AGI-3 games — with toggle+sequence solvers, faster limits."""
 
 import time
 
@@ -8,6 +8,7 @@ from arcengine import GameAction, GameState
 
 from admorphiq.agent_graph import GraphAgent
 from admorphiq.planner.toggle_solver import ToggleSolver
+from admorphiq.planner.sequence_solver import SequenceSolver
 
 MAX_ACTIONS = 50000
 TIME_LIMIT = 120.0  # 2 minutes per game
@@ -53,6 +54,40 @@ def try_toggle_solve(env, obs):
     return 0, obs
 
 
+def try_sequence_solve(env, obs):
+    """Try brute-force sequence solver. Returns (levels_completed, obs)."""
+    available = list(obs.available_actions)
+
+    solver = SequenceSolver(max_length=8, max_combos=50000)
+    actions = solver.discover_actions(
+        env, GameAction.RESET, _click, _get_frame, available
+    )
+
+    if not actions:
+        return 0, obs
+
+    n = len(actions)
+    # Only try if search space is manageable
+    if n > 10:
+        obs = env.step(GameAction.RESET)
+        return 0, obs
+
+    result = solver.brute_force_solve(
+        env, GameAction.RESET, _click, _get_levels, actions
+    )
+
+    if result:
+        obs = env.step(GameAction.RESET)
+        obs = solver.apply_sequence(env, _click)
+        levels = obs.levels_completed if obs else 0
+        seq_desc = [(t, a) if t == "action" else (t, a, b) for t, a, b in result]
+        print(f"  Sequence solver: L1 solved! steps={len(result)}, seq={seq_desc}, levels={levels}/{obs.win_levels if obs else '?'}")
+        return levels, obs
+
+    obs = env.step(GameAction.RESET)
+    return 0, obs
+
+
 def run_game(arcade: Arcade, game_id: str, agent: GraphAgent) -> dict:
     env = arcade.make(game_id)
     if env is None:
@@ -64,14 +99,20 @@ def run_game(arcade: Arcade, game_id: str, agent: GraphAgent) -> dict:
 
     toggle_levels, obs = try_toggle_solve(env, obs)
 
+    # Try sequence solver if toggle didn't solve
+    seq_levels = toggle_levels
+    if toggle_levels == 0:
+        seq_levels, obs = try_sequence_solve(env, obs)
+
+    solved_levels = max(toggle_levels, seq_levels)
     agent.explorer.on_level_complete()
-    agent._last_levels_completed = toggle_levels
+    agent._last_levels_completed = solved_levels
 
     start_time = time.time()
     action_count = 0
     last_new_state_step = 0
     last_state_count = 0
-    last_level_count = toggle_levels
+    last_level_count = solved_levels
     STALE_THRESHOLD = 3000
 
     while action_count < MAX_ACTIONS:
@@ -109,7 +150,7 @@ def run_game(arcade: Arcade, game_id: str, agent: GraphAgent) -> dict:
 
     elapsed = time.time() - start_time
     stats = agent.get_stats()
-    levels = obs.levels_completed if obs else toggle_levels
+    levels = obs.levels_completed if obs else solved_levels
 
     return {
         "game_id": game_id,
