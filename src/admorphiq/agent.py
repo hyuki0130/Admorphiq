@@ -96,6 +96,9 @@ class AdmorphiqAgent:
         self._last_big_change_action: int | None = None  # action that caused the biggest change
         self._repeat_count: int = 0  # how many times we've repeated the current momentum action
         self._max_repeat: int = 20  # max consecutive repeats before switching
+        # State novelty tracking
+        self._visited_states: set[str] = set()  # hashes of visited frames
+        self._novelty_bonus: float = 0.3  # extra reward for reaching a new state
 
     def _reset_for_new_level(self, level_completed: bool = False) -> None:
         """Reset state for a new level. Preserves model weights for transfer."""
@@ -118,6 +121,7 @@ class AdmorphiqAgent:
         self._action_try_counts = np.zeros(5, dtype=np.float64)
         self._last_big_change_action = None
         self._repeat_count = 0
+        self._visited_states.clear()
 
     def set_logger(self, logger: GameLogger) -> None:
         """Attach a GameLogger for structured JSONL logging."""
@@ -166,12 +170,19 @@ class AdmorphiqAgent:
         # Encode current frame
         current_frame = _frame_to_tensor(latest_frame.frame).to(self.device)
 
-        # Record experience from previous step with magnitude-scaled reward
+        # Record experience from previous step with magnitude-scaled reward + novelty bonus
         frame_changed = False
         reward = 0.0
         if self._prev_frame is not None and self._prev_action_idx is not None:
             frame_changed = not torch.equal(self._prev_frame, current_frame)
             reward = self._compute_reward(frame_changed, self._prev_raw_frame, latest_frame.frame)
+
+            # Novelty bonus: extra reward for reaching a never-seen state
+            state_hash = self.explorer.hash_frame(current_frame)
+            if state_hash not in self._visited_states:
+                self._visited_states.add(state_hash)
+                reward = min(1.0, reward + self._novelty_bonus)
+
             self.buffer.add(
                 self._prev_frame.cpu().numpy().astype(bool),
                 self._prev_action_idx,
