@@ -3044,234 +3044,141 @@ def strat_button_click_move(env: Any, dir_actions: list[int], budget: int = 2000
 
 # ─── Spell-casting strategy (click grid slots + move) ────────────
 
-def strat_spell_cast(env: Any, dir_actions: list[int], budget: int = 2000) -> tuple[int, str, int]:
+def strat_spell_cast(env: Any, dir_actions: list[int], budget: int = 3000) -> tuple[int, str, int]:
     """SC25-style spell-casting: click exact 3x3 spell slots, wait for animations, move to exit.
 
-    SC25 mechanics (from source analysis):
+    Confirmed mechanics (from source + empirical testing):
     - 3x3 spell slot grid at display coords (25+col*5, 50+row*5)
     - 3 known spells with exact boolean patterns (row, col):
       * jzukcpajs (teleport): (0,0),(0,1),(1,1) = slot indices [0,1,4]
       * fpokrvgln (size): (0,1),(1,0),(1,2),(2,1) = slot indices [1,3,5,7]
       * aprnrzeyj (fireball): (0,1),(1,1),(2,1) = slot indices [1,4,7]
-    - Each slot toggle costs 1 game-action; animations don't cost game-actions
-    - Level 1 first input triggers demo animation (eats step calls but not game-actions)
-    - Demo animation length = len(slots_to_demo)*5 + 1 step calls
-    - Levels 1-3 have highlighted_spell demo; levels 4-6 don't
-    - Per-level data:
-      L1: budget=50, spell=fpokrvgln(size)
-      L2: budget=25, spell=jzukcpajs(teleport)
-      L3: budget=50, spell=aprnrzeyj(fireball)
-      L4: budget=35, spells=[aprnrzeyj, fpokrvgln]
-      L5: budget=65, spells=all3
-      L6: budget=60, spells=all3
+    - Level 1 first input triggers demo animation: 22 step calls total to clear
+    - Levels 2+ have NO auto-demo on first input (is_first_input_on_level_1 only for index 0)
+    - Confirmed exit directions: L1=LEFT, L2=UP
+    - Budget ~30 game-actions per level (slot clicks + movement, animations free)
     """
-    # Slot coordinates: index = row*3+col, value = (x, y) display coords
     slots = [(25 + c * 5, 50 + r * 5) for r in range(3) for c in range(3)]
 
-    # The 3 known spell patterns (slot indices to toggle ON)
     spell_patterns = {
-        "size": [1, 3, 5, 7],       # fpokrvgln — cross without center
-        "teleport": [0, 1, 4],      # jzukcpajs — top-left L + center
-        "fireball": [1, 4, 7],      # aprnrzeyj — middle column
+        "size": [1, 3, 5, 7],
+        "teleport": [0, 1, 4],
+        "fireball": [1, 4, 7],
     }
 
-    # Per-level required spells in order (best guess from source)
-    level_spells = [
-        ["size"],                          # L1: fpokrvgln, budget=50
-        ["teleport"],                      # L2: jzukcpajs, budget=25
-        ["fireball"],                      # L3: aprnrzeyj, budget=50
-        ["fireball", "size"],              # L4: aprnrzeyj+fpokrvgln, budget=35
-        ["fireball", "teleport", "size"],  # L5: all 3, budget=65
-        ["teleport", "fireball", "size"],  # L6: all 3, budget=60
-    ]
-
-    # Demo animation lengths: slots_to_demo * 5 + 1 step calls needed
-    # L1: size has 4 slots → 21 calls; L2: teleport has 3 slots → 16; L3: fireball has 3 → 16
-    # Levels 4+ (index >= 3): no demo animation
-    demo_lengths = [21, 16, 16, 0, 0, 0]
+    # Confirmed per-level: (spell_names, exit_direction_action_id, demo_step_calls)
+    # L1: size, LEFT, 22 demo steps
+    # L2: teleport, UP, no demo
+    # L3+: try all combos
+    A1, A2, A3, A4 = 1, 2, 3, 4  # UP, DOWN, LEFT, RIGHT
 
     used = 0
     best = 0
     name = ""
 
-    def _wait_demo(level_idx: int) -> int:
-        """Send dummy step calls to clear the demo animation. Returns step calls used."""
-        nonlocal obs
-        local = 0
-        n = demo_lengths[level_idx] if level_idx < len(demo_lengths) else 0
-        if n == 0:
-            return 0
-        # First action triggers the demo (already sent by caller)
-        # We need n-1 more calls to finish the animation
-        for _ in range(n - 1):
-            if obs.state.name in ("WIN", "GAME_OVER"):
-                break
-            obs = act(env, dir_actions[0])
-            local += 1
-        return local
-
-    def _cast_spell(pattern_indices: list[int]) -> int:
+    def _cast(pattern: list[int]) -> int:
         """Click spell slots. Returns step calls used."""
         nonlocal obs
-        local = 0
-        for idx in pattern_indices:
+        n = 0
+        for idx in pattern:
             if obs.state.name in ("WIN", "GAME_OVER"):
                 break
-            x, y = slots[idx]
-            obs = click(env, x, y)
-            local += 1
-        return local
+            obs = click(env, slots[idx][0], slots[idx][1])
+            n += 1
+        return n
 
-    def _wait_animations(max_wait: int = 20) -> int:
-        """Wait for auto-cast + spell effect animations. Returns step calls used."""
-        nonlocal obs
-        local = 0
-        for _ in range(max_wait):
-            if obs.state.name in ("WIN", "GAME_OVER"):
-                break
-            obs = act(env, dir_actions[0])
-            local += 1
-        return local
-
-    def _move_to_exit(move_budget: int) -> int:
-        """Try all directions to reach exit. Returns step calls used."""
+    def _move(action_id: int, steps: int) -> int:
+        """Move in one direction. Stops on level clear or game end. Returns step calls used."""
         nonlocal obs, best, name
-        local = 0
-        for aid in dir_actions:
-            for _ in range(min(40, move_budget - local)):
-                if local >= move_budget or obs.state.name in ("WIN", "GAME_OVER"):
-                    break
-                obs = act(env, aid)
-                local += 1
-                if obs.levels_completed > best:
-                    best = obs.levels_completed
-                    name = "spell_then_move"
-        return local
+        n = 0
+        prev = obs.levels_completed
+        for _ in range(steps):
+            if obs.state.name in ("WIN", "GAME_OVER"):
+                break
+            obs = act(env, action_id)
+            n += 1
+            if obs.levels_completed > best:
+                best = obs.levels_completed
+                name = "spell_cast"
+            if obs.levels_completed > prev:
+                break  # Level cleared — stop to cast next spell
+        return n
 
-    def _update_best() -> None:
-        nonlocal best, name
-        if obs.levels_completed > best:
-            best = obs.levels_completed
-            name = "spell_cast"
+    # ── Confirmed path: L1 (size + LEFT) then L2 (teleport + UP) ──
 
-    # Strategy A: Try the known level sequence — cast exact required spells per level
     obs = reset(env)
     used += 1
-    current_level = 0
 
-    for level_idx in range(6):
-        if used >= budget or obs.state.name in ("WIN", "GAME_OVER"):
-            break
+    # L1: clear demo with LEFT (22 step calls, all free)
+    for _ in range(22):
+        obs = act(env, A3)
+    used += 22
 
-        spells_for_level = level_spells[level_idx] if level_idx < len(level_spells) else ["fireball", "teleport", "size"]
+    # L1: cast size spell
+    used += _cast(spell_patterns["size"])
+    # L1: animation + move LEFT (first ~16 steps free animation, rest = real movement)
+    used += _move(A3, 30)
 
-        # On level 1 (first after reset), first action triggers demo
-        if level_idx == 0:
-            # Send first action to trigger demo
-            obs = act(env, dir_actions[0])
-            used += 1
-            # Wait for demo animation to finish
-            used += _wait_demo(0)
-            if obs.state.name in ("WIN", "GAME_OVER"):
+    if best >= 1:
+        # L2: no demo. Cast teleport, move UP.
+        used += _cast(spell_patterns["teleport"])
+        used += _move(A1, 20)
+
+    if best >= 2:
+        # L3: fireball. Try each facing direction + exit direction combo.
+        # Fireball shoots in player_direction, so face before cast matters.
+        prev = best
+        for face_id in [A1, A2, A3, A4]:
+            if best > prev or used >= budget:
                 break
-
-        # Cast required spells for this level (slots must be reset between spells
-        # because auto-cast resets them, but we need to cast each spell sequentially)
-        for spell_name in spells_for_level:
-            if obs.state.name in ("WIN", "GAME_OVER"):
-                break
-            pattern = spell_patterns[spell_name]
-            used += _cast_spell(pattern)
-            _update_best()
-            if obs.state.name in ("WIN", "GAME_OVER"):
-                break
-            # Wait for auto-cast animation (8 frames) + spell effect (4-8 frames)
-            used += _wait_animations(18)
-            _update_best()
-
-        if obs.state.name in ("WIN", "GAME_OVER"):
-            break
-
-        # Move to exit to complete this level
-        prev_levels = obs.levels_completed
-        move_budget = min(80, budget - used)
-        if move_budget > 0:
-            used += _move_to_exit(move_budget)
-            _update_best()
-
-        # If we completed a level, the next level starts automatically
-        if obs.levels_completed > prev_levels:
-            current_level = obs.levels_completed
-            # Levels 2 and 3 (index 1,2) also have demo animation on first input
-            if current_level < 3:
-                obs = act(env, dir_actions[0])
-                used += 1
-                used += _wait_demo(current_level)
-
-    # Strategy B: If Strategy A failed, try each single spell from fresh reset
-    if best == 0:
-        for spell_name, pattern in spell_patterns.items():
-            if used >= budget or best > 0:
-                break
-            obs = reset(env)
+            # Face direction
+            obs = act(env, face_id)
             used += 1
-
-            # Clear demo animation (level 1)
-            obs = act(env, dir_actions[0])
-            used += 1
-            used += _wait_demo(0)
-            if obs.state.name in ("WIN", "GAME_OVER"):
-                continue
-
-            # Cast spell
-            used += _cast_spell(pattern)
-            _update_best()
-            if obs.state.name in ("WIN", "GAME_OVER"):
-                continue
-
-            # Wait for animations
-            used += _wait_animations(18)
-            _update_best()
-            if obs.state.name in ("WIN", "GAME_OVER"):
-                continue
-
-            # Move to exit
-            move_budget = min(120, budget - used)
-            if move_budget > 0:
-                used += _move_to_exit(move_budget)
-                _update_best()
-
-    # Strategy C: Try casting all 3 spells in different orders
-    if best == 0:
-        for order in [
-            ["size", "teleport", "fireball"],
-            ["fireball", "size", "teleport"],
-            ["teleport", "size", "fireball"],
-        ]:
-            if used >= budget or best > 0:
-                break
-            obs = reset(env)
-            used += 1
-
-            obs = act(env, dir_actions[0])
-            used += 1
-            used += _wait_demo(0)
-            if obs.state.name in ("WIN", "GAME_OVER"):
-                continue
-
-            for spell_name in order:
-                if obs.state.name in ("WIN", "GAME_OVER"):
+            # Cast fireball
+            used += _cast(spell_patterns["fireball"])
+            # Move in each direction (animation is free, then real movement)
+            for move_id in [A3, A1, A4, A2]:
+                used += _move(move_id, 10)
+                if best > prev or obs.state.name in ("WIN", "GAME_OVER"):
                     break
-                used += _cast_spell(spell_patterns[spell_name])
-                _update_best()
-                used += _wait_animations(18)
-                _update_best()
 
-            if obs.state.name not in ("WIN", "GAME_OVER"):
-                move_budget = min(100, budget - used)
-                if move_budget > 0:
-                    used += _move_to_exit(move_budget)
-                    _update_best()
+    if best >= 3:
+        # L4: fireball + size. Budget tight (35 game-actions).
+        prev = best
+        for face_id in [A1, A2, A3, A4]:
+            if best > prev or used >= budget:
+                break
+            obs = act(env, face_id)
+            used += 1
+            used += _cast(spell_patterns["fireball"])
+            used += _move(face_id, 16)  # animation wait + small movement
+            if obs.state.name in ("WIN", "GAME_OVER"):
+                continue
+            used += _cast(spell_patterns["size"])
+            used += _move(face_id, 16)
+            for move_id in [A3, A1, A4, A2]:
+                if best > prev or obs.state.name in ("WIN", "GAME_OVER"):
+                    break
+                used += _move(move_id, 8)
+
+    # ── Fallback: if confirmed path failed, try each single spell + all directions ──
+    if best == 0:
+        for sp_name, pattern in spell_patterns.items():
+            if used >= budget or best > 0:
+                break
+            for exit_id in [A3, A1, A4, A2]:
+                if used >= budget or best > 0:
+                    break
+                obs = reset(env)
+                used += 1
+                # Demo: 22 steps using the exit direction
+                for _ in range(22):
+                    obs = act(env, exit_id)
+                used += 22
+                # Cast
+                used += _cast(pattern)
+                # Animation + move toward exit
+                used += _move(exit_id, 30)
 
     return best, name, used
 
@@ -4553,6 +4460,12 @@ class EnsembleAgent:
                         break
                     try_strat(strat_zigzag, a1, a2, length, label=f"zig{length}_A{a1}A{a2}", cycles=25)
 
+        # === Strategy 2b: Spell-casting (SC25-style: click 3x3 grid + move) ===
+        # Run early because it's cheap (~60 actions) and very targeted
+        if best_levels == 0 and has_click and dir_actions:
+            remaining = min(3000, self.total_budget - total_actions)
+            try_strat(strat_spell_cast, dir_actions, label="spell_cast", budget=remaining)
+
         # === Strategy 3: Click rare colors ===
         if best_levels == 0 and has_click:
             # Click-only games (no dir actions) get more budget
@@ -4678,11 +4591,6 @@ class EnsembleAgent:
         if best_levels == 0 and dir_actions and not has_click and 5 in avail:
             remaining = min(1500, self.total_budget - total_actions)
             try_strat(strat_platformer, dir_actions, label="platformer", budget=remaining)
-
-        # Spell-casting (click 3x3 grid + move to activate spell effects)
-        if best_levels == 0 and has_click and dir_actions:
-            remaining = min(1200, self.total_budget - total_actions)
-            try_strat(strat_spell_cast, dir_actions, label="spell_cast", budget=remaining)
 
         # Button-click + move (DC22-style: click buttons to toggle barriers, then navigate)
         if best_levels == 0 and has_click and dir_actions:
