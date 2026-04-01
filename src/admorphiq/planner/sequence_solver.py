@@ -40,11 +40,11 @@ class SequenceSolver:
             if a != 6:
                 actions.append(("action", a, 0))
 
-        # Discover distinct click regions
+        # Discover distinct click regions (scan at 4px resolution)
         if 6 in available_actions:
             seen_effects: set[frozenset[tuple[int, int]]] = set()
-            for cy in range(0, 64, 8):
-                for cx in range(0, 64, 8):
+            for cy in range(0, 64, 4):
+                for cx in range(0, 64, 4):
                     obs_ref = env.step(reset_action)
                     fb = get_frame_fn(obs_ref)
                     obs_click = click_fn(env, cx, cy)
