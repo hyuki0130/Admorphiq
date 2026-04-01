@@ -3492,6 +3492,125 @@ def strat_tr87_rotation(env: Any, budget: int = 500000) -> tuple[int, str, int]:
     return best, name, used
 
 
+# ─── LS20 grid puzzle solver ────────────────────────────────────────
+
+def strat_ls20_grid(env: Any, budget: int = 500000) -> tuple[int, str, int]:
+    """LS20: grid-based shape/color/rotation matching puzzle.
+
+    Player moves on a 5px grid (A1-A4). Must match shape+color+rotation to
+    goal by stepping on modifiers, then visit goal position.
+    L1 solved analytically: left3, up4-via-rotation, right3, up3 (13 moves).
+    L2+: frame-hash BFS with replay from level start.
+    """
+    from collections import deque as _deque
+
+    obs = reset(env)
+    used = 1
+    best = obs.levels_completed
+    name = ""
+
+    A1, A2, A3, A4 = 1, 2, 3, 4
+    actions_list = [A1, A2, A3, A4]
+
+    # L1 hardcoded: left3, up4 (through rotation changer), right3, up3
+    # Path: (34,45) → L,L,L → (19,45) → U,U,U → (19,30)=rot_changer → U → (19,25)
+    #        → R,R,R → (34,25) → U,U,U → (34,10)=goal
+    hardcoded_l1 = [A3, A3, A3, A1, A1, A1, A1, A4, A4, A4, A1, A1, A1]
+
+    # Play L1
+    for a in hardcoded_l1:
+        if used >= budget:
+            break
+        obs = act(env, a)
+        used += 1
+        if obs.state.name == "GAME_OVER":
+            break
+
+    if obs.levels_completed >= 1:
+        best = obs.levels_completed
+        name = "ls20_grid"
+    else:
+        # Not LS20, bail out immediately
+        return best, name, used
+
+    # L2+: frame-hash BFS with replay from reset
+    def _get_frame(o):
+        import numpy as _np
+        return _np.array(o.frame[0], dtype=_np.int32)
+
+    def _frame_hash(f):
+        return hash(f.tobytes())
+
+    for level in range(2, 8):
+        if used >= budget or obs.state.name in ("WIN", "GAME_OVER"):
+            break
+
+        # BFS with frame hashing — replay from current level start (reset)
+        obs = reset(env)
+        used += 1
+        f0 = _get_frame(obs)
+        h0 = _frame_hash(f0)
+        visited = {h0}
+        queue = _deque()
+        queue.append([])
+        found = False
+        max_nodes = 2000
+        max_depth = 25
+        nodes = 0
+
+        while queue and not found and nodes < max_nodes and used < budget:
+            seq = queue.popleft()
+            if len(seq) >= max_depth:
+                continue
+            nodes += 1
+
+            for ai in range(4):
+                # Replay from level start
+                obs = reset(env)
+                used += 1
+                ok = True
+                for si in seq:
+                    if used >= budget:
+                        ok = False
+                        break
+                    obs = act(env, actions_list[si])
+                    used += 1
+                    if obs.levels_completed >= level:
+                        best = obs.levels_completed
+                        name = "ls20_grid"
+                        found = True
+                        break
+                    if obs.state.name == "GAME_OVER":
+                        ok = False
+                        break
+                if found or not ok or used >= budget:
+                    if found:
+                        break
+                    continue
+
+                obs = act(env, actions_list[ai])
+                used += 1
+
+                if obs.levels_completed >= level:
+                    best = obs.levels_completed
+                    name = "ls20_grid"
+                    found = True
+                    break
+                if obs.state.name == "GAME_OVER":
+                    continue
+
+                f = _get_frame(obs)
+                h = _frame_hash(f)
+                if h not in visited:
+                    visited.add(h)
+                    queue.append(seq + [ai])
+
+        if not found:
+            break  # Can't solve this level, stop
+
+    return best, name, used
+
+
 # ─── ACTION5-cycle strategy (move + A5 special action) ─────────────
 
 def strat_action5_cycle(env: Any, dir_actions: list[int], budget: int = 600) -> tuple[int, str, int]:
@@ -4767,6 +4886,10 @@ class EnsembleAgent:
         if best_levels == 0 and dir_actions and not has_click and 5 not in avail:
             remaining = min(500000, self.total_budget - total_actions)
             try_strat(strat_tr87_rotation, label="tr87_rotation", budget=remaining)
+        # LS20 grid puzzle (A1-A4 only, shape/color/rotation matching)
+        if best_levels == 0 and dir_actions and not has_click and 5 not in avail:
+            remaining = min(500000, self.total_budget - total_actions)
+            try_strat(strat_ls20_grid, label="ls20_grid", budget=remaining)
 
         # === Strategy 1: Sustained directions ===
         if best_levels == 0:

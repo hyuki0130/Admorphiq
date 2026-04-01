@@ -36,6 +36,8 @@ class BFSSolver:
         f = np.array(obs.frame)
         if f.ndim == 3:
             f = f[0]
+        if f.ndim < 2:
+            return hashlib.md5(f.tobytes()).hexdigest()
         # Mask out timer area (top rows, right side)
         f_copy = f.copy()
         f_copy[:5, 40:] = 0
@@ -60,6 +62,7 @@ class BFSSolver:
         get_levels_fn,
         click_coords: list[tuple[int, int]] | None = None,
         prefix: list | None = None,
+        expected_base_levels: int | None = None,
     ) -> list | None:
         """BFS over game states to find shortest winning action sequence.
 
@@ -70,6 +73,7 @@ class BFSSolver:
             get_levels_fn: Function obs -> levels_completed
             click_coords: Optional list of (x,y) click positions to include
             prefix: Actions to replay before starting BFS (for multi-level)
+            expected_base_levels: Override base_levels (for mid-transition states)
 
         Returns:
             List of NEW actions (not including prefix) or None
@@ -82,7 +86,7 @@ class BFSSolver:
         obs = self._replay_prefix(env, reset_action, prefix)
         if obs is None:
             return None
-        base_levels = get_levels_fn(obs)
+        base_levels = expected_base_levels if expected_base_levels is not None else get_levels_fn(obs)
         init_hash = self._frame_hash(obs)
 
         # Build action list
@@ -188,6 +192,7 @@ class BFSSolver:
                 env, reset_action, simple_actions, get_levels_fn,
                 click_coords=click_coords,
                 prefix=cumulative_actions,
+                expected_base_levels=base_levels + level,
             )
 
             if result is None:
@@ -196,7 +201,28 @@ class BFSSolver:
             cumulative_actions.extend(result)
             level += 1
 
-            # Verify by replaying
+            # Add padding actions to complete level transition animation.
+            # Without this, the next level's BFS starts mid-transition and
+            # subsequent actions consume the previous level's step budget.
+            obs = self._replay_prefix(env, reset_action, cumulative_actions)
+            if obs is not None:
+                current_levels = get_levels_fn(obs)
+                expected = base_levels + level
+                if current_levels < expected:
+                    # Try padding with each simple action to find one that
+                    # completes the transition without hitting GAME_OVER
+                    for pad_count in range(5):
+                        pad_action = simple_actions[0] if simple_actions else 1
+                        obs = self._do_action(env, pad_action)
+                        if obs is None:
+                            break
+                        if hasattr(obs, 'state') and obs.state.name == 'GAME_OVER':
+                            # This padding action caused game over — undo it
+                            break
+                        cumulative_actions.append(pad_action)
+                        if get_levels_fn(obs) >= expected:
+                            break
+
             obs = self._replay_prefix(env, reset_action, cumulative_actions)
             if obs is None:
                 break
