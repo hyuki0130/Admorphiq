@@ -1820,7 +1820,7 @@ def strat_click_frame_adaptive(env: Any, budget: int = 500) -> tuple[int, str, i
 
 def strat_dominant_action(env: Any, avail_actions: list[int], budget: int = 500) -> tuple[int, str, int]:
     """Find the action that causes the most change, then spam it.
-    For games like TU93 where only one action really works."""
+    For games where only one action really works."""
     obs = reset(env)
     used, best, name = 1, 0, ""
 
@@ -2496,10 +2496,10 @@ def strat_action_sequence_search(env: Any, avail_actions: list[int],
     return best, name, used
 
 
-# ─── M0R0-specific: click-select-move puzzle ───────────────────────
+# ─── Click-select-move puzzle (select object by click, move with dirs) ──
 
-def strat_m0r0_click_select_move(env: Any, budget: int = 600) -> tuple[int, str, int]:
-    """M0R0 game: click 'cvcer' sprite (color 9) to select, A1-4 to move it.
+def strat_click_select_move(env: Any, budget: int = 600) -> tuple[int, str, int]:
+    """Click-select-move: click on object (e.g. color 9) to select, A1-4 to move it.
     When two sprites overlap at same position, both are removed.
     Goal: pair up all sprites. 150-action limit per level."""
     obs = reset(env)
@@ -2559,7 +2559,7 @@ def strat_m0r0_click_select_move(env: Any, budget: int = 600) -> tuple[int, str,
                 used += 1
                 if obs.levels_completed > best:
                     best = obs.levels_completed
-                    name = "m0r0_random"
+                    name = "click_select_random"
             if obs.state.name == "GAME_OVER":
                 obs = reset(env)
                 used += 1
@@ -2575,7 +2575,7 @@ def strat_m0r0_click_select_move(env: Any, budget: int = 600) -> tuple[int, str,
             used += 1
             if obs.levels_completed > best:
                 best = obs.levels_completed
-                name = "m0r0_click_move"
+                name = "click_select_move"
 
             # Check if sprite was selected (should turn color 11)
             f_after = get_frame(obs)
@@ -2626,7 +2626,7 @@ def strat_m0r0_click_select_move(env: Any, budget: int = 600) -> tuple[int, str,
                 used += 1
                 if obs.levels_completed > best:
                     best = obs.levels_completed
-                    name = "m0r0_click_move"
+                    name = "click_select_move"
                 if obs.state.name in ("WIN", "GAME_OVER"):
                     break
 
@@ -2640,15 +2640,15 @@ def strat_m0r0_click_select_move(env: Any, budget: int = 600) -> tuple[int, str,
         # After attempting all pairs, refresh sprite list for next attempt
         if obs.levels_completed > best:
             best = obs.levels_completed
-            name = "m0r0_click_move"
+            name = "click_select_move"
 
     return best, name, used
 
 
-# ─── TR87-like: combination lock puzzle ────────────────────────────
+# ─── Combination lock / slot-value puzzle ──────────────────────────
 
-def strat_combo_lock(env: Any, budget: int = 800) -> tuple[int, str, int]:
-    """TR87-style combination lock: A3/A4 select slot, A1/A2 cycle value.
+def strat_slot_value_cycle(env: Any, budget: int = 800) -> tuple[int, str, int]:
+    """Combination lock / slot-value puzzle: A3/A4 select slot, A1/A2 cycle value.
     Systematically try all values for each slot position."""
     obs = reset(env)
     used = 1
@@ -2741,7 +2741,7 @@ def strat_combo_lock(env: Any, budget: int = 800) -> tuple[int, str, int]:
     return best, name, used
 
 
-# ─── Platformer strategy (G50T-style: animation eats steps, go right) ──
+# ─── Platformer strategy (animation eats steps, go right) ─────────
 
 def strat_platformer(env: Any, dir_actions: list[int], budget: int = 1500) -> tuple[int, str, int]:
     """For platformer games where animation consumes multiple steps per move.
@@ -2802,11 +2802,11 @@ def strat_platformer(env: Any, dir_actions: list[int], budget: int = 1500) -> tu
     return best, name, used
 
 
-# ─── TU93 multi-phase maze strategy ──────────────────────────────
+# ─── Multi-phase maze strategy (animation eats steps per move) ───
 
 def strat_maze_multiphase(env: Any, dir_actions: list[int], budget: int = 1200) -> tuple[int, str, int]:
     """For games where each move takes multiple steps (animation phases).
-    TU93: color 2 = passable, 3 phases per move. Try all 4 directions with 3 actions each."""
+    Some games consume 3+ actions per actual move. DFS with backtracking."""
     obs = reset(env)
     used, best, name = 1, 0, ""
 
@@ -2876,11 +2876,11 @@ def strat_maze_multiphase(env: Any, dir_actions: list[int], budget: int = 1200) 
     return best, name, used
 
 
-# ─── SC25 spell-casting strategy ──────────────────────────────────
+# ─── Spell-casting strategy (click grid slots + move) ────────────
 
 def strat_spell_cast(env: Any, dir_actions: list[int], budget: int = 1200) -> tuple[int, str, int]:
-    """SC25 spell game: click 3x3 spell slots at known coordinates, then move.
-    Slot grid: row=(y-49)//5, col=(x-24)//5, so centers at x=25,30,35 y=50,55,60."""
+    """Spell-casting game: click 3x3 spell slots at common grid coordinates, then move.
+    Tries slot grid at x=25,30,35 y=50,55,60 (common UI layout for spell patterns)."""
     # Spell slot pixel coordinates (3x3 grid)
     slots = [(25 + c * 5, 50 + r * 5) for r in range(3) for c in range(3)]
 
@@ -2960,7 +2960,7 @@ def strat_spell_cast(env: Any, dir_actions: list[int], budget: int = 1200) -> tu
     return best, name, used
 
 
-# ─── ACTION5-cycle strategy (RE86/WA30/LF52/BP35/G50T) ────────────
+# ─── ACTION5-cycle strategy (move + A5 special action) ─────────────
 
 def strat_action5_cycle(env: Any, dir_actions: list[int], budget: int = 600) -> tuple[int, str, int]:
     """Games with A5 as special action (switch/cycle/fire).
@@ -3120,10 +3120,10 @@ def strat_sokoban_interact(env: Any, dir_actions: list[int], budget: int = 800) 
     return best, name, used
 
 
-# ─── Rotation puzzle (S5I5-style: click to rotate groups) ─────────
+# ─── Rotation puzzle (click to rotate/transform groups) ──────────
 
 def strat_click_rotation_puzzle(env: Any, budget: int = 800) -> tuple[int, str, int]:
-    """S5I5/TN36-style: click on control elements to rotate/transform groups.
+    """Rotation/transform puzzle: click on control elements to rotate/transform groups.
     Systematically try clicking each interactive position 1-4 times."""
     obs = reset(env)
     used = 1
@@ -3400,10 +3400,10 @@ def strat_click_then_confirm(env: Any, budget: int = 600) -> tuple[int, str, int
     return best, name, used
 
 
-# ─── CD82-specific: launcher/basket game ───────────────────────────
+# ─── Move + launch + click (move character, use A5 to launch, click targets) ──
 
-def strat_cd82_launcher(env: Any, budget: int = 600) -> tuple[int, str, int]:
-    """CD82 game: move character (A1-4), launch basket (A5), click targets (A6).
+def strat_move_launch_click(env: Any, budget: int = 600) -> tuple[int, str, int]:
+    """Move-launch-click: move character (A1-4), launch/interact (A5), click targets (A6).
     Try systematic approach: move to position, launch, click targets."""
     obs = reset(env)
     used = 1
@@ -3427,7 +3427,7 @@ def strat_cd82_launcher(env: Any, budget: int = 600) -> tuple[int, str, int]:
                 used += 1
                 if obs.levels_completed > best:
                     best = obs.levels_completed
-                    name = "cd82_move_launch"
+                    name = "move_launch_click"
 
             # Launch
             if used < budget:
@@ -3435,7 +3435,7 @@ def strat_cd82_launcher(env: Any, budget: int = 600) -> tuple[int, str, int]:
                 used += 1
                 if obs.levels_completed > best:
                     best = obs.levels_completed
-                    name = "cd82_launch"
+                    name = "launch_click"
 
             # Click on changed areas
             f_after = get_frame(obs)
@@ -3448,7 +3448,7 @@ def strat_cd82_launcher(env: Any, budget: int = 600) -> tuple[int, str, int]:
                     used += 1
                     if obs.levels_completed > best:
                         best = obs.levels_completed
-                        name = "cd82_click_diff"
+                        name = "launch_click_diff"
 
             if obs.state.name in ("WIN", "GAME_OVER"):
                 break
@@ -3486,6 +3486,593 @@ def strat_continue_multilevel(env: Any, winning_fn, winning_args: tuple,
             break  # Strategy stopped working
 
     return total_levels, name, used
+
+
+def strat_sidescroll_click(env: Any, dir_actions: list[int], budget: int = 1500) -> tuple[int, str, int]:
+    """For side-scrolling games with limited movement (2 dirs) + click.
+    Move in one direction, clicking at various heights. Then reverse."""
+    obs = reset(env)
+    if obs is None:
+        return 0, "sidescroll_click", 0
+    if len(dir_actions) < 2:
+        return 0, "sidescroll_click", 0
+
+    used = 0
+    best_levels = 0
+    avail = sorted(obs.available_actions)
+    has_undo = 7 in avail
+
+    # Try each direction as "forward", click at various positions
+    for fwd, bwd in [(dir_actions[0], dir_actions[1]), (dir_actions[1], dir_actions[0])]:
+        if used >= budget or best_levels > 0:
+            break
+
+        obs = reset(env)
+        used += 1
+
+        # Move forward, click at frame-detected positions after each move
+        for step in range(30):
+            if used >= budget or best_levels > 0:
+                break
+
+            # Move forward
+            obs = act(env, fwd)
+            used += 1
+            if obs.levels_completed > best_levels:
+                best_levels = obs.levels_completed
+                return best_levels, "sidescroll_click", used
+
+            # Click at rare color positions on current frame
+            f = get_frame(obs)
+            rc = rare_colors(f, max_count=200)
+            for color, _ in rc[:3]:
+                if used >= budget or best_levels > 0:
+                    break
+                pos = find_color_positions(f, color)
+                if len(pos) > 0:
+                    cy = int(np.mean(pos[:, 0]))
+                    cx = int(np.mean(pos[:, 1]))
+                    obs = click(env, cx, cy)
+                    used += 1
+                    if obs.levels_completed > best_levels:
+                        best_levels = obs.levels_completed
+                        return best_levels, "sidescroll_click", used
+
+    # Phase 2: Move + click grid at each position
+    for fwd in dir_actions:
+        if used >= budget or best_levels > 0:
+            break
+        obs = reset(env)
+        used += 1
+        for _ in range(20):
+            if used >= budget or best_levels > 0:
+                break
+            obs = act(env, fwd)
+            used += 1
+            # Click a grid of Y positions at center X
+            for y in range(8, 56, 8):
+                if used >= budget:
+                    break
+                obs = click(env, 32, y)
+                used += 1
+                if obs.levels_completed > best_levels:
+                    best_levels = obs.levels_completed
+                    return best_levels, "sidescroll_click", used
+
+    return best_levels, "sidescroll_click", used
+
+
+def strat_click_grid_aligned(env: Any, budget: int = 3000) -> tuple[int, str, int]:
+    """For grid-based click games: click at evenly spaced grid positions.
+    Detects grid spacing from frame analysis, then systematically clicks."""
+    obs = reset(env)
+    if obs is None:
+        return 0, "click_grid", 0
+    used = 0
+    best_levels = 0
+    f0 = get_frame(obs)
+
+    # Try common grid spacings: 4px (SU15-style), 8px, 6px
+    for spacing in [4, 8, 6]:
+        if used >= budget or best_levels > 0:
+            break
+        obs = reset(env)
+        used += 1
+
+        # Determine grid offset by looking at where non-background pixels cluster
+        offsets_y = [0, 2, 10]  # Common y-offsets
+        offsets_x = [0, 2]
+
+        for y_off in offsets_y:
+            if used >= budget or best_levels > 0:
+                break
+            for x_off in offsets_x:
+                if used >= budget or best_levels > 0:
+                    break
+
+                obs = reset(env)
+                used += 1
+
+                # Click through the grid
+                for y in range(y_off, 64, spacing):
+                    if used >= budget or best_levels > 0:
+                        break
+                    for x in range(x_off, 64, spacing):
+                        if used >= budget or best_levels > 0:
+                            break
+                        obs = click(env, x, y)
+                        used += 1
+                        if obs.levels_completed > best_levels:
+                            best_levels = obs.levels_completed
+                            return best_levels, "click_grid", used
+
+    # Phase 2: Randomized grid clicking (for games where order matters)
+    rng = np.random.RandomState(77)
+    for spacing in [4, 8]:
+        if used >= budget or best_levels > 0:
+            break
+        obs = reset(env)
+        used += 1
+
+        positions = [(x, y) for y in range(0, 64, spacing) for x in range(0, 64, spacing)]
+        rng.shuffle(positions)
+        for x, y in positions:
+            if used >= budget or best_levels > 0:
+                break
+            obs = click(env, x, y)
+            used += 1
+            if obs.levels_completed > best_levels:
+                best_levels = obs.levels_completed
+                return best_levels, "click_grid", used
+
+    return best_levels, "click_grid", used
+
+
+def strat_sprite_cycle_match(env: Any, budget: int = 2000) -> tuple[int, str, int]:
+    """For pattern-matching transform games: cycle through sprite variants using
+    A1/A2 to transform and A3/A4 to select, trying to match a target pattern.
+    Works for games where each action cycles element values (like TR87)."""
+    obs = reset(env)
+    if obs is None:
+        return 0, "sprite_cycle_match", 0
+    avail = sorted(obs.available_actions)
+    dir_actions = [a for a in avail if a not in (6, 7, 8)]
+    if len(dir_actions) < 2:
+        return 0, "sprite_cycle_match", 0
+
+    used = 0
+    best_levels = 0
+    f0 = get_frame(obs)
+
+    # Identify which actions are "select" vs "transform" by checking frame diffs
+    # Try each action and measure change magnitude
+    action_diffs: dict[int, int] = {}
+    for aid in dir_actions:
+        obs = reset(env)
+        used += 1
+        f_before = get_frame(obs)
+        obs = act(env, aid)
+        used += 1
+        f_after = get_frame(obs)
+        action_diffs[aid] = frame_diff(f_before, f_after)
+
+    # Sort: larger diff = transform action, smaller diff = select action
+    sorted_actions = sorted(dir_actions, key=lambda a: action_diffs.get(a, 0))
+    # First two (smallest diff) are likely select/cursor, last two transform
+    select_actions = sorted_actions[:len(sorted_actions)//2] if len(sorted_actions) >= 4 else sorted_actions[:1]
+    transform_actions = sorted_actions[len(sorted_actions)//2:] if len(sorted_actions) >= 4 else sorted_actions[1:]
+
+    if not transform_actions:
+        transform_actions = dir_actions[:2]
+        select_actions = dir_actions[2:] if len(dir_actions) > 2 else []
+
+    # Strategy: systematically cycle each position through all transform values
+    # For each "slot" position (selected via select_actions), try all transform values
+    max_cycle_len = 8  # Most sprite variant counts
+    for trial in range(3):
+        obs = reset(env)
+        used += 1
+        if used >= budget:
+            break
+
+        # Try different systematic approaches
+        if trial == 0:
+            # Pure transform cycling: for each select position, try all transforms
+            for sel_step in range(20):
+                if used >= budget or best_levels > 0:
+                    break
+                # Move selector
+                if select_actions:
+                    sel_act = select_actions[0]
+                    obs = act(env, sel_act)
+                    used += 1
+                    if obs.levels_completed > best_levels:
+                        best_levels = obs.levels_completed
+                        return best_levels, "sprite_cycle_match", used
+                # Cycle transform at this position
+                for _ in range(max_cycle_len):
+                    if used >= budget or best_levels > 0:
+                        break
+                    obs = act(env, transform_actions[0])
+                    used += 1
+                    if obs.levels_completed > best_levels:
+                        best_levels = obs.levels_completed
+                        return best_levels, "sprite_cycle_match", used
+        elif trial == 1:
+            # Use second transform direction (reverse cycling)
+            if len(transform_actions) >= 2:
+                for sel_step in range(20):
+                    if used >= budget or best_levels > 0:
+                        break
+                    if select_actions:
+                        obs = act(env, select_actions[-1])
+                        used += 1
+                    for _ in range(max_cycle_len):
+                        if used >= budget or best_levels > 0:
+                            break
+                        obs = act(env, transform_actions[1])
+                        used += 1
+                        if obs.levels_completed > best_levels:
+                            best_levels = obs.levels_completed
+                            return best_levels, "sprite_cycle_match", used
+        else:
+            # Random cycling with both select and transform
+            rng = np.random.RandomState(42)
+            remaining = min(500, budget - used)
+            for _ in range(remaining):
+                if used >= budget or best_levels > 0:
+                    break
+                aid = rng.choice(dir_actions)
+                obs = act(env, aid)
+                used += 1
+                if obs.levels_completed > best_levels:
+                    best_levels = obs.levels_completed
+                    return best_levels, "sprite_cycle_match", used
+
+    return best_levels, "sprite_cycle_match", used
+
+
+def strat_scan_swap_puzzle(env: Any, budget: int = 2000) -> tuple[int, str, int]:
+    """For scan-and-swap puzzles: press A5 to scan/reveal, A6 to click-swap items,
+    A7 to undo. Works for games like SB26 where you arrange items by swapping."""
+    obs = reset(env)
+    if obs is None:
+        return 0, "scan_swap", 0
+    avail = sorted(obs.available_actions)
+    has_a5 = 5 in avail
+    has_click = 6 in avail
+    has_a7 = 7 in avail
+    if not (has_a5 and has_click):
+        return 0, "scan_swap", 0
+
+    used = 0
+    best_levels = 0
+
+    # Phase 1: Press A5 first to "scan" or reveal the board state
+    obs = act(env, 5)
+    used += 1
+    if obs.levels_completed > best_levels:
+        best_levels = obs.levels_completed
+
+    f_after_scan = get_frame(obs)
+
+    # Find clickable elements (rare colors that appeared after scan)
+    rc = rare_colors(f_after_scan, max_count=500)
+
+    # Phase 2: Try clicking pairs of items to swap them
+    # Collect all clickable positions
+    click_targets: list[tuple[int, int]] = []
+    for color, cnt in rc[:10]:
+        positions = find_color_positions(f_after_scan, color)
+        if len(positions) > 0:
+            # Use center of each cluster
+            if cnt < 100:
+                cy = int(np.mean(positions[:, 0]))
+                cx = int(np.mean(positions[:, 1]))
+                click_targets.append((cx, cy))
+            else:
+                # Multiple objects of same color - find clusters
+                for p in positions[::max(1, len(positions)//10)]:
+                    click_targets.append((int(p[1]), int(p[0])))
+
+    # Try clicking pairs (swap two items)
+    for i in range(len(click_targets)):
+        if used >= budget or best_levels > 0:
+            break
+        for j in range(i + 1, len(click_targets)):
+            if used >= budget or best_levels > 0:
+                break
+            # Click first item
+            obs = click(env, click_targets[i][0], click_targets[i][1])
+            used += 1
+            if obs.levels_completed > best_levels:
+                best_levels = obs.levels_completed
+                return best_levels, "scan_swap", used
+
+            # Click second item (swap)
+            obs = click(env, click_targets[j][0], click_targets[j][1])
+            used += 1
+            if obs.levels_completed > best_levels:
+                best_levels = obs.levels_completed
+                return best_levels, "scan_swap", used
+
+            # Check if frame changed significantly
+            f_now = get_frame(obs)
+            diff = frame_diff(f_after_scan, f_now)
+            if diff > 0:
+                # Something happened! Press A5 again to re-evaluate
+                obs = act(env, 5)
+                used += 1
+                if obs.levels_completed > best_levels:
+                    best_levels = obs.levels_completed
+                    return best_levels, "scan_swap", used
+                f_after_scan = get_frame(obs)
+
+    # Phase 3: Try A5 → systematic click grid → A5 cycle
+    obs = reset(env)
+    used += 1
+    obs = act(env, 5)
+    used += 1
+    for y in range(2, 62, 6):
+        if used >= budget or best_levels > 0:
+            break
+        for x in range(2, 62, 6):
+            if used >= budget or best_levels > 0:
+                break
+            obs = click(env, x, y)
+            used += 1
+            if obs.levels_completed > best_levels:
+                best_levels = obs.levels_completed
+                return best_levels, "scan_swap", used
+
+    # Phase 4: Try click-click-A5 pattern (select, target, confirm)
+    obs = reset(env)
+    used += 1
+    obs = act(env, 5)
+    used += 1
+    f_scan = get_frame(obs)
+    rc2 = rare_colors(f_scan, max_count=300)
+    positions_all: list[tuple[int, int]] = []
+    for color, _ in rc2[:8]:
+        pos = find_color_positions(f_scan, color)
+        for p in pos[::max(1, len(pos)//5)]:
+            positions_all.append((int(p[1]), int(p[0])))
+
+    for i, (x1, y1) in enumerate(positions_all):
+        if used >= budget or best_levels > 0:
+            break
+        obs = click(env, x1, y1)
+        used += 1
+        if obs.levels_completed > best_levels:
+            best_levels = obs.levels_completed
+            return best_levels, "scan_swap", used
+        for x2, y2 in positions_all[i+1:i+5]:
+            if used >= budget or best_levels > 0:
+                break
+            obs = click(env, x2, y2)
+            used += 1
+            if obs.levels_completed > best_levels:
+                best_levels = obs.levels_completed
+                return best_levels, "scan_swap", used
+            # Press A5 to evaluate
+            obs = act(env, 5)
+            used += 1
+            if obs.levels_completed > best_levels:
+                best_levels = obs.levels_completed
+                return best_levels, "scan_swap", used
+
+    return best_levels, "scan_swap", used
+
+
+def strat_grab_and_deliver(env: Any, dir_actions: list[int], budget: int = 2000) -> tuple[int, str, int]:
+    """For pickup/delivery games: move to items, A5 to grab/drop, move to targets.
+    Works for games like WA30 where player carries items to goal zones."""
+    obs = reset(env)
+    if obs is None:
+        return 0, "grab_deliver", 0
+    avail = sorted(obs.available_actions)
+    if 5 not in avail or not dir_actions:
+        return 0, "grab_deliver", 0
+
+    used = 0
+    best_levels = 0
+
+    # Strategy: move around, press A5 frequently to grab/interact
+    # Phase 1: Explore map corners with A5 at key points
+    patterns = [
+        # Each pattern: list of (action, repeat_count)
+        [(dir_actions[0], 5), (5, 1)] * 8,  # move direction 0, grab
+        [(dir_actions[-1], 5), (5, 1)] * 8,  # move direction -1, grab
+    ]
+    if len(dir_actions) >= 2:
+        patterns.extend([
+            [(dir_actions[0], 3), (dir_actions[1], 3), (5, 1)] * 6,
+            [(dir_actions[1], 3), (dir_actions[0], 3), (5, 1)] * 6,
+        ])
+    if len(dir_actions) >= 4:
+        patterns.extend([
+            # All four directions with grab
+            [(dir_actions[i], 2) for i in range(4)] + [(5, 1)],
+            [(dir_actions[3-i], 2) for i in range(4)] + [(5, 1)],
+        ])
+
+    for pattern in patterns:
+        obs = reset(env)
+        used += 1
+        for _ in range(3):  # Repeat pattern 3x
+            if used >= budget or best_levels > 0:
+                break
+            for action, count in pattern:
+                if used >= budget or best_levels > 0:
+                    break
+                for _ in range(count):
+                    if used >= budget:
+                        break
+                    obs = act(env, action)
+                    used += 1
+                    if obs.levels_completed > best_levels:
+                        best_levels = obs.levels_completed
+                        return best_levels, "grab_deliver", used
+
+    # Phase 2: Systematic grid exploration with A5 at every position
+    obs = reset(env)
+    used += 1
+    if len(dir_actions) >= 2:
+        # Zigzag across the grid, pressing A5 every few steps
+        a_horiz = dir_actions[0]  # assume first two are up/down or left/right
+        a_vert = dir_actions[1]
+        for row in range(12):
+            if used >= budget or best_levels > 0:
+                break
+            # Move across
+            for _ in range(10):
+                if used >= budget:
+                    break
+                obs = act(env, a_horiz if row % 2 == 0 else (dir_actions[2] if len(dir_actions) > 2 else a_horiz))
+                used += 1
+                if obs.levels_completed > best_levels:
+                    best_levels = obs.levels_completed
+                    return best_levels, "grab_deliver", used
+            # Grab/drop
+            obs = act(env, 5)
+            used += 1
+            if obs.levels_completed > best_levels:
+                best_levels = obs.levels_completed
+                return best_levels, "grab_deliver", used
+            # Move down one row
+            obs = act(env, a_vert)
+            used += 1
+
+    # Phase 3: Random walk with frequent A5
+    remaining = min(500, budget - used)
+    rng = np.random.RandomState(123)
+    for _ in range(remaining):
+        if used >= budget or best_levels > 0:
+            break
+        if rng.random() < 0.2:
+            obs = act(env, 5)
+        else:
+            obs = act(env, dir_actions[rng.randint(len(dir_actions))])
+        used += 1
+        if obs.levels_completed > best_levels:
+            best_levels = obs.levels_completed
+            return best_levels, "grab_deliver", used
+
+    return best_levels, "grab_deliver", used
+
+
+def strat_click_select_then_move(env: Any, dir_actions: list[int], budget: int = 1500) -> tuple[int, str, int]:
+    """For games with multiple controllable entities: click to select one entity,
+    then use direction keys to move it. Try cycling through click targets.
+    Works for games like SK48 with multiple selectable sprites."""
+    obs = reset(env)
+    if obs is None:
+        return 0, "click_sel_move", 0
+    avail = sorted(obs.available_actions)
+    has_click = 6 in avail
+    has_undo = 7 in avail
+    if not has_click or not dir_actions:
+        return 0, "click_sel_move", 0
+
+    used = 0
+    best_levels = 0
+    f0 = get_frame(obs)
+
+    # Find clickable positions from rare colors
+    rc = rare_colors(f0, max_count=500)
+    click_positions: list[tuple[int, int]] = []
+    for color, cnt in rc[:8]:
+        positions = find_color_positions(f0, color)
+        if len(positions) > 0 and cnt < 200:
+            cy = int(np.mean(positions[:, 0]))
+            cx = int(np.mean(positions[:, 1]))
+            click_positions.append((cx, cy))
+
+    if not click_positions:
+        # Fallback: try grid positions
+        for y in range(8, 56, 12):
+            for x in range(8, 56, 12):
+                click_positions.append((x, y))
+
+    # For each clickable entity, try clicking it then moving
+    for cx, cy in click_positions[:10]:
+        if used >= budget or best_levels > 0:
+            break
+
+        obs = reset(env)
+        used += 1
+
+        # Click to select
+        obs = click(env, cx, cy)
+        used += 1
+        f_after_click = get_frame(obs)
+        click_diff = frame_diff(f0, f_after_click)
+
+        if click_diff == 0:
+            continue  # Click did nothing, skip this target
+
+        # Now try moving in each direction
+        for aid in dir_actions:
+            if used >= budget or best_levels > 0:
+                break
+            for _ in range(8):
+                if used >= budget:
+                    break
+                obs = act(env, aid)
+                used += 1
+                if obs.levels_completed > best_levels:
+                    best_levels = obs.levels_completed
+                    return best_levels, "click_sel_move", used
+
+    # Phase 2: Click entity, then do zigzag moves
+    for cx, cy in click_positions[:5]:
+        if used >= budget or best_levels > 0:
+            break
+        if len(dir_actions) < 2:
+            break
+
+        obs = reset(env)
+        used += 1
+        obs = click(env, cx, cy)
+        used += 1
+
+        for a1, a2 in [(dir_actions[0], dir_actions[1]), (dir_actions[1], dir_actions[0])]:
+            if used >= budget or best_levels > 0:
+                break
+            for _ in range(15):
+                if used >= budget:
+                    break
+                for _ in range(3):
+                    obs = act(env, a1)
+                    used += 1
+                for _ in range(3):
+                    obs = act(env, a2)
+                    used += 1
+                if obs.levels_completed > best_levels:
+                    best_levels = obs.levels_completed
+                    return best_levels, "click_sel_move", used
+
+    # Phase 3: Click multiple entities and move each one
+    obs = reset(env)
+    used += 1
+    for cx, cy in click_positions[:6]:
+        if used >= budget or best_levels > 0:
+            break
+        # Select this entity
+        obs = click(env, cx, cy)
+        used += 1
+        # Move it in one direction until stuck
+        for aid in dir_actions[:2]:
+            if used >= budget:
+                break
+            for _ in range(5):
+                obs = act(env, aid)
+                used += 1
+                if obs.levels_completed > best_levels:
+                    best_levels = obs.levels_completed
+                    return best_levels, "click_sel_move", used
+
+    return best_levels, "click_sel_move", used
 
 
 # ─── Ensemble solver ────────────────────────────────────────────────
@@ -3550,45 +4137,6 @@ class EnsembleAgent:
                     self._logger.log_event("strategy_switch", {"strategy": best_strategy, "levels": best_levels})
             return levels > 0
 
-        # === Strategy 0: Proven strategies (game-specific, highest priority) ===
-        # These are strategies that have been verified to clear Level 1 for specific games.
-        # Run them FIRST to avoid regression from new strategies consuming budget.
-        _proven = {
-            'ar25': ('zig', 5, 2, 3),      # zig5_A2A3
-            'cn04': ('zig', 3, 2, 4),      # zig3_A2A4
-            'sp80': ('zig', 1, 4, 5),      # zig1_A4A5
-            'lp85': ('click_c', 8),        # click_c8
-            'vc33': ('click_c', 9),        # click_c9
-            'r11l': ('click_all_c', 15),   # click_all_c15 / seq_repeat
-        }
-        gid = game_id.lower()
-        if gid in _proven:
-            spec = _proven[gid]
-            if spec[0] == 'zig':
-                _, length, a1, a2 = spec
-                try_strat(strat_zigzag, a1, a2, length, label=f"proven_zig{length}_A{a1}A{a2}", cycles=80)
-            elif spec[0] in ('click_c', 'click_all_c'):
-                color = spec[1]
-                label = f"proven_click_c{color}" if spec[0] == 'click_c' else f"proven_click_all_c{color}"
-                obs_p = reset(env)
-                total_actions += 1
-                f_p = get_frame(obs_p)
-                positions = find_color_positions(f_p, color)
-                click_used = 1  # reset counts
-                for pos in positions:
-                    if total_actions >= self.total_budget or best_levels > 0:
-                        break
-                    obs_p = click(env, int(pos[1]), int(pos[0]))
-                    total_actions += 1
-                    click_used += 1
-                    if obs_p.levels_completed > best_levels:
-                        best_levels = obs_p.levels_completed
-                        best_strategy = label
-                strategies_tried.append({"name": label, "levels": best_levels, "actions": click_used})
-                # For R11L: also try seq_repeat as fallback
-                if spec[0] == 'click_all_c' and best_levels == 0:
-                    try_strat(strat_pattern_repeat, avail, label="proven_seq_repeat", budget=400)
-
         # === Strategy 1: Sustained directions ===
         if best_levels == 0:
             for aid in dir_actions:
@@ -3596,12 +4144,14 @@ class EnsembleAgent:
                     break
 
         # === Strategy 2: Zigzag pairs ===
+        # Cap at 4000 actions to leave budget for later strategies
+        zig_budget_cap = total_actions + 4000
         if best_levels == 0 and len(dir_actions) >= 2:
             for length in [1, 2, 3, 5, 7, 10]:
-                if best_levels > 0:
+                if best_levels > 0 or total_actions >= zig_budget_cap:
                     break
                 for a1, a2 in itertools.permutations(dir_actions, 2):
-                    if total_actions >= self.total_budget or best_levels > 0:
+                    if total_actions >= self.total_budget or total_actions >= zig_budget_cap or best_levels > 0:
                         break
                     try_strat(strat_zigzag, a1, a2, length, label=f"zig{length}_A{a1}A{a2}", cycles=25)
 
@@ -3691,55 +4241,60 @@ class EnsembleAgent:
 
         # === Strategy 15a: Game-specific strategies (before expensive rasters) ===
 
-        # Combination lock (TR87-style)
+        # Combination lock / slot-value puzzle
         if best_levels == 0 and len(dir_actions) >= 2:
             remaining = min(800, self.total_budget - total_actions)
-            try_strat(strat_combo_lock, label="combo_lock_early", budget=remaining)
+            try_strat(strat_slot_value_cycle, label="slot_value_cycle", budget=remaining)
 
-        # Click + confirm (SB26-style)
+        # Click + confirm (click then use A5/A7 to confirm)
         if best_levels == 0 and has_click and 5 in avail:
             remaining = min(600, self.total_budget - total_actions)
-            try_strat(strat_click_then_confirm, label="click_confirm_early", budget=remaining)
+            try_strat(strat_click_then_confirm, label="click_confirm", budget=remaining)
 
-        # Rotation puzzle (S5I5/TN36-style)
+        # Rotation puzzle (click controls to rotate/transform groups)
         if best_levels == 0 and has_click:
             remaining = min(800, self.total_budget - total_actions)
             try_strat(strat_click_rotation_puzzle, label="rotation_puzzle", budget=remaining)
 
-        # M0R0 click-select-move
+        # Click-select-move (click to select object, then move it)
         if best_levels == 0 and has_click and dir_actions:
             remaining = min(600, self.total_budget - total_actions)
-            try_strat(strat_m0r0_click_select_move, label="m0r0_early", budget=remaining)
+            try_strat(strat_click_select_move, label="click_select_move", budget=remaining)
 
-        # ACTION5 cycle
+        # ACTION5 cycle (move + special action)
         if best_levels == 0 and 5 in avail and dir_actions:
             remaining = min(600, self.total_budget - total_actions)
-            try_strat(strat_action5_cycle, dir_actions, label="a5_cycle_early", budget=remaining)
+            try_strat(strat_action5_cycle, dir_actions, label="a5_cycle", budget=remaining)
 
-        # Sokoban interact
+        # Sokoban-style interact (move + A5 push/pull)
         if best_levels == 0 and 5 in avail and dir_actions:
             remaining = min(600, self.total_budget - total_actions)
-            try_strat(strat_sokoban_interact, dir_actions, label="sokoban_early", budget=remaining)
+            try_strat(strat_sokoban_interact, dir_actions, label="sokoban_interact", budget=remaining)
 
-        # Move + click at player (KA59/hybrid)
+        # Move + click at player position (hybrid games)
         if best_levels == 0 and has_click and dir_actions:
             remaining = min(600, self.total_budget - total_actions)
             try_strat(strat_move_click_at_player, dir_actions, label="move_click_player", budget=remaining)
 
-        # Platformer (G50T-style: animation consumes steps, go right aggressively)
+        # Platformer (animation consumes steps, go right aggressively)
         if best_levels == 0 and dir_actions and not has_click and 5 in avail:
             remaining = min(1500, self.total_budget - total_actions)
             try_strat(strat_platformer, dir_actions, label="platformer", budget=remaining)
 
-        # Spell-casting (SC25-style: click 3x3 spell grid + move)
+        # Spell-casting (click 3x3 grid + move to activate spell effects)
         if best_levels == 0 and has_click and dir_actions:
             remaining = min(1200, self.total_budget - total_actions)
             try_strat(strat_spell_cast, dir_actions, label="spell_cast", budget=remaining)
 
-        # Multi-phase maze (TU93-style: 3 actions per real move, DFS with backtrack)
+        # Multi-phase maze (3+ actions per real move, DFS with backtrack)
         if best_levels == 0 and dir_actions and not has_click:
             remaining = min(1200, self.total_budget - total_actions)
             try_strat(strat_maze_multiphase, dir_actions, label="maze_multiphase", budget=remaining)
+
+        # === Strategy 14b: Grid-aligned click (click-only games with grid layout) ===
+        if best_levels == 0 and has_click and not dir_actions:
+            remaining = min(3000, self.total_budget - total_actions)
+            try_strat(strat_click_grid_aligned, label="click_grid", budget=remaining)
 
         # === Strategy 15: Raster scan (last resort) ===
         if best_levels == 0 and has_click:
@@ -3826,10 +4381,35 @@ class EnsembleAgent:
             remaining = min(1000, self.total_budget - total_actions)
             try_strat(strat_long_sustained, avail, label="long_sustained", budget=remaining)
 
-        # === Strategy 32: CD82 launcher/basket (not in early batch) ===
+        # === Strategy 32: Move + launch + click (dir + A5 + A6) ===
         if best_levels == 0 and has_click and dir_actions and 5 in avail:
             remaining = min(600, self.total_budget - total_actions)
-            try_strat(strat_cd82_launcher, label="cd82_launcher", budget=remaining)
+            try_strat(strat_move_launch_click, label="move_launch_click", budget=remaining)
+
+        # === Strategy 32b: Side-scroll + click (2-dir + click games) ===
+        if best_levels == 0 and has_click and dir_actions and len(dir_actions) <= 2:
+            remaining = min(1500, self.total_budget - total_actions)
+            try_strat(strat_sidescroll_click, dir_actions, label="sidescroll_click", budget=remaining)
+
+        # === Strategy 33: Sprite cycle match (transform puzzles) ===
+        if best_levels == 0 and len(dir_actions) >= 2 and not has_click:
+            remaining = min(2000, self.total_budget - total_actions)
+            try_strat(strat_sprite_cycle_match, label="sprite_cycle_match", budget=remaining)
+
+        # === Strategy 34: Scan + swap puzzle (A5 scan, A6 swap, A7 undo) ===
+        if best_levels == 0 and has_click and 5 in avail:
+            remaining = min(2000, self.total_budget - total_actions)
+            try_strat(strat_scan_swap_puzzle, label="scan_swap", budget=remaining)
+
+        # === Strategy 35: Grab and deliver (A5 pickup/drop + movement) ===
+        if best_levels == 0 and 5 in avail and dir_actions and not has_click:
+            remaining = min(2000, self.total_budget - total_actions)
+            try_strat(strat_grab_and_deliver, dir_actions, label="grab_deliver", budget=remaining)
+
+        # === Strategy 36: Click-select then move (multi-entity control) ===
+        if best_levels == 0 and has_click and dir_actions:
+            remaining = min(1500, self.total_budget - total_actions)
+            try_strat(strat_click_select_then_move, dir_actions, label="click_sel_move", budget=remaining)
 
         # === EXTENSION: Multi-level continuation ===
         # After clearing Level 1, don't reset — keep trying strategies for Level 2+
