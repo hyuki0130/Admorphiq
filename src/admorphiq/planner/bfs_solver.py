@@ -25,26 +25,49 @@ class BFSSolver:
         max_depth: int = 60,
         max_states: int = 50000,
         time_limit: float = 60.0,
+        steps_per_action: int = 1,
+        mask_rows: list[tuple[int, int]] | None = None,
     ) -> None:
         self.max_depth = max_depth
         self.max_states = max_states
         self.time_limit = time_limit
+        self.steps_per_action = steps_per_action
+        # Rows to mask: list of (start, end) ranges. Default: top 5 rows right side
+        self.mask_rows = mask_rows
         self.winning_actions: list = []  # cumulative actions across all levels
 
-    @staticmethod
-    def _frame_hash(obs) -> str:
+    def _frame_hash(self, obs) -> str:
         f = np.array(obs.frame)
         if f.ndim == 3:
             f = f[0]
         if f.ndim < 2:
             return hashlib.md5(f.tobytes()).hexdigest()
-        # Mask out timer area (top rows, right side)
         f_copy = f.copy()
-        f_copy[:5, 40:] = 0
+        if self.mask_rows:
+            for start, end in self.mask_rows:
+                f_copy[start:end, :] = 0
+        else:
+            # Default: mask timer area (top rows, right side)
+            f_copy[:5, 40:] = 0
         return hashlib.md5(f_copy.tobytes()).hexdigest()
 
+    @staticmethod
+    def _do_action_raw(env, action):
+        """Execute a single action without animation flushing."""
+        if isinstance(action, tuple):
+            x, y = action
+            ga = GameAction.from_id(6)
+            ga.set_data({"x": x, "y": y})
+            return env.step(ga, data={"x": x, "y": y})
+        else:
+            return env.step(GameAction.from_id(action))
+
     def _replay_prefix(self, env, reset_action, prefix):
-        """Replay a prefix of actions from reset. Returns obs or None."""
+        """Replay a prefix of actions from reset. Returns obs or None.
+
+        Uses raw single-step actions (no animation flushing) since the
+        environment processes replayed actions in sequence.
+        """
         obs = env.step(reset_action)
         if obs is None:
             return None
@@ -221,16 +244,30 @@ class BFSSolver:
         self.winning_actions = cumulative_actions
         return final_levels, cumulative_actions
 
-    @staticmethod
-    def _do_action(env, action):
-        """Execute a single action (simple int or click tuple)."""
+    def _do_action(self, env, action):
+        """Execute a single action (simple int or click tuple).
+
+        If steps_per_action > 1, sends extra step() calls to flush animations.
+        Uses a no-op-like repeated action to drain animation queue.
+        """
         if isinstance(action, tuple):
             x, y = action
             ga = GameAction.from_id(6)
             ga.set_data({"x": x, "y": y})
-            return env.step(ga, data={"x": x, "y": y})
+            obs = env.step(ga, data={"x": x, "y": y})
         else:
-            return env.step(GameAction.from_id(action))
+            obs = env.step(GameAction.from_id(action))
+        if self.steps_per_action > 1 and obs is not None:
+            # Send extra steps to flush animation; cap at steps_per_action-1
+            for _ in range(self.steps_per_action - 1):
+                prev_hash = self._frame_hash(obs)
+                obs = env.step(GameAction.from_id(action))
+                if obs is None:
+                    return None
+                # If frame stopped changing, animation is done
+                if self._frame_hash(obs) == prev_hash:
+                    break
+        return obs
 
     def apply_solution(
         self,

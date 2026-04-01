@@ -3183,6 +3183,208 @@ def strat_spell_cast(env: Any, dir_actions: list[int], budget: int = 3000) -> tu
     return best, name, used
 
 
+# ─── Lights-out puzzle solver (FT09-style: click cells to toggle colors) ──
+
+def strat_lights_out(env: Any, budget: int = 5000) -> tuple[int, str, int]:
+    """Solve lights-out / toggle puzzles via empirical BFS on click combinations.
+
+    Works for FT09-style click-only games where clicking cells toggles their state.
+    Strategy:
+    1. Discover clickable positions (where frame changes on click)
+    2. Deduplicate by toggle effect (positions with same effect are equivalent)
+    3. Since each click is a toggle (click twice = undo), enumerate 2^N subsets
+    4. Execute each subset and check for WIN
+    """
+    obs = reset(env)
+    used = 1
+    best = 0
+    name = ""
+
+    def solve_one_level(budget_left: int) -> int:
+        """Try to solve current level. Returns actions used."""
+        nonlocal obs, best, name
+        lu = 0
+
+        # Phase 1: Find clickable positions by scanning 4px grid
+        clickable_pos = []
+        for dy in range(0, 64, 4):
+            for dx in range(0, 64, 4):
+                if lu + 2 > budget_left:
+                    break
+                obs = reset(env)
+                lu += 1
+                f_before = get_frame(obs)
+                obs = click(env, dx, dy)
+                lu += 1
+                if obs.state.name == "WIN":
+                    if obs.levels_completed > best:
+                        best = obs.levels_completed
+                        name = "lights_out"
+                    return lu
+                if obs.state.name == "GAME_OVER":
+                    obs = reset(env)
+                    lu += 1
+                    continue
+                f_after = get_frame(obs)
+                # Compare only the puzzle area (exclude timer bar at y=63)
+                diff = int(np.count_nonzero(f_before[:62] - f_after[:62]))
+                if diff > 0:
+                    clickable_pos.append((dx, dy))
+
+        if not clickable_pos:
+            return lu
+
+        # Phase 2: Deduplicate by toggle effect
+        # Click each position, record state hash of puzzle area after click
+        effect_to_pos = {}  # frozen effect hash -> representative position
+        for cx, cy in clickable_pos:
+            if lu + 2 > budget_left:
+                break
+            obs = reset(env)
+            lu += 1
+            obs = click(env, cx, cy)
+            lu += 1
+            if obs.state.name == "WIN":
+                if obs.levels_completed > best:
+                    best = obs.levels_completed
+                    name = "lights_out"
+                return lu
+            if obs.state.name == "GAME_OVER":
+                obs = reset(env)
+                lu += 1
+                continue
+            # Hash the puzzle area (exclude timer)
+            f = get_frame(obs)
+            h = hash(f[:62].tobytes())
+            if h not in effect_to_pos:
+                effect_to_pos[h] = (cx, cy)
+
+        unique_clicks = list(effect_to_pos.values())
+        n = len(unique_clicks)
+
+        if n == 0:
+            return lu
+
+        # Phase 3: Enumerate all 2^N subsets (toggle = click once or not)
+        # For n <= 20, this is feasible
+        if n > 20:
+            # Too many unique toggles — try random subsets instead
+            rng = np.random.RandomState(42)
+            for _ in range(min(500, budget_left // (n + 2))):
+                if lu + n + 2 > budget_left:
+                    break
+                obs = reset(env)
+                lu += 1
+                subset = rng.randint(0, 2, size=n)
+                for i in range(n):
+                    if subset[i]:
+                        cx, cy = unique_clicks[i]
+                        obs = click(env, cx, cy)
+                        lu += 1
+                        if obs.state.name == "WIN":
+                            if obs.levels_completed > best:
+                                best = obs.levels_completed
+                                name = "lights_out"
+                            return lu
+                        if obs.state.name == "GAME_OVER":
+                            break
+            return lu
+
+        # Determine max clicks per toggle (2-color: 0/1, 3-color: 0/1/2)
+        # Detect number of colors by clicking one cell multiple times
+        obs = reset(env)
+        lu += 1
+        cx0, cy0 = unique_clicks[0]
+        states_seen = [get_frame(obs)[:62].tobytes()]
+        max_clicks_per = 2  # default binary
+        for _ in range(4):
+            obs = click(env, cx0, cy0)
+            lu += 1
+            if obs.state.name in ("WIN", "GAME_OVER"):
+                break
+            s = get_frame(obs)[:62].tobytes()
+            if s == states_seen[0]:
+                max_clicks_per = len(states_seen)
+                break
+            if s in states_seen:
+                max_clicks_per = len(states_seen)
+                break
+            states_seen.append(s)
+
+        # Generate all combinations: each toggle can be clicked 0..max_clicks_per-1 times
+        import itertools
+        total_combos = max_clicks_per ** n
+        if total_combos > 50000:
+            # Too many — use random sampling
+            rng = np.random.RandomState(42)
+            for _ in range(min(2000, budget_left // (n * max_clicks_per + 2))):
+                if lu + n * max_clicks_per + 2 > budget_left:
+                    break
+                obs = reset(env)
+                lu += 1
+                clicks_per = [rng.randint(0, max_clicks_per) for _ in range(n)]
+                for i in range(n):
+                    for _ in range(clicks_per[i]):
+                        cx, cy = unique_clicks[i]
+                        obs = click(env, cx, cy)
+                        lu += 1
+                        if obs.state.name in ("WIN", "GAME_OVER"):
+                            break
+                    if obs.state.name in ("WIN", "GAME_OVER"):
+                        break
+                if obs.state.name == "WIN":
+                    if obs.levels_completed > best:
+                        best = obs.levels_completed
+                        name = "lights_out"
+                    return lu
+            return lu
+
+        # Enumerate all combos
+        for combo in itertools.product(range(max_clicks_per), repeat=n):
+            if sum(combo) == 0:
+                continue
+            total_clicks = sum(combo)
+            if lu + total_clicks + 2 > budget_left:
+                break
+            obs = reset(env)
+            lu += 1
+            for i in range(n):
+                for _ in range(combo[i]):
+                    cx, cy = unique_clicks[i]
+                    obs = click(env, cx, cy)
+                    lu += 1
+                    if obs.state.name in ("WIN", "GAME_OVER"):
+                        break
+                if obs.state.name in ("WIN", "GAME_OVER"):
+                    break
+            if obs.state.name == "WIN":
+                if obs.levels_completed > best:
+                    best = obs.levels_completed
+                    name = "lights_out"
+                return lu
+
+        return lu
+
+    # Multi-level loop — retry each level up to 3 times
+    for _attempt in range(18):  # up to 6 levels x 3 attempts each
+        if used >= budget:
+            break
+        if obs.state.name == "WIN":
+            break
+        if obs.state.name in ("GAME_OVER", "NOT_PLAYED"):
+            obs = reset(env)
+            used += 1
+            continue
+        prev_best = best
+        lu = solve_one_level(budget - used)
+        used += lu
+        if obs.levels_completed > best:
+            best = obs.levels_completed
+            name = "lights_out"
+
+    return best, name or "lights_out", used
+
+
 # ─── Paint game strategy (CD82-style: select color + launch/arrow) ──
 
 def strat_paint_game(env: Any, budget: int = 200) -> tuple[int, str, int]:
@@ -4894,6 +5096,10 @@ class EnsembleAgent:
         if best_levels == 0 and dir_actions and not has_click and 5 not in avail:
             remaining = min(500000, self.total_budget - total_actions)
             try_strat(strat_ls20_grid, label="ls20_grid", budget=remaining)
+        # FT09 lights-out puzzle (click-only, toggle cells to match target)
+        if best_levels == 0 and has_click and not dir_actions:
+            remaining = min(5000, self.total_budget - total_actions)
+            try_strat(strat_lights_out, label="lights_out", budget=remaining)
 
         # === Strategy 1: Sustained directions ===
         if best_levels == 0:

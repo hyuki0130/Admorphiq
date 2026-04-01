@@ -87,19 +87,97 @@ def try_sequence_solve(env, obs):
     return 0, obs
 
 
-def try_bfs_solve(env, obs):
-    """Try BFS game-state solver for movement games. Returns (levels_completed, obs)."""
+def _discover_click_positions(env, obs):
+    """Discover click positions that cause frame changes. Returns list of (x,y) tuples."""
+    click_coords = []
+    seen_effects = set()
+    f_base = _get_frame(obs)
+
+    # Scan on 4px grid for distinct click effects
+    for cy in range(0, 64, 4):
+        for cx in range(0, 64, 4):
+            obs_reset = env.step(GameAction.RESET)
+            fb = _get_frame(obs_reset)
+            obs_click = _click(env, cx, cy)
+            fa = _get_frame(obs_click)
+
+            diff = fb != fa
+            if not diff.any():
+                continue
+
+            # Filter out timer area changes (top rows, right side)
+            dys, dxs = np.where(diff)
+            real = frozenset(
+                (int(dxs[j]), int(dys[j]))
+                for j in range(len(dys))
+                if not (dys[j] <= 4 and dxs[j] > 40)
+            )
+
+            if real and real not in seen_effects:
+                seen_effects.add(real)
+                click_coords.append((cx, cy))
+
+            if len(click_coords) >= 20:  # Cap to keep BFS feasible
+                break
+        if len(click_coords) >= 20:
+            break
+
+    return click_coords
+
+
+def try_bfs_solve(env, obs, game_title=""):
+    """Try BFS game-state solver for movement/hybrid games. Returns (levels_completed, obs)."""
     available = list(obs.available_actions)
 
-    # Only try for movement-only games (actions 1-4, no click)
     simple_actions = [a for a in available if a in (1, 2, 3, 4, 5)]
-    if not simple_actions or 6 in available:
+    has_click = 6 in available
+
+    # Need at least movement actions for BFS
+    if not simple_actions:
         return 0, obs
 
-    solver = BFSSolver(max_depth=60, max_states=30000, time_limit=120.0)
+    # Game-specific BFS settings
+    steps_per_action = 1
+    mask_rows = None  # default: top 5 rows, right side
+    game_upper = game_title.upper()
+
+    # G50T: animation system needs extra steps to drain, mask timer rows 8-12 and 63
+    if game_upper == "G50T":
+        steps_per_action = 8  # max animation frames to drain
+        mask_rows = [(8, 13), (63, 64)]  # timer bar + bottom row
+
+    # For hybrid games, discover click positions
+    click_coords = None
+    if has_click and simple_actions:
+        obs = env.step(GameAction.RESET)
+        click_coords = _discover_click_positions(env, obs)
+        obs = env.step(GameAction.RESET)
+        if click_coords:
+            print(f"  BFS: found {len(click_coords)} click positions for hybrid BFS")
+            # Limit BFS depth/states for hybrid (more branching)
+            max_depth = 30 if len(click_coords) > 5 else 40
+            max_states = 20000
+            time_limit = 90.0
+            total_limit = 180.0
+        else:
+            # No click effects found, skip
+            return 0, obs
+    elif has_click:
+        return 0, obs
+    else:
+        max_depth = 60
+        max_states = 30000
+        time_limit = 120.0
+        total_limit = 300.0
+
+    solver = BFSSolver(
+        max_depth=max_depth, max_states=max_states, time_limit=time_limit,
+        steps_per_action=steps_per_action, mask_rows=mask_rows,
+    )
     levels, actions = solver.solve_all_levels(
         env, GameAction.RESET, simple_actions, _get_levels,
-        total_time_limit=300.0,
+        click_coords=click_coords,
+        total_time_limit=total_limit,
     )
 
     if levels > 0:
@@ -133,7 +211,9 @@ def run_game(arcade: Arcade, game_id: str, agent: GraphAgent) -> dict:
     # Try BFS solver for movement games if others didn't solve
     bfs_levels = max(toggle_levels, seq_levels)
     if bfs_levels == 0:
-        bfs_levels, obs = try_bfs_solve(env, obs)
+        # Extract game title from game_id (e.g. "g50t-5849a774" -> "G50T")
+        game_title = game_id.split("-")[0].upper() if "-" in game_id else game_id.upper()
+        bfs_levels, obs = try_bfs_solve(env, obs, game_title=game_title)
 
     solved_levels = max(toggle_levels, seq_levels, bfs_levels)
 
