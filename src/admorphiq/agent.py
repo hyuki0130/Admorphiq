@@ -95,10 +95,10 @@ class AdmorphiqAgent:
         self._action_try_counts: np.ndarray = np.zeros(5, dtype=np.float64)  # times each simple action was tried
         self._last_big_change_action: int | None = None  # action that caused the biggest change
         self._repeat_count: int = 0  # how many times we've repeated the current momentum action
-        self._max_repeat: int = 20  # max consecutive repeats before switching
+        self._max_repeat: int = 10  # max consecutive repeats before switching
         # State novelty tracking
         self._visited_states: set[str] = set()  # hashes of visited frames
-        self._novelty_bonus: float = 0.3  # extra reward for reaching a new state
+        self._novelty_bonus: float = 0.5  # extra reward for reaching a new state
 
     def _reset_for_new_level(self, level_completed: bool = False) -> None:
         """Reset state for a new level. Preserves model weights for transfer."""

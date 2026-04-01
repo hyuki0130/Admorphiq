@@ -3183,6 +3183,108 @@ def strat_spell_cast(env: Any, dir_actions: list[int], budget: int = 3000) -> tu
     return best, name, used
 
 
+# ─── Paint game strategy (CD82-style: select color + launch/arrow) ──
+
+def strat_paint_game(env: Any, budget: int = 200) -> tuple[int, str, int]:
+    """CD82 paint game: navigate basket on 3x3 grid, select colors, launch to paint canvas.
+
+    Hardcoded solutions for all 6 levels based on source code analysis.
+    Each level needs 1-4 paint operations (launch A5 or arrow click A6).
+    Total actions: ~75 for all 6 levels.
+    """
+    from collections import deque as _deque
+
+    obs = reset(env)
+    used = 1
+    best = obs.levels_completed
+    name = ""
+
+    A1, A2, A3, A4, A5 = 1, 2, 3, 4, 5
+    pos_to_grid = {0:(0,1), 1:(0,2), 2:(1,2), 3:(2,2), 4:(2,1), 5:(2,0), 6:(1,0), 7:(0,0)}
+    grid_to_pos = {v:k for k,v in pos_to_grid.items()}
+
+    # Color swatch X positions (pqkenviek sprite x coords)
+    swatch_x_2color = {0: 35, 15: 41}
+    swatch_x_3color = {0: 32, 15: 38, 12: 44}
+    swatch_x_7color = {0: 21, 15: 27, 12: 33, 11: 39, 14: 45, 8: 51, 9: 57}
+    level_swatches = [None, swatch_x_2color, swatch_x_3color,
+                      swatch_x_7color, swatch_x_7color, swatch_x_7color, swatch_x_7color]
+
+    # Arrow click display coords (center of ctwspzkygu sprite at each cardinal pos)
+    arrow_coords = {0: (32, 20), 2: (51, 38), 4: (32, 57), 6: (14, 38)}
+
+    # Solutions: list of (op_type, basket_pos, color) per level
+    solutions = [
+        None,  # placeholder for index 0
+        [('launch', 4, 15)],
+        [('launch', 0, 15), ('launch', 3, 12)],
+        [('launch', 2, 14), ('launch', 6, 8), ('launch', 7, 15), ('arrow', 0, 12)],
+        [('launch', 0, 12), ('launch', 3, 15), ('launch', 6, 9), ('arrow', 6, 11)],
+        [('launch', 0, 9), ('launch', 5, 14), ('launch', 3, 12), ('arrow', 0, 8)],
+        [('launch', 2, 14), ('launch', 7, 8), ('arrow', 0, 15), ('arrow', 6, 11)],
+    ]
+
+    def _nav(cur: int, tgt: int) -> list[int]:
+        """BFS navigate on 3x3 grid avoiding center."""
+        if cur == tgt:
+            return []
+        cr, cc = pos_to_grid[cur]
+        tr, tc = pos_to_grid[tgt]
+        q = _deque([(cr, cc, [])])
+        visited = {(cr, cc)}
+        while q:
+            r, c, path = q.popleft()
+            if (r, c) == (tr, tc):
+                return path
+            for dr, dc, a in [(-1,0,A1), (1,0,A2), (0,-1,A3), (0,1,A4)]:
+                nr, nc = r+dr, c+dc
+                if 0 <= nr <= 2 and 0 <= nc <= 2 and (nr, nc) != (1,1) and (nr, nc) not in visited:
+                    visited.add((nr, nc))
+                    q.append((nr, nc, path + [a]))
+        return []
+
+    cur_pos = 0  # start position after reset
+
+    for level in range(1, 7):
+        if used >= budget or obs.state.name in ("WIN", "GAME_OVER"):
+            break
+        cur_pos = 0  # resets each level
+        swatches = level_swatches[level]
+        if swatches is None:
+            break
+
+        for op_type, tgt_pos, color in solutions[level]:
+            if used >= budget or obs.state.name in ("WIN", "GAME_OVER"):
+                break
+
+            # Navigate to target position
+            for a in _nav(cur_pos, tgt_pos):
+                obs = act(env, a)
+                used += 1
+            cur_pos = tgt_pos
+
+            # Select color
+            sx = swatches.get(color)
+            if sx is not None:
+                obs = click(env, sx + 2, 4)
+                used += 1
+
+            # Execute paint
+            if op_type == 'launch':
+                obs = act(env, A5)
+                used += 1
+            else:  # arrow click
+                ax, ay = arrow_coords[tgt_pos]
+                obs = click(env, ax, ay)
+                used += 1
+
+            if obs.levels_completed > best:
+                best = obs.levels_completed
+                name = "paint_game"
+
+    return best, name, used
+
+
 # ─── ACTION5-cycle strategy (move + A5 special action) ─────────────
 
 def strat_action5_cycle(env: Any, dir_actions: list[int], budget: int = 600) -> tuple[int, str, int]:
@@ -4442,6 +4544,15 @@ class EnsembleAgent:
                     self._logger.log_event("strategy_switch", {"strategy": best_strategy, "levels": best_levels})
             return levels > 0
 
+        # === Strategy 0: Cheap targeted strategies (run before expensive exploration) ===
+        # Paint game (~75 actions, solves CD82 fully)
+        if best_levels == 0 and has_click and dir_actions and 5 in avail:
+            try_strat(strat_paint_game, label="paint_game", budget=200)
+        # Spell-casting (~60 actions, solves SC25)
+        if best_levels == 0 and has_click and dir_actions:
+            remaining = min(3000, self.total_budget - total_actions)
+            try_strat(strat_spell_cast, dir_actions, label="spell_cast", budget=remaining)
+
         # === Strategy 1: Sustained directions ===
         if best_levels == 0:
             for aid in dir_actions:
@@ -4459,12 +4570,6 @@ class EnsembleAgent:
                     if total_actions >= self.total_budget or total_actions >= zig_budget_cap or best_levels > 0:
                         break
                     try_strat(strat_zigzag, a1, a2, length, label=f"zig{length}_A{a1}A{a2}", cycles=25)
-
-        # === Strategy 2b: Spell-casting (SC25-style: click 3x3 grid + move) ===
-        # Run early because it's cheap (~60 actions) and very targeted
-        if best_levels == 0 and has_click and dir_actions:
-            remaining = min(3000, self.total_budget - total_actions)
-            try_strat(strat_spell_cast, dir_actions, label="spell_cast", budget=remaining)
 
         # === Strategy 3: Click rare colors ===
         if best_levels == 0 and has_click:
