@@ -299,18 +299,18 @@ scripts/
 
 ## Current Status (2026-04-01)
 
-**Score: 9/25 games, 9/182 levels cleared**
+**Score: 11/25 games, 12/182 levels cleared**
 
 ### Per-Strategy Results
 | Strategy | Games Cleared | Unique Games |
 |----------|--------------|-------------|
-| Ensemble | AR25, CN04, LP85, SP80, R11L, VC33 (6) | R11L, VC33 |
-| Diff | AR25, CN04, LP85, SP80, R11L, VC33, LS20 (7) | FT09 |
+| Ensemble | AR25, CN04, LP85, SP80, R11L, VC33 (6) | VC33 |
+| Diff | AR25, CN04, FT09, KA59, LP85, LS20, S5I5(2lvl), SP80, R11L, VC33 (10) | FT09, KA59, S5I5 |
 | Graph | M0R0, CN04, LP85, LS20 (4) | M0R0 |
-| CNN | LP85 (1) | — |
+| CNN | LP85, AR25, R11L, SP80 (4) | — |
 
-### Remaining 16 Games (TODO)
-DC22, TU93, RE86, SU15, TR87, SC25, KA59, G50T, SB26, LF52, BP35, S5I5, SK48, WA30, CD82, TN36
+### Remaining 14 Games (TODO)
+DC22, TU93, RE86, SU15, TR87, SC25, G50T, SB26, LF52, BP35, SK48, WA30, CD82, TN36
 
 ### Active TODO per Team
 
