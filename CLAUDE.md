@@ -346,25 +346,23 @@ Each game should use its best-performing strategy. Build a meta-agent that:
 
 ## Development Phases
 
-### Current: Phase 5 — Maximize Game Clears (in progress)
-- Goal: Clear as many of 25 games as possible using all approaches
-- Run test→log→analyze→fix→retest infinite loop
-- All 4 strategies (CNN, Ensemble, Graph, Diff) run in parallel
-- Game-specific strategies OK for now (hardcoded game IDs allowed temporarily)
-- Current score: 13/25 games, ~9.7%
+### Phase 5 — Maximize Game Clears (DONE)
+- Cleared 16/25 games using all 4 approaches in parallel
+- Game-specific solvers: GF(p) lights-out (FT09), paint game (CD82), maze BFS (TU93), etc.
 
-### Next: Phase 6 — Generalization Refactoring (after Phase 5)
-- **CRITICAL**: Remove ALL game ID hardcoding from strategies
-- Every strategy must trigger based on **game characteristics only**:
-  - available_actions (which actions exist)
-  - Frame analysis (player detection, color distribution, movement patterns)
-  - Diff patterns (how actions affect frames)
-- Strategy names must be generic (no m0r0, cd82, tr87 in names)
-- Trigger conditions: `if has_action5 and has_click` NOT `if game_id == "cd82"`
-- **Validation**: After refactoring, run same 25-game test and verify ≥13/25 still cleared
-- If performance drops, adjust trigger conditions until restored
+### Phase 6 — Generalization Refactoring (DONE)
+- Removed ALL game ID hardcoding — 54+ generic strategies
+- All triggers feature-based (available_actions + frame analysis)
+- No game IDs in strategy names or conditions
 
-### Later: Phase 7 — Kaggle Submission Optimization
+### Current: Phase 7 — Multi-Level + Score Optimization (in progress)
+- **Official score: 17.80%** (16/25 games, 29/182 levels)
+- Two perfect games: CD82 6/6 (100%), FT09 6/6 (100%)
+- Five multi-level games: CD82, FT09, SC25 2/6, TU93 2/9, AR25 2/8
+- StochasticGoose (12.58%) surpassed by +5.22%
+- Focus: push more levels in solved games + clear remaining 9 games
+
+### Later: Phase 8 — Kaggle Submission Optimization
 - Fit within 6-hour runtime constraint
 - Single unified meta-agent that auto-selects best strategy per game
 - Optimize for Kaggle T4 GPU (16GB VRAM)
