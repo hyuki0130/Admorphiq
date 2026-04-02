@@ -39,5 +39,10 @@ logs/
 # ARC-AGI SDK downloaded game environments
 environment_files/
 
+# Debug/test scripts
+scripts/debug_*
+scripts/test_*
+scripts/run_regression_quick.py
+
 # OMC
 .omc/

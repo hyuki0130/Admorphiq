@@ -139,12 +139,6 @@ def try_bfs_solve(env, obs, game_title=""):
     # Game-specific BFS settings
     steps_per_action = 1
     mask_rows = None  # default: top 5 rows, right side
-    game_upper = game_title.upper()
-
-    # G50T: animation system needs extra steps to drain, mask timer rows 8-12 and 63
-    if game_upper == "G50T":
-        steps_per_action = 8  # max animation frames to drain
-        mask_rows = [(8, 13), (63, 64)]  # timer bar + bottom row
 
     # For hybrid games, discover click positions
     click_coords = None
