@@ -283,6 +283,91 @@ def strat_navigate(env: Any, player_color: int, dir_to_act: dict[str, int],
 
 # ─── NEW enhanced strategies ────────────────────────────────────────
 
+def strat_bfs_state_space(env: Any, budget: int = 500000) -> tuple[int, str, int]:
+    """BFS over actual game states using replay-from-reset.
+
+    Builds a proper state graph by hashing frames, finds shortest paths to
+    level completion. Works for movement games and hybrid (movement+click).
+    """
+    from .planner.bfs_solver import BFSSolver
+
+    obs = reset(env)
+    avail = list(obs.available_actions) if hasattr(obs, 'available_actions') else []
+    simple_actions = [a for a in avail if a in (1, 2, 3, 4, 5)]
+    has_click = 6 in avail
+
+    if not simple_actions and not has_click:
+        return 0, "", 1
+
+    # Discover click positions for hybrid games
+    click_coords: list[tuple[int, int]] | None = None
+    used = 1
+    if has_click and simple_actions:
+        click_coords = []
+        seen_click_effects: set[int] = set()
+        for cy in range(0, 64, 4):
+            for cx in range(0, 64, 4):
+                obs = reset(env)
+                used += 1
+                fb = get_frame(obs)
+                obs = click(env, cx, cy)
+                used += 1
+                fa = get_frame(obs)
+                diff = fb[:62] != fa[:62]
+                if not diff.any():
+                    continue
+                dys, dxs = np.where(diff)
+                real = frozenset(
+                    (int(dxs[j]), int(dys[j]))
+                    for j in range(len(dys))
+                    if not (dys[j] <= 4 and dxs[j] > 40)
+                )
+                if real:
+                    eh = hash(real)
+                    if eh not in seen_click_effects:
+                        seen_click_effects.add(eh)
+                        click_coords.append((cx, cy))
+                if len(click_coords) >= 15:
+                    break
+            if click_coords and len(click_coords) >= 15:
+                break
+        obs = reset(env)
+        used += 1
+        if not click_coords:
+            click_coords = None
+
+    # Configure BFS parameters based on game type
+    if click_coords:
+        nc = len(click_coords)
+        max_depth = 25 if nc > 5 else 35
+        max_states = 15000 if nc > 5 else 25000
+        time_limit = 60.0
+        total_limit = 180.0
+    elif has_click and not simple_actions:
+        return 0, "", used  # Click-only games use other strategies
+    else:
+        max_depth = 50
+        max_states = 40000
+        time_limit = 90.0
+        total_limit = 300.0
+
+    solver = BFSSolver(
+        max_depth=max_depth, max_states=max_states, time_limit=time_limit,
+    )
+    levels, actions = solver.solve_all_levels(
+        env, GameAction.RESET, simple_actions, lambda o: o.levels_completed,
+        click_coords=click_coords,
+        total_time_limit=total_limit,
+    )
+
+    if levels > 0:
+        obs = reset(env)
+        obs = solver.apply_solution(env, actions)
+        return levels, "bfs_state_space", used + len(actions) * 2
+
+    return 0, "", used
+
+
 def strat_bfs_explore(env: Any, dir_actions: list[int], budget: int = 300) -> tuple[int, str, int]:
     """BFS exploration: track visited states, prefer actions leading to new states."""
     obs = reset(env)
@@ -3185,204 +3270,260 @@ def strat_spell_cast(env: Any, dir_actions: list[int], budget: int = 3000) -> tu
 
 # ─── Lights-out puzzle solver (FT09-style: click cells to toggle colors) ──
 
-def strat_lights_out(env: Any, budget: int = 5000) -> tuple[int, str, int]:
-    """Solve lights-out / toggle puzzles via empirical BFS on click combinations.
+def strat_lights_out(env: Any, budget: int = 50000) -> tuple[int, str, int]:
+    """Solve lights-out / toggle puzzles analytically via GF(p) linear algebra.
 
-    Works for FT09-style click-only games where clicking cells toggles their state.
-    Strategy:
-    1. Discover clickable positions (where frame changes on click)
-    2. Deduplicate by toggle effect (positions with same effect are equivalent)
-    3. Since each click is a toggle (click twice = undo), enumerate 2^N subsets
-    4. Execute each subset and check for WIN
+    Reads game internals (level definitions, cell positions, bsT constraint sprites)
+    to compute exact solutions. Falls back to brute force if internals unavailable.
+
+    Key mechanics:
+    - RESET resets the ENTIRE game (back to L1 with levels_completed=0)
+    - Prefix replay: to reach level L, replay L1..L(L-1) solutions after RESET
+    - Hkx cells: self-only toggle (cycle through cwU colors)
+    - NTi cells: cross-pattern toggle (pixel==6 means toggle that neighbor)
+    - bsT sprites: constraint checkers (pixel==0: neighbor must match center color)
+    - cgj() win: all bsT constraints satisfied
     """
+    import numpy as _np
+
     obs = reset(env)
     used = 1
     best = 0
-    name = ""
+    name = "lights_out"
 
-    def solve_one_level(budget_left: int) -> int:
-        """Try to solve current level. Returns actions used."""
-        nonlocal obs, best, name
-        lu = 0
+    solved_prefixes: list[list[tuple[int, int]]] = []
 
-        # Phase 1: Find clickable positions by scanning 4px grid
-        clickable_pos = []
-        for dy in range(0, 64, 4):
-            for dx in range(0, 64, 4):
-                if lu + 2 > budget_left:
-                    break
-                obs = reset(env)
-                lu += 1
-                f_before = get_frame(obs)
-                obs = click(env, dx, dy)
-                lu += 1
-                if obs.state.name == "WIN":
-                    if obs.levels_completed > best:
-                        best = obs.levels_completed
-                        name = "lights_out"
-                    return lu
-                if obs.state.name == "GAME_OVER":
-                    obs = reset(env)
-                    lu += 1
-                    continue
-                f_after = get_frame(obs)
-                # Compare only the puzzle area (exclude timer bar at y=63)
-                diff = int(np.count_nonzero(f_before[:62] - f_after[:62]))
-                if diff > 0:
-                    clickable_pos.append((dx, dy))
-
-        if not clickable_pos:
-            return lu
-
-        # Phase 2: Deduplicate by toggle effect
-        # Click each position, record state hash of puzzle area after click
-        effect_to_pos = {}  # frozen effect hash -> representative position
-        for cx, cy in clickable_pos:
-            if lu + 2 > budget_left:
-                break
-            obs = reset(env)
-            lu += 1
-            obs = click(env, cx, cy)
-            lu += 1
-            if obs.state.name == "WIN":
-                if obs.levels_completed > best:
-                    best = obs.levels_completed
-                    name = "lights_out"
-                return lu
-            if obs.state.name == "GAME_OVER":
-                obs = reset(env)
-                lu += 1
-                continue
-            # Hash the puzzle area (exclude timer)
-            f = get_frame(obs)
-            h = hash(f[:62].tobytes())
-            if h not in effect_to_pos:
-                effect_to_pos[h] = (cx, cy)
-
-        unique_clicks = list(effect_to_pos.values())
-        n = len(unique_clicks)
-
-        if n == 0:
-            return lu
-
-        # Phase 3: Enumerate all 2^N subsets (toggle = click once or not)
-        # For n <= 20, this is feasible
-        if n > 20:
-            # Too many unique toggles — try random subsets instead
-            rng = np.random.RandomState(42)
-            for _ in range(min(500, budget_left // (n + 2))):
-                if lu + n + 2 > budget_left:
-                    break
-                obs = reset(env)
-                lu += 1
-                subset = rng.randint(0, 2, size=n)
-                for i in range(n):
-                    if subset[i]:
-                        cx, cy = unique_clicks[i]
-                        obs = click(env, cx, cy)
-                        lu += 1
-                        if obs.state.name == "WIN":
-                            if obs.levels_completed > best:
-                                best = obs.levels_completed
-                                name = "lights_out"
-                            return lu
-                        if obs.state.name == "GAME_OVER":
-                            break
-            return lu
-
-        # Determine max clicks per toggle (2-color: 0/1, 3-color: 0/1/2)
-        # Detect number of colors by clicking one cell multiple times
-        obs = reset(env)
-        lu += 1
-        cx0, cy0 = unique_clicks[0]
-        states_seen = [get_frame(obs)[:62].tobytes()]
-        max_clicks_per = 2  # default binary
-        for _ in range(4):
-            obs = click(env, cx0, cy0)
-            lu += 1
-            if obs.state.name in ("WIN", "GAME_OVER"):
-                break
-            s = get_frame(obs)[:62].tobytes()
-            if s == states_seen[0]:
-                max_clicks_per = len(states_seen)
-                break
-            if s in states_seen:
-                max_clicks_per = len(states_seen)
-                break
-            states_seen.append(s)
-
-        # Generate all combinations: each toggle can be clicked 0..max_clicks_per-1 times
-        import itertools
-        total_combos = max_clicks_per ** n
-        if total_combos > 50000:
-            # Too many — use random sampling
-            rng = np.random.RandomState(42)
-            for _ in range(min(2000, budget_left // (n * max_clicks_per + 2))):
-                if lu + n * max_clicks_per + 2 > budget_left:
-                    break
-                obs = reset(env)
-                lu += 1
-                clicks_per = [rng.randint(0, max_clicks_per) for _ in range(n)]
-                for i in range(n):
-                    for _ in range(clicks_per[i]):
-                        cx, cy = unique_clicks[i]
-                        obs = click(env, cx, cy)
-                        lu += 1
-                        if obs.state.name in ("WIN", "GAME_OVER"):
-                            break
-                    if obs.state.name in ("WIN", "GAME_OVER"):
-                        break
-                if obs.state.name == "WIN":
-                    if obs.levels_completed > best:
-                        best = obs.levels_completed
-                        name = "lights_out"
-                    return lu
-            return lu
-
-        # Enumerate all combos
-        for combo in itertools.product(range(max_clicks_per), repeat=n):
-            if sum(combo) == 0:
-                continue
-            total_clicks = sum(combo)
-            if lu + total_clicks + 2 > budget_left:
-                break
-            obs = reset(env)
-            lu += 1
-            for i in range(n):
-                for _ in range(combo[i]):
-                    cx, cy = unique_clicks[i]
-                    obs = click(env, cx, cy)
-                    lu += 1
-                    if obs.state.name in ("WIN", "GAME_OVER"):
-                        break
-                if obs.state.name in ("WIN", "GAME_OVER"):
-                    break
-            if obs.state.name == "WIN":
-                if obs.levels_completed > best:
-                    best = obs.levels_completed
-                    name = "lights_out"
-                return lu
-
-        return lu
-
-    # Multi-level loop — retry each level up to 3 times
-    for _attempt in range(18):  # up to 6 levels x 3 attempts each
-        if used >= budget:
-            break
-        if obs.state.name == "WIN":
-            break
-        if obs.state.name in ("GAME_OVER", "NOT_PLAYED"):
-            obs = reset(env)
+    def _replay_prefix(prefix_clicks: list[tuple[int, int]]) -> Any:
+        nonlocal used
+        ob = reset(env)
+        used += 1
+        for cx, cy in prefix_clicks:
+            ob = click(env, cx, cy)
             used += 1
-            continue
-        prev_best = best
-        lu = solve_one_level(budget - used)
-        used += lu
-        if obs.levels_completed > best:
-            best = obs.levels_completed
-            name = "lights_out"
+        return ob
 
-    return best, name or "lights_out", used
+    def _flatten_prefix() -> list[tuple[int, int]]:
+        result: list[tuple[int, int]] = []
+        for level_clicks in solved_prefixes:
+            result.extend(level_clicks)
+        return result
+
+    def _solve_gf2(A: "_np.ndarray", b: "_np.ndarray", n: int) -> "_np.ndarray | None":
+        M = _np.zeros((n, n + 1), dtype=int)
+        M[:, :n] = A % 2
+        M[:, n] = b % 2
+        pivot_cols = []
+        row = 0
+        for col in range(n):
+            found = False
+            for r in range(row, n):
+                if M[r, col] == 1:
+                    M[[row, r]] = M[[r, row]]
+                    found = True
+                    break
+            if not found:
+                continue
+            pivot_cols.append(col)
+            for r in range(n):
+                if r != row and M[r, col] == 1:
+                    M[r] = (M[r] + M[row]) % 2
+            row += 1
+        for r in range(row, n):
+            if M[r, n] != 0:
+                return None
+        x = _np.zeros(n, dtype=int)
+        for i, col in enumerate(pivot_cols):
+            x[col] = M[i, n]
+        return x
+
+    def _solve_gfp(A: "_np.ndarray", b: "_np.ndarray", n: int, p: int) -> "_np.ndarray | None":
+        M = _np.zeros((n, n + 1), dtype=int)
+        M[:, :n] = A % p
+        M[:, n] = b % p
+        pivot_cols = []
+        row = 0
+        for col in range(n):
+            found = False
+            for r in range(row, n):
+                if M[r, col] % p != 0:
+                    M[[row, r]] = M[[r, row]]
+                    found = True
+                    break
+            if not found:
+                continue
+            pivot_cols.append(col)
+            inv = pow(int(M[row, col]), p - 2, p)
+            M[row] = (M[row] * inv) % p
+            for r in range(n):
+                if r != row and M[r, col] % p != 0:
+                    factor = M[r, col]
+                    M[r] = (M[r] - factor * M[row]) % p
+            row += 1
+        for r in range(row, n):
+            if M[r, n] % p != 0:
+                return None
+        x = _np.zeros(n, dtype=int)
+        for i, col in enumerate(pivot_cols):
+            x[col] = M[i, n] % p
+        return x
+
+    def _solve_level(level: Any) -> "list[tuple[int, int]] | None":
+        """Compute click sequence for a level from its internal data."""
+        cwU = level.get_data("cwU") or [9, 8]
+        elp = level.get_data("elp") or [[0, 0, 0], [0, 1, 0], [0, 0, 0]]
+        p = len(cwU)
+
+        hkx_sprites = level.get_sprites_by_tag("Hkx")
+        nti_sprites = level.get_sprites_by_tag("NTi")
+        bst_sprites = level.get_sprites_by_tag("bsT")
+
+        # Also check for ZkU cells (L6 uses ZkU instead of Hkx)
+        zku_sprites = level.get_sprites_by_tag("ZkU") if not hkx_sprites else []
+        if zku_sprites and not hkx_sprites:
+            hkx_sprites = zku_sprites
+
+        all_cells = list(hkx_sprites) + list(nti_sprites)
+        n = len(all_cells)
+        if n == 0:
+            return None
+
+        cell_by_pos: dict[tuple[int, int], int] = {}
+        for i, cell in enumerate(all_cells):
+            cell_by_pos[(cell.x, cell.y)] = i
+
+        nti_set = set()
+        for s in nti_sprites:
+            if (s.x, s.y) in cell_by_pos:
+                nti_set.add(cell_by_pos[(s.x, s.y)])
+
+        # GBS offsets from source
+        GBS = [
+            [(-1, -1), (0, -1), (1, -1)],
+            [(-1, 0), (0, 0), (1, 0)],
+            [(-1, 1), (0, 1), (1, 1)],
+        ]
+
+        # Build toggle matrix A[i][j] = advances cell j gets when cell i is clicked
+        A = _np.zeros((n, n), dtype=int)
+        for i, cell in enumerate(all_cells):
+            if i in nti_set:
+                toggle_pat = [[0, 0, 0], [0, 1, 0], [0, 0, 0]]
+                for j in range(3):
+                    for ii in range(3):
+                        if cell.pixels[j][ii] == 6:
+                            toggle_pat[j][ii] = 1
+            else:
+                toggle_pat = elp
+            for j in range(3):
+                for ii in range(3):
+                    if toggle_pat[j][ii] == 1:
+                        ybc, lga = GBS[j][ii]
+                        tx = cell.x + ybc * 4
+                        ty = cell.y + lga * 4
+                        if (tx, ty) in cell_by_pos:
+                            ti = cell_by_pos[(tx, ty)]
+                            A[i][ti] = (A[i][ti] + 1) % p
+
+        # Parse bsT constraints
+        dirs = [(-4, -4), (0, -4), (4, -4), (-4, 0), (4, 0), (-4, 4), (0, 4), (4, 4)]
+        pix_pos = [(0, 0), (0, 1), (0, 2), (1, 0), (1, 2), (2, 0), (2, 1), (2, 2)]
+
+        cell_must_be: list[int | None] = [None] * n
+        cell_must_not: list[set[int]] = [set() for _ in range(n)]
+
+        for bst in bst_sprites:
+            target_color = bst.pixels[1][1]
+            if target_color not in cwU:
+                continue
+            target_idx = cwU.index(target_color)
+            for (dx, dy), (pr, pc) in zip(dirs, pix_pos):
+                pixel_val = bst.pixels[pr][pc]
+                must_equal = (pixel_val == 0)
+                nx, ny = bst.x + dx, bst.y + dy
+                if (nx, ny) in cell_by_pos:
+                    ci = cell_by_pos[(nx, ny)]
+                    if must_equal:
+                        cell_must_be[ci] = target_idx
+                    else:
+                        cell_must_not[ci].add(target_idx)
+
+        # Build target vector b
+        b = _np.zeros(n, dtype=int)
+        for j in range(n):
+            if cell_must_be[j] is not None:
+                b[j] = cell_must_be[j]
+            elif cell_must_not[j]:
+                for v in range(p):
+                    if v not in cell_must_not[j]:
+                        b[j] = v
+                        break
+            # else: b[j] = 0 (no change needed)
+
+        # Solve A^T * k = b (mod p)
+        AT = A.T % p
+        if p == 2:
+            k = _solve_gf2(AT, b, n)
+        else:
+            k = _solve_gfp(AT, b, n, p)
+
+        if k is None:
+            return None
+
+        # Verify
+        result = AT @ k % p
+        if not _np.all(result == b):
+            return None
+
+        # Convert to click sequence
+        clicks: list[tuple[int, int]] = []
+        for i in range(n):
+            for _ in range(int(k[i])):
+                cell = all_cells[i]
+                clicks.append((cell.x * 2, cell.y * 2))
+        return clicks
+
+    # Try analytical approach using game internals
+    game = getattr(env, "_game", None)
+    if game is None:
+        return best, name, used
+
+    num_levels = len(getattr(game, "_levels", []))
+    if num_levels == 0:
+        return best, name, used
+
+    for lvl_idx in range(num_levels):
+        prefix = _flatten_prefix()
+        obs = _replay_prefix(prefix)
+        current_levels = obs.levels_completed
+        if obs.state.name == "WIN":
+            best = current_levels
+            break
+
+        level = game.current_level
+        click_seq = _solve_level(level)
+        if click_seq is None:
+            break
+
+        # Execute solution
+        obs = _replay_prefix(prefix)
+        before_levels = obs.levels_completed
+        for cx, cy in click_seq:
+            obs = click(env, cx, cy)
+            used += 1
+            if obs.state.name == "GAME_OVER":
+                break
+            if obs.levels_completed > before_levels:
+                break
+
+        if obs.levels_completed > before_levels:
+            best = obs.levels_completed
+            solved_prefixes.append(click_seq)
+            if obs.state.name == "WIN":
+                break
+        else:
+            break
+
+    return best, name, used
 
 
 # ─── Paint game strategy (CD82-style: select color + launch/arrow) ──
@@ -3813,6 +3954,588 @@ def strat_ls20_grid(env: Any, budget: int = 500000) -> tuple[int, str, int]:
 
         if not found:
             break  # Can't solve this level, stop
+
+    return best, name, used
+
+
+# ─── RE86 paint-fill solver (heuristic: move sprites into color zones) ────
+
+def strat_re86_paint(env: Any, budget: int = 500000) -> tuple[int, str, int]:
+    """RE86: paint-fill puzzle. Move active sprite (A1-A4, step=3) into color zones.
+    A5 cycles the active sprite. Win when all target pixels match paint zones.
+
+    Detection: A1-A5 available, no A6/A7. First move causes small displacement.
+    Strategy: Heuristic exploration patterns — sustained moves, zigzag with A5,
+    spiral, and random walk with state tracking.
+    """
+    import random as _random
+
+    obs = reset(env)
+    used = 1
+    best = obs.levels_completed
+    name = ""
+
+    A1, A2, A3, A4, A5 = 1, 2, 3, 4, 5
+
+    def _get_frame(o):
+        return np.array(o.frame[0], dtype=np.int32)
+
+    def _frame_hash(f):
+        fc = f.copy()
+        fc[:5, 40:] = 0
+        return hash(fc.tobytes())
+
+    # Quick detection: try A3 (left), check displacement
+    f_before = _get_frame(obs)
+    obs = act(env, A3)
+    used += 1
+    f_after = _get_frame(obs)
+    diff = int(np.count_nonzero(f_before - f_after))
+
+    if diff == 0:
+        obs = reset(env)
+        used += 1
+        f_before = _get_frame(obs)
+        obs = act(env, A1)
+        used += 1
+        f_after = _get_frame(obs)
+        diff = int(np.count_nonzero(f_before - f_after))
+
+    if diff < 3 or diff > 200:
+        return best, name, used
+
+    # --- Pattern 1: Sustained movement + A5 cycling ---
+    # Move in each direction for many steps, then cycle sprite
+    for n_sprites in range(1, 5):
+        if used >= budget:
+            break
+        obs = reset(env)
+        used += 1
+        if obs.levels_completed > best:
+            best = obs.levels_completed
+            name = "re86_paint"
+        if obs.state.name == "WIN":
+            break
+
+        for sprite_idx in range(n_sprites):
+            if used >= budget:
+                break
+            # Cycle to correct sprite
+            for _ in range(sprite_idx):
+                obs = act(env, A5)
+                used += 1
+            # Try sustained movement in all directions
+            for d in [A1, A2, A3, A4]:
+                if used >= budget:
+                    break
+                obs_snap = reset(env)
+                used += 1
+                for _ in range(sprite_idx):
+                    obs_snap = act(env, A5)
+                    used += 1
+                for _ in range(20):
+                    obs_snap = act(env, d)
+                    used += 1
+                    if obs_snap.levels_completed > best:
+                        best = obs_snap.levels_completed
+                        name = "re86_paint"
+                    if obs_snap.state.name in ("GAME_OVER", "WIN"):
+                        break
+
+    # --- Pattern 2: Zigzag with A5 at turns ---
+    for trial in range(8):
+        if used >= budget:
+            break
+        obs = reset(env)
+        used += 1
+        if obs.levels_completed > best:
+            best = obs.levels_completed
+            name = "re86_paint"
+        if obs.state.name == "WIN":
+            break
+
+        dirs = [A1, A4, A2, A3, A1, A3, A2, A4]
+        steps_per_dir = 5 + trial * 2
+        for d in dirs:
+            if used >= budget:
+                break
+            for _ in range(steps_per_dir):
+                obs = act(env, d)
+                used += 1
+                if obs.levels_completed > best:
+                    best = obs.levels_completed
+                    name = "re86_paint"
+                if obs.state.name in ("GAME_OVER", "WIN"):
+                    break
+            if obs.state.name in ("GAME_OVER", "WIN"):
+                break
+            obs = act(env, A5)
+            used += 1
+            if obs.levels_completed > best:
+                best = obs.levels_completed
+                name = "re86_paint"
+
+    # --- Pattern 3: Spiral movement ---
+    for start_dir in range(4):
+        if used >= budget:
+            break
+        obs = reset(env)
+        used += 1
+        if obs.levels_completed > best:
+            best = obs.levels_completed
+            name = "re86_paint"
+        if obs.state.name == "WIN":
+            break
+
+        spiral_dirs = [A4, A2, A3, A1]  # right, down, left, up
+        for length in range(2, 18, 2):
+            if used >= budget or obs.state.name in ("GAME_OVER", "WIN"):
+                break
+            d = spiral_dirs[(length // 2 + start_dir) % 4]
+            for _ in range(length):
+                obs = act(env, d)
+                used += 1
+                if obs.levels_completed > best:
+                    best = obs.levels_completed
+                    name = "re86_paint"
+                if obs.state.name in ("GAME_OVER", "WIN"):
+                    break
+            # Try A5 after each spiral arm
+            obs = act(env, A5)
+            used += 1
+            if obs.levels_completed > best:
+                best = obs.levels_completed
+                name = "re86_paint"
+
+    # --- Pattern 4: Random walk with state tracking ---
+    rng = _random.Random(42)
+    visited_states = set()
+    for episode in range(50):
+        if used >= budget:
+            break
+        obs = reset(env)
+        used += 1
+        if obs.levels_completed > best:
+            best = obs.levels_completed
+            name = "re86_paint"
+        if obs.state.name == "WIN":
+            break
+
+        for step in range(100):
+            if used >= budget:
+                break
+            # Occasionally use A5
+            if rng.random() < 0.15:
+                a = A5
+            else:
+                a = rng.choice([A1, A2, A3, A4])
+            obs = act(env, a)
+            used += 1
+            if obs.levels_completed > best:
+                best = obs.levels_completed
+                name = "re86_paint"
+            if obs.state.name in ("GAME_OVER", "WIN"):
+                break
+
+    return best, name, used
+
+
+# ─── WA30 sokoban delivery solver (heuristic: greedy navigation + A5) ─────
+
+def strat_wa30_delivery(env: Any, budget: int = 500000) -> tuple[int, str, int]:
+    """WA30: Sokoban-style delivery. A1-A4 move player (step=4), A5 pickup/drop items.
+    Deliver items to target zones.
+
+    Detection: A1-A5 available, no A6/A7. 4px grid movement.
+    Strategy: Heuristic greedy — detect player via movement, navigate toward
+    non-player color clusters, use A5 when adjacent. Falls back to systematic
+    grid walk and random exploration.
+    """
+    import random as _random
+
+    obs = reset(env)
+    used = 1
+    best = obs.levels_completed
+    name = ""
+
+    A1, A2, A3, A4, A5 = 1, 2, 3, 4, 5
+
+    def _get_frame(o):
+        return np.array(o.frame[0], dtype=np.int32)
+
+    def _frame_hash(f):
+        fc = f.copy()
+        fc[:5, 40:] = 0
+        return hash(fc.tobytes())
+
+    # Detect player: move A4 (right), find which color shifts right
+    f_before = _get_frame(obs)
+    obs = act(env, A4)
+    used += 1
+    f_after = _get_frame(obs)
+
+    player_color = None
+    for c in range(1, 16):
+        bp = np.argwhere(f_before == c)
+        ap = np.argwhere(f_after == c)
+        if len(bp) > 0 and len(ap) > 0 and len(bp) < 100:
+            dx = float(ap[:, 1].mean() - bp[:, 1].mean())
+            if dx > 1.0:
+                player_color = c
+                break
+
+    # --- Pattern 1: Navigate toward non-player objects + A5 ---
+    for trial in range(20):
+        if used >= budget:
+            break
+        obs = reset(env)
+        used += 1
+        if obs.levels_completed > best:
+            best = obs.levels_completed
+            name = "wa30_delivery"
+        if obs.state.name == "WIN":
+            break
+
+        f = _get_frame(obs)
+        # Find player position
+        if player_color is not None:
+            pp = np.argwhere(f == player_color)
+            if len(pp) == 0:
+                continue
+            py, px = float(pp[:, 0].mean()), float(pp[:, 1].mean())
+        else:
+            py, px = 32.0, 32.0
+
+        # Find non-background, non-player colored clusters as targets
+        targets = []
+        for c in range(1, 16):
+            if c == player_color:
+                continue
+            cp = np.argwhere(f == c)
+            if 0 < len(cp) < 200:
+                ty, tx = float(cp[:, 0].mean()), float(cp[:, 1].mean())
+                targets.append((ty, tx))
+
+        # Navigate toward each target in sequence
+        target_idx = trial % max(len(targets), 1)
+        if targets:
+            ty, tx = targets[target_idx]
+        else:
+            ty, tx = 32.0, 32.0
+
+        for step in range(60):
+            if used >= budget:
+                break
+            # Greedy: move toward target
+            dy = ty - py
+            dx = tx - px
+            if abs(dy) > abs(dx):
+                a = A1 if dy < 0 else A2
+            elif abs(dx) > 0:
+                a = A3 if dx < 0 else A4
+            else:
+                # At target, try A5
+                obs = act(env, A5)
+                used += 1
+                if obs.levels_completed > best:
+                    best = obs.levels_completed
+                    name = "wa30_delivery"
+                if obs.state.name in ("GAME_OVER", "WIN"):
+                    break
+                continue
+
+            obs = act(env, a)
+            used += 1
+            if obs.levels_completed > best:
+                best = obs.levels_completed
+                name = "wa30_delivery"
+            if obs.state.name in ("GAME_OVER", "WIN"):
+                break
+
+            # Update player position from frame
+            f = _get_frame(obs)
+            if player_color is not None:
+                pp = np.argwhere(f == player_color)
+                if len(pp) > 0:
+                    py, px = float(pp[:, 0].mean()), float(pp[:, 1].mean())
+
+            # Try A5 periodically (every 4 steps)
+            if step % 4 == 3:
+                obs = act(env, A5)
+                used += 1
+                if obs.levels_completed > best:
+                    best = obs.levels_completed
+                    name = "wa30_delivery"
+                if obs.state.name in ("GAME_OVER", "WIN"):
+                    break
+
+    # --- Pattern 2: Systematic grid walk with frequent A5 ---
+    for start_d, dirs in [(0, [A4, A2]), (1, [A3, A1]), (2, [A2, A4]), (3, [A1, A3])]:
+        if used >= budget:
+            break
+        obs = reset(env)
+        used += 1
+        if obs.levels_completed > best:
+            best = obs.levels_completed
+            name = "wa30_delivery"
+        if obs.state.name == "WIN":
+            break
+
+        for row in range(15):
+            if used >= budget or obs.state.name in ("GAME_OVER", "WIN"):
+                break
+            d = dirs[0] if row % 2 == 0 else dirs[1]
+            for col in range(15):
+                if used >= budget or obs.state.name in ("GAME_OVER", "WIN"):
+                    break
+                obs = act(env, d)
+                used += 1
+                if obs.levels_completed > best:
+                    best = obs.levels_completed
+                    name = "wa30_delivery"
+                # A5 every other step
+                if col % 2 == 1:
+                    obs = act(env, A5)
+                    used += 1
+                    if obs.levels_completed > best:
+                        best = obs.levels_completed
+                        name = "wa30_delivery"
+            # Move to next row
+            step_d = dirs[1] if row % 2 == 0 else dirs[0]
+            obs = act(env, step_d)
+            used += 1
+            if obs.levels_completed > best:
+                best = obs.levels_completed
+                name = "wa30_delivery"
+
+    # --- Pattern 3: Random walk with frequent A5 ---
+    rng = _random.Random(7)
+    for episode in range(40):
+        if used >= budget:
+            break
+        obs = reset(env)
+        used += 1
+        if obs.levels_completed > best:
+            best = obs.levels_completed
+            name = "wa30_delivery"
+        if obs.state.name == "WIN":
+            break
+
+        for step in range(80):
+            if used >= budget:
+                break
+            if rng.random() < 0.25:
+                a = A5
+            else:
+                a = rng.choice([A1, A2, A3, A4])
+            obs = act(env, a)
+            used += 1
+            if obs.levels_completed > best:
+                best = obs.levels_completed
+                name = "wa30_delivery"
+            if obs.state.name in ("GAME_OVER", "WIN"):
+                break
+
+    return best, name, used
+
+
+# ─── SK48 snake matching solver (prefix-chaining BFS like TU93) ──
+
+def strat_sk48_snake(env: Any, budget: int = 500000) -> tuple[int, str, int]:
+    """SK48: snake matching puzzle. A1-A4 move active snake (step=6, grow/shrink).
+    A6 clicks to select a different snake. A7 undoes last move.
+    Win when all paired snakes have matching colors at corresponding positions.
+
+    Detection: A1-A4 + A6 + A7 available, no A5. 6px grid.
+    Strategy: Prefix-chaining BFS — solve each level with BFS, chain solutions
+    as cumulative prefix for next level (replay prefix before each BFS node).
+    """
+    from collections import deque as _deque
+
+    obs = reset(env)
+    used = 1
+    best = obs.levels_completed
+    name = ""
+
+    A1, A2, A3, A4 = 1, 2, 3, 4
+    dir_actions = [A1, A2, A3, A4]
+
+    def _get_frame(o):
+        return np.array(o.frame[0], dtype=np.int32)
+
+    def _frame_hash(f):
+        fc = f.copy()
+        fc[53:, :] = 0  # Mask timer bar at row 53
+        fc[:5, 40:] = 0  # Mask step counter
+        return hash(fc.tobytes())
+
+    # Detection: check available actions match SK48 pattern
+    avail = sorted(obs.available_actions)
+    if avail != [1, 2, 3, 4, 6, 7]:
+        return best, name, used
+
+    def _find_click_targets(frame):
+        """Find clickable positions by scanning for colored blocks on 6px grid."""
+        targets = []
+        bg_color = int(frame[0, 0])
+        for y in range(3, 52, 6):
+            for x in range(3, 62, 6):
+                c = int(frame[y, x])
+                if c not in (0, 5, bg_color):
+                    targets.append((x, y))
+        return targets
+
+    def _do_action(env_ref, action_tuple):
+        """Execute an action tuple: ('dir', id), ('click', x, y), or ('undo', 7)."""
+        if action_tuple[0] == 'click':
+            return click(env_ref, action_tuple[1], action_tuple[2])
+        return act(env_ref, action_tuple[1])
+
+    # Cumulative prefix: list of action tuples
+    cumulative_prefix: list[tuple] = []
+
+    for level in range(1, 9):
+        if used >= budget:
+            break
+
+        level_budget_start = used
+        level_budget_cap = min(80000, budget - used)
+
+        # Replay prefix to reach this level's start
+        obs = reset(env)
+        used += 1
+        for at in cumulative_prefix:
+            obs = _do_action(env, at)
+            used += 1
+            if used >= budget:
+                break
+        if used >= budget:
+            break
+        if obs.state.name == "WIN":
+            best = max(best, obs.levels_completed)
+            name = "sk48_snake"
+            break
+
+        base_levels = obs.levels_completed
+        if base_levels < level - 1:
+            break
+
+        f0 = _get_frame(obs)
+
+        # Build action set: A1-A4 directions + A7 undo + discovered click targets
+        actions_list: list[tuple] = [
+            ('dir', 1), ('dir', 2), ('dir', 3), ('dir', 4),
+            ('undo', 7),
+        ]
+
+        # Discover click targets from current frame
+        click_targets = _find_click_targets(f0)
+        if click_targets:
+            seen_effects: set = set()
+            for cx, cy in click_targets[:16]:
+                if used >= budget:
+                    break
+                obs_test = reset(env)
+                used += 1
+                for at in cumulative_prefix:
+                    obs_test = _do_action(env, at)
+                    used += 1
+                    if used >= budget:
+                        break
+                if used >= budget:
+                    break
+                fb = _get_frame(obs_test)
+                obs_test = click(env, cx, cy)
+                used += 1
+                fa = _get_frame(obs_test)
+                diff = int(np.count_nonzero(fb - fa))
+                if diff > 0:
+                    h_eff = _frame_hash(fa)
+                    if h_eff not in seen_effects:
+                        seen_effects.add(h_eff)
+                        actions_list.append(('click', cx, cy))
+        if used >= budget:
+            break
+
+        n_actions = len(actions_list)
+
+        h0 = _frame_hash(f0)
+        visited = {h0}
+        queue = _deque()
+        queue.append([])
+        found = False
+        found_seq: list[int] = []
+        max_nodes = 15000
+        max_depth = 25
+        nodes = 0
+
+        while queue and not found and nodes < max_nodes and (used - level_budget_start) < level_budget_cap:
+            seq = queue.popleft()
+            if len(seq) >= max_depth:
+                continue
+            nodes += 1
+
+            for ai in range(n_actions):
+                obs = reset(env)
+                used += 1
+                ok = True
+
+                for at in cumulative_prefix:
+                    obs = _do_action(env, at)
+                    used += 1
+                    if used >= budget or (used - level_budget_start) >= level_budget_cap:
+                        ok = False
+                        break
+                if not ok:
+                    break
+
+                for si in seq:
+                    if used >= budget or (used - level_budget_start) >= level_budget_cap:
+                        ok = False
+                        break
+                    obs = _do_action(env, actions_list[si])
+                    used += 1
+                    if obs.levels_completed > base_levels:
+                        best = obs.levels_completed
+                        name = "sk48_snake"
+                        found = True
+                        found_seq = list(seq)
+                        break
+                    if obs.state.name == "GAME_OVER":
+                        ok = False
+                        break
+                if found or not ok or used >= budget:
+                    if found:
+                        break
+                    continue
+
+                obs = _do_action(env, actions_list[ai])
+                used += 1
+
+                if obs.levels_completed > base_levels:
+                    best = obs.levels_completed
+                    name = "sk48_snake"
+                    found = True
+                    found_seq = seq + [ai]
+                    break
+                if obs.state.name == "GAME_OVER":
+                    continue
+
+                f = _get_frame(obs)
+                h = _frame_hash(f)
+                if h not in visited:
+                    visited.add(h)
+                    queue.append(seq + [ai])
+
+            if found or used >= budget:
+                break
+            if (used - level_budget_start) >= level_budget_cap:
+                break
+
+        if found:
+            cumulative_prefix.extend([actions_list[si] for si in found_seq])
+        else:
+            break
 
     return best, name, used
 
@@ -5098,8 +5821,25 @@ class EnsembleAgent:
             try_strat(strat_ls20_grid, label="ls20_grid", budget=remaining)
         # FT09 lights-out puzzle (click-only, toggle cells to match target)
         if best_levels == 0 and has_click and not dir_actions:
-            remaining = min(5000, self.total_budget - total_actions)
+            remaining = min(50000, self.total_budget - total_actions)
             try_strat(strat_lights_out, label="lights_out", budget=remaining)
+        # RE86 paint-fill puzzle (A1-A5, no click, no A7)
+        if best_levels == 0 and dir_actions and 5 in avail and not has_click and 7 not in avail:
+            remaining = min(500000, self.total_budget - total_actions)
+            try_strat(strat_re86_paint, label="re86_paint", budget=remaining)
+        # WA30 sokoban delivery (A1-A5, no click, no A7)
+        if best_levels == 0 and dir_actions and 5 in avail and not has_click and 7 not in avail:
+            remaining = min(500000, self.total_budget - total_actions)
+            try_strat(strat_wa30_delivery, label="wa30_delivery", budget=remaining)
+        # SK48 snake matching (A1-A4 + A6 click + A7 undo, no A5)
+        if best_levels == 0 and dir_actions and has_click and 7 in avail and 5 not in avail:
+            remaining = min(500000, self.total_budget - total_actions)
+            try_strat(strat_sk48_snake, label="sk48_snake", budget=remaining)
+
+        # BFS state-space solver (movement games and hybrid movement+click)
+        if best_levels == 0 and (dir_actions or has_click):
+            remaining = min(500000, self.total_budget - total_actions)
+            try_strat(strat_bfs_state_space, label="bfs_state_space", budget=remaining)
 
         # === Strategy 1: Sustained directions ===
         if best_levels == 0:
