@@ -4500,6 +4500,14 @@ def strat_wa30_analytical(env: Any, budget: int = 5000) -> tuple[int, str, int]:
         player = game.current_level.get_sprites_by_tag("wbmdvjhthc")[0]
         prev_level = game._current_level_index
         blocked = game.pkbufziase | game.qthdiggudy
+        # Exclude worker positions — workers move after each action
+        all_workers = (game.current_level.get_sprites_by_tag("kdweefinfi")
+                       + game.current_level.get_sprites_by_tag("ysysltqlke"))
+        for w in all_workers:
+            blocked.discard((w.x, w.y))
+            if w in game.nsevyuople:
+                wc = game.nsevyuople[w]
+                blocked.discard((wc.x, wc.y))
         step_count = 0
 
         # Navigate to adjacent position
@@ -4561,11 +4569,32 @@ def strat_wa30_analytical(env: Any, budget: int = 5000) -> tuple[int, str, int]:
         dx_item = carried.x - player.x
         dy_item = carried.y - player.y
 
-        # Navigate to deliver
-        player_goal = (target[0] - dx_item, target[1] - dy_item)
+        # Navigate to deliver — try all free targets, pick shortest valid path
         blocked = game.pkbufziase | game.qthdiggudy
-        path = _bfs(blocked, (player.x, player.y), {player_goal},
-                     item_offset=(dx_item, dy_item))
+        # Exclude worker positions — workers move after each action
+        all_workers = (game.current_level.get_sprites_by_tag("kdweefinfi")
+                       + game.current_level.get_sprites_by_tag("ysysltqlke"))
+        for w in all_workers:
+            blocked.discard((w.x, w.y))
+            if w in game.nsevyuople:
+                wc = game.nsevyuople[w]
+                blocked.discard((wc.x, wc.y))
+        # Try the requested target first, then all other free targets
+        _gt = _get_grid_targets()
+        _items = game.current_level.get_sprites_by_tag("geezpjgiyd")
+        _occ = {(it.x, it.y) for it in _items
+                if (it.x, it.y) in _gt and it not in game.zmqreragji}
+        _free = list(_gt - _occ)
+        _candidates = [target] + [t for t in _free if t != target]
+        path = None
+        for _t in _candidates:
+            _pg = (_t[0] - dx_item, _t[1] - dy_item)
+            _p = _bfs(blocked, (player.x, player.y), {_pg},
+                       item_offset=(dx_item, dy_item))
+            if _p is not None:
+                path = _p
+                target = _t
+                break
 
         if path is None:
             obs2 = act(env, 5)  # drop
@@ -4637,9 +4666,25 @@ def strat_wa30_analytical(env: Any, budget: int = 5000) -> tuple[int, str, int]:
                         best_target = t
                 if best_target:
                     blocked = game.pkbufziase | game.qthdiggudy
-                    player_goal = (best_target[0] - dx_item, best_target[1] - dy_item)
-                    path = _bfs(blocked, (player.x, player.y), {player_goal},
-                                item_offset=(dx_item, dy_item))
+                    # Exclude worker positions — workers move dynamically
+                    _aw = (game.current_level.get_sprites_by_tag("kdweefinfi")
+                           + game.current_level.get_sprites_by_tag("ysysltqlke"))
+                    for _w in _aw:
+                        blocked.discard((_w.x, _w.y))
+                        if _w in game.nsevyuople:
+                            _wc = game.nsevyuople[_w]
+                            blocked.discard((_wc.x, _wc.y))
+                    # Try best target first, then others
+                    _cands = [best_target] + [t for t in free if t != best_target]
+                    path = None
+                    for _ct in _cands:
+                        _pg = (_ct[0] - dx_item, _ct[1] - dy_item)
+                        _p = _bfs(blocked, (player.x, player.y), {_pg},
+                                  item_offset=(dx_item, dy_item))
+                        if _p is not None:
+                            path = _p
+                            best_target = _ct
+                            break
                     if path:
                         for a in _path_to_actions(path):
                             obs2 = act(env, a)
@@ -4686,20 +4731,6 @@ def strat_wa30_analytical(env: Any, budget: int = 5000) -> tuple[int, str, int]:
                         break
                 continue
             # Pick item-target pair minimizing total player travel
-            # Prefer targets at grid edges to avoid blocking worker paths
-            workers = (game.current_level.get_sprites_by_tag("kdweefinfi")
-                       + game.current_level.get_sprites_by_tag("ysysltqlke"))
-            free_set = set(free)
-            # Count how many free-target neighbors each free target has
-            # Targets with MORE free neighbors are "interior" - filling them
-            # blocks more worker delivery paths. Prefer "edge" targets.
-            neighbor_count = {}
-            for t in free:
-                cnt = 0
-                for ddx, ddy in [(-STEP,0),(STEP,0),(0,-STEP),(0,STEP)]:
-                    if (t[0]+ddx, t[1]+ddy) in free_set:
-                        cnt += 1
-                neighbor_count[t] = cnt
             best_d = float('inf')
             best_pair = None
             for it in pickable:
@@ -4709,8 +4740,6 @@ def strat_wa30_analytical(env: Any, budget: int = 5000) -> tuple[int, str, int]:
                 p_dist = abs(player.x - it.x) + abs(player.y - it.y)
                 for t in free:
                     d = p_dist + abs(it.x - t[0]) + abs(it.y - t[1])
-                    # Prefer edge targets (fewer free neighbors)
-                    d += neighbor_count[t] * 6
                     if d < best_d:
                         best_d = d
                         best_pair = (it, t)
