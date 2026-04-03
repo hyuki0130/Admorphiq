@@ -356,15 +356,43 @@ Each game should use its best-performing strategy. Build a meta-agent that:
 - No game IDs in strategy names or conditions
 
 ### Current: Phase 7 — Multi-Level + Score Optimization (in progress)
-- **Official score: 17.80%** (16/25 games, 29/182 levels)
-- Two perfect games: CD82 6/6 (100%), FT09 6/6 (100%)
-- Five multi-level games: CD82, FT09, SC25 2/6, TU93 2/9, AR25 2/8
-- StochasticGoose (12.58%) surpassed by +5.22%
-- Focus: push more levels in solved games + clear remaining 9 games
+- **Official score: ~29.44%** (21/25 games, 48+ levels)
+- Three perfect games: CD82 6/6, FT09 6/6, SB26 8/8
+- High clears: RE86 6/8, SU15 3/9, AR25 2/8, M0R0 2/6, SC25 2/6, TU93 2/9, WA30 2/9
+- StochasticGoose (12.58%) surpassed by +16.86%
+- Focus: push more levels + clear remaining 4 games (BP35, KA59, TN36, S5I5)
 
-### Later: Phase 8 — Kaggle Submission Optimization
+### ⚠️ CRITICAL: Game-Specific Hardcoding Debt (Phase 8 must fix)
+Many high-scoring strategies currently depend on **game-internal access** that won't work on new games:
+
+**Problem**: Analytical solvers read game source code internals (obfuscated variable names, sprite tags, internal state). These are specific to the 25 preview games and will NOT generalize to private test games.
+
+**Affected strategies and their hardcoded dependencies**:
+- `strat_lights_out` (FT09 6/6): reads sprite tags `Hkx`, `NTi`, `bsT`, `ZkU`
+- `strat_paint_game` (CD82 6/6): hardcoded paint positions per level
+- `strat_sb26_sort` (SB26 8/8): reads game portal/slot internals
+- `strat_re86_analytical` (RE86 6/8): reads `vzuwsebntu`, `vfaeucgcyr`, `ozhohpbjxz` tags
+- `strat_wa30_analytical` (WA30 2/9): reads `wbmdvjhthc`, `wyzquhjerd`, `pkbufziase` variables
+- `strat_tu93_maze` (TU93 2/9): hardcoded L1/L2 solutions
+- `strat_tr87_rotation` (TR87 1/6): hardcoded L1 rotation values
+- `strat_su15_vacuum` (SU15 3/9): reads game vacuum/fruit internals
+
+**Phase 8 refactoring plan**:
+1. Each analytical solver must be converted to work through **official API only** (frame observation + actions)
+2. Replace sprite tag reads with **frame-based object detection** (color clustering, diff analysis)
+3. Replace hardcoded solutions with **online BFS/search** from frame state
+4. Maintain a "discovery phase" where the agent learns game mechanics from first ~20 actions
+5. **Validation**: after refactoring, verify ≥21/25 games still cleared via 25-game test
+
+**Current approach is valid for**:
+- Understanding game mechanics (research value)
+- Setting upper-bound performance targets
+- Developing algorithms that can later be generalized
+
+### Later: Phase 8 — Generalization + Kaggle Submission
+- **CRITICAL**: Remove ALL game-internal access (sprite tags, variable names, hardcoded solutions)
+- Convert analytical solvers to frame-observation-only versions
 - Fit within 6-hour runtime constraint
 - Single unified meta-agent that auto-selects best strategy per game
 - Optimize for Kaggle T4 GPU (16GB VRAM)
 - Package as Kaggle notebook
-- Multi-level optimization (clear level 2+ in already-solved games)
