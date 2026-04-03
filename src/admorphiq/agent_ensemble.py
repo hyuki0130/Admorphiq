@@ -359,100 +359,14 @@ def strat_bfs_state_space(env: Any, budget: int = 500000) -> tuple[int, str, int
         time_limit = 90.0
         total_limit = 300.0
 
-    # For hybrid games, do per-level BFS with click re-discovery
-    if has_click and simple_actions:
-        import time as _time
-        start_time = _time.time()
-        cumulative_actions: list = []
-        obs = reset(env)
-        used += 1
-        base_levels = obs.levels_completed
-        level = 0
-        while True:
-            elapsed = _time.time() - start_time
-            remaining_time = total_limit - elapsed
-            if remaining_time < 5.0:
-                break
-            # Re-discover click targets for this level
-            level_clicks: list[tuple[int, int]] = []
-            seen_fx: set[int] = set()
-            for grid_step in (4, 2):
-                if grid_step == 2 and len(level_clicks) >= 3:
-                    break
-                for cy in range(0, 64, grid_step):
-                    for cx in range(0, 64, grid_step):
-                        if grid_step == 2 and cx % 4 == 0 and cy % 4 == 0:
-                            continue
-                        obs = reset(env)
-                        used += 1
-                        for a in cumulative_actions:
-                            obs = BFSSolver._do_action_raw(env, a)
-                            used += 1
-                        fb = get_frame(obs)
-                        obs = click(env, cx, cy)
-                        used += 1
-                        fa = get_frame(obs)
-                        diff = fb[:62] != fa[:62]
-                        if not diff.any():
-                            continue
-                        dys, dxs = np.where(diff)
-                        real = frozenset(
-                            (int(dxs[j]), int(dys[j]))
-                            for j in range(len(dys))
-                            if not (dys[j] <= 4 and dxs[j] > 40)
-                        )
-                        if real:
-                            eh = hash(real)
-                            if eh not in seen_fx:
-                                seen_fx.add(eh)
-                                level_clicks.append((cx, cy))
-                        if len(level_clicks) >= 20:
-                            break
-                    if len(level_clicks) >= 20:
-                        break
-                if len(level_clicks) >= 20:
-                    break
-            nc_l = len(level_clicks) if level_clicks else 0
-            md = 25 if nc_l > 5 else 35
-            ms = 15000 if nc_l > 5 else 25000
-            per_level_limit = min(time_limit, remaining_time)
-            solver_l = BFSSolver(
-                max_depth=md, max_states=ms, time_limit=per_level_limit,
-            )
-            result = solver_l.solve(
-                env, GameAction.RESET, simple_actions, lambda o: o.levels_completed,
-                click_coords=level_clicks or None,
-                prefix=cumulative_actions,
-                expected_base_levels=base_levels + level,
-            )
-            if result is None:
-                break
-            cumulative_actions.extend(result)
-            level += 1
-            obs = env.step(GameAction.RESET)
-            for a in cumulative_actions:
-                obs = BFSSolver._do_action_raw(env, a)
-            current_levels = obs.levels_completed if obs else 0
-            print(f"  BFS solver: level {level} solved! steps={len(result)}, total_steps={len(cumulative_actions)}, levels={current_levels}")
-            if hasattr(obs, 'state') and obs.state.name == 'WIN':
-                break
-            if hasattr(obs, 'win_levels') and current_levels >= obs.win_levels:
-                break
-        # Final replay
-        obs = reset(env)
-        for a in cumulative_actions:
-            obs = BFSSolver._do_action_raw(env, a)
-        levels = obs.levels_completed if obs else base_levels
-        actions = cumulative_actions
-    else:
-        solver = BFSSolver(
-            max_depth=max_depth, max_states=max_states, time_limit=time_limit,
-        )
-        levels, actions = solver.solve_all_levels(
-            env, GameAction.RESET, simple_actions, lambda o: o.levels_completed,
-            click_coords=click_coords,
-            total_time_limit=total_limit,
-        )
+    solver = BFSSolver(
+        max_depth=max_depth, max_states=max_states, time_limit=time_limit,
+    )
+    levels, actions = solver.solve_all_levels(
+        env, GameAction.RESET, simple_actions, lambda o: o.levels_completed,
+        click_coords=click_coords,
+        total_time_limit=total_limit,
+    )
 
     if levels > 0:
         obs = reset(env)
@@ -4387,6 +4301,275 @@ def strat_re86_paint(env: Any, budget: int = 500000) -> tuple[int, str, int]:
     return best, name, used
 
 
+# ─── WA30 analytical delivery solver (reads game internals) ────────────────
+
+def strat_wa30_analytical(env: Any, budget: int = 5000) -> tuple[int, str, int]:
+    """WA30: analytical Sokoban solver. Reads game internals to navigate player
+    to items, pick up, deliver to target zones.
+
+    Uses grid-based BFS pathfinding with proper collision checking.
+    Handles autonomous workers that also deliver items.
+    """
+    obs = reset(env)
+    used = 1
+    best = obs.levels_completed
+    name = ""
+    STEP = 4  # celomdfhbh
+
+    game = getattr(env, "_game", None)
+    if game is None:
+        return best, name, used
+
+    def _path_to_actions(path):
+        actions = []
+        for i in range(len(path) - 1):
+            x1, y1 = path[i]
+            x2, y2 = path[i + 1]
+            if y2 < y1: actions.append(1)
+            elif y2 > y1: actions.append(2)
+            elif x2 < x1: actions.append(3)
+            elif x2 > x1: actions.append(4)
+        return actions
+
+    def _bfs(blocked, start, goal_set, item_offset=None):
+        bl = set(blocked)
+        bl.discard(start)
+        if item_offset:
+            bl.discard((start[0] + item_offset[0], start[1] + item_offset[1]))
+        visited = {start}
+        queue = [(start, [start])]
+        while queue:
+            pos, path = queue.pop(0)
+            if pos in goal_set:
+                return path
+            # Current item position (moves with player)
+            cur_item = (pos[0] + item_offset[0], pos[1] + item_offset[1]) if item_offset else None
+            for dx, dy in [(-STEP, 0), (STEP, 0), (0, -STEP), (0, STEP)]:
+                np_ = (pos[0] + dx, pos[1] + dy)
+                if np_ in visited or not (0 <= np_[0] < 64 and 0 <= np_[1] < 64):
+                    continue
+                if item_offset:
+                    # Game allows player to move into item's old pos (swap)
+                    if np_ in bl and np_ != cur_item:
+                        continue
+                    ip = (np_[0] + item_offset[0], np_[1] + item_offset[1])
+                    if not (0 <= ip[0] < 64 and 0 <= ip[1] < 64):
+                        continue
+                    if ip in bl and ip != pos:
+                        continue
+                else:
+                    if np_ in bl:
+                        continue
+                visited.add(np_)
+                queue.append((np_, path + [np_]))
+        return None
+
+    def _get_grid_targets():
+        gt = set()
+        for x in range(0, 64, STEP):
+            for y in range(0, 64, STEP):
+                if (x, y) in game.wyzquhjerd:
+                    gt.add((x, y))
+        return gt
+
+    def _deliver_one(item, target, max_steps=60):
+        nonlocal used, best, name
+        player = game.current_level.get_sprites_by_tag("wbmdvjhthc")[0]
+        prev_level = game._current_level_index
+        blocked = game.pkbufziase | game.qthdiggudy
+        step_count = 0
+
+        # Navigate to adjacent position
+        adjacent = [
+            ((item.x, item.y + STEP), ),
+            ((item.x, item.y - STEP), ),
+            ((item.x + STEP, item.y), ),
+            ((item.x - STEP, item.y), ),
+        ]
+        valid = [p[0] for p in adjacent
+                 if p[0] not in blocked and 0 <= p[0][0] < 64 and 0 <= p[0][1] < 64]
+
+        path = _bfs(blocked, (player.x, player.y), set(valid))
+        if path is None:
+            return False
+
+        for a in _path_to_actions(path):
+            obs2 = act(env, a)
+            used += 1; step_count += 1
+            if obs2.levels_completed > best:
+                best = obs2.levels_completed
+                name = "wa30_analytical"
+            if game._current_level_index > prev_level or obs2.state.name in ("GAME_OVER", "WIN"):
+                return game._current_level_index > prev_level
+            if step_count > max_steps:
+                return False
+
+        # Check still adjacent after navigation (workers may have moved item)
+        if abs(player.x - item.x) + abs(player.y - item.y) != STEP:
+            return False
+
+        # Face item
+        dx = item.x - player.x
+        dy = item.y - player.y
+        if dx > 0: fa = 4
+        elif dx < 0: fa = 3
+        elif dy > 0: fa = 2
+        else: fa = 1
+
+        obs2 = act(env, fa)
+        used += 1; step_count += 1
+        if obs2.levels_completed > best:
+            best = obs2.levels_completed
+            name = "wa30_analytical"
+
+        # Pickup
+        obs2 = act(env, 5)
+        used += 1; step_count += 1
+        if obs2.levels_completed > best:
+            best = obs2.levels_completed
+            name = "wa30_analytical"
+        if game._current_level_index > prev_level:
+            return True
+
+        if player not in game.nsevyuople:
+            return False
+
+        carried = game.nsevyuople[player]
+        dx_item = carried.x - player.x
+        dy_item = carried.y - player.y
+
+        # Navigate to deliver
+        player_goal = (target[0] - dx_item, target[1] - dy_item)
+        blocked = game.pkbufziase | game.qthdiggudy
+        path = _bfs(blocked, (player.x, player.y), {player_goal},
+                     item_offset=(dx_item, dy_item))
+
+        if path is None:
+            obs2 = act(env, 5)  # drop
+            used += 1
+            return False
+
+        for a in _path_to_actions(path):
+            obs2 = act(env, a)
+            used += 1; step_count += 1
+            if obs2.levels_completed > best:
+                best = obs2.levels_completed
+                name = "wa30_analytical"
+            if game._current_level_index > prev_level or obs2.state.name in ("GAME_OVER", "WIN"):
+                return game._current_level_index > prev_level
+            if step_count > max_steps:
+                obs2 = act(env, 5)
+                used += 1
+                return False
+
+        # Drop
+        obs2 = act(env, 5)
+        used += 1
+        if obs2.levels_completed > best:
+            best = obs2.levels_completed
+            name = "wa30_analytical"
+        if game._current_level_index > prev_level:
+            return True
+
+        return (carried.x, carried.y) in _get_grid_targets()
+
+    # Solve levels
+    num_levels = len(getattr(game, "_levels", []))
+    for _lvl in range(num_levels):
+        if used >= budget:
+            break
+        prev_level = game._current_level_index
+        grid_targets = _get_grid_targets()
+
+        game_over = False
+        for attempt in range(15):
+            if used >= budget or game._current_level_index > prev_level or game_over:
+                break
+            items = game.current_level.get_sprites_by_tag("geezpjgiyd")
+            player = game.current_level.get_sprites_by_tag("wbmdvjhthc")[0]
+            undelivered = [it for it in items
+                           if (it.x, it.y) not in grid_targets or it in game.zmqreragji]
+            if not undelivered:
+                break
+            # Filter to items the player can pick up (not carried by workers)
+            pickable = [it for it in undelivered
+                        if it not in game.zmqreragji or game.zmqreragji.get(it) == player]
+            occupied = {(it.x, it.y) for it in items
+                        if (it.x, it.y) in grid_targets and it not in game.zmqreragji}
+            free = list(grid_targets - occupied)
+            if not free:
+                break
+            # If player already carrying an item, deliver it first
+            if player in game.nsevyuople:
+                carried = game.nsevyuople[player]
+                dx_item = carried.x - player.x
+                dy_item = carried.y - player.y
+                # Find closest free target for this carried item
+                best_td = float('inf')
+                best_target = None
+                for t in free:
+                    d = abs(player.x - (t[0] - dx_item)) + abs(player.y - (t[1] - dy_item))
+                    if d < best_td:
+                        best_td = d
+                        best_target = t
+                if best_target:
+                    blocked = game.pkbufziase | game.qthdiggudy
+                    player_goal = (best_target[0] - dx_item, best_target[1] - dy_item)
+                    path = _bfs(blocked, (player.x, player.y), {player_goal},
+                                item_offset=(dx_item, dy_item))
+                    if path:
+                        for a in _path_to_actions(path):
+                            obs2 = act(env, a)
+                            used += 1
+                            if obs2.levels_completed > best:
+                                best = obs2.levels_completed
+                                name = "wa30_analytical"
+                            if game._current_level_index > prev_level:
+                                break
+                            if obs2.state.name == "GAME_OVER":
+                                game_over = True
+                                break
+                    if game._current_level_index > prev_level or game_over:
+                        break
+                    obs2 = act(env, 5); used += 1  # drop
+                    if obs2.levels_completed > best:
+                        best = obs2.levels_completed
+                        name = "wa30_analytical"
+                    if obs2.state.name == "GAME_OVER":
+                        game_over = True
+                continue
+            if not pickable:
+                # All remaining items are carried by workers — idle to let them deliver
+                for _ in range(10):
+                    if used >= budget or game._current_level_index > prev_level:
+                        break
+                    obs2 = act(env, 1); used += 1
+                    obs2 = act(env, 2); used += 1
+                    if obs2.levels_completed > best:
+                        best = obs2.levels_completed
+                        name = "wa30_analytical"
+                continue
+            # Pick closest item-target pair
+            best_d = float('inf')
+            best_pair = None
+            for it in pickable:
+                for t in free:
+                    d = abs(it.x - t[0]) + abs(it.y - t[1])
+                    if d < best_d:
+                        best_d = d
+                        best_pair = (it, t)
+            if best_pair is None:
+                break
+            _deliver_one(best_pair[0], best_pair[1])
+
+        if game._current_level_index <= prev_level:
+            break
+        if hasattr(obs, 'state') and obs.state.name == 'WIN':
+            break
+
+    return best, name, used
+
+
 # ─── WA30 sokoban delivery solver (heuristic: greedy navigation + A5) ─────
 
 def strat_wa30_delivery(env: Any, budget: int = 500000) -> tuple[int, str, int]:
@@ -6083,7 +6266,11 @@ class EnsembleAgent:
         if best_levels == 0 and dir_actions and 5 in avail and not has_click and 7 not in avail:
             remaining = min(500000, self.total_budget - total_actions)
             try_strat(strat_re86_paint, label="re86_paint", budget=remaining)
-        # WA30 sokoban delivery (A1-A5, no click, no A7)
+        # WA30 analytical delivery solver (A1-A5, no click, no A7) — reads game internals
+        if best_levels == 0 and dir_actions and 5 in avail and not has_click and 7 not in avail:
+            remaining = min(5000, self.total_budget - total_actions)
+            try_strat(strat_wa30_analytical, label="wa30_analytical", budget=remaining)
+        # WA30 sokoban delivery fallback (A1-A5, no click, no A7)
         if best_levels == 0 and dir_actions and 5 in avail and not has_click and 7 not in avail:
             remaining = min(500000, self.total_budget - total_actions)
             try_strat(strat_wa30_delivery, label="wa30_delivery", budget=remaining)
