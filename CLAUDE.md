@@ -356,11 +356,12 @@ Each game should use its best-performing strategy. Build a meta-agent that:
 - No game IDs in strategy names or conditions
 
 ### Current: Phase 7 — Multi-Level + Score Optimization (in progress)
-- **Official score: ~29.44%** (21/25 games, 48+ levels)
+- **Official score: ~31.6%** (22/25 games, 52+ levels)
 - Three perfect games: CD82 6/6, FT09 6/6, SB26 8/8
-- High clears: RE86 6/8, SU15 3/9, AR25 2/8, M0R0 2/6, SC25 2/6, TU93 2/9, WA30 2/9
-- StochasticGoose (12.58%) surpassed by +16.86%
-- Focus: push more levels + clear remaining 4 games (BP35, KA59, TN36, S5I5)
+- High clears: RE86 6/8, SU15 6/9, AR25 2/8, M0R0 2/6, SC25 2/6, TU93 2/9, WA30 2/9
+- BP35: 1/9 (newly solved — gravity platformer)
+- StochasticGoose (12.58%) surpassed by +19%
+- Focus: push more levels + clear remaining 3 games (KA59, TN36, S5I5)
 
 ### ⚠️ CRITICAL: Game-Specific Hardcoding Debt (Phase 8 must fix)
 Many high-scoring strategies currently depend on **game-internal access** that won't work on new games:
