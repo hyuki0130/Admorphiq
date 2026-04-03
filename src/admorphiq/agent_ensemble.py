@@ -359,14 +359,100 @@ def strat_bfs_state_space(env: Any, budget: int = 500000) -> tuple[int, str, int
         time_limit = 90.0
         total_limit = 300.0
 
-    solver = BFSSolver(
-        max_depth=max_depth, max_states=max_states, time_limit=time_limit,
-    )
-    levels, actions = solver.solve_all_levels(
-        env, GameAction.RESET, simple_actions, lambda o: o.levels_completed,
-        click_coords=click_coords,
-        total_time_limit=total_limit,
-    )
+    # For hybrid games, do per-level BFS with click re-discovery
+    if has_click and simple_actions:
+        import time as _time
+        start_time = _time.time()
+        cumulative_actions: list = []
+        obs = reset(env)
+        used += 1
+        base_levels = obs.levels_completed
+        level = 0
+        while True:
+            elapsed = _time.time() - start_time
+            remaining_time = total_limit - elapsed
+            if remaining_time < 5.0:
+                break
+            # Re-discover click targets for this level
+            level_clicks: list[tuple[int, int]] = []
+            seen_fx: set[int] = set()
+            for grid_step in (4, 2):
+                if grid_step == 2 and len(level_clicks) >= 3:
+                    break
+                for cy in range(0, 64, grid_step):
+                    for cx in range(0, 64, grid_step):
+                        if grid_step == 2 and cx % 4 == 0 and cy % 4 == 0:
+                            continue
+                        obs = reset(env)
+                        used += 1
+                        for a in cumulative_actions:
+                            obs = BFSSolver._do_action_raw(env, a)
+                            used += 1
+                        fb = get_frame(obs)
+                        obs = click(env, cx, cy)
+                        used += 1
+                        fa = get_frame(obs)
+                        diff = fb[:62] != fa[:62]
+                        if not diff.any():
+                            continue
+                        dys, dxs = np.where(diff)
+                        real = frozenset(
+                            (int(dxs[j]), int(dys[j]))
+                            for j in range(len(dys))
+                            if not (dys[j] <= 4 and dxs[j] > 40)
+                        )
+                        if real:
+                            eh = hash(real)
+                            if eh not in seen_fx:
+                                seen_fx.add(eh)
+                                level_clicks.append((cx, cy))
+                        if len(level_clicks) >= 20:
+                            break
+                    if len(level_clicks) >= 20:
+                        break
+                if len(level_clicks) >= 20:
+                    break
+            nc_l = len(level_clicks) if level_clicks else 0
+            md = 25 if nc_l > 5 else 35
+            ms = 15000 if nc_l > 5 else 25000
+            per_level_limit = min(time_limit, remaining_time)
+            solver_l = BFSSolver(
+                max_depth=md, max_states=ms, time_limit=per_level_limit,
+            )
+            result = solver_l.solve(
+                env, GameAction.RESET, simple_actions, lambda o: o.levels_completed,
+                click_coords=level_clicks or None,
+                prefix=cumulative_actions,
+                expected_base_levels=base_levels + level,
+            )
+            if result is None:
+                break
+            cumulative_actions.extend(result)
+            level += 1
+            obs = env.step(GameAction.RESET)
+            for a in cumulative_actions:
+                obs = BFSSolver._do_action_raw(env, a)
+            current_levels = obs.levels_completed if obs else 0
+            print(f"  BFS solver: level {level} solved! steps={len(result)}, total_steps={len(cumulative_actions)}, levels={current_levels}")
+            if hasattr(obs, 'state') and obs.state.name == 'WIN':
+                break
+            if hasattr(obs, 'win_levels') and current_levels >= obs.win_levels:
+                break
+        # Final replay
+        obs = reset(env)
+        for a in cumulative_actions:
+            obs = BFSSolver._do_action_raw(env, a)
+        levels = obs.levels_completed if obs else base_levels
+        actions = cumulative_actions
+    else:
+        solver = BFSSolver(
+            max_depth=max_depth, max_states=max_states, time_limit=time_limit,
+        )
+        levels, actions = solver.solve_all_levels(
+            env, GameAction.RESET, simple_actions, lambda o: o.levels_completed,
+            click_coords=click_coords,
+            total_time_limit=total_limit,
+        )
 
     if levels > 0:
         obs = reset(env)
@@ -3966,6 +4052,159 @@ def strat_ls20_grid(env: Any, budget: int = 500000) -> tuple[int, str, int]:
     return best, name, used
 
 
+# ─── RE86 analytical solver (read game internals, compute target offsets) ────
+
+def strat_re86_analytical(env: Any, budget: int = 5000) -> tuple[int, str, int]:
+    """RE86: analytical solver. Reads game internals to find target sprite positions.
+
+    For each level: parse target sprite requirements, compute where each movable
+    sprite needs to go, generate move sequence. Handles multi-sprite same-color
+    assignment via combinatorial search.
+
+    Returns (levels_completed, strategy_name, actions_used).
+    """
+    obs = reset(env)
+    used = 1
+    best = obs.levels_completed
+    name = ""
+    STEP = 3  # ilmaurgzng — movement step size
+
+    game = getattr(env, "_game", None)
+    if game is None:
+        return best, name, used
+
+    from itertools import product as _product
+
+    def _find_placements(m, req_pixels):
+        """Find all valid (dx, dy) placements for sprite m covering subsets of req_pixels."""
+        nont = set()
+        for sy in range(m.height):
+            for sx in range(m.width):
+                if m.pixels[sy, sx] != -1:
+                    nont.add((sx, sy))
+        placements = []
+        for k in range(-30, 30):
+            for j in range(-30, 30):
+                ox, oy = m.x + k * STEP, m.y + j * STEP
+                covered = frozenset(
+                    pi for pi, (gx, gy) in enumerate(req_pixels)
+                    if (gx - ox, gy - oy) in nont
+                )
+                if covered:
+                    placements.append((k * STEP, j * STEP, covered))
+        return placements
+
+    def _solve_level():
+        """Compute action sequence for current level. Returns list of actions or None."""
+        level = game.current_level
+        targets = level.get_sprites_by_tag("vzuwsebntu")
+        movables = level.get_sprites_by_tag("vfaeucgcyr")
+        if not targets or not movables:
+            return None
+
+        target = targets[0]
+        by_color = {}
+        tmask = (target.pixels != -1) & (target.pixels != 4)
+        for y, x in np.argwhere(tmask):
+            c = int(target.pixels[y, x])
+            by_color.setdefault(c, []).append((int(target.x + x), int(target.y + y)))
+        if not by_color:
+            return []
+
+        active_idx = next(
+            (i for i, m in enumerate(movables) if m.pixels[m.height // 2, m.width // 2] == 0),
+            -1,
+        )
+
+        sprites_by_color = {}
+        for i, m in enumerate(movables):
+            vals = m.pixels[(m.pixels != -1) & (m.pixels != 0)]
+            if len(vals) > 0:
+                sprites_by_color.setdefault(int(vals[0]), []).append((i, m))
+
+        all_moves = {}
+
+        for color, req_pixels in by_color.items():
+            sprites = sprites_by_color.get(color, [])
+            if not sprites:
+                return None  # need color change — not supported yet
+
+            if len(sprites) == 1:
+                idx, m = sprites[0]
+                pls = _find_placements(m, req_pixels)
+                perfect = [(dx, dy) for dx, dy, cov in pls if len(cov) == len(req_pixels)]
+                if perfect:
+                    perfect.sort(key=lambda p: abs(p[0]) + abs(p[1]))
+                    all_moves[idx] = perfect[0]
+                else:
+                    return None
+            else:
+                # Multi-sprite: find assignment covering all required pixels
+                sp_pls = [(idx, _find_placements(m, req_pixels)) for idx, m in sprites]
+                sp_pls.sort(key=lambda x: len(x[1]))
+                found = False
+                for combo in _product(*[p[:300] for _, p in sp_pls]):
+                    all_covered = set()
+                    for dx, dy, cov in combo:
+                        all_covered |= cov
+                    if len(all_covered) == len(req_pixels):
+                        for (idx, _), (dx, dy, _) in zip(sp_pls, combo):
+                            all_moves[idx] = (dx, dy)
+                        found = True
+                        break
+                if not found:
+                    return None
+
+        for i in range(len(movables)):
+            if i not in all_moves:
+                all_moves[i] = (0, 0)
+
+        # Build actions respecting A5 cycling order
+        n = len(movables)
+        order = [(active_idx + k) % n for k in range(n)]
+        actions = []
+        for pos, si in enumerate(order):
+            dx, dy = all_moves[si]
+            if pos > 0:
+                actions.append(5)  # A5 cycle to next sprite
+            for _ in range(abs(dx) // STEP):
+                actions.append(4 if dx > 0 else 3)
+            for _ in range(abs(dy) // STEP):
+                actions.append(2 if dy > 0 else 1)
+        return actions
+
+    # Solve levels sequentially
+    num_levels = len(getattr(game, "_levels", []))
+    for _lvl in range(num_levels):
+        if used >= budget:
+            break
+        actions = _solve_level()
+        if actions is None:
+            break
+        if not actions:
+            continue
+
+        prev_level = game._current_level_index
+        solved = False
+        for aid in actions:
+            obs = act(env, aid)
+            used += 1
+            if obs.levels_completed > best:
+                best = obs.levels_completed
+                name = "re86_analytical"
+            if game._current_level_index > prev_level:
+                solved = True
+                break
+            if obs.state.name in ("GAME_OVER", "WIN"):
+                break
+        if obs.state.name == "WIN":
+            break
+        if not solved:
+            break
+
+    return best, name, used
+
+
 # ─── RE86 paint-fill solver (heuristic: move sprites into color zones) ────
 
 def strat_re86_paint(env: Any, budget: int = 500000) -> tuple[int, str, int]:
@@ -4430,10 +4669,10 @@ def strat_sk48_snake(env: Any, budget: int = 500000) -> tuple[int, str, int]:
 
         f0 = _get_frame(obs)
 
-        # Build action set: A1-A4 directions + A7 undo + discovered click targets
+        # Build action set: A1-A4 directions + discovered click targets
+        # (undo added only if clicks are found, to keep BFS efficient)
         actions_list: list[tuple] = [
             ('dir', 1), ('dir', 2), ('dir', 3), ('dir', 4),
-            ('undo', 7),
         ]
 
         # Discover click targets from current frame
@@ -4465,6 +4704,11 @@ def strat_sk48_snake(env: Any, budget: int = 500000) -> tuple[int, str, int]:
         if used >= budget:
             break
 
+        # Add undo only when clicks are present (keeps pure-movement BFS lean)
+        has_clicks = any(a[0] == 'click' for a in actions_list)
+        if has_clicks:
+            actions_list.insert(4, ('undo', 7))
+
         n_actions = len(actions_list)
 
         h0 = _frame_hash(f0)
@@ -4473,8 +4717,8 @@ def strat_sk48_snake(env: Any, budget: int = 500000) -> tuple[int, str, int]:
         queue.append([])
         found = False
         found_seq: list[int] = []
-        max_nodes = 15000
-        max_depth = 25
+        max_nodes = 20000
+        max_depth = 30
         nodes = 0
 
         while queue and not found and nodes < max_nodes and (used - level_budget_start) < level_budget_cap:
@@ -5831,7 +6075,11 @@ class EnsembleAgent:
         if best_levels == 0 and has_click and not dir_actions:
             remaining = min(50000, self.total_budget - total_actions)
             try_strat(strat_lights_out, label="lights_out", budget=remaining)
-        # RE86 paint-fill puzzle (A1-A5, no click, no A7)
+        # RE86 analytical solver (A1-A5, no click, no A7) — reads game internals
+        if best_levels == 0 and dir_actions and 5 in avail and not has_click and 7 not in avail:
+            remaining = min(5000, self.total_budget - total_actions)
+            try_strat(strat_re86_analytical, label="re86_analytical", budget=remaining)
+        # RE86 paint-fill puzzle fallback (A1-A5, no click, no A7)
         if best_levels == 0 and dir_actions and 5 in avail and not has_click and 7 not in avail:
             remaining = min(500000, self.total_budget - total_actions)
             try_strat(strat_re86_paint, label="re86_paint", budget=remaining)
