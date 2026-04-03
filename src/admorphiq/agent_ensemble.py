@@ -5459,61 +5459,27 @@ def strat_su15_vacuum(env: Any, budget: int = 5000) -> tuple[int, str, int]:
 
         # ── Hardcoded L4 solver (level index 3) ──
         # 8 color-0 fruits, 1 enemy. Goal: [3,1]. Budget: 48.
-        # Enemy at (54,21) races toward fruits. Generic solver can't protect
-        # all 8 fruits needed for 2^3=8 → color-3.
-        # Strategy: merge C+D→c1, suck south to meet E+F→CE(c2),
-        # evacuate CE to goal corner (5,57), then build AG(c2) on left,
-        # merge at goal zone. 15 clicks total.
+        # Build AC(c2) from top group + EG(c2) from bottom group, merge→c3.
+        # Enemy freeze after contact gives enough time. 12 clicks.
         if _cur_level == 3:
             _l4_clicks = [
-                (34, 28),   # merge C(31,27)+D(36,29)→c1
-                (34, 35),   # suck C south
-                (33, 42),   # suck C south (E gets pulled here too)
-                (32, 49),   # merge E+F→c1, then C+E→c2
-                (25, 52),   # evacuate C(c2) southwest
-                (18, 55),   # evacuate C southwest
-                (11, 56),   # evacuate C southwest
-                (5, 57),    # C arrives at goal zone
-                (8, 26),    # merge A+B→c1
-                (10, 44),   # merge G+H→c1
-                (8, 33),    # suck A south
-                (9, 40),    # suck A south toward G
-                (10, 43),   # merge A+G→c2
-                (9, 50),    # suck AG south
-                (7, 56),    # merge AG+C→c3 at goal zone
+                (32, 49),   # 1: EF→c1
+                (34, 28),   # 2: CD→c1
+                (8, 26),    # 3: AB→c1 (clears B from C's path)
+                (25, 28),   # 4: suck C(c1) west
+                (17, 28),   # 5: suck C(c1) further west
+                (9, 27),    # 6: AC→c2 (merge A+C)
+                (9, 33),    # 7: suck AC south (y=33 avoids H at y=41)
+                (10, 44),   # 8: GH→c1
+                (24, 48),   # 9: suck E(c1) west
+                (16, 47),   # 10: suck E(c1) further west
+                (12, 45),   # 11: EG→c2 (merge E+G)
+                (9, 38),    # 12: suck both c2s together → c3
             ]
-            import sys as _sys
-            def _l4_click(x: int, y: int, desc: str) -> Any:
-                nonlocal used, obs, best, name
-                x = max(0, min(63, x))
-                y = max(10, min(62, y))
-                _sys.stderr.write(f"  L4 {desc}: pre-anim={game.anibpvotxtvdating} inhlatxex={game.inhlatxex}\n")
-                ga = GameAction.from_id(6)
-                ga.set_data({"x": x, "y": y})
-                obs = env.step(ga, data={"x": x, "y": y})
-                used += 1
-                _sys.stderr.write(f"  L4 {desc}: post-step state={obs.state.name} anim={game.anibpvotxtvdating}\n")
-                safety = 0
-                while obs.state.name == "NOT_FINISHED" and game.anibpvotxtvdating and safety < 50:
-                    ga7 = GameAction.from_id(7)
-                    obs = env.step(ga7)
-                    used += 1
-                    safety += 1
-                _sys.stderr.write(f"  L4 {desc}: post-anim safety={safety} anim={game.anibpvotxtvdating}\n")
-                if obs.levels_completed > best:
-                    best = obs.levels_completed
-                    name = "su15_vacuum"
-                _finfo = [(game.qmecbepbyz(f), game.amnmgwpkeb.get(f, 0)) for f in game.hmeulfxgy]
-                _einfo = [game.qmecbepbyz(e) for e in game.peiiyyzum]
-                _scu = getattr(game, 'step_counter_ui', None)
-                _steps = _scu.current_steps if _scu else '?'
-                _sys.stderr.write(f"  L4 {desc}: fruits={_finfo} enemies={_einfo} steps={_steps} gray={getattr(game,'grayed',False)}\n")
-                return obs
             for _ci, (cx, cy) in enumerate(_l4_clicks):
                 if _advanced() or _done():
-                    _sys.stderr.write(f"L4 break at click {_ci}: adv={_advanced()} done={_done()}\n")
                     break
-                _l4_click(cx, cy, f"ck{_ci+1}@({cx},{cy})")
+                _click(cx, cy)
             if _advanced():
                 return True
 
