@@ -305,31 +305,39 @@ def strat_bfs_state_space(env: Any, budget: int = 500000) -> tuple[int, str, int
     if has_click and simple_actions:
         click_coords = []
         seen_click_effects: set[int] = set()
-        for cy in range(0, 64, 4):
-            for cx in range(0, 64, 4):
-                obs = reset(env)
-                used += 1
-                fb = get_frame(obs)
-                obs = click(env, cx, cy)
-                used += 1
-                fa = get_frame(obs)
-                diff = fb[:62] != fa[:62]
-                if not diff.any():
-                    continue
-                dys, dxs = np.where(diff)
-                real = frozenset(
-                    (int(dxs[j]), int(dys[j]))
-                    for j in range(len(dys))
-                    if not (dys[j] <= 4 and dxs[j] > 40)
-                )
-                if real:
-                    eh = hash(real)
-                    if eh not in seen_click_effects:
-                        seen_click_effects.add(eh)
-                        click_coords.append((cx, cy))
-                if len(click_coords) >= 15:
+        # Two-pass scan: 4px grid first, then 2px if few targets found
+        for grid_step in (4, 2):
+            if grid_step == 2 and len(click_coords) >= 3:
+                break  # Enough targets from coarse scan
+            for cy in range(0, 64, grid_step):
+                for cx in range(0, 64, grid_step):
+                    if grid_step == 2 and cx % 4 == 0 and cy % 4 == 0:
+                        continue  # Already scanned in 4px pass
+                    obs = reset(env)
+                    used += 1
+                    fb = get_frame(obs)
+                    obs = click(env, cx, cy)
+                    used += 1
+                    fa = get_frame(obs)
+                    diff = fb[:62] != fa[:62]
+                    if not diff.any():
+                        continue
+                    dys, dxs = np.where(diff)
+                    real = frozenset(
+                        (int(dxs[j]), int(dys[j]))
+                        for j in range(len(dys))
+                        if not (dys[j] <= 4 and dxs[j] > 40)
+                    )
+                    if real:
+                        eh = hash(real)
+                        if eh not in seen_click_effects:
+                            seen_click_effects.add(eh)
+                            click_coords.append((cx, cy))
+                    if len(click_coords) >= 20:
+                        break
+                if click_coords and len(click_coords) >= 20:
                     break
-            if click_coords and len(click_coords) >= 15:
+            if len(click_coords) >= 20:
                 break
         obs = reset(env)
         used += 1

@@ -47,8 +47,9 @@ class BFSSolver:
             for start, end in self.mask_rows:
                 f_copy[start:end, :] = 0
         else:
-            # Default: mask timer area (top rows, right side)
+            # Default: mask timer area (top rows, right side) and bottom bar
             f_copy[:5, 40:] = 0
+            f_copy[63:, :] = 0
         return hashlib.md5(f_copy.tobytes()).hexdigest()
 
     @staticmethod
