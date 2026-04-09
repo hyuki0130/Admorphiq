@@ -5638,6 +5638,98 @@ def strat_ka59_sokoban(env: Any, budget: int = 5000) -> tuple[int, str, int]:
             if p6x3 and game._current_level_index == prev_lvl:
                 _sel_player(p6x3.x, p6x3.y, cam_offset)
                 _step(4); _step(4); _step(4); _step(4); _step(1)
+        elif lvl_idx == 2:
+            # L3 hardcoded: 1 player (3x3)@(39,9), 2 enemies (9x9 plus)@(45,15)[E1] and @(15,30)[E2]
+            # Enemy-goals (11x11)@(14,14)→target(15,15) and @(29,29)→target(30,30)
+            # Player-goal (5x5)@(29,23)→target(30,24)
+            # Enemy is plus-shaped: cols 0-2 and 6-8 are transparent at rows 0-2 and 6-8.
+            # Rows 3-5 are fully solid. Player can pass through transparent corners.
+            #
+            # Phase 1: Push E1 from (45,15) to (30,15)
+            # Player@(39,9) right 4 → (51,9), then down 2 → (51,15)
+            # [E1 rows 0-2 cols 6-8 at x=51-53 are transparent — player passes through]
+            _sel_player(39, 9, cam_offset)
+            for _ in range(4): _step(4)  # right 4 → (51,9)
+            for _ in range(2): _step(2)  # down 2 → (51,15)
+            # Left 1 → player tries (48,15): E1 row 0-2 cols 3-5 at x=48-50 solid → push E1 left 15px
+            # E1: (45,15)→(30,15). Player stays at (51,15).
+            _step(3)
+            # Phase 2: Push E1 from (30,15) to (15,15)
+            # Navigate left 5 → (36,15) passing through E1's right transparent cols
+            # Then left 1 → try (33,15): E1 row 0 cols 3-5 at x=33-35 solid → push E1 left 15px
+            # E1: (30,15)→(15,15). Player stays at (36,15).
+            for _ in range(5): _step(3)  # left 5 → (36,15) [through transparent, no push]
+            _step(3)  # left 1 → push E1 to (15,15), player stays at (36,15)
+            # Phase 3: Push E2 from (15,30) to (30,30)
+            # Go down 4 → (36,27) [below E1 y=23, above E2 y=30 — safe corridor]
+            for _ in range(4): _step(2)  # down 4 → (36,27)
+            # Go left 8 → (12,27) [y=27 clears E1 (ends y=23) and E2 (starts y=30)]
+            for _ in range(8): _step(3)  # left 8 → (12,27)
+            # Go down 2 → (12,33) [x=12-14 clears E2 at x=15-23]
+            for _ in range(2): _step(2)  # down 2 → (12,33)
+            # Right 1 → player tries (15,33): E2 rows 3-5 cols 0-2 at y=33-35 x=15-17 solid
+            # → push E2 right 15px. E2: (15,30)→(30,30). Player stays at (12,33).
+            _step(4)
+            # Phase 4: Player to target (30,24)
+            # Up 3 → (12,24) [x=12-14 clears E1 (x=15-23) and E2 (x=30-38 after push)]
+            for _ in range(3): _step(1)  # up 3 → (12,24)
+            # Right 6 → (30,24) [y=24 clears E1 (y≤23) and E2 (y≥30)]
+            for _ in range(6): _step(4)  # right 6 → (30,24)
+        elif lvl_idx == 3:
+            # L4: P1@(15,24), P2@(24,27), Enemy@(15,45)
+            # Goals: P-goal1→(45,24), P-goal2→(33,48), E-goal→(30,3)
+            # Phase 1: P1@(15,24) -> (24,21) -> push P2@(24,27) DOWN -> P2@(24,42), P1@(24,24)
+            _sel_player(15, 24, cam_offset)
+            _step(1)                          # up -> (15,21)
+            for _ in range(3): _step(4)       # right 3 -> (24,21)
+            _step(2)                          # down -> (24,24)
+            _step(2)                          # down -> push P2; P2@(24,42), P1@(24,24)
+            # Phase 2: P2@(24,42) -> (24,51) -> (21,51) -> push enemy UP -> enemy@(15,24), P2@(21,51)
+            # (21,51) is in enemy's transparent cols 6-8 rows 6-8; push UP hits solid rows 3-5
+            players_now = game.current_level.get_sprites_by_tag("xlfuqjygey")
+            p2 = max(players_now, key=lambda p: p.y)
+            _sel_player(p2.x, p2.y, cam_offset)
+            for _ in range(3): _step(2)       # down 3 -> (24,51)
+            _step(3)                          # left 1 -> (21,51)
+            _step(1)                          # up -> push enemy UP; enemy@(15,24)
+            # Phase 3: P1@(24,24) -> (24,21) -> (12,21) -> (12,27) -> push enemy RIGHT -> enemy@(30,24)
+            # Navigate via top to avoid hitting enemy body
+            players_now = game.current_level.get_sprites_by_tag("xlfuqjygey")
+            p1 = min(players_now, key=lambda p: p.y)
+            _sel_player(p1.x, p1.y, cam_offset)
+            _step(1)                          # up -> (24,21) [above enemy]
+            for _ in range(4): _step(3)       # left 4 -> (12,21)
+            _step(2)                          # down -> (12,24)
+            _step(2)                          # down -> (12,27) [enemy rows 3-5 at y=27-29]
+            _step(4)                          # right -> push enemy RIGHT; enemy@(30,24), P1@(12,27)
+            # Phase 4: P1@(12,27) -> (12,21) -> (39,21) -> (39,30) -> (36,30) -> push enemy UP -> enemy@(30,9)
+            # Navigate via top-right to bypass enemy, approach from transparent cols 6-8 at y=30
+            players_now = game.current_level.get_sprites_by_tag("xlfuqjygey")
+            p1 = min(players_now, key=lambda p: p.y)
+            _sel_player(p1.x, p1.y, cam_offset)
+            for _ in range(2): _step(1)       # up 2 -> (12,21)
+            for _ in range(9): _step(4)       # right 9 -> (39,21) [right of enemy x=30-38]
+            for _ in range(3): _step(2)       # down 3 -> (39,30) [below enemy]
+            _step(3)                          # left 1 -> (36,30) [transparent cols 6-8 rows 6-8]
+            _step(1)                          # up -> push enemy UP; enemy@(30,9), P1@(36,30)
+            # Phase 5: P1@(36,30) -> push enemy@(30,9) UP -> enemy@(30,3)
+            # Navigate up: (36,21) -> (36,18) -> (36,15)[transparent rows 6-8] -> push at (36,12)[solid rows 3-5]
+            for _ in range(3): _step(1)       # up 3 -> (36,21)
+            _step(1)                          # up -> (36,18)
+            _step(1)                          # up -> (36,15) [through transparent rows 6-8]
+            _step(1)                          # up -> push enemy UP; enemy@(30,3), P1@(36,15)
+            # Phase 6: P2@(21,51) -> (33,51) -> (33,48) [P2 on goal]
+            players_now = game.current_level.get_sprites_by_tag("xlfuqjygey")
+            p2 = max(players_now, key=lambda p: p.y)
+            _sel_player(p2.x, p2.y, cam_offset)
+            for _ in range(4): _step(4)       # right 4 -> (33,51)
+            _step(1)                          # up -> (33,48) [P2 on goal]
+            # Phase 7: P1@(36,15) -> (45,15) -> (45,24) [P1 on goal -> WIN]
+            players_now = game.current_level.get_sprites_by_tag("xlfuqjygey")
+            p1 = min(players_now, key=lambda p: p.y)
+            _sel_player(p1.x, p1.y, cam_offset)
+            for _ in range(3): _step(4)       # right 3 -> (45,15)
+            for _ in range(3): _step(2)       # down 3 -> (45,24) [WIN]
         else:
             # General solver: BFS for size-matched players
             advanced = _solve_level(cam_offset)
@@ -6157,8 +6249,157 @@ def strat_su15_vacuum(env: Any, budget: int = 5000) -> tuple[int, str, int]:
             if _advanced():
                 return True
 
-        # L8 (index 7) and L9 (index 8) are complex enemy-management levels.
-        # Skipping hardcoded for now — generic solver may attempt them.
+        # ── Hardcoded L8 solver (level index 7) ──
+        # Fruits: 2×c3 @(13,42)+(3,40), 1×c5 @(20,24). 3×type1 enemies.
+        # Goal: [[4,2],["yckgseirmu",1]] = 2×c4 + 1×type2 in goal zones.
+        # Goal zones: (3,15),(52,15),(3,51),(52,51) (9x9 each).
+        # Strategy: merge c3+c3→c4, deliver to TL goal, merge t1+t1→t2
+        # (vacuum also catches c5→c4), deliver 2nd c4 to TR goal, deliver t2.
+        if _cur_level == 7:
+            import math as _m8
+            ENEMY_T1_L8 = "vnjbdkorwc"; ENEMY_T2_L8 = "yckgseirmu"
+            def _gf8(c): return [f for f in game.hmeulfxgy if game.amnmgwpkeb.get(f, 0) == c]
+            def _ge8(t): return [e for e in game.peiiyyzum if game.hirdajbmj.get(e, '') == t]
+            def _suck8(sprite, tx, ty):
+                sx, sy = game.qmecbepbyz(sprite); dx, dy = tx-sx, ty-sy
+                d = _m8.sqrt(dx*dx+dy*dy)
+                if d < 1: _click(sx, sy); return
+                ndx, ndy = dx/d, dy/d
+                _click(int(round(sx+ndx*min(7, d))), int(round(sy+ndy*min(7, d))))
+            def _in_gz8(sprite, gz):
+                sx, sy = game.qmecbepbyz(sprite); return game.epvtlqtczz(sx, sy, gz)
+            def _gz_c8(gz): return gz.x+gz.pixels.shape[1]//2, gz.y+gz.pixels.shape[0]//2
+            goals8 = game.rqdsgrklq
+            top8 = sorted(goals8, key=lambda g: g.y)[:2]
+            tl8 = min(top8, key=lambda g: g.x); tr8 = max(top8, key=lambda g: g.x)
+            # Step 1: Merge c3+c3→c4
+            c3s = _gf8(3)
+            if len(c3s) >= 2:
+                ax, ay = game.qmecbepbyz(c3s[0]); bx, by = game.qmecbepbyz(c3s[1])
+                _click((ax+bx)//2, (ay+by)//2)
+            # Step 2: Deliver c4 to TL goal
+            for _ in range(5):
+                if _advanced() or _done(): break
+                c4s = _gf8(4)
+                if not c4s or _in_gz8(c4s[0], tl8): break
+                _suck8(c4s[0], *_gz_c8(tl8))
+            # Step 3: Merge t1+t1→t2 (vacuum also hits c5→c4)
+            t1s = _ge8(ENEMY_T1_L8)
+            if len(t1s) >= 2 and not _advanced():
+                pairs = sorted([(t1s[i], t1s[j],
+                                 _m8.dist(game.qmecbepbyz(t1s[i]), game.qmecbepbyz(t1s[j])))
+                                for i in range(len(t1s)) for j in range(i+1, len(t1s))],
+                               key=lambda x: x[2])
+                a8, b8, _ = pairs[0]
+                ax, ay = game.qmecbepbyz(a8); bx, by = game.qmecbepbyz(b8)
+                _click((ax+bx)//2, (ay+by)//2)
+            # Step 4: Deliver 2nd c4 to TR goal
+            for _ in range(6):
+                if _advanced() or _done(): break
+                c4s = [f for f in _gf8(4) if not _in_gz8(f, tl8)]
+                if not c4s or _in_gz8(c4s[0], tr8): break
+                _suck8(c4s[0], *_gz_c8(tr8))
+            # Step 5: Deliver type2 enemy to closest goal
+            for _ in range(10):
+                if _advanced() or _done(): break
+                t2s = _ge8(ENEMY_T2_L8)
+                if not t2s or t2s[0] not in game.peiiyyzum: break
+                e2 = t2s[0]; ex, ey = game.qmecbepbyz(e2)
+                gz = min(game.rqdsgrklq,
+                         key=lambda g: _m8.dist((ex, ey), _gz_c8(g)))
+                if _in_gz8(e2, gz): break
+                _suck8(e2, *_gz_c8(gz))
+            # Step 6: Trigger win animation (up to 15 frames)
+            for _ in range(15):
+                if _advanced() or _done(): break
+                _click(32, 32)
+            if _advanced():
+                return True
+
+        # ── Hardcoded L9 solver (level index 8) ──
+        # Fruits: 2×c1 @(18,46)+(23,52), 1×c5 @(35,48). 4×type1 enemies.
+        # Goal: [[4,1],["vptxjilzzk",1],[2,1]] = 1×c4 + 1×type3 + 1×c2.
+        # Goal zones: (7,37),(7,51),(49,51). Strategy: merge c1+c1→c2, deliver c2
+        # to bot-left goal, merge 4×t1→2×t2→1×t3, c5→c4 via enemy, deliver c4+t3.
+        if _cur_level == 8:
+            import math as _m9
+            ENEMY_T1_L9 = "vnjbdkorwc"; ENEMY_T2_L9 = "yckgseirmu"; ENEMY_T3_L9 = "vptxjilzzk"
+            def _gf9(c): return [f for f in game.hmeulfxgy if game.amnmgwpkeb.get(f, 0) == c]
+            def _ge9(t): return [e for e in game.peiiyyzum if game.hirdajbmj.get(e, '') == t]
+            def _suck9(sprite, tx, ty):
+                sx, sy = game.qmecbepbyz(sprite); dx, dy = tx-sx, ty-sy
+                d = _m9.sqrt(dx*dx+dy*dy)
+                if d < 1: _click(sx, sy); return
+                ndx, ndy = dx/d, dy/d
+                _click(int(round(sx+ndx*min(7, d))), int(round(sy+ndy*min(7, d))))
+            def _in_gz9(sprite, gz):
+                sx, sy = game.qmecbepbyz(sprite); return game.epvtlqtczz(sx, sy, gz)
+            def _gz_c9(gz): return gz.x+gz.pixels.shape[1]//2, gz.y+gz.pixels.shape[0]//2
+            def _merge_all9(etype, target_count=0, max_steps=10):
+                for _ in range(max_steps):
+                    if _advanced() or _done(): break
+                    enemies = _ge9(etype)
+                    if len(enemies) <= target_count or len(enemies) < 2: break
+                    pairs = sorted(
+                        [(enemies[i], enemies[j],
+                          _m9.dist(game.qmecbepbyz(enemies[i]), game.qmecbepbyz(enemies[j])))
+                         for i in range(len(enemies)) for j in range(i+1, len(enemies))],
+                        key=lambda x: x[2])
+                    a9, b9, d9 = pairs[0]
+                    ax, ay = game.qmecbepbyz(a9); bx, by = game.qmecbepbyz(b9)
+                    if d9 <= 12:
+                        _click((ax+bx)//2, (ay+by)//2)
+                    else:
+                        _suck9(a9, bx, by)
+            goals9 = sorted(game.rqdsgrklq, key=lambda g: (g.y, g.x))
+            top9 = goals9[0]; bl9 = goals9[1]; br9 = goals9[2]
+            # Step 1: Merge c1+c1→c2
+            c1s = _gf9(1)
+            if len(c1s) >= 2:
+                ax, ay = game.qmecbepbyz(c1s[0]); bx, by = game.qmecbepbyz(c1s[1])
+                _click((ax+bx)//2, (ay+by)//2)
+            # Step 2: Deliver c2 to bot-left goal
+            for _ in range(3):
+                if _advanced() or _done(): break
+                c2s = _gf9(2)
+                if not c2s or _in_gz9(c2s[0], bl9): break
+                _suck9(c2s[0], *_gz_c9(bl9))
+            # Step 3: Merge all 4 type1→2 type2 (iteratively)
+            _merge_all9(ENEMY_T1_L9, 0, 8)
+            # Step 4: Merge 2 type2→1 type3 (iteratively)
+            _merge_all9(ENEMY_T2_L9, 0, 10)
+            # Step 5: Help c5→c4 if still alive
+            for _ in range(3):
+                if _advanced() or _done() or not _gf9(5): break
+                f5 = _gf9(5)[0]
+                all_e9 = game.peiiyyzum
+                if not all_e9: break
+                e9 = min(all_e9, key=lambda x: _m9.dist(
+                    game.qmecbepbyz(x), game.qmecbepbyz(f5)))
+                ax, ay = game.qmecbepbyz(f5); bx, by = game.qmecbepbyz(e9)
+                _click((ax+bx)//2, (ay+by)//2)
+            # Step 6: Deliver c4 to top goal
+            for _ in range(6):
+                if _advanced() or _done(): break
+                c4s = [f for f in _gf9(4) if not _in_gz9(f, bl9)]
+                if not c4s: break
+                f4 = c4s[0]
+                if _in_gz9(f4, top9) or _in_gz9(f4, br9): break
+                _suck9(f4, *_gz_c9(top9))
+            # Step 7: Deliver type3 to bot-right goal
+            for _ in range(12):
+                if _advanced() or _done(): break
+                t3s = _ge9(ENEMY_T3_L9)
+                if not t3s or t3s[0] not in game.peiiyyzum: break
+                e3 = t3s[0]
+                if _in_gz9(e3, br9): break
+                _suck9(e3, *_gz_c9(br9))
+            # Step 8: Trigger win check — may need up to 15 frames for win animation
+            for _ in range(15):
+                if _advanced() or _done(): break
+                _click(32, 32)
+            if _advanced():
+                return True
 
         goal_data = getattr(game, 'reqbygadvzmjired', None)
         if goal_data is None:

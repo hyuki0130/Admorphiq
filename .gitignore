@@ -46,3 +46,6 @@ scripts/run_regression_quick.py
 
 # OMC
 .omc/
+
+# Exploratory sims
+scripts/su15_l*_sim*.py
