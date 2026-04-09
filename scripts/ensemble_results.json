@@ -1,1955 +1,125 @@
 [
   {
     "game_id": "tu93-2b534c15",
-    "levels_completed": 0,
+    "levels_completed": 2,
     "win_levels": 9,
-    "actions": 10000,
-    "strategy": "",
-    "cleared": false,
+    "actions": 20001,
+    "strategy": "tu93_maze",
+    "cleared": true,
     "strategies_tried": [
       {
-        "name": "sustained_A1",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "sustained_A2",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "sustained_A3",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "sustained_A4",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A1A2",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A1A3",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A1A4",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A2A1",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A2A3",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A2A4",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A3A1",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A3A2",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A3A4",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A4A1",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A4A2",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A4A3",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig2_A1A2",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig2_A1A3",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig2_A1A4",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig2_A2A1",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig2_A2A3",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig2_A2A4",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig2_A3A1",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig2_A3A2",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig2_A3A4",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig2_A4A1",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig2_A4A2",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig2_A4A3",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig3_A1A2",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig3_A1A3",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig3_A1A4",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig3_A2A1",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig3_A2A3",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig3_A2A4",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig3_A3A1",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig3_A3A2",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig3_A3A4",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig3_A4A1",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig3_A4A2",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig3_A4A3",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig5_A1A2",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig5_A1A3",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig5_A1A4",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig5_A2A1",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig5_A2A3",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig5_A2A4",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig5_A3A1",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig5_A3A2",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig5_A3A4",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig5_A4A1",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig5_A4A2",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig5_A4A3",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig7_A1A2",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig7_A1A3",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig7_A1A4",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig7_A2A1",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig7_A2A3",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig7_A2A4",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig7_A3A1",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig7_A3A2",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig7_A3A4",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig7_A4A1",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig7_A4A2",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig7_A4A3",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig10_A1A2",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig10_A1A3",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig10_A1A4",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig10_A2A1",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig10_A2A3",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig10_A2A4",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig10_A3A1",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig10_A3A2",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig10_A3A4",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig10_A4A1",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig10_A4A2",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig10_A4A3",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "nav_c2",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "nav_c4",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "nav_c5",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "nav_c9",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "nav_c14",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "smart_nav",
-        "levels": 0,
-        "actions": 800
-      },
-      {
-        "name": "explore_interact",
-        "levels": 0,
-        "actions": 776
-      },
-      {
-        "name": "seq_search",
-        "levels": 0,
-        "actions": 483
-      },
-      {
-        "name": "bfs_explore",
-        "levels": 0,
-        "actions": 300
-      },
-      {
-        "name": "wall_avoid",
-        "levels": 0,
-        "actions": 300
-      },
-      {
-        "name": "pattern_repeat",
-        "levels": 0,
-        "actions": 400
-      },
-      {
-        "name": "spiral",
-        "levels": 0,
-        "actions": 200
-      },
-      {
-        "name": "all_combos",
-        "levels": 0,
-        "actions": 250
-      },
-      {
-        "name": "graph_explore",
-        "levels": 0,
-        "actions": 500
-      },
-      {
-        "name": "bfs_navigate",
-        "levels": 0,
-        "actions": 500
-      },
-      {
-        "name": "wall_map_nav",
-        "levels": 0,
-        "actions": 500
-      },
-      {
-        "name": "target_chase",
-        "levels": 0,
-        "actions": 400
-      },
-      {
-        "name": "grid_walk",
-        "levels": 0,
-        "actions": 440
-      },
-      {
-        "name": "move_collect",
-        "levels": 0,
-        "actions": 20
+        "name": "tu93_maze",
+        "levels": 2,
+        "actions": 20001
       }
     ],
     "title": "TU93"
   },
   {
     "game_id": "ar25-e3c63847",
-    "levels_completed": 1,
+    "levels_completed": 2,
     "win_levels": 8,
-    "actions": 8142,
-    "strategy": "zig5_A2A3",
+    "actions": 8024,
+    "strategy": "bfs_state_space",
     "cleared": true,
     "strategies_tried": [
       {
-        "name": "sustained_A1",
+        "name": "paint_game",
         "levels": 0,
-        "actions": 81
+        "actions": 76
       },
       {
-        "name": "sustained_A2",
+        "name": "spell_cast",
         "levels": 0,
-        "actions": 81
+        "actions": 733
       },
       {
-        "name": "sustained_A3",
-        "levels": 0,
-        "actions": 81
-      },
-      {
-        "name": "sustained_A4",
-        "levels": 0,
-        "actions": 81
-      },
-      {
-        "name": "sustained_A5",
-        "levels": 0,
-        "actions": 65
-      },
-      {
-        "name": "zig1_A1A2",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A1A3",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A1A4",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A1A5",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A2A1",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A2A3",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A2A4",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A2A5",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A3A1",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A3A2",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A3A4",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A3A5",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A4A1",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A4A2",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A4A3",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A4A5",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A5A1",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A5A2",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A5A3",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A5A4",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig2_A1A2",
-        "levels": 0,
-        "actions": 65
-      },
-      {
-        "name": "zig2_A1A3",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A1A4",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A1A5",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A2A1",
-        "levels": 0,
-        "actions": 65
-      },
-      {
-        "name": "zig2_A2A3",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A2A4",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A2A5",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A3A1",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A3A2",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A3A4",
-        "levels": 0,
-        "actions": 65
-      },
-      {
-        "name": "zig2_A3A5",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A4A1",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A4A2",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A4A3",
-        "levels": 0,
-        "actions": 65
-      },
-      {
-        "name": "zig2_A4A5",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A5A1",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A5A2",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A5A3",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A5A4",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig3_A1A2",
-        "levels": 0,
-        "actions": 65
-      },
-      {
-        "name": "zig3_A1A3",
-        "levels": 0,
-        "actions": 151
-      },
-      {
-        "name": "zig3_A1A4",
-        "levels": 0,
-        "actions": 151
-      },
-      {
-        "name": "zig3_A1A5",
-        "levels": 0,
-        "actions": 120
-      },
-      {
-        "name": "zig3_A2A1",
-        "levels": 0,
-        "actions": 65
-      },
-      {
-        "name": "zig3_A2A3",
-        "levels": 0,
-        "actions": 151
-      },
-      {
-        "name": "zig3_A2A4",
-        "levels": 0,
-        "actions": 151
-      },
-      {
-        "name": "zig3_A2A5",
-        "levels": 0,
-        "actions": 103
-      },
-      {
-        "name": "zig3_A3A1",
-        "levels": 0,
-        "actions": 151
-      },
-      {
-        "name": "zig3_A3A2",
-        "levels": 0,
-        "actions": 151
-      },
-      {
-        "name": "zig3_A3A4",
-        "levels": 0,
-        "actions": 65
-      },
-      {
-        "name": "zig3_A3A5",
-        "levels": 0,
-        "actions": 119
-      },
-      {
-        "name": "zig3_A4A1",
-        "levels": 0,
-        "actions": 151
-      },
-      {
-        "name": "zig3_A4A2",
-        "levels": 0,
-        "actions": 151
-      },
-      {
-        "name": "zig3_A4A3",
-        "levels": 0,
-        "actions": 65
-      },
-      {
-        "name": "zig3_A4A5",
-        "levels": 0,
-        "actions": 107
-      },
-      {
-        "name": "zig3_A5A1",
-        "levels": 0,
-        "actions": 117
-      },
-      {
-        "name": "zig3_A5A2",
-        "levels": 0,
-        "actions": 100
-      },
-      {
-        "name": "zig3_A5A3",
-        "levels": 0,
-        "actions": 116
-      },
-      {
-        "name": "zig3_A5A4",
-        "levels": 0,
-        "actions": 104
-      },
-      {
-        "name": "zig5_A1A2",
-        "levels": 0,
-        "actions": 65
-      },
-      {
-        "name": "zig5_A1A3",
-        "levels": 0,
-        "actions": 251
-      },
-      {
-        "name": "zig5_A1A4",
-        "levels": 0,
-        "actions": 251
-      },
-      {
-        "name": "zig5_A1A5",
-        "levels": 0,
-        "actions": 120
-      },
-      {
-        "name": "zig5_A2A1",
-        "levels": 0,
-        "actions": 65
-      },
-      {
-        "name": "zig5_A2A3",
-        "levels": 1,
-        "actions": 251
-      },
-      {
-        "name": "ext_graph_explore",
-        "levels": 1,
-        "actions": 1000
+        "name": "bfs_state_space",
+        "levels": 2,
+        "actions": 2104
       },
       {
-        "name": "ext_bfs_explore",
-        "levels": 1,
-        "actions": 500
+        "name": "ml_continuation",
+        "levels": 2,
+        "actions": 5111
       }
     ],
     "title": "AR25"
   },
   {
     "game_id": "re86-4e57566e",
-    "levels_completed": 0,
+    "levels_completed": 6,
     "win_levels": 8,
-    "actions": 10010,
-    "strategy": "",
-    "cleared": false,
+    "actions": 4738,
+    "strategy": "re86_analytical",
+    "cleared": true,
     "strategies_tried": [
       {
-        "name": "sustained_A1",
-        "levels": 0,
-        "actions": 81
+        "name": "re86_analytical",
+        "levels": 6,
+        "actions": 322
       },
       {
-        "name": "sustained_A2",
-        "levels": 0,
-        "actions": 81
-      },
-      {
-        "name": "sustained_A3",
-        "levels": 0,
-        "actions": 81
-      },
-      {
-        "name": "sustained_A4",
-        "levels": 0,
-        "actions": 81
-      },
-      {
-        "name": "sustained_A5",
-        "levels": 0,
-        "actions": 81
-      },
-      {
-        "name": "zig1_A1A2",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A1A3",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A1A4",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A1A5",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A2A1",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A2A3",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A2A4",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A2A5",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A3A1",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A3A2",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A3A4",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A3A5",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A4A1",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A4A2",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A4A3",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A4A5",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A5A1",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A5A2",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A5A3",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A5A4",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig2_A1A2",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A1A3",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A1A4",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A1A5",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A2A1",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A2A3",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A2A4",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A2A5",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A3A1",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A3A2",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A3A4",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A3A5",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A4A1",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A4A2",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A4A3",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A4A5",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A5A1",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A5A2",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A5A3",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A5A4",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig3_A1A2",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig3_A1A3",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig3_A1A4",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig3_A1A5",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig3_A2A1",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig3_A2A3",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig3_A2A4",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig3_A2A5",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig3_A3A1",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig3_A3A2",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig3_A3A4",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig3_A3A5",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig3_A4A1",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig3_A4A2",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig3_A4A3",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig3_A4A5",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig3_A5A1",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig3_A5A2",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig3_A5A3",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig3_A5A4",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig5_A1A2",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig5_A1A3",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig5_A1A4",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig5_A1A5",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig5_A2A1",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig5_A2A3",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig5_A2A4",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig5_A2A5",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig5_A3A1",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig5_A3A2",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig5_A3A4",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig5_A3A5",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig5_A4A1",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig5_A4A2",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig5_A4A3",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig5_A4A5",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig5_A5A1",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig5_A5A2",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig5_A5A3",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig5_A5A4",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig7_A1A2",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig7_A1A3",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig7_A1A4",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig7_A1A5",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig7_A2A1",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig7_A2A3",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig7_A2A4",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig7_A2A5",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig7_A3A1",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig7_A3A2",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig7_A3A4",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig7_A3A5",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig7_A4A1",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig7_A4A2",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig7_A4A3",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig7_A4A5",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig7_A5A1",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig7_A5A2",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig7_A5A3",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig7_A5A4",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig10_A1A2",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig10_A1A3",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig10_A1A4",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig10_A1A5",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig10_A2A1",
-        "levels": 0,
-        "actions": 101
+        "name": "ml_continuation",
+        "levels": 6,
+        "actions": 4416
       }
     ],
     "title": "RE86"
   },
   {
     "game_id": "su15-4c352900",
-    "levels_completed": 0,
+    "levels_completed": 7,
     "win_levels": 9,
-    "actions": 10000,
-    "strategy": "",
-    "cleared": false,
+    "actions": 149,
+    "strategy": "su15_vacuum",
+    "cleared": true,
     "strategies_tried": [
       {
-        "name": "click_rare",
+        "name": "lights_out",
         "levels": 0,
-        "actions": 110
+        "actions": 2
       },
       {
-        "name": "seq_search",
-        "levels": 0,
-        "actions": 391
+        "name": "su15_vacuum",
+        "levels": 7,
+        "actions": 87
       },
       {
-        "name": "pattern_repeat",
-        "levels": 0,
-        "actions": 400
-      },
-      {
-        "name": "click_diff",
-        "levels": 0,
-        "actions": 323
-      },
-      {
-        "name": "click_all_colors",
-        "levels": 0,
-        "actions": 159
-      },
-      {
-        "name": "graph_explore",
-        "levels": 0,
-        "actions": 500
-      },
-      {
-        "name": "raster",
-        "levels": 0,
-        "actions": 4200
-      },
-      {
-        "name": "click_progressive",
-        "levels": 0,
-        "actions": 171
-      },
-      {
-        "name": "click_color_order",
-        "levels": 0,
-        "actions": 500
-      },
-      {
-        "name": "click_toggle",
-        "levels": 0,
-        "actions": 500
-      },
-      {
-        "name": "transform_detect",
-        "levels": 0,
-        "actions": 500
-      },
-      {
-        "name": "click_adaptive",
-        "levels": 0,
-        "actions": 500
-      },
-      {
-        "name": "raster_fine",
-        "levels": 0,
-        "actions": 1746
+        "name": "ml_continuation",
+        "levels": 7,
+        "actions": 60
       }
     ],
     "title": "SU15"
   },
   {
     "game_id": "m0r0-dadda488",
-    "levels_completed": 0,
+    "levels_completed": 2,
     "win_levels": 6,
-    "actions": 10113,
-    "strategy": "",
-    "cleared": false,
+    "actions": 7160,
+    "strategy": "bfs_state_space",
+    "cleared": true,
     "strategies_tried": [
       {
-        "name": "sustained_A1",
+        "name": "paint_game",
         "levels": 0,
-        "actions": 81
+        "actions": 76
       },
       {
-        "name": "sustained_A2",
+        "name": "spell_cast",
         "levels": 0,
-        "actions": 81
+        "actions": 733
       },
       {
-        "name": "sustained_A3",
-        "levels": 0,
-        "actions": 81
-      },
-      {
-        "name": "sustained_A4",
-        "levels": 0,
-        "actions": 81
-      },
-      {
-        "name": "sustained_A5",
-        "levels": 0,
-        "actions": 81
-      },
-      {
-        "name": "zig1_A1A2",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A1A3",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A1A4",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A1A5",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A2A1",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A2A3",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A2A4",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A2A5",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A3A1",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A3A2",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A3A4",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A3A5",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A4A1",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A4A2",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A4A3",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A4A5",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A5A1",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A5A2",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A5A3",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A5A4",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig2_A1A2",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A1A3",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A1A4",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A1A5",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A2A1",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A2A3",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A2A4",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A2A5",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A3A1",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A3A2",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A3A4",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A3A5",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A4A1",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A4A2",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A4A3",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A4A5",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A5A1",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A5A2",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A5A3",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A5A4",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig3_A1A2",
-        "levels": 0,
-        "actions": 151
-      },
-      {
-        "name": "zig3_A1A3",
-        "levels": 0,
-        "actions": 151
-      },
-      {
-        "name": "zig3_A1A4",
-        "levels": 0,
-        "actions": 151
-      },
-      {
-        "name": "zig3_A1A5",
-        "levels": 0,
-        "actions": 151
-      },
-      {
-        "name": "zig3_A2A1",
-        "levels": 0,
-        "actions": 151
-      },
-      {
-        "name": "zig3_A2A3",
-        "levels": 0,
-        "actions": 151
-      },
-      {
-        "name": "zig3_A2A4",
-        "levels": 0,
-        "actions": 151
-      },
-      {
-        "name": "zig3_A2A5",
-        "levels": 0,
-        "actions": 151
-      },
-      {
-        "name": "zig3_A3A1",
-        "levels": 0,
-        "actions": 151
-      },
-      {
-        "name": "zig3_A3A2",
-        "levels": 0,
-        "actions": 151
-      },
-      {
-        "name": "zig3_A3A4",
-        "levels": 0,
-        "actions": 151
-      },
-      {
-        "name": "zig3_A3A5",
-        "levels": 0,
-        "actions": 151
-      },
-      {
-        "name": "zig3_A4A1",
-        "levels": 0,
-        "actions": 151
-      },
-      {
-        "name": "zig3_A4A2",
-        "levels": 0,
-        "actions": 151
-      },
-      {
-        "name": "zig3_A4A3",
-        "levels": 0,
-        "actions": 151
-      },
-      {
-        "name": "zig3_A4A5",
-        "levels": 0,
-        "actions": 151
-      },
-      {
-        "name": "zig3_A5A1",
-        "levels": 0,
-        "actions": 151
-      },
-      {
-        "name": "zig3_A5A2",
-        "levels": 0,
-        "actions": 151
-      },
-      {
-        "name": "zig3_A5A3",
-        "levels": 0,
-        "actions": 151
-      },
-      {
-        "name": "zig3_A5A4",
-        "levels": 0,
-        "actions": 151
-      },
-      {
-        "name": "zig5_A1A2",
-        "levels": 0,
-        "actions": 152
-      },
-      {
-        "name": "zig5_A1A3",
-        "levels": 0,
-        "actions": 152
-      },
-      {
-        "name": "zig5_A1A4",
-        "levels": 0,
-        "actions": 152
-      },
-      {
-        "name": "zig5_A1A5",
-        "levels": 0,
-        "actions": 152
-      },
-      {
-        "name": "zig5_A2A1",
-        "levels": 0,
-        "actions": 152
-      },
-      {
-        "name": "zig5_A2A3",
-        "levels": 0,
-        "actions": 152
-      },
-      {
-        "name": "zig5_A2A4",
-        "levels": 0,
-        "actions": 152
-      },
-      {
-        "name": "zig5_A2A5",
-        "levels": 0,
-        "actions": 152
-      },
-      {
-        "name": "zig5_A3A1",
-        "levels": 0,
-        "actions": 152
-      },
-      {
-        "name": "zig5_A3A2",
-        "levels": 0,
-        "actions": 152
-      },
-      {
-        "name": "zig5_A3A4",
-        "levels": 0,
-        "actions": 152
-      },
-      {
-        "name": "zig5_A3A5",
-        "levels": 0,
-        "actions": 152
-      },
-      {
-        "name": "zig5_A4A1",
-        "levels": 0,
-        "actions": 152
-      },
-      {
-        "name": "zig5_A4A2",
-        "levels": 0,
-        "actions": 152
-      },
-      {
-        "name": "zig5_A4A3",
-        "levels": 0,
-        "actions": 152
-      },
-      {
-        "name": "zig5_A4A5",
-        "levels": 0,
-        "actions": 152
-      },
-      {
-        "name": "zig5_A5A1",
-        "levels": 0,
-        "actions": 152
-      },
-      {
-        "name": "zig5_A5A2",
-        "levels": 0,
-        "actions": 152
-      },
-      {
-        "name": "zig5_A5A3",
-        "levels": 0,
-        "actions": 152
-      },
-      {
-        "name": "zig5_A5A4",
-        "levels": 0,
-        "actions": 152
-      },
-      {
-        "name": "zig7_A1A2",
-        "levels": 0,
-        "actions": 152
-      },
-      {
-        "name": "zig7_A1A3",
-        "levels": 0,
-        "actions": 152
-      },
-      {
-        "name": "zig7_A1A4",
-        "levels": 0,
-        "actions": 152
+        "name": "bfs_state_space",
+        "levels": 2,
+        "actions": 2130
       },
       {
-        "name": "zig7_A1A5",
-        "levels": 0,
-        "actions": 152
+        "name": "ml_continuation",
+        "levels": 2,
+        "actions": 4221
       }
     ],
     "title": "M0R0"
@@ -1958,10 +128,25 @@
     "game_id": "cn04-65d47d14",
     "levels_completed": 1,
     "win_levels": 5,
-    "actions": 6002,
+    "actions": 14734,
     "strategy": "zig3_A2A4",
     "cleared": true,
     "strategies_tried": [
+      {
+        "name": "paint_game",
+        "levels": 0,
+        "actions": 76
+      },
+      {
+        "name": "spell_cast",
+        "levels": 0,
+        "actions": 733
+      },
+      {
+        "name": "bfs_state_space",
+        "levels": 0,
+        "actions": 2050
+      },
       {
         "name": "sustained_A1",
         "levels": 0,
@@ -2223,992 +408,82 @@
         "actions": 151
       },
       {
-        "name": "ext_graph_explore",
+        "name": "extend_zig3_A2A4",
         "levels": 1,
-        "actions": 1000
+        "actions": 2000
       },
       {
-        "name": "ext_bfs_explore",
+        "name": "ml_continuation",
         "levels": 1,
-        "actions": 500
+        "actions": 5373
       }
     ],
     "title": "CN04"
   },
   {
     "game_id": "ft09-0d8bbf25",
-    "levels_completed": 0,
+    "levels_completed": 6,
     "win_levels": 6,
-    "actions": 10000,
-    "strategy": "",
-    "cleared": false,
+    "actions": 375,
+    "strategy": "lights_out",
+    "cleared": true,
     "strategies_tried": [
       {
-        "name": "click_rare",
+        "name": "s5i5_slider",
         "levels": 0,
-        "actions": 500
+        "actions": 1
       },
       {
-        "name": "seq_search",
-        "levels": 0,
-        "actions": 422
+        "name": "lights_out",
+        "levels": 6,
+        "actions": 374
       },
       {
-        "name": "pattern_repeat",
-        "levels": 0,
-        "actions": 400
-      },
-      {
-        "name": "click_diff",
-        "levels": 0,
-        "actions": 268
-      },
-      {
-        "name": "click_all_colors",
-        "levels": 0,
-        "actions": 217
-      },
-      {
-        "name": "graph_explore",
-        "levels": 0,
-        "actions": 500
-      },
-      {
-        "name": "raster",
-        "levels": 0,
-        "actions": 4106
-      },
-      {
-        "name": "click_progressive",
-        "levels": 0,
-        "actions": 91
-      },
-      {
-        "name": "click_color_order",
-        "levels": 0,
-        "actions": 500
-      },
-      {
-        "name": "click_toggle",
-        "levels": 0,
-        "actions": 500
-      },
-      {
-        "name": "transform_detect",
-        "levels": 0,
-        "actions": 500
-      },
-      {
-        "name": "click_adaptive",
-        "levels": 0,
-        "actions": 500
-      },
-      {
-        "name": "raster_fine",
-        "levels": 0,
-        "actions": 1496
+        "name": "ml_continuation",
+        "levels": 6,
+        "actions": 0
       }
     ],
     "title": "FT09"
   },
   {
     "game_id": "tr87-cd924810",
-    "levels_completed": 0,
+    "levels_completed": 1,
     "win_levels": 6,
-    "actions": 10000,
-    "strategy": "",
-    "cleared": false,
+    "actions": 20000,
+    "strategy": "tr87_rotation",
+    "cleared": true,
     "strategies_tried": [
       {
-        "name": "sustained_A1",
+        "name": "tu93_maze",
         "levels": 0,
-        "actions": 81
+        "actions": 19
       },
       {
-        "name": "sustained_A2",
-        "levels": 0,
-        "actions": 81
-      },
-      {
-        "name": "sustained_A3",
-        "levels": 0,
-        "actions": 81
-      },
-      {
-        "name": "sustained_A4",
-        "levels": 0,
-        "actions": 81
-      },
-      {
-        "name": "zig1_A1A2",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A1A3",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A1A4",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A2A1",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A2A3",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A2A4",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A3A1",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A3A2",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A3A4",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A4A1",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A4A2",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A4A3",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig2_A1A2",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A1A3",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A1A4",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A2A1",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A2A3",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A2A4",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A3A1",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A3A2",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A3A4",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A4A1",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A4A2",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A4A3",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig3_A1A2",
-        "levels": 0,
-        "actions": 129
-      },
-      {
-        "name": "zig3_A1A3",
-        "levels": 0,
-        "actions": 129
-      },
-      {
-        "name": "zig3_A1A4",
-        "levels": 0,
-        "actions": 129
-      },
-      {
-        "name": "zig3_A2A1",
-        "levels": 0,
-        "actions": 129
-      },
-      {
-        "name": "zig3_A2A3",
-        "levels": 0,
-        "actions": 129
-      },
-      {
-        "name": "zig3_A2A4",
-        "levels": 0,
-        "actions": 129
-      },
-      {
-        "name": "zig3_A3A1",
-        "levels": 0,
-        "actions": 129
-      },
-      {
-        "name": "zig3_A3A2",
-        "levels": 0,
-        "actions": 129
-      },
-      {
-        "name": "zig3_A3A4",
-        "levels": 0,
-        "actions": 129
-      },
-      {
-        "name": "zig3_A4A1",
-        "levels": 0,
-        "actions": 129
-      },
-      {
-        "name": "zig3_A4A2",
-        "levels": 0,
-        "actions": 129
-      },
-      {
-        "name": "zig3_A4A3",
-        "levels": 0,
-        "actions": 129
-      },
-      {
-        "name": "zig5_A1A2",
-        "levels": 0,
-        "actions": 129
-      },
-      {
-        "name": "zig5_A1A3",
-        "levels": 0,
-        "actions": 129
-      },
-      {
-        "name": "zig5_A1A4",
-        "levels": 0,
-        "actions": 129
-      },
-      {
-        "name": "zig5_A2A1",
-        "levels": 0,
-        "actions": 129
-      },
-      {
-        "name": "zig5_A2A3",
-        "levels": 0,
-        "actions": 129
-      },
-      {
-        "name": "zig5_A2A4",
-        "levels": 0,
-        "actions": 129
-      },
-      {
-        "name": "zig5_A3A1",
-        "levels": 0,
-        "actions": 129
-      },
-      {
-        "name": "zig5_A3A2",
-        "levels": 0,
-        "actions": 129
-      },
-      {
-        "name": "zig5_A3A4",
-        "levels": 0,
-        "actions": 129
-      },
-      {
-        "name": "zig5_A4A1",
-        "levels": 0,
-        "actions": 129
-      },
-      {
-        "name": "zig5_A4A2",
-        "levels": 0,
-        "actions": 129
-      },
-      {
-        "name": "zig5_A4A3",
-        "levels": 0,
-        "actions": 129
-      },
-      {
-        "name": "zig7_A1A2",
-        "levels": 0,
-        "actions": 129
-      },
-      {
-        "name": "zig7_A1A3",
-        "levels": 0,
-        "actions": 129
-      },
-      {
-        "name": "zig7_A1A4",
-        "levels": 0,
-        "actions": 129
-      },
-      {
-        "name": "zig7_A2A1",
-        "levels": 0,
-        "actions": 129
-      },
-      {
-        "name": "zig7_A2A3",
-        "levels": 0,
-        "actions": 129
-      },
-      {
-        "name": "zig7_A2A4",
-        "levels": 0,
-        "actions": 129
-      },
-      {
-        "name": "zig7_A3A1",
-        "levels": 0,
-        "actions": 129
-      },
-      {
-        "name": "zig7_A3A2",
-        "levels": 0,
-        "actions": 129
-      },
-      {
-        "name": "zig7_A3A4",
-        "levels": 0,
-        "actions": 129
-      },
-      {
-        "name": "zig7_A4A1",
-        "levels": 0,
-        "actions": 129
-      },
-      {
-        "name": "zig7_A4A2",
-        "levels": 0,
-        "actions": 129
-      },
-      {
-        "name": "zig7_A4A3",
-        "levels": 0,
-        "actions": 129
-      },
-      {
-        "name": "zig10_A1A2",
-        "levels": 0,
-        "actions": 129
-      },
-      {
-        "name": "zig10_A1A3",
-        "levels": 0,
-        "actions": 129
-      },
-      {
-        "name": "zig10_A1A4",
-        "levels": 0,
-        "actions": 129
-      },
-      {
-        "name": "zig10_A2A1",
-        "levels": 0,
-        "actions": 129
-      },
-      {
-        "name": "zig10_A2A3",
-        "levels": 0,
-        "actions": 129
-      },
-      {
-        "name": "zig10_A2A4",
-        "levels": 0,
-        "actions": 129
-      },
-      {
-        "name": "zig10_A3A1",
-        "levels": 0,
-        "actions": 129
-      },
-      {
-        "name": "zig10_A3A2",
-        "levels": 0,
-        "actions": 129
-      },
-      {
-        "name": "zig10_A3A4",
-        "levels": 0,
-        "actions": 129
-      },
-      {
-        "name": "zig10_A4A1",
-        "levels": 0,
-        "actions": 129
-      },
-      {
-        "name": "zig10_A4A2",
-        "levels": 0,
-        "actions": 129
-      },
-      {
-        "name": "zig10_A4A3",
-        "levels": 0,
-        "actions": 129
-      },
-      {
-        "name": "nav_c1",
-        "levels": 0,
-        "actions": 105
-      },
-      {
-        "name": "nav_c2",
-        "levels": 0,
-        "actions": 105
-      },
-      {
-        "name": "nav_c3",
-        "levels": 0,
-        "actions": 105
-      },
-      {
-        "name": "nav_c7",
-        "levels": 0,
-        "actions": 105
-      },
-      {
-        "name": "nav_c10",
-        "levels": 0,
-        "actions": 105
-      },
-      {
-        "name": "smart_nav",
-        "levels": 0,
-        "actions": 800
-      },
-      {
-        "name": "explore_interact",
-        "levels": 0,
-        "actions": 335
+        "name": "tr87_rotation",
+        "levels": 1,
+        "actions": 19981
       }
     ],
     "title": "TR87"
   },
   {
     "game_id": "sc25-f9b21a2f",
-    "levels_completed": 0,
+    "levels_completed": 2,
     "win_levels": 6,
-    "actions": 10000,
-    "strategy": "",
-    "cleared": false,
+    "actions": 3409,
+    "strategy": "spell_cast",
+    "cleared": true,
     "strategies_tried": [
       {
-        "name": "sustained_A1",
-        "levels": 0,
-        "actions": 53
+        "name": "spell_cast",
+        "levels": 2,
+        "actions": 87
       },
       {
-        "name": "sustained_A2",
-        "levels": 0,
-        "actions": 53
-      },
-      {
-        "name": "sustained_A3",
-        "levels": 0,
-        "actions": 53
-      },
-      {
-        "name": "sustained_A4",
-        "levels": 0,
-        "actions": 53
-      },
-      {
-        "name": "zig1_A1A2",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A1A3",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A1A4",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A2A1",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A2A3",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A2A4",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A3A1",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A3A2",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A3A4",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A4A1",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A4A2",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A4A3",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig2_A1A2",
-        "levels": 0,
-        "actions": 53
-      },
-      {
-        "name": "zig2_A1A3",
-        "levels": 0,
-        "actions": 53
-      },
-      {
-        "name": "zig2_A1A4",
-        "levels": 0,
-        "actions": 53
-      },
-      {
-        "name": "zig2_A2A1",
-        "levels": 0,
-        "actions": 53
-      },
-      {
-        "name": "zig2_A2A3",
-        "levels": 0,
-        "actions": 53
-      },
-      {
-        "name": "zig2_A2A4",
-        "levels": 0,
-        "actions": 53
-      },
-      {
-        "name": "zig2_A3A1",
-        "levels": 0,
-        "actions": 53
-      },
-      {
-        "name": "zig2_A3A2",
-        "levels": 0,
-        "actions": 53
-      },
-      {
-        "name": "zig2_A3A4",
-        "levels": 0,
-        "actions": 53
-      },
-      {
-        "name": "zig2_A4A1",
-        "levels": 0,
-        "actions": 53
-      },
-      {
-        "name": "zig2_A4A2",
-        "levels": 0,
-        "actions": 53
-      },
-      {
-        "name": "zig2_A4A3",
-        "levels": 0,
-        "actions": 53
-      },
-      {
-        "name": "zig3_A1A2",
-        "levels": 0,
-        "actions": 53
-      },
-      {
-        "name": "zig3_A1A3",
-        "levels": 0,
-        "actions": 53
-      },
-      {
-        "name": "zig3_A1A4",
-        "levels": 0,
-        "actions": 53
-      },
-      {
-        "name": "zig3_A2A1",
-        "levels": 0,
-        "actions": 53
-      },
-      {
-        "name": "zig3_A2A3",
-        "levels": 0,
-        "actions": 53
-      },
-      {
-        "name": "zig3_A2A4",
-        "levels": 0,
-        "actions": 53
-      },
-      {
-        "name": "zig3_A3A1",
-        "levels": 0,
-        "actions": 53
-      },
-      {
-        "name": "zig3_A3A2",
-        "levels": 0,
-        "actions": 53
-      },
-      {
-        "name": "zig3_A3A4",
-        "levels": 0,
-        "actions": 53
-      },
-      {
-        "name": "zig3_A4A1",
-        "levels": 0,
-        "actions": 53
-      },
-      {
-        "name": "zig3_A4A2",
-        "levels": 0,
-        "actions": 53
-      },
-      {
-        "name": "zig3_A4A3",
-        "levels": 0,
-        "actions": 53
-      },
-      {
-        "name": "zig5_A1A2",
-        "levels": 0,
-        "actions": 53
-      },
-      {
-        "name": "zig5_A1A3",
-        "levels": 0,
-        "actions": 53
-      },
-      {
-        "name": "zig5_A1A4",
-        "levels": 0,
-        "actions": 53
-      },
-      {
-        "name": "zig5_A2A1",
-        "levels": 0,
-        "actions": 53
-      },
-      {
-        "name": "zig5_A2A3",
-        "levels": 0,
-        "actions": 53
-      },
-      {
-        "name": "zig5_A2A4",
-        "levels": 0,
-        "actions": 53
-      },
-      {
-        "name": "zig5_A3A1",
-        "levels": 0,
-        "actions": 53
-      },
-      {
-        "name": "zig5_A3A2",
-        "levels": 0,
-        "actions": 53
-      },
-      {
-        "name": "zig5_A3A4",
-        "levels": 0,
-        "actions": 53
-      },
-      {
-        "name": "zig5_A4A1",
-        "levels": 0,
-        "actions": 53
-      },
-      {
-        "name": "zig5_A4A2",
-        "levels": 0,
-        "actions": 53
-      },
-      {
-        "name": "zig5_A4A3",
-        "levels": 0,
-        "actions": 53
-      },
-      {
-        "name": "zig7_A1A2",
-        "levels": 0,
-        "actions": 53
-      },
-      {
-        "name": "zig7_A1A3",
-        "levels": 0,
-        "actions": 53
-      },
-      {
-        "name": "zig7_A1A4",
-        "levels": 0,
-        "actions": 53
-      },
-      {
-        "name": "zig7_A2A1",
-        "levels": 0,
-        "actions": 53
-      },
-      {
-        "name": "zig7_A2A3",
-        "levels": 0,
-        "actions": 53
-      },
-      {
-        "name": "zig7_A2A4",
-        "levels": 0,
-        "actions": 53
-      },
-      {
-        "name": "zig7_A3A1",
-        "levels": 0,
-        "actions": 53
-      },
-      {
-        "name": "zig7_A3A2",
-        "levels": 0,
-        "actions": 53
-      },
-      {
-        "name": "zig7_A3A4",
-        "levels": 0,
-        "actions": 53
-      },
-      {
-        "name": "zig7_A4A1",
-        "levels": 0,
-        "actions": 53
-      },
-      {
-        "name": "zig7_A4A2",
-        "levels": 0,
-        "actions": 53
-      },
-      {
-        "name": "zig7_A4A3",
-        "levels": 0,
-        "actions": 53
-      },
-      {
-        "name": "zig10_A1A2",
-        "levels": 0,
-        "actions": 53
-      },
-      {
-        "name": "zig10_A1A3",
-        "levels": 0,
-        "actions": 53
-      },
-      {
-        "name": "zig10_A1A4",
-        "levels": 0,
-        "actions": 53
-      },
-      {
-        "name": "zig10_A2A1",
-        "levels": 0,
-        "actions": 53
-      },
-      {
-        "name": "zig10_A2A3",
-        "levels": 0,
-        "actions": 53
-      },
-      {
-        "name": "zig10_A2A4",
-        "levels": 0,
-        "actions": 53
-      },
-      {
-        "name": "zig10_A3A1",
-        "levels": 0,
-        "actions": 53
-      },
-      {
-        "name": "zig10_A3A2",
-        "levels": 0,
-        "actions": 53
-      },
-      {
-        "name": "zig10_A3A4",
-        "levels": 0,
-        "actions": 53
-      },
-      {
-        "name": "zig10_A4A1",
-        "levels": 0,
-        "actions": 53
-      },
-      {
-        "name": "zig10_A4A2",
-        "levels": 0,
-        "actions": 53
-      },
-      {
-        "name": "zig10_A4A3",
-        "levels": 0,
-        "actions": 53
-      },
-      {
-        "name": "click_rare",
-        "levels": 0,
-        "actions": 500
-      },
-      {
-        "name": "moveclick_A1",
-        "levels": 0,
-        "actions": 131
-      },
-      {
-        "name": "moveclick_A2",
-        "levels": 0,
-        "actions": 131
-      },
-      {
-        "name": "moveclick_A3",
-        "levels": 0,
-        "actions": 131
-      },
-      {
-        "name": "moveclick_A4",
-        "levels": 0,
-        "actions": 131
-      },
-      {
-        "name": "smart_nav",
-        "levels": 0,
-        "actions": 800
-      },
-      {
-        "name": "explore_interact",
-        "levels": 0,
-        "actions": 800
-      },
-      {
-        "name": "seq_search",
-        "levels": 0,
-        "actions": 488
-      },
-      {
-        "name": "bfs_explore",
-        "levels": 0,
-        "actions": 300
-      },
-      {
-        "name": "wall_avoid",
-        "levels": 0,
-        "actions": 300
-      },
-      {
-        "name": "pattern_repeat",
-        "levels": 0,
-        "actions": 400
-      },
-      {
-        "name": "click_diff",
-        "levels": 0,
-        "actions": 166
-      },
-      {
-        "name": "click_all_colors",
-        "levels": 0,
-        "actions": 218
-      },
-      {
-        "name": "all_combos",
-        "levels": 0,
-        "actions": 250
-      },
-      {
-        "name": "graph_explore",
-        "levels": 0,
-        "actions": 500
-      },
-      {
-        "name": "move_click_grid",
-        "levels": 0,
-        "actions": 400
-      },
-      {
-        "name": "raster",
-        "levels": 0,
-        "actions": 350
+        "name": "ml_continuation",
+        "levels": 2,
+        "actions": 3322
       }
     ],
     "title": "SC25"
@@ -3217,495 +492,60 @@
     "game_id": "lp85-305b61c3",
     "levels_completed": 1,
     "win_levels": 8,
-    "actions": 2555,
+    "actions": 711,
     "strategy": "click_c8_(30,4)",
     "cleared": true,
     "strategies_tried": [
       {
+        "name": "s5i5_slider",
+        "levels": 0,
+        "actions": 1
+      },
+      {
+        "name": "lights_out",
+        "levels": 0,
+        "actions": 2
+      },
+      {
+        "name": "bfs_state_space",
+        "levels": 0,
+        "actions": 1
+      },
+      {
         "name": "click_rare",
         "levels": 1,
-        "actions": 500
+        "actions": 513
       },
       {
-        "name": "ext_click_rare",
+        "name": "ml_continuation",
         "levels": 1,
-        "actions": 334
-      },
-      {
-        "name": "ext_click_progressive",
-        "levels": 1,
-        "actions": 221
-      },
-      {
-        "name": "ext_click_adaptive",
-        "levels": 1,
-        "actions": 500
-      },
-      {
-        "name": "ext_graph_explore",
-        "levels": 1,
-        "actions": 1000
+        "actions": 194
       }
     ],
     "title": "LP85"
   },
   {
     "game_id": "dc22-4c9bff3e",
-    "levels_completed": 0,
+    "levels_completed": 1,
     "win_levels": 6,
-    "actions": 10000,
-    "strategy": "",
-    "cleared": false,
+    "actions": 7432,
+    "strategy": "bfs_state_space",
+    "cleared": true,
     "strategies_tried": [
       {
-        "name": "sustained_A1",
+        "name": "spell_cast",
         "levels": 0,
-        "actions": 81
+        "actions": 733
       },
       {
-        "name": "sustained_A2",
-        "levels": 0,
-        "actions": 81
-      },
-      {
-        "name": "sustained_A3",
-        "levels": 0,
-        "actions": 81
-      },
-      {
-        "name": "sustained_A4",
-        "levels": 0,
-        "actions": 81
-      },
-      {
-        "name": "zig1_A1A2",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A1A3",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A1A4",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A2A1",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A2A3",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A2A4",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A3A1",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A3A2",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A3A4",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A4A1",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A4A2",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A4A3",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig2_A1A2",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A1A3",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A1A4",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A2A1",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A2A3",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A2A4",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A3A1",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A3A2",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A3A4",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A4A1",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A4A2",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A4A3",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig3_A1A2",
-        "levels": 0,
-        "actions": 129
-      },
-      {
-        "name": "zig3_A1A3",
-        "levels": 0,
-        "actions": 129
-      },
-      {
-        "name": "zig3_A1A4",
-        "levels": 0,
-        "actions": 129
-      },
-      {
-        "name": "zig3_A2A1",
-        "levels": 0,
-        "actions": 129
-      },
-      {
-        "name": "zig3_A2A3",
-        "levels": 0,
-        "actions": 129
-      },
-      {
-        "name": "zig3_A2A4",
-        "levels": 0,
-        "actions": 129
-      },
-      {
-        "name": "zig3_A3A1",
-        "levels": 0,
-        "actions": 129
-      },
-      {
-        "name": "zig3_A3A2",
-        "levels": 0,
-        "actions": 129
-      },
-      {
-        "name": "zig3_A3A4",
-        "levels": 0,
-        "actions": 129
-      },
-      {
-        "name": "zig3_A4A1",
-        "levels": 0,
-        "actions": 129
-      },
-      {
-        "name": "zig3_A4A2",
-        "levels": 0,
-        "actions": 129
-      },
-      {
-        "name": "zig3_A4A3",
-        "levels": 0,
-        "actions": 129
-      },
-      {
-        "name": "zig5_A1A2",
-        "levels": 0,
-        "actions": 129
-      },
-      {
-        "name": "zig5_A1A3",
-        "levels": 0,
-        "actions": 129
-      },
-      {
-        "name": "zig5_A1A4",
-        "levels": 0,
-        "actions": 129
-      },
-      {
-        "name": "zig5_A2A1",
-        "levels": 0,
-        "actions": 129
-      },
-      {
-        "name": "zig5_A2A3",
-        "levels": 0,
-        "actions": 129
-      },
-      {
-        "name": "zig5_A2A4",
-        "levels": 0,
-        "actions": 129
-      },
-      {
-        "name": "zig5_A3A1",
-        "levels": 0,
-        "actions": 129
-      },
-      {
-        "name": "zig5_A3A2",
-        "levels": 0,
-        "actions": 129
-      },
-      {
-        "name": "zig5_A3A4",
-        "levels": 0,
-        "actions": 129
-      },
-      {
-        "name": "zig5_A4A1",
-        "levels": 0,
-        "actions": 129
-      },
-      {
-        "name": "zig5_A4A2",
-        "levels": 0,
-        "actions": 129
-      },
-      {
-        "name": "zig5_A4A3",
-        "levels": 0,
-        "actions": 129
-      },
-      {
-        "name": "zig7_A1A2",
-        "levels": 0,
-        "actions": 129
-      },
-      {
-        "name": "zig7_A1A3",
-        "levels": 0,
-        "actions": 129
-      },
-      {
-        "name": "zig7_A1A4",
-        "levels": 0,
-        "actions": 129
-      },
-      {
-        "name": "zig7_A2A1",
-        "levels": 0,
-        "actions": 129
-      },
-      {
-        "name": "zig7_A2A3",
-        "levels": 0,
-        "actions": 129
-      },
-      {
-        "name": "zig7_A2A4",
-        "levels": 0,
-        "actions": 129
-      },
-      {
-        "name": "zig7_A3A1",
-        "levels": 0,
-        "actions": 129
-      },
-      {
-        "name": "zig7_A3A2",
-        "levels": 0,
-        "actions": 129
-      },
-      {
-        "name": "zig7_A3A4",
-        "levels": 0,
-        "actions": 129
-      },
-      {
-        "name": "zig7_A4A1",
-        "levels": 0,
-        "actions": 129
-      },
-      {
-        "name": "zig7_A4A2",
-        "levels": 0,
-        "actions": 129
-      },
-      {
-        "name": "zig7_A4A3",
-        "levels": 0,
-        "actions": 129
-      },
-      {
-        "name": "zig10_A1A2",
-        "levels": 0,
-        "actions": 129
-      },
-      {
-        "name": "zig10_A1A3",
-        "levels": 0,
-        "actions": 129
-      },
-      {
-        "name": "zig10_A1A4",
-        "levels": 0,
-        "actions": 129
-      },
-      {
-        "name": "zig10_A2A1",
-        "levels": 0,
-        "actions": 129
-      },
-      {
-        "name": "zig10_A2A3",
-        "levels": 0,
-        "actions": 129
-      },
-      {
-        "name": "zig10_A2A4",
-        "levels": 0,
-        "actions": 129
-      },
-      {
-        "name": "zig10_A3A1",
-        "levels": 0,
-        "actions": 129
-      },
-      {
-        "name": "zig10_A3A2",
-        "levels": 0,
-        "actions": 129
-      },
-      {
-        "name": "zig10_A3A4",
-        "levels": 0,
-        "actions": 129
-      },
-      {
-        "name": "zig10_A4A1",
-        "levels": 0,
-        "actions": 129
-      },
-      {
-        "name": "zig10_A4A2",
-        "levels": 0,
-        "actions": 129
-      },
-      {
-        "name": "zig10_A4A3",
-        "levels": 0,
-        "actions": 129
-      },
-      {
-        "name": "click_rare",
-        "levels": 0,
-        "actions": 249
-      },
-      {
-        "name": "moveclick_A1",
-        "levels": 0,
-        "actions": 132
-      },
-      {
-        "name": "moveclick_A2",
-        "levels": 0,
-        "actions": 132
-      },
-      {
-        "name": "moveclick_A3",
-        "levels": 0,
-        "actions": 132
-      },
-      {
-        "name": "moveclick_A4",
-        "levels": 0,
-        "actions": 132
-      },
-      {
-        "name": "nav_c2",
-        "levels": 0,
-        "actions": 105
-      },
-      {
-        "name": "nav_c3",
-        "levels": 0,
-        "actions": 105
-      },
-      {
-        "name": "nav_c4",
-        "levels": 0,
-        "actions": 105
-      },
-      {
-        "name": "nav_c5",
-        "levels": 0,
-        "actions": 105
-      },
-      {
-        "name": "nav_c8",
-        "levels": 0,
-        "actions": 105
-      },
-      {
-        "name": "nav_c9",
-        "levels": 0,
-        "actions": 105
-      },
-      {
-        "name": "nav_c11",
-        "levels": 0,
-        "actions": 105
-      },
-      {
-        "name": "nav_c13",
-        "levels": 0,
-        "actions": 105
+        "name": "bfs_state_space",
+        "levels": 1,
+        "actions": 2090
       },
       {
-        "name": "smart_nav",
-        "levels": 0,
-        "actions": 43
+        "name": "ml_continuation",
+        "levels": 1,
+        "actions": 4609
       }
     ],
     "title": "DC22"
@@ -3714,592 +554,87 @@
     "game_id": "sp80-0ee2d095",
     "levels_completed": 1,
     "win_levels": 6,
-    "actions": 2052,
-    "strategy": "zig1_A4A5",
+    "actions": 5746,
+    "strategy": "bfs_state_space",
     "cleared": true,
     "strategies_tried": [
       {
-        "name": "sustained_A1",
+        "name": "paint_game",
         "levels": 0,
-        "actions": 31
+        "actions": 24
       },
       {
-        "name": "sustained_A2",
+        "name": "spell_cast",
         "levels": 0,
-        "actions": 31
+        "actions": 403
       },
       {
-        "name": "sustained_A3",
-        "levels": 0,
-        "actions": 31
-      },
-      {
-        "name": "sustained_A4",
-        "levels": 0,
-        "actions": 31
-      },
-      {
-        "name": "sustained_A5",
-        "levels": 0,
-        "actions": 6
-      },
-      {
-        "name": "zig1_A1A2",
-        "levels": 0,
-        "actions": 31
-      },
-      {
-        "name": "zig1_A1A3",
-        "levels": 0,
-        "actions": 31
-      },
-      {
-        "name": "zig1_A1A4",
-        "levels": 0,
-        "actions": 31
-      },
-      {
-        "name": "zig1_A1A5",
-        "levels": 0,
-        "actions": 11
-      },
-      {
-        "name": "zig1_A2A1",
-        "levels": 0,
-        "actions": 31
-      },
-      {
-        "name": "zig1_A2A3",
-        "levels": 0,
-        "actions": 31
-      },
-      {
-        "name": "zig1_A2A4",
-        "levels": 0,
-        "actions": 31
-      },
-      {
-        "name": "zig1_A2A5",
-        "levels": 0,
-        "actions": 11
-      },
-      {
-        "name": "zig1_A3A1",
-        "levels": 0,
-        "actions": 31
-      },
-      {
-        "name": "zig1_A3A2",
-        "levels": 0,
-        "actions": 31
-      },
-      {
-        "name": "zig1_A3A4",
-        "levels": 0,
-        "actions": 31
-      },
-      {
-        "name": "zig1_A3A5",
-        "levels": 0,
-        "actions": 11
-      },
-      {
-        "name": "zig1_A4A1",
-        "levels": 0,
-        "actions": 31
-      },
-      {
-        "name": "zig1_A4A2",
-        "levels": 0,
-        "actions": 31
-      },
-      {
-        "name": "zig1_A4A3",
-        "levels": 0,
-        "actions": 31
-      },
-      {
-        "name": "zig1_A4A5",
+        "name": "bfs_state_space",
         "levels": 1,
-        "actions": 17
+        "actions": 2058
       },
       {
-        "name": "ext_graph_explore",
+        "name": "ml_continuation",
         "levels": 1,
-        "actions": 1000
-      },
-      {
-        "name": "ext_bfs_explore",
-        "levels": 1,
-        "actions": 500
+        "actions": 3261
       }
     ],
     "title": "SP80"
   },
   {
     "game_id": "ka59-9f096b4a",
-    "levels_completed": 0,
+    "levels_completed": 1,
     "win_levels": 7,
-    "actions": 10000,
-    "strategy": "",
-    "cleared": false,
+    "actions": 4791,
+    "strategy": "ka59_sokoban",
+    "cleared": true,
     "strategies_tried": [
       {
-        "name": "sustained_A1",
+        "name": "spell_cast",
         "levels": 0,
-        "actions": 81
+        "actions": 733
       },
       {
-        "name": "sustained_A2",
-        "levels": 0,
-        "actions": 81
-      },
-      {
-        "name": "sustained_A3",
-        "levels": 0,
-        "actions": 81
-      },
-      {
-        "name": "sustained_A4",
-        "levels": 0,
-        "actions": 81
-      },
-      {
-        "name": "zig1_A1A2",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A1A3",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A1A4",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A2A1",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A2A3",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A2A4",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A3A1",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A3A2",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A3A4",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A4A1",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A4A2",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A4A3",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig2_A1A2",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A1A3",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A1A4",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A2A1",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A2A3",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A2A4",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A3A1",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A3A2",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A3A4",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A4A1",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A4A2",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A4A3",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig3_A1A2",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig3_A1A3",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig3_A1A4",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig3_A2A1",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig3_A2A3",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig3_A2A4",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig3_A3A1",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig3_A3A2",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig3_A3A4",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig3_A4A1",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig3_A4A2",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig3_A4A3",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig5_A1A2",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig5_A1A3",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig5_A1A4",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig5_A2A1",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig5_A2A3",
-        "levels": 0,
-        "actions": 101
+        "name": "ka59_sokoban",
+        "levels": 1,
+        "actions": 89
       },
       {
-        "name": "zig5_A2A4",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig5_A3A1",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig5_A3A2",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig5_A3A4",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig5_A4A1",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig5_A4A2",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig5_A4A3",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig7_A1A2",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig7_A1A3",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig7_A1A4",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig7_A2A1",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig7_A2A3",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig7_A2A4",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig7_A3A1",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig7_A3A2",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig7_A3A4",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig7_A4A1",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig7_A4A2",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig7_A4A3",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig10_A1A2",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig10_A1A3",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig10_A1A4",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig10_A2A1",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig10_A2A3",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig10_A2A4",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig10_A3A1",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig10_A3A2",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig10_A3A4",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig10_A4A1",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig10_A4A2",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig10_A4A3",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "click_rare",
-        "levels": 0,
-        "actions": 242
-      },
-      {
-        "name": "moveclick_A1",
-        "levels": 0,
-        "actions": 132
-      },
-      {
-        "name": "moveclick_A2",
-        "levels": 0,
-        "actions": 132
-      },
-      {
-        "name": "moveclick_A3",
-        "levels": 0,
-        "actions": 132
-      },
-      {
-        "name": "moveclick_A4",
-        "levels": 0,
-        "actions": 132
-      },
-      {
-        "name": "nav_c1",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "nav_c2",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "nav_c4",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "nav_c5",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "nav_c15",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "smart_nav",
-        "levels": 0,
-        "actions": 800
-      },
-      {
-        "name": "explore_interact",
-        "levels": 0,
-        "actions": 800
-      },
-      {
-        "name": "seq_search",
-        "levels": 0,
-        "actions": 129
+        "name": "ml_continuation",
+        "levels": 1,
+        "actions": 3969
       }
     ],
     "title": "KA59"
   },
   {
     "game_id": "g50t-5849a774",
-    "levels_completed": 0,
+    "levels_completed": 1,
     "win_levels": 7,
-    "actions": 10126,
-    "strategy": "",
-    "cleared": false,
+    "actions": 15290,
+    "strategy": "explore_interact",
+    "cleared": true,
     "strategies_tried": [
+      {
+        "name": "re86_analytical",
+        "levels": 0,
+        "actions": 1
+      },
+      {
+        "name": "re86_paint",
+        "levels": 0,
+        "actions": 4
+      },
+      {
+        "name": "wa30_delivery",
+        "levels": 0,
+        "actions": 5290
+      },
+      {
+        "name": "bfs_state_space",
+        "levels": 0,
+        "actions": 1
+      },
       {
         "name": "sustained_A1",
         "levels": 0,
@@ -4566,350 +901,50 @@
         "actions": 131
       },
       {
-        "name": "zig3_A3A1",
-        "levels": 0,
-        "actions": 131
-      },
-      {
-        "name": "zig3_A3A2",
-        "levels": 0,
-        "actions": 131
-      },
-      {
-        "name": "zig3_A3A4",
-        "levels": 0,
-        "actions": 131
-      },
-      {
-        "name": "zig3_A3A5",
-        "levels": 0,
-        "actions": 131
-      },
-      {
-        "name": "zig3_A4A1",
-        "levels": 0,
-        "actions": 131
-      },
-      {
-        "name": "zig3_A4A2",
-        "levels": 0,
-        "actions": 131
-      },
-      {
-        "name": "zig3_A4A3",
-        "levels": 0,
-        "actions": 131
-      },
-      {
-        "name": "zig3_A4A5",
-        "levels": 0,
-        "actions": 131
-      },
-      {
-        "name": "zig3_A5A1",
-        "levels": 0,
-        "actions": 131
-      },
-      {
-        "name": "zig3_A5A2",
-        "levels": 0,
-        "actions": 131
-      },
-      {
-        "name": "zig3_A5A3",
-        "levels": 0,
-        "actions": 131
-      },
-      {
-        "name": "zig3_A5A4",
-        "levels": 0,
-        "actions": 131
-      },
-      {
-        "name": "zig5_A1A2",
-        "levels": 0,
-        "actions": 131
-      },
-      {
-        "name": "zig5_A1A3",
-        "levels": 0,
-        "actions": 131
-      },
-      {
-        "name": "zig5_A1A4",
-        "levels": 0,
-        "actions": 131
-      },
-      {
-        "name": "zig5_A1A5",
-        "levels": 0,
-        "actions": 131
-      },
-      {
-        "name": "zig5_A2A1",
-        "levels": 0,
-        "actions": 131
-      },
-      {
-        "name": "zig5_A2A3",
-        "levels": 0,
-        "actions": 131
-      },
-      {
-        "name": "zig5_A2A4",
-        "levels": 0,
-        "actions": 131
-      },
-      {
-        "name": "zig5_A2A5",
-        "levels": 0,
-        "actions": 131
-      },
-      {
-        "name": "zig5_A3A1",
-        "levels": 0,
-        "actions": 131
-      },
-      {
-        "name": "zig5_A3A2",
-        "levels": 0,
-        "actions": 131
-      },
-      {
-        "name": "zig5_A3A4",
-        "levels": 0,
-        "actions": 131
-      },
-      {
-        "name": "zig5_A3A5",
-        "levels": 0,
-        "actions": 131
-      },
-      {
-        "name": "zig5_A4A1",
-        "levels": 0,
-        "actions": 131
-      },
-      {
-        "name": "zig5_A4A2",
-        "levels": 0,
-        "actions": 131
-      },
-      {
-        "name": "zig5_A4A3",
-        "levels": 0,
-        "actions": 131
-      },
-      {
-        "name": "zig5_A4A5",
-        "levels": 0,
-        "actions": 131
-      },
-      {
-        "name": "zig5_A5A1",
-        "levels": 0,
-        "actions": 131
-      },
-      {
-        "name": "zig5_A5A2",
-        "levels": 0,
-        "actions": 131
-      },
-      {
-        "name": "zig5_A5A3",
-        "levels": 0,
-        "actions": 131
-      },
-      {
-        "name": "zig5_A5A4",
-        "levels": 0,
-        "actions": 131
-      },
-      {
-        "name": "zig7_A1A2",
-        "levels": 0,
-        "actions": 131
-      },
-      {
-        "name": "zig7_A1A3",
-        "levels": 0,
-        "actions": 131
-      },
-      {
-        "name": "zig7_A1A4",
-        "levels": 0,
-        "actions": 131
-      },
-      {
-        "name": "zig7_A1A5",
-        "levels": 0,
-        "actions": 131
-      },
-      {
-        "name": "zig7_A2A1",
-        "levels": 0,
-        "actions": 131
-      },
-      {
-        "name": "zig7_A2A3",
-        "levels": 0,
-        "actions": 131
-      },
-      {
-        "name": "zig7_A2A4",
-        "levels": 0,
-        "actions": 131
-      },
-      {
-        "name": "zig7_A2A5",
-        "levels": 0,
-        "actions": 131
-      },
-      {
-        "name": "zig7_A3A1",
-        "levels": 0,
-        "actions": 131
-      },
-      {
-        "name": "zig7_A3A2",
-        "levels": 0,
-        "actions": 131
-      },
-      {
-        "name": "zig7_A3A4",
-        "levels": 0,
-        "actions": 131
-      }
-    ],
-    "title": "G50T"
-  },
-  {
-    "game_id": "sb26-7fbdac44",
-    "levels_completed": 0,
-    "win_levels": 8,
-    "actions": 10000,
-    "strategy": "",
-    "cleared": false,
-    "strategies_tried": [
-      {
-        "name": "sustained_A5",
-        "levels": 0,
-        "actions": 65
-      },
-      {
-        "name": "click_rare",
-        "levels": 0,
-        "actions": 449
-      },
-      {
-        "name": "moveclick_A5",
-        "levels": 0,
-        "actions": 131
-      },
-      {
-        "name": "nav_c4",
-        "levels": 0,
-        "actions": 65
-      },
-      {
-        "name": "nav_c5",
-        "levels": 0,
-        "actions": 65
-      },
-      {
-        "name": "nav_c8",
-        "levels": 0,
-        "actions": 65
-      },
-      {
-        "name": "nav_c9",
-        "levels": 0,
-        "actions": 65
-      },
-      {
-        "name": "nav_c11",
-        "levels": 0,
-        "actions": 65
-      },
-      {
-        "name": "nav_c14",
-        "levels": 0,
-        "actions": 65
-      },
-      {
-        "name": "nav_c15",
-        "levels": 0,
-        "actions": 65
-      },
-      {
         "name": "smart_nav",
         "levels": 0,
         "actions": 800
       },
       {
         "name": "explore_interact",
-        "levels": 0,
-        "actions": 250
+        "levels": 1,
+        "actions": 800
       },
       {
-        "name": "seq_search",
+        "name": "ml_continuation",
+        "levels": 1,
+        "actions": 3901
+      }
+    ],
+    "title": "G50T"
+  },
+  {
+    "game_id": "sb26-7fbdac44",
+    "levels_completed": 8,
+    "win_levels": 8,
+    "actions": 934,
+    "strategy": "sb26_sort",
+    "cleared": true,
+    "strategies_tried": [
+      {
+        "name": "paint_game",
         "levels": 0,
-        "actions": 600
+        "actions": 76
       },
       {
-        "name": "bfs_explore",
+        "name": "spell_cast",
         "levels": 0,
-        "actions": 300
+        "actions": 733
       },
       {
-        "name": "wall_avoid",
-        "levels": 0,
-        "actions": 300
+        "name": "sb26_sort",
+        "levels": 8,
+        "actions": 125
       },
       {
-        "name": "pattern_repeat",
-        "levels": 0,
-        "actions": 400
-      },
-      {
-        "name": "spiral",
-        "levels": 0,
-        "actions": 200
-      },
-      {
-        "name": "click_diff",
-        "levels": 0,
-        "actions": 165
-      },
-      {
-        "name": "click_all_colors",
-        "levels": 0,
-        "actions": 249
-      },
-      {
-        "name": "graph_explore",
-        "levels": 0,
-        "actions": 500
-      },
-      {
-        "name": "move_click_grid",
-        "levels": 0,
-        "actions": 400
-      },
-      {
-        "name": "raster",
-        "levels": 0,
-        "actions": 4097
-      },
-      {
-        "name": "bfs_navigate",
-        "levels": 0,
-        "actions": 501
-      },
-      {
-        "name": "wall_map_nav",
-        "levels": 0,
-        "actions": 138
+        "name": "ml_continuation",
+        "levels": 8,
+        "actions": 0
       }
     ],
     "title": "SB26"
@@ -4918,10 +953,25 @@
     "game_id": "lf52-271a04aa",
     "levels_completed": 0,
     "win_levels": 10,
-    "actions": 10000,
+    "actions": 20000,
     "strategy": "",
     "cleared": false,
     "strategies_tried": [
+      {
+        "name": "spell_cast",
+        "levels": 0,
+        "actions": 733
+      },
+      {
+        "name": "sk48_snake",
+        "levels": 0,
+        "actions": 5962
+      },
+      {
+        "name": "bfs_state_space",
+        "levels": 0,
+        "actions": 514
+      },
       {
         "name": "sustained_A1",
         "levels": 0,
@@ -5264,41 +1314,6 @@
       },
       {
         "name": "zig10_A2A3",
-        "levels": 0,
-        "actions": 65
-      },
-      {
-        "name": "zig10_A2A4",
-        "levels": 0,
-        "actions": 65
-      },
-      {
-        "name": "zig10_A3A1",
-        "levels": 0,
-        "actions": 65
-      },
-      {
-        "name": "zig10_A3A2",
-        "levels": 0,
-        "actions": 65
-      },
-      {
-        "name": "zig10_A3A4",
-        "levels": 0,
-        "actions": 65
-      },
-      {
-        "name": "zig10_A4A1",
-        "levels": 0,
-        "actions": 65
-      },
-      {
-        "name": "zig10_A4A2",
-        "levels": 0,
-        "actions": 65
-      },
-      {
-        "name": "zig10_A4A3",
         "levels": 0,
         "actions": 65
       },
@@ -5340,7 +1355,7 @@
       {
         "name": "seq_search",
         "levels": 0,
-        "actions": 514
+        "actions": 554
       },
       {
         "name": "bfs_explore",
@@ -5351,6 +1366,11 @@
         "name": "wall_avoid",
         "levels": 0,
         "actions": 300
+      },
+      {
+        "name": "pattern_repeat",
+        "levels": 0,
+        "actions": 400
       },
       {
         "name": "click_diff",
@@ -5378,216 +1398,117 @@
         "actions": 400
       },
       {
+        "name": "slot_value_cycle",
+        "levels": 0,
+        "actions": 264
+      },
+      {
+        "name": "rotation_puzzle",
+        "levels": 0,
+        "actions": 495
+      },
+      {
+        "name": "click_select_move",
+        "levels": 0,
+        "actions": 15
+      },
+      {
+        "name": "move_click_player",
+        "levels": 0,
+        "actions": 3
+      },
+      {
+        "name": "button_click_move",
+        "levels": 0,
+        "actions": 2000
+      },
+      {
         "name": "raster",
         "levels": 0,
-        "actions": 1066
+        "actions": 1095
       }
     ],
     "title": "LF52"
   },
   {
     "game_id": "bp35-0a0ad940",
-    "levels_completed": 0,
+    "levels_completed": 1,
     "win_levels": 9,
-    "actions": 10000,
-    "strategy": "",
-    "cleared": false,
+    "actions": 2662,
+    "strategy": "bp35_platformer",
+    "cleared": true,
     "strategies_tried": [
       {
-        "name": "sustained_A3",
+        "name": "spell_cast",
         "levels": 0,
-        "actions": 17
+        "actions": 313
       },
       {
-        "name": "sustained_A4",
-        "levels": 0,
-        "actions": 25
+        "name": "bp35_platformer",
+        "levels": 1,
+        "actions": 16
       },
       {
-        "name": "zig1_A3A4",
-        "levels": 0,
-        "actions": 17
-      },
-      {
-        "name": "zig1_A4A3",
-        "levels": 0,
-        "actions": 17
-      },
-      {
-        "name": "zig2_A3A4",
-        "levels": 0,
-        "actions": 17
-      },
-      {
-        "name": "zig2_A4A3",
-        "levels": 0,
-        "actions": 17
-      },
-      {
-        "name": "zig3_A3A4",
-        "levels": 0,
-        "actions": 17
-      },
-      {
-        "name": "zig3_A4A3",
-        "levels": 0,
-        "actions": 17
-      },
-      {
-        "name": "zig5_A3A4",
-        "levels": 0,
-        "actions": 25
-      },
-      {
-        "name": "zig5_A4A3",
-        "levels": 0,
-        "actions": 25
-      },
-      {
-        "name": "zig7_A3A4",
-        "levels": 0,
-        "actions": 25
-      },
-      {
-        "name": "zig7_A4A3",
-        "levels": 0,
-        "actions": 25
-      },
-      {
-        "name": "zig10_A3A4",
-        "levels": 0,
-        "actions": 23
-      },
-      {
-        "name": "zig10_A4A3",
-        "levels": 0,
-        "actions": 25
-      },
-      {
-        "name": "click_rare",
-        "levels": 0,
-        "actions": 339
-      },
-      {
-        "name": "moveclick_A3",
-        "levels": 0,
-        "actions": 131
-      },
-      {
-        "name": "moveclick_A4",
-        "levels": 0,
-        "actions": 131
-      },
-      {
-        "name": "nav_c3",
-        "levels": 0,
-        "actions": 17
-      },
-      {
-        "name": "nav_c5",
-        "levels": 0,
-        "actions": 17
-      },
-      {
-        "name": "nav_c10",
-        "levels": 0,
-        "actions": 25
-      },
-      {
-        "name": "nav_c11",
-        "levels": 0,
-        "actions": 25
-      },
-      {
-        "name": "nav_c14",
-        "levels": 0,
-        "actions": 17
-      },
-      {
-        "name": "smart_nav",
-        "levels": 0,
-        "actions": 800
-      },
-      {
-        "name": "explore_interact",
-        "levels": 0,
-        "actions": 729
-      },
-      {
-        "name": "seq_search",
-        "levels": 0,
-        "actions": 449
-      },
-      {
-        "name": "bfs_explore",
-        "levels": 0,
-        "actions": 300
-      },
-      {
-        "name": "wall_avoid",
-        "levels": 0,
-        "actions": 300
-      },
-      {
-        "name": "spiral",
-        "levels": 0,
-        "actions": 200
-      },
-      {
-        "name": "click_diff",
-        "levels": 0,
-        "actions": 319
-      },
-      {
-        "name": "click_all_colors",
-        "levels": 0,
-        "actions": 202
-      },
-      {
-        "name": "all_combos",
-        "levels": 0,
-        "actions": 245
-      },
-      {
-        "name": "graph_explore",
-        "levels": 0,
-        "actions": 500
-      },
-      {
-        "name": "move_click_grid",
-        "levels": 0,
-        "actions": 400
-      },
-      {
-        "name": "raster",
-        "levels": 0,
-        "actions": 4161
-      },
-      {
-        "name": "bfs_navigate",
-        "levels": 0,
-        "actions": 401
+        "name": "ml_continuation",
+        "levels": 1,
+        "actions": 2333
       }
     ],
     "title": "BP35"
   },
   {
     "game_id": "s5i5-a48e4b1d",
-    "levels_completed": 0,
+    "levels_completed": 1,
     "win_levels": 8,
-    "actions": 10000,
-    "strategy": "",
-    "cleared": false,
+    "actions": 2056,
+    "strategy": "s5i5_slider",
+    "cleared": true,
     "strategies_tried": [
+      {
+        "name": "s5i5_slider",
+        "levels": 1,
+        "actions": 1995
+      },
+      {
+        "name": "ml_continuation",
+        "levels": 1,
+        "actions": 61
+      }
+    ],
+    "title": "S5I5"
+  },
+  {
+    "game_id": "r11l-aa269680",
+    "levels_completed": 1,
+    "win_levels": 6,
+    "actions": 1702,
+    "strategy": "click_all_c15",
+    "cleared": true,
+    "strategies_tried": [
+      {
+        "name": "s5i5_slider",
+        "levels": 0,
+        "actions": 1
+      },
+      {
+        "name": "lights_out",
+        "levels": 0,
+        "actions": 2
+      },
+      {
+        "name": "bfs_state_space",
+        "levels": 0,
+        "actions": 1
+      },
       {
         "name": "click_rare",
         "levels": 0,
-        "actions": 305
+        "actions": 66
       },
       {
         "name": "seq_search",
         "levels": 0,
-        "actions": 469
+        "actions": 524
       },
       {
         "name": "pattern_repeat",
@@ -5597,78 +1518,17 @@
       {
         "name": "click_diff",
         "levels": 0,
-        "actions": 321
+        "actions": 320
       },
       {
         "name": "click_all_colors",
-        "levels": 0,
-        "actions": 203
-      },
-      {
-        "name": "graph_explore",
-        "levels": 0,
-        "actions": 500
-      },
-      {
-        "name": "raster",
-        "levels": 0,
-        "actions": 4178
-      },
-      {
-        "name": "click_progressive",
-        "levels": 0,
-        "actions": 311
-      },
-      {
-        "name": "click_color_order",
-        "levels": 0,
-        "actions": 500
-      },
-      {
-        "name": "click_toggle",
-        "levels": 0,
-        "actions": 500
-      },
-      {
-        "name": "transform_detect",
-        "levels": 0,
-        "actions": 500
-      },
-      {
-        "name": "click_adaptive",
-        "levels": 0,
-        "actions": 500
-      },
-      {
-        "name": "raster_fine",
-        "levels": 0,
-        "actions": 1313
-      }
-    ],
-    "title": "S5I5"
-  },
-  {
-    "game_id": "r11l-aa269680",
-    "levels_completed": 1,
-    "win_levels": 6,
-    "actions": 1561,
-    "strategy": "seq_repeat",
-    "cleared": true,
-    "strategies_tried": [
-      {
-        "name": "click_rare",
-        "levels": 0,
-        "actions": 66
-      },
-      {
-        "name": "seq_search",
         "levels": 1,
-        "actions": 495
+        "actions": 211
       },
       {
-        "name": "ext_graph_explore",
-        "levels": 0,
-        "actions": 1000
+        "name": "ml_continuation",
+        "levels": 1,
+        "actions": 177
       }
     ],
     "title": "R11L"
@@ -5677,790 +1537,50 @@
     "game_id": "sk48-41055498",
     "levels_completed": 0,
     "win_levels": 8,
-    "actions": 10067,
+    "actions": 20003,
     "strategy": "",
     "cleared": false,
     "strategies_tried": [
       {
-        "name": "sustained_A1",
+        "name": "spell_cast",
         "levels": 0,
-        "actions": 81
+        "actions": 733
       },
       {
-        "name": "sustained_A2",
+        "name": "sk48_snake",
         "levels": 0,
-        "actions": 81
-      },
-      {
-        "name": "sustained_A3",
-        "levels": 0,
-        "actions": 81
-      },
-      {
-        "name": "sustained_A4",
-        "levels": 0,
-        "actions": 81
-      },
-      {
-        "name": "zig1_A1A2",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A1A3",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A1A4",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A2A1",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A2A3",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A2A4",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A3A1",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A3A2",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A3A4",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A4A1",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A4A2",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A4A3",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig2_A1A2",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A1A3",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A1A4",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A2A1",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A2A3",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A2A4",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A3A1",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A3A2",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A3A4",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A4A1",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A4A2",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A4A3",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig3_A1A2",
-        "levels": 0,
-        "actions": 151
-      },
-      {
-        "name": "zig3_A1A3",
-        "levels": 0,
-        "actions": 151
-      },
-      {
-        "name": "zig3_A1A4",
-        "levels": 0,
-        "actions": 151
-      },
-      {
-        "name": "zig3_A2A1",
-        "levels": 0,
-        "actions": 151
-      },
-      {
-        "name": "zig3_A2A3",
-        "levels": 0,
-        "actions": 151
-      },
-      {
-        "name": "zig3_A2A4",
-        "levels": 0,
-        "actions": 151
-      },
-      {
-        "name": "zig3_A3A1",
-        "levels": 0,
-        "actions": 151
-      },
-      {
-        "name": "zig3_A3A2",
-        "levels": 0,
-        "actions": 151
-      },
-      {
-        "name": "zig3_A3A4",
-        "levels": 0,
-        "actions": 151
-      },
-      {
-        "name": "zig3_A4A1",
-        "levels": 0,
-        "actions": 151
-      },
-      {
-        "name": "zig3_A4A2",
-        "levels": 0,
-        "actions": 151
-      },
-      {
-        "name": "zig3_A4A3",
-        "levels": 0,
-        "actions": 151
-      },
-      {
-        "name": "zig5_A1A2",
-        "levels": 0,
-        "actions": 197
-      },
-      {
-        "name": "zig5_A1A3",
-        "levels": 0,
-        "actions": 197
-      },
-      {
-        "name": "zig5_A1A4",
-        "levels": 0,
-        "actions": 197
-      },
-      {
-        "name": "zig5_A2A1",
-        "levels": 0,
-        "actions": 197
-      },
-      {
-        "name": "zig5_A2A3",
-        "levels": 0,
-        "actions": 197
-      },
-      {
-        "name": "zig5_A2A4",
-        "levels": 0,
-        "actions": 197
-      },
-      {
-        "name": "zig5_A3A1",
-        "levels": 0,
-        "actions": 197
-      },
-      {
-        "name": "zig5_A3A2",
-        "levels": 0,
-        "actions": 197
-      },
-      {
-        "name": "zig5_A3A4",
-        "levels": 0,
-        "actions": 197
-      },
-      {
-        "name": "zig5_A4A1",
-        "levels": 0,
-        "actions": 197
-      },
-      {
-        "name": "zig5_A4A2",
-        "levels": 0,
-        "actions": 197
-      },
-      {
-        "name": "zig5_A4A3",
-        "levels": 0,
-        "actions": 197
-      },
-      {
-        "name": "zig7_A1A2",
-        "levels": 0,
-        "actions": 197
-      },
-      {
-        "name": "zig7_A1A3",
-        "levels": 0,
-        "actions": 197
-      },
-      {
-        "name": "zig7_A1A4",
-        "levels": 0,
-        "actions": 197
-      },
-      {
-        "name": "zig7_A2A1",
-        "levels": 0,
-        "actions": 197
-      },
-      {
-        "name": "zig7_A2A3",
-        "levels": 0,
-        "actions": 197
-      },
-      {
-        "name": "zig7_A2A4",
-        "levels": 0,
-        "actions": 197
-      },
-      {
-        "name": "zig7_A3A1",
-        "levels": 0,
-        "actions": 197
-      },
-      {
-        "name": "zig7_A3A2",
-        "levels": 0,
-        "actions": 197
-      },
-      {
-        "name": "zig7_A3A4",
-        "levels": 0,
-        "actions": 197
-      },
-      {
-        "name": "zig7_A4A1",
-        "levels": 0,
-        "actions": 197
-      },
-      {
-        "name": "zig7_A4A2",
-        "levels": 0,
-        "actions": 197
-      },
-      {
-        "name": "zig7_A4A3",
-        "levels": 0,
-        "actions": 197
-      },
-      {
-        "name": "zig10_A1A2",
-        "levels": 0,
-        "actions": 197
-      },
-      {
-        "name": "zig10_A1A3",
-        "levels": 0,
-        "actions": 197
-      },
-      {
-        "name": "zig10_A1A4",
-        "levels": 0,
-        "actions": 197
-      },
-      {
-        "name": "zig10_A2A1",
-        "levels": 0,
-        "actions": 197
-      },
-      {
-        "name": "zig10_A2A3",
-        "levels": 0,
-        "actions": 197
-      },
-      {
-        "name": "zig10_A2A4",
-        "levels": 0,
-        "actions": 197
-      },
-      {
-        "name": "zig10_A3A1",
-        "levels": 0,
-        "actions": 197
+        "actions": 19270
       }
     ],
     "title": "SK48"
   },
   {
     "game_id": "wa30-ee6fef47",
-    "levels_completed": 0,
+    "levels_completed": 2,
     "win_levels": 9,
-    "actions": 10083,
-    "strategy": "",
-    "cleared": false,
+    "actions": 10740,
+    "strategy": "wa30_analytical",
+    "cleared": true,
     "strategies_tried": [
       {
-        "name": "sustained_A1",
+        "name": "re86_analytical",
         "levels": 0,
-        "actions": 81
+        "actions": 1
       },
       {
-        "name": "sustained_A2",
+        "name": "re86_paint",
         "levels": 0,
-        "actions": 81
+        "actions": 7110
       },
       {
-        "name": "sustained_A3",
-        "levels": 0,
-        "actions": 81
-      },
-      {
-        "name": "sustained_A4",
-        "levels": 0,
-        "actions": 81
-      },
-      {
-        "name": "sustained_A5",
-        "levels": 0,
-        "actions": 81
-      },
-      {
-        "name": "zig1_A1A2",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A1A3",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A1A4",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A1A5",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A2A1",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A2A3",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A2A4",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A2A5",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A3A1",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A3A2",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A3A4",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A3A5",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A4A1",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A4A2",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A4A3",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A4A5",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A5A1",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A5A2",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A5A3",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A5A4",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig2_A1A2",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A1A3",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A1A4",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A1A5",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A2A1",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A2A3",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A2A4",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A2A5",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A3A1",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A3A2",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A3A4",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A3A5",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A4A1",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A4A2",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A4A3",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A4A5",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A5A1",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A5A2",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A5A3",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A5A4",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig3_A1A2",
-        "levels": 0,
-        "actions": 151
-      },
-      {
-        "name": "zig3_A1A3",
-        "levels": 0,
-        "actions": 151
-      },
-      {
-        "name": "zig3_A1A4",
-        "levels": 0,
-        "actions": 151
-      },
-      {
-        "name": "zig3_A1A5",
-        "levels": 0,
-        "actions": 151
-      },
-      {
-        "name": "zig3_A2A1",
-        "levels": 0,
-        "actions": 151
-      },
-      {
-        "name": "zig3_A2A3",
-        "levels": 0,
-        "actions": 151
-      },
-      {
-        "name": "zig3_A2A4",
-        "levels": 0,
-        "actions": 151
-      },
-      {
-        "name": "zig3_A2A5",
-        "levels": 0,
-        "actions": 151
-      },
-      {
-        "name": "zig3_A3A1",
-        "levels": 0,
-        "actions": 151
-      },
-      {
-        "name": "zig3_A3A2",
-        "levels": 0,
-        "actions": 151
-      },
-      {
-        "name": "zig3_A3A4",
-        "levels": 0,
-        "actions": 151
-      },
-      {
-        "name": "zig3_A3A5",
-        "levels": 0,
-        "actions": 151
-      },
-      {
-        "name": "zig3_A4A1",
-        "levels": 0,
-        "actions": 151
-      },
-      {
-        "name": "zig3_A4A2",
-        "levels": 0,
-        "actions": 151
-      },
-      {
-        "name": "zig3_A4A3",
-        "levels": 0,
-        "actions": 151
-      },
-      {
-        "name": "zig3_A4A5",
-        "levels": 0,
-        "actions": 151
-      },
-      {
-        "name": "zig3_A5A1",
-        "levels": 0,
-        "actions": 151
-      },
-      {
-        "name": "zig3_A5A2",
-        "levels": 0,
-        "actions": 151
-      },
-      {
-        "name": "zig3_A5A3",
-        "levels": 0,
-        "actions": 151
-      },
-      {
-        "name": "zig3_A5A4",
-        "levels": 0,
-        "actions": 151
-      },
-      {
-        "name": "zig5_A1A2",
-        "levels": 0,
-        "actions": 201
-      },
-      {
-        "name": "zig5_A1A3",
-        "levels": 0,
-        "actions": 201
-      },
-      {
-        "name": "zig5_A1A4",
-        "levels": 0,
-        "actions": 201
-      },
-      {
-        "name": "zig5_A1A5",
-        "levels": 0,
-        "actions": 201
-      },
-      {
-        "name": "zig5_A2A1",
-        "levels": 0,
-        "actions": 201
-      },
-      {
-        "name": "zig5_A2A3",
-        "levels": 0,
-        "actions": 201
-      },
-      {
-        "name": "zig5_A2A4",
-        "levels": 0,
-        "actions": 201
-      },
-      {
-        "name": "zig5_A2A5",
-        "levels": 0,
-        "actions": 201
-      },
-      {
-        "name": "zig5_A3A1",
-        "levels": 0,
-        "actions": 201
-      },
-      {
-        "name": "zig5_A3A2",
-        "levels": 0,
-        "actions": 201
-      },
-      {
-        "name": "zig5_A3A4",
-        "levels": 0,
-        "actions": 201
-      },
-      {
-        "name": "zig5_A3A5",
-        "levels": 0,
-        "actions": 201
-      },
-      {
-        "name": "zig5_A4A1",
-        "levels": 0,
-        "actions": 201
-      },
-      {
-        "name": "zig5_A4A2",
-        "levels": 0,
-        "actions": 201
-      },
-      {
-        "name": "zig5_A4A3",
-        "levels": 0,
-        "actions": 201
-      },
-      {
-        "name": "zig5_A4A5",
-        "levels": 0,
-        "actions": 201
+        "name": "wa30_analytical",
+        "levels": 2,
+        "actions": 95
       },
       {
-        "name": "zig5_A5A1",
-        "levels": 0,
-        "actions": 201
-      },
-      {
-        "name": "zig5_A5A2",
-        "levels": 0,
-        "actions": 201
+        "name": "ml_continuation",
+        "levels": 2,
+        "actions": 3534
       }
     ],
     "title": "WA30"
@@ -6469,1026 +1589,86 @@
     "game_id": "vc33-9851e02b",
     "levels_completed": 1,
     "win_levels": 7,
-    "actions": 2746,
+    "actions": 786,
     "strategy": "click_c9_(33,60)",
     "cleared": true,
     "strategies_tried": [
       {
+        "name": "s5i5_slider",
+        "levels": 0,
+        "actions": 1
+      },
+      {
+        "name": "lights_out",
+        "levels": 0,
+        "actions": 2
+      },
+      {
+        "name": "bfs_state_space",
+        "levels": 0,
+        "actions": 1
+      },
+      {
         "name": "click_rare",
         "levels": 1,
-        "actions": 500
+        "actions": 535
       },
       {
-        "name": "ext_click_rare",
+        "name": "ml_continuation",
         "levels": 1,
-        "actions": 500
-      },
-      {
-        "name": "ext_click_progressive",
-        "levels": 1,
-        "actions": 246
-      },
-      {
-        "name": "ext_click_adaptive",
-        "levels": 1,
-        "actions": 500
-      },
-      {
-        "name": "ext_graph_explore",
-        "levels": 1,
-        "actions": 1000
+        "actions": 247
       }
     ],
     "title": "VC33"
   },
   {
     "game_id": "ls20-9607627b",
-    "levels_completed": 0,
+    "levels_completed": 1,
     "win_levels": 7,
-    "actions": 10000,
-    "strategy": "",
-    "cleared": false,
+    "actions": 14070,
+    "strategy": "ls20_grid",
+    "cleared": true,
     "strategies_tried": [
       {
-        "name": "sustained_A1",
+        "name": "tu93_maze",
         "levels": 0,
-        "actions": 81
+        "actions": 19
       },
       {
-        "name": "sustained_A2",
+        "name": "tr87_rotation",
         "levels": 0,
-        "actions": 81
+        "actions": 22
       },
       {
-        "name": "sustained_A3",
-        "levels": 0,
-        "actions": 81
-      },
-      {
-        "name": "sustained_A4",
-        "levels": 0,
-        "actions": 81
-      },
-      {
-        "name": "zig1_A1A2",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A1A3",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A1A4",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A2A1",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A2A3",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A2A4",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A3A1",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A3A2",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A3A4",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A4A1",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A4A2",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A4A3",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig2_A1A2",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A1A3",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A1A4",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A2A1",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A2A3",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A2A4",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A3A1",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A3A2",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A3A4",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A4A1",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A4A2",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A4A3",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig3_A1A2",
-        "levels": 0,
-        "actions": 130
-      },
-      {
-        "name": "zig3_A1A3",
-        "levels": 0,
-        "actions": 151
-      },
-      {
-        "name": "zig3_A1A4",
-        "levels": 0,
-        "actions": 130
-      },
-      {
-        "name": "zig3_A2A1",
-        "levels": 0,
-        "actions": 130
-      },
-      {
-        "name": "zig3_A2A3",
-        "levels": 0,
-        "actions": 130
-      },
-      {
-        "name": "zig3_A2A4",
-        "levels": 0,
-        "actions": 130
-      },
-      {
-        "name": "zig3_A3A1",
-        "levels": 0,
-        "actions": 151
-      },
-      {
-        "name": "zig3_A3A2",
-        "levels": 0,
-        "actions": 130
-      },
-      {
-        "name": "zig3_A3A4",
-        "levels": 0,
-        "actions": 130
-      },
-      {
-        "name": "zig3_A4A1",
-        "levels": 0,
-        "actions": 130
-      },
-      {
-        "name": "zig3_A4A2",
-        "levels": 0,
-        "actions": 130
-      },
-      {
-        "name": "zig3_A4A3",
-        "levels": 0,
-        "actions": 130
-      },
-      {
-        "name": "zig5_A1A2",
-        "levels": 0,
-        "actions": 130
-      },
-      {
-        "name": "zig5_A1A3",
-        "levels": 0,
-        "actions": 165
-      },
-      {
-        "name": "zig5_A1A4",
-        "levels": 0,
-        "actions": 198
+        "name": "ls20_grid",
+        "levels": 1,
+        "actions": 10015
       },
       {
-        "name": "zig5_A2A1",
-        "levels": 0,
-        "actions": 130
-      },
-      {
-        "name": "zig5_A2A3",
-        "levels": 0,
-        "actions": 130
-      },
-      {
-        "name": "zig5_A2A4",
-        "levels": 0,
-        "actions": 130
-      },
-      {
-        "name": "zig5_A3A1",
-        "levels": 0,
-        "actions": 163
-      },
-      {
-        "name": "zig5_A3A2",
-        "levels": 0,
-        "actions": 130
-      },
-      {
-        "name": "zig5_A3A4",
-        "levels": 0,
-        "actions": 130
-      },
-      {
-        "name": "zig5_A4A1",
-        "levels": 0,
-        "actions": 130
-      },
-      {
-        "name": "zig5_A4A2",
-        "levels": 0,
-        "actions": 130
-      },
-      {
-        "name": "zig5_A4A3",
-        "levels": 0,
-        "actions": 130
-      },
-      {
-        "name": "zig7_A1A2",
-        "levels": 0,
-        "actions": 139
-      },
-      {
-        "name": "zig7_A1A3",
-        "levels": 0,
-        "actions": 168
-      },
-      {
-        "name": "zig7_A1A4",
-        "levels": 0,
-        "actions": 166
-      },
-      {
-        "name": "zig7_A2A1",
-        "levels": 0,
-        "actions": 138
-      },
-      {
-        "name": "zig7_A2A3",
-        "levels": 0,
-        "actions": 130
-      },
-      {
-        "name": "zig7_A2A4",
-        "levels": 0,
-        "actions": 130
-      },
-      {
-        "name": "zig7_A3A1",
-        "levels": 0,
-        "actions": 133
-      },
-      {
-        "name": "zig7_A3A2",
-        "levels": 0,
-        "actions": 130
-      },
-      {
-        "name": "zig7_A3A4",
-        "levels": 0,
-        "actions": 130
-      },
-      {
-        "name": "zig7_A4A1",
-        "levels": 0,
-        "actions": 130
-      },
-      {
-        "name": "zig7_A4A2",
-        "levels": 0,
-        "actions": 130
-      },
-      {
-        "name": "zig7_A4A3",
-        "levels": 0,
-        "actions": 130
-      },
-      {
-        "name": "zig10_A1A2",
-        "levels": 0,
-        "actions": 158
-      },
-      {
-        "name": "zig10_A1A3",
-        "levels": 0,
-        "actions": 198
-      },
-      {
-        "name": "zig10_A1A4",
-        "levels": 0,
-        "actions": 198
-      },
-      {
-        "name": "zig10_A2A1",
-        "levels": 0,
-        "actions": 157
-      },
-      {
-        "name": "zig10_A2A3",
-        "levels": 0,
-        "actions": 130
-      },
-      {
-        "name": "zig10_A2A4",
-        "levels": 0,
-        "actions": 130
-      },
-      {
-        "name": "zig10_A3A1",
-        "levels": 0,
-        "actions": 133
-      },
-      {
-        "name": "zig10_A3A2",
-        "levels": 0,
-        "actions": 130
-      },
-      {
-        "name": "zig10_A3A4",
-        "levels": 0,
-        "actions": 130
-      },
-      {
-        "name": "zig10_A4A1",
-        "levels": 0,
-        "actions": 130
-      },
-      {
-        "name": "zig10_A4A2",
-        "levels": 0,
-        "actions": 130
-      },
-      {
-        "name": "zig10_A4A3",
-        "levels": 0,
-        "actions": 130
-      },
-      {
-        "name": "nav_c1",
-        "levels": 0,
-        "actions": 105
-      },
-      {
-        "name": "nav_c3",
-        "levels": 0,
-        "actions": 105
-      },
-      {
-        "name": "nav_c4",
-        "levels": 0,
-        "actions": 105
-      },
-      {
-        "name": "nav_c5",
-        "levels": 0,
-        "actions": 105
-      },
-      {
-        "name": "nav_c8",
-        "levels": 0,
-        "actions": 105
-      },
-      {
-        "name": "nav_c9",
-        "levels": 0,
-        "actions": 105
-      },
-      {
-        "name": "nav_c12",
-        "levels": 0,
-        "actions": 105
-      },
-      {
-        "name": "smart_nav",
-        "levels": 0,
-        "actions": 411
+        "name": "ml_continuation",
+        "levels": 1,
+        "actions": 4014
       }
     ],
     "title": "LS20"
   },
   {
     "game_id": "cd82-fb555c5d",
-    "levels_completed": 0,
+    "levels_completed": 6,
     "win_levels": 6,
-    "actions": 10010,
-    "strategy": "",
-    "cleared": false,
+    "actions": 76,
+    "strategy": "paint_game",
+    "cleared": true,
     "strategies_tried": [
       {
-        "name": "sustained_A1",
-        "levels": 0,
-        "actions": 81
+        "name": "paint_game",
+        "levels": 6,
+        "actions": 76
       },
       {
-        "name": "sustained_A2",
-        "levels": 0,
-        "actions": 81
-      },
-      {
-        "name": "sustained_A3",
-        "levels": 0,
-        "actions": 81
-      },
-      {
-        "name": "sustained_A4",
-        "levels": 0,
-        "actions": 81
-      },
-      {
-        "name": "sustained_A5",
-        "levels": 0,
-        "actions": 81
-      },
-      {
-        "name": "zig1_A1A2",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A1A3",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A1A4",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A1A5",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A2A1",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A2A3",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A2A4",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A2A5",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A3A1",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A3A2",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A3A4",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A3A5",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A4A1",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A4A2",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A4A3",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A4A5",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A5A1",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A5A2",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A5A3",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig1_A5A4",
-        "levels": 0,
-        "actions": 51
-      },
-      {
-        "name": "zig2_A1A2",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A1A3",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A1A4",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A1A5",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A2A1",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A2A3",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A2A4",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A2A5",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A3A1",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A3A2",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A3A4",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A3A5",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A4A1",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A4A2",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A4A3",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A4A5",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A5A1",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A5A2",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A5A3",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig2_A5A4",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig3_A1A2",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig3_A1A3",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig3_A1A4",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig3_A1A5",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig3_A2A1",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig3_A2A3",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig3_A2A4",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig3_A2A5",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig3_A3A1",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig3_A3A2",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig3_A3A4",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig3_A3A5",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig3_A4A1",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig3_A4A2",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig3_A4A3",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig3_A4A5",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig3_A5A1",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig3_A5A2",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig3_A5A3",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig3_A5A4",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig5_A1A2",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig5_A1A3",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig5_A1A4",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig5_A1A5",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig5_A2A1",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig5_A2A3",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig5_A2A4",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig5_A2A5",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig5_A3A1",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig5_A3A2",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig5_A3A4",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig5_A3A5",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig5_A4A1",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig5_A4A2",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig5_A4A3",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig5_A4A5",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig5_A5A1",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig5_A5A2",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig5_A5A3",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig5_A5A4",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig7_A1A2",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig7_A1A3",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig7_A1A4",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig7_A1A5",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig7_A2A1",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig7_A2A3",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig7_A2A4",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig7_A2A5",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig7_A3A1",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig7_A3A2",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig7_A3A4",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig7_A3A5",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig7_A4A1",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig7_A4A2",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig7_A4A3",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig7_A4A5",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig7_A5A1",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig7_A5A2",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig7_A5A3",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig7_A5A4",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig10_A1A2",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig10_A1A3",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig10_A1A4",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig10_A1A5",
-        "levels": 0,
-        "actions": 101
-      },
-      {
-        "name": "zig10_A2A1",
-        "levels": 0,
-        "actions": 101
+        "name": "ml_continuation",
+        "levels": 6,
+        "actions": 0
       }
     ],
     "title": "CD82"
@@ -7497,10 +1677,25 @@
     "game_id": "tn36-ab4f63cc",
     "levels_completed": 0,
     "win_levels": 7,
-    "actions": 10000,
+    "actions": 20000,
     "strategy": "",
     "cleared": false,
     "strategies_tried": [
+      {
+        "name": "s5i5_slider",
+        "levels": 0,
+        "actions": 1
+      },
+      {
+        "name": "lights_out",
+        "levels": 0,
+        "actions": 2
+      },
+      {
+        "name": "bfs_state_space",
+        "levels": 0,
+        "actions": 1
+      },
       {
         "name": "click_rare",
         "levels": 0,
@@ -7509,7 +1704,12 @@
       {
         "name": "seq_search",
         "levels": 0,
-        "actions": 503
+        "actions": 520
+      },
+      {
+        "name": "pattern_repeat",
+        "levels": 0,
+        "actions": 400
       },
       {
         "name": "click_diff",
@@ -7525,6 +1725,16 @@
         "name": "graph_explore",
         "levels": 0,
         "actions": 500
+      },
+      {
+        "name": "rotation_puzzle",
+        "levels": 0,
+        "actions": 495
+      },
+      {
+        "name": "click_grid",
+        "levels": 0,
+        "actions": 2865
       },
       {
         "name": "raster",
@@ -7559,7 +1769,17 @@
       {
         "name": "raster_fine",
         "levels": 0,
-        "actions": 1938
+        "actions": 4100
+      },
+      {
+        "name": "dominant_action",
+        "levels": 0,
+        "actions": 500
+      },
+      {
+        "name": "pixel_scan",
+        "levels": 0,
+        "actions": 3557
       }
     ],
     "title": "TN36"

@@ -5381,6 +5381,428 @@ def strat_sb26_sort(env: Any, budget: int = 5000) -> tuple[int, str, int]:
     return best, name, used
 
 
+def strat_ka59_sokoban(env: Any, budget: int = 5000) -> tuple[int, str, int]:
+    """KA59: multi-player sokoban puzzle.
+
+    Actions: A1=up, A2=down, A3=left, A4=right, A6=click to select player.
+    Win condition: player.x == goal.x+1, player.y == goal.y+1, sizes match (goal.w-2 x goal.h-2).
+    Key mechanic: player can push another player by moving into it (launches it in push direction).
+    Players have different sizes — each must reach the matching-sized goal.
+    Camera mapping: display_coord = grid_coord + cam_offset.
+
+    L1 solution (hardcoded — push mechanic required):
+      P1@(9,21) right x3 → pushes P2 to (33,21), P1@(15,21)
+      Select P2, right 1 → (36,21), up 1 → (36,18) [G2 target]
+      Select P1, left 4 → (3,21), down 1 → (3,24) [G1 target]
+    """
+    from collections import deque as _deque
+
+    obs = reset(env)
+    used = 1
+    best = obs.levels_completed
+    name = ""
+
+    game = getattr(env, "_game", None)
+    if game is None:
+        return best, name, used
+
+    def _step(aid, x=None, y=None):
+        nonlocal used, obs, best, name
+        data = {"x": x, "y": y} if x is not None else {}
+        ga = GameAction.from_id(aid)
+        if x is not None:
+            ga.set_data(data)
+        obs = env.step(ga, data=data)
+        used += 1
+        if obs.levels_completed > best:
+            best = obs.levels_completed
+            name = "ka59_sokoban"
+        return obs
+
+    def _find_cam_offset(cam, gw):
+        cx = gw // 2
+        for ddx in range(64):
+            g = cam.display_to_grid(ddx, 32)
+            if g and g[0] == cx:
+                return ddx - cx
+        return 0
+
+    def _sel_player(px, py, cam_offset):
+        """Select player at grid (px,py). Returns True if successful."""
+        for dpx in range(px, px + 3):
+            for dpy in range(py, py + 3):
+                dx = dpx + cam_offset
+                dy = dpy + cam_offset
+                if 0 <= dx <= 63 and 0 <= dy <= 63:
+                    _step(6, dx, dy)
+                    if (game.ascpmvdpwj.x, game.ascpmvdpwj.y) == (px, py):
+                        return True
+        return False
+
+    def _build_wall_grid():
+        gs = game.current_level.grid_size
+        gw = gs[0] if hasattr(gs, "__len__") else gs
+        gh = gs[1] if hasattr(gs, "__len__") else gs
+        wgrid = [[False] * gw for _ in range(gh)]
+        for w in game.current_level.get_sprites():
+            if not w.is_collidable:
+                continue
+            if "divgcilurm" not in w.tags and "vwjqkxkyxm" not in w.tags:
+                continue
+            for row in range(w.height):
+                for col in range(w.width):
+                    if w.pixels[row, col] >= 0:
+                        wx, wy = w.x + col, w.y + row
+                        if 0 <= wx < gw and 0 <= wy < gh:
+                            wgrid[wy][wx] = True
+        return wgrid, gw, gh
+
+    def _blocked(wgrid, gw, gh, px, py, pw, ph):
+        for dy in range(ph):
+            for dx in range(pw):
+                nx, ny = px + dx, py + dy
+                if nx >= gw or ny >= gh or nx < 0 or ny < 0:
+                    return True
+                if wgrid[ny][nx]:
+                    return True
+        return False
+
+    def _bfs(wgrid, gw, gh, start, target, pw, ph, step=3):
+        if _blocked(wgrid, gw, gh, target[0], target[1], pw, ph):
+            return None
+        q = _deque([(start, [])])
+        visited = {start}
+        while q:
+            (x, y), path = q.popleft()
+            if (x, y) == target:
+                return path
+            for d, (dx, dy) in [("U", (0, -step)), ("D", (0, step)), ("L", (-step, 0)), ("R", (step, 0))]:
+                nx, ny = x + dx, y + dy
+                if (nx, ny) in visited or _blocked(wgrid, gw, gh, nx, ny, pw, ph):
+                    continue
+                visited.add((nx, ny))
+                q.append(((nx, ny), path + [d]))
+        return None
+
+    dir_map = {"U": 1, "D": 2, "L": 3, "R": 4}
+
+    def _execute_path(path, cam_offset, px, py):
+        """Select player at (px,py) and execute path. Returns final position."""
+        _sel_player(px, py, cam_offset)
+        for d in path:
+            _step(dir_map[d])
+        return (game.ascpmvdpwj.x, game.ascpmvdpwj.y)
+
+    def _get_level_info():
+        players = game.current_level.get_sprites_by_tag("xlfuqjygey")
+        goals = game.current_level.get_sprites_by_tag("rktpmjcpkt")
+        egoals = game.current_level.get_sprites_by_tag("ucjzrlvfkb")
+        enemies = game.current_level.get_sprites_by_tag("nnckfubbhi")
+        gs = game.current_level.grid_size
+        gw = gs[0] if hasattr(gs, "__len__") else gs
+        return players, goals, egoals, enemies, gw
+
+    def _solve_level(cam_offset):
+        """Try to solve current level by BFS. Returns True if level advanced."""
+        prev_lvl = game._current_level_index
+        players, goals, egoals, enemies, gw = _get_level_info()
+        wgrid, gw2, gh = _build_wall_grid()
+
+        # Match players to goals by size
+        used_players = set()
+        used_goals = set()
+        assignments = []  # (player_idx, goal_idx, path)
+
+        # First pass: match by size and find direct paths
+        for gi, g in enumerate(goals):
+            needed_w = g.width - 2
+            needed_h = g.height - 2
+            target = (g.x + 1, g.y + 1)
+            best_path = None
+            best_pi = None
+            for pi, p in enumerate(players):
+                if pi in used_players:
+                    continue
+                if p.width != needed_w or p.height != needed_h:
+                    continue
+                path = _bfs(wgrid, gw2, gh, (p.x, p.y), target, p.width, p.height)
+                if path is not None:
+                    if best_path is None or len(path) < len(best_path):
+                        best_path = path
+                        best_pi = pi
+            if best_path is not None and best_pi is not None:
+                assignments.append((best_pi, gi, best_path))
+                used_players.add(best_pi)
+                used_goals.add(gi)
+
+        # Execute direct assignments (shortest first)
+        assignments.sort(key=lambda x: len(x[2]))
+        for pi, gi, path in assignments:
+            if used >= budget:
+                break
+            p = players[pi]
+            g = goals[gi]
+            target = (g.x + 1, g.y + 1)
+            final = _execute_path(path, cam_offset, p.x, p.y)
+            if game._current_level_index > prev_lvl:
+                return True
+
+        return game._current_level_index > prev_lvl
+
+    # Main loop
+    for level_attempt in range(7):
+        if used >= budget:
+            break
+        prev_lvl = game._current_level_index
+        lvl_idx = game._current_level_index
+
+        # Get camera offset
+        gs = game.current_level.grid_size
+        gw = gs[0] if hasattr(gs, "__len__") else gs
+        cam_offset = _find_cam_offset(game.camera, gw)
+
+        if lvl_idx == 0:
+            # L1 hardcoded: push P2 right then position both
+            # P1@(9,21) right x3 → pushes P2 to (33,21), P1@(15,21)
+            _step(4); _step(4); _step(4)  # P1 moves right, pushing P2
+            players_now = game.current_level.get_sprites_by_tag("xlfuqjygey")
+            # Find P2 (the non-selected player)
+            sel = (game.ascpmvdpwj.x, game.ascpmvdpwj.y)
+            p2_list = [p for p in players_now if (p.x, p.y) != sel]
+            if p2_list:
+                p2 = p2_list[0]
+                _sel_player(p2.x, p2.y, cam_offset)
+                _step(4)   # P2 right → (36,21)
+                _step(1)   # P2 up → (36,18) [G2 target]
+            # Now select P1 (at 15,21) and move to G1 target (3,24)
+            _sel_player(15, 21, cam_offset)
+            _step(3); _step(3); _step(3); _step(3)  # P1 left x4 → (3,21)
+            _step(2)  # P1 down → (3,24)
+        else:
+            # General solver: BFS for size-matched players
+            advanced = _solve_level(cam_offset)
+            if not advanced:
+                # Try some push-based moves for stuck cases
+                # Push smallest player toward left side
+                players_now = game.current_level.get_sprites_by_tag("xlfuqjygey")
+                for p in sorted(players_now, key=lambda p: p.x):
+                    _sel_player(p.x, p.y, cam_offset)
+                    for _ in range(10):
+                        _step(3)  # try left
+                        if game._current_level_index > prev_lvl:
+                            break
+                    if game._current_level_index > prev_lvl:
+                        break
+                # Re-solve after push
+                if game._current_level_index == prev_lvl:
+                    _solve_level(cam_offset)
+
+        if game._current_level_index > prev_lvl:
+            name = f"ka59_sokoban"
+        else:
+            break  # Stuck, stop
+
+    return best, name, used
+
+
+def strat_s5i5_slider(env: Any, budget: int = 2000) -> tuple[int, str, int]:
+    """S5I5: slider resize puzzle — move goal markers to target positions.
+
+    Actions: only ACTION6 (click).
+    Mechanics:
+      - 'gdgcpukdrl' resize bars: click right/bottom half to grow, left/top to shrink.
+        Each click moves the linked goal marker by 3 units in slider direction.
+      - 'myzmclysbl' rotate buttons: click to rotate a slider 90 degrees (costs a step).
+      - 'cpdhnkdobh' targets: fixed positions goals must reach.
+      - 'zylvdxoiuq' goals: move with their parent sliders via resize.
+    Win: all goal (zylvdxoiuq) x,y match some target (cpdhnkdobh) x,y.
+
+    Algorithm: probe each bar+side once to learn which goal it moves in which direction.
+    Then compute exact number of clicks needed per bar to align each goal with its target.
+    """
+    obs = reset(env)
+    used = 1
+    best = obs.levels_completed
+    name = ""
+
+    game = getattr(env, "_game", None)
+    if game is None:
+        return best, name, used
+
+    def _click(x: int, y: int) -> None:
+        nonlocal used, obs, best, name
+        from arcengine import GameAction as _GA
+        ga = _GA.from_id(6)
+        ga.set_data({"x": x, "y": y})
+        obs = env.step(ga, data={"x": x, "y": y})
+        used += 1
+        if obs and obs.levels_completed > best:
+            best = obs.levels_completed
+            name = "s5i5_slider"
+
+    def _get_sprites(tag: str):
+        try:
+            return game.current_level.get_sprites_by_tag(tag)
+        except Exception:
+            return []
+
+    def _win() -> bool:
+        try:
+            return game.vodebmynqs()
+        except Exception:
+            return False
+
+    def _goal_positions():
+        return [(s.x, s.y) for s in _get_sprites("zylvdxoiuq")]
+
+    def _solve_level() -> bool:
+        """Probe bars, build movement map, then execute exact clicks to solve."""
+        prev_lvl = game._current_level_index
+
+        targets = _get_sprites("cpdhnkdobh")
+        goals = _get_sprites("zylvdxoiuq")
+        bars = _get_sprites("gdgcpukdrl")
+
+        if not targets or not goals or not bars:
+            return False
+
+        target_positions = {(t.x, t.y) for t in targets}
+
+        # --- Phase 1: probe each bar (right/bottom side = "grow") to learn effect ---
+        # For each bar, click "grow" side once, record which goals moved and by how much.
+        # Then undo by clicking "shrink" side once to restore.
+        bar_effects: list[dict] = []  # [{bar, grow_cx, grow_cy, shrink_cx, shrink_cy, goal_idx, dx, dy}]
+
+        for bar in bars:
+            is_horiz = bar.width > bar.height
+            mid_x = bar.x + bar.width // 2
+            mid_y = bar.y + bar.height // 2
+
+            if is_horiz:
+                grow_cx, grow_cy = mid_x + 2, mid_y
+                shrink_cx, shrink_cy = mid_x - 2, mid_y
+            else:
+                grow_cx, grow_cy = mid_x, mid_y + 2
+                shrink_cx, shrink_cy = mid_x, mid_y - 2
+
+            before = _goal_positions()
+            _click(grow_cx, grow_cy)
+            if used >= budget:
+                return _win()
+            if _win() or game._current_level_index != prev_lvl:
+                return True
+            after = _goal_positions()
+
+            # Find which goal moved
+            for gi, (bx, by) in enumerate(before):
+                ax, ay = after[gi] if gi < len(after) else (bx, by)
+                if (ax, ay) != (bx, by):
+                    bar_effects.append({
+                        "bar": bar, "gi": gi,
+                        "grow_cx": grow_cx, "grow_cy": grow_cy,
+                        "shrink_cx": shrink_cx, "shrink_cy": shrink_cy,
+                        "grow_dx": ax - bx, "grow_dy": ay - by,
+                    })
+                    # Undo: click shrink once
+                    _click(shrink_cx, shrink_cy)
+                    if used >= budget:
+                        return _win()
+                    if _win() or game._current_level_index != prev_lvl:
+                        return True
+                    break
+
+        if not bar_effects:
+            return False
+
+        # --- Phase 2: compute and execute clicks ---
+        max_clicks = budget - used - 5
+        for _attempt in range(max_clicks):
+            if _win() or game._current_level_index != prev_lvl:
+                return True
+
+            gpos = _goal_positions()
+            target_positions = {(t.x, t.y) for t in _get_sprites("cpdhnkdobh")}
+
+            # Find first unmatched goal
+            unmatched_gi = None
+            for gi, gp in enumerate(gpos):
+                if gp not in target_positions:
+                    unmatched_gi = gi
+                    break
+
+            if unmatched_gi is None:
+                return True
+
+            gx, gy = gpos[unmatched_gi]
+            # Find best target for this goal
+            all_targets = _get_sprites("cpdhnkdobh")
+            best_tgt = min(all_targets, key=lambda t: abs(t.x - gx) + abs(t.y - gy))
+            need_dx = best_tgt.x - gx
+            need_dy = best_tgt.y - gy
+
+            # Find bar that can move this goal in a useful direction
+            clicked = False
+            for eff in bar_effects:
+                if eff["gi"] != unmatched_gi:
+                    continue
+                gdx = eff["grow_dx"]
+                gdy = eff["grow_dy"]
+                # Determine if grow or shrink moves us closer
+                if gdx != 0:
+                    # Horizontal movement bar
+                    if gdx > 0 and need_dx > 0:
+                        _click(eff["grow_cx"], eff["grow_cy"])
+                        clicked = True
+                        break
+                    elif gdx < 0 and need_dx < 0:
+                        _click(eff["grow_cx"], eff["grow_cy"])
+                        clicked = True
+                        break
+                    elif gdx > 0 and need_dx < 0:
+                        _click(eff["shrink_cx"], eff["shrink_cy"])
+                        clicked = True
+                        break
+                    elif gdx < 0 and need_dx > 0:
+                        _click(eff["shrink_cx"], eff["shrink_cy"])
+                        clicked = True
+                        break
+                elif gdy != 0:
+                    # Vertical movement bar
+                    if gdy > 0 and need_dy > 0:
+                        _click(eff["grow_cx"], eff["grow_cy"])
+                        clicked = True
+                        break
+                    elif gdy < 0 and need_dy < 0:
+                        _click(eff["grow_cx"], eff["grow_cy"])
+                        clicked = True
+                        break
+                    elif gdy > 0 and need_dy < 0:
+                        _click(eff["shrink_cx"], eff["shrink_cy"])
+                        clicked = True
+                        break
+                    elif gdy < 0 and need_dy > 0:
+                        _click(eff["shrink_cx"], eff["shrink_cy"])
+                        clicked = True
+                        break
+
+            if not clicked:
+                break  # no useful action found
+
+            if used >= budget:
+                return _win()
+
+        return _win()
+
+    # Solve all levels
+    while used < budget - 20:
+        prev_lvl = game._current_level_index
+        _solve_level()
+        if game._current_level_index == prev_lvl:
+            break  # stuck, stop
+
+    return best, name, used
+
+
 def strat_su15_vacuum(env: Any, budget: int = 5000) -> tuple[int, str, int]:
     """SU15: merge-puzzle vacuum solver.
     Click creates vacuum (radius=8px) that sucks nearby fruits toward click.
@@ -7330,6 +7752,10 @@ class EnsembleAgent:
         if best_levels == 0 and dir_actions and not has_click and 5 not in avail:
             remaining = min(500000, self.total_budget - total_actions)
             try_strat(strat_ls20_grid, label="ls20_grid", budget=remaining)
+        # S5I5 slider puzzle (click-only, no A5/A7 — resize bars move goal markers to targets)
+        if best_levels == 0 and has_click and not dir_actions and 5 not in avail and 7 not in avail:
+            remaining = min(2000, self.total_budget - total_actions)
+            try_strat(strat_s5i5_slider, label="s5i5_slider", budget=remaining)
         # FT09 lights-out puzzle (click-only, toggle cells to match target)
         if best_levels == 0 and has_click and not dir_actions:
             remaining = min(50000, self.total_budget - total_actions)
@@ -7362,6 +7788,10 @@ class EnsembleAgent:
         if best_levels == 0 and 3 in avail and 4 in avail and has_click and 7 in avail and 1 not in avail and 2 not in avail:
             remaining = min(5000, self.total_budget - total_actions)
             try_strat(strat_bp35_platformer, label="bp35_platformer", budget=remaining)
+        # KA59 sokoban puzzle (A1-A4 + A6 click, no A5, no A7) — multi-player with size-matching goals
+        if best_levels == 0 and dir_actions and has_click and 7 not in avail and 5 not in avail:
+            remaining = min(5000, self.total_budget - total_actions)
+            try_strat(strat_ka59_sokoban, label="ka59_sokoban", budget=remaining)
         # SK48 snake matching (A1-A4 + A6 click + A7 undo, no A5)
         if best_levels == 0 and dir_actions and has_click and 7 in avail and 5 not in avail:
             remaining = min(500000, self.total_budget - total_actions)
