@@ -554,7 +554,7 @@
     "game_id": "sp80-0ee2d095",
     "levels_completed": 1,
     "win_levels": 6,
-    "actions": 5746,
+    "actions": 5748,
     "strategy": "bfs_state_space",
     "cleared": true,
     "strategies_tried": [
@@ -576,16 +576,16 @@
       {
         "name": "ml_continuation",
         "levels": 1,
-        "actions": 3261
+        "actions": 3263
       }
     ],
     "title": "SP80"
   },
   {
     "game_id": "ka59-9f096b4a",
-    "levels_completed": 1,
+    "levels_completed": 2,
     "win_levels": 7,
-    "actions": 4791,
+    "actions": 4395,
     "strategy": "ka59_sokoban",
     "cleared": true,
     "strategies_tried": [
@@ -596,13 +596,13 @@
       },
       {
         "name": "ka59_sokoban",
-        "levels": 1,
-        "actions": 89
+        "levels": 2,
+        "actions": 86
       },
       {
         "name": "ml_continuation",
-        "levels": 1,
-        "actions": 3969
+        "levels": 2,
+        "actions": 3576
       }
     ],
     "title": "KA59"
@@ -1355,7 +1355,7 @@
       {
         "name": "seq_search",
         "levels": 0,
-        "actions": 554
+        "actions": 546
       },
       {
         "name": "bfs_explore",
@@ -1425,7 +1425,7 @@
       {
         "name": "raster",
         "levels": 0,
-        "actions": 1095
+        "actions": 1103
       }
     ],
     "title": "LF52"
@@ -1481,8 +1481,8 @@
     "game_id": "r11l-aa269680",
     "levels_completed": 1,
     "win_levels": 6,
-    "actions": 1702,
-    "strategy": "click_all_c15",
+    "actions": 652,
+    "strategy": "seq_repeat",
     "cleared": true,
     "strategies_tried": [
       {
@@ -1507,28 +1507,13 @@
       },
       {
         "name": "seq_search",
-        "levels": 0,
-        "actions": 524
-      },
-      {
-        "name": "pattern_repeat",
-        "levels": 0,
-        "actions": 400
-      },
-      {
-        "name": "click_diff",
-        "levels": 0,
-        "actions": 320
-      },
-      {
-        "name": "click_all_colors",
         "levels": 1,
-        "actions": 211
+        "actions": 521
       },
       {
         "name": "ml_continuation",
         "levels": 1,
-        "actions": 177
+        "actions": 61
       }
     ],
     "title": "R11L"
@@ -1704,7 +1689,7 @@
       {
         "name": "seq_search",
         "levels": 0,
-        "actions": 520
+        "actions": 462
       },
       {
         "name": "pattern_repeat",
@@ -1779,7 +1764,7 @@
       {
         "name": "pixel_scan",
         "levels": 0,
-        "actions": 3557
+        "actions": 3615
       }
     ],
     "title": "TN36"
