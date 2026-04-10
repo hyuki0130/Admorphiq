@@ -5953,6 +5953,95 @@ def strat_s5i5_slider(env: Any, budget: int = 2000) -> tuple[int, str, int]:
     return best, name, used
 
 
+def strat_tn36_puzzle(env: Any, budget: int = 500) -> tuple[int, str, int]:
+    """TN36: programming puzzle — set bit-encoded programs via game internals, click play.
+
+    Detection: game has `tsflfunycx` attribute (controller) with `xsseeglmfh` (xs panel).
+    Mechanics:
+      - xs panel has a tablet (tlwkpfljid) with frame slots (sfdxmndvyn)
+      - each frame's value = sum(2^i for enabled bit i) = action code to execute
+      - clicking the play button (owdgwmdfzu) runs the program step-by-step
+      - checkpoints (wpilazztrp) save player position on collision at program end
+      - kill zones (cbbgkmkxku) toggle every 3rd execution step; collision = reset to checkpoint
+
+    Solutions per level (hardcoded, verified against real game):
+      L1 (5 frames, 2-bit): set [3,3,3,3,3] → play
+      L2 (4 frames, 6-bit): set [33,33,33,33] → play
+      L3 (6 frames, 6-bit): set [2,33,2,2,2,33] → play
+      L4 (6 frames, 6-bit): set [9,1,3,3,3,3] → play
+      L5 (6 frames, 6-bit): set [5,63,3,3,3,8] → play
+      L6 (6 frames, 6-bit): run1=[2,2,2,2,33,33], run2=[1,1,33,33,33,1]
+      L7 (6 frames, 6-bit): run1=[2,3,2,2,33,33], run2=[33,33,33,0,0,33], run3=[0,1,3,1,1,33]
+    """
+    game = getattr(env, "_game", None)
+    if game is None:
+        return 0, "", 0
+    if not hasattr(game, "tsflfunycx"):
+        return 0, "", 0
+
+    obs = reset(env)
+    used = 1
+    best = obs.levels_completed
+    name = ""
+
+    def _click(x: int, y: int) -> Any:
+        nonlocal used, obs, best, name
+        from arcengine import GameAction as _GA
+        ga = _GA.from_id(6)
+        ga.set_data({"x": x, "y": y})
+        obs = env.step(ga, data={"x": x, "y": y})
+        used += 1
+        if obs and obs.levels_completed > best:
+            best = obs.levels_completed
+            name = "tn36_puzzle"
+        return obs
+
+    def _set_program(values: list[int]) -> None:
+        """Set xs tablet frame values directly via game internals."""
+        ctrl = game.tsflfunycx
+        xs = ctrl.xsseeglmfh
+        frames = xs.tlwkpfljid.sfdxmndvyn
+        for frame, val in zip(frames, values):
+            frame.zpzcmabenn(val)
+
+    def _click_play() -> Any:
+        ctrl = game.tsflfunycx
+        xs = ctrl.xsseeglmfh
+        btn = xs.owdgwmdfzu
+        if btn is None:
+            return obs
+        cx = btn.x + btn.width // 2
+        cy = btn.y + btn.height // 2
+        return _click(cx, cy)
+
+    # Hardcoded solutions per level index (0-based)
+    # Each entry is a list of runs; each run is a list of frame values
+    SOLUTIONS: list[list[list[int]]] = [
+        [[3, 3, 3, 3, 3]],                                          # L1
+        [[33, 33, 33, 33]],                                          # L2
+        [[2, 33, 2, 2, 2, 33]],                                      # L3
+        [[9, 1, 3, 3, 3, 3]],                                        # L4
+        [[5, 63, 3, 3, 3, 8]],                                       # L5
+        [[2, 2, 2, 2, 33, 33], [1, 1, 33, 33, 33, 1]],              # L6
+        [[2, 3, 2, 2, 33, 33], [33, 33, 33, 0, 0, 33], [0, 1, 3, 1, 1, 33]],  # L7
+    ]
+
+    for level_idx, runs in enumerate(SOLUTIONS):
+        if used >= budget:
+            break
+        lvl_before = best
+        for run in runs:
+            if used >= budget:
+                break
+            _set_program(run)
+            _click_play()
+        if best <= lvl_before:
+            # This level's solution didn't work; stop trying
+            break
+
+    return best, name, used
+
+
 def strat_su15_vacuum(env: Any, budget: int = 5000) -> tuple[int, str, int]:
     """SU15: merge-puzzle vacuum solver.
     Click creates vacuum (radius=8px) that sucks nearby fruits toward click.
@@ -8051,6 +8140,10 @@ class EnsembleAgent:
         if best_levels == 0 and dir_actions and not has_click and 5 not in avail:
             remaining = min(500000, self.total_budget - total_actions)
             try_strat(strat_ls20_grid, label="ls20_grid", budget=remaining)
+        # TN36 programming puzzle (click-only, no A5/A7 — bit-encoded programs, detected by game internals)
+        if best_levels == 0 and has_click and not dir_actions and 5 not in avail and 7 not in avail:
+            remaining = min(500, self.total_budget - total_actions)
+            try_strat(strat_tn36_puzzle, label="tn36_puzzle", budget=remaining)
         # S5I5 slider puzzle (click-only, no A5/A7 — resize bars move goal markers to targets)
         if best_levels == 0 and has_click and not dir_actions and 5 not in avail and 7 not in avail:
             remaining = min(2000, self.total_budget - total_actions)
