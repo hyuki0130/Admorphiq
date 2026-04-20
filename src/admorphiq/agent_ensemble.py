@@ -6816,6 +6816,152 @@ def strat_su15_vacuum(env: Any, budget: int = 5000) -> tuple[int, str, int]:
     return best, name, used
 
 
+def strat_su15_frame_only(env: Any, budget: int = 2000) -> tuple[int, str, int]:
+    """SU15 merge puzzle — frame-only variant (no game internals).
+
+    Phase 8 Step 2b refactor of [[.wiki/wiki/games/SU15.md]]. Unlike
+    [[strat_su15_vacuum]] which reads `game.hmeulfxgy/peiiyyzum/rqdsgrklq`,
+    this variant detects entities from the frame alone so it survives v2
+    hash obfuscation.
+
+    Scope (deliberate): L1-L3 only. Higher levels require planning against
+    enemies and hardcoded sequences that aren't reproducible from the frame
+    yet — deferred to the BFS/LLM hypothesis track.
+
+    Algorithm per level:
+      1. Snapshot reset frame.
+      2. Cluster non-background pixels into color-indexed blobs via 4-connected
+         flood-fill → list of (cx, cy, color, size).
+      3. Probe: click on an empty cell and diff the frame. Clusters that move
+         are dynamic (fruits/enemies); the largest static region is the goal
+         zone candidate.
+      4. Greedy merge loop: for each same-color pair of dynamic clusters,
+         click their midpoint (within vacuum radius ~8). Re-detect after
+         each click to pick up merges.
+      5. Deliver: suck merged clusters toward the goal zone centroid.
+
+    Intended dispatch: runs after `strat_su15_vacuum` when its internal
+    attribute reads return 0 (typical v2 collapse). Expected v2 coverage
+    ~3/9 on easier levels; worth roughly +3 levels without brittle reads.
+
+    See [[.wiki/wiki/debug/attribute_error_playbook]] (Option C) and
+    [[.wiki/wiki/concepts/sprite_cluster]] for the detection pattern.
+    """
+    obs = reset(env)
+    if obs is None:
+        return 0, "", 1
+    used = 1
+    best = obs.levels_completed
+    name = ""
+    VACUUM_R = 8
+
+    def _clusters(frame: np.ndarray) -> list[tuple[float, float, int, int]]:
+        """4-connected flood-fill over non-zero cells, grouped by color.
+        Returns list of (cx, cy, color, size)."""
+        seen = np.zeros_like(frame, dtype=bool)
+        out: list[tuple[float, float, int, int]] = []
+        H, W = frame.shape
+        for y0 in range(H):
+            for x0 in range(W):
+                if seen[y0, x0] or frame[y0, x0] == 0:
+                    continue
+                c = int(frame[y0, x0])
+                stack = [(y0, x0)]
+                xs: list[int] = []
+                ys: list[int] = []
+                while stack:
+                    y, x = stack.pop()
+                    if y < 0 or y >= H or x < 0 or x >= W or seen[y, x] or int(frame[y, x]) != c:
+                        continue
+                    seen[y, x] = True
+                    xs.append(x)
+                    ys.append(y)
+                    stack.extend([(y + 1, x), (y - 1, x), (y, x + 1), (y, x - 1)])
+                if len(xs) >= 2:
+                    out.append((sum(xs) / len(xs), sum(ys) / len(ys), c, len(xs)))
+        return out
+
+    def _click_and_track(x: int, y: int) -> Any:
+        nonlocal used, best, name
+        x = max(0, min(63, x))
+        y = max(10, min(62, y))
+        obs_local = env.step(GameAction.ACTION6, data={"x": x, "y": y})
+        used += 1
+        if obs_local is None:
+            return None
+        if obs_local.levels_completed > best:
+            best = obs_local.levels_completed
+            name = "su15_frame_only"
+        return obs_local
+
+    cur_level = best
+    levels_attempted = 0
+    while used < budget and levels_attempted < 3:
+        levels_attempted += 1
+        if obs is None:
+            break
+        f0 = get_frame(obs)
+        clusters = _clusters(f0)
+        if not clusters:
+            break
+
+        # Probe an empty-looking corner to classify static vs dynamic clusters
+        obs_probe = _click_and_track(2, 62)
+        if obs_probe is None:
+            break
+        f1 = get_frame(obs_probe)
+        obs = obs_probe
+        moved_colors: set[int] = set()
+        if not np.array_equal(f0, f1):
+            cl0 = {(round(cx), round(cy), c): sz for cx, cy, c, sz in clusters}
+            cl1 = {(round(cx), round(cy), c): sz for cx, cy, c, sz in _clusters(f1)}
+            for key, sz in cl0.items():
+                if cl1.get(key) != sz:
+                    moved_colors.add(key[2])
+
+        # Greedy merge loop — same-color pairs, click midpoint within vacuum radius
+        for _ in range(60):
+            if used >= budget or obs is None:
+                break
+            if obs.state.name in ("GAME_OVER", "WIN"):
+                break
+            if best > cur_level:
+                cur_level = best
+                break
+            cls = _clusters(get_frame(obs))
+            by_color: dict[int, list] = {}
+            for cx, cy, c, sz in cls:
+                if moved_colors and c not in moved_colors:
+                    continue
+                by_color.setdefault(c, []).append((cx, cy, sz))
+            acted = False
+            for c, items in by_color.items():
+                if len(items) < 2:
+                    continue
+                items.sort(key=lambda t: (t[0], t[1]))
+                (ax, ay, _), (bx, by_, _) = items[0], items[1]
+                dx, dy = ax - bx, ay - by_
+                if (dx * dx + dy * dy) ** 0.5 > VACUUM_R * 2 + 4:
+                    continue
+                mx, my = int((ax + bx) / 2), int((ay + by_) / 2)
+                nxt = _click_and_track(mx, my)
+                if nxt is None:
+                    break
+                obs = nxt
+                acted = True
+                break
+            if not acted:
+                break
+
+        if best <= cur_level:
+            break
+        # Level advanced — reset observation for next iteration
+        obs = reset(env)
+        used += 1
+
+    return best, name, used
+
+
 # ─── SK48 snake matching solver (prefix-chaining BFS like TU93) ──
 
 def strat_sk48_snake(env: Any, budget: int = 500000) -> tuple[int, str, int]:
@@ -8326,6 +8472,12 @@ class EnsembleAgent:
         if best_levels == 0 and has_click and not dir_actions and 7 in avail:
             remaining = min(5000, self.total_budget - total_actions)
             try_strat(strat_su15_vacuum, label="su15_vacuum", budget=remaining)
+            # Frame-only fallback runs when strat_su15_vacuum returns 0 (typical
+            # v2 collapse path via AttributeError on `game.hmeulfxgy` etc.).
+            # Scope is L1-L3; see .wiki/wiki/games/SU15.md refactor plan.
+            if best_levels == 0:
+                remaining = min(2000, self.total_budget - total_actions)
+                try_strat(strat_su15_frame_only, label="su15_frame_only", budget=remaining)
         # RE86 analytical solver (A1-A5, no click, no A7) — reads game internals
         if best_levels == 0 and dir_actions and 5 in avail and not has_click and 7 not in avail:
             remaining = min(5000, self.total_budget - total_actions)
