@@ -6042,6 +6042,167 @@ def strat_tn36_puzzle(env: Any, budget: int = 500) -> tuple[int, str, int]:
     return best, name, used
 
 
+def strat_tn36_frame_only(env: Any, budget: int = 1500) -> tuple[int, str, int]:
+    """TN36 programming puzzle — frame-only variant (no game internals).
+
+    This is the Phase 8 Step 2a refactor of [[.wiki/wiki/games/TN36.md]], designed
+    to survive v2 hash obfuscation. Unlike [[strat_tn36_puzzle]] which calls
+    `frame.zpzcmabenn(val)` directly, this variant observes the frame only.
+
+    Algorithm (discovery + probe, no planning):
+      1. Click at a grid of positions to find interactive cells.
+         Classify each by frame-diff magnitude:
+           - "bit-like": small local change (toggles a bit cell).
+           - "play-like": large change or level progression (triggers execution).
+      2. Enumerate short bit-subset programs and run each against each play candidate.
+         Small L1 programs (few bits) are solvable this way.
+
+    Limitations:
+      - Does not plan long programs (L3+ need BFS over bit patterns; deferred).
+      - Relies on the play button being reachable in the first probe grid.
+      - Expected v2 coverage: L1 only, ~1/7.
+
+    Intended dispatch: runs on v2 after `strat_tn36_puzzle` returns 0 on an
+    `AttributeError`/missing-internals short-circuit. See
+    [[.wiki/wiki/debug/attribute_error_playbook]] (Option C fallback) and
+    [[.wiki/wiki/lessons/v2_hash_obfuscation]].
+    """
+    obs = reset(env)
+    if obs is None:
+        return 0, "", 1
+    used = 1
+    best = obs.levels_completed
+    name = ""
+
+    # Phase 1 — detect the bit row: cells whose click produces a persistent change
+    # (diff > threshold after a settle click). The bit row forms an evenly-spaced
+    # horizontal cluster at a single y-row (observed on TN36 v2: y=44, x={20..40 step 4}).
+    persistent_cells: list[tuple[int, int]] = []
+    probe_budget = min(budget // 2, 1200)
+    for y in range(0, 64, 4):
+        if used >= probe_budget:
+            break
+        for x in range(0, 64, 4):
+            if used >= probe_budget:
+                break
+            obs = reset(env)
+            used += 1
+            if obs is None:
+                continue
+            f_reset = get_frame(obs)
+            obs = env.step(GameAction.ACTION6, data={"x": x, "y": y})
+            used += 1
+            if obs is None:
+                continue
+            if obs.levels_completed > best:
+                best = obs.levels_completed
+                name = "tn36_frame_only"
+            # Settle click at a corner to flush cursor overlay
+            obs = env.step(GameAction.ACTION6, data={"x": 0, "y": 0})
+            used += 1
+            if obs is None:
+                continue
+            f_settled = get_frame(obs)
+            persist = frame_diff(f_reset, f_settled)
+            if persist >= 4:
+                persistent_cells.append((x, y))
+
+    if len(persistent_cells) < 2:
+        return best, name, used
+
+    # Cluster persistent cells by row (same y)
+    from collections import defaultdict
+    by_y: dict[int, list[int]] = defaultdict(list)
+    for x, y in persistent_cells:
+        by_y[y].append(x)
+    # Pick the row with the most cells as the bit row
+    bit_y = max(by_y, key=lambda k: len(by_y[k]))
+    bit_xs = sorted(by_y[bit_y])
+    if len(bit_xs) < 2:
+        return best, name, used
+    bit_cells = [(x, bit_y) for x in bit_xs]
+
+    # Phase 2 — find the play button: with all bits set, scan for cells that produce
+    # a large diff (not persistent toggle) — indicates a running-animation / execution.
+    play_candidates: list[tuple[int, int]] = []
+    obs = reset(env)
+    used += 1
+    for bx, by in bit_cells:
+        if used >= budget:
+            break
+        obs = env.step(GameAction.ACTION6, data={"x": bx, "y": by})
+        used += 1
+    if obs is None or used >= budget:
+        return best, name, used
+    f_all_set = get_frame(obs)
+
+    # Scan coarsely for play button
+    for y in range(0, 64, 4):
+        if used >= budget * 2 // 3:
+            break
+        for x in range(0, 64, 4):
+            if used >= budget * 2 // 3:
+                break
+            if (x, y) in bit_cells or (abs(y - bit_y) <= 2 and x in bit_xs):
+                continue
+            obs = reset(env)
+            used += 1
+            if obs is None:
+                continue
+            for bx, by in bit_cells:
+                if used >= budget:
+                    break
+                obs = env.step(GameAction.ACTION6, data={"x": bx, "y": by})
+                used += 1
+            if obs is None or used >= budget:
+                break
+            f_bits = get_frame(obs)
+            obs = env.step(GameAction.ACTION6, data={"x": x, "y": y})
+            used += 1
+            if obs is None:
+                continue
+            if obs.levels_completed > best:
+                best = obs.levels_completed
+                name = "tn36_frame_only"
+            diff = frame_diff(f_bits, get_frame(obs))
+            if diff >= 30:
+                play_candidates.append((x, y))
+
+    if not play_candidates:
+        return best, name, used
+    # Dedupe by simple 4-pixel grouping
+    px, py = play_candidates[0]
+
+    # Phase 3 — enumerate bit-value programs (single frame assumed on v2)
+    # Try values 0..(2^N - 1) where N = number of bit cells (capped at 6)
+    n_bits = min(len(bit_cells), 6)
+    for val in range(1, 1 << n_bits):
+        if used >= budget:
+            break
+        obs = reset(env)
+        used += 1
+        if obs is None:
+            break
+        # Toggle bits matching val
+        for i in range(n_bits):
+            if used >= budget:
+                break
+            if (val >> i) & 1:
+                bx, by = bit_cells[i]
+                obs = env.step(GameAction.ACTION6, data={"x": bx, "y": by})
+                used += 1
+        if used >= budget:
+            break
+        # Click play
+        obs = env.step(GameAction.ACTION6, data={"x": px, "y": py})
+        used += 1
+        if obs and obs.levels_completed > best:
+            best = obs.levels_completed
+            name = "tn36_frame_only"
+
+    return best, name, used
+
+
 def strat_su15_vacuum(env: Any, budget: int = 5000) -> tuple[int, str, int]:
     """SU15: merge-puzzle vacuum solver.
     Click creates vacuum (radius=8px) that sucks nearby fruits toward click.
@@ -8144,6 +8305,11 @@ class EnsembleAgent:
         if best_levels == 0 and has_click and not dir_actions and 5 not in avail and 7 not in avail:
             remaining = min(500, self.total_budget - total_actions)
             try_strat(strat_tn36_puzzle, label="tn36_puzzle", budget=remaining)
+        # TN36 frame-only fallback — runs on v2 hashes where game internals are obfuscated.
+        # See `.wiki/wiki/games/TN36.md` Refactor Plan and `.wiki/wiki/debug/attribute_error_playbook.md`.
+        if best_levels == 0 and has_click and not dir_actions and 5 not in avail and 7 not in avail:
+            remaining = min(1500, self.total_budget - total_actions)
+            try_strat(strat_tn36_frame_only, label="tn36_frame_only", budget=remaining)
         # S5I5 slider puzzle (click-only, no A5/A7 — resize bars move goal markers to targets)
         if best_levels == 0 and has_click and not dir_actions and 5 not in avail and 7 not in avail:
             remaining = min(2000, self.total_budget - total_actions)
