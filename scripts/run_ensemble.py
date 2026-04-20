@@ -22,7 +22,11 @@ def main():
     envs = arcade.get_environments()
     print(f"  Games: {len(envs)}\n")
 
-    agent = EnsembleAgent(total_budget=20000)
+    # total_budget=50000 matches the EnsembleAgent class default and the budget that
+    # historically cleared LF52 at commit b1cbc91. A lower override (e.g. 20000) was
+    # identified as the root cause of LF52 silent regression in Round 1 (2026-04-20).
+    # See `.wiki/wiki/debug/regression_bisect_playbook.md` and `.wiki/wiki/games/LF52.md`.
+    agent = EnsembleAgent(total_budget=50000)
     results = []
     total_start = time.time()
 
