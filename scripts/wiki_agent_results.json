@@ -1,0 +1,3074 @@
+{
+  "timestamp": "2026-04-21T03:00:27",
+  "candidate": "qwen_3_8b_q4",
+  "results": [
+    {
+      "game_title": "TU93",
+      "discovery": {
+        "available_actions": [
+          1,
+          2,
+          3,
+          4
+        ],
+        "layer_count": 1,
+        "dominant_colors": [
+          [
+            5,
+            3465
+          ],
+          [
+            2,
+            288
+          ],
+          [
+            6,
+            64
+          ],
+          [
+            14,
+            9
+          ],
+          [
+            9,
+            8
+          ],
+          [
+            4,
+            1
+          ]
+        ],
+        "probe_diffs": {
+          "1": 1,
+          "2": 1,
+          "3": 1,
+          "4": 8
+        }
+      },
+      "hypothesis": {
+        "game_type": "movement",
+        "primary_strategy": "bfs_state_space",
+        "fallback_stack": [
+          "click_rare",
+          "raster"
+        ],
+        "rationale": "Available actions include movement commands (1-4) with low pixel diffs, indicating a movement-based game. The primary strategy 'bfs_state_space' is preferred for movement games."
+      },
+      "executions": [
+        {
+          "strategy": "bfs_state_space",
+          "winning_label": "bfs_state_space",
+          "levels": 2,
+          "actions": 53,
+          "elapsed_s": 1.71,
+          "status": "ok"
+        }
+      ],
+      "best_levels": 2,
+      "total_elapsed_s": 4.41,
+      "status": "ok",
+      "env_index": 1,
+      "game_id": "tu93-0768757b"
+    },
+    {
+      "game_title": "TU93",
+      "discovery": {
+        "available_actions": [
+          1,
+          2,
+          3,
+          4
+        ],
+        "layer_count": 1,
+        "dominant_colors": [
+          [
+            5,
+            3465
+          ],
+          [
+            2,
+            288
+          ],
+          [
+            6,
+            64
+          ],
+          [
+            14,
+            9
+          ],
+          [
+            9,
+            8
+          ],
+          [
+            4,
+            1
+          ]
+        ],
+        "probe_diffs": {
+          "1": 1,
+          "2": 1,
+          "3": 1,
+          "4": 8
+        }
+      },
+      "hypothesis": {
+        "game_type": "movement",
+        "primary_strategy": "bfs_state_space",
+        "fallback_stack": [
+          "click_rare",
+          "raster"
+        ],
+        "rationale": "Available actions include 1-4 with mixed diffs, indicating a movement-based game. The primary strategy is bfs_state_space as it is the default for movement types."
+      },
+      "executions": [
+        {
+          "strategy": "bfs_state_space",
+          "winning_label": "bfs_state_space",
+          "levels": 2,
+          "actions": 53,
+          "elapsed_s": 1.67,
+          "status": "ok"
+        }
+      ],
+      "best_levels": 2,
+      "total_elapsed_s": 3.79,
+      "status": "ok",
+      "env_index": 2,
+      "game_id": "tu93-0768757b"
+    },
+    {
+      "game_title": "AR25",
+      "discovery": {
+        "available_actions": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "layer_count": 1,
+        "dominant_colors": [
+          [
+            9,
+            3645
+          ],
+          [
+            10,
+            189
+          ],
+          [
+            11,
+            109
+          ],
+          [
+            5,
+            103
+          ],
+          [
+            4,
+            45
+          ]
+        ],
+        "probe_diffs": {
+          "1": 109,
+          "2": 109,
+          "3": 109,
+          "4": 109,
+          "6": 0,
+          "-6": 0
+        }
+      },
+      "hypothesis": {
+        "game_type": "unknown",
+        "primary_strategy": "bfs_state_space",
+        "fallback_stack": [
+          "click_rare",
+          "seq_search"
+        ],
+        "rationale": "Available actions include movement and click, but probe diffs suggest no responsive click cells. Prioritize BFS for state space exploration as the primary strategy."
+      },
+      "executions": [
+        {
+          "strategy": "bfs_state_space",
+          "winning_label": "bfs_state_space",
+          "levels": 2,
+          "actions": 2104,
+          "elapsed_s": 174.67,
+          "status": "ok"
+        }
+      ],
+      "best_levels": 2,
+      "total_elapsed_s": 177.15,
+      "status": "ok",
+      "env_index": 3,
+      "game_id": "ar25-0c556536"
+    },
+    {
+      "game_title": "AR25",
+      "discovery": {
+        "available_actions": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "layer_count": 1,
+        "dominant_colors": [
+          [
+            9,
+            3645
+          ],
+          [
+            10,
+            189
+          ],
+          [
+            11,
+            109
+          ],
+          [
+            5,
+            103
+          ],
+          [
+            4,
+            45
+          ]
+        ],
+        "probe_diffs": {
+          "1": 109,
+          "2": 109,
+          "3": 109,
+          "4": 109,
+          "6": 0,
+          "-6": 0
+        }
+      },
+      "hypothesis": {
+        "game_type": "unknown",
+        "primary_strategy": "bfs_state_space",
+        "fallback_stack": [
+          "click_rare",
+          "seq_search"
+        ],
+        "rationale": "Available actions include movement and click, but probe diffs suggest no responsive click cells. Prioritize BFS for state space exploration as the primary strategy."
+      },
+      "executions": [
+        {
+          "strategy": "bfs_state_space",
+          "winning_label": "bfs_state_space",
+          "levels": 2,
+          "actions": 2104,
+          "elapsed_s": 174.14,
+          "status": "ok"
+        }
+      ],
+      "best_levels": 2,
+      "total_elapsed_s": 176.16,
+      "status": "ok",
+      "env_index": 4,
+      "game_id": "ar25-0c556536"
+    },
+    {
+      "game_title": "RE86",
+      "discovery": {
+        "available_actions": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "layer_count": 1,
+        "dominant_colors": [
+          [
+            5,
+            3862
+          ],
+          [
+            4,
+            64
+          ],
+          [
+            15,
+            64
+          ],
+          [
+            9,
+            56
+          ],
+          [
+            11,
+            49
+          ]
+        ],
+        "probe_diffs": {
+          "1": 61,
+          "2": 61,
+          "3": 61,
+          "4": 61
+        }
+      },
+      "hypothesis": {
+        "game_type": "movement",
+        "primary_strategy": "bfs_state_space",
+        "fallback_stack": [
+          "click_rare",
+          "raster"
+        ],
+        "rationale": "Available actions include movement commands with moderate pixel diffs, indicating a movement-based game. BFS state space is the default strategy for movement games."
+      },
+      "executions": [
+        {
+          "strategy": "bfs_state_space",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 1,
+          "elapsed_s": 35.52,
+          "status": "ok"
+        },
+        {
+          "strategy": "click_rare",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 234,
+          "elapsed_s": 0.01,
+          "status": "ok"
+        },
+        {
+          "strategy": "raster",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 2,
+          "elapsed_s": 0.0,
+          "status": "ok"
+        }
+      ],
+      "best_levels": 0,
+      "total_elapsed_s": 39.14,
+      "status": "ok",
+      "env_index": 5,
+      "game_id": "re86-8af5384d"
+    },
+    {
+      "game_title": "RE86",
+      "discovery": {
+        "available_actions": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "layer_count": 1,
+        "dominant_colors": [
+          [
+            5,
+            3862
+          ],
+          [
+            4,
+            64
+          ],
+          [
+            15,
+            64
+          ],
+          [
+            9,
+            56
+          ],
+          [
+            11,
+            49
+          ]
+        ],
+        "probe_diffs": {
+          "1": 61,
+          "2": 61,
+          "3": 61,
+          "4": 61
+        }
+      },
+      "hypothesis": {
+        "game_type": "movement",
+        "primary_strategy": "bfs_state_space",
+        "fallback_stack": [
+          "click_rare",
+          "raster"
+        ],
+        "rationale": "Available actions include movement commands with moderate pixel diffs, indicating a movement-based game. BFS state space is the default strategy for movement games."
+      },
+      "executions": [
+        {
+          "strategy": "bfs_state_space",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 1,
+          "elapsed_s": 35.11,
+          "status": "ok"
+        },
+        {
+          "strategy": "click_rare",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 234,
+          "elapsed_s": 0.01,
+          "status": "ok"
+        },
+        {
+          "strategy": "raster",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 2,
+          "elapsed_s": 0.0,
+          "status": "ok"
+        }
+      ],
+      "best_levels": 0,
+      "total_elapsed_s": 37.13,
+      "status": "ok",
+      "env_index": 6,
+      "game_id": "re86-8af5384d"
+    },
+    {
+      "game_title": "SU15",
+      "discovery": {
+        "available_actions": [
+          6,
+          7
+        ],
+        "layer_count": 1,
+        "dominant_colors": [
+          [
+            5,
+            3290
+          ],
+          [
+            4,
+            631
+          ],
+          [
+            9,
+            59
+          ],
+          [
+            3,
+            29
+          ],
+          [
+            15,
+            18
+          ]
+        ],
+        "probe_diffs": {
+          "7": 0,
+          "6": 48,
+          "-6": 5
+        }
+      },
+      "hypothesis": {
+        "game_type": "merge_puzzle",
+        "primary_strategy": "su15_frame_only",
+        "fallback_stack": [
+          "click_rare",
+          "click_all_colors"
+        ],
+        "rationale": "The game title matches SU15, and the available actions [6, 7] with probe 6 \u2265 20 indicate a merge puzzle, so the frame-only strategy su15_frame_only is preferred."
+      },
+      "executions": [
+        {
+          "strategy": "su15_frame_only",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 2,
+          "elapsed_s": 0.01,
+          "status": "ok"
+        },
+        {
+          "strategy": "click_rare",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 110,
+          "elapsed_s": 0.02,
+          "status": "ok"
+        },
+        {
+          "strategy": "click_all_colors",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 641,
+          "elapsed_s": 0.13,
+          "status": "ok"
+        }
+      ],
+      "best_levels": 0,
+      "total_elapsed_s": 3.17,
+      "status": "ok",
+      "env_index": 7,
+      "game_id": "su15-1944f8ab"
+    },
+    {
+      "game_title": "SU15",
+      "discovery": {
+        "available_actions": [
+          6,
+          7
+        ],
+        "layer_count": 1,
+        "dominant_colors": [
+          [
+            5,
+            3290
+          ],
+          [
+            4,
+            631
+          ],
+          [
+            9,
+            59
+          ],
+          [
+            3,
+            29
+          ],
+          [
+            15,
+            18
+          ]
+        ],
+        "probe_diffs": {
+          "7": 0,
+          "6": 48,
+          "-6": 5
+        }
+      },
+      "hypothesis": {
+        "game_type": "merge_puzzle",
+        "primary_strategy": "su15_frame_only",
+        "fallback_stack": [
+          "click_rare",
+          "click_all_colors"
+        ],
+        "rationale": "Available actions [6, 7] and probe diff for action 6 \u2265 20 indicate a merge_puzzle, matching the su15_frame_only strategy."
+      },
+      "executions": [
+        {
+          "strategy": "su15_frame_only",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 2,
+          "elapsed_s": 0.01,
+          "status": "ok"
+        },
+        {
+          "strategy": "click_rare",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 110,
+          "elapsed_s": 0.02,
+          "status": "ok"
+        },
+        {
+          "strategy": "click_all_colors",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 641,
+          "elapsed_s": 0.12,
+          "status": "ok"
+        }
+      ],
+      "best_levels": 0,
+      "total_elapsed_s": 2.39,
+      "status": "ok",
+      "env_index": 8,
+      "game_id": "su15-1944f8ab"
+    },
+    {
+      "game_title": "M0R0",
+      "discovery": {
+        "available_actions": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        "layer_count": 1,
+        "dominant_colors": [
+          [
+            5,
+            1453
+          ],
+          [
+            12,
+            1299
+          ],
+          [
+            11,
+            1294
+          ],
+          [
+            10,
+            50
+          ]
+        ],
+        "probe_diffs": {
+          "1": 100,
+          "2": 100,
+          "3": 100,
+          "4": 100,
+          "6": 0,
+          "-6": 0
+        }
+      },
+      "hypothesis": {
+        "game_type": "click",
+        "primary_strategy": "click_rare",
+        "fallback_stack": [
+          "click_all_colors",
+          "raster"
+        ],
+        "rationale": "Available actions include 6, and probe 6 returns 0 on all 5 coords, indicating rare click targets."
+      },
+      "executions": [
+        {
+          "strategy": "click_rare",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 51,
+          "elapsed_s": 0.0,
+          "status": "ok"
+        },
+        {
+          "strategy": "click_all_colors",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 501,
+          "elapsed_s": 0.05,
+          "status": "ok"
+        },
+        {
+          "strategy": "raster",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 2,
+          "elapsed_s": 0.0,
+          "status": "ok"
+        }
+      ],
+      "best_levels": 0,
+      "total_elapsed_s": 2.34,
+      "status": "ok",
+      "env_index": 9,
+      "game_id": "m0r0-492f87ba"
+    },
+    {
+      "game_title": "M0R0",
+      "discovery": {
+        "available_actions": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        "layer_count": 1,
+        "dominant_colors": [
+          [
+            5,
+            1453
+          ],
+          [
+            12,
+            1299
+          ],
+          [
+            11,
+            1294
+          ],
+          [
+            10,
+            50
+          ]
+        ],
+        "probe_diffs": {
+          "1": 100,
+          "2": 100,
+          "3": 100,
+          "4": 100,
+          "6": 0,
+          "-6": 0
+        }
+      },
+      "hypothesis": {
+        "game_type": "click",
+        "primary_strategy": "click_rare",
+        "fallback_stack": [
+          "click_all_colors",
+          "raster"
+        ],
+        "rationale": "Available actions include 6, and probe 6 returns 0 on all 5 coords, indicating rare click targets."
+      },
+      "executions": [
+        {
+          "strategy": "click_rare",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 51,
+          "elapsed_s": 0.0,
+          "status": "ok"
+        },
+        {
+          "strategy": "click_all_colors",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 501,
+          "elapsed_s": 0.04,
+          "status": "ok"
+        },
+        {
+          "strategy": "raster",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 2,
+          "elapsed_s": 0.0,
+          "status": "ok"
+        }
+      ],
+      "best_levels": 0,
+      "total_elapsed_s": 1.91,
+      "status": "ok",
+      "env_index": 10,
+      "game_id": "m0r0-492f87ba"
+    },
+    {
+      "game_title": "CN04",
+      "discovery": {
+        "available_actions": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        "layer_count": 1,
+        "dominant_colors": [
+          [
+            10,
+            3749
+          ],
+          [
+            14,
+            144
+          ],
+          [
+            8,
+            36
+          ],
+          [
+            4,
+            32
+          ]
+        ],
+        "probe_diffs": {
+          "1": 144,
+          "2": 144,
+          "3": 198,
+          "4": 198,
+          "6": 279,
+          "-6": 1
+        }
+      },
+      "hypothesis": {
+        "game_type": "click",
+        "primary_strategy": "click_rare",
+        "fallback_stack": [
+          "paint_game",
+          "raster"
+        ],
+        "rationale": "Available actions include 6, and probe 6 shows 279 pixels changed, indicating a click-based game with rare targets."
+      },
+      "executions": [
+        {
+          "strategy": "click_rare",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 215,
+          "elapsed_s": 0.01,
+          "status": "ok"
+        },
+        {
+          "strategy": "paint_game",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 76,
+          "elapsed_s": 0.0,
+          "status": "ok"
+        },
+        {
+          "strategy": "raster",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 2,
+          "elapsed_s": 0.0,
+          "status": "ok"
+        }
+      ],
+      "best_levels": 0,
+      "total_elapsed_s": 2.38,
+      "status": "ok",
+      "env_index": 11,
+      "game_id": "cn04-2fe56bfb"
+    },
+    {
+      "game_title": "CN04",
+      "discovery": {
+        "available_actions": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        "layer_count": 1,
+        "dominant_colors": [
+          [
+            10,
+            3749
+          ],
+          [
+            14,
+            144
+          ],
+          [
+            8,
+            36
+          ],
+          [
+            4,
+            32
+          ]
+        ],
+        "probe_diffs": {
+          "1": 144,
+          "2": 144,
+          "3": 198,
+          "4": 198,
+          "6": 279,
+          "-6": 1
+        }
+      },
+      "hypothesis": {
+        "game_type": "click",
+        "primary_strategy": "click_rare",
+        "fallback_stack": [
+          "paint_game",
+          "raster"
+        ],
+        "rationale": "Available actions include 6, and probe 6 shows 279 pixels changed, indicating a click-based game with rare targets."
+      },
+      "executions": [
+        {
+          "strategy": "click_rare",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 215,
+          "elapsed_s": 0.01,
+          "status": "ok"
+        },
+        {
+          "strategy": "paint_game",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 76,
+          "elapsed_s": 0.0,
+          "status": "ok"
+        },
+        {
+          "strategy": "raster",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 2,
+          "elapsed_s": 0.0,
+          "status": "ok"
+        }
+      ],
+      "best_levels": 0,
+      "total_elapsed_s": 1.91,
+      "status": "ok",
+      "env_index": 12,
+      "game_id": "cn04-2fe56bfb"
+    },
+    {
+      "game_title": "FT09",
+      "discovery": {
+        "available_actions": [
+          6
+        ],
+        "layer_count": 1,
+        "dominant_colors": [
+          [
+            5,
+            2160
+          ],
+          [
+            9,
+            720
+          ],
+          [
+            4,
+            496
+          ],
+          [
+            8,
+            448
+          ],
+          [
+            2,
+            144
+          ],
+          [
+            12,
+            64
+          ]
+        ],
+        "probe_diffs": {
+          "6": 0,
+          "-6": 0
+        }
+      },
+      "hypothesis": {
+        "game_type": "click",
+        "primary_strategy": "click_rare",
+        "fallback_stack": [
+          "paint_game",
+          "lights_out"
+        ],
+        "rationale": "Available action is 6 and probe 6 returns 0 on all 5 coords, indicating rare click targets."
+      },
+      "executions": [
+        {
+          "strategy": "click_rare",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 1153,
+          "elapsed_s": 0.26,
+          "status": "ok"
+        },
+        {
+          "strategy": "paint_game",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 51,
+          "elapsed_s": 0.01,
+          "status": "ok"
+        },
+        {
+          "strategy": "lights_out",
+          "winning_label": "lights_out",
+          "levels": 6,
+          "actions": 374,
+          "elapsed_s": 0.04,
+          "status": "ok"
+        }
+      ],
+      "best_levels": 6,
+      "total_elapsed_s": 2.44,
+      "status": "ok",
+      "env_index": 13,
+      "game_id": "ft09-0d8bbf25"
+    },
+    {
+      "game_title": "TR87",
+      "discovery": {
+        "available_actions": [
+          1,
+          2,
+          3,
+          4
+        ],
+        "layer_count": 1,
+        "dominant_colors": [
+          [
+            2,
+            1570
+          ],
+          [
+            3,
+            1370
+          ],
+          [
+            10,
+            394
+          ],
+          [
+            7,
+            364
+          ],
+          [
+            5,
+            320
+          ],
+          [
+            1,
+            64
+          ]
+        ],
+        "probe_diffs": {
+          "1": 13,
+          "2": 15,
+          "3": 28,
+          "4": 28
+        }
+      },
+      "hypothesis": {
+        "game_type": "movement",
+        "primary_strategy": "bfs_state_space",
+        "fallback_stack": [
+          "click_rare",
+          "raster"
+        ],
+        "rationale": "Available actions include 1-4 with mixed diffs, indicating a movement-based game. The primary strategy is bfs_state_space as it is the default for movement types."
+      },
+      "executions": [
+        {
+          "strategy": "bfs_state_space",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 1,
+          "elapsed_s": 82.88,
+          "status": "ok"
+        },
+        {
+          "strategy": "click_rare",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 1143,
+          "elapsed_s": 0.16,
+          "status": "ok"
+        },
+        {
+          "strategy": "raster",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 2,
+          "elapsed_s": 0.0,
+          "status": "ok"
+        }
+      ],
+      "best_levels": 0,
+      "total_elapsed_s": 85.69,
+      "status": "ok",
+      "env_index": 14,
+      "game_id": "tr87-cd924810"
+    },
+    {
+      "game_title": "SC25",
+      "discovery": {
+        "available_actions": [
+          1,
+          2,
+          3,
+          4,
+          6
+        ],
+        "layer_count": 1,
+        "dominant_colors": [
+          [
+            5,
+            3457
+          ],
+          [
+            3,
+            244
+          ],
+          [
+            2,
+            169
+          ],
+          [
+            14,
+            128
+          ],
+          [
+            10,
+            24
+          ],
+          [
+            9,
+            22
+          ]
+        ],
+        "probe_diffs": {
+          "1": 0,
+          "2": 0,
+          "3": 0,
+          "4": 0,
+          "6": 0,
+          "-6": 0
+        }
+      },
+      "hypothesis": {
+        "game_type": "click",
+        "primary_strategy": "click_rare",
+        "fallback_stack": [
+          "click_all_colors",
+          "raster"
+        ],
+        "rationale": "Available actions include 6, and probe 6 returns 0 on all 5 coords, indicating rare click targets."
+      },
+      "executions": [
+        {
+          "strategy": "click_rare",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 608,
+          "elapsed_s": 0.3,
+          "status": "ok"
+        },
+        {
+          "strategy": "click_all_colors",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 868,
+          "elapsed_s": 0.55,
+          "status": "ok"
+        },
+        {
+          "strategy": "raster",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 2,
+          "elapsed_s": 0.0,
+          "status": "ok"
+        }
+      ],
+      "best_levels": 0,
+      "total_elapsed_s": 3.16,
+      "status": "ok",
+      "env_index": 15,
+      "game_id": "sc25-635fd71a"
+    },
+    {
+      "game_title": "SC25",
+      "discovery": {
+        "available_actions": [
+          1,
+          2,
+          3,
+          4,
+          6
+        ],
+        "layer_count": 1,
+        "dominant_colors": [
+          [
+            5,
+            3457
+          ],
+          [
+            3,
+            244
+          ],
+          [
+            2,
+            169
+          ],
+          [
+            14,
+            128
+          ],
+          [
+            10,
+            24
+          ],
+          [
+            9,
+            22
+          ]
+        ],
+        "probe_diffs": {
+          "1": 0,
+          "2": 0,
+          "3": 0,
+          "4": 0,
+          "6": 0,
+          "-6": 0
+        }
+      },
+      "hypothesis": {
+        "game_type": "click",
+        "primary_strategy": "click_rare",
+        "fallback_stack": [
+          "click_all_colors",
+          "raster"
+        ],
+        "rationale": "Available actions include 6, and probe 6 returns 0 on all 5 coords, indicating rare click targets."
+      },
+      "executions": [
+        {
+          "strategy": "click_rare",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 608,
+          "elapsed_s": 0.29,
+          "status": "ok"
+        },
+        {
+          "strategy": "click_all_colors",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 868,
+          "elapsed_s": 0.54,
+          "status": "ok"
+        },
+        {
+          "strategy": "raster",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 2,
+          "elapsed_s": 0.0,
+          "status": "ok"
+        }
+      ],
+      "best_levels": 0,
+      "total_elapsed_s": 2.69,
+      "status": "ok",
+      "env_index": 16,
+      "game_id": "sc25-635fd71a"
+    },
+    {
+      "game_title": "LP85",
+      "discovery": {
+        "available_actions": [
+          6
+        ],
+        "layer_count": 1,
+        "dominant_colors": [
+          [
+            4,
+            1978
+          ],
+          [
+            3,
+            1606
+          ],
+          [
+            14,
+            104
+          ],
+          [
+            2,
+            64
+          ],
+          [
+            9,
+            64
+          ],
+          [
+            10,
+            64
+          ]
+        ],
+        "probe_diffs": {
+          "6": 0,
+          "-6": 0
+        }
+      },
+      "hypothesis": {
+        "game_type": "click",
+        "primary_strategy": "click_rare",
+        "fallback_stack": [
+          "click_all_colors",
+          "raster"
+        ],
+        "rationale": "Available actions contain only 6, and probe 6 returns 0 on all 5 coords, indicating rare click targets."
+      },
+      "executions": [
+        {
+          "strategy": "click_rare",
+          "winning_label": "click_c8_(30,4)",
+          "levels": 1,
+          "actions": 513,
+          "elapsed_s": 0.06,
+          "status": "ok"
+        }
+      ],
+      "best_levels": 1,
+      "total_elapsed_s": 2.26,
+      "status": "ok",
+      "env_index": 17,
+      "game_id": "lp85-305b61c3"
+    },
+    {
+      "game_title": "DC22",
+      "discovery": {
+        "available_actions": [
+          1,
+          2,
+          3,
+          4,
+          6
+        ],
+        "layer_count": 1,
+        "dominant_colors": [
+          [
+            4,
+            1256
+          ],
+          [
+            3,
+            1216
+          ],
+          [
+            5,
+            1190
+          ],
+          [
+            2,
+            80
+          ],
+          [
+            8,
+            71
+          ],
+          [
+            9,
+            71
+          ]
+        ],
+        "probe_diffs": {
+          "1": 9,
+          "2": 9,
+          "3": 9,
+          "4": 9,
+          "6": 1,
+          "-6": 5
+        }
+      },
+      "hypothesis": {
+        "game_type": "movement",
+        "primary_strategy": "bfs_state_space",
+        "fallback_stack": [
+          "click_rare",
+          "raster"
+        ],
+        "rationale": "Available actions include movement (1-4) and no click action (6), with moderate pixel diffs suggesting a movement-based game."
+      },
+      "executions": [
+        {
+          "strategy": "bfs_state_space",
+          "winning_label": "bfs_state_space",
+          "levels": 1,
+          "actions": 2090,
+          "elapsed_s": 3.74,
+          "status": "ok"
+        }
+      ],
+      "best_levels": 1,
+      "total_elapsed_s": 6.13,
+      "status": "ok",
+      "env_index": 18,
+      "game_id": "dc22-fdcac232"
+    },
+    {
+      "game_title": "DC22",
+      "discovery": {
+        "available_actions": [
+          1,
+          2,
+          3,
+          4,
+          6
+        ],
+        "layer_count": 1,
+        "dominant_colors": [
+          [
+            4,
+            1256
+          ],
+          [
+            3,
+            1216
+          ],
+          [
+            5,
+            1190
+          ],
+          [
+            2,
+            80
+          ],
+          [
+            8,
+            71
+          ],
+          [
+            9,
+            71
+          ]
+        ],
+        "probe_diffs": {
+          "1": 9,
+          "2": 9,
+          "3": 9,
+          "4": 9,
+          "6": 1,
+          "-6": 5
+        }
+      },
+      "hypothesis": {
+        "game_type": "movement",
+        "primary_strategy": "bfs_state_space",
+        "fallback_stack": [
+          "click_rare",
+          "raster"
+        ],
+        "rationale": "Available actions include movement (1-4) and no click action (6), with moderate pixel diffs suggesting a movement-based game."
+      },
+      "executions": [
+        {
+          "strategy": "bfs_state_space",
+          "winning_label": "bfs_state_space",
+          "levels": 1,
+          "actions": 2090,
+          "elapsed_s": 3.71,
+          "status": "ok"
+        }
+      ],
+      "best_levels": 1,
+      "total_elapsed_s": 5.68,
+      "status": "ok",
+      "env_index": 19,
+      "game_id": "dc22-fdcac232"
+    },
+    {
+      "game_title": "SP80",
+      "discovery": {
+        "available_actions": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        "layer_count": 1,
+        "dominant_colors": [
+          [
+            12,
+            3508
+          ],
+          [
+            1,
+            256
+          ],
+          [
+            11,
+            160
+          ],
+          [
+            9,
+            80
+          ],
+          [
+            14,
+            64
+          ],
+          [
+            6,
+            16
+          ]
+        ],
+        "probe_diffs": {
+          "1": 162,
+          "2": 162,
+          "3": 34,
+          "4": 34,
+          "6": 2,
+          "-6": 5
+        }
+      },
+      "hypothesis": {
+        "game_type": "movement",
+        "primary_strategy": "bfs_state_space",
+        "fallback_stack": [
+          "click_rare",
+          "raster"
+        ],
+        "rationale": "Available actions include movement (1-4) and click (6), with moderate pixel diffs suggesting a movement-based game."
+      },
+      "executions": [
+        {
+          "strategy": "bfs_state_space",
+          "winning_label": "bfs_state_space",
+          "levels": 1,
+          "actions": 2058,
+          "elapsed_s": 90.25,
+          "status": "ok"
+        }
+      ],
+      "best_levels": 1,
+      "total_elapsed_s": 92.65,
+      "status": "ok",
+      "env_index": 20,
+      "game_id": "sp80-589a99af"
+    },
+    {
+      "game_title": "SP80",
+      "discovery": {
+        "available_actions": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        "layer_count": 1,
+        "dominant_colors": [
+          [
+            12,
+            3508
+          ],
+          [
+            1,
+            256
+          ],
+          [
+            11,
+            160
+          ],
+          [
+            9,
+            80
+          ],
+          [
+            14,
+            64
+          ],
+          [
+            6,
+            16
+          ]
+        ],
+        "probe_diffs": {
+          "1": 162,
+          "2": 162,
+          "3": 34,
+          "4": 34,
+          "6": 2,
+          "-6": 5
+        }
+      },
+      "hypothesis": {
+        "game_type": "movement",
+        "primary_strategy": "bfs_state_space",
+        "fallback_stack": [
+          "click_rare",
+          "raster"
+        ],
+        "rationale": "Available actions include movement (1-4) and click (6), with moderate pixel diffs suggesting a movement-based game."
+      },
+      "executions": [
+        {
+          "strategy": "bfs_state_space",
+          "winning_label": "bfs_state_space",
+          "levels": 1,
+          "actions": 2058,
+          "elapsed_s": 90.24,
+          "status": "ok"
+        }
+      ],
+      "best_levels": 1,
+      "total_elapsed_s": 92.26,
+      "status": "ok",
+      "env_index": 21,
+      "game_id": "sp80-589a99af"
+    },
+    {
+      "game_title": "KA59",
+      "discovery": {
+        "available_actions": [
+          1,
+          2,
+          3,
+          4,
+          6
+        ],
+        "layer_count": 1,
+        "dominant_colors": [
+          [
+            2,
+            3249
+          ],
+          [
+            1,
+            607
+          ],
+          [
+            15,
+            126
+          ],
+          [
+            4,
+            96
+          ],
+          [
+            14,
+            16
+          ],
+          [
+            5,
+            1
+          ]
+        ],
+        "probe_diffs": {
+          "1": 19,
+          "2": 19,
+          "3": 19,
+          "4": 19,
+          "6": 1,
+          "-6": 5
+        }
+      },
+      "hypothesis": {
+        "game_type": "click",
+        "primary_strategy": "click_rare",
+        "fallback_stack": [
+          "click_all_colors",
+          "raster"
+        ],
+        "rationale": "Available actions include 6, and probe 6 shows 5 responsive click cells, indicating a rare click target."
+      },
+      "executions": [
+        {
+          "strategy": "click_rare",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 242,
+          "elapsed_s": 0.02,
+          "status": "ok"
+        },
+        {
+          "strategy": "click_all_colors",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 633,
+          "elapsed_s": 0.06,
+          "status": "ok"
+        },
+        {
+          "strategy": "raster",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 2,
+          "elapsed_s": 0.0,
+          "status": "ok"
+        }
+      ],
+      "best_levels": 0,
+      "total_elapsed_s": 2.41,
+      "status": "ok",
+      "env_index": 22,
+      "game_id": "ka59-38d34dbb"
+    },
+    {
+      "game_title": "KA59",
+      "discovery": {
+        "available_actions": [
+          1,
+          2,
+          3,
+          4,
+          6
+        ],
+        "layer_count": 1,
+        "dominant_colors": [
+          [
+            2,
+            3249
+          ],
+          [
+            1,
+            607
+          ],
+          [
+            15,
+            126
+          ],
+          [
+            4,
+            96
+          ],
+          [
+            14,
+            16
+          ],
+          [
+            5,
+            1
+          ]
+        ],
+        "probe_diffs": {
+          "1": 19,
+          "2": 19,
+          "3": 19,
+          "4": 19,
+          "6": 1,
+          "-6": 5
+        }
+      },
+      "hypothesis": {
+        "game_type": "click",
+        "primary_strategy": "click_rare",
+        "fallback_stack": [
+          "click_all_colors",
+          "raster"
+        ],
+        "rationale": "Available actions include 6, and probe 6 shows 5 responsive click cells, indicating a rare click target."
+      },
+      "executions": [
+        {
+          "strategy": "click_rare",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 242,
+          "elapsed_s": 0.02,
+          "status": "ok"
+        },
+        {
+          "strategy": "click_all_colors",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 633,
+          "elapsed_s": 0.06,
+          "status": "ok"
+        },
+        {
+          "strategy": "raster",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 2,
+          "elapsed_s": 0.0,
+          "status": "ok"
+        }
+      ],
+      "best_levels": 0,
+      "total_elapsed_s": 1.88,
+      "status": "ok",
+      "env_index": 23,
+      "game_id": "ka59-38d34dbb"
+    },
+    {
+      "game_title": "G50T",
+      "discovery": {
+        "available_actions": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "layer_count": 1,
+        "dominant_colors": [
+          [
+            5,
+            880
+          ],
+          [
+            9,
+            119
+          ],
+          [
+            8,
+            82
+          ],
+          [
+            1,
+            9
+          ]
+        ],
+        "probe_diffs": {
+          "1": 0,
+          "2": 0,
+          "3": 0,
+          "4": 0
+        }
+      },
+      "hypothesis": {
+        "game_type": "click",
+        "primary_strategy": "click_rare",
+        "fallback_stack": [
+          "click_all_colors",
+          "raster"
+        ],
+        "rationale": "Available actions include 1-5, and probe diffs show no responsive click cells, indicating a rare click target game."
+      },
+      "executions": [
+        {
+          "strategy": "click_rare",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 212,
+          "elapsed_s": 0.03,
+          "status": "ok"
+        },
+        {
+          "strategy": "click_all_colors",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 498,
+          "elapsed_s": 0.04,
+          "status": "ok"
+        },
+        {
+          "strategy": "raster",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 2,
+          "elapsed_s": 0.0,
+          "status": "ok"
+        }
+      ],
+      "best_levels": 0,
+      "total_elapsed_s": 2.25,
+      "status": "ok",
+      "env_index": 24,
+      "game_id": "g50t-5849a774"
+    },
+    {
+      "game_title": "SB26",
+      "discovery": {
+        "available_actions": [
+          5,
+          6,
+          7
+        ],
+        "layer_count": 1,
+        "dominant_colors": [
+          [
+            4,
+            3628
+          ],
+          [
+            5,
+            152
+          ],
+          [
+            2,
+            80
+          ],
+          [
+            8,
+            72
+          ],
+          [
+            9,
+            36
+          ],
+          [
+            11,
+            36
+          ]
+        ],
+        "probe_diffs": {
+          "5": 1,
+          "7": 0,
+          "6": 0,
+          "-6": 0
+        }
+      },
+      "hypothesis": {
+        "game_type": "sort_puzzle",
+        "primary_strategy": "sb26_sort",
+        "fallback_stack": [
+          "click_rare",
+          "click_color_order"
+        ],
+        "rationale": "Available actions include 5, 6, 7 and probe diffs indicate sort_puzzle characteristics. The dominant colors and probe responses match the SB26 game type, so sb26_sort is selected as the primary strategy."
+      },
+      "executions": [
+        {
+          "strategy": "sb26_sort",
+          "winning_label": "sb26_sort",
+          "levels": 8,
+          "actions": 125,
+          "elapsed_s": 0.14,
+          "status": "ok"
+        }
+      ],
+      "best_levels": 8,
+      "total_elapsed_s": 3.08,
+      "status": "ok",
+      "env_index": 25,
+      "game_id": "sb26-7fbdac44"
+    },
+    {
+      "game_title": "LF52",
+      "discovery": {
+        "available_actions": [
+          1,
+          2,
+          3,
+          4,
+          6,
+          7
+        ],
+        "layer_count": 2,
+        "dominant_colors": [
+          [
+            10,
+            2586
+          ],
+          [
+            1,
+            468
+          ],
+          [
+            5,
+            172
+          ],
+          [
+            9,
+            86
+          ],
+          [
+            14,
+            60
+          ]
+        ],
+        "probe_diffs": {
+          "1": 1,
+          "2": 1,
+          "3": 1,
+          "4": 1,
+          "6": 21,
+          "-6": 5
+        }
+      },
+      "hypothesis": {
+        "game_type": "unknown",
+        "primary_strategy": "bfs_state_space",
+        "fallback_stack": [
+          "click_rare",
+          "seq_search"
+        ],
+        "rationale": "Available actions include movement and click, but no clear player motion or click targets. Default to BFS state space exploration."
+      },
+      "executions": [
+        {
+          "strategy": "bfs_state_space",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 514,
+          "elapsed_s": 7.87,
+          "status": "ok"
+        },
+        {
+          "strategy": "click_rare",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 799,
+          "elapsed_s": 0.55,
+          "status": "ok"
+        },
+        {
+          "strategy": "seq_search",
+          "status": "unknown_strategy"
+        }
+      ],
+      "best_levels": 0,
+      "total_elapsed_s": 10.68,
+      "status": "ok",
+      "env_index": 26,
+      "game_id": "lf52-271a04aa"
+    },
+    {
+      "game_title": "BP35",
+      "discovery": {
+        "available_actions": [
+          3,
+          4,
+          6,
+          7
+        ],
+        "layer_count": 2,
+        "dominant_colors": [
+          [
+            5,
+            1894
+          ],
+          [
+            10,
+            1805
+          ],
+          [
+            3,
+            178
+          ],
+          [
+            14,
+            147
+          ],
+          [
+            9,
+            6
+          ],
+          [
+            11,
+            2
+          ]
+        ],
+        "probe_diffs": {
+          "3": 35,
+          "4": 31,
+          "7": 1,
+          "6": 27,
+          "-6": 5
+        }
+      },
+      "hypothesis": {
+        "game_type": "movement",
+        "primary_strategy": "bfs_state_space",
+        "fallback_stack": [
+          "graph_explore",
+          "wall_avoid"
+        ],
+        "rationale": "Available actions include movement-based actions (3, 4, 6, 7), and the game is classified as movement. BFS state space is the primary strategy for movement-based games."
+      },
+      "executions": [
+        {
+          "strategy": "bfs_state_space",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 514,
+          "elapsed_s": 60.74,
+          "status": "ok"
+        },
+        {
+          "strategy": "graph_explore",
+          "status": "unknown_strategy"
+        },
+        {
+          "strategy": "wall_avoid",
+          "status": "unknown_strategy"
+        }
+      ],
+      "best_levels": 0,
+      "total_elapsed_s": 63.42,
+      "status": "ok",
+      "env_index": 27,
+      "game_id": "bp35-0a0ad940"
+    },
+    {
+      "game_title": "S5I5",
+      "discovery": {
+        "available_actions": [
+          6
+        ],
+        "layer_count": 1,
+        "dominant_colors": [
+          [
+            5,
+            3797
+          ],
+          [
+            3,
+            80
+          ],
+          [
+            2,
+            72
+          ],
+          [
+            4,
+            72
+          ],
+          [
+            11,
+            37
+          ],
+          [
+            14,
+            28
+          ]
+        ],
+        "probe_diffs": {
+          "6": 1,
+          "-6": 5
+        }
+      },
+      "hypothesis": {
+        "game_type": "click",
+        "primary_strategy": "click_rare",
+        "fallback_stack": [
+          "paint_game",
+          "raster"
+        ],
+        "rationale": "Available actions contain only 6, and probe 6 shows 5 responsive click cells, indicating a rare click target."
+      },
+      "executions": [
+        {
+          "strategy": "click_rare",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 305,
+          "elapsed_s": 0.02,
+          "status": "ok"
+        },
+        {
+          "strategy": "paint_game",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 76,
+          "elapsed_s": 0.0,
+          "status": "ok"
+        },
+        {
+          "strategy": "raster",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 2,
+          "elapsed_s": 0.0,
+          "status": "ok"
+        }
+      ],
+      "best_levels": 0,
+      "total_elapsed_s": 2.51,
+      "status": "ok",
+      "env_index": 28,
+      "game_id": "s5i5-18d95033"
+    },
+    {
+      "game_title": "S5I5",
+      "discovery": {
+        "available_actions": [
+          6
+        ],
+        "layer_count": 1,
+        "dominant_colors": [
+          [
+            5,
+            3797
+          ],
+          [
+            3,
+            80
+          ],
+          [
+            2,
+            72
+          ],
+          [
+            4,
+            72
+          ],
+          [
+            11,
+            37
+          ],
+          [
+            14,
+            28
+          ]
+        ],
+        "probe_diffs": {
+          "6": 1,
+          "-6": 5
+        }
+      },
+      "hypothesis": {
+        "game_type": "click",
+        "primary_strategy": "click_rare",
+        "fallback_stack": [
+          "paint_game",
+          "raster"
+        ],
+        "rationale": "Available action is 6 and probe 6 has 5 responsive cells, matching the click (paint) game type."
+      },
+      "executions": [
+        {
+          "strategy": "click_rare",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 305,
+          "elapsed_s": 0.01,
+          "status": "ok"
+        },
+        {
+          "strategy": "paint_game",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 76,
+          "elapsed_s": 0.0,
+          "status": "ok"
+        },
+        {
+          "strategy": "raster",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 2,
+          "elapsed_s": 0.0,
+          "status": "ok"
+        }
+      ],
+      "best_levels": 0,
+      "total_elapsed_s": 1.83,
+      "status": "ok",
+      "env_index": 29,
+      "game_id": "s5i5-18d95033"
+    },
+    {
+      "game_title": "R11L",
+      "discovery": {
+        "available_actions": [
+          6
+        ],
+        "layer_count": 1,
+        "dominant_colors": [
+          [
+            5,
+            3318
+          ],
+          [
+            2,
+            638
+          ],
+          [
+            15,
+            34
+          ],
+          [
+            1,
+            17
+          ],
+          [
+            3,
+            12
+          ],
+          [
+            6,
+            1
+          ]
+        ],
+        "probe_diffs": {
+          "6": 1,
+          "-6": 5
+        }
+      },
+      "hypothesis": {
+        "game_type": "click",
+        "primary_strategy": "click_rare",
+        "fallback_stack": [
+          "paint_game",
+          "raster"
+        ],
+        "rationale": "Available action is 6 and probe 6 has 5 responsive cells, indicating a rare click target."
+      },
+      "executions": [
+        {
+          "strategy": "click_rare",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 66,
+          "elapsed_s": 0.01,
+          "status": "ok"
+        },
+        {
+          "strategy": "paint_game",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 64,
+          "elapsed_s": 0.01,
+          "status": "ok"
+        },
+        {
+          "strategy": "raster",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 2,
+          "elapsed_s": 0.0,
+          "status": "ok"
+        }
+      ],
+      "best_levels": 0,
+      "total_elapsed_s": 2.09,
+      "status": "ok",
+      "env_index": 30,
+      "game_id": "r11l-495a7899"
+    },
+    {
+      "game_title": "R11L",
+      "discovery": {
+        "available_actions": [
+          6
+        ],
+        "layer_count": 1,
+        "dominant_colors": [
+          [
+            5,
+            3318
+          ],
+          [
+            2,
+            638
+          ],
+          [
+            15,
+            34
+          ],
+          [
+            1,
+            17
+          ],
+          [
+            3,
+            12
+          ],
+          [
+            6,
+            1
+          ]
+        ],
+        "probe_diffs": {
+          "6": 1,
+          "-6": 5
+        }
+      },
+      "hypothesis": {
+        "game_type": "click",
+        "primary_strategy": "click_rare",
+        "fallback_stack": [
+          "paint_game",
+          "raster"
+        ],
+        "rationale": "Available actions contain only 6, and probe 6 shows 5 responsive click cells, indicating a rare click target."
+      },
+      "executions": [
+        {
+          "strategy": "click_rare",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 66,
+          "elapsed_s": 0.01,
+          "status": "ok"
+        },
+        {
+          "strategy": "paint_game",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 64,
+          "elapsed_s": 0.0,
+          "status": "ok"
+        },
+        {
+          "strategy": "raster",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 2,
+          "elapsed_s": 0.0,
+          "status": "ok"
+        }
+      ],
+      "best_levels": 0,
+      "total_elapsed_s": 1.83,
+      "status": "ok",
+      "env_index": 31,
+      "game_id": "r11l-495a7899"
+    },
+    {
+      "game_title": "SK48",
+      "discovery": {
+        "available_actions": [
+          1,
+          2,
+          3,
+          4,
+          6,
+          7
+        ],
+        "layer_count": 1,
+        "dominant_colors": [
+          [
+            5,
+            2412
+          ],
+          [
+            4,
+            1384
+          ],
+          [
+            2,
+            92
+          ],
+          [
+            6,
+            44
+          ],
+          [
+            8,
+            32
+          ],
+          [
+            9,
+            32
+          ]
+        ],
+        "probe_diffs": {
+          "1": 66,
+          "2": 0,
+          "3": 6,
+          "4": 6,
+          "6": 0,
+          "-6": 0
+        }
+      },
+      "hypothesis": {
+        "game_type": "click",
+        "primary_strategy": "click_rare",
+        "fallback_stack": [
+          "click_all_colors",
+          "raster"
+        ],
+        "rationale": "Available actions include 6, and probe 6 returns 0 on all 5 coords, indicating rare click targets."
+      },
+      "executions": [
+        {
+          "strategy": "click_rare",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 277,
+          "elapsed_s": 0.03,
+          "status": "ok"
+        },
+        {
+          "strategy": "click_all_colors",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 1126,
+          "elapsed_s": 0.09,
+          "status": "ok"
+        },
+        {
+          "strategy": "raster",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 2,
+          "elapsed_s": 0.0,
+          "status": "ok"
+        }
+      ],
+      "best_levels": 0,
+      "total_elapsed_s": 2.38,
+      "status": "ok",
+      "env_index": 32,
+      "game_id": "sk48-d8078629"
+    },
+    {
+      "game_title": "SK48",
+      "discovery": {
+        "available_actions": [
+          1,
+          2,
+          3,
+          4,
+          6,
+          7
+        ],
+        "layer_count": 1,
+        "dominant_colors": [
+          [
+            5,
+            2412
+          ],
+          [
+            4,
+            1384
+          ],
+          [
+            2,
+            92
+          ],
+          [
+            6,
+            44
+          ],
+          [
+            8,
+            32
+          ],
+          [
+            9,
+            32
+          ]
+        ],
+        "probe_diffs": {
+          "1": 66,
+          "2": 0,
+          "3": 6,
+          "4": 6,
+          "6": 0,
+          "-6": 0
+        }
+      },
+      "hypothesis": {
+        "game_type": "click",
+        "primary_strategy": "click_rare",
+        "fallback_stack": [
+          "click_all_colors",
+          "raster"
+        ],
+        "rationale": "Available actions include 6, and probe 6 returns 0 on all 5 coords, indicating rare click targets."
+      },
+      "executions": [
+        {
+          "strategy": "click_rare",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 277,
+          "elapsed_s": 0.02,
+          "status": "ok"
+        },
+        {
+          "strategy": "click_all_colors",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 1126,
+          "elapsed_s": 0.08,
+          "status": "ok"
+        },
+        {
+          "strategy": "raster",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 2,
+          "elapsed_s": 0.0,
+          "status": "ok"
+        }
+      ],
+      "best_levels": 0,
+      "total_elapsed_s": 1.91,
+      "status": "ok",
+      "env_index": 33,
+      "game_id": "sk48-d8078629"
+    },
+    {
+      "game_title": "WA30",
+      "discovery": {
+        "available_actions": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "layer_count": 1,
+        "dominant_colors": [
+          [
+            1,
+            3920
+          ],
+          [
+            7,
+            64
+          ],
+          [
+            9,
+            40
+          ],
+          [
+            4,
+            36
+          ],
+          [
+            2,
+            20
+          ],
+          [
+            14,
+            12
+          ]
+        ],
+        "probe_diffs": {
+          "1": 32,
+          "2": 32,
+          "3": 32,
+          "4": 32
+        }
+      },
+      "hypothesis": {
+        "game_type": "movement",
+        "primary_strategy": "bfs_state_space",
+        "fallback_stack": [
+          "click_rare",
+          "raster"
+        ],
+        "rationale": "Available actions include 1-4 with mixed diffs, indicating a movement-based game. The primary strategy is bfs_state_space as it is the default for movement types."
+      },
+      "executions": [
+        {
+          "strategy": "bfs_state_space",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 1,
+          "elapsed_s": 17.57,
+          "status": "ok"
+        },
+        {
+          "strategy": "click_rare",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 173,
+          "elapsed_s": 0.01,
+          "status": "ok"
+        },
+        {
+          "strategy": "raster",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 2,
+          "elapsed_s": 0.0,
+          "status": "ok"
+        }
+      ],
+      "best_levels": 0,
+      "total_elapsed_s": 20.11,
+      "status": "ok",
+      "env_index": 34,
+      "game_id": "wa30-ee6fef47"
+    },
+    {
+      "game_title": "VC33",
+      "discovery": {
+        "available_actions": [
+          6
+        ],
+        "layer_count": 1,
+        "dominant_colors": [
+          [
+            3,
+            2580
+          ],
+          [
+            5,
+            168
+          ],
+          [
+            7,
+            64
+          ],
+          [
+            9,
+            32
+          ],
+          [
+            11,
+            20
+          ],
+          [
+            4,
+            16
+          ]
+        ],
+        "probe_diffs": {
+          "6": 1,
+          "-6": 5
+        }
+      },
+      "hypothesis": {
+        "game_type": "click",
+        "primary_strategy": "click_rare",
+        "fallback_stack": [
+          "paint_game",
+          "raster"
+        ],
+        "rationale": "Available action is 6 and probe 6 has 5 responsive cells, indicating a rare click target."
+      },
+      "executions": [
+        {
+          "strategy": "click_rare",
+          "winning_label": "click_c9_(33,60)",
+          "levels": 1,
+          "actions": 535,
+          "elapsed_s": 0.09,
+          "status": "ok"
+        }
+      ],
+      "best_levels": 1,
+      "total_elapsed_s": 2.19,
+      "status": "ok",
+      "env_index": 35,
+      "game_id": "vc33-5430563c"
+    },
+    {
+      "game_title": "VC33",
+      "discovery": {
+        "available_actions": [
+          6
+        ],
+        "layer_count": 1,
+        "dominant_colors": [
+          [
+            3,
+            2580
+          ],
+          [
+            5,
+            168
+          ],
+          [
+            7,
+            64
+          ],
+          [
+            9,
+            32
+          ],
+          [
+            11,
+            20
+          ],
+          [
+            4,
+            16
+          ]
+        ],
+        "probe_diffs": {
+          "6": 1,
+          "-6": 5
+        }
+      },
+      "hypothesis": {
+        "game_type": "click",
+        "primary_strategy": "click_rare",
+        "fallback_stack": [
+          "paint_game",
+          "raster"
+        ],
+        "rationale": "Available action is 6 and probe 6 has 5 responsive cells, indicating a rare click target."
+      },
+      "executions": [
+        {
+          "strategy": "click_rare",
+          "winning_label": "click_c9_(33,60)",
+          "levels": 1,
+          "actions": 535,
+          "elapsed_s": 0.06,
+          "status": "ok"
+        }
+      ],
+      "best_levels": 1,
+      "total_elapsed_s": 1.79,
+      "status": "ok",
+      "env_index": 36,
+      "game_id": "vc33-5430563c"
+    },
+    {
+      "game_title": "LS20",
+      "discovery": {
+        "available_actions": [
+          1,
+          2,
+          3,
+          4
+        ],
+        "layer_count": 1,
+        "dominant_colors": [
+          [
+            4,
+            2609
+          ],
+          [
+            3,
+            892
+          ],
+          [
+            5,
+            439
+          ],
+          [
+            11,
+            84
+          ],
+          [
+            9,
+            45
+          ],
+          [
+            8,
+            12
+          ]
+        ],
+        "probe_diffs": {
+          "1": 52,
+          "2": 2,
+          "3": 52,
+          "4": 52
+        }
+      },
+      "hypothesis": {
+        "game_type": "movement",
+        "primary_strategy": "bfs_state_space",
+        "fallback_stack": [
+          "click_rare",
+          "raster"
+        ],
+        "rationale": "Available actions include 1-4 with mixed diffs, indicating a movement-based game. The primary strategy is bfs_state_space as it is the default for movement types."
+      },
+      "executions": [
+        {
+          "strategy": "bfs_state_space",
+          "winning_label": "bfs_state_space",
+          "levels": 1,
+          "actions": 27,
+          "elapsed_s": 96.72,
+          "status": "ok"
+        }
+      ],
+      "best_levels": 1,
+      "total_elapsed_s": 99.24,
+      "status": "ok",
+      "env_index": 37,
+      "game_id": "ls20-9607627b"
+    },
+    {
+      "game_title": "CD82",
+      "discovery": {
+        "available_actions": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        "layer_count": 1,
+        "dominant_colors": [
+          [
+            5,
+            3236
+          ],
+          [
+            3,
+            359
+          ],
+          [
+            4,
+            164
+          ],
+          [
+            15,
+            143
+          ],
+          [
+            2,
+            30
+          ]
+        ],
+        "probe_diffs": {
+          "1": 1,
+          "2": 1,
+          "3": 201,
+          "4": 201,
+          "6": 1,
+          "-6": 5
+        }
+      },
+      "hypothesis": {
+        "game_type": "click",
+        "primary_strategy": "click_rare",
+        "fallback_stack": [
+          "paint_game",
+          "raster"
+        ],
+        "rationale": "Available actions include 6, and probe 6 has 5 responsive cells, indicating a click-based game with rare targets."
+      },
+      "executions": [
+        {
+          "strategy": "click_rare",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 703,
+          "elapsed_s": 0.05,
+          "status": "ok"
+        },
+        {
+          "strategy": "paint_game",
+          "winning_label": "paint_game",
+          "levels": 6,
+          "actions": 76,
+          "elapsed_s": 0.02,
+          "status": "ok"
+        }
+      ],
+      "best_levels": 6,
+      "total_elapsed_s": 2.38,
+      "status": "ok",
+      "env_index": 38,
+      "game_id": "cd82-fb555c5d"
+    },
+    {
+      "game_title": "TN36",
+      "discovery": {
+        "available_actions": [
+          6
+        ],
+        "layer_count": 1,
+        "dominant_colors": [
+          [
+            5,
+            3015
+          ],
+          [
+            4,
+            550
+          ],
+          [
+            9,
+            130
+          ],
+          [
+            11,
+            30
+          ],
+          [
+            1,
+            18
+          ]
+        ],
+        "probe_diffs": {
+          "6": 1,
+          "-6": 5
+        }
+      },
+      "hypothesis": {
+        "game_type": "click",
+        "primary_strategy": "tn36_frame_only",
+        "fallback_stack": [
+          "click_rare",
+          "raster"
+        ],
+        "rationale": "The game title matches TN36 and available actions include only 6, with probe 6 showing 5 responsive click cells."
+      },
+      "executions": [
+        {
+          "strategy": "tn36_frame_only",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 1336,
+          "elapsed_s": 0.31,
+          "status": "ok"
+        },
+        {
+          "strategy": "click_rare",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 181,
+          "elapsed_s": 0.03,
+          "status": "ok"
+        },
+        {
+          "strategy": "raster",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 2,
+          "elapsed_s": 0.0,
+          "status": "ok"
+        }
+      ],
+      "best_levels": 0,
+      "total_elapsed_s": 2.63,
+      "status": "ok",
+      "env_index": 39,
+      "game_id": "tn36-ef4dde99"
+    },
+    {
+      "game_title": "TN36",
+      "discovery": {
+        "available_actions": [
+          6
+        ],
+        "layer_count": 1,
+        "dominant_colors": [
+          [
+            5,
+            3015
+          ],
+          [
+            4,
+            550
+          ],
+          [
+            9,
+            130
+          ],
+          [
+            11,
+            30
+          ],
+          [
+            1,
+            18
+          ]
+        ],
+        "probe_diffs": {
+          "6": 1,
+          "-6": 5
+        }
+      },
+      "hypothesis": {
+        "game_type": "click",
+        "primary_strategy": "tn36_frame_only",
+        "fallback_stack": [
+          "click_rare",
+          "raster"
+        ],
+        "rationale": "The game title matches TN36 and available actions include only 6, with probe 6 showing 5 responsive click cells."
+      },
+      "executions": [
+        {
+          "strategy": "tn36_frame_only",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 1336,
+          "elapsed_s": 0.32,
+          "status": "ok"
+        },
+        {
+          "strategy": "click_rare",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 181,
+          "elapsed_s": 0.03,
+          "status": "ok"
+        },
+        {
+          "strategy": "raster",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 2,
+          "elapsed_s": 0.0,
+          "status": "ok"
+        }
+      ],
+      "best_levels": 0,
+      "total_elapsed_s": 2.32,
+      "status": "ok",
+      "env_index": 40,
+      "game_id": "tn36-ef4dde99"
+    }
+  ]
+}
