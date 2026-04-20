@@ -1,0 +1,372 @@
+{
+  "total_games": 25,
+  "total_envs": 40,
+  "v1_cleared": 23,
+  "v2_cleared": 8,
+  "perfect_games_v1": [
+    "CD82",
+    "FT09",
+    "SB26",
+    "SU15",
+    "TN36"
+  ],
+  "brittle_winners_v1": [
+    "CD82",
+    "FT09",
+    "KA59",
+    "LS20",
+    "RE86",
+    "S5I5",
+    "SB26",
+    "SU15",
+    "TN36",
+    "TR87",
+    "TU93",
+    "WA30"
+  ],
+  "frame_only_winners_v1": [
+    "AR25",
+    "BP35",
+    "CN04",
+    "DC22",
+    "G50T",
+    "LP85",
+    "M0R0",
+    "R11L",
+    "SC25",
+    "SP80",
+    "VC33"
+  ],
+  "per_game": {
+    "AR25": {
+      "v1": {
+        "game_id": "ar25-e3c63847",
+        "cleared": true,
+        "levels": "2/8",
+        "strategy": "bfs_state_space",
+        "strategy_type": "frame_only"
+      },
+      "v2": {
+        "game_id": "ar25-0c556536",
+        "cleared": true,
+        "levels": "2/8",
+        "strategy": "bfs_state_space",
+        "strategy_type": "frame_only"
+      }
+    },
+    "BP35": {
+      "v1": {
+        "game_id": "bp35-0a0ad940",
+        "cleared": true,
+        "levels": "1/9",
+        "strategy": "bp35_platformer",
+        "strategy_type": "frame_only"
+      }
+    },
+    "CD82": {
+      "v1": {
+        "game_id": "cd82-fb555c5d",
+        "cleared": true,
+        "levels": "6/6",
+        "strategy": "paint_game",
+        "strategy_type": "brittle"
+      }
+    },
+    "CN04": {
+      "v1": {
+        "game_id": "cn04-65d47d14",
+        "cleared": true,
+        "levels": "1/5",
+        "strategy": "zig3_A2A4",
+        "strategy_type": "frame_only"
+      },
+      "v2": {
+        "game_id": "cn04-2fe56bfb",
+        "cleared": false,
+        "levels": "0/6",
+        "strategy": "",
+        "strategy_type": null
+      }
+    },
+    "DC22": {
+      "v1": {
+        "game_id": "dc22-4c9bff3e",
+        "cleared": true,
+        "levels": "1/6",
+        "strategy": "bfs_state_space",
+        "strategy_type": "frame_only"
+      },
+      "v2": {
+        "game_id": "dc22-fdcac232",
+        "cleared": true,
+        "levels": "1/6",
+        "strategy": "bfs_state_space",
+        "strategy_type": "frame_only"
+      }
+    },
+    "FT09": {
+      "v1": {
+        "game_id": "ft09-0d8bbf25",
+        "cleared": true,
+        "levels": "6/6",
+        "strategy": "lights_out",
+        "strategy_type": "brittle"
+      }
+    },
+    "G50T": {
+      "v1": {
+        "game_id": "g50t-5849a774",
+        "cleared": true,
+        "levels": "1/7",
+        "strategy": "explore_interact",
+        "strategy_type": "frame_only"
+      }
+    },
+    "KA59": {
+      "v1": {
+        "game_id": "ka59-9f096b4a",
+        "cleared": true,
+        "levels": "4/7",
+        "strategy": "ka59_sokoban",
+        "strategy_type": "brittle"
+      },
+      "v2": {
+        "game_id": "ka59-38d34dbb",
+        "cleared": false,
+        "levels": "0/7",
+        "strategy": "",
+        "strategy_type": null
+      }
+    },
+    "LF52": {
+      "v1": {
+        "game_id": "lf52-271a04aa",
+        "cleared": false,
+        "levels": "0/10",
+        "strategy": "",
+        "strategy_type": null
+      }
+    },
+    "LP85": {
+      "v1": {
+        "game_id": "lp85-305b61c3",
+        "cleared": true,
+        "levels": "1/8",
+        "strategy": "click_c8_(30,4)",
+        "strategy_type": "frame_only"
+      }
+    },
+    "LS20": {
+      "v1": {
+        "game_id": "ls20-9607627b",
+        "cleared": true,
+        "levels": "1/7",
+        "strategy": "ls20_grid",
+        "strategy_type": "brittle"
+      }
+    },
+    "M0R0": {
+      "v1": {
+        "game_id": "m0r0-dadda488",
+        "cleared": true,
+        "levels": "2/6",
+        "strategy": "bfs_state_space",
+        "strategy_type": "frame_only"
+      },
+      "v2": {
+        "game_id": "m0r0-492f87ba",
+        "cleared": true,
+        "levels": "2/6",
+        "strategy": "bfs_state_space",
+        "strategy_type": "frame_only"
+      }
+    },
+    "R11L": {
+      "v1": {
+        "game_id": "r11l-aa269680",
+        "cleared": true,
+        "levels": "1/6",
+        "strategy": "seq_repeat",
+        "strategy_type": "frame_only"
+      },
+      "v2": {
+        "game_id": "r11l-495a7899",
+        "cleared": true,
+        "levels": "1/6",
+        "strategy": "seq_repeat",
+        "strategy_type": "frame_only"
+      }
+    },
+    "RE86": {
+      "v1": {
+        "game_id": "re86-4e57566e",
+        "cleared": true,
+        "levels": "6/8",
+        "strategy": "re86_analytical",
+        "strategy_type": "brittle"
+      },
+      "v2": {
+        "game_id": "re86-8af5384d",
+        "cleared": false,
+        "levels": "0/8",
+        "strategy": "",
+        "strategy_type": null
+      }
+    },
+    "S5I5": {
+      "v1": {
+        "game_id": "s5i5-a48e4b1d",
+        "cleared": true,
+        "levels": "1/8",
+        "strategy": "s5i5_slider",
+        "strategy_type": "brittle"
+      },
+      "v2": {
+        "game_id": "s5i5-18d95033",
+        "cleared": false,
+        "levels": "0/8",
+        "strategy": "",
+        "strategy_type": null
+      }
+    },
+    "SB26": {
+      "v1": {
+        "game_id": "sb26-7fbdac44",
+        "cleared": true,
+        "levels": "8/8",
+        "strategy": "sb26_sort",
+        "strategy_type": "brittle"
+      }
+    },
+    "SC25": {
+      "v1": {
+        "game_id": "sc25-f9b21a2f",
+        "cleared": true,
+        "levels": "2/6",
+        "strategy": "spell_cast",
+        "strategy_type": "frame_only"
+      },
+      "v2": {
+        "game_id": "sc25-635fd71a",
+        "cleared": true,
+        "levels": "2/6",
+        "strategy": "spell_cast",
+        "strategy_type": "frame_only"
+      }
+    },
+    "SK48": {
+      "v1": {
+        "game_id": "sk48-41055498",
+        "cleared": false,
+        "levels": "0/8",
+        "strategy": "",
+        "strategy_type": null
+      },
+      "v2": {
+        "game_id": "sk48-d8078629",
+        "cleared": false,
+        "levels": "0/8",
+        "strategy": "",
+        "strategy_type": null
+      }
+    },
+    "SP80": {
+      "v1": {
+        "game_id": "sp80-0ee2d095",
+        "cleared": true,
+        "levels": "1/6",
+        "strategy": "bfs_state_space",
+        "strategy_type": "frame_only"
+      },
+      "v2": {
+        "game_id": "sp80-589a99af",
+        "cleared": true,
+        "levels": "1/6",
+        "strategy": "bfs_state_space",
+        "strategy_type": "frame_only"
+      }
+    },
+    "SU15": {
+      "v1": {
+        "game_id": "su15-4c352900",
+        "cleared": true,
+        "levels": "9/9",
+        "strategy": "su15_vacuum",
+        "strategy_type": "brittle"
+      },
+      "v2": {
+        "game_id": "su15-1944f8ab",
+        "cleared": false,
+        "levels": "0/9",
+        "strategy": "",
+        "strategy_type": null
+      }
+    },
+    "TN36": {
+      "v1": {
+        "game_id": "tn36-ab4f63cc",
+        "cleared": true,
+        "levels": "7/7",
+        "strategy": "tn36_puzzle",
+        "strategy_type": "brittle"
+      },
+      "v2": {
+        "game_id": "tn36-ef4dde99",
+        "cleared": false,
+        "levels": "0/7",
+        "strategy": "",
+        "strategy_type": null
+      }
+    },
+    "TR87": {
+      "v1": {
+        "game_id": "tr87-cd924810",
+        "cleared": true,
+        "levels": "1/6",
+        "strategy": "tr87_rotation",
+        "strategy_type": "brittle"
+      }
+    },
+    "TU93": {
+      "v1": {
+        "game_id": "tu93-2b534c15",
+        "cleared": true,
+        "levels": "2/9",
+        "strategy": "tu93_maze",
+        "strategy_type": "brittle"
+      },
+      "v2": {
+        "game_id": "tu93-0768757b",
+        "cleared": true,
+        "levels": "2/9",
+        "strategy": "tu93_maze",
+        "strategy_type": "brittle"
+      }
+    },
+    "VC33": {
+      "v1": {
+        "game_id": "vc33-9851e02b",
+        "cleared": true,
+        "levels": "1/7",
+        "strategy": "click_c9_(33,60)",
+        "strategy_type": "frame_only"
+      },
+      "v2": {
+        "game_id": "vc33-5430563c",
+        "cleared": true,
+        "levels": "1/7",
+        "strategy": "click_c9_(33,60)",
+        "strategy_type": "frame_only"
+      }
+    },
+    "WA30": {
+      "v1": {
+        "game_id": "wa30-ee6fef47",
+        "cleared": true,
+        "levels": "2/9",
+        "strategy": "wa30_analytical",
+        "strategy_type": "brittle"
+      }
+    }
+  }
+}
