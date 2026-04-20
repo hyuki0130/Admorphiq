@@ -1,0 +1,136 @@
+# Labeled evaluation dataset for Phase 8 Step 3-pre benchmark (Task #11).
+#
+# Each entry specifies the expected game_type classification and the expected
+# dispatch strategy for one of the 25 preview games. The benchmark drives the
+# LLM through two tasks per game:
+#   1. classify  — given wiki context + opening-frame summary, predict game_type
+#   2. pick      — given classification + wiki, pick primary_strategy + fallback_stack
+#
+# Ground truth here must match `.wiki/wiki/games/*.md` frontmatter (enforced by
+# a test in `tests/test_bench_dataset_sync.py` to keep wiki and ground truth in lockstep).
+
+tasks:
+  - game: AR25
+    game_type: movement
+    primary_strategy: bfs_state_space
+    fallback_stack: [graph_explore, wall_avoid]
+
+  - game: BP35
+    game_type: platformer
+    primary_strategy: bp35_platformer
+    fallback_stack: [explore_interact, bfs_state_space]
+
+  - game: CD82
+    game_type: click
+    primary_strategy: click_rare            # frame-only alternative; brittle paint_game off-limits
+    fallback_stack: [click_all_colors, click_grid]
+
+  - game: CN04
+    game_type: click
+    primary_strategy: click_rare
+    fallback_stack: [click_all_colors, click_grid]
+
+  - game: DC22
+    game_type: movement
+    primary_strategy: bfs_state_space
+    fallback_stack: [graph_explore, wall_avoid]
+
+  - game: FT09
+    game_type: click
+    primary_strategy: click_rare            # v2-friendly substitute for brittle lights_out
+    fallback_stack: [click_grid, spell_cast]
+
+  - game: G50T
+    game_type: hybrid
+    primary_strategy: explore_interact
+    fallback_stack: [bfs_state_space, click_rare]
+
+  - game: KA59
+    game_type: sokoban
+    primary_strategy: bfs_state_space        # frame-only sokoban alternative
+    fallback_stack: [sokoban_interact, graph_explore]
+
+  - game: LF52
+    game_type: unknown
+    primary_strategy: bfs_state_space
+    fallback_stack: [click_rare, seq_search]
+
+  - game: LP85
+    game_type: click
+    primary_strategy: click_rare
+    fallback_stack: [click_all_colors, click_grid]
+
+  - game: LS20
+    game_type: movement                      # rotation+matching; without hardcoded L1, movement BFS is the next best
+    primary_strategy: bfs_state_space
+    fallback_stack: [graph_explore, wall_avoid]
+
+  - game: M0R0
+    game_type: movement
+    primary_strategy: bfs_state_space
+    fallback_stack: [graph_explore, wall_avoid]
+
+  - game: R11L
+    game_type: sequence
+    primary_strategy: seq_search
+    fallback_stack: [pattern_repeat, seq_repeat]
+
+  - game: RE86
+    game_type: transform
+    primary_strategy: bfs_state_space        # frame-only alt to brittle re86_analytical
+    fallback_stack: [click_rare, graph_explore]
+
+  - game: S5I5
+    game_type: slider_puzzle
+    primary_strategy: click_rare             # frame-only alt to brittle s5i5_slider
+    fallback_stack: [click_all_colors, click_grid]
+
+  - game: SB26
+    game_type: sort_puzzle
+    primary_strategy: click_rare             # frame-only alt to brittle sb26_sort
+    fallback_stack: [click_grid, seq_search]
+
+  - game: SC25
+    game_type: spell_cast
+    primary_strategy: spell_cast
+    fallback_stack: [click_grid, bfs_state_space]
+
+  - game: SK48
+    game_type: movement
+    primary_strategy: sk48_snake             # still frame-only; works at full budget
+    fallback_stack: [bfs_state_space, graph_explore]
+
+  - game: SP80
+    game_type: movement
+    primary_strategy: bfs_state_space
+    fallback_stack: [graph_explore, wall_avoid]
+
+  - game: SU15
+    game_type: merge_puzzle
+    primary_strategy: click_rare             # frame-only fallback for brittle su15_vacuum
+    fallback_stack: [click_all_colors, click_grid]
+
+  - game: TN36
+    game_type: programming_puzzle
+    primary_strategy: tn36_frame_only
+    fallback_stack: [click_rare, click_grid]
+
+  - game: TR87
+    game_type: rotation
+    primary_strategy: bfs_state_space
+    fallback_stack: [graph_explore, seq_search]
+
+  - game: TU93
+    game_type: movement
+    primary_strategy: bfs_state_space
+    fallback_stack: [graph_explore, wall_avoid]
+
+  - game: VC33
+    game_type: click
+    primary_strategy: click_rare
+    fallback_stack: [click_all_colors, click_grid]
+
+  - game: WA30
+    game_type: delivery
+    primary_strategy: explore_interact       # frame-only alt to brittle wa30_analytical
+    fallback_stack: [bfs_state_space, click_rare]

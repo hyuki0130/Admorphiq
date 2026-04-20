@@ -8,6 +8,7 @@ dependencies = [
     "numpy",
     "pillow",
     "arc-agi>=0.9.1",
+    "pyyaml>=6.0.3",
 ]
 
 [dependency-groups]

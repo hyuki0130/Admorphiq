@@ -1,0 +1,77 @@
+# LLM candidate registry for Phase 8 Hypothesis Engine benchmark (Task #11).
+#
+# Backends:
+#   - family: gemma4  → OllamaBackend (requires `ollama serve` + `ollama pull <ollama_tag>`)
+#   - family: qwen3   → OllamaBackend (same, once weights pulled)
+#
+# Run:
+#   uv run python scripts/bench_llm.py
+#
+# Results land in `scripts/bench_llm_results.json`.
+
+candidates:
+  # --- Primary target: Qwen 3 8B ---------------------------------------------
+  # Alibaba Cloud Qwen 3 series. Apache 2.0. 128K context. Strongest 8B-class
+  # reasoning per public benchmarks and the class most commonly used as an
+  # ARC / LoRA fine-tune base. Fits T4 16GB with room for CNN + World Model.
+  - id: qwen_3_8b_q4
+    display_name: "Qwen 3 8B (Q4_K_M)"
+    family: qwen3
+    ollama_tag: qwen3:8b
+    params_dense: 8.0e9
+    params_effective: 8.0e9
+    license: Apache-2.0
+    quantization: Q4_K_M
+    expected_vram_gb: 5.0
+    context_tokens: 131072
+    lora_ecosystem: mature
+    strengths: [reasoning_8b_class_top, lora_ready]
+    enabled: true                       # run `ollama pull qwen3:8b` before first bench
+
+  # --- Reserve: Qwen 3 14B ---------------------------------------------------
+  # Only if 8B proves insufficient on the bench. ~8GB at Q4, still fits T4 16GB
+  # alongside CNN/World Model but with much tighter activation-memory budget.
+  - id: qwen_3_14b_q4
+    display_name: "Qwen 3 14B (Q4_K_M, reserve)"
+    family: qwen3
+    ollama_tag: qwen3:14b
+    params_dense: 14.0e9
+    params_effective: 14.0e9
+    license: Apache-2.0
+    quantization: Q4_K_M
+    expected_vram_gb: 8.0
+    context_tokens: 131072
+    lora_ecosystem: mature
+    strengths: [reasoning_14b_class_top, lora_ready]
+    enabled: false
+
+  # --- Reasoning-tier reference: Gemma 4 26B MoE -----------------------------
+  # Not Kaggle-deployable (Q4 ~17GB > T4 16GB VRAM), but kept as the reasoning
+  # ceiling reference. Running it on local 24GB unified memory gives an upper-
+  # bound for "what a bigger model could achieve on our wiki prompts." Useful
+  # when evaluating whether Qwen 3 8B / 14B is close to ceiling or leaving
+  # significant score on the table.
+  - id: gemma_4_26b_moe_q4
+    display_name: "Gemma 4 26B MoE (Q4_K_M)"
+    family: gemma4
+    ollama_tag: gemma4:26b
+    params_dense: 25.8e9
+    params_effective: 3.8e9
+    license: Apache-2.0
+    quantization: Q4_K_M
+    expected_vram_gb: 17.0
+    context_tokens: 131072
+    lora_ecosystem: growing
+    strengths: [reasoning_31b_tier, math_top, moe_fast_inference]
+    enabled: false                      # local-only reference; do not enable for Kaggle-bound runs
+
+# Removed from registry 2026-04-21:
+#   - gemma_4_e2b_q4 (2.3B effective, edge-optimized, weak on reasoning)
+#   - gemma_4_e4b_q4 (4.5B effective, edge-optimized, weak on reasoning)
+# Edge-tuned variants are not meaningful competitors to Qwen 3 8B on the
+# reasoning-heavy Hypothesis Engine task. Re-add only if a future task needs
+# on-device audio/vision.
+
+# Selection rule (enforced by `scripts/bench_llm.py` at summarize time):
+# primary = best composite score over { classification_accuracy × strategy_hit_rate / (1 + mean_latency_ms/10000) }
+# fallback = runner-up.
