@@ -237,18 +237,20 @@ scripts/
 - No game IDs in strategy names or conditions
 - Analytical solvers retained internal access (Phase 8 will clean up)
 
-### Phase 7: Multi-Level + Score Optimization 🔄 In Progress (Round 1 verified 2026-04-20)
-- **v1 primary versions**: 23/25 games, 67/182 levels (36.81%)
-- **v1 + v2 (40 envs served by API)**: 31/40 envs, 79/289 levels (27.34%)
-- ✅ TN36 7/7, SU15 9/9, KA59 4/7 commit claims verified on v1
-- ❌ LF52, SK48 still fail (silent regressions, not fixed)
-- 🔴 **v2 hash versions collapse all internals-based solvers** — preview of private-test-set behavior
-- Five verified perfect games on v1: CD82 6/6, FT09 6/6, SB26 8/8, SU15 9/9, TN36 7/7
-- StochasticGoose baseline (12.58%) surpassed by +24% on v1 / +15% on full 40-env set
-- **Remaining Phase 7 work**:
-  - Fix LF52/SK48 regressions (git bisect to find breaking commit)
-  - DO NOT add v2-version hardcoding — that's anti-generalization, waste of effort
-  - Instead move to Phase 8 (frame-only solvers close the v1→v2 gap)
+### Phase 7: Multi-Level + Score Optimization ✅ Closed (post-rotation reality check, 2026-04-21)
+- **Round 1 (2026-04-20, since-superseded baseline)**: 31/40 envs, 79/289 levels (27.34%).
+- **2026-04-21 re-run, SAME code, SAME runner, 50K budget**: **28/40 envs, 54/290 levels (18.62%)**.
+  The ARC Prize API rotated every env hash overnight; `su15-4c352900 → su15-1944f8ab` etc.
+  Every brittle attr-reader (`strat_su15_vacuum`, `strat_re86_analytical`, `strat_ka59_sokoban`,
+  `strat_s5i5_slider`, `zig3_A2A4`) silently dropped to 0. See
+  `.wiki/wiki/lessons/api_hash_rotation_20260421.md`.
+- **Lesson written in blood**: "v1 score" is not a stable metric. The previous 36.81% figure
+  was a single-day snapshot tied to the 2026-04-20 hash set. It cannot be chased.
+- **LF52/SK48 budget fix verified**: LF52 1/10 via `adaptive_c2`, SK48 1/8 via `sk48_snake`
+  (both recovered from 0). Root cause was `total_budget=20000` in the runner starving late
+  strategies; fix raised it to 50000 to match the class default.
+- **All further Phase 7 work cancelled** — no more brittle solvers, no more hash-coupled
+  hardcoding. Phase 8 (frame-only + LLM) is the only sustainable path.
 
 ### Phase 8: Generalization + Kaggle Submission 🔄 ACTIVE (Karpathy LLM-Wiki pattern)
 
