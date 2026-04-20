@@ -17,14 +17,28 @@ Output: ordered list of strategies to try.
 | `changer_candidates` | static regions after ACTION1-5 | list of regions |
 | `grid_like` | regular lattice detection | bool |
 
-## Dispatch Rules (draft — to be populated as wiki grows)
+## Dispatch Rules (probe-signature → primary_strategy)
 
-1. **Movement + few simple actions + no ACTION6** → [[game_types/movement]] → try [[strategies/frame_only/bfs_state_space]]
-2. **Only ACTION6 + sparse clicks matter** → [[game_types/click]] → try [[strategies/frame_only/click_rare]]
-3. **ACTION6 + grid_like + clickable bits** → [[game_types/programming_puzzle]] → frame-only TN36-analog
-4. **Multiple same-color sprites + merge behavior on proximity** → [[game_types/merge_puzzle]] → SU15-analog
-5. **Movement + pushable blocks** → [[game_types/sokoban]] → KA59-analog with frame-only push detection
-6. **None of the above** → fallback stack: `bfs_state_space` → `click_rare` → `seq_repeat` → `spell_cast`
+Read the DiscoveryReport and match the first rule that applies. Probe keys:
+`{aid: pixel_diff}`; key `-6` is the count of responsive click cells out of
+the 5-coord sample.
+
+| # | Probe signature | game_type | primary_strategy | fallback_stack |
+|---|----------------|-----------|------------------|----------------|
+| 1 | `avail` has 1-4, no 6, diffs 1-10 each | `movement` | `bfs_state_space` | `click_rare`, `raster` |
+| 2 | `avail` has 1-4, diffs all ≥50 | `transform` | `bfs_state_space` | `paint_game`, `click_rare` |
+| 3 | `avail` has 1-4 + 6, mixed diffs | `hybrid` | `bfs_state_space` | `click_toggle_detect`, `click_rare` |
+| 4 | `avail == [6]`, probe 6 returns 0 on all 5 coords | `click` (rare targets) | `click_rare` | `click_all_colors`, `raster` |
+| 5 | `avail == [6]`, probe 6 ≥ 5 and ≤ 40, all 5 coords responsive | `programming_puzzle` (bit panel) | `tn36_frame_only` | `click_rare`, `raster` |
+| 6 | `avail == [6, 7]`, probe 6 ≥ 20, most coords responsive | `merge_puzzle` | `su15_frame_only` | `click_rare`, `click_all_colors` |
+| 7 | `avail` has 5 + 6, no 1-4 | `sort_puzzle` (SB26-style) | `sb26_sort` | `click_rare`, `click_color_order` |
+| 8 | `avail` has 6 only, probe 6 ≥ 100 on first click | `click` (paint) | `paint_game` | `lights_out`, `click_rare` |
+| 9 | everything else | `unknown` | `bfs_state_space` | `click_rare`, `raster` |
+
+**When the title matches a known game** (TN36, SU15, RE86, KA59, S5I5, CN04,
+LS20, CD82, FT09, SB26), prefer the corresponding frame-only strategy **only
+if that name exists in the Available Strategies list for this run**. Never
+invent a strategy name.
 
 ## Anti-patterns (do not recommend)
 

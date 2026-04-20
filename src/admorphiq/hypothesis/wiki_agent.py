@@ -64,11 +64,23 @@ observe the live-game discovery report and output ONE JSON object:
   {{"game_type":        "one of: movement | click | programming_puzzle | merge_puzzle |
                          sokoban | platformer | transform | delivery | slider_puzzle |
                          rotation | sort_puzzle | spell_cast | sequence | hybrid | unknown",
-    "primary_strategy": "frame_only strategy name (see selector.md)",
-    "fallback_stack":   ["strategy_name", ...] (up to 3),
+    "primary_strategy": "MUST be an EXACT name from the Available Strategies list below",
+    "fallback_stack":   ["strategy_name", ...] (up to 3, each from the list),
     "rationale":        "1-2 sentences"}}
 
-No prose outside the JSON.
+Rules:
+- Never invent a strategy name. If unsure, pick "bfs_state_space" as the safe default.
+- `primary_strategy` and every `fallback_stack` entry MUST appear verbatim in
+  Available Strategies. Case-sensitive, no spaces, no spelling variants.
+- No prose outside the JSON.
+- Priority when multiple strategies match: if a strategy name contains the
+  lowercase game title (e.g., `tn36_frame_only` when title is `TN36`) AND it
+  appears in Available Strategies, PREFER IT as `primary_strategy`. Frame-only
+  game-specific strategies were built with more prior knowledge than the
+  generic `click_rare` default.
+
+=== Available Strategies ({n_strategies}) ===
+{strategy_list}
 
 === Wiki Context ===
 {context}
@@ -78,18 +90,22 @@ Game title: {title}
 Available actions: {avail}
 Layer count: {layers}
 Dominant colors (color:count): {colors}
-Probe diffs (action: pixels changed vs reset): {probes}
+Probe diffs (action: pixels changed vs reset;  -6 = num responsive click cells): {probes}
 Starting level: {lvl}
 """
 
 
+# Order matters — the LLM weights the first pages more. selector.md goes first
+# because it's the only page with an actionable dispatch table; everything else
+# is supporting context. The lessons land last as "if in doubt, remember that
+# brittle solvers die; prefer frame-only".
 _DEFAULT_PAGES = [
-    "reasoning/discovery_phase.md",
-    "reasoning/frame_to_strategy_chain.md",
-    "reasoning/hypothesis_check.md",
     "selector.md",
+    "reasoning/frame_to_strategy_chain.md",
+    "reasoning/discovery_phase.md",
     "lessons/v2_hash_obfuscation.md",
     "lessons/brittle_tells.md",
+    "reasoning/hypothesis_check.md",
     "strategies/frame_only/bfs_state_space.md",
 ]
 
@@ -131,16 +147,21 @@ def _parse_json_lenient(raw: str) -> dict[str, Any]:
         return {}
 
 
-def discover(env: Any, probe_actions: list[int] | None = None) -> DiscoveryReport:
+def discover(env: Any, title: str = "UNKNOWN", probe_actions: list[int] | None = None) -> DiscoveryReport:
     """Reset the env, snapshot the opening frame, then probe each action once.
 
     The probe diffs are the single most useful signal for classifying a game —
     they tell the LLM which actions cause movement, which are no-ops, and which
     cause large scene changes (level transition, click-spawn, etc.).
+
+    `title` is passed in (not read off the env) because the playable env from
+    `arcade.make(game_id)` does not carry the human-readable game name; that
+    metadata lives on the `EnvironmentInfo` sibling object.
     """
     import numpy as np
 
-    # Lazy import to keep this module importable without arcengine.
+    # Import from arcengine (the base SDK, installed alongside arc_agi). The
+    # playable env exposes .step + GameAction-compatible actions.
     from arcengine import GameAction
 
     obs = env.step(GameAction.RESET)
@@ -164,18 +185,36 @@ def discover(env: Any, probe_actions: list[int] | None = None) -> DiscoveryRepor
         if obs_r is None:
             continue
         f_before = np.array(obs_r.frame[0], dtype=np.int32)
-        if aid == 6:
-            obs_a = env.step(GameAction.ACTION6, data={"x": 32, "y": 32})
-        else:
-            obs_a = env.step(GameAction.from_id(aid))
+        obs_a = env.step(GameAction.from_id(aid))
         if obs_a is None:
             continue
         f_after = np.array(obs_a.frame[0], dtype=np.int32)
         probes[aid] = int(np.count_nonzero(f_before - f_after))
 
+    # ACTION6 probe: many games are click-only, skipping ACTION6 leaves the
+    # report empty. Sample a small grid (center + 4 corners) and take the max
+    # diff as the "click responsiveness" signal. The per-coord diffs are also
+    # recorded so the LLM can tell between sparse-rare-click and everywhere-
+    # changes-equally game styles.
+    if 6 in avail:
+        coords = [(32, 32), (16, 16), (48, 16), (16, 48), (48, 48)]
+        a6_diffs: list[int] = []
+        for cx, cy in coords:
+            obs_r = env.step(GameAction.RESET)
+            if obs_r is None:
+                continue
+            f_before = np.array(obs_r.frame[0], dtype=np.int32)
+            obs_a = env.step(GameAction.ACTION6, data={"x": cx, "y": cy})
+            if obs_a is None:
+                continue
+            f_after = np.array(obs_a.frame[0], dtype=np.int32)
+            a6_diffs.append(int(np.count_nonzero(f_before - f_after)))
+        if a6_diffs:
+            probes[6] = max(a6_diffs)
+            probes[-6] = int(sum(d > 0 for d in a6_diffs))  # num responsive cells
+
     env.step(GameAction.RESET)
 
-    title = getattr(env, "title", None) or getattr(env, "_game_id", "UNKNOWN")
     return DiscoveryReport(
         game_title=str(title),
         available_actions=avail,
@@ -214,6 +253,7 @@ class WikiAgent:
     def build_prompt(self, report: DiscoveryReport) -> str:
         pages = list(_DEFAULT_PAGES) + list(self.extra_pages)
         context = _read_wiki(pages, self.context_chars)
+        names = sorted(self.strategies.keys())
         return _PROMPT_TEMPLATE.format(
             context=context,
             title=report.game_title,
@@ -222,6 +262,8 @@ class WikiAgent:
             colors=report.dominant_colors,
             probes=report.probe_diffs,
             lvl=report.reset_levels,
+            n_strategies=len(names),
+            strategy_list=", ".join(names),
         )
 
     def classify(self, report: DiscoveryReport, max_tokens: int = 512) -> Hypothesis:
@@ -236,7 +278,7 @@ class WikiAgent:
             raw=raw,
         )
 
-    def run(self, env: Any, budget_per_strategy: int = 5000) -> dict[str, Any]:
+    def run(self, env: Any, title: str = "UNKNOWN", budget_per_strategy: int = 5000) -> dict[str, Any]:
         """Full loop: discover → classify → dispatch primary → fallbacks on failure.
 
         Returns a trace suitable for JSON logging. Does not raise — strategy
@@ -244,7 +286,7 @@ class WikiAgent:
         """
         t_start = time.time()
         try:
-            report = discover(env)
+            report = discover(env, title=title)
         except Exception as exc:  # noqa: BLE001 - top-level guard for the inference loop
             return {"status": "error", "stage": "discover", "error": str(exc)}
 

@@ -51,27 +51,35 @@ def main() -> None:
     )
     args = ap.parse_args()
 
-    # Lazy import: only need arcengine once we actually run games
-    from arcengine import Arcade
+    # Lazy import: only need arc_agi once we actually run games
+    from arc_agi import Arcade, OperationMode
 
     cid = args.candidate or _pick_default_candidate()
     print(f"Loading LLM candidate: {cid}", flush=True)
     llm = load_candidate(cid)
     agent = WikiAgent(llm=llm, strategy_registry=default_strategy_registry())
 
-    arcade = Arcade()
-    envs = arcade.get_environments()
+    arcade = Arcade(operation_mode=OperationMode.NORMAL)
+    env_infos = arcade.get_environments()
     if args.limit:
-        envs = envs[: args.limit]
-    print(f"Running on {len(envs)} env(s)", flush=True)
+        env_infos = env_infos[: args.limit]
+    print(f"Running on {len(env_infos)} env(s)", flush=True)
 
     results: list[dict] = []
     t_all = time.time()
-    for i, env in enumerate(envs, 1):
-        title = getattr(env, "title", "?")
-        game_id = getattr(env, "_game_id", f"env{i}")
-        print(f"[{i:>2}/{len(envs)}] {game_id} ({title}) ...", flush=True)
-        trace = agent.run(env, budget_per_strategy=args.budget)
+    for i, info in enumerate(env_infos, 1):
+        game_id = info.game_id
+        title = info.title or "?"
+        print(f"[{i:>2}/{len(env_infos)}] {game_id} ({title}) ...", flush=True)
+        try:
+            env = arcade.make(game_id)
+        except Exception as exc:  # noqa: BLE001
+            results.append({"status": "error", "stage": "make", "game_id": game_id, "error": str(exc)})
+            continue
+        if env is None:
+            results.append({"status": "error", "stage": "make", "game_id": game_id, "error": "make() returned None"})
+            continue
+        trace = agent.run(env, title=title, budget_per_strategy=args.budget)
         trace["env_index"] = i
         trace["game_id"] = game_id
         results.append(trace)
