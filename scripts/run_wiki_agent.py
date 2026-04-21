@@ -29,7 +29,7 @@ from admorphiq.llm import load_candidate, load_registry
 
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-OUT = REPO_ROOT / "scripts" / "wiki_agent_results.json"
+DEFAULT_OUT = REPO_ROOT / "scripts" / "wiki_agent_results.json"
 
 
 def _pick_default_candidate() -> str:
@@ -49,7 +49,14 @@ def main() -> None:
         default=3000,
         help="Per-strategy action budget (default 3000; lower for a quick sweep)",
     )
+    ap.add_argument(
+        "--out",
+        type=Path,
+        default=DEFAULT_OUT,
+        help="Output JSON path (default scripts/wiki_agent_results.json)",
+    )
     args = ap.parse_args()
+    out_path: Path = args.out
 
     # Lazy import: only need arc_agi once we actually run games
     from arc_agi import Arcade, OperationMode
@@ -92,7 +99,7 @@ def main() -> None:
             flush=True,
         )
         # Persist after every env so a crash doesn't erase progress
-        OUT.write_text(
+        out_path.write_text(
             json.dumps(
                 {
                     "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S"),
@@ -107,7 +114,7 @@ def main() -> None:
     n_ok = sum(1 for r in results if r.get("status") == "ok")
     lvls = sum(int(r.get("best_levels", 0)) for r in results)
     print(f"\nDone. {n_ok}/{len(results)} games completed, {lvls} total levels, {total:.1f}s")
-    print(f"Wrote {OUT}")
+    print(f"Wrote {out_path}")
 
 
 if __name__ == "__main__":
