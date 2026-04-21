@@ -318,7 +318,18 @@ Binding architecture doc: **`.wiki/wiki/architecture.md`** (load-bearing — any
   - Architecture doc updated: **dev-time Cognition = Claude Code**, Qwen is Kaggle-time only. Claude Code reads `trace_analysis.json` and authors wiki/code proposals inline during a session — no intermediate LLM call required.
   - Full suite 164/164.
 - [x] **R5 — Regression gate** (2026-04-21). `scripts/regression_gate.py` + `scripts/regression_baseline.json`. Compares new trace against baseline with two views: strict `by_game_id` (same title+hash, fails on drop), and informational `by_title` (best across hashes, logs but does not fail — API hash rotation is outside our control, see lessons/api_hash_rotation_20260421). Seeded from the 2026-04-21 WikiAgent trace: 10 unique cleared envs / 29 levels (aggregate per unique game_id, max over duplicate runs). CLI: `--seed`, `--promote`, `--dry-run`; exit 0/1/2 for PASS/FAIL/INPUT_ERROR. 10 unit tests in `tests/test_regression_gate.py`. Full suite 174/174.
-- [ ] **R6 — Live-env bench (formal)**. Rebuild on top of R2 + R3: 8B vs 14B with full feature set + full strategy whitelist. This is the number that decides the Kaggle model, not the cold-prompt bench.
+- [x] **R6 — Live-env bench (formal)** (2026-04-21). Full 40-env comparison: Qwen 3 8B and 14B, both with R2 feature-rich DiscoveryReport + R3 universal dispatcher (67 strategies).
+
+  | Run | Envs cleared | Total levels | Runtime | Gate verdict |
+  |---|---|---|---|---|
+  | Baseline (pre-R2/R3, 8B) | 10/25 unique / 15/40 raw | 29 / 36 | 990s | — |
+  | R6 8B + R2+R3 | 10/25 unique / 15/40 raw | 29 / **36** | 1066s | **PASS** |
+  | R6 14B + R2+R3 | 13/25 unique / 21/40 raw | 23 / 34 | 1389s | FAIL (FT09, CD82 -6 each) |
+  | R6 14B + selector v2 | 11/25 unique / 18/40 raw | 21 / 31 | 1080s | FAIL (+LS20 regression) |
+
+  **Decision**: 8B stays primary. 14B regresses on FT09/CD82 because it ignores selector.md's fallback guidance — even after selector edits, 14B produced `[click_rare, seq_search]` for FT09 (seq_search hallucinated, not in the 67-whitelist) and missed lights_out/paint_game.
+  
+  **Lesson captured**: `.wiki/wiki/lessons/selector_is_advisory_not_enforced_20260421.md`. Wiki edits alone don't change LLM behavior reliably at 8B-14B scale; selector rules need a Python enforcement layer (next dev-cycle task). 14B is strategically better (env diversity, whitelist discipline, calibrated confidence 0.77 vs 0.93) but can't be promoted until Python enforcement lands.
 
 **What is frozen by R1 that wasn't before**:
 - No more ad-hoc "add an 18th strategy to the whitelist" edits — R3 covers all 74 uniformly.

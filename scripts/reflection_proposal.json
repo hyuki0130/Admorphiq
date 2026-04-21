@@ -1,0 +1,20 @@
+{
+  "error": "no JSON object in response",
+  "raw_head": "{\"summary\": \"{\"summary\": \"The provided data consists of multiple game entries, each with unique identifiers, titles, and associated attributes. The games vary in their types, such as 'click', 'movement', 'merge', and 'click' again, and each has a primary strategy and fallback strategies. The 'probe_diffs' attribute indicates differences in probe values for each game, and the 'executions' attribute lists the strategies used along with the number of actions taken. Some entries are incomplete or cut off, such as the last entry for 'SC25-635fd71a', which ends abruptly with 'probe_diffs': {\\\"1\\\": 0, \\\"2\\\": 0, \\\"3\\\": 0, \\\"4'.\"}",
+  "_meta": {
+    "generated_at": "2026-04-21T15:37:31",
+    "candidate_id": "qwen_3_14b_q4",
+    "trace_source": "/Users/nhn/Workspace/Admorphiq/scripts/wiki_agent_results.json",
+    "latency_sec": 37.2,
+    "raw_response_length": 629,
+    "raw_response_path": "/Users/nhn/Workspace/Admorphiq/scripts/reflection_proposal.raw.txt",
+    "schema_issues": [
+      "proposal contains error: no JSON object in response"
+    ],
+    "trace_summary": {
+      "total_envs": 40,
+      "envs_cleared": 15,
+      "total_levels": 36
+    }
+  }
+}

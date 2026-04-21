@@ -1,0 +1,86 @@
+{
+  "verdict": "FAIL",
+  "regressions": [
+    {
+      "game_id": "ft09-0d8bbf25",
+      "title": "FT09",
+      "baseline_levels": 6,
+      "new_levels": 0,
+      "delta": -6
+    },
+    {
+      "game_id": "ls20-9607627b",
+      "title": "LS20",
+      "baseline_levels": 1,
+      "new_levels": 0,
+      "delta": -1
+    },
+    {
+      "game_id": "cd82-fb555c5d",
+      "title": "CD82",
+      "baseline_levels": 6,
+      "new_levels": 0,
+      "delta": -6
+    }
+  ],
+  "improvements": [
+    {
+      "game_id": "m0r0-492f87ba",
+      "title": "M0R0",
+      "baseline_levels": 0,
+      "new_levels": 2,
+      "delta": 2
+    },
+    {
+      "game_id": "tr87-cd924810",
+      "title": "TR87",
+      "baseline_levels": 0,
+      "new_levels": 1,
+      "delta": 1
+    },
+    {
+      "game_id": "bp35-0a0ad940",
+      "title": "BP35",
+      "baseline_levels": 0,
+      "new_levels": 1,
+      "delta": 1
+    },
+    {
+      "game_id": "r11l-495a7899",
+      "title": "R11L",
+      "baseline_levels": 0,
+      "new_levels": 1,
+      "delta": 1
+    }
+  ],
+  "held_stable": 18,
+  "new_envs": [],
+  "missing_envs": [],
+  "title_regressions": [
+    {
+      "title": "FT09",
+      "baseline_best": 6,
+      "new_best": 0,
+      "delta": -6
+    },
+    {
+      "title": "LS20",
+      "baseline_best": 1,
+      "new_best": 0,
+      "delta": -1
+    },
+    {
+      "title": "CD82",
+      "baseline_best": 6,
+      "new_best": 0,
+      "delta": -6
+    }
+  ],
+  "headline": {
+    "baseline_envs_cleared": 10,
+    "new_envs_cleared": 11,
+    "baseline_total_levels": 29,
+    "new_total_levels": 21,
+    "level_delta": -8
+  }
+}
