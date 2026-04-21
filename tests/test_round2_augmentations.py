@@ -11,6 +11,7 @@ from __future__ import annotations
 from admorphiq.hypothesis import DiscoveryReport, Hypothesis
 from admorphiq.hypothesis.wiki_agent import (
     _augment_click_only_rule4,
+    _augment_hybrid_rule3,
     _augment_with_title_match,
     _title_match_strategies,
 )
@@ -238,6 +239,158 @@ def test_click_only_rule4_does_not_duplicate_already_picked():
         hyp, rep, {"click_rare", "lights_out", "paint_game"}
     )
     assert out.fallback_stack.count("lights_out") == 1
+
+
+# ---------------------------------------------------------------------------
+# _augment_hybrid_rule3 (Round 3 — 2026-04-21)
+# ---------------------------------------------------------------------------
+
+
+# FEEDBACK-GATED: pins CD82's round-2 signature (avail=[1..6], probe3/4=201,
+# probe6=1, -6=5) — Qwen picked click_select_move and lost all 6 levels
+# that baseline recovered via paint_game. Once rule-3 reinforcement has
+# survived a multi-round bench, this specific signature pin is deletable.
+def test_hybrid_rule3_injects_paint_game_on_cd82_signature():
+    """Purpose: reproduce CD82's round-2 probe signature and confirm rule-3
+    augmentation injects paint_game into fallback_stack. CD82 baseline
+    cleared 6/6 via paint_game; round 2 lost all 6 because the Qwen pick
+    omitted it.
+
+    Expected feedback: if this fails, round 3's CD82 recovery is broken
+    and the -6 regression persists.
+    """
+    rep = _report(
+        game_title="CD82",
+        available_actions=[1, 2, 3, 4, 5, 6],
+        probe_diffs={1: 1, 2: 1, 3: 201, 4: 201, 6: 1, -6: 5},
+    )
+    hyp = _hyp(primary="click_select_move", fallbacks=["click_toggle_detect", "click_color_order"])
+    valid = {"click_select_move", "click_toggle_detect", "click_color_order", "paint_game", "bfs_state_space"}
+    out = _augment_hybrid_rule3(hyp, rep, valid)
+    assert "paint_game" in out.fallback_stack
+    assert out.primary_strategy == "click_select_move"  # LLM primary preserved
+    assert len(out.fallback_stack) <= 3
+
+
+# FEEDBACK-GATED: pins AR25's round-2 signature (avail=[1..7], probe1-4=109,
+# probe6=0) — Qwen picked explore_and_interact with no bfs_state_space in
+# the chain. Baseline got 2/8 via bfs_state_space. Deletable once rule-3
+# reinforcement is stable across rounds.
+def test_hybrid_rule3_injects_bfs_on_ar25_signature():
+    """Purpose: reproduce AR25's round-2 probe signature and confirm rule-3
+    augmentation prepends bfs_state_space to fallback_stack. AR25 baseline
+    cleared 2/8 via bfs_state_space; round 2 lost both.
+
+    Expected feedback: if this fails, round 3's AR25 recovery is broken.
+    """
+    rep = _report(
+        game_title="AR25",
+        available_actions=[1, 2, 3, 4, 5, 6, 7],
+        probe_diffs={1: 109, 2: 109, 3: 109, 4: 109, 6: 0, -6: 0},
+    )
+    hyp = _hyp(primary="explore_and_interact", fallbacks=["click_toggle_detect", "move_then_click_grid"])
+    valid = {"explore_and_interact", "click_toggle_detect", "move_then_click_grid", "bfs_state_space", "paint_game"}
+    out = _augment_hybrid_rule3(hyp, rep, valid)
+    assert "bfs_state_space" in out.fallback_stack
+    assert out.fallback_stack[0] == "bfs_state_space"  # priority position
+    assert out.primary_strategy == "explore_and_interact"
+
+
+def test_hybrid_rule3_noop_when_no_action6():
+    """Purpose: rule 3 requires action 6 alongside 1-4. Pure movement
+    games (avail has 1-4, no 6) match rule 1, not rule 3 — augmentation
+    must not fire.
+
+    Expected feedback: failure means movement games get paint_game /
+    click_toggle_detect injected, displacing valid movement fallbacks.
+    """
+    rep = _report(
+        available_actions=[1, 2, 3, 4],
+        probe_diffs={1: 5, 2: 5, 3: 5, 4: 5},
+    )
+    hyp = _hyp(primary="bfs_state_space", fallbacks=["click_rare", "raster"])
+    valid = {"bfs_state_space", "click_rare", "raster", "paint_game", "click_toggle_detect"}
+    out = _augment_hybrid_rule3(hyp, rep, valid)
+    assert "paint_game" not in out.fallback_stack
+    assert "click_toggle_detect" not in out.fallback_stack
+    assert out.fallback_stack == ["click_rare", "raster"]
+
+
+def test_hybrid_rule3_noop_when_missing_action_1_to_4():
+    """Purpose: rule 3 also requires 1-4 in avail. avail=[6] triggers
+    rule 4 (click-only), not rule 3 — augmentation must not fire.
+
+    Expected feedback: failure means click-only games get bfs injected
+    which is wasted budget (movement actions don't do anything).
+    """
+    rep = _report(
+        available_actions=[6],
+        probe_diffs={6: 0, -6: 0},
+    )
+    hyp = _hyp(primary="click_rare", fallbacks=["lights_out"])
+    valid = {"click_rare", "lights_out", "bfs_state_space", "paint_game", "click_toggle_detect"}
+    out = _augment_hybrid_rule3(hyp, rep, valid)
+    assert "bfs_state_space" not in out.fallback_stack
+    assert out.fallback_stack == ["lights_out"]
+
+
+def test_hybrid_rule3_fills_empty_primary_preserved():
+    """Purpose: rule 3 augmentation is additive even when the LLM left
+    primary empty. The primary is set by title-match (earlier in the
+    pipeline) or stays empty; rule 3 only touches fallback_stack — never
+    overrides or fills primary. That is the title-match function's job.
+
+    Expected feedback: failure means rule-3 and title-match fight over
+    the primary slot, one overwriting the other.
+    """
+    rep = _report(
+        available_actions=[1, 2, 3, 4, 6],
+        probe_diffs={1: 100, 2: 100, 3: 100, 4: 100, 6: 0, -6: 0},
+    )
+    hyp = _hyp(primary="", fallbacks=[])
+    valid = {"bfs_state_space", "paint_game", "click_toggle_detect"}
+    out = _augment_hybrid_rule3(hyp, rep, valid)
+    assert out.primary_strategy == ""  # rule-3 never writes primary
+    assert out.fallback_stack == ["bfs_state_space", "paint_game", "click_toggle_detect"]
+
+
+def test_hybrid_rule3_does_not_duplicate_already_picked():
+    """Purpose: if the LLM already picked bfs_state_space (rule 3's
+    canonical primary), the augmentation must not re-insert it into
+    fallback_stack.
+
+    Expected feedback: failure means CN04-style envs (primary already
+    bfs_state_space) get bfs duplicated into fallback, wasting a slot.
+    """
+    rep = _report(
+        available_actions=[1, 2, 3, 4, 6],
+        probe_diffs={1: 144, 2: 144, 3: 198, 4: 198, 6: 279, -6: 1},
+    )
+    hyp = _hyp(primary="bfs_state_space", fallbacks=["explore_and_interact", "click_toggle_detect"])
+    valid = {"bfs_state_space", "explore_and_interact", "click_toggle_detect", "paint_game"}
+    out = _augment_hybrid_rule3(hyp, rep, valid)
+    assert out.fallback_stack.count("bfs_state_space") == 0  # already primary
+    assert "paint_game" in out.fallback_stack  # only missing piece added
+
+
+def test_hybrid_rule3_respects_valid_names_filter():
+    """Purpose: rule-3 names that aren't in the live whitelist must not
+    be injected — enum constraint at the decoder would reject them
+    anyway, but the augmentation runs after decoding and must not
+    reintroduce hallucinations via the back door.
+
+    Expected feedback: failure means bfs_state_space leaks into a
+    registry that doesn't export it (e.g., a minimal test harness),
+    causing downstream `unknown_strategy` errors in run().
+    """
+    rep = _report(
+        available_actions=[1, 2, 3, 4, 6],
+        probe_diffs={1: 5, 2: 5, 3: 5, 4: 5, 6: 0, -6: 0},
+    )
+    hyp = _hyp(primary="click_rare", fallbacks=[])
+    valid = {"click_rare", "click_toggle_detect"}  # no bfs, no paint
+    out = _augment_hybrid_rule3(hyp, rep, valid)
+    assert out.fallback_stack == ["click_toggle_detect"]
 
 
 # ---------------------------------------------------------------------------

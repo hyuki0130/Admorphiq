@@ -661,6 +661,44 @@ def _augment_click_only_rule4(
     return hyp
 
 
+def _augment_hybrid_rule3(
+    hyp: "Hypothesis", report: "DiscoveryReport", valid_names: set[str]
+) -> "Hypothesis":
+    """Python-level reinforcement of selector.md rule 3.
+
+    Rule 3: `avail` contains {1,2,3,4} AND 6 → hybrid game → primary
+    `bfs_state_space`, fallbacks `click_toggle_detect`, `paint_game`,
+    `click_rare`. Round 2 (2026-04-21) measured AR25 0/8 and CD82 0/6
+    regressions — both match this signature but Qwen picked
+    `explore_and_interact` / `click_select_move` as primary and left
+    `paint_game` / `bfs_state_space` out of the fallback chain entirely.
+
+    The augmentation is additive (consistent with title-match and rule-4):
+    the LLM's primary is preserved; the three rule-3 fallbacks are
+    prepended in priority order so the `run()` loop exercises them
+    before the LLM's own fallbacks. Final stack (cap 3):
+    ``[bfs_state_space, paint_game, click_toggle_detect]`` when none were
+    picked, else whichever of the three are missing from the LLM's pick.
+
+    Matches the observable signature only — transfers to unseen envs.
+    """
+    avail = {a for a in report.available_actions if a not in (0, 7)}
+    if not ({1, 2, 3, 4} <= avail and 6 in avail):
+        return hyp
+    seen = {hyp.primary_strategy, *hyp.fallback_stack}
+    new_stack = list(hyp.fallback_stack)
+    # Insert in reverse priority so the final order (after cap-3) is
+    # [bfs_state_space, paint_game, click_toggle_detect]. bfs first is the
+    # selector.md rule-3 primary; paint next is what recovered CD82 6/6 at
+    # baseline; click_toggle_detect is the selector.md rule-3 fallback[0].
+    for name in ("click_toggle_detect", "paint_game", "bfs_state_space"):
+        if name in valid_names and name not in seen:
+            new_stack.insert(0, name)
+            seen.add(name)
+    hyp.fallback_stack = new_stack[:3]
+    return hyp
+
+
 def discover(env: Any, title: str = "UNKNOWN", probe_actions: list[int] | None = None) -> DiscoveryReport:
     """Reset the env, snapshot the opening frame, then probe each action once.
 
@@ -880,6 +918,7 @@ class WikiAgent:
         hyp = _validate_whitelist(hyp, valid)
         hyp = _augment_with_title_match(hyp, report, valid)
         hyp = _augment_click_only_rule4(hyp, report, valid)
+        hyp = _augment_hybrid_rule3(hyp, report, valid)
         return hyp
 
     def run(self, env: Any, title: str = "UNKNOWN", budget_per_strategy: int = 5000) -> dict[str, Any]:

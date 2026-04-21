@@ -578,6 +578,51 @@ or title-matching whitelist strategies land in `fallback_stack` — a
 reinforcement of selector.md's title-match rule that Qwen ignored
 under 16KB context.
 
+### Round 2 outcome (2026-04-21, FAIL, not promoted)
+
+Landed title-match + rule-4 (click-only) Python reinforcements
+(`_augment_with_title_match`, `_augment_click_only_rule4` in
+`src/admorphiq/hypothesis/wiki_agent.py`). Result: 20/40 envs cleared,
+37 levels raw (vs R1 15/40, 19 levels). FT09 recovered 0→6 via rule-4
+`lights_out` injection; SB26 recovered 0→8 via title-match `sb26_sort`.
+Gate FAIL because AR25 (-2) and CD82 (-6) remained unrecovered — both
+match selector.md rule 3 (hybrid) but Qwen picked `explore_and_interact`
+/ `click_select_move` instead of `bfs_state_space` + `paint_game`.
+
+Round 3 candidate: Python reinforcement of selector.md rule 3 — inject
+`bfs_state_space`, `paint_game`, `click_toggle_detect` into fallback_stack
+for any env where `avail ⊇ {1,2,3,4}` AND `6 ∈ avail`.
+
+### Round 3 outcome (2026-04-21, FAIL, not promoted)
+
+Added `_augment_hybrid_rule3` Python reinforcement for rule 3. Result:
+26/40 envs cleared, 47 levels raw (vs R2 20/40, 37 levels). Rule-3 worked
+for **movement-dominant hybrids**: AR25 0→2, M0R0 0→2, SC25 0→2, WA30
+0→2, BP35/R11L/SK48/TR87 +1 each. Cumulative R1→R3: **19→37→47 levels
+(+28)**.
+
+Gate FAIL, two defects surfaced that round 3 is explicitly not fixing:
+
+1. **CD82 stuck at 1/6 (vs baseline 6/6).** Paint-dominant hybrid
+   (probe6 responsive=5/5, probe 3/4 huge diff). Rule-3 put `paint_game`
+   into fallback[1], but `WikiAgent.run()` breaks on first success —
+   `explore_and_interact` cleared 1 level, loop broke, `paint_game` never
+   ran. Run-loop policy issue, not a rule-3 issue.
+2. **G50T regressed 1→0.** Qwen emitted `[bfs_state_space × 3]` as
+   fallback_stack despite `uniqueItems: true`. Ollama 0.20.3's `format`
+   enforcement doesn't honor uniqueItems for Qwen 3 8B. Stochastic LLM
+   variance.
+
+Round 4 candidates:
+- (a) Patch `WikiAgent.run()` to run all strategies and take max, not
+  break-on-first-success. 4× budget per env; still under 6h cap (R3
+  finished in 1900s).
+- (b) Signature-specific primary override for paint-dominant sub-cases
+  (responsive click ≥ 3 AND probe 1-4 present → override primary with
+  `paint_game`).
+- (c) Post-process dedupe in `_validate_whitelist` so emitted duplicates
+  don't land in fallback (covers G50T-class Qwen variance).
+
 ## Implementation Discipline (applies to every change)
 
 **No speculative safety nets.** Do not add hardcoded constants, fallback

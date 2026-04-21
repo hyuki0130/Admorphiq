@@ -11,7 +11,18 @@ table below is the shared source of truth for both the LLM prompt and the
 Python-side enforcement; when a row changes, both sides update together.
 Measured non-compliance: R6 (14B ignored rule 4's fallback_stack update),
 R7 round 1 (Qwen skipped title-match on FT09/CD82/SB26/AR25 — see
-[[lessons/schema_enforcement_round1_20260421]]).
+[[lessons/schema_enforcement_round1_20260421]]), round 2 (Qwen skipped
+rule 3 on AR25/CD82/M0R0 — `explore_and_interact` / `click_select_move`
+preferred over `bfs_state_space`, `paint_game` left out entirely).
+
+Python reinforcements live in `src/admorphiq/hypothesis/wiki_agent.py`:
+- Rule 3 (hybrid): `_augment_hybrid_rule3` — when `avail ⊇ {1,2,3,4,6}`,
+  prepend `bfs_state_space`, `paint_game`, `click_toggle_detect` into
+  fallback_stack (primary preserved, cap 3).
+- Rule 4 (click-rare): `_augment_click_only_rule4` — when `avail == [6]`
+  and probe 6 returned 0 everywhere, prepend `lights_out`, `paint_game`.
+- Title match: `_augment_with_title_match` — when the title substring
+  matches a whitelist entry, seed primary if empty or prepend to fallback.
 
 Input: game classification output (from first 10-20 discovery actions) + frame statistics.
 Output: ordered list of strategies to try.
