@@ -1,0 +1,135 @@
+{
+  "seeded_at": "2026-04-21T15:43:41",
+  "seeded_from": "/Users/nhn/Workspace/Admorphiq/scripts/wiki_agent_results.json",
+  "timestamp": "2026-04-21T03:00:27",
+  "candidate": "qwen_3_8b_q4",
+  "by_game_id": {
+    "tu93-0768757b": {
+      "title": "TU93",
+      "levels": 2
+    },
+    "ar25-0c556536": {
+      "title": "AR25",
+      "levels": 2
+    },
+    "re86-8af5384d": {
+      "title": "RE86",
+      "levels": 0
+    },
+    "su15-1944f8ab": {
+      "title": "SU15",
+      "levels": 0
+    },
+    "m0r0-492f87ba": {
+      "title": "M0R0",
+      "levels": 0
+    },
+    "cn04-2fe56bfb": {
+      "title": "CN04",
+      "levels": 0
+    },
+    "ft09-0d8bbf25": {
+      "title": "FT09",
+      "levels": 6
+    },
+    "tr87-cd924810": {
+      "title": "TR87",
+      "levels": 0
+    },
+    "sc25-635fd71a": {
+      "title": "SC25",
+      "levels": 0
+    },
+    "lp85-305b61c3": {
+      "title": "LP85",
+      "levels": 1
+    },
+    "dc22-fdcac232": {
+      "title": "DC22",
+      "levels": 1
+    },
+    "sp80-589a99af": {
+      "title": "SP80",
+      "levels": 1
+    },
+    "ka59-38d34dbb": {
+      "title": "KA59",
+      "levels": 0
+    },
+    "g50t-5849a774": {
+      "title": "G50T",
+      "levels": 0
+    },
+    "sb26-7fbdac44": {
+      "title": "SB26",
+      "levels": 8
+    },
+    "lf52-271a04aa": {
+      "title": "LF52",
+      "levels": 0
+    },
+    "bp35-0a0ad940": {
+      "title": "BP35",
+      "levels": 0
+    },
+    "s5i5-18d95033": {
+      "title": "S5I5",
+      "levels": 0
+    },
+    "r11l-495a7899": {
+      "title": "R11L",
+      "levels": 0
+    },
+    "sk48-d8078629": {
+      "title": "SK48",
+      "levels": 0
+    },
+    "wa30-ee6fef47": {
+      "title": "WA30",
+      "levels": 0
+    },
+    "vc33-5430563c": {
+      "title": "VC33",
+      "levels": 1
+    },
+    "ls20-9607627b": {
+      "title": "LS20",
+      "levels": 1
+    },
+    "cd82-fb555c5d": {
+      "title": "CD82",
+      "levels": 6
+    },
+    "tn36-ef4dde99": {
+      "title": "TN36",
+      "levels": 0
+    }
+  },
+  "by_title": {
+    "TU93": 2,
+    "AR25": 2,
+    "RE86": 0,
+    "SU15": 0,
+    "M0R0": 0,
+    "CN04": 0,
+    "FT09": 6,
+    "TR87": 0,
+    "SC25": 0,
+    "LP85": 1,
+    "DC22": 1,
+    "SP80": 1,
+    "KA59": 0,
+    "G50T": 0,
+    "SB26": 8,
+    "LF52": 0,
+    "BP35": 0,
+    "S5I5": 0,
+    "R11L": 0,
+    "SK48": 0,
+    "WA30": 0,
+    "VC33": 1,
+    "LS20": 1,
+    "CD82": 6,
+    "TN36": 0
+  }
+}
