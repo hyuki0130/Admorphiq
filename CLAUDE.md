@@ -790,6 +790,91 @@ sprite tags. All those gains were fake for deployment.
    4 E4B untested. Pick based on `configs/llm.yaml` candidate matrix
    and what Kaggle VRAM allows.
 
+### Round 6 outcome (2026-04-22, partial progress, not promoted)
+
+Diagnostic via `scripts/probe_generics_direct.py` revealed round-5's
+G1-G4 were "generic" only in the "no hardcoding" sense — their
+internals were brute-force search/enumeration with fixed thresholds.
+Direct-run score: **0-1/47 cleared** across FT09/CD82/SB26/SU15/KA59/
+WA30/AR25/M0R0/DC22/TN36. See
+`.wiki/wiki/lessons/g1_g4_direct_test_20260422.md` for the full
+measurement arc.
+
+User directed: redesign as a real inference agent (Chollet framing —
+"intelligence = efficiency of skill acquisition in novel situations").
+
+Implemented `strat_inferential_agent` in
+`src/admorphiq/strategies/inferential.py` — 528-line five-phase
+pipeline:
+
+  Phase 1 Observation — probe every action + stride-8 grid + cluster
+    centroids, record (diff_magnitude, bbox, centroid, region_kind,
+    did_transition) per probe.
+  Phase 2 Entity Detection — flood-fill clusters, match before/after
+    across movement probes, tag player = cluster with highest
+    "mobility" (number of directions it shifts ≥ 2 px under), plus
+    executor / palette / goal-region / merge-item / obstacle tags.
+  Phase 3 Goal Inference — prefer navigation when player detected,
+    else merge / paint-fill / toggle from observed transitions or
+    entity-map heuristics.
+  Phase 4 Plan Synthesis — delegates navigation plan to the proven
+    `strat_bfs_state_space` engine (iteration 4-7 showed in-plan BFS
+    re-implementations were buggy). Merge / paint / toggle plans are
+    still domain-specific and need per-game refinement.
+  Phase 5 Learning Loop — on plan failure, widen probe stride,
+    re-tag entities, and retry sibling plans.
+
+Added `.wiki/wiki/llm_context/decision_tree.md` (≤ 1200 chars) and
+made it the first seed in `wiki_retrieval.derive_seed_pages` so 8B
+Qwen gets the compact dispatch decision before attention degrades on
+longer prose pages.
+
+Registry: 60 strategies (was 59; +1 `inferential_agent`). Brittle
+deny-list unchanged.
+
+**Direct-test result** (`scripts/probe_inferential_direct.py` v9,
+1479 s for 10 envs):
+
+| Env | I-Agent v9 | Brittle | Notes |
+|---|---|---|---|
+| AR25 | 2/2 | 2 | navigation plan via bfs_state_space |
+| M0R0 | 2/2 | 2 | navigation |
+| DC22 | 1/1 | 1 | navigation |
+| CD82 | 1/6 | 6 | navigation partial |
+| FT09 | 0/6 | 6 | toggle plan not reaching lit cells |
+| SB26 | 0/8 | 8 | merge plan doesn't handle sort-order |
+| SU15 | 0/9 | 9 | merge plan outside vacuum radius |
+| TN36 | 0/7 | 7 | bit-panel combinatorial search infeasible |
+| KA59 | 0/4 | 4 | push plan not implemented |
+| WA30 | 0/2 | 2 | pick-carry-drop plan not implemented |
+
+Cleared 6/47 levels (13% of brittle baseline), up from 1/47 in the
+G1-G4 round-5 state. Navigation plan is effectively at brittle parity
+(2+2+1 = 5 levels on M0R0/AR25/DC22 match the brittle 2+2+1 = 5).
+
+Tests: 243/243 passing. Updated `test_wiki_retrieval.py` seed-order
+invariant to require `llm_context/decision_tree.md` first.
+
+Runtime: 1479 s for 10 envs = **147 s / env** is too slow for a full
+40-env WikiAgent bench (would run ≈ 1.6 hours). Round 7 must cap
+per-plan budget and/or parallelize plan fanout.
+
+**Round 7 candidates**:
+
+1. Cap `_plan_navigation` budget at 10000 instead of 50000 so
+   unsolvable levels bail fast (AR25 took 866 s because BFS tried L3
+   with full 50k budget after L1+L2 were already cleared).
+2. Implement **toggle plan** properly for FT09-class (sparse
+   responsive cells): enumerate combinations of cluster-responsive
+   cells up to depth 4, test each as click sequence.
+3. Implement **merge plan** with vacuum-radius calibration (probe
+   near a pair to measure reach, then only propose midpoints within
+   radius).
+4. Run full WikiAgent bench with the decision_tree.md seed and
+   I-Agent registered — measure whether Qwen now picks
+   inferential_agent (previous rounds defaulted to bfs_state_space /
+   click_rare).
+
 ## Prohibited Patterns (Wiki-First Routing enforcement)
 
 The routing decision — which strategy runs as primary and what lands in

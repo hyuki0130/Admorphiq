@@ -225,18 +225,22 @@ def _report(**kwargs) -> DiscoveryReport:
     return DiscoveryReport(**defaults)
 
 
-def test_seed_pages_start_with_selector_and_core_reasoning():
-    """Purpose: no matter the env, selector.md must be the first seed so
-    the LLM always has the dispatch table, followed by the core reasoning
-    pages that frame how to read discovery signals.
+def test_seed_pages_start_with_decision_tree_then_selector():
+    """Purpose: round 6 added llm_context/decision_tree.md as the
+    highest-density LLM anchor page (≤ 1200 chars carrying the full
+    dispatch decision). It must come first, followed by selector.md
+    and the core reasoning pages. If this drifts, 8B models lose
+    their compact anchor and fall back to collapsing all envs to
+    `bfs_state_space` / `click_rare` as measured in rounds 4-5.
 
-    Expected feedback: if this drifts, the LLM's first anchor shifts and
-    the other R7c prompt rules become less effective.
+    Expected feedback: if seeds[0] is no longer decision_tree, Qwen
+    re-anchors on longer prose and routing degrades measurably.
     """
     seeds = derive_seed_pages(_report())
-    assert seeds[0] == "selector.md"
-    assert "reasoning/frame_to_strategy_chain.md" in seeds[:3]
-    assert "reasoning/discovery_phase.md" in seeds[:3]
+    assert seeds[0] == "llm_context/decision_tree.md"
+    assert "selector.md" in seeds[:4]
+    assert "reasoning/frame_to_strategy_chain.md" in seeds[:4]
+    assert "reasoning/discovery_phase.md" in seeds[:4]
 
 
 def test_seed_pages_hybrid_when_click_and_movement_both():

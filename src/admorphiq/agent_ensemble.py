@@ -21,7 +21,10 @@ import numpy as np
 
 from arcengine import GameAction
 
+from .strategies.inferential import strat_inferential_agent  # round 6 — re-exported for introspection
 from .utils import GameLogger
+
+__all__ = ["strat_inferential_agent"]
 
 
 # ─── Utility functions ──────────────────────────────────────────────

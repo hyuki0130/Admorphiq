@@ -115,13 +115,14 @@ def derive_seed_pages(report: Any) -> list[str]:
     """Map a DiscoveryReport to a deterministic, ordered seed-page list.
 
     Order matters: the first pages in the returned list are the first pages
-    the LLM sees, so they anchor the reasoning. selector.md goes first
-    because it is the only page with an actionable dispatch table, followed
-    by the frame-to-strategy chain and discovery-phase reasoning. Then
-    signal-driven pages (game_type by probe signature, games/<TITLE> by
-    title match, concepts page for observed topology).
+    the LLM sees, so they anchor the reasoning. The llm_context/decision_tree
+    page is the highest-density summary (≤ 1200 chars covering the full
+    dispatch decision) — it goes first so an 8B model sees the whole rule
+    set before its attention degrades on longer follow-up pages. Then the
+    standard prose pages (selector.md, reasoning chain) back it up.
     """
     seeds: list[str] = [
+        "llm_context/decision_tree.md",
         "selector.md",
         "reasoning/frame_to_strategy_chain.md",
         "reasoning/discovery_phase.md",
