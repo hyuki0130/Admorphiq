@@ -1,0 +1,252 @@
+"""Phase 8 R7b — graph-based wiki retrieval (Karpathy pattern executed properly).
+
+Before R7b: `WikiAgent` always read the same 7 pages (`_DEFAULT_PAGES`) up to an
+8KB budget, ignoring the 63 other wiki pages and the `[[backlink]]` graph
+edges the wiki doctrine insists on. Every env saw the same slice.
+
+After R7b: each env gets a tailored slice. Discovery signals seed the walk
+(directional movement → movement game type; action 6 + color toggle →
+merge_mechanic concept; matching game title → games/<TITLE>.md). From each
+seed, a BFS follows `[[link]]` edges, ordered by keyword relevance, until
+the character budget is hit. The LLM's `wiki_needs` from the prior turn can
+be force-included at the front of the queue so pages the LLM asked for are
+always retrieved.
+
+Pure-function design so each piece (link extraction, link resolution,
+seed derivation, scoring, the BFS itself) is unit-testable without a live
+filesystem and without an LLM.
+"""
+
+from __future__ import annotations
+
+import re
+from collections import deque
+from pathlib import Path
+from typing import Any, Iterable
+
+
+# Match [[link]] forms. The link text may contain slashes, dots, dashes,
+# underscores. Obsidian also allows `[[target|alias]]`; we strip the alias.
+_BACKLINK_RE = re.compile(r"\[\[([^\]\|]+)(?:\|[^\]]*)?\]\]")
+
+
+def extract_backlinks(text: str) -> list[str]:
+    """Return distinct `[[...]]` targets in first-occurrence order.
+
+    Preserves order so the BFS respects the prose flow of the page — earlier
+    links in a page are usually more central to the topic than trailing ones.
+    """
+    seen: set[str] = set()
+    out: list[str] = []
+    for m in _BACKLINK_RE.finditer(text):
+        target = m.group(1).strip()
+        if not target or target in seen:
+            continue
+        seen.add(target)
+        out.append(target)
+    return out
+
+
+def resolve_link(link: str, wiki_dir: Path) -> str | None:
+    """Turn a `[[link]]` target into a wiki-relative path, or None on miss.
+
+    Handles the common forms the wiki actually uses:
+      "concepts/merge_mechanic"       -> "concepts/merge_mechanic.md"
+      "concepts/merge_mechanic.md"    -> "concepts/merge_mechanic.md"
+      "../architecture"               -> "architecture.md"
+      "selector"                      -> "selector.md"
+      "games/TN36"                    -> "games/TN36.md"
+      "merge_mechanic" (basename only, unique match) -> "concepts/merge_mechanic.md"
+
+    Returns None when the link cannot be resolved to exactly one file — we
+    never guess between multiple candidates; ambiguity is a wiki-doctrine
+    violation to fix at authoring time, not papered over at retrieval time.
+    """
+    wiki_dir = Path(wiki_dir)
+    raw = link.strip().lstrip("/")
+    if not raw:
+        return None
+
+    # Strip `../` prefix — wiki is flat enough that we resolve relative to root.
+    while raw.startswith("../"):
+        raw = raw[3:]
+
+    candidates: list[str] = []
+    if raw.endswith(".md"):
+        candidates.append(raw)
+    else:
+        candidates.append(raw + ".md")
+        candidates.append(raw + "/index.md")
+
+    for cand in candidates:
+        rel = Path(cand).as_posix()
+        if (wiki_dir / rel).is_file():
+            return rel
+
+    # Basename fallback: single-match by filename only
+    base = Path(raw).name
+    if not base.endswith(".md"):
+        base = base + ".md"
+    matches = list(wiki_dir.rglob(base))
+    if len(matches) == 1:
+        return matches[0].relative_to(wiki_dir).as_posix()
+    return None
+
+
+def derive_seed_pages(report: Any) -> list[str]:
+    """Map a DiscoveryReport to a deterministic, ordered seed-page list.
+
+    Order matters: the first pages in the returned list are the first pages
+    the LLM sees, so they anchor the reasoning. selector.md goes first
+    because it is the only page with an actionable dispatch table, followed
+    by the frame-to-strategy chain and discovery-phase reasoning. Then
+    signal-driven pages (game_type by probe signature, games/<TITLE> by
+    title match, concepts page for observed topology).
+    """
+    seeds: list[str] = [
+        "selector.md",
+        "reasoning/frame_to_strategy_chain.md",
+        "reasoning/discovery_phase.md",
+    ]
+    avail = [a for a in (report.available_actions or []) if a not in (0, 7)]
+    has_click = 6 in avail
+    has_movement_actions = any(1 <= a <= 4 for a in avail)
+    dir_map = report.dir_map or {}
+
+    # Game-type seeds driven by probe signature
+    if dir_map or has_movement_actions:
+        if has_click:
+            seeds.append("game_types/hybrid.md")
+        else:
+            seeds.append("game_types/movement.md")
+    elif has_click:
+        seeds.append("game_types/click.md")
+
+    topology = getattr(report, "change_topology", "") or ""
+    if topology == "color_toggle":
+        seeds.append("concepts/merge_mechanic.md")
+    elif topology == "level_transition":
+        seeds.append("game_types/transform.md")
+    elif topology == "sprite_move":
+        seeds.append("game_types/movement.md")
+
+    # Title-match seed: games/<TITLE>.md if present
+    title = (report.game_title or "").upper()
+    if title and title != "UNKNOWN":
+        seeds.append(f"games/{title}.md")
+
+    return seeds
+
+
+def derive_keywords(report: Any) -> set[str]:
+    """Extract lowercase keywords from the DiscoveryReport for link scoring.
+
+    Intentionally small — 5-10 terms max — so scoring is fast and signal-
+    rich rather than diluted by every feature name.
+    """
+    kw: set[str] = set()
+    avail = [a for a in (report.available_actions or []) if a not in (0, 7)]
+    if 6 in avail:
+        kw.add("click")
+    if any(1 <= a <= 4 for a in avail):
+        kw.add("movement")
+    if report.dir_map:
+        kw.add("movement")
+    topology = getattr(report, "change_topology", "") or ""
+    if topology and topology != "unknown":
+        kw.add(topology)
+    title = (report.game_title or "").lower()
+    if title and title != "unknown":
+        kw.add(title)
+    return kw
+
+
+def score_link(target: str, keywords: set[str]) -> int:
+    """Rank a link target by keyword overlap + directory priority.
+
+    Higher = retrieved sooner. Reasoning/concept/lesson pages get a small
+    boost because they carry cross-game abstractions that are more likely
+    to help a never-seen-before env than a specific games/<TITLE> page.
+    """
+    target_l = target.lower()
+    score = 0
+    for kw in keywords:
+        if kw in target_l:
+            score += 2
+    if target_l.startswith(("reasoning/", "concepts/", "lessons/")):
+        score += 1
+    return score
+
+
+class GraphRetriever:
+    """BFS walk over the wiki's `[[backlink]]` graph, budgeted by characters.
+
+    Usage:
+        retriever = GraphRetriever(Path(".wiki/wiki"))
+        context, pages = retriever.retrieve(report)
+
+    The `pages` list is the ordered set of wiki paths actually included in
+    `context` (useful for traces and for honoring the R7c prompt's rule
+    that the LLM cite only pages it read).
+    """
+
+    def __init__(self, wiki_dir: Path) -> None:
+        self.wiki_dir = Path(wiki_dir)
+
+    def retrieve(
+        self,
+        report: Any,
+        wiki_needs: Iterable[str] | None = None,
+        budget_chars: int = 8000,
+    ) -> tuple[str, list[str]]:
+        seeds: list[str] = []
+        # Requested pages from the LLM go first — they are the strongest signal
+        # for what the next turn should see.
+        if wiki_needs:
+            seeds.extend(wiki_needs)
+        seeds.extend(derive_seed_pages(report))
+
+        keywords = derive_keywords(report)
+        visited: set[str] = set()
+        queue: deque[str] = deque(seeds)
+        pages: list[tuple[str, str]] = []
+        total = 0
+
+        # The final context is `"\n\n".join(chunks)`, so each chunk after the
+        # first also contributes 2 characters of joiner to the rendered length.
+        # `total` tracks rendered length including those joiners so the budget
+        # cap is honored by the concatenated string, not just the raw chunks.
+        joiner_len = 2
+        while queue and total < budget_chars:
+            raw = queue.popleft()
+            resolved = resolve_link(raw, self.wiki_dir)
+            if not resolved or resolved in visited:
+                continue
+            visited.add(resolved)
+            path = self.wiki_dir / resolved
+            try:
+                content = path.read_text()
+            except OSError:
+                continue
+            chunk = f"--- {resolved} ---\n{content}"
+            prefix = joiner_len if pages else 0
+            if total + prefix + len(chunk) > budget_chars:
+                chunk = chunk[: max(0, budget_chars - total - prefix)]
+                if not chunk:
+                    break
+            pages.append((resolved, chunk))
+            total += prefix + len(chunk)
+            if total >= budget_chars:
+                break
+            # Enqueue outbound links, ordered by score (descending)
+            outbound = extract_backlinks(content)
+            scored = sorted(
+                ((tgt, score_link(tgt, keywords)) for tgt in outbound),
+                key=lambda t: -t[1],
+            )
+            for target, _ in scored:
+                if target not in visited:
+                    queue.append(target)
+
+        formatted = "\n\n".join(chunk for _, chunk in pages)
+        return formatted, [p for p, _ in pages]

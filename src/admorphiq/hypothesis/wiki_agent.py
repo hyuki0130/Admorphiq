@@ -414,39 +414,10 @@ _DEFAULT_ROUND_LEARNINGS = (
 )
 
 
-# Order matters — the LLM weights the first pages more. selector.md goes first
-# because it's the only page with an actionable dispatch table; everything else
-# is supporting context. The lessons land last as "if in doubt, remember that
-# brittle solvers die; prefer frame-only".
-_DEFAULT_PAGES = [
-    "selector.md",
-    "reasoning/frame_to_strategy_chain.md",
-    "reasoning/discovery_phase.md",
-    "lessons/v2_hash_obfuscation.md",
-    "lessons/brittle_tells.md",
-    "reasoning/hypothesis_check.md",
-    "strategies/frame_only/bfs_state_space.md",
-]
-
-
-def _read_wiki(pages: list[str], budget_chars: int = 8000) -> str:
-    """Concatenate requested wiki pages, trimming to `budget_chars` total."""
-    parts: list[str] = []
-    total = 0
-    for p in pages:
-        path = WIKI_DIR / p
-        if not path.exists():
-            continue
-        body = path.read_text()
-        header = f"--- {p} ---\n"
-        chunk = header + body
-        if total + len(chunk) > budget_chars:
-            chunk = chunk[: max(0, budget_chars - total)]
-        parts.append(chunk)
-        total += len(chunk)
-        if total >= budget_chars:
-            break
-    return "\n\n".join(parts)
+# Wiki retrieval is graph-based (R7b). See `wiki_retrieval.py` for the BFS
+# walk over `[[backlinks]]` and the seed-derivation rules. Static page lists
+# were removed in the R7b commit — every env now gets a tailored slice based
+# on its discovery signals.
 
 
 def _parse_json_lenient(raw: str) -> dict[str, Any]:
@@ -652,29 +623,41 @@ class WikiAgent:
         player_color, etc.) from ``ctx`` and calls the underlying `strat_*`
         function positionally. The WikiAgent builds ``ctx`` once per run from
         the DiscoveryReport via :func:`dispatcher.build_ctx`.
-    extra_context_pages: list[str] — wiki pages to append after the default set.
+    retriever: GraphRetriever — R7b graph-based wiki walker. Defaults to a
+        retriever rooted at the repo's `.wiki/wiki/`. Override with a retriever
+        pointed at a different tree only for tests or experiments.
     context_chars: int — soft cap on prompt wiki length (default 8000, tuned for T4 budget).
+    round_num, round_learnings: injected into the prompt so the LLM knows which
+        round of the dev-time loop it is and what prior rounds concluded.
     """
 
     def __init__(
         self,
         llm: LLMBackend,
         strategy_registry: dict[str, Callable[..., tuple[int, str, int]]],
-        extra_context_pages: list[str] | None = None,
-        context_chars: int = 8000,
+        retriever: "GraphRetriever | None" = None,
+        context_chars: int = 16000,
         round_num: int = 1,
         round_learnings: str = _DEFAULT_ROUND_LEARNINGS,
     ) -> None:
+        from .wiki_retrieval import GraphRetriever
+
         self.llm = llm
         self.strategies = strategy_registry
-        self.extra_pages = extra_context_pages or []
         self.context_chars = context_chars
         self.round_num = int(round_num)
         self.round_learnings = str(round_learnings)
+        self.retriever = retriever or GraphRetriever(WIKI_DIR)
+        # Populated by build_prompt; exposed to run() for trace emission.
+        self._last_retrieved_pages: list[str] = []
 
-    def build_prompt(self, report: DiscoveryReport) -> str:
-        pages = list(_DEFAULT_PAGES) + list(self.extra_pages)
-        context = _read_wiki(pages, self.context_chars)
+    def build_prompt(
+        self, report: DiscoveryReport, wiki_needs: list[str] | None = None
+    ) -> str:
+        context, retrieved = self.retriever.retrieve(
+            report, wiki_needs=wiki_needs, budget_chars=self.context_chars
+        )
+        self._last_retrieved_pages = retrieved
         names = sorted(self.strategies.keys())
         return _PROMPT_TEMPLATE.format(
             round_num=self.round_num,
@@ -774,6 +757,7 @@ class WikiAgent:
                 ],
                 "wiki_needs": hyp.wiki_needs,
             },
+            "retrieved_pages": list(self._last_retrieved_pages),
             "executions": [],
             "best_levels": report.reset_levels,
         }

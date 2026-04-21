@@ -22,6 +22,14 @@ from .wiki_agent import (
     WikiGap,
     discover,
 )
+from .wiki_retrieval import (
+    GraphRetriever,
+    derive_keywords,
+    derive_seed_pages,
+    extract_backlinks,
+    resolve_link,
+    score_link,
+)
 
 
 def default_strategy_registry() -> dict:
@@ -54,12 +62,18 @@ __all__ = [
     "CTX_KEYS",
     "DiscoveryReport",
     "FeatureGap",
+    "GraphRetriever",
     "Hypothesis",
     "WikiAgent",
     "WikiGap",
     "build_ctx",
     "default_strategy_registry",
+    "derive_keywords",
+    "derive_seed_pages",
     "discover",
+    "extract_backlinks",
     "introspect_strategies",
+    "resolve_link",
+    "score_link",
     "strategy_whitelist_text",
 ]
