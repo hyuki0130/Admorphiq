@@ -490,8 +490,13 @@ class WikiAgent:
     Parameters
     ----------
     llm: LLMBackend — any backend from `admorphiq.llm` that satisfies the protocol.
-    strategy_registry: dict[str, Callable] — maps strategy names (as they appear in
-        `selector.md`) to callables that take `(env, budget)` and return `(levels, name, used)`.
+    strategy_registry: dict[str, Callable] — maps strategy names to **ctx-aware**
+        callables with signature ``(env, budget, ctx) -> (levels, label, actions)``.
+        After R3 (2026-04-21) every registered callable is a wrapper built by
+        :func:`dispatcher._make_wrapper`; it pulls the args it needs (dir_actions,
+        player_color, etc.) from ``ctx`` and calls the underlying `strat_*`
+        function positionally. The WikiAgent builds ``ctx`` once per run from
+        the DiscoveryReport via :func:`dispatcher.build_ctx`.
     extra_context_pages: list[str] — wiki pages to append after the default set.
     context_chars: int — soft cap on prompt wiki length (default 8000, tuned for T4 budget).
     """
@@ -556,12 +561,15 @@ class WikiAgent:
         Returns a trace suitable for JSON logging. Does not raise — strategy
         failures are captured as `{"status": "error", ...}`.
         """
+        from .dispatcher import build_ctx
+
         t_start = time.time()
         try:
             report = discover(env, title=title)
         except Exception as exc:  # noqa: BLE001 - top-level guard for the inference loop
             return {"status": "error", "stage": "discover", "error": str(exc)}
 
+        ctx = build_ctx(report)
         hyp = self.classify(report)
         trace: dict[str, Any] = {
             "game_title": report.game_title,
@@ -599,7 +607,7 @@ class WikiAgent:
             strat = self.strategies[sname]
             t0 = time.time()
             try:
-                lvls, winning, used = strat(env, budget_per_strategy)
+                lvls, winning, used = strat(env, budget_per_strategy, ctx)
             except Exception as exc:  # noqa: BLE001 - isolate strategy crashes
                 trace["executions"].append(
                     {"strategy": sname, "status": "error", "error": str(exc)}
