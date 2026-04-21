@@ -613,15 +613,168 @@ Gate FAIL, two defects surfaced that round 3 is explicitly not fixing:
    enforcement doesn't honor uniqueItems for Qwen 3 8B. Stochastic LLM
    variance.
 
-Round 4 candidates:
-- (a) Patch `WikiAgent.run()` to run all strategies and take max, not
-  break-on-first-success. 4× budget per env; still under 6h cap (R3
-  finished in 1900s).
-- (b) Signature-specific primary override for paint-dominant sub-cases
-  (responsive click ≥ 3 AND probe 1-4 present → override primary with
-  `paint_game`).
-- (c) Post-process dedupe in `_validate_whitelist` so emitted duplicates
-  don't land in fallback (covers G50T-class Qwen variance).
+Round 4 candidates (a), (b), (c) listed here historically were all
+Python-layer patches. **Rejected by user directive** mid-round 4: no
+more Python-level routing. See "Round 4 outcome" below.
+
+### Round 4 outcome (2026-04-21, FAIL, not promoted)
+
+User directive (paraphrased): *"Don't keep patching LLM mistakes with
+Python helpers. Don't stack fallbacks as a workaround. Fix the wiki
+so Qwen reasons correctly from frame observations alone."* This turned
+rounds 2-3 into rollback debt — those helpers were hardcoded to 25
+preview games and made the bench score rise without transferring to
+Kaggle private test.
+
+Round 4 enforces **Wiki-First Routing** (architecture.md §). The three
+`_augment_*` helpers and the title-match utility in
+`src/admorphiq/hypothesis/wiki_agent.py` are deleted. `classify()` now
+only runs `_validate_whitelist`. Selector.md rule 3 was split into 3a
+(movement-hybrid, uniform movement probes, dead click) / 3b
+(paint-hybrid, asymmetric probes, responsive click) / 3c
+(transform-hybrid, asymmetric probes, dead click). A new
+`concepts/probe_signature.md` page defines the observable
+discriminators (probe-ratio, click-responsiveness). Enforcement layered:
+
+- `tests/test_classify_contract.py` — semantic contract test,
+  title-blind + probe-signature-blind invariants.
+- `.claude/hooks/guard_wiki_agent.sh` — PreToolUse warning on edits to
+  wiki_agent.py.
+- `.claude/hooks/run_contract_tests.sh` — Stop hook, blocks response
+  completion when the contract test is red.
+- CLAUDE.md "Prohibited Patterns" section lists banned helper name
+  patterns.
+
+**Bench result**: 40/40 envs, 31 raw levels (vs R3 47, -16). Unique
+22 levels (vs R3 34, -12). Gate FAIL against baseline: SB26 -8, LS20
+-1, M0R0 +2, net -7.
+
+The honest read: rounds 2-3's 47-level peak was inflated by Python
+hardcoding. Round 4's 22 unique levels is the true wiki-only baseline
+of Qwen 8B + current strategies.
+
+**Wiki-first success — CD82 0/6 → 6/6**. Qwen read the new rule 3b
+(paint-hybrid signature) and picked `paint_game` primary on its own,
+without any Python helper. This is the first measured evidence that
+the Karpathy LLM-Wiki pattern works end-to-end for a routing decision
+that the previous round needed a Python override to get right.
+
+**Wiki gaps revealed**:
+
+- **SB26 (−8)** — Qwen classified `click` and picked `click_rare`
+  instead of applying selector rule 7 (sort-puzzle: `avail ⊇ {5,6}`,
+  no 1-4). The rule is present in selector.md but the title-match
+  preference block is too soft. Fine-grained rules (5, 6, 7) need
+  stronger probe-signature discriminators.
+- **SC25 (−2)** — Qwen classified `unknown`, picked `bfs_state_space`.
+  No `spell_cast` discriminator in selector.md's signature rows.
+- **SU15 (0/9, same as R3)** — Qwen picked `su15_vacuum` (brittle,
+  name contains `vacuum`). The "prefer frame-only" note is too soft
+  and `su15_frame_only` vs `su15_vacuum` disambiguation isn't explicit.
+
+**Strategy-implementation gap — bigger problem**: 12 whitelisted
+strategies read game-internal sprite tags or attribute names:
+
+| Strategy | Hardcoded to |
+|---|---|
+| `paint_game` | CD82 sprite tags `pqkenviek`, `ctwspzkygu` |
+| `lights_out` | FT09 tags `Hkx/NTi/bsT/ZkU`, `game.` |
+| `sb26_sort` | SB26 `frame.`, `game.` internals |
+| `su15_frame_only` (name sayiing frame-only!) | `hmeulfxgy`, `peiiyyzum`, `rqdsgrklq` (SU15) |
+| `su15_vacuum` | same SU15 internals |
+| `tn36_frame_only`, `tn36_puzzle` | `zpzcmabenn` (TN36) |
+| `ka59_sokoban` | `game.` (KA59) |
+| `re86_analytical` | `vzuwsebntu`, `vfaeucgcyr`, `ozhohpbjxz` (RE86) |
+| `wa30_analytical` | `wbmdvjhthc`, `wyzquhjerd`, `pkbufziase` (WA30) |
+| `s5i5_slider` | `myzmclysbl`, `zylvdxoiuq` (S5I5) |
+| `bp35_platformer` | `game.` (BP35) |
+
+Even round 4's CD82 +5 only works because `paint_game` reads CD82
+internals. On Kaggle private test, where sprite tags differ, it
+produces 0. The honest ceiling for a Kaggle submission is the set of
+frame-only generic strategies: `bfs_state_space`, `click_rare`,
+`click_toggle_detect`, `click_color_order`, `click_select_move`,
+`explore_and_interact`, `spell_cast`, `tu93_maze`, `tr87_rotation`,
+`ls20_grid`, `sk48_snake`, `zigzag`, `raster`, `click_all_colors`.
+
+Round 5 candidates (pick one):
+- (a) **Wiki discriminator strengthening** — write the missing
+  signature rules into selector.md so Qwen applies rules 5/6/7 and the
+  frame-only-vs-brittle preference. Projected: recover SB26 / possibly
+  SU15 via `su15_frame_only` (still hardcoded, but at least routed).
+- (b) **Brittle purge from the whitelist** — remove the 12
+  hardcoded strategies from `default_strategy_registry` so Qwen cannot
+  select them. Bench score drops further but reflects actual Kaggle
+  reality. Forces the strategy re-implementation work to be visible.
+- (c) **Strategy re-implementation (generic)** — rewrite `paint_game`
+  and `lights_out` to detect paint/toggle structure from frame pixels
+  (connected components, color clustering) without reading internals.
+  Highest leverage, biggest lift — easily a full round each.
+
+## Prohibited Patterns (Wiki-First Routing enforcement)
+
+The routing decision — which strategy runs as primary and what lands in
+`fallback_stack` — is owned by the LLM reasoning over `.wiki/` + frame
+observations. Python is NOT a second router. Rounds 2-3 added
+`_augment_with_title_match` / `_augment_click_only_rule4` /
+`_augment_hybrid_rule3` that mutated `Hypothesis` after the whitelist
+filter. Those were **rolled back in round 4** because:
+
+1. They were hardcoding to the 25 preview games (title-based) and to
+   fixed probe signatures — neither transfers to the Kaggle private test.
+2. They made the bench score rise without the LLM actually learning —
+   metric gaming.
+3. They grew by one rule per round, implying an unbounded trajectory.
+
+**Banned now, by name and by shape**:
+
+- No function reading `DiscoveryReport.game_title` and writing
+  `Hypothesis.primary_strategy` or `Hypothesis.fallback_stack`. Titles
+  are Kaggle-invisible.
+- No function reading `DiscoveryReport.probe_diffs` /
+  `available_actions` / `click_responsive_cells` / `dir_map` /
+  `change_topology` and using them to decide strategy names. That
+  decision belongs in the LLM.
+- Banned name patterns in `src/admorphiq/hypothesis/wiki_agent.py`:
+  `_augment_*`, `_inject_*`, `_reinforce_*`, `_override_*`,
+  `_post_process_strategy_*`, `_seed_strategy_*`. Renaming does not
+  make the rule OK — the shape is what is banned, not the string.
+
+**Permitted**:
+
+- JSON Schema `enum` + `uniqueItems` on `primary_strategy` and
+  `fallback_stack.items` (decoder-level, shapes the output space only).
+- `_validate_whitelist` — drops invented names; never inserts,
+  reorders, or substitutes.
+- Everything else in `wiki_agent.py` that does NOT read frame signals
+  to pick strategies (prompt building, retrieval, schema construction,
+  trace serialization).
+
+**When the LLM picks wrong**:
+
+1. Edit `.wiki/wiki/selector.md` — add a table row or refine an existing
+   one so the observable signal → strategy mapping is explicit.
+2. Edit `.wiki/wiki/reasoning/frame_to_strategy_chain.md` — write the
+   prose "if you observe X then the right pick is Y because Z" chain.
+   8B models need the *why*.
+3. Edit the relevant `concepts/*.md` — if the discriminator relies on a
+   concept not yet named (e.g., "probe-asymmetry"), define it first.
+4. Re-bench. Do NOT patch Python.
+
+**Enforcement (three layers)**:
+
+- `tests/test_classify_contract.py` — semantic contract test. Passing
+  means classify() is title-blind and probe-blind at the Python layer.
+- `.claude/hooks/guard_wiki_agent.sh` — PreToolUse hook that prints a
+  reminder when `wiki_agent.py` is being edited.
+- `.claude/hooks/run_contract_tests.sh` — Stop hook that blocks
+  response completion when the contract test is red.
+
+If a future task needs behavior that looks like it must go in Python,
+first prove the wiki route is insufficient by: (a) writing the wiki
+page, (b) re-benching, (c) showing in a trace that Qwen still cannot
+learn the rule from the wiki alone. Only then discuss a Python
+exception — and it will require updating architecture.md first.
 
 ## Implementation Discipline (applies to every change)
 

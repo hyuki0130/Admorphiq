@@ -214,27 +214,67 @@ These four rules are prerequisites for every new LLM-produced structured
 output the project adds. A new endpoint that bypasses any of them will
 fail in the same shape.
 
-## Routing Rules Require Python Reinforcement
+## Wiki-First Routing (no Python strategy-selection)
 
-A routing rule expressed only in markdown (`selector.md` table, inline
-prompt text) does NOT reliably shape Qwen's picks. The R6 and R7 benches
-both measured envs where the LLM ignored a rule present in the prompt
-(FT09 / CD82 / SB26 / AR25 on title-match; see
-[[lessons/selector_is_advisory_not_enforced_20260421]] and
-[[lessons/schema_enforcement_round1_20260421]]).
+Routing decisions — which primary strategy to run, what lands in
+`fallback_stack` — MUST be produced by the LLM reasoning over the wiki
+and the frame observations. Python is not a second router. Rounds 2-3
+of the R7 dev loop violated this: they added `_augment_with_title_match`,
+`_augment_click_only_rule4`, `_augment_hybrid_rule3` that mutated
+`primary_strategy` / `fallback_stack` after the whitelist filter, using
+title strings and probe-signature branches hand-written in Python. The
+bench score rose (19→37→47 levels) but none of that transfers to the
+Kaggle private test set — titles are obfuscated there, and the Python
+branches are signature-specific hardcoding. See
+`memory/feedback_no_python_augmentation.md` for the user directive that
+triggered this reversal.
 
-Principle: any routing rule the project depends on ships with two
-implementations —
+**Permitted Python, at this layer:**
 
-- **Wiki text** (human-readable, LLM-hint): `selector.md` rows, page prose.
-- **Python enforcement** (runtime guarantee): either as a decoder constraint
-  (enum), a deterministic seed in the retrieval (R7b `derive_seed_pages`),
-  or a post-processing augmentation of the LLM output.
+- **Decoder constraints** — JSON Schema `enum` binding `primary_strategy`
+  and `fallback_stack.items` to the live whitelist, `uniqueItems: true`.
+  These shape the output space; they do not make the choice.
+- **Post-decode sanitization (name-only)** — `_validate_whitelist` drops
+  names the LLM invented. It removes invalid tokens; it never inserts,
+  reorders, or overrides.
 
-The two must say the same thing; they are audited in lockstep. If only
-the wiki text exists, the rule is advisory and will be ignored some of the
-time. If only the Python enforcement exists, the rule is opaque and the
-LLM cannot reason about edge cases — add a wiki page.
+**Prohibited Python, at this layer (any name, any form):**
+
+- No function that reads `DiscoveryReport` fields and writes
+  `Hypothesis.primary_strategy` or mutates `Hypothesis.fallback_stack`
+  beyond the whitelist filter above.
+- No `game_title`-based branches. Titles are Kaggle-invisible and using
+  them is hardcoding to the 25 preview games.
+- No "if probe signature X then inject strategy Y" logic in Python.
+  That rule goes in `selector.md` and, if `selector.md` alone isn't
+  enough, in `reasoning/frame_to_strategy_chain.md` with the discriminating
+  signal explained in prose so Qwen can apply it.
+
+**When the LLM picks wrong**, the fix sequence is:
+
+1. Identify the observable frame signal (from the R2 DiscoveryReport
+   fields: probe diffs, `dir_map`, `click_responsive_cells`,
+   `change_topology`, `color_histogram`, `symmetry_score`) that
+   distinguishes the correct strategy.
+2. Write that discriminator into `selector.md` (table row) or a
+   `reasoning/*.md` page (prose chain). Include the *why* — an 8B model
+   needs a reason, not just a rule.
+3. Re-bench. If Qwen still picks wrong, the wiki is still under-specified;
+   iterate on the wiki, never on Python post-processing.
+
+**Enforcement**:
+
+- `tests/test_classify_contract.py` — contract test. `WikiAgent.classify()`
+  must return exactly `LLM-output ∩ whitelist`. Any semantic mutation
+  (regardless of helper name) turns this test red.
+- `.claude/hooks/guard_wiki_agent.sh` — PreToolUse hook that warns at
+  the moment `src/admorphiq/hypothesis/wiki_agent.py` is being edited.
+- `.claude/hooks/run_contract_tests.sh` — Stop hook that blocks response
+  completion when the contract test is red.
+
+The 2026-04-21 rollback (round 4) that removed the three `_augment_*`
+helpers is the first application of this rule. Future violations of the
+same shape must be reverted on sight, not iterated on.
 
 ## Falsification
 

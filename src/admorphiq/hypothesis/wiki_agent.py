@@ -582,123 +582,6 @@ def _validate_whitelist(hyp: "Hypothesis", valid_names: set[str]) -> "Hypothesis
     return hyp
 
 
-def _title_match_strategies(title: str, valid_names: set[str]) -> list[str]:
-    """Find whitelist strategies whose name contains the lowercased title.
-
-    Example: title "SB26" returns ["sb26_sort"]; title "SU15" returns
-    ["su15_frame_only", "su15_vacuum"] with frame_only first (prefix match
-    wins the tie so the frame-only variant lands before the brittle one).
-    Returns [] when the title is missing, "UNKNOWN", or has no match.
-    """
-    if not title or title.upper() == "UNKNOWN":
-        return []
-    t = title.lower()
-    matches = [n for n in valid_names if t in n.lower()]
-    matches.sort(key=lambda n: (not n.lower().startswith(t), "frame_only" not in n, n))
-    return matches
-
-
-def _augment_with_title_match(
-    hyp: "Hypothesis", report: "DiscoveryReport", valid_names: set[str]
-) -> "Hypothesis":
-    """Python-level reinforcement of selector.md's title-match rule.
-
-    Round 1 measured 4/40 envs where Qwen ignored the prompt's "prefer
-    <title>_frame_only when it exists in the whitelist" rule — SB26 lost
-    8 levels because Qwen picked `click_rare` instead of `sb26_sort`. This
-    augmentation guarantees the title-match strategy lands in the pick:
-
-      - if no whitelist strategy name contains the title → no-op
-      - if the primary slot is empty → title-match becomes primary
-      - else → title-match is prepended to fallback_stack (deduped, cap 3)
-
-    It is an augmentation, not an override: a non-empty LLM-picked primary
-    is preserved. The corresponding wiki rule lives in selector.md; this
-    function is its Python reinforcement half (architecture.md "Routing
-    Rules Require Python Reinforcement").
-    """
-    matches = _title_match_strategies(report.game_title, valid_names)
-    if not matches:
-        return hyp
-    pick = matches[0]
-    if pick == hyp.primary_strategy or pick in hyp.fallback_stack:
-        return hyp
-    if not hyp.primary_strategy:
-        hyp.primary_strategy = pick
-        return hyp
-    hyp.fallback_stack = [pick, *hyp.fallback_stack][:3]
-    return hyp
-
-
-def _augment_click_only_rule4(
-    hyp: "Hypothesis", report: "DiscoveryReport", valid_names: set[str]
-) -> "Hypothesis":
-    """Python-level reinforcement of selector.md rule 4.
-
-    Rule 4: `avail == [6]` AND probe 6 returned 0 on every click cell
-    → click-rare game (FT09-like). The baseline 8B ran recovered FT09
-    6/6 via an unconstrained fallback picking `lights_out` and `paint_game`;
-    round 1's enum-constrained Qwen never picked them. This function
-    injects them into fallback_stack for envs matching the signature.
-
-    Matches the signature only — no title or game_id branch, so it
-    transfers to never-before-seen envs with the same observable shape.
-    """
-    avail = {a for a in report.available_actions if a not in (0, 7)}
-    if avail != {6}:
-        return hyp
-    probe6 = report.probe_diffs.get(6)
-    responsive = report.probe_diffs.get(-6, 0)
-    if probe6 != 0 or responsive != 0:
-        return hyp
-    seen = {hyp.primary_strategy, *hyp.fallback_stack}
-    new_stack = list(hyp.fallback_stack)
-    for name in ("lights_out", "paint_game"):
-        if name in valid_names and name not in seen:
-            new_stack.insert(0, name)
-            seen.add(name)
-    hyp.fallback_stack = new_stack[:3]
-    return hyp
-
-
-def _augment_hybrid_rule3(
-    hyp: "Hypothesis", report: "DiscoveryReport", valid_names: set[str]
-) -> "Hypothesis":
-    """Python-level reinforcement of selector.md rule 3.
-
-    Rule 3: `avail` contains {1,2,3,4} AND 6 → hybrid game → primary
-    `bfs_state_space`, fallbacks `click_toggle_detect`, `paint_game`,
-    `click_rare`. Round 2 (2026-04-21) measured AR25 0/8 and CD82 0/6
-    regressions — both match this signature but Qwen picked
-    `explore_and_interact` / `click_select_move` as primary and left
-    `paint_game` / `bfs_state_space` out of the fallback chain entirely.
-
-    The augmentation is additive (consistent with title-match and rule-4):
-    the LLM's primary is preserved; the three rule-3 fallbacks are
-    prepended in priority order so the `run()` loop exercises them
-    before the LLM's own fallbacks. Final stack (cap 3):
-    ``[bfs_state_space, paint_game, click_toggle_detect]`` when none were
-    picked, else whichever of the three are missing from the LLM's pick.
-
-    Matches the observable signature only — transfers to unseen envs.
-    """
-    avail = {a for a in report.available_actions if a not in (0, 7)}
-    if not ({1, 2, 3, 4} <= avail and 6 in avail):
-        return hyp
-    seen = {hyp.primary_strategy, *hyp.fallback_stack}
-    new_stack = list(hyp.fallback_stack)
-    # Insert in reverse priority so the final order (after cap-3) is
-    # [bfs_state_space, paint_game, click_toggle_detect]. bfs first is the
-    # selector.md rule-3 primary; paint next is what recovered CD82 6/6 at
-    # baseline; click_toggle_detect is the selector.md rule-3 fallback[0].
-    for name in ("click_toggle_detect", "paint_game", "bfs_state_space"):
-        if name in valid_names and name not in seen:
-            new_stack.insert(0, name)
-            seen.add(name)
-    hyp.fallback_stack = new_stack[:3]
-    return hyp
-
-
 def discover(env: Any, title: str = "UNKNOWN", probe_actions: list[int] | None = None) -> DiscoveryReport:
     """Reset the env, snapshot the opening frame, then probe each action once.
 
@@ -916,9 +799,6 @@ class WikiAgent:
         )
         valid = set(self.strategies.keys())
         hyp = _validate_whitelist(hyp, valid)
-        hyp = _augment_with_title_match(hyp, report, valid)
-        hyp = _augment_click_only_rule4(hyp, report, valid)
-        hyp = _augment_hybrid_rule3(hyp, report, valid)
         return hyp
 
     def run(self, env: Any, title: str = "UNKNOWN", budget_per_strategy: int = 5000) -> dict[str, Any]:
