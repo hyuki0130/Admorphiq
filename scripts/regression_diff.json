@@ -9,20 +9,6 @@
       "delta": -2
     },
     {
-      "game_id": "ft09-0d8bbf25",
-      "title": "FT09",
-      "baseline_levels": 6,
-      "new_levels": 0,
-      "delta": -6
-    },
-    {
-      "game_id": "sb26-7fbdac44",
-      "title": "SB26",
-      "baseline_levels": 8,
-      "new_levels": 0,
-      "delta": -8
-    },
-    {
       "game_id": "cd82-fb555c5d",
       "title": "CD82",
       "baseline_levels": 6,
@@ -31,6 +17,13 @@
     }
   ],
   "improvements": [
+    {
+      "game_id": "tr87-cd924810",
+      "title": "TR87",
+      "baseline_levels": 0,
+      "new_levels": 1,
+      "delta": 1
+    },
     {
       "game_id": "sc25-635fd71a",
       "title": "SC25",
@@ -46,14 +39,28 @@
       "delta": 1
     },
     {
+      "game_id": "bp35-0a0ad940",
+      "title": "BP35",
+      "baseline_levels": 0,
+      "new_levels": 1,
+      "delta": 1
+    },
+    {
       "game_id": "r11l-495a7899",
       "title": "R11L",
       "baseline_levels": 0,
       "new_levels": 1,
       "delta": 1
+    },
+    {
+      "game_id": "wa30-ee6fef47",
+      "title": "WA30",
+      "baseline_levels": 0,
+      "new_levels": 2,
+      "delta": 2
     }
   ],
-  "held_stable": 18,
+  "held_stable": 17,
   "new_envs": [],
   "missing_envs": [],
   "title_regressions": [
@@ -64,18 +71,6 @@
       "delta": -2
     },
     {
-      "title": "FT09",
-      "baseline_best": 6,
-      "new_best": 0,
-      "delta": -6
-    },
-    {
-      "title": "SB26",
-      "baseline_best": 8,
-      "new_best": 0,
-      "delta": -8
-    },
-    {
       "title": "CD82",
       "baseline_best": 6,
       "new_best": 0,
@@ -84,9 +79,9 @@
   ],
   "headline": {
     "baseline_envs_cleared": 10,
-    "new_envs_cleared": 9,
+    "new_envs_cleared": 14,
     "baseline_total_levels": 29,
-    "new_total_levels": 11,
-    "level_delta": -18
+    "new_total_levels": 29,
+    "level_delta": 0
   }
 }
