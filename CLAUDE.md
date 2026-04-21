@@ -296,54 +296,48 @@ See `.wiki/schema.md` for the write conventions and `memory/feedback_wiki_doctri
 └── schema.md                  # write conventions
 ```
 
-**Phase 8 TODO (Karpathy-Wiki-driven plan)**:
+**Phase 8 RESTART (2026-04-21) — three-layer agent, dev/Kaggle split, R1-R6 loop**:
 
-**Step 1 — Wiki seed (dev-time, Claude Code)**
-- [x] 1a: Scaffold `.wiki/` directory structure (raw/, wiki/games/, wiki/game_types/, wiki/strategies/, schema.md, index.md)
-- [x] 1b: Seed `raw/traces/<game>.jsonl` for all 25 games (distilled from regression) + `raw/regressions/v2_failures_20260420.md` analysis
-- [x] 1c: Write first 3 game wiki pages (TN36, SU15, AR25) as rich templates — brittle vs frame-only contrast
-- [x] 1d-skeleton: Generate skeleton wiki pages for remaining 22 games via `scripts/generate_wiki_game_pages.py`
-- [x] 1d-expand: Fill Observations + Mechanics Hypothesis + Refactor Plan for 22 skeletons via `scripts/enrich_wiki_game_pages.py` (curated `GAME_KNOWLEDGE`)
-- [x] 1e: 13 game_type pages written (click, merge_puzzle, sokoban, platformer, transform, delivery, slider_puzzle, rotation, sort_puzzle, spell_cast, sequence, hybrid, unknown) in addition to movement + programming_puzzle
-- [x] 1f: `.wiki/wiki/index.md` auto-regeneration via `scripts/generate_wiki_index.py` (43 pages indexed)
-- [x] 1g: Knowledge-graph layer written — `concepts/` (7), `lessons/` (6), `debug/` (3), `reasoning/` (4)
-- [x] 1h: `raw/commits.md` compiled as narrative history for LLM reasoning
-- [x] 1i: 25 game pages retrofit with `Lessons Learned` + `Related Concepts` + `Peer Games` cross-links
-- [ ] 1j: Expand `strategies/frame_only/` pages (`click_rare`, `seq_search`, `spell_cast`, `explore_interact`) beyond current `bfs_state_space`
+Binding architecture doc: **`.wiki/wiki/architecture.md`** (load-bearing — any change contradicting it updates the doc first). The pre-restart linear plan (Step 1-4 below, kept for traceability) capped at 15/40 envs / 36 levels / 45% classification on 2026-04-21 live-env run. Four structural gaps drove the restart: thin LLM input (5 features), thin LLM output (17/74 strategies exposed), no failure feedback loop, no regression gate.
 
-**Step 1 status: ~90% complete (65 pages, 70 MD files, 416KB total — well under the 10MB budget).**
+**Three layers** (see `architecture.md` for full contract):
+- **Cognition (LLM, Qwen 3 family)** — reasons, hypothesizes, reflects. Proposes code/wiki edits via JSON. Never writes code directly.
+- **Memory (Wiki + Session)** — `.wiki/` long-term, append-only dev-time, frozen Kaggle-time. In-memory session dict at Kaggle-time tracks intra-run failures.
+- **Action (Strategies)** — `agent_ensemble.py` functions. Dev-time: added/rewritten by Claude Code from LLM proposals. Kaggle-time: frozen.
 
-**Step 2 — Frame-only solver refactoring (parallel to Step 1)**
-- [~] 2a: TN36 — `strat_tn36_frame_only` probing fallback added; does not yet score on v2 because the mechanic requires bit-panel detection + BFS planning. Follow-up task filed for full implementation (see `.wiki/wiki/games/TN36.md` findings section).
-- [ ] 2b: Refactor SU15 solver — replace `hmeulfxgy/peiiyyzum/rqdsgrklq` with color-cluster fruit/enemy/goal detection
-- [ ] 2c: Refactor RE86 solver — replace sprite-tag reads with diff-based movable/target detection
-- [ ] 2d: Refactor KA59/S5I5/CN04 with same principle
-- [ ] 2e: Regression gate after each refactor — v1 ≥ previous, v2 > 0
+**Boundary rule** (non-negotiable): Kaggle-time the only mutable layer is session state. Everything else ships as a frozen asset. Dev-time loop hardens the snapshot between submissions.
 
-**Step 3 — LLM + Wiki inference pipeline (Kaggle side, model selected by empirical bench)**
-- [x] **3-pre: Benchmark harness built & portable** — `configs/llm.yaml` + `configs/llm_bench_tasks.yaml` + `src/admorphiq/llm/registry.py` + `src/admorphiq/llm/ollama_backend.py` + `scripts/bench_llm.py`. Framework is intentionally **environment-free** (no `Arcade` / `GameAction` imports at bench time) so it can run on any box with an LLM backend: Kaggle, Colab, local, CI. See [[../.wiki/wiki/reasoning/benchmark_protocol.md]] and `memory/feedback_preserve_framework.md`.
-- [x] **3-pre-cold-prompt baseline (Qwen 3 8B, local 2026-04-21)**:
-  - thinking mode ON: classification 24% / strategy 32% / latency 12.4s/call (thinking tokens exhausted num_predict → empty `response` on 13/25 prompts).
-  - `/no_think` + `think: false`: classification 32% / strategy 40% / latency 1.75s/call (7× faster, parse 100%).
-  - The 32%/40% is a **cold-prompt ceiling** — bench deliberately gives no live frame data; the model must classify from the game title and generic wiki alone. Useful for apples-to-apples model comparison, NOT for deployment accuracy prediction.
-- [ ] **3-pre-live-env driver (SEPARATE script, not yet written)** — build `scripts/bench_llm_with_live_env.py` that imports the framework and prepends real `FrameData` observations (reset + ACTION1..4 diff probes + dominant colors) to the prompt. This reproduces the actual deployment scenario and gives a realistic accuracy number. Do not modify the portable framework.
-- [ ] 3-pre-run-ceiling-reference (optional): on 24GB+ hardware, run Gemma 4 26B MoE (local-only, does not ship to Kaggle) as an upper-bound reference.
-- [ ] 3-pre-run-reserve: if 8B cold-prompt + live-env numbers are insufficient, `ollama pull qwen3:14b` and re-run on same bench.
-  - **Selection rule**: pick model with best accuracy × 1/latency product; don't pre-commit to any
-- [ ] 3a: `scripts/run_wiki_agent.py` — load selected LLM 4bit + `.wiki/` at startup
-- [ ] 3b: Game classifier: first 10-20 actions → game_type label
-- [ ] 3c: Wiki retrieval: select `wiki/game_types/<type>.md` + top-3 similar `wiki/games/*.md`
-- [ ] 3d: Zero-shot strategy selection + rule hypothesis
-- [ ] 3e: Compare vs current ensemble — target: match v1 score, recover v2 score
+**Restart steps R1–R6**:
 
-**Step 4 — Independent cleanup (parallel)**
-- [ ] 4a: LF52/SK48 regression bisect (separate line, not blocked on Wiki)
-- [ ] 4b: Offline LoRA tuning on v1 traces — ONLY if Step 3d zero-shot falls short, **and only if selected model has mature LoRA tooling** (favors Qwen 3 8B for this fallback)
+- [x] **R1 — Architecture doc** (`.wiki/wiki/architecture.md`, this commit). Defines 3 layers, dev/Kaggle split, dev loop, Kaggle loop, layer contracts, falsification criteria.
+- [ ] **R2 — Feature-rich DiscoveryReport**. Expand from 5 fields to 20+: `dir_map`, `player_color`, `movable_object_count`, `click_responsive_cells`, `change_topology`, `symmetry_score`, `color_histogram`, `level_diff_signature`, etc. LLM can flag `features_missing` in its output so reflection adds what's needed.
+- [ ] **R3 — Universal strategy dispatcher**. Expose all 74 `strat_*` to LLM via `ctx`-based call. `STRATEGY_ARGS` metadata table + `call_strategy(name, env, budget, ctx)` wrapper. Strategy source stays untouched — adapter lives in WikiAgent.
+- [ ] **R4 — Reflection module** (`scripts/reflect_wiki_agent.py`). LLM reads trace.json + wiki + baseline, outputs JSON proposal (`wiki_edits`, `new_features`, `new_strategies`, `rollback_candidates`). Claude Code is the implementer — applies proposal to wiki/code/configs.
+- [ ] **R5 — Regression gate** (`scripts/regression_gate.py`). Compares new run's `best_levels` per env vs baseline. Any drop → fail → rollback the proposing commit.
+- [ ] **R6 — Live-env bench (formal)**. Rebuild on top of R2 + R3: 8B vs 14B with full feature set + full strategy whitelist. This is the number that decides the Kaggle model, not the cold-prompt bench.
 
-**Validation gates**:
-- Gate A (after Step 2): v2-hash envs improve from 9→≥18 cleared
-- Gate B (after Step 3): zero-shot wiki agent clears ≥21/25 unique games on both v1 and v2
-- Gate C (Kaggle packaging): runtime ≤ 6h, memory ≤ 16GB, fully offline
+**What is frozen by R1 that wasn't before**:
+- No more ad-hoc "add an 18th strategy to the whitelist" edits — R3 covers all 74 uniformly.
+- No more cold-prompt bench as decision input — R6 (live-env) is the only bench that decides.
+- No more one-shot classify-and-dispatch — every run feeds R4 reflection.
+
+**Legacy linear plan (kept for traceability, superseded by R1-R6)**:
+
+<details>
+<summary>Step 1-4 as written pre-restart (2026-04-20) — do not follow linearly</summary>
+
+- Step 1 (Wiki seed): ~90% complete (65 pages, 70 MD files, 416KB). Carried forward into R4 reflection which appends new pages.
+- Step 2 (Frame-only solvers): subsumed by R4 — reflection proposes refactors as they're needed, not in a hardcoded order.
+- Step 3 (LLM + Wiki inference): subsumed by R2+R3+R6. The cold-prompt bench (2026-04-21: 8B 32%/40%, 14B 16%/40%) is a model-comparison artifact, not a deployment predictor.
+- Step 4 (Independent cleanup): LF52/SK48 regression bisect still open; LoRA tuning deferred until R6 numbers say it's needed.
+
+</details>
+
+**Validation gates (R1-R6 framing)**:
+- Gate A — R2+R3 regression: live-env ≥15 envs / 36 levels (2026-04-21 baseline), classification ≥45%.
+- Gate B — R4 reflection effectiveness: ≥1 proposed change per run survives R5 gate; cumulative best_levels non-decreasing over 3 consecutive dev cycles.
+- Gate C — R6 decision: live-env numbers with full features + full whitelist justify primary LLM choice. Target: ≥21/40 envs on v1+v2 combined (vs ensemble 28/40, WikiAgent 15/40).
+- Gate D — Kaggle packaging: runtime ≤ 6h, VRAM ≤ 16GB, fully offline, frozen wiki + frozen strategies + frozen weights.
 
 ## Reference Projects
 
