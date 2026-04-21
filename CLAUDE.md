@@ -711,6 +711,85 @@ Round 5 candidates (pick one):
   (connected components, color clustering) without reading internals.
   Highest leverage, biggest lift — easily a full round each.
 
+### Round 5 outcome (2026-04-22, FAIL, not promoted)
+
+Picked option **(b) + (c) combined**: purged the 12 brittle strategies
+from `default_strategy_registry()` AND added four generic inference
+classes (G1-G4) to `agent_ensemble.py` that combine probing + frame
+analysis + state-space search. None of the G1-G4 functions read
+game-internal sprite tags or attribute names.
+
+**Code changes**:
+- `src/admorphiq/agent_ensemble.py` — added `strat_interactive_grid_toggle`
+  (G1, replaces paint_game/lights_out/tn36_frame_only), `strat_sprite_cluster_interaction`
+  (G2, replaces su15_*), `strat_push_bfs_grid` (G3, replaces
+  ka59_sokoban/wa30_analytical), `strat_bfs_framehash` (G4, universal
+  fallback). Stripped L1 hardcoded sequences from `strat_tu93_maze`,
+  `strat_tr87_rotation`, `strat_ls20_grid` — they now BFS every level.
+- `src/admorphiq/hypothesis/dispatcher.py` — added `BRITTLE_STRATEGIES`
+  frozenset (12 names) and deny-filter in `introspect_strategies`.
+  Registry size 67 → 59.
+- `.wiki/wiki/selector.md` — rules 4/5/6/7/8 now reference G1-G4 names.
+  Added "four generic inference classes" table mapping G1-G4 to what
+  each replaces and how each works.
+
+**Tests**: 243/243 passing (was 228; +13 generic-strategy tests + 2
+dispatcher tests pinning the deny-list and G1-G4 registry presence).
+
+**Bench**: 40/40 envs, 27 raw levels, 1943s.
+
+| Metric | R3 | R4 | R5 | Δ vs R4 |
+|---|---|---|---|---|
+| Raw levels | 47 | 31 | **27** | -4 |
+| Unique envs cleared | 17/25 | 9/25 | **11/25** | +2 |
+| Unique levels | 34 | 22 | **15** | -7 |
+| Gate | FAIL | FAIL | **FAIL** | — |
+
+**Gate verdict**: FAIL — CD82 6→1 (-5), FT09 6→0 (-6), SB26 8→0 (-8)
+all attributable to the brittle purge. M0R0 0→2, SC25 0→2, SK48 0→1
+improvements offset partially. LS20 0→1 recovered via pure BFS after
+its L1 hardcoded sequence was removed.
+
+**Critical diagnostic finding — G1-G4 were never executed**. Qwen 3
+8B's primary-strategy picks across all 40 envs:
+
+```
+bfs_state_space   26
+click_rare        14
+```
+
+`interactive_grid_toggle`, `sprite_cluster_interaction`,
+`push_bfs_grid`, `bfs_framehash` — 0 picks primary, 0 picks fallback.
+The 27 raw levels in R5 came entirely from the two pre-existing
+generic strategies. G1-G4 implementations are in the whitelist and
+selector.md references them, but 8B collapses to familiar names under
+long wiki context — the same pattern measured in rounds 1 / 3 / 4.
+
+**Honest read**: R5's 15 unique levels is the true Kaggle-realistic
+frame-only baseline of Qwen 8B + the current generic strategy set.
+R2/R3's 37/47 were inflated by brittle internal reads; R4's 22 was
+closer but still included CD82 +5 from `paint_game`'s CD82-specific
+sprite tags. All those gains were fake for deployment.
+
+**Round 6 candidates** (diagnostic → fix, in order):
+1. **Direct G1-G4 validation** — run `strat_interactive_grid_toggle`,
+   `strat_sprite_cluster_interaction`, `strat_push_bfs_grid`, and
+   `strat_bfs_framehash` against CD82 / FT09 / SB26 / SU15 live envs
+   outside the WikiAgent loop. Necessary before any routing fix —
+   confirms whether the implementations actually work, or are also
+   broken (in which case routing them wouldn't help).
+2. **Remove bfs_state_space + click_rare from the whitelist** — forces
+   Qwen to pick from G1-G4 + peers. Radical but measures G1-G4
+   effectiveness. Reversible.
+3. **Decoder bias / anchor the prompt at G1-G4** — move G1-G4 to the
+   front of the strategy list, tag them in selector.md as "preferred
+   for any click-driven game", add explicit "if you see signature X,
+   pick G-Y" sentences. Round 4 showed this doesn't fully work at 8B
+   but it's cheap to try.
+4. **LLM upgrade** — Qwen 3 14B hallucinated in round 6 pre-R7; Gemma
+   4 E4B untested. Pick based on `configs/llm.yaml` candidate matrix
+   and what Kaggle VRAM allows.
+
 ## Prohibited Patterns (Wiki-First Routing enforcement)
 
 The routing decision — which strategy runs as primary and what lands in

@@ -34,6 +34,31 @@ CTX_KEYS: frozenset[str] = frozenset(
 )
 
 
+# Strategies that read game-internal sprite tags or attribute names and
+# therefore only function on the 25 preview games. Round 5 (2026-04-22)
+# removed them from the LLM-pickable whitelist; the routing layer cannot
+# select these on the Kaggle private test set anyway, and exposing them
+# made R2/R3 bench numbers misleading. The functions still exist in
+# `agent_ensemble.py` for the internal ensemble dispatcher's
+# feature-based fallback path on preview games.
+BRITTLE_STRATEGIES: frozenset[str] = frozenset(
+    {
+        "paint_game",
+        "lights_out",
+        "sb26_sort",
+        "su15_frame_only",
+        "su15_vacuum",
+        "tn36_frame_only",
+        "tn36_puzzle",
+        "ka59_sokoban",
+        "re86_analytical",
+        "wa30_analytical",
+        "s5i5_slider",
+        "bp35_platformer",
+    }
+)
+
+
 def build_ctx(report) -> dict[str, Any]:
     """Derive the strategy-call context dict from a DiscoveryReport.
 
@@ -107,6 +132,16 @@ def introspect_strategies(
             skipped.append((attr_name, "first parameter is not 'env'"))
             continue
         short_name = attr_name[len("strat_") :]
+        if short_name in BRITTLE_STRATEGIES:
+            skipped.append(
+                (
+                    short_name,
+                    "brittle: reads game-internal sprite/attribute names — "
+                    "kept in agent_ensemble for preview-game ensemble use, "
+                    "denied from the LLM-pickable whitelist (round 5 rule)",
+                )
+            )
+            continue
         extra_params = [p for p in params[1:] if p.name != "budget"]
         missing_required = [
             p.name

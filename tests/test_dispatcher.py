@@ -107,7 +107,12 @@ def test_introspect_skips_runtime_only_strategies():
 
 
 def test_introspect_preserves_previous_uniform_strategies():
-    """Previously-exposed uniform strategies must still be in the new registry."""
+    """Previously-exposed uniform strategies must still be in the new
+    registry. Round 5 (2026-04-22) excluded `tn36_frame_only` and
+    `su15_frame_only` from this list because they were renamed
+    "frame_only" but actually read game-internal sprite tags — see
+    BRITTLE_STRATEGIES in dispatcher.py.
+    """
     from admorphiq import agent_ensemble as ae
 
     registry, _ = introspect_strategies(ae)
@@ -122,11 +127,58 @@ def test_introspect_preserves_previous_uniform_strategies():
         "click_color_order",
         "click_grid_aligned",
         "raster",
-        "tn36_frame_only",
-        "su15_frame_only",
     }
     missing = pre_r3_uniform - set(registry.keys())
-    assert not missing, f"R3 dropped pre-R3 uniform strategies: {missing}"
+    assert not missing, f"registry dropped pre-R3 uniform strategies: {missing}"
+
+
+def test_round5_brittle_deny_list_is_enforced():
+    """Purpose: the 12 game-internal-hardcoded strategies on the
+    BRITTLE_STRATEGIES deny-list MUST NOT appear in the LLM-pickable
+    registry, even though their `strat_*` functions still exist in
+    `agent_ensemble.py`. This is the round-5 contract — without this,
+    Qwen could pick `paint_game` for a CD82-shape env on Kaggle and
+    get an AttributeError because the sprite tags don't exist.
+
+    Expected feedback: failure means a brittle strategy leaked into
+    the LLM whitelist. Either the deny-list dropped a name or
+    introspect_strategies stopped checking it.
+    """
+    from admorphiq import agent_ensemble as ae
+    from admorphiq.hypothesis.dispatcher import BRITTLE_STRATEGIES
+
+    registry, skipped = introspect_strategies(ae)
+    leaked = sorted(BRITTLE_STRATEGIES & set(registry.keys()))
+    assert not leaked, f"brittle strategies leaked into registry: {leaked}"
+    skipped_names = {n for n, _ in skipped}
+    not_skipped = sorted(BRITTLE_STRATEGIES - skipped_names)
+    assert not not_skipped, (
+        f"brittle strategies missing from skipped list: {not_skipped}"
+    )
+
+
+def test_round5_generic_g1_to_g4_are_registered():
+    """Purpose: the four round-5 generic inference strategies
+    (G1 interactive_grid_toggle, G2 sprite_cluster_interaction,
+    G3 push_bfs_grid, G4 bfs_framehash) MUST appear in the registry.
+    They replace the routing role of the brittle strategies and the
+    LLM cannot pick them otherwise.
+
+    Expected feedback: failure means a Gx function was renamed,
+    deleted, or its signature broke ctx-introspection. Re-add it or
+    fix its signature so the introspector accepts it.
+    """
+    from admorphiq import agent_ensemble as ae
+
+    registry, _ = introspect_strategies(ae)
+    expected = {
+        "interactive_grid_toggle",
+        "sprite_cluster_interaction",
+        "push_bfs_grid",
+        "bfs_framehash",
+    }
+    missing = expected - set(registry.keys())
+    assert not missing, f"round-5 generics missing from registry: {missing}"
 
 
 # ---------------------------------------------------------------------------

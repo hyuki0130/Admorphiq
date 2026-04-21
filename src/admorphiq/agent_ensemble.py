@@ -3639,12 +3639,14 @@ def strat_paint_game(env: Any, budget: int = 200) -> tuple[int, str, int]:
 # ─── TU93 maze solver (hardcoded L1/L2 + BFS for L3+) ─────────────
 
 def strat_tu93_maze(env: Any, budget: int = 500000) -> tuple[int, str, int]:
-    """TU93 maze navigation: player reaches exit on grid board.
+    """Pure-movement maze BFS with frame hashing and reset-replay.
 
-    Pure movement game (A1-A4). Moving entities react to player.
-    L1 solved: R D D R U R D D L L D R R D R U R D (18 moves)
-    L2 solved: U*15 R D D R D R R U R R U (26 moves)
-    L3+: BFS with frame hashing, depth limit per step counter.
+    Generic over any A1-A4 movement game where the state is fully
+    captured by the frame. Round 5 removed the L1/L2 hardcoded
+    sequences (they made this strategy a bail-out detector for TU93
+    rather than a generic maze solver). Now it BFS-searches every
+    level from scratch — TU93 v1 levels 1-2 will be slower than the
+    hardcoded path but the strategy generalizes to other mazes.
     """
     from collections import deque as _deque
 
@@ -3655,14 +3657,7 @@ def strat_tu93_maze(env: Any, budget: int = 500000) -> tuple[int, str, int]:
 
     A1, A2, A3, A4 = 1, 2, 3, 4
     actions_list = [A1, A2, A3, A4]
-    action_names = ['U', 'D', 'L', 'R']
     opposite = {0: 1, 1: 0, 2: 3, 3: 2}
-
-    # Hardcoded solutions (action indices: 0=U, 1=D, 2=L, 3=R)
-    hardcoded = {
-        1: [3, 1, 1, 3, 0, 3, 1, 1, 2, 2, 1, 3, 3, 1, 3, 0, 3, 1],
-        2: [0]*15 + [3, 1, 1, 3, 1, 3, 3, 0, 3, 3, 0],
-    }
 
     def _get_frame(o):
         import numpy as _np
@@ -3671,27 +3666,9 @@ def strat_tu93_maze(env: Any, budget: int = 500000) -> tuple[int, str, int]:
     def _frame_hash(f):
         return hash(f.tobytes())
 
-    # Play hardcoded levels
     for level in range(1, 10):
         if used >= budget or obs.state.name in ("WIN", "GAME_OVER"):
             break
-
-        if level in hardcoded:
-            seq = hardcoded[level]
-            for ai in seq:
-                if used >= budget:
-                    break
-                obs = act(env, actions_list[ai])
-                used += 1
-                if obs.state.name == "GAME_OVER":
-                    break
-            if obs.levels_completed >= level:
-                best = obs.levels_completed
-                name = "tu93_maze"
-                continue
-            else:
-                # Hardcoded failed — not TU93, bail out entirely
-                return best, name, used
 
         # BFS with frame hashing for this level
         visited = set()
@@ -3758,11 +3735,13 @@ def strat_tu93_maze(env: Any, budget: int = 500000) -> tuple[int, str, int]:
 # ─── TR87 rotation puzzle solver ─────────────────────────────────────
 
 def strat_tr87_rotation(env: Any, budget: int = 500000) -> tuple[int, str, int]:
-    """TR87: rotate pieces (A1/A2) to match pattern. Select with A3/A4.
+    """Generic combinatorial-rotation puzzle solver.
 
-    7 variants per piece. Budget 128 per attempt (reset restores it).
-    L1: 5 output pieces, solved with rotations [2,2,4,1,0].
-    L2+: brute force with increasing piece counts.
+    Pattern: A2 rotates the active item, A4 advances to the next item;
+    a fixed number of items per level, each with a small finite set of
+    states (≤ 7). Round 5 removed the L1 hardcoded `[2,2,4,1,0]`
+    sequence — every level is now brute-forced. Slow on a known game,
+    correct on an unknown one.
     """
     obs = reset(env)
     used = 1
@@ -3770,11 +3749,7 @@ def strat_tr87_rotation(env: Any, budget: int = 500000) -> tuple[int, str, int]:
     name = ""
 
     A2, A4 = 2, 4  # rotate right, select next
-
-    # Hardcoded L1 solution: rotations [2,2,4,1,0] for 5 pieces
-    hardcoded = {
-        1: [2, 2, 4, 1, 0],
-    }
+    hardcoded: dict[int, list[int]] = {}
 
     def _try_combo(rotations: list[int]) -> bool:
         nonlocal obs, used, best, name
@@ -3846,12 +3821,12 @@ def strat_tr87_rotation(env: Any, budget: int = 500000) -> tuple[int, str, int]:
 # ─── LS20 grid puzzle solver ────────────────────────────────────────
 
 def strat_ls20_grid(env: Any, budget: int = 500000) -> tuple[int, str, int]:
-    """LS20: grid-based shape/color/rotation matching puzzle.
+    """Generic grid-puzzle BFS for A1-A4 movement games whose state is
+    fully captured by the rendered frame (modifier-tile maze pattern).
 
-    Player moves on a 5px grid (A1-A4). Must match shape+color+rotation to
-    goal by stepping on modifiers, then visit goal position.
-    L1 solved analytically: left3, up4-via-rotation, right3, up3 (13 moves).
-    L2+: frame-hash BFS with replay from level start.
+    Round 5 removed the L1 hardcoded path. Every level is now BFS'd
+    from scratch. Slower on the known game but works on any unseen
+    puzzle of the same shape.
     """
     from collections import deque as _deque
 
@@ -3863,28 +3838,6 @@ def strat_ls20_grid(env: Any, budget: int = 500000) -> tuple[int, str, int]:
     A1, A2, A3, A4 = 1, 2, 3, 4
     actions_list = [A1, A2, A3, A4]
 
-    # L1 hardcoded: left3, up4 (through rotation changer), right3, up3
-    # Path: (34,45) → L,L,L → (19,45) → U,U,U → (19,30)=rot_changer → U → (19,25)
-    #        → R,R,R → (34,25) → U,U,U → (34,10)=goal
-    hardcoded_l1 = [A3, A3, A3, A1, A1, A1, A1, A4, A4, A4, A1, A1, A1]
-
-    # Play L1
-    for a in hardcoded_l1:
-        if used >= budget:
-            break
-        obs = act(env, a)
-        used += 1
-        if obs.state.name == "GAME_OVER":
-            break
-
-    if obs.levels_completed >= 1:
-        best = obs.levels_completed
-        name = "ls20_grid"
-    else:
-        # Not LS20, bail out immediately
-        return best, name, used
-
-    # L2+: frame-hash BFS with replay from reset
     def _get_frame(o):
         import numpy as _np
         return _np.array(o.frame[0], dtype=_np.int32)
@@ -3892,7 +3845,11 @@ def strat_ls20_grid(env: Any, budget: int = 500000) -> tuple[int, str, int]:
     def _frame_hash(f):
         return hash(f.tobytes())
 
-    for level in range(2, 8):
+    # Replay any prior level-clears via reset before each level's BFS.
+    # The cumulative-prefix model is intentionally simpler than G4's
+    # because LS20-shape games have small state graphs that BFS solves
+    # quickly from a fresh reset.
+    for level in range(1, 8):
         if used >= budget or obs.state.name in ("WIN", "GAME_OVER"):
             break
 
@@ -8363,6 +8320,978 @@ def strat_click_select_then_move(env: Any, dir_actions: list[int], budget: int =
                     return best_levels, "click_sel_move", used
 
     return best_levels, "click_sel_move", used
+
+
+# ─── G3: Push-BFS on Inferred Grid ───────────────────────────────────
+#
+# Sokoban-style movement-and-push solver. Replaces the routing role
+# of ka59_sokoban and wa30_analytical by inferring the movement
+# step, blocked cells, and goal positions from frame observations
+# alone — no game.* attribute reads, no sprite tags, no hardcoded
+# level scripts.
+#
+#   1. Detect player color: press one direction, find the color
+#      whose centroid moved by > 0 pixels. STEP = pixel displacement.
+#   2. Build blocked set: every connected component that did NOT move
+#      across the probe is a candidate static obstacle.
+#   3. BFS over (player_grid_x, player_grid_y) with reset-replay.
+#   4. State key = (player_x, player_y, frame_hash_of_non_player_pixels).
+#      The non-player hash captures item/box positions so push
+#      semantics are implicitly encoded in BFS state expansion.
+#
+# G4 covers pure movement; G3 specializes in "movement plus the
+# rest of the board changes when you walk into things" (the push
+# signature).
+
+
+def _g3_detect_player(env: Any, dir_actions: list[int]) -> tuple[int | None, int, int]:
+    """Find player color and measured movement step.
+
+    Returns (color, step_pixels, used). color is None if no movement
+    detected. step_pixels is the per-key displacement magnitude
+    (defaults to 1 if not measurable).
+    """
+    used = 0
+    obs = reset(env)
+    used += 1
+    f0 = get_frame(obs)
+    clusters0 = _g2_flood_clusters(f0, min_size=3)
+    centroids0 = {(c["color"], c["cy"], c["cx"]): c for c in clusters0}
+
+    best_color = None
+    best_step = 0
+
+    for aid in dir_actions[:4]:
+        if used >= 50:
+            break
+        obs = reset(env)
+        used += 1
+        obs = act(env, aid)
+        used += 1
+        f1 = get_frame(obs)
+        clusters1 = _g2_flood_clusters(f1, min_size=3)
+        # For each color present in both, find max centroid shift
+        by_color1: dict[int, list[dict]] = {}
+        for c in clusters1:
+            by_color1.setdefault(c["color"], []).append(c)
+        by_color0: dict[int, list[dict]] = {}
+        for c in clusters0:
+            by_color0.setdefault(c["color"], []).append(c)
+        for color, lst1 in by_color1.items():
+            lst0 = by_color0.get(color, [])
+            if not lst0 or len(lst0) != len(lst1):
+                continue
+            # Match by nearest neighbor; record max displacement
+            for c1 in lst1:
+                best_d = float("inf")
+                for c0 in lst0:
+                    d = (c0["cx"] - c1["cx"]) ** 2 + (c0["cy"] - c1["cy"]) ** 2
+                    if d < best_d:
+                        best_d = d
+                if best_d > 0:
+                    step = int(best_d ** 0.5)
+                    if step > best_step:
+                        best_step = step
+                        best_color = color
+    return best_color, max(1, best_step), used
+
+
+def strat_push_bfs_grid(env: Any, budget: int = 500000) -> tuple[int, str, int]:
+    """Generic push-BFS solver for movement-and-collision games.
+
+    Works on sokoban-shape games where the player moves a step at a
+    time on a discrete grid and other on-grid sprites can be pushed,
+    blocked, or required to reach goal cells. Replaces the routing
+    role of ka59_sokoban and wa30_analytical.
+
+    Algorithm:
+      1. Detect the player color and pixel-step via one-shot probe.
+      2. BFS over (player_x, player_y) state space with reset-replay,
+         where the state hash also includes the frame-hash of
+         non-player pixels — this lets BFS distinguish board states
+         that differ only in pushed-item positions.
+      3. Stop on level-up; advance to next level via continued play.
+    """
+    obs = reset(env)
+    used = 1
+    best = obs.levels_completed
+    label = ""
+    avail = sorted(int(a) for a in obs.available_actions)
+    dir_actions = [a for a in (1, 2, 3, 4) if a in avail]
+    if len(dir_actions) < 2:
+        return best, label, used
+
+    player_color, step, p_used = _g3_detect_player(env, dir_actions)
+    used += p_used
+    if player_color is None or used >= budget:
+        return best, label, used
+
+    no_progress_streak = 0
+
+    for level in range(1, 12):
+        if used >= budget:
+            break
+
+        obs = reset(env)
+        used += 1
+        base_levels = obs.levels_completed
+        if base_levels > best:
+            # Probe-phase or earlier-level prefix replay already cleared
+            # past the previous best — claim the credit and advance.
+            best = base_levels
+            label = "push_bfs_grid"
+        if base_levels >= level:
+            continue
+        if obs.state.name == "WIN":
+            break
+
+        # State key: (player centroid, hash of non-player frame)
+        def _state_key(frame: np.ndarray) -> tuple:
+            mask = (frame != player_color)
+            non_player = (frame * mask).tobytes()
+            ys, xs = np.where(frame == player_color)
+            if len(ys) == 0:
+                return (-1, -1, hash(non_player))
+            return (int(np.mean(xs)), int(np.mean(ys)), hash(non_player))
+
+        f0 = get_frame(obs)
+        visited = {_state_key(f0)}
+        queue = deque([[]])
+        found = False
+        max_depth = 25
+        max_nodes = 4000
+        nodes = 0
+        level_start_used = used
+
+        while queue and not found and nodes < max_nodes and (used - level_start_used) < 50000:
+            if used >= budget:
+                break
+            seq = queue.popleft()
+            if len(seq) >= max_depth:
+                continue
+            nodes += 1
+
+            for aid in dir_actions:
+                if used >= budget:
+                    break
+                obs = reset(env)
+                used += 1
+                ok = True
+                for prev_aid in seq:
+                    if used >= budget:
+                        ok = False
+                        break
+                    obs = act(env, prev_aid)
+                    used += 1
+                    if obs.levels_completed > base_levels:
+                        best = obs.levels_completed
+                        label = "push_bfs_grid"
+                        found = True
+                        break
+                    if obs.state.name == "GAME_OVER":
+                        ok = False
+                        break
+                if found:
+                    break
+                if not ok:
+                    continue
+                obs = act(env, aid)
+                used += 1
+                if obs.levels_completed > base_levels:
+                    best = obs.levels_completed
+                    label = "push_bfs_grid"
+                    found = True
+                    break
+                if obs.state.name == "GAME_OVER":
+                    continue
+                f = get_frame(obs)
+                key = _state_key(f)
+                if key not in visited:
+                    visited.add(key)
+                    queue.append(seq + [aid])
+            if found or used >= budget:
+                break
+
+        if not found:
+            no_progress_streak += 1
+            if no_progress_streak >= 2:
+                break
+        else:
+            no_progress_streak = 0
+
+    return best, label, used
+
+
+# ─── G2: Sprite-Cluster-Interaction ──────────────────────────────────
+#
+# Click-induced merge / vacuum / deliver solver. Replaces the routing
+# role of su15_frame_only and su15_vacuum (and the launch phase of
+# paint_game) by sharing one cluster-probe-act pipeline:
+#
+#   1. Flood-fill non-background pixels into clusters keyed by color.
+#   2. Probe a single dir/click to classify clusters as static vs
+#      dynamic (position delta on the second frame).
+#   3. Greedy plan: for each pair of same-color clusters, click the
+#      midpoint. After each click, re-flood and check level progress.
+#   4. If stagnation: try clicking near the centroid of each cluster
+#      (calibrates the vacuum radius implicitly — works regardless of
+#      whether the game uses a Manhattan / Euclidean / radius-K kernel).
+#
+# All thresholds are observable (number of clusters, color counts,
+# centroids). No sprite-tag reads, no game.* attribute reads.
+
+
+def _g2_flood_clusters(frame: np.ndarray, min_size: int = 4) -> list[dict]:
+    """Connected-component flood-fill on the frame. Returns a list of
+    {color, size, cx, cy, ymin, ymax, xmin, xmax} dicts, one per
+    cluster, omitting the background (color of frame[0,0]) and any
+    cluster smaller than `min_size` pixels.
+    """
+    h, w = frame.shape
+    bg = int(frame[0, 0])
+    visited = np.zeros((h, w), dtype=bool)
+    clusters: list[dict] = []
+    for y in range(h):
+        for x in range(w):
+            if visited[y, x]:
+                continue
+            c = int(frame[y, x])
+            if c == bg or c == 0:
+                visited[y, x] = True
+                continue
+            # BFS flood-fill
+            stack = [(y, x)]
+            ys: list[int] = []
+            xs: list[int] = []
+            while stack:
+                yy, xx = stack.pop()
+                if yy < 0 or yy >= h or xx < 0 or xx >= w or visited[yy, xx]:
+                    continue
+                if int(frame[yy, xx]) != c:
+                    continue
+                visited[yy, xx] = True
+                ys.append(yy)
+                xs.append(xx)
+                stack.append((yy + 1, xx))
+                stack.append((yy - 1, xx))
+                stack.append((yy, xx + 1))
+                stack.append((yy, xx - 1))
+            if len(ys) < min_size:
+                continue
+            clusters.append({
+                "color": c,
+                "size": len(ys),
+                "cx": int(sum(xs) / len(xs)),
+                "cy": int(sum(ys) / len(ys)),
+                "ymin": min(ys),
+                "ymax": max(ys),
+                "xmin": min(xs),
+                "xmax": max(xs),
+            })
+    return clusters
+
+
+def _g2_pair_centroid(a: dict, b: dict) -> tuple[int, int]:
+    return ((a["cx"] + b["cx"]) // 2, (a["cy"] + b["cy"]) // 2)
+
+
+def _g2_distance(a: dict, b: dict) -> float:
+    dx = a["cx"] - b["cx"]
+    dy = a["cy"] - b["cy"]
+    return float((dx * dx + dy * dy) ** 0.5)
+
+
+def strat_sprite_cluster_interaction(env: Any, budget: int = 500000) -> tuple[int, str, int]:
+    """Generic sprite-cluster-interaction solver.
+
+    Works on click-driven games where the playfield contains colored
+    blobs (player, enemies, fruits, target zones) and progress comes
+    from manipulating those clusters via click. Subsumes the routing
+    role of su15_frame_only and su15_vacuum without reading any
+    internal sprite-tag or attribute.
+
+    Algorithm:
+      Per level —
+        1. Flood-fill clusters from the current frame.
+        2. Find pairs of same-color clusters; sort by ascending
+           inter-pair distance.
+        3. Click each pair's midpoint (closest pair first). After each
+           click, re-flood and check `levels_completed`.
+        4. If no progress, fall back to clicking each cluster centroid
+           directly (covers vacuum-style attractors and select-then-
+           act games where one click toggles selection).
+        5. Bail when budget runs out or 3 consecutive levels stall.
+    """
+    obs = reset(env)
+    used = 1
+    best = obs.levels_completed
+    label = ""
+    if 6 not in obs.available_actions:
+        return best, label, used
+
+    no_progress_streak = 0
+
+    for level in range(1, 12):
+        if used >= budget:
+            break
+
+        obs = reset(env)
+        used += 1
+        # Replay any prior progress is implicit (env state persists
+        # across levels in the SDK; reset returns to the level start
+        # of the *current* level for SU15-shape games).
+        base_levels = obs.levels_completed
+        if base_levels >= level:
+            continue
+        if obs.state.name == "WIN":
+            break
+
+        f0 = get_frame(obs)
+        cleared = False
+
+        for attempt in range(40):  # bounded outer loop per level
+            if used >= budget or cleared:
+                break
+
+            f_now = get_frame(obs)
+            clusters = _g2_flood_clusters(f_now, min_size=4)
+            if not clusters:
+                break
+
+            # 3a) Same-color pairs, closest first
+            pairs: list[tuple[float, dict, dict]] = []
+            by_color: dict[int, list[dict]] = {}
+            for c in clusters:
+                by_color.setdefault(c["color"], []).append(c)
+            for color, lst in by_color.items():
+                if len(lst) < 2:
+                    continue
+                for i in range(len(lst)):
+                    for j in range(i + 1, len(lst)):
+                        pairs.append((_g2_distance(lst[i], lst[j]), lst[i], lst[j]))
+            pairs.sort(key=lambda t: t[0])
+
+            tried_any = False
+            for dist, a, b in pairs[:8]:
+                if used >= budget:
+                    break
+                tried_any = True
+                cx, cy = _g2_pair_centroid(a, b)
+                obs = click(env, cx, cy)
+                used += 1
+                if obs.levels_completed > base_levels:
+                    best = obs.levels_completed
+                    label = "sprite_cluster_interaction"
+                    cleared = True
+                    no_progress_streak = 0
+                    break
+                if obs.state.name == "GAME_OVER":
+                    break
+            if cleared or used >= budget:
+                break
+
+            # 3b) Cluster-centroid clicks (covers select-and-act)
+            if not tried_any:
+                for c in clusters[:8]:
+                    if used >= budget:
+                        break
+                    obs = click(env, c["cx"], c["cy"])
+                    used += 1
+                    if obs.levels_completed > base_levels:
+                        best = obs.levels_completed
+                        label = "sprite_cluster_interaction"
+                        cleared = True
+                        no_progress_streak = 0
+                        break
+                    if obs.state.name == "GAME_OVER":
+                        break
+            if cleared or used >= budget:
+                break
+
+            # If after one full pass over clusters no level-up, stop
+            # this level's inner loop — clusters didn't visibly change
+            # in a way that would let further attempts converge.
+            f_after = get_frame(obs)
+            if int(np.count_nonzero(f_now - f_after)) == 0:
+                break
+
+        if not cleared:
+            no_progress_streak += 1
+            if no_progress_streak >= 3:
+                break
+
+    return best, label, used
+
+
+# ─── G1: Interactive-Grid-Toggle ─────────────────────────────────────
+#
+# Click-driven puzzle solver. Replaces the routing role of paint_game,
+# lights_out, and tn36_frame_only by sharing one inference pipeline:
+#
+#   1. Detect grid stride K (default 6).
+#   2. Probe-click every (x,y) on the stride-K grid; record the
+#      post-click frame and per-cell diff magnitude.
+#   3. Classify each cell by its effect:
+#        - executor:   diff > 30% of frame  (a "play"/"submit" button)
+#        - palette:    diff < 10 pixels but recolors a persistent cursor
+#        - cross-toggle: diff in [10..200] AND multiple cells changed
+#        - self-toggle: diff in [10..50] AND only the clicked cell changed
+#        - inert:      diff == 0 (skip)
+#   4. Search over click sequences of non-palette/non-executor cells:
+#        - Try each single cell.
+#        - If no progress, try all unordered pairs.
+#        - If no progress, try unordered triples up to a budget cap.
+#        Each candidate sequence is replayed from reset; if an executor
+#        cell exists, click it last.
+#   5. On level-up, advance to the next level (state persists).
+#
+# Intentionally a brute-force search rather than a GF(p) solver — at
+# 8B-LLM-routing scale, simplicity > optimality, and the replay-from-
+# reset cost is what bounds runtime, not the search complexity.
+
+
+def _g1_detect_grid_stride(frame: np.ndarray) -> int:
+    """Return the most likely cell pitch on the rendered grid.
+
+    Heuristic: scan column-color sequences and find the most common
+    spacing between color transitions. Falls back to 6 (the value the
+    pre-round-5 hardcoded solvers used) if the heuristic produces no
+    confident peak.
+    """
+    h, w = frame.shape
+    diffs = []
+    for y in (16, 32, 48):
+        prev = -1
+        gaps: list[int] = []
+        last_change = 0
+        for x in range(0, w):
+            c = int(frame[y, x])
+            if prev >= 0 and c != prev and c != 0:
+                gaps.append(x - last_change)
+                last_change = x
+            prev = c
+        diffs.extend(gaps)
+    if not diffs:
+        return 6
+    # Pick the most common small gap (3..16), default 6.
+    from collections import Counter as _C
+    c = _C(g for g in diffs if 3 <= g <= 16)
+    if not c:
+        return 6
+    return c.most_common(1)[0][0]
+
+
+def _g1_classify_cells(
+    env: Any,
+    base_frame: np.ndarray,
+    cells: list[tuple[int, int]],
+    budget_left: int,
+) -> tuple[dict[tuple[int, int], str], int]:
+    """Probe-click each candidate cell and label it by effect class.
+
+    Returns ({(x,y): label}, used) where label is one of:
+      'executor', 'cross_toggle', 'self_toggle', 'palette', 'inert'.
+    """
+    used = 0
+    classes: dict[tuple[int, int], str] = {}
+    total_pixels = base_frame.size
+    for cx, cy in cells:
+        if used >= budget_left:
+            break
+        obs = reset(env)
+        used += 1
+        f_before = get_frame(obs)
+        obs = click(env, cx, cy)
+        used += 1
+        f_after = get_frame(obs)
+        diff_mask = (f_before != f_after)
+        diff = int(diff_mask.sum())
+        if diff == 0:
+            classes[(cx, cy)] = "inert"
+            continue
+        ratio = diff / total_pixels
+        if ratio > 0.30:
+            classes[(cx, cy)] = "executor"
+        elif diff <= 10:
+            classes[(cx, cy)] = "palette"
+        elif diff_mask[max(0, cy - 2):min(64, cy + 3), max(0, cx - 2):min(64, cx + 3)].sum() == diff:
+            # All change confined to a 5x5 around the click.
+            classes[(cx, cy)] = "self_toggle"
+        else:
+            classes[(cx, cy)] = "cross_toggle"
+    return classes, used
+
+
+def _g1_try_sequence(
+    env: Any,
+    sequence: list[tuple[int, int]],
+    executor: tuple[int, int] | None,
+    base_levels: int,
+    budget_left: int,
+) -> tuple[bool, int, int]:
+    """Reset, click each (cx, cy) in `sequence`, then the executor (if
+    any). Return (cleared_one_level, new_levels_completed, used).
+    """
+    used = 0
+    obs = reset(env)
+    used += 1
+    for cx, cy in sequence:
+        if used >= budget_left:
+            return False, base_levels, used
+        obs = click(env, cx, cy)
+        used += 1
+        if obs.levels_completed > base_levels:
+            return True, obs.levels_completed, used
+        if obs.state.name == "GAME_OVER":
+            return False, obs.levels_completed, used
+    if executor is not None and used < budget_left:
+        obs = click(env, executor[0], executor[1])
+        used += 1
+        if obs.levels_completed > base_levels:
+            return True, obs.levels_completed, used
+    return False, obs.levels_completed, used
+
+
+def strat_interactive_grid_toggle(env: Any, budget: int = 500000) -> tuple[int, str, int]:
+    """Generic interactive-grid-toggle solver.
+
+    Works on any click-driven puzzle where:
+      - the playfield is a discrete grid of clickable cells
+      - each click changes a small subset of the grid (toggle, paint,
+        bit-set) or fires a global action (execute / submit)
+      - reset returns to a fixed initial state per level
+
+    Subsumes the routing role of paint_game / lights_out /
+    tn36_frame_only. Replaces sprite-tag reads with probe-classify.
+    """
+    obs = reset(env)
+    used = 1
+    best = obs.levels_completed
+    label = ""
+    if 6 not in obs.available_actions:
+        return best, label, used
+
+    for level in range(1, 12):
+        if used >= budget:
+            break
+        obs = reset(env)
+        used += 1
+        if obs.state.name == "WIN":
+            break
+        base_levels = obs.levels_completed
+        if base_levels >= level:
+            continue  # already on a higher level (chained progress)
+        f0 = get_frame(obs)
+
+        # Phase 1: discover the grid stride and candidate cells.
+        K = _g1_detect_grid_stride(f0)
+        K = max(3, min(K, 12))
+        cells: list[tuple[int, int]] = []
+        bg = int(f0[0, 0])
+        for y in range(K // 2, 64, K):
+            for x in range(K // 2, 64, K):
+                if int(f0[y, x]) != bg:
+                    cells.append((x, y))
+        if not cells:
+            # Nothing colored on the grid — fall through.
+            break
+
+        # Phase 2: classify by effect.
+        classify_budget = min(2000, budget - used)
+        classes, used_c = _g1_classify_cells(env, f0, cells[:48], classify_budget)
+        used += used_c
+        if used >= budget:
+            break
+
+        executors = [c for c, k in classes.items() if k == "executor"]
+        toggles = [c for c, k in classes.items() if k in ("cross_toggle", "self_toggle")]
+        palettes = [c for c, k in classes.items() if k == "palette"]
+        executor = executors[0] if executors else None
+
+        if not toggles and not palettes:
+            break  # nothing to interact with
+
+        # Phase 3: search over click combinations.
+        # 3a) singletons of each toggle cell.
+        cleared = False
+        for c in toggles:
+            if used >= budget:
+                break
+            ok, lvl, u = _g1_try_sequence(env, [c], executor, base_levels, budget - used)
+            used += u
+            if ok:
+                best = max(best, lvl)
+                label = "interactive_grid_toggle"
+                cleared = True
+                break
+        if cleared:
+            continue
+        if used >= budget:
+            break
+
+        # 3b) palette + each non-palette cell (covers paint-game shape).
+        for p in palettes[:6]:
+            if cleared or used >= budget:
+                break
+            for c in toggles[:12]:
+                if used >= budget:
+                    break
+                ok, lvl, u = _g1_try_sequence(env, [p, c], executor, base_levels, budget - used)
+                used += u
+                if ok:
+                    best = max(best, lvl)
+                    label = "interactive_grid_toggle"
+                    cleared = True
+                    break
+        if cleared:
+            continue
+        if used >= budget:
+            break
+
+        # 3c) unordered toggle pairs.
+        for i in range(min(len(toggles), 8)):
+            if cleared or used >= budget:
+                break
+            for j in range(i + 1, min(len(toggles), 12)):
+                if used >= budget:
+                    break
+                ok, lvl, u = _g1_try_sequence(env, [toggles[i], toggles[j]], executor, base_levels, budget - used)
+                used += u
+                if ok:
+                    best = max(best, lvl)
+                    label = "interactive_grid_toggle"
+                    cleared = True
+                    break
+        if cleared:
+            continue
+        if used >= budget:
+            break
+
+        # 3d) unordered toggle triples (small budget cap to avoid blow-up).
+        for i in range(min(len(toggles), 5)):
+            if cleared or used >= budget:
+                break
+            for j in range(i + 1, min(len(toggles), 6)):
+                if cleared or used >= budget:
+                    break
+                for k in range(j + 1, min(len(toggles), 7)):
+                    if used >= budget:
+                        break
+                    ok, lvl, u = _g1_try_sequence(env, [toggles[i], toggles[j], toggles[k]], executor, base_levels, budget - used)
+                    used += u
+                    if ok:
+                        best = max(best, lvl)
+                        label = "interactive_grid_toggle"
+                        cleared = True
+                        break
+        if not cleared:
+            break  # unable to clear this level — bail
+
+    return best, label, used
+
+
+# ─── G4: Generic BFS-FrameHash with Prefix-Chain ────────────────────
+#
+# Universal fallback solver. Replaces the bail-out role of
+# strat_tu93_maze / strat_tr87_rotation / strat_ls20_grid (whose
+# hardcoded L1 sequences are removed in this round) and absorbs the
+# prefix-chain pattern from strat_sk48_snake. Designed to work on any
+# game whose state transitions are deterministic and whose levels can
+# be reached by a sequence of available actions ± click points
+# discovered by stride-K probing.
+#
+# Combines: action-set discovery + HUD auto-masking + frame-hash BFS +
+# reset-replay + cumulative prefix on level-up + adaptive depth.
+# No game name, no sprite tag, no internal attribute access.
+
+
+def _g4_detect_hud_mask(env: Any, obs: Any, dir_actions: list[int]) -> tuple[np.ndarray, int]:
+    """Probe a few harmless actions and find pixel positions whose value
+    is unstable across them (timer, step counter, animated HUD).
+
+    Returns (mask, used) where mask is a (H, W) bool array — True means
+    "stable, use for hashing". `used` is the number of env steps consumed.
+    """
+    used = 0
+    base = get_frame(obs)
+    seen_values = [base.copy()]
+    # Sample up to 4 cheap probes from movement actions; falls back to
+    # ACTION6 corners if no movement is available.
+    probe_actions: list[Any] = []
+    for aid in dir_actions[:2]:
+        probe_actions.append(("act", aid))
+    if 6 in obs.available_actions:
+        probe_actions.append(("click", 1, 1))
+        probe_actions.append(("click", 62, 62))
+    for kind, *args in probe_actions[:4]:
+        obs2 = reset(env)
+        used += 1
+        if kind == "act":
+            obs2 = act(env, args[0])
+        else:
+            obs2 = click(env, args[0], args[1])
+        used += 1
+        seen_values.append(get_frame(obs2))
+    if len(seen_values) < 2:
+        # Nothing to compare against — assume the standard-issue HUD rows
+        mask = np.ones_like(base, dtype=bool)
+        mask[53:, :] = False
+        return mask, used
+    stack = np.stack(seen_values, axis=0)
+    # A pixel is "HUD-like" if it changes across probes that should not
+    # have touched the gameplay area. We mark those False (excluded from hash).
+    var_mask = (stack.max(axis=0) != stack.min(axis=0))
+    mask = ~var_mask
+    return mask, used
+
+
+def _g4_discover_click_targets(
+    env: Any,
+    base_frame: np.ndarray,
+    prefix: list[tuple],
+    budget_left: int,
+) -> tuple[list[tuple[int, int]], int]:
+    """Probe a stride-6 grid of ACTION6 cells, keep coords whose click
+    causes a non-zero frame diff. De-dup by post-click frame hash so we
+    don't bloat the BFS action set with cells that have identical effect.
+
+    Returns (click_targets, used).
+    """
+    used = 0
+    targets: list[tuple[int, int]] = []
+    seen_effects: set = set()
+    bg = int(base_frame[0, 0])
+    candidates: list[tuple[int, int]] = []
+    for y in range(3, 62, 6):
+        for x in range(3, 62, 6):
+            c = int(base_frame[y, x])
+            if c not in (0, bg):
+                candidates.append((x, y))
+    # Probe up to 24 candidates; the rest would saturate the action set.
+    for cx, cy in candidates[:24]:
+        if used >= budget_left:
+            break
+        obs = reset(env)
+        used += 1
+        ok = True
+        for at in prefix:
+            if used >= budget_left:
+                ok = False
+                break
+            obs = _g4_do(env, at)
+            used += 1
+        if not ok:
+            break
+        f_before = get_frame(obs)
+        obs = click(env, cx, cy)
+        used += 1
+        f_after = get_frame(obs)
+        if int(np.count_nonzero(f_before - f_after)) == 0:
+            continue
+        h = hash(f_after.tobytes())
+        if h in seen_effects:
+            continue
+        seen_effects.add(h)
+        targets.append((cx, cy))
+    return targets, used
+
+
+def _g4_do(env: Any, action_tuple: tuple) -> Any:
+    """Execute one action tuple. Tuple shape:
+      ("act", aid)        — A1..A5, A7
+      ("click", x, y)     — A6 with coordinates
+    """
+    if action_tuple[0] == "click":
+        return click(env, action_tuple[1], action_tuple[2])
+    return act(env, action_tuple[1])
+
+
+def strat_bfs_framehash(env: Any, budget: int = 500000) -> tuple[int, str, int]:
+    """Generic frame-hash BFS with cumulative prefix and adaptive depth.
+
+    Designed as the universal fallback when no specialized strategy
+    fits. Works on any deterministic puzzle where:
+      - the state is recoverable from the rendered frame
+      - reset returns to a fixed initial state
+      - some sequence of available actions advances `levels_completed`
+
+    Algorithm (per level):
+      1. Replay the cumulative prefix from reset.
+      2. Auto-detect HUD pixels (timer / counter / animated overlays)
+         and exclude them from frame hashing so equivalent-game-states
+         hash equal.
+      3. Discover the action vocabulary:
+           - all dir actions present in `available_actions`
+           - if A6 in avail: probe a stride-6 grid, keep coords whose
+             click causes a unique frame change
+           - A5 if present (often "fire/cycle/scan")
+           - A7 if present (undo) — added only when a click was added,
+             since an undo with no preceding non-movement is wasted.
+      4. BFS with replay-from-prefix per node. Visited set is the
+         masked frame hash. Adaptive depth: start at 15, grow to 30 if
+         no level-up after exploring 5000 nodes.
+      5. On level-up: append the winning action sequence to the
+         cumulative prefix and continue to the next level.
+      6. Bail early if 3 consecutive levels reach max-depth without a
+         solution (signals the game is not solvable by this class).
+
+    Returns (best_levels, label, used). The label is "bfs_framehash"
+    on success, "" on no progress.
+    """
+    obs = reset(env)
+    used = 1
+    best = obs.levels_completed
+    label = ""
+
+    avail = sorted(int(a) for a in obs.available_actions)
+    dir_actions = [a for a in (1, 2, 3, 4) if a in avail]
+    if not dir_actions and 6 not in avail:
+        return best, label, used  # Nothing to try.
+
+    # Phase 0 — HUD detection (one-shot at start; the mask is reused
+    # across levels because HUD position is typically game-wide).
+    hud_mask, hud_used = _g4_detect_hud_mask(env, obs, dir_actions)
+    used += hud_used
+
+    def _hash(f: np.ndarray) -> int:
+        return hash((f * hud_mask).tobytes())
+
+    cumulative_prefix: list[tuple] = []
+    no_progress_streak = 0
+
+    for level_idx in range(1, 16):
+        if used >= budget:
+            break
+
+        # Replay prefix to current level start.
+        obs = reset(env)
+        used += 1
+        for at in cumulative_prefix:
+            if used >= budget:
+                break
+            obs = _g4_do(env, at)
+            used += 1
+        if used >= budget:
+            break
+        if obs.state.name == "WIN":
+            best = max(best, obs.levels_completed)
+            label = "bfs_framehash"
+            break
+        base_levels = obs.levels_completed
+        f0 = get_frame(obs)
+
+        # Phase 1 — discover click targets for this level (frame may
+        # have changed across levels; rediscover each time).
+        click_targets: list[tuple[int, int]] = []
+        if 6 in avail and (budget - used) > 200:
+            click_targets, ct_used = _g4_discover_click_targets(
+                env, f0, cumulative_prefix, budget_left=min(2000, budget - used)
+            )
+            used += ct_used
+        if used >= budget:
+            break
+
+        # Build action vocabulary for this level. Order matters — BFS
+        # expands in this order, so put cheap movement first and
+        # rare/expensive actions later.
+        actions_list: list[tuple] = [("act", a) for a in dir_actions]
+        for cx, cy in click_targets:
+            actions_list.append(("click", cx, cy))
+        if 5 in avail:
+            actions_list.append(("act", 5))
+        if 7 in avail and click_targets:
+            actions_list.append(("act", 7))
+        n_actions = len(actions_list)
+
+        # Adaptive BFS depth.
+        max_depth = 15
+        max_nodes_per_depth = 5000
+        level_used_start = used
+
+        # We may grow max_depth up to 30 if 15 isn't enough.
+        for depth_attempt in range(2):  # two attempts: 15 then 30
+            visited = {_hash(f0)}
+            queue: deque = deque([[]])
+            found = False
+            found_seq: list[int] = []
+            nodes = 0
+
+            while queue and not found and nodes < max_nodes_per_depth:
+                if used >= budget or (used - level_used_start) >= 100000:
+                    break
+                seq = queue.popleft()
+                if len(seq) >= max_depth:
+                    continue
+                nodes += 1
+
+                for ai in range(n_actions):
+                    if used >= budget:
+                        break
+                    obs = reset(env)
+                    used += 1
+                    ok = True
+                    for at in cumulative_prefix:
+                        if used >= budget:
+                            ok = False
+                            break
+                        obs = _g4_do(env, at)
+                        used += 1
+                    if not ok:
+                        break
+                    for si in seq:
+                        if used >= budget:
+                            ok = False
+                            break
+                        obs = _g4_do(env, actions_list[si])
+                        used += 1
+                        if obs.levels_completed > base_levels:
+                            best = obs.levels_completed
+                            label = "bfs_framehash"
+                            found = True
+                            found_seq = list(seq)
+                            break
+                        if obs.state.name == "GAME_OVER":
+                            ok = False
+                            break
+                    if found or not ok:
+                        if found:
+                            break
+                        continue
+
+                    obs = _g4_do(env, actions_list[ai])
+                    used += 1
+                    if obs.levels_completed > base_levels:
+                        best = obs.levels_completed
+                        label = "bfs_framehash"
+                        found = True
+                        found_seq = seq + [ai]
+                        break
+                    if obs.state.name == "GAME_OVER":
+                        continue
+                    f = get_frame(obs)
+                    h = _hash(f)
+                    if h not in visited:
+                        visited.add(h)
+                        queue.append(seq + [ai])
+                if found or used >= budget:
+                    break
+
+            if found:
+                cumulative_prefix.extend(actions_list[si] for si in found_seq)
+                no_progress_streak = 0
+                break  # advance to next level
+            # Grow depth and retry the same level.
+            max_depth = 30
+            max_nodes_per_depth = 8000
+
+        if used >= budget:
+            break
+        if not found:
+            no_progress_streak += 1
+            if no_progress_streak >= 3:
+                break
+
+    return best, label, used
 
 
 # ─── Ensemble solver ────────────────────────────────────────────────
