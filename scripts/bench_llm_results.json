@@ -1,7 +1,7 @@
 {
-  "timestamp": "2026-04-21T01:47:18",
+  "timestamp": "2026-04-21T12:56:51",
   "primary_pick": "qwen_3_8b_q4",
-  "fallback_pick": null,
+  "fallback_pick": "qwen_3_14b_q4",
   "results": [
     {
       "candidate_id": "qwen_3_8b_q4",
@@ -14,7 +14,7 @@
       "total_games": 25,
       "classification_accuracy": 0.32,
       "strategy_hit_rate": 0.4,
-      "mean_latency_ms": 1748.2915782928467,
+      "mean_latency_ms": 2137.179470062256,
       "per_game": [
         {
           "game": "AR25",
@@ -24,7 +24,7 @@
           "predicted_primary": "bfs_state_space",
           "classification_ok": true,
           "strategy_ok": true,
-          "latency_ms": 1973.72
+          "latency_ms": 11313.01
         },
         {
           "game": "BP35",
@@ -34,7 +34,7 @@
           "predicted_primary": "bp35_platformer",
           "classification_ok": true,
           "strategy_ok": true,
-          "latency_ms": 2019.57
+          "latency_ms": 2067.14
         },
         {
           "game": "CD82",
@@ -44,7 +44,7 @@
           "predicted_primary": "bfs_state_space",
           "classification_ok": false,
           "strategy_ok": false,
-          "latency_ms": 1721.73
+          "latency_ms": 1741.16
         },
         {
           "game": "CN04",
@@ -54,7 +54,7 @@
           "predicted_primary": "bfs_state_space",
           "classification_ok": false,
           "strategy_ok": false,
-          "latency_ms": 1716.77
+          "latency_ms": 1753.66
         },
         {
           "game": "DC22",
@@ -64,7 +64,7 @@
           "predicted_primary": "bfs_state_space",
           "classification_ok": true,
           "strategy_ok": true,
-          "latency_ms": 1724.42
+          "latency_ms": 1765.99
         },
         {
           "game": "FT09",
@@ -74,7 +74,7 @@
           "predicted_primary": "bfs_state_space",
           "classification_ok": false,
           "strategy_ok": false,
-          "latency_ms": 1759.21
+          "latency_ms": 1749.65
         },
         {
           "game": "G50T",
@@ -84,7 +84,7 @@
           "predicted_primary": "bfs_state_space",
           "classification_ok": false,
           "strategy_ok": false,
-          "latency_ms": 1708.47
+          "latency_ms": 1762.19
         },
         {
           "game": "KA59",
@@ -94,7 +94,7 @@
           "predicted_primary": "bfs_state_space",
           "classification_ok": false,
           "strategy_ok": true,
-          "latency_ms": 1708.37
+          "latency_ms": 1746.93
         },
         {
           "game": "LF52",
@@ -104,7 +104,7 @@
           "predicted_primary": "bfs_state_space",
           "classification_ok": false,
           "strategy_ok": true,
-          "latency_ms": 1781.24
+          "latency_ms": 1737.45
         },
         {
           "game": "LP85",
@@ -114,7 +114,7 @@
           "predicted_primary": "bfs_state_space",
           "classification_ok": false,
           "strategy_ok": false,
-          "latency_ms": 1706.98
+          "latency_ms": 1746.31
         },
         {
           "game": "LS20",
@@ -124,7 +124,7 @@
           "predicted_primary": "bfs_state_space",
           "classification_ok": true,
           "strategy_ok": true,
-          "latency_ms": 1706.25
+          "latency_ms": 1739.99
         },
         {
           "game": "M0R0",
@@ -134,7 +134,7 @@
           "predicted_primary": "bfs_state_space",
           "classification_ok": true,
           "strategy_ok": true,
-          "latency_ms": 1729.47
+          "latency_ms": 1733.78
         },
         {
           "game": "R11L",
@@ -144,7 +144,7 @@
           "predicted_primary": "bfs_state_space",
           "classification_ok": false,
           "strategy_ok": false,
-          "latency_ms": 1705.7
+          "latency_ms": 1743.35
         },
         {
           "game": "RE86",
@@ -154,7 +154,7 @@
           "predicted_primary": "bfs_state_space",
           "classification_ok": false,
           "strategy_ok": true,
-          "latency_ms": 1764.16
+          "latency_ms": 1737.98
         },
         {
           "game": "S5I5",
@@ -164,7 +164,7 @@
           "predicted_primary": "frame-only vacuum planner",
           "classification_ok": false,
           "strategy_ok": false,
-          "latency_ms": 1768.04
+          "latency_ms": 1733.92
         },
         {
           "game": "SB26",
@@ -174,7 +174,7 @@
           "predicted_primary": "bfs_state_space",
           "classification_ok": false,
           "strategy_ok": false,
-          "latency_ms": 1699.17
+          "latency_ms": 1734.65
         },
         {
           "game": "SC25",
@@ -184,7 +184,7 @@
           "predicted_primary": "frame-only vacuum planner",
           "classification_ok": false,
           "strategy_ok": false,
-          "latency_ms": 1715.84
+          "latency_ms": 1737.07
         },
         {
           "game": "SK48",
@@ -194,7 +194,7 @@
           "predicted_primary": "bfs_state_space",
           "classification_ok": true,
           "strategy_ok": false,
-          "latency_ms": 1707.26
+          "latency_ms": 1738.78
         },
         {
           "game": "SP80",
@@ -204,7 +204,7 @@
           "predicted_primary": "frame-only vacuum planner",
           "classification_ok": false,
           "strategy_ok": false,
-          "latency_ms": 1720.69
+          "latency_ms": 1754.03
         },
         {
           "game": "SU15",
@@ -214,7 +214,7 @@
           "predicted_primary": "frame-only vacuum planner",
           "classification_ok": true,
           "strategy_ok": false,
-          "latency_ms": 1673.21
+          "latency_ms": 1711.91
         },
         {
           "game": "TN36",
@@ -224,7 +224,7 @@
           "predicted_primary": "bfs_state_space",
           "classification_ok": false,
           "strategy_ok": false,
-          "latency_ms": 1711.0
+          "latency_ms": 1734.46
         },
         {
           "game": "TR87",
@@ -234,7 +234,7 @@
           "predicted_primary": "bfs_state_space",
           "classification_ok": false,
           "strategy_ok": true,
-          "latency_ms": 1728.89
+          "latency_ms": 1733.66
         },
         {
           "game": "TU93",
@@ -244,7 +244,7 @@
           "predicted_primary": "bfs_state_space",
           "classification_ok": true,
           "strategy_ok": true,
-          "latency_ms": 1706.01
+          "latency_ms": 1736.76
         },
         {
           "game": "VC33",
@@ -254,7 +254,7 @@
           "predicted_primary": "bfs_state_space",
           "classification_ok": false,
           "strategy_ok": false,
-          "latency_ms": 1793.88
+          "latency_ms": 1722.4
         },
         {
           "game": "WA30",
@@ -264,11 +264,278 @@
           "predicted_primary": "bfs_state_space",
           "classification_ok": false,
           "strategy_ok": false,
-          "latency_ms": 1757.23
+          "latency_ms": 1753.25
         }
       ],
       "status": "ok",
-      "total_runtime_sec": 43.7
+      "total_runtime_sec": 53.5
+    },
+    {
+      "candidate_id": "qwen_3_14b_q4",
+      "meta": {
+        "display_name": "Qwen 3 14B (Q4_K_M, reserve)",
+        "family": "qwen3",
+        "expected_vram_gb": 8.0,
+        "context_tokens": 131072
+      },
+      "total_games": 25,
+      "classification_accuracy": 0.16,
+      "strategy_hit_rate": 0.4,
+      "mean_latency_ms": 3922.4877738952637,
+      "per_game": [
+        {
+          "game": "AR25",
+          "expected_game_type": "movement",
+          "predicted_game_type": "movement",
+          "expected_primary": "bfs_state_space",
+          "predicted_primary": "bfs_state_space",
+          "classification_ok": true,
+          "strategy_ok": true,
+          "latency_ms": 21007.01
+        },
+        {
+          "game": "BP35",
+          "expected_game_type": "platformer",
+          "predicted_game_type": "platformer",
+          "expected_primary": "bp35_platformer",
+          "predicted_primary": "bp35_platformer-style gravity BFS",
+          "classification_ok": true,
+          "strategy_ok": false,
+          "latency_ms": 3980.76
+        },
+        {
+          "game": "CD82",
+          "expected_game_type": "click",
+          "predicted_game_type": "unknown",
+          "expected_primary": "click_rare",
+          "predicted_primary": "bfs_state_space",
+          "classification_ok": false,
+          "strategy_ok": false,
+          "latency_ms": 3079.5
+        },
+        {
+          "game": "CN04",
+          "expected_game_type": "click",
+          "predicted_game_type": "unknown",
+          "expected_primary": "click_rare",
+          "predicted_primary": "bfs_state_space",
+          "classification_ok": false,
+          "strategy_ok": false,
+          "latency_ms": 3133.76
+        },
+        {
+          "game": "DC22",
+          "expected_game_type": "movement",
+          "predicted_game_type": "unknown",
+          "expected_primary": "bfs_state_space",
+          "predicted_primary": "bfs_state_space",
+          "classification_ok": false,
+          "strategy_ok": true,
+          "latency_ms": 3088.15
+        },
+        {
+          "game": "FT09",
+          "expected_game_type": "click",
+          "predicted_game_type": "unknown",
+          "expected_primary": "click_rare",
+          "predicted_primary": "bfs_state_space",
+          "classification_ok": false,
+          "strategy_ok": false,
+          "latency_ms": 3123.5
+        },
+        {
+          "game": "G50T",
+          "expected_game_type": "hybrid",
+          "predicted_game_type": "unknown",
+          "expected_primary": "explore_interact",
+          "predicted_primary": "bfs_state_space",
+          "classification_ok": false,
+          "strategy_ok": false,
+          "latency_ms": 3074.49
+        },
+        {
+          "game": "KA59",
+          "expected_game_type": "sokoban",
+          "predicted_game_type": "unknown",
+          "expected_primary": "bfs_state_space",
+          "predicted_primary": "bfs_state_space",
+          "classification_ok": false,
+          "strategy_ok": true,
+          "latency_ms": 3102.92
+        },
+        {
+          "game": "LF52",
+          "expected_game_type": "unknown",
+          "predicted_game_type": "unknown",
+          "expected_primary": "bfs_state_space",
+          "predicted_primary": "bfs_state_space",
+          "classification_ok": true,
+          "strategy_ok": true,
+          "latency_ms": 3392.44
+        },
+        {
+          "game": "LP85",
+          "expected_game_type": "click",
+          "predicted_game_type": "unknown",
+          "expected_primary": "click_rare",
+          "predicted_primary": "bfs_state_space",
+          "classification_ok": false,
+          "strategy_ok": false,
+          "latency_ms": 3237.96
+        },
+        {
+          "game": "LS20",
+          "expected_game_type": "movement",
+          "predicted_game_type": "unknown",
+          "expected_primary": "bfs_state_space",
+          "predicted_primary": "bfs_state_space",
+          "classification_ok": false,
+          "strategy_ok": true,
+          "latency_ms": 3086.54
+        },
+        {
+          "game": "M0R0",
+          "expected_game_type": "movement",
+          "predicted_game_type": "unknown",
+          "expected_primary": "bfs_state_space",
+          "predicted_primary": "bfs_state_space",
+          "classification_ok": false,
+          "strategy_ok": true,
+          "latency_ms": 3063.18
+        },
+        {
+          "game": "R11L",
+          "expected_game_type": "sequence",
+          "predicted_game_type": "unknown",
+          "expected_primary": "seq_search",
+          "predicted_primary": "bfs_state_space",
+          "classification_ok": false,
+          "strategy_ok": false,
+          "latency_ms": 3100.59
+        },
+        {
+          "game": "RE86",
+          "expected_game_type": "transform",
+          "predicted_game_type": "unknown",
+          "expected_primary": "bfs_state_space",
+          "predicted_primary": "bfs_state_space",
+          "classification_ok": false,
+          "strategy_ok": true,
+          "latency_ms": 3088.68
+        },
+        {
+          "game": "S5I5",
+          "expected_game_type": "slider_puzzle",
+          "predicted_game_type": "unknown",
+          "expected_primary": "click_rare",
+          "predicted_primary": "bfs_state_space",
+          "classification_ok": false,
+          "strategy_ok": false,
+          "latency_ms": 3099.87
+        },
+        {
+          "game": "SB26",
+          "expected_game_type": "sort_puzzle",
+          "predicted_game_type": "unknown",
+          "expected_primary": "click_rare",
+          "predicted_primary": "bfs_state_space",
+          "classification_ok": false,
+          "strategy_ok": false,
+          "latency_ms": 3046.07
+        },
+        {
+          "game": "SC25",
+          "expected_game_type": "spell_cast",
+          "predicted_game_type": "unknown",
+          "expected_primary": "spell_cast",
+          "predicted_primary": "bfs_state_space",
+          "classification_ok": false,
+          "strategy_ok": false,
+          "latency_ms": 3103.24
+        },
+        {
+          "game": "SK48",
+          "expected_game_type": "movement",
+          "predicted_game_type": "unknown",
+          "expected_primary": "sk48_snake",
+          "predicted_primary": "bfs_state_space",
+          "classification_ok": false,
+          "strategy_ok": false,
+          "latency_ms": 3093.94
+        },
+        {
+          "game": "SP80",
+          "expected_game_type": "movement",
+          "predicted_game_type": "unknown",
+          "expected_primary": "bfs_state_space",
+          "predicted_primary": "bfs_state_space",
+          "classification_ok": false,
+          "strategy_ok": true,
+          "latency_ms": 3049.07
+        },
+        {
+          "game": "SU15",
+          "expected_game_type": "merge_puzzle",
+          "predicted_game_type": "merge_puzzle",
+          "expected_primary": "click_rare",
+          "predicted_primary": "frame-only vacuum planner (target: Phase 8 Step 2b)",
+          "classification_ok": true,
+          "strategy_ok": false,
+          "latency_ms": 4182.63
+        },
+        {
+          "game": "TN36",
+          "expected_game_type": "programming_puzzle",
+          "predicted_game_type": "unknown",
+          "expected_primary": "tn36_frame_only",
+          "predicted_primary": "bfs_state_space",
+          "classification_ok": false,
+          "strategy_ok": false,
+          "latency_ms": 3088.1
+        },
+        {
+          "game": "TR87",
+          "expected_game_type": "rotation",
+          "predicted_game_type": "unknown",
+          "expected_primary": "bfs_state_space",
+          "predicted_primary": "bfs_state_space",
+          "classification_ok": false,
+          "strategy_ok": true,
+          "latency_ms": 3066.59
+        },
+        {
+          "game": "TU93",
+          "expected_game_type": "movement",
+          "predicted_game_type": "unknown",
+          "expected_primary": "bfs_state_space",
+          "predicted_primary": "bfs_state_space",
+          "classification_ok": false,
+          "strategy_ok": true,
+          "latency_ms": 3162.18
+        },
+        {
+          "game": "VC33",
+          "expected_game_type": "click",
+          "predicted_game_type": "unknown",
+          "expected_primary": "click_rare",
+          "predicted_primary": "bfs_state_space",
+          "classification_ok": false,
+          "strategy_ok": false,
+          "latency_ms": 3146.71
+        },
+        {
+          "game": "WA30",
+          "expected_game_type": "delivery",
+          "predicted_game_type": "unknown",
+          "expected_primary": "explore_interact",
+          "predicted_primary": "bfs_state_space",
+          "classification_ok": false,
+          "strategy_ok": false,
+          "latency_ms": 3464.32
+        }
+      ],
+      "status": "ok",
+      "total_runtime_sec": 98.1
     }
   ]
 }

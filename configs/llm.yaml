@@ -43,7 +43,7 @@ candidates:
     context_tokens: 131072
     lora_ecosystem: mature
     strengths: [reasoning_14b_class_top, lora_ready]
-    enabled: false
+    enabled: true
 
   # --- Reasoning-tier reference: Gemma 4 26B MoE -----------------------------
   # Not Kaggle-deployable (Q4 ~17GB > T4 16GB VRAM), but kept as the reasoning
