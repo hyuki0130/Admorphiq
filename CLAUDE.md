@@ -362,7 +362,7 @@ Round 1 of the dev-time loop. Per user direction (2026-04-21), the R1-R6 skeleto
 - [x] **R7c — Qwen system prompt rewrite (English only)**. New sections: Output schema / Hard rules / Wiki search guidance / Feedback discipline / Expressing uncertainty / Carryover from prior rounds. `WikiAgent` now takes `round_num` + `round_learnings` and injects them into the prompt so every call knows which round it is and what the last round taught.
 - [x] **R7e — Whitelist validation (`_validate_whitelist`)**. Filters hallucinated strategy names from primary/fallback before dispatch. Pins the 2026-04-21 R6 Qwen 14B FT09 `seq_search` regression as a FEEDBACK-GATED test.
 - [x] **R7b — Graph-based wiki retrieval** (2026-04-21). `src/admorphiq/hypothesis/wiki_retrieval.py` with `GraphRetriever` that seeds from discovery signals (selector.md + reasoning core always; `game_types/hybrid.md` when both click and movement; `game_types/click.md`/`movement.md`/`concepts/merge_mechanic.md` by probe signature; `games/<TITLE>.md` by title match) then walks `[[backlinks]]` in keyword-scored order until the char budget is hit. Context budget raised 8K→16K (Qwen 128K context has room; seed pages saturated 8K before any link traversal). Smoke verified: SU15 now retrieves `concepts/merge_mechanic`, FT09 retrieves `games/FT09`, M0R0 retrieves `game_types/hybrid` + `games/M0R0` + `reasoning/hypothesis_check` — every env gets a different slice. 24 unit tests in `tests/test_wiki_retrieval.py`. Full suite 210/210.
-- [ ] **R7d — Round protocol (`.omc/rounds/round_N/context.md`)**. Per-round metadata: goal, bench-before, changes made, bench-after, wiki pages touched, features added, verdict. Makes the loop auditable.
+- [x] **R7d — Round protocol** (2026-04-21). `scripts/round.py` with `start` / `finalize` / `learnings` subcommands writes `.omc/rounds/round_NNN/meta.json` + `notes.md`. `meta.json` captures goal, before/after summary (matching the regression gate's per-game_id aggregate), verdict (PASS/FAIL + per-env regressions/improvements lists), changes_made log, and prior_learnings_used. `round.py learnings N` replays prior rounds' takeaways — output is suitable for injection into WikiAgent's `round_learnings` prompt slot (R7c), closing the feedback carryover loop. 9 unit tests in `tests/test_round_protocol.py`. `.omc/rounds/round_001/` initialized for the first R7 bench.
 - [ ] **R7f — Per-env multi-turn (optional)**. When primary fails, re-ask the LLM with the failure context before running fallback_stack. Cost: one extra LLM call per failed env.
 
 186/186 tests passing (was 174, +11 R7 schema tests + 1 replaced features test). Smoke-tested end-to-end against a mock `HallucinatingLLM` that emits `seq_search` + structured `features_missing` / `wiki_gaps` / `wiki_needs` — filter strips hallucination, structured feedback round-trips to trace intact.
@@ -516,6 +516,38 @@ Verified per-game depth (sorted):
 - The test→log→analyze→fix→retest loop runs indefinitely. Commit periodically but never use commits as a reason to stop.
 - All 4 strategies (CNN, Ensemble, Graph, Diff) run in parallel. Never abandon one unless the user approves with clear justification.
 - **Proactively keep CLAUDE.md in sync** with each phase commit — never wait for the user to point out stale stats.
+
+## Dev-Time Round Loop (Phase 8)
+
+Every improvement cycle is a **round** tracked under `.omc/rounds/round_NNN/`.
+The protocol exists so ad-hoc bench runs don't lose provenance.
+
+**Per-round files**:
+- `meta.json` — structured metadata. `round.py start` seeds it with the
+  current baseline snapshot; `round.py finalize` captures after-summary
+  + verdict.
+- `notes.md` — freeform work log. Claude Code appends to this during the
+  round as changes are proposed, reviewed, and applied.
+
+**Lifecycle** (runnable from the repo root):
+1. `uv run python scripts/round.py start N --goal "..."`
+2. (Qwen proposes → Claude Code applies → bench)
+3. `uv run python scripts/round.py finalize N --trace scripts/wiki_agent_results_rN.json --takeaway "one-line lesson"`
+4. If PASS, promote the baseline: `uv run python scripts/regression_gate.py --trace ... --promote`
+5. Next round pulls the takeaway via `round.py learnings N+1` and
+   injects it into WikiAgent's `round_learnings` prompt slot (R7c).
+
+**Round principles**:
+- The LLM (Qwen) is the **proposer**, Claude Code is the **implementer**.
+  Never let Qwen write code or wiki directly — 8B-class models are
+  reliable at spotting gaps but unreliable at integrating changes into
+  an 8000-line codebase (measured in R4).
+- Structured feedback only. `features_missing` and `wiki_gaps` entries
+  without the R7a-required fields are parser-dropped, not coerced.
+- Every round must produce a one-line `takeaway`. If the round taught
+  nothing worth remembering, the goal was wrong or the bench is noise.
+- Regression gate is non-optional. A round that fails R5 rolls back the
+  proposing commit; the baseline only moves forward.
 
 ## Implementation Discipline (applies to every change)
 
