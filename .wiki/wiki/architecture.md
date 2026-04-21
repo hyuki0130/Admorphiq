@@ -29,9 +29,14 @@ The restart (R1–R6) replaces the linear pipeline with an agentic loop.
 
 ```
 ┌─ Cognition (LLM) ───────────────────────────────────────┐
-│   Qwen 3 family (tool-calling capable).                 │
-│   Reasons, hypothesizes, reflects. NEVER writes code   │
-│   directly — Claude Code is the implementer at dev-time.│
+│   Dev-time:    Claude Code (long context, code-aware).  │
+│   Kaggle-time: Qwen 3 family (offline, tool-calling).   │
+│   Reasons, hypothesizes, reflects. Neither writes code │
+│   directly — at dev-time, Claude Code IS the reflector  │
+│   AND the implementer. Qwen was measured too weak at    │
+│   8B-14B for structured reflection on a 40-env trace    │
+│   (R4 experiment, 2026-04-21); `scripts/analyze_trace.py│
+│   │` does deterministic pattern extraction instead.     │
 └───────────────────────┬─────────────────────────────────┘
                         │ reads
                         ▼
@@ -76,13 +81,21 @@ Runs between Kaggle submissions, on a laptop with internet and Claude Code avail
 └────────────────┬─────────────────────────────────────────┘
                  ▼
 ┌── 2. Reflection (Cognition) ─────────────────────────────┐
-│   scripts/reflect_wiki_agent.py                          │
-│   Input: trace + wiki + regression baseline              │
-│   LLM (Qwen) outputs a JSON proposal:                    │
-│     { wiki_edits: [{path, section, text}],               │
-│       new_features: [{name, derive_recipe}],             │
-│       new_strategies: [{name, sketch}],                  │
-│       rollback_candidates: [strat_name] }                │
+│   scripts/analyze_trace.py    (deterministic, always-on) │
+│     Emits scripts/trace_analysis.json with:              │
+│       - headline counts                                  │
+│       - primary_strategy success rates                   │
+│       - pattern flags (dir_map→click misroute,           │
+│         wasted_budget, unknown_strategy picks,           │
+│         LLM-flagged missing features)                    │
+│   Claude Code (dev-time Cognition) reads this JSON and   │
+│   authors the proposal inline during a session.          │
+│                                                          │
+│   scripts/reflect_wiki_agent.py  (LLM-assisted, kept for │
+│     future use when a stronger model is available;       │
+│     Qwen 3 8B/14B produce degenerate output on this task │
+│     per 2026-04-21 R4 experiment — documented, not a     │
+│     regression to fix against local 8B-class models)     │
 └────────────────┬─────────────────────────────────────────┘
                  ▼
 ┌── 3. Apply (Claude Code, supervised) ────────────────────┐
