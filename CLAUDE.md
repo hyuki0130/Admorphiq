@@ -354,6 +354,19 @@ Binding architecture doc: **`.wiki/wiki/architecture.md`** (load-bearing — any
 - Gate C — R6 decision: live-env numbers with full features + full whitelist justify primary LLM choice. Target: ≥21/40 envs on v1+v2 combined (vs ensemble 28/40, WikiAgent 15/40).
 - Gate D — Kaggle packaging: runtime ≤ 6h, VRAM ≤ 16GB, fully offline, frozen wiki + frozen strategies + frozen weights.
 
+### R7 — Round Loop formalization (in progress)
+
+Round 1 of the dev-time loop. Per user direction (2026-04-21), the R1-R6 skeleton is kept but the Qwen prompt and feedback schema are upgraded so each round produces actionable, structured input for the next round.
+
+- [x] **R7a — Structured Hypothesis schema**. `features_missing` is now `list[FeatureGap(name, why_needed, derive_hint)]`; added `wiki_gaps: list[WikiGap]`, `wiki_needs: list[str]`, `doubt: str`. Parser (`_parse_feature_gaps`, `_parse_wiki_gaps`) accepts dict form; a single-commit tolerance for bare-string `features_missing` is FEEDBACK-GATED and deletable once all traces emit dicts. `scripts/analyze_trace.py` updated to group by `name` and surface a representative `why_needed` / `derive_hint` per feature.
+- [x] **R7c — Qwen system prompt rewrite (English only)**. New sections: Output schema / Hard rules / Wiki search guidance / Feedback discipline / Expressing uncertainty / Carryover from prior rounds. `WikiAgent` now takes `round_num` + `round_learnings` and injects them into the prompt so every call knows which round it is and what the last round taught.
+- [x] **R7e — Whitelist validation (`_validate_whitelist`)**. Filters hallucinated strategy names from primary/fallback before dispatch. Pins the 2026-04-21 R6 Qwen 14B FT09 `seq_search` regression as a FEEDBACK-GATED test.
+- [ ] **R7b — Graph-based wiki retrieval**. Replace the fixed `_DEFAULT_PAGES` list with a keyword-driven BFS walk over `[[backlink]]` edges so each env gets a tailored wiki slice. Karpathy's pattern executed properly.
+- [ ] **R7d — Round protocol (`.omc/rounds/round_N/context.md`)**. Per-round metadata: goal, bench-before, changes made, bench-after, wiki pages touched, features added, verdict. Makes the loop auditable.
+- [ ] **R7f — Per-env multi-turn (optional)**. When primary fails, re-ask the LLM with the failure context before running fallback_stack. Cost: one extra LLM call per failed env.
+
+186/186 tests passing (was 174, +11 R7 schema tests + 1 replaced features test). Smoke-tested end-to-end against a mock `HallucinatingLLM` that emits `seq_search` + structured `features_missing` / `wiki_gaps` / `wiki_needs` — filter strips hallucination, structured feedback round-trips to trace intact.
+
 ## Reference Projects
 
 | Project | Approach | Score | Notes |
@@ -503,6 +516,47 @@ Verified per-game depth (sorted):
 - The test→log→analyze→fix→retest loop runs indefinitely. Commit periodically but never use commits as a reason to stop.
 - All 4 strategies (CNN, Ensemble, Graph, Diff) run in parallel. Never abandon one unless the user approves with clear justification.
 - **Proactively keep CLAUDE.md in sync** with each phase commit — never wait for the user to point out stale stats.
+
+## Implementation Discipline (applies to every change)
+
+**No speculative safety nets.** Do not add hardcoded constants, fallback
+branches, or placeholder returns unless the task explicitly requires them.
+If you find yourself typing `if x is None: return default` as a "just in
+case," stop and verify whether `x` can actually be `None` at runtime — if
+not, the branch is dead weight and obscures the real contract. Do not
+invent scenarios the task did not ask for (negative budgets, missing
+fields, partial configs). Trust internal callers. Validate only at genuine
+system boundaries (user input, external APIs, file reads).
+
+**No backward-compatibility shims by reflex.** Do not keep old argument
+shapes, aliased names, or deprecation wrappers unless an external caller
+actually depends on the old form. In a single-commit refactor, rename
+together and move on.
+
+**No placeholders.** `TODO`, `FIXME`, `# implement later`, and returning
+`None`/`{}`/`""` from a half-written function are anti-patterns in this
+repo. If a task isn't complete, the code isn't written yet — write it or
+don't commit it. There is no "stub now, finish later" mode.
+
+**Test code is proof of intent.** Every new test MUST carry a top-of-
+function docstring stating:
+  1. **Purpose** — what decision, invariant, or contract this test proves.
+  2. **Expected feedback** — what its pass or fail outcome signals to the
+     reader. A maintainer should understand the significance without
+     reading the test body.
+
+**Feedback-gated tests are deletable.** Tests that exist solely to validate
+a one-off design decision (e.g., "does Qwen 8B still hallucinate
+`seq_search`?") MUST be marked with a single-line `# FEEDBACK-GATED:`
+comment directly above the test function. Once the feedback has been
+collected and the decision is locked in, these tests ARE deleted — keeping
+them around "just in case" is cruft that hides signal. Durable contract
+tests (invariants, API guarantees, regression pins, schema validation)
+are never marked and never deleted.
+
+**When in doubt, prefer deletion over retention.** A clean test suite that
+protects only durable contracts is worth more than a bloated suite that
+protects every past experiment.
 
 ## Current Status (2026-04-20, Round 1 Regression Verified)
 

@@ -14,7 +14,14 @@ Exports:
 from __future__ import annotations
 
 from .dispatcher import CTX_KEYS, build_ctx, introspect_strategies
-from .wiki_agent import DiscoveryReport, Hypothesis, WikiAgent, discover
+from .wiki_agent import (
+    DiscoveryReport,
+    FeatureGap,
+    Hypothesis,
+    WikiAgent,
+    WikiGap,
+    discover,
+)
 
 
 def default_strategy_registry() -> dict:
@@ -46,8 +53,10 @@ def strategy_whitelist_text(registry: dict) -> str:
 __all__ = [
     "CTX_KEYS",
     "DiscoveryReport",
+    "FeatureGap",
     "Hypothesis",
     "WikiAgent",
+    "WikiGap",
     "build_ctx",
     "default_strategy_registry",
     "discover",

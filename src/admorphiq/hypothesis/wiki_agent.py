@@ -74,15 +74,45 @@ class DiscoveryReport:
 
 
 @dataclass
+class FeatureGap:
+    """A frame-derivable observation the LLM would have used but did not have.
+
+    Structured so the dev-time reflector (Claude Code) can read it and decide
+    whether to add a new derive helper and extend DiscoveryReport.
+    """
+
+    name: str
+    why_needed: str = ""
+    derive_hint: str = ""
+
+
+@dataclass
+class WikiGap:
+    """A wiki page/section the LLM would have consulted but found missing.
+
+    Claude Code reviews these between rounds and either authors the page or
+    extends an existing one. Entries with an empty `proposed_addition` are
+    logged but not actioned — we never let the LLM write wiki content directly.
+    """
+
+    topic: str
+    suggested_page: str = ""
+    current_info_insufficient: str = ""
+    proposed_addition: str = ""
+
+
+@dataclass
 class Hypothesis:
     """Parsed LLM response.
 
-    R2 additions:
-        confidence        - LLM self-reported 0..1. Low confidence + failed
-                            primary → reflection (R4) prioritizes this env.
-        features_missing  - LLM flags which derivable-but-absent feature would
-                            have changed its classification. Consumed by
-                            reflection to propose new fields for DiscoveryReport.
+    R7 expanded the schema so every round's trace carries enough information
+    to drive the next round without a second LLM call:
+
+      confidence        - self-reported 0..1
+      doubt             - short free-text on what the LLM is unsure about
+      features_missing  - structured FeatureGap list (shape changed from R2)
+      wiki_gaps         - structured WikiGap list for wiki authoring
+      wiki_needs        - paths the LLM wants retrieved next round
     """
 
     game_type: str
@@ -90,7 +120,10 @@ class Hypothesis:
     fallback_stack: list[str] = field(default_factory=list)
     rationale: str = ""
     confidence: float = 0.0
-    features_missing: list[str] = field(default_factory=list)
+    doubt: str = ""
+    features_missing: list[FeatureGap] = field(default_factory=list)
+    wiki_gaps: list[WikiGap] = field(default_factory=list)
+    wiki_needs: list[str] = field(default_factory=list)
     raw: str = ""
 
 
@@ -272,62 +305,113 @@ def _derive_movable_region_count(probes_raw):
     return max_count
 
 
-_PROMPT_TEMPLATE = """You are the Admorphiq Phase 8 Hypothesis Engine.
+_PROMPT_TEMPLATE = """You are the Admorphiq Phase 8 Hypothesis Engine, round {round_num}.
 
-The wiki context below describes game types and strategies. Read it, then
-observe the live-game discovery report and output ONE JSON object:
+Your job on this game:
+  (a) pick a primary strategy and up to three fallbacks from the whitelist;
+  (b) report what you needed but did not have, so the next round can give
+      it to you. The quality of (b) determines how fast this loop improves.
 
-  {{"game_type":        "one of: movement | click | programming_puzzle | merge_puzzle |
-                         sokoban | platformer | transform | delivery | slider_puzzle |
-                         rotation | sort_puzzle | spell_cast | sequence | hybrid | unknown",
-    "primary_strategy": "MUST be an EXACT name from the Available Strategies list below",
-    "fallback_stack":   ["strategy_name", ...] (up to 3, each from the list),
-    "rationale":        "1-2 sentences",
-    "confidence":       0.0 to 1.0 (your own confidence in this classification),
-    "features_missing": ["feature_name", ...] (OPTIONAL — name any frame-derivable
-                                               feature whose absence hurt your
-                                               decision; reflection will add it
-                                               next iteration)}}
+## Output schema
 
-Rules:
-- Never invent a strategy name. If unsure, pick "bfs_state_space" as the safe default.
-- `primary_strategy` and every `fallback_stack` entry MUST appear verbatim in
-  Available Strategies. Case-sensitive, no spaces, no spelling variants.
-- No prose outside the JSON.
-- Priority when multiple strategies match: if a strategy name contains the
-  lowercase game title (e.g., `tn36_frame_only` when title is `TN36`) AND it
-  appears in Available Strategies, PREFER IT as `primary_strategy`. Frame-only
-  game-specific strategies were built with more prior knowledge than the
-  generic `click_rare` default.
-- Use `dir_map` + `player_color` + `movable_region_count` to detect movement /
-  sokoban / multi-character games before defaulting to click strategies.
-- `change_topology` = `level_transition` implies the probe already solved a
-  level or the game has a RESET-like effect — rarely a strategy anchor.
+Emit EXACTLY ONE JSON object. No prose, no code fences.
 
-=== Available Strategies ({n_strategies}) ===
+{{
+  "game_type":        "one of: movement | click | programming_puzzle | merge_puzzle | sokoban | platformer | transform | delivery | slider_puzzle | rotation | sort_puzzle | spell_cast | sequence | hybrid | unknown",
+  "primary_strategy": "EXACT name from the Available Strategies list",
+  "fallback_stack":   ["strategy_name", ...] up to 3, each from the whitelist,
+  "rationale":        "1-2 sentences grounded in the observed probe signals",
+  "confidence":       0.0 to 1.0,
+  "doubt":            "one short sentence on what you are unsure about, or empty string",
+  "features_missing": [{{"name": "...", "why_needed": "...", "derive_hint": "..."}}],
+  "wiki_gaps":        [{{"topic": "...", "suggested_page": "...", "current_info_insufficient": "...", "proposed_addition": "..."}}],
+  "wiki_needs":       ["relative/path/to/page.md", ...]
+}}
+
+## Hard rules
+
+- `primary_strategy` and every `fallback_stack` entry MUST appear verbatim
+  in Available Strategies. Case-sensitive. No invented names.
+- If confidence < 0.5, set `game_type: "unknown"` and let `bfs_state_space`
+  be the primary. Do not guess. Honest uncertainty is more useful than a
+  confident wrong answer.
+- When the game title lowercased matches a frame-only strategy in the
+  whitelist (e.g., title SU15 <-> strategy `su15_frame_only`), prefer that
+  strategy in the primary slot. Frame-only game-specific strategies carry
+  more prior than generic ones.
+- Use `dir_map`, `player_color`, and `movable_region_count` to detect
+  movement / sokoban / multi-character games before defaulting to click.
+- `change_topology == "level_transition"` means the probe already tripped
+  a level reset; do not anchor a hypothesis on that signal alone.
+
+## Wiki search guidance
+
+The Wiki Context below was retrieved based on your discovery observations.
+Page titles appear as `--- path ---` headers. Inside pages, `[[link]]` is
+a reference to another wiki page.
+
+- If you see a `[[link]]` to a page that is NOT in the context below and
+  you judge it material to this decision, add its relative path to
+  `wiki_needs`. The next round will include it.
+- Do NOT hallucinate page contents you cannot see.
+- Do NOT cite pages you did not read; if you rely on one, its path must
+  be among the `--- path ---` headers in the context.
+
+## Feedback discipline
+
+This is the signal that drives the next round. Be specific or stay silent.
+
+- `features_missing` entries MUST have all three fields: `name` (snake_case),
+  `why_needed` (one clause naming which decision would change), and
+  `derive_hint` (one-line recipe computable from the RESET frame and the
+  per-action before/after frames already captured during discovery). No
+  vague "more info would be nice" entries. Empty list is valid.
+- `wiki_gaps` entries MUST have `topic` and `proposed_addition` (what
+  content would make the missing or sparse page usable). Empty list is
+  valid.
+- `wiki_needs` is a list of relative paths you saw in `[[links]]` but not
+  in the context. Empty list is valid.
+
+Over-reporting weakens the signal. One well-stated gap beats five vague
+complaints. Saying nothing is correct when nothing is missing.
+
+## Carryover from prior rounds
+
+{round_learnings}
+
+## Available Strategies ({n_strategies})
+
 {strategy_list}
 
-=== Wiki Context ===
+## Wiki Context
+
 {context}
 
-=== Live Discovery ===
+## Live Discovery
+
 Game title: {title}
 Available actions: {avail}
 Layer count: {layers}
 Frame shape: {shape}
 Dominant colors (color:count): {colors}
 Color histogram (color:fraction): {color_hist}
-Symmetry score (0..1, horizontal-flip similarity): {symmetry}
+Symmetry score (0..1): {symmetry}
 Starting level: {lvl}
 
--- Probe-derived signals --
-Probe diffs (action: pixels changed;  -6 = # responsive click cells): {probes}
-Direction map (action: N/S/E/W) — blank if no movement inferred: {dir_map}
-Player color (consistent moving-pixel color, null if none): {player_color}
-Movable region count (max connected diff components across directional probes): {movable_count}
-Change topology (sprite_move|color_toggle|level_transition|mixed|no_change): {topology}
-ACTION6 responsive cells [{{x,y,diff,color_before_at_click,color_after_at_click}}]: {click_cells}
+Probe-derived signals:
+  probe_diffs (action: pixels changed; key -6 = # responsive click cells): {probes}
+  dir_map (action -> N/S/E/W, empty if no movement): {dir_map}
+  player_color (consistent moving-pixel color, null if none): {player_color}
+  movable_region_count (max connected diff components): {movable_count}
+  change_topology: {topology}
+  click_responsive_cells: {click_cells}
 """
+
+
+_DEFAULT_ROUND_LEARNINGS = (
+    "(First round. No prior rounds' learnings to carry. Respond based on "
+    "the discovery data and wiki context directly.)"
+)
 
 
 # Order matters — the LLM weights the first pages more. selector.md goes first
@@ -380,6 +464,77 @@ def _parse_json_lenient(raw: str) -> dict[str, Any]:
         return json.loads(raw)
     except json.JSONDecodeError:
         return {}
+
+
+def _parse_feature_gaps(raw_list) -> list[FeatureGap]:
+    """Turn the LLM's `features_missing` field into structured FeatureGap objects.
+
+    The prompt asks for dicts with {name, why_needed, derive_hint}. Models
+    occasionally regress to a bare list of strings; that is accepted as
+    name-only (why/hint empty) so we don't drop the signal, but such entries
+    convey less actionable information downstream.
+    """
+    if not isinstance(raw_list, list):
+        return []
+    out: list[FeatureGap] = []
+    for item in raw_list[:8]:
+        if isinstance(item, dict):
+            name = str(item.get("name", "")).strip()
+            if not name:
+                continue
+            out.append(
+                FeatureGap(
+                    name=name,
+                    why_needed=str(item.get("why_needed", "")),
+                    derive_hint=str(item.get("derive_hint", "")),
+                )
+            )
+        elif isinstance(item, str) and item.strip():
+            out.append(FeatureGap(name=item.strip()))
+    return out
+
+
+def _parse_wiki_gaps(raw_list) -> list[WikiGap]:
+    """Turn the LLM's `wiki_gaps` field into structured WikiGap objects. Bare
+    strings are rejected here — a wiki-authoring signal without a topic is
+    not actionable and should not pollute the trace."""
+    if not isinstance(raw_list, list):
+        return []
+    out: list[WikiGap] = []
+    for item in raw_list[:8]:
+        if not isinstance(item, dict):
+            continue
+        topic = str(item.get("topic", "")).strip()
+        if not topic:
+            continue
+        out.append(
+            WikiGap(
+                topic=topic,
+                suggested_page=str(item.get("suggested_page", "")),
+                current_info_insufficient=str(item.get("current_info_insufficient", "")),
+                proposed_addition=str(item.get("proposed_addition", "")),
+            )
+        )
+    return out
+
+
+def _validate_whitelist(hyp: "Hypothesis", valid_names: set[str]) -> "Hypothesis":
+    """Strip strategy names the LLM invented.
+
+    Purpose: R6 measured that Qwen 3 14B hallucinated `seq_search` for FT09
+    (a name never present in the 67-strategy whitelist). Such names silently
+    produce `unknown_strategy` execution records and waste a fallback slot.
+    This filter is the cheapest correct response: an invalid primary becomes
+    empty (the run() loop then falls through to the next valid fallback),
+    and invalid fallback entries are dropped outright.
+
+    This function mutates neither the input dict nor the module state — it
+    returns the corrected hypothesis for the caller to use.
+    """
+    if hyp.primary_strategy not in valid_names:
+        hyp.primary_strategy = ""
+    hyp.fallback_stack = [s for s in hyp.fallback_stack if s in valid_names]
+    return hyp
 
 
 def discover(env: Any, title: str = "UNKNOWN", probe_actions: list[int] | None = None) -> DiscoveryReport:
@@ -507,17 +662,23 @@ class WikiAgent:
         strategy_registry: dict[str, Callable[..., tuple[int, str, int]]],
         extra_context_pages: list[str] | None = None,
         context_chars: int = 8000,
+        round_num: int = 1,
+        round_learnings: str = _DEFAULT_ROUND_LEARNINGS,
     ) -> None:
         self.llm = llm
         self.strategies = strategy_registry
         self.extra_pages = extra_context_pages or []
         self.context_chars = context_chars
+        self.round_num = int(round_num)
+        self.round_learnings = str(round_learnings)
 
     def build_prompt(self, report: DiscoveryReport) -> str:
         pages = list(_DEFAULT_PAGES) + list(self.extra_pages)
         context = _read_wiki(pages, self.context_chars)
         names = sorted(self.strategies.keys())
         return _PROMPT_TEMPLATE.format(
+            round_num=self.round_num,
+            round_learnings=self.round_learnings,
             context=context,
             title=report.game_title,
             avail=report.available_actions,
@@ -545,15 +706,19 @@ class WikiAgent:
             confidence = float(parsed.get("confidence", 0.0))
         except (TypeError, ValueError):
             confidence = 0.0
-        return Hypothesis(
+        hyp = Hypothesis(
             game_type=str(parsed.get("game_type", "unknown")),
             primary_strategy=str(parsed.get("primary_strategy", "")),
             fallback_stack=[str(s) for s in parsed.get("fallback_stack", [])][:3],
             rationale=str(parsed.get("rationale", "")),
             confidence=max(0.0, min(1.0, confidence)),
-            features_missing=[str(f) for f in parsed.get("features_missing", [])][:8],
+            doubt=str(parsed.get("doubt", "")),
+            features_missing=_parse_feature_gaps(parsed.get("features_missing", [])),
+            wiki_gaps=_parse_wiki_gaps(parsed.get("wiki_gaps", [])),
+            wiki_needs=[str(p) for p in parsed.get("wiki_needs", [])][:10],
             raw=raw,
         )
+        return _validate_whitelist(hyp, set(self.strategies.keys()))
 
     def run(self, env: Any, title: str = "UNKNOWN", budget_per_strategy: int = 5000) -> dict[str, Any]:
         """Full loop: discover → classify → dispatch primary → fallbacks on failure.
@@ -593,7 +758,21 @@ class WikiAgent:
                 "fallback_stack": hyp.fallback_stack,
                 "rationale": hyp.rationale,
                 "confidence": hyp.confidence,
-                "features_missing": hyp.features_missing,
+                "doubt": hyp.doubt,
+                "features_missing": [
+                    {"name": f.name, "why_needed": f.why_needed, "derive_hint": f.derive_hint}
+                    for f in hyp.features_missing
+                ],
+                "wiki_gaps": [
+                    {
+                        "topic": g.topic,
+                        "suggested_page": g.suggested_page,
+                        "current_info_insufficient": g.current_info_insufficient,
+                        "proposed_addition": g.proposed_addition,
+                    }
+                    for g in hyp.wiki_gaps
+                ],
+                "wiki_needs": hyp.wiki_needs,
             },
             "executions": [],
             "best_levels": report.reset_levels,

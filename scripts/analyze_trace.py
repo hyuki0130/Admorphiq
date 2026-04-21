@@ -175,12 +175,28 @@ def analyze(trace: dict[str, Any]) -> dict[str, Any]:
                     }
                 )
 
-    # --- Pattern 5: LLM-flagged missing features ---
-    features_missing_reports: dict[str, list[str]] = defaultdict(list)
+    # --- Pattern 5: LLM-flagged missing features (R7 structured schema) ---
+    # Trace entries carry features_missing as a list of dicts:
+    #   [{"name": "...", "why_needed": "...", "derive_hint": "..."}]
+    # The analyzer keys by `name` and keeps the first non-empty why/hint seen
+    # across envs so Claude Code can read a representative example in one pass.
+    features_missing_reports: dict[str, dict[str, Any]] = {}
     for r in results:
         fm = (r.get("hypothesis") or {}).get("features_missing") or []
         for feat in fm:
-            features_missing_reports[str(feat)].append(r.get("game_id") or "?")
+            if not isinstance(feat, dict):
+                continue
+            name = str(feat.get("name", "")).strip()
+            if not name:
+                continue
+            slot = features_missing_reports.setdefault(
+                name, {"envs": [], "why_needed": "", "derive_hint": ""}
+            )
+            slot["envs"].append(r.get("game_id") or "?")
+            if not slot["why_needed"] and feat.get("why_needed"):
+                slot["why_needed"] = str(feat["why_needed"])
+            if not slot["derive_hint"] and feat.get("derive_hint"):
+                slot["derive_hint"] = str(feat["derive_hint"])
 
     # --- Per-primary success rate ---
     primary_success: dict[str, dict[str, Any]] = defaultdict(
@@ -254,14 +270,19 @@ def analyze(trace: dict[str, Any]) -> dict[str, Any]:
                 "envs": unknown_strategy_picks,
             },
             "llm_flagged_missing_features": {
-                "count": sum(len(v) for v in features_missing_reports.values()),
+                "count": sum(len(slot["envs"]) for slot in features_missing_reports.values()),
                 "evidence": (
-                    "The LLM self-reported features it wanted but did not have. Direct input "
-                    "to R2 expansion — add the feature if derivable from frames."
+                    "The LLM self-reported features it wanted but did not have. Direct "
+                    "input to the dev-time cognition layer (Claude Code) — add the feature "
+                    "if derivable from frames already captured during discovery."
                 ),
                 "by_feature": {
-                    name: sorted(set(envs))
-                    for name, envs in features_missing_reports.items()
+                    name: {
+                        "envs": sorted(set(slot["envs"])),
+                        "why_needed": slot["why_needed"],
+                        "derive_hint": slot["derive_hint"],
+                    }
+                    for name, slot in features_missing_reports.items()
                 },
             },
         },

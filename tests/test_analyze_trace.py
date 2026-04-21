@@ -124,11 +124,38 @@ def test_unknown_strategy_picks_detected():
 
 
 def test_llm_flagged_missing_features_grouped_by_feature():
+    """Purpose: verify the analyzer groups R7's structured features_missing
+    entries by `name` and keeps one representative why/hint per feature so
+    Claude Code can triage gaps without re-reading every env entry.
+
+    Expected feedback: if this fails, the analyzer either dropped structured
+    entries, mis-grouped by non-name key, or lost the why_needed/derive_hint
+    pass-through that makes the suggestion actionable.
+    """
     report = _MOD.analyze(
         {
             "results": [
-                _env(game_id="A", features_missing=["sprite_pixel_count"]),
-                _env(game_id="B", features_missing=["sprite_pixel_count", "grid_period"]),
+                _env(
+                    game_id="A",
+                    features_missing=[
+                        {
+                            "name": "sprite_pixel_count",
+                            "why_needed": "separate slider from point-player",
+                            "derive_hint": "count pixels of player_color in RESET frame",
+                        }
+                    ],
+                ),
+                _env(
+                    game_id="B",
+                    features_missing=[
+                        {"name": "sprite_pixel_count", "why_needed": "", "derive_hint": ""},
+                        {
+                            "name": "grid_period",
+                            "why_needed": "identify lattice games",
+                            "derive_hint": "FFT on row sums",
+                        },
+                    ],
+                ),
                 _env(game_id="C", features_missing=[]),
             ]
         }
@@ -136,8 +163,35 @@ def test_llm_flagged_missing_features_grouped_by_feature():
     patt = report["patterns"]["llm_flagged_missing_features"]
     assert patt["count"] == 3
     by_feat = patt["by_feature"]
-    assert set(by_feat["sprite_pixel_count"]) == {"A", "B"}
-    assert set(by_feat["grid_period"]) == {"B"}
+    assert set(by_feat["sprite_pixel_count"]["envs"]) == {"A", "B"}
+    assert by_feat["sprite_pixel_count"]["why_needed"] == "separate slider from point-player"
+    assert by_feat["sprite_pixel_count"]["derive_hint"] == "count pixels of player_color in RESET frame"
+    assert set(by_feat["grid_period"]["envs"]) == {"B"}
+    assert by_feat["grid_period"]["derive_hint"] == "FFT on row sums"
+
+
+def test_llm_flagged_missing_features_ignores_malformed_entries():
+    """Purpose: bare-string or unnamed entries must not pollute the grouping.
+    The R7 prompt insists on dict form; older traces or partial LLM output
+    occasionally violate that — the analyzer drops them rather than coercing.
+
+    Expected feedback: failure means the analyzer is accepting degraded input
+    and the downstream dev-time triage will see noise.
+    """
+    report = _MOD.analyze(
+        {
+            "results": [
+                _env(game_id="A", features_missing=["bare_string_not_allowed"]),
+                _env(game_id="B", features_missing=[{"why_needed": "no name"}]),
+                _env(
+                    game_id="C",
+                    features_missing=[{"name": "valid_feature", "why_needed": "", "derive_hint": ""}],
+                ),
+            ]
+        }
+    )
+    patt = report["patterns"]["llm_flagged_missing_features"]
+    assert list(patt["by_feature"].keys()) == ["valid_feature"]
 
 
 def test_primary_success_rates():
