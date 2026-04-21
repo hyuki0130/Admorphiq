@@ -180,6 +180,62 @@ What "self-improvement" actually means, per layer × time:
 
 The column that matters for the competition is **dev-time**: each Kaggle submission ships a snapshot that the dev loop has already hardened.
 
+## LLM Output Shape Enforcement (round 1 load-bearing rule)
+
+The LLM (Qwen 3 8B/14B at 8-16KB prompt length) does NOT reliably follow a
+prompt-declared output schema. Three layers are required for robust output,
+each fixing a specific failure mode measured on the 2026-04-21 R7 bench
+(see [[lessons/schema_enforcement_round1_20260421]] for the version arc).
+
+1. **Strip tooling frontmatter before any content reaches the LLM.** Any
+   retrieved wiki page whose body begins with `---\n...---\n` must be
+   sanitized via `wiki_retrieval.strip_frontmatter`. Qwen 8B otherwise
+   mimics the YAML key-value layout as its own output shape. Not a
+   style preference — it's a measured regression (0 levels across 40 envs
+   in R7 v1 before the strip landed).
+
+2. **Decoder-level JSON Schema constraint.** Pass a full `json_schema` dict
+   via `OllamaBackend.generate(..., json_schema=)` (Ollama 0.5+ accepts it
+   as the `format` parameter). Prompt instructions like "emit this JSON"
+   are not enough; Qwen creatively renames keys under long context.
+
+3. **Enum-bind fields with a closed value set.** `primary_strategy`,
+   `fallback_stack.items`, and `game_type` are all bound to literal enums
+   in `_HYPOTHESIS_JSON_SCHEMA`. The decoder physically cannot emit a
+   non-whitelist name. Post-hoc filtering (R7e `_validate_whitelist`)
+   remains as a defense-in-depth belt but should never fire in the steady
+   state.
+
+4. **`uniqueItems: true` on choice arrays.** Prevents the LLM from padding
+   `fallback_stack` with duplicates. 2026-04-21 R7 v3 observed 4/40 envs
+   where Qwen repeated the same strategy 2-4 times.
+
+These four rules are prerequisites for every new LLM-produced structured
+output the project adds. A new endpoint that bypasses any of them will
+fail in the same shape.
+
+## Routing Rules Require Python Reinforcement
+
+A routing rule expressed only in markdown (`selector.md` table, inline
+prompt text) does NOT reliably shape Qwen's picks. The R6 and R7 benches
+both measured envs where the LLM ignored a rule present in the prompt
+(FT09 / CD82 / SB26 / AR25 on title-match; see
+[[lessons/selector_is_advisory_not_enforced_20260421]] and
+[[lessons/schema_enforcement_round1_20260421]]).
+
+Principle: any routing rule the project depends on ships with two
+implementations —
+
+- **Wiki text** (human-readable, LLM-hint): `selector.md` rows, page prose.
+- **Python enforcement** (runtime guarantee): either as a decoder constraint
+  (enum), a deterministic seed in the retrieval (R7b `derive_seed_pages`),
+  or a post-processing augmentation of the LLM output.
+
+The two must say the same thing; they are audited in lockstep. If only
+the wiki text exists, the rule is advisory and will be ignored some of the
+time. If only the Python enforcement exists, the rule is opaque and the
+LLM cannot reason about edge cases — add a wiki page.
+
 ## Falsification
 
 This architecture is wrong if any of these become true:

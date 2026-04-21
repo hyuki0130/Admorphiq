@@ -123,6 +123,27 @@ instantiating_games (list), detection_frame_only (yes|no|partial)
 generalizes (yes|no|partial), implementation (src path)
 ```
 
+## Frontmatter Policy (load-bearing)
+
+Every `wiki/**/*.md` page carries a YAML frontmatter block at the top
+(`type:`, `status_v1:`, etc.) for tooling — the wiki index generator, the
+retrieval seed rules, and future schema validators read these fields.
+
+**Frontmatter is tooling metadata. It MUST NOT reach the LLM as
+reasoning context.** `wiki_retrieval.strip_frontmatter` removes the leading
+`---\n...\n---\n` block before any page enters the prompt. Reason: Qwen 3
+8B treats the most recently seen JSON-like shape as the template for its
+own response. 2026-04-21 R7 v1 bench regressed to 0 levels across all 40
+envs because `games/<TITLE>.md` frontmatter leaked into the prompt and
+Qwen echoed its `game_id` / `status_v1` / `current_strategy` fields back
+as its response. See
+[[wiki/lessons/schema_enforcement_round1_20260421]] for the history.
+
+When authoring a new page type or a new frontmatter key: the key only
+exists for scripts and governance. Do not assume the LLM will ever see it.
+Conversely, if a fact belongs in LLM reasoning, it goes in the prose
+body, not the frontmatter.
+
 ## Kaggle Compatibility Contract
 
 - All files are plain markdown, readable via `open()`.

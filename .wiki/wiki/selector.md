@@ -2,6 +2,17 @@
 
 > Feature-driven dispatch rules used by the Hypothesis Engine LLM (selected LLM (Task #11 winner)).
 
+**Enforcement note.** Rules on this page are read by the LLM as guidance
+but are NOT reliably honored at 8B-14B scale under long wiki context.
+Every rule this project depends on must also have a Python-level
+enforcement (decoder enum, retrieval seed, or hypothesis post-processing)
+— see [[architecture#Routing-Rules-Require-Python-Reinforcement]]. The
+table below is the shared source of truth for both the LLM prompt and the
+Python-side enforcement; when a row changes, both sides update together.
+Measured non-compliance: R6 (14B ignored rule 4's fallback_stack update),
+R7 round 1 (Qwen skipped title-match on FT09/CD82/SB26/AR25 — see
+[[lessons/schema_enforcement_round1_20260421]]).
+
 Input: game classification output (from first 10-20 discovery actions) + frame statistics.
 Output: ordered list of strategies to try.
 

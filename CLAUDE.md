@@ -549,6 +549,35 @@ The protocol exists so ad-hoc bench runs don't lose provenance.
 - Regression gate is non-optional. A round that fails R5 rolls back the
   proposing commit; the baseline only moves forward.
 
+### Round 1 outcome (2026-04-21, FAIL, not promoted)
+
+First real loop cycle. Infrastructure validated end-to-end: 4 bench
+iterations in one session, each driven by measuring the prior failure
+and adding one defensive layer. Final numbers: 15/40 raw envs cleared,
+19 levels, 0 hallucinations. Baseline (pre-R7): 15/40 / 36 levels / 12
+hallucinations. So env coverage = baseline, hallucinations crushed to
+zero, but levels -17 because 4 games lost their game-specific fallback
+picks (FT09 / CD82 / SB26 / AR25). Gate verdict FAIL; baseline NOT
+promoted.
+
+Four rules were extracted from the round and hoisted into main docs
+(see `.wiki/wiki/architecture.md` "LLM Output Shape Enforcement" and
+"Routing Rules Require Python Reinforcement" sections, and
+`.wiki/schema.md` "Frontmatter Policy"):
+
+1. Strip YAML frontmatter from any retrieved wiki page before feeding
+   it to the LLM.
+2. Enforce output JSON shape at the decoder (Ollama `format` param),
+   not via prompt instruction alone.
+3. Enum-bind fields with closed value sets (strategy names, game_type).
+4. `uniqueItems: true` on choice arrays to prevent duplicate padding.
+
+Round 2 candidate action (picked up from the lesson page): add a
+Python-level post-processing step that guarantees `<title>_frame_only`
+or title-matching whitelist strategies land in `fallback_stack` — a
+reinforcement of selector.md's title-match rule that Qwen ignored
+under 16KB context.
+
 ## Implementation Discipline (applies to every change)
 
 **No speculative safety nets.** Do not add hardcoded constants, fallback
