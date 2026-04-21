@@ -414,6 +414,80 @@ _DEFAULT_ROUND_LEARNINGS = (
 )
 
 
+# JSON Schema for the Hypothesis output. When the backend supports schema-
+# constrained decoding (Ollama 0.5+ via the `format` parameter), this shape
+# is enforced by the decoder rather than asked-for in the prompt. Measured
+# on 2026-04-21 R7 bench: without schema enforcement, Qwen 8B drifts and
+# emits arbitrary keys (`"strategy"` instead of `"primary_strategy"`).
+_HYPOTHESIS_JSON_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "properties": {
+        "game_type": {
+            "type": "string",
+            "enum": [
+                "movement",
+                "click",
+                "programming_puzzle",
+                "merge_puzzle",
+                "sokoban",
+                "platformer",
+                "transform",
+                "delivery",
+                "slider_puzzle",
+                "rotation",
+                "sort_puzzle",
+                "spell_cast",
+                "sequence",
+                "hybrid",
+                "unknown",
+            ],
+        },
+        "primary_strategy": {"type": "string"},
+        "fallback_stack": {
+            "type": "array",
+            "items": {"type": "string"},
+            "maxItems": 3,
+        },
+        "rationale": {"type": "string"},
+        "confidence": {"type": "number", "minimum": 0.0, "maximum": 1.0},
+        "doubt": {"type": "string"},
+        "features_missing": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "name": {"type": "string"},
+                    "why_needed": {"type": "string"},
+                    "derive_hint": {"type": "string"},
+                },
+                "required": ["name"],
+            },
+        },
+        "wiki_gaps": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "topic": {"type": "string"},
+                    "suggested_page": {"type": "string"},
+                    "current_info_insufficient": {"type": "string"},
+                    "proposed_addition": {"type": "string"},
+                },
+                "required": ["topic"],
+            },
+        },
+        "wiki_needs": {"type": "array", "items": {"type": "string"}},
+    },
+    "required": [
+        "game_type",
+        "primary_strategy",
+        "fallback_stack",
+        "rationale",
+        "confidence",
+    ],
+}
+
+
 # Wiki retrieval is graph-based (R7b). See `wiki_retrieval.py` for the BFS
 # walk over `[[backlinks]]` and the seed-derivation rules. Static page lists
 # were removed in the R7b commit — every env now gets a tailored slice based
@@ -683,7 +757,29 @@ class WikiAgent:
 
     def classify(self, report: DiscoveryReport, max_tokens: int = 512) -> Hypothesis:
         prompt = self.build_prompt(report)
-        raw = self.llm.generate(prompt, max_tokens=max_tokens)
+        # Inject the live strategy whitelist as enum constraints on
+        # primary_strategy and fallback_stack items. Measured on the
+        # 2026-04-21 R7 bench (v1): the base schema (string type only)
+        # still let Qwen 8B hallucinate invalid names 26/40 envs. With an
+        # enum, the decoder physically cannot emit a non-whitelisted name.
+        schema = dict(_HYPOTHESIS_JSON_SCHEMA)
+        schema["properties"] = dict(schema["properties"])
+        whitelist = sorted(self.strategies.keys())
+        schema["properties"]["primary_strategy"] = {
+            "type": "string",
+            "enum": whitelist,
+        }
+        # uniqueItems forces Qwen to actually think of 3 *distinct* fallbacks
+        # rather than padding with duplicates. 2026-04-21 R7 v3 bench showed
+        # 4/40 envs with all-duplicate fallbacks (CD82 got click_color_order
+        # four times in the stack), which wastes every fallback slot.
+        schema["properties"]["fallback_stack"] = {
+            "type": "array",
+            "items": {"type": "string", "enum": whitelist},
+            "maxItems": 3,
+            "uniqueItems": True,
+        }
+        raw = self.llm.generate(prompt, max_tokens=max_tokens, json_schema=schema)
         parsed = _parse_json_lenient(raw)
         try:
             confidence = float(parsed.get("confidence", 0.0))

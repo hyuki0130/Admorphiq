@@ -1,0 +1,288 @@
+{
+  "headline": {
+    "total_envs": 40,
+    "envs_cleared": 9,
+    "envs_failed": 31,
+    "total_levels": 13,
+    "mean_confidence": 0.931
+  },
+  "predicted_type_distribution": {
+    "movement": 11,
+    "click": 15,
+    "merge_puzzle": 5,
+    "unknown": 2,
+    "sokoban": 2,
+    "hybrid": 1,
+    "sequence": 2,
+    "programming_puzzle": 2
+  },
+  "primary_strategy_counts": {
+    "bfs_state_space": 5,
+    "": 26,
+    "click_rare": 7,
+    "spell_cast": 2
+  },
+  "primary_success_rates": {
+    "bfs_state_space": {
+      "attempts": 5,
+      "cleared": 4,
+      "levels": 6,
+      "cleared_pct": 0.8
+    },
+    "click_rare": {
+      "attempts": 7,
+      "cleared": 3,
+      "levels": 3,
+      "cleared_pct": 0.429
+    },
+    "spell_cast": {
+      "attempts": 2,
+      "cleared": 2,
+      "levels": 4,
+      "cleared_pct": 1.0
+    }
+  },
+  "patterns": {
+    "dir_map_but_click_primary": {
+      "count": 0,
+      "evidence": "Discovery saw directional motion (dir_map populated) but the LLM picked a click-only primary. Movement games tend to fail without a movement strategy in the primary slot.",
+      "envs": []
+    },
+    "movement_type_non_movement_primary": {
+      "count": 6,
+      "evidence": "LLM predicted game_type='movement' but picked a non-movement primary strategy. Suggests the strategy selection rule is inconsistent with the type classification.",
+      "envs": [
+        {
+          "game_id": "cn04-2fe56bfb",
+          "title": "CN04",
+          "primary": "",
+          "best_levels": 0
+        },
+        {
+          "game_id": "cn04-2fe56bfb",
+          "title": "CN04",
+          "primary": "",
+          "best_levels": 0
+        },
+        {
+          "game_id": "dc22-fdcac232",
+          "title": "DC22",
+          "primary": "",
+          "best_levels": 0
+        },
+        {
+          "game_id": "dc22-fdcac232",
+          "title": "DC22",
+          "primary": "",
+          "best_levels": 0
+        },
+        {
+          "game_id": "g50t-5849a774",
+          "title": "G50T",
+          "primary": "",
+          "best_levels": 0
+        },
+        {
+          "game_id": "wa30-ee6fef47",
+          "title": "WA30",
+          "primary": "",
+          "best_levels": 0
+        }
+      ]
+    },
+    "wasted_budget_zero_levels": {
+      "count": 5,
+      "evidence": "All fallback strategies ran to completion (status=ok) with zero level gain. Suggests neither the primary nor fallbacks had signal for this env.",
+      "envs": [
+        {
+          "game_id": "ft09-0d8bbf25",
+          "title": "FT09",
+          "primary": "click_rare",
+          "fallback_stack": [],
+          "total_actions": 1153,
+          "strategies_tried": 1
+        },
+        {
+          "game_id": "tr87-cd924810",
+          "title": "TR87",
+          "primary": "bfs_state_space",
+          "fallback_stack": [],
+          "total_actions": 1,
+          "strategies_tried": 1
+        },
+        {
+          "game_id": "sb26-7fbdac44",
+          "title": "SB26",
+          "primary": "click_rare",
+          "fallback_stack": [],
+          "total_actions": 449,
+          "strategies_tried": 1
+        },
+        {
+          "game_id": "s5i5-18d95033",
+          "title": "S5I5",
+          "primary": "click_rare",
+          "fallback_stack": [],
+          "total_actions": 305,
+          "strategies_tried": 1
+        },
+        {
+          "game_id": "s5i5-18d95033",
+          "title": "S5I5",
+          "primary": "click_rare",
+          "fallback_stack": [],
+          "total_actions": 305,
+          "strategies_tried": 1
+        }
+      ]
+    },
+    "unknown_strategy_picks": {
+      "count": 26,
+      "evidence": "LLM invented a strategy name not in the whitelist. Indicates the strategy whitelist or prompt rule was ignored.",
+      "envs": [
+        {
+          "game_id": "ar25-0c556536",
+          "title": "AR25",
+          "invented_name": ""
+        },
+        {
+          "game_id": "ar25-0c556536",
+          "title": "AR25",
+          "invented_name": ""
+        },
+        {
+          "game_id": "re86-8af5384d",
+          "title": "RE86",
+          "invented_name": ""
+        },
+        {
+          "game_id": "re86-8af5384d",
+          "title": "RE86",
+          "invented_name": ""
+        },
+        {
+          "game_id": "su15-1944f8ab",
+          "title": "SU15",
+          "invented_name": ""
+        },
+        {
+          "game_id": "su15-1944f8ab",
+          "title": "SU15",
+          "invented_name": ""
+        },
+        {
+          "game_id": "m0r0-492f87ba",
+          "title": "M0R0",
+          "invented_name": ""
+        },
+        {
+          "game_id": "m0r0-492f87ba",
+          "title": "M0R0",
+          "invented_name": ""
+        },
+        {
+          "game_id": "cn04-2fe56bfb",
+          "title": "CN04",
+          "invented_name": ""
+        },
+        {
+          "game_id": "cn04-2fe56bfb",
+          "title": "CN04",
+          "invented_name": ""
+        },
+        {
+          "game_id": "dc22-fdcac232",
+          "title": "DC22",
+          "invented_name": ""
+        },
+        {
+          "game_id": "dc22-fdcac232",
+          "title": "DC22",
+          "invented_name": ""
+        },
+        {
+          "game_id": "ka59-38d34dbb",
+          "title": "KA59",
+          "invented_name": ""
+        },
+        {
+          "game_id": "ka59-38d34dbb",
+          "title": "KA59",
+          "invented_name": ""
+        },
+        {
+          "game_id": "g50t-5849a774",
+          "title": "G50T",
+          "invented_name": ""
+        },
+        {
+          "game_id": "lf52-271a04aa",
+          "title": "LF52",
+          "invented_name": ""
+        },
+        {
+          "game_id": "bp35-0a0ad940",
+          "title": "BP35",
+          "invented_name": ""
+        },
+        {
+          "game_id": "r11l-495a7899",
+          "title": "R11L",
+          "invented_name": ""
+        },
+        {
+          "game_id": "r11l-495a7899",
+          "title": "R11L",
+          "invented_name": ""
+        },
+        {
+          "game_id": "sk48-d8078629",
+          "title": "SK48",
+          "invented_name": ""
+        },
+        {
+          "game_id": "sk48-d8078629",
+          "title": "SK48",
+          "invented_name": ""
+        },
+        {
+          "game_id": "wa30-ee6fef47",
+          "title": "WA30",
+          "invented_name": ""
+        },
+        {
+          "game_id": "ls20-9607627b",
+          "title": "LS20",
+          "invented_name": ""
+        },
+        {
+          "game_id": "cd82-fb555c5d",
+          "title": "CD82",
+          "invented_name": ""
+        },
+        {
+          "game_id": "tn36-ef4dde99",
+          "title": "TN36",
+          "invented_name": ""
+        },
+        {
+          "game_id": "tn36-ef4dde99",
+          "title": "TN36",
+          "invented_name": ""
+        }
+      ]
+    },
+    "llm_flagged_missing_features": {
+      "count": 0,
+      "evidence": "The LLM self-reported features it wanted but did not have. Direct input to the dev-time cognition layer (Claude Code) — add the feature if derivable from frames already captured during discovery.",
+      "by_feature": {}
+    }
+  },
+  "_meta": {
+    "generated_at": "2026-04-21T19:16:30",
+    "trace_timestamp": "2026-04-21T19:16:13",
+    "trace_candidate": "qwen_3_8b_q4",
+    "deterministic": true,
+    "note": "Produced without LLM assistance. Claude Code (dev-time Cognition) reads this file and proposes wiki/code edits."
+  }
+}

@@ -2,6 +2,13 @@
   "verdict": "FAIL",
   "regressions": [
     {
+      "game_id": "ar25-0c556536",
+      "title": "AR25",
+      "baseline_levels": 2,
+      "new_levels": 0,
+      "delta": -2
+    },
+    {
       "game_id": "ft09-0d8bbf25",
       "title": "FT09",
       "baseline_levels": 6,
@@ -9,11 +16,11 @@
       "delta": -6
     },
     {
-      "game_id": "ls20-9607627b",
-      "title": "LS20",
-      "baseline_levels": 1,
+      "game_id": "sb26-7fbdac44",
+      "title": "SB26",
+      "baseline_levels": 8,
       "new_levels": 0,
-      "delta": -1
+      "delta": -8
     },
     {
       "game_id": "cd82-fb555c5d",
@@ -25,22 +32,15 @@
   ],
   "improvements": [
     {
-      "game_id": "m0r0-492f87ba",
-      "title": "M0R0",
+      "game_id": "sc25-635fd71a",
+      "title": "SC25",
       "baseline_levels": 0,
       "new_levels": 2,
       "delta": 2
     },
     {
-      "game_id": "tr87-cd924810",
-      "title": "TR87",
-      "baseline_levels": 0,
-      "new_levels": 1,
-      "delta": 1
-    },
-    {
-      "game_id": "bp35-0a0ad940",
-      "title": "BP35",
+      "game_id": "g50t-5849a774",
+      "title": "G50T",
       "baseline_levels": 0,
       "new_levels": 1,
       "delta": 1
@@ -58,16 +58,22 @@
   "missing_envs": [],
   "title_regressions": [
     {
+      "title": "AR25",
+      "baseline_best": 2,
+      "new_best": 0,
+      "delta": -2
+    },
+    {
       "title": "FT09",
       "baseline_best": 6,
       "new_best": 0,
       "delta": -6
     },
     {
-      "title": "LS20",
-      "baseline_best": 1,
+      "title": "SB26",
+      "baseline_best": 8,
       "new_best": 0,
-      "delta": -1
+      "delta": -8
     },
     {
       "title": "CD82",
@@ -78,9 +84,9 @@
   ],
   "headline": {
     "baseline_envs_cleared": 10,
-    "new_envs_cleared": 11,
+    "new_envs_cleared": 9,
     "baseline_total_levels": 29,
-    "new_total_levels": 21,
-    "level_delta": -8
+    "new_total_levels": 11,
+    "level_delta": -18
   }
 }

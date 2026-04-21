@@ -20,7 +20,67 @@ from admorphiq.hypothesis import (
     extract_backlinks,
     resolve_link,
     score_link,
+    strip_frontmatter,
 )
+
+
+# ---------------------------------------------------------------------------
+# strip_frontmatter
+# ---------------------------------------------------------------------------
+
+
+# FEEDBACK-GATED: pins the specific R7 bench collapse (2026-04-21) where
+# Qwen imitated the YAML frontmatter of games/<TITLE>.md as its output
+# shape, producing 0 levels across 40 envs. Once the dev-time loop has
+# completed multiple rounds with frontmatter stripping in place, this
+# test can be removed — the behavior is covered by the general
+# "frontmatter-bearing pages" test below.
+def test_strip_frontmatter_removes_leading_yaml_block_on_real_shape():
+    """Purpose: guarantee that the exact shape of a wiki game page's
+    frontmatter (as emitted by scripts/generate_wiki_game_pages.py) is
+    stripped — the one that caused Qwen 8B to parrot `game_id` / `status_v1`
+    into its response on 2026-04-21.
+
+    Expected feedback: if this fails, the R7 bench regression returns.
+    """
+    page = (
+        "---\n"
+        "type: game\n"
+        "game_id: tu93\n"
+        "game_type: movement\n"
+        "status_v1: 2/9\n"
+        "current_strategy: tu93_maze (brittle)\n"
+        "generalizes: yes\n"
+        "---\n"
+        "# TU93\n\n"
+        "Some prose here.\n"
+    )
+    out = strip_frontmatter(page)
+    assert "game_id: tu93" not in out
+    assert "# TU93" in out
+    assert "Some prose here." in out
+
+
+def test_strip_frontmatter_noop_when_absent():
+    """Purpose: pages without a frontmatter block must be returned
+    unchanged — selector.md and the reasoning pages don't all carry one.
+
+    Expected feedback: failure means non-frontmatter pages are being
+    mutilated at the top.
+    """
+    page = "# Plain page\n\nNo frontmatter here.\n"
+    assert strip_frontmatter(page) == page
+
+
+def test_strip_frontmatter_only_strips_leading_block():
+    """Purpose: a `---` horizontal rule in the middle of content must not
+    be mistaken for frontmatter fencing.
+
+    Expected feedback: failure means the middle of a wiki page could be
+    silently truncated if it contains `---`.
+    """
+    page = "# Heading\n\nText.\n\n---\n\nMore text.\n"
+    assert strip_frontmatter(page) == page
 
 
 # ---------------------------------------------------------------------------

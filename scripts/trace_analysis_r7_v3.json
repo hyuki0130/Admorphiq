@@ -1,0 +1,351 @@
+{
+  "headline": {
+    "total_envs": 40,
+    "envs_cleared": 16,
+    "envs_failed": 24,
+    "total_levels": 20,
+    "mean_confidence": 0.923
+  },
+  "predicted_type_distribution": {
+    "movement": 11,
+    "click": 15,
+    "merge_puzzle": 5,
+    "unknown": 2,
+    "sokoban": 2,
+    "hybrid": 1,
+    "sequence": 2,
+    "programming_puzzle": 2
+  },
+  "primary_strategy_counts": {
+    "bfs_state_space": 12,
+    "click_toggle_detect": 4,
+    "sb26_sort": 2,
+    "click_rare": 11,
+    "spell_cast": 2,
+    "ka59_sokoban": 2,
+    "click_diff_track": 1,
+    "explore_and_interact": 1,
+    "click_color_order": 5
+  },
+  "primary_success_rates": {
+    "bfs_state_space": {
+      "attempts": 12,
+      "cleared": 8,
+      "levels": 10,
+      "cleared_pct": 0.667
+    },
+    "click_toggle_detect": {
+      "attempts": 4,
+      "cleared": 1,
+      "levels": 1,
+      "cleared_pct": 0.25
+    },
+    "sb26_sort": {
+      "attempts": 2,
+      "cleared": 0,
+      "levels": 0,
+      "cleared_pct": 0.0
+    },
+    "click_rare": {
+      "attempts": 11,
+      "cleared": 5,
+      "levels": 5,
+      "cleared_pct": 0.455
+    },
+    "spell_cast": {
+      "attempts": 2,
+      "cleared": 2,
+      "levels": 4,
+      "cleared_pct": 1.0
+    },
+    "ka59_sokoban": {
+      "attempts": 2,
+      "cleared": 0,
+      "levels": 0,
+      "cleared_pct": 0.0
+    },
+    "click_diff_track": {
+      "attempts": 1,
+      "cleared": 0,
+      "levels": 0,
+      "cleared_pct": 0.0
+    },
+    "explore_and_interact": {
+      "attempts": 1,
+      "cleared": 0,
+      "levels": 0,
+      "cleared_pct": 0.0
+    },
+    "click_color_order": {
+      "attempts": 5,
+      "cleared": 0,
+      "levels": 0,
+      "cleared_pct": 0.0
+    }
+  },
+  "patterns": {
+    "dir_map_but_click_primary": {
+      "count": 0,
+      "evidence": "Discovery saw directional motion (dir_map populated) but the LLM picked a click-only primary. Movement games tend to fail without a movement strategy in the primary slot.",
+      "envs": []
+    },
+    "movement_type_non_movement_primary": {
+      "count": 0,
+      "evidence": "LLM predicted game_type='movement' but picked a non-movement primary strategy. Suggests the strategy selection rule is inconsistent with the type classification.",
+      "envs": []
+    },
+    "wasted_budget_zero_levels": {
+      "count": 20,
+      "evidence": "All fallback strategies ran to completion (status=ok) with zero level gain. Suggests neither the primary nor fallbacks had signal for this env.",
+      "envs": [
+        {
+          "game_id": "ar25-0c556536",
+          "title": "AR25",
+          "primary": "click_toggle_detect",
+          "fallback_stack": [
+            "click_toggle_detect",
+            "click_select_move",
+            "click_toggle_detect"
+          ],
+          "total_actions": 568,
+          "strategies_tried": 4
+        },
+        {
+          "game_id": "ar25-0c556536",
+          "title": "AR25",
+          "primary": "click_toggle_detect",
+          "fallback_stack": [
+            "click_toggle_detect",
+            "click_select_move",
+            "click_toggle_detect"
+          ],
+          "total_actions": 568,
+          "strategies_tried": 4
+        },
+        {
+          "game_id": "su15-1944f8ab",
+          "title": "SU15",
+          "primary": "click_rare",
+          "fallback_stack": [
+            "click_color_order",
+            "click_color_order"
+          ],
+          "total_actions": 4110,
+          "strategies_tried": 3
+        },
+        {
+          "game_id": "su15-1944f8ab",
+          "title": "SU15",
+          "primary": "click_rare",
+          "fallback_stack": [
+            "click_color_order",
+            "click_color_order"
+          ],
+          "total_actions": 4110,
+          "strategies_tried": 3
+        },
+        {
+          "game_id": "m0r0-492f87ba",
+          "title": "M0R0",
+          "primary": "click_toggle_detect",
+          "fallback_stack": [
+            "click_toggle_detect",
+            "click_select_move",
+            "click_toggle_detect"
+          ],
+          "total_actions": 6121,
+          "strategies_tried": 4
+        },
+        {
+          "game_id": "cn04-2fe56bfb",
+          "title": "CN04",
+          "primary": "bfs_state_space",
+          "fallback_stack": [
+            "explore_and_interact",
+            "click_only_raster_fine"
+          ],
+          "total_actions": 5494,
+          "strategies_tried": 3
+        },
+        {
+          "game_id": "cn04-2fe56bfb",
+          "title": "CN04",
+          "primary": "bfs_state_space",
+          "fallback_stack": [
+            "explore_and_interact",
+            "click_only_raster_fine"
+          ],
+          "total_actions": 5494,
+          "strategies_tried": 3
+        },
+        {
+          "game_id": "ft09-0d8bbf25",
+          "title": "FT09",
+          "primary": "click_rare",
+          "fallback_stack": [
+            "click_color_order",
+            "click_color_order"
+          ],
+          "total_actions": 5153,
+          "strategies_tried": 3
+        },
+        {
+          "game_id": "tr87-cd924810",
+          "title": "TR87",
+          "primary": "bfs_state_space",
+          "fallback_stack": [
+            "bfs_state_space",
+            "bfs_state_space",
+            "bfs_state_space"
+          ],
+          "total_actions": 4,
+          "strategies_tried": 4
+        },
+        {
+          "game_id": "sb26-7fbdac44",
+          "title": "SB26",
+          "primary": "click_rare",
+          "fallback_stack": [
+            "click_color_order",
+            "click_color_order"
+          ],
+          "total_actions": 4449,
+          "strategies_tried": 3
+        },
+        {
+          "game_id": "lf52-271a04aa",
+          "title": "LF52",
+          "primary": "click_diff_track",
+          "fallback_stack": [
+            "click_diff_track",
+            "click_color_order",
+            "click_color_order"
+          ],
+          "total_actions": 3016,
+          "strategies_tried": 4
+        },
+        {
+          "game_id": "bp35-0a0ad940",
+          "title": "BP35",
+          "primary": "explore_and_interact",
+          "fallback_stack": [
+            "explore_and_interact",
+            "explore_and_interact",
+            "explore_and_interact"
+          ],
+          "total_actions": 2916,
+          "strategies_tried": 4
+        },
+        {
+          "game_id": "s5i5-18d95033",
+          "title": "S5I5",
+          "primary": "click_rare",
+          "fallback_stack": [
+            "click_color_order",
+            "click_color_order"
+          ],
+          "total_actions": 2439,
+          "strategies_tried": 3
+        },
+        {
+          "game_id": "s5i5-18d95033",
+          "title": "S5I5",
+          "primary": "click_rare",
+          "fallback_stack": [
+            "click_color_order",
+            "click_color_order"
+          ],
+          "total_actions": 2439,
+          "strategies_tried": 3
+        },
+        {
+          "game_id": "sk48-d8078629",
+          "title": "SK48",
+          "primary": "click_color_order",
+          "fallback_stack": [
+            "click_color_order",
+            "click_color_order",
+            "click_color_order"
+          ],
+          "total_actions": 8000,
+          "strategies_tried": 4
+        },
+        {
+          "game_id": "sk48-d8078629",
+          "title": "SK48",
+          "primary": "click_color_order",
+          "fallback_stack": [
+            "click_color_order",
+            "click_color_order",
+            "click_color_order"
+          ],
+          "total_actions": 8000,
+          "strategies_tried": 4
+        },
+        {
+          "game_id": "wa30-ee6fef47",
+          "title": "WA30",
+          "primary": "bfs_state_space",
+          "fallback_stack": [
+            "bfs_state_space",
+            "bfs_state_space",
+            "bfs_state_space"
+          ],
+          "total_actions": 4,
+          "strategies_tried": 4
+        },
+        {
+          "game_id": "cd82-fb555c5d",
+          "title": "CD82",
+          "primary": "click_color_order",
+          "fallback_stack": [
+            "click_color_order",
+            "click_color_order",
+            "click_color_order"
+          ],
+          "total_actions": 6820,
+          "strategies_tried": 4
+        },
+        {
+          "game_id": "tn36-ef4dde99",
+          "title": "TN36",
+          "primary": "click_color_order",
+          "fallback_stack": [
+            "click_rare",
+            "click_color_order"
+          ],
+          "total_actions": 1919,
+          "strategies_tried": 3
+        },
+        {
+          "game_id": "tn36-ef4dde99",
+          "title": "TN36",
+          "primary": "click_color_order",
+          "fallback_stack": [
+            "click_rare",
+            "click_color_order"
+          ],
+          "total_actions": 1919,
+          "strategies_tried": 3
+        }
+      ]
+    },
+    "unknown_strategy_picks": {
+      "count": 0,
+      "evidence": "LLM invented a strategy name not in the whitelist. Indicates the strategy whitelist or prompt rule was ignored.",
+      "envs": []
+    },
+    "llm_flagged_missing_features": {
+      "count": 0,
+      "evidence": "The LLM self-reported features it wanted but did not have. Direct input to the dev-time cognition layer (Claude Code) — add the feature if derivable from frames already captured during discovery.",
+      "by_feature": {}
+    }
+  },
+  "_meta": {
+    "generated_at": "2026-04-21T19:41:01",
+    "trace_timestamp": "2026-04-21T19:40:55",
+    "trace_candidate": "qwen_3_8b_q4",
+    "deterministic": true,
+    "note": "Produced without LLM assistance. Claude Code (dev-time Cognition) reads this file and proposes wiki/code edits."
+  }
+}

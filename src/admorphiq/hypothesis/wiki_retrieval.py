@@ -29,6 +29,24 @@ from typing import Any, Iterable
 # underscores. Obsidian also allows `[[target|alias]]`; we strip the alias.
 _BACKLINK_RE = re.compile(r"\[\[([^\]\|]+)(?:\|[^\]]*)?\]\]")
 
+# Match a YAML frontmatter block at the very top of a page: opening `---` on
+# its own line, then any content (non-greedy), then a closing `---` line.
+# Frontmatter is tooling metadata (wiki_index generator, schema governance)
+# and must NOT be exposed to the LLM — Qwen 8B will imitate its key/value
+# structure ("game_id", "status_v1", ...) instead of producing our response
+# schema. Measured failure: 2026-04-21 R7 bench where 40/40 envs returned
+# 0 levels because Qwen parroted games/<TITLE>.md's frontmatter as output.
+_FRONTMATTER_RE = re.compile(r"\A---\s*\n.*?\n---\s*\n", re.DOTALL)
+
+
+def strip_frontmatter(text: str) -> str:
+    """Remove a leading YAML frontmatter block from a wiki page.
+
+    Only strips when the file begins with `---` on its own line — pages
+    without frontmatter are returned unchanged.
+    """
+    return _FRONTMATTER_RE.sub("", text, count=1)
+
 
 def extract_backlinks(text: str) -> list[str]:
     """Return distinct `[[...]]` targets in first-occurrence order.
@@ -228,6 +246,7 @@ class GraphRetriever:
                 content = path.read_text()
             except OSError:
                 continue
+            content = strip_frontmatter(content)
             chunk = f"--- {resolved} ---\n{content}"
             prefix = joiner_len if pages else 0
             if total + prefix + len(chunk) > budget_chars:

@@ -29,6 +29,7 @@ from .wiki_retrieval import (
     extract_backlinks,
     resolve_link,
     score_link,
+    strip_frontmatter,
 )
 
 
@@ -76,4 +77,5 @@ __all__ = [
     "resolve_link",
     "score_link",
     "strategy_whitelist_text",
+    "strip_frontmatter",
 ]

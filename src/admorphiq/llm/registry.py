@@ -49,8 +49,19 @@ class LLMBackend(Protocol):
 
     meta: CandidateMeta
 
-    def generate(self, prompt: str, max_tokens: int = 512) -> str:
-        """Return the generated text for a prompt."""
+    def generate(
+        self,
+        prompt: str,
+        max_tokens: int = 512,
+        json_schema: dict[str, Any] | None = None,
+    ) -> str:
+        """Return the generated text for a prompt.
+
+        `json_schema` — optional JSON Schema dict; when set, the backend must
+        constrain generation to match. Ollama 0.5+ supports this via the
+        `format` API parameter. Backends that cannot enforce schema MUST
+        raise rather than silently fall back to free-form generation.
+        """
         ...
 
 

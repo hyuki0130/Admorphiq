@@ -24,7 +24,12 @@ class OllamaBackend:
         self._tag = ollama_tag
         self._endpoint = f"{host.rstrip('/')}/api/generate"
 
-    def generate(self, prompt: str, max_tokens: int = 512) -> str:
+    def generate(
+        self,
+        prompt: str,
+        max_tokens: int = 512,
+        json_schema: dict[str, Any] | None = None,
+    ) -> str:
         # Qwen 3 (and other reasoning-tuned models) default to a "thinking" phase
         # whose tokens count against num_predict but do NOT appear in `response`.
         # Prepend `/no_think` so the model emits the answer directly; also disable
@@ -32,7 +37,7 @@ class OllamaBackend:
         use_prompt = prompt
         if self.meta.family == "qwen3" and not prompt.lstrip().startswith("/no_think"):
             use_prompt = "/no_think\n" + prompt
-        body = {
+        body: dict[str, Any] = {
             "model": self._tag,
             "prompt": use_prompt,
             "stream": False,
@@ -43,6 +48,12 @@ class OllamaBackend:
                 "top_p": 1.0,
             },
         }
+        if json_schema is not None:
+            # Ollama 0.5+ accepts a JSON Schema dict here and constrains the
+            # decoder to produce valid matching output. Crucial for our case:
+            # without this, Qwen 8B silently drifts from the prompt's declared
+            # schema (2026-04-21 R7 bench: all 40 envs returned wrong keys).
+            body["format"] = json_schema
         req = urllib.request.Request(
             self._endpoint,
             data=json.dumps(body).encode("utf-8"),
