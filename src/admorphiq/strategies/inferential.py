@@ -125,10 +125,17 @@ def observation_phase(env: Any, stride: int = 8, budget: int = 200) -> tuple[dic
         "scalar": {aid: ScalarProfile},  # aid ∈ 1..5, 7
         "click": list[ClickProfile],     # one per probed (x, y)
         "observed_transitions": list[TransitionRecord],
+        "hud_mask": np.ndarray,          # round-12: pixels that changed under every probe
       }
 
     ScalarProfile and ClickProfile carry:
-      diff_magnitude, bbox, centroid, region_kind, did_transition.
+      diff_magnitude, bbox, centroid, region_kind, did_transition
+    with HUD pixels already excluded from diff_magnitude / bbox /
+    centroid / region_kind (round 12 — CD82 measured a step-counter
+    at (63,63) incrementing under every probe, which previously
+    made every click look "responsive-local" and mass-tagged cells
+    as palettes).
+
     TransitionRecord carries (frame_before, frame_after, action).
     """
     used = 0
@@ -142,6 +149,9 @@ def observation_phase(env: Any, stride: int = 8, budget: int = 200) -> tuple[dic
     scalar: dict[int, dict] = {}
     click_probes: list[dict] = []
     transitions: list[dict] = []
+    # Raw diff masks kept for HUD detection — pixels that changed
+    # under EVERY probe are step counters / timers, not gameplay.
+    raw_diff_masks: list[np.ndarray] = []
 
     def _record_transition(f_before: np.ndarray, f_after: np.ndarray, action_desc: dict) -> None:
         transitions.append({
@@ -162,19 +172,12 @@ def observation_phase(env: Any, stride: int = 8, budget: int = 200) -> tuple[dic
         used += 1
         f1 = _get_frame(obs)
         mask = (f0 != f1)
-        bbox, centroid = _bbox_and_centroid(mask)
         did_trans = obs.levels_completed > base_levels
+        raw_diff_masks.append(mask)
         scalar[aid] = {
             "aid": aid,
-            "diff_magnitude": int(mask.sum()),
-            "bbox": bbox,
-            "centroid": centroid,
-            "region_kind": _classify_region(mask, total_pixels),
+            "raw_mask": mask,
             "did_transition": did_trans,
-            # Save both frames so Phase 2 can match clusters across the
-            # probe — needed to identify the player as "cluster whose
-            # centroid shifted between f0 and f1", not just "centroid of
-            # the diff_mask" (which lands between old and new position).
             "frame_before": f0,
             "frame_after": f1,
         }
@@ -212,19 +215,44 @@ def observation_phase(env: Any, stride: int = 8, budget: int = 200) -> tuple[dic
             used += 1
             f1 = _get_frame(obs)
             mask = (f0 != f1)
-            bbox, centroid = _bbox_and_centroid(mask)
             did_trans = obs.levels_completed > base_levels
+            raw_diff_masks.append(mask)
             click_probes.append({
                 "x": x,
                 "y": y,
-                "diff_magnitude": int(mask.sum()),
-                "bbox": bbox,
-                "centroid": centroid,
-                "region_kind": _classify_region(mask, total_pixels),
+                "raw_mask": mask,
                 "did_transition": did_trans,
             })
             if did_trans:
                 _record_transition(f0, f1, {"kind": "click", "x": x, "y": y})
+
+    # HUD derivation — pixels that changed under at least N-1 of N
+    # probes are a step counter / timer / animated HUD element.
+    # Subtract them from every probe's effective diff so entity
+    # detection doesn't mass-tag cells as "palettes" just because
+    # the HUD increments on every action.
+    if raw_diff_masks:
+        stack = np.stack(raw_diff_masks, axis=0)
+        change_count = stack.sum(axis=0)
+        # HUD ≡ pixels that changed under ≥ 80% of probes.
+        threshold = max(1, int(0.8 * len(raw_diff_masks)))
+        hud_mask = change_count >= threshold
+    else:
+        hud_mask = np.zeros_like(base_frame, dtype=bool)
+
+    def _finalize(entry: dict) -> dict:
+        mask = entry.pop("raw_mask")
+        clean_mask = mask & ~hud_mask
+        bbox, centroid = _bbox_and_centroid(clean_mask)
+        entry["diff_magnitude"] = int(clean_mask.sum())
+        entry["bbox"] = bbox
+        entry["centroid"] = centroid
+        entry["region_kind"] = _classify_region(clean_mask, total_pixels)
+        return entry
+
+    for aid in list(scalar.keys()):
+        scalar[aid] = _finalize(scalar[aid])
+    click_probes = [_finalize(p) for p in click_probes]
 
     return ({
         "base_levels": int(base_levels),
@@ -233,6 +261,7 @@ def observation_phase(env: Any, stride: int = 8, budget: int = 200) -> tuple[dic
         "scalar": scalar,
         "click": click_probes,
         "observed_transitions": transitions,
+        "hud_mask": hud_mask,
     }, used)
 
 

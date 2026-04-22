@@ -1089,6 +1089,42 @@ so the 18 unsolved game classes clear something:
 
 Each is a per-plan iteration, not a routing layer change.
 
+### Round 12 outcome (2026-04-23, observation HUD masking, bench unchanged)
+
+Added HUD masking to `observation_phase` — pixels that change under
+≥ 80 % of all probes (step counters / timers / animated overlays)
+are identified post-hoc and subtracted from every probe's effective
+`diff_magnitude` / `bbox` / `centroid` / `region_kind`. The raw
+diff mask is also exposed as `profile["hud_mask"]`.
+
+Motivation: CD82 trace showed 71/71 click probes labeled
+"responsive" because a step-counter at (63,63) incremented on every
+action, producing a 1-pixel change. That mass-tagged cells as
+"palettes" (67 of them) and drowned out the 2 truly-meaningful
+clicks ((36,4) and (37,4) with diff=94 at centroid (32,25) — the
+actual game button).
+
+After HUD masking: CD82 responsive clicks correctly drop to 2/71,
+palette count 67 → 0, the real interaction points surface.
+
+**Bench result** (40 envs, 4236 s): 20 raw levels, 14/40 cleared,
+100 % `adaptive_bfs_solver`. **Identical to R11** per-env.
+
+HUD masking cleaned up entity-detection false positives but didn't
+change plan outcomes. This confirms the round-11 diagnosis: the
+bottleneck is the plan execution layer, not observation quality.
+Plans clear movement/navigation games at brittle parity but fail
+on click-heavy classes (toggle / merge / paint / push) because
+the plan algorithms themselves aren't game-semantic-aware enough.
+
+**Round 13+ direction**: deep per-game-class plan work. Broad
+architectural improvements have now saturated; remaining lift
+requires understanding what specifically each failing class
+(FT09 lights-out, SU15 merge, CD82 paint, SB26 sort, KA59/WA30
+sokoban) needs and implementing that inside the corresponding
+plan fn. Each is a narrow research-and-implement cycle, not a
+sweeping change.
+
 ## Prohibited Patterns (Wiki-First Routing enforcement)
 
 The routing decision — which strategy runs as primary and what lands in
