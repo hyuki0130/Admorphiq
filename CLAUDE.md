@@ -875,6 +875,62 @@ per-plan budget and/or parallelize plan fanout.
    inferential_agent (previous rounds defaulted to bfs_state_space /
    click_rare).
 
+### Round 7 outcome (2026-04-22, FAIL vs baseline, raw +8 vs R5)
+
+Applied three I-Agent refinements in
+`src/admorphiq/strategies/inferential.py`:
+
+- **Nav budget cap**. Per-plan budget caps: navigation 10 000,
+  toggle 15 000, merge 12 000, paint_fill 12 000. Previously a single
+  plan call could burn the full 50 000. AR25 direct-test time did not
+  shrink much (875 s → 875 s; arcengine `env.step` is ~60 actions/sec,
+  so wall-clock is dominated by step latency, not plan cost).
+- **Toggle plan rewrite**. Candidates now include every cluster
+  centroid PLUS corner samples of non-trivial clusters, not just cells
+  that showed immediate click-responsiveness. Depth extended to 4.
+  Rationale: FT09 has 0/20 responsive probes on cluster centroids,
+  yet brittle `lights_out` clears 6/6 — clicks are being registered
+  but the effect is delayed / cumulative. Still didn't clear FT09 in
+  the v10 direct test; likely needs even deeper combinations or a
+  different cell-selection heuristic.
+- **Merge plan vacuum-radius calibration**. Infer radius R from
+  observation-phase click probes (max click-to-diff-bbox L∞
+  distance). Only propose midpoints for pairs within 2R. Fallback
+  click positions: midpoint → 1/3 → 2/3 → on-cluster. Still didn't
+  clear SU15.
+
+**Bench result** (full 40-env WikiAgent, 1911 s):
+
+| Metric | R5 | R6 | **R7** | Δ vs R5 |
+|---|---|---|---|---|
+| Raw levels | 27 | — | **23** | — |
+| Raw envs cleared | 11/40 | — | **17/40** | **+6** |
+| Raw total (trace) | 15 | — | **23** | **+8** |
+| Gate | FAIL | — | **FAIL** | CD82/FT09/SB26 |
+| I-Agent picks (primary) | 0 | — | **0** | no change |
+
+The compact `llm_context/decision_tree.md` seeded first in the
+retriever DID improve Qwen's decisiveness: raw-levels 15 → 23 (+8)
+even though I-Agent is never selected. `bfs_state_space` got 25
+picks, `click_rare` got 15, I-Agent 0. The gate still fails because
+CD82 / FT09 / SB26 all need brittle strategies (purged) OR I-Agent
+(not selected).
+
+**Critical finding — Qwen 8B anchor bias is very strong**. Four
+rounds of wiki work (R3 split, R4 architecture pivot, R5 G1-G4, R6
+decision_tree) have not dislodged Qwen's anchoring on the two most
+familiar strategy names. Adding new names to the whitelist does not
+change routing behavior.
+
+**Round 8 direction**: force the single-entry-point by removing
+`bfs_state_space` and `click_rare` from the LLM-pickable whitelist.
+They remain internally callable from `strat_inferential_agent`'s
+navigation plan (which delegates to `strat_bfs_state_space`). Qwen
+will be forced to pick a name it has never been "used to" — ideally
+`inferential_agent`. Projected: I-Agent primary picks jump to ~30/40,
+measured levels become a direct test of I-Agent's in-bench
+performance.
+
 ## Prohibited Patterns (Wiki-First Routing enforcement)
 
 The routing decision — which strategy runs as primary and what lands in

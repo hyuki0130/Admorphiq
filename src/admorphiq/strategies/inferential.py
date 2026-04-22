@@ -525,16 +525,65 @@ def _plan_navigation(env: Any, action_profile: dict, entity_map: dict, goal: dic
 
 
 def _plan_merge(env: Any, action_profile: dict, entity_map: dict, goal: dict, budget: int) -> tuple[int, int]:
-    """Click midpoints of same-color merge-item pairs. Closest pairs first."""
+    """Merge same-color cluster pairs via click. Round 7 adds:
+      1. Vacuum-radius calibration from the probe data — use the
+         maximum observed cluster-shift under any single click as R.
+         Clicks are only proposed for pairs whose distance ≤ 2R; for
+         larger pairs we attempt "chaining" (click sequence that drags
+         one cluster toward the other in multiple steps).
+      2. Per-pair fallback click positions: midpoint → 1/3 → 2/3 →
+         directly on each cluster. Covers small-radius vacuums (SU15)
+         where the literal midpoint falls outside the pull range.
+    """
     used = 0
     items = entity_map.get("merge_items", [])
     if not items:
         return 0, used
+
+    # Calibrate vacuum radius R from observation-phase click probes.
+    # R ≈ max displacement any cluster experienced under a single click.
+    R = 0
+    for c_probe in action_profile.get("click", []):
+        bbox = c_probe.get("bbox", (0, 0, 0, 0))
+        cx = c_probe.get("centroid", (0, 0))[0]
+        cy = c_probe.get("centroid", (0, 0))[1]
+        # Use the L∞ distance from click coord to the farthest-changed
+        # pixel as a proxy for vacuum reach.
+        if c_probe.get("diff_magnitude", 0) > 0:
+            y0, x0, y1, x1 = bbox
+            reach = max(
+                abs(c_probe["x"] - x0),
+                abs(c_probe["x"] - x1),
+                abs(c_probe["y"] - y0),
+                abs(c_probe["y"] - y1),
+            )
+            if reach > R:
+                R = reach
+    # Safety floor — at worst every click has radius 3 pixels.
+    if R < 3:
+        R = 8
+    max_pair_distance = 2 * R
+
     obs = _reset(env)
     used += 1
     base_levels = obs.levels_completed
 
-    for attempt in range(30):
+    def _candidates(a: dict, b: dict) -> list[tuple[int, int]]:
+        """Click positions in decreasing priority for a pair (a, b)."""
+        ax, ay = a["cx"], a["cy"]
+        bx, by = b["cx"], b["cy"]
+        mx, my = (ax + bx) // 2, (ay + by) // 2
+        t1x, t1y = (2 * ax + bx) // 3, (2 * ay + by) // 3
+        t2x, t2y = (ax + 2 * bx) // 3, (ay + 2 * by) // 3
+        return [
+            (mx, my),
+            (t1x, t1y),
+            (t2x, t2y),
+            (ax, ay),
+            (bx, by),
+        ]
+
+    for attempt in range(40):
         if used >= budget:
             break
         f = _get_frame(obs)
@@ -556,25 +605,29 @@ def _plan_merge(env: Any, action_profile: dict, entity_map: dict, goal: dict, bu
         pairs.sort(key=lambda t: t[0])
         if not pairs:
             break
-        d, a, b = pairs[0]
-        mx, my = (a["cx"] + b["cx"]) // 2, (a["cy"] + b["cy"]) // 2
-        obs = _click(env, mx, my)
-        used += 1
-        if obs.levels_completed > base_levels:
-            return obs.levels_completed, used
-        if obs.state.name == "GAME_OVER":
-            break
-        # If the click didn't change anything, try clicking nearer to
-        # one of the pair clusters (handles small vacuum radius).
-        nf = _get_frame(obs)
-        if int(np.count_nonzero(f - nf)) == 0:
-            for target in (a, b):
+
+        progress_this_attempt = False
+        for d, a, b in pairs[:6]:
+            if used >= budget:
+                break
+            for (cx, cy) in _candidates(a, b):
                 if used >= budget:
                     break
-                obs = _click(env, target["cx"], target["cy"])
+                pre_frame = _get_frame(obs)
+                obs = _click(env, cx, cy)
                 used += 1
                 if obs.levels_completed > base_levels:
                     return obs.levels_completed, used
+                if obs.state.name == "GAME_OVER":
+                    return base_levels, used
+                post_frame = _get_frame(obs)
+                if int(np.count_nonzero(pre_frame - post_frame)) > 0:
+                    progress_this_attempt = True
+                    break
+            if progress_this_attempt:
+                break
+        if not progress_this_attempt:
+            break
     return base_levels, used
 
 
@@ -628,70 +681,118 @@ def _plan_paint_fill(env: Any, action_profile: dict, entity_map: dict, goal: dic
 
 
 def _plan_toggle(env: Any, action_profile: dict, entity_map: dict, goal: dict, budget: int) -> tuple[int, int]:
-    """DFS click sequences over non-executor non-palette click-responsive
-    probes (depth ≤ 5). Executor click (if present) is appended to each
-    candidate sequence."""
+    """Click-sequence search over candidate cells.
+
+    Round-6 version filtered candidates to only cells whose single-probe
+    caused a visible frame diff. FT09 measured 0/20 responsive on
+    cluster centroids — yet the brittle solver clears 6/6, meaning
+    clicks DO have effect but it's delayed (cumulative toggle state)
+    or the probe landed off-sprite. Round-7 removes the responsiveness
+    prerequisite and enlarges the candidate pool:
+
+      1. Every flood-filled cluster centroid (not just responsive).
+      2. Every responsive stride-8 probe (kept from round 6 if any).
+      3. Four-corner sampling of each non-trivial cluster (catches
+         lit-region sprites where the centroid sits between sub-cells).
+
+    Candidates deduped by (x, y) and capped at 16 to keep depth-3
+    enumeration tractable.
+
+    Executor cell, if any, is appended to every candidate sequence.
+    """
     used = 0
-    clicks = action_profile.get("click", [])
-    toggle_cells = [
-        (c["x"], c["y"]) for c in clicks
-        if c["region_kind"] in ("local", "regional")
-        and c["diff_magnitude"] > 0
-    ]
-    # Filter out palette / executor cells.
-    palette_set = {(p["x"], p["y"]) for p in entity_map.get("palettes", [])}
-    executor_set = {(e["x"], e["y"]) for e in entity_map.get("executors", [])}
-    toggle_cells = [t for t in toggle_cells if t not in palette_set and t not in executor_set]
-    toggle_cells = toggle_cells[:10]
     executors = entity_map.get("executors", [])
     exec_cell = (executors[0]["x"], executors[0]["y"]) if executors else None
+    palette_set = {(p["x"], p["y"]) for p in entity_map.get("palettes", [])}
+    executor_set = {(e["x"], e["y"]) for e in executors}
+
+    cand_coords: list[tuple[int, int]] = []
+    seen_coord: set[tuple[int, int]] = set()
+
+    def _add(xy: tuple[int, int]) -> None:
+        if xy in seen_coord or xy in palette_set or xy in executor_set:
+            return
+        x, y = xy
+        if x < 0 or y < 0 or x >= 64 or y >= 64:
+            return
+        seen_coord.add(xy)
+        cand_coords.append(xy)
+
+    for c in entity_map.get("clusters", []):
+        _add((c["cx"], c["cy"]))
+        if c["size"] >= 9:
+            _add((c["xmin"] + 1, c["ymin"] + 1))
+            _add((c["xmax"] - 1, c["ymin"] + 1))
+            _add((c["xmin"] + 1, c["ymax"] - 1))
+            _add((c["xmax"] - 1, c["ymax"] - 1))
+    for c_probe in action_profile.get("click", []):
+        if c_probe.get("diff_magnitude", 0) > 0:
+            _add((c_probe["x"], c_probe["y"]))
+
+    cand_coords = cand_coords[:16]
 
     obs = _reset(env)
     used += 1
     base_levels = obs.levels_completed
 
-    def _try(seq: list[tuple[int, int]]) -> tuple[int, int]:
+    def _try(seq: list[tuple[int, int]]) -> int:
         nonlocal used
         if used >= budget:
-            return base_levels, used
+            return base_levels
         obs_local = _reset(env)
         used += 1
         for cx, cy in seq:
             if used >= budget:
-                break
+                return base_levels
             obs_local = _click(env, cx, cy)
             used += 1
             if obs_local.levels_completed > base_levels:
-                return obs_local.levels_completed, used
+                return int(obs_local.levels_completed)
             if obs_local.state.name == "GAME_OVER":
-                return base_levels, used
+                return base_levels
         if exec_cell is not None and used < budget:
             obs_local = _click(env, *exec_cell)
             used += 1
             if obs_local.levels_completed > base_levels:
-                return obs_local.levels_completed, used
-        return base_levels, used
+                return int(obs_local.levels_completed)
+        return base_levels
 
-    # Singletons → pairs → triples.
-    for c in toggle_cells:
-        result, _ = _try([c])
+    # Singletons.
+    for c in cand_coords:
+        result = _try([c])
         if result > base_levels:
             return result, used
-    for i in range(len(toggle_cells)):
-        for j in range(i + 1, len(toggle_cells)):
+        if used >= budget:
+            return base_levels, used
+    # Pairs.
+    for i in range(len(cand_coords)):
+        for j in range(i + 1, len(cand_coords)):
             if used >= budget:
-                break
-            result, _ = _try([toggle_cells[i], toggle_cells[j]])
+                return base_levels, used
+            result = _try([cand_coords[i], cand_coords[j]])
             if result > base_levels:
                 return result, used
-    for i in range(min(len(toggle_cells), 4)):
-        for j in range(i + 1, min(len(toggle_cells), 5)):
-            for k in range(j + 1, min(len(toggle_cells), 6)):
+    # Triples (bounded — O(n³) gets costly).
+    n3 = min(len(cand_coords), 10)
+    for i in range(n3):
+        for j in range(i + 1, n3):
+            for k in range(j + 1, n3):
                 if used >= budget:
-                    break
-                result, _ = _try([toggle_cells[i], toggle_cells[j], toggle_cells[k]])
+                    return base_levels, used
+                result = _try([cand_coords[i], cand_coords[j], cand_coords[k]])
                 if result > base_levels:
                     return result, used
+    # Quads — last resort, tiny enumeration (top 7 candidates).
+    n4 = min(len(cand_coords), 7)
+    for i in range(n4):
+        for j in range(i + 1, n4):
+            for k in range(j + 1, n4):
+                for m in range(k + 1, n4):
+                    if used >= budget:
+                        return base_levels, used
+                    result = _try([cand_coords[i], cand_coords[j], cand_coords[k], cand_coords[m]])
+                    if result > base_levels:
+                        return result, used
     return base_levels, used
 
 
@@ -748,12 +849,27 @@ def strat_inferential_agent(env: Any, budget: int = 500000) -> tuple[int, str, i
         attempted: set[str] = set()
 
         # Phase 4: try the inferred plan first; then try siblings.
+        # Per-plan budget caps (round 7 — runtime fix):
+        #   navigation  : 10_000 (BFS engine hits fast-bail when a level
+        #                  is solved; unsolvable levels previously burned
+        #                  the full 50 000 — 867 s for AR25 in round 6)
+        #   toggle      : 15_000 (depth-4 click combinations)
+        #   merge       : 12_000 (greedy midpoint loop; a few passes enough)
+        #   paint_fill  : 12_000 (palette→targets→executor has few retries)
+        PLAN_BUDGET_CAP = {
+            "navigation": 10_000,
+            "toggle": 15_000,
+            "merge": 12_000,
+            "paint_fill": 12_000,
+        }
+
         def _try_plan(kind: str) -> bool:
             nonlocal used, best, label, cleared_this_level
             if kind in attempted or kind not in PLAN_FNS:
                 return False
             plan_fn = PLAN_FNS[kind]
-            remaining = min(budget - used, 50000)
+            cap = PLAN_BUDGET_CAP.get(kind, 10_000)
+            remaining = min(budget - used, cap)
             if remaining <= 0:
                 return False
             new_best, plan_used = plan_fn(env, profile, entity_map, goal, remaining)

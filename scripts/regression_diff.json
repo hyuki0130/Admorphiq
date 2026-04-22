@@ -32,13 +32,6 @@
       "delta": 2
     },
     {
-      "game_id": "sc25-635fd71a",
-      "title": "SC25",
-      "baseline_levels": 0,
-      "new_levels": 2,
-      "delta": 2
-    },
-    {
       "game_id": "sk48-d8078629",
       "title": "SK48",
       "baseline_levels": 0,
@@ -46,7 +39,7 @@
       "delta": 1
     }
   ],
-  "held_stable": 19,
+  "held_stable": 20,
   "new_envs": [],
   "missing_envs": [],
   "title_regressions": [
@@ -71,9 +64,9 @@
   ],
   "headline": {
     "baseline_envs_cleared": 10,
-    "new_envs_cleared": 11,
+    "new_envs_cleared": 10,
     "baseline_total_levels": 29,
-    "new_total_levels": 15,
-    "level_delta": -14
+    "new_total_levels": 13,
+    "level_delta": -16
   }
 }
