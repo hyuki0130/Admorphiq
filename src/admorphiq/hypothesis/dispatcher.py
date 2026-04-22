@@ -65,17 +65,36 @@ BRITTLE_STRATEGIES: frozenset[str] = frozenset(
 # `bfs_state_space` 25x and `click_rare` 15x and `inferential_agent`
 # 0x, despite the round-6 compact decision_tree.md seeded first.
 #
-# Remove them from the LLM-pickable whitelist so the model must pick
-# a different name — `inferential_agent` is designed to be that
-# name. Both banned strategies stay internally callable: the
-# navigation plan inside `strat_inferential_agent` already delegates
-# to `strat_bfs_state_space`, and click-rare behavior is subsumed by
-# the toggle / paint-fill plans. This is a single-entry-point
-# architectural decision, not a quality filter.
+# Both stay internally callable: the navigation plan inside
+# `strat_inferential_agent` already delegates to
+# `strat_bfs_state_space`, and click-rare behavior is subsumed by
+# the toggle / paint-fill plans.
 ANCHOR_BANNED_STRATEGIES: frozenset[str] = frozenset(
     {
         "bfs_state_space",
         "click_rare",
+    }
+)
+
+
+# Round 9 (2026-04-22) — ultra-minimal LLM-pickable allowlist.
+# Round 8 measured that partial whitelist purging produces
+# anchor-whack-a-mole: Qwen abandoned bfs_state_space/click_rare only
+# to pick bfs_explore / click_rotation_puzzle / bfs_framehash, all
+# weaker strategies. Score collapsed 23 → 4 raw levels.
+#
+# The allowlist below is the logical endpoint of Wiki-First Routing:
+# the routing LLM is offered exactly four names and must pick among
+# them. `inferential_agent` is the sole primary — it handles every
+# game shape through its five-phase pipeline. The three click-tool
+# fallbacks exist only so the run() loop has something to try when
+# I-Agent's plans all time out mid-run.
+LLM_WHITELIST_ALLOWLIST: frozenset[str] = frozenset(
+    {
+        "inferential_agent",
+        "click_toggle_detect",
+        "click_all_colors",
+        "click_color_order",
     }
 )
 
@@ -172,6 +191,19 @@ def introspect_strategies(
                     "forces inferential_agent as the routing entry point. "
                     "Still callable internally via strat_inferential_agent "
                     "navigation plan delegation.",
+                )
+            )
+            continue
+        if short_name not in LLM_WHITELIST_ALLOWLIST:
+            skipped.append(
+                (
+                    short_name,
+                    "round-9 allowlist: only inferential_agent + 3 click "
+                    "fallbacks are LLM-pickable. Round 8 measured that "
+                    "partial purging produces anchor-whack-a-mole; the "
+                    "allowlist is the logical endpoint of Wiki-First "
+                    "Routing. Strategy still callable internally when the "
+                    "inferential agent's plans decide to route here.",
                 )
             )
             continue

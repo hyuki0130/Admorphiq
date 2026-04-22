@@ -988,6 +988,33 @@ This is the logical endpoint of wiki-first routing: if the
 architecture says "the agent decides per-env via its phases", then
 the LLM's routing choice should literally be "run the agent".
 
+### Round 9 outcome (2026-04-22, FAIL — name-preference pathology)
+
+Implemented `LLM_WHITELIST_ALLOWLIST = {"inferential_agent",
+"click_toggle_detect", "click_all_colors", "click_color_order"}`
+and extended `introspect_strategies` to skip every strategy not in
+the allowlist. Registry 58 → 4. Tests 245 → 243 (retired two
+obsolete invariants about the bigger registry, added the round-9
+exact-set invariant).
+
+Bench (aborted at 11/40 envs): Qwen picked `click_toggle_detect`
+11/11 times. `inferential_agent` 0. The same model that had been
+picking `bfs_state_space` across 40 envs now picks
+`click_toggle_detect` across all its attempts — any name BUT
+`inferential_agent`.
+
+**Finding — name-preference pathology**: Qwen 3 8B actively avoids
+the string `inferential_agent` regardless of how few alternatives
+are offered. The 4-item allowlist was not enough to force the pick.
+Likely cause: "inferential_agent" is an abstract noun phrase that
+Qwen's pretraining associates weakly with executable code; the
+other three names are concrete action-compound phrases
+(verb_subject_noun).
+
+Round 10 candidate: rename the underlying function to a name Qwen
+is more likely to pick — e.g. `adaptive_bfs_solver` (retains `bfs`
+token Qwen already anchors on, distinguishing adjective).
+
 ## Prohibited Patterns (Wiki-First Routing enforcement)
 
 The routing decision — which strategy runs as primary and what lands in

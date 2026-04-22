@@ -79,15 +79,12 @@ def test_build_ctx_has_click_reflects_action6_availability():
 # ---------------------------------------------------------------------------
 
 
-def test_introspect_real_ensemble_exposes_many_more_than_pre_r3():
-    """R3 must expose materially more than the pre-R3 manual whitelist of 17."""
-    from admorphiq import agent_ensemble as ae
-
-    registry, skipped = introspect_strategies(ae)
-    assert len(registry) >= 30, (
-        f"Only {len(registry)} strategies dispatchable after R3; the pre-R3 "
-        f"manual list had 17, so this is a regression. Skipped reasons: {skipped}"
-    )
+# NOTE: the pre-R9 invariant that R3 exposes >= 30 strategies is gone.
+# Round 9 (2026-04-22) intentionally shrank the LLM-pickable set to
+# exactly the four strategies in LLM_WHITELIST_ALLOWLIST so Qwen is
+# forced off the BFS-like / click-variant anchor-whack-a-mole pattern
+# measured in rounds 3-8. See test_round9_registry_is_exactly_the_allowlist
+# below for the replacement invariant.
 
 
 def test_introspect_skips_runtime_only_strategies():
@@ -106,31 +103,28 @@ def test_introspect_skips_runtime_only_strategies():
         )
 
 
-def test_introspect_preserves_previous_uniform_strategies():
-    """Previously-exposed uniform strategies must still be in the new
-    registry. Round 5 (2026-04-22) excluded `tn36_frame_only` and
-    `su15_frame_only` from this list because they were renamed
-    "frame_only" but actually read game-internal sprite tags — see
-    BRITTLE_STRATEGIES in dispatcher.py. Round 8 additionally excluded
-    `bfs_state_space` and `click_rare` as LLM anchor-banned — they
-    remain internally callable via strat_inferential_agent's
-    navigation / toggle plans.
+def test_round9_registry_is_exactly_the_allowlist():
+    """Purpose: round 9 enforces an ultra-minimal LLM-pickable
+    whitelist. The registry must contain exactly the four strategies
+    in LLM_WHITELIST_ALLOWLIST — no more, no less. Round 8 measured
+    that partial purging produces anchor-whack-a-mole (Qwen abandoned
+    bfs_state_space / click_rare only to pick bfs_explore / friends,
+    all weaker). The allowlist is the mechanism that eliminates
+    whack-a-mole by leaving no BFS-like name for Qwen to latch onto.
+
+    Expected feedback: failure means a strategy that should be
+    callable-only-internally has leaked back into the LLM whitelist,
+    or the allowlist dropped a necessary fallback. Both break the
+    Wiki-First Routing architecture.
     """
     from admorphiq import agent_ensemble as ae
+    from admorphiq.hypothesis.dispatcher import LLM_WHITELIST_ALLOWLIST
 
     registry, _ = introspect_strategies(ae)
-    pre_r3_uniform = {
-        "click_all_colors",
-        "click_progressive",
-        "click_toggle_detect",
-        "click_diff_track",
-        "click_frame_adaptive",
-        "click_color_order",
-        "click_grid_aligned",
-        "raster",
-    }
-    missing = pre_r3_uniform - set(registry.keys())
-    assert not missing, f"registry dropped pre-R3 uniform strategies: {missing}"
+    assert set(registry.keys()) == set(LLM_WHITELIST_ALLOWLIST), (
+        f"registry={sorted(registry.keys())} "
+        f"allowlist={sorted(LLM_WHITELIST_ALLOWLIST)}"
+    )
 
 
 def test_round8_anchor_ban_is_enforced():
@@ -202,28 +196,12 @@ def test_round5_brittle_deny_list_is_enforced():
     )
 
 
-def test_round5_generic_g1_to_g4_are_registered():
-    """Purpose: the four round-5 generic inference strategies
-    (G1 interactive_grid_toggle, G2 sprite_cluster_interaction,
-    G3 push_bfs_grid, G4 bfs_framehash) MUST appear in the registry.
-    They replace the routing role of the brittle strategies and the
-    LLM cannot pick them otherwise.
-
-    Expected feedback: failure means a Gx function was renamed,
-    deleted, or its signature broke ctx-introspection. Re-add it or
-    fix its signature so the introspector accepts it.
-    """
-    from admorphiq import agent_ensemble as ae
-
-    registry, _ = introspect_strategies(ae)
-    expected = {
-        "interactive_grid_toggle",
-        "sprite_cluster_interaction",
-        "push_bfs_grid",
-        "bfs_framehash",
-    }
-    missing = expected - set(registry.keys())
-    assert not missing, f"round-5 generics missing from registry: {missing}"
+# Round-5 added G1-G4 generics to the LLM whitelist. Round 6
+# (inferential_agent) absorbed the routing role of G1-G4 — they're now
+# called *internally* from strat_inferential_agent's plan synthesis,
+# not chosen directly by Qwen. Round 9's ultra-minimal allowlist
+# enforces this: G1-G4 are intentionally NOT in the LLM-pickable
+# registry. The earlier test asserting they are has been removed.
 
 
 # ---------------------------------------------------------------------------
