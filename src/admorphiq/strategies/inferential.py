@@ -825,11 +825,106 @@ def _plan_toggle(env: Any, action_profile: dict, entity_map: dict, goal: dict, b
     return base_levels, used
 
 
+def _plan_click_then_move(env: Any, action_profile: dict, entity_map: dict, goal: dict, budget: int) -> tuple[int, int]:
+    """Click a high-diff button then BFS movement.
+
+    Round-13 plan for hybrids where a button press + player movement
+    clears the level (CD82 pattern: clicking the top arrow at (37,4)
+    advances game state, then left/right movement positions the
+    player). HUD masking (round 12) is what makes this plan viable —
+    without it every click looks responsive.
+
+    Algorithm:
+      1. Collect the top-K click probes by HUD-masked diff_magnitude
+         (descending). Only keep those with diff ≥ 10.
+      2. For each button: reset, click, then BFS 2-step movement
+         (dir_actions × dir_actions) looking for a level advance.
+      3. If none succeed, widen to 3-step movement.
+
+    Works well when the game has 1-3 state-advancing buttons and a
+    player that moves under directional actions.
+    """
+    used = 0
+    clicks = action_profile.get("click", [])
+    meaningful = [c for c in clicks if c.get("diff_magnitude", 0) >= 10]
+    meaningful.sort(key=lambda c: -c["diff_magnitude"])
+    meaningful = meaningful[:6]
+    if not meaningful:
+        return 0, used
+
+    dir_actions = [a for a in action_profile["scalar"].keys() if 1 <= a <= 4]
+    if not dir_actions:
+        return 0, used
+
+    obs = _reset(env)
+    used += 1
+    base_levels = obs.levels_completed
+
+    # Pass 1: each button alone + ≤ 2 movement steps.
+    for c in meaningful:
+        if used >= budget:
+            break
+        for d1 in dir_actions + [None]:
+            if used >= budget:
+                break
+            for d2 in dir_actions + [None]:
+                if used >= budget:
+                    break
+                obs = _reset(env)
+                used += 1
+                obs = _click(env, c["x"], c["y"])
+                used += 1
+                if obs.levels_completed > base_levels:
+                    return int(obs.levels_completed), used
+                if obs.state.name == "GAME_OVER":
+                    continue
+                for d in (d1, d2):
+                    if d is None or used >= budget:
+                        continue
+                    obs = _act(env, d)
+                    used += 1
+                    if obs.levels_completed > base_levels:
+                        return int(obs.levels_completed), used
+                    if obs.state.name == "GAME_OVER":
+                        break
+
+    # Pass 2: two-button sequences (click A → click B → movement).
+    if used < budget:
+        for i, a in enumerate(meaningful):
+            if used >= budget:
+                break
+            for j, b in enumerate(meaningful):
+                if i == j or used >= budget:
+                    continue
+                for d in dir_actions + [None]:
+                    if used >= budget:
+                        break
+                    obs = _reset(env)
+                    used += 1
+                    obs = _click(env, a["x"], a["y"])
+                    used += 1
+                    if obs.levels_completed > base_levels:
+                        return int(obs.levels_completed), used
+                    if obs.state.name == "GAME_OVER":
+                        continue
+                    obs = _click(env, b["x"], b["y"])
+                    used += 1
+                    if obs.levels_completed > base_levels:
+                        return int(obs.levels_completed), used
+                    if d is not None:
+                        obs = _act(env, d)
+                        used += 1
+                        if obs.levels_completed > base_levels:
+                            return int(obs.levels_completed), used
+    return base_levels, used
+
+
 PLAN_FNS = {
     "navigation": _plan_navigation,
     "merge": _plan_merge,
     "paint_fill": _plan_paint_fill,
     "toggle": _plan_toggle,
+    "click_then_move": _plan_click_then_move,
 }
 
 
@@ -890,6 +985,7 @@ def strat_inferential_agent(env: Any, budget: int = 500000) -> tuple[int, str, i
             "toggle": 15_000,
             "merge": 12_000,
             "paint_fill": 12_000,
+            "click_then_move": 15_000,
         }
 
         def _try_plan(kind: str) -> bool:
@@ -915,7 +1011,7 @@ def strat_inferential_agent(env: Any, budget: int = 500000) -> tuple[int, str, i
         _try_plan(goal["kind"])
         if not cleared_this_level:
             # Round 2: heuristic-ordered siblings.
-            for alt in ("navigation", "merge", "paint_fill", "toggle"):
+            for alt in ("navigation", "click_then_move", "merge", "paint_fill", "toggle"):
                 if cleared_this_level or used >= budget:
                     break
                 _try_plan(alt)
@@ -927,7 +1023,7 @@ def strat_inferential_agent(env: Any, budget: int = 500000) -> tuple[int, str, i
             entity_map = entity_phase(profile["base_frame"], profile)
             goal = goal_phase(profile, entity_map)
             attempted.clear()
-            for alt in (goal["kind"], "navigation", "merge", "paint_fill", "toggle"):
+            for alt in (goal["kind"], "navigation", "click_then_move", "merge", "paint_fill", "toggle"):
                 if cleared_this_level or used >= budget:
                     break
                 _try_plan(alt)
