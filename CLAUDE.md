@@ -1015,6 +1015,80 @@ Round 10 candidate: rename the underlying function to a name Qwen
 is more likely to pick — e.g. `adaptive_bfs_solver` (retains `bfs`
 token Qwen already anchors on, distinguishing adjective).
 
+### Round 10 outcome (2026-04-22, FAIL — rename didn't help)
+
+Aliased `strat_inferential_agent` → `strat_adaptive_bfs_solver`
+and updated the allowlist to use the new name. 4-item allowlist:
+{adaptive_bfs_solver, click_toggle_detect, click_all_colors,
+click_color_order}. Decision_tree.md updated.
+
+Bench aborted at 11/40 envs: `click_toggle_detect` picked 11/11,
+`adaptive_bfs_solver` 0. The `bfs`-token anchor hypothesis was
+wrong — Qwen picks the click-verb-compound over any adj-noun-noun
+form.
+
+### Round 11 outcome (2026-04-22, architectural PASS — I-Agent runs 100%)
+
+Collapsed the allowlist to a single item: `{adaptive_bfs_solver}`.
+Schema in `wiki_agent.py` relaxed so `uniqueItems` only applies
+when whitelist ≥ 4; maxItems of fallback_stack scales to the
+whitelist size. The decoder now has exactly one valid name to
+return for `primary_strategy`.
+
+**Bench result** (40 envs, 4295 s):
+
+| Metric | R7 | R8 | R11 |
+|---|---|---|---|
+| Raw levels | 23 | 4 | **20** |
+| Raw envs cleared | 17 | 4 | **14** |
+| Adaptive-BFS-solver primary picks | 0 | 0 | **40** |
+| Gate | FAIL | FAIL | FAIL |
+
+For the first time in rounds 6-11, Qwen picked the inferential
+agent on every single env. I-Agent's five-phase pipeline actually
+executed 40 times.
+
+**Per-env clears** (14 unique cleared):
+
+  TU93 2, AR25 2, M0R0 2, DC22 1, SP80 1, SK48 1, LS20 1, CD82 1
+
+**Per-env failures** (18 unique 0):
+
+  RE86, SU15, CN04, FT09, TR87, SC25, LP85, KA59, G50T, SB26, LF52,
+  BP35, S5I5, R11L, WA30, VC33, TN36, plus duplicates.
+
+Gate FAIL: cleared 10 → 8 (−2), levels 29 → 11 (−18). Regressions
+are against the pre-R7 baseline which was brittle-inflated:
+FT09 (−6), CD82 (−5), SB26 (−8), LP85 (−1), VC33 (−1). Brittle
+strategies cleared those games via sprite-tag reads that this
+architecture intentionally excludes.
+
+R11 is the honest Kaggle-realistic baseline of the current
+InferentialAgent implementation + Qwen 3 8B. Every level in the
+20-level total came from the real single-entry-point path: Qwen →
+adaptive_bfs_solver → five-phase pipeline → internal plan
+delegation → ensemble primitives. No hardcoding, no
+title-matching, no brittle sprite-tag reads.
+
+**Architectural takeaway**: Wiki-First Routing is now
+**end-to-end enforced**. Rounds 4-10 each proved a different way
+the architecture could be undermined; round 11 closes the last
+loophole by forcing the LLM's routing pick mechanically.
+
+**Round 12 direction**: the routing layer is done. Remaining lift
+comes from plan-quality improvements inside strat_inferential_agent
+so the 18 unsolved game classes clear something:
+
+1. Toggle plan needs sparse-click strategies for FT09 / TN36 —
+   maybe interaction with `click_toggle_detect` logic from
+   `agent_ensemble`.
+2. Merge plan needs vacuum-radius calibration that actually
+   triggers SU15-class merges.
+3. Paint plan needs palette/executor detection that works on CD82.
+4. Push plan needs grid-aware item-state BFS for KA59 / WA30.
+
+Each is a per-plan iteration, not a routing layer change.
+
 ## Prohibited Patterns (Wiki-First Routing enforcement)
 
 The routing decision — which strategy runs as primary and what lands in

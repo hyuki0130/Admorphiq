@@ -153,21 +153,28 @@ def test_round8_anchor_ban_is_enforced():
     )
 
 
-def test_round8_inferential_agent_remains_registered():
-    """Purpose: after removing the anchors, `inferential_agent` must
-    still be the one first-class routing choice. If it also drops out
-    of the registry (e.g., by import failure or signature drift),
-    Qwen has no valid primary to pick.
+def test_round10_adaptive_bfs_solver_remains_registered():
+    """Purpose: after removing the anchors and renaming the agent,
+    `adaptive_bfs_solver` must be the one first-class routing choice
+    the LLM sees. If it drops out of the registry (import failure,
+    signature drift, alias removal), Qwen has no valid primary to
+    pick and the whole routing architecture collapses.
 
-    Expected feedback: failure means the five-phase agent is not
-    reachable — immediate rollback or fix required.
+    Round 10 renamed `strat_inferential_agent` → alias
+    `strat_adaptive_bfs_solver` to exploit the `bfs` token Qwen 8B
+    anchors on, after rounds 6-9 measured Qwen refused to pick the
+    original `inferential_agent` name at any allowlist size.
+
+    Expected feedback: failure means the alias got dropped or the
+    allowlist still references the old name — rollback the rename
+    or fix the allowlist.
     """
     from admorphiq import agent_ensemble as ae
 
     registry, _ = introspect_strategies(ae)
-    assert "inferential_agent" in registry, (
-        "inferential_agent missing from registry — round 8 routing "
-        "architecture cannot function"
+    assert "adaptive_bfs_solver" in registry, (
+        "adaptive_bfs_solver missing from registry — round-10 rename "
+        "broken; Qwen has no routing entry point"
     )
 
 

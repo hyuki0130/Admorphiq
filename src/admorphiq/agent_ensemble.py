@@ -21,10 +21,17 @@ import numpy as np
 
 from arcengine import GameAction
 
-from .strategies.inferential import strat_inferential_agent  # round 6 — re-exported for introspection
+from .strategies.inferential import strat_inferential_agent  # round 6
 from .utils import GameLogger
 
-__all__ = ["strat_inferential_agent"]
+# Round 10 (2026-04-22) — rename alias. `inferential_agent` proved
+# to be a name Qwen 3 8B avoids picking even when it's the only
+# reasonable option (round-9 bench: 0 picks across 11 attempts).
+# Exposing the same function under `adaptive_bfs_solver` matches the
+# BFS-token anchor Qwen latched onto in rounds 3-7.
+strat_adaptive_bfs_solver = strat_inferential_agent
+
+__all__ = ["strat_inferential_agent", "strat_adaptive_bfs_solver"]
 
 
 # ─── Utility functions ──────────────────────────────────────────────

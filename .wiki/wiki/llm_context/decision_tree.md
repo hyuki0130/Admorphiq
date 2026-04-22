@@ -7,36 +7,41 @@ purpose: single-source-of-truth decision tree the LLM applies every run
 
 # Decision Tree (LLM reads this first)
 
-## Inputs you see
-- `avail` ⊆ {1,2,3,4,5,6,7} : available action ids (0 = RESET, never pick)
-- `probe_diffs[aid]` : pixels changed after pressing aid once
-- `probe_diffs[6]` : max pixels changed among 5 sampled ACTION6 clicks
-- `probe_diffs[-6]` : count of those 5 cells that reacted (0..5)
-- `dir_map` : subset of {1,2,3,4} → N/S/E/W inferred from movement
-- `click_responsive_cells` : same as probe_diffs[-6]
+## Inputs
+- `avail` ⊆ {1,2,3,4,5,6,7} : available action ids
+- `probe_diffs[aid]` : pixels changed after pressing aid
+- `probe_diffs[6]` : max pixels among 5 sampled ACTION6 clicks
+- `probe_diffs[-6]` : count of those 5 that reacted (0..5)
+- `dir_map` : {1,2,3,4} → N/S/E/W inferred from movement
 
-## Pick primary_strategy
+## primary_strategy
 
-**Always `inferential_agent` unless a narrower rule applies.** It is the only first-class routing choice. Every other strategy in the whitelist is a fallback.
+Always `adaptive_bfs_solver`. It is the five-phase
+observation-entity-goal-plan-loop engine that picks the right
+internal algorithm per env. Other whitelist names exist only as
+fallback backstops.
 
-| Case | primary_strategy |
-|---|---|
-| Anything at all, default | `inferential_agent` |
+## fallback_stack (3 distinct items from whitelist)
 
-The `bfs_state_space` and `click_rare` strategies are no longer in the whitelist (round 8, 2026-04-22 — anchor-banned). Their behavior is reachable via `strat_inferential_agent`'s navigation and toggle plans, which delegate internally. Do not attempt to pick them — the decoder will reject.
-
-## Fill fallback_stack (3 items, distinct)
-
-If primary is `inferential_agent`, fallbacks = `click_toggle_detect`, `click_color_order`, `click_all_colors` (generic click tools for when the agent's plan synthesis needs an exploration-style backstop).
+1. `click_toggle_detect`
+2. `click_all_colors`
+3. `click_color_order`
 
 ## Hard rules
 
-- Strategy name must be in the whitelist shown in the prompt. Never invent names.
-- Set `primary_strategy` = `inferential_agent` unless there is a specific, whitelist-valid reason to deviate.
-- fallback_stack has 3 distinct entries, each in the whitelist.
-- game_type: movement | click-rare | click-paint | merge-puzzle | sort-puzzle | movement-hybrid | paint-hybrid | unknown.
-- Never use `game_title` as a decision key. Kaggle rotates titles.
+- `primary_strategy` = `"adaptive_bfs_solver"` every run.
+- `fallback_stack` = the three click tools above, in any order.
+- Strategy names must be from the whitelist shown in the prompt.
+- game_type: movement | click-rare | click-paint | merge-puzzle |
+  sort-puzzle | movement-hybrid | paint-hybrid | unknown.
+- Never use `game_title` as a decision key (Kaggle rotates titles).
 
-## Why inferential_agent is the only first-class choice
+## Why adaptive_bfs_solver is the only first-class choice
 
-It runs observation → entity detection → goal inference → plan synthesis → learning loop. The plan synthesis step already selects the right internal strategy (navigation BFS for movement, cluster-click for merge, probe-and-classify for toggle, palette+executor for paint). The routing layer you're in — the one that writes `primary_strategy` — should not try to make that choice. Hand routing over to the agent and let its five phases decide per-env.
+It runs observation (probe each action, classify effects) → entity
+detection (player / goal / item / palette / executor via color-cluster
+matching) → goal inference (paint-fill / navigation / merge / toggle
+from observed transitions) → plan synthesis (delegates to the right
+internal engine per inferred goal) → learning loop (retries with
+wider probes on failure). No game shape in the whitelist benefits
+from your routing pick beyond it.

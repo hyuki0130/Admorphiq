@@ -2,20 +2,6 @@
   "verdict": "FAIL",
   "regressions": [
     {
-      "game_id": "tu93-0768757b",
-      "title": "TU93",
-      "baseline_levels": 2,
-      "new_levels": 0,
-      "delta": -2
-    },
-    {
-      "game_id": "ar25-0c556536",
-      "title": "AR25",
-      "baseline_levels": 2,
-      "new_levels": 0,
-      "delta": -2
-    },
-    {
       "game_id": "ft09-0d8bbf25",
       "title": "FT09",
       "baseline_levels": 6,
@@ -23,15 +9,8 @@
       "delta": -6
     },
     {
-      "game_id": "dc22-fdcac232",
-      "title": "DC22",
-      "baseline_levels": 1,
-      "new_levels": 0,
-      "delta": -1
-    },
-    {
-      "game_id": "sp80-589a99af",
-      "title": "SP80",
+      "game_id": "lp85-305b61c3",
+      "title": "LP85",
       "baseline_levels": 1,
       "new_levels": 0,
       "delta": -1
@@ -44,8 +23,8 @@
       "delta": -8
     },
     {
-      "game_id": "ls20-9607627b",
-      "title": "LS20",
+      "game_id": "vc33-5430563c",
+      "title": "VC33",
       "baseline_levels": 1,
       "new_levels": 0,
       "delta": -1
@@ -54,8 +33,8 @@
       "game_id": "cd82-fb555c5d",
       "title": "CD82",
       "baseline_levels": 6,
-      "new_levels": 0,
-      "delta": -6
+      "new_levels": 1,
+      "delta": -5
     }
   ],
   "improvements": [
@@ -63,26 +42,21 @@
       "game_id": "m0r0-492f87ba",
       "title": "M0R0",
       "baseline_levels": 0,
+      "new_levels": 2,
+      "delta": 2
+    },
+    {
+      "game_id": "sk48-d8078629",
+      "title": "SK48",
+      "baseline_levels": 0,
       "new_levels": 1,
       "delta": 1
     }
   ],
-  "held_stable": 16,
+  "held_stable": 18,
   "new_envs": [],
   "missing_envs": [],
   "title_regressions": [
-    {
-      "title": "TU93",
-      "baseline_best": 2,
-      "new_best": 0,
-      "delta": -2
-    },
-    {
-      "title": "AR25",
-      "baseline_best": 2,
-      "new_best": 0,
-      "delta": -2
-    },
     {
       "title": "FT09",
       "baseline_best": 6,
@@ -90,13 +64,7 @@
       "delta": -6
     },
     {
-      "title": "DC22",
-      "baseline_best": 1,
-      "new_best": 0,
-      "delta": -1
-    },
-    {
-      "title": "SP80",
+      "title": "LP85",
       "baseline_best": 1,
       "new_best": 0,
       "delta": -1
@@ -108,7 +76,7 @@
       "delta": -8
     },
     {
-      "title": "LS20",
+      "title": "VC33",
       "baseline_best": 1,
       "new_best": 0,
       "delta": -1
@@ -116,15 +84,15 @@
     {
       "title": "CD82",
       "baseline_best": 6,
-      "new_best": 0,
-      "delta": -6
+      "new_best": 1,
+      "delta": -5
     }
   ],
   "headline": {
     "baseline_envs_cleared": 10,
-    "new_envs_cleared": 3,
+    "new_envs_cleared": 8,
     "baseline_total_levels": 29,
-    "new_total_levels": 3,
-    "level_delta": -26
+    "new_total_levels": 11,
+    "level_delta": -18
   }
 }

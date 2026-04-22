@@ -769,16 +769,22 @@ class WikiAgent:
             "type": "string",
             "enum": whitelist,
         }
-        # uniqueItems forces Qwen to actually think of 3 *distinct* fallbacks
-        # rather than padding with duplicates. 2026-04-21 R7 v3 bench showed
-        # 4/40 envs with all-duplicate fallbacks (CD82 got click_color_order
-        # four times in the stack), which wastes every fallback slot.
+        # Fallback stack schema scales to the whitelist size. With a
+        # very small whitelist (round 11+: 1-3 names) uniqueItems and a
+        # fixed maxItems 3 would make the schema unsatisfiable — the
+        # decoder has to pack the stack, we relax both.
+        fallback_items = min(3, max(0, len(whitelist)))
         schema["properties"]["fallback_stack"] = {
             "type": "array",
             "items": {"type": "string", "enum": whitelist},
-            "maxItems": 3,
-            "uniqueItems": True,
+            "maxItems": fallback_items,
         }
+        # Only enforce uniqueness when there are enough names to go
+        # around. Round 7's CD82 duplicate-padding problem was a
+        # big-whitelist phenomenon; tiny whitelists can't duplicate
+        # and don't need the constraint.
+        if len(whitelist) >= 4:
+            schema["properties"]["fallback_stack"]["uniqueItems"] = True
         raw = self.llm.generate(prompt, max_tokens=max_tokens, json_schema=schema)
         parsed = _parse_json_lenient(raw)
         try:

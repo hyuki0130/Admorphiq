@@ -91,10 +91,14 @@ ANCHOR_BANNED_STRATEGIES: frozenset[str] = frozenset(
 # I-Agent's plans all time out mid-run.
 LLM_WHITELIST_ALLOWLIST: frozenset[str] = frozenset(
     {
-        "inferential_agent",
-        "click_toggle_detect",
-        "click_all_colors",
-        "click_color_order",
+        # Round 11 (2026-04-22) — single-item allowlist. Round 10
+        # renamed `inferential_agent` → `adaptive_bfs_solver` and kept
+        # 3 click-tool fallbacks; Qwen still picked click_toggle_detect
+        # 11/11. Removing even the fallbacks forces the decoder to
+        # return adaptive_bfs_solver as the only option. The schema
+        # in wiki_agent.py relaxes uniqueItems/minItems when the
+        # whitelist is < 4 so this doesn't become unsatisfiable.
+        "adaptive_bfs_solver",
     }
 )
 
