@@ -111,14 +111,15 @@ def test_introspect_preserves_previous_uniform_strategies():
     registry. Round 5 (2026-04-22) excluded `tn36_frame_only` and
     `su15_frame_only` from this list because they were renamed
     "frame_only" but actually read game-internal sprite tags — see
-    BRITTLE_STRATEGIES in dispatcher.py.
+    BRITTLE_STRATEGIES in dispatcher.py. Round 8 additionally excluded
+    `bfs_state_space` and `click_rare` as LLM anchor-banned — they
+    remain internally callable via strat_inferential_agent's
+    navigation / toggle plans.
     """
     from admorphiq import agent_ensemble as ae
 
     registry, _ = introspect_strategies(ae)
     pre_r3_uniform = {
-        "bfs_state_space",
-        "click_rare",
         "click_all_colors",
         "click_progressive",
         "click_toggle_detect",
@@ -130,6 +131,50 @@ def test_introspect_preserves_previous_uniform_strategies():
     }
     missing = pre_r3_uniform - set(registry.keys())
     assert not missing, f"registry dropped pre-R3 uniform strategies: {missing}"
+
+
+def test_round8_anchor_ban_is_enforced():
+    """Purpose: round 8's ANCHOR_BANNED_STRATEGIES set — currently
+    `bfs_state_space` and `click_rare` — MUST NOT appear in the
+    LLM-pickable registry. Qwen 8B anchor-locked on these across
+    R3-R7 (measured 40/40 picks = bfs + click_rare, zero
+    inferential_agent), so this ban is the mechanism that forces the
+    Wiki-First Routing architecture to actually route through
+    inferential_agent. Both names stay internally callable.
+
+    Expected feedback: failure means a banned name leaked back into
+    the whitelist, Qwen picks it again, and the five-phase
+    inferential pipeline never executes.
+    """
+    from admorphiq import agent_ensemble as ae
+    from admorphiq.hypothesis.dispatcher import ANCHOR_BANNED_STRATEGIES
+
+    registry, skipped = introspect_strategies(ae)
+    leaked = sorted(ANCHOR_BANNED_STRATEGIES & set(registry.keys()))
+    assert not leaked, f"anchor-banned strategies leaked into registry: {leaked}"
+    skipped_names = {n for n, _ in skipped}
+    not_skipped = sorted(ANCHOR_BANNED_STRATEGIES - skipped_names)
+    assert not not_skipped, (
+        f"anchor-banned strategies missing from skipped list: {not_skipped}"
+    )
+
+
+def test_round8_inferential_agent_remains_registered():
+    """Purpose: after removing the anchors, `inferential_agent` must
+    still be the one first-class routing choice. If it also drops out
+    of the registry (e.g., by import failure or signature drift),
+    Qwen has no valid primary to pick.
+
+    Expected feedback: failure means the five-phase agent is not
+    reachable — immediate rollback or fix required.
+    """
+    from admorphiq import agent_ensemble as ae
+
+    registry, _ = introspect_strategies(ae)
+    assert "inferential_agent" in registry, (
+        "inferential_agent missing from registry — round 8 routing "
+        "architecture cannot function"
+    )
 
 
 def test_round5_brittle_deny_list_is_enforced():

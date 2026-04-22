@@ -931,6 +931,63 @@ will be forced to pick a name it has never been "used to" — ideally
 measured levels become a direct test of I-Agent's in-bench
 performance.
 
+### Round 8 outcome (2026-04-22, FAIL — anchor-whack-a-mole confirmed)
+
+Added `ANCHOR_BANNED_STRATEGIES = {"bfs_state_space", "click_rare"}`
+to `src/admorphiq/hypothesis/dispatcher.py` and extended
+`introspect_strategies` to skip them with the round-8 reason.
+Registry 60 → 58. Tests 243 → 245 (+2 round-8 invariants).
+
+Updated `.wiki/wiki/llm_context/decision_tree.md` to state
+`inferential_agent` as the ONLY first-class choice.
+
+**Bench result** (40 envs, 688 s):
+
+| Metric | R5 | R6 | R7 | **R8** | Δ vs R7 |
+|---|---|---|---|---|---|
+| Raw levels | 27 | — | 23 | **4** | **-19** |
+| Envs cleared | 11/40 | — | 17/40 | **4/40** | **-13** |
+| Qwen primary dist | bfs 26, click_rare 14 | — | bfs 25, click_rare 15 | **bfs_explore 22, click_rotation_puzzle 14, bfs_framehash 4** | anchor moved |
+| I-Agent picks | 0 | — | 0 | **0** | unchanged |
+| Gate | FAIL | — | FAIL | **FAIL** | CD82/FT09/SB26/+5 new regressions |
+
+**Decisive finding — anchor-whack-a-mole**: removing the two
+high-frequency names did NOT push Qwen toward `inferential_agent`.
+Instead the model found the next-most-familiar BFS-shaped name
+(`bfs_explore`) and click-shaped name (`click_rotation_puzzle`) and
+continued anchoring on those. The compact `decision_tree.md` saying
+"always pick inferential_agent" had no measurable effect.
+
+Score collapsed because the fallback anchors (`bfs_explore`,
+`click_rotation_puzzle`) are substantially weaker than the removed
+ones. 8 envs regressed vs the pre-R7 baseline, including games that
+R5/R6/R7 had cleared (TU93, AR25, DC22, SP80, FT09, SB26, LS20,
+CD82).
+
+**Round 9 direction (ultra-minimal whitelist)**:
+
+The whack-a-mole proves that *partial* whitelist purging doesn't
+work — the model will always find another BFS-like name to anchor
+on. Round 9 eliminates that option by shrinking the whitelist to
+only the strategies that actually form a coherent routing
+architecture:
+
+- `inferential_agent` — the sole routing entry point
+- `click_toggle_detect` — minimal fallback for click-only puzzles
+  that the inference phase timed out on
+- `click_all_colors` — minimal fallback for color-scan games
+- `click_color_order` — minimal fallback for pattern-click games
+
+Every other `strat_*` gets added to `ANCHOR_BANNED_STRATEGIES`
+(expanding the set from 2 to ~50). Qwen will have no BFS-like
+name to anchor on; the whitelist is designed so the inferential
+agent is the only sensible primary pick. Internal delegation
+continues to call the banned strategies as needed.
+
+This is the logical endpoint of wiki-first routing: if the
+architecture says "the agent decides per-env via its phases", then
+the LLM's routing choice should literally be "run the agent".
+
 ## Prohibited Patterns (Wiki-First Routing enforcement)
 
 The routing decision — which strategy runs as primary and what lands in

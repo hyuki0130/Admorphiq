@@ -59,6 +59,27 @@ BRITTLE_STRATEGIES: frozenset[str] = frozenset(
 )
 
 
+# Round 8 (2026-04-22) — strategies Qwen 3 8B anchor-locks on.
+# Four rounds of wiki work (R3-R7) did not dislodge Qwen's preference
+# for these two names. Across R7's 40-env bench, Qwen picked
+# `bfs_state_space` 25x and `click_rare` 15x and `inferential_agent`
+# 0x, despite the round-6 compact decision_tree.md seeded first.
+#
+# Remove them from the LLM-pickable whitelist so the model must pick
+# a different name — `inferential_agent` is designed to be that
+# name. Both banned strategies stay internally callable: the
+# navigation plan inside `strat_inferential_agent` already delegates
+# to `strat_bfs_state_space`, and click-rare behavior is subsumed by
+# the toggle / paint-fill plans. This is a single-entry-point
+# architectural decision, not a quality filter.
+ANCHOR_BANNED_STRATEGIES: frozenset[str] = frozenset(
+    {
+        "bfs_state_space",
+        "click_rare",
+    }
+)
+
+
 def build_ctx(report) -> dict[str, Any]:
     """Derive the strategy-call context dict from a DiscoveryReport.
 
@@ -139,6 +160,18 @@ def introspect_strategies(
                     "brittle: reads game-internal sprite/attribute names — "
                     "kept in agent_ensemble for preview-game ensemble use, "
                     "denied from the LLM-pickable whitelist (round 5 rule)",
+                )
+            )
+            continue
+        if short_name in ANCHOR_BANNED_STRATEGIES:
+            skipped.append(
+                (
+                    short_name,
+                    "anchor-banned in round 8 — Qwen locked onto this "
+                    "name through R3-R7; removing it from the LLM whitelist "
+                    "forces inferential_agent as the routing entry point. "
+                    "Still callable internally via strat_inferential_agent "
+                    "navigation plan delegation.",
                 )
             )
             continue

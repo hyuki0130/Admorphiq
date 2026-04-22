@@ -17,27 +17,26 @@ purpose: single-source-of-truth decision tree the LLM applies every run
 
 ## Pick primary_strategy
 
-1. `avail ⊇ {1,2,3,4} ∪ {6}` → **`inferential_agent`** (the 5-phase inference solver). Works for every mixed-movement-and-click game. First choice.
-2. `avail ⊇ {1,2,3,4}`, no 6 → **`inferential_agent`** (movement-only mode). Still first.
-3. `avail == [6]`, -6 == 0 → rare-click → **`click_rare`** primary. `inferential_agent` fallback.
-4. `avail == [6]`, -6 ≥ 3 → click-paint → **`inferential_agent`**.
-5. `avail ⊇ {5,6}`, no 1-4 → sort puzzle → **`inferential_agent`**.
-6. Anything else → **`inferential_agent`** default.
+**Always `inferential_agent` unless a narrower rule applies.** It is the only first-class routing choice. Every other strategy in the whitelist is a fallback.
+
+| Case | primary_strategy |
+|---|---|
+| Anything at all, default | `inferential_agent` |
+
+The `bfs_state_space` and `click_rare` strategies are no longer in the whitelist (round 8, 2026-04-22 — anchor-banned). Their behavior is reachable via `strat_inferential_agent`'s navigation and toggle plans, which delegate internally. Do not attempt to pick them — the decoder will reject.
 
 ## Fill fallback_stack (3 items, distinct)
 
-- If primary is `inferential_agent`: fallbacks = `bfs_state_space`, `click_rare`, `click_toggle_detect`.
-- If primary is `click_rare`: fallbacks = `inferential_agent`, `click_color_order`, `click_all_colors`.
-- Default otherwise: `bfs_state_space`, `click_rare`, `inferential_agent`.
+If primary is `inferential_agent`, fallbacks = `click_toggle_detect`, `click_color_order`, `click_all_colors` (generic click tools for when the agent's plan synthesis needs an exploration-style backstop).
 
 ## Hard rules
 
 - Strategy name must be in the whitelist shown in the prompt. Never invent names.
-- Set `primary_strategy` non-empty. If uncertain, default to `inferential_agent`.
+- Set `primary_strategy` = `inferential_agent` unless there is a specific, whitelist-valid reason to deviate.
 - fallback_stack has 3 distinct entries, each in the whitelist.
 - game_type: movement | click-rare | click-paint | merge-puzzle | sort-puzzle | movement-hybrid | paint-hybrid | unknown.
 - Never use `game_title` as a decision key. Kaggle rotates titles.
 
-## Why inferential_agent is almost always right
+## Why inferential_agent is the only first-class choice
 
-It runs observation → entity detection → goal inference → plan synthesis → learning loop. Any shape of game its internal phases cover. Other strategies stay in the whitelist only as fallbacks for when the inference phase times out.
+It runs observation → entity detection → goal inference → plan synthesis → learning loop. The plan synthesis step already selects the right internal strategy (navigation BFS for movement, cluster-click for merge, probe-and-classify for toggle, palette+executor for paint). The routing layer you're in — the one that writes `primary_strategy` — should not try to make that choice. Hand routing over to the agent and let its five phases decide per-env.
