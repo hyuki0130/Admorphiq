@@ -1065,9 +1065,50 @@ def _plan_lights_out(env: Any, action_profile: dict, entity_map: dict, goal: dic
     responsive = [c for c in clicks if c.get("diff_magnitude", 0) >= 10]
     if not responsive:
         return 0, used
-    responsive.sort(key=lambda c: (abs(c["x"] - 32) + abs(c["y"] - 32)))
+    # Round 18: rank by diff_magnitude desc (tiebreak: distance to
+    # center). Previously sort-by-distance picked up display / animation
+    # cells that co-activate under every click (measured 91/100 stencil
+    # density on FT09 L2 — buttons were elsewhere). Diff-magnitude
+    # picks the strongest reactors first, which are more likely the
+    # real toggle buttons.
+    responsive.sort(
+        key=lambda c: (
+            -int(c.get("diff_magnitude", 0)),
+            abs(c["x"] - 32) + abs(c["y"] - 32),
+        )
+    )
     cells = [(c["x"], c["y"]) for c in responsive[:10]]
     n = len(cells)
+
+    # Round 18b: single-click sweep over ALL responsive cells (up to
+    # 40) before expensive stencil measurement. For FT09 L2 the top-10
+    # by diff_magnitude co-activate (stencil density = 100%), meaning
+    # those cells are display / feedback regions, not buttons. The
+    # real buttons may live lower in the responsive list. A cumulative
+    # click sweep through 40 cells costs only ~50 actions and catches:
+    #   (a) click-the-right-single-button games;
+    #   (b) lights-out games where the first level's solution happens
+    #       to be a contiguous subset of cells in the sweep order.
+    obs = _reset_then_replay(env)
+    used += 1 + len(_ACTIVE_PREFIX)
+    base_levels_sweep = obs.levels_completed
+    sweep_clicks: list[tuple] = []
+    sweep_cells = [(c["x"], c["y"]) for c in responsive[:40]]
+    for cx, cy in sweep_cells:
+        if used >= budget:
+            return base_levels_sweep, used
+        obs = _click(env, cx, cy)
+        used += 1
+        sweep_clicks.append(("click", cx, cy))
+        if obs.levels_completed > base_levels_sweep:
+            _LAST_WIN_SEQUENCE = list(sweep_clicks)
+            return int(obs.levels_completed), used
+        if obs.state.name == "GAME_OVER":
+            if used >= budget:
+                return base_levels_sweep, used
+            obs = _reset_then_replay(env)
+            used += 1 + len(_ACTIVE_PREFIX)
+            sweep_clicks = []
 
     # Round 16: measure the stencil before brute force.
     stencil_budget = min(budget // 10, 400)
@@ -1090,41 +1131,55 @@ def _plan_lights_out(env: Any, action_profile: dict, entity_map: dict, goal: dic
     used += 1 + len(_ACTIVE_PREFIX)
     base_levels = obs.levels_completed
 
-    # Round 17: predictive ranking. Enumerate every subset virtually,
-    # rank by homogeneity, and try the top-K in the env before falling
-    # back to naive enumeration. Skipped when stencil measurement was
-    # skipped or returned an all-zero matrix (no toggling observed).
+    # Round 17+18: predictive ranking with delta chaining. Enumerate
+    # every subset virtually, rank by homogeneity, then traverse the
+    # ranked list in the env via xor-deltas (click_toggle is commutative
+    # and self-inverse in lights-out, so net-state = current_x and
+    # trial-to-trial transitions cost only |x_next ⊕ x_prev| clicks).
+    # This removes the per-trial reset_then_replay cost which, with a
+    # long prefix (e.g., 374-click FT09 L1 winning sequence) dominates
+    # the budget. Skipped when stencil measurement was skipped or
+    # returned an all-zero matrix.
     if A is not None and int(A.sum()) > 0 and n <= 12:
         ranked = _rank_subsets_by_prediction(A, base_cls, toggled_cls)
-        top_k = min(len(ranked), 64)
-        tried: set[int] = set()
+        top_k = min(len(ranked), 1 << n)
+        obs = _reset_then_replay(env)
+        used += 1 + len(_ACTIVE_PREFIX)
+        current_x = np.zeros(n, dtype=np.uint8)
         for x_vec, _score in ranked[:top_k]:
             if used >= budget:
                 return base_levels, used
-            key = int("".join(str(int(b)) for b in x_vec), 2) if len(x_vec) else 0
-            if key in tried:
-                continue
-            tried.add(key)
             if int(x_vec.sum()) == 0:
-                continue  # clicking nothing can't advance from a
-                          # just-reset state
-            obs = _reset_then_replay(env)
-            used += 1 + len(_ACTIVE_PREFIX)
-            seq: list[tuple] = []
+                continue
+            delta = x_vec ^ current_x
+            advanced = False
+            game_over = False
             for j in range(n):
-                if x_vec[j] == 0:
+                if delta[j] == 0:
                     continue
                 if used >= budget:
                     return base_levels, used
                 cx, cy = cells[j]
                 obs = _click(env, cx, cy)
                 used += 1
-                seq.append(("click", cx, cy))
+                current_x[j] ^= 1
                 if obs.levels_completed > base_levels:
-                    _LAST_WIN_SEQUENCE = list(seq)
+                    _LAST_WIN_SEQUENCE = [
+                        ("click", cells[k][0], cells[k][1])
+                        for k in range(n) if int(current_x[k]) == 1
+                    ]
                     return int(obs.levels_completed), used
                 if obs.state.name == "GAME_OVER":
+                    game_over = True
                     break
+            if game_over:
+                if used >= budget:
+                    return base_levels, used
+                obs = _reset_then_replay(env)
+                used += 1 + len(_ACTIVE_PREFIX)
+                current_x = np.zeros(n, dtype=np.uint8)
+            if advanced:
+                break
 
     for subset_size in range(1, n + 1):
         for combo in itertools.combinations(range(n), subset_size):
