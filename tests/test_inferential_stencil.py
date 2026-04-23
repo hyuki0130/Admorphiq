@@ -169,6 +169,98 @@ def test_measure_toggle_stencil_budget_cap():
     assert A.shape == (5, 5)
 
 
+def test_gf2_solve_identity():
+    """Purpose: A = I gives x = b trivially. Pins the base case.
+
+    Expected feedback: failure means elimination logic is broken and
+    no downstream solve will work.
+    """
+    A = np.eye(4, dtype=np.uint8)
+    b = np.array([1, 0, 1, 1], dtype=np.uint8)
+    x = inf._gf2_solve(A, b)
+    assert x is not None
+    assert np.array_equal(x, b)
+
+
+def test_gf2_solve_plus_stencil_3x3():
+    """Purpose: classic 3-cell plus stencil (each click flips self
+    and every neighbor) should still be invertible on a 3-wide row.
+    With stencil [[1,1,0],[1,1,1],[0,1,1]] and b = [1,1,1], there
+    exists a unique x.
+
+    Expected feedback: failure means the solver can't handle
+    non-identity A or produces a spurious None.
+    """
+    A = np.array(
+        [
+            [1, 1, 0],
+            [1, 1, 1],
+            [0, 1, 1],
+        ],
+        dtype=np.uint8,
+    )
+    b = np.array([1, 1, 1], dtype=np.uint8)
+    x = inf._gf2_solve(A, b)
+    assert x is not None
+    predicted = (A @ x) % 2
+    assert np.array_equal(predicted, b)
+
+
+def test_gf2_solve_inconsistent_system_returns_none():
+    """Purpose: when b is outside the column space of A, the solver
+    must return None rather than silently producing a wrong x.
+
+    Expected feedback: failure means the solve step will return bogus
+    click sequences that silently do nothing, wasting budget.
+    """
+    A = np.array(
+        [
+            [1, 1],
+            [1, 1],
+        ],
+        dtype=np.uint8,
+    )
+    b = np.array([1, 0], dtype=np.uint8)
+    assert inf._gf2_solve(A, b) is None
+
+
+def test_homogeneity_score_all_same_is_one():
+    """Purpose: a fully uniform predicted state maxes out the
+    homogeneity heuristic. This is what the ranking relies on —
+    'all cells same color' is the likely goal configuration.
+
+    Expected feedback: failure means the scorer is not ordering
+    candidate subsets correctly and predictive ranking degrades to
+    brute force order.
+    """
+    assert inf._homogeneity_score([5, 5, 5, 5]) == 1.0
+    assert inf._homogeneity_score([5, 5, 7, 5]) == 0.75
+
+
+def test_rank_subsets_by_prediction_orders_by_homogeneity_first():
+    """Purpose: with a toggle stencil that flips every cell on
+    subset [1,1,1], the 'all toggled' state (fully uniform) and the
+    'all base' state (also fully uniform) should tie for rank 1,
+    beating any partial-flip configuration.
+
+    Expected feedback: failure means the ranking is not favoring
+    uniformity, so top-K trial picks random subsets first and the
+    R17 speedup vanishes.
+    """
+    A = np.ones((3, 3), dtype=np.uint8)
+    base_classes = [5, 5, 5]
+    toggled_classes = [7, 7, 7]
+    ranked = inf._rank_subsets_by_prediction(A, base_classes, toggled_classes)
+    best_x, best_score = ranked[0]
+    assert best_score == 1.0
+    # With A = ones, (A @ x) % 2 = (x.sum() mod 2) * ones. So either
+    # x sums to 0 (all base) or odd (all toggled). Evens produce the
+    # same flip pattern as zero. Highest homogeneity is any pattern
+    # where the predicted state is uniform — both parities qualify.
+    predicted_flip = (A @ best_x) % 2
+    assert len(set(predicted_flip.tolist())) == 1
+
+
 def test_measure_toggle_stencil_records_toggled_classes_once_per_cell():
     """Purpose: toggled_classes[i] should latch on the first click
     that flips cell i and not overwrite on subsequent flips. Since

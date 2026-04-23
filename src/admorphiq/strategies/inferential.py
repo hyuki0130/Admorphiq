@@ -944,6 +944,92 @@ def _measure_toggle_stencil(
     return A, base_classes, toggled_classes, used
 
 
+def _gf2_solve(A: np.ndarray, b: np.ndarray) -> np.ndarray | None:
+    """Solve A x = b over GF(2) via Gaussian elimination.
+
+    Returns a particular solution x (uint8 n-vector) when one exists,
+    else None. When the system is underdetermined, the returned x is
+    the one produced by reduced row echelon; non-pivot variables are
+    set to 0. R18 will enumerate the kernel to pick minimum-weight x.
+
+    Parameters
+    ----------
+    A : (n, n) uint8
+    b : (n,) uint8
+    """
+    n = A.shape[0]
+    M = np.concatenate(
+        [A.astype(np.uint8), b.reshape(-1, 1).astype(np.uint8)], axis=1
+    )
+    pivot_col = [-1] * n
+    row = 0
+    for col in range(n):
+        pivot_row = -1
+        for r in range(row, n):
+            if M[r, col] == 1:
+                pivot_row = r
+                break
+        if pivot_row == -1:
+            continue
+        if pivot_row != row:
+            M[[row, pivot_row]] = M[[pivot_row, row]]
+        for r in range(n):
+            if r != row and M[r, col] == 1:
+                M[r] ^= M[row]
+        pivot_col[row] = col
+        row += 1
+    for r in range(row, n):
+        if M[r, -1] == 1:
+            return None
+    x = np.zeros(n, dtype=np.uint8)
+    for i, c in enumerate(pivot_col):
+        if c != -1:
+            x[c] = M[i, -1]
+    return x
+
+
+def _homogeneity_score(classes: list[int]) -> float:
+    """Fraction of cells sharing the single most common class.
+
+    Used as the goal-likelihood heuristic for predicted lights-out
+    post-click states: 1.0 means all cells are the same color (likely
+    'all solved' / 'all lit'); 1/n means every cell is different.
+    """
+    if not classes:
+        return 0.0
+    from collections import Counter
+    counts = Counter(classes)
+    return counts.most_common(1)[0][1] / len(classes)
+
+
+def _rank_subsets_by_prediction(
+    A: np.ndarray,
+    base_classes: list[int],
+    toggled_classes: list[int],
+) -> list[tuple[np.ndarray, float]]:
+    """Enumerate every x in {0,1}^n, predict the resulting cell-class
+    vector using A, and rank by homogeneity.
+
+    Returns (x, score) pairs sorted by descending score. For n ≤ 12
+    this enumerates at most 4096 masks — cheap. Cells whose
+    `toggled_classes[i] == -1` are treated as fixed at base (the
+    measurement phase saw no click flip them, so they're indicator
+    cells or unresponsive patches).
+    """
+    n = A.shape[0]
+    results: list[tuple[np.ndarray, float]] = []
+    for mask in range(1 << n):
+        x = np.array([(mask >> i) & 1 for i in range(n)], dtype=np.uint8)
+        flip = (A @ x) % 2
+        predicted = [
+            toggled_classes[i] if flip[i] and toggled_classes[i] != -1 else base_classes[i]
+            for i in range(n)
+        ]
+        results.append((x, _homogeneity_score(predicted)))
+    results.sort(key=lambda r: (-r[1], int(r[0].sum())))
+    return results
+
+
 def _plan_lights_out(env: Any, action_profile: dict, entity_map: dict, goal: dict, budget: int) -> tuple[int, int]:
     """Brute-force subset enumeration for lights-out style games.
 
@@ -963,6 +1049,13 @@ def _plan_lights_out(env: Any, action_profile: dict, entity_map: dict, goal: dic
     future GF(2) solvers (R17) can consume it. Measurement costs n+1
     resets + n clicks — cheap relative to the 2^n enumeration it
     precedes.
+
+    Round 17: after measurement, run `_rank_subsets_by_prediction` to
+    predict the post-click cell-class vector for every x in {0,1}^n
+    and rank by homogeneity (fraction of cells sharing the most
+    common color). Execute the top-K ranked subsets in the env and
+    short-circuit on level advance. Only fall through to naive
+    brute force if ranked trials exhaust without success.
     """
     import itertools
     global _LAST_WIN_SEQUENCE, _LAST_STENCIL
@@ -974,9 +1067,9 @@ def _plan_lights_out(env: Any, action_profile: dict, entity_map: dict, goal: dic
         return 0, used
     responsive.sort(key=lambda c: (abs(c["x"] - 32) + abs(c["y"] - 32)))
     cells = [(c["x"], c["y"]) for c in responsive[:10]]
+    n = len(cells)
 
-    # Round 16: measure the stencil before brute force. Stored on
-    # module-level _LAST_STENCIL so R17's GF(2) solver can read it.
+    # Round 16: measure the stencil before brute force.
     stencil_budget = min(budget // 10, 400)
     if stencil_budget > 0:
         A, base_cls, toggled_cls, m_used = _measure_toggle_stencil(
@@ -990,12 +1083,48 @@ def _plan_lights_out(env: Any, action_profile: dict, entity_map: dict, goal: dic
             "toggled_classes": toggled_cls,
         }
     else:
+        A = None
         _LAST_STENCIL = None
 
     obs = _reset_then_replay(env)
     used += 1 + len(_ACTIVE_PREFIX)
     base_levels = obs.levels_completed
-    n = len(cells)
+
+    # Round 17: predictive ranking. Enumerate every subset virtually,
+    # rank by homogeneity, and try the top-K in the env before falling
+    # back to naive enumeration. Skipped when stencil measurement was
+    # skipped or returned an all-zero matrix (no toggling observed).
+    if A is not None and int(A.sum()) > 0 and n <= 12:
+        ranked = _rank_subsets_by_prediction(A, base_cls, toggled_cls)
+        top_k = min(len(ranked), 64)
+        tried: set[int] = set()
+        for x_vec, _score in ranked[:top_k]:
+            if used >= budget:
+                return base_levels, used
+            key = int("".join(str(int(b)) for b in x_vec), 2) if len(x_vec) else 0
+            if key in tried:
+                continue
+            tried.add(key)
+            if int(x_vec.sum()) == 0:
+                continue  # clicking nothing can't advance from a
+                          # just-reset state
+            obs = _reset_then_replay(env)
+            used += 1 + len(_ACTIVE_PREFIX)
+            seq: list[tuple] = []
+            for j in range(n):
+                if x_vec[j] == 0:
+                    continue
+                if used >= budget:
+                    return base_levels, used
+                cx, cy = cells[j]
+                obs = _click(env, cx, cy)
+                used += 1
+                seq.append(("click", cx, cy))
+                if obs.levels_completed > base_levels:
+                    _LAST_WIN_SEQUENCE = list(seq)
+                    return int(obs.levels_completed), used
+                if obs.state.name == "GAME_OVER":
+                    break
 
     for subset_size in range(1, n + 1):
         for combo in itertools.combinations(range(n), subset_size):
