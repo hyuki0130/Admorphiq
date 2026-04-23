@@ -429,12 +429,21 @@ def entity_phase(base_frame: np.ndarray, action_profile: dict) -> dict:
         if abs(cx - c_probe["x"]) > 10 or abs(cy - c_probe["y"]) > 10:
             entity["palettes"].append({"x": c_probe["x"], "y": c_probe["y"]})
 
-    # Merge items: clusters whose color appears ≥ 2 times.
+    # Merge items: clusters in the fruit-size window OR same-color
+    # pairs. Round 21: loosened from strict same-color-pair-only to
+    # accept singletons in the small-fruit range (size 8..150). The
+    # merge plan still picks same-color pairs for click midpoints; the
+    # broader set helps goal_phase detect that the env is a merge
+    # puzzle at all (previously SU15 L1 surfaced only 2 merge_items
+    # because most fruit colors appeared once, so the rest were
+    # dropped — routing fell back from merge to unknown).
     color_counts: dict[int, int] = {}
     for c in clusters:
         color_counts[c["color"]] = color_counts.get(c["color"], 0) + 1
     for c in clusters:
-        if color_counts[c["color"]] >= 2 and c["size"] < 200:
+        same_color_pair = color_counts[c["color"]] >= 2 and c["size"] < 200
+        fruit_shape = 8 <= c["size"] <= 150
+        if same_color_pair or fruit_shape:
             entity["merge_items"].append(dict(c))
 
     # Goal regions: stable clusters with distinct border color that are
