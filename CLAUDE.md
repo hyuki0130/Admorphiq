@@ -93,6 +93,27 @@ ARC-AGI-3 is the first **interactive reasoning benchmark** — agents must explo
 
 **Hypothesis Engine** (planned — Phase 8 integration, **model undecided, pending benchmark**)
 
+Role is **NOT "one-shot router"**. The LLM is a runtime reasoning
+agent that participates in the whole game-completion loop:
+
+1. **Classify & route** — pick the best primary strategy + fallback
+   stack from the observable signatures.
+2. **Observe runtime failures** — when a strategy returns levels=0
+   or regresses, read the failure context (what was probed, what
+   cluster counts emerged, what post-click homogeneity looked like).
+3. **Self-heal** — propose an alternate plan from the wiki's
+   failure-mode playbooks (`.wiki/wiki/debug/*`) without waiting for
+   the next dev-time round. The plan may be a different strategy
+   name, a parameter adjustment, or a new observation stride.
+4. **Decide game-complete** — track per-level progress and reason
+   "are we stuck because the plan is wrong, or because the game
+   genuinely requires more budget?" Budget-bail vs plan-swap is an
+   LLM call, not a hardcoded threshold.
+
+Wiki pages must therefore be written as **runtime reasoning fuel**:
+observable signatures + falsification criteria + "if you see X, try
+Y" next-step rules — not just historical narrative. See Wiki Doctrine.
+
 Candidates to evaluate (all Apache 2.0 or equivalent, Kaggle-compatible):
 - **Qwen 3 8B** (dense, ~5GB 4bit) — strong 8B-class reasoning, best LoRA ecosystem (favored if TTT needed)
 - **Gemma 4 26B MoE** (3.8B active / 26B total, ~13GB 4bit) — 31B-tier reasoning (AIME 89.2% / GPQA 84.3%), fast MoE inference (favored for Wiki zero-shot)
@@ -256,6 +277,74 @@ scripts/
 
 **Architecture decision (2026-04-20)**: Adopt [Karpathy's LLM Wiki pattern](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f) — markdown knowledge base maintained by LLM at dev-time, read by inference LLM at Kaggle-time. No vector DB (incompatible with Kaggle internet constraint).
 
+### LLM as Game-Completion Driver — Claude Code as Helper (not as auto-coder)
+
+**Framing correction (2026-04-23, two passes)**: The offline LLM
+(Qwen 3 family) is the **primary agent** — it does game
+comprehension, picks the plan fn, runs it, observes failure, and
+**decides how to fix the code or swap strategies**. Dev-time
+Claude Code is the LLM's **implementation helper**: receive the
+LLM's diagnosis + fix proposal, write the code change, commit,
+re-bench. This is qualitatively different from how rounds R16-R22
+were run (Claude Code read the probe trace and unilaterally
+rewrote plan fns without routing the failure through the LLM).
+
+**The actual per-env runtime loop (Kaggle-time)** is:
+
+1. **Discovery** — `DiscoveryReport` from observation_phase.
+2. **Routing** — LLM picks primary + fallback strategies from the
+   whitelist based on observable signatures + wiki retrieval.
+3. **Plan execution** — the chosen plan fn runs for its budget cap.
+4. **Failure observation** — if levels=0 or regression, the LLM
+   reads the post-plan envelope: stencil density, cluster counts,
+   probe diffs, which cells were tried, what happened on each.
+5. **Self-decision**: one of
+   (a) **Swap strategy** — pick a different whitelist name.
+   (b) **Retune parameters** — "same plan with stride=2 instead
+       of stride=8", "widen vacuum radius R", "pick cells from the
+       18 we didn't try".
+   (c) **Propose code fix** — "the measurement is wrong because
+       it trusts the first observation pass; the wiki says to
+       re-observe after the sweep invalidates top-10 choices.
+       Edit `_plan_lights_out` to re-rank after sweep."
+6. **Loop** — execute the chosen action, observe again.
+
+When the LLM reaches (c), the Kaggle-time run simply can't act on
+it (the code is frozen post-submission). But during **dev-time**
+iteration, (c) proposals MUST route through Claude Code:
+
+- Qwen writes a structured `CodeFixProposal {target, reason,
+  suggested_patch}` into the run trace.
+- Claude Code at the next dev round reads the proposals, discusses
+  with the user if needed, and implements the agreed ones.
+- Re-bench. Qwen sees whether its proposed fix helped.
+
+**This inverts the control**: Claude Code is no longer the
+designer of plan fns — Claude Code is the scribe who turns Qwen's
+runtime diagnoses into committable code. R16-R22 skipped this
+because R11's `LLM_WHITELIST_ALLOWLIST = {"adaptive_bfs_solver"}`
+zeroed out Qwen's routing voice, so Claude Code substituted its
+own judgement. That substitution is a procedural bug, not a
+performance win.
+
+**Implication for R11's single-item allowlist**: it was a dev-time
+emergency patch to stop Qwen anchor-looping on `bfs_state_space /
+click_rare`. It is NOT the target state. The target is: Qwen sees
+all ~14 frame-only strategies + reads the wiki's failure-mode
+playbooks + reasons runtime + proposes code fixes when no
+existing plan fits.
+
+**Implication for the wiki**: each page must expose the plan fn's
+INTERNAL algorithm (not just API) so Qwen can reason "the stencil
+measurement uses stride-8 which drops button cells; try stride-4
+or a different cell-selection heuristic". Runtime-consumable
+signature fields per wiki page:
+
+- Observable signature to detect "this plan is the right fit"
+- Falsification signature to detect "this plan has failed, swap now"
+- Internal-algorithm hooks the LLM can suggest tuning
+- Short "next-best" pointer to the alternative plan if failure
+
 ### Wiki Doctrine (non-negotiable)
 
 The wiki is **not a state dump**. It exists to let an offline LLM reason about a new game by retrieving:
@@ -363,9 +452,79 @@ Round 1 of the dev-time loop. Per user direction (2026-04-21), the R1-R6 skeleto
 - [x] **R7e — Whitelist validation (`_validate_whitelist`)**. Filters hallucinated strategy names from primary/fallback before dispatch. Pins the 2026-04-21 R6 Qwen 14B FT09 `seq_search` regression as a FEEDBACK-GATED test.
 - [x] **R7b — Graph-based wiki retrieval** (2026-04-21). `src/admorphiq/hypothesis/wiki_retrieval.py` with `GraphRetriever` that seeds from discovery signals (selector.md + reasoning core always; `game_types/hybrid.md` when both click and movement; `game_types/click.md`/`movement.md`/`concepts/merge_mechanic.md` by probe signature; `games/<TITLE>.md` by title match) then walks `[[backlinks]]` in keyword-scored order until the char budget is hit. Context budget raised 8K→16K (Qwen 128K context has room; seed pages saturated 8K before any link traversal). Smoke verified: SU15 now retrieves `concepts/merge_mechanic`, FT09 retrieves `games/FT09`, M0R0 retrieves `game_types/hybrid` + `games/M0R0` + `reasoning/hypothesis_check` — every env gets a different slice. 24 unit tests in `tests/test_wiki_retrieval.py`. Full suite 210/210.
 - [x] **R7d — Round protocol** (2026-04-21). `scripts/round.py` with `start` / `finalize` / `learnings` subcommands writes `.omc/rounds/round_NNN/meta.json` + `notes.md`. `meta.json` captures goal, before/after summary (matching the regression gate's per-game_id aggregate), verdict (PASS/FAIL + per-env regressions/improvements lists), changes_made log, and prior_learnings_used. `round.py learnings N` replays prior rounds' takeaways — output is suitable for injection into WikiAgent's `round_learnings` prompt slot (R7c), closing the feedback carryover loop. 9 unit tests in `tests/test_round_protocol.py`. `.omc/rounds/round_001/` initialized for the first R7 bench.
-- [ ] **R7f — Per-env multi-turn (optional)**. When primary fails, re-ask the LLM with the failure context before running fallback_stack. Cost: one extra LLM call per failed env.
+- [ ] **R7f — Per-env multi-turn (UPGRADED to central, 2026-04-23)**. When primary fails, re-ask the LLM with the failure context before running fallback_stack. Originally optional — the 2026-04-23 framing correction makes this a **central architectural requirement**: without it, Qwen's self-healing role is degraded to single-shot routing, and the whole "LLM as game-completion driver" framing collapses. See below.
 
 186/186 tests passing (was 174, +11 R7 schema tests + 1 replaced features test). Smoke-tested end-to-end against a mock `HallucinatingLLM` that emits `seq_search` + structured `features_missing` / `wiki_gaps` / `wiki_needs` — filter strips hallucination, structured feedback round-trips to trace intact.
+
+### R16-R22 rounds (2026-04-23) — math-primitive additions, Claude-Code only
+
+One-line summaries (commit messages have full detail; wiki pages
+carry per-round provenance):
+
+- **R16** (`377ca48`) — lights-out toggle stencil measurement (`_measure_toggle_stencil`, `_extract_cell_class`).
+- **R17** (`009a6be`) — GF(2) solver + predictive ranking (`_gf2_solve`, `_homogeneity_score`, `_rank_subsets_by_prediction`).
+- **R18** (`8c41623`) — delta-chain trials + cumulative cell sweep; FT09 L1 clears via generic path.
+- **R19** (`fcc39ea`) — Sokoban-like navigation budget bump (30k); KA59 still blocked by BFS state-space explosion.
+- **R20** (`afe6ab8`) — prefix-aware `_plan_navigation` using BFSSolver directly; broke AR25/M0R0 multi-level.
+- **R21** (`ce95929`) — loosened `merge_items` heuristic (size 8..150); SU15 L1 still blocked on same-color-pair requirement.
+- **R22** (pending commit) — restored `solve_all_levels` chaining inside `_plan_navigation`; AR25 2/2 verified.
+
+**What R16-R22 got right**: the math primitives are generic
+(verified grep for game_title / game_id in logic: clean). They
+are usable building blocks for future Qwen-driven plan additions.
+
+**What R16-R22 got wrong**: the rounds were run with Qwen out of
+the loop. R11's `LLM_WHITELIST_ALLOWLIST={"adaptive_bfs_solver"}`
+zeroed Qwen's voice, so Claude Code read direct-test results and
+unilaterally wrote code. Per the 2026-04-23 framing correction,
+this is a procedural bug — the LLM should have diagnosed the
+failures and proposed the fixes; Claude Code should have
+implemented them. All R16-R22 improvements remain valid CODE,
+but the process needs to change for R23+.
+
+### R23+ plan — restore Qwen to the dev loop
+
+Target architecture: Qwen drives comprehension + plan selection +
+failure diagnosis; Claude Code implements the fixes Qwen proposes.
+
+- [ ] **R23 — Reopen the allowlist** (2026-04-24). Expand
+  `LLM_WHITELIST_ALLOWLIST` from `{adaptive_bfs_solver}` to the
+  ~14 frame-only strategies that actually have plan fns. Update
+  `.wiki/wiki/llm_context/decision_tree.md` to reflect
+  "inferential_agent first, swap on failure". Bench to verify
+  Qwen doesn't re-anchor.
+- [ ] **R24 — Debug playbook pages**. Populate
+  `.wiki/wiki/debug/plan_failure_signatures.md` and per-plan
+  pages with observable failure signatures + next-best pointers
+  (stencil density > 0.8 → try plan X, merge_items=0 but
+  responsive>10 → try plan Y, etc.). Sourced from R16-R22
+  direct-probe traces.
+- [ ] **R25 — Implement R7f per-env multi-turn**. `WikiAgent.run`
+  captures per-env failure envelope on plan return; re-invokes
+  the LLM with `{previous_attempt, failure_envelope, remaining_budget}`
+  asking for next action (swap / retune / code-fix proposal).
+  Session state tracks attempted plans so Qwen doesn't repeat.
+- [ ] **R26 — Structured `CodeFixProposal` schema**. Extend the
+  Hypothesis JSON with an optional `code_fix_proposals` field.
+  Qwen writes "target: `_plan_lights_out`, reason: ..., suggested
+  edit: use stride=4 on retry" into the trace. Dev-time Claude
+  Code reads proposals at round start.
+- [ ] **R27 — Runtime wiki signature exposure**. Each plan fn's
+  wiki page (`strategies/frame_only/*.md`) must expose:
+  observable-signature / falsification-signature / tunable
+  parameters / next-best. This is the LLM's runtime reasoning
+  surface.
+- [ ] **R28+ — Iterative game-completion sprints**. For each
+  failing game class (FT09 L2+, SU15, CD82 L2+, SB26, KA59),
+  run the loop: Qwen diagnosis → Claude Code implements → bench
+  → repeat until cleared or ceiling hit. Target: ≥ 1 new
+  level per sprint.
+
+**Gate for promoting past R23**: Qwen picks a non-primary
+strategy on a bench where the primary returns 0 levels. If Qwen
+always picks `adaptive_bfs_solver` regardless of failure, the
+allowlist expansion is ineffective and we either re-prompt the
+wiki or downgrade the decoder schema.
 
 ## Reference Projects
 

@@ -650,29 +650,52 @@ def _plan_navigation(env: Any, action_profile: dict, entity_map: dict, goal: dic
     )
     base_levels = action_profile.get("base_levels", 0)
 
-    result = solver.solve(
-        env,
-        GameAction.RESET,
-        avail_scalar,
-        lambda o: o.levels_completed,
-        click_coords=click_coords,
-        prefix=prefix_actions,
-        expected_base_levels=base_levels,
-    )
-    used += len(prefix_actions) + 1  # prefix replay + initial reset
-    if result is None:
-        return base_levels, used
+    # Round 22 fix: restore solve_all_levels-style internal chaining
+    # inside the plan call. R20's single-solve variant regressed
+    # AR25 / M0R0 from 2/2 → 1/2 because the outer loop's
+    # observation_phase overhead and plan-budget-cap of 10 000
+    # combined to stop forward progress after the first level was
+    # cleared within one plan call. Repeat solve while we make
+    # progress; the total returns as new_levels.
+    cumulative_new: list = []
+    levels_cleared = 0
+    import time as _time_mod
+    plan_start = _time_mod.time()
+    soft_time_budget = max(time_limit, 90.0)
+    while True:
+        if _time_mod.time() - plan_start > soft_time_budget:
+            break
+        if used + len(prefix_actions) + len(cumulative_new) + 1 > budget:
+            break
+        result = solver.solve(
+            env,
+            GameAction.RESET,
+            avail_scalar,
+            lambda o: o.levels_completed,
+            click_coords=click_coords,
+            prefix=prefix_actions + cumulative_new,
+            expected_base_levels=base_levels + levels_cleared,
+        )
+        if result is None:
+            break
+        cumulative_new.extend(result)
+        levels_cleared += 1
+        used += len(prefix_actions) + len(cumulative_new) + 1
 
-    used += len(prefix_actions) + 1 + len(result)  # apply winning seq
-    obs = solver._replay_prefix(env, GameAction.RESET, prefix_actions + result)
-    if obs is None:
-        return base_levels, used
-    new_levels = obs.levels_completed
-    if new_levels > base_levels:
+    # Apply the full winning sequence once so the env is left at the
+    # correct post-plan state for downstream plans.
+    if cumulative_new:
+        obs = solver._replay_prefix(
+            env, GameAction.RESET, prefix_actions + cumulative_new
+        )
+        used += len(prefix_actions) + len(cumulative_new) + 1
+        new_levels = obs.levels_completed if obs else base_levels + levels_cleared
         _LAST_WIN_SEQUENCE = [
             ("click", a[0], a[1]) if isinstance(a, tuple) else ("act", int(a))
-            for a in result
+            for a in cumulative_new
         ]
+    else:
+        new_levels = base_levels
     return int(new_levels), used
 
 

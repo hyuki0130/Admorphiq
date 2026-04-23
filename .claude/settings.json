@@ -9,6 +9,15 @@
             "command": "./.claude/hooks/guard_wiki_agent.sh"
           }
         ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "./.claude/hooks/remind_wiki_sync.sh"
+          }
+        ]
       }
     ],
     "Stop": [
