@@ -277,6 +277,8 @@ scripts/
 
 **Architecture decision (2026-04-20)**: Adopt [Karpathy's LLM Wiki pattern](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f) — markdown knowledge base maintained by LLM at dev-time, read by inference LLM at Kaggle-time. No vector DB (incompatible with Kaggle internet constraint).
 
+**Reference analysis**: see [`docs/llm_wiki_karpathy_analysis_ko.md`](docs/llm_wiki_karpathy_analysis_ko.md) for the full Karpathy pattern breakdown and the Admorphiq gap table (log.md missing, lint pass missing, ingest-workflow not ritualised, query→page refiling not systematic). R23+ roadmap below absorbs the gaps as dedicated sub-rounds.
+
 ### LLM as Game-Completion Driver — Claude Code as Helper (not as auto-coder)
 
 **Framing correction (2026-04-23, two passes)**: The offline LLM
