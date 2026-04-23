@@ -576,18 +576,95 @@ def goal_phase(action_profile: dict, entity_map: dict) -> dict:
 
 
 def _plan_navigation(env: Any, action_profile: dict, entity_map: dict, goal: dict, budget: int) -> tuple[int, int]:
-    """Delegate movement-game solving to the proven generic BFS.
+    """Delegate movement-game solving to BFSSolver with prefix awareness.
 
-    `strat_bfs_state_space` (in `agent_ensemble`) is already a tuned
-    reset-replay BFS that clears M0R0 / AR25 L1-L2 in ~2000 actions.
-    Rather than re-implement BFS in the plan layer (which round-6
-    iterations 4-7 showed is error-prone), delegate here. The
-    InferentialAgent's job is to DECIDE this is a navigation game;
-    the BFS engine executes.
+    Round 20: the prior implementation delegated to
+    `strat_bfs_state_space`, which internally `reset(env)`s and ignores
+    `_ACTIVE_PREFIX`. On multi-level games (CD82, every obs after L1)
+    the BFS always re-solves the level-1 start and returns `levels=1`
+    with the outer `best` already at 1, so no progress.
+
+    Rewritten: call `BFSSolver.solve` directly with `prefix=_ACTIVE_PREFIX`
+    (converted to BFSSolver format) so BFS starts from the CURRENT
+    level state. Winning actions are written into `_LAST_WIN_SEQUENCE`
+    so the outer loop can extend the prefix and move on to the next
+    level.
     """
-    from ..agent_ensemble import strat_bfs_state_space
-    best, _label, used = strat_bfs_state_space(env, budget)
-    return best, used
+    from ..agent_ensemble import get_frame as _ae_get_frame  # noqa: F401
+    from ..planner.bfs_solver import BFSSolver
+    global _LAST_WIN_SEQUENCE
+
+    used = 0
+    avail_scalar = sorted(
+        int(aid) for aid, p in action_profile.get("scalar", {}).items()
+        if 1 <= int(aid) <= 5
+    )
+    has_click = any(
+        int(aid) == 6 for aid in action_profile.get("avail", [])
+    ) or bool(action_profile.get("click"))
+    if not avail_scalar and not has_click:
+        return 0, used
+
+    # Convert _ACTIVE_PREFIX to BFSSolver format: int for dir, (x, y)
+    # tuple for click.
+    prefix_actions: list = []
+    for item in _ACTIVE_PREFIX:
+        if item[0] == "click":
+            prefix_actions.append((int(item[1]), int(item[2])))
+        else:
+            prefix_actions.append(int(item[1]))
+
+    # Gather click_coords from observation phase for hybrid games.
+    click_coords: list[tuple[int, int]] | None = None
+    if has_click:
+        click_probes = [
+            c for c in action_profile.get("click", [])
+            if c.get("diff_magnitude", 0) >= 10
+        ]
+        click_probes.sort(key=lambda c: -int(c.get("diff_magnitude", 0)))
+        click_coords = [(int(c["x"]), int(c["y"])) for c in click_probes[:20]]
+        if not click_coords:
+            click_coords = None
+
+    nc = len(click_coords) if click_coords else 0
+    if click_coords:
+        max_depth = 25 if nc > 5 else 35
+        max_states = 15000 if nc > 5 else 25000
+        time_limit = 60.0
+    else:
+        max_depth = 50
+        max_states = 40000
+        time_limit = 90.0
+
+    solver = BFSSolver(
+        max_depth=max_depth, max_states=max_states, time_limit=time_limit,
+    )
+    base_levels = action_profile.get("base_levels", 0)
+
+    result = solver.solve(
+        env,
+        GameAction.RESET,
+        avail_scalar,
+        lambda o: o.levels_completed,
+        click_coords=click_coords,
+        prefix=prefix_actions,
+        expected_base_levels=base_levels,
+    )
+    used += len(prefix_actions) + 1  # prefix replay + initial reset
+    if result is None:
+        return base_levels, used
+
+    used += len(prefix_actions) + 1 + len(result)  # apply winning seq
+    obs = solver._replay_prefix(env, GameAction.RESET, prefix_actions + result)
+    if obs is None:
+        return base_levels, used
+    new_levels = obs.levels_completed
+    if new_levels > base_levels:
+        _LAST_WIN_SEQUENCE = [
+            ("click", a[0], a[1]) if isinstance(a, tuple) else ("act", int(a))
+            for a in result
+        ]
+    return int(new_levels), used
 
 
 def _plan_merge(env: Any, action_profile: dict, entity_map: dict, goal: dict, budget: int) -> tuple[int, int]:
