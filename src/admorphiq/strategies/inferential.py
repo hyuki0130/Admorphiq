@@ -1366,8 +1366,16 @@ def strat_inferential_agent(env: Any, budget: int = 500000) -> tuple[int, str, i
         #   toggle      : 15_000 (depth-4 click combinations)
         #   merge       : 12_000 (greedy midpoint loop; a few passes enough)
         #   paint_fill  : 12_000 (palette→targets→executor has few retries)
+        # Round 19 bump: Sokoban-like games (navigation with multiple
+        # merge_items = pushable blocks) need deeper BFS than simple
+        # movement. Raise navigation cap to 30k when the signature
+        # matches, else keep 10k so AR25-class games still fast-bail.
+        sokoban_like = (
+            goal.get("kind") == "navigation"
+            and len(entity_map.get("merge_items", [])) >= 3
+        )
         PLAN_BUDGET_CAP = {
-            "navigation": 10_000,
+            "navigation": 30_000 if sokoban_like else 10_000,
             "toggle": 15_000,
             "merge": 12_000,
             "paint_fill": 12_000,
