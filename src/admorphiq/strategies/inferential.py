@@ -48,6 +48,12 @@ _ACTIVE_PREFIX: list[tuple] = []
 # _ACTIVE_PREFIX with it.
 _LAST_WIN_SEQUENCE: list[tuple] = []
 
+# Round 16: last measured lights-out toggle stencil. Populated by
+# _plan_lights_out on each call. Shape: {"cells": [(x,y), ...],
+# "A": np.uint8 matrix, "base_classes": [int], "toggled_classes":
+# [int]}. None when measurement was skipped (budget too tight).
+_LAST_STENCIL: dict | None = None
+
 
 def _replay_action(env: Any, action_tuple: tuple) -> Any:
     kind = action_tuple[0]
@@ -856,6 +862,88 @@ def _plan_toggle(env: Any, action_profile: dict, entity_map: dict, goal: dict, b
     return base_levels, used
 
 
+def _extract_cell_class(frame: np.ndarray, cx: int, cy: int, r: int) -> int:
+    """Mode color of a (2r+1)x(2r+1) patch centered at (cx, cy).
+
+    Used to classify a cell's current toggle state without reading
+    sprite tags — the cell's dominant color acts as its observable
+    'state'. The patch is clipped to the frame boundary so cells near
+    the edge still return a value.
+    """
+    h, w = frame.shape
+    y0 = max(0, cy - r)
+    y1 = min(h, cy + r + 1)
+    x0 = max(0, cx - r)
+    x1 = min(w, cx + r + 1)
+    patch = frame[y0:y1, x0:x1]
+    vals, counts = np.unique(patch, return_counts=True)
+    return int(vals[int(np.argmax(counts))])
+
+
+def _measure_toggle_stencil(
+    env: Any,
+    cells: list[tuple[int, int]],
+    patch_radius: int = 2,
+    budget: int = 200,
+) -> tuple[np.ndarray, list[int], list[int], int]:
+    """Round 16: measure the GF(2) stencil matrix A for a lights-out grid.
+
+    For each cell j in `cells`, reset-then-replay then click cell j
+    exactly once. Classify each cell i's dominant-color patch before
+    and after. A[i][j] = 1 iff cell i's class changed under click j
+    alone. Cells whose class is binary (two distinct observed classes
+    across the measurement pass) are the usable ones; cells showing
+    more than two classes are logged but flagged by excluding their
+    row/column from the returned stencil (A row set to 0).
+
+    Returns
+    -------
+    A : (n, n) uint8
+        Stencil matrix — A[i][j] = 1 iff click j toggles cell i.
+    base_classes : list[int]
+        Each cell's base-state color class (mode of baseline patch).
+    toggled_classes : list[int]
+        Each cell's alternate-state color class (mode of the patch
+        after the single click that flipped cell i, if any; else -1).
+    used : int
+        Action count spent on measurement.
+
+    The caller supplies the candidate cells (usually from
+    `action_profile["click"]` responsive entries). R17 will feed A and
+    the inferred target vector b into GF(2) Gaussian elimination.
+    """
+    n = len(cells)
+    A = np.zeros((n, n), dtype=np.uint8)
+    toggled_classes: list[int] = [-1] * n
+    used = 0
+    obs = _reset_then_replay(env)
+    used += 1 + len(_ACTIVE_PREFIX)
+    base_frame = _get_frame(obs)
+    base_classes = [
+        _extract_cell_class(base_frame, x, y, patch_radius) for x, y in cells
+    ]
+
+    for j in range(n):
+        if used >= budget:
+            break
+        obs = _reset_then_replay(env)
+        used += 1 + len(_ACTIVE_PREFIX)
+        cx, cy = cells[j]
+        obs = _click(env, cx, cy)
+        used += 1
+        if obs.state.name == "GAME_OVER":
+            continue
+        frame_after = _get_frame(obs)
+        for i in range(n):
+            ix, iy = cells[i]
+            cls_after = _extract_cell_class(frame_after, ix, iy, patch_radius)
+            if cls_after != base_classes[i]:
+                A[i, j] = 1
+                if toggled_classes[i] == -1:
+                    toggled_classes[i] = cls_after
+    return A, base_classes, toggled_classes, used
+
+
 def _plan_lights_out(env: Any, action_profile: dict, entity_map: dict, goal: dict, budget: int) -> tuple[int, int]:
     """Brute-force subset enumeration for lights-out style games.
 
@@ -868,9 +956,16 @@ def _plan_lights_out(env: Any, action_profile: dict, entity_map: dict, goal: dic
     For n ≤ 10 cells and typical per-env budget 15000, we can exhaust
     the full subset space. We iterate subsets in ascending |subset| so
     level clears via minimum-click sequences are found fast.
+
+    Round 16: before brute force, measure the per-cell toggle stencil
+    (A[i][j] = 1 iff click j flips cell i) via `_measure_toggle_stencil`.
+    The matrix is stored on `goal["stencil"]` so plan_synthesis and
+    future GF(2) solvers (R17) can consume it. Measurement costs n+1
+    resets + n clicks — cheap relative to the 2^n enumeration it
+    precedes.
     """
     import itertools
-    global _LAST_WIN_SEQUENCE
+    global _LAST_WIN_SEQUENCE, _LAST_STENCIL
     _LAST_WIN_SEQUENCE = []
     used = 0
     clicks = action_profile.get("click", [])
@@ -879,6 +974,23 @@ def _plan_lights_out(env: Any, action_profile: dict, entity_map: dict, goal: dic
         return 0, used
     responsive.sort(key=lambda c: (abs(c["x"] - 32) + abs(c["y"] - 32)))
     cells = [(c["x"], c["y"]) for c in responsive[:10]]
+
+    # Round 16: measure the stencil before brute force. Stored on
+    # module-level _LAST_STENCIL so R17's GF(2) solver can read it.
+    stencil_budget = min(budget // 10, 400)
+    if stencil_budget > 0:
+        A, base_cls, toggled_cls, m_used = _measure_toggle_stencil(
+            env, cells, patch_radius=2, budget=stencil_budget,
+        )
+        used += m_used
+        _LAST_STENCIL = {
+            "cells": list(cells),
+            "A": A,
+            "base_classes": base_cls,
+            "toggled_classes": toggled_cls,
+        }
+    else:
+        _LAST_STENCIL = None
 
     obs = _reset_then_replay(env)
     used += 1 + len(_ACTIVE_PREFIX)
