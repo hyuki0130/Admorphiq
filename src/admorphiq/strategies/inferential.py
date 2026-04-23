@@ -825,6 +825,56 @@ def _plan_toggle(env: Any, action_profile: dict, entity_map: dict, goal: dict, b
     return base_levels, used
 
 
+def _plan_lights_out(env: Any, action_profile: dict, entity_map: dict, goal: dict, budget: int) -> tuple[int, int]:
+    """Brute-force subset enumeration for lights-out style games.
+
+    Round 14: FT09 trace revealed a 3x3 toggle grid at x=38,46,54 y=38,46,54
+    (8-9 cells, each click diff=38). Within-cell commutativity of
+    toggle clicks means ORDER doesn't matter — only which cells are
+    clicked. That gives 2^n subsets to try, each costing reset + |subset|
+    clicks.
+
+    For n ≤ 10 cells and typical per-env budget 15000, we can exhaust
+    the full subset space. We iterate subsets in ascending |subset| so
+    level clears via minimum-click sequences are found fast.
+    """
+    import itertools
+    used = 0
+    clicks = action_profile.get("click", [])
+    # Candidates: responsive clicks (post-HUD-mask), sorted by proximity
+    # to frame center (toggle grids are typically mid-frame, not at edges).
+    responsive = [c for c in clicks if c.get("diff_magnitude", 0) >= 10]
+    if not responsive:
+        return 0, used
+    # Keep only up to 10 cells — 2^10 = 1024 subsets is the budget ceiling.
+    responsive.sort(key=lambda c: (abs(c["x"] - 32) + abs(c["y"] - 32)))
+    cells = [(c["x"], c["y"]) for c in responsive[:10]]
+
+    obs = _reset(env)
+    used += 1
+    base_levels = obs.levels_completed
+    n = len(cells)
+
+    # Try subsets in ascending size (1, 2, 3, ..., n).
+    for subset_size in range(1, n + 1):
+        for combo in itertools.combinations(range(n), subset_size):
+            if used >= budget:
+                return base_levels, used
+            obs = _reset(env)
+            used += 1
+            for idx in combo:
+                if used >= budget:
+                    return base_levels, used
+                cx, cy = cells[idx]
+                obs = _click(env, cx, cy)
+                used += 1
+                if obs.levels_completed > base_levels:
+                    return int(obs.levels_completed), used
+                if obs.state.name == "GAME_OVER":
+                    break
+    return base_levels, used
+
+
 def _plan_click_then_move(env: Any, action_profile: dict, entity_map: dict, goal: dict, budget: int) -> tuple[int, int]:
     """Click a high-diff button then BFS movement.
 
@@ -925,6 +975,7 @@ PLAN_FNS = {
     "paint_fill": _plan_paint_fill,
     "toggle": _plan_toggle,
     "click_then_move": _plan_click_then_move,
+    "lights_out": _plan_lights_out,
 }
 
 
@@ -955,8 +1006,8 @@ def strat_inferential_agent(env: Any, budget: int = 500000) -> tuple[int, str, i
 
         # Observation budget scales with remaining total budget so late
         # levels still get adequate probing.
-        probe_budget = max(150, min(400, (budget - used) // 6))
-        profile, p_used = observation_phase(env, stride=8, budget=probe_budget)
+        probe_budget = max(200, min(600, (budget - used) // 5))
+        profile, p_used = observation_phase(env, stride=4, budget=probe_budget)
         used += p_used
         if used >= budget:
             break
@@ -986,6 +1037,7 @@ def strat_inferential_agent(env: Any, budget: int = 500000) -> tuple[int, str, i
             "merge": 12_000,
             "paint_fill": 12_000,
             "click_then_move": 15_000,
+            "lights_out": 20_000,
         }
 
         def _try_plan(kind: str) -> bool:
@@ -1011,7 +1063,7 @@ def strat_inferential_agent(env: Any, budget: int = 500000) -> tuple[int, str, i
         _try_plan(goal["kind"])
         if not cleared_this_level:
             # Round 2: heuristic-ordered siblings.
-            for alt in ("navigation", "click_then_move", "merge", "paint_fill", "toggle"):
+            for alt in ("navigation", "lights_out", "click_then_move", "merge", "paint_fill", "toggle"):
                 if cleared_this_level or used >= budget:
                     break
                 _try_plan(alt)
@@ -1023,7 +1075,7 @@ def strat_inferential_agent(env: Any, budget: int = 500000) -> tuple[int, str, i
             entity_map = entity_phase(profile["base_frame"], profile)
             goal = goal_phase(profile, entity_map)
             attempted.clear()
-            for alt in (goal["kind"], "navigation", "click_then_move", "merge", "paint_fill", "toggle"):
+            for alt in (goal["kind"], "navigation", "lights_out", "click_then_move", "merge", "paint_fill", "toggle"):
                 if cleared_this_level or used >= budget:
                     break
                 _try_plan(alt)
