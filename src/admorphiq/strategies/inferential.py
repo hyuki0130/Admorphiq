@@ -37,6 +37,37 @@ def _reset(env: Any) -> Any:
     return env.step(GameAction.RESET)
 
 
+# Round 15: multi-level cumulative prefix. When the outer loop clears
+# level L, the winning action sequence is appended to this list. Every
+# subsequent _reset_then_replay call resets then replays the prefix so
+# the env returns to the LEVEL-L+1 START, not the game start. Plans
+# that need reset should call _reset_then_replay instead of _reset.
+_ACTIVE_PREFIX: list[tuple] = []
+# Plans that clear a level append their winning sequence here. The
+# outer loop consumes it after each plan call and may extend
+# _ACTIVE_PREFIX with it.
+_LAST_WIN_SEQUENCE: list[tuple] = []
+
+
+def _replay_action(env: Any, action_tuple: tuple) -> Any:
+    kind = action_tuple[0]
+    if kind == "click":
+        return _click(env, action_tuple[1], action_tuple[2])
+    return _act(env, action_tuple[1])
+
+
+def _reset_then_replay(env: Any) -> Any:
+    """Reset, then replay every action in `_ACTIVE_PREFIX`. Used by
+    every plan that needs to return to the current level's start state
+    (not the game start). If the prefix is empty, equivalent to _reset.
+    """
+    obs = env.step(GameAction.RESET)  # intentionally not `_reset` to make
+    # the global replace-all below safe (round 15 refactor).
+    for action_tuple in _ACTIVE_PREFIX:
+        obs = _replay_action(env, action_tuple)
+    return obs
+
+
 def _act(env: Any, aid: int) -> Any:
     if aid == 6:
         return env.step(GameAction.ACTION6, data={"x": 32, "y": 32})
@@ -139,7 +170,7 @@ def observation_phase(env: Any, stride: int = 8, budget: int = 200) -> tuple[dic
     TransitionRecord carries (frame_before, frame_after, action).
     """
     used = 0
-    obs = _reset(env)
+    obs = _reset_then_replay(env)
     used += 1
     base_frame = _get_frame(obs)
     avail = sorted(int(a) for a in obs.available_actions if int(a) != 0)
@@ -165,7 +196,7 @@ def observation_phase(env: Any, stride: int = 8, budget: int = 200) -> tuple[dic
     for aid in avail:
         if aid == 6 or used >= budget:
             continue
-        obs = _reset(env)
+        obs = _reset_then_replay(env)
         used += 1
         f0 = _get_frame(obs)
         obs = _act(env, aid)
@@ -208,7 +239,7 @@ def observation_phase(env: Any, stride: int = 8, budget: int = 200) -> tuple[dic
         for (x, y) in probe_coords:
             if used >= budget:
                 break
-            obs = _reset(env)
+            obs = _reset_then_replay(env)
             used += 1
             f0 = _get_frame(obs)
             obs = _click(env, x, y)
@@ -593,7 +624,7 @@ def _plan_merge(env: Any, action_profile: dict, entity_map: dict, goal: dict, bu
         R = 8
     max_pair_distance = 2 * R
 
-    obs = _reset(env)
+    obs = _reset_then_replay(env)
     used += 1
     base_levels = obs.levels_completed
 
@@ -667,7 +698,7 @@ def _plan_paint_fill(env: Any, action_profile: dict, entity_map: dict, goal: dic
     palettes = entity_map.get("palettes", [])
     executors = entity_map.get("executors", [])
     target_color = goal.get("target_color")
-    obs = _reset(env)
+    obs = _reset_then_replay(env)
     used += 1
     base_levels = obs.levels_completed
     f = _get_frame(obs)
@@ -688,7 +719,7 @@ def _plan_paint_fill(env: Any, action_profile: dict, entity_map: dict, goal: dic
     for palette in palettes[:3]:
         if used >= budget:
             break
-        obs = _reset(env)
+        obs = _reset_then_replay(env)
         used += 1
         obs = _click(env, palette["x"], palette["y"])
         used += 1
@@ -760,7 +791,7 @@ def _plan_toggle(env: Any, action_profile: dict, entity_map: dict, goal: dict, b
 
     cand_coords = cand_coords[:16]
 
-    obs = _reset(env)
+    obs = _reset_then_replay(env)
     used += 1
     base_levels = obs.levels_completed
 
@@ -768,7 +799,7 @@ def _plan_toggle(env: Any, action_profile: dict, entity_map: dict, goal: dict, b
         nonlocal used
         if used >= budget:
             return base_levels
-        obs_local = _reset(env)
+        obs_local = _reset_then_replay(env)
         used += 1
         for cx, cy in seq:
             if used >= budget:
@@ -839,29 +870,27 @@ def _plan_lights_out(env: Any, action_profile: dict, entity_map: dict, goal: dic
     level clears via minimum-click sequences are found fast.
     """
     import itertools
+    global _LAST_WIN_SEQUENCE
+    _LAST_WIN_SEQUENCE = []
     used = 0
     clicks = action_profile.get("click", [])
-    # Candidates: responsive clicks (post-HUD-mask), sorted by proximity
-    # to frame center (toggle grids are typically mid-frame, not at edges).
     responsive = [c for c in clicks if c.get("diff_magnitude", 0) >= 10]
     if not responsive:
         return 0, used
-    # Keep only up to 10 cells — 2^10 = 1024 subsets is the budget ceiling.
     responsive.sort(key=lambda c: (abs(c["x"] - 32) + abs(c["y"] - 32)))
     cells = [(c["x"], c["y"]) for c in responsive[:10]]
 
-    obs = _reset(env)
-    used += 1
+    obs = _reset_then_replay(env)
+    used += 1 + len(_ACTIVE_PREFIX)
     base_levels = obs.levels_completed
     n = len(cells)
 
-    # Try subsets in ascending size (1, 2, 3, ..., n).
     for subset_size in range(1, n + 1):
         for combo in itertools.combinations(range(n), subset_size):
             if used >= budget:
                 return base_levels, used
-            obs = _reset(env)
-            used += 1
+            obs = _reset_then_replay(env)
+            used += 1 + len(_ACTIVE_PREFIX)
             for idx in combo:
                 if used >= budget:
                     return base_levels, used
@@ -869,6 +898,7 @@ def _plan_lights_out(env: Any, action_profile: dict, entity_map: dict, goal: dic
                 obs = _click(env, cx, cy)
                 used += 1
                 if obs.levels_completed > base_levels:
+                    _LAST_WIN_SEQUENCE = [("click", cells[i][0], cells[i][1]) for i in combo[:combo.index(idx) + 1]]
                     return int(obs.levels_completed), used
                 if obs.state.name == "GAME_OVER":
                     break
@@ -906,7 +936,7 @@ def _plan_click_then_move(env: Any, action_profile: dict, entity_map: dict, goal
     if not dir_actions:
         return 0, used
 
-    obs = _reset(env)
+    obs = _reset_then_replay(env)
     used += 1
     base_levels = obs.levels_completed
 
@@ -920,7 +950,7 @@ def _plan_click_then_move(env: Any, action_profile: dict, entity_map: dict, goal
             for d2 in dir_actions + [None]:
                 if used >= budget:
                     break
-                obs = _reset(env)
+                obs = _reset_then_replay(env)
                 used += 1
                 obs = _click(env, c["x"], c["y"])
                 used += 1
@@ -949,7 +979,7 @@ def _plan_click_then_move(env: Any, action_profile: dict, entity_map: dict, goal
                 for d in dir_actions + [None]:
                     if used >= budget:
                         break
-                    obs = _reset(env)
+                    obs = _reset_then_replay(env)
                     used += 1
                     obs = _click(env, a["x"], a["y"])
                     used += 1
@@ -987,14 +1017,23 @@ def strat_inferential_agent(env: Any, budget: int = 500000) -> tuple[int, str, i
 
     Runs Observation → Entity Detection → Goal Inference → Plan
     Synthesis per level, with learning-loop retries on plan failure.
-    Multi-level games rely on the env's own state progression: once a
-    plan clears a level, the env advances, and subsequent Phase-1
-    observations run against the new level's frame.
+
+    Round-15 addition: cumulative prefix chaining. `_reset(env)` on
+    these environments goes back to LEVEL 1 START, not the current
+    level. To make multi-level progression work, each plan that
+    succeeds writes its action sequence into `_LAST_WIN_SEQUENCE`; the
+    outer loop appends it to `_ACTIVE_PREFIX`. Every subsequent
+    `_reset_then_replay(env)` call (used in place of `_reset` inside
+    plans) then lands the env at the start of the current level,
+    giving Phase-1 a fresh frame for the next level's observation.
 
     Returns (best_levels_cleared, label, actions_used). Label is
     "inferential_agent/<plan_kind>" on success or "" on no progress.
     """
-    obs = _reset(env)
+    global _ACTIVE_PREFIX, _LAST_WIN_SEQUENCE
+    _ACTIVE_PREFIX = []
+    _LAST_WIN_SEQUENCE = []
+    obs = _reset_then_replay(env)
     used = 1
     best = obs.levels_completed
     label = ""
@@ -1042,6 +1081,7 @@ def strat_inferential_agent(env: Any, budget: int = 500000) -> tuple[int, str, i
 
         def _try_plan(kind: str) -> bool:
             nonlocal used, best, label, cleared_this_level
+            global _ACTIVE_PREFIX, _LAST_WIN_SEQUENCE
             if kind in attempted or kind not in PLAN_FNS:
                 return False
             plan_fn = PLAN_FNS[kind]
@@ -1049,6 +1089,7 @@ def strat_inferential_agent(env: Any, budget: int = 500000) -> tuple[int, str, i
             remaining = min(budget - used, cap)
             if remaining <= 0:
                 return False
+            _LAST_WIN_SEQUENCE = []
             new_best, plan_used = plan_fn(env, profile, entity_map, goal, remaining)
             used += plan_used
             attempted.add(kind)
@@ -1056,6 +1097,10 @@ def strat_inferential_agent(env: Any, budget: int = 500000) -> tuple[int, str, i
                 best = new_best
                 label = f"inferential_agent/{kind}"
                 cleared_this_level = True
+                # Append winning actions to the prefix so future level
+                # iterations resume from the cleared-level start.
+                if _LAST_WIN_SEQUENCE:
+                    _ACTIVE_PREFIX = list(_ACTIVE_PREFIX) + list(_LAST_WIN_SEQUENCE)
                 return True
             return False
 
