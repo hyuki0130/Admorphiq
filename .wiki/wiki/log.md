@@ -333,3 +333,39 @@ Provenance: `49e05c7`.
 Backfilled R1-R22 + setup commits + docs. Future rounds MUST append
 a fresh entry per commit; the schema check lands in R23c.
 Pages touched: log.md (new).
+Provenance: `d6b9138`.
+
+## [2026-04-29 R23b] index.md generator categorised + frontmatter fallback
+
+Rewrote `scripts/generate_wiki_index.py` to surface 10 categories
+separately (concepts / lessons / debug / reasoning / llm_context +
+existing games / game_types / strategies). One-liner fallback chain:
+blockquote `> ...` → frontmatter `description` → `purpose` → `type`.
+status_v1_brittle / status_v1_generic both rendered so generic-vs-
+brittle gap is visible. log.md frontmatter gains `description` field.
+80 pages indexed across 10 categories.
+Pages touched: scripts/generate_wiki_index.py, .wiki/wiki/index.md,
+.wiki/wiki/log.md (frontmatter).
+Provenance: `45fc709`.
+
+## [2026-04-29 R23c] schema.md — ingest ritual + runtime-consumable fields
+
+`.wiki/schema.md` gains two load-bearing sections:
+
+  - **Ingest Ritual** (Karpathy §6.1) — mandatory per-round
+    checklist: log.md append, games/<G>.md provenance update,
+    new lessons/<topic>_<date>.md when round produced a
+    falsifiable claim, new concepts/<concept>.md when reusable
+    abstraction emerged, strategies/frame_only/<plan>.md update
+    with runtime-consumable fields, debug/<symptom>_playbook.md
+    when reproducible failure mode measured, index.md regeneration.
+  - **Runtime-Consumable Signature Fields** — four required prose
+    sections per plan-fn / mechanic page: Observable Signature /
+    Falsification Signature / Tunable Parameters / Next-Best.
+    Without them, the runtime LLM can call the plan but cannot
+    decide when to stop. R16-R22 pages grandfathered but back-filled
+    when next edited.
+
+Reference link to docs/llm_wiki_karpathy_analysis_ko.md added.
+Pages touched: .wiki/schema.md, log.md (this entry).
+Provenance: this commit.

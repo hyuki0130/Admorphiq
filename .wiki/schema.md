@@ -162,3 +162,96 @@ body, not the frontmatter.
 - Index regeneration: run `scripts/generate_wiki_index.py` after any batch of page edits.
 - Trace refresh: run `scripts/extract_wiki_traces.py` after every 25-game regression.
 - Page rewrite: any game/strategy/concept page affected by a new commit gets updated in the same commit.
+
+## Ingest Ritual (Karpathy LLM-Wiki §6.1, R23c)
+
+Per [Karpathy's LLM Wiki pattern](../docs/llm_wiki_karpathy_analysis_ko.md)
+§6.1, every new insight should fan out across the wiki — a single
+measurement / round / failure typically touches 10-15 pages. Rounds
+that commit code without touching wiki violate the pattern; the
+maintenance-cost-near-zero promise only holds when the LLM (Claude
+Code at dev-time) actually does the maintenance on each round.
+
+**Per-round ingest checklist** (mandatory unless the round is a pure
+revert):
+
+1. **`log.md`** — append a `## [YYYY-MM-DD round RN]` entry with a
+   1-line title + 2-3 line summary + `Pages touched:` list +
+   `Provenance:` commit hash. Append-only, never edit prior entries.
+2. **`games/<GAME>.md`** — provenance update for every game whose
+   measurable status (`status_v1*`, `status_v2`, `current_strategy`)
+   changed during the round. Add a "Lessons Learned" bullet with a
+   link to the new lessons page.
+3. **`lessons/<topic>_<YYYYMMDD>.md`** — new page if the round
+   produced a falsifiable claim, regression diagnosis, or
+   architectural correction. Required sections: Symptom, Root Cause,
+   Prevention, Recovery, Falsification, Related. Filenames carry
+   the date so chronological grep works.
+4. **`concepts/<concept>.md`** — new page if the round introduced
+   a reusable abstraction (e.g., `gf2_toggle_stencil` from R16-R18).
+   Required: Definition, Detection Signature (frame-only),
+   Instantiating Games, Falsification, Related.
+5. **`strategies/frame_only/<plan_fn>.md`** — when adding or
+   significantly changing a plan fn, the wiki page must include the
+   four runtime-consumable fields (next section).
+6. **`debug/<symptom>_playbook.md`** — when the round measured a
+   reproducible failure mode (e.g., "stencil density > 0.8 means
+   coupled display"), record the symptom + triage + recovery so
+   the runtime LLM can self-heal next time.
+7. **`index.md`** — regenerate via `scripts/generate_wiki_index.py`.
+
+A round commit that touches `src/admorphiq/strategies/**` or
+`src/admorphiq/hypothesis/**` without ANY `.wiki/wiki/**` change is
+flagged by `.claude/hooks/remind_wiki_sync.sh` (warning, not block).
+
+## Runtime-Consumable Signature Fields (R23c)
+
+Pages describing plan fns or game mechanics need four explicit fields
+the runtime LLM (Qwen at Kaggle-time) can consume to reason about
+"is this plan the right pick / is it failing / what's next?".
+
+These live in the prose body (not frontmatter — frontmatter is
+stripped before Qwen sees the page). Use literal section headers:
+
+```markdown
+## Observable Signature
+
+The plan fn is the right pick when these conditions hold AT
+DiscoveryReport time (no plan execution yet):
+- <signature 1>
+- <signature 2>
+
+## Falsification Signature
+
+The plan fn has failed AND should be swapped when these conditions
+hold AFTER plan execution returns 0 levels:
+- <signature 1>
+- <signature 2>
+
+## Tunable Parameters
+
+Internal knobs the runtime LLM can suggest tuning rather than
+swapping plans entirely:
+- `<param_name>`: default <value>, range <range>, effect <effect>
+
+## Next-Best
+
+If this plan's falsification signature triggers, the LLM should
+try one of (in priority order):
+- `<next_plan_fn_name>` — when <condition>
+- `<another_plan_fn_name>` — when <condition>
+```
+
+Without those four sections, the runtime LLM can call the plan but
+cannot decide when to stop calling it. Pages that pre-date R23c
+(R16-R22 era) are grandfathered but should be back-filled when next
+edited.
+
+## Reference
+
+Architectural inspiration: Andrej Karpathy, "LLM Wiki" (2026-04-02).
+Full Korean analysis archived at
+[`docs/llm_wiki_karpathy_analysis_ko.md`](../docs/llm_wiki_karpathy_analysis_ko.md)
+with an Admorphiq gap-mapping appendix. Key principles consulted:
+ingest fan-out, query→page refiling, `index.md` + `log.md` as the
+two special files, periodic lint pass, asymmetric maintenance cost.
