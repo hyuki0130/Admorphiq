@@ -1,5 +1,6 @@
 ---
 type: log
+description: Append-only chronological record of every dev-time round and significant infra change. Grep `^## \[` for latest entries.
 purpose: append-only chronological record of wiki ingest events, dev-time rounds, and significant infra changes
 schema: each entry begins with `## [YYYY-MM-DD round RN]` so `grep "^## \[" log.md | tail -N` returns the latest N entries
 ---
