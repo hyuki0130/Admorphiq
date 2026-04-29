@@ -247,6 +247,55 @@ cannot decide when to stop calling it. Pages that pre-date R23c
 (R16-R22 era) are grandfathered but should be back-filled when next
 edited.
 
+## Query → Page Refiling (Karpathy LLM-Wiki §6.2, R25b)
+
+Per Karpathy §6.2: **"a good answer can be re-filed to the wiki
+as a new page"**. Exploration activity is just as much a wiki
+ingest event as a new external source.
+
+Concretely, every `scripts/probe_*.py` direct-test, every manual
+trace analysis, every "I ran X and learned Y" exploration done at
+dev-time is an answer worth refiling. Without refiling, the
+finding lives in `/tmp/`, in scrollback, or in a notebook nobody
+reads next session.
+
+**Refiling triggers** — after one of these happens, a wiki page
+must be authored before the round commit:
+
+1. A `scripts/probe_*.py` run reveals a falsifiable claim
+   (e.g., "FT09 L2 stencil is 91% dense; the buttons are
+   elsewhere in the responsive list").
+2. A regression bisect surfaces a silent break.
+3. A manual frame-by-frame analysis identifies a previously
+   unnamed mechanic.
+4. A failed plan-fn iteration yields a "this approach can't
+   work because..." conclusion.
+
+**Refiling target** — pick by finding kind:
+
+| Finding kind | Target page |
+|---|---|
+| Falsifiable claim about a game | `lessons/<topic>_<YYYYMMDD>.md` + cross-link from `games/<GAME>.md` |
+| New reusable abstraction | `concepts/<concept>.md` |
+| Reproducible failure mode + recovery | `debug/<symptom>_playbook.md` |
+| New plan fn or significant change | `strategies/frame_only/<name>.md` (with R23c fields) |
+| Per-round summary | `log.md` entry |
+
+**Anti-pattern**: leaving finding in `scripts/probe_*.json` or
+`/tmp/*.out` only. Those files are cache; the wiki is memory.
+
+R16-R22 violated this — most rounds wrote no wiki page, and the
+R22 backfill commit (`a43dea4`) had to retroactively author 4
+lesson + 1 concept + 4 game-page updates. The point of R25b is
+to make this ritual obvious so future rounds don't repeat the
+backfill cycle.
+
+The lint check at `scripts/wiki_lint.py` (R24b) does NOT yet
+enforce per-round refiling — it only catches orphans and missing
+xrefs. A future round can add a "round commits without a fresh
+lessons page" check, but it would need a heuristic (some rounds
+are pure reverts and legitimately have no new lesson).
+
 ## Reference
 
 Architectural inspiration: Andrej Karpathy, "LLM Wiki" (2026-04-02).

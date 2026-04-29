@@ -388,4 +388,18 @@ stale-claims + 2 R23c gaps surfaced — these are real maintenance
 items, not lint bugs. Future rounds will burn down the list.
 
 Pages touched: scripts/wiki_lint.py (new), log.md (this entry).
+Provenance: `45d3621`.
+
+## [2026-04-29 R25b] schema.md — Query→Page refiling ritual
+
+Adds a "Query → Page Refiling" section to `.wiki/schema.md` per
+Karpathy §6.2. Lists 4 refiling triggers (falsifiable claim,
+regression bisect, manual analysis, failed plan-fn iteration) and
+maps each to its target page kind. Anti-pattern called out:
+finding stays in `scripts/probe_*.json` or `/tmp/` only — cache
+not memory. R16-R22's R22 backfill is named as the cautionary
+example. Future-round work to add a round-without-lesson lint
+check is noted but deferred (needs heuristic for legitimate
+no-lesson rounds).
+Pages touched: .wiki/schema.md, log.md (this entry).
 Provenance: this commit.
