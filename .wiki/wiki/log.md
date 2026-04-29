@@ -368,4 +368,24 @@ Provenance: `45fc709`.
 
 Reference link to docs/llm_wiki_karpathy_analysis_ko.md added.
 Pages touched: .wiki/schema.md, log.md (this entry).
+Provenance: `96330a7`.
+
+## [2026-04-29 R24b] wiki_lint.py — periodic health check (Karpathy §6.3)
+
+`scripts/wiki_lint.py` walks `.wiki/wiki/**/*.md` and reports
+4 finding kinds: orphan pages (no inbound `[[backlinks]]`),
+missing cross-refs (unresolved `[[link]]`), stale claims
+(frontmatter status_v1 contradicts regression_baseline.json),
+R23c gaps (plan-fn pages missing the 4 runtime-consumable
+sections). Output: markdown report on stdout + JSON at
+`scripts/wiki_lint_report.json`. Exit 0/1/2.
+
+False-positive guards: skip metalinguistic terms (`backlinks`,
+`link`, `page`), skip template placeholders (`<` `>` in target),
+skip directory-shaped links, resolve `raw/...` against `.wiki/`.
+Initial run on the current wiki: 18 orphans + 9 missing-xref + 13
+stale-claims + 2 R23c gaps surfaced — these are real maintenance
+items, not lint bugs. Future rounds will burn down the list.
+
+Pages touched: scripts/wiki_lint.py (new), log.md (this entry).
 Provenance: this commit.
