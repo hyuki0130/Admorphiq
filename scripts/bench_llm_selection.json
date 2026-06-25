@@ -1,0 +1,357 @@
+{
+  "timestamp": "2026-06-26T00:26:53",
+  "total_runtime_sec": 438.0,
+  "games": [
+    "AR25",
+    "M0R0",
+    "DC22",
+    "FT09",
+    "CD82",
+    "SU15",
+    "SB26",
+    "KA59",
+    "SC25"
+  ],
+  "primary_pick": "qwen_3_8b_q4",
+  "fallback_pick": "qwen_3_14b_q4",
+  "results": [
+    {
+      "candidate_id": "qwen_3_8b_q4",
+      "meta": {
+        "display_name": "Qwen 3 8B (Q4_K_M)",
+        "family": "qwen3",
+        "expected_vram_gb": 5.0
+      },
+      "total_games": 9,
+      "class_accuracy": 0.667,
+      "goal_coverage": 1.0,
+      "plan_coverage": 1.0,
+      "mean_latency_ms": 4678.2,
+      "per_game": [
+        {
+          "game": "AR25",
+          "expected_class": "movement",
+          "expected_goal_hint": "Navigate the player sprite to the goal exit tile.",
+          "predicted_goal": "Reach the target cell to win the game.",
+          "predicted_target_color": 10,
+          "predicted_plan": [
+            "Move the player right to reach the target cell.",
+            "Continue moving right until the target cell is reached."
+          ],
+          "class_hit": true,
+          "goal_nonempty": true,
+          "plan_nonempty": true,
+          "latency_ms": 9457.6,
+          "probes_collected": 6,
+          "dir_map_learned": 5
+        },
+        {
+          "game": "M0R0",
+          "expected_class": "movement",
+          "expected_goal_hint": "Guide the player through the grid to reach the exit.",
+          "predicted_goal": "Reach the target cell to complete the level.",
+          "predicted_target_color": 11,
+          "predicted_plan": [
+            "Move the player towards the target cell.",
+            "Use action 2 to move down towards the target."
+          ],
+          "class_hit": true,
+          "goal_nonempty": true,
+          "plan_nonempty": true,
+          "latency_ms": 4403.0,
+          "probes_collected": 5,
+          "dir_map_learned": 4
+        },
+        {
+          "game": "DC22",
+          "expected_class": "movement",
+          "expected_goal_hint": "Move the player to the goal position in the maze.",
+          "predicted_goal": "Reach the player's target cell to win.",
+          "predicted_target_color": 14,
+          "predicted_plan": [
+            "Move up to reach the target cell.",
+            "Move down to reach the target cell."
+          ],
+          "class_hit": true,
+          "goal_nonempty": true,
+          "plan_nonempty": true,
+          "latency_ms": 5188.9,
+          "probes_collected": 4,
+          "dir_map_learned": 4
+        },
+        {
+          "game": "FT09",
+          "expected_class": "toggle",
+          "expected_goal_hint": "Click cells to toggle their state and reach the target configuration.",
+          "predicted_goal": "Reach the large blue cell (color 12) to win the game.",
+          "predicted_target_color": 12,
+          "predicted_plan": [
+            "Move towards the large blue cell (color 12)."
+          ],
+          "class_hit": false,
+          "goal_nonempty": true,
+          "plan_nonempty": true,
+          "latency_ms": 2778.6,
+          "probes_collected": 0,
+          "dir_map_learned": 0
+        },
+        {
+          "game": "CD82",
+          "expected_class": "paint",
+          "expected_goal_hint": "Select palette colors and paint the canvas to match the target pattern.",
+          "predicted_goal": "Reach the target color cell to win the game.",
+          "predicted_target_color": 3,
+          "predicted_plan": [
+            "Move left and up using action 3.",
+            "Continue moving left and up to reach the target color cell."
+          ],
+          "class_hit": true,
+          "goal_nonempty": true,
+          "plan_nonempty": true,
+          "latency_ms": 4497.6,
+          "probes_collected": 5,
+          "dir_map_learned": 2
+        },
+        {
+          "game": "SU15",
+          "expected_class": "merge",
+          "expected_goal_hint": "Attract same-colored fruits to merge and reach the target color in goal zones.",
+          "predicted_goal": "Reach the target cell to complete the level.",
+          "predicted_target_color": 4,
+          "predicted_plan": [
+            "Move towards the target cell (color 4).",
+            "Avoid other colored objects to prevent interference."
+          ],
+          "class_hit": false,
+          "goal_nonempty": true,
+          "plan_nonempty": true,
+          "latency_ms": 3069.4,
+          "probes_collected": 1,
+          "dir_map_learned": 0
+        },
+        {
+          "game": "SB26",
+          "expected_class": "sort",
+          "expected_goal_hint": "Sort and place colored blocks into their designated target slots.",
+          "predicted_goal": "Reach the color 3 cell to complete the goal.",
+          "predicted_target_color": 3,
+          "predicted_plan": [
+            "Identify the color 3 cell as the target.",
+            "Use action 6 to move towards the color 3 cell."
+          ],
+          "class_hit": true,
+          "goal_nonempty": true,
+          "plan_nonempty": true,
+          "latency_ms": 3990.2,
+          "probes_collected": 2,
+          "dir_map_learned": 0
+        },
+        {
+          "game": "KA59",
+          "expected_class": "sokoban",
+          "expected_goal_hint": "Push boxes onto the marked target cells.",
+          "predicted_goal": "Reach the target cell to complete the level.",
+          "predicted_target_color": 15,
+          "predicted_plan": [
+            "Move right to align with the target cell.",
+            "Move down to reach the target cell."
+          ],
+          "class_hit": false,
+          "goal_nonempty": true,
+          "plan_nonempty": true,
+          "latency_ms": 3925.9,
+          "probes_collected": 4,
+          "dir_map_learned": 4
+        },
+        {
+          "game": "SC25",
+          "expected_class": "sequence",
+          "expected_goal_hint": "Apply the correct sequence of actions to each object to transform it.",
+          "predicted_goal": "Reach the target color cell to complete the level.",
+          "predicted_target_color": 14,
+          "predicted_plan": [
+            "Move towards the color 14 cell using action 4.",
+            "Use action 3 to adjust position if needed."
+          ],
+          "class_hit": true,
+          "goal_nonempty": true,
+          "plan_nonempty": true,
+          "latency_ms": 4792.4,
+          "probes_collected": 4,
+          "dir_map_learned": 2
+        }
+      ],
+      "status": "ok",
+      "total_runtime_sec": 46.3
+    },
+    {
+      "candidate_id": "qwen_3_14b_q4",
+      "meta": {
+        "display_name": "Qwen 3 14B (Q4_K_M, reserve)",
+        "family": "qwen3",
+        "expected_vram_gb": 8.0
+      },
+      "total_games": 9,
+      "class_accuracy": 0.667,
+      "goal_coverage": 1.0,
+      "plan_coverage": 1.0,
+      "mean_latency_ms": 42785.0,
+      "per_game": [
+        {
+          "game": "AR25",
+          "expected_class": "movement",
+          "expected_goal_hint": "Navigate the player sprite to the goal exit tile.",
+          "predicted_goal": "Reach the large central object to complete the objective.",
+          "predicted_target_color": 10,
+          "predicted_plan": [
+            "Move toward the large central object (color 10).",
+            "Use actions 3 and 7 to move right when needed."
+          ],
+          "class_hit": true,
+          "goal_nonempty": true,
+          "plan_nonempty": true,
+          "latency_ms": 81368.5,
+          "probes_collected": 6,
+          "dir_map_learned": 5
+        },
+        {
+          "game": "M0R0",
+          "expected_class": "movement",
+          "expected_goal_hint": "Guide the player through the grid to reach the exit.",
+          "predicted_goal": "Reach the target object by moving to its position.",
+          "predicted_target_color": 11,
+          "predicted_plan": [
+            "Move toward the target object (color 11) using actions 3 and 4 to adjust horizontal position.",
+            "Use actions 1 and 2 to adjust vertical position as needed."
+          ],
+          "class_hit": true,
+          "goal_nonempty": true,
+          "plan_nonempty": true,
+          "latency_ms": 28674.1,
+          "probes_collected": 5,
+          "dir_map_learned": 4
+        },
+        {
+          "game": "DC22",
+          "expected_class": "movement",
+          "expected_goal_hint": "Move the player to the goal position in the maze.",
+          "predicted_goal": "Reach the small object of color 14.",
+          "predicted_target_color": 14,
+          "predicted_plan": [
+            "Move toward the centroid of color 14 at (10,40).",
+            "Use action 3 (move left) to approach the target."
+          ],
+          "class_hit": true,
+          "goal_nonempty": true,
+          "plan_nonempty": true,
+          "latency_ms": 233384.4,
+          "probes_collected": 4,
+          "dir_map_learned": 4
+        },
+        {
+          "game": "FT09",
+          "expected_class": "toggle",
+          "expected_goal_hint": "Click cells to toggle their state and reach the target configuration.",
+          "predicted_goal": "Reach the large object in the top-right corner.",
+          "predicted_target_color": 12,
+          "predicted_plan": [
+            "Move up towards the large object in the top-right corner."
+          ],
+          "class_hit": false,
+          "goal_nonempty": true,
+          "plan_nonempty": true,
+          "latency_ms": 4878.2,
+          "probes_collected": 0,
+          "dir_map_learned": 0
+        },
+        {
+          "game": "CD82",
+          "expected_class": "paint",
+          "expected_goal_hint": "Select palette colors and paint the canvas to match the target pattern.",
+          "predicted_goal": "Reach or interact with the large object of color 3.",
+          "predicted_target_color": 3,
+          "predicted_plan": [
+            "Use action 3 to move left and up toward the object of color 3.",
+            "Continue using action 3 until reaching or interacting with the object of color 3."
+          ],
+          "class_hit": true,
+          "goal_nonempty": true,
+          "plan_nonempty": true,
+          "latency_ms": 7472.7,
+          "probes_collected": 5,
+          "dir_map_learned": 2
+        },
+        {
+          "game": "SU15",
+          "expected_class": "merge",
+          "expected_goal_hint": "Attract same-colored fruits to merge and reach the target color in goal zones.",
+          "predicted_goal": "Reach the large object in the center of the grid.",
+          "predicted_target_color": 4,
+          "predicted_plan": [
+            "Move toward the large object at centroid (32,4).",
+            "Continue moving until reaching the target."
+          ],
+          "class_hit": false,
+          "goal_nonempty": true,
+          "plan_nonempty": true,
+          "latency_ms": 5005.5,
+          "probes_collected": 1,
+          "dir_map_learned": 0
+        },
+        {
+          "game": "SB26",
+          "expected_class": "sort",
+          "expected_goal_hint": "Sort and place colored blocks into their designated target slots.",
+          "predicted_goal": "Reach the single object of color 3 located at (63,53).",
+          "predicted_target_color": 3,
+          "predicted_plan": [
+            "Identify the location of the target (color 3) at (63,53).",
+            "Use action 5 to attempt to interact with the environment and move toward the target."
+          ],
+          "class_hit": true,
+          "goal_nonempty": true,
+          "plan_nonempty": true,
+          "latency_ms": 7833.6,
+          "probes_collected": 2,
+          "dir_map_learned": 0
+        },
+        {
+          "game": "KA59",
+          "expected_class": "sokoban",
+          "expected_goal_hint": "Push boxes onto the marked target cells.",
+          "predicted_goal": "Reach the single object of color 5.",
+          "predicted_target_color": 5,
+          "predicted_plan": [
+            "Move toward the object of color 5 using actions 1, 2, 3, and 4.",
+            "Avoid obstacles by observing changes in the grid after each action."
+          ],
+          "class_hit": false,
+          "goal_nonempty": true,
+          "plan_nonempty": true,
+          "latency_ms": 7941.5,
+          "probes_collected": 4,
+          "dir_map_learned": 4
+        },
+        {
+          "game": "SC25",
+          "expected_class": "sequence",
+          "expected_goal_hint": "Apply the correct sequence of actions to each object to transform it.",
+          "predicted_goal": "Reach or interact with the large object of color 14.",
+          "predicted_target_color": 14,
+          "predicted_plan": [
+            "Use action 3 to move left and up to approach the large object of color 14.",
+            "Use action 4 to move right if needed to align with the object."
+          ],
+          "class_hit": true,
+          "goal_nonempty": true,
+          "plan_nonempty": true,
+          "latency_ms": 8506.4,
+          "probes_collected": 4,
+          "dir_map_learned": 2
+        }
+      ],
+      "status": "ok",
+      "total_runtime_sec": 391.7
+    }
+  ]
+}

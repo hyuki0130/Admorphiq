@@ -14,12 +14,17 @@ from __future__ import annotations
 import numpy as np
 
 from admorphiq.general_agent import (
+    GeneralAgent,
     connected_components,
+    corridor_color_from_probes,
+    edge_grid_bfs,
     floor_colors_from_probes,
     frame_to_cells,
+    goal_centroid_px,
     grid_bfs,
     infer_direction_map,
     pick_goal_cell,
+    pick_next_probe,
 )
 
 
@@ -256,3 +261,315 @@ def test_pick_goal_cell_ignores_single_pixel_noise():
     assert goal is not None
     # Goal should map to the colour-7 cluster region (rows/cols ~8-10 / cell 2).
     assert goal == (4, 4)
+
+
+# ---------------------------------------------------------------------------
+# infer_direction_map — HUD-drift rejection
+# ---------------------------------------------------------------------------
+
+
+def test_infer_direction_map_rejects_sub_pixel_hud_drift():
+    """Purpose: a HUD / progress bar that creeps ~1px per action must NOT be
+    mistaken for the player — this is the tu93 bug where a bottom step-counter
+    bar drifting left polluted the direction map with bogus (-1,0) vectors and
+    starved the real (6px-stepping) player of its learned directions.
+
+    Expected feedback: pass means only the genuine multi-pixel mover is learned
+    and the 1px-drift colour is filtered; a fail reproduces the HUD-hijack that
+    left the planner with a wrong/incomplete direction map.
+    """
+    base = np.zeros((20, 20), dtype=np.int32)
+    base[2:5, 2:5] = 9  # real player sprite (colour 9), steps by cell pitch
+    base[18, 0:4] = 6  # a 4-px HUD bar (colour 6) along the bottom
+
+    # ACTION4: player steps right by 6px; HUD bar drifts left by only 1px.
+    after = _shift(_shift(base, 9, 0, 6), 6, 0, -1)
+    probes = [{"aid": 4, "before": base, "after": after}]
+    dir_map, player = infer_direction_map(probes, background=0)
+    assert player is not None
+    assert player["color"] == 9  # the player, not the HUD bar
+    assert dir_map == {4: (6, 0)}  # only the real 6px step; no HUD (-1,0) entry
+
+
+# ---------------------------------------------------------------------------
+# pick_next_probe — recentering-aware discovery policy
+# ---------------------------------------------------------------------------
+
+
+def test_pick_next_probe_sweeps_breadth_first_before_retrying():
+    """Purpose: every movement action must be probed ONCE before any is retried
+    — the first sweep reveals which directions are unblocked from the start cell
+    and yields learned inverses to recenter with. A depth-first policy (the old
+    bug) burned the whole budget retrying the first wall-blocked action.
+
+    Expected feedback: pass means the four targets are issued 1,2,3,4 in order
+    on the first pass; a fail means the agent fixates on one action and never
+    explores the others within budget.
+    """
+    targets = [1, 2, 3, 4]
+    learned: dict[int, tuple[int, int]] = {}
+    attempts: dict[int, int] = {}
+    order = []
+    last_probe = None
+    last_moved = False
+    for _ in range(4):
+        kind, aid = pick_next_probe(targets, learned, attempts, last_moved, last_probe)
+        assert kind == "probe"
+        order.append(aid)
+        attempts[aid] = attempts.get(aid, 0) + 1  # simulate a (blocked) probe
+        last_probe, last_moved = aid, False
+    assert order == [1, 2, 3, 4]
+
+
+def test_pick_next_probe_recenters_before_retrying_blocked_action():
+    """Purpose: once the first sweep has learned at least one direction, a
+    still-unlearned (wall-blocked) action must be RETRIED only after a
+    recentering move that frees the player — this is the fix for a player that
+    starts wall-bound and cannot move up/left until it has moved away.
+
+    Expected feedback: pass means a retry of a blocked target yields a
+    "recenter" using a learned action, then the following call re-probes it; a
+    fail means the agent re-probes from the same wall-bound cell forever and
+    never learns the blocked direction.
+    """
+    targets = [1, 2, 3, 4]
+    learned = {2: (0, 6), 4: (6, 0)}  # down + right already learned on sweep
+    attempts = {1: 1, 2: 1, 3: 1, 4: 1}  # action 1 (up) was blocked once
+    # Retry of unlearned action 1: previous call was a probe of 1 that did not move.
+    kind, aid = pick_next_probe(targets, learned, attempts, last_moved=False, last_was_probe_of=1)
+    assert kind == "recenter"
+    assert aid in learned  # relocate using a known direction
+    # After the recenter (modelled as last_was_probe_of=None), it re-probes 1.
+    kind2, aid2 = pick_next_probe(
+        targets, learned, attempts, last_moved=False, last_was_probe_of=None
+    )
+    assert kind2 == "probe"
+    assert aid2 == 1
+
+
+def test_pick_next_probe_done_when_all_learned_or_exhausted():
+    """Purpose: discovery must terminate — once every target is learned or has
+    used its attempt budget, the policy reports "done" so the FSM advances to
+    planning instead of probing forever.
+
+    Expected feedback: pass means a fully-learned target set ends discovery; a
+    fail means the agent loops in the discovery phase and never plans.
+    """
+    targets = [1, 2, 3, 4]
+    learned = {1: (0, -6), 2: (0, 6), 3: (-6, 0), 4: (6, 0)}
+    kind, aid = pick_next_probe(targets, learned, {}, last_moved=True, last_was_probe_of=4)
+    assert kind == "done"
+    assert aid is None
+
+
+# ---------------------------------------------------------------------------
+# end-to-end discovery against a synthetic wall-bound-start env
+# ---------------------------------------------------------------------------
+
+
+class _Frame:
+    """Minimal arcengine-shaped observation for driving the agent in tests."""
+
+    def __init__(self, layer: np.ndarray, avail: list[int]) -> None:
+        self.frame = [layer]  # (1, H, W) single-layer frame
+        self.available_actions = avail
+        self.levels_completed = 0
+
+        class _S:
+            name = "NOT_FINISHED"
+
+        self.state = _S()
+
+
+class _ScriptedMaze:
+    """A 4-direction grid env whose player starts wall-bound at the top-left.
+
+    Reproduces the tu93 failure mode: from the start cell the player can only
+    move DOWN (action 2) and RIGHT (action 4); UP (1) and LEFT (3) are blocked
+    until the player has moved into open space. A correct, recentering-aware
+    discovery must still learn all four direction vectors.
+    """
+
+    PITCH = 6
+
+    def __init__(self) -> None:
+        self.col = 0  # player grid column (0 = left wall)
+        self.row = 0  # player grid row (0 = top wall)
+        self.maxr = 6
+        self.maxc = 6
+
+    def _layer(self) -> np.ndarray:
+        layer = np.full((64, 64), 5, dtype=np.int32)  # background colour 5
+        py = self.row * self.PITCH + 2
+        px = self.col * self.PITCH + 2
+        layer[py : py + 3, px : px + 3] = 9  # 3x3 player sprite, colour 9
+        return layer
+
+    def frame(self) -> _Frame:
+        return _Frame(self._layer(), [1, 2, 3, 4])
+
+    def step(self, aid: int) -> None:
+        if aid == 1 and self.row > 0:  # up
+            self.row -= 1
+        elif aid == 2 and self.row < self.maxr:  # down
+            self.row += 1
+        elif aid == 3 and self.col > 0:  # left
+            self.col -= 1
+        elif aid == 4 and self.col < self.maxc:  # right
+            self.col += 1
+
+
+def test_discovery_learns_all_four_directions_from_wall_bound_start():
+    """Purpose: the headline regression — discovery must learn ALL four movement
+    directions even when the player starts pinned in a corner where two probes
+    initially produce no movement. The original sweep learned only the two
+    unblocked directions (down+right), leaving the grid planner unable to
+    navigate up or left and clearing 0 levels.
+
+    Expected feedback: pass means the agent's learned ``_dir_map`` contains a
+    distinct vector for each of actions 1/2/3/4 with the correct signs (up/down
+    on the y axis, left/right on the x axis); a fail reproduces the 2-direction
+    map that made real navigation impossible.
+    """
+    maze = _ScriptedMaze()
+    agent = GeneralAgent()
+    frame = maze.frame()
+    for _ in range(40):  # bounded; discovery must finish well within this
+        action = agent.choose_action([], frame)
+        aid = getattr(action, "id", None)
+        if aid is None:
+            aid = getattr(action, "value", 0)
+        maze.step(int(aid))
+        frame = maze.frame()
+        if agent._phase != "discovery":
+            break
+
+    dir_map = agent._dir_map
+    assert set(dir_map) == {1, 2, 3, 4}, f"missing directions: {dir_map}"
+    # Sign check: action 1 = up (dy<0), 2 = down (dy>0), 3 = left (dx<0),
+    # 4 = right (dx>0). Each is a one-axis step of the cell pitch.
+    assert dir_map[1][1] < 0 and dir_map[1][0] == 0  # up
+    assert dir_map[2][1] > 0 and dir_map[2][0] == 0  # down
+    assert dir_map[3][0] < 0 and dir_map[3][1] == 0  # left
+    assert dir_map[4][0] > 0 and dir_map[4][1] == 0  # right
+
+
+# ---------------------------------------------------------------------------
+# corridor_color_from_probes / edge_grid_bfs / goal_centroid_px
+# ---------------------------------------------------------------------------
+
+
+def test_corridor_color_from_probes_reads_edge_midpoint_not_destination():
+    """Purpose: derive the open-edge (corridor) colour from the midpoint between
+    a probe's before/after player centroids, even when the destination node
+    itself renders as wall colour (the tu93-class interleaved-pitch maze).
+
+    Expected feedback: pass means the agent learns colour 7 is the walkable
+    corridor purely from where the player passed through; a fail means edge
+    walkability falls back to the node-dominant model and tu93 cannot be
+    navigated (the level-0-clear regression this whole fix targets).
+    """
+    bg = 5
+    player = 9
+    # 9x3 strip: player at cols 0-0 row1, corridor colour 7 at the midpoint
+    # col 2, destination node at col 4 rendered as wall colour 0.
+    before = np.full((3, 7), bg, dtype=np.int32)
+    before[1, 0] = player  # player start centroid ~ (0, 1)
+    before[1, 2] = 7  # the open edge midpoint
+    before[1, 4] = 0  # destination node renders as wall colour
+    after = np.full((3, 7), bg, dtype=np.int32)
+    after[1, 4] = player  # player ended on the node that looked like wall
+    probes = [{"aid": 4, "before": before, "after": after}]
+    assert corridor_color_from_probes(probes, player, bg) == 7
+
+
+def test_corridor_color_from_probes_none_without_translation():
+    """Purpose: a probe where the player did not move yields no corridor vote.
+
+    Expected feedback: pass confirms blocked / no-op probes never invent a
+    corridor colour; a fail would let a stationary frame poison the maze model.
+    """
+    bg = 5
+    player = 9
+    frame = np.full((3, 5), bg, dtype=np.int32)
+    frame[1, 1] = player
+    probes = [{"aid": 1, "before": frame, "after": frame.copy()}]
+    assert corridor_color_from_probes(probes, player, bg) is None
+
+
+def test_edge_grid_bfs_navigates_interleaved_pitch_maze():
+    """Purpose: edge_grid_bfs finds a shortest action path over a node grid
+    whose nodes render as wall colour but whose connecting edges are the
+    corridor colour — the model the node-dominant frame_to_cells cannot express.
+
+    Expected feedback: pass proves the navigation primitive can actually reach a
+    goal in a tu93-style maze; a fail means closed-loop execution would have no
+    path and bail to explore (0 levels, the bug being fixed).
+    """
+    bg = 5
+    player = 9
+    corridor = 2
+    pitch = 2  # nodes 2px apart, edge midpoint at +1px
+    # 7x7 frame. Player node at px (1,1) -> anchor. Goal marker colour 14 at
+    # px (5,5). Open a straight L-path: right edge at (1,3) open, down edges.
+    layer = np.full((7, 7), bg, dtype=np.int32)
+    # Nodes render as wall colour 0 at the 2px grid points (1,1),(1,3),(1,5),...
+    for ny in (1, 3, 5):
+        for nx in (1, 3, 5):
+            layer[ny, nx] = 0
+    layer[1, 1] = player  # player sits on its node
+    # Open edges along the path: (1,1)->(1,3) right [mid (1,2)],
+    # (1,3)->(1,5) right [mid (1,4)], (1,5)->(3,5) down [mid (2,5)],
+    # (3,5)->(5,5) down [mid (4,5)].
+    layer[1, 2] = corridor
+    layer[1, 4] = corridor
+    layer[2, 5] = corridor
+    layer[4, 5] = corridor
+    layer[5, 5] = 14  # goal marker (overrides the node wall colour)
+    step_dirs = {1: (0, -1), 2: (0, 1), 3: (-1, 0), 4: (1, 0)}  # up/down/left/right
+    path = edge_grid_bfs(
+        layer, (1.0, 1.0), pitch, (5.0, 5.0), step_dirs, corridor, player, bg
+    )
+    assert path is not None
+    # Shortest L-path is right, right, down, down = 4 moves (actions 4,4,2,2).
+    assert path == [4, 4, 2, 2]
+
+
+def test_edge_grid_bfs_returns_none_when_walled_off():
+    """Purpose: when no open edge leads toward the goal, edge_grid_bfs returns
+    None rather than a wrong path.
+
+    Expected feedback: pass means the planner honestly reports 'unreachable' so
+    the agent can fall back; a fail would emit phantom moves into walls.
+    """
+    bg = 5
+    player = 9
+    corridor = 2
+    layer = np.full((7, 7), bg, dtype=np.int32)
+    layer[1, 1] = player
+    layer[5, 5] = 14
+    # No corridor pixels at all -> every edge is closed.
+    step_dirs = {1: (0, -1), 2: (0, 1), 3: (-1, 0), 4: (1, 0)}
+    path = edge_grid_bfs(
+        layer, (1.0, 1.0), 2, (5.0, 5.0), step_dirs, corridor, player, bg
+    )
+    assert path is None
+
+
+def test_goal_centroid_px_picks_rare_marker_centroid():
+    """Purpose: goal_centroid_px returns the sub-pixel centroid of the distinct
+    rare-colour marker the player must reach (tu93's colour-14 exit).
+
+    Expected feedback: pass confirms the edge navigator anchors the goal node on
+    the real exit; a fail means it aims at the wrong cluster and never clears.
+    """
+    bg = 5
+    player = 9
+    layer = np.full((10, 10), bg, dtype=np.int32)
+    # A big non-goal object (colour 0) and a small rare marker (colour 14).
+    layer[0:5, 0:5] = 0
+    layer[7:10, 7:10] = 14  # 3x3 marker, centroid (8, 8)
+    centroid = goal_centroid_px(layer, player, bg)
+    assert centroid is not None
+    cx, cy = centroid
+    assert round(cx) == 8 and round(cy) == 8

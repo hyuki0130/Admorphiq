@@ -33,6 +33,7 @@ The grid-abstraction and BFS logic are pure functions (``infer_direction_map``,
 
 from __future__ import annotations
 
+import os
 import random
 from collections import Counter, deque
 
@@ -43,12 +44,22 @@ import numpy as np
 # Movement (no-coordinate) actions we probe during discovery, in id order.
 _MOVE_ACTION_IDS: tuple[int, ...] = (1, 2, 3, 4, 5, 7)
 # Max actions spent on discovery probing per level. Kept small — wasted probe
-# actions also hurt the efficiency ratio (human L1 baselines are ~16-42). We
-# probe each movement action up to twice (cumulatively): a player wall-bound at
-# the start often becomes free to move other directions after the first probe,
-# so a second pass recovers directions a single pass misses.
-DISCOVERY_BUDGET = 12
-_DISCOVERY_PASSES = 2
+# actions also hurt the efficiency ratio (human L1 baselines are ~16-42).
+#
+# Discovery is *recentering-aware*: a naive single sweep that probes 1->2->3->4
+# without restoring the player's position mislearns games where the player
+# starts wall-bound. After the player moves right+down, the up/left probes only
+# produce ~1px diffs (blocked) and their vectors are never inferred — leaving a
+# 2-direction map the grid planner cannot navigate with. Instead, after each
+# clean translation we record the vector and, before probing an action that did
+# NOT move the player, issue a *counter-move* (the inverse of an already-learned
+# direction) to free the player from the wall, then re-probe. Each action gets
+# up to ``_DISCOVERY_MAX_ATTEMPTS`` clean tries before it is declared null.
+DISCOVERY_BUDGET = 16
+_DISCOVERY_MAX_ATTEMPTS = 3
+# A centroid shift this fraction of the cell pitch (or, before pitch is known,
+# this many pixels) counts as a clean translation rather than blocked jitter.
+_MIN_TRANSLATION_PX = 2.0
 # A connected component is "small" enough to be a player if it is at most this
 # many cells (players are compact sprites, not background fields).
 _MAX_PLAYER_SIZE = 64
@@ -184,7 +195,11 @@ def _candidate_shifts(
             continue
         dx = nearest["cx"] - b["cx"]
         dy = nearest["cy"] - b["cy"]
-        if (dx * dx + dy * dy) ** 0.5 <= 0.99:  # require ~1 cell of movement
+        # Require a real translation, not sub-pixel HUD/progress-bar drift. A
+        # game player steps by the cell pitch (typically >= a few px); a timer
+        # bar or counter creeps ~1px/action and would otherwise be mistaken for
+        # a mover and pollute the direction map (the tu93 HUD-bar bug).
+        if (dx * dx + dy * dy) ** 0.5 < _MIN_TRANSLATION_PX:
             continue
         out.append((b, (dx, dy)))
     return out
@@ -232,6 +247,26 @@ def infer_direction_map(
     return dict(best["dirs"]), best["comp"]
 
 
+def player_centroid(
+    layer: np.ndarray, player_color: int, background: int
+) -> tuple[float, float] | None:
+    """Centroid ``(cx, cy)`` of the largest player-coloured component, or None.
+
+    Used during discovery to measure the player's translation between probes
+    directly from the live frame (independent of nearest-twin matching), so a
+    blocked / no-op probe is detectable as a near-zero shift.
+    """
+    comps = [
+        c
+        for c in connected_components(layer, background)
+        if c["color"] == player_color and c["size"] <= _MAX_PLAYER_SIZE
+    ]
+    if not comps:
+        return None
+    p = max(comps, key=lambda c: c["size"])
+    return (p["cx"], p["cy"])
+
+
 def floor_colors_from_probes(
     probes: list[dict], player_color: int, background: int
 ) -> set[int]:
@@ -259,6 +294,79 @@ def floor_colors_from_probes(
             if c not in (player_color, background):
                 floor.add(c)
     return floor
+
+
+def _opposite_action(
+    aid: int, learned: dict[int, tuple[int, int]]
+) -> int | None:
+    """A learned action whose step opposes ``aid``'s expected direction.
+
+    Used to free a wall-bound player before re-probing ``aid``: if ``aid`` is
+    not yet learned we cannot know its axis, so we pick *any* learned action
+    (it relocates the player and a later re-probe sees the real translation).
+    Prefers an action whose vector is most anti-parallel to ``aid``'s when
+    ``aid`` is already partially known; otherwise returns the first learned
+    action. None when nothing is learned yet.
+    """
+    if not learned:
+        return None
+    if aid in learned:
+        ax, ay = learned[aid]
+        # Most anti-parallel learned move (largest negative dot product).
+        ranked = sorted(
+            learned.items(),
+            key=lambda kv: kv[1][0] * ax + kv[1][1] * ay,
+        )
+        for cand, _ in ranked:
+            if cand != aid:
+                return cand
+    # Fall back to any learned action (deterministic: lowest id).
+    return min(learned)
+
+
+def pick_next_probe(
+    targets: list[int],
+    learned: dict[int, tuple[int, int]],
+    attempts: dict[int, int],
+    last_moved: bool,
+    last_was_probe_of: int | None,
+    max_attempts: int = _DISCOVERY_MAX_ATTEMPTS,
+) -> tuple[str, int | None]:
+    """Decide the next discovery action (pure, env-free, unit-tested).
+
+    Returns ``(kind, aid)`` where ``kind`` is:
+      * ``"probe"`` — issue ``aid`` and measure the player's translation;
+      * ``"recenter"`` — issue ``aid`` (a learned inverse) to free a wall-bound
+        player, then a later call re-probes the blocked action;
+      * ``"done"`` — every target is learned or out of attempts.
+
+    Policy (breadth-first sweep, then recenter-and-retry):
+      * Every unlearned target is probed ONCE before any is retried — the cheap
+        first sweep reveals which directions are unblocked from the start cell
+        and gives us learned inverses to recenter with.
+      * On a *retry* (attempts >= 1) of a still-unlearned target, the player was
+        blocked there last time, so we recenter first (move via a learned action
+        to free the player) and re-probe on the following call.
+      * A target is abandoned after ``max_attempts`` probe attempts.
+    """
+    pending = [
+        a for a in targets if a not in learned and attempts.get(a, 0) < max_attempts
+    ]
+    if not pending:
+        return ("done", None)
+    # Breadth-first: lowest attempt count first (then id order) so each target
+    # is tried once before any second attempt.
+    nxt = min(pending, key=lambda a: (attempts.get(a, 0), a))
+    if attempts.get(nxt, 0) >= 1:
+        # This target already failed once → relocate the player before retrying.
+        recenter = _opposite_action(nxt, learned)
+        if recenter is not None and not (
+            last_was_probe_of is None and not last_moved
+        ):
+            # Only recenter if the previous call was not itself a recenter move
+            # (avoid two recenters in a row without an intervening probe).
+            return ("recenter", recenter)
+    return ("probe", nxt)
 
 
 def _step_cell_size(dir_map: dict[int, tuple[int, int]]) -> int:
@@ -373,17 +481,136 @@ def grid_bfs(
     return None
 
 
-def pick_goal_cell(
+def corridor_color_from_probes(
+    probes: list[dict], player_color: int, background: int
+) -> int | None:
+    """Colour of the open *edge* the player traverses when it moves.
+
+    In interleaved-pitch mazes (tu93-class) the node a player stops on renders
+    as wall colour, while the corridor connecting two adjacent nodes is a
+    distinct ``open`` colour. The player's *destination node* therefore looks
+    like a wall, but the midpoint between its start and end centroid sits on
+    the corridor. For every probe where the player translated, sample the
+    before-frame colour at the midpoint of its (before, after) centroids; the
+    most frequent such colour is the corridor/edge-open colour.
+
+    Returns None when no probe produced a clean translation (callers then fall
+    back to the node-dominant-colour walkability model). Fully observation
+    driven — never keys on a game id/title or a hardcoded colour.
+    """
+    votes: Counter[int] = Counter()
+    for probe in probes:
+        before = probe.get("before")
+        after = probe.get("after")
+        if before is None or after is None or before.shape != after.shape:
+            continue
+        cb = player_centroid(before, player_color, background)
+        ca = player_centroid(after, player_color, background)
+        if cb is None or ca is None:
+            continue
+        if (ca[0] - cb[0]) ** 2 + (ca[1] - cb[1]) ** 2 < _MIN_TRANSLATION_PX**2:
+            continue
+        mx = int(round((cb[0] + ca[0]) / 2))
+        my = int(round((cb[1] + ca[1]) / 2))
+        h, w = before.shape
+        if 0 <= my < h and 0 <= mx < w:
+            c = int(before[my, mx])
+            if c not in (player_color, background):
+                votes[c] += 1
+    if not votes:
+        return None
+    return max(votes, key=lambda k: votes[k])
+
+
+def _block_dominant(layer: np.ndarray, r0: int, c0: int, size: int) -> int:
+    """Dominant colour of the ``size``x``size`` block at ``(r0, c0)`` (clamped)."""
+    h, w = layer.shape
+    r0c, c0c = max(0, r0), max(0, c0)
+    block = layer[r0c : r0c + size, c0c : c0c + size]
+    if block.size == 0:
+        return -1
+    vals, counts = np.unique(block, return_counts=True)
+    return int(vals[int(counts.argmax())])
+
+
+def edge_grid_bfs(
     layer: np.ndarray,
-    cell: int,
+    anchor: tuple[float, float],
+    pitch: int,
+    goal_px: tuple[float, float],
+    step_dirs: dict[int, tuple[int, int]],
+    corridor_color: int,
     player_color: int,
     background: int,
-) -> tuple[int, int] | None:
-    """Choose the most plausible goal grid-cell.
+    grid_radius: int = 12,
+) -> list[int] | None:
+    """Shortest action sequence over an *edge-walkable* node grid.
 
-    The goal is the centroid (in grid coordinates) of the rarest non-player,
-    non-background colour cluster — distinct rare clusters are usually the
-    target / exit. Returns ``(row, col)`` or None when nothing qualifies.
+    Nodes are spaced ``pitch`` pixels apart, anchored at the player's current
+    centroid ``anchor`` (px ``(cx, cy)``). A move in a learned direction is
+    legal iff the half-pitch *midpoint* block toward the neighbour is the
+    ``corridor_color`` (the open edge) — this captures interleaved-pitch mazes
+    where the destination node itself renders as wall colour. The goal node is
+    the grid node nearest the goal marker ``goal_px``.
+
+    ``step_dirs`` maps an action id to a unit grid step ``(d_col, d_row)``.
+    Returns the action-id path, or None if the goal node is unreachable.
+    Pure / env-free so it is unit-testable.
+    """
+    if pitch <= 0 or not step_dirs:
+        return None
+    ax, ay = anchor
+    gx, gy = goal_px
+    goal_gr = int(round((gy - ay) / pitch))
+    goal_gc = int(round((gx - ax) / pitch))
+    goal = (goal_gr, goal_gc)
+    if goal == (0, 0):
+        return []
+    half = max(1, pitch // 2)
+    block = max(1, pitch // 2)
+
+    def edge_open(gr: int, gc: int, dcol: int, drow: int) -> bool:
+        # Midpoint pixel of the edge between this node and the neighbour.
+        cx = ax + gc * pitch + dcol * half
+        cy = ay + gr * pitch + drow * half
+        dom = _block_dominant(
+            layer, int(round(cy)) - block // 2, int(round(cx)) - block // 2, block
+        )
+        return dom in (corridor_color, player_color)
+
+    visited = {(0, 0)}
+    queue: deque[tuple[tuple[int, int], list[int]]] = deque([((0, 0), [])])
+    while queue:
+        (gr, gc), path = queue.popleft()
+        for aid, (dcol, drow) in step_dirs.items():
+            ngr, ngc = gr + drow, gc + dcol
+            if (ngr, ngc) in visited:
+                continue
+            if abs(ngr) > grid_radius or abs(ngc) > grid_radius:
+                continue
+            if not edge_open(gr, gc, dcol, drow):
+                continue
+            npath = path + [aid]
+            if (ngr, ngc) == goal:
+                return npath
+            visited.add((ngr, ngc))
+            queue.append(((ngr, ngc), npath))
+    return None
+
+
+def goal_centroid_px(
+    layer: np.ndarray,
+    player_color: int,
+    background: int,
+    target_color: int | None = None,
+) -> tuple[float, float] | None:
+    """Pixel centroid ``(cx, cy)`` of the goal marker, or None.
+
+    Same selection policy as :func:`pick_goal_cell` (explicit ``target_color``
+    else the rarest non-player non-background colour's largest cluster) but
+    returns sub-pixel pixel coordinates, which the edge-grid navigator needs to
+    anchor the goal node precisely. For tu93 this resolves to the colour-14
+    exit marker's centroid.
     """
     comps = [
         c
@@ -392,6 +619,53 @@ def pick_goal_cell(
     ]
     if not comps:
         return None
+    if target_color is not None:
+        tc_comps = [c for c in comps if c["color"] == target_color]
+        if tc_comps:
+            t = max(tc_comps, key=lambda c: c["size"])
+            return (t["cx"], t["cy"])
+    color_area: Counter[int] = Counter()
+    for c in comps:
+        color_area[c["color"]] += c["size"]
+    rare_color = min(color_area, key=lambda k: color_area[k])
+    rare_comps = [c for c in comps if c["color"] == rare_color]
+    t = max(rare_comps, key=lambda c: c["size"])
+    return (t["cx"], t["cy"])
+
+
+def pick_goal_cell(
+    layer: np.ndarray,
+    cell: int,
+    player_color: int,
+    background: int,
+    target_color: int | None = None,
+) -> tuple[int, int] | None:
+    """Choose the most plausible goal grid-cell.
+
+    When ``target_color`` is given (e.g. supplied by the LLM reasoning layer)
+    and that colour has a usable cluster in the frame, the goal is the largest
+    cluster of that colour. Otherwise the goal is the centroid (in grid
+    coordinates) of the rarest non-player, non-background colour cluster —
+    distinct rare clusters are usually the target / exit. Returns ``(row,
+    col)`` or None when nothing qualifies.
+    """
+    comps = [
+        c
+        for c in connected_components(layer, background)
+        if c["color"] != player_color and c["size"] >= _MIN_GOAL_SIZE
+    ]
+    if not comps:
+        return None
+    if target_color is not None:
+        tc_comps = [c for c in comps if c["color"] == target_color]
+        if tc_comps:
+            target = max(tc_comps, key=lambda c: c["size"])
+            gr = int(round(target["cy"])) // cell
+            gc = int(round(target["cx"])) // cell
+            gh, gw = layer.shape[0] // cell, layer.shape[1] // cell
+            gr = max(0, min(gh - 1, gr))
+            gc = max(0, min(gw - 1, gc))
+            return (gr, gc)
     # Rarest colour overall (fewest cells of that colour) → most likely target.
     color_area: Counter[int] = Counter()
     for c in comps:
@@ -427,21 +701,51 @@ class GeneralAgent:
 
     MAX_ACTIONS = 600
 
-    def __init__(self, seed: int = 0) -> None:
+    def __init__(
+        self,
+        seed: int = 0,
+        use_llm: bool | None = None,
+        llm_candidate: str = "qwen_3_14b_q4",
+    ) -> None:
         self._rng = random.Random(seed)
         self._action_count = 0
         self._levels_completed = 0
+        # LLM reasoning layer is opt-in: explicit constructor flag wins, else
+        # the ADMORPHIQ_USE_LLM=1 env gate. Off by default so the pure
+        # deterministic path (and the no-LLM test harness) is unaffected. The
+        # backend is loaded lazily on the first discovery so construction never
+        # requires Ollama / GGUF to be present.
+        if use_llm is None:
+            use_llm = os.environ.get("ADMORPHIQ_USE_LLM", "") == "1"
+        self._use_llm = bool(use_llm)
+        self._llm_candidate = llm_candidate
+        self._llm = None
+        self._llm_loaded = False
+        # Most recent LLM hypothesis (recorded for tracing / inspection).
+        self.last_hypothesis: dict | None = None
         self._reset_level_state()
 
     def _reset_level_state(self) -> None:
         """Clear all per-level discovery / plan state (called on level-up)."""
         self._phase = _PHASE_DISCOVERY
-        self._probe_idx = 0
         self._probes: list[dict] = []
         self._pending_probe: dict | None = None
         self._dir_map: dict[int, tuple[int, int]] = {}
         self._player_color: int | None = None
         self._background: int | None = None
+        # Open-edge colour for the interleaved-pitch maze model (derived from
+        # probe midpoints at end of discovery); None ⇒ use node-dominant model.
+        self._corridor_color: int | None = None
+        # LLM-supplied goal colour for this level (overrides pick_goal_cell's
+        # rarest-colour heuristic when set); None ⇒ pure deterministic goal.
+        self._llm_target_color: int | None = None
+        # Recentering-aware discovery bookkeeping.
+        self._disc_targets: list[int] | None = None
+        self._disc_learned: dict[int, tuple[int, int]] = {}
+        self._disc_attempts: Counter[int] = Counter()
+        self._disc_last_centroid: tuple[float, float] | None = None
+        self._disc_last_probe_aid: int | None = None
+        self._disc_last_moved: bool = False
         # Closed-loop execution bookkeeping.
         self._last_player_cell: tuple[int, int] | None = None
         self._stuck_steps = 0
@@ -494,42 +798,109 @@ class GeneralAgent:
     # ── discovery phase ──────────────────────────────────────────────────────
 
     def _discovery_step(self, layer: np.ndarray, avail: list[int], latest_frame):
-        """Probe one movement action; record before/after for the previous one."""
+        """Probe movement actions with recentering until all dirs are learned.
+
+        Two stages share one probe buffer. The player colour and per-action
+        vectors are re-derived after every probe by :func:`infer_direction_map`
+        — the proven multi-direction-consistency identifier — so a wall block /
+        animated tile cannot be mistaken for the player. Live centroid tracking
+        (with the now-known player colour) only decides *did this probe move
+        the player*; an unmoved action is re-probed after a recentering move
+        that frees the player from the wall. Bounded by ``DISCOVERY_BUDGET``.
+        """
         from arcengine import GameAction
+
+        bg = self._background if self._background is not None else 0
+
+        if self._disc_targets is None:
+            self._disc_targets = [a for a in _MOVE_ACTION_IDS if a in avail]
 
         # Credit the probe issued on the previous call (its "after" is now).
         if self._pending_probe is not None:
-            self._pending_probe["after"] = layer
-            self._probes.append(self._pending_probe)
+            probe = self._pending_probe
+            probe["after"] = layer
+            self._probes.append(probe)
+            self._disc_attempts[probe["aid"]] += 1
+            # Re-derive player colour + learned directions from all probes.
+            self._disc_learned, player = infer_direction_map(self._probes, bg)
+            if player is not None:
+                self._player_color = player["color"]
+            # Decide whether the just-probed action actually moved the player.
+            aid = probe["aid"]
+            moved = aid in self._disc_learned
+            if not moved and self._player_color is not None:
+                before_c = probe.get("centroid")
+                after_c = player_centroid(layer, self._player_color, bg)
+                if before_c is not None and after_c is not None:
+                    shift = (
+                        (after_c[0] - before_c[0]) ** 2
+                        + (after_c[1] - before_c[1]) ** 2
+                    ) ** 0.5
+                    moved = shift >= _MIN_TRANSLATION_PX
+            self._disc_last_probe_aid = aid
+            self._disc_last_moved = moved
             self._pending_probe = None
 
-        move_actions = [a for a in _MOVE_ACTION_IDS if a in avail] * _DISCOVERY_PASSES
-        budget_hit = (
-            self._probe_idx >= len(move_actions) or self._action_count >= DISCOVERY_BUDGET
-        )
-        if budget_hit:
+        if self._action_count >= DISCOVERY_BUDGET:
             self._finish_discovery(layer, avail)
-            # Re-dispatch into whatever phase discovery selected.
             if self._phase == _PHASE_EXECUTE:
                 return self._execute_step(layer, avail, latest_frame)
             return self._explore_step(layer, avail, latest_frame)
 
-        aid = move_actions[self._probe_idx]
-        self._probe_idx += 1
-        self._pending_probe = {"aid": aid, "before": layer}
+        kind, aid = pick_next_probe(
+            self._disc_targets,
+            self._disc_learned,
+            dict(self._disc_attempts),
+            self._disc_last_moved,
+            self._disc_last_probe_aid,
+        )
+        if kind == "done" or aid is None or aid not in avail:
+            self._finish_discovery(layer, avail)
+            if self._phase == _PHASE_EXECUTE:
+                return self._execute_step(layer, avail, latest_frame)
+            return self._explore_step(layer, avail, latest_frame)
+
+        if kind == "recenter":
+            # A relocation move, not a probe: don't buffer it as a vector probe.
+            self._disc_last_probe_aid = None
+            self._disc_last_moved = False
+            return self._emit(GameAction.from_id(aid))
+
+        before_c = (
+            player_centroid(layer, self._player_color, bg)
+            if self._player_color is not None
+            else None
+        )
+        self._pending_probe = {"aid": aid, "before": layer, "centroid": before_c}
         return self._emit(GameAction.from_id(aid))
 
     def _finish_discovery(self, layer: np.ndarray, avail: list[int]) -> None:
         """Build the direction map, then choose the next phase.
 
-        We require a *planable* path to a goal (BFS returns a non-empty action
-        list) before committing to the EXECUTE phase. Execution itself is
-        closed-loop (re-planned each step), so we do not store the path here.
+        Prefer the centroid-measured ``_disc_learned`` map (robust to blocked
+        probes via recentering); fall back to nearest-twin inference only when
+        centroid tracking learned nothing. We require a *planable* path to a
+        goal (BFS returns a non-empty action list) before committing to the
+        EXECUTE phase. Execution itself is closed-loop (re-planned each step),
+        so we do not store the path here.
         """
-        bg = self._background if self._background is not None else 0
-        self._dir_map, player = infer_direction_map(self._probes, bg)
-        if player is not None:
-            self._player_color = player["color"]
+        # _disc_learned + _player_color were re-derived after each probe by
+        # infer_direction_map during stepping; commit them as the dir map.
+        self._dir_map = dict(self._disc_learned)
+
+        # Derive the open-edge (corridor) colour from probe midpoints. When the
+        # player traversed a maze whose nodes render as wall colour, this is the
+        # only reliable walkability signal (the tu93-class interleaved pitch).
+        if self._player_color is not None:
+            bg = self._background if self._background is not None else 0
+            self._corridor_color = corridor_color_from_probes(
+                self._probes, self._player_color, bg
+            )
+
+        # Optional LLM goal/strategy hypothesis — called ONCE here, at the end
+        # of discovery (never per action). Used to override the deterministic
+        # goal-cell colour; any error falls back to the pure path.
+        self._maybe_hypothesize(layer, avail)
 
         plan = self._try_build_plan(layer, avail)
         if plan:
@@ -538,6 +909,57 @@ class GeneralAgent:
             self._stuck_steps = 0
         else:
             self._phase = _PHASE_EXPLORE
+
+    def _ensure_llm(self):
+        """Lazily load the LLM backend once; None when unavailable.
+
+        Loaded on first discovery, not at construction, so the no-LLM test
+        harness and the pure deterministic path never require Ollama / a GGUF.
+        Any import/connection failure disables the layer for the rest of the
+        run (``_use_llm`` cleared) rather than crashing the agent.
+        """
+        if self._llm_loaded:
+            return self._llm
+        self._llm_loaded = True
+        try:
+            from admorphiq.llm import load_candidate
+
+            self._llm = load_candidate(self._llm_candidate)
+        except Exception:
+            self._llm = None
+            self._use_llm = False
+        return self._llm
+
+    def _maybe_hypothesize(self, layer: np.ndarray, avail: list[int]) -> None:
+        """Call the LLM once for a goal hypothesis; record + apply target_color.
+
+        Builds the compact symbolic state, asks the LLM, and stores the parsed
+        hypothesis on ``self.last_hypothesis``. The ``target_color`` (when it
+        names a colour actually present in the frame) overrides the
+        deterministic rarest-colour goal heuristic. Any LLM/timeout error
+        leaves the deterministic path fully intact.
+        """
+        if not self._use_llm:
+            return
+        llm = self._ensure_llm()
+        if llm is None:
+            return
+        from admorphiq.llm_reasoner import build_symbolic_state, hypothesize
+
+        bg = self._background if self._background is not None else 0
+        try:
+            state_text = build_symbolic_state(
+                layer, self._probes, avail, self._dir_map, self._player_color
+            )
+            hyp = hypothesize(state_text, llm)
+        except Exception:
+            return
+        self.last_hypothesis = hyp
+        tc = hyp.get("target_color")
+        if isinstance(tc, int) and not isinstance(tc, bool):
+            present = set(np.unique(layer).tolist()) if layer.size else set()
+            if tc in present and tc != bg and tc != self._player_color:
+                self._llm_target_color = tc
 
     def _try_build_plan(self, layer: np.ndarray, avail: list[int]) -> list[int] | None:
         """Grid-BFS a shortest path from player to goal. None if not possible."""
@@ -556,7 +978,46 @@ class GeneralAgent:
             return None
         player = max(player_comps, key=lambda c: c["size"])
 
-        goal = pick_goal_cell(layer, cell, self._player_color, bg)
+        # Direction map quantised to unit grid steps (one cell per move).
+        step_dirs: dict[int, tuple[int, int]] = {}
+        for aid in avail:
+            if aid not in self._dir_map:
+                continue
+            dx, dy = self._dir_map[aid]
+            ucol = _unit(dx)
+            urow = _unit(dy)
+            if ucol == 0 and urow == 0:
+                continue
+            step_dirs[aid] = (ucol, urow)
+        if not step_dirs:
+            return None
+
+        # Preferred model: edge-walkable node grid keyed on the corridor colour.
+        # This is the only model that navigates interleaved-pitch mazes where a
+        # node renders as wall colour but its connecting edge is the open
+        # corridor (verified on tu93). Falls back to the node-dominant model
+        # when no corridor colour was observed.
+        if self._corridor_color is not None:
+            goal_px = goal_centroid_px(
+                layer, self._player_color, bg, target_color=self._llm_target_color
+            )
+            if goal_px is not None:
+                edge_plan = edge_grid_bfs(
+                    layer,
+                    (player["cx"], player["cy"]),
+                    cell,
+                    goal_px,
+                    step_dirs,
+                    self._corridor_color,
+                    self._player_color,
+                    bg,
+                )
+                if edge_plan is not None:
+                    return edge_plan
+
+        goal = pick_goal_cell(
+            layer, cell, self._player_color, bg, target_color=self._llm_target_color
+        )
         if goal is None:
             return None
 
@@ -576,20 +1037,6 @@ class GeneralAgent:
         gh, gw = walkable.shape
         if 0 <= goal[0] < gh and 0 <= goal[1] < gw:
             walkable[goal[0], goal[1]] = True
-
-        # Direction map quantised to unit grid steps (one cell per move).
-        step_dirs: dict[int, tuple[int, int]] = {}
-        for aid in avail:
-            if aid not in self._dir_map:
-                continue
-            dx, dy = self._dir_map[aid]
-            ucol = _unit(dx)
-            urow = _unit(dy)
-            if ucol == 0 and urow == 0:
-                continue
-            step_dirs[aid] = (ucol, urow)
-        if not step_dirs:
-            return None
 
         return grid_bfs(walkable, start, goal, step_dirs)
 

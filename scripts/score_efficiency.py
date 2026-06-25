@@ -180,6 +180,9 @@ def run_game(
 
     elapsed = time.time() - start
     levels_completed: int = obs.levels_completed if obs else prev_levels
+    # Record the LLM goal hypothesis (when the general agent ran with an LLM)
+    # so the bench output shows what the reasoning layer proposed per game.
+    llm_hypothesis = getattr(adapter, "last_hypothesis", None)
 
     # Build per-level records.
     per_level: list[dict[str, Any]] = []
@@ -216,6 +219,7 @@ def run_game(
         "per_level": per_level,
         "game_score": round(gscore, 6) if gscore is not None else None,
         "has_baseline": has_baseline,
+        "llm_hypothesis": llm_hypothesis,
     }
 
 
