@@ -1,0 +1,65 @@
+{
+  "agent": "general",
+  "n_games_run": 5,
+  "n_games_scored": 5,
+  "n_excluded": 0,
+  "total_score": 0.0,
+  "total_score_pct": 0.0,
+  "games": [
+    {
+      "game_id": "sc25-635fd71a",
+      "win_levels": 6,
+      "levels_completed": 0,
+      "elapsed_s": 1.09,
+      "total_actions": 600,
+      "per_level": [],
+      "game_score": 0.0,
+      "has_baseline": true,
+      "title": "SC25"
+    },
+    {
+      "game_id": "sp80-589a99af",
+      "win_levels": 6,
+      "levels_completed": 0,
+      "elapsed_s": 0.05,
+      "total_actions": 30,
+      "per_level": [],
+      "game_score": 0.0,
+      "has_baseline": true,
+      "title": "SP80"
+    },
+    {
+      "game_id": "ka59-38d34dbb",
+      "win_levels": 7,
+      "levels_completed": 0,
+      "elapsed_s": 0.12,
+      "total_actions": 100,
+      "per_level": [],
+      "game_score": 0.0,
+      "has_baseline": true,
+      "title": "KA59"
+    },
+    {
+      "game_id": "wa30-ee6fef47",
+      "win_levels": 9,
+      "levels_completed": 0,
+      "elapsed_s": 0.06,
+      "total_actions": 200,
+      "per_level": [],
+      "game_score": 0.0,
+      "has_baseline": true,
+      "title": "WA30"
+    },
+    {
+      "game_id": "ls20-9607627b",
+      "win_levels": 7,
+      "levels_completed": 0,
+      "elapsed_s": 0.09,
+      "total_actions": 129,
+      "per_level": [],
+      "game_score": 0.0,
+      "has_baseline": true,
+      "title": "LS20"
+    }
+  ]
+}

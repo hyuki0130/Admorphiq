@@ -36,30 +36,34 @@ ARC-AGI-3 is the first **interactive reasoning benchmark** — agents must explo
 
 ### Constraints (Kaggle Environment)
 
-> **⚠️ Hardware corrected 2026-06-25 (per competition overview).** The eval
-> machine is **`g4-standard-48`** — 1× **NVIDIA RTX PRO 6000 Blackwell,
-> 96GB GDDR7 VRAM**, 48 vCPUs, 180GB RAM (GPU/VRAM verified via the GCP
-> g4-standard-48 spec). Runtime ~**9h**, disk ~**32GB**. This **invalidates
-> the original "T4 16GB / 6h" assumption** that drove model selection. The
-> VRAM ceiling is effectively gone; the binding constraints are now the
-> ~32GB disk (model weight size) and ~9h runtime. Model selection is
-> reopened — see R17 below and `configs/llm.yaml`. (Confirm the exact
-> runtime/disk on the Kaggle overview; GPU is confirmed.)
+> **✅ Hardware CONFIRMED 2026-06-25 from the official Kaggle overview** (not
+> a guess). Overview "Upgraded accelerators": *"Kaggle uses machine type
+> `g4-standard-48`"* + *"added RTX 6000 machines"* → **1× NVIDIA RTX PRO
+> 6000 Blackwell, 96GB VRAM**, 48 vCPU, 180GB RAM. Code Requirements: *"GPU
+> Notebook ≤ **9 hours** run-time"*, *"Internet access disabled"*,
+> *"pre-trained models allowed"*. This **invalidates the old "T4 16GB / 6h"
+> assumption.** The VRAM ceiling is gone (96GB). Pre-trained model weights
+> mount as a **read-only Kaggle Model/Dataset** — NOT counted against the
+> notebook's working disk — so model SIZE is not meaningfully constrained
+> (tens of GB fine). Binding constraints are now: **9h wall-clock across all
+> eval games** + the offline/no-internet rule. Model selection reopened (R17).
 
-| Constraint | Limit (corrected 2026-06-25) |
+| Constraint | Limit (CONFIRMED 2026-06-25, official overview) |
 |-----------|-------|
 | GPU | `g4-standard-48`: 1× RTX PRO 6000 Blackwell, **96GB VRAM** |
 | Host | 48 vCPU, 180GB RAM |
-| Runtime | ~**9 hours** |
-| Disk | ~**32GB** (binding constraint — model weights must fit) |
-| Internet | **Disabled** (no external API calls) |
-| External data | Freely available public data + pre-trained models OK |
-| Submission | 1 per day |
-| Open source | Required for prize eligibility |
+| Runtime | **≤ 9 hours** (CPU or GPU notebook) |
+| Internet | **Disabled** (no external API calls — RTX sessions enforced) |
+| External data | Public data + **pre-trained models** OK (read-only mount) |
+| Submission | **Notebook only**; file auto-generated once the agent acts on any game |
+| Metric | per-game 0–100% (human action-count relative), **averaged over all games** |
+| Open source | Notebook must be public/open-source by the milestone date to win |
 
-*(Superseded assumption: "≤6h runtime, T4 16GB VRAM". Many sections below — esp. [LLM Selection](#llm-selection-phase-8-hypothesis-engine) — still cite the old T4/VRAM math; those are stale and tracked for the R17 model-reselection round.)*
+*(Superseded: "≤6h, T4 16GB VRAM". Sections below — esp. [LLM Selection](#llm-selection-phase-8-hypothesis-engine) — still cite the old T4/VRAM math; stale, tracked for R17.)*
 
-**Key implication**: No Claude/GPT API calls. Must use offline open-weight LLMs. With 96GB VRAM the VRAM ceiling no longer constrains model choice — the real limits are ~32GB disk (weights) and ~9h runtime. Gemma 4 26B MoE (and even Q5/Q8 of ~26-32B models) now fit comfortably. Claude Code is dev-time only.
+**Milestones (optional):** M1 = **June 30 2026 23:59 UTC** (=7/1 08:59 KST), M2 = Sep 30. Prizes per milestone: 1st $25K / 2nd $7.5K / 3rd $5K. Must open-source the notebook by the deadline. As of 2026-06-25: **1,424 teams / 11,222 submissions** already on the board — we have **0 submissions**.
+
+**Key implication**: No Claude/GPT API calls — offline open-weight LLM only, loaded from a mounted Kaggle Model (no `ollama serve`, no internet). With 96GB VRAM + read-only weight mount, model choice is bounded by 9h-across-all-games throughput, not VRAM/disk. The submission is a **notebook running an agent against the offline ARC game interface** (NOT the networked `arc_agi` API we use locally). Claude Code is dev-time only.
 
 ## Architecture Design
 
@@ -288,6 +292,24 @@ scripts/
   hardcoding. Phase 8 (frame-only + LLM) is the only sustainable path.
 
 ### Phase 8: Generalization + Kaggle Submission 🔄 ACTIVE (Karpathy LLM-Wiki pattern)
+
+> **🚨 M1 SPRINT CORRECTION (2026-06-25) — read `docs/sprint_m1_architecture_20260625.md` FIRST.**
+> Verified from the live Kaggle pages; corrects load-bearing errors that
+> shaped rounds R1–R17:
+> - **Eval = 110 PRIVATE unseen games** (NOT the 25 preview). The 25 in
+>   `environment_files/` are dev-only; the leaderboard is NOT the 25-game score.
+> - **Metric = efficiency SQUARED**: per-level `min(human/agent_actions, 1)²`,
+>   level-index-weighted per game, mean over games. Brute-force completion
+>   (BFS clearing in hundreds of actions) scores ≈ 0. Real leaderboard:
+>   random = 0.18, stochastic-sample = 0.25, top (Dries Smit/Tufa) = 1.21.
+> - **Hardware**: g4-standard-48 / RTX PRO 6000 **96GB** / **9h** (see Constraints).
+> - **Design pivot**: drop "LLM routes among brute-force strategies"; adopt a
+>   single **efficiency-first general agent** — cheap discovery → online
+>   world model → *efficient* planning; the offline LLM hypothesizes the
+>   goal at discovery time (a few calls/game), NOT per-action routing. The
+>   R1–R16 wiki-routing machinery is de-prioritized, not the spine.
+> - We have **0 submissions**. A valid offline notebook on the board (beating
+>   the 0.25 sample) + open-sourcing by June 30 23:59 UTC is **P0**.
 
 **Architecture decision (2026-04-20)**: Adopt [Karpathy's LLM Wiki pattern](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f) — markdown knowledge base maintained by LLM at dev-time, read by inference LLM at Kaggle-time. No vector DB (incompatible with Kaggle internet constraint).
 

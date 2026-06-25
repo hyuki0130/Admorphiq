@@ -1,0 +1,98 @@
+{
+  "agent": "general",
+  "n_games_run": 8,
+  "n_games_scored": 8,
+  "n_excluded": 0,
+  "total_score": 0.0,
+  "total_score_pct": 0.0,
+  "games": [
+    {
+      "game_id": "tu93-0768757b",
+      "win_levels": 9,
+      "levels_completed": 0,
+      "elapsed_s": 0.05,
+      "total_actions": 50,
+      "per_level": [],
+      "game_score": 0.0,
+      "has_baseline": true,
+      "title": "TU93"
+    },
+    {
+      "game_id": "tu93-0768757b",
+      "win_levels": 9,
+      "levels_completed": 0,
+      "elapsed_s": 0.05,
+      "total_actions": 50,
+      "per_level": [],
+      "game_score": 0.0,
+      "has_baseline": true,
+      "title": "TU93"
+    },
+    {
+      "game_id": "ar25-0c556536",
+      "win_levels": 8,
+      "levels_completed": 0,
+      "elapsed_s": 0.6,
+      "total_actions": 600,
+      "per_level": [],
+      "game_score": 0.0,
+      "has_baseline": true,
+      "title": "AR25"
+    },
+    {
+      "game_id": "ar25-0c556536",
+      "win_levels": 8,
+      "levels_completed": 0,
+      "elapsed_s": 0.58,
+      "total_actions": 600,
+      "per_level": [],
+      "game_score": 0.0,
+      "has_baseline": true,
+      "title": "AR25"
+    },
+    {
+      "game_id": "re86-8af5384d",
+      "win_levels": 8,
+      "levels_completed": 0,
+      "elapsed_s": 0.02,
+      "total_actions": 100,
+      "per_level": [],
+      "game_score": 0.0,
+      "has_baseline": true,
+      "title": "RE86"
+    },
+    {
+      "game_id": "re86-8af5384d",
+      "win_levels": 8,
+      "levels_completed": 0,
+      "elapsed_s": 0.02,
+      "total_actions": 100,
+      "per_level": [],
+      "game_score": 0.0,
+      "has_baseline": true,
+      "title": "RE86"
+    },
+    {
+      "game_id": "su15-1944f8ab",
+      "win_levels": 9,
+      "levels_completed": 0,
+      "elapsed_s": 0.53,
+      "total_actions": 600,
+      "per_level": [],
+      "game_score": 0.0,
+      "has_baseline": true,
+      "title": "SU15"
+    },
+    {
+      "game_id": "su15-1944f8ab",
+      "win_levels": 9,
+      "levels_completed": 0,
+      "elapsed_s": 0.52,
+      "total_actions": 600,
+      "per_level": [],
+      "game_score": 0.0,
+      "has_baseline": true,
+      "title": "SU15"
+    }
+  ]
+}

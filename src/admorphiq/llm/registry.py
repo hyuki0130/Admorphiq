@@ -3,13 +3,16 @@
 The registry reads `configs/llm.yaml` and exposes a uniform `LLMBackend`
 interface. Backends dispatch by `family`:
 
-  - gemma4 / qwen3 → OllamaBackend (requires `ollama serve`)
+  - gemma4 / qwen3 → OllamaBackend (requires `ollama serve`)  [default]
+  - any family     → LlamaCppBackend when ADMORPHIQ_LLM_BACKEND=llamacpp
+                     or ADMORPHIQ_GGUF_PATH is set in the environment
 
 Adding a new candidate is a YAML edit plus (if a new family) one Python class.
 """
 
 from __future__ import annotations
 
+import os
 import re
 from dataclasses import dataclass
 from pathlib import Path
@@ -93,10 +96,23 @@ def load_registry() -> list[CandidateMeta]:
 
 
 def load_candidate(candidate_id: str) -> LLMBackend:
-    """Return a ready-to-use backend for the named candidate."""
+    """Return a ready-to-use backend for the named candidate.
+
+    Backend selection (in priority order):
+    1. ``ADMORPHIQ_LLM_BACKEND=llamacpp`` — use LlamaCppBackend regardless of family.
+    2. ``ADMORPHIQ_GGUF_PATH`` set (and ADMORPHIQ_LLM_BACKEND not overriding) — same.
+    3. Default: OllamaBackend for gemma4/qwen3 families (requires ``ollama serve``).
+    """
+    use_llamacpp = (
+        os.environ.get("ADMORPHIQ_LLM_BACKEND", "").lower() == "llamacpp"
+        or bool(os.environ.get("ADMORPHIQ_GGUF_PATH"))
+    )
     for meta in load_registry():
         if meta.id != candidate_id:
             continue
+        if use_llamacpp:
+            from .llamacpp_backend import LlamaCppBackend  # lazy import
+            return LlamaCppBackend(meta)
         if meta.family in ("gemma4", "qwen3"):
             if not meta.ollama_tag:
                 raise ValueError(
