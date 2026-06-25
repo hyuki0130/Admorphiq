@@ -6,7 +6,6 @@ import time
 
 from admorphiq.strategies.inferential import strat_inferential_agent
 
-
 TARGETS = ["AR25", "M0R0", "DC22"]
 BASELINE = {"AR25": 2, "M0R0": 2, "DC22": 1}
 

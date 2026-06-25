@@ -85,7 +85,7 @@ def main():
             cleared_games.append(r)
 
     # Strategy effectiveness
-    print(f"\n  --- Strategy Stats ---")
+    print("\n  --- Strategy Stats ---")
     strat_wins: dict[str, int] = {}
     strat_total: dict[str, int] = {}
     for r in results:
@@ -104,13 +104,13 @@ def main():
     total_levels = sum(r.get("levels_completed", 0) for r in results)
     total_win = sum(r.get("win_levels", 0) for r in results)
 
-    print(f"\n  === OVERALL ===")
+    print("\n  === OVERALL ===")
     print(f"  Games cleared (1+ level): {total_cleared}/{total_games}")
     print(f"  Total levels completed:   {total_levels}/{total_win}")
     print(f"  Total time:               {total_elapsed:.1f}s")
 
     if cleared_games:
-        print(f"\n  Cleared games:")
+        print("\n  Cleared games:")
         for r in cleared_games:
             print(f"    {r['game_id']} ({r.get('title','')}) - {r['levels_completed']}/{r['win_levels']} via {r.get('strategy','')}")
 

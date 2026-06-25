@@ -4,12 +4,12 @@ import time
 
 import numpy as np
 from arc_agi import Arcade, OperationMode
-from arcengine import GameAction, GameState
+from arcengine import GameAction
 
 from admorphiq.agent_graph import GraphAgent
-from admorphiq.planner.toggle_solver import ToggleSolver
-from admorphiq.planner.sequence_solver import SequenceSolver
 from admorphiq.planner.bfs_solver import BFSSolver
+from admorphiq.planner.sequence_solver import SequenceSolver
+from admorphiq.planner.toggle_solver import ToggleSolver
 
 MAX_ACTIONS = 100000  # effectively unlimited
 TIME_LIMIT = 600.0  # 10 minutes per game

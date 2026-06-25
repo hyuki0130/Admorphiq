@@ -1,0 +1,21 @@
+a=  1 act=ACTION1 phase=discovery->discovery lvl=0 pcolor=None bg=5 corridor=None ndirs=0 dm={} probes=0 state=GameState.NOT_FINISHED
+a=  2 act=ACTION2 phase=discovery->discovery lvl=0 pcolor=10 bg=5 corridor=None ndirs=0 dm={} probes=1 state=GameState.NOT_FINISHED
+a=  3 act=ACTION3 phase=discovery->discovery lvl=0 pcolor=10 bg=5 corridor=None ndirs=0 dm={} probes=2 state=GameState.NOT_FINISHED
+a=  4 act=ACTION4 phase=discovery->discovery lvl=0 pcolor=10 bg=5 corridor=None ndirs=0 dm={} probes=3 state=GameState.NOT_FINISHED
+a= 10 act=ACTION6 phase=discovery->explore lvl=0 pcolor=10 bg=5 corridor=None ndirs=4 dm={1: (0, -5), 2: (0, 5), 3: (5, 0), 4: (-5, 0)} probes=7 state=GameState.NOT_FINISHED
+a= 27 act=ACTION6 phase=explore->explore lvl=0 pcolor=10 bg=5 corridor=None ndirs=4 dm={1: (0, -5), 2: (0, 5), 3: (5, 0), 4: (-5, 0)} probes=7 state=GameState.NOT_FINISHED
+a= 28 act=ACTION6 phase=explore->explore lvl=0 pcolor=10 bg=5 corridor=None ndirs=4 dm={1: (0, -5), 2: (0, 5), 3: (5, 0), 4: (-5, 0)} probes=7 state=GameState.NOT_FINISHED
+a= 29 act=ACTION6 phase=explore->explore lvl=0 pcolor=10 bg=5 corridor=None ndirs=4 dm={1: (0, -5), 2: (0, 5), 3: (5, 0), 4: (-5, 0)} probes=7 state=GameState.NOT_FINISHED
+a= 30 act=ACTION6 phase=explore->explore lvl=0 pcolor=10 bg=5 corridor=None ndirs=4 dm={1: (0, -5), 2: (0, 5), 3: (5, 0), 4: (-5, 0)} probes=7 state=GameState.NOT_FINISHED
+a= 31 act=ACTION6 phase=explore->explore lvl=0 pcolor=10 bg=5 corridor=None ndirs=4 dm={1: (0, -5), 2: (0, 5), 3: (5, 0), 4: (-5, 0)} probes=7 state=GameState.NOT_FINISHED
+a= 32 act=ACTION6 phase=explore->explore lvl=0 pcolor=10 bg=5 corridor=None ndirs=4 dm={1: (0, -5), 2: (0, 5), 3: (5, 0), 4: (-5, 0)} probes=7 state=GameState.NOT_FINISHED
+a= 33 act=ACTION6 phase=explore->explore lvl=0 pcolor=10 bg=5 corridor=None ndirs=4 dm={1: (0, -5), 2: (0, 5), 3: (5, 0), 4: (-5, 0)} probes=7 state=GameState.NOT_FINISHED
+a= 34 act=ACTION6 phase=explore->explore lvl=0 pcolor=10 bg=5 corridor=None ndirs=4 dm={1: (0, -5), 2: (0, 5), 3: (5, 0), 4: (-5, 0)} probes=7 state=GameState.NOT_FINISHED
+a= 35 act=ACTION6 phase=explore->explore lvl=0 pcolor=10 bg=5 corridor=None ndirs=4 dm={1: (0, -5), 2: (0, 5), 3: (5, 0), 4: (-5, 0)} probes=7 state=GameState.NOT_FINISHED
+a= 36 act=ACTION6 phase=explore->explore lvl=0 pcolor=10 bg=5 corridor=None ndirs=4 dm={1: (0, -5), 2: (0, 5), 3: (5, 0), 4: (-5, 0)} probes=7 state=GameState.NOT_FINISHED
+a= 37 act=ACTION6 phase=explore->explore lvl=0 pcolor=10 bg=5 corridor=None ndirs=4 dm={1: (0, -5), 2: (0, 5), 3: (5, 0), 4: (-5, 0)} probes=7 state=GameState.NOT_FINISHED
+a= 38 act=ACTION6 phase=explore->explore lvl=0 pcolor=10 bg=5 corridor=None ndirs=4 dm={1: (0, -5), 2: (0, 5), 3: (5, 0), 4: (-5, 0)} probes=7 state=GameState.NOT_FINISHED
+a= 39 act=ACTION6 phase=explore->explore lvl=0 pcolor=10 bg=5 corridor=None ndirs=4 dm={1: (0, -5), 2: (0, 5), 3: (5, 0), 4: (-5, 0)} probes=7 state=GameState.NOT_FINISHED
+[TERMINAL] state=GameState.GAME_OVER @ total=151 lvl=0
+
+FINAL levels_completed=0/6 total_actions=151 state=GameState.GAME_OVER agent._action_count=151

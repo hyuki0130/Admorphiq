@@ -1,7 +1,9 @@
 """Run EnsembleAgent on the 14 unsolved games."""
 
 import time
+
 from arc_agi import Arcade, OperationMode
+
 from admorphiq.agent_ensemble import EnsembleAgent
 
 TARGET_GAMES = [

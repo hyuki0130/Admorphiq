@@ -687,6 +687,11 @@ def pick_goal_cell(
 _PHASE_DISCOVERY = "discovery"
 _PHASE_EXECUTE = "execute"
 _PHASE_EXPLORE = "explore"
+# Pattern-match primitive (paint-to-match / GF(2) toggle). Dispatched after
+# discovery when no navigation plan exists but a pattern detector fires.
+_PHASE_PATTERN = "pattern"
+# Max candidate cells to probe when measuring a toggle stencil (2 clicks each).
+_PATTERN_TOGGLE_PROBE_CAP = 12
 
 
 class GeneralAgent:
@@ -723,11 +728,30 @@ class GeneralAgent:
         self._llm_loaded = False
         # Most recent LLM hypothesis (recorded for tracing / inspection).
         self.last_hypothesis: dict | None = None
+        # Game-scope control memory (NOT cleared on level-up). The action ->
+        # (dx, dy) map, player colour and corridor colour are properties of the
+        # game's CONTROLS / rendering, which are constant across levels — only
+        # the layout changes. Persisting them lets later levels skip the costly
+        # (and, in step-budgeted games like tu93, dangerous) re-probe sweep and
+        # plan immediately from the clean level-start position.
+        self._known_dir_map: dict[int, tuple[int, int]] = {}
+        self._known_player_color: int | None = None
+        self._known_corridor_color: int | None = None
         self._reset_level_state()
 
     def _reset_level_state(self) -> None:
         """Clear all per-level discovery / plan state (called on level-up)."""
         self._phase = _PHASE_DISCOVERY
+        # Discovery budget is PER LEVEL, not per game: record the global action
+        # count at which this level's discovery begins so the budget gate
+        # measures actions spent on THIS level. Without this, ``_action_count``
+        # (which never resets) is already past ``DISCOVERY_BUDGET`` by L2, so
+        # discovery is skipped on every level after the first — the agent never
+        # re-learns the direction map on the new layout and wanders to GAME_OVER.
+        self._level_action_base = getattr(self, "_action_count", 0)
+        # One-shot guard: try reusing carried control knowledge once per level
+        # before falling back to active probing.
+        self._seed_attempted = False
         self._probes: list[dict] = []
         self._pending_probe: dict | None = None
         self._dir_map: dict[int, tuple[int, int]] = {}
@@ -749,6 +773,14 @@ class GeneralAgent:
         # Closed-loop execution bookkeeping.
         self._last_player_cell: tuple[int, int] | None = None
         self._stuck_steps = 0
+        # Pattern-match primitive bookkeeping (paint / GF(2) toggle).
+        self._pat_kind: str | None = None
+        self._pat_queue: list[tuple[int, int, int]] = []
+        self._pat_cells: list[tuple[int, int]] = []
+        self._pat_sub: str | None = None
+        self._pat_j: int = 0
+        self._pat_before: np.ndarray | None = None
+        self._pat_click_probes: list[dict] = []
         # Cheap-explore fallback bookkeeping.
         self._explore_last_sig: tuple = ()
         self._explore_pending: int | None = None
@@ -784,6 +816,8 @@ class GeneralAgent:
             return self._discovery_step(layer, avail, latest_frame)
         if self._phase == _PHASE_EXECUTE:
             return self._execute_step(layer, avail, latest_frame)
+        if self._phase == _PHASE_PATTERN:
+            return self._pattern_step(layer, avail, latest_frame)
         return self._explore_step(layer, avail, latest_frame)
 
     # ── level-transition handling ────────────────────────────────────────────
@@ -811,6 +845,19 @@ class GeneralAgent:
         from arcengine import GameAction
 
         bg = self._background if self._background is not None else 0
+
+        # Reuse control knowledge from a prior level before spending any probe
+        # actions. Controls don't change between levels, so if a plan can be
+        # built straight away from the carried map we skip discovery entirely.
+        if (
+            not self._seed_attempted
+            and self._pending_probe is None
+            and not self._probes
+            and self._known_dir_map
+        ):
+            self._seed_attempted = True
+            if self._seed_from_known(layer, avail):
+                return self._execute_step(layer, avail, latest_frame)
 
         if self._disc_targets is None:
             self._disc_targets = [a for a in _MOVE_ACTION_IDS if a in avail]
@@ -841,7 +888,7 @@ class GeneralAgent:
             self._disc_last_moved = moved
             self._pending_probe = None
 
-        if self._action_count >= DISCOVERY_BUDGET:
+        if self._action_count - self._level_action_base >= DISCOVERY_BUDGET:
             self._finish_discovery(layer, avail)
             if self._phase == _PHASE_EXECUTE:
                 return self._execute_step(layer, avail, latest_frame)
@@ -902,13 +949,54 @@ class GeneralAgent:
         # goal-cell colour; any error falls back to the pure path.
         self._maybe_hypothesize(layer, avail)
 
+        # Persist the learned controls at game scope so later levels can skip
+        # the probe sweep (controls are level-invariant; only layout changes).
+        if self._dir_map and self._player_color is not None:
+            self._known_dir_map = dict(self._dir_map)
+            self._known_player_color = self._player_color
+            self._known_corridor_color = self._corridor_color
+
         plan = self._try_build_plan(layer, avail)
         if plan:
             self._phase = _PHASE_EXECUTE
             self._last_player_cell = None
             self._stuck_steps = 0
+        elif self._init_pattern(layer, avail):
+            self._phase = _PHASE_PATTERN
         else:
             self._phase = _PHASE_EXPLORE
+
+    def _seed_from_known(self, layer: np.ndarray, avail: list[int]) -> bool:
+        """Seed this level from carried control knowledge; arm EXECUTE if usable.
+
+        Controls (action -> shift map, player colour, corridor colour) learned
+        on an earlier level are reapplied to the new layout. When the player
+        colour is present and a shortest path to the goal can be planned right
+        away, the agent enters EXECUTE having spent ZERO probe actions — both an
+        efficiency win and, in step-budgeted / fall-off games (tu93), a safety
+        win (no probe moves displacing the player before planning). Returns
+        False (leaving level state clean for normal probing) when the carried
+        map does not apply to the new layout.
+        """
+        if not self._known_dir_map or self._known_player_color is None:
+            return False
+        present = set(np.unique(layer).tolist()) if layer.size else set()
+        if self._known_player_color not in present:
+            return False
+        self._dir_map = dict(self._known_dir_map)
+        self._player_color = self._known_player_color
+        self._corridor_color = self._known_corridor_color
+        plan = self._try_build_plan(layer, avail)
+        if plan:
+            self._phase = _PHASE_EXECUTE
+            self._last_player_cell = None
+            self._stuck_steps = 0
+            return True
+        # Carried map could not plan on this layout → reset and probe normally.
+        self._dir_map = {}
+        self._player_color = None
+        self._corridor_color = None
+        return False
 
     def _ensure_llm(self):
         """Lazily load the LLM backend once; None when unavailable.
@@ -1039,6 +1127,101 @@ class GeneralAgent:
             walkable[goal[0], goal[1]] = True
 
         return grid_bfs(walkable, start, goal, step_dirs)
+
+    # ── pattern-match primitive (paint / GF(2) toggle) ───────────────────────
+
+    def _init_pattern(self, layer: np.ndarray, avail: list[int]) -> bool:
+        """Dispatch a pattern-match plan when a detector fires. Additive hook.
+
+        Tried only after the navigation plan failed (no player/goal). Prefers
+        paint (a congruent reference+editable pair is a strong, specific signal)
+        over toggle. For toggle we only stage the candidate cells here; the
+        stencil is measured interactively in :meth:`_pattern_step` via a
+        self-inverse click sweep. Returns True when a plan was staged.
+        """
+        from admorphiq.primitives.pattern_match import (
+            detect_paint_task,
+            detect_toggle_task,
+            plan_paint,
+        )
+
+        if 6 in avail:
+            paint = detect_paint_task(layer, self._probes)
+            if paint is not None:
+                queue = plan_paint(paint, layer)
+                if queue:
+                    self._pat_kind = "paint"
+                    self._pat_queue = queue
+                    return True
+            tog = detect_toggle_task(layer, self._probes)
+            if tog is not None and len(tog["cells"]) >= 2:
+                self._pat_kind = "toggle"
+                self._pat_cells = tog["cells"][:_PATTERN_TOGGLE_PROBE_CAP]
+                self._pat_sub = "probe"
+                self._pat_j = 0
+                self._pat_click_probes = []
+                return True
+        return False
+
+    def _pattern_step(self, layer: np.ndarray, avail: list[int], latest_frame):
+        """Drive the staged pattern plan one action per call.
+
+        * paint — pop the precomputed ``(action_id, x, y)`` click queue.
+        * toggle — interactive stencil measurement (click cell j, observe the
+          flip, click again to undo — clicks are self-inverse so the base state
+          is restored), then GF(2)-solve for the most-homogeneous target and
+          execute only the solution-subset clicks.
+        When the plan is exhausted without a win, fall back to cheap-explore.
+        """
+        if 6 not in avail:
+            self._phase = _PHASE_EXPLORE
+            return self._explore_step(layer, avail, latest_frame)
+
+        if self._pat_kind == "paint":
+            return self._pattern_paint_step(layer, avail, latest_frame)
+        if self._pat_kind == "toggle":
+            return self._pattern_toggle_step(layer, avail, latest_frame)
+        self._phase = _PHASE_EXPLORE
+        return self._explore_step(layer, avail, latest_frame)
+
+    def _pattern_paint_step(self, layer: np.ndarray, avail: list[int], latest_frame):
+        if not self._pat_queue:
+            self._phase = _PHASE_EXPLORE
+            return self._explore_step(layer, avail, latest_frame)
+        _aid, x, y = self._pat_queue.pop(0)
+        return self._emit_click(x, y)
+
+    def _pattern_toggle_step(self, layer: np.ndarray, avail: list[int], latest_frame):
+        from admorphiq.primitives.pattern_match import build_stencil, plan_toggle
+
+        cells = self._pat_cells
+        if self._pat_sub == "probe":
+            if self._pat_j >= len(cells):
+                # Measurement complete → solve and stage the solution clicks.
+                stencil = build_stencil(cells, self._pat_click_probes)
+                self._pat_queue = [
+                    (6, x, y) for (x, y) in plan_toggle(cells, stencil)
+                ]
+                self._pat_sub = "execute"
+                return self._pattern_toggle_step(layer, avail, latest_frame)
+            self._pat_before = layer.copy()
+            self._pat_sub = "undo"
+            cx, cy = cells[self._pat_j]
+            return self._emit_click(cx, cy)
+        if self._pat_sub == "undo":
+            cx, cy = cells[self._pat_j]
+            self._pat_click_probes.append(
+                {"x": cx, "y": cy, "before": self._pat_before, "after": layer.copy()}
+            )
+            self._pat_j += 1
+            self._pat_sub = "probe"
+            return self._emit_click(cx, cy)  # self-inverse: restore base state
+        # execute
+        if self._pat_queue:
+            _aid, x, y = self._pat_queue.pop(0)
+            return self._emit_click(x, y)
+        self._phase = _PHASE_EXPLORE
+        return self._explore_step(layer, avail, latest_frame)
 
     # ── execute phase (closed-loop) ──────────────────────────────────────────
 

@@ -32,7 +32,6 @@ from admorphiq.agent_ensemble import (
     strat_sprite_cluster_interaction,
 )
 
-
 REPO_ROOT = Path(__file__).resolve().parent.parent
 OUT = REPO_ROOT / "scripts" / "g1_g4_direct_results.json"
 

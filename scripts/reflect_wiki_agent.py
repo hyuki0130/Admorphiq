@@ -19,7 +19,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import re
 import sys
 import time
 from pathlib import Path
@@ -27,7 +26,6 @@ from typing import Any
 
 from admorphiq.hypothesis import CTX_KEYS, default_strategy_registry
 from admorphiq.llm import load_candidate, load_registry
-
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 ARCH_DOC = REPO_ROOT / ".wiki" / "wiki" / "architecture.md"

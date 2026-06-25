@@ -6,8 +6,9 @@ then brute-forces all 2^N combinations using RESET to find the winning one.
 
 from __future__ import annotations
 
-import numpy as np
 from itertools import product
+
+import numpy as np
 
 
 class ToggleSolver:

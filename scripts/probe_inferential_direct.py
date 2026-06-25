@@ -18,7 +18,6 @@ from pathlib import Path
 
 from admorphiq.strategies.inferential import strat_inferential_agent
 
-
 REPO_ROOT = Path(__file__).resolve().parent.parent
 OUT = REPO_ROOT / "scripts" / "inferential_direct_results.json"
 

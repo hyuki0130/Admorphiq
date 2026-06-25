@@ -1,6 +1,5 @@
 """Post-hotfix game test — 500 actions, train_frequency=20, fixed explorer."""
 
-import sys
 import time
 
 from arc_agi import Arcade, OperationMode

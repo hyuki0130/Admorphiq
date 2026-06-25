@@ -454,6 +454,86 @@ def test_discovery_learns_all_four_directions_from_wall_bound_start():
     assert dir_map[4][0] > 0 and dir_map[4][1] == 0  # right
 
 
+def test_discovery_runs_on_later_levels_despite_global_action_count():
+    """Purpose: pin the multi-level transition bug — the discovery budget must
+    be measured PER LEVEL, not against the never-resetting global action count.
+    Originally the gate compared ``_action_count`` (already far past
+    ``DISCOVERY_BUDGET`` by level 2) so discovery was skipped on every level
+    after the first; the direction map was never re-learned and the agent
+    wandered to a game-over, stuck at levels_completed=1.
+
+    Expected feedback: pass means that after a level-up (simulated here by a
+    high global action count plus a level-state reset) discovery still probes
+    and learns all four directions. A fail means the per-level budget base
+    regressed and later levels are unnavigable again.
+    """
+    maze = _ScriptedMaze()
+    agent = GeneralAgent()
+    # Simulate arriving on a later level: the global counter never resets, so
+    # it is already well past DISCOVERY_BUDGET when the new level begins.
+    agent._action_count = 100
+    agent._reset_level_state()  # mirrors _maybe_level_up on a fresh level
+    frame = maze.frame()
+    for _ in range(40):
+        action = agent.choose_action([], frame)
+        aid = int(getattr(action, "id", None) or getattr(action, "value", 0))
+        maze.step(aid)
+        frame = maze.frame()
+        if agent._phase != "discovery":
+            break
+
+    assert set(agent._dir_map) == {1, 2, 3, 4}, f"discovery skipped: {agent._dir_map}"
+
+
+def test_seed_from_known_skips_probing_on_new_level():
+    """Purpose: controls are a game constant, not a per-level one. Once the
+    direction map / player colour are learned, a new level should reuse them
+    and plan immediately — spending ZERO probe actions. This is both an
+    efficiency win and, in step-budgeted / fall-off games, a safety win (no
+    probe moves displacing the player before the plan is built).
+
+    Expected feedback: pass means seeding from carried knowledge arms the
+    EXECUTE phase with the carried map and player colour. A fail means the
+    agent would re-probe every level, wasting budget and risking displacement.
+    """
+    agent = GeneralAgent()
+    agent._known_dir_map = {1: (0, -6), 2: (0, 6), 3: (-6, 0), 4: (6, 0)}
+    agent._known_player_color = 9
+    agent._known_corridor_color = None
+    agent._background = 5
+    layer = np.full((64, 64), 5, dtype=np.int32)
+    layer[2:5, 2:5] = 9  # player at grid cell (0, 0)
+    layer[2:5, 20:23] = 14  # rare goal marker to the right
+
+    assert agent._seed_from_known(layer, [1, 2, 3, 4]) is True
+    assert agent._phase == "execute"
+    assert agent._dir_map == agent._known_dir_map
+    assert agent._player_color == 9
+
+
+def test_seed_from_known_falls_back_when_player_absent():
+    """Purpose: carried controls must only be reused when they actually apply
+    to the new layout. If the known player colour is not present in the frame,
+    seeding must decline and leave the level state clean so normal probing runs.
+
+    Expected feedback: pass means a non-matching layout returns False and the
+    discovery state is untouched (empty dir_map, no player colour, discovery
+    phase). A fail means stale knowledge could be force-applied to a layout it
+    does not fit, mis-planning the level.
+    """
+    agent = GeneralAgent()
+    agent._known_dir_map = {1: (0, -6), 2: (0, 6), 3: (-6, 0), 4: (6, 0)}
+    agent._known_player_color = 9
+    agent._background = 5
+    layer = np.full((64, 64), 5, dtype=np.int32)
+    layer[2:5, 20:23] = 14  # goal present but NO player colour 9 anywhere
+
+    assert agent._seed_from_known(layer, [1, 2, 3, 4]) is False
+    assert agent._dir_map == {}
+    assert agent._player_color is None
+    assert agent._phase == "discovery"
+
+
 # ---------------------------------------------------------------------------
 # corridor_color_from_probes / edge_grid_bfs / goal_centroid_px
 # ---------------------------------------------------------------------------

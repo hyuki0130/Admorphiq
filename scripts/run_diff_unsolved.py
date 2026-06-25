@@ -1,6 +1,5 @@
 """Run DiffAgent on the 15 unsolved games with 200K actions."""
 
-import json
 import time
 
 from arc_agi import Arcade, OperationMode
@@ -38,7 +37,7 @@ def main() -> None:
         try:
             env = arcade.make(game_id)
             if env is None:
-                print(f"  ERROR: make() returned None\n")
+                print("  ERROR: make() returned None\n")
                 results.append({"game_id": game_id, "error": "make() returned None"})
                 continue
 
@@ -83,7 +82,7 @@ def main() -> None:
 
     # Sort by states discovered (most promising)
     successful.sort(key=lambda r: r.get("states_discovered", 0), reverse=True)
-    print(f"\nPer-game results (sorted by states discovered):")
+    print("\nPer-game results (sorted by states discovered):")
     for r in successful:
         gid = r.get("game_id", "?")
         print(

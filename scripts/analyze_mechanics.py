@@ -6,7 +6,6 @@ For each game:
 3. Infer game rules from diffs
 """
 
-import sys
 import numpy as np
 from arc_agi import Arcade, OperationMode
 from arcengine import GameAction
@@ -126,12 +125,12 @@ def analyze_diff(before: np.ndarray, after: np.ndarray) -> dict:
 def analyze_game(arcade, game_id_full):
     env = arcade.make(game_id_full)
     if env is None:
-        print(f"  ERROR: make() returned None")
+        print("  ERROR: make() returned None")
         return
 
     obs = env.observation_space
     if obs is None:
-        print(f"  ERROR: no observation")
+        print("  ERROR: no observation")
         return
 
     # Initial frame analysis
@@ -152,7 +151,7 @@ def analyze_game(arcade, game_id_full):
     print(f"  Win levels: {obs.win_levels}")
 
     # Try each action 3 times
-    print(f"\n  === Action Effects ===")
+    print("\n  === Action Effects ===")
     for action_id in available:
         print(f"\n  ACTION{action_id}:")
         for trial in range(3):
@@ -207,7 +206,7 @@ def analyze_game(arcade, game_id_full):
                                 for m in diff2["movements"]:
                                     print(f"        color {m['color']} moved dy={m['dy']}, dx={m['dx']}")
                             else:
-                                print(f"      2nd press: NO additional change")
+                                print("      2nd press: NO additional change")
 
                 # Check state after action
                 print(f"      State: {obs.state.name}, levels={obs.levels_completed}/{obs.win_levels}")

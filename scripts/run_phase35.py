@@ -1,6 +1,5 @@
 """Phase 3.5 game test — compare with Phase 2.5 baseline."""
 
-import sys
 import time
 
 from arc_agi import Arcade, OperationMode

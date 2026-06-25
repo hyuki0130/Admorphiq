@@ -27,7 +27,6 @@ from pathlib import Path
 from admorphiq.hypothesis import WikiAgent, default_strategy_registry
 from admorphiq.llm import load_candidate, load_registry
 
-
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_OUT = REPO_ROOT / "scripts" / "wiki_agent_results.json"
 

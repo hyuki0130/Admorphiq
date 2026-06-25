@@ -13,12 +13,10 @@ from __future__ import annotations
 import hashlib
 import itertools
 import re
-import time
 from collections import defaultdict, deque
 from typing import Any
 
 import numpy as np
-
 from arcengine import GameAction
 
 from .strategies.inferential import strat_inferential_agent  # round 6
@@ -407,7 +405,7 @@ def strat_bfs_explore(env: Any, dir_actions: list[int], budget: int = 300) -> tu
 
         if obs.levels_completed > best:
             best = obs.levels_completed
-            name = f"bfs_explore"
+            name = "bfs_explore"
             # Reset visited on level change
             visited_hashes.clear()
 
@@ -443,7 +441,7 @@ def strat_bfs_explore(env: Any, dir_actions: list[int], budget: int = 300) -> tu
 
         if obs.levels_completed > best:
             best = obs.levels_completed
-            name = f"bfs_explore"
+            name = "bfs_explore"
 
         last_hash = new_hash
 
@@ -471,7 +469,7 @@ def strat_wall_avoid(env: Any, dir_actions: list[int], budget: int = 300) -> tup
 
         if obs.levels_completed > best:
             best = obs.levels_completed
-            name = f"wall_avoid"
+            name = "wall_avoid"
             stuck_count = 0
 
         aid = dir_actions[current_dir_idx % len(dir_actions)]
@@ -490,7 +488,7 @@ def strat_wall_avoid(env: Any, dir_actions: list[int], budget: int = 300) -> tup
 
         if obs.levels_completed > best:
             best = obs.levels_completed
-            name = f"wall_avoid"
+            name = "wall_avoid"
 
         prev_frame = new_frame
 
@@ -518,7 +516,7 @@ def strat_pattern_repeat(env: Any, avail_actions: list[int], budget: int = 400) 
 
         if obs_test.levels_completed > best:
             best = obs_test.levels_completed
-            name = f"pattern_repeat"
+            name = "pattern_repeat"
         if obs_test.state.name in ("WIN", "GAME_OVER"):
             if obs_test.state.name == "GAME_OVER":
                 obs_test = reset(env)
@@ -553,7 +551,7 @@ def strat_pattern_repeat(env: Any, avail_actions: list[int], budget: int = 400) 
         used += 1
         if obs.levels_completed > best:
             best = obs.levels_completed
-            name = f"pattern_repeat"
+            name = "pattern_repeat"
 
     return best, name, used
 
@@ -650,7 +648,7 @@ def strat_spiral_move(env: Any, dir_to_act: dict[str, int], budget: int = 200) -
         used += 1
         if obs.levels_completed > best:
             best = obs.levels_completed
-            name = f"spiral"
+            name = "spiral"
 
         steps_at_len += 1
         if steps_at_len >= step_len * 2:
@@ -902,7 +900,7 @@ def strat_move_then_click_grid(env: Any, dir_actions: list[int], budget: int = 4
             used += 1
             if obs.levels_completed > best:
                 best = obs.levels_completed
-                name = f"move_click_grid"
+                name = "move_click_grid"
 
     return best, name, used
 
@@ -5715,7 +5713,7 @@ def strat_ka59_sokoban(env: Any, budget: int = 5000) -> tuple[int, str, int]:
                     _solve_level(cam_offset)
 
         if game._current_level_index > prev_lvl:
-            name = f"ka59_sokoban"
+            name = "ka59_sokoban"
         else:
             break  # Stuck, stop
 

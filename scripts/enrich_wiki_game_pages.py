@@ -647,13 +647,13 @@ def render(title: str, entries: list[dict]) -> str:
         lines.append("")
         if strategy_type == "brittle":
             lines.append(
-                f"- Current solver is brittle — v1 works, v2 fails. See the linked lessons for "
-                f"the underlying pattern and refactor path."
+                "- Current solver is brittle — v1 works, v2 fails. See the linked lessons for "
+                "the underlying pattern and refactor path."
             )
         elif strategy_type == "frame_only":
             lines.append(
-                f"- Frame-only solver generalizes across version hashes. See linked lessons "
-                f"for why frame-observation strategies are preferred."
+                "- Frame-only solver generalizes across version hashes. See linked lessons "
+                "for why frame-observation strategies are preferred."
             )
         for lesson in links.get("lessons", []):
             lines.append(f"- [[../lessons/{lesson}]]")

@@ -3,7 +3,7 @@
 import time
 
 from arc_agi import Arcade, OperationMode
-from arcengine import GameAction, GameState
+from arcengine import GameAction
 
 from admorphiq.adapter import AdmorphiqAdapter
 from admorphiq.utils import GameLogger

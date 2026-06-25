@@ -18,13 +18,10 @@ This module reads ONLY the rendered frame and `available_actions` /
 
 from __future__ import annotations
 
-from collections import deque
 from typing import Any
 
 import numpy as np
-
 from arcengine import GameAction
-
 
 # ----- Low-level env helpers (duplicated from agent_ensemble to keep
 #       this module free of cyclic imports during test discovery). --------

@@ -1,13 +1,12 @@
 """Classify all 25 ARC-AGI-3 games by type (movement, click, transform, hybrid, unknown)."""
 
-import sys
 import json
 import time
 import traceback
 
 import numpy as np
 from arc_agi import Arcade, OperationMode
-from arcengine import GameAction, GameState
+from arcengine import GameAction
 
 
 def detect_movement(frame_before, frame_after):

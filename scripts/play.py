@@ -1,6 +1,5 @@
 """Interactive ARC-AGI-3 game player — play games in the terminal."""
 
-import sys
 
 import numpy as np
 from arc_agi import Arcade, OperationMode

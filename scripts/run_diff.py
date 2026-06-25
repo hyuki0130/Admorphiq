@@ -1,7 +1,6 @@
 """Run the DiffAgent on ARC-AGI-3 games and report results."""
 
 import json
-import sys
 import time
 
 from arc_agi import Arcade, OperationMode
@@ -33,7 +32,7 @@ def main() -> None:
         try:
             env = arcade.make(game_id)
             if env is None:
-                print(f"  ERROR: make() returned None\n")
+                print("  ERROR: make() returned None\n")
                 results.append({"game_id": game_id, "error": "make() returned None"})
                 continue
 
@@ -92,7 +91,7 @@ def main() -> None:
     print(f"\nTotal time: {total_elapsed:.1f}s")
 
     # Per-game results
-    print(f"\nPer-game results:")
+    print("\nPer-game results:")
     for r in results:
         gid = r.get("game_id", "?")
         if "error" in r:
