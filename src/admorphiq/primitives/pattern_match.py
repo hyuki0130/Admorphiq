@@ -38,8 +38,13 @@ _CELL_MIN_SIZE = 6
 _CELL_MAX_SIZE = 160
 # Two centroids closer than this (px) are the same lattice node (dedup).
 _CELL_DEDUP_PX = 4.0
-# GF(2) enumeration is 2^n; cap candidate cells so ranking stays cheap.
-_MAX_TOGGLE_CELLS = 12
+# Candidate cell cap. Interactive toggle buttons are indistinguishable from
+# decorative same-colour tiles WITHOUT probing, so the detector must return a
+# superset (the agent's interactive measurement then filters to the cells that
+# actually toggle). A small cap (12) plus a centre-bias sort silently dropped
+# ft09's 8 real tiles (they sit off-centre between a legend panel and the
+# board); a larger cap keeps the whole board in the candidate set.
+_MAX_TOGGLE_CELLS = 48
 # Patch radius for reading a cell's dominant-colour "state".
 _PATCH_RADIUS = 2
 # A click probe counts as toggling cell i when its patch class flips.
@@ -188,6 +193,55 @@ def plan_toggle(
         if int(x_vec.sum()) > 0:
             return [cells[j] for j in range(n) if int(x_vec[j]) == 1]
     return []
+
+
+def indicator_flip_sets(
+    layer: np.ndarray, toggle_cells: list[tuple[int, int]]
+) -> list[list[tuple[int, int]]]:
+    """Candidate flip-sets read from a central *indicator* sprite.
+
+    Many toggle puzzles are NOT "make every cell the same colour" — the win is
+    a target *pattern* dictated by a small indicator (a clue / legend sprite)
+    sitting amid the interactive cells (ft09: an 8-cell ring around one clue).
+    The indicator encodes, per surrounding cell, a marker colour drawn from a
+    tiny set (typically two values = "match me" / "differ from me"). Which
+    marker means "flip" is not knowable from pixels alone, so we partition the
+    ring cells by their marker value and return EACH partition as a candidate
+    flip-set; the caller tries them against the live win predicate.
+
+    Pure / env-free. Observable-signature only (no game id / title). Returns
+    ``[]`` when fewer than two cells or no usable marker split exists.
+    """
+    if len(toggle_cells) < 2 or layer.size == 0:
+        return []
+    cix = int(round(sum(c[0] for c in toggle_cells) / len(toggle_cells)))
+    ciy = int(round(sum(c[1] for c in toggle_cells) / len(toggle_cells)))
+    xs = sorted({c[0] for c in toggle_cells})
+    ys = sorted({c[1] for c in toggle_cells})
+
+    def _pitch(vals: list[int]) -> int:
+        gaps = [b - a for a, b in zip(vals, vals[1:]) if b - a > 0]
+        return min(gaps) if gaps else 8
+
+    px, py = _pitch(xs), _pitch(ys)
+    off = max(1, min(px, py) // 4)
+    h, w = layer.shape
+    groups: dict[int, list[tuple[int, int]]] = {}
+    for cx, cy in toggle_cells:
+        sx = (cx > cix) - (cx < cix)
+        sy = (cy > ciy) - (cy < ciy)
+        my = min(h - 1, max(0, ciy + sy * off))
+        mx = min(w - 1, max(0, cix + sx * off))
+        marker = int(layer[my, mx])
+        groups.setdefault(marker, []).append((cx, cy))
+    # Only a genuine TWO-marker split is informative (one value = flip, the
+    # other = leave). A single marker means the ring sits on a uniform field
+    # (no indicator) — defer to the homogeneity planner instead.
+    if len(groups) < 2:
+        return []
+    # Smaller partitions first: minimal-intervention targets are likelier and
+    # cheaper to execute, and keep the move-budget metric happy.
+    return sorted(groups.values(), key=len)
 
 
 def _direct_gf2_subset(A: np.ndarray, base: list[int], toggled: list[int]) -> np.ndarray | None:

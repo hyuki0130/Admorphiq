@@ -690,8 +690,17 @@ _PHASE_EXPLORE = "explore"
 # Pattern-match primitive (paint-to-match / GF(2) toggle). Dispatched after
 # discovery when no navigation plan exists but a pattern detector fires.
 _PHASE_PATTERN = "pattern"
-# Max candidate cells to probe when measuring a toggle stencil (2 clicks each).
-_PATTERN_TOGGLE_PROBE_CAP = 12
+# Max candidate cells to probe when measuring a toggle stencil. Interactive
+# buttons are indistinguishable from decorative same-colour tiles without
+# probing, so the candidate set is a superset filtered by measurement.
+_PATTERN_TOGGLE_PROBE_CAP = 48
+# A probe click "toggles" a cell when it flips a compact, LOCAL region: at
+# least 1 and at most this many pixels change. Larger global changes are
+# animations / HUD flashes, not an independent cell toggle.
+_TOGGLE_DIFF_MAX = 120
+# The flipped region's centroid must be within this many px of the clicked
+# point to count as that cell's own toggle (rejects far-away HUD/animation).
+_TOGGLE_LOCALITY_PX = 8.0
 
 
 class GeneralAgent:
@@ -781,6 +790,13 @@ class GeneralAgent:
         self._pat_j: int = 0
         self._pat_before: np.ndarray | None = None
         self._pat_click_probes: list[dict] = []
+        # Interactive toggle-solve bookkeeping.
+        self._pat_base_layer: np.ndarray | None = None
+        self._pat_toggled: list[tuple[int, int]] = []
+        self._pat_candidates: list[list[tuple[int, int]]] = []
+        self._pat_cand_k: int = 0
+        self._pat_applied: set[tuple[int, int]] = set()
+        self._pat_delta: list[tuple[int, int]] = []
         # Cheap-explore fallback bookkeeping.
         self._explore_last_sig: tuple = ()
         self._explore_pending: int | None = None
@@ -1160,6 +1176,12 @@ class GeneralAgent:
                 self._pat_sub = "probe"
                 self._pat_j = 0
                 self._pat_click_probes = []
+                self._pat_base_layer = layer.copy()
+                self._pat_toggled = []
+                self._pat_candidates = []
+                self._pat_cand_k = 0
+                self._pat_applied = set()
+                self._pat_delta = []
                 return True
         return False
 
@@ -1192,36 +1214,113 @@ class GeneralAgent:
         return self._emit_click(x, y)
 
     def _pattern_toggle_step(self, layer: np.ndarray, avail: list[int], latest_frame):
-        from admorphiq.primitives.pattern_match import build_stencil, plan_toggle
+        """Interactive GF(2) toggle solve, driven one action per call.
 
+        Two sub-phases:
+
+        * MEASURE (``probe`` / ``observe``) — click each candidate cell; on the
+          next frame, classify the change. A compact LOCAL flip near the click
+          marks a real interactive cell (its self-inverse undo restores the base
+          state); a far-away / global change is HUD/animation and is skipped
+          with no undo (saves the limited move budget). The kept cells are the
+          board's actual toggle buttons.
+        * SOLVE (``solve``) — derive candidate target flip-sets (indicator
+          polarities first, then all-on, then the homogeneity GF(2) solve) and
+          execute them one at a time via a reset-free delta-chain (clicks are
+          self-inverse, so moving from one candidate to the next clicks only the
+          symmetric difference). A cleared level is observed by the harness as a
+          level-up (state reset); an exhausted candidate that did not clear
+          advances to the next. No game id / title — pure observable signature.
+        """
         cells = self._pat_cells
-        if self._pat_sub == "probe":
+        sub = self._pat_sub
+
+        if sub == "probe":
             if self._pat_j >= len(cells):
-                # Measurement complete → solve and stage the solution clicks.
-                stencil = build_stencil(cells, self._pat_click_probes)
-                self._pat_queue = [
-                    (6, x, y) for (x, y) in plan_toggle(cells, stencil)
-                ]
-                self._pat_sub = "execute"
-                return self._pattern_toggle_step(layer, avail, latest_frame)
+                return self._begin_toggle_solve(layer, avail, latest_frame)
             self._pat_before = layer.copy()
-            self._pat_sub = "undo"
+            self._pat_sub = "observe"
             cx, cy = cells[self._pat_j]
             return self._emit_click(cx, cy)
-        if self._pat_sub == "undo":
+
+        if sub == "observe":
             cx, cy = cells[self._pat_j]
-            self._pat_click_probes.append(
-                {"x": cx, "y": cy, "before": self._pat_before, "after": layer.copy()}
-            )
+            before = self._pat_before
+            if _is_local_toggle(before, layer, cx, cy):
+                self._pat_click_probes.append(
+                    {"x": cx, "y": cy, "before": before, "after": layer.copy()}
+                )
+                self._pat_toggled.append((cx, cy))
+                self._pat_j += 1
+                self._pat_sub = "probe"
+                return self._emit_click(cx, cy)  # self-inverse: restore base
+            # Non-toggle (no change or far HUD/animation): no undo, probe next.
             self._pat_j += 1
             self._pat_sub = "probe"
-            return self._emit_click(cx, cy)  # self-inverse: restore base state
-        # execute
-        if self._pat_queue:
-            _aid, x, y = self._pat_queue.pop(0)
-            return self._emit_click(x, y)
+            return self._pattern_toggle_step(layer, avail, latest_frame)
+
+        if sub == "solve":
+            return self._toggle_solve_step(layer, avail, latest_frame)
+
         self._phase = _PHASE_EXPLORE
         return self._explore_step(layer, avail, latest_frame)
+
+    def _begin_toggle_solve(self, layer: np.ndarray, avail: list[int], latest_frame):
+        """Build the ordered candidate flip-sets and enter the SOLVE sub-phase."""
+        from admorphiq.primitives.pattern_match import (
+            build_stencil,
+            indicator_flip_sets,
+            plan_toggle,
+        )
+
+        toggle = self._pat_toggled
+        base = self._pat_base_layer if self._pat_base_layer is not None else layer
+        candidates: list[list[tuple[int, int]]] = []
+
+        def _add(flip: list[tuple[int, int]]) -> None:
+            if flip and flip not in candidates:
+                candidates.append(list(flip))
+
+        # 1) Indicator-defined target patterns (both polarities), smallest first.
+        for flip in indicator_flip_sets(base, toggle):
+            _add(flip)
+        # 2) Flip every cell (the simplest non-trivial uniform target).
+        _add(list(toggle))
+        # 3) Homogeneity GF(2) solve — the classic "all cells equal" lights-out.
+        stencil = build_stencil(toggle, self._pat_click_probes) if self._pat_click_probes else None
+        if stencil is not None:
+            _add(plan_toggle(toggle, stencil))
+
+        if not candidates:
+            self._phase = _PHASE_EXPLORE
+            return self._explore_step(layer, avail, latest_frame)
+
+        self._pat_candidates = candidates
+        self._pat_cand_k = 0
+        self._pat_applied = set()
+        self._pat_delta = sorted(candidates[0])
+        self._pat_sub = "solve"
+        return self._toggle_solve_step(layer, avail, latest_frame)
+
+    def _toggle_solve_step(self, layer: np.ndarray, avail: list[int], latest_frame):
+        """Emit the next delta click for the current candidate, or advance."""
+        if not self._pat_delta:
+            # Current candidate fully applied without a level-up → try the next.
+            self._pat_cand_k += 1
+            if self._pat_cand_k >= len(self._pat_candidates):
+                self._phase = _PHASE_EXPLORE
+                return self._explore_step(layer, avail, latest_frame)
+            target = set(self._pat_candidates[self._pat_cand_k])
+            self._pat_delta = sorted(target ^ self._pat_applied)
+            if not self._pat_delta:
+                return self._toggle_solve_step(layer, avail, latest_frame)
+
+        cell = self._pat_delta.pop(0)
+        if cell in self._pat_applied:
+            self._pat_applied.discard(cell)
+        else:
+            self._pat_applied.add(cell)
+        return self._emit_click(cell[0], cell[1])
 
     # ── execute phase (closed-loop) ──────────────────────────────────────────
 
@@ -1356,6 +1455,35 @@ class GeneralAgent:
 
 def _unit(v: int) -> int:
     return (v > 0) - (v < 0)
+
+
+def _is_local_toggle(
+    before: np.ndarray | None,
+    after: np.ndarray,
+    cx: int,
+    cy: int,
+    diff_max: int = _TOGGLE_DIFF_MAX,
+    locality_px: float = _TOGGLE_LOCALITY_PX,
+) -> bool:
+    """True when clicking ``(cx, cy)`` flipped a compact region AT that cell.
+
+    A real interactive toggle button changes a small, local block of pixels
+    centred on the click. A HUD counter, progress bar or first-level animation
+    instead changes pixels far from the click (or the whole frame). Requiring
+    the changed region to be both small (``<= diff_max`` px) and centred within
+    ``locality_px`` of the click rejects those, so the move-budgeted board is
+    not polluted with phantom cells. Pure / env-free.
+    """
+    if before is None or before.shape != after.shape:
+        return False
+    changed = before != after
+    n = int(np.count_nonzero(changed))
+    if n < 1 or n > diff_max:
+        return False
+    ys, xs = np.nonzero(changed)
+    mx = float(xs.mean())
+    my = float(ys.mean())
+    return abs(mx - cx) <= locality_px and abs(my - cy) <= locality_px
 
 
 def _state_name(frame) -> str:
