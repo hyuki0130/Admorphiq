@@ -36,16 +36,30 @@ ARC-AGI-3 is the first **interactive reasoning benchmark** — agents must explo
 
 ### Constraints (Kaggle Environment)
 
-| Constraint | Limit |
+> **⚠️ Hardware corrected 2026-06-25 (per competition overview).** The eval
+> machine is **`g4-standard-48`** — 1× **NVIDIA RTX PRO 6000 Blackwell,
+> 96GB GDDR7 VRAM**, 48 vCPUs, 180GB RAM (GPU/VRAM verified via the GCP
+> g4-standard-48 spec). Runtime ~**9h**, disk ~**32GB**. This **invalidates
+> the original "T4 16GB / 6h" assumption** that drove model selection. The
+> VRAM ceiling is effectively gone; the binding constraints are now the
+> ~32GB disk (model weight size) and ~9h runtime. Model selection is
+> reopened — see R17 below and `configs/llm.yaml`. (Confirm the exact
+> runtime/disk on the Kaggle overview; GPU is confirmed.)
+
+| Constraint | Limit (corrected 2026-06-25) |
 |-----------|-------|
-| CPU notebook | ≤ 6 hours runtime |
-| GPU notebook | ≤ 6 hours runtime (T4 16GB VRAM) |
+| GPU | `g4-standard-48`: 1× RTX PRO 6000 Blackwell, **96GB VRAM** |
+| Host | 48 vCPU, 180GB RAM |
+| Runtime | ~**9 hours** |
+| Disk | ~**32GB** (binding constraint — model weights must fit) |
 | Internet | **Disabled** (no external API calls) |
 | External data | Freely available public data + pre-trained models OK |
 | Submission | 1 per day |
 | Open source | Required for prize eligibility |
 
-**Key implication**: No Claude/GPT API calls. Must use offline models (quantized open-source LLMs on Kaggle GPU). Claude Code is dev-time only — final notebook ships with pre-downloaded open-weight model (candidate set under evaluation; see [LLM Selection](#llm-selection-phase-8-hypothesis-engine)).
+*(Superseded assumption: "≤6h runtime, T4 16GB VRAM". Many sections below — esp. [LLM Selection](#llm-selection-phase-8-hypothesis-engine) — still cite the old T4/VRAM math; those are stale and tracked for the R17 model-reselection round.)*
+
+**Key implication**: No Claude/GPT API calls. Must use offline open-weight LLMs. With 96GB VRAM the VRAM ceiling no longer constrains model choice — the real limits are ~32GB disk (weights) and ~9h runtime. Gemma 4 26B MoE (and even Q5/Q8 of ~26-32B models) now fit comfortably. Claude Code is dev-time only.
 
 ## Architecture Design
 

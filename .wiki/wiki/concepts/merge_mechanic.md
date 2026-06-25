@@ -47,8 +47,8 @@ Ordering matters: if you merge first and then discover you have too many of colo
 ## Related concepts
 
 - [[sprite_cluster]] — detection primitive
-- [[vacuum_click]] (planned) — the action semantics that enable merge
-- [[frame_diff_as_probe]] — see [[../lessons/frame_diff_as_probe]]
+- Vacuum-click action semantics (an `ACTION6(x, y)` that attracts nearby sprites toward the click) are what enable the merge; no dedicated concept page yet.
+- [[../lessons/frame_diff_as_probe]] — using frame diff to confirm a merge occurred
 
 ## Related games
 

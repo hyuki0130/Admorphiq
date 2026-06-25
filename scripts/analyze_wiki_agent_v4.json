@@ -1,0 +1,1690 @@
+{
+  "trace_file": "scripts/wiki_agent_results_r23_14b_v4.json",
+  "candidate": "qwen_3_14b_q4",
+  "envs": 40,
+  "primary_distribution": {
+    "click_rare": 25,
+    "bfs_state_space": 14,
+    "": 1
+  },
+  "fallback_distribution": {
+    "click_toggle_detect": 25,
+    "bfs_state_space": 24,
+    "click_rare": 14,
+    "spell_cast": 9,
+    "explore_and_interact": 4
+  },
+  "distinct_primaries": 3,
+  "rule_compliance_pct": 35.0,
+  "page_appearance": {
+    "llm_context/decision_tree.md": {
+      "envs": 40,
+      "envs_pct": 100.0,
+      "avg_chars": 1356.0,
+      "envs_clipped": 40
+    },
+    "debug/plan_failure_signatures.md": {
+      "envs": 40,
+      "envs_pct": 100.0,
+      "avg_chars": 6801.0,
+      "envs_clipped": 40
+    },
+    "selector.md": {
+      "envs": 40,
+      "envs_pct": 100.0,
+      "avg_chars": 10043.0,
+      "envs_clipped": 40
+    },
+    "reasoning/frame_to_strategy_chain.md": {
+      "envs": 40,
+      "envs_pct": 100.0,
+      "avg_chars": 5794.0,
+      "envs_clipped": 40
+    }
+  },
+  "saturation_histogram": {
+    "1.0": 40
+  },
+  "per_env": [
+    {
+      "title": "TU93",
+      "primary": "bfs_state_space",
+      "expected_by_decision_tree": "adaptive_bfs_solver",
+      "rule_followed": false,
+      "best_levels": 2,
+      "wiki_context_chars": 24000,
+      "budget": 24000,
+      "saturation": 1.0,
+      "page_count": 4,
+      "page_utilisation": [
+        {
+          "path": "llm_context/decision_tree.md",
+          "chars": 1356,
+          "page_words": 87,
+          "rationale_overlap": 6,
+          "util_pct": 6.9
+        },
+        {
+          "path": "debug/plan_failure_signatures.md",
+          "chars": 6801,
+          "page_words": 294,
+          "rationale_overlap": 10,
+          "util_pct": 3.4
+        },
+        {
+          "path": "selector.md",
+          "chars": 10043,
+          "page_words": 354,
+          "rationale_overlap": 16,
+          "util_pct": 4.5
+        },
+        {
+          "path": "reasoning/frame_to_strategy_chain.md",
+          "chars": 5794,
+          "page_words": 271,
+          "rationale_overlap": 13,
+          "util_pct": 4.8
+        }
+      ]
+    },
+    {
+      "title": "TU93",
+      "primary": "bfs_state_space",
+      "expected_by_decision_tree": "adaptive_bfs_solver",
+      "rule_followed": false,
+      "best_levels": 2,
+      "wiki_context_chars": 24000,
+      "budget": 24000,
+      "saturation": 1.0,
+      "page_count": 4,
+      "page_utilisation": [
+        {
+          "path": "llm_context/decision_tree.md",
+          "chars": 1356,
+          "page_words": 87,
+          "rationale_overlap": 6,
+          "util_pct": 6.9
+        },
+        {
+          "path": "debug/plan_failure_signatures.md",
+          "chars": 6801,
+          "page_words": 294,
+          "rationale_overlap": 10,
+          "util_pct": 3.4
+        },
+        {
+          "path": "selector.md",
+          "chars": 10043,
+          "page_words": 354,
+          "rationale_overlap": 16,
+          "util_pct": 4.5
+        },
+        {
+          "path": "reasoning/frame_to_strategy_chain.md",
+          "chars": 5794,
+          "page_words": 271,
+          "rationale_overlap": 13,
+          "util_pct": 4.8
+        }
+      ]
+    },
+    {
+      "title": "AR25",
+      "primary": "bfs_state_space",
+      "expected_by_decision_tree": "bfs_state_space",
+      "rule_followed": true,
+      "best_levels": 2,
+      "wiki_context_chars": 24000,
+      "budget": 24000,
+      "saturation": 1.0,
+      "page_count": 4,
+      "page_utilisation": [
+        {
+          "path": "llm_context/decision_tree.md",
+          "chars": 1356,
+          "page_words": 87,
+          "rationale_overlap": 7,
+          "util_pct": 8.0
+        },
+        {
+          "path": "debug/plan_failure_signatures.md",
+          "chars": 6801,
+          "page_words": 294,
+          "rationale_overlap": 11,
+          "util_pct": 3.7
+        },
+        {
+          "path": "selector.md",
+          "chars": 10043,
+          "page_words": 354,
+          "rationale_overlap": 10,
+          "util_pct": 2.8
+        },
+        {
+          "path": "reasoning/frame_to_strategy_chain.md",
+          "chars": 5794,
+          "page_words": 271,
+          "rationale_overlap": 10,
+          "util_pct": 3.7
+        }
+      ]
+    },
+    {
+      "title": "AR25",
+      "primary": "bfs_state_space",
+      "expected_by_decision_tree": "bfs_state_space",
+      "rule_followed": true,
+      "best_levels": 2,
+      "wiki_context_chars": 24000,
+      "budget": 24000,
+      "saturation": 1.0,
+      "page_count": 4,
+      "page_utilisation": [
+        {
+          "path": "llm_context/decision_tree.md",
+          "chars": 1356,
+          "page_words": 87,
+          "rationale_overlap": 8,
+          "util_pct": 9.2
+        },
+        {
+          "path": "debug/plan_failure_signatures.md",
+          "chars": 6801,
+          "page_words": 294,
+          "rationale_overlap": 13,
+          "util_pct": 4.4
+        },
+        {
+          "path": "selector.md",
+          "chars": 10043,
+          "page_words": 354,
+          "rationale_overlap": 12,
+          "util_pct": 3.4
+        },
+        {
+          "path": "reasoning/frame_to_strategy_chain.md",
+          "chars": 5794,
+          "page_words": 271,
+          "rationale_overlap": 16,
+          "util_pct": 5.9
+        }
+      ]
+    },
+    {
+      "title": "RE86",
+      "primary": "click_rare",
+      "expected_by_decision_tree": "bfs_state_space",
+      "rule_followed": false,
+      "best_levels": 0,
+      "wiki_context_chars": 24000,
+      "budget": 24000,
+      "saturation": 1.0,
+      "page_count": 4,
+      "page_utilisation": [
+        {
+          "path": "llm_context/decision_tree.md",
+          "chars": 1356,
+          "page_words": 87,
+          "rationale_overlap": 6,
+          "util_pct": 6.9
+        },
+        {
+          "path": "debug/plan_failure_signatures.md",
+          "chars": 6801,
+          "page_words": 294,
+          "rationale_overlap": 11,
+          "util_pct": 3.7
+        },
+        {
+          "path": "selector.md",
+          "chars": 10043,
+          "page_words": 354,
+          "rationale_overlap": 15,
+          "util_pct": 4.2
+        },
+        {
+          "path": "reasoning/frame_to_strategy_chain.md",
+          "chars": 5794,
+          "page_words": 271,
+          "rationale_overlap": 9,
+          "util_pct": 3.3
+        }
+      ]
+    },
+    {
+      "title": "RE86",
+      "primary": "click_rare",
+      "expected_by_decision_tree": "bfs_state_space",
+      "rule_followed": false,
+      "best_levels": 0,
+      "wiki_context_chars": 24000,
+      "budget": 24000,
+      "saturation": 1.0,
+      "page_count": 4,
+      "page_utilisation": [
+        {
+          "path": "llm_context/decision_tree.md",
+          "chars": 1356,
+          "page_words": 87,
+          "rationale_overlap": 5,
+          "util_pct": 5.7
+        },
+        {
+          "path": "debug/plan_failure_signatures.md",
+          "chars": 6801,
+          "page_words": 294,
+          "rationale_overlap": 6,
+          "util_pct": 2.0
+        },
+        {
+          "path": "selector.md",
+          "chars": 10043,
+          "page_words": 354,
+          "rationale_overlap": 11,
+          "util_pct": 3.1
+        },
+        {
+          "path": "reasoning/frame_to_strategy_chain.md",
+          "chars": 5794,
+          "page_words": 271,
+          "rationale_overlap": 7,
+          "util_pct": 2.6
+        }
+      ]
+    },
+    {
+      "title": "SU15",
+      "primary": "click_rare",
+      "expected_by_decision_tree": "click_toggle_detect",
+      "rule_followed": false,
+      "best_levels": 0,
+      "wiki_context_chars": 24000,
+      "budget": 24000,
+      "saturation": 1.0,
+      "page_count": 4,
+      "page_utilisation": [
+        {
+          "path": "llm_context/decision_tree.md",
+          "chars": 1356,
+          "page_words": 87,
+          "rationale_overlap": 7,
+          "util_pct": 8.0
+        },
+        {
+          "path": "debug/plan_failure_signatures.md",
+          "chars": 6801,
+          "page_words": 294,
+          "rationale_overlap": 14,
+          "util_pct": 4.8
+        },
+        {
+          "path": "selector.md",
+          "chars": 10043,
+          "page_words": 354,
+          "rationale_overlap": 22,
+          "util_pct": 6.2
+        },
+        {
+          "path": "reasoning/frame_to_strategy_chain.md",
+          "chars": 5794,
+          "page_words": 271,
+          "rationale_overlap": 21,
+          "util_pct": 7.7
+        }
+      ]
+    },
+    {
+      "title": "SU15",
+      "primary": "click_rare",
+      "expected_by_decision_tree": "click_toggle_detect",
+      "rule_followed": false,
+      "best_levels": 0,
+      "wiki_context_chars": 24000,
+      "budget": 24000,
+      "saturation": 1.0,
+      "page_count": 4,
+      "page_utilisation": [
+        {
+          "path": "llm_context/decision_tree.md",
+          "chars": 1356,
+          "page_words": 87,
+          "rationale_overlap": 5,
+          "util_pct": 5.7
+        },
+        {
+          "path": "debug/plan_failure_signatures.md",
+          "chars": 6801,
+          "page_words": 294,
+          "rationale_overlap": 7,
+          "util_pct": 2.4
+        },
+        {
+          "path": "selector.md",
+          "chars": 10043,
+          "page_words": 354,
+          "rationale_overlap": 12,
+          "util_pct": 3.4
+        },
+        {
+          "path": "reasoning/frame_to_strategy_chain.md",
+          "chars": 5794,
+          "page_words": 271,
+          "rationale_overlap": 8,
+          "util_pct": 3.0
+        }
+      ]
+    },
+    {
+      "title": "M0R0",
+      "primary": "click_rare",
+      "expected_by_decision_tree": "bfs_state_space",
+      "rule_followed": false,
+      "best_levels": 2,
+      "wiki_context_chars": 24000,
+      "budget": 24000,
+      "saturation": 1.0,
+      "page_count": 4,
+      "page_utilisation": [
+        {
+          "path": "llm_context/decision_tree.md",
+          "chars": 1356,
+          "page_words": 87,
+          "rationale_overlap": 10,
+          "util_pct": 11.5
+        },
+        {
+          "path": "debug/plan_failure_signatures.md",
+          "chars": 6801,
+          "page_words": 294,
+          "rationale_overlap": 11,
+          "util_pct": 3.7
+        },
+        {
+          "path": "selector.md",
+          "chars": 10043,
+          "page_words": 354,
+          "rationale_overlap": 19,
+          "util_pct": 5.4
+        },
+        {
+          "path": "reasoning/frame_to_strategy_chain.md",
+          "chars": 5794,
+          "page_words": 271,
+          "rationale_overlap": 17,
+          "util_pct": 6.3
+        }
+      ]
+    },
+    {
+      "title": "M0R0",
+      "primary": "click_rare",
+      "expected_by_decision_tree": "bfs_state_space",
+      "rule_followed": false,
+      "best_levels": 2,
+      "wiki_context_chars": 24000,
+      "budget": 24000,
+      "saturation": 1.0,
+      "page_count": 4,
+      "page_utilisation": [
+        {
+          "path": "llm_context/decision_tree.md",
+          "chars": 1356,
+          "page_words": 87,
+          "rationale_overlap": 10,
+          "util_pct": 11.5
+        },
+        {
+          "path": "debug/plan_failure_signatures.md",
+          "chars": 6801,
+          "page_words": 294,
+          "rationale_overlap": 11,
+          "util_pct": 3.7
+        },
+        {
+          "path": "selector.md",
+          "chars": 10043,
+          "page_words": 354,
+          "rationale_overlap": 19,
+          "util_pct": 5.4
+        },
+        {
+          "path": "reasoning/frame_to_strategy_chain.md",
+          "chars": 5794,
+          "page_words": 271,
+          "rationale_overlap": 17,
+          "util_pct": 6.3
+        }
+      ]
+    },
+    {
+      "title": "CN04",
+      "primary": "bfs_state_space",
+      "expected_by_decision_tree": "bfs_state_space",
+      "rule_followed": true,
+      "best_levels": 0,
+      "wiki_context_chars": 24000,
+      "budget": 24000,
+      "saturation": 1.0,
+      "page_count": 4,
+      "page_utilisation": [
+        {
+          "path": "llm_context/decision_tree.md",
+          "chars": 1356,
+          "page_words": 87,
+          "rationale_overlap": 5,
+          "util_pct": 5.7
+        },
+        {
+          "path": "debug/plan_failure_signatures.md",
+          "chars": 6801,
+          "page_words": 294,
+          "rationale_overlap": 7,
+          "util_pct": 2.4
+        },
+        {
+          "path": "selector.md",
+          "chars": 10043,
+          "page_words": 354,
+          "rationale_overlap": 15,
+          "util_pct": 4.2
+        },
+        {
+          "path": "reasoning/frame_to_strategy_chain.md",
+          "chars": 5794,
+          "page_words": 271,
+          "rationale_overlap": 12,
+          "util_pct": 4.4
+        }
+      ]
+    },
+    {
+      "title": "CN04",
+      "primary": "bfs_state_space",
+      "expected_by_decision_tree": "bfs_state_space",
+      "rule_followed": true,
+      "best_levels": 0,
+      "wiki_context_chars": 24000,
+      "budget": 24000,
+      "saturation": 1.0,
+      "page_count": 4,
+      "page_utilisation": [
+        {
+          "path": "llm_context/decision_tree.md",
+          "chars": 1356,
+          "page_words": 87,
+          "rationale_overlap": 5,
+          "util_pct": 5.7
+        },
+        {
+          "path": "debug/plan_failure_signatures.md",
+          "chars": 6801,
+          "page_words": 294,
+          "rationale_overlap": 7,
+          "util_pct": 2.4
+        },
+        {
+          "path": "selector.md",
+          "chars": 10043,
+          "page_words": 354,
+          "rationale_overlap": 15,
+          "util_pct": 4.2
+        },
+        {
+          "path": "reasoning/frame_to_strategy_chain.md",
+          "chars": 5794,
+          "page_words": 271,
+          "rationale_overlap": 12,
+          "util_pct": 4.4
+        }
+      ]
+    },
+    {
+      "title": "FT09",
+      "primary": "click_rare",
+      "expected_by_decision_tree": "click_rare",
+      "rule_followed": true,
+      "best_levels": 0,
+      "wiki_context_chars": 24000,
+      "budget": 24000,
+      "saturation": 1.0,
+      "page_count": 4,
+      "page_utilisation": [
+        {
+          "path": "llm_context/decision_tree.md",
+          "chars": 1356,
+          "page_words": 87,
+          "rationale_overlap": 7,
+          "util_pct": 8.0
+        },
+        {
+          "path": "debug/plan_failure_signatures.md",
+          "chars": 6801,
+          "page_words": 294,
+          "rationale_overlap": 11,
+          "util_pct": 3.7
+        },
+        {
+          "path": "selector.md",
+          "chars": 10043,
+          "page_words": 354,
+          "rationale_overlap": 17,
+          "util_pct": 4.8
+        },
+        {
+          "path": "reasoning/frame_to_strategy_chain.md",
+          "chars": 5794,
+          "page_words": 271,
+          "rationale_overlap": 17,
+          "util_pct": 6.3
+        }
+      ]
+    },
+    {
+      "title": "TR87",
+      "primary": "bfs_state_space",
+      "expected_by_decision_tree": "adaptive_bfs_solver",
+      "rule_followed": false,
+      "best_levels": 0,
+      "wiki_context_chars": 24000,
+      "budget": 24000,
+      "saturation": 1.0,
+      "page_count": 4,
+      "page_utilisation": [
+        {
+          "path": "llm_context/decision_tree.md",
+          "chars": 1356,
+          "page_words": 87,
+          "rationale_overlap": 4,
+          "util_pct": 4.6
+        },
+        {
+          "path": "debug/plan_failure_signatures.md",
+          "chars": 6801,
+          "page_words": 294,
+          "rationale_overlap": 12,
+          "util_pct": 4.1
+        },
+        {
+          "path": "selector.md",
+          "chars": 10043,
+          "page_words": 354,
+          "rationale_overlap": 14,
+          "util_pct": 4.0
+        },
+        {
+          "path": "reasoning/frame_to_strategy_chain.md",
+          "chars": 5794,
+          "page_words": 271,
+          "rationale_overlap": 17,
+          "util_pct": 6.3
+        }
+      ]
+    },
+    {
+      "title": "SC25",
+      "primary": "click_rare",
+      "expected_by_decision_tree": "bfs_state_space",
+      "rule_followed": false,
+      "best_levels": 0,
+      "wiki_context_chars": 24000,
+      "budget": 24000,
+      "saturation": 1.0,
+      "page_count": 4,
+      "page_utilisation": [
+        {
+          "path": "llm_context/decision_tree.md",
+          "chars": 1356,
+          "page_words": 87,
+          "rationale_overlap": 8,
+          "util_pct": 9.2
+        },
+        {
+          "path": "debug/plan_failure_signatures.md",
+          "chars": 6801,
+          "page_words": 294,
+          "rationale_overlap": 9,
+          "util_pct": 3.1
+        },
+        {
+          "path": "selector.md",
+          "chars": 10043,
+          "page_words": 354,
+          "rationale_overlap": 15,
+          "util_pct": 4.2
+        },
+        {
+          "path": "reasoning/frame_to_strategy_chain.md",
+          "chars": 5794,
+          "page_words": 271,
+          "rationale_overlap": 12,
+          "util_pct": 4.4
+        }
+      ]
+    },
+    {
+      "title": "SC25",
+      "primary": "click_rare",
+      "expected_by_decision_tree": "bfs_state_space",
+      "rule_followed": false,
+      "best_levels": 0,
+      "wiki_context_chars": 24000,
+      "budget": 24000,
+      "saturation": 1.0,
+      "page_count": 4,
+      "page_utilisation": [
+        {
+          "path": "llm_context/decision_tree.md",
+          "chars": 1356,
+          "page_words": 87,
+          "rationale_overlap": 8,
+          "util_pct": 9.2
+        },
+        {
+          "path": "debug/plan_failure_signatures.md",
+          "chars": 6801,
+          "page_words": 294,
+          "rationale_overlap": 9,
+          "util_pct": 3.1
+        },
+        {
+          "path": "selector.md",
+          "chars": 10043,
+          "page_words": 354,
+          "rationale_overlap": 15,
+          "util_pct": 4.2
+        },
+        {
+          "path": "reasoning/frame_to_strategy_chain.md",
+          "chars": 5794,
+          "page_words": 271,
+          "rationale_overlap": 12,
+          "util_pct": 4.4
+        }
+      ]
+    },
+    {
+      "title": "LP85",
+      "primary": "click_rare",
+      "expected_by_decision_tree": "click_rare",
+      "rule_followed": true,
+      "best_levels": 1,
+      "wiki_context_chars": 24000,
+      "budget": 24000,
+      "saturation": 1.0,
+      "page_count": 4,
+      "page_utilisation": [
+        {
+          "path": "llm_context/decision_tree.md",
+          "chars": 1356,
+          "page_words": 87,
+          "rationale_overlap": 4,
+          "util_pct": 4.6
+        },
+        {
+          "path": "debug/plan_failure_signatures.md",
+          "chars": 6801,
+          "page_words": 294,
+          "rationale_overlap": 9,
+          "util_pct": 3.1
+        },
+        {
+          "path": "selector.md",
+          "chars": 10043,
+          "page_words": 354,
+          "rationale_overlap": 12,
+          "util_pct": 3.4
+        },
+        {
+          "path": "reasoning/frame_to_strategy_chain.md",
+          "chars": 5794,
+          "page_words": 271,
+          "rationale_overlap": 14,
+          "util_pct": 5.2
+        }
+      ]
+    },
+    {
+      "title": "DC22",
+      "primary": "bfs_state_space",
+      "expected_by_decision_tree": "bfs_state_space",
+      "rule_followed": true,
+      "best_levels": 1,
+      "wiki_context_chars": 24000,
+      "budget": 24000,
+      "saturation": 1.0,
+      "page_count": 4,
+      "page_utilisation": [
+        {
+          "path": "llm_context/decision_tree.md",
+          "chars": 1356,
+          "page_words": 87,
+          "rationale_overlap": 7,
+          "util_pct": 8.0
+        },
+        {
+          "path": "debug/plan_failure_signatures.md",
+          "chars": 6801,
+          "page_words": 294,
+          "rationale_overlap": 7,
+          "util_pct": 2.4
+        },
+        {
+          "path": "selector.md",
+          "chars": 10043,
+          "page_words": 354,
+          "rationale_overlap": 11,
+          "util_pct": 3.1
+        },
+        {
+          "path": "reasoning/frame_to_strategy_chain.md",
+          "chars": 5794,
+          "page_words": 271,
+          "rationale_overlap": 10,
+          "util_pct": 3.7
+        }
+      ]
+    },
+    {
+      "title": "DC22",
+      "primary": "bfs_state_space",
+      "expected_by_decision_tree": "bfs_state_space",
+      "rule_followed": true,
+      "best_levels": 1,
+      "wiki_context_chars": 24000,
+      "budget": 24000,
+      "saturation": 1.0,
+      "page_count": 4,
+      "page_utilisation": [
+        {
+          "path": "llm_context/decision_tree.md",
+          "chars": 1356,
+          "page_words": 87,
+          "rationale_overlap": 7,
+          "util_pct": 8.0
+        },
+        {
+          "path": "debug/plan_failure_signatures.md",
+          "chars": 6801,
+          "page_words": 294,
+          "rationale_overlap": 7,
+          "util_pct": 2.4
+        },
+        {
+          "path": "selector.md",
+          "chars": 10043,
+          "page_words": 354,
+          "rationale_overlap": 11,
+          "util_pct": 3.1
+        },
+        {
+          "path": "reasoning/frame_to_strategy_chain.md",
+          "chars": 5794,
+          "page_words": 271,
+          "rationale_overlap": 10,
+          "util_pct": 3.7
+        }
+      ]
+    },
+    {
+      "title": "SP80",
+      "primary": "bfs_state_space",
+      "expected_by_decision_tree": "bfs_state_space",
+      "rule_followed": true,
+      "best_levels": 1,
+      "wiki_context_chars": 24000,
+      "budget": 24000,
+      "saturation": 1.0,
+      "page_count": 4,
+      "page_utilisation": [
+        {
+          "path": "llm_context/decision_tree.md",
+          "chars": 1356,
+          "page_words": 87,
+          "rationale_overlap": 5,
+          "util_pct": 5.7
+        },
+        {
+          "path": "debug/plan_failure_signatures.md",
+          "chars": 6801,
+          "page_words": 294,
+          "rationale_overlap": 11,
+          "util_pct": 3.7
+        },
+        {
+          "path": "selector.md",
+          "chars": 10043,
+          "page_words": 354,
+          "rationale_overlap": 15,
+          "util_pct": 4.2
+        },
+        {
+          "path": "reasoning/frame_to_strategy_chain.md",
+          "chars": 5794,
+          "page_words": 271,
+          "rationale_overlap": 16,
+          "util_pct": 5.9
+        }
+      ]
+    },
+    {
+      "title": "SP80",
+      "primary": "bfs_state_space",
+      "expected_by_decision_tree": "bfs_state_space",
+      "rule_followed": true,
+      "best_levels": 1,
+      "wiki_context_chars": 24000,
+      "budget": 24000,
+      "saturation": 1.0,
+      "page_count": 4,
+      "page_utilisation": [
+        {
+          "path": "llm_context/decision_tree.md",
+          "chars": 1356,
+          "page_words": 87,
+          "rationale_overlap": 5,
+          "util_pct": 5.7
+        },
+        {
+          "path": "debug/plan_failure_signatures.md",
+          "chars": 6801,
+          "page_words": 294,
+          "rationale_overlap": 11,
+          "util_pct": 3.7
+        },
+        {
+          "path": "selector.md",
+          "chars": 10043,
+          "page_words": 354,
+          "rationale_overlap": 15,
+          "util_pct": 4.2
+        },
+        {
+          "path": "reasoning/frame_to_strategy_chain.md",
+          "chars": 5794,
+          "page_words": 271,
+          "rationale_overlap": 16,
+          "util_pct": 5.9
+        }
+      ]
+    },
+    {
+      "title": "KA59",
+      "primary": "bfs_state_space",
+      "expected_by_decision_tree": "bfs_state_space",
+      "rule_followed": true,
+      "best_levels": 0,
+      "wiki_context_chars": 24000,
+      "budget": 24000,
+      "saturation": 1.0,
+      "page_count": 4,
+      "page_utilisation": [
+        {
+          "path": "llm_context/decision_tree.md",
+          "chars": 1356,
+          "page_words": 87,
+          "rationale_overlap": 3,
+          "util_pct": 3.4
+        },
+        {
+          "path": "debug/plan_failure_signatures.md",
+          "chars": 6801,
+          "page_words": 294,
+          "rationale_overlap": 8,
+          "util_pct": 2.7
+        },
+        {
+          "path": "selector.md",
+          "chars": 10043,
+          "page_words": 354,
+          "rationale_overlap": 13,
+          "util_pct": 3.7
+        },
+        {
+          "path": "reasoning/frame_to_strategy_chain.md",
+          "chars": 5794,
+          "page_words": 271,
+          "rationale_overlap": 12,
+          "util_pct": 4.4
+        }
+      ]
+    },
+    {
+      "title": "KA59",
+      "primary": "bfs_state_space",
+      "expected_by_decision_tree": "bfs_state_space",
+      "rule_followed": true,
+      "best_levels": 0,
+      "wiki_context_chars": 24000,
+      "budget": 24000,
+      "saturation": 1.0,
+      "page_count": 4,
+      "page_utilisation": [
+        {
+          "path": "llm_context/decision_tree.md",
+          "chars": 1356,
+          "page_words": 87,
+          "rationale_overlap": 3,
+          "util_pct": 3.4
+        },
+        {
+          "path": "debug/plan_failure_signatures.md",
+          "chars": 6801,
+          "page_words": 294,
+          "rationale_overlap": 8,
+          "util_pct": 2.7
+        },
+        {
+          "path": "selector.md",
+          "chars": 10043,
+          "page_words": 354,
+          "rationale_overlap": 13,
+          "util_pct": 3.7
+        },
+        {
+          "path": "reasoning/frame_to_strategy_chain.md",
+          "chars": 5794,
+          "page_words": 271,
+          "rationale_overlap": 12,
+          "util_pct": 4.4
+        }
+      ]
+    },
+    {
+      "title": "G50T",
+      "primary": "click_rare",
+      "expected_by_decision_tree": "bfs_state_space",
+      "rule_followed": false,
+      "best_levels": 0,
+      "wiki_context_chars": 24000,
+      "budget": 24000,
+      "saturation": 1.0,
+      "page_count": 4,
+      "page_utilisation": [
+        {
+          "path": "llm_context/decision_tree.md",
+          "chars": 1356,
+          "page_words": 87,
+          "rationale_overlap": 5,
+          "util_pct": 5.7
+        },
+        {
+          "path": "debug/plan_failure_signatures.md",
+          "chars": 6801,
+          "page_words": 294,
+          "rationale_overlap": 3,
+          "util_pct": 1.0
+        },
+        {
+          "path": "selector.md",
+          "chars": 10043,
+          "page_words": 354,
+          "rationale_overlap": 8,
+          "util_pct": 2.3
+        },
+        {
+          "path": "reasoning/frame_to_strategy_chain.md",
+          "chars": 5794,
+          "page_words": 271,
+          "rationale_overlap": 11,
+          "util_pct": 4.1
+        }
+      ]
+    },
+    {
+      "title": "SB26",
+      "primary": "click_rare",
+      "expected_by_decision_tree": "click_rare",
+      "rule_followed": true,
+      "best_levels": 0,
+      "wiki_context_chars": 24000,
+      "budget": 24000,
+      "saturation": 1.0,
+      "page_count": 4,
+      "page_utilisation": [
+        {
+          "path": "llm_context/decision_tree.md",
+          "chars": 1356,
+          "page_words": 87,
+          "rationale_overlap": 5,
+          "util_pct": 5.7
+        },
+        {
+          "path": "debug/plan_failure_signatures.md",
+          "chars": 6801,
+          "page_words": 294,
+          "rationale_overlap": 11,
+          "util_pct": 3.7
+        },
+        {
+          "path": "selector.md",
+          "chars": 10043,
+          "page_words": 354,
+          "rationale_overlap": 14,
+          "util_pct": 4.0
+        },
+        {
+          "path": "reasoning/frame_to_strategy_chain.md",
+          "chars": 5794,
+          "page_words": 271,
+          "rationale_overlap": 12,
+          "util_pct": 4.4
+        }
+      ]
+    },
+    {
+      "title": "LF52",
+      "primary": "click_rare",
+      "expected_by_decision_tree": "bfs_state_space",
+      "rule_followed": false,
+      "best_levels": 0,
+      "wiki_context_chars": 24000,
+      "budget": 24000,
+      "saturation": 1.0,
+      "page_count": 4,
+      "page_utilisation": [
+        {
+          "path": "llm_context/decision_tree.md",
+          "chars": 1356,
+          "page_words": 87,
+          "rationale_overlap": 10,
+          "util_pct": 11.5
+        },
+        {
+          "path": "debug/plan_failure_signatures.md",
+          "chars": 6801,
+          "page_words": 294,
+          "rationale_overlap": 14,
+          "util_pct": 4.8
+        },
+        {
+          "path": "selector.md",
+          "chars": 10043,
+          "page_words": 354,
+          "rationale_overlap": 18,
+          "util_pct": 5.1
+        },
+        {
+          "path": "reasoning/frame_to_strategy_chain.md",
+          "chars": 5794,
+          "page_words": 271,
+          "rationale_overlap": 18,
+          "util_pct": 6.6
+        }
+      ]
+    },
+    {
+      "title": "BP35",
+      "primary": "",
+      "expected_by_decision_tree": "bfs_state_space",
+      "rule_followed": false,
+      "best_levels": 0,
+      "wiki_context_chars": 24000,
+      "budget": 24000,
+      "saturation": 1.0,
+      "page_count": 4,
+      "page_utilisation": [
+        {
+          "path": "llm_context/decision_tree.md",
+          "chars": 1356,
+          "page_words": 87,
+          "rationale_overlap": 0,
+          "util_pct": 0.0
+        },
+        {
+          "path": "debug/plan_failure_signatures.md",
+          "chars": 6801,
+          "page_words": 294,
+          "rationale_overlap": 0,
+          "util_pct": 0.0
+        },
+        {
+          "path": "selector.md",
+          "chars": 10043,
+          "page_words": 354,
+          "rationale_overlap": 0,
+          "util_pct": 0.0
+        },
+        {
+          "path": "reasoning/frame_to_strategy_chain.md",
+          "chars": 5794,
+          "page_words": 271,
+          "rationale_overlap": 0,
+          "util_pct": 0.0
+        }
+      ]
+    },
+    {
+      "title": "S5I5",
+      "primary": "click_rare",
+      "expected_by_decision_tree": "click_toggle_detect",
+      "rule_followed": false,
+      "best_levels": 0,
+      "wiki_context_chars": 24000,
+      "budget": 24000,
+      "saturation": 1.0,
+      "page_count": 4,
+      "page_utilisation": [
+        {
+          "path": "llm_context/decision_tree.md",
+          "chars": 1356,
+          "page_words": 87,
+          "rationale_overlap": 8,
+          "util_pct": 9.2
+        },
+        {
+          "path": "debug/plan_failure_signatures.md",
+          "chars": 6801,
+          "page_words": 294,
+          "rationale_overlap": 14,
+          "util_pct": 4.8
+        },
+        {
+          "path": "selector.md",
+          "chars": 10043,
+          "page_words": 354,
+          "rationale_overlap": 16,
+          "util_pct": 4.5
+        },
+        {
+          "path": "reasoning/frame_to_strategy_chain.md",
+          "chars": 5794,
+          "page_words": 271,
+          "rationale_overlap": 20,
+          "util_pct": 7.4
+        }
+      ]
+    },
+    {
+      "title": "S5I5",
+      "primary": "click_rare",
+      "expected_by_decision_tree": "click_toggle_detect",
+      "rule_followed": false,
+      "best_levels": 0,
+      "wiki_context_chars": 24000,
+      "budget": 24000,
+      "saturation": 1.0,
+      "page_count": 4,
+      "page_utilisation": [
+        {
+          "path": "llm_context/decision_tree.md",
+          "chars": 1356,
+          "page_words": 87,
+          "rationale_overlap": 8,
+          "util_pct": 9.2
+        },
+        {
+          "path": "debug/plan_failure_signatures.md",
+          "chars": 6801,
+          "page_words": 294,
+          "rationale_overlap": 14,
+          "util_pct": 4.8
+        },
+        {
+          "path": "selector.md",
+          "chars": 10043,
+          "page_words": 354,
+          "rationale_overlap": 16,
+          "util_pct": 4.5
+        },
+        {
+          "path": "reasoning/frame_to_strategy_chain.md",
+          "chars": 5794,
+          "page_words": 271,
+          "rationale_overlap": 20,
+          "util_pct": 7.4
+        }
+      ]
+    },
+    {
+      "title": "R11L",
+      "primary": "click_rare",
+      "expected_by_decision_tree": "click_toggle_detect",
+      "rule_followed": false,
+      "best_levels": 0,
+      "wiki_context_chars": 24000,
+      "budget": 24000,
+      "saturation": 1.0,
+      "page_count": 4,
+      "page_utilisation": [
+        {
+          "path": "llm_context/decision_tree.md",
+          "chars": 1356,
+          "page_words": 87,
+          "rationale_overlap": 6,
+          "util_pct": 6.9
+        },
+        {
+          "path": "debug/plan_failure_signatures.md",
+          "chars": 6801,
+          "page_words": 294,
+          "rationale_overlap": 14,
+          "util_pct": 4.8
+        },
+        {
+          "path": "selector.md",
+          "chars": 10043,
+          "page_words": 354,
+          "rationale_overlap": 19,
+          "util_pct": 5.4
+        },
+        {
+          "path": "reasoning/frame_to_strategy_chain.md",
+          "chars": 5794,
+          "page_words": 271,
+          "rationale_overlap": 19,
+          "util_pct": 7.0
+        }
+      ]
+    },
+    {
+      "title": "R11L",
+      "primary": "click_rare",
+      "expected_by_decision_tree": "click_toggle_detect",
+      "rule_followed": false,
+      "best_levels": 0,
+      "wiki_context_chars": 24000,
+      "budget": 24000,
+      "saturation": 1.0,
+      "page_count": 4,
+      "page_utilisation": [
+        {
+          "path": "llm_context/decision_tree.md",
+          "chars": 1356,
+          "page_words": 87,
+          "rationale_overlap": 6,
+          "util_pct": 6.9
+        },
+        {
+          "path": "debug/plan_failure_signatures.md",
+          "chars": 6801,
+          "page_words": 294,
+          "rationale_overlap": 14,
+          "util_pct": 4.8
+        },
+        {
+          "path": "selector.md",
+          "chars": 10043,
+          "page_words": 354,
+          "rationale_overlap": 19,
+          "util_pct": 5.4
+        },
+        {
+          "path": "reasoning/frame_to_strategy_chain.md",
+          "chars": 5794,
+          "page_words": 271,
+          "rationale_overlap": 19,
+          "util_pct": 7.0
+        }
+      ]
+    },
+    {
+      "title": "SK48",
+      "primary": "click_rare",
+      "expected_by_decision_tree": "bfs_state_space",
+      "rule_followed": false,
+      "best_levels": 1,
+      "wiki_context_chars": 24000,
+      "budget": 24000,
+      "saturation": 1.0,
+      "page_count": 4,
+      "page_utilisation": [
+        {
+          "path": "llm_context/decision_tree.md",
+          "chars": 1356,
+          "page_words": 87,
+          "rationale_overlap": 4,
+          "util_pct": 4.6
+        },
+        {
+          "path": "debug/plan_failure_signatures.md",
+          "chars": 6801,
+          "page_words": 294,
+          "rationale_overlap": 5,
+          "util_pct": 1.7
+        },
+        {
+          "path": "selector.md",
+          "chars": 10043,
+          "page_words": 354,
+          "rationale_overlap": 12,
+          "util_pct": 3.4
+        },
+        {
+          "path": "reasoning/frame_to_strategy_chain.md",
+          "chars": 5794,
+          "page_words": 271,
+          "rationale_overlap": 12,
+          "util_pct": 4.4
+        }
+      ]
+    },
+    {
+      "title": "SK48",
+      "primary": "click_rare",
+      "expected_by_decision_tree": "bfs_state_space",
+      "rule_followed": false,
+      "best_levels": 1,
+      "wiki_context_chars": 24000,
+      "budget": 24000,
+      "saturation": 1.0,
+      "page_count": 4,
+      "page_utilisation": [
+        {
+          "path": "llm_context/decision_tree.md",
+          "chars": 1356,
+          "page_words": 87,
+          "rationale_overlap": 4,
+          "util_pct": 4.6
+        },
+        {
+          "path": "debug/plan_failure_signatures.md",
+          "chars": 6801,
+          "page_words": 294,
+          "rationale_overlap": 5,
+          "util_pct": 1.7
+        },
+        {
+          "path": "selector.md",
+          "chars": 10043,
+          "page_words": 354,
+          "rationale_overlap": 12,
+          "util_pct": 3.4
+        },
+        {
+          "path": "reasoning/frame_to_strategy_chain.md",
+          "chars": 5794,
+          "page_words": 271,
+          "rationale_overlap": 12,
+          "util_pct": 4.4
+        }
+      ]
+    },
+    {
+      "title": "WA30",
+      "primary": "bfs_state_space",
+      "expected_by_decision_tree": "bfs_state_space",
+      "rule_followed": true,
+      "best_levels": 0,
+      "wiki_context_chars": 24000,
+      "budget": 24000,
+      "saturation": 1.0,
+      "page_count": 4,
+      "page_utilisation": [
+        {
+          "path": "llm_context/decision_tree.md",
+          "chars": 1356,
+          "page_words": 87,
+          "rationale_overlap": 8,
+          "util_pct": 9.2
+        },
+        {
+          "path": "debug/plan_failure_signatures.md",
+          "chars": 6801,
+          "page_words": 294,
+          "rationale_overlap": 7,
+          "util_pct": 2.4
+        },
+        {
+          "path": "selector.md",
+          "chars": 10043,
+          "page_words": 354,
+          "rationale_overlap": 14,
+          "util_pct": 4.0
+        },
+        {
+          "path": "reasoning/frame_to_strategy_chain.md",
+          "chars": 5794,
+          "page_words": 271,
+          "rationale_overlap": 13,
+          "util_pct": 4.8
+        }
+      ]
+    },
+    {
+      "title": "VC33",
+      "primary": "click_rare",
+      "expected_by_decision_tree": "click_toggle_detect",
+      "rule_followed": false,
+      "best_levels": 1,
+      "wiki_context_chars": 24000,
+      "budget": 24000,
+      "saturation": 1.0,
+      "page_count": 4,
+      "page_utilisation": [
+        {
+          "path": "llm_context/decision_tree.md",
+          "chars": 1356,
+          "page_words": 87,
+          "rationale_overlap": 6,
+          "util_pct": 6.9
+        },
+        {
+          "path": "debug/plan_failure_signatures.md",
+          "chars": 6801,
+          "page_words": 294,
+          "rationale_overlap": 11,
+          "util_pct": 3.7
+        },
+        {
+          "path": "selector.md",
+          "chars": 10043,
+          "page_words": 354,
+          "rationale_overlap": 18,
+          "util_pct": 5.1
+        },
+        {
+          "path": "reasoning/frame_to_strategy_chain.md",
+          "chars": 5794,
+          "page_words": 271,
+          "rationale_overlap": 20,
+          "util_pct": 7.4
+        }
+      ]
+    },
+    {
+      "title": "VC33",
+      "primary": "click_rare",
+      "expected_by_decision_tree": "click_toggle_detect",
+      "rule_followed": false,
+      "best_levels": 1,
+      "wiki_context_chars": 24000,
+      "budget": 24000,
+      "saturation": 1.0,
+      "page_count": 4,
+      "page_utilisation": [
+        {
+          "path": "llm_context/decision_tree.md",
+          "chars": 1356,
+          "page_words": 87,
+          "rationale_overlap": 6,
+          "util_pct": 6.9
+        },
+        {
+          "path": "debug/plan_failure_signatures.md",
+          "chars": 6801,
+          "page_words": 294,
+          "rationale_overlap": 11,
+          "util_pct": 3.7
+        },
+        {
+          "path": "selector.md",
+          "chars": 10043,
+          "page_words": 354,
+          "rationale_overlap": 18,
+          "util_pct": 5.1
+        },
+        {
+          "path": "reasoning/frame_to_strategy_chain.md",
+          "chars": 5794,
+          "page_words": 271,
+          "rationale_overlap": 20,
+          "util_pct": 7.4
+        }
+      ]
+    },
+    {
+      "title": "LS20",
+      "primary": "click_rare",
+      "expected_by_decision_tree": "adaptive_bfs_solver",
+      "rule_followed": false,
+      "best_levels": 1,
+      "wiki_context_chars": 24000,
+      "budget": 24000,
+      "saturation": 1.0,
+      "page_count": 4,
+      "page_utilisation": [
+        {
+          "path": "llm_context/decision_tree.md",
+          "chars": 1356,
+          "page_words": 87,
+          "rationale_overlap": 6,
+          "util_pct": 6.9
+        },
+        {
+          "path": "debug/plan_failure_signatures.md",
+          "chars": 6801,
+          "page_words": 294,
+          "rationale_overlap": 7,
+          "util_pct": 2.4
+        },
+        {
+          "path": "selector.md",
+          "chars": 10043,
+          "page_words": 354,
+          "rationale_overlap": 13,
+          "util_pct": 3.7
+        },
+        {
+          "path": "reasoning/frame_to_strategy_chain.md",
+          "chars": 5794,
+          "page_words": 271,
+          "rationale_overlap": 17,
+          "util_pct": 6.3
+        }
+      ]
+    },
+    {
+      "title": "CD82",
+      "primary": "click_rare",
+      "expected_by_decision_tree": "click_color_order",
+      "rule_followed": false,
+      "best_levels": 1,
+      "wiki_context_chars": 24000,
+      "budget": 24000,
+      "saturation": 1.0,
+      "page_count": 4,
+      "page_utilisation": [
+        {
+          "path": "llm_context/decision_tree.md",
+          "chars": 1356,
+          "page_words": 87,
+          "rationale_overlap": 8,
+          "util_pct": 9.2
+        },
+        {
+          "path": "debug/plan_failure_signatures.md",
+          "chars": 6801,
+          "page_words": 294,
+          "rationale_overlap": 10,
+          "util_pct": 3.4
+        },
+        {
+          "path": "selector.md",
+          "chars": 10043,
+          "page_words": 354,
+          "rationale_overlap": 17,
+          "util_pct": 4.8
+        },
+        {
+          "path": "reasoning/frame_to_strategy_chain.md",
+          "chars": 5794,
+          "page_words": 271,
+          "rationale_overlap": 23,
+          "util_pct": 8.5
+        }
+      ]
+    },
+    {
+      "title": "TN36",
+      "primary": "click_rare",
+      "expected_by_decision_tree": "click_toggle_detect",
+      "rule_followed": false,
+      "best_levels": 0,
+      "wiki_context_chars": 24000,
+      "budget": 24000,
+      "saturation": 1.0,
+      "page_count": 4,
+      "page_utilisation": [
+        {
+          "path": "llm_context/decision_tree.md",
+          "chars": 1356,
+          "page_words": 87,
+          "rationale_overlap": 6,
+          "util_pct": 6.9
+        },
+        {
+          "path": "debug/plan_failure_signatures.md",
+          "chars": 6801,
+          "page_words": 294,
+          "rationale_overlap": 12,
+          "util_pct": 4.1
+        },
+        {
+          "path": "selector.md",
+          "chars": 10043,
+          "page_words": 354,
+          "rationale_overlap": 19,
+          "util_pct": 5.4
+        },
+        {
+          "path": "reasoning/frame_to_strategy_chain.md",
+          "chars": 5794,
+          "page_words": 271,
+          "rationale_overlap": 14,
+          "util_pct": 5.2
+        }
+      ]
+    },
+    {
+      "title": "TN36",
+      "primary": "click_rare",
+      "expected_by_decision_tree": "click_toggle_detect",
+      "rule_followed": false,
+      "best_levels": 0,
+      "wiki_context_chars": 24000,
+      "budget": 24000,
+      "saturation": 1.0,
+      "page_count": 4,
+      "page_utilisation": [
+        {
+          "path": "llm_context/decision_tree.md",
+          "chars": 1356,
+          "page_words": 87,
+          "rationale_overlap": 6,
+          "util_pct": 6.9
+        },
+        {
+          "path": "debug/plan_failure_signatures.md",
+          "chars": 6801,
+          "page_words": 294,
+          "rationale_overlap": 12,
+          "util_pct": 4.1
+        },
+        {
+          "path": "selector.md",
+          "chars": 10043,
+          "page_words": 354,
+          "rationale_overlap": 19,
+          "util_pct": 5.4
+        },
+        {
+          "path": "reasoning/frame_to_strategy_chain.md",
+          "chars": 5794,
+          "page_words": 271,
+          "rationale_overlap": 14,
+          "util_pct": 5.2
+        }
+      ]
+    }
+  ]
+}

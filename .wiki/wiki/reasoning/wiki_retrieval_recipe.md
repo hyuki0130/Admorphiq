@@ -125,3 +125,4 @@ def load_wiki_context(game_type: str, game_title_hint: str | None = None) -> str
 - [[frame_to_strategy_chain]]
 - [[hypothesis_check]]
 - [[../selector]]
+- [[../lessons/seed_reorder_regression_20260625]] — why seed ORDER is benched, not tuned by intuition (R16 front-loading regressed 14B -6 levels)

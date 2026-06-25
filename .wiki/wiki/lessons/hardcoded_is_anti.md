@@ -41,7 +41,7 @@ Runtime search is slower but never worse than 0. It also generalizes to unseen l
 
 If a solver is already hardcoded and we need it working on v2 today:
 
-1. **Do not** add a v2 branch with v2 hardcoded values. That's twice the debt for half the guarantee. See `[[lessons/do_not_patch_brittle]]` (planned).
+1. **Do not** add a v2 branch with v2 hardcoded values. That's twice the debt for half the guarantee. See `[[brittle_tells]]` for the red flags that mark brittle solver code.
 2. Instead, immediately start the frame-only refactor. It takes 1–3 days per solver but is permanent.
 3. In the interim, accept the v2 score loss and focus on the refactor as the only path forward.
 

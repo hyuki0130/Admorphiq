@@ -34,6 +34,7 @@ refactor_status: frame_only_works
 | DC22 | 1/6 | 1/6 | bfs_state_space ✅ |
 | M0R0 | 2/6 | 2/6 | bfs_state_space ✅ |
 | SP80 | 1/6 | 1/6 | bfs_state_space ✅ |
+| [[games/TU93]] | 2/9 | 2/9 | tu93_maze (brittle — refactor target) |
 | LF52 | 0/10 | n/a | currently failing (regression to investigate) |
 | BP35 | 1/9 | n/a | platformer variant (gravity) |
 
@@ -46,4 +47,4 @@ refactor_status: frame_only_works
 ## Related
 
 - [[strategies/frame_only/bfs_state_space]]
-- [[strategies/frame_only/frame_hashing]]
+- [[../concepts/frame_hashing]]

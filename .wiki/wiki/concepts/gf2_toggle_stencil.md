@@ -6,6 +6,8 @@ audience: inference agent and routing LLM
 
 # GF(2) Toggle Stencil
 
+> Any click-grid where each click flips a fixed cell subset is a linear system over GF(2); the solution is a click *subset* (`2^n` candidates), not an ordered sequence (`n!`). Measure the stencil `A` empirically, then solve `A·x = b`.
+
 Any click-grid puzzle where each click flips a fixed subset of cells
 (independent of their current state) is a linear system over the field
 with two elements, GF(2). The stencil matrix `A[i][j] = 1` iff

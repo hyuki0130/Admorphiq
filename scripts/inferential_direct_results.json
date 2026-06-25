@@ -1,0 +1,114 @@
+{
+  "results": [
+    {
+      "title": "FT09",
+      "game_id": "ft09-0d8bbf25",
+      "baseline_brittle": 6,
+      "status": "ok",
+      "levels": 1,
+      "actions": 50000,
+      "label": "inferential_agent/navigation",
+      "elapsed_s": 32.4,
+      "baseline_ratio": 0.17
+    },
+    {
+      "title": "CD82",
+      "game_id": "cd82-fb555c5d",
+      "baseline_brittle": 6,
+      "status": "ok",
+      "levels": 1,
+      "actions": 13662,
+      "label": "inferential_agent/navigation",
+      "elapsed_s": 3.6,
+      "baseline_ratio": 0.17
+    },
+    {
+      "title": "TN36",
+      "game_id": "tn36-ef4dde99",
+      "baseline_brittle": 7,
+      "status": "ok",
+      "levels": 0,
+      "actions": 6999,
+      "label": "",
+      "elapsed_s": 2.6,
+      "baseline_ratio": 0.0
+    },
+    {
+      "title": "SB26",
+      "game_id": "sb26-7fbdac44",
+      "baseline_brittle": 8,
+      "status": "ok",
+      "levels": 0,
+      "actions": 33405,
+      "label": "",
+      "elapsed_s": 78.5,
+      "baseline_ratio": 0.0
+    },
+    {
+      "title": "SU15",
+      "game_id": "su15-1944f8ab",
+      "baseline_brittle": 9,
+      "status": "ok",
+      "levels": 0,
+      "actions": 31213,
+      "label": "",
+      "elapsed_s": 9.3,
+      "baseline_ratio": 0.0
+    },
+    {
+      "title": "KA59",
+      "game_id": "ka59-38d34dbb",
+      "baseline_brittle": 4,
+      "status": "ok",
+      "levels": 0,
+      "actions": 6533,
+      "label": "",
+      "elapsed_s": 1.8,
+      "baseline_ratio": 0.0
+    },
+    {
+      "title": "WA30",
+      "game_id": "wa30-ee6fef47",
+      "baseline_brittle": 2,
+      "status": "ok",
+      "levels": 0,
+      "actions": 4369,
+      "label": "",
+      "elapsed_s": 70.7,
+      "baseline_ratio": 0.0
+    },
+    {
+      "title": "AR25",
+      "game_id": "ar25-0c556536",
+      "baseline_brittle": 2,
+      "status": "ok",
+      "levels": 1,
+      "actions": 9260,
+      "label": "inferential_agent/navigation",
+      "elapsed_s": 262.0,
+      "baseline_ratio": 0.5
+    },
+    {
+      "title": "M0R0",
+      "game_id": "m0r0-492f87ba",
+      "baseline_brittle": 2,
+      "status": "ok",
+      "levels": 1,
+      "actions": 7267,
+      "label": "inferential_agent/navigation",
+      "elapsed_s": 248.8,
+      "baseline_ratio": 0.5
+    },
+    {
+      "title": "DC22",
+      "game_id": "dc22-fdcac232",
+      "baseline_brittle": 1,
+      "status": "ok",
+      "levels": 1,
+      "actions": 50000,
+      "label": "inferential_agent/navigation",
+      "elapsed_s": 129.1,
+      "baseline_ratio": 1.0
+    }
+  ]
+}

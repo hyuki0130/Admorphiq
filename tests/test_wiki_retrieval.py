@@ -10,8 +10,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from admorphiq.hypothesis import (
     DiscoveryReport,
     GraphRetriever,
@@ -22,7 +20,6 @@ from admorphiq.hypothesis import (
     score_link,
     strip_frontmatter,
 )
-
 
 # ---------------------------------------------------------------------------
 # strip_frontmatter
@@ -227,20 +224,28 @@ def _report(**kwargs) -> DiscoveryReport:
 
 def test_seed_pages_start_with_decision_tree_then_selector():
     """Purpose: round 6 added llm_context/decision_tree.md as the
-    highest-density LLM anchor page (≤ 1200 chars carrying the full
-    dispatch decision). It must come first, followed by selector.md
-    and the core reasoning pages. If this drifts, 8B models lose
-    their compact anchor and fall back to collapsing all envs to
-    `bfs_state_space` / `click_rare` as measured in rounds 4-5.
+    highest-density LLM anchor page. It must come first, followed by the
+    failure playbook + selector + core reasoning pages (the generic prose
+    scaffolding). If this drifts, 8B/14B models lose their compact anchor.
 
-    Expected feedback: if seeds[0] is no longer decision_tree, Qwen
-    re-anchors on longer prose and routing degrades measurably.
+    NOTE: round 16 tried front-loading env-specific seeds BEFORE these
+    generic pages (B2). The 2026-06-25 14B bench regressed -6 levels, so
+    the reorder was reverted — env-specific seeds append LAST again. This
+    test pins the proven order. See
+    `lessons/seed_reorder_regression_20260625.md`.
+
+    Expected feedback: if seeds[0] is no longer decision_tree, or the four
+    generic pages fall out of the first 5, routing degrades measurably.
     """
     seeds = derive_seed_pages(_report())
     assert seeds[0] == "llm_context/decision_tree.md"
-    assert "selector.md" in seeds[:4]
-    assert "reasoning/frame_to_strategy_chain.md" in seeds[:4]
-    assert "reasoning/discovery_phase.md" in seeds[:4]
+    # R23-14B retrieval audit (2026-05-06) added plan_failure_signatures
+    # as a seed because the standard backlink walk never reaches it
+    # within the 16-24K char budget.
+    assert "debug/plan_failure_signatures.md" in seeds[:5]
+    assert "selector.md" in seeds[:5]
+    assert "reasoning/frame_to_strategy_chain.md" in seeds[:5]
+    assert "reasoning/discovery_phase.md" in seeds[:5]
 
 
 def test_seed_pages_hybrid_when_click_and_movement_both():

@@ -61,7 +61,7 @@ Obsolete if the runner is refactored to allocate per-strategy budgets explicitly
 
 ## Related
 
-- `[[silent_regression]]` — symptom class this debug entry resolves
+- `[[../lessons/silent_regression]]` — symptom class this debug entry resolves
 - `[[regression_bisect_playbook]]` — use if budget raise does not recover
 - `[[../games/LF52]]`
 - `[[../raw/commits.md]]` — entry for commit `b1cbc91` that established 50K budget

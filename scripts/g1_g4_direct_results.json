@@ -1,0 +1,144 @@
+{
+  "results": [
+    {
+      "strategy": "interactive_grid_toggle",
+      "title": "FT09",
+      "game_id": "ft09-0d8bbf25",
+      "baseline_brittle": 6,
+      "status": "ok",
+      "levels": 0,
+      "actions": 178,
+      "label": "",
+      "elapsed_s": 0.0,
+      "baseline_ratio": 0.0
+    },
+    {
+      "strategy": "interactive_grid_toggle",
+      "title": "CD82",
+      "game_id": "cd82-fb555c5d",
+      "baseline_brittle": 6,
+      "status": "ok",
+      "levels": 0,
+      "actions": 16,
+      "label": "",
+      "elapsed_s": 0.0,
+      "baseline_ratio": 0.0
+    },
+    {
+      "strategy": "interactive_grid_toggle",
+      "title": "TN36",
+      "game_id": "tn36-ef4dde99",
+      "baseline_brittle": 7,
+      "status": "ok",
+      "levels": 0,
+      "actions": 98,
+      "label": "",
+      "elapsed_s": 0.0,
+      "baseline_ratio": 0.0
+    },
+    {
+      "strategy": "sprite_cluster_interaction",
+      "title": "SB26",
+      "game_id": "sb26-7fbdac44",
+      "baseline_brittle": 8,
+      "status": "ok",
+      "levels": 0,
+      "actions": 28,
+      "label": "",
+      "elapsed_s": 0.0,
+      "baseline_ratio": 0.0
+    },
+    {
+      "strategy": "sprite_cluster_interaction",
+      "title": "SU15",
+      "game_id": "su15-1944f8ab",
+      "baseline_brittle": 9,
+      "status": "run_error",
+      "error": "list index out of range"
+    },
+    {
+      "strategy": "push_bfs_grid",
+      "title": "KA59",
+      "game_id": "ka59-38d34dbb",
+      "baseline_brittle": 4,
+      "status": "ok",
+      "levels": 0,
+      "actions": 48012,
+      "label": "",
+      "elapsed_s": 4.1,
+      "baseline_ratio": 0.0
+    },
+    {
+      "strategy": "push_bfs_grid",
+      "title": "WA30",
+      "game_id": "wa30-ee6fef47",
+      "baseline_brittle": 2,
+      "status": "ok",
+      "levels": 0,
+      "actions": 50000,
+      "label": "",
+      "elapsed_s": 1.8,
+      "baseline_ratio": 0.0
+    },
+    {
+      "strategy": "bfs_framehash",
+      "title": "FT09",
+      "game_id": "ft09-0d8bbf25",
+      "baseline_brittle": 6,
+      "status": "ok",
+      "levels": 0,
+      "actions": 152,
+      "label": "",
+      "elapsed_s": 0.0,
+      "baseline_ratio": 0.0
+    },
+    {
+      "strategy": "bfs_framehash",
+      "title": "CD82",
+      "game_id": "cd82-fb555c5d",
+      "baseline_brittle": 6,
+      "status": "ok",
+      "levels": 1,
+      "actions": 50001,
+      "label": "bfs_framehash",
+      "elapsed_s": 3.2,
+      "baseline_ratio": 0.17
+    },
+    {
+      "strategy": "bfs_framehash",
+      "title": "SB26",
+      "game_id": "sb26-7fbdac44",
+      "baseline_brittle": 8,
+      "status": "ok",
+      "levels": 0,
+      "actions": 37688,
+      "label": "",
+      "elapsed_s": 34.8,
+      "baseline_ratio": 0.0
+    },
+    {
+      "strategy": "bfs_framehash",
+      "title": "SU15",
+      "game_id": "su15-1944f8ab",
+      "baseline_brittle": 9,
+      "status": "ok",
+      "levels": 0,
+      "actions": 50000,
+      "label": "",
+      "elapsed_s": 10.0,
+      "baseline_ratio": 0.0
+    },
+    {
+      "strategy": "bfs_framehash",
+      "title": "KA59",
+      "game_id": "ka59-38d34dbb",
+      "baseline_brittle": 4,
+      "status": "ok",
+      "levels": 0,
+      "actions": 50000,
+      "label": "",
+      "elapsed_s": 4.9,
+      "baseline_ratio": 0.0
+    }
+  ]
+}

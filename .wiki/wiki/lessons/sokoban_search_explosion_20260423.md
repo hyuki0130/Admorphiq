@@ -7,6 +7,8 @@ status: ceiling identified; workaround needs specialized plan
 
 # Frame-Hash BFS Saturates on 2-Player Sokoban (R19)
 
+> Frame-hash BFS cannot clear 2-player Sokoban (KA59) inside the Kaggle envelope — branching ~24/step makes a depth-10 search ~10^13 states, far beyond the 15k-state cap. The fix is a specialist `_plan_push_bfs` over `(player_xy, block_set)` tuples with an A* Manhattan-to-goal heuristic.
+
 ## What
 
 `strat_bfs_state_space` uses a frame-hash state abstraction: two

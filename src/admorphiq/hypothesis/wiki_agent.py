@@ -332,13 +332,18 @@ Emit EXACTLY ONE JSON object. No prose, no code fences.
 
 - `primary_strategy` and every `fallback_stack` entry MUST appear verbatim
   in Available Strategies. Case-sensitive. No invented names.
-- If confidence < 0.5, set `game_type: "unknown"` and let `bfs_state_space`
-  be the primary. Do not guess. Honest uncertainty is more useful than a
-  confident wrong answer.
-- When the game title lowercased matches a frame-only strategy in the
-  whitelist (e.g., title SU15 <-> strategy `su15_frame_only`), prefer that
-  strategy in the primary slot. Frame-only game-specific strategies carry
-  more prior than generic ones.
+- `fallback_stack` entries MUST be DISTINCT — no duplicate strategy names.
+  Pick three different strategies to try if the primary fails.
+- If you are uncertain (confidence < 0.5), set
+  `primary_strategy: "adaptive_bfs_solver"`. It runs a five-phase
+  observation→entity→goal→plan→loop pipeline that picks the right
+  internal algorithm per env, so it is the safe default when no specific
+  signature dominates.
+- Pick a peer (not adaptive_bfs_solver) ONLY when the env signature
+  unambiguously matches that peer's Observable Signature in
+  `strategies/frame_only/<name>.md` AND the recommended strategy is in
+  Available Strategies above. If the relevant peer name is not in the
+  list, fall back to `adaptive_bfs_solver`.
 - Use `dir_map`, `player_color`, and `movable_region_count` to detect
   movement / sokoban / multi-character games before defaulting to click.
 - `change_topology == "level_transition"` means the probe already tripped
@@ -710,7 +715,7 @@ class WikiAgent:
         llm: LLMBackend,
         strategy_registry: dict[str, Callable[..., tuple[int, str, int]]],
         retriever: "GraphRetriever | None" = None,
-        context_chars: int = 16000,
+        context_chars: int = 32000,
         round_num: int = 1,
         round_learnings: str = _DEFAULT_ROUND_LEARNINGS,
     ) -> None:
@@ -724,6 +729,10 @@ class WikiAgent:
         self.retriever = retriever or GraphRetriever(WIKI_DIR)
         # Populated by build_prompt; exposed to run() for trace emission.
         self._last_retrieved_pages: list[str] = []
+        # R23-14B observability — see build_prompt.
+        self._last_retrieved_page_sizes: list[tuple[str, int]] = []
+        self._last_wiki_context_chars: int = 0
+        self._last_prompt_chars: int = 0
 
     def build_prompt(
         self, report: DiscoveryReport, wiki_needs: list[str] | None = None
@@ -732,6 +741,13 @@ class WikiAgent:
             report, wiki_needs=wiki_needs, budget_chars=self.context_chars
         )
         self._last_retrieved_pages = retrieved
+        # R23-14B observability: expose per-page char counts + the
+        # rendered wiki context length so the trace can show what the
+        # LLM actually saw vs the 24K budget.
+        self._last_retrieved_page_sizes = list(
+            getattr(self.retriever, "_last_page_sizes", [])
+        )
+        self._last_wiki_context_chars = len(context)
         names = sorted(self.strategies.keys())
         return _PROMPT_TEMPLATE.format(
             round_num=self.round_num,
@@ -755,8 +771,9 @@ class WikiAgent:
             strategy_list=", ".join(names),
         )
 
-    def classify(self, report: DiscoveryReport, max_tokens: int = 512) -> Hypothesis:
+    def classify(self, report: DiscoveryReport, max_tokens: int = 1536) -> Hypothesis:
         prompt = self.build_prompt(report)
+        self._last_prompt_chars = len(prompt)
         # Inject the live strategy whitelist as enum constraints on
         # primary_strategy and fallback_stack items. Measured on the
         # 2026-04-21 R7 bench (v1): the base schema (string type only)
@@ -791,10 +808,25 @@ class WikiAgent:
             confidence = float(parsed.get("confidence", 0.0))
         except (TypeError, ValueError):
             confidence = 0.0
+        # Dedupe fallback_stack — Ollama JSON schema `uniqueItems` is not
+        # enforced by Qwen 3 8B/14B in practice (R23-14B-v3 trace measured
+        # `["click_rare", "click_rare", "click_rare"]` despite uniqueItems=True).
+        # Python post-process is the reliable way to guarantee distinct
+        # fallbacks.
+        raw_fallbacks = [str(s) for s in parsed.get("fallback_stack", [])]
+        primary_str = str(parsed.get("primary_strategy", ""))
+        seen_fb: set[str] = {primary_str} if primary_str else set()
+        deduped_fb: list[str] = []
+        for s in raw_fallbacks:
+            if s and s not in seen_fb:
+                seen_fb.add(s)
+                deduped_fb.append(s)
+            if len(deduped_fb) >= 3:
+                break
         hyp = Hypothesis(
             game_type=str(parsed.get("game_type", "unknown")),
-            primary_strategy=str(parsed.get("primary_strategy", "")),
-            fallback_stack=[str(s) for s in parsed.get("fallback_stack", [])][:3],
+            primary_strategy=primary_str,
+            fallback_stack=deduped_fb,
             rationale=str(parsed.get("rationale", "")),
             confidence=max(0.0, min(1.0, confidence)),
             doubt=str(parsed.get("doubt", "")),
@@ -862,6 +894,14 @@ class WikiAgent:
                 "wiki_needs": hyp.wiki_needs,
             },
             "retrieved_pages": list(self._last_retrieved_pages),
+            "retrieved_pages_detail": [
+                {"path": p, "chars": c}
+                for p, c in self._last_retrieved_page_sizes
+            ],
+            "wiki_context_chars": self._last_wiki_context_chars,
+            "prompt_chars": self._last_prompt_chars,
+            "context_budget": self.context_chars,
+            "raw_response": hyp.raw,
             "executions": [],
             "best_levels": report.reset_levels,
         }

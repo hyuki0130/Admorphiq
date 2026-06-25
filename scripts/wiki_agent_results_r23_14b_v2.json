@@ -1,0 +1,743 @@
+{
+  "timestamp": "2026-05-06T19:12:05",
+  "candidate": "qwen_3_14b_q4",
+  "results": [
+    {
+      "game_title": "TU93",
+      "discovery": {
+        "available_actions": [
+          1,
+          2,
+          3,
+          4
+        ],
+        "layer_count": 1,
+        "dominant_colors": [
+          [
+            5,
+            3465
+          ],
+          [
+            2,
+            288
+          ],
+          [
+            6,
+            64
+          ],
+          [
+            14,
+            9
+          ],
+          [
+            9,
+            8
+          ],
+          [
+            4,
+            1
+          ]
+        ],
+        "probe_diffs": {
+          "1": 1,
+          "2": 1,
+          "3": 1,
+          "4": 8
+        },
+        "dir_map": {
+          "4": "N"
+        },
+        "player_color": 2,
+        "movable_region_count": 3,
+        "click_responsive_cells": [],
+        "change_topology": "mixed",
+        "color_histogram": {
+          "5": 0.8459,
+          "2": 0.0703,
+          "0": 0.0637,
+          "6": 0.0156,
+          "14": 0.0022,
+          "9": 0.002,
+          "4": 0.0002
+        },
+        "symmetry_score": 0.8579
+      },
+      "hypothesis": {
+        "game_type": "movement",
+        "primary_strategy": "bfs_state_space",
+        "fallback_stack": [
+          "click_rare",
+          "spell_cast"
+        ],
+        "rationale": "Available actions [1, 2, 3, 4] with directional mapping {4: 'N'} indicate movement controls. Probe_diffs {1: 1, 2: 1, 3: 1, 4: 8} show directional action 4 has the most visual impact, consistent with movement. Player_color 2 and movable_region_count 3 suggest a navigable environment. Color histogram dominated by color 5 (84.6%) with other colors as minor elements indicates a simple visual design typical of movement puzzles. Symmetry score 0.8579 suggests a structured level layout. Since this is a movement game with directional controls and no responsive click cells, the primary strategy is state-space search (bfs_state_space). Fallback strategies include click_rare for potential toggle mechanics and spell_cast for any hidden action sequences.",
+        "confidence": 0.82,
+        "doubt": "",
+        "features_missing": [],
+        "wiki_gaps": [],
+        "wiki_needs": []
+      },
+      "retrieved_pages": [
+        "llm_context/decision_tree.md",
+        "debug/plan_failure_signatures.md",
+        "selector.md",
+        "reasoning/frame_to_strategy_chain.md",
+        "reasoning/discovery_phase.md"
+      ],
+      "executions": [
+        {
+          "strategy": "bfs_state_space",
+          "winning_label": "bfs_state_space",
+          "levels": 2,
+          "actions": 53,
+          "elapsed_s": 1.72,
+          "status": "ok"
+        }
+      ],
+      "best_levels": 2,
+      "total_elapsed_s": 38.26,
+      "status": "ok",
+      "env_index": 1,
+      "game_id": "tu93-0768757b"
+    },
+    {
+      "game_title": "TU93",
+      "discovery": {
+        "available_actions": [
+          1,
+          2,
+          3,
+          4
+        ],
+        "layer_count": 1,
+        "dominant_colors": [
+          [
+            5,
+            3465
+          ],
+          [
+            2,
+            288
+          ],
+          [
+            6,
+            64
+          ],
+          [
+            14,
+            9
+          ],
+          [
+            9,
+            8
+          ],
+          [
+            4,
+            1
+          ]
+        ],
+        "probe_diffs": {
+          "1": 1,
+          "2": 1,
+          "3": 1,
+          "4": 8
+        },
+        "dir_map": {
+          "4": "N"
+        },
+        "player_color": 2,
+        "movable_region_count": 3,
+        "click_responsive_cells": [],
+        "change_topology": "mixed",
+        "color_histogram": {
+          "5": 0.8459,
+          "2": 0.0703,
+          "0": 0.0637,
+          "6": 0.0156,
+          "14": 0.0022,
+          "9": 0.002,
+          "4": 0.0002
+        },
+        "symmetry_score": 0.8579
+      },
+      "hypothesis": {
+        "game_type": "movement",
+        "primary_strategy": "bfs_state_space",
+        "fallback_stack": [
+          "click_rare",
+          "spell_cast"
+        ],
+        "rationale": "Available actions [1, 2, 3, 4] with directional mapping {4: 'N'} indicate movement controls. Probe_diffs {1: 1, 2: 1, 3: 1, 4: 8} show directional action 4 has the most visual impact, consistent with movement. Player_color 2 and movable_region_count 3 suggest a navigable environment. Color histogram dominated by color 5 (84.6%) with other colors as minor elements indicates a simple visual design typical of movement puzzles. Symmetry score 0.8579 suggests a structured level layout. Since this is a movement game with directional controls and no responsive click cells, the primary strategy is state-space search (bfs_state_space). Fallback strategies include click_rare for potential toggle mechanics and spell_cast for any hidden action sequences.",
+        "confidence": 0.82,
+        "doubt": "",
+        "features_missing": [],
+        "wiki_gaps": [],
+        "wiki_needs": []
+      },
+      "retrieved_pages": [
+        "llm_context/decision_tree.md",
+        "debug/plan_failure_signatures.md",
+        "selector.md",
+        "reasoning/frame_to_strategy_chain.md",
+        "reasoning/discovery_phase.md"
+      ],
+      "executions": [
+        {
+          "strategy": "bfs_state_space",
+          "winning_label": "bfs_state_space",
+          "levels": 2,
+          "actions": 53,
+          "elapsed_s": 1.76,
+          "status": "ok"
+        }
+      ],
+      "best_levels": 2,
+      "total_elapsed_s": 32.96,
+      "status": "ok",
+      "env_index": 2,
+      "game_id": "tu93-0768757b"
+    },
+    {
+      "game_title": "AR25",
+      "discovery": {
+        "available_actions": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "layer_count": 1,
+        "dominant_colors": [
+          [
+            9,
+            3645
+          ],
+          [
+            10,
+            189
+          ],
+          [
+            11,
+            109
+          ],
+          [
+            5,
+            103
+          ],
+          [
+            4,
+            45
+          ]
+        ],
+        "probe_diffs": {
+          "1": 109,
+          "2": 109,
+          "3": 109,
+          "4": 109,
+          "6": 0,
+          "-6": 0
+        },
+        "dir_map": {},
+        "player_color": null,
+        "movable_region_count": 5,
+        "click_responsive_cells": [],
+        "change_topology": "color_toggle",
+        "color_histogram": {
+          "9": 0.8899,
+          "10": 0.0461,
+          "11": 0.0266,
+          "5": 0.0251,
+          "4": 0.011,
+          "0": 0.0012
+        },
+        "symmetry_score": 0.8896
+      },
+      "hypothesis": {
+        "game_type": "movement",
+        "primary_strategy": "bfs_state_space",
+        "fallback_stack": [
+          "click_rare",
+          "spell_cast"
+        ],
+        "rationale": "The probe_diffs show uniform changes (109 pixels per action) across directional actions 1-4, indicating consistent movement mechanics. The lack of responsive click cells (-6: 0) and the color_toggle change topology suggest a movement-based game where actions modify the environment rather than trigger instant effects. The symmetry score (0.8896) and dominant color (9: 88.99%) indicate a structured level layout, making BFS enumeration of states viable.",
+        "confidence": 0.85,
+        "doubt": "",
+        "features_missing": [],
+        "wiki_gaps": [],
+        "wiki_needs": []
+      },
+      "retrieved_pages": [
+        "llm_context/decision_tree.md",
+        "debug/plan_failure_signatures.md",
+        "selector.md",
+        "reasoning/frame_to_strategy_chain.md",
+        "reasoning/discovery_phase.md"
+      ],
+      "executions": [
+        {
+          "strategy": "bfs_state_space",
+          "winning_label": "bfs_state_space",
+          "levels": 2,
+          "actions": 2104,
+          "elapsed_s": 176.86,
+          "status": "ok"
+        }
+      ],
+      "best_levels": 2,
+      "total_elapsed_s": 203.67,
+      "status": "ok",
+      "env_index": 3,
+      "game_id": "ar25-0c556536"
+    },
+    {
+      "game_title": "AR25",
+      "discovery": {
+        "available_actions": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "layer_count": 1,
+        "dominant_colors": [
+          [
+            9,
+            3645
+          ],
+          [
+            10,
+            189
+          ],
+          [
+            11,
+            109
+          ],
+          [
+            5,
+            103
+          ],
+          [
+            4,
+            45
+          ]
+        ],
+        "probe_diffs": {
+          "1": 109,
+          "2": 109,
+          "3": 109,
+          "4": 109,
+          "6": 0,
+          "-6": 0
+        },
+        "dir_map": {},
+        "player_color": null,
+        "movable_region_count": 5,
+        "click_responsive_cells": [],
+        "change_topology": "color_toggle",
+        "color_histogram": {
+          "9": 0.8899,
+          "10": 0.0461,
+          "11": 0.0266,
+          "5": 0.0251,
+          "4": 0.011,
+          "0": 0.0012
+        },
+        "symmetry_score": 0.8896
+      },
+      "hypothesis": {
+        "game_type": "movement",
+        "primary_strategy": "bfs_state_space",
+        "fallback_stack": [
+          "click_rare",
+          "spell_cast"
+        ],
+        "rationale": "The probe_diffs show uniform changes (109 pixels per action) across directional actions 1-4, indicating consistent movement mechanics. The lack of responsive click cells (-6: 0) and the color_toggle change topology suggest a movement-based game where actions modify the environment rather than trigger instant effects. The symmetry score (0.8896) and dominant color (9: 88.99%) indicate a structured level layout, making BFS enumeration of states viable.",
+        "confidence": 0.85,
+        "doubt": "",
+        "features_missing": [],
+        "wiki_gaps": [],
+        "wiki_needs": []
+      },
+      "retrieved_pages": [
+        "llm_context/decision_tree.md",
+        "debug/plan_failure_signatures.md",
+        "selector.md",
+        "reasoning/frame_to_strategy_chain.md",
+        "reasoning/discovery_phase.md"
+      ],
+      "executions": [
+        {
+          "strategy": "bfs_state_space",
+          "winning_label": "bfs_state_space",
+          "levels": 2,
+          "actions": 2104,
+          "elapsed_s": 175.68,
+          "status": "ok"
+        }
+      ],
+      "best_levels": 2,
+      "total_elapsed_s": 203.0,
+      "status": "ok",
+      "env_index": 4,
+      "game_id": "ar25-0c556536"
+    },
+    {
+      "game_title": "RE86",
+      "discovery": {
+        "available_actions": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "layer_count": 1,
+        "dominant_colors": [
+          [
+            5,
+            3862
+          ],
+          [
+            4,
+            64
+          ],
+          [
+            15,
+            64
+          ],
+          [
+            9,
+            56
+          ],
+          [
+            11,
+            49
+          ]
+        ],
+        "probe_diffs": {
+          "1": 61,
+          "2": 61,
+          "3": 61,
+          "4": 61
+        },
+        "dir_map": {},
+        "player_color": null,
+        "movable_region_count": 5,
+        "click_responsive_cells": [],
+        "change_topology": "color_toggle",
+        "color_histogram": {
+          "5": 0.9429,
+          "4": 0.0156,
+          "15": 0.0156,
+          "9": 0.0137,
+          "11": 0.012,
+          "0": 0.0002
+        },
+        "symmetry_score": 0.9312
+      },
+      "hypothesis": {
+        "game_type": "unknown",
+        "primary_strategy": "bfs_state_space",
+        "fallback_stack": [
+          "click_rare",
+          "spell_cast"
+        ],
+        "rationale": "The probe_diffs show uniform changes across directional actions (1-4), but no movement is detected (dir_map is empty). The change_topology is 'color_toggle', suggesting some toggle-like behavior, but no clear player entity is identified (player_color is null). With only 5 available actions and no clear classification, the game is marked as 'unknown'. The fallback stack includes 'bfs_state_space' (most used primary), 'click_rare' (for games with rare clickable targets), and 'spell_cast' (for games with spell-like actions).",
+        "confidence": 0.6,
+        "doubt": "",
+        "features_missing": [],
+        "wiki_gaps": [],
+        "wiki_needs": []
+      },
+      "retrieved_pages": [
+        "llm_context/decision_tree.md",
+        "debug/plan_failure_signatures.md",
+        "selector.md",
+        "reasoning/frame_to_strategy_chain.md",
+        "reasoning/discovery_phase.md"
+      ],
+      "executions": [
+        {
+          "strategy": "bfs_state_space",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 1,
+          "elapsed_s": 35.05,
+          "status": "ok"
+        },
+        {
+          "strategy": "click_rare",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 234,
+          "elapsed_s": 0.01,
+          "status": "ok"
+        },
+        {
+          "strategy": "spell_cast",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 733,
+          "elapsed_s": 0.04,
+          "status": "ok"
+        }
+      ],
+      "best_levels": 0,
+      "total_elapsed_s": 62.45,
+      "status": "ok",
+      "env_index": 5,
+      "game_id": "re86-8af5384d"
+    },
+    {
+      "game_title": "RE86",
+      "discovery": {
+        "available_actions": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "layer_count": 1,
+        "dominant_colors": [
+          [
+            5,
+            3862
+          ],
+          [
+            4,
+            64
+          ],
+          [
+            15,
+            64
+          ],
+          [
+            9,
+            56
+          ],
+          [
+            11,
+            49
+          ]
+        ],
+        "probe_diffs": {
+          "1": 61,
+          "2": 61,
+          "3": 61,
+          "4": 61
+        },
+        "dir_map": {},
+        "player_color": null,
+        "movable_region_count": 5,
+        "click_responsive_cells": [],
+        "change_topology": "color_toggle",
+        "color_histogram": {
+          "5": 0.9429,
+          "4": 0.0156,
+          "15": 0.0156,
+          "9": 0.0137,
+          "11": 0.012,
+          "0": 0.0002
+        },
+        "symmetry_score": 0.9312
+      },
+      "hypothesis": {
+        "game_type": "unknown",
+        "primary_strategy": "bfs_state_space",
+        "fallback_stack": [
+          "click_rare",
+          "spell_cast"
+        ],
+        "rationale": "The probe_diffs show uniform changes across directional actions (1-4), but no movement is detected (dir_map is empty). The change_topology is 'color_toggle', suggesting a toggle-based puzzle. However, the lack of a clear player entity and the absence of responsive click cells makes classification difficult. The fallback strategies are chosen to cover both toggle-based (click_rare) and spell-based (spell_cast) possibilities.",
+        "confidence": 0.65,
+        "doubt": "",
+        "features_missing": [],
+        "wiki_gaps": [],
+        "wiki_needs": []
+      },
+      "retrieved_pages": [
+        "llm_context/decision_tree.md",
+        "debug/plan_failure_signatures.md",
+        "selector.md",
+        "reasoning/frame_to_strategy_chain.md",
+        "reasoning/discovery_phase.md"
+      ],
+      "executions": [
+        {
+          "strategy": "bfs_state_space",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 1,
+          "elapsed_s": 35.56,
+          "status": "ok"
+        },
+        {
+          "strategy": "click_rare",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 234,
+          "elapsed_s": 0.01,
+          "status": "ok"
+        },
+        {
+          "strategy": "spell_cast",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 733,
+          "elapsed_s": 0.03,
+          "status": "ok"
+        }
+      ],
+      "best_levels": 0,
+      "total_elapsed_s": 61.96,
+      "status": "ok",
+      "env_index": 6,
+      "game_id": "re86-8af5384d"
+    },
+    {
+      "game_title": "SU15",
+      "discovery": {
+        "available_actions": [
+          6,
+          7
+        ],
+        "layer_count": 1,
+        "dominant_colors": [
+          [
+            5,
+            3290
+          ],
+          [
+            4,
+            631
+          ],
+          [
+            9,
+            59
+          ],
+          [
+            3,
+            29
+          ],
+          [
+            15,
+            18
+          ]
+        ],
+        "probe_diffs": {
+          "7": 0,
+          "6": 48,
+          "-6": 5
+        },
+        "dir_map": {},
+        "player_color": null,
+        "movable_region_count": 0,
+        "click_responsive_cells": [
+          {
+            "x": 32,
+            "y": 32,
+            "diff": 48,
+            "color_before_at_click": 5,
+            "color_after_at_click": 5
+          },
+          {
+            "x": 16,
+            "y": 16,
+            "diff": 48,
+            "color_before_at_click": 5,
+            "color_after_at_click": 5
+          },
+          {
+            "x": 48,
+            "y": 16,
+            "diff": 48,
+            "color_before_at_click": 3,
+            "color_after_at_click": 3
+          },
+          {
+            "x": 16,
+            "y": 48,
+            "diff": 46,
+            "color_before_at_click": 5,
+            "color_after_at_click": 5
+          },
+          {
+            "x": 48,
+            "y": 48,
+            "diff": 48,
+            "color_before_at_click": 5,
+            "color_after_at_click": 5
+          }
+        ],
+        "change_topology": "no_change",
+        "color_histogram": {
+          "5": 0.8032,
+          "4": 0.1541,
+          "0": 0.0168,
+          "9": 0.0144,
+          "3": 0.0071,
+          "15": 0.0044
+        },
+        "symmetry_score": 0.9487
+      },
+      "hypothesis": {
+        "game_type": "merge_puzzle",
+        "primary_strategy": "bfs_state_space",
+        "fallback_stack": [
+          "click_rare",
+          "bfs_state_space"
+        ],
+        "rationale": "The discovery phase identified this as a merge puzzle with responsive click cells. The primary strategy is to use the frame-only vacuum planner once Phase 8 Step 2b is implemented. Until then, the fallback stack includes 'click_rare' and 'bfs_state_space' as substitutes.",
+        "confidence": 0.85,
+        "doubt": "",
+        "features_missing": [],
+        "wiki_gaps": [],
+        "wiki_needs": []
+      },
+      "retrieved_pages": [
+        "llm_context/decision_tree.md",
+        "debug/plan_failure_signatures.md",
+        "selector.md",
+        "reasoning/frame_to_strategy_chain.md",
+        "reasoning/discovery_phase.md"
+      ],
+      "executions": [
+        {
+          "strategy": "bfs_state_space",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 1,
+          "elapsed_s": 0.0,
+          "status": "ok"
+        },
+        {
+          "strategy": "click_rare",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 110,
+          "elapsed_s": 0.02,
+          "status": "ok"
+        },
+        {
+          "strategy": "bfs_state_space",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 1,
+          "elapsed_s": 0.0,
+          "status": "ok"
+        }
+      ],
+      "best_levels": 0,
+      "total_elapsed_s": 25.48,
+      "status": "ok",
+      "env_index": 7,
+      "game_id": "su15-1944f8ab"
+    }
+  ]
+}

@@ -7,6 +7,8 @@ status: regression-then-fix; infrastructure correct
 
 # Prefix-Aware Navigation Plan (R20-R22)
 
+> `_plan_navigation` must resume BFS from the current level start using the cumulative prefix and chain `solve_all_levels` internally; R20 accidentally dropped multi-level chaining (AR25/M0R0 regressed 2→1), and R22 restored it with prefix awareness so one plan call clears multiple levels in sequence.
+
 ## What
 
 `_plan_navigation` in `src/admorphiq/strategies/inferential.py`

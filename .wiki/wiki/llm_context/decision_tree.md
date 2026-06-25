@@ -1,47 +1,44 @@
 ---
 type: llm_context
-audience: 8B model (Qwen 3 8B Q4)
-budget: ≤ 1200 chars — never grow
-purpose: single-source-of-truth decision tree the LLM applies every run
+audience: Qwen 3 8B Q4
+budget: ≤ 1500 chars
+description: Compact dispatch read first by Qwen — default primary adaptive_bfs_solver, peer-swap only on Observable-Signature match, 3-deep fallback_stack by game shape, re-ask on primary failure via each plan's Falsification Signature + Next-Best.
 ---
 
-# Decision Tree (LLM reads this first)
+# Decision Tree
 
 ## Inputs
-- `avail` ⊆ {1,2,3,4,5,6,7} : available action ids
-- `probe_diffs[aid]` : pixels changed after pressing aid
-- `probe_diffs[6]` : max pixels among 5 sampled ACTION6 clicks
-- `probe_diffs[-6]` : count of those 5 that reacted (0..5)
-- `dir_map` : {1,2,3,4} → N/S/E/W inferred from movement
+`avail`, `probe_diffs[aid]`, `probe_diffs[6]`, `probe_diffs[-6]`,
+`dir_map`.
 
 ## primary_strategy
 
-Always `adaptive_bfs_solver`. It is the five-phase
-observation-entity-goal-plan-loop engine that picks the right
-internal algorithm per env. Other whitelist names exist only as
-fallback backstops.
+Default `"adaptive_bfs_solver"` (5-phase
+observation→entity→goal→plan→loop; runs specialised plans
+internally). Pick a peer ONLY if env signature matches that peer's
+**Observable Signature** at `strategies/frame_only/<name>.md`:
+- pure-movement uniform probes → `bfs_state_space`
+- click-only NxN grid + sparse responsive → `click_toggle_detect`
 
-## fallback_stack (3 distinct items from whitelist)
+## fallback_stack (3 distinct from whitelist)
 
-1. `click_toggle_detect`
-2. `click_all_colors`
-3. `click_color_order`
+By shape:
+- movement-pure: bfs_state_space / tu93_maze / tr87_rotation
+- click-rare: click_rare / click_toggle_detect / click_color_order
+- click-paint: click_color_order / click_select_move / click_all_colors
+- hybrid: bfs_state_space / explore_and_interact / click_select_move
+- programming: spell_cast + 2 click peers
+- sokoban-like: bfs_state_space / sk48_snake / tu93_maze
 
-## Hard rules
+## Rules
+- Names from prompt whitelist only.
+- Never use `game_title`.
+- `game_type` ∈ {movement, click-rare, click-paint, merge-puzzle,
+  sort-puzzle, movement-hybrid, paint-hybrid, unknown}.
 
-- `primary_strategy` = `"adaptive_bfs_solver"` every run.
-- `fallback_stack` = the three click tools above, in any order.
-- Strategy names must be from the whitelist shown in the prompt.
-- game_type: movement | click-rare | click-paint | merge-puzzle |
-  sort-puzzle | movement-hybrid | paint-hybrid | unknown.
-- Never use `game_title` as a decision key (Kaggle rotates titles).
+## On primary failure (R7f)
 
-## Why adaptive_bfs_solver is the only first-class choice
-
-It runs observation (probe each action, classify effects) → entity
-detection (player / goal / item / palette / executor via color-cluster
-matching) → goal inference (paint-fill / navigation / merge / toggle
-from observed transitions) → plan synthesis (delegates to the right
-internal engine per inferred goal) → learning loop (retries with
-wider probes on failure). No game shape in the whitelist benefits
-from your routing pick beyond it.
+Runtime re-asks with `{prev, envelope, attempted}`. Read plan-fn
+page's **Falsification Signature** + **Next-Best**. Plans:
+navigation / merge / paint_fill / toggle / lights_out /
+click_then_move.

@@ -45,12 +45,13 @@ candidates:
     strengths: [reasoning_14b_class_top, lora_ready]
     enabled: true
 
-  # --- Reasoning-tier reference: Gemma 4 26B MoE -----------------------------
-  # Not Kaggle-deployable (Q4 ~17GB > T4 16GB VRAM), but kept as the reasoning
-  # ceiling reference. Running it on local 24GB unified memory gives an upper-
-  # bound for "what a bigger model could achieve on our wiki prompts." Useful
-  # when evaluating whether Qwen 3 8B / 14B is close to ceiling or leaving
-  # significant score on the table.
+  # --- Reasoning-tier candidate: Gemma 4 26B MoE -----------------------------
+  # NOW KAGGLE-DEPLOYABLE (corrected 2026-06-25). Eval machine is
+  # g4-standard-48 = RTX PRO 6000 Blackwell, 96GB VRAM (NOT T4 16GB). Q4
+  # ~13-17GB fits with huge headroom (even Q5/Q8 fits VRAM). Binding limits
+  # are now ~32GB disk (weights) + ~9h runtime, both comfortable here.
+  # Highest reasoning ceiling in the registry (AIME 89.2% / GPQA 84.3%);
+  # MoE keeps inference fast. Primary candidate for the R17 reselection bench.
   - id: gemma_4_26b_moe_q4
     display_name: "Gemma 4 26B MoE (Q4_K_M)"
     family: gemma4
@@ -59,11 +60,11 @@ candidates:
     params_effective: 3.8e9
     license: Apache-2.0
     quantization: Q4_K_M
-    expected_vram_gb: 17.0
+    expected_vram_gb: 17.0              # fits g4-standard-48 96GB VRAM with ~79GB to spare
     context_tokens: 131072
     lora_ecosystem: growing
     strengths: [reasoning_31b_tier, math_top, moe_fast_inference]
-    enabled: false                      # local-only reference; do not enable for Kaggle-bound runs
+    enabled: true                       # R17: deployable on g4-standard-48 (96GB VRAM)
 
 # Removed from registry 2026-04-21:
 #   - gemma_4_e2b_q4 (2.3B effective, edge-optimized, weak on reasoning)

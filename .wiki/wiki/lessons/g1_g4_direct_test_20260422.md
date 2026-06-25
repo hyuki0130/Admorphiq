@@ -30,6 +30,33 @@ with 50 000-action budget, bypassing WikiAgent entirely.
 
 ## What each Gx actually did
 
+Per-strategy actions / elapsed (raw from `scripts/g1_g4_direct_results.json`):
+
+| Strategy | Env | Levels | Actions | Elapsed (s) | Failure mode |
+|---|---|---|---|---|---|
+| `interactive_grid_toggle` | FT09 | 0 | 178 | 0.0 | early-bail (no responsive grid) |
+| `interactive_grid_toggle` | CD82 | 0 | 16 | 0.0 | early-bail (HUD-noise pre-R12) |
+| `interactive_grid_toggle` | TN36 | 0 | 98 | 0.0 | early-bail (no responsive grid) |
+| `sprite_cluster_interaction` | SB26 | 0 | 28 | 0.0 | early-bail (no same-color pair) |
+| `sprite_cluster_interaction` | SU15 | run_error | — | — | `list index out of range` |
+| `push_bfs_grid` | KA59 | 0 | 48 012 | 4.1 | budget-near-cap, no progress (sokoban-search-explosion) |
+| `push_bfs_grid` | WA30 | 0 | 50 000 | 1.8 | budget-cap, 0 BFS iterations (player not isolatable) |
+| `bfs_framehash` | FT09 | 0 | 152 | 0.0 | early-bail (avail=[6], stride-8 0 responsive) |
+| `bfs_framehash` | CD82 | **1** | 50 001 | 3.2 | L1 cleared then budget-exhausted (HUD-noise pre-R12) |
+| `bfs_framehash` | SB26 | 0 | 37 688 | 34.8 | search-ceiling (state cap) |
+| `bfs_framehash` | SU15 | 0 | 50 000 | 10.0 | budget-cap, no goal |
+| `bfs_framehash` | KA59 | 0 | 50 000 | 4.9 | budget-cap, dir-silent v2 |
+
+The action/elapsed split mirrors the three modes characterised in
+[[inferential_budget_vs_algo_20260423]]: KA59/WA30 push_bfs_grid hit
+budget-cap fast (low elapsed → fast env steps with no useful state
+expansion); SB26 bfs_framehash burned 34.8 s at 37 688 actions
+(search-ceiling — BFS exploring states without progress);
+FT09/CD82/TN36 G1 early-bailed in 16-178 actions (no entry
+condition matched).
+
+**Narrative interpretation**:
+
 - **G1 (interactive_grid_toggle) on FT09/CD82/TN36**: ran its
   probe-classify-search but singleton/pair/triple click sequences
   never triggered level-clear. The click-effect classifier ran but
@@ -38,15 +65,31 @@ with 50 000-action budget, bypassing WikiAgent entirely.
   same-color-pair midpoints. SU15's vacuum radius is ~8 px and far
   pair midpoints fell outside it; SB26's merge is sort-order
   dependent and midpoint-clicks never trigger the correct swap.
-- **G3 (push_bfs_grid) on WA30**: bailed at 1.8 s with 0 BFS
-  iterations. `_g3_detect_player` returned None because WA30 has
-  multiple moving entities and the probe couldn't isolate a single
-  displaced cluster.
+  SU15 additionally tripped a `list index out of range` — the
+  function assumed at least one same-color pair existed, foreshadowing
+  the same-color pair=0 issue characterised in
+  [[su15_l1_singleton_colors_20260423]].
+- **G3 (push_bfs_grid) on KA59/WA30**: KA59 ran 48 012 actions in
+  4.1 s — that's pure env stepping with no productive BFS expansion
+  because every direction probe returns 0 pixel diff on v2 (see
+  [[ka59_v2_action6_semantic_20260423]]). WA30 hit 50 000 in 1.8 s
+  for the same reason via a different shape: `_g3_detect_player`
+  returned None because WA30 has multiple moving entities and the
+  probe couldn't isolate a single displaced cluster.
 - **G4 (bfs_framehash) on FT09**: consumed 152 of 50000 actions,
   then exited. FT09 is `avail=[6]` only, so dir_actions was empty
   and click-target discovery found few responsive cells; BFS over
   the resulting sparse action space could not reach a progress
-  state within depth 30.
+  state within depth 30. (Same root cause as
+  [[ft09_stride_button_drop_20260423]]: stride-8 lands on cell
+  borders.)
+- **G4 on CD82** is the lone "1 level" entry. The L1 clear was
+  serendipity — pre-R12 HUD noise made one of the framehash states
+  match a level-up boundary. Post-R12 HUD masking would suppress
+  this; the 1/47 figure is therefore an upper-bound on G4's real
+  generality. See [[cd82_paint_palette_signature_20260423]] for the
+  HUD-mask diagnosis that explains why pre-R12 CD82 traces were
+  noise-dominated.
 
 ## The meta-error
 

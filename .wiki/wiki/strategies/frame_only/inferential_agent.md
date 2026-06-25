@@ -137,13 +137,91 @@ This design is wrong if:
 - The five-phase pipeline costs > 5% of the Kaggle per-game budget —
   if discovery takes 5000 actions, there's nothing left for planning.
 
+## Observable Signature
+
+The agent is the right pick when at DiscoveryReport time the LLM
+cannot decisively pick a single specialised plan from the wiki:
+
+- The env's combined signature (avail × probe_diffs × dir_map ×
+  click_responsive_cells) does not match any of the rules in
+  `selector.md` rule 1-8.
+- Or: the env matches multiple rules ambiguously and the LLM
+  prefers a probe-then-decide approach.
+- Or: this is the R11+ baseline state where
+  `LLM_WHITELIST_ALLOWLIST = {"adaptive_bfs_solver"}` reduces all
+  routing to this single entry — the runtime then defers to the
+  agent's internal plan-selection (Phase 4).
+
+`adaptive_bfs_solver` is the public alias used in the allowlist;
+implementation is `strat_inferential_agent`.
+
+## Falsification Signature
+
+The agent has failed AND another approach is needed when:
+
+- All inner plans return 0 levels AND the agent's outer loop hits
+  the `no_progress_streak` cap (currently 12 levels with 0
+  progress). Indicates probe / entity / goal classification is
+  systematically wrong on the env class.
+- Phase 1 (observation) consumes > 5 % of total budget without
+  surfacing any tagged entities (see Falsification of the design
+  above). Indicates probe stride is too coarse — see
+  [[../../lessons/ft09_stride_button_drop_20260423]] for the
+  retry-pattern that mitigates this.
+- Plans cycle: each outer iteration picks the same `goal["kind"]`
+  but the inner plan keeps returning 0. Indicates the goal heuristic
+  is locked on a wrong hypothesis with no second-best (Phase 5
+  exhausted).
+
+## Tunable Parameters
+
+- `stride` (observation): default 4 in the agent's outer loop
+  (`observation_phase(env, stride=4, ...)`). Range 2-8. Smaller
+  stride probes more cells at higher cost; FT09-class grid-aligned
+  envs need ≤ 4 (see
+  [[../../lessons/ft09_stride_button_drop_20260423]]).
+- `probe_budget` (observation): scales as
+  `max(200, min(600, (budget - used) // 5))` — 1/5 of remaining
+  budget capped at 600 actions per level. Effect: late-level
+  observations stay cheap.
+- `PLAN_BUDGET_CAP` per kind: navigation 10 000 / 30 000
+  (sokoban-like), toggle 15 000, merge 12 000, paint_fill 12 000,
+  click_then_move 15 000, lights_out 20 000. Effect: budget-cap
+  early-bail vs search-ceiling characterisation in
+  [[../../lessons/inferential_budget_vs_algo_20260423]].
+- Plan iteration order in `_try_plan`: inferred first, then
+  siblings in fixed order (navigation, lights_out,
+  click_then_move, merge, paint_fill, toggle). Effect: determines
+  which specialised plan runs next when the inferred plan misses.
+- `level` cap: 12. Effect: outer loop stops after 12 level
+  attempts even with budget remaining; tuning higher costs
+  observation overhead, lower drops late-game progression.
+
+## Next-Best
+
+This agent is itself usually the next-best when a more specialised
+strategy fails. When this agent is the failing plan, candidates are:
+
+- [[bfs_state_space]] (direct, no prefix-awareness) — for
+  movement-pure envs where inferential's overhead is not paying for
+  itself. Surrenders the multi-level prefix chaining; only viable
+  for single-level games.
+- A new specialised plan-fn in `inferential.PLAN_FNS` — author it
+  via the `.wiki/schema.md` R23c template and add the goal-kind
+  detection in `goal_phase` so the new plan auto-routes when its
+  signature matches.
+- Re-running with a different probe stride (`stride=2`) — quick
+  diagnostic before declaring the env unsolvable.
+
 ## Related
 
-- [[selector]] — dispatch rules, rule 9 (unknown) routes here
-- [[architecture]] § Wiki-First Routing — why the LLM picks this
-- [[reasoning/discovery_phase]] — what Phase 1 extends
-- [[concepts/probe_signature]] — what Phase 1's output formalizes
-- [[lessons/g1_g4_direct_test_20260422]] — why this redesign is needed
+- [[../../selector]] — dispatch rules, rule 9 (unknown) routes here
+- [[../../architecture]] § Wiki-First Routing — why the LLM picks this
+- [[../../reasoning/discovery_phase]] — what Phase 1 extends
+- [[../../concepts/probe_signature]] — what Phase 1's output formalizes
+- [[../../lessons/g1_g4_direct_test_20260422]] — why this redesign is needed
+- [[../../lessons/inferential_budget_vs_algo_20260423]] — failure-mode taxonomy
+- [[navigation]], [[merge]], [[paint_fill]], [[toggle]], [[lights_out]], [[click_then_move]] — inner plan fns
 
 ## Sources
 

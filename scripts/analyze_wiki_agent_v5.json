@@ -1,0 +1,2275 @@
+{
+  "trace_file": "scripts/wiki_agent_results_r23_14b_v5.json",
+  "candidate": "qwen_3_14b_q4",
+  "envs": 40,
+  "primary_distribution": {
+    "bfs_state_space": 24,
+    "click_select_move": 12,
+    "click_toggle_detect": 4
+  },
+  "fallback_distribution": {
+    "click_toggle_detect": 33,
+    "click_select_move": 13,
+    "spell_cast": 9,
+    "adaptive_bfs_solver": 3,
+    "bfs_state_space": 2,
+    "click_color_order": 1
+  },
+  "distinct_primaries": 3,
+  "rule_compliance_pct": 50.0,
+  "page_appearance": {
+    "llm_context/decision_tree.md": {
+      "envs": 40,
+      "envs_pct": 100.0,
+      "avg_chars": 1356.0,
+      "envs_clipped": 40
+    },
+    "debug/plan_failure_signatures.md": {
+      "envs": 40,
+      "envs_pct": 100.0,
+      "avg_chars": 6801.0,
+      "envs_clipped": 40
+    },
+    "selector.md": {
+      "envs": 40,
+      "envs_pct": 100.0,
+      "avg_chars": 10496.0,
+      "envs_clipped": 40
+    },
+    "reasoning/frame_to_strategy_chain.md": {
+      "envs": 40,
+      "envs_pct": 100.0,
+      "avg_chars": 7232.0,
+      "envs_clipped": 40
+    },
+    "reasoning/discovery_phase.md": {
+      "envs": 40,
+      "envs_pct": 100.0,
+      "avg_chars": 5539.0,
+      "envs_clipped": 40
+    },
+    "game_types/hybrid.md": {
+      "envs": 19,
+      "envs_pct": 47.5,
+      "avg_chars": 566.0,
+      "envs_clipped": 19
+    },
+    "game_types/click.md": {
+      "envs": 13,
+      "envs_pct": 32.5,
+      "avg_chars": 566.0,
+      "envs_clipped": 13
+    },
+    "game_types/movement.md": {
+      "envs": 8,
+      "envs_pct": 20.0,
+      "avg_chars": 566.0,
+      "envs_clipped": 8
+    }
+  },
+  "saturation_histogram": {
+    "1.0": 40
+  },
+  "per_env": [
+    {
+      "title": "TU93",
+      "primary": "bfs_state_space",
+      "expected_by_decision_tree": "adaptive_bfs_solver",
+      "rule_followed": false,
+      "best_levels": 2,
+      "wiki_context_chars": 32000,
+      "budget": 32000,
+      "saturation": 1.0,
+      "page_count": 6,
+      "page_utilisation": [
+        {
+          "path": "llm_context/decision_tree.md",
+          "chars": 1356,
+          "page_words": 87,
+          "rationale_overlap": 5,
+          "util_pct": 5.7
+        },
+        {
+          "path": "debug/plan_failure_signatures.md",
+          "chars": 6801,
+          "page_words": 294,
+          "rationale_overlap": 8,
+          "util_pct": 2.7
+        },
+        {
+          "path": "selector.md",
+          "chars": 10496,
+          "page_words": 362,
+          "rationale_overlap": 8,
+          "util_pct": 2.2
+        },
+        {
+          "path": "reasoning/frame_to_strategy_chain.md",
+          "chars": 7232,
+          "page_words": 271,
+          "rationale_overlap": 10,
+          "util_pct": 3.7
+        },
+        {
+          "path": "reasoning/discovery_phase.md",
+          "chars": 5539,
+          "page_words": 260,
+          "rationale_overlap": 11,
+          "util_pct": 4.2
+        },
+        {
+          "path": "game_types/movement.md",
+          "chars": 566,
+          "page_words": 113,
+          "rationale_overlap": 9,
+          "util_pct": 8.0
+        }
+      ]
+    },
+    {
+      "title": "TU93",
+      "primary": "bfs_state_space",
+      "expected_by_decision_tree": "adaptive_bfs_solver",
+      "rule_followed": false,
+      "best_levels": 2,
+      "wiki_context_chars": 32000,
+      "budget": 32000,
+      "saturation": 1.0,
+      "page_count": 6,
+      "page_utilisation": [
+        {
+          "path": "llm_context/decision_tree.md",
+          "chars": 1356,
+          "page_words": 87,
+          "rationale_overlap": 5,
+          "util_pct": 5.7
+        },
+        {
+          "path": "debug/plan_failure_signatures.md",
+          "chars": 6801,
+          "page_words": 294,
+          "rationale_overlap": 8,
+          "util_pct": 2.7
+        },
+        {
+          "path": "selector.md",
+          "chars": 10496,
+          "page_words": 362,
+          "rationale_overlap": 8,
+          "util_pct": 2.2
+        },
+        {
+          "path": "reasoning/frame_to_strategy_chain.md",
+          "chars": 7232,
+          "page_words": 271,
+          "rationale_overlap": 10,
+          "util_pct": 3.7
+        },
+        {
+          "path": "reasoning/discovery_phase.md",
+          "chars": 5539,
+          "page_words": 260,
+          "rationale_overlap": 11,
+          "util_pct": 4.2
+        },
+        {
+          "path": "game_types/movement.md",
+          "chars": 566,
+          "page_words": 113,
+          "rationale_overlap": 9,
+          "util_pct": 8.0
+        }
+      ]
+    },
+    {
+      "title": "AR25",
+      "primary": "bfs_state_space",
+      "expected_by_decision_tree": "bfs_state_space",
+      "rule_followed": true,
+      "best_levels": 2,
+      "wiki_context_chars": 32000,
+      "budget": 32000,
+      "saturation": 1.0,
+      "page_count": 6,
+      "page_utilisation": [
+        {
+          "path": "llm_context/decision_tree.md",
+          "chars": 1356,
+          "page_words": 87,
+          "rationale_overlap": 4,
+          "util_pct": 4.6
+        },
+        {
+          "path": "debug/plan_failure_signatures.md",
+          "chars": 6801,
+          "page_words": 294,
+          "rationale_overlap": 7,
+          "util_pct": 2.4
+        },
+        {
+          "path": "selector.md",
+          "chars": 10496,
+          "page_words": 362,
+          "rationale_overlap": 9,
+          "util_pct": 2.5
+        },
+        {
+          "path": "reasoning/frame_to_strategy_chain.md",
+          "chars": 7232,
+          "page_words": 271,
+          "rationale_overlap": 7,
+          "util_pct": 2.6
+        },
+        {
+          "path": "reasoning/discovery_phase.md",
+          "chars": 5539,
+          "page_words": 260,
+          "rationale_overlap": 10,
+          "util_pct": 3.8
+        },
+        {
+          "path": "game_types/hybrid.md",
+          "chars": 566,
+          "page_words": 58,
+          "rationale_overlap": 9,
+          "util_pct": 15.5
+        }
+      ]
+    },
+    {
+      "title": "AR25",
+      "primary": "bfs_state_space",
+      "expected_by_decision_tree": "bfs_state_space",
+      "rule_followed": true,
+      "best_levels": 2,
+      "wiki_context_chars": 32000,
+      "budget": 32000,
+      "saturation": 1.0,
+      "page_count": 6,
+      "page_utilisation": [
+        {
+          "path": "llm_context/decision_tree.md",
+          "chars": 1356,
+          "page_words": 87,
+          "rationale_overlap": 4,
+          "util_pct": 4.6
+        },
+        {
+          "path": "debug/plan_failure_signatures.md",
+          "chars": 6801,
+          "page_words": 294,
+          "rationale_overlap": 7,
+          "util_pct": 2.4
+        },
+        {
+          "path": "selector.md",
+          "chars": 10496,
+          "page_words": 362,
+          "rationale_overlap": 9,
+          "util_pct": 2.5
+        },
+        {
+          "path": "reasoning/frame_to_strategy_chain.md",
+          "chars": 7232,
+          "page_words": 271,
+          "rationale_overlap": 7,
+          "util_pct": 2.6
+        },
+        {
+          "path": "reasoning/discovery_phase.md",
+          "chars": 5539,
+          "page_words": 260,
+          "rationale_overlap": 10,
+          "util_pct": 3.8
+        },
+        {
+          "path": "game_types/hybrid.md",
+          "chars": 566,
+          "page_words": 58,
+          "rationale_overlap": 9,
+          "util_pct": 15.5
+        }
+      ]
+    },
+    {
+      "title": "RE86",
+      "primary": "bfs_state_space",
+      "expected_by_decision_tree": "bfs_state_space",
+      "rule_followed": true,
+      "best_levels": 0,
+      "wiki_context_chars": 32000,
+      "budget": 32000,
+      "saturation": 1.0,
+      "page_count": 6,
+      "page_utilisation": [
+        {
+          "path": "llm_context/decision_tree.md",
+          "chars": 1356,
+          "page_words": 87,
+          "rationale_overlap": 5,
+          "util_pct": 5.7
+        },
+        {
+          "path": "debug/plan_failure_signatures.md",
+          "chars": 6801,
+          "page_words": 294,
+          "rationale_overlap": 11,
+          "util_pct": 3.7
+        },
+        {
+          "path": "selector.md",
+          "chars": 10496,
+          "page_words": 362,
+          "rationale_overlap": 11,
+          "util_pct": 3.0
+        },
+        {
+          "path": "reasoning/frame_to_strategy_chain.md",
+          "chars": 7232,
+          "page_words": 271,
+          "rationale_overlap": 12,
+          "util_pct": 4.4
+        },
+        {
+          "path": "reasoning/discovery_phase.md",
+          "chars": 5539,
+          "page_words": 260,
+          "rationale_overlap": 14,
+          "util_pct": 5.4
+        },
+        {
+          "path": "game_types/movement.md",
+          "chars": 566,
+          "page_words": 113,
+          "rationale_overlap": 7,
+          "util_pct": 6.2
+        }
+      ]
+    },
+    {
+      "title": "RE86",
+      "primary": "bfs_state_space",
+      "expected_by_decision_tree": "bfs_state_space",
+      "rule_followed": true,
+      "best_levels": 0,
+      "wiki_context_chars": 32000,
+      "budget": 32000,
+      "saturation": 1.0,
+      "page_count": 6,
+      "page_utilisation": [
+        {
+          "path": "llm_context/decision_tree.md",
+          "chars": 1356,
+          "page_words": 87,
+          "rationale_overlap": 5,
+          "util_pct": 5.7
+        },
+        {
+          "path": "debug/plan_failure_signatures.md",
+          "chars": 6801,
+          "page_words": 294,
+          "rationale_overlap": 11,
+          "util_pct": 3.7
+        },
+        {
+          "path": "selector.md",
+          "chars": 10496,
+          "page_words": 362,
+          "rationale_overlap": 11,
+          "util_pct": 3.0
+        },
+        {
+          "path": "reasoning/frame_to_strategy_chain.md",
+          "chars": 7232,
+          "page_words": 271,
+          "rationale_overlap": 12,
+          "util_pct": 4.4
+        },
+        {
+          "path": "reasoning/discovery_phase.md",
+          "chars": 5539,
+          "page_words": 260,
+          "rationale_overlap": 14,
+          "util_pct": 5.4
+        },
+        {
+          "path": "game_types/movement.md",
+          "chars": 566,
+          "page_words": 113,
+          "rationale_overlap": 7,
+          "util_pct": 6.2
+        }
+      ]
+    },
+    {
+      "title": "SU15",
+      "primary": "click_select_move",
+      "expected_by_decision_tree": "click_toggle_detect",
+      "rule_followed": false,
+      "best_levels": 0,
+      "wiki_context_chars": 32000,
+      "budget": 32000,
+      "saturation": 1.0,
+      "page_count": 6,
+      "page_utilisation": [
+        {
+          "path": "llm_context/decision_tree.md",
+          "chars": 1356,
+          "page_words": 87,
+          "rationale_overlap": 2,
+          "util_pct": 2.3
+        },
+        {
+          "path": "debug/plan_failure_signatures.md",
+          "chars": 6801,
+          "page_words": 294,
+          "rationale_overlap": 8,
+          "util_pct": 2.7
+        },
+        {
+          "path": "selector.md",
+          "chars": 10496,
+          "page_words": 362,
+          "rationale_overlap": 12,
+          "util_pct": 3.3
+        },
+        {
+          "path": "reasoning/frame_to_strategy_chain.md",
+          "chars": 7232,
+          "page_words": 271,
+          "rationale_overlap": 11,
+          "util_pct": 4.1
+        },
+        {
+          "path": "reasoning/discovery_phase.md",
+          "chars": 5539,
+          "page_words": 260,
+          "rationale_overlap": 15,
+          "util_pct": 5.8
+        },
+        {
+          "path": "game_types/click.md",
+          "chars": 566,
+          "page_words": 112,
+          "rationale_overlap": 11,
+          "util_pct": 9.8
+        }
+      ]
+    },
+    {
+      "title": "SU15",
+      "primary": "click_select_move",
+      "expected_by_decision_tree": "click_toggle_detect",
+      "rule_followed": false,
+      "best_levels": 0,
+      "wiki_context_chars": 32000,
+      "budget": 32000,
+      "saturation": 1.0,
+      "page_count": 6,
+      "page_utilisation": [
+        {
+          "path": "llm_context/decision_tree.md",
+          "chars": 1356,
+          "page_words": 87,
+          "rationale_overlap": 2,
+          "util_pct": 2.3
+        },
+        {
+          "path": "debug/plan_failure_signatures.md",
+          "chars": 6801,
+          "page_words": 294,
+          "rationale_overlap": 8,
+          "util_pct": 2.7
+        },
+        {
+          "path": "selector.md",
+          "chars": 10496,
+          "page_words": 362,
+          "rationale_overlap": 12,
+          "util_pct": 3.3
+        },
+        {
+          "path": "reasoning/frame_to_strategy_chain.md",
+          "chars": 7232,
+          "page_words": 271,
+          "rationale_overlap": 11,
+          "util_pct": 4.1
+        },
+        {
+          "path": "reasoning/discovery_phase.md",
+          "chars": 5539,
+          "page_words": 260,
+          "rationale_overlap": 15,
+          "util_pct": 5.8
+        },
+        {
+          "path": "game_types/click.md",
+          "chars": 566,
+          "page_words": 112,
+          "rationale_overlap": 11,
+          "util_pct": 9.8
+        }
+      ]
+    },
+    {
+      "title": "M0R0",
+      "primary": "bfs_state_space",
+      "expected_by_decision_tree": "bfs_state_space",
+      "rule_followed": true,
+      "best_levels": 2,
+      "wiki_context_chars": 32000,
+      "budget": 32000,
+      "saturation": 1.0,
+      "page_count": 6,
+      "page_utilisation": [
+        {
+          "path": "llm_context/decision_tree.md",
+          "chars": 1356,
+          "page_words": 87,
+          "rationale_overlap": 5,
+          "util_pct": 5.7
+        },
+        {
+          "path": "debug/plan_failure_signatures.md",
+          "chars": 6801,
+          "page_words": 294,
+          "rationale_overlap": 4,
+          "util_pct": 1.4
+        },
+        {
+          "path": "selector.md",
+          "chars": 10496,
+          "page_words": 362,
+          "rationale_overlap": 9,
+          "util_pct": 2.5
+        },
+        {
+          "path": "reasoning/frame_to_strategy_chain.md",
+          "chars": 7232,
+          "page_words": 271,
+          "rationale_overlap": 6,
+          "util_pct": 2.2
+        },
+        {
+          "path": "reasoning/discovery_phase.md",
+          "chars": 5539,
+          "page_words": 260,
+          "rationale_overlap": 7,
+          "util_pct": 2.7
+        },
+        {
+          "path": "game_types/hybrid.md",
+          "chars": 566,
+          "page_words": 58,
+          "rationale_overlap": 10,
+          "util_pct": 17.2
+        }
+      ]
+    },
+    {
+      "title": "M0R0",
+      "primary": "bfs_state_space",
+      "expected_by_decision_tree": "bfs_state_space",
+      "rule_followed": true,
+      "best_levels": 2,
+      "wiki_context_chars": 32000,
+      "budget": 32000,
+      "saturation": 1.0,
+      "page_count": 6,
+      "page_utilisation": [
+        {
+          "path": "llm_context/decision_tree.md",
+          "chars": 1356,
+          "page_words": 87,
+          "rationale_overlap": 5,
+          "util_pct": 5.7
+        },
+        {
+          "path": "debug/plan_failure_signatures.md",
+          "chars": 6801,
+          "page_words": 294,
+          "rationale_overlap": 4,
+          "util_pct": 1.4
+        },
+        {
+          "path": "selector.md",
+          "chars": 10496,
+          "page_words": 362,
+          "rationale_overlap": 9,
+          "util_pct": 2.5
+        },
+        {
+          "path": "reasoning/frame_to_strategy_chain.md",
+          "chars": 7232,
+          "page_words": 271,
+          "rationale_overlap": 6,
+          "util_pct": 2.2
+        },
+        {
+          "path": "reasoning/discovery_phase.md",
+          "chars": 5539,
+          "page_words": 260,
+          "rationale_overlap": 7,
+          "util_pct": 2.7
+        },
+        {
+          "path": "game_types/hybrid.md",
+          "chars": 566,
+          "page_words": 58,
+          "rationale_overlap": 10,
+          "util_pct": 17.2
+        }
+      ]
+    },
+    {
+      "title": "CN04",
+      "primary": "bfs_state_space",
+      "expected_by_decision_tree": "bfs_state_space",
+      "rule_followed": true,
+      "best_levels": 0,
+      "wiki_context_chars": 32000,
+      "budget": 32000,
+      "saturation": 1.0,
+      "page_count": 6,
+      "page_utilisation": [
+        {
+          "path": "llm_context/decision_tree.md",
+          "chars": 1356,
+          "page_words": 87,
+          "rationale_overlap": 7,
+          "util_pct": 8.0
+        },
+        {
+          "path": "debug/plan_failure_signatures.md",
+          "chars": 6801,
+          "page_words": 294,
+          "rationale_overlap": 10,
+          "util_pct": 3.4
+        },
+        {
+          "path": "selector.md",
+          "chars": 10496,
+          "page_words": 362,
+          "rationale_overlap": 12,
+          "util_pct": 3.3
+        },
+        {
+          "path": "reasoning/frame_to_strategy_chain.md",
+          "chars": 7232,
+          "page_words": 271,
+          "rationale_overlap": 10,
+          "util_pct": 3.7
+        },
+        {
+          "path": "reasoning/discovery_phase.md",
+          "chars": 5539,
+          "page_words": 260,
+          "rationale_overlap": 10,
+          "util_pct": 3.8
+        },
+        {
+          "path": "game_types/hybrid.md",
+          "chars": 566,
+          "page_words": 58,
+          "rationale_overlap": 11,
+          "util_pct": 19.0
+        }
+      ]
+    },
+    {
+      "title": "CN04",
+      "primary": "bfs_state_space",
+      "expected_by_decision_tree": "bfs_state_space",
+      "rule_followed": true,
+      "best_levels": 0,
+      "wiki_context_chars": 32000,
+      "budget": 32000,
+      "saturation": 1.0,
+      "page_count": 6,
+      "page_utilisation": [
+        {
+          "path": "llm_context/decision_tree.md",
+          "chars": 1356,
+          "page_words": 87,
+          "rationale_overlap": 7,
+          "util_pct": 8.0
+        },
+        {
+          "path": "debug/plan_failure_signatures.md",
+          "chars": 6801,
+          "page_words": 294,
+          "rationale_overlap": 10,
+          "util_pct": 3.4
+        },
+        {
+          "path": "selector.md",
+          "chars": 10496,
+          "page_words": 362,
+          "rationale_overlap": 12,
+          "util_pct": 3.3
+        },
+        {
+          "path": "reasoning/frame_to_strategy_chain.md",
+          "chars": 7232,
+          "page_words": 271,
+          "rationale_overlap": 10,
+          "util_pct": 3.7
+        },
+        {
+          "path": "reasoning/discovery_phase.md",
+          "chars": 5539,
+          "page_words": 260,
+          "rationale_overlap": 10,
+          "util_pct": 3.8
+        },
+        {
+          "path": "game_types/hybrid.md",
+          "chars": 566,
+          "page_words": 58,
+          "rationale_overlap": 11,
+          "util_pct": 19.0
+        }
+      ]
+    },
+    {
+      "title": "FT09",
+      "primary": "click_select_move",
+      "expected_by_decision_tree": "click_rare",
+      "rule_followed": false,
+      "best_levels": 0,
+      "wiki_context_chars": 32000,
+      "budget": 32000,
+      "saturation": 1.0,
+      "page_count": 6,
+      "page_utilisation": [
+        {
+          "path": "llm_context/decision_tree.md",
+          "chars": 1356,
+          "page_words": 87,
+          "rationale_overlap": 4,
+          "util_pct": 4.6
+        },
+        {
+          "path": "debug/plan_failure_signatures.md",
+          "chars": 6801,
+          "page_words": 294,
+          "rationale_overlap": 11,
+          "util_pct": 3.7
+        },
+        {
+          "path": "selector.md",
+          "chars": 10496,
+          "page_words": 362,
+          "rationale_overlap": 13,
+          "util_pct": 3.6
+        },
+        {
+          "path": "reasoning/frame_to_strategy_chain.md",
+          "chars": 7232,
+          "page_words": 271,
+          "rationale_overlap": 8,
+          "util_pct": 3.0
+        },
+        {
+          "path": "reasoning/discovery_phase.md",
+          "chars": 5539,
+          "page_words": 260,
+          "rationale_overlap": 15,
+          "util_pct": 5.8
+        },
+        {
+          "path": "game_types/click.md",
+          "chars": 566,
+          "page_words": 112,
+          "rationale_overlap": 9,
+          "util_pct": 8.0
+        }
+      ]
+    },
+    {
+      "title": "TR87",
+      "primary": "bfs_state_space",
+      "expected_by_decision_tree": "adaptive_bfs_solver",
+      "rule_followed": false,
+      "best_levels": 0,
+      "wiki_context_chars": 32000,
+      "budget": 32000,
+      "saturation": 1.0,
+      "page_count": 6,
+      "page_utilisation": [
+        {
+          "path": "llm_context/decision_tree.md",
+          "chars": 1356,
+          "page_words": 87,
+          "rationale_overlap": 3,
+          "util_pct": 3.4
+        },
+        {
+          "path": "debug/plan_failure_signatures.md",
+          "chars": 6801,
+          "page_words": 294,
+          "rationale_overlap": 9,
+          "util_pct": 3.1
+        },
+        {
+          "path": "selector.md",
+          "chars": 10496,
+          "page_words": 362,
+          "rationale_overlap": 9,
+          "util_pct": 2.5
+        },
+        {
+          "path": "reasoning/frame_to_strategy_chain.md",
+          "chars": 7232,
+          "page_words": 271,
+          "rationale_overlap": 10,
+          "util_pct": 3.7
+        },
+        {
+          "path": "reasoning/discovery_phase.md",
+          "chars": 5539,
+          "page_words": 260,
+          "rationale_overlap": 10,
+          "util_pct": 3.8
+        },
+        {
+          "path": "game_types/movement.md",
+          "chars": 566,
+          "page_words": 113,
+          "rationale_overlap": 6,
+          "util_pct": 5.3
+        }
+      ]
+    },
+    {
+      "title": "SC25",
+      "primary": "bfs_state_space",
+      "expected_by_decision_tree": "bfs_state_space",
+      "rule_followed": true,
+      "best_levels": 2,
+      "wiki_context_chars": 32000,
+      "budget": 32000,
+      "saturation": 1.0,
+      "page_count": 6,
+      "page_utilisation": [
+        {
+          "path": "llm_context/decision_tree.md",
+          "chars": 1356,
+          "page_words": 87,
+          "rationale_overlap": 2,
+          "util_pct": 2.3
+        },
+        {
+          "path": "debug/plan_failure_signatures.md",
+          "chars": 6801,
+          "page_words": 294,
+          "rationale_overlap": 2,
+          "util_pct": 0.7
+        },
+        {
+          "path": "selector.md",
+          "chars": 10496,
+          "page_words": 362,
+          "rationale_overlap": 3,
+          "util_pct": 0.8
+        },
+        {
+          "path": "reasoning/frame_to_strategy_chain.md",
+          "chars": 7232,
+          "page_words": 271,
+          "rationale_overlap": 4,
+          "util_pct": 1.5
+        },
+        {
+          "path": "reasoning/discovery_phase.md",
+          "chars": 5539,
+          "page_words": 260,
+          "rationale_overlap": 3,
+          "util_pct": 1.2
+        },
+        {
+          "path": "game_types/hybrid.md",
+          "chars": 566,
+          "page_words": 58,
+          "rationale_overlap": 2,
+          "util_pct": 3.4
+        }
+      ]
+    },
+    {
+      "title": "SC25",
+      "primary": "bfs_state_space",
+      "expected_by_decision_tree": "bfs_state_space",
+      "rule_followed": true,
+      "best_levels": 2,
+      "wiki_context_chars": 32000,
+      "budget": 32000,
+      "saturation": 1.0,
+      "page_count": 6,
+      "page_utilisation": [
+        {
+          "path": "llm_context/decision_tree.md",
+          "chars": 1356,
+          "page_words": 87,
+          "rationale_overlap": 2,
+          "util_pct": 2.3
+        },
+        {
+          "path": "debug/plan_failure_signatures.md",
+          "chars": 6801,
+          "page_words": 294,
+          "rationale_overlap": 2,
+          "util_pct": 0.7
+        },
+        {
+          "path": "selector.md",
+          "chars": 10496,
+          "page_words": 362,
+          "rationale_overlap": 3,
+          "util_pct": 0.8
+        },
+        {
+          "path": "reasoning/frame_to_strategy_chain.md",
+          "chars": 7232,
+          "page_words": 271,
+          "rationale_overlap": 4,
+          "util_pct": 1.5
+        },
+        {
+          "path": "reasoning/discovery_phase.md",
+          "chars": 5539,
+          "page_words": 260,
+          "rationale_overlap": 3,
+          "util_pct": 1.2
+        },
+        {
+          "path": "game_types/hybrid.md",
+          "chars": 566,
+          "page_words": 58,
+          "rationale_overlap": 2,
+          "util_pct": 3.4
+        }
+      ]
+    },
+    {
+      "title": "LP85",
+      "primary": "click_select_move",
+      "expected_by_decision_tree": "click_rare",
+      "rule_followed": false,
+      "best_levels": 1,
+      "wiki_context_chars": 32000,
+      "budget": 32000,
+      "saturation": 1.0,
+      "page_count": 6,
+      "page_utilisation": [
+        {
+          "path": "llm_context/decision_tree.md",
+          "chars": 1356,
+          "page_words": 87,
+          "rationale_overlap": 2,
+          "util_pct": 2.3
+        },
+        {
+          "path": "debug/plan_failure_signatures.md",
+          "chars": 6801,
+          "page_words": 294,
+          "rationale_overlap": 7,
+          "util_pct": 2.4
+        },
+        {
+          "path": "selector.md",
+          "chars": 10496,
+          "page_words": 362,
+          "rationale_overlap": 8,
+          "util_pct": 2.2
+        },
+        {
+          "path": "reasoning/frame_to_strategy_chain.md",
+          "chars": 7232,
+          "page_words": 271,
+          "rationale_overlap": 7,
+          "util_pct": 2.6
+        },
+        {
+          "path": "reasoning/discovery_phase.md",
+          "chars": 5539,
+          "page_words": 260,
+          "rationale_overlap": 13,
+          "util_pct": 5.0
+        },
+        {
+          "path": "game_types/click.md",
+          "chars": 566,
+          "page_words": 112,
+          "rationale_overlap": 7,
+          "util_pct": 6.2
+        }
+      ]
+    },
+    {
+      "title": "DC22",
+      "primary": "bfs_state_space",
+      "expected_by_decision_tree": "bfs_state_space",
+      "rule_followed": true,
+      "best_levels": 1,
+      "wiki_context_chars": 32000,
+      "budget": 32000,
+      "saturation": 1.0,
+      "page_count": 6,
+      "page_utilisation": [
+        {
+          "path": "llm_context/decision_tree.md",
+          "chars": 1356,
+          "page_words": 87,
+          "rationale_overlap": 5,
+          "util_pct": 5.7
+        },
+        {
+          "path": "debug/plan_failure_signatures.md",
+          "chars": 6801,
+          "page_words": 294,
+          "rationale_overlap": 10,
+          "util_pct": 3.4
+        },
+        {
+          "path": "selector.md",
+          "chars": 10496,
+          "page_words": 362,
+          "rationale_overlap": 9,
+          "util_pct": 2.5
+        },
+        {
+          "path": "reasoning/frame_to_strategy_chain.md",
+          "chars": 7232,
+          "page_words": 271,
+          "rationale_overlap": 12,
+          "util_pct": 4.4
+        },
+        {
+          "path": "reasoning/discovery_phase.md",
+          "chars": 5539,
+          "page_words": 260,
+          "rationale_overlap": 15,
+          "util_pct": 5.8
+        },
+        {
+          "path": "game_types/hybrid.md",
+          "chars": 566,
+          "page_words": 58,
+          "rationale_overlap": 11,
+          "util_pct": 19.0
+        }
+      ]
+    },
+    {
+      "title": "DC22",
+      "primary": "bfs_state_space",
+      "expected_by_decision_tree": "bfs_state_space",
+      "rule_followed": true,
+      "best_levels": 1,
+      "wiki_context_chars": 32000,
+      "budget": 32000,
+      "saturation": 1.0,
+      "page_count": 6,
+      "page_utilisation": [
+        {
+          "path": "llm_context/decision_tree.md",
+          "chars": 1356,
+          "page_words": 87,
+          "rationale_overlap": 5,
+          "util_pct": 5.7
+        },
+        {
+          "path": "debug/plan_failure_signatures.md",
+          "chars": 6801,
+          "page_words": 294,
+          "rationale_overlap": 10,
+          "util_pct": 3.4
+        },
+        {
+          "path": "selector.md",
+          "chars": 10496,
+          "page_words": 362,
+          "rationale_overlap": 9,
+          "util_pct": 2.5
+        },
+        {
+          "path": "reasoning/frame_to_strategy_chain.md",
+          "chars": 7232,
+          "page_words": 271,
+          "rationale_overlap": 12,
+          "util_pct": 4.4
+        },
+        {
+          "path": "reasoning/discovery_phase.md",
+          "chars": 5539,
+          "page_words": 260,
+          "rationale_overlap": 15,
+          "util_pct": 5.8
+        },
+        {
+          "path": "game_types/hybrid.md",
+          "chars": 566,
+          "page_words": 58,
+          "rationale_overlap": 11,
+          "util_pct": 19.0
+        }
+      ]
+    },
+    {
+      "title": "SP80",
+      "primary": "bfs_state_space",
+      "expected_by_decision_tree": "bfs_state_space",
+      "rule_followed": true,
+      "best_levels": 1,
+      "wiki_context_chars": 32000,
+      "budget": 32000,
+      "saturation": 1.0,
+      "page_count": 6,
+      "page_utilisation": [
+        {
+          "path": "llm_context/decision_tree.md",
+          "chars": 1356,
+          "page_words": 87,
+          "rationale_overlap": 4,
+          "util_pct": 4.6
+        },
+        {
+          "path": "debug/plan_failure_signatures.md",
+          "chars": 6801,
+          "page_words": 294,
+          "rationale_overlap": 10,
+          "util_pct": 3.4
+        },
+        {
+          "path": "selector.md",
+          "chars": 10496,
+          "page_words": 362,
+          "rationale_overlap": 10,
+          "util_pct": 2.8
+        },
+        {
+          "path": "reasoning/frame_to_strategy_chain.md",
+          "chars": 7232,
+          "page_words": 271,
+          "rationale_overlap": 13,
+          "util_pct": 4.8
+        },
+        {
+          "path": "reasoning/discovery_phase.md",
+          "chars": 5539,
+          "page_words": 260,
+          "rationale_overlap": 13,
+          "util_pct": 5.0
+        },
+        {
+          "path": "game_types/hybrid.md",
+          "chars": 566,
+          "page_words": 58,
+          "rationale_overlap": 11,
+          "util_pct": 19.0
+        }
+      ]
+    },
+    {
+      "title": "SP80",
+      "primary": "bfs_state_space",
+      "expected_by_decision_tree": "bfs_state_space",
+      "rule_followed": true,
+      "best_levels": 1,
+      "wiki_context_chars": 32000,
+      "budget": 32000,
+      "saturation": 1.0,
+      "page_count": 6,
+      "page_utilisation": [
+        {
+          "path": "llm_context/decision_tree.md",
+          "chars": 1356,
+          "page_words": 87,
+          "rationale_overlap": 5,
+          "util_pct": 5.7
+        },
+        {
+          "path": "debug/plan_failure_signatures.md",
+          "chars": 6801,
+          "page_words": 294,
+          "rationale_overlap": 10,
+          "util_pct": 3.4
+        },
+        {
+          "path": "selector.md",
+          "chars": 10496,
+          "page_words": 362,
+          "rationale_overlap": 10,
+          "util_pct": 2.8
+        },
+        {
+          "path": "reasoning/frame_to_strategy_chain.md",
+          "chars": 7232,
+          "page_words": 271,
+          "rationale_overlap": 12,
+          "util_pct": 4.4
+        },
+        {
+          "path": "reasoning/discovery_phase.md",
+          "chars": 5539,
+          "page_words": 260,
+          "rationale_overlap": 13,
+          "util_pct": 5.0
+        },
+        {
+          "path": "game_types/hybrid.md",
+          "chars": 566,
+          "page_words": 58,
+          "rationale_overlap": 10,
+          "util_pct": 17.2
+        }
+      ]
+    },
+    {
+      "title": "KA59",
+      "primary": "bfs_state_space",
+      "expected_by_decision_tree": "bfs_state_space",
+      "rule_followed": true,
+      "best_levels": 0,
+      "wiki_context_chars": 32000,
+      "budget": 32000,
+      "saturation": 1.0,
+      "page_count": 6,
+      "page_utilisation": [
+        {
+          "path": "llm_context/decision_tree.md",
+          "chars": 1356,
+          "page_words": 87,
+          "rationale_overlap": 5,
+          "util_pct": 5.7
+        },
+        {
+          "path": "debug/plan_failure_signatures.md",
+          "chars": 6801,
+          "page_words": 294,
+          "rationale_overlap": 8,
+          "util_pct": 2.7
+        },
+        {
+          "path": "selector.md",
+          "chars": 10496,
+          "page_words": 362,
+          "rationale_overlap": 9,
+          "util_pct": 2.5
+        },
+        {
+          "path": "reasoning/frame_to_strategy_chain.md",
+          "chars": 7232,
+          "page_words": 271,
+          "rationale_overlap": 9,
+          "util_pct": 3.3
+        },
+        {
+          "path": "reasoning/discovery_phase.md",
+          "chars": 5539,
+          "page_words": 260,
+          "rationale_overlap": 8,
+          "util_pct": 3.1
+        },
+        {
+          "path": "game_types/hybrid.md",
+          "chars": 566,
+          "page_words": 58,
+          "rationale_overlap": 9,
+          "util_pct": 15.5
+        }
+      ]
+    },
+    {
+      "title": "KA59",
+      "primary": "bfs_state_space",
+      "expected_by_decision_tree": "bfs_state_space",
+      "rule_followed": true,
+      "best_levels": 0,
+      "wiki_context_chars": 32000,
+      "budget": 32000,
+      "saturation": 1.0,
+      "page_count": 6,
+      "page_utilisation": [
+        {
+          "path": "llm_context/decision_tree.md",
+          "chars": 1356,
+          "page_words": 87,
+          "rationale_overlap": 5,
+          "util_pct": 5.7
+        },
+        {
+          "path": "debug/plan_failure_signatures.md",
+          "chars": 6801,
+          "page_words": 294,
+          "rationale_overlap": 8,
+          "util_pct": 2.7
+        },
+        {
+          "path": "selector.md",
+          "chars": 10496,
+          "page_words": 362,
+          "rationale_overlap": 9,
+          "util_pct": 2.5
+        },
+        {
+          "path": "reasoning/frame_to_strategy_chain.md",
+          "chars": 7232,
+          "page_words": 271,
+          "rationale_overlap": 9,
+          "util_pct": 3.3
+        },
+        {
+          "path": "reasoning/discovery_phase.md",
+          "chars": 5539,
+          "page_words": 260,
+          "rationale_overlap": 8,
+          "util_pct": 3.1
+        },
+        {
+          "path": "game_types/hybrid.md",
+          "chars": 566,
+          "page_words": 58,
+          "rationale_overlap": 9,
+          "util_pct": 15.5
+        }
+      ]
+    },
+    {
+      "title": "G50T",
+      "primary": "bfs_state_space",
+      "expected_by_decision_tree": "bfs_state_space",
+      "rule_followed": true,
+      "best_levels": 0,
+      "wiki_context_chars": 32000,
+      "budget": 32000,
+      "saturation": 1.0,
+      "page_count": 6,
+      "page_utilisation": [
+        {
+          "path": "llm_context/decision_tree.md",
+          "chars": 1356,
+          "page_words": 87,
+          "rationale_overlap": 5,
+          "util_pct": 5.7
+        },
+        {
+          "path": "debug/plan_failure_signatures.md",
+          "chars": 6801,
+          "page_words": 294,
+          "rationale_overlap": 8,
+          "util_pct": 2.7
+        },
+        {
+          "path": "selector.md",
+          "chars": 10496,
+          "page_words": 362,
+          "rationale_overlap": 9,
+          "util_pct": 2.5
+        },
+        {
+          "path": "reasoning/frame_to_strategy_chain.md",
+          "chars": 7232,
+          "page_words": 271,
+          "rationale_overlap": 9,
+          "util_pct": 3.3
+        },
+        {
+          "path": "reasoning/discovery_phase.md",
+          "chars": 5539,
+          "page_words": 260,
+          "rationale_overlap": 11,
+          "util_pct": 4.2
+        },
+        {
+          "path": "game_types/movement.md",
+          "chars": 566,
+          "page_words": 113,
+          "rationale_overlap": 9,
+          "util_pct": 8.0
+        }
+      ]
+    },
+    {
+      "title": "SB26",
+      "primary": "click_toggle_detect",
+      "expected_by_decision_tree": "click_rare",
+      "rule_followed": false,
+      "best_levels": 0,
+      "wiki_context_chars": 32000,
+      "budget": 32000,
+      "saturation": 1.0,
+      "page_count": 6,
+      "page_utilisation": [
+        {
+          "path": "llm_context/decision_tree.md",
+          "chars": 1356,
+          "page_words": 87,
+          "rationale_overlap": 4,
+          "util_pct": 4.6
+        },
+        {
+          "path": "debug/plan_failure_signatures.md",
+          "chars": 6801,
+          "page_words": 294,
+          "rationale_overlap": 5,
+          "util_pct": 1.7
+        },
+        {
+          "path": "selector.md",
+          "chars": 10496,
+          "page_words": 362,
+          "rationale_overlap": 9,
+          "util_pct": 2.5
+        },
+        {
+          "path": "reasoning/frame_to_strategy_chain.md",
+          "chars": 7232,
+          "page_words": 271,
+          "rationale_overlap": 6,
+          "util_pct": 2.2
+        },
+        {
+          "path": "reasoning/discovery_phase.md",
+          "chars": 5539,
+          "page_words": 260,
+          "rationale_overlap": 10,
+          "util_pct": 3.8
+        },
+        {
+          "path": "game_types/click.md",
+          "chars": 566,
+          "page_words": 112,
+          "rationale_overlap": 9,
+          "util_pct": 8.0
+        }
+      ]
+    },
+    {
+      "title": "LF52",
+      "primary": "click_toggle_detect",
+      "expected_by_decision_tree": "bfs_state_space",
+      "rule_followed": false,
+      "best_levels": 0,
+      "wiki_context_chars": 32000,
+      "budget": 32000,
+      "saturation": 1.0,
+      "page_count": 6,
+      "page_utilisation": [
+        {
+          "path": "llm_context/decision_tree.md",
+          "chars": 1356,
+          "page_words": 87,
+          "rationale_overlap": 4,
+          "util_pct": 4.6
+        },
+        {
+          "path": "debug/plan_failure_signatures.md",
+          "chars": 6801,
+          "page_words": 294,
+          "rationale_overlap": 9,
+          "util_pct": 3.1
+        },
+        {
+          "path": "selector.md",
+          "chars": 10496,
+          "page_words": 362,
+          "rationale_overlap": 15,
+          "util_pct": 4.1
+        },
+        {
+          "path": "reasoning/frame_to_strategy_chain.md",
+          "chars": 7232,
+          "page_words": 271,
+          "rationale_overlap": 13,
+          "util_pct": 4.8
+        },
+        {
+          "path": "reasoning/discovery_phase.md",
+          "chars": 5539,
+          "page_words": 260,
+          "rationale_overlap": 11,
+          "util_pct": 4.2
+        },
+        {
+          "path": "game_types/hybrid.md",
+          "chars": 566,
+          "page_words": 58,
+          "rationale_overlap": 5,
+          "util_pct": 8.6
+        }
+      ]
+    },
+    {
+      "title": "BP35",
+      "primary": "click_toggle_detect",
+      "expected_by_decision_tree": "bfs_state_space",
+      "rule_followed": false,
+      "best_levels": 0,
+      "wiki_context_chars": 32000,
+      "budget": 32000,
+      "saturation": 1.0,
+      "page_count": 6,
+      "page_utilisation": [
+        {
+          "path": "llm_context/decision_tree.md",
+          "chars": 1356,
+          "page_words": 87,
+          "rationale_overlap": 4,
+          "util_pct": 4.6
+        },
+        {
+          "path": "debug/plan_failure_signatures.md",
+          "chars": 6801,
+          "page_words": 294,
+          "rationale_overlap": 9,
+          "util_pct": 3.1
+        },
+        {
+          "path": "selector.md",
+          "chars": 10496,
+          "page_words": 362,
+          "rationale_overlap": 14,
+          "util_pct": 3.9
+        },
+        {
+          "path": "reasoning/frame_to_strategy_chain.md",
+          "chars": 7232,
+          "page_words": 271,
+          "rationale_overlap": 9,
+          "util_pct": 3.3
+        },
+        {
+          "path": "reasoning/discovery_phase.md",
+          "chars": 5539,
+          "page_words": 260,
+          "rationale_overlap": 16,
+          "util_pct": 6.2
+        },
+        {
+          "path": "game_types/hybrid.md",
+          "chars": 566,
+          "page_words": 58,
+          "rationale_overlap": 7,
+          "util_pct": 12.1
+        }
+      ]
+    },
+    {
+      "title": "S5I5",
+      "primary": "click_select_move",
+      "expected_by_decision_tree": "click_toggle_detect",
+      "rule_followed": false,
+      "best_levels": 0,
+      "wiki_context_chars": 32000,
+      "budget": 32000,
+      "saturation": 1.0,
+      "page_count": 6,
+      "page_utilisation": [
+        {
+          "path": "llm_context/decision_tree.md",
+          "chars": 1356,
+          "page_words": 87,
+          "rationale_overlap": 5,
+          "util_pct": 5.7
+        },
+        {
+          "path": "debug/plan_failure_signatures.md",
+          "chars": 6801,
+          "page_words": 294,
+          "rationale_overlap": 9,
+          "util_pct": 3.1
+        },
+        {
+          "path": "selector.md",
+          "chars": 10496,
+          "page_words": 362,
+          "rationale_overlap": 10,
+          "util_pct": 2.8
+        },
+        {
+          "path": "reasoning/frame_to_strategy_chain.md",
+          "chars": 7232,
+          "page_words": 271,
+          "rationale_overlap": 9,
+          "util_pct": 3.3
+        },
+        {
+          "path": "reasoning/discovery_phase.md",
+          "chars": 5539,
+          "page_words": 260,
+          "rationale_overlap": 13,
+          "util_pct": 5.0
+        },
+        {
+          "path": "game_types/click.md",
+          "chars": 566,
+          "page_words": 112,
+          "rationale_overlap": 10,
+          "util_pct": 8.9
+        }
+      ]
+    },
+    {
+      "title": "S5I5",
+      "primary": "click_select_move",
+      "expected_by_decision_tree": "click_toggle_detect",
+      "rule_followed": false,
+      "best_levels": 0,
+      "wiki_context_chars": 32000,
+      "budget": 32000,
+      "saturation": 1.0,
+      "page_count": 6,
+      "page_utilisation": [
+        {
+          "path": "llm_context/decision_tree.md",
+          "chars": 1356,
+          "page_words": 87,
+          "rationale_overlap": 5,
+          "util_pct": 5.7
+        },
+        {
+          "path": "debug/plan_failure_signatures.md",
+          "chars": 6801,
+          "page_words": 294,
+          "rationale_overlap": 9,
+          "util_pct": 3.1
+        },
+        {
+          "path": "selector.md",
+          "chars": 10496,
+          "page_words": 362,
+          "rationale_overlap": 10,
+          "util_pct": 2.8
+        },
+        {
+          "path": "reasoning/frame_to_strategy_chain.md",
+          "chars": 7232,
+          "page_words": 271,
+          "rationale_overlap": 9,
+          "util_pct": 3.3
+        },
+        {
+          "path": "reasoning/discovery_phase.md",
+          "chars": 5539,
+          "page_words": 260,
+          "rationale_overlap": 13,
+          "util_pct": 5.0
+        },
+        {
+          "path": "game_types/click.md",
+          "chars": 566,
+          "page_words": 112,
+          "rationale_overlap": 10,
+          "util_pct": 8.9
+        }
+      ]
+    },
+    {
+      "title": "R11L",
+      "primary": "click_select_move",
+      "expected_by_decision_tree": "click_toggle_detect",
+      "rule_followed": false,
+      "best_levels": 0,
+      "wiki_context_chars": 32000,
+      "budget": 32000,
+      "saturation": 1.0,
+      "page_count": 6,
+      "page_utilisation": [
+        {
+          "path": "llm_context/decision_tree.md",
+          "chars": 1356,
+          "page_words": 87,
+          "rationale_overlap": 4,
+          "util_pct": 4.6
+        },
+        {
+          "path": "debug/plan_failure_signatures.md",
+          "chars": 6801,
+          "page_words": 294,
+          "rationale_overlap": 9,
+          "util_pct": 3.1
+        },
+        {
+          "path": "selector.md",
+          "chars": 10496,
+          "page_words": 362,
+          "rationale_overlap": 12,
+          "util_pct": 3.3
+        },
+        {
+          "path": "reasoning/frame_to_strategy_chain.md",
+          "chars": 7232,
+          "page_words": 271,
+          "rationale_overlap": 10,
+          "util_pct": 3.7
+        },
+        {
+          "path": "reasoning/discovery_phase.md",
+          "chars": 5539,
+          "page_words": 260,
+          "rationale_overlap": 10,
+          "util_pct": 3.8
+        },
+        {
+          "path": "game_types/click.md",
+          "chars": 566,
+          "page_words": 112,
+          "rationale_overlap": 11,
+          "util_pct": 9.8
+        }
+      ]
+    },
+    {
+      "title": "R11L",
+      "primary": "click_select_move",
+      "expected_by_decision_tree": "click_toggle_detect",
+      "rule_followed": false,
+      "best_levels": 0,
+      "wiki_context_chars": 32000,
+      "budget": 32000,
+      "saturation": 1.0,
+      "page_count": 6,
+      "page_utilisation": [
+        {
+          "path": "llm_context/decision_tree.md",
+          "chars": 1356,
+          "page_words": 87,
+          "rationale_overlap": 4,
+          "util_pct": 4.6
+        },
+        {
+          "path": "debug/plan_failure_signatures.md",
+          "chars": 6801,
+          "page_words": 294,
+          "rationale_overlap": 9,
+          "util_pct": 3.1
+        },
+        {
+          "path": "selector.md",
+          "chars": 10496,
+          "page_words": 362,
+          "rationale_overlap": 12,
+          "util_pct": 3.3
+        },
+        {
+          "path": "reasoning/frame_to_strategy_chain.md",
+          "chars": 7232,
+          "page_words": 271,
+          "rationale_overlap": 10,
+          "util_pct": 3.7
+        },
+        {
+          "path": "reasoning/discovery_phase.md",
+          "chars": 5539,
+          "page_words": 260,
+          "rationale_overlap": 10,
+          "util_pct": 3.8
+        },
+        {
+          "path": "game_types/click.md",
+          "chars": 566,
+          "page_words": 112,
+          "rationale_overlap": 11,
+          "util_pct": 9.8
+        }
+      ]
+    },
+    {
+      "title": "SK48",
+      "primary": "bfs_state_space",
+      "expected_by_decision_tree": "bfs_state_space",
+      "rule_followed": true,
+      "best_levels": 1,
+      "wiki_context_chars": 32000,
+      "budget": 32000,
+      "saturation": 1.0,
+      "page_count": 6,
+      "page_utilisation": [
+        {
+          "path": "llm_context/decision_tree.md",
+          "chars": 1356,
+          "page_words": 87,
+          "rationale_overlap": 4,
+          "util_pct": 4.6
+        },
+        {
+          "path": "debug/plan_failure_signatures.md",
+          "chars": 6801,
+          "page_words": 294,
+          "rationale_overlap": 6,
+          "util_pct": 2.0
+        },
+        {
+          "path": "selector.md",
+          "chars": 10496,
+          "page_words": 362,
+          "rationale_overlap": 6,
+          "util_pct": 1.7
+        },
+        {
+          "path": "reasoning/frame_to_strategy_chain.md",
+          "chars": 7232,
+          "page_words": 271,
+          "rationale_overlap": 6,
+          "util_pct": 2.2
+        },
+        {
+          "path": "reasoning/discovery_phase.md",
+          "chars": 5539,
+          "page_words": 260,
+          "rationale_overlap": 8,
+          "util_pct": 3.1
+        },
+        {
+          "path": "game_types/hybrid.md",
+          "chars": 566,
+          "page_words": 58,
+          "rationale_overlap": 8,
+          "util_pct": 13.8
+        }
+      ]
+    },
+    {
+      "title": "SK48",
+      "primary": "bfs_state_space",
+      "expected_by_decision_tree": "bfs_state_space",
+      "rule_followed": true,
+      "best_levels": 1,
+      "wiki_context_chars": 32000,
+      "budget": 32000,
+      "saturation": 1.0,
+      "page_count": 6,
+      "page_utilisation": [
+        {
+          "path": "llm_context/decision_tree.md",
+          "chars": 1356,
+          "page_words": 87,
+          "rationale_overlap": 3,
+          "util_pct": 3.4
+        },
+        {
+          "path": "debug/plan_failure_signatures.md",
+          "chars": 6801,
+          "page_words": 294,
+          "rationale_overlap": 7,
+          "util_pct": 2.4
+        },
+        {
+          "path": "selector.md",
+          "chars": 10496,
+          "page_words": 362,
+          "rationale_overlap": 7,
+          "util_pct": 1.9
+        },
+        {
+          "path": "reasoning/frame_to_strategy_chain.md",
+          "chars": 7232,
+          "page_words": 271,
+          "rationale_overlap": 7,
+          "util_pct": 2.6
+        },
+        {
+          "path": "reasoning/discovery_phase.md",
+          "chars": 5539,
+          "page_words": 260,
+          "rationale_overlap": 9,
+          "util_pct": 3.5
+        },
+        {
+          "path": "game_types/hybrid.md",
+          "chars": 566,
+          "page_words": 58,
+          "rationale_overlap": 6,
+          "util_pct": 10.3
+        }
+      ]
+    },
+    {
+      "title": "WA30",
+      "primary": "bfs_state_space",
+      "expected_by_decision_tree": "bfs_state_space",
+      "rule_followed": true,
+      "best_levels": 0,
+      "wiki_context_chars": 32000,
+      "budget": 32000,
+      "saturation": 1.0,
+      "page_count": 6,
+      "page_utilisation": [
+        {
+          "path": "llm_context/decision_tree.md",
+          "chars": 1356,
+          "page_words": 87,
+          "rationale_overlap": 3,
+          "util_pct": 3.4
+        },
+        {
+          "path": "debug/plan_failure_signatures.md",
+          "chars": 6801,
+          "page_words": 294,
+          "rationale_overlap": 8,
+          "util_pct": 2.7
+        },
+        {
+          "path": "selector.md",
+          "chars": 10496,
+          "page_words": 362,
+          "rationale_overlap": 9,
+          "util_pct": 2.5
+        },
+        {
+          "path": "reasoning/frame_to_strategy_chain.md",
+          "chars": 7232,
+          "page_words": 271,
+          "rationale_overlap": 9,
+          "util_pct": 3.3
+        },
+        {
+          "path": "reasoning/discovery_phase.md",
+          "chars": 5539,
+          "page_words": 260,
+          "rationale_overlap": 12,
+          "util_pct": 4.6
+        },
+        {
+          "path": "game_types/movement.md",
+          "chars": 566,
+          "page_words": 113,
+          "rationale_overlap": 7,
+          "util_pct": 6.2
+        }
+      ]
+    },
+    {
+      "title": "VC33",
+      "primary": "click_select_move",
+      "expected_by_decision_tree": "click_toggle_detect",
+      "rule_followed": false,
+      "best_levels": 1,
+      "wiki_context_chars": 32000,
+      "budget": 32000,
+      "saturation": 1.0,
+      "page_count": 6,
+      "page_utilisation": [
+        {
+          "path": "llm_context/decision_tree.md",
+          "chars": 1356,
+          "page_words": 87,
+          "rationale_overlap": 6,
+          "util_pct": 6.9
+        },
+        {
+          "path": "debug/plan_failure_signatures.md",
+          "chars": 6801,
+          "page_words": 294,
+          "rationale_overlap": 10,
+          "util_pct": 3.4
+        },
+        {
+          "path": "selector.md",
+          "chars": 10496,
+          "page_words": 362,
+          "rationale_overlap": 12,
+          "util_pct": 3.3
+        },
+        {
+          "path": "reasoning/frame_to_strategy_chain.md",
+          "chars": 7232,
+          "page_words": 271,
+          "rationale_overlap": 9,
+          "util_pct": 3.3
+        },
+        {
+          "path": "reasoning/discovery_phase.md",
+          "chars": 5539,
+          "page_words": 260,
+          "rationale_overlap": 13,
+          "util_pct": 5.0
+        },
+        {
+          "path": "game_types/click.md",
+          "chars": 566,
+          "page_words": 112,
+          "rationale_overlap": 12,
+          "util_pct": 10.7
+        }
+      ]
+    },
+    {
+      "title": "VC33",
+      "primary": "click_select_move",
+      "expected_by_decision_tree": "click_toggle_detect",
+      "rule_followed": false,
+      "best_levels": 1,
+      "wiki_context_chars": 32000,
+      "budget": 32000,
+      "saturation": 1.0,
+      "page_count": 6,
+      "page_utilisation": [
+        {
+          "path": "llm_context/decision_tree.md",
+          "chars": 1356,
+          "page_words": 87,
+          "rationale_overlap": 6,
+          "util_pct": 6.9
+        },
+        {
+          "path": "debug/plan_failure_signatures.md",
+          "chars": 6801,
+          "page_words": 294,
+          "rationale_overlap": 10,
+          "util_pct": 3.4
+        },
+        {
+          "path": "selector.md",
+          "chars": 10496,
+          "page_words": 362,
+          "rationale_overlap": 12,
+          "util_pct": 3.3
+        },
+        {
+          "path": "reasoning/frame_to_strategy_chain.md",
+          "chars": 7232,
+          "page_words": 271,
+          "rationale_overlap": 9,
+          "util_pct": 3.3
+        },
+        {
+          "path": "reasoning/discovery_phase.md",
+          "chars": 5539,
+          "page_words": 260,
+          "rationale_overlap": 13,
+          "util_pct": 5.0
+        },
+        {
+          "path": "game_types/click.md",
+          "chars": 566,
+          "page_words": 112,
+          "rationale_overlap": 12,
+          "util_pct": 10.7
+        }
+      ]
+    },
+    {
+      "title": "LS20",
+      "primary": "bfs_state_space",
+      "expected_by_decision_tree": "adaptive_bfs_solver",
+      "rule_followed": false,
+      "best_levels": 1,
+      "wiki_context_chars": 32000,
+      "budget": 32000,
+      "saturation": 1.0,
+      "page_count": 6,
+      "page_utilisation": [
+        {
+          "path": "llm_context/decision_tree.md",
+          "chars": 1356,
+          "page_words": 87,
+          "rationale_overlap": 3,
+          "util_pct": 3.4
+        },
+        {
+          "path": "debug/plan_failure_signatures.md",
+          "chars": 6801,
+          "page_words": 294,
+          "rationale_overlap": 8,
+          "util_pct": 2.7
+        },
+        {
+          "path": "selector.md",
+          "chars": 10496,
+          "page_words": 362,
+          "rationale_overlap": 9,
+          "util_pct": 2.5
+        },
+        {
+          "path": "reasoning/frame_to_strategy_chain.md",
+          "chars": 7232,
+          "page_words": 271,
+          "rationale_overlap": 9,
+          "util_pct": 3.3
+        },
+        {
+          "path": "reasoning/discovery_phase.md",
+          "chars": 5539,
+          "page_words": 260,
+          "rationale_overlap": 12,
+          "util_pct": 4.6
+        },
+        {
+          "path": "game_types/movement.md",
+          "chars": 566,
+          "page_words": 113,
+          "rationale_overlap": 7,
+          "util_pct": 6.2
+        }
+      ]
+    },
+    {
+      "title": "CD82",
+      "primary": "click_toggle_detect",
+      "expected_by_decision_tree": "click_color_order",
+      "rule_followed": false,
+      "best_levels": 0,
+      "wiki_context_chars": 32000,
+      "budget": 32000,
+      "saturation": 1.0,
+      "page_count": 6,
+      "page_utilisation": [
+        {
+          "path": "llm_context/decision_tree.md",
+          "chars": 1356,
+          "page_words": 87,
+          "rationale_overlap": 4,
+          "util_pct": 4.6
+        },
+        {
+          "path": "debug/plan_failure_signatures.md",
+          "chars": 6801,
+          "page_words": 294,
+          "rationale_overlap": 14,
+          "util_pct": 4.8
+        },
+        {
+          "path": "selector.md",
+          "chars": 10496,
+          "page_words": 362,
+          "rationale_overlap": 14,
+          "util_pct": 3.9
+        },
+        {
+          "path": "reasoning/frame_to_strategy_chain.md",
+          "chars": 7232,
+          "page_words": 271,
+          "rationale_overlap": 13,
+          "util_pct": 4.8
+        },
+        {
+          "path": "reasoning/discovery_phase.md",
+          "chars": 5539,
+          "page_words": 260,
+          "rationale_overlap": 15,
+          "util_pct": 5.8
+        },
+        {
+          "path": "game_types/hybrid.md",
+          "chars": 566,
+          "page_words": 58,
+          "rationale_overlap": 10,
+          "util_pct": 17.2
+        }
+      ]
+    },
+    {
+      "title": "TN36",
+      "primary": "click_select_move",
+      "expected_by_decision_tree": "click_toggle_detect",
+      "rule_followed": false,
+      "best_levels": 0,
+      "wiki_context_chars": 32000,
+      "budget": 32000,
+      "saturation": 1.0,
+      "page_count": 6,
+      "page_utilisation": [
+        {
+          "path": "llm_context/decision_tree.md",
+          "chars": 1356,
+          "page_words": 87,
+          "rationale_overlap": 4,
+          "util_pct": 4.6
+        },
+        {
+          "path": "debug/plan_failure_signatures.md",
+          "chars": 6801,
+          "page_words": 294,
+          "rationale_overlap": 11,
+          "util_pct": 3.7
+        },
+        {
+          "path": "selector.md",
+          "chars": 10496,
+          "page_words": 362,
+          "rationale_overlap": 13,
+          "util_pct": 3.6
+        },
+        {
+          "path": "reasoning/frame_to_strategy_chain.md",
+          "chars": 7232,
+          "page_words": 271,
+          "rationale_overlap": 9,
+          "util_pct": 3.3
+        },
+        {
+          "path": "reasoning/discovery_phase.md",
+          "chars": 5539,
+          "page_words": 260,
+          "rationale_overlap": 13,
+          "util_pct": 5.0
+        },
+        {
+          "path": "game_types/click.md",
+          "chars": 566,
+          "page_words": 112,
+          "rationale_overlap": 11,
+          "util_pct": 9.8
+        }
+      ]
+    },
+    {
+      "title": "TN36",
+      "primary": "click_select_move",
+      "expected_by_decision_tree": "click_toggle_detect",
+      "rule_followed": false,
+      "best_levels": 0,
+      "wiki_context_chars": 32000,
+      "budget": 32000,
+      "saturation": 1.0,
+      "page_count": 6,
+      "page_utilisation": [
+        {
+          "path": "llm_context/decision_tree.md",
+          "chars": 1356,
+          "page_words": 87,
+          "rationale_overlap": 4,
+          "util_pct": 4.6
+        },
+        {
+          "path": "debug/plan_failure_signatures.md",
+          "chars": 6801,
+          "page_words": 294,
+          "rationale_overlap": 11,
+          "util_pct": 3.7
+        },
+        {
+          "path": "selector.md",
+          "chars": 10496,
+          "page_words": 362,
+          "rationale_overlap": 13,
+          "util_pct": 3.6
+        },
+        {
+          "path": "reasoning/frame_to_strategy_chain.md",
+          "chars": 7232,
+          "page_words": 271,
+          "rationale_overlap": 9,
+          "util_pct": 3.3
+        },
+        {
+          "path": "reasoning/discovery_phase.md",
+          "chars": 5539,
+          "page_words": 260,
+          "rationale_overlap": 13,
+          "util_pct": 5.0
+        },
+        {
+          "path": "game_types/click.md",
+          "chars": 566,
+          "page_words": 112,
+          "rationale_overlap": 11,
+          "util_pct": 9.8
+        }
+      ]
+    }
+  ]
+}

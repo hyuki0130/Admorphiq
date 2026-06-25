@@ -1,0 +1,4780 @@
+{
+  "timestamp": "2026-04-22T13:39:47",
+  "candidate": "qwen_3_8b_q4",
+  "results": [
+    {
+      "game_title": "TU93",
+      "discovery": {
+        "available_actions": [
+          1,
+          2,
+          3,
+          4
+        ],
+        "layer_count": 1,
+        "dominant_colors": [
+          [
+            5,
+            3465
+          ],
+          [
+            2,
+            288
+          ],
+          [
+            6,
+            64
+          ],
+          [
+            14,
+            9
+          ],
+          [
+            9,
+            8
+          ],
+          [
+            4,
+            1
+          ]
+        ],
+        "probe_diffs": {
+          "1": 1,
+          "2": 1,
+          "3": 1,
+          "4": 8
+        },
+        "dir_map": {
+          "4": "N"
+        },
+        "player_color": 2,
+        "movable_region_count": 3,
+        "click_responsive_cells": [],
+        "change_topology": "mixed",
+        "color_histogram": {
+          "5": 0.8459,
+          "2": 0.0703,
+          "0": 0.0637,
+          "6": 0.0156,
+          "14": 0.0022,
+          "9": 0.002,
+          "4": 0.0002
+        },
+        "symmetry_score": 0.8579
+      },
+      "hypothesis": {
+        "game_type": "movement",
+        "primary_strategy": "bfs_state_space",
+        "fallback_stack": [
+          "wall_avoid",
+          "click_rare"
+        ],
+        "rationale": "The game type is classified as 'movement' based on the presence of directional actions (1, 2, 3, 4) and the movement mapping (action 4 is 'N'). The probe_diffs show minimal changes for actions 1, 2, 3, and a larger change for action 4, suggesting movement. The primary strategy 'bfs_state_space' is appropriate for navigating a maze-like environment. If BFS stalls, we fall back to 'wall_avoid' to avoid obstacles and then 'click_rare' if needed.",
+        "confidence": 0.95,
+        "doubt": "",
+        "features_missing": [],
+        "wiki_gaps": [],
+        "wiki_needs": []
+      },
+      "retrieved_pages": [
+        "llm_context/decision_tree.md",
+        "selector.md",
+        "reasoning/frame_to_strategy_chain.md"
+      ],
+      "executions": [
+        {
+          "strategy": "bfs_state_space",
+          "winning_label": "bfs_state_space",
+          "levels": 2,
+          "actions": 53,
+          "elapsed_s": 1.65,
+          "status": "ok"
+        }
+      ],
+      "best_levels": 2,
+      "total_elapsed_s": 26.0,
+      "status": "ok",
+      "env_index": 1,
+      "game_id": "tu93-0768757b"
+    },
+    {
+      "game_title": "TU93",
+      "discovery": {
+        "available_actions": [
+          1,
+          2,
+          3,
+          4
+        ],
+        "layer_count": 1,
+        "dominant_colors": [
+          [
+            5,
+            3465
+          ],
+          [
+            2,
+            288
+          ],
+          [
+            6,
+            64
+          ],
+          [
+            14,
+            9
+          ],
+          [
+            9,
+            8
+          ],
+          [
+            4,
+            1
+          ]
+        ],
+        "probe_diffs": {
+          "1": 1,
+          "2": 1,
+          "3": 1,
+          "4": 8
+        },
+        "dir_map": {
+          "4": "N"
+        },
+        "player_color": 2,
+        "movable_region_count": 3,
+        "click_responsive_cells": [],
+        "change_topology": "mixed",
+        "color_histogram": {
+          "5": 0.8459,
+          "2": 0.0703,
+          "0": 0.0637,
+          "6": 0.0156,
+          "14": 0.0022,
+          "9": 0.002,
+          "4": 0.0002
+        },
+        "symmetry_score": 0.8579
+      },
+      "hypothesis": {
+        "game_type": "movement",
+        "primary_strategy": "bfs_state_space",
+        "fallback_stack": [
+          "wall_avoid",
+          "click_rare"
+        ],
+        "rationale": "The game type is classified as 'movement' based on the presence of directional actions (1, 2, 3, 4) and the movement mapping (action 4 is 'N'). The probe_diffs show minimal changes for actions 1, 2, 3, and a larger change for action 4, suggesting movement. The primary strategy 'bfs_state_space' is appropriate for navigating a maze-like environment. If BFS stalls, we fall back to 'wall_avoid' to avoid obstacles and then 'click_rare' if needed.",
+        "confidence": 0.95,
+        "doubt": "",
+        "features_missing": [],
+        "wiki_gaps": [],
+        "wiki_needs": []
+      },
+      "retrieved_pages": [
+        "llm_context/decision_tree.md",
+        "selector.md",
+        "reasoning/frame_to_strategy_chain.md"
+      ],
+      "executions": [
+        {
+          "strategy": "bfs_state_space",
+          "winning_label": "bfs_state_space",
+          "levels": 2,
+          "actions": 53,
+          "elapsed_s": 1.61,
+          "status": "ok"
+        }
+      ],
+      "best_levels": 2,
+      "total_elapsed_s": 17.11,
+      "status": "ok",
+      "env_index": 2,
+      "game_id": "tu93-0768757b"
+    },
+    {
+      "game_title": "AR25",
+      "discovery": {
+        "available_actions": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "layer_count": 1,
+        "dominant_colors": [
+          [
+            9,
+            3645
+          ],
+          [
+            10,
+            189
+          ],
+          [
+            11,
+            109
+          ],
+          [
+            5,
+            103
+          ],
+          [
+            4,
+            45
+          ]
+        ],
+        "probe_diffs": {
+          "1": 109,
+          "2": 109,
+          "3": 109,
+          "4": 109,
+          "6": 0,
+          "-6": 0
+        },
+        "dir_map": {},
+        "player_color": null,
+        "movable_region_count": 5,
+        "click_responsive_cells": [],
+        "change_topology": "color_toggle",
+        "color_histogram": {
+          "9": 0.8899,
+          "10": 0.0461,
+          "11": 0.0266,
+          "5": 0.0251,
+          "4": 0.011,
+          "0": 0.0012
+        },
+        "symmetry_score": 0.8896
+      },
+      "hypothesis": {
+        "game_type": "movement",
+        "primary_strategy": "bfs_state_space",
+        "fallback_stack": [
+          "click_rare",
+          "wall_avoid"
+        ],
+        "rationale": "The game is classified as 'movement' based on the available actions [1, 2, 3, 4] and the uniform probe_diffs (109 for each action). The probe-ratio is 1 (max/min = 109/109), indicating uniform movement effects. The click_responsive_cells is empty, suggesting no direct cell interaction. The primary strategy 'bfs_state_space' is suitable for navigating the environment, and the fallback stack includes 'click_rare' for potential cell interaction and 'wall_avoid' for obstacle avoidance.",
+        "confidence": 0.95,
+        "doubt": "",
+        "features_missing": [],
+        "wiki_gaps": [],
+        "wiki_needs": []
+      },
+      "retrieved_pages": [
+        "llm_context/decision_tree.md",
+        "selector.md",
+        "reasoning/frame_to_strategy_chain.md"
+      ],
+      "executions": [
+        {
+          "strategy": "bfs_state_space",
+          "winning_label": "bfs_state_space",
+          "levels": 2,
+          "actions": 2104,
+          "elapsed_s": 177.86,
+          "status": "ok"
+        }
+      ],
+      "best_levels": 2,
+      "total_elapsed_s": 193.5,
+      "status": "ok",
+      "env_index": 3,
+      "game_id": "ar25-0c556536"
+    },
+    {
+      "game_title": "AR25",
+      "discovery": {
+        "available_actions": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "layer_count": 1,
+        "dominant_colors": [
+          [
+            9,
+            3645
+          ],
+          [
+            10,
+            189
+          ],
+          [
+            11,
+            109
+          ],
+          [
+            5,
+            103
+          ],
+          [
+            4,
+            45
+          ]
+        ],
+        "probe_diffs": {
+          "1": 109,
+          "2": 109,
+          "3": 109,
+          "4": 109,
+          "6": 0,
+          "-6": 0
+        },
+        "dir_map": {},
+        "player_color": null,
+        "movable_region_count": 5,
+        "click_responsive_cells": [],
+        "change_topology": "color_toggle",
+        "color_histogram": {
+          "9": 0.8899,
+          "10": 0.0461,
+          "11": 0.0266,
+          "5": 0.0251,
+          "4": 0.011,
+          "0": 0.0012
+        },
+        "symmetry_score": 0.8896
+      },
+      "hypothesis": {
+        "game_type": "movement",
+        "primary_strategy": "bfs_state_space",
+        "fallback_stack": [
+          "click_rare",
+          "wall_avoid"
+        ],
+        "rationale": "The game is classified as 'movement' based on the available actions [1, 2, 3, 4] and the uniform probe_diffs (109 for each action). The probe-ratio is 1 (max/min = 109/109), indicating uniform movement effects. The click_responsive_cells is empty, suggesting no direct cell interaction. The primary strategy 'bfs_state_space' is suitable for navigating the environment, and the fallback stack includes 'click_rare' for potential cell interaction and 'wall_avoid' for obstacle avoidance.",
+        "confidence": 0.95,
+        "doubt": "",
+        "features_missing": [],
+        "wiki_gaps": [],
+        "wiki_needs": []
+      },
+      "retrieved_pages": [
+        "llm_context/decision_tree.md",
+        "selector.md",
+        "reasoning/frame_to_strategy_chain.md"
+      ],
+      "executions": [
+        {
+          "strategy": "bfs_state_space",
+          "winning_label": "bfs_state_space",
+          "levels": 2,
+          "actions": 2104,
+          "elapsed_s": 172.3,
+          "status": "ok"
+        }
+      ],
+      "best_levels": 2,
+      "total_elapsed_s": 187.75,
+      "status": "ok",
+      "env_index": 4,
+      "game_id": "ar25-0c556536"
+    },
+    {
+      "game_title": "RE86",
+      "discovery": {
+        "available_actions": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "layer_count": 1,
+        "dominant_colors": [
+          [
+            5,
+            3862
+          ],
+          [
+            4,
+            64
+          ],
+          [
+            15,
+            64
+          ],
+          [
+            9,
+            56
+          ],
+          [
+            11,
+            49
+          ]
+        ],
+        "probe_diffs": {
+          "1": 61,
+          "2": 61,
+          "3": 61,
+          "4": 61
+        },
+        "dir_map": {},
+        "player_color": null,
+        "movable_region_count": 5,
+        "click_responsive_cells": [],
+        "change_topology": "color_toggle",
+        "color_histogram": {
+          "5": 0.9429,
+          "4": 0.0156,
+          "15": 0.0156,
+          "9": 0.0137,
+          "11": 0.012,
+          "0": 0.0002
+        },
+        "symmetry_score": 0.9312
+      },
+      "hypothesis": {
+        "game_type": "movement",
+        "primary_strategy": "bfs_state_space",
+        "fallback_stack": [
+          "wall_avoid",
+          "click_rare"
+        ],
+        "rationale": "The discovery phase identifies the game as 'movement' with uniform probe diffs (61) for actions 1-4, indicating consistent movement effects. The absence of responsive click cells and no directional mapping suggests a standard movement puzzle. The primary strategy 'bfs_state_space' is appropriate for exploring the state space, with fallbacks for avoiding walls and handling rare click interactions.",
+        "confidence": 0.95,
+        "doubt": "",
+        "features_missing": [],
+        "wiki_gaps": [],
+        "wiki_needs": []
+      },
+      "retrieved_pages": [
+        "llm_context/decision_tree.md",
+        "selector.md",
+        "reasoning/frame_to_strategy_chain.md"
+      ],
+      "executions": [
+        {
+          "strategy": "bfs_state_space",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 1,
+          "elapsed_s": 33.97,
+          "status": "ok"
+        },
+        {
+          "strategy": "wall_avoid",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 3000,
+          "elapsed_s": 0.13,
+          "status": "ok"
+        },
+        {
+          "strategy": "click_rare",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 234,
+          "elapsed_s": 0.01,
+          "status": "ok"
+        }
+      ],
+      "best_levels": 0,
+      "total_elapsed_s": 48.39,
+      "status": "ok",
+      "env_index": 5,
+      "game_id": "re86-8af5384d"
+    },
+    {
+      "game_title": "RE86",
+      "discovery": {
+        "available_actions": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "layer_count": 1,
+        "dominant_colors": [
+          [
+            5,
+            3862
+          ],
+          [
+            4,
+            64
+          ],
+          [
+            15,
+            64
+          ],
+          [
+            9,
+            56
+          ],
+          [
+            11,
+            49
+          ]
+        ],
+        "probe_diffs": {
+          "1": 61,
+          "2": 61,
+          "3": 61,
+          "4": 61
+        },
+        "dir_map": {},
+        "player_color": null,
+        "movable_region_count": 5,
+        "click_responsive_cells": [],
+        "change_topology": "color_toggle",
+        "color_histogram": {
+          "5": 0.9429,
+          "4": 0.0156,
+          "15": 0.0156,
+          "9": 0.0137,
+          "11": 0.012,
+          "0": 0.0002
+        },
+        "symmetry_score": 0.9312
+      },
+      "hypothesis": {
+        "game_type": "movement",
+        "primary_strategy": "bfs_state_space",
+        "fallback_stack": [
+          "wall_avoid",
+          "click_rare"
+        ],
+        "rationale": "The discovery phase identifies the game as 'movement' with uniform probe diffs (61) for actions 1-4, indicating consistent movement effects. The absence of responsive click cells and no directional mapping suggests a standard movement puzzle. The primary strategy 'bfs_state_space' is appropriate for exploring the state space, with fallbacks for avoiding walls and handling rare click interactions.",
+        "confidence": 0.95,
+        "doubt": "",
+        "features_missing": [],
+        "wiki_gaps": [],
+        "wiki_needs": []
+      },
+      "retrieved_pages": [
+        "llm_context/decision_tree.md",
+        "selector.md",
+        "reasoning/frame_to_strategy_chain.md"
+      ],
+      "executions": [
+        {
+          "strategy": "bfs_state_space",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 1,
+          "elapsed_s": 33.9,
+          "status": "ok"
+        },
+        {
+          "strategy": "wall_avoid",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 3000,
+          "elapsed_s": 0.13,
+          "status": "ok"
+        },
+        {
+          "strategy": "click_rare",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 234,
+          "elapsed_s": 0.01,
+          "status": "ok"
+        }
+      ],
+      "best_levels": 0,
+      "total_elapsed_s": 48.29,
+      "status": "ok",
+      "env_index": 6,
+      "game_id": "re86-8af5384d"
+    },
+    {
+      "game_title": "SU15",
+      "discovery": {
+        "available_actions": [
+          6,
+          7
+        ],
+        "layer_count": 1,
+        "dominant_colors": [
+          [
+            5,
+            3290
+          ],
+          [
+            4,
+            631
+          ],
+          [
+            9,
+            59
+          ],
+          [
+            3,
+            29
+          ],
+          [
+            15,
+            18
+          ]
+        ],
+        "probe_diffs": {
+          "7": 0,
+          "6": 48,
+          "-6": 5
+        },
+        "dir_map": {},
+        "player_color": null,
+        "movable_region_count": 0,
+        "click_responsive_cells": [
+          {
+            "x": 32,
+            "y": 32,
+            "diff": 48,
+            "color_before_at_click": 5,
+            "color_after_at_click": 5
+          },
+          {
+            "x": 16,
+            "y": 16,
+            "diff": 48,
+            "color_before_at_click": 5,
+            "color_after_at_click": 5
+          },
+          {
+            "x": 48,
+            "y": 16,
+            "diff": 48,
+            "color_before_at_click": 3,
+            "color_after_at_click": 3
+          },
+          {
+            "x": 16,
+            "y": 48,
+            "diff": 46,
+            "color_before_at_click": 5,
+            "color_after_at_click": 5
+          },
+          {
+            "x": 48,
+            "y": 48,
+            "diff": 48,
+            "color_before_at_click": 5,
+            "color_after_at_click": 5
+          }
+        ],
+        "change_topology": "no_change",
+        "color_histogram": {
+          "5": 0.8032,
+          "4": 0.1541,
+          "0": 0.0168,
+          "9": 0.0144,
+          "3": 0.0071,
+          "15": 0.0044
+        },
+        "symmetry_score": 0.9487
+      },
+      "hypothesis": {
+        "game_type": "merge_puzzle",
+        "primary_strategy": "click_rare",
+        "fallback_stack": [
+          "click_rare",
+          "click_grid_aligned",
+          "bfs_state_space"
+        ],
+        "rationale": "The discovery phase identifies this as a merge_puzzle. The probe_diffs show that action 6 (click) has a significant impact (48 pixels changed), and there are 5 responsive click cells. This aligns with rule 4 (click-rare) where only action 6 is available and it has a significant impact. The primary strategy is click_rare, which focuses on identifying and executing the rare click actions that clear the level. The fallback stack includes click_rare (to handle any additional responsive clicks), click_grid_aliigned (to handle any grid-aligned patterns), and bfs_state_space (as a last resort if the level requires pathfinding).",
+        "confidence": 0.95,
+        "doubt": "",
+        "features_missing": [],
+        "wiki_gaps": [],
+        "wiki_needs": []
+      },
+      "retrieved_pages": [
+        "llm_context/decision_tree.md",
+        "selector.md",
+        "reasoning/frame_to_strategy_chain.md"
+      ],
+      "executions": [
+        {
+          "strategy": "click_rare",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 110,
+          "elapsed_s": 0.02,
+          "status": "ok"
+        },
+        {
+          "strategy": "click_rare",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 110,
+          "elapsed_s": 0.02,
+          "status": "ok"
+        },
+        {
+          "strategy": "click_grid_aligned",
+          "winning_label": "click_grid",
+          "levels": 0,
+          "actions": 2865,
+          "elapsed_s": 0.21,
+          "status": "ok"
+        },
+        {
+          "strategy": "bfs_state_space",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 1,
+          "elapsed_s": 0.0,
+          "status": "ok"
+        }
+      ],
+      "best_levels": 0,
+      "total_elapsed_s": 16.45,
+      "status": "ok",
+      "env_index": 7,
+      "game_id": "su15-1944f8ab"
+    },
+    {
+      "game_title": "SU15",
+      "discovery": {
+        "available_actions": [
+          6,
+          7
+        ],
+        "layer_count": 1,
+        "dominant_colors": [
+          [
+            5,
+            3290
+          ],
+          [
+            4,
+            631
+          ],
+          [
+            9,
+            59
+          ],
+          [
+            3,
+            29
+          ],
+          [
+            15,
+            18
+          ]
+        ],
+        "probe_diffs": {
+          "7": 0,
+          "6": 48,
+          "-6": 5
+        },
+        "dir_map": {},
+        "player_color": null,
+        "movable_region_count": 0,
+        "click_responsive_cells": [
+          {
+            "x": 32,
+            "y": 32,
+            "diff": 48,
+            "color_before_at_click": 5,
+            "color_after_at_click": 5
+          },
+          {
+            "x": 16,
+            "y": 16,
+            "diff": 48,
+            "color_before_at_click": 5,
+            "color_after_at_click": 5
+          },
+          {
+            "x": 48,
+            "y": 16,
+            "diff": 48,
+            "color_before_at_click": 3,
+            "color_after_at_click": 3
+          },
+          {
+            "x": 16,
+            "y": 48,
+            "diff": 46,
+            "color_before_at_click": 5,
+            "color_after_at_click": 5
+          },
+          {
+            "x": 48,
+            "y": 48,
+            "diff": 48,
+            "color_before_at_click": 5,
+            "color_after_at_click": 5
+          }
+        ],
+        "change_topology": "no_change",
+        "color_histogram": {
+          "5": 0.8032,
+          "4": 0.1541,
+          "0": 0.0168,
+          "9": 0.0144,
+          "3": 0.0071,
+          "15": 0.0044
+        },
+        "symmetry_score": 0.9487
+      },
+      "hypothesis": {
+        "game_type": "merge_puzzle",
+        "primary_strategy": "click_rare",
+        "fallback_stack": [
+          "click_rare",
+          "click_grid_aligned",
+          "bfs_state_space"
+        ],
+        "rationale": "The discovery phase identifies this as a merge_puzzle. The probe_diffs show that action 6 (click) has a significant impact (48 pixels changed), and there are 5 responsive click cells. This aligns with rule 4 (click-rare) where only action 6 is available and it has a significant impact. The primary strategy is click_rare, which focuses on identifying and executing the rare click actions that clear the level. The fallback stack includes click_rare (to handle any additional responsive clicks), click_grid_aliigned (to handle any grid-aligned patterns), and bfs_state_space (as a last resort if the level requires pathfinding).",
+        "confidence": 0.95,
+        "doubt": "",
+        "features_missing": [],
+        "wiki_gaps": [],
+        "wiki_needs": []
+      },
+      "retrieved_pages": [
+        "llm_context/decision_tree.md",
+        "selector.md",
+        "reasoning/frame_to_strategy_chain.md"
+      ],
+      "executions": [
+        {
+          "strategy": "click_rare",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 110,
+          "elapsed_s": 0.02,
+          "status": "ok"
+        },
+        {
+          "strategy": "click_rare",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 110,
+          "elapsed_s": 0.02,
+          "status": "ok"
+        },
+        {
+          "strategy": "click_grid_aligned",
+          "winning_label": "click_grid",
+          "levels": 0,
+          "actions": 2865,
+          "elapsed_s": 0.14,
+          "status": "ok"
+        },
+        {
+          "strategy": "bfs_state_space",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 1,
+          "elapsed_s": 0.0,
+          "status": "ok"
+        }
+      ],
+      "best_levels": 0,
+      "total_elapsed_s": 16.35,
+      "status": "ok",
+      "env_index": 8,
+      "game_id": "su15-1944f8ab"
+    },
+    {
+      "game_title": "M0R0",
+      "discovery": {
+        "available_actions": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        "layer_count": 1,
+        "dominant_colors": [
+          [
+            5,
+            1453
+          ],
+          [
+            12,
+            1299
+          ],
+          [
+            11,
+            1294
+          ],
+          [
+            10,
+            50
+          ]
+        ],
+        "probe_diffs": {
+          "1": 100,
+          "2": 100,
+          "3": 100,
+          "4": 100,
+          "6": 0,
+          "-6": 0
+        },
+        "dir_map": {},
+        "player_color": null,
+        "movable_region_count": 2,
+        "click_responsive_cells": [],
+        "change_topology": "color_toggle",
+        "color_histogram": {
+          "5": 0.3547,
+          "12": 0.3171,
+          "11": 0.3159,
+          "10": 0.0122
+        },
+        "symmetry_score": 0.3071
+      },
+      "hypothesis": {
+        "game_type": "movement",
+        "primary_strategy": "bfs_state_space",
+        "fallback_stack": [
+          "click_rare",
+          "wall_avoid"
+        ],
+        "rationale": "The game type is classified as 'movement' based on the available actions [1, 2, 3, 4] and the probe_diffs showing uniform pixel changes (100 for each action). The dir_map indicates no movement directions, suggesting the player is not moving through a grid. The primary strategy 'bfs_state_space' is appropriate for exploring the state space of a movement-based game. The fallback stack includes 'click_rare' and 'wall_avoid' to handle scenarios where the primary strategy might not be effective.",
+        "confidence": 0.95,
+        "doubt": "",
+        "features_missing": [],
+        "wiki_gaps": [],
+        "wiki_needs": []
+      },
+      "retrieved_pages": [
+        "llm_context/decision_tree.md",
+        "selector.md",
+        "reasoning/frame_to_strategy_chain.md"
+      ],
+      "executions": [
+        {
+          "strategy": "bfs_state_space",
+          "winning_label": "bfs_state_space",
+          "levels": 2,
+          "actions": 2130,
+          "elapsed_s": 67.64,
+          "status": "ok"
+        }
+      ],
+      "best_levels": 2,
+      "total_elapsed_s": 82.77,
+      "status": "ok",
+      "env_index": 9,
+      "game_id": "m0r0-492f87ba"
+    },
+    {
+      "game_title": "M0R0",
+      "discovery": {
+        "available_actions": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        "layer_count": 1,
+        "dominant_colors": [
+          [
+            5,
+            1453
+          ],
+          [
+            12,
+            1299
+          ],
+          [
+            11,
+            1294
+          ],
+          [
+            10,
+            50
+          ]
+        ],
+        "probe_diffs": {
+          "1": 100,
+          "2": 100,
+          "3": 100,
+          "4": 100,
+          "6": 0,
+          "-6": 0
+        },
+        "dir_map": {},
+        "player_color": null,
+        "movable_region_count": 2,
+        "click_responsive_cells": [],
+        "change_topology": "color_toggle",
+        "color_histogram": {
+          "5": 0.3547,
+          "12": 0.3171,
+          "11": 0.3159,
+          "10": 0.0122
+        },
+        "symmetry_score": 0.3071
+      },
+      "hypothesis": {
+        "game_type": "movement",
+        "primary_strategy": "bfs_state_space",
+        "fallback_stack": [
+          "click_rare",
+          "wall_avoid"
+        ],
+        "rationale": "The game type is classified as 'movement' based on the available actions [1, 2, 3, 4] and the probe_diffs showing uniform pixel changes (100 for each action). The dir_map indicates no movement directions, suggesting the player is not moving through a grid. The primary strategy 'bfs_state_space' is appropriate for exploring the state space of a movement-based game. The fallback stack includes 'click_rare' and 'wall_avoid' to handle scenarios where the primary strategy might not be effective.",
+        "confidence": 0.95,
+        "doubt": "",
+        "features_missing": [],
+        "wiki_gaps": [],
+        "wiki_needs": []
+      },
+      "retrieved_pages": [
+        "llm_context/decision_tree.md",
+        "selector.md",
+        "reasoning/frame_to_strategy_chain.md"
+      ],
+      "executions": [
+        {
+          "strategy": "bfs_state_space",
+          "winning_label": "bfs_state_space",
+          "levels": 2,
+          "actions": 2130,
+          "elapsed_s": 67.22,
+          "status": "ok"
+        }
+      ],
+      "best_levels": 2,
+      "total_elapsed_s": 82.35,
+      "status": "ok",
+      "env_index": 10,
+      "game_id": "m0r0-492f87ba"
+    },
+    {
+      "game_title": "CN04",
+      "discovery": {
+        "available_actions": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        "layer_count": 1,
+        "dominant_colors": [
+          [
+            10,
+            3749
+          ],
+          [
+            14,
+            144
+          ],
+          [
+            8,
+            36
+          ],
+          [
+            4,
+            32
+          ]
+        ],
+        "probe_diffs": {
+          "1": 144,
+          "2": 144,
+          "3": 198,
+          "4": 198,
+          "6": 279,
+          "-6": 1
+        },
+        "dir_map": {
+          "1": "S",
+          "2": "N",
+          "3": "E",
+          "4": "W"
+        },
+        "player_color": 10,
+        "movable_region_count": 5,
+        "click_responsive_cells": [
+          {
+            "x": 48,
+            "y": 48,
+            "diff": 279,
+            "color_before_at_click": 14,
+            "color_after_at_click": 0
+          }
+        ],
+        "change_topology": "sprite_move",
+        "color_histogram": {
+          "10": 0.9153,
+          "14": 0.0352,
+          "0": 0.033,
+          "8": 0.0088,
+          "4": 0.0078
+        },
+        "symmetry_score": 0.8462
+      },
+      "hypothesis": {
+        "game_type": "movement",
+        "primary_strategy": "bfs_state_space",
+        "fallback_stack": [
+          "click_rare",
+          "wall_avoid"
+        ],
+        "rationale": "The game type is 'movement' based on the presence of directional actions (1-4) mapped to cardinal directions and the player_color being consistent. The probe_diffs show uniform changes for movement actions (144-198 pixels), indicating they are movement actions. The -6 key has 1 responsive cell, suggesting a small number of click-responsive cells. This matches rule 3a (movement-hybrid) with a ratio of 198/144 = 1.375 (uniform) and responsive cells = 1/5 (dead). The primary strategy is 'bfs_state_space' as it is the canonical strategy for movement-based games. The fallback stack includes 'click_rare' and 'wall_avoid' to handle potential dead ends or sparse responsive cells.",
+        "confidence": 0.95,
+        "doubt": "",
+        "features_missing": [],
+        "wiki_gaps": [],
+        "wiki_needs": []
+      },
+      "retrieved_pages": [
+        "llm_context/decision_tree.md",
+        "selector.md",
+        "reasoning/frame_to_strategy_chain.md"
+      ],
+      "executions": [
+        {
+          "strategy": "bfs_state_space",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 2050,
+          "elapsed_s": 10.42,
+          "status": "ok"
+        },
+        {
+          "strategy": "click_rare",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 215,
+          "elapsed_s": 0.01,
+          "status": "ok"
+        },
+        {
+          "strategy": "wall_avoid",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 3000,
+          "elapsed_s": 0.16,
+          "status": "ok"
+        }
+      ],
+      "best_levels": 0,
+      "total_elapsed_s": 27.26,
+      "status": "ok",
+      "env_index": 11,
+      "game_id": "cn04-2fe56bfb"
+    },
+    {
+      "game_title": "CN04",
+      "discovery": {
+        "available_actions": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        "layer_count": 1,
+        "dominant_colors": [
+          [
+            10,
+            3749
+          ],
+          [
+            14,
+            144
+          ],
+          [
+            8,
+            36
+          ],
+          [
+            4,
+            32
+          ]
+        ],
+        "probe_diffs": {
+          "1": 144,
+          "2": 144,
+          "3": 198,
+          "4": 198,
+          "6": 279,
+          "-6": 1
+        },
+        "dir_map": {
+          "1": "S",
+          "2": "N",
+          "3": "E",
+          "4": "W"
+        },
+        "player_color": 10,
+        "movable_region_count": 5,
+        "click_responsive_cells": [
+          {
+            "x": 48,
+            "y": 48,
+            "diff": 279,
+            "color_before_at_click": 14,
+            "color_after_at_click": 0
+          }
+        ],
+        "change_topology": "sprite_move",
+        "color_histogram": {
+          "10": 0.9153,
+          "14": 0.0352,
+          "0": 0.033,
+          "8": 0.0088,
+          "4": 0.0078
+        },
+        "symmetry_score": 0.8462
+      },
+      "hypothesis": {
+        "game_type": "movement",
+        "primary_strategy": "bfs_state_space",
+        "fallback_stack": [
+          "click_rare",
+          "wall_avoid"
+        ],
+        "rationale": "The game type is 'movement' based on the presence of directional actions (1-4) mapped to cardinal directions and the player_color being consistent. The probe_diffs show uniform changes for movement actions (144-198 pixels), indicating they are movement actions. The -6 key has 1 responsive cell, suggesting a small number of click-responsive cells. This matches rule 3a (movement-hybrid) with a ratio of 198/144 = 1.375 (uniform) and responsive cells = 1/5 (dead). The primary strategy is 'bfs_state_space' as it is the canonical strategy for movement-based games. The fallback stack includes 'click_rare' and 'wall_avoid' to handle potential dead ends or sparse responsive cells.",
+        "confidence": 0.95,
+        "doubt": "",
+        "features_missing": [],
+        "wiki_gaps": [],
+        "wiki_needs": []
+      },
+      "retrieved_pages": [
+        "llm_context/decision_tree.md",
+        "selector.md",
+        "reasoning/frame_to_strategy_chain.md"
+      ],
+      "executions": [
+        {
+          "strategy": "bfs_state_space",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 2050,
+          "elapsed_s": 10.4,
+          "status": "ok"
+        },
+        {
+          "strategy": "click_rare",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 215,
+          "elapsed_s": 0.01,
+          "status": "ok"
+        },
+        {
+          "strategy": "wall_avoid",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 3000,
+          "elapsed_s": 0.16,
+          "status": "ok"
+        }
+      ],
+      "best_levels": 0,
+      "total_elapsed_s": 27.18,
+      "status": "ok",
+      "env_index": 12,
+      "game_id": "cn04-2fe56bfb"
+    },
+    {
+      "game_title": "FT09",
+      "discovery": {
+        "available_actions": [
+          6
+        ],
+        "layer_count": 1,
+        "dominant_colors": [
+          [
+            5,
+            2160
+          ],
+          [
+            9,
+            720
+          ],
+          [
+            4,
+            496
+          ],
+          [
+            8,
+            448
+          ],
+          [
+            2,
+            144
+          ],
+          [
+            12,
+            64
+          ]
+        ],
+        "probe_diffs": {
+          "6": 0,
+          "-6": 0
+        },
+        "dir_map": {},
+        "player_color": null,
+        "movable_region_count": 0,
+        "click_responsive_cells": [],
+        "change_topology": "no_change",
+        "color_histogram": {
+          "5": 0.5273,
+          "9": 0.1758,
+          "4": 0.1211,
+          "8": 0.1094,
+          "2": 0.0352,
+          "0": 0.0156,
+          "12": 0.0156
+        },
+        "symmetry_score": 0.5742
+      },
+      "hypothesis": {
+        "game_type": "click",
+        "primary_strategy": "click_rare",
+        "fallback_stack": [
+          "bfs_state_space",
+          "click_toggle_detect"
+        ],
+        "rationale": "The discovery phase identifies a game with only action 6 available, and probe_diffs show no change when action 6 is executed. This indicates that the action has no visual effect, which is characteristic of a 'click-rare' game where specific clicks are required to progress. The fallback stack includes 'bfs_state_space' to handle potential state space exploration if the primary strategy fails, and 'click_toggle_detect' to handle any toggle-based mechanics that might be present.",
+        "confidence": 0.95,
+        "doubt": "",
+        "features_missing": [],
+        "wiki_gaps": [],
+        "wiki_needs": []
+      },
+      "retrieved_pages": [
+        "llm_context/decision_tree.md",
+        "selector.md",
+        "reasoning/frame_to_strategy_chain.md"
+      ],
+      "executions": [
+        {
+          "strategy": "click_rare",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 1153,
+          "elapsed_s": 0.27,
+          "status": "ok"
+        },
+        {
+          "strategy": "bfs_state_space",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 1,
+          "elapsed_s": 0.0,
+          "status": "ok"
+        },
+        {
+          "strategy": "click_toggle_detect",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 628,
+          "elapsed_s": 0.09,
+          "status": "ok"
+        }
+      ],
+      "best_levels": 0,
+      "total_elapsed_s": 15.15,
+      "status": "ok",
+      "env_index": 13,
+      "game_id": "ft09-0d8bbf25"
+    },
+    {
+      "game_title": "TR87",
+      "discovery": {
+        "available_actions": [
+          1,
+          2,
+          3,
+          4
+        ],
+        "layer_count": 1,
+        "dominant_colors": [
+          [
+            2,
+            1570
+          ],
+          [
+            3,
+            1370
+          ],
+          [
+            10,
+            394
+          ],
+          [
+            7,
+            364
+          ],
+          [
+            5,
+            320
+          ],
+          [
+            1,
+            64
+          ]
+        ],
+        "probe_diffs": {
+          "1": 13,
+          "2": 15,
+          "3": 28,
+          "4": 28
+        },
+        "dir_map": {
+          "3": "W",
+          "4": "W"
+        },
+        "player_color": 3,
+        "movable_region_count": 4,
+        "click_responsive_cells": [],
+        "change_topology": "mixed",
+        "color_histogram": {
+          "2": 0.3833,
+          "3": 0.3345,
+          "10": 0.0962,
+          "7": 0.0889,
+          "5": 0.0781,
+          "1": 0.0156,
+          "0": 0.0034
+        },
+        "symmetry_score": 0.8394
+      },
+      "hypothesis": {
+        "game_type": "movement",
+        "primary_strategy": "bfs_state_space",
+        "fallback_stack": [
+          "wall_avoid",
+          "click_rare"
+        ],
+        "rationale": "The game type is classified as 'movement' based on the available actions [1, 2, 3, 4] and the directional mapping {3: 'W', 4: 'W'}. The probe_diffs show that actions 3 and 4 cause significant changes (28 pixels), while actions 1 and 2 cause smaller changes (13 and 15 pixels). The lack of responsive click cells and the mixed change topology suggest that movement is the primary mechanic. The BFS strategy is appropriate for exploring the state space, and if it stalls, we fall back to wall avoidance and then click rare strategies.",
+        "confidence": 0.95,
+        "doubt": "",
+        "features_missing": [],
+        "wiki_gaps": [],
+        "wiki_needs": []
+      },
+      "retrieved_pages": [
+        "llm_context/decision_tree.md",
+        "selector.md",
+        "reasoning/frame_to_strategy_chain.md"
+      ],
+      "executions": [
+        {
+          "strategy": "bfs_state_space",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 1,
+          "elapsed_s": 81.11,
+          "status": "ok"
+        },
+        {
+          "strategy": "wall_avoid",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 3000,
+          "elapsed_s": 0.47,
+          "status": "ok"
+        },
+        {
+          "strategy": "click_rare",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 1143,
+          "elapsed_s": 0.16,
+          "status": "ok"
+        }
+      ],
+      "best_levels": 0,
+      "total_elapsed_s": 97.38,
+      "status": "ok",
+      "env_index": 14,
+      "game_id": "tr87-cd924810"
+    },
+    {
+      "game_title": "SC25",
+      "discovery": {
+        "available_actions": [
+          1,
+          2,
+          3,
+          4,
+          6
+        ],
+        "layer_count": 1,
+        "dominant_colors": [
+          [
+            5,
+            3457
+          ],
+          [
+            3,
+            244
+          ],
+          [
+            2,
+            169
+          ],
+          [
+            14,
+            128
+          ],
+          [
+            10,
+            24
+          ],
+          [
+            9,
+            22
+          ]
+        ],
+        "probe_diffs": {
+          "1": 0,
+          "2": 0,
+          "3": 0,
+          "4": 0,
+          "6": 0,
+          "-6": 0
+        },
+        "dir_map": {},
+        "player_color": null,
+        "movable_region_count": 0,
+        "click_responsive_cells": [],
+        "change_topology": "no_change",
+        "color_histogram": {
+          "5": 0.844,
+          "3": 0.0596,
+          "2": 0.0413,
+          "14": 0.0312,
+          "0": 0.0088,
+          "10": 0.0059,
+          "9": 0.0054,
+          "15": 0.0039
+        },
+        "symmetry_score": 0.8066
+      },
+      "hypothesis": {
+        "game_type": "unknown",
+        "primary_strategy": "bfs_state_space",
+        "fallback_stack": [
+          "click_rare",
+          "bfs_state_space"
+        ],
+        "rationale": "The discovery phase indicates no movement or change in the frame, with all probe diffs and click responsiveness at zero. This suggests the game is in a static state or the player is not interacting with the environment. The primary strategy 'bfs_state_space' is chosen as a fallback to explore the state space, while 'click_rare' and 'bfs_state_space' are included in the fallback stack to handle potential unexpected interactions or state changes.",
+        "confidence": 0.3,
+        "doubt": "",
+        "features_missing": [],
+        "wiki_gaps": [],
+        "wiki_needs": []
+      },
+      "retrieved_pages": [
+        "llm_context/decision_tree.md",
+        "selector.md",
+        "reasoning/frame_to_strategy_chain.md"
+      ],
+      "executions": [
+        {
+          "strategy": "bfs_state_space",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 2050,
+          "elapsed_s": 1.21,
+          "status": "ok"
+        },
+        {
+          "strategy": "click_rare",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 608,
+          "elapsed_s": 0.27,
+          "status": "ok"
+        },
+        {
+          "strategy": "bfs_state_space",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 2050,
+          "elapsed_s": 1.18,
+          "status": "ok"
+        }
+      ],
+      "best_levels": 0,
+      "total_elapsed_s": 17.31,
+      "status": "ok",
+      "env_index": 15,
+      "game_id": "sc25-635fd71a"
+    },
+    {
+      "game_title": "SC25",
+      "discovery": {
+        "available_actions": [
+          1,
+          2,
+          3,
+          4,
+          6
+        ],
+        "layer_count": 1,
+        "dominant_colors": [
+          [
+            5,
+            3457
+          ],
+          [
+            3,
+            244
+          ],
+          [
+            2,
+            169
+          ],
+          [
+            14,
+            128
+          ],
+          [
+            10,
+            24
+          ],
+          [
+            9,
+            22
+          ]
+        ],
+        "probe_diffs": {
+          "1": 0,
+          "2": 0,
+          "3": 0,
+          "4": 0,
+          "6": 0,
+          "-6": 0
+        },
+        "dir_map": {},
+        "player_color": null,
+        "movable_region_count": 0,
+        "click_responsive_cells": [],
+        "change_topology": "no_change",
+        "color_histogram": {
+          "5": 0.844,
+          "3": 0.0596,
+          "2": 0.0413,
+          "14": 0.0312,
+          "0": 0.0088,
+          "10": 0.0059,
+          "9": 0.0054,
+          "15": 0.0039
+        },
+        "symmetry_score": 0.8066
+      },
+      "hypothesis": {
+        "game_type": "unknown",
+        "primary_strategy": "bfs_state_space",
+        "fallback_stack": [
+          "click_rare",
+          "bfs_state_space"
+        ],
+        "rationale": "The discovery phase indicates no movement or change in the frame, with all probe diffs and click responsiveness at zero. This suggests the game is in a static state or the player is not interacting with the environment. The primary strategy 'bfs_state_space' is chosen as a fallback to explore the state space, while 'click_rare' and 'bfs_state_space' are included in the fallback stack to handle potential unexpected interactions or state changes.",
+        "confidence": 0.3,
+        "doubt": "",
+        "features_missing": [],
+        "wiki_gaps": [],
+        "wiki_needs": []
+      },
+      "retrieved_pages": [
+        "llm_context/decision_tree.md",
+        "selector.md",
+        "reasoning/frame_to_strategy_chain.md"
+      ],
+      "executions": [
+        {
+          "strategy": "bfs_state_space",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 2050,
+          "elapsed_s": 1.19,
+          "status": "ok"
+        },
+        {
+          "strategy": "click_rare",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 608,
+          "elapsed_s": 0.27,
+          "status": "ok"
+        },
+        {
+          "strategy": "bfs_state_space",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 2050,
+          "elapsed_s": 1.2,
+          "status": "ok"
+        }
+      ],
+      "best_levels": 0,
+      "total_elapsed_s": 17.22,
+      "status": "ok",
+      "env_index": 16,
+      "game_id": "sc25-635fd71a"
+    },
+    {
+      "game_title": "LP85",
+      "discovery": {
+        "available_actions": [
+          6
+        ],
+        "layer_count": 1,
+        "dominant_colors": [
+          [
+            4,
+            1978
+          ],
+          [
+            3,
+            1606
+          ],
+          [
+            14,
+            104
+          ],
+          [
+            2,
+            64
+          ],
+          [
+            9,
+            64
+          ],
+          [
+            10,
+            64
+          ]
+        ],
+        "probe_diffs": {
+          "6": 0,
+          "-6": 0
+        },
+        "dir_map": {},
+        "player_color": null,
+        "movable_region_count": 0,
+        "click_responsive_cells": [],
+        "change_topology": "no_change",
+        "color_histogram": {
+          "4": 0.4829,
+          "3": 0.3921,
+          "14": 0.0254,
+          "2": 0.0156,
+          "9": 0.0156,
+          "10": 0.0156,
+          "15": 0.0156,
+          "1": 0.0117
+        },
+        "symmetry_score": 0.8691
+      },
+      "hypothesis": {
+        "game_type": "click",
+        "primary_strategy": "click_rare",
+        "fallback_stack": [
+          "bfs_state_space",
+          "spell_cast"
+        ],
+        "rationale": "The game type is identified as 'click' based on the available action [6] and the probe_diffs signal {6: 0, -6: 0}, which indicates no change in the frame when action 6 is executed. The lack of movement (dir_map: none) and no responsive click cells (click_responsive_cells: none) suggest that the game requires identifying rare or specific click actions to progress. The primary strategy 'click_rare' is chosen to detect these rare actions. If 'click_rare' fails, the fallback stack will attempt 'bfs_state_space' for state-space exploration and 'spell_cast' for complex action sequences.",
+        "confidence": 0.95,
+        "doubt": "",
+        "features_missing": [],
+        "wiki_gaps": [],
+        "wiki_needs": []
+      },
+      "retrieved_pages": [
+        "llm_context/decision_tree.md",
+        "selector.md",
+        "reasoning/frame_to_strategy_chain.md"
+      ],
+      "executions": [
+        {
+          "strategy": "click_rare",
+          "winning_label": "click_c8_(30,4)",
+          "levels": 1,
+          "actions": 513,
+          "elapsed_s": 0.06,
+          "status": "ok"
+        }
+      ],
+      "best_levels": 1,
+      "total_elapsed_s": 15.79,
+      "status": "ok",
+      "env_index": 17,
+      "game_id": "lp85-305b61c3"
+    },
+    {
+      "game_title": "DC22",
+      "discovery": {
+        "available_actions": [
+          1,
+          2,
+          3,
+          4,
+          6
+        ],
+        "layer_count": 1,
+        "dominant_colors": [
+          [
+            4,
+            1256
+          ],
+          [
+            3,
+            1216
+          ],
+          [
+            5,
+            1190
+          ],
+          [
+            2,
+            80
+          ],
+          [
+            8,
+            71
+          ],
+          [
+            9,
+            71
+          ]
+        ],
+        "probe_diffs": {
+          "1": 9,
+          "2": 9,
+          "3": 9,
+          "4": 9,
+          "6": 1,
+          "-6": 5
+        },
+        "dir_map": {
+          "1": "S",
+          "2": "S",
+          "3": "S",
+          "4": "S"
+        },
+        "player_color": 2,
+        "movable_region_count": 2,
+        "click_responsive_cells": [
+          {
+            "x": 32,
+            "y": 32,
+            "diff": 1,
+            "color_before_at_click": 5,
+            "color_after_at_click": 5
+          },
+          {
+            "x": 16,
+            "y": 16,
+            "diff": 1,
+            "color_before_at_click": 4,
+            "color_after_at_click": 4
+          },
+          {
+            "x": 48,
+            "y": 16,
+            "diff": 1,
+            "color_before_at_click": 0,
+            "color_after_at_click": 0
+          },
+          {
+            "x": 16,
+            "y": 48,
+            "diff": 1,
+            "color_before_at_click": 4,
+            "color_after_at_click": 4
+          },
+          {
+            "x": 48,
+            "y": 48,
+            "diff": 1,
+            "color_before_at_click": 5,
+            "color_after_at_click": 5
+          }
+        ],
+        "change_topology": "sprite_move",
+        "color_histogram": {
+          "4": 0.3066,
+          "3": 0.2969,
+          "5": 0.2905,
+          "0": 0.0459,
+          "2": 0.0195,
+          "8": 0.0173,
+          "9": 0.0173,
+          "13": 0.0039
+        },
+        "symmetry_score": 0.313
+      },
+      "hypothesis": {
+        "game_type": "movement",
+        "primary_strategy": "bfs_state_space",
+        "fallback_stack": [
+          "click_rare",
+          "wall_avoid"
+        ],
+        "rationale": "The game has a clear movement pattern with actions 1-4 moving the player in the same direction (South), and the probe_diffs show uniform changes (9 pixels changed for each action). The click_responsive_cells indicate that only 5 out of 6 cells are responsive to clicks, which is consistent with a movement-based game. The probe_diffs for actions 1-4 are uniform, suggesting that these actions are primarily for movement rather than transforming the environment. Therefore, the game is classified as 'movement' and the primary strategy is 'bfs_state_space'.",
+        "confidence": 0.95,
+        "doubt": "",
+        "features_missing": [],
+        "wiki_gaps": [],
+        "wiki_needs": []
+      },
+      "retrieved_pages": [
+        "llm_context/decision_tree.md",
+        "selector.md",
+        "reasoning/frame_to_strategy_chain.md"
+      ],
+      "executions": [
+        {
+          "strategy": "bfs_state_space",
+          "winning_label": "bfs_state_space",
+          "levels": 1,
+          "actions": 2090,
+          "elapsed_s": 3.7,
+          "status": "ok"
+        }
+      ],
+      "best_levels": 1,
+      "total_elapsed_s": 19.07,
+      "status": "ok",
+      "env_index": 18,
+      "game_id": "dc22-fdcac232"
+    },
+    {
+      "game_title": "DC22",
+      "discovery": {
+        "available_actions": [
+          1,
+          2,
+          3,
+          4,
+          6
+        ],
+        "layer_count": 1,
+        "dominant_colors": [
+          [
+            4,
+            1256
+          ],
+          [
+            3,
+            1216
+          ],
+          [
+            5,
+            1190
+          ],
+          [
+            2,
+            80
+          ],
+          [
+            8,
+            71
+          ],
+          [
+            9,
+            71
+          ]
+        ],
+        "probe_diffs": {
+          "1": 9,
+          "2": 9,
+          "3": 9,
+          "4": 9,
+          "6": 1,
+          "-6": 5
+        },
+        "dir_map": {
+          "1": "S",
+          "2": "S",
+          "3": "S",
+          "4": "S"
+        },
+        "player_color": 2,
+        "movable_region_count": 2,
+        "click_responsive_cells": [
+          {
+            "x": 32,
+            "y": 32,
+            "diff": 1,
+            "color_before_at_click": 5,
+            "color_after_at_click": 5
+          },
+          {
+            "x": 16,
+            "y": 16,
+            "diff": 1,
+            "color_before_at_click": 4,
+            "color_after_at_click": 4
+          },
+          {
+            "x": 48,
+            "y": 16,
+            "diff": 1,
+            "color_before_at_click": 0,
+            "color_after_at_click": 0
+          },
+          {
+            "x": 16,
+            "y": 48,
+            "diff": 1,
+            "color_before_at_click": 4,
+            "color_after_at_click": 4
+          },
+          {
+            "x": 48,
+            "y": 48,
+            "diff": 1,
+            "color_before_at_click": 5,
+            "color_after_at_click": 5
+          }
+        ],
+        "change_topology": "sprite_move",
+        "color_histogram": {
+          "4": 0.3066,
+          "3": 0.2969,
+          "5": 0.2905,
+          "0": 0.0459,
+          "2": 0.0195,
+          "8": 0.0173,
+          "9": 0.0173,
+          "13": 0.0039
+        },
+        "symmetry_score": 0.313
+      },
+      "hypothesis": {
+        "game_type": "movement",
+        "primary_strategy": "bfs_state_space",
+        "fallback_stack": [
+          "click_rare",
+          "wall_avoid"
+        ],
+        "rationale": "The game has a clear movement pattern with actions 1-4 moving the player in the same direction (South), and the probe_diffs show uniform changes (9 pixels changed for each action). The click_responsive_cells indicate that only 5 out of 6 cells are responsive to clicks, which is consistent with a movement-based game. The probe_diffs for actions 1-4 are uniform, suggesting that these actions are primarily for movement rather than transforming the environment. Therefore, the game is classified as 'movement' and the primary strategy is 'bfs_state_space'.",
+        "confidence": 0.95,
+        "doubt": "",
+        "features_missing": [],
+        "wiki_gaps": [],
+        "wiki_needs": []
+      },
+      "retrieved_pages": [
+        "llm_context/decision_tree.md",
+        "selector.md",
+        "reasoning/frame_to_strategy_chain.md"
+      ],
+      "executions": [
+        {
+          "strategy": "bfs_state_space",
+          "winning_label": "bfs_state_space",
+          "levels": 1,
+          "actions": 2090,
+          "elapsed_s": 3.73,
+          "status": "ok"
+        }
+      ],
+      "best_levels": 1,
+      "total_elapsed_s": 19.18,
+      "status": "ok",
+      "env_index": 19,
+      "game_id": "dc22-fdcac232"
+    },
+    {
+      "game_title": "SP80",
+      "discovery": {
+        "available_actions": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        "layer_count": 1,
+        "dominant_colors": [
+          [
+            12,
+            3508
+          ],
+          [
+            1,
+            256
+          ],
+          [
+            11,
+            160
+          ],
+          [
+            9,
+            80
+          ],
+          [
+            14,
+            64
+          ],
+          [
+            6,
+            16
+          ]
+        ],
+        "probe_diffs": {
+          "1": 162,
+          "2": 162,
+          "3": 34,
+          "4": 34,
+          "6": 2,
+          "-6": 5
+        },
+        "dir_map": {
+          "3": "W",
+          "4": "W"
+        },
+        "player_color": 9,
+        "movable_region_count": 3,
+        "click_responsive_cells": [
+          {
+            "x": 32,
+            "y": 32,
+            "diff": 2,
+            "color_before_at_click": 12,
+            "color_after_at_click": 12
+          },
+          {
+            "x": 16,
+            "y": 16,
+            "diff": 2,
+            "color_before_at_click": 9,
+            "color_after_at_click": 9
+          },
+          {
+            "x": 48,
+            "y": 16,
+            "diff": 2,
+            "color_before_at_click": 12,
+            "color_after_at_click": 12
+          },
+          {
+            "x": 16,
+            "y": 48,
+            "diff": 2,
+            "color_before_at_click": 12,
+            "color_after_at_click": 12
+          },
+          {
+            "x": 48,
+            "y": 48,
+            "diff": 2,
+            "color_before_at_click": 12,
+            "color_after_at_click": 12
+          }
+        ],
+        "change_topology": "mixed",
+        "color_histogram": {
+          "12": 0.8564,
+          "1": 0.0625,
+          "11": 0.0391,
+          "9": 0.0195,
+          "14": 0.0156,
+          "6": 0.0039,
+          "4": 0.0029
+        },
+        "symmetry_score": 0.9004
+      },
+      "hypothesis": {
+        "game_type": "movement",
+        "primary_strategy": "bfs_state_space",
+        "fallback_stack": [
+          "click_rare",
+          "wall_avoid"
+        ],
+        "rationale": "The game is classified as 'movement' based on the available actions and the presence of directional movement (actions 3 and 4 map to 'W'). The probe_diffs show uniform movement (actions 1 and 2 have similar pixel changes), and the click_responsive_cells indicate minimal responsiveness (5 out of 5 cells). This aligns with rule 3a (movement-hybrid), but since the game is classified as 'movement', the primary strategy is 'bfs_state_space'.",
+        "confidence": 0.95,
+        "doubt": "",
+        "features_missing": [],
+        "wiki_gaps": [],
+        "wiki_needs": []
+      },
+      "retrieved_pages": [
+        "llm_context/decision_tree.md",
+        "selector.md",
+        "reasoning/frame_to_strategy_chain.md"
+      ],
+      "executions": [
+        {
+          "strategy": "bfs_state_space",
+          "winning_label": "bfs_state_space",
+          "levels": 1,
+          "actions": 2058,
+          "elapsed_s": 90.26,
+          "status": "ok"
+        }
+      ],
+      "best_levels": 1,
+      "total_elapsed_s": 105.28,
+      "status": "ok",
+      "env_index": 20,
+      "game_id": "sp80-589a99af"
+    },
+    {
+      "game_title": "SP80",
+      "discovery": {
+        "available_actions": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        "layer_count": 1,
+        "dominant_colors": [
+          [
+            12,
+            3508
+          ],
+          [
+            1,
+            256
+          ],
+          [
+            11,
+            160
+          ],
+          [
+            9,
+            80
+          ],
+          [
+            14,
+            64
+          ],
+          [
+            6,
+            16
+          ]
+        ],
+        "probe_diffs": {
+          "1": 162,
+          "2": 162,
+          "3": 34,
+          "4": 34,
+          "6": 2,
+          "-6": 5
+        },
+        "dir_map": {
+          "3": "W",
+          "4": "W"
+        },
+        "player_color": 9,
+        "movable_region_count": 3,
+        "click_responsive_cells": [
+          {
+            "x": 32,
+            "y": 32,
+            "diff": 2,
+            "color_before_at_click": 12,
+            "color_after_at_click": 12
+          },
+          {
+            "x": 16,
+            "y": 16,
+            "diff": 2,
+            "color_before_at_click": 9,
+            "color_after_at_click": 9
+          },
+          {
+            "x": 48,
+            "y": 16,
+            "diff": 2,
+            "color_before_at_click": 12,
+            "color_after_at_click": 12
+          },
+          {
+            "x": 16,
+            "y": 48,
+            "diff": 2,
+            "color_before_at_click": 12,
+            "color_after_at_click": 12
+          },
+          {
+            "x": 48,
+            "y": 48,
+            "diff": 2,
+            "color_before_at_click": 12,
+            "color_after_at_click": 12
+          }
+        ],
+        "change_topology": "mixed",
+        "color_histogram": {
+          "12": 0.8564,
+          "1": 0.0625,
+          "11": 0.0391,
+          "9": 0.0195,
+          "14": 0.0156,
+          "6": 0.0039,
+          "4": 0.0029
+        },
+        "symmetry_score": 0.9004
+      },
+      "hypothesis": {
+        "game_type": "movement",
+        "primary_strategy": "bfs_state_space",
+        "fallback_stack": [
+          "click_rare",
+          "wall_avoid"
+        ],
+        "rationale": "The game is classified as 'movement' based on the available actions and the presence of directional movement (actions 3 and 4 map to 'W'). The probe_diffs show uniform movement (actions 1 and 2 have similar pixel changes), and the click_responsive_cells indicate minimal responsiveness (5 out of 5 cells). This aligns with rule 3a (movement-hybrid), but since the game is classified as 'movement', the primary strategy is 'bfs_state_space'.",
+        "confidence": 0.95,
+        "doubt": "",
+        "features_missing": [],
+        "wiki_gaps": [],
+        "wiki_needs": []
+      },
+      "retrieved_pages": [
+        "llm_context/decision_tree.md",
+        "selector.md",
+        "reasoning/frame_to_strategy_chain.md"
+      ],
+      "executions": [
+        {
+          "strategy": "bfs_state_space",
+          "winning_label": "bfs_state_space",
+          "levels": 1,
+          "actions": 2058,
+          "elapsed_s": 90.24,
+          "status": "ok"
+        }
+      ],
+      "best_levels": 1,
+      "total_elapsed_s": 106.93,
+      "status": "ok",
+      "env_index": 21,
+      "game_id": "sp80-589a99af"
+    },
+    {
+      "game_title": "KA59",
+      "discovery": {
+        "available_actions": [
+          1,
+          2,
+          3,
+          4,
+          6
+        ],
+        "layer_count": 1,
+        "dominant_colors": [
+          [
+            2,
+            3249
+          ],
+          [
+            1,
+            607
+          ],
+          [
+            15,
+            126
+          ],
+          [
+            4,
+            96
+          ],
+          [
+            14,
+            16
+          ],
+          [
+            5,
+            1
+          ]
+        ],
+        "probe_diffs": {
+          "1": 19,
+          "2": 19,
+          "3": 19,
+          "4": 19,
+          "6": 1,
+          "-6": 5
+        },
+        "dir_map": {
+          "1": "W",
+          "2": "W",
+          "3": "W",
+          "4": "W"
+        },
+        "player_color": 1,
+        "movable_region_count": 2,
+        "click_responsive_cells": [
+          {
+            "x": 32,
+            "y": 32,
+            "diff": 1,
+            "color_before_at_click": 1,
+            "color_after_at_click": 1
+          },
+          {
+            "x": 16,
+            "y": 16,
+            "diff": 1,
+            "color_before_at_click": 2,
+            "color_after_at_click": 2
+          },
+          {
+            "x": 48,
+            "y": 16,
+            "diff": 1,
+            "color_before_at_click": 2,
+            "color_after_at_click": 2
+          },
+          {
+            "x": 16,
+            "y": 48,
+            "diff": 1,
+            "color_before_at_click": 2,
+            "color_after_at_click": 2
+          },
+          {
+            "x": 48,
+            "y": 48,
+            "diff": 1,
+            "color_before_at_click": 2,
+            "color_after_at_click": 2
+          }
+        ],
+        "change_topology": "sprite_move",
+        "color_histogram": {
+          "2": 0.7932,
+          "1": 0.1482,
+          "15": 0.0308,
+          "4": 0.0234,
+          "14": 0.0039,
+          "0": 0.0002,
+          "5": 0.0002
+        },
+        "symmetry_score": 0.9004
+      },
+      "hypothesis": {
+        "game_type": "movement",
+        "primary_strategy": "bfs_state_space",
+        "fallback_stack": [
+          "wall_avoid",
+          "click_rare"
+        ],
+        "rationale": "The game is classified as 'movement' based on the available actions [1, 2, 3, 4] and the dir_map indicating movement directions. The probe_diffs show uniform changes (19 pixels) for actions 1-4, suggesting movement actions. The click_responsive_cells indicate 5 responsive cells, but the primary strategy for movement is 'bfs_state_space'. The fallback stack includes 'wall_avoid' and 'click_rare' to handle potential obstacles or rare clicks.",
+        "confidence": 0.95,
+        "doubt": "",
+        "features_missing": [],
+        "wiki_gaps": [],
+        "wiki_needs": []
+      },
+      "retrieved_pages": [
+        "llm_context/decision_tree.md",
+        "selector.md",
+        "reasoning/frame_to_strategy_chain.md"
+      ],
+      "executions": [
+        {
+          "strategy": "bfs_state_space",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 2050,
+          "elapsed_s": 9.66,
+          "status": "ok"
+        },
+        {
+          "strategy": "wall_avoid",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 3000,
+          "elapsed_s": 0.23,
+          "status": "ok"
+        },
+        {
+          "strategy": "click_rare",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 242,
+          "elapsed_s": 0.02,
+          "status": "ok"
+        }
+      ],
+      "best_levels": 0,
+      "total_elapsed_s": 24.96,
+      "status": "ok",
+      "env_index": 22,
+      "game_id": "ka59-38d34dbb"
+    },
+    {
+      "game_title": "KA59",
+      "discovery": {
+        "available_actions": [
+          1,
+          2,
+          3,
+          4,
+          6
+        ],
+        "layer_count": 1,
+        "dominant_colors": [
+          [
+            2,
+            3249
+          ],
+          [
+            1,
+            607
+          ],
+          [
+            15,
+            126
+          ],
+          [
+            4,
+            96
+          ],
+          [
+            14,
+            16
+          ],
+          [
+            5,
+            1
+          ]
+        ],
+        "probe_diffs": {
+          "1": 19,
+          "2": 19,
+          "3": 19,
+          "4": 19,
+          "6": 1,
+          "-6": 5
+        },
+        "dir_map": {
+          "1": "W",
+          "2": "W",
+          "3": "W",
+          "4": "W"
+        },
+        "player_color": 1,
+        "movable_region_count": 2,
+        "click_responsive_cells": [
+          {
+            "x": 32,
+            "y": 32,
+            "diff": 1,
+            "color_before_at_click": 1,
+            "color_after_at_click": 1
+          },
+          {
+            "x": 16,
+            "y": 16,
+            "diff": 1,
+            "color_before_at_click": 2,
+            "color_after_at_click": 2
+          },
+          {
+            "x": 48,
+            "y": 16,
+            "diff": 1,
+            "color_before_at_click": 2,
+            "color_after_at_click": 2
+          },
+          {
+            "x": 16,
+            "y": 48,
+            "diff": 1,
+            "color_before_at_click": 2,
+            "color_after_at_click": 2
+          },
+          {
+            "x": 48,
+            "y": 48,
+            "diff": 1,
+            "color_before_at_click": 2,
+            "color_after_at_click": 2
+          }
+        ],
+        "change_topology": "sprite_move",
+        "color_histogram": {
+          "2": 0.7932,
+          "1": 0.1482,
+          "15": 0.0308,
+          "4": 0.0234,
+          "14": 0.0039,
+          "0": 0.0002,
+          "5": 0.0002
+        },
+        "symmetry_score": 0.9004
+      },
+      "hypothesis": {
+        "game_type": "movement",
+        "primary_strategy": "bfs_state_space",
+        "fallback_stack": [
+          "wall_avoid",
+          "click_rare"
+        ],
+        "rationale": "The game is classified as 'movement' based on the available actions [1, 2, 3, 4] and the dir_map indicating movement directions. The probe_diffs show uniform changes (19 pixels) for actions 1-4, suggesting movement actions. The click_responsive_cells indicate 5 responsive cells, but the primary strategy for movement is 'bfs_state_space'. The fallback stack includes 'wall_avoid' and 'click_rare' to handle potential obstacles or rare clicks.",
+        "confidence": 0.95,
+        "doubt": "",
+        "features_missing": [],
+        "wiki_gaps": [],
+        "wiki_needs": []
+      },
+      "retrieved_pages": [
+        "llm_context/decision_tree.md",
+        "selector.md",
+        "reasoning/frame_to_strategy_chain.md"
+      ],
+      "executions": [
+        {
+          "strategy": "bfs_state_space",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 2050,
+          "elapsed_s": 9.63,
+          "status": "ok"
+        },
+        {
+          "strategy": "wall_avoid",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 3000,
+          "elapsed_s": 0.23,
+          "status": "ok"
+        },
+        {
+          "strategy": "click_rare",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 242,
+          "elapsed_s": 0.02,
+          "status": "ok"
+        }
+      ],
+      "best_levels": 0,
+      "total_elapsed_s": 24.97,
+      "status": "ok",
+      "env_index": 23,
+      "game_id": "ka59-38d34dbb"
+    },
+    {
+      "game_title": "G50T",
+      "discovery": {
+        "available_actions": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "layer_count": 1,
+        "dominant_colors": [
+          [
+            5,
+            880
+          ],
+          [
+            9,
+            119
+          ],
+          [
+            8,
+            82
+          ],
+          [
+            1,
+            9
+          ]
+        ],
+        "probe_diffs": {
+          "1": 0,
+          "2": 0,
+          "3": 0,
+          "4": 0
+        },
+        "dir_map": {},
+        "player_color": null,
+        "movable_region_count": 0,
+        "click_responsive_cells": [],
+        "change_topology": "no_change",
+        "color_histogram": {
+          "0": 0.7339,
+          "5": 0.2148,
+          "9": 0.0291,
+          "8": 0.02,
+          "1": 0.0022
+        },
+        "symmetry_score": 0.748
+      },
+      "hypothesis": {
+        "game_type": "click",
+        "primary_strategy": "click_rare",
+        "fallback_stack": [
+          "bfs_state_space",
+          "click_toggle_detect"
+        ],
+        "rationale": "The probe_diffs show no change for any action, indicating no movement or transformation. The lack of responsive click cells and no change in the frame suggests a 'click-rare' pattern where specific clicks are required to progress. The fallback stack includes 'bfs_state_space' to explore the state space if needed, and 'click_toggle_detect' to identify any responsive cells if the initial assumption is incorrect.",
+        "confidence": 0.95,
+        "doubt": "",
+        "features_missing": [],
+        "wiki_gaps": [],
+        "wiki_needs": []
+      },
+      "retrieved_pages": [
+        "llm_context/decision_tree.md",
+        "selector.md",
+        "reasoning/frame_to_strategy_chain.md"
+      ],
+      "executions": [
+        {
+          "strategy": "click_rare",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 212,
+          "elapsed_s": 0.01,
+          "status": "ok"
+        },
+        {
+          "strategy": "bfs_state_space",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 1,
+          "elapsed_s": 0.01,
+          "status": "ok"
+        },
+        {
+          "strategy": "click_toggle_detect",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 3000,
+          "elapsed_s": 0.14,
+          "status": "ok"
+        }
+      ],
+      "best_levels": 0,
+      "total_elapsed_s": 14.53,
+      "status": "ok",
+      "env_index": 24,
+      "game_id": "g50t-5849a774"
+    },
+    {
+      "game_title": "SB26",
+      "discovery": {
+        "available_actions": [
+          5,
+          6,
+          7
+        ],
+        "layer_count": 1,
+        "dominant_colors": [
+          [
+            4,
+            3628
+          ],
+          [
+            5,
+            152
+          ],
+          [
+            2,
+            80
+          ],
+          [
+            8,
+            72
+          ],
+          [
+            9,
+            36
+          ],
+          [
+            11,
+            36
+          ]
+        ],
+        "probe_diffs": {
+          "5": 1,
+          "7": 0,
+          "6": 0,
+          "-6": 0
+        },
+        "dir_map": {},
+        "player_color": null,
+        "movable_region_count": 1,
+        "click_responsive_cells": [],
+        "change_topology": "color_toggle",
+        "color_histogram": {
+          "4": 0.8857,
+          "5": 0.0371,
+          "2": 0.0195,
+          "8": 0.0176,
+          "9": 0.0088,
+          "11": 0.0088,
+          "14": 0.0088,
+          "15": 0.0088
+        },
+        "symmetry_score": 0.9512
+      },
+      "hypothesis": {
+        "game_type": "click",
+        "primary_strategy": "click_rare",
+        "fallback_stack": [
+          "bfs_state_space",
+          "click_toggle_detect"
+        ],
+        "rationale": "The game type is classified as 'click' based on the probe_diffs and change_topology signals. The available actions are [5, 6, 7], but only action 5 shows a change in pixels (1 pixel changed). The -6 key indicates no responsive click cells. The symmetry score is very high (0.9512), suggesting a highly structured level. The change_topology is 'color_toggle', indicating that clicking on certain cells toggles colors. Since there are no responsive click cells (-6: 0), the primary strategy is 'click_rare' to find the rare cells that cause the color toggle. The fallback stack includes 'bfs_state_space' to explore the state space if needed, and 'click_toggle_detect' to specifically detect the color toggle behavior.",
+        "confidence": 0.95,
+        "doubt": "",
+        "features_missing": [],
+        "wiki_gaps": [],
+        "wiki_needs": []
+      },
+      "retrieved_pages": [
+        "llm_context/decision_tree.md",
+        "selector.md",
+        "reasoning/frame_to_strategy_chain.md"
+      ],
+      "executions": [
+        {
+          "strategy": "click_rare",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 449,
+          "elapsed_s": 0.05,
+          "status": "ok"
+        },
+        {
+          "strategy": "bfs_state_space",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 514,
+          "elapsed_s": 16.04,
+          "status": "ok"
+        },
+        {
+          "strategy": "click_toggle_detect",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 69,
+          "elapsed_s": 0.01,
+          "status": "ok"
+        }
+      ],
+      "best_levels": 0,
+      "total_elapsed_s": 32.49,
+      "status": "ok",
+      "env_index": 25,
+      "game_id": "sb26-7fbdac44"
+    },
+    {
+      "game_title": "LF52",
+      "discovery": {
+        "available_actions": [
+          1,
+          2,
+          3,
+          4,
+          6,
+          7
+        ],
+        "layer_count": 2,
+        "dominant_colors": [
+          [
+            10,
+            2586
+          ],
+          [
+            1,
+            468
+          ],
+          [
+            5,
+            172
+          ],
+          [
+            9,
+            86
+          ],
+          [
+            14,
+            60
+          ]
+        ],
+        "probe_diffs": {
+          "1": 1,
+          "2": 1,
+          "3": 1,
+          "4": 1,
+          "6": 21,
+          "-6": 5
+        },
+        "dir_map": {},
+        "player_color": null,
+        "movable_region_count": 1,
+        "click_responsive_cells": [
+          {
+            "x": 32,
+            "y": 32,
+            "diff": 21,
+            "color_before_at_click": 10,
+            "color_after_at_click": 10
+          },
+          {
+            "x": 16,
+            "y": 16,
+            "diff": 21,
+            "color_before_at_click": 0,
+            "color_after_at_click": 0
+          },
+          {
+            "x": 48,
+            "y": 16,
+            "diff": 21,
+            "color_before_at_click": 0,
+            "color_after_at_click": 0
+          },
+          {
+            "x": 16,
+            "y": 48,
+            "diff": 21,
+            "color_before_at_click": 10,
+            "color_after_at_click": 10
+          },
+          {
+            "x": 48,
+            "y": 48,
+            "diff": 21,
+            "color_before_at_click": 1,
+            "color_after_at_click": 1
+          }
+        ],
+        "change_topology": "color_toggle",
+        "color_histogram": {
+          "10": 0.6313,
+          "0": 0.1768,
+          "1": 0.1143,
+          "5": 0.042,
+          "9": 0.021,
+          "14": 0.0146
+        },
+        "symmetry_score": 0.6235
+      },
+      "hypothesis": {
+        "game_type": "movement",
+        "primary_strategy": "bfs_state_space",
+        "fallback_stack": [
+          "click_rare",
+          "wall_avoid"
+        ],
+        "rationale": "The game title 'LF52' has available actions [1, 2, 3, 4, 6, 7]. The probe_diffs show that actions 1-4 have minimal impact (1 pixel change each), while action 6 has a significant impact (21 pixels changed). The click_responsive_cells indicate 5 responsive cells, suggesting that actions 1-4 are movement actions with minimal effect, and action 6 is a transformative action. The symmetry score of 0.6235 and the color histogram suggest a structured environment. Based on the probe-ratio (1/1 = 1) and click-responsiveness (5/5), this fits the 'movement' game type, and the primary strategy is 'bfs_state_space' with fallbacks to 'click_rare' and 'wall_avoid'.",
+        "confidence": 0.95,
+        "doubt": "",
+        "features_missing": [],
+        "wiki_gaps": [],
+        "wiki_needs": []
+      },
+      "retrieved_pages": [
+        "llm_context/decision_tree.md",
+        "selector.md",
+        "reasoning/frame_to_strategy_chain.md"
+      ],
+      "executions": [
+        {
+          "strategy": "bfs_state_space",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 514,
+          "elapsed_s": 7.7,
+          "status": "ok"
+        },
+        {
+          "strategy": "click_rare",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 799,
+          "elapsed_s": 0.54,
+          "status": "ok"
+        },
+        {
+          "strategy": "wall_avoid",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 3000,
+          "elapsed_s": 0.38,
+          "status": "ok"
+        }
+      ],
+      "best_levels": 0,
+      "total_elapsed_s": 25.66,
+      "status": "ok",
+      "env_index": 26,
+      "game_id": "lf52-271a04aa"
+    },
+    {
+      "game_title": "BP35",
+      "discovery": {
+        "available_actions": [
+          3,
+          4,
+          6,
+          7
+        ],
+        "layer_count": 2,
+        "dominant_colors": [
+          [
+            5,
+            1894
+          ],
+          [
+            10,
+            1805
+          ],
+          [
+            3,
+            178
+          ],
+          [
+            14,
+            147
+          ],
+          [
+            9,
+            6
+          ],
+          [
+            11,
+            2
+          ]
+        ],
+        "probe_diffs": {
+          "3": 35,
+          "4": 31,
+          "7": 1,
+          "6": 27,
+          "-6": 5
+        },
+        "dir_map": {},
+        "player_color": null,
+        "movable_region_count": 2,
+        "click_responsive_cells": [
+          {
+            "x": 32,
+            "y": 32,
+            "diff": 1,
+            "color_before_at_click": 5,
+            "color_after_at_click": 5
+          },
+          {
+            "x": 16,
+            "y": 16,
+            "diff": 1,
+            "color_before_at_click": 5,
+            "color_after_at_click": 5
+          },
+          {
+            "x": 48,
+            "y": 16,
+            "diff": 27,
+            "color_before_at_click": 5,
+            "color_after_at_click": 5
+          },
+          {
+            "x": 16,
+            "y": 48,
+            "diff": 1,
+            "color_before_at_click": 10,
+            "color_after_at_click": 10
+          },
+          {
+            "x": 48,
+            "y": 48,
+            "diff": 1,
+            "color_before_at_click": 10,
+            "color_after_at_click": 10
+          }
+        ],
+        "change_topology": "color_toggle",
+        "color_histogram": {
+          "5": 0.4624,
+          "10": 0.4407,
+          "3": 0.0435,
+          "14": 0.0359,
+          "0": 0.0156,
+          "9": 0.0015,
+          "11": 0.0005
+        },
+        "symmetry_score": 0.6943
+      },
+      "hypothesis": {
+        "game_type": "click",
+        "primary_strategy": "click_rare",
+        "fallback_stack": [
+          "click_toggle_detect",
+          "bfs_state_space"
+        ],
+        "rationale": "The game title is BP35, and the available actions are [3, 4, 6, 7]. The probe_diffs show that action 6 (click) has 5 responsive cells, indicating that it is the rare action that changes the frame. The other actions (3, 4, 7) have much lower responsiveness. This matches rule 4 (click-rare), where only action 6 is responsive. The primary strategy is click_rare, and the fallback stack includes click_toggle_detect and bfs_state_space.",
+        "confidence": 0.95,
+        "doubt": "",
+        "features_missing": [],
+        "wiki_gaps": [],
+        "wiki_needs": []
+      },
+      "retrieved_pages": [
+        "llm_context/decision_tree.md",
+        "selector.md",
+        "reasoning/frame_to_strategy_chain.md"
+      ],
+      "executions": [
+        {
+          "strategy": "click_rare",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 339,
+          "elapsed_s": 0.2,
+          "status": "ok"
+        },
+        {
+          "strategy": "click_toggle_detect",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 3000,
+          "elapsed_s": 1.69,
+          "status": "ok"
+        },
+        {
+          "strategy": "bfs_state_space",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 514,
+          "elapsed_s": 60.72,
+          "status": "ok"
+        }
+      ],
+      "best_levels": 0,
+      "total_elapsed_s": 77.91,
+      "status": "ok",
+      "env_index": 27,
+      "game_id": "bp35-0a0ad940"
+    },
+    {
+      "game_title": "S5I5",
+      "discovery": {
+        "available_actions": [
+          6
+        ],
+        "layer_count": 1,
+        "dominant_colors": [
+          [
+            5,
+            3797
+          ],
+          [
+            3,
+            80
+          ],
+          [
+            2,
+            72
+          ],
+          [
+            4,
+            72
+          ],
+          [
+            11,
+            37
+          ],
+          [
+            14,
+            28
+          ]
+        ],
+        "probe_diffs": {
+          "6": 1,
+          "-6": 5
+        },
+        "dir_map": {},
+        "player_color": null,
+        "movable_region_count": 0,
+        "click_responsive_cells": [
+          {
+            "x": 32,
+            "y": 32,
+            "diff": 1,
+            "color_before_at_click": 5,
+            "color_after_at_click": 5
+          },
+          {
+            "x": 16,
+            "y": 16,
+            "diff": 1,
+            "color_before_at_click": 5,
+            "color_after_at_click": 5
+          },
+          {
+            "x": 48,
+            "y": 16,
+            "diff": 1,
+            "color_before_at_click": 5,
+            "color_after_at_click": 5
+          },
+          {
+            "x": 16,
+            "y": 48,
+            "diff": 1,
+            "color_before_at_click": 5,
+            "color_after_at_click": 5
+          },
+          {
+            "x": 48,
+            "y": 48,
+            "diff": 1,
+            "color_before_at_click": 5,
+            "color_after_at_click": 5
+          }
+        ],
+        "change_topology": "no_change",
+        "color_histogram": {
+          "5": 0.927,
+          "3": 0.0195,
+          "2": 0.0176,
+          "4": 0.0176,
+          "11": 0.009,
+          "14": 0.0068,
+          "13": 0.0024
+        },
+        "symmetry_score": 0.8877
+      },
+      "hypothesis": {
+        "game_type": "click",
+        "primary_strategy": "click_rare",
+        "fallback_stack": [
+          "click_toggle_detect",
+          "bfs_state_space"
+        ],
+        "rationale": "The game has only one available action (6), and the probe_diffs show that this action changes 1 pixel. The click_responsive_cells indicate that 5 cells are responsive to clicks. This matches rule 4 (click-rare) where the action has minimal visual impact but some cells respond to clicks. The primary strategy is click_rare to target these responsive cells, with fallbacks for more complex patterns.",
+        "confidence": 0.95,
+        "doubt": "",
+        "features_missing": [],
+        "wiki_gaps": [],
+        "wiki_needs": []
+      },
+      "retrieved_pages": [
+        "llm_context/decision_tree.md",
+        "selector.md",
+        "reasoning/frame_to_strategy_chain.md"
+      ],
+      "executions": [
+        {
+          "strategy": "click_rare",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 305,
+          "elapsed_s": 0.01,
+          "status": "ok"
+        },
+        {
+          "strategy": "click_toggle_detect",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 3000,
+          "elapsed_s": 0.1,
+          "status": "ok"
+        },
+        {
+          "strategy": "bfs_state_space",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 1,
+          "elapsed_s": 0.0,
+          "status": "ok"
+        }
+      ],
+      "best_levels": 0,
+      "total_elapsed_s": 14.56,
+      "status": "ok",
+      "env_index": 28,
+      "game_id": "s5i5-18d95033"
+    },
+    {
+      "game_title": "S5I5",
+      "discovery": {
+        "available_actions": [
+          6
+        ],
+        "layer_count": 1,
+        "dominant_colors": [
+          [
+            5,
+            3797
+          ],
+          [
+            3,
+            80
+          ],
+          [
+            2,
+            72
+          ],
+          [
+            4,
+            72
+          ],
+          [
+            11,
+            37
+          ],
+          [
+            14,
+            28
+          ]
+        ],
+        "probe_diffs": {
+          "6": 1,
+          "-6": 5
+        },
+        "dir_map": {},
+        "player_color": null,
+        "movable_region_count": 0,
+        "click_responsive_cells": [
+          {
+            "x": 32,
+            "y": 32,
+            "diff": 1,
+            "color_before_at_click": 5,
+            "color_after_at_click": 5
+          },
+          {
+            "x": 16,
+            "y": 16,
+            "diff": 1,
+            "color_before_at_click": 5,
+            "color_after_at_click": 5
+          },
+          {
+            "x": 48,
+            "y": 16,
+            "diff": 1,
+            "color_before_at_click": 5,
+            "color_after_at_click": 5
+          },
+          {
+            "x": 16,
+            "y": 48,
+            "diff": 1,
+            "color_before_at_click": 5,
+            "color_after_at_click": 5
+          },
+          {
+            "x": 48,
+            "y": 48,
+            "diff": 1,
+            "color_before_at_click": 5,
+            "color_after_at_click": 5
+          }
+        ],
+        "change_topology": "no_change",
+        "color_histogram": {
+          "5": 0.927,
+          "3": 0.0195,
+          "2": 0.0176,
+          "4": 0.0176,
+          "11": 0.009,
+          "14": 0.0068,
+          "13": 0.0024
+        },
+        "symmetry_score": 0.8877
+      },
+      "hypothesis": {
+        "game_type": "click",
+        "primary_strategy": "click_rare",
+        "fallback_stack": [
+          "click_toggle_detect",
+          "bfs_state_space"
+        ],
+        "rationale": "The game has only one available action (6), and the probe_diffs show that this action changes 1 pixel. The click_responsive_cells indicate that 5 cells are responsive to clicks. This matches rule 4 (click-rare) where the action has minimal visual impact but some cells respond to clicks. The primary strategy is click_rare to target these responsive cells, with fallbacks for more complex patterns.",
+        "confidence": 0.95,
+        "doubt": "",
+        "features_missing": [],
+        "wiki_gaps": [],
+        "wiki_needs": []
+      },
+      "retrieved_pages": [
+        "llm_context/decision_tree.md",
+        "selector.md",
+        "reasoning/frame_to_strategy_chain.md"
+      ],
+      "executions": [
+        {
+          "strategy": "click_rare",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 305,
+          "elapsed_s": 0.02,
+          "status": "ok"
+        },
+        {
+          "strategy": "click_toggle_detect",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 3000,
+          "elapsed_s": 0.1,
+          "status": "ok"
+        },
+        {
+          "strategy": "bfs_state_space",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 1,
+          "elapsed_s": 0.0,
+          "status": "ok"
+        }
+      ],
+      "best_levels": 0,
+      "total_elapsed_s": 14.61,
+      "status": "ok",
+      "env_index": 29,
+      "game_id": "s5i5-18d95033"
+    },
+    {
+      "game_title": "R11L",
+      "discovery": {
+        "available_actions": [
+          6
+        ],
+        "layer_count": 1,
+        "dominant_colors": [
+          [
+            5,
+            3318
+          ],
+          [
+            2,
+            638
+          ],
+          [
+            15,
+            34
+          ],
+          [
+            1,
+            17
+          ],
+          [
+            3,
+            12
+          ],
+          [
+            6,
+            1
+          ]
+        ],
+        "probe_diffs": {
+          "6": 1,
+          "-6": 5
+        },
+        "dir_map": {},
+        "player_color": null,
+        "movable_region_count": 0,
+        "click_responsive_cells": [
+          {
+            "x": 32,
+            "y": 32,
+            "diff": 1,
+            "color_before_at_click": 5,
+            "color_after_at_click": 5
+          },
+          {
+            "x": 16,
+            "y": 16,
+            "diff": 1,
+            "color_before_at_click": 5,
+            "color_after_at_click": 5
+          },
+          {
+            "x": 48,
+            "y": 16,
+            "diff": 1,
+            "color_before_at_click": 5,
+            "color_after_at_click": 5
+          },
+          {
+            "x": 16,
+            "y": 48,
+            "diff": 1,
+            "color_before_at_click": 15,
+            "color_after_at_click": 15
+          },
+          {
+            "x": 48,
+            "y": 48,
+            "diff": 1,
+            "color_before_at_click": 5,
+            "color_after_at_click": 5
+          }
+        ],
+        "change_topology": "no_change",
+        "color_histogram": {
+          "5": 0.8101,
+          "2": 0.1558,
+          "0": 0.0186,
+          "15": 0.0083,
+          "1": 0.0042,
+          "3": 0.0029,
+          "6": 0.0002
+        },
+        "symmetry_score": 0.793
+      },
+      "hypothesis": {
+        "game_type": "click",
+        "primary_strategy": "click_rare",
+        "fallback_stack": [
+          "click_toggle_detect",
+          "bfs_state_space"
+        ],
+        "rationale": "The game has only one available action (6), and the probe_diffs show that action 6 changes 1 pixel. The click_responsive_cells indicate that 5 clicks are responsive, suggesting that clicking on specific cells has an effect. This matches rule 4 (click-rare), where the only available action has minimal visual impact but is responsive to clicks. The primary strategy is click_rare, which focuses on identifying and executing the rare, responsive clicks. If this stalls, we fall back to click_toggle_detect (which looks for toggle-like behavior) and then bfs_state_space (for broader exploration).",
+        "confidence": 0.95,
+        "doubt": "",
+        "features_missing": [],
+        "wiki_gaps": [],
+        "wiki_needs": []
+      },
+      "retrieved_pages": [
+        "llm_context/decision_tree.md",
+        "selector.md",
+        "reasoning/frame_to_strategy_chain.md"
+      ],
+      "executions": [
+        {
+          "strategy": "click_rare",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 66,
+          "elapsed_s": 0.01,
+          "status": "ok"
+        },
+        {
+          "strategy": "click_toggle_detect",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 3000,
+          "elapsed_s": 0.23,
+          "status": "ok"
+        },
+        {
+          "strategy": "bfs_state_space",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 1,
+          "elapsed_s": 0.0,
+          "status": "ok"
+        }
+      ],
+      "best_levels": 0,
+      "total_elapsed_s": 15.8,
+      "status": "ok",
+      "env_index": 30,
+      "game_id": "r11l-495a7899"
+    },
+    {
+      "game_title": "R11L",
+      "discovery": {
+        "available_actions": [
+          6
+        ],
+        "layer_count": 1,
+        "dominant_colors": [
+          [
+            5,
+            3318
+          ],
+          [
+            2,
+            638
+          ],
+          [
+            15,
+            34
+          ],
+          [
+            1,
+            17
+          ],
+          [
+            3,
+            12
+          ],
+          [
+            6,
+            1
+          ]
+        ],
+        "probe_diffs": {
+          "6": 1,
+          "-6": 5
+        },
+        "dir_map": {},
+        "player_color": null,
+        "movable_region_count": 0,
+        "click_responsive_cells": [
+          {
+            "x": 32,
+            "y": 32,
+            "diff": 1,
+            "color_before_at_click": 5,
+            "color_after_at_click": 5
+          },
+          {
+            "x": 16,
+            "y": 16,
+            "diff": 1,
+            "color_before_at_click": 5,
+            "color_after_at_click": 5
+          },
+          {
+            "x": 48,
+            "y": 16,
+            "diff": 1,
+            "color_before_at_click": 5,
+            "color_after_at_click": 5
+          },
+          {
+            "x": 16,
+            "y": 48,
+            "diff": 1,
+            "color_before_at_click": 15,
+            "color_after_at_click": 15
+          },
+          {
+            "x": 48,
+            "y": 48,
+            "diff": 1,
+            "color_before_at_click": 5,
+            "color_after_at_click": 5
+          }
+        ],
+        "change_topology": "no_change",
+        "color_histogram": {
+          "5": 0.8101,
+          "2": 0.1558,
+          "0": 0.0186,
+          "15": 0.0083,
+          "1": 0.0042,
+          "3": 0.0029,
+          "6": 0.0002
+        },
+        "symmetry_score": 0.793
+      },
+      "hypothesis": {
+        "game_type": "click",
+        "primary_strategy": "click_rare",
+        "fallback_stack": [
+          "click_toggle_detect",
+          "bfs_state_space"
+        ],
+        "rationale": "The game has only one available action (6), and the probe_diffs show that action 6 changes 1 pixel. The click_responsive_cells indicate that 5 clicks are responsive, suggesting that clicking on specific cells has an effect. This matches rule 4 (click-rare), where the only available action has minimal visual impact but is responsive to clicks. The primary strategy is click_rare, which focuses on identifying and executing the rare, responsive clicks. If this stalls, we fall back to click_toggle_detect (which looks for toggle-like behavior) and then bfs_state_space (for broader exploration).",
+        "confidence": 0.95,
+        "doubt": "",
+        "features_missing": [],
+        "wiki_gaps": [],
+        "wiki_needs": []
+      },
+      "retrieved_pages": [
+        "llm_context/decision_tree.md",
+        "selector.md",
+        "reasoning/frame_to_strategy_chain.md"
+      ],
+      "executions": [
+        {
+          "strategy": "click_rare",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 66,
+          "elapsed_s": 0.01,
+          "status": "ok"
+        },
+        {
+          "strategy": "click_toggle_detect",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 3000,
+          "elapsed_s": 0.22,
+          "status": "ok"
+        },
+        {
+          "strategy": "bfs_state_space",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 1,
+          "elapsed_s": 0.0,
+          "status": "ok"
+        }
+      ],
+      "best_levels": 0,
+      "total_elapsed_s": 15.75,
+      "status": "ok",
+      "env_index": 31,
+      "game_id": "r11l-495a7899"
+    },
+    {
+      "game_title": "SK48",
+      "discovery": {
+        "available_actions": [
+          1,
+          2,
+          3,
+          4,
+          6,
+          7
+        ],
+        "layer_count": 1,
+        "dominant_colors": [
+          [
+            5,
+            2412
+          ],
+          [
+            4,
+            1384
+          ],
+          [
+            2,
+            92
+          ],
+          [
+            6,
+            44
+          ],
+          [
+            8,
+            32
+          ],
+          [
+            9,
+            32
+          ]
+        ],
+        "probe_diffs": {
+          "1": 66,
+          "2": 0,
+          "3": 6,
+          "4": 6,
+          "6": 0,
+          "-6": 0
+        },
+        "dir_map": {},
+        "player_color": null,
+        "movable_region_count": 2,
+        "click_responsive_cells": [],
+        "change_topology": "color_toggle",
+        "color_histogram": {
+          "5": 0.5889,
+          "4": 0.3379,
+          "2": 0.0225,
+          "6": 0.0107,
+          "8": 0.0078,
+          "9": 0.0078,
+          "14": 0.0078,
+          "3": 0.0068
+        },
+        "symmetry_score": 0.9043
+      },
+      "hypothesis": {
+        "game_type": "movement",
+        "primary_strategy": "bfs_state_space",
+        "fallback_stack": [
+          "wall_avoid",
+          "click_rare"
+        ],
+        "rationale": "The game type is identified as 'movement' based on the available actions [1, 2, 3, 4] and the probe_diffs indicating movement-like changes. The primary strategy 'bfs_state_space' is selected for its ability to explore the state space efficiently. The fallback stack includes 'wall_avoid' for obstacle navigation and 'click_rare' for handling any rare click interactions.",
+        "confidence": 0.95,
+        "doubt": "",
+        "features_missing": [],
+        "wiki_gaps": [],
+        "wiki_needs": []
+      },
+      "retrieved_pages": [
+        "llm_context/decision_tree.md",
+        "selector.md",
+        "reasoning/frame_to_strategy_chain.md"
+      ],
+      "executions": [
+        {
+          "strategy": "bfs_state_space",
+          "winning_label": "bfs_state_space",
+          "levels": 1,
+          "actions": 2078,
+          "elapsed_s": 97.97,
+          "status": "ok"
+        }
+      ],
+      "best_levels": 1,
+      "total_elapsed_s": 112.32,
+      "status": "ok",
+      "env_index": 32,
+      "game_id": "sk48-d8078629"
+    },
+    {
+      "game_title": "SK48",
+      "discovery": {
+        "available_actions": [
+          1,
+          2,
+          3,
+          4,
+          6,
+          7
+        ],
+        "layer_count": 1,
+        "dominant_colors": [
+          [
+            5,
+            2412
+          ],
+          [
+            4,
+            1384
+          ],
+          [
+            2,
+            92
+          ],
+          [
+            6,
+            44
+          ],
+          [
+            8,
+            32
+          ],
+          [
+            9,
+            32
+          ]
+        ],
+        "probe_diffs": {
+          "1": 66,
+          "2": 0,
+          "3": 6,
+          "4": 6,
+          "6": 0,
+          "-6": 0
+        },
+        "dir_map": {},
+        "player_color": null,
+        "movable_region_count": 2,
+        "click_responsive_cells": [],
+        "change_topology": "color_toggle",
+        "color_histogram": {
+          "5": 0.5889,
+          "4": 0.3379,
+          "2": 0.0225,
+          "6": 0.0107,
+          "8": 0.0078,
+          "9": 0.0078,
+          "14": 0.0078,
+          "3": 0.0068
+        },
+        "symmetry_score": 0.9043
+      },
+      "hypothesis": {
+        "game_type": "movement",
+        "primary_strategy": "bfs_state_space",
+        "fallback_stack": [
+          "wall_avoid",
+          "click_rare"
+        ],
+        "rationale": "The game type is identified as 'movement' based on the available actions [1, 2, 3, 4] and the probe_diffs indicating movement-like changes. The primary strategy 'bfs_state_space' is selected for its ability to explore the state space efficiently. The fallback stack includes 'wall_avoid' for obstacle navigation and 'click_rare' for handling any rare click interactions.",
+        "confidence": 0.95,
+        "doubt": "",
+        "features_missing": [],
+        "wiki_gaps": [],
+        "wiki_needs": []
+      },
+      "retrieved_pages": [
+        "llm_context/decision_tree.md",
+        "selector.md",
+        "reasoning/frame_to_strategy_chain.md"
+      ],
+      "executions": [
+        {
+          "strategy": "bfs_state_space",
+          "winning_label": "bfs_state_space",
+          "levels": 1,
+          "actions": 2078,
+          "elapsed_s": 97.87,
+          "status": "ok"
+        }
+      ],
+      "best_levels": 1,
+      "total_elapsed_s": 112.25,
+      "status": "ok",
+      "env_index": 33,
+      "game_id": "sk48-d8078629"
+    },
+    {
+      "game_title": "WA30",
+      "discovery": {
+        "available_actions": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "layer_count": 1,
+        "dominant_colors": [
+          [
+            1,
+            3920
+          ],
+          [
+            7,
+            64
+          ],
+          [
+            9,
+            40
+          ],
+          [
+            4,
+            36
+          ],
+          [
+            2,
+            20
+          ],
+          [
+            14,
+            12
+          ]
+        ],
+        "probe_diffs": {
+          "1": 32,
+          "2": 32,
+          "3": 32,
+          "4": 32
+        },
+        "dir_map": {
+          "2": "N"
+        },
+        "player_color": 1,
+        "movable_region_count": 1,
+        "click_responsive_cells": [],
+        "change_topology": "mixed",
+        "color_histogram": {
+          "1": 0.957,
+          "7": 0.0156,
+          "9": 0.0098,
+          "4": 0.0088,
+          "2": 0.0049,
+          "14": 0.0029,
+          "0": 0.001
+        },
+        "symmetry_score": 0.96
+      },
+      "hypothesis": {
+        "game_type": "movement",
+        "primary_strategy": "bfs_state_space",
+        "fallback_stack": [
+          "wall_avoid",
+          "click_rare"
+        ],
+        "rationale": "The game is classified as 'movement' based on the available actions and the directional mapping. The probe_diffs show uniform changes for actions 1-4, indicating consistent movement effects. The symmetry score and color histogram suggest a structured environment. The primary strategy 'bfs_state_space' is appropriate for navigating a grid-based environment. If BFS stalls, 'wall_avoid' will help navigate obstacles, and 'click_rare' can handle any sparse interactive elements.",
+        "confidence": 0.95,
+        "doubt": "",
+        "features_missing": [],
+        "wiki_gaps": [],
+        "wiki_needs": []
+      },
+      "retrieved_pages": [
+        "llm_context/decision_tree.md",
+        "selector.md",
+        "reasoning/frame_to_strategy_chain.md"
+      ],
+      "executions": [
+        {
+          "strategy": "bfs_state_space",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 1,
+          "elapsed_s": 17.22,
+          "status": "ok"
+        },
+        {
+          "strategy": "wall_avoid",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 3000,
+          "elapsed_s": 0.1,
+          "status": "ok"
+        },
+        {
+          "strategy": "click_rare",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 173,
+          "elapsed_s": 0.0,
+          "status": "ok"
+        }
+      ],
+      "best_levels": 0,
+      "total_elapsed_s": 32.07,
+      "status": "ok",
+      "env_index": 34,
+      "game_id": "wa30-ee6fef47"
+    },
+    {
+      "game_title": "VC33",
+      "discovery": {
+        "available_actions": [
+          6
+        ],
+        "layer_count": 1,
+        "dominant_colors": [
+          [
+            3,
+            2580
+          ],
+          [
+            5,
+            168
+          ],
+          [
+            7,
+            64
+          ],
+          [
+            9,
+            32
+          ],
+          [
+            11,
+            20
+          ],
+          [
+            4,
+            16
+          ]
+        ],
+        "probe_diffs": {
+          "6": 1,
+          "-6": 5
+        },
+        "dir_map": {},
+        "player_color": null,
+        "movable_region_count": 0,
+        "click_responsive_cells": [
+          {
+            "x": 32,
+            "y": 32,
+            "diff": 1,
+            "color_before_at_click": 3,
+            "color_after_at_click": 3
+          },
+          {
+            "x": 16,
+            "y": 16,
+            "diff": 1,
+            "color_before_at_click": 3,
+            "color_after_at_click": 3
+          },
+          {
+            "x": 48,
+            "y": 16,
+            "diff": 1,
+            "color_before_at_click": 0,
+            "color_after_at_click": 0
+          },
+          {
+            "x": 16,
+            "y": 48,
+            "diff": 1,
+            "color_before_at_click": 3,
+            "color_after_at_click": 3
+          },
+          {
+            "x": 48,
+            "y": 48,
+            "diff": 1,
+            "color_before_at_click": 4,
+            "color_after_at_click": 4
+          }
+        ],
+        "change_topology": "no_change",
+        "color_histogram": {
+          "3": 0.6299,
+          "0": 0.2969,
+          "5": 0.041,
+          "7": 0.0156,
+          "9": 0.0078,
+          "11": 0.0049,
+          "4": 0.0039
+        },
+        "symmetry_score": 0.334
+      },
+      "hypothesis": {
+        "game_type": "click",
+        "primary_strategy": "click_rare",
+        "fallback_stack": [
+          "click_toggle_detect",
+          "bfs_state_space"
+        ],
+        "rationale": "The game has only one available action (6), and the probe_diffs show that this action changes 1 pixel. The click_responsive_cells indicate that 5 clicks are responsive, suggesting that the action is rare and only affects specific cells. This matches rule 4 (click-rare), where the action is rare and only affects a few cells. The primary strategy is click_rare, which is designed to handle such cases. The fallback stack includes click_toggle_detect and bfs_state_space, which can be used if the primary strategy fails.",
+        "confidence": 0.95,
+        "doubt": "",
+        "features_missing": [],
+        "wiki_gaps": [],
+        "wiki_needs": []
+      },
+      "retrieved_pages": [
+        "llm_context/decision_tree.md",
+        "selector.md",
+        "reasoning/frame_to_strategy_chain.md"
+      ],
+      "executions": [
+        {
+          "strategy": "click_rare",
+          "winning_label": "click_c9_(33,60)",
+          "levels": 1,
+          "actions": 535,
+          "elapsed_s": 0.07,
+          "status": "ok"
+        }
+      ],
+      "best_levels": 1,
+      "total_elapsed_s": 15.19,
+      "status": "ok",
+      "env_index": 35,
+      "game_id": "vc33-5430563c"
+    },
+    {
+      "game_title": "VC33",
+      "discovery": {
+        "available_actions": [
+          6
+        ],
+        "layer_count": 1,
+        "dominant_colors": [
+          [
+            3,
+            2580
+          ],
+          [
+            5,
+            168
+          ],
+          [
+            7,
+            64
+          ],
+          [
+            9,
+            32
+          ],
+          [
+            11,
+            20
+          ],
+          [
+            4,
+            16
+          ]
+        ],
+        "probe_diffs": {
+          "6": 1,
+          "-6": 5
+        },
+        "dir_map": {},
+        "player_color": null,
+        "movable_region_count": 0,
+        "click_responsive_cells": [
+          {
+            "x": 32,
+            "y": 32,
+            "diff": 1,
+            "color_before_at_click": 3,
+            "color_after_at_click": 3
+          },
+          {
+            "x": 16,
+            "y": 16,
+            "diff": 1,
+            "color_before_at_click": 3,
+            "color_after_at_click": 3
+          },
+          {
+            "x": 48,
+            "y": 16,
+            "diff": 1,
+            "color_before_at_click": 0,
+            "color_after_at_click": 0
+          },
+          {
+            "x": 16,
+            "y": 48,
+            "diff": 1,
+            "color_before_at_click": 3,
+            "color_after_at_click": 3
+          },
+          {
+            "x": 48,
+            "y": 48,
+            "diff": 1,
+            "color_before_at_click": 4,
+            "color_after_at_click": 4
+          }
+        ],
+        "change_topology": "no_change",
+        "color_histogram": {
+          "3": 0.6299,
+          "0": 0.2969,
+          "5": 0.041,
+          "7": 0.0156,
+          "9": 0.0078,
+          "11": 0.0049,
+          "4": 0.0039
+        },
+        "symmetry_score": 0.334
+      },
+      "hypothesis": {
+        "game_type": "click",
+        "primary_strategy": "click_rare",
+        "fallback_stack": [
+          "click_toggle_detect",
+          "bfs_state_space"
+        ],
+        "rationale": "The game has only one available action (6), and the probe_diffs show that this action changes 1 pixel. The click_responsive_cells indicate that 5 clicks are responsive, suggesting that the action is rare and only affects specific cells. This matches rule 4 (click-rare), where the action is rare and only affects a few cells. The primary strategy is click_rare, which is designed to handle such cases. The fallback stack includes click_toggle_detect and bfs_state_space, which can be used if the primary strategy fails.",
+        "confidence": 0.95,
+        "doubt": "",
+        "features_missing": [],
+        "wiki_gaps": [],
+        "wiki_needs": []
+      },
+      "retrieved_pages": [
+        "llm_context/decision_tree.md",
+        "selector.md",
+        "reasoning/frame_to_strategy_chain.md"
+      ],
+      "executions": [
+        {
+          "strategy": "click_rare",
+          "winning_label": "click_c9_(33,60)",
+          "levels": 1,
+          "actions": 535,
+          "elapsed_s": 0.06,
+          "status": "ok"
+        }
+      ],
+      "best_levels": 1,
+      "total_elapsed_s": 15.18,
+      "status": "ok",
+      "env_index": 36,
+      "game_id": "vc33-5430563c"
+    },
+    {
+      "game_title": "LS20",
+      "discovery": {
+        "available_actions": [
+          1,
+          2,
+          3,
+          4
+        ],
+        "layer_count": 1,
+        "dominant_colors": [
+          [
+            4,
+            2609
+          ],
+          [
+            3,
+            892
+          ],
+          [
+            5,
+            439
+          ],
+          [
+            11,
+            84
+          ],
+          [
+            9,
+            45
+          ],
+          [
+            8,
+            12
+          ]
+        ],
+        "probe_diffs": {
+          "1": 52,
+          "2": 2,
+          "3": 52,
+          "4": 52
+        },
+        "dir_map": {},
+        "player_color": null,
+        "movable_region_count": 2,
+        "click_responsive_cells": [],
+        "change_topology": "color_toggle",
+        "color_histogram": {
+          "4": 0.637,
+          "3": 0.2178,
+          "5": 0.1072,
+          "11": 0.0205,
+          "9": 0.011,
+          "8": 0.0029,
+          "12": 0.0024,
+          "0": 0.0007
+        },
+        "symmetry_score": 0.6792
+      },
+      "hypothesis": {
+        "game_type": "movement",
+        "primary_strategy": "bfs_state_space",
+        "fallback_stack": [
+          "wall_avoid",
+          "click_rare"
+        ],
+        "rationale": "The game type is classified as 'movement' based on the available actions [1, 2, 3, 4] and the probe_diffs showing movement-like changes (52 pixels changed for actions 1, 3, and 4). The dir_map indicates no movement directions, but the probe_diffs suggest that these actions are likely movement actions. The color histogram and symmetry score indicate a simple grid layout, making BFS a suitable strategy. The fallback stack includes 'wall_avoid' to handle potential obstacles and 'click_rare' for any unexpected responsive clicks.",
+        "confidence": 0.95,
+        "doubt": "",
+        "features_missing": [],
+        "wiki_gaps": [],
+        "wiki_needs": []
+      },
+      "retrieved_pages": [
+        "llm_context/decision_tree.md",
+        "selector.md",
+        "reasoning/frame_to_strategy_chain.md"
+      ],
+      "executions": [
+        {
+          "strategy": "bfs_state_space",
+          "winning_label": "bfs_state_space",
+          "levels": 1,
+          "actions": 27,
+          "elapsed_s": 96.63,
+          "status": "ok"
+        }
+      ],
+      "best_levels": 1,
+      "total_elapsed_s": 111.95,
+      "status": "ok",
+      "env_index": 37,
+      "game_id": "ls20-9607627b"
+    },
+    {
+      "game_title": "CD82",
+      "discovery": {
+        "available_actions": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        "layer_count": 1,
+        "dominant_colors": [
+          [
+            5,
+            3236
+          ],
+          [
+            3,
+            359
+          ],
+          [
+            4,
+            164
+          ],
+          [
+            15,
+            143
+          ],
+          [
+            2,
+            30
+          ]
+        ],
+        "probe_diffs": {
+          "1": 1,
+          "2": 1,
+          "3": 201,
+          "4": 201,
+          "6": 1,
+          "-6": 5
+        },
+        "dir_map": {},
+        "player_color": null,
+        "movable_region_count": 2,
+        "click_responsive_cells": [
+          {
+            "x": 32,
+            "y": 32,
+            "diff": 1,
+            "color_before_at_click": 5,
+            "color_after_at_click": 5
+          },
+          {
+            "x": 16,
+            "y": 16,
+            "diff": 1,
+            "color_before_at_click": 4,
+            "color_after_at_click": 4
+          },
+          {
+            "x": 48,
+            "y": 16,
+            "diff": 1,
+            "color_before_at_click": 5,
+            "color_after_at_click": 5
+          },
+          {
+            "x": 16,
+            "y": 48,
+            "diff": 1,
+            "color_before_at_click": 5,
+            "color_after_at_click": 5
+          },
+          {
+            "x": 48,
+            "y": 48,
+            "diff": 1,
+            "color_before_at_click": 5,
+            "color_after_at_click": 5
+          }
+        ],
+        "change_topology": "color_toggle",
+        "color_histogram": {
+          "5": 0.79,
+          "3": 0.0876,
+          "0": 0.04,
+          "4": 0.04,
+          "15": 0.0349,
+          "2": 0.0073
+        },
+        "symmetry_score": 0.8501
+      },
+      "hypothesis": {
+        "game_type": "platformer",
+        "primary_strategy": "bfs_state_space",
+        "fallback_stack": [
+          "explore_and_interact",
+          "click_rare"
+        ],
+        "rationale": "The game is classified as a platformer based on the movement patterns and the presence of gravity-like interactions. The primary strategy is a gravity-aware BFS to navigate the level. If this stalls, we fall back to sampling-based exploration and then to click-based rare actions.",
+        "confidence": 0.95,
+        "doubt": "",
+        "features_missing": [],
+        "wiki_gaps": [],
+        "wiki_needs": []
+      },
+      "retrieved_pages": [
+        "llm_context/decision_tree.md",
+        "selector.md",
+        "reasoning/frame_to_strategy_chain.md"
+      ],
+      "executions": [
+        {
+          "strategy": "bfs_state_space",
+          "winning_label": "bfs_state_space",
+          "levels": 1,
+          "actions": 2060,
+          "elapsed_s": 0.27,
+          "status": "ok"
+        }
+      ],
+      "best_levels": 1,
+      "total_elapsed_s": 14.22,
+      "status": "ok",
+      "env_index": 38,
+      "game_id": "cd82-fb555c5d"
+    },
+    {
+      "game_title": "TN36",
+      "discovery": {
+        "available_actions": [
+          6
+        ],
+        "layer_count": 1,
+        "dominant_colors": [
+          [
+            5,
+            3015
+          ],
+          [
+            4,
+            550
+          ],
+          [
+            9,
+            130
+          ],
+          [
+            11,
+            30
+          ],
+          [
+            1,
+            18
+          ]
+        ],
+        "probe_diffs": {
+          "6": 1,
+          "-6": 5
+        },
+        "dir_map": {},
+        "player_color": null,
+        "movable_region_count": 0,
+        "click_responsive_cells": [
+          {
+            "x": 32,
+            "y": 32,
+            "diff": 1,
+            "color_before_at_click": 4,
+            "color_after_at_click": 4
+          },
+          {
+            "x": 16,
+            "y": 16,
+            "diff": 1,
+            "color_before_at_click": 4,
+            "color_after_at_click": 4
+          },
+          {
+            "x": 48,
+            "y": 16,
+            "diff": 1,
+            "color_before_at_click": 4,
+            "color_after_at_click": 4
+          },
+          {
+            "x": 16,
+            "y": 48,
+            "diff": 1,
+            "color_before_at_click": 5,
+            "color_after_at_click": 5
+          },
+          {
+            "x": 48,
+            "y": 48,
+            "diff": 1,
+            "color_before_at_click": 0,
+            "color_after_at_click": 0
+          }
+        ],
+        "change_topology": "no_change",
+        "color_histogram": {
+          "5": 0.7361,
+          "4": 0.1343,
+          "0": 0.0862,
+          "9": 0.0317,
+          "11": 0.0073,
+          "1": 0.0044
+        },
+        "symmetry_score": 0.9478
+      },
+      "hypothesis": {
+        "game_type": "click",
+        "primary_strategy": "click_rare",
+        "fallback_stack": [
+          "click_toggle_detect",
+          "bfs_state_space"
+        ],
+        "rationale": "The game TN36 has only one available action (6), and the probe_diffs show that action 6 changes 1 pixel. The click_responsive_cells indicate that 5 clicks are responsive, suggesting that the action is rare and has a specific effect. The color histogram and symmetry score suggest that the game is likely a puzzle where specific clicks are required to solve the level. The primary strategy is click_rare, which is designed to handle such cases. The fallback stack includes click_toggle_detect and bfs_state_space in case the primary strategy fails.",
+        "confidence": 0.95,
+        "doubt": "",
+        "features_missing": [],
+        "wiki_gaps": [],
+        "wiki_needs": []
+      },
+      "retrieved_pages": [
+        "llm_context/decision_tree.md",
+        "selector.md",
+        "reasoning/frame_to_strategy_chain.md"
+      ],
+      "executions": [
+        {
+          "strategy": "click_rare",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 181,
+          "elapsed_s": 0.04,
+          "status": "ok"
+        },
+        {
+          "strategy": "click_toggle_detect",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 3000,
+          "elapsed_s": 0.22,
+          "status": "ok"
+        },
+        {
+          "strategy": "bfs_state_space",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 1,
+          "elapsed_s": 0.0,
+          "status": "ok"
+        }
+      ],
+      "best_levels": 0,
+      "total_elapsed_s": 15.46,
+      "status": "ok",
+      "env_index": 39,
+      "game_id": "tn36-ef4dde99"
+    },
+    {
+      "game_title": "TN36",
+      "discovery": {
+        "available_actions": [
+          6
+        ],
+        "layer_count": 1,
+        "dominant_colors": [
+          [
+            5,
+            3015
+          ],
+          [
+            4,
+            550
+          ],
+          [
+            9,
+            130
+          ],
+          [
+            11,
+            30
+          ],
+          [
+            1,
+            18
+          ]
+        ],
+        "probe_diffs": {
+          "6": 1,
+          "-6": 5
+        },
+        "dir_map": {},
+        "player_color": null,
+        "movable_region_count": 0,
+        "click_responsive_cells": [
+          {
+            "x": 32,
+            "y": 32,
+            "diff": 1,
+            "color_before_at_click": 4,
+            "color_after_at_click": 4
+          },
+          {
+            "x": 16,
+            "y": 16,
+            "diff": 1,
+            "color_before_at_click": 4,
+            "color_after_at_click": 4
+          },
+          {
+            "x": 48,
+            "y": 16,
+            "diff": 1,
+            "color_before_at_click": 4,
+            "color_after_at_click": 4
+          },
+          {
+            "x": 16,
+            "y": 48,
+            "diff": 1,
+            "color_before_at_click": 5,
+            "color_after_at_click": 5
+          },
+          {
+            "x": 48,
+            "y": 48,
+            "diff": 1,
+            "color_before_at_click": 0,
+            "color_after_at_click": 0
+          }
+        ],
+        "change_topology": "no_change",
+        "color_histogram": {
+          "5": 0.7361,
+          "4": 0.1343,
+          "0": 0.0862,
+          "9": 0.0317,
+          "11": 0.0073,
+          "1": 0.0044
+        },
+        "symmetry_score": 0.9478
+      },
+      "hypothesis": {
+        "game_type": "click",
+        "primary_strategy": "click_rare",
+        "fallback_stack": [
+          "click_toggle_detect",
+          "bfs_state_space"
+        ],
+        "rationale": "The game TN36 has only one available action (6), and the probe_diffs show that action 6 changes 1 pixel. The click_responsive_cells indicate that 5 clicks are responsive, suggesting that the action is rare and has a specific effect. The color histogram and symmetry score suggest that the game is likely a puzzle where specific clicks are required to solve the level. The primary strategy is click_rare, which is designed to handle such cases. The fallback stack includes click_toggle_detect and bfs_state_space in case the primary strategy fails.",
+        "confidence": 0.95,
+        "doubt": "",
+        "features_missing": [],
+        "wiki_gaps": [],
+        "wiki_needs": []
+      },
+      "retrieved_pages": [
+        "llm_context/decision_tree.md",
+        "selector.md",
+        "reasoning/frame_to_strategy_chain.md"
+      ],
+      "executions": [
+        {
+          "strategy": "click_rare",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 181,
+          "elapsed_s": 0.04,
+          "status": "ok"
+        },
+        {
+          "strategy": "click_toggle_detect",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 3000,
+          "elapsed_s": 0.23,
+          "status": "ok"
+        },
+        {
+          "strategy": "bfs_state_space",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 1,
+          "elapsed_s": 0.0,
+          "status": "ok"
+        }
+      ],
+      "best_levels": 0,
+      "total_elapsed_s": 15.47,
+      "status": "ok",
+      "env_index": 40,
+      "game_id": "tn36-ef4dde99"
+    }
+  ]
+}

@@ -36,7 +36,7 @@ Write solvers that read **only** the public interface:
 | per-pixel color clustering | hardcoded sprite coordinate constants |
 | frame-diff after action | hardcoded action sequences per level |
 
-This is the `[[strategies/frame_only/...]]` side of the split. See `[[strategies/brittle/internal_method_call]]` for the anti-pattern catalogue.
+This is the `[[../strategies/frame_only/bfs_state_space]]` side of the split. See `[[../strategies/brittle/internal_method_call]]` for the anti-pattern catalogue.
 
 ## Recovery
 

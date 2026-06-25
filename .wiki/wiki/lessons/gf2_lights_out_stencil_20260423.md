@@ -7,6 +7,8 @@ status: partial — infrastructure complete, multi-level still open
 
 # GF(2) Toggle Stencil for Lights-Out (R16-R18)
 
+> R16-R18 gave `_plan_lights_out` a GF(2) stencil + Gaussian-elimination solver + delta-chaining; it clears FT09 L1 but L2+ stays blocked because the diff-sorted top cells are coupled display feedback, not real toggle buttons.
+
 ## What
 
 Rounds R16-R18 added a GF(2) linear-algebra layer to

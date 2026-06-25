@@ -1,0 +1,1474 @@
+{
+  "timestamp": "2026-04-22T14:10:31",
+  "candidate": "qwen_3_8b_q4",
+  "results": [
+    {
+      "game_title": "TU93",
+      "discovery": {
+        "available_actions": [
+          1,
+          2,
+          3,
+          4
+        ],
+        "layer_count": 1,
+        "dominant_colors": [
+          [
+            5,
+            3465
+          ],
+          [
+            2,
+            288
+          ],
+          [
+            6,
+            64
+          ],
+          [
+            14,
+            9
+          ],
+          [
+            9,
+            8
+          ],
+          [
+            4,
+            1
+          ]
+        ],
+        "probe_diffs": {
+          "1": 1,
+          "2": 1,
+          "3": 1,
+          "4": 8
+        },
+        "dir_map": {
+          "4": "N"
+        },
+        "player_color": 2,
+        "movable_region_count": 3,
+        "click_responsive_cells": [],
+        "change_topology": "mixed",
+        "color_histogram": {
+          "5": 0.8459,
+          "2": 0.0703,
+          "0": 0.0637,
+          "6": 0.0156,
+          "14": 0.0022,
+          "9": 0.002,
+          "4": 0.0002
+        },
+        "symmetry_score": 0.8579
+      },
+      "hypothesis": {
+        "game_type": "movement",
+        "primary_strategy": "click_toggle_detect",
+        "fallback_stack": [
+          "click_toggle_detect",
+          "click_toggle_detect",
+          "click_toggle_detect"
+        ],
+        "rationale": "The discovery_phase classifies this as a movement game with a symmetry score of 0.8579 and a dominant color of 5. The probe_diffs show that actions 1, 2, and 3 have minimal impact (1 pixel change), while action 4 has a significant impact (8 pixels changed). The dir_map indicates that action 4 moves the player north. The click_responsive_cells are empty, suggesting that the movement actions are not directly linked to cell toggling. However, the high symmetry score and the significant impact of action 4 suggest that the game may involve a pattern of movement that indirectly affects the board state. The primary strategy is set to 'click_toggle_detect' as a fallback, but given the movement nature, the actual primary strategy should be 'bfs_state_space' with a budget of 5000. The fallback stack includes 'click_toggle_detect' to handle any potential toggle patterns that may emerge during the BFS search.",
+        "confidence": 0.85,
+        "doubt": "",
+        "features_missing": [],
+        "wiki_gaps": [],
+        "wiki_needs": []
+      },
+      "retrieved_pages": [
+        "llm_context/decision_tree.md",
+        "selector.md",
+        "reasoning/frame_to_strategy_chain.md"
+      ],
+      "executions": [
+        {
+          "strategy": "click_toggle_detect",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 65,
+          "elapsed_s": 0.01,
+          "status": "ok"
+        },
+        {
+          "strategy": "click_toggle_detect",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 65,
+          "elapsed_s": 0.0,
+          "status": "ok"
+        },
+        {
+          "strategy": "click_toggle_detect",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 65,
+          "elapsed_s": 0.0,
+          "status": "ok"
+        },
+        {
+          "strategy": "click_toggle_detect",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 65,
+          "elapsed_s": 0.0,
+          "status": "ok"
+        }
+      ],
+      "best_levels": 0,
+      "total_elapsed_s": 17.69,
+      "status": "ok",
+      "env_index": 1,
+      "game_id": "tu93-0768757b"
+    },
+    {
+      "game_title": "TU93",
+      "discovery": {
+        "available_actions": [
+          1,
+          2,
+          3,
+          4
+        ],
+        "layer_count": 1,
+        "dominant_colors": [
+          [
+            5,
+            3465
+          ],
+          [
+            2,
+            288
+          ],
+          [
+            6,
+            64
+          ],
+          [
+            14,
+            9
+          ],
+          [
+            9,
+            8
+          ],
+          [
+            4,
+            1
+          ]
+        ],
+        "probe_diffs": {
+          "1": 1,
+          "2": 1,
+          "3": 1,
+          "4": 8
+        },
+        "dir_map": {
+          "4": "N"
+        },
+        "player_color": 2,
+        "movable_region_count": 3,
+        "click_responsive_cells": [],
+        "change_topology": "mixed",
+        "color_histogram": {
+          "5": 0.8459,
+          "2": 0.0703,
+          "0": 0.0637,
+          "6": 0.0156,
+          "14": 0.0022,
+          "9": 0.002,
+          "4": 0.0002
+        },
+        "symmetry_score": 0.8579
+      },
+      "hypothesis": {
+        "game_type": "movement",
+        "primary_strategy": "click_toggle_detect",
+        "fallback_stack": [
+          "click_toggle_detect",
+          "click_toggle_detect",
+          "click_toggle_detect"
+        ],
+        "rationale": "The discovery_phase classifies this as a movement game with a symmetry score of 0.8579 and a dominant color of 5. The probe_diffs show that actions 1, 2, and 3 have minimal impact (1 pixel change), while action 4 has a significant impact (8 pixels changed). The dir_map indicates that action 4 moves the player north. The click_responsive_cells are empty, suggesting that the movement actions are not directly linked to cell toggling. However, the high symmetry score and the significant impact of action 4 suggest that the game may involve a pattern of movement that indirectly affects the board state. The primary strategy is set to 'click_toggle_detect' as a fallback, but given the movement nature, the actual primary strategy should be 'bfs_state_space' with a budget of 5000. The fallback stack includes 'click_toggle_detect' to handle any potential toggle patterns that may emerge during the BFS search.",
+        "confidence": 0.85,
+        "doubt": "",
+        "features_missing": [],
+        "wiki_gaps": [],
+        "wiki_needs": []
+      },
+      "retrieved_pages": [
+        "llm_context/decision_tree.md",
+        "selector.md",
+        "reasoning/frame_to_strategy_chain.md"
+      ],
+      "executions": [
+        {
+          "strategy": "click_toggle_detect",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 65,
+          "elapsed_s": 0.01,
+          "status": "ok"
+        },
+        {
+          "strategy": "click_toggle_detect",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 65,
+          "elapsed_s": 0.01,
+          "status": "ok"
+        },
+        {
+          "strategy": "click_toggle_detect",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 65,
+          "elapsed_s": 0.01,
+          "status": "ok"
+        },
+        {
+          "strategy": "click_toggle_detect",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 65,
+          "elapsed_s": 0.01,
+          "status": "ok"
+        }
+      ],
+      "best_levels": 0,
+      "total_elapsed_s": 17.56,
+      "status": "ok",
+      "env_index": 2,
+      "game_id": "tu93-0768757b"
+    },
+    {
+      "game_title": "AR25",
+      "discovery": {
+        "available_actions": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "layer_count": 1,
+        "dominant_colors": [
+          [
+            9,
+            3645
+          ],
+          [
+            10,
+            189
+          ],
+          [
+            11,
+            109
+          ],
+          [
+            5,
+            103
+          ],
+          [
+            4,
+            45
+          ]
+        ],
+        "probe_diffs": {
+          "1": 109,
+          "2": 109,
+          "3": 109,
+          "4": 109,
+          "6": 0,
+          "-6": 0
+        },
+        "dir_map": {},
+        "player_color": null,
+        "movable_region_count": 5,
+        "click_responsive_cells": [],
+        "change_topology": "color_toggle",
+        "color_histogram": {
+          "9": 0.8899,
+          "10": 0.0461,
+          "11": 0.0266,
+          "5": 0.0251,
+          "4": 0.011,
+          "0": 0.0012
+        },
+        "symmetry_score": 0.8896
+      },
+      "hypothesis": {
+        "game_type": "movement",
+        "primary_strategy": "click_toggle_detect",
+        "fallback_stack": [
+          "click_toggle_detect",
+          "click_toggle_detect",
+          "click_toggle_detect"
+        ],
+        "rationale": "The discovery_phase classifies this as a movement game with uniform probe ratios (109/109 = 1) and no responsive click cells (-6: 0). This matches rule 3a (movement-hybrid). However, the probe_diffs show no change in the frame when actions 1-4 are applied, suggesting these are not movement actions but rather color toggles. The lack of responsive click cells (-6: 0) indicates that the game is not a click-rare or paint-hybrid type. The dominant color (9) and high symmetry score (0.8896) suggest a puzzle where the player must toggle colors to solve the level. The primary strategy should be click_toggle_detect, which is designed for games where clicking on cells toggles their state. The fallback stack is repeated as there are no other strategies that would be effective in this scenario.",
+        "confidence": 0.95,
+        "doubt": "",
+        "features_missing": [],
+        "wiki_gaps": [],
+        "wiki_needs": []
+      },
+      "retrieved_pages": [
+        "llm_context/decision_tree.md",
+        "selector.md",
+        "reasoning/frame_to_strategy_chain.md"
+      ],
+      "executions": [
+        {
+          "strategy": "click_toggle_detect",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 65,
+          "elapsed_s": 0.02,
+          "status": "ok"
+        },
+        {
+          "strategy": "click_toggle_detect",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 65,
+          "elapsed_s": 0.01,
+          "status": "ok"
+        },
+        {
+          "strategy": "click_toggle_detect",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 65,
+          "elapsed_s": 0.01,
+          "status": "ok"
+        },
+        {
+          "strategy": "click_toggle_detect",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 65,
+          "elapsed_s": 0.01,
+          "status": "ok"
+        }
+      ],
+      "best_levels": 0,
+      "total_elapsed_s": 17.25,
+      "status": "ok",
+      "env_index": 3,
+      "game_id": "ar25-0c556536"
+    },
+    {
+      "game_title": "AR25",
+      "discovery": {
+        "available_actions": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "layer_count": 1,
+        "dominant_colors": [
+          [
+            9,
+            3645
+          ],
+          [
+            10,
+            189
+          ],
+          [
+            11,
+            109
+          ],
+          [
+            5,
+            103
+          ],
+          [
+            4,
+            45
+          ]
+        ],
+        "probe_diffs": {
+          "1": 109,
+          "2": 109,
+          "3": 109,
+          "4": 109,
+          "6": 0,
+          "-6": 0
+        },
+        "dir_map": {},
+        "player_color": null,
+        "movable_region_count": 5,
+        "click_responsive_cells": [],
+        "change_topology": "color_toggle",
+        "color_histogram": {
+          "9": 0.8899,
+          "10": 0.0461,
+          "11": 0.0266,
+          "5": 0.0251,
+          "4": 0.011,
+          "0": 0.0012
+        },
+        "symmetry_score": 0.8896
+      },
+      "hypothesis": {
+        "game_type": "movement",
+        "primary_strategy": "click_toggle_detect",
+        "fallback_stack": [
+          "click_toggle_detect",
+          "click_toggle_detect",
+          "click_toggle_detect"
+        ],
+        "rationale": "The discovery_phase classifies this as a movement game with uniform probe ratios (109/109 = 1) and no responsive click cells (-6: 0). This matches rule 3a (movement-hybrid). However, the probe_diffs show no change in the frame when actions 1-4 are applied, suggesting these are not movement actions but rather color toggles. The lack of responsive click cells (-6: 0) indicates that the game is not a click-rare or paint-hybrid type. The dominant color (9) and high symmetry score (0.8896) suggest a puzzle where the player must toggle colors to solve the level. The primary strategy should be click_toggle_detect, which is designed for games where clicking on cells toggles their state. The fallback stack is repeated as there are no other strategies that would be effective in this scenario.",
+        "confidence": 0.95,
+        "doubt": "",
+        "features_missing": [],
+        "wiki_gaps": [],
+        "wiki_needs": []
+      },
+      "retrieved_pages": [
+        "llm_context/decision_tree.md",
+        "selector.md",
+        "reasoning/frame_to_strategy_chain.md"
+      ],
+      "executions": [
+        {
+          "strategy": "click_toggle_detect",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 65,
+          "elapsed_s": 0.02,
+          "status": "ok"
+        },
+        {
+          "strategy": "click_toggle_detect",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 65,
+          "elapsed_s": 0.02,
+          "status": "ok"
+        },
+        {
+          "strategy": "click_toggle_detect",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 65,
+          "elapsed_s": 0.01,
+          "status": "ok"
+        },
+        {
+          "strategy": "click_toggle_detect",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 65,
+          "elapsed_s": 0.01,
+          "status": "ok"
+        }
+      ],
+      "best_levels": 0,
+      "total_elapsed_s": 17.25,
+      "status": "ok",
+      "env_index": 4,
+      "game_id": "ar25-0c556536"
+    },
+    {
+      "game_title": "RE86",
+      "discovery": {
+        "available_actions": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "layer_count": 1,
+        "dominant_colors": [
+          [
+            5,
+            3862
+          ],
+          [
+            4,
+            64
+          ],
+          [
+            15,
+            64
+          ],
+          [
+            9,
+            56
+          ],
+          [
+            11,
+            49
+          ]
+        ],
+        "probe_diffs": {
+          "1": 61,
+          "2": 61,
+          "3": 61,
+          "4": 61
+        },
+        "dir_map": {},
+        "player_color": null,
+        "movable_region_count": 5,
+        "click_responsive_cells": [],
+        "change_topology": "color_toggle",
+        "color_histogram": {
+          "5": 0.9429,
+          "4": 0.0156,
+          "15": 0.0156,
+          "9": 0.0137,
+          "11": 0.012,
+          "0": 0.0002
+        },
+        "symmetry_score": 0.9312
+      },
+      "hypothesis": {
+        "game_type": "movement",
+        "primary_strategy": "click_toggle_detect",
+        "fallback_stack": [
+          "click_toggle_detect",
+          "click_toggle_detect",
+          "click_toggle_detect"
+        ],
+        "rationale": "The discovery_phase classifies this as a movement game with uniform probe_diffs (61) and no responsive click cells. The symmetry score (0.9312) and dominant color (5) suggest a color_toggle mechanism. The lack of responsive clicks and uniform probe_diffs indicate that movement actions are not the primary mechanism, but rather color toggles. The fallback stack is filled with click_toggle_detect as it is the most appropriate strategy for this type of game.",
+        "confidence": 0.95,
+        "doubt": "",
+        "features_missing": [],
+        "wiki_gaps": [],
+        "wiki_needs": []
+      },
+      "retrieved_pages": [
+        "llm_context/decision_tree.md",
+        "selector.md",
+        "reasoning/frame_to_strategy_chain.md"
+      ],
+      "executions": [
+        {
+          "strategy": "click_toggle_detect",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 65,
+          "elapsed_s": 0.01,
+          "status": "ok"
+        },
+        {
+          "strategy": "click_toggle_detect",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 65,
+          "elapsed_s": 0.01,
+          "status": "ok"
+        },
+        {
+          "strategy": "click_toggle_detect",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 65,
+          "elapsed_s": 0.01,
+          "status": "ok"
+        },
+        {
+          "strategy": "click_toggle_detect",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 65,
+          "elapsed_s": 0.01,
+          "status": "ok"
+        }
+      ],
+      "best_levels": 0,
+      "total_elapsed_s": 15.01,
+      "status": "ok",
+      "env_index": 5,
+      "game_id": "re86-8af5384d"
+    },
+    {
+      "game_title": "RE86",
+      "discovery": {
+        "available_actions": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "layer_count": 1,
+        "dominant_colors": [
+          [
+            5,
+            3862
+          ],
+          [
+            4,
+            64
+          ],
+          [
+            15,
+            64
+          ],
+          [
+            9,
+            56
+          ],
+          [
+            11,
+            49
+          ]
+        ],
+        "probe_diffs": {
+          "1": 61,
+          "2": 61,
+          "3": 61,
+          "4": 61
+        },
+        "dir_map": {},
+        "player_color": null,
+        "movable_region_count": 5,
+        "click_responsive_cells": [],
+        "change_topology": "color_toggle",
+        "color_histogram": {
+          "5": 0.9429,
+          "4": 0.0156,
+          "15": 0.0156,
+          "9": 0.0137,
+          "11": 0.012,
+          "0": 0.0002
+        },
+        "symmetry_score": 0.9312
+      },
+      "hypothesis": {
+        "game_type": "movement",
+        "primary_strategy": "click_toggle_detect",
+        "fallback_stack": [
+          "click_toggle_detect",
+          "click_toggle_detect",
+          "click_toggle_detect"
+        ],
+        "rationale": "The discovery_phase classifies this as a movement game with uniform probe_diffs (61) and no responsive click cells. The symmetry score (0.9312) and dominant color (5) suggest a color_toggle mechanism. The lack of responsive clicks and uniform probe_diffs indicate that movement actions are not the primary mechanism, but rather color toggles. The fallback stack is filled with click_toggle_detect as it is the most appropriate strategy for this type of game.",
+        "confidence": 0.95,
+        "doubt": "",
+        "features_missing": [],
+        "wiki_gaps": [],
+        "wiki_needs": []
+      },
+      "retrieved_pages": [
+        "llm_context/decision_tree.md",
+        "selector.md",
+        "reasoning/frame_to_strategy_chain.md"
+      ],
+      "executions": [
+        {
+          "strategy": "click_toggle_detect",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 65,
+          "elapsed_s": 0.02,
+          "status": "ok"
+        },
+        {
+          "strategy": "click_toggle_detect",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 65,
+          "elapsed_s": 0.01,
+          "status": "ok"
+        },
+        {
+          "strategy": "click_toggle_detect",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 65,
+          "elapsed_s": 0.01,
+          "status": "ok"
+        },
+        {
+          "strategy": "click_toggle_detect",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 65,
+          "elapsed_s": 0.01,
+          "status": "ok"
+        }
+      ],
+      "best_levels": 0,
+      "total_elapsed_s": 14.97,
+      "status": "ok",
+      "env_index": 6,
+      "game_id": "re86-8af5384d"
+    },
+    {
+      "game_title": "SU15",
+      "discovery": {
+        "available_actions": [
+          6,
+          7
+        ],
+        "layer_count": 1,
+        "dominant_colors": [
+          [
+            5,
+            3290
+          ],
+          [
+            4,
+            631
+          ],
+          [
+            9,
+            59
+          ],
+          [
+            3,
+            29
+          ],
+          [
+            15,
+            18
+          ]
+        ],
+        "probe_diffs": {
+          "7": 0,
+          "6": 48,
+          "-6": 5
+        },
+        "dir_map": {},
+        "player_color": null,
+        "movable_region_count": 0,
+        "click_responsive_cells": [
+          {
+            "x": 32,
+            "y": 32,
+            "diff": 48,
+            "color_before_at_click": 5,
+            "color_after_at_click": 5
+          },
+          {
+            "x": 16,
+            "y": 16,
+            "diff": 48,
+            "color_before_at_click": 5,
+            "color_after_at_click": 5
+          },
+          {
+            "x": 48,
+            "y": 16,
+            "diff": 48,
+            "color_before_at_click": 3,
+            "color_after_at_click": 3
+          },
+          {
+            "x": 16,
+            "y": 48,
+            "diff": 46,
+            "color_before_at_click": 5,
+            "color_after_at_click": 5
+          },
+          {
+            "x": 48,
+            "y": 48,
+            "diff": 48,
+            "color_before_at_click": 5,
+            "color_after_at_click": 5
+          }
+        ],
+        "change_topology": "no_change",
+        "color_histogram": {
+          "5": 0.8032,
+          "4": 0.1541,
+          "0": 0.0168,
+          "9": 0.0144,
+          "3": 0.0071,
+          "15": 0.0044
+        },
+        "symmetry_score": 0.9487
+      },
+      "hypothesis": {
+        "game_type": "merge_puzzle",
+        "primary_strategy": "click_toggle_detect",
+        "fallback_stack": [
+          "click_toggle_detect",
+          "click_toggle_detect",
+          "click_toggle_detect"
+        ],
+        "rationale": "The discovery_phase classifies this as a merge_puzzle. The probe_diffs show that action 6 (which is likely the merge action) has a significant impact on the frame, while action 7 has no effect. The click_responsive_cells indicate that clicking on certain cells (especially those with color 5) causes changes, suggesting a merge or transformation mechanism. Since the game is classified as a merge_puzzle, the primary strategy is to use the frame-only vacuum planner (click_toggle_detect), which is the equivalent of the brittle strategy su15_vacuum. The fallback stack is populated with click_toggle_detect as well, as it is the most appropriate strategy for this type of game.",
+        "confidence": 0.95,
+        "doubt": "",
+        "features_missing": [],
+        "wiki_gaps": [],
+        "wiki_needs": []
+      },
+      "retrieved_pages": [
+        "llm_context/decision_tree.md",
+        "selector.md",
+        "reasoning/frame_to_strategy_chain.md"
+      ],
+      "executions": [
+        {
+          "strategy": "click_toggle_detect",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 3000,
+          "elapsed_s": 0.58,
+          "status": "ok"
+        },
+        {
+          "strategy": "click_toggle_detect",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 3000,
+          "elapsed_s": 0.53,
+          "status": "ok"
+        },
+        {
+          "strategy": "click_toggle_detect",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 3000,
+          "elapsed_s": 0.53,
+          "status": "ok"
+        },
+        {
+          "strategy": "click_toggle_detect",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 3000,
+          "elapsed_s": 0.53,
+          "status": "ok"
+        }
+      ],
+      "best_levels": 0,
+      "total_elapsed_s": 18.3,
+      "status": "ok",
+      "env_index": 7,
+      "game_id": "su15-1944f8ab"
+    },
+    {
+      "game_title": "SU15",
+      "discovery": {
+        "available_actions": [
+          6,
+          7
+        ],
+        "layer_count": 1,
+        "dominant_colors": [
+          [
+            5,
+            3290
+          ],
+          [
+            4,
+            631
+          ],
+          [
+            9,
+            59
+          ],
+          [
+            3,
+            29
+          ],
+          [
+            15,
+            18
+          ]
+        ],
+        "probe_diffs": {
+          "7": 0,
+          "6": 48,
+          "-6": 5
+        },
+        "dir_map": {},
+        "player_color": null,
+        "movable_region_count": 0,
+        "click_responsive_cells": [
+          {
+            "x": 32,
+            "y": 32,
+            "diff": 48,
+            "color_before_at_click": 5,
+            "color_after_at_click": 5
+          },
+          {
+            "x": 16,
+            "y": 16,
+            "diff": 48,
+            "color_before_at_click": 5,
+            "color_after_at_click": 5
+          },
+          {
+            "x": 48,
+            "y": 16,
+            "diff": 48,
+            "color_before_at_click": 3,
+            "color_after_at_click": 3
+          },
+          {
+            "x": 16,
+            "y": 48,
+            "diff": 46,
+            "color_before_at_click": 5,
+            "color_after_at_click": 5
+          },
+          {
+            "x": 48,
+            "y": 48,
+            "diff": 48,
+            "color_before_at_click": 5,
+            "color_after_at_click": 5
+          }
+        ],
+        "change_topology": "no_change",
+        "color_histogram": {
+          "5": 0.8032,
+          "4": 0.1541,
+          "0": 0.0168,
+          "9": 0.0144,
+          "3": 0.0071,
+          "15": 0.0044
+        },
+        "symmetry_score": 0.9487
+      },
+      "hypothesis": {
+        "game_type": "merge_puzzle",
+        "primary_strategy": "click_toggle_detect",
+        "fallback_stack": [
+          "click_toggle_detect",
+          "click_toggle_detect",
+          "click_toggle_detect"
+        ],
+        "rationale": "The discovery_phase classifies this as a merge_puzzle. The probe_diffs show that action 6 (which is likely the merge action) has a significant impact on the frame, while action 7 has no effect. The click_responsive_cells indicate that clicking on certain cells (especially those with color 5) causes changes, suggesting a merge or transformation mechanism. Since the game is classified as a merge_puzzle, the primary strategy is to use the frame-only vacuum planner (click_toggle_detect), which is the equivalent of the brittle strategy su15_vacuum. The fallback stack is populated with click_toggle_detect as well, as it is the most appropriate strategy for this type of game.",
+        "confidence": 0.95,
+        "doubt": "",
+        "features_missing": [],
+        "wiki_gaps": [],
+        "wiki_needs": []
+      },
+      "retrieved_pages": [
+        "llm_context/decision_tree.md",
+        "selector.md",
+        "reasoning/frame_to_strategy_chain.md"
+      ],
+      "executions": [
+        {
+          "strategy": "click_toggle_detect",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 3000,
+          "elapsed_s": 0.54,
+          "status": "ok"
+        },
+        {
+          "strategy": "click_toggle_detect",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 3000,
+          "elapsed_s": 0.55,
+          "status": "ok"
+        },
+        {
+          "strategy": "click_toggle_detect",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 3000,
+          "elapsed_s": 0.55,
+          "status": "ok"
+        },
+        {
+          "strategy": "click_toggle_detect",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 3000,
+          "elapsed_s": 0.55,
+          "status": "ok"
+        }
+      ],
+      "best_levels": 0,
+      "total_elapsed_s": 18.27,
+      "status": "ok",
+      "env_index": 8,
+      "game_id": "su15-1944f8ab"
+    },
+    {
+      "game_title": "M0R0",
+      "discovery": {
+        "available_actions": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        "layer_count": 1,
+        "dominant_colors": [
+          [
+            5,
+            1453
+          ],
+          [
+            12,
+            1299
+          ],
+          [
+            11,
+            1294
+          ],
+          [
+            10,
+            50
+          ]
+        ],
+        "probe_diffs": {
+          "1": 100,
+          "2": 100,
+          "3": 100,
+          "4": 100,
+          "6": 0,
+          "-6": 0
+        },
+        "dir_map": {},
+        "player_color": null,
+        "movable_region_count": 2,
+        "click_responsive_cells": [],
+        "change_topology": "color_toggle",
+        "color_histogram": {
+          "5": 0.3547,
+          "12": 0.3171,
+          "11": 0.3159,
+          "10": 0.0122
+        },
+        "symmetry_score": 0.3071
+      },
+      "hypothesis": {
+        "game_type": "movement",
+        "primary_strategy": "click_toggle_detect",
+        "fallback_stack": [
+          "click_toggle_detect",
+          "click_toggle_detect",
+          "click_toggle_detect"
+        ],
+        "rationale": "The discovery phase indicates a movement game with no responsive clicks. The primary strategy is 'click_toggle_detect' as it is the fallback for movement games with no responsive clicks. The fallback stack is repeated as there are no other strategies to fall back to.",
+        "confidence": 0.95,
+        "doubt": "",
+        "features_missing": [],
+        "wiki_gaps": [],
+        "wiki_needs": []
+      },
+      "retrieved_pages": [
+        "llm_context/decision_tree.md",
+        "selector.md",
+        "reasoning/frame_to_strategy_chain.md"
+      ],
+      "executions": [
+        {
+          "strategy": "click_toggle_detect",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 3000,
+          "elapsed_s": 0.14,
+          "status": "ok"
+        },
+        {
+          "strategy": "click_toggle_detect",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 3000,
+          "elapsed_s": 0.14,
+          "status": "ok"
+        },
+        {
+          "strategy": "click_toggle_detect",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 3000,
+          "elapsed_s": 0.14,
+          "status": "ok"
+        },
+        {
+          "strategy": "click_toggle_detect",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 3000,
+          "elapsed_s": 0.14,
+          "status": "ok"
+        }
+      ],
+      "best_levels": 0,
+      "total_elapsed_s": 14.3,
+      "status": "ok",
+      "env_index": 9,
+      "game_id": "m0r0-492f87ba"
+    },
+    {
+      "game_title": "M0R0",
+      "discovery": {
+        "available_actions": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        "layer_count": 1,
+        "dominant_colors": [
+          [
+            5,
+            1453
+          ],
+          [
+            12,
+            1299
+          ],
+          [
+            11,
+            1294
+          ],
+          [
+            10,
+            50
+          ]
+        ],
+        "probe_diffs": {
+          "1": 100,
+          "2": 100,
+          "3": 100,
+          "4": 100,
+          "6": 0,
+          "-6": 0
+        },
+        "dir_map": {},
+        "player_color": null,
+        "movable_region_count": 2,
+        "click_responsive_cells": [],
+        "change_topology": "color_toggle",
+        "color_histogram": {
+          "5": 0.3547,
+          "12": 0.3171,
+          "11": 0.3159,
+          "10": 0.0122
+        },
+        "symmetry_score": 0.3071
+      },
+      "hypothesis": {
+        "game_type": "movement",
+        "primary_strategy": "click_toggle_detect",
+        "fallback_stack": [
+          "click_toggle_detect",
+          "click_toggle_detect",
+          "click_toggle_detect"
+        ],
+        "rationale": "The discovery phase indicates a movement game with no responsive clicks. The primary strategy is 'click_toggle_detect' as it is the fallback for movement games with no responsive clicks. The fallback stack is repeated as there are no other strategies to fall back to.",
+        "confidence": 0.95,
+        "doubt": "",
+        "features_missing": [],
+        "wiki_gaps": [],
+        "wiki_needs": []
+      },
+      "retrieved_pages": [
+        "llm_context/decision_tree.md",
+        "selector.md",
+        "reasoning/frame_to_strategy_chain.md"
+      ],
+      "executions": [
+        {
+          "strategy": "click_toggle_detect",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 3000,
+          "elapsed_s": 0.16,
+          "status": "ok"
+        },
+        {
+          "strategy": "click_toggle_detect",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 3000,
+          "elapsed_s": 0.14,
+          "status": "ok"
+        },
+        {
+          "strategy": "click_toggle_detect",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 3000,
+          "elapsed_s": 0.14,
+          "status": "ok"
+        },
+        {
+          "strategy": "click_toggle_detect",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 3000,
+          "elapsed_s": 0.14,
+          "status": "ok"
+        }
+      ],
+      "best_levels": 0,
+      "total_elapsed_s": 14.4,
+      "status": "ok",
+      "env_index": 10,
+      "game_id": "m0r0-492f87ba"
+    },
+    {
+      "game_title": "CN04",
+      "discovery": {
+        "available_actions": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        "layer_count": 1,
+        "dominant_colors": [
+          [
+            10,
+            3749
+          ],
+          [
+            14,
+            144
+          ],
+          [
+            8,
+            36
+          ],
+          [
+            4,
+            32
+          ]
+        ],
+        "probe_diffs": {
+          "1": 144,
+          "2": 144,
+          "3": 198,
+          "4": 198,
+          "6": 279,
+          "-6": 1
+        },
+        "dir_map": {
+          "1": "S",
+          "2": "N",
+          "3": "E",
+          "4": "W"
+        },
+        "player_color": 10,
+        "movable_region_count": 5,
+        "click_responsive_cells": [
+          {
+            "x": 48,
+            "y": 48,
+            "diff": 279,
+            "color_before_at_click": 14,
+            "color_after_at_click": 0
+          }
+        ],
+        "change_topology": "sprite_move",
+        "color_histogram": {
+          "10": 0.9153,
+          "14": 0.0352,
+          "0": 0.033,
+          "8": 0.0088,
+          "4": 0.0078
+        },
+        "symmetry_score": 0.8462
+      },
+      "hypothesis": {
+        "game_type": "movement",
+        "primary_strategy": "click_toggle_detect",
+        "fallback_stack": [
+          "click_toggle_detect",
+          "click_toggle_detect",
+          "click_toggle_detect"
+        ],
+        "rationale": "The discovery_phase classifies this as a movement game with a dominant color (10) and a symmetry score of 0.8462. The probe_diffs show that actions 1-4 have similar pixel changes (144-198), and action 6 has a higher change (279). The click_responsive_cells indicate that clicking on a specific cell (x:48, y:48) changes the color from 14 to 0, suggesting a toggle mechanism. The dir_map shows movement directions for actions 1-4, but the high change for action 6 suggests it might be a toggle action. The game appears to be a lights-out-style puzzle where clicking on specific cells toggles their state, and the movement actions might be distractions. The primary strategy is click_toggle_detect, and the fallback stack is the same because the game is likely to be a lights-out-style puzzle.",
+        "confidence": 0.95,
+        "doubt": "",
+        "features_missing": [],
+        "wiki_gaps": [],
+        "wiki_needs": []
+      },
+      "retrieved_pages": [
+        "llm_context/decision_tree.md",
+        "selector.md",
+        "reasoning/frame_to_strategy_chain.md"
+      ],
+      "executions": [
+        {
+          "strategy": "click_toggle_detect",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 3000,
+          "elapsed_s": 0.09,
+          "status": "ok"
+        },
+        {
+          "strategy": "click_toggle_detect",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 3000,
+          "elapsed_s": 0.08,
+          "status": "ok"
+        },
+        {
+          "strategy": "click_toggle_detect",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 3000,
+          "elapsed_s": 0.08,
+          "status": "ok"
+        },
+        {
+          "strategy": "click_toggle_detect",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 3000,
+          "elapsed_s": 0.08,
+          "status": "ok"
+        }
+      ],
+      "best_levels": 0,
+      "total_elapsed_s": 18.23,
+      "status": "ok",
+      "env_index": 11,
+      "game_id": "cn04-2fe56bfb"
+    },
+    {
+      "game_title": "CN04",
+      "discovery": {
+        "available_actions": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        "layer_count": 1,
+        "dominant_colors": [
+          [
+            10,
+            3749
+          ],
+          [
+            14,
+            144
+          ],
+          [
+            8,
+            36
+          ],
+          [
+            4,
+            32
+          ]
+        ],
+        "probe_diffs": {
+          "1": 144,
+          "2": 144,
+          "3": 198,
+          "4": 198,
+          "6": 279,
+          "-6": 1
+        },
+        "dir_map": {
+          "1": "S",
+          "2": "N",
+          "3": "E",
+          "4": "W"
+        },
+        "player_color": 10,
+        "movable_region_count": 5,
+        "click_responsive_cells": [
+          {
+            "x": 48,
+            "y": 48,
+            "diff": 279,
+            "color_before_at_click": 14,
+            "color_after_at_click": 0
+          }
+        ],
+        "change_topology": "sprite_move",
+        "color_histogram": {
+          "10": 0.9153,
+          "14": 0.0352,
+          "0": 0.033,
+          "8": 0.0088,
+          "4": 0.0078
+        },
+        "symmetry_score": 0.8462
+      },
+      "hypothesis": {
+        "game_type": "movement",
+        "primary_strategy": "click_toggle_detect",
+        "fallback_stack": [
+          "click_toggle_detect",
+          "click_toggle_detect",
+          "click_toggle_detect"
+        ],
+        "rationale": "The discovery_phase classifies this as a movement game with a dominant color (10) and a symmetry score of 0.8462. The probe_diffs show that actions 1-4 have similar pixel changes (144-198), and action 6 has a higher change (279). The click_responsive_cells indicate that clicking on a specific cell (x:48, y:48) changes the color from 14 to 0, suggesting a toggle mechanism. The dir_map shows movement directions for actions 1-4, but the high change for action 6 suggests it might be a toggle action. The game appears to be a lights-out-style puzzle where clicking on specific cells toggles their state, and the movement actions might be distractions. The primary strategy is click_toggle_detect, and the fallback stack is the same because the game is likely to be a lights-out-style puzzle.",
+        "confidence": 0.95,
+        "doubt": "",
+        "features_missing": [],
+        "wiki_gaps": [],
+        "wiki_needs": []
+      },
+      "retrieved_pages": [
+        "llm_context/decision_tree.md",
+        "selector.md",
+        "reasoning/frame_to_strategy_chain.md"
+      ],
+      "executions": [
+        {
+          "strategy": "click_toggle_detect",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 3000,
+          "elapsed_s": 0.09,
+          "status": "ok"
+        },
+        {
+          "strategy": "click_toggle_detect",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 3000,
+          "elapsed_s": 0.08,
+          "status": "ok"
+        },
+        {
+          "strategy": "click_toggle_detect",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 3000,
+          "elapsed_s": 0.08,
+          "status": "ok"
+        },
+        {
+          "strategy": "click_toggle_detect",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 3000,
+          "elapsed_s": 0.08,
+          "status": "ok"
+        }
+      ],
+      "best_levels": 0,
+      "total_elapsed_s": 18.69,
+      "status": "ok",
+      "env_index": 12,
+      "game_id": "cn04-2fe56bfb"
+    }
+  ]
+}

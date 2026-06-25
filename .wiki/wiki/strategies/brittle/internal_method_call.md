@@ -45,5 +45,5 @@ Every `internal_method_call` site can be replaced with one of:
 ## Related
 
 - [[../raw/regressions/v2_failures_20260420]]
-- [[frame_only/bfs_state_space]] (template for refactor)
-- Phase 8 Step 2 in [[../../../CLAUDE.md]]
+- [[../frame_only/bfs_state_space]] (template for refactor)
+- Phase 8 Step 2 in the repo `CLAUDE.md`

@@ -29,8 +29,8 @@ refactor_status: brittle_only
 
 ## Related strategies
 
-- [[strategies/frame_only/bit_encoding_click]] (target — to be created in Step 2a)
-- [[strategies/brittle/internal_method_call]] (current TN36 implementation)
+- [[../concepts/bit_encoding]] — the bit-panel puzzle abstraction (frame-only refactor target)
+- [[../strategies/brittle/internal_method_call]] (current TN36 implementation)
 
 ## Related games
 

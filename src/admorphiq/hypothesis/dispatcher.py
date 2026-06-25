@@ -59,48 +59,81 @@ BRITTLE_STRATEGIES: frozenset[str] = frozenset(
 )
 
 
-# Round 8 (2026-04-22) — strategies Qwen 3 8B anchor-locks on.
-# Four rounds of wiki work (R3-R7) did not dislodge Qwen's preference
-# for these two names. Across R7's 40-env bench, Qwen picked
-# `bfs_state_space` 25x and `click_rare` 15x and `inferential_agent`
-# 0x, despite the round-6 compact decision_tree.md seeded first.
+# Round 8-11 history (2026-04-22) — Qwen 3 8B anchor-lock on
+# `bfs_state_space` / `click_rare`. Rounds R8-R10 tried partial
+# purging and saw whack-a-mole regression (23 → 4 raw levels). R11
+# collapsed to a single-item allowlist {adaptive_bfs_solver}, which
+# forced the decoder to pick the inferential agent every time and
+# stabilised at 14/40 envs / 20 raw levels.
 #
-# Both stay internally callable: the navigation plan inside
-# `strat_inferential_agent` already delegates to
-# `strat_bfs_state_space`, and click-rare behavior is subsumed by
-# the toggle / paint-fill plans.
-ANCHOR_BANNED_STRATEGIES: frozenset[str] = frozenset(
-    {
-        "bfs_state_space",
-        "click_rare",
-    }
-)
+# Round 23 (2026-05-06) — REOPENED. R27 backfilled the four
+# runtime-consumable sections (Observable / Falsification / Tunable
+# / Next-Best) onto every plan-fn page. The bet: with explicit
+# falsification → next-best mappings in the wiki, Qwen no longer
+# defaults to a familiar BFS name when the right pick is a
+# specialised click strategy. R23 measures whether that bet pays
+# off.
+#
+# The empty ANCHOR_BANNED_STRATEGIES set keeps the hook in place so
+# R23-bench failure modes can be diagnosed without touching code:
+# if Qwen still anchors on bfs_state_space across the 40-env run,
+# the next dev cycle adds it back here without any plan-fn rewrite.
+ANCHOR_BANNED_STRATEGIES: frozenset[str] = frozenset()
 
 
-# Round 9 (2026-04-22) — ultra-minimal LLM-pickable allowlist.
-# Round 8 measured that partial whitelist purging produces
-# anchor-whack-a-mole: Qwen abandoned bfs_state_space/click_rare only
-# to pick bfs_explore / click_rotation_puzzle / bfs_framehash, all
-# weaker strategies. Score collapsed 23 → 4 raw levels.
+# Round 23 (2026-05-06) — frame-only strategies LLM may pick.
 #
-# The allowlist below is the logical endpoint of Wiki-First Routing:
-# the routing LLM is offered exactly four names and must pick among
-# them. `inferential_agent` is the sole primary — it handles every
-# game shape through its five-phase pipeline. The three click-tool
-# fallbacks exist only so the run() loop has something to try when
-# I-Agent's plans all time out mid-run.
+# Composition rules:
+#   - `adaptive_bfs_solver` (alias of strat_inferential_agent) stays
+#     as the universal default — its five-phase pipeline + R27
+#     plan-fn pages cover every classified game shape.
+#   - The 13 specialised entries are dispatchable strat_* in
+#     `agent_ensemble.py` whose plan/algorithm is generic (no
+#     game-internal sprite tags, no game_title branching). Each
+#     has a `strategies/frame_only/<name>.md` page or is documented
+#     in selector.md as a tool the runtime LLM may pick.
+#   - `BRITTLE_STRATEGIES` (R5 list of internal-attr-readers) is
+#     still applied first; nothing in the allowlist below overlaps.
+#
+# If the 8B model still anchors after R23 bench, the recovery is
+# either (a) put bfs_state_space + click_rare back in
+# ANCHOR_BANNED_STRATEGIES, or (b) upgrade the model — see
+# `tasks #69` (Qwen upgrade evaluation).
 LLM_WHITELIST_ALLOWLIST: frozenset[str] = frozenset(
     {
-        # Round 11 (2026-04-22) — single-item allowlist. Round 10
-        # renamed `inferential_agent` → `adaptive_bfs_solver` and kept
-        # 3 click-tool fallbacks; Qwen still picked click_toggle_detect
-        # 11/11. Removing even the fallbacks forces the decoder to
-        # return adaptive_bfs_solver as the only option. The schema
-        # in wiki_agent.py relaxes uniqueItems/minItems when the
-        # whitelist is < 4 so this doesn't become unsatisfiable.
+        # Universal default — five-phase inferential agent.
         "adaptive_bfs_solver",
+        # Movement / state-space search peers. `bfs_state_space` is
+        # explicitly allowed again so the LLM can pick it for pure-
+        # movement envs without paying the inferential observation
+        # overhead; it is internally still called by
+        # `_plan_navigation`.
+        "bfs_state_space",
+        # Click-only specialists.
+        "click_rare",
+        "click_toggle_detect",
+        "click_color_order",
+        "click_select_move",
+        "click_all_colors",
+        # Hybrid / interactive.
+        "explore_and_interact",
+        # Programming-puzzle / spell mechanics.
+        "spell_cast",
+        # Tu93 / Tr87 / Ls20 / Sk48 generalised path planners
+        # (R5 stripped their L1 hardcoded sequences; they now pure-
+        # BFS every level).
+        "tu93_maze",
+        "tr87_rotation",
+        "ls20_grid",
+        "sk48_snake",
     }
 )
+# Note: `zigzag` and other runtime-arg strategies (sustained,
+# extended_winner, continue_multilevel, move_click, navigate,
+# graph_explore — see R3 dispatcher commit) cannot be added because
+# their plan fns require args (winning aid, target color) that only
+# exist mid-run. The internal ensemble dispatcher still selects them
+# via feature triggers; they are simply not LLM-pickable.
 
 
 def build_ctx(report) -> dict[str, Any]:

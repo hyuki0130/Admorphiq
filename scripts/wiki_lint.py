@@ -11,6 +11,17 @@ Walks `.wiki/wiki/**/*.md` and surfaces:
   4. Plan-fn pages missing R23c runtime-consumable fields
      (Observable Signature / Falsification Signature / Tunable
      Parameters / Next-Best).
+  5. Missing summary — pages with no `> blockquote` one-liner AND no
+     `description` / `purpose` frontmatter, so `generate_wiki_index.py`
+     degrades the index entry to a bare `type` token ("concept",
+     "lesson", ...). The index is the LLM's first stop (Karpathy §7.1);
+     bare-type entries waste that skim. Mirrors the index generator's
+     exact fallback chain so a flag here predicts a junk index line.
+  6. Duplicate titles — two or more pages sharing a normalized `# H1`
+     heading. The deterministic, false-positive-safe form of the
+     karpathywiki plugin's semantic-duplicate detection: distinct
+     concept / game_type / strategy facet pages keep distinct H1s, so
+     a collision means an accidental duplicate to merge.
 
 Output:
 
@@ -20,7 +31,8 @@ Output:
 Exit codes:
 
   0  no findings
-  1  findings exist (any of orphan / missing / stale / R23c gap)
+  1  findings exist (orphan / missing-xref / stale / R23c gap /
+     missing-summary / duplicate-title)
   2  CLI / IO error
 
 Intended cadence: every 3-5 rounds, not every commit. Schema is in
@@ -43,6 +55,8 @@ REGRESSION_BASELINE = REPO_ROOT / "scripts" / "regression_baseline.json"
 
 FRONTMATTER_RE = re.compile(r"^---\n(.*?)\n---\n", re.DOTALL)
 LINK_RE = re.compile(r"\[\[([^\]]+?)\]\]")
+BLOCKQUOTE_RE = re.compile(r"^> (.+)$", re.MULTILINE)
+H1_RE = re.compile(r"^# (.+)$", re.MULTILINE)
 
 R23C_SECTIONS = [
     "## Observable Signature",
@@ -65,11 +79,18 @@ class LintReport:
     missing_xrefs: list[LintFinding] = field(default_factory=list)
     stale_claims: list[LintFinding] = field(default_factory=list)
     r23c_gaps: list[LintFinding] = field(default_factory=list)
+    missing_summary: list[LintFinding] = field(default_factory=list)
+    duplicate_titles: list[LintFinding] = field(default_factory=list)
 
     @property
     def has_findings(self) -> bool:
         return bool(
-            self.orphans or self.missing_xrefs or self.stale_claims or self.r23c_gaps
+            self.orphans
+            or self.missing_xrefs
+            or self.stale_claims
+            or self.r23c_gaps
+            or self.missing_summary
+            or self.duplicate_titles
         )
 
     def to_dict(self) -> dict:
@@ -83,6 +104,12 @@ class LintReport:
             ],
             "r23c_gaps": [
                 {"page": f.page, "detail": f.detail} for f in self.r23c_gaps
+            ],
+            "missing_summary": [
+                {"page": f.page, "detail": f.detail} for f in self.missing_summary
+            ],
+            "duplicate_titles": [
+                {"page": f.page, "detail": f.detail} for f in self.duplicate_titles
             ],
         }
 
@@ -156,8 +183,12 @@ def check_orphans(pages: list[Path]) -> list[str]:
     inbound: dict[Path, set[Path]] = {p: set() for p in pages}
     for src in pages:
         for raw in collect_links(src):
-            if raw.startswith("../"):
-                continue  # raw/ link, not a wiki page
+            # A `../`-relative link can still target a wiki page
+            # (`[[../concepts/x]]`, `[[../../games/Y]]`). Resolve it and let
+            # the `tgt in inbound` membership below exclude genuine raw/
+            # links (which resolve outside WIKI_DIR and are not keys here).
+            # Do NOT blanket-skip `../` — that silently dropped every
+            # cross-directory inbound link and produced false orphans.
             tgt = resolve_link(raw, src)
             if tgt is None or tgt == "skip":
                 continue
@@ -177,8 +208,10 @@ def check_missing_xrefs(pages: list[Path]) -> list[LintFinding]:
     findings: list[LintFinding] = []
     for src in pages:
         for raw in collect_links(src):
-            if raw.startswith("../"):
-                continue
+            # `../` links are validated too — a broken `[[../lessons/x]]` is
+            # just as dead as a broken `[[lessons/x]]`. resolve_link finds
+            # real raw/ targets via its WIKI_DIR.parent candidate, so valid
+            # raw/ links are not flagged.
             tgt = resolve_link(raw, src)
             if tgt == "skip":
                 continue
@@ -254,6 +287,97 @@ def check_r23c_gaps(pages: list[Path]) -> list[LintFinding]:
     return findings
 
 
+def index_summary_source(text: str) -> str:
+    """Mirror `generate_wiki_index.parse_page`'s one-liner fallback chain.
+
+    Returns the label of the source the index generator would use for
+    this page's catalog entry: ``"blockquote"``, ``"description"``,
+    ``"purpose"``, or ``"type"`` (the bare-token degraded case), or
+    ``""`` when even ``type`` is absent (index prints "(no description)").
+
+    Keeping this in lockstep with the generator is the whole point: a
+    page that resolves to ``"type"`` here is exactly a page that prints a
+    useless bare-token line in index.md.
+    """
+    if BLOCKQUOTE_RE.search(text):
+        return "blockquote"
+    fm = parse_frontmatter(text)
+    for key in ("description", "purpose"):
+        if fm.get(key):
+            return key
+    if fm.get("type"):
+        return "type"
+    return ""
+
+
+def check_missing_summary(pages: list[Path]) -> list[LintFinding]:
+    """Flag pages whose index entry degrades to a bare frontmatter `type`.
+
+    Such a page has neither a `> ...` blockquote nor a `description` /
+    `purpose` frontmatter field, so the auto-generated index lists it as
+    just "concept" / "lesson" / "llm_context" — a non-descriptive entry
+    that defeats the index's skim purpose (Karpathy §7.1).
+    """
+    findings: list[LintFinding] = []
+    for page in pages:
+        source = index_summary_source(page.read_text())
+        if source in ("type", ""):
+            rel = page.relative_to(WIKI_DIR)
+            detail = (
+                "index falls back to bare frontmatter `type` — add a "
+                "`> one-line summary` blockquote or a `description:` "
+                "frontmatter field"
+                if source == "type"
+                else "no summary source at all — index prints "
+                "'(no description)'"
+            )
+            findings.append(
+                LintFinding(kind="missing_summary", page=str(rel), detail=detail)
+            )
+    return findings
+
+
+def normalize_title(text: str) -> str:
+    """Lowercase + whitespace-collapse the first `# H1`, or "" if none."""
+    m = H1_RE.search(text)
+    if not m:
+        return ""
+    return " ".join(m.group(1).split()).lower()
+
+
+def check_duplicate_titles(pages: list[Path]) -> list[LintFinding]:
+    """Flag pages that share a normalized `# H1` heading.
+
+    The deterministic, low-false-positive form of the karpathywiki
+    plugin's semantic-duplicate detection. The concept / game_type /
+    strategy facet split the wiki deliberately uses keeps distinct H1s
+    ("Merge Mechanic" vs "Merge Puzzle" vs "Merge"), so a true collision
+    here means two pages document the same entity and should be merged.
+    """
+    by_title: dict[str, list[str]] = {}
+    for page in pages:
+        title = normalize_title(page.read_text())
+        if not title:
+            continue
+        rel = str(page.relative_to(WIKI_DIR))
+        by_title.setdefault(title, []).append(rel)
+    findings: list[LintFinding] = []
+    for title, rels in sorted(by_title.items()):
+        if len(rels) < 2:
+            continue
+        rels_sorted = sorted(rels)
+        for rel in rels_sorted:
+            others = [r for r in rels_sorted if r != rel]
+            findings.append(
+                LintFinding(
+                    kind="duplicate_title",
+                    page=rel,
+                    detail=f"shares H1 '{title}' with {', '.join(others)}",
+                )
+            )
+    return findings
+
+
 def render_report(report: LintReport) -> str:
     lines: list[str] = ["# Wiki Lint Report", ""]
     if not report.has_findings:
@@ -281,6 +405,18 @@ def render_report(report: LintReport) -> str:
         lines.append(f"## R23c runtime-field gaps ({len(report.r23c_gaps)})")
         lines.append("")
         for f in report.r23c_gaps:
+            lines.append(f"- `{f.page}` — {f.detail}")
+        lines.append("")
+    if report.missing_summary:
+        lines.append(f"## Missing index summary ({len(report.missing_summary)})")
+        lines.append("")
+        for f in report.missing_summary:
+            lines.append(f"- `{f.page}` — {f.detail}")
+        lines.append("")
+    if report.duplicate_titles:
+        lines.append(f"## Duplicate titles ({len(report.duplicate_titles)})")
+        lines.append("")
+        for f in report.duplicate_titles:
             lines.append(f"- `{f.page}` — {f.detail}")
         lines.append("")
     return "\n".join(lines)
@@ -311,6 +447,8 @@ def main() -> int:
         missing_xrefs=check_missing_xrefs(pages),
         stale_claims=check_stale_claims(pages),
         r23c_gaps=check_r23c_gaps(pages),
+        missing_summary=check_missing_summary(pages),
+        duplicate_titles=check_duplicate_titles(pages),
     )
 
     args.json_out.write_text(json.dumps(report.to_dict(), indent=2))

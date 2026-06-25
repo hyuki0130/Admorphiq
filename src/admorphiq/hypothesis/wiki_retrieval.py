@@ -24,7 +24,6 @@ from collections import deque
 from pathlib import Path
 from typing import Any, Iterable
 
-
 # Match [[link]] forms. The link text may contain slashes, dots, dashes,
 # underscores. Obsidian also allows `[[target|alias]]`; we strip the alias.
 _BACKLINK_RE = re.compile(r"\[\[([^\]\|]+)(?:\|[^\]]*)?\]\]")
@@ -114,15 +113,31 @@ def resolve_link(link: str, wiki_dir: Path) -> str | None:
 def derive_seed_pages(report: Any) -> list[str]:
     """Map a DiscoveryReport to a deterministic, ordered seed-page list.
 
-    Order matters: the first pages in the returned list are the first pages
-    the LLM sees, so they anchor the reasoning. The llm_context/decision_tree
-    page is the highest-density summary (≤ 1200 chars covering the full
-    dispatch decision) — it goes first so an 8B model sees the whole rule
-    set before its attention degrades on longer follow-up pages. Then the
-    standard prose pages (selector.md, reasoning chain) back it up.
+    Order matters: the first pages returned are the first the LLM sees, and
+    seed pages usually saturate the char budget before the backlink walk
+    runs (R23-14B retrieval audit) — so a page that lands late may be
+    truncated or never read.
+
+    B2 (round 16) tried front-loading env-specific seeds before the generic
+    prose. The 2026-06-25 14B bench REGRESSED (-6 levels vs the R23 14B
+    reference; `click_select_move` picks 12→0, `click_toggle_detect` 4→19),
+    so the reorder was REVERTED. The original order below is the proven one:
+    decision_tree, then the failure playbook + generic dispatch prose, then
+    env-specific seeds appended last. See `.omc/rounds/round_016/notes.md`
+    and `lessons/seed_reorder_regression_20260625.md` for the measurement.
+    architecture.md: "changing the order requires re-measuring classification
+    accuracy" — the bench did, and front-loading lost.
     """
     seeds: list[str] = [
+        # Compact dispatch rules — first so 8B/14B sees them before
+        # attention degrades on longer prose pages.
         "llm_context/decision_tree.md",
+        # R24 (2026-05-06): one-page lookup of every plan-fn's
+        # Falsification Signature → Next-Best. Pulled into seeds
+        # because the standard backlink walk never reaches it (seeds
+        # alone saturate the 16K budget; see R23-14B retrieval audit).
+        # ~6K chars; sized to fit alongside selector + decision_tree.
+        "debug/plan_failure_signatures.md",
         "selector.md",
         "reasoning/frame_to_strategy_chain.md",
         "reasoning/discovery_phase.md",
@@ -211,6 +226,11 @@ class GraphRetriever:
 
     def __init__(self, wiki_dir: Path) -> None:
         self.wiki_dir = Path(wiki_dir)
+        # R23-14B observability (2026-05-06): expose per-page char counts so
+        # callers (WikiAgent.run) can emit them into the trace. Useful for
+        # diagnosing retrieval-budget saturation. Repopulated each retrieve()
+        # call.
+        self._last_page_sizes: list[tuple[str, int]] = []
 
     def retrieve(
         self,
@@ -269,4 +289,5 @@ class GraphRetriever:
                     queue.append(target)
 
         formatted = "\n\n".join(chunk for _, chunk in pages)
+        self._last_page_sizes = [(p, len(chunk)) for p, chunk in pages]
         return formatted, [p for p, _ in pages]

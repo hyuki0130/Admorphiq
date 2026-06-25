@@ -1,0 +1,583 @@
+{
+  "timestamp": "2026-05-06T20:40:13",
+  "candidate": "qwen_3_14b_q4",
+  "results": [
+    {
+      "game_title": "TU93",
+      "discovery": {
+        "available_actions": [
+          1,
+          2,
+          3,
+          4
+        ],
+        "layer_count": 1,
+        "dominant_colors": [
+          [
+            5,
+            3465
+          ],
+          [
+            2,
+            288
+          ],
+          [
+            6,
+            64
+          ],
+          [
+            14,
+            9
+          ],
+          [
+            9,
+            8
+          ],
+          [
+            4,
+            1
+          ]
+        ],
+        "probe_diffs": {
+          "1": 1,
+          "2": 1,
+          "3": 1,
+          "4": 8
+        },
+        "dir_map": {
+          "4": "N"
+        },
+        "player_color": 2,
+        "movable_region_count": 3,
+        "click_responsive_cells": [],
+        "change_topology": "mixed",
+        "color_histogram": {
+          "5": 0.8459,
+          "2": 0.0703,
+          "0": 0.0637,
+          "6": 0.0156,
+          "14": 0.0022,
+          "9": 0.002,
+          "4": 0.0002
+        },
+        "symmetry_score": 0.8579
+      },
+      "hypothesis": {
+        "game_type": "movement",
+        "primary_strategy": "bfs_state_space",
+        "fallback_stack": [
+          "explore_and_interact",
+          "click_rare"
+        ],
+        "rationale": "The game type is classified as 'movement' based on the available actions (1-4) and the presence of a directional map (dir_map). The probe_diffs indicate that action 4 (N) has a significantly higher impact on the frame (8 pixels changed) compared to the other actions (1 pixel changed). This suggests that action 4 is likely the primary movement action, while the others may be secondary or auxiliary actions. The symmetry score (0.8579) and the presence of a dominant color (5) suggest a structured environment, which is consistent with a maze or grid-based movement game. The absence of responsive click cells indicates that the game does not involve clicking on the screen, further supporting the 'movement' classification. The fallback strategies are chosen based on the game type and the potential need to explore and interact with the environment if the primary strategy fails.",
+        "confidence": 0.9,
+        "doubt": "",
+        "features_missing": [],
+        "wiki_gaps": [],
+        "wiki_needs": []
+      },
+      "retrieved_pages": [
+        "llm_context/decision_tree.md",
+        "debug/plan_failure_signatures.md",
+        "selector.md",
+        "reasoning/frame_to_strategy_chain.md"
+      ],
+      "retrieved_pages_detail": [
+        {
+          "path": "llm_context/decision_tree.md",
+          "chars": 1356
+        },
+        {
+          "path": "debug/plan_failure_signatures.md",
+          "chars": 6801
+        },
+        {
+          "path": "selector.md",
+          "chars": 10043
+        },
+        {
+          "path": "reasoning/frame_to_strategy_chain.md",
+          "chars": 5794
+        }
+      ],
+      "wiki_context_chars": 24000,
+      "prompt_chars": 28945,
+      "context_budget": 24000,
+      "raw_response": "{\n  \"game_type\": \"movement\",\n  \"primary_strategy\": \"bfs_state_space\",\n  \"fallback_stack\": [\"explore_and_interact\", \"click_rare\"],\n  \"rationale\": \"The game type is classified as 'movement' based on the available actions (1-4) and the presence of a directional map (dir_map). The probe_diffs indicate that action 4 (N) has a significantly higher impact on the frame (8 pixels changed) compared to the other actions (1 pixel changed). This suggests that action 4 is likely the primary movement action, while the others may be secondary or auxiliary actions. The symmetry score (0.8579) and the presence of a dominant color (5) suggest a structured environment, which is consistent with a maze or grid-based movement game. The absence of responsive click cells indicates that the game does not involve clicking on the screen, further supporting the 'movement' classification. The fallback strategies are chosen based on the game type and the potential need to explore and interact with the environment if the primary strategy fails.\"\n  ,\n  \"confidence\": 0.9\n}",
+      "executions": [
+        {
+          "strategy": "bfs_state_space",
+          "winning_label": "bfs_state_space",
+          "levels": 2,
+          "actions": 53,
+          "elapsed_s": 1.8,
+          "status": "ok"
+        }
+      ],
+      "best_levels": 2,
+      "total_elapsed_s": 41.69,
+      "status": "ok",
+      "env_index": 1,
+      "game_id": "tu93-0768757b"
+    },
+    {
+      "game_title": "TU93",
+      "discovery": {
+        "available_actions": [
+          1,
+          2,
+          3,
+          4
+        ],
+        "layer_count": 1,
+        "dominant_colors": [
+          [
+            5,
+            3465
+          ],
+          [
+            2,
+            288
+          ],
+          [
+            6,
+            64
+          ],
+          [
+            14,
+            9
+          ],
+          [
+            9,
+            8
+          ],
+          [
+            4,
+            1
+          ]
+        ],
+        "probe_diffs": {
+          "1": 1,
+          "2": 1,
+          "3": 1,
+          "4": 8
+        },
+        "dir_map": {
+          "4": "N"
+        },
+        "player_color": 2,
+        "movable_region_count": 3,
+        "click_responsive_cells": [],
+        "change_topology": "mixed",
+        "color_histogram": {
+          "5": 0.8459,
+          "2": 0.0703,
+          "0": 0.0637,
+          "6": 0.0156,
+          "14": 0.0022,
+          "9": 0.002,
+          "4": 0.0002
+        },
+        "symmetry_score": 0.8579
+      },
+      "hypothesis": {
+        "game_type": "movement",
+        "primary_strategy": "bfs_state_space",
+        "fallback_stack": [
+          "explore_and_interact",
+          "click_rare"
+        ],
+        "rationale": "The game type is classified as 'movement' based on the available actions (1-4) and the presence of a directional map (dir_map). The probe_diffs indicate that action 4 (N) has a significantly higher impact on the frame (8 pixels changed) compared to the other actions (1 pixel changed). This suggests that action 4 is likely the primary movement action, while the others may be secondary or auxiliary actions. The symmetry score (0.8579) and the presence of a dominant color (5) suggest a structured environment, which is consistent with a maze or grid-based movement game. The absence of responsive click cells indicates that the game does not involve clicking on the screen, further supporting the 'movement' classification. The fallback strategies are chosen based on the game type and the potential need to explore and interact with the environment if the primary strategy fails.",
+        "confidence": 0.9,
+        "doubt": "",
+        "features_missing": [],
+        "wiki_gaps": [],
+        "wiki_needs": []
+      },
+      "retrieved_pages": [
+        "llm_context/decision_tree.md",
+        "debug/plan_failure_signatures.md",
+        "selector.md",
+        "reasoning/frame_to_strategy_chain.md"
+      ],
+      "retrieved_pages_detail": [
+        {
+          "path": "llm_context/decision_tree.md",
+          "chars": 1356
+        },
+        {
+          "path": "debug/plan_failure_signatures.md",
+          "chars": 6801
+        },
+        {
+          "path": "selector.md",
+          "chars": 10043
+        },
+        {
+          "path": "reasoning/frame_to_strategy_chain.md",
+          "chars": 5794
+        }
+      ],
+      "wiki_context_chars": 24000,
+      "prompt_chars": 28945,
+      "context_budget": 24000,
+      "raw_response": "{\n  \"game_type\": \"movement\",\n  \"primary_strategy\": \"bfs_state_space\",\n  \"fallback_stack\": [\"explore_and_interact\", \"click_rare\"],\n  \"rationale\": \"The game type is classified as 'movement' based on the available actions (1-4) and the presence of a directional map (dir_map). The probe_diffs indicate that action 4 (N) has a significantly higher impact on the frame (8 pixels changed) compared to the other actions (1 pixel changed). This suggests that action 4 is likely the primary movement action, while the others may be secondary or auxiliary actions. The symmetry score (0.8579) and the presence of a dominant color (5) suggest a structured environment, which is consistent with a maze or grid-based movement game. The absence of responsive click cells indicates that the game does not involve clicking on the screen, further supporting the 'movement' classification. The fallback strategies are chosen based on the game type and the potential need to explore and interact with the environment if the primary strategy fails.\"\n  ,\n  \"confidence\": 0.9\n}",
+      "executions": [
+        {
+          "strategy": "bfs_state_space",
+          "winning_label": "bfs_state_space",
+          "levels": 2,
+          "actions": 53,
+          "elapsed_s": 1.69,
+          "status": "ok"
+        }
+      ],
+      "best_levels": 2,
+      "total_elapsed_s": 33.14,
+      "status": "ok",
+      "env_index": 2,
+      "game_id": "tu93-0768757b"
+    },
+    {
+      "game_title": "AR25",
+      "discovery": {
+        "available_actions": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "layer_count": 1,
+        "dominant_colors": [
+          [
+            9,
+            3645
+          ],
+          [
+            10,
+            189
+          ],
+          [
+            11,
+            109
+          ],
+          [
+            5,
+            103
+          ],
+          [
+            4,
+            45
+          ]
+        ],
+        "probe_diffs": {
+          "1": 109,
+          "2": 109,
+          "3": 109,
+          "4": 109,
+          "6": 0,
+          "-6": 0
+        },
+        "dir_map": {},
+        "player_color": null,
+        "movable_region_count": 5,
+        "click_responsive_cells": [],
+        "change_topology": "color_toggle",
+        "color_histogram": {
+          "9": 0.8899,
+          "10": 0.0461,
+          "11": 0.0266,
+          "5": 0.0251,
+          "4": 0.011,
+          "0": 0.0012
+        },
+        "symmetry_score": 0.8896
+      },
+      "hypothesis": {
+        "game_type": "movement",
+        "primary_strategy": "bfs_state_space",
+        "fallback_stack": [
+          "explore_and_interact",
+          "click_rare"
+        ],
+        "rationale": "The probe_diffs show uniform changes across movement actions (1-4), indicating they are likely directional movement actions. The lack of responsive click cells (-6: 0) and the presence of a color toggle change topology suggests a traditional maze-like environment. The symmetry score and color histogram indicate a structured level with few color variations, consistent with a movement-based puzzle.",
+        "confidence": 0.92,
+        "doubt": "The absence of a clear player_color and the presence of a color toggle change topology could indicate a more complex interaction than simple movement, but the uniform probe_diffs across movement actions strongly suggest directional movement.",
+        "features_missing": [],
+        "wiki_gaps": [],
+        "wiki_needs": []
+      },
+      "retrieved_pages": [
+        "llm_context/decision_tree.md",
+        "debug/plan_failure_signatures.md",
+        "selector.md",
+        "reasoning/frame_to_strategy_chain.md"
+      ],
+      "retrieved_pages_detail": [
+        {
+          "path": "llm_context/decision_tree.md",
+          "chars": 1356
+        },
+        {
+          "path": "debug/plan_failure_signatures.md",
+          "chars": 6801
+        },
+        {
+          "path": "selector.md",
+          "chars": 10043
+        },
+        {
+          "path": "reasoning/frame_to_strategy_chain.md",
+          "chars": 5794
+        }
+      ],
+      "wiki_context_chars": 24000,
+      "prompt_chars": 28970,
+      "context_budget": 24000,
+      "raw_response": "{\n  \"game_type\": \"movement\",\n  \"primary_strategy\": \"bfs_state_space\",\n  \"fallback_stack\": [\"explore_and_interact\", \"click_rare\"],\n  \"rationale\": \"The probe_diffs show uniform changes across movement actions (1-4), indicating they are likely directional movement actions. The lack of responsive click cells (-6: 0) and the presence of a color toggle change topology suggests a traditional maze-like environment. The symmetry score and color histogram indicate a structured level with few color variations, consistent with a movement-based puzzle.\",\n  \"confidence\": 0.92,\n  \"doubt\": \"The absence of a clear player_color and the presence of a color toggle change topology could indicate a more complex interaction than simple movement, but the uniform probe_diffs across movement actions strongly suggest directional movement.\"\n}",
+      "executions": [
+        {
+          "strategy": "bfs_state_space",
+          "winning_label": "bfs_state_space",
+          "levels": 2,
+          "actions": 2104,
+          "elapsed_s": 178.46,
+          "status": "ok"
+        }
+      ],
+      "best_levels": 2,
+      "total_elapsed_s": 206.07,
+      "status": "ok",
+      "env_index": 3,
+      "game_id": "ar25-0c556536"
+    },
+    {
+      "game_title": "AR25",
+      "discovery": {
+        "available_actions": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "layer_count": 1,
+        "dominant_colors": [
+          [
+            9,
+            3645
+          ],
+          [
+            10,
+            189
+          ],
+          [
+            11,
+            109
+          ],
+          [
+            5,
+            103
+          ],
+          [
+            4,
+            45
+          ]
+        ],
+        "probe_diffs": {
+          "1": 109,
+          "2": 109,
+          "3": 109,
+          "4": 109,
+          "6": 0,
+          "-6": 0
+        },
+        "dir_map": {},
+        "player_color": null,
+        "movable_region_count": 5,
+        "click_responsive_cells": [],
+        "change_topology": "color_toggle",
+        "color_histogram": {
+          "9": 0.8899,
+          "10": 0.0461,
+          "11": 0.0266,
+          "5": 0.0251,
+          "4": 0.011,
+          "0": 0.0012
+        },
+        "symmetry_score": 0.8896
+      },
+      "hypothesis": {
+        "game_type": "movement",
+        "primary_strategy": "bfs_state_space",
+        "fallback_stack": [
+          "explore_and_interact",
+          "click_rare"
+        ],
+        "rationale": "The probe_diffs show uniform changes across movement actions (1-4), indicating they are likely directional movement actions. The lack of responsive click cells (-6: 0) and the presence of a color toggle change topology suggests a traditional maze-like environment. The symmetry score and color histogram indicate a structured level with few color variations, consistent with a movement-based puzzle.",
+        "confidence": 0.92,
+        "doubt": "The absence of a clear player_color and the presence of a color toggle change topology could indicate a more complex interaction than simple movement, but the uniform probe_diffs across movement actions strongly suggest directional movement.",
+        "features_missing": [],
+        "wiki_gaps": [],
+        "wiki_needs": []
+      },
+      "retrieved_pages": [
+        "llm_context/decision_tree.md",
+        "debug/plan_failure_signatures.md",
+        "selector.md",
+        "reasoning/frame_to_strategy_chain.md"
+      ],
+      "retrieved_pages_detail": [
+        {
+          "path": "llm_context/decision_tree.md",
+          "chars": 1356
+        },
+        {
+          "path": "debug/plan_failure_signatures.md",
+          "chars": 6801
+        },
+        {
+          "path": "selector.md",
+          "chars": 10043
+        },
+        {
+          "path": "reasoning/frame_to_strategy_chain.md",
+          "chars": 5794
+        }
+      ],
+      "wiki_context_chars": 24000,
+      "prompt_chars": 28970,
+      "context_budget": 24000,
+      "raw_response": "{\n  \"game_type\": \"movement\",\n  \"primary_strategy\": \"bfs_state_space\",\n  \"fallback_stack\": [\"explore_and_interact\", \"click_rare\"],\n  \"rationale\": \"The probe_diffs show uniform changes across movement actions (1-4), indicating they are likely directional movement actions. The lack of responsive click cells (-6: 0) and the presence of a color toggle change topology suggests a traditional maze-like environment. The symmetry score and color histogram indicate a structured level with few color variations, consistent with a movement-based puzzle.\",\n  \"confidence\": 0.92,\n  \"doubt\": \"The absence of a clear player_color and the presence of a color toggle change topology could indicate a more complex interaction than simple movement, but the uniform probe_diffs across movement actions strongly suggest directional movement.\"\n}",
+      "executions": [
+        {
+          "strategy": "bfs_state_space",
+          "winning_label": "bfs_state_space",
+          "levels": 2,
+          "actions": 2104,
+          "elapsed_s": 181.08,
+          "status": "ok"
+        }
+      ],
+      "best_levels": 2,
+      "total_elapsed_s": 211.0,
+      "status": "ok",
+      "env_index": 4,
+      "game_id": "ar25-0c556536"
+    },
+    {
+      "game_title": "RE86",
+      "discovery": {
+        "available_actions": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "layer_count": 1,
+        "dominant_colors": [
+          [
+            5,
+            3862
+          ],
+          [
+            4,
+            64
+          ],
+          [
+            15,
+            64
+          ],
+          [
+            9,
+            56
+          ],
+          [
+            11,
+            49
+          ]
+        ],
+        "probe_diffs": {
+          "1": 61,
+          "2": 61,
+          "3": 61,
+          "4": 61
+        },
+        "dir_map": {},
+        "player_color": null,
+        "movable_region_count": 5,
+        "click_responsive_cells": [],
+        "change_topology": "color_toggle",
+        "color_histogram": {
+          "5": 0.9429,
+          "4": 0.0156,
+          "15": 0.0156,
+          "9": 0.0137,
+          "11": 0.012,
+          "0": 0.0002
+        },
+        "symmetry_score": 0.9312
+      },
+      "hypothesis": {
+        "game_type": "click",
+        "primary_strategy": "click_rare",
+        "fallback_stack": [],
+        "rationale": "The game has only one layer and no movement actions (dir_map is empty). The probe_diffs show that all four movement actions (1-4) change the same number of pixels (61), but there's no indication of player movement (player_color is null). The change_topology is 'color_toggle', which is consistent with a click-based puzzle where clicking changes colors. Since there are no responsive click cells (click_responsive_cells is empty), this is likely a 'click-rare' game where the solution involves clicking on specific cells that don't show immediate visual feedback.",
+        "confidence": 0.85,
+        "doubt": "",
+        "features_missing": [],
+        "wiki_gaps": [],
+        "wiki_needs": []
+      },
+      "retrieved_pages": [
+        "llm_context/decision_tree.md",
+        "debug/plan_failure_signatures.md",
+        "selector.md",
+        "reasoning/frame_to_strategy_chain.md"
+      ],
+      "retrieved_pages_detail": [
+        {
+          "path": "llm_context/decision_tree.md",
+          "chars": 1356
+        },
+        {
+          "path": "debug/plan_failure_signatures.md",
+          "chars": 6801
+        },
+        {
+          "path": "selector.md",
+          "chars": 10043
+        },
+        {
+          "path": "reasoning/frame_to_strategy_chain.md",
+          "chars": 5794
+        }
+      ],
+      "wiki_context_chars": 24000,
+      "prompt_chars": 28944,
+      "context_budget": 24000,
+      "raw_response": "{\"game_type\": \"click\", \"primary_strategy\": \"click_rare\", \"fallback_stack\": [\"click_rare\", \"click_rare\", \"click_rare\"], \"rationale\": \"The game has only one layer and no movement actions (dir_map is empty). The probe_diffs show that all four movement actions (1-4) change the same number of pixels (61), but there's no indication of player movement (player_color is null). The change_topology is 'color_toggle', which is consistent with a click-based puzzle where clicking changes colors. Since there are no responsive click cells (click_responsive_cells is empty), this is likely a 'click-rare' game where the solution involves clicking on specific cells that don't show immediate visual feedback.\" ,\"confidence\": 0.85}",
+      "executions": [
+        {
+          "strategy": "click_rare",
+          "winning_label": "",
+          "levels": 0,
+          "actions": 234,
+          "elapsed_s": 0.02,
+          "status": "ok"
+        }
+      ],
+      "best_levels": 0,
+      "total_elapsed_s": 27.98,
+      "status": "ok",
+      "env_index": 5,
+      "game_id": "re86-8af5384d"
+    }
+  ]
+}
