@@ -75,11 +75,30 @@ _MIN_COMPONENT_SIZE = 1
 # A goal marker must be at least this large; single-pixel rare colours are
 # anti-aliasing / cursor artefacts, not the target.
 _MIN_GOAL_SIZE = 3
-# Epsilon-greedy exploration rate in the cheap-explore fallback.
-_EXPLORE_EPSILON = 0.15
 # Consecutive EXECUTE steps with no player-cell change before bailing to
 # cheap-explore (the abstract model is too wrong to navigate).
 _STUCK_LIMIT = 4
+# Bail-fast: max actions a committed plan may run on the CURRENT level WITHOUT
+# completing a level before it is abandoned for cheap-explore. The competition
+# metric gives NO partial credit, so a plan that has not cleared the level in
+# far more than the human action budget (L1 baselines ~16-42) is the wrong plan
+# — continuing only burns the action budget that disciplined exploration could
+# instead spend stumbling into an easy level. Navigation (EXECUTE) clears fast
+# or never, so its cap is tight; the pattern-solve (PATTERN) legitimately spends
+# actions probing a toggle stencil (~55 actions to clear ft09 L1), so its cap is
+# looser, but both are far below the 600-action hard cap that the agent used to
+# squander on a single dead plan (e.g. su15: 600 -> 0).
+_EXECUTE_BAIL_LIMIT = 50
+_PATTERN_BAIL_LIMIT = 120
+# Cheap-explore: a candidate (move or click) tried this many times that NEVER
+# once changed the frame is treated as dead and dropped from the rotation, so
+# the budget is spent on actions that actually do something.
+_EXPLORE_DEAD_TRIES = 3
+# Coarse click-grid stride (px) for ACTION6 exploration: clicks are scattered on
+# a regular lattice so a responsive cell anywhere on the board is eventually hit.
+_EXPLORE_GRID_STRIDE = 16
+# Max rare-colour cluster centroids offered as click targets per explore build.
+_EXPLORE_MAX_CLUSTERS = 16
 
 
 # ── Pure connected-components / entity helpers ───────────────────────────────
@@ -682,6 +701,52 @@ def pick_goal_cell(
     return (gr, gc)
 
 
+def select_explore_action(
+    candidates: list[tuple],
+    tries: dict[tuple, int],
+    changes: dict[tuple, int],
+    cursor: int,
+) -> tuple[tuple | None, int]:
+    """Pick the next exploration candidate from observed try/change history.
+
+    ``candidates`` is an ordered list of opaque descriptors (the agent uses
+    ``("m", aid)`` for a simple move and ``("c", x, y)`` for an ACTION6 click).
+    ``tries``/``changes`` count how often each descriptor was issued and how
+    often issuing it changed the frame. ``cursor`` is a rotating counter the
+    caller persists across calls. Returns ``(descriptor, new_cursor)`` (or
+    ``(None, cursor)`` when there is nothing to do).
+
+    Policy — a smarter-than-random explorer that maximises the chance of
+    stumbling the winning interaction within budget:
+      1. Drop *dead* candidates (tried ``_EXPLORE_DEAD_TRIES`` times, never
+         changed the frame) so no-op spots are not re-clicked forever.
+      2. Try every still-untried candidate first (breadth — cover all actions
+         and all click targets before repeating any).
+      3. Once everything has been tried, ROTATE but BIAS toward candidates that
+         have changed the frame (2 of every 3 picks come from the changer set),
+         while still revisiting the full pool periodically so a delayed-effect
+         cell is not abandoned.
+
+    Pure / env-free so the selection logic is unit-testable without an env.
+    """
+    if not candidates:
+        return None, cursor
+    live = [
+        d
+        for d in candidates
+        if not (tries.get(d, 0) >= _EXPLORE_DEAD_TRIES and changes.get(d, 0) == 0)
+    ]
+    pool = live or candidates
+    untried = [d for d in pool if tries.get(d, 0) == 0]
+    if untried:
+        return untried[0], cursor
+    cursor += 1
+    changers = [d for d in pool if changes.get(d, 0) > 0]
+    if changers and cursor % 3 != 0:
+        return changers[cursor % len(changers)], cursor
+    return pool[cursor % len(pool)], cursor
+
+
 # ── Agent FSM ────────────────────────────────────────────────────────────────
 
 _PHASE_DISCOVERY = "discovery"
@@ -782,6 +847,10 @@ class GeneralAgent:
         # Closed-loop execution bookkeeping.
         self._last_player_cell: tuple[int, int] | None = None
         self._stuck_steps = 0
+        # Bail-fast watchdog: global action count when the current committed plan
+        # (EXECUTE / PATTERN) began. A plan that has run longer than its cap on
+        # this level without a level-up is abandoned for cheap-explore.
+        self._plan_commit_action = getattr(self, "_action_count", 0)
         # Pattern-match primitive bookkeeping (paint / GF(2) toggle).
         self._pat_kind: str | None = None
         self._pat_queue: list[tuple[int, int, int]] = []
@@ -797,12 +866,15 @@ class GeneralAgent:
         self._pat_cand_k: int = 0
         self._pat_applied: set[tuple[int, int]] = set()
         self._pat_delta: list[tuple[int, int]] = []
-        # Cheap-explore fallback bookkeeping.
-        self._explore_last_sig: tuple = ()
-        self._explore_pending: int | None = None
-        self._explore_tries: Counter[int] = Counter()
-        self._explore_changes: Counter[int] = Counter()
-        self._explore_cursor = 0
+        # Cheap-explore fallback bookkeeping (keyed by candidate descriptor so
+        # try/change stats survive a candidate-list rebuild as the frame evolves).
+        self._xp_tries: Counter[tuple] = Counter()
+        self._xp_changes: Counter[tuple] = Counter()
+        self._xp_last_desc: tuple | None = None
+        self._xp_last_sig: bytes = b""
+        self._xp_cursor = 0
+        self._xp_cluster_sig: bytes = b""
+        self._xp_cluster_cands: list[tuple] = []
 
     # ── official-shaped interface ────────────────────────────────────────────
 
@@ -977,8 +1049,10 @@ class GeneralAgent:
             self._phase = _PHASE_EXECUTE
             self._last_player_cell = None
             self._stuck_steps = 0
+            self._plan_commit_action = self._action_count
         elif self._init_pattern(layer, avail):
             self._phase = _PHASE_PATTERN
+            self._plan_commit_action = self._action_count
         else:
             self._phase = _PHASE_EXPLORE
 
@@ -1007,6 +1081,7 @@ class GeneralAgent:
             self._phase = _PHASE_EXECUTE
             self._last_player_cell = None
             self._stuck_steps = 0
+            self._plan_commit_action = self._action_count
             return True
         # Carried map could not plan on this layout → reset and probe normally.
         self._dir_map = {}
@@ -1199,6 +1274,14 @@ class GeneralAgent:
             self._phase = _PHASE_EXPLORE
             return self._explore_step(layer, avail, latest_frame)
 
+        # Bail-fast: cap how long the pattern-solve may run on this level without
+        # a level-up. The toggle/paint solve legitimately spends actions probing,
+        # but past this cap it is grinding a wrong hypothesis and should yield the
+        # remaining budget to exploration.
+        if self._action_count - self._plan_commit_action >= _PATTERN_BAIL_LIMIT:
+            self._phase = _PHASE_EXPLORE
+            return self._explore_step(layer, avail, latest_frame)
+
         if self._pat_kind == "paint":
             return self._pattern_paint_step(layer, avail, latest_frame)
         if self._pat_kind == "toggle":
@@ -1336,6 +1419,14 @@ class GeneralAgent:
         """
         from arcengine import GameAction
 
+        # Bail-fast: a navigation plan clears the level in a small multiple of the
+        # human action count or not at all. If it has run this long without a
+        # level-up, the abstraction is wrong — abandon it and explore so the rest
+        # of the budget can stumble an easy level instead of wandering to 0.
+        if self._action_count - self._plan_commit_action >= _EXECUTE_BAIL_LIMIT:
+            self._phase = _PHASE_EXPLORE
+            return self._explore_step(layer, avail, latest_frame)
+
         cur_cell = self._current_player_cell(layer)
         if cur_cell is not None and cur_cell == self._last_player_cell:
             self._stuck_steps += 1
@@ -1377,63 +1468,95 @@ class GeneralAgent:
     # ── cheap-explore fallback ───────────────────────────────────────────────
 
     def _explore_step(self, layer: np.ndarray, avail: list[int], latest_frame):
-        """Disciplined cheap explore: prefer change-producing actions, click rare."""
+        """Disciplined cheap explore — a smarter-than-random easy-level stumbler.
+
+        Credits the previously-issued candidate (did its action change the
+        frame?), rebuilds the candidate set for the current frame, and asks
+        :func:`select_explore_action` for the next descriptor. The candidate set
+        is every available simple move plus, when ACTION6 is available, the
+        rare-colour cluster centroids and a coarse click grid. The selector
+        cycles through ALL of them, biases toward those observed to change the
+        frame, and drops dead no-op spots. On a level-up the harness resets this
+        state (re-discovery). The aim: maximise the chance of triggering the
+        winning interaction within the action budget rather than repeating a
+        single dead click as the old fallback did.
+        """
         from arcengine import GameAction
 
+        # Credit the candidate issued on the previous call against the new frame.
         sig = layer.tobytes()
-        if self._explore_pending is not None and self._explore_pending != 0:
-            self._explore_tries[self._explore_pending] += 1
-            if sig != self._explore_last_sig:
-                self._explore_changes[self._explore_pending] += 1
-        self._explore_last_sig = sig
-        self._explore_pending = None
+        if self._xp_last_desc is not None:
+            self._xp_tries[self._xp_last_desc] += 1
+            if sig != self._xp_last_sig:
+                self._xp_changes[self._xp_last_desc] += 1
+        self._xp_last_sig = sig
 
+        candidates = self._build_explore_candidates(layer, avail)
+        desc, self._xp_cursor = select_explore_action(
+            candidates, self._xp_tries, self._xp_changes, self._xp_cursor
+        )
+        if desc is None:
+            self._xp_last_desc = None
+            if 6 in avail:
+                return self._emit_click(32, 32)
+            return self._emit(GameAction.RESET)
+
+        self._xp_last_desc = desc
+        if desc[0] == "m":
+            return self._emit(GameAction.from_id(desc[1]))
+        return self._emit_click(desc[1], desc[2])
+
+    def _build_explore_candidates(
+        self, layer: np.ndarray, avail: list[int]
+    ) -> list[tuple]:
+        """Ordered explore candidates: simple moves + rare clusters + click grid.
+
+        Cluster centroids are recomputed only when the frame changed since the
+        last build (the clusters are otherwise identical), keeping per-action
+        cost low across the 600-action budget. Descriptors are de-duplicated
+        preserving order so a grid point coinciding with a centroid is offered
+        once. Returns ``[("m", aid) | ("c", x, y), ...]``.
+        """
+        cands: list[tuple] = [("m", a) for a in _MOVE_ACTION_IDS if a in avail]
         if 6 in avail:
-            target = self._rare_centroid(layer)
-            if target is not None:
-                return self._emit_click(*target)
+            sig = layer.tobytes()
+            if sig != self._xp_cluster_sig or not self._xp_cluster_cands:
+                self._xp_cluster_sig = sig
+                self._xp_cluster_cands = self._cluster_click_cands(layer)
+            cands.extend(self._xp_cluster_cands)
+            for y in range(_EXPLORE_GRID_STRIDE // 2, 64, _EXPLORE_GRID_STRIDE):
+                for x in range(_EXPLORE_GRID_STRIDE // 2, 64, _EXPLORE_GRID_STRIDE):
+                    cands.append(("c", x, y))
+        seen: set[tuple] = set()
+        out: list[tuple] = []
+        for d in cands:
+            if d not in seen:
+                seen.add(d)
+                out.append(d)
+        return out
 
-        simple = [a for a in _MOVE_ACTION_IDS if a in avail]
-        if simple:
-            choice = self._pick_explore_simple(simple)
-            self._explore_pending = choice
-            return self._emit(GameAction.from_id(choice))
+    def _cluster_click_cands(self, layer: np.ndarray) -> list[tuple]:
+        """Click targets at non-background cluster centroids, rarest colour first.
 
-        if 6 in avail:
-            return self._emit_click(32, 32)
-        return self._emit(GameAction.RESET)
-
-    def _pick_explore_simple(self, simple: list[int]) -> int:
-        under = [a for a in simple if self._explore_tries[a] < 1]
-        if under:
-            return under[0]
-        if self._rng.random() < _EXPLORE_EPSILON:
-            return self._rng.choice(simple)
-        rates = {a: self._explore_rate(a) for a in simple}
-        best = max(rates.values())
-        useful = [a for a in simple if rates[a] >= 0.8 * best] if best > 0 else simple
-        choice = useful[self._explore_cursor % len(useful)]
-        self._explore_cursor += 1
-        return choice
-
-    def _explore_rate(self, aid: int) -> float:
-        t = self._explore_tries[aid]
-        return self._explore_changes[aid] / t if t else 0.0
-
-    def _rare_centroid(self, layer: np.ndarray) -> tuple[int, int] | None:
+        Rare colours are the most likely interactive markers (buttons / goals),
+        so they are offered before common ones; capped at
+        ``_EXPLORE_MAX_CLUSTERS`` to keep the candidate list small.
+        """
         if layer.size == 0:
-            return None
+            return []
         bg = self._background if self._background is not None else int(layer[0, 0])
         comps = [c for c in connected_components(layer, bg) if c["color"] != bg]
         if not comps:
-            return None
+            return []
         color_area: Counter[int] = Counter()
         for c in comps:
             color_area[c["color"]] += c["size"]
-        rare = min(color_area, key=lambda k: color_area[k])
-        rc = [c for c in comps if c["color"] == rare]
-        target = max(rc, key=lambda c: c["size"])
-        return (int(round(target["cx"])), int(round(target["cy"])))
+        # Rarest colour (fewest total cells) first, then larger clusters first.
+        comps.sort(key=lambda c: (color_area[c["color"]], -c["size"]))
+        out: list[tuple] = []
+        for c in comps[:_EXPLORE_MAX_CLUSTERS]:
+            out.append(("c", int(round(c["cx"])), int(round(c["cy"]))))
+        return out
 
     # ── action emission ──────────────────────────────────────────────────────
 

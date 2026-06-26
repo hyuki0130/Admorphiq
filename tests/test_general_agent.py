@@ -14,6 +14,10 @@ from __future__ import annotations
 import numpy as np
 
 from admorphiq.general_agent import (
+    _EXECUTE_BAIL_LIMIT,
+    _EXPLORE_DEAD_TRIES,
+    _PHASE_EXECUTE,
+    _PHASE_EXPLORE,
     GeneralAgent,
     connected_components,
     corridor_color_from_probes,
@@ -25,6 +29,7 @@ from admorphiq.general_agent import (
     infer_direction_map,
     pick_goal_cell,
     pick_next_probe,
+    select_explore_action,
 )
 
 
@@ -653,3 +658,121 @@ def test_goal_centroid_px_picks_rare_marker_centroid():
     assert centroid is not None
     cx, cy = centroid
     assert round(cx) == 8 and round(cy) == 8
+
+
+# ---------------------------------------------------------------------------
+# bail-fast watchdog + disciplined exploration (aggregate-score levers)
+# ---------------------------------------------------------------------------
+
+
+def test_execute_bails_to_explore_after_budget_without_levelup():
+    """Purpose: pin the core aggregate-score fix — a navigation plan that has run
+    ``_EXECUTE_BAIL_LIMIT`` actions on the current level WITHOUT completing a
+    level must be abandoned for cheap-explore, instead of burning the whole
+    600-action budget wandering (the su15: 600 -> 0 waste this targets).
+
+    Expected feedback: pass means once the committed-plan action span crosses the
+    cap the agent flips out of EXECUTE into EXPLORE and emits a real action; a
+    fail means a dead plan can again squander the entire budget on one game and
+    starve every other game of the chance to stumble an easy level.
+    """
+    agent = GeneralAgent()
+    agent._background = 5
+    agent._phase = _PHASE_EXECUTE
+    agent._plan_commit_action = 0
+    agent._action_count = _EXECUTE_BAIL_LIMIT  # exactly at the cap, no level-up
+    layer = np.full((64, 64), 5, dtype=np.int32)
+    layer[2:5, 2:5] = 9  # a player-ish blob so the frame is non-empty
+    frame = _Frame(layer, [1, 2, 3, 4])
+
+    action = agent.choose_action([], frame)
+    assert agent._phase == _PHASE_EXPLORE
+    assert action is not None
+
+
+def test_execute_does_not_bail_before_budget():
+    """Purpose: the watchdog must NOT fire early — a freshly committed plan keeps
+    executing so fast/correct navigation (tu93 clears L1 in ~16 nav actions) is
+    never cut off prematurely.
+
+    Expected feedback: pass means below the cap the agent stays in EXECUTE; a
+    fail means the bail threshold is too aggressive and would kill working
+    navigation before it can clear a level.
+    """
+    agent = GeneralAgent()
+    agent._background = 5
+    agent._phase = _PHASE_EXECUTE
+    agent._plan_commit_action = 0
+    agent._action_count = _EXECUTE_BAIL_LIMIT - 5  # still within budget
+    # A genuinely navigable layout so a plan exists (otherwise the no-plan path
+    # would explore for an unrelated reason and mask the watchdog under test).
+    agent._dir_map = {1: (0, -6), 2: (0, 6), 3: (-6, 0), 4: (6, 0)}
+    agent._player_color = 9
+    layer = np.full((64, 64), 5, dtype=np.int32)
+    layer[2:5, 2:5] = 9  # player at grid cell (0, 0)
+    layer[2:5, 30:33] = 14  # rare goal marker to the right
+    frame = _Frame(layer, [1, 2, 3, 4])
+
+    agent.choose_action([], frame)
+    assert agent._phase == _PHASE_EXECUTE
+
+
+def test_select_explore_action_tries_every_candidate_before_repeating():
+    """Purpose: disciplined exploration covers ALL available actions/targets
+    (breadth) before revisiting any, so on an easy game the winning interaction
+    is reached within budget instead of one spot being hammered forever.
+
+    Expected feedback: pass means each untried candidate is returned once before
+    any repeat; a fail means the explorer narrows too early and may never try the
+    action that completes the level.
+    """
+    cands = [("m", 1), ("m", 2), ("c", 8, 8), ("c", 24, 24)]
+    tries: dict[tuple, int] = {}
+    changes: dict[tuple, int] = {}
+    cursor = 0
+    picked = []
+    for _ in range(len(cands)):
+        desc, cursor = select_explore_action(cands, tries, changes, cursor)
+        picked.append(desc)
+        tries[desc] = tries.get(desc, 0) + 1
+    assert set(picked) == set(cands)
+
+
+def test_select_explore_action_biases_toward_frame_changers():
+    """Purpose: once everything has been tried, the explorer must bias toward
+    candidates observed to change the frame (productive actions) while still
+    rotating, so budget is spent where something actually happens.
+
+    Expected feedback: pass means a known changer is chosen markedly more often
+    than a known no-op across a run of picks; a fail means exploration wastes the
+    budget equally on dead spots.
+    """
+    cands = [("m", 1), ("c", 8, 8)]
+    tries = {("m", 1): 1, ("c", 8, 8): 1}
+    changes = {("m", 1): 1, ("c", 8, 8): 0}  # move changes, click is a no-op
+    cursor = 0
+    counts = {("m", 1): 0, ("c", 8, 8): 0}
+    for _ in range(30):
+        desc, cursor = select_explore_action(cands, tries, changes, cursor)
+        counts[desc] += 1
+    assert counts[("m", 1)] > counts[("c", 8, 8)]
+
+
+def test_select_explore_action_drops_dead_candidates():
+    """Purpose: a candidate tried ``_EXPLORE_DEAD_TRIES`` times that never changed
+    the frame is dead and must be dropped from the rotation so the budget is not
+    re-spent re-clicking a confirmed no-op cell.
+
+    Expected feedback: pass means a live changer is preferred over a dead no-op
+    once the dead threshold is crossed; a fail means no-op spots are revisited
+    forever (the old fallback's pathology).
+    """
+    dead = ("c", 8, 8)
+    live = ("m", 1)
+    cands = [dead, live]
+    tries = {dead: _EXPLORE_DEAD_TRIES, live: 1}
+    changes = {dead: 0, live: 1}
+    cursor = 0
+    for _ in range(10):
+        desc, cursor = select_explore_action(cands, tries, changes, cursor)
+        assert desc != dead
