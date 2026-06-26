@@ -70,7 +70,11 @@ def load_gold() -> dict:
 
         # Per gold block = (episode, level cleared). Block length = agent actions
         # used for that clear. weight ~ (human / agent)^2 => efficient (short)
-        # clears weigh more; metric is efficiency-squared.
+        # clears weigh more; metric is efficiency-squared. We additionally scale
+        # by the 1-indexed level depth because the competition metric weights
+        # level k by k: without this, the efficiency term alone over-rewards the
+        # abundant, easy level-0 demos and starves the rarer deep-level demos,
+        # which measurably collapsed multi-level clears (AR25/M0R0 lost level 2).
         w = np.ones(actions.shape[0], dtype=np.float64)
         for ep in np.unique(episode):
             for lvl in np.unique(level_idx[episode == ep]):
@@ -78,7 +82,12 @@ def load_gold() -> dict:
                 block_len = int(sel.sum())
                 human = baseline[lvl] if 0 <= lvl < len(baseline) else block_len
                 eff = human / max(block_len, 1)
-                w[sel] = float(np.clip(eff * eff, 0.25, 4.0))
+                # Gentle depth bias: full (level+1) weighting protects deep nav
+                # levels but starves the abundant level-0 ACTION6 demos and
+                # collapses click games (CD82/LF52). sqrt keeps a deep-level
+                # nudge while preserving coordinate-head learning.
+                depth = float(np.sqrt(lvl + 1))
+                w[sel] = float(np.clip(eff * eff, 0.25, 4.0) * depth)
 
         frames_l.append(frames)
         actions_l.append(actions)

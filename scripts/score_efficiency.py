@@ -50,9 +50,14 @@ def _make_agent(name: str):
     if name == "general":
         return GeneralAgent()
     if name == "bc":
-        from admorphiq.bc_agent import BCPolicyAgent
+        import os
 
-        return BCPolicyAgent()
+        from admorphiq.bc_agent import DEFAULT_WEIGHTS, BCPolicyAgent
+
+        # Optional override so a freshly-trained checkpoint (e.g. bc_policy_v2.pt)
+        # can be scored without touching the agent. Falls back to the default.
+        weights = os.environ.get("BC_WEIGHTS") or DEFAULT_WEIGHTS
+        return BCPolicyAgent(weights_path=weights)
     return AdmorphiqAdapter()
 
 # ─────────────────────────────── scoring maths ──────────────────────────────
