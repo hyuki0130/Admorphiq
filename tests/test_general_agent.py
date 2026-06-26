@@ -11,6 +11,8 @@ identification and shortest-path planning over a correct walkable grid.
 
 from __future__ import annotations
 
+from collections import Counter
+
 import numpy as np
 
 from admorphiq.general_agent import (
@@ -18,7 +20,9 @@ from admorphiq.general_agent import (
     _EXPLORE_DEAD_TRIES,
     _PHASE_EXECUTE,
     _PHASE_EXPLORE,
+    _SEQ_MAX_TOTAL_ACTIONS,
     GeneralAgent,
+    build_action_sequences,
     connected_components,
     corridor_color_from_probes,
     edge_grid_bfs,
@@ -776,3 +780,210 @@ def test_select_explore_action_drops_dead_candidates():
     for _ in range(10):
         desc, cursor = select_explore_action(cands, tries, changes, cursor)
         assert desc != dead
+
+
+# ---------------------------------------------------------------------------
+# build_action_sequences (bounded sequence search)
+# ---------------------------------------------------------------------------
+
+
+def test_build_action_sequences_empty_tokens_yields_nothing():
+    """Purpose: with no observed frame-changer there is nothing worth combining,
+    so the search must be empty (the explorer then falls through to its rotate
+    fallback instead of emitting meaningless combos).
+
+    Expected feedback: pass means a frame where nothing moved spends zero budget
+    on sequence search; a fail means the agent burns the budget on no-op combos.
+    """
+    assert build_action_sequences([]) == []
+
+
+def test_build_action_sequences_single_token_is_repeats_only():
+    """Purpose: one changer can only form sustained-repeat combos (there is no
+    second token to pair / alternate with), which is exactly what a game needing
+    held / repeated pushing of a single action requires.
+
+    Expected feedback: pass means a lone changer still produces the repeat combos
+    that single-action exploration cannot (it only ever issues the action once
+    per rotation step); a fail means repeated-push levels are never attempted.
+    """
+    seqs = build_action_sequences([2])
+    assert (2, 2) in seqs
+    assert (2, 2, 2, 2) in seqs
+    # No pair / permutation / alternating combo is possible with one token.
+    assert all(set(s) == {2} for s in seqs)
+
+
+def test_build_action_sequences_two_tokens_have_pairs_and_alternating():
+    """Purpose: two changers must yield the "A then B" ordered pairs and the
+    ABAB alternating rhythm — the canonical "press A2 then A4" and toggle-rhythm
+    sequences that complete many levels.
+
+    Expected feedback: pass means both the ordered-pair and alternating mechanics
+    are in the search; a fail means a level cleared by a 2-action combo is missed.
+    """
+    seqs = build_action_sequences([2, 4])
+    assert (2, 4) in seqs and (4, 2) in seqs  # ordered pairs (k=2)
+    assert (2, 4, 2, 4) in seqs  # alternating ABAB
+    assert (2, 2) in seqs and (4, 4) in seqs  # sustained repeats
+
+
+def test_build_action_sequences_respects_total_action_cap():
+    """Purpose: the search is a budget-bounded stumble, not an exhaustive tree —
+    the cumulative action count across all combos must never exceed the cap, so
+    sequence search cannot starve the rest of the game budget.
+
+    Expected feedback: pass means the combo set is provably budget-safe for any
+    token set; a fail means a large changer set could blow the action budget.
+    """
+    seqs = build_action_sequences([1, 2, 3, 4, 5])
+    assert sum(len(s) for s in seqs) <= _SEQ_MAX_TOTAL_ACTIONS
+    # Tight explicit cap is honoured too.
+    tight = build_action_sequences([1, 2, 3], max_total_actions=6)
+    assert sum(len(s) for s in tight) <= 6
+
+
+def test_build_action_sequences_dedup_and_token_agnostic():
+    """Purpose: duplicate tokens must collapse and click descriptors (tuples)
+    must be combinable alongside move ids — the search is token-agnostic so a
+    "click responsive cell then move" sequence is expressible.
+
+    Expected feedback: pass means mixed move+click combos are generated without
+    duplicate combos; a fail means click-driven sequences are unreachable or the
+    budget is wasted on repeats.
+    """
+    seqs = build_action_sequences([2, 2, ("c", 10, 10)])
+    assert len(seqs) == len(set(seqs))  # no duplicate combos
+    # A mixed move+click ordered pair is present.
+    assert (2, ("c", 10, 10)) in seqs
+
+
+# ---------------------------------------------------------------------------
+# sequence-search executor (GeneralAgent stage 2)
+# ---------------------------------------------------------------------------
+
+
+def test_build_sequence_search_uses_only_observed_changers():
+    """Purpose: combos must be built ONLY from inputs observed to change the
+    frame (move ids and click cells), never from no-op actions — that is the
+    branch-level no-op pruning that keeps the search efficient.
+
+    Expected feedback: pass means a dead action (changes==0) never appears in any
+    staged combo while live ones do; a fail means budget is spent combining
+    inputs already known to do nothing.
+    """
+    agent = GeneralAgent()
+    agent._xp_changes = Counter(
+        {("m", 2): 3, ("m", 4): 1, ("m", 1): 0, ("c", 10, 10): 5, ("c", 20, 20): 2}
+    )
+    agent._build_sequence_search(avail=[1, 2, 3, 4, 6])
+    assert agent._seq_list  # non-empty
+    flat = {t for seq in agent._seq_list for t in seq}
+    assert 2 in flat and 4 in flat  # live move changers
+    assert 1 not in flat  # dead move (changes==0) excluded
+    assert ("c", 10, 10) in flat  # busiest click changer included
+
+
+def test_next_sequence_action_prunes_combo_on_noop():
+    """Purpose: a started combo whose last token stopped changing the frame is a
+    dead branch and must be abandoned for the next combo (so the agent does not
+    keep pushing into a wall for the rest of a repeat).
+
+    Expected feedback: pass means a no-op mid-combo advances to the next combo
+    immediately; a fail means budget is wasted finishing combos that have
+    already stalled.
+    """
+    agent = GeneralAgent()
+    agent._seq_built = True
+    agent._seq_list = [(2, 2, 2), (4, 4)]
+    agent._seq_i = 0
+    agent._seq_pos = 0
+    # First token of combo 0 emitted (frame changed → keep going).
+    agent._next_sequence_action(changed=True, avail=[2, 4])
+    assert (agent._seq_i, agent._seq_pos) == (0, 1)
+    # Last token did nothing → prune homogeneous combo 0, emit first of combo 1.
+    agent._next_sequence_action(changed=False, avail=[2, 4])
+    assert (agent._seq_i, agent._seq_pos) == (1, 1)
+
+
+def test_next_sequence_action_does_not_prune_heterogeneous_combo_on_noop():
+    """Purpose: an alternating / ordered-pair combo must NOT be abandoned when
+    one leg momentarily no-ops — that is precisely the zigzag case where the
+    blocked direction is meant to be followed by the other direction.
+
+    Expected feedback: pass means a heterogeneous combo runs to completion
+    through a mid-combo no-op; a fail means zigzag / "A then B" traversals are
+    killed the instant one leg hits a wall (the over-aggressive-prune bug).
+    """
+    agent = GeneralAgent()
+    agent._seq_built = True
+    agent._seq_list = [(2, 4, 2, 4)]
+    agent._seq_i = 0
+    agent._seq_pos = 0
+    agent._next_sequence_action(changed=True, avail=[2, 4])  # emit token 2
+    assert (agent._seq_i, agent._seq_pos) == (0, 1)
+    # Token 2 no-oped (wall), but the combo is heterogeneous → keep going.
+    agent._next_sequence_action(changed=False, avail=[2, 4])  # emit token 4
+    assert (agent._seq_i, agent._seq_pos) == (0, 2)
+
+
+def test_next_sequence_action_skips_unavailable_and_exhausts_to_none():
+    """Purpose: a combo whose action is no longer available must be skipped
+    whole, and once every combo is consumed the executor must return None so the
+    explorer falls through to its rotate fallback.
+
+    Expected feedback: pass means unavailable-action combos are skipped and
+    exhaustion is signalled cleanly; a fail means the agent emits an illegal
+    action or loops on a spent search.
+    """
+    agent = GeneralAgent()
+    agent._seq_built = True
+    agent._seq_list = [(5, 5), (2, 2)]
+    agent._seq_i = 0
+    agent._seq_pos = 0
+    agent._next_sequence_action(changed=True, avail=[2])  # 5 unavailable → skip
+    assert (agent._seq_i, agent._seq_pos) == (1, 1)
+    agent._seq_list = []
+    agent._seq_i = 0
+    assert agent._next_sequence_action(changed=True, avail=[2]) is None
+
+
+def test_explore_phase_emits_multi_action_sequences_after_sweep():
+    """Purpose: end-to-end the explore phase must, after its single-action sweep,
+    emit MULTI-action combos of the observed changer — the core behaviour R10's
+    single-action explorer lacked.
+
+    Expected feedback: pass means a run of >=2 consecutive emissions of the lone
+    frame-changing action appears after the sweep (a repeat combo); a fail means
+    the agent never strings actions together and sequence-completing levels stay
+    unreachable.
+    """
+    from arcengine import GameAction
+
+    agent = GeneralAgent()
+    agent._phase = _PHASE_EXPLORE
+    agent._background = 0
+    avail = [2, 4]  # move-only, no ACTION6 → no click candidates
+    state_a = np.zeros((64, 64), dtype=np.int32)
+    state_b = np.ones((64, 64), dtype=np.int32)
+    cur = {"layer": state_a, "toggle": False}
+    emitted: list[str] = []
+    for _ in range(40):
+        out = agent._explore_step(cur["layer"], avail, None)
+        emitted.append(out.name)
+        # Action 2 changes the frame (flip between two states); 4 / others don't.
+        if out == GameAction.ACTION2:
+            cur["toggle"] = not cur["toggle"]
+            cur["layer"] = state_b if cur["toggle"] else state_a
+    # Somewhere after the 2-action sweep there must be >=2 consecutive ACTION2s.
+    run = 0
+    saw_run = False
+    for name in emitted:
+        if name == "ACTION2":
+            run += 1
+            if run >= 2:
+                saw_run = True
+                break
+        else:
+            run = 0
+    assert saw_run, emitted

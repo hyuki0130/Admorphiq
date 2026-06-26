@@ -33,6 +33,7 @@ The grid-abstraction and BFS logic are pure functions (``infer_direction_map``,
 
 from __future__ import annotations
 
+import itertools
 import os
 import random
 from collections import Counter, deque
@@ -99,6 +100,25 @@ _EXPLORE_DEAD_TRIES = 3
 _EXPLORE_GRID_STRIDE = 16
 # Max rare-colour cluster centroids offered as click targets per explore build.
 _EXPLORE_MAX_CLUSTERS = 16
+# Bounded sequence-search (extends single-action explore): single actions can
+# only ever stumble a level that completes on ONE input. Many ARC-AGI-3 levels
+# instead complete on a short ACTION SEQUENCE (press A2 then A4, a 3-4 action
+# combo, sustained pushing, or an alternating pattern). After the single-action
+# sweep has revealed which actions/clicks actually move the frame, we run a
+# bounded search over short combos of ONLY those frame-changers (no-op actions
+# are pruned at construction, so the budget is spent on inputs that do
+# something). The caps below keep the search far below the 600-action game
+# budget so it stays efficient and still leaves room for the rotate fallback.
+_SEQ_REPEAT_LENGTHS: tuple[int, ...] = (2, 4, 8)
+_SEQ_COMBO_KS: tuple[int, ...] = (2, 3, 4)
+# Alternating ABAB / ABABABAB lengths (rhythm + short zigzag traversal). A
+# single ABAB cannot traverse a zigzag corridor; the longer block can.
+_SEQ_ALT_LENGTHS: tuple[int, ...] = (4, 8)
+_SEQ_MAX_PER_K = 16
+_SEQ_MAX_TOTAL_ACTIONS = 256
+# Max distinct click targets (responsive / rare-cluster cells, busiest first)
+# admitted as sequence tokens alongside the frame-changing move actions.
+_SEQ_MAX_CLICK_TOKENS = 3
 
 
 # ── Pure connected-components / entity helpers ───────────────────────────────
@@ -747,6 +767,96 @@ def select_explore_action(
     return pool[cursor % len(pool)], cursor
 
 
+def build_action_sequences(
+    changers: list,
+    *,
+    repeat_lengths: tuple[int, ...] = _SEQ_REPEAT_LENGTHS,
+    combo_ks: tuple[int, ...] = _SEQ_COMBO_KS,
+    alt_lengths: tuple[int, ...] = _SEQ_ALT_LENGTHS,
+    max_per_k: int = _SEQ_MAX_PER_K,
+    max_total_actions: int = _SEQ_MAX_TOTAL_ACTIONS,
+) -> list[tuple]:
+    """Bounded set of short action SEQUENCES built from frame-changing tokens.
+
+    ``changers`` is an ordered list of opaque, hashable tokens — the agent uses
+    a move action id (``int``) or a click descriptor (``("c", x, y)``) — that
+    were each individually observed to change the frame. Single-action
+    exploration can only stumble a level that completes on one input; this
+    generates the short multi-action combos that levels needing a SEQUENCE
+    require, while spending the budget only on inputs that actually do
+    something (no-op tokens are excluded by the caller, so every emitted token
+    is a real changer — branch-level no-op pruning).
+
+    Output ordering encodes priority (cheapest / most-common-mechanic first):
+
+      1. **Sustained repeats** — ``(a,)*n`` for each token and each ``n`` in
+         ``repeat_lengths`` (games that need held / repeated pushing).
+      2. **Distinct-token permutations** for each ``k`` in ``combo_ks`` (k=2
+         ordered pairs "A then B", k=3, k=4 combos), capped at ``max_per_k``
+         per ``k`` so the count cannot explode with the token set.
+      3. **Alternating ``(a, b)`` runs** of each length in ``alt_lengths`` for
+         each unordered pair (rhythm / toggle patterns, and short zigzag
+         traversal — a plain permutation can't express these because it has no
+         repeats).
+
+    Sequences are de-duplicated preserving first-seen order, and the running
+    total of emitted actions is capped at ``max_total_actions`` so the search
+    stays far below the game budget. Pure / env-free → unit-testable.
+    """
+    uniq = list(dict.fromkeys(changers))  # dedup, preserve order
+    if not uniq:
+        return []
+
+    seqs: list[tuple] = []
+    seen: set[tuple] = set()
+    total = 0
+
+    def _add(seq: tuple) -> None:
+        nonlocal total
+        if not seq or seq in seen:
+            return
+        if total + len(seq) > max_total_actions:
+            return
+        seen.add(seq)
+        seqs.append(seq)
+        total += len(seq)
+
+    # 1) Sustained repeats.
+    for n in repeat_lengths:
+        for a in uniq:
+            _add((a,) * n)
+
+    # 2) Distinct-token permutations per k (k=2 → ordered pairs, then k=3, k=4).
+    for k in combo_ks:
+        if k < 2 or k > len(uniq):
+            continue
+        count = 0
+        for combo in itertools.permutations(uniq, k):
+            before = len(seqs)
+            _add(combo)
+            if len(seqs) > before:
+                count += 1
+                if count >= max_per_k:
+                    break
+
+    # 3) Alternating (a, b) runs of each requested length, shortest first.
+    for length in alt_lengths:
+        reps = max(1, length // 2)
+        count = 0
+        for i, a in enumerate(uniq):
+            for b in uniq[i + 1 :]:
+                before = len(seqs)
+                _add((a, b) * reps)
+                if len(seqs) > before:
+                    count += 1
+                    if count >= max_per_k:
+                        break
+            if count >= max_per_k:
+                break
+
+    return seqs
+
+
 # ── Agent FSM ────────────────────────────────────────────────────────────────
 
 _PHASE_DISCOVERY = "discovery"
@@ -875,6 +985,16 @@ class GeneralAgent:
         self._xp_cursor = 0
         self._xp_cluster_sig: bytes = b""
         self._xp_cluster_cands: list[tuple] = []
+        # Bounded sequence-search bookkeeping (runs after the single-action
+        # sweep identifies the frame-changers). ``_seq_sweep_queue`` is a
+        # one-shot snapshot swept once to learn the changers; once
+        # ``_seq_built`` flips, the combos in ``_seq_list`` are emitted one
+        # token per call. Reset on level-up like all other explore state.
+        self._seq_sweep_queue: list[tuple] | None = None
+        self._seq_built = False
+        self._seq_list: list[tuple] = []
+        self._seq_i = 0
+        self._seq_pos = 0
 
     # ── official-shaped interface ────────────────────────────────────────────
 
@@ -1468,30 +1588,62 @@ class GeneralAgent:
     # ── cheap-explore fallback ───────────────────────────────────────────────
 
     def _explore_step(self, layer: np.ndarray, avail: list[int], latest_frame):
-        """Disciplined cheap explore — a smarter-than-random easy-level stumbler.
+        """Disciplined cheap explore in THREE stages — a smarter-than-random
+        easy-level stumbler that also probes short action SEQUENCES.
 
-        Credits the previously-issued candidate (did its action change the
-        frame?), rebuilds the candidate set for the current frame, and asks
-        :func:`select_explore_action` for the next descriptor. The candidate set
-        is every available simple move plus, when ACTION6 is available, the
-        rare-colour cluster centroids and a coarse click grid. The selector
-        cycles through ALL of them, biases toward those observed to change the
-        frame, and drops dead no-op spots. On a level-up the harness resets this
-        state (re-discovery). The aim: maximise the chance of triggering the
-        winning interaction within the action budget rather than repeating a
-        single dead click as the old fallback did.
+        Every call first credits the previously-issued candidate (did its action
+        change the frame?) so the changer statistics accumulate. Then:
+
+          1. **Single-action sweep** — try each candidate (simple moves + click
+             targets) once to learn which inputs actually move the frame. Levels
+             that complete on ONE input are stumbled here, as in R10.
+          2. **Bounded sequence search** — once the sweep is done, run short
+             combos (repeats / "A then B" / k=3-4 / alternating) built ONLY from
+             the observed frame-changers via :func:`build_action_sequences`.
+             Levels that complete on a short SEQUENCE are stumbled here. A
+             combo is abandoned the moment one of its tokens stops changing the
+             frame (no-op branch pruning), and the whole search is capped well
+             below the game budget.
+          3. **Rotate fallback** — once the sequences are exhausted, the R10
+             :func:`select_explore_action` rotation handles delayed-effect cells
+             and keeps spending the remaining budget productively.
+
+        On a level-up the harness resets this state (re-discovery), so working
+        nav / toggle clears and the R10 single-action clears are all retained.
         """
         from arcengine import GameAction
 
         # Credit the candidate issued on the previous call against the new frame.
         sig = layer.tobytes()
+        changed = self._xp_last_desc is not None and sig != self._xp_last_sig
         if self._xp_last_desc is not None:
             self._xp_tries[self._xp_last_desc] += 1
-            if sig != self._xp_last_sig:
+            if changed:
                 self._xp_changes[self._xp_last_desc] += 1
         self._xp_last_sig = sig
 
         candidates = self._build_explore_candidates(layer, avail)
+
+        # Stage 1: sweep a one-shot snapshot of the candidates once so every
+        # input is observed at least once before any combo is built.
+        if not self._seq_built:
+            if self._seq_sweep_queue is None:
+                self._seq_sweep_queue = list(candidates)
+            while self._seq_sweep_queue:
+                d = self._seq_sweep_queue.pop(0)
+                if self._xp_tries.get(d, 0) == 0:
+                    self._xp_last_desc = d
+                    return self._emit_desc(d)
+            # Sweep exhausted → build the bounded sequence search.
+            self._build_sequence_search(avail)
+            self._seq_built = True
+
+        # Stage 2: emit the next token of the bounded sequence search.
+        act = self._next_sequence_action(changed, avail)
+        if act is not None:
+            return act
+
+        # Stage 3: R10 rotate fallback (delayed effects, busiest-cell bias).
         desc, self._xp_cursor = select_explore_action(
             candidates, self._xp_tries, self._xp_changes, self._xp_cursor
         )
@@ -1500,8 +1652,84 @@ class GeneralAgent:
             if 6 in avail:
                 return self._emit_click(32, 32)
             return self._emit(GameAction.RESET)
-
         self._xp_last_desc = desc
+        return self._emit_desc(desc)
+
+    def _build_sequence_search(self, avail: list[int]) -> None:
+        """Stage the bounded sequence search from the observed frame-changers.
+
+        Tokens are the move actions that changed the frame during the sweep
+        (still available) followed by up to ``_SEQ_MAX_CLICK_TOKENS`` click
+        targets that changed the frame, busiest first. With no observed changer
+        the list stays empty and the explorer falls straight through to the
+        rotate fallback.
+        """
+        move_tokens = [
+            aid
+            for aid in _MOVE_ACTION_IDS
+            if aid in avail and self._xp_changes.get(("m", aid), 0) > 0
+        ]
+        click_changers = [
+            d
+            for d in self._xp_changes
+            if d[0] == "c" and self._xp_changes.get(d, 0) > 0
+        ]
+        click_changers.sort(key=lambda d: -self._xp_changes[d])
+        click_tokens: list[tuple] = (
+            click_changers[:_SEQ_MAX_CLICK_TOKENS] if 6 in avail else []
+        )
+        tokens: list = list(move_tokens) + list(click_tokens)
+        self._seq_list = build_action_sequences(tokens)
+        self._seq_i = 0
+        self._seq_pos = 0
+
+    def _next_sequence_action(self, changed: bool, avail: list[int]):
+        """Emit the next token of the current combo, or None when exhausted.
+
+        Walks the staged ``_seq_list`` one token per call. A *homogeneous*
+        combo (a sustained repeat of one token) is abandoned the moment a token
+        already emitted within it failed to change the frame (``changed`` False
+        with ``_seq_pos > 0``): repeating an action that just hit a wall is
+        wasted budget. *Heterogeneous* combos (ordered pairs / alternating
+        zigzags) are NOT pruned on a single no-op — one leg being momentarily
+        wall-blocked is exactly when the other leg matters, so the combo must
+        run to completion. Tokens referencing a now-unavailable action skip the
+        whole combo.
+        """
+        while self._seq_i < len(self._seq_list):
+            seq = self._seq_list[self._seq_i]
+            # Prune the no-op branch only for pure-repeat combos: a sustained
+            # push whose last token did nothing is dead. Mixed combos run on.
+            if (
+                self._seq_pos > 0
+                and not changed
+                and len(set(seq)) == 1
+            ):
+                self._seq_i += 1
+                self._seq_pos = 0
+                continue
+            if self._seq_pos >= len(seq):
+                self._seq_i += 1
+                self._seq_pos = 0
+                continue
+            token = seq[self._seq_pos]
+            desc = ("m", token) if isinstance(token, int) else token
+            if (desc[0] == "m" and desc[1] not in avail) or (
+                desc[0] == "c" and 6 not in avail
+            ):
+                # This combo is not executable in the current action set.
+                self._seq_i += 1
+                self._seq_pos = 0
+                continue
+            self._seq_pos += 1
+            self._xp_last_desc = desc
+            return self._emit_desc(desc)
+        return None
+
+    def _emit_desc(self, desc: tuple):
+        """Emit a move (``("m", aid)``) or click (``("c", x, y)``) descriptor."""
+        from arcengine import GameAction
+
         if desc[0] == "m":
             return self._emit(GameAction.from_id(desc[1]))
         return self._emit_click(desc[1], desc[2])
