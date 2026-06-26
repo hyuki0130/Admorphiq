@@ -20,6 +20,7 @@ the agent's runtime conversion/fallback deps are imported lazily.
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 from typing import Any
 
@@ -107,18 +108,59 @@ def _pick_device(device: str | None) -> torch.device:
     return torch.device("cpu")
 
 
+def _frame_hash(frame: np.ndarray) -> str:
+    """Stable short hash of a (64, 64) frame for cycle detection."""
+    import hashlib
+
+    return hashlib.md5(np.ascontiguousarray(frame).tobytes()).hexdigest()[:16]
+
+
 class BCPolicyAgent:
     """Deploys the trained BC policy against the official harness contract.
 
     Exposes ``is_done(frames, latest_frame)`` / ``choose_action(frames, latest_frame)``
     over the raw arcengine observation (same contract as ``AdmorphiqAdapter`` and
-    ``GeneralAgent``), returning an official ``GameAction``. On a stuck streak
-    (repeated no-op frames) it falls back to the existing exploration agent.
+    ``GeneralAgent``), returning an official ``GameAction``.
+
+    Two robustness layers sit on top of the raw argmax policy:
+
+    * **Cycle / stuck detector** — the argmax policy is deterministic, so on a
+      game it cannot solve it can loop forever on a (state, action) pair that
+      never changes the frame (this is what burned SB26's full 50k budget). We
+      track recent ``(frame_hash, action)`` pairs; once a pick repeats past
+      ``REPEAT_LIMIT`` we skip to the next-best logit, and on a sustained
+      identical-frame streak we fall back to the exploration agent. A hard
+      no-progress cap (``GIVE_UP_NO_PROGRESS`` actions without a level clear)
+      flips ``is_done`` to ``True`` so the runner bails instead of grinding to
+      the action budget.
+    * **Test-time training (TTT)** — when the policy clears a level on the
+      current game, the ``(frame -> action)`` transitions that produced the
+      clear are fine-tuned into the per-game working model with a handful of
+      gradient steps (Jack Cole's ARC TTT technique). The working model is a
+      fresh per-game copy of the on-disk base weights, so adaptation is
+      isolated to this game and never written back to disk. Gated behind a
+      flag (default on; ``ttt=False`` or env ``BC_TTT=0`` disables it).
     """
 
-    STUCK_THRESHOLD = 4  # consecutive unchanged frames before falling back
+    STUCK_THRESHOLD = 4          # consecutive unchanged frames before falling back
+    REPEAT_LIMIT = 2             # times a (frame_hash, action) may repeat before it is skipped
+    POLICY_TOPK = 8             # next-best candidates considered when escaping a cycle
+    GIVE_UP_NO_PROGRESS = 2500  # actions on a level without progress before bailing out
 
-    def __init__(self, weights_path: str | Path = DEFAULT_WEIGHTS, device: str | None = None) -> None:
+    # TTT hyperparameters — kept tiny so the per-game cost fits the
+    # ~5min/game (9h / 110 games) Kaggle budget.
+    TTT_LR = 1e-4
+    TTT_STEPS = 8
+    TTT_MAX_SAMPLES = 48
+    TTT_MIN_SAMPLES = 4
+    TTT_BUFFER_CAP = 512
+
+    def __init__(
+        self,
+        weights_path: str | Path = DEFAULT_WEIGHTS,
+        device: str | None = None,
+        ttt: bool = True,
+    ) -> None:
         from .adapter import AdmorphiqAdapter  # heavy import, kept lazy
         from .agent_ensemble import get_frame
 
@@ -137,14 +179,34 @@ class BCPolicyAgent:
             self._loaded = False
         self.model.eval()
 
+        # TTT flag: constructor arg AND env override (BC_TTT=0/false disables).
+        env_ttt = os.environ.get("BC_TTT", "").strip().lower()
+        self._ttt_enabled = bool(ttt) and env_ttt not in ("0", "false", "no", "off")
+
+        # Per-game mutable thresholds (instance copies so tests can tune them).
+        self._give_up_no_progress = self.GIVE_UP_NO_PROGRESS
+
         self._prev_frame: np.ndarray | None = None
         self._no_change_streak = 0
         self._fallback: Any = None  # lazily constructed AdmorphiqAdapter
 
+        # Cycle detector + hard-cap state.
+        self._seen_state_action: dict[tuple[str, int], int] = {}
+        self._prev_levels: int | None = None
+        self._actions_since_progress = 0
+        self._give_up = False
+
+        # TTT buffers: pending = this level's transitions; buffer = accumulated
+        # successful (level-clearing) transitions for this game.
+        self._ttt_pending: list[tuple[np.ndarray, int]] = []
+        self._ttt_buffer: list[tuple[np.ndarray, int]] = []
+
     # ── harness contract ─────────────────────────────────────────────────────
 
     def is_done(self, frames: list[Any], latest_frame: Any) -> bool:
-        return _state_name(latest_frame) == "WIN"
+        # ``_give_up`` hard-caps a hopeless loop (e.g. SB26) so the runner stops
+        # instead of grinding through the full action budget.
+        return self._give_up or _state_name(latest_frame) == "WIN"
 
     def choose_action(self, frames: list[Any], latest_frame: Any) -> Any:
         obs = latest_frame
@@ -157,6 +219,15 @@ class BCPolicyAgent:
         if not _has_frame(obs):
             return self._reset_action()
 
+        # Detect level transitions: a level clear is the supervision signal for
+        # TTT and resets the cycle/progress trackers (new level = new state space).
+        levels = _levels_completed(obs)
+        if self._prev_levels is None:
+            self._prev_levels = levels
+        elif levels > self._prev_levels:
+            self._on_level_cleared()
+            self._prev_levels = levels
+
         frame = self._get_frame(obs)  # (64, 64) int — same as training (obs.frame[0])
 
         # Track stuck-ness: identical frame to the previous step means the last
@@ -166,6 +237,13 @@ class BCPolicyAgent:
         else:
             self._no_change_streak = 0
 
+        # Hard cap: bail out of a hopeless game rather than burning the budget.
+        self._actions_since_progress += 1
+        if self._actions_since_progress >= self._give_up_no_progress:
+            self._give_up = True
+            self._prev_frame = frame
+            return self._reset_action()
+
         simple_mask, action6_ok = _availability(obs)
         if not simple_mask.any() and not action6_ok:
             return self._reset_action()
@@ -174,13 +252,27 @@ class BCPolicyAgent:
             self._prev_frame = frame
             return self._fallback_action(obs)
 
-        idx = self._policy_index(frame, simple_mask, action6_ok)
+        fhash = _frame_hash(frame)
+        idx = self._pick_noncycling_index(frame, fhash, simple_mask, action6_ok)
+        if idx is None:
+            # Every top candidate at this state is a known cycle → explore.
+            self._prev_frame = frame
+            return self._fallback_action(obs)
+
+        self._seen_state_action[(fhash, idx)] = (
+            self._seen_state_action.get((fhash, idx), 0) + 1
+        )
+        if self._ttt_enabled:
+            self._ttt_pending.append((frame.astype(np.int64), idx))
         self._prev_frame = frame
         return self._index_to_action(idx)
 
     # ── internals ────────────────────────────────────────────────────────────
 
-    def _policy_index(self, frame: np.ndarray, simple_mask: np.ndarray, action6_ok: bool) -> int:
+    def _policy_ranked(
+        self, frame: np.ndarray, simple_mask: np.ndarray, action6_ok: bool, k: int
+    ) -> list[int]:
+        """Return up-to-``k`` available combined-logit indices, best logit first."""
         full_mask = torch.zeros(1, TOTAL_LOGITS, dtype=torch.bool, device=self.device)
         full_mask[0, :NUM_SIMPLE_ACTIONS] = torch.from_numpy(simple_mask).to(self.device)
         if action6_ok:
@@ -188,8 +280,64 @@ class BCPolicyAgent:
 
         x = frame_to_onehot(frame).unsqueeze(0).to(self.device)
         with torch.no_grad():
-            logits = self.model(x, available_actions=full_mask)
-        return int(torch.argmax(logits[0]).item())
+            logits = self.model(x, available_actions=full_mask)[0]
+        k = min(k, logits.numel())
+        vals, idxs = torch.topk(logits, k)
+        return [
+            int(i)
+            for i, v in zip(idxs.tolist(), vals.tolist(), strict=False)
+            if v != float("-inf")
+        ]
+
+    def _pick_noncycling_index(
+        self, frame: np.ndarray, fhash: str, simple_mask: np.ndarray, action6_ok: bool
+    ) -> int | None:
+        """Best policy index whose (frame, action) hasn't already cycled."""
+        for cand in self._policy_ranked(frame, simple_mask, action6_ok, self.POLICY_TOPK):
+            if self._seen_state_action.get((fhash, cand), 0) >= self.REPEAT_LIMIT:
+                continue
+            return cand
+        return None
+
+    def _on_level_cleared(self) -> None:
+        """Fine-tune on the just-cleared level's transitions and reset trackers."""
+        if self._ttt_enabled and self._ttt_pending:
+            self._ttt_buffer.extend(self._ttt_pending)
+            if len(self._ttt_buffer) > self.TTT_BUFFER_CAP:
+                self._ttt_buffer = self._ttt_buffer[-self.TTT_BUFFER_CAP:]
+            self._ttt_finetune()
+        self._ttt_pending = []
+        # New level → stale cycle memory and progress budget are irrelevant.
+        self._seen_state_action.clear()
+        self._no_change_streak = 0
+        self._actions_since_progress = 0
+
+    def _ttt_finetune(self) -> None:
+        """A few gradient steps adapting the per-game model to its own successes.
+
+        Trains the in-memory working model only — the on-disk base weights are
+        never modified, and each game gets a fresh working model, so adaptation
+        does not leak across games.
+        """
+        buf = self._ttt_buffer
+        if len(buf) < self.TTT_MIN_SAMPLES:
+            return
+        samples = buf[-self.TTT_MAX_SAMPLES:]
+        frames = np.stack([f for f, _ in samples])  # (N, 64, 64)
+        targets = torch.tensor(
+            [t for _, t in samples], dtype=torch.long, device=self.device
+        )
+        x = onehot_batch(frames).to(self.device)
+
+        self.model.train()
+        opt = torch.optim.Adam(self.model.parameters(), lr=self.TTT_LR)
+        for _ in range(self.TTT_STEPS):
+            opt.zero_grad()
+            logits = self.model(x)  # unmasked: learn the demonstrated class
+            loss = F.cross_entropy(logits, targets)
+            loss.backward()
+            opt.step()
+        self.model.eval()
 
     def _index_to_action(self, idx: int) -> Any:
         from .types import ActionType, GameAction
@@ -225,6 +373,19 @@ def _state_name(obs: Any) -> str:
 def _has_frame(obs: Any) -> bool:
     fr = getattr(obs, "frame", None)
     return fr is not None and len(fr) > 0
+
+
+def _levels_completed(obs: Any) -> int:
+    """Number of levels cleared so far, tolerant of obs/score shape."""
+    v = getattr(obs, "levels_completed", None)
+    if v is None:
+        score = getattr(obs, "score", None)
+        if isinstance(score, dict):
+            v = score.get("levels_completed")
+    try:
+        return int(v)
+    except (TypeError, ValueError):
+        return 0
 
 
 def _availability(obs: Any) -> tuple[np.ndarray, bool]:

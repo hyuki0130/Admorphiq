@@ -10,10 +10,22 @@ import torch
 from admorphiq.bc_agent import (
     COORD_OFFSET,
     TOTAL_LOGITS,
+    BCPolicyAgent,
     build_bc_targets,
     coord_to_index,
     frame_to_onehot,
 )
+
+
+class _FakeObs:
+    """Minimal arcengine-observation stand-in for agent unit tests."""
+
+    def __init__(self, frame: np.ndarray, actions: list[int], state: str = "PLAYING",
+                 levels: int = 0) -> None:
+        self.frame = [frame]            # get_frame() reads obs.frame[0]
+        self.available_actions = actions
+        self.levels_completed = levels
+        self.state = type("S", (), {"name": state})()
 
 
 def test_build_bc_targets_simple_and_action6():
@@ -72,3 +84,46 @@ def test_frame_to_onehot_shape_and_channels():
     assert oh[5, 0, 0] == 1.0
     assert oh[11, 10, 20] == 1.0
     assert oh[0, 1, 1] == 1.0  # background colour 0
+
+
+def test_cycle_detector_triggers_fallback_on_repeated_noop():
+    """Purpose: a frozen frame with one deterministic action (the SB26 loop shape)
+    must trip the stuck/cycle detector and hand off to the exploration fallback
+    instead of re-emitting the same no-op argmax forever.
+
+    Expected feedback: PASS proves the detector escapes a deterministic
+    state-action loop after ``STUCK_THRESHOLD`` unchanged frames. FAIL means the
+    argmax policy can still spin in place to the action budget cap.
+    """
+    agent = BCPolicyAgent(device="cpu", ttt=False)
+    sentinel = object()
+    agent._fallback_action = lambda obs: sentinel  # avoid the heavy ensemble agent
+
+    frame = np.zeros((64, 64), dtype=np.int32)
+    obs = _FakeObs(frame, actions=[1])  # only ACTION1 → deterministic no-op pick
+
+    returned = [agent.choose_action([], obs) for _ in range(agent.STUCK_THRESHOLD + 2)]
+    assert returned[-1] is sentinel
+    assert not agent._ttt_enabled  # TTT must stay off in tests
+
+
+def test_no_progress_hard_cap_sets_done():
+    """Purpose: a game that never clears a level (e.g. SB26) must be abandoned via
+    ``is_done`` once the no-progress action cap is hit, rather than running to the
+    50k action budget.
+
+    Expected feedback: PASS proves the hard cap flips ``is_done`` to True after
+    ``_give_up_no_progress`` actions without a level clear. FAIL means a hopeless
+    game still burns the full budget.
+    """
+    agent = BCPolicyAgent(device="cpu", ttt=False)
+    agent.STUCK_THRESHOLD = 10_000      # disable the fallback path for this test
+    agent._give_up_no_progress = 6      # tiny cap so the test is fast
+
+    frame = np.zeros((64, 64), dtype=np.int32)
+    obs = _FakeObs(frame, actions=[1])
+
+    assert not agent.is_done([], obs)
+    for _ in range(agent._give_up_no_progress):
+        agent.choose_action([], obs)
+    assert agent.is_done([], obs)
