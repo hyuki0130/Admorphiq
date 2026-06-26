@@ -987,3 +987,115 @@ def test_explore_phase_emits_multi_action_sequences_after_sweep():
         else:
             run = 0
     assert saw_run, emitted
+
+
+# ── LLM-as-selector dispatch (mocked LLM, no Ollama required) ─────────────────
+
+
+class _ScriptedLLM:
+    """LLMBackend stand-in: returns a canned JSON hypothesis from ``generate``.
+
+    Lets the selector-dispatch tests run fully offline — no Ollama, no GGUF.
+    """
+
+    def __init__(self, response: str) -> None:
+        self._response = response
+
+    def generate(self, prompt: str, max_tokens: int = 512, json_schema=None) -> str:
+        return self._response
+
+
+def _nav_viable_state():
+    """A frame + control state where the deterministic planner CAN build a nav
+    plan: a 3x3 player (color 9) and a distinct goal marker (color 7) on an
+    otherwise walkable background (color 5), with a known 4-direction map."""
+    layer = np.full((64, 64), 5, dtype=np.int32)
+    layer[2:5, 2:5] = 9  # player blob at grid (0,0)
+    layer[2:5, 10:13] = 7  # goal marker a few cells to the right
+    dir_map = {1: (0, -4), 2: (0, 4), 3: (-4, 0), 4: (4, 0)}
+    return layer, dir_map
+
+
+def _armed_agent(use_llm=True):
+    agent = GeneralAgent(use_llm=use_llm)
+    layer, dir_map = _nav_viable_state()
+    agent._dir_map = dict(dir_map)
+    agent._disc_learned = dict(dir_map)
+    agent._player_color = 9
+    agent._background = 5
+    agent._corridor_color = None
+    agent._probes = []
+    agent._llm_target_color = None
+    return agent, layer, dir_map
+
+
+def test_llm_selector_routes_to_chosen_primitive_over_deterministic():
+    """Purpose: prove the LLM is wired as the LIVE primitive-selector — a
+    confident pick overrides the deterministic detector order. The state is
+    nav-viable (deterministic would commit EXECUTE), but the LLM selects
+    "explore", so the agent must end discovery in the EXPLORE phase.
+
+    Expected feedback: pass means ``_finish_discovery`` honoured the LLM's
+    primitive choice and the dispatch routed it to the matching phase; a fail
+    means the selector is not actually steering dispatch (the LLM would be a
+    no-op goal-color nudge), which is the whole deliverable.
+    """
+    agent, layer, _ = _armed_agent(use_llm=True)
+    # Sanity: the deterministic path would navigate here.
+    assert agent._try_build_plan(layer, [1, 2, 3, 4]) is not None
+
+    agent.last_hypothesis = {
+        "primitive": "explore",
+        "confidence": 0.9,
+        "goal": "probe the board",
+        "target_color": None,
+        "action_meaning": {},
+        "plan": [],
+    }
+    routed = agent._dispatch_llm_primitive(layer, [1, 2, 3, 4])
+    assert routed is True
+    assert agent._phase == _PHASE_EXPLORE
+
+    # And a confident "nav" pick commits EXECUTE on the same viable state.
+    agent2, layer2, _ = _armed_agent(use_llm=True)
+    agent2.last_hypothesis = {
+        "primitive": "nav",
+        "confidence": 0.8,
+        "goal": "reach color 7",
+        "target_color": 7,
+        "action_meaning": {},
+        "plan": [],
+    }
+    assert agent2._dispatch_llm_primitive(layer2, [1, 2, 3, 4]) is True
+    assert agent2._phase == _PHASE_EXECUTE
+
+
+def test_llm_selector_low_confidence_falls_back_to_deterministic():
+    """Purpose: the confidence gate — a hesitant or unusable LLM pick must NOT
+    derail dispatch; the agent falls back to its proven deterministic order.
+
+    Expected feedback: pass means a below-threshold confidence makes
+    ``_dispatch_llm_primitive`` return False (so the caller runs the
+    deterministic nav/pattern/explore order) AND a full discovery with the
+    LLM OFF still reaches EXECUTE on a nav-viable state — proving the default
+    path is unaffected. A fail means the LLM layer can hijack or break the
+    deterministic clears (tu93/ft09/lp85/tn36) we must keep.
+    """
+    agent, layer, _ = _armed_agent(use_llm=True)
+    agent.last_hypothesis = {
+        "primitive": "explore",
+        "confidence": 0.2,  # below _LLM_MIN_CONFIDENCE
+        "goal": "",
+        "target_color": None,
+        "action_meaning": {},
+        "plan": [],
+    }
+    # Low confidence → selector declines; caller falls through to deterministic.
+    assert agent._dispatch_llm_primitive(layer, [1, 2, 3, 4]) is False
+
+    # End-to-end with the LLM OFF (default path): the same viable state commits
+    # the deterministic EXECUTE phase, untouched by the selector code.
+    agent_off, layer_off, _ = _armed_agent(use_llm=False)
+    agent_off._finish_discovery(layer_off, [1, 2, 3, 4])
+    assert agent_off._phase == _PHASE_EXECUTE
+    assert agent_off.last_hypothesis is None

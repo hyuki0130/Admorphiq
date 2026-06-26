@@ -111,6 +111,8 @@ def test_hypothesize_recovers_from_noisy_and_malformed_output():
     garbage = _FakeLLM("not json at all")
     hyp2 = hypothesize("x", garbage)
     assert hyp2 == {
+        "primitive": None,
+        "confidence": 0.0,
         "goal": "",
         "target_color": None,
         "action_meaning": {},
@@ -123,3 +125,33 @@ def test_hypothesize_recovers_from_noisy_and_malformed_output():
     assert hyp3["target_color"] is None
     assert hyp3["action_meaning"] == {}
     assert hyp3["plan"] == ["single"]
+
+
+def test_hypothesize_parses_primitive_selection_and_confidence():
+    """Purpose: the LLM-as-selector contract — a hypothesis carries an enum
+    ``primitive`` choice and a numeric ``confidence`` that the agent uses to
+    decide whether to honour the pick.
+
+    Expected feedback: pass means a clean selection round-trips with the
+    primitive kept only when it is one of the four dispatchable names and the
+    confidence clamped to [0,1]; a fail means the selector signal the agent
+    routes on is being dropped or mistyped, collapsing the LLM back to a
+    goal-color nudge.
+    """
+    llm = _FakeLLM(
+        '{"primitive": "toggle", "confidence": 0.82, "goal": "flip all cells", '
+        '"target_color": null, "action_meaning": {}, "plan": ["click cells"]}'
+    )
+    hyp = hypothesize("state", llm)
+    assert hyp["primitive"] == "toggle"
+    assert hyp["confidence"] == 0.82
+
+    # An invented primitive name is rejected to None (deterministic fallback);
+    # an out-of-range confidence is clamped, not crashed on.
+    bad = _FakeLLM(
+        '{"primitive": "teleport", "confidence": 5, "goal": "g", '
+        '"target_color": null, "action_meaning": {}, "plan": []}'
+    )
+    hyp2 = hypothesize("state", bad)
+    assert hyp2["primitive"] is None
+    assert hyp2["confidence"] == 1.0

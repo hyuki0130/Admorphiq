@@ -876,6 +876,11 @@ _TOGGLE_DIFF_MAX = 120
 # The flipped region's centroid must be within this many px of the clicked
 # point to count as that cell's own toggle (rejects far-away HUD/animation).
 _TOGGLE_LOCALITY_PX = 8.0
+# Minimum LLM ``confidence`` for the agent to act on the LLM's primitive
+# SELECTION. Below this the LLM pick is discarded and the deterministic
+# detector order (nav -> pattern -> explore) runs unchanged — so a hesitant or
+# malformed hypothesis can never derail the proven default path.
+_LLM_MIN_CONFIDENCE = 0.5
 
 
 class GeneralAgent:
@@ -894,7 +899,7 @@ class GeneralAgent:
         self,
         seed: int = 0,
         use_llm: bool | None = None,
-        llm_candidate: str = "qwen_3_14b_q4",
+        llm_candidate: str = "qwen_3_8b_q4",
     ) -> None:
         self._rng = random.Random(seed)
         self._action_count = 0
@@ -1164,6 +1169,15 @@ class GeneralAgent:
             self._known_player_color = self._player_color
             self._known_corridor_color = self._corridor_color
 
+        # LLM-as-selector: when enabled and the hypothesis is confident, the LLM
+        # CHOOSES which primitive to run (nav / toggle / paint / explore). A
+        # successful, viable pick commits the phase and we return. Otherwise
+        # (LLM off, low confidence, parse failure, or the chosen primitive can't
+        # be staged on this frame) we fall through to the deterministic detector
+        # order below — the proven default path is never weakened.
+        if self._use_llm and self._dispatch_llm_primitive(layer, avail):
+            return
+
         plan = self._try_build_plan(layer, avail)
         if plan:
             self._phase = _PHASE_EXECUTE
@@ -1175,6 +1189,60 @@ class GeneralAgent:
             self._plan_commit_action = self._action_count
         else:
             self._phase = _PHASE_EXPLORE
+
+    def _dispatch_llm_primitive(self, layer: np.ndarray, avail: list[int]) -> bool:
+        """Commit the phase to the LLM's SELECTED primitive; False to fall back.
+
+        Reads ``self.last_hypothesis`` (set by :meth:`_maybe_hypothesize`) and
+        maps the enum ``primitive`` field to the agent's actual dispatch:
+
+          * ``nav``    -> grid-BFS navigation plan (EXECUTE), using the LLM's
+            ``target_color`` goal when it named one (already applied upstream);
+          * ``toggle`` -> interactive GF(2) toggle solver (PATTERN);
+          * ``paint``  -> paint-to-match solver (PATTERN);
+          * ``explore``-> disciplined cheap-explore (EXPLORE).
+
+        The pick is honoured ONLY when ``confidence >= _LLM_MIN_CONFIDENCE`` and
+        the primitive is one of the closed enum names; a nav/toggle/paint pick
+        additionally requires the corresponding plan/detector to be stageable on
+        the current frame, else this returns False and the deterministic order
+        runs. ``explore`` is always stageable. Never raises.
+        """
+        hyp = self.last_hypothesis
+        if not hyp:
+            return False
+        primitive = hyp.get("primitive")
+        confidence = hyp.get("confidence")
+        if primitive not in ("nav", "toggle", "paint", "explore"):
+            return False
+        if isinstance(confidence, bool) or not isinstance(confidence, (int, float)):
+            return False
+        if confidence < _LLM_MIN_CONFIDENCE:
+            return False
+
+        if primitive == "nav":
+            if self._try_build_plan(layer, avail):
+                self._phase = _PHASE_EXECUTE
+                self._last_player_cell = None
+                self._stuck_steps = 0
+                self._plan_commit_action = self._action_count
+                return True
+            return False
+        if primitive == "toggle":
+            if 6 in avail and self._stage_toggle(layer):
+                self._phase = _PHASE_PATTERN
+                self._plan_commit_action = self._action_count
+                return True
+            return False
+        if primitive == "paint":
+            if 6 in avail and self._stage_paint(layer):
+                self._phase = _PHASE_PATTERN
+                self._plan_commit_action = self._action_count
+                return True
+            return False
+        # explore — always available as the disciplined fallback.
+        self._phase = _PHASE_EXPLORE
+        return True
 
     def _seed_from_known(self, layer: np.ndarray, avail: list[int]) -> bool:
         """Seed this level from carried control knowledge; arm EXECUTE if usable.
@@ -1350,34 +1418,53 @@ class GeneralAgent:
         stencil is measured interactively in :meth:`_pattern_step` via a
         self-inverse click sweep. Returns True when a plan was staged.
         """
-        from admorphiq.primitives.pattern_match import (
-            detect_paint_task,
-            detect_toggle_task,
-            plan_paint,
-        )
+        if 6 not in avail:
+            return False
+        return self._stage_paint(layer) or self._stage_toggle(layer)
 
-        if 6 in avail:
-            paint = detect_paint_task(layer, self._probes)
-            if paint is not None:
-                queue = plan_paint(paint, layer)
-                if queue:
-                    self._pat_kind = "paint"
-                    self._pat_queue = queue
-                    return True
-            tog = detect_toggle_task(layer, self._probes)
-            if tog is not None and len(tog["cells"]) >= 2:
-                self._pat_kind = "toggle"
-                self._pat_cells = tog["cells"][:_PATTERN_TOGGLE_PROBE_CAP]
-                self._pat_sub = "probe"
-                self._pat_j = 0
-                self._pat_click_probes = []
-                self._pat_base_layer = layer.copy()
-                self._pat_toggled = []
-                self._pat_candidates = []
-                self._pat_cand_k = 0
-                self._pat_applied = set()
-                self._pat_delta = []
+    def _stage_paint(self, layer: np.ndarray) -> bool:
+        """Stage a paint-to-match plan if a congruent reference/canvas pair fires.
+
+        Returns True (and arms ``_pat_kind="paint"`` + the click queue) when the
+        paint detector finds a copyable pattern; False when no paint signature is
+        present. Split out of :meth:`_init_pattern` so the LLM selector can
+        request the paint primitive directly.
+        """
+        from admorphiq.primitives.pattern_match import detect_paint_task, plan_paint
+
+        paint = detect_paint_task(layer, self._probes)
+        if paint is not None:
+            queue = plan_paint(paint, layer)
+            if queue:
+                self._pat_kind = "paint"
+                self._pat_queue = queue
                 return True
+        return False
+
+    def _stage_toggle(self, layer: np.ndarray) -> bool:
+        """Stage the interactive GF(2) toggle solve if a clickable lattice fires.
+
+        Returns True (and arms ``_pat_kind="toggle"`` plus the candidate cells
+        for the interactive stencil sweep) when at least two grid cells are
+        detected; False otherwise. Split out of :meth:`_init_pattern` so the LLM
+        selector can request the toggle primitive directly.
+        """
+        from admorphiq.primitives.pattern_match import detect_toggle_task
+
+        tog = detect_toggle_task(layer, self._probes)
+        if tog is not None and len(tog["cells"]) >= 2:
+            self._pat_kind = "toggle"
+            self._pat_cells = tog["cells"][:_PATTERN_TOGGLE_PROBE_CAP]
+            self._pat_sub = "probe"
+            self._pat_j = 0
+            self._pat_click_probes = []
+            self._pat_base_layer = layer.copy()
+            self._pat_toggled = []
+            self._pat_candidates = []
+            self._pat_cand_k = 0
+            self._pat_applied = set()
+            self._pat_delta = []
+            return True
         return False
 
     def _pattern_step(self, layer: np.ndarray, avail: list[int], latest_frame):

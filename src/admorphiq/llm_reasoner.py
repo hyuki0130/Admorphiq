@@ -32,12 +32,21 @@ import numpy as np
 
 from .general_agent import connected_components
 
+# The closed set of executable primitives the agent can dispatch. The LLM's
+# ``primitive`` choice is enum-bound to exactly these names so it can never name
+# a strategy that does not exist (the anchor/hallucination failure mode the
+# wiki-routing rounds repeatedly hit). ``explore`` is the always-safe fallback.
+PRIMITIVE_CHOICES: tuple[str, ...] = ("nav", "toggle", "paint", "explore")
+
 # JSON Schema enforced at the decoder (Ollama `format` / llama.cpp grammar).
-# Closed shapes only: goal/plan are free text, target_color is an int or null,
-# action_meaning is a free string map keyed by action id.
+# Closed shapes only: ``primitive`` is enum-bound to the dispatchable set,
+# ``confidence`` gates whether the selection is trusted, goal/plan are free
+# text, target_color is an int or null, action_meaning is a free string map.
 HYPOTHESIS_SCHEMA: dict[str, Any] = {
     "type": "object",
     "properties": {
+        "primitive": {"type": "string", "enum": list(PRIMITIVE_CHOICES)},
+        "confidence": {"type": "number"},
         "goal": {"type": "string"},
         "target_color": {"type": ["integer", "null"]},
         "action_meaning": {
@@ -46,7 +55,14 @@ HYPOTHESIS_SCHEMA: dict[str, Any] = {
         },
         "plan": {"type": "array", "items": {"type": "string"}},
     },
-    "required": ["goal", "target_color", "action_meaning", "plan"],
+    "required": [
+        "primitive",
+        "confidence",
+        "goal",
+        "target_color",
+        "action_meaning",
+        "plan",
+    ],
 }
 
 
@@ -201,14 +217,31 @@ def build_symbolic_state(
 
 
 _SYSTEM = (
-    "You are analysing an ARC-AGI-3 interactive game from a COMPACT symbolic "
-    "summary (entities by color + how each action changed the frame). Reason "
-    "about the likely WIN goal and which colored object is the target to reach "
-    "or act on. Respond with JSON only.\n\n"
+    "You are the routing brain of an ARC-AGI-3 game agent. From a COMPACT "
+    "symbolic summary (entities by color + how each action changed the frame) "
+    "you SELECT which solver PRIMITIVE the agent should run, and parameterize "
+    "it. Respond with JSON only.\n\n"
+    "Choose exactly one primitive:\n"
+    '  "nav"    — a controllable PLAYER object moves under the actions; reach a '
+    "target cell. Pick this when one color is tagged [PLAYER] and there is a "
+    "distinct goal/exit marker. Set target_color to the goal color.\n"
+    '  "toggle" — a grid/lattice of clickable cells must be flipped to a uniform '
+    "or matching pattern (lights-out style). Pick when ACTION6 is available and "
+    "the board is many small same-shaped cells, no moving player.\n"
+    '  "paint"  — two congruent regions: copy a reference pattern onto an '
+    "editable canvas by clicking palette+cells. Pick when ACTION6 is available "
+    "and you see a reference region plus a blank/uniform twin region.\n"
+    '  "explore" — none of the above clearly fit; let the agent probe. Use this '
+    "(low confidence) whenever the signature is ambiguous.\n\n"
     "Schema:\n"
+    '  primitive: one of "nav" | "toggle" | "paint" | "explore".\n'
+    "  confidence: number in [0,1]; how sure you are of the primitive choice. "
+    "Below 0.5 the agent ignores your pick and falls back to its deterministic "
+    "detectors, so only go high when the signature is clear.\n"
     '  goal: one short sentence describing the win condition.\n'
-    '  target_color: the integer color id of the goal/target cell to reach, '
-    "or null if there is no single target.\n"
+    '  target_color: the integer color id of the goal/target cell to reach '
+    "(nav) or the key palette color (paint), or null if there is no single "
+    "target.\n"
     '  action_meaning: map of action-id (string) -> short meaning '
     '(e.g. "move up", "no effect").\n'
     '  plan: list of short imperative steps.\n'
@@ -234,6 +267,8 @@ def hypothesize(state_text: str, llm: Any) -> dict[str, Any]:
 def _parse_hypothesis(raw: str) -> dict[str, Any]:
     """Coerce raw LLM text into the hypothesis dict with safe defaults."""
     default: dict[str, Any] = {
+        "primitive": None,
+        "confidence": 0.0,
         "goal": "",
         "target_color": None,
         "action_meaning": {},
@@ -242,6 +277,21 @@ def _parse_hypothesis(raw: str) -> dict[str, Any]:
     obj = _extract_json_object(raw)
     if not isinstance(obj, dict):
         return default
+
+    prim = obj.get("primitive")
+    if isinstance(prim, str) and prim in PRIMITIVE_CHOICES:
+        default["primitive"] = prim
+
+    conf = obj.get("confidence")
+    if isinstance(conf, bool):  # bool is an int subclass; not a confidence
+        default["confidence"] = 0.0
+    elif isinstance(conf, (int, float)):
+        default["confidence"] = max(0.0, min(1.0, float(conf)))
+    elif isinstance(conf, str):
+        try:
+            default["confidence"] = max(0.0, min(1.0, float(conf.strip())))
+        except ValueError:
+            default["confidence"] = 0.0
 
     goal = obj.get("goal")
     default["goal"] = goal if isinstance(goal, str) else ""
