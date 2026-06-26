@@ -49,6 +49,10 @@ def _make_agent(name: str):
     """
     if name == "general":
         return GeneralAgent()
+    if name == "bc":
+        from admorphiq.bc_agent import BCPolicyAgent
+
+        return BCPolicyAgent()
     return AdmorphiqAdapter()
 
 # ─────────────────────────────── scoring maths ──────────────────────────────

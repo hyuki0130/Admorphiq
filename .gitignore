@@ -53,3 +53,5 @@ scripts/su15_l*_sim*.py
 # Cloned official framework (local dev only; ships via Kaggle Data tab)
 ARC-AGI-3-Agents/
 scripts/efficiency_*.json
+models/bc_policy.pt
+data/traces/
