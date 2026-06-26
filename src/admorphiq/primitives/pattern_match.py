@@ -52,6 +52,13 @@ _PATCH_RADIUS = 2
 _REGION_DIM_TOL = 3
 # Sprite grid resolution used for the per-cell paint diff (cd82 sprites are 10x10).
 _PAINT_GRID = 10
+# A palette swatch is a small distinct-colour cell enclosed by a uniform frame
+# (the swatch border). Sizes bound the inner colour blob (cd82: a 3x3 = 9px
+# centre inside a 5x5 frame). The border test rejects same-size decoys such as
+# the selection-indicator line, which sits on the background with no frame.
+_SWATCH_MIN_SIZE = 4
+_SWATCH_MAX_SIZE = 25
+_SWATCH_BORDER_FRAC = 0.5
 
 
 # ── grid-cell detection (shared by toggle) ───────────────────────────────────
@@ -461,6 +468,168 @@ def plan_paint(
         for tx, ty in targets:
             plan.append((action_id, tx, ty))
     return plan
+
+
+def detect_palette_swatches(
+    layer: np.ndarray,
+    background: int | None = None,
+    exclude: list[tuple[int, int, int, int]] | None = None,
+) -> list[tuple[int, int, int]]:
+    """Centroids + colour of palette swatches: small framed colour cells.
+
+    Observable signature: a colour palette is a row/column of small swatches,
+    each a distinct interior colour enclosed by a uniform *frame* colour. We
+    return one ``(x, y, colour)`` per swatch (``x, y`` the click point, the
+    swatch centre). The frame test — the 1px ring around the blob's bounding
+    box must be dominated by a single non-background colour different from the
+    blob — rejects same-size decoys (the selection-indicator line, stray sprite
+    fragments) that sit on bare background. ``exclude`` lists region bounding
+    boxes (reference / editable panels) whose interior swatch-sized blobs are
+    not palette swatches. Pure / env-free; never keys on a game id / title.
+    """
+    if layer.size == 0:
+        return []
+    if background is None:
+        vals, counts = np.unique(layer, return_counts=True)
+        background = int(vals[int(counts.argmax())])
+    exclude = exclude or []
+    h, w = layer.shape
+    cand: list[tuple[int, int, int, int]] = []  # (cx, cy, colour, frame_colour)
+    for c in connected_components(layer, background, min_size=_SWATCH_MIN_SIZE):
+        if not (_SWATCH_MIN_SIZE <= c["size"] <= _SWATCH_MAX_SIZE):
+            continue
+        cx, cy = int(round(c["cx"])), int(round(c["cy"]))
+        if any(xmin <= cx <= xmax and ymin <= cy <= ymax for xmin, ymin, xmax, ymax in exclude):
+            continue
+        frame = _frame_colour(layer, c["cells"], int(c["color"]), h, w)
+        if frame is not None:
+            cand.append((cx, cy, int(c["color"]), frame))
+    if not cand:
+        return []
+    # Real swatches share one frame colour; a hollow frame-ring blob has the
+    # swatch colour AS its own colour (and a different surround). Keep only blobs
+    # wrapped by the majority frame colour, dropping any whose own colour IS that
+    # frame colour (those are the border rings, not selectable swatches).
+    frame_vals, frame_counts = np.unique([f for *_, f in cand], return_counts=True)
+    common_frame = int(frame_vals[int(frame_counts.argmax())])
+    out = [
+        (cx, cy, colour)
+        for cx, cy, colour, frame in cand
+        if frame == common_frame and colour != common_frame
+    ]
+    out.sort(key=lambda s: (s[1], s[0]))
+    return out
+
+
+def _frame_colour(
+    layer: np.ndarray,
+    cells: set[tuple[int, int]],
+    colour: int,
+    h: int,
+    w: int,
+) -> int | None:
+    """The single frame colour enclosing ``cells``' bbox on all 4 sides, or None.
+
+    A palette swatch's interior blob is wrapped by a closed border (the swatch
+    frame); a decoy — the selection-indicator line, the hollow frame ring
+    itself, a sprite fragment — is bordered on at most one side. We take each
+    side's majority colour just outside the bbox and require all four to agree
+    on a single colour ≠ the blob's own colour, returning that frame colour.
+    Holds even when the swatch sits on a coloured panel (a bare-background test
+    would misfire). ``_SWATCH_BORDER_FRAC`` guards a side being mostly empty.
+    """
+    ys = [r for r, _ in cells]
+    xs = [col for _, col in cells]
+    ymin, ymax, xmin, xmax = min(ys), max(ys), min(xs), max(xs)
+
+    def _side_majority(coords: list[tuple[int, int]]) -> int | None:
+        vals = [int(layer[y, x]) for y, x in coords if 0 <= y < h and 0 <= x < w]
+        if not vals:
+            return None
+        u, counts = np.unique(vals, return_counts=True)
+        if int(counts.max()) < _SWATCH_BORDER_FRAC * len(vals):
+            return None
+        return int(u[int(counts.argmax())])
+
+    sides = [
+        _side_majority([(ymin - 1, x) for x in range(xmin - 1, xmax + 2)]),
+        _side_majority([(ymax + 1, x) for x in range(xmin - 1, xmax + 2)]),
+        _side_majority([(y, xmin - 1) for y in range(ymin, ymax + 1)]),
+        _side_majority([(y, xmax + 1) for y in range(ymin, ymax + 1)]),
+    ]
+    frame = sides[0]
+    if frame is None or frame == colour:
+        return None
+    return frame if all(s == frame for s in sides) else None
+
+
+def plan_region_fill(detection: dict, layer: np.ndarray, grid: int = _PAINT_GRID) -> list[dict]:
+    """Decompose editable → reference into a minimal set of half-region fills.
+
+    Many paint-to-match games (cd82) do NOT set individual cells on click — a
+    tool fills a whole *half* of the editable canvas (top / bottom 5 rows or
+    left / right 5 cols) with the selected colour, the fill side chosen by the
+    tool's position. This planner reads the reference's band structure: when the
+    target splits into two uniform horizontal bands (or two vertical bands) over
+    the diagonal-excluded mask, it returns the ``{"side", "colour"}`` fills whose
+    target band the editable does not already match. Filling a whole band to its
+    uniform reference colour reaches the win predicate regardless of the
+    editable's current (possibly probe-corrupted) state — the two half-fills
+    repaint every compared cell. Returns ``[]`` when the reference is not a
+    two-band axis-aligned pattern (the caller then falls back). Pure / env-free.
+    """
+    ref = _sample_cells(layer, detection["reference_region"], grid)
+    cur = _sample_cells(layer, detection["editable_region"], grid)
+    mask = _diagonal_mask(grid)
+    return _decompose_region_fills(ref, cur, mask, grid)
+
+
+def _decompose_region_fills(
+    ref: np.ndarray, cur: np.ndarray, mask: np.ndarray, grid: int
+) -> list[dict]:
+    """Two-band (horizontal preferred, else vertical) fill decomposition."""
+    half = grid // 2
+    bands_h = [
+        ("top", _strip(grid, rows=(0, half))),
+        ("bottom", _strip(grid, rows=(half, grid))),
+    ]
+    bands_v = [
+        ("left", _strip(grid, cols=(0, half))),
+        ("right", _strip(grid, cols=(half, grid))),
+    ]
+    for bands in (bands_h, bands_v):
+        colours = [_uniform_masked_colour(ref, region & mask) for _, region in bands]
+        if any(c is None for c in colours):
+            continue
+        ops: list[dict] = []
+        for (side, region), colour in zip(bands, colours):
+            cmp_cells = cur[region & mask]
+            if cmp_cells.size and bool(np.any(cmp_cells != colour)):
+                ops.append({"side": side, "colour": int(colour)})
+        return ops
+    return []
+
+
+def _strip(
+    grid: int,
+    rows: tuple[int, int] | None = None,
+    cols: tuple[int, int] | None = None,
+) -> np.ndarray:
+    """Boolean ``grid``x``grid`` mask selecting a row-band or col-band strip."""
+    m = np.zeros((grid, grid), dtype=bool)
+    r0, r1 = rows if rows is not None else (0, grid)
+    c0, c1 = cols if cols is not None else (0, grid)
+    m[r0:r1, c0:c1] = True
+    return m
+
+
+def _uniform_masked_colour(grid_arr: np.ndarray, region: np.ndarray) -> int | None:
+    """The single colour of ``grid_arr`` over ``region``, or None if not uniform."""
+    cells = grid_arr[region]
+    if cells.size == 0:
+        return None
+    vals = np.unique(cells)
+    return int(vals[0]) if vals.size == 1 else None
 
 
 # ── small helpers ────────────────────────────────────────────────────────────
