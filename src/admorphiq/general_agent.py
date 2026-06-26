@@ -877,9 +877,12 @@ _TOGGLE_DIFF_MAX = 120
 # point to count as that cell's own toggle (rejects far-away HUD/animation).
 _TOGGLE_LOCALITY_PX = 8.0
 # Minimum LLM ``confidence`` for the agent to act on the LLM's primitive
-# SELECTION. Below this the LLM pick is discarded and the deterministic
-# detector order (nav -> pattern -> explore) runs unchanged — so a hesitant or
-# malformed hypothesis can never derail the proven default path.
+# SELECTION. The LLM is consulted ONLY after the deterministic pipeline has
+# already failed to build a plan (see :meth:`GeneralAgent._finish_discovery`),
+# so it competes with cheap-explore, never with a working deterministic plan.
+# Below this threshold the LLM pick is discarded and the agent falls through to
+# cheap-explore — so a hesitant or malformed hypothesis can never derail the
+# proven default path.
 _LLM_MIN_CONFIDENCE = 0.5
 
 
@@ -1135,7 +1138,7 @@ class GeneralAgent:
         return self._emit(GameAction.from_id(aid))
 
     def _finish_discovery(self, layer: np.ndarray, avail: list[int]) -> None:
-        """Build the direction map, then choose the next phase.
+        """Build the direction map, then choose the next phase — DETERMINISTIC FIRST.
 
         Prefer the centroid-measured ``_disc_learned`` map (robust to blocked
         probes via recentering); fall back to nearest-twin inference only when
@@ -1143,6 +1146,23 @@ class GeneralAgent:
         goal (BFS returns a non-empty action list) before committing to the
         EXECUTE phase. Execution itself is closed-loop (re-planned each step),
         so we do not store the path here.
+
+        Selection order (the regression guarantee):
+
+          1. **Deterministic pipeline** — nav plan, then pattern detectors, run
+             with ZERO LLM influence (``_llm_target_color`` is still None, so
+             goal selection is pure). If a deterministic primitive yields a
+             valid plan it is committed and the LLM is NEVER consulted. This is
+             what keeps the proven clears (tu93/ft09/lp85/tn36): the LLM cannot
+             override a working deterministic plan. R6 inverted this order and
+             a wrong target_color hypothesis broke tu93.
+          2. **LLM fallback** — reached ONLY when the deterministic pipeline
+             produced no plan (the case that would otherwise drop straight to
+             cheap-explore). Here the LLM competes with EXPLORE, never with a
+             working plan: it may name a buildable primitive (nav with a goal
+             colour, toggle, paint) that gets a bounded shot, bailing to explore
+             on no progress via the EXECUTE/PATTERN watchdog.
+          3. **Cheap-explore** — the final fallback.
         """
         # _disc_learned + _player_color were re-derived after each probe by
         # infer_direction_map during stepping; commit them as the dir map.
@@ -1157,11 +1177,6 @@ class GeneralAgent:
                 self._probes, self._player_color, bg
             )
 
-        # Optional LLM goal/strategy hypothesis — called ONCE here, at the end
-        # of discovery (never per action). Used to override the deterministic
-        # goal-cell colour; any error falls back to the pure path.
-        self._maybe_hypothesize(layer, avail)
-
         # Persist the learned controls at game scope so later levels can skip
         # the probe sweep (controls are level-invariant; only layout changes).
         if self._dir_map and self._player_color is not None:
@@ -1169,26 +1184,29 @@ class GeneralAgent:
             self._known_player_color = self._player_color
             self._known_corridor_color = self._corridor_color
 
-        # LLM-as-selector: when enabled and the hypothesis is confident, the LLM
-        # CHOOSES which primitive to run (nav / toggle / paint / explore). A
-        # successful, viable pick commits the phase and we return. Otherwise
-        # (LLM off, low confidence, parse failure, or the chosen primitive can't
-        # be staged on this frame) we fall through to the deterministic detector
-        # order below — the proven default path is never weakened.
-        if self._use_llm and self._dispatch_llm_primitive(layer, avail):
-            return
-
+        # 1) Deterministic-first. No LLM influence on goal selection here.
         plan = self._try_build_plan(layer, avail)
         if plan:
             self._phase = _PHASE_EXECUTE
             self._last_player_cell = None
             self._stuck_steps = 0
             self._plan_commit_action = self._action_count
-        elif self._init_pattern(layer, avail):
+            return
+        if self._init_pattern(layer, avail):
             self._phase = _PHASE_PATTERN
             self._plan_commit_action = self._action_count
-        else:
-            self._phase = _PHASE_EXPLORE
+            return
+
+        # 2) LLM fallback — only when the deterministic pipeline found nothing.
+        # The hypothesis call is ONLY made here, so games the deterministic path
+        # already clears never spend an LLM call and can never be overridden.
+        if self._use_llm:
+            self._maybe_hypothesize(layer, avail)
+            if self._dispatch_llm_primitive(layer, avail):
+                return
+
+        # 3) Cheap-explore fallback.
+        self._phase = _PHASE_EXPLORE
 
     def _dispatch_llm_primitive(self, layer: np.ndarray, avail: list[int]) -> bool:
         """Commit the phase to the LLM's SELECTED primitive; False to fall back.
@@ -1205,8 +1223,13 @@ class GeneralAgent:
         The pick is honoured ONLY when ``confidence >= _LLM_MIN_CONFIDENCE`` and
         the primitive is one of the closed enum names; a nav/toggle/paint pick
         additionally requires the corresponding plan/detector to be stageable on
-        the current frame, else this returns False and the deterministic order
-        runs. ``explore`` is always stageable. Never raises.
+        the current frame, else this returns False and the caller falls through
+        to cheap-explore. ``explore`` is always stageable. Never raises.
+
+        Called by :meth:`_finish_discovery` ONLY when the deterministic pipeline
+        produced no plan, so this dispatch can only ADD a clear on a game that
+        would otherwise explore — it can never override a working deterministic
+        plan.
         """
         hyp = self.last_hypothesis
         if not hyp:

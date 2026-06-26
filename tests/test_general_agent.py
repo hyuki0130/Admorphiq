@@ -1029,21 +1029,18 @@ def _armed_agent(use_llm=True):
     return agent, layer, dir_map
 
 
-def test_llm_selector_routes_to_chosen_primitive_over_deterministic():
-    """Purpose: prove the LLM is wired as the LIVE primitive-selector — a
-    confident pick overrides the deterministic detector order. The state is
-    nav-viable (deterministic would commit EXECUTE), but the LLM selects
-    "explore", so the agent must end discovery in the EXPLORE phase.
+def test_llm_dispatch_routes_chosen_primitive_to_phase():
+    """Purpose: prove the fallback-time primitive selector routes each enum pick
+    to its matching phase. ``_dispatch_llm_primitive`` is the unit the LLM
+    fallback calls AFTER the deterministic pipeline has already declined; this
+    test exercises it in isolation. A confident "explore" pick routes EXPLORE; a
+    confident "nav" pick with a viable goal routes EXECUTE.
 
-    Expected feedback: pass means ``_finish_discovery`` honoured the LLM's
-    primitive choice and the dispatch routed it to the matching phase; a fail
-    means the selector is not actually steering dispatch (the LLM would be a
-    no-op goal-color nudge), which is the whole deliverable.
+    Expected feedback: pass means the dispatch maps the enum primitive to the
+    correct agent phase; a fail means the selector cannot actually steer the
+    phase, so the LLM fallback would be a no-op.
     """
     agent, layer, _ = _armed_agent(use_llm=True)
-    # Sanity: the deterministic path would navigate here.
-    assert agent._try_build_plan(layer, [1, 2, 3, 4]) is not None
-
     agent.last_hypothesis = {
         "primitive": "explore",
         "confidence": 0.9,
@@ -1056,7 +1053,7 @@ def test_llm_selector_routes_to_chosen_primitive_over_deterministic():
     assert routed is True
     assert agent._phase == _PHASE_EXPLORE
 
-    # And a confident "nav" pick commits EXECUTE on the same viable state.
+    # And a confident "nav" pick commits EXECUTE on a viable state.
     agent2, layer2, _ = _armed_agent(use_llm=True)
     agent2.last_hypothesis = {
         "primitive": "nav",
@@ -1068,6 +1065,97 @@ def test_llm_selector_routes_to_chosen_primitive_over_deterministic():
     }
     assert agent2._dispatch_llm_primitive(layer2, [1, 2, 3, 4]) is True
     assert agent2._phase == _PHASE_EXECUTE
+
+
+def test_llm_not_consulted_when_deterministic_plan_exists():
+    """Purpose: the core deterministic-FIRST guarantee. When the deterministic
+    pipeline can build a plan on a nav-viable state, ``_finish_discovery`` must
+    commit EXECUTE WITHOUT ever calling the LLM — even with the LLM enabled. The
+    LLM may only ADD clears on games that would otherwise explore; it can never
+    override or regress a working deterministic plan (the R6 failure that broke
+    tu93 by acting on a wrong target_color=6 hypothesis).
+
+    Expected feedback: pass means the LLM backend's ``generate`` was never
+    invoked and ``last_hypothesis`` stayed None while the phase reached EXECUTE
+    — proving the LLM is short-circuited on deterministic-clearable games. A
+    fail means the LLM is still in the path for working games and can regress
+    them, which is exactly the design defect this round fixes.
+    """
+
+    class _CountingLLM:
+        def __init__(self) -> None:
+            self.calls = 0
+
+        def generate(self, prompt, max_tokens=512, json_schema=None):
+            self.calls += 1
+            return (
+                '{"primitive": "nav", "confidence": 0.95, "goal": "x", '
+                '"target_color": 6, "action_meaning": {}, "plan": []}'
+            )
+
+    agent, layer, _ = _armed_agent(use_llm=True)
+    # Sanity: the deterministic path WOULD navigate here.
+    assert agent._try_build_plan(layer, [1, 2, 3, 4]) is not None
+
+    spy = _CountingLLM()
+    agent._llm = spy
+    agent._llm_loaded = True
+
+    agent._disc_learned = dict(agent._dir_map)
+    agent._finish_discovery(layer, [1, 2, 3, 4])
+
+    assert agent._phase == _PHASE_EXECUTE
+    assert spy.calls == 0
+    assert agent.last_hypothesis is None
+    # The deterministic goal heuristic was used — no LLM target_color leaked in.
+    assert agent._llm_target_color is None
+
+
+def test_llm_consulted_only_when_deterministic_yields_no_plan():
+    """Purpose: the complementary half of the deterministic-FIRST contract —
+    when the deterministic pipeline produces NO plan (no player/goal, no pattern
+    detector fires), the LLM fallback IS consulted so it can route a primitive
+    the deterministic layer missed. Here the LLM names "explore", which the
+    fallback dispatches to the EXPLORE phase.
+
+    Expected feedback: pass means ``generate`` WAS called exactly once and the
+    parsed hypothesis was recorded — proving the LLM still gets its shot on the
+    games we currently score 0 on. A fail means the deterministic-first wiring
+    over-suppressed the LLM and it never competes with cheap-explore.
+    """
+
+    class _ExploreLLM:
+        def __init__(self) -> None:
+            self.calls = 0
+
+        def generate(self, prompt, max_tokens=512, json_schema=None):
+            self.calls += 1
+            return (
+                '{"primitive": "explore", "confidence": 0.9, "goal": "probe", '
+                '"target_color": null, "action_meaning": {}, "plan": []}'
+            )
+
+    # No control map → deterministic nav cannot plan; uniform frame → no pattern.
+    agent = GeneralAgent(use_llm=True)
+    agent._dir_map = {}
+    agent._disc_learned = {}
+    agent._player_color = None
+    agent._background = 5
+    agent._probes = []
+    agent._llm_target_color = None
+    layer = np.full((64, 64), 5, dtype=np.int32)
+
+    assert agent._try_build_plan(layer, [1, 2, 3, 4]) is None
+
+    spy = _ExploreLLM()
+    agent._llm = spy
+    agent._llm_loaded = True
+    agent._finish_discovery(layer, [1, 2, 3, 4])
+
+    assert spy.calls == 1
+    assert agent.last_hypothesis is not None
+    assert agent.last_hypothesis["primitive"] == "explore"
+    assert agent._phase == _PHASE_EXPLORE
 
 
 def test_llm_selector_low_confidence_falls_back_to_deterministic():
