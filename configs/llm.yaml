@@ -45,6 +45,25 @@ candidates:
     strengths: [reasoning_14b_class_top, lora_ready]
     enabled: true
 
+  # --- Stronger reasoning candidate: Qwen 3 30B-A3B (MoE) --------------------
+  # R12 follow-up (2026-06-26): 8b AND 14b both gave WRONG goal targets on the
+  # selector task (tu93 target 4/9, real 14). Testing whether a 30B-tier MoE
+  # (3B active → fast inference, fits 9h/110-game budget; ~18GB Q4 fits the
+  # 96GB GPU trivially) reads game goals correctly where 8b/14b fail.
+  - id: qwen_3_30b_a3b
+    display_name: "Qwen 3 30B-A3B (MoE Q4_K_M)"
+    family: qwen3
+    ollama_tag: qwen3:30b-a3b
+    params_dense: 30.0e9
+    params_effective: 3.0e9
+    license: Apache-2.0
+    quantization: Q4_K_M
+    expected_vram_gb: 18.0
+    context_tokens: 131072
+    lora_ecosystem: growing
+    strengths: [reasoning_30b_tier, moe_fast_inference]
+    enabled: false   # Kaggle-GPU only: ~7min/call on local Mac Metal (unvalidatable here); 8b/14b both gave WRONG goal targets so size is not the bottleneck
+
   # --- Reasoning-tier candidate: Gemma 4 26B MoE -----------------------------
   # NOW KAGGLE-DEPLOYABLE (corrected 2026-06-25). Eval machine is
   # g4-standard-48 = RTX PRO 6000 Blackwell, 96GB VRAM (NOT T4 16GB). Q4
