@@ -236,7 +236,10 @@ def main() -> None:
                    help="early-stop after this many evals without val improvement")
     p.add_argument("--no-augment", dest="augment", action="store_false",
                    help="disable D4 ACTION6 augmentation (default: enabled)")
-    p.set_defaults(augment=True)
+    p.add_argument("--no-balance-aug", dest="balance_aug", action="store_false",
+                   help="disable the v4 ACTION6 augmentation weight-balance fix "
+                        "(default: enabled — preserves movement-game coverage)")
+    p.set_defaults(augment=True, balance_aug=True)
     args = p.parse_args()
 
     if args.device:
@@ -278,6 +281,17 @@ def main() -> None:
         a6_fr, a6_cx, a6_cy, a6_w = d4_augment_action6(
             fr_tr[a6_tr_mask], cx_tr[a6_tr_mask], cy_tr[a6_tr_mask], w_tr[a6_tr_mask]
         )
+        # Coverage-preserving balance fix (v4): D4 multiplies the ACTION6 rows 8x
+        # but leaves their per-row weights unchanged, so the aggregate ACTION6
+        # loss mass becomes 8x the simple-action mass. v3 measured this as a
+        # coverage collapse (10->6 cleared games) because the model over-focused
+        # the coordinate head and starved the directional ACTION1-5 signal that
+        # movement games depend on. Dividing the augmented weights by the number
+        # of symmetries keeps the ACTION6 aggregate mass constant — the policy
+        # still sees 8 coordinate-invariant views (D4's generalization benefit)
+        # but no longer drowns out the simple actions.
+        if args.balance_aug:
+            a6_w = a6_w / float(len(D4_TRANSFORMS))
         n_a6_aug = a6_fr.shape[0]
         fr_tr = np.concatenate([fr_s, a6_fr])
         act_tr = np.concatenate([act_tr[~a6_tr_mask], np.full(n_a6_aug, 6, np.int64)])
