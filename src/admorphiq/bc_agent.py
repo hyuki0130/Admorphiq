@@ -21,6 +21,8 @@ the agent's runtime conversion/fallback deps are imported lazily.
 from __future__ import annotations
 
 import os
+import sys
+import time
 from pathlib import Path
 from typing import Any
 
@@ -135,11 +137,31 @@ class BCPolicyAgent:
       the action budget.
     * **Test-time training (TTT)** — when the policy clears a level on the
       current game, the ``(frame -> action)`` transitions that produced the
-      clear are fine-tuned into the per-game working model with a handful of
-      gradient steps (Jack Cole's ARC TTT technique). The working model is a
-      fresh per-game copy of the on-disk base weights, so adaptation is
-      isolated to this game and never written back to disk. Gated behind a
-      flag (default on; ``ttt=False`` or env ``BC_TTT=0`` disables it).
+      clear (whether the move came from the policy OR from the exploration
+      fallback below) are fine-tuned HARD into the per-game working model with
+      tens of gradient steps (Jack Cole's ARC TTT technique, scaled up for
+      depth). The intent is depth: lock the working model onto THIS game's
+      mechanics after L1 so it can carry them into L2, L3, … . The working
+      model is a fresh per-game copy of the on-disk base weights, so
+      adaptation is isolated to this game and never written back to disk. The
+      cumulative per-game finetune wall-clock is capped (``TTT_TIME_BUDGET_S``)
+      to stay well inside the ~5min/game (9h / 110 games) Kaggle budget. Gated
+      behind a flag (default on; ``ttt=False`` or env ``BC_TTT=0`` disables it).
+
+    * **Search-assisted depth** — clearing L1 does not teach the policy L2's
+      (often new) winning move. Once at least one level has been cleared, a
+      sustained unproductive streak (``SEARCH_WINDOW`` actions with no level-up)
+      hands the step to the exploration fallback to DISCOVER a level-clearing
+      action. The discovered transition is recorded like any policy pick, so
+      the next clear's TTT pass locks the freshly-found move into the policy and
+      the agent pushes deeper. Confident policy moves are always tried first
+      (search only engages after the window) to keep the squared efficiency
+      metric high.
+
+    TTT hyperparameters and the search window are env-overridable
+    (``BC_TTT_LR`` / ``BC_TTT_STEPS`` / ``BC_SEARCH_WINDOW``) so the long
+    depth bench can be tuned without code edits; ``BC_TTT_LOG=1`` streams
+    per-finetune wall-time to stderr for the measurement report.
     """
 
     STUCK_THRESHOLD = 4          # consecutive unchanged frames before falling back
@@ -147,13 +169,25 @@ class BCPolicyAgent:
     POLICY_TOPK = 8             # next-best candidates considered when escaping a cycle
     GIVE_UP_NO_PROGRESS = 2500  # actions on a level without progress before bailing out
 
-    # TTT hyperparameters — kept tiny so the per-game cost fits the
-    # ~5min/game (9h / 110 games) Kaggle budget.
+    # Search-assisted depth: after >=1 clear, this many no-progress actions
+    # before the exploration fallback takes over to discover the next move.
+    SEARCH_WINDOW = 100
+
+    # TTT hyperparameters — DEPTH-focused but collapse-safe. ``TTT_STEPS`` is a
+    # *ceiling*: an early-stop at ``TTT_LOSS_FLOOR`` halts as soon as the demos
+    # are fit, so easy trajectories train a few steps (preserving the general
+    # features the NEXT level needs) while harder/more-diverse trajectories get
+    # more adaptation — without driving the loss to 0 and overfitting the
+    # working model into a degenerate single-action policy (the regression that
+    # aggressive fixed-step TTT caused on AR25). A cumulative wall-clock cap
+    # keeps the per-game cost safely inside the ~5min/game (9h/110) budget.
     TTT_LR = 1e-4
-    TTT_STEPS = 8
-    TTT_MAX_SAMPLES = 48
+    TTT_STEPS = 40               # max gradient steps per finetune (early-stopped)
+    TTT_LOSS_FLOOR = 0.1         # stop once the demos are fit, before collapse
+    TTT_MAX_SAMPLES = 128
     TTT_MIN_SAMPLES = 4
-    TTT_BUFFER_CAP = 512
+    TTT_BUFFER_CAP = 1024
+    TTT_TIME_BUDGET_S = 150.0    # cumulative per-game finetune wall-clock cap
 
     def __init__(
         self,
@@ -183,8 +217,22 @@ class BCPolicyAgent:
         env_ttt = os.environ.get("BC_TTT", "").strip().lower()
         self._ttt_enabled = bool(ttt) and env_ttt not in ("0", "false", "no", "off")
 
+        # Env-overridable depth knobs (instance copies shadow the class attrs).
+        self.TTT_LR = float(os.environ.get("BC_TTT_LR", self.TTT_LR))
+        self.TTT_STEPS = int(os.environ.get("BC_TTT_STEPS", self.TTT_STEPS))
+        self.TTT_LOSS_FLOOR = float(os.environ.get("BC_TTT_LOSS_FLOOR", self.TTT_LOSS_FLOOR))
+        self.SEARCH_WINDOW = int(os.environ.get("BC_SEARCH_WINDOW", self.SEARCH_WINDOW))
+        self._ttt_log = os.environ.get("BC_TTT_LOG", "").strip().lower() in (
+            "1", "true", "yes", "on",
+        )
+
         # Per-game mutable thresholds (instance copies so tests can tune them).
         self._give_up_no_progress = self.GIVE_UP_NO_PROGRESS
+
+        # Per-game depth/adaptation bookkeeping.
+        self._levels_cleared_this_game = 0
+        self._ttt_time_spent = 0.0   # cumulative finetune wall-clock this game
+        self.ttt_seconds = 0.0       # public mirror for the measurement report
 
         self._prev_frame: np.ndarray | None = None
         self._no_change_streak = 0
@@ -248,16 +296,25 @@ class BCPolicyAgent:
         if not simple_mask.any() and not action6_ok:
             return self._reset_action()
 
-        if self._no_change_streak >= self.STUCK_THRESHOLD:
+        # Search-assisted depth: once a level has been cleared this game, a long
+        # unproductive streak means the policy doesn't know this level's new
+        # move. Hand the step to the exploration fallback to DISCOVER a
+        # level-clearing action; the discovered transition is recorded so the
+        # next clear's TTT pass locks it into the policy and we push deeper.
+        engage_search = (
+            self._levels_cleared_this_game >= 1
+            and self._actions_since_progress > self.SEARCH_WINDOW
+        )
+        if self._no_change_streak >= self.STUCK_THRESHOLD or engage_search:
             self._prev_frame = frame
-            return self._fallback_action(obs)
+            return self._explore_action(frame, obs)
 
         fhash = _frame_hash(frame)
         idx = self._pick_noncycling_index(frame, fhash, simple_mask, action6_ok)
         if idx is None:
             # Every top candidate at this state is a known cycle → explore.
             self._prev_frame = frame
-            return self._fallback_action(obs)
+            return self._explore_action(frame, obs)
 
         self._seen_state_action[(fhash, idx)] = (
             self._seen_state_action.get((fhash, idx), 0) + 1
@@ -301,6 +358,7 @@ class BCPolicyAgent:
 
     def _on_level_cleared(self) -> None:
         """Fine-tune on the just-cleared level's transitions and reset trackers."""
+        self._levels_cleared_this_game += 1
         if self._ttt_enabled and self._ttt_pending:
             self._ttt_buffer.extend(self._ttt_pending)
             if len(self._ttt_buffer) > self.TTT_BUFFER_CAP:
@@ -313,15 +371,21 @@ class BCPolicyAgent:
         self._actions_since_progress = 0
 
     def _ttt_finetune(self) -> None:
-        """A few gradient steps adapting the per-game model to its own successes.
+        """Fine-tune the per-game model HARD on its own level-clearing successes.
 
-        Trains the in-memory working model only — the on-disk base weights are
-        never modified, and each game gets a fresh working model, so adaptation
-        does not leak across games.
+        Tens of gradient steps lock the working model onto THIS game's mechanics
+        so the cleared-level behaviour transfers to the next level (the depth
+        lever). Trains the in-memory working model only — the on-disk base
+        weights are never modified, and each game gets a fresh working model, so
+        adaptation does not leak across games. A cumulative wall-clock budget
+        (``TTT_TIME_BUDGET_S``) keeps the per-game cost inside the Kaggle
+        ~5min/game envelope.
         """
         buf = self._ttt_buffer
         if len(buf) < self.TTT_MIN_SAMPLES:
             return
+        if self._ttt_time_spent >= self.TTT_TIME_BUDGET_S:
+            return  # stay within the per-game finetune wall-clock budget
         samples = buf[-self.TTT_MAX_SAMPLES:]
         frames = np.stack([f for f, _ in samples])  # (N, 64, 64)
         targets = torch.tensor(
@@ -329,15 +393,71 @@ class BCPolicyAgent:
         )
         x = onehot_batch(frames).to(self.device)
 
+        t0 = time.perf_counter()
         self.model.train()
         opt = torch.optim.Adam(self.model.parameters(), lr=self.TTT_LR)
+        loss_val = 0.0
+        steps_run = 0
         for _ in range(self.TTT_STEPS):
             opt.zero_grad()
             logits = self.model(x)  # unmasked: learn the demonstrated class
             loss = F.cross_entropy(logits, targets)
             loss.backward()
             opt.step()
+            steps_run += 1
+            loss_val = float(loss.detach())
+            # Early-stop before collapse: once the demos are fit, more steps only
+            # overfit the working model and destroy the features L+1 needs.
+            if loss_val <= self.TTT_LOSS_FLOOR:
+                break
         self.model.eval()
+        dt = time.perf_counter() - t0
+        self._ttt_time_spent += dt
+        self.ttt_seconds = self._ttt_time_spent
+        if self._ttt_log:
+            print(
+                f"[BC-TTT] finetune steps={steps_run}/{self.TTT_STEPS} "
+                f"samples={len(samples)} lr={self.TTT_LR:g} loss={loss_val:.4f} "
+                f"dt={dt:.2f}s game_total={self._ttt_time_spent:.2f}s "
+                f"levels_cleared={self._levels_cleared_this_game}",
+                file=sys.stderr,
+                flush=True,
+            )
+
+    def _official_to_index(self, action: Any) -> int | None:
+        """Map an official ``GameAction`` back to its combined-logit class index.
+
+        Used to record exploration-fallback moves as TTT supervision so a
+        discovered level-clearing action becomes a demonstrated target on the
+        next clear. RESET/ACTION7 have no logit slot and return ``None``.
+        """
+        v = getattr(action, "value", None)
+        if v is None:
+            return None
+        if 1 <= v <= 5:
+            return v - 1
+        if v == 6:
+            ad = getattr(action, "action_data", None)
+            if ad is None:
+                return None
+            x = int(getattr(ad, "x", 0))
+            y = int(getattr(ad, "y", 0))
+            if 0 <= x < GRID and 0 <= y < GRID:
+                return COORD_OFFSET + y * GRID + x
+        return None
+
+    def _explore_action(self, frame: np.ndarray, obs: Any) -> Any:
+        """Take an exploration step and record it as a candidate TTT demo.
+
+        Recording the explored action (not just policy picks) is what lets the
+        next level-clear's TTT pass learn a move the frozen policy did not know.
+        """
+        action = self._fallback_action(obs)
+        if self._ttt_enabled:
+            idx = self._official_to_index(action)
+            if idx is not None:
+                self._ttt_pending.append((frame.astype(np.int64), idx))
+        return action
 
     def _index_to_action(self, idx: int) -> Any:
         from .types import ActionType, GameAction

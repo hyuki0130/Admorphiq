@@ -127,3 +127,69 @@ def test_no_progress_hard_cap_sets_done():
     for _ in range(agent._give_up_no_progress):
         agent.choose_action([], obs)
     assert agent.is_done([], obs)
+
+
+def test_ttt_triggers_and_adapts_on_level_clear():
+    """Purpose: clearing a level must fine-tune the per-game policy copy on its
+    accumulated successful (frame->action) transitions (test-time training),
+    bounded to a few steps, mutating only the in-memory working model.
+
+    Expected feedback: PASS proves a level-up event flushes the pending
+    transitions into the TTT buffer and runs a bounded finetune that changes the
+    working model's weights — the depth lever that lets cleared-level mechanics
+    carry into the next level. FAIL means deeper levels get no per-game
+    adaptation, so depth cannot improve.
+    """
+    agent = BCPolicyAgent(device="cpu", ttt=True)
+    # Bounded, fast finetune — no real long training in the test suite.
+    agent.TTT_STEPS = 1
+    agent.TTT_MAX_SAMPLES = 4
+    agent.TTT_MIN_SAMPLES = 1
+    # Keep the policy path (avoid the heavy exploration fallback) for recording.
+    agent.REPEAT_LIMIT = 10_000
+    agent.STUCK_THRESHOLD = 10_000
+    agent._fallback_action = lambda obs: None  # must never be hit in this test
+
+    frame = np.zeros((64, 64), dtype=np.int32)
+    obs0 = _FakeObs(frame, actions=[1], levels=0)
+    for _ in range(3):
+        agent.choose_action([], obs0)
+    assert agent._ttt_pending  # policy picks recorded as TTT candidates
+
+    before = next(agent.model.parameters()).detach().clone()
+    obs1 = _FakeObs(frame, actions=[1], levels=1)  # levels 0->1 == level clear
+    agent.choose_action([], obs1)
+
+    after = next(agent.model.parameters()).detach()
+    assert agent._levels_cleared_this_game == 1
+    # The 3 pre-clear demos were flushed into the buffer; the current post-clear
+    # step is freshly recorded into the emptied pending list.
+    assert len(agent._ttt_buffer) == 3
+    assert len(agent._ttt_pending) == 1
+    assert not torch.equal(before, after)  # finetune mutated the working model
+    assert agent.ttt_seconds > 0.0         # wall-time was measured/recorded
+
+
+def test_official_action_maps_back_to_logit_index():
+    """Purpose: explored fallback moves must be recordable as TTT supervision,
+    which requires mapping an official GameAction back to its combined-logit
+    class — the inverse of ``_index_to_action``.
+
+    Expected feedback: PASS proves simple actions and ACTION6 clicks round-trip
+    to the exact class the policy decodes (so a discovered clearing move becomes
+    a valid demonstrated target), and RESET/ACTION7 (no logit slot) map to None.
+    FAIL means search-discovered moves cannot be learned by TTT.
+    """
+    from arcengine import GameAction
+
+    agent = BCPolicyAgent(device="cpu", ttt=True)
+
+    assert agent._official_to_index(GameAction.from_id(1)) == 0
+    assert agent._official_to_index(GameAction.from_id(5)) == 4
+
+    a6 = GameAction.from_id(6)
+    a6.set_data({"x": 7, "y": 2})
+    assert agent._official_to_index(a6) == coord_to_index(7, 2)
+
+    assert agent._official_to_index(GameAction.RESET) is None
+    assert agent._official_to_index(GameAction.from_id(7)) is None
