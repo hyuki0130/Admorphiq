@@ -58,6 +58,10 @@ def _make_agent(name: str):
         # can be scored without touching the agent. Falls back to the default.
         weights = os.environ.get("BC_WEIGHTS") or DEFAULT_WEIGHTS
         return BCPolicyAgent(weights_path=weights)
+    if name == "ensemble_bc":
+        from admorphiq.ensemble_bc_agent import EnsembleBCAgent
+
+        return EnsembleBCAgent()
     return AdmorphiqAdapter()
 
 # ─────────────────────────────── scoring maths ──────────────────────────────
