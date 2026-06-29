@@ -1,10 +1,12 @@
 # %% [markdown]
-# # Admorphiq — ARC-AGI-3 Kaggle Submission (v0)
+# # Admorphiq — ARC-AGI-3 Kaggle Submission (BC policy)
 #
 # Always-ready, valid submission notebook. It:
 #  1. Installs the arc wheels offline (from the Kaggle Data tab).
 #  2. Puts the official `agents` package on `sys.path`.
-#  3. Registers our `CheapExploreAgent`.
+#  3. Registers our `KaggleBCAgent` — the trained behaviour-cloning policy
+#     (`models/bc_policy.pt`, auto-updated to the best checkpoint at submit
+#     time; override with the `BC_WEIGHTS` env var).
 #  4. Boots an OFFLINE `Arcade` over the bundled environment files and serves
 #     it locally, runs the agent swarm against every environment, and writes
 #     `/kaggle/working/submission.json` from the closed scorecard.
@@ -68,8 +70,9 @@ if ON_KAGGLE:
 _ensure_admorphiq_importable()
 
 # Importing the agent installs the `agents` package (real on Kaggle, light
-# namespace shim in local dev) — see admorphiq._agents_shim.
-from admorphiq.kaggle_agent import CheapExploreAgent  # noqa: E402
+# namespace shim in local dev) — see admorphiq._agents_shim. KaggleBCAgent
+# composes the trained BC policy (admorphiq.bc_agent.BCPolicyAgent).
+from admorphiq.kaggle_bc_agent import KaggleBCAgent  # noqa: E402
 
 try:
     # On Kaggle the full package is present and provides the shared registry.
@@ -80,8 +83,8 @@ except ImportError:
     AVAILABLE_AGENTS = {}
 
 AGENT_KEY = "admorphiq"
-AVAILABLE_AGENTS[AGENT_KEY] = CheapExploreAgent
-print(f"Registered agent '{AGENT_KEY}' -> {CheapExploreAgent.__name__}")
+AVAILABLE_AGENTS[AGENT_KEY] = KaggleBCAgent
+print(f"Registered agent '{AGENT_KEY}' -> {KaggleBCAgent.__name__}")
 
 
 # %%
@@ -123,7 +126,7 @@ def run_offline_submission() -> None:
     games = [env.game_id for env in arc.get_environments()]
     print(f"Playing {len(games)} environment(s): {games}")
 
-    swarm = Swarm(AGENT_KEY, root_url, games, tags=["admorphiq", "v0"])
+    swarm = Swarm(AGENT_KEY, root_url, games, tags=["admorphiq", "bc"])
     swarm.main()
 
 
