@@ -46,27 +46,42 @@ from .general_agent import (
     _EXPLORE_MAX_CLUSTERS,
     _MAX_PLAYER_SIZE,
     _MIN_GOAL_SIZE,
+    _MIN_TRANSLATION_PX,
     _MOVE_ACTION_IDS,
     _avail_ids,
     _state_name,
     _step_cell_size,
     _unit,
+    build_action_sequences,
     canonical_layer,
     connected_components,
+    corridor_color_from_probes,
+    edge_grid_bfs,
     floor_colors_from_probes,
     frame_to_cells,
+    goal_centroid_px,
     grid_bfs,
     infer_direction_map,
     pick_goal_cell,
+    pick_next_probe,
     player_centroid,
+    select_explore_action,
 )
 from .perception.frame_analyzer import FrameAnalyzer
 
 # ── Tunables ─────────────────────────────────────────────────────────────────
 
-# Max actions spent probing per level. Probe actions count against the squared
-# efficiency ratio (human L1 baselines are ~16-42), so the budget is tight.
-PROBE_BUDGET = 20
+# Max actions spent on RECENTERING-AWARE movement discovery per level. A naive
+# single sweep mislearns a wall-bound player (only the unblocked directions get a
+# vector); recentering re-probes blocked actions after a freeing move, so the cap
+# must leave room for those retries. Matches ``GeneralAgent.DISCOVERY_BUDGET``.
+MOVE_PROBE_BUDGET = 16
+# Total probe budget per level (movement discovery + ACTION6 click probing). The
+# click sweep runs from where movement discovery left off up to this cap. Probe
+# actions count against the squared-efficiency ratio (human L1 baselines ~16-42),
+# but a level NOT cleared scores 0 — so the budget is wide enough to find the
+# responsive cells of a click puzzle, while still bounded.
+PROBE_BUDGET = 40
 # Coarse ACTION6 probe lattice stride (px): clicks scattered on a regular grid so
 # a responsive cell anywhere on the board is eventually hit during discovery.
 PROBE_GRID_STRIDE = 16
@@ -328,6 +343,30 @@ def plan_navigation(layer: np.ndarray, model: EffectModel, goal: Goal) -> list[i
         return []
     player = max(player_comps, key=lambda c: c["size"])
 
+    # Preferred model: edge-walkable node grid keyed on the corridor colour. This
+    # is the only model that navigates interleaved-pitch mazes where a node
+    # renders as wall colour but its connecting edge is the open corridor — the
+    # tu93 class, where the node-dominant model below labels the whole board a
+    # wall and BFS returns no path. The corridor colour is derived from the
+    # player's move midpoints, so it is fully observation-driven. Falls back to
+    # the node-dominant model when no corridor colour was observed.
+    corridor = corridor_color_from_probes(model._move_probes, model.player_color, bg)
+    if corridor is not None:
+        goal_px = goal_centroid_px(layer, model.player_color, bg, target_color=goal.target_color)
+        if goal_px is not None:
+            edge_plan = edge_grid_bfs(
+                layer,
+                (player["cx"], player["cy"]),
+                cell,
+                goal_px,
+                step_dirs,
+                corridor,
+                model.player_color,
+                bg,
+            )
+            if edge_plan is not None:
+                return edge_plan
+
     goal_cell = pick_goal_cell(layer, cell, model.player_color, bg, target_color=goal.target_color)
     if goal_cell is None:
         return []
@@ -407,16 +446,42 @@ class WorldModelAgent:
         self._reset_level()
 
     def _reset_level(self) -> None:
-        """Clear per-level plan/goal/probe state (called on level-up)."""
+        """Clear per-level plan/goal/probe state (called on level-up).
+
+        The EffectModel (control knowledge) is GAME-scope and is NOT cleared
+        here; only the per-level discovery / plan / explore bookkeeping resets.
+        """
         self._phase = _PHASE_PROBE
         self._level_base = self._action_count
-        self._probe_queue: list[tuple] | None = None
         self._pending: dict | None = None
+        # Recentering-aware movement-discovery bookkeeping (mirrors GeneralAgent).
+        self._move_targets: list[int] | None = None
+        self._move_disc_done = False
+        self._disc_attempts: Counter = Counter()
+        self._disc_last_moved = False
+        self._disc_last_probe_aid: int | None = None
+        # One-shot attempt to build a navigation plan once movement is learned.
+        self._nav_attempted = False
+        # ACTION6 click-probe queue (built lazily for click-capable games).
+        self._click_queue: list[tuple[int, int]] | None = None
+        # Navigation plan + closed-loop prediction.
         self._plan: list[int] = []
         self._plan_commit = self._action_count
         self._pred_player: tuple[float, float] | None = None
-        self._interact_queue: list[tuple] = []
-        self._interact_cursor = 0
+        # Explore / interaction bookkeeping (keyed by candidate descriptor so the
+        # try/change stats survive a candidate-list rebuild as the frame evolves).
+        self._xp_tries: Counter = Counter()
+        self._xp_changes: Counter = Counter()
+        self._xp_last_desc: tuple | None = None
+        self._last_changed = False
+        self._xp_cursor = 0
+        # Bounded sequence-search bookkeeping (runs after the single-action sweep
+        # identifies the frame-changers), mirroring GeneralAgent's explorer.
+        self._seq_sweep_queue: list[tuple] | None = None
+        self._seq_built = False
+        self._seq_list: list[tuple] = []
+        self._seq_i = 0
+        self._seq_pos = 0
 
     # ── harness contract ──────────────────────────────────────────────────────
 
@@ -434,6 +499,7 @@ class WorldModelAgent:
         avail = _avail_ids(latest_frame)
         state = _state_name(latest_frame)
         self.model.set_background(layer)
+        bg = self.model.background if self.model.background is not None else 0
 
         # Credit the action issued last call (its "after" is the current frame)
         # into the GAME-scope model BEFORE any per-level reset.
@@ -443,6 +509,19 @@ class WorldModelAgent:
             p = self._pending
             if p["before"].shape == layer.shape:
                 self.model.observe(p["action_id"], p["coord"], p["before"], layer, level_up=leveled)
+                self._last_changed = not np.array_equal(p["before"], layer)
+                # Explore credit: did this candidate change the frame?
+                desc = p.get("desc")
+                if desc is not None:
+                    self._xp_tries[desc] += 1
+                    if self._last_changed:
+                        self._xp_changes[desc] += 1
+                # Discovery credit: count the probe attempt + did the player move?
+                if p.get("disc_probe"):
+                    aid = p["action_id"]
+                    self._disc_attempts[aid] += 1
+                    self._disc_last_probe_aid = aid
+                    self._disc_last_moved = self._probe_moved(aid, p["before"], layer, bg)
             self._pending = None
         if leveled:
             self._levels_completed = lvl
@@ -466,39 +545,134 @@ class WorldModelAgent:
             return action, {"x": int(data.x), "y": int(data.y)}
         return action, None
 
-    # ── probe phase ───────────────────────────────────────────────────────────
+    # ── probe phase: recentering movement discovery, then click probing ────────
 
-    def _build_probe_queue(self, avail: list[int]) -> list[tuple]:
-        """Each available move once, then a coarse ACTION6 lattice (if 6 avail)."""
-        queue: list[tuple] = [("m", a) for a in _MOVE_ACTION_IDS if a in avail]
-        if 6 in avail:
-            half = PROBE_GRID_STRIDE // 2
-            for y in range(half, 64, PROBE_GRID_STRIDE):
-                for x in range(half, 64, PROBE_GRID_STRIDE):
-                    queue.append(("c", x, y))
-        return queue
+    def _probe_moved(
+        self, aid: int, before: np.ndarray, after: np.ndarray, bg: int
+    ) -> bool:
+        """Did the just-credited move probe translate the player? (env-free).
+
+        A clean entry in the model's ``move_map`` is decisive; otherwise fall
+        back to a live player-centroid shift so a blocked / no-op probe (which
+        ``infer_direction_map`` never records) is still detectable as unmoved.
+        """
+        if aid in self.model.move_map:
+            return True
+        pc = self.model.player_color
+        if pc is None:
+            return False
+        b = player_centroid(before, pc, bg)
+        a = player_centroid(after, pc, bg)
+        if b is None or a is None:
+            return False
+        return ((a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2) ** 0.5 >= _MIN_TRANSLATION_PX
 
     def _probe_step(self, layer: np.ndarray, avail: list[int], latest_frame):
-        if self._probe_queue is None:
-            self._probe_queue = self._build_probe_queue(avail)
+        from arcengine import GameAction
+
         spent = self._action_count - self._level_base
-        if spent >= PROBE_BUDGET or not self._probe_queue:
-            return self._finish_probe(layer, avail, latest_frame)
-        return self._emit_desc(self._probe_queue.pop(0), layer)
+
+        if self._move_targets is None:
+            self._move_targets = [a for a in _MOVE_ACTION_IDS if a in avail]
+
+        # Phase 1: recentering-aware movement discovery. A naive single sweep
+        # mislearns a wall-bound player — the blocked directions never get a
+        # vector, leaving a 2-direction map the planner cannot navigate with
+        # (the tu93 failure). ``pick_next_probe`` re-probes a blocked action
+        # after a freeing counter-move so every reachable direction is learned.
+        if self._move_targets and not self._move_disc_done:
+            if spent >= MOVE_PROBE_BUDGET:
+                self._move_disc_done = True
+            else:
+                kind, aid = pick_next_probe(
+                    self._move_targets,
+                    self.model.move_map,
+                    dict(self._disc_attempts),
+                    self._disc_last_moved,
+                    self._disc_last_probe_aid,
+                )
+                if kind == "recenter" and aid in avail:
+                    # A relocation move (still observed by the model, but it is
+                    # NOT counted as a probe attempt of any target).
+                    self._disc_last_probe_aid = None
+                    self._disc_last_moved = False
+                    self._pending = {"action_id": aid, "coord": None, "before": layer.copy()}
+                    return self._emit(GameAction.from_id(aid))
+                if kind == "probe" and aid in avail:
+                    self._pending = {
+                        "action_id": aid,
+                        "coord": None,
+                        "before": layer.copy(),
+                        "disc_probe": True,
+                    }
+                    return self._emit(GameAction.from_id(aid))
+                self._move_disc_done = True
+
+        # Once movement is learned, try a navigation plan BEFORE spending click
+        # probes — navigation is the highest-value, most efficient plan kind.
+        if not self._nav_attempted:
+            self._nav_attempted = True
+            self.goal = infer_goal(layer, self.model)
+            if self.goal.kind == "navigate":
+                plan = plan_navigation(layer, self.model, self.goal)
+                if plan:
+                    self._plan = list(plan)
+                    self._pred_player = None
+                    self._phase = _PHASE_EXECUTE
+                    self._plan_commit = self._action_count
+                    return self._execute_step(layer, avail, latest_frame)
+
+        # Phase 2: ACTION6 click probing (click games + nav-failed games). Probe
+        # rare-colour cluster centroids (the plausible buttons / markers) first,
+        # then a coarse lattice, so a responsive cell anywhere is eventually hit.
+        if 6 in avail:
+            if self._click_queue is None:
+                self._click_queue = self._build_click_probes(layer)
+            if spent < PROBE_BUDGET and self._click_queue:
+                x, y = self._click_queue.pop(0)
+                self._pending = {
+                    "action_id": 6,
+                    "coord": (x, y),
+                    "before": layer.copy(),
+                    "desc": ("c", x, y),
+                }
+                return self._emit_click(x, y)
+
+        return self._finish_probe(layer, avail, latest_frame)
+
+    def _build_click_probes(self, layer: np.ndarray) -> list[tuple[int, int]]:
+        """Ordered ACTION6 probe cells: rare-colour cluster centroids, then grid.
+
+        Rare-colour clusters are the most likely interactive markers (buttons /
+        goals), so they are probed before a blind lattice; the lattice fills the
+        gaps so a responsive cell anywhere on the board is eventually hit.
+        """
+        bg = self.model.background if self.model.background is not None else 0
+        out: list[tuple[int, int]] = []
+        seen: set[tuple[int, int]] = set()
+        comps = [c for c in connected_components(layer, bg) if c["size"] >= _MIN_GOAL_SIZE]
+        color_area: Counter = Counter()
+        for c in comps:
+            color_area[c["color"]] += c["size"]
+        comps.sort(key=lambda c: (color_area[c["color"]], -c["size"]))
+        for c in comps[:_EXPLORE_MAX_CLUSTERS]:
+            cell = (int(round(c["cx"])), int(round(c["cy"])))
+            if cell not in seen:
+                seen.add(cell)
+                out.append(cell)
+        half = PROBE_GRID_STRIDE // 2
+        for y in range(half, 64, PROBE_GRID_STRIDE):
+            for x in range(half, 64, PROBE_GRID_STRIDE):
+                if (x, y) not in seen:
+                    seen.add((x, y))
+                    out.append((x, y))
+        return out
 
     def _finish_probe(self, layer: np.ndarray, avail: list[int], latest_frame):
-        """Infer the goal, build a plan, and dispatch the post-probe phase."""
-        self.goal = infer_goal(layer, self.model)
+        """Probing exhausted with no navigation plan → greedy interaction."""
+        if self.goal is None:
+            self.goal = infer_goal(layer, self.model)
         self._plan_commit = self._action_count
-        if self.goal.kind == "navigate":
-            plan = plan_navigation(layer, self.model, self.goal)
-            if plan:
-                self._plan = list(plan)
-                self._pred_player = None
-                self._phase = _PHASE_EXECUTE
-                return self._execute_step(layer, avail, latest_frame)
-        self._interact_queue = plan_interaction(layer, self.model)
-        self._interact_cursor = 0
         self._phase = _PHASE_INTERACT
         return self._interact_step(layer, avail, latest_frame)
 
@@ -546,40 +720,137 @@ class WorldModelAgent:
         return self._emit(GameAction.from_id(aid))
 
     def _switch_to_interact(self, layer: np.ndarray, avail: list[int], latest_frame):
-        self._interact_queue = plan_interaction(layer, self.model)
-        self._interact_cursor = 0
         self._plan_commit = self._action_count
         self._phase = _PHASE_INTERACT
         return self._interact_step(layer, avail, latest_frame)
 
-    # ── interact (greedy) phase ───────────────────────────────────────────────
+    # ── interact (greedy + bounded sequence search) phase ─────────────────────
 
     def _interact_step(self, layer: np.ndarray, avail: list[int], latest_frame):
+        """Disciplined interaction in three stages (reuses GeneralAgent's proven
+        explorer primitives so a level completing on a single click, a short
+        action SEQUENCE, or a delayed-effect cell is all reachable).
+
+        1. **Single-action sweep** — try each candidate once (one-input clears).
+        2. **Bounded sequence search** — short combos built ONLY from the
+           observed frame-changers via :func:`build_action_sequences`.
+        3. **Rotate fallback** — :func:`select_explore_action` keeps spending the
+           remaining budget on changers while periodically revisiting the pool.
+        """
         from arcengine import GameAction
 
-        live = self._live_candidates(avail)
-        if not live:
+        candidates = self._build_interact_candidates(layer, avail)
+        if not candidates:
+            if 6 in avail:
+                self._pending = {
+                    "action_id": 6, "coord": (32, 32),
+                    "before": layer.copy(), "desc": ("c", 32, 32),
+                }
+                return self._emit_click(32, 32)
             return self._emit(GameAction.RESET)
-        desc = live[self._interact_cursor % len(live)]
-        self._interact_cursor += 1
+
+        if not self._seq_built:
+            if self._seq_sweep_queue is None:
+                self._seq_sweep_queue = list(candidates)
+            while self._seq_sweep_queue:
+                d = self._seq_sweep_queue.pop(0)
+                if self._xp_tries.get(d, 0) == 0:
+                    return self._emit_desc(d, layer)
+            self._build_sequence_search(avail)
+            self._seq_built = True
+
+        act = self._next_sequence_action(layer, avail)
+        if act is not None:
+            return act
+
+        desc, self._xp_cursor = select_explore_action(
+            candidates, self._xp_tries, self._xp_changes, self._xp_cursor
+        )
+        if desc is None:
+            if 6 in avail:
+                self._pending = {
+                    "action_id": 6, "coord": (32, 32),
+                    "before": layer.copy(), "desc": ("c", 32, 32),
+                }
+                return self._emit_click(32, 32)
+            return self._emit(GameAction.RESET)
         return self._emit_desc(desc, layer)
 
-    def _live_candidates(self, avail: list[int]) -> list[tuple]:
-        """Currently-usable interaction descriptors (availability-filtered).
+    def _build_interact_candidates(self, layer: np.ndarray, avail: list[int]) -> list[tuple]:
+        """Ordered, availability-filtered interaction descriptors.
 
-        Rebuilds from the model's queue (clicks need ACTION6 available; moves
-        need their id available); falls back to the raw available simple actions
-        so the agent always has something live to try.
+        Most-promising first: cells/actions the online model already saw doing
+        something (``plan_interaction``), then the raw move actions, then the
+        rare-cluster / lattice click probes — de-duplicated preserving order.
         """
-        live: list[tuple] = []
-        for desc in self._interact_queue:
-            if desc[0] == "c" and 6 in avail:
-                live.append(desc)
-            elif desc[0] == "m" and desc[1] in avail:
-                live.append(desc)
-        if not live:
-            live = [("m", a) for a in avail if a in _MOVE_ACTION_IDS]
-        return live
+        out: list[tuple] = []
+        seen: set[tuple] = set()
+
+        def _add(desc: tuple) -> None:
+            ok = (desc[0] == "m" and desc[1] in avail) or (desc[0] == "c" and 6 in avail)
+            if ok and desc not in seen:
+                seen.add(desc)
+                out.append(desc)
+
+        for desc in plan_interaction(layer, self.model):
+            _add(desc)
+        for a in _MOVE_ACTION_IDS:
+            _add(("m", a))
+        if 6 in avail:
+            for cell in self._click_queue or self._build_click_probes(layer):
+                _add(("c", int(cell[0]), int(cell[1])))
+        return out
+
+    def _build_sequence_search(self, avail: list[int]) -> None:
+        """Stage the bounded sequence search from the observed frame-changers.
+
+        Tokens are the move actions that changed the frame during the sweep
+        (still available) followed by up to three frame-changing click targets,
+        busiest first. With no observed changer the list stays empty and the
+        explorer falls straight through to the rotate fallback.
+        """
+        move_tokens = [
+            a
+            for a in _MOVE_ACTION_IDS
+            if a in avail and self._xp_changes.get(("m", a), 0) > 0
+        ]
+        click_changers = [
+            d for d in self._xp_changes if d[0] == "c" and self._xp_changes.get(d, 0) > 0
+        ]
+        click_changers.sort(key=lambda d: -self._xp_changes[d])
+        click_tokens: list[tuple] = click_changers[:3] if 6 in avail else []
+        tokens: list = list(move_tokens) + list(click_tokens)
+        self._seq_list = build_action_sequences(tokens)
+        self._seq_i = 0
+        self._seq_pos = 0
+
+    def _next_sequence_action(self, layer: np.ndarray, avail: list[int]):
+        """Emit the next token of the current combo, or None when exhausted.
+
+        A pure-repeat combo is abandoned the moment a token already emitted
+        within it failed to change the frame (repeating a wall-hit is wasted
+        budget); heterogeneous combos run to completion. Tokens referencing a
+        now-unavailable action skip the whole combo.
+        """
+        while self._seq_i < len(self._seq_list):
+            seq = self._seq_list[self._seq_i]
+            if self._seq_pos > 0 and not self._last_changed and len(set(seq)) == 1:
+                self._seq_i += 1
+                self._seq_pos = 0
+                continue
+            if self._seq_pos >= len(seq):
+                self._seq_i += 1
+                self._seq_pos = 0
+                continue
+            token = seq[self._seq_pos]
+            desc = ("m", token) if isinstance(token, int) else token
+            if (desc[0] == "m" and desc[1] not in avail) or (desc[0] == "c" and 6 not in avail):
+                self._seq_i += 1
+                self._seq_pos = 0
+                continue
+            self._seq_pos += 1
+            return self._emit_desc(desc, layer)
+        return None
 
     # ── action emission (records pending so the model keeps learning) ──────────
 
@@ -588,10 +859,16 @@ class WorldModelAgent:
 
         if desc[0] == "m":
             aid = desc[1]
-            self._pending = {"action_id": aid, "coord": None, "before": layer.copy()}
+            self._pending = {
+                "action_id": aid, "coord": None,
+                "before": layer.copy(), "desc": ("m", aid),
+            }
             return self._emit(GameAction.from_id(aid))
         _, x, y = desc
-        self._pending = {"action_id": 6, "coord": (int(x), int(y)), "before": layer.copy()}
+        self._pending = {
+            "action_id": 6, "coord": (int(x), int(y)),
+            "before": layer.copy(), "desc": ("c", int(x), int(y)),
+        }
         return self._emit_click(int(x), int(y))
 
     def _emit(self, action):

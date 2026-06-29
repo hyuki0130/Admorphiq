@@ -266,6 +266,119 @@ def test_plan_interaction_orders_responsive_cells_first():
     assert cands[0] == ("c", 10, 10)
 
 
+# ── R29: edge-grid navigation + recentering discovery + click probing ─────────
+
+
+def test_plan_navigation_uses_edge_grid_when_corridor_observed():
+    """Purpose: on an interleaved-pitch maze (goal node renders as wall colour
+    but the connecting edge is an open corridor), navigation falls back to the
+    edge-walkable model and returns a path the node-dominant model cannot — this
+    is the tu93 fix that took the agent from 0 to a level-1 clear.
+
+    Expected feedback: pass means the corridor-aware edge model is wired into
+    plan_navigation; a fail means interleaved mazes stay unreachable (the
+    measured pre-R29 tu93=0 regression).
+    """
+    bg, player, corridor, wall, goal_c = 0, 7, 3, 5, 4
+    # Movement probe: player (a single cell) steps +2 cols; the midpoint pixel of
+    # its (before, after) centroids sits on the corridor colour, and the vacated
+    # cell reveals corridor — so corridor_color_from_probes resolves to 3.
+    before = np.full((6, 12), wall, dtype=np.int32)
+    before[2, 2] = player
+    before[2, 3] = corridor  # edge midpoint between before/after centroids
+    after = before.copy()
+    after[2, 2] = corridor  # player vacated → corridor revealed (floor)
+    after[2, 4] = player
+
+    model = EffectModel()
+    model.background = bg
+    model.player_color = player
+    model.move_map = {3: (2, 0), 1: (-2, 0), 2: (0, 2), 4: (0, -2)}
+    model._move_probes = [{"aid": 3, "before": before, "after": after}]
+
+    # Current frame: a wall-filled board with an open corridor row at row 2 and a
+    # rare goal marker two nodes to the right. The node-dominant model marks the
+    # whole board wall (no floor cells abut the goal); only the edge model walks.
+    layer = np.full((6, 12), wall, dtype=np.int32)
+    layer[2, 2] = player
+    layer[2, 3:7] = corridor  # open corridor edge toward the goal
+    layer[2, 6] = goal_c  # goal node at col 6 (two pitch-2 steps right)
+    plan = plan_navigation(layer, model, Goal("navigate", target_color=goal_c))
+    assert plan, "edge-grid model should find a corridor path to the goal node"
+    assert all(a == 3 for a in plan), "path runs rightward along the corridor"
+
+
+def test_plan_navigation_empty_without_corridor_or_node_path():
+    """Purpose: with no corridor observed AND the node-dominant model unable to
+    reach the goal, navigation declines (empty) so the agent falls to interaction
+    rather than fabricating a path.
+
+    Expected feedback: pass means the corridor branch does not mask a genuine
+    'unreachable' verdict; a fail means navigation could commit to a phantom plan.
+    """
+    model = EffectModel()
+    model.background = 0
+    model.player_color = 7
+    model.move_map = {3: (1, 0), 1: (-1, 0)}
+    # No move probes → no corridor colour. Player walled off from the goal.
+    layer = np.full((6, 6), 5, dtype=np.int32)  # solid wall everywhere
+    layer[1, 1] = 7  # player island
+    layer[4, 4] = 4  # goal island, no walkable connection
+    assert plan_navigation(layer, model, Goal("navigate", target_color=4)) == []
+
+
+def test_build_click_probes_orders_rare_clusters_before_grid():
+    """Purpose: ACTION6 probe targets put rare-colour cluster centroids (the
+    plausible interactive buttons/markers) ahead of the blind lattice, so a
+    click puzzle's responsive cells are hit early in the bounded probe budget.
+
+    Expected feedback: pass means click-game discovery spends its tight budget on
+    likely buttons first; a fail means it wastes probes on empty lattice cells.
+    """
+    agent = WorldModelAgent()
+    layer = _layer(64, 64)  # background 0
+    layer[10:12, 10:12] = 4  # a rare 2x2 cluster (the "button")
+    agent.model.set_background(layer)
+    probes = agent._build_click_probes(layer)
+    assert probes[0] == (10, 10), "rare cluster centroid is probed first"
+    assert len(probes) > 1, "lattice fallback cells follow the cluster centroids"
+
+
+def test_probe_moved_detects_translation_and_rejects_noop():
+    """Purpose: the discovery move-credit helper reports True when the player
+    translated and False for a no-op, so recentering discovery knows which
+    directions are blocked and must be re-probed after a freeing move.
+
+    Expected feedback: pass means wall-bound directions are correctly detected as
+    'did not move' (the signal recentering needs); a fail means the agent mislearns
+    a 2-direction map and cannot navigate (the measured tu93 failure).
+    """
+    agent = WorldModelAgent()
+    agent.model.player_color = 7
+    before = _block(_layer(), color=7, r0=2, c0=2)
+    moved = _block(_layer(), color=7, r0=2, c0=5)  # translated +3 cols
+    assert agent._probe_moved(1, before, moved, bg=0) is True
+    assert agent._probe_moved(1, before, before, bg=0) is False  # no-op
+
+
+def test_build_interact_candidates_filters_by_availability():
+    """Purpose: interaction candidates only include clicks when ACTION6 is
+    available and only include a move when its id is available, so the agent
+    never emits an action the environment rejects.
+
+    Expected feedback: pass means the explorer respects the live action set; a
+    fail means wasted no-op turns on unavailable actions.
+    """
+    agent = WorldModelAgent()
+    layer = _block(_layer(16, 16), color=4, r0=2, c0=2)
+    agent.model.set_background(layer)
+    move_only = agent._build_interact_candidates(layer, avail=[1, 2])
+    assert move_only, "movement candidates exist when moves are available"
+    assert all(d[0] == "m" and d[1] in (1, 2) for d in move_only)
+    with_click = agent._build_interact_candidates(layer, avail=[6])
+    assert with_click and all(d[0] == "c" for d in with_click)
+
+
 # ── Agent FSM / harness contract ──────────────────────────────────────────────
 
 
