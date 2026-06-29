@@ -311,6 +311,39 @@ scripts/
 > - We have **0 submissions**. A valid offline notebook on the board (beating
 >   the 0.25 sample) + open-sourcing by June 30 23:59 UTC is **P0**.
 
+> **📐 EXACT SCORING — RHAE (from https://docs.arcprize.org/methodology, verified 2026-06-29).**
+> "Relative Human Action Efficiency". Three levels of aggregation:
+> 1. **Per-level**: `level_score = (human_baseline_actions / ai_actions)²` — SQUARED.
+>    Capped at **1.15** (an agent that beats the human action count can exceed 1.0,
+>    up to 1.15). human=10/ai=10 → 1.0; ai=20 → 0.25; ai=100 → 0.01.
+>    Human baseline = **upper-median** first-time human per level (not average).
+>    An "action" = an env-state-changing command; internal reasoning/retries don't count.
+> 2. **Per-game**: **weighted average** of per-level scores, weight = 1-indexed level
+>    number (deep levels dominate). Denominator = sum of ALL levels' weights, so the
+>    max game score is capped by completion: clearing 4 of 5 levels caps the game at
+>    `(1+2+3+4)/(1+2+3+4+5)=66.7%`. **100% requires clearing the final level.**
+> 3. **Total**: arithmetic **mean of per-game scores**. Range 0–100%, can exceed 100%
+>    via the 1.15 per-level cap (that is how Tufa shows **1.21**). random≈0.18,
+>    stochastic-sample≈0.25 on this same scale.
+> - **Public vs Private leaderboard**: BOTH are the hidden test set, split ~50/50.
+>   Public LB = ~50% of test data (live); Private = the other ~50% (final standings).
+>   "Entries" on the LB = a team's submission count. Daily limit = **1 submission/day**
+>   (resets 00:00 UTC); up to **2 Final Submissions** selected at the end (best auto-picked).
+> - **Submission**: code competition. The notebook runs server-side; a submission file
+>   for all games is auto-created once the agent acts on any game. `kaggle kernels push`
+>   runs a notebook WITHOUT consuming a submission (free server-side validation);
+>   `kaggle competitions submit -k <kernel>` consumes the daily slot.
+> - **Our local harness `scripts/score_efficiency.py` is FAITHFUL to this** — same
+>   squaring, same level-index weighted average, same all-levels denominator. (It caps
+>   per-level at 1.0 vs the official 1.15, negligible because our agents never beat the
+>   human action count.) So its `total_score` fraction is directly comparable to the
+>   leaderboard scale, and all round measurements are trustworthy dev proxies.
+> - **What the formula rewards (the levers)**: (a) clear MORE games (coverage), and
+>   especially (b) clear DEEPER levels EFFICIENTLY — the level-index weight × the square
+>   means deep, near-human-efficient clears dominate the score. Shallow/inefficient
+>   clears barely move it. This is why depth + efficiency + coverage are the spine,
+>   not raw completion. Memory: [[project_kaggle_eval_and_metric]].
+
 > **🧭 DIRECTION CORRECTION (2026-06-29) — BC is the M1 ship asset and a
 > warm-start, NOT the destination. The general path is world-model + online
 > (test-time) learning + RL.** Read this before extending the BC track.

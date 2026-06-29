@@ -26,6 +26,7 @@ from admorphiq.general_agent import (
     connected_components,
     corridor_color_from_probes,
     edge_grid_bfs,
+    enumerate_goal_cells,
     floor_colors_from_probes,
     frame_to_cells,
     goal_centroid_px,
@@ -253,6 +254,69 @@ def test_grid_bfs_empty_path_when_start_is_goal():
     walk = np.ones((3, 3), dtype=bool)
     step_dirs = {4: (1, 0)}
     assert grid_bfs(walk, (1, 1), (1, 1), step_dirs) == []
+
+
+def test_grid_bfs_routes_around_runtime_blocked_cell():
+    """Purpose: a cell in the runtime-learned ``blocked`` set is impassable even
+    though the static walkable grid marks it open -- this is the ls20 stuck-loop
+    fix (a move into a mislabelled-open wall is never re-issued; BFS detours).
+
+    Expected feedback: pass means the path avoids the blocked cell and is longer
+    than the straight line through it; a fail means learned walls are ignored
+    and the agent would re-issue the same blocked action forever.
+    """
+    walk = np.ones((3, 5), dtype=bool)
+    step_dirs = {1: (0, -1), 2: (0, 1), 3: (-1, 0), 4: (1, 0)}
+    blocked = {(0, 1), (0, 2), (0, 3)}
+    path = grid_bfs(walk, (0, 0), (0, 4), step_dirs, blocked=blocked)
+    assert path is not None
+    assert len(path) == 6  # down, 4x right, up
+    assert len(grid_bfs(walk, (0, 0), (0, 4), step_dirs)) == 4
+
+
+def test_grid_bfs_blocked_goal_is_unreachable():
+    """Purpose: blocking every approach to the goal makes it unreachable (None),
+    so the caller rotates to another target instead of looping.
+
+    Expected feedback: pass means a fully-blocked goal yields None; a fail would
+    let the planner emit a path that cannot actually reach the goal.
+    """
+    walk = np.ones((3, 3), dtype=bool)
+    step_dirs = {1: (0, -1), 2: (0, 1), 3: (-1, 0), 4: (1, 0)}
+    blocked = {(0, 1), (1, 2)}  # both cells adjacent to goal (0,2)
+    assert grid_bfs(walk, (0, 0), (0, 2), step_dirs, blocked=blocked) is None
+
+
+def test_enumerate_goal_cells_orders_rarest_colour_first():
+    """Purpose: multi-target navigation needs an ORDERED candidate list -- the
+    rarest-colour markers (likeliest targets) before commoner clusters -- so a
+    collection level can be swept one marker at a time.
+
+    Expected feedback: pass means the rare 3-cell marker precedes the larger
+    common cluster and 1-pixel noise is excluded; a fail means goal rotation
+    would visit the wrong cells first or chase artefacts.
+    """
+    layer = np.zeros((12, 12), dtype=np.int32)
+    layer[1, 1] = 4  # 1-pixel noise -- excluded (size < _MIN_GOAL_SIZE)
+    layer[8:11, 8:11] = 7  # large common cluster (9 cells of colour 7)
+    layer[0, 4:7] = 5  # rare 3-cell marker (colour 5 appears only here)
+    cells = enumerate_goal_cells(layer, cell=2, player_color=9, background=0)
+    assert cells, "expected at least one candidate"
+    rare_cell = (0 // 2, 5 // 2)  # centroid of the colour-5 row -> (0, 2)
+    assert cells[0] == rare_cell
+    assert (0, 0) not in cells
+
+
+def test_enumerate_goal_cells_empty_when_no_targets():
+    """Purpose: a frame with only player + background yields no candidates, so
+    the caller falls back cleanly instead of indexing an empty list.
+
+    Expected feedback: pass means an empty list is returned; a fail risks an
+    IndexError in the goal-rotation cursor.
+    """
+    layer = np.zeros((10, 10), dtype=np.int32)
+    layer[5, 5] = 9  # player only
+    assert enumerate_goal_cells(layer, cell=2, player_color=9, background=0) == []
 
 
 def test_pick_goal_cell_ignores_single_pixel_noise():

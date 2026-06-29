@@ -479,18 +479,24 @@ def grid_bfs(
     start: tuple[int, int],
     goal: tuple[int, int],
     step_dirs: dict[int, tuple[int, int]],
+    blocked: set[tuple[int, int]] | None = None,
 ) -> list[int] | None:
     """Shortest action sequence from ``start`` cell to ``goal`` cell.
 
     ``walkable`` is a 2-D bool grid (``True`` = passable). ``start``/``goal``
     are ``(row, col)``. ``step_dirs`` maps an action id to a unit grid step
     ``(d_col, d_row)`` (note: x = col, y = row). Moves into blocked or
-    out-of-bounds cells are rejected. Returns the list of action ids, or None
-    if unreachable.
+    out-of-bounds cells are rejected. ``blocked`` is an optional set of
+    ``(row, col)`` cells learned impassable AT RUNTIME -- cells the static
+    pixel-walkability heuristic mislabelled as open but where a planned move
+    was observed to NOT translate the player. Feeding these back into BFS is
+    what stops the agent re-issuing the same wall-blocked action forever (the
+    ls20 stuck-loop). Returns the list of action ids, or None if unreachable.
     """
     gh, gw = walkable.shape
     if gh == 0 or gw == 0:
         return None
+    blocked = blocked or set()
     sr, sc = start
     gr, gc = goal
     if not (0 <= sr < gh and 0 <= sc < gw and 0 <= gr < gh and 0 <= gc < gw):
@@ -509,6 +515,8 @@ def grid_bfs(
             if not (0 <= nr < gh and 0 <= nc < gw):
                 continue
             if not walkable[nr, nc]:
+                continue
+            if (nr, nc) in blocked:
                 continue
             if (nr, nc) in visited:
                 continue
@@ -719,6 +727,50 @@ def pick_goal_cell(
     gr = max(0, min(gh - 1, gr))
     gc = max(0, min(gw - 1, gc))
     return (gr, gc)
+
+
+def enumerate_goal_cells(
+    layer: np.ndarray,
+    cell: int,
+    player_color: int,
+    background: int,
+) -> list[tuple[int, int]]:
+    """Candidate goal grid-cells, most-plausible target first.
+
+    Generalises :func:`pick_goal_cell` from one goal to an ORDERED LIST so a
+    navigation game with SEVERAL plausible targets (e.g. a multi-dot collection
+    level where the player must visit each marker) can be driven by trying the
+    next candidate when the current one is reached or proves unreachable.
+
+    Ordering: each distinct non-player non-background colour cluster
+    (size >= ``_MIN_GOAL_SIZE``) yields its centroid grid-cell; clusters are
+    sorted by their colour's total rarity (rarest colour first — rare markers
+    are the likeliest targets), then by descending cluster size within a colour.
+    De-duplicated by grid-cell preserving order. Pure / env-free.
+    """
+    comps = [
+        c
+        for c in connected_components(layer, background)
+        if c["color"] != player_color and c["size"] >= _MIN_GOAL_SIZE
+    ]
+    if not comps:
+        return []
+    gh, gw = layer.shape[0] // cell, layer.shape[1] // cell
+    if gh == 0 or gw == 0:
+        return []
+    color_area: Counter[int] = Counter()
+    for c in comps:
+        color_area[c["color"]] += c["size"]
+    comps.sort(key=lambda c: (color_area[c["color"]], -c["size"]))
+    out: list[tuple[int, int]] = []
+    seen: set[tuple[int, int]] = set()
+    for c in comps:
+        gr = max(0, min(gh - 1, int(round(c["cy"])) // cell))
+        gc = max(0, min(gw - 1, int(round(c["cx"])) // cell))
+        if (gr, gc) not in seen:
+            seen.add((gr, gc))
+            out.append((gr, gc))
+    return out
 
 
 def select_explore_action(
