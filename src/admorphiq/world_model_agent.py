@@ -58,6 +58,7 @@ from .general_agent import (
     connected_components,
     corridor_color_from_probes,
     edge_grid_bfs,
+    enumerate_goal_cells,
     floor_colors_from_probes,
     frame_to_cells,
     goal_centroid_px,
@@ -94,6 +95,14 @@ SURPRISE_PX = 4.0
 # navigation plan that has not cleared the level in far more than the human
 # budget is the wrong model — keep it tight (navigation clears fast or never).
 EXECUTE_BAIL = 50
+# Consecutive PLANNED moves that fail to translate the player (the cell ahead
+# is a wall the static pixel-walkability heuristic mislabelled as open) before
+# the navigation plan is abandoned for interaction. Each blocked move is first
+# fed back as a learned wall cell and the path is re-planned around it; only a
+# genuinely boxed-in player (no alternate route after this many learned blocks)
+# bails. Kept tight so a truly stuck plan converts to exploration fast, but >1
+# so a single mislabelled edge is corrected by replanning, not a bail.
+EXECUTE_STUCK_LIMIT = 4
 # When the structured world-model path (probe → navigate → interact) gains NO
 # new level for this many actions, it has demonstrably stalled on this game
 # class. The world model's own interaction lacks the GF(2) toggle / paint
@@ -387,12 +396,22 @@ def infer_goal(layer: np.ndarray, model: EffectModel) -> Goal:
 # ── Stage (d): search-based planning ──────────────────────────────────────────
 
 
-def plan_navigation(layer: np.ndarray, model: EffectModel, goal: Goal) -> list[int]:
+def plan_navigation(
+    layer: np.ndarray,
+    model: EffectModel,
+    goal: Goal,
+    blocked: set[tuple[int, int]] | None = None,
+    goal_cell_override: tuple[int, int] | None = None,
+) -> list[int]:
     """Shortest action-id path from the player to the goal, in the learned model.
 
     Builds the walkable grid (``frame_to_cells`` with the floor colours the
     player was seen standing on) and runs ``grid_bfs`` over the learned unit
-    ``step_dirs``. Returns ``[]`` when no player, no learned directions, no goal,
+    ``step_dirs``. ``blocked`` is an optional set of grid ``(row, col)`` cells
+    the agent learned impassable at runtime (a planned move into them did not
+    translate the player); BFS routes around them so a wall the static pixel
+    heuristic missed cannot trap the plan in a re-issue loop (the ls20 bug).
+    Returns ``[]`` when no player, no learned directions, no goal,
     or the goal is unreachable. The expanded transition IS the learned per-action
     shift, so this is search inside the world model — and BFS returns the
     shortest sequence, which the squared-efficiency metric rewards.
@@ -422,7 +441,7 @@ def plan_navigation(layer: np.ndarray, model: EffectModel, goal: Goal) -> list[i
     # player's move midpoints, so it is fully observation-driven. Falls back to
     # the node-dominant model when no corridor colour was observed.
     corridor = corridor_color_from_probes(model._move_probes, model.player_color, bg)
-    if corridor is not None:
+    if corridor is not None and goal_cell_override is None:
         goal_px = goal_centroid_px(layer, model.player_color, bg, target_color=goal.target_color)
         if goal_px is not None:
             edge_plan = edge_grid_bfs(
@@ -438,7 +457,9 @@ def plan_navigation(layer: np.ndarray, model: EffectModel, goal: Goal) -> list[i
             if edge_plan is not None:
                 return edge_plan
 
-    goal_cell = pick_goal_cell(layer, cell, model.player_color, bg, target_color=goal.target_color)
+    goal_cell = goal_cell_override or pick_goal_cell(
+        layer, cell, model.player_color, bg, target_color=goal.target_color
+    )
     if goal_cell is None:
         return []
 
@@ -455,7 +476,7 @@ def plan_navigation(layer: np.ndarray, model: EffectModel, goal: Goal) -> list[i
         # The goal marker is a coloured object → force its cell passable so BFS
         # can terminate there.
         walkable[goal_cell[0], goal_cell[1]] = True
-    return grid_bfs(walkable, start, goal_cell, step_dirs) or []
+    return grid_bfs(walkable, start, goal_cell, step_dirs, blocked=blocked) or []
 
 
 def plan_interaction(layer: np.ndarray, model: EffectModel) -> list[tuple]:
@@ -552,6 +573,23 @@ class WorldModelAgent:
         self._plan: list[int] = []
         self._plan_commit = self._action_count
         self._pred_player: tuple[float, float] | None = None
+        # Runtime-learned impassable grid cells (row, col): a planned move that
+        # did NOT translate the player marks the cell it tried to enter as a
+        # wall the static pixel heuristic missed, so the replan routes around
+        # it instead of re-issuing the same blocked action (the ls20 stuck-loop).
+        self._blocked_cells: set[tuple[int, int]] = set()
+        # Player grid cell at the previous execute step, and the count of
+        # consecutive planned moves that produced no player translation.
+        self._exec_prev_cell: tuple[int, int] | None = None
+        self._exec_aid: int | None = None
+        self._exec_stuck = 0
+        # Multi-target navigation: ordered goal-cell candidates and a cursor.
+        # A collection level (visit several markers) is cleared by rotating to
+        # the next candidate when the current one is reached / proves
+        # unreachable, instead of bailing to undirected interaction after one.
+        self._goal_cells: list[tuple[int, int]] | None = None
+        self._goal_idx = 0
+        self._goal_cell: tuple[int, int] | None = None
         # Explore / interaction bookkeeping (keyed by candidate descriptor so the
         # try/change stats survive a candidate-list rebuild as the frame evolves).
         self._xp_tries: Counter = Counter()
@@ -844,17 +882,52 @@ class WorldModelAgent:
         from arcengine import GameAction
 
         bg = self.model.background if self.model.background is not None else 0
+        cur = (
+            player_centroid(layer, self.model.player_color, bg)
+            if self.model.player_color is not None
+            else None
+        )
+        cur_cell = self._player_cell(cur)
+
+        # Blocked-move detection: the move emitted last execute step had a known
+        # nonzero unit step, yet the player's grid cell did NOT change -> the
+        # cell it tried to enter is a wall the static pixel heuristic missed.
+        # Learn that cell as impassable, abandon the now-invalid plan, and let
+        # the replan below route around it (the ls20 stuck-loop fix). A player
+        # stuck even after learning blocks rotates to the NEXT goal candidate
+        # (multi-target levels) rather than bailing immediately.
+        if (
+            self._exec_prev_cell is not None
+            and self._exec_aid is not None
+            and cur_cell is not None
+        ):
+            step = self.model.step_dirs().get(self._exec_aid)
+            if step is not None and cur_cell == self._exec_prev_cell:
+                wall = (self._exec_prev_cell[0] + step[1], self._exec_prev_cell[1] + step[0])
+                self._blocked_cells.add(wall)
+                self._exec_stuck += 1
+                self._plan = []
+            elif cur_cell != self._exec_prev_cell:
+                self._exec_stuck = 0
+
+        if self._exec_stuck >= EXECUTE_STUCK_LIMIT:
+            # Current target is unreachable from here even after learning walls.
+            # Advance to the next goal candidate and replan; bail only when all
+            # candidates are exhausted.
+            self._exec_stuck = 0
+            self._plan = []
+            if not self._advance_goal(layer):
+                return self._switch_to_interact(layer, avail, latest_frame)
 
         # Surprise check: the model predicted where the player would land last
-        # step; a large mismatch means the learned dynamics are wrong here.
-        if self._pred_player is not None and self.model.player_color is not None:
-            cur = player_centroid(layer, self.model.player_color, bg)
-            if cur is not None:
-                dist = (
-                    (cur[0] - self._pred_player[0]) ** 2 + (cur[1] - self._pred_player[1]) ** 2
-                ) ** 0.5
-                if dist > SURPRISE_PX:
-                    self._plan = plan_navigation(layer, self.model, self.goal or infer_goal(layer, self.model))
+        # step; a large mismatch (other than a clean block) means the learned
+        # dynamics are wrong here, so replan to the current goal candidate.
+        if self._pred_player is not None and cur is not None:
+            dist = (
+                (cur[0] - self._pred_player[0]) ** 2 + (cur[1] - self._pred_player[1]) ** 2
+            ) ** 0.5
+            if dist > SURPRISE_PX:
+                self._plan = self._plan_to_current_goal(layer)
 
         # Bail-fast: a navigation plan that has not cleared the level in far more
         # than the human budget is the wrong model — switch to interaction.
@@ -862,9 +935,13 @@ class WorldModelAgent:
             return self._switch_to_interact(layer, avail, latest_frame)
 
         if not self._plan:
-            self._plan = plan_navigation(layer, self.model, self.goal or infer_goal(layer, self.model))
-            if not self._plan:
-                return self._switch_to_interact(layer, avail, latest_frame)
+            self._plan = self._plan_to_current_goal(layer)
+            # Empty plan to the current candidate (reached or unreachable) ->
+            # rotate to the next candidate; bail when none remain.
+            while not self._plan:
+                if not self._advance_goal(layer):
+                    return self._switch_to_interact(layer, avail, latest_frame)
+                self._plan = self._plan_to_current_goal(layer)
 
         aid = self._plan.pop(0)
         if aid not in avail:
@@ -872,14 +949,63 @@ class WorldModelAgent:
             return self._switch_to_interact(layer, avail, latest_frame)
 
         shift = self.model.predict_player_shift(aid)
-        cur = (
-            player_centroid(layer, self.model.player_color, bg)
-            if self.model.player_color is not None
-            else None
-        )
         self._pred_player = (cur[0] + shift[0], cur[1] + shift[1]) if (shift and cur) else None
+        self._exec_prev_cell = cur_cell
+        self._exec_aid = aid
         self._pending = {"action_id": aid, "coord": None, "before": layer.copy()}
         return self._emit(GameAction.from_id(aid))
+
+    def _ensure_goal_cells(self, layer: np.ndarray) -> None:
+        """Lazily enumerate the ordered goal-cell candidates for this level."""
+        if self._goal_cells is None:
+            bg = self.model.background if self.model.background is not None else 0
+            cell = _step_cell_size(self.model.move_map)
+            self._goal_cells = enumerate_goal_cells(layer, cell, self.model.player_color, bg)
+            self._goal_idx = 0
+            self._goal_cell = self._goal_cells[0] if self._goal_cells else None
+
+    def _advance_goal(self, layer: np.ndarray) -> bool:
+        """Move the goal cursor to the next candidate; False when exhausted.
+
+        Each rotation clears the per-target stuck count and the learned-block
+        set is kept (walls are level-invariant). Returns True while a fresh
+        candidate is available to plan toward.
+        """
+        self._ensure_goal_cells(layer)
+        if not self._goal_cells:
+            return False
+        self._goal_idx += 1
+        self._exec_stuck = 0
+        if self._goal_idx >= len(self._goal_cells):
+            return False
+        self._goal_cell = self._goal_cells[self._goal_idx]
+        return True
+
+    def _plan_to_current_goal(self, layer: np.ndarray) -> list[int]:
+        """BFS plan to the current goal candidate (override), else the default.
+
+        With candidates enumerated, navigation aims explicitly at the current
+        marker cell so a multi-target level can be swept one marker at a time.
+        Falls back to the default rarest-colour goal when no candidates exist.
+        """
+        self._ensure_goal_cells(layer)
+        goal = self.goal or infer_goal(layer, self.model)
+        return plan_navigation(
+            layer, self.model, goal,
+            blocked=self._blocked_cells,
+            goal_cell_override=self._goal_cell,
+        )
+
+    def _player_cell(self, centroid: tuple[float, float] | None) -> tuple[int, int] | None:
+        """Player centroid (cx, cy) -> grid (row, col) at the learned cell pitch.
+
+        Returns None when the player is unlocated or no movement was learned (no
+        pitch to quantise by). Pure helper for blocked-move detection.
+        """
+        if centroid is None or not self.model.move_map:
+            return None
+        cell = _step_cell_size(self.model.move_map)
+        return (int(round(centroid[1])) // cell, int(round(centroid[0])) // cell)
 
     def _switch_to_interact(self, layer: np.ndarray, avail: list[int], latest_frame):
         self._plan_commit = self._action_count
