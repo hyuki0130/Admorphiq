@@ -48,6 +48,7 @@ from .general_agent import (
     _MIN_GOAL_SIZE,
     _MIN_TRANSLATION_PX,
     _MOVE_ACTION_IDS,
+    GeneralAgent,
     _avail_ids,
     _state_name,
     _step_cell_size,
@@ -85,14 +86,6 @@ PROBE_BUDGET = 40
 # Coarse ACTION6 probe lattice stride (px): clicks scattered on a regular grid so
 # a responsive cell anywhere on the board is eventually hit during discovery.
 PROBE_GRID_STRIDE = 16
-# Click-ONLY games (no movement action moves anything) have nothing to do but
-# search for the cell that drives the reward up — so the click sweep is given a
-# much wider budget than ``PROBE_BUDGET`` (sized for nav games where clicks are
-# a secondary probe). The reward-driven cell search walks the rare-colour
-# interactive surface (see :func:`rare_color_cells`) in rarest-first order; the
-# winning cell of a click puzzle can sit deep in that order (lp85 L1 clears on
-# the 69th rare-colour cell), so the cap is wide while still bounded.
-CLICK_ONLY_PROBE_BUDGET = 220
 # A learned player shift this far (px) from where the model predicted the player
 # would land counts as a model SURPRISE → replan from the live frame.
 SURPRISE_PX = 4.0
@@ -101,6 +94,19 @@ SURPRISE_PX = 4.0
 # navigation plan that has not cleared the level in far more than the human
 # budget is the wrong model — keep it tight (navigation clears fast or never).
 EXECUTE_BAIL = 50
+# When the structured world-model path (probe → navigate → interact) gains NO
+# new level for this many actions, it has demonstrably stalled on this game
+# class. The world model's own interaction lacks the GF(2) toggle / paint
+# pattern primitives some games (lights-out, bit-panel) require, so it can loop
+# its rotate-explore indefinitely without ever completing such a level. At that
+# point the remaining budget is handed to a fresh GeneralAgent running its full
+# proven discovery→nav→pattern→explore pipeline — the broad systematic
+# exploration that catches those classes. The threshold sits above the slowest
+# observed structured clear (ar25 L1 stumbles in the world model's interact
+# rotate by ~540 actions) so every game the structured path CAN clear completes
+# before the hand-off; the fallback only ever ADDS clears on games the world
+# model would otherwise score 0 on (ft09 toggle, tn36 bit-panel).
+NO_PROGRESS_FALLBACK = 650
 # Bounded probe buffer: the direction map is recomputed from the most recent
 # movement probes, so the buffer is capped to keep ``observe`` O(1) per call.
 _MOVE_PROBE_CAP = 40
@@ -485,14 +491,27 @@ class WorldModelAgent:
     goal / probe state is per-level.
     """
 
-    MAX_ACTIONS = 600
+    # Hard per-game action cap. Sized so the structured world-model path keeps
+    # its full working budget AND, on a stall, the GeneralAgent fallback gets a
+    # fresh GeneralAgent-equivalent budget (~600) on top — see
+    # NO_PROGRESS_FALLBACK. (WIN / GAME_OVER still stop the game far earlier on
+    # the games either path can clear.)
+    MAX_ACTIONS = 1250
 
     def __init__(self, seed: int = 0) -> None:
+        self._seed = seed
         self._rng = random.Random(seed)
         self._action_count = 0
         self._levels_completed = 0
         self.model = EffectModel()
         self.goal: Goal | None = None
+        # Action count at the last level-up (0 at game start). The structured
+        # path is judged stalled when it gains no level for
+        # NO_PROGRESS_FALLBACK actions past this mark, engaging the fallback.
+        self._last_progress_action = 0
+        # GeneralAgent exploration fallback, created lazily on stall (see
+        # _activate_fallback). None while the structured path is driving.
+        self._fallback: GeneralAgent | None = None
         self._reset_level()
 
     def _reset_level(self) -> None:
@@ -545,6 +564,10 @@ class WorldModelAgent:
         """Emit the next action for the current observation."""
         from arcengine import GameAction
 
+        # Once the exploration fallback has engaged it owns the rest of the game.
+        if self._fallback is not None:
+            return self._fallback_step(frames, latest_frame)
+
         layer = canonical_layer(getattr(latest_frame, "frame", latest_frame))
         avail = _avail_ids(latest_frame)
         state = _state_name(latest_frame)
@@ -575,11 +598,18 @@ class WorldModelAgent:
             self._pending = None
         if leveled:
             self._levels_completed = lvl
+            self._last_progress_action = self._action_count
             self._reset_level()
 
         if state == "GAME_OVER" or layer.size == 0 or not avail:
             self._pending = None
             return self._emit(GameAction.RESET)
+
+        # Structured path stalled (no new level for NO_PROGRESS_FALLBACK
+        # actions) → hand the remaining budget to the exploration fallback.
+        if self._action_count - self._last_progress_action >= NO_PROGRESS_FALLBACK:
+            self._activate_fallback()
+            return self._fallback_step(frames, latest_frame)
 
         if self._phase == _PHASE_PROBE:
             return self._probe_step(layer, avail, latest_frame)
@@ -594,6 +624,34 @@ class WorldModelAgent:
         if data is not None:
             return action, {"x": int(data.x), "y": int(data.y)}
         return action, None
+
+    # ── exploration fallback (delegates to GeneralAgent's full pipeline) ──────
+
+    def _activate_fallback(self) -> None:
+        """Switch control to a fresh GeneralAgent for the rest of the game.
+
+        Called once when the structured world-model path has stalled (no new
+        level for ``NO_PROGRESS_FALLBACK`` actions). The GeneralAgent runs its
+        full proven discovery→nav→pattern→explore pipeline against the live
+        frame — the broad systematic exploration (including the GF(2) toggle /
+        paint primitives the world model lacks) that clears toggle / sequence
+        games the world model alone cannot. The structured model is abandoned;
+        any pending probe is dropped so it is not credited against the
+        fallback's actions.
+        """
+        self._fallback = GeneralAgent(seed=self._seed)
+        self._pending = None
+
+    def _fallback_step(self, frames: list, latest_frame):
+        """Delegate one action to the GeneralAgent fallback, counting it as ours.
+
+        GeneralAgent maintains its own action counter; we additionally advance
+        ``_action_count`` so ``is_done``'s budget cap still bounds the whole
+        game and the harness's per-call accounting stays consistent.
+        """
+        action = self._fallback.choose_action(frames, latest_frame)
+        self._action_count += 1
+        return action
 
     # ── probe phase: recentering movement discovery, then click probing ────────
 
@@ -672,15 +730,31 @@ class WorldModelAgent:
                     self._plan_commit = self._action_count
                     return self._execute_step(layer, avail, latest_frame)
 
-        # Phase 2: ACTION6 click probing (click games + nav-failed games). Probe
+        # No controllable player learned after movement discovery → this is a
+        # pure click / toggle / bit-panel game. The world model has no nav plan
+        # here and its blind click interaction is BOTH ineffective AND can trip a
+        # lose-state before any action-count stall is ever detected (measured:
+        # tn36 game-over by ~61 actions, ft09 by ~454). Hand off NOW — before
+        # spending a single click probe — to the GeneralAgent's disciplined
+        # discovery→pattern→explore pipeline, which owns the GF(2) toggle / paint
+        # primitives these classes need and clears them without tripping the
+        # lose-state. Movement games (a player WAS learned) keep the structured
+        # world-model path, which is what clears the navigation classes.
+        if self.model.player_color is None:
+            self._activate_fallback()
+            return self._fallback_step([], latest_frame)
+
+        # Phase 2: ACTION6 click probing for a movement game whose navigation
+        # goal could not be planned (no-movement games handed off above). Probe
         # rare-colour cluster centroids (the plausible buttons / markers) first,
         # then a coarse lattice, so a responsive cell anywhere is eventually hit.
         if 6 in avail:
             if self._click_queue is None:
                 self._click_queue = self._build_click_probes(layer)
-            # Click-only games (no movement) get the wide reward-driven sweep
-            # budget; nav games keep the tight secondary-probe budget.
-            cap = PROBE_BUDGET if self._move_targets else CLICK_ONLY_PROBE_BUDGET
+            # A movement game keeps the tight nav-secondary probe budget (the
+            # wide reward-driven sweep belonged to the no-movement path, which
+            # now hands off to the exploration fallback instead).
+            cap = PROBE_BUDGET
             if spent < cap and self._click_queue:
                 x, y = self._click_queue.pop(0)
                 self._pending = {

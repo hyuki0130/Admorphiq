@@ -19,7 +19,9 @@ import os
 import numpy as np
 import pytest
 
+from admorphiq.general_agent import GeneralAgent
 from admorphiq.world_model_agent import (
+    NO_PROGRESS_FALLBACK,
     EffectModel,
     Goal,
     WorldModelAgent,
@@ -492,31 +494,92 @@ def test_rare_color_cells_prefers_completion_colors():
     assert cells[0] == (0, 0)  # preferred colour leads despite being less rare
 
 
-def test_click_only_game_sweeps_rare_cells_past_nav_probe_budget():
-    """Purpose: a click-ONLY game (no movement action available) keeps clicking
-    rare-colour cells well past PROBE_BUDGET (the tight nav-probe cap), because
-    the only way to drive the reward up is to search the interactive cells — the
-    lp85 fix (its winning cell sits at rare-cell index 68 > PROBE_BUDGET=40).
+def test_click_only_game_hands_off_to_general_agent_fallback():
+    """Purpose: a pure click game (ACTION6 only, no controllable player) hands
+    control to the GeneralAgent exploration fallback rather than running the
+    world model's own blind click sweep — the R33 fix that stops the world
+    model tripping the lose-state on toggle / bit-panel games (ft09 game-over
+    ~454, tn36 ~61) and routes click games to the disciplined
+    discovery→pattern→explore pipeline that clears them.
 
-    Expected feedback: pass means click-only games get the wide reward-driven
-    sweep; a fail means the agent prematurely abandons the search and can never
-    reach a deep winning cell.
+    Expected feedback: pass means a no-player game engages the fallback before
+    any world-model click probe; a fail means the world model resumes the
+    blind sweep that game-overs ft09 / tn36.
     """
-    from admorphiq.world_model_agent import CLICK_ONLY_PROBE_BUDGET, PROBE_BUDGET
+    from arcengine import GameAction
 
-    assert CLICK_ONLY_PROBE_BUDGET > PROBE_BUDGET
     agent = WorldModelAgent()
     layer = _layer(64, 64)
-    layer[3, 2:50] = 7  # 48 rare-colour cells -> a long click queue
-    obs = _FakeObs(layer, avail=[6])
-    clicks = []
-    for _ in range(60):
-        action = agent.choose_action([], obs)
-        if action.action_data is not None:
-            clicks.append((action.action_data.x, action.action_data.y))
-    # More than PROBE_BUDGET distinct cells were clicked (the wide sweep), proving
-    # the agent did not stop the search at the nav-probe cap.
-    assert len(set(clicks)) > PROBE_BUDGET
+    layer[3, 2:50] = 7  # a rare-colour interactive surface, no moving player
+    # No movement actions → movement discovery is a no-op → no player learned.
+    action = agent.choose_action([], _FakeObs(layer, avail=[6]))
+    assert isinstance(action, GameAction)
+    assert isinstance(agent._fallback, GeneralAgent)
+
+
+# ── R33: GeneralAgent exploration fallback on structured stall ─────────────────
+
+
+def test_stall_activates_general_agent_fallback():
+    """Purpose: when the structured world-model path gains no new level for
+    NO_PROGRESS_FALLBACK actions it hands control to a fresh GeneralAgent — the
+    broad exploration (with the toggle/paint primitives the world model lacks)
+    that catches the games (ft09, tn36) the world model alone never completes.
+
+    Expected feedback: pass means the stall watchdog engages the GeneralAgent
+    fallback; a fail means the world model loops its own interaction forever and
+    those games stay at 0 levels.
+    """
+    from arcengine import GameAction
+
+    agent = WorldModelAgent()
+    # Simulate having spent NO_PROGRESS_FALLBACK actions with no level-up.
+    agent._action_count = NO_PROGRESS_FALLBACK
+    agent._last_progress_action = 0
+    layer = _layer(64, 64)
+    layer[10:12, 10:12] = 4  # a rare cluster the explorer can target
+    action = agent.choose_action([], _FakeObs(layer, avail=[6]))
+    assert isinstance(action, GameAction)
+    assert isinstance(agent._fallback, GeneralAgent)
+
+
+def test_level_up_resets_stall_clock():
+    """Purpose: a level-up resets the stall clock so a game still making progress
+    is never prematurely handed off — this protects the world-model-only clears
+    (ar25) whose first level can take hundreds of structured actions to stumble.
+
+    Expected feedback: pass means progress defers the fallback; a fail means the
+    watchdog could fire mid-progress and discard a game the world model would
+    have cleared on its own.
+    """
+    agent = WorldModelAgent()
+    agent._action_count = NO_PROGRESS_FALLBACK - 1  # one short of the stall
+    agent._last_progress_action = 0
+    layer = _block(_layer(), color=7, r0=2, c0=2)
+    agent.choose_action([], _FakeObs(layer, avail=[1, 2, 3, 4], levels=1))
+    assert agent._fallback is None  # level-up deferred the fallback
+    assert agent._last_progress_action == NO_PROGRESS_FALLBACK - 1
+
+
+def test_fallback_delegates_subsequent_calls():
+    """Purpose: once the fallback is active every call routes through the embedded
+    GeneralAgent and still advances the world-model agent's own action counter so
+    is_done's budget cap continues to bound the game.
+
+    Expected feedback: pass means the hand-off is sticky and budget-accounted; a
+    fail means control flips back to the stalled world model or the budget
+    miscounts.
+    """
+    from arcengine import GameAction
+
+    agent = WorldModelAgent()
+    agent._fallback = GeneralAgent()
+    layer = _block(_layer(), color=7, r0=2, c0=2)
+    before = agent._action_count
+    action = agent.choose_action([], _FakeObs(layer, avail=[1, 2, 3, 4]))
+    assert isinstance(action, GameAction)
+    assert agent._action_count == before + 1
+    assert agent._fallback is not None
 
 
 # ── optional slow live-env smoke (skipped by default) ─────────────────────────
