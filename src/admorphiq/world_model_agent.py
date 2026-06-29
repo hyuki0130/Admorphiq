@@ -85,6 +85,14 @@ PROBE_BUDGET = 40
 # Coarse ACTION6 probe lattice stride (px): clicks scattered on a regular grid so
 # a responsive cell anywhere on the board is eventually hit during discovery.
 PROBE_GRID_STRIDE = 16
+# Click-ONLY games (no movement action moves anything) have nothing to do but
+# search for the cell that drives the reward up — so the click sweep is given a
+# much wider budget than ``PROBE_BUDGET`` (sized for nav games where clicks are
+# a secondary probe). The reward-driven cell search walks the rare-colour
+# interactive surface (see :func:`rare_color_cells`) in rarest-first order; the
+# winning cell of a click puzzle can sit deep in that order (lp85 L1 clears on
+# the 69th rare-colour cell), so the cap is wide while still bounded.
+CLICK_ONLY_PROBE_BUDGET = 220
 # A learned player shift this far (px) from where the model predicted the player
 # would land counts as a model SURPRISE → replan from the live frame.
 SURPRISE_PX = 4.0
@@ -268,6 +276,48 @@ def _changed_colors(before: np.ndarray, after: np.ndarray) -> set[int]:
         return set()
     vals = set(np.unique(before[mask]).tolist()) | set(np.unique(after[mask]).tolist())
     return {int(v) for v in vals}
+
+
+def rare_color_cells(
+    layer: np.ndarray,
+    background: int,
+    max_colors: int = 8,
+    max_cells: int = 400,
+    prefer_colors: set[int] | None = None,
+) -> list[tuple[int, int]]:
+    """Individual cells of the rarest non-background colours, rarest colour first.
+
+    The interactive surface of a click puzzle is its rare-colour object pixels
+    (buttons / markers), NOT the common background field. Clicking a background
+    or common-colour cell never drives the reward (``levels_completed``) up and,
+    in a game with a lose state, can be fatal — so the reward-driven interaction
+    search walks the rare-colour cells exclusively, rarest colour first then
+    raster order within a colour. ``prefer_colors`` (e.g. the colour set that
+    changed at a PAST level completion) is tried ahead of everything else, so
+    reward attribution carries across levels. Pure / env-free → unit-testable.
+    Returns ``(x, y)`` pixel coordinates.
+    """
+    if layer.size == 0:
+        return []
+    prefer = prefer_colors or set()
+    vals, counts = np.unique(layer, return_counts=True)
+    by_count = sorted(
+        (
+            (int(v), int(c))
+            for v, c in zip(vals.tolist(), counts.tolist())
+            if int(v) != background
+        ),
+        key=lambda vc: (vc[0] not in prefer, vc[1]),
+    )
+    out: list[tuple[int, int]] = []
+    for color, _ in by_count[:max_colors]:
+        ys, xs = np.where(layer == color)
+        cells = sorted(zip(xs.tolist(), ys.tolist()), key=lambda p: (p[1], p[0]))
+        for x, y in cells:
+            out.append((int(x), int(y)))
+            if len(out) >= max_cells:
+                return out
+    return out
 
 
 # ── Stage (c): goal inference ─────────────────────────────────────────────────
@@ -628,7 +678,10 @@ class WorldModelAgent:
         if 6 in avail:
             if self._click_queue is None:
                 self._click_queue = self._build_click_probes(layer)
-            if spent < PROBE_BUDGET and self._click_queue:
+            # Click-only games (no movement) get the wide reward-driven sweep
+            # budget; nav games keep the tight secondary-probe budget.
+            cap = PROBE_BUDGET if self._move_targets else CLICK_ONLY_PROBE_BUDGET
+            if spent < cap and self._click_queue:
                 x, y = self._click_queue.pop(0)
                 self._pending = {
                     "action_id": 6,
@@ -641,22 +694,21 @@ class WorldModelAgent:
         return self._finish_probe(layer, avail, latest_frame)
 
     def _build_click_probes(self, layer: np.ndarray) -> list[tuple[int, int]]:
-        """Ordered ACTION6 probe cells: rare-colour cluster centroids, then grid.
+        """Ordered ACTION6 probe cells for the reward-driven interaction search.
 
-        Rare-colour clusters are the most likely interactive markers (buttons /
-        goals), so they are probed before a blind lattice; the lattice fills the
-        gaps so a responsive cell anywhere on the board is eventually hit.
+        The interactive surface of a click puzzle is its rare-colour object
+        CELLS, not the common background field — so the search walks every cell
+        of the rarest colours (rarest first; see :func:`rare_color_cells`),
+        which is where the cell that drives ``levels_completed`` up actually
+        lives. A colour that drove a PAST level completion is tried first
+        (reward attribution carried across levels). The coarse lattice is kept
+        only as a trailing fallback for games whose button sits on a common
+        colour, reached after the rare-colour surface is exhausted.
         """
         bg = self.model.background if self.model.background is not None else 0
         out: list[tuple[int, int]] = []
         seen: set[tuple[int, int]] = set()
-        comps = [c for c in connected_components(layer, bg) if c["size"] >= _MIN_GOAL_SIZE]
-        color_area: Counter = Counter()
-        for c in comps:
-            color_area[c["color"]] += c["size"]
-        comps.sort(key=lambda c: (color_area[c["color"]], -c["size"]))
-        for c in comps[:_EXPLORE_MAX_CLUSTERS]:
-            cell = (int(round(c["cx"])), int(round(c["cy"])))
+        for cell in rare_color_cells(layer, bg, prefer_colors=self.model.completion_target_colors()):
             if cell not in seen:
                 seen.add(cell)
                 out.append(cell)

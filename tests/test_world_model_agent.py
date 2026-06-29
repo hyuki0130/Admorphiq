@@ -449,6 +449,76 @@ def test_agent_action6_click_carries_xy_data():
     assert (data.x, data.y) == (63, 0)
 
 
+# ── R31: reward-driven rare-colour click search ───────────────────────────────
+
+
+def test_rare_color_cells_orders_rarest_color_first():
+    """Purpose: rare_color_cells enumerates individual cells of the rarest
+    non-background colours, rarest colour first then raster order — the
+    reward-driven click surface (clicking common/background cells never drives
+    progress and can trip a lose state).
+
+    Expected feedback: pass means the click search targets the meaningful sparse
+    interactive cells in priority order; a fail means it wastes budget (or trips
+    a lose) on common-colour cells.
+    """
+    from admorphiq.world_model_agent import rare_color_cells
+
+    layer = _layer(8, 8, bg=0)
+    layer[0, 0:5] = 3  # common colour 3 (5 cells)
+    layer[7, 7] = 9  # rarest colour 9 (1 cell)
+    layer[6, 6:8] = 4  # colour 4 (2 cells)
+    cells = rare_color_cells(layer, background=0)
+    assert cells[0] == (7, 7)  # rarest colour first
+    assert (6, 6) in cells and (7, 6) in cells
+    assert cells.index((6, 6)) < cells.index((0, 0))  # colour 4 before colour 3
+
+
+def test_rare_color_cells_prefers_completion_colors():
+    """Purpose: a colour supplied via prefer_colors (one that changed at a past
+    level completion) is searched ahead of rarer colours — reward attribution
+    carried across levels.
+
+    Expected feedback: pass means the agent re-uses what won a previous level to
+    prioritise the next level's click search; a fail means it re-discovers the
+    productive colour from scratch every level.
+    """
+    from admorphiq.world_model_agent import rare_color_cells
+
+    layer = _layer(8, 8, bg=0)
+    layer[7, 7] = 9  # rarest colour 9 (1 cell)
+    layer[0, 0:4] = 6  # colour 6 (4 cells), completion-correlated
+    cells = rare_color_cells(layer, background=0, prefer_colors={6})
+    assert cells[0] == (0, 0)  # preferred colour leads despite being less rare
+
+
+def test_click_only_game_sweeps_rare_cells_past_nav_probe_budget():
+    """Purpose: a click-ONLY game (no movement action available) keeps clicking
+    rare-colour cells well past PROBE_BUDGET (the tight nav-probe cap), because
+    the only way to drive the reward up is to search the interactive cells — the
+    lp85 fix (its winning cell sits at rare-cell index 68 > PROBE_BUDGET=40).
+
+    Expected feedback: pass means click-only games get the wide reward-driven
+    sweep; a fail means the agent prematurely abandons the search and can never
+    reach a deep winning cell.
+    """
+    from admorphiq.world_model_agent import CLICK_ONLY_PROBE_BUDGET, PROBE_BUDGET
+
+    assert CLICK_ONLY_PROBE_BUDGET > PROBE_BUDGET
+    agent = WorldModelAgent()
+    layer = _layer(64, 64)
+    layer[3, 2:50] = 7  # 48 rare-colour cells -> a long click queue
+    obs = _FakeObs(layer, avail=[6])
+    clicks = []
+    for _ in range(60):
+        action = agent.choose_action([], obs)
+        if action.action_data is not None:
+            clicks.append((action.action_data.x, action.action_data.y))
+    # More than PROBE_BUDGET distinct cells were clicked (the wide sweep), proving
+    # the agent did not stop the search at the nav-probe cap.
+    assert len(set(clicks)) > PROBE_BUDGET
+
+
 # ── optional slow live-env smoke (skipped by default) ─────────────────────────
 
 
