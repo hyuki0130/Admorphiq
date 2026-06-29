@@ -22,6 +22,7 @@ import pytest
 from admorphiq.general_agent import GeneralAgent
 from admorphiq.world_model_agent import (
     NO_PROGRESS_FALLBACK,
+    POST_CLEAR_STALL,
     EffectModel,
     Goal,
     WorldModelAgent,
@@ -414,6 +415,39 @@ def test_agent_is_done_on_win_and_budget():
     assert agent.is_done([], win_obs) is True
     agent._action_count = agent.MAX_ACTIONS
     assert agent.is_done([], _FakeObs(_layer(), avail=[1])) is True
+
+
+def test_agent_is_done_post_clear_stall():
+    """Purpose: prove the post-clear EXPLOIT-then-STOP watchdog — once >=1 level
+    is cleared, is_done stops after POST_CLEAR_STALL actions with no further
+    level-up, but it NEVER fires before the first clear (so the agent keeps
+    searching for its first level) and NEVER fires while progress is fresh.
+
+    Expected feedback: pass means the agent banks its clears and abandons the
+    proven-futile exploration tail (cutting AR25's 542 / LP85's 1250 wandering)
+    without truncating a still-progressing game; a fail means either wasted
+    wall-clock on a dead tail or a premature stop that loses a reachable level.
+    """
+    obs = _FakeObs(_layer(), avail=[1, 2, 3, 4])
+
+    # No level cleared yet: the watchdog must stay silent however long we wander,
+    # so the first-clear search is never cut short.
+    agent = WorldModelAgent()
+    agent._levels_completed = 0
+    agent._last_progress_action = 0
+    agent._action_count = POST_CLEAR_STALL + 100
+    assert agent.is_done([], obs) is False
+
+    # One level cleared, progress still fresh (< stall window): keep going.
+    agent = WorldModelAgent()
+    agent._levels_completed = 1
+    agent._last_progress_action = 20
+    agent._action_count = 20 + POST_CLEAR_STALL - 1
+    assert agent.is_done([], obs) is False
+
+    # One level cleared and the stall window elapsed with no new level: STOP.
+    agent._action_count = 20 + POST_CLEAR_STALL
+    assert agent.is_done([], obs) is True
 
 
 def test_agent_learns_online_across_calls():

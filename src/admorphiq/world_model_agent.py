@@ -107,6 +107,21 @@ EXECUTE_BAIL = 50
 # before the hand-off; the fallback only ever ADDS clears on games the world
 # model would otherwise score 0 on (ft09 toggle, tn36 bit-panel).
 NO_PROGRESS_FALLBACK = 650
+# Post-clear EXPLOIT-then-STOP watchdog. The competition metric is per-level
+# ``min(human/agent_actions, 1)**2`` — once a level is recorded, the actions
+# spent AFTER it neither improve that level's score nor (measured) ever clear
+# the next level on the games this agent reaches: AR25 clears L1 in 30 actions
+# then wanders 512 more to GAME_OVER; LP85 clears L1 in 61 then loops the
+# fallback to the 1250 cap. Those tails are pure waste against the shared 9h
+# wall-clock the 110-game eval runs under. So once >=1 level has been cleared, a
+# stall of this many actions with NO further level-up means broad exploration
+# has demonstrably failed to find the next level — STOP and bank the clears. The
+# window resets on every level-up, so a genuinely-progressing multi-level game
+# is never cut; and it is wide enough (> the largest L2 human baseline among
+# reached games + a full discovery+nav budget) that any next level clearable
+# fast enough to score non-negligibly under the squared metric completes before
+# the watchdog fires.
+POST_CLEAR_STALL = 250
 # Bounded probe buffer: the direction map is recomputed from the most recent
 # movement probes, so the buffer is capped to keep ``observe`` O(1) per call.
 _MOVE_PROBE_CAP = 40
@@ -555,8 +570,19 @@ class WorldModelAgent:
     # ── harness contract ──────────────────────────────────────────────────────
 
     def is_done(self, frames: list, latest_frame) -> bool:
-        """Stop on WIN (the biggest efficiency lever) or when out of budget."""
+        """Stop on WIN, on a post-clear stall, or when out of budget.
+
+        WIN is the biggest efficiency lever. The post-clear stall check
+        (``POST_CLEAR_STALL``) banks the clears already won and stops the
+        proven-futile tail of broad exploration once at least one level is
+        cleared and no further level has been gained for the stall window.
+        """
         if _state_name(latest_frame) == "WIN":
+            return True
+        if (
+            self._levels_completed >= 1
+            and self._action_count - self._last_progress_action >= POST_CLEAR_STALL
+        ):
             return True
         return self._action_count >= self.MAX_ACTIONS
 
@@ -648,7 +674,17 @@ class WorldModelAgent:
         GeneralAgent maintains its own action counter; we additionally advance
         ``_action_count`` so ``is_done``'s budget cap still bounds the whole
         game and the harness's per-call accounting stays consistent.
+
+        The fallback clears levels INSIDE its own pipeline, invisible to our
+        level counter — so we mirror the frame's ``levels_completed`` here.
+        Without this the post-clear stall watchdog could never fire on a
+        fallback-driven game (no-player click games hand off before any clear),
+        leaving LP85/FT09/TN36 to grind their full budget after L1 is banked.
         """
+        lvl = int(getattr(latest_frame, "levels_completed", 0) or 0)
+        if lvl > self._levels_completed:
+            self._levels_completed = lvl
+            self._last_progress_action = self._action_count
         action = self._fallback.choose_action(frames, latest_frame)
         self._action_count += 1
         return action
