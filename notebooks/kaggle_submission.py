@@ -7,9 +7,17 @@
 #  3. Registers our `KaggleBCAgent` — the trained behaviour-cloning policy
 #     (`models/bc_policy.pt`, auto-updated to the best checkpoint at submit
 #     time; override with the `BC_WEIGHTS` env var).
-#  4. Boots an OFFLINE `Arcade` over the bundled environment files and serves
-#     it locally, runs the agent swarm against every environment, and writes
-#     `/kaggle/working/submission.json` from the closed scorecard.
+#  4. Boots an OFFLINE `Arcade` over the bundled environment files and drives
+#     the agent over every environment with a direct make()/agent.main() loop,
+#     then writes `/kaggle/working/submission.json` from the closed scorecard.
+#
+# Why a direct loop and NOT `agents.swarm.Swarm` + `Arcade.listen_and_serve`:
+# `Swarm.__init__` constructs its OWN `Arcade()` in NORMAL mode (which fetches
+# an anonymous API key over HTTP) and runs the games through that internal
+# Arcade — never through a locally-served OFFLINE one. With internet disabled
+# that errors, and the `on_scorecard_close` callback that was meant to write
+# the submission never fires. The direct OFFLINE loop below is fully offline,
+# deterministic, and verified by `scripts/verify_offline_submission.py`.
 #
 # Every Kaggle-only path is guarded so this file also imports cleanly off
 # Kaggle (e.g. during local lint / smoke tests).
@@ -89,45 +97,52 @@ print(f"Registered agent '{AGENT_KEY}' -> {KaggleBCAgent.__name__}")
 
 # %%
 def run_offline_submission() -> None:
-    """Boot OFFLINE Arcade, serve it, run the swarm, write submission.json."""
-    import threading
-
-    from agents.swarm import Swarm
+    """Boot OFFLINE Arcade, drive the agent over every game, write submission.json."""
     from arc_agi import Arcade, OperationMode
 
-    host, port = "localhost", 8001
-    root_url = f"http://{host}:{port}"
+    # Force OFFLINE deterministically. The Arcade constructor lets an
+    # OPERATION_MODE=competition env var override the constructor arg, and
+    # competition mode needs the network — impossible with internet disabled.
+    os.environ["OPERATION_MODE"] = "offline"
 
     arc = Arcade(
         operation_mode=OperationMode.OFFLINE,
         environments_dir=KAGGLE_ENVS_DIR,
     )
 
-    def _on_scorecard_close(scorecard) -> None:
-        os.makedirs(KAGGLE_WORKING, exist_ok=True)
-        with open(SUBMISSION_PATH, "w") as f:
-            f.write(scorecard.model_dump_json())
-        print(f"Wrote submission to {SUBMISSION_PATH}")
-
-    # Serve the offline environments in a background thread.
-    server = threading.Thread(
-        target=arc.listen_and_serve,
-        kwargs=dict(
-            host=host,
-            port=port,
-            competition_mode=True,
-            on_scorecard_close=_on_scorecard_close,
-        ),
-        daemon=True,
-    )
-    server.start()
-
-    # Discover every environment the offline Arcade exposes.
     games = [env.game_id for env in arc.get_environments()]
     print(f"Playing {len(games)} environment(s): {games}")
 
-    swarm = Swarm(AGENT_KEY, root_url, games, tags=["admorphiq", "bc"])
-    swarm.main()
+    card_id = arc.open_scorecard(tags=["admorphiq", "bc"])
+    print(f"Opened scorecard: {card_id}")
+
+    for game_id in games:
+        env = arc.make(game_id, scorecard_id=card_id)
+        if env is None:
+            print(f"  {game_id}: make() returned None — skipping")
+            continue
+        agent = AVAILABLE_AGENTS[AGENT_KEY](
+            card_id=card_id,
+            game_id=game_id,
+            agent_name=AGENT_KEY,
+            ROOT_URL="",
+            record=False,
+            arc_env=env,
+            tags=["admorphiq", "bc"],
+        )
+        agent.main()
+        last = agent.frames[-1]
+        print(
+            f"  {game_id}: actions={agent.action_counter} "
+            f"state={getattr(last.state, 'name', last.state)} "
+            f"levels_completed={last.levels_completed}"
+        )
+
+    scorecard = arc.close_scorecard(card_id)
+    os.makedirs(KAGGLE_WORKING, exist_ok=True)
+    with open(SUBMISSION_PATH, "w") as f:
+        f.write(scorecard.model_dump_json() if scorecard is not None else "{}")
+    print(f"Wrote submission to {SUBMISSION_PATH}")
 
 
 # %%
