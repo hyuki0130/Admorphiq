@@ -49,6 +49,10 @@ def _make_agent(name: str):
     """
     if name == "general":
         return GeneralAgent()
+    if name == "worldmodel":
+        from admorphiq.world_model_agent import WorldModelAgent
+
+        return WorldModelAgent()
     if name == "bc":
         import os
 
