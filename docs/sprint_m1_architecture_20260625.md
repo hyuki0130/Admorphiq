@@ -118,3 +118,41 @@ cheap non-wasteful exploration everywhere else beats any brute-force solver.
 Official ARC-AGI-3-Agents runner/Swarm entry-point + exact Kaggle notebook
 cells — pull from the provided `ARC-AGI-3-Agents/` (Kaggle Data tab) or the
 GitHub repo; needed for step A. Everything else above is verified.
+
+> Resolved (2026-06-29): Swarm is broken offline (fetches an API key over HTTP).
+> The notebook uses a direct OFFLINE `Arcade` loop instead — verified locally
+> (`scripts/verify_offline_submission.py`). See `notebooks/SUBMISSION.md`.
+
+## 8. Post-M1 direction (2026-06-29) — BC is the ship asset, not the destination
+
+The M1 submission is a behavior-cloned CNN policy (`models/bc_policy.pt` = v6,
+3.41% / 15-of-25 games on the proxy, BC + Test-Time Training). **Ship it for
+M1** — it beats the 0.25 floor and is the safety net. But it is a warm-start,
+not the spine for the private leaderboard.
+
+**Why BC alone is not enough.** Eval = 110 PRIVATE unseen games; BC learned from
+gold on the 25 PUBLIC games, so the proxy score is partly in-sample. The
+held-out transfer test (`scripts/_transfer_test.sh`: train on 18, score the 7
+never-seen) measures the real transfer; if it is low, BC-on-public-gold is a
+proxy overfit. The top team (StochasticGoose ≈ 1.21) is CNN+RL, but the
+load-bearing half is **online RL that adapts per game at TEST time** — not BC on
+a public set. Copy the online-learning idea, not the public-gold BC.
+
+**RL status:** the first fine-tune (`scripts/train_rl.py`) underperformed BC
+(1.54% vs 3.41%) and is not deployed — but that is one config, not a verdict on
+the method. Redesign (lower LR, stronger KL anchor, drop the +0.02/frame-change
+shaping, longer training, keep-best-by-eval), don't bury it.
+
+**The general agent (R27+ thrust):**
+1. Perception → objects (segment frames into entities; game-agnostic).
+2. Online world model — learn "action X changes object Y" *per game* from the
+   agent's own probes (`src/admorphiq/world_model/`); this is what transfers.
+3. Goal inference — find the level-complete condition (heuristic or offline LLM
+   at discovery, a few calls/game).
+4. Search-based planning — BFS/MCTS in the learned model → short, efficient
+   action sequences (the squared metric rewards efficiency).
+5. RL on top — online per-game policy improvement; BC = warm-start prior.
+
+Two-layer plan: (M1) ship BC v6; (R27+) build the world-model + online-learning
++ RL general agent for the private 110. Memory: `project_general_direction_worldmodel`,
+`project_bc_transfer_ceiling`, `feedback_rl_not_abandoned`.

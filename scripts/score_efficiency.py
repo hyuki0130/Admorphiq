@@ -135,6 +135,7 @@ def run_game(
     game_id: str,
     baseline: list[int] | None,
     agent_name: str = "ensemble",
+    max_actions: int = _MAX_ACTIONS,
 ) -> dict[str, Any]:
     """Run one game with the selected agent and record per-level action counts.
 
@@ -161,7 +162,7 @@ def run_game(
 
     start = time.time()
 
-    while action_count_total < _MAX_ACTIONS:
+    while action_count_total < max_actions:
         if adapter.is_done([], obs):
             break
 
@@ -265,6 +266,14 @@ def _build_parser() -> argparse.ArgumentParser:
         default="scripts/efficiency_score.json",
         help="Output JSON path (default: scripts/efficiency_score.json).",
     )
+    p.add_argument(
+        "--max-actions",
+        type=int,
+        default=_MAX_ACTIONS,
+        help=f"Per-game action budget (default: {_MAX_ACTIONS}). Lower it for fast "
+        "diagnostic runs — clears that exceed the cap score ~0 under the squared "
+        "efficiency metric anyway, so the signal is preserved.",
+    )
     return p
 
 
@@ -306,7 +315,8 @@ def main() -> None:
         )
 
         try:
-            result = run_game(arcade, game_id, baseline, agent_name=args.agent)
+            result = run_game(arcade, game_id, baseline, agent_name=args.agent,
+                              max_actions=args.max_actions)
         except Exception as exc:
             result = {"game_id": game_id, "error": str(exc)}
 

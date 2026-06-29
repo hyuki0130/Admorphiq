@@ -311,6 +311,67 @@ scripts/
 > - We have **0 submissions**. A valid offline notebook on the board (beating
 >   the 0.25 sample) + open-sourcing by June 30 23:59 UTC is **P0**.
 
+> **🧭 DIRECTION CORRECTION (2026-06-29) — BC is the M1 ship asset and a
+> warm-start, NOT the destination. The general path is world-model + online
+> (test-time) learning + RL.** Read this before extending the BC track.
+>
+> **What the BC sprint (R14–R26) produced** — a behavior-cloned CNN policy
+> (`PerceptionModel`, frame→4101 logits) trained on gold traces for 24 of the
+> 25 public games, plus Test-Time Training + a cycle-breaker at inference
+> (`src/admorphiq/bc_agent.py`, `kaggle_bc_agent.py`). Deployed model
+> `models/bc_policy.pt` = **v6** (BC retrain on 24-game gold) = **3.41%** on the
+> 25-game proxy (40 envs, real squared-efficiency metric), **15/25** games
+> clearing ≥1 level (v2 was 2.20% / 10). This is the **M1 submission asset** —
+> ship it (P0), keep it.
+>
+> **The structural blind spot — MEASURED 2026-06-29: transfer ≈ 0%.** Eval is
+> **110 PRIVATE unseen games**, but BC learned from gold on the **25 PUBLIC**
+> ones. The **held-out transfer test** (`scripts/_transfer_test.sh`: train BC on
+> 18 games, score the 7 it never saw) returned a **0.00% transfer ratio** — the
+> holdout model cleared **0 of 7** unseen games (vs 0.054 mean in-sample for v6).
+> Confound ruled out: the same holdout model DOES clear its own training games
+> (M0R0 2/6, LP85 1/8), so this is genuine non-transfer, not undertraining.
+> **Conclusion: BC-on-public-gold memorizes the training games and is a proxy
+> overfit — it cannot be the spine for the private leaderboard.** (Log:
+> `scripts/transfer_test.log`; memory `project_bc_transfer_ceiling`.)
+>
+> **The top-team recipe, read correctly** — StochasticGoose (Dries Smit / Tufa,
+> top ≈ 1.21) is CNN+RL, but the load-bearing half is **online RL that adapts
+> per game at TEST time** (retrains between levels), not BC on a public training
+> set. We copied the transferable-weak half. The learning that matters happens
+> *inside each unseen game*, within the 9h / 110-game budget.
+>
+> **RL status is NOT "rejected"** — one fine-tune run (`scripts/train_rl.py`,
+> REINFORCE from the BC init, lr 1e-4, KL 0.1, +0.02/frame-change shaping,
+> 50k steps) scored 1.54% (< BC 3.41%), so auto-promote correctly kept v6 for
+> *deployment*. That is one config, not a verdict on the method. Likely fixes:
+> lower LR, stronger KL/BC anchor, drop the frame-change shaping (it rewards
+> wiggling over solving), longer training, and **keep-best-by-eval instead of
+> keep-last** (intermediate checkpoints scored via `scripts/_rl_curve.sh` show
+> the trajectory). RL-from-BC is hyperparameter-sensitive; redesign, don't bury.
+>
+> **The general path (R27+ thrust, toward M2 / final / the $350K bonus)** — an
+> object-centric agent that does its learning AT TEST TIME on each unseen game:
+> 1. **Perception → objects** — segment the frame into entities/color regions
+>    (game-agnostic; `FrameAnalyzer` exists). No game-id / sprite-tag reads.
+> 2. **Online world model** — from the agent's own probes, learn "action X
+>    changes object Y" *per game* in the first tens of actions (`world_model/`
+>    exists). This is what transfers, because it is rebuilt fresh per game.
+> 3. **Goal inference** — detect the level-complete condition via the model +
+>    a small reasoning step (heuristic, or the offline LLM at discovery, a few
+>    calls/game).
+> 4. **Search-based planning** — BFS/MCTS in the learned model toward the goal
+>    → short action sequences (the squared-efficiency metric rewards this).
+> 5. **RL on top** — online policy improvement per game; **BC = warm-start
+>    prior** that biases exploration toward "actions that do something", not the
+>    final policy.
+>
+> **Two-layer plan**: (M1, now) ship BC v6 — valid offline notebook beating the
+> 0.25 floor, open-sourced by the deadline. (R27+) build the world-model +
+> online-learning + RL general agent as the real lever for the private 110.
+> Both tracks coexist: BC v6 is the safety net; the general agent is the climb.
+> Doc: `docs/sprint_m1_architecture_20260625.md` (post-M1 direction section).
+
 **Architecture decision (2026-04-20)**: Adopt [Karpathy's LLM Wiki pattern](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f) — markdown knowledge base maintained by LLM at dev-time, read by inference LLM at Kaggle-time. No vector DB (incompatible with Kaggle internet constraint).
 
 **Reference analysis**: see [`docs/llm_wiki_karpathy_analysis_ko.md`](docs/llm_wiki_karpathy_analysis_ko.md) for the full Karpathy pattern breakdown and the Admorphiq gap table (log.md missing, lint pass missing, ingest-workflow not ritualised, query→page refiling not systematic). R23+ roadmap below absorbs the gaps as dedicated sub-rounds.
