@@ -191,3 +191,81 @@ def test_reset_states_emit_reset(state: str) -> None:
     action = agent.choose_action([], obs)
     assert action is not None
     assert len(agent.buffer) == 0
+
+
+def _run_indices(seed: int, n: int = 12) -> list[int]:
+    """Drive one fresh agent over a fixed obs sequence, returning chosen indices.
+
+    The chosen combined-logit index is captured from ``agent._pending`` after
+    each call — a clean, comparable integer summary of the stochastic decision.
+    """
+    agent = OnlineRLAgent(warmstart=False, device="cpu", seed=seed)
+    indices: list[int] = []
+    for i in range(n):
+        agent.choose_action([], _Obs(_frame(i % 5), levels=0, avail=(1, 2, 3, 4, 6)))
+        indices.append(agent._pending[1] if agent._pending is not None else -1)
+    return indices
+
+
+def test_same_seed_reproducible() -> None:
+    """Purpose: a fixed seed must make the whole agent run reproducible —
+    identical weight init, identical exploration, identical replay sampling — so
+    the K-seed clear-rate harness measures real variance, not RNG noise.
+
+    Expected feedback: a pass means two independently-constructed agents with
+    the same seed pick the identical action-index sequence over the same obs
+    stream; a fail means a randomness source (global random / numpy / torch /
+    model init) is unseeded and the measurement bar would be untrustworthy.
+    """
+    assert _run_indices(123) == _run_indices(123)
+
+
+def test_different_seed_differs() -> None:
+    """Purpose: distinct seeds must produce distinct runs — confirming the seed
+    actually drives the stochasticity rather than the run being constant.
+
+    Expected feedback: a pass means two different seeds diverge somewhere in the
+    action-index sequence; a fail means seeding is a no-op (e.g. greedy collapse)
+    and the K-seed harness would report a fake clear-rate of 0/K or K/K.
+    """
+    assert _run_indices(1) != _run_indices(2)
+
+
+def test_progress_log_writes_ticks(tmp_path, monkeypatch) -> None:
+    """Purpose: when RL_PROGRESS_LOG is set the agent must emit timestamped TICK
+    lines carrying game_id / level / action_count / train_updates every
+    RL_PROGRESS_EVERY actions — the learning-curve trace for long runs.
+
+    Expected feedback: a pass means the log file exists and contains TICK lines
+    tagged with the agent's game_id and the four required fields; a fail means
+    the progress instrumentation is silent or malformed.
+    """
+    log = tmp_path / "prog.log"
+    monkeypatch.setenv("RL_PROGRESS_LOG", str(log))
+    monkeypatch.setenv("RL_PROGRESS_EVERY", "2")
+    agent = OnlineRLAgent(warmstart=False, device="cpu", seed=0, game_id="zz99")
+    for i in range(8):
+        agent.choose_action([], _Obs(_frame(i), levels=0))
+    text = log.read_text()
+    ticks = [ln for ln in text.splitlines() if ln.startswith("TICK")]
+    assert ticks, "at least one TICK line must be written"
+    line = ticks[0]
+    assert "game=zz99" in line
+    for field in ("level=", "actions=", "train_updates="):
+        assert field in line
+
+
+def test_progress_log_silent_without_env(tmp_path, monkeypatch) -> None:
+    """Purpose: progress logging is opt-in — with no RL_PROGRESS_LOG set the
+    agent must write nothing (so unit tests and silent runs leave no files).
+
+    Expected feedback: a pass means no progress path is configured and no file
+    is created; a fail means the agent writes a log unconditionally, polluting
+    the repo during ordinary runs.
+    """
+    monkeypatch.delenv("RL_PROGRESS_LOG", raising=False)
+    agent = OnlineRLAgent(warmstart=False, device="cpu", seed=0, game_id="zz99")
+    assert agent._progress_path is None
+    for i in range(8):
+        agent.choose_action([], _Obs(_frame(i), levels=0))
+    assert not list(tmp_path.iterdir())

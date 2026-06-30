@@ -40,12 +40,15 @@ from admorphiq.adapter import AdmorphiqAdapter  # noqa: E402
 from admorphiq.general_agent import GeneralAgent  # noqa: E402
 
 
-def _make_agent(name: str):
+def _make_agent(name: str, game_id: str | None = None):
     """Build the agent object for the given ``--agent`` name.
 
     Both agents expose the harness contract ``is_done(frames, latest_frame)``
     / ``choose_action(frames, latest_frame)`` over the raw arcengine
     observation, so the run loop is agent-agnostic.
+
+    ``game_id`` is threaded through so per-game-aware agents (the online RL
+    agent's progress log) can label their output.
     """
     if name == "general":
         return GeneralAgent()
@@ -59,7 +62,11 @@ def _make_agent(name: str):
         warmstart = os.environ.get("RL_NO_WARMSTART", "").strip().lower() not in (
             "1", "true", "yes", "on",
         )
-        return OnlineRLAgent(warmstart=warmstart)
+        # RL_SEED makes the stochastic agent reproducible — single-run clear/miss
+        # is variance, so the K-seed harness varies this to measure a clear-RATE.
+        seed_env = os.environ.get("RL_SEED", "").strip()
+        seed = int(seed_env) if seed_env else None
+        return OnlineRLAgent(warmstart=warmstart, seed=seed, game_id=game_id)
     if name == "bc":
         import os
 
@@ -155,7 +162,7 @@ def run_game(
       per_level (list of {level, agent_actions, human_actions, score}),
       game_score, has_baseline, error (only on failure)
     """
-    adapter = _make_agent(agent_name)
+    adapter = _make_agent(agent_name, game_id=game_id)
 
     env = arcade.make(game_id)
     if env is None:

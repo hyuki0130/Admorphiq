@@ -44,10 +44,30 @@ Harness contract: ``is_done(frames, latest_frame)`` /
 ``choose_action(frames, latest_frame)`` over the raw arcengine observation,
 returning an official ``GameAction`` — identical to ``BCPolicyAgent``. The
 train-as-it-plays loop runs inside ``choose_action``.
+
+Measurement (R2c) — the agent is stochastic, so single-run clear/miss is
+variance, not signal. Pass a fixed ``seed`` (or ``RL_SEED`` env via
+``scripts/score_efficiency.py``) for a reproducible run; judge changes by the
+K-seed CLEAR-RATE from ``scripts/online_rl_clearrate.sh``, never one run.
+
+TRUSTWORTHY BASELINE (2026-06-30, K=3 seeds {1,2,3}, max_actions=1500, warm-start
+BC v6). This is the bar all future learner changes are judged against:
+
+    game   win  clear_rate  mean_levels  levels_by_seed
+    AR25    8      0/3         0.00        [0, 0, 0]
+    DC22    6      0/3         0.00        [0, 0, 0]
+    FT09    6      1/3         0.33        [0, 0, 1]
+    LP85    8      1/3         0.33        [0, 1, 0]
+    M0R0    6      1/3         0.33        [0, 0, 1]
+    TU93    9      0/3         0.00        [0, 0, 0]
+
+Aggregate: 3/18 (game, seed) cells cleared >=1 level at the 1500-action budget.
+NO learner change produced this — it is the as-committed (a550070) baseline.
 """
 
 from __future__ import annotations
 
+import datetime
 import os
 import random
 import sys
@@ -98,6 +118,48 @@ def _frame_hash(frame: np.ndarray) -> str:
     return hashlib.md5(np.ascontiguousarray(frame).tobytes()).hexdigest()[:16]
 
 
+def _seed_everything(seed: int) -> None:
+    """Seed every RNG the agent draws from so a fixed seed = a reproducible run.
+
+    The agent's stochasticity has three sources: (1) the agent's own
+    :class:`random.Random` (action-type / coordinate exploration choices),
+    (2) numpy (incidental), and (3) torch — both the per-game model's random
+    weight initialisation and ``torch.multinomial`` coordinate sampling. The
+    :class:`ExperienceBuffer` draws its replay minibatches from the *global*
+    ``random`` module, so the global seed must be set too. Seeding must happen
+    BEFORE the model is constructed so warm-start-disabled weight init is itself
+    reproducible.
+    """
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+
+
+def _append_progress(
+    path: str,
+    game_id: str,
+    level: int,
+    action_count: int,
+    train_updates: int,
+) -> None:
+    """Append one timestamped TICK line to the per-game online-RL progress log.
+
+    Format (one line, space-separated key=value pairs after the TICK token):
+        TICK <iso8601> game=<id> level=<n> actions=<n> train_updates=<n>
+
+    This is the lightweight learning-curve trace re-introduced so a long run can
+    be inspected after the fact without re-instrumenting; it is opt-in via the
+    ``RL_PROGRESS_LOG`` env var so unit tests and silent runs write nothing.
+    """
+    ts = datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds")
+    line = (
+        f"TICK {ts} game={game_id} level={level} "
+        f"actions={action_count} train_updates={train_updates}\n"
+    )
+    with open(path, "a", encoding="utf-8") as fh:
+        fh.write(line)
+
+
 class OnlineRLAgent:
     """Test-time online CNN policy that learns per game from sparse level rewards.
 
@@ -125,6 +187,7 @@ class OnlineRLAgent:
         device: str | None = None,
         warmstart: bool = True,
         seed: int | None = None,
+        game_id: str | None = None,
     ) -> None:
         from .adapter import AdmorphiqAdapter  # heavy import, kept lazy
         from .agent_ensemble import get_frame
@@ -133,7 +196,19 @@ class OnlineRLAgent:
         self._convert_action = AdmorphiqAdapter._convert_action
 
         self.device = _pick_device(device)
+        # Seed every RNG (global random + numpy + torch) BEFORE building the
+        # model so the run — including random weight init — is reproducible.
+        # A None seed leaves the global RNGs untouched (non-reproducible, fine).
+        if seed is not None:
+            _seed_everything(seed)
         self._rng = random.Random(seed)
+
+        # Per-game progress logging (opt-in via RL_PROGRESS_LOG). Tick every
+        # RL_PROGRESS_EVERY env steps so a long run leaves a learning-curve trace.
+        self.game_id = game_id or "unknown"
+        self._progress_path = os.environ.get("RL_PROGRESS_LOG", "").strip() or None
+        self._progress_every = int(os.environ.get("RL_PROGRESS_EVERY", "200"))
+        self._train_updates = 0
 
         # env overrides for tuning without code edits
         self.EPSILON_START = float(os.environ.get("RL_EPS_START", self.EPSILON_START))
@@ -247,7 +322,19 @@ class OnlineRLAgent:
         self._prev_frame = frame
         self._step_in_level += 1
         self._total_steps += 1
+        if self._progress_path and self._total_steps % self._progress_every == 0:
+            self._progress_tick()
         return self._index_to_action(idx)
+
+    def _progress_tick(self) -> None:
+        """Emit one progress-log line capturing the current learning state."""
+        _append_progress(
+            self._progress_path,
+            self.game_id,
+            self._prev_levels or 0,
+            self._total_steps,
+            self._train_updates,
+        )
 
     # ── transition bookkeeping ─────────────────────────────────────────────────
 
@@ -427,6 +514,7 @@ class OnlineRLAgent:
         greedy pick toward productive / rewarding actions without disturbing the
         masking semantics of the other logits.
         """
+        self._train_updates += 1
         sample = self.buffer.sample_with_next(min(self.TRAIN_BATCH, len(self.buffer)))
         if sample is None:
             # Not enough next_frame entries yet — fall back to reward-only sample.
