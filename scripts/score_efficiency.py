@@ -49,10 +49,17 @@ def _make_agent(name: str):
     """
     if name == "general":
         return GeneralAgent()
-    if name == "worldmodel":
-        from admorphiq.world_model_agent import WorldModelAgent
+    if name == "online_rl":
+        import os
 
-        return WorldModelAgent()
+        from admorphiq.online_rl_agent import OnlineRLAgent
+
+        # Warm-start from BC v6 as an exploration prior unless disabled
+        # (RL_NO_WARMSTART=1 trains the per-game policy from scratch).
+        warmstart = os.environ.get("RL_NO_WARMSTART", "").strip().lower() not in (
+            "1", "true", "yes", "on",
+        )
+        return OnlineRLAgent(warmstart=warmstart)
     if name == "bc":
         import os
 
@@ -166,6 +173,14 @@ def run_game(
 
     start = time.time()
 
+    # Agents that learn online across attempts (e.g. the test-time RL agent)
+    # need many episodes of the SAME game: on GAME_OVER they RESET and keep
+    # their per-game model/buffer instead of the run ending. This is faithful
+    # to the real eval (the agent keeps acting until WIN or the action budget;
+    # GAME_OVER just resets the current attempt) — action_count_total keeps
+    # accumulating, so the squared-efficiency metric still penalises waste.
+    restart_on_game_over = bool(getattr(adapter, "restart_on_game_over", False))
+
     while action_count_total < max_actions:
         if adapter.is_done([], obs):
             break
@@ -193,8 +208,17 @@ def run_game(
                 action_count_this_level = 0
             prev_levels = current_levels
 
-        if obs.state in (GameState.WIN, GameState.GAME_OVER):
+        if obs.state == GameState.WIN:
             break
+        if obs.state == GameState.GAME_OVER:
+            if not restart_on_game_over:
+                break
+            # Revive the env for the next attempt; the agent keeps learning.
+            obs = env.step(GameAction.RESET)
+            action_count_total += 1
+            action_count_this_level += 1
+            if obs is None:
+                break
 
     elapsed = time.time() - start
     levels_completed: int = obs.levels_completed if obs else prev_levels
@@ -274,9 +298,9 @@ def _build_parser() -> argparse.ArgumentParser:
         "--max-actions",
         type=int,
         default=_MAX_ACTIONS,
-        help=f"Per-game action budget (default: {_MAX_ACTIONS}). Lower it for fast "
-        "diagnostic runs — clears that exceed the cap score ~0 under the squared "
-        "efficiency metric anyway, so the signal is preserved.",
+        help=f"Per-game action budget (default: {_MAX_ACTIONS}). Lower it for "
+        "fast diagnostic runs — clears that exceed the cap score ~0 under the "
+        "squared efficiency metric anyway, so the signal is preserved.",
     )
     return p
 
