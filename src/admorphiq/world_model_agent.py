@@ -42,6 +42,10 @@ from dataclasses import dataclass, field
 
 import numpy as np
 
+from .arrangement import (
+    learn_selection_modes,
+    plan_descend_and_sweep,
+)
 from .general_agent import (
     _EXPLORE_MAX_CLUSTERS,
     _MAX_PLAYER_SIZE,
@@ -138,6 +142,20 @@ _MOVE_PROBE_CAP = 40
 _PHASE_PROBE = "probe"
 _PHASE_EXECUTE = "execute"
 _PHASE_INTERACT = "interact"
+_PHASE_ARRANGE = "arrange"
+
+# Simple action commonly used as the SELECTION toggle in arrangement games
+# (cycles which entity the move actions drive). Detected, not assumed: the
+# arrangement phase only engages when this action is available AND probing
+# confirms it changes the per-mode movement map without itself translating a
+# single player. ARC-AGI-3 maps ACTION5 to this role on the measured games.
+_SELECT_TOGGLE_ACTION = 5
+# Max distinct candidate arrangement plans the agent executes live before giving
+# up on the arrangement hypothesis and falling through to interaction. Each
+# candidate is a short sequence (~human-baseline length); the systematic sweep
+# over alignment-entity offsets converges within a handful of tries on the
+# measured games, and a cap keeps a non-arrangement game from burning budget.
+_ARRANGE_MAX_CANDIDATES = 18
 
 
 # ── Stage (a): perception → objects ──────────────────────────────────────────
@@ -604,6 +622,29 @@ class WorldModelAgent:
         self._seq_list: list[tuple] = []
         self._seq_i = 0
         self._seq_pos = 0
+        # ── Multi-entity ARRANGEMENT bookkeeping (select-and-place) ──────────
+        # The selection model (per-mode movement maps + toggle action) learned
+        # by sweeping the selection space live, and the systematic-search state:
+        # the ordered probe schedule, the model, the candidate plan currently
+        # being executed, and the set of candidate plans already tried (so a
+        # failed candidate's displaced frame yields a NEW alignment offset on the
+        # next replan instead of repeating). See ``src/admorphiq/arrangement.py``.
+        self._arr_probe_queue: list[tuple] | None = None
+        self._arr_probe_log: list[dict] = []
+        self._arr_model = None
+        # The arrangement executes in two stages once the model is learned:
+        # (1) ``_arr_descend`` — the queued action plan that brings the primary
+        #     group onto the goal-marker row (descended ONCE);
+        # (2) the alignment SWEEP — single alignment-entity steps, alternating
+        #     direction outward (0, -1, +1, -2, +2, ...), checking the live
+        #     level-up after each, so the level clears the moment the alignment
+        #     column is right WITHOUT a risky full re-descent / restore. The
+        #     sweep offsets are pre-ordered in ``_arr_sweep`` (each a small action
+        #     list: a toggle to the alignment mode then one alignment move).
+        self._arr_descend: list[int] | None = None
+        self._arr_sweep: list[list[int]] | None = None
+        self._arr_sweep_plan: list[int] = []
+        self._arr_executed = 0
 
     # ── harness contract ──────────────────────────────────────────────────────
 
@@ -659,6 +700,12 @@ class WorldModelAgent:
                     self._disc_attempts[aid] += 1
                     self._disc_last_probe_aid = aid
                     self._disc_last_moved = self._probe_moved(aid, p["before"], layer, bg)
+                # Arrangement selection-mode probe: log the (action, before, after)
+                # so learn_selection_modes can build the per-mode movement map.
+                if p.get("arr_probe"):
+                    self._arr_probe_log.append(
+                        {"action": p["action_id"], "before": p["before"], "after": layer.copy()}
+                    )
             self._pending = None
         if leveled:
             self._levels_completed = lvl
@@ -679,6 +726,8 @@ class WorldModelAgent:
             return self._probe_step(layer, avail, latest_frame)
         if self._phase == _PHASE_EXECUTE:
             return self._execute_step(layer, avail, latest_frame)
+        if self._phase == _PHASE_ARRANGE:
+            return self._arrange_step(layer, avail, latest_frame)
         return self._interact_step(layer, avail, latest_frame)
 
     def choose_action_with_data(self, frames: list, latest_frame):
@@ -754,6 +803,29 @@ class WorldModelAgent:
 
         spent = self._action_count - self._level_base
 
+        # On a level PAST the first, where the player/move controls are already
+        # learned (GAME-scope) yet a selection-toggle action + several movable
+        # entities are present, try the multi-entity ARRANGEMENT capability
+        # BEFORE the recentering movement-discovery sweep below — that sweep
+        # issues real (non-undone) moves that scramble the level's piece layout,
+        # and the arrangement search depends on a near-pristine layout to keep
+        # its alignment-offset sweep on a stable reference. The arrangement probe
+        # schedule undoes each move, so it preserves the layout; if the learned
+        # selection model turns out NOT to be a real arrangement (no
+        # vertically-controllable primary + separate alignment entity), the phase
+        # abandons back to interaction. Gated to non-first levels so no game's L1
+        # discovery path is touched (the 6-game regression is L1-driven).
+        if (
+            self._levels_completed >= 1
+            and self.model.player_color is not None
+            and self._arr_probe_queue is None
+            and _SELECT_TOGGLE_ACTION in avail
+            and not self._move_disc_done
+            and spent == 0
+            and self._arrange_enabled(layer, avail)
+        ):
+            return self._enter_arrange(layer, avail, latest_frame)
+
         if self._move_targets is None:
             self._move_targets = [a for a in _MOVE_ACTION_IDS if a in avail]
 
@@ -803,6 +875,19 @@ class WorldModelAgent:
                     self._phase = _PHASE_EXECUTE
                     self._plan_commit = self._action_count
                     return self._execute_step(layer, avail, latest_frame)
+            # No single-player navigation plan, but a selection-toggle action +
+            # several movable entities → this is the multi-entity ARRANGEMENT
+            # class (AR25-L2). Enter arrangement NOW, before the click-probe
+            # sweep below displaces the pieces (the sweep moves them, shifting
+            # the alignment offset the systematic search depends on). The
+            # selection-toggle move probes have already been folded into the
+            # model, so the pieces are near their level-start configuration.
+            if (
+                self._arr_probe_queue is None
+                and _SELECT_TOGGLE_ACTION in avail
+                and self._arrange_enabled(layer, avail)
+            ):
+                return self._enter_arrange(layer, avail, latest_frame)
 
         # No controllable player learned after movement discovery → this is a
         # pure click / toggle / bit-panel game. The world model has no nav plan
@@ -869,9 +954,19 @@ class WorldModelAgent:
         return out
 
     def _finish_probe(self, layer: np.ndarray, avail: list[int], latest_frame):
-        """Probing exhausted with no navigation plan → greedy interaction."""
+        """Probing exhausted with no navigation plan → arrangement, else interact."""
         if self.goal is None:
             self.goal = infer_goal(layer, self.model)
+        # No navigation plan formed, but a selection-toggle action + multiple
+        # movable entities → try the multi-entity arrangement capability before
+        # undirected interaction (the AR25-L2 select-and-place class). Gate is
+        # observation-only.
+        if (
+            self._arr_probe_queue is None
+            and _SELECT_TOGGLE_ACTION in avail
+            and self._arrange_enabled(layer, avail)
+        ):
+            return self._enter_arrange(layer, avail, latest_frame)
         self._plan_commit = self._action_count
         self._phase = _PHASE_INTERACT
         return self._interact_step(layer, avail, latest_frame)
@@ -1008,9 +1103,180 @@ class WorldModelAgent:
         return (int(round(centroid[1])) // cell, int(round(centroid[0])) // cell)
 
     def _switch_to_interact(self, layer: np.ndarray, avail: list[int], latest_frame):
+        # A navigation plan that did not clear the level is the FIRST signal that
+        # this may be a multi-entity ARRANGEMENT level (one player → one target →
+        # one path is the wrong model when several pieces must each be placed and
+        # a selection action cycles which piece moves). Before falling through to
+        # undirected interaction, try the arrangement capability when its enabling
+        # conditions hold: the selection-toggle action is available and not yet
+        # probed this level. This is observation-gated, not game-id-gated.
+        if (
+            self._arr_probe_queue is None
+            and _SELECT_TOGGLE_ACTION in avail
+            and self._arrange_enabled(layer, avail)
+        ):
+            return self._enter_arrange(layer, avail, latest_frame)
         self._plan_commit = self._action_count
         self._phase = _PHASE_INTERACT
         return self._interact_step(layer, avail, latest_frame)
+
+    # ── arrangement (select-and-place multi-entity) phase ─────────────────────
+
+    def _arrange_enabled(self, layer: np.ndarray, avail: list[int]) -> bool:
+        """Cheap gate: are there several sizeable movable-looking entities?
+
+        The arrangement search is only worth its probe cost when the frame holds
+        at least two distinct non-background coloured objects large enough to be
+        pieces (the selection toggle alone is not enough — a pure toggle game has
+        no movable entities). Counts distinct colours with a sizeable component;
+        ``>= 2`` qualifies. Frame-only, no game-id / internal reads.
+        """
+        bg = self.model.background if self.model.background is not None else 0
+        from .arrangement import entity_centroids
+
+        return len(entity_centroids(layer, bg)) >= 2
+
+    def _enter_arrange(self, layer: np.ndarray, avail: list[int], latest_frame):
+        """Begin the arrangement phase: schedule the live selection-mode probes.
+
+        The probe schedule sweeps each selection mode: within a mode, probe each
+        move action (with an immediate inverse to undo it so the sweep does not
+        drift the pieces), then issue the selection toggle to advance to the next
+        mode. The resulting ``before/after`` log feeds
+        :func:`learn_selection_modes`. Two modes are scheduled (the measured
+        count); an extra toggle at the end restores selection to mode 0.
+        """
+        self._phase = _PHASE_ARRANGE
+        self._plan_commit = self._action_count
+        moves = [a for a in (1, 2, 3, 4) if a in avail]
+        inv = {1: 2, 2: 1, 3: 4, 4: 3}
+        schedule: list[tuple] = []
+        n_modes = 2
+        # Probe each of the ``n_modes`` selection modes (model mode 0 = the mode
+        # active NOW). Within a mode, probe each move (undone immediately so the
+        # layout is preserved); a single toggle separates modes. After visiting
+        # all modes the hardware sits in the LAST mode, so issue
+        # ``n_modes - last_mode`` (= 1 for two modes, a full extra cycle back to
+        # 0) closing toggles to return the hardware to model mode 0 — the mode
+        # the candidate plans assume as their starting selection. Total toggles is
+        # then ``n_modes`` (even for two modes → back to start), fixing the
+        # off-by-one that previously left the hardware one toggle out of phase and
+        # made every candidate execute in the wrong selection mode.
+        for mode in range(n_modes):
+            for a in moves:
+                schedule.append(("probe", a))
+                if inv[a] in avail:
+                    schedule.append(("undo", inv[a]))
+            if mode < n_modes - 1:
+                schedule.append(("toggle", _SELECT_TOGGLE_ACTION))
+        # Closing toggles: from the last visited mode (n_modes-1) advance the
+        # cyclic selection back to 0.
+        for _ in range((n_modes - (n_modes - 1)) % n_modes or n_modes):
+            schedule.append(("toggle", _SELECT_TOGGLE_ACTION))
+        self._arr_probe_queue = schedule
+        self._arr_probe_log = []
+        return self._arrange_step(layer, avail, latest_frame)
+
+    def _arrange_step(self, layer: np.ndarray, avail: list[int], latest_frame):
+        """One action of the arrangement phase: probe modes, then sweep candidates.
+
+        Stage 1 — drain the live mode-probe schedule, logging each
+        (action, before, after) so :func:`learn_selection_modes` can build the
+        per-mode movement map.
+        Stage 2 — with the model learned, repeatedly generate candidate plans
+        from the LIVE frame (shortest first), execute the shortest untried one,
+        and let the env confirm the WIN. A failed candidate displaces the pieces;
+        the next replan from the displaced frame yields a different alignment
+        offset, so the systematic sweep advances without repeating. Falls through
+        to interaction once the candidate budget is spent.
+        """
+        from arcengine import GameAction
+
+        bg = self.model.background if self.model.background is not None else 0
+
+        # Stage 1: live selection-mode probing.
+        if self._arr_probe_queue:
+            kind, aid = self._arr_probe_queue.pop(0)
+            if aid not in avail:
+                # Skip a probe whose action vanished; keep draining the schedule.
+                return self._arrange_step(layer, avail, latest_frame)
+            if kind in ("probe", "toggle"):
+                self._pending = {
+                    "action_id": aid,
+                    "coord": None,
+                    "before": layer.copy(),
+                    "arr_probe": True,
+                    "arr_kind": kind,
+                }
+            else:  # undo move — observed by the model but not logged as a probe
+                self._pending = {"action_id": aid, "coord": None, "before": layer.copy()}
+            return self._emit(GameAction.from_id(aid))
+
+        # Build the selection model once the schedule has drained.
+        if self._arr_model is None:
+            self._arr_model = learn_selection_modes(
+                self._arr_probe_log, bg, toggle_action=_SELECT_TOGGLE_ACTION
+            )
+            if not self._arr_model.any_movement():
+                return self._abandon_arrange(layer, avail, latest_frame)
+
+        # Stage 2a: descend the primary group ONCE onto the goal-marker row.
+        # Planned from the live (post-probe) layout, and executed before any
+        # alignment sweep — moving the alignment entity afterwards does not change
+        # the primary's row, so the level clears the instant the alignment column
+        # is right, with no risky re-descent / restore that could overshoot the
+        # board edge and trip a lose-state (measured on AR25: restoring the
+        # descent UP game-overs).
+        if self._arr_descend is None:
+            self._arr_descend, self._arr_sweep = plan_descend_and_sweep(
+                layer, bg, self._arr_model
+            )
+            if self._arr_descend is None:
+                return self._abandon_arrange(layer, avail, latest_frame)
+        if self._arr_descend:
+            aid = self._arr_descend.pop(0)
+            if aid not in avail:
+                self._arr_descend = []
+                return self._arrange_step(layer, avail, latest_frame)
+            self._pending = {"action_id": aid, "coord": None, "before": layer.copy()}
+            return self._emit(GameAction.from_id(aid))
+
+        # Stage 2b: alignment SWEEP. Each entry is a short action list (toggle into
+        # the alignment mode + one alignment-entity step) tried in outward order
+        # (0, then toward the goal marker, then the other side); the live level-up
+        # check between entries (handled by the harness on the next call) ends the
+        # game the moment the alignment column is right.
+        if not self._arr_sweep_plan:
+            if not self._arr_sweep or self._arr_executed >= _ARRANGE_MAX_CANDIDATES:
+                return self._abandon_arrange(layer, avail, latest_frame)
+            self._arr_sweep_plan = list(self._arr_sweep.pop(0))
+            self._arr_executed += 1
+            if not self._arr_sweep_plan:
+                return self._arrange_step(layer, avail, latest_frame)
+
+        aid = self._arr_sweep_plan.pop(0)
+        if aid not in avail:
+            self._arr_sweep_plan = []
+            return self._arrange_step(layer, avail, latest_frame)
+        self._pending = {"action_id": aid, "coord": None, "before": layer.copy()}
+        return self._emit(GameAction.from_id(aid))
+
+    def _abandon_arrange(self, layer: np.ndarray, avail: list[int], latest_frame):
+        """Arrangement inapplicable/exhausted → resume the normal probe pipeline.
+
+        When the learned selection model is NOT a real arrangement (no movement,
+        or no vertically-controllable primary), the level may still be a normal
+        navigation / interaction level, so control returns to the standard probe
+        phase (movement discovery → navigation → interaction) rather than jumping
+        straight to undirected interaction. The arrangement queue is marked done
+        (set to ``[]``) so this phase is not re-entered for the level.
+        """
+        self._arr_probe_queue = []
+        self._phase = _PHASE_PROBE
+        self._move_disc_done = False
+        self._move_targets = None
+        self._nav_attempted = False
+        return self._probe_step(layer, avail, latest_frame)
 
     # ── interact (greedy + bounded sequence search) phase ─────────────────────
 
