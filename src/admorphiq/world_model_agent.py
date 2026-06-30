@@ -74,6 +74,7 @@ from .general_agent import (
     select_explore_action,
 )
 from .perception.frame_analyzer import FrameAnalyzer
+from .sort_match import detect_match_layout, plan_match_placement
 
 # ── Tunables ─────────────────────────────────────────────────────────────────
 
@@ -143,6 +144,7 @@ _PHASE_PROBE = "probe"
 _PHASE_EXECUTE = "execute"
 _PHASE_INTERACT = "interact"
 _PHASE_ARRANGE = "arrange"
+_PHASE_SORT_MATCH = "sort_match"
 
 # Simple action commonly used as the SELECTION toggle in arrangement games
 # (cycles which entity the move actions drive). Detected, not assumed: the
@@ -645,6 +647,13 @@ class WorldModelAgent:
         self._arr_sweep: list[list[int]] | None = None
         self._arr_sweep_plan: list[int] = []
         self._arr_executed = 0
+        # ── Click-only MATCH-TO-ORDER sort bookkeeping (sort_match.py) ───────
+        # The ordered click/verify plan that places each pool swatch under its
+        # matching reference frame, built once per level from the detected
+        # layout. None until the sort phase is entered; [] once attempted (so
+        # the phase is not re-entered).
+        self._sort_plan: list[tuple] | None = None
+        self._sort_attempted = False
 
     # ── harness contract ──────────────────────────────────────────────────────
 
@@ -728,6 +737,8 @@ class WorldModelAgent:
             return self._execute_step(layer, avail, latest_frame)
         if self._phase == _PHASE_ARRANGE:
             return self._arrange_step(layer, avail, latest_frame)
+        if self._phase == _PHASE_SORT_MATCH:
+            return self._sort_match_step(layer, avail, latest_frame)
         return self._interact_step(layer, avail, latest_frame)
 
     def choose_action_with_data(self, frames: list, latest_frame):
@@ -802,6 +813,29 @@ class WorldModelAgent:
         from arcengine import GameAction
 
         spent = self._action_count - self._level_base
+
+        # Click-only MATCH-TO-ORDER sort signature: a SELECT toggle + an ACTION6
+        # click are available but NO movement action is (a pure click game), and
+        # the frame shows a top reference row + bottom pool row of matching
+        # colours. This is the SB26-class sort puzzle — place each pool swatch
+        # under its matching reference frame, then verify. Tried ONCE per level
+        # (before any other discovery) since the layout is static; on failure
+        # the phase abandons back to normal probing. Observation-gated, no
+        # game-id reads. Movement games (1-4 present) and the arrangement class
+        # (movement + toggle) never reach this branch.
+        if (
+            not self._sort_attempted
+            and _SELECT_TOGGLE_ACTION in avail
+            and 6 in avail
+            and not any(a in avail for a in (1, 2, 3, 4))
+        ):
+            self._sort_attempted = True
+            bg = self.model.background if self.model.background is not None else 0
+            layout = detect_match_layout(layer, bg)
+            if layout is not None:
+                self._sort_plan = plan_match_placement(layout, _SELECT_TOGGLE_ACTION)
+                self._phase = _PHASE_SORT_MATCH
+                return self._sort_match_step(layer, avail, latest_frame)
 
         # On a level PAST the first, where the player/move controls are already
         # learned (GAME-scope) yet a selection-toggle action + several movable
@@ -1277,6 +1311,48 @@ class WorldModelAgent:
         self._move_targets = None
         self._nav_attempted = False
         return self._probe_step(layer, avail, latest_frame)
+
+    # ── sort (click-only match-to-order placement) phase ──────────────────────
+
+    def _sort_match_step(self, layer: np.ndarray, avail: list[int], latest_frame):
+        """Drain the match-to-order placement plan one action per call.
+
+        Each plan entry is ``("click", x, y)`` (an ACTION6 placement click) or
+        ``("simple", aid)`` (the verify action). When the plan is exhausted the
+        level either cleared (the harness sees the level-up and resets) or the
+        layout guess was wrong, so control returns to normal interaction rather
+        than looping the sort — the plan is short (~human-baseline length) and
+        tried once, so a wrong guess costs little. A click whose ACTION6 is gone
+        or a simple action no longer available is skipped, keeping the drain
+        robust to the verify-animation frames the env interleaves.
+        """
+        from arcengine import GameAction
+
+        while self._sort_plan:
+            kind, *rest = self._sort_plan.pop(0)
+            if kind == "click":
+                x, y = rest
+                if 6 not in avail:
+                    continue
+                self._pending = {
+                    "action_id": 6,
+                    "coord": (int(x), int(y)),
+                    "before": layer.copy(),
+                    "desc": ("c", int(x), int(y)),
+                }
+                return self._emit_click(int(x), int(y))
+            aid = rest[0]
+            if aid not in avail:
+                continue
+            self._pending = {"action_id": aid, "coord": None, "before": layer.copy()}
+            return self._emit(GameAction.from_id(aid))
+
+        # Plan exhausted without a level-up → the layout guess did not clear;
+        # fall through to the standard interaction pipeline for the remaining
+        # budget (the sort phase is not re-entered: _sort_attempted is set).
+        self._plan_commit = self._action_count
+        self._phase = _PHASE_INTERACT
+        return self._interact_step(layer, avail, latest_frame)
 
     # ── interact (greedy + bounded sequence search) phase ─────────────────────
 
