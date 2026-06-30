@@ -73,6 +73,11 @@ from .general_agent import (
     player_centroid,
     select_explore_action,
 )
+from .merge_drag import (
+    detect_drag_layout,
+    drag_probe_target,
+    next_merge_click,
+)
 from .perception.frame_analyzer import FrameAnalyzer
 from .sort_match import detect_match_layout, plan_match_placement
 
@@ -145,6 +150,16 @@ _PHASE_EXECUTE = "execute"
 _PHASE_INTERACT = "interact"
 _PHASE_ARRANGE = "arrange"
 _PHASE_SORT_MATCH = "sort_match"
+_PHASE_MERGE_DRAG = "merge_drag"
+
+# Max clicks the merge-drag plan issues PER LEVEL before abandoning the
+# hypothesis (reset each level in ``_reset_level``). A simple gather walks a tile
+# across the board in ~9 clicks (SU15 L1); a full merge chain (SU15 L2: eight
+# 1-px tiles combined up to a value-3 tile then gathered) needs ~35. The cap
+# covers the deepest measured chain plus animation margin while still bounding
+# wasted budget on a non-drag click game whose tiles ignore the pull (caught
+# earlier by the test-click confirmation in any case).
+_MERGE_DRAG_MAX_CLICKS = 120
 
 # Simple action commonly used as the SELECTION toggle in arrangement games
 # (cycles which entity the move actions drive). Detected, not assumed: the
@@ -654,6 +669,15 @@ class WorldModelAgent:
         # the phase is not re-entered).
         self._sort_plan: list[tuple] | None = None
         self._sort_attempted = False
+        # ── Click-only MERGE / gather (drag-to-goal) bookkeeping (merge_drag) ──
+        # ``_merge_drag_attempted`` gates the one-shot drag probe per level (a
+        # fresh gather each level: SU15 re-lays its tiles + goal every level);
+        # ``_merge_drag_probed`` flips True once the test click confirmed the
+        # drag pull, after which the gather walk runs; ``_merge_drag_clicks``
+        # caps the walk length so a non-drag game abandons quickly.
+        self._merge_drag_attempted = False
+        self._merge_drag_probed = False
+        self._merge_drag_clicks = 0
 
     # ── harness contract ──────────────────────────────────────────────────────
 
@@ -739,6 +763,8 @@ class WorldModelAgent:
             return self._arrange_step(layer, avail, latest_frame)
         if self._phase == _PHASE_SORT_MATCH:
             return self._sort_match_step(layer, avail, latest_frame)
+        if self._phase == _PHASE_MERGE_DRAG:
+            return self._merge_drag_step(layer, avail, latest_frame)
         return self._interact_step(layer, avail, latest_frame)
 
     def choose_action_with_data(self, frames: list, latest_frame):
@@ -922,6 +948,40 @@ class WorldModelAgent:
                 and self._arrange_enabled(layer, avail)
             ):
                 return self._enter_arrange(layer, avail, latest_frame)
+
+        # No controllable player, but a click (ACTION6) + a cancel/undo
+        # (ACTION7) are available with NO movement and NO selection toggle, AND
+        # the frame shows a few small movable tiles plus a distinct goal region →
+        # this is the click-drag MERGE / gather class (SU15: a click pulls nearby
+        # tiles toward the click point, same-colour tiles overlapping merge into
+        # the next tile, and a tile is walked into the goal container). Try this
+        # BEFORE the blind-click handoff: detect the layout, probe the drag
+        # hypothesis with one short test click, and commit to the merge/gather
+        # only if that click moved the tile. The ACTION7 (undo) signal is the
+        # discriminator from the pure-click TOGGLE panels (FT09 / TN36 expose
+        # ACTION6 only): a manipulation game offers an undo, a toggle grid does
+        # not. Movement classes keep the nav path; toggle/arrangement/sort
+        # classes are handled above. Observation-only, no game-id reads.
+        if (
+            self.model.player_color is None
+            and 6 in avail
+            and 7 in avail
+            and not any(a in avail for a in (1, 2, 3, 4, 5))
+            and not self._merge_drag_attempted
+        ):
+            bg = self.model.background if self.model.background is not None else 0
+            layout = detect_drag_layout(layer, bg)
+            if layout is not None:
+                self._merge_drag_attempted = True
+                self._phase = _PHASE_MERGE_DRAG
+                self._merge_drag_clicks = 0
+                self._merge_drag_probed = False
+                x, y = drag_probe_target(layout)
+                self._pending = {
+                    "action_id": 6, "coord": (x, y),
+                    "before": layer.copy(), "desc": ("c", x, y),
+                }
+                return self._emit_click(x, y)
 
         # No controllable player learned after movement discovery → this is a
         # pure click / toggle / bit-panel game. The world model has no nav plan
@@ -1350,6 +1410,50 @@ class WorldModelAgent:
         # Plan exhausted without a level-up → the layout guess did not clear;
         # fall through to the standard interaction pipeline for the remaining
         # budget (the sort phase is not re-entered: _sort_attempted is set).
+        self._plan_commit = self._action_count
+        self._phase = _PHASE_INTERACT
+        return self._interact_step(layer, avail, latest_frame)
+
+    # ── merge-drag (click-only gather to goal) phase ───────────────────────────
+
+    def _merge_drag_step(self, layer: np.ndarray, avail: list[int], latest_frame):
+        """One action of the click-drag gather: confirm the pull, then walk.
+
+        The phase is entered with a TEST click already issued (the drag probe).
+        The first call here reads ``_last_changed`` (the model credited that
+        probe before dispatch): if the test click did not change the frame the
+        drag hypothesis is FALSE for this game, so the phase abandons to the
+        standard interaction pipeline rather than wasting the walk budget. With
+        the pull confirmed, each call recomputes :func:`next_drag_click` from the
+        LIVE frame (robust to the multi-frame drag animation and to a tile that
+        merged mid-walk) and clicks one short step ahead of the goal-farthest
+        tile, gathering every tile into the goal region. The harness checks the
+        live level-up after each click, so the walk stops the instant the gather
+        clears the level. Bails to interaction when the gather is complete
+        (nothing left to drag) or the walk cap is hit.
+        """
+        bg = self.model.background if self.model.background is not None else 0
+        if not self._merge_drag_probed:
+            self._merge_drag_probed = True
+            if not self._last_changed:
+                # The test click pulled nothing → not a drag game. Abandon.
+                self._plan_commit = self._action_count
+                self._phase = _PHASE_INTERACT
+                return self._interact_step(layer, avail, latest_frame)
+
+        if 6 in avail and self._merge_drag_clicks < _MERGE_DRAG_MAX_CLICKS:
+            cell = next_merge_click(layer, bg)
+            if cell is not None:
+                self._merge_drag_clicks += 1
+                x, y = cell
+                self._pending = {
+                    "action_id": 6, "coord": (x, y),
+                    "before": layer.copy(), "desc": ("c", x, y),
+                }
+                return self._emit_click(x, y)
+
+        # Gather complete (no tile left outside the goal) or cap reached without
+        # a level-up → hand the remaining budget to the interaction pipeline.
         self._plan_commit = self._action_count
         self._phase = _PHASE_INTERACT
         return self._interact_step(layer, avail, latest_frame)
