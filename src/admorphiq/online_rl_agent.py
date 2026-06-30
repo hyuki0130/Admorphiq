@@ -23,13 +23,17 @@ Recipe (implemented exactly):
    exploration toward productive actions, never as reward.
 
 4. **Online retraining** — every ``TRAIN_EVERY`` env steps the policy takes a
-   few gradient steps off-policy from the buffer. The training target is a
-   "did this (frame, action) make PROGRESS" signal: a transition gets a high
-   target if it changed the frame, and the maximum target if it was on the path
-   to a level clear (the last ``CREDIT_WINDOW`` transitions before a ``+1``
-   reward are credit-assigned). This is a 1-step productivity model the agent
-   follows greedily-with-exploration. The buffer is RESET between levels (a new
-   level is a new state space / new mechanics).
+   few gradient steps off-policy from the buffer. The training target DIRECTS
+   exploration via COUNT-BASED NOVELTY: a state-changing transition's target is
+   ``1/sqrt(visit_count)`` of the resulting state (rarely-seen → ~1.0, often-seen
+   → low, floored at ``NOVELTY_FLOOR``), a no-op gets 0.0, and a transition on
+   the path to a level clear gets the maximum target (the last ``CREDIT_WINDOW``
+   transitions before a ``+1`` reward are credit-trained directly). This makes
+   the greedy policy seek the FRONTIER of unexplored states — the lever that
+   lets the agent reach a sparse, distant reward within the action budget.
+   (The earlier flat ``0.5 * changed`` target gave every move the same value and
+   so no direction: the agent wandered the whole budget without reaching the
+   reward.) The buffer is RESET between levels (a new level = new state space).
 
 5. **Exploration** — epsilon-greedy over the productivity model. With prob
    ``epsilon`` take a semi-random available action (hierarchical: action type
@@ -68,6 +72,8 @@ NO learner change produced this — it is the as-committed (a550070) baseline.
 from __future__ import annotations
 
 import datetime
+import hashlib
+import math
 import os
 import random
 import sys
@@ -113,9 +119,20 @@ def _pick_device(device: str | None) -> torch.device:
 
 
 def _frame_hash(frame: np.ndarray) -> str:
-    import hashlib
-
     return hashlib.md5(np.ascontiguousarray(frame).tobytes()).hexdigest()[:16]
+
+
+def _onehot_key(onehot_bool: np.ndarray) -> str:
+    """Stable hash of a (16, 64, 64) bool one-hot frame, for visit counting.
+
+    The same byte layout must be produced whether the array originates from
+    :func:`frame_to_onehot` at store time or from a ``next_frames > 0.5`` mask
+    recovered from the replay buffer at train time, so the novelty visit-count
+    table can be keyed identically in both places.
+    """
+    return hashlib.md5(
+        np.ascontiguousarray(onehot_bool, dtype=bool).tobytes()
+    ).hexdigest()[:16]
 
 
 def _seed_everything(seed: int) -> None:
@@ -180,6 +197,7 @@ class OnlineRLAgent:
     GIVE_UP_NO_PROGRESS = 3000   # actions without a clear before bailing the game
     POLICY_TOPK = 12             # candidates considered when picking a productive action
     PER_FRAME_REPEAT_LIMIT = 1   # times a (frame, action) no-op may repeat before skipped
+    NOVELTY_FLOOR = 0.1          # min auxiliary target for a productive (state-changing) move
 
     def __init__(
         self,
@@ -258,6 +276,10 @@ class OnlineRLAgent:
         self._recent: list[tuple[np.ndarray, int, np.ndarray]] = []
         # cheap per-frame no-op memory: (frame_hash, action_idx) -> no-op count
         self._noop_seen: dict[tuple[str, int], int] = {}
+        # count-based novelty: next-state one-hot hash -> times visited THIS level.
+        # Drives the auxiliary training target so the greedy policy seeks the
+        # frontier of unexplored states (directed exploration toward the reward).
+        self._visit_counts: dict[str, int] = {}
 
     # ── harness contract ─────────────────────────────────────────────────────
 
@@ -341,9 +363,16 @@ class OnlineRLAgent:
     def _close_transition(self, next_frame: np.ndarray, leveled_up: bool) -> None:
         """Store the previous (frame, action) -> next_frame transition.
 
-        Reward is sparse: +1 only on a level clear (``leveled_up``). The
-        frame-change flag is recorded separately as an auxiliary learning target,
-        NOT as reward.
+        Reward is sparse: +1 only on a level clear (``leveled_up``); a mere frame
+        change earns 0.0 reward (no wiggling reward). The state-change is instead
+        tracked as a COUNT-BASED NOVELTY signal: every productive transition's
+        next-state one-hot hash is counted in ``self._visit_counts``. The
+        auxiliary training target (computed in :meth:`_train_step`) is then high
+        for moves that reach rarely-seen states and low for revisits, so the
+        greedy policy seeks the frontier of unexplored states — directed
+        exploration that finds the sparse reward far faster than the previous
+        flat ``0.5 * changed`` target (which gave every move the same value and so
+        no direction at all).
         """
         if self._pending is None:
             return
@@ -353,12 +382,17 @@ class OnlineRLAgent:
         changed = self._prev_frame is None or not np.array_equal(frame, next_frame)
         reward = 1.0 if leveled_up else 0.0
 
-        # Cheap per-frame no-op memory for cycle avoidance.
-        if not changed:
+        if leveled_up:
+            self._actions_since_progress = 0
+        elif not changed:
+            # Cheap per-frame no-op memory for cycle avoidance.
             fhash = _frame_hash(frame)
             self._noop_seen[(fhash, idx)] = self._noop_seen.get((fhash, idx), 0) + 1
-        elif reward > 0.0:
-            self._actions_since_progress = 0
+        else:
+            # Productive move: count the visited next-state so novelty decays as
+            # the state is re-seen, pushing the policy toward new territory.
+            nkey = _onehot_key(frame_to_onehot(next_frame).numpy() > 0.5)
+            self._visit_counts[nkey] = self._visit_counts.get(nkey, 0) + 1
 
         self.buffer.add(
             (frame_to_onehot(frame).numpy() > 0.5),
@@ -374,27 +408,48 @@ class OnlineRLAgent:
         """Credit-assign the path to the clear, then RESET the buffer for the new level."""
         self._levels_cleared += 1
         self._prev_levels = levels
-        # Credit assignment: re-add the last CREDIT_WINDOW transitions with a
-        # strong positive reward so the productivity model learns the run-up to
-        # the clear, not just the single rewarding step.
-        tail = self._recent[-self.CREDIT_WINDOW:]
-        for frame, idx, next_frame in tail:
-            self.buffer.add(
-                (frame_to_onehot(frame).numpy() > 0.5),
-                idx,
-                1.0,
-                (frame_to_onehot(next_frame).numpy() > 0.5),
-            )
-        # Train hard on the freshly-credited buffer before the reset wipes it.
-        if len(self.buffer) >= self.WARMUP_STEPS:
-            for _ in range(self.TRAIN_STEPS * 3):
-                self._train_step()
+        # Credit assignment: train the last CREDIT_WINDOW transitions toward the
+        # MAX target (1.0) so the policy learns the run-up to the clear, not just
+        # the single rewarding step. This trains directly off the recent tail —
+        # NOT via re-adding to the buffer, because the buffer dedups on
+        # (frame, action) and would silently reject every re-add (the path
+        # transitions are already stored with their novelty target). Training
+        # the tail directly is what actually reinforces the successful path.
+        self._credit_train(self._recent[-self.CREDIT_WINDOW:])
         # New level = new state space / new mechanics: reset learning context.
         self.buffer.clear()
         self._recent.clear()
         self._noop_seen.clear()
+        self._visit_counts.clear()
         self._step_in_level = 0
         self._actions_since_progress = 0
+
+    def _credit_train(
+        self, tail: list[tuple[np.ndarray, int, np.ndarray]]
+    ) -> None:
+        """Push the chosen-action logit of each path-to-clear transition toward 1.0.
+
+        Builds one batch from the successful tail and runs a few gradient steps so
+        the reward signal propagates to the whole run-up, bypassing the buffer's
+        (frame, action) dedup that would otherwise drop these as duplicates.
+        """
+        if not tail:
+            return
+        frames = torch.from_numpy(
+            np.stack([frame_to_onehot(f).numpy() for f, _, _ in tail]).astype(np.float32)
+        ).to(self.device)
+        actions = torch.tensor([idx for _, idx, _ in tail], dtype=torch.long, device=self.device)
+        target = torch.ones(len(tail), device=self.device)
+        self.model.train()
+        for _ in range(self.TRAIN_STEPS * 3):
+            self._train_updates += 1
+            logits = self.model(frames)
+            chosen = logits.gather(1, actions.view(-1, 1)).squeeze(1)
+            loss = F.binary_cross_entropy_with_logits(chosen, target)
+            self.opt.zero_grad()
+            loss.backward()
+            self.opt.step()
+        self.model.eval()
 
     def _penalise_pending_death(self) -> None:
         """Mark the action that caused GAME_OVER as a hard no-op (avoid).
@@ -418,6 +473,7 @@ class OnlineRLAgent:
         self.buffer.clear()
         self._recent.clear()
         self._noop_seen.clear()
+        self._visit_counts.clear()
         self._pending = None
         self._prev_frame = None
         self._step_in_level = 0
@@ -504,39 +560,59 @@ class OnlineRLAgent:
         for _ in range(self.TRAIN_STEPS):
             self._train_step()
 
-    def _train_step(self) -> None:
-        """One off-policy gradient step: regress chosen-action logit toward productivity.
+    def _novelty_target(self, visit_count: int) -> float:
+        """Count-based novelty: ``1/sqrt(n)`` floored at :attr:`NOVELTY_FLOOR`.
 
-        Target per sampled (frame, action): 1.0 if the action earned reward
-        (level-clear credit), 0.5 if it merely changed the frame (productive
-        probe), 0.0 if it was a no-op. The chosen-action logit is pushed toward
-        that target via a per-sample BCE on the gathered logit — biasing the
-        greedy pick toward productive / rewarding actions without disturbing the
-        masking semantics of the other logits.
+        A first visit (n=1) yields 1.0; the value decays as the state is re-seen
+        so the policy keeps seeking new states instead of looping in familiar
+        ones. The floor keeps any productive (state-changing) move ranked above a
+        no-op (target 0), so the agent never prefers wiggling-in-place.
+        """
+        return max(self.NOVELTY_FLOOR, 1.0 / math.sqrt(max(1, visit_count)))
+
+    def _train_step(self) -> None:
+        """One off-policy gradient step: regress chosen-action logit toward an
+        exploration target that DIRECTS the policy toward unexplored states.
+
+        Target per sampled (frame, action):
+          * 1.0 if the action earned reward (level-clear) — ``reward`` is the
+            sparse buffer reward, +1 only on a level clear;
+          * a COUNT-BASED NOVELTY value in ``[NOVELTY_FLOOR, 1.0]`` if it changed
+            the frame, looked up from the live visit count of the resulting state
+            (rarely-seen → high, often-seen → low);
+          * 0.0 if it was a no-op.
+        This replaces the previous flat ``0.5 * changed`` target, which gave every
+        state-changing move the SAME value and therefore no directional gradient —
+        the diagnosed cause of the agent wandering for the whole budget without
+        reaching the reward. The chosen-action logit is pushed toward the target
+        via per-sample BCE; the masking semantics of the other logits are
+        untouched.
         """
         self._train_updates += 1
         sample = self.buffer.sample_with_next(min(self.TRAIN_BATCH, len(self.buffer)))
         if sample is None:
-            # Not enough next_frame entries yet — fall back to reward-only sample.
+            # Not enough next_frame entries yet — fall back to reward-only sample
+            # (novelty needs next_frame; until then the sparse reward is the target).
             frames, actions, rewards = self.buffer.sample(
                 min(self.TRAIN_BATCH, len(self.buffer))
             )
-            next_frames = None
+            target = torch.clamp(rewards.to(self.device), 0.0, 1.0)
+            frames = frames.to(self.device)
+            actions = actions.to(self.device)
         else:
             frames, actions, rewards, next_frames = sample
-
-        frames = frames.to(self.device)        # (B, 16, 64, 64) float
-        actions = actions.to(self.device)      # (B,)
-        rewards = rewards.to(self.device)      # (B,)
-
-        if next_frames is not None:
-            next_frames = next_frames.to(self.device)
-            changed = (frames != next_frames).flatten(1).any(dim=1).float()  # (B,)
-        else:
-            changed = torch.zeros_like(rewards)
-
-        # Productivity target: rewarding > productive(frame change) > no-op.
-        target = torch.clamp(rewards + 0.5 * changed, 0.0, 1.0)  # (B,)
+            frames = frames.to(self.device)
+            actions = actions.to(self.device)
+            rewards = rewards.to(self.device)
+            # Per-sample auxiliary novelty target from the live visit counts.
+            nf_bool = (next_frames > 0.5).numpy()                       # (B,16,64,64)
+            changed = (frames != next_frames.to(self.device)).flatten(1).any(dim=1)  # (B,) bool
+            nov = torch.zeros(len(actions), device=self.device)
+            for i in range(len(actions)):
+                if bool(changed[i]):
+                    count = self._visit_counts.get(_onehot_key(nf_bool[i]), 1)
+                    nov[i] = self._novelty_target(count)
+            target = torch.clamp(rewards + nov, 0.0, 1.0)               # (B,)
 
         self.model.train()
         logits = self.model(frames)            # (B, 4101)
