@@ -60,6 +60,29 @@ def main() -> None:
         )
         lines.append(f"  {t}: {cr[t]}/{len(runs)}  mean={m:.2f}  {runs}  [{tag}]")
 
+    # LIVE in-flight view: last TICK from each per-game progress log whose game
+    # has NOT yet produced a result json (i.e. still running). Lets one glance at
+    # SUMMARY show currently-running games' level/actions, not just completed ones.
+    prog_dir = os.path.join(round_dir, "progress")
+    done_stems = {
+        os.path.basename(f)[:-5] for f in glob.glob(os.path.join(games_dir, "*.json"))
+    }
+    inflight = []
+    for pf in sorted(glob.glob(os.path.join(prog_dir, "*.log"))):
+        stem = os.path.basename(pf)[:-4]
+        if stem in done_stems:
+            continue
+        last = None
+        for ln in open(pf):
+            if ln.startswith("TICK"):
+                last = ln.rstrip()
+        if last:
+            inflight.append(f"  [running] {stem}: {last}")
+    if inflight:
+        lines.append("")
+        lines.append("--- IN PROGRESS (live TICK from running games) ---")
+        lines += inflight
+
     if os.path.exists(log_path):
         timings = [ln for ln in open(log_path) if "done in" in ln]
         if timings:
@@ -67,6 +90,11 @@ def main() -> None:
             lines.append(f"--- last timings ({len(timings)} runs done) ---")
             lines += [t.rstrip() for t in timings[-4:]]
 
+    import datetime as _dt
+
+    stamp = _dt.datetime.now().astimezone().strftime("%Y-%m-%d %H:%M:%S %Z")
+    header = f"[generated {stamp}] " + lines[0]
+    lines[0] = header
     with open(os.path.join(round_dir, "SUMMARY.txt"), "w") as fh:
         fh.write("\n".join(lines) + "\n")
 

@@ -15,9 +15,12 @@ SEEDS=(1 2 3)
 PAR=3
 echo "[R13] START $(date) — parallel(${PAR}) 9 L1-stuck games x3 seeds online_rl @6000 (budget depth test)" | tee -a $log
 
+mkdir -p $D/progress
 run_one() {
   g=$1; s=$2; t0=$(date +%s)
-  RL_SEED=$s BC_TTT=0 uv run python scripts/score_efficiency.py --agent online_rl \
+  # per-(game,seed) TICK log so 3 parallel procs don't clobber; real-time within-game visibility
+  RL_SEED=$s BC_TTT=0 RL_PROGRESS_LOG="scripts/rounds/R13/progress/${g}_s${s}.log" RL_PROGRESS_EVERY=200 \
+    uv run python scripts/score_efficiency.py --agent online_rl \
     --titles "$g" --max-actions 6000 --out "scripts/rounds/R13/games/${g}_s${s}.json" >/dev/null 2>&1
   echo "[R13] ${g} seed${s} done in $(($(date +%s)-t0))s $(date)" >> scripts/rounds/R13/run.log
   uv run python scripts/rounds/aggregate.py scripts/rounds/R13 "$GAMESCSV" 3 2>/dev/null
