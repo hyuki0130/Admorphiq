@@ -55,10 +55,14 @@ class KaggleOnlineRLAgent(Agent):  # type: ignore[misc,valid-type]
     """
 
     # Online RL needs many env steps to learn a game from scratch (the top team
-    # used <100k/game). The trustworthy clear-rate baseline was measured at 1500
-    # actions/game; give a generous but bounded ceiling so the learner has room
-    # to reach deeper levels while a pathological no-progress game still bails
-    # (the composed agent's own give-up logic fires well before this).
+    # used <100k/game). The R8 budget sweep (3-seed clear-rate) showed depth
+    # rises with budget WITHOUT regressing the novelty exploration: LP85 mean
+    # levels 2.33 (@1500) -> 3.33 (@3000) -> 3.67 (@6000), AR25 1.67 -> 2.0
+    # (saturates @3000). More budget is a pure RHAE win (deeper levels carry
+    # higher level-index weight; already-cleared levels keep their efficiency).
+    # 8000 covers the measured sweet spot with wall-clock to spare (~100s/game
+    # at arcengine's ~60 steps/s, well inside 9h over 110 games), while a
+    # pathological no-progress game still bails via the agent's own give-up.
     MAX_ACTIONS = 8000
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
