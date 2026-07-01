@@ -1,0 +1,55 @@
+R11 SUMMARY — full-25 breadth, online_rl GENERAL learner, seed1 @3000 (PARALLEL)
+VERDICT DATA: 14/25 envs cleared >=1 level
+baseline 6-probe winners = AR25/FT09/LP85/M0R0. Anything NEW below = broader general coverage.
+  * AR25: 2 levels
+  * LP85: 2 levels
+  * BP35: 1 levels
+  * CD82: 1 levels
+  * CN04: 1 levels
+  * FT09: 1 levels
+  * LF52: 1 levels
+  * LS20: 1 levels
+  * M0R0: 1 levels
+  * R11L: 1 levels
+  * S5I5: 1 levels
+  * SC25: 1 levels
+  * SP80: 1 levels
+  * VC33: 1 levels
+    DC22: 0 levels
+    G50T: 0 levels
+    KA59: 0 levels
+    RE86: 0 levels
+    SB26: 0 levels
+    SK48: 0 levels
+    SU15: 0 levels
+    TN36: 0 levels
+    TR87: 0 levels
+    TU93: 0 levels
+    WA30: 0 levels
+
+--- per-game wall-time (bottleneck check) ---
+[R11] cd82 done in 553s 2026년  7월  1일 수요일 19시 08분 37초 KST
+[R11] ar25 done in 554s 2026년  7월  1일 수요일 19시 08분 38초 KST
+[R11] bp35 done in 558s 2026년  7월  1일 수요일 19시 08분 42초 KST
+[R11] cn04 done in 527s 2026년  7월  1일 수요일 19시 17분 25초 KST
+[R11] ft09 done in 530s 2026년  7월  1일 수요일 19시 17분 32초 KST
+[R11] dc22 done in 530s 2026년  7월  1일 수요일 19시 17분 32초 KST
+[R11] g50t done in 527s 2026년  7월  1일 수요일 19시 26분 12초 KST
+[R11] ka59 done in 535s 2026년  7월  1일 수요일 19시 26분 27초 KST
+[R11] lf52 done in 537s 2026년  7월  1일 수요일 19시 26분 29초 KST
+[R11] lp85 done in 532s 2026년  7월  1일 수요일 19시 35분 04초 KST
+[R11] ls20 done in 527s 2026년  7월  1일 수요일 19시 35분 14초 KST
+[R11] m0r0 done in 532s 2026년  7월  1일 수요일 19시 35분 21초 KST
+[R11] r11l done in 530s 2026년  7월  1일 수요일 19시 43분 54초 KST
+[R11] re86 done in 523s 2026년  7월  1일 수요일 19시 43분 57초 KST
+[R11] s5i5 done in 524s 2026년  7월  1일 수요일 19시 44분 05초 KST
+[R11] sc25 done in 536s 2026년  7월  1일 수요일 19시 52분 53초 KST
+[R11] sb26 done in 549s 2026년  7월  1일 수요일 19시 53분 03초 KST
+[R11] sk48 done in 540s 2026년  7월  1일 수요일 19시 53분 05초 KST
+[R11] sp80 done in 521s 2026년  7월  1일 수요일 20시 01분 44초 KST
+[R11] su15 done in 523s 2026년  7월  1일 수요일 20시 01분 46초 KST
+[R11] tn36 done in 527s 2026년  7월  1일 수요일 20시 01분 52초 KST
+[R11] tu93 done in 525s 2026년  7월  1일 수요일 20시 10분 31초 KST
+[R11] tr87 done in 527s 2026년  7월  1일 수요일 20시 10분 31초 KST
+[R11] vc33 done in 527s 2026년  7월  1일 수요일 20시 10분 39초 KST
+[R11] wa30 done in 219s 2026년  7월  1일 수요일 20시 14분 10초 KST
