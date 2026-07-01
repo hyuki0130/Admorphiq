@@ -1,0 +1,17 @@
+[generated 2026-07-01 23:18:49 KST] ROUND R13 SUMMARY (LIVE — regenerated per run) progress 27/27 runs
+VERDICT DATA: STABLE (>=2/3) = 9/9 : FT09, M0R0, BP35, CD82, CN04, LS20, R11L, S5I5, SP80
+  FT09: 3/3  mean=1.00  [1, 1, 1]  [STABLE]
+  M0R0: 3/3  mean=1.00  [1, 1, 1]  [STABLE]
+  BP35: 3/3  mean=1.00  [1, 1, 1]  [STABLE]
+  CD82: 2/3  mean=0.67  [1, 1, 0]  [STABLE]
+  CN04: 3/3  mean=1.00  [1, 1, 1]  [STABLE]
+  LS20: 3/3  mean=1.00  [1, 1, 1]  [STABLE]
+  R11L: 3/3  mean=1.00  [1, 1, 1]  [STABLE]
+  S5I5: 2/3  mean=0.67  [1, 1, 0]  [STABLE]
+  SP80: 3/3  mean=1.00  [1, 1, 1]  [STABLE]
+
+--- last timings (27 runs done) ---
+[R13] r11l seed3 done in 545s 2026년  7월  1일 수요일 23시 12분 26초 KST
+[R13] cn04 seed3 done in 572s 2026년  7월  1일 수요일 23시 12분 45초 KST
+[R13] s5i5 seed3 done in 362s 2026년  7월  1일 수요일 23시 18분 47초 KST
+[R13] sp80 seed3 done in 364s 2026년  7월  1일 수요일 23시 18분 49초 KST
