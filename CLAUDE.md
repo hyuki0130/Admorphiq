@@ -1483,11 +1483,14 @@ exception — and it will require updating architecture.md first.
 
 ## Measurement Discipline (dev-time rounds — enforced 2026-07-01)
 
-**Timestamp every output.** Every status report, round SUMMARY, progress.txt
-entry, and record carries an absolute timestamp (`date '+%Y-%m-%d %H:%M:%S %Z'`).
-Before claiming a result "just ran", CHECK the clock and compare to the file's
-mtime. When waiting, report current time + elapsed since the run started. Stale-vs-fresh
-confusion is a timestamp failure.
+**Timestamp every output — including chat replies to the user.** EVERY reply you
+write to the user MUST begin with an absolute timestamp header `[YYYY-MM-DD HH:MM:SS KST]`
+(fetch it with `date '+%Y-%m-%d %H:%M:%S %Z'` at the start of the turn). This is not
+optional and applies to every message, not just status reports. Every log line, round
+SUMMARY, progress.txt entry, and record also carries an absolute timestamp (logs are
+logs — always timestamped). Before claiming a result "just ran", CHECK the clock and
+compare to the file's mtime. When waiting, report current time + elapsed since the run
+started. Stale-vs-fresh confusion is a timestamp failure.
 
 **Measurements run as background shells, never inside agents.** Agents write CODE
 only; measurement runs as a `run_in_background` shell. Online-RL measurement inside
