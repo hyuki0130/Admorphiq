@@ -1,10 +1,10 @@
 # %% [markdown]
-# # Admorphiq — ARC-AGI-3 Kaggle Submission (online world-model agent)
+# # Admorphiq — ARC-AGI-3 Kaggle Submission (test-time online RL agent)
 #
 # Always-ready, valid submission notebook. It:
 #  1. Installs the arc wheels offline (from the Kaggle Data tab).
 #  2. Puts the official `agents` package on `sys.path`.
-#  3. Registers our `KaggleWorldModelAgent` — the online world-model agent.
+#  3. Registers our `KaggleOnlineRLAgent` — the test-time online RL agent
 #     It loads NO weights: it learns each game's dynamics at test time, so the
 #     submission needs only the `src` dataset (no weights upload).
 #  4. Boots an OFFLINE `Arcade` over the bundled environment files and drives
@@ -78,12 +78,14 @@ if ON_KAGGLE:
 _ensure_admorphiq_importable()
 
 # Importing the agent installs the `agents` package (real on Kaggle, light
-# namespace shim in local dev) — see admorphiq._agents_shim. KaggleWorldModelAgent
-# composes the online world-model agent (admorphiq.world_model_agent.WorldModelAgent):
-# it loads NO weights — it learns each game's dynamics at test time, so it
-# transfers to the private games. (KaggleBCAgent remains available for the BC
-# policy, but the world-model is the deployed card per the R27 transfer finding.)
-from admorphiq.kaggle_world_model_agent import KaggleWorldModelAgent  # noqa: E402
+# namespace shim in local dev) — see admorphiq._agents_shim. KaggleOnlineRLAgent
+# composes the test-time online RL agent (admorphiq.online_rl_agent.OnlineRLAgent):
+# CNN + off-policy replay + novelty exploration, learns FRESH per game with NO
+# pre-trained weights (BC warm-start prior only), so it transfers to the private
+# 110 by construction. This is the deployed card per docs/submission_strategy_r7.md
+# (world-model scores higher on the public 25 but is sample-specific → kept as a
+# dev-time proxy, not shipped).
+from admorphiq.kaggle_online_rl_agent import KaggleOnlineRLAgent  # noqa: E402
 
 try:
     # On Kaggle the full package is present and provides the shared registry.
@@ -94,8 +96,8 @@ except ImportError:
     AVAILABLE_AGENTS = {}
 
 AGENT_KEY = "admorphiq"
-AVAILABLE_AGENTS[AGENT_KEY] = KaggleWorldModelAgent
-print(f"Registered agent '{AGENT_KEY}' -> {KaggleWorldModelAgent.__name__}")
+AVAILABLE_AGENTS[AGENT_KEY] = KaggleOnlineRLAgent
+print(f"Registered agent '{AGENT_KEY}' -> {KaggleOnlineRLAgent.__name__}")
 
 
 # %%
