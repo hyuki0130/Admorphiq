@@ -1,0 +1,62 @@
+[generated 2026-07-02 05:01:14 KST] ROUND R17 SUMMARY (LIVE — regenerated per run) progress 25/25 runs
+VERDICT DATA: STABLE (>=2/1) = 0/25 : (none yet)
+  AR25: 1/1  mean=2.00  [2]  [flaky]
+  BP35: 1/1  mean=1.00  [1]  [flaky]
+  CD82: 1/1  mean=1.00  [1]  [flaky]
+  CN04: 1/1  mean=1.00  [1]  [flaky]
+  DC22: 0/1  mean=0.00  [0]  [LOST]
+  FT09: 1/1  mean=1.00  [1]  [flaky]
+  G50T: 0/1  mean=0.00  [0]  [LOST]
+  KA59: 0/1  mean=0.00  [0]  [LOST]
+  LF52: 1/1  mean=1.00  [1]  [flaky]
+  LP85: 1/1  mean=2.00  [2]  [flaky]
+  LS20: 1/1  mean=1.00  [1]  [flaky]
+  M0R0: 1/1  mean=1.00  [1]  [flaky]
+  R11L: 1/1  mean=1.00  [1]  [flaky]
+  RE86: 0/1  mean=0.00  [0]  [LOST]
+  S5I5: 1/1  mean=1.00  [1]  [flaky]
+  SB26: 0/1  mean=0.00  [0]  [LOST]
+  SC25: 1/1  mean=1.00  [1]  [flaky]
+  SK48: 0/1  mean=0.00  [0]  [LOST]
+  SP80: 1/1  mean=1.00  [1]  [flaky]
+  SU15: 0/1  mean=0.00  [0]  [LOST]
+  TN36: 0/1  mean=0.00  [0]  [LOST]
+  TR87: 0/1  mean=0.00  [0]  [LOST]
+  TU93: 0/1  mean=0.00  [0]  [LOST]
+  VC33: 1/1  mean=1.00  [1]  [flaky]
+  WA30: 0/1  mean=0.00  [0]  [LOST]
+
+--- last timings (25 runs done) ---
+[R17] tu93 done in 522s 04:57:30
+[R17] tr87 done in 528s 04:57:36
+[R17] vc33 done in 522s 04:57:44
+[R17] wa30 done in 218s 05:01:14
+
+--- TOTAL (deployed card, full-25, seed1 @3000) ---
+  SP80: game_score=0.0476
+  R11L: game_score=0.0400
+  LP85: game_score=0.0278
+  AR25: game_score=0.0046
+  M0R0: game_score=0.0023
+  VC33: game_score=0.0018
+  BP35: game_score=0.0011
+  CD82: game_score=0.0008
+  SC25: game_score=0.0003
+  LF52: game_score=0.0001
+  LS20: game_score=0.0001
+  FT09: game_score=0.0001
+  CN04: game_score=0.0000
+  S5I5: game_score=0.0000
+  DC22: game_score=0.0000
+  G50T: game_score=0.0000
+  KA59: game_score=0.0000
+  RE86: game_score=0.0000
+  SB26: game_score=0.0000
+  SK48: game_score=0.0000
+  SU15: game_score=0.0000
+  TN36: game_score=0.0000
+  TR87: game_score=0.0000
+  TU93: game_score=0.0000
+  WA30: game_score=0.0000
+MEAN game_score across 25 games = 0.0051  (14 games > 0)
+This is the real RHAE proxy-leaderboard number. Any future round must beat it.
