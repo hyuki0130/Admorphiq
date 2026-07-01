@@ -1481,6 +1481,35 @@ page, (b) re-benching, (c) showing in a trace that Qwen still cannot
 learn the rule from the wiki alone. Only then discuss a Python
 exception — and it will require updating architecture.md first.
 
+## Measurement Discipline (dev-time rounds — enforced 2026-07-01)
+
+**Timestamp every output.** Every status report, round SUMMARY, progress.txt
+entry, and record carries an absolute timestamp (`date '+%Y-%m-%d %H:%M:%S %Z'`).
+Before claiming a result "just ran", CHECK the clock and compare to the file's
+mtime. When waiting, report current time + elapsed since the run started. Stale-vs-fresh
+confusion is a timestamp failure.
+
+**Measurements run as background shells, never inside agents.** Agents write CODE
+only; measurement runs as a `run_in_background` shell. Online-RL measurement inside
+an agent burns its session tokens and it dies mid-run; manual `setsid nohup` is torn
+down by the Bash sandbox. The harness-managed `run_in_background` survives session
+rate-limits (rate-limit blocks only LLM turns, not the running process) — so the
+measurement keeps going even when I can't respond.
+
+**One LIVE SUMMARY per round.** Fixed convention: `scripts/rounds/RN/run.sh` →
+`scripts/rounds/RN/SUMMARY.txt` (+ `games/*.json`, `run.log`). SUMMARY.txt is
+regenerated LIVE after every run via `scripts/rounds/aggregate.py` — always readable
+mid-run, valid partial on crash. On completion OR crash the answer is ALWAYS
+SUMMARY.txt; never grep agent transcripts. Parallelize games (PAR=3 locally; the
+per-step online CNN training is the bottleneck, uniform ~530s/game @3000, so Kaggle's
+GPU would speed training).
+
+**Never discard partial results; analyze and advance.** If a run dies at 27/42, do
+NOT re-run the completed ones and do NOT restart the whole round. Aggregate what
+exists, ANALYZE it (not merely archive), conclude if signal is sufficient, and launch
+the NEXT round applying that finding — in parallel. Keep rounds running continuously
+until the user intervenes. Don't be hasty: reckless kill/restart wasted hours.
+
 ## Implementation Discipline (applies to every change)
 
 **No speculative safety nets.** Do not add hardcoded constants, fallback
