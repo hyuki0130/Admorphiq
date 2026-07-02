@@ -43,7 +43,7 @@ commit, and `[[backlinks]]`. Narrative overview + reliable-metric + resume steps
 | R19 | reward-shaping | KEEP (first win) | `2c93fc1` | [[r19_reward-shaping]] |
 | R20 | reward-shaping | TUNE (0.1 best) | — | [[r20_shape-coef-sweep]] |
 | R21 | reward-shaping | NULL (off) | — | [[r21_progress-phi-off]] |
-| R22 | reward-shaping | in progress | — | [[r22_progress-phi-on]] |
+| R22 | reward-shaping | NULL (no gain) | — | [[r22_progress-phi-on]] |
 
 ## The two standing conclusions
 - ⛔ **Do NOT re-try action-selection tweaks** — 8 rounds failed; the novelty learner's action

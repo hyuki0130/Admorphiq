@@ -4,14 +4,14 @@ type: round-log
 round: R22
 axis: reward-shaping
 keywords: [progress-potential, phi-enabled]
-verdict: IN PROGRESS
+verdict: NULL (no gain vs R19 card, within noise)
 commit: none
 date: 2026-07-02
 ---
 
 # R22 — progress phi on
 
-**Axis**: reward-shaping · **Verdict**: IN PROGRESS
+**Axis**: reward-shaping · **Verdict**: NULL — 0.0133 ≈ R19 card 0.0134 (within noise); progress-Φ@0.5 adds nothing; code reverted
 **Keywords**: progress-potential, phi-enabled
 
 Re-run R21 code with RL_PHI_PROGRESS_W=0.5 to actually test the progress potential vs the R19 card (0.0134).
