@@ -1525,7 +1525,14 @@ round pages). The narrative overview + ⛔ DO-NOT-REPEAT list + reliable-metric 
 **`.wiki/wiki/lessons/online_rl_sprint_round_log.md`**. To FIND prior work on a topic, open
 `rounds/index.md`, jump via the keyword group to the specific round pages — NEVER scan the whole
 log. (A single monolith is not retrievable; per-round pages + a keyword index + backlinks are,
-Obsidian-style.) BEFORE devising ANY new round/strategy (not
+Obsidian-style.)
+
+**If it is not in your current context, LOOK IT UP — do not rely on memory or guess.** Whenever a
+fact about a past round (what was tried, the measured number, the verdict, whether an approach
+already failed) is NOT clearly in your working context, you MUST consult `rounds/index.md` → the
+relevant round page BEFORE acting or proposing. Do not reconstruct past results from memory (that
+caused a round to be re-run on the wrong assumption). Context memory is a cache, not the source of
+truth; the round pages are the source of truth. BEFORE devising ANY new round/strategy (not
 just at session start), READ that log + `memory/project_online_rl_baseline.md` +
 `memory/feedback_measurement_discipline.md`, and design the next experiment IN LIGHT OF the
 past results — build on what worked (the reward-shaping axis), avoid the ⛔ DO-NOT-REPEAT list,
