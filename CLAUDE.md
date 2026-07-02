@@ -1484,8 +1484,11 @@ exception — and it will require updating architecture.md first.
 ## Measurement Discipline (dev-time rounds — enforced 2026-07-01)
 
 **Timestamp every output — including chat replies to the user.** EVERY reply you
-write to the user MUST begin with an absolute timestamp header `[YYYY-MM-DD HH:MM:SS KST]`
-(fetch it with `date '+%Y-%m-%d %H:%M:%S %Z'` at the start of the turn). This is not
+write to the user MUST begin with an absolute timestamp header `[YYYY-MM-DD HH:MM:SS KST]`.
+The header value MUST come from an ACTUAL `date '+%Y-%m-%d %H:%M:%S %Z'` call made IN THAT
+SAME TURN — NEVER estimate, increment, or reuse an earlier turn's time. Estimating produced a
+future-dated header (wrote 11:01 when it was 10:59), which is worse than no timestamp. If you
+did not run `date` this turn, run it before replying. This is not
 optional and applies to every message, not just status reports. Every log line, round
 SUMMARY, progress.txt entry, and record also carries an absolute timestamp (logs are
 logs — always timestamped). Before claiming a result "just ran", CHECK the clock and
