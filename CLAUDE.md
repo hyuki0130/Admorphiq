@@ -1516,6 +1516,15 @@ exists, ANALYZE it (not merely archive), conclude if signal is sufficient, and l
 the NEXT round applying that finding — in parallel. Keep rounds running continuously
 until the user intervenes. Don't be hasty: reckless kill/restart wasted hours.
 
+**Tune before you discard (one bad config ≠ verdict on the lever).** A single unfavorable
+result does NOT kill a lever (see `memory/feedback_rl_not_abandoned`). Before discarding:
+(a) if the lever shows ANY positive signal (even on a subset, e.g. object-prior got CD82/M0R0
+to L2), run a SMALL parameter sweep (2–3 configs: coefficient/threshold/probability) on the
+reliable 3-seed metric before the verdict; (b) only a mechanism proven INERT (e.g. a change
+that is byte-identical to baseline) may be discarded from one shot. Record the sweep in the
+round page so the lever's real potential is documented, not a single-config snapshot. Revisit
+prior "discarded" levers that were only tested at one config if they showed a positive hint.
+
 **Durable cross-session round log (MANDATORY).** `.omc/state/sessions/*/progress.txt`
 is session-scoped — a compacted or new session CANNOT see it. So every RL-spine round's
 outcome MUST be recorded as its OWN searchable page **`.wiki/wiki/rounds/rNN_slug.md`**
