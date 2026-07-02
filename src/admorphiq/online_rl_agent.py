@@ -198,6 +198,9 @@ class OnlineRLAgent:
     POLICY_TOPK = 12             # candidates considered when picking a productive action
     PER_FRAME_REPEAT_LIMIT = 1   # times a (frame, action) no-op may repeat before skipped
     NOVELTY_FLOOR = 0.1          # min auxiliary target for a productive (state-changing) move
+    SHAPE_COEF = 0.1             # potential-based shaping weight (0 => byte-identical prior)
+    SHAPE_GAMMA = 0.99           # discount gamma in the shaping potential difference
+    SHAPE_C = 1.0                # numerator constant of the novelty potential Phi(s)
 
     def __init__(
         self,
@@ -237,6 +240,8 @@ class OnlineRLAgent:
         self.TRAIN_EVERY = int(os.environ.get("RL_TRAIN_EVERY", self.TRAIN_EVERY))
         self.TRAIN_STEPS = int(os.environ.get("RL_TRAIN_STEPS", self.TRAIN_STEPS))
         self.LR = float(os.environ.get("RL_LR", self.LR))
+        self.SHAPE_COEF = float(os.environ.get("RL_SHAPE_COEF", self.SHAPE_COEF))
+        self.SHAPE_GAMMA = float(os.environ.get("RL_SHAPE_GAMMA", self.SHAPE_GAMMA))
         self._log = os.environ.get("RL_LOG", "").strip().lower() in (
             "1", "true", "yes", "on",
         )
@@ -570,6 +575,25 @@ class OnlineRLAgent:
         """
         return max(self.NOVELTY_FLOOR, 1.0 / math.sqrt(max(1, visit_count)))
 
+    def _potential(self, visit_count: int) -> float:
+        """Novelty potential ``Phi(s) = SHAPE_C / sqrt(visit_count(s) + 1)``.
+
+        Rarer (less-visited) states have HIGHER potential: an unseen state
+        (``visit_count == 0``) yields ``SHAPE_C / 1 = SHAPE_C``; the potential
+        decays monotonically as the state is re-seen. This is the state-value
+        function used by the potential-based shaping reward
+        ``F(s, s') = gamma * Phi(s') - Phi(s)`` (Ng et al. 1999) — a policy-
+        INVARIANT densifier of the sparse level-completion signal that cannot,
+        in the limit, reward pointless wiggling because the shaping terms
+        telescope to zero over any closed cycle.
+
+        ``self._visit_counts`` is keyed by the same ``_onehot_key`` used at
+        transition-store time, so a state never recorded as a productive
+        next-state has count 0 and thus maximal potential — exactly the frontier
+        bias we want.
+        """
+        return self.SHAPE_C / math.sqrt(visit_count + 1)
+
     def _train_step(self) -> None:
         """One off-policy gradient step: regress chosen-action logit toward an
         exploration target that DIRECTS the policy toward unexplored states.
@@ -584,9 +608,25 @@ class OnlineRLAgent:
         This replaces the previous flat ``0.5 * changed`` target, which gave every
         state-changing move the SAME value and therefore no directional gradient —
         the diagnosed cause of the agent wandering for the whole budget without
-        reaching the reward. The chosen-action logit is pushed toward the target
-        via per-sample BCE; the masking semantics of the other logits are
-        untouched.
+        reaching the reward.
+
+        ON TOP of that target, a POTENTIAL-BASED SHAPING reward densifies the
+        distant sparse signal so the agent can climb toward a level-completion
+        reward it cannot yet reach (the measured R13 L2 plateau):
+
+            F(s, s') = SHAPE_GAMMA * Phi(s') - Phi(s)
+
+        with ``Phi(s) = SHAPE_C / sqrt(visit_count(s) + 1)`` from the SAME
+        count-based visit table. It is added as ``SHAPE_COEF * F`` (Ng et al.
+        1999): being a potential DIFFERENCE it is provably policy-invariant —
+        the shaping terms telescope over any cycle, so it cannot reward
+        wiggling-in-place in the limit, yet it fills in the gradient between
+        sparse rewards. ``SHAPE_COEF == 0.0`` skips the branch entirely, leaving
+        the target BYTE-IDENTICAL to the pre-shaping behaviour. The sparse +1
+        level-clear reward remains the dominant term (``SHAPE_COEF`` default
+        ~0.1, potentials in ``(0, SHAPE_C]``). The chosen-action logit is pushed
+        toward the clamped target via per-sample BCE; the masking semantics of
+        the other logits are untouched.
         """
         self._train_updates += 1
         sample = self.buffer.sample_with_next(min(self.TRAIN_BATCH, len(self.buffer)))
@@ -601,11 +641,14 @@ class OnlineRLAgent:
             actions = actions.to(self.device)
         else:
             frames, actions, rewards, next_frames = sample
+            # Bool one-hot views on CPU, keyed identically to store-time so the
+            # visit-count table (Phi) can be looked up for both s and s'.
+            sf_bool = (frames > 0.5).numpy()                            # (B,16,64,64)
+            nf_bool = (next_frames > 0.5).numpy()                       # (B,16,64,64)
             frames = frames.to(self.device)
             actions = actions.to(self.device)
             rewards = rewards.to(self.device)
             # Per-sample auxiliary novelty target from the live visit counts.
-            nf_bool = (next_frames > 0.5).numpy()                       # (B,16,64,64)
             changed = (frames != next_frames.to(self.device)).flatten(1).any(dim=1)  # (B,) bool
             nov = torch.zeros(len(actions), device=self.device)
             for i in range(len(actions)):
@@ -613,6 +656,18 @@ class OnlineRLAgent:
                     count = self._visit_counts.get(_onehot_key(nf_bool[i]), 1)
                     nov[i] = self._novelty_target(count)
             target = torch.clamp(rewards + nov, 0.0, 1.0)               # (B,)
+            # Potential-based reward shaping (Ng et al. 1999), policy-invariant:
+            #   F(s, s') = SHAPE_GAMMA * Phi(s') - Phi(s),   Phi = _potential
+            # added on top of the sparse+novelty target, scaled by SHAPE_COEF.
+            # SHAPE_COEF == 0.0 skips this branch entirely so the target stays
+            # BYTE-IDENTICAL to the pre-shaping behaviour.
+            if self.SHAPE_COEF != 0.0:
+                shape = torch.zeros(len(actions), device=self.device)
+                for i in range(len(actions)):
+                    phi_s = self._potential(self._visit_counts.get(_onehot_key(sf_bool[i]), 0))
+                    phi_sp = self._potential(self._visit_counts.get(_onehot_key(nf_bool[i]), 0))
+                    shape[i] = self.SHAPE_GAMMA * phi_sp - phi_s
+                target = torch.clamp(target + self.SHAPE_COEF * shape, 0.0, 1.0)
 
         self.model.train()
         logits = self.model(frames)            # (B, 4101)
