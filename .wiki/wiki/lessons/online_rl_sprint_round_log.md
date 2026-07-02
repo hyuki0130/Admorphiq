@@ -5,7 +5,13 @@ status: living
 updated: 2026-07-02
 ---
 
-# Online-RL Sprint — Durable Round Log
+# Online-RL Sprint — Durable Round Log (narrative overview)
+
+> **🔎 To FIND past work by topic, start at the retrieval map [[rounds_index]]**
+> (`.wiki/wiki/rounds/index.md`) — keyword groups → per-round pages. Each round has its own
+> page `.wiki/wiki/rounds/rNN_slug.md` with keywords, verdict, commit, and `[[backlinks]]`.
+> This file is the NARRATIVE overview + reliable-metric + resume steps; the per-round pages
+> are the searchable atoms. Do NOT scan this whole file to find a topic — use the index.
 
 **Purpose**: cross-session memory so a resumed/compacted session does NOT repeat
 already-failed experiments. This is the durable mirror of the session-scoped
@@ -67,3 +73,12 @@ Potential-based shaping (policy-invariant, no wiggle-reward) is the one lever th
 3. Reliable metric: 9 L1-stuck games (ft09,m0r0,bp35,cd82,cn04,ls20,r11l,s5i5,sp80) @3000, 3 seeds,
    judged by mean **game_score** (not level count). Beat 0.0134 (R19 card) with no net clear loss.
 4. Do NOT re-run the ⛔ list. Iterate the reward/structure axis.
+
+## R21 (2026-07-02) — progress-potential Φ measured OFF-by-default (no signal); re-run as R22
+Added composite Φ = PHI_NOVELTY_W·novelty + PHI_PROGRESS_W·progress. But defaults are
+PHI_NOVELTY_W=1.0, PHI_PROGRESS_W=0.0 (regression guard = committed behavior), and the R21 runner
+did NOT set RL_PHI_PROGRESS_W → progress term was OFF → result BYTE-IDENTICAL to R19 (mean 0.0134,
+same per-game actions). Not a discard — the feature was simply disabled by default. R22 re-runs the
+SAME code with RL_PHI_PROGRESS_W=0.5 to actually test the progress potential. LESSON: when a new
+term defaults to 0 for a regression guard, the measurement runner MUST set the env var to enable it,
+else you measure the old behavior.

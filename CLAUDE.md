@@ -1518,9 +1518,14 @@ until the user intervenes. Don't be hasty: reckless kill/restart wasted hours.
 
 **Durable cross-session round log (MANDATORY).** `.omc/state/sessions/*/progress.txt`
 is session-scoped — a compacted or new session CANNOT see it. So every RL-spine round's
-outcome (tried / measured / kept-or-discarded / lesson) MUST also be appended to the
-git-tracked living log **`.wiki/wiki/lessons/online_rl_sprint_round_log.md`**, which
-carries the ⛔ DO-NOT-REPEAT list. BEFORE devising ANY new round/strategy (not
+outcome MUST be recorded as its OWN searchable page **`.wiki/wiki/rounds/rNN_slug.md`**
+(YAML frontmatter: round/axis/keywords/verdict/commit + summary + `[[backlinks]]` to related
+rounds), and registered in the retrieval map **`.wiki/wiki/rounds/index.md`** (keyword groups →
+round pages). The narrative overview + ⛔ DO-NOT-REPEAT list + reliable-metric live in
+**`.wiki/wiki/lessons/online_rl_sprint_round_log.md`**. To FIND prior work on a topic, open
+`rounds/index.md`, jump via the keyword group to the specific round pages — NEVER scan the whole
+log. (A single monolith is not retrievable; per-round pages + a keyword index + backlinks are,
+Obsidian-style.) BEFORE devising ANY new round/strategy (not
 just at session start), READ that log + `memory/project_online_rl_baseline.md` +
 `memory/feedback_measurement_discipline.md`, and design the next experiment IN LIGHT OF the
 past results — build on what worked (the reward-shaping axis), avoid the ⛔ DO-NOT-REPEAT list,
