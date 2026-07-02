@@ -1513,6 +1513,18 @@ exists, ANALYZE it (not merely archive), conclude if signal is sufficient, and l
 the NEXT round applying that finding — in parallel. Keep rounds running continuously
 until the user intervenes. Don't be hasty: reckless kill/restart wasted hours.
 
+**Durable cross-session round log (MANDATORY).** `.omc/state/sessions/*/progress.txt`
+is session-scoped — a compacted or new session CANNOT see it. So every RL-spine round's
+outcome (tried / measured / kept-or-discarded / lesson) MUST also be appended to the
+git-tracked living log **`.wiki/wiki/lessons/online_rl_sprint_round_log.md`**, which
+carries the ⛔ DO-NOT-REPEAT list. BEFORE devising ANY new round/strategy (not
+just at session start), READ that log + `memory/project_online_rl_baseline.md` +
+`memory/feedback_measurement_discipline.md`, and design the next experiment IN LIGHT OF the
+past results — build on what worked (the reward-shaping axis), avoid the ⛔ DO-NOT-REPEAT list,
+and don't re-derive conclusions already recorded. Every new strategy must reference the prior
+rounds it builds on / avoids. This is the "write the wiki + log and always consult them before
+planning" discipline.
+
 ## Implementation Discipline (applies to every change)
 
 **No speculative safety nets.** Do not add hardcoded constants, fallback

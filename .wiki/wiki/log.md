@@ -646,3 +646,20 @@ Pages touched: lessons/seed_reorder_regression_20260625 (new),
 reasoning/wiki_retrieval_recipe (cross-link), 5 strategies/frame_only/*
 (new), ~9 link-fix pages, index.md, log.md (this entry).
 Provenance: this commit. Bench traces: scripts/wiki_agent_results_r16_14b*.json.
+
+---
+
+## 2026-07-01/02 — Online-RL sprint (R5–R21) durable round log created
+
+The RL-spine improvement sprint (test-time online CNN+RL, the deployed general agent for the 110
+private games) runs many rounds. Its full round history — what was tried, measured, kept/discarded,
+and the ⛔ DO-NOT-REPEAT list (8 exploration-SELECTION tweaks that all failed) — now lives in
+**`lessons/online_rl_sprint_round_log.md`** (living page). This is the cross-session memory so a
+compacted/resumed session does not repeat regressed experiments (the per-session
+`.omc/state/sessions/*/progress.txt` is NOT visible to a new session).
+
+Key state as of 2026-07-02: deployed card = online-RL + potential-based reward shaping
+(SHAPE_COEF=0.1, commit `2c93fc1`); honest baseline full-25 game_score ≈ 0.005 (R17 `0266634`);
+DEPTH is the ceiling; the REWARD-shaping axis is the one working lever (M0R0/CD82 → L2). Reliable
+metric = 9 L1-stuck games @3000 × 3 seeds, judged by mean game_score.
+Provenance: this session; see lessons/online_rl_sprint_round_log.md + memory/project_online_rl_baseline.md.
