@@ -103,3 +103,12 @@ Ran the full remaining candidate set in parallel (code) + serial (measure). None
 => Micro-levers on the reactive novelty learner are SATURATED. A real jump needs a learned
 generalizing forward model (big, careful build) OR accept the current card and optimize a different
 pipeline stage (e.g. discovery/goal-inference, or per-game seed selection at deploy).
+
+## 2026-07-04 — ⚠️ R29 TRANSFER RECKONING: judge everything warm-start OFF from now on
+The card warm-starts from bc_policy_v6.pt (public-25 gold). warm-start OFF = 0.0014 vs ON = 0.0134
+on the 9 PUBLIC games (which BC was trained on = max-favorable). BC = 0% transfer to the 110 private
+(measured). So the card's real private number ≈ 0.0014, and ~90% of every score in this log is
+public-gold inflation that does NOT transfer. THE RELIABLE METRIC IS NOW: 9 games @3000 3-seed with
+RL_NO_WARMSTART=1 (transfer-honest, from-scratch ~0.0014 baseline). Optimizing warm-start-ON public
+scores is proxy-gaming — banned. Real work = raise the from-scratch general learner, or find a prior
+that transfers to UNSEEN games (public-gold BC does not).
