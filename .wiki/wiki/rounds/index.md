@@ -47,6 +47,10 @@ commit, and `[[backlinks]]`. Narrative overview + reliable-metric + resume steps
 | R22 | reward-shaping | NULL (no gain) | — | [[r22_progress-phi-on]] |
 | R23 | training-convergence | FAIL (sweep closed) | — | [[r23_train-convergence]] |
 | R24 | model-capacity | FAIL (0.0019, slow convergence) | — | [[r24_bigger-cnn]] |
+| R25 | exploration-prior | FAIL (sweep: 0.0051/0.0060 < card) | — | [[r25_object-prior-sweep]] |
+| R26 | reward-shaping | FAIL (progress-Φ w=0.5/1.0 < card) | — | [[r22_progress-phi-on]] |
+| R27 | world-model+planning | NULL (gate never fired) | — | [[r19_reward-shaping]] |
+| R28 | depth-transition | FAIL (0.0121 < card) | — | [[r28_keep-across-levels]] |
 
 ## The two standing conclusions
 - ⛔ **Do NOT re-try action-selection tweaks** — 8 rounds failed; the novelty learner's action
