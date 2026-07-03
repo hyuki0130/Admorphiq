@@ -82,3 +82,24 @@ same per-game actions). Not a discard — the feature was simply disabled by def
 SAME code with RL_PHI_PROGRESS_W=0.5 to actually test the progress potential. LESSON: when a new
 term defaults to 0 for a regression guard, the measurement runner MUST set the env var to enable it,
 else you measure the old behavior.
+
+## 2026-07-04 — "check all possibilities" batch (R25-R28, R27b) ALL FAIL; two structural walls named
+Ran the full remaining candidate set in parallel (code) + serial (measure). None beat the R19 card
+(9-subset 0.0134 / full-25 ~0.005):
+- R25 object-prior sweep (P=0.7→0.0051, P=0.3→0.0060) — starves novelty. DEAD (4 configs w/ R16/R18).
+- R26 progress-Φ sweep (w=0.5→0.0133, w=1.0→0.0124) — reward-shaping axis EXHAUSTED (novelty-only best).
+- R27/R27b world-model+planning — planning NEVER fires (planned=0): tabular (state-sig,action) model
+  has no data for near-unique ARC frames. SAME WALL AS R10. DEAD via tabular route.
+- R28 keep-learning-across-levels (0.0121) — new level = different state space; retaining policy hurts.
+  Confirms R6 on a 2nd base. DEAD.
+
+### TWO NAMED STRUCTURAL WALLS (why micro-levers are exhausted)
+1. STATE-UNIQUENESS: ARC frames are near-unique (counters/motion), so anything keyed on exact/near
+   state recurrence fails — tabular world-model (R10,R27b), exact no-op cache (R14). A world-model
+   here needs a LEARNED neural forward model that generalizes across unseen states.
+2. ONLINE-CONVERGENCE-BUDGET: bigger nets (R24) don't converge within the per-game action budget on
+   MPS/CPU — so "more capacity" backfires. The small 34M CNN + novelty + shaping is the practical
+   optimum for the reactive policy.
+=> Micro-levers on the reactive novelty learner are SATURATED. A real jump needs a learned
+generalizing forward model (big, careful build) OR accept the current card and optimize a different
+pipeline stage (e.g. discovery/goal-inference, or per-game seed selection at deploy).
