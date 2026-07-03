@@ -19,6 +19,7 @@ commit, and `[[backlinks]]`. Narrative overview + reliable-metric + resume steps
 - **depth / level-transition**: [[r06_depth-boost]], [[r08_budget-depth]], [[r13_efficiency-insight]], [[r19_reward-shaping]]
 - **object-centric / objectness**: [[r10_object-state-hash]], [[r16_object-click-prior]], [[r18_object-prior-full25]]
 - **budget**: [[r08_budget-depth]]
+- **model-capacity / convergence-speed**: [[r24_bigger-cnn]] (bigger CNN FAILED — speed>capacity), [[r23_train-convergence]]
 - **measurement / baseline / metric**: [[r11_breadth-measure]], [[r12_clear-rate-stable]], [[r13_efficiency-insight]], [[r17_full25-baseline]] (0.005 baseline)
 - **deployment / submission / transfer**: [[r07_deploy-online-rl]] (`9c5d207`), [[r17_full25-baseline]]
 - **DC22/TU93 walls / state-explosion**: [[r09_additive-planning]], [[r10_object-state-hash]]
@@ -44,6 +45,8 @@ commit, and `[[backlinks]]`. Narrative overview + reliable-metric + resume steps
 | R20 | reward-shaping | TUNE (0.1 best) | — | [[r20_shape-coef-sweep]] |
 | R21 | reward-shaping | NULL (off) | — | [[r21_progress-phi-off]] |
 | R22 | reward-shaping | NULL (no gain) | — | [[r22_progress-phi-on]] |
+| R23 | training-convergence | FAIL (sweep closed) | — | [[r23_train-convergence]] |
+| R24 | model-capacity | FAIL (0.0019, slow convergence) | — | [[r24_bigger-cnn]] |
 
 ## The two standing conclusions
 - ⛔ **Do NOT re-try action-selection tweaks** — 8 rounds failed; the novelty learner's action

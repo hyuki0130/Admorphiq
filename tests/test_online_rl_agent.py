@@ -427,3 +427,101 @@ def test_shape_coef_zero_is_byte_identical() -> None:
     got = _capture_train_target(agent)
     # Bit-for-bit: SHAPE_COEF=0 adds nothing, target is the exact prior tensor.
     assert np.array_equal(got, expected)
+
+
+# ── R24: env-gated CNN capacity knob ─────────────────────────────────────────
+
+# Committed default policy-net param count (the online-RL regression guard).
+DEFAULT_POLICY_PARAMS = 34_320_614
+
+
+def _model_params(agent: OnlineRLAgent) -> int:
+    return sum(p.numel() for p in agent.model.parameters())
+
+
+def test_default_capacity_reproduces_committed_net(monkeypatch) -> None:
+    """Purpose: with the capacity env vars UNSET, the online agent must build the
+    exact committed 34.3M-param policy net (default-behaviour regression guard).
+
+    Expected feedback: pass => an unset RL_CNN_WIDTH leaves the online learner
+    architecturally identical to the baseline card, so the trusted 3-seed metric
+    is reproducible. Fail => the default per-game net drifted.
+    """
+    monkeypatch.delenv("RL_CNN_WIDTH", raising=False)
+    monkeypatch.delenv("RL_CNN_CAPACITY", raising=False)
+    monkeypatch.delenv("RL_CNN_EXTRA_BLOCK", raising=False)
+    agent = OnlineRLAgent(warmstart=False, device="cpu", seed=0)
+    assert agent._cnn_width == 1.0
+    assert agent._cnn_extra_block is False
+    assert _model_params(agent) == DEFAULT_POLICY_PARAMS
+
+
+def test_width_env_builds_larger_net(monkeypatch) -> None:
+    """Purpose: RL_CNN_WIDTH must widen the per-game policy net while keeping the
+    dual-head 4101-logit output shape.
+
+    Expected feedback: pass => RL_CNN_WIDTH=2 yields a strictly larger net whose
+    forward emits (1,4101), proving the capacity axis is wired end-to-end into the
+    online agent. Fail => the env knob is ignored or breaks the output contract.
+    """
+    import torch
+
+    monkeypatch.setenv("RL_CNN_WIDTH", "2")
+    agent = OnlineRLAgent(warmstart=False, device="cpu", seed=0)
+    assert agent._cnn_width == 2.0
+    assert _model_params(agent) > DEFAULT_POLICY_PARAMS
+    out = agent.model(torch.zeros(1, 16, 64, 64))
+    assert out.shape == (1, 4101)
+
+
+def test_capacity_alias_and_extra_block(monkeypatch) -> None:
+    """Purpose: the RL_CNN_CAPACITY alias and RL_CNN_EXTRA_BLOCK depth flag must
+    both take effect on the built net.
+
+    Expected feedback: pass => setting the alias width plus the extra-block flag
+    produces a net larger than a width-only net, confirming both knobs compose.
+    Fail => the alias is unread or the extra block is a no-op in the agent path.
+    """
+    monkeypatch.delenv("RL_CNN_WIDTH", raising=False)
+    monkeypatch.setenv("RL_CNN_CAPACITY", "1.5")
+    monkeypatch.setenv("RL_CNN_EXTRA_BLOCK", "1")
+    agent = OnlineRLAgent(warmstart=False, device="cpu", seed=0)
+    assert agent._cnn_width == 1.5
+    assert agent._cnn_extra_block is True
+
+    monkeypatch.setenv("RL_CNN_CAPACITY", "1.5")
+    monkeypatch.delenv("RL_CNN_EXTRA_BLOCK", raising=False)
+    width_only = OnlineRLAgent(warmstart=False, device="cpu", seed=0)
+    assert _model_params(agent) > _model_params(width_only)
+
+
+def test_malformed_width_falls_back_to_default(monkeypatch) -> None:
+    """Purpose: a malformed / non-positive RL_CNN_WIDTH must degrade to the 1.0
+    default rather than raising, so a typo in a measurement shell cannot crash the
+    per-game agent build.
+
+    Expected feedback: pass => "abc" and "0" both leave the net at the committed
+    default param count. Fail => a bad env value crashes construction or silently
+    produces a degenerate net.
+    """
+    for bad in ("abc", "0", "-2"):
+        monkeypatch.setenv("RL_CNN_WIDTH", bad)
+        agent = OnlineRLAgent(warmstart=False, device="cpu", seed=0)
+        assert agent._cnn_width == 1.0
+        assert _model_params(agent) == DEFAULT_POLICY_PARAMS
+
+
+def test_capacity_net_still_selects_valid_action(monkeypatch) -> None:
+    """Purpose: a widened net must still satisfy the agent contract — an ACTION6
+    availability produces a coordinate action index in range.
+
+    Expected feedback: pass => at RL_CNN_WIDTH=2 the agent returns a valid combined
+    action index over a masked availability, so capacity scaling does not break
+    action selection. Fail => the larger net breaks the planner's index contract.
+    """
+    monkeypatch.setenv("RL_CNN_WIDTH", "2")
+    agent = OnlineRLAgent(warmstart=False, device="cpu", seed=0)
+    frame = np.zeros((64, 64), dtype=np.int64)
+    simple_mask = np.array([False, False, False, False, False])
+    idx = agent._select_action_index(frame, simple_mask, action6_ok=True)
+    assert COORD_OFFSET <= idx < COORD_OFFSET + 4096

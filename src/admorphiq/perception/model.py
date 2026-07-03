@@ -17,11 +17,22 @@ class PerceptionModel(nn.Module):
     NUM_COORDINATES: int = 4096  # 64 * 64
     TOTAL_LOGITS: int = NUM_ACTIONS + NUM_COORDINATES  # 4101
 
-    def __init__(self) -> None:
+    def __init__(self, width_mult: float = 1.0, extra_block: bool = False) -> None:
+        """Build the perception model at a given capacity.
+
+        Args:
+            width_mult: Backbone channel multiplier. Default 1.0 reproduces the
+                committed 34.3M-param architecture byte-for-byte; >1.0 widens
+                every conv and (via the heads' ``in_channels``) the head input
+                dims, growing the net for the online RL learner.
+            extra_block: Append one extra backbone conv block (final width) when
+                True. Output logit shape (batch, 4101) is invariant to both knobs.
+        """
         super().__init__()
-        self.backbone = CNNBackbone()
-        self.action_head = ActionHead()
-        self.coordinate_head = CoordinateHead()
+        self.backbone = CNNBackbone(width_mult=width_mult, extra_block=extra_block)
+        out_ch = self.backbone.out_channels
+        self.action_head = ActionHead(in_channels=out_ch)
+        self.coordinate_head = CoordinateHead(in_channels=out_ch)
 
     def forward(
         self,

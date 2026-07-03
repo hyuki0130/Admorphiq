@@ -108,6 +108,40 @@ def frame_to_onehot(frame: np.ndarray) -> torch.Tensor:
     return onehot.permute(2, 0, 1).float()                      # (16, 64, 64)
 
 
+def _read_capacity() -> tuple[float, bool]:
+    """Read the env-gated CNN capacity knob for the per-game policy net.
+
+    Returns ``(width_mult, extra_block)``. Defaults (``1.0``, ``False``)
+    reproduce the committed :class:`PerceptionModel` byte-for-byte, so an unset
+    environment leaves the online learner unchanged. The knob only widens/deepens
+    the net when explicitly set:
+
+      * ``RL_CNN_WIDTH`` (alias ``RL_CNN_CAPACITY``) — float channel multiplier
+        on the base plan (32,64,128,256). ``2.0`` => 64,128,256,512.
+      * ``RL_CNN_EXTRA_BLOCK`` — truthy string appends one extra conv block.
+
+    A malformed / non-positive width falls back to the 1.0 default rather than
+    raising, so a typo in a measurement shell degrades to the regression net.
+    """
+    raw = (
+        os.environ.get("RL_CNN_WIDTH")
+        or os.environ.get("RL_CNN_CAPACITY")
+        or ""
+    ).strip()
+    width = 1.0
+    if raw:
+        try:
+            parsed = float(raw)
+            if parsed > 0.0:
+                width = parsed
+        except ValueError:
+            width = 1.0
+    extra = os.environ.get("RL_CNN_EXTRA_BLOCK", "").strip().lower() in (
+        "1", "true", "yes", "on",
+    )
+    return width, extra
+
+
 def _pick_device(device: str | None) -> torch.device:
     if device is not None:
         return torch.device(device)
@@ -246,10 +280,21 @@ class OnlineRLAgent:
             "1", "true", "yes", "on",
         )
 
-        # Build the per-game working model. Warm-start is an exploration prior.
-        self.model = PerceptionModel().to(self.device)
+        # Build the per-game working model at the env-gated capacity. Default
+        # (1.0, False) reproduces the committed 34.3M-param net byte-for-byte;
+        # RL_CNN_WIDTH / RL_CNN_EXTRA_BLOCK widen/deepen it (R24 capacity axis).
+        # The model is fresh per game (a new agent instance per game), trained
+        # online with the same Adam/LR — only the parameter count changes.
+        self._cnn_width, self._cnn_extra_block = _read_capacity()
+        self.model = PerceptionModel(
+            width_mult=self._cnn_width, extra_block=self._cnn_extra_block
+        ).to(self.device)
+        # Warm-start weights are shaped for the default architecture; a widened /
+        # deepened net cannot load them, so warm-start is skipped whenever the
+        # capacity knob is active (the bigger net trains from scratch per game).
         self._warm_loaded = False
-        if warmstart and warmstart_path is not None:
+        _default_capacity = self._cnn_width == 1.0 and not self._cnn_extra_block
+        if warmstart and warmstart_path is not None and _default_capacity:
             path = Path(warmstart_path)
             if path.exists():
                 state = torch.load(path, map_location=self.device)
