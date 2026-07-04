@@ -26,3 +26,20 @@ worktree copy was lost).
 
 **Related rounds**: [[r32_neural-forward-model]], [[r29_warmstart-off]], [[r13_efficiency-insight]]
 See map: [[rounds_index]]. Overview: [[online_rl_sprint_round_log]].
+
+## R33b result (2026-07-05) — LLM goal = heuristic goal = baseline (forward-model accuracy is the wall)
+R33b (LLM goal via qwen3:8b at discovery, warm-start OFF) = 0.0013 — IDENTICAL to R33a heuristic
+(0.0013) and baseline (0.0014), clears 3/9, per-game numbers the same. Better goals do NOT help.
+
+FINAL DIAGNOSIS: the wall is NOT goal quality — it's FORWARD-MODEL ACCURACY. The 15K-param change-mask
+model, trained from scratch (warm-start OFF) within the per-game budget, predicts rollouts too
+inaccurately for goal-proximity scoring to mean anything. Giving planning a correct GOAL doesn't help
+if the model can't accurately predict which action MOVES TOWARD it. Consistent with R32b (accuracy gate
+was ineffective). goal-directed planning is blocked by forward-model accuracy under the from-scratch,
+per-game online budget.
+
+CONCLUSION: The full R27 pipeline (neural forward model + goal inference + goal-directed planning) is
+BUILT and CORRECT (468 tests, planning fires, LLM goal parses) but does not beat the 0.0014
+transfer-honest baseline, because an online-from-scratch forward model isn't accurate enough for
+lookahead in the per-game budget. The pipeline is a reusable asset; the binding constraint is now
+forward-model sample-efficiency/accuracy.

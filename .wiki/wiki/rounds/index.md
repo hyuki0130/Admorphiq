@@ -20,6 +20,7 @@ commit, and `[[backlinks]]`. Narrative overview + reliable-metric + resume steps
 - **object-centric / objectness**: [[r10_object-state-hash]], [[r16_object-click-prior]], [[r18_object-prior-full25]]
 - **transfer-honesty / warm-start / proxy-inflation**: [[r29_warmstart-off]] (⚠️ card score is ~90% public-gold BC inflation; judge future rounds warm-start OFF)
 - **neural-world-model / forward-model / planning**: [[r32_neural-forward-model]] (neural change-mask predictor — planning FIRES on unseen frames, beats state-uniqueness; needs confidence gate)
+- **goal-inference / goal-directed-planning**: [[r33_goal-directed-planning]] (built + correct, but blocked by forward-model accuracy under per-game online budget)
 - **budget**: [[r08_budget-depth]]
 - **model-capacity / convergence-speed**: [[r24_bigger-cnn]] (bigger CNN FAILED — speed>capacity), [[r23_train-convergence]]
 - **measurement / baseline / metric**: [[r11_breadth-measure]], [[r12_clear-rate-stable]], [[r13_efficiency-insight]], [[r17_full25-baseline]] (0.005 baseline)
@@ -59,6 +60,8 @@ commit, and `[[backlinks]]`. Narrative overview + reliable-metric + resume steps
 | R31 | transfer-honesty | budget doesn't transfer (6000=3000=0.0014) | — | [[r29_warmstart-off]] |
 | R32 | neural-world-model | PARTIAL: planning FIRES (beats R10 wall) but 92% takeover crushes novelty | — | [[r32_neural-forward-model]] |
 | R32b | neural-world-model | FAIL: conf-gate didn't help (0.0013) — wall is GOAL-absence, not activation | — | [[r32_neural-forward-model]] |
+| R33a | goal-inference | heuristic goal 0.0013 ≈ baseline | 20afa66 | [[r33_goal-directed-planning]] |
+| R33b | goal-inference | LLM goal 0.0013 = baseline — wall is FORWARD-MODEL ACCURACY | 20afa66 | [[r33_goal-directed-planning]] |
 
 ## The two standing conclusions
 - ⛔ **Do NOT re-try action-selection tweaks** — 8 rounds failed; the novelty learner's action
