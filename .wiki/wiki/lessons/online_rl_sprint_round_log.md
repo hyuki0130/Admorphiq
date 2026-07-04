@@ -121,3 +121,14 @@ A real private gain needs a NEW CAPABILITY. Candidates NOT yet tried from-scratc
 prior that transfers to UNSEEN games (procedural/self-play pretrain, or a game-agnostic change-seeking
 prior) — NOT public-gold BC; (b) re-test R8 budget from-scratch (only plausibly-transferable lever);
 (c) a learned neural forward model (big; R24 warns on convergence). Decision point — surfaced to user.
+
+## 2026-07-04 — DIRECTION DECISION (user): learned NEURAL forward model + planning
+After the R29/R30 reckoning (transfer-honest baseline ~0.0015, all micro-levers warm-start-dependent),
+user chose: build a LEARNED NEURAL forward model. Design targets the two named walls:
+- Beats STATE-UNIQUENESS: neural model generalizes across near-unique unseen frames (tabular can't).
+- Beats ONLINE-CONVERGENCE-BUDGET: keep it SMALL and fast by predicting a CHANGE-DELTA / change-mask
+  (not full pixels), SEPARATE from the policy net, so it converges within the per-game budget.
+- Used for SHORT-HORIZON PLANNING (rollouts scored by predicted change/novelty/goal-proximity) → cut
+  actions-to-clear (the RHAE efficiency lever, R13).
+- JUDGED TRANSFER-HONEST: warm-start OFF (RL_NO_WARMSTART=1) is the metric now, baseline ~0.0015.
+Rounds R32+. Env-gated OFF by default (regression guard). This is the "new capability", not a tweak.
