@@ -132,3 +132,8 @@ user chose: build a LEARNED NEURAL forward model. Design targets the two named w
   actions-to-clear (the RHAE efficiency lever, R13).
 - JUDGED TRANSFER-HONEST: warm-start OFF (RL_NO_WARMSTART=1) is the metric now, baseline ~0.0015.
 Rounds R32+. Env-gated OFF by default (regression guard). This is the "new capability", not a tweak.
+
+## 2026-07-04 — R31: budget also does NOT transfer (warm-start OFF, budget 6000 = 3000 = 0.0014)
+From-scratch, budget 6000 = budget 3000 = 0.0014. R8's budget "win" was ALSO warm-start-dependent.
+CONFIRMED: EVERY micro-lever (budget, shaping, all others) is inert without warm-start. Transfer-honest
+baseline is firmly ~0.0014. Only a NEW CAPABILITY (R32 neural forward model) can move it.
