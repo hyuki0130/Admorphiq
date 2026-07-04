@@ -158,3 +158,24 @@ by predicted GOAL-PROXIMITY (not novelty) → directed toward level completion. 
 judged warm-start OFF (baseline 0.0014). This is the R27 pipeline's missing piece (goal inference).
 forward_model.py + the goal spec are the reusable assets. Unit-testable with a deterministic goal
 stub; LLM only at runtime.
+
+## 2026-07-05 — R33 (goal-directed planning) built; blocked by FORWARD-MODEL ACCURACY (4th wall)
+The full R27 pipeline is now BUILT and correct: neural forward model (state-uniqueness ✓, R32) +
+structured goal spec + LLM goal inference at discovery (qwen3:8b) + goal-directed planning scoring
+rollouts by goal-proximity. 468 tests, planning fires, LLM goal parses. BUT warm-start OFF:
+R33a heuristic goal = 0.0013, R33b LLM goal = 0.0013, = baseline 0.0014. Better goals don't help.
+NAMED WALL #4 — FORWARD-MODEL ACCURACY: a small from-scratch model can't predict rollouts accurately
+enough within the per-game budget for lookahead to beat reactive novelty. Giving a correct GOAL is
+useless if the model can't predict which action moves toward it.
+
+### GRAND SUMMARY after ~35 rounds (transfer-honest, warm-start OFF baseline ~0.0014)
+NOTHING beats 0.0014 from scratch. Four named walls: (1) state-uniqueness [neural fwd model beats it],
+(2) online-convergence-budget [big nets fail], (3) goal-absence [goal spec+LLM addresses it], (4)
+forward-model-accuracy [the current binding constraint]. Every micro-lever (exploration, reward,
+budget, capacity, planning, goal) is inert on the from-scratch learner. The reactive novelty CNN from
+scratch clears mostly L1 at 10-100x human actions ≈ 0.0014, and that appears to be the ceiling of
+"learn a game from scratch in a few thousand actions with a small net". The public-25 0.0134 was BC
+warm-start inflation (does not transfer). Assets built & kept: forward_model.py, planner/goal.py,
+planner/goal_inference.py — all env-gated OFF, reusable if forward-model accuracy is later solved
+(needs sample-efficiency: better predictor arch, or a transferable pretrained forward model — NOT
+public-gold BC). DECISION POINT for the user: the from-scratch online-RL ceiling looks fundamental.
