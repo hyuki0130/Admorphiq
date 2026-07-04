@@ -112,3 +112,12 @@ public-gold inflation that does NOT transfer. THE RELIABLE METRIC IS NOW: 9 game
 RL_NO_WARMSTART=1 (transfer-honest, from-scratch ~0.0014 baseline). Optimizing warm-start-ON public
 scores is proxy-gaming — banned. Real work = raise the from-scratch general learner, or find a prior
 that transfers to UNSEEN games (public-gold BC does not).
+
+## 2026-07-04 — R30: shaping does NOT transfer (confirms the reckoning)
+warm-start OFF + shaping OFF = 0.0015 ≈ R29 (shaping ON, warm-start OFF) = 0.0014. R19 shaping's win
+needed the BC warm-start; from scratch it is inert. TRANSFER-HONEST BASELINE ≈ 0.0015 and no sprint
+micro-lever moves it. The reactive novelty CNN from scratch clears mostly L1 at 10-100x human actions.
+A real private gain needs a NEW CAPABILITY. Candidates NOT yet tried from-scratch: (a) a warm-start
+prior that transfers to UNSEEN games (procedural/self-play pretrain, or a game-agnostic change-seeking
+prior) — NOT public-gold BC; (b) re-test R8 budget from-scratch (only plausibly-transferable lever);
+(c) a learned neural forward model (big; R24 warns on convergence). Decision point — surfaced to user.

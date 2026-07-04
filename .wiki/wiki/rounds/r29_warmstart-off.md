@@ -42,3 +42,12 @@ warns about). All future RL-spine rounds should be judged with warm-start OFF (t
 
 **Related rounds**: [[r13_efficiency-insight]], [[r19_reward-shaping]], [[r17_full25-baseline]]
 See map: [[rounds_index]]. Overview: [[online_rl_sprint_round_log]].
+
+## R30 addendum (2026-07-04) — shaping does NOT transfer either
+warm-start OFF + shaping OFF = 0.0015 ≈ R29 (warm-start OFF + shaping ON) = 0.0014 (noise; R30 even
+clears 7/9 vs R29's 4/9). CONCLUSION: R19 reward-shaping's "win" (M0R0/CD82→L2) REQUIRED the BC
+warm-start; without it (= the private reality) shaping is inert. Our ONLY apparent lever was
+warm-start-dependent. The transfer-honest from-scratch baseline is ~0.0015, and NONE of the sprint's
+micro-levers move it. Only R8 (budget) is plausibly warm-start-independent (untested from-scratch).
+=> The reactive novelty CNN, from scratch, clears mostly L1 at 10-100x human actions ≈ 0.0015. A
+real private-leaderboard gain needs a genuinely NEW capability, not another tweak.
