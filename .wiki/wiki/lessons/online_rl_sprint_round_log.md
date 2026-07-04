@@ -147,3 +147,14 @@ so planning is novelty-by-another-name. Forward-model planning is inert WITHOUT 
 => Next real lever = GOAL INFERENCE (detect level-complete condition), the CLAUDE.md R27 pipeline's
 missing piece (offline LLM at discovery, or a heuristic goal detector). forward_model.py kept as an
 asset for a future goal-directed planner.
+
+## 2026-07-05 — DIRECTION (user): offline LLM goal inference (R27 정공법)
+After R32b named the GOAL-ABSENCE wall, user chose offline-LLM goal inference. Infra confirmed:
+Ollama local has qwen3:8b/14b/30b; hypothesis/ module exists. Plan (R33+): at DISCOVERY (a few LLM
+calls per game, not per action → fits 9h), Qwen observes the probe frames + observed changes and
+emits a STRUCTURED goal spec (goal-type enum + params, e.g. fill-all-color-X / move-player-to-region
+/ maximize-count-of-Z). The R32 neural forward model then does goal-directed planning: score rollouts
+by predicted GOAL-PROXIMITY (not novelty) → directed toward level completion. Env-gated OFF = card;
+judged warm-start OFF (baseline 0.0014). This is the R27 pipeline's missing piece (goal inference).
+forward_model.py + the goal spec are the reusable assets. Unit-testable with a deterministic goal
+stub; LLM only at runtime.
