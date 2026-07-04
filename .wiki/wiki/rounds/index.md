@@ -58,6 +58,7 @@ commit, and `[[backlinks]]`. Narrative overview + reliable-metric + resume steps
 | R30 | transfer-honesty | shaping doesn't transfer (0.0015=0.0014) | — | [[r29_warmstart-off]] |
 | R31 | transfer-honesty | budget doesn't transfer (6000=3000=0.0014) | — | [[r29_warmstart-off]] |
 | R32 | neural-world-model | PARTIAL: planning FIRES (beats R10 wall) but 92% takeover crushes novelty | — | [[r32_neural-forward-model]] |
+| R32b | neural-world-model | FAIL: conf-gate didn't help (0.0013) — wall is GOAL-absence, not activation | — | [[r32_neural-forward-model]] |
 
 ## The two standing conclusions
 - ⛔ **Do NOT re-try action-selection tweaks** — 8 rounds failed; the novelty learner's action

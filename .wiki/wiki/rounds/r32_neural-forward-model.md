@@ -32,3 +32,20 @@ reliable. Keep forward_model.py (the neural predictor is the real asset; the wal
 
 **Related rounds**: [[r27b_planning-gate]], [[r10_object-state-hash]], [[r05_planning-override]], [[r29_warmstart-off]]
 See map: [[rounds_index]]. Overview: [[online_rl_sprint_round_log]].
+
+## R32b addendum (2026-07-04) — confidence gate didn't help; the wall is GOAL, not activation
+Added a running change-mask prediction-accuracy gate (RL_FWD_MIN_ACC=0.85). Result 0.0013 ≈ baseline
+0.0014, clears 3/9. Planning STILL fired 87% (2430/2800) — the model's change-mask accuracy exceeds
+0.85 (it predicts WHAT changes well), so the gate stays open, but planning still doesn't help.
+
+DECISIVE DIAGNOSIS: the neural forward model beats STATE-UNIQUENESS (it predicts on unseen frames)
+but hits a new wall — GOAL ABSENCE. It predicts "what will change" accurately, but not "which change
+leads to level completion". Planning scores rollouts by predicted change/novelty, so it just does
+novelty-by-another-name + prediction noise → no efficiency/clear gain. Forward-model planning is
+INERT for scoring toward the goal WITHOUT a goal-inference signal.
+
+CONCLUSION: forward-model planning axis is dead UNTIL there is GOAL INFERENCE (what state = level
+solved). The forward model (forward_model.py) remains a valid asset for a future goal-directed
+planner, but planning-toward-novelty via the model does not transfer-beat 0.0014. Next real lever =
+GOAL INFERENCE (detect the level-complete condition), which the offline LLM was meant to provide at
+discovery — the CLAUDE.md R27 pipeline's missing piece.

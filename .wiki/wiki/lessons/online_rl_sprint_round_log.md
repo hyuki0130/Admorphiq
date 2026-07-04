@@ -137,3 +137,13 @@ Rounds R32+. Env-gated OFF by default (regression guard). This is the "new capab
 From-scratch, budget 6000 = budget 3000 = 0.0014. R8's budget "win" was ALSO warm-start-dependent.
 CONFIRMED: EVERY micro-lever (budget, shaping, all others) is inert without warm-start. Transfer-honest
 baseline is firmly ~0.0014. Only a NEW CAPABILITY (R32 neural forward model) can move it.
+
+## 2026-07-04 — R32/R32b: neural forward model beats state-uniqueness but hits GOAL-ABSENCE wall
+Neural change-mask forward model (18.7K params) makes planning FIRE on unseen frames (unlike tabular
+R10/R27b) — state-uniqueness wall BEATEN. But planning scored by predicted change/novelty does NOT
+beat baseline (R32 0.0017 @92% planning crushes novelty→clears 2/9; R32b conf-gate 0.0013 @87%, 3/9).
+NEW NAMED WALL #3 — GOAL-ABSENCE: the model predicts WHAT changes, not WHICH change = level-solved,
+so planning is novelty-by-another-name. Forward-model planning is inert WITHOUT goal inference.
+=> Next real lever = GOAL INFERENCE (detect level-complete condition), the CLAUDE.md R27 pipeline's
+missing piece (offline LLM at discovery, or a heuristic goal detector). forward_model.py kept as an
+asset for a future goal-directed planner.
