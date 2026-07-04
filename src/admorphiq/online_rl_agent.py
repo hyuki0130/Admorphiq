@@ -85,7 +85,11 @@ import torch
 import torch.nn.functional as F
 
 from .perception import PerceptionModel
+from .planner.goal import GoalSpec, goal_directed_plan
+from .planner.goal_inference import color_histogram_from_frame, infer_goal
 from .utils.buffer import ExperienceBuffer
+from .world_model.forward_model import ForwardModel
+from .world_model.forward_model import _action_planes as _forward_action_planes
 
 # ── Layout constants (mirror PerceptionModel / BCPolicyAgent) ─────────────────
 NUM_SIMPLE_ACTIONS = 5          # ACTION1..5 -> combined indices 0..4
@@ -106,40 +110,6 @@ def frame_to_onehot(frame: np.ndarray) -> torch.Tensor:
     t = torch.from_numpy(np.asarray(frame).astype(np.int64))   # (64, 64)
     onehot = F.one_hot(t.clamp(0, 15), num_classes=16)          # (64, 64, 16)
     return onehot.permute(2, 0, 1).float()                      # (16, 64, 64)
-
-
-def _read_capacity() -> tuple[float, bool]:
-    """Read the env-gated CNN capacity knob for the per-game policy net.
-
-    Returns ``(width_mult, extra_block)``. Defaults (``1.0``, ``False``)
-    reproduce the committed :class:`PerceptionModel` byte-for-byte, so an unset
-    environment leaves the online learner unchanged. The knob only widens/deepens
-    the net when explicitly set:
-
-      * ``RL_CNN_WIDTH`` (alias ``RL_CNN_CAPACITY``) — float channel multiplier
-        on the base plan (32,64,128,256). ``2.0`` => 64,128,256,512.
-      * ``RL_CNN_EXTRA_BLOCK`` — truthy string appends one extra conv block.
-
-    A malformed / non-positive width falls back to the 1.0 default rather than
-    raising, so a typo in a measurement shell degrades to the regression net.
-    """
-    raw = (
-        os.environ.get("RL_CNN_WIDTH")
-        or os.environ.get("RL_CNN_CAPACITY")
-        or ""
-    ).strip()
-    width = 1.0
-    if raw:
-        try:
-            parsed = float(raw)
-            if parsed > 0.0:
-                width = parsed
-        except ValueError:
-            width = 1.0
-    extra = os.environ.get("RL_CNN_EXTRA_BLOCK", "").strip().lower() in (
-        "1", "true", "yes", "on",
-    )
-    return width, extra
 
 
 def _pick_device(device: str | None) -> torch.device:
@@ -236,6 +206,14 @@ class OnlineRLAgent:
     SHAPE_GAMMA = 0.99           # discount gamma in the shaping potential difference
     SHAPE_C = 1.0                # numerator constant of the novelty potential Phi(s)
 
+    # ── R33 goal-directed planning knobs (env-overridable) ────────────────────
+    GOAL_PLAN = 0                # RL_GOAL_PLAN: 0 => OFF => byte-identical card
+    GOAL_LLM = 0                 # RL_GOAL_LLM: 0 => heuristic goal only (no Ollama)
+    GOAL_HORIZON = 2             # forward-model rollout depth for planning
+    GOAL_CONF_FLOOR = 0.55       # min forward-model confidence to trust a plan
+    GOAL_INFER_AFTER = 32        # env steps of probing before goal is inferred
+    GOAL_CANDIDATES = 8          # top novelty-ranked actions fed to the planner
+
     def __init__(
         self,
         warmstart_path: str | Path | None = DEFAULT_WARMSTART,
@@ -280,21 +258,20 @@ class OnlineRLAgent:
             "1", "true", "yes", "on",
         )
 
-        # Build the per-game working model at the env-gated capacity. Default
-        # (1.0, False) reproduces the committed 34.3M-param net byte-for-byte;
-        # RL_CNN_WIDTH / RL_CNN_EXTRA_BLOCK widen/deepen it (R24 capacity axis).
-        # The model is fresh per game (a new agent instance per game), trained
-        # online with the same Adam/LR — only the parameter count changes.
-        self._cnn_width, self._cnn_extra_block = _read_capacity()
-        self.model = PerceptionModel(
-            width_mult=self._cnn_width, extra_block=self._cnn_extra_block
-        ).to(self.device)
-        # Warm-start weights are shaped for the default architecture; a widened /
-        # deepened net cannot load them, so warm-start is skipped whenever the
-        # capacity knob is active (the bigger net trains from scratch per game).
+        # R33 goal-directed planning. Default OFF => the select/train paths are
+        # byte-identical to the pre-R33 novelty agent (no forward model built,
+        # no goal inferred, no planning branch taken).
+        self.GOAL_PLAN = int(os.environ.get("RL_GOAL_PLAN", self.GOAL_PLAN))
+        self.GOAL_LLM = int(os.environ.get("RL_GOAL_LLM", self.GOAL_LLM))
+        self.GOAL_HORIZON = int(os.environ.get("RL_GOAL_HORIZON", self.GOAL_HORIZON))
+        self.GOAL_CONF_FLOOR = float(
+            os.environ.get("RL_GOAL_CONF_FLOOR", self.GOAL_CONF_FLOOR)
+        )
+
+        # Build the per-game working model. Warm-start is an exploration prior.
+        self.model = PerceptionModel().to(self.device)
         self._warm_loaded = False
-        _default_capacity = self._cnn_width == 1.0 and not self._cnn_extra_block
-        if warmstart and warmstart_path is not None and _default_capacity:
+        if warmstart and warmstart_path is not None:
             path = Path(warmstart_path)
             if path.exists():
                 state = torch.load(path, map_location=self.device)
@@ -302,6 +279,15 @@ class OnlineRLAgent:
                 self._warm_loaded = True
         self.model.eval()
         self.opt = torch.optim.Adam(self.model.parameters(), lr=self.LR)
+
+        # R33: a per-game forward model + its optimiser, built ONLY when goal
+        # planning is enabled (default off => no extra params, byte-identical).
+        self.forward_model: ForwardModel | None = None
+        self.forward_opt: torch.optim.Optimizer | None = None
+        if self.GOAL_PLAN:
+            self.forward_model = ForwardModel().to(self.device)
+            self.forward_model.eval()
+            self.forward_opt = torch.optim.Adam(self.forward_model.parameters(), lr=self.LR)
 
         self.buffer = ExperienceBuffer(maxlen=200_000)
 
@@ -330,6 +316,16 @@ class OnlineRLAgent:
         # Drives the auxiliary training target so the greedy policy seeks the
         # frontier of unexplored states (directed exploration toward the reward).
         self._visit_counts: dict[str, int] = {}
+
+        # R33 goal state (all inert while GOAL_PLAN == 0). Inferred once per
+        # level after GOAL_INFER_AFTER probing steps, from accumulated probe
+        # deltas. fwd_planned / fwd_fallback count planner-driven vs
+        # novelty-fallback action picks, for post-run diagnosis.
+        self._goal: GoalSpec | None = None
+        self._probe_changes: list[dict] = []
+        self.fwd_planned = 0
+        self.fwd_fallback = 0
+        self._llm_call = self._build_llm_call() if self.GOAL_PLAN and self.GOAL_LLM else None
 
     # ── harness contract ─────────────────────────────────────────────────────
 
@@ -443,6 +439,8 @@ class OnlineRLAgent:
             # the state is re-seen, pushing the policy toward new territory.
             nkey = _onehot_key(frame_to_onehot(next_frame).numpy() > 0.5)
             self._visit_counts[nkey] = self._visit_counts.get(nkey, 0) + 1
+            if self.GOAL_PLAN:
+                self._record_probe_change(frame, idx, next_frame)
 
         self.buffer.add(
             (frame_to_onehot(frame).numpy() > 0.5),
@@ -471,6 +469,8 @@ class OnlineRLAgent:
         self._recent.clear()
         self._noop_seen.clear()
         self._visit_counts.clear()
+        self._goal = None
+        self._probe_changes.clear()
         self._step_in_level = 0
         self._actions_since_progress = 0
 
@@ -524,6 +524,8 @@ class OnlineRLAgent:
         self._recent.clear()
         self._noop_seen.clear()
         self._visit_counts.clear()
+        self._goal = None
+        self._probe_changes.clear()
         self._pending = None
         self._prev_frame = None
         self._step_in_level = 0
@@ -543,7 +545,19 @@ class OnlineRLAgent:
         Greedy = top productivity logit among available actions, skipping per-frame
         known no-ops. Explore = semi-random hierarchical pick (action type first,
         then a coordinate sampled from the coord-head distribution for ACTION6).
+
+        R33: when goal planning is enabled and a goal is set, first TRY a
+        goal-directed forward-model rollout (scored by goal-proximity, not
+        novelty). It only overrides when the model is confident; otherwise the
+        pick falls through to the byte-identical novelty path below.
         """
+        if self.GOAL_PLAN:
+            planned = self._goal_directed_index(frame, simple_mask, action6_ok)
+            if planned is not None:
+                self.fwd_planned += 1
+                return planned
+            self.fwd_fallback += 1
+
         fhash = _frame_hash(frame)
         if self._rng.random() < self._epsilon():
             return self._explore_index(frame, simple_mask, action6_ok)
@@ -603,6 +617,119 @@ class OnlineRLAgent:
             for i, v in zip(idxs.tolist(), vals.tolist(), strict=False)
             if v != float("-inf")
         ]
+
+    # ── R33 goal inference + goal-directed planning ───────────────────────────
+
+    def _record_probe_change(
+        self, frame: np.ndarray, idx: int, next_frame: np.ndarray
+    ) -> None:
+        """Accumulate a compact probe-delta summary for discovery-time goal inference."""
+        diff = frame != next_frame
+        n_changed = int(diff.sum())
+        new_vals = next_frame[diff]
+        top_new = int(np.bincount(new_vals.astype(np.int64)).argmax()) if n_changed else 0
+        self._probe_changes.append(
+            {"action": int(idx), "changed_cells": n_changed, "top_new_color": top_new}
+        )
+
+    def _maybe_infer_goal(self, frame: np.ndarray) -> None:
+        """Infer the level goal once, after enough probing steps have accrued.
+
+        Uses the injected LLM when RL_GOAL_LLM is on; otherwise the deterministic
+        heuristic from the observed probe deltas. Sets ``self._goal`` in place.
+        """
+        if self._goal is not None or self._step_in_level < self.GOAL_INFER_AFTER:
+            return
+        hist = color_histogram_from_frame(frame)
+        self._goal = infer_goal(hist, self._probe_changes, llm_call=self._llm_call)
+
+    def _goal_directed_index(
+        self, frame: np.ndarray, simple_mask: np.ndarray, action6_ok: bool
+    ) -> int | None:
+        """Return a goal-maximising action index, or None to fall back to novelty.
+
+        Trains the forward model a step on recent transitions, (lazily) infers
+        the goal, then rolls out the top novelty-ranked candidate actions and
+        picks the first move of the best goal-scoring rollout. Returns None when
+        no goal is set yet or the forward model is not confident enough.
+        """
+        self._maybe_infer_goal(frame)
+        if self._goal is None or self.forward_model is None:
+            return None
+        if len(self.buffer) >= self.WARMUP_STEPS:
+            self._train_forward()
+        candidates = self._policy_ranked(
+            frame, simple_mask, action6_ok, self.GOAL_CANDIDATES
+        )
+        if not candidates:
+            return None
+        result = goal_directed_plan(
+            frame.astype(np.int64),
+            self._goal,
+            candidates,
+            self.forward_model,
+            horizon=self.GOAL_HORIZON,
+            confidence_floor=self.GOAL_CONF_FLOOR,
+        )
+        return result.action_idx
+
+    def _build_llm_call(self):
+        """Wire the injected discovery-time LLM to the existing Ollama backend.
+
+        Returns a ``prompt -> text`` callable using the qwen3:8b candidate via
+        the same path :mod:`admorphiq.hypothesis.wiki_agent` uses. Any load
+        error yields None so the agent silently uses the heuristic goal instead.
+        """
+        try:
+            from .llm import load_candidate
+
+            backend = load_candidate("qwen3-8b")
+        except Exception:
+            return None
+
+        def _call(prompt: str) -> str:
+            from .planner.goal_inference import GOAL_JSON_SCHEMA
+
+            return backend.generate(prompt, max_tokens=128, json_schema=GOAL_JSON_SCHEMA)
+
+        return _call
+
+    def _train_forward(self) -> None:
+        """One supervised step of the forward model on a replay minibatch.
+
+        Targets: per-cell change mask (did the colour flip?) via BCE, and the
+        new colour of changed cells via cross-entropy. Trains only the cells
+        that actually changed for the colour head so unchanged background does
+        not dominate. No-op unless goal planning built a forward model.
+        """
+        if self.forward_model is None or self.forward_opt is None:
+            return
+        sample = self.buffer.sample_with_next(min(self.TRAIN_BATCH, len(self.buffer)))
+        if sample is None:
+            return
+        frames, actions, _rewards, next_frames = sample
+        frames = frames.to(self.device)                 # (B, 16, 64, 64) float
+        next_frames = next_frames.to(self.device)
+        planes = torch.stack(
+            [_forward_action_planes(int(a), self.device) for a in actions.tolist()]
+        )  # (B, 2, 64, 64)
+        cur_color = frames.argmax(dim=1)                 # (B, 64, 64)
+        nxt_color = next_frames.argmax(dim=1)            # (B, 64, 64)
+        changed = (cur_color != nxt_color).float()       # (B, 64, 64)
+
+        self.forward_model.train()
+        change_logits, colour_logits = self.forward_model(frames, planes)
+        change_loss = F.binary_cross_entropy_with_logits(
+            change_logits.squeeze(1), changed
+        )
+        colour_loss = F.cross_entropy(colour_logits, nxt_color, reduction="none")  # (B,64,64)
+        denom = changed.sum().clamp(min=1.0)
+        colour_loss = (colour_loss * changed).sum() / denom
+        loss = change_loss + colour_loss
+        self.forward_opt.zero_grad()
+        loss.backward()
+        self.forward_opt.step()
+        self.forward_model.eval()
 
     # ── online training ─────────────────────────────────────────────────────────
 
