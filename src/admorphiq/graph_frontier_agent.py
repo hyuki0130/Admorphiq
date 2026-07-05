@@ -657,7 +657,7 @@ class GraphFrontierAgent:
             self._hud_window.append(changed)
             self._hud_mask = None  # invalidate cache; recompute lazily
             if self.goal_rank:
-                self._record_probe_change(self._prev_frame, frame, changed)
+                self._record_probe_change(frame, changed)
 
         # Graph edge: prev_hash --action--> hash(frame under CURRENT mask).
         nxt_hash = self._hash(frame)
@@ -684,7 +684,7 @@ class GraphFrontierAgent:
     # ── goal-directed ranking (R41) ─────────────────────────────────────────────
 
     def _record_probe_change(
-        self, prev_frame: np.ndarray, frame: np.ndarray, changed: np.ndarray
+        self, frame: np.ndarray, changed: np.ndarray
     ) -> None:
         """Summarise one transition as a probe-change record for goal inference.
 
