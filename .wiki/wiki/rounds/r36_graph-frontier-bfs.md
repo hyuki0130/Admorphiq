@@ -86,3 +86,10 @@ Tiered click candidates (GF_TIER_PRIORITY=1): TN36 L1 862→145 actions (6x, sco
 identical (deterministic); CD82/VC33 L2 intact; deep mean 0.0062→0.0064; quick profile unchanged.
 Promise-frontier + tier-gate implemented but DEFAULT OFF — measured to lose deep clears when on.
 Open lever: L2 discovery cost (CD82 26,965 / VC33 12,389 actions) untouched by local tiering.
+
+## R39 (2026-07-05 22:42) — sticky mask + area-cap: CN04 new L1, VC33 L2 7.5x faster
+Top failure class across the 17 non-clearing games = mask churn / over-masking. Fix (sticky trusted
+mask + region area-cap, default on): CN04 0→L1(815a); VC33 L2 954+12389→173+1654 (7.5x); TN36
+145→72a; SP80 844→442a; CD82 L2 intact; quick 5/9. Only M0R0 mildly slower. 9-game deep set now
+clears 11 levels total. Open: CD82 L2 still 26,965a (different blocker); L3 not yet reached anywhere
+(VC33 has 28k spare budget after L2 — L3 blocker worth a look); remaining 15 non-clearing games.
