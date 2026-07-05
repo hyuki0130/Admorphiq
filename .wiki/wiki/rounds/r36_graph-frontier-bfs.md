@@ -61,3 +61,9 @@ R35 (neural forward-model transfer test) proceeds in parallel as a complementary
   unreachability with failure-caching, ping-pong fallback, click-action keys not quantized (every
   centroid shift = new action identity), mask growth churning hashes.
 - R36d (fresh agent) fixing the stall; acceptance = SP80 L1 + ≥4/9 L1 + ideally an L2.
+
+## R36d SUCCESS (2026-07-05 18:44, commit 5e4665d) — first transfer-honest improvement of the sprint
+Stall fixed (self-absorbing sink + post-masking state explosion). 9-subset @3000: **mean game_score
+0.0055, 4/9 L1 (CD82 342a, M0R0 228a, SP80 844a, R11L 14a→0.0476 ≈ its L1 cap)** vs online-RL
+from-scratch 0.0014 — **4x, training-free** (no warm-start inflation possible). Masked-state
+recurrence + frontier BFS demonstrably work. R37 measuring budget upside (@8000/@30000) + full-25.
