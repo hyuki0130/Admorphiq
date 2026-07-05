@@ -102,3 +102,10 @@ MILESTONE: **VC33 clears L3 @60k (173+1,654+55,209 actions)** — first L3 ever;
 Kaggle budget class (MAX_ACTIONS=100k). Dev 30k probes UNDERESTIMATE deployed depth. Open: blockers
 are now "goal genuinely far" → goal-DIRECTED frontier ranking (R33 score_goal on actual frontier
 frames — no forward model needed in the graph context) is the designed next lever (R41).
+
+## R41 (2026-07-06 00:00) — goal-ranked frontier: real but class-dependent → default OFF
+GF_GOAL_RANK=1 wins on paint/click (CD82 L2 −47%, VC33 L3 −31%) but regresses navigation (M0R0
+level lost); 3 configs tried. Ships default OFF (documented lever; future: per-game-type gating via
+goal-type inference). PLATEAU GATE: R40 (honest negative) + R41 (default-OFF) = 2 consecutive rounds
+without a default-config improvement → per the ralph PRD, the current card is at its near-term
+ceiling. Proceeding to FINAL full-25 measurement at deployed budget + architect verification.
