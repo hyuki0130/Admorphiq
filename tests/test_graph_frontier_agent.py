@@ -16,9 +16,12 @@ from typing import Any
 import numpy as np
 
 from admorphiq.graph_frontier_agent import (
+    _N_TIERS,
+    _SIMPLE_TIER,
     GraphFrontierAgent,
     _max_pool,
     _segment_click_candidates,
+    _segment_click_candidates_tiered,
 )
 
 
@@ -395,3 +398,125 @@ def test_game_over_resets_and_keeps_graph():
     assert _is_reset(action)  # RESET
     assert len(agent._untried) == graph_size  # graph preserved
     assert agent._prev_hash is None  # in-flight edge dropped
+
+
+# ── R38 salience-tiered prioritization ────────────────────────────────────────
+
+
+def test_click_tiers_rank_salient_widgets_above_background_blobs():
+    """Purpose: prove the tiered segmenter puts a small, rare, high-contrast
+    widget in a better (lower-index) tier than a large background-hugging blob,
+    and returns candidates tier-first.
+
+    Expected feedback: if this fails, the tier ranking is not distinguishing
+    likely-interactive buttons from passive fill, so R38's "try high tiers first"
+    lever is inert and deep discovery keeps wasting the budget uniformly.
+    """
+    frame = np.zeros((64, 64), dtype=np.int64)  # background = 0
+    # A large blob of a common colour hugging the background (passive board).
+    frame[10:40, 10:40] = 2
+    # A tiny rare-coloured widget sitting inside the background (a control).
+    frame[55, 5] = 7
+
+    tiered = _segment_click_candidates_tiered(frame, max_clicks=14)
+    tier_of = {(x, y): t for x, y, t in tiered}
+    widget_tier = tier_of[(5, 55)]  # (x=col, y=row)
+    blob_tier = tier_of[(24, 24)]  # centroid of the 30x30 blob
+    assert widget_tier < blob_tier, (widget_tier, blob_tier)
+    # The big background-adjacent blob is demoted to the bottom tier.
+    assert blob_tier == _N_TIERS - 1
+    # Returned tier-first: the widget precedes the blob in the ordered list.
+    order = [(x, y) for x, y, _ in tiered]
+    assert order.index((5, 55)) < order.index((24, 24))
+
+
+def test_tiered_local_pick_prefers_simple_then_low_tier_click():
+    """Purpose: prove the current-state untried pick takes a simple action before
+    any click (R38 §3), and among clicks takes the lowest (best) tier first.
+
+    Expected feedback: if this fails, the agent squanders early actions on
+    low-promise clicks instead of the cheap simple/movement actions and the
+    salient control, inflating actions-to-clear.
+    """
+    agent = GraphFrontierAgent()  # tier_priority on by default
+    s = "S"
+    click_hi = ("click", 5, 5)  # tier 0
+    click_lo = ("click", 9, 9)  # tier 2
+    agent._untried[s] = [click_lo, 2, click_hi]  # deliberately click-first order
+    agent._action_tier = {2: _SIMPLE_TIER, click_hi: 0, click_lo: 2}
+    agent._edges[s] = {}
+
+    # Simple action (tier -1) beats every click regardless of list order.
+    assert agent._best_untried_within_tier(s) == 2
+    # Once the simple action is consumed, the lower-tier click wins over tier-2.
+    agent._untried[s] = [click_lo, click_hi]
+    assert agent._best_untried_within_tier(s) == click_hi
+
+
+def test_frontier_nearest_first_when_promise_inactive_matches_bfs():
+    """Purpose: prove that with promise scoring off (the safe default), the
+    promise frontier picker returns the SAME first action as plain nearest-BFS,
+    so barely-in-budget deep-goal trajectories are never disturbed.
+
+    Expected feedback: if this fails, the R38 frontier reorders the nearest-BFS
+    walk even in its safe mode and can lose fragile deep clears (measured: CD82
+    L2 clears at 26,965/30,000 actions — any reordering drops it).
+    """
+    agent = GraphFrontierAgent(visit_penalty=0.0, recency_bonus=0.0)
+    agent._edges = {
+        "A": {1: "B", 2: "D"},
+        "B": {3: "C"},
+        "C": {},
+        "D": {},
+    }
+    agent._untried = {"A": [], "B": [], "C": [5], "D": []}
+    agent._action_tier = {5: 0}
+    assert agent._best_frontier("A") == agent._bfs_to_frontier("A") == 1
+
+
+def test_frontier_promise_breaks_ties_within_nearest_shell():
+    """Purpose: prove that with promise scoring on, two EQUIDISTANT frontiers are
+    disambiguated by promise (recency bonus toward the recently-changed region),
+    while distance is never overridden.
+
+    Expected feedback: if this fails, the promise lever either does nothing
+    (never nudges toward the changed region) or wrongly overrides distance
+    (walking to a far frontier), both defeating cost-benefit frontier selection.
+    """
+    agent = GraphFrontierAgent(visit_penalty=0.0, recency_bonus=1.0)
+    # A reaches two frontiers at equal distance 1: B (via action 1) and D (via 2).
+    agent._edges = {"A": {1: "B", 2: "D"}, "B": {}, "D": {}}
+    agent._untried = {"A": [], "B": [7], "D": [7]}
+    agent._action_tier = {7: 0}
+    # D is the recently-changed region -> promise favours the action toward D.
+    agent._last_change_hash = "D"
+    assert agent._best_frontier("A") == 2
+    # Move the recency to B -> the pick flips to the action toward B.
+    agent._last_change_hash = "B"
+    assert agent._best_frontier("A") == 1
+
+
+def test_tier_gate_defers_low_tier_until_high_tier_exhausted():
+    """Purpose: prove that with the tier gate on, the local pick withholds a
+    low-tier click while a within-gate (simple/tier-0) untried action exists, and
+    only surfaces the low-tier action after the gate widens.
+
+    Expected feedback: if this fails, the gate is not deferring the large mass of
+    low-promise clicks (its whole purpose), so enabling it cannot cut
+    deep-discovery cost on games that benefit.
+    """
+    agent = GraphFrontierAgent(tier_gate=True)
+    assert agent._unlocked_tier == 0
+    s = "S"
+    click_hi = ("click", 1, 1)  # tier 0
+    click_lo = ("click", 2, 2)  # tier 2
+    agent._untried[s] = [click_lo, click_hi]
+    agent._action_tier = {click_hi: 0, click_lo: 2}
+    # Gate at tier 0: only the tier-0 click is eligible.
+    assert agent._best_untried_within_tier(s) == click_hi
+    # Simulate the tier-0 click being consumed; now nothing is in-gate.
+    agent._untried[s] = [click_lo]
+    assert agent._best_untried_within_tier(s) is None
+    # Widening the gate surfaces the deferred low-tier click.
+    agent._unlocked_tier = _N_TIERS - 1
+    assert agent._best_untried_within_tier(s) == click_lo

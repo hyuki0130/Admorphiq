@@ -72,6 +72,32 @@ Env knobs:
     before masking, to cover glyph edges the low threshold missed.
   * ``GF_GIVEUP``       (default 8000) — per-level action cap after which
     :meth:`is_done` gives up (the runner ``--max-actions`` also bounds it).
+
+**SALIENCE-TIERED PRIORITIZATION (R38)** — uniform exploration wastes most of
+the budget on unpromising frontiers (measured CD82 L2: 26,965 actions). Three
+cost-cutting levers, all frame-only / game-agnostic:
+
+1. **Click-candidate tiers** — click candidates are bucketed into
+   ``_N_TIERS`` interactivity tiers (small / rare-coloured / high-contrast /
+   not-background-hugging → high tier). A state's local untried pick takes the
+   highest-tier action available; low tiers are only tried when high tiers are
+   locally exhausted (and are further deferred by the frontier scorer).
+2. **Frontier prioritization** — instead of walking to the NEAREST frontier,
+   score every reachable frontier by promise (best untried tier, few visits,
+   proximity to the last state where a level cleared) discounted by path length
+   (``promise / (1 + path_len)``) and walk to the best within ``GF_FRONTIER_DIST``.
+3. **Simple-action ordering** — untried simple actions (1-5) are tried before
+   untried clicks in a fresh state (5 vs K, and usually movement).
+
+New knobs (preserve all existing knobs + GF_DEBUG counters):
+  * ``GF_TIER_PRIORITY`` (default 1)   — enable tiered local pick + frontier
+    promise scoring. 0 restores the pre-R38 nearest-frontier BFS behaviour.
+  * ``GF_FRONTIER_DIST`` (default 12)  — max path length the promise-scored
+    frontier search will consider; beyond it, promise is dominated by distance.
+  * ``GF_VISIT_PENALTY`` (default 0.15)— per-visit promise decrement so the
+    scorer spreads exploration instead of re-walking the same frontier.
+  * ``GF_RECENCY_BONUS`` (default 1.0) — promise bonus for a frontier at/near
+    the state where the last level-up happened (recently-changed region).
 """
 
 from __future__ import annotations
@@ -108,6 +134,22 @@ DEFAULT_REGION_MASK = True
 DEFAULT_REGION_LOW = 0.05
 DEFAULT_REGION_RATE = 0.7
 DEFAULT_REGION_DILATE = 1
+
+# Salience-tiered prioritization defaults (R38). See module docstring.
+DEFAULT_TIER_PRIORITY = True
+# Gate + promise default OFF (R38): both perturb the exact nearest-BFS
+# trajectory that reaches barely-in-budget deep goals (measured CD82 L2 clears
+# at 26,965/30,000 actions — any reordering loses it). Tier ORDERING (local pick
+# + registration order + frontier-shell tie-break when promise is on) is the
+# safe, always-on lever. Gate/promise are opt-in knobs for games that benefit.
+DEFAULT_TIER_GATE = False
+DEFAULT_FRONTIER_DIST = 12
+DEFAULT_VISIT_PENALTY = 0.0
+DEFAULT_RECENCY_BONUS = 0.0
+
+# Sentinel tier for simple actions (1-5): strictly better than any click tier
+# (>= 0) so simple actions are tried before clicks in a fresh state (R38 §3).
+_SIMPLE_TIER = -1
 
 
 def _env_int(name: str, default: int) -> int:
@@ -156,6 +198,11 @@ class GraphFrontierAgent:
         region_rate: float | None = None,
         region_dilate: int | None = None,
         hash_pool: int | None = None,
+        tier_priority: bool | None = None,
+        tier_gate: bool | None = None,
+        frontier_dist: int | None = None,
+        visit_penalty: float | None = None,
+        recency_bonus: float | None = None,
     ) -> None:
         from .adapter import AdmorphiqAdapter  # heavy import, kept lazy
 
@@ -199,6 +246,38 @@ class GraphFrontierAgent:
             else _env_int("GF_REGION_DILATE", DEFAULT_REGION_DILATE)
         )
 
+        # Salience-tiered prioritization (R38) — tier local picks + promise-score
+        # frontiers so the budget concentrates on likely-interactive regions.
+        self.tier_priority = (
+            tier_priority
+            if tier_priority is not None
+            else _env_bool("GF_TIER_PRIORITY", DEFAULT_TIER_PRIORITY)
+        )
+        # Tier gate (R38): when on, exploration is restricted to simple + tier-0
+        # clicks until that gate is globally exhausted, THEN unlocks lower tiers.
+        # When off, all tiers are in-gate from the start (tier ordering still
+        # applies to the local pick + frontier scorer, but nothing is deferred).
+        self.tier_gate = (
+            tier_gate
+            if tier_gate is not None
+            else _env_bool("GF_TIER_GATE", DEFAULT_TIER_GATE)
+        )
+        self.frontier_dist = (
+            frontier_dist
+            if frontier_dist is not None
+            else _env_int("GF_FRONTIER_DIST", DEFAULT_FRONTIER_DIST)
+        )
+        self.visit_penalty = (
+            visit_penalty
+            if visit_penalty is not None
+            else _env_float("GF_VISIT_PENALTY", DEFAULT_VISIT_PENALTY)
+        )
+        self.recency_bonus = (
+            recency_bonus
+            if recency_bonus is not None
+            else _env_float("GF_RECENCY_BONUS", DEFAULT_RECENCY_BONUS)
+        )
+
         # The runner (scripts/score_efficiency.py) reads this flag: on GAME_OVER
         # it RESETs the env and lets the agent keep acting. Our observed
         # transitions remain valid across a reset, so we keep the graph.
@@ -221,6 +300,8 @@ class GraphFrontierAgent:
         self._dbg_random = 0
         self._dbg_untried = 0
         self._dbg_recent = deque(maxlen=30)
+        # Per-tier count of local untried picks (index = tier; last slot = simple).
+        self._dbg_tier_hits = [0] * (_N_TIERS + 1)
 
         self._last_levels = 0
         self._reset_level_state()
@@ -238,12 +319,14 @@ class GraphFrontierAgent:
         n_masked = int(mask.sum()) if mask is not None else 0
         # cycle detection: how many DISTINCT states in the last 30 visits?
         distinct_recent = len(set(self._dbg_recent))
+        tier_hits = "/".join(str(x) for x in self._dbg_tier_hits)
         print(
             f"[GF] call={self._dbg_calls} lvl={self._last_levels} "
             f"states={n_states} frontier={n_frontier} edges={n_edges} "
             f"bfs_fires={self._dbg_bfs} bfs_fail={self._dbg_bfs_fail} "
             f"random={self._dbg_random} untried={self._dbg_untried} "
             f"mismatch={self._dbg_mismatch} masked={n_masked} "
+            f"tier_hits={tier_hits} "
             f"recent_distinct={distinct_recent}/30",
             flush=True,
         )
@@ -262,6 +345,26 @@ class GraphFrontierAgent:
         # Predecessor links for shortest-path reconstruction:
         # state_hash -> list of (prev_state_hash, action_key).
         self._preds: dict[str, list[tuple[str, Any]]] = {}
+        # action_key -> salience tier (0 = most promising). Simple actions 1-5
+        # get the top tier so they are preferred over any click. Used by the
+        # tiered local pick and the frontier promise scorer (R38).
+        self._action_tier: dict[Any, int] = {}
+        # state_hash -> number of times the agent has stood on this node
+        # (visit count). Feeds the frontier promise penalty so exploration
+        # spreads instead of re-walking the same frontier (R38).
+        self._visits: dict[str, int] = {}
+        # The state hash the agent most recently ENTERED via a genuine state
+        # change (nxt != prev) — a proxy for the recently-changed region the
+        # frontier scorer is drawn toward (R38). Reset with the graph.
+        self._last_change_hash: str | None = None
+        # Globally-unlocked click tier (R38). With the gate on, exploration
+        # starts restricted to simple actions + tier-0 clicks; only when no such
+        # untried action is reachable anywhere does the agent unlock the next
+        # tier. This defers the large mass of low-promise clicks that made deep
+        # discovery exhaustive (CD82 L2 burned 26,965 actions trying every
+        # centroid at every state). With the gate off, all tiers are unlocked
+        # from the start (ordering still applies, nothing is deferred).
+        self._unlocked_tier = 0 if getattr(self, "tier_gate", True) else _N_TIERS - 1
 
         # HUD estimation: rolling window of per-cell "did this cell change"
         # boolean grids across recent transitions.
@@ -315,6 +418,7 @@ class GraphFrontierAgent:
         cur_hash = self._hash(frame)
         if self._debug:
             self._dbg_recent.append(cur_hash)
+        self._visits[cur_hash] = self._visits.get(cur_hash, 0) + 1
         simple_ids, action6_ok = _availability(obs)
         self._ensure_state(cur_hash, frame, simple_ids, action6_ok)
 
@@ -366,6 +470,9 @@ class GraphFrontierAgent:
             preds = self._preds.setdefault(nxt_hash, [])
             if (self._prev_hash, key) not in preds:
                 preds.append((self._prev_hash, key))
+            # Track the most recently ENTERED changed state — the frontier
+            # promise scorer is drawn toward its neighbourhood (R38).
+            self._last_change_hash = nxt_hash
 
     def _hud_mask_grid(self) -> np.ndarray | None:
         """Return the cached (64,64) HUD bool mask (True = mask out), or None.
@@ -499,33 +606,47 @@ class GraphFrontierAgent:
         simple_ids: list[int],
         action6_ok: bool,
     ) -> None:
-        """Register ``state_hash`` with its untried action set if unseen."""
+        """Register ``state_hash`` with its untried action set if unseen.
+
+        Simple actions (1-5) are registered first and always ranked above any
+        click via a sentinel tier ``_SIMPLE_TIER`` (< 0) so requirement 3
+        (try simple before clicks in a fresh state) holds for both the local
+        pick and the frontier promise scorer. Click candidates carry their
+        interactivity tier from :func:`_segment_click_candidates_tiered`.
+        """
         if state_hash in self._untried:
             return
         actions: list[Any] = list(simple_ids)  # simple actions first
+        for aid in simple_ids:
+            self._action_tier.setdefault(aid, _SIMPLE_TIER)
         if action6_ok:
-            for (x, y) in self._click_candidates(frame):
-                actions.append(("click", x, y))
+            for (x, y, tier) in self._click_candidates(frame):
+                key = ("click", x, y)
+                actions.append(key)
+                # A cell may recur across states; keep its best (lowest) tier.
+                prev = self._action_tier.get(key)
+                self._action_tier[key] = tier if prev is None else min(prev, tier)
         self._untried[state_hash] = actions
         self._edges.setdefault(state_hash, {})
         self._tries.setdefault(state_hash, {})
 
     # ── click candidate segmentation ───────────────────────────────────────────
 
-    def _click_candidates(self, frame: np.ndarray) -> list[tuple[int, int]]:
-        """Reduce ACTION6 to a small salience-ordered set of (x, y) click points.
+    def _click_candidates(self, frame: np.ndarray) -> list[tuple[int, int, int]]:
+        """Reduce ACTION6 to a small tier-ordered set of ``(x, y, tier)`` clicks.
 
         Segment the frame into 4-connected components per non-background colour
         (background = the single most-frequent colour). Each component yields its
-        centroid as a candidate click. Components are ordered by salience —
-        smaller area first, then rarer colour first — because interactive buttons
-        tend to be small and rare-coloured. Capped at ``max_clicks``.
+        centroid as a candidate click, bucketed into an interactivity tier
+        (0 = most likely a control: small, rare-coloured, high-contrast, not
+        background-hugging). Returned tier-first so the caller tries the most
+        promising clicks before the rest. Capped at ``max_clicks``.
 
         Coordinates follow the arcengine convention where ``x`` is the column and
         ``y`` is the row, so a centroid at grid ``(row, col)`` maps to
         ``(x=col, y=row)``.
         """
-        return _segment_click_candidates(frame, self.max_clicks)
+        return _segment_click_candidates_tiered(frame, self.max_clicks)
 
     # ── policy ─────────────────────────────────────────────────────────────────
 
@@ -538,10 +659,16 @@ class GraphFrontierAgent:
     ) -> Any | None:
         """Pick an action_key for the current state.
 
-        1. Untried action at the current state -> take it (simple before click,
-           preserving the registration order).
-        2. Otherwise BFS the known graph to the nearest FRONTIER state (one with
-           untried actions) and take the first action of that shortest path.
+        1. Untried action at the current state -> take it. With
+           ``tier_priority`` (R38) the highest-tier untried action wins (simple
+           actions rank above every click; clicks by ascending interactivity
+           tier). Without it, registration order (simple before click).
+        2. Otherwise pick a FRONTIER state and take the first action toward it.
+           With ``tier_priority`` the frontier is chosen by PROMISE discounted by
+           path length (:meth:`_best_frontier`); without it, the nearest frontier
+           by edge count (:meth:`_bfs_to_frontier`). Concentrating the budget on
+           promising frontiers is the whole point of R38 — uniform nearest-first
+           exploration burned 26,965 actions on CD82 L2.
         3. If no frontier is reachable in the known graph, take a **true random
            action** from the currently-available set (R36d). This is the
            escape hatch for the self-absorbing-sink stall: over-masking or edge
@@ -558,23 +685,172 @@ class GraphFrontierAgent:
            caller then RESETs). That happens on empty-availability screens, not
            on exhausted-but-live states.
         """
-        untried = self._untried.get(state_hash) or []
-        if untried:
-            self._dbg_untried += 1
-            return untried[0]
+        if not self.tier_priority:
+            # Pre-R38 behaviour: registration-order local pick, nearest frontier.
+            untried = self._untried.get(state_hash) or []
+            if untried:
+                self._dbg_untried += 1
+                return untried[0]
+            first_action = self._bfs_to_frontier(state_hash)
+            if first_action is not None:
+                self._dbg_bfs += 1
+                return first_action
+            self._dbg_bfs_fail += 1
+            escape = self._random_action_key(simple_ids, action6_ok, frame)
+            if escape is not None:
+                self._dbg_random += 1
+                return escape
+            return None
 
-        first_action = self._bfs_to_frontier(state_hash)
-        if first_action is not None:
-            self._dbg_bfs += 1
-            return first_action
+        # Tier-gated exploration (R38). Try, in order, at the current unlocked
+        # tier: a local within-tier untried action, then a promise-scored walk to
+        # a within-tier frontier. If neither exists, unlock the next tier and
+        # retry; only once every tier is exhausted globally do we random-escape.
+        while True:
+            key = self._best_untried_within_tier(state_hash)
+            if key is not None:
+                self._dbg_untried += 1
+                self._count_tier_hit(key)
+                return key
 
-        # No untried action and no reachable frontier -> random escape.
+            first_action = self._best_frontier(state_hash)
+            if first_action is not None:
+                self._dbg_bfs += 1
+                return first_action
+
+            if self._unlocked_tier < _N_TIERS - 1:
+                self._unlocked_tier += 1
+                continue  # widen the tier gate and re-evaluate this state
+            break
+
+        # No within-any-tier untried action and no reachable frontier -> escape.
         self._dbg_bfs_fail += 1
         escape = self._random_action_key(simple_ids, action6_ok, frame)
         if escape is not None:
             self._dbg_random += 1
             return escape
         return None
+
+    def _best_untried_within_tier(self, state_hash: str) -> Any | None:
+        """Return the current state's highest-tier untried action within the gate.
+
+        Only actions whose tier is ``<= _unlocked_tier`` (simple actions carry
+        ``_SIMPLE_TIER`` < 0 and are always in-gate) are eligible, so the large
+        mass of low-tier clicks stays deferred until the gate widens. Among
+        eligible actions the lowest tier wins; ties keep registration order for
+        determinism. Returns None when the state has no in-gate untried action.
+        """
+        untried = self._untried.get(state_hash) or []
+        eligible = [
+            k for k in untried
+            if self._action_tier.get(k, _N_TIERS - 1) <= self._unlocked_tier
+        ]
+        if not eligible:
+            return None
+        return min(eligible, key=lambda k: self._action_tier.get(k, _N_TIERS - 1))
+
+    def _count_tier_hit(self, key: Any) -> None:
+        """Increment the debug per-tier local-pick counter (no-op if not debug)."""
+        if not self._debug:
+            return
+        tier = self._action_tier.get(key, _N_TIERS - 1)
+        # Simple actions land in the last slot; click tiers 0..N-1 in their slot.
+        idx = _N_TIERS if tier == _SIMPLE_TIER else min(tier, _N_TIERS - 1)
+        self._dbg_tier_hits[idx] += 1
+
+    def _in_gate_best_tier(self, node: str) -> int | None:
+        """Best (lowest) untried tier at ``node`` that is within the tier gate.
+
+        Returns None when ``node`` has no untried action at or below the
+        currently unlocked tier — such a node is NOT a frontier for the current
+        gate and the promise search skips it.
+        """
+        best: int | None = None
+        for k in self._untried.get(node) or []:
+            tier = self._action_tier.get(k, _N_TIERS - 1)
+            if tier <= self._unlocked_tier and (best is None or tier < best):
+                best = tier
+        return best
+
+    def _frontier_promise(self, best_tier: int, node: str) -> float:
+        """Distance-free promise of an in-gate frontier ``node`` (higher better).
+
+        Used only to break ties AMONG frontiers at the SAME shortest distance, so
+        it never overrides BFS shell expansion (that expansion is what reaches
+        deep goals — CD82 L2). Rewards a better in-gate untried tier, proximity to
+        the most-recently-changed region, and fewer prior visits. See R38 docs.
+        """
+        tier_term = float(_N_TIERS - best_tier)  # tier-0 highest, tier-2 lowest
+        visit_term = self.visit_penalty * self._visits.get(node, 0)
+        recency_term = (
+            self.recency_bonus
+            if self._last_change_hash is not None and node == self._last_change_hash
+            else 0.0
+        )
+        return tier_term + recency_term - visit_term
+
+    def _best_frontier(self, start: str) -> Any | None:
+        """First action toward a reachable in-gate frontier (R38).
+
+        BFS the observed graph from ``start``, carrying the first action out of
+        ``start`` on the shortest path to each node. A node counts as a frontier
+        only if it has an untried action WITHIN the current tier gate. Behaviour
+        depends on whether promise scoring is active:
+
+        * **Promise inactive** (``visit_penalty == 0 and recency_bonus == 0``,
+          the safe default) — return the FIRST in-gate frontier in BFS order,
+          i.e. the nearest, exactly like plain nearest-BFS. This preserves the
+          systematic shell expansion that reaches deep goals; measured on CD82
+          this reproduces the baseline L2 clear at 26,965 actions bit-for-bit.
+        * **Promise active** — among the NEAREST frontier shell only, break ties
+          by promise (better in-gate tier, closer to the recently-changed region,
+          fewer visits). Distance is never overridden — a farther frontier can
+          never beat a nearer one — so deep-goal coverage is retained while the
+          within-shell choice is nudged toward promise. ``frontier_dist`` caps
+          how deep the tie-break is computed.
+
+        Returns None when no in-gate frontier is reachable (the caller then
+        unlocks the next tier, or random-escapes).
+        """
+        promise_active = self.visit_penalty != 0.0 or self.recency_bonus != 0.0
+
+        visited: set[str] = {start}
+        # node -> (first_action_out_of_start, path_len)
+        queue: deque[tuple[str, Any, int]] = deque()
+        for key, nxt in (self._edges.get(start) or {}).items():
+            if nxt not in visited:
+                visited.add(nxt)
+                queue.append((nxt, key, 1))
+
+        nearest_dist: int | None = None
+        best_action: Any | None = None
+        best_promise = float("-inf")
+
+        while queue:
+            node, first_action, path_len = queue.popleft()
+            # BFS visits in nondecreasing distance; once the nearest in-gate
+            # frontier shell is finished, deeper nodes cannot improve the pick.
+            if nearest_dist is not None and path_len > nearest_dist:
+                break
+            best_tier = self._in_gate_best_tier(node)
+            if best_tier is not None:
+                if not promise_active:
+                    # Nearest-BFS-first: return immediately (no reordering).
+                    return first_action
+                nearest_dist = path_len
+                if path_len <= self.frontier_dist:
+                    promise = self._frontier_promise(best_tier, node)
+                    if promise > best_promise:
+                        best_promise = promise
+                        best_action = first_action
+                elif best_action is None:
+                    best_action = first_action
+            for key, nxt in (self._edges.get(node) or {}).items():
+                if nxt not in visited:
+                    visited.add(nxt)
+                    queue.append((nxt, first_action, path_len + 1))
+
+        return best_action
 
     def _random_action_key(
         self, simple_ids: list[int], action6_ok: bool, frame: np.ndarray
@@ -597,7 +873,7 @@ class GraphFrontierAgent:
             if self._rng.random() < 0.5:
                 cands = self._click_candidates(frame)
                 if cands:
-                    x, y = self._rng.choice(cands)
+                    x, y, _tier = self._rng.choice(cands)
                     choices.append(("click", int(x), int(y)))
             h, w = frame.shape if frame.ndim == 2 else (64, 64)
             choices.append(("click", self._rng.randrange(w), self._rng.randrange(h)))
@@ -674,6 +950,42 @@ def _segment_click_candidates(frame: np.ndarray, max_clicks: int) -> list[tuple[
     """Return up to ``max_clicks`` salience-ordered (x, y) component centroids.
 
     See :meth:`GraphFrontierAgent._click_candidates` for the salience rationale.
+    Pure function of the frame so it is unit-testable in isolation. This is the
+    tier-agnostic view (tier information is dropped) kept for callers/tests that
+    only need the ordered coordinate list.
+    """
+    return [(x, y) for x, y, _tier in _segment_click_candidates_tiered(frame, max_clicks)]
+
+
+# Number of salience tiers a click candidate can fall into. Tier 0 is the most
+# likely-interactive (small, rare-coloured, high-contrast, not background-hugging);
+# higher tier index = less promising. The policy exhausts a state's tier-0
+# candidates before its tier-1, etc., and the frontier scorer rewards states
+# still holding low-index (high-promise) untried tiers.
+_N_TIERS = 3
+
+
+def _segment_click_candidates_tiered(
+    frame: np.ndarray, max_clicks: int
+) -> list[tuple[int, int, int]]:
+    """Return up to ``max_clicks`` click candidates as ``(x, y, tier)`` triples.
+
+    Each non-background 4-connected component contributes its centroid. Every
+    component is scored for *interactivity likelihood* from purely visual cues
+    and bucketed into one of ``_N_TIERS`` tiers (0 = most likely interactive):
+
+    * **small area** — buttons/tokens are small; a huge blob is usually board
+      background or a wall.
+    * **rare colour** — a colour that paints few cells is more likely a control
+      than a fill colour.
+    * **high local contrast** — a component whose border colours differ from its
+      own colour stands out (isolated widget) rather than blending into a field.
+    * **not background-adjacent-huge** — a large component whose neighbours are
+      mostly background is a passive backdrop; it is demoted to the lowest tier.
+
+    The list is returned tier-first (all tier-0 before any tier-1) and, within a
+    tier, smaller-area / rarer-colour first, so a caller consuming it in order
+    naturally tries the most promising clicks first. Deduplicated by centroid.
     Pure function of the frame so it is unit-testable in isolation.
     """
     if frame.ndim != 2 or frame.size == 0 or max_clicks <= 0:
@@ -682,8 +994,10 @@ def _segment_click_candidates(frame: np.ndarray, max_clicks: int) -> list[tuple[
     values, counts = np.unique(frame, return_counts=True)
     background = int(values[int(np.argmax(counts))])
     colour_count = {int(v): int(c) for v, c in zip(values, counts)}
+    total_cells = float(frame.size)
+    h, w = frame.shape
 
-    scored: list[tuple[int, int, int, int]] = []  # (area, colour_freq, x, y)
+    scored: list[tuple[int, int, int, int, int]] = []  # (tier, area, freq, x, y)
     for colour in values:
         colour = int(colour)
         if colour == background:
@@ -693,20 +1007,87 @@ def _segment_click_candidates(frame: np.ndarray, max_clicks: int) -> list[tuple[
             area = len(comp)
             cy = int(round(sum(r for r, _ in comp) / area))
             cx = int(round(sum(c for _, c in comp) / area))
-            scored.append((area, colour_count[colour], cx, cy))
+            tier = _click_tier(
+                comp, colour, area, colour_count[colour],
+                total_cells, frame, background, h, w,
+            )
+            scored.append((tier, area, colour_count[colour], cx, cy))
 
-    # Salience: smaller area first, then rarer colour first.
-    scored.sort(key=lambda t: (t[0], t[1]))
-    out: list[tuple[int, int]] = []
+    # Tier-first, then smaller-area, then rarer-colour within a tier.
+    scored.sort(key=lambda t: (t[0], t[1], t[2]))
+    out: list[tuple[int, int, int]] = []
     seen: set[tuple[int, int]] = set()
-    for _area, _freq, cx, cy in scored:
+    for tier, _area, _freq, cx, cy in scored:
         if (cx, cy) in seen:
             continue
         seen.add((cx, cy))
-        out.append((cx, cy))
+        out.append((cx, cy, tier))
         if len(out) >= max_clicks:
             break
     return out
+
+
+def _click_tier(
+    comp: list[tuple[int, int]],
+    colour: int,
+    area: int,
+    colour_freq: int,
+    total_cells: float,
+    frame: np.ndarray,
+    background: int,
+    h: int,
+    w: int,
+) -> int:
+    """Bucket one component into an interactivity tier (0 = most promising).
+
+    A small "interactivity score" is accumulated from visual cues, then mapped
+    to a tier. See :func:`_segment_click_candidates_tiered` for the cue rationale.
+    Returns an int in ``[0, _N_TIERS - 1]``.
+    """
+    area_frac = area / total_cells
+    border = _component_border_colours(comp, frame, colour, h, w)
+
+    # A large blob whose neighbourhood is dominated by background is a passive
+    # backdrop / board — least likely interactive. Demote straight to bottom tier.
+    if area_frac > 0.05 and border:
+        bg_frac = sum(1 for v in border if v == background) / len(border)
+        if bg_frac > 0.6:
+            return _N_TIERS - 1
+
+    score = 0.0
+    # Smaller is more button-like. area_frac ~0 -> ~1.0, ~0.05 -> ~0.
+    score += max(0.0, 1.0 - area_frac / 0.05)
+    # Rarer colour is more control-like.
+    score += max(0.0, 1.0 - colour_freq / total_cells / 0.10)
+    # High border contrast: fraction of neighbouring cells with a DIFFERENT
+    # colour than this component. An isolated widget scores high.
+    if border:
+        score += sum(1 for v in border if v != colour) / len(border)
+
+    # Map the [0, 3] score to a tier (higher score -> lower/better tier index).
+    if score >= 2.0:
+        return 0
+    if score >= 1.0:
+        return 1
+    return _N_TIERS - 1
+
+
+def _component_border_colours(
+    comp: list[tuple[int, int]], frame: np.ndarray, colour: int, h: int, w: int
+) -> list[int]:
+    """Return the colours of 4-neighbour cells that lie OUTSIDE the component.
+
+    Cells whose neighbour is interior to the component are skipped, so the result
+    describes the component's border neighbourhood.
+    """
+    comp_set = set(comp)
+    border: list[int] = []
+    for r, c in comp:
+        for dr, dc in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            nr, nc = r + dr, c + dc
+            if 0 <= nr < h and 0 <= nc < w and (nr, nc) not in comp_set:
+                border.append(int(frame[nr, nc]))
+    return border
 
 
 def _connected_components(mask: np.ndarray) -> list[list[tuple[int, int]]]:

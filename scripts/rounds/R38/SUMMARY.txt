@@ -1,0 +1,12 @@
+R38 salience-tier 재측정 (기본 config: TIER_PRIORITY=1, GATE/PROMISE=OFF)
+--- DEEP @30k vs R37b(CD82 L2@342+26965, VC33 L2@954+12389, mean 계산비교) ---
+mean: R38=0.0064 vs R37b=0.0062
+  CD82: lvl 2 (was 2)  score 0.0012 (was 0.0012)  act/level=[342, 26965]
+  FT09: lvl 1 (was 1)  score 0.0000 (was 0.0000)  act/level=[6241]
+  LP85: lvl 1 (was 1)  score 0.0000 (was 0.0000)  act/level=[809]
+  M0R0: lvl 1 (was 1)  score 0.0008 (was 0.0008)  act/level=[228]
+  R11L: lvl 1 (was 1)  score 0.0476 (was 0.0476)  act/level=[14]
+  SP80: lvl 1 (was 1)  score 0.0001 (was 0.0001)  act/level=[844]
+  TN36: lvl 1 (was 1)  score 0.0017 (was 0.0000)  act/level=[145]
+  VC33: lvl 2 (was 2)  score 0.0000 (was 0.0000)  act/level=[954, 12389]
+--- QUICK 9-subset @3000: mean=0.0055 clears=4/9 (기준 0.0055, 4/9) ---
