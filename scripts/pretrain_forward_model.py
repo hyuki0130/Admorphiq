@@ -61,7 +61,16 @@ def train_step(
     )
     model.train()
     change_logits, colour_logits = model(frame_oh, planes)
-    change_loss = F.binary_cross_entropy_with_logits(change_logits.squeeze(1), changed)
+    # Class-imbalance correction: changed cells are ~1-2% of the grid, so plain
+    # BCE collapses to the trivial "no change anywhere" predictor (measured:
+    # in-sample IoU 0.0000 at change_acc 0.99). Weight positives by the batch's
+    # neg/pos ratio (clamped) so the change head actually learns change.
+    pos = changed.sum().clamp(min=1.0)
+    neg = float(changed.numel()) - changed.sum()
+    pos_weight = (neg / pos).clamp(min=1.0, max=200.0)
+    change_loss = F.binary_cross_entropy_with_logits(
+        change_logits.squeeze(1), changed, pos_weight=pos_weight
+    )
     colour_loss = F.cross_entropy(colour_logits, nxt_colour, reduction="none")
     denom = changed.sum().clamp(min=1.0)
     colour_loss = (colour_loss * changed).sum() / denom

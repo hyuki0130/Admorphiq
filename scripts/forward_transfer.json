@@ -1,0 +1,45 @@
+{
+  "model": "models/forward_model_pretrained.pt",
+  "heldout": {
+    "n": 14000,
+    "change_acc": 0.8447944859095983,
+    "change_iou": 0.025559278580775585,
+    "colour_acc": 0.19600321661468553
+  },
+  "heldout_files": [
+    "bp35.npz",
+    "cd82.npz",
+    "cn04.npz",
+    "ft09.npz",
+    "ls20.npz",
+    "m0r0.npz",
+    "r11l.npz"
+  ],
+  "train": {
+    "n": 36000,
+    "change_acc": 0.9171358032226562,
+    "change_iou": 0.048747288921641846,
+    "colour_acc": 0.875254660089112
+  },
+  "train_files": [
+    "ar25.npz",
+    "dc22.npz",
+    "g50t.npz",
+    "ka59.npz",
+    "lf52.npz",
+    "lp85.npz",
+    "re86.npz",
+    "s5i5.npz",
+    "sb26.npz",
+    "sc25.npz",
+    "sk48.npz",
+    "sp80.npz",
+    "su15.npz",
+    "tn36.npz",
+    "tr87.npz",
+    "tu93.npz",
+    "vc33.npz",
+    "wa30.npz"
+  ],
+  "transfer_ratio_iou": 0.5243220524911754
+}

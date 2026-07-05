@@ -39,8 +39,11 @@ from admorphiq.world_model.forward_model import (  # noqa: E402
 )
 
 
-def pick_device() -> torch.device:
-    """mps > cuda > cpu — same preference as the online agent."""
+def pick_device(preference: str | None = None) -> torch.device:
+    """Resolve a device: explicit ``preference`` (e.g. ``"cpu"``) wins, else
+    mps > cuda > cpu — same order as the online agent."""
+    if preference:
+        return torch.device(preference)
     if torch.backends.mps.is_available():
         return torch.device("mps")
     if torch.cuda.is_available():
@@ -48,12 +51,12 @@ def pick_device() -> torch.device:
     return torch.device("cpu")
 
 
-def load_npz_files(pattern: str) -> list[str]:
+def load_npz_files(pattern: str) -> list[Path]:
     """Expand a glob (quote it in the shell) or accept a single .npz path."""
     matches = sorted(_glob.glob(pattern))
     if not matches and Path(pattern).exists():
         matches = [pattern]
-    return matches
+    return [Path(m) for m in matches]
 
 
 def load_transitions(paths: list) -> dict[str, np.ndarray]:

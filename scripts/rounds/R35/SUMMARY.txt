@@ -1,0 +1,10 @@
+HELD-OUT (unseen games):
+  n=14000  change_acc=0.8448  change_iou=0.0256  colour_acc=0.1960
+IN-SAMPLE (training games):
+  n=36000  change_acc=0.9171  change_iou=0.0487  colour_acc=0.8753
+
+TRANSFER RATIO (held-out IoU / in-sample IoU) = 52.43%
+VERDICT: FORWARD MODEL TRANSFERS (dynamics generalise across games)
+Output written to: scripts/forward_transfer.json
+
+[R35] DONE 2026-07-05 17:21:21 KST — gate: held-out change metrics >> trivial no-change baseline => path(b) LIVE

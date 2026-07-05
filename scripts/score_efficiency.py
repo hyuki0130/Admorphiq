@@ -50,6 +50,26 @@ def _make_agent(name: str, game_id: str | None = None):
     ``game_id`` is threaded through so per-game-aware agents (the online RL
     agent's progress log) can label their output.
     """
+    if name == "graph_frontier":
+        from admorphiq.graph_frontier_agent import GraphFrontierAgent
+
+        # Training-free HUD-masked state-graph + frontier-BFS agent. Knobs are
+        # read from GF_MAX_CLICKS / GF_HUD_THRESHOLD / GF_GIVEUP env vars inside
+        # the agent, so no wiring is needed here.
+        return GraphFrontierAgent()
+    if name in ("random", "stochastic"):
+        import os
+
+        from admorphiq.random_agent import _STOCHASTIC_SEED_OFFSET, RandomAgent
+
+        # Calibration baselines (R34): uniform-random action selection; the
+        # "stochastic" variant avoids immediately repeating a no-op action.
+        seed_env = os.environ.get("RL_SEED", "").strip()
+        base_seed = int(seed_env) if seed_env else None
+        if name == "stochastic":
+            seed = None if base_seed is None else base_seed + _STOCHASTIC_SEED_OFFSET
+            return RandomAgent(seed=seed, avoid_repeat_noop=True)
+        return RandomAgent(seed=base_seed, avoid_repeat_noop=False)
     if name == "general":
         return GeneralAgent()
     if name == "worldmodel":
