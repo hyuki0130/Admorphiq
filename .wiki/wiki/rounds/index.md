@@ -63,7 +63,11 @@ commit, and `[[backlinks]]`. Narrative overview + reliable-metric + resume steps
 | R33a | goal-inference | heuristic goal 0.0013 ≈ baseline | 20afa66 | [[r33_goal-directed-planning]] |
 | R33b | goal-inference | LLM goal 0.0013 = baseline — wall is FORWARD-MODEL ACCURACY | 20afa66 | [[r33_goal-directed-planning]] |
 | R34 | metric-calibration | random=0.0000 on our harness → we BEAT random; '0.18/1.21' baselines were bogus | — | [[r34_metric-reexamination]] |
+| R35 | neural-world-model transfer | dynamics transfer 52.4% (vs BC 0%); abs accuracy low → secondary | cc866eb | [[r35_forward-transfer]] |
+| R36 | explicit-graph-search | building: v1 inert → R36b stuck-fix + counter diagnosis → R36c region-mask | 42499c2 | [[r36_graph-frontier-bfs]] |
 
+- **graph-search / hud-masking / frontier-bfs**: [[r36_graph-frontier-bfs]] (the deep-level axis; offline env.step ~1000+/s discovery)
+- **forward-model transfer / pretrain**: [[r35_forward-transfer]] (dynamics 52.4% vs BC 0%; pos_weight collapse fix)
 - **metric-calibration / baselines**: [[r34_metric-reexamination]] (random=0.0000 measured; real RHAE top=0.1258; purge the bogus 0.18/0.25/1.21)
 
 ## The two standing conclusions
