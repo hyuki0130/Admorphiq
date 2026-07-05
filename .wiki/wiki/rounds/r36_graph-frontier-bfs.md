@@ -40,3 +40,14 @@ R35 (neural forward-model transfer test) proceeds in parallel as a complementary
 
 **Related**: [[r34_metric-reexamination]], [[r32_neural-forward-model]], [[r10_object-state-hash]],
 [[r12_clear-rate-stable]]. See map: [[rounds_index]]. Overview: [[online_rl_sprint_round_log]].
+
+## R36 v1 measurement (2026-07-05 17:24) — implementation defect + a game-changing side discovery
+- v1 RESULT: mean 0.0000 @3000 AND @8000 (identical); only M0R0/R11L clear L1, full budget burned.
+  vs the paper's 19 levels @4000 steps → an IMPLEMENTATION defect (graph/BFS/masking), not the axis.
+  Debugging (R36b), not discard — external evidence for the axis is strong.
+- 🚨 SIDE DISCOVERY THAT CHANGES THE BUDGET MATH: 3000 actions completed in 1-6 SECONDS → the
+  OFFLINE arcengine env.step is ~1000+/s, NOT ~60/s (that figure was the networked engine; our
+  530s/game online-RL runs were dominated by CNN training, not stepping). Kaggle 9h/110 games =
+  295s/game ⇒ a TRAINING-FREE agent can afford ~100k+ actions/game — the graph paper's 8h-class
+  budget is actually FEASIBLE on Kaggle. The architect's 17k-ceiling arithmetic applied only to
+  training-heavy agents. R36's upside is much larger than assumed.
