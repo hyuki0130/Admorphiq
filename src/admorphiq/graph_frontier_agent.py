@@ -130,8 +130,38 @@ class GraphFrontierAgent:
         # transitions remain valid across a reset, so we keep the graph.
         self.restart_on_game_over = True
 
+        # Debug instrumentation (env-gated: GF_DEBUG=1). Cumulative across
+        # levels; a line is printed every GF_DEBUG_EVERY choose_action calls so
+        # a single seconds-long probe reveals whether the graph grows, the
+        # frontier BFS fires, and how often the observed next state disagrees
+        # with the edge we recorded (edge nondeterminism).
+        self._debug = os.environ.get("GF_DEBUG", "").strip() in ("1", "true", "yes")
+        self._debug_every = _env_int("GF_DEBUG_EVERY", 500)
+        self._dbg_calls = 0
+        self._dbg_bfs = 0
+        self._dbg_mismatch = 0
+
         self._last_levels = 0
         self._reset_level_state()
+
+    def _debug_tick(self) -> None:
+        if not self._debug:
+            return
+        self._dbg_calls += 1
+        if self._dbg_calls % self._debug_every != 0:
+            return
+        n_states = len(self._untried)
+        n_frontier = sum(1 for v in self._untried.values() if v)
+        n_edges = sum(len(e) for e in self._edges.values())
+        mask = self._hud_mask_grid()
+        n_masked = int(mask.sum()) if mask is not None else 0
+        print(
+            f"[GF] call={self._dbg_calls} lvl={self._last_levels} "
+            f"states={n_states} frontier={n_frontier} edges={n_edges} "
+            f"bfs_fires={self._dbg_bfs} mismatch={self._dbg_mismatch} "
+            f"masked={n_masked}",
+            flush=True,
+        )
 
     # ── level-scoped state ────────────────────────────────────────────────────
 
@@ -169,6 +199,7 @@ class GraphFrontierAgent:
         return self._level_steps >= self.giveup
 
     def choose_action(self, frames: list[Any], latest_frame: Any) -> Any:
+        self._debug_tick()
         obs = latest_frame
         state = _state_name(obs)
 
@@ -234,6 +265,8 @@ class GraphFrontierAgent:
         nxt_hash = self._hash(frame)
         key = self._prev_action_key
         edges = self._edges.setdefault(self._prev_hash, {})
+        if self._debug and key in edges and edges[key] != nxt_hash:
+            self._dbg_mismatch += 1
         edges[key] = nxt_hash
         # Mark the action tried at the source state.
         untried = self._untried.get(self._prev_hash)
@@ -320,8 +353,15 @@ class GraphFrontierAgent:
            preserving the registration order).
         2. Otherwise BFS the known graph to the nearest FRONTIER state (one with
            untried actions) and take the first action of that shortest path.
-        3. If no frontier is reachable, fall back to the least-tried action at
-           the current state (graceful — keeps probing rather than stalling).
+        3. If no frontier is reachable from the current node, RESET to
+           re-localise. The revived start frame is (deterministically) a node
+           whose subtree may still hold untried frontier that the current
+           dead-end sub-graph cannot reach — e.g. after a GAME_OVER dropped us
+           into a terminal region. Returning None signals :meth:`choose_action`
+           to reset. This is strictly better than the old "replay the
+           least-tried known edge" fallback, which walked the agent around an
+           already-exhausted cycle forever (measured: FT09-class single-state
+           collapse burned the whole budget re-clicking dead cells).
         """
         untried = self._untried.get(state_hash) or []
         if untried:
@@ -329,13 +369,10 @@ class GraphFrontierAgent:
 
         first_action = self._bfs_to_frontier(state_hash)
         if first_action is not None:
+            self._dbg_bfs += 1
             return first_action
 
-        # Graceful fallback: least-tried known action at this state.
-        edges = self._edges.get(state_hash) or {}
-        tries = self._tries.get(state_hash) or {}
-        if edges:
-            return min(edges.keys(), key=lambda k: tries.get(k, 0))
+        # No untried action here and no frontier reachable -> re-localise.
         return None
 
     def _bfs_to_frontier(self, start: str) -> Any | None:

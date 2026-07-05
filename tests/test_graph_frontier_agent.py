@@ -289,6 +289,27 @@ def test_level_up_resets_graph_and_hud_stats():
     assert agent._level_steps == 1
 
 
+def test_policy_resets_when_globally_stuck_instead_of_replaying_dead_edges():
+    """Purpose: prove that when the current state has no untried action AND no
+    frontier is reachable through the observed graph, the policy returns None
+    (which :meth:`choose_action` turns into a RESET to re-localise) rather than
+    replaying an already-tried edge.
+
+    Expected feedback: if this fails, the agent has regressed to the old
+    least-tried-edge fallback, which walks a fully-explored dead-end sub-graph in
+    a cycle forever — the measured FT09-class failure where the whole action
+    budget was burned re-clicking dead cells with zero exploration progress. A
+    pass proves the agent escapes exhausted regions by resetting to start.
+    """
+    agent = GraphFrontierAgent()
+    # A single, fully-explored state: it has tried edges (self-loops) but no
+    # untried actions and no reachable frontier. This is the FT09 collapse shape.
+    agent._edges = {"A": {1: "A", 2: "A"}}
+    agent._untried = {"A": []}
+    agent._tries = {"A": {1: 3, 2: 1}}
+    assert agent._policy("A") is None, "globally-stuck state must signal reset, not replay"
+
+
 def test_game_over_resets_and_keeps_graph():
     """Purpose: prove GAME_OVER emits a RESET action and does NOT wipe the graph
     (observed transitions stay valid across a revive) but drops the in-flight
