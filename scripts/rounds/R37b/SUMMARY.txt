@@ -1,0 +1,9 @@
+R37b GF_GIVEUP=30000 @30000 (8 clearing games) — L2 돌파 여부가 관건
+  CD82: score=0.0012 levels=2 act/level=[342, 26965] total=30000
+  FT09: score=0.0000 levels=1 act/level=[6241] total=30000
+  LP85: score=0.0000 levels=1 act/level=[809] total=30000
+  M0R0: score=0.0008 levels=1 act/level=[228] total=30000
+  R11L: score=0.0476 levels=1 act/level=[14] total=30000
+  SP80: score=0.0001 levels=1 act/level=[844] total=30000
+  TN36: score=0.0000 levels=1 act/level=[862] total=30000
+  VC33: score=0.0000 levels=2 act/level=[954, 12389] total=30000

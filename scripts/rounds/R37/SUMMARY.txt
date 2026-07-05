@@ -1,0 +1,18 @@
+R37 graph-frontier upside LIVE (baseline: @3000 9-subset 0.0055)
+--- @8000 (25 games) mean=0.0020 total_levels=8 ---
+  * CD82: score=0.0012 levels=1
+  * FT09: score=0.0000 levels=1
+  * LP85: score=0.0000 levels=1
+  * M0R0: score=0.0008 levels=1
+  * R11L: score=0.0476 levels=1
+  * SP80: score=0.0001 levels=1
+  * TN36: score=0.0000 levels=1
+  * VC33: score=0.0000 levels=1
+--- @30000 (9 games) mean=0.0055 total_levels=5 ---
+  * CD82: score=0.0012 levels=1
+  * FT09: score=0.0000 levels=1
+  * M0R0: score=0.0008 levels=1
+  * R11L: score=0.0476 levels=1
+  * SP80: score=0.0001 levels=1
+
+[R37] DONE 2026-07-05 18:49:11 KST

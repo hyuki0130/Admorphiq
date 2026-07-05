@@ -67,3 +67,16 @@ Stall fixed (self-absorbing sink + post-masking state explosion). 9-subset @3000
 0.0055, 4/9 L1 (CD82 342a, M0R0 228a, SP80 844a, R11L 14a→0.0476 ≈ its L1 cap)** vs online-RL
 from-scratch 0.0014 — **4x, training-free** (no warm-start inflation possible). Masked-state
 recurrence + frontier BFS demonstrably work. R37 measuring budget upside (@8000/@30000) + full-25.
+
+## R37/R37b (2026-07-05 18:55) — budget upside + L2 BREAKTHROUGH
+- R37 full-25 @8000: **8/25 clear L1** (adds LP85/TN36/VC33), mean 0.0020 transfer-honest.
+  @30000 initially identical to @8000 → traced to GF_GIVEUP default 8000 capping internally.
+- **R37b (GF_GIVEUP=30000 @30000): CD82 reaches L2 (342+26,965 actions) and VC33 reaches L2
+  (954+12,389)** — the graph agent BREAKS the L2 wall that no online-RL configuration ever did.
+  Depth scales with budget exactly as the reference paper showed. Scores still tiny (deep clears
+  are slow → squared efficiency ≈0) — efficiency of deep discovery is the next axis (salience
+  tiers, better frontier prioritization).
+- STRATEGIC: Kaggle gives ~295s/game ≈ 100-300k actions for a training-free agent (env.step
+  ~1000+/s offline). The graph axis owns that regime. DECISION: deploy graph_frontier as the
+  submission agent (transfer-honest 9-subset 0.0055 vs online-RL from-scratch 0.0014; L2-capable;
+  zero warm-start inflation). Online-RL card retained as an alternative.
