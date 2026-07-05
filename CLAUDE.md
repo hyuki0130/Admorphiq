@@ -301,7 +301,11 @@ scripts/
 > - **Metric = efficiency SQUARED**: per-level `min(human/agent_actions, 1)²`,
 >   level-index-weighted per game, mean over games. Brute-force completion
 >   (BFS clearing in hundreds of actions) scores ≈ 0. Real leaderboard:
->   random = 0.18, stochastic-sample = 0.25, top (Dries Smit/Tufa) = 1.21.
+>   ⚠️ **CORRECTED (R34, 2026-07-05)**: the "random 0.18 / stochastic 0.25 /
+>   top 1.21" figures were UNVERIFIED and RHAE-impossible; a MEASURED random
+>   agent scores **0.0000** on our faithful harness. Web-verified anchors:
+>   **top (StochasticGoose) = 12.58%, 2nd = 6.71%, RHAE random ≈ 0.001**. Use
+>   these. (See .wiki/wiki/rounds/r34_metric-reexamination.md.)
 > - **Hardware**: g4-standard-48 / RTX PRO 6000 **96GB** / **9h** (see Constraints).
 > - **Design pivot**: drop "LLM routes among brute-force strategies"; adopt a
 >   single **efficiency-first general agent** — cheap discovery → online
