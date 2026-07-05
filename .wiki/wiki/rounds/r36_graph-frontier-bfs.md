@@ -93,3 +93,12 @@ mask + region area-cap, default on): CN04 0→L1(815a); VC33 L2 954+12389→173+
 145→72a; SP80 844→442a; CD82 L2 intact; quick 5/9. Only M0R0 mildly slower. 9-game deep set now
 clears 11 levels total. Open: CD82 L2 still 26,965a (different blocker); L3 not yet reached anywhere
 (VC33 has 28k spare budget after L2 — L3 blocker worth a look); remaining 15 non-clearing games.
+
+## R40 (2026-07-05 23:16) — honest negative + FIRST L3 (budget confirms deployed depth)
+Diagnosis: VC33 L3 / CD82 L2 are NOT defects — "healthy graph, goal genuinely far" (VC33 L3 =
+combinatorial toggle+reshuffle; CD82 L2 = large productive space, zero prunable waste). The
+disruptive-action-demotion lever probed byte-identical (no gain) → discarded per no-dead-weight.
+MILESTONE: **VC33 clears L3 @60k (173+1,654+55,209 actions)** — first L3 ever; within the deployed
+Kaggle budget class (MAX_ACTIONS=100k). Dev 30k probes UNDERESTIMATE deployed depth. Open: blockers
+are now "goal genuinely far" → goal-DIRECTED frontier ranking (R33 score_goal on actual frontier
+frames — no forward model needed in the graph context) is the designed next lever (R41).
