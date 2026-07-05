@@ -21,7 +21,7 @@ collapses to the trivial "no change anywhere" predictor (in-sample IoU 0.0000 at
 cells are ~1-2% of the grid). Fixed with pos_weight (neg/pos, clamped ≤200). ⚠️ The ONLINE agent's
 _train_forward uses the same plain BCE → its forward model likely ALSO collapsed during R32/R33,
 which is why "accuracy" gates stayed open (fake acc) while planning was useless. A pos_weight fix
-там could partially resurrect the neural planning track — noted as a future option.
+there could partially resurrect the neural planning track — noted as a future option.
 
 **Finding 2 — dynamics DO transfer (directionally)**: with pos_weight, in-sample IoU 0.0487 (still
 climbing at 8 epochs = undertrained), HELD-OUT IoU 0.0256 → **transfer ratio 52.4%** vs BC policy
