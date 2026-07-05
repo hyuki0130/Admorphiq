@@ -64,7 +64,9 @@ commit, and `[[backlinks]]`. Narrative overview + reliable-metric + resume steps
 | R33b | goal-inference | LLM goal 0.0013 = baseline — wall is FORWARD-MODEL ACCURACY | 20afa66 | [[r33_goal-directed-planning]] |
 | R34 | metric-calibration | random=0.0000 on our harness → we BEAT random; '0.18/1.21' baselines were bogus | — | [[r34_metric-reexamination]] |
 | R35 | neural-world-model transfer | dynamics transfer 52.4% (vs BC 0%); abs accuracy low → secondary | cc866eb | [[r35_forward-transfer]] |
-| R36 | explicit-graph-search | building: v1 inert → R36b stuck-fix + counter diagnosis → R36c region-mask | 42499c2 | [[r36_graph-frontier-bfs]] |
+| R36 | explicit-graph-search | WORKS: 0.0055 transfer-honest (4x), 8/25 L1, L2 @30k (CD82/VC33) — DEPLOYED | 5e4665d/2026e67 | [[r36_graph-frontier-bfs]] |
+| R37 | explicit-graph-search | budget upside: full-25 8/25; L2 needs GF_GIVEUP raised | 08dfbb5 | [[r36_graph-frontier-bfs]] |
+| R38 | graph-efficiency | salience tiering: TN36 6x, mean 0.0064, no loss | cd90a4f | [[r36_graph-frontier-bfs]] |
 
 - **graph-search / hud-masking / frontier-bfs**: [[r36_graph-frontier-bfs]] (the deep-level axis; offline env.step ~1000+/s discovery)
 - **forward-model transfer / pretrain**: [[r35_forward-transfer]] (dynamics 52.4% vs BC 0%; pos_weight collapse fix)
