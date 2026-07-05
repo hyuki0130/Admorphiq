@@ -203,3 +203,21 @@ forward model transfer? (4) if yes, plug the pretrained model into the R33 goal-
 measure RHAE (warm-start-OFF policy, pretrained forward model). Step 3 is the cheap pivotal test
 BEFORE any full RL run. If forward-model accuracy transfers, planning (R33, built) finally has an
 accurate model to plan with — the escape from wall #4.
+
+## 2026-07-05 — ARCHITECT SYNTHESIS (decision-grade): scale-up is DEAD by arithmetic; R35 is the pivotal test
+Deep re-research (user ralph directive). Architect findings:
+1. "Top team ~100k steps/game" is ARITHMETICALLY IMPOSSIBLE: env.step ~60/s (CPU, GPU-invariant) →
+   100k × 110 games = 51h of stepping alone vs the 9h budget. Real ceiling ≈ 17k actions/game
+   (uniform 295s/game), practical ≈ 8k. Kaggle's RTX 6000 speeds GRADIENTS, not experience.
+2. Wall #2 re-verdict: only the gradient-throughput half is a dev artifact. "Scale the card on the
+   big GPU" is DEAD: (a) env.step caps experience; (b) RHAE squares away extra actions; (c) R31
+   budget 6000=3000 from-scratch; (d) R23 more-gradients-per-action regressed. Expected gain ≈ 0.
+3. ONLY unfalsified lever = pretrained TRANSFERABLE forward model (path b): BC policy=0% transfer
+   (policy is game-specific) but change-mask DYNAMICS are game-agnostic core-knowledge; R32 proved
+   the model fires on unseen frames; R33 planner is built & correct, starved only by wall #4.
+4. R35 DECISION GATE (exact): collect ~20-50k transitions, 18/7 game split (mirror _transfer_test.sh),
+   pretrain the 18.7K ForwardModel (change-BCE + colour-CE), measure HELD-OUT change-mask F1 vs the
+   trivial "predict-no-change" baseline (ARC frames mostly static — report it explicitly).
+   F1 ≥ ~0.5 ⇒ path (b) live → plug pretrained model into R33 planner, measure RHAE (target 0.06-0.13).
+   F1 ≈ trivial ⇒ kill path (b) cheaply → ship card + optimize discovery/seed-selection.
+5. Ship the current card as M1 safety net regardless (already deployed: KaggleOnlineRLAgent, 9c5d207).
