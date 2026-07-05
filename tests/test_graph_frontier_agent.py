@@ -638,3 +638,152 @@ def test_sticky_and_cap_knobs_default_on_and_env_overridable(monkeypatch):
     overridden = GraphFrontierAgent()
     assert overridden.sticky_mask is False
     assert overridden.region_max_frac == 0.5
+
+
+# ── (R41) goal-directed frontier ranking ──────────────────────────────────────
+
+
+def _goal_ready_agent(**kwargs) -> GraphFrontierAgent:
+    """Build a goal-rank agent with a tiny hand-wired graph for ranker tests.
+
+    Graph: START --a1--> A, START --a2--> B. A and B are both in-gate frontiers
+    (each holds an untried simple action). A's frame is goal-poor, B's frame is
+    goal-rich under FILL_COLOR(3), so a goal-following ranker prefers a2.
+    """
+    from admorphiq.planner.goal import GoalSpec, GoalType
+
+    agent = GraphFrontierAgent(goal_rank=True, **kwargs)
+    agent._edges = {"START": {1: "A", 2: "B"}, "A": {}, "B": {}}
+    agent._untried = {"START": [], "A": [3], "B": [4]}
+    agent._action_tier = {3: _SIMPLE_TIER, 4: _SIMPLE_TIER}
+    agent._unlocked_tier = _N_TIERS - 1
+    poor = np.zeros((64, 64), dtype=np.int8)
+    poor[0, 0] = 3  # one target-colour cell
+    rich = np.zeros((64, 64), dtype=np.int8)
+    rich[:10, :10] = 3  # 100 target-colour cells
+    agent._state_frame = {"A": poor, "B": rich}
+    agent._goal = GoalSpec(goal_type=GoalType.FILL_COLOR, color=3)
+    return agent
+
+
+def test_goal_shell_mode_preserves_nearest_distance():
+    """Purpose: prove that in shell mode the ranker never picks a farther
+    frontier over a nearer one — it only reorders within the nearest shell — so
+    the BFS shell expansion that reaches barely-in-budget deep goals is intact.
+
+    Expected feedback: if this fails, shell mode leaks into the aggressive
+    global-override behaviour that lost CD82 L2 (measured R41), and the
+    no-level-lost acceptance guarantee is void.
+    """
+    from admorphiq.planner.goal import GoalSpec, GoalType
+
+    agent = GraphFrontierAgent(goal_rank=True, goal_shell=True, goal_blend=1.0)
+    # NEAR (dist 1) is goal-poor; FAR (dist 2) is goal-rich. Shell mode must
+    # still pick the near frontier because it never crosses the nearest shell.
+    agent._edges = {"START": {1: "NEAR"}, "NEAR": {2: "FAR"}, "FAR": {}}
+    agent._untried = {"START": [], "NEAR": [3], "FAR": [4]}
+    agent._action_tier = {3: _SIMPLE_TIER, 4: _SIMPLE_TIER}
+    agent._unlocked_tier = _N_TIERS - 1
+    near = np.zeros((64, 64), dtype=np.int8)
+    near[0, 0] = 3  # 1 target cell
+    far = np.full((64, 64), 3, dtype=np.int8)  # all target cells
+    agent._state_frame = {"NEAR": near, "FAR": far}
+    agent._goal = GoalSpec(goal_type=GoalType.FILL_COLOR, color=3)
+    assert agent._goal_ranked_frontier("START") == 1, "shell mode stays nearest"
+
+
+def test_goal_ranked_frontier_prefers_goal_rich_frontier():
+    """Purpose: prove that with goal_blend=1.0 the ranker walks toward the
+    frontier whose cached frame scores highest under the inferred goal, not the
+    merely-nearest one.
+
+    Expected feedback: if this fails, score_goal is not steering the frontier
+    choice — the core R41 lever (walk toward the level-complete condition) is
+    inert and the agent falls back to uniform exploration.
+    """
+    agent = _goal_ready_agent(goal_blend=1.0)
+    action = agent._goal_ranked_frontier("START")
+    assert action == 2, "goal-rich frontier B (via a2) must win at blend=1.0"
+
+
+def test_goal_blend_zero_reduces_to_nearest_tiebreak():
+    """Purpose: prove goal_blend=0.0 makes the ranker distance-only, so both
+    equidistant frontiers tie and the first-registered action is chosen —
+    identical to nearest-first behaviour.
+
+    Expected feedback: if this fails, the blend knob does not actually collapse
+    to nearest, so the graceful-degradation guarantee (goal never overrides
+    distance when blend is low) is broken.
+    """
+    agent = _goal_ready_agent(goal_blend=0.0)
+    action = agent._goal_ranked_frontier("START")
+    assert action == 1, "at blend=0 the nearer/first frontier action wins"
+
+
+def test_goal_score_cache_invalidates_on_goal_version_bump():
+    """Purpose: prove _goal_score memoises per goal_version and recomputes after
+    a re-inference bumps the version.
+
+    Expected feedback: if this fails, re-inferred goals would read stale cached
+    scores and rank frontiers against an outdated objective.
+    """
+    from admorphiq.planner.goal import GoalSpec, GoalType
+
+    agent = _goal_ready_agent()
+    first = agent._goal_score("B")
+    assert first == 100.0
+    # Change the goal to a different colour and bump the version.
+    agent._goal = GoalSpec(goal_type=GoalType.FILL_COLOR, color=5)
+    agent._goal_version += 1
+    second = agent._goal_score("B")
+    assert second == 0.0, "score must recompute against the new goal after bump"
+
+
+def test_goal_ranker_disengages_after_stall_cap():
+    """Purpose: prove that once goal_walks_since_progress reaches goal_max_walks
+    the goal branch in _best_frontier is skipped, so a WRONG goal cannot trap
+    the agent — it reverts to nearest-frontier BFS.
+
+    Expected feedback: if this fails, a mis-inferred goal keeps redirecting the
+    agent indefinitely (the R38 promise-frontier stall this cap exists to
+    prevent).
+    """
+    agent = _goal_ready_agent(goal_blend=1.0, goal_max_walks=3)
+    # Under the cap: goal branch active, prefers goal-rich B (a2).
+    assert agent._best_frontier("START") == 2
+    # Exhaust the cap; the counter now equals goal_max_walks.
+    agent._goal_walks_since_progress = 3
+    # Goal branch is skipped -> nearest BFS returns the first frontier (a1).
+    assert agent._best_frontier("START") == 1
+
+
+def test_goal_inference_confidence_gate_stays_goalless_without_new_colors():
+    """Purpose: prove goal inference declines (leaves _goal None) when no probe
+    introduced a non-background colour — the 'stay goal-less' contract.
+
+    Expected feedback: if this fails, the agent would fabricate a goal from
+    noise and rank frontiers toward a meaningless objective on games where the
+    heuristic has no real signal.
+    """
+    agent = GraphFrontierAgent(goal_rank=True, goal_infer_after=2)
+    agent._level_steps = 5
+    # Probes that changed cells but introduced no non-background colour.
+    agent._probe_changes.extend(
+        [{"action": 1, "changed_cells": 4, "top_new_color": None} for _ in range(3)]
+    )
+    frame = np.zeros((64, 64), dtype=np.int64)
+    agent._maybe_infer_goal(frame)
+    assert agent._goal is None, "no confident signal -> remain goal-less"
+
+
+def test_goal_rank_off_by_default_and_env_overridable(monkeypatch):
+    """Purpose: pin GF_GOAL_RANK OFF by default (pre-R41 behaviour ships) and
+    prove the env knob turns it on.
+
+    Expected feedback: if the default drifts to ON before acceptance promotes
+    it, an unvalidated ranker ships silently; if the override breaks, the lever
+    cannot be A/B measured.
+    """
+    assert GraphFrontierAgent().goal_rank is False
+    monkeypatch.setenv("GF_GOAL_RANK", "1")
+    assert GraphFrontierAgent().goal_rank is True
