@@ -221,3 +221,13 @@ Deep re-research (user ralph directive). Architect findings:
    F1 ≥ ~0.5 ⇒ path (b) live → plug pretrained model into R33 planner, measure RHAE (target 0.06-0.13).
    F1 ≈ trivial ⇒ kill path (b) cheaply → ship card + optimize discovery/seed-selection.
 5. Ship the current card as M1 safety net regardless (already deployed: KaggleOnlineRLAgent, 9c5d207).
+
+## 2026-07-05 — DEEP-RESEARCH CONVERGENCE: the deep-level axis is EXPLICIT GRAPH SEARCH (R36)
+Researcher (primary sources: DriesSmit repo code-read, 30-day-learnings blog, arXiv 2512.24156,
+arXiv 2605.05138) + architect converge: deep levels are cleared by HUD-MASKED state-graph +
+frontier BFS + segment-click reduction (training-free, exact transitions), NOT by reactive policy
+learning (StochasticGoose = 2-game brute-force at 100k steps/8h-per-game, impossible on Kaggle) and
+NOT by neural forward-model planning (our walls #1/#4 dissolve once the HUD is masked before
+hashing — the winners' states RECUR; ours never did because we hashed raw frames). Graph paper:
+19 levels in a 4000-STEP constrained run = our budget class. R36 builds it. R35 (neural transfer)
+continues as a complementary secondary. Scale-up stays dead (env.step arithmetic).
