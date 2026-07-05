@@ -231,3 +231,18 @@ NOT by neural forward-model planning (our walls #1/#4 dissolve once the HUD is m
 hashing — the winners' states RECUR; ours never did because we hashed raw frames). Graph paper:
 19 levels in a 4000-STEP constrained run = our budget class. R36 builds it. R35 (neural transfer)
 continues as a complementary secondary. Scale-up stays dead (env.step arithmetic).
+
+## 2026-07-05 — OPTIMAL PLAN DERIVED & EXECUTED (ralph deep-research sprint, R35-R37b)
+Deep research (top-team code-read + arXiv graph/executable-WM papers + architect arithmetic)
+converged on the deep-level axis: TRAINING-FREE explicit graph search. Built, debugged (v1 inert →
+R36b stuck-fix → R36c region-mask [states recur] → R36d stall-fix), and validated:
+- 9-subset 0.0055 transfer-honest (4x online-RL from-scratch 0.0014); R11L L1 in 14 actions (0.0476).
+- full-25: 8/25 L1 @8000 (mean 0.0020); **L2 breakthrough** @30k (CD82, VC33) — depth scales with
+  budget; offline env.step ~1000+/s makes Kaggle ≈10^5 actions/game for training-free agents.
+- R35 side-result: dynamics DO transfer (52.4% ratio vs BC 0%) but absolute accuracy low — neural
+  forward model stays a secondary asset; pos_weight collapse fix recorded (also implicates online
+  _train_forward's plain BCE).
+DEPLOYED: KaggleGraphFrontierAgent (MAX_ACTIONS=100k) in the submission notebook; online-RL card
+retained as alternative. NEXT AXES (post-sprint): efficiency of deep discovery (salience-tiered
+frontier prioritization — the paper's tiers are richer than ours), L3+ scaling, and cross-level
+mechanics reuse.
