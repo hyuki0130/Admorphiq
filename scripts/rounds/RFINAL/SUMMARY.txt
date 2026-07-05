@@ -1,0 +1,18 @@
+[generated 2026-07-06 00:35:17 KST] FINAL card — full-25 @100k (deployed config) LIVE 25/25
+mean game_score = 0.0025 | total levels = 18 | games clearing = 15/25
+(참조: from-scratch online-RL 0.0014, random 0.0000, verified top 0.1258)
+  * R11L: score=0.0476 lvl=1 act=[14]
+  * TN36: score=0.0071 lvl=1 act=[72]
+  * LF52: score=0.0052 lvl=1 act=[60]
+  * CD82: score=0.0012 lvl=2 act=[342, 26965]
+  * SP80: score=0.0004 lvl=1 act=[442]
+  * M0R0: score=0.0001 lvl=1 act=[751]
+  * VC33: score=0.0001 lvl=3 act=[173, 1654, 55209]
+  * CN04: score=0.0001 lvl=1 act=[815]
+  * LP85: score=0.0000 lvl=1 act=[809]
+  * FT09: score=0.0000 lvl=1 act=[6241]
+  * AR25: score=0.0000 lvl=1 act=[72166]
+  * BP35: score=0.0000 lvl=1 act=[52896]
+  * LS20: score=0.0000 lvl=1 act=[10676]
+  * SK48: score=0.0000 lvl=1 act=[17434]
+  * TR87: score=0.0000 lvl=1 act=[33731]

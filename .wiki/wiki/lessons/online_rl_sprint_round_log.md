@@ -246,3 +246,13 @@ DEPLOYED: KaggleGraphFrontierAgent (MAX_ACTIONS=100k) in the submission notebook
 retained as alternative. NEXT AXES (post-sprint): efficiency of deep discovery (salience-tiered
 frontier prioritization — the paper's tiers are richer than ours), L3+ scaling, and cross-level
 mechanics reuse.
+
+## 2026-07-06 — FINAL CARD NUMBER (ralph "최대 성능까지" sprint close)
+Deployed config (KaggleGraphFrontierAgent, @100k, GF_GIVEUP=100k) full-25:
+**mean game_score 0.0025 | 15/25 games clear | 18 total levels (VC33 L3, CD82 L2)** — transfer-honest
+(training-free; no warm-start question). vs from-scratch online-RL 0.0014 (9-subset), random 0.0000.
+Budget unlocked 7 more games vs @8k (LF52@60a!, LS20@10.7k, SK48@17k, TR87@33k, BP35@52k, AR25@72k).
+Sprint rounds: R38 tiering (win), R39 sticky-mask (win: CN04+VC33 L2 7.5x), R40 honest-neg + first
+L3, R41 goal-rank knob (class-dependent, default OFF). Plateau per PRD (2 consecutive no-default-
+improvement). Remaining recorded levers: per-game-type gating of GF_GOAL_RANK, goal-inference for
+"goal genuinely far", 10 non-clearing games (dc22/tu93/su15/... need mechanics the graph can't brute).
