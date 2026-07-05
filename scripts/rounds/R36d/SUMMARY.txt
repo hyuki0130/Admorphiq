@@ -1,0 +1,11 @@
+R36d graph_frontier @3000 — mean game_score=0.0055  clears=4/9
+  (baseline: online-RL from-scratch 0.0014/4게임, random 0.0000)
+  BP35: score=0.0000 levels=0 actions_per_level=[]
+  CD82: score=0.0012 levels=1 actions_per_level=[342]
+  CN04: score=0.0000 levels=0 actions_per_level=[]
+  FT09: score=0.0000 levels=0 actions_per_level=[]
+  LS20: score=0.0000 levels=0 actions_per_level=[]
+  M0R0: score=0.0008 levels=1 actions_per_level=[228]
+  R11L: score=0.0476 levels=1 actions_per_level=[14]
+  S5I5: score=0.0000 levels=0 actions_per_level=[]
+  SP80: score=0.0001 levels=1 actions_per_level=[844]

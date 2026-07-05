@@ -17,6 +17,7 @@ import numpy as np
 
 from admorphiq.graph_frontier_agent import (
     GraphFrontierAgent,
+    _max_pool,
     _segment_click_candidates,
 )
 
@@ -99,7 +100,10 @@ def test_hud_mask_flags_animated_cell_and_spares_stable_cells():
     mask = agent._hud_mask_grid()
     assert mask is not None, "mask should be trusted after >= min samples"
     assert bool(mask[0, 0]) is True, "always-changing cell must be masked"
-    assert not mask.any() or mask.sum() == 1, "only the animated cell is masked"
+    # Region masking (R36c) DILATES around the animated cell so a moving-digit
+    # display is covered as a REGION; a small dilated neighbourhood (<=9 cells
+    # for a single animated cell at the corner) is the intended behaviour.
+    assert int(mask.sum()) <= 9, "mask should stay a small dilated region"
     assert bool(mask[10, 10]) is False, "a stable cell must NOT be masked"
 
 
@@ -289,25 +293,82 @@ def test_level_up_resets_graph_and_hud_stats():
     assert agent._level_steps == 1
 
 
-def test_policy_resets_when_globally_stuck_instead_of_replaying_dead_edges():
+def test_policy_random_escapes_when_globally_stuck():
     """Purpose: prove that when the current state has no untried action AND no
-    frontier is reachable through the observed graph, the policy returns None
-    (which :meth:`choose_action` turns into a RESET to re-localise) rather than
-    replaying an already-tried edge.
+    frontier is reachable through the observed graph BUT actions are available,
+    the policy returns a live random action (the sink-escape), never None.
 
-    Expected feedback: if this fails, the agent has regressed to the old
-    least-tried-edge fallback, which walks a fully-explored dead-end sub-graph in
-    a cycle forever — the measured FT09-class failure where the whole action
-    budget was burned re-clicking dead cells with zero exploration progress. A
-    pass proves the agent escapes exhausted regions by resetting to start.
+    Expected feedback: if this fails, the agent has regressed to the pre-R36d
+    behaviour of RESETting into a self-absorbing sink — the revived frame
+    re-hashes to the same dead node and the whole budget burns on RESET
+    (measured SP80: bfs_fires froze at 55, recent_distinct 1/30, 0 clears;
+    FT09: states=1 forever). A pass proves the agent breaks the loop by acting
+    against the live env instead of resetting into the same dead state.
     """
     agent = GraphFrontierAgent()
-    # A single, fully-explored state: it has tried edges (self-loops) but no
-    # untried actions and no reachable frontier. This is the FT09 collapse shape.
+    # A single, fully-explored self-looping state: no untried actions, every
+    # edge loops back to itself so BFS finds no frontier. This is the sink shape.
     agent._edges = {"A": {1: "A", 2: "A"}}
     agent._untried = {"A": []}
     agent._tries = {"A": {1: 3, 2: 1}}
-    assert agent._policy("A") is None, "globally-stuck state must signal reset, not replay"
+    frame = np.zeros((64, 64), dtype=np.int64)
+    result = agent._policy("A", [1, 2], False, frame)
+    assert result is not None, "stuck-but-live state must escape, not reset"
+    assert result in (1, 2), "escape must be one of the available simple actions"
+
+
+def test_policy_returns_none_only_when_no_action_available():
+    """Purpose: prove the policy returns None (-> RESET) strictly when there is
+    NO legal action at all, not merely when the graph is exhausted.
+
+    Expected feedback: if this fails, the RESET fallback either fires too eagerly
+    (wasting the random-escape lever on live states) or never (looping on an
+    empty-availability screen). A pass pins the None contract to genuine dead
+    ends only.
+    """
+    agent = GraphFrontierAgent()
+    agent._edges = {"A": {}}
+    agent._untried = {"A": []}
+    frame = np.zeros((64, 64), dtype=np.int64)
+    assert agent._policy("A", [], False, frame) is None
+
+
+def test_max_pool_coarsens_frame_and_is_identity_at_factor_one():
+    """Purpose: prove _max_pool reduces a (64,64) frame to (64/k, 64/k) via block
+    max, and returns the frame unchanged at k<=1.
+
+    Expected feedback: a fail means the hash-pooling that fixes the M0R0/CD82
+    sub-cell-jitter state explosion is either not coarsening (states still never
+    recur) or dropping information incorrectly. Pins the pooling shape contract.
+    """
+    frame = np.arange(64 * 64, dtype=np.int64).reshape(64, 64)
+    assert _max_pool(frame, 1).shape == (64, 64)
+    assert np.array_equal(_max_pool(frame, 1), frame)
+    pooled = _max_pool(frame, 2)
+    assert pooled.shape == (32, 32)
+    # Block max: top-left 2x2 block is {0,1,64,65} -> max 65.
+    assert pooled[0, 0] == 65
+
+
+def test_hash_pool_makes_sub_cell_jitter_states_recur():
+    """Purpose: prove two frames that differ only inside a single pooled block
+    (sub-cell jitter) hash to the SAME state under the default pool factor.
+
+    Expected feedback: a fail means the pooling absorber is not engaging in the
+    real _hash path, so jittery games (M0R0/CD82) would fork a new state every
+    step and the graph would explode — the R36d regression this fix removes.
+    """
+    agent = GraphFrontierAgent(hash_pool=2, region_mask=False)
+    base = np.zeros((64, 64), dtype=np.int64)
+    jittered = base.copy()
+    jittered[0, 1] = 0  # same block as (0,0); pooled max unchanged since all zero
+    jittered[0, 0] = 0
+    # A change confined within one 2x2 block that does not raise the block max
+    # must not change the pooled hash.
+    base[2, 2] = 5
+    jittered2 = base.copy()
+    jittered2[2, 3] = 3  # same 2x2 block (rows2-3,cols2-3); max stays 5
+    assert agent._hash(base) == agent._hash(jittered2)
 
 
 def test_game_over_resets_and_keeps_graph():
