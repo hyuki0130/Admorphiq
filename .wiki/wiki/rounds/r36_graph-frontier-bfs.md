@@ -51,3 +51,13 @@ R35 (neural forward-model transfer test) proceeds in parallel as a complementary
   295s/game ⇒ a TRAINING-FREE agent can afford ~100k+ actions/game — the graph paper's 8h-class
   budget is actually FEASIBLE on Kaggle. The architect's 17k-ceiling arithmetic applied only to
   training-heavy agents. R36's upside is much larger than assumed.
+
+## R36c/R36d progress (2026-07-05 18:28)
+- R36c (region-bbox masking, salvaged from a session-limit-killed worktree +151 lines): **masking now
+  WORKS** — GF_DEBUG on SP80 shows 189 distinct states recurring (vs 1-per-step before), masked≈700
+  cells (counter region + dilation). But clears DROPPED to 1/9: a new stall surfaced.
+- MEASURED STALL: call 500→1000 adds only +1 state/+15 edges with 175 frontier states available and
+  bfs_fires frozen at 55 → the agent loops instead of reaching the frontier. Suspects: BFS
+  unreachability with failure-caching, ping-pong fallback, click-action keys not quantized (every
+  centroid shift = new action identity), mask growth churning hashes.
+- R36d (fresh agent) fixing the stall; acceptance = SP80 L1 + ≥4/9 L1 + ideally an L2.
