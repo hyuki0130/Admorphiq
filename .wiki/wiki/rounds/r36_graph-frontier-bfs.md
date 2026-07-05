@@ -80,3 +80,9 @@ recurrence + frontier BFS demonstrably work. R37 measuring budget upside (@8000/
   ~1000+/s offline). The graph axis owns that regime. DECISION: deploy graph_frontier as the
   submission agent (transfer-honest 9-subset 0.0055 vs online-RL from-scratch 0.0014; L2-capable;
   zero warm-start inflation). Online-RL card retained as an alternative.
+
+## R38 (2026-07-05 21:29) — salience tiering: modest safe win
+Tiered click candidates (GF_TIER_PRIORITY=1): TN36 L1 862→145 actions (6x, score 0→0.0017); all else
+identical (deterministic); CD82/VC33 L2 intact; deep mean 0.0062→0.0064; quick profile unchanged.
+Promise-frontier + tier-gate implemented but DEFAULT OFF — measured to lose deep clears when on.
+Open lever: L2 discovery cost (CD82 26,965 / VC33 12,389 actions) untouched by local tiering.
