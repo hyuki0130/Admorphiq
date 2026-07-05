@@ -1,0 +1,12 @@
+R39 sticky-mask+area-cap 판정 (vs R38: mean 0.0064@8games, CD82/VC33 L2, TN36 145a)
+--- DEEP @30k (9 games incl cn04): mean=0.0063 ---
+ * CD82: lvl 2 (was 2)  score 0.0012 (was 0.0012)  act=[342, 26965]
+ * CN04: lvl 1 (was 0)  score 0.0001 (was 0.0000)  act=[815]
+ * FT09: lvl 1 (was 1)  score 0.0000 (was 0.0000)  act=[6241]
+ * LP85: lvl 1 (was 1)  score 0.0000 (was 0.0000)  act=[809]
+   M0R0: lvl 1 (was 1)  score 0.0001 (was 0.0008)  act=[751]
+ * R11L: lvl 1 (was 1)  score 0.0476 (was 0.0476)  act=[14]
+ * SP80: lvl 1 (was 1)  score 0.0004 (was 0.0001)  act=[442]
+ * TN36: lvl 1 (was 1)  score 0.0071 (was 0.0017)  act=[72]
+ * VC33: lvl 2 (was 2)  score 0.0001 (was 0.0000)  act=[173, 1654]
+--- QUICK 9-subset @3000: mean=0.0055 clears=5/9 (기준 0.0055, 4/9) ---

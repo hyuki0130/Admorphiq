@@ -520,3 +520,121 @@ def test_tier_gate_defers_low_tier_until_high_tier_exhausted():
     # Widening the gate surfaces the deferred low-tier click.
     agent._unlocked_tier = _N_TIERS - 1
     assert agent._best_untried_within_tier(s) == click_lo
+
+
+# ── R39: sticky (monotonic) HUD mask + play-field area cap ────────────────────
+
+
+def _feed_changes(agent: GraphFrontierAgent, changing_cells, n_steps: int) -> None:
+    """Drive ``n_steps`` transitions that change only ``changing_cells`` each step.
+
+    Each step writes a fresh colour into every (row, col) in ``changing_cells`` so
+    those cells register as "changed" while all others stay stable, exercising the
+    HUD change-rate estimator through the real ``_record_transition`` path.
+    """
+    base = np.zeros((64, 64), dtype=np.int64)
+    prev = base.copy()
+    for step in range(n_steps):
+        cur = base.copy()
+        for (r, c) in changing_cells:
+            cur[r, c] = step % 7 + 1
+        agent._prev_frame = prev
+        agent._prev_hash = "src"
+        agent._prev_action_key = 1
+        agent._record_transition(cur)
+        agent._hud_mask = None  # mimic per-step cache invalidation
+        agent._hud_mask_grid()  # force a recompute so sticky accumulates
+        prev = cur
+
+
+def test_sticky_mask_is_monotonic_across_phases():
+    """Purpose: prove the sticky mask KEEPS a cell masked after that cell stops
+    changing, whereas the non-sticky mask lets it un-mask once the rolling window
+    flushes — i.e. the sticky hash is stationary, the rolling one oscillates.
+
+    Expected feedback: if the sticky agent's phase-1 region un-masks, the R39
+    fix is not monotonic and the state-hash will still oscillate (the exact
+    non-stationary-hash defect that leaves 9/17 games in unbounded state
+    explosion). If the non-sticky agent still shows phase-1, the control is wrong.
+    """
+    early = [(1, 1)]      # masked during phase 1, then goes stable
+    late = [(40, 40)]     # masked during phase 2
+    # Phase 2 is longer than the 64-step rolling window so phase-1 flushes out.
+    sticky = GraphFrontierAgent(sticky_mask=True)
+    _feed_changes(sticky, early, 40)
+    _feed_changes(sticky, late, 90)
+    m_sticky = sticky._hud_mask_grid()
+    assert bool(m_sticky[1, 1]) is True, "sticky must retain the phase-1 HUD cell"
+    assert bool(m_sticky[40, 40]) is True, "sticky must also hold the phase-2 cell"
+
+    rolling = GraphFrontierAgent(sticky_mask=False)
+    _feed_changes(rolling, early, 40)
+    _feed_changes(rolling, late, 90)
+    m_roll = rolling._hud_mask_grid()
+    assert bool(m_roll[1, 1]) is False, (
+        "non-sticky mask must drop the phase-1 cell once the window flushes "
+        "(this is the oscillation the sticky knob removes)"
+    )
+    assert bool(m_roll[40, 40]) is True
+
+
+def test_region_area_cap_leaves_playfield_visible():
+    """Purpose: prove a changing region wider than ``region_max_frac`` of the
+    frame is treated as the play field and left VISIBLE, while a small animated
+    widget is still masked — the guard against whole-board-animation blindness.
+
+    Expected feedback: if the large region gets masked, the sticky union will
+    grow to cover the board and every frame hashes equal (the measured LS20
+    masked=4096 total-blindness failure). If the small widget is not masked,
+    the cap is too aggressive and real HUD noise leaks into the hash.
+    """
+    agent = GraphFrontierAgent(
+        sticky_mask=False, region_max_frac=0.30, hud_threshold=0.8
+    )
+    # A big block (rows 0..40, cols 0..40 = 1681 cells > 0.30*4096) whose cells
+    # each change on ~half the steps (below the 0.8 per-cell threshold) but whose
+    # region changes EVERY step (high aggregate) — only region masking could
+    # catch it, so the area cap is the deciding factor. Plus one always-changing
+    # corner widget that must be masked.
+    # Persist colours between repaints so a cell only "changes" on its repaint
+    # step — keeping per-cell change-rate well below the 0.8 per-cell threshold.
+    block = np.zeros((41, 41), dtype=np.int64)
+    prev = np.zeros((64, 64), dtype=np.int64)
+    for step in range(24):
+        # Rotating stripe: repaint one-third of the block rows each step, so every
+        # cell changes on ~1/3 of steps (< 0.8) yet the region changes EVERY step.
+        rows = [r for r in range(41) if (r + step) % 3 == 0]
+        block[rows, :] = step % 5 + 1
+        cur = np.zeros((64, 64), dtype=np.int64)
+        cur[0:41, 0:41] = block
+        cur[63, 63] = step % 5 + 1  # small always-changing widget
+        agent._prev_frame = prev
+        agent._prev_hash = "src"
+        agent._prev_action_key = 1
+        agent._record_transition(cur)
+        agent._hud_mask = None
+        prev = cur
+
+    mask = agent._hud_mask_grid()
+    assert mask is not None
+    assert bool(mask[20, 20]) is False, "the >cap play-field region must stay visible"
+    assert bool(mask[63, 63]) is True, "the small animated widget must be masked"
+
+
+def test_sticky_and_cap_knobs_default_on_and_env_overridable(monkeypatch):
+    """Purpose: pin the R39 defaults (sticky ON, cap 0.30) and prove the env
+    knobs override them, so deployment behaviour is explicit and reversible.
+
+    Expected feedback: if the defaults drift, a future run silently loses the
+    state-explosion fix; if the env override stops working, the fix can't be
+    ablated for A/B measurement (how CN04's before/after was established).
+    """
+    default = GraphFrontierAgent()
+    assert default.sticky_mask is True
+    assert default.region_max_frac == 0.30
+
+    monkeypatch.setenv("GF_STICKY_MASK", "0")
+    monkeypatch.setenv("GF_REGION_MAX_FRAC", "0.5")
+    overridden = GraphFrontierAgent()
+    assert overridden.sticky_mask is False
+    assert overridden.region_max_frac == 0.5

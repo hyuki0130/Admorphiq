@@ -72,6 +72,12 @@ Env knobs:
     before masking, to cover glyph edges the low threshold missed.
   * ``GF_GIVEUP``       (default 8000) — per-level action cap after which
     :meth:`is_done` gives up (the runner ``--max-actions`` also bounds it).
+  * ``GF_STICKY_MASK``  (default 1)    — make the HUD mask MONOTONIC (once a cell
+    is masked it stays masked) so the state-hash is stationary and real states
+    recur. Fixes the R39 state-explosion class (rolling-window mask oscillation).
+  * ``GF_REGION_MAX_FRAC`` (default 0.30) — a noisy region wider than this
+    fraction of the frame is treated as the play field, not a HUD, and is left
+    visible. Guards the sticky union against whole-board-animation blindness.
 
 **SALIENCE-TIERED PRIORITIZATION (R38)** — uniform exploration wastes most of
 the budget on unpromising frontiers (measured CD82 L2: 26,965 actions). Three
@@ -135,6 +141,21 @@ DEFAULT_REGION_LOW = 0.05
 DEFAULT_REGION_RATE = 0.7
 DEFAULT_REGION_DILATE = 1
 
+# Sticky-mask defaults (R39). The pre-R39 mask was recomputed every step from a
+# 64-step rolling window, so it OSCILLATED (measured AR25: masked 0 -> 158 -> 330
+# -> 0 across snapshots). An oscillating mask makes the state-hash NON-STATIONARY:
+# the same real frame hashes differently at different times, so real states never
+# recur and the graph never saturates (measured: 9 of 17 zero-clear games had
+# states ~= choose_action calls). The fix makes the mask MONOTONIC — once a cell
+# is judged HUD it stays masked, so the hash converges (measured CN04 1288 -> 12
+# states, L1 cleared with no regression on the 8 clearing games). The area cap
+# stops a whole-board animation from being masked into total blindness (measured
+# LS20: a 675-cell region crossed agg-rate > 0.7 and the sticky union grew to all
+# 4096 cells -> every frame hashed equal); a region wider than the cap fraction is
+# the play field, not a HUD, and is left visible.
+DEFAULT_STICKY_MASK = True
+DEFAULT_REGION_MAX_FRAC = 0.30
+
 # Salience-tiered prioritization defaults (R38). See module docstring.
 DEFAULT_TIER_PRIORITY = True
 # Gate + promise default OFF (R38): both perturb the exact nearest-BFS
@@ -197,6 +218,8 @@ class GraphFrontierAgent:
         region_low: float | None = None,
         region_rate: float | None = None,
         region_dilate: int | None = None,
+        sticky_mask: bool | None = None,
+        region_max_frac: float | None = None,
         hash_pool: int | None = None,
         tier_priority: bool | None = None,
         tier_gate: bool | None = None,
@@ -244,6 +267,19 @@ class GraphFrontierAgent:
             region_dilate
             if region_dilate is not None
             else _env_int("GF_REGION_DILATE", DEFAULT_REGION_DILATE)
+        )
+
+        # Sticky (monotonic) HUD mask + play-field area cap (R39). See the
+        # DEFAULT_STICKY_MASK note for the non-stationary-hash rationale.
+        self.sticky_mask = (
+            sticky_mask
+            if sticky_mask is not None
+            else _env_bool("GF_STICKY_MASK", DEFAULT_STICKY_MASK)
+        )
+        self.region_max_frac = (
+            region_max_frac
+            if region_max_frac is not None
+            else _env_float("GF_REGION_MAX_FRAC", DEFAULT_REGION_MAX_FRAC)
         )
 
         # Salience-tiered prioritization (R38) — tier local picks + promise-score
@@ -370,6 +406,10 @@ class GraphFrontierAgent:
         # boolean grids across recent transitions.
         self._hud_window: deque[np.ndarray] = deque(maxlen=_HUD_WINDOW)
         self._hud_mask: np.ndarray | None = None  # cached (64,64) bool, True=HUD
+        # Monotonically-growing HUD mask (R39): the union of every per-step mask
+        # seen this level. NOT invalidated between steps (unlike ``_hud_mask``),
+        # so the hash function stabilises instead of oscillating. Reset per level.
+        self._sticky_mask: np.ndarray | None = None
 
         # Bookkeeping for edge recording across steps.
         self._prev_hash: str | None = None
@@ -503,6 +543,15 @@ class GraphFrontierAgent:
         mask = rate > self.hud_threshold
         if self.region_mask:
             mask = mask | self._region_mask_from_rate(rate, stacked)
+        if self.sticky_mask:
+            # Monotonic union: once a cell is HUD it stays HUD, so the hash stops
+            # oscillating and real states recur (R39). ``_sticky_mask`` survives
+            # the per-step ``_hud_mask`` invalidation, so the union only grows.
+            if self._sticky_mask is None or self._sticky_mask.shape != mask.shape:
+                self._sticky_mask = mask.copy()
+            else:
+                self._sticky_mask |= mask
+            mask = self._sticky_mask
         self._hud_mask = mask
         return self._hud_mask
 
@@ -524,7 +573,14 @@ class GraphFrontierAgent:
         out = np.zeros_like(noisy, dtype=bool)
         if not noisy.any():
             return out
+        # A region wider than ``region_max_frac`` of the frame is the play field,
+        # not a HUD widget — masking it would blind the agent (R39). Skip it so a
+        # whole-board animation (LS20: a 675-cell region crossing agg-rate > 0.7)
+        # never enters the sticky union and grows to cover every cell.
+        max_region = self.region_max_frac * float(rate.size)
         for comp in _connected_components(noisy):
+            if len(comp) > max_region:
+                continue
             rows = np.fromiter((r for r, _ in comp), dtype=np.intp, count=len(comp))
             cols = np.fromiter((c for _, c in comp), dtype=np.intp, count=len(comp))
             # Aggregate region change-rate: on what fraction of transitions did
