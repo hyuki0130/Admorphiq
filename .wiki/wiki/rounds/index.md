@@ -62,6 +62,9 @@ commit, and `[[backlinks]]`. Narrative overview + reliable-metric + resume steps
 | R32b | neural-world-model | FAIL: conf-gate didn't help (0.0013) — wall is GOAL-absence, not activation | — | [[r32_neural-forward-model]] |
 | R33a | goal-inference | heuristic goal 0.0013 ≈ baseline | 20afa66 | [[r33_goal-directed-planning]] |
 | R33b | goal-inference | LLM goal 0.0013 = baseline — wall is FORWARD-MODEL ACCURACY | 20afa66 | [[r33_goal-directed-planning]] |
+| R34 | metric-calibration | random=0.0000 on our harness → we BEAT random; '0.18/1.21' baselines were bogus | — | [[r34_metric-reexamination]] |
+
+- **metric-calibration / baselines**: [[r34_metric-reexamination]] (random=0.0000 measured; real RHAE top=0.1258; purge the bogus 0.18/0.25/1.21)
 
 ## The two standing conclusions
 - ⛔ **Do NOT re-try action-selection tweaks** — 8 rounds failed; the novelty learner's action

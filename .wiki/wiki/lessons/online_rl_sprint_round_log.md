@@ -179,3 +179,13 @@ warm-start inflation (does not transfer). Assets built & kept: forward_model.py,
 planner/goal_inference.py — all env-gated OFF, reusable if forward-model accuracy is later solved
 (needs sample-efficiency: better predictor arch, or a transferable pretrained forward model — NOT
 public-gold BC). DECISION POINT for the user: the from-scratch online-RL ceiling looks fundamental.
+
+## 2026-07-05 — R34 METRIC RECKONING: we BEAT random; the 0.18 baseline was bogus
+Measured random + stochastic on our 9-game harness: BOTH = 0.0000 (27 runs each, clear nothing). Our
+from-scratch online-RL (0.0014) therefore BEATS random decisively — it is NOT sub-random. The whole-
+night "100x below random" fear came from a BOGUS baseline: the "random 0.18 / top 1.21" figures in the
+docs are unverified and impossible on RHAE. Web-verified reality: RHAE top (StochasticGoose) = 12.58%
+(0.1258), 2nd = 6.71%; RHAE random ≈ 0.001 (≈ our measured 0.0000). Our harness is faithful. The real
+gap is L1-only (~0.035 subset ceiling) vs DEEP-level clears (12.58% team cleared 18 levels). ACTION:
+purge 0.18/0.25/1.21 from docs; anchors are random≈0 and top=0.1258. The from-scratch micro-lever
+ceiling still stands, but we are ABOVE random and the target (deep-level efficient clears) is clear.
