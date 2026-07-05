@@ -189,3 +189,17 @@ docs are unverified and impossible on RHAE. Web-verified reality: RHAE top (Stoc
 gap is L1-only (~0.035 subset ceiling) vs DEEP-level clears (12.58% team cleared 18 levels). ACTION:
 purge 0.18/0.25/1.21 from docs; anchors are random≈0 and top=0.1258. The from-scratch micro-lever
 ceiling still stands, but we are ABOVE random and the target (deep-level efficient clears) is clear.
+
+## 2026-07-05 — DIRECTION (user): attack deep levels via forward-model sample-efficiency (R35)
+After R34 corrected the framing (we beat random; harness faithful; target = deep clears at ~0.06-0.13),
+user chose to attack deep levels head-on. Target wall #4 (forward-model accuracy) via a KEY untested
+idea: a FORWARD MODEL may TRANSFER where the BC POLICY did not. BC policy = 0% transfer because the
+right ACTIONS differ per game; but a forward model ("action X changes region Y this way") captures
+game-agnostic core-knowledge physics (push→move, click→toggle) that could generalize across games.
+R35 plan: (1) collect (frame,action,next_frame) transitions from public games via random/exploration
+rollouts; (2) PRETRAIN the small change-mask forward model on them; (3) measure held-out change-mask
+prediction ACCURACY (train on N games, test on held-out — mirror scripts/_transfer_test.sh) → does the
+forward model transfer? (4) if yes, plug the pretrained model into the R33 goal-directed planner and
+measure RHAE (warm-start-OFF policy, pretrained forward model). Step 3 is the cheap pivotal test
+BEFORE any full RL run. If forward-model accuracy transfers, planning (R33, built) finally has an
+accurate model to plan with — the escape from wall #4.
