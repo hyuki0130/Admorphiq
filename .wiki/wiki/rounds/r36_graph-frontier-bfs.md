@@ -137,3 +137,12 @@ Recurrence + edge determinism achieved on the explosion class; zero loss. Still 
 residual barriers: goal-distance, stochasticity, large-object centroid merging. Both mask/hash
 levers (①②) now landed as substrate; the remaining blocker set is SEMANTIC → lever ③ goal-aware
 planning is the last of the three. 16/25 stands.
+
+## R46 (2026-07-06 15:44) — lever ③ landed (infra); frontier-ranking honest OFF; taxonomy levers EXHAUSTED
+Semantic measures (order/on-target/count) + inference + stall-gating built & tested; ranking OFF
+(0 new + CD82 regression when on). VERDICT after R43→R46: all three taxonomy levers are landed as
+substrate, yet the 9 games stand — their blocker is the PARADIGM: undirected/heuristic graph search
+cannot cross semantic puzzles (sokoban push-planning, sort sequences, slider combinatorics). The
+literature's answer at this exact wall = executable world model + directed planning (arXiv
+2605.05138, 32.58%, 106/209 levels). That is a NEW BUILD (LLM-written per-game transition rules +
+plan search), not a graph tweak. 16/25 · 21 levels stands as the honest graph-paradigm result.
