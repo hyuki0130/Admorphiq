@@ -130,3 +130,10 @@ movement-gated fix landed (real bug; SU15 prerequisite). 16/25 stands.
 Drift-coherence detector masks 1-cell/action counters/cursors. S5I5/DC22 recurrence restored
 (330→64 states); zero loss. No new clears yet — semantic sinks remain beneath (slider/sort/sokoban
 = levers ② object-segmented hash, ③ goal-aware planning). 16/25 stands.
+
+## R45 (2026-07-06 14:26) — object-segmented hash landed (lever ②; infrastructure)
+3rd downshift rung: object-multiset key gives jitter-absorption + movement-sensitivity together.
+Recurrence + edge determinism achieved on the explosion class; zero loss. Still 0 new clears —
+residual barriers: goal-distance, stochasticity, large-object centroid merging. Both mask/hash
+levers (①②) now landed as substrate; the remaining blocker set is SEMANTIC → lever ③ goal-aware
+planning is the last of the three. 16/25 stands.
