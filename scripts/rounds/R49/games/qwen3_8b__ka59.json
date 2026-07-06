@@ -1,0 +1,67 @@
+{
+  "model": "qwen3:8b",
+  "game": "ka59",
+  "n_few": 15,
+  "n_hold": 10,
+  "rounds": [
+    {
+      "round": 0,
+      "code_validity": 0.0,
+      "cell_accuracy": 0.0,
+      "exact_frame_accuracy": 0.0,
+      "compile_error": "",
+      "prompt_tokens": 4096,
+      "eval_tokens": 298,
+      "latency_s": 23.41,
+      "code": "def predict_next_frame(grid):\n    new_grid = [[0 for _ in range(len(grid[0]))] for _ in range(len(grid))]\n    for i in range(len(grid)):\n        for j in range(len(grid[0])):\n            if grid[i][j] == 1:\n                # Rule: A cell with 1 becomes 0 if surrounded by 4 or more 1s\n                count = sum(grid[i + di][j + dj] for di in (-1, 0, 1) for dj in (-1, 0, 1) if 0 <= i + di < len(grid) and 0 <= j + dj < len(grid))\n                if count >= 4:\n                    new_grid[i][j] = 0\n                else:\n                    new_grid[i][j] = 1\n            else:\n                # Rule: A cell with 0 becomes 1 if surrounded by exactly 3 1s\n                count = sum(grid[i + di][j + dj] for di in (-1, 0, 1) for dj in (-1, 0, 1) if 0 <= i + di < len(grid) and 0 <= j + dj < len(grid))\n                if count == 3:\n                    new_grid[i][j] = 1\n                else:\n                    new_grid[i][j] = 0\n    return new_grid"
+    },
+    {
+      "round": 1,
+      "code_validity": 1.0,
+      "cell_accuracy": 0.9976,
+      "exact_frame_accuracy": 0.0,
+      "compile_error": "",
+      "prompt_tokens": 1237,
+      "eval_tokens": 72,
+      "latency_s": 4.918,
+      "code": "def predict_next_frame(frame, action, xy=None):\n    new_frame = [row[:] for row in frame]\n    if action == \"ACTION6\":\n        x, y = xy\n        new_frame[y][x] = (new_frame[y][x] + 1) % 16\n    return new_frame"
+    },
+    {
+      "round": 2,
+      "code_validity": 1.0,
+      "cell_accuracy": 0.9976,
+      "exact_frame_accuracy": 0.0,
+      "compile_error": "",
+      "prompt_tokens": 1983,
+      "eval_tokens": 72,
+      "latency_s": 3.958,
+      "code": "def predict_next_frame(frame, action, xy=None):\n    new_frame = [row[:] for row in frame]\n    if action == \"ACTION6\":\n        x, y = xy\n        new_frame[y][x] = (new_frame[y][x] + 1) % 16\n    return new_frame"
+    },
+    {
+      "round": 3,
+      "code_validity": 1.0,
+      "cell_accuracy": 0.9976,
+      "exact_frame_accuracy": 0.0,
+      "compile_error": "",
+      "prompt_tokens": 2729,
+      "eval_tokens": 72,
+      "latency_s": 4.111,
+      "code": "def predict_next_frame(frame, action, xy=None):\n    new_frame = [row[:] for row in frame]\n    if action == \"ACTION6\":\n        x, y = xy\n        new_frame[y][x] = (new_frame[y][x] + 1) % 16\n    return new_frame"
+    }
+  ],
+  "final": {
+    "round": 3,
+    "code_validity": 1.0,
+    "cell_accuracy": 0.9976,
+    "exact_frame_accuracy": 0.0,
+    "compile_error": "",
+    "prompt_tokens": 2729,
+    "eval_tokens": 72,
+    "latency_s": 4.111,
+    "code": "def predict_next_frame(frame, action, xy=None):\n    new_frame = [row[:] for row in frame]\n    if action == \"ACTION6\":\n        x, y = xy\n        new_frame[y][x] = (new_frame[y][x] + 1) % 16\n    return new_frame"
+  },
+  "refinement_gain": 0.0,
+  "total_prompt_tokens": 10045,
+  "total_eval_tokens": 514,
+  "total_latency_s": 36.397
+}

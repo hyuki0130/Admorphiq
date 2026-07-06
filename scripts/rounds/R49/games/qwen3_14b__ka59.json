@@ -1,0 +1,67 @@
+{
+  "model": "qwen3:14b",
+  "game": "ka59",
+  "n_few": 15,
+  "n_hold": 10,
+  "rounds": [
+    {
+      "round": 0,
+      "code_validity": 0.0,
+      "cell_accuracy": 0.0,
+      "exact_frame_accuracy": 0.0,
+      "compile_error": "",
+      "prompt_tokens": 4096,
+      "eval_tokens": 420,
+      "latency_s": 44.805,
+      "code": "def predict_next_frame(current_frame, action):\n    next_frame = [row[:] for row in current_frame]\n    if action == \"ACTION1\":\n        for i in range(21, 30):\n            for j in range(9, 12):\n                if i == 22 and j == 10:\n                    next_frame[i][j] = 0\n                else:\n                    next_frame[i][j] = 14\n    elif action == \"ACTION2\":\n        for i in range(33, 38):\n            for j in range(18, 23):\n                if i == 34 and j == 19:\n                    next_frame[i][j] = 0\n                else:\n                    next_frame[i][j] = 14\n    elif action == \"ACTION3\":\n        for i in range(30, 33):\n            for j in range(18, 23):\n                if i == 31 and j == 19:\n                    next_frame[i][j] = 0\n                else:\n                    next_frame[i][j] = 14\n    elif action == \"ACTION4\":\n        for i in range(39, 42):\n            for j in range(12, 18):\n                if i == 40 and j == 13:\n                    next_frame[i][j] = 0\n                else:\n                    next_frame[i][j] = 14\n    elif action == \"ACTION6\":\n        if action == \"ACTION6(25,0)\":\n            next_frame[63][15] = 0\n        elif action == \"ACTION6(20,54)\":\n            next_frame[63][54] = 0\n        elif action == \"ACTION6(25,0)\":\n            next_frame[63][15] = 0\n    return next_frame"
+    },
+    {
+      "round": 1,
+      "code_validity": 1.0,
+      "cell_accuracy": 0.9956,
+      "exact_frame_accuracy": 0.0,
+      "compile_error": "",
+      "prompt_tokens": 1359,
+      "eval_tokens": 413,
+      "latency_s": 23.617,
+      "code": "def predict_next_frame(frame, action, xy=None):\n    next_frame = [row[:] for row in frame]\n    if action == \"ACTION1\":\n        for i in range(24, 29):\n            for j in range(18, 21):\n                if i == 25 and j == 19:\n                    next_frame[i][j] = 0\n                else:\n                    next_frame[i][j] = 14\n    elif action == \"ACTION2\":\n        for i in range(33, 38):\n            for j in range(18, 23):\n                if i == 34 and j == 19:\n                    next_frame[i][j] = 0\n                else:\n                    next_frame[i][j] = 14\n    elif action == \"ACTION3\":\n        for i in range(30, 33):\n            for j in range(12, 18):\n                if i == 31 and j == 13:\n                    next_frame[i][j] = 0\n                else:\n                    next_frame[i][j] = 14\n    elif action == \"ACTION4\":\n        for i in range(39, 42):\n            for j in range(12, 18):\n                if i == 40 and j == 13:\n                    next_frame[i][j] = 0\n                else:\n                    next_frame[i][j] = 14\n    elif action == \"ACTION6\":\n        if xy == (25, 0):\n            next_frame[63][15] = 0\n        elif xy == (20, 54):\n            next_frame[63][54] = 0\n        elif xy == (25, 0):\n            next_frame[63][15] = 0\n    return next_frame"
+    },
+    {
+      "round": 2,
+      "code_validity": 1.0,
+      "cell_accuracy": 0.9969,
+      "exact_frame_accuracy": 0.1,
+      "compile_error": "",
+      "prompt_tokens": 3010,
+      "eval_tokens": 336,
+      "latency_s": 23.008,
+      "code": "def predict_next_frame(frame, action, xy=None):\n    next_frame = [row[:] for row in frame]\n    if action == \"ACTION1\":\n        for i in range(24, 29):\n            for j in range(18, 21):\n                if i == 25 and j == 19:\n                    next_frame[i][j] = 0\n                else:\n                    next_frame[i][j] = 14\n    elif action == \"ACTION2\":\n        for i in range(33, 38):\n            for j in range(18, 23):\n                if i == 34 and j == 19:\n                    next_frame[i][j] = 0\n                else:\n                    next_frame[i][j] = 14\n    elif action == \"ACTION3\":\n        for i in range(30, 33):\n            for j in range(12, 18):\n                if i == 31 and j == 13:\n                    next_frame[i][j] = 0\n                else:\n                    next_frame[i][j] = 14\n    elif action == \"ACTION4\":\n        next_frame[63][44] = 0\n    elif action == \"ACTION6\":\n        if xy == (25, 0):\n            next_frame[63][15] = 0\n        elif xy == (20, 54):\n            next_frame[63][54] = 0\n    return next_frame"
+    },
+    {
+      "round": 3,
+      "code_validity": 1.0,
+      "cell_accuracy": 0.9961,
+      "exact_frame_accuracy": 0.0,
+      "compile_error": "",
+      "prompt_tokens": 3431,
+      "eval_tokens": 413,
+      "latency_s": 33.771,
+      "code": "def predict_next_frame(frame, action, xy=None):\n    next_frame = [row[:] for row in frame]\n    if action == \"ACTION1\":\n        for i in range(24, 30):\n            for j in range(18, 21):\n                if i == 25 and j == 19:\n                    next_frame[i][j] = 0\n                else:\n                    next_frame[i][j] = 14\n    elif action == \"ACTION2\":\n        for i in range(33, 38):\n            for j in range(18, 23):\n                if i == 34 and j == 19:\n                    next_frame[i][j] = 0\n                else:\n                    next_frame[i][j] = 14\n    elif action == \"ACTION3\":\n        for i in range(30, 33):\n            for j in range(12, 18):\n                if i == 31 and j == 13:\n                    next_frame[i][j] = 0\n                else:\n                    next_frame[i][j] = 14\n    elif action == \"ACTION4\":\n        for i in range(27, 30):\n            for j in range(18, 24):\n                if i == 28 and j == 19:\n                    next_frame[i][j] = 0\n                elif i == 28 and j == 22:\n                    next_frame[i][j] = 0\n                else:\n                    next_frame[i][j] = 14\n    elif action == \"ACTION6\":\n        if xy == (25, 0):\n            next_frame[63][15] = 0\n        elif xy == (20, 54):\n            next_frame[63][54] = 0\n    return next_frame"
+    }
+  ],
+  "final": {
+    "round": 3,
+    "code_validity": 1.0,
+    "cell_accuracy": 0.9961,
+    "exact_frame_accuracy": 0.0,
+    "compile_error": "",
+    "prompt_tokens": 3431,
+    "eval_tokens": 413,
+    "latency_s": 33.771,
+    "code": "def predict_next_frame(frame, action, xy=None):\n    next_frame = [row[:] for row in frame]\n    if action == \"ACTION1\":\n        for i in range(24, 30):\n            for j in range(18, 21):\n                if i == 25 and j == 19:\n                    next_frame[i][j] = 0\n                else:\n                    next_frame[i][j] = 14\n    elif action == \"ACTION2\":\n        for i in range(33, 38):\n            for j in range(18, 23):\n                if i == 34 and j == 19:\n                    next_frame[i][j] = 0\n                else:\n                    next_frame[i][j] = 14\n    elif action == \"ACTION3\":\n        for i in range(30, 33):\n            for j in range(12, 18):\n                if i == 31 and j == 13:\n                    next_frame[i][j] = 0\n                else:\n                    next_frame[i][j] = 14\n    elif action == \"ACTION4\":\n        for i in range(27, 30):\n            for j in range(18, 24):\n                if i == 28 and j == 19:\n                    next_frame[i][j] = 0\n                elif i == 28 and j == 22:\n                    next_frame[i][j] = 0\n                else:\n                    next_frame[i][j] = 14\n    elif action == \"ACTION6\":\n        if xy == (25, 0):\n            next_frame[63][15] = 0\n        elif xy == (20, 54):\n            next_frame[63][54] = 0\n    return next_frame"
+  },
+  "refinement_gain": 0.0,
+  "total_prompt_tokens": 11896,
+  "total_eval_tokens": 1582,
+  "total_latency_s": 125.201
+}

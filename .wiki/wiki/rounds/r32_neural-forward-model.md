@@ -7,6 +7,7 @@ keywords: [forward-model, neural-world-model, change-mask, planning, transfer-ho
 verdict: PARTIAL — planning FIRES (beats state-uniqueness!) but 92% takeover crushes novelty (0.0017≈baseline, clears 2/9)
 commit: none (env-gated OFF = card; forward_model.py kept)
 date: 2026-07-04
+description: Neural forward model — planning fires on unseen frames (beats the state-uniqueness wall) but 92% takeover crushes novelty; 0.0017 ≈ baseline
 ---
 
 # R32 — learned neural forward model (change-mask) + short-horizon planning

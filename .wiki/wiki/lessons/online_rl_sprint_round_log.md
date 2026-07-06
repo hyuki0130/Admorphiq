@@ -266,3 +266,14 @@ Sprint arc: 15/25·18lvl → 18/25·23lvl via R42 pool-downshift (TU93 L3), R44 
 hash, R47 verification (KA59 was an @8k probe artifact). NEXT (user-ordered): executable-WM track —
 R48 LLM research done (Qwen3-Coder-30B primary; GLM-5.2 hardware-excluded 744B>96GB); step 1 =
 measured LLM bench (scripts/llm_worldmodel_bench.py; exact-frame acc + refinement-gain).
+
+## 2026-07-06 — R49 (executable-WM bench) PARTIAL + ⛔ 24GB-RAM crash lesson
+Run 1 (17:54 KST, qwen3-coder:30b 18GB via Ollama) took the whole Mac down: Metal wired ~18GB of
+24GB → free RAM 89MB → WindowServer watchdog death ×2 (17:57/19:22) + Jetsam 18:02 → Ollama
+connection dropped → bench died with 0 results. The 2.4MB crash .ips pasted into the dev session
+then bricked the session itself (prompt 1.84M tok > 1M; /compact can't shed a queued paste).
+⛔ **DO NOT load ≥18GB Ollama models on the 24GB dev Mac; never paste multi-MB files into chat —
+give the path.** Run 2 (20:19, memory-safe): **qwen3:14b exact=0.100 valid=1.00 gain=+0.100**
+(sp80 0.00→0.30 — refinement climb CONFIRMED); qwen3:8b exact=0.000, 2/3 games invalid code.
+30b (the R48 primary) still unmeasured: options = Q3_K_M quant (~13-14GB, fits) / Kaggle 96GB /
+accept 14b as lower bound. Details: [[r49_ewm-bench-partial]].

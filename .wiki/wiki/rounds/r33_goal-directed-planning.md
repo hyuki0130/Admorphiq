@@ -7,6 +7,7 @@ keywords: [goal-inference, goal-directed-planning, forward-model, llm-goal, heur
 verdict: R33a heuristic goal = 0.0013 ≈ baseline 0.0014 (no gain); R33b LLM-goal testing
 commit: 20afa66 (infra, env-gated OFF)
 date: 2026-07-05
+description: Goal-directed planning over the forward model — heuristic and LLM goals both 0.0013 ≈ baseline; the wall is forward-model accuracy
 ---
 
 # R33 — goal inference + goal-directed planning (R27 pipeline missing piece)

@@ -8,7 +8,7 @@ seeds `llm_context/decision_tree.md` first, then walks `[[backlinks]]`.
 Use this index when authoring or auditing: skim the catalog, pick a
 category, drill into specific pages.
 
-**Total pages**: 98.
+**Total pages**: 130.
 
 ## Games (25)
 
@@ -90,8 +90,9 @@ category, drill into specific pages.
 - [[concepts/sprite_cluster.md]] — A connected component of same-color pixels in the frame. The universal primitive for detecting entities without reading game internals.
 - [[concepts/version_hash.md]] — A game's identifier in the ARC Prize API has the form `<title>-<hash>` (e.g. `tn36-ab4f63cc`). The hash is a version fingerprint: games with the same title but different hashes share gameplay rules but differ in internal implementation details that solvers may or may not observe.
 
-## Lessons (engineering wisdom from past incidents) (19)
+## Lessons (engineering wisdom from past incidents) (20)
 
+- [[lessons/online_rl_sprint_round_log.md]] — **🔎 To FIND past work by topic, start at the retrieval map [[rounds_index]]**
 - [[lessons/api_hash_rotation_20260421.md]] — Between 2026-04-20 and 2026-04-21 the API replaced every served env hash; all brittle-internals solvers silently died
 - [[lessons/brittle_tells.md]] — Code smells that indicate a strategy will fail on a new version hash. Use this checklist when reviewing any new `strat_*` function in `src/admorphiq/agent_ensemble.py`.
 - [[lessons/cd82_paint_palette_signature_20260423.md]] — Pre-HUD-masking, CD82's discovery phase reported 71 of 71
@@ -132,8 +133,39 @@ category, drill into specific pages.
 
 - [[llm_context/decision_tree.md]] — Compact dispatch read first by Qwen — default primary adaptive_bfs_solver, peer-swap only on Observable-Signature match, 3-deep fallback_stack by game shape, re-ask on primary failure via each plan's Falsification Signature + Next-Best.
 
-## Top-level dispatch (architecture, selector, log, schema) (3)
+## Top-level dispatch (architecture, selector, log, schema) (34)
 
+- [[rounds/r05_planning-override.md]] — round-log
+- [[rounds/r06_depth-boost.md]] — round-log
+- [[rounds/r07_deploy-online-rl.md]] — round-log
+- [[rounds/r08_budget-depth.md]] — round-log
+- [[rounds/r09_additive-planning.md]] — round-log
+- [[rounds/r10_object-state-hash.md]] — round-log
+- [[rounds/r11_breadth-measure.md]] — round-log
+- [[rounds/r12_clear-rate-stable.md]] — round-log
+- [[rounds/r13_efficiency-insight.md]] — round-log
+- [[rounds/r14_noop-suppress.md]] — round-log
+- [[rounds/r15_dead-action-prune.md]] — round-log
+- [[rounds/r16_object-click-prior.md]] — round-log
+- [[rounds/r17_full25-baseline.md]] — round-log
+- [[rounds/r18_object-prior-full25.md]] — round-log
+- [[rounds/r19_reward-shaping.md]] — round-log
+- [[rounds/r20_shape-coef-sweep.md]] — round-log
+- [[rounds/r21_progress-phi-off.md]] — round-log
+- [[rounds/r22_progress-phi-on.md]] — round-log
+- [[rounds/r23_train-convergence.md]] — round-log
+- [[rounds/r24_bigger-cnn.md]] — round-log
+- [[rounds/r25_object-prior-sweep.md]] — round-log
+- [[rounds/r27b_planning-gate.md]] — round-log
+- [[rounds/r28_keep-across-levels.md]] — round-log
+- [[rounds/r29_warmstart-off.md]] — round-log
+- [[rounds/r32_neural-forward-model.md]] — Neural forward model — planning fires on unseen frames (beats the state-uniqueness wall) but 92% takeover crushes novelty; 0.0017 ≈ baseline
+- [[rounds/r33_goal-directed-planning.md]] — Goal-directed planning over the forward model — heuristic and LLM goals both 0.0013 ≈ baseline; the wall is forward-model accuracy
+- [[rounds/r34_metric-reexamination.md]] — Metric reckoning — measured random = 0.0000 on our harness (we beat random); the 0.18/0.25/1.21 anchors were bogus; real top = 12.58%
+- [[rounds/r35_forward-transfer.md]] — Forward-model transfer test — dynamics transfer 52.4% (vs BC 0%) but absolute accuracy below the planning gate; secondary asset
+- [[rounds/r36_graph-frontier-bfs.md]] — Explicit graph-frontier BFS agent — 0.0055 transfer-honest (4x baseline), deployed; the deep-level axis
+- [[rounds/r48_llm-selection-ewm.md]] — LLM selection research for the executable-WM role — Qwen3-Coder-30B-A3B primary, GLM-5.2 hardware-excluded (744B > 96GB), measured-pick bench designed
+- [[rounds/r49_ewm-bench-partial.md]] — Measured executable-WM bench — 14b exact=0.100 (refinement +0.30 on sp80), 8b invalid; 30b blocked by 24GB-RAM crash (WindowServer death)
 - [[architecture.md]] — Three-layer agent design — Cognition (LLM) / Memory (Wiki) / Action (Strategies) — with explicit dev-time vs Kaggle-time boundaries and a self-improvement loop.
 - [[log.md]] — Append-only chronological record of every dev-time round and significant infra change. Grep `^## \[` for latest entries.
 - [[selector.md]] — Feature-driven dispatch rules the Hypothesis Engine LLM uses to pick

@@ -7,6 +7,7 @@ keywords: [forward-model, pretrain, transfer, held-out, pos-weight, class-imbala
 verdict: TRANSFER CONFIRMED directionally (ratio 52.4% vs BC 0%) but absolute accuracy below planning gate — secondary asset
 commit: cc866eb
 date: 2026-07-05
+description: Forward-model transfer test — dynamics transfer 52.4% (vs BC 0%) but absolute accuracy below the planning gate; secondary asset
 ---
 
 # R35 — forward-model pretrain + held-out transfer test

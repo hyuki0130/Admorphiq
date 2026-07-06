@@ -7,6 +7,7 @@ keywords: [rhae, metric-scale, random-baseline, leaderboard, representativeness,
 verdict: reframes the sprint — our 0.0014 is ~RHAE-random (NOT sub-random); "0.18/1.21" baselines were unverified & wrong
 commit: measured
 date: 2026-07-05
+description: Metric reckoning — measured random = 0.0000 on our harness (we beat random); the 0.18/0.25/1.21 anchors were bogus; real top = 12.58%
 ---
 
 # R34 — problem-setup / metric re-examination

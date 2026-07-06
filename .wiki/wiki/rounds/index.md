@@ -67,12 +67,14 @@ commit, and `[[backlinks]]`. Narrative overview + reliable-metric + resume steps
 | R36 | explicit-graph-search | WORKS: 0.0055 transfer-honest (4x), 8/25 L1, L2 @30k (CD82/VC33) — DEPLOYED | 5e4665d/2026e67 | [[r36_graph-frontier-bfs]] |
 | R37 | explicit-graph-search | budget upside: full-25 8/25; L2 needs GF_GIVEUP raised | 08dfbb5 | [[r36_graph-frontier-bfs]] |
 | R38 | graph-efficiency | salience tiering: TN36 6x, mean 0.0064, no loss | cd90a4f | [[r36_graph-frontier-bfs]] |
+| R48 | llm-selection | research: Qwen3-Coder-30B-A3B primary (pending measured bench) | — | [[r48_llm-selection-ewm]] |
+| R49 | llm-selection | PARTIAL: 14b exact=0.100 (refinement works); 8b 0.000; 30b blocked (RAM crash) | a12e760 | [[r49_ewm-bench-partial]] |
 
 - **graph-search / hud-masking / frontier-bfs**: [[r36_graph-frontier-bfs]] (the deep-level axis; offline env.step ~1000+/s discovery)
 - **forward-model transfer / pretrain**: [[r35_forward-transfer]] (dynamics 52.4% vs BC 0%; pos_weight collapse fix)
 - **metric-calibration / baselines**: [[r34_metric-reexamination]] (random=0.0000 measured; real RHAE top=0.1258; purge the bogus 0.18/0.25/1.21)
 
-- **llm-selection / executable-world-model**: [[r48_llm-selection-ewm]] (Qwen3-Coder-30B-A3B primary; GLM-5.2 hardware-excluded; measured-pick bench designed)
+- **llm-selection / executable-world-model**: [[r48_llm-selection-ewm]] (Qwen3-Coder-30B-A3B primary; GLM-5.2 hardware-excluded; measured-pick bench designed), [[r49_ewm-bench-partial]] (14b exact=0.100, refinement +0.30 on sp80; 8b invalid; ⛔ 18GB Ollama models crash the 24GB dev Mac — 30b unmeasured locally)
 
 ## The two standing conclusions
 - ⛔ **Do NOT re-try action-selection tweaks** — 8 rounds failed; the novelty learner's action

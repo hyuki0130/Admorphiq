@@ -1,0 +1,67 @@
+{
+  "model": "qwen3:14b",
+  "game": "sb26",
+  "n_few": 15,
+  "n_hold": 10,
+  "rounds": [
+    {
+      "round": 0,
+      "code_validity": 0.0,
+      "cell_accuracy": 0.0,
+      "exact_frame_accuracy": 0.0,
+      "compile_error": "",
+      "prompt_tokens": 4096,
+      "eval_tokens": 128,
+      "latency_s": 24.967,
+      "code": "def predict_next_frame(current_frame):\n    # Create a deep copy of the current frame to avoid modifying it\n    next_frame = [row[:] for row in current_frame]\n    \n    # Iterate through each cell in the frame\n    for row in range(len(current_frame)):\n        for col in range(len(current_frame[0])):\n            # Check if the cell value is 2 (the state that changes to 3)\n            if current_frame[row][col] == 2:\n                # Change the cell value to 3\n                next_frame[row][col] = 3\n                \n    return next_frame"
+    },
+    {
+      "round": 1,
+      "code_validity": 1.0,
+      "cell_accuracy": 0.9988,
+      "exact_frame_accuracy": 0.0,
+      "compile_error": "",
+      "prompt_tokens": 839,
+      "eval_tokens": 166,
+      "latency_s": 10.696,
+      "code": "def predict_next_frame(frame, action, xy=None):\n    # Create a deep copy of the current frame to avoid modifying it\n    next_frame = [row[:] for row in frame]\n    \n    # Only handle ACTION5 for this example\n    if action == 'ACTION5':\n        # Check if xy is provided and valid\n        if xy is not None and 0 <= xy[0] < 64 and 0 <= xy[1] < 64:\n            x, y = xy\n            # Check if the cell value is 2 (the state that changes to 3)\n            if frame[y][x] == 2:\n                # Change the cell value to 3\n                next_frame[y][x] = 3\n                \n    return next_frame"
+    },
+    {
+      "round": 2,
+      "code_validity": 1.0,
+      "cell_accuracy": 0.9988,
+      "exact_frame_accuracy": 0.0,
+      "compile_error": "",
+      "prompt_tokens": 1451,
+      "eval_tokens": 166,
+      "latency_s": 10.087,
+      "code": "def predict_next_frame(frame, action, xy=None):\n    # Create a deep copy of the current frame to avoid modifying it\n    next_frame = [row[:] for row in frame]\n    \n    # Only handle ACTION5 for this example\n    if action == 'ACTION5':\n        # Check if xy is provided and valid\n        if xy is not None and 0 <= xy[0] < 64 and 0 <= xy[1] < 64:\n            x, y = xy\n            # Check if the cell value is 2 (the state that changes to 3)\n            if frame[y][x] == 2:\n                # Change the cell value to 3\n                next_frame[y][x] = 3\n                \n    return next_frame"
+    },
+    {
+      "round": 3,
+      "code_validity": 1.0,
+      "cell_accuracy": 0.9988,
+      "exact_frame_accuracy": 0.0,
+      "compile_error": "",
+      "prompt_tokens": 2063,
+      "eval_tokens": 279,
+      "latency_s": 15.075,
+      "code": "def predict_next_frame(frame, action, xy=None):\n    # Create a deep copy of the current frame to avoid modifying it\n    next_frame = [row[:] for row in frame]\n    \n    # Only handle ACTION5 for this example\n    if action == 'ACTION5':\n        # Check if xy is provided and valid\n        if xy is not None and 0 <= xy[0] < 64 and 0 <= xy[1] < 64:\n            x, y = xy\n            # Check if the cell value is 2 (the state that changes to 3)\n            if frame[y][x] == 2:\n                # Change the cell value to 3\n                next_frame[y][x] = 3\n            # Check for other cells that might change based on the pattern\n            # This is a guess based on the pattern in the actual_changed lists\n            for dy in [-1, 0, 1]:\n                for dx in [-1, 0, 1]:\n                    nx, ny = x + dx, y + dy\n                    if 0 <= nx < 64 and 0 <= ny < 64:\n                        if frame[ny][nx] == 2:\n                            next_frame[ny][nx] = 3\n    \n    return next_frame"
+    }
+  ],
+  "final": {
+    "round": 3,
+    "code_validity": 1.0,
+    "cell_accuracy": 0.9988,
+    "exact_frame_accuracy": 0.0,
+    "compile_error": "",
+    "prompt_tokens": 2063,
+    "eval_tokens": 279,
+    "latency_s": 15.075,
+    "code": "def predict_next_frame(frame, action, xy=None):\n    # Create a deep copy of the current frame to avoid modifying it\n    next_frame = [row[:] for row in frame]\n    \n    # Only handle ACTION5 for this example\n    if action == 'ACTION5':\n        # Check if xy is provided and valid\n        if xy is not None and 0 <= xy[0] < 64 and 0 <= xy[1] < 64:\n            x, y = xy\n            # Check if the cell value is 2 (the state that changes to 3)\n            if frame[y][x] == 2:\n                # Change the cell value to 3\n                next_frame[y][x] = 3\n            # Check for other cells that might change based on the pattern\n            # This is a guess based on the pattern in the actual_changed lists\n            for dy in [-1, 0, 1]:\n                for dx in [-1, 0, 1]:\n                    nx, ny = x + dx, y + dy\n                    if 0 <= nx < 64 and 0 <= ny < 64:\n                        if frame[ny][nx] == 2:\n                            next_frame[ny][nx] = 3\n    \n    return next_frame"
+  },
+  "refinement_gain": 0.0,
+  "total_prompt_tokens": 8449,
+  "total_eval_tokens": 739,
+  "total_latency_s": 60.825
+}

@@ -7,6 +7,7 @@ keywords: [state-graph, hud-masking, frontier-bfs, segment-clicks, training-free
 verdict: BUILDING (convergent optimal plan from deep research)
 commit: pending
 date: 2026-07-05
+description: Explicit graph-frontier BFS agent — 0.0055 transfer-honest (4x baseline), deployed; the deep-level axis
 ---
 
 # R36 — HUD-masked explicit state graph + frontier BFS

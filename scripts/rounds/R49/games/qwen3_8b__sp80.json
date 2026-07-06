@@ -1,0 +1,67 @@
+{
+  "model": "qwen3:8b",
+  "game": "sp80",
+  "n_few": 15,
+  "n_hold": 10,
+  "rounds": [
+    {
+      "round": 0,
+      "code_validity": 0.0,
+      "cell_accuracy": 0.0,
+      "exact_frame_accuracy": 0.0,
+      "compile_error": "no callable predict_next_frame defined",
+      "prompt_tokens": 4096,
+      "eval_tokens": 338,
+      "latency_s": 20.734,
+      "code": "'''python\ndef predict_next_frame(grid):\n    new_grid = [row[:] for row in grid]\n    height = len(grid)\n    width = len(grid[0])\n    \n    for i in range(height):\n        for j in range(width):\n            if grid[i][j] == 1:\n                # Check neighbors\n                neighbors = 0\n                for dx in [-1, 0, 1]:\n                    for dy in [-1, 0, 1]:\n                        if dx == 0 and dy == 0:\n                            continue\n                        ni, nj = i + dx, j + dy\n                        if 0 <= ni < height and 0 <= nj < width:\n                            neighbors += grid[ni][nj]\n                # Apply transition rule\n                if neighbors < 2 or neighbors > 3:\n                    new_grid[i][j] = 0\n                elif neighbors == 3:\n                    new_grid[i][j] = 1\n                else:\n                    new_grid[i][j] = grid[i][j]\n            else:\n                # Check neighbors\n                neighbors = 0\n                for dx in [-1, 0, 1]:\n                    for dy in [-1, 0, 1]:\n                        if dx == 0 and dy == 0:\n                            continue\n                        ni, nj = i + dx, j + dy\n                        if 0 <= ni < height and 0 <= nj < width:\n                            neighbors += grid[ni][nj]\n                # Apply transition rule\n                if neighbors == 3:\n                    new_grid[i][j] = 1\n    return new_grid\n'''"
+    },
+    {
+      "round": 1,
+      "code_validity": 0.0,
+      "cell_accuracy": 0.0,
+      "exact_frame_accuracy": 0.0,
+      "compile_error": "",
+      "prompt_tokens": 1249,
+      "eval_tokens": 338,
+      "latency_s": 12.042,
+      "code": "def predict_next_frame(grid):\n    new_grid = [row[:] for row in grid]\n    height = len(grid)\n    width = len(grid[0])\n    \n    for i in range(height):\n        for j in range(width):\n            if grid[i][j] == 1:\n                # Check neighbors\n                neighbors = 0\n                for dx in [-1, 0, 1]:\n                    for dy in [-1, 0, 1]:\n                        if dx == 0 and dy == 0:\n                            continue\n                        ni, nj = i + dx, j + dy\n                        if 0 <= ni < height and 0 <= nj < width:\n                            neighbors += grid[ni][nj]\n                # Apply transition rule\n                if neighbors < 2 or neighbors > 3:\n                    new_grid[i][j] = 0\n                elif neighbors == 3:\n                    new_grid[i][j] = 1\n                else:\n                    new_grid[i][j] = grid[i][j]\n            else:\n                # Check neighbors\n                neighbors = 0\n                for dx in [-1, 0, 1]:\n                    for dy in [-1, 0, 1]:\n                        if dx == 0 and dy == 0:\n                            continue\n                        ni, nj = i + dx, j + dy\n                        if 0 <= ni < height and 0 <= nj < width:\n                            neighbors += grid[ni][nj]\n                # Apply transition rule\n                if neighbors == 3:\n                    new_grid[i][j] = 1\n    return new_grid"
+    },
+    {
+      "round": 2,
+      "code_validity": 0.0,
+      "cell_accuracy": 0.0,
+      "exact_frame_accuracy": 0.0,
+      "compile_error": "",
+      "prompt_tokens": 2307,
+      "eval_tokens": 338,
+      "latency_s": 12.694,
+      "code": "def predict_next_frame(grid):\n    new_grid = [row[:] for row in grid]\n    height = len(grid)\n    width = len(grid[0])\n    \n    for i in range(height):\n        for j in range(width):\n            if grid[i][j] == 1:\n                # Check neighbors\n                neighbors = 0\n                for dx in [-1, 0, 1]:\n                    for dy in [-1, 0, 1]:\n                        if dx == 0 and dy == 0:\n                            continue\n                        ni, nj = i + dx, j + dy\n                        if 0 <= ni < height and 0 <= nj < width:\n                            neighbors += grid[ni][nj]\n                # Apply transition rule\n                if neighbors < 2 or neighbors > 3:\n                    new_grid[i][j] = 0\n                elif neighbors == 3:\n                    new_grid[i][j] = 1\n                else:\n                    new_grid[i][j] = grid[i][j]\n            else:\n                # Check neighbors\n                neighbors = 0\n                for dx in [-1, 0, 1]:\n                    for dy in [-1, 0, 1]:\n                        if dx == 0 and dy == 0:\n                            continue\n                        ni, nj = i + dx, j + dy\n                        if 0 <= ni < height and 0 <= nj < width:\n                            neighbors += grid[ni][nj]\n                # Apply transition rule\n                if neighbors == 3:\n                    new_grid[i][j] = 1\n    return new_grid"
+    },
+    {
+      "round": 3,
+      "code_validity": 0.0,
+      "cell_accuracy": 0.0,
+      "exact_frame_accuracy": 0.0,
+      "compile_error": "",
+      "prompt_tokens": 3365,
+      "eval_tokens": 338,
+      "latency_s": 12.654,
+      "code": "def predict_next_frame(grid):\n    new_grid = [row[:] for row in grid]\n    height = len(grid)\n    width = len(grid[0])\n    \n    for i in range(height):\n        for j in range(width):\n            if grid[i][j] == 1:\n                # Check neighbors\n                neighbors = 0\n                for dx in [-1, 0, 1]:\n                    for dy in [-1, 0, 1]:\n                        if dx == 0 and dy == 0:\n                            continue\n                        ni, nj = i + dx, j + dy\n                        if 0 <= ni < height and 0 <= nj < width:\n                            neighbors += grid[ni][nj]\n                # Apply transition rule\n                if neighbors < 2 or neighbors > 3:\n                    new_grid[i][j] = 0\n                elif neighbors == 3:\n                    new_grid[i][j] = 1\n                else:\n                    new_grid[i][j] = grid[i][j]\n            else:\n                # Check neighbors\n                neighbors = 0\n                for dx in [-1, 0, 1]:\n                    for dy in [-1, 0, 1]:\n                        if dx == 0 and dy == 0:\n                            continue\n                        ni, nj = i + dx, j + dy\n                        if 0 <= ni < height and 0 <= nj < width:\n                            neighbors += grid[ni][nj]\n                # Apply transition rule\n                if neighbors == 3:\n                    new_grid[i][j] = 1\n    return new_grid"
+    }
+  ],
+  "final": {
+    "round": 3,
+    "code_validity": 0.0,
+    "cell_accuracy": 0.0,
+    "exact_frame_accuracy": 0.0,
+    "compile_error": "",
+    "prompt_tokens": 3365,
+    "eval_tokens": 338,
+    "latency_s": 12.654,
+    "code": "def predict_next_frame(grid):\n    new_grid = [row[:] for row in grid]\n    height = len(grid)\n    width = len(grid[0])\n    \n    for i in range(height):\n        for j in range(width):\n            if grid[i][j] == 1:\n                # Check neighbors\n                neighbors = 0\n                for dx in [-1, 0, 1]:\n                    for dy in [-1, 0, 1]:\n                        if dx == 0 and dy == 0:\n                            continue\n                        ni, nj = i + dx, j + dy\n                        if 0 <= ni < height and 0 <= nj < width:\n                            neighbors += grid[ni][nj]\n                # Apply transition rule\n                if neighbors < 2 or neighbors > 3:\n                    new_grid[i][j] = 0\n                elif neighbors == 3:\n                    new_grid[i][j] = 1\n                else:\n                    new_grid[i][j] = grid[i][j]\n            else:\n                # Check neighbors\n                neighbors = 0\n                for dx in [-1, 0, 1]:\n                    for dy in [-1, 0, 1]:\n                        if dx == 0 and dy == 0:\n                            continue\n                        ni, nj = i + dx, j + dy\n                        if 0 <= ni < height and 0 <= nj < width:\n                            neighbors += grid[ni][nj]\n                # Apply transition rule\n                if neighbors == 3:\n                    new_grid[i][j] = 1\n    return new_grid"
+  },
+  "refinement_gain": 0.0,
+  "total_prompt_tokens": 11017,
+  "total_eval_tokens": 1352,
+  "total_latency_s": 58.124
+}

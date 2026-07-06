@@ -1,0 +1,15 @@
+R49 — executable-world-model LLM selection
+============================================================
+
+model                 game    valid   cell   exR0   exRK   gain     tok     sec
+-------------------------------------------------------------------------------
+qwen3:14b             ka59     1.00  0.996   0.00   0.00  +0.00   13478   125.2
+qwen3:14b             sb26     1.00  0.999   0.00   0.00  +0.00    9188    60.8
+qwen3:14b             sp80     1.00  0.996   0.00   0.30  +0.30   16479   196.5
+qwen3:8b              ka59     1.00  0.998   0.00   0.00  +0.00   10559    36.4
+qwen3:8b              sb26     0.00  0.000   0.00   0.00  +0.00   10542    45.7
+qwen3:8b              sp80     0.00  0.000   0.00   0.00  +0.00   12369    58.1
+
+Per-model means (headline = exact-frame-accuracy @ final round):
+  qwen3:14b              exact=0.100 cell=0.997 valid=1.00 gain=+0.100 (n=3)
+  qwen3:8b               exact=0.000 cell=0.333 valid=0.33 gain=+0.000 (n=3)

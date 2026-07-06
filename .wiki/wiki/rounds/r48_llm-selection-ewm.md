@@ -7,6 +7,7 @@ keywords: [executable-world-model, llm-selection, qwen3-coder, glm-5.2, gemma-4,
 verdict: primary = Qwen3-Coder-30B-A3B (pending local measured bench); GLM-5.2 hardware-excluded
 commit: pending
 date: 2026-07-06
+description: LLM selection research for the executable-WM role — Qwen3-Coder-30B-A3B primary, GLM-5.2 hardware-excluded (744B > 96GB), measured-pick bench designed
 ---
 
 # R48 — LLM selection for the executable-world-model role (deep comparison)
@@ -33,4 +34,5 @@ cell-acc, exact-frame-acc(주지표), refinement-gain, tokens/latency. Pull: `qw
 vLLM offline V1 + FP8 (Blackwell native) 권장; read-only Kaggle Model mount; guided decoding으로
 validity 확보; 게임당 max-calls(≤25)+max-tokens 하드캡 (논문 $34-620/game = 무제한 루프 경고).
 
-**Related**: [[r36_graph-frontier-bfs]] (paradigm wall), [[r34_metric-reexamination]].
+**Related**: [[r36_graph-frontier-bfs]] (paradigm wall), [[r34_metric-reexamination]],
+[[r49_ewm-bench-partial]] (the measured bench this page designed — 14b/8b results, 30b blocked).
