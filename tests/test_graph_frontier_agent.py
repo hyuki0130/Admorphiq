@@ -1209,3 +1209,129 @@ def test_band_mask_unions_into_hud_mask_and_is_sticky():
     assert bool(mask[40, 25]) is True
     # A row far from the band is untouched.
     assert bool(mask[10, 10]) is False
+
+
+# ── (R45) object-segmented hash: jitter-absorption + movement-sensitivity ──────
+
+
+def _obj_frame(top: int, left: int, size: int = 5, colour: int = 3) -> np.ndarray:
+    """A (64,64) frame holding one solid ``size``x``size`` block of ``colour``."""
+    f = np.zeros((64, 64), dtype=np.int64)
+    f[top : top + size, left : left + size] = colour
+    return f
+
+
+def test_object_hash_jitter_yields_same_key():
+    """Purpose: prove the object-segmented hash is INVARIANT to intra-object
+    jitter — flipping a few interior pixels of a component (animation) while its
+    colour, log2 size-bucket and rounded centroid are unchanged must produce the
+    SAME state key.
+
+    Expected feedback: fail => the object hash still forks on sprite animation, so
+    it does not solve the pool=1 explosion it was built for (jitter-heavy games
+    would still never recur under object mode).
+    """
+    agent = GraphFrontierAgent(obj_hash="on")
+    base = _obj_frame(10, 20)  # 5x5 block, area 25, bucket 5
+    jittered = base.copy()
+    jittered[12, 22] = 0  # drop one interior pixel -> area 24, still bucket 5
+    jittered[10, 24] = 0  # drop a corner -> centroid barely shifts, rounds equal
+    assert agent._object_hash(base) == agent._object_hash(jittered)
+
+
+def test_object_hash_one_cell_move_yields_different_key():
+    """Purpose: prove the object-segmented hash is SENSITIVE to whole-object
+    movement — translating a component by a single cell (a real player move) must
+    change its rounded centroid and therefore the state key.
+
+    Expected feedback: fail => the object hash conflates a 1-cell move with the
+    prior position (the pool=2 self-loop-sink pathology it was built to fix), so
+    DC22-class real movement stays invisible and no frontier is discoverable.
+    """
+    agent = GraphFrontierAgent(obj_hash="on")
+    here = _obj_frame(10, 20)
+    moved = _obj_frame(10, 21)  # same block shifted one column right
+    assert agent._object_hash(here) != agent._object_hash(moved)
+
+
+def test_object_hash_on_mode_routes_hash_through_object_hash():
+    """Purpose: prove GF_OBJ_HASH=on forces the object hash from the first frame —
+    the level starts in object mode and _hash delegates to _object_hash.
+
+    Expected feedback: fail => the ``on`` override is not wired, so a forced-object
+    run silently falls back to the pixel hash and the mode is untestable in
+    isolation.
+    """
+    agent = GraphFrontierAgent(obj_hash="on")
+    assert agent._hash_mode == "object"
+    frame = _obj_frame(30, 30)
+    assert agent._hash(frame) == agent._object_hash(frame)
+
+
+def test_object_hash_activation_fires_on_persistent_sink():
+    """Purpose: prove the adaptive third rung flips pixel->object mode on the
+    DC22-style persistent sink — a moderate self-loop fraction (below the stronger
+    pool-downshift cut) with low distinct-recent, which the pool downshift will not
+    rescue — after the no-progress guard.
+
+    Expected feedback: fail => the sink signature/gating is wrong; DC22-class games
+    (self-loop ~0.73, distinct ~4) would never reach object mode and stay stuck in
+    the pixel self-loop sink.
+    """
+    agent = GraphFrontierAgent(
+        obj_hash="auto", downshift_after=10, band_mask=False, region_mask=False
+    )
+    agent._level_steps = 50
+    w = agent._sl_window.maxlen
+    # Self-loop fraction ~0.75 (>= obj_sink_selfloop 0.70, < downshift_selfloop 0.90).
+    agent._sl_window.extend([True] * int(w * 0.75) + [False] * (w - int(w * 0.75)))
+    agent._new_state_window.extend([False] * agent._new_state_window.maxlen)
+    agent._recent_states.extend(["a", "b", "c", "d", "a", "b"])  # distinct 4 <= 6
+    agent._maybe_activate_object_hash()
+    assert agent._hash_mode == "object"
+    assert agent._obj_hash_activated is True
+
+
+def test_object_hash_activation_fires_on_explosion():
+    """Purpose: prove the adaptive third rung flips pixel->object mode on the
+    G50T/SC25-style explosion — a high windowed new-state fraction while still
+    mobile (states never recur) — after the no-progress guard.
+
+    Expected feedback: fail => the explosion signature/gating is wrong; a game
+    whose pixel states never recur (new-state fraction ~1) would keep forking a
+    fresh node per action and never build a usable frontier graph.
+    """
+    agent = GraphFrontierAgent(
+        obj_hash="auto", downshift_after=10, band_mask=False, region_mask=False
+    )
+    agent._level_steps = 50
+    agent._new_state_window.extend([True] * agent._new_state_window.maxlen)  # frac 1.0
+    agent._sl_window.extend([False] * agent._sl_window.maxlen)
+    agent._recent_states.extend([str(i) for i in range(20)])  # distinct 20 >= 12
+    agent._maybe_activate_object_hash()
+    assert agent._hash_mode == "object"
+
+
+def test_object_hash_activation_spared_when_healthy_graph():
+    """Purpose: prove a healthy graph (low new-state fraction, moderate self-loop,
+    high distinct-recent — the CD82-L2 / VC33-L3 deep-clear signature) does NOT
+    trip object activation, so slow-but-recurring deep clears are never disrupted.
+
+    Expected feedback: fail => the thresholds are too loose and the third rung
+    fires on a working deep-exploration graph, resetting it mid-clear and
+    regressing the no-loss set.
+    """
+    agent = GraphFrontierAgent(
+        obj_hash="auto", downshift_after=10, band_mask=False, region_mask=False
+    )
+    agent._level_steps = 50
+    # CD82-L2-like: self-loop ~0.51 (< both 0.70 sink and 0.90 downshift cuts),
+    # new-state fraction ~0.2 (states recur), distinct-recent high (mobile graph).
+    w = agent._sl_window.maxlen
+    agent._sl_window.extend([True] * int(w * 0.51) + [False] * (w - int(w * 0.51)))
+    n = agent._new_state_window.maxlen
+    agent._new_state_window.extend([True] * int(n * 0.2) + [False] * (n - int(n * 0.2)))
+    agent._recent_states.extend([str(i) for i in range(25)])
+    agent._maybe_activate_object_hash()
+    assert agent._hash_mode == "pixel"
+    assert agent._obj_hash_activated is False

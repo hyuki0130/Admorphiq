@@ -81,6 +81,46 @@ by itself clear these games: the residue is a semantic sink (S5I5 slider toggles
 between 2 states; DC22 pool-tension; SB26 large sort state-space) — the other two
 R43 deep levers (object-hash, goal-planning).
 
+**OBJECT-SEGMENTED HASH (R45)** — the third and final rung of the hash ladder,
+resolving the pool-tension the pixel modes cannot. Max-pool=2 absorbs sub-cell
+jitter but CONFLATES a 1-2 cell real object move (the moved object pools back to
+the same block, so a genuine transition self-loops — measured DC22: 25 states, a
+sink where every move is invisible and the random-escape thrashes 1718x with 0
+clears); pool=1 keeps the move distinct but EXPLODES on the jitter (DC22 557+
+states; G50T after its pool downshift 259+ growing; SC25 1026+ at pool2). Neither
+pool factor is right because the noise (intra-object jitter) and the signal (whole-
+object position) live at the SAME pixel scale. The object hash separates them by
+representing the state by its OBJECTS, not its raw pixels:
+
+  Segment the (HUD/band-mask-subtracted) frame into 4-connected components per
+  non-background colour. The state key is the hash of the SORTED multiset of
+  ``(colour, size_bucket, centroid_row, centroid_col)`` tokens — centroid at FULL
+  cell resolution (so a 1-cell object move IS a new state) but component area
+  coarsened to a log2 ``size_bucket`` and the component's INTERIOR/SHAPE dropped
+  entirely (so sprite jitter/animation that flips a few interior pixels leaves the
+  colour, size-bucket and rounded centroid unchanged -> SAME key). This delivers
+  jitter-absorption AND movement-sensitivity simultaneously.
+
+Adaptive activation (``GF_OBJ_HASH=auto``, default): the pixel-hash ladder
+(pool=2 -> pool=1 downshift) stays the default; object-hash is the THIRD rung,
+armed only after the no-progress guard (``downshift_after`` in-level actions with
+no level-up — so every game clearing within that budget is untouched) and the same
+jitter-mask gate as the downshift (a large HUD mask means pooling is load-bearing;
+skip). It then fires on either broken-graph signature the pool ladder could not
+fix:
+  * **explosion** — windowed new-state fraction ``>= GF_OBJ_EXPLODE_FRAC`` while
+    still mobile (distinct-recent ``>= GF_OBJ_EXPLODE_MOBILE``): pixel states are
+    not recurring (G50T pool1, SC25 pool2).
+  * **persistent sink** — windowed self-loop fraction ``>= GF_OBJ_SINK_SELFLOOP``
+    with low distinct-recent (``<= GF_OBJ_SINK_DISTINCT``), where the pool
+    downshift will NOT rescue it (either already at pool=1, or self-loop below the
+    stronger ``downshift_selfloop`` cut so the downshift never triggers — DC22's
+    0.73 sink). Strong sinks (self-loop ``>= downshift_selfloop``) are left to the
+    pool downshift first; only if pool=1 still sinks does object-hash take over.
+On a fire the level graph is rebuilt with the object hash and the mode is pinned
+for the rest of the level (one activation per level). ``GF_OBJ_HASH=on`` forces
+object-hash from the first frame; ``off`` restores the pre-R45 pixel-only ladder.
+
 Env knobs:
   * ``GF_MAX_CLICKS``   (default 14)   — cap on click candidates per frame.
   * ``GF_HUD_THRESHOLD`` (default 0.8) — per-cell change-rate above which a cell
@@ -193,6 +233,17 @@ Goal knobs (all additive; default OFF until acceptance promotes them):
     without a new state before falling back to nearest-frontier.
   * ``GF_GOAL_BLEND``  (default 0.5)   — weight in [0,1] of goal-proximity vs
     nearness in the frontier rank (0 = pure nearest, 1 = pure goal-proximity).
+  * ``GF_OBJ_HASH``    (default auto)  — object-segmented hash mode: ``auto``
+    (arm the third rung adaptively), ``on`` (force from the first frame), ``off``
+    (pixel-only ladder, pre-R45).
+  * ``GF_OBJ_EXPLODE_FRAC`` (default 0.5) — windowed new-state fraction above
+    which the pixel hash is judged to be exploding (states not recurring).
+  * ``GF_OBJ_EXPLODE_MOBILE`` (default 12) — min distinct-recent for the
+    explosion trigger (an explosion is mobile; a frozen sink is not).
+  * ``GF_OBJ_SINK_SELFLOOP`` (default 0.70) — windowed self-loop fraction above
+    which a low-distinct state is judged a persistent (pool-unfixable) sink.
+  * ``GF_OBJ_SINK_DISTINCT`` (default 6) — max distinct-recent for the sink
+    trigger.
 """
 
 from __future__ import annotations
@@ -279,6 +330,36 @@ DEFAULT_DOWNSHIFT_MAX_MASK = 256
 # enough to be stable, far narrower than DEFAULT_DOWNSHIFT_AFTER so it is full by
 # the time the guard opens.
 _INSTABILITY_WINDOW = 200
+
+# Object-segmented hash defaults (R45). See the module docstring "OBJECT-SEGMENTED
+# HASH" section. Object-hash is the THIRD rung of the hash ladder, armed
+# adaptively when the pixel ladder (pool=2 -> pool=1) cannot produce a usable
+# recurring graph. Two broken-graph signatures fire it, both gated by the same
+# no-progress guard (``downshift_after``) and jitter-mask gate (``downshift_max_mask``)
+# the pool downshift uses:
+#   * EXPLOSION — windowed new-state fraction (transitions whose next-hash was
+#     never seen this level) >= DEFAULT_OBJ_EXPLODE_FRAC while still mobile
+#     (distinct-recent >= DEFAULT_OBJ_EXPLODE_MOBILE). Pixel states are not
+#     recurring so no frontier saturates (measured G50T pool1 259+ growing / SC25
+#     pool2 1026+; both mobile ~16-22 distinct-recent).
+#   * PERSISTENT SINK — windowed self-loop fraction >= DEFAULT_OBJ_SINK_SELFLOOP
+#     with low distinct-recent (<= DEFAULT_OBJ_SINK_DISTINCT), that the pool
+#     downshift will NOT rescue: either already at pool=1, or the self-loop sits
+#     BELOW the stronger ``downshift_selfloop`` (0.90) cut so the downshift never
+#     triggers (measured DC22: self-loop 0.73, distinct-recent 4 — a real 1-cell
+#     move pools back to the same block and self-loops, but 0.73 < 0.90 so pool=1
+#     is never reached; and pool=1 would only explode on the same jitter). Strong
+#     sinks (self-loop >= downshift_selfloop) are left to the pool downshift FIRST;
+#     only if pool=1 STILL sinks does object-hash take over.
+# The healthy deep clears are spared by the no-progress guard (they clear within
+# ``downshift_after``) or by having neither signature (CD82-L2 self-loop 0.51 and a
+# revisiting graph -> new-state-frac well under 0.5; VC33-L3 similar) — verified in
+# the acceptance no-loss set.
+DEFAULT_OBJ_HASH = "auto"  # auto | on | off
+DEFAULT_OBJ_EXPLODE_FRAC = 0.5
+DEFAULT_OBJ_EXPLODE_MOBILE = 12
+DEFAULT_OBJ_SINK_SELFLOOP = 0.70
+DEFAULT_OBJ_SINK_DISTINCT = 6
 
 # Region-mask defaults (R36c). See module docstring for the rationale.
 DEFAULT_REGION_MASK = True
@@ -458,6 +539,11 @@ class GraphFrontierAgent:
         goal_max_walks: int | None = None,
         goal_blend: float | None = None,
         goal_shell: bool | None = None,
+        obj_hash: str | None = None,
+        obj_explode_frac: float | None = None,
+        obj_explode_mobile: int | None = None,
+        obj_sink_selfloop: float | None = None,
+        obj_sink_distinct: int | None = None,
     ) -> None:
         from .adapter import AdmorphiqAdapter  # heavy import, kept lazy
 
@@ -656,6 +742,35 @@ class GraphFrontierAgent:
             if goal_shell is not None
             else _env_bool("GF_GOAL_SHELL", DEFAULT_GOAL_SHELL)
         )
+
+        # Object-segmented hash (R45) — the third rung of the hash ladder. See the
+        # module docstring "OBJECT-SEGMENTED HASH" section and DEFAULT_OBJ_* notes.
+        obj_hash_raw = (
+            obj_hash
+            if obj_hash is not None
+            else os.environ.get("GF_OBJ_HASH", "").strip().lower() or DEFAULT_OBJ_HASH
+        )
+        self.obj_hash = obj_hash_raw if obj_hash_raw in ("auto", "on", "off") else DEFAULT_OBJ_HASH
+        self.obj_explode_frac = (
+            obj_explode_frac
+            if obj_explode_frac is not None
+            else _env_float("GF_OBJ_EXPLODE_FRAC", DEFAULT_OBJ_EXPLODE_FRAC)
+        )
+        self.obj_explode_mobile = (
+            obj_explode_mobile
+            if obj_explode_mobile is not None
+            else _env_int("GF_OBJ_EXPLODE_MOBILE", DEFAULT_OBJ_EXPLODE_MOBILE)
+        )
+        self.obj_sink_selfloop = (
+            obj_sink_selfloop
+            if obj_sink_selfloop is not None
+            else _env_float("GF_OBJ_SINK_SELFLOOP", DEFAULT_OBJ_SINK_SELFLOOP)
+        )
+        self.obj_sink_distinct = (
+            obj_sink_distinct
+            if obj_sink_distinct is not None
+            else _env_int("GF_OBJ_SINK_DISTINCT", DEFAULT_OBJ_SINK_DISTINCT)
+        )
         # Optional offline-LLM goal-inference hook (Callable[[str], str]); None by
         # default so the deterministic heuristic is used offline. Reserved for a
         # later round that wires an offline Qwen call at discovery time.
@@ -716,6 +831,11 @@ class GraphFrontierAgent:
         # cycle detection: how many DISTINCT states in the last 30 visits?
         distinct_recent = len(set(self._dbg_recent))
         tier_hits = "/".join(str(x) for x in self._dbg_tier_hits)
+        new_frac = (
+            sum(self._new_state_window) / len(self._new_state_window)
+            if self._new_state_window
+            else 0.0
+        )
         goal_desc = (
             f"{self._goal.goal_type.value}:{self._goal.color}"
             if self._goal is not None
@@ -737,7 +857,8 @@ class GraphFrontierAgent:
             f"mismatch={self._dbg_mismatch} "
             f"selfloop={self._dbg_selfloop} realedge={self._dbg_realedge} "
             f"unstable_win={sum(self._dbg_unstable_window)}/{len(self._dbg_unstable_window)} "
-            f"effpool={self._effective_pool} "
+            f"effpool={self._effective_pool} mode={self._hash_mode} "
+            f"newfrac={new_frac:.2f} "
             f"masked={n_masked} band={band_desc} "
             f"tier_hits={tier_hits} "
             f"goal={goal_desc} goal_walks={self._dbg_goal_walks} "
@@ -824,6 +945,17 @@ class GraphFrontierAgent:
         self._mm_window: deque[bool] = deque(maxlen=_INSTABILITY_WINDOW)
         self._recent_states: deque[str] = deque(maxlen=30)
 
+        # Object-segmented hash (R45). ``_hash_mode`` selects which hash the state
+        # key uses this level: "pixel" (the pool ladder, default) or "object". In
+        # ``on`` mode it starts "object"; ``auto`` starts "pixel" and the third-rung
+        # activation (:meth:`_maybe_activate_object_hash`) flips it once, resetting
+        # the graph. ``_new_state_window`` tracks, per transition, whether the
+        # next-hash was never seen this level — its windowed fraction is the
+        # explosion signature (states not recurring).
+        self._hash_mode = "object" if self.obj_hash == "on" else "pixel"
+        self._obj_hash_activated = False
+        self._new_state_window: deque[bool] = deque(maxlen=_INSTABILITY_WINDOW)
+
         # ── goal-directed ranking state (R41) ──────────────────────────────────
         # Compact frame (int8) cached at first sighting of each state, so the
         # goal scorer can evaluate score_goal(frame_of_state, goal) as a lookup.
@@ -885,6 +1017,7 @@ class GraphFrontierAgent:
         # HUD change statistics from the raw before/after frames.
         self._record_transition(frame)
         self._maybe_downshift_pool()
+        self._maybe_activate_object_hash()
 
         cur_hash = self._hash(frame)
         self._recent_states.append(cur_hash)
@@ -947,6 +1080,13 @@ class GraphFrontierAgent:
         selflooped = nxt_hash == self._prev_hash
         self._sl_window.append(bool(selflooped))
         self._mm_window.append(bool(mismatched))
+        # New-state signal (R45): the object-hash explosion trigger reads how often
+        # a transition lands on a never-before-seen node. ``_ensure_state`` for this
+        # frame has not run yet this step, so ``nxt_hash not in self._untried`` is
+        # True exactly on the FIRST sighting of the state — i.e. a non-recurring
+        # (forked) transition. A saturating pixel graph drives this toward 0; a
+        # jitter-explosion keeps it near 1.
+        self._new_state_window.append(nxt_hash not in self._untried)
         if self._debug:
             if mismatched:
                 self._dbg_mismatch += 1
@@ -1123,7 +1263,8 @@ class GraphFrontierAgent:
         them but the adaptive downshift does not.
         """
         if (
-            not self.pool_downshift
+            self._hash_mode == "object"
+            or not self.pool_downshift
             or self._pool_downshifted
             or self._effective_pool <= 1
             or self._level_steps < self.downshift_after
@@ -1152,6 +1293,72 @@ class GraphFrontierAgent:
         self._reset_level_state()
         self._effective_pool = 1
         self._pool_downshifted = True
+
+    # ── object-segmented hash activation (R45) ────────────────────────────────────
+
+    def _maybe_activate_object_hash(self) -> None:
+        """Flip the hash to object-segmented mode when the pixel ladder is broken.
+
+        The THIRD rung of the hash ladder (after pool=2 -> pool=1 downshift). Fires
+        at most once per level, in ``auto`` mode only, and only after the same
+        no-progress guard (``downshift_after`` in-level actions with no level-up) and
+        jitter-mask gate the pool downshift uses — so every game clearing within that
+        budget, and every game whose large HUD mask means pooling is load-bearing, is
+        untouched. On top of the guard, one of two pool-unfixable broken-graph
+        signatures must hold over the rolling windows:
+
+        * **explosion** — windowed new-state fraction ``>= obj_explode_frac`` while
+          still mobile (distinct-recent ``>= obj_explode_mobile``): the pixel hash
+          keeps forking never-seen states so no frontier saturates (G50T at pool=1
+          after its downshift; SC25 at pool=2).
+        * **persistent sink** — windowed self-loop fraction ``>= obj_sink_selfloop``
+          with low distinct-recent (``<= obj_sink_distinct``), where the pool
+          downshift will NOT rescue it: either already at ``_effective_pool == 1``,
+          or the self-loop sits below the stronger ``downshift_selfloop`` cut so the
+          downshift never triggers (DC22's 0.73 sink — a real 1-cell move pools back
+          to the same block; pool=1 is never reached and would only re-explode on the
+          same jitter). Strong sinks (self-loop ``>= downshift_selfloop``) are left to
+          the pool downshift first; only a residual sink at pool=1 reaches here.
+
+        On a fire the level graph is rebuilt (the pool state hashes now become object
+        hashes, so real states become distinct-and-recurring) and the mode is pinned
+        for the rest of the level.
+        """
+        if (
+            self.obj_hash != "auto"
+            or self._hash_mode == "object"
+            or self._obj_hash_activated
+            or self._level_steps < self.downshift_after
+            or len(self._new_state_window) < self._new_state_window.maxlen
+            or len(self._sl_window) < self._sl_window.maxlen
+        ):
+            return
+        # Jitter-mask gate: a large HUD mask (minus the moving-band counter) means
+        # pooling absorbs real sub-cell jitter and is load-bearing — the object hash
+        # would have to re-derive that absorption per component; leave such levels on
+        # the pixel ladder (same guard the pool downshift uses).
+        mask = self._hud_mask_grid()
+        if mask is not None:
+            jitter = mask & ~self._band_mask if self._band_mask is not None else mask
+            if int(jitter.sum()) > self.downshift_max_mask:
+                return
+        new_frac = sum(self._new_state_window) / len(self._new_state_window)
+        sl_frac = sum(self._sl_window) / len(self._sl_window)
+        distinct = len(set(self._recent_states))
+        explosion = new_frac >= self.obj_explode_frac and distinct >= self.obj_explode_mobile
+        pool_unfixable_sink = (
+            self._effective_pool == 1 or sl_frac < self.downshift_selfloop
+        )
+        persistent_sink = (
+            sl_frac >= self.obj_sink_selfloop
+            and distinct <= self.obj_sink_distinct
+            and pool_unfixable_sink
+        )
+        if not (explosion or persistent_sink):
+            return
+        self._reset_level_state()
+        self._hash_mode = "object"
+        self._obj_hash_activated = True
 
     # ── goal-directed ranking (R41) ─────────────────────────────────────────────
 
@@ -1372,7 +1579,12 @@ class GraphFrontierAgent:
           catches, yet it makes every raw frame unique so the graph never
           recurs (measured: M0R0 71%%->18%%, CD82 68%%->11%% distinct states
           under 2x2 pooling). Pooling absorbs it while preserving gross layout.
+
+        In object-hash mode (R45) the key is the object multiset instead — see
+        :meth:`_object_hash`.
         """
+        if self._hash_mode == "object":
+            return self._object_hash(frame)
         mask = self._hud_mask_grid()
         if mask is not None and mask.shape == frame.shape:
             masked = frame.copy()
@@ -1381,6 +1593,48 @@ class GraphFrontierAgent:
             masked = frame
         pooled = _max_pool(masked, self._effective_pool)
         return hashlib.md5(np.ascontiguousarray(pooled).tobytes()).hexdigest()[:16]
+
+    def _object_hash(self, frame: np.ndarray) -> str:
+        """Hash the frame by its OBJECTS, not its raw pixels (R45).
+
+        The (HUD/band-mask-subtracted) frame is segmented into 4-connected
+        components per non-background colour. The key is the md5 of the SORTED
+        multiset of ``(colour, size_bucket, centroid_row, centroid_col)`` tokens:
+
+        * ``centroid_row/col`` at FULL cell resolution (rounded component centroid),
+          so a 1-cell object move produces a DIFFERENT key — movement is visible.
+        * ``size_bucket`` = ``area.bit_length()`` (a log2 bucket), and the
+          component's interior/shape is dropped entirely, so intra-object jitter
+          that flips a few pixels leaves colour + bucket + rounded centroid
+          unchanged — the SAME key. Jitter is absorbed.
+
+        The HUD/band mask is subtracted by repainting masked cells to the background
+        colour so a counter/animation never spawns phantom components. Pure of
+        ``_effective_pool`` (object mode ignores pooling). Fast: one
+        :func:`_connected_components` pass per non-background colour, ~1 ms/frame.
+        """
+        work = frame
+        mask = self._hud_mask_grid()
+        values, counts = np.unique(work, return_counts=True)
+        background = int(values[int(np.argmax(counts))])
+        if mask is not None and mask.shape == work.shape and mask.any():
+            work = frame.copy()
+            work[mask] = background
+            values, counts = np.unique(work, return_counts=True)
+            background = int(values[int(np.argmax(counts))])
+        tokens: list[tuple[int, int, int, int]] = []
+        for colour in values:
+            colour = int(colour)
+            if colour == background:
+                continue
+            comp_mask = work == colour
+            for comp in _connected_components(comp_mask):
+                area = len(comp)
+                cy = int(round(sum(r for r, _ in comp) / area))
+                cx = int(round(sum(c for _, c in comp) / area))
+                tokens.append((colour, area.bit_length(), cy, cx))
+        tokens.sort()
+        return hashlib.md5(repr(tokens).encode()).hexdigest()[:16]
 
     # ── graph maintenance ──────────────────────────────────────────────────────
 
