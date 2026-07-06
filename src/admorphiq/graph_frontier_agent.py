@@ -1723,9 +1723,24 @@ def _levels_completed(obs: Any) -> int:
 
 
 def _availability(obs: Any) -> tuple[list[int], bool]:
-    """Return (list of available simple action ids 1..5, action6_available)."""
+    """Return (list of coordinate-free simple action ids, action6_available).
+
+    Simple ids are the no-coordinate movement commands 1-5, plus ACTION7 **only
+    when the game offers no 1-5 movement at all**. ACTION7 is a real,
+    level-advancing command on some titles — SU15 exposes ONLY ``[6, 7]`` — and
+    dropping it left such a game with a single usable action (click), unclearable
+    because a command it needs was never in the agent's set (R43 action-space
+    -miss). It is gated to the no-movement case on purpose: titles that DO offer
+    1-5 (AR25/BP35/LF52/SK48 — all in the clearing set) already clear without
+    ACTION7, and adding a mostly-self-looping "undo/cancel" as a top-priority
+    simple action there measurably destabilised them (SB26 collapsed into a
+    self-loop sink). Gating to "no 1-5 present" targets exactly the class where
+    ACTION7 is unambiguously load-bearing and provably touches none of the
+    movement-having clearers. ``6`` remains the coordinate (click) action.
+    """
     simple_ids: list[int] = []
     action6_ok = False
+    has_action7 = False
     for a in getattr(obs, "available_actions", []) or []:
         aid = a if isinstance(a, int) else getattr(a, "value", getattr(a, "id", None))
         if aid is None:
@@ -1734,4 +1749,8 @@ def _availability(obs: Any) -> tuple[list[int], bool]:
             simple_ids.append(aid)
         elif aid == 6:
             action6_ok = True
+        elif aid == 7:
+            has_action7 = True
+    if has_action7 and not simple_ids:
+        simple_ids.append(7)
     return simple_ids, action6_ok

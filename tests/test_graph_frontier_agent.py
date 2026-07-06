@@ -19,6 +19,7 @@ from admorphiq.graph_frontier_agent import (
     _N_TIERS,
     _SIMPLE_TIER,
     GraphFrontierAgent,
+    _availability,
     _max_pool,
     _segment_click_candidates,
     _segment_click_candidates_tiered,
@@ -973,3 +974,50 @@ def test_pool_downshift_off_by_env_knob(monkeypatch):
     _set_recent_distinct(off, 2)
     off._maybe_downshift_pool()
     assert off._effective_pool == 2
+
+
+# ── ACTION7 availability gate (R43 action-space-miss) ─────────────────────────
+
+
+class _AvailObs:
+    """Minimal obs stand-in exposing only ``available_actions`` for _availability."""
+
+    def __init__(self, actions: list[int]) -> None:
+        self.available_actions = actions
+
+
+def test_availability_includes_action7_only_when_no_movement() -> None:
+    """Purpose: pin the R43 gate — ACTION7 joins the simple-action set ONLY when
+    the game exposes no 1-5 movement (e.g. SU15's ``[6, 7]``), because ACTION7 is
+    a real level-advancing command there yet the pre-R43 code silently dropped it,
+    leaving the agent a single usable action (click) and the game unclearable.
+
+    Expected feedback: pass means a no-movement title surfaces action id 7 as a
+    coordinate-free simple action (with ACTION6 still flagged), so the agent can
+    actually issue the command. Fail means the action-space-miss regressed and
+    SU15-class games are back to click-only.
+    """
+    simple, action6 = _availability(_AvailObs([6, 7]))
+    assert simple == [7]
+    assert action6 is True
+
+
+def test_availability_drops_action7_when_movement_present() -> None:
+    """Purpose: guarantee zero regression on the movement-having clearers — AR25
+    ``[1..7]``, SB26 ``[5, 6, 7]``, LF52/SK48/BP35 all expose 1-5 AND ACTION7, and
+    all clear WITHOUT ACTION7. Adding a mostly-self-looping cancel command as a
+    top-priority simple action there destabilised them (SB26 collapsed into a
+    self-loop sink), so the gate must exclude ACTION7 whenever any 1-5 is offered.
+
+    Expected feedback: pass means an env offering movement never picks up ACTION7,
+    so its action set (and therefore its exploration trajectory) is byte-identical
+    to the pre-R43 baseline. Fail means the gate leaked and a clearer is at risk.
+    """
+    # AR25-style full set: 7 dropped, 1-5 kept, 6 flagged.
+    assert _availability(_AvailObs([1, 2, 3, 4, 5, 6, 7])) == ([1, 2, 3, 4, 5], True)
+    # SB26-style [5, 6, 7]: has movement (5) -> 7 dropped.
+    assert _availability(_AvailObs([5, 6, 7])) == ([5], True)
+    # Pure click-only [6]: no 7 present, no movement -> empty simple set.
+    assert _availability(_AvailObs([6])) == ([], True)
+    # Pure movement [1-4]: unchanged, no click.
+    assert _availability(_AvailObs([1, 2, 3, 4])) == ([1, 2, 3, 4], False)
