@@ -125,3 +125,8 @@ or blocks downshift; (e) G50T/SC25 pure state-explosion/goal-far. 7 lever config
 REWORK not knobs: ① monotone-moving-band mask (detects counters/cursors specifically), ② object-
 segmented state hash (player position as grid cell), ③ goal-type-aware planning. ACTION7
 movement-gated fix landed (real bug; SU15 prerequisite). 16/25 stands.
+
+## R44 (2026-07-06 13:41) — moving-band mask landed (infrastructure; prerequisite for ②③)
+Drift-coherence detector masks 1-cell/action counters/cursors. S5I5/DC22 recurrence restored
+(330→64 states); zero loss. No new clears yet — semantic sinks remain beneath (slider/sort/sokoban
+= levers ② object-segmented hash, ③ goal-aware planning). 16/25 stands.
