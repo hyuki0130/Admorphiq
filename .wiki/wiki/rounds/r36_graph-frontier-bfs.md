@@ -109,3 +109,9 @@ level lost); 3 configs tried. Ships default OFF (documented lever; future: per-g
 goal-type inference). PLATEAU GATE: R40 (honest negative) + R41 (default-OFF) = 2 consecutive rounds
 without a default-config improvement → per the ralph PRD, the current card is at its near-term
 ceiling. Proceeding to FINAL full-25 measurement at deployed budget + architect verification.
+
+## R42 (2026-07-06 12:29) — adaptive pool-downshift: TU93 0→L3 (verified)
+Per-level hash-pool downshift on collapse signatures (default on). TU93 — the wall that beat every
+online-RL round — clears THREE levels (8199+682+3643 @30k). Zero regression. Build-agent's S5I5/SB26
+claims did NOT reproduce (0/3 retries; possibly env-knob leakage in its runs) — kept in remaining
+set. Remaining 9: DC22, G50T, KA59, RE86, S5I5, SB26, SC25, SU15, WA30. Cleared now 16/25.
