@@ -68,7 +68,7 @@ commit, and `[[backlinks]]`. Narrative overview + reliable-metric + resume steps
 | R37 | explicit-graph-search | budget upside: full-25 8/25; L2 needs GF_GIVEUP raised | 08dfbb5 | [[r36_graph-frontier-bfs]] |
 | R38 | graph-efficiency | salience tiering: TN36 6x, mean 0.0064, no loss | cd90a4f | [[r36_graph-frontier-bfs]] |
 | R48 | llm-selection | research: Qwen3-Coder-30B-A3B primary (pending measured bench) | — | [[r48_llm-selection-ewm]] |
-| R49 | llm-selection | PARTIAL: 14b exact=0.100 (refinement works); 8b 0.000; 30b blocked (RAM crash) | a12e760 | [[r49_ewm-bench-partial]] |
+| R49 | llm-selection | local ceiling: 14b best-exact=0.100 > Q3-30b-coder 0.033 (quant damage) > 8b 0; original-30b go/no-go deferred to Kaggle 96GB | a12e760 | [[r49_ewm-bench-partial]] |
 
 - **graph-search / hud-masking / frontier-bfs**: [[r36_graph-frontier-bfs]] (the deep-level axis; offline env.step ~1000+/s discovery)
 - **forward-model transfer / pretrain**: [[r35_forward-transfer]] (dynamics 52.4% vs BC 0%; pos_weight collapse fix)

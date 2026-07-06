@@ -1,0 +1,67 @@
+{
+  "model": "hf.co/unsloth/Qwen3-Coder-30B-A3B-Instruct-GGUF:Q3_K_M",
+  "game": "sb26",
+  "n_few": 15,
+  "n_hold": 10,
+  "rounds": [
+    {
+      "round": 0,
+      "code_validity": 1.0,
+      "cell_accuracy": 0.989,
+      "exact_frame_accuracy": 0.0,
+      "compile_error": "",
+      "prompt_tokens": 4682,
+      "eval_tokens": 501,
+      "latency_s": 29.247,
+      "code": "def predict_next_frame(frame, action, xy=None):\n    # Create a deep copy of the frame to avoid modifying the original\n    next_frame = [row[:] for row in frame]\n    \n    if action == \"ACTION1\":\n        # ACTION1: Change all cells with value 4 to value 5\n        for i in range(64):\n            for j in range(64):\n                if next_frame[i][j] == 4:\n                    next_frame[i][j] = 5\n    \n    elif action == \"ACTION2\":\n        # ACTION2: Change all cells with value 5 to value 4\n        for i in range(64):\n            for j in range(64):\n                if next_frame[i][j] == 5:\n                    next_frame[i][j] = 4\n    \n    elif action == \"ACTION3\":\n        # ACTION3: Change all cells with value 9 to value 0\n        for i in range(64):\n            for j in range(64):\n                if next_frame[i][j] == 9:\n                    next_frame[i][j] = 0\n    \n    elif action == \"ACTION4\":\n        # ACTION4: Change all cells with value 0 to value 9\n        for i in range(64):\n            for j in range(64):\n                if next_frame[i][j] == 0:\n                    next_frame[i][j] = 9\n    \n    elif action == \"ACTION5\":\n        # ACTION5: Change all cells with value 2 to value 3\n        for i in range(64):\n            for j in range(64):\n                if next_frame[i][j] == 2:\n                    next_frame[i][j] = 3\n    \n    elif action == \"ACTION6\":\n        # ACTION6: Click at position (x, y) - change the clicked cell to value 1\n        if xy is not None:\n            x, y = xy\n            next_frame[y][x] = 1\n    \n    elif action == \"ACTION7\":\n        # ACTION7: Change all cells with value 3 to value 2\n        for i in range(64):\n            for j in range(64):\n                if next_frame[i][j] == 3:\n                    next_frame[i][j] = 2\n    \n    return next_frame"
+    },
+    {
+      "round": 1,
+      "code_validity": 1.0,
+      "cell_accuracy": 0.989,
+      "exact_frame_accuracy": 0.0,
+      "compile_error": "",
+      "prompt_tokens": 7976,
+      "eval_tokens": 1339,
+      "latency_s": 49.013,
+      "code": "def predict_next_frame(frame, action, xy=None):\n    # Create a deep copy of the frame to avoid modifying the original\n    next_frame = [row[:] for row in frame]\n    \n    if action == \"ACTION1\":\n        # ACTION1: Change all cells with value 4 to value 5\n        for i in range(64):\n            for j in range(64):\n                if next_frame[i][j] == 4:\n                    next_frame[i][j] = 5\n    \n    elif action == \"ACTION2\":\n        # ACTION2: Change all cells with value 5 to value 4\n        for i in range(64):\n            for j in range(64):\n                if next_frame[i][j] == 5:\n                    next_frame[i][j] = 4\n    \n    elif action == \"ACTION3\":\n        # ACTION3: Change all cells with value 9 to value 0\n        for i in range(64):\n            for j in range(64):\n                if next_frame[i][j] == 9:\n                    next_frame[i][j] = 0\n    \n    elif action == \"ACTION4\":\n        # ACTION4: Change all cells with value 0 to value 9\n        for i in range(64):\n            for j in range(64):\n                if next_frame[i][j] == 0:\n                    next_frame[i][j] = 9\n    \n    elif action == \"ACTION5\":\n        # ACTION5: Change all cells with value 2 to value 3\n        for i in range(64):\n            for j in range(64):\n                if next_frame[i][j] == 2:\n                    next_frame[i][j] = 3\n    \n    elif action == \"ACTION6\":\n        # ACTION6: Click at position (x, y) - change the clicked cell to value 1\n        if xy is not None:\n            x, y = xy\n            next_frame[y][x] = 1\n    \n    elif action == \"ACTION7\":\n        # ACTION7: Change all cells with value 3 to value 2\n        for i in range(64):\n            for j in range(64):\n                if next_frame[i][j] == 3:\n                    next_frame[i][j] = 2\n    \n    return next_frame"
+    },
+    {
+      "round": 2,
+      "code_validity": 1.0,
+      "cell_accuracy": 0.989,
+      "exact_frame_accuracy": 0.0,
+      "compile_error": "",
+      "prompt_tokens": 11270,
+      "eval_tokens": 1132,
+      "latency_s": 51.053,
+      "code": "def predict_next_frame(frame, action, xy=None):\n    # Create a deep copy of the frame to avoid modifying the original\n    next_frame = [row[:] for row in frame]\n    \n    if action == \"ACTION1\":\n        # ACTION1: Change all cells with value 4 to value 5\n        for i in range(64):\n            for j in range(64):\n                if next_frame[i][j] == 4:\n                    next_frame[i][j] = 5\n    \n    elif action == \"ACTION2\":\n        # ACTION2: Change all cells with value 5 to value 4\n        for i in range(64):\n            for j in range(64):\n                if next_frame[i][j] == 5:\n                    next_frame[i][j] = 4\n    \n    elif action == \"ACTION3\":\n        # ACTION3: Change all cells with value 9 to value 0\n        for i in range(64):\n            for j in range(64):\n                if next_frame[i][j] == 9:\n                    next_frame[i][j] = 0\n    \n    elif action == \"ACTION4\":\n        # ACTION4: Change all cells with value 0 to value 9\n        for i in range(64):\n            for j in range(64):\n                if next_frame[i][j] == 0:\n                    next_frame[i][j] = 9\n    \n    elif action == \"ACTION5\":\n        # ACTION5: Change all cells with value 2 to value 3\n        for i in range(64):\n            for j in range(64):\n                if next_frame[i][j] == 2:\n                    next_frame[i][j] = 3\n    \n    elif action == \"ACTION6\":\n        # ACTION6: Click at position (x, y) - change the clicked cell to value 1\n        if xy is not None:\n            x, y = xy\n            next_frame[y][x] = 1\n    \n    elif action == \"ACTION7\":\n        # ACTION7: Change all cells with value 3 to value 2\n        for i in range(64):\n            for j in range(64):\n                if next_frame[i][j] == 3:\n                    next_frame[i][j] = 2\n    \n    return next_frame"
+    },
+    {
+      "round": 3,
+      "code_validity": 1.0,
+      "cell_accuracy": 0.989,
+      "exact_frame_accuracy": 0.0,
+      "compile_error": "",
+      "prompt_tokens": 14564,
+      "eval_tokens": 1103,
+      "latency_s": 55.866,
+      "code": "def predict_next_frame(frame, action, xy=None):\n    # Create a deep copy of the frame to avoid modifying the original\n    next_frame = [row[:] for row in frame]\n    \n    if action == \"ACTION1\":\n        # ACTION1: Change all cells with value 4 to value 5\n        for i in range(64):\n            for j in range(64):\n                if next_frame[i][j] == 4:\n                    next_frame[i][j] = 5\n    \n    elif action == \"ACTION2\":\n        # ACTION2: Change all cells with value 5 to value 4\n        for i in range(64):\n            for j in range(64):\n                if next_frame[i][j] == 5:\n                    next_frame[i][j] = 4\n    \n    elif action == \"ACTION3\":\n        # ACTION3: Change all cells with value 9 to value 0\n        for i in range(64):\n            for j in range(64):\n                if next_frame[i][j] == 9:\n                    next_frame[i][j] = 0\n    \n    elif action == \"ACTION4\":\n        # ACTION4: Change all cells with value 0 to value 9\n        for i in range(64):\n            for j in range(64):\n                if next_frame[i][j] == 0:\n                    next_frame[i][j] = 9\n    \n    elif action == \"ACTION5\":\n        # ACTION5: Change all cells with value 2 to value 3\n        for i in range(64):\n            for j in range(64):\n                if next_frame[i][j] == 2:\n                    next_frame[i][j] = 3\n    \n    elif action == \"ACTION6\":\n        # ACTION6: Click at position (x, y) - change the clicked cell to value 1\n        if xy is not None:\n            x, y = xy\n            next_frame[y][x] = 1\n    \n    elif action == \"ACTION7\":\n        # ACTION7: Change all cells with value 3 to value 2\n        for i in range(64):\n            for j in range(64):\n                if next_frame[i][j] == 3:\n                    next_frame[i][j] = 2\n    \n    return next_frame"
+    }
+  ],
+  "final": {
+    "round": 3,
+    "code_validity": 1.0,
+    "cell_accuracy": 0.989,
+    "exact_frame_accuracy": 0.0,
+    "compile_error": "",
+    "prompt_tokens": 14564,
+    "eval_tokens": 1103,
+    "latency_s": 55.866,
+    "code": "def predict_next_frame(frame, action, xy=None):\n    # Create a deep copy of the frame to avoid modifying the original\n    next_frame = [row[:] for row in frame]\n    \n    if action == \"ACTION1\":\n        # ACTION1: Change all cells with value 4 to value 5\n        for i in range(64):\n            for j in range(64):\n                if next_frame[i][j] == 4:\n                    next_frame[i][j] = 5\n    \n    elif action == \"ACTION2\":\n        # ACTION2: Change all cells with value 5 to value 4\n        for i in range(64):\n            for j in range(64):\n                if next_frame[i][j] == 5:\n                    next_frame[i][j] = 4\n    \n    elif action == \"ACTION3\":\n        # ACTION3: Change all cells with value 9 to value 0\n        for i in range(64):\n            for j in range(64):\n                if next_frame[i][j] == 9:\n                    next_frame[i][j] = 0\n    \n    elif action == \"ACTION4\":\n        # ACTION4: Change all cells with value 0 to value 9\n        for i in range(64):\n            for j in range(64):\n                if next_frame[i][j] == 0:\n                    next_frame[i][j] = 9\n    \n    elif action == \"ACTION5\":\n        # ACTION5: Change all cells with value 2 to value 3\n        for i in range(64):\n            for j in range(64):\n                if next_frame[i][j] == 2:\n                    next_frame[i][j] = 3\n    \n    elif action == \"ACTION6\":\n        # ACTION6: Click at position (x, y) - change the clicked cell to value 1\n        if xy is not None:\n            x, y = xy\n            next_frame[y][x] = 1\n    \n    elif action == \"ACTION7\":\n        # ACTION7: Change all cells with value 3 to value 2\n        for i in range(64):\n            for j in range(64):\n                if next_frame[i][j] == 3:\n                    next_frame[i][j] = 2\n    \n    return next_frame"
+  },
+  "refinement_gain": 0.0,
+  "total_prompt_tokens": 38492,
+  "total_eval_tokens": 4075,
+  "total_latency_s": 185.179
+}

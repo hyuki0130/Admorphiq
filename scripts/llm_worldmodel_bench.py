@@ -292,11 +292,22 @@ def build_refinement_prompt(prev_code: str, mismatches: list[dict[str, Any]]) ->
 _CODE_BLOCK = re.compile(r"```(?:python)?\s*\n(.*?)```", re.DOTALL | re.IGNORECASE)
 
 
+_OPEN_FENCE = re.compile(r"```(?:python)?\s*\n", re.IGNORECASE)
+
+
 def extract_code(text: str) -> str:
-    """Return the LAST fenced code block, or the raw text if none is fenced."""
+    """Return the LAST fenced code block, or the raw text if none is fenced.
+
+    A generation cut off at the token cap leaves an OPENING fence with no
+    closing one (R49c ka59 round 3) — strip the fence header and keep the
+    body instead of exec()ing the literal backticks.
+    """
     blocks = _CODE_BLOCK.findall(text)
     if blocks:
         return blocks[-1].strip()
+    m = _OPEN_FENCE.search(text)
+    if m:
+        return text[m.end():].strip()
     return text.strip()
 
 
@@ -486,9 +497,15 @@ def score_predictions(
 class OllamaChat:
     """Live /api/chat client (stream=False) with one retry."""
 
-    def __init__(self, host: str = "http://localhost:11434", request_timeout: int = 900):
+    def __init__(
+        self,
+        host: str = "http://localhost:11434",
+        request_timeout: int = 900,
+        num_ctx: int = 16384,
+    ):
         self._endpoint = f"{host.rstrip('/')}/api/chat"
         self._request_timeout = request_timeout
+        self._num_ctx = num_ctx
 
     def __call__(
         self, messages: list[dict[str, str]], model: str, max_tokens: int
@@ -498,7 +515,14 @@ class OllamaChat:
             "messages": messages,
             "stream": False,
             "think": False,
-            "options": {"num_predict": max_tokens, "temperature": 0.0, "top_p": 1.0},
+            "options": {
+                "num_predict": max_tokens,
+                "temperature": 0.0,
+                "top_p": 1.0,
+                # Ollama's default num_ctx (4096) silently truncates the few-shot
+                # prompt (R49 run 2: rounds[0] prompt_eval_count == 4096 exactly).
+                "num_ctx": self._num_ctx,
+            },
         }
         data = json.dumps(body).encode("utf-8")
         last_err: Exception | None = None
@@ -685,6 +709,8 @@ def _build_parser() -> argparse.ArgumentParser:
     p.add_argument("--hold", type=int, default=10, help="Held-out transitions/game.")
     p.add_argument("--seed", type=int, default=0, help="Split seed.")
     p.add_argument("--max-tokens", type=int, default=2048, help="Generation cap.")
+    p.add_argument("--num-ctx", type=int, default=16384,
+                   help="Ollama context window (default 4096 truncates few-shot prompts).")
     p.add_argument("--pred-timeout", type=float, default=2.0,
                    help="Per-prediction sandbox timeout (s).")
     p.add_argument("--max-diff-cells", type=int, default=80,
@@ -700,7 +726,7 @@ def main() -> None:
     (round_dir / "games").mkdir(parents=True, exist_ok=True)
     data_dir = REPO_ROOT / args.data_dir
 
-    chat = OllamaChat(host=args.host)
+    chat = OllamaChat(host=args.host, num_ctx=args.num_ctx)
 
     splits: dict[str, tuple[list[Transition], list[Transition]]] = {}
     for game in games:

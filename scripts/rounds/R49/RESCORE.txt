@@ -1,0 +1,15 @@
+R49 rescore (fixed fence extraction; same held-out split)
+model                                              game   last-ex  best-ex  per-round exact
+hf.co/unsloth/Qwen3-Coder-30B-A3B-Instruct-GGUF:Q3_K_M ka59      0.00     0.10  0.00 0.10 0.00 0.00
+hf.co/unsloth/Qwen3-Coder-30B-A3B-Instruct-GGUF:Q3_K_M sb26      0.00     0.00  0.00 0.00 0.00 0.00
+hf.co/unsloth/Qwen3-Coder-30B-A3B-Instruct-GGUF:Q3_K_M sp80      0.00     0.00  0.00 0.00 0.00 0.00
+qwen3:14b                                          ka59      0.00     0.00  0.00 0.00 0.00 0.00
+qwen3:14b                                          sb26      0.00     0.10  0.10 0.00 0.10 0.00
+qwen3:14b                                          sp80      0.20     0.20  0.00 0.20 0.20 0.20
+qwen3:8b                                           ka59      0.00     0.00  0.00 0.00 0.00 0.00
+qwen3:8b                                           sb26      0.00     0.00  0.00 0.00 0.00 0.00
+qwen3:8b                                           sp80      0.00     0.00  0.00 0.00 0.00 0.00
+
+hf.co/unsloth/Qwen3-Coder-30B-A3B-Instruct-GGUF:Q3_K_M mean last-exact=0.000 best-exact=0.033 (n=3)
+qwen3:14b                                          mean last-exact=0.067 best-exact=0.100 (n=3)
+qwen3:8b                                           mean last-exact=0.000 best-exact=0.000 (n=3)

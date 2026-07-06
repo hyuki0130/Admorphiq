@@ -1,0 +1,67 @@
+{
+  "model": "hf.co/unsloth/Qwen3-Coder-30B-A3B-Instruct-GGUF:Q3_K_M",
+  "game": "sp80",
+  "n_few": 15,
+  "n_hold": 10,
+  "rounds": [
+    {
+      "round": 0,
+      "code_validity": 1.0,
+      "cell_accuracy": 0.9908,
+      "exact_frame_accuracy": 0.0,
+      "compile_error": "",
+      "prompt_tokens": 4508,
+      "eval_tokens": 387,
+      "latency_s": 17.786,
+      "code": "def predict_next_frame(frame, action, xy=None):\n    # Create a deep copy of the frame to avoid modifying the original\n    next_frame = [row[:] for row in frame]\n    \n    if action == 'ACTION1':\n        # Clear the top-left 2x2 cells\n        for i in range(2):\n            for j in range(2):\n                next_frame[i][j] = 0\n    \n    elif action == 'ACTION2':\n        # Clear the top-right 2x2 cells\n        for i in range(2):\n            for j in range(62, 64):\n                next_frame[i][j] = 0\n    \n    elif action == 'ACTION3':\n        # Clear the bottom-left 2x2 cells\n        for i in range(62, 64):\n            for j in range(2):\n                next_frame[i][j] = 0\n    \n    elif action == 'ACTION4':\n        # Clear the bottom-right 2x2 cells\n        for i in range(62, 64):\n            for j in range(62, 64):\n                next_frame[i][j] = 0\n    \n    elif action == 'ACTION5':\n        # Clear the top 2 rows\n        for i in range(2):\n            for j in range(64):\n                next_frame[i][j] = 0\n    \n    elif action == 'ACTION6':\n        # Clear the cell at xy\n        if xy is not None:\n            x, y = xy\n            next_frame[y][x] = 0\n    \n    elif action == 'ACTION7':\n        # Clear the entire frame\n        for i in range(64):\n            for j in range(64):\n                next_frame[i][j] = 0\n    \n    return next_frame"
+    },
+    {
+      "round": 1,
+      "code_validity": 1.0,
+      "cell_accuracy": 0.9908,
+      "exact_frame_accuracy": 0.0,
+      "compile_error": "",
+      "prompt_tokens": 7363,
+      "eval_tokens": 1917,
+      "latency_s": 63.9,
+      "code": "def predict_next_frame(frame, action, xy=None):\n    # Create a deep copy of the frame to avoid modifying the original\n    next_frame = [row[:] for row in frame]\n    \n    if action == 'ACTION1':\n        # Clear the top-left 2x2 cells\n        for i in range(2):\n            for j in range(2):\n                next_frame[i][j] = 0\n    \n    elif action == 'ACTION2':\n        # Clear the top-right 2x2 cells\n        for i in range(2):\n            for j in range(62, 64):\n                next_frame[i][j] = 0\n    \n    elif action == 'ACTION3':\n        # Clear the bottom-left 2x2 cells\n        for i in range(62, 64):\n            for j in range(2):\n                next_frame[i][j] = 0\n    \n    elif action == 'ACTION4':\n        # Clear the bottom-right 2x2 cells\n        for i in range(62, 64):\n            for j in range(62, 64):\n                next_frame[i][j] = 0\n    \n    elif action == 'ACTION5':\n        # Clear the top 2 rows\n        for i in range(2):\n            for j in range(64):\n                next_frame[i][j] = 0\n    \n    elif action == 'ACTION6':\n        # Clear the cell at xy\n        if xy is not None:\n            x, y = xy\n            next_frame[y][x] = 0\n    \n    elif action == 'ACTION7':\n        # Clear the entire frame\n        for i in range(64):\n            for j in range(64):\n                next_frame[i][j] = 0\n    \n    return next_frame"
+    },
+    {
+      "round": 2,
+      "code_validity": 1.0,
+      "cell_accuracy": 0.9908,
+      "exact_frame_accuracy": 0.0,
+      "compile_error": "",
+      "prompt_tokens": 10218,
+      "eval_tokens": 1124,
+      "latency_s": 47.331,
+      "code": "def predict_next_frame(frame, action, xy=None):\n    # Create a deep copy of the frame to avoid modifying the original\n    next_frame = [row[:] for row in frame]\n    \n    if action == 'ACTION1':\n        # Clear the top-left 2x2 cells\n        for i in range(2):\n            for j in range(2):\n                next_frame[i][j] = 0\n    \n    elif action == 'ACTION2':\n        # Clear the top-right 2x2 cells\n        for i in range(2):\n            for j in range(62, 64):\n                next_frame[i][j] = 0\n    \n    elif action == 'ACTION3':\n        # Clear the bottom-left 2x2 cells\n        for i in range(62, 64):\n            for j in range(2):\n                next_frame[i][j] = 0\n    \n    elif action == 'ACTION4':\n        # Clear the bottom-right 2x2 cells\n        for i in range(62, 64):\n            for j in range(62, 64):\n                next_frame[i][j] = 0\n    \n    elif action == 'ACTION5':\n        # Clear the top 2 rows\n        for i in range(2):\n            for j in range(64):\n                next_frame[i][j] = 0\n    \n    elif action == 'ACTION6':\n        # Clear the cell at xy\n        if xy is not None:\n            x, y = xy\n            next_frame[y][x] = 0\n    \n    elif action == 'ACTION7':\n        # Clear the entire frame\n        for i in range(64):\n            for j in range(64):\n                next_frame[i][j] = 0\n    \n    return next_frame"
+    },
+    {
+      "round": 3,
+      "code_validity": 1.0,
+      "cell_accuracy": 0.9908,
+      "exact_frame_accuracy": 0.0,
+      "compile_error": "",
+      "prompt_tokens": 13073,
+      "eval_tokens": 1862,
+      "latency_s": 76.875,
+      "code": "def predict_next_frame(frame, action, xy=None):\n    # Create a deep copy of the frame to avoid modifying the original\n    next_frame = [row[:] for row in frame]\n    \n    if action == 'ACTION1':\n        # Clear the top-left 2x2 cells\n        for i in range(2):\n            for j in range(2):\n                next_frame[i][j] = 0\n    \n    elif action == 'ACTION2':\n        # Clear the top-right 2x2 cells\n        for i in range(2):\n            for j in range(62, 64):\n                next_frame[i][j] = 0\n    \n    elif action == 'ACTION3':\n        # Clear the bottom-left 2x2 cells\n        for i in range(62, 64):\n            for j in range(2):\n                next_frame[i][j] = 0\n    \n    elif action == 'ACTION4':\n        # Clear the bottom-right 2x2 cells\n        for i in range(62, 64):\n            for j in range(62, 64):\n                next_frame[i][j] = 0\n    \n    elif action == 'ACTION5':\n        # Clear the top 2 rows\n        for i in range(2):\n            for j in range(64):\n                next_frame[i][j] = 0\n    \n    elif action == 'ACTION6':\n        # Clear the cell at xy\n        if xy is not None:\n            x, y = xy\n            next_frame[y][x] = 0\n    \n    elif action == 'ACTION7':\n        # Clear the entire frame\n        for i in range(64):\n            for j in range(64):\n                next_frame[i][j] = 0\n    \n    return next_frame"
+    }
+  ],
+  "final": {
+    "round": 3,
+    "code_validity": 1.0,
+    "cell_accuracy": 0.9908,
+    "exact_frame_accuracy": 0.0,
+    "compile_error": "",
+    "prompt_tokens": 13073,
+    "eval_tokens": 1862,
+    "latency_s": 76.875,
+    "code": "def predict_next_frame(frame, action, xy=None):\n    # Create a deep copy of the frame to avoid modifying the original\n    next_frame = [row[:] for row in frame]\n    \n    if action == 'ACTION1':\n        # Clear the top-left 2x2 cells\n        for i in range(2):\n            for j in range(2):\n                next_frame[i][j] = 0\n    \n    elif action == 'ACTION2':\n        # Clear the top-right 2x2 cells\n        for i in range(2):\n            for j in range(62, 64):\n                next_frame[i][j] = 0\n    \n    elif action == 'ACTION3':\n        # Clear the bottom-left 2x2 cells\n        for i in range(62, 64):\n            for j in range(2):\n                next_frame[i][j] = 0\n    \n    elif action == 'ACTION4':\n        # Clear the bottom-right 2x2 cells\n        for i in range(62, 64):\n            for j in range(62, 64):\n                next_frame[i][j] = 0\n    \n    elif action == 'ACTION5':\n        # Clear the top 2 rows\n        for i in range(2):\n            for j in range(64):\n                next_frame[i][j] = 0\n    \n    elif action == 'ACTION6':\n        # Clear the cell at xy\n        if xy is not None:\n            x, y = xy\n            next_frame[y][x] = 0\n    \n    elif action == 'ACTION7':\n        # Clear the entire frame\n        for i in range(64):\n            for j in range(64):\n                next_frame[i][j] = 0\n    \n    return next_frame"
+  },
+  "refinement_gain": 0.0,
+  "total_prompt_tokens": 35162,
+  "total_eval_tokens": 5290,
+  "total_latency_s": 205.892
+}

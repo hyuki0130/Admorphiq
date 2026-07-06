@@ -4,10 +4,10 @@ type: round-log
 round: R49
 axis: llm-selection
 keywords: [executable-world-model, llm-bench, qwen3-14b, qwen3-8b, qwen3-coder, exact-frame-accuracy, refinement, memory-crash, ollama, 24gb-ram]
-verdict: 14b exact=0.100 (sp80 0.30 via refinement), 8b exact=0.000; 30b UNMEASURED — 18GB model crashed the 24GB dev Mac
+verdict: local ceiling reached — 14b best-exact=0.100, 30b-coder Q3_K_M 0.033 (quant-damaged), 8b 0.000; decisive 30b go/no-go needs Kaggle 96GB original weights
 commit: a12e760
 date: 2026-07-06
-description: Measured executable-WM bench — 14b exact=0.100 (refinement +0.30 on sp80), 8b invalid; 30b blocked by 24GB-RAM crash (WindowServer death)
+description: Measured executable-WM bench — 14b best-exact=0.100, Q3-quant 30b-coder 0.033 (no crash, but quant-damaged); original-weight 30b measurement deferred to Kaggle 96GB
 ---
 
 # R49 — executable-WM measured bench (partial)
@@ -43,6 +43,30 @@ reports into a session — reference the file path instead.
 | qwen3:8b | sp80 | 0.00 | 0.000 | 0.00→0.00 | +0.00 | 12,369 | 58 |
 
 Means: **14b exact=0.100 / valid=1.00 / gain=+0.100**; **8b exact=0.000 / valid=0.33**.
+
+## Run 3 — R49c (21:15–21:39 KST): Q3_K_M 30b-coder + 14b re-measure, num_ctx fixed
+
+Run 2 had a hidden defect: Ollama default `num_ctx=4096` silently truncated the few-shot prompt
+(`rounds[0].prompt_eval_count == 4096` exactly). Added `--num-ctx` (default 16384) and re-measured.
+Also pulled `hf.co/unsloth/Qwen3-Coder-30B-A3B-Instruct-GGUF:Q3_K_M` (14GB — fits the ~16-18GB
+Metal budget; loaded 100% GPU, **no system crash**; kernel pressure oscillated normal↔warn only).
+A second harness defect found and fixed: a generation cut at the 2048-token cap leaves an
+unterminated code fence → `extract_code` fell back to raw text → spurious invalid. Fixed the
+fallback; all rounds post-hoc rescored from stored code (`rescore.py`, no LLM calls).
+
+Rescored (untruncated prompts, same held-out split; exact-frame, keep-last / keep-best):
+
+| model | ka59 | sb26 | sp80 | mean last | mean best |
+|---|---|---|---|---|---|
+| Qwen3-Coder-30B Q3_K_M | 0.00 / 0.10 | 0.00 / 0.00 | 0.00 / 0.00 | 0.000 | 0.033 |
+| qwen3:14b | 0.00 / 0.00 | 0.00 / 0.10 | 0.20 / 0.20 | 0.067 | **0.100** |
+| qwen3:8b | 0 | 0 | 0 | 0.000 | 0.000 |
+
+**3-bit quantized 30b-coder does NOT beat 14b Q4 locally** — Q3 coding-quality damage and/or the
+task itself; locally indistinguishable. The decisive go/no-go for the R48 pick therefore CANNOT be
+produced on this machine: it requires the original model (4bit/FP8) on Kaggle 96GB (or rented GPU).
+Refinement signal exists but is weak and unstable at local scale (sp80 0→0.20 climb; ka59 0.10 then
+regress — keep-BEST-round aggregation is the right headline, echoing the RL keep-best lesson).
 
 ## Read
 

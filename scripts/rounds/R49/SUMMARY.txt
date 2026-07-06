@@ -3,13 +3,17 @@ R49 — executable-world-model LLM selection
 
 model                 game    valid   cell   exR0   exRK   gain     tok     sec
 -------------------------------------------------------------------------------
-qwen3:14b             ka59     1.00  0.996   0.00   0.00  +0.00   13478   125.2
-qwen3:14b             sb26     1.00  0.999   0.00   0.00  +0.00    9188    60.8
-qwen3:14b             sp80     1.00  0.996   0.00   0.30  +0.30   16479   196.5
+hf.co/unsloth/Qwen3-Coder-30B-A3B-Instruct-GGUF:Q3_K_Mka59     0.00  0.000   0.00   0.00  +0.00   45599   218.5
+hf.co/unsloth/Qwen3-Coder-30B-A3B-Instruct-GGUF:Q3_K_Msb26     1.00  0.989   0.00   0.00  +0.00   42567   185.2
+hf.co/unsloth/Qwen3-Coder-30B-A3B-Instruct-GGUF:Q3_K_Msp80     1.00  0.991   0.00   0.00  +0.00   40452   205.9
+qwen3:14b             ka59     1.00  0.996   0.00   0.00  +0.00   42768   258.6
+qwen3:14b             sb26     0.00  0.000   0.10   0.00  -0.10   32920   220.5
+qwen3:14b             sp80     1.00  0.993   0.00   0.20  +0.20   47591   370.3
 qwen3:8b              ka59     1.00  0.998   0.00   0.00  +0.00   10559    36.4
 qwen3:8b              sb26     0.00  0.000   0.00   0.00  +0.00   10542    45.7
 qwen3:8b              sp80     0.00  0.000   0.00   0.00  +0.00   12369    58.1
 
 Per-model means (headline = exact-frame-accuracy @ final round):
-  qwen3:14b              exact=0.100 cell=0.997 valid=1.00 gain=+0.100 (n=3)
+  hf.co/unsloth/Qwen3-Coder-30B-A3B-Instruct-GGUF:Q3_K_M exact=0.000 cell=0.660 valid=0.67 gain=+0.000 (n=3)
+  qwen3:14b              exact=0.067 cell=0.663 valid=0.67 gain=+0.033 (n=3)
   qwen3:8b               exact=0.000 cell=0.333 valid=0.33 gain=+0.000 (n=3)

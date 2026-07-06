@@ -165,7 +165,7 @@ category, drill into specific pages.
 - [[rounds/r35_forward-transfer.md]] — Forward-model transfer test — dynamics transfer 52.4% (vs BC 0%) but absolute accuracy below the planning gate; secondary asset
 - [[rounds/r36_graph-frontier-bfs.md]] — Explicit graph-frontier BFS agent — 0.0055 transfer-honest (4x baseline), deployed; the deep-level axis
 - [[rounds/r48_llm-selection-ewm.md]] — LLM selection research for the executable-WM role — Qwen3-Coder-30B-A3B primary, GLM-5.2 hardware-excluded (744B > 96GB), measured-pick bench designed
-- [[rounds/r49_ewm-bench-partial.md]] — Measured executable-WM bench — 14b exact=0.100 (refinement +0.30 on sp80), 8b invalid; 30b blocked by 24GB-RAM crash (WindowServer death)
+- [[rounds/r49_ewm-bench-partial.md]] — Measured executable-WM bench — 14b best-exact=0.100, Q3-quant 30b-coder 0.033 (no crash, but quant-damaged); original-weight 30b measurement deferred to Kaggle 96GB
 - [[architecture.md]] — Three-layer agent design — Cognition (LLM) / Memory (Wiki) / Action (Strategies) — with explicit dev-time vs Kaggle-time boundaries and a self-improvement loop.
 - [[log.md]] — Append-only chronological record of every dev-time round and significant infra change. Grep `^## \[` for latest entries.
 - [[selector.md]] — Feature-driven dispatch rules the Hypothesis Engine LLM uses to pick
