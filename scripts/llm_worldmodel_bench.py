@@ -657,7 +657,7 @@ def write_summary(round_dir: Path) -> None:
     lines = ["R49 — executable-world-model LLM selection", "=" * 60, ""]
     header = (
         f"{'model':<22}{'game':<7}{'valid':>6}{'cell':>7}"
-        f"{'exR0':>7}{'exRK':>7}{'gain':>7}{'tok':>8}{'sec':>8}"
+        f"{'exR0':>7}{'exRK':>7}{'exBest':>8}{'gain':>7}{'tok':>8}{'sec':>8}"
     )
     lines.append(header)
     lines.append("-" * len(header))
@@ -666,11 +666,15 @@ def write_summary(round_dir: Path) -> None:
     for rec in records:
         per_model.setdefault(rec["model"], []).append(rec)
         r0 = rec["rounds"][0]["exact_frame_accuracy"] if rec["rounds"] else 0.0
+        best = max(
+            (r["exact_frame_accuracy"] for r in rec["rounds"]), default=0.0
+        )
+        rec["_best_exact"] = best
         fin = rec["final"]
         lines.append(
             f"{rec['model']:<22}{rec['game']:<7}"
             f"{fin['code_validity']:>6.2f}{fin['cell_accuracy']:>7.3f}"
-            f"{r0:>7.2f}{fin['exact_frame_accuracy']:>7.2f}"
+            f"{r0:>7.2f}{fin['exact_frame_accuracy']:>7.2f}{best:>8.2f}"
             f"{rec['refinement_gain']:>+7.2f}"
             f"{rec['total_prompt_tokens'] + rec['total_eval_tokens']:>8}"
             f"{rec['total_latency_s']:>8.1f}"
@@ -683,9 +687,11 @@ def write_summary(round_dir: Path) -> None:
         mean_cell = float(np.mean([r["final"]["cell_accuracy"] for r in recs]))
         mean_gain = float(np.mean([r["refinement_gain"] for r in recs]))
         mean_valid = float(np.mean([r["final"]["code_validity"] for r in recs]))
+        mean_best = float(np.mean([r["_best_exact"] for r in recs]))
         lines.append(
-            f"  {model:<22} exact={mean_exact:.3f} cell={mean_cell:.3f} "
-            f"valid={mean_valid:.2f} gain={mean_gain:+.3f} (n={len(recs)})"
+            f"  {model:<22} exact={mean_exact:.3f} best-exact={mean_best:.3f} "
+            f"cell={mean_cell:.3f} valid={mean_valid:.2f} gain={mean_gain:+.3f} "
+            f"(n={len(recs)})"
         )
     lines.append("")
     (round_dir / "SUMMARY.txt").write_text("\n".join(lines))
