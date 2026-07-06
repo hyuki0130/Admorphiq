@@ -787,3 +787,189 @@ def test_goal_rank_off_by_default_and_env_overridable(monkeypatch):
     assert GraphFrontierAgent().goal_rank is False
     monkeypatch.setenv("GF_GOAL_RANK", "1")
     assert GraphFrontierAgent().goal_rank is True
+
+
+# ── adaptive pool downshift (R42) ─────────────────────────────────────────────
+
+
+def _fill_windows(agent, *, selfloop_frac: float, mismatch_frac: float) -> None:
+    """Saturate the instability windows to the given fractions (window = maxlen).
+
+    The downshift guard requires a FULL window, so both deques are filled to
+    their maxlen with the requested True fraction.
+    """
+    n = agent._sl_window.maxlen
+    for i in range(n):
+        agent._sl_window.append(i < round(selfloop_frac * n))
+        agent._mm_window.append(i < round(mismatch_frac * n))
+
+
+def _set_recent_distinct(agent, distinct: int) -> None:
+    """Load the 30-wide recency window so exactly ``distinct`` hashes appear."""
+    agent._recent_states.clear()
+    for i in range(agent._recent_states.maxlen):
+        agent._recent_states.append(f"s{i % distinct}")
+
+
+def test_pool_downshift_fires_on_selfloop_sink():
+    """Purpose: prove that after the no-progress guard opens, a windowed self-loop
+    fraction above threshold drops the effective pool to 1 and rebuilds the graph.
+
+    Expected feedback: a fail means the pool-collapse sink (SB26/S5I5 — a real
+    move hashing back to the same state, ~95% self-loop, 0 clears under pooling)
+    would never get the finer hash that unblocks it; the sink stays dead.
+    """
+    agent = GraphFrontierAgent(hash_pool=2, downshift_after=250)
+    agent._edges = {"A": {1: "A"}}  # some stale graph to prove it is rebuilt
+    agent._untried = {"A": [2]}
+    agent._level_steps = 300
+    _fill_windows(agent, selfloop_frac=0.95, mismatch_frac=0.0)
+    _set_recent_distinct(agent, 2)  # low mobility — sink trigger must not need it
+
+    agent._maybe_downshift_pool()
+
+    assert agent._effective_pool == 1
+    assert agent._pool_downshifted is True
+    assert agent._untried == {}  # level graph was reset
+
+
+def test_pool_downshift_moving_collapse_requires_mobility():
+    """Purpose: prove the mismatch (moving-object) trigger fires ONLY when the
+    agent is still mobile (distinct-recent >= threshold), so a stuck sink whose
+    edges merely mismatch (TR87: mismatch 0.38 but distinct 9/30) is spared while
+    a mobile moving-object game (TU93: mismatch 0.19, distinct 26/30) downshifts.
+
+    Expected feedback: a fail means either TU93-class moving games never get the
+    finer hash that clears them, or TR87/DC22-class sinks get wrongly downshifted
+    (measured pool=1 BREAKS TR87/SK48), losing a clearing game.
+    """
+    # High mismatch but LOW mobility -> spared.
+    stuck = GraphFrontierAgent(hash_pool=2, downshift_after=250)
+    stuck._level_steps = 300
+    _fill_windows(stuck, selfloop_frac=0.0, mismatch_frac=0.30)
+    _set_recent_distinct(stuck, 9)
+    stuck._maybe_downshift_pool()
+    assert stuck._effective_pool == 2, "low-mobility sink must keep pooling"
+
+    # Same mismatch but MOBILE -> fires.
+    mobile = GraphFrontierAgent(hash_pool=2, downshift_after=250)
+    mobile._level_steps = 300
+    _fill_windows(mobile, selfloop_frac=0.0, mismatch_frac=0.30)
+    _set_recent_distinct(mobile, 28)
+    mobile._maybe_downshift_pool()
+    assert mobile._effective_pool == 1, "mobile moving-collapse must downshift"
+
+
+def test_pool_downshift_jitter_gate_spares_high_mask_level():
+    """Purpose: prove a level with a large HUD mask (real sub-cell jitter that
+    pooling absorbs) is NOT downshifted even when its self-loop window is maxed,
+    because pooling is load-bearing there (SK48: mask ~1100 cells, pool=1 breaks
+    its clear and does not even unstick it).
+
+    Expected feedback: a fail means the downshift strips pooling from a jittery
+    clearing game (SK48 1->0), violating the 15-game no-loss constraint; the mask
+    gate is what separates a true pool-collapse (tiny mask) from a jitter game.
+    """
+    agent = GraphFrontierAgent(hash_pool=2, downshift_after=250)
+    agent._level_steps = 300
+    _fill_windows(agent, selfloop_frac=0.99, mismatch_frac=0.0)
+    _set_recent_distinct(agent, 2)
+    # Large HUD mask -> jitter gate blocks the downshift.
+    mask = np.zeros((64, 64), dtype=bool)
+    mask[:20, :20] = True  # 400 masked cells > default 256 cap
+    agent._hud_mask = mask
+    agent._maybe_downshift_pool()
+    assert agent._effective_pool == 2, "high-mask jitter level must keep pooling"
+
+
+def test_pool_downshift_guard_blocks_before_min_actions():
+    """Purpose: prove no downshift happens before ``downshift_after`` in-level
+    actions, even with a maxed-out sink window.
+
+    Expected feedback: a fail means a level that would clear quickly under pooling
+    (M0R0-L1 @751, CD82-L1 @342, LP85 @809 — all high self-loop yet clearing via
+    pooling) could be downshifted mid-clear and break, violating the 15-game
+    no-loss constraint. The guard is the primary safety.
+    """
+    agent = GraphFrontierAgent(hash_pool=2, downshift_after=1500)
+    agent._level_steps = 900  # below the guard
+    _fill_windows(agent, selfloop_frac=0.99, mismatch_frac=0.0)
+    _set_recent_distinct(agent, 2)
+    agent._maybe_downshift_pool()
+    assert agent._effective_pool == 2
+    assert agent._pool_downshifted is False
+
+
+def test_pool_downshift_spares_healthy_deep_level():
+    """Purpose: prove a slow-but-healthy deep clear (CD82-L2: self-loop ~0.51,
+    mismatch ~0.02, still discovering) never downshifts, so its pooling — which
+    absorbs the sub-cell jitter it depends on — is preserved.
+
+    Expected feedback: a fail means the deep clears the metric rewards most
+    (CD82 L2 @26,965 actions, VC33 L3 @55,209) get their graph reset mid-search
+    and are lost — the exact regression this gate exists to prevent.
+    """
+    agent = GraphFrontierAgent(hash_pool=2, downshift_after=1500)
+    agent._level_steps = 20000  # long-running, but NOT collapsing
+    _fill_windows(agent, selfloop_frac=0.51, mismatch_frac=0.02)
+    _set_recent_distinct(agent, 12)
+    agent._maybe_downshift_pool()
+    assert agent._effective_pool == 2
+    assert agent._pool_downshifted is False
+
+
+def test_pool_downshift_fires_at_most_once_per_level():
+    """Purpose: prove a level downshifts once and then stays at pool=1 without
+    repeatedly resetting its (now finer-hashed) graph.
+
+    Expected feedback: a fail means every subsequent step re-resets the graph,
+    so exploration can never accumulate and the unblocked game still cannot
+    clear.
+    """
+    agent = GraphFrontierAgent(hash_pool=2, downshift_after=250)
+    agent._level_steps = 300
+    _fill_windows(agent, selfloop_frac=0.99, mismatch_frac=0.0)
+    _set_recent_distinct(agent, 2)
+    agent._maybe_downshift_pool()
+    assert agent._effective_pool == 1
+
+    # Re-arm the windows to the sink shape and re-run: the once-per-level guard
+    # (and the pool already being 1) must prevent a second reset.
+    agent._untried = {"B": [1]}
+    _fill_windows(agent, selfloop_frac=0.99, mismatch_frac=0.0)
+    agent._maybe_downshift_pool()
+    assert agent._untried == {"B": [1]}, "must not reset a second time"
+
+
+def test_pool_downshift_resets_to_pool_on_level_up():
+    """Purpose: prove a genuine level-up restores the configured pool (a fresh
+    level may carry the sub-cell jitter that pooling absorbs), independent of a
+    prior level's downshift.
+
+    Expected feedback: a fail means once any level downshifted, every later level
+    ran unpooled — re-introducing the state explosion pooling was added to fix on
+    the jitter games.
+    """
+    agent = GraphFrontierAgent(hash_pool=2)
+    agent._effective_pool = 1
+    agent._pool_downshifted = True
+    agent._reset_level_state()
+    assert agent._effective_pool == 2
+    assert agent._pool_downshifted is False
+
+
+def test_pool_downshift_off_by_env_knob(monkeypatch):
+    """Purpose: pin the feature ON by default (it ships) and prove GF_POOL_DOWNSHIFT=0
+    fully disables it, so the lever can be A/B measured against the pooled baseline.
+
+    Expected feedback: a fail means the adaptive downshift cannot be turned off for
+    a clean baseline comparison, or it silently defaults off and never ships.
+    """
+    assert GraphFrontierAgent().pool_downshift is True
+    monkeypatch.setenv("GF_POOL_DOWNSHIFT", "0")
+    off = GraphFrontierAgent(hash_pool=2, downshift_after=250)
+    off._level_steps = 300
+    _fill_windows(off, selfloop_frac=0.99, mismatch_frac=0.0)
+    _set_recent_distinct(off, 2)
+    off._maybe_downshift_pool()
+    assert off._effective_pool == 2

@@ -193,6 +193,59 @@ DEFAULT_GIVEUP = 8000
 # while preserving gross game structure. 1 disables pooling.
 DEFAULT_HASH_POOL = 2
 
+# Adaptive pool-downshift defaults (R42). See the module docstring section
+# "ADAPTIVE POOL DOWNSHIFT". The hash max-pool (DEFAULT_HASH_POOL) absorbs
+# sub-cell jitter so jitter-heavy games (M0R0/CD82/CN04) recur — but it also
+# COLLAPSES small real object-moves on other games, so a genuine transition
+# hashes back to the SAME state (a self-loop) or a stale edge is overwritten (a
+# mismatch). The graph then has no reachable frontier and the agent random-walks
+# in place forever (measured SB26/S5I5 bfs_fail ~95% of steps, 0 clears; TU93
+# mismatch 1686/8000, states never recur). Setting hash_pool=1 fixes those but
+# REGRESSES the jitter games (measured CD82/CN04/M0R0/VC33 all lose levels), so a
+# global switch is wrong. Instead: keep pooling by default, and DOWNSHIFT to
+# pool=1 only when a level has run a long time WITHOUT progress AND its hashing
+# is demonstrably collapsing real states (high windowed self-loop OR mismatch).
+# The "no level-up for N in-level actions" guard is the primary safety — every
+# level that clears within N actions is untouched (measured: M0R0-L1 clears at
+# 751, CD82-L1 342, LP85 809, all < N). The instability gate then spares the slow
+# but healthy deep clears whose hashing is NOT collapsing (CD82-L2 self-loop 51%
+# / mismatch 2%; VC33-L3 52% / 1% — both well under the thresholds).
+# Two orthogonal collapse signatures fire the downshift (both gated by the
+# no-progress guard above):
+#   * SELF-LOOP sink — a real move hashes back to the SAME state. Measured
+#     windowed self-loop fraction: SB26 0.96 / S5I5 0.94 / FT09 0.97 (targets) vs
+#     the slow but pool-DEPENDENT clearers SK48 0.85 / TR87 0.74 and the deep
+#     clears CD82-L2 0.51 / VC33 0.52 (must spare). The 0.90 cut captures the
+#     targets and spares SK48 (pool=1 measured to BREAK SK48/TR87, unlike FT09).
+#   * MOVING collapse — pooling conflates distinct MOVING-object positions so the
+#     same (state,action) resolves to different next-states (edge mismatch) while
+#     the agent is still MOBILE. Measured: TU93 mismatch 0.19 with recent_distinct
+#     26/30 (target: pool=1 clears L1+L2) vs TR87 mismatch 0.38 but recent_distinct
+#     9/30 (a SINK — pool=1 breaks it) and DC22 4/30. The mobility gate
+#     (recent_distinct high) is what separates the moving-object game whose
+#     pooling merely nondeterminises its edges from a stuck sink.
+DEFAULT_POOL_DOWNSHIFT = True
+DEFAULT_DOWNSHIFT_AFTER = 1500
+DEFAULT_DOWNSHIFT_SELFLOOP = 0.90
+DEFAULT_DOWNSHIFT_MISMATCH = 0.15
+# Min distinct-recent states (of the 30-wide recency window) for the MOVING
+# collapse trigger — a mobility gate that spares low-distinct sinks (TR87/DC22).
+DEFAULT_DOWNSHIFT_MOBILE = 20
+# Max HUD-masked cells for a downshift to be eligible. Pooling exists to absorb
+# sub-cell JITTER; a game with a large HUD mask already has real jitter that
+# pooling is load-bearing for, so its high self-loop is NOT a pool-collapse and a
+# downshift would strip a pooling it needs (measured: SK48 masks 550-1007 cells
+# and pool=1 BREAKS its clear; its recent-distinct stays ~3 even after a downshift
+# — pool=1 does not unstick it). The true pool-collapse targets carry a tiny mask
+# (S5I5 50 / SB26 0 / DC22 44 / TU93 85 / FT09 0), so a 256-cell (~6% of 4096) cap
+# admits them and spares the jittery clearers. CD82-L2 (mask 0) is admitted here
+# but spared by its low self-loop/mismatch instead — the gates are independent.
+DEFAULT_DOWNSHIFT_MAX_MASK = 256
+# Rolling window over which the self-loop / mismatch fractions are measured. Wide
+# enough to be stable, far narrower than DEFAULT_DOWNSHIFT_AFTER so it is full by
+# the time the guard opens.
+_INSTABILITY_WINDOW = 200
+
 # Region-mask defaults (R36c). See module docstring for the rationale.
 DEFAULT_REGION_MASK = True
 DEFAULT_REGION_LOW = 0.05
@@ -300,6 +353,10 @@ class GraphFrontierAgent:
         sticky_mask: bool | None = None,
         region_max_frac: float | None = None,
         hash_pool: int | None = None,
+        pool_downshift: bool | None = None,
+        downshift_after: int | None = None,
+        downshift_selfloop: float | None = None,
+        downshift_mismatch: float | None = None,
         tier_priority: bool | None = None,
         tier_gate: bool | None = None,
         frontier_dist: int | None = None,
@@ -329,6 +386,34 @@ class GraphFrontierAgent:
         )
         self.hash_pool = hash_pool if hash_pool is not None else _env_int(
             "GF_HASH_POOL", DEFAULT_HASH_POOL
+        )
+
+        # Adaptive pool downshift (R42). See DEFAULT_POOL_DOWNSHIFT.
+        self.pool_downshift = (
+            pool_downshift
+            if pool_downshift is not None
+            else _env_bool("GF_POOL_DOWNSHIFT", DEFAULT_POOL_DOWNSHIFT)
+        )
+        self.downshift_after = (
+            downshift_after
+            if downshift_after is not None
+            else _env_int("GF_DOWNSHIFT_AFTER", DEFAULT_DOWNSHIFT_AFTER)
+        )
+        self.downshift_selfloop = (
+            downshift_selfloop
+            if downshift_selfloop is not None
+            else _env_float("GF_DOWNSHIFT_SELFLOOP", DEFAULT_DOWNSHIFT_SELFLOOP)
+        )
+        self.downshift_mismatch = (
+            downshift_mismatch
+            if downshift_mismatch is not None
+            else _env_float("GF_DOWNSHIFT_MISMATCH", DEFAULT_DOWNSHIFT_MISMATCH)
+        )
+        self.downshift_mobile = _env_int(
+            "GF_DOWNSHIFT_MOBILE", DEFAULT_DOWNSHIFT_MOBILE
+        )
+        self.downshift_max_mask = _env_int(
+            "GF_DOWNSHIFT_MAX_MASK", DEFAULT_DOWNSHIFT_MAX_MASK
         )
 
         # Region-level HUD masking (R36c) — groups low-rate flickering cells (a
@@ -459,6 +544,17 @@ class GraphFrontierAgent:
         self._dbg_bfs_fail = 0
         self._dbg_random = 0
         self._dbg_untried = 0
+        # Self-loop vs real-move edge counters. A self-loop edge (recorded
+        # next_hash == source hash) means the action changed the LIVE env but the
+        # hashed state did not — the signature of the hash collapsing distinct
+        # real states (over-pooling). A high self-loop fraction discriminates a
+        # "pool-collapse sink" from a genuine small-cycle stall (which cycles
+        # among DISTINCT hashes, so its edges are real moves).
+        self._dbg_selfloop = 0
+        self._dbg_realedge = 0
+        # Rolling window of "hash-unstable" transition flags (self-loop OR
+        # edge-mismatch). A high windowed fraction is the pool-collapse signature.
+        self._dbg_unstable_window: deque[bool] = deque(maxlen=200)
         self._dbg_recent = deque(maxlen=30)
         # Per-tier count of local untried picks (index = tier; last slot = simple).
         self._dbg_tier_hits = [0] * (_N_TIERS + 1)
@@ -492,7 +588,11 @@ class GraphFrontierAgent:
             f"states={n_states} frontier={n_frontier} edges={n_edges} "
             f"bfs_fires={self._dbg_bfs} bfs_fail={self._dbg_bfs_fail} "
             f"random={self._dbg_random} untried={self._dbg_untried} "
-            f"mismatch={self._dbg_mismatch} masked={n_masked} "
+            f"mismatch={self._dbg_mismatch} "
+            f"selfloop={self._dbg_selfloop} realedge={self._dbg_realedge} "
+            f"unstable_win={sum(self._dbg_unstable_window)}/{len(self._dbg_unstable_window)} "
+            f"effpool={self._effective_pool} "
+            f"masked={n_masked} "
             f"tier_hits={tier_hits} "
             f"goal={goal_desc} goal_walks={self._dbg_goal_walks} "
             f"recent_distinct={distinct_recent}/30",
@@ -549,6 +649,18 @@ class GraphFrontierAgent:
         self._prev_frame: np.ndarray | None = None
 
         self._level_steps = 0
+
+        # Adaptive pool downshift (R42) — always-on (independent of GF_DEBUG).
+        # ``_effective_pool`` is the pool factor the hash actually uses this
+        # level; it starts at the configured ``hash_pool`` and drops to 1 on a
+        # confirmed collapse. ``_pool_downshifted`` caps it at one downshift per
+        # level. The two rolling windows carry the collapse signatures, and
+        # ``_recent_states`` feeds the mobility gate (distinct-recent count).
+        self._effective_pool = self.hash_pool
+        self._pool_downshifted = False
+        self._sl_window: deque[bool] = deque(maxlen=_INSTABILITY_WINDOW)
+        self._mm_window: deque[bool] = deque(maxlen=_INSTABILITY_WINDOW)
+        self._recent_states: deque[str] = deque(maxlen=30)
 
         # ── goal-directed ranking state (R41) ──────────────────────────────────
         # Compact frame (int8) cached at first sighting of each state, so the
@@ -610,8 +722,10 @@ class GraphFrontierAgent:
         # Record the transition produced by our previous action, and update the
         # HUD change statistics from the raw before/after frames.
         self._record_transition(frame)
+        self._maybe_downshift_pool()
 
         cur_hash = self._hash(frame)
+        self._recent_states.append(cur_hash)
         if self._debug:
             self._dbg_recent.append(cur_hash)
         self._visits[cur_hash] = self._visits.get(cur_hash, 0) + 1
@@ -663,8 +777,19 @@ class GraphFrontierAgent:
         nxt_hash = self._hash(frame)
         key = self._prev_action_key
         edges = self._edges.setdefault(self._prev_hash, {})
-        if self._debug and key in edges and edges[key] != nxt_hash:
-            self._dbg_mismatch += 1
+        # Collapse signatures (always-on: they drive the adaptive downshift).
+        mismatched = key in edges and edges[key] != nxt_hash
+        selflooped = nxt_hash == self._prev_hash
+        self._sl_window.append(bool(selflooped))
+        self._mm_window.append(bool(mismatched))
+        if self._debug:
+            if mismatched:
+                self._dbg_mismatch += 1
+            if selflooped:
+                self._dbg_selfloop += 1
+            else:
+                self._dbg_realedge += 1
+            self._dbg_unstable_window.append(bool(mismatched or selflooped))
         edges[key] = nxt_hash
         # Mark the action tried at the source state.
         untried = self._untried.get(self._prev_hash)
@@ -680,6 +805,64 @@ class GraphFrontierAgent:
             # Track the most recently ENTERED changed state — the frontier
             # promise scorer is drawn toward its neighbourhood (R38).
             self._last_change_hash = nxt_hash
+
+    # ── adaptive pool downshift (R42) ────────────────────────────────────────────
+
+    def _maybe_downshift_pool(self) -> None:
+        """Drop the hash pool to 1 when pooling is collapsing real states (R42).
+
+        Fires at most once per level, and only after the level has run
+        ``downshift_after`` in-level actions WITHOUT a level-up (the guard that
+        makes every level clearing within that budget untouchable). On top of the
+        guard, one of two collapse signatures must hold over the rolling window:
+
+        * **self-loop sink** — the windowed fraction of transitions that hashed
+          back to the SAME state is ``>= downshift_selfloop``; a real move is
+          invisible to the hash, so no frontier is reachable.
+        * **moving collapse** — the windowed edge-mismatch fraction is
+          ``>= downshift_mismatch`` WHILE the agent is still mobile
+          (``distinct-recent >= downshift_mobile``); pooling is merging distinct
+          moving-object positions into one nondeterministic node.
+
+        A third gate spares jitter-heavy levels regardless of self-loop: if the
+        current HUD mask covers more than ``downshift_max_mask`` cells, pooling is
+        load-bearing (real sub-cell jitter) and its high self-loop is not a
+        pool-collapse — measured SK48 masks ~1100 cells, its recent-distinct stays
+        ~3 even at pool=1 (a downshift does not unstick it, only strips a pooling
+        its slow clear needs).
+
+        On a fire it rebuilds the level graph with an unpooled hash (real states
+        become distinct again) and pins ``_effective_pool = 1`` for the rest of
+        the level. Jitter-heavy levels never reach the guard (they clear fast),
+        never cross the thresholds (their pooling is doing its job), or are held
+        back by the mask gate — this is why a global ``hash_pool=1`` regresses
+        them but the adaptive downshift does not.
+        """
+        if (
+            not self.pool_downshift
+            or self._pool_downshifted
+            or self._effective_pool <= 1
+            or self._level_steps < self.downshift_after
+            or len(self._sl_window) < self._sl_window.maxlen
+        ):
+            return
+        # Jitter gate: a large HUD mask means pooling is load-bearing (real
+        # jitter), so the high self-loop is not a pool-collapse — spare it.
+        mask = self._hud_mask_grid()
+        if mask is not None and int(mask.sum()) > self.downshift_max_mask:
+            return
+        sl_frac = sum(self._sl_window) / len(self._sl_window)
+        mm_frac = sum(self._mm_window) / len(self._mm_window)
+        distinct = len(set(self._recent_states))
+        selfloop_sink = sl_frac >= self.downshift_selfloop
+        moving_collapse = (
+            mm_frac >= self.downshift_mismatch and distinct >= self.downshift_mobile
+        )
+        if not (selfloop_sink or moving_collapse):
+            return
+        self._reset_level_state()
+        self._effective_pool = 1
+        self._pool_downshifted = True
 
     # ── goal-directed ranking (R41) ─────────────────────────────────────────────
 
@@ -898,7 +1081,7 @@ class GraphFrontierAgent:
             masked[mask] = 0
         else:
             masked = frame
-        pooled = _max_pool(masked, self.hash_pool)
+        pooled = _max_pool(masked, self._effective_pool)
         return hashlib.md5(np.ascontiguousarray(pooled).tobytes()).hexdigest()[:16]
 
     # ── graph maintenance ──────────────────────────────────────────────────────

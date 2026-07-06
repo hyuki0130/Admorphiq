@@ -1,0 +1,17 @@
+[generated 2026-07-06 12:23:11 KST] R42 verdict — adaptive pool-downshift fix
+--- 잔여 10게임 @8k: 0 clear:  ---
+  DC22: lvl=0 score=0.0000 act=[]
+  G50T: lvl=0 score=0.0000 act=[]
+  KA59: lvl=0 score=0.0000 act=[]
+  RE86: lvl=0 score=0.0000 act=[]
+  S5I5: lvl=0 score=0.0000 act=[]
+  SB26: lvl=0 score=0.0000 act=[]
+  SC25: lvl=0 score=0.0000 act=[]
+  SU15: lvl=0 score=0.0000 act=[]
+  TU93: lvl=0 score=0.0000 act=[]
+  WA30: lvl=0 score=0.0000 act=[]
+--- no-loss quick 11게임 @3k: 8/11 clear ---
+  ! BP35: LOST (was clearing)
+  ! FT09: LOST (was clearing)
+  ! LS20: LOST (was clearing)
+--- deep: CD82 lvl=2 (need 2), VC33 lvl=3 (need 3) ---
