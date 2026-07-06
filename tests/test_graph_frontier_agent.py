@@ -20,10 +20,34 @@ from admorphiq.graph_frontier_agent import (
     _SIMPLE_TIER,
     GraphFrontierAgent,
     _availability,
+    _dilate_grid,
     _max_pool,
     _segment_click_candidates,
     _segment_click_candidates_tiered,
 )
+
+
+def _drive_row_marker(agent, row, cols, extra=None):
+    """Feed transitions where a single marker cell walks ``row`` across ``cols``.
+
+    A fresh (64,64) frame is used each step with the marker painted at (row, c)
+    and an optional list of stable ``extra`` (r, c, colour) cells, exercising the
+    real ``_record_transition`` -> ``_band_observe`` path. The marker is colour 4.
+    """
+    base = np.zeros((64, 64), dtype=np.int64)
+    for (r, c, v) in (extra or []):
+        base[r, c] = v
+    prev = base.copy()
+    prev[row, cols[0]] = 4
+    for c in cols[1:]:
+        cur = base.copy()
+        cur[row, c] = 4
+        agent._prev_frame = prev
+        agent._prev_hash = "src"
+        agent._prev_action_key = 1
+        agent._record_transition(cur)
+        prev = cur
+    return base
 
 
 @dataclass
@@ -1021,3 +1045,167 @@ def test_availability_drops_action7_when_movement_present() -> None:
     assert _availability(_AvailObs([6])) == ([], True)
     # Pure movement [1-4]: unchanged, no click.
     assert _availability(_AvailObs([1, 2, 3, 4])) == ([1, 2, 3, 4], False)
+
+
+# ── R44 monotone-moving-band mask ─────────────────────────────────────────────
+
+
+def test_dilate_grid_expands_true_cells_by_one():
+    """Purpose: pin _dilate_grid — a single True cell dilates to its 8-neighbour
+    3x3 block at d=1, and d=0 is an identity copy.
+
+    Expected feedback: fail => the band mask fails to cover the marker's LEADING
+    edge (its next position lies one cell beyond the swept union), so the marker
+    peeks out of the mask and re-forks the state hash every step — defeating the
+    whole point of masking the band.
+    """
+    g = np.zeros((10, 10), dtype=bool)
+    g[5, 5] = True
+    identity = _dilate_grid(g, 0)
+    assert np.array_equal(identity, g)
+    assert identity is not g  # a copy, not the same object
+    d = _dilate_grid(g, 1)
+    assert d[4:7, 4:7].all()
+    assert int(d.sum()) == 9
+
+
+def test_moving_band_along_row_eventually_hashes_equal():
+    """Purpose: prove the CORE R44 contract — a small marker that DRIFTS one cell
+    per transition along a fixed row is detected as a monotone-moving band and
+    masked, so two frames differing ONLY in the marker's column hash to the SAME
+    state (real states recur again).
+
+    Expected feedback: fail => the 1-cell-per-action counter/cursor that defeats
+    both the per-cell and region masks (S5I5 row-63, DC22 row-63) still forks a
+    fresh state every action; the graph never recurs at pool=1 and the game is
+    unclearable (measured pre-fix: S5I5 states 21 -> 454 over 4000 actions).
+    """
+    # Isolate the band: per-cell (0.99) and region masks off, pool=1, so ONLY the
+    # band mask can equalise the two frames.
+    agent = GraphFrontierAgent(region_mask=False, hud_threshold=0.99, hash_pool=1)
+    base = _drive_row_marker(agent, row=30, cols=list(range(0, 30)), extra=[(5, 5, 9)])
+
+    assert agent._band_confirmed is True
+    assert agent._band_horizontal is True
+    assert agent._band_lo_line <= 30 <= agent._band_hi_line
+
+    a = base.copy()
+    a[30, 5] = 4  # marker at column 5
+    b = base.copy()
+    b[30, 12] = 4  # SAME game state, marker at a different swept column
+    assert agent._hash(a) == agent._hash(b), "marker-only difference must hash equal"
+
+    # A change OUTSIDE the band (a real game cell) must still fork the state.
+    c = base.copy()
+    c[30, 5] = 4
+    c[5, 5] = 1
+    assert agent._hash(a) != agent._hash(c), "a real-cell change must NOT be masked"
+
+
+def test_band_rejects_reversing_marker():
+    """Purpose: prove a marker that REVERSES direction (a controlled player, not a
+    monotone auto-counter) is NOT confirmed as a band even though it drifts a long
+    way — monotonicity, not mere motion, is the discriminator.
+
+    Expected feedback: fail => the detector masks a controlled entity, erasing the
+    position information the agent navigates by (would regress movement games —
+    this is why band_density stays at 0.5: lowering it falsely masked CD82/AR25).
+    """
+    agent = GraphFrontierAgent(region_mask=False, hud_threshold=0.99)
+    # Hand-populate the records with a single-cell marker whose column OSCILLATES
+    # 10<->20 across a wide extent (col_ext = 11 >= min_drift, thin in rows) but
+    # whose per-record centroid flips direction every step, so the dominant-sign
+    # fraction is ~0.5 (< band_monotone 0.7). Populating directly and confirming
+    # once isolates the MONOTONE gate from the incremental confirm path (a genuine
+    # monotone counter is correctly confirmed the moment 16 such records exist).
+    for t in range(20):
+        col = 10 if t % 2 == 0 else 20
+        agent._band_records.append(
+            (t, np.array([30], dtype=np.intp), np.array([col], dtype=np.intp))
+        )
+    agent._band_t = 20
+    agent._try_confirm_band()
+    assert agent._band_confirmed is False
+
+
+def test_band_rejects_stationary_flicker():
+    """Purpose: prove a single cell that flickers IN PLACE (changes value without
+    moving) is NOT a band — that is the per-cell HUD mask's job, and a band
+    requires real drift (>= band_min_drift extent along the track axis).
+
+    Expected feedback: fail => the band detector fires on stationary noise and
+    claims a track a coherent-drift signature should never assert, over-masking a
+    fixed cell.
+    """
+    agent = GraphFrontierAgent(region_mask=False, hud_threshold=0.99)
+    base = np.zeros((64, 64), dtype=np.int64)
+    prev = base.copy()
+    prev[30, 10] = 1
+    for i in range(20):
+        cur = base.copy()
+        cur[30, 10] = (i % 5) + 1  # same cell, changing colour, never moving
+        agent._prev_frame = prev
+        agent._prev_hash = "src"
+        agent._prev_action_key = 1
+        agent._record_transition(cur)
+        prev = cur
+    assert agent._band_confirmed is False
+
+
+def test_band_needs_min_samples_before_confirming():
+    """Purpose: prove the band is not confirmed before ``band_min_samples`` marker
+    records exist, so a couple of coincidental small moves cannot trigger masking.
+
+    Expected feedback: fail => the detector confirms on scant evidence and can
+    mask a transient early-game animation, corrupting the hash before the graph
+    has stabilised.
+    """
+    agent = GraphFrontierAgent(region_mask=False, hud_threshold=0.99, band_min_samples=16)
+    # Only 6 drift steps: well below the 16-sample floor.
+    _drive_row_marker(agent, row=30, cols=list(range(0, 7)))
+    assert agent._band_confirmed is False
+    assert len(agent._band_records) == 6
+
+
+def test_band_knobs_default_on_and_env_overridable(monkeypatch):
+    """Purpose: pin the R44 defaults (band mask ON, density floor 0.5) and prove
+    the GF_BAND_* env knobs override them, so the lever ships on and is A/B
+    ablatable for measurement.
+
+    Expected feedback: fail => the band mask silently defaults off (the
+    S5I5/DC22 state explosion returns) or a tuned threshold cannot be ablated to
+    reproduce the before/after the round measured.
+    """
+    default = GraphFrontierAgent()
+    assert default.band_mask is True
+    assert default.band_density == 0.5
+    assert default.band_thickness == 3
+
+    monkeypatch.setenv("GF_BAND_MASK", "0")
+    monkeypatch.setenv("GF_BAND_DENSITY", "0.6")
+    monkeypatch.setenv("GF_BAND_THICKNESS", "5")
+    overridden = GraphFrontierAgent()
+    assert overridden.band_mask is False
+    assert overridden.band_density == 0.6
+    assert overridden.band_thickness == 5
+
+
+def test_band_mask_unions_into_hud_mask_and_is_sticky():
+    """Purpose: prove a confirmed band is OR-ed into the mask returned by
+    _hud_mask_grid (so the hash uses it) and, once swept, its cells persist
+    (monotone) even as the marker moves on.
+
+    Expected feedback: fail => the band is detected but never reaches the hash
+    path (states still fork), or the swept track un-masks behind the marker so
+    old positions re-fork — either way the recurrence the band buys is lost.
+    """
+    agent = GraphFrontierAgent(region_mask=False, hud_threshold=0.99, hash_pool=1)
+    _drive_row_marker(agent, row=40, cols=list(range(0, 30)))
+    assert agent._band_confirmed is True
+    mask = agent._hud_mask_grid()
+    assert mask is not None
+    # The band's row (dilated) is present in the combined mask.
+    assert bool(mask[40, 10]) is True
+    assert bool(mask[40, 25]) is True
+    # A row far from the band is untouched.
+    assert bool(mask[10, 10]) is False

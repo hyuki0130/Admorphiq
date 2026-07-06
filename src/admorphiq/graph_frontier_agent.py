@@ -58,10 +58,44 @@ display is exactly such a region: individually low-rate cells, collectively
 high-rate. Enabled by default (``GF_REGION_MASK=1``); the per-cell mask still
 runs and its result is UNION-ed with the region mask.
 
+**MOVING-BAND MASK (R44)** — a third masking class for a marker that moves ONE
+cell per action along a fixed row/column (S5I5 row-63 counter, DC22 row-63,
+SB26 row-53 decrementer). Each individual track cell changes only when the marker
+passes (rate ~= 1/track_len ≪ ``GF_REGION_LOW``) so the per-cell mask misses it,
+yet the marker repaints EVERY step so no raw frame recurs and pool=1 hashing forks
+a fresh state per action (measured S5I5: after the pool downshift, states 21 → 454
+over 4000 actions, 0 clears). The detector watches the per-transition changed-cell
+sets for the signature "a small (≤ ``GF_BAND_MAX_CELLS``) changed set, dense over
+its span (≥ ``GF_BAND_DENSITY``), confined to a thin strip (≤ ``GF_BAND_THICKNESS``)
+whose centroid DRIFTS monotonically (≥ ``GF_BAND_MONOTONE``) a real distance
+(≥ ``GF_BAND_MIN_DRIFT``)", then masks the whole swept track (accumulated union,
+dilated by ``GF_BAND_DILATE``). Confirmed within ~16 marker steps (far before the
+pool-downshift guard), UNION-ed into the mask stack, and — being a masked counter,
+not sub-cell jitter — subtracted from the downshift jitter gate so pool=1 stays
+viable once the band recurs. Monotonicity is the discriminator against a controlled
+player (which reverses); ``GF_BAND_DENSITY`` stays at 0.5 because lowering it
+falsely masked CD82's paint region / AR25's player (measured regression). MEASURED
+(R44): dissolves the explosion — S5I5 states 330 → 64 @4000, DC22 explosion → 435
+recurring — with zero regression (quick-8 identical, TU93 L3, CD82 L2). It does NOT
+by itself clear these games: the residue is a semantic sink (S5I5 slider toggles
+between 2 states; DC22 pool-tension; SB26 large sort state-space) — the other two
+R43 deep levers (object-hash, goal-planning).
+
 Env knobs:
   * ``GF_MAX_CLICKS``   (default 14)   — cap on click candidates per frame.
   * ``GF_HUD_THRESHOLD`` (default 0.8) — per-cell change-rate above which a cell
     is masked out of the state hash (always active).
+  * ``GF_BAND_MASK``    (default 1)    — enable the monotone-moving-band mask.
+  * ``GF_BAND_WINDOW``  (default 48)   — recent small-change transitions retained.
+  * ``GF_BAND_MIN_SAMPLES`` (default 16) — marker records before a band confirms.
+  * ``GF_BAND_MAX_CELLS`` (default 12) — max changed cells for a "marker step".
+  * ``GF_BAND_THICKNESS`` (default 3)  — max band thickness (thin axis).
+  * ``GF_BAND_MIN_DRIFT`` (default 6)  — min extent along the drift axis.
+  * ``GF_BAND_MONOTONE`` (default 0.7) — min dominant-sign fraction of centroid
+    deltas (the discriminator vs a reversing controlled player).
+  * ``GF_BAND_DENSITY`` (default 0.5)  — min fraction of transitions that are
+    marker steps (0.5 spares paint/navigation content that drifts for a stretch).
+  * ``GF_BAND_DILATE`` (default 1)     — dilation of the swept-track mask.
   * ``GF_REGION_MASK``  (default 1)    — enable region-level HUD masking.
   * ``GF_REGION_LOW``   (default 0.05) — per-cell change-rate above which a cell
     joins the "noisy" candidate map for region grouping.
@@ -252,6 +286,53 @@ DEFAULT_REGION_LOW = 0.05
 DEFAULT_REGION_RATE = 0.7
 DEFAULT_REGION_DILATE = 1
 
+# Monotone-moving-band mask defaults (R44). See the "MOVING-BAND MASK" module
+# docstring section. Both the per-cell HUD mask (change-rate) and the region mask
+# MISS a small marker that moves ONE cell per action along a fixed row/column: a
+# 1-cell counter/cursor changes each individual cell only when it passes (rate ~=
+# 1/track_len << region_low), yet it repaints EVERY step so no raw frame ever
+# recurs and pool=1 hashing forks a fresh state per action (measured S5I5: after
+# the pool downshift, states 21 -> 454 over 4000 actions, 0 clears; SB26 655 ->
+# 1322). This detector watches the per-transition changed-cell sets for the
+# signature "a small set of cells that changes on (almost) every transition and
+# whose centroid DRIFTS monotonically along one axis", then masks the whole thin
+# band it sweeps (the accumulated union, dilated) so the marker becomes invisible
+# and real states recur — which lets pool=1 become viable for exactly this class.
+DEFAULT_BAND_MASK = True
+# Recent small-change transitions retained for band inference (rolling window).
+DEFAULT_BAND_WINDOW = 48
+# Minimum small-change records before a band can be confirmed. ~16 marker steps is
+# enough to see a coherent drift yet fires far before the downshift guard (1500).
+DEFAULT_BAND_MIN_SAMPLES = 16
+# A transition changing at most this many cells is a "marker step" candidate. A
+# 1-cell marker moving leaves ~2 changed cells (old off + new on); a small multi-
+# digit cursor a few more. Above this the step carried real game change and is
+# skipped for band inference (but still counts toward the transition total).
+DEFAULT_BAND_MAX_CELLS = 12
+# Max thickness (rows for a horizontal band, cols for a vertical one). A HUD
+# counter/cursor track is thin (1-3 cells); a real play field is not.
+DEFAULT_BAND_THICKNESS = 3
+# Minimum extent along the drift axis before a thin strip counts as a TRACK —
+# guards against masking a stationary 1-cell flicker (that is the per-cell mask's
+# job) and demands the marker actually moved.
+DEFAULT_BAND_MIN_DRIFT = 6
+# Minimum fraction of consecutive centroid deltas sharing the dominant sign
+# (monotone drift, wrap-tolerant). A controlled player reverses direction and
+# fails this; a counter/cursor advances one way (with occasional wrap) and passes.
+DEFAULT_BAND_MONOTONE = 0.7
+# Minimum fraction of transitions (over the record span) that are marker steps —
+# encodes "the marker moves on (almost) EVERY transition regardless of action".
+# Measured at 0.5: an every-step auto-counter (S5I5/DC22 row-63, density ~= 1.0)
+# is caught while paint/navigation content that DRIFTS monotonically for a stretch
+# is spared — lowering to 0.3 falsely masked CD82's paint region (L2 efficiency
+# 0.0012 -> 0.0003) and AR25's player (2 -> 0 levels), so 0.5 is the safe floor.
+# (SB26's row-53 decrementer moves on < 0.5 of steps and is therefore NOT caught;
+# its explosion is a large sort state-space, not chiefly the marker — see R44.)
+DEFAULT_BAND_DENSITY = 0.5
+# Cells to dilate the accumulated track by, covering the marker's leading edge
+# (its next position is one cell beyond the current union) and glyph edges.
+DEFAULT_BAND_DILATE = 1
+
 # Sticky-mask defaults (R39). The pre-R39 mask was recomputed every step from a
 # 64-step rolling window, so it OSCILLATED (measured AR25: masked 0 -> 158 -> 330
 # -> 0 across snapshots). An oscillating mask makes the state-hash NON-STATIONARY:
@@ -350,6 +431,15 @@ class GraphFrontierAgent:
         region_low: float | None = None,
         region_rate: float | None = None,
         region_dilate: int | None = None,
+        band_mask: bool | None = None,
+        band_window: int | None = None,
+        band_min_samples: int | None = None,
+        band_max_cells: int | None = None,
+        band_thickness: int | None = None,
+        band_min_drift: int | None = None,
+        band_monotone: float | None = None,
+        band_density: float | None = None,
+        band_dilate: int | None = None,
         sticky_mask: bool | None = None,
         region_max_frac: float | None = None,
         hash_pool: int | None = None,
@@ -437,6 +527,54 @@ class GraphFrontierAgent:
             region_dilate
             if region_dilate is not None
             else _env_int("GF_REGION_DILATE", DEFAULT_REGION_DILATE)
+        )
+
+        # Monotone-moving-band mask (R44) — detects a small marker drifting one
+        # cell per action along a thin row/column track and masks the whole band.
+        self.band_mask = (
+            band_mask
+            if band_mask is not None
+            else _env_bool("GF_BAND_MASK", DEFAULT_BAND_MASK)
+        )
+        self.band_window = (
+            band_window
+            if band_window is not None
+            else _env_int("GF_BAND_WINDOW", DEFAULT_BAND_WINDOW)
+        )
+        self.band_min_samples = (
+            band_min_samples
+            if band_min_samples is not None
+            else _env_int("GF_BAND_MIN_SAMPLES", DEFAULT_BAND_MIN_SAMPLES)
+        )
+        self.band_max_cells = (
+            band_max_cells
+            if band_max_cells is not None
+            else _env_int("GF_BAND_MAX_CELLS", DEFAULT_BAND_MAX_CELLS)
+        )
+        self.band_thickness = (
+            band_thickness
+            if band_thickness is not None
+            else _env_int("GF_BAND_THICKNESS", DEFAULT_BAND_THICKNESS)
+        )
+        self.band_min_drift = (
+            band_min_drift
+            if band_min_drift is not None
+            else _env_int("GF_BAND_MIN_DRIFT", DEFAULT_BAND_MIN_DRIFT)
+        )
+        self.band_monotone = (
+            band_monotone
+            if band_monotone is not None
+            else _env_float("GF_BAND_MONOTONE", DEFAULT_BAND_MONOTONE)
+        )
+        self.band_density = (
+            band_density
+            if band_density is not None
+            else _env_float("GF_BAND_DENSITY", DEFAULT_BAND_DENSITY)
+        )
+        self.band_dilate = (
+            band_dilate
+            if band_dilate is not None
+            else _env_int("GF_BAND_DILATE", DEFAULT_BAND_DILATE)
         )
 
         # Sticky (monotonic) HUD mask + play-field area cap (R39). See the
@@ -583,6 +721,14 @@ class GraphFrontierAgent:
             if self._goal is not None
             else "none"
         )
+        if self._band_confirmed and self._band_mask is not None:
+            axis = "H" if self._band_horizontal else "V"
+            band_desc = (
+                f"{axis}[{self._band_lo_line}-{self._band_hi_line}]"
+                f":{int(self._band_mask.sum())}"
+            )
+        else:
+            band_desc = f"none({len(self._band_records)}rec)"
         print(
             f"[GF] call={self._dbg_calls} lvl={self._last_levels} "
             f"states={n_states} frontier={n_frontier} edges={n_edges} "
@@ -592,7 +738,7 @@ class GraphFrontierAgent:
             f"selfloop={self._dbg_selfloop} realedge={self._dbg_realedge} "
             f"unstable_win={sum(self._dbg_unstable_window)}/{len(self._dbg_unstable_window)} "
             f"effpool={self._effective_pool} "
-            f"masked={n_masked} "
+            f"masked={n_masked} band={band_desc} "
             f"tier_hits={tier_hits} "
             f"goal={goal_desc} goal_walks={self._dbg_goal_walks} "
             f"recent_distinct={distinct_recent}/30",
@@ -642,6 +788,22 @@ class GraphFrontierAgent:
         # seen this level. NOT invalidated between steps (unlike ``_hud_mask``),
         # so the hash function stabilises instead of oscillating. Reset per level.
         self._sticky_mask: np.ndarray | None = None
+
+        # ── monotone-moving-band detection state (R44) ──────────────────────────
+        # Running transition counter (small AND large steps) for the density gate.
+        self._band_t = 0
+        # Recent small-change transitions: (t, row_idx array, col_idx array).
+        self._band_records: deque[tuple[int, np.ndarray, np.ndarray]] = deque(
+            maxlen=self.band_window
+        )
+        # Set once a coherent drifting band is confirmed; then the accumulated
+        # track (dilated) is masked and grows monotonically as the marker sweeps.
+        self._band_confirmed = False
+        self._band_horizontal = True  # True = thin in rows (drifts along cols)
+        self._band_lo_line = 0  # inclusive thin-axis lower bound of the band
+        self._band_hi_line = 0  # inclusive thin-axis upper bound of the band
+        self._band_accum: np.ndarray | None = None  # (64,64) bool swept-cell union
+        self._band_mask: np.ndarray | None = None  # (64,64) bool dilated band mask
 
         # Bookkeeping for edge recording across steps.
         self._prev_hash: str | None = None
@@ -770,6 +932,9 @@ class GraphFrontierAgent:
             changed = self._prev_frame != frame
             self._hud_window.append(changed)
             self._hud_mask = None  # invalidate cache; recompute lazily
+            # Feed the moving-band detector BEFORE the edge hash below, so a
+            # newly-masked band takes effect on this very transition's next-hash.
+            self._band_observe(changed)
             if self.goal_rank:
                 self._record_probe_change(frame, changed)
 
@@ -805,6 +970,125 @@ class GraphFrontierAgent:
             # Track the most recently ENTERED changed state — the frontier
             # promise scorer is drawn toward its neighbourhood (R38).
             self._last_change_hash = nxt_hash
+
+    # ── monotone-moving-band detection (R44) ─────────────────────────────────────
+
+    def _band_observe(self, changed: np.ndarray) -> None:
+        """Fold one transition's changed-cell set into the moving-band detector.
+
+        A "marker step" is a transition changing at most ``band_max_cells`` cells
+        (a 1-cell counter/cursor move leaves ~2 changed cells). Large-change
+        (productive) steps only advance the transition counter used by the density
+        gate. Before confirmation, marker steps accumulate as records and
+        :meth:`_try_confirm_band` looks for the drift signature. After
+        confirmation, in-band marker cells extend the swept-track union and the
+        dilated band mask grows monotonically so the marker stays invisible as it
+        reaches new positions.
+        """
+        if not self.band_mask:
+            return
+        self._band_t += 1
+        n = int(changed.sum())
+        if not (0 < n <= self.band_max_cells):
+            return
+        ys, xs = np.nonzero(changed)
+        ys = ys.astype(np.intp)
+        xs = xs.astype(np.intp)
+        if self._band_confirmed:
+            self._grow_band(ys, xs)
+            return
+        self._band_records.append((self._band_t, ys, xs))
+        self._try_confirm_band()
+
+    def _grow_band(self, ys: np.ndarray, xs: np.ndarray) -> None:
+        """Add in-band marker cells to the swept-track union and rebuild the mask.
+
+        Only cells inside the confirmed thin band (``[lo_line, hi_line]`` on the
+        band's thin axis) are added, so an unrelated small game change on another
+        row never balloons the band. The mask is the union dilated by
+        ``band_dilate`` to cover the marker's leading edge.
+        """
+        assert self._band_accum is not None
+        if self._band_horizontal:
+            keep = (ys >= self._band_lo_line) & (ys <= self._band_hi_line)
+        else:
+            keep = (xs >= self._band_lo_line) & (xs <= self._band_hi_line)
+        if not keep.any():
+            return
+        before = int(self._band_accum.sum())
+        self._band_accum[ys[keep], xs[keep]] = True
+        if int(self._band_accum.sum()) != before:
+            self._band_mask = _dilate_grid(self._band_accum, self.band_dilate)
+
+    def _try_confirm_band(self) -> None:
+        """Confirm a monotone-moving band from the accumulated marker records.
+
+        The signature (all three required): the marker cells lie in a THIN strip
+        along one axis (``<= band_thickness``) that EXTENDS along the other axis
+        (``>= band_min_drift`` — the marker actually moved); the marker steps are
+        DENSE over their transition span (``>= band_density`` — occur on almost
+        every transition); and the per-record centroid along the drift axis is
+        MONOTONE (``>= band_monotone`` of consecutive deltas share the dominant
+        sign, wrap-tolerant). On confirmation the swept union of in-band cells is
+        seeded and the dilated band mask is built.
+        """
+        recs = self._band_records
+        if len(recs) < self.band_min_samples:
+            return
+        all_r = np.concatenate([ys for _, ys, _ in recs])
+        all_c = np.concatenate([xs for _, _, xs in recs])
+        rmin, rmax = int(all_r.min()), int(all_r.max())
+        cmin, cmax = int(all_c.min()), int(all_c.max())
+        row_ext = rmax - rmin + 1
+        col_ext = cmax - cmin + 1
+        horizontal = row_ext <= self.band_thickness and col_ext >= self.band_min_drift
+        vertical = col_ext <= self.band_thickness and row_ext >= self.band_min_drift
+        # Exactly one orientation must qualify: both => too square (a blob), and
+        # neither => no thin drifting track yet.
+        if horizontal == vertical:
+            return
+
+        if horizontal:
+            centroids = [(t, float(xs.mean())) for t, _ys, xs in recs]
+            lo_line, hi_line = rmin, rmax
+        else:
+            centroids = [(t, float(ys.mean())) for t, ys, _xs in recs]
+            lo_line, hi_line = cmin, cmax
+        centroids.sort(key=lambda tc: tc[0])
+        ts = [t for t, _ in centroids]
+        cs = [c for _, c in centroids]
+
+        # Density: marker steps must cover most transitions over their span.
+        span = ts[-1] - ts[0]
+        if span <= 0 or len(recs) / (span + 1) < self.band_density:
+            return
+
+        # Monotonicity: dominant-sign fraction of consecutive centroid deltas.
+        pos = neg = 0
+        for i in range(1, len(cs)):
+            d = cs[i] - cs[i - 1]
+            if d > 0.4:
+                pos += 1
+            elif d < -0.4:
+                neg += 1
+        moves = pos + neg
+        if moves == 0 or max(pos, neg) / moves < self.band_monotone:
+            return
+
+        # Confirmed — seed the swept union from every in-band record cell.
+        self._band_confirmed = True
+        self._band_horizontal = horizontal
+        self._band_lo_line = lo_line
+        self._band_hi_line = hi_line
+        accum = np.zeros((64, 64), dtype=bool)
+        for _t, ys, xs in recs:
+            if horizontal:
+                keep = (ys >= lo_line) & (ys <= hi_line)
+            else:
+                keep = (xs >= lo_line) & (xs <= hi_line)
+            accum[ys[keep], xs[keep]] = True
+        self._band_accum = accum
+        self._band_mask = _dilate_grid(accum, self.band_dilate)
 
     # ── adaptive pool downshift (R42) ────────────────────────────────────────────
 
@@ -847,10 +1131,15 @@ class GraphFrontierAgent:
         ):
             return
         # Jitter gate: a large HUD mask means pooling is load-bearing (real
-        # jitter), so the high self-loop is not a pool-collapse — spare it.
+        # jitter), so the high self-loop is not a pool-collapse — spare it. The
+        # moving-band mask (R44) is a masked COUNTER, not sub-cell jitter, so it is
+        # subtracted before the gate: masking a drifting counter must not block the
+        # very pool=1 downshift that makes its now-recurring states usable.
         mask = self._hud_mask_grid()
-        if mask is not None and int(mask.sum()) > self.downshift_max_mask:
-            return
+        if mask is not None:
+            jitter = mask & ~self._band_mask if self._band_mask is not None else mask
+            if int(jitter.sum()) > self.downshift_max_mask:
+                return
         sl_frac = sum(self._sl_window) / len(self._sl_window)
         mm_frac = sum(self._mm_window) / len(self._mm_window)
         distinct = len(set(self._recent_states))
@@ -967,13 +1256,22 @@ class GraphFrontierAgent:
         if self._hud_mask is not None:
             return self._hud_mask
         n = len(self._hud_window)
+        # The moving-band mask (R44) is trusted on its OWN sample budget
+        # (band_min_samples marker steps), independent of the per-cell change-rate
+        # window, so it can apply even before the per-cell mask is trusted.
+        band = self._band_mask
         if n < _HUD_MIN_SAMPLES:
-            return None
-        stacked = np.stack(self._hud_window, axis=0)  # (n, 64, 64) bool
-        rate = stacked.mean(axis=0)  # per-cell change fraction
-        mask = rate > self.hud_threshold
-        if self.region_mask:
-            mask = mask | self._region_mask_from_rate(rate, stacked)
+            if band is None:
+                return None
+            mask = band.copy()
+        else:
+            stacked = np.stack(self._hud_window, axis=0)  # (n, 64, 64) bool
+            rate = stacked.mean(axis=0)  # per-cell change fraction
+            mask = rate > self.hud_threshold
+            if self.region_mask:
+                mask = mask | self._region_mask_from_rate(rate, stacked)
+            if band is not None:
+                mask = mask | band
         if self.sticky_mask:
             # Monotonic union: once a cell is HUD it stays HUD, so the hash stops
             # oscillating and real states recur (R39). ``_sticky_mask`` survives
@@ -1518,6 +1816,31 @@ def _max_pool(frame: np.ndarray, k: int) -> np.ndarray:
         return frame
     trimmed = frame[: ph * k, : pw * k]
     return trimmed.reshape(ph, k, pw, k).max(axis=(1, 3))
+
+
+def _dilate_grid(grid: np.ndarray, d: int) -> np.ndarray:
+    """Return ``grid`` binary-dilated by ``d`` cells (8-connectivity per step).
+
+    A pure function so the moving-band mask (R44) and tests can call it directly.
+    Returns a copy at ``d <= 0``. Dilation covers the marker's leading edge (its
+    next position lies one cell beyond the current swept union) and glyph edges.
+    """
+    if d <= 0:
+        return grid.copy()
+    out = grid.copy()
+    for _ in range(d):
+        cur = out
+        nxt = cur.copy()
+        nxt[1:, :] |= cur[:-1, :]
+        nxt[:-1, :] |= cur[1:, :]
+        nxt[:, 1:] |= cur[:, :-1]
+        nxt[:, :-1] |= cur[:, 1:]
+        nxt[1:, 1:] |= cur[:-1, :-1]
+        nxt[1:, :-1] |= cur[:-1, 1:]
+        nxt[:-1, 1:] |= cur[1:, :-1]
+        nxt[:-1, :-1] |= cur[1:, 1:]
+        out = nxt
+    return out
 
 
 def _segment_click_candidates(frame: np.ndarray, max_clicks: int) -> list[tuple[int, int]]:
