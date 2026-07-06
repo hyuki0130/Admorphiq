@@ -1,0 +1,6 @@
+[generated 2026-07-06 16:35:18 KST] R47 independent verification
+  ka59_off: lvl=1 act=[18785]
+  ka59_on: lvl=0 act=[]
+  sc25_on_t1: lvl=1 act=[28696]
+  sc25_on_t2: lvl=1 act=[28696]
+  tu93_def: lvl=3 act=[2396, 1584, 5280]

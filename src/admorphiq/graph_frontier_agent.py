@@ -505,6 +505,35 @@ DEFAULT_GOAL_ENGAGE_FRONTIER = 25
 # Bounds the flood-fill cost of scoring the candidate-goal family per level.
 DEFAULT_GOAL_OBSERVE_STRIDE = 8
 
+# ── Measure-guided expansion (R47) defaults ──────────────────────────────────
+#
+# R46 ranked WHICH already-discovered frontier STATE to walk to (goal-proximity
+# of seen states) — that only reorders visits and measured ZERO new clears. R47
+# instead guides WHICH UNTRIED ACTION to EXPAND: it credits ACTION CLASSES
+# (buckets) by the average delta of the inferred goal measure they produce, then
+# runs best-first EXPANSION toward high-measure reachable states whose untried
+# actions belong to a PRODUCTIVE bucket. This is A*-flavoured expansion toward
+# measure-improving territory — what sokoban / sort / merge need (each productive
+# push / placement raises the on-target / order count, a climbable gradient).
+#
+# Default OFF (byte-identical zero-loss): with the flag off, ``_goal_active`` is
+# False so every goal / measure code path is inert exactly as before R47. The
+# gate (:meth:`_r47_engaged`) additionally protects the fast-clearing set — it
+# engages only once a level has stalled (``goal_engage_after`` actions, still-large
+# frontier), so games that clear quickly never enter measure-guided mode.
+DEFAULT_MEASURE_EXPAND = False
+# Weight of a bucket's mean measure-delta in the productive-expansion rank,
+# relative to the frontier state's own goal measure (measure dominates; credit
+# breaks ties toward action classes that historically moved the measure up).
+DEFAULT_MEASURE_CREDIT_W = 1.0
+# Penalty subtracted from a bucket's credit per GAME_OVER attributed to it — a
+# bucket whose action immediately preceded death is regressive and deprioritised.
+DEFAULT_MEASURE_DEATH_W = 4.0
+# Minimum measure-delta samples before a bucket's mean credit is trusted; below
+# it the bucket is neutral (credit 0), so it is neither preferred nor a "productive"
+# expansion target until enough evidence accrues (discovery precedes exploitation).
+DEFAULT_MEASURE_MIN_SAMPLES = 3
+
 # Sentinel tier for simple actions (1-5): strictly better than any click tier
 # (>= 0) so simple actions are tried before clicks in a fresh state (R38 §3).
 _SIMPLE_TIER = -1
@@ -587,6 +616,10 @@ class GraphFrontierAgent:
         obj_explode_mobile: int | None = None,
         obj_sink_selfloop: float | None = None,
         obj_sink_distinct: int | None = None,
+        measure_expand: bool | None = None,
+        measure_credit_w: float | None = None,
+        measure_death_w: float | None = None,
+        measure_min_samples: int | None = None,
     ) -> None:
         from .adapter import AdmorphiqAdapter  # heavy import, kept lazy
 
@@ -824,6 +857,37 @@ class GraphFrontierAgent:
             if obj_sink_distinct is not None
             else _env_int("GF_OBJ_SINK_DISTINCT", DEFAULT_OBJ_SINK_DISTINCT)
         )
+
+        # Measure-guided expansion (R47) — credit action classes by the goal
+        # measure they move, then expand toward high-measure states via productive
+        # buckets. Default OFF (see DEFAULT_MEASURE_EXPAND). Reuses the R46 stall
+        # gate (goal_engage_after / goal_engage_frontier) and goal inference.
+        self.measure_expand = (
+            measure_expand
+            if measure_expand is not None
+            else _env_bool("GF_MEASURE_EXPAND", DEFAULT_MEASURE_EXPAND)
+        )
+        self.measure_credit_w = (
+            measure_credit_w
+            if measure_credit_w is not None
+            else _env_float("GF_MEASURE_CREDIT_W", DEFAULT_MEASURE_CREDIT_W)
+        )
+        self.measure_death_w = (
+            measure_death_w
+            if measure_death_w is not None
+            else _env_float("GF_MEASURE_DEATH_W", DEFAULT_MEASURE_DEATH_W)
+        )
+        self.measure_min_samples = (
+            measure_min_samples
+            if measure_min_samples is not None
+            else _env_int("GF_MEASURE_MIN_SAMPLES", DEFAULT_MEASURE_MIN_SAMPLES)
+        )
+        # Goal inference + per-state frame caching + measure tracking are shared by
+        # BOTH the R46 goal ranker and the R47 measure-guided expander. This single
+        # switch gates all of it so that with both features OFF (the default) every
+        # goal code path stays inert — byte-identical to pre-R46/R47 behaviour.
+        self._goal_active = self.goal_rank or self.measure_expand
+
         # Carried goal TYPE across level boundaries (R46). When a level clears, the
         # measure-tracker's best-jump goal type is snapshotted here so the NEXT
         # level re-instantiates the same goal shape on its own colours (deep levels
@@ -909,6 +973,16 @@ class GraphFrontierAgent:
             )
         else:
             band_desc = f"none({len(self._band_records)}rec)"
+        # R47 measure trace: current goal measure + the most-productive bucket.
+        measure_s = "-"
+        bucket_best_s = "-"
+        if self.measure_expand and self._goal is not None and self._recent_states:
+            mval = self._goal_score(self._recent_states[-1])
+            if mval != float("-inf"):
+                measure_s = f"{mval:.1f}"
+            if self._bucket_delta_n:
+                bb = max(self._bucket_delta_n, key=lambda b: self._bucket_credit(b))
+                bucket_best_s = f"{bb}:{self._bucket_credit(bb):.2f}"
         print(
             f"[GF] call={self._dbg_calls} lvl={self._last_levels} "
             f"states={n_states} frontier={n_frontier} edges={n_edges} "
@@ -922,6 +996,8 @@ class GraphFrontierAgent:
             f"masked={n_masked} band={band_desc} "
             f"tier_hits={tier_hits} "
             f"goal={goal_desc} goal_walks={self._dbg_goal_walks} "
+            f"measure={measure_s} bucket_best={bucket_best_s} "
+            f"measure_walks={self._dbg_measure_walks} "
             f"recent_distinct={distinct_recent}/30",
             flush=True,
         )
@@ -1043,6 +1119,21 @@ class GraphFrontierAgent:
         self._graph_size_ckpt = 0
         self._dbg_goal_walks = 0
 
+        # ── measure-guided expansion state (R47) ────────────────────────────────
+        # action_key -> its ACTION-CLASS bucket. A bucket is ("s", id) for a
+        # simple action or ("c", colour, size_bucket) for a click, so actions of
+        # the same visual class share credit (the goal measure they tend to move).
+        self._action_bucket: dict[Any, Any] = {}
+        # bucket -> running sum / count of the inferred goal-measure DELTA observed
+        # when an action of that bucket was taken (its mean is the bucket credit).
+        self._bucket_delta_sum: dict[Any, float] = {}
+        self._bucket_delta_n: dict[Any, int] = {}
+        # bucket -> count of GAME_OVERs whose immediately-preceding action was of
+        # that bucket (regressive evidence, subtracted from credit).
+        self._bucket_deaths: dict[Any, int] = {}
+        # Debug: measure-guided expansion picks taken this level.
+        self._dbg_measure_walks = 0
+
     # ── harness contract ─────────────────────────────────────────────────────
 
     def is_done(self, frames: list[Any], latest_frame: Any) -> bool:
@@ -1062,7 +1153,7 @@ class GraphFrontierAgent:
         # re-instantiates the same goal shape on its own colours (R46).
         levels = _levels_completed(obs)
         if levels > self._last_levels:
-            if self.goal_rank:
+            if self._goal_active:
                 jump = self._measure_tracker.best_jump()
                 if jump is not None:
                     self._carried_goal_type = jump.goal_type
@@ -1074,6 +1165,16 @@ class GraphFrontierAgent:
             # Env is being (re)started. Keep the graph, but drop the in-flight
             # edge — the transition FROM the pre-reset state to the revived
             # frame is not a game transition and must not pollute the graph.
+            # GAME_OVER learning (R47): the action taken immediately BEFORE death
+            # is regressive; credit its bucket with a death so measure-guided
+            # expansion deprioritises that action class going forward.
+            if (
+                self.measure_expand
+                and state == "GAME_OVER"
+                and self._prev_action_key is not None
+            ):
+                b = self._bucket_of(self._prev_action_key)
+                self._bucket_deaths[b] = self._bucket_deaths.get(b, 0) + 1
             self._prev_hash = None
             self._prev_action_key = None
             self._prev_frame = None
@@ -1098,7 +1199,7 @@ class GraphFrontierAgent:
         simple_ids, action6_ok = _availability(obs)
         self._ensure_state(cur_hash, frame, simple_ids, action6_ok)
 
-        if self.goal_rank:
+        if self._goal_active:
             # Graph grew => a new state was discovered => the goal ranker is
             # making progress; reset the stall counter (R41). Then (re)infer the
             # goal if enough evidence has accumulated.
@@ -1139,7 +1240,7 @@ class GraphFrontierAgent:
             # Feed the moving-band detector BEFORE the edge hash below, so a
             # newly-masked band takes effect on this very transition's next-hash.
             self._band_observe(changed)
-            if self.goal_rank and bool(changed.any()):
+            if self._goal_active and bool(changed.any()):
                 # Productive transition: fold this frame's measure vector into the
                 # trend tracker at the observe stride (flood-fill cost bound).
                 self._productive_since_observe += 1
@@ -1186,6 +1287,14 @@ class GraphFrontierAgent:
             # Track the most recently ENTERED changed state — the frontier
             # promise scorer is drawn toward its neighbourhood (R38).
             self._last_change_hash = nxt_hash
+
+        # Measure-guided expansion credit (R47): attribute the inferred goal-
+        # measure delta of THIS transition to the action-class bucket that
+        # produced it, so best-first expansion can prefer buckets that
+        # historically raised the measure (a self-loop contributes a 0 delta,
+        # informative evidence that this action class is inert at that state).
+        if self.measure_expand and self._goal is not None:
+            self._credit_bucket_delta(self._prev_hash, nxt_hash, frame, key)
 
     # ── monotone-moving-band detection (R44) ─────────────────────────────────────
 
@@ -1453,6 +1562,148 @@ class GraphFrontierAgent:
         n_frontier = sum(1 for v in self._untried.values() if v)
         return n_frontier >= self.goal_engage_frontier
 
+    # ── measure-guided expansion (R47) ─────────────────────────────────────────
+
+    def _r47_engaged(self) -> bool:
+        """Stall signature that gates measure-guided expansion (R47).
+
+        Identical gate shape to :meth:`_goal_engaged` (a level has consumed
+        ``goal_engage_after`` actions without clearing while the reachable
+        frontier is still large) PLUS a confidently-inferred goal measure. Games
+        that clear quickly never reach the gate, so they keep the exact pre-R47
+        nearest-BFS trajectory — the gating is what protected the clearing set in
+        R46 and is reused verbatim here.
+        """
+        return self._goal is not None and self._goal_engaged()
+
+    def _bucket_of(self, action_key: Any) -> Any:
+        """Return the action-CLASS bucket of ``action_key``.
+
+        ``("s", id)`` for a simple action, ``("c", colour, size_bucket)`` for a
+        registered click. A click not seen through :meth:`_ensure_state` (e.g. a
+        raw-pixel random-escape) has no visual class on record and maps to the
+        catch-all ``("c", -1, -1)`` so credit/death bookkeeping stays total.
+        """
+        b = self._action_bucket.get(action_key)
+        if b is not None:
+            return b
+        if isinstance(action_key, tuple) and action_key and action_key[0] == "click":
+            return ("c", -1, -1)
+        return ("s", int(action_key))
+
+    def _bucket_credit(self, bucket: Any) -> float:
+        """Credit of an action-class bucket (higher = more measure-productive).
+
+        ``mean(measure_delta) - death_w * deaths``. A bucket with fewer than
+        ``measure_min_samples`` delta observations is untrusted and contributes a
+        zero mean (so it is neutral, never "productive"), but a death still
+        deprioritises it — a class that killed the agent is avoided even before
+        its measure trend is trusted.
+        """
+        n = self._bucket_delta_n.get(bucket, 0)
+        mean = self._bucket_delta_sum.get(bucket, 0.0) / n if n >= self.measure_min_samples else 0.0
+        return mean - self.measure_death_w * self._bucket_deaths.get(bucket, 0)
+
+    def _credit_bucket_delta(
+        self, prev_hash: str, nxt_hash: str, nxt_frame: np.ndarray, action_key: Any
+    ) -> None:
+        """Fold this transition's goal-measure delta into its bucket's credit (R47).
+
+        The measure of both endpoints comes from the memoised :meth:`_goal_score`
+        (one flood-fill per DISTINCT state, not per transition), so the credit
+        update is bounded by the graph size. Skips silently when either endpoint's
+        frame is uncached (only possible before a goal is set, where this is not
+        called).
+        """
+        self._state_frame.setdefault(nxt_hash, nxt_frame.astype(np.int8))
+        m_prev = self._goal_score(prev_hash)
+        m_next = self._goal_score(nxt_hash)
+        if m_prev == float("-inf") or m_next == float("-inf"):
+            return
+        bucket = self._bucket_of(action_key)
+        self._bucket_delta_sum[bucket] = self._bucket_delta_sum.get(bucket, 0.0) + (
+            m_next - m_prev
+        )
+        self._bucket_delta_n[bucket] = self._bucket_delta_n.get(bucket, 0) + 1
+
+    def _best_productive_untried(self, node: str) -> tuple[Any, float] | None:
+        """Best in-gate untried action at ``node`` whose bucket is PRODUCTIVE.
+
+        Among the node's untried actions within the current tier gate, returns
+        the ``(action_key, credit)`` of the one whose bucket has the highest
+        credit, but only if that credit is strictly positive (a productive class
+        that historically moved the measure up and has not been death-flagged).
+        Returns None when the node has no in-gate untried action in a productive
+        bucket — the expander then does not treat this node as a target.
+        """
+        best_key: Any | None = None
+        best_credit = 0.0
+        for k in self._untried.get(node) or []:
+            if self._action_tier.get(k, _N_TIERS - 1) > self._unlocked_tier:
+                continue
+            credit = self._bucket_credit(self._bucket_of(k))
+            if credit > best_credit:
+                best_credit = credit
+                best_key = k
+        if best_key is None:
+            return None
+        return best_key, best_credit
+
+    def _measure_guided_pick(self, start: str) -> Any | None:
+        """Best-first EXPANSION toward measure-improving territory (R47 core).
+
+        BFS the observed graph from ``start`` (including ``start`` itself at
+        distance 0, bounded by ``frontier_dist``). Every reachable state that has
+        an in-gate untried action in a PRODUCTIVE bucket
+        (:meth:`_best_productive_untried`) is a candidate, ranked lexicographically
+        by (goal measure of the state, that bucket's credit, nearness). The best
+        candidate is expanded: if it is the current state its productive untried
+        action is returned directly; otherwise the first action of the shortest
+        path toward it is returned so the agent walks there and expands on arrival.
+
+        Returns None when no productive-bucket expansion is reachable — the caller
+        then falls through to the ordinary tier walk (untried-anywhere → nearest
+        frontier), so R47 only ever ADDS a preference, never removes a fallback.
+        """
+        best_rank: tuple[float, float, int] | None = None
+        best_first: Any | None = None  # None => expand at start locally
+        best_local_key: Any | None = None
+
+        # start at distance 0 (a local productive expansion is allowed).
+        pk = self._best_productive_untried(start)
+        if pk is not None:
+            key, credit = pk
+            best_rank = (self._goal_score(start), self.measure_credit_w * credit, 0)
+            best_first = None
+            best_local_key = key
+
+        visited: set[str] = {start}
+        queue: deque[tuple[str, Any, int]] = deque()
+        for k, nxt in (self._edges.get(start) or {}).items():
+            if nxt not in visited:
+                visited.add(nxt)
+                queue.append((nxt, k, 1))
+        while queue:
+            node, first_action, path_len = queue.popleft()
+            if path_len > self.frontier_dist:
+                break  # BFS is nondecreasing in distance; nothing closer remains
+            pk = self._best_productive_untried(node)
+            if pk is not None:
+                _key, credit = pk
+                rank = (self._goal_score(node), self.measure_credit_w * credit, -path_len)
+                if best_rank is None or rank > best_rank:
+                    best_rank = rank
+                    best_first = first_action
+                    best_local_key = None
+            for k, nxt in (self._edges.get(node) or {}).items():
+                if nxt not in visited:
+                    visited.add(nxt)
+                    queue.append((nxt, first_action, path_len + 1))
+
+        if best_rank is None:
+            return None
+        return best_local_key if best_first is None else best_first
+
     def _maybe_infer_goal(self, frame: np.ndarray) -> None:
         """(Re)infer the level goal from the semantic-measure tracker (R46).
 
@@ -1468,7 +1719,7 @@ class GraphFrontierAgent:
         Leaving ``_goal`` None keeps the pre-R41 nearest behaviour, so an
         unconfident level simply never ranks by goal.
         """
-        if not self.goal_rank:
+        if not self._goal_active:
             return
         if self._level_steps < self.goal_infer_after:
             return
@@ -1727,20 +1978,34 @@ class GraphFrontierAgent:
         """
         if state_hash in self._untried:
             return
-        # Cache a compact frame for the goal scorer (R41). Colours are indices in
-        # [0, 15], so int8 is exact and keeps the per-state footprint at ~4 KB.
-        if self.goal_rank:
+        # Cache a compact frame for the goal scorer (R41/R47). Colours are indices
+        # in [0, 15], so int8 is exact and keeps the per-state footprint at ~4 KB.
+        if self._goal_active:
             self._state_frame.setdefault(state_hash, frame.astype(np.int8))
         actions: list[Any] = list(simple_ids)  # simple actions first
         for aid in simple_ids:
             self._action_tier.setdefault(aid, _SIMPLE_TIER)
+            if self.measure_expand:
+                self._action_bucket.setdefault(aid, ("s", int(aid)))
         if action6_ok:
-            for (x, y, tier) in self._click_candidates(frame):
-                key = ("click", x, y)
-                actions.append(key)
-                # A cell may recur across states; keep its best (lowest) tier.
-                prev = self._action_tier.get(key)
-                self._action_tier[key] = tier if prev is None else min(prev, tier)
+            if self.measure_expand:
+                # Rich segmentation carries the target's colour + size bucket so a
+                # click's action-CLASS (its visual family) can accrue measure credit.
+                for (x, y, tier, colour, size_bucket) in _segment_click_candidates_rich(
+                    frame, self.max_clicks
+                ):
+                    key = ("click", x, y)
+                    actions.append(key)
+                    prev = self._action_tier.get(key)
+                    self._action_tier[key] = tier if prev is None else min(prev, tier)
+                    self._action_bucket.setdefault(key, ("c", int(colour), int(size_bucket)))
+            else:
+                for (x, y, tier) in self._click_candidates(frame):
+                    key = ("click", x, y)
+                    actions.append(key)
+                    # A cell may recur across states; keep its best (lowest) tier.
+                    prev = self._action_tier.get(key)
+                    self._action_tier[key] = tier if prev is None else min(prev, tier)
         self._untried[state_hash] = actions
         self._edges.setdefault(state_hash, {})
         self._tries.setdefault(state_hash, {})
@@ -1816,6 +2081,18 @@ class GraphFrontierAgent:
                 self._dbg_random += 1
                 return escape
             return None
+
+        # Measure-guided expansion (R47): once a level has STALLED and a goal
+        # measure is confidently inferred, prefer expanding an untried action in a
+        # PRODUCTIVE bucket at a HIGH-measure reachable state (A*-flavoured
+        # expansion toward measure-improving territory) BEFORE the uniform tier
+        # walk. Returns None when no productive-bucket expansion is reachable, so
+        # exploration below is unchanged for every non-engaged / early step.
+        if self.measure_expand and self._r47_engaged():
+            key = self._measure_guided_pick(state_hash)
+            if key is not None:
+                self._dbg_measure_walks += 1
+                return key
 
         # Tier-gated exploration (R38). Try, in order, at the current unlocked
         # tier: a local within-tier untried action, then a promise-scored walk to
@@ -2194,6 +2471,24 @@ def _segment_click_candidates_tiered(
 ) -> list[tuple[int, int, int]]:
     """Return up to ``max_clicks`` click candidates as ``(x, y, tier)`` triples.
 
+    Thin projection of :func:`_segment_click_candidates_rich` that drops the
+    per-candidate colour and size-bucket (kept for the callers/tests that only
+    need the tier-ordered coordinate list). See the rich function for the full
+    salience-tier rationale.
+    """
+    return [
+        (x, y, tier)
+        for x, y, tier, _colour, _size in _segment_click_candidates_rich(
+            frame, max_clicks
+        )
+    ]
+
+
+def _segment_click_candidates_rich(
+    frame: np.ndarray, max_clicks: int
+) -> list[tuple[int, int, int, int, int]]:
+    """Return click candidates as ``(x, y, tier, colour, size_bucket)`` quintuples.
+
     Each non-background 4-connected component contributes its centroid. Every
     component is scored for *interactivity likelihood* from purely visual cues
     and bucketed into one of ``_N_TIERS`` tiers (0 = most likely interactive):
@@ -2210,7 +2505,9 @@ def _segment_click_candidates_tiered(
     The list is returned tier-first (all tier-0 before any tier-1) and, within a
     tier, smaller-area / rarer-colour first, so a caller consuming it in order
     naturally tries the most promising clicks first. Deduplicated by centroid.
-    Pure function of the frame so it is unit-testable in isolation.
+    Pure function of the frame so it is unit-testable in isolation. The extra
+    ``colour`` and ``size_bucket`` (``area.bit_length()``) fields let the R47
+    measure-guided expander bucket clicks by their target's visual class.
     """
     if frame.ndim != 2 or frame.size == 0 or max_clicks <= 0:
         return []
@@ -2221,7 +2518,8 @@ def _segment_click_candidates_tiered(
     total_cells = float(frame.size)
     h, w = frame.shape
 
-    scored: list[tuple[int, int, int, int, int]] = []  # (tier, area, freq, x, y)
+    # (tier, area, freq, x, y, colour, size_bucket)
+    scored: list[tuple[int, int, int, int, int, int, int]] = []
     for colour in values:
         colour = int(colour)
         if colour == background:
@@ -2235,17 +2533,19 @@ def _segment_click_candidates_tiered(
                 comp, colour, area, colour_count[colour],
                 total_cells, frame, background, h, w,
             )
-            scored.append((tier, area, colour_count[colour], cx, cy))
+            scored.append(
+                (tier, area, colour_count[colour], cx, cy, colour, area.bit_length())
+            )
 
     # Tier-first, then smaller-area, then rarer-colour within a tier.
     scored.sort(key=lambda t: (t[0], t[1], t[2]))
-    out: list[tuple[int, int, int]] = []
+    out: list[tuple[int, int, int, int, int]] = []
     seen: set[tuple[int, int]] = set()
-    for tier, _area, _freq, cx, cy in scored:
+    for tier, _area, _freq, cx, cy, colour, size_bucket in scored:
         if (cx, cy) in seen:
             continue
         seen.add((cx, cy))
-        out.append((cx, cy, tier))
+        out.append((cx, cy, tier, colour, size_bucket))
         if len(out) >= max_clicks:
             break
     return out

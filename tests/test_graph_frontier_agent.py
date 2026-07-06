@@ -23,6 +23,7 @@ from admorphiq.graph_frontier_agent import (
     _dilate_grid,
     _max_pool,
     _segment_click_candidates,
+    _segment_click_candidates_rich,
     _segment_click_candidates_tiered,
 )
 
@@ -1378,3 +1379,208 @@ def test_object_hash_activation_spared_when_healthy_graph():
     agent._maybe_activate_object_hash()
     assert agent._hash_mode == "pixel"
     assert agent._obj_hash_activated is False
+
+
+# ── (R47) measure-guided expansion ────────────────────────────────────────────
+
+
+def _measure_ready_agent(**kwargs) -> GraphFrontierAgent:
+    """Build a measure-expand agent with a hand-wired two-frontier graph.
+
+    Graph: START --1--> LOWM, START --2--> HIGHM. Both frontiers hold an untried
+    simple action whose bucket is PRODUCTIVE (positive trusted mean credit).
+    HIGHM's cached frame scores far higher under FILL_COLOR(3) than LOWM's, so a
+    measure-guided expander must walk toward HIGHM (first action 2).
+    """
+    from admorphiq.planner.goal import GoalSpec, GoalType
+
+    agent = GraphFrontierAgent(measure_expand=True, **kwargs)
+    agent._edges = {"START": {1: "LOWM", 2: "HIGHM"}, "LOWM": {}, "HIGHM": {}}
+    agent._untried = {"START": [], "LOWM": [3], "HIGHM": [4]}
+    agent._action_tier = {3: _SIMPLE_TIER, 4: _SIMPLE_TIER}
+    agent._action_bucket = {3: ("s", 3), 4: ("s", 4)}
+    agent._unlocked_tier = _N_TIERS - 1
+    low = np.zeros((64, 64), dtype=np.int8)
+    low[0, 0] = 3  # 1 target-colour cell
+    high = np.zeros((64, 64), dtype=np.int8)
+    high[:10, :10] = 3  # 100 target-colour cells
+    agent._state_frame = {"START": np.zeros((64, 64), dtype=np.int8), "LOWM": low, "HIGHM": high}
+    agent._goal = GoalSpec(goal_type=GoalType.FILL_COLOR, color=3)
+    # Make both frontier buckets trusted + productive.
+    for b in (("s", 3), ("s", 4)):
+        agent._bucket_delta_sum[b] = 10.0
+        agent._bucket_delta_n[b] = 5
+    return agent
+
+
+def test_measure_expand_off_by_default_and_env_overridable(monkeypatch):
+    """Purpose: prove GF_MEASURE_EXPAND defaults OFF (so _goal_active is False and
+    every goal/measure path stays inert = byte-identical zero-loss) and that the
+    env knob flips it on.
+
+    Expected feedback: if this fails, the R47 machinery is either live by default
+    (perturbing the protected clearing set) or unreachable via its env knob.
+    """
+    monkeypatch.delenv("GF_MEASURE_EXPAND", raising=False)
+    a = GraphFrontierAgent()
+    assert a.measure_expand is False
+    assert a._goal_active is False
+    monkeypatch.setenv("GF_MEASURE_EXPAND", "1")
+    b = GraphFrontierAgent()
+    assert b.measure_expand is True
+    assert b._goal_active is True
+
+
+def test_segment_rich_projects_exactly_to_tiered():
+    """Purpose: prove _segment_click_candidates_tiered is a faithful projection of
+    _segment_click_candidates_rich — same (x, y, tier) order/dedup — so adding the
+    colour/size fields did not change the tier-ordered candidate stream the
+    non-R47 path (and all prior tests) depend on.
+
+    Expected feedback: if this fails, the refactor silently altered click
+    ordering, which would perturb the zero-loss baseline exploration trajectory.
+    """
+    frame = np.zeros((64, 64), dtype=np.int64)
+    frame[2, 2] = 5
+    frame[10, 40] = 7
+    frame[:8, :8] = 3
+    tiered = _segment_click_candidates_tiered(frame, 14)
+    rich = _segment_click_candidates_rich(frame, 14)
+    assert [(x, y, t) for x, y, t, _c, _s in rich] == tiered
+
+
+def test_segment_rich_carries_colour_and_size_bucket():
+    """Purpose: prove the rich segmentation reports each candidate's target COLOUR
+    and log2 size bucket, the fields R47 buckets clicks by.
+
+    Expected feedback: if this fails, click actions cannot be grouped into visual
+    classes, so per-class measure credit is meaningless.
+    """
+    frame = np.zeros((64, 64), dtype=np.int64)
+    frame[3, 3] = 6  # single cell of colour 6 (area 1 -> bit_length 1)
+    rich = _segment_click_candidates_rich(frame, 14)
+    hit = [(c, s) for x, y, _t, c, s in rich if (x, y) == (3, 3)]
+    assert hit == [(6, 1)]
+
+
+def test_bucket_credit_untrusted_below_min_samples():
+    """Purpose: prove a bucket with fewer than measure_min_samples delta samples
+    contributes a NEUTRAL (zero) mean to its credit — discovery must precede
+    exploitation so a single lucky delta cannot mark a class 'productive'.
+
+    Expected feedback: if this fails, the expander chases action classes on one
+    noisy observation, defeating the credit-averaging intent.
+    """
+    agent = GraphFrontierAgent(measure_expand=True, measure_min_samples=3, measure_death_w=4.0)
+    b = ("s", 1)
+    agent._bucket_delta_sum[b] = 6.0
+    agent._bucket_delta_n[b] = 2  # below the 3-sample floor
+    assert agent._bucket_credit(b) == 0.0
+    agent._bucket_delta_n[b] = 3  # now trusted: mean = 6/3 = 2.0
+    assert agent._bucket_credit(b) == 2.0
+
+
+def test_bucket_credit_death_penalty_deprioritizes():
+    """Purpose: prove a GAME_OVER attributed to a bucket subtracts death_w from
+    its credit even while the bucket is untrusted — a class that killed the agent
+    is avoided before its measure trend is even trusted.
+
+    Expected feedback: if this fails, regressive (death-causing) action classes
+    are not deprioritised and the agent can re-walk into the same death.
+    """
+    agent = GraphFrontierAgent(measure_expand=True, measure_min_samples=3, measure_death_w=4.0)
+    b = ("s", 1)
+    agent._bucket_delta_sum[b] = 6.0
+    agent._bucket_delta_n[b] = 3  # trusted mean 2.0
+    agent._bucket_deaths[b] = 1
+    assert agent._bucket_credit(b) == 2.0 - 4.0
+
+
+def test_measure_guided_pick_walks_toward_high_measure_productive_frontier():
+    """Purpose: prove the R47 core expands toward the reachable state with the
+    HIGHEST goal measure whose untried action is in a productive bucket — the
+    A*-flavoured 'expand toward measure-improving territory' behaviour.
+
+    Expected feedback: if this fails, measure-guided expansion is not steering by
+    the inferred measure gradient and reduces to ordinary frontier exploration.
+    """
+    agent = _measure_ready_agent()
+    assert agent._measure_guided_pick("START") == 2  # walk toward HIGHM (via 2)
+
+
+def test_measure_guided_pick_returns_none_without_productive_bucket():
+    """Purpose: prove the expander DECLINES (returns None) when no reachable
+    untried action sits in a productive bucket, so the policy falls through to the
+    ordinary tier walk — R47 only ADDS a preference, never removes a fallback.
+
+    Expected feedback: if this fails, the expander can strand the agent by
+    returning nothing actionable while ordinary exploration would have progressed.
+    """
+    agent = _measure_ready_agent()
+    # Demote both buckets below the sample floor => neither is productive.
+    agent._bucket_delta_n[("s", 3)] = 0
+    agent._bucket_delta_n[("s", 4)] = 0
+    assert agent._measure_guided_pick("START") is None
+
+
+def test_measure_guided_pick_prefers_local_productive_action_at_high_measure():
+    """Purpose: prove that when the CURRENT state itself is highest-measure and
+    holds a productive untried action, the expander returns that action directly
+    (a local expansion, not a walk).
+
+    Expected feedback: if this fails, the agent needlessly walks away from a
+    productive high-measure state instead of expanding it in place.
+    """
+    from admorphiq.planner.goal import GoalSpec, GoalType
+
+    agent = _measure_ready_agent()
+    # Give START an untried productive action and the highest measure.
+    agent._untried["START"] = [5]
+    agent._action_bucket[5] = ("s", 5)
+    agent._action_tier[5] = _SIMPLE_TIER
+    agent._bucket_delta_sum[("s", 5)] = 10.0
+    agent._bucket_delta_n[("s", 5)] = 5
+    start_frame = np.zeros((64, 64), dtype=np.int8)
+    start_frame[:20, :20] = 3  # 400 target cells: strictly highest measure
+    agent._state_frame["START"] = start_frame
+    agent._goal = GoalSpec(goal_type=GoalType.FILL_COLOR, color=3)
+    assert agent._measure_guided_pick("START") == 5  # local expansion
+
+
+def test_r47_gate_requires_goal_and_stall():
+    """Purpose: prove _r47_engaged only opens with (a) an inferred goal AND (b) the
+    R46 stall signature (goal_engage_after actions consumed, frontier still large)
+    — the same gate that protected the fast-clearing set in R46.
+
+    Expected feedback: if this fails, measure-guided expansion engages on quick or
+    goal-less games and the zero-loss guarantee is void.
+    """
+    from admorphiq.planner.goal import GoalSpec, GoalType
+
+    agent = GraphFrontierAgent(measure_expand=True)
+    agent.goal_engage_after = 1000
+    agent.goal_engage_frontier = 2
+    agent._untried = {"a": [1], "b": [2]}  # 2 in-gate frontiers
+    agent._level_steps = 2000  # stalled
+    agent._goal = None
+    assert agent._r47_engaged() is False  # no goal
+    agent._goal = GoalSpec(goal_type=GoalType.FILL_COLOR, color=3)
+    assert agent._r47_engaged() is True  # goal + stalled + large frontier
+    agent._level_steps = 10  # not stalled
+    assert agent._r47_engaged() is False
+
+
+def test_game_over_credits_death_to_last_action_bucket():
+    """Purpose: prove a GAME_OVER observation records a death against the bucket of
+    the action taken immediately before it (R47 GAME_OVER learning), so the
+    regressive action class is deprioritised on subsequent expansions.
+
+    Expected feedback: if this fails, deaths are not attributed and the agent
+    cannot learn to avoid the action class that killed it.
+    """
+    agent = GraphFrontierAgent(measure_expand=True)
+    agent._prev_action_key = 2  # last action was simple action 2
+    obs = _MockObs(frame=_layered(np.zeros((64, 64), dtype=np.int64)),
+                   state=_MockState("GAME_OVER"))
+    agent.choose_action([], obs)
+    assert agent._bucket_deaths.get(("s", 2)) == 1
