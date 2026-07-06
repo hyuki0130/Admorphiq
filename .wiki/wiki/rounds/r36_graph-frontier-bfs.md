@@ -115,3 +115,13 @@ Per-level hash-pool downshift on collapse signatures (default on). TU93 — the 
 online-RL round — clears THREE levels (8199+682+3643 @30k). Zero regression. Build-agent's S5I5/SB26
 claims did NOT reproduce (0/3 retries; possibly env-knob leakage in its runs) — kept in remaining
 set. Remaining 9: DC22, G50T, KA59, RE86, S5I5, SB26, SC25, SU15, WA30. Cleared now 16/25.
+
+## R43 (2026-07-06 12:58) — diagnosis of the 9 blocked games (honest 0 new clears) + ACTION7 fix
+Full GF_DEBUG diagnosis table (see commit message + agent report). Blocker classes: (a) DC22
+pool-tension (jitter-absorb vs small real movement); (b) S5I5/SB26 1-cell/action moving
+counter/cursor breaks pool=1 recurrence; (c) KA59/SB26 semantic goals (sokoban/sort) unreachable by
+undirected BFS; (d) SU15/WA30/RE86 sticky over-masking (mask ~1700-2000 cells) erases click targets
+or blocks downshift; (e) G50T/SC25 pure state-explosion/goal-far. 7 lever configs all 0 — these need
+REWORK not knobs: ① monotone-moving-band mask (detects counters/cursors specifically), ② object-
+segmented state hash (player position as grid cell), ③ goal-type-aware planning. ACTION7
+movement-gated fix landed (real bug; SU15 prerequisite). 16/25 stands.
