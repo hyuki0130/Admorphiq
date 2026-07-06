@@ -24,7 +24,15 @@ from collections.abc import Callable
 
 import numpy as np
 
-from .goal import GRID, NUM_COLORS, GoalSpec, GoalType
+from .goal import (
+    BACKGROUND_COLORS,
+    GRID,
+    NUM_COLORS,
+    GoalSpec,
+    GoalType,
+    _component_stats,
+    score_goal,
+)
 
 # Injected LLM: takes a prompt, returns raw text (expected to contain JSON).
 LLMCall = Callable[[str], str]
@@ -210,3 +218,187 @@ def color_histogram_from_frame(frame: np.ndarray) -> dict[int, int]:
     """Compute {colour_index: cell_count} for a ``(64, 64)`` int frame."""
     vals, counts = np.unique(np.asarray(frame), return_counts=True)
     return {int(v): int(c) for v, c in zip(vals, counts, strict=False)}
+
+
+# ─────────────────── R46 semantic-progress goal inference ────────────────────
+#
+# A game-agnostic tracker that watches a bounded FAMILY of frame-computable
+# progress measures over the agent's productive transitions and infers WHICH
+# measure trends toward the level-clear. Two inference signals:
+#
+#   * within-level TREND — a measure that moves with a consistent sign under
+#     productive actions is a candidate goal even before any level has cleared.
+#   * level-clear JUMP  — when a level clears, the measure that increased most
+#     over that level is snapshotted and its TYPE carried to the next level
+#     (deep levels are where the squared-efficiency metric pays off).
+#
+# Everything is computed from the (64,64) int colour-index frame — no game id.
+
+_MAX_SALIENT = 4          # object colours considered per frame
+_FIELD_FRAC = 0.5         # colours filling > this frac of the grid are "field"
+_MIN_TREND_SAMPLES = 8    # productive observations before a trend is trusted
+_MIN_TREND_CONSISTENCY = 0.6  # min directional consistency in [-1, 1]
+_MIN_TREND_NET = 3.0      # min |net measure movement| for a real trend
+
+
+def salient_object_colors(color_histogram: dict[int, int]) -> list[int]:
+    """Return non-background OBJECT colours, rarest first (bounded to K).
+
+    Object colours are those present with a cell count below the field cutoff
+    (``_FIELD_FRAC`` of the grid) — this excludes the play-field / background
+    region so pair- and order-goals reason over movable pieces, not the board.
+    Rarest-first because targets / pieces are typically rarer than the field.
+    """
+    total = GRID * GRID
+    objs = {
+        c: n
+        for c, n in color_histogram.items()
+        if c not in BACKGROUND_COLORS and 0 < n < total * _FIELD_FRAC
+    }
+    return [c for c, _ in sorted(objs.items(), key=lambda kv: kv[1])][:_MAX_SALIENT]
+
+
+def candidate_goals(
+    frame: np.ndarray, color_histogram: dict[int, int] | None = None
+) -> list[GoalSpec]:
+    """Bounded family of candidate GoalSpecs derived from one frame.
+
+    Covers the fill / count / order / pair progress shapes over the frame's
+    salient object colours. The family is intentionally small (a few dozen at
+    most) so the trend tracker can score every member each observation.
+    """
+    if color_histogram is None:
+        color_histogram = color_histogram_from_frame(frame)
+    colors = salient_object_colors(color_histogram)
+    specs: list[GoalSpec] = []
+    for c in colors:
+        specs.append(GoalSpec(GoalType.FILL_COLOR, color=c))
+        specs.append(GoalSpec(GoalType.MINIMIZE_OBJECT_COUNT, color=c))
+        specs.append(GoalSpec(GoalType.MAXIMIZE_OBJECT_COUNT, color=c))
+    specs.append(GoalSpec(GoalType.ORDER, axis=0))
+    specs.append(GoalSpec(GoalType.ORDER, axis=1))
+    for i, ci in enumerate(colors):
+        for j, cj in enumerate(colors):
+            if i != j:
+                specs.append(GoalSpec(GoalType.ON_TARGET, color=ci, color_b=cj))
+    return specs
+
+
+def goal_signature(goal: GoalSpec) -> str:
+    """Stable string identity for a GoalSpec (keys the trend tracker)."""
+    return f"{goal.goal_type.value}:{goal.color}:{goal.color_b}:{goal.axis}"
+
+
+def instantiate_goal_type(
+    frame: np.ndarray,
+    goal_type: GoalType,
+    axis: int = 0,
+    color_histogram: dict[int, int] | None = None,
+) -> GoalSpec | None:
+    """Re-derive a concrete GoalSpec of ``goal_type`` on a new level's frame.
+
+    Used to CARRY a goal TYPE across a level boundary: the next level's colours
+    differ, so the role-appropriate colours are re-selected from the new frame
+    (rarest object colour for FILL, the two most-salient for an ON_TARGET pair,
+    the most-fragmented for a count goal). Returns None when the frame has no
+    object colours to instantiate the type on.
+    """
+    if color_histogram is None:
+        color_histogram = color_histogram_from_frame(frame)
+    colors = salient_object_colors(color_histogram)
+    if goal_type is GoalType.ORDER:
+        return GoalSpec(GoalType.ORDER, axis=axis)
+    if goal_type is GoalType.ON_TARGET and len(colors) >= 2:
+        return GoalSpec(GoalType.ON_TARGET, color=colors[0], color_b=colors[1])
+    if goal_type in (GoalType.MINIMIZE_OBJECT_COUNT, GoalType.MAXIMIZE_OBJECT_COUNT) and colors:
+        best = max(colors, key=lambda c: len(_component_stats(frame, c)))
+        return GoalSpec(goal_type, color=best)
+    if goal_type is GoalType.FILL_COLOR and colors:
+        return GoalSpec(GoalType.FILL_COLOR, color=colors[0])
+    return None
+
+
+class GoalMeasureTracker:
+    """Tracks progress-measure trends over productive transitions (R46).
+
+    Each :meth:`observe` scores the frame under the :func:`candidate_goals`
+    family and folds the per-signature value into running trend statistics.
+    :meth:`best_trend` names the measure moving most consistently upward within
+    the level; :meth:`best_jump` names the measure that increased most cleanly
+    over the whole level (snapshotted at a level clear to carry its TYPE
+    forward). Reset per level via :meth:`reset`.
+    """
+
+    def __init__(self) -> None:
+        self.reset()
+
+    def reset(self) -> None:
+        self._first: dict[str, float] = {}
+        self._last: dict[str, float] = {}
+        self._up: dict[str, float] = {}
+        self._down: dict[str, float] = {}
+        self._n: dict[str, int] = {}
+        self._spec: dict[str, GoalSpec] = {}
+
+    def observe(self, frame: np.ndarray) -> None:
+        """Fold one frame's measure vector into the running trend statistics."""
+        for goal in candidate_goals(frame):
+            sig = goal_signature(goal)
+            val = score_goal(frame, goal)
+            self._spec[sig] = goal
+            if sig not in self._n:
+                self._n[sig] = 1
+                self._first[sig] = val
+                self._last[sig] = val
+                self._up[sig] = 0.0
+                self._down[sig] = 0.0
+                continue
+            delta = val - self._last[sig]
+            if delta > 0:
+                self._up[sig] += delta
+            elif delta < 0:
+                self._down[sig] += -delta
+            self._last[sig] = val
+            self._n[sig] += 1
+
+    def best_trend(self) -> tuple[GoalSpec, float] | None:
+        """Signature with the strongest trusted upward monotone trend, or None."""
+        best_sig: str | None = None
+        best_consistency = 0.0
+        for sig, n in self._n.items():
+            if n < _MIN_TREND_SAMPLES:
+                continue
+            up, down = self._up[sig], self._down[sig]
+            net = up - down
+            if net < _MIN_TREND_NET:
+                continue
+            consistency = net / (up + down + 1e-9)
+            if consistency >= _MIN_TREND_CONSISTENCY and consistency > best_consistency:
+                best_consistency = consistency
+                best_sig = sig
+        if best_sig is None:
+            return None
+        return self._spec[best_sig], best_consistency
+
+    def best_jump(self) -> GoalSpec | None:
+        """Signature whose measure rose most cleanly over the level, or None.
+
+        Ranks by net increase normalised by the measure's own total movement, so
+        a measure that only ever went up (norm ~= 1) beats one that oscillated to
+        the same net value. This snapshot is taken at a level clear to decide
+        which goal TYPE to carry into the next level.
+        """
+        best_sig: str | None = None
+        best_norm = 0.0
+        for sig, n in self._n.items():
+            if n < 2:
+                continue
+            net = self._last[sig] - self._first[sig]
+            if net <= 0:
+                continue
+            scale = self._up[sig] + self._down[sig] + 1e-9
+            norm = net / scale
+            if norm > best_norm:
+                best_norm = norm
+                best_sig = sig
+        return self._spec[best_sig] if best_sig else None

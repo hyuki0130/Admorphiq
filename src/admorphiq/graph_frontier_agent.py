@@ -190,11 +190,14 @@ the GRAPH holds the ACTUAL frame of every discovered state, so
 model, no accuracy wall. The lever:
 
 1. **Goal acquisition** — after the first ``GF_GOAL_INFER_AFTER`` transitions of
-   a level, infer a structured :class:`~planner.goal.GoalSpec` from the observed
-   probe deltas via :func:`planner.goal_inference.infer_goal` (heuristic by
-   default; ``GF_GOAL_LLM`` reserved for a later offline-LLM hook). Re-inferred
-   every ``GF_GOAL_RECADENCE`` steps as evidence accumulates. If nothing
-   confident is observed the agent stays goal-less (= pre-R41 behaviour).
+   a level, infer a structured :class:`~planner.goal.GoalSpec` via the R46
+   :class:`~planner.goal_inference.GoalMeasureTracker`, which watches the
+   candidate-goal family (fill / count / ORDER / ON_TARGET) over productive
+   transitions and adopts the measure trending most consistently upward — OR the
+   goal TYPE carried from a prior level's clear (:meth:`_maybe_infer_goal`).
+   Re-inferred every ``GF_GOAL_RECADENCE`` steps. If nothing confident is
+   observed the agent stays goal-less (= pre-R41 behaviour). (R46 REPLACED the
+   R41 FILL_COLOR ``infer_goal`` heuristic with this semantic tracker.)
 2. **Goal-directed ranking** — when the local state is exhausted and the agent
    must walk to a frontier, rank reachable in-gate frontiers by
    ``score_goal(frame_of_state, goal)`` blended with nearness (``GF_GOAL_BLEND``)
@@ -207,28 +210,38 @@ model, no accuracy wall. The lever:
    until a new state appears, then re-enables. Local untried actions at the
    current state are always tried first (unchanged).
 
-**MEASURED VERDICT (R41, 2026-07-05) — shell mode, default OFF.** Enabling the
-knob (``GF_GOAL_RANK=1``) is a real lever on paint/click games but regresses
-navigation, so it ships default OFF (baseline untouched, zero regression risk):
-  * CD82 L2: 26,965 -> **14,262** actions (−47%, deep clear preserved).
-  * VC33 L3 @60k: 55,209 -> **37,966** actions (−31%, deepest level).
-  * M0R0 L1: 751 -> 4,076 actions — REGRESSION. The FILL_COLOR heuristic is wrong
-    for navigation (its object relocates, it does not fill), and even shell-mode
-    within-shell tie-break by that goal delays the clear; M0R0 then misses the
-    3,000-action quick budget (quick clears 5/9 -> 4/9), failing "no level lost".
-  * Configs tried (tune-before-discard): (a) global blend 0.5 lost CD82 L2
-    entirely; (b) shell mode = the wins above; (c) shell + a fill-colour
-    accumulation gate restored M0R0 but ALSO killed the CD82 win (CD82's target
-    colour does not actually accumulate — the fill-goal helped as a frontier
-    ORDERING heuristic, not as a true objective), so the gate was dropped.
-  A future round needs a game-type-aware goal (MOVE_TO_REGION for navigation,
-  or an offline-LLM goal at discovery) before this can be promoted to default ON.
+**MEASURED VERDICT (R46, 2026-07-06) — semantic goals, default OFF.** R46 added
+the ORDER / ON_TARGET measures + the semantic measure-trend/level-jump inference
++ the stall gate (:meth:`_goal_engaged`), then A/B-measured knob-ON on the 9
+blocked semantic games @30000 against the zero-loss guard:
+  * ZERO new level clears in BOTH shell and global mode (KA59 1/7, SB26 1/8 held
+    at baseline; s5i5 / su15 / g50t / sc25 / dc22 / re86 / wa30 stayed 0). Those
+    games need action SEQUENCING (push boxes in order, sort a permutation) — the
+    near-solved states are never discovered by frontier BFS, so ranking the
+    discovered frontier by goal-proximity has nothing to steer to.
+  * CD82 L2 REGRESSED 2/6 -> 1/6 in BOTH modes: the semantic tracker infers a
+    wrong goal for CD82 (ON_TARGET, not the R41 FILL that helped) and the stall
+    gate engages on CD82's legitimately-long L2 walk, derailing the clear.
+  So the lever is harmful-and-inert on this substrate and ships default OFF
+  (byte-identical zero-loss, verified: CD82 2/6, TU93 3/9). The measures +
+  inference + gate remain validated infrastructure, reachable via
+  ``GF_GOAL_RANK=1``, for a future round that pairs them with a world model able
+  to REACH near-solved states (not merely rank the ones exploration finds).
+  NOTE: because R46 replaced the R41 FILL inference, knob-ON no longer reproduces
+  the R41 CD82/VC33 discovery-cost speedups (those relied on FILL as a frontier
+  ORDERING heuristic); reviving them is a config of the tracker, not a revert.
 
-Goal knobs (all additive; default OFF until acceptance promotes them):
+Goal knobs (all additive; default OFF — see the R46 verdict above):
   * ``GF_GOAL_RANK``   (default 0)     — enable goal-directed frontier ranking.
   * ``GF_GOAL_INFER_AFTER`` (default 40)— per-level transitions before the first
     goal inference.
   * ``GF_GOAL_RECADENCE`` (default 300)— steps between goal re-inference.
+  * ``GF_GOAL_ENGAGE_AFTER`` (default 2000)— per-level actions before the stall
+    gate lets goal ranking engage (below it, pre-R46 nearest-BFS behaviour).
+  * ``GF_GOAL_ENGAGE_FRONTIER`` (default 25)— min in-gate frontier states for the
+    stall signature (small frontier => not stalled => goal stays disengaged).
+  * ``GF_GOAL_OBSERVE_STRIDE`` (default 8)— productive transitions between
+    measure-tracker observations (bounds the flood-fill cost).
   * ``GF_GOAL_MAX_WALKS`` (default 400)— consecutive goal-directed frontier picks
     without a new state before falling back to nearest-frontier.
   * ``GF_GOAL_BLEND``  (default 0.5)   — weight in [0,1] of goal-proximity vs
@@ -256,8 +269,11 @@ from typing import Any
 
 import numpy as np
 
-from .planner.goal import GoalSpec, score_goal
-from .planner.goal_inference import color_histogram_from_frame, infer_goal
+from .planner.goal import GoalSpec, GoalType, score_goal
+from .planner.goal_inference import (
+    GoalMeasureTracker,
+    instantiate_goal_type,
+)
 
 # Number of recent transitions kept for HUD change-rate estimation. A rolling
 # window keeps the mask responsive to level changes without unbounded memory.
@@ -441,9 +457,26 @@ DEFAULT_FRONTIER_DIST = 12
 DEFAULT_VISIT_PENALTY = 0.0
 DEFAULT_RECENCY_BONUS = 0.0
 
-# Goal-directed frontier ranking defaults (R41). Default OFF: promotion to ON is
-# gated on the acceptance probe (deep 9-game set + quick 9-subset). See the
-# module docstring "GOAL-DIRECTED FRONTIER RANKING" section for the rationale.
+# Goal-directed frontier ranking defaults. R41 kept this OFF because a GLOBAL
+# fill-goal helped paint/click but hurt navigation. R46 added the semantic
+# measures (ORDER / ON_TARGET), the measure-trend + level-clear-jump inference,
+# and the stall gate (:meth:`_goal_engaged`), then A/B-measured the lever on the
+# 9 blocked semantic games @30000 vs the zero-loss guard:
+#
+#   * BOTH shell and global ranking produced ZERO new level clears on the 9
+#     games (KA59 1/7, SB26 1/8 held at baseline; the other 7 stayed 0). Those
+#     games need action SEQUENCING (push boxes in order, sort a permutation) —
+#     the near-solved states are simply never discovered by frontier BFS, so
+#     ranking the discovered frontier by goal-proximity has nothing to steer to.
+#   * BOTH modes REGRESSED CD82's deep clear (L2 2/6 -> 1/6): once the stall gate
+#     engages on CD82's legitimately-long L2 frontier walk, the goal reorders the
+#     frontier and derails the clear.
+#
+# The lever is therefore harmful-and-inert on this substrate, so it ships OFF by
+# default (byte-identical zero-loss). The measures + inference + gating remain as
+# validated infrastructure, reachable via GF_GOAL_RANK=1, for a future round that
+# pairs them with a world model able to REACH near-solved states (not just rank
+# the ones exploration happens to find). See scripts/rounds/R46/.
 DEFAULT_GOAL_RANK = False
 DEFAULT_GOAL_INFER_AFTER = 40
 DEFAULT_GOAL_RECADENCE = 300
@@ -452,15 +485,25 @@ DEFAULT_GOAL_BLEND = 0.5
 # Nearest-shell mode (R41). When True the goal ranker is restricted to the
 # NEAREST in-gate frontier shell — it never picks a farther frontier over a
 # nearer one, so the systematic BFS shell expansion that reaches barely-in-budget
-# deep goals (CD82 L2, VC33 L3) is preserved; the goal only breaks ties among
-# equidistant frontiers. This is the gentle/safe blend the R38 promise-frontier
-# lesson demands. When False the ranker weighs goal-proximity against distance
-# globally within ``frontier_dist`` (aggressive; can abandon deep clears).
+# deep goals (CD82 L2, TU93 L3, VC33 L3) is preserved BY CONSTRUCTION; the goal
+# only breaks ties among equidistant frontiers.
+#
+# R46 measured the alternative (global mode, DEFAULT_GOAL_SHELL=False): once the
+# stall gate engaged on CD82's legitimately-long L2 frontier walk it derailed the
+# clear (2/6 -> 1/6) while producing ZERO new clears on the 9 blocked semantic
+# games — those need action SEQUENCING the frontier graph never discovers, not
+# distance-to-goal ranking. So shell mode stays the default: the semantic
+# measures + inference ship live and gated, but never at the cost of a deep clear.
 DEFAULT_GOAL_SHELL = True
-# Per-level cap on stored probe-change records fed to goal inference. Bounded so
-# a long level does not grow the list without limit; the most recent probes are
-# the most relevant evidence for the current goal.
-_GOAL_PROBE_WINDOW = 256
+# Stall gate (R46). Goal ranking ENGAGES only after a level has consumed at least
+# this many actions without clearing while the reachable frontier is still large
+# (>= DEFAULT_GOAL_ENGAGE_FRONTIER in-gate frontier states). Tuned so every game
+# that clears within the quick budget stays in pre-R46 nearest-BFS behaviour.
+DEFAULT_GOAL_ENGAGE_AFTER = 2000
+DEFAULT_GOAL_ENGAGE_FRONTIER = 25
+# Productive (frame-changing) transitions between measure-tracker observations.
+# Bounds the flood-fill cost of scoring the candidate-goal family per level.
+DEFAULT_GOAL_OBSERVE_STRIDE = 8
 
 # Sentinel tier for simple actions (1-5): strictly better than any click tier
 # (>= 0) so simple actions are tried before clicks in a fresh state (R38 §3).
@@ -742,6 +785,16 @@ class GraphFrontierAgent:
             if goal_shell is not None
             else _env_bool("GF_GOAL_SHELL", DEFAULT_GOAL_SHELL)
         )
+        # Stall gate + observe stride (R46). See the DEFAULT_GOAL_ENGAGE_* notes.
+        self.goal_engage_after = _env_int(
+            "GF_GOAL_ENGAGE_AFTER", DEFAULT_GOAL_ENGAGE_AFTER
+        )
+        self.goal_engage_frontier = _env_int(
+            "GF_GOAL_ENGAGE_FRONTIER", DEFAULT_GOAL_ENGAGE_FRONTIER
+        )
+        self.goal_observe_stride = _env_int(
+            "GF_GOAL_OBSERVE_STRIDE", DEFAULT_GOAL_OBSERVE_STRIDE
+        )
 
         # Object-segmented hash (R45) — the third rung of the hash ladder. See the
         # module docstring "OBJECT-SEGMENTED HASH" section and DEFAULT_OBJ_* notes.
@@ -771,10 +824,13 @@ class GraphFrontierAgent:
             if obj_sink_distinct is not None
             else _env_int("GF_OBJ_SINK_DISTINCT", DEFAULT_OBJ_SINK_DISTINCT)
         )
-        # Optional offline-LLM goal-inference hook (Callable[[str], str]); None by
-        # default so the deterministic heuristic is used offline. Reserved for a
-        # later round that wires an offline Qwen call at discovery time.
-        self._goal_llm_call = None
+        # Carried goal TYPE across level boundaries (R46). When a level clears, the
+        # measure-tracker's best-jump goal type is snapshotted here so the NEXT
+        # level re-instantiates the same goal shape on its own colours (deep levels
+        # are where the squared-efficiency metric pays off). Persists across
+        # _reset_level_state (which the per-level graph state does not).
+        self._carried_goal_type: GoalType | None = None
+        self._carried_axis = 0
 
         # The runner (scripts/score_efficiency.py) reads this flag: on GAME_OVER
         # it RESETs the env and lets the agent keep acting. Our observed
@@ -836,11 +892,15 @@ class GraphFrontierAgent:
             if self._new_state_window
             else 0.0
         )
-        goal_desc = (
-            f"{self._goal.goal_type.value}:{self._goal.color}"
-            if self._goal is not None
-            else "none"
-        )
+        if self._goal is not None:
+            eng = "eng" if self._goal_engaged() else "wait"
+            goal_desc = (
+                f"{self._goal.goal_type.value}:{self._goal.color}"
+                f",{self._goal.color_b},ax{self._goal.axis}[{eng}]"
+            )
+        else:
+            carried = self._carried_goal_type.value if self._carried_goal_type else "-"
+            goal_desc = f"none(carry={carried})"
         if self._band_confirmed and self._band_mask is not None:
             axis = "H" if self._band_horizontal else "V"
             band_desc = (
@@ -956,7 +1016,7 @@ class GraphFrontierAgent:
         self._obj_hash_activated = False
         self._new_state_window: deque[bool] = deque(maxlen=_INSTABILITY_WINDOW)
 
-        # ── goal-directed ranking state (R41) ──────────────────────────────────
+        # ── goal-directed ranking state (R41 + R46 semantic measures) ───────────
         # Compact frame (int8) cached at first sighting of each state, so the
         # goal scorer can evaluate score_goal(frame_of_state, goal) as a lookup.
         self._state_frame: dict[str, np.ndarray] = {}
@@ -966,9 +1026,12 @@ class GraphFrontierAgent:
         self._goal_version = 0
         # state_hash -> (goal_version, score) memo of score_goal for that state.
         self._goal_score_cache: dict[str, tuple[int, float]] = {}
-        # Recent per-probe change summaries (action / changed_cells / new colour)
-        # feeding goal inference; bounded to the most-recent evidence.
-        self._probe_changes: deque[dict] = deque(maxlen=_GOAL_PROBE_WINDOW)
+        # Semantic-progress measure tracker (R46): watches the candidate-goal
+        # family over productive transitions to infer WHICH measure trends toward
+        # the level clear (within-level trend + level-clear jump snapshot).
+        self._measure_tracker = GoalMeasureTracker()
+        # Productive transitions since the last measure observation (stride gate).
+        self._productive_since_observe = 0
         # Level step at which the goal was last (re)inferred; -1 = never.
         self._last_goal_infer_step = -1
         # Consecutive goal-directed frontier picks WITHOUT the graph growing.
@@ -993,9 +1056,17 @@ class GraphFrontierAgent:
         obs = latest_frame
         state = _state_name(obs)
 
-        # Level-up: the state space changed — start a fresh graph.
+        # Level-up: the state space changed — start a fresh graph. Before wiping
+        # the per-level measure tracker, snapshot which progress measure JUMPED
+        # over the cleared level and carry its TYPE forward, so the next level
+        # re-instantiates the same goal shape on its own colours (R46).
         levels = _levels_completed(obs)
         if levels > self._last_levels:
+            if self.goal_rank:
+                jump = self._measure_tracker.best_jump()
+                if jump is not None:
+                    self._carried_goal_type = jump.goal_type
+                    self._carried_axis = jump.axis
             self._reset_level_state()
         self._last_levels = levels
 
@@ -1068,8 +1139,13 @@ class GraphFrontierAgent:
             # Feed the moving-band detector BEFORE the edge hash below, so a
             # newly-masked band takes effect on this very transition's next-hash.
             self._band_observe(changed)
-            if self.goal_rank:
-                self._record_probe_change(frame, changed)
+            if self.goal_rank and bool(changed.any()):
+                # Productive transition: fold this frame's measure vector into the
+                # trend tracker at the observe stride (flood-fill cost bound).
+                self._productive_since_observe += 1
+                if self._productive_since_observe >= self.goal_observe_stride:
+                    self._productive_since_observe = 0
+                    self._measure_tracker.observe(frame)
 
         # Graph edge: prev_hash --action--> hash(frame under CURRENT mask).
         nxt_hash = self._hash(frame)
@@ -1360,47 +1436,37 @@ class GraphFrontierAgent:
         self._hash_mode = "object"
         self._obj_hash_activated = True
 
-    # ── goal-directed ranking (R41) ─────────────────────────────────────────────
+    # ── goal-directed ranking (R41 routing + R46 semantic inference) ────────────
 
-    def _record_probe_change(
-        self, frame: np.ndarray, changed: np.ndarray
-    ) -> None:
-        """Summarise one transition as a probe-change record for goal inference.
+    def _goal_engaged(self) -> bool:
+        """Stall signature that gates goal-ranked frontier selection (R46).
 
-        The HUD mask (when trusted) is subtracted from the changed-cell set so a
-        step-counter / animated overlay does not masquerade as the "new colour"
-        the goal is trying to grow. Records ``action`` (the key that produced the
-        transition), ``changed_cells``, and ``top_new_color`` (the most common
-        non-background colour that APPEARED in the changed cells), matching the
-        shape :func:`planner.goal_inference.infer_goal` expects.
+        Goal ranking only overrides the nearest-frontier BFS once (a) the level
+        has consumed ``goal_engage_after`` actions WITHOUT clearing and (b) the
+        reachable in-gate frontier is still large (``goal_engage_frontier`` +
+        states) — the "graph is healthy but BFS is wandering far from the goal"
+        signature R40 diagnosed. Games that clear quickly never reach the gate,
+        so they keep the exact pre-R46 nearest-BFS trajectory (zero-loss).
         """
-        mask = self._hud_mask_grid()
-        if mask is not None and mask.shape == changed.shape:
-            changed = changed & ~mask
-        n_changed = int(changed.sum())
-        top_new: int | None = None
-        if n_changed:
-            new_vals = frame[changed]
-            new_vals = new_vals[new_vals != 0]  # ignore background appearances
-            if new_vals.size:
-                vals, counts = np.unique(new_vals, return_counts=True)
-                top_new = int(vals[int(np.argmax(counts))])
-        self._probe_changes.append(
-            {
-                "action": self._prev_action_key,
-                "changed_cells": n_changed,
-                "top_new_color": top_new,
-            }
-        )
+        if self._level_steps < self.goal_engage_after:
+            return False
+        n_frontier = sum(1 for v in self._untried.values() if v)
+        return n_frontier >= self.goal_engage_frontier
 
     def _maybe_infer_goal(self, frame: np.ndarray) -> None:
-        """(Re)infer the level goal once enough evidence has accumulated (R41).
+        """(Re)infer the level goal from the semantic-measure tracker (R46).
 
-        The first inference fires after ``goal_infer_after`` transitions; further
-        re-inferences fire every ``goal_recadence`` steps so the goal tracks the
-        evidence as the graph grows. Inference is CONFIDENCE-gated: if no probe
-        introduced a non-background colour the observation is too weak to name a
-        goal, so the agent stays goal-less (= pre-R41 nearest behaviour).
+        Fires first after ``goal_infer_after`` transitions, then every
+        ``goal_recadence`` steps. Two evidence sources, in priority order:
+
+        1. **Carried type** — if a prior level clear snapshotted a goal TYPE
+           (``_carried_goal_type``), re-instantiate that shape on THIS level's
+           colours. This is the cross-level transfer that targets deep levels.
+        2. **Within-level trend** — otherwise adopt the measure moving most
+           consistently upward under productive actions, if one is confident.
+
+        Leaving ``_goal`` None keeps the pre-R41 nearest behaviour, so an
+        unconfident level simply never ranks by goal.
         """
         if not self.goal_rank:
             return
@@ -1414,11 +1480,17 @@ class GraphFrontierAgent:
         if not (due_first or due_recadence):
             return
         self._last_goal_infer_step = self._level_steps
-        if not any(p.get("top_new_color") is not None for p in self._probe_changes):
-            return  # no confident signal yet — remain goal-less
-        hist = color_histogram_from_frame(frame)
-        new_goal = infer_goal(hist, list(self._probe_changes), self._goal_llm_call)
-        if new_goal != self._goal:
+
+        new_goal: GoalSpec | None = None
+        if self._carried_goal_type is not None:
+            new_goal = instantiate_goal_type(
+                frame, self._carried_goal_type, self._carried_axis
+            )
+        if new_goal is None:
+            trend = self._measure_tracker.best_trend()
+            if trend is not None:
+                new_goal = trend[0]
+        if new_goal is not None and new_goal != self._goal:
             self._goal = new_goal
             self._goal_version += 1  # invalidate cached scores lazily
             self._goal_walks_since_progress = 0  # fresh goal earns a fresh budget
@@ -1931,6 +2003,7 @@ class GraphFrontierAgent:
             and self._goal is not None
             and self.goal_blend > 0.0
             and self._goal_walks_since_progress < self.goal_max_walks
+            and self._goal_engaged()
         ):
             goal_action = self._goal_ranked_frontier(start)
             if goal_action is not None:

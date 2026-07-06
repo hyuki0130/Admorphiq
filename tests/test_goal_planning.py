@@ -245,3 +245,157 @@ def test_heuristic_goal_uses_rarest_color_without_probes() -> None:
     spec = heuristic_goal({0: 4000, 1: 90, 2: 6}, [])
     assert spec.goal_type is GoalType.FILL_COLOR
     assert spec.color == 2
+
+
+# ── R46 semantic-progress measures ───────────────────────────────────────────
+
+
+def test_score_goal_order_rises_as_components_size_sort() -> None:
+    """Purpose: score_goal(ORDER) must be higher for a component sequence whose
+    sizes are monotone along the axis than for a scrambled one.
+
+    Expected feedback: pass => the sort-class goal can climb toward a size-sorted
+    arrangement; fail => the ORDER measure is not directional and cannot steer
+    sort puzzles like SB26.
+    """
+    goal = GoalSpec(goal_type=GoalType.ORDER, axis=0)
+    sorted_frame = np.zeros((64, 64), dtype=np.int64)
+    # three blobs left->right with increasing size (1,4,9 cells)
+    sorted_frame[2, 4] = 5
+    sorted_frame[2, 20:22] = 5
+    sorted_frame[2:4, 20:22] = 5
+    sorted_frame[2:5, 36:39] = 5
+    scrambled = np.zeros((64, 64), dtype=np.int64)
+    scrambled[2:5, 4:7] = 5  # big on the left
+    scrambled[2, 20:22] = 5  # medium mid
+    scrambled[2, 36] = 5  # small right — then medium below reverses monotonicity
+    scrambled[10:13, 44:47] = 5
+    assert score_goal(sorted_frame, goal) >= score_goal(scrambled, goal)
+
+
+def test_score_goal_order_zero_with_fewer_than_two_components() -> None:
+    """Purpose: ORDER over a frame with <2 components carries no ordering, so the
+    measure is 0.0 (no spurious gradient).
+
+    Expected feedback: pass => single-object frames do not fabricate ordering
+    progress; fail => the ranker chases noise on near-empty frames.
+    """
+    goal = GoalSpec(goal_type=GoalType.ORDER, axis=1)
+    frame = np.zeros((64, 64), dtype=np.int64)
+    frame[10:12, 10:12] = 7
+    assert score_goal(frame, goal) == 0.0
+
+
+def test_score_goal_on_target_rises_as_a_nears_b() -> None:
+    """Purpose: score_goal(ON_TARGET) must increase (toward 0) as the colour-A
+    component moves closer to the colour-B target.
+
+    Expected feedback: pass => the pair-class goal can climb boxes-onto-targets /
+    items-into-slots; fail => the ON_TARGET measure is not directional and cannot
+    steer sokoban (KA59) or merge (SU15).
+    """
+    goal = GoalSpec(goal_type=GoalType.ON_TARGET, color=3, color_b=4)
+    far = np.zeros((64, 64), dtype=np.int64)
+    far[30:32, 4:6] = 3
+    far[30:32, 50:52] = 4
+    near = np.zeros((64, 64), dtype=np.int64)
+    near[30:32, 46:48] = 3  # A moved next to B
+    near[30:32, 50:52] = 4
+    assert score_goal(near, goal) > score_goal(far, goal)
+
+
+def test_score_goal_on_target_absent_color_is_maximally_far() -> None:
+    """Purpose: ON_TARGET with a missing colour is scored maximally far so the
+    ranker never prefers a state that lost a target/piece.
+
+    Expected feedback: pass => losing a target is penalised; fail => the ranker
+    could walk toward states that destroy the pieces it must place.
+    """
+    goal = GoalSpec(goal_type=GoalType.ON_TARGET, color=3, color_b=4)
+    frame = np.zeros((64, 64), dtype=np.int64)
+    frame[30:32, 4:6] = 3  # only A present, no B
+    assert score_goal(frame, goal) == -float(64 * 64)
+
+
+# ── R46 measure tracker + cross-level goal-type carry ─────────────────────────
+
+
+def test_candidate_goals_covers_progress_shapes_for_salient_colors() -> None:
+    """Purpose: candidate_goals must emit fill/count/order/pair shapes over the
+    frame's salient object colours (the family the tracker scores).
+
+    Expected feedback: pass => the tracker can discover any of the supported
+    progress measures; fail => a whole goal class is invisible to inference.
+    """
+    from admorphiq.planner.goal_inference import candidate_goals
+
+    frame = np.zeros((64, 64), dtype=np.int64)
+    frame[10:12, 10:12] = 3
+    frame[10:12, 40:42] = 4
+    goals = candidate_goals(frame)
+    types = {g.goal_type for g in goals}
+    assert GoalType.FILL_COLOR in types
+    assert GoalType.ORDER in types
+    assert GoalType.ON_TARGET in types
+
+
+def test_measure_tracker_best_trend_finds_monotone_measure() -> None:
+    """Purpose: GoalMeasureTracker.best_trend must name the measure that moves
+    consistently upward across observed frames.
+
+    Expected feedback: pass => within-level trend inference works (an unseen game
+    at L1 can acquire a goal); fail => trend detection is inert and the agent
+    stays goal-less on stalled games.
+    """
+    from admorphiq.planner.goal_inference import GoalMeasureTracker
+
+    tracker = GoalMeasureTracker()
+    # A grows in colour-5 fill count monotonically across 12 frames.
+    for k in range(12):
+        frame = np.zeros((64, 64), dtype=np.int64)
+        frame[0, : k + 2] = 5  # more colour-5 cells each step
+        frame[40:42, 40:42] = 6  # a static second object so colours stay salient
+        tracker.observe(frame)
+    best = tracker.best_trend()
+    assert best is not None
+    assert best[0].goal_type is GoalType.FILL_COLOR
+    assert best[0].color == 5
+
+
+def test_measure_tracker_best_jump_snapshots_biggest_riser() -> None:
+    """Purpose: best_jump must return the measure with the largest clean increase
+    over a level — the snapshot carried to the next level.
+
+    Expected feedback: pass => a level clear can hand its goal TYPE forward; fail
+    => cross-level transfer to deep levels is broken.
+    """
+    from admorphiq.planner.goal_inference import GoalMeasureTracker
+
+    tracker = GoalMeasureTracker()
+    for k in range(6):
+        frame = np.zeros((64, 64), dtype=np.int64)
+        frame[0, : 2 * (k + 1)] = 5  # colour-5 fill climbs steadily
+        frame[40:42, 40:42] = 6
+        tracker.observe(frame)
+    jump = tracker.best_jump()
+    assert jump is not None
+    assert jump.goal_type is GoalType.FILL_COLOR
+
+
+def test_instantiate_goal_type_reselects_colors_on_new_frame() -> None:
+    """Purpose: instantiate_goal_type must re-derive a concrete GoalSpec of the
+    carried type using the NEW frame's own object colours.
+
+    Expected feedback: pass => a carried ON_TARGET pairs the new level's two most
+    salient colours; fail => cross-level carry re-uses stale colours and scores
+    nothing on the next level.
+    """
+    from admorphiq.planner.goal_inference import instantiate_goal_type
+
+    frame = np.zeros((64, 64), dtype=np.int64)
+    frame[10:12, 10:12] = 8  # rarer object colour
+    frame[10:16, 40:46] = 9  # larger object colour
+    spec = instantiate_goal_type(frame, GoalType.ON_TARGET)
+    assert spec is not None
+    assert spec.goal_type is GoalType.ON_TARGET
+    assert {spec.color, spec.color_b} == {8, 9}

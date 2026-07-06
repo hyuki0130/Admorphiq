@@ -774,6 +774,9 @@ def test_goal_ranker_disengages_after_stall_cap():
     prevent).
     """
     agent = _goal_ready_agent(goal_blend=1.0, goal_max_walks=3)
+    # Force the R46 stall gate open so the goal branch is reachable.
+    agent.goal_engage_after = 0
+    agent.goal_engage_frontier = 0
     # Under the cap: goal branch active, prefers goal-rich B (a2).
     assert agent._best_frontier("START") == 2
     # Exhaust the cap; the counter now equals goal_max_walks.
@@ -782,31 +785,71 @@ def test_goal_ranker_disengages_after_stall_cap():
     assert agent._best_frontier("START") == 1
 
 
-def test_goal_inference_confidence_gate_stays_goalless_without_new_colors():
-    """Purpose: prove goal inference declines (leaves _goal None) when no probe
-    introduced a non-background colour — the 'stay goal-less' contract.
+def test_goal_branch_gated_off_until_stall_engaged():
+    """Purpose: prove the R46 stall gate keeps the goal branch INACTIVE until a
+    level has run goal_engage_after actions with a large frontier — so a
+    quick-clearing game keeps the exact pre-R46 nearest-BFS trajectory.
 
-    Expected feedback: if this fails, the agent would fabricate a goal from
-    noise and rank frontiers toward a meaningless objective on games where the
-    heuristic has no real signal.
+    Expected feedback: if this fails, goal ranking engages on fast games and the
+    zero-loss guarantee (byte-identical behaviour before the stall) is void.
+    """
+    agent = _goal_ready_agent(goal_blend=1.0)
+    agent.goal_engage_after = 1000
+    agent.goal_engage_frontier = 2
+    agent._level_steps = 10  # well under the engage threshold
+    # Not yet stalled -> nearest BFS returns the first-registered frontier (a1),
+    # NOT the goal-rich one (a2), even though a goal is set.
+    assert agent._best_frontier("START") == 1
+    # Cross the stall threshold with a large frontier -> goal branch engages.
+    agent._level_steps = 1000
+    assert agent._best_frontier("START") == 2
+
+
+def test_goal_inference_stays_goalless_without_signal():
+    """Purpose: prove goal inference declines (leaves _goal None) when the
+    measure tracker has seen no confident trend AND no goal type was carried in
+    from a prior level — the R46 'stay goal-less' contract.
+
+    Expected feedback: if this fails, the agent fabricates a goal from noise and
+    ranks frontiers toward a meaningless objective on games with no real signal.
     """
     agent = GraphFrontierAgent(goal_rank=True, goal_infer_after=2)
     agent._level_steps = 5
-    # Probes that changed cells but introduced no non-background colour.
-    agent._probe_changes.extend(
-        [{"action": 1, "changed_cells": 4, "top_new_color": None} for _ in range(3)]
-    )
+    # No observations fed to the tracker, no carried goal type.
     frame = np.zeros((64, 64), dtype=np.int64)
     agent._maybe_infer_goal(frame)
     assert agent._goal is None, "no confident signal -> remain goal-less"
 
 
-def test_goal_rank_off_by_default_and_env_overridable(monkeypatch):
-    """Purpose: pin GF_GOAL_RANK OFF by default (pre-R41 behaviour ships) and
-    prove the env knob turns it on.
+def test_carried_goal_type_instantiated_on_new_level():
+    """Purpose: prove a goal TYPE carried across a level boundary is
+    re-instantiated on the new level's own colours (R46 cross-level transfer).
 
-    Expected feedback: if the default drifts to ON before acceptance promotes
-    it, an unvalidated ranker ships silently; if the override breaks, the lever
+    Expected feedback: if this fails, the level-clear jump snapshot cannot steer
+    deeper levels — the deep-level lever the squared-efficiency metric rewards.
+    """
+    from admorphiq.planner.goal import GoalType
+
+    agent = GraphFrontierAgent(goal_rank=True, goal_infer_after=2)
+    agent._level_steps = 5
+    agent._carried_goal_type = GoalType.ON_TARGET
+    frame = np.zeros((64, 64), dtype=np.int64)
+    frame[10:12, 10:12] = 3  # object colour A
+    frame[10:12, 40:42] = 4  # object colour B
+    agent._maybe_infer_goal(frame)
+    assert agent._goal is not None
+    assert agent._goal.goal_type is GoalType.ON_TARGET
+
+
+def test_goal_rank_off_by_default_and_env_overridable(monkeypatch):
+    """Purpose: pin GF_GOAL_RANK OFF by default and prove the env knob turns it
+    on. R46 A/B-measured the stall-gated goal ranker (shell AND global) and found
+    it produced zero new clears on the 9 blocked games while regressing CD82's
+    deep L2 clear, so the lever ships OFF (byte-identical zero-loss) and stays
+    reachable via the env knob for future world-model-backed work.
+
+    Expected feedback: if the default drifts to ON, an unvalidated ranker that
+    regresses a deep clear ships silently; if the override breaks, the lever
     cannot be A/B measured.
     """
     assert GraphFrontierAgent().goal_rank is False
