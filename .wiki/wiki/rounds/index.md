@@ -72,6 +72,8 @@ commit, and `[[backlinks]]`. Narrative overview + reliable-metric + resume steps
 - **forward-model transfer / pretrain**: [[r35_forward-transfer]] (dynamics 52.4% vs BC 0%; pos_weight collapse fix)
 - **metric-calibration / baselines**: [[r34_metric-reexamination]] (random=0.0000 measured; real RHAE top=0.1258; purge the bogus 0.18/0.25/1.21)
 
+- **llm-selection / executable-world-model**: [[r48_llm-selection-ewm]] (Qwen3-Coder-30B-A3B primary; GLM-5.2 hardware-excluded; measured-pick bench designed)
+
 ## The two standing conclusions
 - ⛔ **Do NOT re-try action-selection tweaks** — 8 rounds failed; the novelty learner's action
   choice is a tight local optimum.
