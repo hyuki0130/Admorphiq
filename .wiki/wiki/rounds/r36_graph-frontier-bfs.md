@@ -146,3 +146,10 @@ cannot cross semantic puzzles (sokoban push-planning, sort sequences, slider com
 literature's answer at this exact wall = executable world model + directed planning (arXiv
 2605.05138, 32.58%, 106/209 levels). That is a NEW BUILD (LLM-written per-game transition rules +
 plan search), not a graph tweak. 16/25 · 21 levels stands as the honest graph-paradigm result.
+
+## R47 (2026-07-06 16:35) — measure-expansion OFF-ship + KA59 VERIFIED = 17/25
+Independent verification: KA59 clears at BASELINE @30k (18,785a — the "remaining 9" list was an @8k
+probe artifact; substrate levers made it reachable). SC25 clears 2/2 with GF_MEASURE_EXPAND=1
+(28,696a) but the knob breaks KA59 → default OFF, SC25 = documented conditional lever. TU93 L3 now
+9.2k total (was 12.5k). **17/25 verified · 23+ levels.** Remaining 7 (+SC25 conditional): DC22,
+G50T, RE86, S5I5, SB26, SU15, WA30 — the semantic core. In-paradigm exploration complete.
