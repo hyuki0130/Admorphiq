@@ -3,7 +3,7 @@ title: R48 — LLM selection for executable world model (research)
 type: round-log
 round: R48
 axis: llm-selection
-keywords: [executable-world-model, llm-selection, qwen3-coder, glm-5.2, gemma-4, vllm, fp8, kaggle-budget]
+keywords: [executable-world-model, llm-selection, qwen3-coder, glm-5.2, gemma-4, gpt-oss, vllm, fp8, kaggle-budget]
 verdict: primary = Qwen3-Coder-30B-A3B (pending local measured bench); GLM-5.2 hardware-excluded
 commit: pending
 date: 2026-07-06
@@ -23,6 +23,12 @@ GPT-5.4 32.58%, GPT-5.5 successor 58.12%). Core skill: code generation + iterati
   → 96GB 물리적 불가**; Ollama cloud-only → 로컬 벤치도 불가. **배포 제외** (상한 레퍼런스로만).
 - DeepSeek-Coder-V3: 초대형, 96GB 불가. Gemma 4 26B MoE: 수학/추론 강하나 코딩 특화 아님 — 2순위
   후보(다양성). Qwen3-Coder-Next: 크기 확인 후 상위 대안 가능.
+- **gpt-oss-120b** (added 2026-07-06, user-directed): OpenAI open-weight MoE 117B/5.1B-active,
+  Apache 2.0, native MXFP4 ~61GB → **96GB fits**; strong reasoning+coding; vLLM supported
+  (Harmony chat format required). Kaggle-side candidate #2 for architectural diversity vs
+  Qwen3-Coder. NOT locally benchable (61GB ≫ 24GB dev Mac). Sighted in active use on the
+  competition's Models tab. Sibling **gpt-oss-20b** (MXFP4 ~13GB, 3.6B active) DOES fit the
+  local Metal budget — local-bench candidate alongside Q3-quant 30b-coder ([[r49_ewm-bench-partial]]).
 - 참고: 작은 모델 distill 가능성 (arXiv 2605.24375: Qwen2.5-3B distill이 GPT-4o 근접) — M2 fallback.
 
 ## Measured-pick benchmark (mandatory before final; scripts/llm_worldmodel_bench.py 제안)
