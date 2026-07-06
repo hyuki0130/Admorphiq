@@ -256,3 +256,13 @@ Sprint rounds: R38 tiering (win), R39 sticky-mask (win: CN04+VC33 L2 7.5x), R40 
 L3, R41 goal-rank knob (class-dependent, default OFF). Plateau per PRD (2 consecutive no-default-
 improvement). Remaining recorded levers: per-game-type gating of GF_GOAL_RANK, goal-inference for
 "goal genuinely far", 10 non-clearing games (dc22/tu93/su15/... need mechanics the graph can't brute).
+
+## 2026-07-06 — FINAL2: deployed card = 18/25 games · 23 levels (graph paradigm complete)
+Full-25 @100k (deployed config): **18/25 clearing, 23 levels** (TU93 L3, VC33 L3, CD82 L2; SB26 new
+at 10,314a — substrate stacking), mean game_score 0.0023 (deep clears cost 10k-70k actions →
+squared efficiency ≈0; efficiency remains the open axis). Remaining 7: DC22, G50T, RE86, S5I5,
+SC25(knob-conditional), SU15, WA30 — semantic core, graph-paradigm-blocked (R43-R47 exhausted).
+Sprint arc: 15/25·18lvl → 18/25·23lvl via R42 pool-downshift (TU93 L3), R44 band-mask, R45 object
+hash, R47 verification (KA59 was an @8k probe artifact). NEXT (user-ordered): executable-WM track —
+R48 LLM research done (Qwen3-Coder-30B primary; GLM-5.2 hardware-excluded 744B>96GB); step 1 =
+measured LLM bench (scripts/llm_worldmodel_bench.py; exact-frame acc + refinement-gain).
