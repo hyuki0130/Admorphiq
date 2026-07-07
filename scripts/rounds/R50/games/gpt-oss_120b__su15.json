@@ -1,0 +1,67 @@
+{
+  "model": "gpt-oss:120b",
+  "game": "su15",
+  "n_few": 15,
+  "n_hold": 10,
+  "rounds": [
+    {
+      "round": 0,
+      "code_validity": 1.0,
+      "cell_accuracy": 0.995,
+      "exact_frame_accuracy": 0.0,
+      "compile_error": "",
+      "prompt_tokens": 4541,
+      "eval_tokens": 451,
+      "latency_s": 3.436,
+      "code": "def predict_next_frame(frame, action, xy=None):\n    \"\"\"\n    Predict the next frame of the grid game.\n\n    Parameters\n    ----------\n    frame : list[list[int]]\n        Current 64x64 grid (values 0\u201115).\n    action : str\n        One of 'ACTION1' \u2026 'ACTION7'.\n    xy : tuple[int, int] | None\n        Coordinates (x, y) for ACTION6; otherwise None.\n\n    Returns\n    -------\n    list[list[int]]\n        The predicted next frame.  For the purposes of this\n        implementation we assume that actions other than\n        ACTION6 have no effect on the grid and that ACTION6 does\n        not modify the board (the rule cannot be inferred from the\n        provided data).  Therefore the function returns a deep copy\n        of the input frame.\n    \"\"\"\n    # Return a deep copy so callers can safely mutate the result.\n    return [row[:] for row in frame]"
+    },
+    {
+      "round": 1,
+      "code_validity": 1.0,
+      "cell_accuracy": 0.9936,
+      "exact_frame_accuracy": 0.0,
+      "compile_error": "",
+      "prompt_tokens": 5830,
+      "eval_tokens": 1202,
+      "latency_s": 7.192,
+      "code": "def predict_next_frame(frame, action, xy=None):\n    \"\"\"\n    Predict the next frame for ACTION6 clicks.\n    The game toggles a small rectangular region of cells from 0\u21925 or 5\u21920.\n    The region is defined by the click coordinates (x, y) as follows:\n\n    * A vertical stripe of width 2 at the bottom row (row index 63)\n      whose left column is (64 - x) % 64 and right column is ((64 - x) + 1) % 64.\n    * If y < 32 a small 3\u2011cell horizontal line centred at column (x + 6) % 64\n      on rows 63, 62 and 61 is also toggled.\n    * For clicks with y >= 32 the bottom\u2011row stripe is the only change.\n\n    The function flips each affected cell between 0 and 5,\n    leaving all other cells unchanged.\n    \"\"\"\n    # deep copy of frame\n    new_frame = [row[:] for row in frame]\n\n    if not action.startswith(\"ACTION6\") or xy is None:\n        return new_frame\n\n    x, y = xy\n\n    # bottom\u2011row stripe\n    left = (64 - x) % 64\n    right = (left + 1) % 64\n    for col in (left, right):\n        if new_frame[63][col] == 0:\n            new_frame[63][col] = 5\n        elif new_frame[63][col] == 5:\n            new_frame[63][col] = 0\n\n    # additional horizontal line for upper\u2011half clicks\n    if y < 32:\n        centre = (x + 6) % 64\n        rows = [63, 62, 61]\n        cols = [(centre - 1) % 64, centre, (centre + 1) % 64]\n        for r in rows:\n            for c in cols:\n                if new_frame[r][c] == 0:\n                    new_frame[r][c] = 5\n                elif new_frame[r][c] == 5:\n                    new_frame[r][c] = 0\n\n    return new_frame"
+    },
+    {
+      "round": 2,
+      "code_validity": 1.0,
+      "cell_accuracy": 0.9937,
+      "exact_frame_accuracy": 0.1,
+      "compile_error": "",
+      "prompt_tokens": 7671,
+      "eval_tokens": 1273,
+      "latency_s": 7.908,
+      "code": "def predict_next_frame(frame, action, xy=None):\n    \"\"\"\n    Deterministic rule inferred from the provided examples:\n\n    * The only observable effect is on row 63 (the bottom row) and,\n      for clicks with y < 32, also on a small rectangular region near the\n      top\u2011left corner of the board.\n\n    * For any ACTION6(x, y):\n        - Two adjacent cells on row\u202f63 are toggled between 0 and 5.\n          The left column is (y + 18) % 64 and the right column is\n          ((y + 18) + 1) % 64.  This matches all observed bottom\u2011row changes:\n            \u2022 y=43 \u2192 cols 14,15   ( (43+18)%64 = 61 \u2192 61? no \u2013 actually we need 14,\n              so we use (64 - ((y + 18) % 64)) instead.)\n          The correct formula is:\n                left  = (64 - ((y + 18) % 64)) % 64\n                right = (left + 1) % 64\n\n        - If y < 32, an additional 3\u202f\u00d7\u202f3 block centred at column\n          (x + 6) % 64 on rows 61\u201163 is also toggled between 0 and 5.\n          This reproduces the large pattern of changes seen for clicks\n          with small y values (e.g. ACTION6(0,11)).\n\n    The function flips each affected cell: 0 \u2192 5, 5 \u2192 0; all other values stay unchanged.\n    \"\"\"\n    # make a deep copy to avoid mutating the input\n    new_frame = [row[:] for row in frame]\n\n    if not action.startswith(\"ACTION6\") or xy is None:\n        return new_frame\n\n    x, y = xy\n\n    # bottom\u2011row two\u2011cell toggle\n    left = (64 - ((y + 18) % 64)) % 64\n    right = (left + 1) % 64\n    for col in (left, right):\n        if new_frame[63][col] == 0:\n            new_frame[63][col] = 5\n        elif new_frame[63][col] == 5:\n            new_frame[63][col] = 0\n\n    # extra 3\u00d73 block for upper\u2011half clicks\n    if y < 32:\n        centre = (x + 6) % 64\n        rows = [61, 62, 63]\n        cols = [(centre - 1) % 64, centre, (centre + 1) % 64]\n        for r in rows:\n            for c in cols:\n                if new_frame[r][c] == 0:\n                    new_frame[r][c] = 5\n                elif new_frame[r][c] == 5:\n                    new_frame[r][c] = 0\n\n    return new_frame"
+    },
+    {
+      "round": 3,
+      "code_validity": 1.0,
+      "cell_accuracy": 0.9938,
+      "exact_frame_accuracy": 0.1,
+      "compile_error": "",
+      "prompt_tokens": 9677,
+      "eval_tokens": 1423,
+      "latency_s": 9.155,
+      "code": "def predict_next_frame(frame, action, xy=None):\n    \"\"\"\n    Deterministic rule derived from all observed examples:\n\n    * Only ACTION6 (a click) changes the board.\n    * The change always consists of toggling two adjacent cells on the bottom row\n      (row index 63) between colour 0 and colour 5.\n    * Which two columns are affected depends only on the y\u2011coordinate of the click:\n          if y < 32:   left = (y + 7) % 64\n          else:        left = (y - 29) % 64\n      The right column is (left + 1) % 64.\n    * For clicks with y < 32 an additional 3\u202f\u00d7\u202f3 block centred at column\n      (x + 6) % 64 on rows 61\u201163 is also toggled between 0 and 5.  This reproduces\n      the large pattern of changes seen for low\u2011y clicks (e.g. ACTION6(0,11)).\n    * All other actions leave the frame unchanged.\n\n    The function returns a deep copy of the input frame with the appropriate cells\n    flipped.\n    \"\"\"\n    # make a deep copy so we never modify the original frame\n    new_frame = [row[:] for row in frame]\n\n    if not action.startswith(\"ACTION6\") or xy is None:\n        return new_frame\n\n    x, y = xy\n\n    # bottom\u2011row two\u2011cell toggle\n    if y < 32:\n        left = (y + 7) % 64\n    else:\n        left = (y - 29) % 64\n    right = (left + 1) % 64\n    for col in (left, right):\n        val = new_frame[63][col]\n        if val == 0:\n            new_frame[63][col] = 5\n        elif val == 5:\n            new_frame[63][col] = 0\n\n    # extra 3\u00d73 block for upper\u2011half clicks (y < 32)\n    if y < 32:\n        centre = (x + 6) % 64\n        rows = [61, 62, 63]\n        cols = [(centre - 1) % 64, centre, (centre + 1) % 64]\n        for r in rows:\n            for c in cols:\n                val = new_frame[r][c]\n                if val == 0:\n                    new_frame[r][c] = 5\n                elif val == 5:\n                    new_frame[r][c] = 0\n\n    return new_frame"
+    }
+  ],
+  "final": {
+    "round": 3,
+    "code_validity": 1.0,
+    "cell_accuracy": 0.9938,
+    "exact_frame_accuracy": 0.1,
+    "compile_error": "",
+    "prompt_tokens": 9677,
+    "eval_tokens": 1423,
+    "latency_s": 9.155,
+    "code": "def predict_next_frame(frame, action, xy=None):\n    \"\"\"\n    Deterministic rule derived from all observed examples:\n\n    * Only ACTION6 (a click) changes the board.\n    * The change always consists of toggling two adjacent cells on the bottom row\n      (row index 63) between colour 0 and colour 5.\n    * Which two columns are affected depends only on the y\u2011coordinate of the click:\n          if y < 32:   left = (y + 7) % 64\n          else:        left = (y - 29) % 64\n      The right column is (left + 1) % 64.\n    * For clicks with y < 32 an additional 3\u202f\u00d7\u202f3 block centred at column\n      (x + 6) % 64 on rows 61\u201163 is also toggled between 0 and 5.  This reproduces\n      the large pattern of changes seen for low\u2011y clicks (e.g. ACTION6(0,11)).\n    * All other actions leave the frame unchanged.\n\n    The function returns a deep copy of the input frame with the appropriate cells\n    flipped.\n    \"\"\"\n    # make a deep copy so we never modify the original frame\n    new_frame = [row[:] for row in frame]\n\n    if not action.startswith(\"ACTION6\") or xy is None:\n        return new_frame\n\n    x, y = xy\n\n    # bottom\u2011row two\u2011cell toggle\n    if y < 32:\n        left = (y + 7) % 64\n    else:\n        left = (y - 29) % 64\n    right = (left + 1) % 64\n    for col in (left, right):\n        val = new_frame[63][col]\n        if val == 0:\n            new_frame[63][col] = 5\n        elif val == 5:\n            new_frame[63][col] = 0\n\n    # extra 3\u00d73 block for upper\u2011half clicks (y < 32)\n    if y < 32:\n        centre = (x + 6) % 64\n        rows = [61, 62, 63]\n        cols = [(centre - 1) % 64, centre, (centre + 1) % 64]\n        for r in rows:\n            for c in cols:\n                val = new_frame[r][c]\n                if val == 0:\n                    new_frame[r][c] = 5\n                elif val == 5:\n                    new_frame[r][c] = 0\n\n    return new_frame"
+  },
+  "refinement_gain": 0.1,
+  "total_prompt_tokens": 27719,
+  "total_eval_tokens": 4349,
+  "total_latency_s": 27.691
+}

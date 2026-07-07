@@ -371,3 +371,35 @@ def test_selected_round_is_best_train_fit_not_last():
     assert rec["selected"]["round"] == 1
     assert rec["selected"]["train_exact"] == 1.0
     assert rec["selected"]["exact_frame_accuracy"] == 1.0
+
+
+def test_refinement_feedback_uses_train_not_heldout():
+    """Purpose: the refinement prompt must be built from TRAIN (few-shot)
+    mismatches only — feeding held-out mismatches leaks test answers into the
+    loop (pre-R50b defect: every post-R0 score was inflated) and cannot exist
+    at Kaggle runtime.
+
+    Expected feedback: pass ⇒ round-1+ prompts mention the train transition's
+    actual change and never the held-out-only change; fail ⇒ test-set leakage
+    has been reintroduced into the refinement loop.
+    """
+    z = np.zeros((4, 4), dtype=np.int16)
+    train_next = z.copy()
+    train_next[0, 0] = 7  # train-only ground truth
+    held_next = z.copy()
+    held_next[3, 3] = 9   # held-out-only ground truth
+    few = [_transition(z, train_next)]
+    held = [_transition(z, held_next)]
+
+    bad = "```python\ndef predict_next_frame(frame, action, xy=None):\n    return frame\n```"
+    seen: list[list[dict]] = []
+
+    def mock_chat(messages, model, max_tokens):
+        seen.append(messages)
+        return bad, {"prompt_tokens": 1, "eval_tokens": 1, "latency_s": 0.0}
+
+    _MOD.run_model_game(mock_chat, "mock", "toy", few, held, rounds=1,
+                        max_tokens=64, timeout=1.0)
+    refinement_text = seen[1][-1]["content"]
+    assert "7" in refinement_text        # train mismatch present
+    assert "9" not in refinement_text    # held-out answer must NOT leak

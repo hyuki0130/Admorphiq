@@ -1,0 +1,67 @@
+{
+  "model": "qwen3-coder:30b-a3b-q8_0",
+  "game": "sb26",
+  "n_few": 15,
+  "n_hold": 10,
+  "rounds": [
+    {
+      "round": 0,
+      "code_validity": 1.0,
+      "cell_accuracy": 0.989,
+      "exact_frame_accuracy": 0.0,
+      "compile_error": "",
+      "prompt_tokens": 4682,
+      "eval_tokens": 348,
+      "latency_s": 2.517,
+      "code": "def predict_next_frame(frame, action, xy=None):\n    # Create a deep copy of the frame to avoid modifying the original\n    next_frame = [row[:] for row in frame]\n    \n    if action == \"ACTION5\":\n        # ACTION5 changes cells from color 2 to color 3\n        # Based on the examples, it seems to change all cells with value 2 to value 3\n        for i in range(64):\n            for j in range(64):\n                if next_frame[i][j] == 2:\n                    next_frame[i][j] = 3\n    elif action == \"ACTION6\":\n        # ACTION6 is a click at coordinates (x, y)\n        # For this specific game, it seems to change the clicked cell and its neighbors\n        # from color 4 to color 5, but only if they are currently color 4\n        if xy is not None:\n            x, y = xy\n            # Check bounds\n            if 0 <= x < 64 and 0 <= y < 64:\n                # Change the clicked cell and its 8 neighbors if they are color 4\n                for dx in [-1, 0, 1]:\n                    for dy in [-1, 0, 1]:\n                        nx, ny = x + dx, y + dy\n                        if 0 <= nx < 64 and 0 <= ny < 64:\n                            if next_frame[ny][nx] == 4:\n                                next_frame[ny][nx] = 5\n    \n    # For other actions, return the frame unchanged\n    return next_frame"
+    },
+    {
+      "round": 1,
+      "code_validity": 1.0,
+      "cell_accuracy": 0.989,
+      "exact_frame_accuracy": 0.0,
+      "compile_error": "",
+      "prompt_tokens": 7823,
+      "eval_tokens": 247,
+      "latency_s": 1.667,
+      "code": "def predict_next_frame(frame, action, xy=None):\n    # Create a deep copy of the frame to avoid modifying the original\n    next_frame = [row[:] for row in frame]\n    \n    if action == \"ACTION5\":\n        # ACTION5 changes ALL cells from color 2 to color 3\n        for i in range(64):\n            for j in range(64):\n                if next_frame[i][j] == 2:\n                    next_frame[i][j] = 3\n    \n    # For other actions, return the frame unchanged\n    return next_frame"
+    },
+    {
+      "round": 2,
+      "code_validity": 1.0,
+      "cell_accuracy": 0.989,
+      "exact_frame_accuracy": 0.0,
+      "compile_error": "",
+      "prompt_tokens": 10741,
+      "eval_tokens": 516,
+      "latency_s": 3.165,
+      "code": "def predict_next_frame(frame, action, xy=None):\n    # Create a deep copy of the frame to avoid modifying the original\n    next_frame = [row[:] for row in frame]\n    \n    if action == \"ACTION5\":\n        # ACTION5 changes ALL cells from color 2 to color 3\n        for i in range(64):\n            for j in range(64):\n                if next_frame[i][j] == 2:\n                    next_frame[i][j] = 3\n    \n    # For other actions, return the frame unchanged\n    return next_frame"
+    },
+    {
+      "round": 3,
+      "code_validity": 1.0,
+      "cell_accuracy": 0.989,
+      "exact_frame_accuracy": 0.0,
+      "compile_error": "",
+      "prompt_tokens": 13659,
+      "eval_tokens": 701,
+      "latency_s": 4.363,
+      "code": "def predict_next_frame(frame, action, xy=None):\n    # Create a deep copy of the frame to avoid modifying the original\n    next_frame = [row[:] for row in frame]\n    \n    if action == \"ACTION5\":\n        # ACTION5 changes ALL cells from color 2 to color 3\n        for i in range(64):\n            for j in range(64):\n                if next_frame[i][j] == 2:\n                    next_frame[i][j] = 3\n    \n    # For other actions, return the frame unchanged\n    return next_frame"
+    }
+  ],
+  "final": {
+    "round": 3,
+    "code_validity": 1.0,
+    "cell_accuracy": 0.989,
+    "exact_frame_accuracy": 0.0,
+    "compile_error": "",
+    "prompt_tokens": 13659,
+    "eval_tokens": 701,
+    "latency_s": 4.363,
+    "code": "def predict_next_frame(frame, action, xy=None):\n    # Create a deep copy of the frame to avoid modifying the original\n    next_frame = [row[:] for row in frame]\n    \n    if action == \"ACTION5\":\n        # ACTION5 changes ALL cells from color 2 to color 3\n        for i in range(64):\n            for j in range(64):\n                if next_frame[i][j] == 2:\n                    next_frame[i][j] = 3\n    \n    # For other actions, return the frame unchanged\n    return next_frame"
+  },
+  "refinement_gain": 0.0,
+  "total_prompt_tokens": 36905,
+  "total_eval_tokens": 1812,
+  "total_latency_s": 11.712
+}

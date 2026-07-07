@@ -1,0 +1,67 @@
+{
+  "model": "qwen3-coder:30b-a3b-q8_0",
+  "game": "lp85",
+  "n_few": 15,
+  "n_hold": 10,
+  "rounds": [
+    {
+      "round": 0,
+      "code_validity": 1.0,
+      "cell_accuracy": 0.9236,
+      "exact_frame_accuracy": 0.0,
+      "compile_error": "",
+      "prompt_tokens": 61975,
+      "eval_tokens": 441,
+      "latency_s": 12.9,
+      "code": "def predict_next_frame(frame, action, xy=None):\n    # Create a deep copy of the frame to avoid modifying the original\n    new_frame = [row[:] for row in frame]\n    \n    # Define action mappings\n    if action == \"ACTION1\":\n        # Fill entire grid with color 14\n        for i in range(64):\n            for j in range(64):\n                new_frame[i][j] = 14\n    elif action == \"ACTION2\":\n        # Fill entire grid with color 5\n        for i in range(64):\n            for j in range(64):\n                new_frame[i][j] = 5\n    elif action == \"ACTION3\":\n        # Fill entire grid with color 10\n        for i in range(64):\n            for j in range(64):\n                new_frame[i][j] = 10\n    elif action == \"ACTION4\":\n        # Fill entire grid with color 9\n        for i in range(64):\n            for j in range(64):\n                new_frame[i][j] = 9\n    elif action == \"ACTION5\":\n        # Fill entire grid with color 2\n        for i in range(64):\n            for j in range(64):\n                new_frame[i][j] = 2\n    elif action == \"ACTION6\":\n        if xy is not None:\n            x, y = xy\n            # Get the current color at the clicked position\n            current_color = frame[y][x]\n            # Change all cells of that color to color 15\n            for i in range(64):\n                for j in range(64):\n                    if new_frame[i][j] == current_color:\n                        new_frame[i][j] = 15\n    elif action == \"ACTION7\":\n        # Fill entire grid with color 11\n        for i in range(64):\n            for j in range(64):\n                new_frame[i][j] = 11\n    \n    return new_frame"
+    },
+    {
+      "round": 1,
+      "code_validity": 1.0,
+      "cell_accuracy": 0.9236,
+      "exact_frame_accuracy": 0.0,
+      "compile_error": "",
+      "prompt_tokens": 13643,
+      "eval_tokens": 569,
+      "latency_s": 5.682,
+      "code": "def predict_next_frame(frame, action, xy=None):\n    # Create a deep copy of the frame to avoid modifying the original\n    new_frame = [row[:] for row in frame]\n    \n    # Define action mappings\n    if action == \"ACTION1\":\n        # Fill entire grid with color 14\n        for i in range(64):\n            for j in range(64):\n                new_frame[i][j] = 14\n    elif action == \"ACTION2\":\n        # Fill entire grid with color 5\n        for i in range(64):\n            for j in range(64):\n                new_frame[i][j] = 5\n    elif action == \"ACTION3\":\n        # Fill entire grid with color 10\n        for i in range(64):\n            for j in range(64):\n                new_frame[i][j] = 10\n    elif action == \"ACTION4\":\n        # Fill entire grid with color 9\n        for i in range(64):\n            for j in range(64):\n                new_frame[i][j] = 9\n    elif action == \"ACTION5\":\n        # Fill entire grid with color 2\n        for i in range(64):\n            for j in range(64):\n                new_frame[i][j] = 2\n    elif action == \"ACTION6\":\n        if xy is not None:\n            x, y = xy\n            # Get the current color at the clicked position\n            current_color = frame[y][x]\n            # Change all cells of that color to color 15\n            for i in range(64):\n                for j in range(64):\n                    if new_frame[i][j] == current_color:\n                        new_frame[i][j] = 15\n    elif action == \"ACTION7\":\n        # Fill entire grid with color 11\n        for i in range(64):\n            for j in range(64):\n                new_frame[i][j] = 11\n    \n    return new_frame"
+    },
+    {
+      "round": 2,
+      "code_validity": 1.0,
+      "cell_accuracy": 0.9236,
+      "exact_frame_accuracy": 0.0,
+      "compile_error": "",
+      "prompt_tokens": 27074,
+      "eval_tokens": 779,
+      "latency_s": 6.726,
+      "code": "def predict_next_frame(frame, action, xy=None):\n    # Create a deep copy of the frame to avoid modifying the original\n    new_frame = [row[:] for row in frame]\n    \n    # Define action mappings\n    if action == \"ACTION1\":\n        # Fill entire grid with color 14\n        for i in range(64):\n            for j in range(64):\n                new_frame[i][j] = 14\n    elif action == \"ACTION2\":\n        # Fill entire grid with color 5\n        for i in range(64):\n            for j in range(64):\n                new_frame[i][j] = 5\n    elif action == \"ACTION3\":\n        # Fill entire grid with color 10\n        for i in range(64):\n            for j in range(64):\n                new_frame[i][j] = 10\n    elif action == \"ACTION4\":\n        # Fill entire grid with color 9\n        for i in range(64):\n            for j in range(64):\n                new_frame[i][j] = 9\n    elif action == \"ACTION5\":\n        # Fill entire grid with color 2\n        for i in range(64):\n            for j in range(64):\n                new_frame[i][j] = 2\n    elif action == \"ACTION6\":\n        if xy is not None:\n            x, y = xy\n            # Get the current color at the clicked position\n            current_color = frame[y][x]\n            # Change all cells of that color to color 15\n            for i in range(64):\n                for j in range(64):\n                    if new_frame[i][j] == current_color:\n                        new_frame[i][j] = 15\n    elif action == \"ACTION7\":\n        # Fill entire grid with color 11\n        for i in range(64):\n            for j in range(64):\n                new_frame[i][j] = 11\n    \n    return new_frame"
+    },
+    {
+      "round": 3,
+      "code_validity": 1.0,
+      "cell_accuracy": 0.9236,
+      "exact_frame_accuracy": 0.0,
+      "compile_error": "",
+      "prompt_tokens": 40505,
+      "eval_tokens": 882,
+      "latency_s": 8.744,
+      "code": "def predict_next_frame(frame, action, xy=None):\n    # Create a deep copy of the frame to avoid modifying the original\n    new_frame = [row[:] for row in frame]\n    \n    # Define action mappings\n    if action == \"ACTION1\":\n        # Fill entire grid with color 14\n        for i in range(64):\n            for j in range(64):\n                new_frame[i][j] = 14\n    elif action == \"ACTION2\":\n        # Fill entire grid with color 5\n        for i in range(64):\n            for j in range(64):\n                new_frame[i][j] = 5\n    elif action == \"ACTION3\":\n        # Fill entire grid with color 10\n        for i in range(64):\n            for j in range(64):\n                new_frame[i][j] = 10\n    elif action == \"ACTION4\":\n        # Fill entire grid with color 9\n        for i in range(64):\n            for j in range(64):\n                new_frame[i][j] = 9\n    elif action == \"ACTION5\":\n        # Fill entire grid with color 2\n        for i in range(64):\n            for j in range(64):\n                new_frame[i][j] = 2\n    elif action == \"ACTION6\":\n        if xy is not None:\n            x, y = xy\n            # Get the current color at the clicked position\n            current_color = frame[y][x]\n            # Change all cells of that color to color 15\n            for i in range(64):\n                for j in range(64):\n                    if new_frame[i][j] == current_color:\n                        new_frame[i][j] = 15\n    elif action == \"ACTION7\":\n        # Fill entire grid with color 11\n        for i in range(64):\n            for j in range(64):\n                new_frame[i][j] = 11\n    \n    return new_frame"
+    }
+  ],
+  "final": {
+    "round": 3,
+    "code_validity": 1.0,
+    "cell_accuracy": 0.9236,
+    "exact_frame_accuracy": 0.0,
+    "compile_error": "",
+    "prompt_tokens": 40505,
+    "eval_tokens": 882,
+    "latency_s": 8.744,
+    "code": "def predict_next_frame(frame, action, xy=None):\n    # Create a deep copy of the frame to avoid modifying the original\n    new_frame = [row[:] for row in frame]\n    \n    # Define action mappings\n    if action == \"ACTION1\":\n        # Fill entire grid with color 14\n        for i in range(64):\n            for j in range(64):\n                new_frame[i][j] = 14\n    elif action == \"ACTION2\":\n        # Fill entire grid with color 5\n        for i in range(64):\n            for j in range(64):\n                new_frame[i][j] = 5\n    elif action == \"ACTION3\":\n        # Fill entire grid with color 10\n        for i in range(64):\n            for j in range(64):\n                new_frame[i][j] = 10\n    elif action == \"ACTION4\":\n        # Fill entire grid with color 9\n        for i in range(64):\n            for j in range(64):\n                new_frame[i][j] = 9\n    elif action == \"ACTION5\":\n        # Fill entire grid with color 2\n        for i in range(64):\n            for j in range(64):\n                new_frame[i][j] = 2\n    elif action == \"ACTION6\":\n        if xy is not None:\n            x, y = xy\n            # Get the current color at the clicked position\n            current_color = frame[y][x]\n            # Change all cells of that color to color 15\n            for i in range(64):\n                for j in range(64):\n                    if new_frame[i][j] == current_color:\n                        new_frame[i][j] = 15\n    elif action == \"ACTION7\":\n        # Fill entire grid with color 11\n        for i in range(64):\n            for j in range(64):\n                new_frame[i][j] = 11\n    \n    return new_frame"
+  },
+  "refinement_gain": 0.0,
+  "total_prompt_tokens": 143197,
+  "total_eval_tokens": 2671,
+  "total_latency_s": 34.052
+}

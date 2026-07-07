@@ -1,0 +1,67 @@
+{
+  "model": "qwen3-coder:30b-a3b-q8_0",
+  "game": "ar25",
+  "n_few": 15,
+  "n_hold": 10,
+  "rounds": [
+    {
+      "round": 0,
+      "code_validity": 1.0,
+      "cell_accuracy": 0.9869,
+      "exact_frame_accuracy": 0.0,
+      "compile_error": "",
+      "prompt_tokens": 9305,
+      "eval_tokens": 653,
+      "latency_s": 16.438,
+      "code": "def predict_next_frame(frame, action, xy=None):\n    # Create a deep copy of the frame to avoid modifying the original\n    new_frame = [row[:] for row in frame]\n    \n    if action == \"ACTION1\":\n        # ACTION1: Fill entire grid with color 0\n        for i in range(64):\n            for j in range(64):\n                new_frame[i][j] = 0\n    \n    elif action == \"ACTION2\":\n        # ACTION2: Change specific cells to color 9 or 5 based on pattern\n        # Based on examples, it seems to change a region around center with specific pattern\n        # For simplicity, let's assume it changes a 10x10 square starting from (30,25) to 9s and 5s\n        for i in range(30, 40):\n            for j in range(25, 35):\n                if (i - 30 + j - 25) % 2 == 0:\n                    new_frame[i][j] = 9\n                else:\n                    new_frame[i][j] = 5\n    \n    elif action == \"ACTION3\":\n        # ACTION3: Not specified in examples, assume no change for now\n        pass\n    \n    elif action == \"ACTION4\":\n        # ACTION4: Change cells in a pattern around center with alternating colors\n        # Based on examples, it seems to affect a 10x10 region around (25,25) \n        # and also affects some other regions\n        for i in range(20, 30):\n            for j in range(20, 30):\n                if (i - 20 + j - 20) % 2 == 0:\n                    new_frame[i][j] = 9\n                else:\n                    new_frame[i][j] = 5\n    \n    elif action == \"ACTION5\":\n        # ACTION5: Change specific cells to color 5 (from various colors)\n        # Based on examples, it seems to change cells at row 1 with column 34 from 9 to 0\n        # and also changes some other specific cells to 5\n        # Let's assume it changes a few specific cells to 5\n        # For now, let's just change the last cell of each row to 5 if it's not already 5\n        for i in range(64):\n            if new_frame[i][63] != 5:\n                new_frame[i][63] = 5\n    \n    elif action == \"ACTION6\":\n        # ACTION6: Click at (x,y) - change that cell to color 9\n        if xy is not None:\n            x, y = xy\n            if 0 <= x < 64 and 0 <= y < 64:\n                new_frame[y][x] = 9\n    \n    elif action == \"ACTION7\":\n        # ACTION7: Not specified in examples, assume no change for now\n        pass\n    \n    return new_frame"
+    },
+    {
+      "round": 1,
+      "code_validity": 1.0,
+      "cell_accuracy": 0.9959,
+      "exact_frame_accuracy": 0.0,
+      "compile_error": "",
+      "prompt_tokens": 13468,
+      "eval_tokens": 748,
+      "latency_s": 4.663,
+      "code": "def predict_next_frame(frame, action, xy=None):\n    # Create a deep copy of the frame to avoid modifying the original\n    new_frame = [row[:] for row in frame]\n    \n    if action == \"ACTION1\":\n        # ACTION1: Fill entire grid with color 0\n        for i in range(64):\n            for j in range(64):\n                new_frame[i][j] = 0\n    \n    elif action == \"ACTION2\":\n        # ACTION2: Based on examples, seems to change a specific pattern around center\n        # Looking at the examples, it appears to be changing cells in a diamond/plus pattern\n        # For now, let's just implement what we see in examples - change some specific cells\n        # But since we don't have a clear rule from examples, let's make a reasonable assumption\n        pass\n    \n    elif action == \"ACTION3\":\n        # ACTION3: Not specified in examples, assume no change for now\n        pass\n    \n    elif action == \"ACTION4\":\n        # ACTION4: Based on examples, it seems to change cells in specific regions\n        # The pattern shows changing a 10x10 region with alternating colors\n        # But the actual changes are more complex - let's implement based on what we see\n        pass\n    \n    elif action == \"ACTION5\":\n        # ACTION5: Change cell at column 63 to color 5, but only for specific rows\n        # From examples, it seems to change one specific row's column 63 from 11 to 5\n        # But looking more carefully, it appears to be changing the last cell of a row (column 63)\n        # from whatever it was to 5, but only if it was 11\n        # Actually, let me just implement what we see in examples:\n        # It changes specific cells at column 63 from 11 to 5\n        pass\n    \n    elif action == \"ACTION6\":\n        # ACTION6: Click at (x,y) - change that cell to color 9\n        if xy is not None:\n            x, y = xy\n            if 0 <= x < 64 and 0 <= y < 64:\n                new_frame[y][x] = 9\n    \n    elif action == \"ACTION7\":\n        # ACTION7: Not specified in examples, assume no change for now\n        pass\n    \n    return new_frame"
+    },
+    {
+      "round": 2,
+      "code_validity": 1.0,
+      "cell_accuracy": 0.9959,
+      "exact_frame_accuracy": 0.0,
+      "compile_error": "",
+      "prompt_tokens": 15275,
+      "eval_tokens": 1158,
+      "latency_s": 6.866,
+      "code": "def predict_next_frame(frame, action, xy=None):\n    # Create a deep copy of the frame to avoid modifying the original\n    new_frame = [row[:] for row in frame]\n    \n    if action == \"ACTION1\":\n        # ACTION1: Fill entire grid with color 0\n        for i in range(64):\n            for j in range(64):\n                new_frame[i][j] = 0\n    \n    elif action == \"ACTION2\":\n        # ACTION2: Based on examples, seems to change a specific pattern around center\n        pass\n    \n    elif action == \"ACTION3\":\n        # ACTION3: Not specified in examples, assume no change for now\n        pass\n    \n    elif action == \"ACTION4\":\n        # ACTION4: Based on examples, changes cells in a complex pattern\n        # From the example, it seems to be changing specific cells in rows 18-26 and 52\n        # Let's implement a deterministic rule that matches the pattern:\n        # It appears to change cells in a diamond/plus pattern with alternating colors\n        # But since I don't have a clear rule from examples, let's just return as is for now\n        pass\n    \n    elif action == \"ACTION5\":\n        # ACTION5: Based on held-out cases, it seems to change one specific cell at column 63\n        # from color 11 to 5. But I need to be more precise.\n        # Looking at the examples, it changes many cells, but in held-out cases only one.\n        # Let me just implement what's actually needed for the test cases:\n        # The pattern seems to be changing row 23 column 63 from 11 to 5\n        # and row 3 column 63 from 11 to 5\n        # But that's not general. I'll need to make a better guess.\n        pass\n    \n    elif action == \"ACTION6\":\n        # ACTION6: Click at (x,y) - change that cell to color 9\n        if xy is not None:\n            x, y = xy\n            if 0 <= x < 64 and 0 <= y < 64:\n                new_frame[y][x] = 9\n    \n    elif action == \"ACTION7\":\n        # ACTION7: Not specified in examples, assume no change for now\n        pass\n    \n    return new_frame"
+    },
+    {
+      "round": 3,
+      "code_validity": 1.0,
+      "cell_accuracy": 0.9959,
+      "exact_frame_accuracy": 0.0,
+      "compile_error": "",
+      "prompt_tokens": 17074,
+      "eval_tokens": 598,
+      "latency_s": 3.767,
+      "code": "def predict_next_frame(frame, action, xy=None):\n    # Create a deep copy of the frame to avoid modifying the original\n    new_frame = [row[:] for row in frame]\n    \n    if action == \"ACTION1\":\n        # ACTION1: Fill entire grid with color 0\n        for i in range(64):\n            for j in range(64):\n                new_frame[i][j] = 0\n    \n    elif action == \"ACTION2\":\n        # ACTION2: Based on examples, seems to change a specific pattern around center\n        pass\n    \n    elif action == \"ACTION3\":\n        # ACTION3: Not specified in examples, assume no change for now\n        pass\n    \n    elif action == \"ACTION4\":\n        # ACTION4: Complex pattern - based on held-out case, it changes many cells\n        # Since I can't determine the exact rule from examples, I'll implement \n        # a simple deterministic version that at least handles some cases\n        pass\n    \n    elif action == \"ACTION5\":\n        # ACTION5: Based on held-out cases, it seems to change specific cells at column 63\n        # from color 11 to 5. But since we don't know the exact rule, \n        # I'll implement a simple version that handles the test cases:\n        # For now, let's assume it changes row 23 column 63 or row 3 column 63\n        # But this is not general. Let me just return the frame as is for now.\n        pass\n    \n    elif action == \"ACTION6\":\n        # ACTION6: Click at (x,y) - change that cell to color 9\n        if xy is not None:\n            x, y = xy\n            if 0 <= x < 64 and 0 <= y < 64:\n                new_frame[y][x] = 9\n    \n    elif action == \"ACTION7\":\n        # ACTION7: Not specified in examples, assume no change for now\n        pass\n    \n    return new_frame"
+    }
+  ],
+  "final": {
+    "round": 3,
+    "code_validity": 1.0,
+    "cell_accuracy": 0.9959,
+    "exact_frame_accuracy": 0.0,
+    "compile_error": "",
+    "prompt_tokens": 17074,
+    "eval_tokens": 598,
+    "latency_s": 3.767,
+    "code": "def predict_next_frame(frame, action, xy=None):\n    # Create a deep copy of the frame to avoid modifying the original\n    new_frame = [row[:] for row in frame]\n    \n    if action == \"ACTION1\":\n        # ACTION1: Fill entire grid with color 0\n        for i in range(64):\n            for j in range(64):\n                new_frame[i][j] = 0\n    \n    elif action == \"ACTION2\":\n        # ACTION2: Based on examples, seems to change a specific pattern around center\n        pass\n    \n    elif action == \"ACTION3\":\n        # ACTION3: Not specified in examples, assume no change for now\n        pass\n    \n    elif action == \"ACTION4\":\n        # ACTION4: Complex pattern - based on held-out case, it changes many cells\n        # Since I can't determine the exact rule from examples, I'll implement \n        # a simple deterministic version that at least handles some cases\n        pass\n    \n    elif action == \"ACTION5\":\n        # ACTION5: Based on held-out cases, it seems to change specific cells at column 63\n        # from color 11 to 5. But since we don't know the exact rule, \n        # I'll implement a simple version that handles the test cases:\n        # For now, let's assume it changes row 23 column 63 or row 3 column 63\n        # But this is not general. Let me just return the frame as is for now.\n        pass\n    \n    elif action == \"ACTION6\":\n        # ACTION6: Click at (x,y) - change that cell to color 9\n        if xy is not None:\n            x, y = xy\n            if 0 <= x < 64 and 0 <= y < 64:\n                new_frame[y][x] = 9\n    \n    elif action == \"ACTION7\":\n        # ACTION7: Not specified in examples, assume no change for now\n        pass\n    \n    return new_frame"
+  },
+  "refinement_gain": 0.0,
+  "total_prompt_tokens": 55122,
+  "total_eval_tokens": 3157,
+  "total_latency_s": 31.734
+}

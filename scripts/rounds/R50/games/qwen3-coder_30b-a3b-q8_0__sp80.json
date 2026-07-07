@@ -1,0 +1,67 @@
+{
+  "model": "qwen3-coder:30b-a3b-q8_0",
+  "game": "sp80",
+  "n_few": 15,
+  "n_hold": 10,
+  "rounds": [
+    {
+      "round": 0,
+      "code_validity": 1.0,
+      "cell_accuracy": 0.827,
+      "exact_frame_accuracy": 0.0,
+      "compile_error": "",
+      "prompt_tokens": 4301,
+      "eval_tokens": 541,
+      "latency_s": 3.684,
+      "code": "def predict_next_frame(frame, action, xy=None):\n    # Create a deep copy of the frame to avoid modifying the original\n    new_frame = [row[:] for row in frame]\n    \n    if action == \"ACTION1\":\n        # Change top-left 2x2 cells from 14 to 0\n        for i in range(2):\n            for j in range(2):\n                if new_frame[i][j] == 14:\n                    new_frame[i][j] = 0\n    \n    elif action == \"ACTION3\":\n        # Change top-right 3x1 cells from 14 to 0\n        for j in range(6, 9):\n            if new_frame[0][j] == 14:\n                new_frame[0][j] = 0\n    \n    elif action == \"ACTION4\":\n        # Change 4x4 regions of 9s to 12s and vice versa\n        # This appears to be a pattern where 9s become 12s and 12s become 9s\n        # in specific 4x4 regions, but we need to identify the exact pattern\n        # Looking at examples, it seems like it's changing 9s to 12s and 12s to 9s\n        # in a 4x4 region around some center point\n        \n        # For now, let's assume it's changing all 9s to 12s and 12s to 9s\n        for i in range(64):\n            for j in range(64):\n                if new_frame[i][j] == 9:\n                    new_frame[i][j] = 12\n                elif new_frame[i][j] == 12:\n                    new_frame[i][j] = 9\n    \n    elif action == \"ACTION5\":\n        # Change bottom-left 2x1 cells from 14 to 0\n        for j in range(1, 3):\n            if new_frame[63][j] == 14:\n                new_frame[63][j] = 0\n    \n    elif action == \"ACTION6\":\n        # Click at xy coordinates - change the clicked cell from 14 to 0\n        if xy is not None:\n            x, y = xy\n            if 0 <= x < 64 and 0 <= y < 64 and new_frame[y][x] == 14:\n                new_frame[y][x] = 0\n    \n    return new_frame"
+    },
+    {
+      "round": 1,
+      "code_validity": 1.0,
+      "cell_accuracy": 0.827,
+      "exact_frame_accuracy": 0.0,
+      "compile_error": "",
+      "prompt_tokens": 58198,
+      "eval_tokens": 1712,
+      "latency_s": 22.531,
+      "code": "def predict_next_frame(frame, action, xy=None):\n    # Create a deep copy of the frame to avoid modifying the original\n    new_frame = [row[:] for row in frame]\n    \n    if action == \"ACTION1\":\n        # Change top-left 2x2 cells from 14 to 0\n        for i in range(2):\n            for j in range(2):\n                if new_frame[i][j] == 14:\n                    new_frame[i][j] = 0\n    \n    elif action == \"ACTION3\":\n        # Change top-right 3x1 cells from 14 to 0\n        for j in range(6, 9):\n            if new_frame[0][j] == 14:\n                new_frame[0][j] = 0\n    \n    elif action == \"ACTION4\":\n        # Toggle 9s and 12s in specific regions\n        # Based on examples, it seems to toggle between 9 and 12 in certain positions\n        # Looking at the pattern from examples:\n        # Row 44: columns 20-23 (9->12) and 40-43 (12->9)\n        # Row 45: columns 20-23 (9->12) and 40-43 (12->9)\n        # Row 46: columns 20-23 (9->12) and 40-43 (12->9)\n        # Row 47: columns 20-23 (9->12) and 40-43 (12->9)\n        \n        # But also from case 2:\n        # Rows 44-47, columns 28-31 (12->9) and 48-51 (9->12)\n        \n        # Let's try a more general approach - toggle all 9s to 12s and 12s to 9s\n        for i in range(64):\n            for j in range(64):\n                if new_frame[i][j] == 9:\n                    new_frame[i][j] = 12\n                elif new_frame[i][j] == 12:\n                    new_frame[i][j] = 9\n    \n    elif action == \"ACTION5\":\n        # Change bottom-left 2x1 cells from 14 to 0\n        for j in range(1, 3):\n            if new_frame[63][j] == 14:\n                new_frame[63][j] = 0\n    \n    elif action == \"ACTION6\":\n        # Click at xy coordinates - change the clicked cell from 14 to 0\n        if xy is not None:\n            x, y = xy\n            if 0 <= x < 64 and 0 <= y < 64 and new_frame[y][x] == 14:\n                new_frame[y][x] = 0\n    \n    return new_frame"
+    },
+    {
+      "round": 2,
+      "code_validity": 1.0,
+      "cell_accuracy": 0.9949,
+      "exact_frame_accuracy": 0.2,
+      "compile_error": "",
+      "prompt_tokens": 54222,
+      "eval_tokens": 1671,
+      "latency_s": 22.482,
+      "code": "def predict_next_frame(frame, action, xy=None):\n    # Create a deep copy of the frame to avoid modifying the original\n    new_frame = [row[:] for row in frame]\n    \n    if action == \"ACTION1\":\n        # Change top-left 2x2 cells from 14 to 0\n        for i in range(2):\n            for j in range(2):\n                if new_frame[i][j] == 14:\n                    new_frame[i][j] = 0\n    \n    elif action == \"ACTION3\":\n        # Toggle 9s and 12s in specific regions AND change bottom-left 14 to 0\n        # Based on actual changes: rows 44-47, columns 28-31 (12->9) and 48-51 (9->12)\n        # Plus row 63, column 30 (14->0)\n        for i in range(44, 48):\n            for j in range(28, 32):\n                if new_frame[i][j] == 9:\n                    new_frame[i][j] = 12\n                elif new_frame[i][j] == 12:\n                    new_frame[i][j] = 9\n        \n        for i in range(44, 48):\n            for j in range(48, 52):\n                if new_frame[i][j] == 9:\n                    new_frame[i][j] = 12\n                elif new_frame[i][j] == 12:\n                    new_frame[i][j] = 9\n        \n        # Also change bottom-left 14 to 0 (row 63, column 30)\n        if new_frame[63][30] == 14:\n            new_frame[63][30] = 0\n    \n    elif action == \"ACTION4\":\n        # Toggle 9s and 12s in specific regions\n        # Based on actual changes: rows 26-27, columns 44-47 (9->12) and 48-51 (12->9)\n        # And also rows 44-47, columns 28-31 (12->9) and 48-51 (9->12)\n        for i in range(26, 28):\n            for j in range(44, 48):\n                if new_frame[i][j] == 9:\n                    new_frame[i][j] = 12\n                elif new_frame[i][j] == 12:\n                    new_frame[i][j] = 9\n        \n        for i in range(26, 28):\n            for j in range(48, 52):\n                if new_frame[i][j] == 9:\n                    new_frame[i][j] = 12\n                elif new_frame[i][j] == 12:\n                    new_frame[i][j] = 9\n        \n        # Also rows 44-47, columns 28-31 (12->9) and 48-51 (9->12)\n        for i in range(44, 48):\n            for j in range(28, 32):\n                if new_frame[i][j] == 9:\n                    new_frame[i][j] = 12\n                elif new_frame[i][j] == 12:\n                    new_frame[i][j] = 9\n        \n        for i in range(44, 48):\n            for j in range(48, 52):\n                if new_frame[i][j] == 9:\n                    new_frame[i][j] = 12\n                elif new_frame[i][j] == 12:\n                    new_frame[i][j] = 9\n    \n    elif action == \"ACTION5\":\n        # Change bottom-left 2x1 cells from 14 to 0\n        # Based on actual changes: row 0, columns 58-59 (14->0)\n        for j in range(58, 60):\n            if new_frame[0][j] == 14:\n                new_frame[0][j] = 0\n    \n    elif action == \"ACTION6\":\n        # Click at xy coordinates - change the clicked cell from 14 to 0\n        if xy is not None:\n            x, y = xy\n            if 0 <= x < 64 and 0 <= y < 64 and new_frame[y][x] == 14:\n                new_frame[y][x] = 0\n    \n    return new_frame"
+    },
+    {
+      "round": 3,
+      "code_validity": 1.0,
+      "cell_accuracy": 0.9956,
+      "exact_frame_accuracy": 0.2,
+      "compile_error": "",
+      "prompt_tokens": 57110,
+      "eval_tokens": 796,
+      "latency_s": 7.663,
+      "code": "def predict_next_frame(frame, action, xy=None):\n    # Create a deep copy of the frame to avoid modifying the original\n    new_frame = [row[:] for row in frame]\n    \n    if action == \"ACTION1\":\n        # Change top-left 2x2 cells from 14 to 0\n        for i in range(2):\n            for j in range(2):\n                if new_frame[i][j] == 14:\n                    new_frame[i][j] = 0\n    \n    elif action == \"ACTION3\":\n        # Toggle 9s and 12s in specific regions AND change bottom-left 14 to 0\n        # Based on actual changes: rows 16-19, columns 40-43 (12->9) and 60-63 (9->12)\n        # Plus row 63, column 43 (14->0)\n        for i in range(16, 20):\n            for j in range(40, 44):\n                if new_frame[i][j] == 9:\n                    new_frame[i][j] = 12\n                elif new_frame[i][j] == 12:\n                    new_frame[i][j] = 9\n        \n        for i in range(16, 20):\n            for j in range(60, 64):\n                if new_frame[i][j] == 9:\n                    new_frame[i][j] = 12\n                elif new_frame[i][j] == 12:\n                    new_frame[i][j] = 9\n        \n        # Also change row 63, column 43 (14->0)\n        if new_frame[63][43] == 14:\n            new_frame[63][43] = 0\n    \n    elif action == \"ACTION4\":\n        # Change top-left 2x2 cells from 14 to 0\n        for i in range(2):\n            for j in range(2):\n                if new_frame[i][j] == 14:\n                    new_frame[i][j] = 0\n    \n    elif action == \"ACTION5\":\n        # Change bottom-left 2x1 cells from 14 to 0\n        # Based on actual changes: row 0, columns 28-29 (14->0)\n        for j in range(28, 30):\n            if new_frame[0][j] == 14:\n                new_frame[0][j] = 0\n    \n    elif action == \"ACTION6\":\n        # Click at xy coordinates - change the clicked cell from 14 to 0\n        if xy is not None:\n            x, y = xy\n            if 0 <= x < 64 and 0 <= y < 64 and new_frame[y][x] == 14:\n                new_frame[y][x] = 0\n    \n    return new_frame"
+    }
+  ],
+  "final": {
+    "round": 3,
+    "code_validity": 1.0,
+    "cell_accuracy": 0.9956,
+    "exact_frame_accuracy": 0.2,
+    "compile_error": "",
+    "prompt_tokens": 57110,
+    "eval_tokens": 796,
+    "latency_s": 7.663,
+    "code": "def predict_next_frame(frame, action, xy=None):\n    # Create a deep copy of the frame to avoid modifying the original\n    new_frame = [row[:] for row in frame]\n    \n    if action == \"ACTION1\":\n        # Change top-left 2x2 cells from 14 to 0\n        for i in range(2):\n            for j in range(2):\n                if new_frame[i][j] == 14:\n                    new_frame[i][j] = 0\n    \n    elif action == \"ACTION3\":\n        # Toggle 9s and 12s in specific regions AND change bottom-left 14 to 0\n        # Based on actual changes: rows 16-19, columns 40-43 (12->9) and 60-63 (9->12)\n        # Plus row 63, column 43 (14->0)\n        for i in range(16, 20):\n            for j in range(40, 44):\n                if new_frame[i][j] == 9:\n                    new_frame[i][j] = 12\n                elif new_frame[i][j] == 12:\n                    new_frame[i][j] = 9\n        \n        for i in range(16, 20):\n            for j in range(60, 64):\n                if new_frame[i][j] == 9:\n                    new_frame[i][j] = 12\n                elif new_frame[i][j] == 12:\n                    new_frame[i][j] = 9\n        \n        # Also change row 63, column 43 (14->0)\n        if new_frame[63][43] == 14:\n            new_frame[63][43] = 0\n    \n    elif action == \"ACTION4\":\n        # Change top-left 2x2 cells from 14 to 0\n        for i in range(2):\n            for j in range(2):\n                if new_frame[i][j] == 14:\n                    new_frame[i][j] = 0\n    \n    elif action == \"ACTION5\":\n        # Change bottom-left 2x1 cells from 14 to 0\n        # Based on actual changes: row 0, columns 28-29 (14->0)\n        for j in range(28, 30):\n            if new_frame[0][j] == 14:\n                new_frame[0][j] = 0\n    \n    elif action == \"ACTION6\":\n        # Click at xy coordinates - change the clicked cell from 14 to 0\n        if xy is not None:\n            x, y = xy\n            if 0 <= x < 64 and 0 <= y < 64 and new_frame[y][x] == 14:\n                new_frame[y][x] = 0\n    \n    return new_frame"
+  },
+  "refinement_gain": 0.2,
+  "total_prompt_tokens": 173831,
+  "total_eval_tokens": 4720,
+  "total_latency_s": 56.36
+}

@@ -600,7 +600,11 @@ def run_model_game(
         # leakage-free selection signal (usable identically at Kaggle runtime,
         # where held-out labels don't exist).
         train_score = score_predictions(fn, few_shot, timeout)
-        last_mismatches = score.mismatches
+        # Refinement feedback comes from TRAIN mismatches only. Feeding
+        # held-out mismatches (the pre-R50b behaviour) leaks up to 3 test
+        # answers per round into the prompt and inflates every post-R0 score;
+        # at Kaggle runtime no held-out labels exist at all.
+        last_mismatches = train_score.mismatches
         round_records.append(
             {
                 "round": r,

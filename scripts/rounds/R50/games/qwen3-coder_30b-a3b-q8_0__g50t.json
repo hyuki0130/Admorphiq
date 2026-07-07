@@ -1,0 +1,67 @@
+{
+  "model": "qwen3-coder:30b-a3b-q8_0",
+  "game": "g50t",
+  "n_few": 15,
+  "n_hold": 10,
+  "rounds": [
+    {
+      "round": 0,
+      "code_validity": 1.0,
+      "cell_accuracy": 0.7714,
+      "exact_frame_accuracy": 0.0,
+      "compile_error": "",
+      "prompt_tokens": 9578,
+      "eval_tokens": 653,
+      "latency_s": 4.568,
+      "code": "def predict_next_frame(frame, action, xy=None):\n    # Create a deep copy of the frame to avoid modifying the original\n    new_frame = [row[:] for row in frame]\n    \n    if action == \"ACTION1\":\n        # Change all 5s to 9s and all 9s to 5s in the entire frame\n        for i in range(64):\n            for j in range(64):\n                if new_frame[i][j] == 5:\n                    new_frame[i][j] = 9\n                elif new_frame[i][j] == 9:\n                    new_frame[i][j] = 5\n    elif action == \"ACTION2\":\n        # Change all 5s to 9s and all 9s to 5s in the entire frame\n        for i in range(64):\n            for j in range(64):\n                if new_frame[i][j] == 5:\n                    new_frame[i][j] = 9\n                elif new_frame[i][j] == 9:\n                    new_frame[i][j] = 5\n    elif action == \"ACTION3\":\n        # Change all 5s to 9s and all 9s to 5s in the entire frame\n        for i in range(64):\n            for j in range(64):\n                if new_frame[i][j] == 5:\n                    new_frame[i][j] = 9\n                elif new_frame[i][j] == 9:\n                    new_frame[i][j] = 5\n    elif action == \"ACTION4\":\n        # Change all 5s to 9s and all 9s to 5s in the entire frame\n        for i in range(64):\n            for j in range(64):\n                if new_frame[i][j] == 5:\n                    new_frame[i][j] = 9\n                elif new_frame[i][j] == 9:\n                    new_frame[i][j] = 5\n    elif action == \"ACTION5\":\n        # Change all 5s to 9s and all 9s to 5s in the entire frame\n        for i in range(64):\n            for j in range(64):\n                if new_frame[i][j] == 5:\n                    new_frame[i][j] = 9\n                elif new_frame[i][j] == 9:\n                    new_frame[i][j] = 5\n    elif action == \"ACTION6\":\n        # No-op for ACTION6 since it's a click with coordinates\n        pass\n    elif action == \"ACTION7\":\n        # No-op for ACTION7\n        pass\n    \n    # Handle ACTION6 separately if needed (though examples don't show changes)\n    if action == \"ACTION6\" and xy:\n        x, y = xy\n        if 0 <= x < 64 and 0 <= y < 64:\n            # This is a click, but no specific rule given for it in examples\n            pass\n    \n    return new_frame"
+    },
+    {
+      "round": 1,
+      "code_validity": 0.0,
+      "cell_accuracy": 0.0,
+      "exact_frame_accuracy": 0.0,
+      "compile_error": "syntax error: invalid decimal literal (<generated>, line 1)",
+      "prompt_tokens": 0,
+      "eval_tokens": 0,
+      "latency_s": 10.096,
+      "code": "Looking at the examples more carefully, I can see that ACTION1 and ACTION2 both seem to swap 5s and 9s in the entire frame, but the actual behavior is different from what I initially implemented.\n\nLet me analyze the pattern:\n- In ACTION1 case 1: only [63,15,9,1] changed (9 became 1)\n- In ACTION1 case 2: only [63,2,9,1] changed (9 became 1) \n- In ACTION2 case: only [63,6,9,1] changed (9 became 1)\n\nThis suggests that ACTION1, ACTION2, ACTION3, ACTION4, ACTION5 are all changing the same specific cell (63,15) from 9 to 1 in the first example, and other specific cells in other examples.\n\nLooking more carefully at the transitions:\n- ACTION1: changes [63,15,9,1] \n- ACTION2: changes [63,6,9,1]\n- ACTION3: changes [63,16,9,1] \n- ACTION4: changes [63,5,9,1]\n- ACTION5: changes [63,12,9,1]\n- ACTION6: no change shown in examples\n- ACTION7: no change shown in examples\n\nBut wait - let me re-read the examples. The transitions show that ACTION1 actually changes ALL 5s to 9s and ALL 9s to 5s in the entire frame, but the examples are showing only specific cells changing.\n\nLooking at the actual examples more systematically:\n- ACTION1: [63,15,9,1] - this means cell (63,15) changed from 9 to 1\n- But looking at the initial frame, that cell is 9, and it's being changed to 1\n\nWait, I think I misunderstood. Let me look at the actual transitions again.\n\nLooking at the examples:\n- ACTION1: changes [63,15,9,1] - means (63,15) was 9 and became 1\n- But in the initial frame, that cell is 9, so it's changing 9 to 1\n\nBut looking at the initial frame again:\nRow 63: \"999999999999999999999991111111111111111111111111111111"
+    },
+    {
+      "round": 2,
+      "code_validity": 0.0,
+      "cell_accuracy": 0.0,
+      "exact_frame_accuracy": 0.0,
+      "compile_error": "syntax error: unterminated string literal (detected at line 1) (<generated>, line 1)",
+      "prompt_tokens": 0,
+      "eval_tokens": 0,
+      "latency_s": 4.776,
+      "code": "Looking at the error messages, I see that my previous implementation had issues. Let me analyze what's happening:\n\nFrom the examples, I can see that:\n1. ACTION1 changes cell (63,15) from 9 to 1\n2. ACTION2 changes cell (63,6) from 9 to 1  \n3. ACTION3 changes cell (63,16) from 9 to 1\n4. ACTION4 changes cell (63,5) from 9 to 1\n5. ACTION5 changes cell (63,12) from 9 to 1\n\nBut the actual transitions show that ACTION1 and ACTION2 are changing different cells, not all 5s to 9s and vice versa.\n\nLooking more carefully at the examples:\n- ACTION1: [63,15,9,1] - cell (63,15) changes from 9 to 1\n- ACTION2: [8,14,9,5], [8,15,9,5], ..., [63,6,9,1] - multiple cells change\n\nWait, I think I misunderstood the pattern. Let me re-read the examples more carefully.\n\nLooking at the actual transitions:\n- ACTION1: changes only one cell (63,15) from 9 to 1\n- ACTION2: changes multiple cells including (8,14) through (8,18) and (8,20) through (8,24) and (63,6) from 9 to 1\n\nThis suggests that each action has a specific rule for which cells change. Let me look at the pattern in the transitions.\n\nActually, looking at the examples again:\n- ACTION5: [63,12,9,1] - cell (63,12) changes from 9 to 1\n- ACTION4: [63,5,9,1] - cell (63,5) changes from 9 to 1\n\nThe pattern seems to be that each action changes a specific cell from 9 to 1. But the examples show different cells for different actions.\n\nLet me re-read the problem statement and examples more carefully.\n\nLooking at the initial frame:\nRow 63: \"999999999999999999999991111111111111111111111111111111"
+    },
+    {
+      "round": 3,
+      "code_validity": 1.0,
+      "cell_accuracy": 0.9933,
+      "exact_frame_accuracy": 0.1,
+      "compile_error": "",
+      "prompt_tokens": 53289,
+      "eval_tokens": 1122,
+      "latency_s": 9.762,
+      "code": "def predict_next_frame(frame, action, xy=None):\n    # Create a deep copy of the frame to avoid modifying the original\n    new_frame = [row[:] for row in frame]\n    \n    if action == \"ACTION1\":\n        # Change cell (63, 15) from 9 to 1\n        if 0 <= 63 < 64 and 0 <= 15 < 64:\n            if new_frame[63][15] == 9:\n                new_frame[63][15] = 1\n    elif action == \"ACTION2\":\n        # Change cell (63, 6) from 9 to 1\n        if 0 <= 63 < 64 and 0 <= 6 < 64:\n            if new_frame[63][6] == 9:\n                new_frame[63][6] = 1\n    elif action == \"ACTION3\":\n        # Change cell (63, 16) from 9 to 1\n        if 0 <= 63 < 64 and 0 <= 16 < 64:\n            if new_frame[63][16] == 9:\n                new_frame[63][16] = 1\n    elif action == \"ACTION4\":\n        # Change cell (63, 5) from 9 to 1\n        if 0 <= 63 < 64 and 0 <= 5 < 64:\n            if new_frame[63][5] == 9:\n                new_frame[63][5] = 1\n    elif action == \"ACTION5\":\n        # Change cell (63, 12) from 9 to 1\n        if 0 <= 63 < 64 and 0 <= 12 < 64:\n            if new_frame[63][12] == 9:\n                new_frame[63][12] = 1\n    elif action == \"ACTION6\":\n        # No-op for ACTION6 since it's a click with coordinates\n        pass\n    elif action == \"ACTION7\":\n        # No-op for ACTION7\n        pass\n    \n    return new_frame"
+    }
+  ],
+  "final": {
+    "round": 3,
+    "code_validity": 1.0,
+    "cell_accuracy": 0.9933,
+    "exact_frame_accuracy": 0.1,
+    "compile_error": "",
+    "prompt_tokens": 53289,
+    "eval_tokens": 1122,
+    "latency_s": 9.762,
+    "code": "def predict_next_frame(frame, action, xy=None):\n    # Create a deep copy of the frame to avoid modifying the original\n    new_frame = [row[:] for row in frame]\n    \n    if action == \"ACTION1\":\n        # Change cell (63, 15) from 9 to 1\n        if 0 <= 63 < 64 and 0 <= 15 < 64:\n            if new_frame[63][15] == 9:\n                new_frame[63][15] = 1\n    elif action == \"ACTION2\":\n        # Change cell (63, 6) from 9 to 1\n        if 0 <= 63 < 64 and 0 <= 6 < 64:\n            if new_frame[63][6] == 9:\n                new_frame[63][6] = 1\n    elif action == \"ACTION3\":\n        # Change cell (63, 16) from 9 to 1\n        if 0 <= 63 < 64 and 0 <= 16 < 64:\n            if new_frame[63][16] == 9:\n                new_frame[63][16] = 1\n    elif action == \"ACTION4\":\n        # Change cell (63, 5) from 9 to 1\n        if 0 <= 63 < 64 and 0 <= 5 < 64:\n            if new_frame[63][5] == 9:\n                new_frame[63][5] = 1\n    elif action == \"ACTION5\":\n        # Change cell (63, 12) from 9 to 1\n        if 0 <= 63 < 64 and 0 <= 12 < 64:\n            if new_frame[63][12] == 9:\n                new_frame[63][12] = 1\n    elif action == \"ACTION6\":\n        # No-op for ACTION6 since it's a click with coordinates\n        pass\n    elif action == \"ACTION7\":\n        # No-op for ACTION7\n        pass\n    \n    return new_frame"
+  },
+  "refinement_gain": 0.1,
+  "total_prompt_tokens": 62867,
+  "total_eval_tokens": 1775,
+  "total_latency_s": 29.202
+}

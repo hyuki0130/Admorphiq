@@ -1,0 +1,67 @@
+{
+  "model": "gpt-oss:120b",
+  "game": "sb26",
+  "n_few": 15,
+  "n_hold": 10,
+  "rounds": [
+    {
+      "round": 0,
+      "code_validity": 1.0,
+      "cell_accuracy": 0.9926,
+      "exact_frame_accuracy": 0.1,
+      "compile_error": "",
+      "prompt_tokens": 2112,
+      "eval_tokens": 411,
+      "latency_s": 2.892,
+      "code": "def predict_next_frame(frame, action, xy=None):\n    \"\"\"\n    Predict the next frame of a 64x64 grid game.\n\n    Parameters\n    ----------\n    frame : list[list[int]]\n        Current board \u2013 64 rows each containing 64 integers (0\u201115).\n    action : str\n        One of 'ACTION1' \u2026 'ACTION7'.\n    xy : tuple[int, int] | None\n        Coordinate for ACTION6; ignored for other actions.\n\n    Returns\n    -------\n    list[list[int]]\n        Predicted next board. The function is deterministic and uses only the\n        standard library.\n    \"\"\"\n    # Defensive copy of the frame (list of lists)\n    new_frame = [row[:] for row in frame]\n\n    if action == \"ACTION5\":\n        # Observed rule: every cell on row index 53 that currently holds value 2\n        # becomes 3. No other cells are affected.\n        target_row = 53\n        if 0 <= target_row < len(new_frame):\n            new_frame[target_row] = [\n                3 if val == 2 else val for val in new_frame[target_row]\n            ]\n\n    # For all other actions (including ACTION6) we keep the board unchanged.\n    return new_frame"
+    },
+    {
+      "round": 1,
+      "code_validity": 1.0,
+      "cell_accuracy": 0.9956,
+      "exact_frame_accuracy": 0.0,
+      "compile_error": "",
+      "prompt_tokens": 4240,
+      "eval_tokens": 542,
+      "latency_s": 3.617,
+      "code": "def predict_next_frame(frame, action, xy=None):\n    \"\"\"\n    Predict the next frame for the grid game.\n\n    Observed rule (ACTION5):\n      \u2022 Locate the first cell with value 2 in row index 53 and change it to 3.\n        If no such cell exists, do nothing for this part.\n      \u2022 Paint a solid 6\u00d76 block of colour 4 covering rows 56\u201161\n        and columns 41\u201146 (inclusive), overwriting whatever was there.\n\n    All other actions leave the board unchanged.\n    \"\"\"\n    # Make a deep copy of the frame (list of lists)\n    new_frame = [row[:] for row in frame]\n\n    if action == \"ACTION5\":\n        target_row = 53\n        # Change first 2 \u2192 3 in row 53\n        if 0 <= target_row < len(new_frame):\n            for col, val in enumerate(new_frame[target_row]):\n                if val == 2:\n                    new_frame[target_row][col] = 3\n                    break\n\n        # Paint the 6\u00d76 block of 4s (rows 56\u201161, cols 41\u201146)\n        for r in range(56, 62):          # 56,57,58,59,60,61\n            if 0 <= r < len(new_frame):\n                row = new_frame[r]\n                for c in range(41, 47):   # 41\u201146 inclusive\n                    if 0 <= c < len(row):\n                        row[c] = 4\n\n    # No changes for other actions (including ACTION6)\n    return new_frame"
+    },
+    {
+      "round": 2,
+      "code_validity": 1.0,
+      "cell_accuracy": 0.9995,
+      "exact_frame_accuracy": 0.9,
+      "compile_error": "",
+      "prompt_tokens": 5836,
+      "eval_tokens": 1209,
+      "latency_s": 7.266,
+      "code": "def predict_next_frame(frame, action, xy=None):\n    \"\"\"\n    Predict the next frame for the grid game.\n\n    Observed ACTION5 rule:\n      \u2022 In row 53, locate the *right\u2011most* cell whose value is 2 and change it to 3.\n        (If no such cell exists, do nothing for this part.)\n      \u2022 Draw a hollow rectangle of colour\u202f4 with its top\u2011left corner at\n        (row\u00a056, col\u00a041) and bottom\u2011right corner at (row\u00a061, col\u00a046):\n          \u2013 Fill the entire top edge (row\u00a056, cols\u00a041\u201146) with 4.\n          \u2013 Fill the entire bottom edge (row\u00a061, cols\u00a041\u201146) with 4.\n          \u2013 For rows\u202f57\u201160 fill only the left and right edges\n            (cols\u00a041 and\u00a046) with 4.\n\n    All other actions leave the board unchanged.\n    \"\"\"\n    # Deep copy of the frame (list of lists)\n    new_frame = [row[:] for row in frame]\n\n    if action == \"ACTION5\":\n        target_row = 53\n        # Change right\u2011most 2 \u2192 3 in row\u00a053\n        if 0 <= target_row < len(new_frame):\n            row_vals = new_frame[target_row]\n            # find last index where value is 2\n            for col in range(len(row_vals) - 1, -1, -1):\n                if row_vals[col] == 2:\n                    new_frame[target_row][col] = 3\n                    break\n\n        # Draw the hollow rectangle of 4s\n        top, bottom = 56, 61          # inclusive rows\n        left, right = 41, 46          # inclusive cols\n\n        for r in range(top, bottom + 1):\n            if not (0 <= r < len(new_frame)):\n                continue\n            row = new_frame[r]\n            if r == top or r == bottom:\n                # fill whole horizontal edge\n                for c in range(left, right + 1):\n                    if 0 <= c < len(row):\n                        row[c] = 4\n            else:\n                # fill only the vertical edges\n                for c in (left, right):\n                    if 0 <= c < len(row):\n                        row[c] = 4\n\n    # No modifications for other actions (including ACTION6)\n    return new_frame"
+    },
+    {
+      "round": 3,
+      "code_validity": 1.0,
+      "cell_accuracy": 0.9997,
+      "exact_frame_accuracy": 0.9,
+      "compile_error": "",
+      "prompt_tokens": 6678,
+      "eval_tokens": 878,
+      "latency_s": 5.85,
+      "code": "def predict_next_frame(frame, action, xy=None):\n    \"\"\"\n    Predict the next frame for the grid game.\n\n    Rules inferred from the data:\n\n    \u2022 ACTION5:\n        \u2013 In row 53 change the right\u2011most cell with value\u202f2 to 3.\n        \u2013 Draw a hollow rectangle of colour\u202f4 whose top\u2011left corner is at\n          (row\u00a056, col\u00a041) and bottom\u2011right corner at (row\u00a061, col\u00a046).\n\n    \u2022 ACTION6(x, y):\n        \u2013 Treat (x, y) as the centre of a 6\u00d76 hollow rectangle.\n        \u2013 The rectangle\u2019s top\u2011left corner is therefore at (row\u202fy\u20113, col\u202fx\u20111)\n          and its bottom\u2011right corner at (row\u202fy+2, col\u202fx+2).\n        \u2013 Fill the perimeter of this rectangle with colour\u202f4\n          (top and bottom edges fully, left and right edges only on the\n           intermediate rows).\n\n    All other actions leave the board unchanged.\n    \"\"\"\n    # Deep copy of the frame\n    new_frame = [row[:] for row in frame]\n\n    if action == \"ACTION5\":\n        # ---- change right\u2011most 2 \u2192 3 in row 53 -----------------\n        r = 53\n        if 0 <= r < len(new_frame):\n            row_vals = new_frame[r]\n            for c in range(len(row_vals) - 1, -1, -1):\n                if row_vals[c] == 2:\n                    new_frame[r][c] = 3\n                    break\n\n        # ---- draw fixed hollow rectangle (41\u201146, 56\u201161) ----------\n        top, bottom = 56, 61\n        left, right = 41, 46\n        for rr in range(top, bottom + 1):\n            if not (0 <= rr < len(new_frame)):\n                continue\n            row = new_frame[rr]\n            if rr == top or rr == bottom:\n                for cc in range(left, right + 1):\n                    if 0 <= cc < len(row):\n                        row[cc] = 4\n            else:\n                for cc in (left, right):\n                    if 0 <= cc < len(row):\n                        row[cc] = 4\n\n    elif action == \"ACTION6\" and xy is not None:\n        # ---- draw hollow rectangle centred at (x, y) ----------\n        x, y = xy          # x = column, y = row\n        top = y - 3\n        bottom = y + 2\n        left = x - 1\n        right = x + 2\n\n        for rr in range(top, bottom + 1):\n            if not (0 <= rr < len(new_frame)):\n                continue\n            row = new_frame[rr]\n            if rr == top or rr == bottom:\n                for cc in range(left, right + 1):\n                    if 0 <= cc < len(row):\n                        row[cc] = 4\n            else:\n                for cc in (left, right):\n                    if 0 <= cc < len(row):\n                        row[cc] = 4\n\n    # Other actions produce no change.\n    return new_frame"
+    }
+  ],
+  "final": {
+    "round": 3,
+    "code_validity": 1.0,
+    "cell_accuracy": 0.9997,
+    "exact_frame_accuracy": 0.9,
+    "compile_error": "",
+    "prompt_tokens": 6678,
+    "eval_tokens": 878,
+    "latency_s": 5.85,
+    "code": "def predict_next_frame(frame, action, xy=None):\n    \"\"\"\n    Predict the next frame for the grid game.\n\n    Rules inferred from the data:\n\n    \u2022 ACTION5:\n        \u2013 In row 53 change the right\u2011most cell with value\u202f2 to 3.\n        \u2013 Draw a hollow rectangle of colour\u202f4 whose top\u2011left corner is at\n          (row\u00a056, col\u00a041) and bottom\u2011right corner at (row\u00a061, col\u00a046).\n\n    \u2022 ACTION6(x, y):\n        \u2013 Treat (x, y) as the centre of a 6\u00d76 hollow rectangle.\n        \u2013 The rectangle\u2019s top\u2011left corner is therefore at (row\u202fy\u20113, col\u202fx\u20111)\n          and its bottom\u2011right corner at (row\u202fy+2, col\u202fx+2).\n        \u2013 Fill the perimeter of this rectangle with colour\u202f4\n          (top and bottom edges fully, left and right edges only on the\n           intermediate rows).\n\n    All other actions leave the board unchanged.\n    \"\"\"\n    # Deep copy of the frame\n    new_frame = [row[:] for row in frame]\n\n    if action == \"ACTION5\":\n        # ---- change right\u2011most 2 \u2192 3 in row 53 -----------------\n        r = 53\n        if 0 <= r < len(new_frame):\n            row_vals = new_frame[r]\n            for c in range(len(row_vals) - 1, -1, -1):\n                if row_vals[c] == 2:\n                    new_frame[r][c] = 3\n                    break\n\n        # ---- draw fixed hollow rectangle (41\u201146, 56\u201161) ----------\n        top, bottom = 56, 61\n        left, right = 41, 46\n        for rr in range(top, bottom + 1):\n            if not (0 <= rr < len(new_frame)):\n                continue\n            row = new_frame[rr]\n            if rr == top or rr == bottom:\n                for cc in range(left, right + 1):\n                    if 0 <= cc < len(row):\n                        row[cc] = 4\n            else:\n                for cc in (left, right):\n                    if 0 <= cc < len(row):\n                        row[cc] = 4\n\n    elif action == \"ACTION6\" and xy is not None:\n        # ---- draw hollow rectangle centred at (x, y) ----------\n        x, y = xy          # x = column, y = row\n        top = y - 3\n        bottom = y + 2\n        left = x - 1\n        right = x + 2\n\n        for rr in range(top, bottom + 1):\n            if not (0 <= rr < len(new_frame)):\n                continue\n            row = new_frame[rr]\n            if rr == top or rr == bottom:\n                for cc in range(left, right + 1):\n                    if 0 <= cc < len(row):\n                        row[cc] = 4\n            else:\n                for cc in (left, right):\n                    if 0 <= cc < len(row):\n                        row[cc] = 4\n\n    # Other actions produce no change.\n    return new_frame"
+  },
+  "refinement_gain": 0.8,
+  "total_prompt_tokens": 18866,
+  "total_eval_tokens": 3040,
+  "total_latency_s": 19.625
+}

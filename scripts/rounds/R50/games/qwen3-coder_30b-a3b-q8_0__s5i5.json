@@ -1,0 +1,67 @@
+{
+  "model": "qwen3-coder:30b-a3b-q8_0",
+  "game": "s5i5",
+  "n_few": 15,
+  "n_hold": 10,
+  "rounds": [
+    {
+      "round": 0,
+      "code_validity": 1.0,
+      "cell_accuracy": 0.9996,
+      "exact_frame_accuracy": 0.0,
+      "compile_error": "",
+      "prompt_tokens": 4943,
+      "eval_tokens": 526,
+      "latency_s": 3.904,
+      "code": "def predict_next_frame(frame, action, xy=None):\n    # Create a deep copy of the frame to avoid modifying the original\n    next_frame = [row[:] for row in frame]\n    \n    if action == \"ACTION6\":\n        x, y = xy\n        # Change the clicked cell from color 3 to color 4\n        if 0 <= y < 64 and 0 <= x < 64:\n            if next_frame[y][x] == 3:\n                next_frame[y][x] = 4\n                \n    elif action == \"ACTION1\":\n        # Find all cells with color 3 and change them to color 4\n        for y in range(64):\n            for x in range(64):\n                if next_frame[y][x] == 3:\n                    next_frame[y][x] = 4\n                    \n    elif action == \"ACTION2\":\n        # Find all cells with color 4 and change them to color 3\n        for y in range(64):\n            for x in range(64):\n                if next_frame[y][x] == 4:\n                    next_frame[y][x] = 3\n                    \n    elif action == \"ACTION3\":\n        # Find all cells with color 5 and change them to color 14\n        for y in range(64):\n            for x in range(64):\n                if next_frame[y][x] == 5:\n                    next_frame[y][x] = 14\n                    \n    elif action == \"ACTION4\":\n        # Find all cells with color 13 and change them to color 14\n        for y in range(64):\n            for x in range(64):\n                if next_frame[y][x] == 13:\n                    next_frame[y][x] = 14\n                    \n    elif action == \"ACTION5\":\n        # Find all cells with color 14 and change them to color 5\n        for y in range(64):\n            for x in range(64):\n                if next_frame[y][x] == 14:\n                    next_frame[y][x] = 5\n                    \n    elif action == \"ACTION7\":\n        # Find all cells with color 3 and change them to color 4\n        for y in range(64):\n            for x in range(64):\n                if next_frame[y][x] == 3:\n                    next_frame[y][x] = 4\n                    \n    return next_frame"
+    },
+    {
+      "round": 1,
+      "code_validity": 1.0,
+      "cell_accuracy": 0.9996,
+      "exact_frame_accuracy": 0.0,
+      "compile_error": "",
+      "prompt_tokens": 5649,
+      "eval_tokens": 5110,
+      "latency_s": 27.164,
+      "code": "def predict_next_frame(frame, action, xy=None):\n    # Create a deep copy of the frame to avoid modifying the original\n    next_frame = [row[:] for row in frame]\n    \n    if action == \"ACTION6\":\n        x, y = xy\n        # Change the clicked cell from color 3 to color 4 if it's currently color 3\n        if 0 <= y < 64 and 0 <= x < 64:\n            if next_frame[y][x] == 3:\n                next_frame[y][x] = 4\n                \n    elif action == \"ACTION1\":\n        # Find all cells with color 3 and change them to color 4\n        for y in range(64):\n            for x in range(64):\n                if next_frame[y][x] == 3:\n                    next_frame[y][x] = 4\n                    \n    elif action == \"ACTION2\":\n        # Find all cells with color 4 and change them to color 3\n        for y in range(64):\n            for x in range(64):\n                if next_frame[y][x] == 4:\n                    next_frame[y][x] = 3\n                    \n    elif action == \"ACTION3\":\n        # Find all cells with color 5 and change them to color 14\n        for y in range(64):\n            for x in range(64):\n                if next_frame[y][x] == 5:\n                    next_frame[y][x] = 14\n                    \n    elif action == \"ACTION4\":\n        # Find all cells with color 13 and change them to color 14\n        for y in range(64):\n            for x in range(64):\n                if next_frame[y][x] == 13:\n                    next_frame[y][x] = 14\n                    \n    elif action == \"ACTION5\":\n        # Find all cells with color 14 and change them to color 5\n        for y in range(64):\n            for x in range(64):\n                if next_frame[y][x] == 14:\n                    next_frame[y][x] = 5\n                    \n    elif action == \"ACTION7\":\n        # Find all cells with color 3 and change them to color 4\n        for y in range(64):\n            for x in range(64):\n                if next_frame[y][x] == 3:\n                    next_frame[y][x] = 4\n                    \n    return next_frame"
+    },
+    {
+      "round": 2,
+      "code_validity": 1.0,
+      "cell_accuracy": 0.9996,
+      "exact_frame_accuracy": 0.0,
+      "compile_error": "",
+      "prompt_tokens": 6362,
+      "eval_tokens": 1428,
+      "latency_s": 7.904,
+      "code": "def predict_next_frame(frame, action, xy=None):\n    # Create a deep copy of the frame to avoid modifying the original\n    next_frame = [row[:] for row in frame]\n    \n    if action == \"ACTION6\":\n        x, y = xy\n        # Change the clicked cell from color 3 to color 4 if it's currently color 3\n        if 0 <= y < 64 and 0 <= x < 64:\n            if next_frame[y][x] == 3:\n                next_frame[y][x] = 4\n                \n    elif action == \"ACTION1\":\n        # Find all cells with color 3 and change them to color 4\n        for y in range(64):\n            for x in range(64):\n                if next_frame[y][x] == 3:\n                    next_frame[y][x] = 4\n                    \n    elif action == \"ACTION2\":\n        # Find all cells with color 4 and change them to color 3\n        for y in range(64):\n            for x in range(64):\n                if next_frame[y][x] == 4:\n                    next_frame[y][x] = 3\n                    \n    elif action == \"ACTION3\":\n        # Find all cells with color 5 and change them to color 14\n        for y in range(64):\n            for x in range(64):\n                if next_frame[y][x] == 5:\n                    next_frame[y][x] = 14\n                    \n    elif action == \"ACTION4\":\n        # Find all cells with color 13 and change them to color 14\n        for y in range(64):\n            for x in range(64):\n                if next_frame[y][x] == 13:\n                    next_frame[y][x] = 14\n                    \n    elif action == \"ACTION5\":\n        # Find all cells with color 14 and change them to color 5\n        for y in range(64):\n            for x in range(64):\n                if next_frame[y][x] == 14:\n                    next_frame[y][x] = 5\n                    \n    elif action == \"ACTION7\":\n        # Find all cells with color 3 and change them to color 4\n        for y in range(64):\n            for x in range(64):\n                if next_frame[y][x] == 3:\n                    next_frame[y][x] = 4\n                    \n    return next_frame"
+    },
+    {
+      "round": 3,
+      "code_validity": 1.0,
+      "cell_accuracy": 0.9996,
+      "exact_frame_accuracy": 0.0,
+      "compile_error": "",
+      "prompt_tokens": 7075,
+      "eval_tokens": 2616,
+      "latency_s": 14.147,
+      "code": "def predict_next_frame(frame, action, xy=None):\n    # Create a deep copy of the frame to avoid modifying the original\n    next_frame = [row[:] for row in frame]\n    \n    if action == \"ACTION6\":\n        x, y = xy\n        # Change the clicked cell from color 3 to color 4 if it's currently color 3\n        if 0 <= y < 64 and 0 <= x < 64:\n            if next_frame[y][x] == 3:\n                next_frame[y][x] = 4\n                \n    elif action == \"ACTION1\":\n        # Find all cells with color 3 and change them to color 4\n        for y in range(64):\n            for x in range(64):\n                if next_frame[y][x] == 3:\n                    next_frame[y][x] = 4\n                    \n    elif action == \"ACTION2\":\n        # Find all cells with color 4 and change them to color 3\n        for y in range(64):\n            for x in range(64):\n                if next_frame[y][x] == 4:\n                    next_frame[y][x] = 3\n                    \n    elif action == \"ACTION3\":\n        # Find all cells with color 5 and change them to color 14\n        for y in range(64):\n            for x in range(64):\n                if next_frame[y][x] == 5:\n                    next_frame[y][x] = 14\n                    \n    elif action == \"ACTION4\":\n        # Find all cells with color 13 and change them to color 14\n        for y in range(64):\n            for x in range(64):\n                if next_frame[y][x] == 13:\n                    next_frame[y][x] = 14\n                    \n    elif action == \"ACTION5\":\n        # Find all cells with color 14 and change them to color 5\n        for y in range(64):\n            for x in range(64):\n                if next_frame[y][x] == 14:\n                    next_frame[y][x] = 5\n                    \n    elif action == \"ACTION7\":\n        # Find all cells with color 3 and change them to color 4\n        for y in range(64):\n            for x in range(64):\n                if next_frame[y][x] == 3:\n                    next_frame[y][x] = 4\n                    \n    return next_frame"
+    }
+  ],
+  "final": {
+    "round": 3,
+    "code_validity": 1.0,
+    "cell_accuracy": 0.9996,
+    "exact_frame_accuracy": 0.0,
+    "compile_error": "",
+    "prompt_tokens": 7075,
+    "eval_tokens": 2616,
+    "latency_s": 14.147,
+    "code": "def predict_next_frame(frame, action, xy=None):\n    # Create a deep copy of the frame to avoid modifying the original\n    next_frame = [row[:] for row in frame]\n    \n    if action == \"ACTION6\":\n        x, y = xy\n        # Change the clicked cell from color 3 to color 4 if it's currently color 3\n        if 0 <= y < 64 and 0 <= x < 64:\n            if next_frame[y][x] == 3:\n                next_frame[y][x] = 4\n                \n    elif action == \"ACTION1\":\n        # Find all cells with color 3 and change them to color 4\n        for y in range(64):\n            for x in range(64):\n                if next_frame[y][x] == 3:\n                    next_frame[y][x] = 4\n                    \n    elif action == \"ACTION2\":\n        # Find all cells with color 4 and change them to color 3\n        for y in range(64):\n            for x in range(64):\n                if next_frame[y][x] == 4:\n                    next_frame[y][x] = 3\n                    \n    elif action == \"ACTION3\":\n        # Find all cells with color 5 and change them to color 14\n        for y in range(64):\n            for x in range(64):\n                if next_frame[y][x] == 5:\n                    next_frame[y][x] = 14\n                    \n    elif action == \"ACTION4\":\n        # Find all cells with color 13 and change them to color 14\n        for y in range(64):\n            for x in range(64):\n                if next_frame[y][x] == 13:\n                    next_frame[y][x] = 14\n                    \n    elif action == \"ACTION5\":\n        # Find all cells with color 14 and change them to color 5\n        for y in range(64):\n            for x in range(64):\n                if next_frame[y][x] == 14:\n                    next_frame[y][x] = 5\n                    \n    elif action == \"ACTION7\":\n        # Find all cells with color 3 and change them to color 4\n        for y in range(64):\n            for x in range(64):\n                if next_frame[y][x] == 3:\n                    next_frame[y][x] = 4\n                    \n    return next_frame"
+  },
+  "refinement_gain": 0.0,
+  "total_prompt_tokens": 24029,
+  "total_eval_tokens": 9680,
+  "total_latency_s": 53.119
+}

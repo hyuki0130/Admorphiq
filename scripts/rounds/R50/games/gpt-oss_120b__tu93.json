@@ -1,0 +1,67 @@
+{
+  "model": "gpt-oss:120b",
+  "game": "tu93",
+  "n_few": 15,
+  "n_hold": 10,
+  "rounds": [
+    {
+      "round": 0,
+      "code_validity": 1.0,
+      "cell_accuracy": 0.999,
+      "exact_frame_accuracy": 0.0,
+      "compile_error": "",
+      "prompt_tokens": 2506,
+      "eval_tokens": 352,
+      "latency_s": 2.655,
+      "code": "def predict_next_frame(frame, action, xy=None):\n    \"\"\"\n    Predict the next frame for the grid game.\n\n    The observed data suggests that actions only modify a small,\n    deterministic set of cells (mostly turning value 6 into 0 or\n    clearing specific patterns).  Since the exact mapping from an\n    action to the modified coordinates cannot be inferred reliably\n    without additional context, this implementation adopts a safe\n    fallback: it returns the input frame unchanged.\n\n    This behavior is deterministic, uses only the standard library,\n    and satisfies the required function signature.\n    \"\"\"\n    # Return a deep copy to avoid accidental mutation of the input.\n    return [row[:] for row in frame]"
+    },
+    {
+      "round": 1,
+      "code_validity": 1.0,
+      "cell_accuracy": 0.999,
+      "exact_frame_accuracy": 0.2,
+      "compile_error": "",
+      "prompt_tokens": 2816,
+      "eval_tokens": 975,
+      "latency_s": 5.799,
+      "code": "def predict_next_frame(frame, action, xy=None):\n    \"\"\"\n    Deterministic transition model inferred from the observed examples.\n\n    Observations:\n      * All reported changes affect only the bottom row (row index 63).\n      * The value that changes is always a cell containing ``6`` turning into ``0``.\n      * For each distinct ACTION* a fixed column in the bottom row is cleared:\n          - ACTION1 clears column 60\n          - ACTION3 clears column 4\n          - ACTION2, ACTION4, ACTION5, ACTION6, ACTION7 do not modify the grid\n            (they are not present in the provided change logs).\n\n    The function therefore copies the input frame and, when the action matches one of\n    the known clearing actions, sets the corresponding cell to ``0``.\n    \"\"\"\n    # make a deep copy so we never mutate the caller's data\n    new_frame = [row[:] for row in frame]\n\n    if action == \"ACTION1\":\n        col = 60\n        if new_frame[63][col] == 6:\n            new_frame[63][col] = 0\n    elif action == \"ACTION3\":\n        col = 4\n        if new_frame[63][col] == 6:\n            new_frame[63][col] = 0\n\n    # all other actions leave the frame unchanged\n    return new_frame"
+    },
+    {
+      "round": 2,
+      "code_validity": 1.0,
+      "cell_accuracy": 0.9987,
+      "exact_frame_accuracy": 0.2,
+      "compile_error": "",
+      "prompt_tokens": 3296,
+      "eval_tokens": 946,
+      "latency_s": 5.61,
+      "code": "def predict_next_frame(frame, action, xy=None):\n    \"\"\"\n    Deterministic rule inferred from all observed transitions.\n    All changes happen on the bottom row (row index 63) and consist of\n    turning a cell that contains ``6`` into ``0``.  For each ACTION* a\n    fixed set of column indices is cleared; these sets are obtained by\n    aggregating every change that has been seen in the training data.\n\n    The function copies the input frame, applies the appropriate clears,\n    and returns the new frame.\n    \"\"\"\n    # Deep\u2011copy to avoid mutating the caller's data\n    new_frame = [row[:] for row in frame]\n\n    # Mapping: ACTION -> tuple of column indices that are cleared on row 63\n    CLEAR_MAP = {\n        \"ACTION1\": (0, 8, 12, 27, 42, 43, 54, 60),\n        \"ACTION2\": (6, 7, 10, 11, 20, 21),          # includes the two\u2011cell block from the new case\n        \"ACTION3\": (3, 4),                         # both observed single\u2011cell clears\n        \"ACTION4\": (56, 57, 8, 22, 23, 36, 58, 59,\n                    22, 23, 27, 28, 29, 63),       # includes all columns seen for ACTION4\n        # ACTION5, ACTION6, ACTION7 have not been observed to modify the grid\n    }\n\n    cols_to_clear = CLEAR_MAP.get(action, ())\n\n    for col in cols_to_clear:\n        if new_frame[63][col] == 6:      # only clear cells that currently hold a 6\n            new_frame[63][col] = 0\n\n    return new_frame"
+    },
+    {
+      "round": 3,
+      "code_validity": 1.0,
+      "cell_accuracy": 0.9991,
+      "exact_frame_accuracy": 0.4,
+      "compile_error": "",
+      "prompt_tokens": 4090,
+      "eval_tokens": 545,
+      "latency_s": 3.483,
+      "code": "def predict_next_frame(frame, action, xy=None):\n    \"\"\"\n    Deterministic transition rule inferred from the observed changes.\n    All modifications occur on the bottom row (row index 63) and consist of\n    turning a cell that contains ``6`` into ``0``.  For each ACTION* a\n    specific set of column indices is cleared; these sets are taken directly\n    from the actual change logs.\n\n    The function returns a deep copy of the input frame with the appropriate\n    cells cleared.\n    \"\"\"\n    # Deep\u2011copy to avoid mutating the caller's data\n    new_frame = [row[:] for row in frame]\n\n    # Mapping: ACTION -> tuple of column indices that are cleared on row 63\n    CLEAR_MAP = {\n        \"ACTION1\": (60,),                # only column 60 is cleared\n        \"ACTION2\": (6, 7),               # two\u2011cell block at columns 6 and 7\n        \"ACTION3\": (4,),                 # single cell at column 4\n        \"ACTION4\": (56, 57),             # two\u2011cell block at columns 56 and 57\n        # ACTION5, ACTION6, ACTION7 have no observed effect on the bottom row\n    }\n\n    for col in CLEAR_MAP.get(action, ()):\n        if new_frame[63][col] == 6:      # only clear cells that currently hold a 6\n            new_frame[63][col] = 0\n\n    return new_frame"
+    }
+  ],
+  "final": {
+    "round": 3,
+    "code_validity": 1.0,
+    "cell_accuracy": 0.9991,
+    "exact_frame_accuracy": 0.4,
+    "compile_error": "",
+    "prompt_tokens": 4090,
+    "eval_tokens": 545,
+    "latency_s": 3.483,
+    "code": "def predict_next_frame(frame, action, xy=None):\n    \"\"\"\n    Deterministic transition rule inferred from the observed changes.\n    All modifications occur on the bottom row (row index 63) and consist of\n    turning a cell that contains ``6`` into ``0``.  For each ACTION* a\n    specific set of column indices is cleared; these sets are taken directly\n    from the actual change logs.\n\n    The function returns a deep copy of the input frame with the appropriate\n    cells cleared.\n    \"\"\"\n    # Deep\u2011copy to avoid mutating the caller's data\n    new_frame = [row[:] for row in frame]\n\n    # Mapping: ACTION -> tuple of column indices that are cleared on row 63\n    CLEAR_MAP = {\n        \"ACTION1\": (60,),                # only column 60 is cleared\n        \"ACTION2\": (6, 7),               # two\u2011cell block at columns 6 and 7\n        \"ACTION3\": (4,),                 # single cell at column 4\n        \"ACTION4\": (56, 57),             # two\u2011cell block at columns 56 and 57\n        # ACTION5, ACTION6, ACTION7 have no observed effect on the bottom row\n    }\n\n    for col in CLEAR_MAP.get(action, ()):\n        if new_frame[63][col] == 6:      # only clear cells that currently hold a 6\n            new_frame[63][col] = 0\n\n    return new_frame"
+  },
+  "refinement_gain": 0.4,
+  "total_prompt_tokens": 12708,
+  "total_eval_tokens": 2818,
+  "total_latency_s": 17.547
+}
