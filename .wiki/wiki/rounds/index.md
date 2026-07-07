@@ -72,12 +72,13 @@ commit, and `[[backlinks]]`. Narrative overview + reliable-metric + resume steps
 | R49d | llm-bench-full18 | 14b full-18: exact 0.078/0.089 (8/18 games >0); 3 of 7 graph-blocked games show EWM traction (dc22/g50t/sc25); launchd = durable runner | — | [[r49_ewm-bench-partial]] |
 | R49e | llm-bench-full18 | gpt-oss-20b full-18: exact 0.239/0.256 = 3x 14b; sb26 1.00, 10/18 >0; gpt-oss-120b promoted co-primary | — | [[r49_ewm-bench-partial]] |
 | R49f | llm-bench-full18 | gemma4-26b-a4b full-18: 0.144/0.244; unlocks su15/re86/tr87/ka59/sk48 (gpt-oss zeros); union 15/18, graph-blocked 6/7 traction; late-round regression → keep-best fix needed | — | [[r49_ewm-bench-partial]] |
+| R50 | llm-bench-cloud | Kaggle-identical HW (96GB): gemma4-31b-q8 0.433/0.494 LEADER > gpt-oss-120b 0.272 > 26b 0.239 > qwen3-coder ELIMINATED; held-out leakage in refinement found+fixed | aea406d | [[r50_cloud-bench-k3]] |
 
 - **graph-search / hud-masking / frontier-bfs**: [[r36_graph-frontier-bfs]] (the deep-level axis; offline env.step ~1000+/s discovery)
 - **forward-model transfer / pretrain**: [[r35_forward-transfer]] (dynamics 52.4% vs BC 0%; pos_weight collapse fix)
 - **metric-calibration / baselines**: [[r34_metric-reexamination]] (random=0.0000 measured; real RHAE top=0.1258; purge the bogus 0.18/0.25/1.21)
 
-- **llm-selection / executable-world-model**: [[r48_llm-selection-ewm]] (Qwen3-Coder-30B-A3B primary; GLM-5.2 hardware-excluded; measured-pick bench designed), [[r49_ewm-bench-partial]] (14b exact=0.100, refinement +0.30 on sp80; 8b invalid; ⛔ 18GB Ollama models crash the 24GB dev Mac — 30b unmeasured locally)
+- **llm-selection / executable-world-model**: [[r48_llm-selection-ewm]] (candidate research; verdict superseded by R50), [[r49_ewm-bench-partial]] (local 3-way; ⛔ 18GB Ollama models crash the 24GB dev Mac), [[r50_cloud-bench-k3]] (Kaggle-identical HW: gemma4-31b-q8 leads 0.433/0.494; qwen3-coder eliminated; leakage fix)
 
 ## The two standing conclusions
 - ⛔ **Do NOT re-try action-selection tweaks** — 8 rounds failed; the novelty learner's action
