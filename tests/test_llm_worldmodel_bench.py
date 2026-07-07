@@ -403,3 +403,23 @@ def test_refinement_feedback_uses_train_not_heldout():
     refinement_text = seen[1][-1]["content"]
     assert "7" in refinement_text        # train mismatch present
     assert "9" not in refinement_text    # held-out answer must NOT leak
+
+
+def test_mechanics_prior_flag_gates_system_prompt():
+    """Purpose: the game-agnostic mechanic vocabulary (R51 axis B) must appear
+    in the system prompt ONLY when mechanics_prior=True, so axis A/B sweeps
+    stay isolated and the default protocol is unchanged.
+
+    Expected feedback: pass ⇒ the prior is opt-in and the baseline prompt is
+    byte-identical to pre-R51; fail ⇒ sweep arms are contaminated.
+    """
+    z = np.zeros((4, 4), dtype=np.int16)
+    a = z.copy()
+    a[0, 0] = 1
+    few = [_transition(z, a)]
+
+    base = _MOD.build_prompt(few)
+    primed = _MOD.build_prompt(few, mechanics_prior=True)
+    assert "Sokoban-like" not in base[0]["content"]
+    assert "Sokoban-like" in primed[0]["content"]
+    assert base[1]["content"] == primed[1]["content"]  # user msg unchanged

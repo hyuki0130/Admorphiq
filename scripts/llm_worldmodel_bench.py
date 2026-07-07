@@ -249,11 +249,45 @@ INSTRUCTION = (
 )
 
 
-def build_prompt(few_shot: list[Transition]) -> list[dict[str, str]]:
+# Game-AGNOSTIC mechanic vocabulary (human Core-Knowledge prior). Names no
+# specific game and gives no answers — it only primes the hypothesis space,
+# so it is safe for the 110 private eval games (R51 axis B).
+MECHANICS_PRIOR = (
+    "Common grid-game mechanics to consider while forming hypotheses (the "
+    "game at hand may use none, one, or several):\n"
+    "- A player avatar that moves one cell per directional action; walls or "
+    "colored borders block movement.\n"
+    "- Pushable objects: moving into an object shifts it if the cell behind "
+    "is free (Sokoban-like).\n"
+    "- Toggles: clicking or stepping on a cell flips its state, sometimes "
+    "also flipping neighbors (lights-out-like).\n"
+    "- Paint/fill: an action recolors a region; color spreads by "
+    "connectivity.\n"
+    "- Collect/merge: touching items removes or combines them; counters or "
+    "HUD pixels elsewhere may tick when this happens.\n"
+    "- Gravity or sliding: pieces fall or slide until blocked.\n"
+    "- Rotation/reflection: an action transforms a whole shape or board "
+    "region geometrically.\n"
+    "- Teleports/portals: entering one special cell moves the player to its "
+    "pair.\n"
+    "- No-ops: many actions legitimately change nothing in some states — "
+    "predicting 'no change' can be correct.\n"
+    "Match observed diffs against these patterns before inventing ad-hoc "
+    "rules, and prefer the simplest mechanic consistent with ALL "
+    "observations."
+)
+
+
+def build_prompt(
+    few_shot: list[Transition], mechanics_prior: bool = False
+) -> list[dict[str, str]]:
     """Build the initial (round-0) chat messages for one game."""
+    system = SYSTEM_PROMPT
+    if mechanics_prior:
+        system = f"{SYSTEM_PROMPT}\n\n{MECHANICS_PRIOR}"
     user = f"{build_observations_block(few_shot)}\n\n{INSTRUCTION}"
     return [
-        {"role": "system", "content": SYSTEM_PROMPT},
+        {"role": "system", "content": system},
         {"role": "user", "content": user},
     ]
 
@@ -567,13 +601,14 @@ def run_model_game(
     rounds: int,
     max_tokens: int = 2048,
     timeout: float = 2.0,
+    mechanics_prior: bool = False,
 ) -> dict[str, Any]:
     """Run round-0 synthesis + ``rounds`` refinement rounds for one model×game.
 
     Returns a JSON-serializable record with per-round scores, the refinement
     gain (R0 -> R{rounds} exact-frame delta), and token/latency totals.
     """
-    messages = build_prompt(few_shot)
+    messages = build_prompt(few_shot, mechanics_prior=mechanics_prior)
     round_records: list[dict[str, Any]] = []
     calls: list[dict[str, Any]] = []
     code = ""
@@ -738,6 +773,9 @@ def _build_parser() -> argparse.ArgumentParser:
     p.add_argument("--max-tokens", type=int, default=2048, help="Generation cap.")
     p.add_argument("--num-ctx", type=int, default=16384,
                    help="Ollama context window (default 4096 truncates few-shot prompts).")
+    p.add_argument("--mechanics-prior", action="store_true",
+                   help="Prepend the game-agnostic mechanic vocabulary to the "
+                        "system prompt (R51 axis B).")
     p.add_argument("--pred-timeout", type=float, default=2.0,
                    help="Per-prediction sandbox timeout (s).")
     p.add_argument("--max-diff-cells", type=int, default=80,
@@ -771,6 +809,7 @@ def main() -> None:
             record = run_model_game(
                 chat, model, game, few, hold, rounds=args.rounds,
                 max_tokens=args.max_tokens, timeout=args.pred_timeout,
+                mechanics_prior=args.mechanics_prior,
             )
             safe_model = model.replace(":", "_").replace("/", "_")
             out_path = round_dir / "games" / f"{safe_model}__{game}.json"
