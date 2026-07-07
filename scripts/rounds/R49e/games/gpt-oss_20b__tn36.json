@@ -1,0 +1,67 @@
+{
+  "model": "gpt-oss:20b",
+  "game": "tn36",
+  "n_few": 15,
+  "n_hold": 10,
+  "rounds": [
+    {
+      "round": 0,
+      "code_validity": 1.0,
+      "cell_accuracy": 0.9981,
+      "exact_frame_accuracy": 0.0,
+      "compile_error": "",
+      "prompt_tokens": 2164,
+      "eval_tokens": 346,
+      "latency_s": 10.454,
+      "code": "def predict_next_frame(frame, action, xy=None):\n    \"\"\"\n    Predict the next frame for the 64x64 grid game.\n\n    The observed rule from the transitions is that a click (ACTION6)\n    changes a cell that currently has the value 9 to the value 3.\n    All other cells remain unchanged.\n\n    Parameters\n    ----------\n    frame : list[list[int]]\n        Current 64x64 grid of integer color indices (0-15).\n    action : str\n        One of 'ACTION1'..'ACTION7'. Only ACTION6 triggers a change.\n    xy : tuple[int, int] | None\n        Coordinates (x, y) for ACTION6. Ignored for other actions.\n\n    Returns\n    -------\n    list[list[int]]\n        The predicted next frame.\n    \"\"\"\n    # Make a shallow copy of the frame (deep copy of rows)\n    new_frame = [row[:] for row in frame]\n\n    if action == \"ACTION6\" and xy is not None:\n        x, y = xy\n        # Ensure coordinates are within bounds\n        if 0 <= y < 64 and 0 <= x < 64:\n            if new_frame[y][x] == 9:\n                new_frame[y][x] = 3\n\n    return new_frame"
+    },
+    {
+      "round": 1,
+      "code_validity": 1.0,
+      "cell_accuracy": 0.9981,
+      "exact_frame_accuracy": 0.0,
+      "compile_error": "",
+      "prompt_tokens": 3438,
+      "eval_tokens": 459,
+      "latency_s": 12.044,
+      "code": "def predict_next_frame(frame, action, xy=None):\n    \"\"\"\n    Placeholder implementation \u2013 the exact transition rule is not yet inferred.\n    \"\"\"\n    # Return the frame unchanged\n    return [row[:] for row in frame]"
+    },
+    {
+      "round": 2,
+      "code_validity": 1.0,
+      "cell_accuracy": 0.9963,
+      "exact_frame_accuracy": 0.0,
+      "compile_error": "",
+      "prompt_tokens": 4491,
+      "eval_tokens": 790,
+      "latency_s": 19.699,
+      "code": "def predict_next_frame(frame, action, xy=None):\n    \"\"\"\n    Predict the next frame for the 64x64 grid game.\n\n    Observed behaviour:\n    * A click (ACTION6) changes the first cell with value 9 in the same row\n      as the click to 3.\n    * It also flips a square region of size 17\u00d717 centred on the click\n      (radius 8) from 10 to 9.\n\n    Parameters\n    ----------\n    frame : list[list[int]]\n        Current 64x64 grid of integer color indices (0\u201115).\n    action : str\n        One of 'ACTION1'..'ACTION7'. Only ACTION6 triggers a change.\n    xy : tuple[int, int] | None\n        Coordinates (x, y) for ACTION6. Ignored for other actions.\n\n    Returns\n    -------\n    list[list[int]]\n        The predicted next frame.\n    \"\"\"\n    # Deep copy of the frame\n    new_frame = [row[:] for row in frame]\n\n    if action != \"ACTION6\" or xy is None:\n        return new_frame\n\n    x, y = xy\n    # 1. Change the first 9 in the same row to 3\n    for col in range(64):\n        if new_frame[y][col] == 9:\n            new_frame[y][col] = 3\n            break\n\n    # 2. Flip a 17\u00d717 square (radius 8) centred on the click\n    for dy in range(-8, 9):\n        ry = y + dy\n        if 0 <= ry < 64:\n            for dx in range(-8, 9):\n                rx = x + dx\n                if 0 <= rx < 64 and new_frame[ry][rx] == 10:\n                    new_frame[ry][rx] = 9\n\n    return new_frame"
+    },
+    {
+      "round": 3,
+      "code_validity": 1.0,
+      "cell_accuracy": 0.9963,
+      "exact_frame_accuracy": 0.0,
+      "compile_error": "",
+      "prompt_tokens": 5904,
+      "eval_tokens": 1091,
+      "latency_s": 27.538,
+      "code": "def predict_next_frame(frame, action, xy=None):\n    \"\"\"\n    Predict the next frame for the 64x64 grid game.\n\n    The observed rule is:\n    * A click (ACTION6) changes the 9 that is located at the same\n      column as the click but in the *first* row that contains a 9.\n    * It also flips a 17\u00d717 square (radius 8) centred on the click\n      from 10 to 9.\n\n    Parameters\n    ----------\n    frame : list[list[int]]\n        Current 64x64 grid of integer color indices (0\u201115).\n    action : str\n        One of 'ACTION1'..'ACTION7'. Only ACTION6 triggers a change.\n    xy : tuple[int, int] | None\n        Coordinates (x, y) for ACTION6. Ignored for other actions.\n\n    Returns\n    -------\n    list[list[int]]\n        The predicted next frame.\n    \"\"\"\n    new_frame = [row[:] for row in frame]\n\n    if action != \"ACTION6\" or xy is None:\n        return new_frame\n\n    x, y = xy\n\n    # 1. Change the first 9 in the same column as the click to 3\n    for row in range(64):\n        if new_frame[row][x] == 9:\n            new_frame[row][x] = 3\n            break\n\n    # 2. Flip a 17\u00d717 square (radius 8) centred on the click\n    for dy in range(-8, 9):\n        ry = y + dy\n        if 0 <= ry < 64:\n            for dx in range(-8, 9):\n                rx = x + dx\n                if 0 <= rx < 64 and new_frame[ry][rx] == 10:\n                    new_frame[ry][rx] = 9\n\n    return new_frame"
+    }
+  ],
+  "final": {
+    "round": 3,
+    "code_validity": 1.0,
+    "cell_accuracy": 0.9963,
+    "exact_frame_accuracy": 0.0,
+    "compile_error": "",
+    "prompt_tokens": 5904,
+    "eval_tokens": 1091,
+    "latency_s": 27.538,
+    "code": "def predict_next_frame(frame, action, xy=None):\n    \"\"\"\n    Predict the next frame for the 64x64 grid game.\n\n    The observed rule is:\n    * A click (ACTION6) changes the 9 that is located at the same\n      column as the click but in the *first* row that contains a 9.\n    * It also flips a 17\u00d717 square (radius 8) centred on the click\n      from 10 to 9.\n\n    Parameters\n    ----------\n    frame : list[list[int]]\n        Current 64x64 grid of integer color indices (0\u201115).\n    action : str\n        One of 'ACTION1'..'ACTION7'. Only ACTION6 triggers a change.\n    xy : tuple[int, int] | None\n        Coordinates (x, y) for ACTION6. Ignored for other actions.\n\n    Returns\n    -------\n    list[list[int]]\n        The predicted next frame.\n    \"\"\"\n    new_frame = [row[:] for row in frame]\n\n    if action != \"ACTION6\" or xy is None:\n        return new_frame\n\n    x, y = xy\n\n    # 1. Change the first 9 in the same column as the click to 3\n    for row in range(64):\n        if new_frame[row][x] == 9:\n            new_frame[row][x] = 3\n            break\n\n    # 2. Flip a 17\u00d717 square (radius 8) centred on the click\n    for dy in range(-8, 9):\n        ry = y + dy\n        if 0 <= ry < 64:\n            for dx in range(-8, 9):\n                rx = x + dx\n                if 0 <= rx < 64 and new_frame[ry][rx] == 10:\n                    new_frame[ry][rx] = 9\n\n    return new_frame"
+  },
+  "refinement_gain": 0.0,
+  "total_prompt_tokens": 15997,
+  "total_eval_tokens": 2686,
+  "total_latency_s": 69.735
+}

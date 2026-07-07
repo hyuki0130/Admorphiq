@@ -1,0 +1,67 @@
+{
+  "model": "gpt-oss:20b",
+  "game": "sb26",
+  "n_few": 15,
+  "n_hold": 10,
+  "rounds": [
+    {
+      "round": 0,
+      "code_validity": 1.0,
+      "cell_accuracy": 0.9926,
+      "exact_frame_accuracy": 0.1,
+      "compile_error": "",
+      "prompt_tokens": 2112,
+      "eval_tokens": 395,
+      "latency_s": 10.896,
+      "code": "def predict_next_frame(frame, action, xy=None):\n    \"\"\"\n    Predict the next frame for the 64x64 grid game.\n\n    The only observed transition is that ACTION5 changes all cells in row 53\n    that currently have the value 2 to the value 3.  All other actions leave\n    the frame unchanged.\n\n    Parameters\n    ----------\n    frame : list[list[int]]\n        Current 64x64 grid.\n    action : str\n        One of 'ACTION1'..'ACTION7'.\n    xy : tuple[int, int] | None\n        Coordinates for ACTION6 (ignored here).\n\n    Returns\n    -------\n    list[list[int]]\n        The predicted next frame.\n    \"\"\"\n    # Make a deep copy to avoid mutating the input\n    new_frame = [row[:] for row in frame]\n\n    if action == \"ACTION5\":\n        row = 53\n        for col in range(64):\n            if new_frame[row][col] == 2:\n                new_frame[row][col] = 3\n\n    return new_frame"
+    },
+    {
+      "round": 1,
+      "code_validity": 1.0,
+      "cell_accuracy": 0.993,
+      "exact_frame_accuracy": 0.1,
+      "compile_error": "",
+      "prompt_tokens": 4200,
+      "eval_tokens": 494,
+      "latency_s": 13.609,
+      "code": "def predict_next_frame(frame, action, xy=None):\n    \"\"\"\n    Predict the next frame for the 64x64 grid game.\n\n    Observed behaviour for ACTION5:\n      * Every cell in row 53 that currently has the value 2 is changed to 3.\n      * Every cell in the 6\u00d76 block with rows 56\u201161 and columns 41\u201146 that\n        currently has the value 0 is changed to 4.\n    All other actions leave the frame unchanged.\n\n    Parameters\n    ----------\n    frame : list[list[int]]\n        Current 64x64 grid.\n    action : str\n        One of 'ACTION1'..'ACTION7'.\n    xy : tuple[int, int] | None\n        Coordinates for ACTION6 (ignored here).\n\n    Returns\n    -------\n    list[list[int]]\n        The predicted next frame.\n    \"\"\"\n    # Make a deep copy to avoid mutating the input\n    new_frame = [row[:] for row in frame]\n\n    if action == \"ACTION5\":\n        # Row 53: 2 \u2192 3\n        r = 53\n        for c in range(64):\n            if new_frame[r][c] == 2:\n                new_frame[r][c] = 3\n\n        # 6\u00d76 block rows 56\u201161, cols 41\u201146: 0 \u2192 4\n        for r in range(56, 62):\n            for c in range(41, 47):\n                if new_frame[r][c] == 0:\n                    new_frame[r][c] = 4\n\n    return new_frame"
+    },
+    {
+      "round": 2,
+      "code_validity": 1.0,
+      "cell_accuracy": 0.9994,
+      "exact_frame_accuracy": 0.8,
+      "compile_error": "",
+      "prompt_tokens": 6644,
+      "eval_tokens": 605,
+      "latency_s": 17.441,
+      "code": "def predict_next_frame(frame, action, xy=None):\n    \"\"\"\n    Predict the next frame for the 64x64 grid game.\n\n    Observed behaviour for ACTION5:\n      * In row 53, only the right\u2011most cell that currently has the value 2\n        is changed to 3.\n      * In the 6\u00d76 block with rows 56\u201161 and columns 41\u201146, every cell that\n        currently has the value 0 is changed to 4 **iff** it is in column\n        41 or 46, or it is in row 56 and in columns 42\u201145.\n    All other actions leave the frame unchanged.\n\n    Parameters\n    ----------\n    frame : list[list[int]]\n        Current 64x64 grid.\n    action : str\n        One of 'ACTION1'..'ACTION7'.\n    xy : tuple[int, int] | None\n        Coordinates for ACTION6 (ignored here).\n\n    Returns\n    -------\n    list[list[int]]\n        The predicted next frame.\n    \"\"\"\n    # Deep copy to avoid mutating the input\n    new_frame = [row[:] for row in frame]\n\n    if action == \"ACTION5\":\n        # Row 53: rightmost 2 \u2192 3\n        r = 53\n        for c in range(63, -1, -1):\n            if new_frame[r][c] == 2:\n                new_frame[r][c] = 3\n                break\n\n        # 6\u00d76 block rows 56\u201161, cols 41\u201146: 0 \u2192 4 under specific conditions\n        for r in range(56, 62):\n            for c in range(41, 47):\n                if new_frame[r][c] == 0:\n                    if c in (41, 46) or (r == 56 and 42 <= c <= 45):\n                        new_frame[r][c] = 4\n\n    return new_frame"
+    },
+    {
+      "round": 3,
+      "code_validity": 1.0,
+      "cell_accuracy": 1.0,
+      "exact_frame_accuracy": 1.0,
+      "compile_error": "",
+      "prompt_tokens": 7864,
+      "eval_tokens": 836,
+      "latency_s": 20.876,
+      "code": "def predict_next_frame(frame, action, xy=None):\n    \"\"\"\n    Predict the next frame for the 64x64 grid game.\n\n    Transition rules observed from the data:\n\n    * ACTION5\n        - In row 53, the right\u2011most cell that currently has the value 2\n          is changed to 3.\n        - In the 6\u00d76 block with rows 56\u201161 and columns 41\u201146, every cell\n          that currently has the value 0 is changed to 4.\n\n    * ACTION6(x, y)\n        - The 6\u00d76 block whose top\u2011left corner is at\n          (y-3, x-1) (i.e. rows y-3 \u2026 y+2, columns x-1 \u2026 x+4)\n          is affected: every cell in that block that currently has the\n          value 0 is changed to 4.\n\n    All other actions leave the frame unchanged.\n\n    Parameters\n    ----------\n    frame : list[list[int]]\n        Current 64x64 grid.\n    action : str\n        One of 'ACTION1'..'ACTION7'.\n    xy : tuple[int, int] | None\n        Coordinates for ACTION6 (ignored for other actions).\n\n    Returns\n    -------\n    list[list[int]]\n        The predicted next frame.\n    \"\"\"\n    # Deep copy to avoid mutating the input\n    new_frame = [row[:] for row in frame]\n\n    if action == \"ACTION5\":\n        # Row 53: rightmost 2 \u2192 3\n        r = 53\n        for c in range(63, -1, -1):\n            if new_frame[r][c] == 2:\n                new_frame[r][c] = 3\n                break\n\n        # 6\u00d76 block rows 56\u201161, cols 41\u201146: 0 \u2192 4\n        for r in range(56, 62):\n            for c in range(41, 47):\n                if new_frame[r][c] == 0:\n                    new_frame[r][c] = 4\n\n    elif action == \"ACTION6\" and xy is not None:\n        x, y = xy\n        # 6\u00d76 block: rows y-3 \u2026 y+2, cols x-1 \u2026 x+4\n        for r in range(y - 3, y + 3):\n            for c in range(x - 1, x + 5):\n                if 0 <= r < 64 and 0 <= c < 64 and new_frame[r][c] == 0:\n                    new_frame[r][c] = 4\n\n    return new_frame"
+    }
+  ],
+  "final": {
+    "round": 3,
+    "code_validity": 1.0,
+    "cell_accuracy": 1.0,
+    "exact_frame_accuracy": 1.0,
+    "compile_error": "",
+    "prompt_tokens": 7864,
+    "eval_tokens": 836,
+    "latency_s": 20.876,
+    "code": "def predict_next_frame(frame, action, xy=None):\n    \"\"\"\n    Predict the next frame for the 64x64 grid game.\n\n    Transition rules observed from the data:\n\n    * ACTION5\n        - In row 53, the right\u2011most cell that currently has the value 2\n          is changed to 3.\n        - In the 6\u00d76 block with rows 56\u201161 and columns 41\u201146, every cell\n          that currently has the value 0 is changed to 4.\n\n    * ACTION6(x, y)\n        - The 6\u00d76 block whose top\u2011left corner is at\n          (y-3, x-1) (i.e. rows y-3 \u2026 y+2, columns x-1 \u2026 x+4)\n          is affected: every cell in that block that currently has the\n          value 0 is changed to 4.\n\n    All other actions leave the frame unchanged.\n\n    Parameters\n    ----------\n    frame : list[list[int]]\n        Current 64x64 grid.\n    action : str\n        One of 'ACTION1'..'ACTION7'.\n    xy : tuple[int, int] | None\n        Coordinates for ACTION6 (ignored for other actions).\n\n    Returns\n    -------\n    list[list[int]]\n        The predicted next frame.\n    \"\"\"\n    # Deep copy to avoid mutating the input\n    new_frame = [row[:] for row in frame]\n\n    if action == \"ACTION5\":\n        # Row 53: rightmost 2 \u2192 3\n        r = 53\n        for c in range(63, -1, -1):\n            if new_frame[r][c] == 2:\n                new_frame[r][c] = 3\n                break\n\n        # 6\u00d76 block rows 56\u201161, cols 41\u201146: 0 \u2192 4\n        for r in range(56, 62):\n            for c in range(41, 47):\n                if new_frame[r][c] == 0:\n                    new_frame[r][c] = 4\n\n    elif action == \"ACTION6\" and xy is not None:\n        x, y = xy\n        # 6\u00d76 block: rows y-3 \u2026 y+2, cols x-1 \u2026 x+4\n        for r in range(y - 3, y + 3):\n            for c in range(x - 1, x + 5):\n                if 0 <= r < 64 and 0 <= c < 64 and new_frame[r][c] == 0:\n                    new_frame[r][c] = 4\n\n    return new_frame"
+  },
+  "refinement_gain": 0.9,
+  "total_prompt_tokens": 20820,
+  "total_eval_tokens": 2330,
+  "total_latency_s": 62.822
+}

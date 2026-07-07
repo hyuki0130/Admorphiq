@@ -1,0 +1,67 @@
+{
+  "model": "gpt-oss:20b",
+  "game": "ar25",
+  "n_few": 15,
+  "n_hold": 10,
+  "rounds": [
+    {
+      "round": 0,
+      "code_validity": 1.0,
+      "cell_accuracy": 0.9959,
+      "exact_frame_accuracy": 0.0,
+      "compile_error": "",
+      "prompt_tokens": 5836,
+      "eval_tokens": 349,
+      "latency_s": 23.463,
+      "code": "def predict_next_frame(frame, action, xy=None):\n    # This implementation simply returns the input frame unchanged.\n    # A full rule inference would require a detailed analysis of the\n    # transition patterns, which is beyond the scope of this placeholder.\n    return [row[:] for row in frame]"
+    },
+    {
+      "round": 1,
+      "code_validity": 1.0,
+      "cell_accuracy": 0.9961,
+      "exact_frame_accuracy": 0.8,
+      "compile_error": "",
+      "prompt_tokens": 7012,
+      "eval_tokens": 337,
+      "latency_s": 9.724,
+      "code": "def predict_next_frame(frame, action, xy=None):\n    # The observed transitions suggest that ACTION5 flips the first\n    # cell in column 63 that currently holds the value 11 to 5.\n    # ACTION4 appears to toggle a 3\u00d7? region of 5/4/9 values around a\n    # central 9, but the exact pattern is not fully deducible from the\n    # provided data.  The following implementation implements the\n    # ACTION5 rule and leaves ACTION4 unchanged (no-op) to avoid\n    # incorrect predictions.\n    new_frame = [row[:] for row in frame]\n    if action == \"ACTION5\":\n        for r in range(64):\n            if new_frame[r][63] == 11:\n                new_frame[r][63] = 5\n                break\n    return new_frame"
+    },
+    {
+      "round": 2,
+      "code_validity": 1.0,
+      "cell_accuracy": 0.9959,
+      "exact_frame_accuracy": 0.0,
+      "compile_error": "",
+      "prompt_tokens": 9210,
+      "eval_tokens": 294,
+      "latency_s": 11.08,
+      "code": "def predict_next_frame(frame, action, xy=None):\n    # The provided data is insufficient to deduce a reliable rule for ACTION4.\n    # Returning the frame unchanged to avoid incorrect modifications.\n    return [row[:] for row in frame]"
+    },
+    {
+      "round": 3,
+      "code_validity": 1.0,
+      "cell_accuracy": 0.9961,
+      "exact_frame_accuracy": 0.8,
+      "compile_error": "",
+      "prompt_tokens": 10375,
+      "eval_tokens": 317,
+      "latency_s": 9.775,
+      "code": "def predict_next_frame(frame, action, xy=None):\n    # The only reliably deducible rule from the data is that ACTION5\n    # changes the first cell in column 63 that currently holds the value 11\n    # to 5.  ACTION4 changes a large region of 5/4/9 values, but the exact\n    # pattern cannot be inferred from the provided examples, so the\n    # implementation below leaves the frame unchanged for ACTION4.\n    new_frame = [row[:] for row in frame]\n    if action == \"ACTION5\":\n        for r in range(64):\n            if new_frame[r][63] == 11:\n                new_frame[r][63] = 5\n                break\n    return new_frame"
+    }
+  ],
+  "final": {
+    "round": 3,
+    "code_validity": 1.0,
+    "cell_accuracy": 0.9961,
+    "exact_frame_accuracy": 0.8,
+    "compile_error": "",
+    "prompt_tokens": 10375,
+    "eval_tokens": 317,
+    "latency_s": 9.775,
+    "code": "def predict_next_frame(frame, action, xy=None):\n    # The only reliably deducible rule from the data is that ACTION5\n    # changes the first cell in column 63 that currently holds the value 11\n    # to 5.  ACTION4 changes a large region of 5/4/9 values, but the exact\n    # pattern cannot be inferred from the provided examples, so the\n    # implementation below leaves the frame unchanged for ACTION4.\n    new_frame = [row[:] for row in frame]\n    if action == \"ACTION5\":\n        for r in range(64):\n            if new_frame[r][63] == 11:\n                new_frame[r][63] = 5\n                break\n    return new_frame"
+  },
+  "refinement_gain": 0.8,
+  "total_prompt_tokens": 32433,
+  "total_eval_tokens": 1297,
+  "total_latency_s": 54.042
+}

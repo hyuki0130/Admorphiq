@@ -1,0 +1,67 @@
+{
+  "model": "gpt-oss:20b",
+  "game": "g50t",
+  "n_few": 15,
+  "n_hold": 10,
+  "rounds": [
+    {
+      "round": 0,
+      "code_validity": 1.0,
+      "cell_accuracy": 0.9891,
+      "exact_frame_accuracy": 0.0,
+      "compile_error": "",
+      "prompt_tokens": 6066,
+      "eval_tokens": 534,
+      "latency_s": 24.631,
+      "code": "def predict_next_frame(frame, action, xy=None):\n    \"\"\"\n    Predict the next frame for a simple toggle game.\n    The game uses two colors: 5 and 9.\n    For actions ACTION1..ACTION5 a 5x5 square is toggled:\n        5 -> 9\n        9 -> 5\n    The square is centered at (15,15) unless a click (ACTION6) is given,\n    in which case the square is centered at the click coordinates.\n    ACTION6 does nothing to the frame.\n    \"\"\"\n    # deep copy of frame\n    new_frame = [row[:] for row in frame]\n\n    # determine center\n    if action == \"ACTION6\" and xy is not None:\n        cx, cy = xy\n    else:\n        cx, cy = 15, 15\n\n    # bounds of 5x5 square\n    for dy in range(-2, 3):\n        y = cy + dy\n        if 0 <= y < 64:\n            for dx in range(-2, 3):\n                x = cx + dx\n                if 0 <= x < 64:\n                    val = new_frame[y][x]\n                    if val == 5:\n                        new_frame[y][x] = 9\n                    elif val == 9:\n                        new_frame[y][x] = 5\n    return new_frame"
+    },
+    {
+      "round": 1,
+      "code_validity": 1.0,
+      "cell_accuracy": 0.992,
+      "exact_frame_accuracy": 0.0,
+      "compile_error": "",
+      "prompt_tokens": 7996,
+      "eval_tokens": 741,
+      "latency_s": 26.1,
+      "code": "def predict_next_frame(frame, action, xy=None):\n    \"\"\"\n    Predict the next frame for a simple toggle game.\n    The game uses two colors: 5 and 9.\n    For actions ACTION1..ACTION5 a 5x5 square is toggled:\n        5 -> 9\n        9 -> 5\n    The center of the square depends on the action:\n        ACTION1 : (15, 63)   # bottom row centre\n        ACTION2 : (20, 10)   # middle\u2011bottom area\n        ACTION3 : (20, 10)   # same as ACTION2\n        ACTION4 : (20, 10)   # same as ACTION2\n        ACTION5 : (3, 1)     # top\u2011left area\n    ACTION6 does nothing to the frame (click only).\n    \"\"\"\n    # deep copy of frame\n    new_frame = [row[:] for row in frame]\n\n    # determine center\n    if action == \"ACTION6\" and xy is not None:\n        cx, cy = xy\n    else:\n        if action == \"ACTION1\":\n            cx, cy = 15, 63\n        elif action in (\"ACTION2\", \"ACTION3\", \"ACTION4\"):\n            cx, cy = 20, 10\n        elif action == \"ACTION5\":\n            cx, cy = 3, 1\n        else:\n            return new_frame  # unknown action, no change\n\n    # bounds of 5x5 square\n    for dy in range(-2, 3):\n        y = cy + dy\n        if 0 <= y < 64:\n            for dx in range(-2, 3):\n                x = cx + dx\n                if 0 <= x < 64:\n                    val = new_frame[y][x]\n                    if val == 5:\n                        new_frame[y][x] = 9\n                    elif val == 9:\n                        new_frame[y][x] = 5\n    return new_frame"
+    },
+    {
+      "round": 2,
+      "code_validity": 1.0,
+      "cell_accuracy": 0.9913,
+      "exact_frame_accuracy": 0.0,
+      "compile_error": "",
+      "prompt_tokens": 9496,
+      "eval_tokens": 887,
+      "latency_s": 30.399,
+      "code": "def predict_next_frame(frame, action, xy=None):\n    \"\"\"\n    Predict the next frame for the observed game.\n\n    Rules inferred from the data:\n    * The board uses two colors: 5 and 9.\n    * ACTION1 toggles a single cell on the bottom row (row 63).  \n      It flips the only 9 present in that row to 1 (or 1 to 9 if it were 1).\n    * ACTION2, ACTION3, ACTION4 toggle a 5\u00d75 block with the middle column removed\n      (i.e. columns 14\u201118 and 20\u201124, rows 8\u201112).  Each cell in that shape\n      flips 5\u21949.\n    * ACTION5 toggles a 5\u00d75 block centered at (3,1) (rows 0\u20114, cols 1\u20115).\n    * ACTION6 is a click that does not modify the board.\n    \"\"\"\n    # deep copy of frame\n    new_frame = [row[:] for row in frame]\n\n    if action == \"ACTION6\":\n        return new_frame\n\n    if action == \"ACTION1\":\n        # toggle the only 9 in the bottom row\n        row = 63\n        for col in range(64):\n            if new_frame[row][col] == 9:\n                new_frame[row][col] = 1\n                break\n        return new_frame\n\n    if action in (\"ACTION2\", \"ACTION3\", \"ACTION4\"):\n        # 5x5 block with middle column removed\n        for r in range(8, 13):\n            for c in range(14, 19):\n                if new_frame[r][c] == 5:\n                    new_frame[r][c] = 9\n                elif new_frame[r][c] == 9:\n                    new_frame[r][c] = 5\n            for c in range(20, 25):\n                if new_frame[r][c] == 5:\n                    new_frame[r][c] = 9\n                elif new_frame[r][c] == 9:\n                    new_frame[r][c] = 5\n        return new_frame\n\n    if action == \"ACTION5\":\n        # 5x5 block centered at (3,1)\n        for r in range(0, 5):\n            for c in range(1, 6):\n                if new_frame[r][c] == 5:\n                    new_frame[r][c] = 9\n                elif new_frame[r][c] == 9:\n                    new_frame[r][c] = 5\n        return new_frame\n\n    return new_frame"
+    },
+    {
+      "round": 3,
+      "code_validity": 1.0,
+      "cell_accuracy": 0.9912,
+      "exact_frame_accuracy": 0.0,
+      "compile_error": "",
+      "prompt_tokens": 11414,
+      "eval_tokens": 721,
+      "latency_s": 24.227,
+      "code": "def predict_next_frame(frame, action, xy=None):\n    \"\"\"\n    Predict the next frame for the observed game.\n\n    Rules inferred from the data:\n    * The board uses two colors: 5 and 9.\n    * ACTION1 toggles the first 9 found in the bottom row (row 63) to 1.\n    * ACTION2 toggles a 5\u00d75 block with the middle column removed\n      (rows 8\u201112, columns 14\u201118 and 20\u201124) and also toggles the single\n      cell at (63,6).  Each cell in that shape flips 5\u21949.\n    * ACTION3, ACTION4, ACTION5 behave exactly like ACTION2.\n    * ACTION6 is a click that does not modify the board.\n    \"\"\"\n    # deep copy of frame\n    new_frame = [row[:] for row in frame]\n\n    if action == \"ACTION6\":\n        return new_frame\n\n    if action == \"ACTION1\":\n        # toggle the first 9 in the bottom row\n        row = 63\n        for col in range(64):\n            if new_frame[row][col] == 9:\n                new_frame[row][col] = 1\n                break\n        return new_frame\n\n    if action in (\"ACTION2\", \"ACTION3\", \"ACTION4\", \"ACTION5\"):\n        # 5x5 block with middle column removed\n        for r in range(8, 13):\n            for c in range(14, 19):\n                if new_frame[r][c] == 5:\n                    new_frame[r][c] = 9\n                elif new_frame[r][c] == 9:\n                    new_frame[r][c] = 5\n            for c in range(20, 25):\n                if new_frame[r][c] == 5:\n                    new_frame[r][c] = 9\n                elif new_frame[r][c] == 9:\n                    new_frame[r][c] = 5\n        # toggle the single cell at (63,6)\n        r, c = 63, 6\n        if new_frame[r][c] == 5:\n            new_frame[r][c] = 9\n        elif new_frame[r][c] == 9:\n            new_frame[r][c] = 5\n        return new_frame\n\n    return new_frame"
+    }
+  ],
+  "final": {
+    "round": 3,
+    "code_validity": 1.0,
+    "cell_accuracy": 0.9912,
+    "exact_frame_accuracy": 0.0,
+    "compile_error": "",
+    "prompt_tokens": 11414,
+    "eval_tokens": 721,
+    "latency_s": 24.227,
+    "code": "def predict_next_frame(frame, action, xy=None):\n    \"\"\"\n    Predict the next frame for the observed game.\n\n    Rules inferred from the data:\n    * The board uses two colors: 5 and 9.\n    * ACTION1 toggles the first 9 found in the bottom row (row 63) to 1.\n    * ACTION2 toggles a 5\u00d75 block with the middle column removed\n      (rows 8\u201112, columns 14\u201118 and 20\u201124) and also toggles the single\n      cell at (63,6).  Each cell in that shape flips 5\u21949.\n    * ACTION3, ACTION4, ACTION5 behave exactly like ACTION2.\n    * ACTION6 is a click that does not modify the board.\n    \"\"\"\n    # deep copy of frame\n    new_frame = [row[:] for row in frame]\n\n    if action == \"ACTION6\":\n        return new_frame\n\n    if action == \"ACTION1\":\n        # toggle the first 9 in the bottom row\n        row = 63\n        for col in range(64):\n            if new_frame[row][col] == 9:\n                new_frame[row][col] = 1\n                break\n        return new_frame\n\n    if action in (\"ACTION2\", \"ACTION3\", \"ACTION4\", \"ACTION5\"):\n        # 5x5 block with middle column removed\n        for r in range(8, 13):\n            for c in range(14, 19):\n                if new_frame[r][c] == 5:\n                    new_frame[r][c] = 9\n                elif new_frame[r][c] == 9:\n                    new_frame[r][c] = 5\n            for c in range(20, 25):\n                if new_frame[r][c] == 5:\n                    new_frame[r][c] = 9\n                elif new_frame[r][c] == 9:\n                    new_frame[r][c] = 5\n        # toggle the single cell at (63,6)\n        r, c = 63, 6\n        if new_frame[r][c] == 5:\n            new_frame[r][c] = 9\n        elif new_frame[r][c] == 9:\n            new_frame[r][c] = 5\n        return new_frame\n\n    return new_frame"
+  },
+  "refinement_gain": 0.0,
+  "total_prompt_tokens": 34972,
+  "total_eval_tokens": 2883,
+  "total_latency_s": 105.357
+}

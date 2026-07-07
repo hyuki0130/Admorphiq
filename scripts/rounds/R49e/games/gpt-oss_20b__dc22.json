@@ -1,0 +1,67 @@
+{
+  "model": "gpt-oss:20b",
+  "game": "dc22",
+  "n_few": 15,
+  "n_hold": 10,
+  "rounds": [
+    {
+      "round": 0,
+      "code_validity": 1.0,
+      "cell_accuracy": 0.9993,
+      "exact_frame_accuracy": 0.3,
+      "compile_error": "",
+      "prompt_tokens": 2744,
+      "eval_tokens": 1706,
+      "latency_s": 40.06,
+      "code": "def predict_next_frame(frame, action, xy=None):\n    # deep copy\n    new = [row[:] for row in frame]\n    h, w = 64, 64\n\n    def swap_blocks(r, c, block1, block2):\n        # block1 and block2 are lists of (dr,dc) offsets\n        for dr, dc in block1:\n            new[r+dr][c+dc] = block2[0][2]  # color from block2 (all same)\n        for dr, dc in block2:\n            new[r+dr][c+dc] = block1[0][2]  # color from block1\n\n    if action == \"ACTION6\":\n        x, y = xy\n        new[y][x] = 3\n        return new\n\n    # patterns: (offsets, color1, color2)\n    patterns = {\n        \"ACTION1\": ([(0,0),(0,1),(1,0),(1,1)], 2, 14, 2, 14),  # vertical 2x2 of 2 above 2x2 of 14\n        \"ACTION2\": ([(0,0),(0,1),(1,0),(1,1)], 14, 2, 14, 2),  # horizontal 2x2 of 14 left of 2x2 of 2\n        \"ACTION3\": ([(0,0),(0,1),(1,0),(1,1)], 2, 14, 2, 14),   # horizontal 2x2 of 2 left of 2x2 of 14\n        \"ACTION4\": ([(0,0),(0,1),(1,0),(1,1)], 14, 2, 14, 2),   # vertical 2x2 of 14 above 2x2 of 2\n    }\n\n    if action in patterns:\n        offs, c1, c2, c3, c4 = patterns[action]\n        # Determine orientation based on action\n        if action in (\"ACTION1\", \"ACTION4\"):\n            # vertical pair\n            for r in range(h-3):\n                for c in range(w-1):\n                    if (frame[r][c]==c1 and frame[r][c+1]==c1 and\n                        frame[r+1][c]==c1 and frame[r+1][c+1]==c1 and\n                        frame[r+2][c]==c2 and frame[r+2][c+1]==c2 and\n                        frame[r+3][c]==c2 and frame[r+3][c+1]==c2):\n                        # swap\n                        for dr, dc in offs:\n                            new[r+dr][c+dc] = c2\n                        for dr, dc in offs:\n                            new[r+2+dr][c+dc] = c1\n                        return new\n        else:\n            # horizontal pair\n            for r in range(h-1):\n                for c in range(w-3):\n                    if (frame[r][c]==c1 and frame[r+1][c]==c1 and\n                        frame[r][c+1]==c1 and frame[r+1][c+1]==c1 and\n                        frame[r][c+2]==c2 and frame[r+1][c+2]==c2 and\n                        frame[r][c+3]==c2 and frame[r+1][c+3]==c2):\n                        for dr, dc in offs:\n                            new[r+dr][c+dc] = c2\n                        for dr, dc in offs:\n                            new[r+dr][c+2+dc] = c1\n                        return new\n    return new"
+    },
+    {
+      "round": 1,
+      "code_validity": 0.4,
+      "cell_accuracy": 0.3997,
+      "exact_frame_accuracy": 0.0,
+      "compile_error": "",
+      "prompt_tokens": 3897,
+      "eval_tokens": 784,
+      "latency_s": 18.597,
+      "code": "def predict_next_frame(frame, action, xy=None):\n    # deep copy\n    new = [row[:] for row in frame]\n    h, w = 64, 64\n\n    if action == \"ACTION6\":\n        x, y = xy\n        new[y][x] = 3\n        return new\n\n    # helper to swap two 2x2 blocks\n    def swap_blocks(r, c, block1, block2):\n        for dr, dc in block1:\n            new[r+dr][c+dc] = block2[0][2]\n        for dr, dc in block2:\n            new[r+dr][c+dc] = block1[0][2]\n\n    # patterns for ACTION1, ACTION2, ACTION3, ACTION4\n    if action in (\"ACTION1\", \"ACTION4\"):\n        # vertical pair: 2x2 of color A above 2x2 of color B\n        for r in range(h - 3):\n            for c in range(w - 1):\n                if (frame[r][c] == 2 and frame[r][c+1] == 2 and\n                    frame[r+1][c] == 2 and frame[r+1][c+1] == 2 and\n                    frame[r+2][c] == 14 and frame[r+2][c+1] == 14 and\n                    frame[r+3][c] == 14 and frame[r+3][c+1] == 14):\n                    # swap\n                    swap_blocks(r, c,\n                                [(0,0),(0,1),(1,0),(1,1)],\n                                [(2,0),(2,1),(3,0),(3,1)])\n                    # set bottom row cell\n                    new[63][c] = 3\n                    return new\n    else:  # ACTION2, ACTION3\n        # horizontal pair: 2x2 of color A left of 2x2 of color B\n        for r in range(h - 1):\n            for c in range(w - 3):\n                if (frame[r][c] == 2 and frame[r+1][c] == 2 and\n                    frame[r][c+1] == 2 and frame[r+1][c+1] == 2 and\n                    frame[r][c+2] == 14 and frame[r+1][c+2] == 14 and\n                    frame[r][c+3] == 14 and frame[r+1][c+3] == 14):\n                    # swap\n                    swap_blocks(r, c,\n                                [(0,0),(1,0),(0,1),(1,1)],\n                                [(0,2),(1,2),(0,3),(1,3)])\n                    return new\n    return new"
+    },
+    {
+      "round": 2,
+      "code_validity": 0.4,
+      "cell_accuracy": 0.3997,
+      "exact_frame_accuracy": 0.0,
+      "compile_error": "",
+      "prompt_tokens": 4761,
+      "eval_tokens": 882,
+      "latency_s": 19.992,
+      "code": "def predict_next_frame(frame, action, xy=None):\n    # deep copy\n    new = [row[:] for row in frame]\n    h, w = 64, 64\n\n    if action == \"ACTION6\":\n        x, y = xy\n        new[y][x] = 3\n        return new\n\n    # helper to swap two 2x2 blocks\n    def swap_blocks(r, c, block1, block2):\n        for dr, dc in block1:\n            new[r+dr][c+dc] = block2[0][2]\n        for dr, dc in block2:\n            new[r+dr][c+dc] = block1[0][2]\n\n    # ACTION1: 2x2 of 2 above 2x2 of 14\n    if action == \"ACTION1\":\n        for r in range(h - 3):\n            for c in range(w - 1):\n                if (frame[r][c] == 2 and frame[r][c+1] == 2 and\n                    frame[r+1][c] == 2 and frame[r+1][c+1] == 2 and\n                    frame[r+2][c] == 14 and frame[r+2][c+1] == 14 and\n                    frame[r+3][c] == 14 and frame[r+3][c+1] == 14):\n                    swap_blocks(r, c,\n                                [(0,0),(0,1),(1,0),(1,1)],\n                                [(2,0),(2,1),(3,0),(3,1)])\n                    new[63][c] = 3\n                    return new\n\n    # ACTION4: 2x2 of 14 above 2x2 of 2\n    if action == \"ACTION4\":\n        for r in range(h - 3):\n            for c in range(w - 1):\n                if (frame[r][c] == 14 and frame[r][c+1] == 14 and\n                    frame[r+1][c] == 14 and frame[r+1][c+1] == 14 and\n                    frame[r+2][c] == 2 and frame[r+2][c+1] == 2 and\n                    frame[r+3][c] == 2 and frame[r+3][c+1] == 2):\n                    swap_blocks(r, c,\n                                [(0,0),(0,1),(1,0),(1,1)],\n                                [(2,0),(2,1),(3,0),(3,1)])\n                    new[63][c] = 3\n                    return new\n\n    # ACTION2 and ACTION3: horizontal patterns\n    if action in (\"ACTION2\", \"ACTION3\"):\n        for r in range(h - 1):\n            for c in range(w - 3):\n                if (frame[r][c] == 2 and frame[r+1][c] == 2 and\n                    frame[r][c+1] == 2 and frame[r+1][c+1] == 2 and\n                    frame[r][c+2] == 14 and frame[r+1][c+2] == 14 and\n                    frame[r][c+3] == 14 and frame[r+1][c+3] == 14):\n                    swap_blocks(r, c,\n                                [(0,0),(1,0),(0,1),(1,1)],\n                                [(0,2),(1,2),(0,3),(1,3)])\n                    return new\n\n    return new"
+    },
+    {
+      "round": 3,
+      "code_validity": 0.4,
+      "cell_accuracy": 0.3997,
+      "exact_frame_accuracy": 0.0,
+      "compile_error": "",
+      "prompt_tokens": 5788,
+      "eval_tokens": 894,
+      "latency_s": 22.742,
+      "code": "def predict_next_frame(frame, action, xy=None):\n    # deep copy\n    new = [row[:] for row in frame]\n    h, w = 64, 64\n\n    if action == \"ACTION6\":\n        x, y = xy\n        new[y][x] = 3\n        return new\n\n    # helper to swap two 2x2 blocks\n    def swap_blocks(r, c, block1, block2):\n        for dr, dc in block1:\n            new[r+dr][c+dc] = block2[0][2]\n        for dr, dc in block2:\n            new[r+dr][c+dc] = block1[0][2]\n\n    # ACTION1: 2x2 of 2 above 2x2 of 14\n    if action == \"ACTION1\":\n        for r in range(h - 3):\n            for c in range(w - 1):\n                if (frame[r][c] == 2 and frame[r][c+1] == 2 and\n                    frame[r+1][c] == 2 and frame[r+1][c+1] == 2 and\n                    frame[r+2][c] == 14 and frame[r+2][c+1] == 14 and\n                    frame[r+3][c] == 14 and frame[r+3][c+1] == 14):\n                    swap_blocks(r, c,\n                                [(0,0),(0,1),(1,0),(1,1)],\n                                [(2,0),(2,1),(3,0),(3,1)])\n                    new[63][c] = 3\n                    return new\n\n    # ACTION4: 2x2 of 14 above 2x2 of 2\n    if action == \"ACTION4\":\n        for r in range(h - 3):\n            for c in range(w - 1):\n                if (frame[r][c] == 14 and frame[r][c+1] == 14 and\n                    frame[r+1][c] == 14 and frame[r+1][c+1] == 14 and\n                    frame[r+2][c] == 2 and frame[r+2][c+1] == 2 and\n                    frame[r+3][c] == 2 and frame[r+3][c+1] == 2):\n                    swap_blocks(r, c,\n                                [(0,0),(0,1),(1,0),(1,1)],\n                                [(2,0),(2,1),(3,0),(3,1)])\n                    new[63][c] = 3\n                    return new\n\n    # ACTION2 and ACTION3: horizontal patterns\n    if action in (\"ACTION2\", \"ACTION3\"):\n        for r in range(h - 1):\n            for c in range(w - 3):\n                if (frame[r][c] == 2 and frame[r+1][c] == 2 and\n                    frame[r][c+1] == 2 and frame[r+1][c+1] == 2 and\n                    frame[r][c+2] == 14 and frame[r+1][c+2] == 14 and\n                    frame[r][c+3] == 14 and frame[r+1][c+3] == 14):\n                    swap_blocks(r, c,\n                                [(0,0),(1,0),(0,1),(1,1)],\n                                [(0,2),(1,2),(0,3),(1,3)])\n                    return new\n\n    return new"
+    }
+  ],
+  "final": {
+    "round": 3,
+    "code_validity": 0.4,
+    "cell_accuracy": 0.3997,
+    "exact_frame_accuracy": 0.0,
+    "compile_error": "",
+    "prompt_tokens": 5788,
+    "eval_tokens": 894,
+    "latency_s": 22.742,
+    "code": "def predict_next_frame(frame, action, xy=None):\n    # deep copy\n    new = [row[:] for row in frame]\n    h, w = 64, 64\n\n    if action == \"ACTION6\":\n        x, y = xy\n        new[y][x] = 3\n        return new\n\n    # helper to swap two 2x2 blocks\n    def swap_blocks(r, c, block1, block2):\n        for dr, dc in block1:\n            new[r+dr][c+dc] = block2[0][2]\n        for dr, dc in block2:\n            new[r+dr][c+dc] = block1[0][2]\n\n    # ACTION1: 2x2 of 2 above 2x2 of 14\n    if action == \"ACTION1\":\n        for r in range(h - 3):\n            for c in range(w - 1):\n                if (frame[r][c] == 2 and frame[r][c+1] == 2 and\n                    frame[r+1][c] == 2 and frame[r+1][c+1] == 2 and\n                    frame[r+2][c] == 14 and frame[r+2][c+1] == 14 and\n                    frame[r+3][c] == 14 and frame[r+3][c+1] == 14):\n                    swap_blocks(r, c,\n                                [(0,0),(0,1),(1,0),(1,1)],\n                                [(2,0),(2,1),(3,0),(3,1)])\n                    new[63][c] = 3\n                    return new\n\n    # ACTION4: 2x2 of 14 above 2x2 of 2\n    if action == \"ACTION4\":\n        for r in range(h - 3):\n            for c in range(w - 1):\n                if (frame[r][c] == 14 and frame[r][c+1] == 14 and\n                    frame[r+1][c] == 14 and frame[r+1][c+1] == 14 and\n                    frame[r+2][c] == 2 and frame[r+2][c+1] == 2 and\n                    frame[r+3][c] == 2 and frame[r+3][c+1] == 2):\n                    swap_blocks(r, c,\n                                [(0,0),(0,1),(1,0),(1,1)],\n                                [(2,0),(2,1),(3,0),(3,1)])\n                    new[63][c] = 3\n                    return new\n\n    # ACTION2 and ACTION3: horizontal patterns\n    if action in (\"ACTION2\", \"ACTION3\"):\n        for r in range(h - 1):\n            for c in range(w - 3):\n                if (frame[r][c] == 2 and frame[r+1][c] == 2 and\n                    frame[r][c+1] == 2 and frame[r+1][c+1] == 2 and\n                    frame[r][c+2] == 14 and frame[r+1][c+2] == 14 and\n                    frame[r][c+3] == 14 and frame[r+1][c+3] == 14):\n                    swap_blocks(r, c,\n                                [(0,0),(1,0),(0,1),(1,1)],\n                                [(0,2),(1,2),(0,3),(1,3)])\n                    return new\n\n    return new"
+  },
+  "refinement_gain": -0.3,
+  "total_prompt_tokens": 17190,
+  "total_eval_tokens": 4266,
+  "total_latency_s": 101.391
+}

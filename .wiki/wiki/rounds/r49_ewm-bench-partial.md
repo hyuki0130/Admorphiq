@@ -89,6 +89,26 @@ su15 wa30), THREE show exact>0 here (dc22, g50t, sc25) — the executable-WM get
 traction precisely where the deployed graph agent is blind. re86/s5i5/su15/wa30 remain 0 for
 both paradigms.
 
+## Run 5 — R49e (07-07 11:21–11:58 KST): gpt-oss:20b full 18 — LOCAL WINNER, 3x over 14b
+
+gpt-oss:20b (MXFP4 ~13GB, `think:"low"` — gpt-oss cannot disable thinking; harness branches the
+Ollama `think` param by model). 18 games in 37 min (~2 min/game, ~5x faster than 14b) via the
+launchd ratchet runner. Rescored exact-frame (keep-last / keep-best): mean **0.239 / 0.256** —
+**~3x qwen3:14b (0.078/0.089)**. Non-zero on 10/18 games:
+
+  sb26 **1.00** (0.10→0.10→0.80→1.00), ar25 0.80, lf52 0.70, tu93 0.50, sp80 0.40,
+  dc22 0.30(best), s5i5 0.30, sc25 0.30, vc33 0.30 — tu93/s5i5/vc33 were ZERO for 14b.
+  Still zero (8/18): g50t ka59 lp85 re86 sk48 su15 tn36 wa30 (tr87/g50t regressed vs 14b).
+
+Graph-blocked overlap: dc22/s5i5/sc25 (3 of 7) show EWM traction under gpt-oss. Refinement curves
+are mostly monotone-up (sb26's 0.10→1.00 is the cleanest execution-feedback climb measured yet);
+occasional oscillation (ar25 0.80→0.00→0.80) keeps keep-best as the right headline.
+
+**Verdict shift**: gpt-oss lineage ≫ Qwen lineage at comparable local scale on this task →
+**gpt-oss-120b is promoted to co-primary** (with Qwen3-Coder-30B) for the Kaggle/GCP
+original-weight bench ([[r48_llm-selection-ewm]] amended). The reasoning-model style (state the
+deducible rule, implement conservatively) fits transition-rule induction.
+
 ## Read
 
 - The refinement loop WORKS when the model is strong enough: 14b×sp80 went 0.00 → 0.30 purely

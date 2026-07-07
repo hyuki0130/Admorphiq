@@ -1,0 +1,67 @@
+{
+  "model": "gpt-oss:20b",
+  "game": "sk48",
+  "n_few": 15,
+  "n_hold": 10,
+  "rounds": [
+    {
+      "round": 0,
+      "code_validity": 1.0,
+      "cell_accuracy": 0.9981,
+      "exact_frame_accuracy": 0.0,
+      "compile_error": "",
+      "prompt_tokens": 4812,
+      "eval_tokens": 287,
+      "latency_s": 13.184,
+      "code": "def predict_next_frame(frame, action, xy=None):\n    \"\"\"\n    Placeholder implementation: returns the input frame unchanged.\n    Replace with the actual transition logic once the rule is inferred.\n    \"\"\"\n    # Deep copy to avoid accidental mutation of the input\n    return [row[:] for row in frame]"
+    },
+    {
+      "round": 1,
+      "code_validity": 1.0,
+      "cell_accuracy": 0.9966,
+      "exact_frame_accuracy": 0.0,
+      "compile_error": "",
+      "prompt_tokens": 5580,
+      "eval_tokens": 1081,
+      "latency_s": 25.327,
+      "code": "def predict_next_frame(frame, action, xy=None):\n    # Deep copy of the frame\n    new_frame = [row[:] for row in frame]\n\n    if action == \"ACTION4\":\n        # Find the first cell with value 4 and toggle a 2x3 rectangle\n        found = False\n        for r in range(64):\n            for c in range(64):\n                if new_frame[r][c] == 4:\n                    # Toggle the 2x3 rectangle starting at (r, c)\n                    for dr in (0, 1):\n                        for dc in (0, 1, 2):\n                            rr, cc = r + dr, c + dc\n                            if 0 <= rr < 64 and 0 <= cc < 64:\n                                if new_frame[rr][cc] == 4:\n                                    # Set to 2 if column mod 3 == 2, else 1\n                                    new_frame[rr][cc] = 2 if cc % 3 == 2 else 1\n                    found = True\n                    break\n            if found:\n                break\n\n    elif action == \"ACTION3\":\n        # Find the first cell with value 4 and toggle a 4x4 rectangle\n        found = False\n        for r in range(64):\n            for c in range(64):\n                if new_frame[r][c] == 4:\n                    # Toggle the 4x4 rectangle starting at (r, c)\n                    for dr in range(4):\n                        for dc in range(4):\n                            rr, cc = r + dr, c + dc\n                            if 0 <= rr < 64 and 0 <= cc < 64:\n                                if new_frame[rr][cc] == 4:\n                                    # Set to 2 if column mod 3 == 2, else 1\n                                    new_frame[rr][cc] = 2 if cc % 3 == 2 else 1\n                    found = True\n                    break\n            if found:\n                break\n\n    # Other actions are no-ops for this simplified model\n    return new_frame"
+    },
+    {
+      "round": 2,
+      "code_validity": 1.0,
+      "cell_accuracy": 0.9966,
+      "exact_frame_accuracy": 0.0,
+      "compile_error": "",
+      "prompt_tokens": 7063,
+      "eval_tokens": 562,
+      "latency_s": 15.649,
+      "code": "def predict_next_frame(frame, action, xy=None):\n    # Deep copy of the frame\n    new_frame = [row[:] for row in frame]\n\n    def find_block(rows, cols, size):\n        \"\"\"Find the first top\u2011left cell of a square block of 4s of given size.\"\"\"\n        for r in range(64 - size + 1):\n            for c in range(64 - size + 1):\n                ok = True\n                for dr in range(size):\n                    for dc in range(size):\n                        if new_frame[r + dr][c + dc] != 4:\n                            ok = False\n                            break\n                    if not ok:\n                        break\n                if ok:\n                    return r, c\n        return None, None\n\n    if action == \"ACTION4\":\n        r, c = find_block(2, 3, 2)  # 2x3 block of 4s\n        if r is not None:\n            for dr in range(2):\n                for dc in range(3):\n                    rr, cc = r + dr, c + dc\n                    # toggle: 4 -> 1 or 2 depending on column parity\n                    new_frame[rr][cc] = 2 if cc % 3 == 2 else 1\n\n    elif action == \"ACTION3\":\n        r, c = find_block(4, 4, 4)  # 4x4 block of 4s\n        if r is not None:\n            for dr in range(4):\n                for dc in range(4):\n                    rr, cc = r + dr, c + dc\n                    # toggle: 4 -> 1 or 2 depending on column parity\n                    new_frame[rr][cc] = 2 if cc % 3 == 2 else 1\n\n    # Other actions are no\u2011ops for this simplified model\n    return new_frame"
+    },
+    {
+      "round": 3,
+      "code_validity": 1.0,
+      "cell_accuracy": 0.9966,
+      "exact_frame_accuracy": 0.0,
+      "compile_error": "",
+      "prompt_tokens": 8501,
+      "eval_tokens": 592,
+      "latency_s": 16.305,
+      "code": "def predict_next_frame(frame, action, xy=None):\n    # Deep copy of the frame\n    new_frame = [row[:] for row in frame]\n\n    def find_block(size):\n        \"\"\"Find the first top\u2011left cell of a square block of 4s of given size.\"\"\"\n        for r in range(64 - size + 1):\n            for c in range(64 - size + 1):\n                ok = True\n                for dr in range(size):\n                    for dc in range(size):\n                        if new_frame[r + dr][c + dc] != 4:\n                            ok = False\n                            break\n                    if not ok:\n                        break\n                if ok:\n                    return r, c\n        return None, None\n\n    if action == \"ACTION4\":\n        r, c = find_block(2)  # 2x2 block of 4s\n        if r is not None:\n            # toggle the 2x3 rectangle starting at (r, c)\n            for dr in range(2):\n                for dc in range(3):\n                    rr, cc = r + dr, c + dc\n                    if 0 <= rr < 64 and 0 <= cc < 64:\n                        new_frame[rr][cc] = 2 if cc % 3 == 2 else 1\n\n    elif action == \"ACTION3\":\n        r, c = find_block(4)  # 4x4 block of 4s\n        if r is not None:\n            # toggle the 4x4 rectangle starting at (r, c)\n            for dr in range(4):\n                for dc in range(4):\n                    rr, cc = r + dr, c + dc\n                    if 0 <= rr < 64 and 0 <= cc < 64:\n                        new_frame[rr][cc] = 2 if cc % 3 == 2 else 1\n\n    # Other actions are no\u2011ops for this simplified model\n    return new_frame"
+    }
+  ],
+  "final": {
+    "round": 3,
+    "code_validity": 1.0,
+    "cell_accuracy": 0.9966,
+    "exact_frame_accuracy": 0.0,
+    "compile_error": "",
+    "prompt_tokens": 8501,
+    "eval_tokens": 592,
+    "latency_s": 16.305,
+    "code": "def predict_next_frame(frame, action, xy=None):\n    # Deep copy of the frame\n    new_frame = [row[:] for row in frame]\n\n    def find_block(size):\n        \"\"\"Find the first top\u2011left cell of a square block of 4s of given size.\"\"\"\n        for r in range(64 - size + 1):\n            for c in range(64 - size + 1):\n                ok = True\n                for dr in range(size):\n                    for dc in range(size):\n                        if new_frame[r + dr][c + dc] != 4:\n                            ok = False\n                            break\n                    if not ok:\n                        break\n                if ok:\n                    return r, c\n        return None, None\n\n    if action == \"ACTION4\":\n        r, c = find_block(2)  # 2x2 block of 4s\n        if r is not None:\n            # toggle the 2x3 rectangle starting at (r, c)\n            for dr in range(2):\n                for dc in range(3):\n                    rr, cc = r + dr, c + dc\n                    if 0 <= rr < 64 and 0 <= cc < 64:\n                        new_frame[rr][cc] = 2 if cc % 3 == 2 else 1\n\n    elif action == \"ACTION3\":\n        r, c = find_block(4)  # 4x4 block of 4s\n        if r is not None:\n            # toggle the 4x4 rectangle starting at (r, c)\n            for dr in range(4):\n                for dc in range(4):\n                    rr, cc = r + dr, c + dc\n                    if 0 <= rr < 64 and 0 <= cc < 64:\n                        new_frame[rr][cc] = 2 if cc % 3 == 2 else 1\n\n    # Other actions are no\u2011ops for this simplified model\n    return new_frame"
+  },
+  "refinement_gain": 0.0,
+  "total_prompt_tokens": 25956,
+  "total_eval_tokens": 2522,
+  "total_latency_s": 70.465
+}

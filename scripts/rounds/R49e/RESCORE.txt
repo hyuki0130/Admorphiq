@@ -1,0 +1,22 @@
+R49 rescore (fixed fence extraction; same held-out split)
+model                                              game   last-ex  best-ex  per-round exact
+gpt-oss:20b                                        ar25      0.80     0.80  0.00 0.80 0.00 0.80
+gpt-oss:20b                                        dc22      0.00     0.30  0.30 0.00 0.00 0.00
+gpt-oss:20b                                        g50t      0.00     0.00  0.00 0.00 0.00 0.00
+gpt-oss:20b                                        ka59      0.00     0.00  0.00 0.00 0.00 0.00
+gpt-oss:20b                                        lf52      0.70     0.70  0.00 0.10 0.70 0.70
+gpt-oss:20b                                        lp85      0.00     0.00  0.00 0.00 0.00 0.00
+gpt-oss:20b                                        re86      0.00     0.00  0.00 0.00 0.00 0.00
+gpt-oss:20b                                        s5i5      0.30     0.30  0.00 0.00 0.30 0.30
+gpt-oss:20b                                        sb26      1.00     1.00  0.10 0.10 0.80 1.00
+gpt-oss:20b                                        sc25      0.30     0.30  0.20 0.30 0.30 0.30
+gpt-oss:20b                                        sk48      0.00     0.00  0.00 0.00 0.00 0.00
+gpt-oss:20b                                        sp80      0.40     0.40  0.00 0.00 0.30 0.40
+gpt-oss:20b                                        su15      0.00     0.00  0.00 0.00 0.00 0.00
+gpt-oss:20b                                        tn36      0.00     0.00  0.00 0.00 0.00 0.00
+gpt-oss:20b                                        tr87      0.00     0.00  0.00 0.00 0.00 0.00
+gpt-oss:20b                                        tu93      0.50     0.50  0.00 0.30 0.30 0.50
+gpt-oss:20b                                        vc33      0.30     0.30  0.00 0.00 0.00 0.30
+gpt-oss:20b                                        wa30      0.00     0.00  0.00 0.00 0.00 0.00
+
+gpt-oss:20b                                        mean last-exact=0.239 best-exact=0.256 (n=18)

@@ -1,0 +1,67 @@
+{
+  "model": "gpt-oss:20b",
+  "game": "tr87",
+  "n_few": 15,
+  "n_hold": 10,
+  "rounds": [
+    {
+      "round": 0,
+      "code_validity": 1.0,
+      "cell_accuracy": 0.995,
+      "exact_frame_accuracy": 0.0,
+      "compile_error": "",
+      "prompt_tokens": 4944,
+      "eval_tokens": 489,
+      "latency_s": 18.462,
+      "code": "def predict_next_frame(frame, action, xy=None):\n    # This implementation simply returns the input frame unchanged.\n    # A proper rule-based implementation would be required to pass the tests.\n    return [row[:] for row in frame]"
+    },
+    {
+      "round": 1,
+      "code_validity": 1.0,
+      "cell_accuracy": 0.9862,
+      "exact_frame_accuracy": 0.0,
+      "compile_error": "",
+      "prompt_tokens": 5999,
+      "eval_tokens": 672,
+      "latency_s": 17.269,
+      "code": "def predict_next_frame(frame, action, xy=None):\n    # Helper to toggle a 5x5 block starting at (r,c)\n    def toggle_block(f, r, c):\n        for dr in range(5):\n            for dc in range(5):\n                rr, cc = r + dr, c + dc\n                if 0 <= rr < 64 and 0 <= cc < 64:\n                    f[rr][cc] = 3 if f[rr][cc] == 0 else 0\n\n    # Copy frame\n    new_frame = [row[:] for row in frame]\n\n    if action == \"ACTION2\":\n        # Toggle two 5x5 blocks at rows 52-56, cols 22-26 and 25-29\n        toggle_block(new_frame, 52, 22)\n        toggle_block(new_frame, 52, 25)\n        # Toggle the 5x5 block at row 63, col 50\n        toggle_block(new_frame, 63, 50)\n    elif action == \"ACTION4\":\n        # Toggle two 5x5 blocks at rows 48-52, cols 22-26 and 29-33\n        toggle_block(new_frame, 48, 22)\n        toggle_block(new_frame, 48, 29)\n        # Toggle two 5x5 blocks at rows 59-63, cols 22-26 and 29-33\n        toggle_block(new_frame, 59, 22)\n        toggle_block(new_frame, 59, 29)\n    else:\n        # For other actions, return the frame unchanged\n        pass\n\n    return new_frame"
+    },
+    {
+      "round": 2,
+      "code_validity": 1.0,
+      "cell_accuracy": 0.9862,
+      "exact_frame_accuracy": 0.0,
+      "compile_error": "",
+      "prompt_tokens": 10291,
+      "eval_tokens": 509,
+      "latency_s": 21.2,
+      "code": "def predict_next_frame(frame, action, xy=None):\n    # Helper to toggle a 5x5 block starting at (r,c)\n    def toggle_block(f, r, c):\n        for dr in range(5):\n            for dc in range(5):\n                rr, cc = r + dr, c + dc\n                if 0 <= rr < 64 and 0 <= cc < 64:\n                    f[rr][cc] = 3 if f[rr][cc] == 0 else 0\n\n    # Copy frame\n    new_frame = [row[:] for row in frame]\n\n    if action == \"ACTION2\":\n        # Two overlapping 5x5 blocks at rows 52-56, cols 22-26 and 25-29\n        toggle_block(new_frame, 52, 22)\n        toggle_block(new_frame, 52, 25)\n        # Toggle the 5x5 block at row 63, col 50\n        toggle_block(new_frame, 63, 50)\n    elif action == \"ACTION4\":\n        # Two overlapping 5x5 blocks at rows 48-52, cols 22-26 and 29-33\n        toggle_block(new_frame, 48, 22)\n        toggle_block(new_frame, 48, 29)\n        # Two overlapping 5x5 blocks at rows 59-63, cols 22-26 and 29-33\n        toggle_block(new_frame, 59, 22)\n        toggle_block(new_frame, 59, 29)\n    else:\n        # For other actions, return the frame unchanged\n        pass\n\n    return new_frame"
+    },
+    {
+      "round": 3,
+      "code_validity": 1.0,
+      "cell_accuracy": 0.9899,
+      "exact_frame_accuracy": 0.0,
+      "compile_error": "",
+      "prompt_tokens": 14583,
+      "eval_tokens": 923,
+      "latency_s": 33.868,
+      "code": "def predict_next_frame(frame, action, xy=None):\n    # Helper to toggle a 5x5 block starting at (r,c) between two values\n    def toggle_block(f, r, c, val1, val2):\n        for dr in range(5):\n            for dc in range(5):\n                rr, cc = r + dr, c + dc\n                if 0 <= rr < 64 and 0 <= cc < 64:\n                    if f[rr][cc] == val1:\n                        f[rr][cc] = val2\n                    elif f[rr][cc] == val2:\n                        f[rr][cc] = val1\n\n    # Copy frame\n    new_frame = [row[:] for row in frame]\n\n    if action == \"ACTION2\":\n        # Two overlapping 5x5 blocks at rows 52-56, cols 22-26 and 25-29\n        toggle_block(new_frame, 52, 22, 5, 7)\n        toggle_block(new_frame, 52, 25, 5, 7)\n        # Toggle the 5x5 block at row 63, col 50\n        toggle_block(new_frame, 63, 50, 1, 4)\n    elif action == \"ACTION4\":\n        # Two overlapping 5x5 blocks at rows 48-52, cols 22-26 and 29-33\n        toggle_block(new_frame, 48, 22, 0, 3)\n        toggle_block(new_frame, 48, 29, 0, 3)\n        # Two overlapping 5x5 blocks at rows 59-63, cols 22-26 and 29-33\n        toggle_block(new_frame, 59, 22, 0, 3)\n        toggle_block(new_frame, 59, 29, 0, 3)\n    else:\n        # For other actions, return the frame unchanged\n        pass\n\n    return new_frame"
+    }
+  ],
+  "final": {
+    "round": 3,
+    "code_validity": 1.0,
+    "cell_accuracy": 0.9899,
+    "exact_frame_accuracy": 0.0,
+    "compile_error": "",
+    "prompt_tokens": 14583,
+    "eval_tokens": 923,
+    "latency_s": 33.868,
+    "code": "def predict_next_frame(frame, action, xy=None):\n    # Helper to toggle a 5x5 block starting at (r,c) between two values\n    def toggle_block(f, r, c, val1, val2):\n        for dr in range(5):\n            for dc in range(5):\n                rr, cc = r + dr, c + dc\n                if 0 <= rr < 64 and 0 <= cc < 64:\n                    if f[rr][cc] == val1:\n                        f[rr][cc] = val2\n                    elif f[rr][cc] == val2:\n                        f[rr][cc] = val1\n\n    # Copy frame\n    new_frame = [row[:] for row in frame]\n\n    if action == \"ACTION2\":\n        # Two overlapping 5x5 blocks at rows 52-56, cols 22-26 and 25-29\n        toggle_block(new_frame, 52, 22, 5, 7)\n        toggle_block(new_frame, 52, 25, 5, 7)\n        # Toggle the 5x5 block at row 63, col 50\n        toggle_block(new_frame, 63, 50, 1, 4)\n    elif action == \"ACTION4\":\n        # Two overlapping 5x5 blocks at rows 48-52, cols 22-26 and 29-33\n        toggle_block(new_frame, 48, 22, 0, 3)\n        toggle_block(new_frame, 48, 29, 0, 3)\n        # Two overlapping 5x5 blocks at rows 59-63, cols 22-26 and 29-33\n        toggle_block(new_frame, 59, 22, 0, 3)\n        toggle_block(new_frame, 59, 29, 0, 3)\n    else:\n        # For other actions, return the frame unchanged\n        pass\n\n    return new_frame"
+  },
+  "refinement_gain": 0.0,
+  "total_prompt_tokens": 35817,
+  "total_eval_tokens": 2593,
+  "total_latency_s": 90.799
+}

@@ -70,6 +70,7 @@ commit, and `[[backlinks]]`. Narrative overview + reliable-metric + resume steps
 | R48 | llm-selection | research: Qwen3-Coder-30B-A3B primary (pending measured bench) | — | [[r48_llm-selection-ewm]] |
 | R49 | llm-selection | local ceiling: 14b best-exact=0.100 > Q3-30b-coder 0.033 (quant damage) > 8b 0; original-30b go/no-go deferred to Kaggle 96GB | a12e760 | [[r49_ewm-bench-partial]] |
 | R49d | llm-bench-full18 | 14b full-18: exact 0.078/0.089 (8/18 games >0); 3 of 7 graph-blocked games show EWM traction (dc22/g50t/sc25); launchd = durable runner | — | [[r49_ewm-bench-partial]] |
+| R49e | llm-bench-full18 | gpt-oss-20b full-18: exact 0.239/0.256 = 3x 14b; sb26 1.00, 10/18 >0; gpt-oss-120b promoted co-primary | — | [[r49_ewm-bench-partial]] |
 
 - **graph-search / hud-masking / frontier-bfs**: [[r36_graph-frontier-bfs]] (the deep-level axis; offline env.step ~1000+/s discovery)
 - **forward-model transfer / pretrain**: [[r35_forward-transfer]] (dynamics 52.4% vs BC 0%; pos_weight collapse fix)

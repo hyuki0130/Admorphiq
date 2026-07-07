@@ -1,0 +1,67 @@
+{
+  "model": "gpt-oss:20b",
+  "game": "wa30",
+  "n_few": 15,
+  "n_hold": 10,
+  "rounds": [
+    {
+      "round": 0,
+      "code_validity": 1.0,
+      "cell_accuracy": 0.9886,
+      "exact_frame_accuracy": 0.0,
+      "compile_error": "",
+      "prompt_tokens": 5122,
+      "eval_tokens": 685,
+      "latency_s": 22.921,
+      "code": "def predict_next_frame(frame, action, xy=None):\n    \"\"\"\n    This function implements a generic rule that applies a 4x4 block toggle\n    for ACTION1, ACTION2, ACTION3, and ACTION4. For other actions it\n    returns the frame unchanged. The rule is inferred from the provided\n    transition examples and should generalize to similar patterns.\n    \"\"\"\n    # Deep copy the frame to avoid mutating the input\n    new_frame = [row[:] for row in frame]\n\n    # Helper to toggle a 4x4 block starting at (r, c)\n    def toggle_block(r, c):\n        for dr in range(4):\n            for dc in range(4):\n                rr, cc = r + dr, c + dc\n                if 0 <= rr < 64 and 0 <= cc < 64:\n                    val = new_frame[rr][cc]\n                    # Toggle between 1 and 0, or 14 and 1 as seen in examples\n                    if val == 1:\n                        new_frame[rr][cc] = 0\n                    elif val == 0:\n                        new_frame[rr][cc] = 1\n                    elif val == 14:\n                        new_frame[rr][cc] = 1\n                    elif val == 7:\n                        new_frame[rr][cc] = 4\n                    elif val == 4:\n                        new_frame[rr][cc] = 7\n\n    if action == \"ACTION1\":\n        # Example shows a block starting at row 44, col 36\n        toggle_block(44, 36)\n    elif action == \"ACTION2\":\n        # Example shows a block starting at row 28, col 60\n        toggle_block(28, 60)\n    elif action == \"ACTION3\":\n        # Example shows a block starting at row 12, col 48\n        toggle_block(12, 48)\n    elif action == \"ACTION4\":\n        # Example shows a block starting at row 60, col 52\n        toggle_block(60, 52)\n    # ACTION5 and ACTION6 are not defined in the examples; return unchanged\n    return new_frame"
+    },
+    {
+      "round": 1,
+      "code_validity": 1.0,
+      "cell_accuracy": 0.9909,
+      "exact_frame_accuracy": 0.0,
+      "compile_error": "",
+      "prompt_tokens": 7434,
+      "eval_tokens": 821,
+      "latency_s": 23.57,
+      "code": "def predict_next_frame(frame, action, xy=None):\n    \"\"\"\n    Predict the next frame for the 64x64 grid game.\n    The game uses four 4\u00d74 blocks that are toggled by the actions\n    ACTION1..ACTION4.  The block positions are fixed:\n\n        ACTION1 \u2192 top\u2011left corner (44, 36)\n        ACTION2 \u2192 top\u2011left corner ( 4, 16)\n        ACTION3 \u2192 top\u2011left corner (48, 36)\n        ACTION4 \u2192 top\u2011left corner (52,  4)\n\n    Inside a block the following value transitions occur:\n\n        1  \u2192 0   (when the target is 0)\n        1  \u2192 14  (when the target is 14)\n        0  \u2192 1\n        14 \u2192 1\n\n    All other cells remain unchanged.\n    \"\"\"\n    # Deep copy to avoid mutating the input\n    new_frame = [row[:] for row in frame]\n\n    # Mapping from action to block top\u2011left corner\n    block_start = {\n        \"ACTION1\": (44, 36),\n        \"ACTION2\": (4, 16),\n        \"ACTION3\": (48, 36),\n        \"ACTION4\": (52, 4),\n    }\n\n    if action not in block_start:\n        return new_frame  # No change for other actions\n\n    r0, c0 = block_start[action]\n\n    for dr in range(4):\n        for dc in range(4):\n            r, c = r0 + dr, c0 + dc\n            if 0 <= r < 64 and 0 <= c < 64:\n                old = new_frame[r][c]\n                if old == 1:\n                    # Determine the intended new value from the examples\n                    # If the cell was 1 and the target is 0 \u2192 0\n                    # If the cell was 1 and the target is 14 \u2192 14\n                    # We can infer the target by looking at the current value\n                    # in the original frame: if it is 0 \u2192 0, else \u2192 14\n                    target = frame[r][c]\n                    new_frame[r][c] = 0 if target == 0 else 14\n                elif old == 0:\n                    new_frame[r][c] = 1\n                elif old == 14:\n                    new_frame[r][c] = 1\n    return new_frame"
+    },
+    {
+      "round": 2,
+      "code_validity": 1.0,
+      "cell_accuracy": 0.9881,
+      "exact_frame_accuracy": 0.0,
+      "compile_error": "",
+      "prompt_tokens": 9806,
+      "eval_tokens": 1149,
+      "latency_s": 31.8,
+      "code": "def predict_next_frame(frame, action, xy=None):\n    \"\"\"\n    Predict the next frame for the 64x64 grid game.\n\n    The game contains four fixed 4\u00d78 blocks that are toggled by the\n    actions ACTION1..ACTION4.  The block positions are:\n\n        ACTION1 \u2192 (44, 36)\n        ACTION2 \u2192 ( 4, 16)\n        ACTION3 \u2192 (48, 36)\n        ACTION4 \u2192 (52,  4)\n\n    Inside a block the following value transitions occur:\n\n        1  \u2192 0\n        14 \u2192 1\n        0  \u2192 1\n\n    All other cells remain unchanged.\n    \"\"\"\n    # Deep copy to avoid mutating the input\n    new_frame = [row[:] for row in frame]\n\n    # Mapping from action to block top\u2011left corner\n    block_start = {\n        \"ACTION1\": (44, 36),\n        \"ACTION2\": (4, 16),\n        \"ACTION3\": (48, 36),\n        \"ACTION4\": (52, 4),\n    }\n\n    if action not in block_start:\n        return new_frame  # No change for other actions\n\n    r0, c0 = block_start[action]\n\n    for dr in range(4):\n        for dc in range(8):\n            r, c = r0 + dr, c0 + dc\n            if 0 <= r < 64 and 0 <= c < 64:\n                val = new_frame[r][c]\n                if val == 1:\n                    new_frame[r][c] = 0\n                elif val == 14:\n                    new_frame[r][c] = 1\n                elif val == 0:\n                    new_frame[r][c] = 1\n    return new_frame"
+    },
+    {
+      "round": 3,
+      "code_validity": 1.0,
+      "cell_accuracy": 0.9903,
+      "exact_frame_accuracy": 0.0,
+      "compile_error": "",
+      "prompt_tokens": 12616,
+      "eval_tokens": 824,
+      "latency_s": 27.461,
+      "code": "def predict_next_frame(frame, action, xy=None):\n    \"\"\"\n    Predict the next frame for the 64x64 grid game.\n\n    The game contains four fixed 4\u00d78 blocks that are toggled by the\n    actions ACTION1..ACTION4.  The block positions are:\n\n        ACTION1 \u2192 (44, 36)\n        ACTION2 \u2192 ( 4, 16)\n        ACTION3 \u2192 (48, 36)\n        ACTION4 \u2192 (52,  4)\n\n    Inside a block the following value transitions occur:\n\n        ACTION1: 1 \u2192 0   (left half), 0 \u2192 1   (right half)\n        ACTION2: 14 \u2192 1  (left half), 1 \u2192 0   (right half)\n        ACTION3: 1  \u2192 0  (left half), 0 \u2192 1   (right half)\n        ACTION4: 14 \u2192 1  (left half), 1 \u2192 0   (right half)\n\n    All other cells remain unchanged.\n    \"\"\"\n    # Deep copy to avoid mutating the input\n    new_frame = [row[:] for row in frame]\n\n    # Mapping from action to block top\u2011left corner\n    block_start = {\n        \"ACTION1\": (44, 36),\n        \"ACTION2\": (4, 16),\n        \"ACTION3\": (48, 36),\n        \"ACTION4\": (52, 4),\n    }\n\n    if action not in block_start:\n        return new_frame  # No change for other actions\n\n    r0, c0 = block_start[action]\n\n    for dr in range(4):\n        for dc in range(8):\n            r, c = r0 + dr, c0 + dc\n            if 0 <= r < 64 and 0 <= c < 64:\n                val = new_frame[r][c]\n                # Determine which half of the block we are in\n                left_half = dc < 4\n                if action in (\"ACTION1\", \"ACTION3\"):\n                    if left_half:\n                        if val == 1:\n                            new_frame[r][c] = 0\n                    else:\n                        if val == 0:\n                            new_frame[r][c] = 1\n                else:  # ACTION2 or ACTION4\n                    if left_half:\n                        if val == 14:\n                            new_frame[r][c] = 1\n                    else:\n                        if val == 1:\n                            new_frame[r][c] = 0\n    return new_frame"
+    }
+  ],
+  "final": {
+    "round": 3,
+    "code_validity": 1.0,
+    "cell_accuracy": 0.9903,
+    "exact_frame_accuracy": 0.0,
+    "compile_error": "",
+    "prompt_tokens": 12616,
+    "eval_tokens": 824,
+    "latency_s": 27.461,
+    "code": "def predict_next_frame(frame, action, xy=None):\n    \"\"\"\n    Predict the next frame for the 64x64 grid game.\n\n    The game contains four fixed 4\u00d78 blocks that are toggled by the\n    actions ACTION1..ACTION4.  The block positions are:\n\n        ACTION1 \u2192 (44, 36)\n        ACTION2 \u2192 ( 4, 16)\n        ACTION3 \u2192 (48, 36)\n        ACTION4 \u2192 (52,  4)\n\n    Inside a block the following value transitions occur:\n\n        ACTION1: 1 \u2192 0   (left half), 0 \u2192 1   (right half)\n        ACTION2: 14 \u2192 1  (left half), 1 \u2192 0   (right half)\n        ACTION3: 1  \u2192 0  (left half), 0 \u2192 1   (right half)\n        ACTION4: 14 \u2192 1  (left half), 1 \u2192 0   (right half)\n\n    All other cells remain unchanged.\n    \"\"\"\n    # Deep copy to avoid mutating the input\n    new_frame = [row[:] for row in frame]\n\n    # Mapping from action to block top\u2011left corner\n    block_start = {\n        \"ACTION1\": (44, 36),\n        \"ACTION2\": (4, 16),\n        \"ACTION3\": (48, 36),\n        \"ACTION4\": (52, 4),\n    }\n\n    if action not in block_start:\n        return new_frame  # No change for other actions\n\n    r0, c0 = block_start[action]\n\n    for dr in range(4):\n        for dc in range(8):\n            r, c = r0 + dr, c0 + dc\n            if 0 <= r < 64 and 0 <= c < 64:\n                val = new_frame[r][c]\n                # Determine which half of the block we are in\n                left_half = dc < 4\n                if action in (\"ACTION1\", \"ACTION3\"):\n                    if left_half:\n                        if val == 1:\n                            new_frame[r][c] = 0\n                    else:\n                        if val == 0:\n                            new_frame[r][c] = 1\n                else:  # ACTION2 or ACTION4\n                    if left_half:\n                        if val == 14:\n                            new_frame[r][c] = 1\n                    else:\n                        if val == 1:\n                            new_frame[r][c] = 0\n    return new_frame"
+  },
+  "refinement_gain": 0.0,
+  "total_prompt_tokens": 34978,
+  "total_eval_tokens": 3479,
+  "total_latency_s": 105.752
+}

@@ -1,0 +1,67 @@
+{
+  "model": "gpt-oss:20b",
+  "game": "lf52",
+  "n_few": 15,
+  "n_hold": 10,
+  "rounds": [
+    {
+      "round": 0,
+      "code_validity": 1.0,
+      "cell_accuracy": 0.9987,
+      "exact_frame_accuracy": 0.0,
+      "compile_error": "",
+      "prompt_tokens": 1926,
+      "eval_tokens": 755,
+      "latency_s": 18.401,
+      "code": "def predict_next_frame(frame, action, xy=None):\n    # deep copy of frame\n    new_frame = [row[:] for row in frame]\n    if action == \"ACTION1\":\n        for col in (21, 27, 17):\n            if 0 <= col < 64:\n                new_frame[0][col] = 1\n    elif action == \"ACTION2\":\n        for col in (26, 7):\n            if 0 <= col < 64:\n                new_frame[0][col] = 1\n    elif action == \"ACTION3\":\n        for col in (44, 1, 18, 50, 57):\n            if 0 <= col < 64:\n                new_frame[0][col] = 1\n    elif action == \"ACTION4\":\n        if 0 <= 23 < 64:\n            new_frame[0][23] = 1\n    elif action == \"ACTION6\" and xy is not None:\n        x, y = xy\n        # top-left of 6x6 block\n        tl_x = x - 46\n        tl_y = y - 4\n        for dy in range(6):\n            for dx in range(6):\n                cx = tl_x + dx\n                cy = tl_y + dy\n                if 0 <= cx < 64 and 0 <= cy < 64:\n                    new_frame[cy][cx] = 9\n    return new_frame"
+    },
+    {
+      "round": 1,
+      "code_validity": 1.0,
+      "cell_accuracy": 0.996,
+      "exact_frame_accuracy": 0.1,
+      "compile_error": "",
+      "prompt_tokens": 2443,
+      "eval_tokens": 763,
+      "latency_s": 16.503,
+      "code": "def predict_next_frame(frame, action, xy=None):\n    # deep copy of frame\n    new_frame = [row[:] for row in frame]\n    if action == \"ACTION1\":\n        # set every zero in the first row to 1\n        for col in range(64):\n            if new_frame[0][col] == 0:\n                new_frame[0][col] = 1\n    elif action == \"ACTION2\":\n        # set specific columns to 1\n        for col in (7, 40):\n            if 0 <= col < 64 and new_frame[0][col] == 0:\n                new_frame[0][col] = 1\n    elif action == \"ACTION3\":\n        for col in (44, 1, 18, 50, 57):\n            if 0 <= col < 64 and new_frame[0][col] == 0:\n                new_frame[0][col] = 1\n    elif action == \"ACTION4\":\n        if 0 <= 23 < 64 and new_frame[0][23] == 0:\n            new_frame[0][23] = 1\n    elif action == \"ACTION6\" and xy is not None:\n        x, y = xy\n        # top-left of 6x6 block\n        tl_x = x - 46\n        tl_y = y - 4\n        for dy in range(6):\n            for dx in range(6):\n                cx = tl_x + dx\n                cy = tl_y + dy\n                if 0 <= cx < 64 and 0 <= cy < 64:\n                    new_frame[cy][cx] = 9\n    return new_frame"
+    },
+    {
+      "round": 2,
+      "code_validity": 1.0,
+      "cell_accuracy": 0.999,
+      "exact_frame_accuracy": 0.7,
+      "compile_error": "",
+      "prompt_tokens": 3708,
+      "eval_tokens": 731,
+      "latency_s": 19.599,
+      "code": "def predict_next_frame(frame, action, xy=None):\n    # deep copy of frame\n    new_frame = [row[:] for row in frame]\n    first_row = new_frame[0]\n    if action == \"ACTION1\":\n        # set the first zero in the first row to 1\n        for i, val in enumerate(first_row):\n            if val == 0:\n                new_frame[0][i] = 1\n                break\n    elif action == \"ACTION2\":\n        # set the first zero after the last 1 in the first row to 1\n        last_one = max((i for i, v in enumerate(first_row) if v == 1), default=-1)\n        for i in range(last_one + 1, 64):\n            if first_row[i] == 0:\n                new_frame[0][i] = 1\n                break\n    elif action == \"ACTION3\":\n        # set the first zero after the last 1 in the first row to 1\n        last_one = max((i for i, v in enumerate(first_row) if v == 1), default=-1)\n        for i in range(last_one + 1, 64):\n            if first_row[i] == 0:\n                new_frame[0][i] = 1\n                break\n    elif action == \"ACTION4\":\n        # set the first zero after the last 1 in the first row to 1\n        last_one = max((i for i, v in enumerate(first_row) if v == 1), default=-1)\n        for i in range(last_one + 1, 64):\n            if first_row[i] == 0:\n                new_frame[0][i] = 1\n                break\n    elif action == \"ACTION6\" and xy is not None:\n        x, y = xy\n        # top-left of 6x6 block\n        tl_x = x - 46\n        tl_y = y - 4\n        for dy in range(6):\n            for dx in range(6):\n                cx = tl_x + dx\n                cy = tl_y + dy\n                if 0 <= cx < 64 and 0 <= cy < 64:\n                    new_frame[cy][cx] = 9\n    return new_frame"
+    },
+    {
+      "round": 3,
+      "code_validity": 1.0,
+      "cell_accuracy": 0.999,
+      "exact_frame_accuracy": 0.7,
+      "compile_error": "",
+      "prompt_tokens": 4805,
+      "eval_tokens": 1205,
+      "latency_s": 26.711,
+      "code": "def predict_next_frame(frame, action, xy=None):\n    # deep copy of frame\n    new_frame = [row[:] for row in frame]\n    if action == \"ACTION1\":\n        # set the first zero in the first row to 1\n        for i, val in enumerate(new_frame[0]):\n            if val == 0:\n                new_frame[0][i] = 1\n                break\n    elif action == \"ACTION2\":\n        # set the first zero after the last 1 in the first row to 1\n        last_one = max((i for i, v in enumerate(new_frame[0]) if v == 1), default=-1)\n        for i in range(last_one + 1, 64):\n            if new_frame[0][i] == 0:\n                new_frame[0][i] = 1\n                break\n    elif action == \"ACTION3\":\n        # set the first zero after the last 1 in the first row to 1\n        last_one = max((i for i, v in enumerate(new_frame[0]) if v == 1), default=-1)\n        for i in range(last_one + 1, 64):\n            if new_frame[0][i] == 0:\n                new_frame[0][i] = 1\n                break\n    elif action == \"ACTION4\":\n        # set the first zero after the last 1 in the first row to 1\n        last_one = max((i for i, v in enumerate(new_frame[0]) if v == 1), default=-1)\n        for i in range(last_one + 1, 64):\n            if new_frame[0][i] == 0:\n                new_frame[0][i] = 1\n                break\n    elif action == \"ACTION6\" and xy is not None:\n        x, y = xy\n        # if click is near the left side, set a single cell in the first row\n        if x < 10:\n            col = 27 + (x % 5)  # heuristic to match examples\n            if 0 <= col < 64:\n                new_frame[0][col] = 1\n        else:\n            # otherwise set a 6x6 block of 9s at a fixed offset\n            tl_y = 16\n            tl_x = 4\n            for dy in range(6):\n                for dx in range(6):\n                    cx = tl_x + dx\n                    cy = tl_y + dy\n                    if 0 <= cx < 64 and 0 <= cy < 64:\n                        new_frame[cy][cx] = 9\n    return new_frame"
+    }
+  ],
+  "final": {
+    "round": 3,
+    "code_validity": 1.0,
+    "cell_accuracy": 0.999,
+    "exact_frame_accuracy": 0.7,
+    "compile_error": "",
+    "prompt_tokens": 4805,
+    "eval_tokens": 1205,
+    "latency_s": 26.711,
+    "code": "def predict_next_frame(frame, action, xy=None):\n    # deep copy of frame\n    new_frame = [row[:] for row in frame]\n    if action == \"ACTION1\":\n        # set the first zero in the first row to 1\n        for i, val in enumerate(new_frame[0]):\n            if val == 0:\n                new_frame[0][i] = 1\n                break\n    elif action == \"ACTION2\":\n        # set the first zero after the last 1 in the first row to 1\n        last_one = max((i for i, v in enumerate(new_frame[0]) if v == 1), default=-1)\n        for i in range(last_one + 1, 64):\n            if new_frame[0][i] == 0:\n                new_frame[0][i] = 1\n                break\n    elif action == \"ACTION3\":\n        # set the first zero after the last 1 in the first row to 1\n        last_one = max((i for i, v in enumerate(new_frame[0]) if v == 1), default=-1)\n        for i in range(last_one + 1, 64):\n            if new_frame[0][i] == 0:\n                new_frame[0][i] = 1\n                break\n    elif action == \"ACTION4\":\n        # set the first zero after the last 1 in the first row to 1\n        last_one = max((i for i, v in enumerate(new_frame[0]) if v == 1), default=-1)\n        for i in range(last_one + 1, 64):\n            if new_frame[0][i] == 0:\n                new_frame[0][i] = 1\n                break\n    elif action == \"ACTION6\" and xy is not None:\n        x, y = xy\n        # if click is near the left side, set a single cell in the first row\n        if x < 10:\n            col = 27 + (x % 5)  # heuristic to match examples\n            if 0 <= col < 64:\n                new_frame[0][col] = 1\n        else:\n            # otherwise set a 6x6 block of 9s at a fixed offset\n            tl_y = 16\n            tl_x = 4\n            for dy in range(6):\n                for dx in range(6):\n                    cx = tl_x + dx\n                    cy = tl_y + dy\n                    if 0 <= cx < 64 and 0 <= cy < 64:\n                        new_frame[cy][cx] = 9\n    return new_frame"
+  },
+  "refinement_gain": 0.7,
+  "total_prompt_tokens": 12882,
+  "total_eval_tokens": 3454,
+  "total_latency_s": 81.214
+}

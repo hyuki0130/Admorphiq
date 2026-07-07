@@ -1,0 +1,67 @@
+{
+  "model": "gpt-oss:20b",
+  "game": "tu93",
+  "n_few": 15,
+  "n_hold": 10,
+  "rounds": [
+    {
+      "round": 0,
+      "code_validity": 1.0,
+      "cell_accuracy": 0.999,
+      "exact_frame_accuracy": 0.0,
+      "compile_error": "",
+      "prompt_tokens": 2506,
+      "eval_tokens": 556,
+      "latency_s": 16.37,
+      "code": "def predict_next_frame(frame, action, xy=None):\n    \"\"\"\n    A deterministic placeholder that returns the input frame unchanged.\n    The observed transitions are not sufficient to infer a general rule,\n    so this implementation simply returns the frame as is.\n    \"\"\"\n    # Deep copy to avoid accidental mutation of the input\n    return [row[:] for row in frame]"
+    },
+    {
+      "round": 1,
+      "code_validity": 1.0,
+      "cell_accuracy": 0.999,
+      "exact_frame_accuracy": 0.3,
+      "compile_error": "",
+      "prompt_tokens": 2746,
+      "eval_tokens": 869,
+      "latency_s": 19.198,
+      "code": "def predict_next_frame(frame, action, xy=None):\n    \"\"\"\n    Predicts the next frame for a 64x64 grid game.\n    The observed transitions indicate that:\n      * ACTION1 clears the cell at row 63, column 60 (sets it to 0).\n      * ACTION3 clears a cell in the bottom row:\n          - If column 4 contains 6, it is cleared.\n          - Otherwise, if column 3 contains 6, it is cleared.\n    All other actions leave the frame unchanged.\n    \"\"\"\n    # Make a deep copy to avoid mutating the input\n    new_frame = [row[:] for row in frame]\n\n    if action == \"ACTION1\":\n        # Clear the cell at (row 63, col 60)\n        if new_frame[63][60] == 6:\n            new_frame[63][60] = 0\n\n    elif action == \"ACTION3\":\n        # Prefer column 4, fallback to column 3\n        if new_frame[63][4] == 6:\n            new_frame[63][4] = 0\n        elif new_frame[63][3] == 6:\n            new_frame[63][3] = 0\n\n    # For all other actions, return the frame unchanged\n    return new_frame"
+    },
+    {
+      "round": 2,
+      "code_validity": 1.0,
+      "cell_accuracy": 0.999,
+      "exact_frame_accuracy": 0.3,
+      "compile_error": "",
+      "prompt_tokens": 3304,
+      "eval_tokens": 992,
+      "latency_s": 22.489,
+      "code": "def predict_next_frame(frame, action, xy=None):\n    \"\"\"\n    Predicts the next frame for the 64x64 grid game.\n\n    Observed rules:\n      * ACTION1 clears cell (63, 60).\n      * ACTION2 clears cells (63, 6) and (63, 7).\n      * ACTION4 clears cells (63, 56) and (63, 57).\n      * ACTION3 clears a 3\u00d73 block that matches the pattern:\n            left column values are 2,\n            right column values are 9 except the middle row right value is 4,\n            and also clears cells (63, 56) and (63, 57).\n    All other actions leave the frame unchanged.\n    \"\"\"\n    # Deep copy to avoid mutating the input\n    new_frame = [row[:] for row in frame]\n\n    if action == \"ACTION1\":\n        if new_frame[63][60] == 6:\n            new_frame[63][60] = 0\n\n    elif action == \"ACTION2\":\n        for col in (6, 7):\n            if new_frame[63][col] == 6:\n                new_frame[63][col] = 0\n\n    elif action == \"ACTION4\":\n        for col in (56, 57):\n            if new_frame[63][col] == 6:\n                new_frame[63][col] = 0\n\n    elif action == \"ACTION3\":\n        # Clear the bottom row cells 56 and 57\n        for col in (56, 57):\n            if new_frame[63][col] == 6:\n                new_frame[63][col] = 0\n\n        # Search for the 3\u00d73 pattern\n        for r in range(0, 61):          # 61 = 64-3\n            for c in range(0, 61):\n                # Check left column values\n                if not (new_frame[r][c] == 2 and\n                        new_frame[r+1][c] == 2 and\n                        new_frame[r+2][c] == 2):\n                    continue\n                # Check right column values\n                if not (new_frame[r][c+3] == 9 and\n                        new_frame[r+1][c+3] == 4 and\n                        new_frame[r+2][c+3] == 9):\n                    continue\n                # Pattern matched \u2013 clear the 3\u00d73 block\n                for dr in range(3):\n                    for dc in range(4):\n                        if new_frame[r+dr][c+dc] != 0:\n                            new_frame[r+dr][c+dc] = 0\n                # Assume only one such block per ACTION3\n                return new_frame\n\n    # For all other actions, return the frame unchanged\n    return new_frame"
+    },
+    {
+      "round": 3,
+      "code_validity": 1.0,
+      "cell_accuracy": 0.9994,
+      "exact_frame_accuracy": 0.5,
+      "compile_error": "",
+      "prompt_tokens": 4320,
+      "eval_tokens": 970,
+      "latency_s": 22.93,
+      "code": "def predict_next_frame(frame, action, xy=None):\n    \"\"\"\n    Predicts the next frame for the 64x64 grid game.\n\n    Observed rules:\n      * ACTION1 clears cell (63, 60).\n      * ACTION2 clears cells (63, 6) and (63, 7).\n      * ACTION4 clears cells (63, 56) and (63, 57).\n      * ACTION3:\n          - If cell (63, 4) contains 6, it is cleared.\n          - Else if cell (63, 3) contains 6, it is cleared.\n          - Clears cells (63, 56) and (63, 57).\n          - Searches for a 3\u00d73 block where:\n                left column values are 2,\n                right column values are 9 except the middle right value is 4.\n            For each such block it:\n                * changes left column 2 \u2192 9,\n                * changes right column 9 \u2192 0,\n                * changes middle right 4 \u2192 0.\n    All other actions leave the frame unchanged.\n    \"\"\"\n    # Deep copy to avoid mutating the input\n    new_frame = [row[:] for row in frame]\n\n    if action == \"ACTION1\":\n        if new_frame[63][60] == 6:\n            new_frame[63][60] = 0\n\n    elif action == \"ACTION2\":\n        for col in (6, 7):\n            if new_frame[63][col] == 6:\n                new_frame[63][col] = 0\n\n    elif action == \"ACTION4\":\n        for col in (56, 57):\n            if new_frame[63][col] == 6:\n                new_frame[63][col] = 0\n\n    elif action == \"ACTION3\":\n        # Bottom row special cells\n        for col in (56, 57):\n            if new_frame[63][col] == 6:\n                new_frame[63][col] = 0\n        if new_frame[63][4] == 6:\n            new_frame[63][4] = 0\n        elif new_frame[63][3] == 6:\n            new_frame[63][3] = 0\n\n        # Search for the 3\u00d73 pattern\n        for r in range(0, 61):          # 61 = 64-3\n            for c in range(0, 61):\n                # Check left column values\n                if not (new_frame[r][c] == 2 and\n                        new_frame[r+1][c] == 2 and\n                        new_frame[r+2][c] == 2):\n                    continue\n                # Check right column values\n                if not (new_frame[r][c+3] == 9 and\n                        new_frame[r+1][c+3] == 4 and\n                        new_frame[r+2][c+3] == 9):\n                    continue\n                # Pattern matched \u2013 apply the transformation\n                for dr in range(3):\n                    # left column 2 \u2192 9\n                    if new_frame[r+dr][c] == 2:\n                        new_frame[r+dr][c] = 9\n                    # right column 9 \u2192 0\n                    if new_frame[r+dr][c+3] == 9:\n                        new_frame[r+dr][c+3] = 0\n                    # middle right 4 \u2192 0\n                    if dr == 1 and new_frame[r+dr][c+3] == 4:\n                        new_frame[r+dr][c+3] = 0\n                # Assume only one such block per ACTION3\n                return new_frame\n\n    # For all other actions, return the frame unchanged\n    return new_frame"
+    }
+  ],
+  "final": {
+    "round": 3,
+    "code_validity": 1.0,
+    "cell_accuracy": 0.9994,
+    "exact_frame_accuracy": 0.5,
+    "compile_error": "",
+    "prompt_tokens": 4320,
+    "eval_tokens": 970,
+    "latency_s": 22.93,
+    "code": "def predict_next_frame(frame, action, xy=None):\n    \"\"\"\n    Predicts the next frame for the 64x64 grid game.\n\n    Observed rules:\n      * ACTION1 clears cell (63, 60).\n      * ACTION2 clears cells (63, 6) and (63, 7).\n      * ACTION4 clears cells (63, 56) and (63, 57).\n      * ACTION3:\n          - If cell (63, 4) contains 6, it is cleared.\n          - Else if cell (63, 3) contains 6, it is cleared.\n          - Clears cells (63, 56) and (63, 57).\n          - Searches for a 3\u00d73 block where:\n                left column values are 2,\n                right column values are 9 except the middle right value is 4.\n            For each such block it:\n                * changes left column 2 \u2192 9,\n                * changes right column 9 \u2192 0,\n                * changes middle right 4 \u2192 0.\n    All other actions leave the frame unchanged.\n    \"\"\"\n    # Deep copy to avoid mutating the input\n    new_frame = [row[:] for row in frame]\n\n    if action == \"ACTION1\":\n        if new_frame[63][60] == 6:\n            new_frame[63][60] = 0\n\n    elif action == \"ACTION2\":\n        for col in (6, 7):\n            if new_frame[63][col] == 6:\n                new_frame[63][col] = 0\n\n    elif action == \"ACTION4\":\n        for col in (56, 57):\n            if new_frame[63][col] == 6:\n                new_frame[63][col] = 0\n\n    elif action == \"ACTION3\":\n        # Bottom row special cells\n        for col in (56, 57):\n            if new_frame[63][col] == 6:\n                new_frame[63][col] = 0\n        if new_frame[63][4] == 6:\n            new_frame[63][4] = 0\n        elif new_frame[63][3] == 6:\n            new_frame[63][3] = 0\n\n        # Search for the 3\u00d73 pattern\n        for r in range(0, 61):          # 61 = 64-3\n            for c in range(0, 61):\n                # Check left column values\n                if not (new_frame[r][c] == 2 and\n                        new_frame[r+1][c] == 2 and\n                        new_frame[r+2][c] == 2):\n                    continue\n                # Check right column values\n                if not (new_frame[r][c+3] == 9 and\n                        new_frame[r+1][c+3] == 4 and\n                        new_frame[r+2][c+3] == 9):\n                    continue\n                # Pattern matched \u2013 apply the transformation\n                for dr in range(3):\n                    # left column 2 \u2192 9\n                    if new_frame[r+dr][c] == 2:\n                        new_frame[r+dr][c] = 9\n                    # right column 9 \u2192 0\n                    if new_frame[r+dr][c+3] == 9:\n                        new_frame[r+dr][c+3] = 0\n                    # middle right 4 \u2192 0\n                    if dr == 1 and new_frame[r+dr][c+3] == 4:\n                        new_frame[r+dr][c+3] = 0\n                # Assume only one such block per ACTION3\n                return new_frame\n\n    # For all other actions, return the frame unchanged\n    return new_frame"
+  },
+  "refinement_gain": 0.5,
+  "total_prompt_tokens": 12876,
+  "total_eval_tokens": 3387,
+  "total_latency_s": 80.987
+}

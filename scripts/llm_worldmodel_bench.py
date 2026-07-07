@@ -510,11 +510,14 @@ class OllamaChat:
     def __call__(
         self, messages: list[dict[str, str]], model: str, max_tokens: int
     ) -> tuple[str, dict[str, Any]]:
+        # gpt-oss models cannot disable thinking — Ollama's `think` for them is
+        # an effort level ("low"/"medium"/"high"); boolean False is rejected.
+        think: bool | str = "low" if "gpt-oss" in model else False
         body = {
             "model": model,
             "messages": messages,
             "stream": False,
-            "think": False,
+            "think": think,
             "options": {
                 "num_predict": max_tokens,
                 "temperature": 0.0,

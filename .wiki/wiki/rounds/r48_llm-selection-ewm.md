@@ -4,7 +4,7 @@ type: round-log
 round: R48
 axis: llm-selection
 keywords: [executable-world-model, llm-selection, qwen3-coder, glm-5.2, gemma-4, gpt-oss, vllm, fp8, kaggle-budget]
-verdict: primary = Qwen3-Coder-30B-A3B (pending local measured bench); GLM-5.2 hardware-excluded
+verdict: co-primary = gpt-oss-120b + Qwen3-Coder-30B-A3B (R49e local bench = gpt-oss-20b 0.256 ≫ qwen3-14b 0.089); GLM-5.2 hardware-excluded
 commit: pending
 date: 2026-07-06
 description: LLM selection research for the executable-WM role — Qwen3-Coder-30B-A3B primary, GLM-5.2 hardware-excluded (744B > 96GB), measured-pick bench designed
