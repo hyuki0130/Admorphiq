@@ -1,0 +1,67 @@
+{
+  "model": "qwen3:14b",
+  "game": "tn36",
+  "n_few": 15,
+  "n_hold": 10,
+  "rounds": [
+    {
+      "round": 0,
+      "code_validity": 1.0,
+      "cell_accuracy": 0.9981,
+      "exact_frame_accuracy": 0.0,
+      "compile_error": "",
+      "prompt_tokens": 4813,
+      "eval_tokens": 170,
+      "latency_s": 8.832,
+      "code": "def predict_next_frame(frame, action, xy=None):\n    # Create a deep copy of the frame to avoid modifying the original\n    next_frame = [row[:] for row in frame]\n    \n    # Apply the action\n    if action == \"ACTION6\" and xy is not None:\n        x, y = xy\n        # Convert to row and column indices (assuming top-left is (0,0))\n        row = y\n        col = x\n        # Check if the cell is within bounds\n        if 0 <= row < 64 and 0 <= col < 64:\n            # Change the cell color from 9 to 3\n            if next_frame[row][col] == 9:\n                next_frame[row][col] = 3\n    \n    return next_frame"
+    },
+    {
+      "round": 1,
+      "code_validity": 1.0,
+      "cell_accuracy": 0.9981,
+      "exact_frame_accuracy": 0.0,
+      "compile_error": "",
+      "prompt_tokens": 6197,
+      "eval_tokens": 273,
+      "latency_s": 22.694,
+      "code": "def predict_next_frame(frame, action, xy=None):\n    # Create a deep copy of the frame to avoid modifying the original\n    next_frame = [row[:] for row in frame]\n    \n    # Apply the action\n    if action == \"ACTION6\" and xy is not None:\n        x, y = xy\n        # Convert to row and column indices (assuming top-left is (0,0))\n        row = y\n        col = x\n        # Check if the cell is within bounds\n        if 0 <= row < 64 and 0 <= col < 64:\n            # Change the cell color from 9 to 3\n            if next_frame[row][col] == 9:\n                next_frame[row][col] = 3\n                # Trigger a chain reaction in a 3x3 area around the clicked cell\n                for dr in [-1, 0, 1]:\n                    for dc in [-1, 0, 1]:\n                        nr, nc = row + dr, col + dc\n                        if 0 <= nr < 64 and 0 <= nc < 64:\n                            if next_frame[nr][nc] == 10:\n                                next_frame[nr][nc] = 9\n    \n    return next_frame"
+    },
+    {
+      "round": 2,
+      "code_validity": 0.0,
+      "cell_accuracy": 0.0,
+      "exact_frame_accuracy": 0.0,
+      "compile_error": "",
+      "prompt_tokens": 7684,
+      "eval_tokens": 294,
+      "latency_s": 25.094,
+      "code": "def predict_next_frame(frame, action, xy=None):\n    # Create a deep copy of the frame to avoid modifying the original\n    next_frame = [row[:] for row in frame]\n    \n    # Apply the action\n    if action == \"ACTION6\" and xy is not None:\n        x, y = xy\n        # Convert to row and column indices (assuming top-left is (0,0))\n        row = y\n        col = x\n        # Check if the cell is within bounds\n        if 0 <= row < 64 and 0 <= col < 64:\n            # Change the cell color from 9 to 3\n            if next_frame[row][col] == 9:\n                next_frame[row][col] = 3\n                # Trigger a chain reaction in a 3x3 area around the clicked cell\n                for dr in [-1, 0, 1]:\n                    for dc in [-1, 0, 1]:\n                        nr, nc = row + dr, col + dc\n                        if 0 <= nr < 64 and 0 <= nc < 64:\n                            if next_frame[nr][nc] == 10:\n                                next_frame[nr][nc] = 9\n                            elif next_frame[nr][nc] == 5:\n                                next_frame[nr][nc] = 10"
+    },
+    {
+      "round": 3,
+      "code_validity": 1.0,
+      "cell_accuracy": 0.9981,
+      "exact_frame_accuracy": 0.0,
+      "compile_error": "",
+      "prompt_tokens": 9258,
+      "eval_tokens": 314,
+      "latency_s": 27.028,
+      "code": "def predict_next_frame(frame, action, xy=None):\n    # Create a deep copy of the frame to avoid modifying the original\n    next_frame = [row[:] for row in frame]\n    \n    # Apply the action\n    if action == \"ACTION6\" and xy is not None:\n        x, y = xy\n        # Convert to row and column indices (assuming top-left is (0,0))\n        row = y\n        col = x\n        # Check if the cell is within bounds\n        if 0 <= row < 64 and 0 <= col < 64:\n            # Change the cell color from 9 to 3\n            if next_frame[row][col] == 9:\n                next_frame[row][col] = 3\n                # Trigger a chain reaction in a 3x3 area around the clicked cell\n                for dr in [-1, 0, 1]:\n                    for dc in [-1, 0, 1]:\n                        nr, nc = row + dr, col + dc\n                        if 0 <= nr < 64 and 0 <= nc < 64:\n                            if next_frame[nr][nc] == 10:\n                                next_frame[nr][nc] = 9\n                            elif next_frame[nr][nc] == 5:\n                                next_frame[nr][nc] = 10\n                            # Ensure no other changes are made\n                            else:\n                                pass\n    \n    return next_frame"
+    }
+  ],
+  "final": {
+    "round": 3,
+    "code_validity": 1.0,
+    "cell_accuracy": 0.9981,
+    "exact_frame_accuracy": 0.0,
+    "compile_error": "",
+    "prompt_tokens": 9258,
+    "eval_tokens": 314,
+    "latency_s": 27.028,
+    "code": "def predict_next_frame(frame, action, xy=None):\n    # Create a deep copy of the frame to avoid modifying the original\n    next_frame = [row[:] for row in frame]\n    \n    # Apply the action\n    if action == \"ACTION6\" and xy is not None:\n        x, y = xy\n        # Convert to row and column indices (assuming top-left is (0,0))\n        row = y\n        col = x\n        # Check if the cell is within bounds\n        if 0 <= row < 64 and 0 <= col < 64:\n            # Change the cell color from 9 to 3\n            if next_frame[row][col] == 9:\n                next_frame[row][col] = 3\n                # Trigger a chain reaction in a 3x3 area around the clicked cell\n                for dr in [-1, 0, 1]:\n                    for dc in [-1, 0, 1]:\n                        nr, nc = row + dr, col + dc\n                        if 0 <= nr < 64 and 0 <= nc < 64:\n                            if next_frame[nr][nc] == 10:\n                                next_frame[nr][nc] = 9\n                            elif next_frame[nr][nc] == 5:\n                                next_frame[nr][nc] = 10\n                            # Ensure no other changes are made\n                            else:\n                                pass\n    \n    return next_frame"
+  },
+  "refinement_gain": 0.0,
+  "total_prompt_tokens": 27952,
+  "total_eval_tokens": 1051,
+  "total_latency_s": 83.648
+}

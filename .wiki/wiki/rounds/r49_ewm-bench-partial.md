@@ -68,6 +68,27 @@ produced on this machine: it requires the original model (4bit/FP8) on Kaggle 96
 Refinement signal exists but is weak and unstable at local scale (sp80 0→0.20 climb; ka59 0.10 then
 regress — keep-BEST-round aggregation is the right headline, echoing the RL keep-best lesson).
 
+## Run 4 — R49d (07-06 21:47 → 07-07 11:05 KST): FULL 18 games, max_tokens=8192
+
+User-directed expansion: all 18 transition sets, max_tokens 2048→8192, num_ctx 24576.
+Q3-30b@24k-ctx pushed the machine to kernel-critical at 22:00 — watchdog caught it, bench stopped
+in ~1 min, **no crash**; Q3-30b retired locally (0.00 on its 2 completed games, consistent with
+the 3-game smoke). 14b ran all 18. Ops note: three harness background tasks were externally
+killed with zero kernel/log trace (34/54/18 min in); per-game JSON persistence made every kill
+lossless, and the final 5 games ran detached under **launchd** (`finish.sh`) — the durable
+pattern for long local measurements.
+
+14b × 18 games (rescored, exact-frame keep-last / keep-best): mean **0.078 / 0.089**, valid 1.00
+on 16/18. Non-zero games (8/18): lf52 0.40, ar25 0.30, sp80 0.20, tr87 0.20, dc22 0.10/0.20,
+g50t 0.10, sc25 0.10, sb26 0.00/0.10. Zero (10/18): ka59 lp85 re86 s5i5 sk48 su15 tn36 tu93
+vc33 wa30. Refinement curves are mostly monotone-up where signal exists (ar25 0→0→0.20→0.30,
+lf52 0→0.30→0.40→0.40) — the max_tokens raise mattered (game tokens ~4x the 2048-cap smoke).
+
+**Strategic overlap**: of the 7 graph-paradigm-blocked semantic games (dc22 g50t re86 s5i5 sc25
+su15 wa30), THREE show exact>0 here (dc22, g50t, sc25) — the executable-WM gets partial dynamics
+traction precisely where the deployed graph agent is blind. re86/s5i5/su15/wa30 remain 0 for
+both paradigms.
+
 ## Read
 
 - The refinement loop WORKS when the model is strong enough: 14b×sp80 went 0.00 → 0.30 purely

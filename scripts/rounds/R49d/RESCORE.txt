@@ -1,0 +1,25 @@
+R49 rescore (fixed fence extraction; same held-out split)
+model                                              game   last-ex  best-ex  per-round exact
+hf.co/unsloth/Qwen3-Coder-30B-A3B-Instruct-GGUF:Q3_K_M ar25      0.00     0.00  0.00 0.00 0.00 0.00
+hf.co/unsloth/Qwen3-Coder-30B-A3B-Instruct-GGUF:Q3_K_M dc22      0.00     0.00  0.00 0.00 0.00 0.00
+qwen3:14b                                          ar25      0.30     0.30  0.00 0.00 0.20 0.30
+qwen3:14b                                          dc22      0.10     0.20  0.00 0.20 0.00 0.10
+qwen3:14b                                          g50t      0.10     0.10  0.00 0.00 0.10 0.10
+qwen3:14b                                          ka59      0.00     0.00  0.00 0.00 0.00 0.00
+qwen3:14b                                          lf52      0.40     0.40  0.00 0.30 0.40 0.40
+qwen3:14b                                          lp85      0.00     0.00  0.00 0.00 0.00 0.00
+qwen3:14b                                          re86      0.00     0.00  0.00 0.00 0.00 0.00
+qwen3:14b                                          s5i5      0.00     0.00  0.00 0.00 0.00 0.00
+qwen3:14b                                          sb26      0.00     0.10  0.10 0.00 0.10 0.00
+qwen3:14b                                          sc25      0.10     0.10  0.00 0.00 0.10 0.10
+qwen3:14b                                          sk48      0.00     0.00  0.00 0.00 0.00 0.00
+qwen3:14b                                          sp80      0.20     0.20  0.00 0.20 0.20 0.20
+qwen3:14b                                          su15      0.00     0.00  0.00 0.00 0.00 0.00
+qwen3:14b                                          tn36      0.00     0.00  0.00 0.00 0.00 0.00
+qwen3:14b                                          tr87      0.20     0.20  0.10 0.10 0.10 0.20
+qwen3:14b                                          tu93      0.00     0.00  0.00 0.00 0.00 0.00
+qwen3:14b                                          vc33      0.00     0.00  0.00 0.00 0.00 0.00
+qwen3:14b                                          wa30      0.00     0.00  0.00 0.00 0.00 0.00
+
+hf.co/unsloth/Qwen3-Coder-30B-A3B-Instruct-GGUF:Q3_K_M mean last-exact=0.000 best-exact=0.000 (n=2)
+qwen3:14b                                          mean last-exact=0.078 best-exact=0.089 (n=18)

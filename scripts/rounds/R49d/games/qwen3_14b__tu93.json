@@ -1,0 +1,67 @@
+{
+  "model": "qwen3:14b",
+  "game": "tu93",
+  "n_few": 15,
+  "n_hold": 10,
+  "rounds": [
+    {
+      "round": 0,
+      "code_validity": 1.0,
+      "cell_accuracy": 0.994,
+      "exact_frame_accuracy": 0.0,
+      "compile_error": "",
+      "prompt_tokens": 5277,
+      "eval_tokens": 205,
+      "latency_s": 40.681,
+      "code": "def predict_next_frame(frame, action, xy=None):\n    next_frame = [row[:] for row in frame]\n    if action == \"ACTION1\":\n        for i in range(64):\n            if frame[63][i] == 6:\n                next_frame[63][i] = 0\n    elif action == \"ACTION2\":\n        for i in range(64):\n            if frame[63][i] == 6:\n                next_frame[63][i] = 0\n    elif action == \"ACTION3\":\n        for i in range(64):\n            if frame[63][i] == 6:\n                next_frame[63][i] = 0\n    elif action == \"ACTION4\":\n        for i in range(64):\n            if frame[63][i] == 6:\n                next_frame[63][i] = 0\n    return next_frame"
+    },
+    {
+      "round": 1,
+      "code_validity": 1.0,
+      "cell_accuracy": 0.999,
+      "exact_frame_accuracy": 0.0,
+      "compile_error": "",
+      "prompt_tokens": 6604,
+      "eval_tokens": 289,
+      "latency_s": 24.889,
+      "code": "def predict_next_frame(frame, action, xy=None):\n    next_frame = [row[:] for row in frame]\n    if action == \"ACTION1\":\n        if xy is not None:\n            x, y = xy\n            if 0 <= x < 64 and 0 <= y < 64:\n                if frame[y][x] == 6:\n                    next_frame[y][x] = 0\n    elif action == \"ACTION2\":\n        if xy is not None:\n            x, y = xy\n            if 0 <= x < 64 and 0 <= y < 64:\n                if frame[y][x] == 6:\n                    next_frame[y][x] = 0\n    elif action == \"ACTION3\":\n        if xy is not None:\n            x, y = xy\n            if 0 <= x < 64 and 0 <= y < 64:\n                if frame[y][x] == 6:\n                    next_frame[y][x] = 0\n    elif action == \"ACTION4\":\n        if xy is not None:\n            x, y = xy\n            if 0 <= x < 64 and 0 <= y < 64:\n                if frame[y][x] == 6:\n                    next_frame[y][x] = 0\n    return next_frame"
+    },
+    {
+      "round": 2,
+      "code_validity": 1.0,
+      "cell_accuracy": 0.999,
+      "exact_frame_accuracy": 0.0,
+      "compile_error": "",
+      "prompt_tokens": 7057,
+      "eval_tokens": 118,
+      "latency_s": 10.003,
+      "code": "def predict_next_frame(frame, action, xy=None):\n    next_frame = [row[:] for row in frame]\n    if action == \"ACTION1\" or action == \"ACTION2\" or action == \"ACTION3\" or action == \"ACTION4\":\n        if xy is not None:\n            x, y = xy\n            if 0 <= x < 64 and 0 <= y < 64:\n                if frame[y][x] == 6:\n                    next_frame[y][x] = 0\n    return next_frame"
+    },
+    {
+      "round": 3,
+      "code_validity": 1.0,
+      "cell_accuracy": 0.999,
+      "exact_frame_accuracy": 0.0,
+      "compile_error": "",
+      "prompt_tokens": 7339,
+      "eval_tokens": 109,
+      "latency_s": 8.377,
+      "code": "def predict_next_frame(frame, action, xy=None):\n    next_frame = [row[:] for row in frame]\n    if action in [\"ACTION1\", \"ACTION2\", \"ACTION3\", \"ACTION4\"]:\n        if xy is not None:\n            x, y = xy\n            if 0 <= x < 64 and 0 <= y < 64:\n                if frame[y][x] == 6:\n                    next_frame[y][x] = 0\n    return next_frame"
+    }
+  ],
+  "final": {
+    "round": 3,
+    "code_validity": 1.0,
+    "cell_accuracy": 0.999,
+    "exact_frame_accuracy": 0.0,
+    "compile_error": "",
+    "prompt_tokens": 7339,
+    "eval_tokens": 109,
+    "latency_s": 8.377,
+    "code": "def predict_next_frame(frame, action, xy=None):\n    next_frame = [row[:] for row in frame]\n    if action in [\"ACTION1\", \"ACTION2\", \"ACTION3\", \"ACTION4\"]:\n        if xy is not None:\n            x, y = xy\n            if 0 <= x < 64 and 0 <= y < 64:\n                if frame[y][x] == 6:\n                    next_frame[y][x] = 0\n    return next_frame"
+  },
+  "refinement_gain": 0.0,
+  "total_prompt_tokens": 26277,
+  "total_eval_tokens": 721,
+  "total_latency_s": 83.95
+}

@@ -1,0 +1,67 @@
+{
+  "model": "qwen3:14b",
+  "game": "su15",
+  "n_few": 15,
+  "n_hold": 10,
+  "rounds": [
+    {
+      "round": 0,
+      "code_validity": 1.0,
+      "cell_accuracy": 0.9892,
+      "exact_frame_accuracy": 0.0,
+      "compile_error": "",
+      "prompt_tokens": 7743,
+      "eval_tokens": 263,
+      "latency_s": 55.64,
+      "code": "def predict_next_frame(frame, action, xy=None):\n    next_frame = [row[:] for row in frame]\n    \n    if action.startswith(\"ACTION6\"):\n        x, y = xy\n        # Based on the pattern in the transitions, clicking at (x, y) changes cells in a diamond pattern\n        # around (63, 26) and (63, 27) in the first example. This suggests a symmetric pattern around the clicked cell.\n        # The pattern seems to be a diamond shape with a radius of 30-40 cells, but it's not clear.\n        # Given the complexity, we'll assume a simple symmetric pattern for demonstration purposes.\n        # This is a placeholder and may not match the actual game rules.\n        for dy in range(-3, 4):\n            for dx in range(-3, 4):\n                if abs(dx) + abs(dy) <= 3:\n                    nx = x + dx\n                    ny = y + dy\n                    if 0 <= nx < 64 and 0 <= ny < 64:\n                        next_frame[ny][nx] = 5 if next_frame[ny][nx] == 0 else 0\n    return next_frame"
+    },
+    {
+      "round": 1,
+      "code_validity": 1.0,
+      "cell_accuracy": 0.9481,
+      "exact_frame_accuracy": 0.0,
+      "compile_error": "",
+      "prompt_tokens": 10119,
+      "eval_tokens": 418,
+      "latency_s": 39.516,
+      "code": "def predict_next_frame(frame, action, xy=None):\n    next_frame = [row[:] for row in frame]\n    \n    if action.startswith(\"ACTION6\"):\n        x, y = xy\n        # Based on the actual changes, clicking at (x, y) affects a complex pattern of cells.\n        # The pattern seems to be symmetric and involves a large number of cells, often in two distinct regions.\n        # One region is near the top of the grid (row 63), and the other is scattered across the grid.\n        # For the purpose of this function, we will simulate the change based on the observed pattern.\n        # This is a simplified version and may not capture all nuances of the actual game rules.\n        \n        # Change cells near the top of the grid (row 63)\n        for i in range(2):\n            if 0 <= x + i < 64 and 0 <= y + i < 64:\n                next_frame[63][x + i] = 5 if next_frame[63][x + i] == 0 else 0\n            if 0 <= x - i < 64 and 0 <= y - i < 64:\n                next_frame[63][x - i] = 5 if next_frame[63][x - i] == 0 else 0\n        \n        # Change scattered cells across the grid\n        # This is a placeholder and may not match the actual pattern\n        for dy in range(-10, 11):\n            for dx in range(-10, 11):\n                if abs(dx) + abs(dy) <= 10:\n                    nx = x + dx\n                    ny = y + dy\n                    if 0 <= nx < 64 and 0 <= ny < 64:\n                        next_frame[ny][nx] = 5 if next_frame[ny][nx] == 0 else 0\n    \n    return next_frame"
+    },
+    {
+      "round": 2,
+      "code_validity": 1.0,
+      "cell_accuracy": 0.9476,
+      "exact_frame_accuracy": 0.0,
+      "compile_error": "",
+      "prompt_tokens": 19506,
+      "eval_tokens": 322,
+      "latency_s": 109.495,
+      "code": "def predict_next_frame(frame, action, xy=None):\n    next_frame = [row[:] for row in frame]\n    \n    if action.startswith(\"ACTION6\"):\n        x, y = xy\n        # Based on the actual changes, clicking at (x, y) affects two distinct regions:\n        # 1. A small region near the top of the grid (row 63)\n        # 2. A large, complex region scattered across the grid\n        \n        # Change cells near the top of the grid (row 63)\n        for i in range(-2, 3):\n            nx = x + i\n            if 0 <= nx < 64:\n                next_frame[63][nx] = 5 if next_frame[63][nx] == 0 else 0\n        \n        # Change scattered cells across the grid based on the pattern observed\n        # This pattern is complex and not easily captured by simple geometric shapes\n        # The following is a simplified version that attempts to match the observed behavior\n        for dy in range(-10, 11):\n            for dx in range(-10, 11):\n                if abs(dx) + abs(dy) <= 10:\n                    nx = x + dx\n                    ny = y + dy\n                    if 0 <= nx < 64 and 0 <= ny < 64:\n                        next_frame[ny][nx] = 5 if next_frame[ny][nx] == 0 else 0\n    \n    return next_frame"
+    },
+    {
+      "round": 3,
+      "code_validity": 1.0,
+      "cell_accuracy": 0.9476,
+      "exact_frame_accuracy": 0.0,
+      "compile_error": "",
+      "prompt_tokens": 21384,
+      "eval_tokens": 322,
+      "latency_s": 202.133,
+      "code": "def predict_next_frame(frame, action, xy=None):\n    next_frame = [row[:] for row in frame]\n    \n    if action.startswith(\"ACTION6\"):\n        x, y = xy\n        # Based on the actual changes, clicking at (x, y) affects two distinct regions:\n        # 1. A small region near the top of the grid (row 63)\n        # 2. A large, complex region scattered across the grid\n        \n        # Change cells near the top of the grid (row 63)\n        for i in range(-2, 3):\n            nx = x + i\n            if 0 <= nx < 64:\n                next_frame[63][nx] = 5 if next_frame[63][nx] == 0 else 0\n        \n        # Change scattered cells across the grid based on the pattern observed\n        # This pattern is complex and not easily captured by simple geometric shapes\n        # The following is a simplified version that attempts to match the observed behavior\n        for dy in range(-10, 11):\n            for dx in range(-10, 11):\n                if abs(dx) + abs(dy) <= 10:\n                    nx = x + dx\n                    ny = y + dy\n                    if 0 <= nx < 64 and 0 <= ny < 64:\n                        next_frame[ny][nx] = 5 if next_frame[ny][nx] == 0 else 0\n    \n    return next_frame"
+    }
+  ],
+  "final": {
+    "round": 3,
+    "code_validity": 1.0,
+    "cell_accuracy": 0.9476,
+    "exact_frame_accuracy": 0.0,
+    "compile_error": "",
+    "prompt_tokens": 21384,
+    "eval_tokens": 322,
+    "latency_s": 202.133,
+    "code": "def predict_next_frame(frame, action, xy=None):\n    next_frame = [row[:] for row in frame]\n    \n    if action.startswith(\"ACTION6\"):\n        x, y = xy\n        # Based on the actual changes, clicking at (x, y) affects two distinct regions:\n        # 1. A small region near the top of the grid (row 63)\n        # 2. A large, complex region scattered across the grid\n        \n        # Change cells near the top of the grid (row 63)\n        for i in range(-2, 3):\n            nx = x + i\n            if 0 <= nx < 64:\n                next_frame[63][nx] = 5 if next_frame[63][nx] == 0 else 0\n        \n        # Change scattered cells across the grid based on the pattern observed\n        # This pattern is complex and not easily captured by simple geometric shapes\n        # The following is a simplified version that attempts to match the observed behavior\n        for dy in range(-10, 11):\n            for dx in range(-10, 11):\n                if abs(dx) + abs(dy) <= 10:\n                    nx = x + dx\n                    ny = y + dy\n                    if 0 <= nx < 64 and 0 <= ny < 64:\n                        next_frame[ny][nx] = 5 if next_frame[ny][nx] == 0 else 0\n    \n    return next_frame"
+  },
+  "refinement_gain": 0.0,
+  "total_prompt_tokens": 58752,
+  "total_eval_tokens": 1325,
+  "total_latency_s": 406.784
+}

@@ -1,0 +1,67 @@
+{
+  "model": "hf.co/unsloth/Qwen3-Coder-30B-A3B-Instruct-GGUF:Q3_K_M",
+  "game": "dc22",
+  "n_few": 15,
+  "n_hold": 10,
+  "rounds": [
+    {
+      "round": 0,
+      "code_validity": 1.0,
+      "cell_accuracy": 0.9805,
+      "exact_frame_accuracy": 0.0,
+      "compile_error": "",
+      "prompt_tokens": 5620,
+      "eval_tokens": 1211,
+      "latency_s": 45.754,
+      "code": "def predict_next_frame(frame, action, xy=None):\n    # Create a deep copy of the frame to avoid modifying the original\n    next_frame = [row[:] for row in frame]\n    \n    if action == \"ACTION1\":\n        # ACTION1: Change 2x2 blocks of 2s to 14s and vice versa\n        # The pattern suggests it's toggling 2x2 blocks around the center\n        # Looking at the examples, it seems to be toggling around positions\n        # that are 2 rows and 2 columns apart, but let's generalize:\n        # For each 2x2 block, if it contains 2s, change to 14s, and vice versa\n        for i in range(0, 64, 2):\n            for j in range(0, 64, 2):\n                # Check if all four cells in the 2x2 block are the same\n                if (i+1 < 64 and j+1 < 64 and \n                    next_frame[i][j] == next_frame[i][j+1] == \n                    next_frame[i+1][j] == next_frame[i+1][j+1]):\n                    # Toggle the value\n                    if next_frame[i][j] == 2:\n                        next_frame[i][j] = next_frame[i][j+1] = next_frame[i+1][j] = next_frame[i+1][j+1] = 14\n                    elif next_frame[i][j] == 14:\n                        next_frame[i][j] = next_frame[i][j+1] = next_frame[i+1][j] = next_frame[i+1][j+1] = 2\n    \n    elif action == \"ACTION2\":\n        # ACTION2: Similar to ACTION1 but with different pattern\n        # Based on the examples, it seems to toggle 2x2 blocks\n        for i in range(0, 64, 2):\n            for j in range(0, 64, 2):\n                if (i+1 < 64 and j+1 < 64 and \n                    next_frame[i][j] == next_frame[i][j+1] == \n                    next_frame[i+1][j] == next_frame[i+1][j+1]):\n                    # Toggle the value\n                    if next_frame[i][j] == 2:\n                        next_frame[i][j] = next_frame[i][j+1] = next_frame[i+1][j] = next_frame[i+1][j+1] = 14\n                    elif next_frame[i][j] == 14:\n                        next_frame[i][j] = next_frame[i][j+1] = next_frame[i+1][j] = next_frame[i+1][j+1] = 2\n    \n    elif action == \"ACTION3\":\n        # ACTION3: Toggle 2x2 blocks with a different pattern\n        # Based on the examples, it seems to toggle 2x2 blocks\n        for i in range(0, 64, 2):\n            for j in range(0, 64, 2):\n                if (i+1 < 64 and j+1 < 64 and \n                    next_frame[i][j] == next_frame[i][j+1] == \n                    next_frame[i+1][j] == next_frame[i+1][j+1]):\n                    # Toggle the value\n                    if next_frame[i][j] == 2:\n                        next_frame[i][j] = next_frame[i][j+1] = next_frame[i+1][j] = next_frame[i+1][j+1] = 14\n                    elif next_frame[i][j] == 14:\n                        next_frame[i][j] = next_frame[i][j+1] = next_frame[i+1][j] = next_frame[i+1][j+1] = 2\n    \n    elif action == \"ACTION4\":\n        # ACTION4: Toggle 2x2 blocks with a different pattern\n        # Based on the examples, it seems to toggle 2x2 blocks\n        for i in range(0, 64, 2):\n            for j in range(0, 64, 2):\n                if (i+1 < 64 and j+1 < 64 and \n                    next_frame[i][j] == next_frame[i][j+1] == \n                    next_frame[i+1][j] == next_frame[i+1][j+1]):\n                    # Toggle the value\n                    if next_frame[i][j] == 2:\n                        next_frame[i][j] = next_frame[i][j+1] = next_frame[i+1][j] = next_frame[i+1][j+1] = 14\n                    elif next_frame[i][j] == 14:\n                        next_frame[i][j] = next_frame[i][j+1] = next_frame[i+1][j] = next_frame[i+1][j+1] = 2\n    \n    elif action == \"ACTION5\":\n        # ACTION5: No changes\n        pass\n    \n    elif action == \"ACTION6\":\n        # ACTION6: Click at position (x, y) - change cell to 3\n        if xy is not None:\n            x, y = xy\n            if 0 <= x < 64 and 0 <= y < 64:\n                next_frame[y][x] = 3\n    \n    elif action == \"ACTION7\":\n        # ACTION7: No changes\n        pass\n    \n    return next_frame"
+    },
+    {
+      "round": 1,
+      "code_validity": 1.0,
+      "cell_accuracy": 0.9805,
+      "exact_frame_accuracy": 0.0,
+      "compile_error": "",
+      "prompt_tokens": 10833,
+      "eval_tokens": 1118,
+      "latency_s": 52.61,
+      "code": "def predict_next_frame(frame, action, xy=None):\n    # Create a deep copy of the frame to avoid modifying the original\n    next_frame = [row[:] for row in frame]\n    \n    if action == \"ACTION1\" or action == \"ACTION2\" or action == \"ACTION3\" or action == \"ACTION4\":\n        # Toggle 2x2 blocks of same values between 2 and 14\n        # Check all possible 2x2 blocks\n        for i in range(0, 64, 2):\n            for j in range(0, 64, 2):\n                if (i+1 < 64 and j+1 < 64 and \n                    next_frame[i][j] == next_frame[i][j+1] == \n                    next_frame[i+1][j] == next_frame[i+1][j+1]):\n                    # Toggle the value\n                    if next_frame[i][j] == 2:\n                        next_frame[i][j] = next_frame[i][j+1] = next_frame[i+1][j] = next_frame[i+1][j+1] = 14\n                    elif next_frame[i][j] == 14:\n                        next_frame[i][j] = next_frame[i][j+1] = next_frame[i+1][j] = next_frame[i+1][j+1] = 2\n    \n    elif action == \"ACTION5\":\n        # ACTION5: No changes\n        pass\n    \n    elif action == \"ACTION6\":\n        # ACTION6: Click at position (x, y) - change cell to 3\n        if xy is not None:\n            x, y = xy\n            if 0 <= x < 64 and 0 <= y < 64:\n                next_frame[y][x] = 3\n    \n    elif action == \"ACTION7\":\n        # ACTION7: No changes\n        pass\n    \n    return next_frame"
+    },
+    {
+      "round": 2,
+      "code_validity": 1.0,
+      "cell_accuracy": 0.9805,
+      "exact_frame_accuracy": 0.0,
+      "compile_error": "",
+      "prompt_tokens": 15254,
+      "eval_tokens": 1483,
+      "latency_s": 76.571,
+      "code": "def predict_next_frame(frame, action, xy=None):\n    # Create a deep copy of the frame to avoid modifying the original\n    next_frame = [row[:] for row in frame]\n    \n    if action == \"ACTION1\":\n        # ACTION1: Toggle 2x2 blocks of 2s and 14s\n        # Based on the examples, it seems to toggle 2x2 blocks that contain 2s or 14s\n        # But only specific ones. Let's just toggle all 2x2 blocks that are uniform\n        for i in range(0, 64, 2):\n            for j in range(0, 64, 2):\n                if (i+1 < 64 and j+1 < 64 and \n                    next_frame[i][j] == next_frame[i][j+1] == \n                    next_frame[i+1][j] == next_frame[i+1][j+1]):\n                    # Toggle the value\n                    if next_frame[i][j] == 2:\n                        next_frame[i][j] = next_frame[i][j+1] = next_frame[i+1][j] = next_frame[i+1][j+1] = 14\n                    elif next_frame[i][j] == 14:\n                        next_frame[i][j] = next_frame[i][j+1] = next_frame[i+1][j] = next_frame[i+1][j+1] = 2\n    \n    elif action == \"ACTION2\":\n        # ACTION2: Similar to ACTION1\n        for i in range(0, 64, 2):\n            for j in range(0, 64, 2):\n                if (i+1 < 64 and j+1 < 64 and \n                    next_frame[i][j] == next_frame[i][j+1] == \n                    next_frame[i+1][j] == next_frame[i+1][j+1]):\n                    # Toggle the value\n                    if next_frame[i][j] == 2:\n                        next_frame[i][j] = next_frame[i][j+1] = next_frame[i+1][j] = next_frame[i+1][j+1] = 14\n                    elif next_frame[i][j] == 14:\n                        next_frame[i][j] = next_frame[i][j+1] = next_frame[i+1][j] = next_frame[i+1][j+1] = 2\n    \n    elif action == \"ACTION3\":\n        # ACTION3: Similar to ACTION1\n        for i in range(0, 64, 2):\n            for j in range(0, 64, 2):\n                if (i+1 < 64 and j+1 < 64 and \n                    next_frame[i][j] == next_frame[i][j+1] == \n                    next_frame[i+1][j] == next_frame[i+1][j+1]):\n                    # Toggle the value\n                    if next_frame[i][j] == 2:\n                        next_frame[i][j] = next_frame[i][j+1] = next_frame[i+1][j] = next_frame[i+1][j+1] = 14\n                    elif next_frame[i][j] == 14:\n                        next_frame[i][j] = next_frame[i][j+1] = next_frame[i+1][j] = next_frame[i+1][j+1] = 2\n    \n    elif action == \"ACTION4\":\n        # ACTION4: Similar to ACTION1\n        for i in range(0, 64, 2):\n            for j in range(0, 64, 2):\n                if (i+1 < 64 and j+1 < 64 and \n                    next_frame[i][j] == next_frame[i][j+1] == \n                    next_frame[i+1][j] == next_frame[i+1][j+1]):\n                    # Toggle the value\n                    if next_frame[i][j] == 2:\n                        next_frame[i][j] = next_frame[i][j+1] = next_frame[i+1][j] = next_frame[i+1][j+1] = 14\n                    elif next_frame[i][j] == 14:\n                        next_frame[i][j] = next_frame[i][j+1] = next_frame[i+1][j] = next_frame[i+1][j+1] = 2\n    \n    elif action == \"ACTION5\":\n        # ACTION5: No changes\n        pass\n    \n    elif action == \"ACTION6\":\n        # ACTION6: Click at position (x, y) - change cell to 3\n        if xy is not None:\n            x, y = xy\n            if 0 <= x < 64 and 0 <= y < 64:\n                next_frame[y][x] = 3\n    \n    elif action == \"ACTION7\":\n        # ACTION7: No changes\n        pass\n    \n    return next_frame"
+    },
+    {
+      "round": 3,
+      "code_validity": 1.0,
+      "cell_accuracy": 0.9805,
+      "exact_frame_accuracy": 0.0,
+      "compile_error": "",
+      "prompt_tokens": 20347,
+      "eval_tokens": 1090,
+      "latency_s": 82.575,
+      "code": "def predict_next_frame(frame, action, xy=None):\n    # Create a deep copy of the frame to avoid modifying the original\n    next_frame = [row[:] for row in frame]\n    \n    if action == \"ACTION1\" or action == \"ACTION2\" or action == \"ACTION3\" or action == \"ACTION4\":\n        # Toggle 2x2 blocks of 2s and 14s\n        for i in range(0, 64, 2):\n            for j in range(0, 64, 2):\n                if (i+1 < 64 and j+1 < 64 and \n                    next_frame[i][j] == next_frame[i][j+1] == \n                    next_frame[i+1][j] == next_frame[i+1][j+1]):\n                    # Toggle the value\n                    if next_frame[i][j] == 2:\n                        next_frame[i][j] = next_frame[i][j+1] = next_frame[i+1][j] = next_frame[i+1][j+1] = 14\n                    elif next_frame[i][j] == 14:\n                        next_frame[i][j] = next_frame[i][j+1] = next_frame[i+1][j] = next_frame[i+1][j+1] = 2\n    \n    elif action == \"ACTION5\":\n        # ACTION5: No changes\n        pass\n    \n    elif action == \"ACTION6\":\n        # ACTION6: Click at position (x, y) - change cell to 3\n        if xy is not None:\n            x, y = xy\n            if 0 <= x < 64 and 0 <= y < 64:\n                next_frame[y][x] = 3\n    \n    elif action == \"ACTION7\":\n        # ACTION7: No changes\n        pass\n    \n    return next_frame"
+    }
+  ],
+  "final": {
+    "round": 3,
+    "code_validity": 1.0,
+    "cell_accuracy": 0.9805,
+    "exact_frame_accuracy": 0.0,
+    "compile_error": "",
+    "prompt_tokens": 20347,
+    "eval_tokens": 1090,
+    "latency_s": 82.575,
+    "code": "def predict_next_frame(frame, action, xy=None):\n    # Create a deep copy of the frame to avoid modifying the original\n    next_frame = [row[:] for row in frame]\n    \n    if action == \"ACTION1\" or action == \"ACTION2\" or action == \"ACTION3\" or action == \"ACTION4\":\n        # Toggle 2x2 blocks of 2s and 14s\n        for i in range(0, 64, 2):\n            for j in range(0, 64, 2):\n                if (i+1 < 64 and j+1 < 64 and \n                    next_frame[i][j] == next_frame[i][j+1] == \n                    next_frame[i+1][j] == next_frame[i+1][j+1]):\n                    # Toggle the value\n                    if next_frame[i][j] == 2:\n                        next_frame[i][j] = next_frame[i][j+1] = next_frame[i+1][j] = next_frame[i+1][j+1] = 14\n                    elif next_frame[i][j] == 14:\n                        next_frame[i][j] = next_frame[i][j+1] = next_frame[i+1][j] = next_frame[i+1][j+1] = 2\n    \n    elif action == \"ACTION5\":\n        # ACTION5: No changes\n        pass\n    \n    elif action == \"ACTION6\":\n        # ACTION6: Click at position (x, y) - change cell to 3\n        if xy is not None:\n            x, y = xy\n            if 0 <= x < 64 and 0 <= y < 64:\n                next_frame[y][x] = 3\n    \n    elif action == \"ACTION7\":\n        # ACTION7: No changes\n        pass\n    \n    return next_frame"
+  },
+  "refinement_gain": 0.0,
+  "total_prompt_tokens": 52054,
+  "total_eval_tokens": 4902,
+  "total_latency_s": 257.51
+}

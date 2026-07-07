@@ -1,0 +1,67 @@
+{
+  "model": "qwen3:14b",
+  "game": "s5i5",
+  "n_few": 15,
+  "n_hold": 10,
+  "rounds": [
+    {
+      "round": 0,
+      "code_validity": 1.0,
+      "cell_accuracy": 0.9996,
+      "exact_frame_accuracy": 0.0,
+      "compile_error": "",
+      "prompt_tokens": 4951,
+      "eval_tokens": 117,
+      "latency_s": 30.315,
+      "code": "def predict_next_frame(frame, action, xy=None):\n    next_frame = [row[:] for row in frame]\n    if action.startswith(\"ACTION6\"):\n        x, y = xy\n        # Convert to row, col (assuming y is row, x is column)\n        row = y\n        col = x\n        # Check if the cell is 3, and if so, change it to 4\n        if frame[row][col] == 3:\n            next_frame[row][col] = 4\n    return next_frame"
+    },
+    {
+      "round": 1,
+      "code_validity": 1.0,
+      "cell_accuracy": 0.9994,
+      "exact_frame_accuracy": 0.0,
+      "compile_error": "",
+      "prompt_tokens": 5248,
+      "eval_tokens": 161,
+      "latency_s": 9.788,
+      "code": "def predict_next_frame(frame, action, xy=None):\n    next_frame = [row[:] for row in frame]\n    if action.startswith(\"ACTION6\"):\n        x, y = xy\n        # Convert to row, col (assuming y is row, x is column)\n        row = y\n        col = x\n        # Check if the cell is 3, and if so, change it to 4\n        if frame[row][col] == 3:\n            next_frame[row][col] = 4\n        # Check if the cell is 5, and if so, change it to 14\n        if frame[row][col] == 5:\n            next_frame[row][col] = 14\n    return next_frame"
+    },
+    {
+      "round": 2,
+      "code_validity": 1.0,
+      "cell_accuracy": 0.9994,
+      "exact_frame_accuracy": 0.0,
+      "compile_error": "",
+      "prompt_tokens": 5629,
+      "eval_tokens": 207,
+      "latency_s": 12.844,
+      "code": "def predict_next_frame(frame, action, xy=None):\n    next_frame = [row[:] for row in frame]\n    if action.startswith(\"ACTION6\"):\n        x, y = xy\n        # Convert to row, col (assuming y is row, x is column)\n        row = y\n        col = x\n        # Check if the cell is 3, and if so, change it to 4\n        if frame[row][col] == 3:\n            next_frame[row][col] = 4\n        # Check if the cell is 5, and if so, change it to 14\n        if frame[row][col] == 5:\n            next_frame[row][col] = 14\n        # Check if the cell is 13, and if so, change it to 14\n        if frame[row][col] == 13:\n            next_frame[row][col] = 14\n    return next_frame"
+    },
+    {
+      "round": 3,
+      "code_validity": 1.0,
+      "cell_accuracy": 0.9996,
+      "exact_frame_accuracy": 0.0,
+      "compile_error": "",
+      "prompt_tokens": 6056,
+      "eval_tokens": 117,
+      "latency_s": 8.768,
+      "code": "def predict_next_frame(frame, action, xy=None):\n    next_frame = [row[:] for row in frame]\n    if action.startswith(\"ACTION6\"):\n        x, y = xy\n        # Convert to row, col (assuming y is row, x is column)\n        row = y\n        col = x\n        # Check if the cell is 3, and if so, change it to 4\n        if frame[row][col] == 3:\n            next_frame[row][col] = 4\n    return next_frame"
+    }
+  ],
+  "final": {
+    "round": 3,
+    "code_validity": 1.0,
+    "cell_accuracy": 0.9996,
+    "exact_frame_accuracy": 0.0,
+    "compile_error": "",
+    "prompt_tokens": 6056,
+    "eval_tokens": 117,
+    "latency_s": 8.768,
+    "code": "def predict_next_frame(frame, action, xy=None):\n    next_frame = [row[:] for row in frame]\n    if action.startswith(\"ACTION6\"):\n        x, y = xy\n        # Convert to row, col (assuming y is row, x is column)\n        row = y\n        col = x\n        # Check if the cell is 3, and if so, change it to 4\n        if frame[row][col] == 3:\n            next_frame[row][col] = 4\n    return next_frame"
+  },
+  "refinement_gain": 0.0,
+  "total_prompt_tokens": 21884,
+  "total_eval_tokens": 602,
+  "total_latency_s": 61.715
+}

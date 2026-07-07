@@ -1,0 +1,67 @@
+{
+  "model": "hf.co/unsloth/Qwen3-Coder-30B-A3B-Instruct-GGUF:Q3_K_M",
+  "game": "ar25",
+  "n_few": 15,
+  "n_hold": 10,
+  "rounds": [
+    {
+      "round": 0,
+      "code_validity": 1.0,
+      "cell_accuracy": 0.0167,
+      "exact_frame_accuracy": 0.0,
+      "compile_error": "",
+      "prompt_tokens": 9305,
+      "eval_tokens": 460,
+      "latency_s": 55.792,
+      "code": "def predict_next_frame(frame, action, xy=None):\n    # Create a deep copy of the frame to avoid modifying the original\n    new_frame = [row[:] for row in frame]\n    \n    if action == 'ACTION1':\n        # ACTION1: Fill entire grid with color 0\n        for i in range(64):\n            for j in range(64):\n                new_frame[i][j] = 0\n    \n    elif action == 'ACTION2':\n        # ACTION2: Fill entire grid with color 9\n        for i in range(64):\n            for j in range(64):\n                new_frame[i][j] = 9\n    \n    elif action == 'ACTION3':\n        # ACTION3: Fill entire grid with color 5\n        for i in range(64):\n            for j in range(64):\n                new_frame[i][j] = 5\n    \n    elif action == 'ACTION4':\n        # ACTION4: Fill entire grid with color 4\n        for i in range(64):\n            for j in range(64):\n                new_frame[i][j] = 4\n    \n    elif action == 'ACTION5':\n        # ACTION5: Fill entire grid with color 11\n        for i in range(64):\n            for j in range(64):\n                new_frame[i][j] = 11\n    \n    elif action == 'ACTION6':\n        # ACTION6: Click at position (x, y) - fill a 3x3 area around the clicked position with color 9\n        if xy is not None:\n            x, y = xy\n            for i in range(max(0, y-1), min(64, y+2)):\n                for j in range(max(0, x-1), min(64, x+2)):\n                    new_frame[i][j] = 9\n    \n    elif action == 'ACTION7':\n        # ACTION7: Fill entire grid with color 10\n        for i in range(64):\n            for j in range(64):\n                new_frame[i][j] = 10\n    \n    return new_frame"
+    },
+    {
+      "round": 1,
+      "code_validity": 0.0,
+      "cell_accuracy": 0.0,
+      "exact_frame_accuracy": 0.0,
+      "compile_error": "no callable predict_next_frame defined",
+      "prompt_tokens": 24576,
+      "eval_tokens": 125,
+      "latency_s": 129.334,
+      "code": "def transition_rule(state, neighbors):\n    # Count live neighbors\n    live_neighbors = sum(neighbors)\n    \n    # Apply Conway's Game of Life rules\n    if state == 1:  # Cell is alive\n        if live_neighbors < 2 or live_neighbors > 3:\n            return 0  # Cell dies\n        else:\n            return 1  # Cell survives\n    else:  # Cell is dead\n        if live_neighbors == 3:\n            return 1  # Cell becomes alive\n        else:\n            return 0  # Cell remains dead"
+    },
+    {
+      "round": 2,
+      "code_validity": 1.0,
+      "cell_accuracy": 0.0238,
+      "exact_frame_accuracy": 0.0,
+      "compile_error": "",
+      "prompt_tokens": 1639,
+      "eval_tokens": 661,
+      "latency_s": 16.768,
+      "code": "def predict_next_frame(frame, action, xy=None):\n    # Create a copy of the current frame\n    next_frame = [row[:] for row in frame]\n    \n    if action == 'ACTION1':\n        # Toggle all cells\n        for i in range(64):\n            for j in range(64):\n                next_frame[i][j] = (next_frame[i][j] + 1) % 16\n    elif action == 'ACTION2':\n        # Set all cells to 0\n        for i in range(64):\n            for j in range(64):\n                next_frame[i][j] = 0\n    elif action == 'ACTION3':\n        # Set all cells to 15\n        for i in range(64):\n            for j in range(64):\n                next_frame[i][j] = 15\n    elif action == 'ACTION4':\n        # Apply a simple cellular automaton rule\n        # For each cell, count neighbors and apply rule\n        for i in range(64):\n            for j in range(64):\n                # Count live neighbors (assuming 1 is live, 0 is dead)\n                live_neighbors = 0\n                for di in [-1, 0, 1]:\n                    for dj in [-1, 0, 1]:\n                        if di == 0 and dj == 0:\n                            continue\n                        ni, nj = i + di, j + dj\n                        if 0 <= ni < 64 and 0 <= nj < 64:\n                            live_neighbors += 1 if next_frame[ni][nj] > 0 else 0\n                \n                # Apply rule: if cell is alive and has 2-3 neighbors, or if dead and has exactly 3 neighbors\n                if next_frame[i][j] > 0:\n                    if live_neighbors < 2 or live_neighbors > 3:\n                        next_frame[i][j] = 0\n                else:\n                    if live_neighbors == 3:\n                        next_frame[i][j] = 1\n    elif action == 'ACTION5':\n        # Set all cells to a specific value (11)\n        for i in range(64):\n            for j in range(64):\n                next_frame[i][j] = 11\n    elif action == 'ACTION6':\n        # Click at specific coordinates\n        if xy is not None:\n            x, y = xy\n            if 0 <= x < 64 and 0 <= y < 64:\n                next_frame[y][x] = 11\n    elif action == 'ACTION7':\n        # Apply a more complex rule\n        # For each cell, if it's 0, set to 1; if it's 1, set to 2; etc.\n        for i in range(64):\n            for j in range(64):\n                if next_frame[i][j] < 15:\n                    next_frame[i][j] += 1\n                else:\n                    next_frame[i][j] = 0\n    \n    return next_frame"
+    },
+    {
+      "round": 3,
+      "code_validity": 0.0,
+      "cell_accuracy": 0.0,
+      "exact_frame_accuracy": 0.0,
+      "compile_error": "no callable predict_next_frame defined",
+      "prompt_tokens": 24576,
+      "eval_tokens": 125,
+      "latency_s": 149.251,
+      "code": "def transition_rule(state, neighbors):\n    # Count live neighbors\n    live_neighbors = sum(neighbors)\n    \n    # Apply Conway's Game of Life rules\n    if state == 1:  # Cell is alive\n        if live_neighbors < 2 or live_neighbors > 3:\n            return 0  # Cell dies\n        else:\n            return 1  # Cell survives\n    else:  # Cell is dead\n        if live_neighbors == 3:\n            return 1  # Cell becomes alive\n        else:\n            return 0  # Cell remains dead"
+    }
+  ],
+  "final": {
+    "round": 3,
+    "code_validity": 0.0,
+    "cell_accuracy": 0.0,
+    "exact_frame_accuracy": 0.0,
+    "compile_error": "no callable predict_next_frame defined",
+    "prompt_tokens": 24576,
+    "eval_tokens": 125,
+    "latency_s": 149.251,
+    "code": "def transition_rule(state, neighbors):\n    # Count live neighbors\n    live_neighbors = sum(neighbors)\n    \n    # Apply Conway's Game of Life rules\n    if state == 1:  # Cell is alive\n        if live_neighbors < 2 or live_neighbors > 3:\n            return 0  # Cell dies\n        else:\n            return 1  # Cell survives\n    else:  # Cell is dead\n        if live_neighbors == 3:\n            return 1  # Cell becomes alive\n        else:\n            return 0  # Cell remains dead"
+  },
+  "refinement_gain": 0.0,
+  "total_prompt_tokens": 60096,
+  "total_eval_tokens": 1371,
+  "total_latency_s": 351.145
+}

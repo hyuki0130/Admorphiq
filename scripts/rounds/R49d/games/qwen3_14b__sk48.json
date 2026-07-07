@@ -1,0 +1,67 @@
+{
+  "model": "qwen3:14b",
+  "game": "sk48",
+  "n_few": 15,
+  "n_hold": 10,
+  "rounds": [
+    {
+      "round": 0,
+      "code_validity": 1.0,
+      "cell_accuracy": 0.9922,
+      "exact_frame_accuracy": 0.0,
+      "compile_error": "",
+      "prompt_tokens": 8164,
+      "eval_tokens": 715,
+      "latency_s": 83.186,
+      "code": "def predict_next_frame(frame, action, xy=None):\n    next_frame = [row[:] for row in frame]\n    \n    if action == \"ACTION1\":\n        for row in range(33, 42):\n            for col in range(11, 17):\n                if 11 <= col <= 12 or 15 <= col <= 16:\n                    next_frame[row][col] = 5 if next_frame[row][col] == 6 else 6\n                elif 13 <= col <= 14:\n                    next_frame[row][col] = 3 if next_frame[row][col] == 0 else 0\n                elif col == 17:\n                    next_frame[row][col] = 4 if next_frame[row][col] == 2 else 2\n                elif col == 18 or col == 19:\n                    next_frame[row][col] = 1 if next_frame[row][col] == 4 else 4\n                elif col == 20 or col == 21 or col == 22:\n                    next_frame[row][col] = 2 if next_frame[row][col] == 1 else 1\n    elif action == \"ACTION3\":\n        for row in range(20, 30):\n            for col in range(26, 32):\n                if 26 <= col <= 27 or 29 <= col <= 30:\n                    next_frame[row][col] = 1 if next_frame[row][col] == 4 else 4\n                elif 28 <= col <= 28 or 31 <= col <= 31:\n                    next_frame[row][col] = 2 if next_frame[row][col] == 1 else 1\n    elif action == \"ACTION4\":\n        for row in range(14, 16):\n            for col in range(20, 26):\n                if 20 <= col <= 21 or 24 <= col <= 25:\n                    next_frame[row][col] = 1 if next_frame[row][col] == 4 else 4\n                elif 22 <= col <= 23:\n                    next_frame[row][col] = 2 if next_frame[row][col] == 1 else 1\n    elif action == \"ACTION6\" and xy is not None:\n        x, y = xy\n        if (12 <= y <= 17) and (42 <= x <= 45):\n            next_frame[y][x] = 4 if next_frame[y][x] == 8 else 8\n        elif (46 <= y <= 46) and (14 <= x <= 15):\n            next_frame[y][x] = 1 if next_frame[y][x] == 4 else 4\n        elif (46 <= y <= 46) and (17 <= x <= 17):\n            next_frame[y][x] = 2 if next_frame[y][x] == 4 else 4\n        elif (58 <= y <= 59) and (28 <= x <= 29):\n            next_frame[y][x] = 0 if next_frame[y][x] == 8 else 8\n    \n    return next_frame"
+    },
+    {
+      "round": 1,
+      "code_validity": 1.0,
+      "cell_accuracy": 0.9947,
+      "exact_frame_accuracy": 0.0,
+      "compile_error": "",
+      "prompt_tokens": 10848,
+      "eval_tokens": 731,
+      "latency_s": 61.059,
+      "code": "def predict_next_frame(frame, action, xy=None):\n    next_frame = [row[:] for row in frame]\n    \n    if action == \"ACTION1\":\n        for row in range(33, 42):\n            for col in range(11, 17):\n                if 11 <= col <= 12 or 15 <= col <= 16:\n                    next_frame[row][col] = 5 if next_frame[row][col] == 6 else 6\n                elif 13 <= col <= 14:\n                    next_frame[row][col] = 3 if next_frame[row][col] == 0 else 0\n                elif col == 17:\n                    next_frame[row][col] = 4 if next_frame[row][col] == 2 else 2\n                elif col == 18 or col == 19:\n                    next_frame[row][col] = 1 if next_frame[row][col] == 4 else 4\n                elif col == 20 or col == 21 or col == 22:\n                    next_frame[row][col] = 2 if next_frame[row][col] == 1 else 1\n    elif action == \"ACTION3\":\n        for row in range(25, 29):\n            for col in range(21, 31):\n                if 21 <= col <= 24 or 27 <= col <= 30:\n                    next_frame[row][col] = 4 if next_frame[row][col] == 8 else 8\n                elif 25 <= col <= 26:\n                    next_frame[row][col] = 1 if next_frame[row][col] == 8 else 8\n                elif 31 <= col <= 31:\n                    next_frame[row][col] = 4 if next_frame[row][col] == 1 else 1\n    elif action == \"ACTION4\":\n        for row in range(14, 16):\n            for col in range(23, 26):\n                if 23 <= col <= 25:\n                    next_frame[row][col] = 1 if next_frame[row][col] == 4 else 4\n                elif 22 <= col <= 22:\n                    next_frame[row][col] = 2 if next_frame[row][col] == 1 else 1\n    elif action == \"ACTION6\" and xy is not None:\n        x, y = xy\n        if (12 <= y <= 17) and (42 <= x <= 45):\n            next_frame[y][x] = 4 if next_frame[y][x] == 8 else 8\n        elif (46 <= y <= 46) and (14 <= x <= 15):\n            next_frame[y][x] = 1 if next_frame[y][x] == 4 else 4\n        elif (46 <= y <= 46) and (17 <= x <= 17):\n            next_frame[y][x] = 2 if next_frame[y][x] == 4 else 4\n        elif (58 <= y <= 59) and (28 <= x <= 29):\n            next_frame[y][x] = 0 if next_frame[y][x] == 8 else 8\n    \n    return next_frame"
+    },
+    {
+      "round": 2,
+      "code_validity": 1.0,
+      "cell_accuracy": 0.9944,
+      "exact_frame_accuracy": 0.0,
+      "compile_error": "",
+      "prompt_tokens": 13100,
+      "eval_tokens": 731,
+      "latency_s": 61.042,
+      "code": "def predict_next_frame(frame, action, xy=None):\n    next_frame = [row[:] for row in frame]\n    \n    if action == \"ACTION1\":\n        for row in range(33, 42):\n            for col in range(11, 17):\n                if 11 <= col <= 12 or 15 <= col <= 16:\n                    next_frame[row][col] = 5 if next_frame[row][col] == 6 else 6\n                elif 13 <= col <= 14:\n                    next_frame[row][col] = 3 if next_frame[row][col] == 0 else 0\n                elif col == 17:\n                    next_frame[row][col] = 4 if next_frame[row][col] == 2 else 2\n                elif col == 18 or col == 19:\n                    next_frame[row][col] = 1 if next_frame[row][col] == 4 else 4\n                elif col == 20 or col == 21 or col == 22:\n                    next_frame[row][col] = 2 if next_frame[row][col] == 1 else 1\n    elif action == \"ACTION3\":\n        for row in range(25, 29):\n            for col in range(21, 31):\n                if 21 <= col <= 24 or 27 <= col <= 30:\n                    next_frame[row][col] = 8 if next_frame[row][col] == 4 else 4\n                elif 25 <= col <= 26:\n                    next_frame[row][col] = 8 if next_frame[row][col] == 1 else 1\n                elif 31 <= col <= 31:\n                    next_frame[row][col] = 4 if next_frame[row][col] == 1 else 1\n    elif action == \"ACTION4\":\n        for row in range(14, 16):\n            for col in range(23, 26):\n                if 23 <= col <= 25:\n                    next_frame[row][col] = 2 if next_frame[row][col] == 4 else 4\n                elif 22 <= col <= 22:\n                    next_frame[row][col] = 1 if next_frame[row][col] == 2 else 2\n    elif action == \"ACTION6\" and xy is not None:\n        x, y = xy\n        if (12 <= y <= 17) and (42 <= x <= 45):\n            next_frame[y][x] = 4 if next_frame[y][x] == 8 else 8\n        elif (46 <= y <= 46) and (14 <= x <= 15):\n            next_frame[y][x] = 1 if next_frame[y][x] == 4 else 4\n        elif (46 <= y <= 46) and (17 <= x <= 17):\n            next_frame[y][x] = 2 if next_frame[y][x] == 4 else 4\n        elif (58 <= y <= 59) and (28 <= x <= 29):\n            next_frame[y][x] = 0 if next_frame[y][x] == 8 else 8\n    \n    return next_frame"
+    },
+    {
+      "round": 3,
+      "code_validity": 1.0,
+      "cell_accuracy": 0.9944,
+      "exact_frame_accuracy": 0.0,
+      "compile_error": "",
+      "prompt_tokens": 15352,
+      "eval_tokens": 731,
+      "latency_s": 64.414,
+      "code": "def predict_next_frame(frame, action, xy=None):\n    next_frame = [row[:] for row in frame]\n    \n    if action == \"ACTION1\":\n        for row in range(33, 42):\n            for col in range(11, 17):\n                if 11 <= col <= 12 or 15 <= col <= 16:\n                    next_frame[row][col] = 5 if next_frame[row][col] == 6 else 6\n                elif 13 <= col <= 14:\n                    next_frame[row][col] = 3 if next_frame[row][col] == 0 else 0\n                elif col == 17:\n                    next_frame[row][col] = 4 if next_frame[row][col] == 2 else 2\n                elif col == 18 or col == 19:\n                    next_frame[row][col] = 1 if next_frame[row][col] == 4 else 4\n                elif col == 20 or col == 21 or col == 22:\n                    next_frame[row][col] = 2 if next_frame[row][col] == 1 else 1\n    elif action == \"ACTION3\":\n        for row in range(25, 29):\n            for col in range(21, 31):\n                if 21 <= col <= 24 or 27 <= col <= 30:\n                    next_frame[row][col] = 8 if next_frame[row][col] == 4 else 4\n                elif 25 <= col <= 26:\n                    next_frame[row][col] = 8 if next_frame[row][col] == 1 else 1\n                elif 31 <= col <= 31:\n                    next_frame[row][col] = 4 if next_frame[row][col] == 1 else 1\n    elif action == \"ACTION4\":\n        for row in range(14, 16):\n            for col in range(23, 26):\n                if 23 <= col <= 25:\n                    next_frame[row][col] = 2 if next_frame[row][col] == 4 else 4\n                elif 22 <= col <= 22:\n                    next_frame[row][col] = 1 if next_frame[row][col] == 2 else 2\n    elif action == \"ACTION6\" and xy is not None:\n        x, y = xy\n        if (12 <= y <= 17) and (42 <= x <= 45):\n            next_frame[y][x] = 4 if next_frame[y][x] == 8 else 8\n        elif (46 <= y <= 46) and (14 <= x <= 15):\n            next_frame[y][x] = 1 if next_frame[y][x] == 4 else 4\n        elif (46 <= y <= 46) and (17 <= x <= 17):\n            next_frame[y][x] = 2 if next_frame[y][x] == 4 else 4\n        elif (58 <= y <= 59) and (28 <= x <= 29):\n            next_frame[y][x] = 0 if next_frame[y][x] == 8 else 8\n    \n    return next_frame"
+    }
+  ],
+  "final": {
+    "round": 3,
+    "code_validity": 1.0,
+    "cell_accuracy": 0.9944,
+    "exact_frame_accuracy": 0.0,
+    "compile_error": "",
+    "prompt_tokens": 15352,
+    "eval_tokens": 731,
+    "latency_s": 64.414,
+    "code": "def predict_next_frame(frame, action, xy=None):\n    next_frame = [row[:] for row in frame]\n    \n    if action == \"ACTION1\":\n        for row in range(33, 42):\n            for col in range(11, 17):\n                if 11 <= col <= 12 or 15 <= col <= 16:\n                    next_frame[row][col] = 5 if next_frame[row][col] == 6 else 6\n                elif 13 <= col <= 14:\n                    next_frame[row][col] = 3 if next_frame[row][col] == 0 else 0\n                elif col == 17:\n                    next_frame[row][col] = 4 if next_frame[row][col] == 2 else 2\n                elif col == 18 or col == 19:\n                    next_frame[row][col] = 1 if next_frame[row][col] == 4 else 4\n                elif col == 20 or col == 21 or col == 22:\n                    next_frame[row][col] = 2 if next_frame[row][col] == 1 else 1\n    elif action == \"ACTION3\":\n        for row in range(25, 29):\n            for col in range(21, 31):\n                if 21 <= col <= 24 or 27 <= col <= 30:\n                    next_frame[row][col] = 8 if next_frame[row][col] == 4 else 4\n                elif 25 <= col <= 26:\n                    next_frame[row][col] = 8 if next_frame[row][col] == 1 else 1\n                elif 31 <= col <= 31:\n                    next_frame[row][col] = 4 if next_frame[row][col] == 1 else 1\n    elif action == \"ACTION4\":\n        for row in range(14, 16):\n            for col in range(23, 26):\n                if 23 <= col <= 25:\n                    next_frame[row][col] = 2 if next_frame[row][col] == 4 else 4\n                elif 22 <= col <= 22:\n                    next_frame[row][col] = 1 if next_frame[row][col] == 2 else 2\n    elif action == \"ACTION6\" and xy is not None:\n        x, y = xy\n        if (12 <= y <= 17) and (42 <= x <= 45):\n            next_frame[y][x] = 4 if next_frame[y][x] == 8 else 8\n        elif (46 <= y <= 46) and (14 <= x <= 15):\n            next_frame[y][x] = 1 if next_frame[y][x] == 4 else 4\n        elif (46 <= y <= 46) and (17 <= x <= 17):\n            next_frame[y][x] = 2 if next_frame[y][x] == 4 else 4\n        elif (58 <= y <= 59) and (28 <= x <= 29):\n            next_frame[y][x] = 0 if next_frame[y][x] == 8 else 8\n    \n    return next_frame"
+  },
+  "refinement_gain": 0.0,
+  "total_prompt_tokens": 47464,
+  "total_eval_tokens": 2908,
+  "total_latency_s": 269.701
+}
