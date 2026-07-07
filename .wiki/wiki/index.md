@@ -8,7 +8,7 @@ seeds `llm_context/decision_tree.md` first, then walks `[[backlinks]]`.
 Use this index when authoring or auditing: skim the catalog, pick a
 category, drill into specific pages.
 
-**Total pages**: 132.
+**Total pages**: 133.
 
 ## Games (25)
 
@@ -133,7 +133,7 @@ category, drill into specific pages.
 
 - [[llm_context/decision_tree.md]] — Compact dispatch read first by Qwen — default primary adaptive_bfs_solver, peer-swap only on Observable-Signature match, 3-deep fallback_stack by game shape, re-ask on primary failure via each plan's Falsification Signature + Next-Best.
 
-## Top-level dispatch (architecture, selector, log, schema) (36)
+## Top-level dispatch (architecture, selector, log, schema) (37)
 
 - [[rounds/r05_planning-override.md]] — round-log
 - [[rounds/r06_depth-boost.md]] — round-log
@@ -168,6 +168,7 @@ category, drill into specific pages.
 - [[rounds/r49_ewm-bench-partial.md]] — Measured executable-WM bench — 14b best-exact=0.100, Q3-quant 30b-coder 0.033 (no crash, but quant-damaged); original-weight 30b measurement deferred to Kaggle 96GB
 - [[rounds/r50_cloud-bench-k3.md]] — First measurement on the EXACT eval machine class: GCP `g4-standard-48` spot VM
 - [[rounds/r50b_honest-k8.md]] — Leakage-free K=8 on Kaggle-identical HW — gemma4-31b-q8 0.133/0.139 is the real EWM baseline; gpt-oss-120b collapses to 0.039; prior "hard game unlocks" were held-out-leak mirages
+- [[rounds/r51_fewshot-prior-sweep.md]] — Two-axis sweep (few 15→40, mechanics prior) x 2 models — averages flat but effects are strongly game- and model-dependent; per-game union 0.211 motivates runtime adaptive-config synthesis
 - [[architecture.md]] — Three-layer agent design — Cognition (LLM) / Memory (Wiki) / Action (Strategies) — with explicit dev-time vs Kaggle-time boundaries and a self-improvement loop.
 - [[log.md]] — Append-only chronological record of every dev-time round and significant infra change. Grep `^## \[` for latest entries.
 - [[selector.md]] — Feature-driven dispatch rules the Hypothesis Engine LLM uses to pick

@@ -74,12 +74,13 @@ commit, and `[[backlinks]]`. Narrative overview + reliable-metric + resume steps
 | R49f | llm-bench-full18 | gemma4-26b-a4b full-18: 0.144/0.244; unlocks su15/re86/tr87/ka59/sk48 (gpt-oss zeros); union 15/18, graph-blocked 6/7 traction; late-round regression → keep-best fix needed | — | [[r49_ewm-bench-partial]] |
 | R50 | llm-bench-cloud | Kaggle-identical HW (96GB): gemma4-31b-q8 0.433/0.494 LEADER > gpt-oss-120b 0.272 > 26b 0.239 > qwen3-coder ELIMINATED; held-out leakage in refinement found+fixed | aea406d | [[r50_cloud-bench-k3]] |
 | R50b | llm-bench-honest | HONEST K=8: gemma4-31b-q8 0.133/0.139 = deploy candidate ≫ gpt-oss-120b 0.039 (7x leak-inflated); ar25 0→0.80 genuine climb; ⛔ pre-R50b absolutes are leak-inflated | — | [[r50b_honest-k8]] |
+| R51 | ewm-quality | few=40/prior sweep: no single config > f15 0.133, BUT per-game config-UNION 0.211 (1.6x) → adaptive multi-config synthesis; 10/18 stable zero-set ⛔ no more config sweeps for those | — | [[r51_fewshot-prior-sweep]] |
 
 - **graph-search / hud-masking / frontier-bfs**: [[r36_graph-frontier-bfs]] (the deep-level axis; offline env.step ~1000+/s discovery)
 - **forward-model transfer / pretrain**: [[r35_forward-transfer]] (dynamics 52.4% vs BC 0%; pos_weight collapse fix)
 - **metric-calibration / baselines**: [[r34_metric-reexamination]] (random=0.0000 measured; real RHAE top=0.1258; purge the bogus 0.18/0.25/1.21)
 
-- **llm-selection / executable-world-model**: [[r48_llm-selection-ewm]] (candidate research; verdict superseded by R50), [[r49_ewm-bench-partial]] (local 3-way; ⛔ 18GB Ollama models crash the 24GB dev Mac), [[r50_cloud-bench-k3]] (Kaggle-identical HW; leakage fix), [[r50b_honest-k8]] (HONEST baseline: gemma4-31b-q8 0.133/0.139 deploy candidate; ⛔ pre-R50b absolutes leak-inflated)
+- **llm-selection / executable-world-model**: [[r48_llm-selection-ewm]] (candidate research; verdict superseded by R50), [[r49_ewm-bench-partial]] (local 3-way; ⛔ 18GB Ollama models crash the 24GB dev Mac), [[r50_cloud-bench-k3]] (Kaggle-identical HW; leakage fix), [[r50b_honest-k8]] (HONEST baseline: gemma4-31b-q8 0.133/0.139 deploy candidate; ⛔ pre-R50b absolutes leak-inflated), [[r51_fewshot-prior-sweep]] (config-UNION 0.211 → adaptive synthesis; stable zero-set 10/18)
 
 ## The two standing conclusions
 - ⛔ **Do NOT re-try action-selection tweaks** — 8 rounds failed; the novelty learner's action
