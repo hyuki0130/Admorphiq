@@ -596,6 +596,10 @@ def run_model_game(
             fn = None
             compile_error = str(exc)[:200]
         score = score_predictions(fn, held_out, timeout)
+        # Train-fit on the few-shot transitions the model actually saw: the
+        # leakage-free selection signal (usable identically at Kaggle runtime,
+        # where held-out labels don't exist).
+        train_score = score_predictions(fn, few_shot, timeout)
         last_mismatches = score.mismatches
         round_records.append(
             {
@@ -603,6 +607,7 @@ def run_model_game(
                 "code_validity": round(score.code_validity, 4),
                 "cell_accuracy": round(score.cell_accuracy, 4),
                 "exact_frame_accuracy": round(score.exact_frame_accuracy, 4),
+                "train_exact": round(train_score.exact_frame_accuracy, 4),
                 "compile_error": compile_error,
                 "prompt_tokens": meta.get("prompt_tokens", 0),
                 "eval_tokens": meta.get("eval_tokens", 0),
@@ -611,6 +616,11 @@ def run_model_game(
             }
         )
 
+    # Deploy policy: pick the round with the best train-fit (ties -> later
+    # round). Guards against late-round regressions (gemma4 su15 0.60->0.00)
+    # and invalid final generations (qwen tu93 empty r3) without touching
+    # held-out labels.
+    selected = max(round_records, key=lambda rec: (rec["train_exact"], rec["round"]))
     r0 = round_records[0]["exact_frame_accuracy"]
     rk = round_records[-1]["exact_frame_accuracy"]
     return {
@@ -620,6 +630,7 @@ def run_model_game(
         "n_hold": len(held_out),
         "rounds": round_records,
         "final": round_records[-1],
+        "selected": selected,
         "refinement_gain": round(rk - r0, 4),
         "total_prompt_tokens": sum(c.get("prompt_tokens", 0) for c in calls),
         "total_eval_tokens": sum(c.get("eval_tokens", 0) for c in calls),
@@ -660,7 +671,7 @@ def write_summary(round_dir: Path) -> None:
     lines = ["R49 — executable-world-model LLM selection", "=" * 60, ""]
     header = (
         f"{'model':<22}{'game':<7}{'valid':>6}{'cell':>7}"
-        f"{'exR0':>7}{'exRK':>7}{'exBest':>8}{'gain':>7}{'tok':>8}{'sec':>8}"
+        f"{'exR0':>7}{'exRK':>7}{'exSel':>7}{'exBest':>8}{'gain':>7}{'tok':>8}{'sec':>8}"
     )
     lines.append(header)
     lines.append("-" * len(header))
@@ -673,11 +684,13 @@ def write_summary(round_dir: Path) -> None:
             (r["exact_frame_accuracy"] for r in rec["rounds"]), default=0.0
         )
         rec["_best_exact"] = best
+        sel = rec.get("selected", rec["final"])["exact_frame_accuracy"]
+        rec["_sel_exact"] = sel
         fin = rec["final"]
         lines.append(
             f"{rec['model']:<22}{rec['game']:<7}"
             f"{fin['code_validity']:>6.2f}{fin['cell_accuracy']:>7.3f}"
-            f"{r0:>7.2f}{fin['exact_frame_accuracy']:>7.2f}{best:>8.2f}"
+            f"{r0:>7.2f}{fin['exact_frame_accuracy']:>7.2f}{sel:>7.2f}{best:>8.2f}"
             f"{rec['refinement_gain']:>+7.2f}"
             f"{rec['total_prompt_tokens'] + rec['total_eval_tokens']:>8}"
             f"{rec['total_latency_s']:>8.1f}"
@@ -691,10 +704,11 @@ def write_summary(round_dir: Path) -> None:
         mean_gain = float(np.mean([r["refinement_gain"] for r in recs]))
         mean_valid = float(np.mean([r["final"]["code_validity"] for r in recs]))
         mean_best = float(np.mean([r["_best_exact"] for r in recs]))
+        mean_sel = float(np.mean([r["_sel_exact"] for r in recs]))
         lines.append(
-            f"  {model:<22} exact={mean_exact:.3f} best-exact={mean_best:.3f} "
-            f"cell={mean_cell:.3f} valid={mean_valid:.2f} gain={mean_gain:+.3f} "
-            f"(n={len(recs)})"
+            f"  {model:<22} exact={mean_exact:.3f} sel-exact={mean_sel:.3f} "
+            f"best-exact={mean_best:.3f} cell={mean_cell:.3f} valid={mean_valid:.2f} "
+            f"gain={mean_gain:+.3f} (n={len(recs)})"
         )
     lines.append("")
     (round_dir / "SUMMARY.txt").write_text("\n".join(lines))

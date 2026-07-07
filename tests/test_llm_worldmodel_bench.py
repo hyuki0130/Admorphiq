@@ -332,3 +332,42 @@ def test_run_model_game_with_mock_chat_records_gain():
     assert rec["final"]["exact_frame_accuracy"] == 1.0      # corrected
     assert rec["refinement_gain"] == pytest.approx(1.0)
     assert rec["total_prompt_tokens"] == 400  # 4 calls * 100
+
+
+def test_selected_round_is_best_train_fit_not_last():
+    """Purpose: the deploy policy must pick the round with the best few-shot
+    (train) fit, not the last round — a late refinement that regresses (gemma4
+    su15 0.60→0.00) or emits invalid code (qwen tu93 empty final round) must
+    not poison the deployed function. Selection uses only train labels, so it
+    is leakage-free and Kaggle-runtime-realizable.
+
+    Expected feedback: pass ⇒ record["selected"] carries the good mid-round
+    code while record["final"] shows the regressed last round; fail ⇒ the
+    keep-best-by-train-fit policy silently degraded to keep-last.
+    """
+    z = np.zeros((4, 4), dtype=np.int16)
+    a = z.copy()
+    a[0, 0] = 1
+    held = [_transition(z, a) for _ in range(3)]
+    few = [_transition(z, a)]
+
+    good = (
+        "```python\n"
+        "def predict_next_frame(frame, action, xy=None):\n"
+        "    out = [row[:] for row in frame]\n"
+        "    out[0][0] = 1\n"
+        "    return out\n"
+        "```"
+    )
+    bad = "```python\ndef predict_next_frame(frame, action, xy=None):\n    return frame\n```"
+    replies = iter([bad, good, bad, bad])  # peak at round 1, regress after
+
+    def mock_chat(messages, model, max_tokens):
+        return next(replies), {"prompt_tokens": 1, "eval_tokens": 1, "latency_s": 0.0}
+
+    rec = _MOD.run_model_game(mock_chat, "mock", "toy", few, held, rounds=3,
+                              max_tokens=256, timeout=1.0)
+    assert rec["final"]["exact_frame_accuracy"] == 0.0
+    assert rec["selected"]["round"] == 1
+    assert rec["selected"]["train_exact"] == 1.0
+    assert rec["selected"]["exact_frame_accuracy"] == 1.0
