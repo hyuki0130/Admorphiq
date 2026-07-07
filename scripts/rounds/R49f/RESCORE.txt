@@ -1,0 +1,22 @@
+R49 rescore (fixed fence extraction; same held-out split)
+model                                              game   last-ex  best-ex  per-round exact
+gemma4:26b-a4b-it-qat                              ar25      0.00     0.00  0.00 0.00 0.00 0.00
+gemma4:26b-a4b-it-qat                              dc22      0.30     0.30  0.00 0.10 0.00 0.30
+gemma4:26b-a4b-it-qat                              g50t      0.00     0.20  0.20 0.00 0.10 0.00
+gemma4:26b-a4b-it-qat                              ka59      0.00     0.30  0.00 0.10 0.30 0.00
+gemma4:26b-a4b-it-qat                              lf52      0.40     0.40  0.00 0.10 0.30 0.40
+gemma4:26b-a4b-it-qat                              lp85      0.00     0.00  0.00 0.00 0.00 0.00
+gemma4:26b-a4b-it-qat                              re86      0.30     0.40  0.00 0.30 0.40 0.30
+gemma4:26b-a4b-it-qat                              s5i5      0.30     0.30  0.00 0.00 0.00 0.30
+gemma4:26b-a4b-it-qat                              sb26      0.30     0.30  0.00 0.10 0.10 0.30
+gemma4:26b-a4b-it-qat                              sc25      0.40     0.40  0.00 0.10 0.30 0.40
+gemma4:26b-a4b-it-qat                              sk48      0.10     0.20  0.00 0.20 0.00 0.10
+gemma4:26b-a4b-it-qat                              sp80      0.50     0.50  0.00 0.30 0.40 0.50
+gemma4:26b-a4b-it-qat                              su15      0.00     0.60  0.00 0.30 0.60 0.00
+gemma4:26b-a4b-it-qat                              tn36      0.00     0.00  0.00 0.00 0.00 0.00
+gemma4:26b-a4b-it-qat                              tr87      0.00     0.50  0.10 0.00 0.50 0.00
+gemma4:26b-a4b-it-qat                              tu93      0.00     0.00  0.00 0.00 0.00 0.00
+gemma4:26b-a4b-it-qat                              vc33      0.00     0.00  0.00 0.00 0.00 0.00
+gemma4:26b-a4b-it-qat                              wa30      0.00     0.00  0.00 0.00 0.00 0.00
+
+gemma4:26b-a4b-it-qat                              mean last-exact=0.144 best-exact=0.244 (n=18)

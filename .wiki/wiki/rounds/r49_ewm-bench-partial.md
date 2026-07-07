@@ -109,6 +109,25 @@ occasional oscillation (ar25 0.80→0.00→0.80) keeps keep-best as the right he
 original-weight bench ([[r48_llm-selection-ewm]] amended). The reasoning-model style (state the
 deducible rule, implement conservatively) fits transition-rule induction.
 
+## Run 6 — R49f (07-07 12:23–13:57 KST): gemma4:26b-a4b-it-qat full 18 — coverage winner, stability loser
+
+Gemma 4 26B-A4B QAT (15GB; required Ollama 0.20.3→0.31.1 upgrade; num_ctx 16384). 18 games in
+94 min. Exact-frame keep-last / keep-best: **0.144 / 0.244** — best-exact ≈ gpt-oss-20b (0.256)
+but keep-last collapses because gemma4 REGRESSES in late refinement rounds far more than gpt-oss:
+su15 0.60→0.00, tr87 0.50→0.00, ka59 0.30→0.00, g50t 0.20→0.00. Keep-last is the wrong deploy
+policy for this model; select-best-by-train-fit is the R50 harness fix.
+
+**Coverage is complementary, not redundant** (best-exact >0 on 12/18):
+  gemma4 unlocks su15 0.60, tr87 0.50, re86 0.40, ka59 0.30, sk48 0.20 — ALL zero for gpt-oss
+  AND 14b. gpt-oss keeps sb26 1.00 / ar25 0.80 / lf52 0.70 / tu93 0.50 / vc33 0.30 (gemma4 zero
+  on ar25/tu93/vc33). Union of the two: **15/18 games with measured traction** (zero-everywhere:
+  lp85, tn36, wa30). Graph-blocked 7: now **6 of 7** show EWM traction under some model
+  (dc22 0.30, g50t 0.20, re86 0.40, s5i5 0.30, sc25 0.40, su15 0.60; only wa30 still 0).
+
+Local model ranking (best-exact): gpt-oss-20b 0.256 ≥ gemma4-26b-a4b 0.244 ≫ qwen3:14b 0.089 ≫
+Q3-30b-coder ≈ 0. Kaggle implication: bench gpt-oss-120b AND gemma-4 large variants; a two-model
+route-or-union may beat any single model.
+
 ## Read
 
 - The refinement loop WORKS when the model is strong enough: 14b×sp80 went 0.00 → 0.30 purely
