@@ -214,6 +214,18 @@ strengthening is genuine multi-round research per game-class: cd82 (hidden-state
 aliasing beyond 4-history), lights-out cluster (needs sequence search — the
 `paint`/toggle tool's job, not graph), vc33 depth (1→2).
 
+### Confident-primary ownership (the fix that mattered)
+Coarse tenure alone still left m0r0 = 0 in the harness (graph got ONE ~750-action
+tenure then stalled on the loop's RAW-hash novelty — which is BLIND to graph's
+own masked/de-aliased progress — and was retired). The graph tool given the FULL
+3000-action budget clears m0r0 alone. Fix: a tool whose own `detect()` ≥ 0.7 for
+the game OWNS it — not retired on a stall, gets the full budget. detect() is a
+reliable frame signal; trust it and let the right tool run uninterrupted.
+Low-confidence picks still swap-on-failure. Also fixed the routing wiki (decision
+table now outputs EXACT canonical tool names + a `code` last-resort row — gemma4
+had been picking `code` 9× because the table used non-matching display names).
+Re-measuring m0r0 in the full harness with both fixes.
+
 ### E2E finding — the harness broke the strong tool (coarse-tenure fix)
 Full-harness e2e (LLM routing) on m0r0 scored **0/6 — while the graph tool ALONE
 clears m0r0**. Diagnosis from the trace: (a) gemma4 picked `code` 9× and `graph`
