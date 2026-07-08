@@ -137,10 +137,38 @@ Note: graph_frontier_agent.py is itself GENERIC (grep-clean of game ids) — the
 "don't reuse legacy" directive targeted the sprite-tag analytical solvers, not
 the frontier engine; the re-authored tools must reach its generic techniques.
 
+## Direct tool-strength probe (2026-07-08, `scripts/probe_tool_direct.py`)
+
+To separate tool strength from harness routing, a new probe drives ONE tool on a
+game with no LLM/routing/swap. The re-authored `graph` tool alone, budget 3000:
+
+| game | my `graph` (alone) | legacy graph_frontier baseline |
+|---|---|---|
+| **vc33** | **1 level ✓** | 2 |
+| m0r0 | 0 | 1 |
+| cd82 | 0 (hidden-state aliasing, nondet 0.77) | 1 |
+| ar25 | 0 | 0 (baseline also 0) |
+
+**First genuine clear by a from-scratch generic tool: vc33 L1.** The harness
+spine + one working tool are validated end-to-end. But the 293-line re-authored
+`graph` is ~half the strength of the proven 2900-line `GraphFrontierAgent`
+(clears vc33 1 vs 2, misses m0r0/cd82 the legacy engine clears). cd82's 0.77
+nondeterminism is hidden-state aliasing (dealias territory, not visible HUD), so
+HUD masking alone didn't help it — confirmed by the direct probe (0/3000).
+
+**Decision point for the next phase**: either (a) keep strengthening the
+from-scratch tools toward the proven engine's parity (tiering, dealias
+composition, better click salience) — honors "re-implement generically"; or (b)
+wrap the already-generic `GraphFrontierAgent` (grep-clean of game ids) as the
+`graph` tool for instant 18/25-class capability, and spend the from-scratch
+effort on tools it lacks (paint/llm_goal/world_model/dealias). Recorded for the
+user; not taken unilaterally since (b) reverses the "don't reuse" directive.
+
 ## Pending
 
-`HARNESS_CTX` context-size sweep (`scripts/harness_ctx_sweep.py`) once a tool
-clears a base>0 game, so the sweep optimises a non-zero signal.
+`HARNESS_CTX` context-size sweep (`scripts/harness_ctx_sweep.py`) once tool
+strength clears a couple of base>0 games, so the sweep optimises a real signal.
+Full-loop LLM nav bench (m0r0,vc33 @ stall=30) in progress.
 
 ## Related
 
