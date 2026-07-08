@@ -636,6 +636,22 @@ class GraphFrontierAgent:
         self.giveup = giveup if giveup is not None else _env_int(
             "GF_GIVEUP", DEFAULT_GIVEUP
         )
+        # Executable-world-model pruning (R52, default OFF => byte-identical).
+        # After GF_EWM_MIN_OBS observed transitions an LLM synthesizes a
+        # predict_next_frame from the agent's OWN observations (adaptive
+        # multi-config, train-fit selected — see admorphiq.ewm.synthesizer);
+        # if its fit over all observations reaches GF_EWM_MIN_FIT, untried
+        # actions the model predicts as no-change are deprioritized within
+        # their tier. Frame observations only — no game ids.
+        self.ewm_enabled = _env_bool("GF_EWM", False)
+        self.ewm_min_fit = _env_float("GF_EWM_MIN_FIT", 0.8)
+        self.ewm_min_obs = _env_int("GF_EWM_MIN_OBS", 30)
+        self.ewm_model = os.environ.get("GF_EWM_MODEL", "gpt-oss:20b")
+        self._ewm_obs: list[tuple[np.ndarray, int, np.ndarray]] = []
+        self._ewm_result: Any = None
+        self._ewm_attempted = False
+        self._ewm_pred_cache: dict[Any, bool] = {}
+        self._ewm_synthesize: Any = None  # injectable for tests; lazy default
         self.hash_pool = hash_pool if hash_pool is not None else _env_int(
             "GF_HASH_POOL", DEFAULT_HASH_POOL
         )
@@ -1232,6 +1248,19 @@ class GraphFrontierAgent:
         if self._prev_frame is None or self._prev_hash is None:
             return
 
+        # EWM observation log (R52, GF_EWM only): raw transitions become the
+        # few-shot evidence for world-model synthesis. Bounded; RESET and
+        # unknown keys are skipped (predict_next_frame has no RESET concept).
+        if self.ewm_enabled and self._prev_frame.shape == frame.shape:
+            if len(self._ewm_obs) < 4 * self.ewm_min_obs:
+                idx = self._ewm_action_idx(self._prev_action_key)
+                if idx is not None:
+                    self._ewm_obs.append(
+                        (self._prev_frame.copy(), idx, frame.copy())
+                    )
+            if not self._ewm_attempted and len(self._ewm_obs) >= self.ewm_min_obs:
+                self._ewm_try_synthesize()
+
         # HUD stats: which cells changed on THIS transition (raw frames).
         if self._prev_frame.shape == frame.shape:
             changed = self._prev_frame != frame
@@ -1295,6 +1324,82 @@ class GraphFrontierAgent:
         # informative evidence that this action class is inert at that state).
         if self.measure_expand and self._goal is not None:
             self._credit_bucket_delta(self._prev_hash, nxt_hash, frame, key)
+
+    # ── executable-world-model pruning (R52) ─────────────────────────────────────
+
+    def _ewm_action_idx(self, action_key: Any) -> int | None:
+        """Map a graph action_key to the EWM combined-logit index, or None.
+
+        Simple keys 1..5 -> ACTION1..5 (idx 0..4); click keys -> coordinate
+        indices. RESET/ACTION6-bare/ACTION7 have no predict_next_frame
+        semantics and are excluded from the observation log.
+        """
+        from .ewm.core import COORD_OFFSET, GRID, NUM_SIMPLE_ACTIONS
+
+        if isinstance(action_key, tuple) and action_key and action_key[0] == "click":
+            _, x, y = action_key
+            return COORD_OFFSET + int(y) * GRID + int(x)
+        if isinstance(action_key, int) and 1 <= action_key <= NUM_SIMPLE_ACTIONS:
+            return action_key - 1
+        return None
+
+    def _ewm_try_synthesize(self) -> None:
+        """One-shot world-model synthesis from the agent's own observations.
+
+        Runs at most once per game (the LLM call is expensive); the result is
+        kept only when its fit over ALL observations reaches ``ewm_min_fit`` —
+        a low-fit model would deprioritize the wrong actions.
+        """
+        self._ewm_attempted = True
+        from .ewm.core import Transition
+
+        transitions = [
+            Transition(frame=f, action_idx=a, next_frame=n)
+            for f, a, n in self._ewm_obs
+        ]
+        synth = self._ewm_synthesize
+        if synth is None:
+            from .ewm.core import OllamaChat
+            from .ewm.synthesizer import synthesize_world_model
+
+            def synth(ts: Any) -> Any:
+                return synthesize_world_model(ts, OllamaChat(), self.ewm_model)
+
+        try:
+            result = synth(transitions)
+        except Exception:  # noqa: BLE001 - LLM/network failure degrades to OFF
+            result = None
+        if result is not None and result.train_fit >= self.ewm_min_fit:
+            self._ewm_result = result
+        if self._debug:
+            fit = getattr(result, "train_fit", None)
+            print(f"[GF-EWM] synthesized fit={fit} kept={self._ewm_result is not None}")
+
+    def _ewm_predicts_nochange(self, frame: np.ndarray, action_key: Any) -> bool:
+        """True when the accepted world model predicts this action changes nothing.
+
+        Uncertainty (no model, unmappable key, prediction error/timeout, wrong
+        shape) counts as CHANGE — never deprioritize on doubt. Cached per
+        (state, key) via the caller's state hash context; cache is size-capped.
+        """
+        if self._ewm_result is None:
+            return False
+        idx = self._ewm_action_idx(action_key)
+        if idx is None:
+            return False
+        from .ewm.core import _run_with_timeout, action_call_args
+
+        action, xy = action_call_args(idx)
+        try:
+            pred = _run_with_timeout(
+                self._ewm_result.fn, (frame.tolist(), action, xy), 0.05
+            )
+            pred_arr = np.asarray(pred, dtype=np.int16)
+        except Exception:  # noqa: BLE001 - treat any failure as "change"
+            return False
+        if pred_arr.shape != frame.shape:
+            return False
+        return bool((pred_arr == frame).all())
 
     # ── monotone-moving-band detection (R44) ─────────────────────────────────────
 
@@ -2099,7 +2204,7 @@ class GraphFrontierAgent:
         # a within-tier frontier. If neither exists, unlock the next tier and
         # retry; only once every tier is exhausted globally do we random-escape.
         while True:
-            key = self._best_untried_within_tier(state_hash)
+            key = self._best_untried_within_tier(state_hash, frame)
             if key is not None:
                 self._dbg_untried += 1
                 self._count_tier_hit(key)
@@ -2123,7 +2228,9 @@ class GraphFrontierAgent:
             return escape
         return None
 
-    def _best_untried_within_tier(self, state_hash: str) -> Any | None:
+    def _best_untried_within_tier(
+        self, state_hash: str, frame: np.ndarray | None = None
+    ) -> Any | None:
         """Return the current state's highest-tier untried action within the gate.
 
         Only actions whose tier is ``<= _unlocked_tier`` (simple actions carry
@@ -2131,6 +2238,10 @@ class GraphFrontierAgent:
         mass of low-tier clicks stays deferred until the gate widens. Among
         eligible actions the lowest tier wins; ties keep registration order for
         determinism. Returns None when the state has no in-gate untried action.
+
+        With an accepted world model (R52, GF_EWM), actions the model predicts
+        as no-change sort AFTER predicted-change actions within the same tier —
+        deprioritized, never removed, so a wrong model costs ordering only.
         """
         untried = self._untried.get(state_hash) or []
         eligible = [
@@ -2139,6 +2250,22 @@ class GraphFrontierAgent:
         ]
         if not eligible:
             return None
+        if self._ewm_result is not None and frame is not None:
+            if len(self._ewm_pred_cache) > 50_000:
+                self._ewm_pred_cache.clear()
+
+            def _nochange(k: Any) -> bool:
+                ck = (state_hash, k)
+                if ck not in self._ewm_pred_cache:
+                    self._ewm_pred_cache[ck] = self._ewm_predicts_nochange(frame, k)
+                return self._ewm_pred_cache[ck]
+
+            return min(
+                eligible,
+                key=lambda k: (
+                    self._action_tier.get(k, _N_TIERS - 1), _nochange(k)
+                ),
+            )
         return min(eligible, key=lambda k: self._action_tier.get(k, _N_TIERS - 1))
 
     def _count_tier_hit(self, key: Any) -> None:
