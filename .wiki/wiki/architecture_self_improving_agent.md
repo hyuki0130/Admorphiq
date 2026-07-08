@@ -147,3 +147,20 @@ edit/lint/pytest only. Start the VM, `cd ~/admorphiq`, use `~/.local/bin/uv run 
   needs `flush`/`-u`.
 - **Model selection is MEASURED**: bench candidates (gemma4-31b-q8 leads / gpt-oss-120b /
   Qwen3.6-27B) on the harness; never assume. Cross-session env details: memory `project_dev_test_env`.
+
+## Self-improvement loop VALIDATED (2026-07-08, probe1→probe2)
+
+First end-to-end proof the loop works: measure → diagnose → improve the wiki → re-measure.
+- probe1 (gemma4-31b on tool_selector): correct de-aliasing picks on high-nondeterminism games
+  (dc22 0.53, ka59 0.46); but ka59/sp80/ar25 routing was signal-poor (no movement discriminator).
+- Fix (generic, dev-time): added `avatar_mobility` (does a small object TRANSLATE under directional
+  actions?) to the probe signature + tool_selector, rule "high mobility → graph_frontier even if
+  avg_changed_cells is large".
+- probe2: ka59 (mob 0.63) & sp80 (mob 0.23) now → graph_frontier (navigation, correct); sb26 (mob 0)
+  moved paint→world_model (better for a sort game); dc22 (mob 0.78 + nondet 0.53) → graph_frontier
+  (navigation-with-hidden-state, defensible). One assumption CORRECTED by data: ar25 has
+  avatar_mobility=0.00 (its simple actions cause big repaints, not object translation), so
+  paint_flood was a defensible pick from the signals — NOT the mis-route I assumed.
+Takeaway: adding generic observable discriminators to the wiki measurably improves the weak local
+model's first-tool pick. This IS the dev-time half of the mission (Claude improves tools+wiki from
+measured local-model feedback). Next: full orchestration loop (pick→run→observe→improve) on the VM.
