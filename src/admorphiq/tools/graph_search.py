@@ -56,7 +56,7 @@ _LOCAL_BBOX_FRAC = 0.15   # changed bbox area must be <= this fraction of the gr
 # changed in >= _HUD_FRAC of them (step counters / timers / animated overlays)
 # and hash the frame with those cells zeroed, so aliasing (a churning HUD that
 # makes every true-state look new) can't explode the state graph.
-_HUD_WARMUP = 24
+_HUD_WARMUP = 16
 _HUD_FRAC = 0.60
 
 
