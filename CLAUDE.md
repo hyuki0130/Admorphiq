@@ -1592,6 +1592,20 @@ hands, wiki (`.wiki/wiki/tool_selector.md`) = knowledge for the perfect first to
 repo). Goal = 25/25 generic clears. Model is a MEASURED choice (gemma4-31b-q8 leads, R50b 0.133;
 candidates gpt-oss-120b, Qwen3.6-27B), never assumed.
 
+**R53 harness IMPLEMENTED (2026-07-08, commit b533ca4 + f05c3b6).** The 6 tools were
+RE-IMPLEMENTED as clean generic frame-only primitives (NOT the legacy brittle agents) under
+`src/admorphiq/tools/` on a shared `base.Tool` contract (`detect`/`reset`/`observe`/`propose` +
+generic frame analysis in `base.py`): `graph` (frontier-BFS nav), `world_model` (tabular online
+dynamics + progress plan), `dealias` (hidden-state hash aug), `deadsig` (inert-action prune),
+`paint` (click-fills-region), `llm_goal` (LLM infers transform target). The runtime general agent
+is `src/admorphiq/harness/` — `loop.py:UnifiedAgent` is the self-improving retry loop: compute an
+observable `Signature` → pull a MINIMAL signature-targeted wiki slice (`context.py`, hard-capped
+by `HARNESS_CTX`, the char-budget lever `scripts/harness_ctx_sweep.py` measures) → LLM picks a
+tool OR writes Python (`tools/code_agent.py`) → run → feed the transition to every tool's
+`observe` → re-decide on stall. Bench via `--agent unified` (env `HARNESS_MODEL`/`HARNESS_CTX`).
+Measured: code-agent ALONE re86 = 0/8 → frontier transform games need the combined tool+code loop,
+not code in isolation. Round page: [[.wiki/wiki/rounds/r53_unified-harness]]. 655 tests, ruff clean.
+
 **WHERE we develop/measure — GCP VM = Kaggle-identical** (the 24GB Mac CANNOT run 30B models or
 parallel; it crashes — Mac is edit/lint/pytest only):
 - `ewm-bench` / `asia-east1-a` / `g4-standard-48` (RTX PRO 6000 **96GB**), SPOT. Start:
