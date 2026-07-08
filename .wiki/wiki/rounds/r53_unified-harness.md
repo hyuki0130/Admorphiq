@@ -1,0 +1,83 @@
+---
+type: reasoning
+round: R53
+axis: harness-architecture
+keywords: [unified-harness, self-improving-loop, generic-tools, tool-orchestration, code-agent, minimal-wiki-context, retry-loop]
+verdict: built (bench pending)
+commit: b533ca4
+date: 2026-07-08
+description: Re-implemented the 6 tools (graph/world_model/dealias/deadsig/paint/llm_goal) as clean generic frame-only primitives on a shared Tool contract, plus the UnifiedAgent self-improving retry loop — signature → minimal wiki slice → pick tool OR write code → feed transitions back → re-decide on stall; code-agent alone re86=0/8 proves the frontier needs the combined loop
+---
+
+# R53 — Unified self-improving harness + 6 generic tools re-implemented
+
+> The runtime general agent as a retry loop: one offline model reads a minimal
+> signature-targeted wiki slice, picks a Claude-built generic tool OR writes
+> code, runs it, feeds the transition back to every tool, and re-decides on
+> stall — until the level clears or the budget is spent.
+
+## Why this round
+
+Prior sessions orchestrated the EXISTING agents (`graph_frontier_agent.py`,
+`world_model_agent.py`) as tools. User directive (2026-07-08): the tools must be
+RE-IMPLEMENTED generically by Claude, not reuse the legacy implementations that
+carry brittle/game-specific baggage. And the runtime must be a genuine retry
+loop (tool use + direct coding + feedback), with context injected as an
+LLM-wiki slice (not few-shot), trimmed to fit the weak model's window.
+
+## What was built
+
+Clean `src/admorphiq/tools/` package on a shared `base.Tool` contract
+(`detect`/`reset`/`observe`/`propose`) + generic frame analysis
+(`connected_components`, `base_hash`, `diff_*`). None import the legacy agents;
+all six grep-clean of game ids / titles / internal tags.
+
+| Tool | `name` | Signature trigger | Role |
+|---|---|---|---|
+| graph_search | `graph` | has_movement + high avatar_mobility | frontier-BFS navigation (the ~18/25 core, re-authored) |
+| world_model | `world_model` | low nondeterminism, learnable | tabular online dynamics + progress planning |
+| dealias | `dealias` | high nondeterminism | augments node hash for aliased hidden state |
+| dead_signature | `deadsig` | always (efficiency) | deprioritize inert action classes |
+| paint_flood | `paint` | high click_fraction | click-fills-region detection + fill clicks |
+| llm_goal | `llm_goal` | low mobility + large recolor_scale | LLM infers the transform target |
+
+Centerpiece — `src/admorphiq/harness/`:
+- `base.py` — the Tool protocol + generic frame utils (one implementation).
+- `context.py` — minimal signature-targeted wiki retrieval. Computes an
+  observable `Signature` (avatar_mobility, click_fraction, nondeterminism,
+  recolor_scale, has_movement) from the agent's own transitions, pulls only the
+  relevant `tool_selector.md` blocks, hard-caps to `budget_chars` (the
+  `HARNESS_CTX` lever the bench sweeps), strips frontmatter.
+- `loop.py` — `UnifiedAgent`: signature → minimal context → LLM picks tool or
+  code → run → feed transition to every tool's `observe` → re-decide on stall.
+  Offline-safe: injected `llm(messages)` callable, degrades to the
+  highest-`detect` tool when the model is unreachable.
+- `registry.py` — the 6 default tools + an offline ollama callable.
+- `--agent unified` registered in `scripts/score_efficiency.py`.
+
+`tool_selector.md` headings rewritten to embed each canonical tool `name` so the
+harness parser retrieves all six (was retrieving only 3 — graph/paint/code).
+
+## Measured so far
+
+- **code-agent alone (LLM writes Python), re86 = 0/8** at budget 100–250. The
+  frontier transform games are NOT solved by code in isolation → they need the
+  tool+code combined loop, which is exactly what R53 builds. (Earlier the
+  code-agent bench was silently excluded by a `No module named admorphiq.tools`
+  packaging miss — fixed by shipping the package to the VM.)
+- Loop control flow verified offline: 655 tests pass (+50 — tool contracts,
+  loop orchestration, minimal-context budget/retrieval), ruff clean.
+
+## Pending
+
+`--agent unified` full-game bench (ar25 navigation + re86 frontier) running on
+the Kaggle-identical VM to measure whether gemma4-31b picks the
+signature-matching tool and whether the combined loop clears anything the
+pre-built orchestration (≈ baseline) could not. Also open: the `HARNESS_CTX`
+context-size sweep for the performance/window trade-off.
+
+## Related
+
+- [[r52_ewm-integration]] — the EWM runtime hook this generalizes into a tool.
+- [[r36_graph-frontier-bfs]] — the graph core re-authored here as `graph`.
+- [[index]]

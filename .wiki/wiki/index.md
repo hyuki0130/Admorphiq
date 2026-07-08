@@ -8,7 +8,7 @@ seeds `llm_context/decision_tree.md` first, then walks `[[backlinks]]`.
 Use this index when authoring or auditing: skim the catalog, pick a
 category, drill into specific pages.
 
-**Total pages**: 137.
+**Total pages**: 138.
 
 ## Games (25)
 
@@ -134,7 +134,7 @@ category, drill into specific pages.
 
 - [[llm_context/decision_tree.md]] — Compact dispatch read first by Qwen — default primary adaptive_bfs_solver, peer-swap only on Observable-Signature match, 3-deep fallback_stack by game shape, re-ask on primary failure via each plan's Falsification Signature + Next-Best.
 
-## Top-level dispatch (architecture, selector, log, schema) (40)
+## Top-level dispatch (architecture, selector, log, schema) (41)
 
 - [[rounds/r05_planning-override.md]] — round-log
 - [[rounds/r06_depth-boost.md]] — round-log
@@ -175,6 +175,7 @@ category, drill into specific pages.
 - [[tool_selector.md]] — The local LLM's decision table — map what you OBSERVE in the first frames to the FIRST tool to run, with how-to-use, falsification (when it's failing → switch), and next-best. Perfect first pick within the tight budget.
 - [[architecture.md]] — Three-layer agent design — Cognition (LLM) / Memory (Wiki) / Action (Strategies) — with explicit dev-time vs Kaggle-time boundaries and a self-improvement loop.
 - [[log.md]] — Append-only chronological record of every dev-time round and significant infra change. Grep `^## \[` for latest entries.
+- [[rounds/r53_unified-harness.md]] — The runtime general agent as a retry loop: one offline model reads a minimal
 - [[selector.md]] — Feature-driven dispatch rules the Hypothesis Engine LLM uses to pick
 
 ## Raw sources

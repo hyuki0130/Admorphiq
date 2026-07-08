@@ -25,21 +25,24 @@ generic (triggers on frame features, never game identity).
 
 ## Per-tool: when to use / falsification / next-best
 
-### graph-frontier BFS  ([[rounds/r36_graph-frontier-bfs]])
+### graph  — graph-frontier BFS  ([[rounds/r36_graph-frontier-bfs]])
 - **Observable signature**: discrete state changes; a movable avatar; repeatable frames.
+- **Tool name**: `graph` (high avatar_mobility + has_movement).
 - **How to use**: let it build the transition graph and walk promising frontiers by tier.
 - **Falsification**: `recent_distinct` collapses to 1–2 while `bfs_fail/random` climb, or the same
   (frame,action) yields different next frames → the graph is aliasing; switch.
 - **Next-best**: de-aliasing state hash (partial observability) or the world-model tool.
 
-### paint-flood tool  (`src/admorphiq/tools/paint_flood.py`; perception core built + verified)
+### paint  — paint-flood tool  (`src/admorphiq/tools/paint_flood.py`)
+- **Tool name**: `paint` (high click_fraction; a click floods a region with one color).
 - **Observable signature**: an ACTION6 click turns a background region into one color
   (measured su15: `0→5`, 30–50 cells/click); palette small; static between clicks.
 - **How to use**: segment target vs filled; choose click points that flood uncovered target cells.
 - **Falsification**: clicks stop changing the fill fraction, or fill overshoots the target.
 - **Next-best**: executable world model (learn the exact fill rule) then plan.
 
-### de-aliasing state hash  (US-11; novel, no M1 winner has it)
+### dealias  — de-aliasing state hash  (US-11; novel, no M1 winner has it)
+- **Tool name**: `dealias` (high nondeterminism; augmentation, consulted by graph — not a mover).
 - **Observable signature**: identical visible frame + same action → different outcome (hidden
   timer/off-screen entity). Diagnostic: high nondeterminism under frame-hash (dc22/g50t/wa30/sc25).
 - **How to use**: augment the node hash for detected-aliased nodes with a bounded action-history
@@ -47,13 +50,23 @@ generic (triggers on frame features, never game identity).
 - **Falsification**: state count explodes (every step a new node) → the augmentation is too wide.
 - **Next-best**: shrink the k-gram; or CNN-RL if the game is reactive.
 
-### executable world model + goal planning  ([[rounds/r52_ewm-integration]])
+### world_model  — online world model + goal planning  ([[rounds/r52_ewm-integration]])
+- **Tool name**: `world_model` (low nondeterminism; deterministic learnable dynamics).
 - **Observable signature**: deterministic transitions learnable from ~tens of probes; a clear
   progress measure (object count / ordering / fill / on-target).
-- **How to use**: synthesize predict_next_frame from your own observations (adaptive configs,
-  train-fit select); roll out candidate actions toward the goal measure.
-- **Falsification**: train-fit stays < ~0.8, or planning picks moves that don't raise the measure.
-- **Next-best**: graph-frontier (cheap exhaustive) or CNN-RL.
+- **How to use**: learn the per-game transition table from your own probes; roll out candidate
+  actions toward the progress measure (foreground-object count, level-up bonus).
+- **Falsification**: model stays too sparse, or planning picks moves that don't raise the measure.
+- **Next-best**: graph (cheap exhaustive) or llm_goal (infer the target first).
+
+### llm_goal  — LLM goal inference  (`src/admorphiq/tools/llm_goal.py`)
+- **Tool name**: `llm_goal` (low avatar_mobility + large recolor_scale = transform/arrangement).
+- **Observable signature**: big regions recolor or rearrange; no clear avatar; the TARGET pattern
+  must be inferred, not searched (re86-class). Blind search plateaus here.
+- **How to use**: once per level, serialize frame + observed transitions, ask the offline model
+  "what is the level-complete target?"; then prefer actions reducing distance to that goal frame.
+- **Falsification**: LLM unreachable (degrade to empty), or inferred goal never guides progress.
+- **Next-best**: code (LLM writes bespoke solving Python) or world_model.
 
 ### CNN-RL online learner  ([[rounds/r36_graph-frontier-bfs]] era spine)
 - **Observable signature**: reactive/timing dynamics, dense small frame changes, sparse level reward.
@@ -61,7 +74,8 @@ generic (triggers on frame features, never game identity).
 - **Falsification**: no level cleared after the convergence budget; reward flat.
 - **Next-best**: graph-frontier or world-model.
 
-### dead-signature prior  (US-12; always-on efficiency)
+### deadsig  — dead-signature prior  (US-12; always-on efficiency)
+- **Tool name**: `deadsig` (always useful; augmentation that reorders, never removes).
 - **Observable signature**: an action class repeatedly produces no hash change.
 - **How to use**: deprioritize that class within its tier (never remove; one change revives it).
 - **Falsification**: none — it only reorders; a wrong guess costs one probe.

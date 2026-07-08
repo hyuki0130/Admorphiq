@@ -76,10 +76,13 @@ commit, and `[[backlinks]]`. Narrative overview + reliable-metric + resume steps
 | R50b | llm-bench-honest | HONEST K=8: gemma4-31b-q8 0.133/0.139 = deploy candidate ≫ gpt-oss-120b 0.039 (7x leak-inflated); ar25 0→0.80 genuine climb; ⛔ pre-R50b absolutes are leak-inflated | — | [[r50b_honest-k8]] |
 | R51 | ewm-quality | few=40/prior sweep: no single config > f15 0.133, BUT per-game config-UNION 0.211 (1.6x) → adaptive multi-config synthesis; 10/18 stable zero-set ⛔ no more config sweeps for those | — | [[r51_fewshot-prior-sweep]] |
 | R52 | ewm-integration | GF_EWM hook built (default OFF) + measured: score delta +0.0000 NULL — no-change pruning redundant with empirical self-loop learning; runtime fit 0.357 (3/24 > gate); R53 = goal-conditioned WM | pending | [[r52_ewm-integration]] |
+| R53 | harness-architecture | 6 generic tools RE-IMPLEMENTED (graph/world_model/dealias/deadsig/paint/llm_goal) on a shared Tool contract + UnifiedAgent self-improving loop (signature → minimal wiki slice → pick tool OR write code → feed-back → re-decide on stall); code-agent alone re86=0/8 → frontier needs the combined loop; 655 tests | b533ca4 | [[r53_unified-harness]] |
 
 - **graph-search / hud-masking / frontier-bfs**: [[r36_graph-frontier-bfs]] (the deep-level axis; offline env.step ~1000+/s discovery)
 - **forward-model transfer / pretrain**: [[r35_forward-transfer]] (dynamics 52.4% vs BC 0%; pos_weight collapse fix)
 - **metric-calibration / baselines**: [[r34_metric-reexamination]] (random=0.0000 measured; real RHAE top=0.1258; purge the bogus 0.18/0.25/1.21)
+
+- **harness / unified-agent / generic-tools / self-improving-loop**: [[r53_unified-harness]] (6 tools re-implemented on a Tool contract + UnifiedAgent retry loop; minimal signature-targeted wiki context, HARNESS_CTX sweep lever; code-agent alone re86=0/8 → frontier needs the combined loop)
 
 - **llm-selection / executable-world-model**: [[r48_llm-selection-ewm]] (candidate research; verdict superseded by R50), [[r49_ewm-bench-partial]] (local 3-way; ⛔ 18GB Ollama models crash the 24GB dev Mac), [[r50_cloud-bench-k3]] (Kaggle-identical HW; leakage fix), [[r50b_honest-k8]] (HONEST baseline: gemma4-31b-q8 0.133/0.139 deploy candidate; ⛔ pre-R50b absolutes leak-inflated), [[r51_fewshot-prior-sweep]] (config-UNION 0.211 → adaptive synthesis; stable zero-set 10/18), [[r52_ewm-integration]] (GF_EWM runtime hook default-OFF; no-change pruning NULL; R53 = goal-conditioned WM)
 

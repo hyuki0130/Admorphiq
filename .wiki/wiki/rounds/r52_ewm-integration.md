@@ -58,4 +58,6 @@ synthesized `predict_next_frame` into goal-conditioned search (the `planner/goal
 already exists), gated on high train-fit, measured on the games where fit clears the gate.
 
 **Related**: [[r51_fewshot-prior-sweep]] (config union the synthesizer deploys), [[r50b_honest-k8]]
-(honest protocol + train-fit selection), [[r36_graph-frontier-bfs]] (the host agent).
+(honest protocol + train-fit selection), [[r36_graph-frontier-bfs]] (the host agent),
+[[r53_unified-harness]] (generalizes this EWM hook into the `world_model` + `llm_goal` tools of
+the unified self-improving loop).
