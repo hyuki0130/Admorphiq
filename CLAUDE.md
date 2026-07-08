@@ -409,6 +409,31 @@ scripts/
 > Both tracks coexist: BC v6 is the safety net; the general agent is the climb.
 > Doc: `docs/sprint_m1_architecture_20260625.md` (post-M1 direction section).
 
+> **🧪 EXECUTABLE-WM TRACK (R48–R52, updated 2026-07-08) — measured facts; consult
+> `.wiki/wiki/rounds/index.md` before touching this axis.**
+> The LLM synthesizes `predict_next_frame(frame, action, xy)` in Python from the
+> agent's OWN observed transitions, refines it on execution feedback from TRAIN
+> mismatches only (held-out feedback = leakage, found+fixed in R50b), and the
+> deploy pick is train-fit-selected. Model selection is MEASURED, not surveyed:
+> - **Deploy candidate: gemma4-31b-q8** — honest K=8 exact-frame 0.133/0.139
+>   (18-game bench). gpt-oss-120b 0.039 (its leaky #2 was 7x leak-inflated);
+>   **Qwen3-Coder family ELIMINATED** (0.072 even at q8 — coding-bench rank does
+>   not transfer to rule induction). Local dev proxy: gpt-oss:20b (13GB fits the
+>   24GB Mac; ⛔ never load ≥18GB Ollama models locally — WindowServer crash).
+> - **No single prompt config wins** (R51): few=15/40 and mechanics-prior are
+>   game- and model-dependent; per-game config-UNION = 0.211 vs 0.133 best-fixed
+>   → runtime = adaptive multi-config synthesis selected by train-fit
+>   (`src/admorphiq/ewm/synthesizer.py`). Stable zero-set: 10/18 games score 0
+>   under ALL honest configs — those stay graph/RL territory; ⛔ no more config
+>   sweeps hoping they flip.
+> - **Integration (R52)**: `GF_EWM=1` (default OFF = byte-identical card) —
+>   the graph-frontier agent logs its own transitions, synthesizes once per game,
+>   keeps the model only at fit ≥ `GF_EWM_MIN_FIT`, and deprioritizes untried
+>   actions predicted no-change within their tier. Core shared primitives live in
+>   `src/admorphiq/ewm/core.py` (bench imports them; one implementation).
+> - Cloud bench env: GCP `g4-standard-48` spot VM (`ewm-bench`, asia-east1-a,
+>   STOPPED between rounds) = the exact Kaggle machine; free-trial credits.
+
 **Architecture decision (2026-04-20)**: Adopt [Karpathy's LLM Wiki pattern](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f) — markdown knowledge base maintained by LLM at dev-time, read by inference LLM at Kaggle-time. No vector DB (incompatible with Kaggle internet constraint).
 
 **Reference analysis**: see [`docs/llm_wiki_karpathy_analysis_ko.md`](docs/llm_wiki_karpathy_analysis_ko.md) for the full Karpathy pattern breakdown and the Admorphiq gap table (log.md missing, lint pass missing, ingest-workflow not ritualised, query→page refiling not systematic). R23+ roadmap below absorbs the gaps as dedicated sub-rounds.
@@ -690,7 +715,11 @@ wiki or downgrade the decoder schema.
 
 ## LLM Selection (Phase 8 Hypothesis Engine)
 
-**Status**: 🔄 **Model undecided — pending Step 3-pre benchmark (Task #11)**. Do not pre-commit in scripts/docs; refer to the chosen model via config, not hardcoded imports.
+**Status**: ✅ **RESOLVED by measurement for the executable-WM role (R48–R51, 2026-07)**:
+deploy candidate **gemma4-31b-q8** (honest 0.133/0.139); Qwen3-Coder family eliminated;
+local dev proxy gpt-oss:20b. See the Executable-WM Track blockquote in Phase 8 and
+`.wiki/wiki/rounds/index.md`. The candidate matrix below is the ORIGINAL (stale) survey,
+kept for provenance only — its VRAM math predates the 96GB hardware correction.
 
 **Why an LLM is needed**: Current high-scoring solvers depend on game-internal access (sprite tags, internal variables) that won't generalize to private test games. An LLM converts frame observations into rule hypotheses without source-code peek.
 
