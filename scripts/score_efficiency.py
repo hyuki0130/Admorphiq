@@ -93,9 +93,12 @@ def _make_agent(name: str, game_id: str | None = None):
         # the wiki-context char budget the bench sweeps for performance.
         ctx = int(os.environ.get("HARNESS_CTX", "6000"))
         giveup = int(os.environ.get("GF_GIVEUP", "8000"))
-        # stall must exceed a tool's warm-up (graph HUD ~16, world_model table)
-        # so a freshly-picked tool is not retired before it can establish itself.
-        stall = int(os.environ.get("HARNESS_STALL", "30"))
+        # stall = how many steps WITHOUT reaching a new state before a tool is
+        # retired. It must be generous: a graph tool legitimately revisits states
+        # while BFS-walking to a distant frontier, and needs a long uninterrupted
+        # run to clear (measured: it clears m0r0/vc33 alone but was retired too
+        # early inside the harness). Default 80; the bench can override.
+        stall = int(os.environ.get("HARNESS_STALL", "80"))
         return UnifiedAgent(
             default_tools(), ollama_llm(), giveup=giveup, stall=stall, ctx_budget=ctx
         )

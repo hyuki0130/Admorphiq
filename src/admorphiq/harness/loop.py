@@ -142,8 +142,16 @@ class UnifiedAgent:
         # the loop swaps strategy instead of re-picking the proven-failed tool.
         if self._current is not None:
             self._failed.add(self._current)
+        prev_current = self._current
         mode, tool = self._decide(sig)
         self._current = tool if mode == "tool" else "code"
+        # On a switch to a different tool, reset it so it starts from a clean
+        # model (it may hold stale/polluted state from an earlier tenure). The
+        # tool then builds its model purely from its OWN upcoming actions.
+        if self._current != prev_current and self._current != "code":
+            active = self.tools.get(self._current)
+            if active is not None:
+                active.reset()
         if self._current not in self._tried:
             self._tried.append(self._current)
         # Diagnostic trace (stderr) so a bench log shows the routing decision:
@@ -213,11 +221,18 @@ class UnifiedAgent:
             changed = bool((self._prev_frame != frame).any())
             self._transitions.append((self._prev_frame, self._prev_step[0], frame))
             self._transitions = self._transitions[-256:]
-            for t in self.tools.values():
-                try:
-                    t.observe(self._prev_frame, self._prev_step, changed)
-                except Exception:  # noqa: BLE001
-                    pass
+            # Feed the transition ONLY to the tool that chose the action. Feeding
+            # every tool pollutes a stateful tool's model (a graph's edges, a
+            # world-model's table) with actions ANOTHER tool picked — measured to
+            # break the graph tool inside the harness even though it clears the
+            # same game when run alone. Each tool now sees only its own actions.
+            if self._current is not None and self._current != "code":
+                active = self.tools.get(self._current)
+                if active is not None:
+                    try:
+                        active.observe(self._prev_frame, self._prev_step, changed)
+                    except Exception:  # noqa: BLE001
+                        pass
             # Progress = reaching a NOVEL state, not merely "the frame changed".
             # A tool that keeps mutating a small set of frames (e.g. paint clicks
             # toggling regions) changes the frame every step yet makes no progress
