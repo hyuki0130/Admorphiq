@@ -181,6 +181,29 @@ def test_dealias_composition_splits_hidden_state():
     assert tool._node_key(amb) != base_hash(amb)
 
 
+def test_dense_click_grid_only_for_click_only_games():
+    """Purpose: a click-only game (no movement ids) must register a dense
+    whole-board click grid so background/unlit cells are reachable (lights-out),
+    while a game WITH movement keeps the cheap centroid-only set — no regression
+    to the navigation games that already clear.
+
+    Expected feedback: pass ⇒ toggle games get board coverage and navigation
+    games are untouched; fail ⇒ either lights-out cells stay unreachable or
+    navigation exploration is diluted by needless clicks.
+    """
+    tool = GraphSearchTool()
+    frame = np.zeros((32, 32), dtype=np.int64)
+    frame[5, 5] = 2  # one small foreground object -> one centroid
+
+    tool._ensure_state("click_only", frame, [], action6_ok=True)   # no movement
+    tool._ensure_state("with_move", frame, [1, 2, 3, 4], action6_ok=True)
+
+    click_only = [a for a in tool._untried["click_only"] if isinstance(a, tuple)]
+    with_move = [a for a in tool._untried["with_move"] if isinstance(a, tuple)]
+    assert len(click_only) > len(with_move)   # dense grid added only sans movement
+    assert len(with_move) <= tool.max_clicks  # movement game keeps the small set
+
+
 def test_no_game_specifics_in_source():
     """Purpose: generality guard — the tool must contain no game ids, titles, or
     sprite tags so it transfers to the unseen private games.

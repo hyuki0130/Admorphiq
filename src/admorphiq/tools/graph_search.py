@@ -58,6 +58,11 @@ _LOCAL_BBOX_FRAC = 0.15   # changed bbox area must be <= this fraction of the gr
 # makes every true-state look new) can't explode the state graph.
 _HUD_WARMUP = 16
 _HUD_FRAC = 0.60
+# Dense click grid for click-ONLY games (no movement): ~this many points per row
+# and a hard cap, so toggle/lights-out games can click currently-background cells
+# that have no foreground centroid. Never used when movement actions exist.
+_DENSE_GRID_N = 8
+_DENSE_MAX_CLICKS = 40
 
 
 def _norm_grid(arr: Any) -> np.ndarray:
@@ -73,28 +78,44 @@ def _norm_grid(arr: Any) -> np.ndarray:
     return a.astype(np.int64)
 
 
-def _click_candidates(frame: np.ndarray, max_clicks: int = _MAX_CLICKS) -> list[tuple[int, int]]:
+def _click_candidates(
+    frame: np.ndarray, max_clicks: int = _MAX_CLICKS, *, dense: bool = False
+) -> list[tuple[int, int]]:
     """Reduce ACTION6 to a small salience-ordered set of ``(x, y)`` click points.
 
     Segments the frame into 4-connected foreground components (background = the
     most common colour) and returns their centroids as ``(x=col, y=row)`` — the
     ACTION6 convention. Smaller components first: a small blob is more likely a
     button/token than a large passive field. Deduplicated, capped at ``max_clicks``.
+
+    ``dense`` appends a coarse whole-board grid AFTER the centroids: toggle/
+    lights-out games require clicking cells that are currently BACKGROUND (to turn
+    them on), which have no foreground component and so no centroid. The grid
+    covers those. It is gated by the caller to click-only games (no movement), so
+    navigation games keep the cheap centroid-only set and are never diluted.
     """
     comps = connected_components(frame)
     comps.sort(key=lambda c: (c["size"], c["centroid"]))
     out: list[tuple[int, int]] = []
     seen: set[tuple[int, int]] = set()
+
+    def _add(x: int, y: int) -> None:
+        if (x, y) not in seen:
+            seen.add((x, y))
+            out.append((x, y))
+
     for comp in comps:
         cy, cx = comp["centroid"]
-        x, y = int(round(cx)), int(round(cy))
-        if (x, y) in seen:
-            continue
-        seen.add((x, y))
-        out.append((x, y))
-        if len(out) >= max_clicks:
+        _add(int(round(cx)), int(round(cy)))
+        if not dense and len(out) >= max_clicks:
             break
-    return out
+    if dense:
+        h, w = frame.shape
+        step = max(4, min(h, w) // _DENSE_GRID_N)
+        for gy in range(step // 2, h, step):
+            for gx in range(step // 2, w, step):
+                _add(gx, gy)
+    return out[:_DENSE_MAX_CLICKS if dense else max_clicks]
 
 
 def _step_to_key(step: Step) -> Any:
@@ -287,13 +308,16 @@ class GraphSearchTool:
 
         Simple actions (1-5) are registered before any click so a fresh state is
         probed with cheap movement first; ACTION6 clicks come from the salience-
-        ordered segment centroids.
+        ordered segment centroids. When NO movement action exists (a click-only
+        game — lights-out/toggle), a dense whole-board click grid is added so
+        currently-background cells (which have no centroid) are reachable.
         """
         if state_hash in self._untried:
             return
         actions: list[Any] = [int(a) for a in simple_ids]
         if action6_ok:
-            for x, y in _click_candidates(frame, self.max_clicks):
+            dense = not any(1 <= a <= 4 for a in simple_ids)
+            for x, y in _click_candidates(frame, self.max_clicks, dense=dense):
                 actions.append(("click", int(x), int(y)))
         self._untried[state_hash] = actions
         self._edges.setdefault(state_hash, {})
