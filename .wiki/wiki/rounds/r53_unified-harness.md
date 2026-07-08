@@ -100,13 +100,47 @@ which `loop.py` does. A per-action LLM call would be untenable here.
   FT09, LP85** (all base>0). Next bench targets those — does gemma4-31b pick the
   tool that matches/beats the baseline on games that are actually winnable?
 
+## Decisive bench findings (2026-07-08, base>0 games)
+
+Three loop bugs found+fixed by measurement on games the graph_frontier baseline
+DOES clear (so a harness 0 is a real shortfall, not game difficulty):
+
+1. **restart_on_game_over missing** — UnifiedAgent/code_agent didn't set it, so
+   the score harness broke at the FIRST avatar death (measured 50–151 actions/
+   game, 0 levels). graph_frontier sets it and runs the full budget. Fixed →
+   games now run to budget (cd82 100 → 2000 actions).
+2. **LLM called every empty queue** — a tool proposing few steps triggered an
+   LLM decision per action (untenable under gemma SWA). Split into _redecide
+   (LLM, only first/stall) + _continue (same tool, no LLM). Measured: 1 LLM
+   call/game when a tool progresses.
+3. **"frame changed" ≠ progress** — for cd82 the LLM picked `paint`; paint
+   clicks kept changing the frame so the loop NEVER stalled/re-decided and
+   wandered 2000 actions on one wrong tool (score 0). Fixed: progress =
+   reaching a NOVEL frame-hash; a stalled tool is RETIRED for the level and the
+   next decision excludes it (swap-on-failure). Measured after fix: cd82 now
+   cycles **all 7 tools** (graph/dealias/world_model/paint/llm_goal/deadsig/
+   code), each stalling after 12 steps.
+
+**The remaining gap is TOOL STRENGTH, not routing.** With routing fixed, the
+loop correctly tries every tool on cd82, but NONE clears it — while the legacy
+graph_frontier clears cd82 L1 at the SAME 2000-action budget (measured 0.0012).
+cd82's signature is `avatar_mobility=1.00; nondeterminism=0.77` — high
+nondeterminism = frame-hash **aliasing** (a HUD/step element the legacy agent
+strips via HUD-masking). The re-authored 293-line `graph` tool lacks that, so
+its BFS sees a churning state space and can't navigate. **Next: strengthen the
+generic tools to baseline parity — starting with HUD-masking in `graph` (the
+highest-leverage, aliasing-driven miss), then `world_model`/`dealias`.** This is
+the "Claude solves the games to build strong generic tools" phase; the harness
+spine + routing are done and measured.
+
+Note: graph_frontier_agent.py is itself GENERIC (grep-clean of game ids) — the
+"don't reuse legacy" directive targeted the sprite-tag analytical solvers, not
+the frontier engine; the re-authored tools must reach its generic techniques.
+
 ## Pending
 
-`--agent unified` full-game bench (ar25 navigation + re86 frontier) running on
-the Kaggle-identical VM to measure whether gemma4-31b picks the
-signature-matching tool and whether the combined loop clears anything the
-pre-built orchestration (≈ baseline) could not. Also open: the `HARNESS_CTX`
-context-size sweep for the performance/window trade-off.
+`HARNESS_CTX` context-size sweep (`scripts/harness_ctx_sweep.py`) once a tool
+clears a base>0 game, so the sweep optimises a non-zero signal.
 
 ## Related
 
