@@ -118,6 +118,39 @@ def test_propose_reaches_unexplored_frontier():
     assert tool._edges[ha][steps[0][0]] == hb  # and that action reaches frontier B
 
 
+def test_hud_masking_stabilizes_aliased_state():
+    """Purpose: a churning HUD (a step counter that changes every action) makes
+    every true-state hash differently and explodes the graph. After warmup the
+    tool must freeze a HUD mask so two frames that differ ONLY in the HUD hash
+    identically — the fix for the measured cd82 aliasing (nondeterminism 0.77).
+
+    Expected feedback: pass ⇒ HUD is masked and BFS sees a stable state space;
+    fail ⇒ aliasing persists and navigation games with a counter stay unclearable.
+    """
+    from admorphiq.tools.graph_search import _HUD_WARMUP, GraphSearchTool
+
+    tool = GraphSearchTool()
+    size = 8
+    # Feed transitions whose ONLY per-step change is a HUD counter at (0,0);
+    # the avatar sits still at (4,4) so any residual hash change is pure HUD.
+    for i in range(_HUD_WARMUP + 3):
+        f = np.zeros((size, size), dtype=np.int64)
+        f[4, 4] = 1              # static avatar
+        f[0, 0] = i % 5 + 1      # HUD counter cycling 1..5
+        tool.observe(f, (1, None), True)
+
+    # Two frames identical but for the HUD must now hash the same under the mask.
+    a = np.zeros((size, size), dtype=np.int64)
+    a[4, 4] = 1
+    a[0, 0] = 2
+    b = np.zeros((size, size), dtype=np.int64)
+    b[4, 4] = 1
+    b[0, 0] = 5
+    assert tool._mask is not None            # mask was frozen at warmup
+    assert bool(tool._mask[0, 0])            # the HUD cell is masked
+    assert tool._mhash(a) == tool._mhash(b)  # HUD-only difference is erased
+
+
 def test_no_game_specifics_in_source():
     """Purpose: generality guard — the tool must contain no game ids, titles, or
     sprite tags so it transfers to the unseen private games.

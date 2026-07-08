@@ -52,6 +52,12 @@ _MAX_CLICKS = 14
 # Locality gates for the movement (avatar-mobility) detection signature.
 _LOCAL_CELL_FRAC = 0.05   # changed cells must be <= this fraction of the grid
 _LOCAL_BBOX_FRAC = 0.15   # changed bbox area must be <= this fraction of the grid
+# HUD masking: after this many observed transitions, freeze a mask of cells that
+# changed in >= _HUD_FRAC of them (step counters / timers / animated overlays)
+# and hash the frame with those cells zeroed, so aliasing (a churning HUD that
+# makes every true-state look new) can't explode the state graph.
+_HUD_WARMUP = 24
+_HUD_FRAC = 0.60
 
 
 def _norm_grid(arr: Any) -> np.ndarray:
@@ -130,6 +136,47 @@ class GraphSearchTool:
         self._preds: dict[str, list[tuple[str, Any]]] = {}
         # A change-transition whose target hash is resolved on the next propose.
         self._pending: tuple[str, Any] | None = None
+        # HUD masking accumulators (built from consecutive observed prev frames).
+        self._chg: np.ndarray | None = None   # per-cell change count
+        self._nchg = 0                          # transitions folded into _chg
+        self._prev_obs: np.ndarray | None = None
+        self._mask: np.ndarray | None = None    # frozen HUD mask (bool H×W)
+
+    def _mhash(self, frame: np.ndarray) -> str:
+        """Hash the frame with frozen-HUD cells zeroed (identity until the mask
+        is frozen at warmup, so early and late hashes of a true-state agree once
+        the graph is rebuilt on freeze)."""
+        if self._mask is None:
+            return base_hash(frame)
+        g = frame.copy()
+        g[self._mask] = 0
+        return base_hash(g)
+
+    def _accumulate_hud(self, prev: np.ndarray) -> None:
+        """Fold one frame into the per-cell change map; freeze the HUD mask once
+        warmup is reached and drop the (now stale, raw-hashed) graph so it
+        rebuilds under masked hashes."""
+        if self._mask is not None:
+            return
+        if self._prev_obs is not None and self._prev_obs.shape == prev.shape:
+            if self._chg is None:
+                self._chg = np.zeros(prev.shape, dtype=np.int64)
+            self._chg += (self._prev_obs != prev).astype(np.int64)
+            self._nchg += 1
+            if self._nchg >= _HUD_WARMUP and self._chg is not None:
+                mask = self._chg >= (_HUD_FRAC * self._nchg)
+                # Only bother if the HUD is a minority of the board (else masking
+                # would erase the game itself — treat that as "no HUD").
+                if 0 < int(mask.sum()) <= mask.size // 3:
+                    self._mask = mask
+                    self._edges.clear()
+                    self._untried.clear()
+                    self._tries.clear()
+                    self._preds.clear()
+                    self._pending = None
+                else:
+                    self._mask = np.zeros(prev.shape, dtype=bool)  # freeze: no HUD
+        self._prev_obs = prev
 
     def detect(self, frames: list[Any], obs: Any) -> float:
         """Frame-only confidence that this is a graph/navigation game.
@@ -168,7 +215,9 @@ class GraphSearchTool:
         records a self-loop edge immediately; a change stashes the source so the
         edge's target hash is completed on the next :meth:`propose`.
         """
-        prev_hash = base_hash(_norm_grid(prev))
+        prev_grid = _norm_grid(prev)
+        self._accumulate_hud(prev_grid)
+        prev_hash = self._mhash(prev_grid)
         key = _step_to_key(action)
         untried = self._untried.get(prev_hash)
         if untried and key in untried:
@@ -193,7 +242,7 @@ class GraphSearchTool:
         if not has_frame(obs):
             return []
         frame = frame_2d(obs)
-        cur_hash = base_hash(frame)
+        cur_hash = self._mhash(frame)
 
         if self._pending is not None:
             p_hash, p_key = self._pending
