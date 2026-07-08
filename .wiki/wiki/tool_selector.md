@@ -96,3 +96,16 @@ NO state explosion (graph 431 states). So the novel primitive (no M1 winner has 
 partial observability and separates true-states surgically; it just doesn't single-handedly clear
 the hardest game — it must COMPOSE with exploration/goal work. Valid tested library primitive;
 keep default-OFF; compose, don't expect solo clears on the frontier games.
+
+## Finding (2026-07-08): the frontier bottleneck is GOAL INFERENCE, not action mechanics
+Deep transition analysis of re86: ACTION1-4 each recolor ~48 cells among {5,9,11} (a
+TRANSFORM/arrangement mechanic — regions swap color, not object translation, hence
+avatar_mobility=0), ACTION5 = small commit. Board ~95% color 5. re86 is a color-arrangement
+puzzle: the actions are LEARNABLE, but clearing needs the TARGET pattern to search toward.
+This is the recurring wall across the hard games (also R53 ft09: world-model fit=1.0 but the
+inferred goal was wrong → 0 clears). => The highest-value NEXT tool is GOAL INFERENCE — use the
+offline LLM to infer the level-completion target (fill-to-color / match-pattern / sort-order /
+symmetry) from observations, then feed goal_directed_plan (planner/goal.py) + the world model.
+Heuristics can't infer arbitrary goals; the LLM's unique value here is reasoning "what is this
+level asking for?". Build: LLM goal-inference tool -> goal_directed_plan, measured on re86/ft09/
+transform-class games. Do NOT keep adding action-mechanic tools without a goal signal.
