@@ -68,6 +68,19 @@ harness parser retrieves all six (was retrieving only 3 — graph/paint/code).
 - Loop control flow verified offline: 655 tests pass (+50 — tool contracts,
   loop orchestration, minimal-context budget/retrieval), ruff clean.
 
+## Measured: LLM-call latency is the runtime budget constraint
+
+VM ollama logs during the `--agent unified` bench show gemma4-31b **re-processes
+the full ~2.4K-token prompt on every call** — `forcing full prompt re-processing
+due to lack of cache data (SWA)`: gemma's sliding-window attention defeats
+prompt caching, so each decision-boundary LLM call is expensive (several
+seconds). Across the 9h / 110-game Kaggle budget this makes the NUMBER of LLM
+calls the binding cost, not the tool execution. Two direct consequences the
+harness already anticipates: (a) keep `HARNESS_CTX` small — smaller context is
+both faster and (for a weak model) more accurate (the `harness_ctx_sweep.py`
+lever); (b) decide at BOUNDARIES only (queue-empty / stall), never per action —
+which `loop.py` does. A per-action LLM call would be untenable here.
+
 ## Pending
 
 `--agent unified` full-game bench (ar25 navigation + re86 frontier) running on
