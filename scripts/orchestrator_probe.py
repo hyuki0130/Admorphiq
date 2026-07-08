@@ -26,7 +26,9 @@ sys.path.insert(0, str(REPO / "src"))
 
 # The tool menu the model must choose from (mirrors tool_selector.md rows).
 TOOL_MENU = """Available tools (pick the FIRST to run):
-- graph_frontier: movable avatar, discrete one-cell moves, walls block; navigation/state-space.
+- graph_frontier: HIGH avatar_mobility (small object translates under directional actions) =>
+  navigation/state-space; walls block. Prefer over paint_flood when avatar_mobility is high even
+  if avg_changed_cells is large.
 - paint_flood: an ACTION6 click fills a connected region with one color; goal is a coloring.
 - dealias_graph: same frame+action gives DIFFERENT results (hidden timer/off-screen) -> de-alias then graph.
 - world_model_plan: transitions learnable + a monotone progress measure (count/order/fill).
@@ -64,9 +66,24 @@ def _signature(game: str) -> str:
         else:
             seen[k] = h
     click_heavy = float(np.mean([a >= 5 for a in ac]))  # ACTION6 index >= 5
+    # Movement discriminator (fixes ar25 mis-route): does a SMALL object TRANSLATE
+    # under simple directional actions (navigation) vs a big repaint? For each
+    # simple-action (idx 0-3) changed transition, is the changed region a small,
+    # spatially-compact bbox (an object moved a step)?
+    simple_small = simple_n = 0
+    for i in range(n):
+        if int(ac[i]) < 4 and changed[i] > 0:
+            simple_n += 1
+            ys, xs = np.where(fr[i] != nf[i])
+            bbox = (ys.max() - ys.min() + 1) * (xs.max() - xs.min() + 1)
+            # compact + small changed set => object translation, not a repaint
+            if changed[i] <= 40 and bbox <= 400:
+                simple_small += 1
+    mobility = simple_small / simple_n if simple_n else 0.0
     return (
         f"avg_changed_cells={changed[changed > 0].mean():.0f}; "
         f"click_action_fraction={click_heavy:.2f}; "
+        f"avatar_mobility={mobility:.2f} (small object translates under directional actions); "
         f"nondeterminism={nd / max(1, pairs):.2f}; "
         f"palette={sorted(set(np.unique(_first_frame(game)).tolist()))}"
     )

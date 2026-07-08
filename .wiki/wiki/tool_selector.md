@@ -16,7 +16,7 @@ generic (triggers on frame features, never game identity).
 
 | If you observe … | Run FIRST | Because |
 |---|---|---|
-| A player avatar that MOVES one cell per directional action; walls/borders block it | **graph-frontier BFS** | exact transition graph + shortest-path frontier clears navigation/state-space games (our 18/25 engine) |
+| HIGH `avatar_mobility` — a small object TRANSLATES under directional actions (walls block) | **graph-frontier BFS** | navigation/state-space; the exact transition graph + shortest-path frontier clears it (our 18/25 engine). Beats paint_flood whenever avatar_mobility is high EVEN IF avg_changed_cells is large (R53 probe: ar25 mis-routed to paint without this signal) |
 | A click (ACTION6) FILLS a connected region with one color (flood); goal is a color/pattern | **paint-flood tool** | plan clicks to fill toward the target coloring |
 | Same frame + same action gives DIFFERENT next frames (a counter/timer/off-screen thing) | **de-aliasing state hash** → then graph-frontier | the frame hides state; de-alias so the graph stops corrupting (no M1 winner does this) |
 | Transitions look learnable AND a monotone progress measure exists (count/order/fill) | **executable world model + goal planning** | synthesize predict_next_frame, roll out toward the goal measure |
