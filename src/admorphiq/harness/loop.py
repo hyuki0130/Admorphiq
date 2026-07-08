@@ -15,6 +15,7 @@ runtime, a fake in tests), so the loop is fully testable offline.
 from __future__ import annotations
 
 import re
+import sys
 from typing import Any, Callable
 
 import numpy as np
@@ -127,6 +128,13 @@ class UnifiedAgent:
         self._current = tool if mode == "tool" else "code"
         if self._current not in self._tried:
             self._tried.append(self._current)
+        # Diagnostic trace (stderr) so a bench log shows the routing decision:
+        # which tool the model picked for which signature, and why it re-decided.
+        print(
+            f"[harness] step={self._steps} pick={self._current} "
+            f"sig=[{sig.as_line()}] feedback={self._feedback!r}",
+            file=sys.stderr, flush=True,
+        )
         self._fill_from_current(frames, obs)
 
     def _continue(self, frames: list[Any], obs: Any) -> None:
