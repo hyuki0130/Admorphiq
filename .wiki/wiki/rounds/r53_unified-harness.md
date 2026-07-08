@@ -81,6 +81,19 @@ both faster and (for a weak model) more accurate (the `harness_ctx_sweep.py`
 lever); (b) decide at BOUNDARIES only (queue-empty / stall), never per action —
 which `loop.py` does. A per-action LLM call would be untenable here.
 
+## Partial bench (2026-07-08, in progress)
+
+- **re86 = 0/8** (frontier transform) under `--agent unified`, budget 400 — the
+  game consumed only ~100 actions before the env stopped progressing. Consistent
+  with expectation: re86 is a graph-blocked transform game; the code-agent alone
+  also scored 0/8, and the EWM track already flagged this class. NOT evidence of
+  a harness bug — no tool/code path fits a target that must be inferred and the
+  loop correctly falls through them. (To verify the 100-action stop isn't a
+  RESET-loop artefact, compare against the graph_frontier baseline on re86.)
+- **ar25** (navigation — the `graph` tool SHOULD clear it) running now: this is
+  the decisive end-to-end test that gemma4-31b picks `graph` from the movement
+  signature and the loop clears a game it ought to.
+
 ## Pending
 
 `--agent unified` full-game bench (ar25 navigation + re86 frontier) running on
