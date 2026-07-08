@@ -8,7 +8,7 @@ description: The mission architecture — an LLM orchestrator that, per unseen g
 
 # Self-improving tool-orchestrating agent (north-star)
 
-> Per unseen game, an offline LLM (Qwen 3.6-27B, 96GB) SELECTS and APPLIES a library of our
+> Per unseen game, the offline runtime brain (the MEASURED-best model on 96GB — currently gemma4-31b-q8 per R50b; re-benched on this harness; candidates gemma4-31b / gpt-oss-120b / Qwen 3.6-27B) SELECTS and APPLIES a library of our
 > own improvable algorithms (graph-frontier, CNN-RL, executable world model, segmentation,
 > de-aliasing), OBSERVES failures, EDITS the tool code / retunes the models, and LEARNS while
 > solving — a closed apply→diagnose→improve loop. Not a copy of any M1 winner; our original
@@ -37,7 +37,7 @@ games:
   on frame features, never game ids) as the reusable library. The strength of the runtime agent
   is bounded by the strength of this library; a weak local LLM orchestrating weak tools solves
   nothing.
-- **Local LLM (Qwen 3.6-27B, runtime) ORCHESTRATES + ADAPTS the tools.** It selects which tool
+- **Local LLM (measured-best model, runtime) ORCHESTRATES + ADAPTS the tools.** It selects which tool
   fits the observed mechanics, applies it, diagnoses failure, and tunes/edits — but it stands on
   Claude's strong generic primitives, it does not invent them.
 
@@ -72,9 +72,9 @@ them produces an unrealizable Kaggle design.
   the orchestrator forms an improvement plan; each tool-agent edits its own code and re-runs;
   loop until the tool clears the game class generically. This is how the strong, generic tool
   library gets BUILT (realizable now via the Agent/Workflow tools).
-- **KAGGLE-RUNTIME (Qwen 3.6-27B, offline) — single brain + parallel TOOL EXECUTION.** One GPU,
+- **KAGGLE-RUNTIME (measured-best model, offline) — single brain + parallel TOOL EXECUTION.** One GPU,
   no internet, no second LLM. "Parallel" here = running multiple applicable TOOL CODES
-  concurrently (cheap) and having the SINGLE Qwen read their feedback, pick/compose/retune, and
+  concurrently (cheap) and having the SINGLE runtime model read their feedback, pick/compose/retune, and
   edit code Tufa-REPL-style. NOT multiple LLM agents. The wiki ([[tool_selector]]) makes Qwen's
   first pick accurate so few tools need running.
 
@@ -90,7 +90,7 @@ dev-time → Qwen-single-brain runtime).
    - executable world model (LLM-synthesized `predict_next_frame` + goal planning) — R49-R53
    - hidden-state DE-ALIASING state hash (US-11) — the novel primitive no M1 winner has
    - dead-signature / action priors (US-12), segmentation, goal inference
-2. **LLM orchestrator (Qwen 3.6-27B, offline)** — per game: reason about which tool(s) fit the
+2. **LLM orchestrator (measured-best offline model, currently gemma4-31b-q8)** — per game: reason about which tool(s) fit the
    observed mechanics; apply; read the failure envelope (levels=0, plateau, frame-aliasing,
    fit<gate); then EDIT the tool's parameters or CODE, or compose tools, and retry.
 3. **Closed self-improvement loop** (per unseen game, within the action/time budget):

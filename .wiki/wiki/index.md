@@ -171,7 +171,7 @@ category, drill into specific pages.
 - [[rounds/r50b_honest-k8.md]] — Leakage-free K=8 on Kaggle-identical HW — gemma4-31b-q8 0.133/0.139 is the real EWM baseline; gpt-oss-120b collapses to 0.039; prior "hard game unlocks" were held-out-leak mirages
 - [[rounds/r51_fewshot-prior-sweep.md]] — Two-axis sweep (few 15→40, mechanics prior) x 2 models — averages flat but effects are strongly game- and model-dependent; per-game union 0.211 motivates runtime adaptive-config synthesis
 - [[rounds/r52_ewm-integration.md]] — Productized the R49-R51 EWM into the deployed agent (GF_EWM, default OFF) — mechanically works but scores identically to baseline; the no-change pruning signal is redundant with empirical exploration, and runtime fit is far below bench fit
-- [[architecture_self_improving_agent.md]] — Per unseen game, an offline LLM (Qwen 3.6-27B, 96GB) SELECTS and APPLIES a library of our
+- [[architecture_self_improving_agent.md]] — Per unseen game, the offline runtime brain (the MEASURED-best model on 96GB — currently gemma4-31b-q8 per R50b; re-benched on this harness; candidates gemma4-31b / gpt-oss-120b / Qwen 3.6-27B) SELECTS and APPLIES a library of our
 - [[tool_selector.md]] — The local LLM's decision table — map what you OBSERVE in the first frames to the FIRST tool to run, with how-to-use, falsification (when it's failing → switch), and next-best. Perfect first pick within the tight budget.
 - [[architecture.md]] — Three-layer agent design — Cognition (LLM) / Memory (Wiki) / Action (Strategies) — with explicit dev-time vs Kaggle-time boundaries and a self-improvement loop.
 - [[log.md]] — Append-only chronological record of every dev-time round and significant infra change. Grep `^## \[` for latest entries.
