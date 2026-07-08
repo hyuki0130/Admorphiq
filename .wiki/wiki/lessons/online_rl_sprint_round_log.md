@@ -277,3 +277,25 @@ give the path.** Run 2 (20:19, memory-safe): **qwen3:14b exact=0.100 valid=1.00 
 (sp80 0.00→0.30 — refinement climb CONFIRMED); qwen3:8b exact=0.000, 2/3 games invalid code.
 30b (the R48 primary) still unmeasured: options = Q3_K_M quant (~13-14GB, fits) / Kaggle 96GB /
 accept 14b as lower bound. Details: [[r49_ewm-bench-partial]].
+
+## 2026-07-08 — TOP-SOLUTIONS SURVEY + METRIC CORRECTION (research, R53-adjacent)
+Full survey: [[top_solutions_survey_20260708]]. Load-bearing corrections:
+- **Metric scale**: the 2026 leaderboard "Score" is RHAE % (top ~1.2-1.6%). The
+  repo's "12.58% top" was the **2025 PREVIEW** (StochasticGoose, easier/partly-random
+  game set) — NOT the 2026 main 110-game competition. Our harness ~0.002/game =
+  **~0.20% on the leaderboard scale (×100)** → ~8x below top, ~6x below the M1
+  winner. CLOSEABLE, not hopeless. Multiply score_efficiency fractions ×100 to
+  compare to the LB.
+- **M1 winners (public, all local + training-free)**: Tufa "The Duck" (1st 1.21%,
+  local Qwen3.6-27B code-agent: reason→write Python fns→REPL→observe; hand-crafted
+  tools HURT, improvisation won), Reki (2nd) & forge (3rd) Gemma-4-31B vision-policy
+  (frames→JSON + reflection memory + dead-signature). Live top-3 (1.56) NOT public yet.
+- **astroseger executable-WM** (MIT, GPT-5.5 58% RHAE): synthesize→verify-vs-replay→
+  refactor-for-MDL→plan→execute-with-online-check — our EWM blueprint; swap in local Qwen.
+- **Determinism**: games deterministic on TRUE state; "same screen+action→different"
+  = PARTIAL OBSERVABILITY (hidden state aliasing to one frame) — the #1 graph-BFS
+  plateau cause. No M1 winner handles it → our differentiation.
+- **Top-3 generic levers**: (1) local-Qwen executable-WM loop [HIGH, highest ceiling],
+  (2) graph-BFS state de-aliasing via action-history/counter-augmented hash [MED,
+  root-cause of the plateau], (3) cheap action priors: click-heuristic + dead-signature
+  + reflection/eviction [LOW, fast efficiency gains]. All game-agnostic.

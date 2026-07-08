@@ -8,7 +8,7 @@ seeds `llm_context/decision_tree.md` first, then walks `[[backlinks]]`.
 Use this index when authoring or auditing: skim the catalog, pick a
 category, drill into specific pages.
 
-**Total pages**: 134.
+**Total pages**: 135.
 
 ## Games (25)
 
@@ -90,8 +90,9 @@ category, drill into specific pages.
 - [[concepts/sprite_cluster.md]] — A connected component of same-color pixels in the frame. The universal primitive for detecting entities without reading game internals.
 - [[concepts/version_hash.md]] — A game's identifier in the ARC Prize API has the form `<title>-<hash>` (e.g. `tn36-ab4f63cc`). The hash is a version fingerprint: games with the same title but different hashes share gameplay rules but differ in internal implementation details that solvers may or may not observe.
 
-## Lessons (engineering wisdom from past incidents) (20)
+## Lessons (engineering wisdom from past incidents) (21)
 
+- [[lessons/top_solutions_survey_20260708.md]] — Survey of what is actually open-sourced for ARC-AGI-3 (M1 winners = local-LLM agents), resolution of the leaderboard score-scale confusion (top ~1.56 = 1.56%, not 156%; the 12.58% anchor was the 2025 preview), and the top-3 generic levers to adopt next.
 - [[lessons/online_rl_sprint_round_log.md]] — **🔎 To FIND past work by topic, start at the retrieval map [[rounds_index]]**
 - [[lessons/api_hash_rotation_20260421.md]] — Between 2026-04-20 and 2026-04-21 the API replaced every served env hash; all brittle-internals solvers silently died
 - [[lessons/brittle_tells.md]] — Code smells that indicate a strategy will fail on a new version hash. Use this checklist when reviewing any new `strat_*` function in `src/admorphiq/agent_ensemble.py`.
