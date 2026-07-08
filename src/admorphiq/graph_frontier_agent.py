@@ -667,6 +667,13 @@ class GraphFrontierAgent:
         # The novel primitive: split a state that ALIASES (same base+action ->
         # different next, i.e. partial observability) by recent action-history.
         self.dealias = _env_bool("GF_DEALIAS", False)
+        # LLM goal inference (R53; default OFF). The transform/arrangement games
+        # (re86, dc22) plateau because the HEURISTIC goal is wrong; let the
+        # offline LLM infer the target once at discovery, feeding the existing
+        # goal-directed frontier machinery. Needs goal_active + an ollama model.
+        self.llm_goal = _env_bool("GF_LLM_GOAL", False)
+        self.llm_goal_model = os.environ.get("GF_LLM_GOAL_MODEL", "gemma4:31b-it-q8_0")
+        self.llm_goal_host = os.environ.get("GF_LLM_GOAL_HOST", "http://localhost:11434")
         self._ewm_obs: list[tuple[np.ndarray, int, np.ndarray]] = []
         self._ewm_result: Any = None
         self._ewm_attempted = False
@@ -924,7 +931,10 @@ class GraphFrontierAgent:
         # goal code path stays inert — byte-identical to pre-R46/R47 behaviour.
         # GF_EWM_PLAN also needs goal inference running so the forward-model
         # rollout has a goal to climb (R53).
-        self._goal_active = self.goal_rank or self.measure_expand or self.ewm_plan
+        self._goal_active = (
+            self.goal_rank or self.measure_expand or self.ewm_plan or self.llm_goal
+        )
+        self._llm_goal_done = False
 
         # Carried goal TYPE across level boundaries (R46). When a level clears, the
         # measure-tracker's best-jump goal type is snapshotted here so the NEXT
@@ -1057,6 +1067,7 @@ class GraphFrontierAgent:
         self._action_hist: deque[Any] = deque(maxlen=2)
         self._last_base: str | None = None
         self._prev_base: str | None = None
+        self._llm_goal_done = False   # LLM goal inferred once per level (GF_LLM_GOAL)
         # state_hash -> ordered list of untried action_keys.
         self._untried: dict[str, list[Any]] = {}
         # state_hash -> per-action try count (for graceful least-tried fallback).
@@ -1939,6 +1950,16 @@ class GraphFrontierAgent:
             return
         if self._level_steps < self.goal_infer_after:
             return
+        # LLM goal inference (GF_LLM_GOAL): once per level, let the offline model
+        # infer the target from the frame's colour histogram; feeds the same
+        # goal-directed machinery below. Falls through to the heuristic on any
+        # failure (offline-safe).
+        if self.llm_goal and not self._llm_goal_done:
+            self._llm_goal_done = True
+            goal = self._infer_goal_via_llm(frame)
+            if goal is not None:
+                self._goal = goal
+                return
         due_first = self._last_goal_infer_step < 0
         due_recadence = (
             self._last_goal_infer_step >= 0
@@ -1961,6 +1982,37 @@ class GraphFrontierAgent:
             self._goal = new_goal
             self._goal_version += 1  # invalidate cached scores lazily
             self._goal_walks_since_progress = 0  # fresh goal earns a fresh budget
+
+    def _infer_goal_via_llm(self, frame: np.ndarray):
+        """Ask the offline model to infer the level goal (GF_LLM_GOAL).
+
+        Reuses planner.goal_inference.infer_goal with an ollama-backed llm_call;
+        returns a GoalSpec or None (None => caller keeps the heuristic path). All
+        failures degrade to None so the agent never blocks.
+        """
+        import json
+        import urllib.request
+
+        from .planner.goal_inference import color_histogram_from_frame, infer_goal
+
+        def _ollama(prompt: str) -> str:
+            body = {
+                "model": self.llm_goal_model, "stream": False, "think": False,
+                "messages": [{"role": "user", "content": prompt}],
+                "options": {"temperature": 0.0, "num_ctx": 8192, "num_predict": 200},
+            }
+            req = urllib.request.Request(
+                f"{self.llm_goal_host}/api/chat", data=json.dumps(body).encode(),
+                headers={"Content-Type": "application/json"}, method="POST",
+            )
+            with urllib.request.urlopen(req, timeout=120) as r:
+                return json.loads(r.read())["message"]["content"]
+
+        try:
+            hist = color_histogram_from_frame(frame)
+            return infer_goal(hist, [], llm_call=_ollama, grid_shape=frame.shape)
+        except Exception:  # noqa: BLE001 - offline-safe: keep heuristic on failure
+            return None
 
     def _goal_score(self, node: str) -> float:
         """Cached goal-proximity score of ``node``'s frame (higher = closer).

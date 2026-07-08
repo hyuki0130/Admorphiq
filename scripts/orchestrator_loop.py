@@ -33,6 +33,7 @@ CONFIGS = {
     "graph": ("graph_frontier", {}),
     "graph_dealias": ("graph_frontier", {"GF_DEALIAS": "1"}),
     "graph_deadsig": ("graph_frontier", {"GF_DEAD_SIG": "1"}),
+    "graph_llmgoal": ("graph_frontier", {"GF_LLM_GOAL": "1", "GF_GOAL_RANK": "1"}),
     "paint_flood": ("paint_flood", {}),
     "world_model": ("worldmodel", {}),
 }
@@ -41,6 +42,8 @@ MENU = """Tool configs (pick ONE to run next):
 - graph: navigation/state-space via transition-graph frontier BFS (high avatar_mobility).
 - graph_dealias: graph + hidden-state de-aliasing (use when nondeterminism is high).
 - graph_deadsig: graph + skip inert action classes (efficiency).
+- graph_llmgoal: graph + LLM-inferred goal (transform/arrangement games: re86-like, where the
+  target coloring/pattern must be inferred; use when big regions recolor and mobility is low).
 - paint_flood: click fills a background region with one color (verify it's really a fill game).
 - world_model: learn transitions + plan toward a progress measure (deterministic, learnable)."""
 
