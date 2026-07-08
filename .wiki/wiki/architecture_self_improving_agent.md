@@ -118,3 +118,13 @@ dev-time → Qwen-single-brain runtime).
 
 **Related**: [[lessons/top_solutions_survey_20260708]] (baselines to beat + metric), [[rounds/r52_ewm-integration]],
 [[rounds/r36_graph-frontier-bfs]] (graph tool).
+
+## Status (2026-07-08): Kaggle-matched dev environment LIVE on GCP
+
+MILESTONE: the full game stack runs offline on the GCP 96GB VM (`ewm-bench`, asia-east1-a) —
+verified by scoring ft09 end-to-end via `uv run scripts/score_efficiency.py`. The VM has:
+uv-synced deps, 25 `environment_files/` games, and ollama models gemma4-31b-q8 (our R50b winner)
++ gpt-oss-120b. This is now the harness DEV environment (what we build here runs on Kaggle
+verbatim), and it unblocks the parallel tool execution the 24GB Mac could not do. Budget so far
+~$36 (GCP credits). Next: build the orchestration harness on the VM and validate that the local
+runtime model can pick + improve tools from [[tool_selector]].
