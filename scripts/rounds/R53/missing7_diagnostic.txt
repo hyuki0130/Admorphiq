@@ -1,0 +1,12 @@
+== MISSING-7
+  dc22: nondet=53% det-ceiling=47% avgcells=6.0
+  g50t: nondet=71% det-ceiling=29% avgcells=38.2
+  re86: nondet=8% det-ceiling=92% avgcells=41.2
+  s5i5: nondet=0% det-ceiling=100% avgcells=1.6
+  su15: nondet=0% det-ceiling=100% avgcells=41.2
+  wa30: nondet=43% det-ceiling=57% avgcells=28.7
+  sc25: nondet=41% det-ceiling=59% avgcells=18.9
+== CLEARED
+  ar25: nondet=0% det-ceiling=100% avgcells=95.0
+  lf52: nondet=0% det-ceiling=100% avgcells=4.2
+  tu93: nondet=0% det-ceiling=100% avgcells=6.6
