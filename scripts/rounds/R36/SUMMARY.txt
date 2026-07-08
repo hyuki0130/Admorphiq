@@ -1,0 +1,23 @@
+R36 graph_frontier LIVE — baselines: online-RL from-scratch 0.0014, random 0.0000
+--- @3000 (9/9 games) mean game_score=0.0000 ---
+  BP35: score=0.0000 levels=0
+  CD82: score=0.0000 levels=0
+  CN04: score=0.0000 levels=0
+  FT09: score=0.0000 levels=0
+  LS20: score=0.0000 levels=0
+  M0R0: score=0.0000 levels=1
+  R11L: score=0.0001 levels=1
+  S5I5: score=0.0000 levels=0
+  SP80: score=0.0000 levels=0
+--- @8000 (9/9 games) mean game_score=0.0000 ---
+  BP35: score=0.0000 levels=0
+  CD82: score=0.0000 levels=0
+  CN04: score=0.0000 levels=0
+  FT09: score=0.0000 levels=0
+  LS20: score=0.0000 levels=0
+  M0R0: score=0.0000 levels=1
+  R11L: score=0.0001 levels=1
+  S5I5: score=0.0000 levels=0
+  SP80: score=0.0000 levels=0
+
+[R36] DONE 2026-07-05 17:23:47 KST

@@ -1,0 +1,122 @@
+{
+  "agent": "online_rl",
+  "n_games_run": 6,
+  "n_games_scored": 6,
+  "n_excluded": 0,
+  "total_score": 0.00579,
+  "total_score_pct": 0.579,
+  "games": [
+    {
+      "game_id": "tu93-0768757b",
+      "win_levels": 9,
+      "levels_completed": 0,
+      "elapsed_s": 104.22,
+      "total_actions": 1500,
+      "per_level": [],
+      "game_score": 0.0,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "title": "TU93"
+    },
+    {
+      "game_id": "ar25-0c556536",
+      "win_levels": 8,
+      "levels_completed": 2,
+      "elapsed_s": 106.34,
+      "total_actions": 1500,
+      "per_level": [
+        {
+          "level": 1,
+          "agent_actions": 141,
+          "human_actions": 32,
+          "score": 0.051506
+        },
+        {
+          "level": 2,
+          "agent_actions": 210,
+          "human_actions": 50,
+          "score": 0.056689
+        }
+      ],
+      "game_score": 0.00458,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "title": "AR25"
+    },
+    {
+      "game_id": "m0r0-492f87ba",
+      "win_levels": 6,
+      "levels_completed": 1,
+      "elapsed_s": 111.16,
+      "total_actions": 1500,
+      "per_level": [
+        {
+          "level": 1,
+          "agent_actions": 137,
+          "human_actions": 30,
+          "score": 0.047951
+        }
+      ],
+      "game_score": 0.002283,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "title": "M0R0"
+    },
+    {
+      "game_id": "ft09-0d8bbf25",
+      "win_levels": 6,
+      "levels_completed": 1,
+      "elapsed_s": 111.3,
+      "total_actions": 1500,
+      "per_level": [
+        {
+          "level": 1,
+          "agent_actions": 1244,
+          "human_actions": 43,
+          "score": 0.001195
+        }
+      ],
+      "game_score": 5.7e-05,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "title": "FT09"
+    },
+    {
+      "game_id": "lp85-305b61c3",
+      "win_levels": 8,
+      "levels_completed": 2,
+      "elapsed_s": 111.68,
+      "total_actions": 1500,
+      "per_level": [
+        {
+          "level": 1,
+          "agent_actions": 12,
+          "human_actions": 17,
+          "score": 1.0
+        },
+        {
+          "level": 2,
+          "agent_actions": 1390,
+          "human_actions": 38,
+          "score": 0.000747
+        }
+      ],
+      "game_score": 0.027819,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "title": "LP85"
+    },
+    {
+      "game_id": "dc22-fdcac232",
+      "win_levels": 6,
+      "levels_completed": 0,
+      "elapsed_s": 109.97,
+      "total_actions": 1500,
+      "per_level": [],
+      "game_score": 0.0,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "title": "DC22"
+    }
+  ]
+}

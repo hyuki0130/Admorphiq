@@ -1,0 +1,29 @@
+{
+  "agent": "online_rl",
+  "n_games_run": 1,
+  "n_games_scored": 1,
+  "n_excluded": 0,
+  "total_score": 0.002283,
+  "total_score_pct": 0.228,
+  "games": [
+    {
+      "game_id": "m0r0-492f87ba",
+      "win_levels": 6,
+      "levels_completed": 1,
+      "elapsed_s": 1050.46,
+      "total_actions": 3000,
+      "per_level": [
+        {
+          "level": 1,
+          "agent_actions": 137,
+          "human_actions": 30,
+          "score": 0.047951
+        }
+      ],
+      "game_score": 0.002283,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "title": "M0R0"
+    }
+  ]
+}

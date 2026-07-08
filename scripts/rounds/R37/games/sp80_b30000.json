@@ -1,0 +1,29 @@
+{
+  "agent": "graph_frontier",
+  "n_games_run": 1,
+  "n_games_scored": 1,
+  "n_excluded": 0,
+  "total_score": 0.000102,
+  "total_score_pct": 0.01,
+  "games": [
+    {
+      "game_id": "sp80-589a99af",
+      "win_levels": 6,
+      "levels_completed": 1,
+      "elapsed_s": 13.58,
+      "total_actions": 9021,
+      "per_level": [
+        {
+          "level": 1,
+          "agent_actions": 844,
+          "human_actions": 39,
+          "score": 0.002135
+        }
+      ],
+      "game_score": 0.000102,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "title": "SP80"
+    }
+  ]
+}

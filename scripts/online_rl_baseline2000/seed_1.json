@@ -1,0 +1,98 @@
+{
+  "agent": "online_rl",
+  "n_games_run": 4,
+  "n_games_scored": 4,
+  "n_excluded": 0,
+  "total_score": 0.008685,
+  "total_score_pct": 0.868,
+  "games": [
+    {
+      "game_id": "ar25-0c556536",
+      "win_levels": 8,
+      "levels_completed": 2,
+      "elapsed_s": 143.35,
+      "total_actions": 2000,
+      "per_level": [
+        {
+          "level": 1,
+          "agent_actions": 141,
+          "human_actions": 32,
+          "score": 0.051506
+        },
+        {
+          "level": 2,
+          "agent_actions": 210,
+          "human_actions": 50,
+          "score": 0.056689
+        }
+      ],
+      "game_score": 0.00458,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "title": "AR25"
+    },
+    {
+      "game_id": "m0r0-492f87ba",
+      "win_levels": 6,
+      "levels_completed": 1,
+      "elapsed_s": 180.83,
+      "total_actions": 2000,
+      "per_level": [
+        {
+          "level": 1,
+          "agent_actions": 137,
+          "human_actions": 30,
+          "score": 0.047951
+        }
+      ],
+      "game_score": 0.002283,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "title": "M0R0"
+    },
+    {
+      "game_id": "ft09-0d8bbf25",
+      "win_levels": 6,
+      "levels_completed": 1,
+      "elapsed_s": 239.49,
+      "total_actions": 2000,
+      "per_level": [
+        {
+          "level": 1,
+          "agent_actions": 1244,
+          "human_actions": 43,
+          "score": 0.001195
+        }
+      ],
+      "game_score": 5.7e-05,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "title": "FT09"
+    },
+    {
+      "game_id": "lp85-305b61c3",
+      "win_levels": 8,
+      "levels_completed": 2,
+      "elapsed_s": 238.77,
+      "total_actions": 2000,
+      "per_level": [
+        {
+          "level": 1,
+          "agent_actions": 12,
+          "human_actions": 17,
+          "score": 1.0
+        },
+        {
+          "level": 2,
+          "agent_actions": 1390,
+          "human_actions": 38,
+          "score": 0.000747
+        }
+      ],
+      "game_score": 0.027819,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "title": "LP85"
+    }
+  ]
+}

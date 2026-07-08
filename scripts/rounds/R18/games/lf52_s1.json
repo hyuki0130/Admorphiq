@@ -1,0 +1,29 @@
+{
+  "agent": "online_rl",
+  "n_games_run": 1,
+  "n_games_scored": 1,
+  "n_excluded": 0,
+  "total_score": 0.018182,
+  "total_score_pct": 1.818,
+  "games": [
+    {
+      "game_id": "lf52-271a04aa",
+      "win_levels": 10,
+      "levels_completed": 1,
+      "elapsed_s": 542.79,
+      "total_actions": 3000,
+      "per_level": [
+        {
+          "level": 1,
+          "agent_actions": 21,
+          "human_actions": 32,
+          "score": 1.0
+        }
+      ],
+      "game_score": 0.018182,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "title": "LF52"
+    }
+  ]
+}

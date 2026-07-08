@@ -1,0 +1,211 @@
+"""UnifiedAgent — the self-improving retry loop that IS the general agent.
+
+Per game it holds the Claude-built generic tools plus the code path (LLM writes
+Python). At each decision boundary — the action queue empties, or progress
+stalls — it computes the observable signature, pulls a minimal wiki slice
+(harness.context), and asks the model to choose the NEXT move: run a tool or
+write code. It runs the choice, feeds the resulting transition back to every
+stateful tool, and on stall re-decides with that feedback. Reason -> act ->
+observe -> re-decide, until the level is cleared or the budget is spent.
+
+The model is a single injected ``llm(messages) -> str`` callable (ollama at
+runtime, a fake in tests), so the loop is fully testable offline.
+"""
+
+from __future__ import annotations
+
+import re
+from typing import Any, Callable
+
+import numpy as np
+
+from admorphiq.harness.context import Signature, build_context, compute_signature
+from admorphiq.tools.base import Step, Tool, availability, frame_2d, has_frame, levels_completed, state_name
+from admorphiq.tools.code_agent import build_code_prompt, run_code
+
+LLM = Callable[[list[dict[str, str]]], str]
+
+_DECIDE_SYS = (
+    "You drive an ARC-AGI-3 agent. Given the observable game signature, a wiki "
+    "slice describing the available tools, the tools already tried this level, "
+    "and the latest feedback, choose the NEXT move. Reply ONLY with JSON: "
+    '{"mode":"tool","tool":"<name>","why":"..."} to run a tool, or '
+    '{"mode":"code","why":"..."} to write Python that inspects the frame and '
+    "queues actions. Prefer a tool whose signature matches; fall back to code "
+    "for transform/arrangement games no tool fits."
+)
+
+
+class UnifiedAgent:
+    """Harness-contract agent (is_done/choose_action) built on the tool loop."""
+
+    def __init__(
+        self,
+        tools: list[Tool],
+        llm: LLM,
+        *,
+        giveup: int = 8000,
+        stall: int = 12,
+        ctx_budget: int = 6000,
+    ) -> None:
+        from admorphiq.adapter import AdmorphiqAdapter
+        self._convert = AdmorphiqAdapter._convert_action
+        self.tools = {t.name: t for t in tools}
+        self.llm = llm
+        self.giveup = giveup
+        self.stall = stall
+        self.ctx_budget = ctx_budget
+        self._reset_level()
+
+    def _reset_level(self) -> None:
+        for t in self.tools.values():
+            t.reset()
+        self._queue: list[Step] = []
+        self._transitions: list[tuple[np.ndarray, int, np.ndarray]] = []
+        self._tried: list[str] = []
+        self._current: str | None = None
+        self._prev_frame: np.ndarray | None = None
+        self._prev_step: Step | None = None
+        self._since_progress = 0
+        self._steps = 0
+        self._last_levels = 0
+        self._feedback = "start of level"
+
+    def is_done(self, frames: list[Any], latest_frame: Any) -> bool:
+        return state_name(latest_frame) == "WIN" or self._steps >= self.giveup
+
+    # -- decision -------------------------------------------------------------
+
+    def _decide(self, sig: Signature) -> tuple[str, str | None]:
+        """Ask the model for the next move -> (mode, tool_name)."""
+        ctx = build_context(sig, self.ctx_budget)
+        tried = ", ".join(self._tried) or "none"
+        user = (
+            f"SIGNATURE: {sig.as_line()}\n\nWIKI:\n{ctx}\n\n"
+            f"TOOLS AVAILABLE: {', '.join(self.tools)}\n"
+            f"TRIED THIS LEVEL: {tried}\nLATEST FEEDBACK: {self._feedback}\n\nNext move?"
+        )
+        try:
+            txt = self.llm([{"role": "system", "content": _DECIDE_SYS},
+                            {"role": "user", "content": user}])
+        except Exception:  # noqa: BLE001 - offline-safe: fall back to best-signature tool
+            return "tool", self._signature_default(sig)
+        mode_m = re.search(r'"mode"\s*:\s*"(tool|code)"', txt)
+        tool_m = re.search(r'"tool"\s*:\s*"(\w+)"', txt)
+        mode = mode_m.group(1) if mode_m else "tool"
+        if mode == "code":
+            return "code", None
+        name = tool_m.group(1) if tool_m and tool_m.group(1) in self.tools else None
+        return "tool", name or self._signature_default(sig)
+
+    def _signature_default(self, sig: Signature) -> str:
+        """Highest-detect tool for the signature (used when the LLM is silent)."""
+        frames_stub: list[Any] = []
+        best, best_name = -1.0, next(iter(self.tools))
+        for name, t in self.tools.items():
+            try:
+                c = t.detect(frames_stub, self._last_obs)
+            except Exception:  # noqa: BLE001
+                c = 0.0
+            if c > best:
+                best, best_name = c, name
+        return best_name
+
+    # -- refill ---------------------------------------------------------------
+
+    def _refill(self, frames: list[Any], obs: Any, sig: Signature) -> None:
+        mode, tool = self._decide(sig)
+        self._current = tool if mode == "tool" else "code"
+        if self._current not in self._tried:
+            self._tried.append(self._current)
+        simple_ids, action6 = availability(obs)
+        if mode == "code":
+            steps = self._write_code(obs)
+        else:
+            try:
+                steps = self.tools[tool].propose(frames, obs)
+            except Exception:  # noqa: BLE001 - a broken tool never crashes the loop
+                steps = []
+        legal = [s for s in steps if self._legal(s, simple_ids, action6)]
+        self._queue = legal or self._probe(simple_ids, action6)
+
+    def _write_code(self, obs: Any) -> list[Step]:
+        frame = frame_2d(obs).astype(np.int16)
+        simple_ids, action6 = availability(obs)
+        valid = [_NAME[i] for i in simple_ids if i in _NAME] + (["MOUSE"] if action6 else [])
+        hist = [{"action": s[0], "changed": True} for s in []]  # code path is stateless per call
+        try:
+            text = self.llm(build_code_prompt(frame, hist, valid))
+            return run_code(text, frame, hist, valid).actions
+        except Exception:  # noqa: BLE001 - offline-safe
+            return []
+
+    # -- main loop ------------------------------------------------------------
+
+    def choose_action(self, frames: list[Any], latest_frame: Any) -> Any:
+        from admorphiq.types import ActionType, GameAction
+        obs = latest_frame
+        self._last_obs = obs
+        state = state_name(obs)
+
+        levels = levels_completed(obs)
+        if levels > self._last_levels:
+            self._reset_level()
+            self._last_levels = levels
+            self._feedback = f"cleared level {levels}"
+
+        if state in ("GAME_OVER", "NOT_PLAYED") or not has_frame(obs):
+            self._prev_frame = None
+            self._queue.clear()
+            return self._convert(GameAction.reset())
+
+        frame = frame_2d(obs).astype(np.int16)
+        # record the transition the previous action produced -> feed every tool
+        if self._prev_frame is not None and self._prev_step is not None \
+                and self._prev_frame.shape == frame.shape:
+            changed = bool((self._prev_frame != frame).any())
+            self._transitions.append((self._prev_frame, self._prev_step[0], frame))
+            self._transitions = self._transitions[-256:]
+            for t in self.tools.values():
+                try:
+                    t.observe(self._prev_frame, self._prev_step, changed)
+                except Exception:  # noqa: BLE001
+                    pass
+            if changed:
+                self._since_progress = 0
+                self._feedback = f"{self._current or 'action'} changed the frame"
+            else:
+                self._since_progress += 1
+                self._feedback = f"{self._current or 'action'} inert x{self._since_progress}"
+
+        if not self._queue or self._since_progress >= self.stall:
+            sig = compute_signature(obs, self._transitions)
+            self._refill(frames, obs, sig)
+            self._since_progress = 0
+
+        step = self._queue.pop(0)
+        self._steps += 1
+        self._prev_frame = frame
+        self._prev_step = step
+        aid, xy = step
+        if xy is not None:
+            return self._convert(GameAction.coordinate(int(xy[0]), int(xy[1])))
+        return self._convert(GameAction.simple(ActionType(aid)))
+
+    # -- helpers --------------------------------------------------------------
+
+    def _legal(self, step: Step, simple_ids: list[int], action6: bool) -> bool:
+        aid, xy = step
+        if xy is not None:
+            return action6 and aid == 6
+        return aid in simple_ids or (aid == 7 and not simple_ids)
+
+    def _probe(self, simple_ids: list[int], action6: bool) -> list[Step]:
+        if simple_ids:
+            return [(simple_ids[0], None)]
+        if action6:
+            return [(6, (32, 32))]
+        return [(7, None)]
+
+
+_NAME = {1: "UP", 2: "DOWN", 3: "LEFT", 4: "RIGHT", 5: "SPACE", 7: "ACTION7"}

@@ -1,0 +1,35 @@
+{
+  "agent": "online_rl",
+  "n_games_run": 1,
+  "n_games_scored": 1,
+  "n_excluded": 0,
+  "total_score": 0.00922,
+  "total_score_pct": 0.922,
+  "games": [
+    {
+      "game_id": "cd82-fb555c5d",
+      "win_levels": 6,
+      "levels_completed": 2,
+      "elapsed_s": 530.96,
+      "total_actions": 3000,
+      "per_level": [
+        {
+          "level": 1,
+          "agent_actions": 125,
+          "human_actions": 55,
+          "score": 0.1936
+        },
+        {
+          "level": 2,
+          "agent_actions": 2764,
+          "human_actions": 8,
+          "score": 8e-06
+        }
+      ],
+      "game_score": 0.00922,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "title": "CD82"
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "agent": "online_rl",
+  "n_games_run": 1,
+  "n_games_scored": 1,
+  "n_excluded": 0,
+  "total_score": 0.002722,
+  "total_score_pct": 0.272,
+  "games": [
+    {
+      "game_id": "bp35-0a0ad940",
+      "win_levels": 9,
+      "levels_completed": 1,
+      "elapsed_s": 549.7,
+      "total_actions": 3123,
+      "per_level": [
+        {
+          "level": 1,
+          "agent_actions": 60,
+          "human_actions": 21,
+          "score": 0.1225
+        }
+      ],
+      "game_score": 0.002722,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "title": "BP35"
+    }
+  ]
+}

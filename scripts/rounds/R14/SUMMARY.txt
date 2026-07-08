@@ -1,0 +1,31 @@
+[generated 2026-07-02 00:48:57 KST] ROUND R14 SUMMARY (LIVE — regenerated per run) progress 27/27 runs
+VERDICT DATA: STABLE (>=2/3) = 9/9 : FT09, M0R0, BP35, CD82, CN04, LS20, R11L, S5I5, SP80
+  FT09: 3/3  mean=1.00  [1, 1, 1]  [STABLE]
+  M0R0: 3/3  mean=1.00  [1, 1, 1]  [STABLE]
+  BP35: 3/3  mean=1.00  [1, 1, 1]  [STABLE]
+  CD82: 2/3  mean=0.67  [1, 1, 0]  [STABLE]
+  CN04: 3/3  mean=1.00  [1, 1, 1]  [STABLE]
+  LS20: 3/3  mean=1.00  [1, 1, 1]  [STABLE]
+  R11L: 3/3  mean=1.00  [1, 1, 1]  [STABLE]
+  S5I5: 2/3  mean=0.67  [1, 1, 0]  [STABLE]
+  SP80: 3/3  mean=1.00  [1, 1, 1]  [STABLE]
+
+--- last timings (27 runs done) ---
+[R14] cn04 seed3 done in 527s 00:40:15
+[R14] r11l seed3 done in 526s 00:48:35
+[R14] sp80 seed3 done in 521s 00:48:56
+[R14] s5i5 seed3 done in 522s 00:48:57
+
+--- EFFICIENCY (R14 no-op-suppression vs R13 baseline) ---
+game    R13_score  R14_score  R13_act  R14_act
+FT09       0.0175     0.0175      453      453
+M0R0       0.0035     0.0035      154      154
+BP35       0.0015     0.0015       88       88
+CD82       0.0004     0.0004      524      524
+CN04       0.0002     0.0002      831      831
+LS20       0.0042     0.0042      253      253
+R11L       0.0324     0.0324       27       27
+S5I5       0.0093     0.0093     1202     1202
+SP80       0.0476     0.0476       26       26
+MEAN       0.0129     0.0129   (game_score; higher=better)
+KEEP if R14 mean game_score > R13 AND no clear lost (clears in the table above).

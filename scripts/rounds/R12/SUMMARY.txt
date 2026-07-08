@@ -1,0 +1,22 @@
+ROUND R12 SUMMARY (LIVE — regenerated per run) progress 27/42 runs
+VERDICT DATA: STABLE (>=2/3) = 12/14 : AR25, FT09, LP85, M0R0, BP35, CD82, CN04, LS20, R11L, S5I5, SC25, SP80
+  AR25: 2/2  mean=2.00  [2, 2]  [STABLE]
+  FT09: 2/2  mean=1.00  [1, 1]  [STABLE]
+  LP85: 2/2  mean=2.50  [2, 3]  [STABLE]
+  M0R0: 2/2  mean=1.00  [1, 1]  [STABLE]
+  BP35: 2/2  mean=1.00  [1, 1]  [STABLE]
+  CD82: 2/2  mean=1.00  [1, 1]  [STABLE]
+  CN04: 2/2  mean=1.00  [1, 1]  [STABLE]
+  LF52: 1/2  mean=0.50  [1, 0]  [flaky]
+  LS20: 2/2  mean=1.00  [1, 1]  [STABLE]
+  R11L: 2/2  mean=1.00  [1, 1]  [STABLE]
+  S5I5: 2/2  mean=1.00  [1, 1]  [STABLE]
+  SC25: 2/2  mean=1.50  [1, 2]  [STABLE]
+  SP80: 2/2  mean=1.00  [1, 1]  [STABLE]
+  VC33: 1/1  mean=1.00  [1]  [flaky]
+
+--- last timings (27 runs done) ---
+[R12] r11l seed2 done in 522s 2026년  7월  1일 수요일 21시 26분 06초 KST
+[R12] s5i5 seed2 done in 523s 2026년  7월  1일 수요일 21시 34분 28초 KST
+[R12] sc25 seed2 done in 519s 2026년  7월  1일 수요일 21시 34분 39초 KST
+[R12] sp80 seed2 done in 515s 2026년  7월  1일 수요일 21시 34분 41초 KST

@@ -15,8 +15,11 @@ from __future__ import annotations
 
 from collections import deque
 from dataclasses import dataclass
+from typing import Any
 
 import numpy as np
+
+from admorphiq.tools.base import Step, frame_2d, has_frame
 
 BACKGROUND = 0  # colour index 0 is background across ARC-AGI-3 frames
 
@@ -125,3 +128,85 @@ def propose_fill_clicks(
             cy, cx = comp[len(comp) // 2]
         clicks.append((cx, cy))
     return clicks
+
+
+class PaintFloodTool:
+    """``base.Tool`` wrapper around ``detect_flood_mechanic`` / ``propose_fill_clicks``.
+
+    The Tool protocol's ``observe(prev, action, changed)`` does not carry the
+    frame the action produced (only the frame BEFORE the action + whether it
+    changed), so a click transition is completed lazily: ``observe`` queues
+    ``(prev, action)`` when a click changed something, and the next call to
+    ``detect``/``propose`` (which does receive the fresh ``obs``) pairs it with
+    the frame that resulted, feeding it into ``detect_flood_mechanic``.
+
+    Conservative by design (measured caveat, ``.wiki/wiki/tool_selector.md``
+    2026-07-08: paint is NOT a fit for every click game -- su15 measured 0/9).
+    Confidence stays 0.0 until at least one completed click transition is
+    DOMINATED (>=60%, ``detect_flood_mechanic``'s own threshold) by a single
+    background->colour recolouring; unrelated click games never trigger it.
+    """
+
+    name = "paint"
+
+    def __init__(self) -> None:
+        self.reset()
+
+    def reset(self) -> None:
+        """Drop accumulated click evidence (harness calls this on level-up)."""
+        self._pending: tuple[np.ndarray, Step] | None = None
+        self._frames: list[np.ndarray] = []
+        self._acts: list[int] = []
+        self._nexts: list[np.ndarray] = []
+        self._fill_color: int = -1
+        self._fill_queue: list[tuple[int, int]] = []
+
+    def observe(self, prev: np.ndarray, action: Step, changed: bool) -> None:
+        """Queue a click transition; completed against the next frame we see."""
+        if changed and action[0] == 6 and action[1] is not None:
+            self._pending = (np.asarray(prev, dtype=np.int16), action)
+        else:
+            self._pending = None
+
+    def _absorb_pending(self, obs: Any) -> None:
+        """Complete a queued click transition against the frame just observed."""
+        if self._pending is None or not has_frame(obs):
+            return
+        prev, _action = self._pending
+        self._pending = None
+        cur = frame_2d(obs).astype(np.int16)
+        if cur.shape != prev.shape:
+            return
+        self._frames.append(prev)
+        self._acts.append(6)
+        self._nexts.append(cur)
+
+    def detect(self, frames: list[Any], obs: Any) -> float:
+        """Confidence this is a paint/flood game, from observed click fills only."""
+        self._absorb_pending(obs)
+        if not self._acts:
+            return 0.0
+        mechanic = detect_flood_mechanic(
+            np.array(self._frames), np.array(self._acts), np.array(self._nexts)
+        )
+        if not mechanic.detected:
+            return 0.0
+        self._fill_color = mechanic.fill_color
+        return min(1.0, mechanic.confidence)
+
+    def propose(self, frames: list[Any], obs: Any) -> list[Step]:
+        """Click the largest still-background region toward the inferred fill."""
+        self._absorb_pending(obs)
+        if not has_frame(obs):
+            return []
+        frame = frame_2d(obs).astype(np.int16)
+        if self._fill_color < 0:
+            # Mechanic not yet confirmed -- probe a background region to elicit it.
+            targets = propose_fill_clicks(frame, fill_color=-1, max_clicks=1)
+        else:
+            if not self._fill_queue:
+                self._fill_queue = propose_fill_clicks(frame, self._fill_color)
+            targets = self._fill_queue[:1]
+            if self._fill_queue:
+                self._fill_queue.pop(0)
+        return [(6, (x, y)) for x, y in targets]

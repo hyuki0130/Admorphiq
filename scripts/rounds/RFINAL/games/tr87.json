@@ -1,0 +1,29 @@
+{
+  "agent": "graph_frontier",
+  "n_games_run": 1,
+  "n_games_scored": 1,
+  "n_excluded": 0,
+  "total_score": 0.0,
+  "total_score_pct": 0.0,
+  "games": [
+    {
+      "game_id": "tr87-cd924810",
+      "win_levels": 6,
+      "levels_completed": 1,
+      "elapsed_s": 70.67,
+      "total_actions": 100000,
+      "per_level": [
+        {
+          "level": 1,
+          "agent_actions": 33731,
+          "human_actions": 54,
+          "score": 3e-06
+        }
+      ],
+      "game_score": 0.0,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "title": "TR87"
+    }
+  ]
+}

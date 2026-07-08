@@ -1,0 +1,6 @@
+R34 CALIBRATION — baselines on OUR 9-game subset @3000 (3 seeds)
+  random: mean game_score = 0.0000  (n=27)
+  stochastic: mean game_score = 0.0000  (n=27)
+COMPARE: our online-RL from-scratch (warm-start OFF) = 0.0014; leaderboard random≈0.18
+If random here ~0.001 => our 9-game subset is far harder than the public-LB average (scale differs).
+If random here ~0.18 => our agent is genuinely near/below random.

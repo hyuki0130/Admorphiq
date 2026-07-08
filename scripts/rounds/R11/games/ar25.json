@@ -1,0 +1,35 @@
+{
+  "agent": "online_rl",
+  "n_games_run": 1,
+  "n_games_scored": 1,
+  "n_excluded": 0,
+  "total_score": 0.00458,
+  "total_score_pct": 0.458,
+  "games": [
+    {
+      "game_id": "ar25-0c556536",
+      "win_levels": 8,
+      "levels_completed": 2,
+      "elapsed_s": 548.86,
+      "total_actions": 3000,
+      "per_level": [
+        {
+          "level": 1,
+          "agent_actions": 141,
+          "human_actions": 32,
+          "score": 0.051506
+        },
+        {
+          "level": 2,
+          "agent_actions": 210,
+          "human_actions": 50,
+          "score": 0.056689
+        }
+      ],
+      "game_score": 0.00458,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "title": "AR25"
+    }
+  ]
+}

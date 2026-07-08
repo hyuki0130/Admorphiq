@@ -1,0 +1,29 @@
+{
+  "agent": "online_rl",
+  "n_games_run": 1,
+  "n_games_scored": 1,
+  "n_excluded": 0,
+  "total_score": 0.026173,
+  "total_score_pct": 2.617,
+  "games": [
+    {
+      "game_id": "ft09-0d8bbf25",
+      "win_levels": 6,
+      "levels_completed": 1,
+      "elapsed_s": 533.97,
+      "total_actions": 3000,
+      "per_level": [
+        {
+          "level": 1,
+          "agent_actions": 58,
+          "human_actions": 43,
+          "score": 0.549643
+        }
+      ],
+      "game_score": 0.026173,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "title": "FT09"
+    }
+  ]
+}

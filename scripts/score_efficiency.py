@@ -82,6 +82,18 @@ def _make_agent(name: str, game_id: str | None = None):
 
         # Frontier lever: LLM writes Python per turn to inspect frame + queue actions.
         return CodeAgentPlayer()
+    if name == "unified":
+        import os
+
+        from admorphiq.harness.loop import UnifiedAgent
+        from admorphiq.harness.registry import default_tools, ollama_llm
+
+        # The self-improving harness: one offline model orchestrates the six
+        # generic tools + the code path, re-deciding on stall. HARNESS_CTX sets
+        # the wiki-context char budget the bench sweeps for performance.
+        ctx = int(os.environ.get("HARNESS_CTX", "6000"))
+        giveup = int(os.environ.get("GF_GIVEUP", "8000"))
+        return UnifiedAgent(default_tools(), ollama_llm(), giveup=giveup, ctx_budget=ctx)
     if name == "worldmodel":
         from admorphiq.world_model_agent import WorldModelAgent
 

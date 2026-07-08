@@ -1,0 +1,137 @@
+"""Contract tests for the generic graph-search (frontier-BFS) tool.
+
+These pin the tool's public :class:`Tool` contract: frame-only movement
+detection, edge building from observed transitions, and frontier-reaching
+proposal. All fixtures are tiny synthetic numpy frames + a duck-typed fake
+observation, so no arcengine is needed.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+
+import numpy as np
+
+from admorphiq.tools.base import base_hash
+from admorphiq.tools.graph_search import GraphSearchTool
+
+
+@dataclass
+class _State:
+    name: str = "NOT_FINISHED"
+
+
+@dataclass
+class _Obs:
+    """Duck-typed stand-in for an arcengine observation (.frame/.state/etc.)."""
+
+    frame: np.ndarray
+    available_actions: list[int] = field(default_factory=list)
+    levels_completed: int = 0
+    state: _State = field(default_factory=_State)
+
+
+def _grid_with_dot(y: int, x: int, size: int = 8) -> np.ndarray:
+    """A background grid with a single 1-cell 'avatar' at (y, x)."""
+    g = np.zeros((size, size), dtype=np.int64)
+    g[y, x] = 1
+    return g
+
+
+def test_detect_high_on_movement_signature():
+    """Purpose: prove detect fires HIGH when movement actions exist AND the
+    observed transitions move a small localized region (avatar mobility) —
+    exactly the games this graph engine owns.
+
+    Expected feedback: pass ⇒ the orchestrator routes navigation games here;
+    fail ⇒ the tool's own home turf is not recognized from frame signals.
+    """
+    tool = GraphSearchTool()
+    f1 = _grid_with_dot(2, 2)
+    f2 = _grid_with_dot(2, 3)  # avatar shifted one cell — 2 cells changed
+    frames = [_Obs(f1, [1, 2, 3, 4]), _Obs(f2, [1, 2, 3, 4])]
+    conf = tool.detect(frames, frames[-1])
+    assert conf >= 0.7
+
+
+def test_detect_low_without_movement_actions():
+    """Purpose: prove detect stays LOW when no simple movement action (1-4) is
+    offered — a click/transform game belongs to a different tool.
+
+    Expected feedback: pass ⇒ no false-positive routing onto click-only games;
+    fail ⇒ the graph tool mis-fires and wastes the budget.
+    """
+    tool = GraphSearchTool()
+    f = _grid_with_dot(2, 2)
+    obs = _Obs(f, [6])  # ACTION6 (click) only, no movement
+    assert tool.detect([obs], obs) <= 0.2
+
+
+def test_observe_builds_edges():
+    """Purpose: prove observe records a state->next_state edge for a change
+    transition (resolved on the following propose) and a self-loop for a
+    no-change transition.
+
+    Expected feedback: pass ⇒ the transition graph reflects real dynamics; fail
+    ⇒ BFS reasons over a corrupt graph and exploration breaks.
+    """
+    tool = GraphSearchTool()
+    a = _grid_with_dot(1, 1)
+    b = _grid_with_dot(1, 2)
+    ha, hb = base_hash(a), base_hash(b)
+
+    # See state A, take action 1, frame changes to B, then observe B.
+    tool.propose([_Obs(a, [1])], _Obs(a, [1]))
+    tool.observe(a, (1, None), changed=True)
+    tool.propose([_Obs(b, [1])], _Obs(b, [1]))
+    assert tool._edges[ha][1] == hb  # change edge resolved to B
+
+    # From B, action 1 changes nothing -> self-loop edge.
+    tool.observe(b, (1, None), changed=False)
+    assert tool._edges[hb][1] == hb
+
+
+def test_propose_reaches_unexplored_frontier():
+    """Purpose: prove that when the current state has no untried actions, propose
+    BFS-walks the known graph and returns a legal action path that reaches the
+    nearest state which still has an untried action (the frontier).
+
+    Expected feedback: pass ⇒ the engine keeps discovering new states instead of
+    stalling on an exhausted node; fail ⇒ deep exploration dies early.
+    """
+    tool = GraphSearchTool()
+    a = _grid_with_dot(1, 1)
+    b = _grid_with_dot(1, 2)
+    ha, hb = base_hash(a), base_hash(b)
+
+    # State A has a single action (1); B has two (1, 2). Build edge A --1--> B.
+    tool.propose([_Obs(a, [1])], _Obs(a, [1]))          # register A, untried={1}
+    tool.observe(a, (1, None), changed=True)             # 1 tried at A, pending
+    tool.propose([_Obs(b, [1, 2])], _Obs(b, [1, 2]))    # resolve A--1-->B, register B
+
+    assert tool._untried[ha] == []          # A is now exhausted
+    assert tool._untried[hb]                # B is a frontier (has untried)
+
+    # Observe A again: no untried here, so BFS must return the path to frontier B.
+    steps = tool.propose([_Obs(a, [1])], _Obs(a, [1]))
+    assert steps == [(1, None)]             # legal action id 1, leads to B
+    assert tool._edges[ha][steps[0][0]] == hb  # and that action reaches frontier B
+
+
+def test_no_game_specifics_in_source():
+    """Purpose: generality guard — the tool must contain no game ids, titles, or
+    sprite tags so it transfers to the unseen private games.
+
+    Expected feedback: pass ⇒ frame-only and portable; fail ⇒ a game-specific
+    leak crept in and the tool won't generalize.
+    """
+    import re
+
+    import admorphiq.tools.graph_search as mod
+
+    src = open(mod.__file__).read().lower()
+    for tok in ("game_id", "game_title", "sprite"):
+        assert tok not in src
+    # No 4-char ARC-style game-id tokens (e.g. two letters + two digits) as
+    # standalone words — word boundaries exclude numeric type names like int64.
+    assert not re.search(r"\b[a-z]{2}\d{2}\b", src)

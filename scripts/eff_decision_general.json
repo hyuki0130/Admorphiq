@@ -1,0 +1,532 @@
+{
+  "agent": "general",
+  "n_games_run": 40,
+  "n_games_scored": 40,
+  "n_excluded": 0,
+  "total_score": 0.001935,
+  "total_score_pct": 0.193,
+  "games": [
+    {
+      "game_id": "tu93-0768757b",
+      "win_levels": 9,
+      "levels_completed": 1,
+      "elapsed_s": 0.16,
+      "total_actions": 36,
+      "per_level": [
+        {
+          "level": 1,
+          "agent_actions": 32,
+          "human_actions": 19,
+          "score": 0.352539
+        }
+      ],
+      "game_score": 0.007834,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "title": "TU93"
+    },
+    {
+      "game_id": "tu93-0768757b",
+      "win_levels": 9,
+      "levels_completed": 1,
+      "elapsed_s": 0.16,
+      "total_actions": 36,
+      "per_level": [
+        {
+          "level": 1,
+          "agent_actions": 32,
+          "human_actions": 19,
+          "score": 0.352539
+        }
+      ],
+      "game_score": 0.007834,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "title": "TU93"
+    },
+    {
+      "game_id": "ar25-0c556536",
+      "win_levels": 8,
+      "levels_completed": 0,
+      "elapsed_s": 0.29,
+      "total_actions": 65,
+      "per_level": [],
+      "game_score": 0.0,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "title": "AR25"
+    },
+    {
+      "game_id": "ar25-0c556536",
+      "win_levels": 8,
+      "levels_completed": 0,
+      "elapsed_s": 0.31,
+      "total_actions": 65,
+      "per_level": [],
+      "game_score": 0.0,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "title": "AR25"
+    },
+    {
+      "game_id": "re86-8af5384d",
+      "win_levels": 8,
+      "levels_completed": 0,
+      "elapsed_s": 0.16,
+      "total_actions": 100,
+      "per_level": [],
+      "game_score": 0.0,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "title": "RE86"
+    },
+    {
+      "game_id": "re86-8af5384d",
+      "win_levels": 8,
+      "levels_completed": 0,
+      "elapsed_s": 0.16,
+      "total_actions": 100,
+      "per_level": [],
+      "game_score": 0.0,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "title": "RE86"
+    },
+    {
+      "game_id": "su15-1944f8ab",
+      "win_levels": 9,
+      "levels_completed": 0,
+      "elapsed_s": 0.05,
+      "total_actions": 44,
+      "per_level": [],
+      "game_score": 0.0,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "title": "SU15"
+    },
+    {
+      "game_id": "su15-1944f8ab",
+      "win_levels": 9,
+      "levels_completed": 0,
+      "elapsed_s": 0.05,
+      "total_actions": 44,
+      "per_level": [],
+      "game_score": 0.0,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "title": "SU15"
+    },
+    {
+      "game_id": "m0r0-492f87ba",
+      "win_levels": 6,
+      "levels_completed": 0,
+      "elapsed_s": 0.36,
+      "total_actions": 151,
+      "per_level": [],
+      "game_score": 0.0,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "title": "M0R0"
+    },
+    {
+      "game_id": "m0r0-492f87ba",
+      "win_levels": 6,
+      "levels_completed": 0,
+      "elapsed_s": 0.32,
+      "total_actions": 151,
+      "per_level": [],
+      "game_score": 0.0,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "title": "M0R0"
+    },
+    {
+      "game_id": "cn04-2fe56bfb",
+      "win_levels": 6,
+      "levels_completed": 0,
+      "elapsed_s": 0.18,
+      "total_actions": 75,
+      "per_level": [],
+      "game_score": 0.0,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "title": "CN04"
+    },
+    {
+      "game_id": "cn04-2fe56bfb",
+      "win_levels": 6,
+      "levels_completed": 0,
+      "elapsed_s": 0.18,
+      "total_actions": 75,
+      "per_level": [],
+      "game_score": 0.0,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "title": "CN04"
+    },
+    {
+      "game_id": "ft09-0d8bbf25",
+      "win_levels": 6,
+      "levels_completed": 1,
+      "elapsed_s": 0.06,
+      "total_actions": 93,
+      "per_level": [
+        {
+          "level": 1,
+          "agent_actions": 55,
+          "human_actions": 43,
+          "score": 0.61124
+        }
+      ],
+      "game_score": 0.029107,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "title": "FT09"
+    },
+    {
+      "game_id": "tr87-cd924810",
+      "win_levels": 6,
+      "levels_completed": 0,
+      "elapsed_s": 0.2,
+      "total_actions": 128,
+      "per_level": [],
+      "game_score": 0.0,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "title": "TR87"
+    },
+    {
+      "game_id": "sc25-635fd71a",
+      "win_levels": 6,
+      "levels_completed": 0,
+      "elapsed_s": 0.14,
+      "total_actions": 86,
+      "per_level": [],
+      "game_score": 0.0,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "title": "SC25"
+    },
+    {
+      "game_id": "sc25-635fd71a",
+      "win_levels": 6,
+      "levels_completed": 0,
+      "elapsed_s": 0.15,
+      "total_actions": 86,
+      "per_level": [],
+      "game_score": 0.0,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "title": "SC25"
+    },
+    {
+      "game_id": "lp85-305b61c3",
+      "win_levels": 8,
+      "levels_completed": 1,
+      "elapsed_s": 0.09,
+      "total_actions": 600,
+      "per_level": [
+        {
+          "level": 1,
+          "agent_actions": 61,
+          "human_actions": 17,
+          "score": 0.077667
+        }
+      ],
+      "game_score": 0.002157,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "title": "LP85"
+    },
+    {
+      "game_id": "dc22-fdcac232",
+      "win_levels": 6,
+      "levels_completed": 0,
+      "elapsed_s": 0.2,
+      "total_actions": 111,
+      "per_level": [],
+      "game_score": 0.0,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "title": "DC22"
+    },
+    {
+      "game_id": "dc22-fdcac232",
+      "win_levels": 6,
+      "levels_completed": 0,
+      "elapsed_s": 0.2,
+      "total_actions": 111,
+      "per_level": [],
+      "game_score": 0.0,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "title": "DC22"
+    },
+    {
+      "game_id": "sp80-589a99af",
+      "win_levels": 6,
+      "levels_completed": 0,
+      "elapsed_s": 0.19,
+      "total_actions": 30,
+      "per_level": [],
+      "game_score": 0.0,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "title": "SP80"
+    },
+    {
+      "game_id": "sp80-589a99af",
+      "win_levels": 6,
+      "levels_completed": 0,
+      "elapsed_s": 0.19,
+      "total_actions": 30,
+      "per_level": [],
+      "game_score": 0.0,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "title": "SP80"
+    },
+    {
+      "game_id": "ka59-38d34dbb",
+      "win_levels": 7,
+      "levels_completed": 0,
+      "elapsed_s": 0.1,
+      "total_actions": 100,
+      "per_level": [],
+      "game_score": 0.0,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "title": "KA59"
+    },
+    {
+      "game_id": "ka59-38d34dbb",
+      "win_levels": 7,
+      "levels_completed": 0,
+      "elapsed_s": 0.1,
+      "total_actions": 100,
+      "per_level": [],
+      "game_score": 0.0,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "title": "KA59"
+    },
+    {
+      "game_id": "g50t-5849a774",
+      "win_levels": 7,
+      "levels_completed": 0,
+      "elapsed_s": 0.29,
+      "total_actions": 130,
+      "per_level": [],
+      "game_score": 0.0,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "title": "G50T"
+    },
+    {
+      "game_id": "sb26-7fbdac44",
+      "win_levels": 8,
+      "levels_completed": 0,
+      "elapsed_s": 0.3,
+      "total_actions": 284,
+      "per_level": [],
+      "game_score": 0.0,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "title": "SB26"
+    },
+    {
+      "game_id": "lf52-271a04aa",
+      "win_levels": 10,
+      "levels_completed": 0,
+      "elapsed_s": 0.34,
+      "total_actions": 72,
+      "per_level": [],
+      "game_score": 0.0,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "title": "LF52"
+    },
+    {
+      "game_id": "bp35-0a0ad940",
+      "win_levels": 9,
+      "levels_completed": 0,
+      "elapsed_s": 0.14,
+      "total_actions": 64,
+      "per_level": [],
+      "game_score": 0.0,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "title": "BP35"
+    },
+    {
+      "game_id": "s5i5-18d95033",
+      "win_levels": 8,
+      "levels_completed": 0,
+      "elapsed_s": 0.03,
+      "total_actions": 50,
+      "per_level": [],
+      "game_score": 0.0,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "title": "S5I5"
+    },
+    {
+      "game_id": "s5i5-18d95033",
+      "win_levels": 8,
+      "levels_completed": 0,
+      "elapsed_s": 0.03,
+      "total_actions": 50,
+      "per_level": [],
+      "game_score": 0.0,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "title": "S5I5"
+    },
+    {
+      "game_id": "r11l-495a7899",
+      "win_levels": 6,
+      "levels_completed": 0,
+      "elapsed_s": 0.05,
+      "total_actions": 60,
+      "per_level": [],
+      "game_score": 0.0,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "title": "R11L"
+    },
+    {
+      "game_id": "r11l-495a7899",
+      "win_levels": 6,
+      "levels_completed": 0,
+      "elapsed_s": 0.05,
+      "total_actions": 60,
+      "per_level": [],
+      "game_score": 0.0,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "title": "R11L"
+    },
+    {
+      "game_id": "sk48-d8078629",
+      "win_levels": 8,
+      "levels_completed": 0,
+      "elapsed_s": 0.46,
+      "total_actions": 312,
+      "per_level": [],
+      "game_score": 0.0,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "title": "SK48"
+    },
+    {
+      "game_id": "sk48-d8078629",
+      "win_levels": 8,
+      "levels_completed": 0,
+      "elapsed_s": 0.46,
+      "total_actions": 312,
+      "per_level": [],
+      "game_score": 0.0,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "title": "SK48"
+    },
+    {
+      "game_id": "wa30-ee6fef47",
+      "win_levels": 9,
+      "levels_completed": 0,
+      "elapsed_s": 0.12,
+      "total_actions": 200,
+      "per_level": [],
+      "game_score": 0.0,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "title": "WA30"
+    },
+    {
+      "game_id": "vc33-5430563c",
+      "win_levels": 7,
+      "levels_completed": 0,
+      "elapsed_s": 0.06,
+      "total_actions": 50,
+      "per_level": [],
+      "game_score": 0.0,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "title": "VC33"
+    },
+    {
+      "game_id": "vc33-5430563c",
+      "win_levels": 7,
+      "levels_completed": 0,
+      "elapsed_s": 0.06,
+      "total_actions": 50,
+      "per_level": [],
+      "game_score": 0.0,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "title": "VC33"
+    },
+    {
+      "game_id": "ls20-9607627b",
+      "win_levels": 7,
+      "levels_completed": 0,
+      "elapsed_s": 0.1,
+      "total_actions": 129,
+      "per_level": [],
+      "game_score": 0.0,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "title": "LS20"
+    },
+    {
+      "game_id": "cd82-fb555c5d",
+      "win_levels": 6,
+      "levels_completed": 0,
+      "elapsed_s": 0.16,
+      "total_actions": 100,
+      "per_level": [],
+      "game_score": 0.0,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "title": "CD82"
+    },
+    {
+      "game_id": "tn36-ef4dde99",
+      "win_levels": 7,
+      "levels_completed": 1,
+      "elapsed_s": 0.03,
+      "total_actions": 110,
+      "per_level": [
+        {
+          "level": 1,
+          "agent_actions": 49,
+          "human_actions": 32,
+          "score": 0.426489
+        }
+      ],
+      "game_score": 0.015232,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "title": "TN36"
+    },
+    {
+      "game_id": "tn36-ef4dde99",
+      "win_levels": 7,
+      "levels_completed": 1,
+      "elapsed_s": 0.03,
+      "total_actions": 110,
+      "per_level": [
+        {
+          "level": 1,
+          "agent_actions": 49,
+          "human_actions": 32,
+          "score": 0.426489
+        }
+      ],
+      "game_score": 0.015232,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "title": "TN36"
+    }
+  ]
+}
