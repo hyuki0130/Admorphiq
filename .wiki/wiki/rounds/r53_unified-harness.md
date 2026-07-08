@@ -232,6 +232,18 @@ primary → owns game → clears. (game_score ≈ 0 because it used ~3000 action
 level a human does in 30 — RHAE squares efficiency, so inefficient clears score
 near 0; CLEARING is the architecture milestone, efficiency is a later pass.)
 
+### Progress-signal = the active tool's own state_key (click-only games)
+The 3-game e2e then revealed the NEXT gap: vc33/lp85 (click-only, so graph.detect
+is LOW → not a confident primary) cycled tools, though graph clears them ALONE.
+Root cause: the loop's novelty used the RAW frame hash — blind to graph's real
+progress (its masked/de-aliased states) — so graph looked stalled on a click game
+and was swapped. Fix: the loop measures novelty with the ACTIVE tool's own
+`state_key` when it exposes one (graph = HUD-masked + de-aliased key), resetting
+the seen-set on tool switch. A tool genuinely exploring by its OWN measure is no
+longer falsely retired. Re-measuring vc33/lp85. (This unifies ownership: a tool
+owns the game while IT is making progress, regardless of detect — the principled
+version of confident-primary.)
+
 ### E2E finding — the harness broke the strong tool (coarse-tenure fix)
 Full-harness e2e (LLM routing) on m0r0 scored **0/6 — while the graph tool ALONE
 clears m0r0**. Diagnosis from the trace: (a) gemma4 picked `code` 9× and `graph`
