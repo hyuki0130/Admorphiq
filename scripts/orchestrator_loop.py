@@ -56,7 +56,12 @@ SYS = (
 
 def _signature(game: str) -> str:
     import hashlib
-    d = np.load(REPO / "data" / "transitions" / "train" / f"{game}.npz", allow_pickle=True)
+    path = REPO / "data" / "transitions" / "train" / f"{game}.npz"
+    if not path.exists():
+        # No transitions collected for this game -> unknown signature; the
+        # orchestrator falls back to the graph default rather than crashing.
+        return "avg_changed_cells=0; click_action_fraction=0.00; avatar_mobility=0.00; nondeterminism=0.00 (NO DATA)"
+    d = np.load(path, allow_pickle=True)
     fr, ac, nf = d["frames"], d["actions"], d["next_frames"]
     n = len(ac)
     changed = np.array([int((fr[i] != nf[i]).sum()) for i in range(n)])

@@ -109,3 +109,18 @@ symmetry) from observations, then feed goal_directed_plan (planner/goal.py) + th
 Heuristics can't infer arbitrary goals; the LLM's unique value here is reasoning "what is this
 level asking for?". Build: LLM goal-inference tool -> goal_directed_plan, measured on re86/ft09/
 transform-class games. Do NOT keep adding action-mechanic tools without a goal signal.
+
+## Decisive finding (2026-07-08): pre-built tool orchestration ≈ baseline; frontier needs LLM-WRITTEN code
+Measured the full toolkit + LLM orchestration:
+- Orchestration loop (gemma4-31b picks config, runs, adapts) reaches ~the graph baseline: on
+  ar25/sb26/sp80/tu93/lf52 it clears (self-improvement recovery proven on sp80: WM fail -> graph
+  clear), but the FRONTIER transform games (re86/dc22/sc25) are 0 under EVERY tool: graph,
+  graph_dealias, graph_deadsig, paint_flood, world_model, AND graph_llmgoal (LLM-inferred goal).
+- So GOAL inference is necessary but NOT sufficient: even with the right goal, graph BFS can't
+  converge on the huge color-arrangement transform space within budget.
+- CONCLUSION: orchestrating PRE-BUILT generic tools plateaus at ~baseline (18/25). Beating it on
+  the frontier games requires the LLM to WRITE bespoke solving code per game (Tufa's insight:
+  "the model's creativity", the M1-winning REPL code-agent at 1.21%) — not select among fixed
+  tools. Next lever = full LLM code-agent (extend llm_policy into a Tufa-style REPL where the
+  model writes+executes game-specific Python), NOT more fixed tools.
+Do NOT keep adding fixed tools for the frontier transform games; they need LLM-authored code.
