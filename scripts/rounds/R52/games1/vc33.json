@@ -1,0 +1,35 @@
+{
+  "agent": "graph_frontier",
+  "n_games_run": 1,
+  "n_games_scored": 1,
+  "n_excluded": 0,
+  "total_score": 0.000164,
+  "total_score_pct": 0.016,
+  "games": [
+    {
+      "game_id": "vc33-5430563c",
+      "win_levels": 7,
+      "levels_completed": 2,
+      "elapsed_s": 380.27,
+      "total_actions": 8000,
+      "per_level": [
+        {
+          "level": 1,
+          "agent_actions": 118,
+          "human_actions": 7,
+          "score": 0.003519
+        },
+        {
+          "level": 2,
+          "agent_actions": 780,
+          "human_actions": 18,
+          "score": 0.000533
+        }
+      ],
+      "game_score": 0.000164,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "title": "VC33"
+    }
+  ]
+}

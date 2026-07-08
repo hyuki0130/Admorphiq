@@ -1,0 +1,29 @@
+{
+  "agent": "graph_frontier",
+  "n_games_run": 1,
+  "n_games_scored": 1,
+  "n_excluded": 0,
+  "total_score": 0.006678,
+  "total_score_pct": 0.668,
+  "games": [
+    {
+      "game_id": "tn36-ef4dde99",
+      "win_levels": 7,
+      "levels_completed": 1,
+      "elapsed_s": 616.44,
+      "total_actions": 8000,
+      "per_level": [
+        {
+          "level": 1,
+          "agent_actions": 74,
+          "human_actions": 32,
+          "score": 0.186998
+        }
+      ],
+      "game_score": 0.006678,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "title": "TN36"
+    }
+  ]
+}

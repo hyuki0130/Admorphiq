@@ -1,0 +1,33 @@
+R52 — GF_EWM (world-model action pruning) vs baseline, full-25 @8000, gpt-oss:20b
+generated 2026-07-08 17:37:12 KST
+VERDICT: NULL — score delta +0.0000; hook mechanically works (3/25 models kept at gate 0.8) but no-change within-tier pruning does not move the metric on samples.
+
+game      fit  kept     base      ewm  lvl b/e
+AR25     0.13 False   0.0000   0.0000      0/0
+BP35     0.00 False   0.0000   0.0000      0/0
+CD82     0.20 False   0.0012   0.0012      1/1
+CN04     0.07 False   0.0001   0.0001      1/1
+DC22     0.40 False   0.0000   0.0000      0/0
+FT09     1.00  True   0.0000   0.0000      1/1
+G50T     0.23 False   0.0000   0.0000      0/0
+KA59     0.10 False   0.0000   0.0000      0/0
+LF52     0.13 False   0.0015   0.0015      1/1
+LP85     1.00  True   0.0000   0.0000      1/1
+LS20     0.00 False   0.0000   0.0000      0/0
+M0R0     0.10 False   0.0001   0.0001      1/1
+R11L     0.07 False   0.0476   0.0476      1/1
+RE86     0.10 False   0.0000   0.0000      0/0
+S5I5     0.73 False   0.0000   0.0000      0/0
+SB26     0.77 False   0.0000   0.0000      0/0
+SC25     0.30 False   0.0000   0.0000      0/0
+SK48     0.40 False   0.0000   0.0000      0/0
+SP80     0.80  True   0.0005   0.0005      1/1
+SU15     0.00 False   0.0000   0.0000      0/0
+TN36       --  None   0.0067   0.0067      1/1
+TR87     0.57 False   0.0000   0.0000      0/0
+TU93     0.60 False   0.0000   0.0000      2/2
+VC33     0.73 False   0.0002   0.0002      2/2
+WA30     0.13 False   0.0000   0.0000      0/0
+
+fits: n=24 mean=0.357 max=1.00 kept=3 (gate 0.8)
+score delta (ewm-base) over 25 games: +0.0000

@@ -9,7 +9,7 @@ ALL=(ar25 bp35 cd82 cn04 dc22 ft09 g50t ka59 lf52 lp85 ls20 m0r0 r11l re86 s5i5 
 PAR=2
 
 agg() {
-  uv run python - > $D/SUMMARY.txt 2>/dev/null <<'PY'
+  /Users/nhn/.local/bin/uv run python - > $D/SUMMARY.txt 2>/dev/null <<'PY'
 import json, glob, datetime
 
 def load(arm):

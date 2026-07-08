@@ -50,4 +50,4 @@ graph/RL territory ([[r36_graph-frontier-bfs]]). Do NOT re-run more config sweep
 flip. ⛔
 
 **Related**: [[r50b_honest-k8]] (baseline + honest protocol), [[r50_cloud-bench-k3]],
-[[r49_ewm-bench-partial]].
+[[r49_ewm-bench-partial]], [[r52_ewm-integration]] (the runtime hook that deploys this config union).

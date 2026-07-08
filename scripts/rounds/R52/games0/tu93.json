@@ -1,0 +1,35 @@
+{
+  "agent": "graph_frontier",
+  "n_games_run": 1,
+  "n_games_scored": 1,
+  "n_excluded": 0,
+  "total_score": 6e-06,
+  "total_score_pct": 0.001,
+  "games": [
+    {
+      "game_id": "tu93-0768757b",
+      "win_levels": 9,
+      "levels_completed": 2,
+      "elapsed_s": 4.73,
+      "total_actions": 8000,
+      "per_level": [
+        {
+          "level": 1,
+          "agent_actions": 2396,
+          "human_actions": 19,
+          "score": 6.3e-05
+        },
+        {
+          "level": 2,
+          "agent_actions": 1584,
+          "human_actions": 16,
+          "score": 0.000102
+        }
+      ],
+      "game_score": 6e-06,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "title": "TU93"
+    }
+  ]
+}

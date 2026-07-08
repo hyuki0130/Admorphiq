@@ -1,0 +1,29 @@
+{
+  "agent": "graph_frontier",
+  "n_games_run": 1,
+  "n_games_scored": 1,
+  "n_excluded": 0,
+  "total_score": 2e-06,
+  "total_score_pct": 0.0,
+  "games": [
+    {
+      "game_id": "ft09-0d8bbf25",
+      "win_levels": 6,
+      "levels_completed": 1,
+      "elapsed_s": 163.73,
+      "total_actions": 8000,
+      "per_level": [
+        {
+          "level": 1,
+          "agent_actions": 6325,
+          "human_actions": 43,
+          "score": 4.6e-05
+        }
+      ],
+      "game_score": 2e-06,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "title": "FT09"
+    }
+  ]
+}

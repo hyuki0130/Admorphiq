@@ -1,0 +1,29 @@
+{
+  "agent": "graph_frontier",
+  "n_games_run": 1,
+  "n_games_scored": 1,
+  "n_excluded": 0,
+  "total_score": 0.001232,
+  "total_score_pct": 0.123,
+  "games": [
+    {
+      "game_id": "cd82-fb555c5d",
+      "win_levels": 6,
+      "levels_completed": 1,
+      "elapsed_s": 20.73,
+      "total_actions": 8000,
+      "per_level": [
+        {
+          "level": 1,
+          "agent_actions": 342,
+          "human_actions": 55,
+          "score": 0.025863
+        }
+      ],
+      "game_score": 0.001232,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "title": "CD82"
+    }
+  ]
+}

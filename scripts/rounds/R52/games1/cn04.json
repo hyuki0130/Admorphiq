@@ -1,0 +1,29 @@
+{
+  "agent": "graph_frontier",
+  "n_games_run": 1,
+  "n_games_scored": 1,
+  "n_excluded": 0,
+  "total_score": 6e-05,
+  "total_score_pct": 0.006,
+  "games": [
+    {
+      "game_id": "cn04-2fe56bfb",
+      "win_levels": 6,
+      "levels_completed": 1,
+      "elapsed_s": 1097.09,
+      "total_actions": 8000,
+      "per_level": [
+        {
+          "level": 1,
+          "agent_actions": 815,
+          "human_actions": 29,
+          "score": 0.001266
+        }
+      ],
+      "game_score": 6e-05,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "title": "CN04"
+    }
+  ]
+}
