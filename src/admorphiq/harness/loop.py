@@ -50,6 +50,11 @@ class UnifiedAgent:
     ) -> None:
         from admorphiq.adapter import AdmorphiqAdapter
         self._convert = AdmorphiqAdapter._convert_action
+        # Keep the env alive across deaths: the run loop revives on GAME_OVER
+        # only when this is set, so the agent gets its full budget to learn per
+        # game instead of stopping at the first avatar death (else deep-level
+        # games end in tens of actions). Matches GraphFrontierAgent.
+        self.restart_on_game_over = True
         self.tools = {t.name: t for t in tools}
         self.llm = llm
         self.giveup = giveup

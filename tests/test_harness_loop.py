@@ -117,6 +117,16 @@ def test_stall_triggers_redecision():
     assert tool.proposed >= 2
 
 
+def test_agent_restarts_on_game_over():
+    """Purpose: the agent must expose restart_on_game_over=True so the score
+    harness revives the env on death and the agent gets its full per-game budget.
+    Expected feedback: pass = deep-level games run to budget; fail = the game
+    stops at the first avatar death (tens of actions, measured 0)."""
+    tool = _FakeTool("graph", (1, None), 0.9)
+    agent = _agent([tool], "graph")
+    assert getattr(agent, "restart_on_game_over", False) is True
+
+
 def test_progressing_tool_does_not_call_llm_every_action():
     """Purpose: while the current tool keeps changing the frame, the queue may
     empty each step but the LLM is consulted only at decision boundaries, not per

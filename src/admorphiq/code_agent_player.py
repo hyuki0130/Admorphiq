@@ -36,6 +36,8 @@ class CodeAgentPlayer:
     def __init__(self, giveup: int = 8000) -> None:
         from admorphiq.adapter import AdmorphiqAdapter
         self._convert = AdmorphiqAdapter._convert_action
+        # Revive on death so the game gets the full budget (see loop.py / GFA).
+        self.restart_on_game_over = True
         self.giveup = giveup
         self.model = os.environ.get("CODE_AGENT_MODEL", "gemma4:31b-it-q8_0")
         self.host = os.environ.get("CODE_AGENT_HOST", "http://localhost:11434")
