@@ -663,6 +663,10 @@ class GraphFrontierAgent:
         # efficiency) without ever removing an action. Empirical, not predicted.
         self.dead_sig = _env_bool("GF_DEAD_SIG", False)
         self.dead_sig_min = _env_int("GF_DEAD_SIG_MIN", 8)
+        # Hidden-state de-aliasing (US-11, R53; default OFF => byte-identical).
+        # The novel primitive: split a state that ALIASES (same base+action ->
+        # different next, i.e. partial observability) by recent action-history.
+        self.dealias = _env_bool("GF_DEALIAS", False)
         self._ewm_obs: list[tuple[np.ndarray, int, np.ndarray]] = []
         self._ewm_result: Any = None
         self._ewm_attempted = False
@@ -1048,6 +1052,11 @@ class GraphFrontierAgent:
         # an action inert in one level may matter in the next.
         self._ds_inert: dict[Any, int] = {}
         self._ds_active: dict[Any, int] = {}
+        # De-aliasing (GF_DEALIAS): bases observed to alias + recent action k-gram.
+        self._aliased_bases: set[str] = set()
+        self._action_hist: deque[Any] = deque(maxlen=2)
+        self._last_base: str | None = None
+        self._prev_base: str | None = None
         # state_hash -> ordered list of untried action_keys.
         self._untried: dict[str, list[Any]] = {}
         # state_hash -> per-action try count (for graceful least-tried fallback).
@@ -1271,6 +1280,9 @@ class GraphFrontierAgent:
         self._prev_hash = cur_hash
         self._prev_action_key = action_key
         self._prev_frame = frame
+        if self.dealias:
+            self._prev_base = self._last_base   # base of the state we act FROM
+            self._action_hist.append(action_key)  # history that reaches the next state
         self._level_steps += 1
 
         return self._key_to_action(action_key)
@@ -1317,6 +1329,11 @@ class GraphFrontierAgent:
         edges = self._edges.setdefault(self._prev_hash, {})
         # Collapse signatures (always-on: they drive the adaptive downshift).
         mismatched = key in edges and edges[key] != nxt_hash
+        # De-aliasing: a mismatch means the SOURCE base state is partially
+        # observable (same base+action -> different next). Flag its base so
+        # future visits split by action-history and the graph stops corrupting.
+        if self.dealias and mismatched and self._prev_base is not None:
+            self._aliased_bases.add(self._prev_base)
         selflooped = nxt_hash == self._prev_hash
         self._sl_window.append(bool(selflooped))
         # Dead-signature bookkeeping (GF_DEAD_SIG): attribute this outcome to the
@@ -2087,6 +2104,19 @@ class GraphFrontierAgent:
                 dilated |= shifted
         out[r0:r1, c0:c1] |= dilated
 
+    def _base_hash(self, frame: np.ndarray) -> str:
+        """The pre-de-aliasing state hash (object multiset or HUD-masked pool)."""
+        if self._hash_mode == "object":
+            return self._object_hash(frame)
+        mask = self._hud_mask_grid()
+        if mask is not None and mask.shape == frame.shape:
+            masked = frame.copy()
+            masked[mask] = 0
+        else:
+            masked = frame
+        pooled = _max_pool(masked, self._effective_pool)
+        return hashlib.md5(np.ascontiguousarray(pooled).tobytes()).hexdigest()[:16]
+
     def _hash(self, frame: np.ndarray) -> str:
         """Hash the (HUD-masked, max-pooled) frame so real states recur.
 
@@ -2105,16 +2135,17 @@ class GraphFrontierAgent:
         In object-hash mode (R45) the key is the object multiset instead — see
         :meth:`_object_hash`.
         """
-        if self._hash_mode == "object":
-            return self._object_hash(frame)
-        mask = self._hud_mask_grid()
-        if mask is not None and mask.shape == frame.shape:
-            masked = frame.copy()
-            masked[mask] = 0
-        else:
-            masked = frame
-        pooled = _max_pool(masked, self._effective_pool)
-        return hashlib.md5(np.ascontiguousarray(pooled).tobytes()).hexdigest()[:16]
+        base = self._base_hash(frame)
+        self._last_base = base
+        # Hidden-state DE-ALIASING (GF_DEALIAS, default OFF => byte-identical):
+        # once a base state is observed to ALIAS (same base+action -> different
+        # next, i.e. partial observability), split it by recent action-history so
+        # the two true-states separate. Only aliased bases get the suffix, so the
+        # graph does not explode. The novel primitive no M1 winner has.
+        if self.dealias and base in self._aliased_bases:
+            kgram = ",".join(str(a) for a in self._action_hist)
+            return hashlib.md5(f"{base}|{kgram}".encode()).hexdigest()[:16]
+        return base
 
     def _object_hash(self, frame: np.ndarray) -> str:
         """Hash the frame by its OBJECTS, not its raw pixels (R45).

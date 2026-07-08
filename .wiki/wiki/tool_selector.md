@@ -87,3 +87,12 @@ the WRONG target for it. Lesson: a transition-diff color-flip pattern (0→C) do
 prove a click-to-fill mechanic — verify the tool ELICITS the effect LIVE before trusting it.
 su15 needs its true mechanic reverse-engineered (a distinct tool). Do not keep tuning paint_flood
 against su15.
+
+## Measured note (2026-07-08): de-aliasing engages SAFELY but isn't sufficient alone
+Built GF_DEALIAS (hidden-state de-aliasing, US-11) + tests (default-OFF byte-identical to the
+18/25 baseline — guaranteed). dc22 bench: base 0/0 vs dealias 0/0 (no clear yet), BUT the
+mechanism WORKS — on dc22 it flagged 5 aliased bases live and split them by action-history with
+NO state explosion (graph 431 states). So the novel primitive (no M1 winner has it) detects
+partial observability and separates true-states surgically; it just doesn't single-handedly clear
+the hardest game — it must COMPOSE with exploration/goal work. Valid tested library primitive;
+keep default-OFF; compose, don't expect solo clears on the frontier games.
