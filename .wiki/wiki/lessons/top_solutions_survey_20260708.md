@@ -172,3 +172,44 @@ model improvise (Tufa + forge both converged on this).
 - [[rounds/r52_ewm-integration]] -- our executable-WM integration (the Lever-1 track)
 - [[rounds/r34_metric-reexamination]] -- prior (preview-era) metric anchor this corrects
 - StochasticGoose repo, astroseger executable-WM repo, dolphin-in-a-coma graph repo (URLs above)
+
+## 2026-07-08 follow-up — latest models + post-M1 public methods
+
+### Q1 — latest open-weight models for an OFFLINE code-agent / executable-WM on 96GB
+
+Hard fact that reframes everything: nearly ALL new (Apr–Jul 2026) strong open
+models EXCEED 96GB VRAM and are excluded — GLM-5.2 (744B/40B, INT4 ~372GB, MIT,
+https://recipes.vllm.ai/zai-org/GLM-5.2), DeepSeek V4-Flash (284B/13B, 4bit
+~142GB, MIT, https://www.morphllm.com/deepseek-v4), MiniMax M3 (428B/23B, Q4
+~265GB), Kimi K2.7 Code (1T/32B, 2bit ~325GB), DeepSeek V4-Pro (1.6T). Qwen
+3.7-Max is API-ONLY (no weights, https://qwen.ai/blog?id=qwen3.7). So the offline
+lever is METHOD, not a bigger model. Ranked shortlist that FITS 96GB:
+
+1. **Qwen 3.6-27B (dense)** — 27B dense, 4bit ~15GB, FITS (huge headroom),
+   Apache 2.0. SWE-bench Verified 77.2 / SWE-Pro 53.5 / LiveCodeBench v6 83.9 —
+   best coder in-bracket; the EXACT model Tufa's M1 winner ran. 2026-04-22.
+   https://qwen.ai/blog?id=qwen3.6-27b  <- SINGLE BEST PICK for us.
+2. **gpt-oss-120b** — 117B MoE / ~5B active, MXFP4 native ~63GB, FITS (tight),
+   Apache 2.0. Strongest math/scientific reasoning in-bracket, small active =
+   fast; good for the goal-hypothesis reasoning role. 2025-08.
+   https://openai.com/index/introducing-gpt-oss/
+3. **Qwen 3.6-35B-A3B (MoE)** — 35B / 3B active, 4bit ~20GB, FITS, Apache 2.0.
+   Slightly below the 27B dense on coding but 3B active = top throughput (matters
+   for the 9h/110-game budget). 2026-04-16. https://ollama.com/library/qwen3.6
+4. **Gemma 4 31B (dense)** — 31B, 4bit ~18GB, FITS, Gemma license (not Apache,
+   check Kaggle use terms). Proven on THIS task (M1 2nd/3rd + JEPA writeup),
+   multimodal. https://ai.google.dev/gemma/docs/core
+
+Recommendation: Qwen 3.6-27B dense as the primary executable-WM code-agent
+(re-evaluate the R48 Qwen3-Coder-30B-A3B pick against it); gpt-oss-120b as the
+reasoning backup.
+
+### Q2 — any NEW public method beating ~1.2% published AFTER the June-30 M1 winners?
+
+No. No public notebook/writeup/paper dated after June 30 2026 demonstrably beats
+the M1 top (~1.21%). The live top-3 (~1.56%) remain NOT open-sourced (no writeups
+found). The strongest published methods are still the M1 winners (Tufa "The Duck",
+Qwen 3.6-27B FP8 local, live-REPL code agent — "hand-crafted tools hurt, let the
+model improvise") and the pre-M1 arXiv 2605.05138 executable-WM paper (cloud
+GPT-5.5, 58.12% RHAE on public-25, NOT offline as-shipped). Both reinforce our
+R48/R49 executable-WM direction; no newer public SOTA to chase.
