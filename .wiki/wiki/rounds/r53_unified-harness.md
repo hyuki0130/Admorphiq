@@ -178,8 +178,30 @@ Direct-probe after the composition (budget 3000):
 **m0r0 0→1: de-aliasing closed the gap to legacy parity.** cd82 stays 0 — its
 0.77 nondeterminism isn't separated by a 4-action-history suffix (it was
 historically a paint-hybrid; may need the `paint` tool or deeper tiering, not
-just graph). Next strengthening targets: vc33 depth (1→2) and the remaining
-base>0 games (cn04/lf52/tn36/sp80/ft09/lp85) — full direct-probe sweep running.
+just graph).
+
+### Full base>0 direct-probe sweep (graph tool, budget 3000)
+
+| game | my graph | legacy | note |
+|---|---|---|---|
+| vc33 | 1 | 2 | clears; legacy goes deeper |
+| m0r0 | 1 | 1 | ✓ parity (de-aliasing) |
+| lp85 | 1 | 1 | ✓ parity |
+| cd82 | 0 | 1 | hidden-state aliasing 0.77 |
+| cn04 | 0 | 1 | click-heavy |
+| lf52 | 0 | 1 | click-heavy |
+| tn36 | 0 | 1 | click/program-puzzle |
+| sp80 | 0 | 1 | |
+| ft09 | 0 | 1 | lights-out (click-toggle) |
+| ar25 | 0 | 0 | legacy also 0 |
+
+**Score so far: from-scratch `graph` clears 3/9 of the games legacy clears**
+(vc33, m0r0, lp85), up from 1 before this round's HUD+de-alias work. The misses
+cluster on **click-heavy games** (ft09 lights-out, cn04, lf52, tn36) — the graph
+tool's ACTION6 exploration (centroid-only click candidates, capped at 14) is the
+next strengthening lever: legacy graph_frontier explores clicks more thoroughly.
+This is per-game-class research as the user framed it; strengthening pass 2 =
+click-exploration depth for the toggle/click cluster.
 
 ## Pending
 
