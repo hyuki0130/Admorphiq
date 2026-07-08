@@ -655,6 +655,14 @@ class GraphFrontierAgent:
         self.ewm_model = os.environ.get("GF_EWM_MODEL", "gpt-oss:20b")
         self.ewm_plan_horizon = _env_int("GF_EWM_PLAN_HORIZON", 2)
         self.ewm_plan_conf = _env_float("GF_EWM_PLAN_CONF", 0.55)
+        # Dead-signature action prior (R53 lever 3, default OFF => byte-identical).
+        # A game-agnostic, LLM-FREE efficiency prior: an action CLASS (bucket)
+        # that has been tried >= GF_DEAD_SIG_MIN times and NEVER produced a
+        # hash-level state change is treated as inert and its untried members
+        # sort last within their tier — saving probe actions (raises squared-
+        # efficiency) without ever removing an action. Empirical, not predicted.
+        self.dead_sig = _env_bool("GF_DEAD_SIG", False)
+        self.dead_sig_min = _env_int("GF_DEAD_SIG_MIN", 8)
         self._ewm_obs: list[tuple[np.ndarray, int, np.ndarray]] = []
         self._ewm_result: Any = None
         self._ewm_attempted = False
@@ -1035,6 +1043,11 @@ class GraphFrontierAgent:
         # Graph: state_hash -> {action_key: next_state_hash}. action_key is an
         # int for simple actions (1..5) or a ("click", x, y) tuple for ACTION6.
         self._edges: dict[str, dict[Any, str]] = {}
+        # Dead-signature (GF_DEAD_SIG): per action-CLASS bucket, how many tries
+        # produced NO hash-change (inert) vs any change (active). Level-scoped:
+        # an action inert in one level may matter in the next.
+        self._ds_inert: dict[Any, int] = {}
+        self._ds_active: dict[Any, int] = {}
         # state_hash -> ordered list of untried action_keys.
         self._untried: dict[str, list[Any]] = {}
         # state_hash -> per-action try count (for graceful least-tried fallback).
@@ -1306,6 +1319,14 @@ class GraphFrontierAgent:
         mismatched = key in edges and edges[key] != nxt_hash
         selflooped = nxt_hash == self._prev_hash
         self._sl_window.append(bool(selflooped))
+        # Dead-signature bookkeeping (GF_DEAD_SIG): attribute this outcome to the
+        # action CLASS so a bucket that only ever self-loops can be deprioritised.
+        if self.dead_sig and key is not None:
+            b = self._bucket_of(key)
+            if selflooped:
+                self._ds_inert[b] = self._ds_inert.get(b, 0) + 1
+            else:
+                self._ds_active[b] = self._ds_active.get(b, 0) + 1
         self._mm_window.append(bool(mismatched))
         # New-state signal (R45): the object-hash explosion trigger reads how often
         # a transition lands on a never-before-seen node. ``_ensure_state`` for this
@@ -2339,7 +2360,29 @@ class GraphFrontierAgent:
                     self._action_tier.get(k, _N_TIERS - 1), _nochange(k)
                 ),
             )
+        if self.dead_sig:
+            # Empirically-inert action classes sort last within their tier.
+            return min(
+                eligible,
+                key=lambda k: (
+                    self._action_tier.get(k, _N_TIERS - 1), self._bucket_is_dead(k)
+                ),
+            )
         return min(eligible, key=lambda k: self._action_tier.get(k, _N_TIERS - 1))
+
+    def _bucket_is_dead(self, action_key: Any) -> bool:
+        """True if this action's CLASS has only ever self-looped (GF_DEAD_SIG).
+
+        A bucket is 'dead' once it has >= ``dead_sig_min`` inert (self-loop)
+        observations and ZERO state-changing observations. Conservative: any
+        single change revives the class, so a genuinely-useful action is never
+        permanently suppressed.
+        """
+        b = self._bucket_of(action_key)
+        return (
+            self._ds_active.get(b, 0) == 0
+            and self._ds_inert.get(b, 0) >= self.dead_sig_min
+        )
 
     def _count_tier_hit(self, key: Any) -> None:
         """Increment the debug per-tier local-pick counter (no-op if not debug)."""
