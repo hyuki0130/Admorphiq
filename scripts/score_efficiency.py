@@ -77,6 +77,11 @@ def _make_agent(name: str, game_id: str | None = None):
 
         # LLM-free paint tool: detect click-flood mechanic -> click fill points.
         return PaintFloodAgent()
+    if name == "code_agent":
+        from admorphiq.code_agent_player import CodeAgentPlayer
+
+        # Frontier lever: LLM writes Python per turn to inspect frame + queue actions.
+        return CodeAgentPlayer()
     if name == "worldmodel":
         from admorphiq.world_model_agent import WorldModelAgent
 
