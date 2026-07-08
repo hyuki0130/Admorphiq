@@ -5,7 +5,7 @@ round: R52
 axis: ewm-integration
 keywords: [executable-world-model, gf-ewm, action-pruning, graph-frontier, runtime-fit-gap, no-change-pruning, adaptive-synthesis, null-result, ralph]
 verdict: integration BUILT + measured; score delta +0.0000 (NULL) — no-change pruning is redundant with the agent's empirical self-loop learning; runtime raw-observation fit (mean 0.357, 3/24 >= gate) far below bench-curated fit; default-OFF safe; R53 = goal-conditioned WM, not no-change pruning
-commit: pending
+commit: 0c37db9
 date: 2026-07-08
 description: Productized the R49-R51 EWM into the deployed agent (GF_EWM, default OFF) — mechanically works but scores identically to baseline; the no-change pruning signal is redundant with empirical exploration, and runtime fit is far below bench fit
 ---

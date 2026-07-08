@@ -1474,43 +1474,6 @@ class GraphFrontierAgent:
         y, x = divmod(coord, GRID)
         return ("click", int(x), int(y))
 
-    def _ewm_plan_pick(self, state_hash: str, frame: np.ndarray) -> Any | None:
-        """Pick the goal-maximising in-gate untried action via WM rollout (R53).
-
-        Builds candidate combined-action indices from the state's in-gate
-        untried keys, rolls the synthesized world model out toward the inferred
-        goal (:func:`planner.goal.goal_directed_plan`), and returns the winning
-        key — or None when there are no mappable candidates or the planner
-        declines (model below the confidence floor). Additive and safe: a
-        decline leaves the tier walk below untouched.
-        """
-        from .ewm.forward_model import EWMForwardModel
-        from .planner.goal import goal_directed_plan
-
-        untried = self._untried.get(state_hash) or []
-        idx_to_key: dict[int, Any] = {}
-        for k in untried:
-            if self._action_tier.get(k, _N_TIERS - 1) > self._unlocked_tier:
-                continue
-            idx = self._ewm_action_idx(k)
-            if idx is not None:
-                idx_to_key.setdefault(idx, k)
-        if not idx_to_key:
-            return None
-
-        fwd = EWMForwardModel(self._ewm_result.fn, self._ewm_result.train_fit)
-        result = goal_directed_plan(
-            frame,
-            self._goal,
-            list(idx_to_key),
-            fwd,
-            horizon=self.ewm_plan_horizon,
-            confidence_floor=self.ewm_plan_conf,
-        )
-        if result.action_idx is None:
-            return None
-        return idx_to_key.get(result.action_idx)
-
     # ── monotone-moving-band detection (R44) ─────────────────────────────────────
 
     def _band_observe(self, changed: np.ndarray) -> None:
@@ -2307,18 +2270,6 @@ class GraphFrontierAgent:
             key = self._measure_guided_pick(state_hash)
             if key is not None:
                 self._dbg_measure_walks += 1
-                return key
-
-        # Goal-conditioned world-model planning (R53, GF_EWM_PLAN). When a
-        # high-fit synthesized world model exists AND a goal is inferred, roll
-        # the model out toward the goal and take the goal-maximising first move
-        # from the in-gate untried candidates. ADDITIVE: goal_directed_plan
-        # declines (returns None) below its confidence floor, so exploration is
-        # unchanged whenever the model is not trusted.
-        if self.ewm_plan and self._ewm_result is not None and self._goal is not None:
-            key = self._ewm_plan_pick(state_hash, frame)
-            if key is not None:
-                self._dbg_ewm_plans += 1
                 return key
 
         # Tier-gated exploration (R38). Try, in order, at the current unlocked
