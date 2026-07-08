@@ -214,6 +214,19 @@ strengthening is genuine multi-round research per game-class: cd82 (hidden-state
 aliasing beyond 4-history), lights-out cluster (needs sequence search — the
 `paint`/toggle tool's job, not graph), vc33 depth (1→2).
 
+### E2E finding — the harness broke the strong tool (coarse-tenure fix)
+Full-harness e2e (LLM routing) on m0r0 scored **0/6 — while the graph tool ALONE
+clears m0r0**. Diagnosis from the trace: (a) gemma4 picked `code` 9× and `graph`
+only 2× (weak routing), and (b) the fine-grained stall-swap + observe-all
+**broke the strong tool**: every tool observed every transition, so graph's edge
+graph got polluted by other tools' click actions, and graph was retired on a
+30-step stall while legitimately BFS-walking to a distant frontier. A tool that
+must control the whole action sequence (graph BFS) cannot survive fine-grained
+interleaving. Fix (coarse tenure): (1) observe() feeds ONLY the active tool —
+each tool's model reflects only its own actions; (2) a tool is reset on switch —
+clean start; (3) no-new-state stall raised to 80 — a sustained run. Re-measuring
+m0r0 in the full harness to confirm it now matches the direct probe.
+
 ## Pending
 
 `HARNESS_CTX` context-size sweep (`scripts/harness_ctx_sweep.py`) once tool
