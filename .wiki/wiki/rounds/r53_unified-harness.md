@@ -263,6 +263,31 @@ m0r0 in the full harness to confirm it now matches the direct probe.
 strength clears a couple of base>0 games, so the sweep optimises a real signal.
 Full-loop LLM nav bench (m0r0,vc33 @ stall=30) in progress.
 
+### Click-game routing + the remaining efficiency gap (session close)
+Made `graph` a click-game candidate (detect 0.4 when ACTION6 offered + a wiki
+decision-table row), so gemma4 now DOES pick `graph` on vc33/lp85 (was 0 picks).
+BUT the full-harness clear of vc33/lp85 is NOT yet confirmed: graph (detect 0.4 <
+the 0.7 primary threshold) is subject to stall-swap, so it gets a tenure then is
+swapped — it does NOT get the uninterrupted full-budget run that clears vc33/lp85
+in the direct probe. And each tool switch costs a gemma4 call (SWA ~10s), so a
+click game where graph is the 4th-5th pick takes 20+ min for ONE game — the
+serial-tool-exploration latency is itself a problem for the 9h/110-game budget.
+
+**Two standing next-axis conclusions (measured, do not re-derive):**
+1. **Efficiency is the real score lever, not coverage.** Even a CONFIRMED clear
+   (m0r0) scores game_score ≈ 0 because it used ~3000 actions vs a human's ~30 —
+   RHAE squares efficiency. The graph tool's exhaustive BFS clears but is
+   RHAE-worthless. The next axis is SHORT-path solving (goal-directed search),
+   not more coverage.
+2. **Harness tool-selection latency matters.** Serial LLM-per-switch exploration
+   is too slow when the right tool isn't the first pick. Either route the first
+   pick better (so graph is picked first on the games it clears) or parallelize
+   tool trials.
+
+**Session milestone (validated):** the from-scratch generic tools + self-improving
+harness clear a game END-TO-END (m0r0 0→1) — the architecture works. `graph`
+clears 3 games in isolation (vc33/m0r0/lp85). 10 measured fixes, 661 tests green.
+
 ## Related
 
 - [[r52_ewm-integration]] — the EWM runtime hook this generalizes into a tool.
