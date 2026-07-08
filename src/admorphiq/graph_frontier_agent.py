@@ -643,10 +643,18 @@ class GraphFrontierAgent:
         # if its fit over all observations reaches GF_EWM_MIN_FIT, untried
         # actions the model predicts as no-change are deprioritized within
         # their tier. Frame observations only — no game ids.
-        self.ewm_enabled = _env_bool("GF_EWM", False)
+        # GF_EWM = no-change pruning (R52, measured NULL). GF_EWM_PLAN =
+        # goal-conditioned forward planning (R53) — the proper LLM use. Either
+        # flag turns on observation logging + one-shot synthesis; each then
+        # consumes the kept model differently. Both default OFF => byte-identical.
+        self.ewm_prune = _env_bool("GF_EWM", False)
+        self.ewm_plan = _env_bool("GF_EWM_PLAN", False)
+        self.ewm_enabled = self.ewm_prune or self.ewm_plan
         self.ewm_min_fit = _env_float("GF_EWM_MIN_FIT", 0.8)
         self.ewm_min_obs = _env_int("GF_EWM_MIN_OBS", 30)
         self.ewm_model = os.environ.get("GF_EWM_MODEL", "gpt-oss:20b")
+        self.ewm_plan_horizon = _env_int("GF_EWM_PLAN_HORIZON", 2)
+        self.ewm_plan_conf = _env_float("GF_EWM_PLAN_CONF", 0.55)
         self._ewm_obs: list[tuple[np.ndarray, int, np.ndarray]] = []
         self._ewm_result: Any = None
         self._ewm_attempted = False
@@ -902,7 +910,9 @@ class GraphFrontierAgent:
         # BOTH the R46 goal ranker and the R47 measure-guided expander. This single
         # switch gates all of it so that with both features OFF (the default) every
         # goal code path stays inert — byte-identical to pre-R46/R47 behaviour.
-        self._goal_active = self.goal_rank or self.measure_expand
+        # GF_EWM_PLAN also needs goal inference running so the forward-model
+        # rollout has a goal to climb (R53).
+        self._goal_active = self.goal_rank or self.measure_expand or self.ewm_plan
 
         # Carried goal TYPE across level boundaries (R46). When a level clears, the
         # measure-tracker's best-jump goal type is snapshotted here so the NEXT
@@ -1149,6 +1159,8 @@ class GraphFrontierAgent:
         self._bucket_deaths: dict[Any, int] = {}
         # Debug: measure-guided expansion picks taken this level.
         self._dbg_measure_walks = 0
+        # Debug: goal-conditioned WM-planning picks taken this level (R53).
+        self._dbg_ewm_plans = 0
 
     # ── harness contract ─────────────────────────────────────────────────────
 
@@ -1224,7 +1236,16 @@ class GraphFrontierAgent:
                 self._goal_walks_since_progress = 0
             self._maybe_infer_goal(frame)
 
-        action_key = self._policy(cur_hash, simple_ids, action6_ok, frame)
+        # Goal-conditioned world-model planning (R53, GF_EWM_PLAN): when a
+        # high-fit synthesized model AND an inferred goal exist, roll the model
+        # out over the current candidates and take the goal-maximising move.
+        # Additive: declines (returns None) below the confidence floor, so
+        # exploration is unchanged whenever the model is not trusted.
+        action_key = None
+        if self.ewm_plan and self._ewm_result is not None and self._goal is not None:
+            action_key = self._ewm_plan_action(frame, simple_ids, action6_ok)
+        if action_key is None:
+            action_key = self._policy(cur_hash, simple_ids, action6_ok, frame)
         if action_key is None:
             # No action available at all — reset gracefully.
             self._prev_hash = None
@@ -1400,6 +1421,95 @@ class GraphFrontierAgent:
         if pred_arr.shape != frame.shape:
             return False
         return bool((pred_arr == frame).all())
+
+    def _ewm_plan_candidates(
+        self, frame: np.ndarray, simple_ids: list[int], action6_ok: bool
+    ) -> list[int]:
+        """Combined-logit action indices to roll out: available simple actions
+        plus this frame's segment-click candidates (same set the graph agent
+        explores). Frame-only; capped by ``max_clicks``.
+        """
+        from .ewm.core import COORD_OFFSET, GRID
+
+        cands = [i - 1 for i in simple_ids if 1 <= i <= 5]  # ACTION1..5 -> 0..4
+        if action6_ok:
+            for x, y in _segment_click_candidates(frame, self.max_clicks):
+                cands.append(COORD_OFFSET + int(y) * GRID + int(x))
+        return cands
+
+    def _ewm_plan_action(
+        self, frame: np.ndarray, simple_ids: list[int], action6_ok: bool
+    ) -> Any | None:
+        """Pick the goal-maximising next action via forward-model rollout.
+
+        Wraps the kept world model as a planner forward model, asks
+        :func:`planner.goal.goal_directed_plan` for the best first move over the
+        current candidates, and maps the chosen combined index back to a graph
+        action_key. Returns None when the planner declines (low confidence) or
+        no candidates exist, so the caller falls back to novelty exploration.
+        """
+        from .ewm.core import COORD_OFFSET, NUM_SIMPLE_ACTIONS
+        from .ewm.forward_model import EWMForwardModel
+        from .planner.goal import goal_directed_plan
+
+        cands = self._ewm_plan_candidates(frame, simple_ids, action6_ok)
+        if not cands:
+            return None
+        fwd = EWMForwardModel(self._ewm_result.fn, self._ewm_result.train_fit)
+        result = goal_directed_plan(
+            frame, self._goal, cands, fwd,
+            horizon=self.ewm_plan_horizon,
+            confidence_floor=self.ewm_plan_conf,
+        )
+        if result.action_idx is None:
+            return None
+        if self._debug:
+            self._dbg_ewm_plans = getattr(self, "_dbg_ewm_plans", 0) + 1
+        idx = int(result.action_idx)
+        if idx < NUM_SIMPLE_ACTIONS:
+            return idx + 1
+        coord = idx - COORD_OFFSET
+        from .ewm.core import GRID
+
+        y, x = divmod(coord, GRID)
+        return ("click", int(x), int(y))
+
+    def _ewm_plan_pick(self, state_hash: str, frame: np.ndarray) -> Any | None:
+        """Pick the goal-maximising in-gate untried action via WM rollout (R53).
+
+        Builds candidate combined-action indices from the state's in-gate
+        untried keys, rolls the synthesized world model out toward the inferred
+        goal (:func:`planner.goal.goal_directed_plan`), and returns the winning
+        key — or None when there are no mappable candidates or the planner
+        declines (model below the confidence floor). Additive and safe: a
+        decline leaves the tier walk below untouched.
+        """
+        from .ewm.forward_model import EWMForwardModel
+        from .planner.goal import goal_directed_plan
+
+        untried = self._untried.get(state_hash) or []
+        idx_to_key: dict[int, Any] = {}
+        for k in untried:
+            if self._action_tier.get(k, _N_TIERS - 1) > self._unlocked_tier:
+                continue
+            idx = self._ewm_action_idx(k)
+            if idx is not None:
+                idx_to_key.setdefault(idx, k)
+        if not idx_to_key:
+            return None
+
+        fwd = EWMForwardModel(self._ewm_result.fn, self._ewm_result.train_fit)
+        result = goal_directed_plan(
+            frame,
+            self._goal,
+            list(idx_to_key),
+            fwd,
+            horizon=self.ewm_plan_horizon,
+            confidence_floor=self.ewm_plan_conf,
+        )
+        if result.action_idx is None:
+            return None
+        return idx_to_key.get(result.action_idx)
 
     # ── monotone-moving-band detection (R44) ─────────────────────────────────────
 
@@ -2199,6 +2309,18 @@ class GraphFrontierAgent:
                 self._dbg_measure_walks += 1
                 return key
 
+        # Goal-conditioned world-model planning (R53, GF_EWM_PLAN). When a
+        # high-fit synthesized world model exists AND a goal is inferred, roll
+        # the model out toward the goal and take the goal-maximising first move
+        # from the in-gate untried candidates. ADDITIVE: goal_directed_plan
+        # declines (returns None) below its confidence floor, so exploration is
+        # unchanged whenever the model is not trusted.
+        if self.ewm_plan and self._ewm_result is not None and self._goal is not None:
+            key = self._ewm_plan_pick(state_hash, frame)
+            if key is not None:
+                self._dbg_ewm_plans += 1
+                return key
+
         # Tier-gated exploration (R38). Try, in order, at the current unlocked
         # tier: a local within-tier untried action, then a promise-scored walk to
         # a within-tier frontier. If neither exists, unlock the next tier and
@@ -2250,7 +2372,7 @@ class GraphFrontierAgent:
         ]
         if not eligible:
             return None
-        if self._ewm_result is not None and frame is not None:
+        if self._ewm_result is not None and self.ewm_prune and frame is not None:
             if len(self._ewm_pred_cache) > 50_000:
                 self._ewm_pred_cache.clear()
 
