@@ -90,9 +90,15 @@ which `loop.py` does. A per-action LLM call would be untenable here.
   a harness bug — no tool/code path fits a target that must be inferred and the
   loop correctly falls through them. (To verify the 100-action stop isn't a
   RESET-loop artefact, compare against the graph_frontier baseline on re86.)
-- **ar25** (navigation — the `graph` tool SHOULD clear it) running now: this is
-  the decisive end-to-end test that gemma4-31b picks `graph` from the movement
-  signature and the loop clears a game it ought to.
+- **ar25** running now — BUT a baseline check corrected the test design: the
+  deployed graph_frontier baseline ALSO scores **ar25 = 0/8 at 8000 actions**
+  (scripts/rounds/R53/SUMMARY.txt, online-RL track). ar25 is NOT a game the
+  graph approach clears, so a harness 0 on it proves nothing about orchestration
+  quality — both re86 and ar25 were baseline-zero games, a poorly chosen probe
+  pair. The FAIR harness-quality test is on games the baseline DOES clear:
+  **R11L (0.0476, best), VC33 (2 levels), CD82, M0R0, CN04, LF52, TN36, SP80,
+  FT09, LP85** (all base>0). Next bench targets those — does gemma4-31b pick the
+  tool that matches/beats the baseline on games that are actually winnable?
 
 ## Pending
 
