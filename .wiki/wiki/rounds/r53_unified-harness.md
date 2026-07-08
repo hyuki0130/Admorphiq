@@ -224,7 +224,13 @@ reliable frame signal; trust it and let the right tool run uninterrupted.
 Low-confidence picks still swap-on-failure. Also fixed the routing wiki (decision
 table now outputs EXACT canonical tool names + a `code` last-resort row — gemma4
 had been picking `code` 9× because the table used non-matching display names).
-Re-measuring m0r0 in the full harness with both fixes.
+
+**RESULT: the full harness now clears m0r0 L1 (0 → 1)** — matching the direct
+probe. gemma4 picked `graph`, which owned the game as confident primary and
+cleared it. This validates the whole spine end-to-end: LLM routing → confident
+primary → owns game → clears. (game_score ≈ 0 because it used ~3000 actions for a
+level a human does in 30 — RHAE squares efficiency, so inefficient clears score
+near 0; CLEARING is the architecture milestone, efficiency is a later pass.)
 
 ### E2E finding — the harness broke the strong tool (coarse-tenure fix)
 Full-harness e2e (LLM routing) on m0r0 scored **0/6 — while the graph tool ALONE
