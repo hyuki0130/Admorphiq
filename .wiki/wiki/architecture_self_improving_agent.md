@@ -67,7 +67,7 @@ library, verified by actually clearing it), NOT just orchestration scaffolding.
 
 - **Generic only**: no game ids/titles anywhere; every tool triggers on frame observations.
 - **Original, not copied**: M1 winners / Duck are BASELINES to beat (attributed, in `baselines/`),
-  never shipped as ours ([[top_solutions_survey_20260708]]).
+  never shipped as ours ([[lessons/top_solutions_survey_20260708]]).
 - **Measured honestly**: full-25, transfer-honest; ship a change only if it beats both our graph
   baseline AND a reproduced-Duck reference; verdict recorded even if null.
 - **Metric reality**: leaderboard top ~1.56%, M1 winner 1.21%, us ~0.20% (×100 of our harness
@@ -80,5 +80,5 @@ library, verified by actually clearing it), NOT just orchestration scaffolding.
 - Then the orchestrator: LLM REPL that can call + edit the tools, with per-game diagnose→improve.
 - Then measure the whole vs baselines; iterate toward 25/25.
 
-**Related**: [[top_solutions_survey_20260708]] (baselines to beat + metric), [[r52_ewm-integration]],
-[[r53_goal-conditioned-wm]] (world-model tool), [[rounds/r36_graph-frontier-bfs]] (graph tool).
+**Related**: [[lessons/top_solutions_survey_20260708]] (baselines to beat + metric), [[rounds/r52_ewm-integration]],
+[[rounds/r36_graph-frontier-bfs]] (graph tool).
