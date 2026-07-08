@@ -133,7 +133,11 @@ class UnifiedAgent:
         frame = frame_2d(obs).astype(np.int16)
         simple_ids, action6 = availability(obs)
         valid = [_NAME[i] for i in simple_ids if i in _NAME] + (["MOUSE"] if action6 else [])
-        hist = [{"action": s[0], "changed": True} for s in []]  # code path is stateless per call
+        # Give the coding LLM the recent transitions it has actually observed.
+        hist = [
+            {"action": _NAME.get(a, f"ACTION{a}"), "changed": bool((p != n).any())}
+            for p, a, n in self._transitions[-10:]
+        ]
         try:
             text = self.llm(build_code_prompt(frame, hist, valid))
             return run_code(text, frame, hist, valid).actions
