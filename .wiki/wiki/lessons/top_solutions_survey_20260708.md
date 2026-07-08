@@ -213,3 +213,56 @@ Qwen 3.6-27B FP8 local, live-REPL code agent — "hand-crafted tools hurt, let t
 model improvise") and the pre-M1 arXiv 2605.05138 executable-WM paper (cloud
 GPT-5.5, 58.12% RHAE on public-25, NOT offline as-shipped). Both reinforce our
 R48/R49 executable-WM direction; no newer public SOTA to chase.
+
+## 2026-07-08 — Duck harness OBTAINED + studied (the M1 winner, MIT, adoptable)
+
+Full write-up (user-supplied) + cloned repo confirm the winning method concretely:
+- **Repo**: github.com/Tufalabs/duck-harness — **MIT license** (ARC3-Inference/pyproject.toml),
+  so ADOPTABLE. Layout: `ARC3-Inference/inference/{framework/solver.py, agent/prompts.py,
+  agent/python_tool_sandbox.py, framework/kaggle.py}` + TAAF benchmark framework + a full
+  example-run (25 games × 20). Notebook: taaf-duck-harness-kaggle-share.
+- **Method (REPL code-agent, NOT a JSON policy)**: game state exposed as Python variables in a
+  REPL; the LLM writes+executes Python (python tool, 30s / 4096-char cap) to inspect the grid,
+  search action sequences, and act; REPL reset between toolcalls. Multimodal: 4×-upscaled image
+  + ASCII + a 4-connected-component segmentation tool. A carried-over "World model:" note across
+  turns. Context capped 64k, maintained ~32k by evicting oldest user+assistant turns → infinite
+  play. Actions named UP/DOWN/LEFT/RIGHT/SPACE/MOUSE/RESET; UNDO withheld (model misuses it).
+- **Model**: Qwen 3.6 27B FP8 (vLLM). Scores 1.21% Kaggle / 1.6% public-train (±0.45 high var).
+- **Design principles**: fit-96GB open model; STRICTLY generic (no game info encoded); lightweight
+  harness keeping the model in the driver seat. "Hand-crafting tools did not help — it hinders the
+  model's creativity." Heavy PROMPT engineering to steer goal-setting (don't chase the energy bar,
+  don't hallucinate sprites, don't dump whole boards).
+- **Lineage**: successor to StochasticGoose; inspired by RGB Agent (OpenCode/CodeAct) + Symbolica
+  ARCgentica (36% with frontier models, recursive self-calls).
+
+**RECOMMENDATION (decision-grade)**: the fastest generic path to raise our score toward the
+mission is to ADAPT this MIT harness into our offline Kaggle notebook with Qwen 3.6 27B — it is
+proven (1.21% ≈ 6× our ~0.20%), generic (no game hardcoding), and built for our exact hardware.
+Our own EWM (0.002/game) and the R53 JSON-policy are weaker reinventions of this. Adopt-and-improve
+beats rebuild here. This is NOT overfitting: the harness encodes zero game-specific info; it is a
+general solver. Next: study solver.py + prompts.py, port kaggle.py to our submission notebook,
+stand up Qwen 3.6 27B on the cloud 96GB VM, measure full-25, then improve (the write-up names
+context-compaction + better perception as open problems — our differentiation: hidden-state
+de-aliasing, which no M1 winner handles).
+
+## 2026-07-08 — CORRECTION (user directive): Duck is a BASELINE TO BEAT, not a template to copy
+
+Earlier this page recommended "ADOPT/adapt the MIT Duck harness". That is wrong: our
+milestone repo will be PUBLIC, and shipping a lightly-edited Duck would be derivative
+copying, not a contribution. Reframe (binding):
+- **Duck / M1 winners / StochasticGoose = prior art (baselines to measure against and
+  BEAT), never a template to regurgitate.** We may reproduce Duck ONLY as a measured
+  reference number ("our agent beats the Duck baseline by X%"), in a clearly-separated
+  `baselines/` area with attribution — never as our submission.
+- **Our ORIGINAL contributions (none published by any M1 winner):**
+  1. HYBRID: training-free graph-frontier (our 18/25 engine, cheap exhaustive depth) +
+     LLM code-agent invoked ONLY where the graph plateaus (semantic games). Tufa = pure
+     LLM; StochasticGoose = pure CNN-RL; nobody published this division of labour.
+  2. HIDDEN-STATE DE-ALIASING: games are deterministic on TRUE state; frame-hash aliasing
+     of hidden state (timers/off-screen) is the #1 graph plateau and is UNADDRESSED by
+     every public M1 winner (Tufa itself lists perception/context as open). This is our
+     differentiation, not theirs.
+  3. Object-graph perception better than ASCII crops (Tufa's self-named weakness).
+- **Documentation**: our write-up/figures depict OUR architecture in OUR visual language;
+  we do not clone Tufa's figures.
+Supersedes the "adopt-and-improve beats rebuild" line above.
