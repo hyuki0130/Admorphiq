@@ -156,13 +156,30 @@ spine + one working tool are validated end-to-end. But the 293-line re-authored
 nondeterminism is hidden-state aliasing (dealias territory, not visible HUD), so
 HUD masking alone didn't help it — confirmed by the direct probe (0/3000).
 
-**Decision point for the next phase**: either (a) keep strengthening the
-from-scratch tools toward the proven engine's parity (tiering, dealias
-composition, better click salience) — honors "re-implement generically"; or (b)
-wrap the already-generic `GraphFrontierAgent` (grep-clean of game ids) as the
-`graph` tool for instant 18/25-class capability, and spend the from-scratch
-effort on tools it lacks (paint/llm_goal/world_model/dealias). Recorded for the
-user; not taken unilaterally since (b) reverses the "don't reuse" directive.
+**Decision (user, 2026-07-09): option (a) — keep strengthening the from-scratch
+tools.** Do NOT wrap the legacy engine; honor "re-implement generically".
+
+### Strengthening pass 1 — HUD masking + de-aliasing composition
+The `graph` tool now composes both generic aliasing fixes: HUD masking (freeze a
+mask of cells that churn in ≥60% of transitions, hash without them) THEN an
+internal `DealiasTool` on the masked frame (split hidden-state collisions by
+recent action history). Node identity = `_node_key = dealias.key(masked_frame,
+recent)`; clean games get byte-identical keys.
+
+Direct-probe after the composition (budget 3000):
+
+| game | graph before | graph after | legacy baseline |
+|---|---|---|---|
+| vc33 | 1 | 1 | 2 |
+| **m0r0** | 0 | **1 ✓** | 1 (parity reached) |
+| cd82 | 0 | 0 | 1 (nondet 0.77 still unsolved) |
+| ar25 | 0 | 0 | 0 |
+
+**m0r0 0→1: de-aliasing closed the gap to legacy parity.** cd82 stays 0 — its
+0.77 nondeterminism isn't separated by a 4-action-history suffix (it was
+historically a paint-hybrid; may need the `paint` tool or deeper tiering, not
+just graph). Next strengthening targets: vc33 depth (1→2) and the remaining
+base>0 games (cn04/lf52/tn36/sp80/ft09/lp85) — full direct-probe sweep running.
 
 ## Pending
 
