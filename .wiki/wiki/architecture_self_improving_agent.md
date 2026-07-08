@@ -128,3 +128,22 @@ uv-synced deps, 25 `environment_files/` games, and ollama models gemma4-31b-q8 (
 verbatim), and it unblocks the parallel tool execution the 24GB Mac could not do. Budget so far
 ~$36 (GCP credits). Next: build the orchestration harness on the VM and validate that the local
 runtime model can pick + improve tools from [[tool_selector]].
+
+## Test methods (how we measure — keep current across sessions)
+
+All measurement runs on the GCP 96GB VM `ewm-bench` (Kaggle-identical); the 24GB Mac is
+edit/lint/pytest only. Start the VM, `cd ~/admorphiq`, use `~/.local/bin/uv run python`.
+- **Full-game score** (the mission metric): `scripts/score_efficiency.py --agent graph_frontier
+  --titles <game> --max-actions N --out o.json`. Reports a fraction; ×100 = leaderboard %.
+  Anchors: us ~0.20%, Tufa Duck (M1 1st) 1.21%, live top ~1.56%. Full-25, transfer-honest; ship a
+  change only if it beats both our graph baseline and a reproduced-Duck reference.
+- **Runtime-brain / tool-selection probe**: `scripts/orchestrator_probe.py --model
+  gemma4:31b-it-q8_0 --games …` — derives a generic signature (avg_changed_cells,
+  click_action_fraction, NONDETERMINISM, palette) and asks the model to pick the FIRST tool from
+  the [[tool_selector]] menu. Success criterion: correct first pick on clear signatures. When it
+  errs, improve the tool_selector DISCRIMINATORS (wiki), not the model.
+- **EWM synthesis bench**: `scripts/llm_worldmodel_bench.py` (+ `rescore.py`), honest protocol
+  (train-fit select, no held-out leakage). ⛔ never load ≥18GB Ollama on the Mac; nohup Python
+  needs `flush`/`-u`.
+- **Model selection is MEASURED**: bench candidates (gemma4-31b-q8 leads / gpt-oss-120b /
+  Qwen3.6-27B) on the harness; never assume. Cross-session env details: memory `project_dev_test_env`.

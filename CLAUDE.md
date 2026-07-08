@@ -1582,6 +1582,35 @@ and don't re-derive conclusions already recorded. Every new strategy must refere
 rounds it builds on / avoids. This is the "write the wiki + log and always consult them before
 planning" discipline.
 
+## Dev/Test Environment + Methods (2026-07-08, north-star era — KEEP CURRENT)
+
+The agent is now a **self-improving tool-orchestrating harness** (spec:
+`.wiki/wiki/architecture_self_improving_agent.md`): LLM = brain, Claude-built GENERIC tools =
+hands, wiki (`.wiki/wiki/tool_selector.md`) = knowledge for the perfect first tool pick. Dev-time
+= Claude multi-agent builds/improves tools; runtime = ONE measured-best offline model orchestrates
++ runs tools in parallel. M1 winners / Tufa "Duck" are baselines to **BEAT**, never copy (public
+repo). Goal = 25/25 generic clears. Model is a MEASURED choice (gemma4-31b-q8 leads, R50b 0.133;
+candidates gpt-oss-120b, Qwen3.6-27B), never assumed.
+
+**WHERE we develop/measure — GCP VM = Kaggle-identical** (the 24GB Mac CANNOT run 30B models or
+parallel; it crashes — Mac is edit/lint/pytest only):
+- `ewm-bench` / `asia-east1-a` / `g4-standard-48` (RTX PRO 6000 **96GB**), SPOT. Start:
+  `gcloud compute instances start ewm-bench --zone=asia-east1-a`; STOP when idle. Repo at
+  `~/admorphiq` (`~/.local/bin/uv run python …`); 25 games in `environment_files/`; ollama has
+  gemma4-31b-q8 + gpt-oss-120b. Budget ~$36 of GCP credits (2-3 VMs OK). Details + transfer recipe:
+  memory `project_dev_test_env`.
+
+**HOW we test (on the VM):**
+- Full-game score: `uv run python scripts/score_efficiency.py --agent graph_frontier --titles
+  <game> --max-actions N --out o.json` — metric fraction ×100 = leaderboard %; anchors us ~0.20%,
+  M1 1.21%, top ~1.56%.
+- Tool-selection / runtime-brain probe: `uv run python scripts/orchestrator_probe.py --model
+  gemma4:31b-it-q8_0 --games …` — validates the local model picks the right FIRST tool from
+  observable signals + `tool_selector`. (2026-07-08: correct de-aliasing picks on high-nondet
+  games; wrong picks ⇒ improve the wiki discriminators, not the model.)
+- EWM synthesis bench: `scripts/llm_worldmodel_bench.py`. ⛔ never load ≥18GB Ollama models on the
+  Mac; nohup Python needs `flush`/`-u` for live logs.
+
 ## Implementation Discipline (applies to every change)
 
 **No speculative safety nets.** Do not add hardcoded constants, fallback

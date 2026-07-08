@@ -103,13 +103,14 @@ def main() -> None:
     ap.add_argument("--games", default="ft09,dc22,su15,ka59,ar25")
     ap.add_argument("--host", default="http://localhost:11434")
     a = ap.parse_args()
-    print(f"model={a.model}")
+    print(f"model={a.model}", flush=True)
     for g in a.games.split(","):
         try:
             pick = ask(a.model, g, a.host)
-            print(f"  {g:6s} sig=[{_signature(g)}]\n         -> {pick.get('tool')}: {pick.get('why','')[:90]}")
+            print(f"  {g:6s} sig=[{_signature(g)}]", flush=True)
+            print(f"         -> {pick.get('tool')}: {pick.get('why', '')[:90]}", flush=True)
         except Exception as exc:  # noqa: BLE001
-            print(f"  {g}: ERROR {exc}")
+            print(f"  {g}: ERROR {exc}", flush=True)
 
 
 if __name__ == "__main__":
