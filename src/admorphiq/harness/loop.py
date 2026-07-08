@@ -21,7 +21,7 @@ from typing import Any, Callable
 import numpy as np
 
 from admorphiq.harness.context import Signature, build_context, compute_signature
-from admorphiq.tools.base import Step, Tool, availability, frame_2d, has_frame, levels_completed, state_name
+from admorphiq.tools.base import Step, Tool, availability, base_hash, frame_2d, has_frame, levels_completed, state_name
 from admorphiq.tools.code_agent import build_code_prompt, run_code
 
 LLM = Callable[[list[dict[str, str]]], str]
@@ -69,12 +69,14 @@ class UnifiedAgent:
         self._queue: list[Step] = []
         self._transitions: list[tuple[np.ndarray, int, np.ndarray]] = []
         self._tried: list[str] = []
+        self._failed: set[str] = set()
         self._current: str | None = None
         self._prev_frame: np.ndarray | None = None
         self._prev_step: Step | None = None
         self._since_progress = 0
         self._steps = 0
         self._last_levels = 0
+        self._seen_states: set[str] = set()
         self._feedback = "start of level"
 
     def is_done(self, frames: list[Any], latest_frame: Any) -> bool:
@@ -85,11 +87,13 @@ class UnifiedAgent:
     def _decide(self, sig: Signature) -> tuple[str, str | None]:
         """Ask the model for the next move -> (mode, tool_name)."""
         ctx = build_context(sig, self.ctx_budget)
-        tried = ", ".join(self._tried) or "none"
+        available = [n for n in self.tools if n not in self._failed] or list(self.tools)
+        failed = ", ".join(sorted(self._failed)) or "none"
         user = (
             f"SIGNATURE: {sig.as_line()}\n\nWIKI:\n{ctx}\n\n"
-            f"TOOLS AVAILABLE: {', '.join(self.tools)}\n"
-            f"TRIED THIS LEVEL: {tried}\nLATEST FEEDBACK: {self._feedback}\n\nNext move?"
+            f"TOOLS AVAILABLE: {', '.join(available)}\n"
+            f"ALREADY FAILED THIS LEVEL (do NOT pick these): {failed}\n"
+            f"LATEST FEEDBACK: {self._feedback}\n\nNext move?"
         )
         try:
             txt = self.llm([{"role": "system", "content": _DECIDE_SYS},
@@ -102,20 +106,29 @@ class UnifiedAgent:
         if mode == "code":
             return "code", None
         name = tool_m.group(1) if tool_m and tool_m.group(1) in self.tools else None
-        return "tool", name or self._signature_default(sig)
+        # Swap-on-failure: if the model re-picks a tool already retired this level
+        # (or names none), route to the best-signature tool that hasn't failed.
+        if name is None or name in self._failed:
+            name = self._signature_default(sig)
+        return "tool", name
 
     def _signature_default(self, sig: Signature) -> str:
-        """Highest-detect tool for the signature (used when the LLM is silent)."""
+        """Highest-detect tool for the signature that has NOT failed this level.
+        Falls back to the global best only if every tool has been retired."""
         frames_stub: list[Any] = []
-        best, best_name = -1.0, next(iter(self.tools))
+        best, best_name = -1.0, None
         for name, t in self.tools.items():
+            if name in self._failed:
+                continue
             try:
                 c = t.detect(frames_stub, self._last_obs)
             except Exception:  # noqa: BLE001
                 c = 0.0
             if c > best:
                 best, best_name = c, name
-        return best_name
+        if best_name is not None:
+            return best_name
+        return next(iter(self.tools))  # all retired — reuse the first as last resort
 
     # -- refill ---------------------------------------------------------------
 
@@ -124,6 +137,11 @@ class UnifiedAgent:
         genuine decision boundary (first action, or a stall) — NOT on every empty
         queue, so the expensive LLM call rate stays bounded (SWA breaks prompt
         caching; see r53). A progressing tool refills via _continue with no LLM."""
+        # A re-decide triggered while a tool was active means that tool stalled
+        # (reached no new state for `stall` steps) — retire it for this level so
+        # the loop swaps strategy instead of re-picking the proven-failed tool.
+        if self._current is not None:
+            self._failed.add(self._current)
         mode, tool = self._decide(sig)
         self._current = tool if mode == "tool" else "code"
         if self._current not in self._tried:
@@ -200,12 +218,22 @@ class UnifiedAgent:
                     t.observe(self._prev_frame, self._prev_step, changed)
                 except Exception:  # noqa: BLE001
                     pass
-            if changed:
+            # Progress = reaching a NOVEL state, not merely "the frame changed".
+            # A tool that keeps mutating a small set of frames (e.g. paint clicks
+            # toggling regions) changes the frame every step yet makes no progress
+            # toward clearing the level; counting that as progress meant the loop
+            # never re-decided and wandered for the whole budget on one wrong tool.
+            h = base_hash(frame)
+            novel = h not in self._seen_states
+            self._seen_states.add(h)
+            if novel:
                 self._since_progress = 0
-                self._feedback = f"{self._current or 'action'} changed the frame"
+                self._feedback = f"{self._current or 'action'} reached a new state"
             else:
                 self._since_progress += 1
-                self._feedback = f"{self._current or 'action'} inert x{self._since_progress}"
+                self._feedback = (
+                    f"{self._current or 'action'} no new state x{self._since_progress}"
+                )
 
         need_decision = self._current is None or self._since_progress >= self.stall
         if need_decision:

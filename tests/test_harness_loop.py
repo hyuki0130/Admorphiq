@@ -152,6 +152,26 @@ def test_progressing_tool_does_not_call_llm_every_action():
     assert tool.proposed >= 5  # tool refilled repeatedly WITHOUT the LLM
 
 
+def test_stalled_tool_is_retired_and_swapped():
+    """Purpose: a tool that reaches no new state for `stall` steps is retired for
+    the level; the next decision must pick a DIFFERENT tool even if the LLM
+    keeps naming the failed one — the architecture's swap-on-failure behavior.
+    Expected feedback: pass = the loop escapes a wandering wrong tool; fail = it
+    re-picks the proven-failed tool and burns the whole budget (the cd82 bug)."""
+    # LLM always names 'paint'; once paint is retired, the loop must swap to graph
+    def stubborn_llm(messages):
+        return '{"mode":"tool","tool":"paint"}'
+
+    graph = _FakeTool("graph", (1, None), 0.9)
+    paint = _FakeTool("paint", (6, (5, 5)), 0.8)
+    agent = UnifiedAgent([graph, paint], stubborn_llm, giveup=1000, stall=3)
+    g = np.zeros((64, 64), dtype=np.int64)  # frame never gains a NEW state
+    for _ in range(8):
+        agent.choose_action([], _Obs(g, [1, 2, 3, 4, 6]))
+    assert "paint" in agent._failed          # paint stalled and was retired
+    assert graph.proposed >= 1               # the loop swapped to graph despite the LLM
+
+
 def test_llm_failure_falls_back_to_signature_default():
     """Purpose: if the LLM raises, the highest-detect tool is used (offline-safe).
     Expected feedback: pass = the agent never crashes when the model is down."""
