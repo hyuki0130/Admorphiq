@@ -26,6 +26,7 @@ default to `code`; `code` is the LAST resort for transform games no tool fits.
 | Same frame + same action gives DIFFERENT next frames (`nondeterminism` high — a counter/timer/off-screen thing) | **`dealias`** (then `graph`) | the frame hides state; de-alias so the graph stops corrupting |
 | Transitions look learnable AND a monotone progress measure exists (count/order/fill), `nondeterminism` low | **`world_model`** | learn the transition table, roll out toward the goal measure |
 | Big regions recolor/rearrange, NO clear avatar (`has_movement=False`, `recolor_scale` large) — the TARGET must be inferred | **`llm_goal`** | infer the level-complete target, then move toward it |
+| A CLICK game (ACTION6) whose goal is reached by discrete state changes, not a single-color fill or an inferred pattern | **`graph`** | graph is a general discrete-state search — it clears many click-state games (not only movement ones); prefer it over `code` when clicks drive discrete state |
 | No tool above fits — a bespoke transform/arrangement rule must be written | **`code`** | write Python to inspect the frame and queue actions (last resort) |
 | ANY game, always on (efficiency) | **`deadsig`** | stop re-probing action classes that never change anything |
 

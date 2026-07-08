@@ -54,17 +54,21 @@ def test_detect_high_on_movement_signature():
     assert conf >= 0.7
 
 
-def test_detect_low_without_movement_actions():
-    """Purpose: prove detect stays LOW when no simple movement action (1-4) is
-    offered — a click/transform game belongs to a different tool.
+def test_detect_moderate_on_click_only_lowest_without_any_action():
+    """Purpose: graph is a MODERATE candidate on a click-only game (it is a
+    general discrete-state search that clears click-state games like vc33/lp85),
+    but LOWEST when neither movement nor click is offered.
 
-    Expected feedback: pass ⇒ no false-positive routing onto click-only games;
-    fail ⇒ the graph tool mis-fires and wastes the budget.
+    Expected feedback: pass ⇒ graph is considered (not dismissed) on click games,
+    yet not forced where it has no actions to search; fail ⇒ either graph is
+    wrongly excluded from click games it clears, or mis-fires with no actions.
     """
     tool = GraphSearchTool()
     f = _grid_with_dot(2, 2)
-    obs = _Obs(f, [6])  # ACTION6 (click) only, no movement
-    assert tool.detect([obs], obs) <= 0.2
+    click_only = _Obs(f, [6])       # ACTION6 (click) only, no movement
+    no_action = _Obs(f, [])         # neither movement nor click
+    assert 0.3 <= tool.detect([click_only], click_only) < 0.7
+    assert tool.detect([no_action], no_action) <= 0.2
 
 
 def test_observe_builds_edges():

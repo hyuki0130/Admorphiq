@@ -204,11 +204,15 @@ class GraphSearchTool:
         observed frame-to-frame transitions change small, localized regions
         (the signature of a mobile avatar moving on a static board). Movement
         without such evidence yet is still graph territory (0.45). No movement
-        actions at all -> LOW (0.1): clicks/transforms are other tools' turf.
+        but a click (ACTION6) is offered -> MODERATE (0.4): graph is a general
+        discrete-state search that clears many click-state games too, so it is a
+        legitimate candidate, not dismissed — its progress-based ownership drops
+        it quickly if it truly stalls. Only a game with neither movement nor
+        click is not graph's turf (0.1).
         """
-        simple_ids, _ = availability(obs)
+        simple_ids, action6_ok = availability(obs)
         if not any(1 <= a <= 4 for a in simple_ids):
-            return 0.1
+            return 0.4 if action6_ok else 0.1
         grids = [g for g in (_obs_grid(f) for f in frames) if g is not None]
         localized = False
         for a, b in zip(grids, grids[1:]):
