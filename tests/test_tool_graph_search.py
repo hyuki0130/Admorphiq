@@ -146,9 +146,39 @@ def test_hud_masking_stabilizes_aliased_state():
     b = np.zeros((size, size), dtype=np.int64)
     b[4, 4] = 1
     b[0, 0] = 5
-    assert tool._mask is not None            # mask was frozen at warmup
-    assert bool(tool._mask[0, 0])            # the HUD cell is masked
-    assert tool._mhash(a) == tool._mhash(b)  # HUD-only difference is erased
+    assert tool._mask is not None                    # mask was frozen at warmup
+    assert bool(tool._mask[0, 0])                    # the HUD cell is masked
+    assert tool._node_key(a) == tool._node_key(b)    # HUD-only difference is erased
+
+
+def test_dealias_composition_splits_hidden_state():
+    """Purpose: when the same masked frame + same action is observed to lead to
+    DIFFERENT next frames (hidden-state aliasing, cd82's 0.77-nondeterminism
+    class), the composed de-aliasing must split that frame's node key by recent
+    history so BFS stops corrupting one node.
+
+    Expected feedback: pass ⇒ graph composes HUD-masking + de-aliasing and can
+    navigate hidden-state games; fail ⇒ aliased games keep stalling the graph.
+    """
+    tool = GraphSearchTool()
+    size = 8
+    amb = np.zeros((size, size), dtype=np.int64)
+    amb[3, 3] = 2                                   # the ambiguous frame
+    out1 = np.zeros((size, size), dtype=np.int64)
+    out1[3, 4] = 2
+    out2 = np.zeros((size, size), dtype=np.int64)
+    out2[3, 2] = 2
+    # Same (frame, action=UP) observed leading to two different next frames.
+    tool.observe(amb, (1, None), True)
+    tool.observe(out1, (2, None), True)
+    tool.observe(amb, (1, None), True)
+    tool.observe(out2, (2, None), True)
+    # base hash of the ambiguous frame is now flagged aliased by the composed tool
+    assert base_hash(amb) in tool._dealias.aliased_bases
+    # and its node key gains a history suffix (differs from the bare hash)
+    tool._recent.clear()
+    tool._recent.extend([(3, None), (4, None)])
+    assert tool._node_key(amb) != base_hash(amb)
 
 
 def test_no_game_specifics_in_source():

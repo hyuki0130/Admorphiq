@@ -37,13 +37,13 @@ import numpy as np
 from admorphiq.tools.base import (
     Step,
     availability,
-    base_hash,
     connected_components,
     diff_bbox,
     diff_cells,
     frame_2d,
     has_frame,
 )
+from admorphiq.tools.dealias import DealiasTool
 
 __all__ = ["GraphSearchTool"]
 
@@ -141,16 +141,25 @@ class GraphSearchTool:
         self._nchg = 0                          # transitions folded into _chg
         self._prev_obs: np.ndarray | None = None
         self._mask: np.ndarray | None = None    # frozen HUD mask (bool H×W)
+        # De-aliasing on the HUD-masked frame: splits hidden-state collisions
+        # (same visible/masked frame, different true state) by recent history.
+        self._dealias = DealiasTool()
+        self._recent: deque[Step] = deque(maxlen=4)
 
-    def _mhash(self, frame: np.ndarray) -> str:
-        """Hash the frame with frozen-HUD cells zeroed (identity until the mask
-        is frozen at warmup, so early and late hashes of a true-state agree once
-        the graph is rebuilt on freeze)."""
+    def _masked_frame(self, frame: np.ndarray) -> np.ndarray:
+        """The frame with frozen-HUD cells zeroed (identity until warmup freeze)."""
         if self._mask is None:
-            return base_hash(frame)
+            return frame
         g = frame.copy()
         g[self._mask] = 0
-        return base_hash(g)
+        return g
+
+    def _node_key(self, frame: np.ndarray) -> str:
+        """State key = HUD-masked hash, de-aliased by recent action history when
+        the masked hash has shown hidden-state ambiguity (composition of HUD
+        masking + de-aliasing — the two generic aliasing fixes stacked)."""
+        mframe = self._masked_frame(frame)
+        return self._dealias.key(mframe, self._recent)
 
     def _accumulate_hud(self, prev: np.ndarray) -> None:
         """Fold one frame into the per-cell change map; freeze the HUD mask once
@@ -174,6 +183,8 @@ class GraphSearchTool:
                     self._tries.clear()
                     self._preds.clear()
                     self._pending = None
+                    # Masked hashes change on freeze -> aliasing trace is stale.
+                    self._dealias.reset()
                 else:
                     self._mask = np.zeros(prev.shape, dtype=bool)  # freeze: no HUD
         self._prev_obs = prev
@@ -217,7 +228,10 @@ class GraphSearchTool:
         """
         prev_grid = _norm_grid(prev)
         self._accumulate_hud(prev_grid)
-        prev_hash = self._mhash(prev_grid)
+        # De-aliasing sees the HUD-masked frame + the action taken from it.
+        self._dealias.observe(self._masked_frame(prev_grid), action, changed)
+        prev_hash = self._node_key(prev_grid)
+        self._recent.append(action)
         key = _step_to_key(action)
         untried = self._untried.get(prev_hash)
         if untried and key in untried:
@@ -242,7 +256,7 @@ class GraphSearchTool:
         if not has_frame(obs):
             return []
         frame = frame_2d(obs)
-        cur_hash = self._mhash(frame)
+        cur_hash = self._node_key(frame)
 
         if self._pending is not None:
             p_hash, p_key = self._pending
