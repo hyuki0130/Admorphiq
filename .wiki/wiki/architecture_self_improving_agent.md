@@ -45,6 +45,42 @@ Implication for THIS effort: the immediate work is Claude hands-on developing ge
 game-solving tools (understand a game → generic mechanism that clears its class → add to the
 library, verified by actually clearing it), NOT just orchestration scaffolding.
 
+## The three layers (why the wiki exists)
+
+A complete harness is BRAIN + HANDS + KNOWLEDGE:
+
+- **LLM = brain**: reasoning + orchestration (which tool, diagnose, adapt).
+- **Tools (Claude-built, generic) = hands + memory**: the strong algorithms that actually act.
+- **Wiki = knowledge**: for EACH tool, the observable frame signature that says "use this
+  FIRST", how to call it, the falsification signature ("it's failing → switch"), and the
+  next-best tool. This is the whole point of the `.wiki/` LLM-Wiki (Karpathy pattern): a weak
+  local model cannot deduce which algorithm fits from a cold start, so the wiki must map
+  observable signals → the right tool so the FIRST pick is correct within the tight budget.
+
+The lever for coverage: MAXIMIZE the number of generic algorithms in the library, EACH with a
+crisp "when to use" entry in the tool-selector wiki. First-tool-selection accuracy is bounded by
+how precisely the wiki maps game signatures → tools. See [[tool_selector]].
+
+## Multi-agent self-improving loop — TWO REGIMES (load-bearing distinction)
+
+The self-improving multi-agent loop is IDEAL at dev-time and CONSTRAINED at runtime; conflating
+them produces an unrealizable Kaggle design.
+
+- **DEV-TIME (Claude, now) — full multi-agent.** An orchestrator (Claude) inspects a game,
+  dispatches the applicable per-tool BUILDER agents IN PARALLEL (graph-agent, CNN-RL-agent,
+  world-model-agent, paint-agent, …); each runs its algorithm on the game, reports feedback;
+  the orchestrator forms an improvement plan; each tool-agent edits its own code and re-runs;
+  loop until the tool clears the game class generically. This is how the strong, generic tool
+  library gets BUILT (realizable now via the Agent/Workflow tools).
+- **KAGGLE-RUNTIME (Qwen 3.6-27B, offline) — single brain + parallel TOOL EXECUTION.** One GPU,
+  no internet, no second LLM. "Parallel" here = running multiple applicable TOOL CODES
+  concurrently (cheap) and having the SINGLE Qwen read their feedback, pick/compose/retune, and
+  edit code Tufa-REPL-style. NOT multiple LLM agents. The wiki ([[tool_selector]]) makes Qwen's
+  first pick accurate so few tools need running.
+
+Same tool library + wiki feed both regimes; only the orchestrator differs (Claude-multi-agent
+dev-time → Qwen-single-brain runtime).
+
 ## Components
 
 1. **Tool library (`src/admorphiq/**`, our developed + improvable primitives)** — each exposed
