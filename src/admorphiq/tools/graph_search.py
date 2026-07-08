@@ -161,6 +161,14 @@ class GraphSearchTool:
         mframe = self._masked_frame(frame)
         return self._dealias.key(mframe, self._recent)
 
+    def state_key(self, frame: np.ndarray) -> str:
+        """The tool's OWN notion of state identity for the harness's progress
+        signal — HUD-masked + de-aliased, so the loop measures whether THIS tool
+        is reaching new states (it is, while exploring a click game the raw frame
+        makes look static/churny), not raw-frame novelty. Normalises dtype so it
+        matches the tool's internal hashing exactly."""
+        return self._node_key(_norm_grid(frame))
+
     def _accumulate_hud(self, prev: np.ndarray) -> None:
         """Fold one frame into the per-cell change map; freeze the HUD mask once
         warmup is reached and drop the (now stale, raw-hashed) graph so it

@@ -157,6 +157,9 @@ class UnifiedAgent:
             active = self.tools.get(self._current)
             if active is not None:
                 active.reset()
+            # The novelty key space is per-tool (each tool's state_key differs),
+            # so start the new tool's progress measure from a clean seen-set.
+            self._seen_states.clear()
         if self._current not in self._tried:
             self._tried.append(self._current)
         # Does the newly-picked tool own the game (high frame-based confidence)?
@@ -176,6 +179,19 @@ class UnifiedAgent:
             file=sys.stderr, flush=True,
         )
         self._fill_from_current(frames, obs)
+
+    def _state_key(self, frame: np.ndarray) -> str:
+        """Progress key for novelty: the active tool's own state identity if it
+        exposes ``state_key`` (graph's masked/de-aliased key), else raw hash."""
+        if self._current is not None and self._current != "code":
+            tool_obj = self.tools.get(self._current)
+            sk = getattr(tool_obj, "state_key", None)
+            if callable(sk):
+                try:
+                    return str(sk(frame))
+                except Exception:  # noqa: BLE001
+                    pass
+        return base_hash(frame)
 
     def _continue(self, frames: list[Any], obs: Any) -> None:
         """Re-run the CURRENT tool/code path without consulting the LLM, because
@@ -252,7 +268,13 @@ class UnifiedAgent:
             # toggling regions) changes the frame every step yet makes no progress
             # toward clearing the level; counting that as progress meant the loop
             # never re-decided and wandered for the whole budget on one wrong tool.
-            h = base_hash(frame)
+            # Novelty is measured with the ACTIVE tool's OWN state identity when
+            # it exposes one (graph's HUD-masked + de-aliased key), else the raw
+            # frame hash. This makes "progress" mean what the tool actually
+            # accomplishes — a graph exploring a click game reaches new internal
+            # states even when the raw frame looks static/churny, so it is not
+            # falsely stalled and retired.
+            h = self._state_key(frame)
             novel = h not in self._seen_states
             self._seen_states.add(h)
             if novel:
