@@ -164,3 +164,12 @@ First end-to-end proof the loop works: measure → diagnose → improve the wiki
 Takeaway: adding generic observable discriminators to the wiki measurably improves the weak local
 model's first-tool pick. This IS the dev-time half of the mission (Claude improves tools+wiki from
 measured local-model feedback). Next: full orchestration loop (pick→run→observe→improve) on the VM.
+
+## Composed orchestration loop WORKS (2026-07-08, ar25)
+
+Milestone: `scripts/orchestrator_loop.py` ran end-to-end on the VM — gemma4-31b read ar25's
+signature (avatar_mobility=0, deterministic, big changes), autonomously picked the `world_model`
+config, the harness ran it, and it CLEARED 2 levels (score 0.0833). The full runtime story is
+functional: single offline LLM → tool-config selection from the signature → real game execution →
+feedback → best kept. No human in the loop. Next: broader orchestration bench (does LLM tool
+selection match/beat the fixed graph agent across games?) + keep building tools for the frontier 7.
