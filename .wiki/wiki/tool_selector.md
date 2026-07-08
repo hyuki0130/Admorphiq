@@ -76,3 +76,14 @@ generic (triggers on frame features, never game identity).
 
 **Related**: [[architecture_self_improving_agent]] (the 3-layer brain/hands/knowledge harness),
 [[lessons/top_solutions_survey_20260708]] (baselines to beat).
+
+## Measured note (2026-07-08): paint_flood ≠ su15 live mechanic
+Built `paint_flood` tool + `PaintFloodAgent` (LLM-free) and benched on su15: 0/9. Diagnosis
+(300 live steps): the flood mechanic is NEVER detected live (fill_color stays -1) even with
+background-centroid probing — so su15's `0→5` transitions in the OFFLINE dataset are a side-effect
+of a different mechanic (historical "vacuum/merge"), NOT click-to-fill. The paint_flood tool is a
+valid generic primitive (detects/rejects flood correctly on synthetic + offline data) but su15 is
+the WRONG target for it. Lesson: a transition-diff color-flip pattern (0→C) does NOT by itself
+prove a click-to-fill mechanic — verify the tool ELICITS the effect LIVE before trusting it.
+su15 needs its true mechanic reverse-engineered (a distinct tool). Do not keep tuning paint_flood
+against su15.

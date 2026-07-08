@@ -72,6 +72,11 @@ def _make_agent(name: str, game_id: str | None = None):
         return RandomAgent(seed=base_seed, avoid_repeat_noop=False)
     if name == "general":
         return GeneralAgent()
+    if name == "paint_flood":
+        from admorphiq.paint_flood_agent import PaintFloodAgent
+
+        # LLM-free paint tool: detect click-flood mechanic -> click fill points.
+        return PaintFloodAgent()
     if name == "worldmodel":
         from admorphiq.world_model_agent import WorldModelAgent
 
