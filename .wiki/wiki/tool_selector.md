@@ -32,7 +32,7 @@ generic (triggers on frame features, never game identity).
   (frame,action) yields different next frames → the graph is aliasing; switch.
 - **Next-best**: de-aliasing state hash (partial observability) or the world-model tool.
 
-### paint-flood tool  (su15-class; under development)
+### paint-flood tool  (`src/admorphiq/tools/paint_flood.py`; perception core built + verified)
 - **Observable signature**: an ACTION6 click turns a background region into one color
   (measured su15: `0→5`, 30–50 cells/click); palette small; static between clicks.
 - **How to use**: segment target vs filled; choose click points that flood uncovered target cells.
