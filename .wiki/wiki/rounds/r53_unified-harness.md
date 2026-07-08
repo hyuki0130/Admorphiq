@@ -196,12 +196,23 @@ just graph).
 | ar25 | 0 | 0 | legacy also 0 |
 
 **Score so far: from-scratch `graph` clears 3/9 of the games legacy clears**
-(vc33, m0r0, lp85), up from 1 before this round's HUD+de-alias work. The misses
-cluster on **click-heavy games** (ft09 lights-out, cn04, lf52, tn36) — the graph
-tool's ACTION6 exploration (centroid-only click candidates, capped at 14) is the
-next strengthening lever: legacy graph_frontier explores clicks more thoroughly.
-This is per-game-class research as the user framed it; strengthening pass 2 =
-click-exploration depth for the toggle/click cluster.
+(vc33, m0r0, lp85), up from 1 before this round's HUD+de-alias work.
+
+### Strengthening pass 2 — dense click grid: REVERTED (measured harmful)
+Hypothesis: click-only games (lights-out) fail because toggle needs clicking
+currently-BACKGROUND cells that have no foreground centroid, so a dense
+whole-board click grid (gated to no-movement games) would help. **Measured: it
+regressed vc33 1→0 and unlocked none of ft09/cn04/tn36 (all still 0).** vc33 is
+click-only too, and the 40-candidate grid diluted its exploration below the
+budget. Reverted (commit 089f3b3). Finding: lights-out/toggle games need click
+SEQUENCES (combinations), not single-click frontier-BFS — a different mechanism
+than the graph tool provides. They belong to a dedicated toggle/paint tool, not
+graph. ⛔ Do not re-try dense-grid click bloat on the graph tool.
+
+**Graph tool stable state: 3 clears (vc33, m0r0, lp85), all tested.** Remaining
+strengthening is genuine multi-round research per game-class: cd82 (hidden-state
+aliasing beyond 4-history), lights-out cluster (needs sequence search — the
+`paint`/toggle tool's job, not graph), vc33 depth (1→2).
 
 ## Pending
 
