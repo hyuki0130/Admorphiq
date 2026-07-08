@@ -26,6 +26,10 @@ from admorphiq.tools.code_agent import build_code_prompt, run_code
 
 LLM = Callable[[list[dict[str, str]]], str]
 
+# A tool whose own frame-based detect() is at least this confident OWNS the game
+# (it is not retired on a stall) — its signature match is trusted over the swap.
+_PRIMARY_CONF = 0.7
+
 _DECIDE_SYS = (
     "You drive an ARC-AGI-3 agent. Given the observable game signature, a wiki "
     "slice describing the available tools, the tools already tried this level, "
@@ -71,6 +75,7 @@ class UnifiedAgent:
         self._tried: list[str] = []
         self._failed: set[str] = set()
         self._current: str | None = None
+        self._primary_owns = False
         self._prev_frame: np.ndarray | None = None
         self._prev_step: Step | None = None
         self._since_progress = 0
@@ -154,6 +159,15 @@ class UnifiedAgent:
                 active.reset()
         if self._current not in self._tried:
             self._tried.append(self._current)
+        # Does the newly-picked tool own the game (high frame-based confidence)?
+        self._primary_owns = False
+        if self._current != "code":
+            tool_obj = self.tools.get(self._current)
+            if tool_obj is not None:
+                try:
+                    self._primary_owns = tool_obj.detect(frames, obs) >= _PRIMARY_CONF
+                except Exception:  # noqa: BLE001
+                    self._primary_owns = False
         # Diagnostic trace (stderr) so a bench log shows the routing decision:
         # which tool the model picked for which signature, and why it re-decided.
         print(
@@ -250,7 +264,13 @@ class UnifiedAgent:
                     f"{self._current or 'action'} no new state x{self._since_progress}"
                 )
 
-        need_decision = self._current is None or self._since_progress >= self.stall
+        # A confident primary (the tool whose own frame-based detect() is high for
+        # this game) OWNS the game — it is NOT retired on a stall. The graph tool
+        # clears m0r0/vc33 given the FULL budget but was retired after one tenure
+        # when treated like any other tool; detect() is a reliable frame signal,
+        # so trust it and let the right tool run. Low-confidence picks still swap.
+        stalled = self._since_progress >= self.stall
+        need_decision = self._current is None or (stalled and not self._primary_owns)
         if need_decision:
             sig = compute_signature(obs, self._transitions)
             self._redecide(frames, obs, sig)

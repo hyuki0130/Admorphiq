@@ -162,18 +162,40 @@ def test_stalled_tool_is_retired_and_swapped():
     keeps naming the failed one — the architecture's swap-on-failure behavior.
     Expected feedback: pass = the loop escapes a wandering wrong tool; fail = it
     re-picks the proven-failed tool and burns the whole budget (the cd82 bug)."""
-    # LLM always names 'paint'; once paint is retired, the loop must swap to graph
+    # LLM always names 'paint'; once paint is retired, the loop must swap to graph.
+    # Both tools are LOW-confidence (< primary-owns threshold) so the stall-swap
+    # applies — a high-confidence tool would instead OWN the game (tested below).
     def stubborn_llm(messages):
         return '{"mode":"tool","tool":"paint"}'
 
-    graph = _FakeTool("graph", (1, None), 0.9)
-    paint = _FakeTool("paint", (6, (5, 5)), 0.8)
+    graph = _FakeTool("graph", (1, None), 0.5)
+    paint = _FakeTool("paint", (6, (5, 5)), 0.4)
     agent = UnifiedAgent([graph, paint], stubborn_llm, giveup=1000, stall=3)
     g = np.zeros((64, 64), dtype=np.int64)  # frame never gains a NEW state
     for _ in range(8):
         agent.choose_action([], _Obs(g, [1, 2, 3, 4, 6]))
     assert "paint" in agent._failed          # paint stalled and was retired
     assert graph.proposed >= 1               # the loop swapped to graph despite the LLM
+
+
+def test_confident_primary_owns_game_and_is_not_retired():
+    """Purpose: a tool whose frame-based detect() is high (>= primary threshold)
+    OWNS the game — it is NOT retired on a stall, so it gets the FULL budget it
+    needs to clear (the graph tool clears m0r0/vc33 alone but was retired after
+    one tenure inside the harness).
+    Expected feedback: pass = the right tool runs uninterrupted; fail = a strong
+    tool is swapped away mid-solve and the harness underperforms the tool alone."""
+    def llm(messages):
+        return '{"mode":"tool","tool":"graph"}'
+
+    graph = _FakeTool("graph", (1, None), 0.9)   # confident primary
+    other = _FakeTool("paint", (6, (5, 5)), 0.3)
+    agent = UnifiedAgent([graph, other], llm, giveup=1000, stall=3)
+    g = np.zeros((64, 64), dtype=np.int64)        # never a NEW state -> would stall
+    for _ in range(12):
+        agent.choose_action([], _Obs(g, [1, 2, 3, 4, 6]))
+    assert "graph" not in agent._failed           # primary was never retired
+    assert other.proposed == 0                    # no swap away from the primary
 
 
 def test_llm_failure_falls_back_to_signature_default():
