@@ -86,7 +86,8 @@ def test_transition_feedback_reaches_every_tool():
     t2 = _FakeTool("world_model", (2, None), 0.8)
     agent = _agent([t1, t2], "graph")
     agent.choose_action([], _Obs(g, [1, 2, 3, 4]))       # step 1, no prev yet
-    g2 = g.copy(); g2[0, 0] = 5
+    g2 = g.copy()
+    g2[0, 0] = 5
     agent.choose_action([], _Obs(g2, [1, 2, 3, 4]))      # step 2 records transition
     assert t1.observed == 1 and t2.observed == 1
 
@@ -114,6 +115,31 @@ def test_stall_triggers_redecision():
         agent.choose_action([], _Obs(g, [1, 2, 3, 4]))
     # stall=3 -> at least two refills beyond the initial one
     assert tool.proposed >= 2
+
+
+def test_progressing_tool_does_not_call_llm_every_action():
+    """Purpose: while the current tool keeps changing the frame, the queue may
+    empty each step but the LLM is consulted only at decision boundaries, not per
+    action — the latency bound the SWA-cache finding (r53) demands.
+    Expected feedback: pass = LLM-call rate is bounded; fail = a per-action LLM
+    call would blow the 9h/110-game budget."""
+    calls = {"n": 0}
+
+    def counting_llm(messages):
+        calls["n"] += 1
+        return '{"mode":"tool","tool":"graph"}'
+
+    # a tool that proposes ONE step at a time -> queue empties every action
+    tool = _FakeTool("graph", (1, None), 0.9)
+    agent = UnifiedAgent([tool], counting_llm, giveup=1000, stall=50)
+    g = np.zeros((64, 64), dtype=np.int64)
+    for i in range(10):
+        gi = g.copy()
+        gi[0, i] = 1  # every action changes the frame (progress)
+        agent.choose_action([], _Obs(gi, [1, 2, 3, 4]))
+    # 10 progressing actions, stall=50 never hit -> exactly one decision (the first)
+    assert calls["n"] == 1
+    assert tool.proposed >= 5  # tool refilled repeatedly WITHOUT the LLM
 
 
 def test_llm_failure_falls_back_to_signature_default():

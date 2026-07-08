@@ -113,17 +113,29 @@ class UnifiedAgent:
 
     # -- refill ---------------------------------------------------------------
 
-    def _refill(self, frames: list[Any], obs: Any, sig: Signature) -> None:
+    def _redecide(self, frames: list[Any], obs: Any, sig: Signature) -> None:
+        """LLM picks the tool/code path, then fills the queue. Called only at a
+        genuine decision boundary (first action, or a stall) — NOT on every empty
+        queue, so the expensive LLM call rate stays bounded (SWA breaks prompt
+        caching; see r53). A progressing tool refills via _continue with no LLM."""
         mode, tool = self._decide(sig)
         self._current = tool if mode == "tool" else "code"
         if self._current not in self._tried:
             self._tried.append(self._current)
+        self._fill_from_current(frames, obs)
+
+    def _continue(self, frames: list[Any], obs: Any) -> None:
+        """Re-run the CURRENT tool/code path without consulting the LLM, because
+        it is still making progress and the queue merely emptied."""
+        self._fill_from_current(frames, obs)
+
+    def _fill_from_current(self, frames: list[Any], obs: Any) -> None:
         simple_ids, action6 = availability(obs)
-        if mode == "code":
+        if self._current == "code":
             steps = self._write_code(obs)
         else:
             try:
-                steps = self.tools[tool].propose(frames, obs)
+                steps = self.tools[self._current].propose(frames, obs)
             except Exception:  # noqa: BLE001 - a broken tool never crashes the loop
                 steps = []
         legal = [s for s in steps if self._legal(s, simple_ids, action6)]
@@ -182,10 +194,16 @@ class UnifiedAgent:
                 self._since_progress += 1
                 self._feedback = f"{self._current or 'action'} inert x{self._since_progress}"
 
-        if not self._queue or self._since_progress >= self.stall:
+        need_decision = self._current is None or self._since_progress >= self.stall
+        if need_decision:
             sig = compute_signature(obs, self._transitions)
-            self._refill(frames, obs, sig)
+            self._redecide(frames, obs, sig)
             self._since_progress = 0
+        elif not self._queue:
+            # Same tool is progressing; refill without paying for an LLM call.
+            # Do NOT reset _since_progress — inert-action accumulation must
+            # survive across refills so a stalling tool still triggers redecide.
+            self._continue(frames, obs)
 
         step = self._queue.pop(0)
         self._steps += 1
