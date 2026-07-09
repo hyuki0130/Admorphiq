@@ -800,3 +800,14 @@ PROMPT-TAIL DISRUPTION, not evidence content). Tune-before-discard: evidence
 moved BEFORE the board so the validated board→instruction tail stays
 contiguous; re-measuring vc33/r11l. ⛔ Never insert prose between the current
 board grid and the OUTPUT instruction in targetgrid prompts.
+
+### Redraw diversity DISCARDED after 2-config sweep (2026-07-09)
+Config 2 (evidence before board) fixed the degenerate rate (~44% of enriched
+redraws inject) but produced ZERO new levels and no L2 unlocks (vc33/r11l);
+enriched draws are no better than simple ones and reject more often — a net
+risk to cd82's proven multi-simple-draw win condition. Code reverted
+byte-identical (simple draws restored); the ⛔ prompt-tail lesson above is the
+durable takeaway. ⛔ Redraw-diversity-via-transition-evidence is measured
+no-gain — the draw-quality wall is gemma's goal-inference accuracy, and citing
+the agent's own action->effect medians does not move it. Next thread: the
+legacy-vs-new graph strength gap on the remaining navigation games.
