@@ -99,26 +99,52 @@ def run_code(
 
 
 _SYSTEM = (
-    "You control an ARC-AGI-3 grid game by WRITING PYTHON. The sandbox has: "
-    "current_frame (list[list[int]] 64x64 colours 0-15), history (recent "
-    "{action,changed}), valid_actions, numpy as np, and act(name, x=None, y=None) "
-    "to QUEUE actions — name in UP/DOWN/LEFT/RIGHT/SPACE/ACTION7, or CLICK with x,y. "
-    "Inspect the frame, reason about the mechanic, and queue 1-4 actions you expect "
-    "to make progress. Output ONLY one ```python block that calls act(...)."
+    "You solve an ARC-AGI-3 grid game by WRITING PYTHON. The level clears when the "
+    "board reaches a specific TARGET configuration — your job is to infer that "
+    "target from what you see and drive toward it. The sandbox has: current_frame "
+    "(list[list[int]] 64x64 colours 0-15), history (recent {action,changed}), "
+    "valid_actions, numpy as np, and act(name, x=None, y=None) to QUEUE actions — "
+    "name in UP/DOWN/LEFT/RIGHT/SPACE/ACTION7, or CLICK with x,y (x=col, y=row). "
+    "Reason step by step in comments: (1) what are the objects/regions and which "
+    "past actions changed what (from history + the summary); (2) what is the most "
+    "likely GOAL (e.g. recolor a region to match another, fill a shape, sort/order, "
+    "move a piece onto a target); (3) which 1-6 actions move toward it. Then queue "
+    "them. Output ONLY one ```python block that calls act(...)."
 )
 
 
 def build_code_prompt(
     frame: np.ndarray, history: list[dict[str, Any]], valid_actions: list[str],
 ) -> list[dict[str, str]]:
-    """Chat messages asking the model to write an action-queuing code block."""
+    """Chat messages asking the model to infer the goal and write an action block.
+
+    Beyond the raw grid, a compact STRUCTURED summary (colour counts, foreground
+    object sizes) is included so the model can reason about the target without
+    decoding 64 hex rows cell by cell — the raw grid alone gave gemma4 nothing to
+    anchor goal reasoning on (measured re86 0/8)."""
     from admorphiq.ewm.core import serialize_grid
     recent = "; ".join(
         f"{h.get('action')}{'*' if h.get('changed') else ''}" for h in history[-10:]
     ) or "none"
+    summary = _frame_summary(np.asarray(frame))
     user = (
         f"FRAME (hex, 64 rows):\n{serialize_grid(frame)}\n\n"
+        f"SUMMARY: {summary}\n"
         f"valid_actions = {valid_actions}\nrecent = {recent}\n\n"
-        "Write the ```python block."
+        "Infer the goal, then write the ```python block."
     )
     return [{"role": "system", "content": _SYSTEM}, {"role": "user", "content": user}]
+
+
+def _frame_summary(frame: np.ndarray) -> str:
+    """A compact structured description: colour counts + foreground object sizes."""
+    from admorphiq.tools.base import color_histogram, connected_components
+    hist = color_histogram(frame)
+    colors = ", ".join(f"c{c}:{int(n)}" for c, n in enumerate(hist) if n)
+    comps = connected_components(frame)
+    comps.sort(key=lambda c: -c["size"])
+    objs = "; ".join(
+        f"c{o['color']}@({int(o['centroid'][1])},{int(o['centroid'][0])})sz{o['size']}"
+        for o in comps[:8]
+    ) or "none"
+    return f"colours[{colors}] top_objects[{objs}]"
