@@ -290,6 +290,7 @@ class GraphSearchTool:
         # Region-mask state: stacked per-transition change masks + sticky mask.
         self._stacked: deque[np.ndarray] = deque(maxlen=_REGION_WINDOW)
         self._region_mask: np.ndarray | None = None
+        self._region_prev: np.ndarray | None = None  # last refresh's candidates
         self._region_tick = 0
         # Hash-ladder instability tracking. Rungs: pixel pool=1 -> pixel
         # pool=2 -> object.
@@ -373,8 +374,17 @@ class GraphSearchTool:
             if float(region_changed.mean()) > _REGION_RATE:
                 add[rows, cols] = True
         if not add.any():
+            self._region_prev = None
             return
-        add = _dilate(add, _REGION_DILATE)
+        # Stability gate: only cells qualifying on TWO consecutive refreshes are
+        # masked — a transient early-game animation (measured: a 515-cell first
+        # mask swallowed a play field and sank the game) never enters the sticky
+        # union; a persistent widget re-qualifies every window.
+        confirmed = add & self._region_prev if self._region_prev is not None else None
+        self._region_prev = add
+        if confirmed is None or not confirmed.any():
+            return
+        add = _dilate(confirmed, _REGION_DILATE)
         first = self._region_mask is None
         if first:
             self._region_mask = add
