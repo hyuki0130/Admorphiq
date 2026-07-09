@@ -660,3 +660,14 @@ recovered (was lost to churn), only lf52 remains 0 (it is budget-MARGINAL even i
 isolation: clears at exactly 5000, not 4000; harness overhead tips it under).
 **Deployed ≈ isolated performance: productization complete.** Honest deployed
 card: 6 solid + lf52 marginal + cd82 ~30% stochastic ≈ 7±1 of 25.
+
+### Verification chain complete (2026-07-09): architect APPROVE + deslop + regression
+Re-verification after fixes: **APPROVE** (one MEDIUM residual — llm_goal.detect
+filtered raw ndarrays via has_frame() and always returned 0.0 with the harness's
+_recent_frames — fixed with a raw-tolerant _grid_of reader mirroring graph's
+_obs_grid). Deslop pass (behavior locked by tests): deleted the measured-dead
+--hybrid probe path (coarse-GoalSpec injection, inferior to frame-only;
+set_external_goal kept as the API for future richer goal sources) and stripped
+the inert parallel scaffolding from tool_coverage.sh. Post-deslop regression:
+**667 passed**. Deployed card being finalized: 6/7 solid + cd82 ~30% + lf52
+under full-budget re-test (8000).
