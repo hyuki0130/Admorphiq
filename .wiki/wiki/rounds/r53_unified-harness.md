@@ -811,3 +811,15 @@ durable takeaway. ⛔ Redraw-diversity-via-transition-evidence is measured
 no-gain — the draw-quality wall is gemma's goal-inference accuracy, and citing
 the agent's own action->effect medians does not move it. Next thread: the
 legacy-vs-new graph strength gap on the remaining navigation games.
+
+### Gap-1 @8000 pinned + R38 tier gate ported — ft09 closed (2026-07-09)
+Legacy graph_frontier @8000 on the 10 FINAL2-only games: **ft09 1, sp80 1,
+tu93 2; the other 7 (ar25 bp35 ka59 ls20 sb26 sk48 tr87) are 0** — their legacy
+clears need 30k-100k budgets (RHAE-worthless; not port targets). Ported the R38
+GLOBAL TIER GATE into tools/graph_search.py (legacy-faithful interactivity
+tiers: score thresholds 2.0/1.0, backdrop bg-frac>0.6 demotion; frontier
+promise + local pick count only in-gate untried; global unlock when no in-gate
+untried is reachable). Unified bench interim: **ft09 0 → 1 (CLOSED by the
+gate)**; sp80/tu93 unchanged 0 — their legacy technique is elsewhere (both
+movement games; obj-hash ladder / band masking are the next candidates).
+Solid-8 regression guard in flight.
