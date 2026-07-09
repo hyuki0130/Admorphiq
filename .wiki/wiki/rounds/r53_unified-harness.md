@@ -412,3 +412,16 @@ games whose target the heuristic FILL goal can't capture. **Decision: incrementa
 graph-technique ports are diminishing (2 done = +1-2 games); the bulk of remaining
 coverage (the ~12 transform games incl. the ones legacy also fails) is GAP 2 =
 goal inference. That is the real lever and the next focus.**
+
+### Gap-2 attempt 1: code-agent goal-reasoning prompt — cd82 still 0 (2026-07-09)
+Strengthened the code-agent prompt (state the TARGET must be inferred, step-by-step
+object→goal→action reasoning, compact colour/object summary) and measured on cd82
+(transform, legacy-clearable): **still 0** (100 actions). ALL current goal-inference
+mechanisms now measured 0 on transform games: llm_goal (coarse GoalSpec) 0,
+code-agent (bespoke Python) 0. Gap-2 is genuinely unsolved — the project's core
+open problem. Also confirmed: the code-agent's LLM-every-turn design is very slow
+(gemma SWA ~15s/call), a concern for the 9h/110-game budget.
+- Untried Gap-2 idea for next session: HYBRID — llm_goal infers a RICH goal
+  (ON_TARGET / MATCH_SUBREGION, not just FILL) and feeds it to `graph`'s new
+  goal-ranking (score_goal) so LLM goal inference steers graph's search. Builds on
+  the goal-ranking infra added this round.
