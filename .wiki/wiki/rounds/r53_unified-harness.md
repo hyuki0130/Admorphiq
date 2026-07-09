@@ -425,3 +425,14 @@ open problem. Also confirmed: the code-agent's LLM-every-turn design is very slo
   (ON_TARGET / MATCH_SUBREGION, not just FILL) and feeds it to `graph`'s new
   goal-ranking (score_goal) so LLM goal inference steers graph's search. Builds on
   the goal-ranking infra added this round.
+
+### Gap-2 breakthrough: multi-goal tracker cracked cn04 (transform!) (2026-07-09)
+Replaced the FILL-only heuristic goal with GoalMeasureTracker (scores the WHOLE
+candidate-goal family — FILL/COUNT/ORDER/ON_TARGET — and adopts the goal whose
+measure is most consistently increasing), throttled to every 6th state for speed.
+**cn04 0→1** — a transform(move-recolors) game FILL-only could NOT crack — with
+vc33/lf52 kept (no regression). graph now clears up to 7 (vc33, m0r0, lp85, r11l,
+tn36, lf52, cn04). This is real Gap-2 progress: richer HEURISTIC goal inference
+(no LLM) in graph unlocks some transform games. cd82 still 0 (its target may not
+be in the candidate-goal family). Confirms the path: keep enriching the
+frame-only goal family; the LLM is only needed for goals the family can't express.
