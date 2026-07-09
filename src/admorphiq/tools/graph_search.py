@@ -91,6 +91,25 @@ def _norm_grid(arr: Any) -> np.ndarray:
     return a.astype(np.int64)
 
 
+def _downsample(frame: np.ndarray, n: int = 8) -> np.ndarray:
+    """Downsample a grid to n×n by block-majority (mode) — a coarse spatial
+    signature robust to small shifts, used to compare a frame to a target frame."""
+    a = np.asarray(frame)
+    if a.ndim != 2 or a.size == 0:
+        return np.zeros((n, n), dtype=np.int64)
+    h, w = a.shape
+    out = np.zeros((n, n), dtype=np.int64)
+    ys = np.linspace(0, h, n + 1).astype(int)
+    xs = np.linspace(0, w, n + 1).astype(int)
+    for i in range(n):
+        for j in range(n):
+            block = a[ys[i]:max(ys[i] + 1, ys[i + 1]), xs[j]:max(xs[j] + 1, xs[j + 1])]
+            if block.size:
+                vals, cnts = np.unique(block, return_counts=True)
+                out[i, j] = int(vals[int(cnts.argmax())])
+    return out
+
+
 def _click_candidates(frame: np.ndarray, max_clicks: int = _MAX_CLICKS) -> list[tuple[int, int]]:
     """Reduce ACTION6 to a small INTERACTIVITY-tier-ordered set of ``(x, y)`` clicks.
 
@@ -202,6 +221,7 @@ class GraphSearchTool:
         self._goal_tracker = GoalMeasureTracker() if _GOAL_OK else None
         self._goal_obs_count = 0
         self._goal_memo: dict[str, float] = {}
+        self._target_grid: np.ndarray | None = None  # injected LLM target frame
 
     def _masked_frame(self, frame: np.ndarray) -> np.ndarray:
         """The frame with frozen-HUD cells zeroed (identity until warmup freeze)."""
@@ -393,15 +413,31 @@ class GraphSearchTool:
                 self._goal = goal
                 self._goal_memo.clear()
 
+    def set_target_frame(self, target: np.ndarray) -> None:
+        """Inject an arbitrary TARGET FRAME (e.g. an LLM-drawn picture of the solved
+        board) — a goal representation RICHER than the GoalSpec vocabulary, which
+        was measured to be the 25/25 wall. Frontiers are then ranked by how close
+        their (downsampled) frame is to this target. Used exclusively; the
+        candidate-goal tracker is disabled so it isn't diluted."""
+        self._target_grid = _downsample(np.asarray(target))
+        self._goal_tracker = None
+        self._goal = None
+        self._goal_memo.clear()
+
     def _goal_proximity(self, node: str) -> float:
-        """score_goal of a node's stored frame (memoized), 0 if no goal/frame."""
-        if self._goal is None:
-            return 0.0
+        """Frontier goal-proximity (memoized): if a TARGET FRAME is injected, the
+        negative downsampled-frame distance to it; else score_goal of the node's
+        frame under the tracked/injected GoalSpec; 0 if neither."""
         if node in self._goal_memo:
             return self._goal_memo[node]
         fr = self._state_frame.get(node)
         val = 0.0
-        if fr is not None:
+        if fr is not None and self._target_grid is not None:
+            # higher = closer: negative fraction of cells that differ from target
+            ds = _downsample(fr)
+            if ds.shape == self._target_grid.shape:
+                val = -float(np.mean(ds != self._target_grid))
+        elif fr is not None and self._goal is not None:
             try:
                 val = float(score_goal(fr, self._goal))
             except Exception:  # noqa: BLE001
