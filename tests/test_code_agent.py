@@ -94,3 +94,37 @@ def test_prompt_carries_observed_dynamics_when_provided():
     # And absent when not provided (base prompt unchanged).
     msgs2 = build_code_prompt(f, [], ["UP"])
     assert "OBSERVED DYNAMICS" not in msgs2[-1]["content"]
+
+
+def test_refine_prompt_carries_prev_code_and_effect():
+    """Purpose: the execution-feedback revision ask must show the model its own
+    previous block AND the observed effect — one-shot synthesis (even with
+    dynamics context) measured 0 on every wall game; feedback is the next rung.
+
+    Expected feedback: pass = the refine loop feeds real execution evidence;
+    fail = 'revisions' are blind re-rolls and the loop adds nothing."""
+    import numpy as np
+
+    from admorphiq.tools.code_agent import build_refine_prompt
+
+    f = np.zeros((64, 64), dtype=np.int16)
+    prev = "act('UP')\nact('MOUSE', 3, 4)"
+    eff = "8 actions executed; 2 changed the frame; level NOT cleared"
+    msgs = build_refine_prompt(f, prev, eff, ["UP", "MOUSE"])
+    body = msgs[-1]["content"]
+    assert prev in body and eff in body and "REVISED" in body
+
+
+def test_run_code_returns_executed_block():
+    """Purpose: CodeResult.code must carry the extracted executed block so the
+    harness can feed it back verbatim on the next refine ask.
+    Expected feedback: pass = the feedback loop closes on the real code; fail =
+    refine prompts would show the model a stale/empty block."""
+    import numpy as np
+
+    from admorphiq.tools.code_agent import run_code
+
+    f = np.zeros((8, 8), dtype=np.int16)
+    r = run_code("```python\nact('UP')\n```", f, [], ["UP"])
+    assert r.actions == [("ACTION1", None)]  # run_code normalises UP
+    assert "act('UP')" in r.code

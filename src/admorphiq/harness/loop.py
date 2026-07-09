@@ -22,7 +22,7 @@ import numpy as np
 
 from admorphiq.harness.context import Signature, build_context, compute_signature
 from admorphiq.tools.base import Step, Tool, availability, base_hash, frame_2d, has_frame, levels_completed, state_name
-from admorphiq.tools.code_agent import build_code_prompt, run_code
+from admorphiq.tools.code_agent import build_code_prompt, build_refine_prompt, run_code
 from admorphiq.tools.targetgrid import TARGET_RES, build_target_prompt, parse_and_validate_target
 
 LLM = Callable[[list[dict[str, str]]], str]
@@ -279,6 +279,8 @@ class UnifiedAgent:
 
     def _write_code(self, obs: Any) -> list[Step]:
         frame = frame_2d(obs).astype(np.int16)
+        if not hasattr(self, "_last_code"):
+            self._last_code: tuple[str, int, int] | None = None
         simple_ids, action6 = availability(obs)
         valid = [_NAME[i] for i in simple_ids if i in _NAME] + (["MOUSE"] if action6 else [])
         # Give the coding LLM the recent transitions it has actually observed.
@@ -297,8 +299,27 @@ class UnifiedAgent:
             for a, v in sorted(per.items(), key=lambda kv: str(kv[0]))
         ) or None
         try:
-            text = self.llm(build_code_prompt(frame, hist, valid, dynamics=dynamics))
-            return run_code(text, frame, hist, valid).actions
+            if self._last_code is not None and self._last_code[1] == self._last_levels:
+                # Execution-feedback revision: same level, a previous block ran —
+                # show its observed effect and ask for a revised block.
+                prev_code, _lvl, prev_n = self._last_code
+                ran = len(self._transitions) - prev_n
+                changed = sum(
+                    1 for p, a, n in self._transitions[prev_n:] if (p != n).any()
+                )
+                effect = (
+                    f"{ran} actions executed since the block ran; {changed} of "
+                    f"them changed the frame; level NOT cleared (still level "
+                    f"{self._last_levels})."
+                )
+                text = self.llm(build_refine_prompt(
+                    frame, prev_code, effect, valid, dynamics=dynamics))
+            else:
+                text = self.llm(build_code_prompt(frame, hist, valid, dynamics=dynamics))
+            result = run_code(text, frame, hist, valid)
+            if result.actions:
+                self._last_code = (result.code, self._last_levels, len(self._transitions))
+            return result.actions
         except Exception:  # noqa: BLE001 - offline-safe
             return []
 

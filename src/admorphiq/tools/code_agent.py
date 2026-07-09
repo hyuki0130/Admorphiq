@@ -34,6 +34,7 @@ class CodeResult:
     actions: list[tuple[str, tuple[int, int] | None]] = field(default_factory=list)
     printed: str = ""
     error: str = ""
+    code: str = ""  # the executed block (fed back verbatim on a refine ask)
 
 
 _ALLOWED_ACTIONS = {"UP": 1, "DOWN": 2, "LEFT": 3, "RIGHT": 4, "SPACE": 5, "RESET": 0, "ACTION7": 7}
@@ -94,8 +95,9 @@ def run_code(
     try:
         _run_with_timeout(_exec, (), timeout)
     except Exception as exc:  # noqa: BLE001 - degrade to empty queue, never crash
-        return CodeResult(actions=queue[:8], printed="\n".join(out)[:2000], error=str(exc)[:200])
-    return CodeResult(actions=queue[:8], printed="\n".join(out)[:2000])
+        return CodeResult(actions=queue[:8], printed="\n".join(out)[:2000],
+                          error=str(exc)[:200], code=code)
+    return CodeResult(actions=queue[:8], printed="\n".join(out)[:2000], code=code)
 
 
 _SYSTEM = (
@@ -139,6 +141,29 @@ def build_code_prompt(
         + (f"OBSERVED DYNAMICS (this agent's own probes):\n{dynamics}\n" if dynamics else "")
         + f"valid_actions = {valid_actions}\nrecent = {recent}\n\n"
         "Infer the goal, then write the ```python block."
+    )
+    return [{"role": "system", "content": _SYSTEM}, {"role": "user", "content": user}]
+
+
+def build_refine_prompt(
+    frame: np.ndarray, prev_code: str, effect: str, valid_actions: list[str],
+    dynamics: str | None = None,
+) -> list[dict[str, str]]:
+    """Execution-FEEDBACK revision ask (the EWM refinement pattern applied to
+    solver code): show the model its previous block plus the OBSERVED effect of
+    running it, and ask for a revised block. One-shot synthesis measured 0 on
+    every wall game even with dynamics context — feedback is the next rung."""
+    from admorphiq.ewm.core import serialize_grid
+    summary = _frame_summary(np.asarray(frame))
+    user = (
+        "Your PREVIOUS solver block was executed. Observed effect:\n"
+        f"{effect}\n\nPrevious block:\n```python\n{prev_code}\n```\n\n"
+        f"CURRENT FRAME (hex, 64 rows):\n{serialize_grid(frame)}\n\n"
+        f"SUMMARY: {summary}\n"
+        + (f"OBSERVED DYNAMICS (this agent's own probes):\n{dynamics}\n" if dynamics else "")
+        + f"valid_actions = {valid_actions}\n\n"
+        "Diagnose why the previous block did not clear the level, then write a "
+        "REVISED ```python block."
     )
     return [{"role": "system", "content": _SYSTEM}, {"role": "user", "content": user}]
 
