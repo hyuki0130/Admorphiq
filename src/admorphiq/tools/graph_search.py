@@ -228,7 +228,6 @@ class GraphSearchTool:
         self._goal_obs_count = 0
         self._goal_memo: dict[str, float] = {}
         self._target_grid: np.ndarray | None = None  # injected LLM target frame
-        self._target_full: np.ndarray | None = None  # full-res copy (proximity gradient)
         self._scorer = None                           # injected executable goal scorer
         self._target_res = 8                          # its downsample resolution
         # Target-pursuit progress trace (drives target_stalled / redraw gating).
@@ -387,14 +386,9 @@ class GraphSearchTool:
                 except Exception:  # noqa: BLE001
                     prox = None
             else:
-                tf = self._target_full
-                g = _norm_grid(frame)
-                if tf is not None and g.shape == tf.shape:
-                    prox = -float(np.mean(g != tf))
-                else:
-                    ds = _downsample(frame, self._target_res)
-                    if ds.shape == self._target_grid.shape:
-                        prox = -float(np.mean(ds != self._target_grid))
+                ds = _downsample(frame, self._target_res)
+                if ds.shape == self._target_grid.shape:
+                    prox = -float(np.mean(ds != self._target_grid))
             if prox is not None:
                 self._prox_calls += 1
                 if prox > self._best_prox:
@@ -458,13 +452,7 @@ class GraphSearchTool:
         their (downsampled to ``res``×``res``) frame is to this target. Used
         exclusively; the candidate-goal tracker is disabled so it isn't diluted."""
         self._target_res = int(res)
-        target = np.asarray(target)
-        # Full-res copy for PROXIMITY: fine-grained games change ~1 cell per
-        # action, invisible to an 8x8 block-majority — measured as best_prox
-        # frozen at the initial diff for 1200+ calls (zero-gradient metric).
-        # Per-pixel comparison gives gradient for every correctly-placed cell.
-        self._target_full = _norm_grid(target)
-        self._target_grid = _downsample(target, self._target_res)
+        self._target_grid = _downsample(np.asarray(target), self._target_res)
         self._goal_tracker = None
         self._goal = None
         self._goal_memo.clear()
@@ -521,17 +509,10 @@ class GraphSearchTool:
             except Exception:  # noqa: BLE001
                 val = 0.0
         elif fr is not None and self._target_grid is not None:
-            # higher = closer: negative fraction of FULL-RES cells differing from
-            # the (upsampled) target — per-pixel gradient (8x8 was zero-gradient
-            # on fine-grained games).
-            tf = self._target_full
-            g = _norm_grid(fr)
-            if tf is not None and g.shape == tf.shape:
-                val = -float(np.mean(g != tf))
-            else:
-                ds = _downsample(fr, self._target_res)
-                if ds.shape == self._target_grid.shape:
-                    val = -float(np.mean(ds != self._target_grid))
+            # higher = closer: negative fraction of cells that differ from target
+            ds = _downsample(fr, self._target_res)
+            if ds.shape == self._target_grid.shape:
+                val = -float(np.mean(ds != self._target_grid))
         elif fr is not None and self._goal is not None:
             try:
                 val = float(score_goal(fr, self._goal))
