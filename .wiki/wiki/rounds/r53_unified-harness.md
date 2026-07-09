@@ -594,3 +594,14 @@ measured; further gains need a genuinely different goal source (EWM executable
 rules — a dedicated research cycle). Next: PRODUCTIZE the breakthrough into the
 deployed UnifiedAgent (it currently lives only in the probe) so the harness
 itself clears 8/25.
+
+### CORRECTION: the cd82 targetgrid clear is STOCHASTIC (~2/4 runs) (2026-07-09)
+Reproducibility check (3rd probe run): cd82 = **0**. Across 4 total runs (probe
+1, 1, 0; harness-with-verified-injection 0) the clear rate is ~50% — ollama fp
+nondeterminism at temp=0 varies the drawn target run-to-run, and the clear
+depends on drawing a good-enough target. The earlier "breakthrough" declaration
+violated the 3-seed rule; corrected: **the richer-goal lever is REAL (0% under
+every coarse-goal approach vs ~50% with targetgrid) but single-draw quality is
+the noisy bottleneck.** The harness "integration gap" was a mirage — same
+variance. Stabilization lever (next): multiple draws per level (redraw every ~400
+steps, up to 3) — at ~50%/draw that's ~87%/level, 2 extra gemma calls max.
