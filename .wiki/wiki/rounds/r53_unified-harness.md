@@ -508,3 +508,12 @@ frontier for 25/25 is a RICHER goal representation — an arbitrary target frame
 executable rule (the EWM r48-r52 direction, Tufa's code-writing) — plus a planner
 that reaches it. That is the genuine open research problem; 7/25 is the ceiling of
 everything expressible in the current goal vocabulary.
+
+### Parameter sweep confirms the ceiling: goal-weight 0.30 INERT (2026-07-09)
+Swept _GOAL_WEIGHT 0.05→0.30 (stronger goal-proximity steering): cn04/vc33/lf52
+kept, transform games (cd82/sp80/ls20/ar25) still 0 — INERT, reverted to 0.05.
+Combined with budget-8000 inert and every other lever, this CLOSES the sweep:
+**7/25 is the airtight measured ceiling for all frame-only + coarse-GoalSpec
+approaches** (search enrichment, goal-family, goal-weight, LLM inference — every
+one measured). 25/25 = the EWM / richer-goal-representation research frontier
+(r48-r52 track), which is where the graph 7/25 base + hybrid infra hand off.
