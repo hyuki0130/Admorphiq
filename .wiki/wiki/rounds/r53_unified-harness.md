@@ -885,3 +885,16 @@ Ported verbatim (thin<=3 / drift>=6 / density>=0.5 / monotone>=0.7 / window
 48/16 / dilate 1, frame-shape generic): confirmed track masked from node keys,
 mask grows with the marker, graph rebuilt at confirmation. 679 tests. band1
 bench in flight (tu93/sp80 + vc33/m0r0/lf52 guards).
+
+### Band mask REVERTED (measured harmful); REGION mask ported instead (2026-07-09 23:44)
+band1: tu93 never confirmed a band (hypothesis wrong — re-reading the legacy
+debug, tu93 ran with **band=none**; its masked=126 was the REGION mask), sp80
+confirmed one but stayed 0, and **vc33 regressed 1→0** (false-positive row-0
+band + graph drop). Reverted. ⛔ moving-band masking on this stack: measured
+net-negative, do not re-add without a target game that actually shows the
+signature. Ported the actual converging lever: **legacy GF_REGION_MASK**
+(per-cell rate > 0.05 → components → mask those with aggregate any-cell rate
+> 0.7, spare components > 30% of board, dilate 1, sticky refresh every 16 from
+a 32-window; graph dropped on first confirmation). Both remaining Gap-1 games'
+legacy clears rest on it (tu93 masked=126, sp80 masked=2776). 679 tests. reg1
+bench in flight (tu93/sp80 + vc33/m0r0/lf52/cn04 guards).
