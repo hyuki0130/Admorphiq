@@ -384,3 +384,11 @@ ceiling = 4/25. BUT legacy graph_frontier clears ~11-13 (cd82/lf52/cn04/tn36/sp8
   measure 0 on it.
 Plan: close Gap 1 by porting click-tiers + goal-ranking to `graph` (bounded),
 then attack Gap 2 (goal inference) as the research frontier.
+
+### Gap-1 progress: click-tiering added tn36 (graph 4 → 5/25) (2026-07-09)
+Ported legacy's interactivity-tiered click candidates (area/rarity/contrast) →
+**tn36 0→1** (a select/toggle sparse-click game), vc33/m0r0 kept (no regression).
+graph now clears 5/25 (vc33, m0r0, lp85, r11l, tn36). cd82/lf52/cn04/sp80 still 0
+— next port: legacy's GF_GOAL_RANK (heuristic goal-proximity frontier ranking via
+planner.goal.score_goal). Confirms the two-gap plan: porting legacy search
+techniques IS recovering games (unlike promise-frontier alone, which was inert).
