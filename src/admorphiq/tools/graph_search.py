@@ -140,6 +140,21 @@ _OBJ_SINK_SELFLOOP = 0.70  # windowed self-loop fraction for the sink fire
 _OBJ_SINK_DISTINCT = 6     # max distinct-recent states for the sink fire
 _OBJ_MAX_MASK = 256        # skip when the HUD mask is this large (jitter gate)
 
+# Region-level rate mask (legacy GF_REGION_MASK): a widget (counter, digit
+# display, animated panel) repaints on almost EVERY step even though each of
+# its cells changes rarely — invisible to the per-cell >=60% rule. Cells with
+# rate > _REGION_LOW form components; a component whose AGGREGATE rate (any
+# cell changed this step) exceeds _REGION_RATE is masked (dilated), unless it
+# is wider than _REGION_MAX_FRAC of the board (that is the play field itself).
+# The mask is STICKY (grows monotonically) and refreshes every
+# _REGION_REFRESH transitions from a _REGION_WINDOW stacked change history.
+_REGION_LOW = 0.05
+_REGION_RATE = 0.7
+_REGION_MAX_FRAC = 0.30
+_REGION_DILATE = 1
+_REGION_WINDOW = 32
+_REGION_REFRESH = 16
+
 def _click_candidates(frame: np.ndarray, max_clicks: int = _MAX_CLICKS) -> list[tuple[int, int, int]]:
     """Reduce ACTION6 to a small INTERACTIVITY-tier-ordered set of ``(x, y)`` clicks.
 
@@ -272,6 +287,10 @@ class GraphSearchTool:
         # untried action is reachable ANYWHERE — deferring the mass of
         # low-promise clicks that made deep discovery exhaustive.
         self._unlocked_tier = 0
+        # Region-mask state: stacked per-transition change masks + sticky mask.
+        self._stacked: deque[np.ndarray] = deque(maxlen=_REGION_WINDOW)
+        self._region_mask: np.ndarray | None = None
+        self._region_tick = 0
         # Hash-ladder instability tracking. Rungs: pixel pool=1 -> pixel
         # pool=2 -> object.
         self._hash_mode = "pixel"
@@ -310,11 +329,14 @@ class GraphSearchTool:
         self._last_improve_call = 0
 
     def _masked_frame(self, frame: np.ndarray) -> np.ndarray:
-        """The frame with frozen-HUD cells zeroed (identity until warmup freeze)."""
-        if self._mask is None:
+        """The frame with frozen-HUD cells + sticky region-mask cells zeroed."""
+        if self._mask is None and self._region_mask is None:
             return frame
         g = frame.copy()
-        g[self._mask] = 0
+        if self._mask is not None:
+            g[self._mask] = 0
+        if self._region_mask is not None and self._region_mask.shape == g.shape:
+            g[self._region_mask] = 0
         return g
 
     def _node_key(self, frame: np.ndarray) -> str:
@@ -329,6 +351,51 @@ class GraphSearchTool:
         if self._pool > 1:
             mframe = _max_pool(mframe, self._pool)
         return self._dealias.key(mframe, self._recent)
+
+    def _refresh_region_mask(self) -> None:
+        """Recompute the region mask from the stacked change window and OR it
+        into the sticky mask (monotonic growth, like the legacy sticky mask —
+        the graph is dropped only on the FIRST confirmation, later growth is
+        tolerated as transient mismatch)."""
+        stacked = np.stack(list(self._stacked))
+        rate = stacked.mean(axis=0)
+        noisy = rate > _REGION_LOW
+        if not noisy.any():
+            return
+        add = np.zeros(noisy.shape, dtype=bool)
+        max_region = _REGION_MAX_FRAC * float(noisy.size)
+        for cells in _bool_components(noisy):
+            if len(cells) > max_region:
+                continue
+            rows = np.fromiter((r for r, _ in cells), dtype=np.intp, count=len(cells))
+            cols = np.fromiter((c for _, c in cells), dtype=np.intp, count=len(cells))
+            region_changed = stacked[:, rows, cols].any(axis=1)
+            if float(region_changed.mean()) > _REGION_RATE:
+                add[rows, cols] = True
+        if not add.any():
+            return
+        add = _dilate(add, _REGION_DILATE)
+        first = self._region_mask is None
+        if first:
+            self._region_mask = add
+        else:
+            grown = self._region_mask | add
+            if int(grown.sum()) == int(self._region_mask.sum()):
+                return
+            self._region_mask = grown
+        if first:
+            import sys
+            print(f"[graph] REGION mask: {int(self._region_mask.sum())} cells",
+                  file=sys.stderr, flush=True)
+            self._edges.clear()
+            self._untried.clear()
+            self._tries.clear()
+            self._tier.clear()
+            self._preds.clear()
+            self._pending = None
+            self._dealias.reset()
+            self._state_frame.clear()
+            self._goal_memo.clear()
 
     def _maybe_fire_object_hash(self) -> None:
         """Arm the object-hash rung when the pixel graph shows a measured broken
@@ -459,6 +526,12 @@ class GraphSearchTool:
         edge's target hash is completed on the next :meth:`propose`.
         """
         prev_grid = _norm_grid(prev)
+        if self._prev_obs is not None and self._prev_obs.shape == prev_grid.shape:
+            self._stacked.append(self._prev_obs != prev_grid)
+            self._region_tick += 1
+            if (self._region_tick % _REGION_REFRESH == 0
+                    and len(self._stacked) >= _REGION_REFRESH):
+                self._refresh_region_mask()
         self._accumulate_hud(prev_grid)
         # De-aliasing sees the HUD-masked frame + the action taken from it.
         self._dealias.observe(self._masked_frame(prev_grid), action, changed)
@@ -766,6 +839,43 @@ class GraphSearchTool:
         if not choices:
             return None
         return self._rng.choice(choices)
+
+
+def _dilate(grid: np.ndarray, k: int) -> np.ndarray:
+    """Binary dilation by ``k`` cells (4-neighbour, iterated) — covers widget
+    edge cells the rate threshold missed."""
+    out = grid.copy()
+    for _ in range(max(0, k)):
+        g = out.copy()
+        g[1:, :] |= out[:-1, :]
+        g[:-1, :] |= out[1:, :]
+        g[:, 1:] |= out[:, :-1]
+        g[:, :-1] |= out[:, 1:]
+        out = g
+    return out
+
+
+def _bool_components(mask: np.ndarray) -> list[list[tuple[int, int]]]:
+    """4-connected components of a boolean mask (flood fill)."""
+    h, w = mask.shape
+    seen = np.zeros_like(mask, dtype=bool)
+    comps: list[list[tuple[int, int]]] = []
+    for r0 in range(h):
+        for c0 in range(w):
+            if not mask[r0, c0] or seen[r0, c0]:
+                continue
+            stack = [(r0, c0)]
+            seen[r0, c0] = True
+            cells: list[tuple[int, int]] = []
+            while stack:
+                r, c = stack.pop()
+                cells.append((r, c))
+                for nr, nc in ((r - 1, c), (r + 1, c), (r, c - 1), (r, c + 1)):
+                    if 0 <= nr < h and 0 <= nc < w and mask[nr, nc] and not seen[nr, nc]:
+                        seen[nr, nc] = True
+                        stack.append((nr, nc))
+            comps.append(cells)
+    return comps
 
 
 def _max_pool(frame: np.ndarray, k: int) -> np.ndarray:

@@ -344,3 +344,38 @@ def test_tier_gate_bypassed_while_explicit_target_active():
     # ...but with a target active the tier-1 click must be offered immediately.
     assert tool.propose([obs], obs) == [(6, (2, 2))]
     assert tool._unlocked_tier == 0   # the gate itself was not consumed
+
+
+def test_region_mask_catches_low_rate_widget_spares_play_field():
+    """Purpose: a widget whose CELLS each change rarely but which repaints as a
+    REGION on most steps (digit display / animated panel) must be region-masked
+    — the class the per-cell >=60% rule is structurally blind to — while a
+    change-region wider than 30% of the board (the play field itself) is spared.
+
+    Expected feedback: pass ⇒ widget noise stops forking state hashes without
+    blinding the agent to the game; fail ⇒ noisy-widget games explode (or the
+    mask swallows the board).
+    """
+    tool = GraphSearchTool()
+    size = 24
+    rng_cells = [(0, c) for c in range(6)]   # a 6-cell widget on row 0
+    prev = np.zeros((size, size), dtype=np.int64)
+    for i in range(40):
+        f = np.zeros((size, size), dtype=np.int64)
+        f[10, 10] = 4                        # static play content
+        # Each step exactly ONE widget cell differs from the previous frame
+        # (per-cell rate ~1/6 ≈ 0.17 < 0.6) but the REGION repaints every step.
+        r, c = rng_cells[i % 6]
+        f[r, c] = 7
+        tool.observe(prev, (1, None), True)
+        prev = f
+    assert tool._region_mask is not None
+    assert bool(tool._region_mask[0, 0:6].any())      # widget masked
+    assert not bool(tool._region_mask[10, 10])        # play field spared
+    a = np.zeros((size, size), dtype=np.int64)
+    a[10, 10] = 4
+    a[0, 2] = 7
+    b = np.zeros((size, size), dtype=np.int64)
+    b[10, 10] = 4
+    b[0, 5] = 7
+    assert tool._node_key(a) == tool._node_key(b)     # widget-only diff erased
