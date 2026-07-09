@@ -368,3 +368,19 @@ the goal-inference frontier the project has circled since r51/r52.
   is heuristic). This needs gemma4-31b + VM measurement per game (slow).
 - promise-frontier kept (harmless, may help other budgets / the private set).
 - ⛔ Do NOT keep tuning blind graph search for coverage — it is a ~4-13 ceiling.
+
+### Complete coverage matrix + TWO-GAP analysis (2026-07-09)
+All tools measured on the 25 (direct probe): graph **4**, world_model 0, toggle 0
+(no lights-out), llm_goal 0 (transform games), code 0 (re86). Current-tools
+ceiling = 4/25. BUT legacy graph_frontier clears ~11-13 (cd82/lf52/cn04/tn36/sp80
++ the 4). So the gap decomposes:
+- **Gap 1 (my graph 4 → legacy ~13): SEARCH TECHNIQUE, portable & bounded.**
+  Legacy has click-candidate TIERS (interactivity-ranked clicks) + GF_GOAL_RANK
+  (heuristic goal-proximity frontier ranking) that my re-authored graph lacks.
+  Porting these should recover ~7-9 games. THIS IS THE NEXT CONCRETE LEVER.
+- **Gap 2 (legacy ~13 → 25): true GOAL INFERENCE, the open frontier.** The ~12
+  games legacy also fails need the target inferred (LLM goal / code) — r51/r52
+  circled this; all current mechanisms (llm_goal coarse GoalSpec, code-agent)
+  measure 0 on it.
+Plan: close Gap 1 by porting click-tiers + goal-ranking to `graph` (bounded),
+then attack Gap 2 (goal inference) as the research frontier.
