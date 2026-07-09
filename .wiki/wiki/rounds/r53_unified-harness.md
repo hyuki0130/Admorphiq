@@ -747,3 +747,14 @@ the ~30-50% draw quality. The "inert steering masked other games" hypothesis is
 REFUTED: the other 17 games' draws are genuinely wrong/unreachable (the
 inference-accuracy wall stands for them). Deployed card: 7 solid + cd82 (2/2 at
 the deployed config; firming with 2 more samples).
+
+### ✅ cd82 FIRMED 4/4 — deployed card promoted to 8/25 SOLID (2026-07-09)
+Runs 3-4 also cleared: **cd82 = 4/4 at the deployed config** (dominant steering ×
+3 stall-gated draws × 8000 budget). The diagnostic chain (grid-dump trace →
+inert-steering discovery [proximity ±0.05 vs integer promise] → dominance fix
+[weight 50]) converted cd82 from 0/8 to 4/4. **DEPLOYED CARD: 8/25 SOLID** —
+cd82, cn04, lf52, lp85, m0r0, r11l, tn36, vc33. Session arc: 4 isolated (start)
+→ 8 deployed solid. Remaining 17: the inference-accuracy wall (their targetgrid
+draws are genuinely wrong — re-verified under real steering) + the L2+ depth
+problem (tn36's plausible L2 target still unpursued to completion → combinatorial
+click space or full-res mismatch; next research thread).
