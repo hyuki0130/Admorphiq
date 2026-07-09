@@ -392,3 +392,11 @@ graph now clears 5/25 (vc33, m0r0, lp85, r11l, tn36). cd82/lf52/cn04/sp80 still 
 — next port: legacy's GF_GOAL_RANK (heuristic goal-proximity frontier ranking via
 planner.goal.score_goal). Confirms the two-gap plan: porting legacy search
 techniques IS recovering games (unlike promise-frontier alone, which was inert).
+
+### Gap-1 progress cont'd: goal-ranking added lf52 (graph 5 → 6/25) (2026-07-09)
+Ported legacy GF_GOAL_RANK (heuristic no-LLM FILL goal + score_goal frontier
+blend) → **lf52 0→1**, all 5 prior clears kept (no regression). graph now clears
+**6/25** (vc33, m0r0, lp85, r11l, tn36, lf52). Two legacy search-technique ports
+(click-tiering→tn36, goal-ranking→lf52) each recovered one game — the Gap-1 plan
+is validated. cd82/cn04/sp80/ls20 still 0 (transform move-recolors — the FILL
+goal doesn't capture their target). Running full 25-game re-sweep to confirm.
