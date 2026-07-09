@@ -990,3 +990,18 @@ Not variance — the cheaper brain genuinely loses the two marginal card games.
 Deployed brain stays gemma4:31b-q8; the role-split (brain=26b/draw=31b) idea
 is parked unless the 9h budget math forces it. Track D (gpt-oss:120b) partial:
 su15 0, ka59 0 — scale escalation not biting so far.
+
+### ⛔ MULTI-MODEL CAMPAIGN CLOSED: the wall is not a model problem (2026-07-10 01:00)
+Track D final: gpt-oss:120b (largest on hand, MoE 5B-active) = 0 on ALL five
+wall probes (su15 ka59 sc25 re86 wa30). Campaign verdict across gemma4:26b-a4b
+/ qwen3-coder:30b / gemma4:31b-q8 / gpt-oss:120b, run in PARALLEL on the VM:
+- Card (12/25) = graph-noise-stack dominated; model-insensitive EXCEPT
+  tu93+sk48 which need 31b (26b loss reproduced 0/2 — model-real).
+- Wall (13 games) = INVARIANT under model scale/family. ⛔ Do not buy more
+  model-swap experiments on the wall; it needs a different capability class
+  (runtime code-synthesis loop / richer goal evidence), not a bigger drawer.
+- Draw ensemble: no inter-model complementarity → deprioritized.
+- Deployed config unchanged: brain+drawer = gemma4:31b-q8.
+- Coverage lever from nx1: ka59 opens at 30k → ADAPTIVE BUDGET policy
+  (default 8000; unsolved games get a 30k retry pass if wall-clock allows) —
+  deployment-runner design, RHAE-neutral, +1 coverage on the dev proxy.
