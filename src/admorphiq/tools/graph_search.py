@@ -131,7 +131,9 @@ _N_TIERS = 3
 # sub-cell jitter class the legacy engine cleared at pool=2) ->
 # object multiset (colour, log2-size-bucket, centroid). One rung per fire.
 _OBJ_WINDOW = 200          # transitions sampled by the instability windows
-_OBJ_MIN_STEPS = 1500      # in-level propose calls before the ladder may fire
+_OBJ_MIN_STEPS = 500       # in-level propose calls before the ladder may fire
+#   (1500 measured too late: a fired rung rebuilds from scratch and the level
+#   budget is half-spent; 500 leaves the rebuilt graph most of the budget)
 _OBJ_EXPLODE_FRAC = 0.5    # windowed new-state fraction for the explosion fire
 _OBJ_EXPLODE_MOBILE = 12   # min distinct-recent states for the explosion fire
 _OBJ_SINK_SELFLOOP = 0.70  # windowed self-loop fraction for the sink fire
@@ -356,7 +358,8 @@ class GraphSearchTool:
             self._hash_mode = "object"
             rung = "object"
         print(f"[graph] HASH-LADDER -> {rung}: new_frac={new_frac:.2f} "
-              f"loop_frac={loop_frac:.2f} distinct={distinct}",
+              f"loop_frac={loop_frac:.2f} distinct={distinct} "
+              f"aliased={len(self._dealias.aliased_bases)}",
               file=sys.stderr, flush=True)
         self._edges.clear()
         self._untried.clear()
