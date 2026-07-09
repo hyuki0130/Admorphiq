@@ -143,8 +143,11 @@ class WorldModelTool:
         struct = self._structure_score(layer)
         det = self._determinism_ratio()
         if det is None:
-            # Model still empty — report structure-only prior in [0.35, 0.60].
-            return round(0.35 + 0.25 * struct, 4)
+            # Model still empty — structure-only prior, capped LOW: this tool
+            # measured 0/25 as a standalone clearer (r53), so an optimistic
+            # empty prior would let it outrank / displace tools that actually
+            # clear games. Evidence must be earned before confidence rises.
+            return round(0.10 + 0.15 * struct, 4)
         det_component = float(
             np.clip(
                 (det - 0.5) / (_DETERMINISTIC_FRACTION - 0.5),

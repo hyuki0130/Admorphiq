@@ -137,6 +137,30 @@ class UnifiedAgent:
             name = self._signature_default(sig)
         return "tool", name
 
+    def _better_alternative_exists(self) -> bool:
+        """True when some non-failed tool OTHER than the current one reports a
+        strictly higher detect() right now. When nothing better exists, a stalled
+        tool KEEPS RUNNING (the stall window restarts so this re-checks later) —
+        swapping to a weaker tool is pure downside, measured in the deployed
+        sweep which lost solid clears to churn."""
+        cur_tool = self.tools.get(self._current) if self._current != "code" else None
+        try:
+            cur_conf = cur_tool.detect([], self._last_obs) if cur_tool is not None else 0.0
+        except Exception:  # noqa: BLE001
+            cur_conf = 0.0
+        best_other = 0.0
+        for name, t in self.tools.items():
+            if name == self._current or name in self._failed:
+                continue
+            try:
+                best_other = max(best_other, t.detect([], self._last_obs))
+            except Exception:  # noqa: BLE001
+                continue
+        if best_other > cur_conf:
+            return True
+        self._since_progress = 0
+        return False
+
     def _signature_default(self, sig: Signature) -> str:
         """Highest-detect tool for the signature that has NOT failed this level.
         Falls back to the global best only if every tool has been retired."""
@@ -362,7 +386,14 @@ class UnifiedAgent:
         # when treated like any other tool; detect() is a reliable frame signal,
         # so trust it and let the right tool run. Low-confidence picks still swap.
         stalled = self._since_progress >= self.stall
-        need_decision = self._current is None or (stalled and not self._primary_owns)
+        # Retiring the current tool on a stall is only worth it when some OTHER
+        # non-failed tool detects strictly better RIGHT NOW — measured: on games
+        # only the current tool can clear (deployed sweep lost lf52/lp85, both
+        # solid isolated clears), swapping to a weaker tool is pure downside, and
+        # no alternative tool has ever cleared a game the current one couldn't.
+        need_decision = self._current is None or (
+            stalled and not self._primary_owns and self._better_alternative_exists()
+        )
         if need_decision:
             sig = compute_signature(obs, self._transitions)
             self._redecide(frames, obs, sig)
