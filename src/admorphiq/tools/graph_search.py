@@ -37,6 +37,7 @@ import numpy as np
 from admorphiq.tools.base import (
     Step,
     availability,
+    changed_mask,
     color_histogram,
     connected_components,
     diff_bbox,
@@ -45,6 +46,13 @@ from admorphiq.tools.base import (
     has_frame,
 )
 from admorphiq.tools.dealias import DealiasTool
+
+try:
+    from admorphiq.planner.goal import score_goal
+    from admorphiq.planner.goal_inference import heuristic_goal
+    _GOAL_OK = True
+except Exception:  # noqa: BLE001 - goal ranking is optional; degrade to pure promise
+    _GOAL_OK = False
 
 __all__ = ["GraphSearchTool"]
 
@@ -62,6 +70,12 @@ _HUD_FRAC = 0.60
 # Max BFS depth the promise-frontier scorer explores before committing to the
 # best frontier found so far (beyond this, distance dominates promise anyway).
 _FRONTIER_DIST_CAP = 40
+# Goal-ranking: after this many transitions infer a heuristic (no-LLM) FILL goal
+# and blend its proximity into the frontier promise, so exploration is pulled
+# toward states closer to a plausible target (legacy GF_GOAL_RANK). Weight is
+# small so goal-proximity biases, never overrides, breadth-first discovery.
+_GOAL_WARMUP = 20
+_GOAL_WEIGHT = 0.05
 
 
 def _norm_grid(arr: Any) -> np.ndarray:
@@ -180,6 +194,13 @@ class GraphSearchTool:
         # (same visible/masked frame, different true state) by recent history.
         self._dealias = DealiasTool()
         self._recent: deque[Step] = deque(maxlen=4)
+        # Goal ranking: heuristic FILL goal + per-state frame so frontiers can be
+        # ranked by goal-proximity (score_goal). Frames stored under node key.
+        self._state_frame: dict[str, np.ndarray] = {}
+        self._probe_changes: list[dict[str, Any]] = []
+        self._goal: Any = None
+        self._goal_prev_frame: np.ndarray | None = None
+        self._goal_memo: dict[str, float] = {}
 
     def _masked_frame(self, frame: np.ndarray) -> np.ndarray:
         """The frame with frozen-HUD cells zeroed (identity until warmup freeze)."""
@@ -226,8 +247,11 @@ class GraphSearchTool:
                     self._tries.clear()
                     self._preds.clear()
                     self._pending = None
-                    # Masked hashes change on freeze -> aliasing trace is stale.
+                    # Masked hashes change on freeze -> aliasing trace + per-state
+                    # frame store + goal memo are all keyed on stale hashes.
                     self._dealias.reset()
+                    self._state_frame.clear()
+                    self._goal_memo.clear()
                 else:
                     self._mask = np.zeros(prev.shape, dtype=bool)  # freeze: no HUD
         self._prev_obs = prev
@@ -313,6 +337,7 @@ class GraphSearchTool:
 
         simple_ids, action6_ok = availability(obs)
         self._ensure_state(cur_hash, frame, simple_ids, action6_ok)
+        self._track_goal(cur_hash, frame)
 
         untried = self._untried.get(cur_hash) or []
         if untried:
@@ -324,6 +349,49 @@ class GraphSearchTool:
 
         step = self._random_step(simple_ids, action6_ok, frame)
         return [step] if step is not None else []
+
+    # ── goal ranking (heuristic, no LLM) ─────────────────────────────────────
+
+    def _track_goal(self, cur_hash: str, frame: np.ndarray) -> None:
+        """Store this state's frame and accumulate colour-growth evidence; infer a
+        heuristic FILL goal once there is enough of it. All no-LLM, frame-only."""
+        if not _GOAL_OK:
+            return
+        self._state_frame[cur_hash] = frame
+        if self._goal_prev_frame is not None and self._goal_prev_frame.shape == frame.shape:
+            m = changed_mask(self._goal_prev_frame, frame)
+            if m.size and m.any():
+                new = frame[m]
+                if new.size:
+                    vals, cnts = np.unique(new, return_counts=True)
+                    top = int(vals[int(cnts.argmax())])
+                    self._probe_changes.append(
+                        {"top_new_color": top, "changed_cells": int(m.sum())}
+                    )
+        self._goal_prev_frame = frame
+        if self._goal is None and len(self._probe_changes) >= _GOAL_WARMUP:
+            hist = {int(c): int(n) for c, n in enumerate(color_histogram(frame)) if n}
+            try:
+                self._goal = heuristic_goal(hist, self._probe_changes)
+            except Exception:  # noqa: BLE001
+                self._goal = None
+            self._goal_memo.clear()
+
+    def _goal_proximity(self, node: str) -> float:
+        """score_goal of a node's stored frame (memoized), 0 if no goal/frame."""
+        if self._goal is None:
+            return 0.0
+        if node in self._goal_memo:
+            return self._goal_memo[node]
+        fr = self._state_frame.get(node)
+        val = 0.0
+        if fr is not None:
+            try:
+                val = float(score_goal(fr, self._goal))
+            except Exception:  # noqa: BLE001
+                val = 0.0
+        self._goal_memo[node] = val
+        return val
 
     # ── graph internals ──────────────────────────────────────────────────────
 
@@ -369,8 +437,12 @@ class GraphSearchTool:
             untried = self._untried.get(node)
             if untried:
                 visits = sum((self._tries.get(node) or {}).values())
-                # promise: reward untried breadth, penalise re-visits and distance
-                score = len(untried) - 0.5 * visits - 0.25 * len(path)
+                # promise: reward untried breadth, penalise re-visits and distance,
+                # and bias toward frontiers whose state is closer to a heuristic goal
+                score = (
+                    len(untried) - 0.5 * visits - 0.25 * len(path)
+                    + _GOAL_WEIGHT * self._goal_proximity(node)
+                )
                 if score > best_score:
                     best_score, best_path = score, path
             if len(path) >= _FRONTIER_DIST_CAP:
