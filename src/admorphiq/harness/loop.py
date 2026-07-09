@@ -86,6 +86,11 @@ class UnifiedAgent:
         self.giveup = giveup
         self.stall = stall
         self.ctx_budget = ctx_budget
+        # CROSS-LEVEL CLEAR EVIDENCE: the board captured at each level-up —
+        # what "solved" actually looked like. Game-scoped (never reset per
+        # level): later levels' target draws cite it as an analogy example,
+        # attacking the measured wall (goal-INFERENCE accuracy).
+        self._clear_frames: list[np.ndarray] = []
         self._reset_level()
 
     def _reset_level(self) -> None:
@@ -312,7 +317,8 @@ class UnifiedAgent:
             if callable(stalled) and not stalled(_TARGET_STALL_WINDOW):
                 return
         self._draw_slots += 1  # slot spacing/budget; only INJECTIONS count vs MAX_DRAWS
-        prompt = build_target_prompt(frame)
+        solved = self._clear_frames[-1] if self._clear_frames else None
+        prompt = build_target_prompt(frame, solved_example=solved)
         for attempt in (1, 2):
             try:
                 txt = self.draw_llm([{"role": "user", "content": prompt}])
@@ -341,6 +347,10 @@ class UnifiedAgent:
 
         levels = levels_completed(obs)
         if levels > self._last_levels:
+            if self._prev_frame is not None:
+                # The last board of the just-cleared level = direct evidence of
+                # what "solved" looks like for this game's mechanics.
+                self._clear_frames.append(self._prev_frame.copy())
             self._reset_level()
             self._last_levels = levels
             self._feedback = f"cleared level {levels}"

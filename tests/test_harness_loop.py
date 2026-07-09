@@ -284,6 +284,50 @@ def test_redraw_gated_on_target_stall():
     assert len(draws) == 2  # stalled target got refreshed
 
 
+def test_clear_evidence_captured_and_cited_in_next_level_draw():
+    """Purpose: at level-up the loop captures the just-cleared level's final board
+    (game-scoped, survives per-level reset), and the NEXT level's target draw
+    cites it as a solved-example analogy — evidence-based goal inference, the
+    direct attack on the measured wall (inference accuracy, not representation).
+    Expected feedback: pass = later levels draw with real evidence; fail = every
+    level's draw stays blind and deep levels stay locked."""
+    prompts: list = []
+
+    class _FakeGraph(_FakeTool):
+        def set_target_frame(self, target, res=8):
+            pass
+
+    grid_txt = "\n".join(
+        " ".join("3" if (i + j) % 2 == 0 else "0" for j in range(8)) for i in range(8)
+    )
+
+    def llm(messages):
+        content = messages[-1]["content"]
+        if "SOLVED board" in content:
+            prompts.append(content)
+            return grid_txt
+        return '{"mode":"tool","tool":"graph"}'
+
+    tool = _FakeGraph("graph", (1, None), 0.9)
+    agent = UnifiedAgent([tool], llm, giveup=5000, stall=10_000)
+    g = np.zeros((64, 64), dtype=np.int64)
+    g[0, 0] = 3
+    # Level 0: run past warmup (first draw fires blind), then level-up.
+    for i in range(45):
+        gi = g.copy()
+        gi[1, i % 60] = 3
+        agent.choose_action([], _Obs(gi, [1, 2, 3, 4]))
+    assert prompts and "PREVIOUS level" not in prompts[0]   # level-1 draw is blind
+    agent.choose_action([], _Obs(g, [1, 2, 3, 4], levels=1))  # level-up
+    assert len(agent._clear_frames) == 1                     # evidence captured
+    # Level 1: run past warmup again -> the new draw must cite the evidence.
+    for i in range(45):
+        gi = g.copy()
+        gi[2, i % 60] = 3
+        agent.choose_action([], _Obs(gi, [1, 2, 3, 4], levels=1))
+    assert len(prompts) >= 2 and "PREVIOUS level" in prompts[-1]
+
+
 def test_llm_failure_falls_back_to_signature_default():
     """Purpose: if the LLM raises, the highest-detect tool is used (offline-safe).
     Expected feedback: pass = the agent never crashes when the model is down."""

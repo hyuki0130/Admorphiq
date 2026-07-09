@@ -28,15 +28,35 @@ __all__ = ["build_target_prompt", "parse_and_validate_target", "TARGET_RES"]
 TARGET_RES = 8
 
 
-def build_target_prompt(frame: np.ndarray, res: int = TARGET_RES) -> str:
+def build_target_prompt(
+    frame: np.ndarray, res: int = TARGET_RES,
+    solved_example: np.ndarray | None = None,
+) -> str:
     """The validated simple prompt: show the current res×res downsample, ask for
     the solved board as res lines of res integers. (Enriching this prompt with
-    transitions/reasoning was MEASURED to regress — keep it simple.)"""
+    transitions/reasoning was MEASURED to regress — keep the base simple.)
+
+    ``solved_example`` is CROSS-LEVEL CLEAR EVIDENCE: the board captured at the
+    moment a previous level of the SAME game cleared. Levels within a game share
+    mechanics, so showing what "solved" actually looked like turns blind goal
+    inference into evidence-based inference — the measured wall is inference
+    accuracy, and this is the strongest goal evidence the agent can ever hold.
+    """
     cur = _downsample(np.asarray(frame), res)
     rows = "\n".join(" ".join(str(int(v)) for v in r) for r in cur)
+    example = ""
+    if solved_example is not None:
+        ex = _downsample(np.asarray(solved_example), res)
+        ex_rows = "\n".join(" ".join(str(int(v)) for v in r) for r in ex)
+        example = (
+            f"\nA PREVIOUS level of this same game looked like this ({res}x{res}) "
+            "at the moment it was SOLVED — the new level's goal is analogous:\n"
+            + ex_rows + "\n"
+        )
     return (
         f"An ARC-AGI-3 grid puzzle. The board below is a {res}x{res} downsample "
-        "(colours 0-15, 0=background) of the CURRENT state:\n" + rows + "\n\n"
+        "(colours 0-15, 0=background) of the CURRENT state:\n" + rows + "\n"
+        + example + "\n"
         f"Reason about the goal, then OUTPUT the {res}x{res} grid of the SOLVED board "
         f"(what it looks like when the level is complete) as {res} lines of {res} "
         f"space-separated integers 0-15. Output ONLY the {res} lines, no prose."
