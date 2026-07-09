@@ -295,8 +295,22 @@ graph_frontier ≈ 11-13/25, so a real strength gap remains.) ⚠️ arcengine
 deadlocks under PARALLEL probes (Arcade scorecard contention — load 0.00,
 cputime 0) — the coverage sweep MUST run sequentially (PAR=1); probe_tool_direct
 also fixed to construct only the requested tool (default_tools pulled in the
-ollama-backed ones). Next: world_model + paint coverage → the UNION (harness
-coverage ceiling), then strengthen the biggest gaps toward legacy's ~13.
+ollama-backed ones).
+
+**Per-tool coverage (direct probe, budget 3000, all 25 games):**
+- `graph` = **4/25** (lp85, m0r0, r11l, vc33)
+- `world_model` = **0/25** — the tabular passive-dynamics learner is INERT as a
+  standalone solver (no strong planner); it adds nothing to the union. ⛔ Do not
+  route to world_model as a primary until it has real goal-directed planning.
+- `toggle` (NEW GF(2) lights-out solver) — measuring the click/toggle subset.
+
+**New tool built (2026-07-09): `toggle`** (`src/admorphiq/tools/toggle.py`) — the
+biggest gap class is toggle/lights-out games (ft09, cn04, lf52, tn36) that
+neither graph nor paint nor world_model is designed for. ToggleTool LEARNS each
+click's flip stencil from its own probes, then solves A·x=b over GF(2) for a
+uniform board (the exact lights-out solution) and clicks precisely the solution
+cells. Fully generic (no game ids/sprite tags), 7th harness tool, wired into the
+selector/context/probe. Measuring its coverage next.
 
 ## Related
 
