@@ -898,3 +898,15 @@ signature. Ported the actual converging lever: **legacy GF_REGION_MASK**
 a 32-window; graph dropped on first confirmation). Both remaining Gap-1 games'
 legacy clears rest on it (tu93 masked=126, sp80 masked=2776). 679 tests. reg1
 bench in flight (tu93/sp80 + vc33/m0r0/lf52/cn04 guards).
+
+### 🎉 REGION MASK closes BOTH Gap-1 games + deepens vc33 (2026-07-09 23:53)
+reg1: **tu93 0→1 (mask 41→92 cells), sp80 0→1 (masked play-adjacent widgets),
+vc33 1→2 (L2 depth — first ever)**; m0r0/lf52 held. One regression: cn04 1→0 —
+a 515-cell FIRST-refresh mask (transient early animation) swallowed its play
+field (pool2 sink loop=0.70 distinct=1). Fix: 2-consecutive-refresh stability
+gate (persistent widgets re-qualify every window; one-off animations never
+enter the sticky union). reg2 verify in flight (cn04 + the three new wins).
+If it holds: **11/25 SOLID** (cd82 cn04 ft09 lf52 lp85 m0r0 r11l sp80 tn36
+tu93 vc33) + vc33 depth 2. The per-cell >=60% HUD rule + REGION-aggregate rule
++ tier gate + pursuit-gate-bypass now mirror the legacy engine's load-bearing
+noise stack, re-derived by measurement.
