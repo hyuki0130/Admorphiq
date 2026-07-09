@@ -58,6 +58,9 @@ _LOCAL_BBOX_FRAC = 0.15   # changed bbox area must be <= this fraction of the gr
 # makes every true-state look new) can't explode the state graph.
 _HUD_WARMUP = 16
 _HUD_FRAC = 0.60
+# Max BFS depth the promise-frontier scorer explores before committing to the
+# best frontier found so far (beyond this, distance dominates promise anyway).
+_FRONTIER_DIST_CAP = 40
 
 
 def _norm_grid(arr: Any) -> np.ndarray:
@@ -314,9 +317,12 @@ class GraphSearchTool:
     def _bfs_path_to_frontier(self, start: str) -> list[Any] | None:
         """Shortest action path from ``start`` to the nearest frontier state.
 
-        A frontier state is one that still has an untried action. Returns the
-        ordered list of action keys that walks there (self-loops are skipped
-        naturally by the visited set), or None if none is reachable.
+        A frontier state is one that still has an untried action. Rather than the
+        NEAREST frontier (which re-walks the same exhausted area and burns budget
+        on unpromising shells — legacy graph_frontier measured this), collect all
+        frontiers reachable within a distance cap and walk to the most PROMISING:
+        most untried actions, fewest prior visits, nearer breaks ties. Returns the
+        action-key path to it, or None if no frontier is reachable.
         """
         visited: set[str] = {start}
         queue: deque[tuple[str, list[Any]]] = deque()
@@ -324,15 +330,24 @@ class GraphSearchTool:
             if nxt not in visited:
                 visited.add(nxt)
                 queue.append((nxt, [key]))
+        best_path: list[Any] | None = None
+        best_score = -1e18
         while queue:
             node, path = queue.popleft()
-            if self._untried.get(node):
-                return path
+            untried = self._untried.get(node)
+            if untried:
+                visits = sum((self._tries.get(node) or {}).values())
+                # promise: reward untried breadth, penalise re-visits and distance
+                score = len(untried) - 0.5 * visits - 0.25 * len(path)
+                if score > best_score:
+                    best_score, best_path = score, path
+            if len(path) >= _FRONTIER_DIST_CAP:
+                continue
             for key, nxt in (self._edges.get(node) or {}).items():
                 if nxt not in visited:
                     visited.add(nxt)
                     queue.append((nxt, path + [key]))
-        return None
+        return best_path
 
     def _random_step(
         self, simple_ids: list[int], action6_ok: bool, frame: np.ndarray
