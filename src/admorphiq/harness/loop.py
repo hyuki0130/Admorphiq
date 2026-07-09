@@ -23,8 +23,13 @@ import numpy as np
 from admorphiq.harness.context import Signature, build_context, compute_signature
 from admorphiq.tools.base import Step, Tool, availability, base_hash, frame_2d, has_frame, levels_completed, state_name
 from admorphiq.tools.code_agent import build_code_prompt, run_code
+from admorphiq.tools.targetgrid import TARGET_RES, build_target_prompt, parse_and_validate_target
 
 LLM = Callable[[list[dict[str, str]]], str]
+
+# One-time-per-level target draw fires after this many steps into the level (the
+# probe-validated warmup that produced the cd82 clear).
+_TARGET_WARMUP = 40
 
 # A tool whose own frame-based detect() is at least this confident OWNS the game
 # (it is not retired on a stall) — its signature match is trusted over the swap.
@@ -82,6 +87,7 @@ class UnifiedAgent:
         self._steps = 0
         self._last_levels = 0
         self._seen_states: set[str] = set()
+        self._target_drawn = False
         self._feedback = "start of level"
 
     def is_done(self, frames: list[Any], latest_frame: Any) -> bool:
@@ -225,6 +231,32 @@ class UnifiedAgent:
         except Exception:  # noqa: BLE001 - offline-safe
             return []
 
+    def _maybe_draw_target(self, frame: np.ndarray) -> None:
+        """Once per level, after warmup, ask the LLM to DRAW the solved board and
+        inject it into the active graph-like tool (set_target_frame) — the
+        measured richer-goal lever (cd82). Offline-safe: any failure or invalid
+        draw means no injection and the tool keeps its frame-only base."""
+        if self._target_drawn or self._steps < _TARGET_WARMUP or self._current is None:
+            return
+        tool_obj = self.tools.get(self._current)
+        inject = getattr(tool_obj, "set_target_frame", None)
+        if not callable(inject):
+            return
+        self._target_drawn = True  # one draw round per level, success or not
+        prompt = build_target_prompt(frame)
+        for _attempt in (1, 2):
+            try:
+                txt = self.llm([{"role": "user", "content": prompt}])
+            except Exception:  # noqa: BLE001 - offline-safe
+                return
+            tgt, _reason = parse_and_validate_target(txt, frame)
+            if tgt is None:
+                continue
+            scale = max(1, 64 // TARGET_RES)
+            inject(np.kron(tgt, np.ones((scale, scale), dtype=np.int64)), res=TARGET_RES)
+            self._feedback = "target frame drawn and injected"
+            return
+
     # -- main loop ------------------------------------------------------------
 
     def choose_action(self, frames: list[Any], latest_frame: Any) -> Any:
@@ -285,6 +317,8 @@ class UnifiedAgent:
                 self._feedback = (
                     f"{self._current or 'action'} no new state x{self._since_progress}"
                 )
+
+        self._maybe_draw_target(frame)
 
         # A confident primary (the tool whose own frame-based detect() is high for
         # this game) OWNS the game — it is NOT retired on a stall. The graph tool

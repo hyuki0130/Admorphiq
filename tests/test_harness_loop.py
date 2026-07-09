@@ -198,6 +198,41 @@ def test_confident_primary_owns_game_and_is_not_retired():
     assert other.proposed == 0                    # no swap away from the primary
 
 
+def test_target_frame_drawn_and_injected_after_warmup():
+    """Purpose: once per level, after warmup, the loop asks the LLM to DRAW the
+    solved board and injects a VALID draw into the active graph-like tool via
+    set_target_frame — the productized richer-goal lever (measured to crack cd82).
+    Expected feedback: pass = the deployed harness carries the targetgrid
+    breakthrough; fail = it lives only in the diagnostic probe."""
+    calls: dict = {}
+
+    class _FakeGraph(_FakeTool):
+        def set_target_frame(self, target, res=8):
+            calls["target"] = target
+            calls["res"] = res
+
+    # A valid 8x8 draw: two colours (0/3), both in the frame's palette, and
+    # different from the current downsample.
+    grid_txt = "\n".join(
+        " ".join("3" if (i + j) % 2 == 0 else "0" for j in range(8)) for i in range(8)
+    )
+
+    def llm(messages):
+        if "SOLVED board" in messages[-1]["content"]:
+            return grid_txt
+        return '{"mode":"tool","tool":"graph"}'
+
+    tool = _FakeGraph("graph", (1, None), 0.9)
+    agent = UnifiedAgent([tool], llm, giveup=1000, stall=50)
+    g = np.zeros((64, 64), dtype=np.int64)
+    g[0, 0] = 3  # palette = {0, 3} so the drawn target passes validation
+    for i in range(45):
+        gi = g.copy()
+        gi[1, i % 60] = 3  # every action changes the frame (no stall)
+        agent.choose_action([], _Obs(gi, [1, 2, 3, 4]))
+    assert "target" in calls and calls["res"] == 8
+
+
 def test_llm_failure_falls_back_to_signature_default():
     """Purpose: if the LLM raises, the highest-detect tool is used (offline-safe).
     Expected feedback: pass = the agent never crashes when the model is down."""

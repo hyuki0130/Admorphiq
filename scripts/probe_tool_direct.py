@@ -107,49 +107,22 @@ def main() -> None:
         if not a.targetgrid or _hybrid_done[0] or a.tool != "graph" or steps < a.hybrid_warmup:
             return
         import os as _os
-        import re as _re
 
-        from admorphiq.tools.graph_search import _downsample
+        from admorphiq.tools.targetgrid import build_target_prompt, parse_and_validate_target
         res = int(_os.environ.get("TARGETGRID_RES", "8"))
-        cur = _downsample(np.asarray(frame), res)
-        rows = "\n".join(" ".join(str(int(v)) for v in r) for r in cur)
-        prompt = (
-            f"An ARC-AGI-3 grid puzzle. The board below is a {res}x{res} downsample "
-            "(colours 0-15, 0=background) of the CURRENT state:\n" + rows + "\n\n"
-            f"Reason about the goal, then OUTPUT the {res}x{res} grid of the SOLVED board "
-            f"(what it looks like when the level is complete) as {res} lines of {res} "
-            f"space-separated integers 0-15. Output ONLY the {res} lines, no prose."
-        )
+        prompt = build_target_prompt(frame, res)
         ncells = res * res
-        def _valid(tgt: np.ndarray) -> str | None:
-            """Lenient sanity checks on a drawn target; returns a reject reason
-            or None if plausible. Only guards against GARBAGE draws — a wrongly
-            rejected good target just leaves graph on its proven frame-only base."""
-            if len(np.unique(tgt)) < 2:
-                return "degenerate (single colour)"
-            if np.array_equal(tgt, cur):
-                return "identical to current (no goal)"
-            palette = set(int(v) for v in np.unique(np.asarray(frame)))
-            in_palette = float(np.mean([int(v) in palette for v in tgt.ravel()]))
-            if in_palette < 0.8:
-                return f"hallucinated colours ({in_palette:.0%} in palette)"
-            return None
 
         # Up to 2 attempts: a rejected draw is retried once; still-invalid means
         # NO injection (graph keeps its proven frame-only multi-goal base).
         for attempt in (1, 2):
             try:
                 txt = _llm(prompt, npred=100 + 4 * ncells)
-                nums = [int(x) for x in _re.findall(r"-?\d+", txt)]
             except Exception as exc:  # noqa: BLE001
                 print(f"targetgrid infer failed: {exc}", file=sys.stderr)
                 break
-            if len(nums) < ncells:
-                print(f"targetgrid attempt {attempt}: <{ncells} numbers", file=sys.stderr)
-                continue
-            tgt = np.array(nums[:ncells], dtype=np.int64).reshape(res, res)
-            reason = _valid(tgt)
-            if reason is not None:
+            tgt, reason = parse_and_validate_target(txt, frame, res)
+            if tgt is None:
                 print(f"targetgrid attempt {attempt} rejected: {reason}", file=sys.stderr)
                 continue
             scale = max(1, 64 // res)
