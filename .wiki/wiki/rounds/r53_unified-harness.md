@@ -842,3 +842,14 @@ is active — the gate had starved the drawn-target pursuit) and **ft09 held at
 r11l tn36 vc33. The R45 object-hash ladder closed none of its 3 candidates
 (sp80/tu93/ar25 all 0, 1 sample) — next: fire-trace to distinguish "guards too
 strict, never armed" from "armed but the object graph is equally stuck".
+
+### Object-ladder attribution: tu93 fires-but-stuck, sp80 never fires (2026-07-09 23:25)
+Fire-trace runs: **tu93 armed the ladder** (explosion: new_frac=0.50,
+distinct=30) yet finished 0/9 — the object graph is equally stuck, so tu93's
+legacy win is NOT the object rung. **sp80 never armed** (guards unmet at
+STALL=80 ownership churn or its pixel states recur more than assumed). Legacy
+source note: TU93 was the game that needed the pool=1 DOWNSHIFT (pooling
+collapsed its real moves) — we already hash full-res, so tu93's legacy clear
+rests on some OTHER technique (region/band masks, frontier dist 12 vs our 40,
+visit/path penalties, recency bonus). Instead of guessing: GF_DEBUG legacy runs
+on tu93/sp80 in flight to observe the active rungs at clear time.
