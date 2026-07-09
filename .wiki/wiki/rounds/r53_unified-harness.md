@@ -736,3 +736,14 @@ INERT STEERING — targetgrid's true potential is unmeasured. Re-running the
 failing set with dominant steering. tn36 L2 stayed locked (plausible target +
 real steering — its block is deeper: combinatorial click space or full-res
 target mismatch).
+
+### Dominant-steering scope pinned: deployed-cd82 fix real, no new games (2026-07-09)
+Full failing-set probe re-sweep under dominant steering: **all 18 games 0 —
+including cd82 at probe@5000**. Reconciliation: the deployed harness cleared cd82
+2/2 at 8000 with THREE stall-gated draw chances; the probe has one draw per level
+at 5000. So the win condition is the COMBINATION: dominant steering × multi-draw
+× full budget — steering makes a good draw count, multi-draw buys ~3 chances at
+the ~30-50% draw quality. The "inert steering masked other games" hypothesis is
+REFUTED: the other 17 games' draws are genuinely wrong/unreachable (the
+inference-accuracy wall stands for them). Deployed card: 7 solid + cd82 (2/2 at
+the deployed config; firming with 2 more samples).
