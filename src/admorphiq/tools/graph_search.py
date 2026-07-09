@@ -343,6 +343,10 @@ class GraphSearchTool:
         sink = loop_frac >= _OBJ_SINK_SELFLOOP and distinct <= _OBJ_SINK_DISTINCT
         if not (explosion or sink):
             return
+        import sys
+        print(f"[graph] OBJECT-HASH armed: new_frac={new_frac:.2f} "
+              f"loop_frac={loop_frac:.2f} distinct={distinct}",
+              file=sys.stderr, flush=True)
         self._hash_mode = "object"
         self._edges.clear()
         self._untried.clear()
