@@ -1005,3 +1005,15 @@ wall probes (su15 ka59 sc25 re86 wa30). Campaign verdict across gemma4:26b-a4b
 - Coverage lever from nx1: ka59 opens at 30k → ADAPTIVE BUDGET policy
   (default 8000; unsolved games get a 30k retry pass if wall-clock allows) —
   deployment-runner design, RHAE-neutral, +1 coverage on the dev proxy.
+
+### Dynamics-context code synthesis: no unlock (6 wall games 0) (2026-07-10 01:08)
+Graph-informed code prompts (per-action tries/change-rate/median-cells from the
+agent's own 200-transition log) on re86 wa30 sc25 tr87 ls20 g50t — all 0.
+⛔ One-shot dynamics stats do not crack the wall either; the code the model
+writes still can't state the GOAL. Next code-loop escalations (in order of
+cost): (a) execution FEEDBACK loop — show the model its previous block's
+observed effect and let it revise (the EWM refinement pattern, never applied
+to solver code); (b) richer structure (object-level diffs per action, not just
+cell counts); (c) adaptive budget deployment (+ka59, proven). SCALE-OUT: VM #2
+(ewm-bench2) cloning launched per user directive — doubles parallel bench
+throughput for the wall-research iteration loop.
