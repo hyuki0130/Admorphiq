@@ -776,3 +776,16 @@ UNREACHABLE in its combinatorial click space (programming-puzzle class). tn36 L2
 leaves the targetgrid thread. (c) NEW LEAD: r11l L2's pursuit DID move
 (best_prox -0.282 → -0.235 across draw windows) — gradient alive, undershot the
 budget → budget-scaling probe is the right next experiment for r11l/vc33 depth.
+
+### Budget-scaling depth probe: L2 wall = DRAW QUALITY, not budget (2026-07-09)
+r11l/vc33 @16000 (2x deployed budget): both still 1. But the pursuit traces
+split the L2 wall cleanly: **r11l L2 best_prox converged -0.235 → -0.172 →
+-0.109** (gradient alive, steadily closing — the residual ~7 blocks are the
+DRAW'S OWN ERROR, so no budget reaches a clear), while **vc33 L2 froze at
+-0.469 across 3 windows** (tn36-class wrong/unreachable draw). Both point at
+draw quality → implemented **redraw diversity** (r51 config-UNION applied to
+draws): first draw = the measured simple prompt (cd82 path byte-stable), each
+stall-gated redraw adds the agent's own observed action→effect medians
+(`_action_evidence` in loop.py, `action_evidence` in targetgrid.py). A redraw
+only fires when the prior draw's pursuit already stalled, so the extra config
+is a free chance exactly where the simple config failed.
