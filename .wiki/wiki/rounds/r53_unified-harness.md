@@ -758,3 +758,21 @@ cd82, cn04, lf52, lp85, m0r0, r11l, tn36, vc33. Session arc: 4 isolated (start)
 draws are genuinely wrong — re-verified under real steering) + the L2+ depth
 problem (tn36's plausible L2 target still unpursued to completion → combinatorial
 click space or full-res mismatch; next research thread).
+
+### Zero-gradient hypothesis REFUTED — 8x8 proximity is load-bearing (2026-07-09)
+tn36 L2 diagnosis chain: pursuit trace showed best_prox frozen at the initial
+diff (-0.141 = exactly the starting 9/64 blocks) for 1200+ calls → hypothesized
+the 8x8 block-majority was a zero-gradient metric for fine-grained (~1 cell/
+action) games → implemented full-res per-pixel proximity. MEASURED: cd82
+**4/4 → 0** (regression), tn36 still 1 with best_prox -0.385 frozen (zero pixel
+progress), r11l unchanged. Root cause of the regression: per-pixel diff vs the
+kron-blocky target is dominated by block-interior TEXTURE NOISE (diff floor
+-0.38/-0.78 vs -0.14 at 8x8), distorting the proven frontier ordering. REVERTED
+byte-identical (commit 0d2afb2). Verdicts: (a) the 8x8 block-majority proximity
+is load-bearing for cd82 — ⛔ do not replace it with full-res compare against an
+upsampled target; (b) **tn36 L2's block is NOT metric granularity** — zero pixel
+progress under a gradient-capable metric means the drawn target region is
+UNREACHABLE in its combinatorial click space (programming-puzzle class). tn36 L2
+leaves the targetgrid thread. (c) NEW LEAD: r11l L2's pursuit DID move
+(best_prox -0.282 → -0.235 across draw windows) — gradient alive, undershot the
+budget → budget-scaling probe is the right next experiment for r11l/vc33 depth.
