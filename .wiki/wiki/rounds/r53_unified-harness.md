@@ -469,3 +469,15 @@ has cracked them. **25/25 = solving that frontier, a genuine multi-session resea
 problem.** This round's deliverable: the from-scratch generic harness + graph tool
 at legacy-parity coverage (7/25), the complete measured map, and the validated
 incremental enrichment method — the foundation the frontier work builds on.
+
+### Frame-only goal family EXHAUSTED at its ceiling — CLEAR_COLOR regressed (2026-07-09)
+Added CLEAR_COLOR to candidate_goals (it was scoreable but not a candidate).
+Measured on 11 failing games: unlocked NONE and **REGRESSED cn04 1→0** — the extra
+candidate diluted the multi-goal tracker's best_trend selection so it adopted a
+worse goal. Reverted. Finding: the multi-goal tracker's family is DELICATELY TUNED
+at 5 types (FILL/MIN/MAX_COUNT/ON_TARGET/ORDER); adding types REGRESSES. So the
+frame-only goal lever is at its safe ceiling — **graph 7/25 is the frame-only
+maximum** (≈ legacy). ⛔ Do not add more candidate-goal types hoping for coverage
+— measured harmful. The remaining ~18 games (incl. ones legacy also fails) require
+LLM goal inference (target not expressible frame-only) — the unsolved frontier
+where llm_goal + code-agent both measure 0. 25/25 = a research breakthrough there.
