@@ -264,3 +264,52 @@ def test_tier_gate_defers_low_tier_clicks_until_globally_exhausted():
     tool._untried[ha] = [k1]
     assert tool.propose([obs], obs) == [(6, (2, 2))]
     assert tool._unlocked_tier >= 1
+
+
+def test_object_key_absorbs_jitter_keeps_movement():
+    """Purpose: the R45 object hash must give the SAME key when only a
+    component's interior pixels flip (jitter/animation) but a DIFFERENT key
+    when a component's centroid moves one cell — the property that fixes
+    pixel-graph explosion on big-recolor movement games.
+
+    Expected feedback: pass ⇒ object mode separates noise from movement; fail ⇒
+    the ladder rebuilds into an equally broken graph.
+    """
+    from admorphiq.tools.graph_search import _object_key
+
+    base = np.zeros((16, 16), dtype=np.int64)
+    base[4:9, 4:9] = 3            # a 5x5 colour-3 object (area 25)
+    jitter = base.copy()
+    jitter[5, 5] = 0              # interior pixel flips: area 25 -> 24, SAME
+    #                               bit_length bucket (5), same rounded centroid
+    moved = np.zeros((16, 16), dtype=np.int64)
+    moved[4:9, 5:10] = 3          # whole object shifted one cell right
+    assert _object_key(base) == _object_key(jitter)
+    assert _object_key(base) != _object_key(moved)
+
+
+def test_object_ladder_fires_on_explosion_and_rebuilds():
+    """Purpose: prove the adaptive activation — after the warmup gates, a
+    windowed run of never-recurring states (explosion signature) flips the tool
+    to object mode and drops the broken pixel graph.
+
+    Expected feedback: pass ⇒ games whose every action mints a fresh pixel hash
+    (move recolors ~80 cells) get a recurring object-level state space; fail ⇒
+    the ladder never arms and such games stay random walks.
+    """
+    from admorphiq.tools.graph_search import _OBJ_MIN_STEPS, _OBJ_WINDOW, GraphSearchTool
+
+    tool = GraphSearchTool()
+    tool._propose_calls = _OBJ_MIN_STEPS  # past the no-progress guard
+    # Fill the instability windows with the explosion signature: every state
+    # new, plenty of distinct recent states, no self-loops.
+    for i in range(_OBJ_WINDOW):
+        tool._new_window.append(True)
+        tool._loop_window.append(False)
+        tool._recent_states.append(f"h{i}")
+    tool._edges["stale"] = {}
+    tool._maybe_fire_object_hash()
+    assert tool._hash_mode == "object"
+    assert not tool._edges            # broken pixel graph dropped
+    tool.reset()
+    assert tool._hash_mode == "pixel"  # per-level pin: reset restores the ladder

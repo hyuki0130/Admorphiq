@@ -28,6 +28,7 @@ identifier, title, internal tag, or hardcoded level sequence.
 
 from __future__ import annotations
 
+import hashlib
 import random
 from collections import deque
 from typing import Any
@@ -121,6 +122,20 @@ def _downsample(frame: np.ndarray, n: int = 8) -> np.ndarray:
 # clicks until tier-0 is exhausted everywhere — without it deep discovery burned
 # tens of thousands of actions trying every centroid at every state.
 _N_TIERS = 3
+
+# Object-hash ladder (legacy R45): when the pixel-hash graph is measurably
+# broken — EXPLOSION (new states never recur; every transition mints a fresh
+# hash, e.g. a move recolors ~80 cells) or a PERSISTENT SINK (self-loops
+# dominate with few distinct states) — rebuild the level graph keyed on the
+# frame's OBJECTS (colour, log2-size-bucket, centroid), which absorbs jitter
+# while keeping 1-cell movement visible. One activation per level.
+_OBJ_WINDOW = 200          # transitions sampled by the instability windows
+_OBJ_MIN_STEPS = 1500      # in-level propose calls before the ladder may fire
+_OBJ_EXPLODE_FRAC = 0.5    # windowed new-state fraction for the explosion fire
+_OBJ_EXPLODE_MOBILE = 12   # min distinct-recent states for the explosion fire
+_OBJ_SINK_SELFLOOP = 0.70  # windowed self-loop fraction for the sink fire
+_OBJ_SINK_DISTINCT = 6     # max distinct-recent states for the sink fire
+_OBJ_MAX_MASK = 256        # skip when the HUD mask is this large (jitter gate)
 
 def _click_candidates(frame: np.ndarray, max_clicks: int = _MAX_CLICKS) -> list[tuple[int, int, int]]:
     """Reduce ACTION6 to a small INTERACTIVITY-tier-ordered set of ``(x, y)`` clicks.
@@ -254,6 +269,12 @@ class GraphSearchTool:
         # untried action is reachable ANYWHERE — deferring the mass of
         # low-promise clicks that made deep discovery exhaustive.
         self._unlocked_tier = 0
+        # Object-hash ladder (legacy R45) instability tracking.
+        self._hash_mode = "pixel"
+        self._new_window: deque[bool] = deque(maxlen=_OBJ_WINDOW)
+        self._loop_window: deque[bool] = deque(maxlen=_OBJ_WINDOW)
+        self._recent_states: deque[str] = deque(maxlen=30)
+        self._propose_calls = 0
         # next_hash -> list of (prev_hash, action_key) predecessors
         self._preds: dict[str, list[tuple[str, Any]]] = {}
         # A change-transition whose target hash is resolved on the next propose.
@@ -294,9 +315,47 @@ class GraphSearchTool:
     def _node_key(self, frame: np.ndarray) -> str:
         """State key = HUD-masked hash, de-aliased by recent action history when
         the masked hash has shown hidden-state ambiguity (composition of HUD
-        masking + de-aliasing — the two generic aliasing fixes stacked)."""
+        masking + de-aliasing — the two generic aliasing fixes stacked). In
+        OBJECT mode (ladder fired) the key is the object hash instead — the
+        pixel-level dealiasing no longer applies to a broken pixel graph."""
         mframe = self._masked_frame(frame)
+        if self._hash_mode == "object":
+            return _object_key(mframe)
         return self._dealias.key(mframe, self._recent)
+
+    def _maybe_fire_object_hash(self) -> None:
+        """Arm the object-hash rung when the pixel graph shows a measured broken
+        signature (legacy R45 thresholds). Rebuilds the level graph under object
+        keys; pinned until the next reset() (one activation per level)."""
+        if (
+            self._hash_mode == "object"
+            or self._propose_calls < _OBJ_MIN_STEPS
+            or len(self._new_window) < _OBJ_WINDOW
+            or len(self._loop_window) < _OBJ_WINDOW
+        ):
+            return
+        if self._mask is not None and int(self._mask.sum()) > _OBJ_MAX_MASK:
+            return  # jitter gate: a big HUD mask means masking is load-bearing
+        new_frac = sum(self._new_window) / len(self._new_window)
+        loop_frac = sum(self._loop_window) / len(self._loop_window)
+        distinct = len(set(self._recent_states))
+        explosion = new_frac >= _OBJ_EXPLODE_FRAC and distinct >= _OBJ_EXPLODE_MOBILE
+        sink = loop_frac >= _OBJ_SINK_SELFLOOP and distinct <= _OBJ_SINK_DISTINCT
+        if not (explosion or sink):
+            return
+        self._hash_mode = "object"
+        self._edges.clear()
+        self._untried.clear()
+        self._tries.clear()
+        self._tier.clear()
+        self._preds.clear()
+        self._pending = None
+        self._state_frame.clear()
+        self._goal_memo.clear()
+        self._unlocked_tier = 0
+        self._new_window.clear()
+        self._loop_window.clear()
+        self._recent_states.clear()
 
     def state_key(self, frame: np.ndarray) -> str:
         """The tool's OWN notion of state identity for the harness's progress
@@ -395,6 +454,7 @@ class GraphSearchTool:
         self._edges.setdefault(prev_hash, {})
         tries = self._tries.setdefault(prev_hash, {})
         tries[key] = tries.get(key, 0) + 1
+        self._loop_window.append(not changed)
         if changed:
             self._pending = (prev_hash, key)
         else:
@@ -419,6 +479,13 @@ class GraphSearchTool:
             self._edges.setdefault(p_hash, {})[p_key] = cur_hash
             self._preds.setdefault(cur_hash, []).append((p_hash, p_key))
             self._pending = None
+
+        self._propose_calls += 1
+        self._new_window.append(cur_hash not in self._untried)
+        self._recent_states.append(cur_hash)
+        self._maybe_fire_object_hash()
+        if self._hash_mode == "object":
+            cur_hash = self._node_key(frame)  # mode may have just switched
 
         simple_ids, action6_ok = availability(obs)
         self._ensure_state(cur_hash, frame, simple_ids, action6_ok)
@@ -674,6 +741,20 @@ class GraphSearchTool:
         if not choices:
             return None
         return self._rng.choice(choices)
+
+
+def _object_key(frame: np.ndarray) -> str:
+    """Hash a frame by its OBJECTS (legacy R45 _object_hash): md5 of the sorted
+    multiset of (colour, size_bucket, centroid_row, centroid_col) tokens.
+    Centroids at full cell resolution keep 1-cell movement visible; the log2
+    size bucket + dropped interiors absorb intra-object jitter/animation."""
+    comps = connected_components(frame)
+    tokens = sorted(
+        (int(c["color"]), int(c["size"]).bit_length(),
+         int(round(c["centroid"][0])), int(round(c["centroid"][1])))
+        for c in comps
+    )
+    return hashlib.md5(repr(tokens).encode()).hexdigest()[:16]
 
 
 def _obs_grid(x: Any) -> np.ndarray | None:
