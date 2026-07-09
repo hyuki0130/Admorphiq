@@ -491,3 +491,20 @@ problem (the ollama goal call blocks, and/or injected-goal + per-state score_goa
 is too slow), not the concept. Inconclusive — needs perf debugging (async/timeout
 the LLM call; cache score_goal; cap frame storage) before it can be evaluated.
 The hybrid remains the most promising untried Gap-2 lever and its infra is ready.
+
+### DEFINITIVE: LLM goal inference ≤ frame-only heuristic — the GoalSpec vocab is the wall (2026-07-09)
+Fixed the hybrid shipping bug (set_external_goal wasn't on the VM — the first
+"all TIMEOUT" was a crash) and re-measured: hybrid (LLM-inferred GoalSpec injected,
+tracker disabled) = vc33 kept but ALL transform games 0, and it **LOST cn04 1→0**
+(the LLM's coarse GoalSpec was WORSE than the frame-only trend tracker's pick). So
+every goal-inference mechanism measured this session — llm_goal 0, code-agent 0,
+hybrid ≤ frame-only — is NO BETTER than the frame-only heuristic. ⛔ Do not deploy
+the hybrid as default (it regresses cn04); graph's frame-only multi-goal tracker
+(7/25) is the best config.
+**Root cause of the 25/25 wall: the GoalSpec vocabulary (FILL/CLEAR/COUNT/ORDER/
+ON_TARGET/MOVE/MATCH) cannot express the transform games' true targets, so neither
+heuristic trend-tracking NOR LLM inference within it can steer to them.** The
+frontier for 25/25 is a RICHER goal representation — an arbitrary target frame /
+executable rule (the EWM r48-r52 direction, Tufa's code-writing) — plus a planner
+that reaches it. That is the genuine open research problem; 7/25 is the ceiling of
+everything expressible in the current goal vocabulary.
