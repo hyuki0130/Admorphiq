@@ -55,10 +55,8 @@ def main() -> None:
     ap.add_argument("--tool", required=True)
     ap.add_argument("--game", required=True)
     ap.add_argument("--budget", type=int, default=2000)
-    ap.add_argument("--hybrid", action="store_true",
-                    help="graph only: after warmup, infer a goal via the LLM and "
-                         "inject it (set_external_goal) so LLM goal steers search")
-    ap.add_argument("--hybrid-warmup", type=int, default=40)
+    ap.add_argument("--draw-warmup", type=int, default=40,
+                    help="steps into a level before the --targetgrid draw fires")
     ap.add_argument("--targetgrid", action="store_true",
                     help="graph only: after warmup, ask the LLM for an 8x8 TARGET "
                          "grid of the solved board and inject via set_target_frame")
@@ -85,8 +83,7 @@ def main() -> None:
     env = arcade.make(match.game_id)
     obs = env.observation_space
 
-    _hybrid_probe_changes: list = []
-    _hybrid_done = [False]
+    _draw_done = [False]
 
     def _llm(prompt: str, npred: int = 200) -> str:
         import json as _json
@@ -104,7 +101,7 @@ def main() -> None:
     def _maybe_inject_targetgrid(frame):
         """Warmup then ask the LLM to DRAW the solved board as an 8x8 grid and
         inject it via set_target_frame — a goal richer than the GoalSpec vocab."""
-        if not a.targetgrid or _hybrid_done[0] or a.tool != "graph" or steps < a.hybrid_warmup:
+        if not a.targetgrid or _draw_done[0] or a.tool != "graph" or steps < a.draw_warmup:
             return
         import os as _os
 
@@ -132,28 +129,7 @@ def main() -> None:
             print(f"TARGETGRID injected (attempt {attempt}, res={res}, "
                   f"distinct={len(np.unique(tgt))})", file=sys.stderr)
             break
-        _hybrid_done[0] = True
-
-    def _maybe_inject_goal(frame):
-        """Warmup then LLM-infer a goal and inject it into the graph tool."""
-        if not a.hybrid or _hybrid_done[0] or a.tool != "graph":
-            return
-        if steps < a.hybrid_warmup:
-            return
-        from admorphiq.planner.goal_inference import build_goal_prompt, parse_goal_spec
-        from admorphiq.tools.base import color_histogram as _ch
-
-        hist = {int(c): int(n) for c, n in enumerate(_ch(frame)) if n}
-        try:
-            prompt = build_goal_prompt(hist, _hybrid_probe_changes, grid_shape=frame.shape)
-            goal = parse_goal_spec(_llm(prompt))
-        except Exception as exc:  # noqa: BLE001
-            print(f"hybrid goal infer failed: {exc}", file=sys.stderr)
-            goal = None
-        if goal is not None:
-            tool.set_external_goal(goal)
-            print(f"HYBRID injected goal: {goal.goal_type}", file=sys.stderr)
-        _hybrid_done[0] = True
+        _draw_done[0] = True
 
     queue: list = []
     prev_frame = None
@@ -180,22 +156,10 @@ def main() -> None:
             prev_frame = None
             # A new level has a NEW solved-board target — allow a fresh draw
             # (deep levels carry the RHAE weight; one extra LLM call per level).
-            _hybrid_done[0] = False
-            _hybrid_probe_changes.clear()
+            _draw_done[0] = False
 
         if prev_frame is not None and prev_step is not None and prev_frame.shape == frame.shape:
             changed = bool((prev_frame != frame).any())
-            if a.hybrid and changed:
-                d = prev_frame != frame
-                new = frame[d]
-                if new.size:
-                    import numpy as _np
-                    vals, cnts = _np.unique(new, return_counts=True)
-                    _hybrid_probe_changes.append({
-                        "action": prev_step[0], "changed_cells": int(d.sum()),
-                        "top_new_color": int(vals[int(cnts.argmax())]),
-                    })
-            _maybe_inject_goal(frame)
             _maybe_inject_targetgrid(frame)
             try:
                 tool.observe(prev_frame, prev_step, changed)
