@@ -222,6 +222,7 @@ class GraphSearchTool:
         self._goal_obs_count = 0
         self._goal_memo: dict[str, float] = {}
         self._target_grid: np.ndarray | None = None  # injected LLM target frame
+        self._target_res = 8                          # its downsample resolution
 
     def _masked_frame(self, frame: np.ndarray) -> np.ndarray:
         """The frame with frozen-HUD cells zeroed (identity until warmup freeze)."""
@@ -413,13 +414,14 @@ class GraphSearchTool:
                 self._goal = goal
                 self._goal_memo.clear()
 
-    def set_target_frame(self, target: np.ndarray) -> None:
+    def set_target_frame(self, target: np.ndarray, res: int = 8) -> None:
         """Inject an arbitrary TARGET FRAME (e.g. an LLM-drawn picture of the solved
         board) — a goal representation RICHER than the GoalSpec vocabulary, which
         was measured to be the 25/25 wall. Frontiers are then ranked by how close
-        their (downsampled) frame is to this target. Used exclusively; the
-        candidate-goal tracker is disabled so it isn't diluted."""
-        self._target_grid = _downsample(np.asarray(target))
+        their (downsampled to ``res``×``res``) frame is to this target. Used
+        exclusively; the candidate-goal tracker is disabled so it isn't diluted."""
+        self._target_res = int(res)
+        self._target_grid = _downsample(np.asarray(target), self._target_res)
         self._goal_tracker = None
         self._goal = None
         self._goal_memo.clear()
@@ -434,7 +436,7 @@ class GraphSearchTool:
         val = 0.0
         if fr is not None and self._target_grid is not None:
             # higher = closer: negative fraction of cells that differ from target
-            ds = _downsample(fr)
+            ds = _downsample(fr, self._target_res)
             if ds.shape == self._target_grid.shape:
                 val = -float(np.mean(ds != self._target_grid))
         elif fr is not None and self._goal is not None:

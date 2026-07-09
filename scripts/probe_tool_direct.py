@@ -106,18 +106,21 @@ def main() -> None:
         inject it via set_target_frame — a goal richer than the GoalSpec vocab."""
         if not a.targetgrid or _hybrid_done[0] or a.tool != "graph" or steps < a.hybrid_warmup:
             return
+        import os as _os
         import re as _re
 
         from admorphiq.tools.graph_search import _downsample
-        cur = _downsample(np.asarray(frame))
+        res = int(_os.environ.get("TARGETGRID_RES", "8"))
+        cur = _downsample(np.asarray(frame), res)
         rows = "\n".join(" ".join(str(int(v)) for v in r) for r in cur)
         prompt = (
-            "An ARC-AGI-3 grid puzzle. The board below is an 8x8 downsample "
+            f"An ARC-AGI-3 grid puzzle. The board below is a {res}x{res} downsample "
             "(colours 0-15, 0=background) of the CURRENT state:\n" + rows + "\n\n"
-            "Reason about the goal, then OUTPUT the 8x8 grid of the SOLVED board "
-            "(what it looks like when the level is complete) as 8 lines of 8 "
-            "space-separated integers 0-15. Output ONLY the 8 lines, no prose."
+            f"Reason about the goal, then OUTPUT the {res}x{res} grid of the SOLVED board "
+            f"(what it looks like when the level is complete) as {res} lines of {res} "
+            f"space-separated integers 0-15. Output ONLY the {res} lines, no prose."
         )
+        ncells = res * res
         def _valid(tgt: np.ndarray) -> str | None:
             """Lenient sanity checks on a drawn target; returns a reject reason
             or None if plausible. Only guards against GARBAGE draws — a wrongly
@@ -136,21 +139,24 @@ def main() -> None:
         # NO injection (graph keeps its proven frame-only multi-goal base).
         for attempt in (1, 2):
             try:
-                txt = _llm(prompt, npred=200)
+                txt = _llm(prompt, npred=100 + 4 * ncells)
                 nums = [int(x) for x in _re.findall(r"-?\d+", txt)]
             except Exception as exc:  # noqa: BLE001
                 print(f"targetgrid infer failed: {exc}", file=sys.stderr)
                 break
-            if len(nums) < 64:
-                print(f"targetgrid attempt {attempt}: <64 numbers", file=sys.stderr)
+            if len(nums) < ncells:
+                print(f"targetgrid attempt {attempt}: <{ncells} numbers", file=sys.stderr)
                 continue
-            tgt = np.array(nums[:64], dtype=np.int64).reshape(8, 8)
+            tgt = np.array(nums[:ncells], dtype=np.int64).reshape(res, res)
             reason = _valid(tgt)
             if reason is not None:
                 print(f"targetgrid attempt {attempt} rejected: {reason}", file=sys.stderr)
                 continue
-            tool.set_target_frame(np.kron(tgt, np.ones((8, 8), dtype=np.int64)))
-            print(f"TARGETGRID injected (attempt {attempt}, "
+            scale = max(1, 64 // res)
+            tool.set_target_frame(
+                np.kron(tgt, np.ones((scale, scale), dtype=np.int64)), res=res
+            )
+            print(f"TARGETGRID injected (attempt {attempt}, res={res}, "
                   f"distinct={len(np.unique(tgt))})", file=sys.stderr)
             break
         _hybrid_done[0] = True
