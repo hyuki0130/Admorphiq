@@ -273,7 +273,6 @@ def candidate_goals(
     specs: list[GoalSpec] = []
     for c in colors:
         specs.append(GoalSpec(GoalType.FILL_COLOR, color=c))
-        specs.append(GoalSpec(GoalType.CLEAR_COLOR, color=c))
         specs.append(GoalSpec(GoalType.MINIMIZE_OBJECT_COUNT, color=c))
         specs.append(GoalSpec(GoalType.MAXIMIZE_OBJECT_COUNT, color=c))
     specs.append(GoalSpec(GoalType.ORDER, axis=0))
