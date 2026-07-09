@@ -313,3 +313,29 @@ def test_object_ladder_fires_on_explosion_and_rebuilds():
     assert not tool._edges            # broken pixel graph dropped
     tool.reset()
     assert tool._hash_mode == "pixel"  # per-level pin: reset restores the ladder
+
+
+def test_tier_gate_bypassed_while_explicit_target_active():
+    """Purpose: the tier gate must NOT gate anything while an explicit target
+    frame is injected — measured on cd82 (4/4 -> 0/3): the click its drawn
+    target needed was tier-gated out, so dominant steering had nothing to walk
+    to. Blind discovery keeps the gate; goal pursuit sees the full action set.
+
+    Expected feedback: pass ⇒ target pursuit and gated discovery compose; fail
+    ⇒ any drawn-target game whose winning click ranks below tier-0 is lost.
+    """
+    tool = GraphSearchTool()
+    a = _grid_with_dot(1, 1)
+    ha = base_hash(a)
+    k1 = ("click", 2, 2)
+    tool._untried[ha] = [k1]
+    tool._tier[ha] = {k1: 1}          # gated out at unlocked_tier=0...
+    tool._edges[ha] = {}
+    tool._tries[ha] = {}
+    target = np.zeros_like(a)
+    target[0, 0] = 7
+    tool.set_target_frame(np.kron(target, np.ones((8, 8), dtype=np.int64)))
+    obs = _Obs(a, [6])
+    # ...but with a target active the tier-1 click must be offered immediately.
+    assert tool.propose([obs], obs) == [(6, (2, 2))]
+    assert tool._unlocked_tier == 0   # the gate itself was not consumed

@@ -674,8 +674,16 @@ class GraphSearchTool:
         return self._tier.get(state, {}).get(key, -1) <= self._unlocked_tier
 
     def _gated_untried(self, state: str) -> list[Any]:
-        """The state's untried actions currently within the tier gate."""
-        return [k for k in (self._untried.get(state) or []) if self._in_gate(state, k)]
+        """The state's untried actions currently within the tier gate.
+
+        The gate is a BLIND-DISCOVERY budget saver; once an explicit goal is
+        injected (target frame / executable scorer) it is bypassed entirely —
+        measured: gating starved a proven drawn-target pursuit (the click the
+        target needed was tier-gated out, regressing a reliable clear to 0)."""
+        untried = self._untried.get(state) or []
+        if self._target_grid is not None or self._scorer is not None:
+            return list(untried)
+        return [k for k in untried if self._in_gate(state, k)]
 
     def _bfs_path_to_frontier(self, start: str) -> list[Any] | None:
         """Shortest action path from ``start`` to the nearest frontier state.
