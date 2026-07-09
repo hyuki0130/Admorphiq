@@ -74,6 +74,8 @@ _FRONTIER_DIST_CAP = 40
 # toward states closer to the target the game is actually progressing on (legacy
 # GF_GOAL_RANK). Small weight so goal-proximity biases, never overrides, breadth.
 _GOAL_WEIGHT = 0.05
+# Only fold every Nth state into the (expensive) candidate-goal trend tracker.
+_GOAL_OBS_STRIDE = 6
 
 
 def _norm_grid(arr: Any) -> np.ndarray:
@@ -198,6 +200,7 @@ class GraphSearchTool:
         self._state_frame: dict[str, np.ndarray] = {}
         self._goal: Any = None
         self._goal_tracker = GoalMeasureTracker() if _GOAL_OK else None
+        self._goal_obs_count = 0
         self._goal_memo: dict[str, float] = {}
 
     def _masked_frame(self, frame: np.ndarray) -> np.ndarray:
@@ -360,6 +363,12 @@ class GraphSearchTool:
         if not _GOAL_OK or self._goal_tracker is None:
             return
         self._state_frame[cur_hash] = frame
+        # Scoring the whole candidate-goal family per state is expensive; throttle
+        # to every _GOAL_OBS_STRIDE-th state (the trend only needs a sample of the
+        # trajectory, not every frame) so goal-ranking never dominates runtime.
+        self._goal_obs_count += 1
+        if self._goal_obs_count % _GOAL_OBS_STRIDE != 0:
+            return
         try:
             self._goal_tracker.observe(frame)
             best = self._goal_tracker.best_trend()
