@@ -59,6 +59,9 @@ def main() -> None:
                     help="graph only: after warmup, infer a goal via the LLM and "
                          "inject it (set_external_goal) so LLM goal steers search")
     ap.add_argument("--hybrid-warmup", type=int, default=40)
+    ap.add_argument("--targetgrid", action="store_true",
+                    help="graph only: after warmup, ask the LLM for an 8x8 TARGET "
+                         "grid of the solved board and inject via set_target_frame")
     a = ap.parse_args()
 
     from arc_agi import Arcade, OperationMode
@@ -85,26 +88,53 @@ def main() -> None:
     _hybrid_probe_changes: list = []
     _hybrid_done = [False]
 
+    def _llm(prompt: str, npred: int = 200) -> str:
+        import json as _json
+        import urllib.request as _u
+        body = {"model": "gemma4:31b-it-q8_0", "stream": False, "think": False,
+                "messages": [{"role": "user", "content": prompt}],
+                "options": {"temperature": 0.0, "num_ctx": 8192, "num_predict": npred}}
+        req = _u.Request("http://localhost:11434/api/chat", data=_json.dumps(body).encode(),
+                         headers={"Content-Type": "application/json"}, method="POST")
+        with _u.urlopen(req, timeout=150) as r:
+            return _json.loads(r.read())["message"]["content"]
+
+    def _maybe_inject_targetgrid(frame):
+        """Warmup then ask the LLM to DRAW the solved board as an 8x8 grid and
+        inject it via set_target_frame — a goal richer than the GoalSpec vocab."""
+        if not a.targetgrid or _hybrid_done[0] or a.tool != "graph" or steps < a.hybrid_warmup:
+            return
+        import re as _re
+
+        from admorphiq.tools.graph_search import _downsample
+        cur = _downsample(np.asarray(frame))
+        rows = "\n".join(" ".join(str(int(v)) for v in r) for r in cur)
+        prompt = (
+            "An ARC-AGI-3 grid puzzle. The board below is an 8x8 downsample "
+            "(colours 0-15, 0=background) of the CURRENT state:\n" + rows + "\n\n"
+            "Reason about the goal, then OUTPUT the 8x8 grid of the SOLVED board "
+            "(what it looks like when the level is complete) as 8 lines of 8 "
+            "space-separated integers 0-15. Output ONLY the 8 lines, no prose."
+        )
+        try:
+            txt = _llm(prompt, npred=200)
+            nums = [int(x) for x in _re.findall(r"-?\d+", txt)]
+            if len(nums) >= 64:
+                tgt = np.array(nums[:64], dtype=np.int64).reshape(8, 8)
+                tool.set_target_frame(np.kron(tgt, np.ones((8, 8), dtype=np.int64)))
+                print(f"TARGETGRID injected (distinct={len(set(nums[:64]))})", file=sys.stderr)
+        except Exception as exc:  # noqa: BLE001
+            print(f"targetgrid infer failed: {exc}", file=sys.stderr)
+        _hybrid_done[0] = True
+
     def _maybe_inject_goal(frame):
         """Warmup then LLM-infer a goal and inject it into the graph tool."""
         if not a.hybrid or _hybrid_done[0] or a.tool != "graph":
             return
         if steps < a.hybrid_warmup:
             return
-        import json as _json
-        import urllib.request as _u
-
         from admorphiq.planner.goal_inference import build_goal_prompt, parse_goal_spec
         from admorphiq.tools.base import color_histogram as _ch
-
-        def _llm(prompt: str) -> str:
-            body = {"model": "gemma4:31b-it-q8_0", "stream": False, "think": False,
-                    "messages": [{"role": "user", "content": prompt}],
-                    "options": {"temperature": 0.0, "num_ctx": 8192, "num_predict": 200}}
-            req = _u.Request("http://localhost:11434/api/chat", data=_json.dumps(body).encode(),
-                             headers={"Content-Type": "application/json"}, method="POST")
-            with _u.urlopen(req, timeout=120) as r:
-                return _json.loads(r.read())["message"]["content"]
 
         hist = {int(c): int(n) for c, n in enumerate(_ch(frame)) if n}
         try:
@@ -155,6 +185,7 @@ def main() -> None:
                         "top_new_color": int(vals[int(cnts.argmax())]),
                     })
             _maybe_inject_goal(frame)
+            _maybe_inject_targetgrid(frame)
             try:
                 tool.observe(prev_frame, prev_step, changed)
             except Exception as exc:  # noqa: BLE001
