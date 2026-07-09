@@ -244,17 +244,21 @@ class UnifiedAgent:
             return
         self._target_drawn = True  # one draw round per level, success or not
         prompt = build_target_prompt(frame)
-        for _attempt in (1, 2):
+        for attempt in (1, 2):
             try:
                 txt = self.llm([{"role": "user", "content": prompt}])
-            except Exception:  # noqa: BLE001 - offline-safe
+            except Exception as exc:  # noqa: BLE001 - offline-safe
+                print(f"[harness] target draw failed: {exc}", file=sys.stderr, flush=True)
                 return
-            tgt, _reason = parse_and_validate_target(txt, frame)
+            tgt, reason = parse_and_validate_target(txt, frame)
             if tgt is None:
+                print(f"[harness] target draw attempt {attempt} rejected: {reason}",
+                      file=sys.stderr, flush=True)
                 continue
             scale = max(1, 64 // TARGET_RES)
             inject(np.kron(tgt, np.ones((scale, scale), dtype=np.int64)), res=TARGET_RES)
             self._feedback = "target frame drawn and injected"
+            print(f"[harness] TARGET injected (attempt {attempt})", file=sys.stderr, flush=True)
             return
 
     # -- main loop ------------------------------------------------------------
