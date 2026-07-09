@@ -37,6 +37,7 @@ import numpy as np
 from admorphiq.tools.base import (
     Step,
     availability,
+    color_histogram,
     connected_components,
     diff_bbox,
     diff_cells,
@@ -77,20 +78,34 @@ def _norm_grid(arr: Any) -> np.ndarray:
 
 
 def _click_candidates(frame: np.ndarray, max_clicks: int = _MAX_CLICKS) -> list[tuple[int, int]]:
-    """Reduce ACTION6 to a small salience-ordered set of ``(x, y)`` click points.
+    """Reduce ACTION6 to a small INTERACTIVITY-tier-ordered set of ``(x, y)`` clicks.
 
     Segments the frame into 4-connected foreground components (background = the
-    most common colour) and returns their centroids as ``(x=col, y=row)`` — the
-    ACTION6 convention. Smaller components first: a small blob is more likely a
-    button/token than a large passive field. Deduplicated, capped at ``max_clicks``.
+    most common colour) and returns their centroids ``(x=col, y=row)``, ordered by
+    how likely each component is a CONTROL (a button/token/widget you click) vs
+    passive backdrop — the ranking legacy graph_frontier proved recovers clears.
+    Score (lower = more promising) blends: small area, rare colour, and high local
+    contrast (border colours differ from the component's own). Deduplicated by
+    centroid, capped at ``max_clicks``.
     """
-    comps = connected_components(frame)
-    comps.sort(key=lambda c: (c["size"], c["centroid"]))
+    grid = np.asarray(frame)
+    hist = color_histogram(grid)
+    total = float(grid.size) or 1.0
+    comps = connected_components(grid)
+    scored: list[tuple[float, tuple[int, int]]] = []
+    for comp in comps:
+        area = comp["size"]
+        color = comp["color"]
+        rarity = hist[color] / total if 0 <= color < len(hist) else 1.0
+        contrast = _border_contrast(grid, comp)
+        # small + rare + high-contrast => low score => tried first.
+        score = (area / total) + rarity - 0.3 * contrast
+        cy, cx = comp["centroid"]
+        scored.append((score, (int(round(cx)), int(round(cy)))))
+    scored.sort(key=lambda s: s[0])
     out: list[tuple[int, int]] = []
     seen: set[tuple[int, int]] = set()
-    for comp in comps:
-        cy, cx = comp["centroid"]
-        x, y = int(round(cx)), int(round(cy))
+    for _score, (x, y) in scored:
         if (x, y) in seen:
             continue
         seen.add((x, y))
@@ -98,6 +113,23 @@ def _click_candidates(frame: np.ndarray, max_clicks: int = _MAX_CLICKS) -> list[
         if len(out) >= max_clicks:
             break
     return out
+
+
+def _border_contrast(grid: np.ndarray, comp: dict[str, Any]) -> float:
+    """Fraction of a component's 4-neighbour border cells whose colour differs
+    from the component's own — high when the component is an isolated widget."""
+    color = comp["color"]
+    cells = comp["cells"]
+    h, w = grid.shape
+    cellset = set(cells)
+    border = diff = 0
+    for (r, c) in cells:
+        for nr, nc in ((r - 1, c), (r + 1, c), (r, c - 1), (r, c + 1)):
+            if 0 <= nr < h and 0 <= nc < w and (nr, nc) not in cellset:
+                border += 1
+                if int(grid[nr, nc]) != color:
+                    diff += 1
+    return diff / border if border else 0.0
 
 
 def _step_to_key(step: Step) -> Any:
