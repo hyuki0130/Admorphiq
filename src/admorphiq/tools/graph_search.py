@@ -74,6 +74,12 @@ _FRONTIER_DIST_CAP = 40
 # toward states closer to the target the game is actually progressing on (legacy
 # GF_GOAL_RANK). Small weight so goal-proximity biases, never overrides, breadth.
 _GOAL_WEIGHT = 0.05
+# When an EXPLICIT target frame is injected, its proximity (range [-1, 0]) must
+# DOMINATE the frontier ranking, not nudge it: at 0.05 the steering was provably
+# inert (±0.05 against integer untried-counts up to ~19 — measured on a game
+# whose drawn L2 target was plausible and stable yet never pursued). At 50, a
+# frontier 2% closer to the target outweighs one extra untried action.
+_TARGET_STEER_WEIGHT = 50.0
 # Only fold every Nth state into the (expensive) candidate-goal trend tracker.
 _GOAL_OBS_STRIDE = 6
 
@@ -553,10 +559,13 @@ class GraphSearchTool:
             if untried:
                 visits = sum((self._tries.get(node) or {}).values())
                 # promise: reward untried breadth, penalise re-visits and distance,
-                # and bias toward frontiers whose state is closer to a heuristic goal
+                # and steer by goal proximity — DOMINANT for an explicit injected
+                # target ([-1,0] scaled to [-50,0]), a light bias for the noisy
+                # heuristic tracker goal.
+                w = _TARGET_STEER_WEIGHT if self._target_grid is not None else _GOAL_WEIGHT
                 score = (
                     len(untried) - 0.5 * visits - 0.25 * len(path)
-                    + _GOAL_WEIGHT * self._goal_proximity(node)
+                    + w * self._goal_proximity(node)
                 )
                 if score > best_score:
                     best_score, best_path = score, path

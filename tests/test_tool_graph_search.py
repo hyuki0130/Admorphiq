@@ -185,6 +185,39 @@ def test_dealias_composition_splits_hidden_state():
     assert tool._node_key(amb) != base_hash(amb)
 
 
+def test_explicit_target_dominates_frontier_choice():
+    """Purpose: with an injected target frame, proximity must DOMINATE the
+    frontier ranking — at the old 0.05 blend the steering was provably inert
+    (±0.05 against integer untried counts), measured as a plausible drawn L2
+    target that was never pursued.
+
+    Expected feedback: pass ⇒ graph actually drives to an injected target; fail
+    ⇒ target injection is cosmetic and the goal-evidence lever is dead."""
+    tool = GraphSearchTool()
+    target = np.zeros((64, 64), dtype=np.int64)
+    target[:32, :] = 3
+    tool.set_target_frame(target)
+
+    near = np.zeros((64, 64), dtype=np.int64)
+    near[:32, :] = 3          # matches the target (proximity ~0)
+    far = np.zeros((64, 64), dtype=np.int64)  # all-background (proximity ~-0.5)
+
+    # Build a graph: start --1--> near_node (1 untried), start --2--> far_node
+    # (3 untried). Old behavior picked far (more untried); dominant steering
+    # must pick near.
+    tool._state_frame["start"] = far
+    tool._state_frame["near"] = near
+    tool._state_frame["far"] = far
+    tool._edges["start"] = {1: "near", 2: "far"}
+    tool._untried["start"] = []
+    tool._untried["near"] = [("click", 1, 1)]
+    tool._untried["far"] = [("click", 2, 2), ("click", 3, 3), ("click", 4, 4)]
+    tool._tries = {"start": {}, "near": {}, "far": {}}
+
+    path = tool._bfs_path_to_frontier("start")
+    assert path == [1]   # steered to the target-matching frontier
+
+
 def test_no_game_specifics_in_source():
     """Purpose: generality guard — the tool must contain no game ids, titles, or
     sprite tags so it transfers to the unseen private games.
