@@ -304,13 +304,35 @@ ollama-backed ones).
   route to world_model as a primary until it has real goal-directed planning.
 - `toggle` (NEW GF(2) lights-out solver) — measuring the click/toggle subset.
 
-**New tool built (2026-07-09): `toggle`** (`src/admorphiq/tools/toggle.py`) — the
-biggest gap class is toggle/lights-out games (ft09, cn04, lf52, tn36) that
-neither graph nor paint nor world_model is designed for. ToggleTool LEARNS each
-click's flip stencil from its own probes, then solves A·x=b over GF(2) for a
-uniform board (the exact lights-out solution) and clicks precisely the solution
-cells. Fully generic (no game ids/sprite tags), 7th harness tool, wired into the
-selector/context/probe. Measuring its coverage next.
+**New tool built (2026-07-09): `toggle`** (`src/admorphiq/tools/toggle.py`) — a
+generic GF(2) lights-out solver (learn click stencils → solve A·x=b for a uniform
+board). Correct + tested, BUT measured **0/12 on the click subset** even with a
+centroid-aligned probe.
+
+### ⛔ PIVOTAL LESSON — inspect the mechanic BEFORE building the tool
+`scripts/inspect_game.py` (new) dumps what actions actually DO. Running it on the
+games the toggle tool assumed were lights-out:
+- **ft09**: **7 colours**, click-only; most clicks inert, but clicks in the
+  bottom-right region flip ~38 cells and introduce a NEW colour → a
+  **palette-select / region-recolor** game, NOT a 2-colour lights-out.
+- **cn04**: 5 colours, movement+click; ACTION1-5 each transform LARGE regions
+  (145-198 cells) — a **whole-region transform**, not avatar navigation.
+- **lf52**: 6 colours; movement nudges a 1-cell cursor at row 0, clicks paint
+  21-29-cell regions → a **cursor-move + click-to-paint** game.
+
+None are lights-out. The `toggle` tool was built on an ASSUMPTION and cleared 0.
+Kept (clean + generic, valid for real lights-out in the private 110) but it does
+not match these 25.
+
+**Strategic conclusion (measured, load-bearing):** the mechanical generic tools
+(graph/toggle/paint) cover only the *searchable* games (graph 4/25). The MAJORITY
+of the remaining games are **transform / recolor / palette-select** games whose
+level-clear needs the TARGET configuration INFERRED — this is the **goal-inference
+frontier bottleneck** the project has hit repeatedly (r51, r52). Those games are
+the domain of `llm_goal` (LLM infers the target) + `code` (LLM writes the
+transform), NOT more mechanical solvers. Future coverage work MUST run
+`inspect_game.py` first and route transform games to goal-inference, not guess a
+mechanical tool. Do not build another mechanical tool on an unverified mechanic.
 
 ## Related
 
