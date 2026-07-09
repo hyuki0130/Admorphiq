@@ -873,3 +873,15 @@ never fires — its lever is the region mask, pre-registered), vc33/m0r0 guards
 held at 1 (fires occurred during L2 pursuit, harmless). Tune-before-discard:
 _OBJ_MIN_STEPS 1500→500 (a fired rung rebuilds from scratch; at 1500 the level
 budget was half-spent) — pool2b in flight (tu93 + guards).
+
+### Band-mask port (the tu93 lever) — pool2b attribution chain (2026-07-09 23:38)
+pool2b: early fire (500) changed nothing; **aliased=0 refuted the dealias
+hypothesis**. The surviving explanation for "explodes at pool2 AND object mode":
+a MOVING BAND — some component's centroid drifts every step (timer/scanline),
+invisible to per-cell change-rate rules (each cell changes rarely) and to the
+object hash (centroid = part of the token). This is exactly legacy's
+monotone-moving-band detector, and legacy tu93's masked=126 was that band.
+Ported verbatim (thin<=3 / drift>=6 / density>=0.5 / monotone>=0.7 / window
+48/16 / dilate 1, frame-shape generic): confirmed track masked from node keys,
+mask grows with the marker, graph rebuilt at confirmation. 679 tests. band1
+bench in flight (tu93/sp80 + vc33/m0r0/lf52 guards).
