@@ -615,3 +615,14 @@ per propose) and exposes `target_stalled(window)`; the harness redraws ONLY when
 the current target stopped improving for 300 propose-calls. Upside-only: good
 targets pursued to the end, dead ones replaced. This is the self-improving
 feedback pattern applied to the goal itself. Measuring unified cd82 ×2.
+
+### Harness-vs-probe cd82 differential: suspects excluded one by one (2026-07-09)
+Harness cd82 with feedback-gated redraw: still 0/2 (cumulative harness 0/8 vs
+probe 2/3). Excluded by trace: (a) tool propose() exceptions — none (the silent
+handler is now traced); (b) draw-LLM params — aligned to the probe config
+(dedicated draw_llm, num_ctx 8192 / predict 400), no change; (c) graph retirement
+— exactly 1 decision/run, graph owned all 5000 actions; (d) injection — 3 valid
+injections/run (targets kept stalling per the pursuit trace). Mechanical paths
+now match the probe. Remaining hypothesis: the probe's 2/3 overstated the true
+base rate (small-sample luck) and 0/8 is the same low-rate distribution — probe
+×4 base-rate measurement in flight to decide.
