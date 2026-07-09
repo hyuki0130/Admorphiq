@@ -789,3 +789,14 @@ stall-gated redraw adds the agent's own observed action→effect medians
 (`_action_evidence` in loop.py, `action_evidence` in targetgrid.py). A redraw
 only fires when the prior draw's pursuit already stalled, so the extra config
 is a free chance exactly where the simple config failed.
+
+### Redraw diversity batch 1: prompt-structure sensitivity found (2026-07-09)
+First diversity measurement (cd82/vc33/r11l @deployed): cd82 held (1), no L2
+unlocks, and a clean failure mode — **every evidence-carrying redraw was
+rejected "degenerate (single colour)"**. Inserting the evidence block between
+the board and the OUTPUT instruction breaks gemma4-31b's grid output entirely
+(the r51-era "richer prompt regressed cd82" finding is now explained: it is
+PROMPT-TAIL DISRUPTION, not evidence content). Tune-before-discard: evidence
+moved BEFORE the board so the validated board→instruction tail stays
+contiguous; re-measuring vc33/r11l. ⛔ Never insert prose between the current
+board grid and the OUTPUT instruction in targetgrid prompts.
