@@ -919,3 +919,13 @@ every win. Note: vc33's reg1 depth (2/7) did NOT reproduce in reg2/reg3 —
 record it as a stochastic depth event, solid vc33 = 1. reg4 in flight to
 re-verify the 5 solid games (cd82 ft09 tn36 lp85 r11l) never re-measured under
 the region-mask code; if green → **11/25 SOLID** promotion.
+
+### ✅ 11/25 SOLID CONFIRMED — full card verified under the final noise stack (2026-07-10 00:12)
+reg4 all green (cd82 ft09 tn36 lp85 r11l = 1 each). **DEPLOYED CARD: 11/25
+SOLID** — cd82 cn04 ft09 lf52 lp85 m0r0 r11l sp80 tn36 tu93 vc33, at the
+deployed config, under: R38 tier gate (+pursuit bypass), hash ladder
+(pool1→pool2→object, fire@500), REGION-level rate mask (size-conditional
+stability gate). Session arc: 8 → 11. The ported-technique well for the
+remaining 14 is DRY (legacy@8000 clears none of them) — next: (1) first-ever
+measurement of the remaining 14 under the region mask (unmeasured
+combination), then (2) the goal-inference frontier / efficiency axis.
