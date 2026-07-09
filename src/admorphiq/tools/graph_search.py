@@ -140,21 +140,6 @@ _OBJ_SINK_SELFLOOP = 0.70  # windowed self-loop fraction for the sink fire
 _OBJ_SINK_DISTINCT = 6     # max distinct-recent states for the sink fire
 _OBJ_MAX_MASK = 256        # skip when the HUD mask is this large (jitter gate)
 
-# Moving-band mask (legacy monotone-moving-band detector): a slow marker (timer
-# bar / scanline) sweeps ONE new cell every few steps, so no per-cell change-rate
-# rule catches it, yet it forks every state hash (even the object hash — its
-# centroid drifts each step). Signature: small changed sets (<= _BAND_MAX_CELLS),
-# dense over their span, confined to a thin strip that drifts monotonically.
-# On confirmation the swept track (dilated) is masked and grows with the marker.
-_BAND_WINDOW = 48
-_BAND_MIN_SAMPLES = 16
-_BAND_MAX_CELLS = 12
-_BAND_THICKNESS = 3
-_BAND_MIN_DRIFT = 6
-_BAND_MONOTONE = 0.7
-_BAND_DENSITY = 0.5
-_BAND_DILATE = 1
-
 def _click_candidates(frame: np.ndarray, max_clicks: int = _MAX_CLICKS) -> list[tuple[int, int, int]]:
     """Reduce ACTION6 to a small INTERACTIVITY-tier-ordered set of ``(x, y)`` clicks.
 
@@ -287,16 +272,6 @@ class GraphSearchTool:
         # untried action is reachable ANYWHERE — deferring the mass of
         # low-promise clicks that made deep discovery exhaustive.
         self._unlocked_tier = 0
-        # Moving-band detector state.
-        self._band_t = 0
-        self._band_records: deque[tuple[int, np.ndarray, np.ndarray]] = deque(
-            maxlen=_BAND_WINDOW)
-        self._band_confirmed = False
-        self._band_horizontal = False
-        self._band_lo = 0
-        self._band_hi = 0
-        self._band_accum: np.ndarray | None = None
-        self._band_mask: np.ndarray | None = None
         # Hash-ladder instability tracking. Rungs: pixel pool=1 -> pixel
         # pool=2 -> object.
         self._hash_mode = "pixel"
@@ -335,14 +310,11 @@ class GraphSearchTool:
         self._last_improve_call = 0
 
     def _masked_frame(self, frame: np.ndarray) -> np.ndarray:
-        """The frame with frozen-HUD cells + confirmed band-track cells zeroed."""
-        if self._mask is None and self._band_mask is None:
+        """The frame with frozen-HUD cells zeroed (identity until warmup freeze)."""
+        if self._mask is None:
             return frame
         g = frame.copy()
-        if self._mask is not None:
-            g[self._mask] = 0
-        if self._band_mask is not None and self._band_mask.shape == g.shape:
-            g[self._band_mask] = 0
+        g[self._mask] = 0
         return g
 
     def _node_key(self, frame: np.ndarray) -> str:
@@ -357,94 +329,6 @@ class GraphSearchTool:
         if self._pool > 1:
             mframe = _max_pool(mframe, self._pool)
         return self._dealias.key(mframe, self._recent)
-
-    def _band_observe(self, changed: np.ndarray) -> None:
-        """Fold one transition's changed-cell set into the moving-band detector
-        (legacy algorithm; see the _BAND_* constants block for the signature)."""
-        self._band_t += 1
-        n = int(changed.sum())
-        if not (0 < n <= _BAND_MAX_CELLS):
-            return
-        ys, xs = np.nonzero(changed)
-        if self._band_confirmed:
-            self._grow_band(ys, xs)
-            return
-        self._band_records.append((self._band_t, ys, xs))
-        self._try_confirm_band(changed.shape)
-
-    def _grow_band(self, ys: np.ndarray, xs: np.ndarray) -> None:
-        """Extend the swept-track union with in-band marker cells only (an
-        unrelated small change on another line never balloons the band)."""
-        if self._band_accum is None:
-            return
-        lines = ys if self._band_horizontal else xs
-        keep = (lines >= self._band_lo) & (lines <= self._band_hi)
-        if not keep.any():
-            return
-        before = int(self._band_accum.sum())
-        self._band_accum[ys[keep], xs[keep]] = True
-        if int(self._band_accum.sum()) != before:
-            self._band_mask = _dilate(self._band_accum, _BAND_DILATE)
-
-    def _try_confirm_band(self, shape: tuple[int, ...]) -> None:
-        """Confirm the thin/dense/monotone drift signature and build the mask;
-        the (now mis-keyed) graph is dropped so it rebuilds under the mask."""
-        recs = list(self._band_records)
-        if len(recs) < _BAND_MIN_SAMPLES:
-            return
-        all_r = np.concatenate([ys for _, ys, _ in recs])
-        all_c = np.concatenate([xs for _, _, xs in recs])
-        row_ext = int(all_r.max()) - int(all_r.min()) + 1
-        col_ext = int(all_c.max()) - int(all_c.min()) + 1
-        horizontal = row_ext <= _BAND_THICKNESS and col_ext >= _BAND_MIN_DRIFT
-        vertical = col_ext <= _BAND_THICKNESS and row_ext >= _BAND_MIN_DRIFT
-        if horizontal == vertical:   # both = blob, neither = no track yet
-            return
-        if horizontal:
-            centroids = sorted((t, float(xs.mean())) for t, _ys, xs in recs)
-            lo, hi = int(all_r.min()), int(all_r.max())
-        else:
-            centroids = sorted((t, float(ys.mean())) for t, ys, _xs in recs)
-            lo, hi = int(all_c.min()), int(all_c.max())
-        ts = [t for t, _ in centroids]
-        cs = [c for _, c in centroids]
-        span = ts[-1] - ts[0]
-        if span <= 0 or len(recs) / (span + 1) < _BAND_DENSITY:
-            return
-        pos = neg = 0
-        for i in range(1, len(cs)):
-            d = cs[i] - cs[i - 1]
-            if d > 0.4:
-                pos += 1
-            elif d < -0.4:
-                neg += 1
-        moves = pos + neg
-        if moves == 0 or max(pos, neg) / moves < _BAND_MONOTONE:
-            return
-        self._band_confirmed = True
-        self._band_horizontal = horizontal
-        self._band_lo, self._band_hi = lo, hi
-        accum = np.zeros(shape, dtype=bool)
-        for _t, ys, xs in recs:
-            lines = ys if horizontal else xs
-            keep = (lines >= lo) & (lines <= hi)
-            accum[ys[keep], xs[keep]] = True
-        self._band_accum = accum
-        self._band_mask = _dilate(accum, _BAND_DILATE)
-        import sys
-        print(f"[graph] BAND confirmed: {'horizontal' if horizontal else 'vertical'} "
-              f"lines {lo}-{hi}, {int(accum.sum())} track cells",
-              file=sys.stderr, flush=True)
-        # Every existing node key is stale under the new mask.
-        self._edges.clear()
-        self._untried.clear()
-        self._tries.clear()
-        self._tier.clear()
-        self._preds.clear()
-        self._pending = None
-        self._dealias.reset()
-        self._state_frame.clear()
-        self._goal_memo.clear()
 
     def _maybe_fire_object_hash(self) -> None:
         """Arm the object-hash rung when the pixel graph shows a measured broken
@@ -575,8 +459,6 @@ class GraphSearchTool:
         edge's target hash is completed on the next :meth:`propose`.
         """
         prev_grid = _norm_grid(prev)
-        if self._prev_obs is not None and self._prev_obs.shape == prev_grid.shape:
-            self._band_observe(self._prev_obs != prev_grid)
         self._accumulate_hud(prev_grid)
         # De-aliasing sees the HUD-masked frame + the action taken from it.
         self._dealias.observe(self._masked_frame(prev_grid), action, changed)
@@ -884,20 +766,6 @@ class GraphSearchTool:
         if not choices:
             return None
         return self._rng.choice(choices)
-
-
-def _dilate(grid: np.ndarray, k: int) -> np.ndarray:
-    """Binary dilation by ``k`` cells (4-neighbour, iterated) — covers the
-    band marker's leading edge just past its last recorded position."""
-    out = grid.copy()
-    for _ in range(max(0, k)):
-        g = out.copy()
-        g[1:, :] |= out[:-1, :]
-        g[:-1, :] |= out[1:, :]
-        g[:, 1:] |= out[:, :-1]
-        g[:, :-1] |= out[:, 1:]
-        out = g
-    return out
 
 
 def _max_pool(frame: np.ndarray, k: int) -> np.ndarray:

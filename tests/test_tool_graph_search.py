@@ -344,36 +344,3 @@ def test_tier_gate_bypassed_while_explicit_target_active():
     # ...but with a target active the tier-1 click must be offered immediately.
     assert tool.propose([obs], obs) == [(6, (2, 2))]
     assert tool._unlocked_tier == 0   # the gate itself was not consumed
-
-
-def test_band_mask_confirms_and_erases_moving_marker():
-    """Purpose: a 1-cell marker sweeping monotonically along a row (timer bar /
-    scanline) must be band-confirmed and masked so two frames differing ONLY in
-    marker position hash identically — the noise class no per-cell change-rate
-    rule can catch (each cell changes rarely) yet which forks every state hash,
-    including the object hash (drifting centroid).
-
-    Expected feedback: pass ⇒ moving-band games get a recurring state space;
-    fail ⇒ every marker tick mints a fresh state and the graph explodes.
-    """
-    tool = GraphSearchTool()
-    size = 24
-    frames = []
-    for i in range(22):
-        f = np.zeros((size, size), dtype=np.int64)
-        f[10, 10] = 4              # static game content
-        f[0, i] = 7                # marker sweeping row 0 rightwards
-        frames.append(f)
-    for prev in frames:
-        tool.observe(prev, (1, None), True)
-    assert tool._band_confirmed
-    a = np.zeros((size, size), dtype=np.int64)
-    a[10, 10] = 4
-    a[0, 5] = 7
-    b = np.zeros((size, size), dtype=np.int64)
-    b[10, 10] = 4
-    b[0, 12] = 7
-    assert tool._node_key(a) == tool._node_key(b)   # marker-only diff erased
-    c = a.copy()
-    c[10, 10] = 0                                    # real game change
-    assert tool._node_key(a) != tool._node_key(c)    # still visible
