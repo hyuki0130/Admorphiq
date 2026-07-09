@@ -983,3 +983,10 @@ run variance (both are recent marginal unlocks) — variance track E in flight;
 (c) track D = gpt-oss:120b (MoE, 5B active — fast despite 65GB) as brain on 5
 wall games (su15 ka59 sc25 re86 wa30): the scale-escalation test of the
 goal-inference wall.
+
+### Track E: tu93/sk48 loss is model-real → 31b stays deployed brain (2026-07-10 00:57)
+26b-a4b repeat: tu93 0, sk48 0 (now 0/2 each under 26b vs solid 1 under 31b).
+Not variance — the cheaper brain genuinely loses the two marginal card games.
+Deployed brain stays gemma4:31b-q8; the role-split (brain=26b/draw=31b) idea
+is parked unless the 9h budget math forces it. Track D (gpt-oss:120b) partial:
+su15 0, ka59 0 — scale escalation not biting so far.
