@@ -116,15 +116,41 @@ def main() -> None:
             "(what it looks like when the level is complete) as 8 lines of 8 "
             "space-separated integers 0-15. Output ONLY the 8 lines, no prose."
         )
-        try:
-            txt = _llm(prompt, npred=200)
-            nums = [int(x) for x in _re.findall(r"-?\d+", txt)]
-            if len(nums) >= 64:
-                tgt = np.array(nums[:64], dtype=np.int64).reshape(8, 8)
-                tool.set_target_frame(np.kron(tgt, np.ones((8, 8), dtype=np.int64)))
-                print(f"TARGETGRID injected (distinct={len(set(nums[:64]))})", file=sys.stderr)
-        except Exception as exc:  # noqa: BLE001
-            print(f"targetgrid infer failed: {exc}", file=sys.stderr)
+        def _valid(tgt: np.ndarray) -> str | None:
+            """Lenient sanity checks on a drawn target; returns a reject reason
+            or None if plausible. Only guards against GARBAGE draws — a wrongly
+            rejected good target just leaves graph on its proven frame-only base."""
+            if len(np.unique(tgt)) < 2:
+                return "degenerate (single colour)"
+            if np.array_equal(tgt, cur):
+                return "identical to current (no goal)"
+            palette = set(int(v) for v in np.unique(np.asarray(frame)))
+            in_palette = float(np.mean([int(v) in palette for v in tgt.ravel()]))
+            if in_palette < 0.8:
+                return f"hallucinated colours ({in_palette:.0%} in palette)"
+            return None
+
+        # Up to 2 attempts: a rejected draw is retried once; still-invalid means
+        # NO injection (graph keeps its proven frame-only multi-goal base).
+        for attempt in (1, 2):
+            try:
+                txt = _llm(prompt, npred=200)
+                nums = [int(x) for x in _re.findall(r"-?\d+", txt)]
+            except Exception as exc:  # noqa: BLE001
+                print(f"targetgrid infer failed: {exc}", file=sys.stderr)
+                break
+            if len(nums) < 64:
+                print(f"targetgrid attempt {attempt}: <64 numbers", file=sys.stderr)
+                continue
+            tgt = np.array(nums[:64], dtype=np.int64).reshape(8, 8)
+            reason = _valid(tgt)
+            if reason is not None:
+                print(f"targetgrid attempt {attempt} rejected: {reason}", file=sys.stderr)
+                continue
+            tool.set_target_frame(np.kron(tgt, np.ones((8, 8), dtype=np.int64)))
+            print(f"TARGETGRID injected (attempt {attempt}, "
+                  f"distinct={len(np.unique(tgt))})", file=sys.stderr)
+            break
         _hybrid_done[0] = True
 
     def _maybe_inject_goal(frame):
@@ -171,6 +197,10 @@ def main() -> None:
             last_levels = lv
             queue.clear()
             prev_frame = None
+            # A new level has a NEW solved-board target — allow a fresh draw
+            # (deep levels carry the RHAE weight; one extra LLM call per level).
+            _hybrid_done[0] = False
+            _hybrid_probe_changes.clear()
 
         if prev_frame is not None and prev_step is not None and prev_frame.shape == frame.shape:
             changed = bool((prev_frame != frame).any())
