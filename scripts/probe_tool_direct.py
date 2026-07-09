@@ -31,11 +31,22 @@ from admorphiq.tools.base import (  # noqa: E402
 
 
 def _make_tool(name: str):
-    from admorphiq.harness.registry import default_tools
-    for t in default_tools():
-        if t.name == name:
-            return t
-    raise SystemExit(f"unknown tool {name!r}; have {[t.name for t in default_tools()]}")
+    # Instantiate ONLY the requested tool — importing/constructing every tool
+    # (default_tools) pulls in the ollama-backed ones, which can block under
+    # parallel runs. Direct per-tool construction keeps a probe self-contained.
+    ctors = {
+        "graph": ("admorphiq.tools.graph_search", "GraphSearchTool"),
+        "world_model": ("admorphiq.tools.world_model", "WorldModelTool"),
+        "paint": ("admorphiq.tools.paint_flood", "PaintFloodTool"),
+        "dealias": ("admorphiq.tools.dealias", "DealiasTool"),
+        "deadsig": ("admorphiq.tools.dead_signature", "DeadSignatureTool"),
+        "llm_goal": ("admorphiq.tools.llm_goal", "LLMGoalTool"),
+    }
+    if name not in ctors:
+        raise SystemExit(f"unknown tool {name!r}; have {sorted(ctors)}")
+    import importlib
+    mod_name, cls_name = ctors[name]
+    return getattr(importlib.import_module(mod_name), cls_name)()
 
 
 def main() -> None:
