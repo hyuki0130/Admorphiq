@@ -339,3 +339,16 @@ mechanical tool. Do not build another mechanical tool on an unverified mechanic.
 - [[r52_ewm-integration]] — the EWM runtime hook this generalizes into a tool.
 - [[r36_graph-frontier-bfs]] — the graph core re-authored here as `graph`.
 - [[index]]
+
+### Budget is NOT the graph gap — it's a real strength gap (2026-07-09)
+graph @8000 (legacy's budget) on the 5 navigation games (dc22/g50t/lf52/sb26/tu93)
+= **0/5**. Legacy graph_frontier clears several of these (lf52/cd82/cn04/tn36/sp80
+in the online-RL base 11/25) at the same budget. So the re-authored 293-line
+`graph` is fundamentally weaker than the 2900-line legacy engine — more budget
+does not close it. The gap is in the EXPLORATION TECHNIQUE (frontier tiering /
+prioritization / click handling), not budget or the aliasing fixes already
+ported. Next: identify the specific legacy technique that clears lf52 and port it.
+The 25-game taxonomy (`.wiki/raw/game_taxonomy_20260709.txt`): 5 navigation, 5
+select/toggle, 8 transform(move-recolors), 3 transform/paint, 3 mixed, 1 inert —
+graph's 4 clears span 4 classes, so class doesn't predict solvability; the 11
+transform games remain the goal-inference frontier.
