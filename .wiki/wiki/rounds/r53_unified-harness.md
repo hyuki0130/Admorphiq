@@ -436,3 +436,10 @@ tn36, lf52, cn04). This is real Gap-2 progress: richer HEURISTIC goal inference
 (no LLM) in graph unlocks some transform games. cd82 still 0 (its target may not
 be in the candidate-goal family). Confirms the path: keep enriching the
 frame-only goal family; the LLM is only needed for goals the family can't express.
+
+### CONFIRMED full sweep: graph = 7/25 @5000 (2026-07-09)
+Definitive 25-game sweep: **graph clears 7** (cn04, lf52, lp85, m0r0, r11l, tn36,
+vc33) — up from 4 at session start (+75%). The three enrichments each held in the
+full sweep: click-tiering→tn36, FILL goal-ranking→lf52, multi-goal tracker→cn04.
+Validated path confirmed. Next enrichment target: cd82 (legacy clears, mine 0 —
+its goal isn't in the candidate-goal family yet).
