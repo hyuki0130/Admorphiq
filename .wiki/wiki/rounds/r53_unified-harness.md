@@ -961,3 +961,14 @@ if track C (full-card verify, 9 more games) is green, the deployed brain can
 downshift for the Kaggle 9h budget. Track B (qwen3-coder:30b) relaunched after
 a cwd bug (plain python3 from $HOME — parallel-nohup lesson: put cd INSIDE the
 bash -c string).
+
+### Model matrix verdict: card is model-INSENSITIVE, wall is scale-resistant (2026-07-10 00:47)
+Track B (qwen3-coder:30b) = exactly track A's pattern: cd82/tn36/cn04 all 1,
+su15/ka59/sc25 all 0. Three models (gemma31b-q8, gemma26b-a4b, qwen30b) give
+IDENTICAL game-level outcomes on the 6-game probe → (a) the solid card rests
+on the graph noise stack, not the LLM (any competent model suffices — the
+throughput question goes to track C); (b) **no inter-model complementarity on
+the wall games → the draw-ensemble idea is DEPRIORITIZED (measured, not
+assumed)**; (c) the goal-inference wall does not yield to same-scale model
+swaps — next escalation: gpt-oss:120b as brain on wall games (65GB, needs
+VRAM headroom after track C).
