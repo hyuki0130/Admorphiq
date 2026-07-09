@@ -972,3 +972,14 @@ the wall games → the draw-ensemble idea is DEPRIORITIZED (measured, not
 assumed)**; (c) the goal-inference wall does not yield to same-scale model
 swaps — next escalation: gpt-oss:120b as brain on wall games (65GB, needs
 VRAM headroom after track C).
+
+### Track C: 26b-a4b holds 10/12 but loses tu93+sk48 — wholesale downshift rejected (2026-07-10 00:52)
+Full-card verify on the 15GB MoE: lf52/sp80/m0r0/r11l/ft09/lp85 = 1, **vc33 =
+2/7 (second L2 depth event, now under 26b)**, but tu93 0 and sk48 0 (both hold
+at 1 under 31b). Wholesale brain downshift would cost 2 card games → rejected.
+Open follow-ups: (a) role-split brain=26b / draw_llm=31b (harness already
+separates draw_llm — config lever for the 9h budget), (b) tu93/sk48 loss may be
+run variance (both are recent marginal unlocks) — variance track E in flight;
+(c) track D = gpt-oss:120b (MoE, 5B active — fast despite 65GB) as brain on 5
+wall games (su15 ka59 sc25 re86 wa30): the scale-escalation test of the
+goal-inference wall.
