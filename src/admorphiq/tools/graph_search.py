@@ -223,6 +223,10 @@ class GraphSearchTool:
         self._goal_memo: dict[str, float] = {}
         self._target_grid: np.ndarray | None = None  # injected LLM target frame
         self._target_res = 8                          # its downsample resolution
+        # Target-pursuit progress trace (drives target_stalled / redraw gating).
+        self._prox_calls = 0
+        self._best_prox = float("-inf")
+        self._last_improve_call = 0
 
     def _masked_frame(self, frame: np.ndarray) -> np.ndarray:
         """The frame with frozen-HUD cells zeroed (identity until warmup freeze)."""
@@ -363,6 +367,17 @@ class GraphSearchTool:
         simple_ids, action6_ok = availability(obs)
         self._ensure_state(cur_hash, frame, simple_ids, action6_ok)
         self._track_goal(cur_hash, frame)
+        if self._target_grid is not None:
+            # Trace pursuit progress: proximity of the CURRENT board to the target
+            # (higher = closer). Feeds target_stalled() so the harness only
+            # redraws when the current target has genuinely stopped paying off.
+            ds = _downsample(frame, self._target_res)
+            if ds.shape == self._target_grid.shape:
+                prox = -float(np.mean(ds != self._target_grid))
+                self._prox_calls += 1
+                if prox > self._best_prox:
+                    self._best_prox = prox
+                    self._last_improve_call = self._prox_calls
 
         untried = self._untried.get(cur_hash) or []
         if untried:
@@ -425,6 +440,20 @@ class GraphSearchTool:
         self._goal_tracker = None
         self._goal = None
         self._goal_memo.clear()
+        # Fresh target -> fresh progress trace (feeds target_stalled()).
+        self._prox_calls = 0
+        self._best_prox = float("-inf")
+        self._last_improve_call = 0
+
+    def target_stalled(self, window: int) -> bool:
+        """True when the injected target has shown NO proximity improvement for
+        ``window`` propose-calls — the REDRAW gate. A progressing target must
+        not be overwritten (measured: blind periodic redraws replaced good
+        targets mid-pursuit and lost a proven clear — see rounds/r53); no target
+        at all counts as stalled so the first draw is always allowed."""
+        if self._target_grid is None:
+            return True
+        return (self._prox_calls - self._last_improve_call) >= window
 
     def _goal_proximity(self, node: str) -> float:
         """Frontier goal-proximity (memoized): if a TARGET FRAME is injected, the

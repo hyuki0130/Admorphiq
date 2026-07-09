@@ -36,6 +36,9 @@ LLM = Callable[[list[dict[str, str]]], str]
 _TARGET_WARMUP = 40
 _TARGET_MAX_DRAWS = 3
 _TARGET_REDRAW_GAP = 400
+# A redraw additionally requires the tool to report its current-target pursuit
+# has made no proximity improvement for this many propose-calls.
+_TARGET_STALL_WINDOW = 300
 
 # A tool whose own frame-based detect() is at least this confident OWNS the game
 # (it is not retired on a stall) — its signature match is trusted over the swap.
@@ -252,6 +255,14 @@ class UnifiedAgent:
         inject = getattr(tool_obj, "set_target_frame", None)
         if not callable(inject):
             return
+        # REDRAW gate: never overwrite a target that is still paying off —
+        # blind periodic redraws measurably replaced good targets mid-pursuit
+        # (harness cd82 0/4 vs single-draw probe 2/3). Only redraw once the
+        # tool reports its pursuit has stalled.
+        if self._target_draws >= 1:
+            stalled = getattr(tool_obj, "target_stalled", None)
+            if callable(stalled) and not stalled(_TARGET_STALL_WINDOW):
+                return
         self._target_draws += 1  # one draw round per slot, success or not
         prompt = build_target_prompt(frame)
         for attempt in (1, 2):

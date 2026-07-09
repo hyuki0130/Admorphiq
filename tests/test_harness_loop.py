@@ -233,6 +233,57 @@ def test_target_frame_drawn_and_injected_after_warmup():
     assert "target" in calls and calls["res"] == 8
 
 
+def test_redraw_gated_on_target_stall():
+    """Purpose: after the first draw, further draws must NOT overwrite a target
+    whose pursuit is still improving (target_stalled() False) and MUST fire once
+    the tool reports a stall — blind periodic redraws measurably replaced good
+    targets mid-pursuit (harness cd82 0/4 vs single-draw probe 2/3).
+    Expected feedback: pass = a paying-off target is pursued to the end and a
+    dead one is replaced; fail = the overwrite bug is back (or stalled targets
+    are never refreshed)."""
+    draws: list = []
+
+    class _FakeGraph(_FakeTool):
+        stalled = False
+
+        def set_target_frame(self, target, res=8):
+            draws.append(res)
+
+        def target_stalled(self, window):
+            return self.stalled
+
+    grid_txt = "\n".join(
+        " ".join("3" if (i + j) % 2 == 0 else "0" for j in range(8)) for i in range(8)
+    )
+
+    def llm(messages):
+        if "SOLVED board" in messages[-1]["content"]:
+            return grid_txt
+        return '{"mode":"tool","tool":"graph"}'
+
+    tool = _FakeGraph("graph", (1, None), 0.9)
+    agent = UnifiedAgent([tool], llm, giveup=5000, stall=10_000)
+    g = np.zeros((64, 64), dtype=np.int64)
+    g[0, 0] = 3
+    step = 0
+
+    def act():
+        nonlocal step
+        gi = g.copy()
+        gi[1 + (step // 60) % 60, step % 60] = 3  # always a fresh frame (no stall)
+        agent.choose_action([], _Obs(gi, [1, 2, 3, 4]))
+        step += 1
+
+    for _ in range(460):   # past warmup(40) + redraw gap(400)
+        act()
+    assert len(draws) == 1  # progressing target was never overwritten
+
+    tool.stalled = True
+    for _ in range(5):
+        act()
+    assert len(draws) == 2  # stalled target got refreshed
+
+
 def test_llm_failure_falls_back_to_signature_default():
     """Purpose: if the LLM raises, the highest-detect tool is used (offline-safe).
     Expected feedback: pass = the agent never crashes when the model is down."""
