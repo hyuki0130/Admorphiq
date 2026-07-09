@@ -316,6 +316,12 @@ class UnifiedAgent:
             stalled = getattr(tool_obj, "target_stalled", None)
             if callable(stalled) and not stalled(_TARGET_STALL_WINDOW):
                 return
+            prog = getattr(tool_obj, "target_progress", None)
+            if callable(prog):
+                bp, calls = prog()
+                print(f"[harness] pursuit stalled: best_prox={bp:.3f} over "
+                      f"{calls} calls (level={self._last_levels})",
+                      file=sys.stderr, flush=True)
         self._draw_slots += 1  # slot spacing/budget; only INJECTIONS count vs MAX_DRAWS
         solved = self._clear_frames[-1] if self._clear_frames else None
         prompt = build_target_prompt(frame, solved_example=solved)

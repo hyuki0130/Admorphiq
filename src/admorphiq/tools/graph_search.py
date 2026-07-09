@@ -477,6 +477,13 @@ class GraphSearchTool:
         self._best_prox = float("-inf")
         self._last_improve_call = 0
 
+    def target_progress(self) -> tuple[float, int]:
+        """(best proximity achieved, propose-calls traced) for the current
+        injected goal — the depth diagnostic: prox ≈ 0 means the COARSE target
+        was reached (steering saturated; the block is finer-grained), a prox far
+        below 0 means the search never got close (search-space block)."""
+        return (self._best_prox, self._prox_calls)
+
     def target_stalled(self, window: int) -> bool:
         """True when the injected target/scorer has shown NO proximity improvement
         for ``window`` propose-calls — the REDRAW gate. A progressing goal must
