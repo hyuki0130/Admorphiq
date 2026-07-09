@@ -517,3 +517,17 @@ Combined with budget-8000 inert and every other lever, this CLOSES the sweep:
 approaches** (search enrichment, goal-family, goal-weight, LLM inference — every
 one measured). 25/25 = the EWM / richer-goal-representation research frontier
 (r48-r52 track), which is where the graph 7/25 base + hybrid infra hand off.
+
+### 🎯 BREAKTHROUGH: target-grid (LLM draws solved board) CRACKS cd82 (2026-07-09)
+The richer-goal representation BREAKS the GoalSpec-vocabulary wall. `--targetgrid`:
+after warmup the LLM is shown the current 8x8 downsample and asked to DRAW the
+SOLVED board as an 8x8 grid; it's injected via graph.set_target_frame and graph
+ranks frontiers by downsampled-frame distance to it. Result: **cd82 0→1** — the
+transform game that resisted EVERY prior approach (frame-only multi-goal, hybrid
+GoalSpec, budget 8000, goal-weight sweep all 0). cn04/vc33 kept. sp80/ls20/ar25/
+sc25 still 0 (gemma's target for those was likely wrong, or graph couldn't reach
+it). **The 7/25 "ceiling" was the COARSE-goal ceiling; richer goal representation
+(an arbitrary LLM-drawn target FRAME, not a GoalSpec enum) is the lever that
+breaks it — cd82 is the proof.** graph + targetgrid clears 8 (the 7 + cd82). Next:
+strengthen the target extraction (better prompt / per-level re-draw / stronger
+model) to unlock more transform games. THIS is the validated 25/25 frontier path.
