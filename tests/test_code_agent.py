@@ -73,3 +73,24 @@ def test_prompt_is_game_agnostic():
     blob = (msgs[0]["content"] + msgs[1]["content"]).lower()
     for tok in ("ft09", "su15", "game_id", "game_title"):
         assert tok not in blob
+
+
+def test_prompt_carries_observed_dynamics_when_provided():
+    """Purpose: the code prompt must include the agent's own action->effect
+    statistics when passed — code written blind to dynamics was measured 0
+    (re86); what each action actually DOES is the evidence a solver needs.
+
+    Expected feedback: pass = the graph-informed context reaches the model;
+    fail = code synthesis is still blind and the wall games stay at 0."""
+    import numpy as np
+
+    from admorphiq.tools.code_agent import build_code_prompt
+
+    f = np.zeros((64, 64), dtype=np.int16)
+    dyn = "- UP: 12 tries, 10/12 changed, median 4 cells"
+    msgs = build_code_prompt(f, [], ["UP"], dynamics=dyn)
+    assert dyn in msgs[-1]["content"]
+    assert "OBSERVED DYNAMICS" in msgs[-1]["content"]
+    # And absent when not provided (base prompt unchanged).
+    msgs2 = build_code_prompt(f, [], ["UP"])
+    assert "OBSERVED DYNAMICS" not in msgs2[-1]["content"]

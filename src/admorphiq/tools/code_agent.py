@@ -115,13 +115,19 @@ _SYSTEM = (
 
 def build_code_prompt(
     frame: np.ndarray, history: list[dict[str, Any]], valid_actions: list[str],
+    dynamics: str | None = None,
 ) -> list[dict[str, str]]:
     """Chat messages asking the model to infer the goal and write an action block.
 
     Beyond the raw grid, a compact STRUCTURED summary (colour counts, foreground
     object sizes) is included so the model can reason about the target without
     decoding 64 hex rows cell by cell — the raw grid alone gave gemma4 nothing to
-    anchor goal reasoning on (measured re86 0/8)."""
+    anchor goal reasoning on (measured re86 0/8).
+
+    ``dynamics`` is the agent's OWN observed action->effect statistics (tries,
+    change rate, median cells changed per action) — the graph-informed context:
+    code written blind to dynamics was measured 0; what each action actually
+    DOES is the evidence a solver body needs."""
     from admorphiq.ewm.core import serialize_grid
     recent = "; ".join(
         f"{h.get('action')}{'*' if h.get('changed') else ''}" for h in history[-10:]
@@ -130,7 +136,8 @@ def build_code_prompt(
     user = (
         f"FRAME (hex, 64 rows):\n{serialize_grid(frame)}\n\n"
         f"SUMMARY: {summary}\n"
-        f"valid_actions = {valid_actions}\nrecent = {recent}\n\n"
+        + (f"OBSERVED DYNAMICS (this agent's own probes):\n{dynamics}\n" if dynamics else "")
+        + f"valid_actions = {valid_actions}\nrecent = {recent}\n\n"
         "Infer the goal, then write the ```python block."
     )
     return [{"role": "system", "content": _SYSTEM}, {"role": "user", "content": user}]

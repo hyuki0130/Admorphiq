@@ -286,8 +286,18 @@ class UnifiedAgent:
             {"action": _NAME.get(a, f"ACTION{a}"), "changed": bool((p != n).any())}
             for p, a, n in self._transitions[-10:]
         ]
+        # Graph-informed dynamics: per-action effect statistics from the agent's
+        # own transition log — code written blind to dynamics measured 0.
+        per: dict[Any, list[int]] = {}
+        for p, a, n in self._transitions[-200:]:
+            per.setdefault(a, []).append(int((p != n).sum()))
+        dynamics = "\n".join(
+            f"- {_NAME.get(a, f'ACTION{a}')}: {len(v)} tries, "
+            f"{sum(1 for x in v if x)}/{len(v)} changed, median {int(np.median(v))} cells"
+            for a, v in sorted(per.items(), key=lambda kv: str(kv[0]))
+        ) or None
         try:
-            text = self.llm(build_code_prompt(frame, hist, valid))
+            text = self.llm(build_code_prompt(frame, hist, valid, dynamics=dynamics))
             return run_code(text, frame, hist, valid).actions
         except Exception:  # noqa: BLE001 - offline-safe
             return []
