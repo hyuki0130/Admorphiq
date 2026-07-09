@@ -651,3 +651,12 @@ avatar_mobility (act<=4); (MED) click_fraction counted ACTION7 as a click (a==6)
 (LOW) failed target draws no longer exhaust MAX_DRAWS (slots vs injections split,
 5-slot cap). (LOW×2, accepted) HUD-freeze transient novelty optimism; LLM
 callable must be time-bounded (documented contract). 667 tests green.
+
+### Post-fix validation: deployed harness 6/7 solid games (2026-07-09)
+With the architect fixes deployed (live evidence-fed ownership, no-churn stall
+policy, signature fixes, world_model prior cap, aligned tool_selector): the
+deployed UnifiedAgent clears **cn04, lp85, m0r0, r11l, tn36, vc33 (6/7)** — lp85
+recovered (was lost to churn), only lf52 remains 0 (it is budget-MARGINAL even in
+isolation: clears at exactly 5000, not 4000; harness overhead tips it under).
+**Deployed ≈ isolated performance: productization complete.** Honest deployed
+card: 6 solid + lf52 marginal + cd82 ~30% stochastic ≈ 7±1 of 25.
