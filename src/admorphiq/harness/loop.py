@@ -63,6 +63,7 @@ class UnifiedAgent:
         tools: list[Tool],
         llm: LLM,
         *,
+        draw_llm: LLM | None = None,
         giveup: int = 8000,
         stall: int = 12,
         ctx_budget: int = 6000,
@@ -76,6 +77,9 @@ class UnifiedAgent:
         self.restart_on_game_over = True
         self.tools = {t.name: t for t in tools}
         self.llm = llm
+        # Dedicated draw callable: the target draw is measured-sensitive to LLM
+        # params, so callers can align it with the probe-validated configuration.
+        self.draw_llm = draw_llm or llm
         self.giveup = giveup
         self.stall = stall
         self.ctx_budget = ctx_budget
@@ -97,6 +101,7 @@ class UnifiedAgent:
         self._last_levels = 0
         self._seen_states: set[str] = set()
         self._target_draws = 0
+        self._propose_errors = 0
         self._feedback = "start of level"
 
     def is_done(self, frames: list[Any], latest_frame: Any) -> bool:
@@ -220,7 +225,13 @@ class UnifiedAgent:
         else:
             try:
                 steps = self.tools[self._current].propose(frames, obs)
-            except Exception:  # noqa: BLE001 - a broken tool never crashes the loop
+            except Exception as exc:  # noqa: BLE001 - a broken tool never crashes the loop
+                # NEVER silent: a tool that throws every propose would silently
+                # degrade the agent to single-probe actions for the whole budget.
+                self._propose_errors += 1
+                if self._propose_errors <= 3 or self._propose_errors % 500 == 0:
+                    print(f"[harness] {self._current}.propose error "
+                          f"#{self._propose_errors}: {exc}", file=sys.stderr, flush=True)
                 steps = []
         legal = [s for s in steps if self._legal(s, simple_ids, action6)]
         self._queue = legal or self._probe(simple_ids, action6)
@@ -267,7 +278,7 @@ class UnifiedAgent:
         prompt = build_target_prompt(frame)
         for attempt in (1, 2):
             try:
-                txt = self.llm([{"role": "user", "content": prompt}])
+                txt = self.draw_llm([{"role": "user", "content": prompt}])
             except Exception as exc:  # noqa: BLE001 - offline-safe
                 print(f"[harness] target draw failed: {exc}", file=sys.stderr, flush=True)
                 return

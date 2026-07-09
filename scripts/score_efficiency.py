@@ -100,7 +100,14 @@ def _make_agent(name: str, game_id: str | None = None):
         # early inside the harness). Default 80; the bench can override.
         stall = int(os.environ.get("HARNESS_STALL", "80"))
         return UnifiedAgent(
-            default_tools(), ollama_llm(), giveup=giveup, stall=stall, ctx_budget=ctx
+            default_tools(),
+            ollama_llm(),
+            # Target draws use the probe-validated LLM params (the draw is
+            # measured-sensitive to them; see rounds/r53).
+            draw_llm=ollama_llm(num_ctx=8192, num_predict=400),
+            giveup=giveup,
+            stall=stall,
+            ctx_budget=ctx,
         )
     if name == "worldmodel":
         from admorphiq.world_model_agent import WorldModelAgent
