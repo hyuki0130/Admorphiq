@@ -38,6 +38,7 @@ def _make_tool(name: str):
         "graph": ("admorphiq.tools.graph_search", "GraphSearchTool"),
         "world_model": ("admorphiq.tools.world_model", "WorldModelTool"),
         "paint": ("admorphiq.tools.paint_flood", "PaintFloodTool"),
+        "toggle": ("admorphiq.tools.toggle", "ToggleTool"),
         "dealias": ("admorphiq.tools.dealias", "DealiasTool"),
         "deadsig": ("admorphiq.tools.dead_signature", "DeadSignatureTool"),
         "llm_goal": ("admorphiq.tools.llm_goal", "LLMGoalTool"),

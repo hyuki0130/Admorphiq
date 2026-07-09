@@ -99,7 +99,7 @@ def _split_tool_blocks(text: str) -> tuple[str, dict[str, str]]:
     such heading is the shared decision header.
     """
     lines = text.splitlines(keepends=True)
-    tool_names = ["graph", "dealias", "deadsig", "paint", "world_model", "llm_goal", "code"]
+    tool_names = ["graph", "dealias", "deadsig", "paint", "toggle", "world_model", "llm_goal", "code"]
     blocks: dict[str, str] = {}
     header: list[str] = []
     cur_name: str | None = None
@@ -138,6 +138,7 @@ def _relevant_tools(sig: Signature) -> list[str]:
     scored.append((0.9 if sig.nondeterminism >= 0.2 else 0.1, "dealias"))
     scored.append((0.5, "deadsig"))  # efficiency aug — broadly useful
     scored.append((0.8 if sig.click_fraction >= 0.5 else 0.2, "paint"))
+    scored.append((0.8 if sig.click_fraction >= 0.5 else 0.2, "toggle"))
     scored.append((0.7 if sig.nondeterminism < 0.15 else 0.3, "world_model"))
     scored.append((0.8 if (not sig.has_movement and sig.recolor_scale >= 40) else 0.3, "llm_goal"))
     scored.append((0.6, "code"))  # the frontier fallback — always an option

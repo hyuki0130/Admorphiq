@@ -16,12 +16,14 @@ def default_tools() -> list[Tool]:
     from admorphiq.tools.graph_search import GraphSearchTool
     from admorphiq.tools.llm_goal import LLMGoalTool
     from admorphiq.tools.paint_flood import PaintFloodTool
+    from admorphiq.tools.toggle import ToggleTool
     from admorphiq.tools.world_model import WorldModelTool
 
     return [
         GraphSearchTool(),
         WorldModelTool(),
         PaintFloodTool(),
+        ToggleTool(),
         LLMGoalTool(),
         DealiasTool(),
         DeadSignatureTool(),

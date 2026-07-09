@@ -22,6 +22,7 @@ default to `code`; `code` is the LAST resort for transform games no tool fits.
 | If you observe … | Run FIRST (exact name) | Because |
 |---|---|---|
 | Movement actions (1-4) exist AND a small object TRANSLATES under them (walls block) — `has_movement=True`, `avatar_mobility` high | **`graph`** | navigation/state-space; the exact transition graph + shortest-path frontier clears it. This is the DEFAULT for any game with working movement, even if `avg_changed_cells` is large. |
+| A click (ACTION6) FLIPS a small local set of cells on a 2-colour (on/off) grid, goal is a uniform board (lights-out) | **`toggle`** | learn each click's flip stencil, solve the board exactly over GF(2) — brute-force clicking can't |
 | A click (ACTION6) FILLS a connected region with one color (flood); goal is a color/pattern | **`paint`** | plan clicks to fill toward the target coloring |
 | Same frame + same action gives DIFFERENT next frames (`nondeterminism` high — a counter/timer/off-screen thing) | **`dealias`** (then `graph`) | the frame hides state; de-alias so the graph stops corrupting |
 | Transitions look learnable AND a monotone progress measure exists (count/order/fill), `nondeterminism` low | **`world_model`** | learn the transition table, roll out toward the goal measure |
@@ -39,6 +40,16 @@ default to `code`; `code` is the LAST resort for transform games no tool fits.
 - **Falsification**: `recent_distinct` collapses to 1–2 while `bfs_fail/random` climb, or the same
   (frame,action) yields different next frames → the graph is aliasing; switch.
 - **Next-best**: de-aliasing state hash (partial observability) or the world-model tool.
+
+### toggle  — lights-out GF(2) solver  (`src/admorphiq/tools/toggle.py`)
+- **Tool name**: `toggle` (a click flips a small local cell set on a 2-colour grid).
+- **Observable signature**: clicking flips ~1-5 cells (itself + neighbours / a line),
+  board is basically on/off, goal is a uniform board (all-off or all-on).
+- **How to use**: it learns each click's flip stencil from your probes, then solves
+  A·x=b over GF(2) and clicks exactly the solution cells — no brute force.
+- **Falsification**: clicks repaint large regions (not a toggle) or the board has
+  many colours → not lights-out; detect stays low, switch.
+- **Next-best**: `paint` (if a click FILLS rather than toggles) or `graph`.
 
 ### paint  — paint-flood tool  (`src/admorphiq/tools/paint_flood.py`)
 - **Tool name**: `paint` (high click_fraction; a click floods a region with one color).
