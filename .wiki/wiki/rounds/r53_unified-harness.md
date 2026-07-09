@@ -910,3 +910,12 @@ If it holds: **11/25 SOLID** (cd82 cn04 ft09 lf52 lp85 m0r0 r11l sp80 tn36
 tu93 vc33) + vc33 depth 2. The per-cell >=60% HUD rule + REGION-aggregate rule
 + tier gate + pursuit-gate-bypass now mirror the legacy engine's load-bearing
 noise stack, re-derived by measurement.
+
+### Size-conditional gate verified — reg3 all green (2026-07-10 00:04)
+reg3 (6 games): cn04 1 (repair holds), tu93 1 (regained), sp80 1, vc33 1,
+m0r0 1, lf52 1. The size-conditional region-mask gate (small masks <=128 cells
+trusted on sight, larger additions need 2-consecutive-refresh stability) keeps
+every win. Note: vc33's reg1 depth (2/7) did NOT reproduce in reg2/reg3 —
+record it as a stochastic depth event, solid vc33 = 1. reg4 in flight to
+re-verify the 5 solid games (cd82 ft09 tn36 lp85 r11l) never re-measured under
+the region-mask code; if green → **11/25 SOLID** promotion.
