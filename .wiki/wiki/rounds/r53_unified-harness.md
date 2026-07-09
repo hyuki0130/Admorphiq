@@ -400,3 +400,15 @@ blend) → **lf52 0→1**, all 5 prior clears kept (no regression). graph now cl
 (click-tiering→tn36, goal-ranking→lf52) each recovered one game — the Gap-1 plan
 is validated. cd82/cn04/sp80/ls20 still 0 (transform move-recolors — the FILL
 goal doesn't capture their target). Running full 25-game re-sweep to confirm.
+
+### Full re-sweep: graph = 5/25 @4000 (6/25 @5000, lf52 marginal) (2026-07-09)
+Definitive 25-game sweep at budget 4000: **graph clears 5** (lp85, m0r0, r11l,
+tn36, vc33). lf52 clears at 5000 but NOT 4000 — a budget-marginal clear. So the
+ported search techniques took graph 4→5 solidly (tn36 via click-tiering) + lf52
+marginally (goal-ranking, needs ~5000). Both ports validated but with diminishing
+returns (~1 game each, slow measurement). The remaining ~7 games legacy clears
+(cd82/cn04/sp80/ls20/…) resisted both ports — they are transform(move-recolors)
+games whose target the heuristic FILL goal can't capture. **Decision: incremental
+graph-technique ports are diminishing (2 done = +1-2 games); the bulk of remaining
+coverage (the ~12 transform games incl. the ones legacy also fails) is GAP 2 =
+goal inference. That is the real lever and the next focus.**
