@@ -136,7 +136,12 @@ class LLMGoalTool:
         (the avatar isn't the thing doing the work). Pure navigation — one
         small blob moving, nothing else changing — scores low.
         """
-        grids = [frame_2d(o) for o in frames if has_frame(o)]
+        # Accept BOTH observation objects and raw frame ndarrays: the harness
+        # passes its _recent_frames (bare arrays), for which has_frame() is
+        # False — filtering them out blinded this detect to always 0.0
+        # (architect r53 re-verdict, MEDIUM residual of the frames=[] defect).
+        grids = [_grid_of(o) for o in frames]
+        grids = [g for g in grids if g is not None]
         if has_frame(obs):
             grids.append(frame_2d(obs))
         if len(grids) < 2:
@@ -320,3 +325,17 @@ class LLMGoalTool:
         scored = [(score_goal(np.asarray(f), self._goal), f) for f in candidate_next_frames]
         scored.sort(key=lambda t: t[0], reverse=True)
         return [f for _, f in scored]
+
+
+def _grid_of(x):
+    """Best-effort (H, W) grid from an observation OR a raw ndarray; None if
+    neither. Mirrors graph_search._obs_grid so detect() can consume the
+    harness's _recent_frames (bare arrays) exactly like the graph tool does."""
+    if has_frame(x):
+        return frame_2d(x)
+    a = np.asarray(x)
+    if a.ndim >= 3:
+        a = a[0]
+    if a.ndim == 2 and a.size:
+        return a.astype(np.int64)
+    return None
