@@ -443,3 +443,16 @@ vc33) — up from 4 at session start (+75%). The three enrichments each held in 
 full sweep: click-tiering→tn36, FILL goal-ranking→lf52, multi-goal tracker→cn04.
 Validated path confirmed. Next enrichment target: cd82 (legacy clears, mine 0 —
 its goal isn't in the candidate-goal family yet).
+
+### COMPLETE union (2026-07-09): harness = 7/25, graph carries all of it
+Measured every tool on all 25 (direct probe): graph **7**, world_model 0, toggle
+0, paint **0**, llm_goal 0, code 0. **Union = 7/25 — graph is the sole working
+tool.** The other 5 are currently dead weight (each 0). Honest state of the R53
+harness: architecture validated (routing, self-improve loop, m0r0 e2e clear) and
+the graph tool enriched 4→7 (+75%) via clean technique ports (click-tiering,
+FILL+multi-goal ranking). Path to more coverage is PROVEN and incremental:
+1. Keep enriching graph's frame-only goal family (each new goal type / search
+   technique recovers ~1 game; cd82/sp80/ls20/dc22/g50t/… are the queue).
+2. The hardest games (target not expressible frame-only) need LLM goal inference —
+   currently 0 (llm_goal coarse GoalSpec, code-agent both fail); that is the deep
+   open frontier (r51/r52). 25/25 is a multi-cycle research program on this path.
