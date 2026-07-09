@@ -154,6 +154,9 @@ _REGION_MAX_FRAC = 0.30
 _REGION_DILATE = 1
 _REGION_WINDOW = 32
 _REGION_REFRESH = 16
+_REGION_TRUST_CELLS = 128  # masks this small can't swallow a play field —
+#   applied on first qualification; only LARGER additions need to re-qualify
+#   on two consecutive refreshes (the 515-cell transient that sank a game)
 
 def _click_candidates(frame: np.ndarray, max_clicks: int = _MAX_CLICKS) -> list[tuple[int, int, int]]:
     """Reduce ACTION6 to a small INTERACTIVITY-tier-ordered set of ``(x, y)`` clicks.
@@ -376,11 +379,16 @@ class GraphSearchTool:
         if not add.any():
             self._region_prev = None
             return
-        # Stability gate: only cells qualifying on TWO consecutive refreshes are
-        # masked — a transient early-game animation (measured: a 515-cell first
-        # mask swallowed a play field and sank the game) never enters the sticky
-        # union; a persistent widget re-qualifies every window.
-        confirmed = add & self._region_prev if self._region_prev is not None else None
+        # Size-conditional stability gate: a SMALL qualifying set (<=
+        # _REGION_TRUST_CELLS) is masked immediately — it cannot swallow a play
+        # field, and delaying it was measured to lose a mask-dependent clear.
+        # A LARGE set must re-qualify on two consecutive refreshes (a 515-cell
+        # transient early-game animation swallowed a play field and sank the
+        # game when trusted on sight).
+        if int(add.sum()) <= _REGION_TRUST_CELLS:
+            confirmed = add
+        else:
+            confirmed = add & self._region_prev if self._region_prev is not None else None
         self._region_prev = add
         if confirmed is None or not confirmed.any():
             return
