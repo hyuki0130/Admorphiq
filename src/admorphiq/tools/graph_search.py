@@ -37,7 +37,6 @@ import numpy as np
 from admorphiq.tools.base import (
     Step,
     availability,
-    changed_mask,
     color_histogram,
     connected_components,
     diff_bbox,
@@ -49,7 +48,7 @@ from admorphiq.tools.dealias import DealiasTool
 
 try:
     from admorphiq.planner.goal import score_goal
-    from admorphiq.planner.goal_inference import heuristic_goal
+    from admorphiq.planner.goal_inference import GoalMeasureTracker
     _GOAL_OK = True
 except Exception:  # noqa: BLE001 - goal ranking is optional; degrade to pure promise
     _GOAL_OK = False
@@ -70,11 +69,10 @@ _HUD_FRAC = 0.60
 # Max BFS depth the promise-frontier scorer explores before committing to the
 # best frontier found so far (beyond this, distance dominates promise anyway).
 _FRONTIER_DIST_CAP = 40
-# Goal-ranking: after this many transitions infer a heuristic (no-LLM) FILL goal
-# and blend its proximity into the frontier promise, so exploration is pulled
-# toward states closer to a plausible target (legacy GF_GOAL_RANK). Weight is
-# small so goal-proximity biases, never overrides, breadth-first discovery.
-_GOAL_WARMUP = 20
+# Goal-ranking: track the whole candidate-goal family's trends and blend the
+# best-trending goal's proximity into the frontier promise, pulling exploration
+# toward states closer to the target the game is actually progressing on (legacy
+# GF_GOAL_RANK). Small weight so goal-proximity biases, never overrides, breadth.
 _GOAL_WEIGHT = 0.05
 
 
@@ -194,12 +192,12 @@ class GraphSearchTool:
         # (same visible/masked frame, different true state) by recent history.
         self._dealias = DealiasTool()
         self._recent: deque[Step] = deque(maxlen=4)
-        # Goal ranking: heuristic FILL goal + per-state frame so frontiers can be
-        # ranked by goal-proximity (score_goal). Frames stored under node key.
+        # Goal ranking: track ALL candidate-goal trends (FILL/COUNT/ORDER/ON_TARGET)
+        # and rank frontiers by the goal the game is actually PROGRESSING on — not
+        # just FILL. Per-state frame stored so score_goal can evaluate a frontier.
         self._state_frame: dict[str, np.ndarray] = {}
-        self._probe_changes: list[dict[str, Any]] = []
         self._goal: Any = None
-        self._goal_prev_frame: np.ndarray | None = None
+        self._goal_tracker = GoalMeasureTracker() if _GOAL_OK else None
         self._goal_memo: dict[str, float] = {}
 
     def _masked_frame(self, frame: np.ndarray) -> np.ndarray:
@@ -252,6 +250,9 @@ class GraphSearchTool:
                     self._dealias.reset()
                     self._state_frame.clear()
                     self._goal_memo.clear()
+                    if self._goal_tracker is not None:
+                        self._goal_tracker.reset()
+                    self._goal = None
                 else:
                     self._mask = np.zeros(prev.shape, dtype=bool)  # freeze: no HUD
         self._prev_obs = prev
@@ -353,29 +354,22 @@ class GraphSearchTool:
     # ── goal ranking (heuristic, no LLM) ─────────────────────────────────────
 
     def _track_goal(self, cur_hash: str, frame: np.ndarray) -> None:
-        """Store this state's frame and accumulate colour-growth evidence; infer a
-        heuristic FILL goal once there is enough of it. All no-LLM, frame-only."""
-        if not _GOAL_OK:
+        """Store this state's frame, fold it into the candidate-goal trend tracker,
+        and adopt the best-trending goal (the measure the game is progressing on).
+        All no-LLM, frame-only — considers the whole GoalSpec family, not just FILL."""
+        if not _GOAL_OK or self._goal_tracker is None:
             return
         self._state_frame[cur_hash] = frame
-        if self._goal_prev_frame is not None and self._goal_prev_frame.shape == frame.shape:
-            m = changed_mask(self._goal_prev_frame, frame)
-            if m.size and m.any():
-                new = frame[m]
-                if new.size:
-                    vals, cnts = np.unique(new, return_counts=True)
-                    top = int(vals[int(cnts.argmax())])
-                    self._probe_changes.append(
-                        {"top_new_color": top, "changed_cells": int(m.sum())}
-                    )
-        self._goal_prev_frame = frame
-        if self._goal is None and len(self._probe_changes) >= _GOAL_WARMUP:
-            hist = {int(c): int(n) for c, n in enumerate(color_histogram(frame)) if n}
-            try:
-                self._goal = heuristic_goal(hist, self._probe_changes)
-            except Exception:  # noqa: BLE001
-                self._goal = None
-            self._goal_memo.clear()
+        try:
+            self._goal_tracker.observe(frame)
+            best = self._goal_tracker.best_trend()
+        except Exception:  # noqa: BLE001
+            best = None
+        if best is not None:
+            goal = best[0]
+            if goal is not self._goal:
+                self._goal = goal
+                self._goal_memo.clear()
 
     def _goal_proximity(self, node: str) -> float:
         """score_goal of a node's stored frame (memoized), 0 if no goal/frame."""
