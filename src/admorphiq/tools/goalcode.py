@@ -20,6 +20,7 @@ One implementation shared by the probe and (later) the deployed harness.
 
 from __future__ import annotations
 
+import re
 from typing import Any, Callable
 
 import numpy as np
@@ -78,6 +79,14 @@ def compile_scorer(
     code = extract_code(txt)
     if "def goal_score" not in code:
         return None, "no goal_score function in the reply"
+    # Models reflexively add `import numpy as np` despite the prompt; np is
+    # already provided in the namespace, so strip ONLY numpy imports (measured:
+    # every draw was rejected on this line). All other imports stay blocked by
+    # the sandbox (os/sys/... must never load).
+    code = "\n".join(
+        ln for ln in code.splitlines()
+        if not re.match(r"\s*(import numpy\b|from numpy\b)", ln)
+    )
     ns: dict[str, Any] = {"__builtins__": _safe_builtins(), "np": np}
     try:
         compiled = compile(code, "<goal_score>", "exec")

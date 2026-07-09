@@ -33,6 +33,20 @@ def test_valid_scorer_compiles_and_scores():
     assert fn(more3) > fn(_frame())
 
 
+def test_numpy_import_stripped_not_rejected():
+    """Purpose: models reflexively write `import numpy as np` despite the prompt;
+    np is already in the sandbox namespace, so that line is STRIPPED (measured:
+    every live draw was rejected on it, leaving the lever untested) while all
+    other imports remain blocked.
+    Expected feedback: pass = real gemma replies compile; fail = the lever is
+    dead on arrival again."""
+    txt = ("```python\nimport numpy as np\ndef goal_score(frame):\n"
+           "    return int(np.sum(np.array(frame) == 3))\n```")
+    fn, why = compile_scorer(txt, _frame())
+    assert fn is not None, why
+    assert fn(_frame()) == 16
+
+
 def test_garbage_and_hostile_scorers_rejected():
     """Purpose: no-function replies, crashing bodies, non-finite returns and
     sandbox-escaping imports are all rejected (fn is None), never injected.
