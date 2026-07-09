@@ -545,3 +545,15 @@ frontier work = better target extraction: higher-res target, per-level re-draw,
 show the LLM more context (observed transitions, not just the 8x8), a stronger
 model, or validate/repair the drawn target. cd82 is the proof-of-concept that
 this is THE path past the coarse-goal 7/25 ceiling.
+
+### Target extraction is DELICATE — richer prompt regressed cd82, reverted (2026-07-09)
+Enriched the targetgrid prompt (observed transitions + histogram + reason-then-grid,
+parse last-64): cd82 went 1→0 and nothing new cleared — the richer prompt / last-64
+parsing made gemma draw a WORSE target. Reverted to the simple prompt (8x8 current
+→ solved, parse first-64) which gives cd82=1. **HONEST FINAL: graph = 8/25**
+(frame-only 7 + simple-targetgrid cd82). The richer-goal frontier lever is REAL
+(cd82 breaks the coarse-goal wall) but broadening it is DELICATE — target-drawing
+quality is the sensitive bottleneck, and small prompt changes swing it. Getting
+gemma to reliably draw correct targets for more games needs sustained careful work
+(stronger model, target validation/repair, higher-res, per-level re-draw) — the
+research direction past 8/25. Infra ready (set_target_frame + probe --targetgrid).
