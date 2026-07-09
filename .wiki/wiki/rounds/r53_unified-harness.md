@@ -531,3 +531,17 @@ it). **The 7/25 "ceiling" was the COARSE-goal ceiling; richer goal representatio
 breaks it — cd82 is the proof.** graph + targetgrid clears 8 (the 7 + cd82). Next:
 strengthen the target extraction (better prompt / per-level re-draw / stronger
 model) to unlock more transform games. THIS is the validated 25/25 frontier path.
+
+### Target-grid full sweep: +1 (cd82 only) — breakthrough real but NARROW (2026-07-09)
+Ran --targetgrid across all 18 graph-failing games: **only cd82 clears** (the
+others — sp80/ls20/ar25/re86/sk48/sc25/s5i5/su15/tr87/wa30/ka59/bp35/dc22/g50t/
+sb26/tu93/ft09 — all 0). So the richer-goal lever WORKS (cd82 proves the vocab
+wall is breakable) but its current form (gemma draws an 8x8 target) cracks only 1
+more game. **graph frame-only = 7/25; graph + targetgrid fallback = 8/25.** The
+new bottleneck is TARGET-EXTRACTION QUALITY: for most games gemma's 8x8 solved-
+board drawing is wrong, or graph can't reach the drawn target. Targetgrid should
+be a FALLBACK (LLM cost) invoked when frame-only stalls, not the default. Next
+frontier work = better target extraction: higher-res target, per-level re-draw,
+show the LLM more context (observed transitions, not just the 8x8), a stronger
+model, or validate/repair the drawn target. cd82 is the proof-of-concept that
+this is THE path past the coarse-goal 7/25 ceiling.
