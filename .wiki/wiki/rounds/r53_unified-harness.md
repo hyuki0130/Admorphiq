@@ -582,3 +582,15 @@ integers in the reply — the reasoning model burns tokens on prose and doesn't
 emit the plain 8x8 grid) → no injection → 0. Combined with sp80/ls20/sc25 = 0
 warm: **gpt-oss:120b ≤ gemma4-31b for target-drawing** (mirrors the R50b EWM
 verdict). gemma4-31b-q8 is the confirmed drawer; model size is not the lever.
+
+### Targetgrid parameter space CLOSED: res=16 regressed cd82 (2026-07-09)
+TARGETGRID_RES=16 (gemma): all 6 games 0 INCLUDING cd82 (1 at res=8) — higher
+resolution makes gemma's drawing worse, not better. The targetgrid lever is now
+FULLY swept: prompt enrichment (regressed), validation+retry (safe, no gain),
+per-level redraw (no gain), model swap gpt-oss:120b (format-fails, gemma wins),
+resolution 16 (regressed). **Optimal measured config: gemma4-31b, simple prompt,
+8x8, first-64 parse, validation guard = graph 8/25.** Every cheap variation is
+measured; further gains need a genuinely different goal source (EWM executable
+rules — a dedicated research cycle). Next: PRODUCTIZE the breakthrough into the
+deployed UnifiedAgent (it currently lives only in the probe) so the harness
+itself clears 8/25.
