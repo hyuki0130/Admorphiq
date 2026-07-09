@@ -626,3 +626,15 @@ injections/run (targets kept stalling per the pursuit trace). Mechanical paths
 now match the probe. Remaining hypothesis: the probe's 2/3 overstated the true
 base rate (small-sample luck) and 0/8 is the same low-rate distribution — probe
 ×4 base-rate measurement in flight to decide.
+
+### FINAL base rate: cd82-targetgrid ≈ 30% stochastic, not a solid clear (2026-07-09)
+Probe ×4: 0/4. Cumulative probe record: 3 clears in the first 4 runs, 0 in the
+last 5 (≈33% overall); harness 0/8 is the same low-rate distribution, not an
+integration gap — every mechanical suspect was excluded by trace. CORRECTED
+HONEST STATE: **graph = 7/25 solid; cd82 clears ~30% of runs via targetgrid**
+(upside-only fallback, kept as deployed default: ≤3 LLM calls, never harms the
+frame-only base). The targetgrid deep-dive is CLOSED — every cheap parameter was
+measured (prompt, validation, redraw policy, model, resolution, LLM params);
+draw quality at ~30% is the gemma-scale ceiling. Past it = richer target sources
+(EWM executable rules / stronger drawer), a dedicated research cycle. ⛔ Do not
+re-grind targetgrid parameters.
