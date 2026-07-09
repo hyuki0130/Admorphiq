@@ -699,3 +699,16 @@ observation of what changed on a clear, stronger models, or learning the goal
 from the game's own reward structure) — genuine research, not representation
 plumbing.** ⛔ Do not add a fourth representation rung without a better
 inference source.
+
+### Efficiency baseline quantified (2026-07-09): the next mountain, in numbers
+Actions-to-clear on the 7 deployed clears vs human baseline: tn36 266/32 (8×),
+r11l 562/22 (26×), lp85 809/17 (48×), m0r0 2824/30 (94×), cn04 3361/29 (116×),
+lf52 5108/32 (160×), vc33 1902/7 (272×). Summed RHAE contribution ≈ 0.0006 —
+**exhaustive-exploration clears are worth ~nothing under the squared-efficiency
+metric** (standing conclusion #1, now quantified). Efficiency is inseparable from
+goal inference: to clear in ~human actions on the FIRST traversal the agent must
+know where it is going. tn36/r11l (8-26×) show the graph CAN be near-efficient
+when its goal-ranking matches the game. The R53 deliverable ends here: coverage
+productized (7/7 deployed + cd82 ~30%), verification complete, both next-axis
+walls (goal-inference accuracy, efficiency) measured and quantified for the next
+research cycle.
