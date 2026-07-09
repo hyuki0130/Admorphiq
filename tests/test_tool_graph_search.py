@@ -288,31 +288,36 @@ def test_object_key_absorbs_jitter_keeps_movement():
     assert _object_key(base) != _object_key(moved)
 
 
-def test_object_ladder_fires_on_explosion_and_rebuilds():
-    """Purpose: prove the adaptive activation — after the warmup gates, a
-    windowed run of never-recurring states (explosion signature) flips the tool
-    to object mode and drops the broken pixel graph.
+def test_hash_ladder_escalates_pool2_then_object():
+    """Purpose: prove the adaptive hash ladder — after the warmup gates, a
+    windowed explosion signature escalates ONE rung per fire: full-res pixel ->
+    2x2 max-pooled pixel (the rung legacy cleared its jitter class at) ->
+    object multiset; each fire drops the broken graph.
 
     Expected feedback: pass ⇒ games whose every action mints a fresh pixel hash
-    (move recolors ~80 cells) get a recurring object-level state space; fail ⇒
-    the ladder never arms and such games stay random walks.
+    get the pooled then object-level state space; fail ⇒ the ladder never arms
+    and such games stay random walks.
     """
     from admorphiq.tools.graph_search import _OBJ_MIN_STEPS, _OBJ_WINDOW, GraphSearchTool
 
+    def _prime(tool):
+        tool._propose_calls = _OBJ_MIN_STEPS  # past the no-progress guard
+        for i in range(_OBJ_WINDOW):          # explosion: all new, mobile
+            tool._new_window.append(True)
+            tool._loop_window.append(False)
+            tool._recent_states.append(f"h{i}")
+        tool._edges["stale"] = {}
+
     tool = GraphSearchTool()
-    tool._propose_calls = _OBJ_MIN_STEPS  # past the no-progress guard
-    # Fill the instability windows with the explosion signature: every state
-    # new, plenty of distinct recent states, no self-loops.
-    for i in range(_OBJ_WINDOW):
-        tool._new_window.append(True)
-        tool._loop_window.append(False)
-        tool._recent_states.append(f"h{i}")
-    tool._edges["stale"] = {}
+    _prime(tool)
     tool._maybe_fire_object_hash()
-    assert tool._hash_mode == "object"
-    assert not tool._edges            # broken pixel graph dropped
+    assert tool._pool == 2 and tool._hash_mode == "pixel"   # rung 1: pool2
+    assert not tool._edges                                  # broken graph dropped
+    _prime(tool)
+    tool._maybe_fire_object_hash()
+    assert tool._hash_mode == "object"                      # rung 2: object
     tool.reset()
-    assert tool._hash_mode == "pixel"  # per-level pin: reset restores the ladder
+    assert tool._hash_mode == "pixel" and tool._pool == 1   # per-level re-lock
 
 
 def test_tier_gate_bypassed_while_explicit_target_active():

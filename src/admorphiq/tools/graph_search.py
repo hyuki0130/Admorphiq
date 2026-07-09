@@ -123,12 +123,13 @@ def _downsample(frame: np.ndarray, n: int = 8) -> np.ndarray:
 # tens of thousands of actions trying every centroid at every state.
 _N_TIERS = 3
 
-# Object-hash ladder (legacy R45): when the pixel-hash graph is measurably
-# broken — EXPLOSION (new states never recur; every transition mints a fresh
-# hash, e.g. a move recolors ~80 cells) or a PERSISTENT SINK (self-loops
-# dominate with few distinct states) — rebuild the level graph keyed on the
-# frame's OBJECTS (colour, log2-size-bucket, centroid), which absorbs jitter
-# while keeping 1-cell movement visible. One activation per level.
+# Hash ladder (legacy R42/R45, inverted to fit our full-res default): when the
+# current hash graph is measurably broken — EXPLOSION (new states never recur;
+# every transition mints a fresh hash) or a PERSISTENT SINK (self-loops
+# dominate with few distinct states) — escalate the state hashing one rung and
+# rebuild the level graph: full-res pixel -> 2x2 max-pooled pixel (absorbs the
+# sub-cell jitter class the legacy engine cleared at pool=2) ->
+# object multiset (colour, log2-size-bucket, centroid). One rung per fire.
 _OBJ_WINDOW = 200          # transitions sampled by the instability windows
 _OBJ_MIN_STEPS = 1500      # in-level propose calls before the ladder may fire
 _OBJ_EXPLODE_FRAC = 0.5    # windowed new-state fraction for the explosion fire
@@ -269,8 +270,10 @@ class GraphSearchTool:
         # untried action is reachable ANYWHERE — deferring the mass of
         # low-promise clicks that made deep discovery exhaustive.
         self._unlocked_tier = 0
-        # Object-hash ladder (legacy R45) instability tracking.
+        # Hash-ladder instability tracking. Rungs: pixel pool=1 -> pixel
+        # pool=2 -> object.
         self._hash_mode = "pixel"
+        self._pool = 1
         self._new_window: deque[bool] = deque(maxlen=_OBJ_WINDOW)
         self._loop_window: deque[bool] = deque(maxlen=_OBJ_WINDOW)
         self._recent_states: deque[str] = deque(maxlen=30)
@@ -321,6 +324,8 @@ class GraphSearchTool:
         mframe = self._masked_frame(frame)
         if self._hash_mode == "object":
             return _object_key(mframe)
+        if self._pool > 1:
+            mframe = _max_pool(mframe, self._pool)
         return self._dealias.key(mframe, self._recent)
 
     def _maybe_fire_object_hash(self) -> None:
@@ -344,10 +349,15 @@ class GraphSearchTool:
         if not (explosion or sink):
             return
         import sys
-        print(f"[graph] OBJECT-HASH armed: new_frac={new_frac:.2f} "
+        if self._pool == 1:
+            self._pool = 2
+            rung = "pool2"
+        else:
+            self._hash_mode = "object"
+            rung = "object"
+        print(f"[graph] HASH-LADDER -> {rung}: new_frac={new_frac:.2f} "
               f"loop_frac={loop_frac:.2f} distinct={distinct}",
               file=sys.stderr, flush=True)
-        self._hash_mode = "object"
         self._edges.clear()
         self._untried.clear()
         self._tries.clear()
@@ -753,6 +763,18 @@ class GraphSearchTool:
         if not choices:
             return None
         return self._rng.choice(choices)
+
+
+def _max_pool(frame: np.ndarray, k: int) -> np.ndarray:
+    """k×k max-pool (legacy hash_pool): coarsens the frame before hashing so
+    sub-cell jitter — a nudged pixel, an anti-aliased edge — does not mint a
+    fresh state hash, while gross layout is preserved."""
+    a = np.asarray(frame)
+    h, w = a.shape
+    ph, pw = (h + k - 1) // k, (w + k - 1) // k
+    padded = np.zeros((ph * k, pw * k), dtype=a.dtype)
+    padded[:h, :w] = a
+    return padded.reshape(ph, k, pw, k).max(axis=(1, 3))
 
 
 def _object_key(frame: np.ndarray) -> str:
