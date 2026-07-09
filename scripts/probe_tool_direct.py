@@ -106,21 +106,32 @@ def main() -> None:
             return
         import re as _re
 
+        from admorphiq.tools.base import color_histogram as _ch
         from admorphiq.tools.graph_search import _downsample
         cur = _downsample(np.asarray(frame))
         rows = "\n".join(" ".join(str(int(v)) for v in r) for r in cur)
+        hist = ", ".join(f"c{c}={int(n)}" for c, n in enumerate(_ch(np.asarray(frame))) if n)
+        effects = "; ".join(
+            f"{p['action']}->{p['changed_cells']}cells,newcolor{p['top_new_color']}"
+            for p in _hybrid_probe_changes[-12:]
+        ) or "none observed"
         prompt = (
-            "An ARC-AGI-3 grid puzzle. The board below is an 8x8 downsample "
-            "(colours 0-15, 0=background) of the CURRENT state:\n" + rows + "\n\n"
-            "Reason about the goal, then OUTPUT the 8x8 grid of the SOLVED board "
-            "(what it looks like when the level is complete) as 8 lines of 8 "
-            "space-separated integers 0-15. Output ONLY the 8 lines, no prose."
+            "An ARC-AGI-3 grid puzzle (colours 0-15, 0=background). You must infer "
+            "what the SOLVED board looks like.\n"
+            f"CURRENT board (8x8 downsample):\n{rows}\n"
+            f"Full-res colour counts: {hist}\n"
+            f"What actions did during exploration: {effects}\n\n"
+            "Reason step by step: which cells/regions must change colour to solve "
+            "it (e.g. recolour a region to match another, fill a shape, clear a "
+            "colour, arrange pieces on targets). Then OUTPUT the 8x8 grid of the "
+            "SOLVED board as 8 lines of 8 space-separated integers 0-15 — the LAST "
+            "8 lines of your reply must be exactly that grid, nothing after."
         )
         try:
-            txt = _llm(prompt, npred=200)
-            nums = [int(x) for x in _re.findall(r"-?\d+", txt)]
+            txt = _llm(prompt, npred=600)
+            nums = [int(x) for x in _re.findall(r"\b\d+\b", txt) if 0 <= int(x) <= 15]
             if len(nums) >= 64:
-                tgt = np.array(nums[:64], dtype=np.int64).reshape(8, 8)
+                tgt = np.array(nums[-64:], dtype=np.int64).reshape(8, 8)  # grid is last
                 tool.set_target_frame(np.kron(tgt, np.ones((8, 8), dtype=np.int64)))
                 print(f"TARGETGRID injected (distinct={len(set(nums[:64]))})", file=sys.stderr)
         except Exception as exc:  # noqa: BLE001
@@ -174,7 +185,7 @@ def main() -> None:
 
         if prev_frame is not None and prev_step is not None and prev_frame.shape == frame.shape:
             changed = bool((prev_frame != frame).any())
-            if a.hybrid and changed:
+            if (a.hybrid or a.targetgrid) and changed:
                 d = prev_frame != frame
                 new = frame[d]
                 if new.size:
