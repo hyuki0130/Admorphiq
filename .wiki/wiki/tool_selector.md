@@ -12,23 +12,25 @@ You are the brain. These are your hands. Pick the FIRST tool from what you OBSER
 guess. Run it; if its falsification signature appears, switch to its next-best. Every tool is
 generic (triggers on frame features, never game identity).
 
-**Output the tool's exact NAME** from this set: `graph`, `world_model`, `paint`, `llm_goal`,
-`dealias`, `deadsig`, or `code`. The decision table's "Run FIRST" column IS that name. When
-movement actions (1-4) exist and an object moves, the answer is almost always `graph` — do NOT
-default to `code`; `code` is the LAST resort for transform games no tool fits.
+**Output the tool's exact NAME** from this set: `graph`, `world_model`, `paint`, `toggle`,
+`llm_goal`, `dealias`, `deadsig`, or `code`. The decision table's "Run FIRST" column IS that
+name. **MEASURED (r53, all 25 dev games): `graph` is the only tool that clears games on its own
+(7/25 across every mechanic class — navigation, click-state, transform); every other tool
+standalone-cleared 0.** So `graph` is the DEFAULT first pick unless a narrow signature below
+matches EXACTLY. The harness draws solved-board targets for graph automatically — you never
+pick that. `code` is the LAST resort, never the default.
 
 ## Decision table (observe → run first)
 
 | If you observe … | Run FIRST (exact name) | Because |
 |---|---|---|
-| Movement actions (1-4) exist AND a small object TRANSLATES under them (walls block) — `has_movement=True`, `avatar_mobility` high | **`graph`** | navigation/state-space; the exact transition graph + shortest-path frontier clears it. This is the DEFAULT for any game with working movement, even if `avg_changed_cells` is large. |
-| A click (ACTION6) FLIPS a small local set of cells on a 2-colour (on/off) grid, goal is a uniform board (lights-out) | **`toggle`** | learn each click's flip stencil, solve the board exactly over GF(2) — brute-force clicking can't |
-| A click (ACTION6) FILLS a connected region with one color (flood); goal is a color/pattern | **`paint`** | plan clicks to fill toward the target coloring |
-| Same frame + same action gives DIFFERENT next frames (`nondeterminism` high — a counter/timer/off-screen thing) | **`dealias`** (then `graph`) | the frame hides state; de-alias so the graph stops corrupting |
-| Transitions look learnable AND a monotone progress measure exists (count/order/fill), `nondeterminism` low | **`world_model`** | learn the transition table, roll out toward the goal measure |
-| Big regions recolor/rearrange, NO clear avatar (`has_movement=False`, `recolor_scale` large) — the TARGET must be inferred | **`llm_goal`** | infer the level-complete target, then move toward it |
-| A CLICK game (ACTION6) whose goal is reached by discrete state changes, not a single-color fill or an inferred pattern | **`graph`** | graph is a general discrete-state search — it clears many click-state games (not only movement ones); prefer it over `code` when clicks drive discrete state |
-| No tool above fits — a bespoke transform/arrangement rule must be written | **`code`** | write Python to inspect the frame and queue actions (last resort) |
+| ANY game where actions produce discrete repeatable state changes — movement OR clicks, navigation OR transform | **`graph`** | the measured default: exact transition graph + promise-frontier + multi-goal ranking + auto-drawn targets. Clears games in every mechanic class; nothing else clears any alone. |
+| A click (ACTION6) FLIPS a small local set of cells on a TWO-colour grid, goal is a uniform board (true lights-out — NONE of the 25 dev games is one) | **`toggle`** | exact GF(2) solve; only pick on this exact signature — measured 0 elsewhere |
+| A click (ACTION6) verifiably FLOOD-FILLS a region with one colour (watch a click do it first) | **`paint`** | fill planning; only on verified fill mechanics — measured 0 when guessed |
+| Same frame + same action gives DIFFERENT next frames (`nondeterminism` high) | **`dealias`** (then `graph`) | augmentation: de-alias the hash so graph stops corrupting (graph composes it internally too) |
+| You have STRONG evidence a monotone progress measure exists AND graph already failed a full run | **`world_model`** | measured 0/25 standalone — a follow-up probe only, never first |
+| Big regions recolor with no avatar AND graph already failed a full run | **`llm_goal`** | measured 0 standalone (the harness's auto target-draw supersedes it) — follow-up only |
+| Every tool above failed a full run on this game | **`code`** | write Python to inspect the frame and queue actions (true last resort; measured 0 so far) |
 | ANY game, always on (efficiency) | **`deadsig`** | stop re-probing action classes that never change anything |
 
 ## Per-tool: when to use / falsification / next-best
