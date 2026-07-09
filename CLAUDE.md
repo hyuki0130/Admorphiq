@@ -1604,7 +1604,17 @@ by `HARNESS_CTX`, the char-budget lever `scripts/harness_ctx_sweep.py` measures)
 tool OR writes Python (`tools/code_agent.py`) → run → feed the transition to every tool's
 `observe` → re-decide on stall. Bench via `--agent unified` (env `HARNESS_MODEL`/`HARNESS_CTX`).
 Measured: code-agent ALONE re86 = 0/8 → frontier transform games need the combined tool+code loop,
-not code in isolation. Round page: [[.wiki/wiki/rounds/r53_unified-harness]]. 655 tests, ruff clean.
+not code in isolation. Round page: [[.wiki/wiki/rounds/r53_unified-harness]]. 679 tests, ruff clean.
+
+**R53 card (2026-07-10): 11/25 SOLID at the deployed config** — cd82 cn04 ft09 lf52 lp85 m0r0
+r11l sp80 tn36 tu93 vc33, every game re-verified under the final graph noise stack. The
+2026-07-09 porting chain (each step measured, harmful steps reverted): R38 click-tier gate →
+ft09 (+ pursuit bypass fixing a cd82 regression); hash ladder pool1→pool2→object (inert, kept);
+⛔ moving-band mask reverted (vc33 false-positive regression); **REGION-level rate mask → tu93 +
+sp80** with a size-conditional stability gate (≤128 cells on sight, larger needs 2-refresh
+confirmation) fixing a cn04 regression. Legacy@8000 clears NONE of the remaining 14 (ar25 bp35
+ka59 ls20 sb26 sk48 tr87 need 30k-100k even in legacy) — the ported-technique well is dry;
+remaining 14 = goal-inference frontier (gemma draw accuracy) + the efficiency (RHAE) axis.
 
 **WHERE we develop/measure — GCP VM = Kaggle-identical** (the 24GB Mac CANNOT run 30B models or
 parallel; it crashes — Mac is edit/lint/pytest only):
