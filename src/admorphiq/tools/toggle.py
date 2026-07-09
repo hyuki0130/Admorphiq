@@ -25,6 +25,7 @@ from admorphiq.tools.base import (
     availability,
     changed_mask,
     color_histogram,
+    connected_components,
     frame_2d,
     has_frame,
 )
@@ -182,14 +183,22 @@ class ToggleTool:
         return best
 
     def _next_probe(self, frame: np.ndarray) -> Step | None:
-        """A click on a cell not yet clicked — coarse grid order so stencils are
-        learned across the board, not clustered."""
+        """A click on a cell not yet clicked. Prefer the CENTROIDS of the board's
+        distinct-colour components (the actual interactive cells — a blind pixel
+        grid misses cells that sit at non-grid offsets, which starves stencil
+        learning); fall back to a coarse grid to cover the rest."""
+        candidates: list[tuple[int, int]] = []
+        for comp in connected_components(frame):
+            cy, cx = comp["centroid"]
+            candidates.append((int(round(cx)), int(round(cy))))
         h, w = frame.shape
         step = max(1, min(h, w) // 8)
         for y in range(step // 2, h, step):
             for x in range(step // 2, w, step):
-                if (x, y) not in self._stencils and (x, y) != self._prev_click:
-                    return (6, (int(x), int(y)))
+                candidates.append((x, y))
+        for x, y in candidates:
+            if (x, y) not in self._stencils and (x, y) != self._prev_click:
+                return (6, (int(x), int(y)))
         return None
 
 
