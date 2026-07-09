@@ -638,3 +638,16 @@ measured (prompt, validation, redraw policy, model, resolution, LLM params);
 draw quality at ~30% is the gemma-scale ceiling. Past it = richer target sources
 (EWM executable rules / stronger drawer), a dedicated research cycle. ⛔ Do not
 re-grind targetgrid parameters.
+
+### Architect verification: REJECT → all defects fixed (2026-07-09)
+Adversarial architect review (criteria: genericity/contract/offline-safety/state-
+hygiene/correctness) PASSED 1-4 but found 6 ranked defects; verdict REJECT.
+Fixed: (HIGH) confident-primary ownership was INERT — every runner passes
+frames=[], blinding detect()'s transition-evidence branches so graph could never
+reach 0.8; the loop now maintains _recent_frames and feeds them to every detect()
+call, and ownership is re-evaluated LIVE at stall time (it was frozen at the
+evidence-free step-0 value). (MED) context.py off-by-one dropped ACTION4 from
+avatar_mobility (act<=4); (MED) click_fraction counted ACTION7 as a click (a==6).
+(LOW) failed target draws no longer exhaust MAX_DRAWS (slots vs injections split,
+5-slot cap). (LOW×2, accepted) HUD-freeze transient novelty optimism; LLM
+callable must be time-bounded (documented contract). 667 tests green.

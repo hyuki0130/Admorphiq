@@ -56,7 +56,7 @@ def compute_signature(
     """
     simple_ids, action6 = availability(obs)
     avail = list(simple_ids) + ([6] if action6 else [])
-    click_fraction = (sum(a >= 6 for a in avail) / len(avail)) if avail else 0.0
+    click_fraction = (sum(a == 6 for a in avail) / len(avail)) if avail else 0.0
     has_movement = any(a in (1, 2, 3, 4) for a in simple_ids)
 
     small_local = simple_n = 0
@@ -67,7 +67,7 @@ def compute_signature(
         m = changed_mask(prev, nxt)
         changed = int(m.sum()) if m.size else 0
         recolor.append(changed)
-        if act < 4 and changed > 0:
+        if act <= 4 and changed > 0:
             simple_n += 1
             bb = diff_bbox(prev, nxt)
             if bb is not None:

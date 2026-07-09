@@ -26,6 +26,8 @@ from admorphiq.tools.code_agent import build_code_prompt, run_code
 from admorphiq.tools.targetgrid import TARGET_RES, build_target_prompt, parse_and_validate_target
 
 LLM = Callable[[list[dict[str, str]]], str]
+# Contract: the injected callable MUST be time-bounded (the loop imposes no
+# timeout of its own); current callers are (registry urlopen 180s, probe 150s).
 
 # Target draws fire after this many steps into the level (the probe-validated
 # warmup), and are REPEATED up to _TARGET_MAX_DRAWS times, _TARGET_REDRAW_GAP
@@ -34,7 +36,8 @@ LLM = Callable[[list[dict[str, str]]], str]
 # a coin-flip into ~87% per level for two extra LLM calls at most. Each redraw
 # sees the CURRENT (evolved) board, so it is a genuinely fresh sample.
 _TARGET_WARMUP = 40
-_TARGET_MAX_DRAWS = 3
+_TARGET_MAX_DRAWS = 3      # successful injections per level
+_TARGET_MAX_SLOTS = 5      # total attempt slots (failed draws don't exhaust MAX_DRAWS)
 _TARGET_REDRAW_GAP = 400
 # A redraw additionally requires the tool to report its current-target pursuit
 # has made no proximity improvement for this many propose-calls.
@@ -90,6 +93,10 @@ class UnifiedAgent:
             t.reset()
         self._queue: list[Step] = []
         self._transitions: list[tuple[np.ndarray, int, np.ndarray]] = []
+        # Recent raw frames = the evidence detect() needs to see localized
+        # movement etc. (architect r53: passing frames=[] blinded detect and
+        # made confident-primary ownership permanently inert).
+        self._recent_frames: list[np.ndarray] = []
         self._tried: list[str] = []
         self._failed: set[str] = set()
         self._current: str | None = None
@@ -101,6 +108,7 @@ class UnifiedAgent:
         self._last_levels = 0
         self._seen_states: set[str] = set()
         self._target_draws = 0
+        self._draw_slots = 0
         self._propose_errors = 0
         self._feedback = "start of level"
 
@@ -145,7 +153,7 @@ class UnifiedAgent:
         sweep which lost solid clears to churn."""
         cur_tool = self.tools.get(self._current) if self._current != "code" else None
         try:
-            cur_conf = cur_tool.detect([], self._last_obs) if cur_tool is not None else 0.0
+            cur_conf = cur_tool.detect(self._recent_frames, self._last_obs) if cur_tool is not None else 0.0
         except Exception:  # noqa: BLE001
             cur_conf = 0.0
         best_other = 0.0
@@ -153,7 +161,7 @@ class UnifiedAgent:
             if name == self._current or name in self._failed:
                 continue
             try:
-                best_other = max(best_other, t.detect([], self._last_obs))
+                best_other = max(best_other, t.detect(self._recent_frames, self._last_obs))
             except Exception:  # noqa: BLE001
                 continue
         if best_other > cur_conf:
@@ -164,13 +172,12 @@ class UnifiedAgent:
     def _signature_default(self, sig: Signature) -> str:
         """Highest-detect tool for the signature that has NOT failed this level.
         Falls back to the global best only if every tool has been retired."""
-        frames_stub: list[Any] = []
         best, best_name = -1.0, None
         for name, t in self.tools.items():
             if name in self._failed:
                 continue
             try:
-                c = t.detect(frames_stub, self._last_obs)
+                c = t.detect(self._recent_frames, self._last_obs)
             except Exception:  # noqa: BLE001
                 c = 0.0
             if c > best:
@@ -207,12 +214,17 @@ class UnifiedAgent:
         if self._current not in self._tried:
             self._tried.append(self._current)
         # Does the newly-picked tool own the game (high frame-based confidence)?
+        # detect() gets the agent's OWN recent frames as evidence — the harness
+        # runner always passes frames=[], which blinded detect's transition-based
+        # branches and left ownership permanently inert (architect r53, HIGH).
         self._primary_owns = False
         if self._current != "code":
             tool_obj = self.tools.get(self._current)
             if tool_obj is not None:
                 try:
-                    self._primary_owns = tool_obj.detect(frames, obs) >= _PRIMARY_CONF
+                    self._primary_owns = (
+                        tool_obj.detect(self._recent_frames, obs) >= _PRIMARY_CONF
+                    )
                 except Exception:  # noqa: BLE001
                     self._primary_owns = False
         # Diagnostic trace (stderr) so a bench log shows the routing decision:
@@ -282,9 +294,10 @@ class UnifiedAgent:
         fire per level, _TARGET_REDRAW_GAP steps apart; a later draw sees the
         evolved board and OVERWRITES the previous target. Offline-safe: any
         failure/invalid draw means no injection (frame-only base kept)."""
-        if self._current is None or self._target_draws >= _TARGET_MAX_DRAWS:
+        if self._current is None or self._target_draws >= _TARGET_MAX_DRAWS \
+                or self._draw_slots >= _TARGET_MAX_SLOTS:
             return
-        if self._steps < _TARGET_WARMUP + self._target_draws * _TARGET_REDRAW_GAP:
+        if self._steps < _TARGET_WARMUP + self._draw_slots * _TARGET_REDRAW_GAP:
             return
         tool_obj = self.tools.get(self._current)
         inject = getattr(tool_obj, "set_target_frame", None)
@@ -298,7 +311,7 @@ class UnifiedAgent:
             stalled = getattr(tool_obj, "target_stalled", None)
             if callable(stalled) and not stalled(_TARGET_STALL_WINDOW):
                 return
-        self._target_draws += 1  # one draw round per slot, success or not
+        self._draw_slots += 1  # slot spacing/budget; only INJECTIONS count vs MAX_DRAWS
         prompt = build_target_prompt(frame)
         for attempt in (1, 2):
             try:
@@ -313,6 +326,7 @@ class UnifiedAgent:
                 continue
             scale = max(1, 64 // TARGET_RES)
             inject(np.kron(tgt, np.ones((scale, scale), dtype=np.int64)), res=TARGET_RES)
+            self._target_draws += 1  # only successful injections count vs MAX_DRAWS
             self._feedback = "target frame drawn and injected"
             print(f"[harness] TARGET injected (attempt {attempt})", file=sys.stderr, flush=True)
             return
@@ -343,6 +357,8 @@ class UnifiedAgent:
             changed = bool((self._prev_frame != frame).any())
             self._transitions.append((self._prev_frame, self._prev_step[0], frame))
             self._transitions = self._transitions[-256:]
+            self._recent_frames.append(frame)
+            self._recent_frames = self._recent_frames[-8:]
             # Feed the transition ONLY to the tool that chose the action. Feeding
             # every tool pollutes a stateful tool's model (a graph's edges, a
             # world-model's table) with actions ANOTHER tool picked — measured to
@@ -386,6 +402,18 @@ class UnifiedAgent:
         # when treated like any other tool; detect() is a reliable frame signal,
         # so trust it and let the right tool run. Low-confidence picks still swap.
         stalled = self._since_progress >= self.stall
+        if stalled and self._current is not None and self._current != "code":
+            # Ownership is LIVE: at pick time there was no transition evidence
+            # (detect saw an empty history and could not reach its high branch),
+            # so re-evaluate with the frames accumulated since (architect r53).
+            tool_obj = self.tools.get(self._current)
+            if tool_obj is not None:
+                try:
+                    self._primary_owns = (
+                        tool_obj.detect(self._recent_frames, obs) >= _PRIMARY_CONF
+                    )
+                except Exception:  # noqa: BLE001
+                    pass
         # Retiring the current tool on a stall is only worth it when some OTHER
         # non-failed tool detects strictly better RIGHT NOW — measured: on games
         # only the current tool can clear (deployed sweep lost lf52/lp85, both
