@@ -356,11 +356,24 @@ class GraphSearchTool:
 
     # ── goal ranking (heuristic, no LLM) ─────────────────────────────────────
 
+    def set_external_goal(self, goal: Any) -> None:
+        """Inject a goal (e.g. LLM-inferred, richer than the frame-only family)
+        for the frontier ranking to steer toward. Used EXCLUSIVELY — the
+        candidate-goal trend tracker is disabled so the injected goal is never
+        diluted (adding candidates to the tracker was measured to regress). This
+        is the hybrid path: LLM infers a target the frame-only family can't
+        express, graph's search drives to it via score_goal."""
+        self._goal = goal
+        self._goal_tracker = None   # exclusive: no frame-only family dilution
+        self._goal_memo.clear()
+
     def _track_goal(self, cur_hash: str, frame: np.ndarray) -> None:
         """Store this state's frame, fold it into the candidate-goal trend tracker,
         and adopt the best-trending goal (the measure the game is progressing on).
-        All no-LLM, frame-only — considers the whole GoalSpec family, not just FILL."""
+        All no-LLM, frame-only — considers the whole GoalSpec family, not just FILL.
+        Skipped entirely once an external goal is injected (set_external_goal)."""
         if not _GOAL_OK or self._goal_tracker is None:
+            self._state_frame[cur_hash] = frame  # still needed for score_goal
             return
         self._state_frame[cur_hash] = frame
         # Scoring the whole candidate-goal family per state is expensive; throttle
