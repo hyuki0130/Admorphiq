@@ -334,7 +334,12 @@ class UnifiedAgent:
             inject(np.kron(tgt, np.ones((scale, scale), dtype=np.int64)), res=TARGET_RES)
             self._target_draws += 1  # only successful injections count vs MAX_DRAWS
             self._feedback = "target frame drawn and injected"
-            print(f"[harness] TARGET injected (attempt {attempt})", file=sys.stderr, flush=True)
+            from admorphiq.tools.graph_search import _downsample as _ds
+            cur8 = ",".join(str(int(v)) for v in _ds(frame).ravel())
+            tgt8 = ",".join(str(int(v)) for v in tgt.ravel())
+            print(f"[harness] TARGET injected (attempt {attempt}) "
+                  f"level={self._last_levels} cur8=[{cur8}] tgt8=[{tgt8}]",
+                  file=sys.stderr, flush=True)
             return
 
     # -- main loop ------------------------------------------------------------
