@@ -292,6 +292,21 @@ class UnifiedAgent:
         except Exception:  # noqa: BLE001 - offline-safe
             return []
 
+    def _action_evidence(self) -> str | None:
+        """Compact observed action->effect lines from the agent's own transitions
+        (median changed cells per action) — the redraw-diversity evidence block."""
+        if not self._transitions:
+            return None
+        per_action: dict[int, list[int]] = {}
+        for prev, act, nxt in self._transitions[-200:]:
+            per_action.setdefault(act, []).append(int((prev != nxt).sum()))
+        lines = []
+        for act, counts in sorted(per_action.items()):
+            med = int(np.median(counts))
+            name = _NAME.get(act, f"ACTION{act}")
+            lines.append(f"- {name}: {len(counts)} tries, median {med} cells changed")
+        return "\n".join(lines)
+
     def _maybe_draw_target(self, frame: np.ndarray) -> None:
         """Ask the LLM to DRAW the solved board and inject it into the active
         graph-like tool (set_target_frame) — the measured richer-goal lever.
@@ -324,7 +339,12 @@ class UnifiedAgent:
                       file=sys.stderr, flush=True)
         self._draw_slots += 1  # slot spacing/budget; only INJECTIONS count vs MAX_DRAWS
         solved = self._clear_frames[-1] if self._clear_frames else None
-        prompt = build_target_prompt(frame, solved_example=solved)
+        # Redraw diversity (r51 config-UNION applied to draws): the first draw
+        # is the measured-optimal simple prompt; a stall-gated REDRAW means that
+        # draw's pursuit failed, so vary the evidence mix instead of repeating.
+        evidence = self._action_evidence() if self._draw_slots >= 2 else None
+        prompt = build_target_prompt(frame, solved_example=solved,
+                                     action_evidence=evidence)
         for attempt in (1, 2):
             try:
                 txt = self.draw_llm([{"role": "user", "content": prompt}])

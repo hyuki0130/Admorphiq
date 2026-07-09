@@ -31,6 +31,7 @@ TARGET_RES = 8
 def build_target_prompt(
     frame: np.ndarray, res: int = TARGET_RES,
     solved_example: np.ndarray | None = None,
+    action_evidence: str | None = None,
 ) -> str:
     """The validated simple prompt: show the current res×res downsample, ask for
     the solved board as res lines of res integers. (Enriching this prompt with
@@ -41,6 +42,13 @@ def build_target_prompt(
     mechanics, so showing what "solved" actually looked like turns blind goal
     inference into evidence-based inference — the measured wall is inference
     accuracy, and this is the strongest goal evidence the agent can ever hold.
+
+    ``action_evidence`` is the REDRAW-DIVERSITY config (r51 config-UNION pattern
+    applied to draws): a compact observed action->effect summary added only on
+    LATER stall-gated redraws. The FIRST draw stays the measured-optimal simple
+    prompt (enriching it was measured to regress cd82); a redraw only fires
+    after the previous draw's pursuit stalled, so a different evidence mix is a
+    free extra chance on games whose simple-prompt draws are wrong.
     """
     cur = _downsample(np.asarray(frame), res)
     rows = "\n".join(" ".join(str(int(v)) for v in r) for r in cur)
@@ -53,10 +61,16 @@ def build_target_prompt(
             "at the moment it was SOLVED — the new level's goal is analogous:\n"
             + ex_rows + "\n"
         )
+    evidence = ""
+    if action_evidence:
+        evidence = (
+            "\nObserved effects of the agent's own actions (mechanics evidence):\n"
+            + action_evidence + "\n"
+        )
     return (
         f"An ARC-AGI-3 grid puzzle. The board below is a {res}x{res} downsample "
         "(colours 0-15, 0=background) of the CURRENT state:\n" + rows + "\n"
-        + example + "\n"
+        + example + evidence + "\n"
         f"Reason about the goal, then OUTPUT the {res}x{res} grid of the SOLVED board "
         f"(what it looks like when the level is complete) as {res} lines of {res} "
         f"space-separated integers 0-15. Output ONLY the {res} lines, no prose."
