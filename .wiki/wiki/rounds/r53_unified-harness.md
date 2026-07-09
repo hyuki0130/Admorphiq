@@ -605,3 +605,13 @@ every coarse-goal approach vs ~50% with targetgrid) but single-draw quality is
 the noisy bottleneck.** The harness "integration gap" was a mirage — same
 variance. Stabilization lever (next): multiple draws per level (redraw every ~400
 steps, up to 3) — at ~50%/draw that's ~87%/level, 2 extra gemma calls max.
+
+### Blind periodic redraw REGRESSED (last-draw-wins); fixed with feedback gating (2026-07-09)
+Multi-draw v1 (redraw every 400 steps unconditionally): harness cd82 **0/4** vs
+single-draw probe 2/3 — each redraw OVERWROTE the pursued target ("last draw
+wins"), killing pursuit time; a good draw needs long uninterrupted pursuit.
+Fix: graph traces its own pursuit progress (best current-board→target proximity
+per propose) and exposes `target_stalled(window)`; the harness redraws ONLY when
+the current target stopped improving for 300 propose-calls. Upside-only: good
+targets pursued to the end, dead ones replaced. This is the self-improving
+feedback pattern applied to the goal itself. Measuring unified cd82 ×2.
