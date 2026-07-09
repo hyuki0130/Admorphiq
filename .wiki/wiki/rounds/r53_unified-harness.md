@@ -823,3 +823,14 @@ untried is reachable). Unified bench interim: **ft09 0 → 1 (CLOSED by the
 gate)**; sp80/tu93 unchanged 0 — their legacy technique is elsewhere (both
 movement games; obj-hash ladder / band masking are the next candidates).
 Solid-8 regression guard in flight.
+
+### Tier-gate bench final: ft09 CLOSED, 7/8 solid held, cd82 in replication (2026-07-09 23:01)
+Full tier-gate bench (11 games @deployed): **ft09 0→1 (the gate's win)**; solid
+card held on vc33/r11l/tn36/lp85/m0r0/cn04/lf52; sp80/tu93 still 0 (expected —
+their legacy technique is not click-gating; the R45 object-hash ladder is
+implemented+committed locally, measuring next). **cd82 = 0 (was 4/4)** — the
+gate changes exploration order, which can starve the draw-pursuit's graph
+edges; 2-run replication in flight before any verdict. If cd82 reproduces 0,
+candidate fix: exempt the target-pursuit path from the gate (steering ranks
+IN-GATE frontiers only — a gated-out click that the drawn target needs would
+never be walked to).
