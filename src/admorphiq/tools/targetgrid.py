@@ -63,19 +63,14 @@ def build_target_prompt(
         )
     evidence = ""
     if action_evidence:
-        # Placed BEFORE the board: inserting prose between the board and the
-        # OUTPUT instruction was measured to break gemma's draws (degenerate
-        # single-colour grids on every enriched redraw) — the validated
-        # board->instruction tail must stay contiguous.
         evidence = (
-            "Observed effects of the agent's own actions (mechanics evidence):\n"
-            + action_evidence + "\n\n"
+            "\nObserved effects of the agent's own actions (mechanics evidence):\n"
+            + action_evidence + "\n"
         )
     return (
-        evidence
-        + f"An ARC-AGI-3 grid puzzle. The board below is a {res}x{res} downsample "
+        f"An ARC-AGI-3 grid puzzle. The board below is a {res}x{res} downsample "
         "(colours 0-15, 0=background) of the CURRENT state:\n" + rows + "\n"
-        + example + "\n"
+        + example + evidence + "\n"
         f"Reason about the goal, then OUTPUT the {res}x{res} grid of the SOLVED board "
         f"(what it looks like when the level is complete) as {res} lines of {res} "
         f"space-separated integers 0-15. Output ONLY the {res} lines, no prose."
