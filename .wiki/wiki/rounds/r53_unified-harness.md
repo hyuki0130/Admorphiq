@@ -567,3 +567,11 @@ for the private set) but broadening needs a stronger TARGET SOURCE, not plumbing
 Next measured experiment: swap the target-drawing model (TARGETGRID_MODEL env;
 gpt-oss:120b available on the VM — target-DRAWING is a spatial-imagination task,
 distinct from EWM rule induction where gemma won, so it must be measured fresh).
+
+### Target-drawer model swap: gpt-oss:120b — no gain so far (2026-07-09)
+TARGETGRID_MODEL=gpt-oss:120b on the failing set: sp80/ls20/sc25 = 0 (same as
+gemma, model warm for those). cd82 showed 0 but is AMBIGUOUS — it was the first
+game and the 65GB model load likely timed out its LLM calls (no injection →
+frame-only → 0, consistent). Warm-model cd82 re-run in flight to resolve. So far
+the stronger-param model does NOT draw better targets than gemma4-31b — the
+target-drawing bottleneck is not raw model size on this pair.
