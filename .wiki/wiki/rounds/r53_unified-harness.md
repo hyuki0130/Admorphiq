@@ -557,3 +557,13 @@ quality is the sensitive bottleneck, and small prompt changes swing it. Getting
 gemma to reliably draw correct targets for more games needs sustained careful work
 (stronger model, target validation/repair, higher-res, per-level re-draw) — the
 research direction past 8/25. Infra ready (set_target_frame + probe --targetgrid).
+
+### Validation + per-level redraw: cd82 kept, no new unlocks (2026-07-09)
+Added target validation (reject degenerate / identical / hallucinated-palette
+draws, 1 retry — invalid means NO injection, falling back to the proven frame-only
+base) + per-level target redraw. Measured: **cd82=1 kept (no regression), sp80/
+ls20/ar25/sc25/re86 all still 0.** Validation is a KEEP (pure downside protection
+for the private set) but broadening needs a stronger TARGET SOURCE, not plumbing.
+Next measured experiment: swap the target-drawing model (TARGETGRID_MODEL env;
+gpt-oss:120b available on the VM — target-DRAWING is a spatial-imagination task,
+distinct from EWM rule induction where gemma won, so it must be measured fresh).

@@ -90,8 +90,10 @@ def main() -> None:
 
     def _llm(prompt: str, npred: int = 200) -> str:
         import json as _json
+        import os as _os
         import urllib.request as _u
-        body = {"model": "gemma4:31b-it-q8_0", "stream": False, "think": False,
+        model = _os.environ.get("TARGETGRID_MODEL", "gemma4:31b-it-q8_0")
+        body = {"model": model, "stream": False, "think": False,
                 "messages": [{"role": "user", "content": prompt}],
                 "options": {"temperature": 0.0, "num_ctx": 8192, "num_predict": npred}}
         req = _u.Request("http://localhost:11434/api/chat", data=_json.dumps(body).encode(),
