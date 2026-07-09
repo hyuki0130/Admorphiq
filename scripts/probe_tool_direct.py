@@ -60,6 +60,9 @@ def main() -> None:
     ap.add_argument("--targetgrid", action="store_true",
                     help="graph only: after warmup, ask the LLM for an 8x8 TARGET "
                          "grid of the solved board and inject via set_target_frame")
+    ap.add_argument("--goalcode", action="store_true",
+                    help="graph only: after warmup, ask the LLM to WRITE goal_score"
+                         "(frame) and inject via set_external_scorer")
     a = ap.parse_args()
 
     from arc_agi import Arcade, OperationMode
@@ -131,6 +134,30 @@ def main() -> None:
             break
         _draw_done[0] = True
 
+    _fx: list = []
+
+    def _maybe_inject_goalcode(frame):
+        """Warmup then ask the LLM to WRITE goal_score(frame); sandbox-compile,
+        validate on the live frame, and inject via set_external_scorer."""
+        if not a.goalcode or _draw_done[0] or a.tool != "graph" or steps < a.draw_warmup:
+            return
+        from admorphiq.tools.goalcode import build_scorer_prompt, compile_scorer
+        prompt = build_scorer_prompt(frame, _fx)
+        for attempt in (1, 2):
+            try:
+                txt = _llm(prompt, npred=400)
+            except Exception as exc:  # noqa: BLE001
+                print(f"goalcode infer failed: {exc}", file=sys.stderr)
+                break
+            fn, why = compile_scorer(txt, frame)
+            if fn is None:
+                print(f"goalcode attempt {attempt} rejected: {why}", file=sys.stderr)
+                continue
+            tool.set_external_scorer(fn)
+            print(f"GOALCODE injected (attempt {attempt})", file=sys.stderr)
+            break
+        _draw_done[0] = True
+
     queue: list = []
     prev_frame = None
     prev_step = None
@@ -157,10 +184,15 @@ def main() -> None:
             # A new level has a NEW solved-board target — allow a fresh draw
             # (deep levels carry the RHAE weight; one extra LLM call per level).
             _draw_done[0] = False
+            _fx.clear()
 
         if prev_frame is not None and prev_step is not None and prev_frame.shape == frame.shape:
             changed = bool((prev_frame != frame).any())
+            if a.goalcode and changed:
+                d = prev_frame != frame
+                _fx.append({"action": prev_step[0], "changed_cells": int(d.sum())})
             _maybe_inject_targetgrid(frame)
+            _maybe_inject_goalcode(frame)
             try:
                 tool.observe(prev_frame, prev_step, changed)
             except Exception as exc:  # noqa: BLE001

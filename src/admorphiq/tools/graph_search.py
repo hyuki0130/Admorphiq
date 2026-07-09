@@ -222,6 +222,7 @@ class GraphSearchTool:
         self._goal_obs_count = 0
         self._goal_memo: dict[str, float] = {}
         self._target_grid: np.ndarray | None = None  # injected LLM target frame
+        self._scorer = None                           # injected executable goal scorer
         self._target_res = 8                          # its downsample resolution
         # Target-pursuit progress trace (drives target_stalled / redraw gating).
         self._prox_calls = 0
@@ -367,13 +368,22 @@ class GraphSearchTool:
         simple_ids, action6_ok = availability(obs)
         self._ensure_state(cur_hash, frame, simple_ids, action6_ok)
         self._track_goal(cur_hash, frame)
-        if self._target_grid is not None:
-            # Trace pursuit progress: proximity of the CURRENT board to the target
-            # (higher = closer). Feeds target_stalled() so the harness only
-            # redraws when the current target has genuinely stopped paying off.
-            ds = _downsample(frame, self._target_res)
-            if ds.shape == self._target_grid.shape:
-                prox = -float(np.mean(ds != self._target_grid))
+        if self._scorer is not None or self._target_grid is not None:
+            # Trace pursuit progress: goal-proximity of the CURRENT board (higher
+            # = closer). Feeds target_stalled() so the harness only redraws when
+            # the current goal has genuinely stopped paying off.
+            prox = None
+            if self._scorer is not None:
+                try:
+                    v = float(self._scorer(frame))
+                    prox = v if np.isfinite(v) else None
+                except Exception:  # noqa: BLE001
+                    prox = None
+            else:
+                ds = _downsample(frame, self._target_res)
+                if ds.shape == self._target_grid.shape:
+                    prox = -float(np.mean(ds != self._target_grid))
+            if prox is not None:
                 self._prox_calls += 1
                 if prox > self._best_prox:
                     self._best_prox = prox
@@ -445,25 +455,47 @@ class GraphSearchTool:
         self._best_prox = float("-inf")
         self._last_improve_call = 0
 
+    def set_external_scorer(self, scorer: Any) -> None:
+        """Inject an EXECUTABLE goal scorer ``scorer(frame) -> float`` (higher =
+        closer to solved) — the most expressive goal representation: it can state
+        conditions neither the GoalSpec enum nor a static target frame can
+        ("all colour-3 blobs merged", "row sorted by size"). Used exclusively;
+        the tracker and any target frame are cleared so nothing dilutes it. The
+        scorer must already be sandbox-validated by the caller."""
+        self._scorer = scorer
+        self._target_grid = None
+        self._goal_tracker = None
+        self._goal = None
+        self._goal_memo.clear()
+        self._prox_calls = 0
+        self._best_prox = float("-inf")
+        self._last_improve_call = 0
+
     def target_stalled(self, window: int) -> bool:
-        """True when the injected target has shown NO proximity improvement for
-        ``window`` propose-calls — the REDRAW gate. A progressing target must
+        """True when the injected target/scorer has shown NO proximity improvement
+        for ``window`` propose-calls — the REDRAW gate. A progressing goal must
         not be overwritten (measured: blind periodic redraws replaced good
-        targets mid-pursuit and lost a proven clear — see rounds/r53); no target
+        targets mid-pursuit and lost a proven clear — see rounds/r53); no goal
         at all counts as stalled so the first draw is always allowed."""
-        if self._target_grid is None:
+        if self._target_grid is None and self._scorer is None:
             return True
         return (self._prox_calls - self._last_improve_call) >= window
 
     def _goal_proximity(self, node: str) -> float:
-        """Frontier goal-proximity (memoized): if a TARGET FRAME is injected, the
-        negative downsampled-frame distance to it; else score_goal of the node's
-        frame under the tracked/injected GoalSpec; 0 if neither."""
+        """Frontier goal-proximity (memoized): an injected executable SCORER wins;
+        else a TARGET FRAME's negative downsampled distance; else score_goal of
+        the tracked/injected GoalSpec; 0 if none."""
         if node in self._goal_memo:
             return self._goal_memo[node]
         fr = self._state_frame.get(node)
         val = 0.0
-        if fr is not None and self._target_grid is not None:
+        if fr is not None and self._scorer is not None:
+            try:
+                v = float(self._scorer(fr))
+                val = v if np.isfinite(v) else 0.0
+            except Exception:  # noqa: BLE001
+                val = 0.0
+        elif fr is not None and self._target_grid is not None:
             # higher = closer: negative fraction of cells that differ from target
             ds = _downsample(fr, self._target_res)
             if ds.shape == self._target_grid.shape:
