@@ -27,9 +27,15 @@ from admorphiq.tools.targetgrid import TARGET_RES, build_target_prompt, parse_an
 
 LLM = Callable[[list[dict[str, str]]], str]
 
-# One-time-per-level target draw fires after this many steps into the level (the
-# probe-validated warmup that produced the cd82 clear).
+# Target draws fire after this many steps into the level (the probe-validated
+# warmup), and are REPEATED up to _TARGET_MAX_DRAWS times, _TARGET_REDRAW_GAP
+# steps apart: single-draw quality is measured stochastic (~50% good on cd82 —
+# ollama fp nondeterminism varies the drawn grid), so multiple spaced draws turn
+# a coin-flip into ~87% per level for two extra LLM calls at most. Each redraw
+# sees the CURRENT (evolved) board, so it is a genuinely fresh sample.
 _TARGET_WARMUP = 40
+_TARGET_MAX_DRAWS = 3
+_TARGET_REDRAW_GAP = 400
 
 # A tool whose own frame-based detect() is at least this confident OWNS the game
 # (it is not retired on a stall) — its signature match is trusted over the swap.
@@ -87,7 +93,7 @@ class UnifiedAgent:
         self._steps = 0
         self._last_levels = 0
         self._seen_states: set[str] = set()
-        self._target_drawn = False
+        self._target_draws = 0
         self._feedback = "start of level"
 
     def is_done(self, frames: list[Any], latest_frame: Any) -> bool:
@@ -232,17 +238,21 @@ class UnifiedAgent:
             return []
 
     def _maybe_draw_target(self, frame: np.ndarray) -> None:
-        """Once per level, after warmup, ask the LLM to DRAW the solved board and
-        inject it into the active graph-like tool (set_target_frame) — the
-        measured richer-goal lever (cd82). Offline-safe: any failure or invalid
-        draw means no injection and the tool keeps its frame-only base."""
-        if self._target_drawn or self._steps < _TARGET_WARMUP or self._current is None:
+        """Ask the LLM to DRAW the solved board and inject it into the active
+        graph-like tool (set_target_frame) — the measured richer-goal lever.
+        Draw quality is stochastic (~50% good), so up to _TARGET_MAX_DRAWS draws
+        fire per level, _TARGET_REDRAW_GAP steps apart; a later draw sees the
+        evolved board and OVERWRITES the previous target. Offline-safe: any
+        failure/invalid draw means no injection (frame-only base kept)."""
+        if self._current is None or self._target_draws >= _TARGET_MAX_DRAWS:
+            return
+        if self._steps < _TARGET_WARMUP + self._target_draws * _TARGET_REDRAW_GAP:
             return
         tool_obj = self.tools.get(self._current)
         inject = getattr(tool_obj, "set_target_frame", None)
         if not callable(inject):
             return
-        self._target_drawn = True  # one draw round per level, success or not
+        self._target_draws += 1  # one draw round per slot, success or not
         prompt = build_target_prompt(frame)
         for attempt in (1, 2):
             try:
