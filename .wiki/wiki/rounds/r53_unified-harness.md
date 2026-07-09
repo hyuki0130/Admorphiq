@@ -712,3 +712,15 @@ when its goal-ranking matches the game. The R53 deliverable ends here: coverage
 productized (7/7 deployed + cd82 ~30%), verification complete, both next-axis
 walls (goal-inference accuracy, efficiency) measured and quantified for the next
 research cycle.
+
+### Goal-evidence cycle, measurement 1: cross-level clear evidence — L2 still locked (2026-07-09)
+Built the cross-level clear-evidence lever (level-up captures the just-solved
+board game-scoped; later levels' target draws cite its downsample as an analogy —
+L1 draws unchanged). Deployed measurement on the three fastest L1-clearers at
+8000 (tn36 8×, r11l 26×, vc33): **all still 1 level.** The mechanism works (L2
+ran with multiple evidence-cited draws + stall-gated redraws; tn36's L1 took only
+266 actions so ~7.7k budget remained for L2) — so the block is either (a) the
+analogy-drawn target is still wrong for L2, or (b) L2's mechanics/search-space
+defeat graph exploration regardless of goal. Next diagnostic: dump the L2 board
+and the drawn target side-by-side on tn36 to see WHICH. Lever kept (upside-only,
+no regression: all three L1s intact).
