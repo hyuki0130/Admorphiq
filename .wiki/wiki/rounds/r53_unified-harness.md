@@ -352,3 +352,19 @@ The 25-game taxonomy (`.wiki/raw/game_taxonomy_20260709.txt`): 5 navigation, 5
 select/toggle, 8 transform(move-recolors), 3 transform/paint, 3 mixed, 1 inert —
 graph's 4 clears span 4 classes, so class doesn't predict solvability; the 11
 transform games remain the goal-inference frontier.
+
+### CRYSTALLIZED: goal-inference is THE 25/25 bottleneck (2026-07-09)
+promise-frontier scoring kept all 4 graph clears (vc33/m0r0/lp85/r11l = 1) but
+added ZERO nav games (dc22/g50t/lf52/sb26/tu93 still 0/5 at 5000). Combined with
+budget=8000 also 0/5: **blind graph search PLATEAUS at 4/25 regardless of budget
+or frontier strategy.** The games it fails (incl. "navigation"-classified ones
+like lf52 = cursor+paint) need the agent to know the TARGET configuration —
+graph explores blindly and never discovers a goal it can't recognize. This is
+the goal-inference frontier the project has circled since r51/r52.
+- **The lever for 25/25 is GOAL INFERENCE, not more search.** The `llm_goal` tool
+  + `planner.goal_inference` already define a generic goal vocabulary (FILL_COLOR,
+  ORDER, ON_TARGET, MIN/MAX_OBJECT_COUNT). The work: make the LLM infer the right
+  GoalSpec per game AND make the planner drive to it (current `_pick_click_target`
+  is heuristic). This needs gemma4-31b + VM measurement per game (slow).
+- promise-frontier kept (harmless, may help other budgets / the private set).
+- ⛔ Do NOT keep tuning blind graph search for coverage — it is a ~4-13 ceiling.
