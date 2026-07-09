@@ -456,3 +456,16 @@ FILL+multi-goal ranking). Path to more coverage is PROVEN and incremental:
 2. The hardest games (target not expressible frame-only) need LLM goal inference —
    currently 0 (llm_goal coarse GoalSpec, code-agent both fail); that is the deep
    open frontier (r51/r52). 25/25 is a multi-cycle research program on this path.
+
+### Strategic close (2026-07-09): graph 7/25 ≈ legacy ceiling; rest is the frontier
+Cross-referencing the online-RL base 11/25: the Gap-1 games legacy clears (CD82,
+CN04, LF52, M0R0, R11L, SP80, TN36, VC33) are now MOSTLY recovered by the enriched
+graph (cn04/lf52/m0r0/r11l/tn36/vc33 = 6 of them). Remaining Gap-1: cd82, sp80
+(their targets aren't in the frame-only goal family — multi-goal still 0). So the
+re-authored graph at **7/25 is at ~legacy's realistic ceiling**. The other ~14
+games are ones legacy ALSO fails — the Gap-2 GOAL-INFERENCE frontier: their target
+config must be inferred and no approach (legacy graph, EWM, llm_goal, code-agent)
+has cracked them. **25/25 = solving that frontier, a genuine multi-session research
+problem.** This round's deliverable: the from-scratch generic harness + graph tool
+at legacy-parity coverage (7/25), the complete measured map, and the validated
+incremental enrichment method — the foundation the frontier work builds on.
