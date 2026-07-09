@@ -575,3 +575,10 @@ game and the 65GB model load likely timed out its LLM calls (no injection →
 frame-only → 0, consistent). Warm-model cd82 re-run in flight to resolve. So far
 the stronger-param model does NOT draw better targets than gemma4-31b — the
 target-drawing bottleneck is not raw model size on this pair.
+
+### Model verdict: gemma4-31b wins target-drawing too (2026-07-09)
+Warm-model cd82 with gpt-oss:120b: **both draw attempts failed format** (<64
+integers in the reply — the reasoning model burns tokens on prose and doesn't
+emit the plain 8x8 grid) → no injection → 0. Combined with sp80/ls20/sc25 = 0
+warm: **gpt-oss:120b ≤ gemma4-31b for target-drawing** (mirrors the R50b EWM
+verdict). gemma4-31b-q8 is the confirmed drawer; model size is not the lever.
