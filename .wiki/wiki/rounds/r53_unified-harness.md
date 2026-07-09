@@ -834,3 +834,11 @@ edges; 2-run replication in flight before any verdict. If cd82 reproduces 0,
 candidate fix: exempt the target-pursuit path from the gate (steering ranks
 IN-GATE frontiers only — a gated-out click that the drawn target needs would
 never be walked to).
+
+### ✅ 9/25 SOLID — gate exemption fixed cd82; object ladder inert (2026-07-09 23:14)
+tg2: **cd82 2/2 recovered** (tier gate bypassed while an explicit target/scorer
+is active — the gate had starved the drawn-target pursuit) and **ft09 held at
+1** → deployed card promoted to **9/25 SOLID**: cd82 cn04 ft09 lf52 lp85 m0r0
+r11l tn36 vc33. The R45 object-hash ladder closed none of its 3 candidates
+(sp80/tu93/ar25 all 0, 1 sample) — next: fire-trace to distinguish "guards too
+strict, never armed" from "armed but the object graph is equally stuck".
