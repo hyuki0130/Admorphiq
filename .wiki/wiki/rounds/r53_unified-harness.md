@@ -481,3 +481,13 @@ maximum** (≈ legacy). ⛔ Do not add more candidate-goal types hoping for cove
 — measured harmful. The remaining ~18 games (incl. ones legacy also fails) require
 LLM goal inference (target not expressible frame-only) — the unsolved frontier
 where llm_goal + code-agent both measure 0. 25/25 = a research breakthrough there.
+
+### Gap-2 hybrid (LLM goal → graph) built but TIMED OUT — inconclusive (2026-07-09)
+Built the hybrid infra: `graph.set_external_goal()` (inject an LLM-inferred goal,
+used exclusively so no tracker dilution) + `probe_tool_direct --hybrid` (warmup →
+LLM infer GoalSpec → inject). Measured on 8 transform games: **ALL TIMEOUT** at
+250s — including vc33 which graph clears fast normally. So the hybrid PATH is the
+problem (the ollama goal call blocks, and/or injected-goal + per-state score_goal
+is too slow), not the concept. Inconclusive — needs perf debugging (async/timeout
+the LLM call; cache score_goal; cap frame storage) before it can be evaluated.
+The hybrid remains the most promising untried Gap-2 lever and its infra is ready.
