@@ -680,3 +680,22 @@ performance: the productization of the from-scratch generic-tool harness is
 COMPLETE and architect-approved (667 tests). R53 deliverable finalized. The
 mission continues past it on the goal-representation frontier (EWM executable
 rules / richer target sources) — the measured path beyond ~7-8/25.
+
+### Goal-representation ladder CLOSED: inference accuracy, not expressiveness, is the wall (2026-07-09)
+Third rung measured: executable goal scorer (LLM writes goal_score(frame);
+sandbox-compiled/validated, graph.set_external_scorer). After fixing the
+numpy-import rejection (gemma reflexively imports numpy; stripped safely — first
+sweep had 0 injections), 9 scorers injected cleanly across 8 games: **no new
+unlocks, and cn04 REGRESSED 1→0** (gemma's scorer replaced and underperformed the
+frame-only trend tracker — the exact pattern of the coarse-GoalSpec hybrid).
+vc33 kept. ⛔ Do not deploy goalcode as a default (regresses cn04); infra kept
+(set_external_scorer is sound for a future better goal source).
+**COMPLETE LADDER VERDICT (all three rungs measured): enum GoalSpec = 0 & lost
+cn04; static target frame = +cd82 ~30% only; executable scorer = 0 & lost cn04.
+The binding constraint is the LOCAL MODEL'S GOAL-INFERENCE ACCURACY, not the
+representation's expressiveness — richer forms just express wrong goals more
+precisely. Path to 25/25 = better goal EVIDENCE/inference (e.g. cross-level
+observation of what changed on a clear, stronger models, or learning the goal
+from the game's own reward structure) — genuine research, not representation
+plumbing.** ⛔ Do not add a fourth representation rung without a better
+inference source.
