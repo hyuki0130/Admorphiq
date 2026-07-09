@@ -864,3 +864,12 @@ per broken-signature fire, re-locked per level; solid-9 default untouched).
 Bench in flight (tu93/sp80 targets + vc33/m0r0 guard). If sp80 stays 0, the
 next lever is the REGION-mask port (large-region rate masking above the
 per-cell cap) — pre-registered.
+
+### Pool-2 rung: no-gain at fire=1500; early-fire sweep + dealias diag (2026-07-09 23:29)
+pool2 bench: tu93 0/9 (fired pool2 then object — **new_frac stayed 0.64 at
+pool2**, so tu93's explosion is NOT sub-cell jitter; prime suspect = dealias
+history-suffix forking, diagnostic added to the fire trace), sp80 0/6 (ladder
+never fires — its lever is the region mask, pre-registered), vc33/m0r0 guards
+held at 1 (fires occurred during L2 pursuit, harmless). Tune-before-discard:
+_OBJ_MIN_STEPS 1500→500 (a fired rung rebuilds from scratch; at 1500 the level
+budget was half-spent) — pool2b in flight (tu93 + guards).
