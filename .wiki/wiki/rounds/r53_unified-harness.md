@@ -724,3 +724,15 @@ analogy-drawn target is still wrong for L2, or (b) L2's mechanics/search-space
 defeat graph exploration regardless of goal. Next diagnostic: dump the L2 board
 and the drawn target side-by-side on tn36 to see WHICH. Lever kept (upside-only,
 no regression: all three L1s intact).
+
+### 🎯 Dominant steering flips cd82 to 2/2 — the inert-steering diagnosis was right (2026-07-09)
+With explicit-target proximity now DOMINATING the frontier ranking (weight 50 vs
+the provably-inert 0.05): **cd82 cleared BOTH runs** (harness history was 0/8!)
+and all four regression games held (tn36/r11l/vc33/m0r0). The grid-dump→inert-
+steering→dominance chain is validated: gemma's drawn targets were often GOOD and
+simply never pursued. MAJOR CAVEAT ON PRIOR VERDICTS: the "targetgrid cracked
+only cd82" full-sweep AND the ~30%-stochastic base-rate were measured UNDER
+INERT STEERING — targetgrid's true potential is unmeasured. Re-running the
+failing set with dominant steering. tn36 L2 stayed locked (plausible target +
+real steering — its block is deeper: combinatorial click space or full-res
+target mismatch).
