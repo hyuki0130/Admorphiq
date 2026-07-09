@@ -116,7 +116,13 @@ def _downsample(frame: np.ndarray, n: int = 8) -> np.ndarray:
     return out
 
 
-def _click_candidates(frame: np.ndarray, max_clicks: int = _MAX_CLICKS) -> list[tuple[int, int]]:
+# Interactivity tiers for click candidates (0 = most promising). Ported from
+# legacy graph_frontier (R38): the GLOBAL TIER GATE defers the mass of low-tier
+# clicks until tier-0 is exhausted everywhere — without it deep discovery burned
+# tens of thousands of actions trying every centroid at every state.
+_N_TIERS = 3
+
+def _click_candidates(frame: np.ndarray, max_clicks: int = _MAX_CLICKS) -> list[tuple[int, int, int]]:
     """Reduce ACTION6 to a small INTERACTIVITY-tier-ordered set of ``(x, y)`` clicks.
 
     Segments the frame into 4-connected foreground components (background = the
@@ -130,28 +136,63 @@ def _click_candidates(frame: np.ndarray, max_clicks: int = _MAX_CLICKS) -> list[
     grid = np.asarray(frame)
     hist = color_histogram(grid)
     total = float(grid.size) or 1.0
+    background = int(np.argmax(hist)) if len(hist) else 0
     comps = connected_components(grid)
-    scored: list[tuple[float, tuple[int, int]]] = []
+    scored: list[tuple[int, float, float, tuple[int, int]]] = []
     for comp in comps:
         area = comp["size"]
         color = comp["color"]
         rarity = hist[color] / total if 0 <= color < len(hist) else 1.0
         contrast = _border_contrast(grid, comp)
-        # small + rare + high-contrast => low score => tried first.
-        score = (area / total) + rarity - 0.3 * contrast
+        # Legacy _click_tier: accumulate an interactivity score from the same
+        # three cues, then bucket by the legacy thresholds (>=2.0 -> 0,
+        # >=1.0 -> 1, else bottom).
+        area_frac = area / total
+        iscore = (
+            max(0.0, 1.0 - area_frac / 0.05)
+            + max(0.0, 1.0 - rarity / 0.10)
+            + contrast
+        )
+        if iscore >= 2.0:
+            tier = 0
+        elif iscore >= 1.0:
+            tier = 1
+        else:
+            tier = _N_TIERS - 1
+        # Backdrop demotion: a large blob bordered mostly by BACKGROUND is a
+        # passive board, never a control (legacy rule, bg_frac > 0.6).
+        if area_frac > 0.05 and _border_bg_frac(grid, comp, background) > 0.6:
+            tier = _N_TIERS - 1
         cy, cx = comp["centroid"]
-        scored.append((score, (int(round(cx)), int(round(cy)))))
-    scored.sort(key=lambda s: s[0])
-    out: list[tuple[int, int]] = []
+        scored.append((tier, float(area), rarity, (int(round(cx)), int(round(cy)))))
+    # Tier-first, then smaller-area, then rarer-colour (legacy ordering).
+    scored.sort(key=lambda t: (t[0], t[1], t[2]))
+    out: list[tuple[int, int, int]] = []
     seen: set[tuple[int, int]] = set()
-    for _score, (x, y) in scored:
+    for tier, _area, _rar, (x, y) in scored:
         if (x, y) in seen:
             continue
         seen.add((x, y))
-        out.append((x, y))
+        out.append((x, y, tier))
         if len(out) >= max_clicks:
             break
     return out
+
+
+def _border_bg_frac(grid: np.ndarray, comp: dict[str, Any], background: int) -> float:
+    """Fraction of a component's 4-neighbour border cells that are the BACKGROUND
+    colour — high when the component sits isolated on the passive board."""
+    cells = comp["cells"]
+    h, w = grid.shape
+    cellset = set(cells)
+    border = bg = 0
+    for (r, c) in cells:
+        for nr, nc in ((r - 1, c), (r + 1, c), (r, c - 1), (r, c + 1)):
+            if 0 <= nr < h and 0 <= nc < w and (nr, nc) not in cellset:
+                border += 1
+                if int(grid[nr, nc]) == background:
+                    bg += 1
+    return bg / border if border else 0.0
 
 
 def _border_contrast(grid: np.ndarray, comp: dict[str, Any]) -> float:
@@ -206,6 +247,13 @@ class GraphSearchTool:
         self._untried: dict[str, list[Any]] = {}
         # state_hash -> {action_key: try_count}
         self._tries: dict[str, dict[Any, int]] = {}
+        # state_hash -> {action_key: interactivity tier} (simple actions = -1).
+        self._tier: dict[str, dict[Any, int]] = {}
+        # Global tier gate (legacy R38): exploration starts restricted to simple
+        # actions + tier-0 clicks; a lower tier unlocks only when no in-gate
+        # untried action is reachable ANYWHERE — deferring the mass of
+        # low-promise clicks that made deep discovery exhaustive.
+        self._unlocked_tier = 0
         # next_hash -> list of (prev_hash, action_key) predecessors
         self._preds: dict[str, list[tuple[str, Any]]] = {}
         # A change-transition whose target hash is resolved on the next propose.
@@ -278,6 +326,7 @@ class GraphSearchTool:
                     self._edges.clear()
                     self._untried.clear()
                     self._tries.clear()
+                    self._tier.clear()
                     self._preds.clear()
                     self._pending = None
                     # Masked hashes change on freeze -> aliasing trace + per-state
@@ -395,13 +444,19 @@ class GraphSearchTool:
                     self._best_prox = prox
                     self._last_improve_call = self._prox_calls
 
-        untried = self._untried.get(cur_hash) or []
-        if untried:
-            return [_key_to_step(untried[0])]
-
-        path = self._bfs_path_to_frontier(cur_hash)
-        if path:
-            return [_key_to_step(k) for k in path]
+        while True:
+            untried = self._gated_untried(cur_hash)
+            if untried:
+                return [_key_to_step(untried[0])]
+            path = self._bfs_path_to_frontier(cur_hash)
+            if path:
+                return [_key_to_step(k) for k in path]
+            # No in-gate untried reachable anywhere: unlock the next click tier
+            # (legacy R38 global unlock) and retry before falling to random.
+            if self._unlocked_tier < _N_TIERS - 1:
+                self._unlocked_tier += 1
+                continue
+            break
 
         step = self._random_step(simple_ids, action6_ok, frame)
         return [step] if step is not None else []
@@ -535,12 +590,25 @@ class GraphSearchTool:
         if state_hash in self._untried:
             return
         actions: list[Any] = [int(a) for a in simple_ids]
+        tiers: dict[Any, int] = {int(a): -1 for a in simple_ids}
         if action6_ok:
-            for x, y in _click_candidates(frame, self.max_clicks):
-                actions.append(("click", int(x), int(y)))
+            for x, y, tier in _click_candidates(frame, self.max_clicks):
+                key = ("click", int(x), int(y))
+                actions.append(key)
+                tiers[key] = tier
         self._untried[state_hash] = actions
+        self._tier[state_hash] = tiers
         self._edges.setdefault(state_hash, {})
         self._tries.setdefault(state_hash, {})
+
+    def _in_gate(self, state: str, key: Any) -> bool:
+        """True when ``key`` at ``state`` is within the unlocked tier. Keys with
+        no recorded tier (hand-built graphs, simple actions) are always in-gate."""
+        return self._tier.get(state, {}).get(key, -1) <= self._unlocked_tier
+
+    def _gated_untried(self, state: str) -> list[Any]:
+        """The state's untried actions currently within the tier gate."""
+        return [k for k in (self._untried.get(state) or []) if self._in_gate(state, k)]
 
     def _bfs_path_to_frontier(self, start: str) -> list[Any] | None:
         """Shortest action path from ``start`` to the nearest frontier state.
@@ -562,7 +630,7 @@ class GraphSearchTool:
         best_score = -1e18
         while queue:
             node, path = queue.popleft()
-            untried = self._untried.get(node)
+            untried = self._gated_untried(node)
             if untried:
                 visits = sum((self._tries.get(node) or {}).values())
                 # promise: reward untried breadth, penalise re-visits and distance,
@@ -599,7 +667,7 @@ class GraphSearchTool:
             if self._rng.random() < 0.5:
                 cands = _click_candidates(frame, self.max_clicks)
                 if cands:
-                    x, y = self._rng.choice(cands)
+                    x, y, _tier = self._rng.choice(cands)
                     choices.append((6, (int(x), int(y))))
             h, w = frame.shape if frame.ndim == 2 else (64, 64)
             choices.append((6, (self._rng.randrange(w), self._rng.randrange(h))))

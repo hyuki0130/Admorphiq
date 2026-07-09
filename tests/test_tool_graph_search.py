@@ -235,3 +235,32 @@ def test_no_game_specifics_in_source():
     # No 4-char ARC-style game-id tokens (e.g. two letters + two digits) as
     # standalone words — word boundaries exclude numeric type names like int64.
     assert not re.search(r"\b[a-z]{2}\d{2}\b", src)
+
+
+def test_tier_gate_defers_low_tier_clicks_until_globally_exhausted():
+    """Purpose: prove the R38 global tier gate — a tier-1 click is NOT picked
+    while any tier-0 untried action is reachable anywhere in the graph; once
+    tier-0 is globally exhausted the gate unlocks and the tier-1 click fires.
+    Legacy measured this gate as the fix for deep discovery burning ~27k
+    actions trying every centroid at every state (cd82 L2).
+
+    Expected feedback: pass ⇒ low-promise clicks are deferred exactly as in the
+    legacy engine (the ft09-class budget saver); fail ⇒ the gate is cosmetic
+    and click games re-enter exhaustive-centroid behavior.
+    """
+    tool = GraphSearchTool()
+    a = _grid_with_dot(1, 1)
+    ha = base_hash(a)
+    # Hand-build one state with a tier-0 and a tier-1 click untried.
+    k0, k1 = ("click", 1, 1), ("click", 2, 2)
+    tool._untried[ha] = [k1, k0]          # list order says k1 first...
+    tool._tier[ha] = {k0: 0, k1: 1}       # ...but k1 is tier-1 (gated off)
+    tool._edges[ha] = {}
+    tool._tries[ha] = {}
+    obs = _Obs(a, [6])
+    # First pick must be the tier-0 click despite k1 preceding it in the list.
+    assert tool.propose([obs], obs) == [(6, (1, 1))]
+    # Exhaust tier-0; the gate must then unlock and hand out the tier-1 click.
+    tool._untried[ha] = [k1]
+    assert tool.propose([obs], obs) == [(6, (2, 2))]
+    assert tool._unlocked_tier >= 1
