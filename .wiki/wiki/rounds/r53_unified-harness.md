@@ -929,3 +929,13 @@ stability gate). Session arc: 8 → 11. The ported-technique well for the
 remaining 14 is DRY (legacy@8000 clears none of them) — next: (1) first-ever
 measurement of the remaining 14 under the region mask (unmeasured
 combination), then (2) the goal-inference frontier / efficiency axis.
+
+### rem14 sweep: 13 zeros + a surprise sk48 clear (2026-07-10 00:28)
+First-ever measurement of the remaining 14 under the final noise stack:
+dc22 g50t ka59 sc25 s5i5 su15 wa30 ar25 bp35 ls20 re86 sb26 tr87 all 0
+(the goal-inference wall confirmed — noise-stack techniques do not touch it),
+but **sk48 = 1/8** — a game legacy@8000 does NOT clear (batch B measured 0):
+the first unified-stack-only win (region mask × tier gate × dealias compose
+beyond the legacy engine). Replication x2 + a 30k budget probe (ka59/sb26/tr87
+— the legacy 30k-100k club) in flight: if 30k clears them, adaptive per-game
+budget is a coverage lever for the 25/25 mission (RHAE-neutral).
