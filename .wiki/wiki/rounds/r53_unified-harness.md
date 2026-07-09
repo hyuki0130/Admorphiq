@@ -285,8 +285,18 @@ serial-tool-exploration latency is itself a problem for the 9h/110-game budget.
    tool trials.
 
 **Session milestone (validated):** the from-scratch generic tools + self-improving
-harness clear a game END-TO-END (m0r0 0→1) — the architecture works. `graph`
-clears 3 games in isolation (vc33/m0r0/lp85). 10 measured fixes, 661 tests green.
+harness clear a game END-TO-END (m0r0 0→1) — the architecture works. 10 measured
+fixes, 661 tests green.
+
+### Full 25-game coverage sweep (`scripts/tool_coverage.sh`, direct probe)
+Measured the `graph` tool's coverage across ALL 25 games (budget 3000, direct
+probe — no LLM). **graph clears 4/25: lp85, m0r0, r11l, vc33.** (Legacy
+graph_frontier ≈ 11-13/25, so a real strength gap remains.) ⚠️ arcengine
+deadlocks under PARALLEL probes (Arcade scorecard contention — load 0.00,
+cputime 0) — the coverage sweep MUST run sequentially (PAR=1); probe_tool_direct
+also fixed to construct only the requested tool (default_tools pulled in the
+ollama-backed ones). Next: world_model + paint coverage → the UNION (harness
+coverage ceiling), then strengthen the biggest gaps toward legacy's ~13.
 
 ## Related
 
