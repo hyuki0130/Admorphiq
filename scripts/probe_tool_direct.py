@@ -55,6 +55,10 @@ def main() -> None:
     ap.add_argument("--tool", required=True)
     ap.add_argument("--game", required=True)
     ap.add_argument("--budget", type=int, default=2000)
+    ap.add_argument("--hybrid", action="store_true",
+                    help="graph only: after warmup, infer a goal via the LLM and "
+                         "inject it (set_external_goal) so LLM goal steers search")
+    ap.add_argument("--hybrid-warmup", type=int, default=40)
     a = ap.parse_args()
 
     from arc_agi import Arcade, OperationMode
@@ -77,6 +81,42 @@ def main() -> None:
         raise SystemExit(f"no game matching {a.game!r}")
     env = arcade.make(match.game_id)
     obs = env.observation_space
+
+    _hybrid_probe_changes: list = []
+    _hybrid_done = [False]
+
+    def _maybe_inject_goal(frame):
+        """Warmup then LLM-infer a goal and inject it into the graph tool."""
+        if not a.hybrid or _hybrid_done[0] or a.tool != "graph":
+            return
+        if steps < a.hybrid_warmup:
+            return
+        import json as _json
+        import urllib.request as _u
+
+        from admorphiq.planner.goal_inference import build_goal_prompt, parse_goal_spec
+        from admorphiq.tools.base import color_histogram as _ch
+
+        def _llm(prompt: str) -> str:
+            body = {"model": "gemma4:31b-it-q8_0", "stream": False, "think": False,
+                    "messages": [{"role": "user", "content": prompt}],
+                    "options": {"temperature": 0.0, "num_ctx": 8192, "num_predict": 200}}
+            req = _u.Request("http://localhost:11434/api/chat", data=_json.dumps(body).encode(),
+                             headers={"Content-Type": "application/json"}, method="POST")
+            with _u.urlopen(req, timeout=120) as r:
+                return _json.loads(r.read())["message"]["content"]
+
+        hist = {int(c): int(n) for c, n in enumerate(_ch(frame)) if n}
+        try:
+            prompt = build_goal_prompt(hist, _hybrid_probe_changes, grid_shape=frame.shape)
+            goal = parse_goal_spec(_llm(prompt))
+        except Exception as exc:  # noqa: BLE001
+            print(f"hybrid goal infer failed: {exc}", file=sys.stderr)
+            goal = None
+        if goal is not None:
+            tool.set_external_goal(goal)
+            print(f"HYBRID injected goal: {goal.goal_type}", file=sys.stderr)
+        _hybrid_done[0] = True
 
     queue: list = []
     prev_frame = None
@@ -104,6 +144,17 @@ def main() -> None:
 
         if prev_frame is not None and prev_step is not None and prev_frame.shape == frame.shape:
             changed = bool((prev_frame != frame).any())
+            if a.hybrid and changed:
+                d = prev_frame != frame
+                new = frame[d]
+                if new.size:
+                    import numpy as _np
+                    vals, cnts = _np.unique(new, return_counts=True)
+                    _hybrid_probe_changes.append({
+                        "action": prev_step[0], "changed_cells": int(d.sum()),
+                        "top_new_color": int(vals[int(cnts.argmax())]),
+                    })
+            _maybe_inject_goal(frame)
             try:
                 tool.observe(prev_frame, prev_step, changed)
             except Exception as exc:  # noqa: BLE001
