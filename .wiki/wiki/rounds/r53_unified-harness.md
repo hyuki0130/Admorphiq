@@ -853,3 +853,14 @@ collapsed its real moves) — we already hash full-res, so tu93's legacy clear
 rests on some OTHER technique (region/band masks, frontier dist 12 vs our 40,
 visit/path penalties, recency bonus). Instead of guessing: GF_DEBUG legacy runs
 on tu93/sp80 in flight to observe the active rungs at clear time.
+
+### GF_DEBUG attribution: tu93/sp80 legacy clears rest on pool=2 hashing (2026-07-09 23:30)
+Legacy debug runs: tu93 cleared L1/L2 at **effpool=2, mode=pixel, masked=126**
+(pool=1 downshift only fired later on L3); sp80 cleared L1 at **effpool=2 with
+a ~2800-cell region mask** (68% of the board — far above our per-cell mask's
+size/3 cap, which silently disables masking on such games). Ported the missing
+rung: hash ladder now escalates full-res -> 2x2 max-pool -> object (one rung
+per broken-signature fire, re-locked per level; solid-9 default untouched).
+Bench in flight (tu93/sp80 targets + vc33/m0r0 guard). If sp80 stays 0, the
+next lever is the REGION-mask port (large-region rate masking above the
+per-cell cap) — pre-registered.
