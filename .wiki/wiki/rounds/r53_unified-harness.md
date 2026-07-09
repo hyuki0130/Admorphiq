@@ -951,3 +951,13 @@ the old "sequential only" note was an artifact. Multi-model tracks launched in
 parallel (gemma4:26b-a4b vs qwen3-coder:30b harness on 6 games each: cd82 tn36
 cn04 + su15 ka59 sc25) — role-based model routing / draw ensemble are the next
 levers if tracks show complementarity.
+
+### Multi-model track A: gemma4:26b-a4b (15GB MoE) HOLDS the core card (2026-07-10 00:40)
+Track A (26b-a4b as harness brain+drawer, 6 games): **cd82 1, tn36 1, cn04 1 —
+the draw-dependent and dealias-dependent card games all hold on the 15GB MoE**;
+su15/ka59/sc25 stay 0 (the goal-inference wall is model-independent at this
+scale). Throughput implication: 26b-a4b is ~2-3x faster per call than 31b-q8 —
+if track C (full-card verify, 9 more games) is green, the deployed brain can
+downshift for the Kaggle 9h budget. Track B (qwen3-coder:30b) relaunched after
+a cwd bug (plain python3 from $HOME — parallel-nohup lesson: put cd INSIDE the
+bash -c string).
