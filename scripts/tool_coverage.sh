@@ -1,14 +1,18 @@
 #!/bin/bash
-# Direct-probe a given tool across all 25 games, PAR at a time.
+# Direct-probe a given tool across all 25 games, one at a time.
 # Usage: tool_coverage.sh <toolname> [budget]
+# NOTE: MUST stay sequential (PAR=1) — arcengine deadlocks under parallel Arcade
+# instances (scorecard contention: load 0.00, cputime 0). Each probe is wrapped
+# in `timeout` so one hung game can't block the whole sweep.
 cd ~/admorphiq
 TOOL=${1:-graph}
 BUDGET=${2:-3000}
 GAMES="ar25 bp35 cd82 cn04 dc22 ft09 g50t ka59 lf52 lp85 ls20 m0r0 r11l re86 s5i5 sb26 sc25 sk48 sp80 su15 tn36 tr87 tu93 vc33 wa30"
 PAR=1
+PROBE_TIMEOUT=180
 rm -f ~/cov_${TOOL}_*.out
 run_one() {
-  ~/.local/bin/uv run python scripts/probe_tool_direct.py --tool "$2" --game "$1" --budget "$3" 2>/dev/null | grep TOOL= > ~/cov_${2}_$1.out
+  timeout "$PROBE_TIMEOUT" ~/.local/bin/uv run python scripts/probe_tool_direct.py --tool "$2" --game "$1" --budget "$3" 2>/dev/null | grep TOOL= > ~/cov_${2}_$1.out
 }
 export -f run_one
 n=0
