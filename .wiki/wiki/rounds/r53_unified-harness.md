@@ -671,3 +671,12 @@ set_external_goal kept as the API for future richer goal sources) and stripped
 the inert parallel scaffolding from tool_coverage.sh. Post-deslop regression:
 **667 passed**. Deployed card being finalized: 6/7 solid + cd82 ~30% + lf52
 under full-budget re-test (8000).
+
+### ✅ FINAL DEPLOYED CARD (2026-07-09): 7/7 solid at deployment budget
+lf52 clears at the real deployment budget (GF_GIVEUP=8000): **the deployed
+UnifiedAgent clears ALL 7 solid isolated games** — cn04, lf52, lp85, m0r0, r11l,
+tn36, vc33 — plus cd82 ~30% stochastic via targetgrid. Deployed = isolated tool
+performance: the productization of the from-scratch generic-tool harness is
+COMPLETE and architect-approved (667 tests). R53 deliverable finalized. The
+mission continues past it on the goal-representation frontier (EWM executable
+rules / richer target sources) — the measured path beyond ~7-8/25.
