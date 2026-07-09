@@ -939,3 +939,15 @@ the first unified-stack-only win (region mask × tier gate × dealias compose
 beyond the legacy engine). Replication x2 + a 30k budget probe (ka59/sb26/tr87
 — the legacy 30k-100k club) in flight: if 30k clears them, adaptive per-game
 budget is a coverage lever for the 25/25 mission (RHAE-neutral).
+
+### ✅ 12/25 SOLID (sk48 replicated) + ka59 opens at 30k + PARALLEL VM verified (2026-07-10 00:38)
+nx1: **sk48 1/8 x2 replication → card = 12/25 SOLID** (+ sk48 is a
+unified-stack-only win — legacy@8000 = 0). Budget probe: **ka59@30k = 1/7**
+(adaptive budget = a real coverage lever for stuck games; RHAE-neutral),
+sb26/tr87@30k = 0 (their wall is goal inference, not budget). OPERATIONAL
+UNLOCK (user directive): parallel VM execution VERIFIED — 3 concurrent unified
+runs (lp85+m0r0+nx1) completed with no arcengine deadlock and correct results;
+the old "sequential only" note was an artifact. Multi-model tracks launched in
+parallel (gemma4:26b-a4b vs qwen3-coder:30b harness on 6 games each: cd82 tn36
+cn04 + su15 ka59 sc25) — role-based model routing / draw ensemble are the next
+levers if tracks show complementarity.
