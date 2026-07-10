@@ -1118,3 +1118,13 @@ was about deploying it as THE spine; as one mechanic-class solver in a
 fallback chain it is frame-only/game-id-free. Wall sweep (10 games @2000) in
 flight to measure its full coverage before choosing integration: fallback
 pass in the adaptive policy vs technique port into the world_model tool.
+
+### 🎉 WorldModelAgent fallback opens THREE walls efficiently (2026-07-11 05:15)
+Wall sweep @2000: **su15 = 2 LEVELS in 58 actions (0.067), ls20 = 1 in 88
+(0.036)** on top of sb26 (259 acts, 0.028); the other 7 walls 0 at trivial
+cost (50-200 actions each — the agent's giveup is cheap). If su15/ls20
+replicate: **17/25** under the 3-pass fallback policy (unified@8000 →
+unified@30k → worldmodel@2000), and these three clears alone add ~+0.5%p RHAE
+(several times the rest of the card). The R28 agent's object-centric planners
+(arrangement descend-and-sweep, selection modes) are mechanic-class solvers
+the r53 tools lack — port queue after replication.
