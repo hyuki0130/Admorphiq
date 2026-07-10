@@ -367,6 +367,9 @@ def test_code_escalation_after_persistent_nochurn_stall():
             return "```python\nact('UP')\n```"
         return '{"mode":"tool","tool":"graph"}'
 
+    import admorphiq.harness.loop as loop_mod
+    monkey_prev = loop_mod._CODE_ESC_ON
+    loop_mod._CODE_ESC_ON = True                 # research flag (default OFF)
     tool = _FakeTool("graph", (1, None), 0.9)   # owns the game, never progresses
     agent = UnifiedAgent([tool], llm, giveup=1000, stall=3)
     for _ in range(11):                          # static grid -> no novelty
@@ -377,6 +380,7 @@ def test_code_escalation_after_persistent_nochurn_stall():
         agent.choose_action([], _Obs(g, [1, 2, 3, 4]))   # _CODE_STALL window)...
     assert "code" in agent._failed               # ...and retires normally
     assert agent._current == "graph"             # tools resume (full lifecycle)
+    loop_mod._CODE_ESC_ON = monkey_prev
 
 
 def test_code_tenure_block_budget_hard_caps_llm_calls():

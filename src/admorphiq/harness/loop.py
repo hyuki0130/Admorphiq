@@ -14,6 +14,7 @@ runtime, a fake in tests), so the loop is fully testable offline.
 
 from __future__ import annotations
 
+import os
 import re
 import sys
 from typing import Any, Callable
@@ -25,6 +26,11 @@ from admorphiq.tools.base import Step, Tool, availability, base_hash, frame_2d, 
 from admorphiq.tools.code_agent import build_code_prompt, build_refine_prompt, run_code
 from admorphiq.tools.targetgrid import TARGET_RES, build_target_prompt, parse_and_validate_target
 
+# Code escalation is DEFAULT OFF (HARNESS_CODE_ESC=1 to enable for research):
+# the reliable measurement (rounds/r53, 2026-07-11) is 0/6 on the wall games it
+# was built for AND it breaks a marginal card game (sk48 1 -> 0/3 with tenures
+# interrupting the graph's slow-progress path) — net negative deployed.
+_CODE_ESC_ON = os.environ.get("HARNESS_CODE_ESC", "0") == "1"
 # Code-escalation cost controls (wall-clock, not score: see rounds/r53).
 _CODE_TENURES_MAX = 2   # per game — escalation re-fires after level resets
 _CODE_STALL = 24        # steps without a new state before a code tenure retires
@@ -506,7 +512,7 @@ class UnifiedAgent:
         # code path gets one tenure per level mechanically; a stalled code
         # tenure retires through the normal redecide path ("code" joins
         # _failed, tools resume).
-        if (not need_decision and self._current is not None
+        if (_CODE_ESC_ON and not need_decision and self._current is not None
                 and self._current != "code" and "code" not in self._failed
                 and self._code_tenures < _CODE_TENURES_MAX
                 and self._since_progress >= self.stall * 3):
