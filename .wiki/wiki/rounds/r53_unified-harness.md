@@ -1017,3 +1017,17 @@ to solver code); (b) richer structure (object-level diffs per action, not just
 cell counts); (c) adaptive budget deployment (+ka59, proven). SCALE-OUT: VM #2
 (ewm-bench2) cloning launched per user directive — doubles parallel bench
 throughput for the wall-research iteration loop.
+
+### Code loop was NEVER exercised — routing starvation found + fixed (2026-07-10 22:20)
+Attribution on the dyn/rf wall benches: **pick=code count = 0 across all 6
+games** — the model never chooses {"mode":"code"} (the R9 name-preference
+pathology, now measured on the harness), and the no-churn policy keeps the
+stalled best tool running to the end of the budget. So BOTH "code synthesis
+failed" verdicts (dynamics-context, execution-feedback) actually measured
+routing starvation; the code work never ran. Fix (mechanical, per the R9→R11
+lesson that prompt persuasion does not move this pathology): **deterministic
+CODE escalation** — no new-state progress for 3 stall windows → the code path
+gets ONE tenure per level; a stalled code tenure retires normally and tools
+resume. Full lifecycle pinned by test (683 tests). esc bench in flight (wall 6
++ tu93/sk48 guards) — the first run where dynamics-context + execution-feedback
+code synthesis actually executes on the wall.
