@@ -1606,9 +1606,12 @@ tool OR writes Python (`tools/code_agent.py`) → run → feed the transition to
 Measured: code-agent ALONE re86 = 0/8 → frontier transform games need the combined tool+code loop,
 not code in isolation. Round page: [[.wiki/wiki/rounds/r53_unified-harness]]. 679 tests, ruff clean.
 
-**R53 card (2026-07-11): 14/25 under the ADAPTIVE-BUDGET policy** — 12 SOLID @8000 (cd82 cn04
-ft09 lf52 lp85 m0r0 r11l sk48 sp80 tn36 tu93 vc33) + ka59 + ar25 @30k retry (both 3-sample;
-ar25 needed 100k in legacy). The 2026-07-09/10 porting chain (each step measured, harmful steps
+**R53 card (2026-07-11): 17/25 under the 3-PASS FALLBACK policy, RHAE proxy ≈ 0.9%** —
+(1) unified@8000: 12 SOLID (cd82 cn04 ft09 lf52 lp85 m0r0 r11l sk48 sp80 tn36 tu93 vc33);
+(2) unified@30k retry: ka59 + ar25 (3-sample; ar25 needed 100k in legacy); (3) worldmodel@2000
+retry (R28 WorldModelAgent arrangement/selection planners): sb26 259a + su15 2-levels/58a +
+ls20 88a, all deterministic ×3 — efficient clears that lift the RHAE total past the online-RL
+card (0.51%) toward M1 (1.21%). Remaining 8 walls: bp35 dc22 g50t re86 s5i5 sc25 tr87 wa30. The 2026-07-09/10 porting chain (each step measured, harmful steps
 reverted): R38 click-tier gate → ft09 (+ pursuit bypass fixing a cd82 regression); hash ladder
 pool1→pool2→object (inert, kept); ⛔ moving-band mask reverted (vc33 regression); **REGION-level
 rate mask → tu93 + sp80 + sk48** with a size-conditional stability gate fixing a cn04
