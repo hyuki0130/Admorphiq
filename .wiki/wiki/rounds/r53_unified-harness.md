@@ -1082,3 +1082,15 @@ opens it at 30k (1 sample, replication chained). All eight others still 0 at
 budget is not their lever). bp35 pending. If ar25 replicates: **14/25** with
 the adaptive-budget policy (8000 default + 30k retry pass on unsolved games —
 RHAE-neutral, deployment-runner design).
+
+### ✅ 14/25 — ar25 replicated x2 (3 samples); adaptive-budget policy validated (2026-07-11 05:04)
+ar25 @30k: 1, 1 replication (3 total samples incl. the sweep) — CONFIRMED.
+**Card under the adaptive-budget policy (8000 default + one 30k retry pass on
+unsolved games): 14/25** = 12 solid @8000 (cd82 cn04 ft09 lf52 lp85 m0r0 r11l
+sk48 sp80 tn36 tu93 vc33) + ka59 + ar25 @30k (both 3-sample). bp35 0 closed
+the sweep: budget opens NOTHING else. Remaining 11 (bp35 dc22 g50t ls20 re86
+s5i5 sb26 sc25 su15 tr87 wa30) are goal-inference-walled with ALL cheap axes
+closed by reliable measurement (budget ⛔ / model scale+family ⛔ / draw
+diversity ⛔ / code synthesis ⛔). The one open road: RICHER GOAL EVIDENCE —
+which is also the efficiency (RHAE) axis's root (know the target → short
+path). Session arc 2026-07-09→11: 8 → 14/25.
