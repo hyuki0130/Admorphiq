@@ -1072,3 +1072,13 @@ deployed (0 unlock + 1 card regression) → HARNESS_CODE_ESC default OFF
 (research flag; infra retained: dynamics prompt, refine loop, tenure/block
 caps). Card: **12/25 SOLID restored**. Next lever: adaptive budget deployment
 (ka59@30k = 13th game), then the efficiency axis / richer goal evidence.
+
+### 30k adaptive-budget sweep: ka59 SOLID (3 samples) + ar25 opens (2026-07-11 04:55)
+12-run sweep @30000 (GF_GIVEUP=30000): **ka59 1,1 replication → 3 total samples
+= the 13th game** (with the adaptive-budget policy). **ar25 = 1 — NEW**: legacy
+needed 100k for ar25; the unified stack (region mask × tier gate × dealias)
+opens it at 30k (1 sample, replication chained). All eight others still 0 at
+30k (dc22 g50t ls20 re86 s5i5 sc25 su15 wa30 — the goal-inference wall stands;
+budget is not their lever). bp35 pending. If ar25 replicates: **14/25** with
+the adaptive-budget policy (8000 default + 30k retry pass on unsolved games —
+RHAE-neutral, deployment-runner design).
