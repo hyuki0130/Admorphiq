@@ -1107,3 +1107,14 @@ tool that clears it never gets a turn; also contradicts the "world_model 0/25
 standalone" note — that sweep likely mis-measured it). Replication x2 in
 flight. If real: 15th game + an efficient clear + a routing-table fix
 (tool_selector row for its signature).
+
+### sb26 mechanism identified: the R28 WorldModelAgent's arrangement planner (2026-07-11 05:20)
+The 7/8 mystery json traced to orchestrator_loop.py's "world_model" config =
+`--agent worldmodel` = the R28 **WorldModelAgent** (object-centric online
+world model + arrangement planner `plan_descend_and_sweep`), NOT the r53
+world_model tool. Reproduced x2: **sb26 L1 in 259 actions, deterministic,
+game_score 0.028**. R07's recorded caveat ("world-model is sample-specific")
+was about deploying it as THE spine; as one mechanic-class solver in a
+fallback chain it is frame-only/game-id-free. Wall sweep (10 games @2000) in
+flight to measure its full coverage before choosing integration: fallback
+pass in the adaptive policy vs technique port into the world_model tool.
