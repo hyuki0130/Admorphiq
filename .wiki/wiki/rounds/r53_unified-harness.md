@@ -1050,3 +1050,12 @@ force-retire regardless of novelty. Worst case now ~20 LLM calls/game
 (2 tenures x 10 blocks). 684 tests. v4 bench in flight (script-file launch —
 the new standard for VM batches; inline-quoted ssh nohup launches were the
 source of the cwd bug and half the client hangs).
+
+### VM batch ops lesson (2026-07-11 02:12)
+Two silent-failure modes found in ssh batch launches: (a) inline-quoted nohup
+lost the cwd (plain python3 from $HOME), (b) a chmod in a hung ssh never ran so
+`setsid nohup ~/script.sh` failed on permissions with no error surfaced —
+launches "succeeded" while nothing started. STANDARD NOW: scp a script file,
+launch with `setsid nohup bash ~/script.sh`, and ALWAYS verify by polling for
+the script's own log files before trusting the launch. Client-side gcloud ssh
+hangs are common and say NOTHING about whether the remote command ran.
