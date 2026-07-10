@@ -1059,3 +1059,16 @@ launches "succeeded" while nothing started. STANDARD NOW: scp a script file,
 launch with `setsid nohup bash ~/script.sh`, and ALWAYS verify by polling for
 the script's own log files before trusting the launch. Client-side gcloud ssh
 hangs are common and say NOTHING about whether the remote command ran.
+
+### ⛔ CODE-SYNTHESIS AXIS CLOSED — escalation default OFF, card restored (2026-07-11 04:02)
+v4 (all wall-clock holes fixed, 8/8 games completed within budget): wall games
+**0/6 under the first RELIABLE code-loop measurement** (dynamics context +
+execution-feedback refinement actually executing, fires confirmed). Guards:
+tu93 1 held; **sk48 0 — and 0/3 total with escalation ON vs 1/2 recovery with
+it OFF (fires=0)** — causality pinned: code tenures interrupt sk48's
+slow-progress graph path. VERDICT: ⛔ code synthesis at gemma31b scale does not
+crack the goal-inference wall, and deterministic escalation is NET-NEGATIVE
+deployed (0 unlock + 1 card regression) → HARNESS_CODE_ESC default OFF
+(research flag; infra retained: dynamics prompt, refine loop, tenure/block
+caps). Card: **12/25 SOLID restored**. Next lever: adaptive budget deployment
+(ka59@30k = 13th game), then the efficiency axis / richer goal evidence.
