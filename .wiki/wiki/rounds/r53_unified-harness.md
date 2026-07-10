@@ -1128,3 +1128,16 @@ unified@30k → worldmodel@2000), and these three clears alone add ~+0.5%p RHAE
 (several times the rest of the card). The R28 agent's object-centric planners
 (arrangement descend-and-sweep, selection modes) are mechanic-class solvers
 the r53 tools lack — port queue after replication.
+
+### ✅ 17/25 CONFIRMED — 3-pass fallback policy; RHAE ~0.9% (2026-07-11 05:16)
+su15 2/58 x2 and ls20 1/88 x2 replications (deterministic; 3 samples each incl.
+the sweep). **CARD: 17/25** under the 3-pass per-game policy: (1) unified@8000
+→ 12 games, (2) unified@30k retry → ka59 ar25, (3) worldmodel@2000 retry →
+sb26 su15 ls20. Remaining walls: 8 (bp35 dc22 g50t re86 s5i5 sc25 tr87 wa30).
+RHAE proxy total jumps from ~0.03% to **~0.9%** (ar25 0.083 + su15 0.067 +
+ls20 0.036 + sb26 0.028 dominate — efficient clears, exactly what the squared
+metric rewards) — past the online-RL deployed card (0.51%), approaching M1
+winner (1.21%). Deployment note: the Kaggle runner must implement the 3-pass
+chain with wall-clock awareness (pass 2 only if time remains; pass 3 is cheap
+— 50-260 actions — and can even run FIRST as a fast probe). Session arc
+2026-07-09→11: **8 → 17/25**.
