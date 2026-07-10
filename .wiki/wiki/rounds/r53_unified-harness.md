@@ -1094,3 +1094,16 @@ closed by reliable measurement (budget ⛔ / model scale+family ⛔ / draw
 diversity ⛔ / code synthesis ⛔). The one open road: RICHER GOAL EVIDENCE —
 which is also the efficiency (RHAE) axis's root (know the target → short
 path). Session arc 2026-07-09→11: 8 → 14/25.
+
+### Efficiency diagnostic + sb26 world_model lead (2026-07-11 05:10)
+Actions-to-clear across the card (from existing bench jsons): most L1 clears
+are exhaustive-search stumbles — cd82 5786, sk48 6945, cn04 3361, m0r0 2951,
+vc33 1902, tu93 1413 actions vs human baselines ~10-55 → squared-efficiency
+≈ 0 each. TWO outliers: **ar25 clears EFFICIENTLY (L1 in 30 actions, 2 levels
+/310 total, game_score 0.083 — more than the rest of the card combined)**, and
+a forgotten 7/8 probe json shows **world_model clearing sb26 L1 in 9 actions**
+(orch_sb26_world_model.json — the unified harness routes sb26 to graph, so the
+tool that clears it never gets a turn; also contradicts the "world_model 0/25
+standalone" note — that sweep likely mis-measured it). Replication x2 in
+flight. If real: 15th game + an efficient clear + a routing-table fix
+(tool_selector row for its signature).
