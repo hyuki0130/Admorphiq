@@ -96,6 +96,10 @@ class UnifiedAgent:
         # attacking the measured wall (goal-INFERENCE accuracy).
         self._clear_frames: list[np.ndarray] = []
         self._reset_level()
+        # GAME-scoped code-tenure budget (must NOT live in _reset_level: death/
+        # level resets would re-arm it — measured as unbounded tenures blowing
+        # 20-minute wall-clocks on death-looping games).
+        self._code_tenures = 0
 
     def _reset_level(self) -> None:
         for t in self.tools.values():
@@ -108,10 +112,6 @@ class UnifiedAgent:
         self._recent_frames: list[np.ndarray] = []
         self._tried: list[str] = []
         self._failed: set[str] = set()
-        # GAME-scoped code-tenure budget: escalation re-fires after every level
-        # reset/death otherwise, and each tenure costs ~10 LLM calls — measured
-        # to blow a 20-minute per-game wall-clock on 7/8 bench games.
-        self._code_tenures = 0
         self._current: str | None = None
         self._primary_owns = False
         self._prev_frame: np.ndarray | None = None
