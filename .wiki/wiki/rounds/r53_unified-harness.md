@@ -1141,3 +1141,14 @@ winner (1.21%). Deployment note: the Kaggle runner must implement the 3-pass
 chain with wall-clock awareness (pass 2 only if time remains; pass 3 is cheap
 — 50-260 actions — and can even run FIRST as a fast probe). Session arc
 2026-07-09→11: **8 → 17/25**.
+
+### MEASURED policy total: 0.915% (25-game, best-pass-per-game) (2026-07-11 05:18)
+Exact sum over all 25 games from bench jsons: **0.2286 → 0.915%** on the
+leaderboard scale (vs online-RL card 0.51%, M1 winner 1.21%, top ~1.56%).
+Top contributors are ALL efficient clears: ar25 0.083 (lv2 — and its best
+record is ALSO WorldModelAgent, cheaper than the 30k unified pass), su15
+0.067 (lv2), ls20 0.036, sb26 0.028, tn36 0.0065; the exhaustive graph clears
+contribute ≈ 0 each, as the squared metric dictates. POLICY OPTIMIZATION NOTE:
+run the cheap worldmodel pass FIRST (50-260 actions; it may replace the 30k
+retry for ar25-class games entirely). Session: 8→17 coverage, 0.03%→0.915%
+score.
