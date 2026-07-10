@@ -377,3 +377,31 @@ def test_code_escalation_after_persistent_nochurn_stall():
         agent.choose_action([], _Obs(g, [1, 2, 3, 4]))   # _CODE_STALL window)...
     assert "code" in agent._failed               # ...and retires normally
     assert agent._current == "graph"             # tools resume (full lifecycle)
+
+
+def test_code_tenure_block_budget_hard_caps_llm_calls():
+    """Purpose: a code tenure whose actions keep finding novelty never stalls,
+    so without a block budget it costs one LLM call per <=8 actions to the end
+    of the game (measured: persistent 1200s per-game timeouts). After
+    _CODE_BLOCKS_MAX blocks the tenure must force-retire.
+
+    Expected feedback: pass = code tenures have bounded wall-clock; fail = wall
+    games with novelty-churning code blow the Kaggle per-game budget."""
+    from admorphiq.harness.loop import _CODE_BLOCKS_MAX
+
+    g = np.zeros((64, 64), dtype=np.int64)
+
+    def llm(messages):
+        body = messages[-1]["content"] if isinstance(messages, list) else str(messages)
+        if "```python" in body or "python block" in body:
+            return "```python\nact('UP')\n```"
+        return '{"mode":"code"}'
+
+    tool = _FakeTool("graph", (1, None), 0.9)
+    agent = UnifiedAgent([tool], llm, giveup=1000, stall=3)
+    agent._current = "code"
+    agent._code_blocks = _CODE_BLOCKS_MAX  # budget already spent
+    steps = agent._write_code(_Obs(g, [1, 2, 3, 4]))
+    assert steps == []                      # no more blocks
+    assert "code" in agent._failed          # tenure force-retired
+    assert agent._current is None           # next step redecides

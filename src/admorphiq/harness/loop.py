@@ -28,6 +28,9 @@ from admorphiq.tools.targetgrid import TARGET_RES, build_target_prompt, parse_an
 # Code-escalation cost controls (wall-clock, not score: see rounds/r53).
 _CODE_TENURES_MAX = 2   # per game — escalation re-fires after level resets
 _CODE_STALL = 24        # steps without a new state before a code tenure retires
+_CODE_BLOCKS_MAX = 10   # LLM blocks per tenure — a tenure whose actions keep
+#   finding novelty never stalls, so without this cap it runs 1 LLM call per
+#   <=8 actions to the end of the budget (measured: 1200s timeouts persisted)
 
 LLM = Callable[[list[dict[str, str]]], str]
 # Contract: the injected callable MUST be time-bounded (the loop imposes no
@@ -214,6 +217,8 @@ class UnifiedAgent:
         prev_current = self._current
         mode, tool = self._decide(sig)
         self._current = tool if mode == "tool" else "code"
+        if self._current == "code":
+            self._code_blocks = 0  # fresh tenure block budget
         # On a switch to a different tool, reset it so it starts from a clean
         # model (it may hold stale/polluted state from an earlier tenure). The
         # tool then builds its model purely from its OWN upcoming actions.
@@ -289,6 +294,13 @@ class UnifiedAgent:
         frame = frame_2d(obs).astype(np.int16)
         if not hasattr(self, "_last_code"):
             self._last_code: tuple[str, int, int] | None = None
+        # Hard block budget per tenure: novelty-finding code otherwise refills
+        # (= one LLM call per <=8 actions) to the end of the game budget.
+        self._code_blocks = getattr(self, "_code_blocks", 0) + 1
+        if self._code_blocks > _CODE_BLOCKS_MAX:
+            self._failed.add("code")
+            self._current = None  # force a redecide on the next step
+            return []
         simple_ids, action6 = availability(obs)
         valid = [_NAME[i] for i in simple_ids if i in _NAME] + (["MOUSE"] if action6 else [])
         # Give the coding LLM the recent transitions it has actually observed.
@@ -505,6 +517,7 @@ class UnifiedAgent:
             self._current = "code"
             self._primary_owns = False
             self._since_progress = 0
+            self._code_blocks = 0
             self._queue = []
         if need_decision:
             sig = compute_signature(obs, self._transitions)
