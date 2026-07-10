@@ -1031,3 +1031,11 @@ gets ONE tenure per level; a stalled code tenure retires normally and tools
 resume. Full lifecycle pinned by test (683 tests). esc bench in flight (wall 6
 + tu93/sk48 guards) — the first run where dynamics-context + execution-feedback
 code synthesis actually executes on the wall.
+
+### Escalation v1: mechanism works, cost exploded — controls added (2026-07-10 23:58)
+esc bench: escalation fired 7x across 8 games (the code loop finally executes)
+but **7/8 games blew the 1200s per-game timeout** — escalation re-fires after
+every level reset/death and each tenure = ~10 LLM calls on a full 80-step stall
+window. Only re86 completed: 0 (code ran, no unlock — first real code-loop
+measurement). Controls shipped: tenures GAME-scoped (max 2), code stall window
+24 steps (~3 blocks/tenure ≈ 6 LLM calls/game worst case). Re-benching.
