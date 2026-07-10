@@ -474,6 +474,23 @@ class UnifiedAgent:
         need_decision = self._current is None or (
             stalled and not self._primary_owns and self._better_alternative_exists()
         )
+        # Deterministic CODE escalation. Measured on every wall bench: the model
+        # NEVER chooses {"mode":"code"} (0 picks — the R9 name-preference
+        # pathology), and the no-churn policy keeps the stalled best tool
+        # running to the end of the budget on games no tool can clear. When the
+        # active tool has made no new-state progress for 3 stall windows, the
+        # code path gets one tenure per level mechanically; a stalled code
+        # tenure retires through the normal redecide path ("code" joins
+        # _failed, tools resume).
+        if (not need_decision and self._current is not None
+                and self._current != "code" and "code" not in self._failed
+                and self._since_progress >= self.stall * 3):
+            print(f"[harness] step={self._steps} no-churn stall x3 -> CODE escalation",
+                  file=sys.stderr, flush=True)
+            self._current = "code"
+            self._primary_owns = False
+            self._since_progress = 0
+            self._queue = []
         if need_decision:
             sig = compute_signature(obs, self._transitions)
             self._redecide(frames, obs, sig)

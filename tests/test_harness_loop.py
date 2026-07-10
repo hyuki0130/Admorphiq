@@ -345,3 +345,35 @@ def test_llm_failure_falls_back_to_signature_default():
 
 if __name__ == "__main__":
     pytest.main([__file__, "-q"])
+
+
+def test_code_escalation_after_persistent_nochurn_stall():
+    """Purpose: when the owning tool makes no new-state progress for 3 stall
+    windows and no better tool exists, the CODE path must get a tenure
+    MECHANICALLY — measured: the model never chooses {"mode":"code"} (0 picks
+    across every wall bench) and the no-churn policy otherwise runs the stalled
+    tool to the end of the budget, so the code loop never executes at all.
+
+    Expected feedback: pass = wall games eventually exercise code synthesis;
+    fail = the refine loop is dead code and wall benches only measure graph.
+    """
+    g = np.zeros((64, 64), dtype=np.int64)
+    calls = {"code": 0}
+
+    def llm(messages):
+        body = messages[-1]["content"] if isinstance(messages, list) else str(messages)
+        if "```python" in body or "python block" in body:
+            calls["code"] += 1
+            return "```python\nact('UP')\n```"
+        return '{"mode":"tool","tool":"graph"}'
+
+    tool = _FakeTool("graph", (1, None), 0.9)   # owns the game, never progresses
+    agent = UnifiedAgent([tool], llm, giveup=1000, stall=3)
+    for _ in range(11):                          # static grid -> no novelty
+        agent.choose_action([], _Obs(g, [1, 2, 3, 4]))
+    assert agent._current == "code"              # escalation fired (3 windows)
+    assert calls["code"] >= 1                    # a real code prompt was asked
+    for _ in range(4):                           # code also stalls...
+        agent.choose_action([], _Obs(g, [1, 2, 3, 4]))
+    assert "code" in agent._failed               # ...and retires normally
+    assert agent._current == "graph"             # tools resume (full lifecycle)
