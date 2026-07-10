@@ -1039,3 +1039,14 @@ every level reset/death and each tenure = ~10 LLM calls on a full 80-step stall
 window. Only re86 completed: 0 (code ran, no unlock — first real code-loop
 measurement). Controls shipped: tenures GAME-scoped (max 2), code stall window
 24 steps (~3 blocks/tenure ≈ 6 LLM calls/game worst case). Re-benching.
+
+### Escalation v2/v3 wall-clock holes closed one by one (2026-07-11 01:58)
+Two more measured holes after the tenure-cap fix: (a) the "game-scoped"
+counter lived in _reset_level, so death/level resets re-armed it (moved to
+__init__); (b) a tenure whose code keeps FINDING NOVELTY never stalls — one
+LLM call per <=8 actions to the end of the budget (wa30/tr87 still blew 1200s
+with fires<=2). Fix: hard block budget _CODE_BLOCKS_MAX=10 per tenure,
+force-retire regardless of novelty. Worst case now ~20 LLM calls/game
+(2 tenures x 10 blocks). 684 tests. v4 bench in flight (script-file launch —
+the new standard for VM batches; inline-quoted ssh nohup launches were the
+source of the cwd bug and half the client hangs).
