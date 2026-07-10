@@ -373,7 +373,7 @@ def test_code_escalation_after_persistent_nochurn_stall():
         agent.choose_action([], _Obs(g, [1, 2, 3, 4]))
     assert agent._current == "code"              # escalation fired (3 windows)
     assert calls["code"] >= 1                    # a real code prompt was asked
-    for _ in range(4):                           # code also stalls...
-        agent.choose_action([], _Obs(g, [1, 2, 3, 4]))
+    for _ in range(26):                          # code also stalls (short
+        agent.choose_action([], _Obs(g, [1, 2, 3, 4]))   # _CODE_STALL window)...
     assert "code" in agent._failed               # ...and retires normally
     assert agent._current == "graph"             # tools resume (full lifecycle)

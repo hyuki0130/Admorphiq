@@ -25,6 +25,10 @@ from admorphiq.tools.base import Step, Tool, availability, base_hash, frame_2d, 
 from admorphiq.tools.code_agent import build_code_prompt, build_refine_prompt, run_code
 from admorphiq.tools.targetgrid import TARGET_RES, build_target_prompt, parse_and_validate_target
 
+# Code-escalation cost controls (wall-clock, not score: see rounds/r53).
+_CODE_TENURES_MAX = 2   # per game — escalation re-fires after level resets
+_CODE_STALL = 24        # steps without a new state before a code tenure retires
+
 LLM = Callable[[list[dict[str, str]]], str]
 # Contract: the injected callable MUST be time-bounded (the loop imposes no
 # timeout of its own); current callers are (registry urlopen 180s, probe 150s).
@@ -104,6 +108,10 @@ class UnifiedAgent:
         self._recent_frames: list[np.ndarray] = []
         self._tried: list[str] = []
         self._failed: set[str] = set()
+        # GAME-scoped code-tenure budget: escalation re-fires after every level
+        # reset/death otherwise, and each tenure costs ~10 LLM calls — measured
+        # to blow a 20-minute per-game wall-clock on 7/8 bench games.
+        self._code_tenures = 0
         self._current: str | None = None
         self._primary_owns = False
         self._prev_frame: np.ndarray | None = None
@@ -453,7 +461,11 @@ class UnifiedAgent:
         # clears m0r0/vc33 given the FULL budget but was retired after one tenure
         # when treated like any other tool; detect() is a reliable frame signal,
         # so trust it and let the right tool run. Low-confidence picks still swap.
-        stalled = self._since_progress >= self.stall
+        # Code tenures stall on a SHORT window: each code refill costs one LLM
+        # call (~10-15s), so a full tool-sized window per tenure measurably blew
+        # the per-game wall-clock (7/8 games past 20 min).
+        eff_stall = _CODE_STALL if self._current == "code" else self.stall
+        stalled = self._since_progress >= eff_stall
         if stalled and self._current is not None and self._current != "code":
             # Ownership is LIVE: at pick time there was no transition evidence
             # (detect saw an empty history and could not reach its high branch),
@@ -484,8 +496,11 @@ class UnifiedAgent:
         # _failed, tools resume).
         if (not need_decision and self._current is not None
                 and self._current != "code" and "code" not in self._failed
+                and self._code_tenures < _CODE_TENURES_MAX
                 and self._since_progress >= self.stall * 3):
-            print(f"[harness] step={self._steps} no-churn stall x3 -> CODE escalation",
+            self._code_tenures += 1
+            print(f"[harness] step={self._steps} no-churn stall x3 -> CODE "
+                  f"escalation (tenure {self._code_tenures}/{_CODE_TENURES_MAX})",
                   file=sys.stderr, flush=True)
             self._current = "code"
             self._primary_owns = False
