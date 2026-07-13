@@ -1204,3 +1204,12 @@ the kernel pushed: kaggle.com/code/jaehyukhyun/admorphiq-arc-agi-3-chained-llm-f
 (competitions submit, consumes the daily slot) awaits the validation result +
 user go. Parallel local thread: no-LLM chained @30k sweep on the 11 unsolved
 games (Mac, ~1000 steps/s — faster than the VM was).
+
+### Local 30k sweep (Mac): sk48 recovered; ka59/cn04 are LLM-dependent (2026-07-13 12:50)
+no-LLM chained @30000 on the 11 unsolved: **sk48 = 1** (the chain-fragility
+dissolves with budget — no-LLM card = 15/25 with a 30k retry pass), ka59 0 and
+cn04 0 (their earlier unlocks needed the gemma stack — the only two
+LLM-dependent games), all 8 walls 0 (budget is not their lever, re-confirmed
+locally). Kaggle: kernel v2 pushed after two mount fixes (competition data
+nests under the competition slug via CLI; the dataset zip strips src/) + a
+409 id/slug mismatch; server validation in flight.
