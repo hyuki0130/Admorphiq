@@ -3498,11 +3498,24 @@ game geometry (verification-only); swatch detection restricted to x≥20 (a
 top-left target-colour stray was mis-read as a swatch on L2). Deterministic ×2 +
 chained; all 9 guards byte-identical; 778 tests, ruff clean.
 
-**M5 (banked, future) — arrow-click variant for cd82 L3-L6.** L3+ use an
-ACTION6 ARROW-CLICK paint op (at `arrow_coords`, positions 0/2/4/6 only) in
-addition to ACTION5 launches (brittle L3 = 3 launches + 1 arrow). The launch-only
-search defers on those, so cd82 caps at 2/6. Extending needs the arrow op in both
-the search action set and the executor.
+**M5 LANDED → 🚀 cd82 FULLY SOLVED 1/6 → 6/6, game_score 0.0005 → 0.9463
+(~1900×), commit 84261aa.** Added the ACTION6 ARROW-CLICK op (small centre-edge
+patches at `arrow_coords`, positions 0/2/4/6) to both the search action set and
+the executor. The BFS finds the exact per-level op sequences (e.g. L3 =
+`[(L,2,14),(L,6,8),(L,7,15),(A,0,12)]`, matching the brittle solution). TWO extra
+fixes unlocked L3-L6:
+1. **Settle-aware first read** on the paint signature — a level-transition stacks
+   ~16 frame layers; wait for a single settled layer before detecting (a3b9c3c
+   precedent).
+2. **Target size-floor 40 → 8** — deeper levels' targets have thin diagonal
+   colour bands (<40px) that a 40px floor dropped, so the whole target went
+   undetected (the real L3 blocker: detect returned None even after settling
+   until the floor dropped).
+Result: the WMA paint phase clears cd82 L1-L6 in ~108 actions at near-human
+efficiency, game_score **0.9463** (near the ~1.0 ceiling — essentially fully
+solved). Deterministic ×2 + chained; all 9 guards byte-identical; 778 tests,
+ruff clean. **cd82 becomes a NEW GUARD at 6/6@108.** The biggest single-game swing
+possible — from contributing ~nothing to ~0.95 of a full game score.
 
 **M4 origin — diagonal scope (superseded by the landing above).** Traced L2's target (after the solver clears L1 at ac=6): it is a
 DIAGONAL composition — colour-15 upper-left triangle, colour-12 diagonal band,
