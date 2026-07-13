@@ -2,7 +2,7 @@
 
 This is the submission-day de-risking check. It proves that the exact
 mechanism the Kaggle notebook uses can, with **no internet**, run our
-``KaggleBCAgent`` against the bundled ``environment_files/`` games and
+``KaggleChainedAgent`` against the bundled ``environment_files/`` games and
 produce a valid ``submission.json`` scorecard.
 
 Why this exists: the previous notebook drove the games through
@@ -88,7 +88,7 @@ def main() -> int:
     # Import after the CPU pin above so device selection picks CPU.
     from arc_agi import Arcade, OperationMode
 
-    from admorphiq.kaggle_bc_agent import KaggleBCAgent
+    from admorphiq.kaggle_chained_agent import KaggleChainedAgent
 
     # Force OFFLINE deterministically: the Arcade constructor lets an
     # OPERATION_MODE=competition env var override the constructor arg, and
@@ -122,7 +122,7 @@ def main() -> int:
 
     print(f"Playing {len(game_ids)} game(s): {game_ids}\n")
 
-    card_id = arc.open_scorecard(tags=["admorphiq", "bc", "verify"])
+    card_id = arc.open_scorecard(tags=["admorphiq", "chained", "verify"])
     print(f"Opened scorecard: {card_id}")
 
     for gid in game_ids:
@@ -130,14 +130,14 @@ def main() -> int:
         if env is None:
             print(f"  {gid}: make() returned None — skipping")
             continue
-        agent = KaggleBCAgent(
+        agent = KaggleChainedAgent(
             card_id=card_id,
             game_id=gid,
             agent_name="admorphiq",
             ROOT_URL="",
             record=False,
             arc_env=env,
-            tags=["admorphiq", "bc", "verify"],
+            tags=["admorphiq", "chained", "verify"],
         )
         agent.MAX_ACTIONS = args.max_actions
         agent.main()
