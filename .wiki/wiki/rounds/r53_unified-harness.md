@@ -3510,5 +3510,37 @@ measurement (staleness is a transient, mostly SB26-specific). Build path is (A)
 the portal-DFS solver on `canonical_layer` inputs.** No `src/` changes yet; tree
 clean at `a43f952`, 769 green, guards intact.
 
+**Build attempt — feasibility PROVEN end-to-end, but the detector is feature-scale
+(confirmed, not just asserted).** Prototyped the frame-only detection+DFS
+(scratch, validated against internals). Working and validated:
+- **Target order extraction — DONE & exact.** Reading the top-display cells from
+  `canonical_layer` (non-chrome dominant colour per cell, L-to-R) yields
+  `[12,15,8,9,14,11,6]` == internal `game.wcfyiodrx` exactly. `sort_match.py`'s
+  existing `reference` list already IS this (it runs on `canonical_layer`), so the
+  "no frame-only target order" claim is fully refuted.
+- **Frame-0 + slots — DONE.** Frame border 8 detected as a large hollow-rectangle
+  connected-component, bbox (18,18,45,27), slots on the `x0+2+i*6` grid =
+  (20,20),(26,20),(32,20),(38,20) — matches internals.
+- **DFS traversal — logic ported & correct** (frames[0]=topmost, slot L-to-R,
+  portal→recurse, revisit-vs-item). The exact L2 solution it must produce:
+  {(20,20)←12,(26,20)←15,(20,34)←8,(26,34)←9,(32,34)←14,(38,34)←11,(38,20)←6}.
+
+**The hard remaining piece (why it's a real build):** portals render as a visual
+**PIPE** — the fixed portal at slot (32,20) is a colour-14 vertical bar that
+extends DOWN and connects to frame-14's border (measured in the raw pixels), so
+the portal and the target frame's border are ONE connected component. This (a)
+merges frame-14's bbox with the portal, breaking naive "large hollow rectangle"
+frame detection, and (b) is simultaneously a CLEANER portal signal (a pipe from a
+slot to another frame tells you the link directly). A robust detector must
+separate the rectangular box from attached pipes, then read each pipe's endpoints
+as the portal graph — and generalise across all 8 levels (varying frame counts,
+in-frame vs bottom portals, the `itertools.permutations` placement search for
+bottom-portal levels). That is the "comparable to or harder than ar25" scope the
+original bank called — now CONFIRMED by prototype, with the internal-dependency
+half of the verdict overturned. Executor (select-pool-swatch → click-slot-centroid
+→ verify) is mechanical once detection lands. Prototype files:
+`scratchpad/sb26_dfs_v3.py`. Banked for a dedicated build cycle; no `src/`
+changes, tree clean, 769 green.
+
 ## Related
 - [[../lessons/api_hash_rotation_20260421]]
