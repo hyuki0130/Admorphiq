@@ -2702,5 +2702,40 @@ retry trigger reliably in the first place).
 **Open**: SU15 is now `3/9` — levels 4-9 remain unexplored under this
 architecture. Worth a future round once other priorities clear.
 
+### AR25 mobility-shape player selection — landed, verified safe, engages correctly, does NOT clear L3 (2026-07-13 23:22-23:26)
+
+Implemented the standing AR25 lead from earlier in this file (the
+player-color HUD-bar hijack): `select_player_component`
+(`general_agent.py`) excludes any same-colour candidate whose bounding
+box spans `>= 90%` of the board's width or height before falling back to
+the largest remaining. First attempt used an EXACT "touches both
+opposite edges" check and measurably failed to exclude the HUD bar — the
+bar spans columns 0-62 of a 64-wide board (one pixel inset from the true
+edge), so `max(cols) == w - 1` (62 == 63) was False. Switched to a
+span-FRACTION threshold, which correctly catches the real-world inset;
+confirmed via live trace that the BFS start position moved off the HUD
+bar's grid cell for the first time.
+
+**Verified safe**: suite 766/766 (+2 new tests), ruff clean, ls20
+live-reconfirmed unregressed (`1/7, 89`) — this change's exact risk
+class, given it touches shared player-identification logic every
+WorldModelAgent/GeneralAgent game depends on. All 7 guards unchanged
+(su15 `3/9, 152` — the new post-reset-retry baseline — s5i5 `1/8, 169`,
+re86 `2/8, 264`, wa30 `1/9, 100`, ft09 `1/6, 93`, tn36 `1/7, 110`, lp85
+`1/8, 311`).
+
+**AR25 @8000 ×2**: `2/8, 326 actions` both runs — deterministic, level
+count unchanged. But the fix demonstrably engages: L2's own action count
+shifted from `37` to `45` (a different, still-successful navigation
+path — confirms player selection changed somewhere in L2 too, not just
+L3), and the live BFS-input trace confirms the start position moved off
+the HUD bar for the first time. L3 still does not clear. Committed as
+`41118e2` per the standing "guards+suite green = commit" call — this is
+the third real, safe, verified AR25 fix this session (direction-inference
+hardening, occupancy-invariant floor colour, now mobility-shape player
+selection) that each individually moves the mechanism correctly without
+yet compounding into an L3 clear. The remaining blocker is not yet
+identified; each fix has closed exactly the gap it targeted.
+
 ## Related
 - [[../lessons/api_hash_rotation_20260421]]
