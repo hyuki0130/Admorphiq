@@ -29,6 +29,12 @@ class ChainedAgent:
     efficient clear is banked).
     """
 
+    # The runner ends the game on the first GAME_OVER unless the agent opts
+    # into restarts (the unified harness's measured fix #1 — games otherwise
+    # end at the first avatar death, ~50-100 actions). The chain must opt in
+    # for BOTH phases or every death-prone game dies in the probe prefix.
+    restart_on_game_over = True
+
     def __init__(self, probe: Any, main: Any) -> None:
         self._probe = probe
         self._main = main

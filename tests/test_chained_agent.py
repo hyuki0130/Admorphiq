@@ -60,3 +60,12 @@ def test_probe_win_banks_the_efficient_clear():
     chain = ChainedAgent(probe, main)
     assert chain.is_done([], _Obs("WIN"))
     assert main.calls == 0
+
+
+def test_chain_opts_into_game_over_restarts():
+    """Purpose: the runner ends the game on the first GAME_OVER unless the
+    agent exposes restart_on_game_over — measured: the whole solid card died
+    at ~100 actions in the probe prefix (first avatar death ended the run).
+    Expected feedback: pass = chained games survive deaths like unified does;
+    fail = the chain silently loses every death-prone game."""
+    assert ChainedAgent(_Fake("p"), _Fake("m")).restart_on_game_over is True
