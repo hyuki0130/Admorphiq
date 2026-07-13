@@ -27,26 +27,28 @@
 import os
 import sys
 
-# Kaggle mount points. Web-UI attach mounts each input at /kaggle/input/<name>;
-# the CLI competition_sources mount nests them under the competition slug
-# (verified via `kaggle competitions files`: ARC-AGI-3-Agents/... etc.).
-# Resolve whichever exists at runtime.
-_COMP_BASE = "/kaggle/input/arc-prize-2026-arc-agi-3"
+# Kaggle mount points are NOT stable across attach methods (web-UI:
+# /kaggle/input/<name>; CLI v2 run measured: /kaggle/input/competitions/... and
+# /kaggle/input/datasets/...). Stop guessing: WALK /kaggle/input (depth-capped)
+# and find each required directory by NAME wherever it mounts.
 
 
-def _first_dir(*cands: str) -> str:
-    for c in cands:
-        if os.path.isdir(c):
-            return c
-    return cands[0]
+def _find_dir(name: str, root: str = "/kaggle/input", max_depth: int = 5) -> str:
+    if not os.path.isdir(root):
+        return os.path.join(root, name)  # off-Kaggle: return a non-existent stub
+    root_depth = root.rstrip("/").count("/")
+    for cur, dirs, _files in os.walk(root):
+        if cur.rstrip("/").count("/") - root_depth >= max_depth:
+            dirs[:] = []
+            continue
+        if name in dirs:
+            return os.path.join(cur, name)
+    return os.path.join(root, name)
 
 
-KAGGLE_AGENTS_DIR = _first_dir(
-    "/kaggle/input/ARC-AGI-3-Agents", os.path.join(_COMP_BASE, "ARC-AGI-3-Agents"))
-KAGGLE_WHEELS_DIR = _first_dir(
-    "/kaggle/input/arc_agi_3_wheels", os.path.join(_COMP_BASE, "arc_agi_3_wheels"))
-KAGGLE_ENVS_DIR = _first_dir(
-    "/kaggle/input/environment_files", os.path.join(_COMP_BASE, "environment_files"))
+KAGGLE_AGENTS_DIR = _find_dir("ARC-AGI-3-Agents")
+KAGGLE_WHEELS_DIR = _find_dir("arc_agi_3_wheels")
+KAGGLE_ENVS_DIR = _find_dir("environment_files")
 KAGGLE_WORKING = "/kaggle/working"
 SUBMISSION_PATH = os.path.join(KAGGLE_WORKING, "submission.json")
 
@@ -80,6 +82,23 @@ def _ensure_admorphiq_importable() -> None:
     except ImportError:
         pass
     # Common local / Kaggle dataset src locations.
+    # Wherever the dataset mounts, find the dir NAMED admorphiq that holds
+    # __init__.py and put its PARENT on sys.path.
+    if os.path.isdir("/kaggle/input"):
+        for cur, dirs, _files in os.walk("/kaggle/input"):
+            if cur.count("/") > 8:
+                dirs[:] = []
+                continue
+            if "admorphiq" in dirs and os.path.isfile(
+                os.path.join(cur, "admorphiq", "__init__.py")
+            ):
+                sys.path.insert(0, cur)
+                try:
+                    import admorphiq  # noqa: F401
+
+                    return
+                except ImportError:
+                    pass
     for cand in (
         os.path.join(os.getcwd(), "src"),
         "/kaggle/input/admorphiq-src",       # CLI dataset (zip strips src/)
@@ -98,7 +117,8 @@ if ON_KAGGLE:
     import glob as _glob
 
     print("/kaggle/input layout:", sorted(_glob.glob("/kaggle/input/*")))
-    print("comp base:", sorted(_glob.glob(_COMP_BASE + "/*"))[:10])
+    print("depth2:", sorted(_glob.glob("/kaggle/input/*/*"))[:20])
+    print("resolved:", KAGGLE_AGENTS_DIR, "|", KAGGLE_WHEELS_DIR, "|", KAGGLE_ENVS_DIR)
 _ensure_admorphiq_importable()
 
 # Importing the agent installs the `agents` package (real on Kaggle, light
