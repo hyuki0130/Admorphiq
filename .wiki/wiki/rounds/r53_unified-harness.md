@@ -3437,7 +3437,15 @@ short. Clearing L2 therefore requires the stuck-fix PLUS a delivery-efficiency
 overhaul (optimal item ordering / pathing to fit 5 items in ~68 actions) — a
 feature-scale change, not a bounded defect fix. **Verdict: feature-scale stands,
 now with full lever-elimination evidence.** Tree reverted clean to `a43f952`,
-wa30 1/9@100. The calibration fix (a43f952, 4/5 items delivered) remains the
+wa30 1/9@100.
+
+Closing the last "cheap win": the ~15-17 actions/item is GENUINE traversal, not
+recoverable no-op waste — the BFS legs measured 7-10 actions each (items and the
+target are spread across the board, unlike L1's ~9-action/item compact layout).
+So optimal item ORDERING (a plan-time tweak) cannot halve it; 5 items with L2's
+geometry cost ~70-75 actions regardless, over the ~68 budget. This is why the
+efficiency requirement is a real overhaul, not a cheap reorder — and confirms the
+closed-loop stuck-fix alone (recovering only ~12 no-op actions) cannot clear L2. The calibration fix (a43f952, 4/5 items delivered) remains the
 banked progress; the L2 clear is a dedicated efficiency-plus-closed-loop round.
 
 ## Related
