@@ -24,10 +24,18 @@ import sys
 import types
 
 # Candidate locations of the official framework directory (contains ``agents/``).
-_FRAMEWORK_CANDIDATES = (
-    "/kaggle/input/ARC-AGI-3-Agents",
-    os.path.join(os.getcwd(), "ARC-AGI-3-Agents"),
-    os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "ARC-AGI-3-Agents"),
+# ARC_AGENTS_DIR (env) comes first: Kaggle mount layouts vary by attach method
+# (web-UI /kaggle/input/<name> vs CLI /kaggle/input/competitions/<slug>/...),
+# so the notebook resolves the real path at runtime and passes it here.
+_FRAMEWORK_CANDIDATES = tuple(
+    c
+    for c in (
+        os.environ.get("ARC_AGENTS_DIR", ""),
+        "/kaggle/input/ARC-AGI-3-Agents",
+        os.path.join(os.getcwd(), "ARC-AGI-3-Agents"),
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "ARC-AGI-3-Agents"),
+    )
+    if c
 )
 
 

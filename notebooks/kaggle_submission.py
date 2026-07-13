@@ -119,6 +119,9 @@ if ON_KAGGLE:
     print("/kaggle/input layout:", sorted(_glob.glob("/kaggle/input/*")))
     print("depth2:", sorted(_glob.glob("/kaggle/input/*/*"))[:20])
     print("resolved:", KAGGLE_AGENTS_DIR, "|", KAGGLE_WHEELS_DIR, "|", KAGGLE_ENVS_DIR)
+# The shim consults ARC_AGENTS_DIR first — hand it the walk-resolved path so
+# the official `agents` package imports regardless of the mount layout.
+os.environ["ARC_AGENTS_DIR"] = KAGGLE_AGENTS_DIR
 _ensure_admorphiq_importable()
 
 # Importing the agent installs the `agents` package (real on Kaggle, light
