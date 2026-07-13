@@ -1492,3 +1492,15 @@ winning sequence depends on. If confirmed this is a GENERAL masking bug.
 Dispatched: diagnose (mask dump vs toggle cells), then fix = ACTION-CORRELATED
 masking (many distinct action keys → HUD; one specific key → game state),
 with tu93/sp80 (mask-dependent unlocks) as critical guards.
+
+### Action-correlated masking LANDED; confined-avatar gap is the next cycle (2026-07-13 19:10)
+The fraction-based action-correlation fix is committed (753 tests; tu93/sp80
+masks byte-identical; off-by-one action attribution caught pre-ship). The
+REMAINING root cause for the box-confinement family (dc22 g50t sc25 bp35): a
+CONFINED avatar churns the same few cells under all movement keys → same
+high-action-diversity signature as HUD → the avatar's own region masks and
+in-box positions hash identically. Consistency check: free-roaming avatar
+games (tu93/lf52/m0r0) never trip this because per-cell rates stay low across
+a large board. Next cycle dispatched: per-key diff-set similarity (HUD changes
+the same cells regardless of key; an avatar's changed cells DIFFER by key —
+Jaccard across per-key unions), composed with the fraction rule.
