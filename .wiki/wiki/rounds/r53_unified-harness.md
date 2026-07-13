@@ -3448,6 +3448,33 @@ efficiency requirement is a real overhaul, not a cheap reorder — and confirms 
 closed-loop stuck-fix alone (recovering only ~12 no-op actions) cannot clear L2. The calibration fix (a43f952, 4/5 items delivered) remains the
 banked progress; the L2 clear is a dedicated efficiency-plus-closed-loop round.
 
+### cd82 efficiency fallback — feature-scale (needs a paint solver); the L1 clear is graph brute-force, WMA GAME_OVERs (2026-07-14 02:40)
+
+Fallback records-first ([[../games/CD82]] + round-page efficiency notes: 1/6 in
+the card at game_score ~0.0005, "atrocious efficiency"). A bounded trace clarifies
+the opportunity AND the cost:
+- **The deployed WMA does NOT clear cd82** — it runs probe→arrange→interact→
+  GAME_OVER at ac=100, levels=0. The card's L1 clear is the CHAINED agent's
+  graph_frontier/unified handover, which clears by BRUTE-FORCE exploration at
+  ~2000 actions → game_score ~0.0005 (RHAE ≈ (human ~13 / 2000)²).
+- **Mechanic (frame-observable)**: avail=[1,2,3,4,5,6] (movement + click), bg=5.
+  Left column = colour swatches (colours 0/15/4 at x≈8-12), centre = the canvas +
+  target region (colours 2/15/0 at x≈32, y 26-38), a launch/fire element at the
+  bottom (colour 4 at (32,63)). It's the paint-match mechanic the wiki records:
+  navigate a basket to a swatch, pick its colour, fire onto the canvas, repeat
+  until the canvas matches the target pattern.
+- **Efficiency upside is large** (even a 200-action solve is ~100× the current
+  RHAE), BUT achieving it needs a real frame-only PAINT SOLVER: swatch-grid +
+  canvas + target-pattern + launch detection, then per-cell pick→navigate→fire
+  planning + a movement executor. That is a multi-component build comparable to
+  SB26's portal-graph — FEATURE-SCALE, not a cheap efficiency tweak, and it lives
+  in the graph/unified path (not the WMA phase machinery touched tonight).
+
+**Disposition: banked, NOT built.** Both fallback-tier targets tonight (tr87,
+cd82) are feature-scale after honest traces. Tonight's landable win stands at
+SB26 2/8; tr87 (grammar) and cd82 (paint solver) are characterised and reopened
+for dedicated future rounds. Card unchanged, tree clean.
+
 ### 🔑 TR87 win-rule CRACKED — it's a PRODUCTION-GRAMMAR derivation, not visual matching (verification-only internal read, 2026-07-14 02:35)
 
 Records-first ([[../games/TR87]] + [[../lessons/tr87_dial_match_hypothesis_falsified_20260713]]:
