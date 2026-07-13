@@ -1369,3 +1369,11 @@ nearby markers) found, fixed, regression-pinned. Card: **17/25 chained**
 vc33 + ar25; sk48 via 30k pass). Walls remaining: 6 (bp35 dc22 g50t sc25 tr87
 wa30) + depth. NEXT: re86 L2+ — the changer tier; legacy reached 6/8, the
 deepest RHAE pool of any wall (levels 1-6 = up to 0.58 game_score).
+
+### re86 L2 falls — 2 levels at perfect efficiency (2026-07-13 16:40)
+L1 24/26 + L2 40/42, both level score 1.0, game 0.0833, reproducible. L2's
+mechanic: 3 distinct-shaped sprites for 3 colours (no changer yet). Three
+measured bugs fixed en route (render-lag settle frame after level-up;
+step-multiple offset preference; active marker = exactly-1-foreign-cell),
+each regression-pinned — this family's "measure, fix, pin" loop is the
+engine. 730 tests. L3+ dispatched (legacy ceiling 6/8).
