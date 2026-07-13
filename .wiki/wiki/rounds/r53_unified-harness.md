@@ -2966,5 +2966,63 @@ that specific game — this session's own `ft09 1/6@93` guard number comes
 from `--agent worldmodel`, separate from the `chained`-agent tier-gate
 work described earlier in this same file (`Gap-1 @8000... ft09 closed`).
 
+### FT09 L2 in the DEPLOYED chained agent: chaining policy confirmed correct, graph stack tries and doesn't converge — likely a genuine capability gap, not a bounded bug (2026-07-13 23:49-23:56)
+
+Resolved the architecture question directly rather than searching stale
+archives: no local `scripts/rounds/` directory has a `chained`-agent FT09
+result (all found `games/ft09.json` files are the OLD `graph_frontier`
+standalone runs, `1/6, 6325 actions`, RFINAL2-era — exactly the trap the
+dispatch warned about). Ran the ACTUAL deployed agent directly instead:
+`score_efficiency.py --agent chained --titles ft09 --max-actions 8000`.
+
+**Chaining policy CONFIRMED CORRECT — no defect.** `ChainedAgent` (WMA
+probe first → unified handover, `chained_agent.py`) explicitly sets
+`restart_on_game_over = True` at the wrapper level (its own comment:
+"the runner ends the game on the first GAME_OVER unless the agent opts
+into restarts... the chain must opt in for BOTH phases"). Live log
+confirms: `pick=graph ... feedback='cleared level 1'` at the very first
+harness step — WMA's efficient L1 clear banked, handover to the
+unified/graph stack happens immediately and correctly. The GAME_OVER-
+cycling misdiagnosis from the earlier FT09 entry tonight (proven inert,
+reverted) was ENTIRELY about bare `WorldModelAgent`, which does NOT set
+`restart_on_game_over` — irrelevant to this deployed path.
+
+**The unified/graph stack DOES get its full shot at L2 and does NOT
+converge within the 8000-action budget.** Log shows real, escalating
+exploration: `[graph] REGION mask: 66 cells` then
+`[graph] HASH-LADDER -> pool2 ... aliased=1` then
+`[graph] HASH-LADDER -> object ... aliased=3` — the hash-ladder's
+own instability-escalation mechanism fired twice, moving from raw pixel
+hashing through 2x2 pooling to object-level state hashing, exactly as
+designed when a signature proves unstable. Final result: `levels=1/6,
+actions=8000` (the full budget spent, all on L2, no further clear).
+
+**Historical corroboration this is a standing capability gap, not new**:
+this file's OWN earlier entries (`Gap-1 @8000 pinned + R38 tier gate
+ported — ft09 closed`, 2026-07-09) record the tier-gate's contribution
+as `ft09 0 → 1` — i.e. even the R38 tier-gate's dedicated, purpose-built
+improvement for FT09 only ever got the graph-exploration approach from
+0 to 1 LEVEL. No configuration measured in this file's history has ever
+cleared FT09 L2 via graph/frontier exploration. FT09/TN36's win
+condition is a lights-out/GF(2) toggle puzzle (per the STALE-but-
+mechanically-accurate `games/FT09.md` page); the legacy BRITTLE solver
+that once cleared 6/6 did so via genuine linear-algebra solving over the
+puzzle's constraint structure, not frontier-BFS/hash-ladder exploration.
+
+**Assessment, not a fix**: did not attempt a code change this cycle.
+Ran out of the "one bounded trace, fix only the measured defect" scope —
+what's measured here isn't a narrow, fixable bug (like the su15
+disturbed-board or the merge-drag stall-detection issues fixed earlier
+tonight); it's that the current EXPLORATION-based approach to click
+puzzles has no mechanism analogous to GF(2)/lights-out linear-algebra
+solving, and REGION-mask + hash-ladder escalation — while real,
+correctly-firing machinery — isn't a substitute for that. A genuine fix
+here is a feature build (a frame-only lights-out/toggle-constraint
+solver reachable from the graph stack), not a bounded diagnosis-and-
+patch. Flagging for a prioritization call rather than guessing at a
+narrow patch this late in a long session.
+
+**No `src/` changes this cycle.**
+
 ## Related
 - [[../lessons/api_hash_rotation_20260421]]
