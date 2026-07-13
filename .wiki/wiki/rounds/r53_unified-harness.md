@@ -1196,3 +1196,11 @@ no LLM runtime. Remaining ceremony (user-side / kaggle CLI): re-upload the src
 dataset with current code, `kaggle kernels push` (free validation), then
 `kaggle competitions submit` (consumes the daily slot). Measured expectation
 on the dev proxy: 14/25 cleared, 1.072%.
+
+### Kaggle ceremony step 1-2 DONE (2026-07-13 12:35)
+`admorphiq-src` dataset uploaded (1.6M, numpy-only — no weights needed) and
+the kernel pushed: kaggle.com/code/jaehyukhyun/admorphiq-arc-agi-3-chained-llm-free
+(server-side free validation running; `kaggle kernels status` to poll). Step 3
+(competitions submit, consumes the daily slot) awaits the validation result +
+user go. Parallel local thread: no-LLM chained @30k sweep on the 11 unsolved
+games (Mac, ~1000 steps/s — faster than the VM was).
