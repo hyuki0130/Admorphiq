@@ -1223,3 +1223,13 @@ walk-resolver (admorphiq imports) → v4 shim env override (agents imports).
 Parallel local thread: paint_flood + general legacy agents sweeping the 8
 walls @2000 (the WMA-discovery pattern extended to the other registered
 mechanic-class agents).
+
+### ⛔ Legacy-agent well is DRY for the 8 walls (2026-07-13 13:20)
+paint_flood + general @2000 on bp35 dc22 g50t re86 s5i5 sc25 tr87 wa30: all 0
+(16 genuine runs, agents self-terminate in 50-200 actions). Combined closure
+for the 8 walls: budget ⛔ (30k), model scale/family ⛔, draw diversity ⛔,
+code synthesis ⛔, every registered mechanic-class agent ⛔ (WMA/paint_flood/
+general). These games need a capability that does not exist in the repo yet —
+the genuine research frontier. Next candidates (unmeasured): per-game mechanics
+study via scripts/inspect_game.py on each wall (what IS the win condition?),
+then purpose-built mechanic solvers the way R28 built arrangement.
