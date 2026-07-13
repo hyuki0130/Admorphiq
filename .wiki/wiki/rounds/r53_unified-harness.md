@@ -3448,6 +3448,40 @@ efficiency requirement is a real overhaul, not a cheap reorder — and confirms 
 closed-loop stuck-fix alone (recovering only ~12 no-op actions) cannot clear L2. The calibration fix (a43f952, 4/5 items delivered) remains the
 banked progress; the L2 clear is a dedicated efficiency-plus-closed-loop round.
 
+### 🎉 SB26 L2 CLEARED — frame-only portal-graph sort solver landed, 1/8 → 2/8 (2026-07-14 02:25, commit 70084f1)
+
+The reopening below became a real clear. `detect_portal_sort` (sort_match.py) +
+a settle-aware WMA `_portal_sort_step` take **sb26 from 1/8@259 → 2/8@288**
+(game_score 0.0278 → 0.0796, deterministic ×3) in the DEPLOYED `--agent
+worldmodel` path. Minimal-L2 scope exactly as scoped:
+- **Frames = hollow-rectangle SHAPE components**, colour-agnostic (a frame border
+  colour is also an item colour, so no frequency-chrome filter — that was the
+  integration bug: `_chrome_colors` chromed colour 14, dropping frame-14).
+- **Portals via `_split_box_pipe`**: a portal renders as a thin PIPE in its
+  target frame's border colour, merging into one component; the morphological
+  split separates the hollow box from the thin bar, and the bar's far endpoint
+  locates the source slot.
+- **Target order** = top-display cells whose colour is a real pool swatch colour
+  (drops the separator chrome without a colour list).
+- **DFS traversal** (top frame, slots L-to-R, portals recurse, revisit doesn't
+  consume) → item-slot visitation order mapped to the target sequence.
+- **Executor**: WMA drains a place/settle/verify queue one action per call,
+  **settle-waiting** (frame-stable no-ops, `_PORTAL_SETTLE_MAX`) between clicks —
+  the placement animation drops a mid-frame click (the two fixes that made it
+  clear: click the pool CENTROID directly, and settle between every click).
+
+**Battery green**: 771 tests (+2: `_split_box_pipe`, portal gating), files
+ruff-clean, all 8 WMA guards byte-identical (su15 3/9@152, s5i5 1/8@169, re86
+2/8@264, wa30 1/9@100, ft09 1/6@93, tn36 1/7@110, lp85 1/8@311, ls20 1/7@89) —
+the portal path returns None (defers to match-placement) on <2-frame boards, so
+every click-only guard is untouched. Internal reads throughout the investigation
+were VERIFICATION-ONLY (ground-truthing the frame-observability claim); the
+shipped solver path touches no internals.
+
+**Banked as future (out of minimal-L2 scope)**: bottom-portal placement +
+`itertools.permutations` search (deeper levels), and general box/pipe separation
+(horizontal pipes / multi-frame graphs) for L3+.
+
 ### 🔑 SB26 L2 REOPENED — the true colours ARE frame-observable in layer -1; prior "internal-dependent" verdict overturned (2026-07-14 01:23)
 
 Records-first (this page's 2026-07-13 "portal-graph traversal" bank +
