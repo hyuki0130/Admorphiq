@@ -209,10 +209,26 @@ def detect_delivery_puzzle(layer: np.ndarray, background: int) -> DeliveryPuzzle
 
 
 def detect_mover_by_motion(
-    before: np.ndarray, after: np.ndarray, exclude_colors: set[int], background: int
+    before: np.ndarray,
+    after: np.ndarray,
+    exclude_colors: set[int],
+    background: int,
+    include_colors: set[int] | None = None,
 ) -> tuple[Mover, Mover] | None:
     """Classify the PLAYER's motion by which cells changed state, excluding
     known non-player colours (item/target ring + interior colours).
+
+    When ``include_colors`` is given (the player's own colour set, learned on
+    an earlier distractor-free level), the changed-cell scan is restricted to
+    exactly those colours instead of the "everything not an item" default.
+    This isolates the player from AUTONOMOUS movers — a patrol actor or an
+    animated indicator that shifts on its OWN schedule during a calibration
+    press and, if swept into the same before/after diff, drags the union
+    centroid to a meaningless delta (measured WA30 L2: colours 12 and 5 moved
+    independently of the press, producing a step-1 garbage direction map,
+    while the true player is stably colour 14). The default path (no hint) is
+    unchanged for the first delivery level, where the player identity is not
+    yet known and no distractor was measured.
 
     Mirrors :func:`admorphiq.transform_route.detect_sprite_by_motion`'s
     domain-restriction technique, generalised from ONE fixed colour to
@@ -248,6 +264,12 @@ def detect_mover_by_motion(
         if y >= _HUD_ROW_CUTOFF:
             continue
         bv, av = int(before[y, x]), int(after[y, x])
+        if include_colors is not None:
+            if bv in include_colors:
+                vacated.add((x, y))
+            if av in include_colors:
+                arrived.add((x, y))
+            continue
         if bv not in exclude_colors and bv != background:
             vacated.add((x, y))
         if av not in exclude_colors and av != background:

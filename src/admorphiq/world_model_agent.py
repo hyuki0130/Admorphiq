@@ -715,6 +715,20 @@ class WorldModelAgent:
         # transform gate's staleness check: see its comment in
         # ``_probe_step``.
         self._transform_prev_puzzle_key: frozenset | None = None
+        # Player identity persists across levels within a game (object
+        # permanence): once a distractor-free level's delivery calibration
+        # learns which colours are the player's own, later levels reuse it to
+        # isolate the player from AUTONOMOUS movers (patrol actors / animated
+        # indicators) that would otherwise be swept into the same motion diff
+        # and corrupt the direction map. Measured WA30 L2: colours 12 (16-cell
+        # patrol actor) and 5 (12-cell indicator) moved on their own schedule
+        # during calibration, dragging the union centroid to a garbage step;
+        # the player is stably colour 14 on both L1 and L2. GAME-scope, so it
+        # lives here OUTSIDE _reset_level (like _transform_prev_puzzle_key
+        # above) — it must survive the level boundary. Stays None until the
+        # first clean derivation (L1, no distractor present).
+        self._delivery_known_player_colors: set[int] | None = None
+        self._delivery_known_body_color: int | None = None
         self._reset_level()
 
     def _reset_level(self) -> None:
@@ -2570,8 +2584,11 @@ class WorldModelAgent:
         self._delivery_calib_queue = [aid for aid in (1, 2, 3, 4) if aid in avail]
         self._delivery_calib_log = []
         self._delivery_calib_processed = 0
-        self._delivery_player_colors = None
-        self._delivery_player_body_color = None
+        # Seed from the game-persistent identity when a prior level already
+        # learned it (None on the first delivery level, where a distractor-free
+        # calibration derives it from scratch).
+        self._delivery_player_colors = self._delivery_known_player_colors
+        self._delivery_player_body_color = self._delivery_known_body_color
         self._delivery_items_remaining = list(range(len(self._delivery_puzzle.items)))
         self._delivery_used_slots = set()
         self._delivery_action_queue = []
@@ -2622,7 +2639,10 @@ class WorldModelAgent:
         while self._delivery_calib_processed < len(self._delivery_calib_log):
             entry = self._delivery_calib_log[self._delivery_calib_processed]
             self._delivery_calib_processed += 1
-            pair = detect_mover_by_motion(entry["before"], entry["after"], known_colors, bg)
+            pair = detect_mover_by_motion(
+                entry["before"], entry["after"], known_colors, bg,
+                include_colors=self._delivery_player_colors,
+            )
             if pair is not None:
                 mover_before, mover_after = pair
                 dx, dy = snap_to_axis(
@@ -2647,6 +2667,10 @@ class WorldModelAgent:
                     # cells and undershoot the player's true position by
                     # exactly one grid step toward the carry direction.
                     self._delivery_player_body_color = color_counts.most_common(1)[0][0]
+                    # Persist the identity for later levels' distractor
+                    # isolation (see __init__'s _delivery_known_* note).
+                    self._delivery_known_player_colors = self._delivery_player_colors
+                    self._delivery_known_body_color = self._delivery_player_body_color
 
         # Stage 0b: issue the next calibration press.
         if self._delivery_calib_queue:

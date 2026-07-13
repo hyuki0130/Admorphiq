@@ -190,6 +190,46 @@ def test_detect_mover_by_motion_excludes_the_hud_row():
     assert not any(y == 63 for _x, y in mover_after.cells)
 
 
+def test_detect_mover_by_motion_isolates_player_from_autonomous_distractor():
+    """Purpose: with an ``include_colors`` hint (the player's own colour set
+    learned on an earlier level), detect_mover_by_motion recovers the clean
+    player delta even when an AUTONOMOUS mover shifts in the SAME frame — and
+    without the hint the union centroid is corrupted, proving the hint is
+    load-bearing.
+
+    Expected feedback: a PASS proves the WA30 L2 fix — a patrol actor
+    (measured colour 12) moving on its own schedule during a calibration
+    press no longer drags the player's step to garbage (measured: step
+    collapsed to 1, direction map scrambled, before the hint). A FAIL means
+    later delivery levels with a moving distractor would mis-calibrate and
+    fail to reach any item.
+    """
+    _DISTRACTOR = 12  # an autonomous patrol actor, not a player colour
+    before = _blank()
+    _stamp_player(before, 32, 40, "up")
+    before[50:54, 8:12] = _DISTRACTOR  # actor at one spot
+    after = _blank()
+    _stamp_player(after, 32, 36, "up")  # player moved up by 4
+    after[50:54, 12:16] = _DISTRACTOR  # actor drifted right by 4 on its own
+
+    # With the player-colour hint, only {body, accent} cells are considered:
+    # the actor is ignored and the delta is the true player step.
+    hinted = detect_mover_by_motion(before, after, set(), _BG, include_colors={_BODY, _ACCENT})
+    assert hinted is not None
+    mb, ma = hinted
+    assert (ma.cx - mb.cx, ma.cy - mb.cy) == (0.0, -4.0)
+    # The actor's cells (rows 50-53) never enter the player footprint.
+    assert not any((50 <= y < 54) for _x, y in ma.cells | mb.cells)
+
+    # Without the hint, the actor's motion is folded into the same centroid
+    # and the recovered delta is NOT the clean player step (corruption the
+    # hint exists to prevent).
+    unhinted = detect_mover_by_motion(before, after, set(), _BG)
+    assert unhinted is not None
+    umb, uma = unhinted
+    assert (uma.cx - umb.cx, uma.cy - umb.cy) != (0.0, -4.0)
+
+
 def test_detect_mover_by_motion_none_when_nothing_relevant_changed():
     """Purpose: an identical before/after frame (or one whose only change is
     excluded/HUD) returns None rather than fabricating a mover.
