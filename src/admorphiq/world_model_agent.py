@@ -776,6 +776,20 @@ class WorldModelAgent:
         self._transform_colors_needed: set[int] = set()
         self._transform_move_queue: list[int] = []
         self._transform_cycles_left = 0
+        # Active colours already passed through while cycling toward the
+        # NEXT needed colour (reset every time a colour is placed or given
+        # up on, so it bounds each search independently) — the primary
+        # cycle-termination signal; see the comment where it is checked in
+        # _transform_step.
+        self._transform_seen_active: set[int | None] = set()
+        # A level entered via a real transition can render its FIRST frame
+        # still showing the previous level's final board — measured on
+        # RE86 L2: the target-marker/sprite colours only settle to the true
+        # new layout after one more action is taken. ``_transform_settle_tried``
+        # bounds a single harmless settle press + detection retry (see the
+        # gate in ``_probe_step``) so a genuine non-transform level still
+        # gives up after exactly one extra action, never loops.
+        self._transform_settle_tried = False
 
     # ── harness contract ──────────────────────────────────────────────────────
 
@@ -1036,12 +1050,12 @@ class WorldModelAgent:
         # (ACTION5) AND at least one movement action are available, and the
         # frame holds ring+dot target markers plus a movable sprite of some
         # marker's exact colour (transform_route.detect_transform_puzzle).
-        # Tried ONCE per level, before movement discovery and before the
-        # generic ARRANGEMENT gate below — RE86's large multi-sprite cross
-        # shapes are not a single small "player" avatar, so letting movement
-        # discovery run first would mislearn one cross as the player; the
-        # generic arrangement descend-and-sweep model also does not apply
-        # (RE86 needs per-colour footprint coverage, not a row descent). On
+        # Tried before movement discovery and before the generic ARRANGEMENT
+        # gate below — RE86's large multi-sprite cross shapes are not a
+        # single small "player" avatar, so letting movement discovery run
+        # first would mislearn one cross as the player; the generic
+        # arrangement descend-and-sweep model also does not apply (RE86
+        # needs per-colour footprint coverage, not a row descent). On
         # failure the phase falls through to normal probing —
         # detect_transform_puzzle's own structural checks (ring markers +
         # matching-colour sprite) are the actual safety net, not this coarse
@@ -1051,12 +1065,22 @@ class WorldModelAgent:
             and 5 in avail
             and any(a in avail for a in (1, 2, 3, 4))
         ):
-            self._transform_attempted = True
             bg = self.model.background if self.model.background is not None else 0
             transform_puzzle = detect_transform_puzzle(layer, bg)
             if transform_puzzle is not None:
+                self._transform_attempted = True
                 self._transform_puzzle = transform_puzzle
                 return self._enter_transform(layer, avail, latest_frame)
+            if self._levels_completed >= 1 and not self._transform_settle_tried and spent == 0:
+                # Detection found nothing on the very FIRST frame of a level
+                # entered via a real transition — see the settle-frame
+                # comment on ``_transform_settle_tried`` in ``_reset_level``.
+                # Retry ONCE after a harmless settle press instead of
+                # permanently giving up on this level.
+                self._transform_settle_tried = True
+                self._pending = {"action_id": 5, "coord": None, "before": layer.copy()}
+                return self._emit(GameAction.from_id(5))
+            self._transform_attempted = True
 
         # On a level PAST the first, where the player/move controls are already
         # learned (GAME-scope) yet a selection-toggle action + several movable
@@ -1903,7 +1927,13 @@ class WorldModelAgent:
         self._transform_calib_processed = 0
         self._transform_colors_needed = {t.color for t in self._transform_puzzle.targets}
         self._transform_move_queue = []
-        self._transform_cycles_left = len(self._transform_puzzle.sprites)
+        # A generous hard safety backstop (not the primary termination — see
+        # _transform_seen_active): measured on RE86 L2, ACTION5 needed 2
+        # presses to reach one sprite's turn, so "at most len(sprites)
+        # presses total" undercounts. 4x sprite count matches that measured
+        # overhead with margin.
+        self._transform_cycles_left = len(self._transform_puzzle.sprites) * 4
+        self._transform_seen_active = set()
         return self._transform_step(layer, avail, latest_frame)
 
     def _transform_step(self, layer: np.ndarray, avail: list[int], latest_frame):
@@ -1926,9 +1956,12 @@ class WorldModelAgent:
         :func:`transform_route.build_move_actions`) and queue it; a colour
         with no computable offset is given up on (no changer routing — see
         transform_route.py's module docstring) rather than retried
-        speculatively. Otherwise press ACTION5 to cycle, bounded by
-        ``_transform_cycles_left`` so a puzzle this module cannot fully
-        solve still falls through to normal interaction instead of looping.
+        speculatively. Otherwise press ACTION5 to cycle — termination is
+        primarily by ``_transform_seen_active`` (stop once a cycle position
+        repeats without new progress; reset every time a colour is placed
+        or given up on), with ``_transform_cycles_left`` as a generous hard
+        safety backstop, so a puzzle this module cannot fully solve still
+        falls through to normal interaction instead of looping.
         """
         from arcengine import GameAction
 
@@ -1991,7 +2024,7 @@ class WorldModelAgent:
             offset = None
             if sprite is not None:
                 points = [t for t in puzzle.targets if t.color == active_color]
-                offset = find_covering_offset(sprite, points)
+                offset = find_covering_offset(sprite, points, self._transform_step_size)
             moves = (
                 build_move_actions(offset[0], offset[1], self._transform_dir_map, self._transform_step_size)
                 if offset is not None
@@ -2000,11 +2033,29 @@ class WorldModelAgent:
             if moves:
                 self._transform_move_queue = moves
                 self._transform_colors_needed.discard(active_color)
+                self._transform_seen_active = set()
                 return self._transform_step(layer, avail, latest_frame)
             # No computable offset for this colour (needs a changer, or is
             # otherwise unreachable by direct placement) — give up on it,
             # never retried speculatively.
             self._transform_colors_needed.discard(active_color)
+            self._transform_seen_active = set()
+
+        # A cycle position that is neither processable now nor NEW tells us
+        # we have looped all the way around (back to an active colour we
+        # already passed through) without further progress — stop. Measured
+        # necessary on RE86 L2: ACTION5 can pass through more distinct
+        # active states than there are sprites (2 presses were needed to
+        # reach one sprite's turn), so a naive "at most len(sprites) presses"
+        # bound gave up before ever reaching a genuinely needed colour.
+        # ``_transform_cycles_left`` remains a generous hard safety backstop
+        # against a truly unbounded cycle, not the primary termination
+        # signal — this seen-set check is.
+        if active_color in self._transform_seen_active:
+            self._plan_commit = self._action_count
+            self._phase = _PHASE_INTERACT
+            return self._interact_step(layer, avail, latest_frame)
+        self._transform_seen_active.add(active_color)
 
         if not self._transform_colors_needed or self._transform_cycles_left <= 0 or 5 not in avail:
             self._plan_commit = self._action_count

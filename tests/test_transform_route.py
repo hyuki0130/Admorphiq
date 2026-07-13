@@ -170,6 +170,33 @@ def test_find_active_color_none_when_no_sprite_has_a_hole():
     assert find_active_color(layer, _BG, sprites) is None
 
 
+def test_find_active_color_rejects_a_multi_cell_structure_near_an_inactive_centroid():
+    """Purpose: an INACTIVE sprite whose centroid window happens to contain a
+    multi-cell foreign structure (e.g. a nearby target-marker frame edge, 3
+    cells of one colour) is NOT mistaken for active — only a genuine
+    SINGLE-cell hole counts.
+
+    Expected feedback: a PASS proves the fix measured on RE86 L2: a sprite
+    that had just moved onto/near one of its own target markers left that
+    marker's multi-cell frame edge inside the OTHER (inactive) sprite's
+    small centroid window, which a "foreign.size > 0" check wrongly read as
+    still-active — permanently locking cycling onto the wrong sprite and
+    starving the genuinely active one of its turn. A FAIL means the agent
+    could move the wrong sprite (or never reach the right one) whenever a
+    sprite ends up near unrelated board structure.
+    """
+    layer = _blank()
+    _stamp_cross(layer, 10, 10, 5, 6, active_mark=_ACTIVE_MARK)  # sprite A: genuinely active
+    _stamp_cross(layer, 30, 30, 5, 8)  # sprite B: inactive
+    # A 3-cell foreign structure (e.g. a marker-frame edge) falling inside
+    # B's own radius-2 centroid window — NOT a genuine single-cell hole.
+    layer[28, 29] = 4
+    layer[28, 30] = 4
+    layer[28, 31] = 4
+    sprites = detect_sprite_candidates(layer, _BG, {6, 8})
+    assert find_active_color(layer, _BG, sprites) == 6
+
+
 def test_find_covering_offset_matches_the_measured_offset():
     """Purpose: find_covering_offset computes the exact translation that
     makes the cross sprite's own footprint cover all 4 scattered points —
@@ -202,6 +229,32 @@ def test_find_covering_offset_none_when_points_dont_fit_the_shape():
     sprite = Sprite(color=6, cells=frozenset({(30, 25), (30, 35), (25, 30), (35, 30)}), cx=30, cy=30)
     points = [TargetPoint(x=1, y=1, color=6), TargetPoint(x=2, y=50, color=6)]
     assert find_covering_offset(sprite, points) is None
+
+
+def test_find_covering_offset_prefers_a_step_clean_offset_among_several_valid():
+    """Purpose: when a sprite's own cell layout admits MULTIPLE distinct
+    valid offsets for the same point set, find_covering_offset prefers the
+    one that is a clean multiple of the measured per-click step, not
+    whichever is found first.
+
+    Expected feedback: a PASS proves the fix measured on RE86 L2's diamond-
+    outline sprite: the naive "first found" offset was NOT reachable by the
+    sprite's own 3px step, while a DIFFERENT valid offset for the exact same
+    points was — and build_move_actions correctly refuses an unreachable
+    offset, so returning the wrong one silently strands the sprite
+    unplaced. A FAIL means a level solvable by direct placement could be
+    given up on for no real reason.
+    """
+    # 3 collinear cells 5 apart; two adjacent cells can each anchor a valid
+    # offset onto the same two 5-apart points, differing by exactly 5.
+    sprite = Sprite(
+        color=6, cells=frozenset({(0, 0), (5, 0), (10, 0)}), cx=5.0, cy=0.0
+    )
+    points = [TargetPoint(x=20, y=0, color=6), TargetPoint(x=25, y=0, color=6)]
+    # Sanity: both (20, 0) and (15, 0) are genuinely valid for this sprite.
+    assert find_covering_offset(sprite, points, step=1) in {(20, 0), (15, 0)}
+    # With step=10, only (20, 0) is a clean multiple (15 % 10 != 0).
+    assert find_covering_offset(sprite, points, step=10) == (20, 0)
 
 
 def test_build_move_actions_uses_the_measured_dir_map_not_hardcoded_ids():

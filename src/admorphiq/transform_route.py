@@ -238,7 +238,18 @@ def find_active_color(
     bbox can also enclose unrelated target-marker FRAME pixels (a different
     foreign colour, elsewhere in the box, not at the centre), which would
     otherwise cause a false "still active" read on a sprite that just moved
-    away. Pure / env-free, single-frame, no probe click needed.
+    away.
+
+    The window match additionally requires EXACTLY ONE foreign cell, not
+    merely "at least one" — measured necessary on RE86 L2: a sprite that
+    just moved onto/near one of its own target markers can have that
+    marker's multi-cell FRAME edge fall within the small centroid window
+    too (a different foreign colour, but 2+ cells, not the single-cell
+    active hole), which would otherwise cause the SAME false "active" read
+    the whole-bbox version of this check was already fixed for. The genuine
+    active marker is a single cell in every measured case (rotation.py's tip
+    marker, slider.py's notch, and both RE86 levels' hole). Pure / env-free,
+    single-frame, no probe click needed.
     """
     for s in sprites:
         cx, cy = int(round(s.cx)), int(round(s.cy))
@@ -248,7 +259,7 @@ def find_active_color(
         c1 = min(layer.shape[1] - 1, cx + _ACTIVE_MARKER_RADIUS)
         window = layer[r0 : r1 + 1, c0 : c1 + 1]
         foreign = window[(window != background) & (window != s.color)]
-        if foreign.size > 0:
+        if foreign.size == 1:
             return s.color
     return None
 
@@ -273,26 +284,47 @@ def detect_transform_puzzle(layer: np.ndarray, background: int) -> TransformPuzz
 # ── plan synthesis ──────────────────────────────────────────────────────────
 
 
-def find_covering_offset(sprite: Sprite, points: list[TargetPoint]) -> tuple[int, int] | None:
+def find_covering_offset(
+    sprite: Sprite, points: list[TargetPoint], step: int = 1
+) -> tuple[int, int] | None:
     """A translation ``(dx, dy)`` of ``sprite`` that covers every point in ``points``.
 
     Candidates are derived from the FIRST point only: every offset that would
     place SOME cell of the sprite exactly on that point (position-agnostic —
     no blind grid search over an arbitrary range). Each candidate is then
-    verified against every remaining point. Returns the first that covers
-    them all, or ``None`` when no single offset does (the puzzle may need a
-    colour-changer, or a different/additional sprite — out of this module's
-    scope, see its docstring). Pure / env-free.
+    verified against every remaining point.
+
+    A sprite's own cell layout can admit MULTIPLE distinct valid offsets (an
+    asymmetric shape reaching the same point set from more than one cell
+    alignment) — measured necessary on RE86 L2's diamond-outline sprite: the
+    naive "first found" offset was NOT a multiple of the per-click step (so
+    :func:`build_move_actions` would correctly refuse it, leaving the sprite
+    unplaced), while a DIFFERENT valid offset for the exact same points WAS a
+    clean multiple. So every valid offset is collected (candidates visited in
+    a deterministic sorted order, not raw set-iteration order) and one that
+    is a clean multiple of ``step`` is preferred; only when none is clean is
+    the smallest valid offset returned regardless (the default ``step=1``
+    treats every integer offset as clean, preserving plain geometric use).
+    Returns ``None`` when no offset covers every point at all (the puzzle may
+    need a colour-changer, or a different/additional sprite — out of this
+    module's scope, see its docstring). Pure / env-free.
     """
     if not points or not sprite.cells:
         return None
     tx0, ty0 = points[0].x, points[0].y
     candidates = {(tx0 - sx, ty0 - sy) for sx, sy in sprite.cells}
-    for dx, dy in candidates:
+    valid: list[tuple[int, int]] = []
+    for dx, dy in sorted(candidates):
         translated = {(sx + dx, sy + dy) for sx, sy in sprite.cells}
         if all((p.x, p.y) in translated for p in points):
-            return (dx, dy)
-    return None
+            valid.append((dx, dy))
+    if not valid:
+        return None
+    if step > 0:
+        clean = [o for o in valid if o[0] % step == 0 and o[1] % step == 0]
+        if clean:
+            return clean[0]
+    return valid[0]
 
 
 def build_move_actions(
