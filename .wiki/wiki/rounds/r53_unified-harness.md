@@ -3448,6 +3448,54 @@ efficiency requirement is a real overhaul, not a cheap reorder — and confirms 
 closed-loop stuck-fix alone (recovering only ~12 no-op actions) cannot clear L2. The calibration fix (a43f952, 4/5 items delivered) remains the
 banked progress; the L2 clear is a dedicated efficiency-plus-closed-loop round.
 
+### 🔑 TR87 win-rule CRACKED — it's a PRODUCTION-GRAMMAR derivation, not visual matching (verification-only internal read, 2026-07-14 02:35)
+
+Records-first ([[../games/TR87]] + [[../lessons/tr87_dial_match_hypothesis_falsified_20260713]]:
+mechanism decoded — 5-column 7-state cyclic dials, bar1 static targets, bar2
+editable, avail=[1,2,3,4] — but the win CONDITION had 6 visual-match hypotheses
+exhaustively falsified). The explicit open lead was "read the game's internal
+transition logic dev-time (verification-only) to shortcut the hypothesis space."
+Done — and it resolves the mystery.
+
+**The win rule is a REWRITE / PRODUCTION GRAMMAR** (`tr87.py:920-1094`,
+verification-only read; the shipped agent must never touch internals):
+- The board is split by y into bar1 (`zvojhrjxxm`, top/target) and bar2
+  (`ztgmtnnufb`, bottom/editable) glyph sequences.
+- `self.cifzvbcuwqe` is a list of `(LHS, RHS)` RULES, each built from an
+  `iqrduxrukrk` MARKER sprite by reading the run of glyph sprites to its LEFT
+  (LHS) and RIGHT (RHS). The glyphs are tag `nxkictbbvzt` — **VISIBLE** (only the
+  separate `tjaqvwdgkxe` tag is hidden), so the rule table IS on the board: the
+  "decorative" upper 12-piece grid the prior analysis dismissed is almost
+  certainly the visible rule set (LHS→RHS pairs), NOT decoration.
+- `bsqsshqpox()` (the win check, called after every dial step) walks bar1 and
+  verifies bar2 is a valid DERIVATION: it matches each rule's LHS against bar1
+  and requires the corresponding RHS to appear in bar2. Completion =
+  `yfetxjexviz == len(pvgetmhmhgk) * (len(states)-1)`.
+- Per-level MODES add complexity: `alter_rules`, `tree_translation`,
+  `double_translation` (`get_data(...)`), i.e. simple rewrite vs recursive/
+  two-step derivations. Rules + initial dial offsets are seeded-random per level
+  (`random.Random(ofysoutulp[level])`), so each level is a specific instance.
+
+**Why the 6 hypotheses ALL failed (now explained):** none were grammar
+derivations — direct/dihedral/complement/count equality and answer-key matching
+all assume bar2 must visually equal (a transform of) bar1 or the grid. The real
+rule is "bar2 is a grammar-derived string from bar1 via the rule set," which no
+pixel-equality check can capture. This SUPERSEDES the "win condition unknown"
+verdict in the lessons page.
+
+**Feasibility: frame-FEASIBLE but FEATURE-SCALE.** The rules appear frame-visible
+(the upper grid), so a frame-only solver is possible in principle: extract the
+LHS→RHS rule glyphs from the grid, parse bar1, run the grammar derivation (with
+the 3 modes) to compute the target bar2 glyph per column, then spin each dial
+(ACTION1/2) to that glyph and move the bracket (ACTION3/4). But that is a grammar-
+derivation engine + visible-rule extraction + 3 mode variants + a dial executor —
+strictly larger than SB26's portal-graph. NOT buildable tonight.
+
+**Disposition: banked, NOT built.** This is the SB26-shape reopening (a written-off
+win-rule cracked by a verification-only internal read) but the build is a full
+grammar solver — a dedicated round. Pivoting to the fallback (cd82 depth /
+efficiency) per the cycle plan. tr87 stays 0/6; card unchanged; tree clean.
+
 ### 🎉 SB26 L2 CLEARED — frame-only portal-graph sort solver landed, 1/8 → 2/8 (2026-07-14 02:25, commit 70084f1)
 
 The reopening below became a real clear. `detect_portal_sort` (sort_match.py) +

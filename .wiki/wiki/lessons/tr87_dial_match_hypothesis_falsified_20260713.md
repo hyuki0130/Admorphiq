@@ -7,6 +7,19 @@ first_seen: 2026-07-13
 
 # TR87's dial win-rule is NOT visual pattern equality — five hypotheses falsified
 
+> **✅ RESOLVED 2026-07-14 (verification-only internal read).** The win rule is a
+> PRODUCTION / REWRITE GRAMMAR, not any visual match — which is exactly why all
+> six pixel-equality hypotheses below failed. `tr87.py`'s `cifzvbcuwqe` is a list
+> of `(LHS, RHS)` rules (built from visible `iqrduxrukrk` marker + `nxkictbbvzt`
+> glyph sprites — the "decorative" upper grid is the rule table), and
+> `bsqsshqpox()` requires bar2 to be a valid grammar DERIVATION of bar1 under the
+> rules (per-level modes: `alter_rules` / `tree_translation` / `double_translation`).
+> Full analysis + feasibility (frame-visible rules → frame-only feasible but
+> feature-scale: needs a grammar-derivation engine + rule extraction + dial
+> executor) in [[../rounds/r53_unified-harness]] "TR87 win-rule CRACKED". The
+> hypotheses below remain correctly falsified — they were the right things to rule
+> out; the resolution is that the rule is a different KIND of computation entirely.
+
 > Discovery incident log: the obvious "spin each dial until its pattern
 > visually equals its column's target" hypothesis for [[../games/TR87]] was
 > exhaustively disproven across five variants, all computed OFFLINE against

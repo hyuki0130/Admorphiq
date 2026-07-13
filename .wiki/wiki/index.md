@@ -33,7 +33,7 @@ category, drill into specific pages.
 - [[games/SP80.md]] — v1 1/6 ✅, v2 1/6 ✅ — Frame-observation solver — generalizes across version hashes.
 - [[games/SU15.md]] — v1 brittle 9/9 ✅ (uses game.hmeulfxgy/peiiyyzum/rqdsgrklq attrs), generic 0/9 ❌ (R23 8B; same-color-pair=0 at L1) — 2048-style color merging via click-attract radius, with enemies as downgraders; solver reads internal fruit/enemy/goal lists, fails on v2.
 - [[games/TN36.md]] — v1 brittle 7/7 ✅ (uses frame.zpzcmabenn direct call), generic 0/7 ❌ (R23 8B; bit-panel combinatorial too deep) — Bit-encoded action program: click bits to set a number, click play to execute, navigate player to goal; brittle solver passes v1 but collapses on v2.
-- [[games/TR87.md]] — v1 brittle 1/6 ✅ (hardcoded L1 rotation values), generic 0/6 ❌ (R23 8B; pure-BFS post-R5 strip; R53 dial mechanism decoded, win-rule undecoded) — A 5-column cyclic-dial "combination lock" puzzle, NOT a geometric rotation
+- [[games/TR87.md]] — v1 brittle 1/6 ✅ (hardcoded L1 rotation values), generic 0/6 ❌ (R23 8B; R53 dial mechanism decoded; 2026-07-14 win-rule CRACKED = production-grammar derivation, feature-scale build banked) — A 5-column cyclic-dial "combination lock" puzzle, NOT a geometric rotation
 - [[games/TU93.md]] — v1 2/9 ✅, v2 2/9 ✅ — Relies on game internals — high v1 score, fails on v2.
 - [[games/VC33.md]] — v1 1/7 ✅, v2 1/7 ✅ — Frame-observation solver — generalizes across version hashes.
 - [[games/WA30.md]] — v1 brittle 2/9 ✅ (sprite tags wbmdvjhthc/wyzquhjerd/pkbufziase), generic 0/9 ❌ (R23 8B; multi-entity probe ambiguity) — Relies on game internals — high v1 score, fails on v2.
@@ -113,7 +113,7 @@ category, drill into specific pages.
 - [[lessons/silent_regression.md]] — A silent regression is a game that used to clear but now fails, without any commit explicitly breaking it. These are dangerous because commit messages claim continued progress, and the regression only surfaces on the next full 25-game run.
 - [[lessons/sokoban_search_explosion_20260423.md]] — Frame-hash BFS cannot clear 2-player Sokoban (KA59) inside the Kaggle envelope — branching ~24/step makes a depth-10 search ~10^13 states, far beyond the 15k-state cap. The fix is a specialist `_plan_push_bfs` over `(player_xy, block_set)` tuples with an A* Manhattan-to-goal heuristic.
 - [[lessons/su15_l1_singleton_colors_20260423.md]] — SU15 looks like the canonical merge puzzle, so `_plan_merge`
-- [[lessons/tr87_dial_match_hypothesis_falsified_20260713.md]] — Discovery incident log: the obvious "spin each dial until its pattern
+- [[lessons/tr87_dial_match_hypothesis_falsified_20260713.md]] — **✅ RESOLVED 2026-07-14 (verification-only internal read).** The win rule is a
 - [[lessons/trust_regression_not_commits.md]] — Commit messages often reflect a single-game test or an aspirational total. Only a full 25-game regression run produces a trustworthy score. Always cite the regression artifact, never the commit message.
 - [[lessons/v2_hash_obfuscation.md]] — When the ARC Prize API serves a second version hash of a game, game internals (attribute names, sprite tags, method names, level layouts) are re-obfuscated — so any solver that reads those internals fails silently.
 
