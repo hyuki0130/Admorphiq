@@ -3209,6 +3209,48 @@ during Stage-1 queue-draining (open-loop, no re-verification against the
 live board per action — confirmed by reading `_delivery_step`'s own
 Stage 1 code) coincides with the shortened bail point.
 
+### WA30 L2 last-item stuck ROOT-CAUSED + move-budget confirmed per-level; closed-loop attempt regressed the L1 guard and was REVERTED — deferred-commit design requirement banked (2026-07-14 01:25–01:50)
+
+Follow-on to the calibration fix (`a43f952`, which took L2 from 0 to 4/5
+items delivered). Two bounded live traces pinned the remaining L2 wall:
+
+1. **Stuck mechanism (per-emitted-action player-position trace).** After
+   delivering items 0–2 and picking up item 3, the player reaches (13,25.5)
+   and every subsequent move is a NO-OP — ACTION2 then ACTION4 ×9 leave the
+   player frozen against a STATIC obstacle the BFS model does not know about
+   (`_delivery_step`'s BFS blocks only the REMAINING item cells, so it plans a
+   path straight through a cell occupied by a delivered item / structure). The
+   open-loop executor drains the dead queue blindly and never recovers.
+2. **Move budget is PER-LEVEL, not global (HUD row-63 counter trace).** The
+   colour-4 "used" fill on row 63 grows monotonically within a level and
+   RESETS to 0 at level-up (measured nonbg=0 at the L1→L2 boundary, ac=30),
+   then depletes to a full row (GAME_OVER) over L2's own ~64-action budget. So
+   L2 is clearable in principle — the ~12 no-op moves the stuck wastes at the
+   end are exactly what tips L2 over its budget.
+
+**Closed-loop fix attempted, then REVERTED (guard regression).** Implemented
+closed-loop obstacle learning in `_delivery_step`: verify each emitted movement
+actually moved the player (`locate_player_cell` vs an expected cell), and on a
+no-op add the intended cell to a per-level `_delivery_obstacles` set fed into
+every BFS blocked set, flushing the dead queue to force a replan. It REGRESSED
+the wa30 L1 guard: L1 dropped from `1/9@100` (clears at 30) to `0/9` — the
+delivery emptied `items_remaining` at ac=29 but never cleared. **Root cause of
+the regression (real design flaw, not a tuning issue):** Stage 2 commits the
+delivery bookkeeping (`_delivery_used_slots.add`, `_delivery_items_remaining.
+remove`, `carrying=False`) at PLAN time, BEFORE the queued drop actions execute.
+Flushing the queue mid-leg on a no-op therefore discards the actual drop while
+the item stays marked "delivered" → phantom delivery, no level-up. Per doctrine
+("if a guard shifts unexpectedly: revert, bank, don't tune around it") the whole
+change was reverted; tree is back to `a43f952` + docs, 769 green, wa30 1/9@100.
+
+**Implementation-ready requirement for the next dedicated session:** correct
+closed-loop delivery needs the leg bookkeeping DEFERRED — commit
+`used_slots`/`items_remaining`/`carrying` only when the drop/pickup ACTION5
+actually completes (verified against the live frame), not at plan time. Only
+then can a mid-leg replan (on a learned obstacle) be safe. This is a Stage-2
+restructuring, not a one-line addition — correctly scoped now, with the
+per-level budget (~64 actions) confirmed as the feasibility envelope.
+
 ### FT09 L2 indicator topology CONFIRMED via live trace — falsifies the "generalise the centroid" lead; real mechanic is 2 glyph clues with unknown decoding on a lethal board (2026-07-14 01:05–01:25)
 
 Records-first: this page's 2026-07-13 00:05 ft09 section flagged the *working
