@@ -2453,3 +2453,92 @@ prior section flagged as the recovery lead, and the same corrupted-reading
 class was independently reproduced on BOTH ar25 hashes (0c556536 and
 e3c63847), so they likely protect other games/other hash rotations even
 where AR25 itself needed a further fix.
+
+### AR25 L3 occupancy-invariant fix — landed, verified safe, moves plan discovery substantially but does NOT clear L3 (2026-07-13 22:52)
+
+Implemented the floor-colour half of the recovery lead, guided by a
+direct reading of `floor_colors_from_probes`'s own docstring: *"the
+background is always implicitly floor and is excluded from the returned
+set (callers add it separately)"*. Neither call site in the codebase
+(`world_model_agent.plan_navigation`, `general_agent`'s internal nav
+path) was actually adding it — a documented-contract violation, not a
+speculative guess.
+
+**First attempt (reverted): blind `| {bg}`.** Fixed AR25 outright —
+`floor_colors={9,10,11}` (background + the two learned colours) gave
+`walkable=441/441` on the L3 grid, up from 57-59/441. But it broke
+**ls20 live**: `1/7, 89 actions` (baseline) → `0/7, 131 actions`
+(regressed). This is the EXACT ls20-class failure `frame_to_cells`'s own
+comment warns about — background is genuinely a WALL colour on some
+boards once other floor is known, and blanket-including it inverts
+walkability there. Confirmed by directly stashing/unstashing the change
+and running both games back-to-back on the live env.
+
+**Landed version: `_occupancy_floor_colors`** (`general_agent.py`).
+Samples only the colour(s) touching the player's OWN footprint in the
+CURRENT frame (4-connected neighbours of every player-occupied pixel,
+excluding player cells themselves; returns the single most common
+neighbour colour, not every colour touched, so straddling a wall corner
+can't leak the wall colour in as a false floor signal). This is a
+direct-observation invariant — the player is physically standing next to
+these pixels right now — orthogonal to `floor_colors_from_probes`'s
+vacate-based one, and it can never claim a colour the player isn't
+actually touching, so it can't reproduce the ls20 regression: ls20's
+player presumably isn't observed adjacent to its wall-classed background
+the way AR25's is.
+
+**Verification — full battery, twice**:
+- Suite 764/764, ruff clean (both files).
+- **ls20 live-reconfirmed unregressed**: `1/7, 89 actions`, byte-identical
+  to baseline — the ls20-class case this fix could have broken is intact.
+- **All 7 corroboration guards byte-identical**: su15 `2/9, 58`, s5i5
+  `1/8, 169`, re86 `2/8, 264`, wa30 `1/9, 100`, ft09 `1/6, 93`, tn36
+  `1/7, 110`, lp85 `1/8, 311`.
+- **AR25 @8000 ×2 (determinism)**: `2/8, 326 actions` both runs —
+  identical to each other, but NOT identical to the pre-fix baseline
+  (`2/8, 318 actions`) — the fix genuinely changes behaviour, just not
+  enough to clear a level.
+
+**What actually changed, traced live**: pre-fix, EVERY one of the 10
+enumerated goal candidates returned `plan_len=0` immediately (walkable
+grid too sparse to route anywhere). Post-fix, MULTIPLE candidates now
+get real, non-empty BFS plans (`plan_len=11`, `plan_len=20` observed) —
+the walkable-grid connectivity is fixed. The agent commits to one, walks
+part of it, and the corroboration-gated wall-learning from R-earlier this
+session (`1dd5e1a`) correctly confirms TWO genuine walls
+(`{(21,11),(20,10)}`) from real execution mismatches (not spurious single
+readings — both required 2 consistent readings to commit, exactly as
+designed). Execution now reaches step 117 before exhausting reachable
+candidates, versus step 80 before. **Still 2/8** — the newly-reachable
+candidates, once actually walked, run into real walls that make them
+unreachable too, or the level genuinely needs a different goal / a
+different navigation model entirely.
+
+**Committed** as `c048d83` — real, safe, well-verified improvement to a
+function every WorldModelAgent/GeneralAgent navigation game depends on.
+Kept regardless of AR25's own outcome per the explicit call: guards +
+suite green is sufficient to land an invariant that is correct on its own
+terms.
+
+**Live lead for the NEXT AR25 attempt, found but not yet chased this
+session**: a standalone diagnostic (not the shipped fix — a separate
+probe script) revealed that at L3, `model.player_color` (5) matches
+THREE distinct on-screen components: a 63-pixel decorative bar spanning
+the entire bottom row (`cy=63`, clearly a HUD/counter element, not a
+character), plus two other blobs (56px at `(15.6,28.4)`, 48px at
+`(50.5,29.0)`). All three pass the `_MAX_PLAYER_SIZE=64` filter, and
+`plan_navigation`'s `player = max(player_comps, key=lambda c: c["size"])`
+picks the LARGEST — the 63px HUD bar, not the true player. This means
+`start` (the BFS origin) may be anchored to the wrong on-screen entity
+entirely, which would explain why even a fully-open walkable grid still
+fails to route to a meaningful destination: the "shortest path" computed
+is shortest FROM THE HUD BAR'S POSITION, not from where the real
+character is. Not chased this cycle (out of time-boxed scope for this
+attempt, and disentangling "real player" from "same-coloured HUD
+element" generically — e.g. by excluding components pinned to a board
+edge, or requiring the player candidate to have shown responsiveness to
+move-actions specifically — is its own scoped investigation). This is
+the leading candidate for what the occupancy fix alone couldn't close.
+
+## Related
+- [[../lessons/api_hash_rotation_20260421]]
