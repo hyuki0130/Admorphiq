@@ -1152,3 +1152,13 @@ contribute ≈ 0 each, as the squared metric dictates. POLICY OPTIMIZATION NOTE:
 run the cheap worldmodel pass FIRST (50-260 actions; it may replace the 30k
 retry for ar25-class games entirely). Session: 8→17 coverage, 0.03%→0.915%
 score.
+
+### ChainedAgent shipped — the 3-pass policy as one artifact (2026-07-13 09:26)
+`--agent chained` (src/admorphiq/chained_agent.py): worldmodel probe first
+(banks the efficient arrangement-class WINs; self-terminates cheaply
+elsewhere), unified harness owns the remaining budget on handover. Pass order
+is score-critical under RHAE (all actions on a level count) — probe-first
+costs the graph clears nothing (they score ~0) and keeps the efficient clears
+intact. ka59 stays a runner-level 30k budget choice (not in-agent). Full-25
+single-artifact measurement in flight — the honest deployable number vs the
+0.915% best-pass-per-game estimate.
