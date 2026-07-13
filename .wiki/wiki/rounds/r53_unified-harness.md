@@ -2644,5 +2644,63 @@ even when `_last_changed` is credited). Next session should compare
 action-by-action, not just click-target-by-click-target, to check for an
 extra or missing step between the two paths.
 
+### SU15 L3 CLEARS — reset-then-retry on goal switch, live, deterministic (2026-07-13 23:17)
+
+Root cause of the 1-pixel divergence, finally settled: **the board is
+disturbed, not the coordinate.** The live retry path tries the default
+(wrong) goal first, drags tiles toward it for ~20 clicks until the stall
+guard fires, and only THEN switches to the correct goal — gathering from
+a board where tiles have already moved, not the pristine layout the
+monkeypatch's forced-goal-B-from-click-1 test started from. Confirmed by
+a direct tile-position dump at the exact moment of the goal switch: the
+colour-15 tile sits at `(25.0, 44.0)` — nowhere near its phase-entry
+position — by the time goal B becomes the target. No sub-pixel env
+mystery; a fully accounted-for consequence of trying the wrong goal
+first.
+
+**Fix**: `_try_next_merge_goal` (`world_model_agent.py`) now issues
+`GameAction.RESET` when switching to an untried goal, before ever
+clicking toward it — so the new goal's gather sequence starts from the
+level's pristine layout, matching the monkeypatch's advantage exactly. A
+new `_merge_drag_reset_pending` flag tells the following `_merge_drag_step`
+call to issue the new goal's probe click directly, skipping the
+`_last_changed` check (which would otherwise read the credit for the
+RESET action itself, not a real probe).
+
+**Load-bearing assumption verified BEFORE landing, not after**: does a
+DELIBERATE mid-level RESET (issued by the agent's own choice, not
+triggered by `GameState.GAME_OVER`) behave the same as the
+already-confirmed GAME_OVER→RESET case (preserves `levels_completed`,
+restores the pristine current-level layout)? Dedicated probe: reached
+L3, ran 5 merge clicks to disturb the board, issued a bare
+`GameAction.RESET` mid-level (state was `NOT_FINISHED`, not
+`GAME_OVER`), and confirmed — `levels_completed` stayed `2`, and the
+resulting tile layout was BYTE-IDENTICAL to the L3 phase-entry snapshot.
+This was flagged as an unverified assumption before the fix was even
+written; verifying it first (rather than discovering a violated
+assumption after landing something built on it) is exactly right for a
+change to shared, every-game-touching nav code.
+
+**Verified, full battery**: suite 764/764, ruff clean. SU15 via the
+STANDARD `score_efficiency.py` path (not a monkeypatch or custom probe)
+×3 for determinism, per merge-drag's known session-variance history —
+all three runs byte-identical: `levels=3/9, actions=152,
+game_score=0.0935` (previous baseline: `2/9, 58-59 actions`, roughly
+`0.0667`). All 6 OTHER corroboration guards unchanged (s5i5 `1/8, 169`,
+re86 `2/8, 264`, wa30 `1/9, 100`, ft09 `1/6, 93`, tn36 `1/7, 110`, lp85
+`1/8, 311`), ls20 unregressed (`1/7, 89`).
+
+**Committed** as `317d4b3`. This is the first new-level clear of the
+session — SU15 is a 6.67%-weight game on the 25-game proxy, so this is a
+genuine card improvement, not just a diagnostic win. The fix is fully
+generic (any board with multiple goal-coloured regions benefits; no
+game-id, no hardcoded colours or coordinates) and composes cleanly with
+both earlier fixes in this thread (the `goal_override` plumbing from the
+retry mechanism, and the tile-snapshot stall-detection fix that made the
+retry trigger reliably in the first place).
+
+**Open**: SU15 is now `3/9` — levels 4-9 remain unexplored under this
+architecture. Worth a future round once other priorities clear.
+
 ## Related
 - [[../lessons/api_hash_rotation_20260421]]
