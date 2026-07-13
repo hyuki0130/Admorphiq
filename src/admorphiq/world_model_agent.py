@@ -65,6 +65,7 @@ from .general_agent import (
     _MOVE_ACTION_IDS,
     GeneralAgent,
     _avail_ids,
+    _occupancy_floor_colors,
     _state_name,
     _step_cell_size,
     _unit,
@@ -584,7 +585,24 @@ def plan_navigation(
     if goal_cell is None:
         return []
 
+    # Occupancy invariant: any cell the player is CURRENTLY observed standing
+    # on/adjacent to is proof-by-direct-observation of floor, regardless of
+    # what frame_to_cells's probe-derived floor set has or hasn't learned yet.
+    # Measured on AR25 L3 (2026-07-13): floor_colors_from_probes only learns
+    # a colour once a probe records the player VACATING that cell; a level
+    # whose floor colour was never probed this way (plausible right after a
+    # level transition, before any successful move) leaves frame_to_cells's
+    # ``if floor_colors:`` branch excluding that colour, collapsing walkable
+    # from 410/441 (L1/L2) to 57-59/441 (L3) and leaving every goal candidate
+    # unreachable. Tried blindly unioning ``{bg}`` in first — that FIXED ar25
+    # but broke ls20 (1/7@89 -> 0/7@131 live), confirming background is
+    # legitimately a WALL colour on some boards once floor is otherwise known
+    # (the exact case frame_to_cells's docstring warns about). Sampling only
+    # the colours actually touching the player's OWN footprint is safe on
+    # both: it can never blanket-include background unless the player is
+    # truly standing on/next to it right now.
     floor = floor_colors_from_probes(model._move_probes, model.player_color, bg)
+    floor = floor | _occupancy_floor_colors(layer, player.get("cells"))
     walkable, _ = frame_to_cells(layer, cell, model.player_color, bg, floor_colors=floor)
     if walkable.size == 0:
         return []

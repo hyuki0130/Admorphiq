@@ -356,6 +356,41 @@ def floor_colors_from_probes(
     return floor
 
 
+def _occupancy_floor_colors(
+    layer: np.ndarray, player_cells: set[tuple[int, int]] | None
+) -> set[int]:
+    """Colour immediately touching the player's own footprint RIGHT NOW.
+
+    Direct-observation floor signal, orthogonal to floor_colors_from_probes's
+    vacate-based one (which needs a probe where the player successfully moved
+    away from a cell to reveal what was under it): the player is physically
+    standing on/next to these pixels this frame, which is proof of
+    walkability that needs no probe history at all — useful right after a
+    level transition, before any move has succeeded yet. Returns only the
+    SINGLE most common neighbouring colour (not every colour touched), so a
+    player straddling a wall corner doesn't pull the wall colour in as a
+    false floor signal — measured: blindly treating ``background`` as always
+    floor fixed AR25 L3 but broke LS20 (background is legitimately a wall
+    colour there once other floor is known); sampling only what's physically
+    adjacent to the player is safe on both, since it can never claim a colour
+    the player isn't actually touching. Returns an empty set when
+    ``player_cells`` is falsy (no player located) or has no in-bounds
+    non-player neighbour.
+    """
+    if not player_cells or layer.size == 0:
+        return set()
+    h, w = layer.shape
+    counts: Counter[int] = Counter()
+    for y, x in player_cells:
+        for ny, nx in ((y - 1, x), (y + 1, x), (y, x - 1), (y, x + 1)):
+            if 0 <= ny < h and 0 <= nx < w and (ny, nx) not in player_cells:
+                counts[int(layer[ny, nx])] += 1
+    if not counts:
+        return set()
+    dominant, _ = counts.most_common(1)[0]
+    return {dominant}
+
+
 def _opposite_action(
     aid: int, learned: dict[int, tuple[int, int]]
 ) -> int | None:
@@ -1504,7 +1539,12 @@ class GeneralAgent:
         if goal is None:
             return None
 
+        # Occupancy invariant: see world_model_agent.plan_navigation's comment
+        # for the full AR25 measurement and why a blind ``| {bg}`` broke ls20
+        # — sampling only the colours touching the player's OWN footprint is
+        # the safe version of the same fix.
         floor_colors = floor_colors_from_probes(self._probes, self._player_color, bg)
+        floor_colors = floor_colors | _occupancy_floor_colors(layer, player.get("cells"))
         walkable, _ = frame_to_cells(
             layer, cell, self._player_color, bg, floor_colors=floor_colors
         )
