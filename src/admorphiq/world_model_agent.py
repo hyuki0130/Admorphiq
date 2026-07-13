@@ -93,7 +93,7 @@ from .merge_drag import (
     next_merge_click,
 )
 from .perception.frame_analyzer import FrameAnalyzer
-from .ring_paint import detect_paint_layout, nav_path
+from .ring_paint import ARROW_COORDS, detect_paint_layout, nav_path
 from .rotation import (
     MAX_COMMIT_CLICKS_PER_PIECE,
     RotationPuzzle,
@@ -1274,18 +1274,37 @@ class WorldModelAgent:
             not self._paint_attempted
             and all(a in avail for a in (1, 2, 3, 4, 5, 6))
         ):
+            # Settle-aware first read (a3b9c3c precedent): a level-transition
+            # animation stacks many frame layers, and detecting the canvas/target
+            # mid-transition mis-reads (measured CD82 L3: nlayers=16 at entry ->
+            # detect returns None). Wait (a bounded no-op) until the frame settles
+            # to a single layer before the one-shot paint detection.
+            raw_frame = np.asarray(getattr(latest_frame, "frame", latest_frame))
+            n_layers = raw_frame.shape[0] if raw_frame.ndim == 3 else 1
+            if n_layers > 1 and self._paint_settle_count < _PORTAL_SETTLE_MAX:
+                self._paint_settle_count += 1
+                self._pending = {
+                    "action_id": 6, "coord": (0, 0),
+                    "before": layer.copy(), "desc": ("c", 0, 0),
+                }
+                return self._emit_click(0, 0)
             self._paint_attempted = True
+            self._paint_settle_count = 0
             bg = self.model.background if self.model.background is not None else 0
             paint = detect_paint_layout(layer, bg)
             if paint is not None:
                 queue: list[tuple] = []
                 cur = paint.start_pos
-                for pos, color in paint.launches:
+                for kind, pos, color in paint.ops:
                     for aid in nav_path(cur, pos):
                         queue.append(("simple", aid))
                     cur = pos
                     queue.append(("click", paint.swatch_x[color] + 2, 4))
-                    queue.append(("simple", 5))  # launch
+                    if kind == "A":
+                        ax, ay = ARROW_COORDS[pos]
+                        queue.append(("click", ax, ay))  # arrow-click paint
+                    else:
+                        queue.append(("simple", 5))  # launch
                     queue.append(("settle",))
                 self._paint_queue = queue
                 self._phase = _PHASE_PAINT

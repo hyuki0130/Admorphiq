@@ -47,7 +47,7 @@ def test_plan_paint_horizontal_split_paints_only_the_differing_half():
     """
     target = np.zeros((10, 10), dtype=np.int32)
     target[5:10, :] = 15  # top 0, bottom 15
-    assert plan_paint(target, canvas_start=0) == [(4, 15)]
+    assert plan_paint(target, canvas_start=0) == [("L", 4, 15)]
 
 
 def test_plan_paint_vertical_split_uses_left_right_positions():
@@ -59,7 +59,7 @@ def test_plan_paint_vertical_split_uses_left_right_positions():
     """
     target = np.full((10, 10), 8, dtype=np.int32)
     target[:, 5:10] = 9  # left 8, right 9
-    assert plan_paint(target, canvas_start=8) == [(2, 9)]
+    assert plan_paint(target, canvas_start=8) == [("L", 2, 9)]
 
 
 def test_plan_paint_solves_a_diagonal_target():
@@ -75,7 +75,7 @@ def test_plan_paint_solves_a_diagonal_target():
     for i in range(10):
         target[i, : i + 1] = 15  # lower-left triangle
     plan = plan_paint(target, canvas_start=0, colors=[0, 15])
-    assert plan == [(5, 15)]
+    assert plan == [("L", 5, 15)]
 
 
 def test_plan_paint_solves_l2_diagonal_composition():
@@ -94,7 +94,7 @@ def test_plan_paint_solves_l2_diagonal_composition():
     # reproduce the plan and confirm it matches off-diagonal.
     from admorphiq.ring_paint import _MASKS, _matches
     canvas = np.zeros((10, 10), dtype=np.int32)
-    for pos, col in plan:
+    for kind, pos, col in plan:
         canvas[_MASKS[pos]] = col
     assert _matches(canvas, target)
 
@@ -111,7 +111,7 @@ def test_detect_paint_layout_reads_target_canvas_swatches_and_plans():
     layer = _paint_board(target_top=0, target_bot=15, canvas_color=0)
     layout = detect_paint_layout(layer, _BG)
     assert layout is not None
-    assert layout.launches == [(4, 15)]
+    assert layout.ops == [("L", 4, 15)]
     assert 15 in layout.swatch_x  # the colour we need is clickable
 
 

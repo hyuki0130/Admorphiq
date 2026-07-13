@@ -47,7 +47,7 @@ class PaintLayout:
     ``start_pos`` is the basket's starting ring position (0).
     """
 
-    launches: list[tuple[int, int]]
+    ops: list[tuple[str, int, int]]  # (kind "L"aunch / "A"rrow, ring_position, colour)
     swatch_x: dict[int, int]
     start_pos: int = 0
 
@@ -94,7 +94,26 @@ def _region_mask(pos: int) -> np.ndarray:
     return m
 
 
+def _arrow_mask(pos: int) -> np.ndarray:
+    """The 10x10 patch an ARROW-CLICK (ACTION6) paints at half-position ``pos``
+    (0/2/4/6) — a small centre-edge patch, distinct from a launch's half. From
+    the game geometry (verification-only)."""
+    m = np.zeros((10, 10), dtype=bool)
+    if pos == 0:
+        m[0:3, 3:7] = True
+    elif pos == 4:
+        m[7:10, 3:7] = True
+    elif pos == 6:
+        m[3:7, 0:3] = True
+    elif pos == 2:
+        m[3:7, 7:10] = True
+    return m
+
+
 _MASKS = {p: _region_mask(p) for p in range(8)}
+_ARROW_MASKS = {p: _arrow_mask(p) for p in (0, 2, 4, 6)}
+# Fixed click coords for the arrow op at each half-position (game display geometry).
+ARROW_COORDS: dict[int, tuple[int, int]] = {0: (32, 20), 2: (51, 38), 4: (32, 57), 6: (14, 38)}
 # The win check ignores the two main diagonals (the game compares canvas==target
 # only off the anti-diagonals) — so the planner matches off-diagonal cells only.
 _OFFDIAG = np.ones((10, 10), dtype=bool)
@@ -120,16 +139,17 @@ def _is_uniform(a: np.ndarray) -> bool:
 
 def plan_paint(
     target: np.ndarray, canvas_start: int, colors: list[int] | None = None, max_depth: int = 4
-) -> list[tuple[int, int]]:
-    """Shortest launch sequence that paints ``target`` from a uniform canvas.
+) -> list[tuple[str, int, int]]:
+    """Shortest paint-op sequence that produces ``target`` from a uniform canvas.
 
-    BFS over ``(ring_position, colour)`` launches (each overwrites its region;
-    later launches paint over earlier), matched against the target on the
-    off-diagonal cells only (the game's own win check ignores the two main
-    diagonals). Handles L1 half-splits AND deeper diagonal/multi-launch targets
-    (CD82 L2 = ``[(0,15),(3,12)]``). ``colors`` defaults to the target's own
-    palette. Returns ``[]`` when already matching, or when no sequence up to
-    ``max_depth`` matches (the caller defers rather than mis-painting).
+    BFS over paint ops — ``("L", pos, colour)`` launches (halves 0/2/4/6, diagonal
+    triangles 1/3/5/7) and ``("A", pos, colour)`` arrow-clicks (small centre-edge
+    patches at 0/2/4/6). Each op overwrites its region; later ops paint over
+    earlier; the result is matched against the target on the OFF-DIAGONAL cells
+    only (the game's win check ignores the two main diagonals). Solves CD82 L1
+    (half-split), L2 (diagonal + multi-launch), and L3 (launches + an arrow).
+    ``colors`` defaults to the target's own palette. Returns ``[]`` when already
+    matching or when no sequence up to ``max_depth`` matches (the caller defers).
     """
     if target.shape != (10, 10):
         return []
@@ -138,22 +158,24 @@ def plan_paint(
     start = np.full((10, 10), canvas_start, dtype=target.dtype)
     if _matches(start, target):
         return []
-    frontier: deque[tuple[np.ndarray, list[tuple[int, int]]]] = deque([(start, [])])
+    op_masks = [("L", p, _MASKS[p]) for p in range(8)]
+    op_masks += [("A", p, _ARROW_MASKS[p]) for p in (0, 2, 4, 6)]
+    frontier: deque[tuple[np.ndarray, list[tuple[str, int, int]]]] = deque([(start, [])])
     seen = {start.tobytes()}
     while frontier:
         canvas, seq = frontier.popleft()
         if len(seq) >= max_depth:
             continue
-        for pos in range(8):
+        for kind, pos, mask in op_masks:
             for col in colors:
                 nxt = canvas.copy()
-                nxt[_MASKS[pos]] = col
+                nxt[mask] = col
                 if _matches(nxt, target):
-                    return [*seq, (pos, col)]
+                    return [*seq, (kind, pos, col)]
                 key = nxt.tobytes()
                 if key not in seen:
                     seen.add(key)
-                    frontier.append((nxt, [*seq, (pos, col)]))
+                    frontier.append((nxt, [*seq, (kind, pos, col)]))
     return []
 
 
@@ -180,10 +202,13 @@ def detect_paint_layout(layer: np.ndarray, background: int) -> PaintLayout | Non
             break
     if canvas_xy is None:
         return None
-    # TARGET: bounding box of coloured components in the top-left quadrant.
+    # TARGET: bounding box of coloured components in the top-left quadrant. The
+    # size floor is small (8) because a deeper level's target has thin diagonal
+    # colour bands (<40px) — measured CD82 L3: a 40px floor dropped them and the
+    # whole target went undetected.
     tcomps = [
         c for c in comps
-        if c["cx"] < 20 and c["cy"] < 20 and c["size"] >= 40 and c["color"] not in (bg, _PADDING)
+        if c["cx"] < 20 and c["cy"] < 20 and c["size"] >= 8 and c["color"] not in (bg, _PADDING)
     ]
     if not tcomps:
         return None
@@ -194,12 +219,12 @@ def detect_paint_layout(layer: np.ndarray, background: int) -> PaintLayout | Non
     if target is None or canvas is None or not _is_uniform(canvas):
         return None
     swatch_x = _detect_swatches(layer, bg)
-    launches = plan_paint(target, int(canvas[0, 0]), colors=sorted(swatch_x))
-    if not launches:
+    ops = plan_paint(target, int(canvas[0, 0]), colors=sorted(swatch_x))
+    if not ops:
         return None
-    if any(col not in swatch_x for _pos, col in launches):
+    if any(col not in swatch_x for _kind, _pos, col in ops):
         return None
-    return PaintLayout(launches=launches, swatch_x=swatch_x)
+    return PaintLayout(ops=ops, swatch_x=swatch_x)
 
 
 def nav_path(cur: int, tgt: int) -> list[int]:
