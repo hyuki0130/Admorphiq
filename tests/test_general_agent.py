@@ -35,6 +35,7 @@ from admorphiq.general_agent import (
     pick_goal_cell,
     pick_next_probe,
     select_explore_action,
+    select_player_component,
 )
 
 
@@ -187,6 +188,53 @@ def test_infer_direction_map_ignores_tiled_wall_colours():
     _, player = infer_direction_map(probes, background=0)
     assert player is not None
     assert player["color"] == 9
+
+
+# ---------------------------------------------------------------------------
+# select_player_component — mobility/border-shape discrimination
+# ---------------------------------------------------------------------------
+
+
+def test_select_player_component_excludes_full_width_hud_bar():
+    """Purpose: a component spanning the full board width (touching both the
+    left and right edges) must not be picked as the player, even when it is
+    the LARGEST same-coloured candidate -- measured live on AR25 L3: a 63px
+    bar spanning the entire bottom row shared the player's learned colour
+    and, being the largest candidate, hijacked plan_navigation's player-
+    position anchor (every BFS plan then originated from that decoration
+    instead of the real character).
+
+    Expected feedback: a PASS proves a border-shaped decoration can no
+    longer hijack player-position selection by size alone; a FAIL means the
+    AR25-class regression (BFS planning from a HUD/counter bar) is back.
+    """
+    hud_bar = {
+        "color": 5, "size": 20, "cx": 10.0, "cy": 19.0,
+        "cells": {(19, c) for c in range(20)},  # spans cols 0..19 on a 20-wide board
+    }
+    real_player = {
+        "color": 5, "size": 9, "cx": 5.0, "cy": 5.0,
+        "cells": {(r, c) for r in range(4, 7) for c in range(4, 7)},
+    }
+    picked = select_player_component([hud_bar, real_player], layer_shape=(20, 20))
+    assert picked is real_player
+
+
+def test_select_player_component_falls_back_to_largest_when_none_border_shaped():
+    """Purpose: with no border-shaped candidate present, selection is
+    unchanged from the prior plain-size heuristic.
+
+    Expected feedback: a PASS means ordinary (non-HUD) boards keep their
+    existing largest-candidate behaviour; a FAIL means the new shape filter
+    over-excludes legitimate player candidates.
+    """
+    small = {"color": 5, "size": 4, "cx": 2.0, "cy": 2.0, "cells": {(1, 1), (1, 2), (2, 1), (2, 2)}}
+    large = {
+        "color": 5, "size": 9, "cx": 10.0, "cy": 10.0,
+        "cells": {(r, c) for r in range(9, 12) for c in range(9, 12)},
+    }
+    picked = select_player_component([small, large], layer_shape=(20, 20))
+    assert picked is large
 
 
 # ---------------------------------------------------------------------------

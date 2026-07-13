@@ -84,6 +84,7 @@ from .general_agent import (
     pick_next_probe,
     player_centroid,
     select_explore_action,
+    select_player_component,
 )
 from .merge_drag import (
     detect_drag_layout,
@@ -573,7 +574,7 @@ def plan_navigation(
     ]
     if not player_comps:
         return []
-    player = max(player_comps, key=lambda c: c["size"])
+    player = select_player_component(player_comps, layer.shape)
 
     # Preferred model: edge-walkable node grid keyed on the corridor colour. This
     # is the only model that navigates interleaved-pitch mazes where a node

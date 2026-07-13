@@ -307,6 +307,62 @@ def infer_direction_map(
     return resolved, best["comp"]
 
 
+_BORDER_SPAN_FRACTION = 0.9
+
+
+def _is_border_shaped(comp: dict, layer_shape: tuple[int, int]) -> bool:
+    """True when ``comp``'s bounding box spans most of the board's width/height.
+
+    A component spanning nearly the full width or height (>=
+    :data:`_BORDER_SPAN_FRACTION` of the board) is a decoration/HUD/border
+    shape — a resource bar, a progress meter, a frame border — never a
+    movable player, even when it happens to share the player's learned
+    colour and pass the size filter. Measured on AR25 L3: a 63px bar spans
+    columns 0-62 of a 64-wide board — 98% of the width, but NOT touching
+    column 63 exactly, so an exact "touches both edges" check misses it; a
+    fractional-span threshold catches this real-world inset. Being the
+    LARGEST same-colour candidate, this bar hijacked player-position
+    selection — every downstream BFS plan then originated from a decoration
+    instead of the real character. Pure / env-free.
+    """
+    cells = comp.get("cells")
+    if not cells:
+        return False
+    h, w = layer_shape
+    rows = [r for r, _ in cells]
+    cols = [c for _, c in cells]
+    width_span = max(cols) - min(cols) + 1
+    height_span = max(rows) - min(rows) + 1
+    return (
+        width_span >= _BORDER_SPAN_FRACTION * w
+        or height_span >= _BORDER_SPAN_FRACTION * h
+    )
+
+
+def select_player_component(
+    comps: list[dict], layer_shape: tuple[int, int]
+) -> dict | None:
+    """Pick the player among same-colour candidate components, by SHAPE first.
+
+    Excludes any candidate whose bounding box touches both opposite board
+    edges (see :func:`_is_border_shaped` — a border/HUD shape is never the
+    player), then falls back to the LARGEST of what remains — the
+    size-based heuristic every caller used before is fine once decorations
+    that happen to share the player's colour are filtered out first. If
+    EVERY candidate is border-shaped (an edge case with no genuine mobile
+    entity visible), falls back to the full unfiltered list rather than
+    returning nothing, so callers keep their prior no-candidates behaviour
+    only when there truly are no candidates at all. Returns ``None`` when
+    ``comps`` is empty. Pure / env-free.
+    """
+    if not comps:
+        return None
+    candidates = [c for c in comps if not _is_border_shaped(c, layer_shape)]
+    if not candidates:
+        candidates = comps
+    return max(candidates, key=lambda c: c["size"])
+
+
 def player_centroid(
     layer: np.ndarray, player_color: int, background: int
 ) -> tuple[float, float] | None:
@@ -1486,7 +1542,7 @@ class GeneralAgent:
         ]
         if not player_comps:
             return None
-        player = max(player_comps, key=lambda c: c["size"])
+        player = select_player_component(player_comps, layer.shape)
 
         # Direction map quantised to unit grid steps (one cell per move). A
         # non-axis-aligned reading is dropped rather than quantised to a
