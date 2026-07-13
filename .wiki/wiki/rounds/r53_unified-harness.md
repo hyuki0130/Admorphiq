@@ -1408,3 +1408,10 @@ unconstrained offset search: no single translation of its 1-row bar covers 8
 points across rows 6-39 — the "one sprite, one translation" model can't
 represent it (multi-placement / changer / sequential — future scope). re86
 banked at 2 levels, both 1.0. NEXT: wa30 (recorded delivery mechanic).
+
+### 🎉 THIRD WALL FALLS — wa30 L1 at 30/71 actions (2026-07-13 17:50)
+delivery.py (7th family member): pick-carry-drop with measured step=4 grid,
+context ACTION5, fixed carry offset. Level score 1.0 (agent used 42% of the
+human count). Card: **18/25 chained** — walls remaining: bp35 dc22 g50t sc25
+tr87 (5) + banked depth (s5i5 L2 matching, wa30 L2 colour-12 entity, re86 L3
+multi-placement, su15 L3). public-25 proxy now ~1.23. 752 tests.
