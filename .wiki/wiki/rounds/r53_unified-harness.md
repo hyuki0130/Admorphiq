@@ -1175,3 +1175,14 @@ agent budget is the runner's choice), and **sk48 is chain-fragile** (unified
 solo 1, chained 0 — the probe prefix perturbs its marginal path; score impact
 zero, coverage follow-up). Session totals since 2026-07-09: coverage 8→15
 single-artifact (17 with policy), RHAE 0.03% → 1.076% measured.
+
+### 🎯 NO-LLM chained = 14/25, 1.072% — the LLM is nearly free to drop (2026-07-13 11:20)
+Full-25 on the Mac (OLLAMA_HOST dead → offline-safe signature routing, no
+draws): **14 cleared, 1.072%** vs the LLM stack's 15/1.076%. The entire LLM
+contribution at the deployed scale = +1 game (cn04) and +0.004%p. cd82 cleared
+WITHOUT draws (1 sample); vc33 reached L2. DEPLOYMENT IMPLICATION: the
+first Kaggle notebook can ship LLM-FREE (numpy-only WMA probe + graph stack) at
+~1.07% — 89% of the M1 winner with ZERO offline-LLM packaging risk; the
+gemma stack becomes a v2 upgrade, not a blocker. GCP no longer needed for this
+track (free trial ended 7/12; all billable resources deleted 7/13 — instance,
+disks, snapshots; setup playbook recorded for any future GPU work).
