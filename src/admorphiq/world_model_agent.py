@@ -609,6 +609,13 @@ class WorldModelAgent:
         # GeneralAgent exploration fallback, created lazily on stall (see
         # _activate_fallback). None while the structured path is driving.
         self._fallback: GeneralAgent | None = None
+        # Fingerprint of the transform puzzle just solved (captured in
+        # ``choose_action`` right before ``_reset_level`` clears
+        # ``_transform_puzzle`` — so it must live OUTSIDE that reset,
+        # persisting across the level boundary it describes). Used by the
+        # transform gate's staleness check: see its comment in
+        # ``_probe_step``.
+        self._transform_prev_puzzle_key: frozenset | None = None
         self._reset_level()
 
     def _reset_level(self) -> None:
@@ -783,12 +790,19 @@ class WorldModelAgent:
         # _transform_step.
         self._transform_seen_active: set[int | None] = set()
         # A level entered via a real transition can render its FIRST frame
-        # still showing the previous level's final board — measured on
-        # RE86 L2: the target-marker/sprite colours only settle to the true
-        # new layout after one more action is taken. ``_transform_settle_tried``
-        # bounds a single harmless settle press + detection retry (see the
-        # gate in ``_probe_step``) so a genuine non-transform level still
-        # gives up after exactly one extra action, never loops.
+        # still showing the previous level's final board — measured on RE86
+        # L2/L3: the target-marker/sprite colours only settle to the true
+        # new layout after one more action is taken. Detection failing
+        # outright is one signal; the other (measured on L2->L3, worse
+        # because it is silent) is detection SUCCEEDING on an exact repeat
+        # of the puzzle just solved (see ``_transform_prev_puzzle_key``) —
+        # a fully-SOLVED previous board's ring+dot markers stay visually
+        # present regardless of satisfaction, so "detected something valid"
+        # alone does not mean "this is the new level". Either case triggers
+        # ONE settle press + detection retry (see the gate in
+        # ``_probe_step``); ``_transform_settle_tried`` bounds this to
+        # exactly once so a genuine non-transform level still gives up
+        # after one extra action, never loops.
         self._transform_settle_tried = False
 
     # ── harness contract ──────────────────────────────────────────────────────
@@ -874,6 +888,10 @@ class WorldModelAgent:
         if leveled:
             self._levels_completed = lvl
             self._last_progress_action = self._action_count
+            if self._transform_puzzle is not None:
+                self._transform_prev_puzzle_key = frozenset(
+                    (t.x, t.y, t.color) for t in self._transform_puzzle.targets
+                )
             self._reset_level()
 
         if state == "GAME_OVER" or layer.size == 0 or not avail:
@@ -1067,16 +1085,34 @@ class WorldModelAgent:
         ):
             bg = self.model.background if self.model.background is not None else 0
             transform_puzzle = detect_transform_puzzle(layer, bg)
-            if transform_puzzle is not None:
+            stale = False
+            if transform_puzzle is not None and self._levels_completed >= 1 and spent == 0:
+                # A level entered via a real transition can render its
+                # FIRST frame still showing the PREVIOUS level's board —
+                # measured on RE86 L2->L3: the previous level's board was
+                # already fully SOLVED, yet still structurally "detected" as
+                # a valid puzzle (the ring+dot markers stay visually present
+                # regardless of whether they're already satisfied), so
+                # "detection succeeded" alone cannot distinguish a genuine
+                # new level from a stale one. The actual signal is an EXACT
+                # match to the puzzle just solved (``_transform_prev_puzzle_key``,
+                # captured in ``choose_action`` right before this level's
+                # reset) — a coincidentally-identical BUT GENUINELY NEW
+                # puzzle is not something this comparison can rule out, but
+                # none has been measured; treating an exact repeat as stale
+                # is the conservative, evidence-backed call.
+                key = frozenset((t.x, t.y, t.color) for t in transform_puzzle.targets)
+                stale = key == self._transform_prev_puzzle_key
+            if transform_puzzle is not None and not stale:
                 self._transform_attempted = True
                 self._transform_puzzle = transform_puzzle
                 return self._enter_transform(layer, avail, latest_frame)
             if self._levels_completed >= 1 and not self._transform_settle_tried and spent == 0:
-                # Detection found nothing on the very FIRST frame of a level
-                # entered via a real transition — see the settle-frame
-                # comment on ``_transform_settle_tried`` in ``_reset_level``.
-                # Retry ONCE after a harmless settle press instead of
-                # permanently giving up on this level.
+                # Detection found nothing, or found only a stale repeat of
+                # the just-solved puzzle — retry ONCE after a harmless
+                # settle press instead of acting on stale data or
+                # permanently giving up (see ``_transform_settle_tried`` in
+                # ``_reset_level``).
                 self._transform_settle_tried = True
                 self._pending = {"action_id": 5, "coord": None, "before": layer.copy()}
                 return self._emit(GameAction.from_id(5))
