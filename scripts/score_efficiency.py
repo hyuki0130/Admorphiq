@@ -113,6 +113,15 @@ def _make_agent(name: str, game_id: str | None = None):
         from admorphiq.world_model_agent import WorldModelAgent
 
         return WorldModelAgent()
+    if name == "chained":
+        # The measured 3-pass policy as one artifact (rounds/r53 2026-07-11):
+        # cheap worldmodel probe first (efficient arrangement-class clears,
+        # self-terminates in ~50-260 actions elsewhere), then the unified
+        # harness owns the remaining budget.
+        from admorphiq.chained_agent import ChainedAgent
+        from admorphiq.world_model_agent import WorldModelAgent
+
+        return ChainedAgent(WorldModelAgent(), _make_agent("unified", game_id))
     if name == "online_rl":
         import os
 
