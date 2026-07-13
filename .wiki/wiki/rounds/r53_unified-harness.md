@@ -1162,3 +1162,16 @@ costs the graph clears nothing (they score ~0) and keeps the efficient clears
 intact. ka59 stays a runner-level 30k budget choice (not in-agent). Full-25
 single-artifact measurement in flight — the honest deployable number vs the
 0.915% best-pass-per-game estimate.
+
+### ✅ SINGLE-ARTIFACT NUMBER: chained@8000 = 15/25, 1.076% (2026-07-13 09:46)
+Full-25 measurement of `--agent chained` after the restart-flag fix: **15
+games cleared, TOTAL 1.076%** — one deployable agent, no per-game policy
+outside it. vs anchors: online-RL card 0.51% (x2.1), M1 winner 1.21% (89%),
+top ~1.56% (69%). The probe banks the efficient clears (ar25 .083, su15 .067,
+ls20 .036, ft09 .029, sb26 .028, tn36 .015, tu93 .008, lp85 .002) and the
+unified handover recovers the graph card (cd82 cn04 lf52 m0r0 r11l sp80 vc33).
+Deltas vs the 17/25 policy card: ka59 needs the runner-level 30k retry (in-
+agent budget is the runner's choice), and **sk48 is chain-fragile** (unified
+solo 1, chained 0 — the probe prefix perturbs its marginal path; score impact
+zero, coverage follow-up). Session totals since 2026-07-09: coverage 8→15
+single-artifact (17 with policy), RHAE 0.03% → 1.076% measured.
