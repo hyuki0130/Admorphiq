@@ -3565,3 +3565,17 @@ Banked. No `src/` changes; tree clean at `a43f952`.
 
 ## Related
 - [[../lessons/api_hash_rotation_20260421]]
+
+## v6 hidden-set FIRST SCORE + leaderboard scale correction [2026-07-14 01:55 KST]
+
+- **Submission #54637991 (v6, local public-25 proxy 1.0721) scored publicScore = 0.14** on the
+  hidden ~50% test split — our first score on the board. **Measured transfer ratio ≈ 13%**
+  (public-proxy → hidden LB). The hidden 110 games are unseen; only the genuinely generic
+  fraction of the card transfers.
+- **Leaderboard scale correction** (supersedes the old "top = 12.58%" anchor): the live public LB
+  top band on 2026-07-14 is **1.61 (Tecnod8.AI), 1.56 ×3, 1.54 …** — top-20 packed in 1.38–1.61.
+  Our local public-25 proxy numbers (v7 1.6054, v8 1.7091) are numerically comparable to the LB
+  top band, but the transfer gap (0.14 actual) shows public-proxy ≠ hidden score for our card.
+- **Implication**: the primary lever for LB rank is HIDDEN-GAME TRANSFER — generic mechanic
+  families (tonight direction) over public-specific tuning. Depth on public games still feeds the
+  proxy, but every mechanism must be justified as frame-observable + game-agnostic to count.
