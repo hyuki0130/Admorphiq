@@ -1448,3 +1448,22 @@ matches in any pairing. Move counter confirmed (row 63) → remaining
 hypotheses dispatched as OFFLINE computation on the captured masks: dihedral
 equality, complement, count equality, upper-grid-as-key, side-channel scan of
 the existing press traces.
+
+### tr87 offline hypothesis batch (a)-(e): ALL FALSIFIED — banked (2026-07-13 18:50)
+Zero live actions spent — pure offline recomputation on the single 35-state
+capture. (a) dihedral equality (8 transforms x target, vs all 35 dial
+states): zero matches. (b) complement equality (+dihedral): zero matches.
+(c) colour-cell COUNT equality per column: columns 0/1/4 have ZERO dial
+states matching their target's count at all (only cols 2/3 have any) — a
+solvable per-column rule should clear this weak bar everywhere, so this is
+evidence AGAINST same-column matching, not just inconclusive. (d) upper
+12-piece grid as answer key (+dihedral): matches found but a red herring —
+exactly 5 of 12 upper patterns each matched ONE state per column UNIFORMLY
+across all 5 columns (decorative palette reuse, not an encoded answer).
+(e) side-channel scan of all 35 press-transition frame pairs (outside the
+dial box + HUD row): none found. Full elimination table recorded at
+[[../lessons/tr87_dial_match_hypothesis_falsified_20260713]] (also updates
+[[../games/TR87]] and flags the [[../game_types/rotation]] misclassification)
+so a future session doesn't re-spend a live-trace cycle re-deriving this.
+tr87 banked at 0/6 (mechanism decoded, win condition open). Card holds at
+18/25 chained (wa30 L1 fresh); moving to dc22 next.

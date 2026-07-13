@@ -29,4 +29,20 @@ Straightforward per-piece correction: iterate pieces, apply minimum rotation cou
 
 | Game | v1 | v2 | Strategy |
 |------|-----|-----|----------|
-| [[../games/TR87]] | 1/6 | n/a | tr87_rotation (hardcoded L1) |
+| [[../games/TR87]] | 1/6 | n/a | tr87_rotation (hardcoded L1) — **misclassified**, see below |
+
+## Edge Cases
+
+- **TR87 does NOT fit this game_type** (measured R53, 2026-07-13): its
+  `avail` never includes `ACTION6` (click-only is this page's core
+  identifying feature), and `ACTION1`/`ACTION2` step a 7-state CYCLIC DIAL,
+  not a geometric rotation (cell count changes between presses; no
+  `rot90`/transpose/flip matches). It is left listed here only because no
+  better-fitting `game_types/` page exists yet — see
+  [[../games/TR87]] and [[../lessons/tr87_dial_match_hypothesis_falsified_20260713]]
+  for the actual confirmed mechanic before assuming this page applies to it.
+
+## Related
+
+- [[../games/TR87]]
+- [[../lessons/tr87_dial_match_hypothesis_falsified_20260713]]
