@@ -2239,3 +2239,92 @@ consistent readings before trusting a NEW action's direction; or detect an
 implausibly-large magnitude relative to already-known actions and re-probe
 instead of recording it). Verify with the SAME 7-guard set plus ar25 @8000,
 since this touches the shared discovery path every WMA game depends on.
+
+## Follow-up (2026-07-13, later same day): outlier-rejection landed, AR25 STILL blocked — real cause is a third, deeper defect
+
+Implemented exactly the recovery lead above, as two fixes (commit `1dd5e1a`):
+
+1. `WorldModelAgent.step_dirs()` — a quantised `(ucol, urow)` with BOTH
+   components nonzero (non-cardinal) is now DROPPED rather than fed to
+   `grid_bfs` as a diagonal edge. Every game in this repo is
+   4-connected-cardinal only, so a diagonal quantisation is always a probe
+   artefact, never a real mechanic.
+2. `infer_direction_map` (`general_agent.py:247`) — readings for the SAME
+   action id across multiple probes are now resolved by MAJORITY VOTE
+   instead of last-write-wins. This is the "cross-reference against the
+   dominant established pattern" lead above, generalised: rather than
+   comparing a new reading against OTHER actions' directions, compare it
+   against that SAME action's own reading history (simpler, and directly
+   analogous to the `_step_cell_size` mode fix). 2 new unit tests
+   (`test_step_dirs_drops_non_axis_aligned_probe_reading`,
+   `test_infer_direction_map_outvotes_single_bad_reading_for_same_action`).
+
+**Methodology correction — the earlier trace was against the WRONG env
+hash.** `Arcade(OperationMode.NORMAL/OFFLINE).make("ar25")` (title lookup)
+resolves to `environment_files/ar25/0c556536/ar25.py`. But
+`scripts/score_efficiency.py` calls `OFFLINE.make(env.game_id)` where
+`env.game_id` is the string `"ar25-0c556536"` from `get_environments()` —
+and THAT call deterministically resolves to a DIFFERENT local file,
+`environment_files/ar25/e3c63847/ar25.py` (confirmed reproducible across 3
+repeated calls). These are genuinely different game versions (diffed —
+different sprite names/data). **All prior AR25 L3 diagnosis in this file
+was traced against 0c556536, a game version score_efficiency.py never
+actually scores.** Lesson for future live-tracing: always call
+`OFFLINE.make(env.game_id)` with the exact id string from
+`get_environments()`, never `make(title)`, or the trace and the scored run
+silently diverge. (Related: [[../lessons/api_hash_rotation_20260421]] — a
+different mechanism, live API version rotation, but the same failure
+shape: local dev tooling and the actual scored artifact drift apart
+silently.)
+
+**Re-traced against the TRUE scored hash (e3c63847) with both fixes live**:
+`move_map[3]` at L3 now correctly recovers `(-3, 0)` (was the corrupted
+`(-2, -18)` on this hash too — same defect class, independently confirmed
+on a second game version). `step_dirs()` is fully cardinal:
+`{1: (0,-1), 2: (0,1), 3: (-1,0), 4: (1,0), 7: (0,1)}`. `_blocked_cells`
+never gets corrupted (stays `set()` throughout the L3 attempt). **Both
+fixes work exactly as designed.**
+
+**AR25 live score is unchanged: 2/8, 318 actions, byte-identical across 2
+runs at the 8000-action budget.** Direction inference was never the actual
+L3 blocker on this hash. Instrumented `grid_bfs`'s own inputs directly:
+
+```
+L1/L2: walkable.shape=(21,21) true_count=410/441  start_walkable=True
+L3:    walkable.shape=(21,21) true_count=57-58/441 start_walkable=FALSE
+```
+
+At L3 the player's OWN current grid cell is marked unwalkable, and the
+walkable set collapses from 93% of the board to ~13%. Every one of the 10
+enumerated goal candidates is unreachable — not because of a learned wall,
+not because of a bad direction, but because `frame_to_cells`'s floor-colour
+classification (fed by `floor_colors_from_probes(model._move_probes, ...)`)
+does not recognise L3's floor colour as walkable. `_move_probes` is
+game-scope (never cleared on level-up, confirmed by reading
+`_reset_level`'s docstring), so this isn't a stale-reset bug — it's that
+NO probe has yet revealed L3's floor colour via a successful player-vacates-
+a-cell observation, plausibly because the player hasn't moved yet this
+level (chicken-and-egg: can't learn the floor by moving, can't plan a move
+because the model thinks nowhere is walkable).
+
+**This is a third, distinct defect from the (now-fixed) direction/cell-size
+outlier class.** Banked (not fixed) this cycle — priority was verifying the
+direction fixes honestly rather than opening a fourth investigation in one
+sitting. Recovery lead for next AR25 L3 attempt: make `plan_navigation`
+(or `frame_to_cells`) fail open when `start_walkable is False` — e.g. force
+the player's own current cell walkable unconditionally (mirrors the
+existing `walkable[goal_cell] = True` force already done for the goal
+marker at `world_model_agent.py:581`), or detect an entirely-different
+floor colour under the player at level start and seed it into `floor`
+before the first BFS attempt rather than waiting for a probe to reveal it.
+
+**Guards re-confirmed** (same 7-guard set, unchanged from the block above):
+su15 `2/9, 58`, s5i5 `1/8, 169`, re86 `2/8, 264`, wa30 `1/9, 100`, ft09
+`1/6, 93`, tn36 `1/7, 110`, lp85 `1/8, 311` — all exact. Suite 764/764
+(was 760; +4 new tests), ruff clean. **Committed** as `1dd5e1a` — the two
+direction-inference fixes are real, tested, verified-safe hardening even
+though they don't move AR25's score; they close the exact gap this file's
+prior section flagged as the recovery lead, and the same corrupted-reading
+class was independently reproduced on BOTH ar25 hashes (0c556536 and
+e3c63847), so they likely protect other games/other hash rotations even
+where AR25 itself needed a further fix.

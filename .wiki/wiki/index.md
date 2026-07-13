@@ -22,12 +22,12 @@ category, drill into specific pages.
 - [[games/KA59.md]] — v1 brittle 4/7 ✅, generic 0/7 ❌ (R23 8B; v2 dir-silent) — Relies on game internals — high v1 score, fails on v2.
 - [[games/LF52.md]] — v1 0/10 ❌ — Not yet classified; needs hand review.
 - [[games/LP85.md]] — v1 1/8 ✅ — Frame-observation solver — generalizes across version hashes.
-- [[games/LS20.md]] — v1 1/7 ✅ — Relies on game internals — high v1 score, fails on v2.
+- [[games/LS20.md]] — v1 1/7 (brittle, hardcoded L1 -- STALE, see below) — A straightforward multi-room maze/navigation game — earlier notes
 - [[games/M0R0.md]] — v1 brittle n/a (no brittle solver — pure generic), generic 2/6 ✅ (R23 8B via bfs_state_space) — Frame-observation solver — generalizes across version hashes.
 - [[games/R11L.md]] — v1 brittle 1/6 ✅, generic 0/6 ❌ (R23 8B) — Frame-observation solver — generalizes across version hashes.
 - [[games/RE86.md]] — v1 brittle 6/8 ✅, generic 0/8 ❌ (R23 8B; brittle reads sprite tags vzuwsebntu/vfaeucgcyr/ozhohpbjxz) — Relies on game internals — high v1 score, fails on v2.
 - [[games/S5I5.md]] — v1 brittle 1/8 ✅, generic 0/8 ❌ (R23 8B; brittle reads myzmclysbl/zylvdxoiuq sprite tags) — Relies on game internals — high v1 score, fails on v2.
-- [[games/SB26.md]] — v1 8/8 ✅ — Relies on game internals — high v1 score, fails on v2.
+- [[games/SB26.md]] — v1 8/8 ✅ (brittle, internals) — A portal-graph traversal puzzle disguised as a simple reference/pool
 - [[games/SC25.md]] — v1 brittle n/a (uses generic spell_cast), generic 0/6 ❌ (R23 8B; previously 2/6 via spell_cast pick — Qwen didn't select it under R23 anchor) — Frame-observation solver — generalizes across version hashes.
 - [[games/SK48.md]] — v1 0/8 ❌, v2 0/8 ❌ — Not yet classified; needs hand review.
 - [[games/SP80.md]] — v1 1/6 ✅, v2 1/6 ✅ — Frame-observation solver — generalizes across version hashes.
