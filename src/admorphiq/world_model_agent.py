@@ -980,6 +980,19 @@ class WorldModelAgent:
         # orientation-independent, unlike the leading-edge accent colour
         # alone (see :func:`admorphiq.delivery.detect_mover_by_motion`).
         self._delivery_attempted = False
+        # A level entered via a real transition can render its FIRST frame
+        # still mid-settle: measured on WA30 L2 — the very first
+        # detect_delivery_puzzle call saw a partial frame (item-ring pixel
+        # count 36 vs the fully-settled 60, the level's own moving actor
+        # entirely absent from the pixel histogram) and under-detected 3
+        # items instead of the true 5, silently locking in a WRONG,
+        # incomplete puzzle for the rest of the level (mirrors the RE86
+        # settle-frame class documented on ``_transform_settle_tried``
+        # above, but delivery's failure mode is silent under-detection, not
+        # outright None / staleness). Bounds one settle press + retry to
+        # exactly once so a genuine non-delivery level still gives up after
+        # one extra action, never loops.
+        self._delivery_settle_tried = False
         self._delivery_puzzle: DeliveryPuzzle | None = None
         self._delivery_dir_map: dict[int, tuple[int, int]] = {}
         self._delivery_step_size = 0
@@ -1343,8 +1356,29 @@ class WorldModelAgent:
             and 5 in avail
             and any(a in avail for a in (1, 2, 3, 4))
         ):
-            self._delivery_attempted = True
             bg = self.model.background if self.model.background is not None else 0
+            if (
+                self._levels_completed >= 1
+                and not self._delivery_settle_tried
+            ):
+                # Settle press BEFORE trusting detection — see
+                # _delivery_settle_tried's docstring in _reset_level: the
+                # first frame right after a level transition can be
+                # mid-render and silently UNDER-detect items (measured live
+                # on WA30 L2: 3 items found instead of the true 5), locking
+                # in a wrong puzzle for the whole level rather than failing
+                # outright. Mirrors the RE86/transform settle-frame
+                # precedent (``_transform_settle_tried`` above). No
+                # ``spent == 0`` gate here (unlike transform's) — measured
+                # live that an earlier probe-phase check already consumes
+                # one action before this gate is ever reached on the level's
+                # first pass, so ``not self._delivery_attempted`` (this
+                # block's own outer gate) is what makes this exactly-once,
+                # not an action-count check that never actually holds true.
+                self._delivery_settle_tried = True
+                self._pending = {"action_id": 5, "coord": None, "before": layer.copy()}
+                return self._emit(GameAction.from_id(5))
+            self._delivery_attempted = True
             delivery_puzzle = detect_delivery_puzzle(layer, bg)
             if delivery_puzzle is not None:
                 self._delivery_puzzle = delivery_puzzle
