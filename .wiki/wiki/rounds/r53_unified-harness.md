@@ -1689,3 +1689,15 @@ pixel-level tile-vs-diamond overlap tracking, a further probe). Per-goal
 tier assignment (colour-11↔goal-A vs colour-15↔goal-B, matched to the
 indicator positions) also remains untested in either direction conclusively.
 Not building delivery logic on this yet — still short of a confirmed rule.
+
+### Day wrap: v2 submission assets staged (2026-07-13 19:51)
+Dataset v3 (all of today's modules) + kernel v7 pushed — validating overnight
+with the 18/25 card (public-25 proxy ~1.23). Submission #54637991 (v6 card,
+1.072 proxy) still PENDING on the hidden set. NEXT-SESSION CHECKLIST:
+(1) check #54637991's publicScore (`kaggle competitions submissions`),
+(2) check v7 validation COMPLETE + its interactive score in the kernel log,
+(3) submit v7 when the daily slot resets (00:00 UTC / 09:00 KST):
+`kaggle competitions submit arc-prize-2026-arc-agi-3 -k
+jaehyukhyun/admorphiq-arc-agi-3-chained-llm-free -v 7 -f submission.parquet
+-m "..."`. su15 L3 delivery banked with AABB/transparent-corner + indicator-
+block recovery leads; every remaining wall has a documented elimination table.
