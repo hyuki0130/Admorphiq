@@ -87,6 +87,7 @@ from .general_agent import (
 )
 from .merge_drag import (
     detect_drag_layout,
+    detect_goal_containers,
     drag_probe_target,
     next_merge_click,
 )
@@ -229,6 +230,25 @@ _MERGE_DRAG_MAX_CLICKS = 120
 # grab (drag animation lag) while stopping well before the measured
 # GAME_OVER threshold.
 _MERGE_DRAG_STALL_LIMIT = 3
+
+
+def _merge_drag_tile_snapshot(layer: np.ndarray, background: int) -> frozenset:
+    """Rounded ``(colour, size, cx, cy)`` tuples for every movable tile.
+
+    Used to detect a genuinely stalled merge-drag click: comparing this
+    snapshot before/after a click (not full-frame equality, which a HUD or
+    resource-counter region can trip on every click regardless of whether the
+    tracked tiles moved) is the reliable stall signal. Rounds centroids to 1
+    decimal so drag-animation sub-pixel jitter doesn't register as movement.
+    Returns an empty frozenset when there is no drag layout at all.
+    """
+    layout = detect_drag_layout(layer, background)
+    if layout is None:
+        return frozenset()
+    return frozenset(
+        (color, size, round(cx, 1), round(cy, 1)) for cx, cy, color, size in layout.tiles
+    )
+
 
 # Simple action commonly used as the SELECTION toggle in arrangement games
 # (cycles which entity the move actions drive). Detected, not assumed: the
@@ -811,6 +831,29 @@ class WorldModelAgent:
         self._merge_drag_probed = False
         self._merge_drag_clicks = 0
         self._merge_drag_stall = 0
+        # ``_merge_drag_goal`` is the goal-container centroid currently being
+        # targeted (None = the natural default, the largest/rarest cluster).
+        # ``_merge_drag_tried_goals`` accumulates every goal centroid that has
+        # been abandoned (probe failed, stalled, or "gather complete" without
+        # a level-up) so a multi-goal board (SU15: TWO distinct containers)
+        # tries the OTHER goal before giving up entirely, instead of
+        # permanently committing to whichever one detect_drag_layout's
+        # single-largest-cluster heuristic happened to pick first. Measured
+        # live: forcing the correct goal cleared SU15 L3 in 21 actions from a
+        # state that, targeted at the default goal, stalls/GAME_OVERs every
+        # time without ever clearing.
+        self._merge_drag_goal: tuple[float, float] | None = None
+        self._merge_drag_tried_goals: list[tuple[float, float]] = []
+        # Snapshot of tile positions/sizes captured right before the last
+        # merge_drag click was issued, used to detect a stalled TILE
+        # specifically. ``_last_changed`` (full-frame equality) is NOT a
+        # reliable stall signal here — measured on SU15: a HUD/resource
+        # counter changes on every click regardless of whether the tracked
+        # tile moved, so ``_last_changed`` stays True and the stall counter
+        # never increments even while a tile is genuinely dead-clicked
+        # straight through to GAME_OVER (the falsification signature the
+        # lesson page for this exact bug already documented).
+        self._merge_drag_last_tiles: frozenset | None = None
         # ── Click-only ROTATION-PUZZLE bookkeeping (rotation.py) ──────────────
         # ``_rotation_attempted`` gates the one-shot detection per level (a
         # fresh piece/reference layout each level). ``_rotation_puzzle`` is the
@@ -1892,17 +1935,20 @@ class WorldModelAgent:
         free, it walks the env toward GAME_OVER).
         """
         bg = self.model.background if self.model.background is not None else 0
+        current_tiles = _merge_drag_tile_snapshot(layer, bg)
         if not self._merge_drag_probed:
             self._merge_drag_probed = True
             if not self._last_changed:
-                # The test click pulled nothing → not a drag game. Abandon.
-                self._plan_commit = self._action_count
-                self._phase = _PHASE_INTERACT
-                return self._interact_step(layer, avail, latest_frame)
+                # The test click pulled nothing → not a drag game against THIS
+                # goal. Try the other goal container before giving up entirely.
+                return self._try_next_merge_goal(layer, avail, latest_frame, bg)
         elif self._merge_drag_clicks > 0:
             # A walk click was just credited (not the initial probe): track
-            # whether it actually moved anything.
-            if self._last_changed:
+            # whether the TRACKED TILES actually moved, not whether the whole
+            # frame changed (a HUD/counter region can tick every click while
+            # the tiles sit dead-still — see this method's stall-tracking
+            # comment above).
+            if current_tiles != self._merge_drag_last_tiles:
                 self._merge_drag_stall = 0
             else:
                 self._merge_drag_stall += 1
@@ -1912,9 +1958,10 @@ class WorldModelAgent:
             and self._merge_drag_clicks < _MERGE_DRAG_MAX_CLICKS
             and self._merge_drag_stall < _MERGE_DRAG_STALL_LIMIT
         ):
-            cell = next_merge_click(layer, bg)
+            cell = next_merge_click(layer, bg, goal_override=self._merge_drag_goal)
             if cell is not None:
                 self._merge_drag_clicks += 1
+                self._merge_drag_last_tiles = current_tiles
                 x, y = cell
                 self._pending = {
                     "action_id": 6, "coord": (x, y),
@@ -1923,7 +1970,66 @@ class WorldModelAgent:
                 return self._emit_click(x, y)
 
         # Gather complete (no tile left outside the goal) or cap reached without
-        # a level-up → hand the remaining budget to the interaction pipeline.
+        # a level-up. "Complete" can mean the gather genuinely finished with no
+        # goal, OR every tile sits close to a goal that just never accepts them
+        # (measured on SU15: a 2-goal board where the wrong goal is targeted by
+        # default) — try the other goal before handing the budget to interact.
+        return self._try_next_merge_goal(layer, avail, latest_frame, bg)
+
+    def _try_next_merge_goal(
+        self, layer: np.ndarray, avail: list[int], latest_frame, bg: int
+    ):
+        """Retry the merge-drag gather against an untried goal, or abandon.
+
+        A board can render MORE THAN ONE goal-coloured container (measured on
+        SU15 L3: two distinct diamonds); `detect_drag_layout`'s default picks
+        only ONE (the largest/rarest cluster), and that pick is not always the
+        one a given level's puzzle wants — tiles walk right up to it and just
+        never get accepted, or the initial probe never even pulls. Marks the
+        currently-targeted goal as tried, looks for another instance via
+        `detect_goal_containers`, and if one exists, restarts the probe/walk
+        cycle against it (fresh probe click, reset click/stall counters).
+        Falls through to the standard interaction pipeline once every goal
+        instance has been tried. Coordinates are matched by rounding to avoid
+        float-precision misses on a container that hasn't moved between calls.
+        """
+
+        def _key(pt: tuple[float, float]) -> tuple[float, float]:
+            return (round(pt[0], 1), round(pt[1], 1))
+
+        current = self._merge_drag_goal
+        if current is None:
+            layout = detect_drag_layout(layer, bg)
+            current = layout.goal if layout is not None else None
+        if current is not None and _key(current) not in {
+            _key(g) for g in self._merge_drag_tried_goals
+        }:
+            self._merge_drag_tried_goals.append(current)
+
+        candidates = detect_goal_containers(layer, bg)
+        tried_keys = {_key(g) for g in self._merge_drag_tried_goals}
+        next_goal = next(
+            (
+                (c[0], c[1])
+                for c in candidates
+                if _key((c[0], c[1])) not in tried_keys
+            ),
+            None,
+        )
+        if next_goal is not None:
+            self._merge_drag_goal = next_goal
+            self._merge_drag_clicks = 0
+            self._merge_drag_stall = 0
+            self._merge_drag_probed = False
+            layout = detect_drag_layout(layer, bg, goal_override=next_goal)
+            if layout is not None:
+                x, y = drag_probe_target(layout)
+                self._pending = {
+                    "action_id": 6, "coord": (x, y),
+                    "before": layer.copy(), "desc": ("c", x, y),
+                }
+                return self._emit_click(x, y)
+
         self._plan_commit = self._action_count
         self._phase = _PHASE_INTERACT
         return self._interact_step(layer, avail, latest_frame)

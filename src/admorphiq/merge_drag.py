@@ -196,7 +196,11 @@ def _goal_cluster(comps: list[dict]) -> dict | None:
     return max(comps, key=lambda c: c["size"])
 
 
-def detect_drag_layout(layer: np.ndarray, background: int) -> DragLayout | None:
+def detect_drag_layout(
+    layer: np.ndarray,
+    background: int,
+    goal_override: tuple[float, float] | None = None,
+) -> DragLayout | None:
     """Detect a movable-tile + goal-region gather layout, or None.
 
     A gather layout has, on the same frame: at least one small movable TILE and
@@ -206,6 +210,14 @@ def detect_drag_layout(layer: np.ndarray, background: int) -> DragLayout | None:
     are every other candidate cluster. Returns None when there is no tile + goal
     pair of distinct colours (so the plan never engages on an unrelated click
     game). Pure / env-free.
+
+    ``goal_override``, when given, replaces the detected goal's centroid with
+    a caller-supplied point (any coordinate the caller trusts to be a goal
+    instance, e.g. one of :func:`detect_goal_containers`'s several results —
+    a board can render MORE THAN ONE distinct goal-coloured region, and the
+    single largest/rarest one this function picks by default is not always
+    the one a given puzzle wants). The goal COLOUR (used to exclude tiles of
+    that colour) still comes from the detected cluster, not the override.
     """
     if layer.size == 0:
         return None
@@ -214,7 +226,7 @@ def detect_drag_layout(layer: np.ndarray, background: int) -> DragLayout | None:
     if goal_c is None:
         return None
     goal_color = goal_c["color"]
-    goal = (goal_c["cx"], goal_c["cy"])
+    goal = goal_override if goal_override is not None else (goal_c["cx"], goal_c["cy"])
 
     tiles = [
         (c["cx"], c["cy"], int(c["color"]), int(c["size"]))
@@ -342,7 +354,11 @@ def drag_probe_target(layout: DragLayout) -> tuple[int, int]:
     return _step_toward((nearest[0], nearest[1]), layout.goal, _DRAG_STEP)
 
 
-def next_drag_click(layer: np.ndarray, background: int) -> tuple[int, int] | None:
+def next_drag_click(
+    layer: np.ndarray,
+    background: int,
+    goal_override: tuple[float, float] | None = None,
+) -> tuple[int, int] | None:
     """Next walk click for the live frame, or None when nothing left to gather.
 
     Recomputes the layout from the live frame (robust to the drag animation and
@@ -351,9 +367,12 @@ def next_drag_click(layer: np.ndarray, background: int) -> tuple[int, int] | Non
     straggler each call so every tile converges on the container. Returns None
     when no movable tile remains outside the goal-reach radius (the gather is
     complete or the layout is no longer a gather), so the agent stops clicking.
+    ``goal_override`` is forwarded to :func:`detect_drag_layout` (see its
+    docstring) so a caller can target a specific goal instance on a
+    multi-goal board.
     """
     bg = int(background)
-    layout = detect_drag_layout(layer, bg)
+    layout = detect_drag_layout(layer, bg, goal_override=goal_override)
     if layout is None:
         return None
     outstanding = [
@@ -400,7 +419,11 @@ def _nearest_same_color_pair(
     return best[1], best[2]
 
 
-def next_merge_click(layer: np.ndarray, background: int) -> tuple[int, int] | None:
+def next_merge_click(
+    layer: np.ndarray,
+    background: int,
+    goal_override: tuple[float, float] | None = None,
+) -> tuple[int, int] | None:
     """Next click for a 2048-style MERGE-then-gather game, or None when done.
 
     Generalises :func:`next_drag_click` to the merge sub-class (SU15 deep
@@ -421,9 +444,13 @@ def next_merge_click(layer: np.ndarray, background: int) -> tuple[int, int] | No
 
     Returns None when no movable tile remains outside the goal-reach radius (the
     level is solved or the layout is no longer a merge), so the agent stops.
+    ``goal_override`` is forwarded to :func:`detect_drag_layout` (see its
+    docstring) so a caller can target a specific goal instance on a
+    multi-goal board — the merge phase (same-colour tiles combining) is
+    unaffected by which goal is targeted; only the gather phase uses it.
     """
     bg = int(background)
-    layout = detect_drag_layout(layer, bg)
+    layout = detect_drag_layout(layer, bg, goal_override=goal_override)
     if layout is None:
         return None
 
@@ -440,4 +467,4 @@ def next_merge_click(layer: np.ndarray, background: int) -> tuple[int, int] | No
         return _step_toward((a[0], a[1]), (b[0], b[1]), _MERGE_STEP)
 
     # No mergeable pair left → gather the final tile(s) into the goal container.
-    return next_drag_click(layer, bg)
+    return next_drag_click(layer, bg, goal_override=goal_override)
