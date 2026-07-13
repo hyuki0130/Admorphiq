@@ -3448,5 +3448,61 @@ efficiency requirement is a real overhaul, not a cheap reorder — and confirms 
 closed-loop stuck-fix alone (recovering only ~12 no-op actions) cannot clear L2. The calibration fix (a43f952, 4/5 items delivered) remains the
 banked progress; the L2 clear is a dedicated efficiency-plus-closed-loop round.
 
+### 🔑 SB26 L2 REOPENED — the true colours ARE frame-observable in layer -1; prior "internal-dependent" verdict overturned (2026-07-14 01:23)
+
+Records-first (this page's 2026-07-13 "portal-graph traversal" bank +
+`games/SB26.md` + legacy `strat_sb26_sort` at `agent_ensemble.py:5016+`)
+established SB26 L2 as a portal-graph DFS puzzle whose two frame-only blockers
+were declared internal-only: the DFS-consumed target order (`game.wcfyiodrx`)
+and portal-vs-item disambiguation. A bounded diagnostic trace (internals read
+for VERIFICATION only, never for a solver) OVERTURNS both.
+
+**Root cause of the prior verdict: the wrong frame LAYER was read.** `obs.frame`
+for SB26 has **118 layers**. Layers 0–116 are OBFUSCATED — pool items and target
+swatches render as flat colour 4/5, so `obs.frame[0]` (what `sort_match.py` and
+every prior probe read) genuinely lacks the true colours, exactly why the R48
+frame-only model looked "structurally wrong." **Layer -1 (`obs.frame[117]`)
+carries the TRUE colours.** Measured on L2 against internals:
+- **Target order (Q1) — EXACT MATCH.** The top display (7 sprites, y≈1-6,
+  x=8,15,22,29,36,43,50) reads `[12,15,8,9,14,11,6]` on layer -1 == internal
+  `game.wcfyiodrx` exactly. The DFS-consumption target order IS on-frame.
+- **Pool colours — EXACT MATCH.** `[8,15,14,12,6,9,11]` == internal.
+- **Frames visible** — border colour 8 at row 18, border 14 at row 32.
+- **Portals distinguishable** — a portal slot shows ~14px of the pointed-to
+  frame's border colour (measured: fixed portal at (32,20) = `{4:22, 14:14}`,
+  points to frame-14) vs an empty slot `{4:32, 2:4}` (no coloured fill).
+
+**Implication.** SB26 L2 (and by structure all 8 levels) IS frame-only
+solvable: read targets from the layer-(-1) top display, detect frames/slots
+(bank's `connected_components` mid-band detector, reusable), detect portals by
+their border-colour fill, simulate the legacy DFS traversal to get the item-slot
+visitation order, map targets→slots in that order, place pool items, verify
+(ACTION5). This L2 has NO bottom-portals (1 fixed portal, 7 plain items, 7 empty
+slots) so no permutation search is needed for it.
+
+**Legitimacy RESOLVED — `frame[-1]` is the repo's established canonical render
+surface, not a preview artifact.** `obs.frame` is a frame-history stack that
+grows during play (measured: ALL 25 games start at n_layers=1; SB26 reaches 118
+layers after 9 steps). The LAST layer is the current fully-rendered frame; layer
+0 goes stale/incomplete after steps. `general_agent.canonical_layer()` already
+returns `arr[-1]`, documented as *"the canonical render surface (matches the
+repo's StochasticGoose convention)"* — so the WMA/GeneralAgent path ALREADY reads
+true colours on every game. **The SB26 frame-only failure is a LEGACY BUG**: the
+`obs.frame[0]` helpers (`sort_match.py`, `strat_sb26_sort`, and ~6 `_layer`
+helpers in `agent_ensemble.py`) read the STALE first layer. Reading
+`canonical_layer(obs.frame)` (= `frame[-1]`) is correct, standard, and
+generalises.
+
+**Build plan (frame-only, `canonical_layer` inputs):** detect frames (border-
+colour boxes) + slots + portals (border-colour fill) + target order (top display)
++ pool colours, simulate the legacy DFS traversal, map targets→item-slots in
+traversal order, place + verify. L2 needs no permutation (1 fixed portal, 7 plain
+items). **Broad-unlock corollary (worth a survey)**: any legacy `frame[0]` strat
+may be silently reading a stale layer — a cheap `frame[0]`→`canonical_layer`
+audit could help other games too.
+
+**Status: banked, reported to lead; build pre-authorized.** No `src/` changes
+yet; tree clean at `a43f952`, 769 green, guards intact.
+
 ## Related
 - [[../lessons/api_hash_rotation_20260421]]
