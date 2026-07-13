@@ -2765,5 +2765,88 @@ fail). Flagged as the next AR25 lead: check whether the arrange-phase
 fallback is doing anything useful here, or is itself another dead end
 needing its own fix.
 
+### LS20 L2: door/gate hypothesis FALSIFIED directly; the true goal structure found precisely, fix not yet confirmed (2026-07-13 23:29-23:33)
+
+Per dispatch (records-first: read the depth-survey, build-cycle, and
+quick-try sections above, plus `games/LS20.md`), ran the ONE authorized
+active probe the banked recovery lead called for: reach L2, identify wall
+cells bordering the player's reachable region and an isolated region, and
+test whether moving INTO one changes anything (a door opening) versus a
+static wall.
+
+**Door/gate hypothesis directly falsified.** `available_actions` at L2 is
+`[1, 2, 3, 4]` only — movement, no distinct interact/click action exists
+in this game at all, so a "bump a wall to open a door" mechanic requiring
+a SEPARATE interaction action is structurally impossible here (there is
+no such action). Confirmed live: navigated the player to `(7,3)`, adjacent
+to the wall cell `(8,3)` (a candidate door — it borders BOTH the player's
+57-cell reachable region and a 1-cell isolated region at `(9,3)`), then
+issued the movement action toward `(8,3)` three times. Zero effect each
+time: player stayed at `(7,3)`, and the raw pixels at `(8,3)`'s grid cell
+were byte-identical before and after all three attempts. A genuine static
+wall, not a door.
+
+**Follow-up — the enumerated goal candidates are mostly false positives.**
+`enumerate_goal_cells` returned 12 candidates (rarest-colour-cluster
+heuristic); connectivity analysis of the walkable grid found the
+player's own 57-cell region contains a walkable, one-tile disconnected
+region (1 cell), and a second disconnected region (4 cells) — plus 5 of
+the 12 candidates are ON wall-classified cells (unreachable regardless),
+2 are in the isolated 4-cell region (unreachable), and 5 ARE in the
+player's own reachable region. Walked the player to every reachable
+candidate (`(9,10)`, `(8,6)` [= the player's own start position — almost
+certainly a false positive from the heuristic], `(10,8)`, `(5,7)`, plus
+an aborted attempt at `(3,3)`) — **none triggered `levels_completed` to
+advance.** This confirms the generic rarest-colour heuristic is landing
+on decorative clusters, not the true goal marker, and any budget spent
+walking to them is wasted.
+
+**The true goal structure, found and pixel-dumped precisely.** Raw pixels
+around grid rows 7-10 / cols 2-4 (the same area as the falsified door
+candidate) show a distinct, deliberate shape: a colour-3 (a LEARNED FLOOR
+colour) rectangular FRAME/border, 9x9 raw pixels, surrounding a colour-5
+(wall) interior, with colour-9 pixels forming a small marker pattern
+inside (3 pixels in an L/cross arrangement). This is precisely the
+"frame with hole" cross pattern the earlier depth-survey entry described
+by eye without pixel-level confirmation. Because the frame is 9 raw
+pixels wide/tall against a `cell=5` grid, it straddles TWO grid cells per
+side — the coarse dominant-colour classification `frame_to_cells` uses
+(≥75% of a 5x5 block) puts some of the frame's own floor-coloured border
+cells on the WALL side of the boundary depending on exactly how the
+interior's wall pixels split across grid cells. This is a genuine
+grid-RESOLUTION artefact, not a door mechanic and not (only) a goal-
+selection bug: the frame's outer ring IS floor-coloured and in principle
+walkable, but the coarse grid can misclassify parts of it.
+
+**Not yet confirmed — what exactly triggers completion.** Touching the
+frame's TOP border (at `(7,3)`, during the door-bump test) did NOT
+trigger a level-up, so simple proximity to the frame isn't the win
+condition either; the true trigger may require the player to occupy a
+SPECIFIC cell (adjacent to the colour-9 marker specifically, not any
+point on the frame) or may require the isolated single-cell region
+`(9,3)` itself to be reached (which — if it's genuinely part of the
+frame's interior access point — the coarse grid may be wrongly marking
+as both isolated AND inside a wall simultaneously). Ran out of the
+bounded-probe budget for this cycle before pinning the exact trigger
+down further.
+
+**Disposition**: banking here, no code change landed this cycle (probe/
+diagnosis only — read-only on `src/`, no commit needed there). Door/gate
+is now CLOSED as a hypothesis (directly falsified, not just
+circumstantially eliminated). The confirmed next-best lead: the
+`enumerate_goal_cells` false-positive problem (decorative rare-colour
+clusters being tried before the true frame-marker) combined with the
+grid-resolution misclassification at the frame's boundary. A future
+session should either (a) detect this specific "coloured frame around a
+distinct interior marker" shape directly as a higher-priority goal
+candidate than plain rarest-colour clusters, or (b) use a finer
+sub-cell/edge-aware walkability model near frame-shaped structures
+(similar in spirit to the existing `corridor_color_from_probes`/
+`edge_grid_bfs` machinery built for TU93's interleaved-pitch maze class)
+so the frame's own floor-coloured border is correctly walkable at
+pixel-accurate resolution.
+
+**Guards**: none touched, no `src/` changes this cycle.
+
 ## Related
 - [[../lessons/api_hash_rotation_20260421]]
