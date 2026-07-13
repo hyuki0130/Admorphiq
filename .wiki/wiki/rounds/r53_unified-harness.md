@@ -1233,3 +1233,13 @@ general). These games need a capability that does not exist in the repo yet —
 the genuine research frontier. Next candidates (unmeasured): per-game mechanics
 study via scripts/inspect_game.py on each wall (what IS the win condition?),
 then purpose-built mechanic solvers the way R28 built arrangement.
+
+### Wall anatomy #1 — s5i5 decoded: attempt-limited rotation puzzle (2026-07-13 13:28)
+Full-probe (inspect_game, no summary): click-only; most clicks only decrement a
+row-63 ATTEMPT COUNTER (1-2 cells); exactly two widget cells produce real
+11-cell rotation changes. Structure: rotate pieces to a target configuration
+within a move budget — waste is punished, so efficiency-blind frontier search
+fails BY DESIGN (explains every 0 across budgets/models). The purpose-built
+solver shape (R28-arrangement pattern): detect rotatable pieces + reference
+pattern, compute required rotation counts, click exactly. Next: same anatomy
+pass on the other 7 walls, then build the first wall-class solver.
