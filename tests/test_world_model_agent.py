@@ -706,6 +706,53 @@ def test_blocked_wall_pending_clears_on_successful_move():
     assert agent._exec_stuck == 0
 
 
+def test_delivery_settle_press_precedes_first_detection_on_level_transition():
+    """Purpose: on a level reached via a transition (levels_completed >= 1),
+    the FIRST delivery-detection attempt must issue one harmless settle press
+    (ACTION5) instead of immediately trusting detect_delivery_puzzle -- the
+    first frame right after a transition can be mid-render and silently
+    UNDER-detect items (measured live on WA30 L2: 3 items found instead of
+    the true 5), locking in a wrong puzzle for the whole level. Mirrors the
+    RE86/transform settle-frame precedent (_transform_settle_tried).
+
+    Expected feedback: a PASS proves detect_delivery_puzzle is never called
+    on the level's first pass (the settle press pre-empts it) and
+    _delivery_settle_tried flips True so the retry is bounded to exactly
+    once; a FAIL means the WA30-class under-detection regression is back.
+    """
+    import admorphiq.world_model_agent as wma
+
+    detect_calls = []
+    orig_detect = wma.detect_delivery_puzzle
+
+    def _tracking_detect(layer, bg):
+        detect_calls.append(1)
+        return orig_detect(layer, bg)
+
+    wma.detect_delivery_puzzle = _tracking_detect
+    try:
+        agent = WorldModelAgent()
+        agent._levels_completed = 1
+        # Skip the earlier click-only (sort/slide/rotation, all gated on no
+        # movement action) and TRANSFORM checks so control actually reaches
+        # the delivery block -- transform's OWN settle-check shares the same
+        # (levels_completed >= 1, spent == 0) precondition and would
+        # otherwise fire first on this synthetic frame.
+        agent._transform_attempted = True
+        assert agent._delivery_settle_tried is False
+        layer = _block(_layer(20, 20), color=7, r0=2, c0=2)
+        obs = _FakeObs(layer, avail=[1, 2, 3, 4, 5], state="PLAYING", levels=1)
+        action = agent.choose_action([], obs)
+
+        assert not detect_calls, "detect_delivery_puzzle must not run before the settle press"
+        assert agent._delivery_settle_tried is True
+        from arcengine import GameAction
+
+        assert action == GameAction.ACTION5
+    finally:
+        wma.detect_delivery_puzzle = orig_detect
+
+
 def test_is_done_stops_after_repeated_game_over_cycling_with_no_progress():
     """Purpose: a level whose unstructured fallback repeatedly walks the env
     into GAME_OVER (measured live 2026-07-13 on ft09/tn36's L2: RESET just
