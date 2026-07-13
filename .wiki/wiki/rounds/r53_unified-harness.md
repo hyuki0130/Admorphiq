@@ -3209,6 +3209,51 @@ during Stage-1 queue-draining (open-loop, no re-verification against the
 live board per action — confirmed by reading `_delivery_step`'s own
 Stage 1 code) coincides with the shortened bail point.
 
+### FT09 L2 indicator topology CONFIRMED via live trace — falsifies the "generalise the centroid" lead; real mechanic is 2 glyph clues with unknown decoding on a lethal board (2026-07-14 01:05–01:25)
+
+Records-first: this page's 2026-07-13 00:05 ft09 section flagged the *working
+hypothesis* that L2 has a non-ring indicator topology and that generalising
+`indicator_flip_sets`' single-centroid marker lookup is "the most promising
+concrete next step." Doctrine mandates a live trace before implementing. One
+bounded instrumented capture of `GeneralAgent._begin_toggle_solve`'s inputs on
+L2 (base layer + the measured toggle cells) plus an ASCII map of the region
+CONFIRMS the topology and FALSIFIES the simple version of the lead.
+
+**Measured L2 layout.** The 13 toggle buttons form a 3×5 grid: x∈{22,30,38},
+y∈{16,24,32,40,48}, pitch 8, each an 8×8 colour-9 block on a colour-4 field.
+Two center-column positions — (30,24) and (30,40) — are NOT buttons; they are
+the "gaps," and each holds a discrete 6×6 GLYPH sprite built from colours 0/2/12
+(colour 12 central in both, colours 0/2 forming distinct surrounding patterns —
+the two glyphs differ from each other). The single centroid `indicator_flip_sets`
+computes is (30,32) — dead center — which lands ON the central toggle button
+(colour 9); every one of the 13 cells therefore reads the same marker (9) at
+`off=2`, so there is no 2-marker split and the function correctly returns `[]`.
+
+**Why "generalise the centroid to a grid" does NOT fit.** The ring-case
+mechanic reads a per-cell marker from ONE central clue — each ring cell looks
+inward and sees a 2-valued marker. L2 has NO per-cell marker: the buttons are
+uniform colour-9 and the only clue signal is 2 separate glyph sprites whose
+mapping to a 13-button target flip-set is an UNKNOWN code (a 6×6 colour-0/2/12
+glyph does not obviously encode a 3×5 flip pattern). A centroid generalisation
+(multiple centroids / nearest-clue marker reads) would still find no clean
+per-cell marker field to partition on.
+
+**Why implementing anyway would be speculative, not generic.** The only way to
+verify a candidate flip-set on FT09 is to EXECUTE it, and a wrong flip is LETHAL
+(`GameState.GAME_OVER` mid-delta-chain, already measured this session; RESET
+restores pristine). Generating guessed partitions from the glyph sprites and
+trying them is brute-force guessing on a lethal, move-limited board — it has no
+principled reason to hit the right target, it is RHAE-hostile, and it is exactly
+the "speculative safety net" doctrine forbids. So this is banked, NOT implemented.
+
+**Disposition.** Feature-scale with UNKNOWN decoding — the real next step is a
+dedicated research round to decode how the 2 glyph clues (colours 0/2/12 at the
+center-column gaps) specify the target button configuration, which is a genuine
+game-mechanic reverse-engineering problem, not a generalisation of the existing
+per-cell-marker primitive. The record's earlier "generalise the single centroid"
+framing is superseded by this confirmed measurement. Guard ft09 1/6@93 unchanged
+(no code touched).
+
 ### s5i5 L2 matching-rule characterised via controlled probe — permutation puzzle, feature-scale confirmed, thread STOPPED (2026-07-14 00:50–01:05)
 
 Records-first (this page's 2026-07-13 16:05 s5i5 L2 bank) already scoped L2 as
