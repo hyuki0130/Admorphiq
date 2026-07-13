@@ -93,6 +93,7 @@ from .merge_drag import (
     next_merge_click,
 )
 from .perception.frame_analyzer import FrameAnalyzer
+from .ring_paint import detect_paint_layout, nav_path
 from .rotation import (
     MAX_COMMIT_CLICKS_PER_PIECE,
     RotationPuzzle,
@@ -205,6 +206,7 @@ _PHASE_INTERACT = "interact"
 _PHASE_ARRANGE = "arrange"
 _PHASE_SORT_MATCH = "sort_match"
 _PHASE_PORTAL_SORT = "portal_sort"
+_PHASE_PAINT = "ring_paint"
 _PHASE_MERGE_DRAG = "merge_drag"
 _PHASE_ROTATE = "rotate"
 _PHASE_SLIDE = "slide"
@@ -846,6 +848,17 @@ class WorldModelAgent:
         self._portal_settling = False
         self._portal_settle_count = 0
         self._portal_prev_layer: np.ndarray | None = None
+        # ── Ring-PAINT bookkeeping (ring_paint.detect_paint_layout) ────────────
+        # ``_paint_queue`` = a flat nav/select/launch/settle action queue for the
+        # CD82-class paint puzzle; ``_paint_attempted`` gates the one-shot per
+        # level. The launch (ACTION5) animation advances on any action and drops
+        # a mid-frame input, so ``settle`` markers wait for frame stability
+        # between operations (same shape as the portal-sort settle).
+        self._paint_queue: list[tuple] | None = None
+        self._paint_attempted = False
+        self._paint_settling = False
+        self._paint_settle_count = 0
+        self._paint_prev_layer: np.ndarray | None = None
         # ── Click-only MERGE / gather (drag-to-goal) bookkeeping (merge_drag) ──
         # ``_merge_drag_attempted`` gates the one-shot drag probe per level (a
         # fresh gather each level: SU15 re-lays its tiles + goal every level);
@@ -1161,6 +1174,8 @@ class WorldModelAgent:
             return self._execute_step(layer, avail, latest_frame)
         if self._phase == _PHASE_ARRANGE:
             return self._arrange_step(layer, avail, latest_frame)
+        if self._phase == _PHASE_PAINT:
+            return self._paint_step(layer, avail, latest_frame)
         if self._phase == _PHASE_PORTAL_SORT:
             return self._portal_sort_step(layer, avail, latest_frame)
         if self._phase == _PHASE_SORT_MATCH:
@@ -1249,6 +1264,32 @@ class WorldModelAgent:
         from arcengine import GameAction
 
         spent = self._action_count - self._level_base
+
+        # RING-PAINT signature (CD82-class): movement (1-4) + click (6) + launch
+        # (5) all available, and the frame shows a lower canvas + a top-left
+        # target + top swatches that resolve to a plannable half-split. Tried
+        # ONCE per level before other discovery (static layout); returns None and
+        # defers when the target is not a clean half-split, so nothing regresses.
+        if (
+            not self._paint_attempted
+            and all(a in avail for a in (1, 2, 3, 4, 5, 6))
+        ):
+            self._paint_attempted = True
+            bg = self.model.background if self.model.background is not None else 0
+            paint = detect_paint_layout(layer, bg)
+            if paint is not None:
+                queue: list[tuple] = []
+                cur = paint.start_pos
+                for pos, color in paint.launches:
+                    for aid in nav_path(cur, pos):
+                        queue.append(("simple", aid))
+                    cur = pos
+                    queue.append(("click", paint.swatch_x[color] + 2, 4))
+                    queue.append(("simple", 5))  # launch
+                    queue.append(("settle",))
+                self._paint_queue = queue
+                self._phase = _PHASE_PAINT
+                return self._paint_step(layer, avail, latest_frame)
 
         # Click-only MATCH-TO-ORDER sort signature: a SELECT toggle + an ACTION6
         # click are available but NO movement action is (a pure click game), and
@@ -1960,6 +2001,68 @@ class WorldModelAgent:
         return self._probe_step(layer, avail, latest_frame)
 
     # ── sort (click-only match-to-order placement) phase ──────────────────────
+
+    def _paint_step(self, layer: np.ndarray, avail: list[int], latest_frame):
+        """Drain the ring-paint plan: navigate, select a colour, launch, settle.
+
+        Each launch (ACTION5) triggers a multi-frame basket animation that
+        advances on ANY subsequent action and drops a click issued mid-animation,
+        so a ``settle`` marker follows each launch: the step emits ACTION6 no-ops
+        at (0,0) until the canonical layer is stable for one step or
+        :data:`_PORTAL_SETTLE_MAX` no-ops elapse. When the queue is exhausted the
+        plan is done (the harness sees the level-up) or the guess did not clear,
+        so control returns to normal probing (the phase is not re-entered:
+        ``_paint_attempted`` is set).
+        """
+        from arcengine import GameAction
+
+        if self._paint_settling:
+            stable = (
+                self._paint_prev_layer is not None
+                and self._paint_prev_layer.shape == layer.shape
+                and np.array_equal(self._paint_prev_layer, layer)
+            )
+            self._paint_settle_count += 1
+            if stable or self._paint_settle_count >= _PORTAL_SETTLE_MAX:
+                self._paint_settling = False
+                self._paint_prev_layer = None
+            else:
+                self._paint_prev_layer = layer.copy()
+                self._pending = {
+                    "action_id": 6, "coord": (0, 0),
+                    "before": layer.copy(), "desc": ("c", 0, 0),
+                }
+                return self._emit_click(0, 0)
+
+        while self._paint_queue:
+            kind, *rest = self._paint_queue.pop(0)
+            if kind == "settle":
+                self._paint_settling = True
+                self._paint_settle_count = 0
+                self._paint_prev_layer = layer.copy()
+                self._pending = {
+                    "action_id": 6, "coord": (0, 0),
+                    "before": layer.copy(), "desc": ("c", 0, 0),
+                }
+                return self._emit_click(0, 0)
+            if kind == "click":
+                x, y = rest
+                if 6 not in avail:
+                    continue
+                self._pending = {
+                    "action_id": 6, "coord": (int(x), int(y)),
+                    "before": layer.copy(), "desc": ("c", int(x), int(y)),
+                }
+                return self._emit_click(int(x), int(y))
+            aid = rest[0]
+            if aid not in avail:
+                continue
+            self._pending = {"action_id": aid, "coord": None, "before": layer.copy()}
+            return self._emit(GameAction.from_id(aid))
+
+        self._plan_commit = self._action_count
+        self._phase = _PHASE_INTERACT
+        return self._interact_step(layer, avail, latest_frame)
 
     def _portal_sort_step(self, layer: np.ndarray, avail: list[int], latest_frame):
         """Drain the portal-graph placement plan with a settle-wait between clicks.
