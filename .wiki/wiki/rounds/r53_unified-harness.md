@@ -1319,3 +1319,17 @@ for submission.parquet by name. Duck v12's interactive branch writes a
 PLACEHOLDER parquet ("offline run isn't scored, but Kaggle still expects a
 submission.parquet output") — v6 mirrors it. Watcher auto-submits v6 on
 COMPLETE with -f submission.parquet.
+
+### ⚠️ DISCIPLINE LESSON + s5i5 truth: it's a SLIDER (the wiki knew) (2026-07-13 15:40)
+Interactive disambiguation landed (validated general; 703 tests) and its live
+trace overturned the design premise: 4 of 8 widgets DO respond, but they SHIFT
+marker pixels ~3 cells along an axis — s5i5 is the SLIDER puzzle that
+`.wiki/wiki/games/S5I5.md` documented all along (`game_type: slider_puzzle`,
+"Clicking a slider moves its goal marker by 3 units along slider axis"). The
+r53 "rotation-solver DESIGN" mis-modeled it from probe interpretation without
+consulting the game page — a direct violation of the look-it-up-first rule;
+cost: one full implementation cycle building the wrong physics. rotation.py
+stays as a general capability (correct for genuine rotation mechanics; tests
+prove it). NEXT: sibling slider module reusing the piece/widget-probe infra —
+detect tracks/markers/goals, clicks-needed = axis distance / per-click step
+(measured 3), click exactly.
