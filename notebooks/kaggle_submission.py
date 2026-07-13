@@ -27,10 +27,26 @@
 import os
 import sys
 
-# Kaggle Data-tab mount points (see competition spec).
-KAGGLE_AGENTS_DIR = "/kaggle/input/ARC-AGI-3-Agents"
-KAGGLE_WHEELS_DIR = "/kaggle/input/arc_agi_3_wheels"
-KAGGLE_ENVS_DIR = "/kaggle/input/environment_files"
+# Kaggle mount points. Web-UI attach mounts each input at /kaggle/input/<name>;
+# the CLI competition_sources mount nests them under the competition slug
+# (verified via `kaggle competitions files`: ARC-AGI-3-Agents/... etc.).
+# Resolve whichever exists at runtime.
+_COMP_BASE = "/kaggle/input/arc-prize-2026-arc-agi-3"
+
+
+def _first_dir(*cands: str) -> str:
+    for c in cands:
+        if os.path.isdir(c):
+            return c
+    return cands[0]
+
+
+KAGGLE_AGENTS_DIR = _first_dir(
+    "/kaggle/input/ARC-AGI-3-Agents", os.path.join(_COMP_BASE, "ARC-AGI-3-Agents"))
+KAGGLE_WHEELS_DIR = _first_dir(
+    "/kaggle/input/arc_agi_3_wheels", os.path.join(_COMP_BASE, "arc_agi_3_wheels"))
+KAGGLE_ENVS_DIR = _first_dir(
+    "/kaggle/input/environment_files", os.path.join(_COMP_BASE, "environment_files"))
 KAGGLE_WORKING = "/kaggle/working"
 SUBMISSION_PATH = os.path.join(KAGGLE_WORKING, "submission.json")
 
@@ -66,6 +82,7 @@ def _ensure_admorphiq_importable() -> None:
     # Common local / Kaggle dataset src locations.
     for cand in (
         os.path.join(os.getcwd(), "src"),
+        "/kaggle/input/admorphiq-src",       # CLI dataset (zip strips src/)
         "/kaggle/input/admorphiq-src/src",
         "/kaggle/input/admorphiq/src",
         os.path.join(KAGGLE_AGENTS_DIR, "src"),
@@ -77,6 +94,11 @@ def _ensure_admorphiq_importable() -> None:
 if ON_KAGGLE:
     install_wheels_offline()
 
+if ON_KAGGLE:
+    import glob as _glob
+
+    print("/kaggle/input layout:", sorted(_glob.glob("/kaggle/input/*")))
+    print("comp base:", sorted(_glob.glob(_COMP_BASE + "/*"))[:10])
 _ensure_admorphiq_importable()
 
 # Importing the agent installs the `agents` package (real on Kaggle, light
