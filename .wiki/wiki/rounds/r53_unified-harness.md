@@ -3475,10 +3475,24 @@ triangles.** So L1 (target top-0/bottom-15, canvas all-0) = ONE launch: navigate
 to position 4 (bottom half), select colour 15, ACTION5. ~6 actions vs the graph's
 ~2000+ → a ~100× RHAE gain if landed.
 
-**M3 (next): the frame-only planner + executor** — read target+canvas 10×10s,
-diff into regions, map each region+colour to a basket position, navigate→select→
-launch. Integrate as a WMA paint phase (the ChainedAgent probe clears it before
-the graph fallback), same pattern as the portal-sort phase. In progress.
+**M3 LANDED (commit 043794c): frame-only planner + executor — cd82 0.0005 →
+0.0476 (~95×).** `src/admorphiq/ring_paint.py`: `detect_paint_layout` reads
+canvas + target + swatches from `canonical_layer`; `plan_paint` computes the
+half-split launches; the WMA `_paint_step` navigates the ring (BFS) → selects a
+colour (swatch click) → launches (ACTION5) → settle-waits the launch animation.
+cd82 L1 clears in ~8 actions (game_score 0.0476, the L1-only ceiling ~0.048) vs
+the graph's ~2000. Deterministic ×2 (worldmodel) + confirmed via chained. All 9
+guards byte-identical (incl. sb26 2/8@288), 777 tests (+6), ruff clean. Paint
+phase gated on all-of-ACTION1-6-available + a detectable layout; returns None and
+DEFERS on non-half-split targets so nothing regresses. Internal reads were
+verification-only.
+
+**M4 (banked, future): diagonal + multi-launch for deeper cd82 levels.** L2-L6
+targets use the diagonal regions (positions 1/3/5/7 → triangle fills) and
+multiple sequential launches (some via arrow-click ACTION6 rather than ACTION5).
+The current planner returns `[]` for those (defers). Extending needs: diagonal
+target decomposition, a covering/ordering search over region-launches, and the
+arrow-click paint variant. A dedicated extension round.
 
 ### cd82 efficiency fallback — feature-scale (needs a paint solver); the L1 clear is graph brute-force, WMA GAME_OVERs (2026-07-14 02:40)
 

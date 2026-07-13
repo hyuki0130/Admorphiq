@@ -14,7 +14,7 @@ category, drill into specific pages.
 
 - [[games/AR25.md]] — v1 2/8 ✅, v2 2/8 ✅ — Movement game solved by generic BFS over frame-hashed states; same strategy passes both v1 and v2 unchanged.
 - [[games/BP35.md]] — v1 brittle 1/9 ✅, generic 0/9 ❌ (R23 8B) — Frame-observation solver — generalizes across version hashes.
-- [[games/CD82.md]] — v1 6/6 ✅ — Relies on game internals — high v1 score, fails on v2.
+- [[games/CD82.md]] — v1 6/6 ✅ (brittle paint_game, hardcoded positions) — Relies on game internals — high v1 score, fails on v2.
 - [[games/CN04.md]] — v1 brittle 1/5 ✅, generic 0/5 ❌ (R23 8B) — Frame-observation solver — generalizes across version hashes.
 - [[games/DC22.md]] — v1 1/6 ✅, v2 1/6 ✅ — Frame-observation solver — generalizes across version hashes.
 - [[games/FT09.md]] — v1 brittle 6/6 ✅, generic 1/6 (R18 GF(2) stencil, L1 only) — Relies on game internals — high v1 score, fails on v2.
