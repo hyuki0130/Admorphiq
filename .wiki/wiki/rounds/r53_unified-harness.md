@@ -1425,3 +1425,15 @@ banked with trace data for a future cycle. wa30 stays 1/9 at level score 1.0.
 tr87 next: recorded mechanic is a ROTATION puzzle — the family rotation.py was
 originally built for; agent checking whether the existing detector fits as-is
 (baseline 0/6 @128 actions).
+
+### tr87 traced: select-then-rotate GRID-MATCHING (new module scope) (2026-07-13 18:30)
+Not a rotation.py fit on two measured grounds: control scheme is simple-actions
+-only (opposite of the click-only gate), and the board is a 3x4 grid of ~12
+unique pattern blocks + a lower control panel (two bars holding target glyphs
+at matching column positions) — not isolated-piece-plus-reference. Controls
+measured clean: ACTION1/2 rotate the SELECTED piece in place (13-15 cell
+diffs), ACTION3/4 move a selection bracket between columns (28-cell border
+jumps, opposite directions). Design: pair upper-grid pieces to lower-panel
+targets BY COLUMN, rotate each to match, cursor-navigate between them. The
+wiki's "target in a corner" note is stale (target data spans the panel).
+Module cycle dispatched.
