@@ -46,6 +46,17 @@ from .arrangement import (
     learn_selection_modes,
     plan_descend_and_sweep,
 )
+from .delivery import (
+    DeliveryPuzzle,
+    adjacent_cells,
+    bbox_min_corner,
+    bfs_path,
+    detect_delivery_puzzle,
+    detect_mover_by_motion,
+    locate_player_cell,
+    path_to_actions,
+    target_slots,
+)
 from .general_agent import (
     _EXPLORE_MAX_CLUSTERS,
     _MAX_PLAYER_SIZE,
@@ -180,6 +191,7 @@ _PHASE_MERGE_DRAG = "merge_drag"
 _PHASE_ROTATE = "rotate"
 _PHASE_SLIDE = "slide"
 _PHASE_TRANSFORM = "transform"
+_PHASE_DELIVERY = "delivery"
 
 # Max clicks the merge-drag plan issues PER LEVEL before abandoning the
 # hypothesis (reset each level in ``_reset_level``). A simple gather walks a tile
@@ -820,6 +832,34 @@ class WorldModelAgent:
         # exactly once so a genuine non-transform level still gives up
         # after one extra action, never loops.
         self._transform_settle_tried = False
+        # ── Simple-action DELIVERY (pick-carry-drop) bookkeeping (delivery.py) ──
+        # ``_delivery_attempted`` gates the one-shot detection per level.
+        # ``_delivery_puzzle`` is the detected items/targets, captured ONCE
+        # at entry — a delivered item's marker is absorbed into the
+        # player's own rendering and a filled target slot no longer forms a
+        # clean single-colour interior, so re-detecting mid-phase is
+        # unreliable (see delivery.py's module docstring); progress is
+        # tracked in ``_delivery_items_remaining`` / ``_delivery_used_slots``
+        # instead. ``_delivery_player_colors`` (the union of colours found
+        # at the player's own cells during calibration — never assumed) is
+        # what makes any later single-frame player-location lookup
+        # orientation-independent, unlike the leading-edge accent colour
+        # alone (see :func:`admorphiq.delivery.detect_mover_by_motion`).
+        self._delivery_attempted = False
+        self._delivery_puzzle: DeliveryPuzzle | None = None
+        self._delivery_dir_map: dict[int, tuple[int, int]] = {}
+        self._delivery_step_size = 0
+        self._delivery_calib_queue: list[int] = []
+        self._delivery_calib_log: list[dict] = []
+        self._delivery_calib_processed = 0
+        self._delivery_player_colors: set[int] | None = None
+        self._delivery_player_body_color: int | None = None
+        self._delivery_items_remaining: list[int] = []
+        self._delivery_used_slots: set[tuple[int, int]] = set()
+        self._delivery_action_queue: list[int] = []
+        self._delivery_carrying = False
+        self._delivery_carry_offset: tuple[int, int] | None = None
+        self._delivery_cycles_left = 0
 
     # ── harness contract ──────────────────────────────────────────────────────
 
@@ -900,6 +940,13 @@ class WorldModelAgent:
                     self._transform_calib_log.append(
                         {"action_id": p["action_id"], "before": p["before"], "after": layer.copy()}
                     )
+                # Delivery calibration press: log the (action_id, before,
+                # after) so the player's motion-classified shift builds the
+                # direction map (see delivery.detect_mover_by_motion).
+                if p.get("delivery_calib"):
+                    self._delivery_calib_log.append(
+                        {"action_id": p["action_id"], "before": p["before"], "after": layer.copy()}
+                    )
             self._pending = None
         if leveled:
             self._levels_completed = lvl
@@ -936,6 +983,8 @@ class WorldModelAgent:
             return self._slide_step(layer, avail, latest_frame)
         if self._phase == _PHASE_TRANSFORM:
             return self._transform_step(layer, avail, latest_frame)
+        if self._phase == _PHASE_DELIVERY:
+            return self._delivery_step(layer, avail, latest_frame)
         return self._interact_step(layer, avail, latest_frame)
 
     def choose_action_with_data(self, frames: list, latest_frame):
@@ -1133,6 +1182,28 @@ class WorldModelAgent:
                 self._pending = {"action_id": 5, "coord": None, "before": layer.copy()}
                 return self._emit(GameAction.from_id(5))
             self._transform_attempted = True
+
+        # Simple-action DELIVERY (pick-carry-drop) signature: the SAME coarse
+        # action-availability shape as TRANSFORM (ACTION5 + a movement
+        # action) — the two puzzle families are disambiguated by their own
+        # structural detectors, not by this gate. Tried right after the
+        # transform gate so a transform-shaped board is never mis-routed
+        # here (WA30's item markers have a solid multi-cell interior, not
+        # transform_route's exactly-one-cell dot, so detect_transform_puzzle
+        # already returns None for a genuine delivery board — see
+        # delivery.py's module docstring). Observation-gated, no game-id
+        # reads.
+        if (
+            not self._delivery_attempted
+            and 5 in avail
+            and any(a in avail for a in (1, 2, 3, 4))
+        ):
+            self._delivery_attempted = True
+            bg = self.model.background if self.model.background is not None else 0
+            delivery_puzzle = detect_delivery_puzzle(layer, bg)
+            if delivery_puzzle is not None:
+                self._delivery_puzzle = delivery_puzzle
+                return self._enter_delivery(layer, avail, latest_frame)
 
         # On a level PAST the first, where the player/move controls are already
         # learned (GAME-scope) yet a selection-toggle action + several movable
@@ -2173,6 +2244,227 @@ class WorldModelAgent:
         self._transform_cycles_left -= 1
         self._pending = {"action_id": 5, "coord": None, "before": layer.copy()}
         return self._emit(GameAction.from_id(5))
+
+    # ── delivery (pick-carry-drop) phase ───────────────────────────────────────
+
+    def _enter_delivery(self, layer: np.ndarray, avail: list[int], latest_frame):
+        """Begin the delivery phase: schedule player motion calibration.
+
+        ``self._delivery_puzzle`` was just detected by
+        :func:`delivery.detect_delivery_puzzle`. The player's own colours
+        are not assumed (WA30's leading-edge accent relocates to whichever
+        side faces the last move — see delivery.py's module docstring), so
+        Stage 0 (:meth:`_delivery_step`) motion-calibrates against ACTION1-4
+        the same way :meth:`_enter_transform` calibrates a sprite, deriving
+        both the direction map AND the player's own colour set from
+        whichever cells changed state under each press.
+        """
+        self._phase = _PHASE_DELIVERY
+        self._plan_commit = self._action_count
+        self._delivery_dir_map = {}
+        self._delivery_step_size = 0
+        self._delivery_calib_queue = [aid for aid in (1, 2, 3, 4) if aid in avail]
+        self._delivery_calib_log = []
+        self._delivery_calib_processed = 0
+        self._delivery_player_colors = None
+        self._delivery_player_body_color = None
+        self._delivery_items_remaining = list(range(len(self._delivery_puzzle.items)))
+        self._delivery_used_slots = set()
+        self._delivery_action_queue = []
+        self._delivery_carrying = False
+        self._delivery_carry_offset = None
+        # Generous hard safety backstop (not the primary termination — the
+        # phase already ends naturally once every item is delivered or a
+        # remaining item/delivery proves unreachable): one decrement per
+        # sub-task attempt (a pickup leg or a delivery leg), so 2x the item
+        # count covers a clean run with margin for a few give-ups.
+        self._delivery_cycles_left = len(self._delivery_puzzle.items) * 4
+        return self._delivery_step(layer, avail, latest_frame)
+
+    def _delivery_step(self, layer: np.ndarray, avail: list[int], latest_frame):
+        """One action of the delivery phase: calibrate, then fetch-and-deliver.
+
+        Stage 0 — fold every newly-credited calibration press into
+        ``_delivery_dir_map`` via :func:`delivery.detect_mover_by_motion`
+        (excluding the known item/target ring+interior colours), and record
+        the player's own colour set from the first successful press. Once
+        drained, derive the measured step size.
+        Stage 1 — drain any queued action sequence for the sub-task
+        currently in flight (a fetch-and-pickup leg, or a carry-and-drop
+        leg), one action per call.
+        Stage 2 — with no queue pending, locate the player on the LIVE frame
+        by its own colour set (orientation-independent — see the module
+        docstring) and plan the next sub-task: if carrying, BFS to the
+        nearest free target slot (accounting for the carried item's FIXED
+        pickup-time offset — :func:`delivery.bfs_path`'s ``item_offset``)
+        and queue a drop; otherwise BFS to the nearest remaining item's
+        adjacent cell, face it, and queue a pickup. A leg that turns out
+        unreachable gives up on that specific item (never retried
+        speculatively, mirroring transform_route.py's same discipline) and
+        the phase moves on; the whole phase falls through to normal
+        interaction once nothing remains to plan or ``_delivery_cycles_left``
+        is exhausted.
+        """
+        from arcengine import GameAction
+
+        bg = self.model.background if self.model.background is not None else 0
+        puzzle = self._delivery_puzzle
+        known_colors: set[int] = set()
+        for m in puzzle.items + puzzle.targets:
+            known_colors.add(m.ring_color)
+            known_colors.add(m.interior_color)
+
+        # Stage 0a: fold newly-credited calibration presses.
+        while self._delivery_calib_processed < len(self._delivery_calib_log):
+            entry = self._delivery_calib_log[self._delivery_calib_processed]
+            self._delivery_calib_processed += 1
+            pair = detect_mover_by_motion(entry["before"], entry["after"], known_colors, bg)
+            if pair is not None:
+                mover_before, mover_after = pair
+                dx, dy = snap_to_axis(
+                    mover_after.cx - mover_before.cx, mover_after.cy - mover_before.cy
+                )
+                if dx or dy:
+                    self._delivery_dir_map[entry["action_id"]] = (dx, dy)
+                if self._delivery_player_colors is None:
+                    color_counts = Counter(
+                        int(entry["after"][y, x]) for x, y in mover_after.cells
+                    )
+                    self._delivery_player_colors = set(color_counts)
+                    # The player's "body" colour is the LARGER of its two
+                    # sub-colours (measured WA30: 12 cells vs the 4-cell
+                    # leading-edge accent) — used exclusively for locating
+                    # the player once carrying, when the SMALLER colour is
+                    # no longer player-exclusive: a picked-up item is ALSO
+                    # rendered in it (measured: the item's own ring, still
+                    # its own colour before pickup, becomes this same
+                    # accent colour once carried), so a colour-mask lookup
+                    # against the full set would include the carried item's
+                    # cells and undershoot the player's true position by
+                    # exactly one grid step toward the carry direction.
+                    self._delivery_player_body_color = color_counts.most_common(1)[0][0]
+
+        # Stage 0b: issue the next calibration press.
+        if self._delivery_calib_queue:
+            aid = self._delivery_calib_queue.pop(0)
+            if aid not in avail:
+                return self._delivery_step(layer, avail, latest_frame)
+            self._pending = {
+                "action_id": aid,
+                "coord": None,
+                "before": layer.copy(),
+                "delivery_calib": True,
+            }
+            return self._emit(GameAction.from_id(aid))
+
+        if self._delivery_step_size == 0:
+            self._delivery_step_size = _step_cell_size(self._delivery_dir_map)
+            if (
+                self._delivery_step_size <= 0
+                or not self._delivery_dir_map
+                or not self._delivery_player_colors
+            ):
+                # Calibration found no measurable player movement at all —
+                # this board does not fit the model; fall through.
+                self._plan_commit = self._action_count
+                self._phase = _PHASE_INTERACT
+                return self._interact_step(layer, avail, latest_frame)
+
+        # Stage 1: drain a queued action sequence for the sub-task in flight.
+        if self._delivery_action_queue:
+            aid = self._delivery_action_queue.pop(0)
+            if aid not in avail:
+                self._delivery_action_queue = []
+                return self._delivery_step(layer, avail, latest_frame)
+            self._pending = {"action_id": aid, "coord": None, "before": layer.copy()}
+            return self._emit(GameAction.from_id(aid))
+
+        # Stage 2: plan the next sub-task, or fall through when nothing is
+        # left to plan.
+        if self._delivery_cycles_left <= 0 or (
+            not self._delivery_carrying and not self._delivery_items_remaining
+        ):
+            self._plan_commit = self._action_count
+            self._phase = _PHASE_INTERACT
+            return self._interact_step(layer, avail, latest_frame)
+
+        step = self._delivery_step_size
+        bounds = layer.shape
+        accent_colors = self._delivery_player_colors - {self._delivery_player_body_color}
+        player_cell = locate_player_cell(layer, self._delivery_player_body_color, accent_colors)
+        if player_cell is None:
+            self._plan_commit = self._action_count
+            self._phase = _PHASE_INTERACT
+            return self._interact_step(layer, avail, latest_frame)
+        by_delta = {delta: aid for aid, delta in self._delivery_dir_map.items()}
+
+        if self._delivery_carrying:
+            offset = self._delivery_carry_offset
+            item_cells_blocked = {
+                bbox_min_corner(puzzle.items[i].cells) for i in self._delivery_items_remaining
+            }
+            free_slots = [
+                slot
+                for t in puzzle.targets
+                for slot in target_slots(t, step)
+                if slot not in self._delivery_used_slots
+            ]
+            goal_set = {(sx - offset[0], sy - offset[1]) for sx, sy in free_slots}
+            path = None if not goal_set else bfs_path(
+                item_cells_blocked, player_cell, goal_set, step, bounds, item_offset=offset
+            )
+            actions = None if path is None else path_to_actions(path, self._delivery_dir_map)
+            self._delivery_cycles_left -= 1
+            if not free_slots or path is None or actions is None:
+                # No free slot reachable while carrying — nothing more this
+                # phase can productively do; fall through rather than loop.
+                self._plan_commit = self._action_count
+                self._phase = _PHASE_INTERACT
+                return self._interact_step(layer, avail, latest_frame)
+            final_cell = path[-1]
+            chosen_slot = (final_cell[0] + offset[0], final_cell[1] + offset[1])
+            self._delivery_used_slots.add(chosen_slot)
+            self._delivery_carrying = False
+            self._delivery_carry_offset = None
+            actions.append(5)
+            self._delivery_action_queue = actions
+            return self._delivery_step(layer, avail, latest_frame)
+
+        # Not carrying: fetch the nearest remaining item.
+        item_cell_by_idx = {
+            i: bbox_min_corner(puzzle.items[i].cells) for i in self._delivery_items_remaining
+        }
+        target_idx = min(
+            self._delivery_items_remaining,
+            key=lambda i: abs(item_cell_by_idx[i][0] - player_cell[0])
+            + abs(item_cell_by_idx[i][1] - player_cell[1]),
+        )
+        item_cell = item_cell_by_idx[target_idx]
+        blocked = {
+            item_cell_by_idx[i] for i in self._delivery_items_remaining if i != target_idx
+        }
+        goal_set = set(adjacent_cells(item_cell, step))
+        path = bfs_path(blocked, player_cell, goal_set, step, bounds)
+        self._delivery_cycles_left -= 1
+        if path is None:
+            # Unreachable — give up on this item, never retried speculatively.
+            self._delivery_items_remaining.remove(target_idx)
+            return self._delivery_step(layer, avail, latest_frame)
+        actions = path_to_actions(path, self._delivery_dir_map)
+        final_cell = path[-1]
+        needed_delta = (item_cell[0] - final_cell[0], item_cell[1] - final_cell[1])
+        face_aid = by_delta.get(needed_delta)
+        if actions is None or face_aid is None:
+            self._delivery_items_remaining.remove(target_idx)
+            return self._delivery_step(layer, avail, latest_frame)
+        if not actions or actions[-1] != face_aid:
+            actions.append(face_aid)
+        actions.append(5)
+        self._delivery_items_remaining.remove(target_idx)
+        self._delivery_carrying = True
+        self._delivery_carry_offset = needed_delta
+        self._delivery_action_queue = actions
+        return self._delivery_step(layer, avail, latest_frame)
 
     # ── interact (greedy + bounded sequence search) phase ─────────────────────
 
