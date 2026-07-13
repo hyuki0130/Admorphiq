@@ -3058,5 +3058,75 @@ from toward frame-only generalization, not toward reintroducing game-
 specific solvers) — not another bounded-trace-and-patch cycle on either
 game.
 
+### FT09 L2 in GeneralAgent's OWN click-probe pipeline: root cause found precisely, real fix landed, doesn't clear L2 — the gap is candidate GENERATION not recovery (2026-07-13 23:56–00:05)
+
+Corrected course per dispatch: the assigned investigation was
+`WorldModelAgent`/`GeneralAgent`'s OWN toggle-solve pipeline (where the
+GF(2) lineage — R16/R17 `_gf2_solve`/toggle-stencil — already lives, and
+which produced FT09's efficient L1 clear), not the graph/chained stack.
+Instrumented `general_agent.py`'s pattern-toggle state directly (not
+just phase transitions) across the full L2 attempt.
+
+**Precise mechanism, confirmed step-by-step**:
+- Steps 56-88: MEASURE sub-phase runs CLEANLY, zero deaths — probes 18
+  candidate cells, confirms 13 real toggle buttons via local-flip
+  detection, undoing each (self-inverse) to keep the base state intact.
+- Step 88: transitions to SOLVE with a fully-built candidate list.
+- Step 93 (~5 actions into SOLVE): the FIRST candidate flip-set's
+  execution is LETHAL — `GameState.GAME_OVER` fires mid-delta-chain.
+- **Root cause of what happens next**: `GeneralAgent.choose_action`'s
+  GAME_OVER branch (`if _state_name(latest_frame) == "GAME_OVER"...:
+  return self._emit(GameAction.RESET)`) touched NOTHING of
+  `_pat_delta`/`_pat_applied`/`_pat_cand_k`. RESET restores the level's
+  PRISTINE layout (confirmed elsewhere this session — deliberate RESET
+  behaviour), but the interrupted candidate's bookkeeping survived
+  unchanged, so the NEXT call resumed assuming cells were already
+  toggled that the real (now-pristine) board had never touched — a
+  state desync corrupting every subsequent click. The unrelated
+  `_PATTERN_BAIL_LIMIT` timer then eventually wiped the ENTIRE toggle
+  attempt (all 13 measured buttons, the whole candidate list) to
+  `_PHASE_EXPLORE`, where the remaining 3 GAME_OVER cycles this session
+  already traced happen in undirected, unstructured exploration.
+
+**Fix landed** (`53f6469`): GAME_OVER during the toggle SOLVE sub-phase
+now advances to the NEXT candidate flip-set with `_pat_applied`/
+`_pat_delta` reset cleanly, instead of resuming with stale bookkeeping
+or letting the bail-timer discard the measured stencil. 1 new unit test
+pins the exact scenario. Verified safe: suite 767/767, ruff clean, all
+7 guards + ls20 byte-identical (this scope is inside GeneralAgent's
+fallback recovery, narrower than any guard's coverage — none of the
+guard games hit this exact toggle-solve-death path).
+
+**Live-verified the fix's actual mechanism with a second, finer-grained
+trace — it works exactly as designed, but doesn't unlock L2.**
+`_pat_cand_k` correctly advances `0 → 1` with `_pat_applied`/`_pat_delta`
+reset on the death. But `_pat_delta` immediately came back EMPTY —
+because **FT09's candidate list only ever had ONE entry total**: no
+indicator-based flip-sets fired (`indicator_flip_sets` found nothing),
+and the GF(2) homogeneity solve (`plan_toggle`/`build_stencil`) either
+deduplicated against the "flip every cell" candidate or produced nothing
+distinct. With `len(candidates) == 1`, advancing past index 0 has
+nowhere to go — `_toggle_solve_step`'s own pre-existing exhaustion check
+fires immediately after (`self._pat_cand_k >= len(self._pat_candidates)`)
+and falls to explore just 2 actions later than before.
+
+**Honest conclusion, narrowed precisely**: the fix is real, correct,
+and would recover ANY game where a lethal EARLY candidate is followed
+by a genuinely DIFFERENT untried one in the measured stencil — a real,
+generically-useful hardening, landed regardless of FT09's own outcome
+(same "verified-safe, keep it" call as several other fixes tonight).
+FT09 L2's remaining gap is NOT in recovery-from-death; it is that
+**the single hypothesis the pipeline generates ("flip every measured
+button to make the board uniform") is the wrong target**, and there is
+no fallback hypothesis to try instead. This is now a genuinely narrower,
+better-scoped question than "why does FT09 L2 cycle GAME_OVER": either
+(a) `indicator_flip_sets` should be firing but isn't (worth checking
+whether FT09 L2's board actually has indicator sprites this heuristic
+should detect), or (b) the win condition isn't simple homogeneity at
+all, and a different target-inference is needed. Both are real next
+leads, neither chased further this session — this closes the assigned
+investigation with a precise, falsifiable, evidence-backed answer
+rather than a guess.
+
 ## Related
 - [[../lessons/api_hash_rotation_20260421]]
