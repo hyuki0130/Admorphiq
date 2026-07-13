@@ -1606,6 +1606,10 @@ tool OR writes Python (`tools/code_agent.py`) → run → feed the transition to
 Measured: code-agent ALONE re86 = 0/8 → frontier transform games need the combined tool+code loop,
 not code in isolation. Round page: [[.wiki/wiki/rounds/r53_unified-harness]]. 679 tests, ruff clean.
 
+**R53 SINGLE-ARTIFACT (2026-07-13): `--agent chained` @8000 = 15/25 cleared, 1.076% MEASURED**
+(ChainedAgent = WMA probe first → unified handover; + runner-level 30k retry adds ka59 → 16;
+sk48 is chain-fragile, zero score impact). Anchors: online-RL 0.51%, M1 1.21%, top ~1.56%.
+
 **R53 card (2026-07-11): 17/25 under the 3-PASS FALLBACK policy, RHAE proxy ≈ 0.9%** —
 (1) unified@8000: 12 SOLID (cd82 cn04 ft09 lf52 lp85 m0r0 r11l sk48 sp80 tn36 tu93 vc33);
 (2) unified@30k retry: ka59 + ar25 (3-sample; ar25 needed 100k in legacy); (3) worldmodel@2000
