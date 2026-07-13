@@ -1213,3 +1213,13 @@ LLM-dependent games), all 8 walls 0 (budget is not their lever, re-confirmed
 locally). Kaggle: kernel v2 pushed after two mount fixes (competition data
 nests under the competition slug via CLI; the dataset zip strips src/) + a
 409 id/slug mismatch; server validation in flight.
+
+### Kernel v4 RUNNING — import chain cleared (2026-07-13 13:17)
+v4 (ARC_AGENTS_DIR shim override + dataset v2) has been RUNNING 10+ minutes on
+Kaggle — every prior version died in 1-2 min at import. The offline Arcade
+loop is playing the 25 games server-side. Fix genealogy: v1 blind → v2 layout
+dump (CLI mounts nest under /kaggle/input/{competitions,datasets}/) → v3
+walk-resolver (admorphiq imports) → v4 shim env override (agents imports).
+Parallel local thread: paint_flood + general legacy agents sweeping the 8
+walls @2000 (the WMA-discovery pattern extended to the other registered
+mechanic-class agents).
