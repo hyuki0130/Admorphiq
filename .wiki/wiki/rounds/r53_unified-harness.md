@@ -1333,3 +1333,16 @@ stays as a general capability (correct for genuine rotation mechanics; tests
 prove it). NEXT: sibling slider module reusing the piece/widget-probe infra —
 detect tracks/markers/goals, clicks-needed = axis distance / per-click step
 (measured 3), click exactly.
+
+### 🎉 FIRST WALL FALLS — s5i5 L1 via the slider family, BEATS the human baseline (2026-07-13 15:55)
+slider.py + WMA integration: **s5i5 L1 = 19 actions vs human 20 → per-level
+score 1.0 (capped), game_score 0.0278, deterministic x2**. The counter-class
+plan-first thesis validated end-to-end: measure the step from ONE probe click,
+compute clicks_needed, click exactly. Methodology notes that made it work:
+positional (not colour) marker filtering (tip notch and goal share a colour),
+raw-pixel tip scanning (components fragment at same-colour markers), slide
+gate ordered before rotate (rotation's ambiguous fallback would claim slider
+boards). Card: **16/25 in the chained artifact** (s5i5 flows in via the WMA
+probe automatically) + su15 2/58, sb26 1/259 guards exact; 717 tests. Open:
+s5i5 L2 (~150 actions spent without progress after the L1 bank — geometry
+differs; next trace).
