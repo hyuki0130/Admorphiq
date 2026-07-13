@@ -2848,5 +2848,49 @@ pixel-accurate resolution.
 
 **Guards**: none touched, no `src/` changes this cycle.
 
+### LS20 L2 frame: closed with GROUND TRUTH, not just the coarse grid — genuinely sealed, banking (2026-07-13 23:37)
+
+Per dispatch: the earlier "can't physically enter" conclusion was drawn
+from the coarse walkability grid, which was already proven unreliable at
+this exact boundary — the live env, not the grid, is ground truth. Ran
+the requested 4-side entry test.
+
+**North side (the only grid-reachable approach): tested twice,
+independently, both showing zero penetration.** Two different BFS
+approach targets — `(6,3)` and `(8,2)` — both routed the player to the
+SAME accessible cell, `(7,3)` (grid-adjacent to the frame's top border).
+From there, 3 consecutive push attempts toward the frame interior each
+time: player position never changed (`(7,3)` before and after every
+attempt), across BOTH approach routes (6 total push attempts). One route
+showed a small constant 4px frame delta per push (matching the su15-class
+HUD/counter-noise pattern already documented this session — NOT player
+movement) while the other showed zero delta; neither ever translated the
+player.
+
+**South/west/east sides: could not be tested — genuinely unreachable
+from the player's connected region.** `grid_bfs` returns no plan at all
+to any candidate cell near those three sides; this isn't "blocked when
+tried," the player's 57-cell region has no path there whatsoever. Since
+testing those sides "from the outside" requires already standing near
+them, and testing "from the inside" requires already being inside the
+sealed structure, there is no way to probe them further without first
+solving the very reachability question being asked.
+
+**Combined with the earlier pixel-level finding** — the raw frame
+structure is a fully closed colour-3 ring on all four raw-pixel edges,
+no gap — this is now closed with two independent lines of evidence
+(live ground-truth movement AND raw pixel geometry), not one. **This is
+a genuinely sealed decorative structure, not a mislabeled entrance.**
+Banking here per the outcome-(b) disposition: door/gate closed, frame
+question closed, no fix attempted (none would be evidence-based).
+
+**Disposition**: `enumerate_goal_cells` still needs the frame-shape
+detection lead from the prior entry for OTHER games with this same
+"coloured frame + interior marker" pattern (it may be a decorative
+tier/counter indicator rather than a goal at all, given it's provably
+unenterable) — but LS20 L2 itself needs a different explanation for its
+true win condition, not this structure. No `src/` changes this cycle
+either.
+
 ## Related
 - [[../lessons/api_hash_rotation_20260421]]
