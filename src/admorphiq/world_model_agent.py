@@ -98,10 +98,13 @@ from .sort_match import detect_match_layout, plan_match_placement
 from .transform_route import (
     TransformPuzzle,
     build_move_actions,
+    detect_sprite_by_motion,
     detect_sprite_candidates,
     detect_transform_puzzle,
     find_active_color,
     find_covering_offset,
+    snap_to_axis,
+    sprite_bbox_implausible,
 )
 
 # ── Tunables ─────────────────────────────────────────────────────────────────
@@ -777,6 +780,19 @@ class WorldModelAgent:
         self._transform_active_color: int | None = None
         self._transform_dir_map: dict[int, tuple[int, int]] = {}
         self._transform_step_size = 0
+        # Motion-based sprite reclassification (see the transform_route.py
+        # docstrings for detect_sprite_by_motion / sprite_bbox_implausible).
+        # Set once in _enter_transform when the naively-detected active
+        # sprite's bbox is implausible (measured necessary on RE86 L3: same-
+        # colour decoration gap-bridged onto the real sprite through one
+        # touching pixel). ``_transform_last_calib_pair`` caches the most
+        # recent calibration press's (before, after) frames so Stage 2 can
+        # re-derive the CURRENT live sprite footprint by motion instead of
+        # the naive (corrupted, for this active colour) whole-layer cluster.
+        # False/None on every level whose active sprite is plausibly sized —
+        # L1/L2 never set this, so their path is untouched.
+        self._transform_motion_mode = False
+        self._transform_last_calib_pair: tuple[np.ndarray, np.ndarray] | None = None
         self._transform_calib_queue: list[int] = []
         self._transform_calib_log: list[dict] = []
         self._transform_calib_processed = 0
@@ -1949,6 +1965,13 @@ class WorldModelAgent:
         currently controllable straight from the frame (no probe needed);
         that FIXED colour is calibrated against ACTION1-4 in
         :meth:`_transform_step`'s Stage 0.
+
+        If the naively-detected active sprite's own bbox is implausibly
+        large (:func:`transform_route.sprite_bbox_implausible`), Stage 0/2
+        switch to motion-based reclassification
+        (:func:`transform_route.detect_sprite_by_motion`) instead of trusting
+        the (potentially decoration-corrupted) whole-layer colour cluster —
+        see ``_transform_motion_mode``'s comment in ``_reset_level``.
         """
         self._phase = _PHASE_TRANSFORM
         self._plan_commit = self._action_count
@@ -1956,6 +1979,14 @@ class WorldModelAgent:
         self._transform_active_color = find_active_color(
             layer, bg, self._transform_puzzle.sprites
         )
+        active_sprite = next(
+            (s for s in self._transform_puzzle.sprites if s.color == self._transform_active_color),
+            None,
+        )
+        self._transform_motion_mode = active_sprite is not None and sprite_bbox_implausible(
+            active_sprite, layer.shape
+        )
+        self._transform_last_calib_pair = None
         self._transform_dir_map = {}
         self._transform_step_size = 0
         self._transform_calib_queue = [aid for aid in (1, 2, 3, 4) if aid in avail]
@@ -2006,9 +2037,27 @@ class WorldModelAgent:
         target_colors = {t.color for t in puzzle.targets}
 
         # Stage 0a: fold newly-credited calibration presses into the dir_map.
+        # Motion mode (see ``_enter_transform``) replaces the naive
+        # whole-layer colour cluster with the motion-classified vacated/
+        # arrived pair, immune to same-colour decoration by construction
+        # (the excluded cells were never in its input domain — see
+        # transform_route.detect_sprite_by_motion).
         while self._transform_calib_processed < len(self._transform_calib_log):
             entry = self._transform_calib_log[self._transform_calib_processed]
             self._transform_calib_processed += 1
+            if self._transform_motion_mode:
+                pair = detect_sprite_by_motion(
+                    entry["before"], entry["after"], self._transform_active_color
+                )
+                if pair is not None:
+                    self._transform_last_calib_pair = (entry["before"], entry["after"])
+                    sprite_before, sprite_after = pair
+                    dx, dy = snap_to_axis(
+                        sprite_after.cx - sprite_before.cx, sprite_after.cy - sprite_before.cy
+                    )
+                    if dx or dy:
+                        self._transform_dir_map[entry["action_id"]] = (dx, dy)
+                continue
             before_sprites = detect_sprite_candidates(
                 entry["before"], bg, {self._transform_active_color}
             )
@@ -2053,10 +2102,33 @@ class WorldModelAgent:
             return self._emit(GameAction.from_id(aid))
 
         # Stage 2: plan the currently active sprite, or cycle to the next.
+        # find_active_color only inspects a small window around each
+        # candidate's own centroid (see its docstring), so it stays reliable
+        # even off the naive (possibly decoration-corrupted) cluster list;
+        # only the FULL FOOTPRINT used for offset search needs the motion
+        # substitution below.
         live_sprites = detect_sprite_candidates(layer, bg, target_colors)
         active_color = find_active_color(layer, bg, live_sprites)
         if active_color is not None and active_color in self._transform_colors_needed:
             sprite = next((s for s in live_sprites if s.color == active_color), None)
+            if (
+                self._transform_motion_mode
+                and active_color == self._transform_active_color
+                and self._transform_last_calib_pair is not None
+            ):
+                # Re-derive the CURRENT live footprint by motion rather than
+                # trusting the naive cluster for this (measured-implausible)
+                # colour — ``_transform_last_calib_pair``'s "after" frame is
+                # the frame this very call is running on (Stage 0 just folded
+                # it, no intervening action), so its arrived-cell cluster is
+                # the sprite's footprint AT THE CURRENT position.
+                pair = detect_sprite_by_motion(
+                    self._transform_last_calib_pair[0],
+                    self._transform_last_calib_pair[1],
+                    active_color,
+                )
+                if pair is not None:
+                    sprite = pair[1]
             offset = None
             if sprite is not None:
                 points = [t for t in puzzle.targets if t.color == active_color]

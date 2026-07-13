@@ -21,11 +21,14 @@ from admorphiq.transform_route import (
     Sprite,
     TargetPoint,
     build_move_actions,
+    detect_sprite_by_motion,
     detect_sprite_candidates,
     detect_target_points,
     detect_transform_puzzle,
     find_active_color,
     find_covering_offset,
+    snap_to_axis,
+    sprite_bbox_implausible,
 )
 
 _BG = 0
@@ -320,3 +323,128 @@ def test_detect_transform_puzzle_none_without_matching_sprite():
     for x, y in [(10, 7), (10, 17), (5, 12), (15, 12)]:
         _stamp_marker(layer, x, y, 6)
     assert detect_transform_puzzle(layer, _BG) is None
+
+
+# ── motion-based reclassification (R28 family, RE86 L3 same-colour-decoration
+# wall — see .wiki/wiki/rounds/r53_unified-harness.md) ───────────────────────
+
+# A diagonal decoration chain: single-pixel dots exactly one Chebyshev step
+# apart (already 8-connected — matches the measured RE86 L3 pattern, where
+# even standard adjacency, not just the extra _GAP_BRIDGE reach, welds
+# decoration onto the real sprite). Deliberately crosses a horizontal bar's
+# row at both its "before" and "after" positions, so both frames exhibit a
+# genuine touching pixel, exactly as measured live.
+def _diagonal_decoration(layer: np.ndarray, color: int) -> None:
+    for i in range(40):
+        layer[20 + i, i] = color
+
+
+def _bar_sprite_board(bar_row: int, color: int = 6) -> np.ndarray:
+    """A 1-row-tall bar (cols 10-30) plus a same-colour diagonal decoration
+    chain that touches it — the synthetic reproduction of RE86 L3's
+    corrupted-cluster wall (see transform_route.py's module docstring for
+    the live-measured original).
+    """
+    layer = _blank()
+    layer[bar_row, 10:31] = color
+    _diagonal_decoration(layer, color)
+    return layer
+
+
+def test_detect_sprite_candidates_merges_touching_decoration_reproduces_the_l3_wall():
+    """Purpose: pin the BUG this round fixes — static whole-layer clustering
+    welds a same-colour decoration chain onto a real sprite the moment they
+    touch at even one pixel, producing one implausible mega-cluster instead
+    of the true ~20-cell bar.
+
+    Expected feedback: a PASS documents the corruption is reproducible on a
+    minimal synthetic board (bar 21 cells + 40-cell diagonal - 1 shared
+    touching pixel = 60 cells, one cluster); a FAIL would mean this synthetic
+    board no longer reproduces the measured RE86 L3 failure mode, so it can
+    no longer stand in for it in the tests below.
+    """
+    layer = _bar_sprite_board(bar_row=40)
+    sprites = detect_sprite_candidates(layer, _BG, {6})
+    assert len(sprites) == 1
+    assert len(sprites[0].cells) == 60
+
+
+def test_sprite_bbox_implausible_flags_the_corrupted_cluster_not_a_normal_sprite():
+    """Purpose: sprite_bbox_implausible separates the corrupted mega-cluster
+    (bbox spans most of the board) from an ordinary compact sprite, using
+    only the bbox-vs-playfield-extent relationship — the gate that decides
+    whether motion-based reclassification engages at all.
+
+    Expected feedback: a PASS proves normal L1/L2-shaped sprites (this repo's
+    measured 19-27px bboxes) never trigger motion mode, while the L3-shaped
+    corrupted cluster (measured 51px) always does; a FAIL means either normal
+    levels would wrongly detour through motion classification (byte-identical
+    guard risk) or a genuinely corrupted cluster would be trusted as-is.
+    """
+    normal = detect_sprite_candidates(_re86_l1_board(), _BG, {6})[0]
+    assert sprite_bbox_implausible(normal, (64, 64)) is False
+
+    corrupted = detect_sprite_candidates(_bar_sprite_board(bar_row=40), _BG, {6})[0]
+    assert sprite_bbox_implausible(corrupted, (64, 64)) is True
+
+
+def test_detect_sprite_by_motion_excludes_static_decoration_and_recovers_the_true_shift():
+    """Purpose: detect_sprite_by_motion recovers ONLY the cells that changed
+    state between two frames straddling a real movement press, excluding the
+    static same-colour decoration entirely — even though the decoration
+    touches the sprite (via gap-bridging) at a DIFFERENT pixel in each frame,
+    mirroring the measured RE86 L3 evidence exactly.
+
+    Expected feedback: a PASS proves the returned before/after sprites
+    contain ONLY genuine bar cells (never a single decoration-chain cell,
+    since decoration never changes state and so is never in the moved-cell
+    domain — the domain restriction itself, not the gap-bridge radius, is
+    what excludes it); a FAIL means motion mode could still leak decoration
+    into the reclassified footprint.
+    """
+    before = _bar_sprite_board(bar_row=40)
+    after = _bar_sprite_board(bar_row=37)
+    pair = detect_sprite_by_motion(before, after, 6)
+    assert pair is not None
+    sprite_before, sprite_after = pair
+
+    # The decoration's OWN cells (i != 20 for row 40, i != 17 for row 37 —
+    # the two touching pixels) must never appear; only genuine bar cells do.
+    decoration_cells = {(i, 20 + i) for i in range(40)}
+    assert not (sprite_before.cells & decoration_cells)
+    assert not (sprite_after.cells & decoration_cells)
+    assert sprite_before.cells == frozenset((x, 40) for x in range(10, 31) if x != 20)
+    assert sprite_after.cells == frozenset((x, 37) for x in range(10, 31) if x != 17)
+
+
+def test_detect_sprite_by_motion_none_when_nothing_of_the_color_moved():
+    """Purpose: detect_sprite_by_motion returns None when the two frames are
+    identical for the probed colour (a blocked direction, or the wrong
+    colour) rather than fabricating a sprite from noise.
+
+    Expected feedback: a PASS proves the caller correctly gets "try the next
+    calibration press" signal instead of a bogus zero-cell Sprite; a FAIL
+    could crash downstream centroid math or silently record a false (0, 0)
+    step.
+    """
+    layer = _bar_sprite_board(bar_row=40)
+    assert detect_sprite_by_motion(layer, layer.copy(), 6) is None
+
+
+def test_snap_to_axis_zeroes_the_smaller_magnitude_component():
+    """Purpose: snap_to_axis keeps the dominant-magnitude axis (rounded) and
+    zeroes the other — the fix for the measured RE86 L3 residual (raw
+    dx=-0.619 alongside an exact dy=-3.000, from 2-3 of a 39-cell bar's cells
+    coinciding with decoration in only one frame).
+
+    Expected feedback: a PASS proves a small cross-axis artefact never
+    corrupts the recorded per-action step; a FAIL means
+    admorphiq.general_agent._step_cell_size could pick up a spurious 1px
+    "step" from noise instead of the true measured step (exactly the
+    corruption this round's fix targets).
+    """
+    assert snap_to_axis(-0.619, -3.0) == (0, -3)
+    assert snap_to_axis(3.0, 0.4) == (3, 0)
+    assert snap_to_axis(0.0, -3.0) == (0, -3)
+    assert snap_to_axis(3.0, 0.0) == (3, 0)
+    assert snap_to_axis(0.0, 0.0) == (0, 0)

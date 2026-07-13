@@ -162,20 +162,18 @@ def detect_target_points(layer: np.ndarray, background: int) -> list[TargetPoint
     return out
 
 
-def _cluster_color_cells(
-    layer: np.ndarray, color: int, gap: int = _GAP_BRIDGE
+def _cluster_cells(
+    cells: set[tuple[int, int]], gap: int = _GAP_BRIDGE
 ) -> list[frozenset[tuple[int, int]]]:
-    """BFS-cluster all cells of ``color``, bridging up to ``gap`` Chebyshev distance.
+    """BFS-cluster an arbitrary ``(y, x)`` cell set, bridging up to ``gap`` Chebyshev distance.
 
-    See the module docstring: the active sprite's own centre cell is
-    recoloured to a foreign "active marker" value, which would otherwise
-    split one sprite into several disconnected same-colour
-    ``connected_components``. Genuinely separate sprites of the same colour
-    are measured tens of pixels apart, far beyond ``gap``, so this cannot
-    merge them. Returns clusters as sets of ``(y, x)`` cells. Pure / env-free.
+    The shared engine behind :func:`_cluster_color_cells` (domain = every
+    cell of one colour on the whole layer) and :func:`detect_sprite_by_motion`
+    (domain = only the cells that changed state between two frames). The gap
+    itself never introduces contamination here -- whatever is excluded from
+    ``cells`` before this call has no path back in, regardless of ``gap``.
+    Pure / env-free.
     """
-    ys, xs = np.where(layer == color)
-    cells = set(zip(ys.tolist(), xs.tolist()))
     visited: set[tuple[int, int]] = set()
     clusters: list[frozenset[tuple[int, int]]] = []
     for start in sorted(cells):
@@ -199,6 +197,23 @@ def _cluster_color_cells(
     return clusters
 
 
+def _cluster_color_cells(
+    layer: np.ndarray, color: int, gap: int = _GAP_BRIDGE
+) -> list[frozenset[tuple[int, int]]]:
+    """BFS-cluster all cells of ``color``, bridging up to ``gap`` Chebyshev distance.
+
+    See the module docstring: the active sprite's own centre cell is
+    recoloured to a foreign "active marker" value, which would otherwise
+    split one sprite into several disconnected same-colour
+    ``connected_components``. Genuinely separate sprites of the same colour
+    are measured tens of pixels apart, far beyond ``gap``, so this cannot
+    merge them. Returns clusters as sets of ``(y, x)`` cells. Pure / env-free.
+    """
+    ys, xs = np.where(layer == color)
+    cells = set(zip(ys.tolist(), xs.tolist()))
+    return _cluster_cells(cells, gap)
+
+
 def detect_sprite_candidates(
     layer: np.ndarray, background: int, colors: set[int]
 ) -> list[Sprite]:
@@ -214,13 +229,148 @@ def detect_sprite_candidates(
     out: list[Sprite] = []
     for color in colors:
         for cluster in _cluster_color_cells(layer, color):
-            if len(cluster) < _MIN_SPRITE_SIZE:
-                continue
-            cells = frozenset((x, y) for y, x in cluster)
-            cx = sum(x for x, _y in cells) / len(cells)
-            cy = sum(y for _x, y in cells) / len(cells)
-            out.append(Sprite(color=color, cells=cells, cx=cx, cy=cy))
+            sprite = _sprite_from_yx_cluster(color, cluster)
+            if sprite is not None:
+                out.append(sprite)
     return out
+
+
+def _sprite_from_yx_cluster(
+    color: int, cluster: frozenset[tuple[int, int]]
+) -> Sprite | None:
+    """Build a :class:`Sprite` from a ``(y, x)`` cell cluster, or ``None`` when
+    it is smaller than :data:`_MIN_SPRITE_SIZE`. Shared cell->``Sprite``
+    construction for :func:`detect_sprite_candidates` and
+    :func:`detect_sprite_by_motion`. Pure / env-free.
+    """
+    if len(cluster) < _MIN_SPRITE_SIZE:
+        return None
+    cells = frozenset((x, y) for y, x in cluster)
+    cx = sum(x for x, _y in cells) / len(cells)
+    cy = sum(y for _x, y in cells) / len(cells)
+    return Sprite(color=color, cells=cells, cx=cx, cy=cy)
+
+
+# Half the playfield's own extent, in either dimension. Measured on RE86:
+# every genuine sprite across L1/L2 (5 instances, 2 levels) has a bounding
+# box no larger than 27px on a side (42% of the 64-wide / _HUD_ROW_CUTOFF=60-
+# tall playable board). L3's gap-bridge-corrupted cluster — same-colour
+# decoration welded to the real sprite through one touching pixel — spans
+# 51px (80%): a piece that must be TRANSLATED elsewhere to cover its target
+# points cannot already occupy most of the room it needs to move within. The
+# cutoff sits with wide margin on both sides of the measured values (27px
+# plausible / 32px cutoff / 51px implausible).
+_MAX_SPRITE_BBOX_FRACTION = 0.5
+
+
+def sprite_bbox_implausible(sprite: Sprite, layer_shape: tuple[int, int]) -> bool:
+    """Is ``sprite``'s bounding box too large to plausibly be one movable piece?
+
+    Gates :func:`detect_sprite_by_motion`: static colour-clustering
+    (:func:`detect_sprite_candidates`) cannot itself tell a real sprite apart
+    from gap-bridge-adjacent same-colour decoration, so this checks the
+    OUTCOME (an implausibly sprawling bbox) rather than the shape directly.
+    See :data:`_MAX_SPRITE_BBOX_FRACTION` for the measured threshold
+    derivation. Pure / env-free.
+    """
+    xs = [x for x, _y in sprite.cells]
+    ys = [y for _x, y in sprite.cells]
+    height = max(ys) - min(ys) + 1
+    width = max(xs) - min(xs) + 1
+    playfield_rows = min(layer_shape[0], _HUD_ROW_CUTOFF)
+    playfield_cols = layer_shape[1]
+    return (
+        height > playfield_rows * _MAX_SPRITE_BBOX_FRACTION
+        or width > playfield_cols * _MAX_SPRITE_BBOX_FRACTION
+    )
+
+
+def detect_sprite_by_motion(
+    before: np.ndarray, after: np.ndarray, color: int
+) -> tuple[Sprite, Sprite] | None:
+    """Classify ``color`` cells as sprite vs. same-colour decoration by MOTION.
+
+    Static clustering cannot disambiguate a real movable sprite from
+    same-colour decoration that happens to sit gap-bridge-adjacent to it —
+    measured necessary on RE86 L3, where a decorative diagonal pattern
+    (single-pixel dots exactly one Chebyshev step apart, i.e. already
+    8-connected) touches the real sprite at one pixel, and gap-bridging welds
+    the two into one 132-cell cluster spanning most of the board (see
+    :func:`sprite_bbox_implausible`, the gate that engages this path).
+
+    The environment disambiguates for free: decoration, by definition, does
+    not move under a movement press, while the real sprite does. ``before``
+    / ``after`` are the two frames straddling ONE already-issued movement
+    press — reused from calibration, no extra action spent. Cells of
+    ``color`` that changed state (vacated, in ``before`` only, or arrived, in
+    ``after`` only) are trusted as sprite; static same-coloured cells
+    (present at the same position in both frames — the untouched decoration)
+    are excluded from the input domain entirely, so clustering
+    (:func:`_cluster_cells`, still bridged by :data:`_GAP_BRIDGE` to
+    reconnect the sprite's own active-marker hole) has no path back into the
+    decoration regardless of gap size — unlike whole-layer clustering, where
+    the excluded cells are merely "far away", here they were never in the
+    domain at all.
+
+    Returns ``(sprite_before, sprite_after)`` — the largest vacated-cell
+    cluster and the largest arrived-cell cluster respectively, each its own
+    :class:`Sprite` with its own centroid (so callers get a correct
+    before->after centroid delta without contamination from either
+    unrelated-decoration OR from mixing the two timepoints into one blob).
+    Returns ``None`` when ``color`` did not change state on BOTH sides (no
+    cell vacated, or none arrived) — this press moved nothing observable of
+    this colour (a blocked direction, the wrong colour, or a degenerate
+    one-sided artefact), so the caller should try the next calibration press
+    rather than trust a partial read.
+    Measured necessary that a sprite whose own thickness ALONG the motion
+    axis is <= the per-press step (RE86 L3's 1-row-tall bar, step=3) yields
+    vacated/arrived sets that are each essentially the FULL sprite footprint,
+    not just a thin leading/trailing edge — this is what makes the returned
+    centroids directly usable for calibration; a thicker sprite's edge-only
+    slivers were not measured and are out of scope (see module docstring's
+    "scope, not solved here" convention). Pure / env-free.
+    """
+    if before.shape != after.shape:
+        return None
+    by, bx = np.where(before == color)
+    ay, ax = np.where(after == color)
+    before_cells = set(zip(by.tolist(), bx.tolist()))
+    after_cells = set(zip(ay.tolist(), ax.tolist()))
+    vacated = before_cells - after_cells
+    arrived = after_cells - before_cells
+    if not vacated or not arrived:
+        return None
+    before_clusters = _cluster_cells(vacated, gap=_GAP_BRIDGE)
+    after_clusters = _cluster_cells(arrived, gap=_GAP_BRIDGE)
+    sprite_before = _sprite_from_yx_cluster(color, max(before_clusters, key=len))
+    sprite_after = _sprite_from_yx_cluster(color, max(after_clusters, key=len))
+    if sprite_before is None or sprite_after is None:
+        return None
+    return sprite_before, sprite_after
+
+
+def snap_to_axis(dx: float, dy: float) -> tuple[int, int]:
+    """Round a raw ``(dx, dy)`` centroid delta, snapping the smaller-magnitude
+    axis to zero.
+
+    Every per-press shift measured in this family (RE86 L1-L3, both the
+    naive whole-layer method and :func:`detect_sprite_by_motion`) is
+    axis-aligned — exactly one of dx/dy is nonzero. A motion-derived delta
+    can carry a small nonzero residual on the otherwise-stationary axis when
+    a few of the sprite's own cells happen to coincide with same-colour
+    decoration in only ONE of the two frames — measured on RE86 L3 ACTION1:
+    dx=-0.619 alongside an exact dy=-3.000, traced to 2-3 of the bar's 39
+    cells landing on columns the decorative diagonal also occupies in only
+    the before OR only the after frame. Naively rounding that residual alone
+    (``round(-0.619) == -1``) registers a nonexistent step on the axis that
+    never actually moved, corrupting :func:`admorphiq.general_agent._step_cell_size`'s
+    downstream magnitude search. Snapping the smaller-magnitude axis to zero
+    encodes the measured axis-aligned invariant directly; the dominant axis
+    is rounded normally, unaffected. Pure / env-free.
+    """
+    if abs(dx) >= abs(dy):
+        return round(dx), 0
+    return 0, round(dy)
 
 
 def find_active_color(
