@@ -3209,5 +3209,59 @@ during Stage-1 queue-draining (open-loop, no re-verification against the
 live board per action — confirmed by reading `_delivery_step`'s own
 Stage 1 code) coincides with the shortened bail point.
 
+### WA30 L2: patrol-actor CORRUPTS motion calibration (measured, fixed) — delivery now reaches 4/5 items; last-item stuck is the new isolated lead (2026-07-14 00:24–00:50)
+
+Records-first (this round page's prior WA30 section + git log) said the
+settle-frame fix (`a3b9c3c`) eliminated item under-detection but delivery
+now bailed at 4 actions, and the banked next step was "trace whether the
+patrol actor's live position during Stage-1 queue-draining coincides with
+the shortened bail point." One bounded instrumented LIVE trace through
+`score_efficiency.py` (never `arcade.make` — the offline-hash trap) found
+the actor interferes UPSTREAM of queue-draining, at motion CALIBRATION.
+
+**Measured root cause (live, colour-decomposed).** On L1 (distractor-free)
+calibration cleanly derives `dir_map {1:(0,-4),2:(0,4),3:(-4,0),4:(4,0)}`,
+`step_size=4`, player colours `{0,14}`, body 14. On L2 the same
+`_delivery_step` Stage-0a calibration produced garbage
+`dir_map {1:(2,0),3:(0,9),4:(-1,0)}`, `step_size=1`, body 12 — then judged
+every one of the 5 items unreachable and bailed to interact at ac=36,
+wandering to GAME_OVER. Decomposing each L2 calibration diff by colour:
+the diff contains THREE independent movers — the player (colour 14 +
+accent 0, near x≈13) AND a 16-cell patrol actor (colour 12, ≈(35,35),
+pattern right/up/PAUSE/left) AND a 12-cell indicator (colour 5, ≈(37,29)).
+`detect_mover_by_motion` unions every non-item changed cell into ONE
+centroid, so the average of three clusters moving different directions is
+the meaningless delta. The player is stably colour 14 on both levels
+(object permanence).
+
+**Fix landed (`a43f952`, generic).** Player identity is game-scope: the
+colour set learned on the first distractor-free level
+(`_delivery_known_player_colors`, placed in `__init__` next to
+`_transform_prev_puzzle_key` so it survives `_reset_level` — the initial
+attempt WRONGLY put it inside `_reset_level`, so it was cleared every
+level-up and the L2 seed stayed None; caught by re-running the trace and
+seeing L2 still derive `{0,12,14}`) is reused on later levels as a new
+`include_colors` hint to `detect_mover_by_motion`, restricting its scan to
+the player's own colours. Verified against the measured centroids: L2 now
+calibrates identically to L1 (`step_size=4`, body 14) and delivers 4 of 5
+items (was 0). Suite 769 (+1 distractor-isolation pin), ruff clean, all 8
+WMA guards byte-identical (wa30 still 1/9@100, deterministic ×2).
+
+**New isolated lead — last-item stuck + move-limit GAME_OVER (feature-scale,
+banked).** With calibration fixed, the L2 GAME_OVER trace shows the delivery
+delivers items 0–3 methodically (items_rem drops to `[4]` by ac=87), then
+the player FREEZES at cell (13,25.5) from ac=87 through ac=100 while carrying
+the last item — its open-loop directional moves no longer change its position
+(blocked, most likely by the 4 already-delivered items now walling the target
+zone; `bfs_path` blocks only the REMAINING items, not delivered ones or the
+target occupants). GAME_OVER fires at exactly ac=100 (a move limit; L1 cleared
+at 30, L2 entered at 32). So the proximate killer is the open-loop delivery not
+detecting a blocked/no-op move and re-planning the same stuck route until the
+budget expires. Fix direction (next cycle): closed-loop delivery — after a
+queued move, verify the player actually shifted; on a no-op, treat the delivered
+items + target occupants as obstacles and replan, or abandon that leg. This is a
+new capability (blocked-move detection + dynamic obstacle set), NOT a one-line
+defect, so it is banked here rather than attempted this cycle.
+
 ## Related
 - [[../lessons/api_hash_rotation_20260421]]
