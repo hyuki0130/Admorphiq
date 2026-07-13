@@ -21,6 +21,7 @@ import pytest
 
 from admorphiq.general_agent import GeneralAgent
 from admorphiq.world_model_agent import (
+    GAME_OVER_CYCLE_LIMIT,
     NO_PROGRESS_FALLBACK,
     POST_CLEAR_STALL,
     EffectModel,
@@ -593,6 +594,46 @@ def test_level_up_resets_stall_clock():
     agent.choose_action([], _FakeObs(layer, avail=[1, 2, 3, 4], levels=1))
     assert agent._fallback is None  # level-up deferred the fallback
     assert agent._last_progress_action == NO_PROGRESS_FALLBACK - 1
+
+
+def test_is_done_stops_after_repeated_game_over_cycling_with_no_progress():
+    """Purpose: a level whose unstructured fallback repeatedly walks the env
+    into GAME_OVER (measured live 2026-07-13 on ft09/tn36's L2: RESET just
+    re-enters the identical phase and repeats the same losing pattern) must
+    stop via is_done() after GAME_OVER_CYCLE_LIMIT consecutive occurrences,
+    rather than cycling toward MAX_ACTIONS. Crucially this has NO
+    levels_completed >= 1 precondition (unlike POST_CLEAR_STALL), so it also
+    protects a level that never clears at all.
+
+    Expected feedback: pass means a game-over-cycling level is banked early
+    instead of burning budget other games in the same run could have used; a
+    fail means the regression (no cap on GAME_OVER retries) is back.
+    """
+    agent = WorldModelAgent()
+    layer = _block(_layer(), color=7, r0=2, c0=2)
+    for i in range(GAME_OVER_CYCLE_LIMIT):
+        assert not agent.is_done([], _FakeObs(layer, avail=[1, 2, 3, 4], state="GAME_OVER"))
+        agent.choose_action([], _FakeObs(layer, avail=[1, 2, 3, 4], state="GAME_OVER"))
+    assert agent.is_done([], _FakeObs(layer, avail=[1, 2, 3, 4], state="GAME_OVER"))
+
+
+def test_game_over_cycle_count_resets_on_level_up():
+    """Purpose: a genuine level-up resets the GAME_OVER cycle counter, so a
+    multi-level game that occasionally dies once per level (but keeps
+    progressing) is never mistaken for a stuck cycle.
+
+    Expected feedback: pass means only CONSECUTIVE same-level GAME_OVERs
+    count; a fail means an unrelated death on an earlier, already-cleared
+    level could wrongly cap a game that is genuinely still progressing.
+    """
+    agent = WorldModelAgent()
+    layer = _block(_layer(), color=7, r0=2, c0=2)
+    for _ in range(GAME_OVER_CYCLE_LIMIT - 1):
+        agent.choose_action([], _FakeObs(layer, avail=[1, 2, 3, 4], state="GAME_OVER"))
+    assert agent._game_over_count == GAME_OVER_CYCLE_LIMIT - 1
+    # A level-up (levels increases) resets the cycle count.
+    agent.choose_action([], _FakeObs(layer, avail=[1, 2, 3, 4], levels=1))
+    assert agent._game_over_count == 0
 
 
 def test_nav_attempt_recovers_via_goal_rotation_when_remembered_target_is_unreachable():

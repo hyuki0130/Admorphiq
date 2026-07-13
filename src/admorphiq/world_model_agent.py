@@ -178,6 +178,20 @@ NO_PROGRESS_FALLBACK = 650
 # fast enough to score non-negligibly under the squared metric completes before
 # the watchdog fires.
 POST_CLEAR_STALL = 250
+# Consecutive GAME_OVERs on the SAME level (no level-up in between) before
+# is_done() stops the run instead of letting the blind retry-the-same-plan
+# loop continue. Measured 2026-07-13 (depth survey #2): ft09 and tn36's L2
+# fall into unstructured probe/interact, which repeatedly walks the env into
+# GAME_OVER — RESET just re-enters the identical phase and repeats the same
+# losing pattern. Each of those was eventually cut off by POST_CLEAR_STALL,
+# but only after 4 full cycles' worth of wasted budget; a game that never
+# clears ANY level first (POST_CLEAR_STALL's `levels_completed >= 1`
+# precondition does not apply) has no existing stop condition at all and
+# would cycle toward MAX_ACTIONS. 3 mirrors _MERGE_DRAG_STALL_LIMIT's
+# precedent (a stall/retry cap, not a hard game-specific number) and is
+# comfortably below every measured cycling case's 4-7 repeats, so it never
+# cuts a game that is making even slow structured progress.
+GAME_OVER_CYCLE_LIMIT = 3
 # Bounded probe buffer: the direction map is recomputed from the most recent
 # movement probes, so the buffer is capped to keep ``observe`` O(1) per call.
 _MOVE_PROBE_CAP = 40
@@ -653,6 +667,11 @@ class WorldModelAgent:
         here; only the per-level discovery / plan / explore bookkeeping resets.
         """
         self._phase = _PHASE_PROBE
+        # Consecutive GAME_OVERs since the last genuine level-up (see
+        # GAME_OVER_CYCLE_LIMIT). Resetting here — not on every GAME_OVER-
+        # triggered RESET, which stays on the same level index — is what
+        # makes this a "cycling" counter rather than a total-GAME_OVER count.
+        self._game_over_count = 0
         self._level_base = self._action_count
         self._pending: dict | None = None
         # Recentering-aware movement-discovery bookkeeping (mirrors GeneralAgent).
@@ -884,12 +903,19 @@ class WorldModelAgent:
     # ── harness contract ──────────────────────────────────────────────────────
 
     def is_done(self, frames: list, latest_frame) -> bool:
-        """Stop on WIN, on a post-clear stall, or when out of budget.
+        """Stop on WIN, on a post-clear stall, on a GAME_OVER cycle, or out of budget.
 
         WIN is the biggest efficiency lever. The post-clear stall check
         (``POST_CLEAR_STALL``) banks the clears already won and stops the
         proven-futile tail of broad exploration once at least one level is
         cleared and no further level has been gained for the stall window.
+        The GAME_OVER-cycle check (``GAME_OVER_CYCLE_LIMIT``) is a SEPARATE,
+        earlier stop: a level whose unstructured probe/interact fallback
+        repeatedly walks the env into GAME_OVER re-enters the identical
+        phase after each RESET and repeats the same losing pattern — banking
+        here has no ``levels_completed >= 1`` precondition, so it also
+        covers a level that never clears at all (which POST_CLEAR_STALL
+        cannot reach, since its precondition never fires).
         """
         if _state_name(latest_frame) == "WIN":
             return True
@@ -897,6 +923,8 @@ class WorldModelAgent:
             self._levels_completed >= 1
             and self._action_count - self._last_progress_action >= POST_CLEAR_STALL
         ):
+            return True
+        if self._game_over_count >= GAME_OVER_CYCLE_LIMIT:
             return True
         return self._action_count >= self.MAX_ACTIONS
 
@@ -979,6 +1007,8 @@ class WorldModelAgent:
 
         if state == "GAME_OVER" or layer.size == 0 or not avail:
             self._pending = None
+            if state == "GAME_OVER":
+                self._game_over_count += 1
             return self._emit(GameAction.RESET)
 
         # Structured path stalled (no new level for NO_PROGRESS_FALLBACK
