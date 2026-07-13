@@ -3251,6 +3251,24 @@ then can a mid-leg replan (on a learned obstacle) be safe. This is a Stage-2
 restructuring, not a one-line addition — correctly scoped now, with the
 per-level budget (~64 actions) confirmed as the feasibility envelope.
 
+**Open question RESOLVED (passive detection-validation trace, no repo code
+touched).** Replayed the clean agent and replicated the no-op detection
+(expected = player-cell-before + delta vs player-cell-after) against every
+delivery movement. Result: **ZERO false positives** — every one of the 14
+mismatches is a genuine TRUE-NOOP (the player really did not move);
+`locate_player_cell`'s min-corner is stable across successful moves despite the
+accent relocating. So the L1 regression was NOT a detection bug. The real cause
+is subtler and adds a SECOND requirement: **L1 has a SINGLE transient no-op at
+ac=25 (player blocked moving up) that the open-loop flow already TOLERATES and
+still clears** — flushing the queue on that first no-op is what broke L1. L2's
+terminal stuck is a REPEATED no-op (ac=87–99, the same (16,24) cell blocked 12×
+in a row). So the closed-loop trigger must fire only after N CONSECUTIVE no-ops
+against the same intended cell (2–3), never on the first — that both preserves
+L1's byte-identical clear and still catches L2's true stuck. Combined refined
+spec: (1) trigger on repeated same-cell no-ops only; (2) defer leg bookkeeping to
+ACTION5-completion. Both are now precise; the delivery hot-path refactor is
+implementation-ready for a dedicated session (too risky to land pre-submission).
+
 ### FT09 L2 indicator topology CONFIRMED via live trace — falsifies the "generalise the centroid" lead; real mechanic is 2 glyph clues with unknown decoding on a lethal board (2026-07-14 01:05–01:25)
 
 Records-first: this page's 2026-07-13 00:05 ft09 section flagged the *working
