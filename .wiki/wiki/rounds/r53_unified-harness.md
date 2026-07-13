@@ -1467,3 +1467,15 @@ dial box + HUD row): none found. Full elimination table recorded at
 so a future session doesn't re-spend a live-trace cycle re-deriving this.
 tr87 banked at 0/6 (mechanism decoded, win condition open). Card holds at
 18/25 chained (wa30 L1 fresh); moving to dc22 next.
+
+### dc22 MYSTERY SOLVED — back-and-forth toggle maze; BFSSolver gap found (2026-07-13 18:50)
+The toggle-state x movement matrix cracked it: room2's toggle opens the box's
+top wall; the REAL winning sequence (extracted live from the legacy
+bfs_state_space path, 20 actions) toggles the SAME button on, uses the
+opening, then toggles it OFF to open a different path — a backtracking toggle
+maze no greedy explorer finds. ARCHITECTURE GAP: the proven general tool
+(planner/bfs_solver.py + dense-grid click discovery, 40k states/90s) is not
+referenced anywhere in the current agent stack — the legacy 1/6 vs current 0/6
+difference in one finding. Integration dispatched as a GATED LAST-RESORT phase
+(hybrid signature only, after all mechanic modules decline, per-level action
+cap, RHAE-honest coverage backstop) + family check on g50t/sc25/bp35.
