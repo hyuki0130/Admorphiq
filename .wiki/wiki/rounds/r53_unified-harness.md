@@ -3150,5 +3150,64 @@ centroid marker lookup to detect and handle a non-ring indicator
 topology — not a one-line patch; NOT attempted this session, flagged as
 the most promising concrete next step for whoever picks this up.
 
+### WA30 L2: render-lag settle-frame bug found and fixed (real, precedented), L2 still open — patrol-actor lead now testable in isolation (2026-07-13 00:08–00:20)
+
+Records-first check of the three WMA-family leads (re86 L3 multi-
+placement, wa30 L2 patrol actor, s5i5 L2 reveal-matching) picked wa30 as
+most likely to hide a bounded defect under its "patrol actor" framing —
+re86's wall was already PROVEN geometrically impossible, s5i5 needs a
+whole new matching-puzzle solver; wa30's delivery family already exists
+and its patrol pattern is fully deterministic (measured earlier: "3
+right, 1 up, pause, 5 left").
+
+**Live trace found something upstream of the actor question entirely.**
+Comparing the FIRST live `detect_delivery_puzzle` call's frame against a
+freshly-reached, fully-settled L2 pristine board (both via direct pixel-
+histogram diff): 288 pixels differ. Item-ring pixel count 36 vs the
+settled 60; the level's own moving actor (colour 12, confirmed 16px)
+entirely ABSENT (0px) from the live call's histogram. The FIRST
+detection call returns only **3 items**, not the true **5** — under-
+detection, not failure. This is the exact same render-lag/settle-frame
+class already measured and fixed for RE86/transform_route earlier
+tonight (`_transform_settle_tried`), simply not yet applied to the
+delivery family.
+
+**Fix landed** (`a3b9c3c` + test `74fa233`): one settle press (ACTION5)
+before the FIRST delivery-detection attempt on any level reached via a
+transition, bounded via a new `_delivery_settle_tried` flag — same shape
+as the transform precedent. One measured difference from transform's
+exact preconditions: transform gates on `spent == 0`, but live tracing
+showed an EARLIER probe-phase check already consumes one action before
+delivery's gate is ever reached on the level's first pass (`spent=1` at
+the point delivery detection actually runs, confirmed via a temporary
+debug print) — so the `spent == 0` copy of transform's condition NEVER
+held true and the fix had ZERO observable effect until this was caught
+and corrected (relying on the block's own pre-existing `not
+self._delivery_attempted` one-shot gate instead, which is sufficient and
+correct without an action-count precondition).
+
+**Verified safe, does not clear L2.** Suite 768/768, ruff clean, all 7
+guards + ls20 byte-identical (WA30's own guard number, unavoidably, since
+`score_efficiency.py`'s scorer breaks the whole episode on the FIRST
+GAME_OVER for this agent — the same observability gap already documented
+for FT09/TN36 tonight). Live-traced the fix's actual mechanism: the
+settle press correctly delays the delivery gate by one call (confirmed
+via a timing shift, 32→33), but the delivery phase now runs even SHORTER
+before bailing to interact (4 actions vs 11 before the fix) — item-count
+detection is no longer the confounding variable, but SOMETHING else
+still causes an early bail. Landed anyway per the standing "verified-
+safe, real measured defect, keep it" call: this render-lag class is
+real, independently corroborated (exact match to RE86's precedent), and
+worth having even though it alone doesn't solve WA30 L2.
+
+**Disposition**: banked. Now that item-count under-detection is
+eliminated as a confound, the ORIGINAL "patrol actor interferes with the
+open-loop delivery queue" hypothesis from the earlier banked lead is
+finally testable in ISOLATION — was not re-tested this cycle (time
+budget exhausted). Next session: trace whether the actor's live position
+during Stage-1 queue-draining (open-loop, no re-verification against the
+live board per action — confirmed by reading `_delivery_step`'s own
+Stage 1 code) coincides with the shortened bail point.
+
 ## Related
 - [[../lessons/api_hash_rotation_20260421]]
