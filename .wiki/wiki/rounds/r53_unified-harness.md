@@ -3487,12 +3487,22 @@ phase gated on all-of-ACTION1-6-available + a detectable layout; returns None an
 DEFERS on non-half-split targets so nothing regresses. Internal reads were
 verification-only.
 
-**M4 (banked, future): diagonal + multi-launch for deeper cd82 levels.** L2-L6
-targets use the diagonal regions (positions 1/3/5/7 → triangle fills) and
-multiple sequential launches (some via arrow-click ACTION6 rather than ACTION5).
-The current planner returns `[]` for those (defers). Extending needs: diagonal
-target decomposition, a covering/ordering search over region-launches, and the
-arrow-click paint variant. A dedicated extension round.
+**M4 (banked, future) — diagonal + multi-launch for deeper cd82 levels, scoped
+concretely.** Traced L2's target (after the solver clears L1 at ac=6): it is a
+DIAGONAL composition — colour-15 upper-left triangle, colour-12 diagonal band,
+colour-0 lower-left remnant — exactly the brittle 2-launch solution
+`[(pos0, 15), (pos3, 12)]` (paint top-half 15, then a diagonal triangle 12 over
+it). So L2-L6 are NEW COVERAGE (currently 1/6), not just efficiency. The
+extension is well-defined but substantial:
+1. The 8 fixed region MASKS (halves for 0/2/4/6, diagonal triangles for 1/3/5/7)
+   — derivable from the source `rtjwayrycq` (verification-only) or by probing.
+2. A `simulate(launch_sequence)` that applies masks in order (later paints over
+   earlier) to the uniform canvas.
+3. A bounded SEARCH over short launch sequences (≤4 ops, ~24 options each) to
+   match the target — feasible with pruning.
+4. The arrow-click paint variant (ACTION6 at `arrow_coords`) that L3+ use for
+   some ops.
+A dedicated extension round; the L1 half-split solver (landed) is the foundation.
 
 ### cd82 efficiency fallback — feature-scale (needs a paint solver); the L1 clear is graph brute-force, WMA GAME_OVERs (2026-07-14 02:40)
 
