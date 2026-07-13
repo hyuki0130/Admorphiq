@@ -95,6 +95,14 @@ from .slider import (
     track_reached_goal,
 )
 from .sort_match import detect_match_layout, plan_match_placement
+from .transform_route import (
+    TransformPuzzle,
+    build_move_actions,
+    detect_sprite_candidates,
+    detect_transform_puzzle,
+    find_active_color,
+    find_covering_offset,
+)
 
 # ── Tunables ─────────────────────────────────────────────────────────────────
 
@@ -168,6 +176,7 @@ _PHASE_SORT_MATCH = "sort_match"
 _PHASE_MERGE_DRAG = "merge_drag"
 _PHASE_ROTATE = "rotate"
 _PHASE_SLIDE = "slide"
+_PHASE_TRANSFORM = "transform"
 
 # Max clicks the merge-drag plan issues PER LEVEL before abandoning the
 # hypothesis (reset each level in ``_reset_level``). A simple gather walks a tile
@@ -738,6 +747,35 @@ class WorldModelAgent:
         self._slide_active_track: int | None = None
         self._slide_goal: int | None = None
         self._slide_clicks_left = 0
+        # ── Simple-action TRANSFORM-PUZZLE bookkeeping (transform_route.py) ────
+        # ``_transform_attempted`` gates the one-shot detection per level.
+        # ``_transform_puzzle`` is the detected targets/sprites once found.
+        # Stage 0 drains ``_transform_calib_queue`` ([1,2,3,4] filtered by
+        # availability), folding each press's before/after (appended to
+        # ``_transform_calib_log`` by the credit block in ``choose_action``,
+        # mirroring ``_rot_probe_log``/``_slide_probe_log``) into
+        # ``_transform_dir_map`` (action id -> measured (dx, dy)) for the
+        # FIXED colour active at level entry (``_transform_active_color``).
+        # Stage 1 drains a queued move sequence (``_transform_move_queue``)
+        # for whichever sprite was just committed. Stage 2 (no queue pending)
+        # re-reads which sprite is NOW active
+        # (:func:`transform_route.find_active_color`, purely from the live
+        # frame — no probe needed even after an ACTION5 cycle) and, if it is
+        # still in ``_transform_colors_needed``, plans + queues its move via
+        # :func:`transform_route.find_covering_offset` +
+        # :func:`transform_route.build_move_actions`; otherwise presses
+        # ACTION5 to cycle, bounded by ``_transform_cycles_left``.
+        self._transform_attempted = False
+        self._transform_puzzle: TransformPuzzle | None = None
+        self._transform_active_color: int | None = None
+        self._transform_dir_map: dict[int, tuple[int, int]] = {}
+        self._transform_step_size = 0
+        self._transform_calib_queue: list[int] = []
+        self._transform_calib_log: list[dict] = []
+        self._transform_calib_processed = 0
+        self._transform_colors_needed: set[int] = set()
+        self._transform_move_queue: list[int] = []
+        self._transform_cycles_left = 0
 
     # ── harness contract ──────────────────────────────────────────────────────
 
@@ -811,6 +849,13 @@ class WorldModelAgent:
                     self._slide_probe_log.append(
                         {"candidate": p["coord"], "before": p["before"], "after": layer.copy()}
                     )
+                # Transform calibration press: log the (action_id, before,
+                # after) so a fixed-colour sprite's measured shift builds the
+                # direction map.
+                if p.get("transform_calib"):
+                    self._transform_calib_log.append(
+                        {"action_id": p["action_id"], "before": p["before"], "after": layer.copy()}
+                    )
             self._pending = None
         if leveled:
             self._levels_completed = lvl
@@ -841,6 +886,8 @@ class WorldModelAgent:
             return self._rotate_step(layer, avail, latest_frame)
         if self._phase == _PHASE_SLIDE:
             return self._slide_step(layer, avail, latest_frame)
+        if self._phase == _PHASE_TRANSFORM:
+            return self._transform_step(layer, avail, latest_frame)
         return self._interact_step(layer, avail, latest_frame)
 
     def choose_action_with_data(self, frames: list, latest_frame):
@@ -984,6 +1031,32 @@ class WorldModelAgent:
             if puzzle is not None:
                 self._rotation_puzzle = puzzle
                 return self._enter_rotate(layer, avail, latest_frame)
+
+        # Simple-action TRANSFORM-PUZZLE signature: a select-toggle
+        # (ACTION5) AND at least one movement action are available, and the
+        # frame holds ring+dot target markers plus a movable sprite of some
+        # marker's exact colour (transform_route.detect_transform_puzzle).
+        # Tried ONCE per level, before movement discovery and before the
+        # generic ARRANGEMENT gate below — RE86's large multi-sprite cross
+        # shapes are not a single small "player" avatar, so letting movement
+        # discovery run first would mislearn one cross as the player; the
+        # generic arrangement descend-and-sweep model also does not apply
+        # (RE86 needs per-colour footprint coverage, not a row descent). On
+        # failure the phase falls through to normal probing —
+        # detect_transform_puzzle's own structural checks (ring markers +
+        # matching-colour sprite) are the actual safety net, not this coarse
+        # action-availability gate. Observation-gated, no game-id reads.
+        if (
+            not self._transform_attempted
+            and 5 in avail
+            and any(a in avail for a in (1, 2, 3, 4))
+        ):
+            self._transform_attempted = True
+            bg = self.model.background if self.model.background is not None else 0
+            transform_puzzle = detect_transform_puzzle(layer, bg)
+            if transform_puzzle is not None:
+                self._transform_puzzle = transform_puzzle
+                return self._enter_transform(layer, avail, latest_frame)
 
         # On a level PAST the first, where the player/move controls are already
         # learned (GAME-scope) yet a selection-toggle action + several movable
@@ -1804,6 +1877,143 @@ class WorldModelAgent:
             "desc": ("c", x, y),
         }
         return self._emit_click(x, y)
+
+    # ── transform-puzzle (per-colour footprint coverage) phase ────────────────
+
+    def _enter_transform(self, layer: np.ndarray, avail: list[int], latest_frame):
+        """Begin the transform phase: identify the active sprite, schedule calibration.
+
+        ``self._transform_puzzle`` was just detected by
+        :func:`transform_route.detect_transform_puzzle`.
+        :func:`transform_route.find_active_color` reads which sprite is
+        currently controllable straight from the frame (no probe needed);
+        that FIXED colour is calibrated against ACTION1-4 in
+        :meth:`_transform_step`'s Stage 0.
+        """
+        self._phase = _PHASE_TRANSFORM
+        self._plan_commit = self._action_count
+        bg = self.model.background if self.model.background is not None else 0
+        self._transform_active_color = find_active_color(
+            layer, bg, self._transform_puzzle.sprites
+        )
+        self._transform_dir_map = {}
+        self._transform_step_size = 0
+        self._transform_calib_queue = [aid for aid in (1, 2, 3, 4) if aid in avail]
+        self._transform_calib_log = []
+        self._transform_calib_processed = 0
+        self._transform_colors_needed = {t.color for t in self._transform_puzzle.targets}
+        self._transform_move_queue = []
+        self._transform_cycles_left = len(self._transform_puzzle.sprites)
+        return self._transform_step(layer, avail, latest_frame)
+
+    def _transform_step(self, layer: np.ndarray, avail: list[int], latest_frame):
+        """One action of the transform phase: calibrate, then place-and-cycle.
+
+        Stage 0 — fold every newly-credited calibration press (appended to
+        ``_transform_calib_log`` by the ``choose_action`` credit block) into
+        ``_transform_dir_map`` by re-measuring the FIXED
+        ``_transform_active_color`` sprite's centroid shift, then issue the
+        next queued calibration press. Once drained, derive the MEASURED
+        step size (:func:`admorphiq.general_agent._step_cell_size`, reused —
+        never assumed).
+        Stage 1 — drain any queued move sequence for the sprite just
+        committed, one action per call.
+        Stage 2 — with no queue pending, re-read which sprite is NOW active
+        (:func:`transform_route.find_active_color`, a fresh single-frame
+        read — an ACTION5 cycle costs no extra probe click to identify).
+        If it is still needed, plan its move
+        (:func:`transform_route.find_covering_offset` +
+        :func:`transform_route.build_move_actions`) and queue it; a colour
+        with no computable offset is given up on (no changer routing — see
+        transform_route.py's module docstring) rather than retried
+        speculatively. Otherwise press ACTION5 to cycle, bounded by
+        ``_transform_cycles_left`` so a puzzle this module cannot fully
+        solve still falls through to normal interaction instead of looping.
+        """
+        from arcengine import GameAction
+
+        bg = self.model.background if self.model.background is not None else 0
+        puzzle = self._transform_puzzle
+        target_colors = {t.color for t in puzzle.targets}
+
+        # Stage 0a: fold newly-credited calibration presses into the dir_map.
+        while self._transform_calib_processed < len(self._transform_calib_log):
+            entry = self._transform_calib_log[self._transform_calib_processed]
+            self._transform_calib_processed += 1
+            before_sprites = detect_sprite_candidates(
+                entry["before"], bg, {self._transform_active_color}
+            )
+            after_sprites = detect_sprite_candidates(
+                entry["after"], bg, {self._transform_active_color}
+            )
+            if before_sprites and after_sprites:
+                dx = round(after_sprites[0].cx - before_sprites[0].cx)
+                dy = round(after_sprites[0].cy - before_sprites[0].cy)
+                if dx or dy:
+                    self._transform_dir_map[entry["action_id"]] = (dx, dy)
+
+        # Stage 0b: issue the next calibration press.
+        if self._transform_calib_queue:
+            aid = self._transform_calib_queue.pop(0)
+            if aid not in avail:
+                return self._transform_step(layer, avail, latest_frame)
+            self._pending = {
+                "action_id": aid,
+                "coord": None,
+                "before": layer.copy(),
+                "transform_calib": True,
+            }
+            return self._emit(GameAction.from_id(aid))
+
+        if self._transform_step_size == 0:
+            self._transform_step_size = _step_cell_size(self._transform_dir_map)
+            if self._transform_step_size <= 0 or not self._transform_dir_map:
+                # Calibration found no measurable movement at all — this
+                # sprite/level does not fit the model; fall through.
+                self._plan_commit = self._action_count
+                self._phase = _PHASE_INTERACT
+                return self._interact_step(layer, avail, latest_frame)
+
+        # Stage 1: drain a queued move sequence for the committed sprite.
+        if self._transform_move_queue:
+            aid = self._transform_move_queue.pop(0)
+            if aid not in avail:
+                self._transform_move_queue = []
+                return self._transform_step(layer, avail, latest_frame)
+            self._pending = {"action_id": aid, "coord": None, "before": layer.copy()}
+            return self._emit(GameAction.from_id(aid))
+
+        # Stage 2: plan the currently active sprite, or cycle to the next.
+        live_sprites = detect_sprite_candidates(layer, bg, target_colors)
+        active_color = find_active_color(layer, bg, live_sprites)
+        if active_color is not None and active_color in self._transform_colors_needed:
+            sprite = next((s for s in live_sprites if s.color == active_color), None)
+            offset = None
+            if sprite is not None:
+                points = [t for t in puzzle.targets if t.color == active_color]
+                offset = find_covering_offset(sprite, points)
+            moves = (
+                build_move_actions(offset[0], offset[1], self._transform_dir_map, self._transform_step_size)
+                if offset is not None
+                else []
+            )
+            if moves:
+                self._transform_move_queue = moves
+                self._transform_colors_needed.discard(active_color)
+                return self._transform_step(layer, avail, latest_frame)
+            # No computable offset for this colour (needs a changer, or is
+            # otherwise unreachable by direct placement) — give up on it,
+            # never retried speculatively.
+            self._transform_colors_needed.discard(active_color)
+
+        if not self._transform_colors_needed or self._transform_cycles_left <= 0 or 5 not in avail:
+            self._plan_commit = self._action_count
+            self._phase = _PHASE_INTERACT
+            return self._interact_step(layer, avail, latest_frame)
+
+        self._transform_cycles_left -= 1
+        self._pending = {"action_id": 5, "coord": None, "before": layer.copy()}
+        return self._emit(GameAction.from_id(5))
 
     # ── interact (greedy + bounded sequence search) phase ─────────────────────
 
