@@ -97,6 +97,10 @@ proposal for the enemy primitive.
 - [[../concepts/merge_mechanic]]
 - [[../strategies/frame_only/inferential_agent]]
 - [[../lessons/prefix_aware_navigation_20260423]] — companion R20-R22 fix
+- [[merge_drag_stall_causes_game_over_20260713]] — same downgrade-then-merge
+  gap recurring at L3 under the newer `merge_drag.py`/`WorldModelAgent`
+  architecture (R49+); also measures what GAME_OVER actually costs on this
+  game (levels_completed is NOT reset by it).
 
 ## Sources
 

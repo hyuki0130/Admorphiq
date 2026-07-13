@@ -202,6 +202,18 @@ _PHASE_DELIVERY = "delivery"
 # earlier by the test-click confirmation in any case).
 _MERGE_DRAG_MAX_CLICKS = 120
 
+# Consecutive walk clicks that change NOTHING before the merge-drag phase
+# abandons to interaction. Measured on SU15 L3 (2026-07): once a tile stops
+# responding to the pull (a pre-merge phase this plan doesn't model, e.g.
+# enemy-downgrade), ``next_merge_click`` recomputes the identical target from
+# the unchanged frame every call and loops forever; the live env does not
+# treat those no-op clicks as free — after ~6 consecutive no-ops the run hit
+# GAME_OVER, which resets ``levels_completed`` and loses levels already
+# cleared this run. 3 gives the walk room to recover from a single missed
+# grab (drag animation lag) while stopping well before the measured
+# GAME_OVER threshold.
+_MERGE_DRAG_STALL_LIMIT = 3
+
 # Simple action commonly used as the SELECTION toggle in arrangement games
 # (cycles which entity the move actions drive). Detected, not assumed: the
 # arrangement phase only engages when this action is available AND probing
@@ -723,9 +735,16 @@ class WorldModelAgent:
         # ``_merge_drag_probed`` flips True once the test click confirmed the
         # drag pull, after which the gather walk runs; ``_merge_drag_clicks``
         # caps the walk length so a non-drag game abandons quickly.
+        # ``_merge_drag_stall`` counts CONSECUTIVE walk clicks that changed
+        # nothing (measured SU15 L3: a tile can go permanently unresponsive
+        # mid-gather — likely a pre-merge phase, e.g. enemy-downgrade, that
+        # this plan doesn't model — and blindly re-clicking it doesn't just
+        # waste budget, it walks the game into GAME_OVER, which resets
+        # levels_completed and loses the levels already cleared this run).
         self._merge_drag_attempted = False
         self._merge_drag_probed = False
         self._merge_drag_clicks = 0
+        self._merge_drag_stall = 0
         # ── Click-only ROTATION-PUZZLE bookkeeping (rotation.py) ──────────────
         # ``_rotation_attempted`` gates the one-shot detection per level (a
         # fresh piece/reference layout each level). ``_rotation_puzzle`` is the
@@ -1318,6 +1337,7 @@ class WorldModelAgent:
                 self._phase = _PHASE_MERGE_DRAG
                 self._merge_drag_clicks = 0
                 self._merge_drag_probed = False
+                self._merge_drag_stall = 0
                 x, y = drag_probe_target(layout)
                 self._pending = {
                     "action_id": 6, "coord": (x, y),
@@ -1772,7 +1792,10 @@ class WorldModelAgent:
         tile, gathering every tile into the goal region. The harness checks the
         live level-up after each click, so the walk stops the instant the gather
         clears the level. Bails to interaction when the gather is complete
-        (nothing left to drag) or the walk cap is hit.
+        (nothing left to drag), the walk cap is hit, OR a tile has stopped
+        responding to the pull for :data:`_MERGE_DRAG_STALL_LIMIT` consecutive
+        clicks (see its docstring — re-clicking a genuinely stuck tile is not
+        free, it walks the env toward GAME_OVER).
         """
         bg = self.model.background if self.model.background is not None else 0
         if not self._merge_drag_probed:
@@ -1782,8 +1805,19 @@ class WorldModelAgent:
                 self._plan_commit = self._action_count
                 self._phase = _PHASE_INTERACT
                 return self._interact_step(layer, avail, latest_frame)
+        elif self._merge_drag_clicks > 0:
+            # A walk click was just credited (not the initial probe): track
+            # whether it actually moved anything.
+            if self._last_changed:
+                self._merge_drag_stall = 0
+            else:
+                self._merge_drag_stall += 1
 
-        if 6 in avail and self._merge_drag_clicks < _MERGE_DRAG_MAX_CLICKS:
+        if (
+            6 in avail
+            and self._merge_drag_clicks < _MERGE_DRAG_MAX_CLICKS
+            and self._merge_drag_stall < _MERGE_DRAG_STALL_LIMIT
+        ):
             cell = next_merge_click(layer, bg)
             if cell is not None:
                 self._merge_drag_clicks += 1

@@ -104,12 +104,34 @@ When the falsification signature triggers:
   to a target order" (SB26), midpoint clicks are nonsense.
 - No lookahead — greedy pair selection by distance may corner the
   game if a far merge unlocks a near merge.
+- **A stalled walk click is not free.** Measured on the newer
+  `merge_drag.py`/`WorldModelAgent` implementation (below): repeating a
+  click that a tile no longer responds to walks the env toward
+  `GAME_OVER`, not just wasted budget. See
+  [[../../lessons/merge_drag_stall_causes_game_over_20260713]] for the
+  measured trigger and the caller-level stall-limit fix.
+
+## Newer implementation (R49+, supersedes this page's `_plan_merge`)
+
+`src/admorphiq/merge_drag.py` (`detect_drag_layout`, `next_drag_click`,
+`next_merge_click`) is the current frame-only merge/gather capability,
+dispatched from `WorldModelAgent._merge_drag_step`
+(`src/admorphiq/world_model_agent.py`). It generalizes this page's
+algorithm: same-color pairs merge via midpoint clicks within
+`_MERGE_DIST_PX`, distant pairs are walked together, and once no
+same-color pair remains the goal-farthest tile is walked into the
+detected goal region. Both functions are pure / env-free — recomputed
+fresh from the live frame every call — so stall memory (consecutive
+no-op clicks) is tracked by the caller
+(`WorldModelAgent._merge_drag_stall`), not inside these functions.
 
 ## Related
 
 - [[../../concepts/merge_mechanic]] — formal definition
-- [[inferential_agent]] — outer loop
+- [[inferential_agent]] — outer loop (older architecture)
 - [[../../lessons/su15_l1_singleton_colors_20260423]] — failure mode
+- [[../../lessons/merge_drag_stall_causes_game_over_20260713]] — newer
+  `merge_drag.py` failure mode: stalled clicks walk toward GAME_OVER
 - [[../../games/SU15]] — canonical instantiation
 
 ## Sources
