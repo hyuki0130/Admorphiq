@@ -1415,3 +1415,13 @@ context ACTION5, fixed carry offset. Level score 1.0 (agent used 42% of the
 human count). Card: **18/25 chained** — walls remaining: bp35 dc22 g50t sc25
 tr87 (5) + banked depth (s5i5 L2 matching, wa30 L2 colour-12 entity, re86 L3
 multi-placement, su15 L3). public-25 proxy now ~1.23. 752 tests.
+
+### wa30 L2 = autonomous patrol actor — banked; tr87 round begins (2026-07-13 18:15)
+colour-12 is a solid 4x4 actor moving once per player action on its own clock
+(measured patrol: 3 right, 1 up, pause, 5 left — deterministic back-and-forth,
+NOT collision-responsive). Correct handling needs timing-aware BFS (predict
+actor position at each planned tick) — a genuinely different planner class;
+banked with trace data for a future cycle. wa30 stays 1/9 at level score 1.0.
+tr87 next: recorded mechanic is a ROTATION puzzle — the family rotation.py was
+originally built for; agent checking whether the existing detector fits as-is
+(baseline 0/6 @128 actions).
