@@ -260,8 +260,19 @@ def infer_direction_map(
     total shift, then by larger size to skip 1-pixel cursor sprites). The
     dir_map is then built only from that player colour's moves — so a tiny
     cursor that happens to translate cannot hijack the mapping.
+
+    Within an action id, ALL readings across every probe are kept (not just
+    the latest) and resolved by majority vote — measured on AR25 L3
+    (2026-07-13): re-probing on a new level overwrote a previously-correct
+    cardinal reading for one action id with a single corrupted non-axis-
+    aligned shift, and since only the last reading was ever kept, that one
+    bad probe silently replaced the correct, well-established direction —
+    losing the game's only mover in that direction and leaving every
+    remaining goal candidate unreachable. Mirrors the ``_step_cell_size``
+    mode fix ("robust to one bad probe"): a lone outlier reading cannot
+    outvote the readings that came before it for the same action id.
     """
-    # color -> {"dirs": {aid: (rdx, rdy)}, "shift": float, "size": int, "comp": dict}
+    # color -> {"dirs": {aid: [(rdx, rdy), ...]}, "shift": float, "size": int, "comp": dict}
     tally: dict[int, dict] = {}
     for probe in probes:
         for comp, (dx, dy) in _candidate_shifts(probe["before"], probe["after"], background):
@@ -272,7 +283,7 @@ def infer_direction_map(
             entry = tally.setdefault(
                 color, {"dirs": {}, "shift": 0.0, "size": comp["size"], "comp": comp}
             )
-            entry["dirs"][probe["aid"]] = (rdx, rdy)
+            entry["dirs"].setdefault(probe["aid"], []).append((rdx, rdy))
             entry["shift"] += (rdx * rdx + rdy * rdy) ** 0.5
             entry["size"] = max(entry["size"], comp["size"])
     if not tally:
@@ -283,7 +294,17 @@ def infer_direction_map(
         return (len(e["dirs"]), e["shift"], e["size"])
 
     best_color, best = max(tally.items(), key=_rank)
-    return dict(best["dirs"]), best["comp"]
+    resolved: dict[int, tuple[int, int]] = {}
+    for aid, readings in best["dirs"].items():
+        counts: dict[tuple[int, int], int] = {}
+        order: list[tuple[int, int]] = []
+        for r in readings:
+            if r not in counts:
+                counts[r] = 0
+                order.append(r)
+            counts[r] += 1
+        resolved[aid] = max(order, key=lambda r: counts[r])
+    return resolved, best["comp"]
 
 
 def player_centroid(
@@ -1432,7 +1453,13 @@ class GeneralAgent:
             return None
         player = max(player_comps, key=lambda c: c["size"])
 
-        # Direction map quantised to unit grid steps (one cell per move).
+        # Direction map quantised to unit grid steps (one cell per move). A
+        # non-axis-aligned reading is dropped rather than quantised to a
+        # diagonal unit vector — see WorldModelAgent.step_dirs's docstring
+        # (world_model_agent.py) for the AR25 measurement this mirrors: a
+        # single mis-probed reading corrupts the whole reachability graph if
+        # kept, since this repo's navigation model is 4-connected-cardinal
+        # only.
         step_dirs: dict[int, tuple[int, int]] = {}
         for aid in avail:
             if aid not in self._dir_map:
@@ -1441,6 +1468,8 @@ class GeneralAgent:
             ucol = _unit(dx)
             urow = _unit(dy)
             if ucol == 0 and urow == 0:
+                continue
+            if ucol != 0 and urow != 0:
                 continue
             step_dirs[aid] = (ucol, urow)
         if not step_dirs:

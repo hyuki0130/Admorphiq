@@ -368,6 +368,22 @@ class EffectModel:
 
         When ``avail`` is given, only available actions are included. Zero-vector
         actions are dropped. This is the dynamics the navigation planner expands.
+
+        A non-axis-aligned reading (both components nonzero, e.g. ``(-2, -18)``)
+        is dropped rather than quantised to a diagonal unit vector. Measured on
+        AR25 L3 (2026-07-13): a single mis-probed reading for one action ID
+        quantises to a bogus diagonal ``(-1, -1)`` edge; ``grid_bfs`` then
+        expands the walkable grid with that action moving off the cardinal
+        lattice every OTHER action uses, silently discarding one whole
+        direction of real reachability and leaving every goal candidate
+        unreachable (``plan_len=0`` from the very first replan — this never
+        even reaches the blocked-cell / retry-corroboration logic, since no
+        partial plan is ever produced to execute and stall on). This repo's
+        navigation model is 4-connected-cardinal only (no game here moves the
+        player diagonally per action) so a diagonal quantisation is always a
+        probe artefact, never a real mechanic — dropping it just means that
+        action id contributes no edge this level, same as an unobserved
+        action, instead of corrupting the whole reachability graph.
         """
         keys = self.move_map.keys() if avail is None else [a for a in avail if a in self.move_map]
         out: dict[int, tuple[int, int]] = {}
@@ -375,6 +391,8 @@ class EffectModel:
             dx, dy = self.move_map[aid]
             ucol, urow = _unit(dx), _unit(dy)
             if ucol == 0 and urow == 0:
+                continue
+            if ucol != 0 and urow != 0:
                 continue
             out[aid] = (ucol, urow)
         return out
@@ -693,6 +711,16 @@ class WorldModelAgent:
         # wall the static pixel heuristic missed, so the replan routes around
         # it instead of re-issuing the same blocked action (the ls20 stuck-loop).
         self._blocked_cells: set[tuple[int, int]] = set()
+        # A single no-translation reading can be spurious (a corrupted
+        # movement-model entry, a transient animation frame) rather than a
+        # real wall — measured on AR25 L3: one bad probe made a cardinal
+        # action look diagonal, so a genuinely-open cell got misread as
+        # blocked on the FIRST attempt, and that one false wall happened to
+        # be a chokepoint that severed every remaining goal candidate. The
+        # candidate cell must reproduce on a same-action RETRY before it is
+        # committed to _blocked_cells — generic corroboration against any
+        # noise source, not scoped to the movement-model root cause.
+        self._pending_block: tuple[int, int] | None = None
         # Player grid cell at the previous execute step, and the count of
         # consecutive planned moves that produced no player translation.
         self._exec_prev_cell: tuple[int, int] | None = None
@@ -1482,11 +1510,14 @@ class WorldModelAgent:
 
         # Blocked-move detection: the move emitted last execute step had a known
         # nonzero unit step, yet the player's grid cell did NOT change -> the
-        # cell it tried to enter is a wall the static pixel heuristic missed.
-        # Learn that cell as impassable, abandon the now-invalid plan, and let
-        # the replan below route around it (the ls20 stuck-loop fix). A player
-        # stuck even after learning blocks rotates to the NEXT goal candidate
-        # (multi-target levels) rather than bailing immediately.
+        # cell it tried to enter LOOKS like a wall the static pixel heuristic
+        # missed. A single such reading can be spurious (see _pending_block's
+        # docstring), so the candidate cell must reproduce on a same-action
+        # RETRY (the cleared plan replans identically since nothing in the
+        # walkability model changed yet, naturally re-attempting the same
+        # first move) before it is committed to _blocked_cells. A player
+        # stuck even after learning confirmed blocks rotates to the NEXT goal
+        # candidate (multi-target levels) rather than bailing immediately.
         if (
             self._exec_prev_cell is not None
             and self._exec_aid is not None
@@ -1495,11 +1526,16 @@ class WorldModelAgent:
             step = self.model.step_dirs().get(self._exec_aid)
             if step is not None and cur_cell == self._exec_prev_cell:
                 wall = (self._exec_prev_cell[0] + step[1], self._exec_prev_cell[1] + step[0])
-                self._blocked_cells.add(wall)
-                self._exec_stuck += 1
+                if wall == self._pending_block:
+                    self._blocked_cells.add(wall)
+                    self._pending_block = None
+                    self._exec_stuck += 1
+                else:
+                    self._pending_block = wall
                 self._plan = []
             elif cur_cell != self._exec_prev_cell:
                 self._exec_stuck = 0
+                self._pending_block = None
 
         if self._exec_stuck >= EXECUTE_STUCK_LIMIT:
             # Current target is unreachable from here even after learning walls.

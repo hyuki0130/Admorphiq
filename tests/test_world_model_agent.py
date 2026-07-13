@@ -209,6 +209,38 @@ def test_infer_goal_explore_when_nothing_learned():
     assert goal.kind == "explore"
 
 
+def test_step_dirs_drops_non_axis_aligned_probe_reading():
+    """Purpose: a move_map entry whose (dx, dy) has BOTH components nonzero
+    must be dropped by step_dirs(), not quantised to a diagonal unit vector --
+    measured live on AR25 L3 (2026-07-13): a single mis-probed reading for one
+    action id (a real-world value like (-2, -18) instead of the correct
+    cardinal (-3, 0)) quantised to a bogus diagonal edge (-1, -1). grid_bfs
+    then expands the walkable grid off the cardinal lattice every other action
+    uses for that one action id, and since this repo's games are all
+    4-connected-cardinal (no per-action diagonal mechanic exists anywhere),
+    that diagonal edge is never real -- it silently drops the reachability
+    contributed by the action's true (unprobed-this-level) cardinal direction,
+    leaving every remaining goal candidate unreachable (plan_len=0 for all of
+    them, confirmed live) well before the retry-corroboration blocked-cell
+    logic is ever reached.
+
+    Expected feedback: a PASS proves a corrupted single-axis-violating probe
+    reading can no longer poison the whole reachability graph; a FAIL means
+    the AR25-class regression (global unreachability from one bad probe) is
+    back.
+    """
+    model = EffectModel()
+    model.move_map = {
+        1: (0, -3),
+        2: (0, 3),
+        3: (-2, -18),  # corrupted: both components nonzero -> not cardinal
+        4: (3, 0),
+    }
+    dirs = model.step_dirs()
+    assert 3 not in dirs
+    assert dirs == {1: (0, -1), 2: (0, 1), 4: (1, 0)}
+
+
 # ── Stage (d): search-based planning ──────────────────────────────────────────
 
 
@@ -594,6 +626,84 @@ def test_level_up_resets_stall_clock():
     agent.choose_action([], _FakeObs(layer, avail=[1, 2, 3, 4], levels=1))
     assert agent._fallback is None  # level-up deferred the fallback
     assert agent._last_progress_action == NO_PROGRESS_FALLBACK - 1
+
+
+def test_blocked_wall_requires_corroboration_before_committing():
+    """Purpose: a SINGLE no-translation reading (the player's grid cell
+    unchanged after a planned move) must NOT immediately commit a wall to
+    _blocked_cells -- measured live on AR25 L3 (2026-07-13): one corrupted
+    movement-model reading made a genuinely-open cell look blocked on the
+    first attempt, and that ONE false wall happened to be a chokepoint that
+    severed every remaining navigation candidate. The SAME predicted-wall
+    cell must reproduce on a same-action retry (the replan naturally re-
+    attempts the identical first move since nothing in the walkability
+    model changed yet) before it is trusted.
+
+    Expected feedback: a PASS proves one spurious reading can no longer
+    silently corrupt the walkability model; a FAIL means the regression (an
+    single unconfirmed reading blocking a real path) is back.
+    """
+    agent = WorldModelAgent()
+    agent.model.background = 0
+    agent.model.player_color = 7
+    agent.model.move_map = {3: (1, 0)}
+    agent.goal = Goal("navigate", None)
+
+    layer = _block(_layer(10, 10), color=7, r0=5, c0=5, size=1)
+    obs = _FakeObs(layer, avail=[3])
+
+    # First no-translation reading: recorded as PENDING, not yet committed.
+    # _execute_step is called directly (bypassing choose_action's credit
+    # block and phase-fallthrough cascade) so the assertions land exactly
+    # after the blocked-detection logic runs, regardless of what the
+    # unrelated replan/fallback machinery does afterward in this minimal
+    # goal-less setup.
+    agent._exec_prev_cell = (5, 5)
+    agent._exec_aid = 3
+    agent._plan = [3]
+    agent._execute_step(layer, [3], obs)
+    assert agent._blocked_cells == set()
+    assert agent._pending_block == (5, 6)
+    assert agent._exec_stuck == 0
+
+    # Re-arm the same "no translation" observation (mirrors the natural
+    # replan retrying the identical first move) and confirm the SAME cell.
+    agent._exec_prev_cell = (5, 5)
+    agent._exec_aid = 3
+    agent._plan = [3]
+    agent._execute_step(layer, [3], obs)
+
+    assert agent._blocked_cells == {(5, 6)}
+    assert agent._pending_block is None
+    assert agent._exec_stuck == 1
+
+
+def test_blocked_wall_pending_clears_on_successful_move():
+    """Purpose: a pending (unconfirmed) block candidate must be discarded,
+    not carried forward, once the player is observed to actually move --
+    otherwise an unrelated later mismatch could be wrongly corroborated
+    against a stale candidate from a different cell.
+
+    Expected feedback: a PASS proves a genuine move resets the corroboration
+    state cleanly; a FAIL means a stale pending candidate could falsely
+    confirm an unrelated wall.
+    """
+    agent = WorldModelAgent()
+    agent.model.background = 0
+    agent.model.player_color = 7
+    agent.model.move_map = {3: (1, 0)}
+    agent.goal = Goal("navigate", None)
+    agent._pending_block = (9, 9)  # a stale candidate from an earlier miss
+
+    # The player DID move this time (from (5,5) to (5,6)).
+    layer = _block(_layer(10, 10), color=7, r0=5, c0=6, size=1)
+    agent._exec_prev_cell = (5, 5)
+    agent._exec_aid = 3
+    agent._plan = [3]
+
+    agent._execute_step(layer, [3], _FakeObs(layer, avail=[3]))
+    assert agent._pending_block is None
+    assert agent._exec_stuck == 0
 
 
 def test_is_done_stops_after_repeated_game_over_cycling_with_no_progress():

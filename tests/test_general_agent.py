@@ -133,6 +133,40 @@ def test_infer_direction_map_picks_real_player_over_single_pixel_cursor():
     assert dir_map[4] == (3, 0)  # learned a right step of 3 px
 
 
+def test_infer_direction_map_outvotes_single_bad_reading_for_same_action():
+    """Purpose: when an action id is probed multiple times, one corrupted
+    reading must not silently overwrite an established majority reading for
+    that SAME action id — measured live on AR25 L3 (2026-07-13): the old
+    "last write wins" behaviour let a single mis-probed reading (its shift
+    non-axis-aligned relative to the other 3 cardinal actions) replace a
+    previously-correct, repeatedly-confirmed direction, deleting the game's
+    only mover in that direction and leaving all navigation goals
+    unreachable.
+
+    Expected feedback: a PASS proves repeated correct readings win by
+    majority vote over one outlier; a FAIL means a single bad probe can still
+    corrupt an action's learned direction.
+    """
+    base = np.zeros((20, 20), dtype=np.int32)
+    base[10:13, 10:13] = 9  # player sprite, clear of every edge
+
+    # action 3 == "left" 3px (col -3, row 0), confirmed by two identical probes.
+    correct = _shift(base, 9, 0, -3)
+    # A corrupted single reading: same size (passes the candidate filter) but
+    # a non-cardinal diagonal shift (col -5, row -2) — disagrees with the
+    # established direction on both axes.
+    bad = _shift(base, 9, -2, -5)
+
+    probes = [
+        {"aid": 3, "before": base, "after": correct},
+        {"aid": 3, "before": base, "after": correct},
+        {"aid": 3, "before": base, "after": bad},
+    ]
+    dir_map, player = infer_direction_map(probes, background=0)
+    assert player is not None
+    assert dir_map[3] == (-3, 0)
+
+
 def test_infer_direction_map_ignores_tiled_wall_colours():
     """Purpose: a colour that tiles the background in many identical blocks
     must not be mistaken for the player just because nearest-twin matching
