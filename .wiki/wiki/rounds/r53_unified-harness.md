@@ -3448,6 +3448,38 @@ efficiency requirement is a real overhaul, not a cheap reorder — and confirms 
 closed-loop stuck-fix alone (recovering only ~12 no-op actions) cannot clear L2. The calibration fix (a43f952, 4/5 items delivered) remains the
 banked progress; the L2 clear is a dedicated efficiency-plus-closed-loop round.
 
+### cd82 paint-solver round — M1 detection + M2 physics DECODED (2026-07-14 02:55)
+
+Dedicated paint-solver round (lead-directed; local work can't touch the frozen
+v9). Milestones banked as they land.
+
+**M1 — layout (frame-observable, verified against a live board dump + the game
+source verification-only):**
+- **CANVAS** = a 10×10 block at cols 27-36, rows 34-43 (`xytrjjbyib`), starts
+  uniform (all colour 0 on L1). This is what must be painted to match the target.
+- **TARGET** = the left-panel 10×10 at cols 3-12, rows 3-12 — L1 = top-half
+  colour 0 / bottom-half colour 15 (the desired canvas pattern).
+- **SWATCHES** = a top row; click `(swatch_x+2, 4)` to select a colour (L1:
+  colour 0 at x35→click(37,4), colour 15 at x41→click(43,4)).
+- **BASKET** navigates an 8-position RING (positions 0-7) around the canvas via
+  ACTION1-4 (a 3×3 grid minus centre). ACTION5 = launch (paint), ACTION6 =
+  swatch-select / arrow-click.
+- **Budget = 100 moves per attempt** (`iewrsdwok=100`, the GAME_OVER at ac=100);
+  the card's ~13,350 actions = ~133 RESET-retry attempts of the graph brute-force.
+
+**M2 — paint physics (measured empirically: select colour, launch, diff the
+frame):** launch from position P paints a REGION of the canvas with the selected
+colour. Position→region map (probe-confirmed pos0 = top half; rest from the
+source `rtjwayrycq`): **0/2/4/6 = top/right/bottom/left halves; 1/3/5/7 = diagonal
+triangles.** So L1 (target top-0/bottom-15, canvas all-0) = ONE launch: navigate
+to position 4 (bottom half), select colour 15, ACTION5. ~6 actions vs the graph's
+~2000+ → a ~100× RHAE gain if landed.
+
+**M3 (next): the frame-only planner + executor** — read target+canvas 10×10s,
+diff into regions, map each region+colour to a basket position, navigate→select→
+launch. Integrate as a WMA paint phase (the ChainedAgent probe clears it before
+the graph fallback), same pattern as the portal-sort phase. In progress.
+
 ### cd82 efficiency fallback — feature-scale (needs a paint solver); the L1 clear is graph brute-force, WMA GAME_OVERs (2026-07-14 02:40)
 
 Fallback records-first ([[../games/CD82]] + round-page efficiency notes: 1/6 in
