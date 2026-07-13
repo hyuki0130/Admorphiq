@@ -1997,3 +1997,154 @@ arc-prize-2026-arc-agi-3 -k jaehyukhyun/admorphiq-arc-agi-3-chained-llm-free
 -v 7 -f submission.parquet -m "Admorphiq v2: +slider/transform/delivery
 families, public-25 proxy 1.605"`. v6 (#54637991) hidden-set rerun still
 PENDING — its publicScore remains the first transfer datapoint.
+
+### Depth survey #2: ft09/tn36/tu93/cn04/lp85/r11l/vc33/sk48 — a bigger finding than any single blocker (2026-07-13 22:20)
+Per dispatch: worldmodel @3000 for the WMA-family (ft09/tn36/tu93/lp85), `chained`
+agent with `OLLAMA_HOST=127.0.0.1:1` (dead-LLM config) @3000 for the graph-family
+(cn04/r11l/vc33/sk48), confirm banked L1 replicates, then L2 blocker
+characterization. **The replication step itself is the headline finding this
+round** — 4 of 8 games did NOT cleanly replicate, and the reason is architecturally
+important, not per-game noise.
+
+**Confirmed `target draw failed: HTTP 404` is a harmless, BY-DESIGN artifact** of
+the dead-LLM config — `harness/loop.py:_maybe_draw_target`'s own docstring: "Offline-
+safe: any failure/invalid draw means no injection (frame-only base kept)." r11l
+cleared L1 (1/6) despite the identical 5x "target draw failed" spam other games
+showed, proving it doesn't block anything. Do not mistake this log line for a bug
+in future rounds.
+
+**WMA-family (worldmodel agent) — replication + a GAME_OVER-CYCLING pattern found
+in 3 of 4:**
+
+| Game | L1 replicated? | L2 signature |
+|---|---|---|
+| ft09 | ✅ 1/6, 93 actions | `probe` phase stuck (avail=[6], click-only), 4x repeated `GAME_OVER` cycles before `is_done()`'s `POST_CLEAR_STALL` finally cuts it off |
+| tn36 | ✅ 1/7, 110 actions | SAME shape: `probe` stuck, avail=[6], 4x `GAME_OVER` cycles |
+| lp85 | ✅ 1/8, 311 actions | `probe` stuck, avail=[6], but NO `GAME_OVER` — just unproductive wandering to stall (the benign R1-survey shape) |
+| tu93 | ❌ **0/9 in both the 3000-budget scoring run AND a 401-action extended trace** — never clears L1 at all | N/A — genuine non-replication, not a scoring artifact |
+
+**The GAME_OVER-cycling pattern (ft09, tn36, and tu93's own repeated failure) is a
+SCORING METHODOLOGY GAP, not just a game blocker.** `score_efficiency.py`'s scoring
+loop (`if obs.state == GameState.GAME_OVER: if not restart_on_game_over: break` —
+line ~290) BREAKS THE WHOLE EPISODE on the first `GAME_OVER` unless the adapter sets
+`restart_on_game_over=True`, which `WorldModelAgent` does not. But
+`WorldModelAgent.choose_action` itself ALREADY handles `GAME_OVER` internally (emits
+`RESET` and continues) — so the REPORTED "0/9, 50 actions" for tu93 looks like an
+instant crash, but an EXTENDED trace (bypassing `score_efficiency.py`'s early break,
+calling `choose_action`/`env.step` directly in a loop) reveals the true behaviour:
+tu93 cycles through the identical ~51-action failure pattern **seven times**
+(`GAME_OVER` at steps 50, 101, 152, 203, 254, 305, 356) before the trace's own stall
+detector cuts it off at step 401 — never once reaching level 1. ft09 and tn36 show
+the same cycling shape but AFTER clearing L1, so `score_efficiency.py`'s scoring is
+merely misleading there (undercounts the true action cost / attempt count), not
+outright wrong about level completion. **Any future measurement of a `WorldModelAgent`
+game that reports a suspiciously small action count with 0 or a low level count
+should be re-checked with an extended trace before concluding "instant failure" —
+it may be a cycling failure the standard scoring harness truncates at the first
+data point.**
+
+**Root architectural link**: this is the SAME "tried once per level, abandon to
+[interact/probe] on failure, no recovery" pattern flagged in Depth Survey #1
+(sb26/ls20/ar25) — but here it's measurably worse: on these 3 games the
+unstructured fallback doesn't just waste budget, it actively walks the env into
+`GAME_OVER` repeatedly. This raises the cross-cutting lever (flagged, not built,
+in survey #1) from "efficiency/coverage improvement" to "this can turn an
+otherwise-clearable level into a hard failure or a misleadingly-scored one."
+
+**Chained-family (graph, dead-LLM) — 3 of 4 did NOT replicate their banked L1
+clear under this exact protocol:**
+
+| Game | L1 replicated? | Notes |
+|---|---|---|
+| r11l | ✅ 1/6 | Only one of four to replicate under dead-LLM; L2 not deeply characterized this round (time budget went to the replication-failure investigation above) |
+| cn04 | ❌ 0/6, full 3000-action budget | `[graph] HASH-LADDER -> pool2` progress logged (state exploration active, not crashed) but never converts to a clear |
+| vc33 | ❌ 0/7, full 3000-action budget | `[graph] REGION mask: 41 cells` found, no further progress logged before budget exhaustion |
+| sk48 | ❌ 0/8, full 3000-action budget | `[graph] REGION mask: 309 cells` found, no further progress logged |
+
+**Open question, not resolved this round**: whether cn04/vc33/sk48's banked L1
+clears genuinely depend on a WORKING LLM (target-draw injection actually landing,
+not just being attempted) that the dead-LLM protocol removes — which would mean
+they are NOT "graph-family, no-LLM-needed" as assumed going into this survey — or
+whether this is single-run non-determinism / a real regression unrelated to the
+LLM. r11l replicating under the identical protocol argues against "the protocol
+itself is broken," but doesn't rule out that these three specifically lean on the
+LLM more than r11l does. Needs a follow-up: rerun one of the three (e.g. cn04) with
+a REAL Ollama connection to see if it clears L1 with the LLM available, isolating
+whether the dead-LLM config specifically is the cause.
+
+**No pick for tonight's build cycle from this survey** — the two originally-
+highest-priority games (tu93, vc33) both turned out to be non-replication cases
+requiring further diagnosis before any build makes sense, and forcing a "nearest
+to existing family logic" pick on a game that doesn't even confirm L1 would be
+premature. Recommend: next session either (a) resolves the chained-family LLM
+question first (cheap, one rerun with a real Ollama connection), or (b) picks up
+the GAME_OVER-cycling architectural lever (a genuine fix, not a diagnosis — add a
+cycling-detector to the unstructured interact/probe fallback that bails to
+`is_done()` after N consecutive `GAME_OVER`s instead of blindly retrying the same
+losing pattern, mirroring the `_MERGE_DRAG_STALL_LIMIT` precedent from earlier
+today), whichever the next session has budget for.
+
+**Guards untouched** — survey was read-only on code. No commit.
+
+### GAME_OVER-cycling guard landed (2026-07-13 22:40)
+Team-lead corrected four of this survey's "non-replications" with recorded
+facts this session's context had lost — tu93's card clear is GRAPH-family
+(unified's region mask, not WMA-alone: 0/9 was expected), cn04 is measured
+LLM-DEPENDENT (dead-LLM 0/6 is the known result, not a regression), sk48
+chain-fragile at 3000/8000 but clears via the 30k retry pass, and vc33's
+no-LLM baseline was measured @8000 (this survey ran @3000, under-budgeted).
+No protocol mystery, no LLM rerun needed. The genuinely NEW finding —
+ft09/tn36's L2 GAME_OVER-cycling — got a fix this cycle.
+
+**Fix**: `world_model_agent.py` — new `GAME_OVER_CYCLE_LIMIT = 3` (mirrors
+the `_MERGE_DRAG_STALL_LIMIT` precedent from earlier today) + a per-level
+`self._game_over_count` counter, incremented on every `GAME_OVER`, reset in
+`_reset_level()` (so it tracks CONSECUTIVE same-level cycling, not a
+lifetime total — a death on an already-cleared earlier level never counts
+against a later one). `is_done()` now returns `True` once the count reaches
+the limit, alongside the existing WIN / `POST_CLEAR_STALL` / `MAX_ACTIONS`
+checks. Deliberately has NO `levels_completed >= 1` precondition (unlike
+`POST_CLEAR_STALL`), so it also protects a level that never clears at all —
+`POST_CLEAR_STALL` structurally cannot reach that case since its own
+precondition never fires.
+
+**A measurement nuance worth recording**: `score_efficiency.py`'s own
+scoring loop ALSO breaks on the first `GAME_OVER` unless the adapter sets
+`restart_on_game_over` (which `WorldModelAgent` does not) — so the standard
+smoke tool cannot directly OBSERVE the cycling-prevention behaviour; it can
+only confirm no regression to the existing baseline (which it did: ft09
+1/6-93, tn36 1/7-110, lp85 1/8-311, all byte-identical to pre-fix). The
+fix's real target is the CONTINUOUS-episode harness (the actual Kaggle-style
+loop, where `GAME_OVER` -> `RESET` -> keep playing within the same
+scored attempt, matching `WorldModelAgent.choose_action`'s own internal
+handling) — this is exactly the scoring-methodology gap flagged earlier in
+this survey (small action count + low level count on a `WorldModelAgent`
+game should get an extended-trace recheck, not be read as "instant
+failure"). Validated instead via two new unit tests that exercise
+`is_done()`/`choose_action()` directly against a synthetic `GAME_OVER`
+frame sequence — confirmed to fail via `ImportError` on the pre-fix code
+(the constant didn't exist) and pass with the fix, via `git stash` both
+ways.
+
+**Guards** (all confirmed exact, live @2000-3000): su15 `2/9, 58` ✅, s5i5
+`1/8, 169` ✅, re86 `2/8, 264` ✅, wa30 `1/9, 100` ✅, ft09 `1/6, 93` ✅, tn36
+`1/7, 110` ✅, lp85 `1/8, 311` ✅ — all seven byte-identical to their pre-fix
+baselines (fully expected: the standard scoring harness never reaches a
+second `GAME_OVER` cycle within a single scored episode, so this fix cannot
+change ANY of these numbers by construction — see the measurement nuance
+above). Suite 760/760 (was 758, +2 new tests), ruff clean.
+
+**Not committed** — reported per doctrine.
+
+### v6 scorecard ANALYSIS — official scale + reset-waste data (2026-07-13 21:45)
+Full per-game scorecard (user-provided from the kernel output) confirms:
+(a) per-level cap = 115 OFFICIAL (our local 100-cap UNDERSTATES beat-the-human
+clears — sb26 9a vs 18 human shows 115.0); (b) game score = level-weighted
+mean on the 0-100+ scale, total = mean/25 (1.0721 ✓); (c) score concentration:
+ar25 8.33 + su15 6.67 + ls20 3.57 + ft09 2.91 + sb26 2.78 + tn36 1.52 + tu93
+0.78 ≈ 99% of the total — exhaustive-search clears (cd82 et al) are ~0 as
+predicted; (d) RESET WASTE measured: tu93 893 resets, bp35 494, r11l 489,
+sc25 315, sp80 287 — the GAME_OVER-cycling guard (in flight) targets exactly
+this. PRIORITY ORDER from this data: (1) cycling guard → ft09/tn36 L2 retry,
+(2) ar25 L3 (top scorer, hybrid cycle), (3) efficient-depth games first,
+exhaustive-coverage games last.
