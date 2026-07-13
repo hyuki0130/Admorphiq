@@ -3487,8 +3487,24 @@ phase gated on all-of-ACTION1-6-available + a detectable layout; returns None an
 DEFERS on non-half-split targets so nothing regresses. Internal reads were
 verification-only.
 
-**M4 (banked, future) — diagonal + multi-launch for deeper cd82 levels, scoped
-concretely.** Traced L2's target (after the solver clears L1 at ac=6): it is a
+**M4 LANDED (commit d5b9979): search planner — cd82 L2 CLEARS, 1/6 → 2/6
+(0.0005 → 0.1086).** `plan_paint` became a BFS over `(ring_position, colour)`
+launches: each overwrites its 10×10 region, later launches paint over earlier,
+matched on the OFF-DIAGONAL cells only (a load-bearing find: the game's
+`wvrremwltt` win check excludes the two main diagonals). Solves diagonal +
+multi-launch targets: cd82 L2 = `[(0,15),(3,12)]` (top-half 15, then a lower-
+right-triangle 12). Region masks (halves 0/2/4/6, triangles 1/3/5/7) from the
+game geometry (verification-only); swatch detection restricted to x≥20 (a
+top-left target-colour stray was mis-read as a swatch on L2). Deterministic ×2 +
+chained; all 9 guards byte-identical; 778 tests, ruff clean.
+
+**M5 (banked, future) — arrow-click variant for cd82 L3-L6.** L3+ use an
+ACTION6 ARROW-CLICK paint op (at `arrow_coords`, positions 0/2/4/6 only) in
+addition to ACTION5 launches (brittle L3 = 3 launches + 1 arrow). The launch-only
+search defers on those, so cd82 caps at 2/6. Extending needs the arrow op in both
+the search action set and the executor.
+
+**M4 origin — diagonal scope (superseded by the landing above).** Traced L2's target (after the solver clears L1 at ac=6): it is a
 DIAGONAL composition — colour-15 upper-left triangle, colour-12 diagonal band,
 colour-0 lower-left remnant — exactly the brittle 2-launch solution
 `[(pos0, 15), (pos3, 12)]` (paint top-half 15, then a diagonal triangle 12 over
