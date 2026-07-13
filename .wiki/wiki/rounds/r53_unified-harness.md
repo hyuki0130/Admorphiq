@@ -1259,3 +1259,10 @@ sweep). Per-game table: bp35 move[3,4]+click(8,8)=39c; dc22 nav 8-9c moves,
 clicks dead/counter; g50t only ACTION3 real (48c); re86 ACTION1-4 60c
 transforms; sc25 ACTION3 36c, clicks 0; tr87 rotations 13-29c; wa30 ACTION1-4
 32c + ACTION5 counter. Next: purpose-built counter-class solver design.
+
+### dc22 diag: not an accumulation failure (2026-07-13 13:55)
+graph-only @8000: levels=0, no GAME_OVER observed in the probe window (the
+counter exists but exploration dies of exhaustion-of-ideas first, not of the
+move limit). REGION mask 34 cells applied. dc22 keeps 10 colours — key/door
+navigation suspected; needs its own mechanic study rather than the generic
+counter-class treatment. Kernel v4: still RUNNING (~60 min server-side).
