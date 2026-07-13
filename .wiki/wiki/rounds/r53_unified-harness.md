@@ -2148,3 +2148,94 @@ sc25 315, sp80 287 — the GAME_OVER-cycling guard (in flight) targets exactly
 this. PRIORITY ORDER from this data: (1) cycling guard → ft09/tn36 L2 retry,
 (2) ar25 L3 (top scorer, hybrid cycle), (3) efficient-depth games first,
 exhaustive-coverage games last.
+
+### ar25 L3 build cycle: full root cause found, half the fix landed and verified safe, the other half not yet safe to land (2026-07-13 22:10)
+Full live-instrumented investigation, several rounds of "trace → contradiction
+→ re-trace" per doctrine. Corrects survey #1's framing entirely: **ar25 L3 is
+NOT an execute+arrange hybrid gap** — it is a single-entity 2D navigation
+level whose BFS planner is corrupted by one bad movement-discovery probe.
+
+**Arrangement is exonerated.** Instrumented `_abandon_arrange` /
+`learn_selection_modes` / `plan_descend_and_sweep` directly: on L3 the
+primary entity (colour5) has FULL 4-directional movement within a SINGLE
+selection mode (`mode_maps={0: {1:(0,-3), 2:(0,3), 3:(-3,0), 4:(3,0)}}` in
+a clean session) — no mode-switching, no second entity needed. `horiz -
+primary` (arrangement.py:365) correctly returns empty because there
+genuinely is no separate alignment entity; `sweep_len=0` is the CORRECT
+signal, not a bug. The ACTION7 hypothesis (untested probe action) was
+tested live and falsified — zero movement across 4 attempts.
+
+**The real defect, found via live instrumentation of `_execute_step`/
+`_plan_to_current_goal` (offline reconstruction repeatedly gave
+contradictory results — non-deterministic sessions genuinely differ, this
+required several live re-traces to pin down, exactly matching the pattern
+team-lead flagged: "offline state reconstruction is exactly the failure
+mode that produces these contradictions"):**
+
+The FIRST goal candidate tried (in one session, `(2,31)`) has a genuinely
+valid 45-action BFS plan when `blocked_cells` is empty. The agent commits
+and executes ONE step. The move's "did the player's grid cell change as
+predicted" check (the blocked-move detector, `_execute_step`) fires
+falsely, learning a SPURIOUS wall at `(31,16)`. That one cell turns out to
+be a chokepoint — with it blocked, ALL 10 enumerated candidates return
+empty plans (`plan_len=0` for every one, all sharing the identical
+`blocked={(31,16)}`), collapsing straight to `arrange` (which, per above,
+correctly finds nothing either) then `interact`.
+
+**Why the false wall**: traced via raw per-probe shift instrumentation
+(`_candidate_shifts` inside `infer_direction_map`,
+`general_agent.py:247`). In the corrupted session, one action's recorded
+shift was `(-2, -18)` — compare the OTHER three actions, cleanly
+`(0,-3)/(0,3)/(3,0)`. This is not RE86's small-cross-axis-residual class
+(`snap_to_axis`'s fix target) — BOTH components are large and wrong,
+consistent with a probe whose before/after frame pair straddled something
+other than a clean single-step move (animation/level-transition timing).
+Two downstream consequences from this one bad reading:
+1. `_step_cell_size` (`general_agent.py:411`, "smallest non-zero
+   magnitude") picked up the outlier's `2` instead of the dominant `3` —
+   `cell=2` instead of `cell=3` in the corrupted session.
+2. `step_dirs()`'s `_unit()` (pure sign function) turns `(-2,-18)` into a
+   DIAGONAL unit step `(-1,-1)` for that action, when the level only has
+   cardinal movement — corrupting the BFS's understanding of what that
+   action actually does, which is what makes the blocked-move detector
+   misfire on execution (the agent expects a diagonal shift, the game
+   delivers a cardinal one, mismatch reads as "wall").
+
+**Fix landed (half)**: `_step_cell_size` changed from raw MINIMUM to MODE
+(most common magnitude, ties toward the smaller value) — robust to exactly
+one outlier reading, identical to the old behaviour whenever the data is
+clean (which is every previously-passing case; there was no existing test
+pinning the "minimum" choice, and no rationale in the docstring for why
+minimum specifically was needed). **Empirically verified NOT sufficient
+alone** — live ar25 re-run post-fix: still `2/8, 317 actions`, byte-
+identical to baseline. This is expected given the analysis above: fixing
+`cell` alone doesn't fix the corrupted `step_dirs()` entry for the bad
+action, which is the actual trigger for the spurious wall during
+EXECUTION, not merely during grid construction.
+
+**Fix NOT landed (the other half)**: correcting the corrupted per-action
+DIRECTION itself (not just the cell-size estimate) needs `infer_direction_map`
+to reject or re-derive an outlier reading — e.g. cross-check a newly
+recorded shift against the dominant magnitude/axis pattern already
+established by OTHER actions before trusting it, or discard a reading
+whose recorded axis-pattern doesn't match the level's established cardinal-
+vs-diagonal signature. This is a genuinely bigger, riskier change to a
+function used by EVERY WorldModelAgent game's movement discovery (not
+scoped to ar25), and was NOT attempted this cycle given the depth of
+verification a correct version would need and the approaching submission
+timebox — landing an under-verified fix to a widely-shared function is a
+worse outcome than banking a well-diagnosed, well-scoped gap.
+
+**Guards (7-guard byte-check, all confirmed exact, live @2000-3000)**: su15
+`2/9, 58` ✅, s5i5 `1/8, 169` ✅, re86 `2/8, 264` ✅, wa30 `1/9, 100` ✅, ft09
+`1/6, 93` ✅, tn36 `1/7, 110` ✅, lp85 `1/8, 311` ✅ — the landed `_step_cell_size`
+change is confirmed SAFE to keep (no regressions anywhere) even though it
+does not by itself unlock ar25 L3. Suite 760/760, ruff clean.
+
+**Not committed.** Recovery lead for next session: implement outlier-
+rejection in `infer_direction_map`'s per-action shift recording (candidates:
+cross-reference against the dominant established axis pattern; require N≥2
+consistent readings before trusting a NEW action's direction; or detect an
+implausibly-large magnitude relative to already-known actions and re-probe
+instead of recording it). Verify with the SAME 7-guard set plus ar25 @8000,
+since this touches the shared discovery path every WMA game depends on.

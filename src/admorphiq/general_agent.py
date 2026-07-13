@@ -411,8 +411,18 @@ def pick_next_probe(
 def _step_cell_size(dir_map: dict[int, tuple[int, int]]) -> int:
     """Estimate the grid cell size (pixels per move) from the shift vectors.
 
-    Uses the smallest non-zero absolute component of any learned step. Falls
-    back to 1 when nothing usable is present.
+    Uses the most COMMON non-zero absolute component across all learned
+    steps (ties broken toward the smaller magnitude), not the raw minimum.
+    Measured 2026-07-13 (AR25 L3): a single spurious probe reading — one
+    action's shift corrupted to e.g. ``(-2, -18)`` instead of the clean
+    ``(-3, 0)`` every OTHER action agreed on, likely a probe whose before/
+    after frames straddled an animation or level-transition — made the raw-
+    minimum heuristic latch onto the outlier's small component (2) instead
+    of the genuine, dominant 3px stride. The minimum is fragile to exactly
+    one bad reading by construction; the mode is robust to it and reduces
+    to the identical answer whenever the data is clean (every previously-
+    passing case: a single dominant magnitude is trivially "most common").
+    Falls back to 1 when nothing usable is present.
     """
     mags: list[int] = []
     for dx, dy in dir_map.values():
@@ -421,7 +431,9 @@ def _step_cell_size(dir_map: dict[int, tuple[int, int]]) -> int:
                 mags.append(v)
     if not mags:
         return 1
-    return max(1, min(mags))
+    counts = Counter(mags)
+    best_count = max(counts.values())
+    return min(v for v, c in counts.items() if c == best_count)
 
 
 def frame_to_cells(
