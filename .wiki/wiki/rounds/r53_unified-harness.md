@@ -3209,6 +3209,32 @@ during Stage-1 queue-draining (open-loop, no re-verification against the
 live board per action — confirmed by reading `_delivery_step`'s own
 Stage 1 code) coincides with the shortened bail point.
 
+### s5i5 L2 matching-rule characterised via controlled probe — permutation puzzle, feature-scale confirmed, thread STOPPED (2026-07-14 00:50–01:05)
+
+Records-first (this page's 2026-07-13 16:05 s5i5 L2 bank) already scoped L2 as
+a reveal into a 4-pair matching puzzle needing its own round. Guard reconfirmed
+byte-identical this session (s5i5 1/8@169 — the delivery fix does not touch the
+slider path). Added value: ONE bounded controlled-probe trace (drive WMA to L2
+at ac=19, then click each button component once, log the diff) to characterise
+the MATCHING RULE so the future dedicated round is implementation-ready.
+
+Measured L2 board: colour 5 is the revealed canvas (3421px); colour 15 = two
+canvas blocks at (43,29.5) 90px and (40.5,13.5) 117px; button-pair interiors
+10/11/12/14 (~20px each, 3 components apiece). The buttons sit mostly in a
+BOTTOM ROW at y=57 (7px each) plus a few legend-area cells at y≈37-40. Clicking
+a bottom-row button produces a CASCADING multi-colour diff (measured: 36px, 19px,
+49px, 10-11px changing colours 5/3/10/11/12/14 together) — i.e. one click
+PERMUTES/CYCLES several coloured tiles at once, not a single toggle. Clicking the
+legend-area cells (y≈37-40) is inert (diff 0-1px), so those are the reference
+pattern, not controls. The glyph legend (rows 36-41) + the two colour-15 canvas
+blocks are the presumed target arrangement.
+
+Verdict: FEATURE-SCALE confirmed — a matching/permutation solver family (learn
+the per-button permutation from probes → search a click sequence that maps the
+button row onto the legend/canvas target). Not a bounded defect; NOT attempted.
+Thread stopped per the queue's "bank verbatim and stop" instruction. Next
+dedicated round starts from this characterisation.
+
 ### WA30 L2: patrol-actor CORRUPTS motion calibration (measured, fixed) — delivery now reaches 4/5 items; last-item stuck is the new isolated lead (2026-07-14 00:24–00:50)
 
 Records-first (this round page's prior WA30 section + git log) said the
