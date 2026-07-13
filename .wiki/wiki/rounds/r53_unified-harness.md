@@ -3394,5 +3394,51 @@ items + target occupants as obstacles and replan, or abandon that leg. This is a
 new capability (blocked-move detection + dynamic obstacle set), NOT a one-line
 defect, so it is banked here rather than attempted this cycle.
 
+### WA30 L2 STEP-1 levers tested and failed honestly + a budget/efficiency wall makes even the closed-loop insufficient — feature-scale verdict now evidence-backed (2026-07-14, night cont.)
+
+Per the lead's sequencing (identify the blocker's occupant → cheapest sufficient
+fix → closed-loop only if unavoidable), STEP 1 was executed in full before any
+verdict.
+
+**Blocker identity (live frame + pristine diff).** The cell the player no-ops
+against 12× is (16,24), which was BACKGROUND in the pristine L2 frame and is now
+a colour-3 cluster sitting one grid-step ABOVE delivered slot (16,28) (the
+"above-slot" check confirmed each filled slot has an occupant in the cell above
+it). So it is a delivery-CREATED overflow obstacle, outside the target zone.
+
+**Lever #1 (obstacle-set completeness from the frame) — TESTED, FAILED.**
+- v1 (block each used-slot cell + its step-neighbours): regressed wa30 L1 to 0/9
+  — the neighbours include OTHER slots in the same target zone that the player
+  legitimately traverses.
+- v2 (block only occupied neighbours OUTSIDE every target-zone bbox): L1 safe,
+  but did NOT change L2 — instrumentation showed the obstacle at (16,24) is
+  detected on only SOME plan calls (`obstacles=[(16,24)]` then `[]` alternating):
+  the delivered item's RENDER is intermittent while its physical collision is
+  permanent, so a fresh per-call frame read misses it half the time and the BFS
+  re-plans into it.
+- v3 (accumulate detected obstacles into a persistent per-level set): re-regressed
+  L1 to 0/9 — on L1 the cells above filled slots read "occupied" by walkable
+  decoration, so a permanent block severs L1's valid approach path. Root issue:
+  **frame "occupied" ≠ physically "solid"**, and the two diverge between L1 and
+  L2 in ways the frame does not expose. The only reliable solidity signal is the
+  no-op itself (closed-loop), which is the lead's case-3.
+
+**Lever #2 (delivery ORDER) — does not apply.** The defect is not delivered items
+walling off SLOTS; it is an overflow obstacle blocking the player's TRAVERSAL
+path, which appears regardless of delivery order. Reordering cannot remove it.
+
+**Budget/efficiency wall — even the (authorized, spec'd) closed-loop is
+insufficient ALONE.** Measured: the per-level move budget is ~68 actions (HUD
+counter resets at level-up, ~1 cell/action). At ac=82 (50 L2-actions) only 3 of
+5 items are delivered — ~17 actions/item — with item 4 in the FAR corner (44,40).
+Delivering items 3+4 optimally needs ~25-30 more actions → ~ac110, past the ~ac100
+GAME_OVER. A perfect stuck-fix recovers only the ~12 wasted no-op actions, still
+short. Clearing L2 therefore requires the stuck-fix PLUS a delivery-efficiency
+overhaul (optimal item ordering / pathing to fit 5 items in ~68 actions) — a
+feature-scale change, not a bounded defect fix. **Verdict: feature-scale stands,
+now with full lever-elimination evidence.** Tree reverted clean to `a43f952`,
+wa30 1/9@100. The calibration fix (a43f952, 4/5 items delivered) remains the
+banked progress; the L2 clear is a dedicated efficiency-plus-closed-loop round.
+
 ## Related
 - [[../lessons/api_hash_rotation_20260421]]
