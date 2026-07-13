@@ -1536,3 +1536,12 @@ from a confined avatar. Full elimination table + why each failed:
 Axis banked — the confined-avatar gap (dc22/g50t/sc25/bp35 all still 0 with
 the fraction fix alone) stays open for a future session with a fresh angle.
 Moving to su15 L3 (WMA clears L1-2 in 58 actions; L3 unexplored).
+
+### su15 legend decoded LIVE: merge chain = the legend's own ORDER (2026-07-13 19:35)
+Dynamic decode (one live merge each tier): 10+10 -> 6, 6+6 -> 15 — the merge
+target is the NEXT swatch in the board's own top-left legend sequence
+(10→6→15→11), NOT colour+1 arithmetic (which would silently produce the wrong
+target). Mixed starting tiers confirmed (3 colour-6 pre-placed); two goal
+containers exist but detect_drag_layout currently sees one; goal-acceptance
+rule = the one open question (probe dispatched, then the merge/multi-goal
+extension builds on full evidence).
