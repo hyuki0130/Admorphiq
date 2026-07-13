@@ -2540,5 +2540,85 @@ edge, or requiring the player candidate to have shown responsiveness to
 move-actions specifically — is its own scoped investigation). This is
 the leading candidate for what the occupancy fix alone couldn't close.
 
+### SU15 L3 tier-assignment CONFIRMED, general fix landed and safe, but a sub-pixel divergence still blocks the live clear (2026-07-13 22:57-23:08)
+
+Corrected the su15 scope from the stale "enemy-downgrade" lead (see the
+lesson-page correction, commit `6f01426`) to the ACTUAL leading candidate:
+per-goal tier assignment via the top-band indicator blocks. Rather than
+building indicator-reading logic first, tested the underlying hypothesis
+directly and cheaply: drove the REAL `WorldModelAgent` end-to-end (so the
+existing stall guard is live) and monkeypatched `merge_drag.detect_drag_layout`
+to force delivery toward goal B instead of whatever it naturally picks.
+
+**Result: L3 CLEARED in 21 total actions, reproducible twice.** This
+confirms definitively — SU15 L3 was never a missing-capability problem
+(no enemy-downgrade, no impossible geometry); `detect_drag_layout`'s
+default single-largest-cluster goal pick is simply the WRONG one of the
+two containers for this level, and the existing merge/gather logic
+solves it cleanly once correctly targeted. Flagged to team-lead
+immediately per standing instruction.
+
+**General fix implemented** (commit `1e77d2c`), NOT hardcoded to "goal B":
+1. `merge_drag.py`: `detect_drag_layout` / `next_drag_click` /
+   `next_merge_click` gain an optional `goal_override` parameter — any
+   caller-supplied goal instance (e.g. from `detect_goal_containers`)
+   overrides the default largest-cluster pick.
+2. `world_model_agent.py`: new `_try_next_merge_goal` retries the
+   merge-drag phase against an untried goal instead of permanently
+   falling through to `_interact_step` on probe failure, stall, or
+   "gather complete without level-up" — wired into both abandon points
+   in `_merge_drag_step`.
+3. **Found and fixed a LATENT bug this exposed**: the existing
+   `_MERGE_DRAG_STALL_LIMIT` guard (from
+   [[../lessons/merge_drag_stall_causes_game_over_20260713]]) used
+   `_last_changed` (full-frame equality) as its stall signal. SU15's
+   board has a HUD/resource-counter region that changes on every click
+   regardless of whether the tracked tile moved, so the guard's own
+   trigger condition was silently never true in practice — the EXACT
+   "dead click x5 → GAME_OVER" pattern that lesson diagnosed kept
+   recurring THROUGH the supposedly-fixed guard. Replaced with
+   `_merge_drag_tile_snapshot`: a rounded `(colour, size, cx, cy)` tuple
+   set over `detect_drag_layout`'s own tiles, compared before/after each
+   click — immune to unrelated HUD-region noise, exactly matching that
+   lesson's own "Falsification signature" section, which had already
+   named this precise failure mode as a caveat without it being applied
+   to the actual guard implementation.
+
+**Verified safe**: full suite 764/764, ruff clean, all 7 corroboration
+guards unregressed (su15 `2/9, 59` [+1 action, same level count], s5i5
+`1/8, 169`, re86 `2/8, 264`, wa30 `1/9, 100`, ft09 `1/6, 93`, tn36
+`1/7, 110`, lp85 `1/8, 311`), ls20 live-reconfirmed unregressed
+(`1/7, 89`).
+
+**Honest gap — does NOT yet clear L3 through the standard live path.**
+The retry mechanism correctly detects the default goal's probe failure
+and switches to the SAME goal the monkeypatch proved works, but still
+hits GAME_OVER. Root-caused via a click-by-click comparison between the
+clean monkeypatch run and the real retry run: the first 12 clicks are
+BYTE-IDENTICAL (both are merge-phase clicks combining same-colour tiles,
+which don't consult `layout.goal` at all, so they're naturally
+goal-independent). They diverge for the first time at click 13 — the
+first GATHER-phase click, the first one that actually uses the goal
+coordinate — by a single pixel: monkeypatch clicks `(47, 27)`, the real
+retry clicks `(46, 26)`. This one-pixel difference compounds over
+subsequent clicks (each click's target depends on the tile position
+resulting from the PREVIOUS click, so any offset cascades) until the
+retry run dead-clicks a stuck position `(21, 33)` three times running and
+eventually GAME_OVERs, while the monkeypatch's unperturbed sequence
+reaches the goal cleanly 6 clicks later. The most likely cause: the
+monkeypatch captures `goal_b`'s coordinate ONCE, upfront, from a single
+clean frame before any clicking begins; the real `_try_next_merge_goal`
+re-detects the goal at the MOMENT of switching (mid-sequence, after the
+merge phase has already run some clicks), and `detect_goal_containers`'s
+centroid computation for the same physical container may differ by a
+sub-pixel amount between those two moments (worth checking: does a goal
+container's rendered centroid drift by <1px depending on animation
+frame, or is this an off-by-one in the rounding either fix applies?).
+Not chased further this cycle — landing the two real, generalizable
+fixes now (per the standing "guards+suite green = commit" call) rather
+than opening a fourth investigation layer in one sitting; the next
+session's lead is precisely this coordinate-capture-timing question, not
+a new hypothesis.
+
 ## Related
 - [[../lessons/api_hash_rotation_20260421]]
