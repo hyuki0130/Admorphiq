@@ -1701,3 +1701,86 @@ with the 18/25 card (public-25 proxy ~1.23). Submission #54637991 (v6 card,
 jaehyukhyun/admorphiq-arc-agi-3-chained-llm-free -v 7 -f submission.parquet
 -m "..."`. su15 L3 delivery banked with AABB/transparent-corner + indicator-
 block recovery leads; every remaining wall has a documented elimination table.
+
+### Depth survey: sb26 / ls20 / ar25 L2+ blockers (2026-07-13 20:55) — same shape, different scope; sb26 is the near-free pick
+Per dispatch: worldmodel @ 3000 actions on each of the three families whose
+L1 (or L1-2) already clears efficiently, to check whether the next level is
+near-free (the re86 precedent — three small measured fixes cleared L2) or
+genuinely new. All three replicated their exact banked baselines at 3000
+actions (not budget-starved), then were traced for phase transitions and the
+PRISTINE next-level board (captured immediately at the level-up, before any
+`interact`-phase clicks could corrupt it — the first pass mistakenly analysed
+a post-237-click corrupted sb26 L2 frame and had to be redone).
+
+**sb26 (1/8 levels, 259 actions unchanged)**: `sort_match`'s own detector,
+`detect_match_layout`, correctly identifies L2 on the PRISTINE board — live-
+verified: a full 6-colour reference/pool layout (`reference=[(10,12),
+(18,15),(24,8),(32,9),(46,11),(52,6)]`, matching `pool`). So the family DOES
+re-fire on L2 (phase bookkeeping resets correctly per level). The blocker is
+downstream: `_sort_match_step` (`world_model_agent.py:1740`) drains the
+placement plan **open-loop** — pops and fires each `("click", x, y)` /
+verify action with NO per-placement check before advancing to the next
+swatch (`plan_match_placement` in `sort_match.py`). Phase trace shows the L2
+attempt ran ~14 actions (consistent with a 6-swatch plan: 6 clicks + verify
+overhead) then fell to `interact` — "plan exhausted without a level-up," the
+documented on-failure behaviour. L1 apparently has fewer colours (worked
+first try); L2's larger 6-swatch instance is where blind, unverified
+placement drift/misattribution first breaks the level. **Same mechanic,
+bigger instance, execution not robust to scale — not a detection gap.**
+
+**ls20 (1/7 levels, 88 actions unchanged)**: NOT slider-family as
+hypothesised — L1 clears via `execute` (movement/navigation) in 22 actions.
+Traced the first 20 steps of L2: `_nav_attempted` and `_move_disc_done` are
+BOTH already `True` by the very first post-level-up step — the reset-then-
+reattempt DOES fire fresh (same pattern as sb26), but plan-building fails
+within that single call and falls straight to blind `interact`, which then
+triggers `GAME_OVER` three times (steps 88/155/222) before `is_done()` gives
+up at 273. Pristine L2 board dump: a substantially more complex multi-room
+maze — several separated rooms joined by narrow (1-cell) corridors, plus
+**two** candidate goal-marker shapes (matching small 3x3 "frame with hole"
+cross patterns at different rooms, `bXb`/`bbb` in the raw-grid dump) rather
+than a presumably single clear target on L1. Leading hypothesis: either the
+BFS can't find/complete a path through the multi-room structure, or the
+goal-selection heuristic picks the wrong one of the two candidate markers.
+**Same shape as sb26 (mechanism re-fires, single blind attempt insufficient
+for a harder instance) — not confirmed which of path-finding vs goal-
+selection is the exact failure point (would need one more targeted probe).**
+
+**ar25 (2/8 levels, 317 actions unchanged)**: a movement+arrangement HYBRID
+per level (`execute` then `arrange`, confirmed both L1 and L2's clears went
+through this same two-stage sequence). L3's trace differs qualitatively from
+sb26/ls20: `probe→execute→arrange→probe→interact` — BOTH mechanisms were
+re-attempted fresh, plus an extra `probe` cycle, before giving up (more
+fallback structure than the other two games' single-attempt-then-abandon).
+Pristine-ish stall board (captured at give-up, not immediately post-level-up
+— lower confidence than the other two) shows a board bisected by a
+horizontal colour-10 band (rows 33-35, full width) into two regions with
+MIRRORED colour-11/5/4 blobs above and below (cy≈6.6/49.4, 28.4/26.0,
+39.4/42.0) — a two-region, possibly cross-region-coordination structure,
+unlike L1/L2's presumably single-region layout. **Least well-scoped of the
+three — two systems interact (execute + arrange) and which one specifically
+fails, and why, was not pinned down at survey depth.**
+
+**Cross-cutting architectural observation** (not asked for, but load-bearing
+for the pick): every specialized phase in `WorldModelAgent` follows the same
+documented policy — "tried once per level; on failure the phase abandons to
+`interact` for the rest of the budget" (see `_sort_match_step`'s and
+`_merge_drag_step`'s own docstrings). This is a deliberate budget-safety
+policy, and all three surveyed games hit it: the mechanism correctly
+re-detects and re-attempts each level, but a SINGLE blind pass (open-loop
+plan drain for sb26, one-shot BFS/goal-pick for ls20, one execute+arrange
+pass for ar25) has no recovery path when that pass doesn't fully succeed.
+This is a plausible single lever across all three, not a per-game
+coincidence — but it's a bigger, riskier change (touches the core dispatch
+policy) than a single-game fix, so it's flagged, not proposed as the pick.
+
+**Pick: sb26.** Cleanest, most surgical diagnosis of the three — the fix
+shape is narrow and localized (`_sort_match_step`/`plan_match_placement`:
+verify each placement before advancing, retry a misplaced swatch instead of
+draining blindly), doesn't require new detection logic (the detector already
+works), and doesn't touch a second interacting system the way ar25's
+execute+arrange hybrid does. Closest match to the re86 precedent (small,
+localized, near-existing-logic fixes).
+
+**Guards untouched** — survey was read-only on code (only new probe scripts
+in the scratchpad, no `src/` edits this round). No commit.
