@@ -1399,3 +1399,12 @@ gap-bridging into a 132-cell pseudo-sprite, corrupting calibration AND offset.
 Next cycle dispatched: MOTION-based classification (press one calibration
 move, keep only cells that moved) — the let-the-env-discriminate pattern that
 already won twice in this family.
+
+### re86 BANKED at 2/8 (geometric proof); motion classification committed (2026-07-13 17:15)
+Motion-based sprite classification works (L3 calibration fully recovered:
+dy=-3.000 exact, dir_map clean) and is committed as family capability (735
+tests, guards byte-identical). L3's true wall is GEOMETRIC, proven by
+unconstrained offset search: no single translation of its 1-row bar covers 8
+points across rows 6-39 — the "one sprite, one translation" model can't
+represent it (multi-placement / changer / sequential — future scope). re86
+banked at 2 levels, both 1.0. NEXT: wa30 (recorded delivery mechanic).
