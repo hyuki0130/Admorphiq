@@ -1388,3 +1388,14 @@ as of dataset v2 — NOTE: today's slider/transform_route/re86-depth work is
 NOT in this submission (dataset uploaded before them); tomorrow's slot can
 carry the updated card (s5i5 + re86x2 add ~+0.14 to the public-25 proxy →
 ~1.21, exactly the M1-winner anchor).
+
+### re86 L3 wall + staleness fix banked (2026-07-13 17:00)
+Fingerprint-gated staleness detection committed (solved boards keep their
+markers visible → detection can SUCCEED on a stale frame — worse than None;
+the unconditional-settle variant measurably regressed L2 via ACTION5 side
+effects, evidence that settling must be evidence-gated). L3's wall: decoration
+in the SAME colour as the sprite, 1-Chebyshev-step dots chain through
+gap-bridging into a 132-cell pseudo-sprite, corrupting calibration AND offset.
+Next cycle dispatched: MOTION-based classification (press one calibration
+move, keep only cells that moved) — the let-the-env-discriminate pattern that
+already won twice in this family.
