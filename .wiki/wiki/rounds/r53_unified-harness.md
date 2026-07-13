@@ -1266,3 +1266,13 @@ counter exists but exploration dies of exhaustion-of-ideas first, not of the
 move limit). REGION mask 34 cells applied. dc22 keeps 10 colours — key/door
 navigation suspected; needs its own mechanic study rather than the generic
 counter-class treatment. Kernel v4: still RUNNING (~60 min server-side).
+
+### 🏁 KAGGLE SERVER VALIDATION COMPLETE — score 1.0721, submission-ready (2026-07-13 14:10)
+Kernel v4 COMPLETE (~2h server-side, well under the 9h cap): **submission.json
+generated, score = 1.0721** — matching the local dev-proxy measurement
+(1.072%) EXACTLY. 25 environments, 19 levels, 245,867 total actions. The
+LLM-free chained v1 artifact is fully validated end-to-end on Kaggle
+infrastructure (free kernels-push validation; the daily submission slot is
+UNTOUCHED). Step 3 (`kaggle competitions submit`) awaits the user's go.
+Optimization queued: switch the kernel to CPU (numpy-only agent — saves the
+weekly GPU quota; GPU only needed for the v2 LLM stack).
