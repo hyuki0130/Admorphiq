@@ -8,7 +8,7 @@ seeds `llm_context/decision_tree.md` first, then walks `[[backlinks]]`.
 Use this index when authoring or auditing: skim the catalog, pick a
 category, drill into specific pages.
 
-**Total pages**: 139.
+**Total pages**: 140.
 
 ## Games (25)
 
@@ -90,13 +90,14 @@ category, drill into specific pages.
 - [[concepts/sprite_cluster.md]] — A connected component of same-color pixels in the frame. The universal primitive for detecting entities without reading game internals.
 - [[concepts/version_hash.md]] — A game's identifier in the ARC Prize API has the form `<title>-<hash>` (e.g. `tn36-ab4f63cc`). The hash is a version fingerprint: games with the same title but different hashes share gameplay rules but differ in internal implementation details that solvers may or may not observe.
 
-## Lessons (engineering wisdom from past incidents) (22)
+## Lessons (engineering wisdom from past incidents) (23)
 
 - [[lessons/top_solutions_survey_20260708.md]] — Survey of what is actually open-sourced for ARC-AGI-3 (M1 winners = local-LLM agents), resolution of the leaderboard score-scale confusion (top ~1.56 = 1.56%, not 156%; the 12.58% anchor was the 2025 preview), and the top-3 generic levers to adopt next.
 - [[lessons/online_rl_sprint_round_log.md]] — **🔎 To FIND past work by topic, start at the retrieval map [[rounds_index]]**
 - [[lessons/api_hash_rotation_20260421.md]] — Between 2026-04-20 and 2026-04-21 the API replaced every served env hash; all brittle-internals solvers silently died
 - [[lessons/brittle_tells.md]] — Code smells that indicate a strategy will fail on a new version hash. Use this checklist when reviewing any new `strat_*` function in `src/admorphiq/agent_ensemble.py`.
 - [[lessons/cd82_paint_palette_signature_20260423.md]] — Pre-HUD-masking, CD82's discovery phase reported 71 of 71
+- [[lessons/dc22_confined_avatar_discriminator_falsified_20260713.md]] — Discovery incident log for the `tools/graph_search.py` region-mask family
 - [[lessons/frame_diff_as_probe.md]] — The difference between two consecutive frames is the cheapest, most general signal for classifying entities: what moved is likely the player, what changed locally is likely a toggle, what stays constant is likely background.
 - [[lessons/ft09_stride_button_drop_20260423.md]] — The default observation stride of 8 px samples 64 candidate
 - [[lessons/g1_g4_direct_test_20260422.md]] — Round-5 shipped four generic strategies — `interactive_grid_toggle`,

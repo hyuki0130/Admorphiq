@@ -1504,3 +1504,35 @@ games (tu93/lf52/m0r0) never trip this because per-cell rates stay low across
 a large board. Next cycle dispatched: per-key diff-set similarity (HUD changes
 the same cells regardless of key; an avatar's changed cells DIFFER by key —
 Jaccard across per-key unions), composed with the fraction rule.
+
+### Confined-avatar discriminator: 2 more formulations measured and FALSIFIED — axis banked (2026-07-13 19:40)
+Per-key diff-set Jaccard (mean pairwise Jaccard of per-key changed-cell unions,
+live-measured dc22 1200 steps): row63 (HUD ground truth) min=0.16 max=1.00
+mean=0.68 vs box (avatar ground truth) min=0.35 max=0.78 mean=0.47 — ranges
+overlap heavily, no threshold separates cleanly. Root cause: dc22's counter is
+a MONOTONICALLY-ADVANCING bar, not a repeating digit — the same key pressed at
+different points in the bar's progression touches different cells, so even
+same-key self-similarity is low sometimes, breaking the "HUD repeats regardless
+of key" assumption itself.
+
+Per-key displacement vector (arrived-centroid minus vacated-centroid per key,
+mean pairwise cosine similarity across keys — local-background-aware, not
+global, since a walled sub-scene has its own floor colour): WORSE than
+falsified — UNUSABLE for row63 (0 valid samples across the whole 600-step
+trace; a monotonic bar never vacates a cell, so "arrived minus vacated" is
+undefined for the one ground-truth HUD case that matters here) and, for the
+box, showed HIGH cross-key cosine similarity (0.62-0.99) — the OPPOSITE of the
+"an avatar's direction differs by key" hypothesis — with individual per-key
+vectors internally inconsistent across refresh windows (the SAME key showing
+different, sometimes physically-backwards directions call to call).
+
+Three formulations tried on this axis: (1) raw distinct-action COUNT — broke
+an existing test, fixed into (2) a FRACTION of the window's distinct actions
+— this one LANDED (see above) and is the real, tested, deployed gain. (3)
+per-key diff-set Jaccard similarity and (4) per-key displacement-vector cosine
+similarity were both measured live against dc22 and neither separates HUD
+from a confined avatar. Full elimination table + why each failed:
+[[../lessons/dc22_confined_avatar_discriminator_falsified_20260713]].
+Axis banked — the confined-avatar gap (dc22/g50t/sc25/bp35 all still 0 with
+the fraction fix alone) stays open for a future session with a fresh angle.
+Moving to su15 L3 (WMA clears L1-2 in 58 actions; L3 unexplored).
