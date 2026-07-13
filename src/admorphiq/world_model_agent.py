@@ -1286,17 +1286,26 @@ class WorldModelAgent:
 
         # Once movement is learned, try a navigation plan BEFORE spending click
         # probes — navigation is the highest-value, most efficient plan kind.
+        # Enter EXECUTE unconditionally on a navigate goal and let
+        # _execute_step's own candidate rotation (_plan_to_current_goal /
+        # _advance_goal) build the first plan, rather than computing one shot
+        # here and bailing straight to interact on an empty result. Measured
+        # bug (ls20 L2, 2026-07-13): infer_goal's completion_target_colors
+        # memory (a colour that changed at a PAST level's completion) can
+        # force target_color to a colour that is real but not a goal on the
+        # NEW level (measured: a 3px decorative speck), producing a single
+        # empty plan_navigation() call with no recovery. enumerate_goal_cells
+        # (which _plan_to_current_goal uses) takes no target_color bias at
+        # all, so routing through the existing rotation machinery here gives
+        # every candidate a chance instead of abandoning after one bad guess.
         if not self._nav_attempted:
             self._nav_attempted = True
             self.goal = infer_goal(layer, self.model)
             if self.goal.kind == "navigate":
-                plan = plan_navigation(layer, self.model, self.goal)
-                if plan:
-                    self._plan = list(plan)
-                    self._pred_player = None
-                    self._phase = _PHASE_EXECUTE
-                    self._plan_commit = self._action_count
-                    return self._execute_step(layer, avail, latest_frame)
+                self._pred_player = None
+                self._phase = _PHASE_EXECUTE
+                self._plan_commit = self._action_count
+                return self._execute_step(layer, avail, latest_frame)
             # No single-player navigation plan, but a selection-toggle action +
             # several movable entities → this is the multi-entity ARRANGEMENT
             # class (AR25-L2). Enter arrangement NOW, before the click-probe

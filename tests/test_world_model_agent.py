@@ -595,6 +595,50 @@ def test_level_up_resets_stall_clock():
     assert agent._last_progress_action == NO_PROGRESS_FALLBACK - 1
 
 
+def test_nav_attempt_recovers_via_goal_rotation_when_remembered_target_is_unreachable():
+    """Purpose: infer_goal can force target_color to a colour remembered from a
+    PAST level's completion (EffectModel.completion_target_colors) that is
+    present on the NEW level but not a reachable goal there (measured live on
+    ls20 L2, 2026-07-13: a 3px decorative speck). The initial nav-attempt must
+    not bail straight to interact on that single bad guess -- it should enter
+    EXECUTE and let the existing multi-candidate rotation
+    (_plan_to_current_goal / _advance_goal, driven by enumerate_goal_cells,
+    which carries no target_color bias) find the real, reachable goal.
+
+    Expected feedback: pass means a stale completion-colour memory can no
+    longer strand a solvable level in undirected interaction after one wrong
+    guess; a fail means the regression (bailing to interact on the first
+    unreachable pick) is back.
+    """
+    model = EffectModel()
+    model.background = 0
+    model.player_color = 7
+    model.move_map = {3: (1, 0), 2: (-1, 0), 4: (0, 1), 1: (0, -1)}
+    # Remembered "goal" colour from a past level's completion -- present here,
+    # but its only cluster sits behind a wall (colour 8) the player never
+    # crosses, so it is unreachable on THIS level.
+    model.completion_sigs = [{"colors": {6}}]
+
+    layer = _layer(5, 14)
+    layer[2, 1:4] = 7  # player bar, centroid col 2
+    layer[1:4, 9] = 5  # REAL reachable goal, open corridor to it
+    layer[:, 11] = 8  # solid wall column, blocks everything past col 11
+    layer[1:4, 13] = 6  # decoy goal (remembered colour), unreachable behind the wall
+
+    agent = WorldModelAgent()
+    agent.model = model
+    agent._move_disc_done = True  # skip discovery, go straight to the nav attempt
+
+    action = agent.choose_action([], _FakeObs(layer, avail=[1, 2, 3, 4]))
+    assert agent._phase == "execute"
+    assert agent.goal.target_color == 6  # confirms the bad guess WAS made
+    # Rotation must have landed on the real goal, not stayed stuck on the decoy.
+    assert agent._goal_cell != (2, 13)
+    from arcengine import GameAction
+
+    assert isinstance(action, GameAction)
+
+
 def test_fallback_delegates_subsequent_calls():
     """Purpose: once the fallback is active every call routes through the embedded
     GeneralAgent and still advances the world-model agent's own action counter so

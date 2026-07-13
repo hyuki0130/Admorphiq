@@ -1784,3 +1784,168 @@ localized, near-existing-logic fixes).
 
 **Guards untouched** — survey was read-only on code (only new probe scripts
 in the scratchpad, no `src/` edits this round). No commit.
+
+### sb26 build cycle: the "near-free" pick was wrong — it's a portal-graph traversal puzzle, not a placement-robustness gap (2026-07-13 21:20)
+Per doctrine, traced ONE failing L2 placement before coding anything.
+Result overturned the survey's diagnosis entirely and the pick was
+abandoned mid-cycle — recorded here so a future session doesn't retry the
+same "just add verification" plan.
+
+**What the live trace showed**: the existing `plan_match_placement` click
+target — `(ref_x, placement_y)`, the reference frame's own column at the
+arithmetic midpoint between reference-row-y and pool-row-y — has ZERO
+effect on L2. Tested 9 different y-values at the reference column
+(spanning both visible mid-board structures) after selecting a swatch:
+none moved anything. A simpler alternative hypothesis — "select all 6
+pool swatches in reference order, then verify, no physical placement
+needed" — was also tested live and falsified (no level-up).
+
+**What actually moves a swatch**: two rail-bordered boxes on the L2 board
+(one on L1), each containing small uniform "22"-coloured 2x2 slot
+markers, structurally separate from BOTH the reference row and the pool
+row. Selecting a pool swatch then clicking one of these slot markers DOES
+physically relocate the swatch there (pixel-confirmed, repeatable, 100%
+success rate once the slot's true centroid is used — a
+`connected_components`-based detector in the mid-band, excluding
+reference/pool colours, grouped into boxes by y-proximity then ordered
+left-to-right, found all 7 L2 slots precisely).
+
+**Why L1 "worked" under the old code**: L1's board has the identical
+structure — ONE rail box with exactly 4 slots for its 4 colours. The old
+arithmetic `placement_y` numerically lands inside that single box's
+y-range by coincidence, and the reference frame's x-position happens to
+sit close enough to a real slot's x-position for L1's simpler single-box
+layout to register a hit (or close enough for the env's click-grab
+radius). On L2 (two boxes, 6 colours, 7 slots), that coincidental
+alignment breaks down completely — confirmed: zero of 9 candidate clicks
+at the naive column landed on anything.
+
+**Mapping probe (2 live attempts, both pixel-confirmed placements, both
+failed verify)**: (1) reference order → natural slot order (box1's 3
+slots left-to-right, then box2's 4): all 6 swatches landed exactly where
+targeted, `verify` (ACTION5) did not clear the level. (2) reference order
+→ box2-first slot order: same outcome. No per-slot correctness feedback
+(flash/undo/colour-change) was observed distinguishing a right placement
+from a wrong one in either attempt.
+
+**Legacy-code mining (`strat_sb26_sort`, `agent_ensemble.py:5016-5300+`)
+revealed why both attempts were structurally doomed, not just wrongly
+ordered**: SB26 is a **portal-graph traversal puzzle**. Frames (what this
+round's probes called "box1"/"box2" — genuinely two separate FRAMES, not
+decoration; their distinct border colours 8 and 14 are frame identity
+markers) each expose N slots, N baked into the frame's own name/identity.
+Slots may hold either a plain colour item OR a **portal** sprite that
+redirects traversal to a DIFFERENT frame (matched by border colour). The
+level's target colour sequence (`game.wcfyiodrx`, internal — no frame-only
+equivalent found) is consumed via a **DFS traversal starting at frame[0]**,
+following portal links; a "revisit" (a portal loop returning to an
+already-visited slot) must match the colour seen on FIRST visit, not
+consume a fresh target. Some pool items are themselves portal pieces
+needing placement (`bottom_portals`), visually indistinguishable (so far)
+from plain colour swatches. The legacy solver does a full
+`itertools.permutations` search over candidate portal-slot placements,
+simulates the traversal for each, and only commits once a permutation's
+traversal-consumed colour sequence matches `targets` exactly.
+
+**Why both mapping attempts failed**: neither used a portal at all — both
+filled all 7 physical slots with plain colour items in a screen-order
+sequence. The correct order is determined by graph topology (frame →
+portal → frame, DFS), not left-to-right screen position, and is
+structurally unreachable by "guess a screen-order permutation" regardless
+of which permutation is tried.
+
+**Verdict**: the original survey's "sb26 = nearest to existing family
+logic, near-free pick" was wrong — it never looked past the top-level
+reference/pool row into the mid-board slot structure, let alone the
+portal graph underneath. A frame-only equivalent needs, at minimum: (1)
+frame + slot detection as an entity distinct from reference/pool rows
+(landed this round, reusable — `connected_components` in the mid-band,
+excluding ref/pool colours, grouped by y-proximity into boxes/frames), (2)
+portal-vs-plain-item disambiguation for pool pieces (no frame-only signal
+found yet — may be genuinely invisible without internals, or may need a
+probe-and-observe approach: place a candidate piece, see if it changes
+traversal-visited slots elsewhere), (3) the true traversal-consumed target
+order (no frame-only equivalent found for `game.wcfyiodrx`), (4) a
+permutation/traversal solver over portal placements. This is comparable
+to or harder than ar25's execute+arrange hybrid — **not** a small,
+localized fix. Pivoted off sb26 this cycle; banked here so a future
+session with more budget (or a cleverer frame-only portal-detection idea)
+doesn't have to re-derive any of this from scratch.
+
+**Guards**: no `src/` changes this cycle (mining + probing only). No
+commit.
+
+**Related**: [[../lessons/merge_drag_stall_causes_game_over_20260713]] —
+another case this session where "records-first" legacy-mining revealed
+the true mechanic only after live probing had already falsified the naive
+model; same lesson, different game.
+
+### ls20 build cycle: one real bug found and fixed (stale completion-colour override), but a deeper connectivity issue remains (2026-07-13 21:45)
+Pivoted from sb26 per the portal-graph finding above. Legacy-mined
+`strat_ls20_grid` (`agent_ensemble.py:3831`) first — confirmed it is fully
+generic brute-force BFS (full reset-and-replay per candidate, frame-hash
+dedup, zero game-internal reads, zero special mechanic knowledge). This
+rules out an sb26-style hidden mechanic for ls20; it is a straightforward
+maze.
+
+**Root cause traced precisely**: `infer_goal` (`world_model_agent.py:453`)
+prefers a colour remembered from a PAST level's completion
+(`EffectModel.completion_target_colors()`) over the general rarest-colour
+heuristic when picking the navigation goal. Measured live: L1 completed via
+a colour-0 event, so on L2 the goal was force-set to `target_color=0` — but
+L2's only colour-0 cluster is a 3px decorative speck, not a reachable goal.
+The ORIGINAL initial-nav-attempt code (`world_model_agent.py:1289-1298`, pre-
+fix) computed exactly ONE `plan_navigation` call with this forced target and,
+on an empty result, fell straight through to `interact` WITHOUT ever
+reaching `_execute_step`'s already-built multi-candidate rotation system
+(`enumerate_goal_cells` / `_advance_goal` — infrastructure that already
+existed for "a collection level with several plausible targets," see its own
+docstrings, but was unreachable from the FIRST nav attempt because that
+attempt never set `_phase = _PHASE_EXECUTE` on an empty plan).
+`enumerate_goal_cells` carries NO target_color bias at all, so it was
+already immune to this exact bug — it just needed to be reachable from the
+first attempt, not only from a stuck-detection retry mid-plan.
+
+**Fix landed** (`world_model_agent.py`, `_nav_attempted` block): enter
+`_PHASE_EXECUTE` unconditionally whenever `goal.kind == "navigate"`, and let
+`_execute_step`'s own `_plan_to_current_goal` / `_advance_goal` build the
+first plan (trying every enumerated candidate in turn) instead of computing
+one biased plan here and bailing to interact on failure. Verified this is
+BEHAVIOR-PRESERVING for the working case (`plan_navigation`'s priority order
+already has `goal_cell_override` win over `target_color` — confirmed by
+reading the exact line, `goal_cell = goal_cell_override or
+pick_goal_cell(..., target_color=goal.target_color)`). New regression test
+`test_nav_attempt_recovers_via_goal_rotation_when_remembered_target_is_unreachable`
+in `tests/test_world_model_agent.py` — a synthetic frame with a wall-colour
+barrier isolates a "remembered" decoy goal from a genuinely reachable one;
+confirmed the test FAILS on the pre-fix code (`phase == 'interact'` instead
+of `'execute'`) and passes with the fix. 758 tests green, ruff clean.
+
+**Honest result — the fix alone does NOT unlock L2.** Live smoke
+(`score_efficiency.py --agent worldmodel --titles ls20 --max-actions 3000`)
+post-fix: still `levels=1/7`, `actions=89` (was 88) — no L2 clear. Traced
+further: even using the CORRECT floor-colour-aware walkability model
+(`floor_colors_from_probes`, which the real `plan_navigation` already uses
+internally — a first diagnostic pass mistakenly built a walkability grid
+WITHOUT floor colours via a wrong attribute name and got a misleadingly
+fragmented picture, corrected before drawing conclusions) L2's multi-room
+maze structure still defeats BFS reachability for most/all of the 12
+enumerated candidates in the traced run. This is a SEPARATE, deeper issue
+from the completion-colour bug — not yet root-caused. Candidates for a
+future session: (a) some "walls" in the learned model may actually be
+openable doors/gates requiring an interaction first, which a static
+walkability grid structurally cannot represent; (b) the floor-colour
+learning (23 move-probes observed in the traced run) may need a longer
+discovery budget on this specific multi-room layout to correctly classify
+enough of the floor.
+
+**Guards** (all confirmed exact/unchanged, live @2000-3000 actions):
+su15 `2/9, 58 actions` ✅, s5i5 `1/8, 169 actions` ✅, re86 `2/8, 264
+actions` ✅, wa30 `1/9, 100 actions` ✅ (unaffected — no code path overlap).
+ls20 itself: `1/7, 88→89 actions` (structurally different code path, same
+outcome — the +1 action reflects the extra rotation attempt before falling
+back, not a regression). Suite 758/758 (was 757, +1 new test), ruff clean.
+
+**Not committed** — reported per doctrine; landed source change is
+`src/admorphiq/world_model_agent.py` (the `_nav_attempted` block) +
+the new test, both verified as described above.
