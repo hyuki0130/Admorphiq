@@ -1346,3 +1346,14 @@ boards). Card: **16/25 in the chained artifact** (s5i5 flows in via the WMA
 probe automatically) + su15 2/58, sb26 1/259 guards exact; 717 tests. Open:
 s5i5 L2 (~150 actions spent without progress after the L1 bank — geometry
 differs; next trace).
+
+### s5i5 L2 traced: a REVEAL into a 4-pair matching puzzle (2026-07-13 16:05)
+Clean replay-then-click trace: L2 starts at L1's end state; the four L1
+grow/shrink buttons go fully inert; the previously-inert divider (42,21)
+triggers an 862-cell REVEAL (new colour 15, bottom half fills with a new
+structure): 4 button-PAIRS (interior colours 10/11/12/14), a glyph legend
+cluster (rows 36-41), two colour-15 canvas blocks. detect_slider_puzzle
+correctly returns None on it; the deployed agent's L2 behaviour is safe
+fall-through (169-action smoke confirmed). Needs its own dedicated round —
+banked for later; breadth (other walls) first. Trace data preserved here for
+that future cycle.
