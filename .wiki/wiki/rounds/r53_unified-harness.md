@@ -1743,6 +1743,38 @@ disciplined stopping point matching this round's established 2-data-point
 budget norm; a live test of (b)/(c) is the next session's lead, not
 continued here.
 
+### su15 attempted completion of the tier x goal matrix — chain-build itself now GAME_OVERs before delivery, 3/3 attempts (2026-07-13 22:30)
+
+Attempted the one still-untested cell of the pairing matrix — colour-15 →
+goal B — to close out hypothesis (c) cleanly. **Could not reach the
+delivery test at all**: the natural chain-build (the SAME `next_merge_click`
+loop every prior probe in this investigation used to reach the colour-11 /
+colour-15 stall state) hit `GAME_OVER` at click 22, three times in a row,
+across two different env-loading paths (`OFFLINE.make("su15-1944f8ab")` and
+`NORMAL.make("su15")` — both resolved to the identical
+`environment_files/su15/1944f8ab/su15.py`, ruling out the AR25-class
+hash-mismatch trap as the cause here).
+
+This is a NEW, earlier failure point than every previous successful run in
+this investigation, which reached the colour-11/colour-15 stall by click
+~15-30 without GAME_OVER. Not chased further (3 consistent failures without
+ever reaching the intended test is a stop signal, not a retry-until-it-
+works signal) — recorded as an open observation: **the chain-build phase
+itself has become less reliable session-to-session**, independent of the
+delivery-acceptance question this sub-investigation set out to answer.
+Possible causes, none tested: click-order sensitivity in which pair
+`next_merge_click` chooses to merge first, accumulated float-rounding drift
+across many `_step_toward` calls compounding into an eventual bad click,
+or genuine env-side non-determinism (the round page's own prior note that
+"non-deterministic sessions genuinely differ" for this exact game). The
+tier×goal matrix remains 3/4 tested (colour-11→A rejected, colour-11→B
+inconclusive, colour-15→A GAME_OVER-during-delivery); colour-15→B is now
+"blocked before test" rather than merely "untested". Hypothesis (b)
+precondition and (c) tier-assignment both remain open. Next session should
+first re-verify the chain-build's own reliability (does `next_merge_click`
+reliably reach the stall state at all, independent of delivery) before
+spending more budget on delivery-acceptance specifically.
+
 ### Day wrap: v2 submission assets staged (2026-07-13 19:51)
 Dataset v3 (all of today's modules) + kernel v7 pushed — validating overnight
 with the 18/25 card (public-25 proxy ~1.23). Submission #54637991 (v6 card,
