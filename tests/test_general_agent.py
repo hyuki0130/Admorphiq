@@ -20,6 +20,7 @@ from admorphiq.general_agent import (
     _EXPLORE_DEAD_TRIES,
     _PHASE_EXECUTE,
     _PHASE_EXPLORE,
+    _PHASE_PATTERN,
     _SEQ_MAX_TOTAL_ACTIONS,
     GeneralAgent,
     build_action_sequences,
@@ -37,6 +38,21 @@ from admorphiq.general_agent import (
     select_explore_action,
     select_player_component,
 )
+
+
+class _FakeState:
+    def __init__(self, name: str) -> None:
+        self.name = name
+
+
+class _FakeObs:
+    """Minimal stand-in for the arcengine observation the harness passes."""
+
+    def __init__(self, layer: np.ndarray, avail: list[int], state: str = "PLAYING", levels: int = 0) -> None:
+        self.frame = [layer]
+        self.available_actions = avail
+        self.state = _FakeState(state)
+        self.levels_completed = levels
 
 
 def _grid(rows: list[str], mapping: dict[str, int]) -> np.ndarray:
@@ -235,6 +251,51 @@ def test_select_player_component_falls_back_to_largest_when_none_border_shaped()
     }
     picked = select_player_component([small, large], layer_shape=(20, 20))
     assert picked is large
+
+
+# ---------------------------------------------------------------------------
+# choose_action — GAME_OVER during toggle-solve advances to the next candidate
+# ---------------------------------------------------------------------------
+
+
+def test_game_over_during_toggle_solve_advances_to_next_candidate():
+    """Purpose: a GAME_OVER mid-candidate-execution during the toggle SOLVE
+    sub-phase must advance to the next measured candidate flip-set with a
+    clean _pat_applied/_pat_delta, not resume with stale bookkeeping that no
+    longer matches the board RESET restores it to -- measured live on FT09
+    L2 (2026-07-13): the MEASURE sub-phase correctly found 13 real toggle
+    buttons from 18 probed candidates with zero deaths, but the FIRST solve
+    candidate's very first click was lethal, and the resulting desync +
+    eventual pattern-bail wasted the level's entire remaining budget in
+    unstructured explore -- discarding the fully-measured, still-valid
+    toggle stencil and its other candidate flip-sets entirely.
+
+    Expected feedback: a PASS proves a lethal candidate no longer corrupts
+    or discards the measured stencil; a FAIL means the FT09/TN36-class
+    regression (a fully-measured toggle puzzle abandoned after one death) is
+    back.
+    """
+    agent = GeneralAgent(seed=0)
+    agent._phase = _PHASE_PATTERN
+    agent._pat_kind = "toggle"
+    agent._pat_sub = "solve"
+    agent._pat_candidates = [[(1, 1), (2, 2)], [(3, 3)], [(4, 4), (5, 5)]]
+    agent._pat_cand_k = 0
+    agent._pat_applied = {(1, 1)}  # candidate 0 was half-applied when it died
+    agent._pat_delta = []  # the rest of candidate 0's delta chain, mid-pop
+
+    layer = np.zeros((10, 10), dtype=np.int32)
+    obs = _FakeObs(layer, avail=[6], state="GAME_OVER")
+    action = agent.choose_action([], obs)
+
+    assert agent._pat_cand_k == 1
+    assert agent._pat_applied == set()
+    assert agent._pat_delta == sorted(agent._pat_candidates[1])
+    # Still resets, same as the unstructured case -- RESET is how the board
+    # returns to the level's pristine layout.
+    from arcengine import GameAction
+
+    assert action == GameAction.RESET
 
 
 # ---------------------------------------------------------------------------

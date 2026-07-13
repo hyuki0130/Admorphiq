@@ -1198,6 +1198,35 @@ class GeneralAgent:
         layer = canonical_layer(getattr(latest_frame, "frame", latest_frame))
 
         if _state_name(latest_frame) == "GAME_OVER" or layer.size == 0 or not avail:
+            if (
+                self._phase == _PHASE_PATTERN
+                and getattr(self, "_pat_kind", None) == "toggle"
+                and getattr(self, "_pat_sub", None) == "solve"
+            ):
+                # A GAME_OVER mid-candidate-execution leaves _pat_delta /
+                # _pat_applied describing a board state that no longer
+                # exists (RESET restores the level's PRISTINE layout, not
+                # wherever the delta-chain had gotten to) -- resuming with
+                # that stale bookkeeping desyncs every subsequent click
+                # from the real board. Advance to the NEXT candidate
+                # flip-set from a clean slate instead, so the level's
+                # remaining budget goes toward exploiting the ALREADY-
+                # MEASURED toggle stencil rather than either corrupting it
+                # or letting the unrelated pattern-solve bail-timer discard
+                # it wholesale. Measured live on FT09 L2 (2026-07-13): the
+                # MEASURE sub-phase correctly identified 13 real toggle
+                # buttons from 18 probed candidates with zero deaths, but
+                # the FIRST solve candidate's very first click was lethal,
+                # and the resulting desync + eventual bail wasted the rest
+                # of the level's budget in unstructured explore, never
+                # trying any of the OTHER measured candidate flip-sets.
+                self._pat_cand_k += 1
+                self._pat_applied = set()
+                candidates = getattr(self, "_pat_candidates", [])
+                if self._pat_cand_k < len(candidates):
+                    self._pat_delta = sorted(candidates[self._pat_cand_k])
+                else:
+                    self._pat_delta = []
             return self._emit(GameAction.RESET)
 
         if self._background is None and layer.size:
