@@ -17,6 +17,8 @@ import numpy as np
 from admorphiq.merge_drag import (
     DragLayout,
     detect_drag_layout,
+    detect_goal_containers,
+    detect_merge_chain,
     drag_probe_target,
     next_drag_click,
     next_merge_click,
@@ -207,6 +209,89 @@ def test_next_drag_click_none_when_gathered():
         ]
     )
     assert next_drag_click(layer, _BG) is None
+
+
+def test_detect_goal_containers_finds_every_instance():
+    """Purpose: detect_goal_containers reports EVERY same-coloured large
+    cluster as a separate goal, not just the single largest one
+    detect_drag_layout keeps (SU15 L3 renders its goal colour as two
+    disconnected diamond containers).
+
+    Expected feedback: a PASS proves a multi-goal layout is fully visible to
+    a caller that needs it (rather than silently losing the second
+    container); a FAIL means only one goal would ever be considered, so any
+    delivery logic built on top could never target the other.
+    """
+    layer = _layer_with(
+        [
+            (9, 10, 5, 18, 13),  # goal instance A, size 9x9=81
+            (9, 10, 30, 18, 38),  # goal instance B, same size, far away
+            (15, 40, 50, 42, 52),  # a small movable tile, different colour
+        ]
+    )
+    goals = detect_goal_containers(layer, _BG)
+    assert len(goals) == 2
+    colors = {g[2] for g in goals}
+    assert colors == {9}
+    centroids = sorted((g[0], g[1]) for g in goals)
+    assert centroids[0][0] < centroids[1][0]  # A (col5-13) left of B (col30-38)
+
+
+def test_detect_goal_containers_empty_without_layout():
+    """Purpose: with no detectable tile+goal layout at all, there is no goal
+    colour to match against, so detect_goal_containers reports nothing.
+
+    Expected feedback: a PASS proves the function doesn't hallucinate a goal
+    colour on an unrelated frame; a FAIL means it could return spurious
+    "goals" for a game that isn't a gather at all.
+    """
+    assert detect_goal_containers(_layer_with([(15, 57, 2, 59, 4)]), _BG) == []
+    assert detect_goal_containers(np.full((0, 0), _BG), _BG) == []
+
+
+def test_detect_merge_chain_reads_legend_left_to_right():
+    """Purpose: detect_merge_chain reads a top-band legend strip's swatch
+    colours in left-to-right (low-to-high tier) order, mirroring SU15 L3's
+    live-confirmed 10->6->15->11 chain (two live merges: 10+10->6, 6+6->15 —
+    the NEXT colour in this legend order, not colour+1 arithmetic).
+
+    Expected feedback: a PASS proves the merge target for any tier can be
+    read from observation instead of assumed via arithmetic (which would
+    silently break on a relabelled/obfuscated board); a FAIL means the chain
+    order would be wrong or undetected.
+    """
+    layer = _layer_with(
+        [
+            (10, 1, 1, 2, 2),  # legend swatch 1 (tier 0)
+            (6, 1, 5, 2, 6),  # legend swatch 2 (tier 1)
+            (15, 1, 9, 2, 10),  # legend swatch 3 (tier 2)
+            (11, 1, 13, 2, 14),  # legend swatch 4 (tier 3, terminal)
+            (9, 46, 5, 54, 13),  # goal, well below the top band
+        ]
+    )
+    chain = detect_merge_chain(layer, _BG)
+    assert chain == [10, 6, 15, 11]
+
+
+def test_detect_merge_chain_none_without_uniform_top_band_swatches():
+    """Purpose: a top band with fewer than two uniform-size distinct-colour
+    clusters is not a legend, so detect_merge_chain must not fabricate a
+    chain from incidental chrome.
+
+    Expected feedback: a PASS proves the detector only fires on a genuine
+    reference strip (uniform size, distinct colours); a FAIL means an
+    unrelated decorative pattern could be misread as a merge-tier order.
+    """
+    # Only one top-band cluster -- no legend.
+    assert detect_merge_chain(_layer_with([(4, 0, 0, 6, 63)]), _BG) is None
+    # Two top-band clusters of DIFFERENT sizes -- not a uniform swatch row.
+    layer = _layer_with(
+        [
+            (10, 1, 1, 2, 2),  # 2x2 = 4px
+            (6, 1, 5, 3, 8),  # 3x4 = 12px, different size
+        ]
+    )
+    assert detect_merge_chain(layer, _BG) is None
 
 
 def test_layout_dataclass_shape():

@@ -208,8 +208,9 @@ _MERGE_DRAG_MAX_CLICKS = 120
 # enemy-downgrade), ``next_merge_click`` recomputes the identical target from
 # the unchanged frame every call and loops forever; the live env does not
 # treat those no-op clicks as free — after ~6 consecutive no-ops the run hit
-# GAME_OVER, which resets ``levels_completed`` and loses levels already
-# cleared this run. 3 gives the walk room to recover from a single missed
+# GAME_OVER, which costs a RESET's worth of actions (``levels_completed`` is
+# NOT reset by it — confirmed unchanged across GAME_OVER->RESET, so budget is
+# lost, not progress). 3 gives the walk room to recover from a single missed
 # grab (drag animation lag) while stopping well before the measured
 # GAME_OVER threshold.
 _MERGE_DRAG_STALL_LIMIT = 3
@@ -739,8 +740,8 @@ class WorldModelAgent:
         # nothing (measured SU15 L3: a tile can go permanently unresponsive
         # mid-gather — likely a pre-merge phase, e.g. enemy-downgrade, that
         # this plan doesn't model — and blindly re-clicking it doesn't just
-        # waste budget, it walks the game into GAME_OVER, which resets
-        # levels_completed and loses the levels already cleared this run).
+        # waste budget, it walks the game into GAME_OVER (levels_completed
+        # is unaffected, but the RESET still costs real actions).
         self._merge_drag_attempted = False
         self._merge_drag_probed = False
         self._merge_drag_clicks = 0

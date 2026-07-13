@@ -111,6 +111,14 @@ _SCATTER_MIN_CLUSTERS = 13
 # as a scattered chrome line rather than a compact set of tiles. SU15's diagonal
 # line has density ~0.01; a real cluster of merge tiles packs far denser.
 _SCATTER_MAX_DENSITY = 0.05
+# A legend swatch (a small fixed reference patch showing one merge tier's
+# colour, e.g. SU15's row1-2 strip) is a tiny, uniform-size cluster living in
+# the TOP decorative band (``cy < _TOP_BAND_CUTOFF``) that :func:`_candidate_clusters`
+# already excludes from tile/goal consideration. Measured on SU15: each swatch
+# is a 2x2 = 4 px block. This caps swatch size well below a genuine movable
+# tile (tiles run 1-16 px on SU15, but a legend strip's swatches are smaller
+# and, critically, uniform to each other — see :func:`detect_merge_chain`).
+_LEGEND_SWATCH_MAX_SIZE = 16
 
 
 # ── layout detection ──────────────────────────────────────────────────────────
@@ -172,6 +180,22 @@ def _candidate_clusters(layer: np.ndarray, background: int) -> list[dict]:
     return [c for c in raw if c["color"] not in scatter]
 
 
+def _goal_cluster(comps: list[dict]) -> dict | None:
+    """The single largest candidate cluster — the goal-region colour.
+
+    A destination "zone" is rendered bigger than the small movable value
+    tiles it receives (measured on SU15: the goal ring is ~60-70 px vs.
+    ~1-16 px tiles). Shared by :func:`detect_drag_layout` (which reports
+    only this one instance's centroid, its long-standing contract) and
+    :func:`detect_goal_containers` (which reports every same-coloured
+    instance — SU15 L3 renders the goal colour as TWO separate containers,
+    and the single-largest contract predates that discovery).
+    """
+    if len(comps) < 2:
+        return None
+    return max(comps, key=lambda c: c["size"])
+
+
 def detect_drag_layout(layer: np.ndarray, background: int) -> DragLayout | None:
     """Detect a movable-tile + goal-region gather layout, or None.
 
@@ -186,15 +210,9 @@ def detect_drag_layout(layer: np.ndarray, background: int) -> DragLayout | None:
     if layer.size == 0:
         return None
     comps = _candidate_clusters(layer, background)
-    if len(comps) < 2:
+    goal_c = _goal_cluster(comps)
+    if goal_c is None:
         return None
-
-    # The GOAL container is the single LARGEST playfield cluster — a destination
-    # "zone" is rendered bigger than the small movable value tiles it receives
-    # (measured on SU15: the goal ring is ~60 px vs. ~9 px tiles). The movable
-    # TILES are every smaller cluster of a DIFFERENT colour (a same-colour cluster
-    # is part of the container, not a piece to drag into it).
-    goal_c = max(comps, key=lambda c: c["size"])
     goal_color = goal_c["color"]
     goal = (goal_c["cx"], goal_c["cy"])
 
@@ -210,6 +228,80 @@ def detect_drag_layout(layer: np.ndarray, background: int) -> DragLayout | None:
     if not tiles or len(tiles) > _MAX_TILES:
         return None
     return DragLayout(tiles=tiles, goal=goal)
+
+
+def detect_goal_containers(
+    layer: np.ndarray, background: int
+) -> list[tuple[float, float, int, int]]:
+    """Every distinct instance of the goal colour, not just the largest.
+
+    :func:`detect_drag_layout` reports a single ``goal`` centroid (the
+    largest candidate cluster) by long-standing contract — callers depend
+    on that shape. But a game can render its goal colour as MULTIPLE
+    disconnected regions: measured on SU15 L3, two separate colour-9
+    diamond containers at ``(9, 50)`` and ``(23, 50)``, both the same size
+    class (~65-69 px, both far larger than any ~1-16 px movable tile).
+    This returns every such instance as ``(cx, cy, colour, size)`` so a
+    caller that needs to reason about multiple goals (rather than just the
+    single largest) can. Returns ``[]`` when :func:`detect_drag_layout`
+    itself finds no layout (no goal colour established to match against).
+    Pure / env-free.
+    """
+    if layer.size == 0:
+        return []
+    comps = _candidate_clusters(layer, background)
+    goal_c = _goal_cluster(comps)
+    if goal_c is None:
+        return []
+    goal_color = goal_c["color"]
+    return [
+        (c["cx"], c["cy"], int(c["color"]), int(c["size"]))
+        for c in comps
+        if c["color"] == goal_color
+    ]
+
+
+def detect_merge_chain(layer: np.ndarray, background: int) -> list[int] | None:
+    """Merge-tier colour order from a legend strip, or None if none is found.
+
+    A 2048-style merge game can render a reference LEGEND — a horizontal row
+    of small, uniform-size swatches near the top of the board, one per merge
+    tier, in low-to-high tier order — in the decorative top band
+    (``cy < _TOP_BAND_CUTOFF``) that :func:`_candidate_clusters` already
+    excludes from tile/goal consideration. Measured live on SU15 L3: swatches
+    at cols 1-2 / 5-6 / 9-10 / 13-14 (row 1-2, 2x2 = 4 px each) read colours
+    ``[10, 6, 15, 11]`` left-to-right — confirmed by two live merges,
+    ``10+10 -> 6`` and ``6+6 -> 15``, i.e. the merge TARGET is the next
+    colour in this sequence, not ``colour + 1`` arithmetic (which would
+    silently pick the wrong target on a differently-numbered board).
+
+    Detection requires ``>= 2`` clusters in the top band that share the same
+    size (the uniformity that marks them as one reference row rather than
+    incidental chrome) and distinct colours (one swatch per tier — a repeated
+    colour is not a legend). Returns the colours sorted left-to-right
+    (``cx`` ascending), i.e. lowest tier first. Pure / env-free.
+    """
+    if layer.size == 0:
+        return None
+    comps = connected_components(layer, background)
+    band = [
+        c for c in comps
+        if c["cy"] < _TOP_BAND_CUTOFF and c["color"] != background
+        and 1 <= c["size"] <= _LEGEND_SWATCH_MAX_SIZE
+    ]
+    if len(band) < 2:
+        return None
+    sizes: dict[int, list[dict]] = {}
+    for c in band:
+        sizes.setdefault(c["size"], []).append(c)
+    common_size, swatches = max(sizes.items(), key=lambda kv: len(kv[1]))
+    if len(swatches) < 2:
+        return None
+    colors = [c["color"] for c in swatches]
+    if len(set(colors)) != len(colors):
+        return None
+    swatches.sort(key=lambda c: c["cx"])
+    return [int(c["color"]) for c in swatches]
 
 
 # ── drag probe + walk planning ────────────────────────────────────────────────
