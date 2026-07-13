@@ -1948,4 +1948,41 @@ back, not a regression). Suite 758/758 (was 757, +1 new test), ruff clean.
 
 **Not committed** — reported per doctrine; landed source change is
 `src/admorphiq/world_model_agent.py` (the `_nav_attempted` block) +
-the new test, both verified as described above.
+the new test, both verified as described above. *(Update: the
+`_nav_attempted` fix + test were subsequently committed — 758 tests. See
+the follow-up entry below for the final quick-try result and disposition.)*
+
+### ls20 quick-try: discovery-budget bump FALSIFIED, banking with door/gate as the recovery lead (2026-07-13 22:05)
+Per dispatch, tried the one authorized quick option before banking: bumped
+`MOVE_PROBE_BUDGET` 16 → 40 (2.5x more per-level movement-discovery probes,
+giving `floor_colors_from_probes` far more data to work with) and re-ran the
+live smoke.
+
+**Result: byte-identical to baseline.** `levels=1/7, actions=89` — the EXACT
+same outcome as the un-bumped run, not even a partial improvement. Suite
+stayed 758/758 green with the change in place. Reverted immediately
+(confirmed via `git diff` showing zero remaining delta on the constant) — no
+reason to keep a global tunable that measurably didn't help and costs
+budget on every other game using this discovery path.
+
+**Why this matters**: an *identical* result under 2.5x more probes is
+stronger evidence than a merely "still failing" one — if the issue were
+under-sampled floor colours, MORE probes should have found MORE floor and
+changed the walkability grid enough to shift at least one candidate's
+reachability, even if not enough to fully clear the level. Getting the
+exact same numbers instead points AWAY from "insufficient discovery budget"
+and TOWARD the other standing hypothesis: some cells the static
+`frame_to_cells` model marks as permanent WALL are actually interactive
+doors/gates that require an action to open, which no amount of passive
+floor-colour sampling can discover — the walkable-vs-wall classification
+would stay the same regardless of budget because openable doors render
+identically to solid walls until acted on.
+
+**Disposition**: banking ls20 here. `door/gate hypothesis` is now the
+confirmed-by-elimination recovery lead for a future session (not probed
+further this round, per dispatch — would need: detect a candidate
+door/wall cell, try an interaction/movement-into-it action, re-check
+walkability after, and see if previously-unreachable candidates open up).
+The `_nav_attempted` stale-completion-colour fix from the entry above
+remains landed and committed regardless of this outcome — it is an
+independent, confirmed-real bug fix, not contingent on ls20 L2 clearing.
