@@ -1302,3 +1302,12 @@ number of times; (4) never click anything else (attempt budget). Open
 questions for implementation: widget->piece mapping (probe ONCE each — 2
 attempts spent), rotation direction, and whether the reference maps 1:1 by
 shape or by position. Implementation is the next bounded cycle.
+
+### Rotation-plan family shipped; s5i5 needs INTERACTIVE disambiguation (2026-07-13 15:20)
+rotation.py + WMA integration landed (12 new tests, 701 total, guards exact).
+s5i5 verdict: the board's decorative colour-4 rings around reference glyphs
+are statically identical to real piece frames — four static discriminators
+each proven non-separating on the live board. ⛔ static single-frame piece
+detection cannot crack s5i5; the follow-up is interactive probing (click a
+candidate widget once, watch WHICH ring's interior rotates) — infrastructure
+for that (widget probe attribution) already exists in the new _rotate_step.
