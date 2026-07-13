@@ -1479,3 +1479,16 @@ referenced anywhere in the current agent stack — the legacy 1/6 vs current 0/6
 difference in one finding. Integration dispatched as a GATED LAST-RESORT phase
 (hybrid signature only, after all mechanic modules decline, per-level action
 cap, RHAE-honest coverage backstop) + family check on g50t/sc25/bp35.
+
+### BFSSolver is contract-incompatible; region-mask suspicion on the deployable stack (2026-07-13 19:00)
+Pre-build check caught it: BFSSolver drives env.step()/env.reset() directly —
+the official contract is is_done/choose_action only, so a literal port could
+never ship (dev-only tool). The contract-compliant equivalents (legacy
+graph_frontier AND the unified graph tool) BOTH fail dc22 0/6. Live hypothesis
+with one supporting data point ([graph] REGION mask: 52 cells on dc22): the
+region mask may be eating the TOGGLE-STATE pixels — masking frequently-toggled
+GAME STATE as if it were HUD, collapsing exactly the state distinction the
+winning sequence depends on. If confirmed this is a GENERAL masking bug.
+Dispatched: diagnose (mask dump vs toggle cells), then fix = ACTION-CORRELATED
+masking (many distinct action keys → HUD; one specific key → game state),
+with tu93/sp80 (mask-dependent unlocks) as critical guards.
