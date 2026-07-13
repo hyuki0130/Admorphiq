@@ -3757,6 +3757,32 @@ a reset. The mechanic is deeper (target likely defined by structure/relationship
 not rarity) and needs a dedicated investigation — NOT a cheap tonight clear.
 Banked. No `src/` changes; tree clean at `a43f952`.
 
+### re86 L3 RE-VERIFIED (2026-07-14) — proof holds on the scored hash; NOT a false-impossibility, it's a correctly-scoped multi-placement extension
+
+Per the lead's "re-verify WHAT was proven against WHICH hash" (tonight sb26/tr87/
+cd82 were all re-opened by a careful re-read). Findings:
+- **Scored hash = `re86-8af5384d` (v2)** — the scorer serves v2 first, not the
+  v1 `re86-4e57566e` the brittle 6/8 was measured on. Worth recording; the
+  transform_route guard (2/8) is on v2.
+- **L3 structure on the scored board**: 8 TARGET points (colour 4, 8px each,
+  scattered rows 6-30) + **2 SPRITES** (colour 8, ~24px each at (19,45)/(41,45)).
+- **The geometric proof HOLDS**: no single translation of one sprite covers 8
+  scattered points — the `transform_route` "one sprite, one translation" model
+  genuinely cannot represent L3. So per the lead's rule this **re-closes** (not a
+  false-impossibility to re-open like sb26/cd82).
+- **BUT the accurate framing** (already in the bank, now confirmed): there are
+  TWO sprites, so the solvable model is **2-sprite multi-placement** — each
+  sprite's shape/translation covers a subset of the 8 targets, together covering
+  all 8. re86 L3 IS frame-only solvable via a multi-placement extension of
+  transform_route (detect N sprites → search per-sprite translations that jointly
+  cover the target set), NOT "impossible." That extension is the future-scope
+  dedicated round the bank named; it was not built this session (fatigue call).
+
+Disposition: re86 stays 2/8 (guard); the "geometric impossibility" wording is
+clarified to "single-translation-model insufficient; 2-sprite multi-placement is
+the solvable path" so a future session doesn't mistake it for absolute. No src
+changes.
+
 ## Related
 - [[../lessons/api_hash_rotation_20260421]]
 
