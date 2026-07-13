@@ -1690,6 +1690,59 @@ tier assignment (colour-11↔goal-A vs colour-15↔goal-B, matched to the
 indicator positions) also remains untested in either direction conclusively.
 Not building delivery logic on this yet — still short of a confirmed rule.
 
+### su15 diamond-transparency hypothesis REFUTED by direct pixel geometry — precondition/tier-assignment is now the leading lead (2026-07-13 22:27)
+
+Per the fallback pivot from AR25 L3 (banked above, `1dd5e1a`), tested the
+leading "diamond-shape-precision" candidate directly rather than continuing
+to reason from centroid distance alone — two near-zero-cost pixel dumps, no
+delivery-walk budget spent (the earlier rounds' click budget for actual
+delivery attempts is untouched):
+
+1. **Goal diamond pixel mask** (`su15-1944f8ab` L3, both goal instances,
+   identical): 9x9 bbox, confirmed genuinely non-square —
+
+   ```
+   ..#####..
+   .#######.
+   #########
+   #########
+   #########
+   #########
+   #########
+   .#######.
+   ..#####..
+   ```
+   81 bbox cells, 69 solid / 12 background-transparent — the transparent-
+   corner geometry from the round-page hypothesis IS real. But the solid
+   region is large: a guaranteed-solid 5x5 core (rows 48-52, cols 7-11
+   relative to centroid (9,50)) plus a 7-wide band one ring out.
+
+2. **Tile pixel mask** (colour-11 size-16 and colour-15 size-9, built via
+   the same natural chain-build stall used in every prior round — no new
+   mechanic exercised): both are **perfect solid squares**, 4x4 and 3x3
+   respectively, zero transparent cells. The tile shape is not the
+   irregular one.
+
+**Conclusion: the transparent-corner-precision hypothesis is REFUTED by
+geometry, not just untested.** A solid 4x4 or 3x3 tile centered within the
+measured `dist=0.7px` of the goal centroid sits entirely inside the
+diamond's guaranteed-solid 5x5+ core — there is no computed click position
+at that distance whose tile footprint could land exclusively on a
+transparent corner cell. So "the tile overlaps a transparent pixel instead
+of a solid one" cannot be why delivery was rejected at `dist=0.7` in the
+earlier rounds' live data. This is a genuine elimination, not an inference
+gap — both shapes were read directly from the live frame's pixel data, no
+internals.
+
+**What remains standing from the round page's candidate list**: (b) a
+precondition independent of tile tier, and (c) per-goal tier assignment
+(colour-11↔goal-A vs colour-15↔goal-B via the top-band indicator blocks) —
+neither refuted, neither confirmed. (a) is now closed. No further live-click
+budget spent this round on (b)/(c) — the geometric elimination was the
+disciplined stopping point matching this round's established 2-data-point
+budget norm; a live test of (b)/(c) is the next session's lead, not
+continued here.
+
 ### Day wrap: v2 submission assets staged (2026-07-13 19:51)
 Dataset v3 (all of today's modules) + kernel v7 pushed — validating overnight
 with the 18/25 card (public-25 proxy ~1.23). Submission #54637991 (v6 card,
