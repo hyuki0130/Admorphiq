@@ -1743,37 +1743,47 @@ disciplined stopping point matching this round's established 2-data-point
 budget norm; a live test of (b)/(c) is the next session's lead, not
 continued here.
 
-### su15 attempted completion of the tier x goal matrix — chain-build itself now GAME_OVERs before delivery, 3/3 attempts (2026-07-13 22:30)
+### su15 attempted completion of the tier x goal matrix — false alarm, re-derived an ALREADY-FIXED stall pattern by bypassing the fix (2026-07-13 22:30, corrected 22:35)
 
 Attempted the one still-untested cell of the pairing matrix — colour-15 →
-goal B — to close out hypothesis (c) cleanly. **Could not reach the
-delivery test at all**: the natural chain-build (the SAME `next_merge_click`
-loop every prior probe in this investigation used to reach the colour-11 /
-colour-15 stall state) hit `GAME_OVER` at click 22, three times in a row,
-across two different env-loading paths (`OFFLINE.make("su15-1944f8ab")` and
-`NORMAL.make("su15")` — both resolved to the identical
-`environment_files/su15/1944f8ab/su15.py`, ruling out the AR25-class
-hash-mismatch trap as the cause here).
+goal B — to close out hypothesis (c) cleanly, using a custom bare-loop
+probe script that calls `next_merge_click` directly. Hit `GAME_OVER` at
+click 22, reproducibly (4/4 runs, exact same click count and exact same
+dead click `(22, 42)` repeated 5 times immediately before it), across two
+different env-loading paths.
 
-This is a NEW, earlier failure point than every previous successful run in
-this investigation, which reached the colour-11/colour-15 stall by click
-~15-30 without GAME_OVER. Not chased further (3 consistent failures without
-ever reaching the intended test is a stop signal, not a retry-until-it-
-works signal) — recorded as an open observation: **the chain-build phase
-itself has become less reliable session-to-session**, independent of the
-delivery-acceptance question this sub-investigation set out to answer.
-Possible causes, none tested: click-order sensitivity in which pair
-`next_merge_click` chooses to merge first, accumulated float-rounding drift
-across many `_step_toward` calls compounding into an eventual bad click,
-or genuine env-side non-determinism (the round page's own prior note that
-"non-deterministic sessions genuinely differ" for this exact game). The
-tier×goal matrix remains 3/4 tested (colour-11→A rejected, colour-11→B
-inconclusive, colour-15→A GAME_OVER-during-delivery); colour-15→B is now
-"blocked before test" rather than merely "untested". Hypothesis (b)
-precondition and (c) tier-assignment both remain open. Next session should
-first re-verify the chain-build's own reliability (does `next_merge_click`
-reliably reach the stall state at all, independent of delivery) before
-spending more budget on delivery-acceptance specifically.
+**This was initially mis-logged here as a "new chain-build reliability
+regression."  It is not new — it is an exact re-derivation of
+[[../lessons/merge_drag_stall_causes_game_over_20260713]]'s own documented
+"Baseline (`next_merge_click` called in a bare loop, no caller-level
+guard)" trace**, which recorded the identical symptom (dead click at
+`(22,42)` repeated 5x, GAME_OVER at click 22) in exact numeric agreement.
+That lesson page also records that a fix already LANDED the same day (grep
+`_MERGE_DRAG_STALL_LIMIT` in `world_model_agent.py`, confirmed present at
+lines 230/786/1872+): `WorldModelAgent._merge_drag_step` caps consecutive
+no-progress walk clicks at 3 and falls through to the interaction pipeline
+instead of repeating a dead click toward GAME_OVER. My probe script,
+written fresh this session without first checking the existing lesson
+pages, called the pure `next_merge_click` function in its own custom loop
+— exactly bypassing the stateful stall-detection wrapper the fix lives in
+— so it necessarily reproduced the pre-fix baseline, not current agent
+behaviour. The su15 guard (`2/9, 58 actions`, unchanged across this whole
+session) already confirms the real agent path is unaffected.
+
+**Corrected takeaway**: no new regression. The underlying capability gap
+the lesson page identifies — SU15 needs a downgrade-then-merge sequence for
+the two leftover tiles that neither `next_merge_click` nor
+`next_drag_click` implement — remains the actual open blocker, unchanged
+by this probe. The tier×goal delivery-acceptance question (hypotheses b/c
+from the section above) is UNTESTABLE via this bare-loop methodology at
+all — any future live probe of delivery-acceptance must drive through
+`WorldModelAgent`'s actual `_merge_drag_step`/interaction path (or
+explicitly re-implement the same stall guard in the probe script), not
+call `next_merge_click` in a raw loop, or it will hit this same false
+floor. Lesson for the wiki-authoring habit: check `.wiki/wiki/lessons/`
+for the exact symptom BEFORE writing up a "new" finding — this cost one
+extra round-trip that a `grep -r "GAME_OVER.*click 22"` over `.wiki/`
+would have caught immediately.
 
 ### Day wrap: v2 submission assets staged (2026-07-13 19:51)
 Dataset v3 (all of today's modules) + kernel v7 pushed — validating overnight
