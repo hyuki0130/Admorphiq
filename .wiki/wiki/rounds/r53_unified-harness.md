@@ -1437,3 +1437,14 @@ jumps, opposite directions). Design: pair upper-grid pieces to lower-panel
 targets BY COLUMN, rotate each to match, cursor-navigate between them. The
 wiki's "target in a corner" note is stale (target data spans the panel).
 Module cycle dispatched.
+
+### tr87 mechanism decoded; win-rule hypothesis batch offline (2026-07-13 18:35)
+Deep trace: 5-column control panel, each column a 7-STATE CYCLIC DIAL
+(ACTION1=+1/ACTION2=-1, byte-identical return at press 7), bracket cursor via
+ACTION3/4 (wrapping), bar1 = static per-column targets, upper 12-piece grid
+unchanged across all presses. The natural win rule (dial mask == own-column
+target) EXHAUSTIVELY disproven offline: 35 captured states x 5 targets, zero
+matches in any pairing. Move counter confirmed (row 63) → remaining
+hypotheses dispatched as OFFLINE computation on the captured masks: dihedral
+equality, complement, count equality, upper-grid-as-key, side-channel scan of
+the existing press traces.
