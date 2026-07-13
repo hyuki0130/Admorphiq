@@ -2620,5 +2620,29 @@ than opening a fourth investigation layer in one sitting; the next
 session's lead is precisely this coordinate-capture-timing question, not
 a new hypothesis.
 
+**Follow-up test of the leading candidate (2026-07-13 23:10) — NEGATIVE,
+reverted.** Tested the "coordinate drift between capture moments"
+hypothesis directly: captured every goal instance's centroid ONCE at
+`_PHASE_MERGE_DRAG` entry (matching the monkeypatch's "once, upfront"
+pattern exactly) into a new `_merge_drag_all_goals` list, and had
+`_try_next_merge_goal` consume that frozen list instead of re-querying
+`detect_goal_containers` at switch-time. Result: **zero measurable
+change** — `su15 2/9, 59 actions`, byte-identical to the pre-change run.
+Since the fix produced no observable behaviour difference at all (not
+even a shifted action count), it is very likely inert for this specific
+divergence, matching the earlier `walkable[start] = True` pattern in this
+same file (a plausible-sounding invariant that turns out not to be what
+`grid_bfs`/here the click sequence actually depends on). Reverted rather
+than keep unproven code (suite reconfirmed 764/764 after revert). The
+1-pixel click-13 divergence therefore has SOME OTHER cause, not simply
+"which frame the goal centroid was read from" — possibly the retry path
+issuing its OWN fresh probe click (`drag_probe_target`) that the
+monkeypatch path never issues (monkeypatch forces the goal from click 1,
+so its "probe" and its first real merge click may coincide; the retry
+path's probe-then-switch sequence issues an actual extra environment step
+even when `_last_changed` is credited). Next session should compare
+action-by-action, not just click-target-by-click-target, to check for an
+extra or missing step between the two paths.
+
 ## Related
 - [[../lessons/api_hash_rotation_20260421]]
