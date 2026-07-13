@@ -3799,3 +3799,14 @@ changes.
 - **Implication**: the primary lever for LB rank is HIDDEN-GAME TRANSFER — generic mechanic
   families (tonight direction) over public-specific tuning. Depth on public games still feeds the
   proxy, but every mechanism must be justified as frame-observable + game-agnostic to count.
+
+## v10 KAGGLE-VALIDATED: proxy 5.8307 — cd82 6/6 carries server-side [2026-07-14 04:06 KST]
+
+- Kernel v10 (dataset v6: ring_paint cd82 solver + sb26 portal-DFS + su15 reset-retry)
+  validated COMPLETE: **score 5.8307, 27 levels** (v8 1.7091 → v9 1.8077 → v10 5.8307).
+- **cd82 = 6/6 @ 97.4858 in 108 actions on the server** — above the local 94.63 because the
+  official per-level cap is 115 (beat-the-human levels credit >100). su15 10.35, ar25/sb26/re86
+  8.33 each. Public-LB top band is 1.61; v10''s PROXY is 3.6x that — the hidden-set transfer
+  (~13% measured on v6) remains the open question.
+- Submission scheduled for the 09:00 KST slot reset (v10, submission.parquet).
+
