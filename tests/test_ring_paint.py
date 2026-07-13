@@ -62,19 +62,41 @@ def test_plan_paint_vertical_split_uses_left_right_positions():
     assert plan_paint(target, canvas_start=8) == [(2, 9)]
 
 
-def test_plan_paint_returns_empty_on_non_half_split():
-    """Purpose: a target that is not a clean two-colour half-split (e.g. a
-    diagonal / multi-band pattern) yields NO plan, so the caller defers to the
-    existing path rather than mis-painting.
+def test_plan_paint_solves_a_diagonal_target():
+    """Purpose: the search planner solves a DIAGONAL target (the CD82 L2+ class),
+    not just half-splits — a lower-left triangle is one launch from ring position
+    5 (the lower-left-triangle region).
 
-    Expected feedback: a PASS proves the planner is correctly scoped to the L1
-    class and never fires a wrong plan on deeper levels; a FAIL means it could
-    regress a board it cannot actually solve.
+    Expected feedback: a PASS proves the BFS over region-launches (matched on the
+    off-diagonal cells, as the game's win check does) extends past L1 to the
+    diagonal levels; a FAIL means deeper cd82 levels stay unsolved.
     """
     target = np.zeros((10, 10), dtype=np.int32)
     for i in range(10):
-        target[i, : i + 1] = 15  # diagonal triangle
-    assert plan_paint(target, canvas_start=0) == []
+        target[i, : i + 1] = 15  # lower-left triangle
+    plan = plan_paint(target, canvas_start=0, colors=[0, 15])
+    assert plan == [(5, 15)]
+
+
+def test_plan_paint_solves_l2_diagonal_composition():
+    """Purpose: the planner finds a two-launch sequence for the measured CD82 L2
+    composition (top-half one colour, then a diagonal triangle over it).
+
+    Expected feedback: a PASS proves multi-launch ordering works (later launches
+    paint over earlier); a FAIL means L2 would not clear.
+    """
+    # top half 15, then lower-right-triangle 12 painted over (canvas starts 0).
+    target = np.zeros((10, 10), dtype=np.int32)
+    target[0:5, :] = 15
+    for i in range(10):
+        target[i, 9 - i : 10] = 12  # lower-right triangle over the top half
+    plan = plan_paint(target, canvas_start=0, colors=[0, 15, 12])
+    # reproduce the plan and confirm it matches off-diagonal.
+    from admorphiq.ring_paint import _MASKS, _matches
+    canvas = np.zeros((10, 10), dtype=np.int32)
+    for pos, col in plan:
+        canvas[_MASKS[pos]] = col
+    assert _matches(canvas, target)
 
 
 def test_detect_paint_layout_reads_target_canvas_swatches_and_plans():

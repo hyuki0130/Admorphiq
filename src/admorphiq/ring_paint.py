@@ -21,6 +21,7 @@ target is not a clean half-split, so nothing regresses.
 
 from __future__ import annotations
 
+from collections import deque
 from dataclasses import dataclass
 
 import numpy as np
@@ -52,12 +53,58 @@ class PaintLayout:
 
 
 def _detect_swatches(layer: np.ndarray, bg: int) -> dict[int, int]:
-    """Top-row colour swatches: colour -> centroid x (click at (x+? ,4))."""
+    """Top-row colour swatches: colour -> centroid x (click at (x+? ,4)).
+
+    Restricted to x>=20: the swatch strip sits top-centre/right, while the target
+    reference is top-LEFT (x<20) — without this a stray target-colour pixel in
+    the top-left was mis-read as that colour's swatch (measured CD82 L2).
+    """
     sw: dict[int, int] = {}
     for c in connected_components(layer, bg):
-        if c["cy"] < 9 and 6 <= c["size"] <= 40 and c["color"] not in (bg, _PADDING):
+        if c["cy"] < 9 and 6 <= c["size"] <= 40 and c["cx"] >= 20 and c["color"] not in (bg, _PADDING):
             sw.setdefault(int(c["color"]), int(round(c["cx"])))
     return sw
+
+
+def _region_mask(pos: int) -> np.ndarray:
+    """The 10x10 boolean mask a launch from ring ``pos`` paints (from the game's
+    own region geometry, verification-only): 0/2/4/6 = top/right/bottom/left
+    halves; 1/3/5/7 = upper-right/lower-right/lower-left/upper-left triangles."""
+    m = np.zeros((10, 10), dtype=bool)
+    if pos == 0:
+        m[0:5, :] = True
+    elif pos == 4:
+        m[5:10, :] = True
+    elif pos == 6:
+        m[:, 0:5] = True
+    elif pos == 2:
+        m[:, 5:10] = True
+    elif pos == 1:
+        for i in range(10):
+            m[i, i:10] = True
+    elif pos == 3:
+        for i in range(10):
+            m[i, 9 - i : 10] = True
+    elif pos == 5:
+        for i in range(10):
+            m[i, 0 : i + 1] = True
+    elif pos == 7:
+        for i in range(10):
+            m[i, 0 : 10 - i] = True
+    return m
+
+
+_MASKS = {p: _region_mask(p) for p in range(8)}
+# The win check ignores the two main diagonals (the game compares canvas==target
+# only off the anti-diagonals) — so the planner matches off-diagonal cells only.
+_OFFDIAG = np.ones((10, 10), dtype=bool)
+for _i in range(10):
+    _OFFDIAG[_i, _i] = False
+    _OFFDIAG[_i, 9 - _i] = False
+
+
+def _matches(canvas: np.ndarray, target: np.ndarray) -> bool:
+    return bool(np.array_equal(canvas[_OFFDIAG], target[_OFFDIAG]))
 
 
 def _read_10x10(layer: np.ndarray, x0: int, y0: int) -> np.ndarray | None:
@@ -71,29 +118,43 @@ def _is_uniform(a: np.ndarray) -> bool:
     return len(set(a.flatten().tolist())) == 1
 
 
-def plan_paint(target: np.ndarray, canvas_start: int) -> list[tuple[int, int]]:
-    """Half-split planner: launches to paint ``target`` from a uniform canvas.
+def plan_paint(
+    target: np.ndarray, canvas_start: int, colors: list[int] | None = None, max_depth: int = 4
+) -> list[tuple[int, int]]:
+    """Shortest launch sequence that paints ``target`` from a uniform canvas.
 
-    Handles a clean two-colour horizontal (top/bottom) or vertical (left/right)
-    split — the L1 class. Returns ``[]`` for anything else (diagonals, multi-band
-    targets) so the caller defers to the existing path rather than mis-painting.
+    BFS over ``(ring_position, colour)`` launches (each overwrites its region;
+    later launches paint over earlier), matched against the target on the
+    off-diagonal cells only (the game's own win check ignores the two main
+    diagonals). Handles L1 half-splits AND deeper diagonal/multi-launch targets
+    (CD82 L2 = ``[(0,15),(3,12)]``). ``colors`` defaults to the target's own
+    palette. Returns ``[]`` when already matching, or when no sequence up to
+    ``max_depth`` matches (the caller defers rather than mis-painting).
     """
     if target.shape != (10, 10):
         return []
-    launches: list[tuple[int, int]] = []
-    top, bot = target[0:5], target[5:10]
-    left, right = target[:, 0:5], target[:, 5:10]
-    if _is_uniform(top) and _is_uniform(bot):
-        for pos, reg in ((0, top), (4, bot)):
-            col = int(reg[0, 0])
-            if col != canvas_start:
-                launches.append((pos, col))
-    elif _is_uniform(left) and _is_uniform(right):
-        for pos, reg in ((6, left), (2, right)):
-            col = int(reg[0, 0])
-            if col != canvas_start:
-                launches.append((pos, col))
-    return launches
+    if colors is None:
+        colors = sorted(set(target.flatten().tolist()))
+    start = np.full((10, 10), canvas_start, dtype=target.dtype)
+    if _matches(start, target):
+        return []
+    frontier: deque[tuple[np.ndarray, list[tuple[int, int]]]] = deque([(start, [])])
+    seen = {start.tobytes()}
+    while frontier:
+        canvas, seq = frontier.popleft()
+        if len(seq) >= max_depth:
+            continue
+        for pos in range(8):
+            for col in colors:
+                nxt = canvas.copy()
+                nxt[_MASKS[pos]] = col
+                if _matches(nxt, target):
+                    return [*seq, (pos, col)]
+                key = nxt.tobytes()
+                if key not in seen:
+                    seen.add(key)
+                    frontier.append((nxt, [*seq, (pos, col)]))
+    return []
 
 
 def detect_paint_layout(layer: np.ndarray, background: int) -> PaintLayout | None:
@@ -132,10 +193,10 @@ def detect_paint_layout(layer: np.ndarray, background: int) -> PaintLayout | Non
     canvas = _read_10x10(layer, canvas_xy[0], canvas_xy[1])
     if target is None or canvas is None or not _is_uniform(canvas):
         return None
-    launches = plan_paint(target, int(canvas[0, 0]))
+    swatch_x = _detect_swatches(layer, bg)
+    launches = plan_paint(target, int(canvas[0, 0]), colors=sorted(swatch_x))
     if not launches:
         return None
-    swatch_x = _detect_swatches(layer, bg)
     if any(col not in swatch_x for _pos, col in launches):
         return None
     return PaintLayout(launches=launches, swatch_x=swatch_x)
