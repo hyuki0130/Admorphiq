@@ -1357,3 +1357,15 @@ correctly returns None on it; the deployed agent's L2 behaviour is safe
 fall-through (169-action smoke confirmed). Needs its own dedicated round —
 banked for later; breadth (other walls) first. Trace data preserved here for
 that future cycle.
+
+### 🎉 SECOND WALL FALLS — re86 L1 at human-beating efficiency (2026-07-13 16:20)
+transform_route.py (6th family member): **re86 L1 = 24 actions vs human 26 →
+level score 1.0, game_score 0.0278, deterministic x2**. Records-first worked:
+legacy re86_analytical's LOGIC (cover ring+dot required points with matching
+sprites; ACTION5 cycles active) mined without its sprite-tag reads; all
+constants measured live. One real bug (active-sprite bbox scan misreading
+nearby markers) found, fixed, regression-pinned. Card: **17/25 chained**
+(cd82 cn04 ft09 lf52 lp85 m0r0 r11l re86 s5i5 sb26 sk48* sp80 su15 tn36 tu93
+vc33 + ar25; sk48 via 30k pass). Walls remaining: 6 (bp35 dc22 g50t sc25 tr87
+wa30) + depth. NEXT: re86 L2+ — the changer tier; legacy reached 6/8, the
+deepest RHAE pool of any wall (levels 1-6 = up to 0.58 game_score).
