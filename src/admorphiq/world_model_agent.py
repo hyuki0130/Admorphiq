@@ -79,6 +79,13 @@ from .merge_drag import (
     next_merge_click,
 )
 from .perception.frame_analyzer import FrameAnalyzer
+from .rotation import (
+    MAX_COMMIT_CLICKS_PER_PIECE,
+    RotationPuzzle,
+    detect_rotation_puzzle,
+    identify_moved_piece,
+    piece_matches_target,
+)
 from .sort_match import detect_match_layout, plan_match_placement
 
 # ── Tunables ─────────────────────────────────────────────────────────────────
@@ -151,6 +158,7 @@ _PHASE_INTERACT = "interact"
 _PHASE_ARRANGE = "arrange"
 _PHASE_SORT_MATCH = "sort_match"
 _PHASE_MERGE_DRAG = "merge_drag"
+_PHASE_ROTATE = "rotate"
 
 # Max clicks the merge-drag plan issues PER LEVEL before abandoning the
 # hypothesis (reset each level in ``_reset_level``). A simple gather walks a tile
@@ -678,6 +686,26 @@ class WorldModelAgent:
         self._merge_drag_attempted = False
         self._merge_drag_probed = False
         self._merge_drag_clicks = 0
+        # ── Click-only ROTATION-PUZZLE bookkeeping (rotation.py) ──────────────
+        # ``_rotation_attempted`` gates the one-shot detection per level (a
+        # fresh piece/reference layout each level). ``_rotation_puzzle`` is the
+        # detected pieces/targets/candidates once found. Stage 1 drains
+        # ``_rot_probe_queue`` (candidate widget positions, one click each) and
+        # folds each result — appended to ``_rot_probe_log`` by the credit block
+        # in ``choose_action`` (mirrors ``_arr_probe_log``) — into
+        # ``_rot_widget_for_piece`` (piece index -> its widget (x, y)). Stage 2
+        # then works ``_rot_commit_queue`` (piece indices with both a target and
+        # a known widget), clicking ``_rot_active_piece``'s widget until its
+        # live interior matches the target or the per-piece click cap is spent.
+        self._rotation_attempted = False
+        self._rotation_puzzle: RotationPuzzle | None = None
+        self._rot_probe_queue: list[tuple[int, int]] = []
+        self._rot_probe_log: list[dict] = []
+        self._rot_probe_processed = 0
+        self._rot_widget_for_piece: dict[int, tuple[int, int]] = {}
+        self._rot_commit_queue: list[int] | None = None
+        self._rot_active_piece: int | None = None
+        self._rot_clicks_left = 0
 
     # ── harness contract ──────────────────────────────────────────────────────
 
@@ -739,6 +767,12 @@ class WorldModelAgent:
                     self._arr_probe_log.append(
                         {"action": p["action_id"], "before": p["before"], "after": layer.copy()}
                     )
+                # Rotation widget-candidate probe: log the (candidate, before,
+                # after) so identify_moved_piece can attribute it to a piece.
+                if p.get("rot_probe"):
+                    self._rot_probe_log.append(
+                        {"candidate": p["coord"], "before": p["before"], "after": layer.copy()}
+                    )
             self._pending = None
         if leveled:
             self._levels_completed = lvl
@@ -765,6 +799,8 @@ class WorldModelAgent:
             return self._sort_match_step(layer, avail, latest_frame)
         if self._phase == _PHASE_MERGE_DRAG:
             return self._merge_drag_step(layer, avail, latest_frame)
+        if self._phase == _PHASE_ROTATE:
+            return self._rotate_step(layer, avail, latest_frame)
         return self._interact_step(layer, avail, latest_frame)
 
     def choose_action_with_data(self, frames: list, latest_frame):
@@ -862,6 +898,26 @@ class WorldModelAgent:
                 self._sort_plan = plan_match_placement(layout, _SELECT_TOGGLE_ACTION)
                 self._phase = _PHASE_SORT_MATCH
                 return self._sort_match_step(layer, avail, latest_frame)
+
+        # Click-only ROTATION-PUZZLE signature: no movement action is available
+        # (a pure click game, same discriminator as the sort/merge-drag classes
+        # above/below) and the frame holds a frame+interior PIECE plus a
+        # separate REFERENCE pattern (rotation.detect_rotation_puzzle). Tried
+        # ONCE per level, right after the sort-layout check (a different
+        # structural fingerprint — frame/interior pieces vs top/bottom matching
+        # rows — so the two rarely both fire). On failure the phase abandons
+        # back to normal probing. Observation-gated, no game-id reads.
+        if (
+            not self._rotation_attempted
+            and 6 in avail
+            and not any(a in avail for a in (1, 2, 3, 4))
+        ):
+            self._rotation_attempted = True
+            bg = self.model.background if self.model.background is not None else 0
+            puzzle = detect_rotation_puzzle(layer, bg)
+            if puzzle is not None:
+                self._rotation_puzzle = puzzle
+                return self._enter_rotate(layer, avail, latest_frame)
 
         # On a level PAST the first, where the player/move controls are already
         # learned (GAME-scope) yet a selection-toggle action + several movable
@@ -1457,6 +1513,110 @@ class WorldModelAgent:
         self._plan_commit = self._action_count
         self._phase = _PHASE_INTERACT
         return self._interact_step(layer, avail, latest_frame)
+
+    # ── rotation-puzzle (click-exactly, attempt-limited) phase ────────────────
+
+    def _enter_rotate(self, layer: np.ndarray, avail: list[int], latest_frame):
+        """Begin the rotation phase: schedule the widget-candidate probe queue.
+
+        ``self._rotation_puzzle`` was just detected by
+        :func:`rotation.detect_rotation_puzzle`; its ``candidates`` (piece +
+        reference centroids) become the probe queue Stage 1 of
+        :meth:`_rotate_step` drains one click at a time.
+        """
+        self._phase = _PHASE_ROTATE
+        self._plan_commit = self._action_count
+        self._rot_probe_queue = list(self._rotation_puzzle.candidates)
+        self._rot_probe_log = []
+        self._rot_probe_processed = 0
+        self._rot_widget_for_piece = {}
+        self._rot_commit_queue = None
+        self._rot_active_piece = None
+        self._rot_clicks_left = 0
+        return self._rotate_step(layer, avail, latest_frame)
+
+    def _rotate_step(self, layer: np.ndarray, avail: list[int], latest_frame):
+        """One action of the rotation phase: probe widgets, then click-exactly.
+
+        Stage 1 — fold every newly-credited probe result (appended to
+        ``_rot_probe_log`` by the ``choose_action`` credit block) into
+        ``_rot_widget_for_piece`` via :func:`identify_moved_piece`, then issue
+        the next untried candidate click, but ONLY while a piece with an
+        assigned target still lacks a known widget — once every such piece is
+        resolved (or the candidate queue runs dry) the probe stops so no
+        attempt-counter budget is wasted on candidates that cannot help.
+        Stage 2 — work the queue of target-bearing, widget-known pieces one at
+        a time: click the active piece's widget, then on the NEXT call check
+        the LIVE frame (:func:`piece_matches_target`) before clicking again,
+        stopping at a match or at :data:`rotation.MAX_COMMIT_CLICKS_PER_PIECE`
+        additional clicks (never re-probes, never clicks anything else — the
+        attempt counter punishes any other click). Falls through to normal
+        interaction once every resolvable piece is done.
+        """
+        puzzle = self._rotation_puzzle
+
+        # Stage 1a: fold newly-credited probe results into the widget map.
+        while self._rot_probe_processed < len(self._rot_probe_log):
+            entry = self._rot_probe_log[self._rot_probe_processed]
+            self._rot_probe_processed += 1
+            idx = identify_moved_piece(puzzle.pieces, entry["before"], entry["after"])
+            if idx is not None and idx not in self._rot_widget_for_piece:
+                self._rot_widget_for_piece[idx] = entry["candidate"]
+
+        needs_widget = [
+            i
+            for i, t in enumerate(puzzle.targets)
+            if t is not None and i not in self._rot_widget_for_piece
+        ]
+
+        # Stage 1b: probe the next untried candidate, only while some
+        # target-bearing piece still lacks a known widget.
+        if needs_widget and self._rot_probe_queue and 6 in avail:
+            x, y = self._rot_probe_queue.pop(0)
+            self._pending = {
+                "action_id": 6,
+                "coord": (x, y),
+                "before": layer.copy(),
+                "rot_probe": True,
+            }
+            return self._emit_click(x, y)
+
+        # Stage 2: click-exactly commit, one piece at a time.
+        if self._rot_commit_queue is None:
+            self._rot_commit_queue = [
+                i
+                for i, t in enumerate(puzzle.targets)
+                if t is not None and i in self._rot_widget_for_piece
+            ]
+
+        if self._rot_active_piece is None:
+            if not self._rot_commit_queue:
+                self._plan_commit = self._action_count
+                self._phase = _PHASE_INTERACT
+                return self._interact_step(layer, avail, latest_frame)
+            self._rot_active_piece = self._rot_commit_queue.pop(0)
+            self._rot_clicks_left = MAX_COMMIT_CLICKS_PER_PIECE
+
+        piece_idx = self._rot_active_piece
+        piece = puzzle.pieces[piece_idx]
+        target = puzzle.targets[piece_idx]
+        if target is not None and piece_matches_target(piece, layer, target):
+            # This piece is done — move on to the next without spending a click.
+            self._rot_active_piece = None
+            return self._rotate_step(layer, avail, latest_frame)
+        if self._rot_clicks_left <= 0 or 6 not in avail:
+            self._rot_active_piece = None
+            return self._rotate_step(layer, avail, latest_frame)
+
+        self._rot_clicks_left -= 1
+        x, y = self._rot_widget_for_piece[piece_idx]
+        self._pending = {
+            "action_id": 6,
+            "coord": (x, y),
+            "before": layer.copy(),
+            "desc": ("c", x, y),
+        }
+        return self._emit_click(x, y)
 
     # ── interact (greedy + bounded sequence search) phase ─────────────────────
 
