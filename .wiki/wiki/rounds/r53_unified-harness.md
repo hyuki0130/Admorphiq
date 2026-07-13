@@ -3480,29 +3480,35 @@ visitation order, map targets→slots in that order, place pool items, verify
 (ACTION5). This L2 has NO bottom-portals (1 fixed portal, 7 plain items, 7 empty
 slots) so no permutation search is needed for it.
 
-**Legitimacy RESOLVED — `frame[-1]` is the repo's established canonical render
-surface, not a preview artifact.** `obs.frame` is a frame-history stack that
-grows during play (measured: ALL 25 games start at n_layers=1; SB26 reaches 118
-layers after 9 steps). The LAST layer is the current fully-rendered frame; layer
-0 goes stale/incomplete after steps. `general_agent.canonical_layer()` already
-returns `arr[-1]`, documented as *"the canonical render surface (matches the
-repo's StochasticGoose convention)"* — so the WMA/GeneralAgent path ALREADY reads
-true colours on every game. **The SB26 frame-only failure is a LEGACY BUG**: the
-`obs.frame[0]` helpers (`sort_match.py`, `strat_sb26_sort`, and ~6 `_layer`
-helpers in `agent_ensemble.py`) read the STALE first layer. Reading
-`canonical_layer(obs.frame)` (= `frame[-1]`) is correct, standard, and
-generalises.
+**Legitimacy RESOLVED + the "layer bug" CORRECTED to a transient-transition
+timing effect (measured).** `obs.frame` is a frame-history stack. The 118 layers
+appear ONLY as a TRANSIENT level-transition animation right after a level clears
+(measured: SB26 shows 118 layers at the ac=9 L1→L2 arrival, then collapses to
+n_layers=1 after ONE settling step). During that transient, `frame[0]` is a
+stale/incomplete animation frame (items render as flat colour 4); `frame[-1]` is
+the settled current frame. **After settle (1 no-op), `frame[0]` ALSO shows the
+true colours** `[8,15,14,12,6,9,11]`. A mid-play audit across 12 games confirms
+the effect is NOT widespread: 10 of 12 settle to n_layers=1 (frame[0]==frame[-1]);
+only su15 (5 layers) and wa30 (2 layers) keep a persistent divergence. So the
+earlier "stale-layer bug in ~6 strats / broad unlock" claim was OVERSTATED and is
+retracted — most games' `frame[0]` is fine once settled. The robust rule is to
+read `canonical_layer(obs.frame)` (= `frame[-1]`, the repo's StochasticGoose
+convention, always the current frame) so a read is never caught mid-transition;
+the prior SB26 probe was misled by reading during the transient AND by not
+inspecting the top-display target legend.
 
 **Build plan (frame-only, `canonical_layer` inputs):** detect frames (border-
 colour boxes) + slots + portals (border-colour fill) + target order (top display)
 + pool colours, simulate the legacy DFS traversal, map targets→item-slots in
 traversal order, place + verify. L2 needs no permutation (1 fixed portal, 7 plain
-items). **Broad-unlock corollary (worth a survey)**: any legacy `frame[0]` strat
-may be silently reading a stale layer — a cheap `frame[0]`→`canonical_layer`
-audit could help other games too.
+items). The prior bank's real miss was the target legend: the DFS target order IS
+displayed as the top-row 7 sprites (readable from the settled/canonical frame),
+overturning "no frame-only equivalent for `game.wcfyiodrx`."
 
-**Status: banked, reported to lead; build pre-authorized.** No `src/` changes
-yet; tree clean at `a43f952`, 769 green, guards intact.
+**Status: banked; broad-audit recommendation RETRACTED after the settle
+measurement (staleness is a transient, mostly SB26-specific). Build path is (A)
+the portal-DFS solver on `canonical_layer` inputs.** No `src/` changes yet; tree
+clean at `a43f952`, 769 green, guards intact.
 
 ## Related
 - [[../lessons/api_hash_rotation_20260421]]
