@@ -3024,5 +3024,39 @@ narrow patch this late in a long session.
 
 **No `src/` changes this cycle.**
 
+### TN36 L2 corroborates FT09 exactly — same chaining-correct, graph-doesn't-converge shape (2026-07-13 23:54)
+
+Per dispatch ("tn36 L2 next after ft09"), ran the same direct check:
+`score_efficiency.py --agent chained --titles tn36 --max-actions 8000`.
+
+**Identical shape to FT09**: `pick=graph ... feedback='cleared level 1'`
+at step 0 (chaining correct, WMA's L1 clear banked, immediate handover);
+`[graph] REGION mask: 50 cells` fires (real exploration engaging); no
+hash-ladder escalation this time (TN36's instability never crossed the
+threshold that triggered FT09's pool2/object rungs — a difference in
+degree, not in kind). Final: `levels=1/7, actions=8000` — full budget
+spent on L2, no clear.
+
+**This corroborates the FT09 assessment across two independent games,
+not one.** TN36 is documented elsewhere in this wiki as a bit-encoding
+puzzle (`concepts/bit_encoding.md`), a different surface mechanic from
+FT09's lights-out/GF(2) toggle grid, but the SAME shape: a constraint-
+satisfaction puzzle that graph/frontier exploration can search but not
+solve within a bounded action budget, because there is no domain solver
+(linear algebra / constraint propagation) in the current tool stack —
+only state-space discovery. Two-for-two strengthens the "genuine
+capability gap, not a per-game bounded bug" read from the FT09 entry
+above.
+
+**No `src/` changes.** Consolidated recommendation for the next
+prioritization decision: if FT09/TN36-class L2+ depth is worth pursuing,
+it needs a genuine feature build — a frame-only constraint/bit-pattern
+solver reachable from the graph/unified stack (the closest existing
+precedent is the legacy brittle `lights_out`'s GF(2) linear-algebra
+approach, which this repo's Phase 8 direction has been migrating away
+from toward frame-only generalization, not toward reintroducing game-
+specific solvers) — not another bounded-trace-and-patch cycle on either
+game.
+
 ## Related
 - [[../lessons/api_hash_rotation_20260421]]
