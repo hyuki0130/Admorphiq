@@ -1377,3 +1377,14 @@ measured bugs fixed en route (render-lag settle frame after level-up;
 step-multiple offset preference; active marker = exactly-1-foreign-cell),
 each regression-pinned — this family's "measure, fix, pin" loop is the
 engine. 730 tests. L3+ dispatched (legacy ceiling 6/8).
+
+### 🏁 FIRST-EVER SUBMISSION ACCEPTED (2026-07-13 16:41 KST)
+Submission #54637991 (submission.parquet, v6 kernel) — **SubmissionStatus.
+PENDING**: Kaggle is rerunning the notebook against the HIDDEN 110 games via
+the gateway path. The project's first submission since the competition began
+(the June "0 submissions" gap closed). Daily slot consumed; next slot resets
+00:00 UTC (09:00 KST). The pending rerun includes the LLM-free chained agent
+as of dataset v2 — NOTE: today's slider/transform_route/re86-depth work is
+NOT in this submission (dataset uploaded before them); tomorrow's slot can
+carry the updated card (s5i5 + re86x2 add ~+0.14 to the public-25 proxy →
+~1.21, exactly the M1-winner anchor).
