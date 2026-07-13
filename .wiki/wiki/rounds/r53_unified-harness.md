@@ -1243,3 +1243,19 @@ fails BY DESIGN (explains every 0 across budgets/models). The purpose-built
 solver shape (R28-arrangement pattern): detect rotatable pieces + reference
 pattern, compute required rotation counts, click exactly. Next: same anatomy
 pass on the other 7 walls, then build the first wall-class solver.
+
+### Wall anatomy #2-8 — the walls are MOVE-LIMITED games (2026-07-13 13:40)
+Full-probe on the remaining 7: **five of eight walls tick a bottom-row (row
+63) attempt/move counter on (almost) every action** — s5i5, bp35, dc22, g50t,
+wa30 (sc25's clicks are fully dead; re86/tr87 are large-region transforms).
+Structural reframe: these are BUDGETED puzzles that punish waste, so
+efficiency-blind frontier search self-destructs by design — the shared root
+cause behind the "goal-inference wall" for the counter class. Solver
+implications: (a) the per-cell HUD mask absorbs the counter for HASHING but
+not for the GAME's own limit; (b) restart_on_game_over grants retries and the
+graph accumulates across attempts, so the missing piece is DEPTH-LIMITED,
+plan-first play per attempt (act only on a computed short plan, never probe-
+sweep). Per-game table: bp35 move[3,4]+click(8,8)=39c; dc22 nav 8-9c moves,
+clicks dead/counter; g50t only ACTION3 real (48c); re86 ACTION1-4 60c
+transforms; sc25 ACTION3 36c, clicks 0; tr87 rotations 13-29c; wa30 ACTION1-4
+32c + ACTION5 counter. Next: purpose-built counter-class solver design.
