@@ -3128,5 +3128,27 @@ leads, neither chased further this session — this closes the assigned
 investigation with a precise, falsifiable, evidence-backed answer
 rather than a guess.
 
+**One further cheap read narrows lead (a) precisely, without
+implementing anything.** `indicator_flip_sets`'s own docstring
+(`primitives/pattern_match.py:205`) names its calibration case
+explicitly: *"ft09: an 8-cell ring around one clue"*. The function
+computes exactly ONE central indicator position — `cix`/`ciy`, the
+AVERAGE centroid of every toggle cell — then partitions cells by the
+marker colour found near that single point. L2 has **13** confirmed
+toggle buttons (not a clean single 8-cell ring), and the earlier pristine-
+board dump this session found the 13 colour-9 blocks arranged with 2
+"missing" grid positions occupied by small unrelated colour-0/colour-2
+clusters — a layout shape that doesn't obviously match "one ring around
+one central clue." **Working hypothesis, not yet confirmed**: L2 may
+have a DIFFERENT indicator topology than the single-ring case this
+function was built for (e.g. a larger grid, an off-center indicator, or
+multiple indicator points), and averaging all 13 cells into one centroid
+would misplace the marker-lookup point for such a layout, correctly
+explaining an empty `indicator_flip_sets([])` result. A genuine fix (if
+confirmed) is a real, scoped feature addition — generalising the single-
+centroid marker lookup to detect and handle a non-ring indicator
+topology — not a one-line patch; NOT attempted this session, flagged as
+the most promising concrete next step for whoever picks this up.
+
 ## Related
 - [[../lessons/api_hash_rotation_20260421]]
