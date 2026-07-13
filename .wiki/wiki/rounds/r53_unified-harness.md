@@ -1986,3 +1986,14 @@ walkability after, and see if previously-unreachable candidates open up).
 The `_nav_attempted` stale-completion-colour fix from the entry above
 remains landed and committed regardless of this outcome — it is an
 independent, confirmed-real bug fix, not contingent on ls20 L2 clearing.
+
+### 🚀 v7 VALIDATED: server score 1.6054, 23 levels / 25 envs (2026-07-13 21:05)
+The 18/25 card's Kaggle validation: **1.6054** (v6: 1.0721, 19 levels) — the
+perfect-efficiency wall clears (s5i5 19/20, re86 24/26+40/42, wa30 30/71, all
+level score 1.0) lift the public-25 proxy ABOVE the top anchor (~1.56) and
+well past M1 (1.21). Placeholder parquet present → submit preconditions ready.
+CEREMONY (next session or 09:00 KST slot reset): `kaggle competitions submit
+arc-prize-2026-arc-agi-3 -k jaehyukhyun/admorphiq-arc-agi-3-chained-llm-free
+-v 7 -f submission.parquet -m "Admorphiq v2: +slider/transform/delivery
+families, public-25 proxy 1.605"`. v6 (#54637991) hidden-set rerun still
+PENDING — its publicScore remains the first transfer datapoint.
