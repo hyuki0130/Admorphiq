@@ -86,6 +86,14 @@ from .rotation import (
     identify_moved_piece,
     piece_matches_target,
 )
+from .slider import (
+    SliderPuzzle,
+    clicks_needed,
+    detect_slider_puzzle,
+    identify_moved_track,
+    resolve_goal,
+    track_reached_goal,
+)
 from .sort_match import detect_match_layout, plan_match_placement
 
 # ── Tunables ─────────────────────────────────────────────────────────────────
@@ -159,6 +167,7 @@ _PHASE_ARRANGE = "arrange"
 _PHASE_SORT_MATCH = "sort_match"
 _PHASE_MERGE_DRAG = "merge_drag"
 _PHASE_ROTATE = "rotate"
+_PHASE_SLIDE = "slide"
 
 # Max clicks the merge-drag plan issues PER LEVEL before abandoning the
 # hypothesis (reset each level in ``_reset_level``). A simple gather walks a tile
@@ -706,6 +715,29 @@ class WorldModelAgent:
         self._rot_commit_queue: list[int] | None = None
         self._rot_active_piece: int | None = None
         self._rot_clicks_left = 0
+        # ── Click-only SLIDER-PUZZLE bookkeeping (slider.py) ───────────────────
+        # Mirrors the rotation bookkeeping above exactly, one level down:
+        # ``_slide_attempted`` gates one-shot detection per level.
+        # ``_slider_puzzle`` is the detected tracks/markers/candidates. Stage 1
+        # drains ``_slide_probe_queue`` and folds each result — appended to
+        # ``_slide_probe_log`` by the credit block in ``choose_action`` — into
+        # ``_slide_track_buttons`` (track index -> {"grow"/"shrink": (x, y)})
+        # and ``_slide_track_steps`` (track index -> {"grow"/"shrink": measured
+        # step}). Stage 2 works ``_slide_commit_queue`` (tracks with a
+        # discovered "grow" button), clicking ``_slide_active_track``'s grow
+        # widget toward its resolved goal until the live tip reaches it or the
+        # measured click count is spent.
+        self._slide_attempted = False
+        self._slider_puzzle: SliderPuzzle | None = None
+        self._slide_probe_queue: list[tuple[int, int]] = []
+        self._slide_probe_log: list[dict] = []
+        self._slide_probe_processed = 0
+        self._slide_track_buttons: dict[int, dict[str, tuple[int, int]]] = {}
+        self._slide_track_steps: dict[int, dict[str, int]] = {}
+        self._slide_commit_queue: list[int] | None = None
+        self._slide_active_track: int | None = None
+        self._slide_goal: int | None = None
+        self._slide_clicks_left = 0
 
     # ── harness contract ──────────────────────────────────────────────────────
 
@@ -773,6 +805,12 @@ class WorldModelAgent:
                     self._rot_probe_log.append(
                         {"candidate": p["coord"], "before": p["before"], "after": layer.copy()}
                     )
+                # Slider widget-candidate probe: log the (candidate, before,
+                # after) so identify_moved_track can attribute it to a track.
+                if p.get("slide_probe"):
+                    self._slide_probe_log.append(
+                        {"candidate": p["coord"], "before": p["before"], "after": layer.copy()}
+                    )
             self._pending = None
         if leveled:
             self._levels_completed = lvl
@@ -801,6 +839,8 @@ class WorldModelAgent:
             return self._merge_drag_step(layer, avail, latest_frame)
         if self._phase == _PHASE_ROTATE:
             return self._rotate_step(layer, avail, latest_frame)
+        if self._phase == _PHASE_SLIDE:
+            return self._slide_step(layer, avail, latest_frame)
         return self._interact_step(layer, avail, latest_frame)
 
     def choose_action_with_data(self, frames: list, latest_frame):
@@ -898,6 +938,32 @@ class WorldModelAgent:
                 self._sort_plan = plan_match_placement(layout, _SELECT_TOGGLE_ACTION)
                 self._phase = _PHASE_SORT_MATCH
                 return self._sort_match_step(layer, avail, latest_frame)
+
+        # Click-only SLIDER-PUZZLE signature: no movement action is available
+        # and the frame holds an elongated, mostly-filled bar with a distinct
+        # tip cell plus a candidate goal marker along its axis
+        # (slider.detect_slider_puzzle). Tried BEFORE the rotation check
+        # below: on the measured S5I5 board rotation's ambiguous fallback
+        # structurally "succeeds" (every candidate ring matches some other
+        # ring's interior shape at a perfect score) even though the true
+        # mechanic is a slider, not a rotation — see slider.py's module
+        # docstring for the live-trace evidence. A slider track's elongation
+        # requirement (long axis >> short axis) cannot be satisfied by a
+        # compact rotation-style frame+interior piece, so trying this first
+        # does not cost a genuine rotation game anything. On failure the
+        # phase falls through to the rotation check. Observation-gated, no
+        # game-id reads.
+        if (
+            not self._slide_attempted
+            and 6 in avail
+            and not any(a in avail for a in (1, 2, 3, 4))
+        ):
+            self._slide_attempted = True
+            bg = self.model.background if self.model.background is not None else 0
+            slide_puzzle = detect_slider_puzzle(layer, bg)
+            if slide_puzzle is not None:
+                self._slider_puzzle = slide_puzzle
+                return self._enter_slide(layer, avail, latest_frame)
 
         # Click-only ROTATION-PUZZLE signature: no movement action is available
         # (a pure click game, same discriminator as the sort/merge-drag classes
@@ -1610,6 +1676,127 @@ class WorldModelAgent:
 
         self._rot_clicks_left -= 1
         x, y = self._rot_widget_for_piece[piece_idx]
+        self._pending = {
+            "action_id": 6,
+            "coord": (x, y),
+            "before": layer.copy(),
+            "desc": ("c", x, y),
+        }
+        return self._emit_click(x, y)
+
+    # ── slider-puzzle (grow-to-marker, attempt-limited) phase ─────────────────
+
+    def _enter_slide(self, layer: np.ndarray, avail: list[int], latest_frame):
+        """Begin the slide phase: schedule the widget-candidate probe queue.
+
+        Mirrors :meth:`_enter_rotate` exactly: ``self._slider_puzzle`` was
+        just detected by :func:`slider.detect_slider_puzzle`; its
+        ``candidates`` (button centroids) become the probe queue Stage 1 of
+        :meth:`_slide_step` drains one click at a time.
+        """
+        self._phase = _PHASE_SLIDE
+        self._plan_commit = self._action_count
+        self._slide_probe_queue = list(self._slider_puzzle.candidates)
+        self._slide_probe_log = []
+        self._slide_probe_processed = 0
+        self._slide_track_buttons = {}
+        self._slide_track_steps = {}
+        self._slide_commit_queue = None
+        self._slide_active_track = None
+        self._slide_goal = None
+        self._slide_clicks_left = 0
+        return self._slide_step(layer, avail, latest_frame)
+
+    def _slide_step(self, layer: np.ndarray, avail: list[int], latest_frame):
+        """One action of the slide phase: probe buttons, then click-to-goal.
+
+        Stage 1 — fold every newly-credited probe result (appended to
+        ``_slide_probe_log`` by the ``choose_action`` credit block) into
+        ``_slide_track_buttons``/``_slide_track_steps`` via
+        :func:`identify_moved_track`, then issue the next untried candidate
+        click, but ONLY while some track still lacks a discovered "grow"
+        button — once every track has one (or the candidate queue runs dry)
+        the probe stops. Stage 2 — work the queue of tracks with a discovered
+        grow button one at a time: resolve its goal
+        (:func:`resolve_goal`), compute the MEASURED click count
+        (:func:`clicks_needed`, from the probe's own step measurement — never
+        assumed), and click the grow widget that many times, re-checking the
+        LIVE tip position (:func:`track_reached_goal`) before each click so a
+        track that reaches its goal early stops immediately. A track with no
+        resolvable goal, or whose grow button was never discovered, is
+        skipped without spending a click on it. Falls through to normal
+        interaction once every resolvable track is done.
+        """
+        puzzle = self._slider_puzzle
+
+        # Stage 1a: fold newly-credited probe results into the button map.
+        while self._slide_probe_processed < len(self._slide_probe_log):
+            entry = self._slide_probe_log[self._slide_probe_processed]
+            self._slide_probe_processed += 1
+            result = identify_moved_track(puzzle.tracks, entry["before"], entry["after"])
+            if result is not None:
+                idx, step, direction = result
+                buttons = self._slide_track_buttons.setdefault(idx, {})
+                if direction not in buttons:
+                    buttons[direction] = entry["candidate"]
+                    self._slide_track_steps.setdefault(idx, {})[direction] = step
+
+        needs_probe = [
+            i
+            for i in range(len(puzzle.tracks))
+            if "grow" not in self._slide_track_buttons.get(i, {})
+        ]
+
+        # Stage 1b: probe the next untried candidate, only while some track
+        # still lacks a discovered grow button.
+        if needs_probe and self._slide_probe_queue and 6 in avail:
+            x, y = self._slide_probe_queue.pop(0)
+            self._pending = {
+                "action_id": 6,
+                "coord": (x, y),
+                "before": layer.copy(),
+                "slide_probe": True,
+            }
+            return self._emit_click(x, y)
+
+        # Stage 2: click-to-goal commit, one track at a time.
+        if self._slide_commit_queue is None:
+            self._slide_commit_queue = [
+                i
+                for i in range(len(puzzle.tracks))
+                if "grow" in self._slide_track_buttons.get(i, {})
+            ]
+
+        if self._slide_active_track is None:
+            if not self._slide_commit_queue:
+                self._plan_commit = self._action_count
+                self._phase = _PHASE_INTERACT
+                return self._interact_step(layer, avail, latest_frame)
+            idx = self._slide_commit_queue.pop(0)
+            track = puzzle.tracks[idx]
+            goal = resolve_goal(track, puzzle.markers[idx])
+            step = self._slide_track_steps.get(idx, {}).get("grow", 0)
+            n = clicks_needed(track, goal, step) if goal is not None else 0
+            if goal is None or n <= 0:
+                # No resolvable goal, or a non-positive measured step — skip
+                # this track without spending a click on it.
+                return self._slide_step(layer, avail, latest_frame)
+            self._slide_active_track = idx
+            self._slide_goal = goal
+            self._slide_clicks_left = n
+
+        idx = self._slide_active_track
+        track = puzzle.tracks[idx]
+        if track_reached_goal(layer, track, self._slide_goal):
+            # This track is done — move on to the next without spending a click.
+            self._slide_active_track = None
+            return self._slide_step(layer, avail, latest_frame)
+        if self._slide_clicks_left <= 0 or 6 not in avail:
+            self._slide_active_track = None
+            return self._slide_step(layer, avail, latest_frame)
+
+        self._slide_clicks_left -= 1
+        x, y = self._slide_track_buttons[idx]["grow"]
         self._pending = {
             "action_id": 6,
             "coord": (x, y),
