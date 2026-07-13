@@ -8,7 +8,7 @@ seeds `llm_context/decision_tree.md` first, then walks `[[backlinks]]`.
 Use this index when authoring or auditing: skim the catalog, pick a
 category, drill into specific pages.
 
-**Total pages**: 141.
+**Total pages**: 142.
 
 ## Games (25)
 
@@ -90,7 +90,7 @@ category, drill into specific pages.
 - [[concepts/sprite_cluster.md]] — A connected component of same-color pixels in the frame. The universal primitive for detecting entities without reading game internals.
 - [[concepts/version_hash.md]] — A game's identifier in the ARC Prize API has the form `<title>-<hash>` (e.g. `tn36-ab4f63cc`). The hash is a version fingerprint: games with the same title but different hashes share gameplay rules but differ in internal implementation details that solvers may or may not observe.
 
-## Lessons (engineering wisdom from past incidents) (24)
+## Lessons (engineering wisdom from past incidents) (25)
 
 - [[lessons/top_solutions_survey_20260708.md]] — Survey of what is actually open-sourced for ARC-AGI-3 (M1 winners = local-LLM agents), resolution of the leaderboard score-scale confusion (top ~1.56 = 1.56%, not 156%; the 12.58% anchor was the 2025 preview), and the top-3 generic levers to adopt next.
 - [[lessons/online_rl_sprint_round_log.md]] — **🔎 To FIND past work by topic, start at the retrieval map [[rounds_index]]**
@@ -111,6 +111,7 @@ category, drill into specific pages.
 - [[lessons/seed_reorder_regression_20260625.md]] — Reordering `derive_seed_pages` to place env-specific seeds (game_type /
 - [[lessons/selector_is_advisory_not_enforced_20260421.md]] — Discovery incident log: R6 bench (2026-04-21) proved Qwen 3 14B
 - [[lessons/silent_regression.md]] — A silent regression is a game that used to clear but now fails, without any commit explicitly breaking it. These are dangerous because commit messages claim continued progress, and the regression only surfaces on the next full 25-game run.
+- [[lessons/size_floor_and_settle_reads.md]] — Both surfaced repeatedly on 2026-07-14 (SB26, CD82) and each has a general fix.
 - [[lessons/sokoban_search_explosion_20260423.md]] — Frame-hash BFS cannot clear 2-player Sokoban (KA59) inside the Kaggle envelope — branching ~24/step makes a depth-10 search ~10^13 states, far beyond the 15k-state cap. The fix is a specialist `_plan_push_bfs` over `(player_xy, block_set)` tuples with an A* Manhattan-to-goal heuristic.
 - [[lessons/su15_l1_singleton_colors_20260423.md]] — SU15 looks like the canonical merge puzzle, so `_plan_merge`
 - [[lessons/tr87_dial_match_hypothesis_falsified_20260713.md]] — **✅ RESOLVED 2026-07-14 (verification-only internal read).** The win rule is a
