@@ -250,6 +250,94 @@ def test_detect_rotation_puzzle_none_without_pieces():
     assert detect_rotation_puzzle(layer, _BG) is None
 
 
+def test_detect_rotation_puzzle_ambiguous_fallback_admits_decorative_ring():
+    """Purpose: when the strict (frame+interior-exclusion) attempt finds no
+    assignable reference — because a decorative ring elsewhere claims the
+    reference colour as ITS interior too, exactly the real S5I5 board's
+    structure — detect_rotation_puzzle falls back to the full candidate set
+    (real pieces AND the decorative ring) rather than giving up.
+
+    Expected feedback: a PASS proves the ambiguous fallback engages and
+    returns every structurally-valid ring, including the decorative one, so
+    live probing gets a chance to disambiguate them; a FAIL means the fallback
+    either never triggers (the phase would never even attempt S5I5-shaped
+    boards) or silently drops a real piece.
+    """
+    layer = _two_piece_board()
+    # A third ring, far from the real pieces, whose "interior" is the SAME
+    # colour as the real reference — this makes the strict attempt exclude
+    # that colour entirely (it is now claimed as an interior colour too), so
+    # no reference survives strict exclusion and the fallback must engage.
+    _stamp_ring(layer, 50, 54, 50, 54, _FRAME)
+    _stamp_shape(layer, np.rot90(_BASE, 2), 51, 51, _REF_COLOR)
+
+    puzzle = detect_rotation_puzzle(layer, _BG)
+    assert puzzle is not None
+    assert len(puzzle.pieces) == 3
+    bboxes = {p.bbox[0] for p in puzzle.pieces}
+    assert bboxes == {10, 30, 50}
+
+
+def test_ambiguous_pieces_are_pruned_by_probe_attribution():
+    """Purpose: end-to-end interactive disambiguation — given the ambiguous
+    3-ring candidate set (2 real pieces + 1 decorative ring around a
+    reference glyph), simulating the live agent's Stage-1 widget probe (one
+    click per candidate, attributed via identify_moved_piece) responds for
+    the two real pieces but NOT for the decorative ring (a presentation frame
+    never changes under a click), and the Stage-2 commit-queue rule mirrored
+    from world_model_agent._rotate_step (only a piece with BOTH a target AND
+    a discovered widget is ever clicked) then excludes the decorative ring.
+
+    Expected feedback: a PASS proves the interactive disambiguation loop
+    (detect ambiguous candidates -> probe each once -> commit only the
+    responsive ones) correctly separates real pieces from a structurally
+    identical decorative ring without any static color/shape heuristic; a
+    FAIL means either a real piece would get pruned (lost commit) or the
+    decorative ring would survive to be clicked (wasted attempts on a game
+    that punishes waste).
+    """
+    layer = _two_piece_board()
+    _stamp_ring(layer, 50, 54, 50, 54, _FRAME)
+    _stamp_shape(layer, np.rot90(_BASE, 2), 51, 51, _REF_COLOR)
+    puzzle = detect_rotation_puzzle(layer, _BG)
+    assert puzzle is not None
+
+    decorative_idx = next(i for i, p in enumerate(puzzle.pieces) if p.bbox[0] == 50)
+    real_indices = [i for i in range(len(puzzle.pieces)) if i != decorative_idx]
+
+    # Simulate one probe click per candidate: a real piece's widget rotates
+    # its interior (here, simplified to "changes by one cell" — attribution
+    # only needs SOME observable change, not the exact rotation); the
+    # decorative ring's interior never changes under any click.
+    widget_for_piece: dict[int, tuple[int, int]] = {}
+    for i, p in enumerate(puzzle.pieces):
+        before = layer.copy()
+        after = layer.copy()
+        if i != decorative_idx:
+            r0, r1, c0, c1 = p.bbox
+            cells = [
+                (r, c)
+                for r in range(r0, r1 + 1)
+                for c in range(c0, c1 + 1)
+                if layer[r, c] == p.interior_color
+            ]
+            r, c = cells[0]
+            after[r, c] = _BG
+        idx = identify_moved_piece(puzzle.pieces, before, after)
+        if idx is not None:
+            widget_for_piece[idx] = (int(round(p.cx)), int(round(p.cy)))
+
+    assert decorative_idx not in widget_for_piece
+    assert all(i in widget_for_piece for i in real_indices)
+
+    # world_model_agent._rotate_step's Stage-2 commit-queue rule.
+    commit_queue = [
+        i for i, t in enumerate(puzzle.targets) if t is not None and i in widget_for_piece
+    ]
+    assert decorative_idx not in commit_queue
+    assert set(commit_queue) == {i for i in real_indices if puzzle.targets[i] is not None}
+
+
 def test_widget_candidates_dedup_piece_and_reference_centroids():
     """Purpose: widget_candidates returns one (x, y) per piece + reference
     centroid, de-duplicated when two candidates round to the same pixel.

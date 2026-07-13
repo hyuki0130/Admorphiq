@@ -41,37 +41,46 @@ reads a game id / title / sprite tag — detection is purely structural:
    philosophy as the rest of the family, avoiding a fragile explicit rotation-
    count computation whose direction/step-size is unknown ahead of time.
 
-Open limitations (recorded, not solved here — measured directly against the
-live S5I5 environment, not just the synthetic exemplar):
+Decorative "presentation" frames can be structurally indistinguishable from
+real piece frames — measured directly against the live S5I5 environment, not
+just the synthetic exemplar. The real S5I5 board draws a colour-4 ring
+directly around each small reference glyph too — the SAME ring shape and size
+class as the real piece frames, and the enclosed glyph colour (14)
+independently has exactly one unrelated freestanding instance elsewhere
+(mirroring the real pieces' own interior colour, 11, which likewise has one
+unrelated freestanding "slider" component elsewhere). Every STATIC,
+frame-local signal tried (ring-shape strictness, minimum interior fill,
+frame-of-frame nesting exclusion, spatial containment of a reference inside a
+candidate piece) is provably unable to separate the two classes on this
+board, because the ambiguous pair is statistically identical to the genuine
+pair under all of them — :func:`detect_rotatable_pieces` /
+:func:`detect_reference_patterns` keep the falsifiers that ARE unambiguous
+wins (each fixes a real false positive without any false negative on the
+synthetic tests below) but do not attempt to resolve the decorative-vs-real
+question by themselves.
 
-- **Decorative "presentation" frames can be structurally indistinguishable
-  from real piece frames.** The real S5I5 board draws a colour-4 ring
-  directly around each small reference glyph too — the SAME ring shape and
-  size class as the real piece frames, and the enclosed glyph colour (14)
-  independently has exactly one unrelated freestanding instance elsewhere
-  (mirroring the real pieces' own interior colour, 11, which likewise has one
-  unrelated freestanding "slider" component elsewhere). Every static,
-  frame-local signal tried (ring-shape strictness, minimum interior fill,
-  frame-of-frame nesting exclusion, spatial containment of a reference inside
-  a candidate piece) is provably unable to separate the two classes on this
-  board, because the ambiguous pair is statistically identical to the genuine
-  pair under all of them. :func:`detect_rotatable_pieces` /
-  :func:`detect_reference_patterns` keep the falsifiers that ARE unambiguous
-  wins (ring-shape strictness, nested-ring exclusion, minimum interior fill —
-  each fixes a real false positive without any false negative on the
-  synthetic tests below) but do not attempt to resolve this one; on S5I5
-  itself :func:`detect_rotation_puzzle` still returns ``None`` because the
-  decorative frames outnumber/out-rank the true pieces for the available
-  references. Resolving this needs a signal beyond one static frame — e.g.
-  actual click probing across candidate frames to observe which are
-  independently interactive — left for a future round.
-- **The widget-candidate heuristic** in (4) is a bounded geometric guess, not
-  a learned mapping — a game whose widgets sit further from both the piece
-  and the reference will not be found. Widening the search (e.g. a coarse
-  click lattice) was deliberately NOT added because the attempt-limited
-  counter punishes exactly that kind of blind sweep; the correct
-  generalisation is a dedicated widget-discovery phase, left for a future
-  round.
+Instead, :func:`detect_rotation_puzzle` resolves it INTERACTIVELY: when its
+strict (unambiguous) attempt finds no assignable target, it falls back to
+returning the full candidate set (real pieces AND decorative frames alike —
+see its docstring), and the live agent's existing Stage-1 widget-probe loop
+(``world_model_agent._rotate_step``, :func:`identify_moved_piece`) clicks
+each candidate once and observes which ring interiors actually change. A
+decorative frame's interior never responds to any click and so never earns a
+discovered widget; the commit stage (Stage 2) already only acts on pieces
+with a discovered widget, so decorative candidates are pruned for free by
+that existing requirement — no separate static pruning step was added. This
+is the same "let the env confirm" philosophy as :func:`piece_matches_target`.
+
+Open limitation still recorded (unaddressed by the above): **the
+widget-candidate heuristic** in (4) is a bounded geometric guess, not a
+learned mapping — a game whose widgets sit further from both the piece and
+the reference will not be found, so even with correct piece/reference
+identification the live probe queue may never land on the TRUE widget
+position (measured on S5I5: the real widgets sit on/near a piece's own
+border, not exactly at its centroid). Widening the search (e.g. a coarse
+click lattice) was deliberately NOT added because the attempt-limited counter
+punishes exactly that kind of blind sweep; the correct generalisation is a
+dedicated widget-discovery phase, left for a future round.
 """
 
 from __future__ import annotations
@@ -104,6 +113,17 @@ _MAX_PIECE_EXTENT = 16
 # A reference-pattern component must span at least this many cells (filters
 # stray single-pixel dots that are not a real target shape).
 _MIN_REFERENCE_SIZE = 4
+# A (piece, reference) pair is only assignable when their best-rotation IoU
+# reaches this floor. Measured as NECESSARY on the real S5I5 board:
+# best_rotation/plan_piece_targets otherwise happily "assigns" a piece to
+# whatever reference scores highest even when that score is low (e.g. an
+# unrelated corner dot at ~0.19 IoU) — which made the STRICT detection attempt
+# in detect_rotation_puzzle spuriously "succeed" on a garbage match and never
+# fall through to the ambiguous probe-to-disambiguate path. 0.5 requires at
+# least half the (padded) shape to genuinely overlap; every intentional match
+# in the synthetic tests below scores 1.0, and the real decorative/real piece
+# family matches on S5I5 score 1.0 too, so this only rejects noise.
+_MIN_ASSIGNMENT_SCORE = 0.5
 # Two shapes (after padding to a common canvas) count as a MATCH when their
 # intersection-over-union reaches this fraction. Used only by
 # :func:`piece_matches_target`'s live re-check.
@@ -380,20 +400,41 @@ def plan_piece_targets(
 ) -> list[np.ndarray | None]:
     """Per-piece target interior shape, greedily assigned by best IoU score.
 
-    Every (piece, reference) pair is scored via :func:`best_rotation`; pairs
-    are then claimed highest-score-first, each piece and each reference used
-    at most once (so two pieces do not both chase the same reference shape).
-    A piece left without an assignable reference (more pieces than references,
-    or the reference is empty) gets ``None`` and is skipped downstream. Pure /
-    env-free.
+    Every (piece, reference) pair is scored via :func:`best_rotation`, EXCEPT
+    a pair whose reference centroid falls inside the piece's OWN bbox — that
+    reference is the piece's own enclosed content (its own interior, or
+    something else physically nested in the same frame), not an external
+    target, so matching a piece against itself is excluded. This matters once
+    :func:`detect_rotation_puzzle`'s ambiguous fallback stops excluding
+    interior colours from reference candidacy: without this check, a piece's
+    own interior would otherwise register as its own trivially-matching
+    "reference" (always scoring 1.0 at k=0), which would make the ambiguous
+    path find a spurious target for every piece regardless of whether a real
+    external reference exists.
+
+    Scored pairs below :data:`_MIN_ASSIGNMENT_SCORE` are dropped entirely — a
+    piece is better left unassigned than greedily bound to a reference it
+    barely resembles (see that constant's comment for why this matters:
+    without it, a garbage low-score match can make a piece falsely register
+    as "assignable"). Surviving pairs are then claimed highest-score-first,
+    each piece and each reference used at most once (so two pieces do not
+    both chase the same reference shape). A piece left without an assignable
+    reference (more pieces than references, every reference excluded as
+    self-nested or below the score floor, or no references at all) gets
+    ``None`` and is skipped downstream. Pure / env-free.
     """
     targets: list[np.ndarray | None] = [None] * len(pieces)
     if not pieces or not references:
         return targets
     scored: list[tuple[float, int, int, int]] = []
     for pi, piece in enumerate(pieces):
+        r0, r1, c0, c1 = piece.bbox
         for ri, ref in enumerate(references):
+            if r0 <= ref.cy <= r1 and c0 <= ref.cx <= c1:
+                continue
             k, score = best_rotation(piece, ref)
+            if score < _MIN_ASSIGNMENT_SCORE:
+                continue
             scored.append((score, pi, ri, k))
     scored.sort(key=lambda t: -t[0])
     assigned_piece: set[int] = set()
@@ -435,22 +476,16 @@ def widget_candidates(
     return out
 
 
-def detect_rotation_puzzle(layer: np.ndarray, background: int) -> RotationPuzzle | None:
-    """Detect a rotation puzzle on ``layer``, or ``None`` when the structure is absent.
+def _try_puzzle(
+    pieces: list[RotatablePiece], layer: np.ndarray, background: int, exclude: set[int]
+) -> RotationPuzzle | None:
+    """Build a :class:`RotationPuzzle` from ``pieces`` for one reference-exclude policy.
 
-    Composes :func:`detect_rotatable_pieces` + :func:`detect_reference_patterns`
-    + :func:`plan_piece_targets` + :func:`widget_candidates`. References are
-    excluded by every colour already claimed as a piece's frame OR interior
-    (a reference is, by definition, a THIRD colour distinct from any piece) —
-    see the module docstring's "Open limitation" for the board this does not
-    resolve. Returns ``None`` when there are no pieces, no references, or no
-    piece could be assigned a target — so the caller only engages the
-    rotation phase on a genuine piece+reference layout. Pure / env-free.
+    Shared by :func:`detect_rotation_puzzle`'s strict (unambiguous) and loose
+    (ambiguous-fallback) attempts — only the ``exclude`` set differs between
+    them. Returns ``None`` when no reference or no assignable target results,
+    exactly as before this function existed. Pure / env-free.
     """
-    pieces = detect_rotatable_pieces(layer, background)
-    if not pieces:
-        return None
-    exclude = {background} | {p.frame_color for p in pieces} | {p.interior_color for p in pieces}
     references = detect_reference_patterns(layer, background, exclude)
     if not references:
         return None
@@ -460,6 +495,55 @@ def detect_rotation_puzzle(layer: np.ndarray, background: int) -> RotationPuzzle
     return RotationPuzzle(
         pieces=pieces, targets=targets, candidates=widget_candidates(pieces, references)
     )
+
+
+def detect_rotation_puzzle(layer: np.ndarray, background: int) -> RotationPuzzle | None:
+    """Detect a rotation puzzle on ``layer``, or ``None`` when the structure is absent.
+
+    Two attempts, strict then ambiguous-fallback, both composing
+    :func:`detect_rotatable_pieces` + :func:`detect_reference_patterns` +
+    :func:`plan_piece_targets` + :func:`widget_candidates` via
+    :func:`_try_puzzle`:
+
+    1. **Strict** — references are excluded by every colour already claimed as
+       a piece's frame OR interior (a reference is, by definition, a THIRD
+       colour distinct from any piece). This is byte-identical to the
+       module's original behaviour and is tried first because it is cheaper
+       (fewer candidates to probe) whenever the board is unambiguous.
+    2. **Ambiguous fallback** — triggered only when (1) finds no assignable
+       target, e.g. because every reference colour got consumed as some
+       piece's interior. References are excluded by FRAME colour only, so a
+       genuine reference colour that some OTHER (possibly decorative) piece
+       also happens to enclose as its interior is still found. This can admit
+       piece candidates that are actually decorative "presentation" frames —
+       see the module docstring's "Open limitations": on the real S5I5 board,
+       :func:`detect_rotatable_pieces` alone cannot tell a real piece frame
+       from a ring drawn around a reference glyph, since both are structurally
+       identical. Rather than guess, this function returns the FULL candidate
+       set (real and decorative pieces alike) and leaves disambiguation to the
+       live agent: its existing Stage-1 widget-probe loop
+       (:func:`identify_moved_piece`) clicks each candidate once and only
+       decorative pieces that never show a genuine interior change are
+       skipped at commit time, because the commit queue already requires a
+       DISCOVERED widget (see ``world_model_agent._rotate_step``) — no static
+       piece/reference pruning is attempted here.
+
+    Returns ``None`` when there are no pieces or neither attempt finds an
+    assignable target — so the caller only engages the rotation phase when
+    there is at least one piece/reference pairing worth probing. Pure /
+    env-free.
+    """
+    pieces = detect_rotatable_pieces(layer, background)
+    if not pieces:
+        return None
+    strict_exclude = {background} | {p.frame_color for p in pieces} | {
+        p.interior_color for p in pieces
+    }
+    puzzle = _try_puzzle(pieces, layer, background, strict_exclude)
+    if puzzle is not None:
+        return puzzle
+    loose_exclude = {background} | {p.frame_color for p in pieces}
+    return _try_puzzle(pieces, layer, background, loose_exclude)
 
 
 # ── live probing / commit helpers ───────────────────────────────────────────
