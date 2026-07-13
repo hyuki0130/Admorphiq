@@ -2413,6 +2413,36 @@ marker at `world_model_agent.py:581`), or detect an entirely-different
 floor colour under the player at level start and seed it into `floor`
 before the first BFS attempt rather than waiting for a probe to reveal it.
 
+**Follow-up (same session, 2026-07-13 22:40): the "force start walkable"
+half of the recovery lead is a DEAD END — implemented, then reverted after
+proving it changes nothing.** Added the mirror of the goal-cell force
+(`walkable[start] = True`) and re-ran the live L3 trace: `start_walkable`
+correctly flips to `True`, but `plan_len` is STILL `0` for all 10 goal
+candidates — completely unchanged. Root cause of the no-op, confirmed by
+reading `grid_bfs` (`general_agent.py:510`): it seeds `visited={start}`
+and the BFS queue with `start` unconditionally BEFORE any walkability
+check — walkability is only ever tested on a cell being expanded INTO
+(a neighbour), never on `start` itself, and `visited` guarantees `start`
+is never re-examined as someone else's neighbour either. So
+`walkable[start]`'s value is provably inert to `grid_bfs`'s output —
+confirmed with a minimal repro (`grid_bfs` with `walkable[start]=False`
+vs `=True` on an otherwise-identical grid returns the byte-identical
+plan both times). Reverted the change and its test rather than keep
+dead code (repo Implementation Discipline: no branches that don't affect
+behaviour). **This means the true blocker is NOT "the start cell is
+marked False" per se — it's that the surrounding cells the BFS would
+need to expand THROUGH are ALSO misclassified** (only 57-59/441 cells
+walkable at L3 vs 410/441 at L1/L2), so no path exists in the walkable
+grid regardless of the start cell's own flag. The second half of the
+recovery lead — seeding the floor colour from what's directly under the
+player at level start, rather than waiting for a probe to reveal it via
+`floor_colors_from_probes` — is therefore the ONLY remaining candidate
+fix, not the start-cell force. Not attempted this session (bigger,
+riskier change to a function every WMA game's navigation depends on;
+needs its own careful verification pass, consistent with why the
+direction-inference fixes earlier in this file were scoped narrowly and
+verified before landing).
+
 **Guards re-confirmed** (same 7-guard set, unchanged from the block above):
 su15 `2/9, 58`, s5i5 `1/8, 169`, re86 `2/8, 264`, wa30 `1/9, 100`, ft09
 `1/6, 93`, tn36 `1/7, 110`, lp85 `1/8, 311` — all exact. Suite 764/764
