@@ -1311,3 +1311,11 @@ each proven non-separating on the live board. ⛔ static single-frame piece
 detection cannot crack s5i5; the follow-up is interactive probing (click a
 candidate widget once, watch WHICH ring's interior rotates) — infrastructure
 for that (widget probe attribution) already exists in the new _rotate_step.
+
+### Submit precondition #2 decoded — placeholder parquet (v6) (2026-07-13 15:30)
+v5 validated COMPLETE (65 min) but submit 400'd again: "Did not find provided
+Notebook Output File" — the precondition checks the kernel version's OUTPUT
+for submission.parquet by name. Duck v12's interactive branch writes a
+PLACEHOLDER parquet ("offline run isn't scored, but Kaggle still expects a
+submission.parquet output") — v6 mirrors it. Watcher auto-submits v6 on
+COMPLETE with -f submission.parquet.
