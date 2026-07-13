@@ -1545,3 +1545,147 @@ target). Mixed starting tiers confirmed (3 colour-6 pre-placed); two goal
 containers exist but detect_drag_layout currently sees one; goal-acceptance
 rule = the one open question (probe dispatched, then the merge/multi-goal
 extension builds on full evidence).
+
+### su15 goal-acceptance probe: BOTH tiers rejected at near-zero distance — naive proximity hypothesis FALSIFIED (2026-07-13 20:10)
+Bounded 2-data-point live probe against `su15-1944f8ab` L3 (both using the
+real `next_merge_click`/`_step_toward` walk mechanics, not a simplified
+stand-in, so the click behaviour matches what the shipped agent would do):
+
+- **Data point 1 — colour-6 (non-terminal tier)**: walked toward goal A
+  `(9.0, 50.0)` for 20 clicks. Reached `dist=0.7` from the goal centroid at
+  clicks 5, 12, and 14 (three separate times, not a fluke) — closer than
+  `_GOAL_REACH_PX` (6.0) and closer than the tile's own bounding radius.
+  Never consumed: no level-up, tile persists every time, oscillates around
+  the goal instead of settling. The goal container's OWN measured pixel
+  size dropped 69→65 (exactly the tile's size, 4px) while the tile
+  overlapped it — consistent with the tile rendering ON TOP of / occluding
+  container edge pixels, not being absorbed into a hole.
+- **Data point 2 — colour-11 (terminal tier, the true end of the
+  10→6→15→11 chain)**: built via `next_merge_click` run to natural stall
+  (same stall as
+  [[../lessons/merge_drag_stall_causes_game_over_20260713]] — two
+  unresponsive leftover tiles at click 16), which already produced one
+  genuine colour-11/size16 tile by click 10. Walked that tile toward the
+  SAME goal for 20 clicks. Reached `dist=0.7` at click 8 and `dist=1.6` at
+  clicks 6/10/17 — same near-zero pattern as data point 1. Never consumed
+  either.
+
+**Conclusion**: the naive "drag centroid to goal centroid, any tier or the
+terminal tier, and it gets accepted on overlap" hypothesis is FALSIFIED for
+BOTH tiers — this rules out both "any tier delivers" and "only the terminal
+tier delivers" as simple proximity rules. The goal-acceptance mechanism is
+NOT proximity-based in the way `next_drag_click`'s `_GOAL_REACH_PX` model
+assumes. Leading unconfirmed candidates for a future probe: (a) delivery
+requires landing on an EXACT container pixel/slot rather than a computed
+centroid-ward step, which may overshoot the diamond shape's narrow interior
+every click before the tile can settle; (b) a precondition — e.g. the
+wiki-documented enemy-downgrade interaction — must fire before either goal
+accepts anything, independent of tile tier; (c) the two containers require
+a specific tier-to-goal ASSIGNMENT not yet tested (both data points here
+only tried goal A). None of these were tested — the probe budget (2 data
+points) was spent confirming the negative result, per instruction, not
+chasing a third hypothesis live. Reported back rather than building a
+speculative delivery mechanism on an unconfirmed rule (repo Implementation
+Discipline: no speculative logic without evidence).
+
+**What IS safely buildable from this round without more live-env budget**:
+the legend-order merge chain (`10→6→15→11`, confirmed live twice, generic
+by legend-swatch position/size rather than hardcoded colours) and detecting
+BOTH goal containers (straightforward connected-component filter, unlike
+`detect_drag_layout`'s current single-largest-cluster assumption). The
+delivery/acceptance step is NOT safely buildable yet. Landed as
+`detect_merge_chain` / `detect_goal_containers` in `merge_drag.py`, both
+pure/unwired, 4 new tests (757/757 suite green), verified live against the
+real board (`[10, 6, 15, 11]`, both goal centroids).
+
+### su15 delivery follow-up: legacy-code mining + a second live round — enemy hypothesis REJECTED for L3, diamond-shape-precision is the new lead (2026-07-13 20:40)
+Per dispatch: mined `strat_su15_vacuum` (`agent_ensemble.py:6171-6781`, the
+brittle v1 solver) for the DOWNGRADE mechanic's shape before any more live
+probing, then ran one more bounded live round.
+
+**Mechanic mined (shape only, not copied into any new implementation)**:
+downgrade is NOT "enemy touches fruit" passively — the solver actively
+SUCKS the over-target-coloured fruit TOWARD the nearest enemy
+(`_suck_toward(downgrade_fruit, ex, ey)`), gated behind `if need_downgrade
+and game.peiiyyzum:` (a non-empty enemy list). Delivery uses an internal
+containment predicate (`game.epvtlqtczz(sx, sy, gz)`), and a same-purpose
+inline check elsewhere is an explicit AABB test — `_in_gz = (fx < gz_right
+and fx+size > gz_left and fy < gz_bottom and fy+size > gz_top)` — i.e.
+delivery is a bounding-box question, not a centroid-distance one.
+Critically: level indices 0/1/2 (L1/L2/L3) have NO hardcoded block in this
+solver — they fall through a GENERIC downgrade→merge→deliver path, so the
+solver's own author also treated L3 as "possibly needs downgrade,
+possibly doesn't" rather than a known special case.
+
+**Ground-truth read (diagnosis only, one-shot, not built into any shipped
+path)**: the legacy attribute names (`peiiyyzum`/`hmeulfxgy`/`rqdsgrklq`)
+resolve to `None`/empty on this v2 hash (`su15-1944f8ab`) — the well-known
+v2 obfuscation problem ([[../lessons/v2_hash_obfuscation]]) blocks even
+read-only diagnosis via those names. Fell back to the generic
+`Level.get_sprites()` API and enumerated ALL 17 sprites on L3 by hand:
+6× colour-10 tiles, 3× colour-6 tiles, 2× colour-9 diamond goals (9x9,
+transparent corners — genuinely diamond-shaped, not square), 2×
+background panels, and — the new finding — a 1-row legend-template sprite
+at `(1,1)` encoding `[10, 6, 15, 11, 12, 8]` (six tiers, though only the
+first four render visibly on screen; 12 and 8 may be off-screen/clipped,
+unconfirmed), PLUS two solid, static, unaccounted-for blocks: a 4x4
+colour-11 block at `(30,3)` and a 3x3 colour-15 block at `(36,4)`, sitting
+in the top decorative band right next to the legend. **There is no enemy
+sprite anywhere in the 17-sprite list.** This REJECTS the enemy-downgrade
+hypothesis for L3 specifically — whatever blocks the two leftover tiles,
+it isn't a missing enemy interaction (at least not one visible to
+`get_sprites()`; a sprite gated behind some other list was not ruled out,
+but the natural `peiiyyzum`-equivalent-by-tag search found nothing enemy-
+shaped).
+
+**New lead**: the two solid top-band blocks are the SAME colour AND SAME
+size as the two "stuck" tiles (colour-11/16px, colour-15/9px) — a strong,
+frame-observable (no internals needed — plain `connected_components` on
+the top band finds them) candidate for PER-GOAL TARGET INDICATORS rather
+than decoration. `detect_goal_containers`/`detect_merge_chain`-adjacent
+detection of these could plausibly resolve which tier each goal wants.
+
+**Second live round** (reused the natural chain-build stall, ~30 clicks,
+then 3 delivery attempts):
+- colour-11 → goal B (untested goal from the earlier round): reached
+  `min_dist_seen=0.7` (same near-zero pattern as goal A) but the 20-click
+  budget ran out before 4 consecutive stalled clicks confirmed rejection —
+  result INCONCLUSIVE, not a clean accept or reject. Goal-B acceptance of
+  colour-11 is NOT ruled out.
+- colour-15 → goal A: **GAME_OVER at click 3** — much faster than the
+  stall-driven GAME_OVER measured earlier (that took ~22 clicks). The walk
+  path from the colour-15 tile at `(28,38)` toward goal A `(9,50)` likely
+  passes near/through the colour-11 tile at `(15.5,34.5)` — plausibly a
+  DIFFERENT failure mode (the solver's own docstring: "different-colour
+  overlap = flash/undo, wastes steps with penalty" — this round did not
+  confirm whether that penalty is what escalated to GAME_OVER here, or
+  something else). This is a NEW, distinct GAME_OVER trigger, not yet
+  understood — flagged for a future round, not chased further this round
+  (budget discipline).
+
+  **Zero-live-cost follow-up (post-hoc arithmetic on already-collected
+  data, no new clicks spent)**: recomputed the first delivery click from
+  `_step_toward((28,38), (9,50), 7.0)` = `(22, 42)` — the EXACT same point
+  that was the dead-click target for the colour-11 tile in the original
+  stall trace
+  ([[../lessons/merge_drag_stall_causes_game_over_20260713]]). Distance
+  from `(22,42)` to the colour-11 tile `(15.5,34.5)` is `9.92px`, just
+  outside the legacy solver's stated `RADIUS-1=7px` pull distance —
+  suggestive of the two-tile collision hypothesis but not conclusive (the
+  actual live grab radius on this env may differ from the legacy `RADIUS`
+  constant, which itself came from an obfuscated attribute
+  `game.qjlubdgly` that may not resolve the same way here). Flagged, not
+  confirmed.
+
+**Honest state**: the diamond-shaped goal geometry (transparent corners in
+the sprite pixel data — not a solid square) combined with the AABB-style
+internal acceptance check mined from the legacy code is now the leading
+hypothesis for why centroid-distance walking never triggers acceptance
+even at `dist=0.7`: a step-computed click can land the tile's small
+bounding box over a TRANSPARENT corner cell of the diamond rather than a
+solid interior cell, so "close by centroid" does not imply "AABB-overlaps
+the goal's actual solid pixels." This was not tested directly (would need
+pixel-level tile-vs-diamond overlap tracking, a further probe). Per-goal
+tier assignment (colour-11↔goal-A vs colour-15↔goal-B, matched to the
+indicator positions) also remains untested in either direction conclusively.
+Not building delivery logic on this yet — still short of a confirmed rule.
