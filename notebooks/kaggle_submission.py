@@ -66,6 +66,7 @@ def _ensure_admorphiq_importable() -> None:
     # Common local / Kaggle dataset src locations.
     for cand in (
         os.path.join(os.getcwd(), "src"),
+        "/kaggle/input/admorphiq-src/src",
         "/kaggle/input/admorphiq/src",
         os.path.join(KAGGLE_AGENTS_DIR, "src"),
     ):
