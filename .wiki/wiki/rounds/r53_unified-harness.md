@@ -2737,5 +2737,33 @@ selection) that each individually moves the mechanism correctly without
 yet compounding into an L3 clear. The remaining blocker is not yet
 identified; each fix has closed exactly the gap it targeted.
 
+### AR25 L3 fresh trace with all three fixes stacked — genuine progress, new structural lead (2026-07-13 23:27)
+
+Re-traced L3 with direction-inference hardening + occupancy floor colour +
+mobility-shape player selection all active together. The picture is
+substantially better than any single-fix trace this session: multiple
+goal candidates now get real non-zero BFS plans (`plan_len` 10, 12, 13
+observed, vs universally 0 at the start of the session), 5 walls get
+learned via the retry-corroboration mechanism (each required 2 matching
+readings before commit — genuine walls, not spurious single-probe
+artefacts), and execution reaches step 139 before exhausting every
+candidate (up from step 80 at session start, step 117 after the floor-
+colour fix alone).
+
+**Still does not clear L3** — once all 10 enumerated goal candidates are
+blocked by the 5 learned walls, the agent falls to `phase=arrange`. This
+is a new, structurally different signal from anything measured earlier
+this session: `arrange` is the multi-entity ARRANGEMENT phase (the same
+one AR25's OWN L2 uses). One plausible reading: **AR25 L3 may need
+arrangement-style multi-piece solving, not single-player point-to-point
+navigation at all** — consistent with the 5 walls collectively blocking
+every single-path candidate rather than any one wall being an isolated
+false negative. Not investigated further this session (would need to
+understand what `_arrange_enabled`/`_enter_arrange` actually do when
+reached from this state, and whether they engage meaningfully or also
+fail). Flagged as the next AR25 lead: check whether the arrange-phase
+fallback is doing anything useful here, or is itself another dead end
+needing its own fix.
+
 ## Related
 - [[../lessons/api_hash_rotation_20260421]]
