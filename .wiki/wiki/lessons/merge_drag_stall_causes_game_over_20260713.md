@@ -113,9 +113,27 @@ for the missing downgrade-phase capability.
 
 When `_merge_drag_stall` hits the limit and the phase abandons: currently
 falls to generic `_interact_step`, which (measured) also cannot clear SU15
-L3. The real next-best is an enemy/downgrade-detection primitive per
-[[su15_l1_singleton_colors_20260423]]'s "Cross-color downgrade probe"
-proposal — still not implemented as of this session.
+L3.
+
+> **UPDATE (2026-07-13, later the same day) — the enemy-downgrade
+> next-best below is SUPERSEDED for L3.** A ground-truth `get_sprites()`
+> enumeration of the full L3 board (this round's "su15 delivery
+> follow-up" section) found **no enemy sprite anywhere among all 17
+> sprites** — this REJECTS the enemy-downgrade hypothesis for L3
+> specifically (it may still hold for L1, where
+> [[su15_l1_singleton_colors_20260423]] was originally measured, under
+> the OLDER `_plan_merge` architecture — not re-verified here). The same
+> investigation found two solid, static, unaccounted-for top-band blocks
+> (colour-11 4x4, colour-15 3x3) matching the exact colour AND size of
+> the two "stuck" leftover tiles — a frame-observable, non-internals
+> candidate for **PER-GOAL TARGET INDICATORS** (which tier each goal
+> container wants) rather than an enemy/downgrade mechanic. The current
+> real next-best for L3 is testing that tier-assignment hypothesis
+> (deliver a tile to the goal ITS indicator points at, not the nearest
+> or an arbitrary one), not building an enemy-detector. See this round's
+> su15 sections in [[../rounds/r53_unified-harness]] for the full
+> elimination table (transparent-corner geometry already refuted
+> separately) and the untested tier×goal pairing matrix.
 
 ## Related
 
