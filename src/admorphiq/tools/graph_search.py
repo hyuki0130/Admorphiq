@@ -157,6 +157,29 @@ _REGION_REFRESH = 16
 _REGION_TRUST_CELLS = 128  # masks this small can't swallow a play field —
 #   applied on first qualification; only LARGER additions need to re-qualify
 #   on two consecutive refreshes (the 515-cell transient that sank a game)
+# Action-correlation gate (measured necessary on a click+movement maze
+# game): the rate-only test above cannot distinguish a HUD widget (repaints
+# under almost ANY action — a step counter, a drifting animation) from
+# deliberate GAME STATE that is simply toggled often DURING EXPLORATION
+# because it is one of the few productive actions available (a button the
+# search agent keeps retrying). Measured live: two button-toggle regions (a
+# 65-cell room each) reached region-mask status at 46/65 cells covered —
+# collapsing "toggled on" and "toggled off" into the SAME graph node, hiding
+# exactly the state distinction a click-then-move solution depends on.
+#
+# The discriminator is a FRACTION, not a raw count: what share of ALL
+# distinct action keys tried during the window actually correlate with this
+# region's changes? The real HUD widget (a bottom-row move counter) changes
+# under every action id tried, whatever the mix (ratio ~1.0); the button
+# regions changed under exactly ONE specific click, out of the many
+# movement + click actions tried during exploration (ratio << 1). A raw
+# "few distinct actions" count is NOT sufficient on its own — a window where
+# only one action type happens to have been tried at all (e.g. a long
+# straight movement run) would wrongly exempt a genuine HUD widget too,
+# since it also only ever saw that one action (ratio still ~1.0, correctly
+# caught by the fraction form). A region is masked only when it correlates
+# with MORE than this fraction of the window's own distinct action keys.
+_REGION_TRIGGER_FRAC = 0.5
 
 def _click_candidates(frame: np.ndarray, max_clicks: int = _MAX_CLICKS) -> list[tuple[int, int, int]]:
     """Reduce ACTION6 to a small INTERACTIVITY-tier-ordered set of ``(x, y)`` clicks.
@@ -292,6 +315,18 @@ class GraphSearchTool:
         self._unlocked_tier = 0
         # Region-mask state: stacked per-transition change masks + sticky mask.
         self._stacked: deque[np.ndarray] = deque(maxlen=_REGION_WINDOW)
+        # The action key that produced each entry in ``_stacked`` (parallel
+        # deque, same indices) — lets the region-mask refresh distinguish a
+        # widget that changes under many distinct actions (HUD) from a region
+        # that changes only under one/few specific actions (deliberate game
+        # state — a toggle button). See _REGION_TRIGGER_FRAC.
+        self._stacked_actions: deque[Any] = deque(maxlen=_REGION_WINDOW)
+        # ``observe`` is not given the resulting ("after") frame directly —
+        # a diff is only computable once the NEXT call reveals it via that
+        # call's own ``prev``. So the diff appended to ``_stacked`` inside
+        # call N reflects call (N-1)'s action, not call N's — this holds
+        # call (N-1)'s key across the boundary so it tags correctly.
+        self._prev_action_key: Any = None
         self._region_mask: np.ndarray | None = None
         self._region_prev: np.ndarray | None = None  # last refresh's candidates
         self._region_tick = 0
@@ -362,6 +397,8 @@ class GraphSearchTool:
         the graph is dropped only on the FIRST confirmation, later growth is
         tolerated as transient mismatch)."""
         stacked = np.stack(list(self._stacked))
+        actions = list(self._stacked_actions)
+        n_distinct_actions = len(set(actions)) or 1
         rate = stacked.mean(axis=0)
         noisy = rate > _REGION_LOW
         if not noisy.any():
@@ -374,8 +411,18 @@ class GraphSearchTool:
             rows = np.fromiter((r for r, _ in cells), dtype=np.intp, count=len(cells))
             cols = np.fromiter((c for _, c in cells), dtype=np.intp, count=len(cells))
             region_changed = stacked[:, rows, cols].any(axis=1)
-            if float(region_changed.mean()) > _REGION_RATE:
-                add[rows, cols] = True
+            if float(region_changed.mean()) <= _REGION_RATE:
+                continue
+            # Action-correlation gate: a region that only responds to a
+            # SMALL FRACTION of the distinct actions tried this window is
+            # deliberate game state (a toggle button retried during
+            # exploration), not a HUD widget that repaints under almost any
+            # action — never mask it regardless of its aggregate rate. See
+            # _REGION_TRIGGER_FRAC.
+            triggering = {actions[i] for i in range(len(actions)) if region_changed[i]}
+            if len(triggering) / n_distinct_actions <= _REGION_TRIGGER_FRAC:
+                continue
+            add[rows, cols] = True
         if not add.any():
             self._region_prev = None
             return
@@ -544,18 +591,22 @@ class GraphSearchTool:
         edge's target hash is completed on the next :meth:`propose`.
         """
         prev_grid = _norm_grid(prev)
+        key = _step_to_key(action)
         if self._prev_obs is not None and self._prev_obs.shape == prev_grid.shape:
             self._stacked.append(self._prev_obs != prev_grid)
+            # This diff is the result of the PREVIOUS call's action (see
+            # _prev_action_key's comment in reset()), not this call's.
+            self._stacked_actions.append(self._prev_action_key)
             self._region_tick += 1
             if (self._region_tick % _REGION_REFRESH == 0
                     and len(self._stacked) >= _REGION_REFRESH):
                 self._refresh_region_mask()
+        self._prev_action_key = key
         self._accumulate_hud(prev_grid)
         # De-aliasing sees the HUD-masked frame + the action taken from it.
         self._dealias.observe(self._masked_frame(prev_grid), action, changed)
         prev_hash = self._node_key(prev_grid)
         self._recent.append(action)
-        key = _step_to_key(action)
         untried = self._untried.get(prev_hash)
         if untried and key in untried:
             untried.remove(key)

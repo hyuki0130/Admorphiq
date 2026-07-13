@@ -379,3 +379,55 @@ def test_region_mask_catches_low_rate_widget_spares_play_field():
     b[10, 10] = 4
     b[0, 5] = 7
     assert tool._node_key(a) == tool._node_key(b)     # widget-only diff erased
+
+
+def test_region_mask_action_correlation_spares_a_toggle_but_masks_a_widget():
+    """Purpose: a region whose changes correlate with only ONE specific
+    action (a toggle button retried often because it is the only
+    productive move during exploration) must NOT be region-masked even
+    though its own aggregate change rate crosses the same threshold a
+    genuine HUD widget would — while a region that changes under EVERY
+    action tried, regardless of which one, still IS masked.
+
+    This is the fix for a bug measured live: a toggle button's region got
+    swallowed by the (rate-only) region mask because the search agent
+    happened to retry it on most steps in the window — collapsing
+    "toggled on" and "toggled off" into the SAME graph node, hiding
+    exactly the state distinction a click-then-move solution depends on.
+
+    Expected feedback: pass ⇒ the action-correlation gate correctly tells
+    "responds to one specific action" (game state) apart from "responds to
+    whatever action was tried" (HUD), even when both cross the same rate
+    threshold; fail ⇒ either a genuine widget escapes masking (state
+    explosion) or a deliberate toggle gets masked (search blindness on
+    exactly the state distinction a solution needs).
+    """
+    tool = GraphSearchTool()
+    size = 24
+    widget_cells = [(0, c) for c in range(6)]
+    click_action = (6, (5, 5))
+    toggle_color = 8
+    prev = np.zeros((size, size), dtype=np.int64)
+    # 32 steps: mostly the SAME click (the only productive move being
+    # retried), with one press each of the 4 movement ids interspersed —
+    # so the toggle region's own aggregate rate is high (correlated with
+    # the frequently-retried click) while the WIDGET changes on literally
+    # every step regardless of which action was taken.
+    move_at = {4, 12, 20, 28}
+    move_ids = iter([1, 2, 3, 4])
+    for i in range(32):
+        f = np.zeros((size, size), dtype=np.int64)
+        f[10, 10] = 4                          # static play content
+        r, c = widget_cells[i % 6]
+        f[r, c] = 7                            # widget: changes every step
+        if i in move_at:
+            action = (next(move_ids), None)
+        else:
+            toggle_color = 9 if toggle_color == 8 else 8
+            action = click_action
+        f[15, 15] = toggle_color               # toggle: persists, only flips on click
+        tool.observe(prev, action, True)
+        prev = f
+    assert tool._region_mask is not None
+    assert bool(tool._region_mask[0, 0:6].any())         # widget masked
+    assert not bool(tool._region_mask[15, 15])           # toggle spared
