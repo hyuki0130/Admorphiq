@@ -3542,5 +3542,26 @@ half of the verdict overturned. Executor (select-pool-swatch → click-slot-cent
 `scratchpad/sb26_dfs_v3.py`. Banked for a dedicated build cycle; no `src/`
 changes, tree clean, 769 green.
 
+### lp85 L2 — rare-colour click heuristic does NOT extend; deeper mechanic, not a cheap win (2026-07-14 01:45)
+
+Fresh records-first (round page depth-survey #2 + `games/LP85.md`): lp85 is
+click-only (avail=[6]), L1 clears via a rare-colour click (the wiki's
+`click_c8_(30,4)` / `click_rare`), L2 the WMA probe wanders unproductively.
+Hypothesis to test: is L2's winning click also a rare-colour pixel the heuristic
+should find? A bounded, safe (no-GAME_OVER) probe answers it decisively:
+- L2 palette: bg colour 3 (2319px), colour 4 (1445px), colour 14 (98), then rare
+  colours 10/1/2/9/8/15/5/11 (16–36px each).
+- Rare-colour CENTROID clicks: 0 clears (centroids are averages of scattered
+  pixels, not on a clickable object).
+- Rare-colour PER-PIXEL probe: **332 clicks across every rare colour cleared
+  NOTHING**, and the level counter even dropped 1→0 mid-probe — so a wrong click
+  REGRESSES the level (blind probing is NOT safe here despite "no GAME_OVER").
+
+**Conclusion**: lp85 L2's winning target is not identifiable by colour rarity
+(the L1 heuristic does not generalise), and the board punishes wrong clicks with
+a reset. The mechanic is deeper (target likely defined by structure/relationship,
+not rarity) and needs a dedicated investigation — NOT a cheap tonight clear.
+Banked. No `src/` changes; tree clean at `a43f952`.
+
 ## Related
 - [[../lessons/api_hash_rotation_20260421]]
