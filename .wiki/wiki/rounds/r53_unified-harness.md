@@ -1287,3 +1287,18 @@ never a valid submission). v5 adds the rerun branch (wait-for-gateway →
 COMPETITION Arcade) while keeping the offline path for free validation.
 IMPORTANT HONESTY NOTE: every score so far (1.0721 included) is the PUBLIC
 25-game dev proxy; the hidden-set number exists only after a real submission.
+
+### s5i5 rotation-solver DESIGN (from the measured layout) (2026-07-13 14:40)
+Board anatomy (offline dump): TWO stacked 5x5 pieces (color-4 frames, rows
+36-40 and 42-46, cols 22-26, color-11 interiors) = the ROTATABLE pieces; the
+color-14 shapes top-centre (size-14 at rows 9-11 + two size-7 at rows 20-22)
+= the REFERENCE pattern; widget clicks at (40,24)/(24,40) rotate (11-cell
+deltas); every other click burns the row-63 attempt counter. Solver sketch
+(counter-class, plan-first): (1) segment pieces (compact multi-colour blocks
+with distinct interiors) + reference (isolated same-palette shapes elsewhere);
+(2) for each piece, simulate 0-3 rotations of its interior pattern and compare
+to the reference orientation; (3) click that piece's widget exactly the needed
+number of times; (4) never click anything else (attempt budget). Open
+questions for implementation: widget->piece mapping (probe ONCE each — 2
+attempts spent), rotation direction, and whether the reference maps 1:1 by
+shape or by position. Implementation is the next bounded cycle.
