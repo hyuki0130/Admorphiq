@@ -2892,5 +2892,79 @@ unenterable) — but LS20 L2 itself needs a different explanation for its
 true win condition, not this structure. No `src/` changes this cycle
 either.
 
+### FT09 L2: GAME_OVER-cycle-limit fix implemented, then PROVEN INERT and reverted — the real mechanism is a pre-existing, unrelated handoff (2026-07-13 23:39-23:47)
+
+Per dispatch: WorldModelAgent instrumented trace of FT09 L2 (survey #2's
+own characterization: `probe` phase stuck, `avail=[6]`, repeated
+`GAME_OVER` cycles). Live trace confirmed 4 GAME_OVER cycles at steps
+93/154/200/256 before termination at step 306, matching the survey.
+
+**Hypothesis (plausible, wrong): the `dc89aa5` GAME_OVER-cycle-limit
+fix (landed earlier tonight, before this session) unconditionally
+terminates the WHOLE episode via `is_done()` once
+`_game_over_count >= GAME_OVER_CYCLE_LIMIT` (3) — with no
+`levels_completed >= 1` precondition. That commit's own docstring notes
+`score_efficiency.py`'s scorer already breaks on the FIRST GAME_OVER for
+this agent, so the guard is invisible to every dev-time guard check
+regardless of correctness — it specifically targets the continuous-
+episode (Kaggle) harness.** Reasoned that 3 cycles (~150-180 actions for
+FT09) fires well before `NO_PROGRESS_FALLBACK` (650 actions), so under
+the continuous harness the guard could pre-empt `_activate_fallback()`
+— documented as the actual solving mechanism for FT09/TN36 (GeneralAgent's
+GF(2) toggle/paint primitives) — from ever engaging.
+
+**Implemented**: changed the GAME_OVER-cycle-limit path to hand off to
+`_activate_fallback()` directly (instead of `is_done()` ending the
+episode), with `is_done()`'s own cycle check exempted once the fallback
+is active. Updated the affected unit test to match. Suite 766/766, ruff
+clean.
+
+**PROVEN INERT before shipping — reverted.** Added debug instrumentation
+(`agent._fallback is not None` at every GAME_OVER) to the SAME live
+trace and discovered `fallback_active=True` from the very FIRST logged
+cycle (step 93) — meaning `GeneralAgent`'s fallback was ALREADY active
+well before any GAME_OVER cycling could occur. Confirmed the fix changed
+NOTHING by re-running the identical trace with the fix `git stash`ed:
+byte-identical output (same 4 GAME_OVER steps, same termination at step
+306) with or without the fix in place.
+
+**Root cause of the misdiagnosis, found**: a THIRD, pre-existing
+`_activate_fallback()` call site (`world_model_agent.py:1516-1519`,
+predating this session) already hands off to `GeneralAgent` IMMEDIATELY
+once movement discovery finds `model.player_color is None` — i.e. the
+instant a click-only/no-player game like FT09 is recognised as such,
+BEFORE any structured click probing or GAME_OVER cycling ever happens
+under `WorldModelAgent`'s own phases. This is a deliberate, already-
+correct design (its own comment: "the world model has no nav plan here
+and its blind click interaction is BOTH ineffective AND can trip a
+lose-state before any action-count stall is ever detected... hand off
+NOW"). So the GAME_OVER cycles observed at steps 93/154/200/256 are
+`GeneralAgent`'s OWN cycles during its OWN exploration of FT09 L2, not
+`WorldModelAgent`'s structured-loop cycling — a completely different
+code path (`general_agent.py`) than the one the `GAME_OVER_CYCLE_LIMIT`
+fix touches. My fix was solving a problem that does not exist for this
+game; reverted cleanly (`git checkout`, confirmed 766/766 green after).
+
+**What this means for FT09 L2 (the actual open question)**: the real
+blocker is inside `GeneralAgent`'s own click-probing/toggle-solving
+pipeline repeatedly walking FT09's L2 board into `GAME_OVER` without
+ever finding the correct GF(2) toggle sequence — a `general_agent.py`
+investigation, not a `world_model_agent.py` one. Not investigated this
+cycle (ran out of time budget after the misdiagnosis chase). The
+`GAME_OVER_CYCLE_LIMIT` fix MAY still be valid/useful for the games its
+original commit measured (tu93/bp35/r11l — all under the `chained`/
+graph-frontier agent architecture, not `WorldModelAgent`'s click-only
+handoff path), which this investigation did not touch or invalidate.
+
+**Lesson for next session**: "click-tier gate" as referenced by dispatch
+is `tools/graph_search.py`/the `chained` agent's mechanism — a DIFFERENT
+architecture than `WorldModelAgent`, which is what this entire session's
+guards (`su15`/`s5i5`/`re86`/`wa30`/`ft09`/`tn36`/`lp85`/`ls20`) and
+fixes have exclusively touched. Before investigating "ft09 L2" again,
+first confirm which agent architecture is actually deployed/relevant for
+that specific game — this session's own `ft09 1/6@93` guard number comes
+from `--agent worldmodel`, separate from the `chained`-agent tier-gate
+work described earlier in this same file (`Gap-1 @8000... ft09 closed`).
+
 ## Related
 - [[../lessons/api_hash_rotation_20260421]]
