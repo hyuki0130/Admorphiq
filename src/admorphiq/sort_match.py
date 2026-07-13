@@ -156,6 +156,192 @@ def detect_match_layout(layer: np.ndarray, background: int) -> MatchLayout | Non
 # ── plan synthesis ──────────────────────────────────────────────────────────
 
 
+@dataclass
+class PortalSortLayout:
+    """A detected portal-graph SORT layout (SB26 L2+ class).
+
+    ``placements`` is the ordered list of ``(pool_xy, slot_xy)`` pairs to click —
+    for the i-th slot the DFS traversal visits, click the pool swatch of the
+    colour the target sequence assigns to that visit, then the slot. Order is the
+    portal-graph DFS traversal order (NOT screen order), which is what the game's
+    stack-based matcher consumes. ``verify_action`` is the scan/confirm action.
+    """
+
+    placements: list[tuple[tuple[int, int], tuple[int, int]]]
+    verify_action: int
+
+
+def _split_box_pipe(
+    cells: set[tuple[int, int]],
+) -> tuple[tuple[int, int, int, int] | None, set[tuple[int, int]]]:
+    """Split a connected component into its hollow-rectangle BOX and thin PIPE.
+
+    A SB26 frame renders as a hollow rectangle (border); a PORTAL renders as a
+    1-2px-thin bar that extends OUT of the frame it points to and merges into the
+    same colour component as that frame's border (measured L2: colour 14 = the
+    frame-14 box + a vertical pipe up into frame-8's slot). BOX rows span most of
+    the component width (a hollow rectangle's top/bottom edges AND its two side
+    borders all reach both x-extremes); PIPE rows are the thin runs outside the
+    box's row band. Returns ``(box_bbox, pipe_cells)`` — ``box_bbox`` is
+    ``(x0, y0, x1, y1)`` or None when no wide rows exist (a pure pipe). ``cells``
+    are ``(col, row)``. Pure / env-free. Minimal (vertical-pipe) form.
+    """
+    if not cells:
+        return None, set()
+    cols = [c for c, _r in cells]
+    x0, x1 = min(cols), max(cols)
+    width = x1 - x0 + 1
+    row_cols: dict[int, list[int]] = {}
+    for c, r in cells:
+        row_cols.setdefault(r, []).append(c)
+    box_rows = [r for r, cs in row_cols.items() if (max(cs) - min(cs) + 1) >= 0.6 * width]
+    if not box_rows:
+        return None, set(cells)
+    box_top, box_bot = min(box_rows), max(box_rows)
+    box = {(c, r) for c, r in cells if box_top <= r <= box_bot}
+    pipe = {(c, r) for c, r in cells if r < box_top or r > box_bot}
+    bx0 = min(c for c, _r in box)
+    bx1 = max(c for c, _r in box)
+    return (bx0, box_top, bx1, box_bot), pipe
+
+
+def detect_portal_sort(layer: np.ndarray, background: int) -> PortalSortLayout | None:
+    """Detect a portal-graph SORT layout and return the DFS-ordered placement plan.
+
+    Fully observation-driven on the canonical layer (no game-id / internal reads):
+    the top-display row is the target colour sequence; the mid-band hollow
+    rectangles are the frames (their border colour = identity); a thin pipe
+    merged into a frame's colour component is a portal linking the frame at the
+    pipe's far endpoint to the frame whose border the pipe colour is; the bottom
+    row is the pool. A depth-first traversal from the top frame (slots
+    left-to-right, portals recurse, a re-visited slot does not consume a fresh
+    target) yields the item-slot visitation order, which the target sequence maps
+    to colours. Returns None when no two-frame portal structure is present, so the
+    plan only engages on this sub-class (the simpler single-frame case stays with
+    :func:`detect_match_layout`). Pure / env-free. Minimal L2 scope: in-frame
+    (fixed) portals only — bottom-portal placement / permutation search is a
+    future extension.
+    """
+    if layer.size == 0:
+        return None
+    # Background = the most-frequent colour of the CURRENT frame (robust to the
+    # passed model background lagging the live render); frame/target/pool
+    # detection is otherwise colour-agnostic (shape + role), because a SB26
+    # frame-border colour (e.g. 14) is ALSO an item/target colour, so a
+    # frequency-based chrome filter wrongly drops it.
+    vals, counts = np.unique(layer, return_counts=True)
+    bg = int(vals[int(counts.argmax())])
+    comps = connected_components(layer, bg)
+
+    # pool: bottom-row swatches, colour -> centroid (markers/separators may slip
+    # in harmlessly — only colours the target sequence needs are ever looked up).
+    pool: dict[int, tuple[int, int]] = {}
+    for c in comps:
+        if c["cy"] > _BOT_BAND and c["color"] != bg and c["size"] >= _MIN_CLUSTER:
+            pool.setdefault(int(c["color"]), (int(round(c["cx"])), int(round(c["cy"]))))
+    pool_colors = set(pool)
+    if len(pool_colors) < 2:
+        return None
+
+    # target order: top-display cells whose colour is a real pool swatch colour
+    # (this drops the thin separator chrome between cells without a colour list).
+    top = sorted(
+        (c for c in comps if c["cy"] < _TOP_BAND and int(c["color"]) in pool_colors and c["size"] >= _MIN_CLUSTER),
+        key=lambda c: c["cx"],
+    )
+    target_order = [int(c["color"]) for c in top]
+    if len(target_order) < 2:
+        return None
+
+    # frames (box parts) + pipes (portals): pure SHAPE detection (a hollow
+    # rectangle), colour-agnostic — the shape filter excludes solid fills.
+    frames: list[dict] = []
+    pipes: list[tuple[int, set[tuple[int, int]]]] = []
+    for c in comps:
+        if c["color"] == bg or not (_TOP_BAND <= c["cy"] < _BOT_BAND):
+            continue
+        cells = {(col, r) for r, col in c["cells"]}
+        box, pipe = _split_box_pipe(cells)
+        if box is None:
+            continue
+        x0, y0, x1, y1 = box
+        if (x1 - x0 + 1) >= 18 and (y1 - y0 + 1) >= 6:
+            frames.append({"border": int(c["color"]), "bbox": box})
+            if pipe:
+                pipes.append((int(c["color"]), pipe))
+    if len(frames) < 2:
+        return None
+    frames.sort(key=lambda f: f["bbox"][1])  # top-to-bottom; frame[0] = traversal root
+
+    # slot grid per frame
+    for f in frames:
+        x0, y0, x1, y1 = f["bbox"]
+        sy = y0 + 2
+        slots = []
+        i = 0
+        while x0 + 2 + i * 6 + 4 <= x1 + 1:
+            slots.append((x0 + 2 + i * 6, sy))
+            i += 1
+        f["slots"] = slots
+
+    # portals: each pipe links a slot (in the frame containing its far endpoint)
+    # to the frame whose border colour equals the pipe colour.
+    portal_of: dict[tuple[int, int], int] = {}
+    for color, pipe in pipes:
+        endpoint = min(pipe, key=lambda cr: cr[1])  # topmost = far end (vertical pipe up)
+        ex, ey = endpoint
+        for f in frames:
+            bx0, by0, bx1, by1 = f["bbox"]
+            if bx0 <= ex <= bx1 and by0 - 2 <= ey <= by1 + 2 and f["slots"]:
+                slot = min(f["slots"], key=lambda s: abs(s[0] - ex))
+                portal_of[slot] = color
+                break
+
+    # DFS traversal -> item slots in visitation order, mapped to target colours
+    frame_by_color = {f["border"]: f for f in frames}
+    order: list[tuple[tuple[int, int], str]] = []
+    seen: set[tuple[int, int]] = set()
+    consumed = [0]
+
+    def _traverse(frame: dict, depth: int = 0) -> None:
+        if depth > 20 or consumed[0] >= len(target_order):
+            return
+        for s in frame["slots"]:
+            if consumed[0] >= len(target_order):
+                return
+            if s in portal_of:
+                order.append((s, "portal"))
+                nxt = frame_by_color.get(portal_of[s])
+                if nxt is not None:
+                    _traverse(nxt, depth + 1)
+            else:
+                order.append((s, "revisit" if s in seen else "item"))
+                seen.add(s)
+                consumed[0] += 1
+
+    _traverse(frames[0])
+    slot_color: dict[tuple[int, int], int] = {}
+    ti = 0
+    for s, kind in order:
+        if kind == "item":
+            slot_color[s] = target_order[ti]
+            ti += 1
+        elif kind == "revisit":
+            ti += 1
+
+    placements: list[tuple[tuple[int, int], tuple[int, int]]] = []
+    for s, kind in order:
+        if kind != "item":
+            continue
+        color = slot_color.get(s)
+        if color is None or color not in pool:
+            return None  # a needed colour is not in the pool -> not this layout
+        placements.append((pool[color], (s[0] + 2, s[1] + 2)))  # slot corner -> centre
+    if not placements:
+        return None
+    return PortalSortLayout(placements=placements, verify_action=5)
+
+
 def plan_match_placement(layout: MatchLayout, verify_action: int) -> list[tuple]:
     """Ordered action plan: place each pool swatch under its reference frame.
 

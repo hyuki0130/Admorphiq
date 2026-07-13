@@ -17,7 +17,9 @@ import numpy as np
 
 from admorphiq.sort_match import (
     MatchLayout,
+    _split_box_pipe,
     detect_match_layout,
+    detect_portal_sort,
     plan_match_placement,
 )
 
@@ -129,3 +131,54 @@ def test_plan_match_placement_orders_clicks_by_reference():
     slot_clicks = [p for i, p in enumerate(plan[:-1]) if i % 2 == 1]
     assert [c[1] for c in slot_clicks] == [20, 28, 34, 42]
     assert all(c[2] == 30 for c in slot_clicks)
+
+
+def test_split_box_pipe_separates_frame_from_portal_pipe():
+    """Purpose: _split_box_pipe splits a merged component into its hollow-
+    rectangle BOX (a frame border) and the thin PIPE (a portal) that renders in
+    the same colour and extends out of the frame — the SB26 L2 case where the
+    portal's colour equals its target frame's border colour, merging them.
+
+    Expected feedback: a PASS proves the morphological split recovers the frame's
+    true bbox (so a second frame is detected, not swallowed by the pipe) and the
+    pipe cells (whose endpoint locates the portal's source slot). A FAIL means
+    the portal-graph detector collapses to <2 frames and never engages — exactly
+    the bug that made frame-14 undetectable before this split.
+    """
+    cells: set[tuple[int, int]] = set()
+    # Hollow rectangle (box): perimeter of cols 18..45, rows 32..41.
+    for c in range(18, 46):
+        cells.add((c, 32))
+        cells.add((c, 41))
+    for r in range(32, 42):
+        cells.add((18, r))
+        cells.add((45, r))
+    # Thin vertical pipe: cols 34-35, rows 20..31 (above the box).
+    for r in range(20, 32):
+        cells.add((34, r))
+        cells.add((35, r))
+
+    box, pipe = _split_box_pipe(cells)
+    assert box == (18, 32, 45, 41)
+    # Every pipe cell is above the box; none of the box perimeter leaked in.
+    assert pipe and all(r < 32 for _c, r in pipe)
+    assert all(32 <= r <= 41 for _c, r in cells - pipe)
+    # The pipe's far (topmost) endpoint is at the bar's rows/cols.
+    top = min(pipe, key=lambda cr: cr[1])
+    assert top[1] == 20 and top[0] in (34, 35)
+
+
+def test_detect_portal_sort_none_on_single_frame_match_layout():
+    """Purpose: detect_portal_sort returns None on a board with fewer than two
+    mid-band frames (the single-row match-to-order layout, e.g. SB26 L1), so the
+    portal path only engages on a genuine two-frame portal graph and otherwise
+    defers to detect_match_layout.
+
+    Expected feedback: a PASS proves the portal detector is correctly gated — it
+    does not hijack the simpler sort layouts (which would regress SB26 L1 and any
+    click-only game that reaches the sort signature). A FAIL means the portal
+    branch fires on non-portal boards.
+    """
+    # The L1-shaped layer has top frames + a bottom pool but NO mid-band hollow
+    # rectangles, so no frames are detected in the 10..53 band.
+    assert detect_portal_sort(_sb26_l1_layer(), background=_BG) is None

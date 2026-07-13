@@ -108,7 +108,7 @@ from .slider import (
     resolve_goal,
     track_reached_goal,
 )
-from .sort_match import detect_match_layout, plan_match_placement
+from .sort_match import detect_match_layout, detect_portal_sort, plan_match_placement
 from .transform_route import (
     TransformPuzzle,
     build_move_actions,
@@ -204,6 +204,7 @@ _PHASE_EXECUTE = "execute"
 _PHASE_INTERACT = "interact"
 _PHASE_ARRANGE = "arrange"
 _PHASE_SORT_MATCH = "sort_match"
+_PHASE_PORTAL_SORT = "portal_sort"
 _PHASE_MERGE_DRAG = "merge_drag"
 _PHASE_ROTATE = "rotate"
 _PHASE_SLIDE = "slide"
@@ -263,6 +264,9 @@ _SELECT_TOGGLE_ACTION = 5
 # over alignment-entity offsets converges within a handful of tries on the
 # measured games, and a cap keeps a non-arrangement game from burning budget.
 _ARRANGE_MAX_CANDIDATES = 18
+# Max no-op settle steps to wait for the portal-sort placement animation before
+# proceeding anyway (measured SB26 L2: the swap settles within a few frames).
+_PORTAL_SETTLE_MAX = 6
 
 
 # ── Stage (a): perception → objects ──────────────────────────────────────────
@@ -830,6 +834,18 @@ class WorldModelAgent:
         # the phase is not re-entered).
         self._sort_plan: list[tuple] | None = None
         self._sort_attempted = False
+        # ── Portal-graph SORT bookkeeping (sort_match.detect_portal_sort) ──────
+        # ``_portal_queue`` is the flat action queue (place clicks + ``settle``
+        # markers + verify) drained one action per call; ``_portal_settling`` /
+        # ``_portal_settle_count`` / ``_portal_prev_layer`` run the settle-wait
+        # between clicks (the placement animation drops a click issued mid-frame,
+        # measured on SB26 L2 — the same render-lag class as the delivery
+        # settle-frame). ``_portal_attempted`` gates the one-shot per level.
+        self._portal_queue: list[tuple] | None = None
+        self._portal_attempted = False
+        self._portal_settling = False
+        self._portal_settle_count = 0
+        self._portal_prev_layer: np.ndarray | None = None
         # ── Click-only MERGE / gather (drag-to-goal) bookkeeping (merge_drag) ──
         # ``_merge_drag_attempted`` gates the one-shot drag probe per level (a
         # fresh gather each level: SU15 re-lays its tiles + goal every level);
@@ -1145,6 +1161,8 @@ class WorldModelAgent:
             return self._execute_step(layer, avail, latest_frame)
         if self._phase == _PHASE_ARRANGE:
             return self._arrange_step(layer, avail, latest_frame)
+        if self._phase == _PHASE_PORTAL_SORT:
+            return self._portal_sort_step(layer, avail, latest_frame)
         if self._phase == _PHASE_SORT_MATCH:
             return self._sort_match_step(layer, avail, latest_frame)
         if self._phase == _PHASE_MERGE_DRAG:
@@ -1249,6 +1267,22 @@ class WorldModelAgent:
         ):
             self._sort_attempted = True
             bg = self.model.background if self.model.background is not None else 0
+            # Portal-graph sort (SB26 L2+: two frames linked by a portal pipe)
+            # takes precedence — its DFS-ordered placement is the correct target
+            # order, which the single-row match layout cannot express.
+            portal = detect_portal_sort(layer, bg)
+            if portal is not None:
+                self._portal_attempted = True
+                queue: list[tuple] = []
+                for pool_xy, slot_xy in portal.placements:
+                    queue.append(("click", pool_xy[0], pool_xy[1]))
+                    queue.append(("settle",))
+                    queue.append(("click", slot_xy[0], slot_xy[1]))
+                    queue.append(("settle",))
+                queue.append(("simple", portal.verify_action))
+                self._portal_queue = queue
+                self._phase = _PHASE_PORTAL_SORT
+                return self._portal_sort_step(layer, avail, latest_frame)
             layout = detect_match_layout(layer, bg)
             if layout is not None:
                 self._sort_plan = plan_match_placement(layout, _SELECT_TOGGLE_ACTION)
@@ -1926,6 +1960,69 @@ class WorldModelAgent:
         return self._probe_step(layer, avail, latest_frame)
 
     # ── sort (click-only match-to-order placement) phase ──────────────────────
+
+    def _portal_sort_step(self, layer: np.ndarray, avail: list[int], latest_frame):
+        """Drain the portal-graph placement plan with a settle-wait between clicks.
+
+        Each real action (a pool-swatch select click, a slot placement click, or
+        the verify) is followed by a ``settle`` marker: the placement animation
+        drops a click issued mid-frame (measured SB26 L2), so between clicks the
+        step emits ACTION6 no-ops at (0,0) until the canonical layer is stable for
+        one step or :data:`_PORTAL_SETTLE_MAX` no-ops elapse. When the queue is
+        exhausted without a level-up the layout guess did not clear, so control
+        returns to normal interaction (the phase is not re-entered:
+        ``_portal_attempted`` is set).
+        """
+        from arcengine import GameAction
+
+        # Settle-wait: emit no-ops until the frame stabilises.
+        if self._portal_settling:
+            stable = (
+                self._portal_prev_layer is not None
+                and self._portal_prev_layer.shape == layer.shape
+                and np.array_equal(self._portal_prev_layer, layer)
+            )
+            self._portal_settle_count += 1
+            if stable or self._portal_settle_count >= _PORTAL_SETTLE_MAX:
+                self._portal_settling = False
+                self._portal_prev_layer = None
+            else:
+                self._portal_prev_layer = layer.copy()
+                self._pending = {
+                    "action_id": 6, "coord": (0, 0),
+                    "before": layer.copy(), "desc": ("c", 0, 0),
+                }
+                return self._emit_click(0, 0)
+
+        while self._portal_queue:
+            kind, *rest = self._portal_queue.pop(0)
+            if kind == "settle":
+                self._portal_settling = True
+                self._portal_settle_count = 0
+                self._portal_prev_layer = layer.copy()
+                self._pending = {
+                    "action_id": 6, "coord": (0, 0),
+                    "before": layer.copy(), "desc": ("c", 0, 0),
+                }
+                return self._emit_click(0, 0)
+            if kind == "click":
+                x, y = rest
+                if 6 not in avail:
+                    continue
+                self._pending = {
+                    "action_id": 6, "coord": (int(x), int(y)),
+                    "before": layer.copy(), "desc": ("c", int(x), int(y)),
+                }
+                return self._emit_click(int(x), int(y))
+            aid = rest[0]
+            if aid not in avail:
+                continue
+            self._pending = {"action_id": aid, "coord": None, "before": layer.copy()}
+            return self._emit(GameAction.from_id(aid))
+
+        self._plan_commit = self._action_count
+        self._phase = _PHASE_INTERACT
+        return self._interact_step(layer, avail, latest_frame)
 
     def _sort_match_step(self, layer: np.ndarray, avail: list[int], latest_frame):
         """Drain the match-to-order placement plan one action per call.
