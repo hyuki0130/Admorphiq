@@ -844,6 +844,11 @@ class WorldModelAgent:
         # time without ever clearing.
         self._merge_drag_goal: tuple[float, float] | None = None
         self._merge_drag_tried_goals: list[tuple[float, float]] = []
+        # True for exactly one call: right after a goal-switch RESET, telling
+        # _merge_drag_step to issue the new goal's probe click directly
+        # rather than checking _last_changed (which would be credited to the
+        # RESET action itself, meaningless here).
+        self._merge_drag_reset_pending = False
         # Snapshot of tile positions/sizes captured right before the last
         # merge_drag click was issued, used to detect a stalled TILE
         # specifically. ``_last_changed`` (full-frame equality) is NOT a
@@ -1935,6 +1940,23 @@ class WorldModelAgent:
         free, it walks the env toward GAME_OVER).
         """
         bg = self.model.background if self.model.background is not None else 0
+        if self._merge_drag_reset_pending:
+            # Just RESET for a goal switch (see _try_next_merge_goal): the
+            # board is back to the level's pristine layout. Issue the new
+            # goal's probe click directly — do not consult _last_changed,
+            # which reflects the RESET action, not a real probe.
+            self._merge_drag_reset_pending = False
+            layout = detect_drag_layout(layer, bg, goal_override=self._merge_drag_goal)
+            if layout is not None:
+                x, y = drag_probe_target(layout)
+                self._pending = {
+                    "action_id": 6, "coord": (x, y),
+                    "before": layer.copy(), "desc": ("c", x, y),
+                }
+                return self._emit_click(x, y)
+            self._plan_commit = self._action_count
+            self._phase = _PHASE_INTERACT
+            return self._interact_step(layer, avail, latest_frame)
         current_tiles = _merge_drag_tile_snapshot(layer, bg)
         if not self._merge_drag_probed:
             self._merge_drag_probed = True
@@ -1992,7 +2014,11 @@ class WorldModelAgent:
         Falls through to the standard interaction pipeline once every goal
         instance has been tried. Coordinates are matched by rounding to avoid
         float-precision misses on a container that hasn't moved between calls.
+        Switching goals RESETs the board first (see the inline comment where
+        that happens) so the new goal's attempt starts from the level's
+        pristine layout, not one already disturbed by the abandoned attempt.
         """
+        from arcengine import GameAction
 
         def _key(pt: tuple[float, float]) -> tuple[float, float]:
             return (round(pt[0], 1), round(pt[1], 1))
@@ -2021,14 +2047,23 @@ class WorldModelAgent:
             self._merge_drag_clicks = 0
             self._merge_drag_stall = 0
             self._merge_drag_probed = False
-            layout = detect_drag_layout(layer, bg, goal_override=next_goal)
-            if layout is not None:
-                x, y = drag_probe_target(layout)
-                self._pending = {
-                    "action_id": 6, "coord": (x, y),
-                    "before": layer.copy(), "desc": ("c", x, y),
-                }
-                return self._emit_click(x, y)
+            # RESET back to the level's pristine layout before trying the new
+            # goal. Measured live: the gather sequence that clears the level
+            # against goal B only works from a CLEAN board — a live retry that
+            # switches goals mid-sequence (after goal A's attempt already
+            # dragged tiles around) starts goal B's walk from a DISTURBED
+            # layout and diverges from the first gather click onward, ending
+            # in GAME_OVER instead of the clear a fresh-board attempt
+            # achieves. RESET does not affect levels_completed or the
+            # knowledge already accumulated (which goal was tried), only the
+            # board's pixel layout — confirmed by the existing GAME_OVER
+            # handling elsewhere in this class, which relies on the same
+            # fact. `_merge_drag_reset_pending` tells the next call to issue
+            # the goal's probe click directly instead of re-checking a stale
+            # `_last_changed` credited to the RESET itself.
+            self._merge_drag_reset_pending = True
+            self._pending = None
+            return self._emit(GameAction.RESET)
 
         self._plan_commit = self._action_count
         self._phase = _PHASE_INTERACT
