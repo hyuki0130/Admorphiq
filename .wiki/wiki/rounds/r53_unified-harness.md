@@ -1186,3 +1186,13 @@ first Kaggle notebook can ship LLM-FREE (numpy-only WMA probe + graph stack) at
 gemma stack becomes a v2 upgrade, not a blocker. GCP no longer needed for this
 track (free trial ended 7/12; all billable resources deleted 7/13 — instance,
 disks, snapshots; setup playbook recorded for any future GPU work).
+
+### ✅ Kaggle v1 submission artifact VERIFIED offline (2026-07-13 12:30)
+`KaggleChainedAgent` (official-interface wrapper, LLM-free chain) + notebook
+switch + verify-script update: **end-to-end offline verification passes on the
+Mac** (su15 cleared 2 levels through the OFFLINE Arcade, valid scorecard
+JSON). The v1 submission is numpy-only — no weights dataset, no model mount,
+no LLM runtime. Remaining ceremony (user-side / kaggle CLI): re-upload the src
+dataset with current code, `kaggle kernels push` (free validation), then
+`kaggle competitions submit` (consumes the daily slot). Measured expectation
+on the dev proxy: 14/25 cleared, 1.072%.
