@@ -17,6 +17,7 @@ class, so there is one implementation.
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 from dataclasses import dataclass, field
@@ -27,6 +28,20 @@ import numpy as np
 from admorphiq.repl_agent.segmentation import Scene
 
 _DIGITS = "0123456789abcdef"
+
+# Winner-validated ceiling: the Duck harness allows 30s per REPL toolcall so the
+# model can run in-REPL action-sequence search (see the Duck teardown lesson).
+# Env-configurable so the Kaggle bench can tune it; the output cap stays at 4000.
+_DEFAULT_TIMEOUT = 30.0
+
+
+def default_timeout() -> float:
+    """Resolve the sandbox timeout from ``REPL_SANDBOX_TIMEOUT`` (default 30s)."""
+    raw = os.environ.get("REPL_SANDBOX_TIMEOUT", "").strip()
+    try:
+        return float(raw) if raw else _DEFAULT_TIMEOUT
+    except ValueError:
+        return _DEFAULT_TIMEOUT
 
 
 def _scene_payload(scene: Scene | None) -> list[dict[str, Any]]:
@@ -181,15 +196,19 @@ def run_code(
     code: str,
     store: ObservationStore,
     *,
-    timeout: float = 2.0,
+    timeout: float | None = None,
     max_output: int = 4000,
 ) -> SandboxResult:
     """Run ``code`` in a fresh subprocess with the inspection API bound.
 
     The subprocess reads a JSON job on stdin and prints a JSON result. A hard
     ``timeout`` kills a runaway process (subprocess-level, robust against
-    Python-level infinite loops). ``max_output`` caps captured stdout.
+    Python-level infinite loops); when unset it defaults to
+    :func:`default_timeout` (30s, ``REPL_SANDBOX_TIMEOUT``-configurable) so the
+    model has room for in-REPL search. ``max_output`` caps captured stdout.
     """
+    if timeout is None:
+        timeout = default_timeout()
     job = json.dumps({
         "code": code,
         "payload": store.to_payload(),

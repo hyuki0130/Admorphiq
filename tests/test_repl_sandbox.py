@@ -15,6 +15,7 @@ import numpy as np
 from admorphiq.repl_agent.sandbox import (
     Inspector,
     ObservationStore,
+    default_timeout,
     run_code,
 )
 from admorphiq.repl_agent.segmentation import SceneTracker
@@ -124,6 +125,21 @@ def test_run_code_blocks_disallowed_import():
     res = run_code("import os\nos.system('echo hi')\n", _store_two_frames(), timeout=10)
     assert not res.ok
     assert "import" in res.error.lower() or "not allowed" in res.error.lower()
+
+
+def test_default_timeout_env_configurable(monkeypatch):
+    """Purpose: the sandbox timeout defaults to 30s (winner-validated for in-REPL
+    search) and is overridable via REPL_SANDBOX_TIMEOUT.
+
+    Feedback: failure means in-REPL action-sequence search is starved or the
+    Kaggle bench can't tune the ceiling.
+    """
+    monkeypatch.delenv("REPL_SANDBOX_TIMEOUT", raising=False)
+    assert default_timeout() == 30.0
+    monkeypatch.setenv("REPL_SANDBOX_TIMEOUT", "12.5")
+    assert default_timeout() == 12.5
+    monkeypatch.setenv("REPL_SANDBOX_TIMEOUT", "garbage")
+    assert default_timeout() == 30.0  # invalid falls back
 
 
 def test_run_code_hard_timeout_kills_loop():
