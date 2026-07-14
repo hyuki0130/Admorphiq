@@ -366,6 +366,7 @@ class ReplAgent:
         self._prev_action: dict[str, Any] | None = None
         self._macro_active = False
         self._turn = 0
+        self._turn_in_level = 0  # per-level action count (reset on level-up)
         self._steps = 0
         self._last_levels = 0
 
@@ -413,6 +414,7 @@ class ReplAgent:
         self._prev_scene = scene
         self._prev_action = action
         self._turn += 1
+        self._turn_in_level += 1
         self._steps += 1
         return self._to_gameaction(action, obs)
 
@@ -424,6 +426,7 @@ class ReplAgent:
         self._queue.clear()
         self._macro_active = False
         self._prev_scene = None
+        self._turn_in_level = 0  # per-level counter resets on level-up
         self._last_levels = levels
 
     def _record_transition(self, frame: np.ndarray, scene: Any, state: str,
@@ -656,7 +659,7 @@ class ReplAgent:
         return {
             "game_id": self._game_id,
             "level": self._last_levels + 1,
-            "turn_in_level": self._turn,
+            "turn_in_level": self._turn_in_level,
             "total_actions": self._governor.total_actions,
             "legal_actions": sorted(legal),
             "coordinate_rule": "MOUSE(row, col), zero-based",
@@ -683,6 +686,7 @@ class ReplAgent:
             return
         rec = TurnRecord(
             turn=self._turn, game_id=self._game_id, level=self._last_levels,
+            turn_in_level=self._turn_in_level,
             total_actions=self._governor.total_actions,
             legal_actions=sorted(_legal_names(obs)),
             prompt_text=prompt, image_hashes=image_hashes or [], raw_output=raw,

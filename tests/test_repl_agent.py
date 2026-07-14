@@ -169,6 +169,24 @@ def test_openai_client_disables_thinking_and_caps_tokens(monkeypatch):
     assert captured["timeout"] == 300.0
 
 
+def test_turn_in_level_resets_on_level_up():
+    """Purpose: turn_in_level is a REAL per-level counter (reset on level-up),
+    not an alias of the game-lifetime turn (Codex v5 review).
+
+    Feedback: failure means audit triggers / progress accounting use the wrong
+    per-level count.
+    """
+    agent = ReplAgent(SimpleNamespace(complete=lambda p, i=None: '{"action":"LEFT"}'),
+                      render_images=False)
+    f = _frame()
+    agent.choose_action([], _obs(f, avail=(1, 2, 3, 4), levels=0))
+    agent.choose_action([], _obs(f, avail=(1, 2, 3, 4), levels=0))
+    assert agent._turn_in_level == 2 and agent._turn == 2
+    agent.choose_action([], _obs(f, avail=(1, 2, 3, 4), levels=1))  # level up
+    assert agent._turn_in_level == 1   # reset then this action
+    assert agent._turn == 3            # game-lifetime keeps counting
+
+
 def test_agent_logs_observed_outcomes():
     """Purpose: the agent records observed (state, action)->changed into the
     outcomes log that action_outcomes/is_dead query.
