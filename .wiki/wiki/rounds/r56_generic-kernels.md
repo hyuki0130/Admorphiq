@@ -520,6 +520,18 @@ before (compose dc22's probe-effect measurement through the existing
 HUD/cosmetic-diff filtering convention). See [[../games/DC22]] for the
 game's own current status.
 
+**Follow-up, same round — parity-combo enumeration, still 0/6
+(`2209a5f`).** The toggler-cycling fix's own negative result motivated a
+different theory: gold's own solution proves dc22's button clicks are
+PROACTIVE/state-gating (set both togglers to a specific parity combo
+BEFORE walking) rather than reactive to physical blockage the way the
+stuck-triggered probe assumed. Locks in the two known non-inert togglers
+with the largest measured single-click diff and enumerates all 4 parity
+combos in Gray-code order (3 transition clicks total, not 8) instead of
+clicking only when stuck. **Measured: still 0/6 at 500a
+(`scripts/rounds/script25_dc22_smoke7`)** — a different, also-individually-
+sound mechanism, also not sufficient on its own.
+
 ## Open items
 
 - **FT09 — DONE, complete arc.** The glyph decode has been run against the
@@ -557,8 +569,17 @@ game's own current status.
   `_on_restart`). **Measured: 0/6 at BOTH 500a and 3000a** — a directed
   planner with 6x the budget the legacy solver needed still doesn't
   clear a level, so the wall is a planning/goal-detection bug, not
-  budget. Not yet diagnosed further this session; see
-  [[../games/M0R0]] for the game's own current status.
+  budget. **Follow-up, same round — a real goal-jump bug fixed, still
+  0/6 (`2209a5f`):** a live smoke measured `_detect_goal` fabricating a
+  goal from an unrelated HUD/border region whenever the mirror partner
+  briefly merges into the avatar's own region (both gold levels show
+  this right before, sometimes several actions before, the actual WIN
+  moment), sending the planner chasing it for dozens of wasted actions.
+  Fixed by tracking `partner_ever_seen` and reporting the avatar's own
+  cell as the goal when merged (reads as "already arrived" downstream).
+  Measured: still 0/6 at 3000a (`scripts/rounds/script25_m0r0_smoke3`) —
+  a real, verified fix, not sufficient alone. See [[../games/M0R0]] for
+  the game's own current status.
 - **KA59 had a real init bug, fixed same session.** The committed adapter
   (`cbda9aa`) used `self._select_point`/`self._last_select_cell`/
   `self._select_attempts` without ever initializing them in `__init__` —
