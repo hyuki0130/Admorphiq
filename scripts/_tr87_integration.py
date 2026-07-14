@@ -8,6 +8,17 @@ collapsing distinct chiral tokens) -- correctly extract TR87's six rules
 and predict bar2's target token sequence from bar1, matching the oracle
 exactly on all three captured levels (L0/L1/L2)?
 
+**Step 3 (same ruling doc, "Bar2 lattice extraction") folded in**:
+`extract_bar_tokens` (generalizing the step-2 `extract_bar1_tokens`)
+replaces `occupied_runs`-based bar segmentation with a LATTICE split via
+`split_runs_by_pitch` over the bar's own measured extent -- fixing L2's
+step-2 KILL (bar1's C4 glyph fragmented into 3 sub-runs under the old
+background-gap approach) and, applied to bar2 too, fully dissolving the
+doc's separately-flagged L1 bar2 fragmentation (11 messy runs -> exactly
+7 clean, all-recognized tokens). See each function's own docstring for
+the mechanism; see the R56 round page for the measured before/after
+token tables.
+
 Reads ONLY already-captured .npz files (data/traces/tr87.npz frame 0,
 data/traces/tr87_l1_reset.npz, data/traces/tr87_l2_reset.npz) -- no live env
 calls in this script at all. The OPERATIONAL PATH (background discovery,
@@ -162,28 +173,51 @@ def rectangular_ink_mask(frame, row0, row1, col0, col1):
     return tuple(tuple(frame[r][c] != fill for c in range(col0, col1)) for r in range(row0, row1 + 1))
 
 
-def extract_bar1_tokens(frame, bar1_band, bg):
-    """bar1's own per-glyph tokens: window by the band's OWN fill colour (not board bg).
+def extract_bar_tokens(frame, band, bg, pitch):
+    """A bar's (bar1 OR bar2) own per-glyph tokens, LATTICE-split by ``pitch``
+    -- NOT `occupied_runs`-segmented (step 3 fix, replacing the step-2
+    `extract_bar1_tokens`, which used a background-gap `occupied_runs` pass
+    over the bar's own fill colour).
 
-    Each of bar1's tokens is a single family with one shared fill colour
-    (unlike the rule-table bands, which mix families/fill colours within
-    one band) -- discovered here as the majority non-background colour
-    within the band, then used AS the background for a second
-    `occupied_runs` pass restricted to that colour's own column extent, so
-    each glyph is one clean run with no inter-glyph pixel gap needed
-    (measured true, no further pitch-splitting needed, on all 3 captured
-    levels' bar1)."""
-    row0, row1 = bar1_band["start"], bar1_band["end"] - 1
+    That gap-based approach is WRONG for a bar whose glyph shapes can have
+    an ink-free column WITHIN a single glyph's own cell: measured, TR87
+    bar1's C4 glyph (level 2) fragments into 3 sub-runs under it, and bar2
+    fragments even more often (level 1: 11 messy runs instead of 7 clean
+    glyphs, `[3,1,1,3,5,5,5,5,1,1,1]` -- see
+    `docs/tr87_frame_only_grammar_design_20260715.md` §"Bar2 fragmentation").
+    A background gap inside one glyph is indistinguishable, under
+    `occupied_runs` alone, from the gap BETWEEN two glyphs.
+
+    The fix composes the ALREADY-PROMOTED `split_runs_by_pitch` kernel
+    instead of `occupied_runs` for this step: the bar's OWN fill colour and
+    full column extent are discovered exactly as before, but rather than
+    segmenting by background runs, the WHOLE extent `[c0, c1]` is treated
+    as ONE parent run (with its true ink-cell set: every non-fill pixel in
+    that extent, computed directly, not via a second `occupied_runs`
+    pass) and handed to `split_runs_by_pitch`, which mechanically carves it
+    into `pitch`-wide slots POSITIONALLY -- purely from the bar's own
+    measured geometry (extent + pitch), never from where the background
+    happens to show through a glyph's ink. `pitch` is the SAME value
+    `extract_rules` already measures from the rule-table glyphs (the same
+    rendering system, one trusted pitch source, not re-derived here) --
+    exact division is enforced by the kernel itself (Codex's ruling:
+    "exact division only; a remainder must fail").
+    """
+    row0, row1 = band["start"], band["end"] - 1
     w = frame.shape[1]
     non_bg_vals = [frame[r][c] for r in range(row0, row1 + 1) for c in range(w) if frame[r][c] not in bg]
     fill = color_mode(non_bg_vals, k=1)[0]["color"]
     fill_cols = [c for c in range(w) if any(frame[r][c] == fill for r in range(row0, row1 + 1))]
     c0, c1 = min(fill_cols), max(fill_cols)
-    out = occupied_runs(frame, axis="col", bbox=(row0, c0, row1, c1), background={fill})
+    ink_cells = frozenset(
+        (r, c) for r in range(row0, row1 + 1) for c in range(c0, c1 + 1) if frame[r][c] != fill
+    )
+    parent_run = {"start": c0, "end": c1 + 1, "cells": ink_cells}
+    children = split_runs_by_pitch([parent_run], pitch, axis="col")
     tokens = []
-    for run in out["runs"]:
+    for child in children:
         mask = tuple(
-            tuple((r, c) in run["cells"] for c in range(run["start"], run["end"]))
+            tuple((r, c) in child["cells"] for c in range(child["start"], child["end"]))
             for r in range(row0, row1 + 1)
         )
         tokens.append(canon_sig_c4(mask))
@@ -240,7 +274,7 @@ def extract_rules(frame, rule_bands, bg):
     for pair_a, pair_b in band_pair_indices:
         for lhs_idx, rhs_idx in (pair_a, pair_b):
             rules.append((tokens_for(lhs_idx), tokens_for(rhs_idx)))
-    return rules
+    return rules, pitch
 
 
 def run_level(label):
@@ -249,8 +283,9 @@ def run_level(label):
     bg = discover_background(frame)
     bands = discover_bands(frame, bg)
     rule_bands, bar1_band, bar2_band = classify_bands(frame, bands, bg)
-    rules = extract_rules(frame, rule_bands, bg)
-    bar1_tokens = extract_bar1_tokens(frame, bar1_band, bg)
+    rules, pitch = extract_rules(frame, rule_bands, bg)
+    bar1_tokens = extract_bar_tokens(frame, bar1_band, bg, pitch)
+    bar2_tokens = extract_bar_tokens(frame, bar2_band, bg, pitch)
 
     # Build the oracle sprite-name <-> canonical-signature lookup for the
     # FINAL comparison only (never used inside the pipeline above). Every
@@ -277,15 +312,40 @@ def run_level(label):
     print(f"  bar1_band: {(bar1_band['start'], bar1_band['end'])}  bar2_band: {(bar2_band['start'], bar2_band['end'])}")
     print(f"  extracted rule token-count shape: {[(len(lhs), len(rhs)) for lhs, rhs in rules]}")
     print(f"  oracle rule token-count shape:    {[(len(lhs), len(rhs)) for lhs, rhs in oracle_rules]}")
+    print(f"  measured pitch: {pitch}")
     print(f"  bar1 tokens recovered -> names: {bar1_names_predicted}")
     print(f"  bar1 oracle names:              {entry['bar1']}")
     print(f"  token collisions (same signature, different oracle name): {collisions}")
+
+    # Step 3, part (2): re-verify bar2 (CURRENT, pre-edit state) under the
+    # SAME lattice path. No hardcoded bar2-name oracle exists (unlike bar1
+    # -- capture time verified bar1's identity directly, not bar2's own).
+    # bar2's column count is NOT asserted equal to bar1's -- measured
+    # false (L1: bar1 has 4 columns, bar2 has 7; L2: bar1 has 8, bar2 has
+    # 7) -- bar1/bar2 are independently-sized rows, not paired 1:1.
+    # A bar2 token with no matching rule-table signature is NOT
+    # automatically treated as a lattice failure: bar2 is the EDITABLE
+    # row of a documented 7-STATE cyclic dial per column
+    # (docs/tr87_frame_only_grammar_design_20260715.md), and a given
+    # level's 6 rules may not name every one of those 7 possible states --
+    # an unnamed CURRENT dial value is a legitimate board state, not
+    # necessarily a mis-extraction. Reported, not treated as a hard kill,
+    # UNLESS the recovered mask itself looks malformed (see below).
+    bar2_names = [name_by_sig.get(sig, "<UNKNOWN>") for sig in bar2_tokens]
+    bar2_unknown_sigs = [sig for sig, n in zip(bar2_tokens, bar2_names) if n == "<UNKNOWN>"]
+    print(f"  bar2 tokens recovered -> names: {bar2_names}")
+    if bar2_unknown_sigs:
+        print(
+            f"  (bar2 has {len(bar2_unknown_sigs)} token(s) with no matching rule-table name -- "
+            f"hypothesis: a valid but off-table 7th dial state, not a lattice defect; "
+            f"see report for the shape check)"
+        )
 
     if collisions:
         print(f"  *** KILL: token collision(s) on {label} ***")
         return False
     if unknown:
-        print(f"  *** KILL: {len(unknown)} unknown token(s) on {label} (no matching rule-table signature) ***")
+        print(f"  *** KILL: {len(unknown)} unknown bar1 token(s) on {label} (no matching rule-table signature) ***")
         return False
     if bar1_names_predicted != entry["bar1"]:
         print(f"  *** KILL: bar1 token identification mismatch on {label} ***")
@@ -299,10 +359,19 @@ def run_level(label):
         return False
 
     predicted_names = [name_by_sig.get(sig, "<UNKNOWN>") for sig in parsed["result"]]
-    oracle_target = []
-    rule_by_lhs_names = {tuple(lhs): rhs for lhs, rhs in oracle_rules}
-    for name in entry["bar1"]:
-        oracle_target.extend(rule_by_lhs_names[(name,)])
+    # Oracle target: greedy_parse over the ORACLE's own bar1 NAMES against
+    # oracle_rules' NAME-level (lhs_names, rhs_names) pairs -- the same
+    # greedy-first-rule-match algorithm the real (signature-level)
+    # prediction above already uses, just on names instead of canonical
+    # signatures. A single-token "look up bar1[i] as a 1-tuple key" (the
+    # prior version of this check) is wrong whenever a rule's LHS spans
+    # MULTIPLE bar1 tokens (measured on L2: rules like ("C3","C3")->
+    # ("A6","A1") and ("C1","C5","C1")->("A6") both exist) -- L0/L1 never
+    # exercised this bug because their bar1 kill fired earlier (before
+    # step 3's lattice fix), never reaching this code with L2's shape.
+    oracle_parsed = greedy_parse(entry["bar1"], [(list(lhs), list(rhs)) for lhs, rhs in oracle_rules])
+    assert oracle_parsed is not None, f"oracle's own bar1 names failed to greedy-parse on {label} -- oracle data bug"
+    oracle_target = list(oracle_parsed["result"])
 
     print(f"  predicted bar2 target: {predicted_names}")
     print(f"  oracle bar2 target:    {oracle_target}")
