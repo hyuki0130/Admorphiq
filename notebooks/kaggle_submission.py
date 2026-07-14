@@ -25,7 +25,18 @@
 
 # %%
 import os
+import subprocess
 import sys
+
+# Environment probe: which GPU does THIS run actually get? (validation runs
+# measured P100 16GB on standalone CLI kernels; the competition rerun machine
+# is documented as g4-standard-48 / RTX PRO 6000 96GB — verify, don't assume.)
+try:
+    _smi = subprocess.run(["nvidia-smi", "--query-gpu=name,memory.total", "--format=csv,noheader"],
+                          capture_output=True, text=True, timeout=30)
+    print(f"[env-probe] GPU: {_smi.stdout.strip() or _smi.stderr.strip()}", flush=True)
+except Exception as _e:  # CPU-only session is acceptable; the agent is CPU-based
+    print(f"[env-probe] nvidia-smi unavailable: {_e}", flush=True)
 
 # Kaggle mount points are NOT stable across attach methods (web-UI:
 # /kaggle/input/<name>; CLI v2 run measured: /kaggle/input/competitions/... and
