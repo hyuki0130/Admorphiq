@@ -595,13 +595,15 @@ game's own current status.
   last of the four modules with the pattern to be unified onto `_common.py`
   (done this session; confirm it lands in the next commit alongside this
   page).
-- **`docs/r56_kernel_catalog.md` needs a refresh.** It was written at
-  `de013aa` and its own module/export/test counts are a snapshot from
-  before `parse.py`, `gf2.py`, `split_fused_frame`, and strict
-  `split_runs_by_pitch` landed — this page's "What was built tonight"
-  section carries the current verified totals (9 modules / 45 exports /
-  134 tests) but the catalog doc itself still needs the four missing
-  functions' execution-verified examples added.
+- **`docs/r56_kernel_catalog.md` refresh — DONE (`1ee9fff`).** The four
+  missing functions/modules now have execution-verified examples: a new
+  `parse.py` section (`occupied_runs`, `split_runs_by_pitch`, `color_mode`,
+  `cluster_widths`) and `gf2.py` section (`gf2_solve`, `gf2_nullspace`),
+  plus `split_fused_frame`/`recover_occluded_frame` added to the existing
+  `geometry.py` section. Every example was run via `uv run python -c`
+  against the real code, then cross-checked with `doctest.DocTestRunner`.
+  The stale "seven modules" count in the Gaps section is also fixed to
+  nine.
 - **sb26's fused-frame recovery — resolved, corrected from two earlier
   stale notes on this page.** Both `f0b0bcb`'s live re-run AND wiring
   `recover_occluded_frame` alongside `split_fused_frame` landed
