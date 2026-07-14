@@ -37,6 +37,16 @@ computed here and are reported as such rather than faked:
   - eventual intent/playbook success citing each hypothesis — requires the
     full protocol + harness + LLM loop running against real games, not a
     pure-function offline validation of ``detect()`` in isolation.
+
+**Transition-window extension (R58 tuning round #4).** Every game is now
+scored TWICE: once frame-only (as before — first observation + first
+transition only), and once with a real ``transition_window`` added — the
+episode's own first ~8 CONSECUTIVE transitions under whatever actions
+actually occurred in the trace. This is still label-free and bias-free:
+no gold/level-up selection, just the ordinary early steps of the episode a
+live agent would equally have observed. Reports the full before/after on
+both metric sets, plus per-game tier deltas so promotion (or the ABSENCE
+of promotion/demotion) is directly visible.
 """
 
 from __future__ import annotations
@@ -98,7 +108,28 @@ def _repeat_window(actions: np.ndarray, frames: np.ndarray, episode_id: np.ndarr
     return [frames[i] for i in range(run + 1) if i < len(frames)]
 
 
-def _observations_for(name: str) -> dict:
+def _transition_window(frames: np.ndarray, next_frames: np.ndarray, episode_id: np.ndarray, window_size: int = 8) -> list | None:
+    """The episode's own first ``window_size`` (or fewer, if the episode is
+    shorter or resets sooner) CONSECUTIVE transitions under whatever
+    actions actually occurred — no gold-selection bias, no level-up label,
+    just the ordinary early steps of the trace a live agent would equally
+    observe. Bounded by episode continuity (stops at the first RESET,
+    detected via ``episode_id`` changing). Returns ``None`` when fewer than
+    2 consecutive frames are available (not enough for even one transition).
+    """
+    ep0 = episode_id[0]
+    limit = 0
+    for i in range(min(window_size, len(frames))):
+        if episode_id[i] != ep0:
+            break
+        limit += 1
+    if limit < 2:
+        return None
+    window = [frames[i] for i in range(limit)] + [next_frames[limit - 1]]
+    return [f.tolist() for f in window]
+
+
+def _observations_for(name: str, use_window: bool) -> dict:
     path = TRACES_DIR / f"{name}.npz"
     d = np.load(path, allow_pickle=False)
     frames = d["frames"]
@@ -112,6 +143,10 @@ def _observations_for(name: str) -> dict:
     repeat = _repeat_window(actions, frames, episode_id)
     if repeat is not None:
         observations["action_repeat_frames"] = [f.tolist() for f in repeat]
+    if use_window:
+        window = _transition_window(frames, next_frames, episode_id)
+        if window is not None:
+            observations["transition_window"] = window
     return observations
 
 
@@ -166,8 +201,8 @@ def _independent_footprint_groups(result: dict) -> int:
     return len({find(i) for i in ids})
 
 
-def validate_game(name: str) -> dict:
-    observations = _observations_for(name)
+def validate_game(name: str, use_window: bool) -> dict:
+    observations = _observations_for(name, use_window)
     result = detect(observations)  # capped (real deployment shape)
     view = compact_view(result)
     candidate_types = [c["type"] for c in view["goal_candidates"]]
@@ -204,7 +239,9 @@ def validate_game(name: str) -> dict:
         "gt_primary": primary,
         "verdict": verdict,
         "miss_attribution": miss_attribution,
+        "window_used": "transition_window" in observations,
         "candidates_capped": [(c["type"], c["tier"], round(c["strength"], 3)) for c in view["goal_candidates"]],
+        "tier_by_type": {c["type"]: c["tier"] for c in view["goal_candidates"]},
         "candidates_uncapped_types": uncapped_types,
         "independent_footprint_groups": _independent_footprint_groups(result),
         "insufficient_evidence": view["insufficient_evidence"],
@@ -212,10 +249,9 @@ def validate_game(name: str) -> dict:
     }
 
 
-def main() -> None:
-    rows = [validate_game(name) for name in sorted(GROUND_TRUTH.keys()) if (TRACES_DIR / f"{name}.npz").exists()]
-
-    print(f"\n{'game':6s} {'gt_primary':16s} {'verdict':16s} {'attribution':13s} {'indep_fp':9s} {'candidates (type,tier,margin)'}")
+def _print_table(rows: list[dict], label: str) -> None:
+    print(f"\n{'=' * 10} {label} {'=' * 10}")
+    print(f"{'game':6s} {'gt_primary':16s} {'verdict':16s} {'attribution':13s} {'indep_fp':9s} {'candidates (type,tier,margin)'}")
     print("-" * 130)
     for r in rows:
         attr = r["miss_attribution"] or "-"
@@ -224,6 +260,8 @@ def main() -> None:
             f"{r['independent_footprint_groups']:<9d} {r['candidates_capped']}"
         )
 
+
+def _print_metrics(rows: list[dict], label: str) -> None:
     scored = [r for r in rows if not r["verdict"].startswith("N/A")]
     n = len(scored)
     top1_n = sum(1 for r in scored if r["verdict"] == "TOP1(legacy)")
@@ -231,31 +269,59 @@ def main() -> None:
     miss_n = sum(1 for r in scored if r["verdict"] == "MISS")
     cap_evicted = sum(1 for r in scored if r["miss_attribution"] == "cap_eviction")
     non_firing = sum(1 for r in scored if r["miss_attribution"] == "non_firing")
-
-    print(f"\n=== PRIMARY METRICS (n={n} scored games) ===")
-    print(f"Supported-type recall under cap: {recalled_n}/{n} ({100*recalled_n/n:.1f}%)")
-    print(f"MISS: {miss_n}/{n} ({100*miss_n/n:.1f}%)  of which cap_eviction={cap_evicted}, non_firing={non_firing}")
-    print("\n=== SECONDARY (legacy continuity) ===")
-    print(f"TOP1 (legacy, tier+margin order — NOT an elected winner): {top1_n}/{n} ({100*top1_n/n:.1f}%)")
-
+    print(f"\n--- {label}: n={n} scored games ---")
+    print(f"Supported-type recall under cap: {recalled_n}/{n} ({100 * recalled_n / n:.1f}%)")
+    print(f"MISS: {miss_n}/{n} ({100 * miss_n / n:.1f}%)  of which cap_eviction={cap_evicted}, non_firing={non_firing}")
+    print(f"TOP1 (legacy, tier+margin order): {top1_n}/{n} ({100 * top1_n / n:.1f}%)")
     avg_indep = sum(r["independent_footprint_groups"] for r in rows) / len(rows)
-    print(f"\n=== Independent evidence footprint groups (avg per game, all {len(rows)} games): {avg_indep:.2f} ===")
-    for r in rows:
-        print(f"  {r['game']:6s} {r['independent_footprint_groups']} group(s), {len(r['candidates_capped'])} candidate(s)")
+    print(f"Independent evidence footprint groups (avg, all {len(rows)} games): {avg_indep:.2f}")
 
-    unsupported_rows = [r for r in rows if r["verdict"].startswith("N/A")]
-    n_insufficient = sum(1 for r in unsupported_rows if r["insufficient_evidence"])
-    print(f"\n=== Abstention quality on unsupported/unclassified games (n={len(unsupported_rows)}) ===")
-    print(f"insufficient_evidence=True: {n_insufficient}/{len(unsupported_rows)}")
-    for r in unsupported_rows:
-        print(f"  {r['game']:6s} insufficient={r['insufficient_evidence']} candidates={r['candidates_capped']}")
 
-    print("\n=== NOT MEASURED this round (require live execution, see module docstring) ===")
-    print("  - resolution after one or two safe probes")
-    print("  - eventual intent/playbook success citing each hypothesis")
+def main() -> None:
+    names = sorted(name for name in GROUND_TRUTH if (TRACES_DIR / f"{name}.npz").exists())
+    frame_only_rows = [validate_game(name, use_window=False) for name in names]
+    windowed_rows = [validate_game(name, use_window=True) for name in names]
 
-    with open(Path(__file__).resolve().parent / "_r58_ledger_validation_v2_results.json", "w") as fh:
-        json.dump(rows, fh, indent=2, default=str)
+    _print_table(frame_only_rows, "FRAME-ONLY (baseline, matches prior rounds)")
+    _print_table(windowed_rows, "WITH TRANSITION_WINDOW")
+
+    _print_metrics(frame_only_rows, "FRAME-ONLY")
+    _print_metrics(windowed_rows, "WITH TRANSITION_WINDOW")
+
+    print(f"\n{'=' * 10} TIER DELTAS (frame-only -> with window) {'=' * 10}")
+    by_name_fo = {r["game"]: r for r in frame_only_rows}
+    by_name_w = {r["game"]: r for r in windowed_rows}
+    any_change = False
+    for name in names:
+        fo, w = by_name_fo[name], by_name_w[name]
+        types = set(fo["tier_by_type"]) | set(w["tier_by_type"])
+        deltas = []
+        for t in sorted(types):
+            before = fo["tier_by_type"].get(t)
+            after = w["tier_by_type"].get(t)
+            if before != after:
+                deltas.append(f"{t}: tier{before}->tier{after}" if before and after else f"{t}: {'appeared' if after else 'disappeared'}")
+        if deltas:
+            any_change = True
+            print(f"  {name:6s} window={'yes' if w['window_used'] else 'NO (too short/no episode)':30s} {deltas}")
+    if not any_change:
+        print("  (no tier changes on any game)")
+
+    print(f"\n{'=' * 10} TEAM-LEAD'S THREE SPECIFIC QUESTIONS {'=' * 10}")
+    cd82_fo, cd82_w = by_name_fo["cd82"], by_name_w["cd82"]
+    print(f"1. cd82 pattern_match: frame-only tier={cd82_fo['tier_by_type'].get('pattern_match')} "
+          f"-> with window tier={cd82_w['tier_by_type'].get('pattern_match')} "
+          f"(window_used={cd82_w['window_used']})")
+    tn36_fo, tn36_w = by_name_fo["tn36"], by_name_w["tn36"]
+    print(f"2. tn36 arrival (false-confidence flag): frame-only tier={tn36_fo['tier_by_type'].get('arrival')} "
+          f"-> with window tier={tn36_w['tier_by_type'].get('arrival')} "
+          f"(insufficient_evidence frame-only={tn36_fo['insufficient_evidence']}, with window={tn36_w['insufficient_evidence']})")
+    print("3. Other promotions: see TIER DELTAS section above.")
+
+    with open(Path(__file__).resolve().parent / "_r58_ledger_validation_v2_results_frameonly.json", "w") as fh:
+        json.dump(frame_only_rows, fh, indent=2, default=str)
+    with open(Path(__file__).resolve().parent / "_r58_ledger_validation_v2_results_windowed.json", "w") as fh:
+        json.dump(windowed_rows, fh, indent=2, default=str)
 
 
 if __name__ == "__main__":
