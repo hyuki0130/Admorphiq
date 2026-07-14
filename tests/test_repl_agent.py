@@ -166,6 +166,7 @@ def test_openai_client_disables_thinking_and_caps_tokens(monkeypatch):
     assert client.complete("hi") == "UP"
     assert captured["body"]["chat_template_kwargs"] == {"enable_thinking": False}
     assert captured["body"]["max_tokens"] == 512
+    assert captured["body"]["temperature"] == 0.0  # pinned (v7 sent 0.0, not 0.2)
     assert captured["timeout"] == 300.0
 
 

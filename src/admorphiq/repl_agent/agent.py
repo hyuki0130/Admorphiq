@@ -133,7 +133,7 @@ class OpenAICompatClient:
 
     def __init__(self, base_url: str | None = None, model: str | None = None,
                  timeout: float = 300.0, max_tokens: int = 512,
-                 enable_thinking: bool = False) -> None:
+                 enable_thinking: bool = False, temperature: float | None = None) -> None:
         self.base_url = (base_url or os.environ.get("REPL_LLM_BASE_URL", "")).rstrip("/")
         if not self.base_url:
             raise RuntimeError("REPL_LLM_BASE_URL is not set — cannot serve the REPL agent")
@@ -143,6 +143,12 @@ class OpenAICompatClient:
         self.timeout = timeout
         self.max_tokens = max_tokens
         self.enable_thinking = enable_thinking
+        # Explicit + pinned (v7 actually sent 0.0, not the assumed 0.2 — Codex v7
+        # review). REPL_LLM_TEMPERATURE overrides; recorded in the run manifest.
+        if temperature is None:
+            raw = os.environ.get("REPL_LLM_TEMPERATURE", "").strip()
+            temperature = float(raw) if raw else 0.0
+        self.temperature = temperature
         # Populated after each complete(): {"finish_reason", "tokens"} so the
         # agent can record truthful response metadata (usage, truncation).
         self.last_meta: dict[str, Any] = {}
@@ -157,7 +163,7 @@ class OpenAICompatClient:
         body = {
             "model": self.model,
             "messages": [{"role": "user", "content": content}],
-            "temperature": 0.0,
+            "temperature": self.temperature,
             "stream": False,
             "max_tokens": self.max_tokens,
             # vLLM passes chat_template_kwargs to the Qwen template; disabling

@@ -218,6 +218,8 @@ def run_bench() -> dict:
     os.environ["REPL_RENDER_IMAGES"] = "1" if render_images else "0"
     os.environ["REPL_MAX_TOOL_ROUNDS"] = str(max_tool_rounds)
     os.environ["REPL_AUDIT"] = "1" if audit_enabled else "0"
+    # Pin the temperature into the env so the manifest records it (v7 sent 0.0).
+    os.environ.setdefault("REPL_LLM_TEMPERATURE", "0.0")
     os.environ["REPL_ARM"] = arm
     print(f"ARM={arm}", flush=True)  # self-identify in stdout
     print(f"[bench] arm={arm} render_images={render_images} "
