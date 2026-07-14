@@ -245,6 +245,38 @@ threshold (decorative markers measured to have exactly 1). Slot sequence
 matches gold exactly; L1/L2 did not regress; 2x500 deterministic. L4 is
 the next wall (~4000-action plateau).
 
+**L4 attempted and BANKED, not built** — same session, gold-trace-first
+method applied a third time. L4's board (2-frame hub-and-leaf) is
+STRUCTURALLY IDENTICAL in shape to L3's colour-matched-icon mechanic (no
+physical connector, `connectors()` returns zero links) but its single
+icon requires an EXPLICIT standalone click (auto-consuming its own
+colour's pool swatch, no paired pool pick) BEFORE any hub item is placed
+— confirmed both offline (region-diffed gold trace) and live (L3's
+zero-cost colour-matching detection does not clear L4 even at a
+5000-action budget). Two hypotheses tested and FALSIFIED, not just left
+untried:
+1. *Always click every colour-matched icon* — degrades L2's efficiency
+   (21a→22a; L2's icon is independently visible as a `candidates` region
+   despite using the connector path) AND still doesn't fix L4 (the
+   REQUIRED insertion position is "before any hub item"; the same
+   column-position rule that correctly orders L3's two icons would place
+   L4's icon mid-sequence instead — both the trigger condition and the
+   insertion semantics were wrong simultaneously).
+2. *An icon whose colour has a matching pool swatch needs a click; one
+   without doesn't* (a natural follow-up hypothesis) — falsified by
+   direct measurement: colour14 (L4's icon) and colour9 (one of L3's
+   icons) both have a pool swatch present, same single-instance count,
+   in ALL of L2/L3/L4's pools. Pool/target-band composition is
+   byte-identical in shape across all three levels — no per-level
+   difference to key off.
+Both attempted fixes were REVERTED (not banked as partial wins) once
+disproven — `sb26.py` sits at the clean `57b325d` state, 3/8, no
+regression. No structural signal (frame geometry, pool composition,
+target-band composition) was found that discriminates "icon needs a
+click" from "icon is free" between two boards with visually identical
+icons. See [[../games/SB26]]'s own "L4 open question" section for the
+full writeup and next-step ideas.
+
 **Not yet re-measured after this session's fused-frame integration**: a
 LATER same-session commit (`f0b0bcb`, not part of the original `3e7391a`
 clear) wires `split_fused_frame` into `_recover_fused_frames` so the
@@ -413,17 +445,14 @@ regression pin for the trigger-loop bug) and the two open items.
   section carries the current verified totals (9 modules / 45 exports /
   134 tests) but the catalog doc itself still needs the four missing
   functions' execution-verified examples added.
-- **sb26's fused-frame recovery (`f0b0bcb`) needs a live re-run** to see
-  whether it actually clears level 1 (or deeper) now that
-  `split_fused_frame` is wired in — see "Measured so far (continued) —
-  sb26" above.
-- **sb26's SECOND portal frame is now kernel-recoverable (`b28290e`,
-  `recover_occluded_frame` + `split_fused_frame` composed) but NOT wired
-  into the adapter.** `_recover_fused_frames`/`_plan_sb26` only call
-  `split_fused_frame` today (from `f0b0bcb`) — extending them to also
-  call `recover_occluded_frame` (using every other detected region as a
-  candidate occluder set) and then driving `connectors()` across BOTH
-  recovered frames is the remaining step to reach L2+ on this game.
+- **sb26's fused-frame recovery — resolved, corrected from two earlier
+  stale notes on this page.** Both `f0b0bcb`'s live re-run AND wiring
+  `recover_occluded_frame` alongside `split_fused_frame` landed
+  (`bffe4be`); sb26 reached 3/8 live (`57b325d`, L1-L3, see "Measured so
+  far (continued) — sb26" above). Remaining wall is L4, banked with a
+  full falsification writeup in that same section (and on
+  [[../games/SB26]]) — not a wiring gap, a genuinely unexplained per-board
+  mechanic difference.
 
 ## Related
 
