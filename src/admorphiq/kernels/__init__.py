@@ -6,6 +6,12 @@ Kernels never touch the environment, never infer goals, and contain no
 game-specific constants. See docs/r56_codex_toolbase_verdict_20260715.md.
 """
 
+from admorphiq.kernels.canonical import (
+    canonical_key,
+    choose_canonicalization,
+    key_table,
+    stability_report,
+)
 from admorphiq.kernels.motion import (
     changed_region_attribution,
     frame_diff,
@@ -67,4 +73,8 @@ __all__ = [
     "multisets_equal",
     "size_clusters",
     "tile_bbox",
+    "canonical_key",
+    "choose_canonicalization",
+    "key_table",
+    "stability_report",
 ]
