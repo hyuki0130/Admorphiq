@@ -9,14 +9,47 @@ clears when the agent clicks the ONE pixel/region whose color is a
 minority on the board, and "static non-interactive elements dominate the
 frame". The legacy `click_rare` heuristic reflects exactly that.
 
+**Divergence-first investigation (before this revision's fix, mirroring
+every other script25 adapter's offline-verification discipline)**: a full
+VM measurement found this adapter 0/8 at ~4000 actions despite the wiki
+recording a known win pixel (`click_c8_(30,4)`). Replaying
+``data/traces/lp85.npz``'s gold level-0 block against the adapter's own
+candidate list found the actual bug: the winning pixel ``(30, 4)`` belongs
+to a 40-pixel colour-8 region (bbox ``(29, 2, 36, 7)``), but this
+adapter's OLD candidate generation collapsed that whole region down to
+ONE point -- its centroid, ``(32, 5)`` -- a DIFFERENT pixel than the one
+that actually wins. Frame-diffing gold's own clicks in and around that
+region shows why collapsing to a centroid is wrong: clicking four
+DISTINCT pixels within the SAME blob, ``(29,4)`` / ``(29,5)`` / ``(29,6)``
+/ ``(29,7)``, each independently changes the frame (a HUD-visible fill bar
+advances 5 rows per click, one segment at a time) but does NOT win; only
+the fifth, DIFFERENT pixel ``(30,4)`` -- within the same 40-pixel blob --
+triggers WIN. A single same-coloured connected region can therefore
+contain SEVERAL functionally distinct pixels (here: 4 "fill" cells plus 1
+"confirm" cell, the rest of the blob apparently inert), and no amount of
+RANKING which region to try first fixes a strategy that only ever tries
+one point per region. This matches the RETIRED (pre-quarantine)
+``agent_ensemble.strat_click_rare`` exactly (read for reference, not
+imported): it iterates ``np.argwhere(frame == color)`` -- literally EVERY
+pixel of a rare colour, not one point per connected region -- which is how
+it originally won this game. Two other candidate explanations were
+checked against the SAME gold data and directly falsified: gold's 69
+level-0 clicks are ALL distinct pixels (a repeated-click / vc33-style
+counter mechanic is not what is happening here), and gold shows zero
+GAME_OVER events (a life-ending fuse is not the primary wall either, even
+though ``restart_on_game_over`` stays on as a defensive measure regardless
+of which region-probing pattern this adapter's own play produces).
+
 Mechanic hypothesis (role assignment, declared HERE, not in the kernel
-layer): every non-background region is a CANDIDATE click target; the
-correct one is more likely to be a color that covers FEW pixels overall
-(a rare color is a plausible "this is special" signal) than a color that
-dominates the frame (background/chrome). The kernel layer knows nothing
-about "rare colors are targets" — it only segments regions and reports
-diffs; the ranking-by-rarity heuristic and the responsive/no-op bookkeeping
-live entirely in this adapter.
+layer): every PIXEL of a non-background, non-chrome-sized region is a
+CANDIDATE click target (not one centroid per region — see the divergence
+finding above); the correct one is more likely to belong to a color that
+covers FEW pixels overall (a rare color is a plausible "this is special"
+signal) than a color that dominates the frame (background/chrome). The
+kernel layer knows nothing about "rare colors are targets" — it only
+segments regions and reports diffs; the ranking-by-rarity heuristic, the
+per-pixel enumeration, and the responsive/no-op bookkeeping live entirely
+in this adapter.
 
 Composition from ``admorphiq.kernels``:
   - :func:`admorphiq.kernels.find_regions` segments the frame into candidate
@@ -66,7 +99,16 @@ _MAX_CANDIDATE_FRACTION = 0.15
 
 
 def _region_candidates(grid: tuple[tuple[int, ...], ...]) -> list[Cell]:
-    """Non-background, non-chrome region centroids, rarest color first.
+    """EVERY individual pixel of every non-background, non-chrome region,
+    rarest color first, then by pixel position within a region -- NOT one
+    centroid per region (see module docstring's divergence finding: a
+    single connected same-coloured blob can contain several functionally
+    DISTINCT pixels, and the correct one is not necessarily anywhere near
+    the blob's own centroid). Mirrors the retired
+    ``agent_ensemble.strat_click_rare``'s exact enumeration (every pixel of
+    a rare colour, via ``np.argwhere``), reimplemented here compositionally
+    from ``find_regions``' own per-region ``cells`` rather than a raw grid
+    scan.
 
     "Rarest" = the SUM of every region's size sharing that color, ascending
     -- a color that appears in one small region is rarer than one that
@@ -92,10 +134,10 @@ def _region_candidates(grid: tuple[tuple[int, ...], ...]) -> list[Cell]:
     out: list[Cell] = []
     seen: set[Cell] = set()
     for r in ordered:
-        cell = (int(round(r["centroid"][0])), int(round(r["centroid"][1])))
-        if cell not in seen:
-            seen.add(cell)
-            out.append(cell)
+        for cell in sorted(r["cells"]):  # type: ignore[arg-type]
+            if cell not in seen:
+                seen.add(cell)
+                out.append(cell)
     return out
 
 
