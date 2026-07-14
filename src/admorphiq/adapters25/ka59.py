@@ -233,6 +233,12 @@ class Adapter(GameAdapter):
 
         self._pending_action: int | None = None
         self._pending_kind: str | None = None  # "move" | "select" | None
+        # The cell a "move" action was hypothesized to originate from when
+        # it was chosen (see _probe/_route) -- used to attribute a BLOCKED
+        # outcome to the right cell even right after a select, when
+        # self._active_cell is still the stale pre-click value and cannot
+        # be trusted as "whoever this move was issued for".
+        self._pending_ref_cell: Cell | None = None
         self._prev_grid: tuple[tuple[int, ...], ...] | None = None
         self._prev_piece_regions: list[Region] | None = None
 
@@ -247,6 +253,12 @@ class Adapter(GameAdapter):
         # this, _decide would recompute the identical "not yet selected"
         # assignment and re-issue the same click forever.
         self._await_select_confirm = False
+        # The piece cell a pending select click targeted -- the reference
+        # cell for the forced post-select probe's untried-action choice.
+        self._last_select_cell: Cell | None = None
+        # Per-cell count of select clicks issued while that cell never
+        # confirmed active -- drives _select_point's corner cycling.
+        self._select_attempts: dict[Cell, int] = {}
 
         # Measured (cell, action, cell) transitions -- the state-space
         # graph configuration_path / reachable_frontier search over.
@@ -305,6 +317,8 @@ class Adapter(GameAdapter):
         self._tried_from = {}
         self._action_plan = []
         self._await_select_confirm = False
+        self._last_select_cell = None
+        self._select_attempts = {}
 
     def _on_restart(self) -> None:
         """Only the active piece's position resets; the layout knowledge
@@ -316,15 +330,19 @@ class Adapter(GameAdapter):
         self._active_cell = None
         self._action_plan = []
         self._await_select_confirm = False
+        self._last_select_cell = None
+        self._select_attempts = {}
 
     # ── measurement: did the pending action move a piece? ───────────────
 
     def _observe_result(self, grid: tuple[tuple[int, ...], ...]) -> None:
         action = self._pending_action
         kind = self._pending_kind
+        ref_cell = self._pending_ref_cell
         prev_pieces = self._prev_piece_regions
         self._pending_action = None
         self._pending_kind = None
+        self._pending_ref_cell = None
         if action is None or kind != "move" or self._prev_grid is None or not prev_pieces:
             return
 
@@ -333,8 +351,8 @@ class Adapter(GameAdapter):
         tracked = track_objects(prev_pieces, cur_pieces)
         moved = [m for m in tracked["matches"] if tuple(m["shift"]) != (0, 0)]  # type: ignore[arg-type]
         if len(moved) != 1:
-            if self._active_cell is not None:
-                self._record_blocked(self._active_cell, action, prev_pieces)
+            if ref_cell is not None:
+                self._record_blocked(ref_cell, action, prev_pieces)
             return
 
         match = moved[0]
@@ -455,15 +473,49 @@ class Adapter(GameAdapter):
         candidates = [centroid, (r0, c0), (r1, c1), (r0, c1), (r1, c0)]
         return candidates[attempts % len(candidates)]
 
-    def _probe(self, move_ids: list[int], cell: Cell | None = None) -> GameAction:
+    def _pick_action(self, candidates: list[int], ref_cell: Cell, goal: Cell | None) -> int:
+        """Choose among untried ``candidates`` from ``ref_cell``.
+
+        With no ``goal`` (identity still unknown, or no useful hint
+        available), the first candidate in ``move_ids`` order is used --
+        arbitrary but deterministic. With a ``goal``, a candidate whose
+        MEASURED direction (``dir_map``) is already known is scored by the
+        Manhattan distance its predicted destination leaves to ``goal``
+        (ascending -- prefer directions that measurably approach the goal);
+        a candidate with no measured direction yet is deprioritized behind
+        every measured one (tier 1 vs tier 0) since trying it can only be
+        evaluated AFTER the fact, but is still tried once every measured
+        direction from this cell is exhausted, so every action still gets
+        learned eventually. This exists purely to spend fewer of a level's
+        tightly fused action budget wandering AWAY from a known target once
+        enough of the control scheme is already measured -- it never
+        invents a destination the adapter hasn't actually observed.
+        """
+        if goal is None:
+            return candidates[0]
+
+        def score(action: int) -> tuple[int, int]:
+            unit = self._dir_map.get(action)
+            if unit is None:
+                return (1, 0)
+            dest = (ref_cell[0] + unit[0], ref_cell[1] + unit[1])
+            return (0, abs(dest[0] - goal[0]) + abs(dest[1] - goal[1]))
+
+        return min(candidates, key=score)
+
+    def _probe(
+        self, move_ids: list[int], cell: Cell | None = None, goal: Cell | None = None
+    ) -> GameAction:
         ref_cell = cell if cell is not None else self._active_cell
+        self._pending_ref_cell = ref_cell
         if ref_cell is not None:
             tried = self._tried_from.get(ref_cell, set())
             untried = [a for a in move_ids if a not in tried]
             if untried:
-                self._pending_action = untried[0]
+                action = self._pick_action(untried, ref_cell, goal)
+                self._pending_action = action
                 self._pending_kind = "move"
-                return simple_action(untried[0])
+                return simple_action(action)
         self._pending_action = move_ids[0]
         self._pending_kind = "move"
         return simple_action(move_ids[0])
@@ -471,6 +523,11 @@ class Adapter(GameAdapter):
     def _route(self, goal_target: Cell, move_ids: list[int]) -> GameAction:
         if self._active_cell == goal_target:
             return self._probe(move_ids)
+
+        # Every move this function issues is hypothesized to originate from
+        # the currently-trusted active cell -- see _observe_result's use of
+        # _pending_ref_cell to attribute a blocked outcome correctly.
+        self._pending_ref_cell = self._active_cell
 
         if self._action_plan:
             action = self._action_plan.pop(0)
@@ -512,8 +569,9 @@ class Adapter(GameAdapter):
 
         untried = [a for a in move_ids if a not in self._tried_from.get(self._active_cell, set())]
         if untried:
-            self._pending_action = untried[0]
+            action = self._pick_action(untried, self._active_cell, goal_target)  # type: ignore[arg-type]
+            self._pending_action = action
             self._pending_kind = "move"
-            return simple_action(untried[0])
+            return simple_action(action)
 
         return self._probe(move_ids)
