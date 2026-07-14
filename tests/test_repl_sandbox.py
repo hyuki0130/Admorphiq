@@ -20,6 +20,7 @@ from admorphiq.repl_agent.sandbox import (
     sandbox_self_test,
 )
 from admorphiq.repl_agent.segmentation import SceneTracker
+from admorphiq.repl_agent.turn_packet import _object_to_packet
 
 
 def _store_two_frames() -> ObservationStore:
@@ -135,6 +136,46 @@ def test_inspector_action_accounting():
         {"action": "LEFT"},
         {"action": "MOUSE", "row": 3, "col": 4},
     ]
+
+
+def test_sandbox_object_schema_matches_the_turn_packets_object_schema():
+    """Purpose: pin the PROMPT-visible object schema (turn_packet._object_to_packet,
+    what the model reads every turn) and the RUNTIME object schema
+    (sandbox._scene_payload via ObservationStore.to_payload, what objects() code
+    the model WRITES actually gets) structurally equal, key-for-key with matching
+    nesting -- not just eyeballed. R55's engagement run measured `KeyError:
+    'topology'` 7 times verbatim (ft09 x4, r11l x2, sb26 x1): the packet nested
+    hole-count under `topology.holes`, the sandbox exposed a flat `holes` with no
+    `topology` key at all, so model code written from the packet's own documented
+    schema crashed in the sandbox every time it touched `topology`.
+
+    Expected feedback: failure means the two schemas have drifted apart again --
+    fix whichever of _object_to_packet / _scene_payload lost the key, don't
+    silently patch around it with a Python-side special case.
+    """
+    tracker = SceneTracker(background=0)
+    frame = np.zeros((10, 10), dtype=np.int64)
+    frame[2:6, 2:6] = 3
+    frame[3, 3] = 0  # a hole, so topology.holes is exercised (not always 0)
+    scene = tracker.update(frame)
+    assert scene.objects[0].holes > 0  # sanity: this test actually exercises holes
+
+    packet_obj = _object_to_packet(scene.objects[0])
+
+    store = ObservationStore()
+    store.add(frame, scene)
+    sandbox_obj = store.to_payload()["scenes"][0][0]
+
+    # Every key the model sees in its PROMPT must also exist at RUNTIME --
+    # a superset on the sandbox side (e.g. `cells`, needed by mask()) is fine,
+    # a MISSING key is the exact defect class that produced the KeyErrors.
+    missing = set(packet_obj) - set(sandbox_obj)
+    assert not missing, f"packet exposes keys absent from the sandbox: {missing}"
+
+    # Shared nested structures must match exactly, not just be present.
+    assert sandbox_obj["topology"] == packet_obj["topology"]
+    assert sandbox_obj["touches_boundary"] == packet_obj["touches_boundary"]
+    assert sandbox_obj["colors"] == packet_obj["colors"]
 
 
 # ----- subprocess executor ---------------------------------------------------

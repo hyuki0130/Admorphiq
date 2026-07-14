@@ -59,16 +59,20 @@ def _scene_payload(scene: Scene | None) -> list[dict[str, Any]]:
         {
             "id": o.id,
             "color": o.color,
-            # `colors` + `change_history` mirror the turn-packet object schema, so
+            # `colors` + `change_history` + `topology` + `touches_boundary` mirror
+            # the turn-packet object schema exactly (same nesting, same keys), so
             # code the model writes from the packet field names does not KeyError
-            # on the Inspector output (v6 measured KeyError: 'colors').
+            # on the Inspector output (v6 measured KeyError: 'colors'; R55
+            # engagement measured KeyError: 'topology' — flat `holes` here vs
+            # nested `topology.holes` in the packet, 7 verbatim reproductions).
             "colors": {int(o.color): o.area},
             "cells": [list(c) for c in o.cells],
             "bbox_rc": list(o.bbox),  # (row0, col0, row1, col1)
             "centroid_rc": [round(o.centroid[0], 2), round(o.centroid[1], 2)],
             "area": o.area,
             "shape_hash": o.shape_hash,
-            "holes": o.holes,
+            "topology": {"components": 1, "holes": o.holes},
+            "touches_boundary": o.touches_boundary,
             "contained_by": o.contained_by,
             "adjacent": o.adjacent,
             "change_history": "; ".join(o.change_history[-3:]),
