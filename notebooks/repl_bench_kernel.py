@@ -231,7 +231,7 @@ def run_bench() -> dict:
                 events.close()
                 continue
             recorder = TranscriptRecorder(os.path.join(tr_dir, f"{game_id}.jsonl"))
-            agent = ReplAgent(OpenAICompatClient(), recorder=recorder)
+            agent = ReplAgent(OpenAICompatClient(), recorder=recorder, game_id=game_id)
             diag = run_game(env, agent, max_actions=MAX_ACTIONS, wall_s=WALL_S,
                             reset_action=GameAction.RESET, events=events)
             recorder.close()

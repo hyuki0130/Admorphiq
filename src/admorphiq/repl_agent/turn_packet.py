@@ -279,6 +279,7 @@ class TurnPacketBuilder:
             "GAME": game_sec,
             "LAST_ACTION": last_action or {},
             "CHANGE": _change_section(scene, prev_scene, frame, prev_frame),
+            "RECENT_TRANSITIONS": [dict(t) for t in history.recent],
             "SCENE": scene_sec,
             "RECENT_EVENTS": history.recent_events(self.recent_events_shown),
             "MEMORY": memory.to_dict(),

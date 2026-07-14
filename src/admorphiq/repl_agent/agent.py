@@ -312,6 +312,7 @@ class ReplAgent:
         recorder: TranscriptRecorder | None = None,
         token_budget: int = 3000,
         render_images: bool = True,
+        game_id: str = "",
     ) -> None:
         from admorphiq.adapter import AdmorphiqAdapter
 
@@ -322,7 +323,9 @@ class ReplAgent:
         self._recorder = recorder
         self._builder = TurnPacketBuilder(token_budget=token_budget)
         self.last_hypothesis: str | None = None
-        self._game_id = ""
+        self._game_id = game_id
+        self._last_source = "none"
+        self._last_outcome: dict[str, Any] = {}
         # Game-lifetime observability counters (read by the bench diagnostics).
         self.llm_calls = 0
         self.parse_failures = 0
@@ -376,10 +379,17 @@ class ReplAgent:
         self._store.add(frame, scene)
         self._record_transition(frame, scene, state, level_up)
 
+        decided = False
         if not self._queue:
             self._decide(obs, frame, scene)
+            decided = True
         if not self._queue:
             self._queue = [self._fallback(obs)]
+            self._last_source = "fallback"
+        elif decided:
+            self._last_source = getattr(self, "_decided_source", "llm")
+        else:
+            self._last_source = "macro"
 
         action = self._queue.pop(0)
         self._governor.record_executed(action, base_hash(frame))
@@ -405,8 +415,19 @@ class ReplAgent:
         if self._prev_action is None or self._prev_frame is None:
             return
         changed = not np.array_equal(frame, self._prev_frame)
-        events = [f"{e['type']} {e.get('id', '')}".strip() for e in scene.events]
-        self._history.push({"action": self._prev_action, "changed": changed}, events)
+        # Outcome of the PREVIOUS action, surfaced next turn in LAST_ACTION so the
+        # model does not have to reverse-engineer what its action did.
+        self._last_outcome = {
+            "board_changed": changed,
+            "level_completed": level_up,
+            "game_over": state == "GAME_OVER",
+        }
+        act = (self._prev_action or {}).get("action", "?")
+        events = [f"t{self._turn} {act}: {e['type']} {e.get('id', '')}".strip()
+                  for e in scene.events]
+        self._history.push(
+            {"turn": self._turn, "action": self._prev_action,
+             "source": self._last_source, "board_changed": changed}, events)
         self._score_prediction(changed)
         if self._macro_active:
             status = self._governor.observe_after(
@@ -486,6 +507,8 @@ class ReplAgent:
         parsed = parse_model_output(raw)
         if parsed.kind == "none":
             self.parse_failures += 1
+        self._decided_source = {"code": "code", "macro": "macro",
+                                "actions": "llm"}.get(parsed.kind, "llm")
         prediction = parse_prediction(raw)
         self._pending_prediction = prediction
         sandbox_out = sandbox_err = ""
@@ -564,9 +587,14 @@ class ReplAgent:
         }
 
     def _last_action_dict(self) -> dict[str, Any] | None:
+        """Full LAST_ACTION for the packet: action + coords + source + outcome
+        (v5 causal-feedback fix — v3 dropped coords, source, and outcome)."""
         if self._prev_action is None:
             return None
-        return {"action": self._prev_action.get("action")}
+        d: dict[str, Any] = dict(self._prev_action)  # action + row/col
+        d["source"] = self._last_source
+        d.update(self._last_outcome)  # board_changed / level_completed / game_over
+        return d
 
     def _record_turn(self, obs: Any, prompt: str, raw: str, parsed: ParsedOutput,
                      sandbox_out: str, sandbox_err: str,

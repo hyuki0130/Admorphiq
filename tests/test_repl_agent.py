@@ -146,6 +146,33 @@ def test_openai_client_disables_thinking_and_caps_tokens(monkeypatch):
     assert captured["timeout"] == 300.0
 
 
+def test_causal_feedback_in_last_action_and_recent():
+    """Purpose: LAST_ACTION carries the action + coords + source + outcome, and
+    RECENT_TRANSITIONS is serialized (v5 restores the causal history Qwen was
+    reverse-engineering).
+
+    Feedback: failure means the model can't see where its click landed or whether
+    it worked.
+    """
+    prompts = []
+
+    def capture(prompt, images=None):
+        prompts.append(prompt)
+        return '{"action":"MOUSE","row":10,"col":12}'
+
+    agent = ReplAgent(SimpleNamespace(complete=capture), render_images=False,
+                      game_id="g1")
+    agent.choose_action([], _obs(_frame(obj_col=5)))          # MOUSE(10,12)
+    agent.choose_action([], _obs(_frame(obj_col=7)))          # frame changed
+    p = prompts[-1]
+    # LAST_ACTION shows the prior MOUSE coords, its source, and the outcome.
+    assert "row: 10" in p and "col: 12" in p
+    assert "source: llm" in p
+    assert "board_changed: true" in p
+    assert "RECENT_TRANSITIONS" in p
+    assert "game_id: g1" in p  # defect #10 fixed
+
+
 def test_image_is_wired_into_the_call():
     """Purpose: the agent renders the frame and sends it as an image (v5 made it
     a multimodal agent instead of text-only complete(prompt, None)).
