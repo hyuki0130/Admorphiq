@@ -13,10 +13,15 @@ scripts, not in the committed suite).
 
 from __future__ import annotations
 
+from types import SimpleNamespace
+
 from admorphiq.adapters25.ft09 import (
+    _GLYPH_TRIGGER_BUDGET,
+    Adapter,
     _collect_constraints,
     _discover_rings,
     _is_hud_row,
+    _is_wholesale_change,
     _read_glyph_compass,
     _satisfies,
 )
@@ -315,6 +320,89 @@ def test_is_hud_row_excludes_any_region_confined_to_the_last_row():
     assert _is_hud_row((9, 0, 9, 9), grid) is True
     assert _is_hud_row((9, 2, 9, 4), grid) is True
     assert _is_hud_row((0, 0, 9, 9), grid) is False
+
+
+def test_is_wholesale_change_distinguishes_recolour_from_reveal():
+    """Purpose: pin the exact distinction a trigger click's success check
+    relies on -- recolouring existing regions in place (same bbox set,
+    different colours) is NOT a reveal; replacing the region layout
+    entirely (disjoint bbox set) IS. This is the fix for a measured real
+    bug: a naive "did anything change" check treats an ordinary,
+    always-effective field-cell toggle as trigger success forever.
+    Expected feedback: failure means the trigger-click safety net can't
+    tell a real decoy->reveal transition from routine board activity,
+    reintroducing the infinite-loop defect this function exists to fix."""
+    before = _build_ring_board({name: _SOLVED_COLOUR[name] for name in _RING_OFFSETS})
+    # Recolour ONE button in place (same bbox, different colour) -- an
+    # ordinary click's effect, not a reveal.
+    before_list = [list(row) for row in before]
+    _stamp(before_list, 3, 3, 3, _OTHER if _SOLVED_COLOUR["NW"] == _MARKER else _MARKER)
+    recoloured = tuple(tuple(row) for row in before_list)
+    assert _is_wholesale_change(before, recoloured) is False
+
+    # A wholesale reveal: every region moves to entirely different bboxes.
+    reveal_list = [[_BG] * _SIZE for _ in range(_SIZE)]
+    _stamp(reveal_list, 0, 0, 3, _MARKER)
+    _stamp(reveal_list, 0, 17, 3, _MARKER)
+    reveal = tuple(tuple(row) for row in reveal_list)
+    assert _is_wholesale_change(before, reveal) is True
+
+
+def test_glyph_trigger_loop_abandons_glyph_phase_within_budget_when_no_reveal_ever_happens():
+    """Purpose: regression pin for the measured infinite-loop bug -- on a
+    board that is ALWAYS "nothing unsatisfied" (a persistent decoy) where
+    clicking a candidate cell is ALWAYS visibly effective (it toggles its
+    own colour) but NEVER reveals a new board layout, the adapter must
+    abandon glyph-phase play within a small, bounded number of trigger
+    attempts (_GLYPH_TRIGGER_BUDGET, on DISTINCT cells) rather than
+    clicking the same cell forever. Directly reproduces the exact live
+    scenario found on a real board this session (60+ identical clicks,
+    zero contradictions, before the fix).
+    Expected feedback: failure (test hangs or exceeds the step budget with
+    phase still "glyph") means the trigger success check is, once again,
+    treating "something visibly changed" as "the board was revealed"."""
+    pristine = _build_ring_board({name: _SOLVED_COLOUR[name] for name in _RING_OFFSETS})
+
+    def toggle_step(grid: tuple[tuple[int, ...], ...], x: int, y: int) -> tuple[tuple[int, ...], ...]:
+        """Simulate one click: if (y, x) lands within a 3x3 button, toggle
+        that ENTIRE button between marker/other IN PLACE (same region
+        bboxes throughout -- never a reveal), mirroring a real board where
+        a decoy click is always visibly effective but never structural."""
+        grid_list = [list(row) for row in grid]
+        for name, (dr, dc) in _RING_OFFSETS.items():
+            gr, gc = _GLYPH_CENTER
+            r0, c0 = gr + dr, gc + dc
+            if r0 <= y <= r0 + 2 and c0 <= x <= c0 + 2:
+                current = grid_list[r0][c0]
+                new_colour = _OTHER if current == _MARKER else _MARKER
+                for r in range(r0, r0 + 3):
+                    for c in range(c0, c0 + 3):
+                        grid_list[r][c] = new_colour
+                break
+        return tuple(tuple(row) for row in grid_list)
+
+    def make_frame(grid: tuple[tuple[int, ...], ...]) -> SimpleNamespace:
+        return SimpleNamespace(
+            frame=[[list(row) for row in grid]],
+            state=SimpleNamespace(name="NOT_FINISHED"),
+            levels_completed=0,
+        )
+
+    adapter = Adapter()
+    grid = pristine
+    obs = make_frame(grid)
+    max_steps = _GLYPH_TRIGGER_BUDGET * 3 + 10  # generous margin past the budget
+    for _ in range(max_steps):
+        if adapter._phase != "glyph":
+            break
+        action = adapter.choose_action([], obs)
+        x, y = action.action_data.x, action.action_data.y
+        grid = toggle_step(grid, x, y)
+        obs = make_frame(grid)
+    assert adapter._phase != "glyph", (
+        "adapter stayed in glyph phase past the trigger budget -- the "
+        "infinite-loop bug is back"
+    )
 
 
 def test_no_rings_on_a_board_with_fewer_than_eight_same_sized_regions():

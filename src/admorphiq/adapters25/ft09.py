@@ -185,10 +185,37 @@ _GLYPH_NOT_EQUAL_INK = 2  # ink colour that means "this cell's colour must diffe
 _GLYPH_PER_CELL_CLICK_CAP = 5
 # Total contradictions (a cell whose click history revisits an already-seen,
 # still-unsatisfying colour -- its measured cycle has been exhausted with no
-# solution -- or a board where discovery + trigger clicks never produce an
-# unsatisfied cell to act on) tolerated before abandoning glyph-driven play
-# for the level and falling back to the probe/execute/fallback machinery.
+# solution) tolerated before abandoning glyph-driven play for the level and
+# falling back to the probe/execute/fallback machinery.
 _GLYPH_CONTRADICTION_CAP = 2
+
+# A trigger click's only job is testing for a decoy -> reveal transition
+# (measured: the board's ENTIRE region layout is replaced, not just a
+# cell's colour). Success is judged by _is_wholesale_change, never "did
+# anything change at all" -- a board where an ordinary field-cell click is
+# ALWAYS visibly effective (measured on a level where every trigger attempt
+# toggled its own cell, resetting a naive "any diff" counter forever and
+# looping indefinitely) must not read that as "the trigger worked". Bounded
+# to DISTINCT cells -- never retry the same cell twice -- so a real reveal
+# hiding behind a different candidate is still found before giving up.
+_GLYPH_TRIGGER_BUDGET = 5
+# Below this fraction of shared (bbox-identical) candidate regions
+# before -> after a click, the layout counts as wholesale-replaced (a
+# reveal) rather than merely recoloured in place (jaccard 1.0 for an
+# ordinary click, ~0 for a measured reveal on every board tested).
+_WHOLESALE_CHANGE_MAX_OVERLAP = 0.5
+
+# Bounded per-level bail: total actions (glyph-phase + fallback combined)
+# tolerated on ONE level before giving up on it entirely. A level that
+# can't be solved by any strategy this adapter has will otherwise grind
+# indefinitely (measured: the GF(2) probe/execute/fallback machinery burns
+# the ENTIRE remaining action budget on an unsolved board without ever
+# reaching WIN or GAME_OVER) -- real wall-clock risk against Kaggle's 9h
+# ceiling across ~110 games. Generous margin above every real solve
+# measured so far (richest: 18 actions) while still bounding the worst
+# case; covers a full GF(2) probe pass on a board with several dozen
+# candidates (2 actions per candidate) plus its solved click sequence.
+_LEVEL_ACTION_BUDGET = 150
 
 
 def _is_hud_row(bbox: Bbox, grid: Grid) -> bool:
@@ -215,6 +242,24 @@ def _region_candidates(grid: Grid) -> list[dict[str, Any]]:
     regions = find_regions(grid, background=bg)
     max_size = max(1, int(total_cells * _MAX_CANDIDATE_FRACTION))
     return [r for r in regions if r["size"] <= max_size and not _is_hud_row(r["bbox"], grid)]
+
+
+def _is_wholesale_change(before: Grid, after: Grid) -> bool:
+    """True when the board's own SET of candidate region POSITIONS (bbox,
+    colour-blind) is mostly different before -> after -- a decoy -> reveal
+    transition (measured: the visible layout is entirely replaced by a
+    different, previously invisible one), not an ordinary click that only
+    recolours existing regions in place (which keeps the SAME bbox set,
+    jaccard overlap 1.0). This is what a trigger click is actually testing
+    for; see ``_GLYPH_TRIGGER_BUDGET``'s docstring for why "did anything
+    change" is the wrong question."""
+    before_keys = {r["bbox"] for r in _region_candidates(before)}
+    after_keys = {r["bbox"] for r in _region_candidates(after)}
+    union = before_keys | after_keys
+    if not union:
+        return False
+    overlap = before_keys & after_keys
+    return len(overlap) / len(union) < _WHOLESALE_CHANGE_MAX_OVERLAP
 
 
 def _cell_point(region: dict[str, Any]) -> Cell:
@@ -383,6 +428,7 @@ class Adapter(GameAdapter):
 
         self._giveup = giveup
         self._step = 0
+        self._level_actions = 0
         self._levels_seen = -1
 
         self._candidates: list[dict[str, Any]] = []
@@ -423,12 +469,17 @@ class Adapter(GameAdapter):
         # current satisfaction fresh from the live frame every time).
         # ``_cycle_next`` -- MEASURED colour -> colour-after-one-click, board-
         # global (every ring on one board shares one cycle, measured).
+        # ``_glyph_trigger_tried`` -- distinct cells already attempted as a
+        # decoy -> reveal trigger probe (see ``_GLYPH_TRIGGER_BUDGET``);
+        # never retries the same cell twice, and the whole glyph phase is
+        # abandoned once the budget of distinct cells is exhausted without
+        # a wholesale board change.
         self._glyph_click_counts: dict[Cell, int] = {}
         self._glyph_seen_colours: dict[Cell, set[int]] = {}
         self._glyph_coupling: dict[Cell, set[Cell]] = {}
         self._cycle_next: dict[int, int] = {}
         self._glyph_contradictions = 0
-        self._glyph_trigger_attempts = 0
+        self._glyph_trigger_tried: set[Cell] = set()
         self._glyph_pending_key: Cell | None = None
         self._glyph_pending_is_trigger = False
         self._glyph_pre_click_snapshot: dict[Cell, int] = {}
@@ -436,7 +487,11 @@ class Adapter(GameAdapter):
     # ── harness contract ────────────────────────────────────────────────
 
     def is_done(self, frames: list[Any], latest_frame: Any) -> bool:
-        return state_name(latest_frame) == "WIN" or self._step >= self._giveup
+        return (
+            state_name(latest_frame) == "WIN"
+            or self._step >= self._giveup
+            or self._level_actions >= _LEVEL_ACTION_BUDGET
+        )
 
     def choose_action(self, frames: list[Any], latest_frame: Any) -> GameAction:
         state = state_name(latest_frame)
@@ -468,10 +523,12 @@ class Adapter(GameAdapter):
                 # accumulated before this GAME_OVER are real measurements of
                 # the decode failing on THIS board and are deliberately NOT
                 # reset (the cycle/coupling knowledge learned so far is also
-                # kept -- it's a genuine board property, still valid).
+                # kept -- it's a genuine board property, still valid). Same
+                # reasoning for trigger cells already tried: a click's
+                # effect on a given board position is deterministic, so a
+                # cell already proven not to reveal anything stays proven.
                 self._glyph_click_counts = {}
                 self._glyph_seen_colours = {}
-                self._glyph_trigger_attempts = 0
                 self._glyph_pending_key = None
                 self._glyph_pending_is_trigger = False
                 self._glyph_pre_click_snapshot = {}
@@ -485,6 +542,7 @@ class Adapter(GameAdapter):
             self._on_level_up(levels, grid)
 
         self._step += 1
+        self._level_actions += 1
         self._observe_pending(grid)
 
         target = self._next_target(grid)
@@ -497,6 +555,7 @@ class Adapter(GameAdapter):
 
     def _on_level_up(self, levels: int, grid: Grid) -> None:
         self._levels_seen = levels
+        self._level_actions = 0
         self._pending_click = None
         self._prev_grid = None
 
@@ -545,7 +604,7 @@ class Adapter(GameAdapter):
         self._observations.append({"point": point, "before": before, "after": grid})
 
         if self._phase == "glyph":
-            self._observe_glyph_click(grid, diff)
+            self._observe_glyph_click(before, grid, diff)
             return
 
         if self._phase != "probe" or not self._candidates:
@@ -568,21 +627,25 @@ class Adapter(GameAdapter):
         self._solve_from_measured_stencil()
         self._phase = "execute"
 
-    def _observe_glyph_click(self, grid: Grid, diff: dict[str, Any]) -> None:
+    def _observe_glyph_click(self, before: Grid, grid: Grid, diff: dict[str, Any]) -> None:
         """Verify the just-made glyph-phase click. A trigger click (no
-        pending key -- see ``_glyph_target``) succeeds if ANYTHING changed
-        at all, since its only purpose is testing for a decoy -> reveal
-        transition. A real click's every SNAPSHOTTED cell (every cell that
-        was covered by some constraint just before the click) is re-read
-        after: a cell whose colour changed is either the clicked cell
-        itself or a MEASURED coupling side-effect (recorded, not assumed);
-        either way its colour-history is updated for loop detection, and
-        the board-global colour cycle (``_cycle_next``) learns one more
-        transition. A cell that revisits an already-seen colour while still
-        failing its own constraints has exhausted its measured cycle with
-        no solution -- a contradiction; enough contradictions abandon
-        glyph-driven play for the level in favour of the probe/execute/
-        fallback machinery."""
+        pending key -- see ``_glyph_target``) succeeds ONLY on a wholesale
+        board-layout change (``_is_wholesale_change`` -- a measured decoy ->
+        reveal transition), never merely "something changed": a board where
+        an ordinary field-cell click is ALWAYS visibly effective (measured
+        directly -- a level whose trigger cell just toggles its own colour
+        every time) would otherwise reset the attempt budget forever and
+        loop indefinitely, exactly the defect this replaces. A real click's
+        every SNAPSHOTTED cell (every cell that was covered by some
+        constraint just before the click) is re-read after: a cell whose
+        colour changed is either the clicked cell itself or a MEASURED
+        coupling side-effect (recorded, not assumed); either way its
+        colour-history is updated for loop detection, and the board-global
+        colour cycle (``_cycle_next``) learns one more transition. A cell
+        that revisits an already-seen colour while still failing its own
+        constraints has exhausted its measured cycle with no solution -- a
+        contradiction; enough contradictions abandon glyph-driven play for
+        the level in favour of the probe/execute/fallback machinery."""
         key = self._glyph_pending_key
         is_trigger = self._glyph_pending_is_trigger
         pre_snapshot = self._glyph_pre_click_snapshot
@@ -591,12 +654,10 @@ class Adapter(GameAdapter):
         self._glyph_pre_click_snapshot = {}
 
         if is_trigger:
-            if diff["count"] > 0:
-                self._glyph_trigger_attempts = 0
-            elif self._glyph_trigger_attempts + 1 >= _GLYPH_CONTRADICTION_CAP:
+            if _is_wholesale_change(before, grid):
+                self._glyph_trigger_tried.clear()  # a fresh board deserves fresh trigger attempts
+            elif len(self._glyph_trigger_tried) >= _GLYPH_TRIGGER_BUDGET:
                 self._start_probe(grid)
-            else:
-                self._glyph_trigger_attempts += 1
             return
 
         if key is not None:
@@ -750,14 +811,25 @@ class Adapter(GameAdapter):
         # click to reveal its real puzzle (measured on levels 1/3/5 -- the
         # first click there ALSO looked like "nothing to do" by this same
         # rule), or genuinely solved (in which case WIN would already have
-        # fired and choose_action wouldn't be called). Click the first
-        # discovered ring's first member as a bounded trigger probe.
-        first_ring = rings[0]
-        first_cell = next(iter(first_ring["ring_cells"].values()))
+        # fired and choose_action wouldn't be called). Try an UNTRIED cell
+        # (across every discovered ring, not just the first) as a trigger
+        # probe -- bounded to _GLYPH_TRIGGER_BUDGET distinct cells, never
+        # the same one twice, so a genuine reveal hiding behind a different
+        # candidate is still found before giving up.
+        all_ring_cells: dict[Cell, dict[str, Any]] = {}
+        for ring in rings:
+            for cell in ring["ring_cells"].values():
+                all_ring_cells[(cell["bbox"][0], cell["bbox"][1])] = cell
+        untried = [k for k in all_ring_cells if k not in self._glyph_trigger_tried]
+        if not untried or len(self._glyph_trigger_tried) >= _GLYPH_TRIGGER_BUDGET:
+            self._start_probe(grid)
+            return self._next_target(grid)
+        trigger_key = untried[0]
+        self._glyph_trigger_tried.add(trigger_key)
         self._glyph_pending_key = None
         self._glyph_pending_is_trigger = True
         self._glyph_pre_click_snapshot = {}
-        return _cell_point(first_cell)
+        return _cell_point(all_ring_cells[trigger_key])
 
     def _next_target(self, grid: Grid) -> Cell:
         if self._phase == "glyph":
