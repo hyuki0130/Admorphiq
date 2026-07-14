@@ -181,7 +181,8 @@ def _target_game_ids(arcade) -> list[str]:
 
 def run_bench() -> dict:
     """Run ReplAgent on the five bench games; write diagnostics + transcripts."""
-    from arc_agi import Arcade, GameAction, OperationMode
+    from arc_agi import Arcade, OperationMode
+    from arcengine import GameAction
 
     from admorphiq.repl_agent.agent import OpenAICompatClient, ReplAgent
     from admorphiq.repl_agent.bench import run_game
