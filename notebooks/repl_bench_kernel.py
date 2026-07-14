@@ -204,6 +204,7 @@ def run_experiment() -> dict:
     from admorphiq.repl_agent.bench import (
         MATCHED_12_GAMES,
         GameDiagnostics,
+        engagement_run_plan,
         matched_run_plan,
         run_game,
         single_arm_plan,
@@ -228,6 +229,9 @@ def run_experiment() -> dict:
                      or arcade.get_environments())
         plan = single_arm_plan([info.game_id for info in env_infos], "on")
         default_wall = 450.0
+    elif mode == "engagement":
+        plan = engagement_run_plan()
+        default_wall = 500.0
     else:
         plan = matched_run_plan(MATCHED_12_GAMES)
         default_wall = 500.0
@@ -243,10 +247,27 @@ def run_experiment() -> dict:
                    expected_artifacts=[f"experiment={mode}; temperature pinned 0.0"])
     print(f"[exp] {mode} plan: {len(plan)} runs, wall={wall_s}s/run", flush=True)
 
+    # Per-run config from the entry. matched12/full25 entries are arm-labelled and
+    # take PLAN/NAV/ACTION_FIRST/REPEAT_FEEDBACK from the global env; engagement
+    # entries carry their own {audit, action_first, repeat_feedback} per cell.
+    def _cfg(entry: dict) -> dict:
+        label = entry.get("cell", entry.get("arm", "on"))
+        if "cell" in entry:  # engagement: flags come from the entry
+            return {"label": label, "audit": bool(entry.get("audit", False)),
+                    "nav": False, "plan": False,
+                    "action_first": bool(entry["action_first"]),
+                    "repeat_feedback": bool(entry["repeat_feedback"])}
+        g = lambda k: os.environ.get(k, "0").strip().lower() in _TRUTHY  # noqa: E731
+        return {"label": label, "audit": entry.get("arm") == "on",
+                "nav": g("REPL_NAV"), "plan": g("REPL_PLAN"),
+                "action_first": g("REPL_ACTION_FIRST"),
+                "repeat_feedback": g("REPL_REPEAT_FEEDBACK")}
+
     summary: dict[str, dict] = {"_meta": {"experiment": mode, "wall_s": wall_s}}
     for entry in plan:
-        title, arm, rep = entry["game"], entry["arm"], entry["rep"]
-        tag = f"{title}_{arm}_r{rep}"
+        title, rep = entry["game"], entry["rep"]
+        cfg = _cfg(entry)
+        tag = f"{title}_{cfg['label']}_r{rep}"
         events = EventStream(os.path.join(KAGGLE_WORKING, "events", f"{tag}.events.jsonl"))
         try:
             gid = _resolve_title(arcade, title)
@@ -257,15 +278,12 @@ def run_experiment() -> dict:
             env = arcade.make(gid)
             recorder = TranscriptRecorder(
                 os.path.join(KAGGLE_WORKING, "transcripts", f"{tag}.jsonl"))
-            nav = os.environ.get("REPL_NAV", "0").strip().lower() in _TRUTHY
-            plan = os.environ.get("REPL_PLAN", "0").strip().lower() in _TRUTHY
-            afirst = os.environ.get("REPL_ACTION_FIRST", "0").strip().lower() in _TRUTHY
-            rfb = os.environ.get("REPL_REPEAT_FEEDBACK", "0").strip().lower() in _TRUTHY
             agent = ReplAgent(OpenAICompatClient(), recorder=recorder, game_id=gid,
                               render_images=True, max_tool_rounds=1,
-                              audit_enabled=(arm == "on"), nav_steering=nav,
-                              plan_enabled=plan, action_first=afirst,
-                              repeat_feedback=rfb)
+                              audit_enabled=cfg["audit"], nav_steering=cfg["nav"],
+                              plan_enabled=cfg["plan"],
+                              action_first=cfg["action_first"],
+                              repeat_feedback=cfg["repeat_feedback"])
             diag = run_game(env, agent, max_actions=MAX_ACTIONS, wall_s=wall_s,
                             reset_action=GameAction.RESET, events=events)
             recorder.close()
@@ -276,10 +294,10 @@ def run_experiment() -> dict:
             events.close()
         record = diag.to_dict()
         record["derived_from_events"] = derive_summary(events.events)
-        record["arm"], record["rep"] = arm, rep
+        record["label"], record["rep"] = cfg["label"], rep
         with open(os.path.join(KAGGLE_WORKING, "diagnostics", f"{tag}.json"), "w") as f:
             json.dump(record, f, indent=2)
-        summary[tag] = {"arm": arm, "rep": rep, "levels": diag.levels,
+        summary[tag] = {"label": cfg["label"], "rep": rep, "levels": diag.levels,
                         "actions": diag.actions, "audits": diag.audits_triggered,
                         "sandbox_errors": diag.sandbox_errors, "wall_s": diag.wall_s,
                         "terminal": diag.terminal_reason}

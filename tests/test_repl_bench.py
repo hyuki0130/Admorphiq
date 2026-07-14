@@ -12,12 +12,34 @@ from __future__ import annotations
 from types import SimpleNamespace
 
 from admorphiq.repl_agent.bench import (
+    ENGAGEMENT_GUARDS,
+    ENGAGEMENT_TARGETS,
     MATCHED_12_GAMES,
     GameDiagnostics,
+    engagement_run_plan,
     matched_run_plan,
     run_game,
     single_arm_plan,
 )
+
+
+def test_engagement_run_plan():
+    """Purpose: the engagement ablation runs {base, +action_first, +repeat_feedback,
+    +both} on sb26/ft09 targets + su15/r11l guards, cells adjacent per game, audit
+    OFF throughout (the killed lever is not in this experiment).
+
+    Feedback: failure means the flag ablation is unbalanced, mis-flagged, or would
+    contaminate the measurement with audit.
+    """
+    plan = engagement_run_plan(reps=2)
+    assert len(plan) == 2 * 4 * 4  # reps x games x cells = 32
+    assert all(e["audit"] is False for e in plan)
+    games = {e["game"] for e in plan}
+    assert games == set(ENGAGEMENT_TARGETS) | set(ENGAGEMENT_GUARDS)
+    # each (rep, game) has all four cells with the right flag combos
+    combos = {(e["cell"], e["action_first"], e["repeat_feedback"]) for e in plan}
+    assert combos == {("base", False, False), ("afirst", True, False),
+                      ("rfb", False, True), ("both", True, True)}
 
 
 def test_single_arm_plan():

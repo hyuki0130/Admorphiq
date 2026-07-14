@@ -48,6 +48,38 @@ def single_arm_plan(games: list[str], arm: str = "on") -> list[dict[str, Any]]:
     return [{"game": g, "arm": arm, "rep": 0} for g in games]
 
 
+ENGAGEMENT_TARGETS = ["sb26", "ft09"]   # truncation (sb26) + repeat-rejection (ft09)
+ENGAGEMENT_GUARDS = ["su15", "r11l"]    # working clears — must not regress
+
+# (cell name, action_first, repeat_feedback). audit OFF throughout.
+ENGAGEMENT_CELLS = [
+    ("base", False, False),
+    ("afirst", True, False),
+    ("rfb", False, True),
+    ("both", True, True),
+]
+
+
+def engagement_run_plan(reps: int = 2) -> list[dict[str, Any]]:
+    """Flag ablation for the engagement walls (R55 item-37 measurement).
+
+    {base, +action_first, +repeat_feedback, +both} × {sb26, ft09 targets +
+    su15, r11l guards} × ``reps``. Cells run adjacently per (rep, game) so a
+    matched comparison controls for within-pair time drift. Each entry carries
+    the per-run flags so the runner sets them per cell; audit is OFF for all
+    (the killed lever is not in this experiment). Tag = ``{game}_{cell}_r{rep}``.
+    """
+    games = ENGAGEMENT_TARGETS + ENGAGEMENT_GUARDS
+    plan: list[dict[str, Any]] = []
+    for rep in range(reps):
+        for game in games:
+            for name, af, rf in ENGAGEMENT_CELLS:
+                plan.append({"game": game, "cell": name, "rep": rep,
+                             "audit": False, "action_first": af,
+                             "repeat_feedback": rf})
+    return plan
+
+
 @dataclass
 class GameDiagnostics:
     """Per-game observability record (serialized to diagnostics/{game}.json)."""
