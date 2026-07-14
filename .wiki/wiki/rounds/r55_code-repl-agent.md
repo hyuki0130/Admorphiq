@@ -106,11 +106,32 @@ stability, token-budget object trimming, history compaction, hypothesis
 contradiction recovery, rejected-hypothesis hiding, token estimate), 0.50s, ruff
 clean.
 
+## Module 4 — Python sandbox + inspection API (built)
+
+`src/admorphiq/repl_agent/sandbox.py` + `_sandbox_worker.py`. The model writes
+Python that INSPECTS the scene (free internal computation — no env actions
+spent) and REQUESTS actions; each call runs in a throwaway subprocess.
+
+- `ObservationStore` — all frames + tracked scenes; `to_payload()` serializes
+  into the subprocess (raw frames stay available to code, not the prompt).
+- `Inspector` — the API bound into the sandbox namespace: `objects(t)`,
+  `crop(region, t)`, `ascii(region, t)`, `mask(id, t)`, `compare(t1, t2)`,
+  `relations(id, t)`, and `action(kind, row, col)` which RECORDS a request
+  (explicit accounting — never touches the env). Usable in-process for fast
+  tests; the subprocess shares the same class (one implementation).
+- `run_code(code, store, timeout, max_output)` — spawns
+  `python -m …_sandbox_worker`, which binds the API onto a restricted namespace
+  (stdlib-allowlist builtins reused from `ewm.core._safe_builtins`), execs the
+  code with stdout captured + bounded, and returns `{stdout, error, actions}`.
+  A hard subprocess-level timeout+kill stops runaway loops (one hung generation
+  can't starve the run); syntax/runtime errors are reported, never crash.
+
+8 unit tests (objects/relations, crop/mask/compare, ascii shape, action
+accounting, subprocess action round-trip, syntax-error report, disallowed-import
+block, hard-timeout kill), 3.1s (subprocess spawns), ruff clean.
+
 ## Pending modules (Round 1)
 
-- **M4** — stateless Python sandbox (subprocess, stdlib allowlist, bounded
-  output, timeout) + inspection API (objects/crop/ascii/mask/compare/relations)
-  + explicit action accounting.
 - **M5** — action governor (legal-action enforcement, repeated state-action
   prevention, macro gating with per-step precondition+invariant + stop-on-
   surprise, MOUSE(row,col) convention, undo accounting).
