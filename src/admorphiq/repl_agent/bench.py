@@ -64,6 +64,28 @@ def _step(env: Any, action: Any) -> Any:
     return env.step(action)
 
 
+def _obs_hash(obs: Any) -> str:
+    """Stable hash of the observation's frame (or "" when unavailable)."""
+    import hashlib
+
+    fr = getattr(obs, "frame", None)
+    if fr is None:
+        return ""
+    try:
+        import numpy as np
+        arr = np.asarray(fr)
+        return hashlib.md5(np.ascontiguousarray(arr).tobytes()).hexdigest()[:12]
+    except Exception:  # noqa: BLE001 — hashing is best-effort telemetry
+        return ""
+
+
+def _action_repr(action: Any) -> Any:
+    """A JSON-able tag for an action object (dict passthrough or type name)."""
+    if isinstance(action, dict):
+        return action
+    return getattr(getattr(action, "action_type", None), "name", str(action))
+
+
 def run_game(
     env: Any,
     agent: Any,
@@ -72,6 +94,7 @@ def run_game(
     wall_s: float = 600.0,
     reset_action: Any = None,
     clock: Any = time.monotonic,
+    events: Any = None,
 ) -> GameDiagnostics:
     """Play one game to a level clear, budget, or soft deadline.
 
@@ -80,12 +103,22 @@ def run_game(
     ``restart_on_game_over`` + counters). ``reset_action`` is the env's RESET
     command used to revive after GAME_OVER when the agent restarts. ``clock`` is
     injectable so tests can drive the wall-clock deadline deterministically.
+    ``events`` is an optional :class:`EventStream`; when given, each executed
+    action + its transition are emitted (linked by ``action_id``) so a killed
+    kernel still leaves a truthful per-event record.
     """
     diag = GameDiagnostics(game_id=str(getattr(env, "game_id", "") or ""))
+
+    def emit(etype: str, **f: Any) -> None:
+        if events is not None:
+            events.emit(etype, **f)
+
     start = clock()
     obs = getattr(env, "observation_space", None)
     prev_levels = _levels(obs)
     restart = bool(getattr(agent, "restart_on_game_over", False))
+    action_id = 0
+    emit("game_start", game_id=diag.game_id, level=prev_levels)
 
     try:
         while diag.actions < max_actions:
@@ -95,14 +128,22 @@ def run_game(
             if agent.is_done([], obs):
                 diag.terminal_reason = "done"
                 break
+            pre_hash = _obs_hash(obs)
             action = agent.choose_action([], obs)
+            emit("action_executed", action_id=action_id,
+                 action=_action_repr(action), pre_hash=pre_hash)
             obs = _step(env, action)
             if obs is None:
                 diag.terminal_reason = "env_none"
                 break
             diag.actions += 1
             cur = _levels(obs)
+            post_hash = _obs_hash(obs)
+            emit("transition", action_id=action_id, post_hash=post_hash,
+                 changed=(pre_hash != post_hash), level=cur, state=_state(obs))
+            action_id += 1
             if cur > prev_levels:
+                emit("level_up", level=cur)
                 prev_levels = cur
             if _state(obs) == "WIN":
                 diag.terminal_reason = "win"
@@ -111,6 +152,7 @@ def run_game(
                 if not restart or reset_action is None:
                     diag.terminal_reason = "game_over"
                     break
+                emit("reset", reason="game_over")
                 obs = _step(env, reset_action)
                 diag.actions += 1
                 if obs is None:
@@ -121,6 +163,7 @@ def run_game(
     except Exception as exc:  # noqa: BLE001 — one game must never kill the run
         diag.terminal_reason = "error"
         diag.error = f"{type(exc).__name__}: {exc}"
+        emit("exception", error=diag.error)
 
     diag.wall_s = round(clock() - start, 3)
     diag.levels = _levels(obs) if obs is not None else prev_levels
@@ -130,4 +173,6 @@ def run_game(
     diag.truncations = int(getattr(agent, "truncations", 0))
     diag.governor_rejections = int(getattr(agent, "governor_rejections", 0))
     diag.sandbox_errors = int(getattr(agent, "sandbox_errors", 0))
+    emit("terminal", reason=diag.terminal_reason, levels=diag.levels,
+         actions=diag.actions, wall_s=diag.wall_s)
     return diag

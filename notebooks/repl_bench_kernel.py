@@ -192,10 +192,14 @@ def run_bench() -> dict:
     os.environ["REPL_LLM_MODEL"] = VLLM_MODEL_NAME
     os.environ.setdefault("REPL_SANDBOX_TIMEOUT", "30")
 
+    from admorphiq.repl_agent.events import EventStream, derive_summary
+
     diag_dir = os.path.join(KAGGLE_WORKING, "diagnostics")
     tr_dir = os.path.join(KAGGLE_WORKING, "transcripts")
+    ev_dir = os.path.join(KAGGLE_WORKING, "events")
     os.makedirs(diag_dir, exist_ok=True)
     os.makedirs(tr_dir, exist_ok=True)
+    os.makedirs(ev_dir, exist_ok=True)
 
     envs_dir = _find_dir("environment_files")
     arcade = Arcade(operation_mode=OperationMode.OFFLINE, environments_dir=envs_dir)
@@ -204,23 +208,32 @@ def run_bench() -> dict:
 
     summary: dict[str, dict] = {}
     for game_id in game_ids:
+        # Open the append-only event stream FIRST so a killed kernel still leaves
+        # a per-event record (run_incomplete when there is no terminal event).
+        events = EventStream(os.path.join(ev_dir, f"{game_id}.events.jsonl"))
         try:
             env = arcade.make(game_id)
             if env is None:
                 print(f"[bench] {game_id}: make() -> None; skipping", flush=True)
+                events.close()
                 continue
             recorder = TranscriptRecorder(os.path.join(tr_dir, f"{game_id}.jsonl"))
             agent = ReplAgent(OpenAICompatClient(), recorder=recorder)
             diag = run_game(env, agent, max_actions=MAX_ACTIONS, wall_s=WALL_S,
-                            reset_action=GameAction.RESET)
+                            reset_action=GameAction.RESET, events=events)
             recorder.close()
         except Exception as exc:  # noqa: BLE001 — one game never kills the bench
             from admorphiq.repl_agent.bench import GameDiagnostics
             diag = GameDiagnostics(game_id=game_id, terminal_reason="error",
                                    error=f"{type(exc).__name__}: {exc}")
+        finally:
+            events.close()
         diag.game_id = diag.game_id or game_id  # env may not expose game_id
+        derived = derive_summary(events.events)
+        record = diag.to_dict()
+        record["derived_from_events"] = derived
         with open(os.path.join(diag_dir, f"{game_id}.json"), "w") as f:
-            json.dump(diag.to_dict(), f, indent=2)
+            json.dump(record, f, indent=2)
         summary[game_id] = {
             "levels": diag.levels, "actions": diag.actions, "wall_s": diag.wall_s,
             "llm_calls": diag.llm_calls, "llm_errors": diag.llm_errors,
