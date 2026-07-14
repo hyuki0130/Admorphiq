@@ -12,6 +12,15 @@ from admorphiq.kernels.canonical import (
     key_table,
     stability_report,
 )
+from admorphiq.kernels.geometry import (
+    axis_snap,
+    closed_frames,
+    connectors,
+    covering_offsets,
+    elongated_axis,
+    point_toward,
+    project_to_axis,
+)
 from admorphiq.kernels.motion import (
     changed_region_attribution,
     frame_diff,
@@ -77,4 +86,11 @@ __all__ = [
     "choose_canonicalization",
     "key_table",
     "stability_report",
+    "axis_snap",
+    "closed_frames",
+    "connectors",
+    "covering_offsets",
+    "elongated_axis",
+    "point_toward",
+    "project_to_axis",
 ]
