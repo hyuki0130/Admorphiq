@@ -4,7 +4,7 @@ round: R56
 axis: generic-kernel-library
 verdict: IN-PROGRESS
 keywords: [generic-kernels, namespace-safe, script25, agent25, dual-scoreboard, declared-intent, primitive-firewall, kernel-library, quarantined-adapter]
-commit: [4303662, 3edcf4d, 1d797d7, 62fac21, f13b433, d377121, a2a62f0, b67cb39, de013aa, 69101ea, 68b802a, 3151030, cbda9aa, 0a7be09, 6e238de, f406d55, a3a6644, ae8fd95, 204aab2, 3e7391a, f0b0bcb, b28290e, 010df51, fbd625d, 57b325d, a8299de]
+commit: [4303662, 3edcf4d, 1d797d7, 62fac21, f13b433, d377121, a2a62f0, b67cb39, de013aa, 69101ea, 68b802a, 3151030, cbda9aa, 0a7be09, 6e238de, f406d55, a3a6644, ae8fd95, 204aab2, 3e7391a, f0b0bcb, b28290e, 010df51, fbd625d, 57b325d, a8299de, efaf004, 362c672]
 date: 2026-07-15
 ---
 
@@ -172,16 +172,67 @@ did not happen in one commit. Full sequence, in order:
    wall moved closer to the actual mechanic rather than staying in the
    same place.
 
-**Net honest status**: TR87 is still 0/6 live-cleared. What changed is
-epistemic, not a score: the segmentation model is now falsified-and-
-replaced with a verified recovery heuristic, gated through Codex twice,
-integrated far enough to prove L0-L1 token-exact and isolate the L2
-failure to bar1 — a fully-scoped, partially-built solver, not a guess.
-See [[../lessons/tr87_dial_match_hypothesis_falsified_20260713]] for the
-prior (pre-this-arc) falsified hypothesis this segmentation work
-supersedes, and
+6. **`efaf004` — tr87 step 3: LATTICE bar tokenization, gate PASSES exactly
+   on ALL THREE levels.** `extract_bar1_tokens` (occupied_runs-segmented,
+   step 2) replaced with `extract_bar_tokens` (generalized for bar1 OR
+   bar2), composing `split_runs_by_pitch` instead: the bar's full measured
+   extent becomes ONE parent run (real ink cells computed directly, not
+   via a second `occupied_runs` pass), split into `pitch`-wide slots
+   POSITIONALLY. This closes step 5's own bar1-fragmentation KILL (L2's C4
+   glyph, 8/8 tokens now exact, matching oracle) and, applied to bar2 too,
+   fully dissolves the design doc's SEPARATELY-flagged L1 bar2
+   fragmentation (11 messy runs -> exactly 7 clean, all-recognized
+   tokens). Two genuine findings surfaced doing this: bar1/bar2 have
+   INDEPENDENT column counts (not paired 1:1 — L1: 4 vs 7, L2: 8 vs 7,
+   falsifying an initial assumption), and not every one of bar2's 7
+   measured dial states is necessarily NAMED by a given level's 6 rules
+   (L0: 1 of 5 current-state reads has no rule-table name — a clean,
+   well-formed shape, hypothesized as a legitimate off-table state, not a
+   lattice defect; never treated as a kill, since the adapter only needs
+   to detect a target MATCH, never to name the current state). Also fixed
+   a latent, unrelated bug this step's success first exposed: the test
+   harness's own oracle-target verification assumed every rule LHS was
+   single-token, crashing on L2's genuine multi-token LHS rules — L0/L1
+   never exercised that code path because their bar1 KILL fired earlier,
+   before this fix.
+7. **`362c672` — tr87 step 4: THE ADAPTER, `src/admorphiq/adapters25/
+   tr87.py`. TR87 goes from the card's 0/6 wall to 3/6, EVERY clear at the
+   1.0 efficiency cap.** Packages the proven step-1/3 pipeline
+   (background/band discovery -> rule extraction -> bar1 lattice read ->
+   `greedy_parse` -> target) plus a NEW dial executor: bracket-column
+   detection (the bracket is a short, structurally-adjacent-to-bar2 band,
+   not a fixed row; its own ink projected onto bar2's lattice gives the
+   selected column) and a per-column bracket-move + dial-step loop.
+   Neither action direction is assumed from the verification-only source
+   read — bracket-move direction (`ACTION3` vs `ACTION4`) is calibrated
+   LIVE, once per level (one probe action, observe which way the detected
+   column index moved, cache the mapping); dial-step direction needed NO
+   calibration at all, since the measured CLOSED 7-state cycle guarantees
+   that repeatedly pressing ONE dial action reaches any rule-table-derived
+   target within 7 hops regardless of direction. Live smoke (2x500,
+   deterministic): L1 17a/54human, L2 35a/58human, L3 26a/40human — ALL
+   THREE score the maximum 1.0. A 5000-action budget check confirmed the
+   flagged-level (L3-L5, 0-indexed) fallback fails SAFELY: `classify_bands`'
+   own structural gate causes an unsupported board to fall back to
+   harmless `ACTION3` bracket-nudges, exhausting the level's own internal
+   128-action budget (verification-only source read) without crashing,
+   hanging, or attempting exploratory recovery against unmeasured
+   `alter_rules`/`tree_translation`/`double_translation` semantics.
+
+**Net honest status, UPDATED (was "still 0/6" at step 5): TR87 is 3/6
+live-cleared, every cleared level at PERFECT efficiency.** The segmentation
+model was falsified-and-replaced with a verified recovery heuristic (step
+3), gated through Codex twice, integrated to prove all-level token-exact
+(step 3) and packaged into a working adapter (step 4) — the full
+"fully-scoped, partially-built solver" from step 5's own honest status now
+IS a shipped, measured 3/6 solver. See
+[[../lessons/tr87_dial_match_hypothesis_falsified_20260713]] for the prior
+(pre-this-arc) falsified hypothesis this segmentation work supersedes, and
 `docs/tr87_frame_only_grammar_design_20260715.md`/`docs/r56_codex_tr87_reruling_20260715.md`
-for the full design documents.
+for the full design documents. Remaining: [[../games/TR87]]'s own "L3-L5"
+scope note — the three flagged levels are UNMEASURED, banked deliberately
+(Codex's own "bank the simple slice instead of contaminating kernels"),
+not a wiring gap.
 
 ## Measured so far
 
@@ -340,24 +391,31 @@ geometry is entirely discovered (modal button size, mode of measured
 button-gap distances, `tile_bbox` 3x3 split, a measured 4-member floor for
 truncated rings) — no fixed pixel offsets.
 
-**LIVE result (script25, 2x500-action smoke, fully reproducible): 4/6
-levels, 47.62% RHAE, every cleared level at the 1.0 per-level cap**
-(agent action count at or below the human baseline on all 4). This is a
-real live clear, not just an offline gold-trace match. Two levels remain
-open: one (0-indexed 4) is now **SOLVED** (`docs/r58_codex_ft09_l4_solution_20260715.md`,
-committed `df12717`) — the apparent "third glyph type" was actually two
+**LIVE result (script25, 2x500-action smoke, fully reproducible): 6/6
+levels, 100% RHAE (1.0), 88 total actions, every level at the 1.0
+per-level cap** (agent action count at or below the human baseline on all
+6; commit `95c27c4`). This is the first fully-conquered game on the
+script25 scoreboard. Level 5 (0-indexed 4) — the one Codex SOLVED
+(`docs/r58_codex_ft09_l4_solution_20260715.md`, committed `df12717`) — is
+now live-integrated: the apparent "third glyph type" was actually two
 things: 3 ordinary stateful cross-toggle BUTTONS (click toggles self
 14<->15 + every existing ink-6 neighbour, a distinct mechanism alongside
 the constraint rule, not a new ink value the rule interprets) constrained
-by 2 real target glyphs discovery had silently DROPPED (3 members each,
-below the 4-member floor tuned for level 6's truncated rings). The core
-constraint rule is fully intact; not yet integrated into the adapter or
-re-smoked — see the lesson page's resolution section for the complete
-writeup, including the finding that this level's apparent decoy->reveal
-was ALSO not real (an engine level-installation lifecycle artifact, not a
-hidden second board). The other level (0-indexed 5) is fully decoded
-offline but has never been reached live because the (until-now) unsolved
-level sits in front of it sequentially.
+by 2 real target glyphs discovery had silently DROPPED (3 members each).
+Integration required a NEW GF(2) toggle-system solve (`_build_toggle_system`/
+`_glyph_target_controlled`) used only on boards with control glyphs, plus a
+live-only discovery-ordering fix: the member-count floor was being
+checked BEFORE the control-center registry extension, so the same two
+3-member glyphs kept getting dropped for a subtly different reason even
+after the floor was lowered to 3 — fixed by deferring the floor check to
+after extension. Level 5 now clears in exactly 21 actions, matching
+Codex's predicted gold click count. Level 6 (0-indexed 5), fully decoded
+offline but never reached live because level 5 blocked it sequentially,
+ran live for the first time in this same smoke and cleared at 22 actions
+— confirming the offline coupling model transfers unchanged. See the
+lesson page's resolution section for the complete writeup, including the
+finding that level 5's apparent decoy->reveal was NOT real (an engine
+level-installation lifecycle artifact, not a hidden second board).
 
 **A genuine falsification-replay near-miss, root-caused and fixed**: a
 Codex-derived 3-colour-cycle formula (`docs/r58_codex_ft09_l3_formula_20260715.md`)
@@ -383,18 +441,20 @@ Falls back to the pre-existing measured-GF(2)-stencil machinery, unchanged,
 via a per-cell click cap + seen-colour loop detector + contradiction budget
 if the decode doesn't apply to a board it hasn't seen. See
 [[../lessons/ft09_glyph_decode_20260715]] for the full falsification-
-journey writeup (11 tests in `tests/test_adapters25_ft09.py`, including a
-regression pin for the trigger-loop bug) and the two open items.
+journey writeup (16 tests in `tests/test_adapters25_ft09.py`, including
+regression pins for the trigger-loop bug, glyph classification, the
+3-member floor, and the GF(2) control-glyph solver) — FT09's decode arc is
+now COMPLETE, 6/6 live, no open items remain on this game.
 
 ## Open items
 
-- **FT09 live-env smoke run — DONE, corrected from an earlier stale note
-  on this page.** The glyph decode has been run against the live API
-  (script25, 2x500-action smoke): 4/6 levels, 47.62% RHAE, reproducible.
-  Remaining FT09 work is now the level-5 solved-but-not-integrated
-  mechanism and the level-6 re-smoke once level 5 lands — see "Measured
-  so far (continued) — ft09" above and
-  [[../lessons/ft09_glyph_decode_20260715]]'s own open items.
+- **FT09 — DONE, complete arc.** The glyph decode has been run against the
+  live API (script25, 2x500-action smoke): 6/6 levels, 100% RHAE, 88 total
+  actions, reproducible (commit `95c27c4`). Both previously-open items
+  (level 5's control-glyph integration, level 6's live re-smoke) are
+  resolved — see "Measured so far (continued) — ft09" above and
+  [[../lessons/ft09_glyph_decode_20260715]]'s resolution section. No
+  further FT09 work is currently open.
 - **Adapter iteration — resolved, corrected from an earlier stale note on
   this page.** m0r0's hazard-memory fix (dead-cell memory keyed
   per-`(cell, action)`, `known_passable` persisted across restarts instead

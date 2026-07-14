@@ -17,7 +17,7 @@ category, drill into specific pages.
 - [[games/CD82.md]] — v1 6/6 ✅ (brittle paint_game, hardcoded positions) — Relies on game internals — high v1 score, fails on v2.
 - [[games/CN04.md]] — v1 brittle 1/5 ✅, generic 0/5 ❌ (R23 8B) — Frame-observation solver — generalizes across version hashes.
 - [[games/DC22.md]] — v1 1/6 ✅, v2 1/6 ✅ — Frame-observation solver — generalizes across version hashes.
-- [[games/FT09.md]] — v1 brittle 6/6 ✅ (sprite-tag solver, kept for provenance only), generic 4/6 live-cleared, 47.62% RHAE (R56 glyph decode, measured — A multi-ring, multi-glyph constraint-satisfaction toggle puzzle — NOT a
+- [[games/FT09.md]] — v1 brittle 6/6 ✅ (sprite-tag solver, kept for provenance only), generic LIVE 6/6, 100% RHAE, 88 total actions (R56 glyph decode — A multi-ring, multi-glyph constraint-satisfaction toggle puzzle — NOT a
 - [[games/G50T.md]] — v1 brittle 1/7 ✅, generic 0/7 ❌ (R23 8B; previously 1/7 via explore_interact) — Frame-observation solver — generalizes across version hashes.
 - [[games/KA59.md]] — v1 brittle 4/7 ✅, generic 0/7 ❌ (R23 8B; v2 dir-silent) — Relies on game internals — high v1 score, fails on v2.
 - [[games/LF52.md]] — v1 0/10 ❌ — Not yet classified; needs hand review.
@@ -33,7 +33,7 @@ category, drill into specific pages.
 - [[games/SP80.md]] — v1 1/6 ✅, v2 1/6 ✅ — Frame-observation solver — generalizes across version hashes.
 - [[games/SU15.md]] — v1 brittle 9/9 ✅ (uses game.hmeulfxgy/peiiyyzum/rqdsgrklq attrs), generic 0/9 ❌ (R23 8B; same-color-pair=0 at L1) — 2048-style color merging via click-attract radius, with enemies as downgraders; solver reads internal fruit/enemy/goal lists, fails on v2.
 - [[games/TN36.md]] — v1 brittle 7/7 ✅ (uses frame.zpzcmabenn direct call), generic 0/7 ❌ (R23 8B; bit-panel combinatorial too deep) — Bit-encoded action program: click bits to set a number, click play to execute, navigate player to goal; brittle solver passes v1 but collapses on v2.
-- [[games/TR87.md]] — v1 brittle 1/6 ✅ (hardcoded L1 rotation values), generic 0/6 ❌ (R23 8B; R53 dial mechanism decoded; 2026-07-14 win-rule CRACKED = production-grammar derivation, feature-scale build banked) — A 5-column cyclic-dial "combination lock" puzzle, NOT a geometric rotation
+- [[games/TR87.md]] — v1 brittle 1/6 ✅ (hardcoded L1 rotation values), generic 0/6 ❌ (superseded by script25, see below) — A token-rewrite-grammar puzzle (NOT a geometric rotation puzzle, NOT a
 - [[games/TU93.md]] — v1 2/9 ✅, v2 2/9 ✅ — Relies on game internals — high v1 score, fails on v2.
 - [[games/VC33.md]] — v1 1/7 ✅, v2 1/7 ✅ — Frame-observation solver — generalizes across version hashes.
 - [[games/WA30.md]] — v1 brittle 2/9 ✅ (sprite tags wbmdvjhthc/wyzquhjerd/pkbufziase), generic 0/9 ❌ (R23 8B; multi-entity probe ambiguity) — Relies on game internals — high v1 score, fails on v2.

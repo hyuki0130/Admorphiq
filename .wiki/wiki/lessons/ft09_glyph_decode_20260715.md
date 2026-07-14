@@ -2,9 +2,9 @@
 type: lesson
 date: 2026-07-15
 rounds: R56
-status: live-cleared 4/6 (47.62% RHAE); level 5 (0-indexed 4) SOLVED by
-  Codex, not yet integrated/re-smoked; level 6 fully decoded, unreached
-  live
+status: LIVE 6/6, 100% RHAE, 88 total actions (R56/R58, commit `95c27c4`);
+  level 5's Codex-solved control-glyph mechanism and level 6's cell
+  coupling are both integrated and live-cleared
 ---
 
 # FT09 is a multi-glyph constraint-satisfaction puzzle, not a coupled GF(2) neighbourhood stencil (R56)
@@ -14,11 +14,11 @@ status: live-cleared 4/6 (47.62% RHAE); level 5 (0-indexed 4) SOLVED by
 > real win condition is drawn on the board as one or more 3x3 compass
 > glyphs, read via full multi-glyph coverage enumeration (a coverage-
 > scoping near-miss taught that "nearest glyph" is the wrong scope). The
-> R56 `src/admorphiq/adapters25/ft09.py` adapter decodes it directly and
-> live-clears 4/6 levels; a 5th level's mechanic is now SOLVED (Codex —
-> stateful cross-toggle buttons + 2 missed 3-member glyphs, the core rule
-> fully intact) but not yet integrated/re-smoked, and a 6th is fully
-> decoded but unreached live.
+> R56/R58 `src/admorphiq/adapters25/ft09.py` adapter decodes it directly
+> and live-clears ALL 6 levels at 100% RHAE — including a 5th level whose
+> mechanism (Codex — stateful cross-toggle buttons + 2 missed 3-member
+> glyphs) needed a dedicated GF(2) toggle-system solve, and a 6th whose
+> cell-coupling model ran live for the first time in the same integration.
 
 ## Symptom
 
@@ -43,8 +43,8 @@ there is no coupling to measure, so every one of the eleven target
 hypotheses was searching the wrong problem class from the start regardless
 of how good the target guess was.
 
-**The actual mechanic** (verified byte-for-byte on 4 of 6 public levels;
-live-cleared on those same 4, 47.62% RHAE): the board is one or more
+**The actual mechanic** (verified byte-for-byte on all 6 public levels;
+live-cleared on all 6, 100% RHAE): the board is one or more
 8-cell "rings" (a 3x3 button layout minus its own center) wrapped around a
 small "glyph" that occupies the ring's center gap. The glyph is itself a
 3x3 compass-position pattern (NW/N/NE/W/center/E/SW/S/SE). For every board
@@ -200,12 +200,25 @@ installation of level 5's own board and rendering it before processing
 that same click — an engine lifecycle artifact, not a hidden-board design
 choice the way levels 2 and 6 genuinely have.
 
-**Status: adapter integration not yet done.** The wiki/decode-arc
-understanding is complete; `src/admorphiq/adapters25/ft09.py` has not
-been updated to (a) lower/replace the 4-member discovery floor so
-3-member glyphs aren't dropped, (b) model the stateful control-button
-mechanism, or (c) avoid mis-reading level 5's level-start transition as a
-genuine reveal. Re-smoke after that lands.
+**Status: adapter integration DONE, live-verified 6/6, 100% RHAE.**
+`src/admorphiq/adapters25/ft09.py` (commit `95c27c4`) now (a) lowers the
+discovery floor to 3 members, gated by a `_classify_glyph` legibility
+check rather than raw count alone, (b) models the stateful control-button
+mechanism as a one-shot GF(2) toggle-system solve
+(`_build_toggle_system`/`_glyph_target_controlled`) used only on boards
+with control glyphs, and (c) never treats level 5's level-start transition
+as a genuine reveal — no special-casing was needed for that at all, since
+the existing "always re-discover fresh" discipline already handles a stale
+frame the same way it handles a real reveal. One additional live-only bug
+surfaced and was fixed during integration: the member-count floor was
+being checked BEFORE the control-center registry extension, silently
+dropping the same two 3-member glyphs for a subtly different reason even
+after (a) landed — fixed by deferring the floor check to after extension
+(see `docs/r58_codex_ft09_l4_solution_20260715.md`'s live application).
+Re-smoked: level 5 clears in exactly 21 actions (matching Codex's
+predicted gold click count), level 6 clears live for the first time ever
+at 22 actions — 6/6, 100% RHAE, 88 total actions, reproducible across two
+independent 500-action smokes.
 
 ## The trigger-click infinite-loop bug (found live, fixed, unrelated to whether level 5 is ever solved)
 
@@ -302,22 +315,23 @@ wrong.
 
 ## Open items
 
-- **Level 5's mechanism is understood but not integrated.** Concrete
-  adapter work remaining: lower/replace the discovery minimum-member
-  floor (currently 4, silently drops the two real 3-member glyphs this
-  level needs); add the ink-6 stateful-button transition model (click
-  toggles self + every existing ink-6 neighbour) as a new mechanism
-  alongside the constraint rule; ensure level 5's level-start transition
-  is NOT mis-read as a genuine decoy->reveal (it isn't one — see the
-  engine-lifecycle correction above). Re-smoke 2x500 after landing.
-- **Level 6 has never been exercised live** — its mechanic is fully
-  decoded and offline-verified (22/22 covered cells match gold's win
-  state; the coupling model matches all 13 real gold clicks exactly), but
-  it sits sequentially behind level 5, so it has never actually been
-  reached in a live run. Once level 5 clears, re-smoke to confirm level 6
-  also clears as predicted — this is the one remaining "gold-trace
-  verified, live smoke not yet run" gap left in this arc, and possibly
-  the last one needed to close it out at 6/6.
+Both items below are now RESOLVED (previously open, kept here with their
+resolution for provenance — see the "adapter integration DONE" status
+note above for the full writeup):
+
+- **Level 5's mechanism, integrated.** The discovery minimum-member floor
+  is now 3 (gated by `_classify_glyph` legibility, not raw count); the
+  ink-6 stateful-button transition model (click toggles self + every
+  existing ink-6 neighbour) is implemented as a one-shot GF(2)
+  toggle-system solve; level 5's level-start transition is correctly NOT
+  treated as a genuine decoy->reveal. Live-verified: 21 actions, matching
+  Codex's predicted gold click count exactly.
+- **Level 6, exercised live for the first time.** Its mechanic was already
+  fully decoded and offline-verified before this integration (22/22
+  covered cells match gold's win state; the coupling model matches all 13
+  real gold clicks exactly); once level 5 stopped blocking it, level 6 ran
+  live in the same smoke and cleared at 22 actions, exactly as predicted.
+  FT09's decode arc is complete: 6/6 levels, 100% RHAE, 88 total actions.
 
 ## Related
 
@@ -328,7 +342,7 @@ wrong.
   concept page still applies to any game that genuinely IS a coupled
   toggle system).
 - [[../games/FT09]] — the game's own entity page, updated alongside this
-  lesson with the full falsification-journey narrative and live 4/6 table.
+  lesson with the full falsification-journey narrative and live 6/6 table.
 - [[../rounds/r56_generic-kernels]] — the round this decode work landed
   under (kernel composition: `find_regions`, `tile_bbox`), and where the
   live measurement + trigger-loop fix are recorded.
