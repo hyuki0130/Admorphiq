@@ -74,19 +74,13 @@ any kernel call):
   ``admorphiq.adapters25.m0r0``'s frame-diff-based direction-learning, but
   generalized to a multi-piece board where "which region is the mover" is
   itself unknown ahead of time.
-- :func:`admorphiq.kernels.configuration_path` plans a piece's route to its
-  assigned target over the INCREMENTALLY measured ``(cell, action, cell)``
-  transition graph built from real observed moves — this is the
-  "heavyweight" generic state-space search kernel (unlike
-  ``admorphiq.kernels.grid_shortest_path``, which needs a pre-known
-  passability array; here the walls are discovered live, one probed move
-  at a time, the same way ``m0r0`` discovers its maze, but expressed as an
-  arbitrary caller-defined state space rather than a fixed grid).
-- :func:`admorphiq.kernels.reachable_frontier` finds the nearest
-  already-reached cell with an untried direction when the assigned target
-  is not yet known-reachable, so exploration and goal-directed routing
-  share the SAME measured transition graph instead of two separate data
-  structures.
+- :func:`admorphiq.kernels.grid_shortest_path` + :func:`admorphiq.kernels.grid_distance_field`
+  (superseding an earlier ``configuration_path``-based design, see
+  "Optimistic goal-directed exploration" below) plan a piece's route over
+  an OPTIMISTIC passability array built from ``_known_blocked`` --
+  genuinely unexplored cells are assumed passable, so routing beelines
+  toward a target instead of only trusting individually-confirmed-safe
+  cells.
 
 Adapter-owned policy (not a kernel concern): a cell blocked by ANOTHER
 currently-unplaced piece sitting in the destination is deliberately NOT
@@ -226,14 +220,70 @@ frame-by-frame (raw ``find_regions``, not just piece-class rings) shows
 one piece deliberately colliding with the other, triggering a multi-tick
 push-slide that carries the second piece a long distance (column 27 to
 42) past the same wall region this adapter's own exploration independently
-confirmed impassable by direct movement. Modeling this (detecting a
-collision-triggered slide, waiting it out, re-identifying positions
-afterward) is a nontrivial adapter-scope change and is NOT attempted
-here -- flagged for a future round.
+confirmed impassable by direct movement.
+
+**Push mechanic, IMPLEMENTED (round 4)**. Offline calibration first
+(frame-by-frame trace of levels 1 and 3, the same methodology that found
+level 0's push): level 1's only piece-count anomaly is the level0-to-
+level1 TRANSITION tick (the "before" frame is still level 0's solved
+board -- an artifact of the trace's own level-boundary labelling, not a
+push), and level 3 never shows a >3px jump on any cleanly-matched piece
+pair (every count mismatch there is the same detection-flicker the
+sticky-target fixes above already explain). **Only level 0 (of the 4
+gold-covered levels) needs a push.**
+
+Implementation: colliding with another piece (``_record_blocked``'s
+"destination occupied" branch) sets ``_push_settling``; ``choose_action``
+then feeds cheap ticks -- MEASURED necessary, since the engine consumes
+every submitted action as an animation tick regardless of type while a
+slide resolves -- until 2 consecutive identical frames confirm it settled
+(bounded at ``_PUSH_SETTLE_MAX_TICKS`` ticks), then forces full
+re-identification (``_active_cell = None``) since positions may have
+jumped unpredictably. Since this adapter's own assignment logic routes
+each piece independently toward its OWN nearest target, it would never
+naturally attempt a collision (walking into another piece is never on a
+piece's direct path to ITS OWN goal) -- ``_route``'s last-resort tier
+therefore deliberately walks the active piece TOWARD the nearest other
+piece (colliding with it on the final step) once assigned-target routing
+and frontier expansion are both exhausted, tried only there so it never
+displaces the working walk-first behaviour on levels/games that don't
+need a push.
+
+**Measured live**: this genuinely works -- a push was observed carrying a
+piece from (30, 27) to (30, 39), crossing the exact wall this adapter's
+own optimistic search had independently confirmed at column 30-33. Three
+further bugs surfaced and were fixed while getting this far, all in the
+same family (a fallback silently repeating one action forever instead of
+varying when it should): (1) post-push identity re-probing had no anchor
+cell to key "tried" bookkeeping by, so it could repeat the SAME probe
+action forever if that action happened to be blocked -- fixed with
+``_identity_tried``, tracked independently of any cell. (2) the broader
+frontier tier (which itself replaced ``reachable_frontier``'s narrower
+walked-edges-only view, ALSO because it went fully empty once a cell's
+own actions were exhausted) initially excluded the current cell from
+its own candidates, so a cell with a perfectly good untried action could
+still get routed away from and never actually tried -- fixed by checking
+the current cell's own untried actions before considering any other
+frontier cell. (3) both the select-confirmation probe and ``_probe``'s
+generic last resort defaulted to the same fixed action forever once a
+KNOWN cell had every action already tried (a case that did not exist
+before push-triggered re-routing made revisiting an exhausted cell
+common) -- fixed by cycling through actions instead of repeating one.
+
+Despite all of this, **the 2x500 smoke result is still 0/7** -- the push
+executes and crosses the wall, but the system as a whole (assignment +
+select + push-settle + optimistic exploration, now interacting for the
+first time) does not yet converge to a full level clear within the
+100-action fuse across the available lives. The remaining gap was not
+further root-caused given time spent; likely candidates are assignment
+not coordinating WHICH piece should push versus walk, and the overhead
+of re-identifying and re-assigning from scratch after every push and
+restart. Flagged honestly as unresolved rather than claimed fixed.
 """
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import Any
 
 from admorphiq.adapters25.base import (
@@ -254,7 +304,6 @@ from admorphiq.kernels import (
     grid_distance_field,
     grid_shortest_path,
     path_to_moves,
-    reachable_frontier,
     size_clusters,
     track_objects,
 )
@@ -272,6 +321,18 @@ _GIVEUP_DEFAULT = 4000
 # into "piece" vs "frame" size classes. 1.5 matches every other script25
 # adapter's use of size_clusters (sb26, m0r0) -- no game-specific tuning.
 _SIZE_CLUSTER_RATIO = 1.5
+
+# A push-slide, once triggered, is MEASURED (read from the level 0 gold
+# trace + a read-only source review) to consume every submitted action as
+# an animation tick regardless of its nominal type, for several ticks,
+# before the board re-stabilizes. This many CONSECUTIVE identical frames
+# is trusted as "the slide is over" -- 1 alone risks a false-positive on
+# an incidentally-static mid-slide tick.
+_PUSH_SETTLE_STABLE_FRAMES = 2
+# Bound on ticks spent waiting for a slide to settle, mirroring every
+# other script25 adapter's settle-wait convention (sb26's _SETTLE_MAX_WAIT)
+# so a slide that never stabilizes (misdetection) can't hang the adapter.
+_PUSH_SETTLE_MAX_TICKS = 10
 
 
 def _bbox_area(bbox: tuple[int, int, int, int]) -> int:
@@ -443,12 +504,6 @@ class Adapter(GameAdapter):
         # target exists" which remains true forever within the level.
         self._solved_targets: set[Cell] = set()
 
-        # Measured (cell, action, cell) transitions -- the state-space
-        # graph reachable_frontier searches over for exploration ranking.
-        # Property of the level layout: reset on level-up, kept across a
-        # GAME_OVER restart (the walls didn't move, only the active
-        # piece's position did).
-        self._transitions: list[tuple[Cell, int, Cell]] = []
         self._tried_from: dict[Cell, set[int]] = {}
         # Cells CONFIRMED blocked (a move attempt failed with no other
         # piece at the destination -- see _record_blocked). Every other
@@ -462,6 +517,27 @@ class Adapter(GameAdapter):
         # different route on the next call). Never reset -- a whole-run
         # total, not a per-level state the adapter's own behaviour reads.
         self._replans = 0
+
+        # True while a push-slide is believed to be resolving (see
+        # _record_blocked: a move that collided with ANOTHER piece,
+        # rather than a wall, starts a multi-tick engine animation --
+        # MEASURED from the level 0 gold trace + read-only source review:
+        # every submitted action is consumed as a tick, ignoring its
+        # nominal type, until the board re-stabilizes). While True,
+        # choose_action just feeds cheap ticks (see _settle_push) instead
+        # of normal planning, since positions read mid-slide are not
+        # trustworthy. Diagnostic-only: _pushes_settled counts completions.
+        self._push_settling = False
+        self._push_settle_stable = 0
+        self._push_settle_ticks = 0
+        self._pushes_settled = 0
+
+        # Actions tried while _active_cell is None (identity unknown, no
+        # anchor cell to key _tried_from by) -- see _probe. Cleared the
+        # moment identity is re-established (_observe_result) or whenever
+        # _active_cell is deliberately reset to None (level-up, restart,
+        # post-push re-identification).
+        self._identity_tried: set[int] = set()
 
     # ── harness contract ────────────────────────────────────────────────
 
@@ -492,6 +568,37 @@ class Adapter(GameAdapter):
         simple_ids, action6_ok = available_action_ids(latest_frame)
         move_ids = sorted(a for a in simple_ids if a in (1, 2, 3, 4))
 
+        if self._push_settling:
+            # A push-slide is resolving (see the field docstring): ride it
+            # out with cheap ticks -- ANY submitted action is consumed as
+            # an animation tick while this is in progress (measured), so
+            # normal planning on a mid-slide frame would be reasoning
+            # about positions that are about to change unpredictably.
+            stable = self._prev_grid is not None and grid == self._prev_grid
+            self._push_settle_stable = self._push_settle_stable + 1 if stable else 0
+            self._push_settle_ticks += 1
+            if (
+                self._push_settle_stable >= _PUSH_SETTLE_STABLE_FRAMES
+                or self._push_settle_ticks >= _PUSH_SETTLE_MAX_TICKS
+            ):
+                self._push_settling = False
+                self._push_settle_stable = 0
+                self._push_settle_ticks = 0
+                self._pushes_settled += 1
+                # Positions may have jumped unpredictably during the
+                # slide -- force full re-identification via the existing
+                # movement-probe pathway (self._active_cell is None)
+                # rather than trust the stale pre-slide cell.
+                self._active_cell = None
+                self._identity_tried = set()
+                self._prev_piece_regions = None
+                # Fall through to normal planning this same call.
+            else:
+                self._pending_action = None
+                self._pending_kind = None
+                self._prev_grid = grid
+                return simple_action(move_ids[0]) if move_ids else reset_action()
+
         action = self._decide(grid, move_ids, action6_ok)
         self._prev_grid = grid
         return action
@@ -505,7 +612,7 @@ class Adapter(GameAdapter):
         self._prev_grid = None
         self._prev_piece_regions = None
         self._active_cell = None
-        self._transitions = []
+        self._identity_tried = set()
         self._tried_from = {}
         self._known_blocked = set()
         self._await_select_confirm = False
@@ -514,6 +621,9 @@ class Adapter(GameAdapter):
         self._known_targets = set()
         self._solved_targets = set()
         self._active_marker_color = None
+        self._push_settling = False
+        self._push_settle_stable = 0
+        self._push_settle_ticks = 0
 
     def _on_restart(self) -> None:
         """Only the active piece's position resets; the layout knowledge
@@ -526,10 +636,14 @@ class Adapter(GameAdapter):
         self._prev_grid = None
         self._prev_piece_regions = None
         self._active_cell = None
+        self._identity_tried = set()
         self._await_select_confirm = False
         self._last_select_cell = None
         self._select_attempts = {}
         self._solved_targets = set()
+        self._push_settling = False
+        self._push_settle_stable = 0
+        self._push_settle_ticks = 0
 
     # ── measurement: did the pending action move a piece? ───────────────
 
@@ -551,6 +665,11 @@ class Adapter(GameAdapter):
         if len(moved) != 1:
             if ref_cell is not None:
                 self._record_blocked(ref_cell, action, prev_pieces)
+            else:
+                # Identity-probing with no anchor cell (see _probe) --
+                # track this action as tried-while-blind so the next probe
+                # varies instead of repeating the same refuted guess.
+                self._identity_tried.add(action)
             return
 
         match = moved[0]
@@ -558,9 +677,9 @@ class Adapter(GameAdapter):
         shift: Cell = tuple(match["shift"])  # type: ignore[assignment]
         self._dir_map.setdefault(action, shift)
         new_cell = (from_cell[0] + shift[0], from_cell[1] + shift[1])
-        self._transitions.append((from_cell, action, new_cell))
         self._tried_from.setdefault(from_cell, set()).add(action)
         self._active_cell = new_cell
+        self._identity_tried = set()
 
         if self._active_marker_color is None:
             after_bbox = cur_pieces[match["after"]]["bbox"]  # type: ignore[index]
@@ -570,11 +689,21 @@ class Adapter(GameAdapter):
 
     def _record_blocked(self, cell: Cell, action: int, prev_pieces: list[Region]) -> None:
         """Mark ``action`` tried from ``cell`` -- UNLESS the destination is
-        currently occupied by another piece, in which case the block is
-        state-dependent (that piece may move away later), not a permanent
-        wall, so it is deliberately left unrecorded (see class docstring).
+        currently occupied by another piece, in which case moving into it
+        is state-dependent (that piece may move away later, or may itself
+        be PUSHED -- see below), not a permanent wall, so it is
+        deliberately left unrecorded (see class docstring) rather than
+        marked tried.
 
-        A genuine wall (destination NOT occupied by another piece) is also
+        A collision with another piece (not a wall) also starts push-slide
+        settling (``_push_settling``): MEASURED from the level 0 gold
+        trace -- walking the active piece into another piece's cell always
+        triggers the engine's push-resolution animation, whether or not
+        the push ultimately succeeds, so ``choose_action`` must ride out
+        the resulting ticks and re-identify positions afterward rather
+        than trust the stale pre-collision cell.
+
+        A genuine wall (destination NOT occupied by another piece) is
         added to ``_known_blocked`` -- the fact _optimistic_grid reads to
         stop assuming that cell passable -- and counted as a replan: the
         NEXT optimistic beeline attempt will route around it instead of
@@ -587,6 +716,7 @@ class Adapter(GameAdapter):
         dest = (cell[0] + unit[0], cell[1] + unit[1])
         other_cells = {p["bbox"][:2] for p in prev_pieces}
         if dest in other_cells:
+            self._push_settling = True
             return
         self._tried_from.setdefault(cell, set()).add(action)
         if dest not in self._known_blocked:
@@ -651,6 +781,21 @@ class Adapter(GameAdapter):
                 self._await_select_confirm = True
                 point = self._select_point(goal_region, self._last_select_cell)  # type: ignore[arg-type]
                 return click_action(x=point[1], y=point[0])
+            elif self._last_select_cell is not None and len(
+                self._tried_from.get(self._last_select_cell, set())
+            ) >= len(move_ids):
+                # Inconclusive AND the target cell's own directions are
+                # ALL already known (every one is a confirmed wall, from
+                # this cell's own earlier exploration under a different
+                # active piece) -- MEASURED necessary: a movement probe
+                # here can NEVER resolve anything new (every direction's
+                # outcome is already determined, wall-vs-not, regardless
+                # of which piece is standing there), so retrying one
+                # forever (the naive fallback _probe would otherwise
+                # repeat) can never confirm or refute the select. With no
+                # better signal available, trust the click and resume
+                # normal routing from here.
+                self._active_cell = self._last_select_cell
             else:
                 # Inconclusive (marker colour not measured yet this
                 # level, or the piece isn't currently detected at all) --
@@ -675,7 +820,8 @@ class Adapter(GameAdapter):
         assignment = self._assign(free_cells, unfilled_targets)
 
         if self._active_cell in assignment:
-            return self._route(assignment[self._active_cell], move_ids)
+            other_cells = [c for c in piece_cells if c != self._active_cell]
+            return self._route(assignment[self._active_cell], move_ids, other_cells)
 
         if self._active_cell is None:
             # Identity unknown: probe a movement direction. _observe_result
@@ -799,9 +945,35 @@ class Adapter(GameAdapter):
                 self._pending_action = action
                 self._pending_kind = "move"
                 return simple_action(action)
-        self._pending_action = move_ids[0]
+        elif move_ids:
+            # Identity genuinely unknown (no anchor cell at all -- e.g.
+            # right after a push-slide, where positions jumped
+            # unpredictably) -- MEASURED necessary: without this branch,
+            # every call falls straight to the fixed move_ids[0] below,
+            # which repeats the SAME action forever if it happens to be
+            # blocked for whichever piece is secretly active, never
+            # varying enough to ever reveal identity. _identity_tried
+            # tracks "tried while blind" independently of any cell.
+            untried = [a for a in move_ids if a not in self._identity_tried]
+            if untried:
+                self._pending_action = untried[0]
+                self._pending_kind = "move"
+                return simple_action(untried[0])
+        # Truly nothing left to try (a known cell with every action
+        # already tried, or blind identity-probing exhausted every
+        # action too) -- every OTHER tier in _route already failed too,
+        # so this is a genuine last resort. MEASURED necessary: always
+        # defaulting to move_ids[0] here repeats the IDENTICAL action
+        # forever with no chance of ever revealing new information (its
+        # outcome from this exact cell is already fully determined);
+        # cycling by self._step at least varies the probe, which can
+        # matter if circumstances change from outside this cell's own
+        # history (e.g. another piece that was blocking a direction
+        # moves away).
+        action = move_ids[self._step % len(move_ids)]
+        self._pending_action = action
         self._pending_kind = "move"
-        return simple_action(move_ids[0])
+        return simple_action(action)
 
     def _optimistic_grid(self, height: int = 64, width: int = 64) -> list[list[bool]]:
         """A ``grid_shortest_path``-shaped passability array: every cell is
@@ -821,7 +993,9 @@ class Adapter(GameAdapter):
                 grid[r][c] = False
         return grid
 
-    def _route(self, goal_target: Cell, move_ids: list[int]) -> GameAction:
+    def _route(
+        self, goal_target: Cell, move_ids: list[int], other_cells: Sequence[Cell] = ()
+    ) -> GameAction:
         if self._active_cell == goal_target:
             return self._probe(move_ids)
         if not self._dir_map:
@@ -848,33 +1022,71 @@ class Adapter(GameAdapter):
         # The optimistic planner found NO route at all -- goal_target is
         # sealed off by CONFIRMED walls, not merely unexplored space (an
         # optimistic search only fails this way, since every unknown cell
-        # is assumed open). Fall back to frontier exploration, but rank
-        # candidates by proximity to the GOAL (grid_distance_field seeded
-        # FROM the target over the same optimistic map) rather than
-        # proximity to the current cell, so expansion still trends toward
-        # the goal instead of flooding outward blindly.
-        tried_pairs = {(cell, a) for cell, acts in self._tried_from.items() for a in acts}
-        frontier = reachable_frontier(self._transitions, self._active_cell, tried_pairs)
-        if frontier:
-            goal_distances = grid_distance_field(optimistic, [goal_target], moves=moves)
-            ranked = sorted(frontier, key=lambda pair: goal_distances.get(pair[0], float("inf")))
-            cell, action = ranked[0]
-            if cell == self._active_cell:
-                self._pending_action = action  # type: ignore[assignment]
-                self._pending_kind = "move"
-                return simple_action(action)  # type: ignore[arg-type]
-            sub_step = self._first_step(optimistic, self._active_cell, cell, moves, move_labels)  # type: ignore[arg-type]
-            if sub_step is not None:
-                self._pending_action = sub_step
-                self._pending_kind = "move"
-                return simple_action(sub_step)
-
-        untried = [a for a in move_ids if a not in self._tried_from.get(self._active_cell, set())]
-        if untried:
-            action = self._pick_action(untried, self._active_cell, goal_target)  # type: ignore[arg-type]
+        # is assumed open). Try the CURRENT cell's own untried actions
+        # FIRST -- MEASURED necessary: without this check ahead of the
+        # broader frontier search below, a current cell with a perfectly
+        # good untried action would still get routed AWAY from (toward
+        # some other frontier cell that also merely "has an untried
+        # action"), and if that other cell then routes straight back
+        # here, the two cells trap the piece in a permanent ping-pong
+        # that never actually TRIES the untried action at either one.
+        untried_here = [a for a in move_ids if a not in self._tried_from.get(self._active_cell, set())]
+        if untried_here:
+            action = self._pick_action(untried_here, self._active_cell, goal_target)  # type: ignore[arg-type]
             self._pending_action = action
             self._pending_kind = "move"
             return simple_action(action)
+
+        # The current cell is fully exhausted. Fall back to frontier
+        # exploration: any OTHER cell ever STOOD AT (a key in
+        # _tried_from) with fewer than len(move_ids) actions tried is a
+        # genuine frontier candidate, reachable or not via the
+        # OPTIMISTIC grid (not reachable_frontier's narrower "walked
+        # this exact edge before" view) -- MEASURED necessary:
+        # reachable_frontier's graph (built only from this piece's own
+        # successful moves) can be fully disconnected from every other
+        # still-open cell (e.g. ones visited by a DIFFERENT piece, or
+        # reached mid-push), leaving NO candidate at all even though the
+        # optimistic map clearly shows a route there. Ranked by
+        # proximity to the GOAL (grid_distance_field seeded FROM the
+        # target) so expansion still trends toward the goal instead of
+        # flooding outward blindly.
+        frontier_cells = [
+            c for c, tried in self._tried_from.items() if len(tried) < len(move_ids) and c != self._active_cell
+        ]
+        if frontier_cells:
+            goal_distances = grid_distance_field(optimistic, [goal_target], moves=moves)
+            frontier_cells.sort(key=lambda c: goal_distances.get(c, float("inf")))
+            for cell in frontier_cells:
+                sub_step = self._first_step(optimistic, self._active_cell, cell, moves, move_labels)
+                if sub_step is not None:
+                    self._pending_action = sub_step
+                    self._pending_kind = "move"
+                    return simple_action(sub_step)
+
+        # Neither the direct optimistic beeline nor frontier expansion
+        # made any progress -- as a last resort before falling back to
+        # blind local probing, try walking the active piece TOWARD (and
+        # so, on the final step, INTO) the nearest other piece. MEASURED
+        # (level 0 gold trace): colliding with another piece triggers a
+        # push-slide that can cross territory pure walking cannot (this
+        # adapter's own optimistic search independently confirmed a
+        # genuine wall on level 0 that ends exactly where gold's push
+        # begins) -- see _record_blocked's push-settling. The optimistic
+        # grid never marks a piece-occupied cell blocked, so
+        # grid_shortest_path happily routes toward it; only tried once
+        # assigned-target routing and frontier expansion are BOTH
+        # exhausted, so this never displaces the working walk-first
+        # behaviour on levels/games that don't need a push.
+        for candidate in sorted(
+            other_cells,
+            key=lambda c: abs(c[0] - self._active_cell[0]) + abs(c[1] - self._active_cell[1]),  # type: ignore[index]
+        ):
+            push_step = self._first_step(optimistic, self._active_cell, candidate, moves, move_labels)
+            if push_step is not None:
+                self._pending_action = push_step
+                self._pending_kind = "move"
+                return simple_action(push_step)
 
         return self._probe(move_ids)
 
