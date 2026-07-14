@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
-from admorphiq.adapters25.m0r0 import Adapter, _detect_goal
+from admorphiq.adapters25.m0r0 import Adapter, _detect_goal, _snap_to_lattice
 
 
 def _region(color: int, bbox: tuple[int, int, int, int], size: int | None = None) -> dict:
@@ -96,6 +96,44 @@ def test_detect_goal_reports_self_as_arrived_when_a_previously_seen_partner_merg
     # partner at all).
     color2, cell2 = _detect_goal(regions, self_color=7, self_cell=self_cell, partner_ever_seen=False)
     assert (color2, cell2) == (9, (0, 0))
+
+
+def test_snap_to_lattice_rounds_an_off_lattice_goal_to_the_nearest_reachable_cell():
+    """Purpose: regression pin for the real bug a live smoke measured
+    directly -- a mirror partner's true bbox position generally does NOT
+    sit on SELF's own movement lattice (their bboxes are offset by a few
+    pixels, so the two pieces can only become ADJACENT, never exactly
+    coincident -- see module docstring). Routing to the goal's RAW
+    position therefore asks grid_shortest_path for a cell SELF can never
+    exactly occupy, and the search always fails. Snapping per axis to the
+    nearest multiple of the measured step size must round to whichever
+    lattice point is CLOSER, independently per axis.
+    Expected feedback: failure means routing targets an unreachable
+    off-lattice cell again, reproducing the exact "always returns no path"
+    defect this fix closed."""
+    dir_map = {1: (-5, 0), 2: (5, 0), 3: (0, -5), 4: (0, 5)}
+    # origin's own column is 54; goal's raw column is 6 -- neither 54's
+    # nor 6's residue mod 5 match (54 % 5 == 4, 6 % 5 == 1), so goal is
+    # genuinely off SELF's lattice in both axes here.
+    origin = (6, 54)
+    goal = (6, 6)
+    snapped = _snap_to_lattice(goal, origin, dir_map)
+    # 54, 49, 44, ..., 9, 4 is SELF's own column lattice; 6 sits between 4
+    # and 9, closer to 4 (distance 2) than to 9 (distance 3).
+    assert snapped == (6, 4)
+
+
+def test_snap_to_lattice_leaves_an_already_on_lattice_target_unchanged():
+    """Purpose: a goal that already sits on SELF's own lattice (the
+    common case whenever the two pieces share a coordinate offset) must
+    round to itself exactly, not drift to a neighbouring cell.
+    Expected feedback: failure means routing would overshoot or undershoot
+    an already-reachable goal by one step, wasting an action on every
+    single arrival."""
+    dir_map = {1: (-5, 0), 2: (5, 0), 3: (0, -5), 4: (0, 5)}
+    origin = (10, 10)
+    goal = (25, 40)  # both offsets from origin are exact multiples of 5
+    assert _snap_to_lattice(goal, origin, dir_map) == goal
 
 
 def _make_frame(grid: list[list[int]], levels_completed: int = 0) -> SimpleNamespace:

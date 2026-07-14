@@ -132,6 +132,36 @@ def _manhattan(a: Cell, b: Cell) -> int:
     return abs(a[0] - b[0]) + abs(a[1] - b[1])
 
 
+def _snap_to_lattice(target: Cell, origin: Cell, dir_map: dict[int, Cell]) -> Cell:
+    """Round ``target`` to the NEAREST cell reachable from ``origin`` via
+    integer multiples of ``dir_map``'s own measured per-axis step sizes.
+
+    Necessary because a mirror partner's true bbox position generally does
+    NOT sit on SELF's own movement lattice -- the two pieces' bboxes are
+    offset by a few pixels (measured directly: the offline gold-trace
+    investigation found the WIN moment is the two bboxes becoming
+    ADJACENT/touching, merging into one double-width region, never
+    occupying the identical top-left coordinate). Asking
+    ``grid_shortest_path`` to reach the goal's RAW position therefore asks
+    for a cell SELF can never exactly land on -- a real bug a live smoke
+    measured directly (the route search always returned None, and the
+    planner span its whole remaining budget on a level whose true target
+    was only a few pixels away). Snapping to the nearest lattice-aligned
+    cell in each axis independently gives the closest cell SELF can
+    actually occupy, which is exactly the adjacency the win condition
+    needs."""
+    row_step = next((abs(dr) for dr, dc in dir_map.values() if dr != 0), 0)
+    col_step = next((abs(dc) for dr, dc in dir_map.values() if dc != 0), 0)
+
+    def snap_axis(t: int, o: int, step: int) -> int:
+        if step == 0:
+            return t
+        rem = (t - o) % step
+        return t - rem if rem <= step - rem else t + (step - rem)
+
+    return (snap_axis(target[0], origin[0], row_step), snap_axis(target[1], origin[1], col_step))
+
+
 def _detect_goal(
     regions: list[Region],
     self_color: int | None,
@@ -201,6 +231,10 @@ class Adapter(GameAdapter):
         self._active_cell: Cell | None = None
         self._goal_color: int | None = None
         self._goal_cell: Cell | None = None
+        # goal_cell snapped onto SELF's own step lattice -- see
+        # _snap_to_lattice's docstring. This, not the raw goal_cell, is
+        # what routing/arrival actually target.
+        self._goal_target: Cell | None = None
         # True once a mirror partner has been directly observed as a
         # SEPARATE region at least once this level -- see _detect_goal's
         # docstring for why this gates the singleton-colour fallback.
@@ -304,6 +338,7 @@ class Adapter(GameAdapter):
         self._active_cell = None
         self._goal_color = None
         self._goal_cell = None
+        self._goal_target = None
         self._partner_ever_seen = False
         self._tried_from = {}
         self._known_blocked = set()
@@ -376,20 +411,69 @@ class Adapter(GameAdapter):
 
         if ref_cell is None:
             return
-        self_before = [r for r in regions_before if r["color"] == self._self_color]
-        if not self_before:
-            return
-        from_cell = min(self_before, key=lambda r: _manhattan(r["bbox"][:2], ref_cell))["bbox"][:2]  # type: ignore[assignment]
+        # SELF was AT ref_cell by construction -- that is what the caller
+        # (_route/_probe) recorded before issuing this action -- so there
+        # is no need to re-derive it via fuzzy matching. Only the OUTCOME
+        # (did it move, and to where) is a genuinely new observation.
+        from_cell = ref_cell
         bg_cur = most_common_color(grid)
         self_cur = [r for r in find_regions(grid, background=bg_cur) if r["color"] == self._self_color]
         if not self_cur:
             return
-        new_cell: Cell = min(self_cur, key=lambda r: _manhattan(r["bbox"][:2], ref_cell))["bbox"][:2]  # type: ignore[assignment]
+        cur_cells = {r["bbox"][:2] for r in self_cur}
+
+        # EXACT position checks first (never fuzzy nearest-match when the
+        # possibilities are known): either SELF is still exactly at
+        # from_cell (blocked) or exactly at the PREDICTED destination
+        # (dir_map[action], once measured) -- a real, measured bug this
+        # replaces: a mirror partner of the SAME colour can sit CLOSER to
+        # ref_cell than SELF's own true post-action position on some
+        # frames (they can pass near each other), and "nearest region to
+        # ref_cell" would then silently lock onto the PARTNER instead of
+        # SELF, corrupting known_blocked with false walls that describe
+        # the partner's geometry, not SELF's (measured directly: a first
+        # live smoke got SELF permanently boxed into a tiny, fully-
+        # exhausted dead-end pocket with no reachable path anywhere else,
+        # for exactly this reason).
+        predicted = self._dir_map.get(action)
+        if predicted is not None:
+            dest = (from_cell[0] + predicted[0], from_cell[1] + predicted[1])
+            if dest in cur_cells:
+                self._tried_from.setdefault(from_cell, set()).add(action)
+                self._active_cell = dest
+                return
+            if from_cell in cur_cells:
+                self._record_blocked(from_cell, action)
+                return
+            # Neither exact position holds -- dir_map's carried-over
+            # magnitude for this action no longer matches (measured real
+            # cause: dir_map persists ACROSS LEVELS as a warm-start prior,
+            # but a level's own pixel-per-step scale can differ from the
+            # level it carried over from -- e.g. 5px on one level, 4px on
+            # the next; a first live smoke got SELF stuck oscillating
+            # between two cells forever because the stale 5px prediction
+            # never matched, so this observation kept getting silently
+            # discarded and the TRUE 4px magnitude was never learned).
+            # Fall through to bounded re-measurement below instead of
+            # discarding -- self-correct dir_map for the level SELF is
+            # actually on right now.
+
+        # Bounded nearest-match re-measurement: used both for a BRAND-NEW
+        # action (dir_map has no entry yet) and to SELF-CORRECT a stale
+        # magnitude from a different level's pixel scale (see above).
+        # Bounded to a small radius so a distant mirror partner of the
+        # SAME colour can never win this match by chance and corrupt the
+        # measurement (see the exact-match rationale above this branch).
+        near = min(self_cur, key=lambda r: _manhattan(r["bbox"][:2], ref_cell))
+        new_cell: Cell = near["bbox"][:2]  # type: ignore[assignment]
+        if _manhattan(new_cell, ref_cell) > 20:
+            self._tried_from.setdefault(from_cell, set()).add(action)
+            return
         if new_cell == from_cell:
-            self._record_blocked(ref_cell, action)
+            self._record_blocked(from_cell, action)
             return
         shift = (new_cell[0] - from_cell[0], new_cell[1] - from_cell[1])
-        self._dir_map.setdefault(action, shift)
+        self._dir_map[action] = shift  # overwrite, not setdefault -- always trust the latest direct measurement
         self._tried_from.setdefault(from_cell, set()).add(action)
         self._active_cell = new_cell
 
@@ -449,8 +533,13 @@ class Adapter(GameAdapter):
         )
         if self._goal_cell is None:
             return self._probe(move_ids)
+        self._goal_target = (
+            _snap_to_lattice(self._goal_cell, self._active_cell, self._dir_map)
+            if self._dir_map
+            else self._goal_cell
+        )
 
-        if self._active_cell == self._goal_cell:
+        if self._active_cell == self._goal_target:
             return self._probe(move_ids)
 
         return self._route(move_ids)
@@ -493,7 +582,7 @@ class Adapter(GameAdapter):
         if ref_cell is not None:
             untried = self._viable_actions(ref_cell, move_ids)
             if untried:
-                return self._pick_action(untried, ref_cell, self._goal_cell)
+                return self._pick_action(untried, ref_cell, self._goal_target)
         return move_ids[0]
 
     def _passable_array(self) -> list[list[bool]]:
@@ -508,7 +597,7 @@ class Adapter(GameAdapter):
         return array
 
     def _route(self, move_ids: list[int]) -> int:
-        assert self._active_cell is not None and self._goal_cell is not None
+        assert self._active_cell is not None and self._goal_target is not None
         if not self._dir_map:
             return self._probe(move_ids)
 
@@ -517,7 +606,7 @@ class Adapter(GameAdapter):
         move_labels = {unit: action for action, unit in self._dir_map.items()}
         optimistic = self._passable_array()
 
-        path = grid_shortest_path(optimistic, self._active_cell, self._goal_cell, moves=moves)
+        path = grid_shortest_path(optimistic, self._active_cell, self._goal_target, moves=moves)
         if path and len(path) >= 2:
             try:
                 step = path_to_moves(path[:2], move_labels)[0]
@@ -531,7 +620,7 @@ class Adapter(GameAdapter):
         # otherwise invisible to the planner's known move set).
         untried_here = self._viable_actions(self._active_cell, move_ids)
         if untried_here:
-            return self._pick_action(untried_here, self._active_cell, self._goal_cell)
+            return self._pick_action(untried_here, self._active_cell, self._goal_target)
 
         # Broader frontier: any OTHER cell ever stood at with fewer than
         # len(move_ids) actions tried, ranked by proximity to the GOAL.
@@ -539,7 +628,7 @@ class Adapter(GameAdapter):
             c for c, tried in self._tried_from.items() if len(tried) < len(move_ids) and c != self._active_cell
         ]
         if frontier_cells:
-            goal_distances = grid_distance_field(optimistic, [self._goal_cell], moves=moves)
+            goal_distances = grid_distance_field(optimistic, [self._goal_target], moves=moves)
             frontier_cells.sort(key=lambda c: goal_distances.get(c, float("inf")))
             for cell in frontier_cells:
                 sub_path = grid_shortest_path(optimistic, self._active_cell, cell, moves=moves)
