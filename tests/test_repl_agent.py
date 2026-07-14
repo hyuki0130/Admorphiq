@@ -95,6 +95,8 @@ def test_illegal_action_rejected_and_fallback():
     rec = agent._recorder.records[-1]
     assert rec.action is None              # model's illegal action was NOT accepted
     assert agent._prev_action == {"action": "LEFT"}  # safe fallback executed
+    assert agent.llm_calls == 1
+    assert agent.governor_rejections >= 1  # observability counter wired
 
 
 # ----- macro stop-on-surprise -------------------------------------------------

@@ -234,3 +234,35 @@ the 15-min first-action budget if the LLM-free chain acts first). Latency is gen
 CUDA-graph speedup. Duck capped context at 64k for throughput; we serve 131k with 6.2x
 concurrency — eviction pressure is halved.
 
+
+## Round 1 second half — repl-bench kernel (built, awaiting Kaggle push)
+
+`notebooks/repl_bench_kernel.py` + `src/admorphiq/repl_agent/bench.py` give
+`ReplAgent` its first real-LLM run and write full observability diagnostics (the
+transcripts are how we debug the expected first-run integration bugs).
+
+- **`bench.run_game(env, agent, *, max_actions=150, wall_s=600, reset_action, clock)`**
+  — plays one game under BOTH an action cap and a wall-clock soft deadline,
+  detects win / GAME_OVER (with restart revival), isolates a per-game crash into
+  an error record (one game never kills the run), and assembles `GameDiagnostics`
+  {levels, actions, wall_s, llm_calls, parse_failures, governor_rejections,
+  sandbox_errors, terminal_reason, error}. `clock` is injectable for
+  deterministic deadline tests. 7 unit tests.
+- **`ReplAgent` observability counters** — `llm_calls`, `parse_failures`,
+  `governor_rejections`, `sandbox_errors` (game-lifetime; read by the diagnostics).
+- **Kernel** (`notebooks/repl_bench_kernel.py`, imports cleanly off-Kaggle):
+  env-probe → offline install (arc wheels + vLLM from the vllm-deps mount via
+  `--find-links`) → boot the vLLM api_server subprocess with the measured PREFLIGHT
+  config (bf16 KV, `VLLM_ATTENTION_BACKEND=TRITON_ATTN`,
+  `VLLM_USE_FLASHINFER_SAMPLER=0`, spawn, `--max-model-len 131072 --enforce-eager
+  --gpu-memory-utilization 0.92`, port 8199) → health-poll (1200s) → run
+  `ReplAgent` (OpenAI-compat client → local vLLM, `REPL_SANDBOX_TIMEOUT=30`) on
+  su15, ls20 (sanity) + bp35, dc22, g50t (walls), each capped 150 actions / 600s,
+  sequentially with per-game try/except → write `diagnostics/{game}.json` +
+  `transcripts/{game}.jsonl` + a one-line per-game summary + a grep-able
+  `REPL_BENCH_SUMMARY {...}` line.
+
+Kernel metadata (model `michaelpoluektov/qwen3-6-27b-fp8`, kernel_source
+`philipvonderlind/vllm-deps`, dataset `jaehyukhyun/admorphiq-src`, competition
+source) + the push/poll ceremony are the team-lead's side. 54 repl_agent tests
+pass, ruff clean.

@@ -182,6 +182,11 @@ class ReplAgent:
         self._builder = TurnPacketBuilder(token_budget=token_budget)
         self.last_hypothesis: str | None = None
         self._game_id = ""
+        # Game-lifetime observability counters (read by the bench diagnostics).
+        self.llm_calls = 0
+        self.parse_failures = 0
+        self.governor_rejections = 0
+        self.sandbox_errors = 0
         self._reset_game()
 
     def _reset_game(self) -> None:
@@ -280,14 +285,19 @@ class ReplAgent:
         t0 = time.time()
         raw = self._llm.complete(prompt, None)
         latency_ms = (time.time() - t0) * 1000.0
+        self.llm_calls += 1
 
         parsed = parse_model_output(raw)
+        if parsed.kind == "none":
+            self.parse_failures += 1
         sandbox_out = sandbox_err = ""
         chosen: dict[str, Any] | None = None
 
         if parsed.kind == "code" and parsed.code:
             res = run_code(parsed.code, self._store)
             sandbox_out, sandbox_err = res.stdout, res.error
+            if res.error:
+                self.sandbox_errors += 1
             for req in res.actions:
                 d = self._govern_single(req, legal, hw, state_hash)
                 if d is not None:
@@ -310,7 +320,10 @@ class ReplAgent:
                             _as_int(a.get("row")), _as_int(a.get("col")))
         dec = self._governor.check_single(req, legal=legal, board_hw=hw,
                                           state_hash=state_hash)
-        return dec.action if dec.accepted else None
+        if not dec.accepted:
+            self.governor_rejections += 1
+            return None
+        return dec.action
 
     def _arm_macro(self, macro: list[dict[str, Any]], legal: set[str],
                    hw: tuple[int, int]) -> None:
@@ -327,6 +340,8 @@ class ReplAgent:
         if dec.accepted and dec.action is not None:
             self._queue.append(dec.action)
             self._macro_active = True
+        else:
+            self.governor_rejections += 1
 
     def _fallback(self, obs: Any) -> dict[str, Any]:
         legal = _legal_names(obs)
