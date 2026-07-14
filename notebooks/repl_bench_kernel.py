@@ -212,6 +212,7 @@ def run_bench() -> dict:
     os.environ["REPL_RENDER_IMAGES"] = "1" if render_images else "0"
     os.environ["REPL_MAX_TOOL_ROUNDS"] = str(max_tool_rounds)
     os.environ["REPL_ARM"] = arm
+    print(f"ARM={arm}", flush=True)  # self-identify in stdout
     print(f"[bench] arm={arm} render_images={render_images} "
           f"max_tool_rounds={max_tool_rounds}", flush=True)
 
@@ -236,7 +237,8 @@ def run_bench() -> dict:
                    game_list=game_ids, accelerator=_gpu_name(),
                    max_actions=MAX_ACTIONS, wall_s=WALL_S)
 
-    summary: dict[str, dict] = {}
+    summary: dict[str, dict] = {"_meta": {"arm": arm, "render_images": render_images,
+                                          "max_tool_rounds": max_tool_rounds}}
     for game_id in game_ids:
         # Open the append-only event stream FIRST so a killed kernel still leaves
         # a per-event record (run_incomplete when there is no terminal event).
