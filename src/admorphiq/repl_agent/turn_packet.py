@@ -166,10 +166,12 @@ def _rc(centroid: tuple[float, float]) -> list[int]:
 
 
 def _object_to_packet(obj: SceneObject) -> dict[str, Any]:
+    # Coordinate fields carry the _rc suffix so (row, col) order is unambiguous
+    # (Codex v3 review defect #6: unlabeled arrays caused row/col swaps).
     return {
         "id": obj.id,
-        "bbox": list(obj.bbox),
-        "centroid": _rc(obj.centroid),
+        "bbox_rc": list(obj.bbox),          # (y0, x0, y1, x1) = (row0,col0,row1,col1)
+        "centroid_rc": _rc(obj.centroid),   # (row, col)
         "colors": {int(obj.color): obj.area},
         "area": obj.area,
         "shape_hash": obj.shape_hash,
@@ -178,7 +180,7 @@ def _object_to_packet(obj: SceneObject) -> dict[str, Any]:
         "contained_by": obj.contained_by,
         "adjacent": obj.adjacent,
         "change_history": "; ".join(obj.change_history[-3:]),
-        "safe_click": list(obj.safe_click),
+        "safe_click_rc": list(obj.safe_click),  # (row, col) — click here
     }
 
 
@@ -262,15 +264,25 @@ class TurnPacketBuilder:
         game_sec = dict(game)
         game_sec.setdefault("coordinate_rule", self.coordinate_rule)
 
-        objects = sorted(scene.objects, key=lambda o: o.area, reverse=True)
+        # Retain CHANGED objects first, then unchanged by area desc — so trimming
+        # never drops an object the CHANGE section references (Codex defect #7:
+        # events named ids absent from the retained set, breaking referential
+        # integrity). Trimming pops from the end = the largest UNCHANGED objects.
+        changed_ids = {e["id"] for e in scene.events if "id" in e}
+        changed_ids |= {c for e in scene.events for c in e.get("into", [])}
+        objects = sorted(
+            scene.objects,
+            key=lambda o: (o.id not in changed_ids, -o.area))
         obj_packets = [_object_to_packet(o) for o in objects[: self.max_objects]]
-        regions = [{"id": o.id, "bbox": list(o.bbox), "role_guess": "unknown"}
+        regions = [{"id": o.id, "bbox_rc": list(o.bbox), "role_guess": "unknown"}
                    for o in objects
                    if any(x.contained_by == o.id for x in scene.objects)]
 
         scene_sec = {
             "frame_hash": base_hash(frame) if frame is not None else "",
             "background_color": scene.background,
+            "total_objects": len(scene.objects),
+            "objects_shown": len(obj_packets),  # visible truncation marker
             "regions": regions,
             "objects": obj_packets,
         }
@@ -297,10 +309,11 @@ class TurnPacketBuilder:
             if len(objs) <= 1:
                 packet["_meta"]["truncated"] = True
                 break
-            # drop the smallest-area (last, since sorted desc) object.
+            # drop the LAST object — objects are ordered changed-first then
+            # area-desc, so this is the largest UNCHANGED object.
             objs.pop()
             packet["_meta"]["truncated"] = True
-            packet["_meta"]["objects_shown"] = len(objs)
+            packet["SCENE"]["objects_shown"] = len(objs)  # visible marker stays truthful
         return packet
 
     def to_yaml(self, packet: dict[str, Any]) -> str:

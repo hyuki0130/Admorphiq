@@ -121,7 +121,7 @@ def test_run_code_records_actions():
     code = (
         "objs = objects(-1)\n"
         "print('n', len(objs))\n"
-        "action('MOUSE', row=objs[0]['safe_click'][0], col=objs[0]['safe_click'][1])\n"
+        "action('MOUSE', row=objs[0]['safe_click_rc'][0], col=objs[0]['safe_click_rc'][1])\n"
     )
     res = run_code(code, _store_two_frames(), timeout=10)
     assert res.ok

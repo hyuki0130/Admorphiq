@@ -93,6 +93,20 @@ def test_parse_bare_text_action_from_real_dc22_tail():
     assert p.actions == [{"action": "MOUSE", "row": 46, "col": 35}]
 
 
+def test_parser_ignores_stale_incidental_action():
+    """Purpose: a MOUSE mentioned mid-reasoning is NOT recovered when the LAST
+    line is not an action (Codex defect: su15 t4 executed a stale MOUSE).
+
+    Feedback: failure means the agent executes actions the model didn't finally
+    choose.
+    """
+    text = "I could click MOUSE(63, 58) but let me check first\nLet's look at o30 at (2"
+    assert parse_model_output(text).kind == "none"  # no action on the last line
+    # but a real final-line action IS still parsed.
+    assert parse_model_output("reasoning\nMOUSE(5, 6)").actions == [
+        {"action": "MOUSE", "row": 5, "col": 6}]
+
+
 def test_parse_bare_movement_word():
     """Purpose: a lone movement word on the last line parses as that action.
 
@@ -142,7 +156,7 @@ def test_openai_client_disables_thinking_and_caps_tokens(monkeypatch):
     client = OpenAICompatClient(model="qwen")
     assert client.complete("hi") == "UP"
     assert captured["body"]["chat_template_kwargs"] == {"enable_thinking": False}
-    assert captured["body"]["max_tokens"] == 1536
+    assert captured["body"]["max_tokens"] == 512
     assert captured["timeout"] == 300.0
 
 

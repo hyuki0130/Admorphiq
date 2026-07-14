@@ -52,14 +52,14 @@ def _scene_payload(scene: Scene | None) -> list[dict[str, Any]]:
             "id": o.id,
             "color": o.color,
             "cells": [list(c) for c in o.cells],
-            "bbox": list(o.bbox),
-            "centroid": [round(o.centroid[0], 2), round(o.centroid[1], 2)],
+            "bbox_rc": list(o.bbox),  # (row0, col0, row1, col1)
+            "centroid_rc": [round(o.centroid[0], 2), round(o.centroid[1], 2)],
             "area": o.area,
             "shape_hash": o.shape_hash,
             "holes": o.holes,
             "contained_by": o.contained_by,
             "adjacent": o.adjacent,
-            "safe_click": list(o.safe_click),
+            "safe_click_rc": list(o.safe_click),  # (row, col)
         }
         for o in scene.objects
     ]

@@ -87,6 +87,46 @@ def test_yaml_snapshot_stable():
     assert "SCENE" in parsed
 
 
+def test_objects_use_rc_coordinate_names():
+    """Purpose: object coordinate fields carry the _rc suffix (Codex defect #6:
+    unlabeled arrays caused row/col swaps).
+
+    Feedback: failure means the model cannot tell (row,col) from (x,y).
+    """
+    s1, s2, f1, f2 = _scene_pair()
+    b = TurnPacketBuilder()
+    packet = b.build(game=_game_ctx(), last_action=None, scene=s2,
+                     history=HistoryTiers(), memory=EnvironmentMemory())
+    obj = packet["SCENE"]["objects"][0]
+    assert "safe_click_rc" in obj and "bbox_rc" in obj and "centroid_rc" in obj
+    assert "safe_click" not in obj and "bbox" not in obj
+
+
+def test_changed_objects_retained_first_on_trim():
+    """Purpose: when trimming for the token budget, CHANGED objects are kept and
+    large UNCHANGED ones are dropped first (Codex defect #7: events referenced
+    trimmed ids), with a visible objects_shown marker.
+
+    Feedback: failure means CHANGE names an object absent from SCENE.objects.
+    """
+    tracker = SceneTracker(background=0)
+    f1 = np.zeros((16, 16), dtype=np.int64)
+    f1[0:4, 0:4] = 5          # a big unchanged block
+    f1[10, 10] = 2            # a small object that will move
+    tracker.update(f1)
+    f2 = np.zeros((16, 16), dtype=np.int64)
+    f2[0:4, 0:4] = 5          # big block unchanged
+    f2[10, 12] = 2            # the small object moved -> a CHANGE event
+    scene = tracker.update(f2)
+    moved_ids = {e["id"] for e in scene.events if e["type"] == "moved"}
+    b = TurnPacketBuilder(token_budget=90, max_objects=20)  # tight -> must trim
+    packet = b.build(game=_game_ctx(), last_action=None, scene=scene,
+                     history=HistoryTiers(), memory=EnvironmentMemory())
+    shown_ids = {o["id"] for o in packet["SCENE"]["objects"]}
+    assert moved_ids and moved_ids <= shown_ids   # changed object survived the trim
+    assert "objects_shown" in packet["SCENE"]     # visible marker
+
+
 def test_token_budget_trims_objects():
     """Purpose: a tiny token budget forces SCENE.objects truncation and sets the
     truncated meta flag.

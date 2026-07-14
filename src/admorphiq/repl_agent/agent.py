@@ -66,8 +66,8 @@ _SYSTEM_PROMPT = (
     "Each turn do ONE of:\n"
     "  (A) Write a SINGLE ```python block to INSPECT and/or ACT with these "
     "functions:\n"
-    "      objects(t=-1) -> [{id,color,bbox,centroid,area,holes,contained_by,"
-    "adjacent,safe_click}]\n"
+    "      objects(t=-1) -> [{id,color,bbox_rc,centroid_rc,area,holes,"
+    "contained_by,adjacent,safe_click_rc}]  # _rc = (row,col)\n"
     "      crop((y0,x0,y1,x1),t=-1), ascii(region=None,t=-1), mask(id,t=-1), "
     "compare(t1,t2), relations(id,t=-1)\n"
     "      shortest_path(start, goals, passable_mask) -> path  # YOU supply "
@@ -129,7 +129,7 @@ class OpenAICompatClient:
     """
 
     def __init__(self, base_url: str | None = None, model: str | None = None,
-                 timeout: float = 300.0, max_tokens: int = 1536,
+                 timeout: float = 300.0, max_tokens: int = 512,
                  enable_thinking: bool = False) -> None:
         self.base_url = (base_url or os.environ.get("REPL_LLM_BASE_URL", "")).rstrip("/")
         if not self.base_url:
@@ -246,19 +246,23 @@ def parse_prediction(text: str) -> dict[str, Any] | None:
 
 
 def _bare_text_action(text: str) -> dict[str, Any] | None:
-    """Accept the model's NATURAL bare-text action as a fallback.
+    """Accept the model's bare-text action ONLY from the LAST non-empty line.
 
-    Qwen tends to end with a plain ``MOUSE(row, col)`` or a lone movement word
-    rather than the requested JSON. Scan non-empty lines from the end and take
-    the first that is an action. MOUSE is (row, col) per the coordinate rule.
+    Codex v3 review: scanning all lines recovered a STALE action mentioned mid-
+    reasoning (su15 t4 executed an incidental ``MOUSE(63,58)`` from an earlier
+    explanatory line while the real final line was truncated). Per the action-
+    LAST contract, only the final line counts — no incidental recovery.
     """
-    for line in reversed([ln for ln in text.splitlines() if ln.strip()]):
-        m = _MOUSE_RE.search(line)
-        if m:
-            return {"action": "MOUSE", "row": int(m.group(1)), "col": int(m.group(2))}
-        mv = _MOVE_RE.match(line)
-        if mv:
-            return {"action": mv.group(1).upper()}
+    lines = [ln for ln in text.splitlines() if ln.strip()]
+    if not lines:
+        return None
+    line = lines[-1]
+    m = _MOUSE_RE.search(line)
+    if m:
+        return {"action": "MOUSE", "row": int(m.group(1)), "col": int(m.group(2))}
+    mv = _MOVE_RE.match(line)
+    if mv:
+        return {"action": mv.group(1).upper()}
     return None
 
 
