@@ -29,6 +29,30 @@ board), and ``uniformity`` firing on decorative 1-cell texture noise
 indistinguishable, under a naive same-shape count, from a real toggle
 grid. See the per-detector docstrings for exactly what changed.
 
+**Floor-anchoring (R58 tuning round #2, 2026-07-15).** Re-measuring the
+round-1 scoring against the same 24 games found coverage (TOPK) improved
+sharply but top-rank accuracy (TOP1) REGRESSED — traced to the six raw
+formulas having very different values AT their own minimum firing
+threshold (``pattern_match``'s two gates already put its floor near 0.53;
+``arrival``'s ambiguity penalty can push its floor far lower), so a
+detector that "just barely" fired could outrank one with much stronger
+relative evidence purely because its formula family sits higher on
+average. Every detector's raw formula is now rescaled via
+:func:`_floor_anchor`: ``strength = FLOOR + (1-FLOOR) * (raw - gate_min) /
+(gate_max - gate_min)``, where ``gate_min`` is the formula's value
+evaluated ANALYTICALLY at its own firing boundary (documented per detector
+below) and ``gate_max = 1.0`` for all six (each raw formula is a product
+of ``[0, 1]``-bounded terms). This is provably safe: for every detector,
+``raw >= gate_min`` by construction — gate_min substitutes each term that
+has an explicit ``_MIN_*``/``_MAX_*`` gate with its boundary value while
+leaving every other (already-observed, ungated) term at its ACTUAL value
+shared with ``raw``, and a fired detector's gated terms are by definition
+never below their own gate. So ``strength`` always lands in
+``[FLOOR, 1.0]``, and ``FLOOR`` (a component that "just barely fired")
+becomes a comparable floor across all six detector families — the
+semantics of ranking became "how far above ITS OWN bar is this candidate",
+not "which formula family happens to run numerically higher".
+
 Naming follows the verdict's OWN example vocabulary
 (``goals/detectors/{elimination,uniformity,pattern_match,containment,
 arrival}.yaml``) rather than inventing new type names, so a goal
@@ -123,11 +147,20 @@ MAX_UNRESOLVED = 3
 # discriminators, NOT a general threshold sweep.
 _MIN_UNIFORM_GRID_COUNT = 6
 _MAX_UNIFORM_SHAPE_COLORS = 3
+_MIN_UNIFORM_SHAPE_CELLS = 2  # ">1 cell", named for use in gate_min derivations below
 _MIN_CONTAINMENT_SIBLINGS = 2
 _MIN_CONTAINMENT_ITEMS_PER_SIBLING = 2
 _MIN_PATTERN_MATCH_ITEMS = 5
 _MIN_PATTERN_MATCH_DISTINCT_COLORS = 3
 _MIN_THRESHOLD_REPEATS = 3
+_MIN_THRESHOLD_DIFFS = 2  # named for use in gate_min derivations below (was a bare literal)
+
+# Floor-anchoring (R58 tuning round #2): FLOOR is where a "just barely
+# cleared this detector's own firing gate" candidate lands after rescaling;
+# team-lead-suggested 0.2, uniform across all six detectors (a per-detector
+# floor would just reintroduce the calibration-gap problem this exists to
+# fix). See module docstring and :func:`_floor_anchor`.
+_STRENGTH_FLOOR = 0.2
 
 Frame = Sequence[Sequence[int]]
 
@@ -135,6 +168,20 @@ Frame = Sequence[Sequence[int]]
 def _mode_color(frame: Frame) -> int:
     counts = Counter(v for row in frame for v in row)
     return counts.most_common(1)[0][0]
+
+
+def _floor_anchor(raw: float, gate_min: float, gate_max: float = 1.0) -> float:
+    """Rescale ``raw`` (a detector's un-anchored strength) so ``gate_min``
+    (that formula's value at its OWN minimum firing threshold — computed
+    analytically per detector, see each ``_detect_*`` docstring) maps to
+    ``_STRENGTH_FLOOR`` and ``gate_max`` maps to ``1.0``. See the module
+    docstring's "Floor-anchoring" section for why this exists and the proof
+    that ``raw >= gate_min`` always holds by construction (so the result is
+    always in ``[_STRENGTH_FLOOR, 1.0]``); the ``max(0.0, min(1.0, ...))``
+    clamp is defensive only (floating-point safety), not load-bearing.
+    """
+    denom = max(gate_max - gate_min, 1e-9)
+    return _STRENGTH_FLOOR + (1 - _STRENGTH_FLOOR) * max(0.0, min(1.0, (raw - gate_min) / denom))
 
 
 class _Ledger:
@@ -203,6 +250,15 @@ def _detect_arrival(regions: list[dict[str, Any]], frame_area: int, ledger: _Led
       usually a small fraction of the board; a large-but-still-unique-
       coloured region reads as weaker evidence, without being excluded
       outright the way the old median filter did).
+
+    **Floor-anchored (R58 tuning round #2).** The only explicitly GATED
+    term is size, at the dominance boundary (``size == 0.5 * frame_area``
+    gives ``size_distinctness == 0.5``); ``uniqueness_sharpness`` has no
+    fixed gate (``n_candidates`` is unbounded above), so it is left at its
+    ACTUAL value in both ``raw`` and ``gate_min`` — it cancels out of the
+    rescaling, meaning the floor-anchoring here rescales purely on HOW
+    DOMINANT the candidate is, at whatever ambiguity level this frame
+    actually has: ``gate_min = uniqueness_sharpness * 0.5``.
     """
     if len(regions) < 2 or frame_area <= 0:
         return None
@@ -215,7 +271,9 @@ def _detect_arrival(regions: list[dict[str, Any]], frame_area: int, ledger: _Led
     idx, region = min(unique, key=lambda pair: pair[1]["size"])
     uniqueness_sharpness = 1 / len(unique)
     size_distinctness = 1 - region["size"] / frame_area
-    strength = uniqueness_sharpness * size_distinctness
+    raw = uniqueness_sharpness * size_distinctness
+    gate_min = uniqueness_sharpness * 0.5
+    strength = _floor_anchor(raw, gate_min)
     note = "region colour occurs nowhere else in the frame and does not dominate (>50%) the board"
     handle = ledger.evidence(idx, note)
     return {"id": ledger.candidate_id(), "type": "arrival", "support": [handle], "against": [], "strength": strength}
@@ -262,6 +320,18 @@ def _detect_uniformity(regions: list[dict[str, Any]], ledger: _Ledger) -> dict[s
       reuses the SAME cap as discriminator 2 rather than a new constant: a
       single-colour class scores 1.0, a class right at the cap scores low
       but still positive.
+
+    **Floor-anchored (R58 tuning round #2).** ALL THREE terms are
+    explicitly GATED (member count >= ``_MIN_UNIFORM_GRID_COUNT``, shape
+    cells > ``_MIN_UNIFORM_SHAPE_CELLS - 1``, colours <=
+    ``_MAX_UNIFORM_SHAPE_COLORS``), so ``gate_min`` substitutes every term
+    at its own boundary: ``(_MIN_UNIFORM_GRID_COUNT / n_total) * (1 -
+    1/_MIN_UNIFORM_SHAPE_CELLS) * (1 - (_MAX_UNIFORM_SHAPE_COLORS - 1) /
+    _MAX_UNIFORM_SHAPE_COLORS)``, which simplifies to exactly
+    ``_MIN_UNIFORM_GRID_COUNT / (2 * _MAX_UNIFORM_SHAPE_COLORS * n_total)``
+    at current constants (``1 / n_total`` — a clean per-call floor: "if
+    this exact shape class existed, but at the smallest population, the
+    smallest non-trivial shape, and the most colours still allowed").
     """
     if not regions:
         return None
@@ -272,7 +342,7 @@ def _detect_uniformity(regions: list[dict[str, Any]], ledger: _Ledger) -> dict[s
     for sig, members in sorted(groups.items(), key=lambda kv: -len(kv[1])):
         if len(members) < _MIN_UNIFORM_GRID_COUNT:
             break  # population-descending order: no later class clears this bar either
-        if len(sig) <= 1:
+        if len(sig) < _MIN_UNIFORM_SHAPE_CELLS:
             continue  # trivial 1-cell shape — decorative texture, not a toggle grid
         colours = {regions[i]["color"] for i in members}
         if len(colours) > _MAX_UNIFORM_SHAPE_COLORS:
@@ -280,7 +350,13 @@ def _detect_uniformity(regions: list[dict[str, Any]], ledger: _Ledger) -> dict[s
         population_frac = len(members) / n_total
         non_triviality = 1 - 1 / len(sig)
         colour_fit = 1 - (len(colours) - 1) / _MAX_UNIFORM_SHAPE_COLORS
-        strength = population_frac * non_triviality * colour_fit
+        raw = population_frac * non_triviality * colour_fit
+        gate_min = (
+            (_MIN_UNIFORM_GRID_COUNT / n_total)
+            * (1 - 1 / _MIN_UNIFORM_SHAPE_CELLS)
+            * (1 - (_MAX_UNIFORM_SHAPE_COLORS - 1) / _MAX_UNIFORM_SHAPE_COLORS)
+        )
+        strength = _floor_anchor(raw, gate_min)
         sample = members[:MAX_HANDLES_PER_CANDIDATE]
         handles = [
             ledger.evidence(
@@ -315,6 +391,15 @@ def _detect_containment(
       to ``[0, 1]``) — a real slot-grid/pool structure holds roughly EQUAL
       item counts per sibling; wildly uneven counts read as an incidental
       bbox-containment match rather than a designed matching structure.
+
+    **Floor-anchored (R58 tuning round #2).** Only ``sibling_component`` is
+    explicitly GATED (``n_siblings >= _MIN_CONTAINMENT_SIBLINGS``);
+    ``regularity`` has no fixed gate (a real containment structure can
+    legitimately have item counts as uneven as the board allows), so it is
+    left at its ACTUAL value in both ``raw`` and ``gate_min`` and cancels
+    out: ``gate_min = (1 - 1/_MIN_CONTAINMENT_SIBLINGS) * regularity`` —
+    "how strong would this SAME regularity be with only the bare-minimum
+    number of siblings."
     """
     qualifying = {c: items for c, items in containers.items() if len(items) >= _MIN_CONTAINMENT_ITEMS_PER_SIBLING}
     if len(qualifying) < _MIN_CONTAINMENT_SIBLINGS:
@@ -325,7 +410,9 @@ def _detect_containment(
     stdev = (sum((c - mean) ** 2 for c in counts) / n) ** 0.5
     regularity = max(0.0, 1 - (stdev / mean if mean else 1.0))
     sibling_component = 1 - 1 / n
-    strength = sibling_component * regularity
+    raw = sibling_component * regularity
+    gate_min = (1 - 1 / _MIN_CONTAINMENT_SIBLINGS) * regularity
+    strength = _floor_anchor(raw, gate_min)
     sample = list(qualifying.items())[:MAX_HANDLES_PER_CANDIDATE]
     handles = [ledger.evidence(c, f"container region holds {len(items)} item regions") for c, items in sample]
     return {
@@ -349,6 +436,18 @@ def _detect_pattern_match(
     based components): more items, and more distinct colours among them,
     read as stronger evidence of a genuine heterogeneous painting canvas
     rather than an incidental few-item, few-colour coincidence.
+
+    **Floor-anchored (R58 tuning round #2).** BOTH terms are explicitly
+    GATED (items >= ``_MIN_PATTERN_MATCH_ITEMS``, colours >=
+    ``_MIN_PATTERN_MATCH_DISTINCT_COLORS``), so ``gate_min`` is a FIXED
+    constant independent of any per-call data: ``(1 -
+    1/_MIN_PATTERN_MATCH_ITEMS) * (1 - 1/_MIN_PATTERN_MATCH_DISTINCT_COLORS)``
+    ≈ 0.533 at current constants. This is the exact formula this detector
+    was measured to sit ABOVE right at its own minimum firing case in the
+    R58 tuning-round-1 regression — pattern_match's floor was already high
+    relative to detectors like ``arrival`` whose gate_min can be much
+    lower under ambiguity, which is what motivated this whole
+    floor-anchoring round.
     """
     heterogeneous = []
     for c, items in containers.items():
@@ -360,7 +459,9 @@ def _detect_pattern_match(
     c, items, colors = heterogeneous[0]
     item_richness = 1 - 1 / len(items)
     colour_richness = 1 - 1 / len(colors)
-    strength = item_richness * colour_richness
+    raw = item_richness * colour_richness
+    gate_min = (1 - 1 / _MIN_PATTERN_MATCH_ITEMS) * (1 - 1 / _MIN_PATTERN_MATCH_DISTINCT_COLORS)
+    strength = _floor_anchor(raw, gate_min)
     handle = ledger.evidence(
         c, f"container region holds {len(items)} item regions spanning {len(colors)} distinct colours"
     )
@@ -441,6 +542,20 @@ def _detect_elimination(
       vanished twice" — tracking one object's identity ACROSS transitions
       is exactly the harness-level correlation problem this ledger's own
       module docstring rules out of scope for the T4 (delivery) case.
+
+    **Floor-anchored (R58 tuning round #2).** Only ``confirmation_component``
+    is explicitly gated, and its own floor is provable directly from the
+    formula: the PRIMARY transition alone always contributes >= 1 to
+    ``n_transitions_with_a_vanish`` (this function already returned ``None``
+    above if it didn't), so ``confirmation_component >= min(1, 1/2) = 0.5``
+    always. ``size_component``/``signature_distinctness`` have no fixed
+    gate, so they stay at their ACTUAL values in both ``raw`` and
+    ``gate_min`` and cancel out: ``gate_min = size_component *
+    signature_distinctness * 0.5``. Net effect: with NO ``extra_transitions``
+    (confirmation stuck at exactly 0.5), ``raw == gate_min`` exactly, so
+    strength lands EXACTLY at ``_STRENGTH_FLOOR`` regardless of how clean
+    the single observed vanish looked — an uncorroborated elimination call
+    is, by design, never more than "just barely fired" confidence.
     """
     regs_before, vanished = _vanished_signatures(before, after, background)
     if not vanished:
@@ -462,7 +577,9 @@ def _detect_elimination(
     n_with_vanish = sum(1 for b, a in transitions if _vanished_signatures(b, a, background)[1])
     confirmation_component = min(1.0, n_with_vanish / 2)
 
-    strength = size_component * signature_distinctness * confirmation_component
+    raw = size_component * signature_distinctness * confirmation_component
+    gate_min = size_component * signature_distinctness * 0.5
+    strength = _floor_anchor(raw, gate_min)
     handle = ledger.evidence(
         idx, "region present before the transition has no matching (colour, shape) after it", frame="before"
     )
@@ -490,13 +607,20 @@ def _detect_threshold(action_repeat_frames: Sequence[Frame], ledger: _Ledger) ->
       diffs[0], 1)`` — a trend that grows/shrinks by a large relative
       amount is a clearer signal than one that's technically monotonic but
       barely moves (e.g. 1 cell to 2 cells, still monotonic, weak evidence).
+
+    **Floor-anchored (R58 tuning round #2).** Only ``run_length_component``
+    is explicitly gated (``n_diffs >= _MIN_THRESHOLD_DIFFS``);
+    ``magnitude_component`` has no fixed gate (the relative swing can
+    legitimately be tiny for a real, valid trend), so it stays at its
+    ACTUAL value in both ``raw`` and ``gate_min`` and cancels out:
+    ``gate_min = (1 - 1/_MIN_THRESHOLD_DIFFS) * magnitude_component``.
     """
     if len(action_repeat_frames) < _MIN_THRESHOLD_REPEATS:
         return None
     diffs = [
         frame_diff(a, b)["count"] for a, b in zip(action_repeat_frames, action_repeat_frames[1:], strict=False)
     ]
-    if len(diffs) < 2 or diffs[0] == diffs[-1]:
+    if len(diffs) < _MIN_THRESHOLD_DIFFS or diffs[0] == diffs[-1]:
         return None
     increasing = all(b >= a for a, b in zip(diffs, diffs[1:], strict=False))
     decreasing = all(b <= a for a, b in zip(diffs, diffs[1:], strict=False))
@@ -505,7 +629,9 @@ def _detect_threshold(action_repeat_frames: Sequence[Frame], ledger: _Ledger) ->
     direction = "upward" if increasing else "downward"
     run_length_component = 1 - 1 / len(diffs)
     magnitude_component = abs(diffs[-1] - diffs[0]) / max(diffs[-1], diffs[0], 1)
-    strength = run_length_component * magnitude_component
+    raw = run_length_component * magnitude_component
+    gate_min = (1 - 1 / _MIN_THRESHOLD_DIFFS) * magnitude_component
+    strength = _floor_anchor(raw, gate_min)
     handle = ledger.evidence(
         None, f"frame_diff cell count trends {direction} across {len(diffs)} repeats of one action", diffs=diffs
     )
