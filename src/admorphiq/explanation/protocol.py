@@ -71,6 +71,32 @@ _CONSUME_SCHEMA: dict[str, Any] = {
     },
 }
 
+# One-line kernel contracts for the "relevant kernel contract" element of the
+# after-intent-declaration injection (verdict §5). Deliberately just a
+# signature summary, not the kernel's full docstring — the model needs to
+# know a call exists and roughly what it does, not how to invoke it (the
+# harness invokes it automatically in COMPUTE; the model never calls it
+# itself).
+_KERNEL_CONTRACTS: dict[str, str] = {
+    "navigation": (
+        "grid_shortest_path(passable, start, goal) -> path; "
+        "path_to_moves(path, action_map) -> moves"
+    ),
+}
+
+
+def _strip_descriptions(node: Any) -> Any:
+    """Recursively drop every ``"description"`` key from a JSON-Schema-shaped
+    dict/list, used by :meth:`ExplanationProtocol.compact_injection` — the
+    long-form field descriptions in ``intents/*.schema.json`` are authoring
+    documentation for humans/Claude Code, not something the 27B needs
+    re-injected every turn."""
+    if isinstance(node, dict):
+        return {k: _strip_descriptions(v) for k, v in node.items() if k != "description"}
+    if isinstance(node, list):
+        return [_strip_descriptions(v) for v in node]
+    return node
+
 
 # ----- minimal hand-rolled JSON-Schema validator (stdlib only) -----------------
 def validate(schema: dict[str, Any], instance: Any, path: str = "$") -> list[str]:
@@ -213,6 +239,7 @@ class ExplanationProtocol:
         playbooks: dict[str, dict[str, Any]],
         compute_fns: dict[str, Callable[[dict[str, Any], Callable[[str], Any]], dict[str, Any]]],
         resolve: Callable[[str], Any],
+        kernel_contracts: dict[str, str] | None = None,
     ) -> None:
         if fill_schemas.keys() != playbooks.keys() or fill_schemas.keys() != compute_fns.keys():
             raise ValueError("fill_schemas, playbooks, and compute_fns must share the same intent keys")
@@ -221,6 +248,7 @@ class ExplanationProtocol:
         self.playbooks = playbooks
         self.compute_fns = compute_fns
         self.resolve = resolve
+        self.kernel_contracts = kernel_contracts or {}
         self.allowed_intents: frozenset[str] = frozenset(fill_schemas.keys()) | {"unknown"}
 
         self.state = SELECT
@@ -244,7 +272,26 @@ class ExplanationProtocol:
             playbooks={"navigation": nav_playbook},
             compute_fns={"navigation": compute_navigation},
             resolve=resolve if resolve is not None else HandleStore(),
+            kernel_contracts=dict(_KERNEL_CONTRACTS),
         )
+
+    def compact_injection(self, intent: str) -> dict[str, Any]:
+        """The REAL after-intent-declaration injection payload (verdict §5's
+        "One selected playbook, its slot schema, and relevant kernel
+        contract" row) — distinct from measuring the playbook alone. Strips
+        every ``"description"`` field from the FILL schema (authoring
+        documentation, not a per-turn injection need) and adds a one-line
+        kernel contract string. Team-lead ruling (R58 follow-up, 2026-07-15):
+        the ≤500-token budget row is playbook-only; this combined bundle's
+        target is a PROVISIONAL ≤900 tokens pending the protocol-review
+        round — not yet a hard gate, just the number this method's output
+        should be checked against as the playbook/schema grow.
+        """
+        return {
+            "playbook": self.playbooks[intent],
+            "schema": _strip_descriptions(self.fill_schemas[intent]),
+            "kernel_contract": self.kernel_contracts.get(intent, ""),
+        }
 
     # -- telemetry -----------------------------------------------------------
     def _emit(self, funnel: int | None, event: str, **details: Any) -> dict[str, Any]:

@@ -465,6 +465,26 @@ def test_playbook_serialized_size_is_within_the_500_token_injection_budget():
     assert len(compact) / 4 <= 500, f"compact playbook ~{len(compact) / 4:.0f} tokens > 500 budget"
 
 
+def test_compact_injection_bundle_is_within_the_provisional_900_token_target():
+    """Purpose: team-lead's ruling on the after-intent-declaration injection
+    point (R58 follow-up, 2026-07-15) is that the ≤500 playbook budget does
+    NOT cover the whole real payload — playbook + description-stripped FILL
+    schema + a one-line kernel contract does, and that combined bundle's
+    target is a PROVISIONAL ≤900 tokens. This guards the actual method a
+    harness would call, not just the playbook in isolation.
+
+    Expected feedback: a pass means the real injection payload fits the
+    provisional target; a fail means either the schema's non-description
+    content grew too large or the target needs revisiting at the next
+    protocol-review round.
+    """
+    protocol, _ = _new_protocol()
+    bundle = protocol.compact_injection("navigation")
+    assert "description" not in json.dumps(bundle["schema"])
+    compact = json.dumps(bundle, separators=(",", ":"))
+    assert len(compact) / 4 <= 900, f"compact_injection bundle ~{len(compact) / 4:.0f} tokens > 900 provisional target"
+
+
 # ----- 5. lint catches a seeded game-ID violation ----------------------------------
 def test_lint_passes_on_the_real_shipped_artifacts():
     """Purpose: the quarantine lint must report zero violations on the actual

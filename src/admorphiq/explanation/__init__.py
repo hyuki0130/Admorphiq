@@ -7,6 +7,11 @@ this package implements. Deliberately separate from
 package is built to plug into it later, not to replace it mid-flight).
 """
 
+from admorphiq.explanation.goal_ledger import (
+    MAX_CANDIDATES,
+    compact_view,
+    detect,
+)
 from admorphiq.explanation.protocol import (
     CONSUME,
     FILL,
@@ -35,10 +40,13 @@ __all__ = [
     "FUNNEL_PREDICTION_VERIFIED",
     "FUNNEL_RESULT_CONSUMED",
     "FUNNEL_SLOTS_VALID",
+    "MAX_CANDIDATES",
     "SELECT",
     "VERIFY",
     "ExplanationProtocol",
     "HandleStore",
+    "compact_view",
     "compute_navigation",
+    "detect",
     "validate",
 ]
