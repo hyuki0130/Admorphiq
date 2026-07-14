@@ -275,6 +275,104 @@ as the 7th), beyond the verdict doc's original six.
 [{'a': 0, 'b': 1, 'path_cells': frozenset({(0, 1), (0, 2), (0, 3)}), 'color': 6}]
 ```
 
+**Also in `geometry.py` but missing from the previous catalog version**:
+`split_fused_frame` and `recover_occluded_frame` — de-fusion counterparts to
+`closed_frames` above, for the two ways a hollow ring's exact
+cells-equal-border test can fail on a genuinely-hollow ring: extra cells
+fused onto it (a same-colour appendage protruding off the border), or
+missing cells (a portion of the border occupied by a DIFFERENT, already-
+detected component crossing it). Extracted while recovering SB26's second
+portal frame (`.wiki/wiki/rounds/r56_generic-kernels.md`'s "sb26" section) —
+`split_fused_frame` closed the first shape (a box + protruding pipe, same
+colour, one connected component); `recover_occluded_frame` closed a second,
+genuinely different shape found in the same trace (a foreign-colour
+connector physically crossing the ring's own border at exactly the missing
+cells).
+
+| Function | Contract |
+|---|---|
+| `split_fused_frame(region_or_cells, frame=None, background=None) -> dict \| None` | Finds the maximal rectangular ring embedded in a same-colour connected component via row/column SPAN-MODE (the ring's own border rows/columns share one common span regardless of an appendage widening the raw bbox), validates the candidate border is a subset of the cells and the hole is empty, then groups every leftover cell into appendage components by 4-connectivity among themselves. `None` if no candidate ring survives. |
+| `recover_occluded_frame(region_or_cells, occluders) -> dict \| None` | Candidate bbox is the cells' own bbox directly (no span-mode search — nothing pushes it outward the way an appendage does); `missing = full_perimeter - cells`, and every missing cell must be covered by the union of caller-supplied `occluders`' cells (else `None`, a genuinely unexplained gap). Returns `None` (not a ring) when `missing` is already empty — call `closed_frames` first, this only on rejection. |
+
+```python
+>>> # A 3x3 ring (colour 3) with a 1-cell appendage off the right wall.
+>>> frame = [[3,3,3,0], [3,0,3,3], [3,3,3,0]]
+>>> cells = [(r,c) for r,row in enumerate(frame) for c,v in enumerate(row) if v == 3]
+>>> split_fused_frame(cells, frame=frame, background=0)
+{'frame': {'border_cells': frozenset({(0, 1), (1, 2), (2, 1), (0, 0), (2, 0), (0, 2), (2, 2), (1, 0)}), 'outer_bbox': (0, 0, 2, 2), 'inner_bbox': (1, 1, 1, 1), 'hole_cells': frozenset({(1, 1)})}, 'appendages': [{'cells': frozenset({(1, 3)}), 'attach_point': (1, 2)}]}
+
+>>> # Same 3x3 ring, but its bottom-middle border cell is missing -- covered
+>>> # by a foreign-colour pipe crossing it.
+>>> ring_cells = [(0,0),(0,1),(0,2),(1,0),(1,2),(2,0),(2,2)]  # (2,1) missing
+>>> pipe = {'cells': frozenset({(2,1),(3,1)})}
+>>> recover_occluded_frame(ring_cells, occluders=[pipe])
+{'frame': {'border_cells': frozenset({(0, 1), (1, 2), (2, 1), (0, 0), (2, 0), (0, 2), (2, 2), (1, 0)}), 'outer_bbox': (0, 0, 2, 2), 'inner_bbox': (1, 1, 1, 1), 'hole_cells': frozenset({(1, 1)})}, 'occluded_cells': frozenset({(2, 1)}), 'occluded_by': [{'occluder_index': 0, 'cells': frozenset({(2, 1)})}]}
+```
+
+### `parse.py` — intent group: `axis_projection_and_pitch_splitting` (9th group)
+
+Axis-neutral occupied-run projection (a row/column scan segmenting on
+full-background gaps, distinct from `regions.py`'s 2D same-colour
+connected-component segmentation — a two-colour fill+ink region stays ONE
+run here even though it would fragment under colour-flood-fill), exact
+pitch-based run re-splitting, a generic value-frequency histogram, and
+numeric ratio-jump clustering. Extracted while scoping TR87's rule-table
+extraction (`docs/tr87_frame_only_grammar_design_20260715.md`) — a
+same-colour connected-component scan fragments a two-colour glyph, so
+isolating "one occupied run" needs a positional gap scan instead. No
+"cell"/"glyph"/"token" semantics travel with the math; the caller decides
+what a run or a colour count MEANS.
+
+| Function | Contract |
+|---|---|
+| `occupied_runs(frame, axis="col", bbox=None, background=None) -> dict` | Projects `frame` along `axis`, segmenting into runs separated by full-background gaps (a column/row is a gap only when EVERY cross-axis line in `bbox` is background there). Returns `{"runs": [{"start","end","cells"} half-open, Python-slice-style], "gaps": [...]}` (`len(gaps) == len(runs) - 1`). Cannot itself distinguish one wide run from several adjacent runs rendered with no gap — that's `split_runs_by_pitch`'s job, given an explicit pitch. |
+| `split_runs_by_pitch(runs, pitch, *, axis) -> list[dict]` | Splits each run into `pitch`-wide equal children. `pitch` is REQUIRED and never inferred (a run's own minimum width is not a safe pitch estimate — measured TR87 counterexample: `[3,1,1,3,...]`-width runs where the smallest width is debris, not a genuine glyph pitch). Raises `ValueError` if a run's width isn't an exact multiple of `pitch` (a remainder means `pitch` is wrong, never silently truncated). Each child carries `parent_index` back to its source run. |
+| `color_mode(values, k=2) -> list[dict]` | Top-`k` most frequent values in any iterable of hashable values, `[{"color": v, "count": n}, ...]` ranked descending, ties broken by first-encountered order. |
+| `cluster_widths(widths, ratio=1.5) -> list[list[int]]` | Groups `widths`' INDICES into size classes: sorts by value ascending, starts a new cluster whenever the next/previous ratio exceeds `ratio`. Generalises `regions.size_clusters` (which now delegates here) to any numeric sequence. |
+
+```python
+>>> frame = [[0,7,7,0,0,7,0,7,7,7,7,0]]
+>>> r = occupied_runs(frame, axis='col', background=0)
+>>> r
+{'runs': [{'start': 1, 'end': 3, 'cells': frozenset({(0, 1), (0, 2)})}, {'start': 5, 'end': 6, 'cells': frozenset({(0, 5)})}, {'start': 7, 'end': 11, 'cells': frozenset({(0, 7), (0, 8), (0, 9), (0, 10)})}], 'gaps': [2, 1]}
+
+>>> split_runs_by_pitch([r['runs'][2]], pitch=2, axis='col')
+[{'start': 7, 'end': 9, 'cells': frozenset({(0, 7), (0, 8)}), 'parent_index': 0}, {'start': 9, 'end': 11, 'cells': frozenset({(0, 9), (0, 10)}), 'parent_index': 0}]
+
+>>> color_mode([1, 1, 2, 3, 3, 3, 4], k=2)
+[{'color': 3, 'count': 3}, {'color': 1, 'count': 2}]
+
+>>> cluster_widths([1, 1, 2, 10, 11, 50])
+[[0, 1], [2], [3, 4], [5]]
+```
+
+### `gf2.py` — intent group: `linear_algebra_over_gf2` (10th group)
+
+Gaussian elimination over the field with two elements (0/1, addition =
+XOR): solves a system `A x = target` and computes the null space (solution
+space) of `A`. Pure parity-system math — a row states "the XOR of these
+variables equals this target bit"; the kernel knows nothing about what the
+variables represent (lights-out toggle cells, control-glyph states,
+anything else reducible to a linear system over GF(2)). Public rows are
+tuples of 0/1 ints; packed-integer bitmasks are used internally for the
+actual elimination (XOR-ing whole rows as ints is simpler/faster than
+per-column tuple arithmetic) but never cross the public boundary.
+
+| Function | Contract |
+|---|---|
+| `gf2_solve(matrix_rows, target) -> Row \| None` | ONE particular solution to `A x = target` (every free variable set to 0), or `None` if the system is inconsistent. Combine with any `gf2_nullspace` vector (elementwise XOR) to reach other valid solutions when under-determined. `matrix_rows=[]` trivially solves to `()`. |
+| `gf2_nullspace(matrix_rows) -> list[Row]` | A basis for `{x : A x = 0}` — one length-n tuple per free variable/degree of freedom; every 0/1 linear combination (XOR) of the basis is also a solution. |
+
+```python
+>>> # x0 xor x1 = 1 ; x1 xor x2 = 0  (3 vars, 2 eqns -- under-determined)
+>>> matrix = [[1, 1, 0], [0, 1, 1]]
+>>> target = [1, 0]
+>>> gf2_solve(matrix, target)
+(1, 0, 0)
+>>> gf2_nullspace(matrix)
+[(1, 1, 1)]
+```
+
 ## Composition recipes
 
 Each recipe marks, explicitly, which step is a **CALLER decision** (a role,
@@ -367,7 +465,7 @@ Verified run: `choice['mode'] == 'exact'` on the shared canonical.py fixture;
 ## Gaps versus the Codex decomposition table
 
 Comparing every row of the decomposition table in
-`docs/r56_codex_toolbase_verdict_20260715.md` against the seven modules
+`docs/r56_codex_toolbase_verdict_20260715.md` against the nine modules
 above:
 
 **Closed since the previous version of this catalog** (both were "not yet
