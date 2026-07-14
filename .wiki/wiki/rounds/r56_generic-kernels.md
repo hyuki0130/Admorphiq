@@ -486,13 +486,39 @@ trace, which clicks the SAME button region twice at different points in
 the level — a genuine SEESAW re-visit, not wasted repetition, that the
 current never-re-probe rule incorrectly forbids.
 
-Both gaps are diagnosed with a specific fix direction (compose dc22's own
-probe-effect measurement through the existing HUD/cosmetic-diff filtering
-convention, and relax "never re-probe" to "never re-probe UNLESS a
-seesaw-reopen is suspected") but neither fix has landed or been
-re-measured yet — banked as two named, falsifiable gaps rather than a
-vague "0/6, needs work." See [[../games/DC22]] for the game's own current
-status.
+**Re-click fix landed, still 0/6 — the second gap only, same session.**
+The "never re-probe" rule was replaced with per-button click memory
+distinguishing INERT (first click zero diff, never re-clicked) from
+TOGGLER (any diff observed, stays eligible for re-click) buttons, each
+toggler's own COSMETIC signature (cells that repeat on every click of
+that specific button) subtracted before judging a click's real effect.
+The re-click DECISION itself went through a falsification: an initial
+spatial-overlap gate (re-click a toggler whose accumulated effect
+footprint overlaps a cell currently in `_known_blocked`) measured ZERO
+reclicks in a live probe — click 1's 97-cell reveal has no reason to
+land spatially near wherever the avatar happens to be stuck, so
+correlating "where an effect lands" with "where the avatar is stuck"
+conflates two unrelated things. Replaced with stuck-state toggler
+cycling (try each known toggler once per distinct (avatar cell,
+per-toggler click-parity) state, using the planner's own next-step
+success as the effectiveness signal instead of a spatial proxy) plus
+route-proximity candidate ranking (a live probe measured the OLD
+avatar-proximity ranking spending 32 of ~128 per-life actions on
+nearby-but-irrelevant regions before ever reaching plausibly-relevant
+buttons).
+
+**Measured: 6 live 500-action smokes (`scripts/rounds/
+script25_dc22_smoke`..`smoke6`), ALL still 0/6.** Every individual piece
+of the fix is independently correct per its own docstring measurement
+(button classification, cosmetic-signature subtraction, route-proximity
+ranking), but the combination does not clear a level within the
+measured budget. This is a genuine negative result on the SECOND gap
+only — the first gap (cosmetic indicator flips over-counted as barrier
+changes in the pre-toggle "effective click" classifier) was not
+addressed by this fix and remains open, with the same fix direction as
+before (compose dc22's probe-effect measurement through the existing
+HUD/cosmetic-diff filtering convention). See [[../games/DC22]] for the
+game's own current status.
 
 ## Open items
 
@@ -545,11 +571,14 @@ status.
   gate arc" above for the full 7-step provenance. Remaining scope is
   L3-L5 (`alter_rules`/`tree_translation`/`double_translation`),
   deliberately banked unmeasured, not a wiring gap.
-- **DC22 probe-semantics gap.** See "Measured so far (continued) — dc22"
-  above for the two named gaps (cosmetic-indicator-flip false positives in
-  the effective-click classifier, and the never-re-probe rule conflicting
-  with the gold trace's genuine seesaw re-visit). Both have a specific
-  fix direction identified but neither is built or re-measured yet.
+- **DC22 probe-semantics gap — one of two named gaps closed-but-still-0/6,
+  the other still open.** See "Measured so far (continued) — dc22" above.
+  The re-probe/toggler gap was built (per-button click memory, cosmetic-
+  signature subtraction, stuck-state toggler cycling, route-proximity
+  ranking) and live-measured 6 times, still 0/6 — a genuine negative
+  result on that gap, not an unmeasured banking. The cosmetic-indicator-
+  flip false positives in the pre-toggle "effective click" classifier are
+  UNTOUCHED by this fix and remain the next thing to try.
 - **Declared-intent offloading interface** (task #42) — per current team
   coordination, this is pending the engagement/basenav experiment results
   before design work starts. The design should account for **8** intent
