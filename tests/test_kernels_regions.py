@@ -83,6 +83,42 @@ def test_find_regions_background_exclusion():
     assert regions_excl_set == []
 
 
+def test_find_regions_normalizes_mixed_int_float_cells_to_int_color():
+    """Purpose: pins the shared normalization contract (R56 API-inconsistency
+    fix #1 — see docs/r56_kernel_catalog.md): find_regions must (a) still
+    group a float 1.0 cell and an int 1 cell as the same colour (this part
+    already worked even pre-fix, since Python's == and hash treat 1 == 1.0),
+    and (b) — the part that actually depended on the fix — always report
+    region["color"] as a plain int, never a float, REGARDLESS of whether the
+    frame mixed float/int cells or which cell the flood-fill happened to
+    visit first. Before the fix, region["color"]'s type was whatever the
+    FIRST-SCANNED cell's raw type happened to be (int if scan hit the int
+    cell first, float if it hit the float cell first) — a silent,
+    scan-order-dependent type inconsistency that would break a downstream
+    caller doing strict int type-checks, dict-keying, or JSON serialization
+    on region["color"].
+    Expected feedback: failure on grouping means a real merge regression;
+    failure on the int-type assertions means the shared _common.normalize_frame
+    int-cast regressed back to type-preserving (non-normalizing) behaviour."""
+    # Frame A: the float cell (1.0) is scanned FIRST (row-major top-left).
+    frame_a = [[1.0, 1, 0]]
+    regions_a = find_regions(frame_a, background=0)
+    assert len(regions_a) == 1
+    assert regions_a[0]["size"] == 2  # both cells merged into one region
+    assert regions_a[0]["color"] == 1
+    assert type(regions_a[0]["color"]) is int
+
+    # Frame B: the int cell (1) is scanned FIRST instead — same assertion
+    # must hold regardless of scan order, proving it isn't an accident of
+    # which cell happened to seed the flood-fill.
+    frame_b = [[1, 1.0, 0]]
+    regions_b = find_regions(frame_b, background=0)
+    assert len(regions_b) == 1
+    assert regions_b[0]["size"] == 2
+    assert regions_b[0]["color"] == 1
+    assert type(regions_b[0]["color"]) is int
+
+
 def test_region_relations_contains_adjacent_aligned_on_crafted_frame():
     """Purpose: on one frame containing four independent relation instances
     (a ring strictly containing a centre dot; two cells touching at

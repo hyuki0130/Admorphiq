@@ -129,7 +129,7 @@ keys but does not import `regions.py`.
 |---|---|
 | `frame_diff(before, after) -> dict` | `{"cells": frozenset[(r,c)], "bbox": (r0,c0,r1,c1) \| None, "count": int}` for two same-shape frames. |
 | `changed_region_attribution(diff_cells, regions) -> list[int]` | Region indices with nonzero overlap with `diff_cells`, sorted by overlap size descending (index ascending on ties). |
-| `track_objects(regions_before, regions_after, max_shift=None) -> dict` | Matches same-colour regions across two frames — first pass on identical (translation-invariant) shape, second pass by nearest centroid regardless of shape. `{"matches": [{"before","after","shift"}], "vanished": [...], "appeared": [...]}`. GREEDY, not globally optimal (see gaps/inconsistencies below). |
+| `track_objects(regions_before, regions_after, max_shift=None) -> dict` | Matches same-colour regions across two frames, per colour: Stage 1 greedily matches identical (translation-invariant) shape pairs nearest-centroid-first; Stage 2 finds the EXACT minimum-total-distance assignment among the remaining pairs via `shapes.assign_pairs` (not greedy — see API-inconsistency note #2's resolution below). `{"matches": [{"before","after","shift"}], "vanished": [...], "appeared": [...]}`. |
 | `motion_vectors(matches) -> dict` | Summarizes `track_objects`' matches: `{"per_object": [(dr,dc),...], "dominant": (dr,dc) \| None}` (most common nonzero shift). |
 | `learn_point_operators(observations) -> list[dict]` | From `[{"point","before","after"}, ...]`, clusters observations with an identical relative write footprint into `{"footprint","writes","support","points"}` operators — a no-effect click clusters into its own empty-footprint operator, not dropped. |
 | `plan_overwrites(initial, target, operators, max_steps=64) -> list[dict] \| None` | Greedy step sequence (from `learn_point_operators`' output) toward `target`; each step picks the `(operator, point)` maximizing net newly-correct cells. Not globally optimal by design — see its docstring. |
@@ -216,6 +216,63 @@ frozenset({(0, 0)})
 >>> stability_report(groups, modes=('exact','histogram'))
 {'exact': {'intra_consistent': False, 'intra_splits': 1, 'inter_collisions': 0, 'distinct_keys': 3},
  'histogram': {'intra_consistent': False, 'intra_splits': 1, 'inter_collisions': 1, 'distinct_keys': 2}}
+```
+
+### `geometry.py` — intent group: `shape_geometry` (see note below)
+
+Closed-frame (ring/hollow-border) detection, elongated-region axis
+extraction + point-to-axis projection, point-stepping toward a target,
+near-axis offset snapping, minimal covering-translation search, and
+thin-path connector detection between two regions. Extracted from
+`admorphiq.delivery` (closed-frame/ring detection), `admorphiq.slider`
+(elongated-region detection, axis/endpoints, point-to-axis projection),
+`admorphiq.transform_route` (axis snapping, `covering_offsets`-style set
+cover), `admorphiq.sort_match` (hollow-box + connector extraction), and
+`admorphiq.merge_drag` (`point_toward`-style stepping) — no role semantics
+travel with the math (no "small ring is an item", no "foreign cell is a
+tip", no "ring dot is the required colour").
+
+**Note**: this closes both of the previous catalog version's "not yet
+covered" gap entries #1 (structural closed-shape detection) and #2
+(geometry primitives) — see the updated Gaps section below. It is also an
+8th kernel intent group (alongside `canonical.py`'s `state_canonicalization`
+as the 7th), beyond the verdict doc's original six.
+
+| Function | Contract |
+|---|---|
+| `closed_frames(frame, background=None) -> list[dict]` | Rectangular one-colour rings that fully enclose a hole — a component qualifies only when its cells are EXACTLY its own bbox border (a solid filled rectangle has extra interior cells and fails). `{"border_color","outer_bbox","inner_bbox","hole_cells"}` per ring. |
+| `elongated_axis(region, min_aspect=3.0) -> dict \| None` | The principal axis of a `region` (bbox-based) when `length/thickness >= min_aspect`; `{"axis": "row"\|"col", "endpoints", "length", "thickness"}`, else `None`. |
+| `project_to_axis(point, axis_info) -> Cell` | Nearest cell on an `elongated_axis`-shaped segment to `point` (clamped into the endpoint range on the fixed coordinate). |
+| `point_toward(origin, target, distance=1) -> Cell` | The integer cell `distance` px from `origin` toward `target` along the straight line; clamps to `target` exactly rather than overshooting. |
+| `axis_snap(offset, tolerance=1) -> Shift` | Snaps a near-axis `(dr, dc)` offset to the pure axis when the minor component is `<= tolerance` AND strictly smaller than the major one; otherwise unchanged. |
+| `covering_offsets(shape_cells, target_points) -> list[Shift]` | A minimal set of translations of `shape_cells` covering every point in `target_points` — exact minimum set cover for <=12 candidates, greedy most-newly-covered-first above that. |
+| `connectors(frame, regions, background=None) -> list[dict]` | Thin (<=2 cells thick) same-colour paths linking EXACTLY two of `regions` (cells already claimed by any `regions` entry are excluded from the search). `{"a","b","path_cells","color"}` per connector. |
+
+```python
+>>> closed_frames([[3,3,3],[3,0,3],[3,3,3]], background=0)
+[{'border_color': 3, 'outer_bbox': (0, 0, 2, 2), 'inner_bbox': (1, 1, 1, 1), 'hole_cells': frozenset({(1, 1)})}]
+
+>>> region = {'bbox': (0, 3, 9, 5)}   # 10 rows x 3 cols
+>>> axis_info = elongated_axis(region, min_aspect=3.0)
+>>> axis_info
+{'axis': 'row', 'endpoints': ((0, 4), (9, 4)), 'length': 10, 'thickness': 3}
+>>> project_to_axis((-5, 4), axis_info)
+(0, 4)
+
+>>> point_toward((0, 0), (10, 0), distance=3)
+(3, 0)
+>>> axis_snap((5, 1), tolerance=1)
+(5, 0)
+
+>>> shape = frozenset({(0, 0), (0, 1)})
+>>> sorted(covering_offsets(shape, [(0, 0), (0, 1), (5, 5), (5, 6)]))
+[(0, 0), (5, 5)]
+
+>>> frame = [[3, 6, 6, 6, 4]]
+>>> from admorphiq.kernels.regions import find_regions
+>>> endpoints = [r for r in find_regions(frame, background=0) if r['color'] in (3, 4)]
+>>> connectors(frame, endpoints, background=0)
+[{'a': 0, 'b': 1, 'path_cells': frozenset({(0, 1), (0, 2), (0, 3)}), 'color': 6}]
 ```
 
 ## Composition recipes
@@ -310,28 +367,29 @@ Verified run: `choice['mode'] == 'exact'` on the shared canonical.py fixture;
 ## Gaps versus the Codex decomposition table
 
 Comparing every row of the decomposition table in
-`docs/r56_codex_toolbase_verdict_20260715.md` against the six modules above:
+`docs/r56_codex_toolbase_verdict_20260715.md` against the seven modules
+above:
 
-**Not yet covered by any kernel:**
+**Closed since the previous version of this catalog** (both were "not yet
+covered" entries; `geometry.py` landed and covers them):
 
-1. **Structural "closed shape" detection** (ring / hollow-frame / connector
-   extraction — the old `rotation._is_ring_component` test: does a
-   component's cells trace the complete border of its own bounding box?).
-   Needed by the `rotation.py`, `delivery.py` (closed-frame item/target
-   markers), and `sort_match.py` (hollow-box/connector) rows.
-   `regions.find_regions` only does colour-connectivity segmentation — it has
-   no notion of "closed" vs "solid" vs "open" shape structure. No current
-   module covers this.
-2. **Geometry primitives**: `point_toward` (step direction toward a target
-   point — `merge_drag.py` row), axis/endpoint extraction + point-to-axis
-   projection for elongated regions (`slider.py` row), axis snapping
-   (`transform_route.py` row), and the verdict doc's explicitly-named
-   `covering_offsets(shape, points)` (`transform_route.py` row). None exist
-   in `shapes.py`, `regions.py`, `paths.py`, `motion.py`, or `canonical.py`
-   today. Per team-lead, a teammate has a `geometry.py` kernel in flight —
-   likely the intended home for some or all of these (unconfirmed scope;
-   not documented here since it isn't in the repo yet).
-3. **Colour-boundary-crossing single-mover isolation** (`merge_drag.py`'s
+- **Structural "closed shape" detection** (ring / hollow-frame extraction —
+  the old `rotation._is_ring_component` test). Needed by the `rotation.py`,
+  `delivery.py`, and `sort_match.py` rows. Now covered by
+  `geometry.closed_frames` (ring/hole detection) and `geometry.connectors`
+  (the `sort_match.py` hollow-box/connector-extraction half specifically).
+- **Geometry primitives**: `point_toward`, elongated-region axis/endpoint
+  extraction + point-to-axis projection, axis snapping, and the verdict
+  doc's explicitly-named `covering_offsets(shape, points)`. Now covered by
+  `geometry.point_toward`, `geometry.elongated_axis` +
+  `geometry.project_to_axis`, `geometry.axis_snap`, and
+  `geometry.covering_offsets` respectively — the exact function name match
+  is not a coincidence, `geometry.py`'s teammate implemented these directly
+  against the verdict doc's own wording.
+
+**Still not yet covered by any kernel:**
+
+1. **Colour-boundary-crossing single-mover isolation** (`merge_drag.py`'s
    "multi-colour motion tracking" and `transform_route.py`'s
    "motion-isolated object extraction" — the `detect_mover_by_motion` /
    `detect_sprite_by_motion` technique of tracking the UNION of whichever
@@ -340,7 +398,7 @@ Comparing every row of the decomposition table in
    changed-cell set; `motion.track_objects` requires PRE-segmented
    same-colour regions as input — neither covers "partition this raw diff
    into one coherent mover that may legitimately span colours".
-4. **Change-probability / passive forward-simulation** (`world_model_agent.py`
+2. **Change-probability / passive forward-simulation** (`world_model_agent.py`
    row: "change probability", passive `predict(action)`).
    `motion.learn_point_operators` answers "what does an action at a point
    write" structurally (with a `support` count), but nothing estimates a
@@ -362,28 +420,52 @@ re-implemented):
 
 ## API inconsistencies noticed while writing this (feedback for before the library calcifies)
 
-1. **Frame normalization is duplicated three times, inconsistently.**
-   `motion.py`, `regions.py`, and `canonical.py` each define their own
-   private `_normalize_frame`. `motion._normalize_frame` and
-   `canonical._normalize_frame` both cast every cell via `int(v)`;
-   `regions._normalize_frame` does NOT (`tuple(tuple(row) for row in
-   frame)` — no cast). This means `find_regions` groups cells by
-   colour-value equality using whatever type the caller passed (a `5` and a
-   `5.0` are the same colour under `motion`/`canonical`'s normalization but
-   could behave differently in `regions` depending on how the caller's grid
-   was produced). Worth unifying into one shared normalization helper (or at
-   minimum making the int-cast consistent) before more modules copy the
-   pattern.
-2. **`track_objects` re-implements greedy matching instead of composing
-   `assign_pairs`.** `shapes.assign_pairs` already solves EXACT optimal
-   bipartite assignment; `motion.track_objects` solves a conceptually
-   similar "match objects across two sets" problem with its own
-   nearest-centroid-first greedy pass (explicitly documented as
-   non-optimal). A caller that wants optimal object tracking currently has
-   no way to get it without reimplementing `track_objects` on top of
-   `assign_pairs` themselves — worth considering whether `track_objects`
-   should offer an `optimal=True` path that scores candidate pairs and
-   delegates to `assign_pairs`.
+1. **FIXED — frame normalization was duplicated three times, inconsistently.**
+   `motion.py`, `regions.py`, and `canonical.py` each defined their own
+   private `_normalize_frame`; `regions._normalize_frame` was missing the
+   `int(v)` cast the other two applied. Now unified: `src/admorphiq/kernels/
+   _common.py` (private, not exported via `__all__`) holds ONE
+   `normalize_frame` (int-casting, no empty-row collapse); `motion.py` and
+   `regions.py` import it directly as `_normalize_frame`, and
+   `canonical.py` layers its own extra "collapse all-empty-rows to `()`"
+   behavior on top of it (a genuine, tested `canonical.py`-specific
+   contract, not something the other two modules ever had or need — see
+   `_common.py`'s and `canonical._normalize_frame`'s docstrings). Regression
+   test: `tests/test_kernels_regions.py::test_find_regions_normalizes_mixed_int_float_cells_to_int_color`
+   — note the actual bug this caught was NOT grouping (Python's `==`/`hash`
+   already treat `1 == 1.0`, so grouping worked even pre-fix), it was
+   `region["color"]`'s TYPE being scan-order-dependent (int if an int cell
+   was flood-filled first, float if a float cell was) — now always `int`.
+   **Remaining scope note**: `geometry.py` (landed after this catalog's
+   first version) has the SAME duplicate pattern, still using its own
+   private `_normalize_frame` rather than `_common.py` — not fixed in this
+   round (out of the explicitly requested scope), flagged for a follow-up.
+2. **FIXED — `track_objects` re-implemented greedy matching instead of
+   composing `assign_pairs`.** Its Stage 2 (the no-shape-match fallback,
+   previously nearest-centroid-first greedy) now scores every remaining
+   same-colour pair by negated centroid distance and calls
+   `shapes.assign_pairs` for the EXACT minimum-total-distance assignment.
+   `max_shift`-ineligible pairs get a large finite negative sentinel score
+   (`motion._INELIGIBLE_SCORE = -1e9`, deliberately NOT `float("-inf")` —
+   `assign_pairs`' bitmask-DP reconstruction compares floating-point sums
+   for equality, and a real `-inf` combined with the DP's own `-inf`
+   "unreached state" sentinel can produce a `NaN` difference that never
+   satisfies that equality check, silently truncating the returned
+   assignment); `assign_pairs` always returns a FULL assignment over the
+   smaller side even when forced through a sentinel-scored pair, so Stage 2
+   re-checks eligibility on its output and discards any forced-ineligible
+   pick rather than accepting it as a real match. Proven with a genuine
+   greedy-vs-optimal counterexample (not merely a refactor with identical
+   output): `tests/test_kernels_motion.py::test_track_objects_stage2_finds_exact_optimum_greedy_would_miss`
+   crafts centroids where greedy grabs the single nearest edge first
+   (total distance 11.05) while the true optimum is the crossed pairing
+   (total 10.0) — searched for numerically (`assign_pairs` vs a simulated
+   greedy pass) rather than hand-derived, since 2x2 counterexamples are
+   easy to get wrong by hand. A second test,
+   `test_track_objects_stage2_forced_full_coverage_pick_is_filtered_by_max_shift`,
+   pins the sentinel-then-filter behaviour specifically. All pre-existing
+   `track_objects` tests still pass UNCHANGED (33 tests, 0 modified) — none
+   of them happened to exercise a case where greedy and exact disagree.
 3. **Two incompatible "shape" representations exist for the same concept.**
    `shapes.crop_to_content` represents a cropped shape as `{"mask": ...,
    "offset": ...}` (a full 2D mask plus its origin); `canonical.canonical_key(mode="shape")`

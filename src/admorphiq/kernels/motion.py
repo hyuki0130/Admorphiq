@@ -29,14 +29,24 @@ from __future__ import annotations
 
 from collections.abc import Iterable, Mapping, Sequence
 
+from admorphiq.kernels._common import normalize_frame as _normalize_frame
+from admorphiq.kernels.shapes import assign_pairs
+
 Frame = tuple[tuple[int, ...], ...]
 Cell = tuple[int, int]
 Shift = tuple[int, int]
 Region = Mapping[str, object]
 
-
-def _normalize_frame(frame: Sequence[Sequence[int]]) -> Frame:
-    return tuple(tuple(int(v) for v in row) for row in frame)
+# Score assigned to an (i, j) pair that violates max_shift when building
+# track_objects' Stage-2 assignment matrix. A large FINITE negative number,
+# not float("-inf"): shapes.assign_pairs' bitmask DP reconstruction compares
+# floating-point sums for equality, and an actual -inf combined with the DP's
+# own -inf "unreached state" sentinel can produce NaN differences that never
+# satisfy that equality check (see the code review this constant grew out
+# of), silently truncating the returned assignment. A finite sentinel this
+# far below any real (non-negative) centroid distance can never be chosen
+# over a genuinely eligible pair, while staying numerically well-behaved.
+_INELIGIBLE_SCORE = -1e9
 
 
 def _normalize_cells(cells: Iterable[Sequence[int]]) -> frozenset[Cell]:
@@ -107,13 +117,22 @@ def track_objects(
     """Match regions across two frames of the same scene.
 
     Only same-color region pairs are considered candidates. Matching runs in
-    two deterministic passes: first, pairs whose cell sets share an
-    identical :func:`_shape_signature` (i.e. the same shape, only
-    translated) are matched greedily nearest-centroid-first; second, any
-    still-unmatched same-color regions are matched greedily
-    nearest-centroid-first regardless of shape. Each region is matched at
-    most once. When ``max_shift`` is given, a pair is only eligible when its
-    centroid-to-centroid Euclidean distance is <= ``max_shift``.
+    two deterministic passes, per colour: first, pairs whose cell sets share
+    an identical :func:`_shape_signature` (i.e. the same shape, only
+    translated) are matched greedily nearest-centroid-first; second, the
+    STILL-UNMATCHED same-color regions are matched via
+    :func:`admorphiq.kernels.shapes.assign_pairs` — an EXACT
+    minimum-total-distance assignment (not greedy) over the remaining
+    same-colour pairs, scored by negated centroid distance. Each region is
+    matched at most once. When ``max_shift`` is given, a pair is only
+    eligible when its centroid-to-centroid Euclidean distance is <=
+    ``max_shift``; ineligible pairs get :data:`_INELIGIBLE_SCORE` in the
+    Stage-2 score matrix (so ``assign_pairs`` only picks them when no
+    eligible pair exists to fill that slot, since it always returns a full
+    assignment over the smaller side) and are then filtered back OUT of the
+    result — a forced-ineligible pick is not a real match, it means that
+    region genuinely has no viable partner and should count as
+    vanished/appeared instead.
 
     Returns ``{"matches": [{"before": i, "after": j, "shift": (dr, dc)},
     ...], "vanished": [i, ...], "appeared": [j, ...]}``. ``shift`` is the
@@ -162,18 +181,23 @@ def track_objects(
             matched_after.add(j)
             matches.append({"before": i, "after": j, "shift": _shift(i, j)})
 
-        remaining_candidates = sorted(
-            (_dist(i, j), i, j)
-            for i in before_idxs
-            for j in after_idxs
-            if i not in matched_before and j not in matched_after and _eligible(i, j)
-        )
-        for _d, i, j in remaining_candidates:
-            if i in matched_before or j in matched_after:
-                continue
-            matched_before.add(i)
-            matched_after.add(j)
-            matches.append({"before": i, "after": j, "shift": _shift(i, j)})
+        remaining_before = [i for i in before_idxs if i not in matched_before]
+        remaining_after = [j for j in after_idxs if j not in matched_after]
+        if remaining_before and remaining_after:
+            score_matrix = [
+                [
+                    -_dist(i, j) if _eligible(i, j) else _INELIGIBLE_SCORE
+                    for j in remaining_after
+                ]
+                for i in remaining_before
+            ]
+            for row, col in assign_pairs(score_matrix):
+                i, j = remaining_before[row], remaining_after[col]
+                if not _eligible(i, j):
+                    continue  # forced by assign_pairs' full-coverage guarantee, not a real match
+                matched_before.add(i)
+                matched_after.add(j)
+                matches.append({"before": i, "after": j, "shift": _shift(i, j)})
 
     matches.sort(key=lambda m: m["before"])  # type: ignore[arg-type,return-value]
     vanished = [i for i in range(len(regions_before)) if i not in matched_before]

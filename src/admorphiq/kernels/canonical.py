@@ -33,6 +33,8 @@ from __future__ import annotations
 
 from collections.abc import Hashable, Iterable, Sequence
 
+from admorphiq.kernels._common import normalize_frame as _normalize_frame_base
+
 Grid = tuple[tuple[int, ...], ...]
 
 # Fixed cost ranking for the "cheapest mode" tie-break in
@@ -45,12 +47,14 @@ _ALL_MODES: tuple[str, ...] = ("exact", "downsample", "histogram", "shape")
 
 
 def _normalize_frame(frame: Sequence[Sequence[object]]) -> Grid:
-    """Coerce any nested sequence of int-castable values into a ``Grid``.
-
-    An empty outer sequence, or a sequence of empty rows, normalizes to an
-    empty grid (``()``).
+    """Int-cast ``frame`` via :func:`admorphiq.kernels._common.normalize_frame`,
+    plus this module's own additional collapse: an empty outer sequence, or a
+    sequence of empty rows, normalizes to an empty grid (``()``) rather than
+    a tuple of empty row-tuples — a canonical.py-specific contract (see
+    ``test_canonical_key_empty_frame_every_mode``) that the shared base
+    helper deliberately does not impose on every caller.
     """
-    rows = tuple(tuple(int(v) for v in row) for row in frame)
+    rows = _normalize_frame_base(frame)
     if not rows or all(len(row) == 0 for row in rows):
         return ()
     return rows

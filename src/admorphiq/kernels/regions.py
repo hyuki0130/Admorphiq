@@ -29,13 +29,11 @@ from collections import Counter
 from collections.abc import Iterable, Sequence
 from typing import Any
 
+from admorphiq.kernels._common import normalize_frame as _normalize_frame
+
 Cell = tuple[int, int]
 Bbox = tuple[int, int, int, int]
 Region = dict[str, Any]
-
-
-def _normalize_frame(frame: Sequence[Sequence[int]]) -> tuple[tuple[int, ...], ...]:
-    return tuple(tuple(row) for row in frame)
 
 
 def _normalize_background(background: int | Iterable[int] | None) -> frozenset[int]:

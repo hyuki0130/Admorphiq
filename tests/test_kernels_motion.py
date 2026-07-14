@@ -131,6 +131,59 @@ def test_track_objects_max_shift_excludes_far_pairs():
     assert result["appeared"] == [0]
 
 
+def test_track_objects_stage2_finds_exact_optimum_greedy_would_miss():
+    """Purpose: R56 API-inconsistency fix #2 — Stage 2 (the no-shape-match
+    fallback) now composes shapes.assign_pairs for an EXACT minimum-total-
+    distance assignment instead of a greedy nearest-centroid-first pass.
+    This crafted geometry has a genuine greedy failure mode: P0=(0,0) sits
+    exactly 1.0 from BOTH Q0=(0,1) and (indirectly, via the crossed pairing)
+    contributes to a cheaper total than the 'obvious' pairing. Concretely,
+    distances are d(P0,Q0)=1.0, d(P0,Q1)=1.0, d(P1,Q0)=9.0,
+    d(P1,Q1)=~10.05. A greedy nearest-edge-first pass grabs the single
+    smallest edge (P0-Q0, tied with P0-Q1 but ordered first) immediately,
+    forcing the leftover pair P1-Q1 (total 1.0+10.05=11.05). The TRUE
+    optimum is the crossed pairing P0-Q1 + P1-Q0 (total 1.0+9.0=10.0) —
+    strictly cheaper, and unreachable by any greedy nearest-first strategy
+    once it has already committed to P0-Q0. Regions are single-cell
+    (before) vs two-cell (after) so no pair can ever shape-match, forcing
+    100% of the matching through the refactored Stage 2.
+    Expected feedback: failure (matching the OLD greedy pairing, before=0-
+    after=0 and before=1-after=1) means Stage 2 silently reverted to greedy
+    and is no longer finding the true optimum — exactly the regression this
+    test exists to catch."""
+    before = [_region(5, [(0, 0)]), _region(5, [(0, 10)])]
+    after = [_region(5, [(0, 0), (0, 2)]), _region(5, [(0, 0), (2, 0)])]
+    result = track_objects(before, after)
+    assert result["matches"] == [
+        {"before": 0, "after": 1, "shift": (1, 0)},
+        {"before": 1, "after": 0, "shift": (0, -9)},
+    ]
+    assert result["vanished"] == []
+    assert result["appeared"] == []
+
+
+def test_track_objects_stage2_forced_full_coverage_pick_is_filtered_by_max_shift():
+    """Purpose: shapes.assign_pairs always returns a FULL assignment over the
+    smaller side, even when some of those pairs are scored with the
+    ineligible-pair sentinel (see motion._INELIGIBLE_SCORE) — so Stage 2
+    must explicitly re-check max_shift on assign_pairs' own output and
+    discard any pair that only got picked because assign_pairs was forced
+    to cover every slot. Here only (before=0, after=0) is genuinely within
+    max_shift=5.0 (distance 1.0); every other pairing in this 2x2 matrix
+    exceeds it (49, 80, ~30) — a naive 'trust assign_pairs' output as-is'
+    implementation would incorrectly report a second forced match for the
+    remaining (before=1, after=1) slot instead of leaving both unmatched.
+    Expected feedback: failure (a spurious second match appearing) means the
+    post-assign_pairs eligibility filter was removed or bypassed, silently
+    re-introducing exactly the bug max_shift exists to prevent."""
+    before = [_region(5, [(0, 0)]), _region(5, [(0, 50)])]
+    after = [_region(5, [(0, 0), (0, 2)]), _region(5, [(0, 79), (0, 81)])]
+    result = track_objects(before, after, max_shift=5.0)
+    assert result["matches"] == [{"before": 0, "after": 0, "shift": (0, 1)}]
+    assert result["vanished"] == [1]
+    assert result["appeared"] == [1]
+
+
 def test_motion_vectors_dominant_shift_by_frequency():
     """Purpose: dominant must be the most frequent nonzero per-object shift,
     not merely the first or the largest.
