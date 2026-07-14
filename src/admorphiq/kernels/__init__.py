@@ -7,5 +7,20 @@ game-specific constants. See docs/r56_codex_toolbase_verdict_20260715.md.
 """
 
 from admorphiq.kernels.rewrite import derive_rewrites, find_derivation
+from admorphiq.kernels.shapes import (
+    assign_pairs,
+    best_transform_match,
+    crop_to_content,
+    dihedral_transforms,
+    iou,
+)
 
-__all__ = ["derive_rewrites", "find_derivation"]
+__all__ = [
+    "derive_rewrites",
+    "find_derivation",
+    "assign_pairs",
+    "best_transform_match",
+    "crop_to_content",
+    "dihedral_transforms",
+    "iou",
+]
