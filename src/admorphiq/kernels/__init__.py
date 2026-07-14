@@ -21,6 +21,7 @@ from admorphiq.kernels.geometry import (
     point_toward,
     project_to_axis,
 )
+from admorphiq.kernels.gf2 import gf2_nullspace, gf2_solve
 from admorphiq.kernels.motion import (
     changed_region_attribution,
     frame_diff,
@@ -31,9 +32,8 @@ from admorphiq.kernels.motion import (
 )
 from admorphiq.kernels.parse import (
     cluster_widths,
-    gap_windows,
-    greedy_parse,
-    window_majority_color,
+    color_mode,
+    occupied_runs,
 )
 from admorphiq.kernels.paths import (
     configuration_path,
@@ -52,7 +52,7 @@ from admorphiq.kernels.regions import (
     size_clusters,
     tile_bbox,
 )
-from admorphiq.kernels.rewrite import derive_rewrites, find_derivation
+from admorphiq.kernels.rewrite import derive_rewrites, find_derivation, greedy_parse
 from admorphiq.kernels.shapes import (
     assign_pairs,
     best_transform_match,
@@ -100,7 +100,9 @@ __all__ = [
     "point_toward",
     "project_to_axis",
     "cluster_widths",
-    "gap_windows",
+    "color_mode",
+    "occupied_runs",
     "greedy_parse",
-    "window_majority_color",
+    "gf2_nullspace",
+    "gf2_solve",
 ]

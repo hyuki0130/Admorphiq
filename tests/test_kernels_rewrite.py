@@ -1,8 +1,10 @@
-"""Tests for the pure rewrite-derivation kernel (R56)."""
+"""Tests for the pure rewrite-derivation kernels (R56): the branching BFS
+search (derive_rewrites/find_derivation) and the deterministic greedy parse
+(greedy_parse)."""
 
 import pytest
 
-from admorphiq.kernels import derive_rewrites, find_derivation
+from admorphiq.kernels import derive_rewrites, find_derivation, greedy_parse
 
 
 def test_single_rule_single_match_derives_one_string():
@@ -118,3 +120,116 @@ def test_max_states_bounds_exploration():
     rules = [(["a"], ["a", "a"])]
     out = derive_rewrites(["a"], rules, max_depth=50, strategy="leftmost", max_states=20)
     assert 0 < len(out) <= 20
+
+
+# ---- greedy_parse: the deterministic single-pass engine, NOT the search above ----
+
+
+def test_greedy_parse_first_matching_rule_wins_regardless_of_length():
+    """Purpose: at a position where MULTIPLE rules' LHS match, greedy_parse
+    must commit to whichever is FIRST in rule list order -- not the longest,
+    not the "best" for eventual full coverage. Swapping the same two rules'
+    order must swap which one wins, proving list order (not shape) decides.
+    Expected feedback: failure means the match loop isn't scanning rules in
+    strict list order, breaking the "no search, no backtracking" contract
+    that distinguishes this from find_derivation."""
+    short_first = [(("a",), ("x",)), (("a", "a"), ("y",))]
+    out = greedy_parse(("a", "a"), short_first)
+    assert out == {
+        "result": ("x", "x"),
+        "steps": [
+            {"rule": 0, "position": 0, "before": ("a",), "after": ("x",)},
+            {"rule": 0, "position": 1, "before": ("a",), "after": ("x",)},
+        ],
+    }
+
+    long_first = [(("a", "a"), ("y",)), (("a",), ("x",))]
+    out2 = greedy_parse(("a", "a"), long_first)
+    assert out2 == {
+        "result": ("y",),
+        "steps": [{"rule": 0, "position": 0, "before": ("a", "a"), "after": ("y",)}],
+    }
+
+
+def test_greedy_parse_fails_where_find_derivation_succeeds():
+    """Purpose: prove greedy_parse and find_derivation are genuinely
+    different engines, not just different call signatures for the same
+    search. Rule 0 ('a'->'x') greedily consumes the first 'a' in
+    ('a','a','b'), leaving a lone 'b' no rule can ever cover -> greedy_parse
+    must FAIL (None), even though rule 1 ('a','a','b'->'z') -- unreachable
+    from position 0 once rule 0 already committed -- covers the ENTIRE
+    input in one shot. find_derivation's branching search (which tries
+    rule 1 as an alternative, not just rule 0's first match) finds exactly
+    that derivation to target ('z',) at depth 1.
+    Expected feedback: failure of the first assert means greedy_parse grew
+    backtracking (violating its documented contract); failure of the
+    second means find_derivation regressed on a case its own test suite
+    doesn't otherwise cover (an all_matches branch at position 0 that is
+    NOT the first-listed rule)."""
+    tokens = ("a", "a", "b")
+    rules = [(("a",), ("x",)), (("a", "a", "b"), ("z",))]
+    assert greedy_parse(tokens, rules) is None
+    proof = find_derivation(tokens, ("z",), rules, max_depth=1, strategy="all_matches")
+    assert proof == [{"rule": 1, "positions": [0], "before": tokens, "after": ("z",)}]
+
+
+def test_greedy_parse_rtl_scans_from_the_right_and_can_differ_from_ltr():
+    """Purpose: direction="rtl" must genuinely change WHICH matches are made
+    (not just relabel ltr's own steps) when the rule set is ambiguous, and
+    must report "position" back in ORIGINAL (ltr) token coordinates so rtl
+    and ltr results are directly comparable. Here the 2-token rule can only
+    grab a pair of 'a's starting from wherever the scan begins: ltr grabs
+    (0,1) then a lone 'a' at 2; rtl grabs (1,2) then a lone 'a' at 0 --
+    genuinely different tilings, both correctly covering all 3 tokens.
+    Expected feedback: failure means the reversed-rule construction or the
+    position back-conversion math (n - rev_pos - lhs_len) is wrong."""
+    tokens = ("a", "a", "a")
+    rules = [(("a", "a"), ("P",)), (("a",), ("Q",))]
+
+    ltr = greedy_parse(tokens, rules, direction="ltr")
+    assert ltr == {
+        "result": ("P", "Q"),
+        "steps": [
+            {"rule": 0, "position": 0, "before": ("a", "a"), "after": ("P",)},
+            {"rule": 1, "position": 2, "before": ("a",), "after": ("Q",)},
+        ],
+    }
+
+    rtl = greedy_parse(tokens, rules, direction="rtl")
+    assert rtl == {
+        "result": ("Q", "P"),
+        "steps": [
+            {"rule": 1, "position": 0, "before": ("a",), "after": ("Q",)},
+            {"rule": 0, "position": 1, "before": ("a", "a"), "after": ("P",)},
+        ],
+    }
+
+
+def test_greedy_parse_empty_tokens_trivially_succeeds():
+    """Purpose: an empty token sequence has nothing to cover, so it must
+    succeed trivially with an empty result and no steps -- regardless of
+    what rules are supplied (even an empty rule list).
+    Expected feedback: failure means the while-loop's termination condition
+    doesn't handle n=0, either raising or misreporting failure."""
+    assert greedy_parse((), [(("a",), ("x",))]) == {"result": (), "steps": []}
+
+
+def test_greedy_parse_rejects_empty_lhs_rule():
+    """Purpose: a rule with an empty LHS could never advance the scan
+    position, which would make "first match wins" ill-defined at every
+    position simultaneously (an empty LHS trivially "matches" everywhere)
+    -- this must be rejected up front, mirroring derive_rewrites' identical
+    rejection.
+    Expected feedback: failure means a degenerate rule silently produces an
+    infinite loop or nonsensical zero-width steps instead of a clear error."""
+    with pytest.raises(ValueError, match="empty LHS"):
+        greedy_parse(("a",), [((), ("x",))])
+
+
+def test_greedy_parse_rejects_unknown_direction():
+    """Purpose: direction is a closed two-value enum ('ltr'/'rtl') -- any
+    other value is a caller contract violation and must raise clearly.
+    Expected feedback: failure means an invalid direction is silently
+    treated as one of the two valid values instead of surfaced as an error."""
+    with pytest.raises(ValueError, match="direction"):
+        greedy_parse(("a",), [(("a",), ("x",))], direction="sideways")

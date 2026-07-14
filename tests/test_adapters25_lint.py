@@ -206,6 +206,7 @@ def test_discover_adapter_paths_excludes_init_and_base():
     assert "m0r0.py" in names
     assert "lp85.py" in names
     assert "su15.py" in names
+    assert "ft09.py" in names
 
 
 def test_real_m0r0_adapter_passes_the_lint():
@@ -240,5 +241,19 @@ def test_real_su15_adapter_passes_the_lint():
     Expected feedback: failure means the su15 adapter (or the lint's
     whitelist) drifted out of sync with the quarantine rules."""
     path = _REPO_ROOT / "src" / "admorphiq" / "adapters25" / "su15.py"
+    result = lint_module(path)
+    assert result.import_violations == []
+
+
+def test_real_ft09_adapter_passes_the_lint():
+    """Purpose: regression pin -- the actual shipped ft09 adapter (the
+    GF(2) toggle-stencil sibling, the fourth mechanic family and the first
+    to compose admorphiq.kernels.gf2_solve) must ALSO have zero import
+    violations, proving the quarantine contract holds even for an adapter
+    whose own solve logic depends on a kernel added in the same round as
+    the adapter itself.
+    Expected feedback: failure means the ft09 adapter (or the lint's
+    whitelist) drifted out of sync with the quarantine rules."""
+    path = _REPO_ROOT / "src" / "admorphiq" / "adapters25" / "ft09.py"
     result = lint_module(path)
     assert result.import_violations == []

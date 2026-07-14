@@ -1,19 +1,23 @@
-"""Pure 1D/sequence kernels: background-gap window segmentation, per-window
-colour majority/minority, generic size-jump clustering, and deterministic
-greedy token-string parsing.
+"""Pure 1D/structural measurement kernels: axis-neutral occupied-run
+projection, a generic colour-value histogram, and numeric ratio-jump
+clustering.
 
 Distinct from :mod:`admorphiq.kernels.regions` (2D same-colour connected
-components) and :mod:`admorphiq.kernels.rewrite` (branching BFS token-rewrite
-search) — these are 1D/sequence primitives extracted from the TR87-class
-"a row of the board is a strip of fixed-width glyph cells separated by
-background gaps" structure (see
-``docs/tr87_frame_only_grammar_design_20260715.md`` for the measurement that
-motivated this module: naive same-colour connected-component segmentation
-FRAGMENTS a two-colour glyph cell — one glyph's own "ink" pixels are not
-guaranteed 4-connected — so isolating "one cell" needs a positional gap scan,
-not a colour flood fill). No game semantics travel with the math: no
-"glyph", "dial", "bar", or any other TR87-specific vocabulary appears below,
-only bands/windows/tokens/rules.
+components) — these operate on a single axis (a row or column projection of
+a 2D grid) or on a plain sequence of values, with no notion of "cell",
+"glyph", or "token" baked into the primitives themselves; the caller decides
+what a run or a colour count MEANS. Extracted while scoping TR87's rule-table
+extraction (``docs/tr87_frame_only_grammar_design_20260715.md``) — same-colour
+connected-component segmentation FRAGMENTS a two-colour (fill+ink) region,
+since one colour's own pixels need not be 4-connected, so isolating "one
+occupied run" needs a positional gap scan, not a colour flood fill. That
+extraction ALSO revealed (Codex review, ``docs/r56_codex_tr87_review_20260715.md``,
+and the level-1 capture in the same design doc) that a background-only gap
+scan cannot, by itself, tell "one wide occupied run" apart from "several
+adjacent runs with no gap between them" — a caller that needs that
+distinction supplies additional structure (a known single-run pitch,
+independent tokenization evidence, etc.); this module only measures what a
+background-gap projection can measure, no more.
 
 Stdlib only — no numpy. These kernels must run inside the sandboxed REPL
 where only the standard library and explicitly provided modules exist.
@@ -28,8 +32,8 @@ from typing import Any
 from admorphiq.kernels._common import normalize_frame as _normalize_frame
 
 Cell = tuple[int, int]
-Window = dict[str, Any]
-Rule = tuple[Sequence[Any], Sequence[Any]]
+Bbox = tuple[int, int, int, int]
+Run = dict[str, Any]
 
 
 def _resolve_background_set(grid: Sequence[Sequence[int]], background: int | Iterable[int] | None) -> set[int]:
@@ -41,98 +45,120 @@ def _resolve_background_set(grid: Sequence[Sequence[int]], background: int | Ite
     return {int(b) for b in background}
 
 
-def gap_windows(band: Sequence[Sequence[int]], background: int | Iterable[int] | None = None) -> dict[str, Any]:
-    """Segment a row-band into content windows separated by full-background column runs.
+def occupied_runs(
+    frame: Sequence[Sequence[int]],
+    axis: str = "col",
+    bbox: Bbox | None = None,
+    background: int | Iterable[int] | None = None,
+) -> dict[str, Any]:
+    """Project ``frame`` along ``axis`` and segment it into occupied runs separated by full-background gaps.
 
-    ``band`` is a 2D slice (a tuple of rows, all the same width — e.g. the
-    handful of rows spanning one horizontal strip of a frame). A column
-    belongs to a gap only when EVERY row of ``band`` is in ``background`` at
-    that column; a column with content in ANY row starts/extends a window —
-    this is why a two-colour cell (fill + a second "ink" colour) stays one
-    window even though same-colour connected-component segmentation would
-    fragment it. ``background`` is a single colour, any iterable of colours,
-    or (default) auto-derived as the single most-common colour across
-    ``band`` — matching :mod:`admorphiq.kernels.regions`'s
+    ``axis="col"`` scans columns: a column is a GAP only when every row in
+    ``bbox``'s row range is in ``background`` at that column; a column with
+    non-background content in ANY of those rows extends/starts a run — this
+    is why a two-colour region (e.g. a fill colour plus a second "content"
+    colour) stays one run even though same-colour connected-component
+    segmentation would fragment it. ``axis="row"`` is the transpose: scans
+    rows, gap/content determined across ``bbox``'s column range. ``bbox`` is
+    the inclusive ``(row0, col0, row1, col1)`` restricting the scan (default:
+    the whole frame). ``background`` is a single colour, any iterable of
+    colours, or (default) auto-derived as the single most-common colour
+    within ``bbox`` — matching :mod:`admorphiq.kernels.regions`'s
     ``background: int | Iterable[int] | None`` convention.
 
-    Returns ``{"windows": [...], "gaps": [...]}``. Each window is
-    ``{"start": col, "end": col, "cells": frozenset[(row, col)]}`` — note
-    ``end`` is EXCLUSIVE (half-open, Python-slice-style: ``band[r][start:end]``
-    is the window's own row slice) — a deliberate departure from the rest of
-    this kernel library's inclusive-bbox convention, chosen because a
-    window's natural consumer is a slice/range, not a static rectangle;
-    ``cells`` holds only the non-background cells within the window (its
-    full column span may include background cells in some rows, since a
-    column only needs ONE non-background row to join the window). ``gaps``
-    has ``len(windows) - 1`` entries: the background-only column count
-    strictly between consecutive windows. An all-background (or empty)
-    ``band`` returns ``{"windows": [], "gaps": []}``.
+    Returns ``{"runs": [...], "gaps": [...]}``. Each run is ``{"start": p,
+    "end": p, "cells": frozenset[(row, col)]}`` where ``p`` is a position
+    along ``axis`` (a column index for ``axis="col"``, a row index for
+    ``axis="row"``) and ``end`` is EXCLUSIVE (half-open, Python-slice-style)
+    — a deliberate departure from the rest of this kernel library's
+    inclusive-bbox convention, chosen because a run's natural consumer is a
+    slice/range, not a static rectangle; ``cells`` holds only the
+    non-background cells within the run's extent (its full cross-axis span
+    may include background cells on some lines, since one line only needs
+    ONE non-background cell to keep the run alive). ``gaps`` has
+    ``len(runs) - 1`` entries: the background-only count strictly between
+    consecutive runs, in the same units as ``start``/``end``. An
+    all-background (or empty) region returns ``{"runs": [], "gaps": []}``.
+
+    This function does NOT know, and cannot tell you, whether a single wide
+    run is genuinely one occupied thing or several adjacent things rendered
+    with no gap between them — see this module's docstring.
     """
-    grid = _normalize_frame(band)
+    if axis not in ("row", "col"):
+        raise ValueError(f"axis must be 'row' or 'col', got {axis!r}")
+    grid = _normalize_frame(frame)
     if not grid or not grid[0]:
-        return {"windows": [], "gaps": []}
-    bg = _resolve_background_set(grid, background)
+        return {"runs": [], "gaps": []}
     h, w = len(grid), len(grid[0])
+    r0, c0, r1, c1 = (0, 0, h - 1, w - 1) if bbox is None else bbox
+    bg = _resolve_background_set(
+        [row[c0 : c1 + 1] for row in grid[r0 : r1 + 1]], background
+    )
+
+    if axis == "col":
+        primary = range(c0, c1 + 1)
+        cross = range(r0, r1 + 1)
+
+        def has_content(p: int) -> bool:
+            return any(grid[q][p] not in bg for q in cross)
+
+        def cell(p: int, q: int) -> Cell:
+            return (q, p)
+    else:
+        primary = range(r0, r1 + 1)
+        cross = range(c0, c1 + 1)
+
+        def has_content(p: int) -> bool:
+            return any(grid[p][q] not in bg for q in cross)
+
+        def cell(p: int, q: int) -> Cell:
+            return (p, q)
 
     spans: list[tuple[int, int]] = []
-    in_window = False
+    in_run = False
     start = 0
-    for c in range(w):
-        has_content = any(grid[r][c] not in bg for r in range(h))
-        if has_content and not in_window:
-            in_window, start = True, c
-        elif not has_content and in_window:
-            spans.append((start, c))
-            in_window = False
-    if in_window:
-        spans.append((start, w))
+    for p in primary:
+        occ = has_content(p)
+        if occ and not in_run:
+            in_run, start = True, p
+        elif not occ and in_run:
+            spans.append((start, p))
+            in_run = False
+    if in_run:
+        spans.append((start, primary.stop))
 
-    windows: list[Window] = []
-    for c0, c1 in spans:
-        cells = frozenset((r, c) for r in range(h) for c in range(c0, c1) if grid[r][c] not in bg)
-        windows.append({"start": c0, "end": c1, "cells": cells})
-    gaps = [windows[i + 1]["start"] - windows[i]["end"] for i in range(len(windows) - 1)]
-    return {"windows": windows, "gaps": gaps}
+    runs: list[Run] = []
+    for s, e in spans:
+        cells = frozenset(
+            cell(p, q) for p in range(s, e) for q in cross if grid[cell(p, q)[0]][cell(p, q)[1]] not in bg
+        )
+        runs.append({"start": s, "end": e, "cells": cells})
+    gaps = [runs[i + 1]["start"] - runs[i]["end"] for i in range(len(runs) - 1)]
+    return {"runs": runs, "gaps": gaps}
 
 
-def window_majority_color(
-    band: Sequence[Sequence[int]], window: Window, background: int | None = None
-) -> dict[str, Any]:
-    """The most/second-most common colour within one ``gap_windows``-shaped window.
+def color_mode(values: Iterable[Any], k: int = 2) -> list[dict[str, Any]]:
+    """The top-``k`` most frequent values in ``values``, ranked descending by count.
 
-    Reads ``window["start"]``/``window["end"]`` (half-open, as produced by
-    :func:`gap_windows`) and scans every cell of ``band`` in that column
-    span (ALL rows, not just ``window["cells"]``'s non-background subset —
-    this is what lets a caller ask "what's this window's OWN fill colour"
-    even including background rows within the span). When ``background`` is
-    given, cells equal to it are excluded from the count first (so a
-    window's majority reflects its CONTENT structure, not a background
-    colour that happens to also appear in some row of the span).
+    A plain frequency histogram over ANY iterable of hashable values — not
+    specific to colours, not specific to 2D structure, and with no
+    "background"/"ink"/"majority-is-fill" semantics baked in: the caller
+    decides what ``values`` to feed in (every cell of a band, only the cells
+    in one :func:`occupied_runs` result's ``"cells"``, colours with some
+    known background value pre-filtered out, etc.) and what the ranked
+    result MEANS for their own use case.
 
-    Returns ``{"majority": colour, "minority": colour | None, "counts":
-    {colour: count, ...}}``. ``minority`` is the second-most-common colour,
-    or ``None`` when the (post-exclusion) window holds only one colour (or
-    none at all, in which case ``majority`` is also ``None``). Tie rule:
-    when two or more colours share the top (or second) count, the one
-    encountered FIRST in row-major (top-to-bottom, left-to-right) scan
-    order wins — ``collections.Counter.most_common()`` is a stable sort
-    over a dict that preserves first-insertion order, so this falls out of
-    the scan order directly rather than needing an explicit tie-break rule.
+    Returns up to ``k`` entries ``{"color": v, "count": n}`` (fewer if fewer
+    than ``k`` distinct values occur; ``[]`` for an empty ``values``), ordered
+    by count descending. Tie rule: values tied on count are ordered by which
+    was encountered FIRST while consuming ``values`` — ``collections.Counter``
+    preserves first-insertion order for its keys and ``most_common()`` is a
+    stable sort over that order, so this falls out directly rather than
+    needing an explicit tie-break rule.
     """
-    grid = _normalize_frame(band)
-    start, end = window["start"], window["end"]
-    counts = Counter(
-        grid[r][c]
-        for r in range(len(grid))
-        for c in range(start, end)
-        if background is None or grid[r][c] != background
-    )
-    if not counts:
-        return {"majority": None, "minority": None, "counts": {}}
-    ranked = counts.most_common()
-    majority = ranked[0][0]
-    minority = ranked[1][0] if len(ranked) > 1 else None
-    return {"majority": majority, "minority": minority, "counts": dict(counts)}
+    counts = Counter(values)
+    ranked = counts.most_common(k)
+    return [{"color": v, "count": n} for v, n in ranked]
 
 
 def cluster_widths(widths: Sequence[int | float], ratio: float = 1.5) -> list[list[int]]:
@@ -167,105 +193,3 @@ def cluster_widths(widths: Sequence[int | float], ratio: float = 1.5) -> list[li
     if current:
         clusters.append(current)
     return clusters
-
-
-def greedy_parse(tokens: Sequence[Any], rules: Sequence[Rule], direction: str = "ltr") -> dict[str, Any] | None:
-    """Deterministic single-pass greedy token-string parse: NOT a search.
-
-    Scans ``tokens`` from one end (``direction="ltr"`` from the left,
-    ``"rtl"`` from the right), and at each position tries every rule *in
-    list order*, applying the FIRST whose LHS matches a run of tokens
-    starting there — no backtracking, and no consideration of any OTHER
-    rule that might also have matched. On a match, the position advances
-    past the consumed LHS run (not the RHS — the parse always consumes
-    ``tokens``, the RHS only contributes to the OUTPUT). If NO rule matches
-    at some position, the entire parse FAILS and this returns ``None`` —
-    there is no partial-credit / pass-through-unmatched-tokens mode; every
-    token must be covered by some rule's LHS.
-
-    This is deliberately much simpler than
-    :func:`admorphiq.kernels.rewrite.derive_rewrites` /
-    :func:`admorphiq.kernels.rewrite.find_derivation`, which BFS-search over
-    every possible sequence of rule applications (branching at every
-    matching position and rule choice) to find ANY reachable derivation —
-    genuinely necessary when multiple derivations may exist and a specific
-    target must be found among them. ``greedy_parse`` makes exactly one
-    commitment per position and never reconsiders it, which is the right
-    (and much cheaper) tool when the task's own rule is itself a
-    committed, non-backtracking left-to-right tiling (e.g. TR87's win-check
-    parses its target row this way — see the design doc referenced in this
-    module's docstring). When a greedy tiling genuinely doesn't exist for
-    some input even though a valid (non-greedy, differently-ordered)
-    derivation does, ``greedy_parse`` returns ``None`` where
-    ``find_derivation`` would still find it — callers that need a fallback
-    for that gap should reach for ``find_derivation``, not assume
-    ``greedy_parse``'s ``None`` means truly unparseable under the rule set.
-
-    Returns ``{"result": tokens, "steps": [{"rule": idx, "position": p,
-    "before": lhs_tokens, "after": rhs_tokens}, ...]}`` on success —
-    ``result`` is the concatenation of every matched rule's RHS, in match
-    order; ``position`` is always reported in ORIGINAL (``ltr``) token
-    coordinates regardless of ``direction``, so steps from an ``"rtl"``
-    parse are directly comparable to an ``"ltr"`` one. An empty ``tokens``
-    trivially succeeds with an empty result and no steps, regardless of
-    ``rules``. Raises ``ValueError`` for an unknown ``direction`` or a rule
-    with an empty LHS (an empty LHS can never advance the scan position,
-    which would either loop forever or make "first match wins" ill-defined
-    at every position simultaneously — same rejection
-    :func:`admorphiq.kernels.rewrite.derive_rewrites` applies).
-    """
-    if direction not in ("ltr", "rtl"):
-        raise ValueError(f"direction must be 'ltr' or 'rtl', got {direction!r}")
-    normalized: list[tuple[tuple[Any, ...], tuple[Any, ...]]] = []
-    for i, (lhs, rhs) in enumerate(rules):
-        lhs_t, rhs_t = tuple(lhs), tuple(rhs)
-        if not lhs_t:
-            raise ValueError(f"rule {i}: empty LHS is not a valid production")
-        normalized.append((lhs_t, rhs_t))
-
-    tokens_t = tuple(tokens)
-    if direction == "ltr":
-        return _greedy_parse_ltr(tokens_t, normalized)
-
-    n = len(tokens_t)
-    rev_tokens = tuple(reversed(tokens_t))
-    rev_rules = [(tuple(reversed(lhs)), tuple(reversed(rhs))) for lhs, rhs in normalized]
-    parsed = _greedy_parse_ltr(rev_tokens, rev_rules)
-    if parsed is None:
-        return None
-    steps = []
-    for step in reversed(parsed["steps"]):
-        lhs_len = len(step["before"])
-        orig_pos = n - step["position"] - lhs_len
-        steps.append(
-            {
-                "rule": step["rule"],
-                "position": orig_pos,
-                "before": tuple(reversed(step["before"])),
-                "after": tuple(reversed(step["after"])),
-            }
-        )
-    return {"result": tuple(reversed(parsed["result"])), "steps": steps}
-
-
-def _greedy_parse_ltr(
-    tokens: tuple[Any, ...], rules: list[tuple[tuple[Any, ...], tuple[Any, ...]]]
-) -> dict[str, Any] | None:
-    pos = 0
-    n = len(tokens)
-    steps: list[dict[str, Any]] = []
-    result: list[Any] = []
-    while pos < n:
-        matched = None
-        for idx, (lhs, rhs) in enumerate(rules):
-            m = len(lhs)
-            if tokens[pos : pos + m] == lhs:
-                matched = (idx, lhs, rhs)
-                break
-        if matched is None:
-            return None
-        idx, lhs, rhs = matched
-        steps.append({"rule": idx, "position": pos, "before": lhs, "after": rhs})
-        result.extend(rhs)
-        pos += len(lhs)
-    return {"result": tuple(result), "steps": steps}
