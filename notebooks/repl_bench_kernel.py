@@ -42,16 +42,22 @@ SERVER_BOOT_TIMEOUT_S = 1200.0
 
 
 # %%
-def env_probe() -> None:
-    """Print the actual GPU (the 27B needs the RTX PRO 6000, not the P100)."""
+def _gpu_name() -> str:
+    """Best-effort GPU name via nvidia-smi ("" when unavailable)."""
     try:
         smi = subprocess.run(
             ["nvidia-smi", "--query-gpu=name,memory.total", "--format=csv,noheader"],
             capture_output=True, text=True, timeout=30,
         )
-        print(f"[env-probe] GPU: {smi.stdout.strip() or smi.stderr.strip()}", flush=True)
-    except Exception as exc:  # noqa: BLE001
-        print(f"[env-probe] nvidia-smi unavailable: {exc}", flush=True)
+        return smi.stdout.strip()
+    except Exception:  # noqa: BLE001
+        return ""
+
+
+def env_probe() -> None:
+    """Print the actual GPU (the 27B needs the RTX PRO 6000, not the P100)."""
+    name = _gpu_name()
+    print(f"[env-probe] GPU: {name or 'nvidia-smi unavailable'}", flush=True)
 
 
 def _find_dir(name: str, root: str = "/kaggle/input", max_depth: int = 6) -> str:
@@ -205,6 +211,13 @@ def run_bench() -> dict:
     arcade = Arcade(operation_mode=OperationMode.OFFLINE, environments_dir=envs_dir)
     game_ids = _target_game_ids(arcade)
     print(f"[bench] games: {game_ids}", flush=True)
+
+    # Manifest FIRST: pin git/model/prompt/config for reproducibility (obs-3).
+    from admorphiq.repl_agent.manifest import write_manifest
+    write_manifest(os.path.join(KAGGLE_WORKING, "run_manifest.json"),
+                   model=VLLM_MODEL_NAME, baseline="chained-card",
+                   game_list=game_ids, accelerator=_gpu_name(),
+                   max_actions=MAX_ACTIONS, wall_s=WALL_S)
 
     summary: dict[str, dict] = {}
     for game_id in game_ids:
