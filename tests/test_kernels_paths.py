@@ -1,0 +1,248 @@
+"""Tests for the pure shortest-path / configuration-path kernels (R56)."""
+
+import pytest
+
+from admorphiq.kernels.paths import (
+    configuration_path,
+    grid_distance_field,
+    grid_shortest_path,
+    path_to_moves,
+    reachable_frontier,
+    transition_shortest_path,
+)
+
+# 5x5 grid, all passable except a wall down column 2, rows 0-3 (a gap at row 4)
+# so any start=(0,0)/goal=(0,4) path must detour down to row 4 and back up.
+_WALLED_GRID = [
+    [True, True, False, True, True],
+    [True, True, False, True, True],
+    [True, True, False, True, True],
+    [True, True, False, True, True],
+    [True, True, True, True, True],
+]
+
+
+def test_grid_shortest_path_detours_around_wall_with_known_optimal_length():
+    """Purpose: pin the actual optimal path length around a real obstacle —
+    column 2 is impassable for rows 0-3, so (4, 2) is the ONLY crossing
+    point between the left and right halves. Any path from (0,0) to (0,4)
+    must therefore pass through that chokepoint, giving a provable lower
+    bound: Manhattan(start, (4,2)) + Manhattan((4,2), goal) = (4+2)+(4+2) =
+    12 steps, and that bound is achievable (row 4 and columns 0/4 are fully
+    open), so the true optimum is exactly 12 steps / 13 cells.
+    Expected feedback: failure means the BFS either ignores the wall (finds
+    a too-short path straight through) or fails to find the true shortest
+    detour (returns a longer, valid-but-suboptimal path)."""
+    path = grid_shortest_path(_WALLED_GRID, (0, 0), (0, 4))
+    assert path is not None
+    assert path[0] == (0, 0)
+    assert path[-1] == (0, 4)
+    # Every consecutive pair must be a single cardinal step and passable.
+    for (r0, c0), (r1, c1) in zip(path, path[1:]):
+        assert abs(r0 - r1) + abs(c0 - c1) == 1
+        assert _WALLED_GRID[r1][c1] is True
+    # Manhattan distance is 4; the wall forces a strictly longer path.
+    assert len(path) - 1 > 4
+    # The provable chokepoint-bound optimum (see docstring): 12 steps.
+    assert len(path) - 1 == 12
+    assert (4, 2) in path  # must pass through the only crossing cell
+
+
+def test_grid_shortest_path_no_path_returns_none():
+    """Purpose: a start fully enclosed by impassable cells must return None,
+    not raise or loop forever.
+    Expected feedback: failure means the BFS termination condition is wrong
+    for the disconnected-component case."""
+    grid = [
+        [False, False, False],
+        [False, True, False],
+        [False, False, False],
+    ]
+    assert grid_shortest_path(grid, (1, 1), (0, 0)) is None
+
+
+def test_grid_shortest_path_start_equals_goal():
+    """Purpose: start == goal is a zero-step path containing just that cell,
+    a degenerate case that must not require BFS at all.
+    Expected feedback: failure (e.g. None, or a path with >1 cell) means the
+    shortcut is missing and every caller must special-case this themselves."""
+    assert grid_shortest_path(_WALLED_GRID, (2, 2), (2, 2)) == [(2, 2)]
+
+
+def test_grid_shortest_path_out_of_bounds_or_impassable_endpoint_is_none():
+    """Purpose: an out-of-bounds or impassable start/goal (when they differ)
+    is unreachable by definition and must return None, not raise.
+    Expected feedback: failure means a caller passing a slightly-wrong
+    coordinate gets a crash instead of a clean 'no path' signal."""
+    assert grid_shortest_path(_WALLED_GRID, (0, 0), (99, 99)) is None
+    assert grid_shortest_path(_WALLED_GRID, (0, 0), (0, 2)) is None  # (0,2) is a wall
+
+
+def test_grid_distance_field_multi_source_nearest_wins():
+    """Purpose: with two sources on an open grid, every cell's distance must
+    be to its NEAREST source, not the first one listed.
+    Expected feedback: failure means the multi-source seeding only tracks
+    one source (e.g. overwrites instead of taking the min), which would
+    make distance-guided planning prefer the wrong direction near a
+    boundary between two sources' basins."""
+    grid = [[True] * 5 for _ in range(1)]
+    field = grid_distance_field(grid, [(0, 0), (0, 4)])
+    assert field[(0, 0)] == 0
+    assert field[(0, 4)] == 0
+    assert field[(0, 2)] == 2  # equidistant, but must be 2, not stuck at source-1 dist of 4
+    assert field[(0, 1)] == 1
+    assert field[(0, 3)] == 1
+
+
+def test_grid_distance_field_skips_impassable_or_oob_sources():
+    """Purpose: a source that is itself impassable (or out of bounds) cannot
+    seed the field; only genuinely passable, in-bounds sources contribute.
+    Uses a 2D grid with a detour around the wall at (0, 1) so the
+    unreachability under test is specifically about invalid-source seeding,
+    not about the wall blocking all paths outright.
+    Expected feedback: failure means an invalid source either crashes the
+    field computation or silently seeds unreachable cells with distance 0
+    (e.g. (0, 1) itself appearing in the field despite being impassable)."""
+    grid = [
+        [True, False, True],
+        [True, True, True],
+    ]
+    field = grid_distance_field(grid, [(0, 1), (0, 0), (99, 99)])
+    assert (0, 1) not in field  # impassable source must not seed anything
+    assert (99, 99) not in field  # out-of-bounds source must not seed anything
+    assert field == {(0, 0): 0, (1, 0): 1, (1, 1): 2, (1, 2): 3, (0, 2): 4}
+
+
+def test_transition_shortest_path_over_observed_triples():
+    """Purpose: given a small chain of observed (state, label, next_state)
+    triples with one shortcut edge, the shortest LABEL sequence (not state
+    sequence) must be returned, preferring the shortcut.
+    Expected feedback: failure means the induced-graph construction or the
+    BFS over labels is wrong — this is the exact shape a live agent's
+    observed transition store has."""
+    transitions = [
+        ("A", "a1", "B"),
+        ("B", "a1", "C"),
+        ("C", "a1", "D"),
+        ("A", "shortcut", "D"),
+    ]
+    assert transition_shortest_path(transitions, "A", "D") == ["shortcut"]
+
+
+def test_transition_shortest_path_unreachable_and_trivial():
+    """Purpose: an unreachable goal returns None; start == goal returns []
+    (zero edges needed) without consulting the transition store at all.
+    Expected feedback: failure on the unreachable case risks an infinite
+    BFS or a wrong non-None result; failure on the trivial case means every
+    caller must special-case 'already there' themselves."""
+    transitions = [("A", "a1", "B")]
+    assert transition_shortest_path(transitions, "A", "Z") is None
+    assert transition_shortest_path(transitions, "A", "A") == []
+
+
+def test_transition_shortest_path_later_edge_overwrites_stale_target():
+    """Purpose: when the same (state, label) pair appears twice with
+    different next-states, the LAST occurrence must win (matching an
+    observed-store caller that corrects a stale resolution).
+    Expected feedback: failure means a re-observed transition doesn't
+    actually update the induced graph, silently pathing through a target
+    that is no longer what the label actually leads to."""
+    transitions = [
+        ("A", "a1", "STALE"),
+        ("A", "a1", "B"),  # corrected observation
+    ]
+    assert transition_shortest_path(transitions, "A", "B") == ["a1"]
+    assert transition_shortest_path(transitions, "A", "STALE") is None
+
+
+def test_reachable_frontier_excludes_tried_and_orders_by_distance():
+    """Purpose: frontier pairs must exclude every (state, label) already in
+    `tried`, and the surviving pairs must be ordered nearest-state-first.
+    Expected feedback: failure on exclusion means a caller re-proposes an
+    action it already knows the outcome of; failure on ordering means the
+    'nearest untried option' heuristic silently degrades to an unordered
+    dump, defeating its purpose in a promise-ranked frontier search."""
+    transitions = [
+        ("A", "far", "B"),
+        ("B", "near", "C"),
+        ("A", "close", "A"),  # self-loop, still a valid frontier pair at distance 0
+    ]
+    tried = {("A", "far")}
+    out = reachable_frontier(transitions, "A", tried)
+    assert ("A", "far") not in out
+    assert out == [("A", "close"), ("B", "near")]
+
+
+def test_reachable_frontier_no_transitions_from_isolated_start():
+    """Purpose: a start_key with no outgoing edges at all yields an empty
+    frontier, not an error.
+    Expected feedback: failure means a caller probing a genuinely fresh,
+    unexplored state crashes instead of getting a clean empty result."""
+    assert reachable_frontier([], "ISOLATED", set()) == []
+
+
+def test_configuration_path_solves_three_state_toggle_puzzle():
+    """Purpose: a minimal externalized state-space puzzle (three-position
+    toggle: OFF -> HALF -> ON, goal = ON) must be solved via caller-supplied
+    goal_test/successors, proving the state semantics are fully generic.
+    Expected feedback: failure means the generic BFS driver itself is
+    broken (not any puzzle-specific logic, since none lives in the kernel)."""
+    def successors(state: str):
+        order = {"OFF": "HALF", "HALF": "ON", "ON": "OFF"}
+        return [("toggle", order[state])]
+
+    path = configuration_path("OFF", lambda s: s == "ON", successors)
+    assert path == ["toggle", "toggle"]
+
+
+def test_configuration_path_initial_already_goal_returns_empty_list():
+    """Purpose: when the initial state already satisfies goal_test, the
+    result is [] (zero steps), distinct from None (unreachable).
+    Expected feedback: failure conflates 'already solved' with 'unsolvable',
+    which would make an adapter re-plan from an already-complete state."""
+    assert configuration_path("ON", lambda s: s == "ON", lambda s: []) == []
+
+
+def test_configuration_path_max_states_bounds_termination():
+    """Purpose: an infinite/unbounded state space (integers counting up
+    forever, goal never satisfied) must terminate at max_states and return
+    None rather than hang.
+    Expected feedback: failure means there is no expansion cap, risking a
+    runtime hang inside the 9h Kaggle budget on a genuinely unreachable or
+    unbounded configuration space."""
+    def successors(state: int):
+        return [("inc", state + 1)]
+
+    result = configuration_path(0, lambda s: s == 10_000_000, successors, max_states=50)
+    assert result is None
+
+
+def test_path_to_moves_happy_path():
+    """Purpose: a straight-line waypoint path converts to the correct move
+    labels via the caller-supplied delta map.
+    Expected feedback: failure means the delta computation or label lookup
+    is wrong — this is the exact step a live agent uses to turn a BFS path
+    into actions it can actually send to the environment."""
+    path = [(0, 0), (0, 1), (1, 1), (1, 0)]
+    move_labels = {(0, 1): "right", (1, 0): "down", (0, -1): "left", (-1, 0): "up"}
+    assert path_to_moves(path, move_labels) == ["right", "down", "left"]
+
+
+def test_path_to_moves_short_paths_return_empty():
+    """Purpose: a path of length 0 or 1 has no hops to convert, so the
+    result is [] without touching move_labels at all.
+    Expected feedback: failure means a degenerate 'already there' path
+    crashes on an empty zip instead of returning trivially."""
+    assert path_to_moves([], {}) == []
+    assert path_to_moves([(0, 0)], {}) == []
+
+
+def test_path_to_moves_raises_on_non_adjacent_hop():
+    """Purpose: a hop whose delta was never calibrated (or that skips more
+    than one cell) must raise ValueError, not silently drop the step.
+    Expected feedback: failure means an uncalibrated/invalid hop is
+    silently swallowed, producing an action sequence shorter than the
+    actual path and desyncing the agent from its intended waypoints."""
+    path = [(0, 0), (5, 5)]
+    with pytest.raises(ValueError):
+        path_to_moves(path, {(0, 1): "right"})

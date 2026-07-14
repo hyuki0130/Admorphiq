@@ -6,6 +6,31 @@ Kernels never touch the environment, never infer goals, and contain no
 game-specific constants. See docs/r56_codex_toolbase_verdict_20260715.md.
 """
 
+from admorphiq.kernels.motion import (
+    changed_region_attribution,
+    frame_diff,
+    learn_point_operators,
+    motion_vectors,
+    plan_overwrites,
+    track_objects,
+)
+from admorphiq.kernels.paths import (
+    configuration_path,
+    grid_distance_field,
+    grid_shortest_path,
+    path_to_moves,
+    reachable_frontier,
+    transition_shortest_path,
+)
+from admorphiq.kernels.regions import (
+    find_regions,
+    group_by_axis,
+    multiset_signature,
+    multisets_equal,
+    region_relations,
+    size_clusters,
+    tile_bbox,
+)
 from admorphiq.kernels.rewrite import derive_rewrites, find_derivation
 from admorphiq.kernels.shapes import (
     assign_pairs,
@@ -23,4 +48,23 @@ __all__ = [
     "crop_to_content",
     "dihedral_transforms",
     "iou",
+    "configuration_path",
+    "grid_distance_field",
+    "grid_shortest_path",
+    "path_to_moves",
+    "reachable_frontier",
+    "transition_shortest_path",
+    "changed_region_attribution",
+    "frame_diff",
+    "learn_point_operators",
+    "motion_vectors",
+    "plan_overwrites",
+    "track_objects",
+    "find_regions",
+    "region_relations",
+    "group_by_axis",
+    "multiset_signature",
+    "multisets_equal",
+    "size_clusters",
+    "tile_bbox",
 ]
