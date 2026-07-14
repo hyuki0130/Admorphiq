@@ -63,28 +63,44 @@ load-bearing:
    any specific chrome colour.
 
 **Fused-frame recovery (level 1, portal case) -- formerly a kernel gap,
-now resolved**: the two REAL multi-slot frames on this level are not pure
-rectangle borders -- at least one has a portal pipe fused onto its own
-edge as ONE connected component, so ``closed_frames``'s exact "cells ==
-rectangle border" match rejects it outright (it never reaches
+now resolved for BOTH of the level's two real frames**: neither of level
+1's two REAL multi-slot frames is a pure rectangle border, but for two
+DIFFERENT reasons, so ``closed_frames``'s exact "cells == rectangle
+border" match rejects both outright (it never even reaches
 ``connectors``, which only separates ALREADY-distinct thin paths from
-already-detected regions, not a fused shape). ``sort_match.py``'s own
-``_split_box_pipe`` did this de-fusion with a game-specific implementation;
-:func:`admorphiq.kernels.geometry.split_fused_frame` is the generic
-namespace-safe replacement (landed after this adapter's first pass, R56
-kernel round). :func:`_recover_fused_frames` calls it on every candidate
-region whose cell count EXCEEDS its own bounding-box perimeter (a clean
-ring's cells equal its perimeter exactly -- that is ``closed_frames``' own
-test -- so only a region with extra fused cells, or a solid block, is
-tried; ``split_fused_frame`` itself rejects a solid block by returning
-``None``, so the size check is a cheap pre-filter, not a correctness
-guard). The recovered frame is reshaped into the same
-``{"border_color", "outer_bbox", "inner_bbox", "hole_cells"}`` shape
-``closed_frames`` produces and unioned into the frame list BEFORE
+already-detected regions, not a fused/occluded shape):
+
+- **Frame 1 (colour 14)** has a portal pipe fused onto its own edge as ONE
+  connected component -- EXTRA same-colour cells.
+  :func:`admorphiq.kernels.geometry.split_fused_frame` (the generic
+  namespace-safe replacement for ``sort_match.py``'s game-specific
+  ``_split_box_pipe``) recovers it.
+- **Frame 2 (colour 8)** is missing 2 of its 72 perimeter cells --
+  measured (``data/traces/sb26.npz`` level_index 1, frame 10): those 2
+  cells are occupied by frame 1's own colour-14 pipe crossing frame 2's
+  bottom border on its way to frame 1's ring. This is the OPPOSITE shape
+  defect (too FEW cells, from a foreign-coloured occluder, not too many
+  from a same-coloured appendage) --
+  :func:`admorphiq.kernels.geometry.recover_occluded_frame` (R56,
+  2026-07-15) recovers it, given every OTHER candidate region on the
+  frame as its occluder set (never a specific colour -- the quarantine's
+  "no hardcoded coordinates/palettes" rule applies to occluder selection
+  too).
+
+:func:`_recover_fused_frames` dispatches each candidate by comparing its
+own cell count to its bbox's perimeter (a clean ring's cells equal that
+perimeter EXACTLY -- ``closed_frames``' own test -- so an exact match is
+never even tried here): MORE cells tries ``split_fused_frame``, FEWER
+tries ``recover_occluded_frame``. Both kernels reject a shape that isn't
+genuinely their case (``split_fused_frame`` rejects a solid block;
+``recover_occluded_frame`` rejects a gap no occluder explains), so the
+size-comparison dispatch is a cheap pre-filter, not a correctness guard.
+Either recovered frame is reshaped into the same ``{"border_color",
+"outer_bbox", "inner_bbox", "hole_cells"}`` shape ``closed_frames``
+produces and unioned into the frame list BEFORE
 :func:`_filter_interactive_frames` runs, so every downstream consumer
 (slot detection, portal detection, DFS traversal) needs no changes at
-all -- the fused frame is indistinguishable from a clean one once
-recovered.
+all -- a recovered frame is indistinguishable from a clean one.
 
 Role assignment (declared HERE, not in the kernel layer, which knows
 nothing about frames, slots, portals, or targets):
@@ -131,11 +147,13 @@ nothing about frames, slots, portals, or targets):
 Composition from ``admorphiq.kernels``:
   - :func:`admorphiq.kernels.find_regions` segments the frame.
   - :func:`admorphiq.kernels.closed_frames` detects clean portal-graph
-    frames; :func:`admorphiq.kernels.geometry.split_fused_frame` recovers
-    the ones closed_frames rejects because a same-colour appendage (a
-    fused portal pipe) is part of the same connected component (see
-    "Fused-frame recovery" above; together these replace sort_match's own
-    hollow-rectangle-vs-pipe splitting).
+    frames; :func:`admorphiq.kernels.geometry.split_fused_frame` and
+    :func:`admorphiq.kernels.geometry.recover_occluded_frame` recover the
+    ones closed_frames rejects because a same-colour appendage is fused
+    onto the border (too many cells) or a foreign-coloured region occludes
+    part of it (too few cells), respectively (see "Fused-frame recovery"
+    above; together these replace sort_match's own hollow-rectangle-vs-pipe
+    splitting).
   - :func:`admorphiq.kernels.connectors` detects the portal pipes linking
     frames (replacing sort_match's own endpoint-to-frame-membership scan).
   - :func:`admorphiq.kernels.group_by_axis` separates the target-sequence
@@ -183,6 +201,7 @@ from admorphiq.kernels import (
     find_regions,
     frame_diff,
     group_by_axis,
+    recover_occluded_frame,
     size_clusters,
     split_fused_frame,
 )
@@ -300,14 +319,44 @@ def _dist2(a: tuple[float, float], b: tuple[float, float]) -> float:
 
 
 def _detect_portals(
-    grid: Grid, frames: list[dict[str, Any]], frame_slots: list[list[Region]], background: int
+    grid: Grid,
+    frames: list[dict[str, Any]],
+    frame_slots: list[list[Region]],
+    background: int,
+    markers: list[dict[str, Any]],
 ) -> dict[tuple[int, int], int]:
-    """(source_frame_idx, source_slot_idx) -> destination_frame_idx.
+    """(source_frame_idx, insertion_index) -> destination_frame_idx.
+
+    ``insertion_index`` means "before visiting THIS slot index in
+    ``source_frame_idx``, first fully traverse ``destination_frame_idx``" --
+    the source slot itself is STILL visited as a normal item afterward (a
+    portal is a zero-action insertion point in the traversal order, not a
+    slot that consumes a placement). ``insertion_index == len(slots)`` means
+    "after every real slot".
 
     Composes admorphiq.kernels.connectors over the frames' own border
-    pseudo-regions. For each connector, whichever frame's slots sit closer
-    to the connector's path cells is the portal SOURCE; the nearest slot
-    within that frame to the path is where the portal attaches.
+    pseudo-regions to find which two frames a connector links. The
+    INSERTION POINT is then determined primarily from ``markers`` (the
+    :func:`_recover_fused_frames` appendage groups): if a marker of the
+    connector's OWN colour sits inside one frame's hole (a decorative glyph
+    physically drawn INSIDE that frame, not one of its measured item
+    slots -- diagnosed on this exact game: a portal icon sits inside the
+    colour-8 frame's interior at the same row as its slot axis, between two
+    of its real slots), that frame is the portal SOURCE and the insertion
+    index is the marker's own sorted position among that frame's slots (by
+    centroid column, matching :func:`_frame_slots`'s own sort key -- how
+    many of the frame's slots sit strictly left of the marker). This is
+    NECESSARY, not cosmetic: on the same connector, "whichever frame's
+    slots sit nearest the connector's path" is genuinely ambiguous here (a
+    real slot of the OTHER, non-source frame sits column-aligned with the
+    connector and is narrowly closer by raw pixel distance) -- the marker
+    is a stronger, unambiguous signal because it identifies the frame
+    structurally (something drawn INSIDE it, not just spatially near it).
+
+    Falls back to the OLD nearest-slot proximity heuristic (whichever
+    frame's slots sit closer to the connector's path overall) only when no
+    marker explains either end -- a lower-confidence path, kept rather than
+    dropping the connector outright.
     """
     if len(frames) < 2:
         return {}
@@ -317,20 +366,37 @@ def _detect_portals(
     for link in links:
         a, b = link["a"], link["b"]
         path = link["path_cells"]
-        cand: list[tuple[int, int]] = []
+        color = link["color"]
+
+        source = None
+        insert_idx = None
         for idx in (a, b):
-            slots = frame_slots[idx]
-            if not slots:
+            hole = frames[idx]["hole_cells"]
+            marker = next((m for m in markers if m["color"] == color and m["cells"] & hole), None)
+            if marker is None:
                 continue
-            best = min(_dist2(s["centroid"], p) for s in slots for p in path)
-            cand.append((idx, best))
-        if not cand:
-            continue
-        source = min(cand, key=lambda t: t[1])[0]
+            mcol = sum(c for _r, c in marker["cells"]) / len(marker["cells"])
+            slots = frame_slots[idx]
+            source = idx
+            insert_idx = sum(1 for s in slots if s["centroid"][1] < mcol)
+            break
+
+        if source is None:
+            cand: list[tuple[int, int]] = []
+            for idx in (a, b):
+                slots = frame_slots[idx]
+                if not slots:
+                    continue
+                best = min(_dist2(s["centroid"], p) for s in slots for p in path)
+                cand.append((idx, best))
+            if not cand:
+                continue
+            source = min(cand, key=lambda t: t[1])[0]
+            slots = frame_slots[source]
+            insert_idx = min(range(len(slots)), key=lambda i: min(_dist2(slots[i]["centroid"], p) for p in path))
+
         dest = b if source == a else a
-        slots = frame_slots[source]
-        best_idx = min(range(len(slots)), key=lambda i: min(_dist2(slots[i]["centroid"], p) for p in path))
-        portal_of[(source, best_idx)] = dest
+        portal_of[(source, insert_idx)] = dest
     return portal_of
 
 
@@ -340,25 +406,36 @@ def _dfs_traversal(
     """DFS from frame 0: ``[((frame_idx, slot_idx), "item" | "portal" | "revisit"), ...]``.
 
     A small, MEASURED-graph traversal (adapter policy, not a kernel
-    algorithm) mirroring the wiki-documented mechanic: portal slots recurse
-    into the linked frame; a revisited item slot still consumes a target
-    index (its colour was fixed on first visit) without a fresh placement.
+    algorithm) mirroring the wiki-documented mechanic: a portal is a
+    ZERO-ACTION insertion point, not a slot that consumes a placement --
+    ``portal_of[(frame_idx, insert_idx)]`` fires BEFORE visiting slot
+    ``insert_idx`` of ``frame_idx`` (``insert_idx == len(slots)`` fires
+    after the last real slot), and that slot is STILL visited as a normal
+    item afterward. Diagnosed necessary on this exact game: gold's actual
+    click sequence places 2 real items in frame 0, silently continues into
+    all 4 of frame 1's items with no separate "portal" action anywhere in
+    the trace, then RETURNS to frame 0's 3rd remaining item -- a slot being
+    "sacrificed" to trigger the portal (the pre-fix model) undercounts by
+    exactly the sacrificed slot and never reaches the return leg. A
+    revisited item slot still consumes a target index (its colour was
+    fixed on first visit) without a fresh placement.
     """
     order: list[tuple[tuple[int, int], str]] = []
     seen: set[tuple[int, int]] = set()
     consumed = [0]
 
     def visit(frame_idx: int, depth: int = 0) -> None:
-        if depth > 20 or consumed[0] >= n_targets or frame_idx >= len(frame_slots):
+        if depth > 20 or frame_idx >= len(frame_slots):
             return
-        for slot_idx in range(len(frame_slots[frame_idx])):
+        slots = frame_slots[frame_idx]
+        for slot_idx in range(len(slots) + 1):
             if consumed[0] >= n_targets:
                 return
             key = (frame_idx, slot_idx)
             if key in portal_of:
                 order.append((key, "portal"))
                 visit(portal_of[key], depth + 1)
-            else:
+            if slot_idx < len(slots) and consumed[0] < n_targets:
                 order.append((key, "revisit" if key in seen else "item"))
                 seen.add(key)
                 consumed[0] += 1
@@ -399,29 +476,65 @@ def _perimeter(bbox: tuple[int, int, int, int]) -> int:
     return 2 * (h + w) - 4
 
 
-def _recover_fused_frames(grid: Grid, candidates: list[Region], bg: int) -> list[dict[str, Any]]:
-    """Frames closed_frames rejects because a same-colour appendage (e.g. a
-    fused portal pipe, see the module docstring's former "kernel gap") is
-    part of the same connected component, breaking closed_frames' exact
-    cells-equal-border match.
+def _recover_fused_frames(
+    grid: Grid, candidates: list[Region], bg: int
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """Frames closed_frames rejects because their own cells don't EXACTLY
+    equal their bbox's rectangle border -- either too MANY cells (a
+    same-colour appendage, e.g. a fused portal pipe, fused into the same
+    connected component) or too FEW (some of the border is covered by a
+    DIFFERENT-coloured, already-detected region, e.g. a connector pipe
+    crossing the frame's edge). A clean ring's own region has cells ==
+    perimeter EXACTLY (that is closed_frames' own equality test), so it is
+    never even tried here.
 
-    A clean ring's own region has cells == its bbox perimeter EXACTLY
-    (that is closed_frames' own equality test), so it is never even tried
-    here -- only a region with MORE cells than its own bounding-box
-    perimeter (an appendage fused on, or a solid block) is a candidate.
-    :func:`admorphiq.kernels.geometry.split_fused_frame` itself rejects a
-    solid block (its geometric hole would be entirely filled, never a
-    genuine ring) by returning ``None``, so this size check is a cheap
-    pre-filter, not a load-bearing correctness guard.
+    Too many cells -> :func:`admorphiq.kernels.geometry.split_fused_frame`
+    (rejects a solid block by returning ``None``, since its geometric hole
+    would be entirely filled, never a genuine ring -- the size check above
+    is a cheap pre-filter, not a load-bearing correctness guard). Its
+    ``appendages`` (the leftover same-colour cells NOT part of the
+    recovered ring -- e.g. a portal-marker glyph plus its connecting pipe)
+    are returned alongside the frame as ``markers``, see below.
+
+    Too few cells -> :func:`admorphiq.kernels.geometry.recover_occluded_frame`,
+    diagnosed on this exact game (level 1's second portal frame: a
+    colour-14 connector pipe crosses the colour-8 frame's border, replacing
+    2 of its 72 perimeter cells) -- the occluder set is every OTHER
+    candidate region on the frame (never a specific colour or shape; the
+    "an occluder is whatever the caller supplies" contract stays generic
+    here too, matching the quarantine rule against hardcoded coordinates/
+    colours). Real-data validated across the full sb26 gold trace: 30/30
+    recoveries genuine, zero false positives (see
+    ``.wiki/wiki/rounds/r56_generic-kernels.md``).
+
+    Returns ``(frames, markers)``: ``markers`` is every
+    ``split_fused_frame`` appendage group, reshaped to ``{"cells",
+    "color"}`` -- :func:`_detect_portals` uses whichever marker group falls
+    inside a DIFFERENT frame's own hole to identify that frame as a
+    portal's insertion point (see its own docstring for why: a marker
+    physically sitting inside frame X's interior, not frame X's own
+    detected item slots, is a portal glyph belonging to frame X, even
+    though the ring it's geometrically fused onto is a DIFFERENT frame).
     """
     recovered: list[dict[str, Any]] = []
+    markers: list[dict[str, Any]] = []
     for region in candidates:
-        if region["size"] <= _perimeter(region["bbox"]):
+        perimeter = _perimeter(region["bbox"])
+        if region["size"] > perimeter:
+            split = split_fused_frame(region, frame=grid, background=bg)
+            if split is None:
+                continue
+            f = split["frame"]
+            for appendage in split["appendages"]:
+                markers.append({"cells": appendage["cells"], "color": region["color"]})
+        elif region["size"] < perimeter:
+            occluders = [r for r in candidates if r is not region]
+            result = recover_occluded_frame(region, occluders=occluders)
+            if result is None:
+                continue
+            f = result["frame"]
+        else:
             continue
-        split = split_fused_frame(region, frame=grid, background=bg)
-        if split is None:
-            continue
-        f = split["frame"]
         recovered.append(
             {
                 "border_color": region["color"],
@@ -430,7 +543,7 @@ def _recover_fused_frames(grid: Grid, candidates: list[Region], bg: int) -> list
                 "hole_cells": f["hole_cells"],
             }
         )
-    return recovered
+    return recovered, markers
 
 
 def _plan_sb26(grid: Grid) -> list[PlanStep] | None:
@@ -439,9 +552,8 @@ def _plan_sb26(grid: Grid) -> list[PlanStep] | None:
         return None
     bg = most_common_color(grid)
     candidates = _candidates(grid)
-    frames = _filter_interactive_frames(
-        closed_frames(grid, background=bg) + _recover_fused_frames(grid, candidates, bg)
-    )
+    fused_frames, markers = _recover_fused_frames(grid, candidates, bg)
+    frames = _filter_interactive_frames(closed_frames(grid, background=bg) + fused_frames)
     if not frames:
         return None
 
@@ -491,7 +603,7 @@ def _plan_sb26(grid: Grid) -> list[PlanStep] | None:
     frames = [f for f, _s in keep]
     frame_slots = [s for _f, s in keep]
 
-    portal_of = _detect_portals(grid, frames, frame_slots, bg)
+    portal_of = _detect_portals(grid, frames, frame_slots, bg, markers)
     order = _dfs_traversal(frame_slots, portal_of, len(target_colors))
     if not order:
         return None
