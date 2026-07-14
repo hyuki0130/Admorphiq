@@ -235,3 +235,56 @@ def test_diagnostics_dataclass_defaults():
     d = GameDiagnostics(game_id="x")
     assert d.to_dict()["terminal_reason"] == ""
     assert d.to_dict()["levels"] == 0
+
+
+def test_kernel_experiment_default_single_source():
+    """Purpose: pins the dispatch-gate contract of notebooks/repl_bench_kernel.py —
+    the REPL_EXPERIMENT env var is read in EXACTLY one place (experiment_mode),
+    whose fallback is the single DEFAULT_EXPERIMENT literal that push copies flip.
+    Expected feedback: a failure means someone reintroduced a second
+    os.environ.get("REPL_EXPERIMENT", ...) with its own default — the exact dual-
+    default bug that produced two NULL Kaggle GPU runs (2026-07-14/15): the mode
+    default said "engagement" while the main() gate default said "" and silently
+    ran the plain 5-game bench instead of the experiment."""
+    import ast
+    from pathlib import Path
+
+    src = Path(__file__).resolve().parents[1] / "notebooks" / "repl_bench_kernel.py"
+    text = src.read_text()
+    tree = ast.parse(text)
+
+    env_reads = []
+    for node in ast.walk(tree):
+        if (
+            isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Attribute)
+            and node.func.attr == "get"
+            and node.args
+            and isinstance(node.args[0], ast.Constant)
+            and node.args[0].value == "REPL_EXPERIMENT"
+        ):
+            env_reads.append(node)
+    assert len(env_reads) == 1, (
+        f"REPL_EXPERIMENT must be read exactly once (in experiment_mode); found {len(env_reads)}"
+    )
+    default = env_reads[0].args[1]
+    assert isinstance(default, ast.Name) and default.id == "DEFAULT_EXPERIMENT", (
+        "the env read's fallback must be the DEFAULT_EXPERIMENT constant, not a literal"
+    )
+
+    assignments = [
+        node
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Assign)
+        and any(isinstance(t, ast.Name) and t.id == "DEFAULT_EXPERIMENT" for t in node.targets)
+    ]
+    assert len(assignments) == 1, "DEFAULT_EXPERIMENT must be assigned exactly once"
+    assert isinstance(assignments[0].value, ast.Constant) and isinstance(
+        assignments[0].value.value, str
+    ), "DEFAULT_EXPERIMENT must be a plain string literal (push copies string-replace it)"
+    assert 'DEFAULT_EXPERIMENT = "matched12"' in text, (
+        "push scripts flip the verbatim literal 'DEFAULT_EXPERIMENT = \"matched12\"' — keep it byte-exact"
+    )
+    assert "if experiment_mode():" in text, (
+        "main()'s dispatch gate must route through experiment_mode()"
+    )

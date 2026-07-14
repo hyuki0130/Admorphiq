@@ -38,6 +38,20 @@ MAX_ACTIONS = 150
 WALL_S = 600.0
 VLLM_PORT = 8199
 _TRUTHY = ("1", "true", "yes", "on")  # env-flag truthy values (module-wide)
+
+# SINGLE source of truth for which experiment runs. Push copies flip THIS
+# literal; the REPL_EXPERIMENT env var overrides it when set. Empty string =
+# the plain single-arm bench. Two independent os.environ.get() defaults for
+# the same variable caused two NULL Kaggle runs (2026-07-14/15): the mode
+# dispatch default was flipped to "engagement" but the main() gate read
+# default "" and fell through to the plain bench.
+DEFAULT_EXPERIMENT = "matched12"
+
+
+def experiment_mode() -> str:
+    return os.environ.get("REPL_EXPERIMENT", DEFAULT_EXPERIMENT).strip()
+
+
 VLLM_MODEL_NAME = "qwen"
 SERVER_BOOT_TIMEOUT_S = 1200.0
 
@@ -225,7 +239,7 @@ def run_experiment() -> dict:
     envs_dir = _find_dir("environment_files")
     arcade = Arcade(operation_mode=OperationMode.OFFLINE, environments_dir=envs_dir)
 
-    mode = os.environ.get("REPL_EXPERIMENT", "matched12").strip()
+    mode = experiment_mode()
     if mode == "full25":
         env_infos = (getattr(arcade, "available_environments", None)
                      or arcade.get_environments())
@@ -453,9 +467,9 @@ def main() -> None:
     server = boot_vllm_server(_find_model_dir())
     try:
         wait_for_server(VLLM_PORT, SERVER_BOOT_TIMEOUT_S)
-        # Any named REPL_EXPERIMENT (matched12/full25/engagement/plannav/basenav)
+        # Any named experiment (matched12/full25/engagement/plannav/basenav)
         # runs the experiment path; empty = the single-arm bench (arm via env flags).
-        if os.environ.get("REPL_EXPERIMENT", "").strip():
+        if experiment_mode():
             summary = run_experiment()
         else:
             summary = run_bench()
