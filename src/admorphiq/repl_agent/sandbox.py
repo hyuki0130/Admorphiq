@@ -263,6 +263,10 @@ class SandboxResult:
     stdout: str = ""
     error: str = ""
     timed_out: bool = False
+    # True when the SUBPROCESS ITSELF failed (import/spawn/crash) — an
+    # INFRASTRUCTURE fault, distinct from the model's code raising inside a
+    # working worker. The v5 P0 bug was 100% infra_error.
+    infra_error: bool = False
     actions: list[dict[str, Any]] = field(default_factory=list)
 
     @property
@@ -310,13 +314,37 @@ def run_code(
         return SandboxResult(timed_out=True, error=f"timeout after {timeout}s")
 
     if proc.returncode != 0 and not proc.stdout.strip():
-        return SandboxResult(error=(proc.stderr or "worker crashed").strip()[:max_output])
+        # The worker never produced a result -> infrastructure fault (import/spawn).
+        return SandboxResult(error=(proc.stderr or "worker crashed").strip()[:max_output],
+                             infra_error=True)
     try:
         data = json.loads(proc.stdout)
     except (json.JSONDecodeError, ValueError):
-        return SandboxResult(error=(proc.stderr or "unparseable worker output").strip()[:max_output])
+        return SandboxResult(error=(proc.stderr or "unparseable worker output").strip()[:max_output],
+                             infra_error=True)
     return SandboxResult(
         stdout=data.get("stdout", ""),
         error=data.get("error", ""),
         actions=data.get("actions", []),
     )
+
+
+def sandbox_self_test() -> tuple[bool, str]:
+    """Spawn the REAL worker subprocess and run a trivial inspection.
+
+    Proves the subprocess actually imports+executes the worker in THIS
+    environment (not just that PYTHONPATH is passed) — the check the mocked unit
+    test cannot do. The kernel calls this BEFORE playing and hard-aborts on
+    failure, so a dead sandbox (the v5 P0 bug) fails loudly instead of silently
+    erroring every turn. Returns ``(ok, detail)``.
+    """
+    store = ObservationStore()
+    store.add(np.zeros((2, 2), dtype=np.int64), None)
+    res = run_code("print('SANDBOX_OK', len(objects(-1)))", store, timeout=30)
+    if res.infra_error:
+        return False, f"infra_error: {res.error[:300]}"
+    if res.error:
+        return False, f"worker error: {res.error[:300]}"
+    if "SANDBOX_OK" not in res.stdout:
+        return False, f"unexpected stdout: {res.stdout[:200]!r}"
+    return True, res.stdout.strip()

@@ -34,6 +34,8 @@ class GameDiagnostics:
     predictions_correct: int = 0
     governor_rejections: int = 0
     sandbox_errors: int = 0
+    sandbox_infra_errors: int = 0
+    sandbox_code_errors: int = 0
     terminal_reason: str = ""     # win | budget | wall | game_over | env_none | error | done
     error: str = ""
     extra: dict[str, Any] = field(default_factory=dict)
@@ -179,6 +181,8 @@ def run_game(
     diag.predictions_correct = int(getattr(agent, "predictions_correct", 0))
     diag.governor_rejections = int(getattr(agent, "governor_rejections", 0))
     diag.sandbox_errors = int(getattr(agent, "sandbox_errors", 0))
+    diag.sandbox_infra_errors = int(getattr(agent, "sandbox_infra_errors", 0))
+    diag.sandbox_code_errors = int(getattr(agent, "sandbox_code_errors", 0))
     emit("terminal", reason=diag.terminal_reason, levels=diag.levels,
          actions=diag.actions, wall_s=diag.wall_s)
     return diag

@@ -17,6 +17,7 @@ from admorphiq.repl_agent.sandbox import (
     ObservationStore,
     default_timeout,
     run_code,
+    sandbox_self_test,
 )
 from admorphiq.repl_agent.segmentation import SceneTracker
 
@@ -213,6 +214,44 @@ def test_default_timeout_env_configurable(monkeypatch):
     assert default_timeout() == 12.5
     monkeypatch.setenv("REPL_SANDBOX_TIMEOUT", "garbage")
     assert default_timeout() == 30.0  # invalid falls back
+
+
+def test_sandbox_self_test_passes():
+    """Purpose: the real-subprocess smoke test succeeds when the worker imports
+    and runs (the check the kernel hard-aborts on — v5's P0 would have caught it).
+
+    Feedback: failure means the sandbox is broken in this environment.
+    """
+    ok, detail = sandbox_self_test()
+    assert ok is True and "SANDBOX_OK" in detail
+
+
+def test_infra_error_separated_from_code_error():
+    """Purpose: a model-code error (disallowed import) is a code error
+    (infra_error False); a crashed worker subprocess is infra_error True.
+
+    Feedback: failure means we can't distinguish the v5 dead-sandbox P0 (infra)
+    from the model writing bad code.
+    """
+    res = run_code("import os\n", _store_two_frames(), timeout=10)
+    assert res.error and res.infra_error is False  # worker ran; the CODE failed
+
+    import admorphiq.repl_agent.sandbox as sb
+
+    class _Crashed:
+        returncode = 1
+        stdout = ""
+        stderr = "ModuleNotFoundError: No module named 'admorphiq'"
+
+    def _fake(cmd, **kw):
+        return _Crashed()
+
+    import pytest
+    monkeypatch = pytest.MonkeyPatch()
+    monkeypatch.setattr(sb.subprocess, "run", _fake)
+    res2 = run_code("pass", _store_two_frames(), timeout=10)
+    monkeypatch.undo()
+    assert res2.infra_error is True  # subprocess itself failed
 
 
 def test_run_code_hard_timeout_kills_loop():

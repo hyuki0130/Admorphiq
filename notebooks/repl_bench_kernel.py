@@ -275,7 +275,9 @@ def run_bench() -> dict:
             "truncations": diag.truncations, "inspections": diag.inspections,
             "predictions": f"{diag.predictions_correct}/{diag.predictions_made}",
             "governor_rejections": diag.governor_rejections,
-            "sandbox_errors": diag.sandbox_errors, "error": diag.error,
+            "sandbox_errors": diag.sandbox_errors,
+            "sandbox_infra_errors": diag.sandbox_infra_errors,
+            "sandbox_code_errors": diag.sandbox_code_errors, "error": diag.error,
         }
         print(f"[bench] {game_id}: levels={diag.levels} actions={diag.actions} "
               f"wall={diag.wall_s}s llm={diag.llm_calls} llm_err={diag.llm_errors} "
@@ -292,6 +294,15 @@ def main() -> None:
     install_wheels_offline()
     _ensure_admorphiq_importable()
     os.environ["ARC_AGENTS_DIR"] = _find_dir("ARC-AGI-3-Agents")
+
+    # HARD-ABORT if the sandbox subprocess can't import+run the worker in THIS
+    # env (the v5 P0 failure mode). Fail loudly BEFORE the expensive vLLM boot.
+    from admorphiq.repl_agent.sandbox import sandbox_self_test
+    ok, detail = sandbox_self_test()
+    print(f"[smoke] sandbox_self_test: ok={ok} detail={detail}", flush=True)
+    if not ok:
+        raise RuntimeError(f"sandbox worker smoke test FAILED — aborting bench: {detail}")
+
     server = boot_vllm_server(_find_model_dir())
     try:
         wait_for_server(VLLM_PORT, SERVER_BOOT_TIMEOUT_S)

@@ -345,6 +345,8 @@ class ReplAgent:
         self.llm_errors = 0
         self.truncations = 0
         self.inspections = 0
+        self.sandbox_infra_errors = 0  # subprocess import/spawn failures (v5 P0)
+        self.sandbox_code_errors = 0   # the model's code raised inside a live worker
         self.predictions_made = 0
         self.predictions_correct = 0
         self._pending_prediction: dict[str, Any] | None = None
@@ -555,6 +557,10 @@ class ReplAgent:
                 sandbox_out, sandbox_err = res.stdout, res.error
                 if res.error:
                     self.sandbox_errors += 1
+                    if res.infra_error:
+                        self.sandbox_infra_errors += 1
+                    else:
+                        self.sandbox_code_errors += 1
                 if res.actions:
                     for req in res.actions:
                         d = self._govern_single(req, legal, hw, state_hash)
