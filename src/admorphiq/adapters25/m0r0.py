@@ -1,56 +1,91 @@
-"""script25 quarantined adapter: M0R0 (movement/maze family).
+"""script25 quarantined adapter: M0R0 (mirrored-maze navigation family).
 
 *** QUARANTINE — MODEL-NEVER-VISIBLE. See admorphiq.adapters25's package
 docstring. ***
 
+**Backport (this revision)**: replaces the original undirected frontier-BFS
+exploration (which never reaches a declared target — it just walks toward
+whichever known cell has the fewest tried actions) with the
+optimistic-passability + shortest-path-to-a-declared-goal pattern
+``admorphiq.adapters25.dc22``/``admorphiq.adapters25.ka59`` now use. A full
+first-smoke VM measurement at ~4000 actions found undirected frontier
+exploration alone insufficient (0/6, still 0 even at 8x the original
+500-action budget) — the wall is DIRECTION, not exploration budget, exactly
+the gap dc22/ka59's goal-directed planner closed for their own games.
+
+**Offline goal-signal investigation (before any code changed)**, mirroring
+dc22's own offline-verification discipline: loaded ``data/traces/m0r0.npz``
+(gold trace, label-generation only, never imported into this adapter) and
+traced BOTH captured levels' gold blocks frame-by-frame. Finding, measured
+directly (not assumed from the wiki's "mirror/reflection mechanic" prose —
+that prose motivated WHERE to look, this is what was actually measured):
+the avatar's own colour is used by TWO regions simultaneously throughout
+the level, not one. On a horizontal-axis action, the two regions move in
+OPPOSITE absolute directions (a genuine mirror pair, not a static "goal
+marker" the wiki's older single-avatar framing would suggest); on a
+vertical-axis action, both move in the SAME absolute direction; each side
+can be blocked independently by its own local walls (the two halves of the
+board are NOT identical mazes, just mirrored in shape). The measured WIN
+action, on both captured levels, is exactly the step that brings the two
+regions into pixel-adjacency (their bboxes merge into one connected region
+under ``find_regions``). **There is no separate small "exit marker"
+region for this mechanic — the goal IS the mirror partner's own current
+position, which is itself moving, not a one-time-computed fixed cell.**
+This directly changes what "declare a goal" means for M0R0 versus DC22 (a
+static marker, computed once): here the goal must be RE-READ from the live
+frame every planning call, exactly like every other per-cell fact in this
+adapter, so the planner is always routing toward the mirror partner's
+actual current position rather than a stale offline snapshot.
+
+``_detect_goal`` therefore tries the mirror-partner reading FIRST (the
+nearest OTHER same-avatar-colour region), and falls back to DC22's own
+"smallest singleton-coloured region" reading only when no second
+same-colour region exists — a level using a genuinely different (single-
+avatar-to-marker) mechanic is not assumed impossible, just not what the
+two captured levels showed.
+
 Mechanic hypothesis (role assignment, declared HERE — not in the kernel
 layer, which knows nothing about players, mazes, or actions): ACTION1-4 are
-movement buttons; each press either shifts exactly one on-screen region by a
-fixed amount (one "grid cell") or produces no visible shift at all (that
-direction is blocked from the current cell). The adapter never assumes
-WHICH region is the player, WHICH direction is "up", or how large a cell is
-in pixels — every one of those facts is measured live from the frames via
-``admorphiq.kernels``:
+movement buttons; each press either shifts a region by a fixed measured
+pixel amount or produces no visible shift (blocked from the current cell).
+Composed entirely from ``admorphiq.kernels``:
 
-  - :func:`admorphiq.kernels.frame_diff` + :func:`admorphiq.kernels.find_regions`
-    + :func:`admorphiq.kernels.track_objects` + :func:`admorphiq.kernels.motion_vectors`
-    answer "did something move, and by how much" after each press.
-  - :func:`admorphiq.kernels.grid_distance_field` + :func:`admorphiq.kernels.grid_shortest_path`
-    + :func:`admorphiq.kernels.path_to_moves` answer "how do I get from here
-    to the nearest cell whose neighbours I haven't tried yet" once every
-    movement action has already been tried from the current cell.
+  - :func:`admorphiq.kernels.find_regions` + :func:`admorphiq.kernels.track_objects`
+    identify the avatar (mirroring ``admorphiq.adapters25.dc22``'s
+    identity-by-movement technique — the region that moves when only ONE
+    region on the whole board shifts, tried across successive probe
+    actions until a frame satisfies that condition) and, every planning
+    call thereafter, the CURRENT mirror-partner position.
+  - :func:`admorphiq.kernels.grid_shortest_path` + :func:`admorphiq.kernels.grid_distance_field`
+    + :func:`admorphiq.kernels.path_to_moves` plan over the SAME
+    optimistic passability model DC22/KA59 use: every cell is assumed
+    passable except ones CONFIRMED blocked by a failed movement attempt,
+    so the planner beelines toward wherever the mirror partner currently
+    sits instead of only trusting individually-confirmed-safe cells.
 
-This mirrors ``admorphiq.graph_frontier_agent.GraphFrontierAgent``'s
-"frontier BFS to the nearest state with an untried action" ingredient (the
-mechanism shared by the top ARC-AGI-3 graph agents — see that module's
-docstring) but is reimplemented from scratch using ONLY the namespace-safe
-kernel library: no state-hash graph, no HUD masking, no click candidates.
-Those remain out of scope for this maze-navigation proof of concept (see
-``docs/r56_codex_toolbase_verdict_20260715.md``'s script25 remit).
-
-``.wiki/wiki/games/M0R0.md`` (read for reference, not imported) records
-that M0R0 is a movement game with a mirror/reflection mechanic and that
-frame-only BFS clears 2/6 levels — the target this adapter's own frontier
-search is trying to reach purely by composing kernels.
-
-Second policy (adapter-owned, not a kernel concern): a first smoke run
-measured GAME_OVER at 151 actions with 0 levels cleared, so this adapter
-sets ``restart_on_game_over = True`` (mirroring
-``GraphFrontierAgent``/``OnlineRLAgent``'s own convention) so the harness
-RESETs the attempt and lets the agent keep exploring within its action
-budget instead of the run simply ending. On its own that would send the
-agent right back into the same fatal (cell, action) pair forever, so it
-also keeps HAZARD MEMORY: :meth:`_observe_result` detects a restart (the
-frame snaps back to the exact start-of-level frame while the adapter's own
-tracked position was NOT the start cell — the env silently repositioned
-the player, which normal movement never does), records the (cell, action)
-pair that caused it, and excludes that pair from future frontier search —
-persisted across restarts WITHIN a level (the hazard is a property of the
-level's layout), reset on level-up alongside the rest of the spatial state.
+Hazard memory (kept from the pre-backport version, unchanged in spirit —
+this game's own GAME_OVER trap is orthogonal to the goal-direction
+change): a first smoke run measured GAME_OVER at 151 actions with 0
+levels cleared, so this adapter keeps ``restart_on_game_over = True`` and
+tracks (cell, action) pairs that trigger a fatal reposition —
+:meth:`_observe_result` detects this two ways: (a) the harness's own
+explicit ``state == "GAME_OVER"`` (now correctly handled the same way
+``dc22`` does — :meth:`_on_restart` preserves every learned fact and only
+resets the current attempt's position, where the PRE-backport version
+incorrectly routed this through the full level-wipe path shared with
+``NOT_PLAYED``, discovered while porting dc22's control-flow shape here);
+(b) a SILENT reposition (the frame snaps back to the exact start-of-level
+frame while this adapter's own tracked position was mid-maze) for any
+engine that never reports an explicit GAME_OVER state for this outcome.
+Either way, a cell hazardous under >= ``_DEAD_CELL_HAZARD_THRESHOLD``
+distinct actions is excluded from the passable array entirely (see
+``_passable_array``), persisted across restarts within a level, and reset
+on level-up alongside the rest of the spatial state.
 """
 
 from __future__ import annotations
 
+from collections import Counter
 from typing import Any
 
 from admorphiq.adapters25.base import (
@@ -66,10 +101,8 @@ from admorphiq.adapters25.base import (
 )
 from admorphiq.kernels import (
     find_regions,
-    frame_diff,
     grid_distance_field,
     grid_shortest_path,
-    motion_vectors,
     path_to_moves,
     track_objects,
 )
@@ -77,75 +110,114 @@ from admorphiq.kernels import (
 GAME_ID = "m0r0"
 
 Cell = tuple[int, int]
+Region = dict[str, Any]
 
-# Per-level safety cap: is_done() returns True after this many actions even
-# if the level never clears, mirroring GraphFrontierAgent's own "giveup"
-# ingredient so this adapter can never spin forever inside the harness.
+# Per-level safety cap, mirroring every other script25 adapter's giveup
+# convention so the harness never spins forever inside this one.
 _GIVEUP_DEFAULT = 4000
-
-# Used only when no direction has been measured yet (so known_passable can
-# only ever be the single start cell anyway -- the value never actually
-# steers a real path, see _nearest_frontier's early-return on an empty
-# frontier).
-_CARDINAL_FALLBACK: tuple[Cell, ...] = ((-1, 0), (1, 0), (0, -1), (0, 1))
 
 # A cell hazardous under this many DISTINCT actions is declared dead outright
 # (excluded from future path-planning entirely) rather than waiting to try
-# every remaining direction from it too. Measured motivation: a smoke run
-# recorded the SAME cell killing the run on 3 separate actions across 3
-# separate lives (455 of 500 actions spent re-discovering that one spot is
-# fatal regardless of direction) -- 2 independent hazardous directions from
-# one cell is already strong evidence the CELL itself is the trap, not the
-# direction, so this stops the frontier search from ever returning to it.
+# every remaining direction from it too. Measured motivation (pre-backport):
+# a smoke run recorded the SAME cell killing the run on 3 separate actions
+# across 3 separate lives (455 of 500 actions spent re-discovering that one
+# spot is fatal regardless of direction) -- 2 independent hazardous
+# directions from one cell is already strong evidence the CELL itself is the
+# trap, not the direction, so this stops the frontier search from ever
+# returning to it. Kept unchanged by this backport.
 _DEAD_CELL_HAZARD_THRESHOLD = 2
 
 
-def _sign(v: int) -> int:
-    if v > 0:
-        return 1
-    if v < 0:
-        return -1
-    return 0
+def _manhattan(a: Cell, b: Cell) -> int:
+    return abs(a[0] - b[0]) + abs(a[1] - b[1])
+
+
+def _detect_goal(
+    regions: list[Region], self_color: int | None, self_cell: Cell | None
+) -> tuple[int | None, Cell | None]:
+    """The mirror partner's current position when one exists (the NEAREST
+    other region sharing the avatar's own colour — see module docstring's
+    offline investigation); DC22's "smallest singleton-coloured region"
+    reading otherwise, for any level that turns out not to use the
+    mirror-partner mechanic. Re-read fresh from the CURRENT frame every
+    call (never cached) -- see module docstring for why a mirror partner's
+    position cannot be a one-time snapshot the way DC22's static marker
+    is."""
+    if not regions:
+        return None, None
+    if self_color is not None and self_cell is not None:
+        partners = [
+            r for r in regions if r["color"] == self_color and r["bbox"][:2] != self_cell
+        ]
+        if partners:
+            nearest = min(partners, key=lambda r: _manhattan(r["bbox"][:2], self_cell))
+            return self_color, nearest["bbox"][:2]  # type: ignore[index]
+
+    color_counts = Counter(r["color"] for r in regions)
+    singleton = [r for r in regions if color_counts[r["color"]] == 1 and r["color"] != self_color]
+    if not singleton:
+        return None, None
+    goal = min(singleton, key=lambda r: r["size"])
+    return goal["color"], goal["bbox"][:2]  # type: ignore[index]
 
 
 class Adapter(GameAdapter):
-    """Frontier-BFS maze navigation composed entirely from admorphiq.kernels."""
+    """Optimistic goal-directed navigation composed entirely from admorphiq.kernels."""
 
     GAME_ID = GAME_ID
 
     def __init__(self, giveup: int = _GIVEUP_DEFAULT) -> None:
-        # Consumed by scripts/score_efficiency.py's run_game: on GAME_OVER it
-        # RESETs the env and keeps calling this same adapter instance instead
-        # of ending the run, so a fatal move costs one action, not the rest
-        # of the budget.
         self.restart_on_game_over = True
 
         self._giveup = giveup
         self._step = 0
         self._levels_seen = -1
-        # action_id -> measured UNIT cell delta (dr, dc), e.g. (0, 1). Persists
-        # across levels: the control scheme is a property of the game, not the
-        # layout (matching admorphiq.general_agent.GeneralAgent's documented
-        # "carried control knowledge" convention).
+
+        # action_id -> measured pixel delta (dr, dc) of SELF's OWN region.
+        # Persists across levels and restarts: the control scheme is a
+        # property of the game, not the layout.
         self._dir_map: dict[int, Cell] = {}
+        self._self_color: int | None = None
+        self._active_cell: Cell | None = None
+        self._goal_color: int | None = None
+        self._goal_cell: Cell | None = None
+
         self._pending_action: int | None = None
+        self._pending_ref_cell: Cell | None = None
         self._prev_grid: tuple[tuple[int, ...], ...] | None = None
         # The very first frame seen this level (post-reset frames snap back
-        # to this exactly) -- see _observe_result's restart detector.
+        # to this exactly) -- see _observe_result's silent-reposition
+        # detector.
         self._level_start_grid: tuple[tuple[int, ...], ...] | None = None
-        self._player_cell: Cell = (0, 0)
-        self._known_passable: set[Cell] = {(0, 0)}
+        # SELF's own position the first time it was ever measured this
+        # level (cached once, at the same moment _self_color is first
+        # learned). Used to re-acquire SELF's identity after ANY restart
+        # (_active_cell goes back to None) among the >= 1 same-coloured
+        # regions on the board -- nearest-to-start-position is a robust,
+        # measured-necessary disambiguator once a mirror partner of the
+        # SAME colour exists (see module docstring's offline
+        # investigation); picking an arbitrary same-coloured region would
+        # risk locking onto the mirror partner instead of SELF.
+        self._level_start_cell: Cell | None = None
+
         self._tried_from: dict[Cell, set[int]] = {}
-        self._action_plan: list[int] = []
-        # (cell, action) pairs that triggered GAME_OVER. Persists across
-        # restarts within a level (a property of the layout); cleared on
-        # level-up alongside every other spatial fact.
+        # Cells CONFIRMED blocked. Every other cell is OPTIMISTICALLY
+        # assumed passable -- a movement attempt that fails to shift SELF
+        # adds its predicted destination here; nothing removes a cell once
+        # added (no button/toggle mechanic in this game, unlike DC22).
+        self._known_blocked: set[Cell] = set()
+
+        # (cell, action) pairs that triggered a fatal reposition. Persists
+        # across restarts WITHIN a level (a property of the layout);
+        # cleared on level-up alongside every other spatial fact. Kept from
+        # the pre-backport version, unchanged in spirit.
         self._hazards: dict[Cell, set[int]] = {}
         # Cells hazardous under >= _DEAD_CELL_HAZARD_THRESHOLD distinct
         # actions -- excluded from the passable array and frontier search
-        # entirely (see _passable_array / _nearest_frontier). Persists like
-        # _hazards; cleared on level-up.
+        # entirely (see _passable_array). Persists like _hazards.
         self._dead_cells: set[Cell] = set()
+
+        self._replans = 0
 
     # ── harness contract ────────────────────────────────────────────────
 
@@ -154,8 +226,20 @@ class Adapter(GameAdapter):
 
     def choose_action(self, frames: list[Any], latest_frame: Any) -> GameAction:
         state = state_name(latest_frame)
-        if state in ("NOT_PLAYED", "GAME_OVER") or not has_frame(latest_frame):
+        if state == "GAME_OVER":
+            # A fatal reposition just happened, but the maze layout (walls,
+            # hazards) didn't change -- only the current attempt did. This
+            # branch previously shared the full-wipe path with NOT_PLAYED
+            # below (a real bug found while porting DC22's control-flow
+            # shape here: it silently discarded every learned wall/hazard
+            # fact on every single GAME_OVER, defeating the hazard-memory
+            # mechanism this file has always documented). Now matches
+            # DC22's own correct GAME_OVER handling.
+            self._on_restart()
+            return reset_action()
+        if state == "NOT_PLAYED" or not has_frame(latest_frame):
             self._pending_action = None
+            self._pending_ref_cell = None
             self._prev_grid = None
             self._levels_seen = -1
             return reset_action()
@@ -178,111 +262,186 @@ class Adapter(GameAdapter):
             self._pending_action = None
             return simple_action(simple_ids[0]) if simple_ids else reset_action()
 
-        action = self._next_action(move_ids)
+        action = self._decide(grid, move_ids)
         self._prev_grid = grid
         self._pending_action = action
         return simple_action(action)
 
-    # ── level bookkeeping ───────────────────────────────────────────────
+    # ── level / restart bookkeeping ─────────────────────────────────────
 
     def _on_level_up(self, levels: int, grid: tuple[tuple[int, ...], ...]) -> None:
         """Drop every SPATIAL fact about the level just left; keep the dir_map."""
         self._levels_seen = levels
         self._pending_action = None
+        self._pending_ref_cell = None
         self._prev_grid = None
         self._level_start_grid = grid
-        self._player_cell = (0, 0)
-        self._known_passable = {(0, 0)}
+        self._level_start_cell = None
+        self._active_cell = None
+        self._goal_color = None
+        self._goal_cell = None
         self._tried_from = {}
-        self._action_plan = []
+        self._known_blocked = set()
         self._hazards = {}
         self._dead_cells = set()
 
     def _on_restart(self) -> None:
-        """After a GAME_OVER-triggered RESET, only the player's OWN position
-        resets to the start cell. Every fact already learned about the
-        layout -- known_passable, tried_from (which now includes the fatal
-        action, added by the caller before this runs), hazards, dead_cells,
-        dir_map -- remains true (the maze didn't change, only the attempt
-        did) and is deliberately KEPT so each life compounds on the last
-        instead of re-exploring the same safe cells from scratch every
-        time. Measured necessary: an earlier version wiped known_passable
-        here too, and a smoke run spent ~150 of ~150 actions per life
-        re-discovering the same 70 already-known-safe cells before ever
-        reaching new territory."""
-        self._player_cell = (0, 0)
-        self._action_plan = []
+        """Only SELF's own tracked position resets; every fact already
+        learned about the layout (dir_map, known_blocked, hazards,
+        dead_cells, tried_from) remains true (the maze didn't change, only
+        the attempt did) and is deliberately KEPT so each life compounds
+        on the last instead of re-exploring from scratch every time --
+        measured necessary pre-backport: an earlier version wiped this
+        knowledge on every restart and spent nearly the whole action
+        budget per life re-discovering the same already-known-safe cells."""
+        self._pending_action = None
+        self._pending_ref_cell = None
+        self._prev_grid = None
+        self._active_cell = None
 
-    # ── measurement: did the pending action move anything? ─────────────
+    # ── measurement: did the pending action move SELF? ─────────────────
 
     def _observe_result(self, grid: tuple[tuple[int, ...], ...]) -> None:
-        """Fold the outcome of the just-executed action into the passability map.
-
-        Composes frame_diff -> find_regions (before/after) -> track_objects
-        -> motion_vectors to answer "did the mover shift, and in which unit
-        direction" without ever assuming which region is the player or what
-        color it is.
-        """
         action = self._pending_action
+        ref_cell = self._pending_ref_cell
         before = self._prev_grid
         self._pending_action = None
+        self._pending_ref_cell = None
         if action is None or before is None:
             return
-        # The env silently repositioned the player back to the level's start
-        # (the frame snaps back to the exact first-seen frame) while OUR
-        # tracking still holds a mid-maze position: a GAME_OVER restart just
-        # happened, not a normal move that coincidentally reproduced the
-        # start frame (a legitimate walk-back-to-start would already have
-        # our own _player_cell reading (0, 0), so this branch would not
-        # trigger for it).
-        if self._player_cell != (0, 0) and grid == self._level_start_grid:
-            self._tried_from.setdefault(self._player_cell, set()).add(action)
-            hazard_actions = self._hazards.setdefault(self._player_cell, set())
-            hazard_actions.add(action)
-            if len(hazard_actions) >= _DEAD_CELL_HAZARD_THRESHOLD:
-                self._dead_cells.add(self._player_cell)
+
+        # A SILENT reposition: the frame snaps back to the exact
+        # level-start frame while this adapter's own tracking still holds
+        # a position DIFFERENT from where SELF started this level -- a
+        # fatal reposition just happened without the harness ever
+        # reporting an explicit GAME_OVER state for it (kept from the
+        # pre-backport version; see module docstring). Compared against
+        # the cached level-start position, never a literal (0, 0) --
+        # SELF's start cell is wherever its region actually sits in raw
+        # frame pixels, not an abstract coordinate-space origin.
+        if (
+            self._active_cell is not None
+            and self._level_start_cell is not None
+            and self._active_cell != self._level_start_cell
+            and grid == self._level_start_grid
+        ):
+            self._record_hazard(ref_cell, action)
             self._on_restart()
             return
-        if before == grid:
-            self._tried_from.setdefault(self._player_cell, set()).add(action)
-            return
-        diff = frame_diff(before, grid)
-        if diff["count"] == 0:
-            self._tried_from.setdefault(self._player_cell, set()).add(action)
+
+        bg_before = most_common_color(before)
+        regions_before = find_regions(before, background=bg_before)
+
+        if self._self_color is None:
+            bg_cur = most_common_color(grid)
+            regions_cur = find_regions(grid, background=bg_cur)
+            tracked = track_objects(regions_before, regions_cur)
+            moved = [m for m in tracked["matches"] if tuple(m["shift"]) != (0, 0)]  # type: ignore[arg-type]
+            if len(moved) != 1:
+                return
+            match = moved[0]
+            from_cell: Cell = regions_before[match["before"]]["bbox"][:2]  # type: ignore[index]
+            shift: Cell = tuple(match["shift"])  # type: ignore[assignment]
+            self._self_color = regions_before[match["before"]]["color"]  # type: ignore[assignment]
+            self._level_start_cell = from_cell
+            self._dir_map.setdefault(action, shift)
+            self._tried_from.setdefault(from_cell, set()).add(action)
+            self._active_cell = (from_cell[0] + shift[0], from_cell[1] + shift[1])
             return
 
-        regions_before = find_regions(before, background=most_common_color(before))
-        regions_after = find_regions(grid, background=most_common_color(grid))
-        tracked = track_objects(regions_before, regions_after)
-        dominant = motion_vectors(tracked["matches"])["dominant"]
-
-        self._tried_from.setdefault(self._player_cell, set()).add(action)
-        if not dominant or dominant == (0, 0):
+        if ref_cell is None:
             return
-        unit = (_sign(dominant[0]), _sign(dominant[1]))
-        self._dir_map.setdefault(action, unit)
-        new_cell = (self._player_cell[0] + unit[0], self._player_cell[1] + unit[1])
-        self._known_passable.add(new_cell)
-        self._player_cell = new_cell
+        self_before = [r for r in regions_before if r["color"] == self._self_color]
+        if not self_before:
+            return
+        from_cell = min(self_before, key=lambda r: _manhattan(r["bbox"][:2], ref_cell))["bbox"][:2]  # type: ignore[assignment]
+        bg_cur = most_common_color(grid)
+        self_cur = [r for r in find_regions(grid, background=bg_cur) if r["color"] == self._self_color]
+        if not self_cur:
+            return
+        new_cell: Cell = min(self_cur, key=lambda r: _manhattan(r["bbox"][:2], ref_cell))["bbox"][:2]  # type: ignore[assignment]
+        if new_cell == from_cell:
+            self._record_blocked(ref_cell, action)
+            return
+        shift = (new_cell[0] - from_cell[0], new_cell[1] - from_cell[1])
+        self._dir_map.setdefault(action, shift)
+        self._tried_from.setdefault(from_cell, set()).add(action)
+        self._active_cell = new_cell
 
-    # ── planning: what action to take next ──────────────────────────────
+    def _record_blocked(self, cell: Cell, action: int) -> None:
+        """Mark ``action`` tried from ``cell``, and if its measured
+        direction is known, add the refuted destination to
+        ``_known_blocked`` -- the fact ``_passable_array`` reads to stop
+        assuming that cell passable. Counted as a replan: the NEXT
+        optimistic beeline attempt routes around it."""
+        self._tried_from.setdefault(cell, set()).add(action)
+        unit = self._dir_map.get(action)
+        if unit is None:
+            return
+        dest = (cell[0] + unit[0], cell[1] + unit[1])
+        if dest not in self._known_blocked:
+            self._known_blocked.add(dest)
+            self._replans += 1
+
+    def _record_hazard(self, cell: Cell | None, action: int | None) -> None:
+        if cell is None or action is None:
+            return
+        self._tried_from.setdefault(cell, set()).add(action)
+        hazard_actions = self._hazards.setdefault(cell, set())
+        hazard_actions.add(action)
+        if len(hazard_actions) >= _DEAD_CELL_HAZARD_THRESHOLD:
+            self._dead_cells.add(cell)
+
+    # ── planning ─────────────────────────────────────────────────────────
+
+    def _decide(self, grid: tuple[tuple[int, ...], ...], move_ids: list[int]) -> int:
+        if self._self_color is None:
+            return self._probe(move_ids)
+
+        bg = most_common_color(grid)
+        regions = find_regions(grid, background=bg)
+        self_regions = [r for r in regions if r["color"] == self._self_color]
+        if not self_regions:
+            return self._probe(move_ids)
+        # After a restart _active_cell is None -- re-acquire identity via
+        # the cached level-start position (never an arbitrary "first
+        # region found"), since a mirror partner of the SAME colour can
+        # otherwise be picked up as SELF by mistake (see module docstring).
+        ref = self._active_cell if self._active_cell is not None else self._level_start_cell
+        if ref is None:
+            ref = self_regions[0]["bbox"][:2]  # type: ignore[assignment]
+        self._active_cell = min(self_regions, key=lambda r: _manhattan(r["bbox"][:2], ref))["bbox"][:2]  # type: ignore[assignment]
+
+        self._goal_color, self._goal_cell = _detect_goal(regions, self._self_color, self._active_cell)
+        if self._goal_cell is None:
+            return self._probe(move_ids)
+
+        if self._active_cell == self._goal_cell:
+            return self._probe(move_ids)
+
+        return self._route(move_ids)
+
+    def _pick_action(self, candidates: list[int], ref_cell: Cell, goal: Cell | None) -> int:
+        """Choose among untried ``candidates`` from ``ref_cell``. A
+        candidate whose direction has never been measured anywhere is
+        tried FIRST, unconditionally -- a target reachable only via an
+        unmeasured direction is invisible to the optimistic planner's move
+        set otherwise. Ties among measured candidates break by Manhattan
+        distance their predicted destination leaves to ``goal``."""
+        unmeasured = [a for a in candidates if a not in self._dir_map]
+        if unmeasured:
+            return unmeasured[0]
+        if goal is None:
+            return candidates[0]
+
+        def score(action: int) -> int:
+            dr, dc = self._dir_map[action]
+            dest = (ref_cell[0] + dr, ref_cell[1] + dc)
+            return _manhattan(dest, goal)
+
+        return min(candidates, key=score)
 
     def _viable_actions(self, cell: Cell, move_ids: list[int]) -> list[int]:
-        """``move_ids`` not yet tried from ``cell`` AND not predicted to step into a dead cell.
-
-        A dead cell already excludes itself from path-PLANNING (see
-        :meth:`_passable_array`), but plain step-by-step exploration (the
-        "try the first untried direction from wherever I currently stand"
-        branch below) does not go through path planning at all -- without
-        this check it would happily walk straight onto a dead cell one
-        normal step at a time, since from the CURRENT cell's own
-        perspective that direction has never been "tried" there before.
-        Whenever the destination is predictable (the action already has a
-        measured unit direction in dir_map), that prediction is trusted
-        even for a never-tried-from-here action; a genuinely unmeasured
-        action is never filtered, since trying it is the only way to ever
-        learn its direction.
-        """
         tried = self._tried_from.get(cell, set())
         out = []
         for a in move_ids:
@@ -294,92 +453,68 @@ class Adapter(GameAdapter):
             out.append(a)
         return out
 
-    def _next_action(self, move_ids: list[int]) -> int:
-        untried_here = self._viable_actions(self._player_cell, move_ids)
-        if untried_here:
-            return untried_here[0]
+    def _probe(self, move_ids: list[int], cell: Cell | None = None) -> int:
+        ref_cell = cell if cell is not None else self._active_cell
+        self._pending_ref_cell = ref_cell
+        if ref_cell is not None:
+            untried = self._viable_actions(ref_cell, move_ids)
+            if untried:
+                return self._pick_action(untried, ref_cell, self._goal_cell)
+        return move_ids[0]
 
-        if self._action_plan:
-            return self._action_plan.pop(0)
+    def _passable_array(self) -> list[list[bool]]:
+        """A ``grid_shortest_path``-shaped passability array over the FULL
+        64x64 frame: every cell ``True`` (optimistically passable) EXCEPT
+        ones in ``_known_blocked`` or ``_dead_cells``."""
+        height, width = 64, 64
+        array = [[True] * width for _ in range(height)]
+        for r, c in self._known_blocked | self._dead_cells:
+            if 0 <= r < height and 0 <= c < width:
+                array[r][c] = False
+        return array
 
-        target = self._nearest_frontier(move_ids)
-        if target is None or target == self._player_cell:
-            # Nothing reachable left to explore (a fully-tried pocket, or no
-            # direction measured yet) -- keep the harness alive with a
-            # harmless re-probe rather than crash or idle forever.
-            return move_ids[0]
+    def _route(self, move_ids: list[int]) -> int:
+        assert self._active_cell is not None and self._goal_cell is not None
+        if not self._dir_map:
+            return self._probe(move_ids)
 
-        path = self._plan_path(self._player_cell, target)
-        if len(path) < 2:
-            return move_ids[0]
+        self._pending_ref_cell = self._active_cell
+        moves = list(self._dir_map.values())
         move_labels = {unit: action for action, unit in self._dir_map.items()}
-        moves = path_to_moves(path, move_labels)
-        if not moves:
-            return move_ids[0]
-        self._action_plan = moves[1:]
-        return moves[0]
+        optimistic = self._passable_array()
 
-    def _nearest_frontier(self, move_ids: list[int]) -> Cell | None:
-        """The known-passable, non-dead cell nearest the player with an untried direction."""
-        frontier = [
-            cell
-            for cell in self._known_passable
-            if cell not in self._dead_cells and self._viable_actions(cell, move_ids)
+        path = grid_shortest_path(optimistic, self._active_cell, self._goal_cell, moves=moves)
+        if path and len(path) >= 2:
+            try:
+                step = path_to_moves(path[:2], move_labels)[0]
+                return step
+            except ValueError:
+                pass
+
+        # The optimistic planner found NO route -- try the current cell's
+        # own untried actions before considering anything else (a target
+        # reachable only via an unmeasured direction from HERE is
+        # otherwise invisible to the planner's known move set).
+        untried_here = self._viable_actions(self._active_cell, move_ids)
+        if untried_here:
+            return self._pick_action(untried_here, self._active_cell, self._goal_cell)
+
+        # Broader frontier: any OTHER cell ever stood at with fewer than
+        # len(move_ids) actions tried, ranked by proximity to the GOAL.
+        frontier_cells = [
+            c for c, tried in self._tried_from.items() if len(tried) < len(move_ids) and c != self._active_cell
         ]
-        if not frontier:
-            return None
-        array, origin = self._passable_array()
-        moves = tuple(self._dir_map.values()) or _CARDINAL_FALLBACK
-        source_local = self._to_local(self._player_cell, origin)
-        distances = grid_distance_field(array, [source_local], moves=moves)
-        best: Cell | None = None
-        best_dist: int | None = None
-        for cell in sorted(frontier):
-            d = distances.get(self._to_local(cell, origin))
-            if d is None:
-                continue
-            if best_dist is None or d < best_dist:
-                best_dist = d
-                best = cell
-        return best
+        if frontier_cells:
+            goal_distances = grid_distance_field(optimistic, [self._goal_cell], moves=moves)
+            frontier_cells.sort(key=lambda c: goal_distances.get(c, float("inf")))
+            for cell in frontier_cells:
+                sub_path = grid_shortest_path(optimistic, self._active_cell, cell, moves=moves)
+                if sub_path and len(sub_path) >= 2:
+                    try:
+                        return path_to_moves(sub_path[:2], move_labels)[0]
+                    except ValueError:
+                        continue
 
-    def _plan_path(self, start: Cell, goal: Cell) -> list[Cell]:
-        array, origin = self._passable_array()
-        moves = tuple(self._dir_map.values()) or _CARDINAL_FALLBACK
-        path_local = grid_shortest_path(
-            array, self._to_local(start, origin), self._to_local(goal, origin), moves=moves
-        )
-        if path_local is None:
-            return []
-        return [self._to_absolute(c, origin) for c in path_local]
-
-    def _passable_array(self) -> tuple[list[list[bool]], Cell]:
-        """Boolean grid over every known-passable cell EXCEPT dead ones.
-
-        A dead cell (see :data:`_DEAD_CELL_HAZARD_THRESHOLD`) is fatal
-        regardless of which action is pressed there, so it must never be
-        entered even as a waypoint toward some other frontier -- excluding
-        it from the True positions (while still counting it toward the
-        array's bounding box, so the surrounding safe cells stay reachable)
-        makes both grid_shortest_path and grid_distance_field route AROUND
-        it rather than through it.
-        """
-        cells = self._known_passable
-        rows = [r for r, _c in cells]
-        cols = [c for _r, c in cells]
-        r0, r1 = min(rows), max(rows)
-        c0, c1 = min(cols), max(cols)
-        height, width = r1 - r0 + 1, c1 - c0 + 1
-        array = [[False] * width for _ in range(height)]
-        for r, c in cells:
-            if (r, c) not in self._dead_cells:
-                array[r - r0][c - c0] = True
-        return array, (r0, c0)
-
-    @staticmethod
-    def _to_local(cell: Cell, origin: Cell) -> Cell:
-        return (cell[0] - origin[0], cell[1] - origin[1])
-
-    @staticmethod
-    def _to_absolute(cell: Cell, origin: Cell) -> Cell:
-        return (cell[0] + origin[0], cell[1] + origin[1])
+        # Truly stuck: every reachable cell (via the optimistic map) is
+        # fully explored and none leads toward the goal.
+        return self._probe(move_ids)
