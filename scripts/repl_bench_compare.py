@@ -84,6 +84,45 @@ def summarize_run(run_dir: str) -> dict[str, dict]:
     return out
 
 
+def action_phases(run_dir: str, game: str) -> dict:
+    """Break the FIRST level-up into action phases from the event stream + the
+    transcript's audit records (Codex v7: total actions != actions-to-L1 because
+    the bench continues after L1). Reports actions-to-first-level-up, before-first
+    -audit, between-audits, revision(last audit before clear)-to-level-up, and
+    after-level-up.
+    """
+    tp = os.path.join(run_dir, "transcripts", f"{game}.jsonl")
+    ep = os.path.join(run_dir, "events", f"{game}.events.jsonl")
+    if not (os.path.exists(tp) and os.path.exists(ep)):
+        return {}
+    events = _load_jsonl(ep)
+    recs = _load_jsonl(tp)
+    action_ev = [e for e in events if e.get("type") == "action_executed"]
+    total_actions = len(action_ev)
+    lvl = next((e for e in events if e.get("type") == "level_up"), None)
+    audits = sorted(r["audit"]["action_count"] for r in recs
+                    if r.get("audit") and r["audit"].get("action_count") is not None)
+    if lvl is None:
+        return {"cleared": False, "total_actions": total_actions,
+                "first_audit_at": audits[0] if audits else None,
+                "between_audits": _diffs(audits)}
+    to_lvl = sum(1 for e in action_ev if e["seq"] < lvl["seq"])
+    pre = [a for a in audits if a <= to_lvl]
+    return {
+        "cleared": True,
+        "actions_to_first_level_up": to_lvl,
+        "actions_before_first_audit": pre[0] if pre else None,
+        "between_audits": _diffs(audits),
+        "revision_to_level_up": (to_lvl - pre[-1]) if pre else None,
+        "actions_after_level_up": total_actions - to_lvl,
+        "total_actions": total_actions,
+    }
+
+
+def _diffs(xs: list[int]) -> list[int]:
+    return [b - a for a, b in zip(xs, xs[1:])]
+
+
 _COLS = ["levels", "env_actions", "inspection_success_rate", "informed_inspections",
          "src_llm_pct", "src_fallback_pct", "sandbox_error_turns", "parse_fail_pct"]
 
@@ -113,9 +152,14 @@ def main() -> None:
     p = argparse.ArgumentParser(description="Compare two repl-bench run packages.")
     p.add_argument("--a", required=True, help="run dir A (e.g. v6)")
     p.add_argument("--b", default=None, help="run dir B to diff against (e.g. v5)")
+    p.add_argument("--phases", action="store_true",
+                   help="print the first-level-up action-phase breakdown for run A")
     args = p.parse_args()
     a = summarize_run(args.a)
-    if args.b is None:
+    if args.phases:
+        for game in a:
+            print(f"{game:16s} {action_phases(args.a, game)}")
+    elif args.b is None:
         _print_single(a)
     else:
         _print_delta(a, summarize_run(args.b))
