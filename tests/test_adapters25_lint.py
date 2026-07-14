@@ -205,6 +205,7 @@ def test_discover_adapter_paths_excludes_init_and_base():
     assert "base.py" not in names
     assert "m0r0.py" in names
     assert "lp85.py" in names
+    assert "su15.py" in names
 
 
 def test_real_m0r0_adapter_passes_the_lint():
@@ -226,5 +227,18 @@ def test_real_lp85_adapter_passes_the_lint():
     Expected feedback: failure means the lp85 adapter (or the lint's
     whitelist) drifted out of sync with the quarantine rules."""
     path = _REPO_ROOT / "src" / "admorphiq" / "adapters25" / "lp85.py"
+    result = lint_module(path)
+    assert result.import_violations == []
+
+
+def test_real_su15_adapter_passes_the_lint():
+    """Purpose: regression pin -- the actual shipped su15 adapter (the
+    vacuum-merge sibling, the first non-trivial mechanic of the three) must
+    ALSO have zero import violations, proving the quarantine contract holds
+    even for an adapter with its own role-assignment heuristics (HUD-band
+    detection, scattered-color exclusion, same-color pairing).
+    Expected feedback: failure means the su15 adapter (or the lint's
+    whitelist) drifted out of sync with the quarantine rules."""
+    path = _REPO_ROOT / "src" / "admorphiq" / "adapters25" / "su15.py"
     result = lint_module(path)
     assert result.import_violations == []
