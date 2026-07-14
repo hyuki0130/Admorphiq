@@ -26,7 +26,15 @@ def _run(job: dict[str, Any]) -> dict[str, Any]:
     inspector = Inspector(job["payload"])
     max_output = int(job.get("max_output", 4000))
 
-    namespace: dict[str, Any] = {"__builtins__": _safe_builtins()}
+    builtins_ns = _safe_builtins()
+    # Extend with the common read-only builtins the MODEL naturally reaches for
+    # (v6: `next` was missing -> valid model code NameError'd). Read-only/pure,
+    # no I/O or introspection escape.
+    import builtins as _b
+    for _name in ("next", "iter", "str", "repr", "type", "dict", "sorted",
+                  "enumerate", "min", "max", "abs", "divmod", "chr", "ord"):
+        builtins_ns.setdefault(_name, getattr(_b, _name))
+    namespace: dict[str, Any] = {"__builtins__": builtins_ns}
     # Bind the inspection + action API as plain callables the model code uses.
     for name in ("objects", "crop", "ascii", "mask", "compare", "relations",
                  "shortest_path", "action_outcomes", "is_dead", "action"):

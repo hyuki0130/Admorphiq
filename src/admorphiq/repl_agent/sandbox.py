@@ -59,6 +59,10 @@ def _scene_payload(scene: Scene | None) -> list[dict[str, Any]]:
         {
             "id": o.id,
             "color": o.color,
+            # `colors` + `change_history` mirror the turn-packet object schema, so
+            # code the model writes from the packet field names does not KeyError
+            # on the Inspector output (v6 measured KeyError: 'colors').
+            "colors": {int(o.color): o.area},
             "cells": [list(c) for c in o.cells],
             "bbox_rc": list(o.bbox),  # (row0, col0, row1, col1)
             "centroid_rc": [round(o.centroid[0], 2), round(o.centroid[1], 2)],
@@ -67,6 +71,7 @@ def _scene_payload(scene: Scene | None) -> list[dict[str, Any]]:
             "holes": o.holes,
             "contained_by": o.contained_by,
             "adjacent": o.adjacent,
+            "change_history": "; ".join(o.change_history[-3:]),
             "safe_click_rc": list(o.safe_click),  # (row, col)
         }
         for o in scene.objects

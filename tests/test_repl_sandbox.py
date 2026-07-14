@@ -181,6 +181,24 @@ def test_run_code_records_actions():
     assert res.actions and res.actions[0]["action"] == "MOUSE"
 
 
+def test_common_builtins_and_packet_field_names(tmp_path):
+    """Purpose: the model can use `next()` and read obj['colors'] on objects() —
+    the two v6 code-error classes (NameError 'next', KeyError 'colors').
+
+    Feedback: failure means valid model code keeps erroring in the REPL.
+    """
+    code = (
+        "objs = objects(-1)\n"
+        "o = next(iter(objs), None)\n"
+        "print('COLORS', o['colors'], 'CH' in str(o.get('change_history', '')) or True)\n"
+        "action('LEFT')\n"
+    )
+    res = run_code(code, _store_two_frames(), timeout=15)
+    assert res.ok, res.error
+    assert "COLORS" in res.stdout
+    assert res.actions and res.actions[0]["action"] == "LEFT"
+
+
 def test_run_code_reports_syntax_error():
     """Purpose: malformed code returns an error, never crashes the harness.
 
