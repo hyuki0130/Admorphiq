@@ -16,26 +16,48 @@ frame-only ``src/admorphiq/merge_drag.py`` this module deliberately does
 NOT import (quarantine: stdlib + admorphiq.kernels + admorphiq.adapters25.base
 only) — its absolute-pixel tunables (``_MERGE_DIST_PX``, ``_DRAG_STEP``,
 etc.) are exactly the kind of game-specific constant this adapter must not
-inherit. Live probing on the real env (see the module's own dev-time probe
-script, not shipped) measured instead:
+inherit.
 
-  - Clicking DIRECTLY on a tile's own centroid produces ZERO shift (nothing
-    to pull across).
-  - Clicking a SMALL offset (~15-30% of the tile-to-goal distance) toward
-    the destination also produced zero shift on this env.
-  - Clicking at a LARGER offset (~50% of the distance) produced a measured,
-    if small, shift -- confirming a click must land meaningfully AHEAD of a
-    tile (not on it, not barely off it) to register any pull at all.
+**R56 iteration 5 -- two mechanic hypotheses tested live, one falsified,
+one fixed:**
 
-So instead of assuming any fixed pixel radius, this adapter MEASURES it:
-every click is placed via :func:`admorphiq.kernels.point_toward` at
-``_fraction`` of the remaining distance between a source tile and its
-destination (a same-color partner for merging, or the goal container for
-gathering); ``_fraction`` starts small and escalates (via
+1. **"select-then-place" (a click SELECTS a tile, a second click PLACES
+   it), FALSIFIED.** ``avail`` for this game is measured ``[6, 7]`` only
+   (no ACTION5) -- reading ``src/admorphiq/world_model_agent.py``'s own
+   routing gate confirms this structurally: its select-toggle arrangement
+   phase requires ACTION5, and its ``_merge_drag_step`` (a SINGLE-click
+   model, the one that actually clears SU15 L1-2 in ~58 actions) is
+   entered specifically when 1-5 are ALL absent and 6+7 are present -- SU15
+   is its cited example. Live probe (click ON a tile, then click the
+   goal): the tile's distance to goal was IDENTICAL before and after both
+   clicks (19.7px both times) -- the second click pulled something else
+   entirely, never the "selected" tile. Two-click select-then-place is not
+   this game's mechanic.
+2. **Fraction-of-remaining-distance (this module's own iteration 1-4
+   design), the REAL bug, found while testing hypothesis 1.** A probe
+   walked a single tile through absolute click-ahead offsets of 5px, 7px,
+   10px from ITS OWN position: 5px and 7px (note -- close to
+   merge_drag.py's OWN measured ``_DRAG_STEP``/``_MERGE_STEP`` constants,
+   arrived at independently here) produced ZERO shift; 10px worked. Since
+   this module's ``_fraction`` was a FRACTION of the total remaining
+   distance, the ABSOLUTE click-ahead offset it produced SHRANK every time
+   a tile got closer to its target -- exactly backwards, since getting
+   closer is the whole point of gathering. Once a click's absolute offset
+   fell below the true effective threshold, escalation only made the
+   FRACTION bigger, not the useful thing (a modest absolute nudge) --
+   fraction rockets toward its ceiling and clicks become huge, distant,
+   overshooting jumps instead of the small local nudges the mechanic
+   actually needs.
+
+The fix: :func:`admorphiq.kernels.point_toward` is now called with an
+ABSOLUTE pixel distance (``_step_px``), not a fraction of the remaining
+distance. ``_step_px`` starts small and escalates (via
 :func:`admorphiq.kernels.frame_diff` on the observed before/after)
-whenever a click produces no visible change at all, converging on a
-distance that actually moves something. It never shrinks back down once a
-click succeeds -- a known simplification.
+whenever a click produces no visible change, exactly like the old fraction
+did -- but now escalation makes the click reach FARTHER in absolute terms
+regardless of how close the target already is, matching the measured
+mechanic (a modest, roughly-constant nudge, recomputed fresh every call).
+It never shrinks back down once a click succeeds -- a known simplification.
 
 Role assignment (declared HERE, not in the kernel layer, which knows
 nothing about tiles, goals, enemies, or merging):
@@ -114,7 +136,7 @@ Composition from ``admorphiq.kernels``:
   - :func:`admorphiq.kernels.frame_diff` + :func:`admorphiq.kernels.find_regions`
     (before/after) + :func:`admorphiq.kernels.track_objects` measure
     whether the click's OWN source tile moved (or merged away) -- this
-    single measurement drives fraction escalation, dead-click counting,
+    single measurement drives step-size escalation, dead-click counting,
     AND (via a separate frame-identity comparison against the level's
     start frame) fatal-click memory.
   - :func:`admorphiq.kernels.point_toward` replaces this adapter's own
@@ -172,11 +194,20 @@ _HUD_THICKNESS_FRACTION = 0.06
 _SCATTER_MIN_CLUSTERS = 10
 _SCATTER_MAX_DENSITY = 0.05
 
-# Starting fraction-of-remaining-distance for a point-toward click; escalated
-# (never shrunk) whenever a click measurably moves nothing at all.
-_INITIAL_FRACTION = 0.3
-_FRACTION_GROWTH = 1.5
-_MAX_FRACTION = 0.9
+# Starting ABSOLUTE click-ahead distance (px) for a point-toward click;
+# escalated (never shrunk) whenever a click measurably moves nothing at
+# all. Unlike a fraction of the remaining distance, this does NOT shrink
+# as a tile approaches its target -- see the module docstring's iteration-5
+# finding (a fraction-based step falls below the effective pull threshold
+# exactly when it matters most, right as a gather nears completion).
+# Starts below the measured working value (10px, one tile/distance) so
+# escalation -- not an assumed constant -- finds the real threshold.
+_INITIAL_STEP_PX = 5.0
+_STEP_GROWTH = 1.5
+# Capped well under half the board so an escalated step stays a local
+# nudge, never a huge cross-board jump (the failure mode of the old
+# fraction model at its own ceiling).
+_MAX_STEP_PX = 30.0
 # A measured dominant shift smaller than this (in px) is treated the same as
 # "nothing moved" for escalation purposes -- a click that barely nudged
 # something is not yet at a useful working distance either. Small relative
@@ -280,23 +311,22 @@ def _tile_key(region: Region) -> tuple[int, int, int]:
     return (region["color"], int(r) // 4, int(c) // 4)
 
 
-def _click_toward(src: Cell, dst: tuple[float, float], fraction: float, height: int, width: int) -> Cell:
-    """Click point at ``fraction`` of the src->dst distance, clamped to the frame.
+def _click_toward(src: Cell, dst: tuple[float, float], step_px: float, height: int, width: int) -> Cell:
+    """Click point ``step_px`` ahead of ``src`` toward ``dst``, clamped to the frame.
 
-    Composes admorphiq.kernels.point_toward (the measured "step this many
-    PIXELS toward the target" primitive) with a fraction-of-distance
-    conversion this adapter owns -- point_toward itself takes an absolute
-    distance, not a fraction, and knows nothing about frame bounds.
+    Thin wrapper over admorphiq.kernels.point_toward (which already takes
+    an absolute pixel distance and clamps to ``dst`` itself if ``step_px``
+    would overshoot it) adding only the frame-bounds clamp point_toward
+    doesn't know about.
     """
-    distance = fraction * (_dist2(src, dst) ** 0.5)
-    row, col = point_toward(src, dst, distance=distance)
+    row, col = point_toward(src, dst, distance=step_px)
     row = max(0, min(height - 1, row))
     col = max(0, min(width - 1, col))
     return (row, col)
 
 
 class Adapter(GameAdapter):
-    """Adaptive point-toward vacuum-merge play composed entirely from admorphiq.kernels."""
+    """Adaptive absolute-step point-toward vacuum-merge play composed entirely from admorphiq.kernels."""
 
     GAME_ID = GAME_ID
 
@@ -310,11 +340,12 @@ class Adapter(GameAdapter):
         self._giveup = giveup
         self._step = 0
         self._levels_seen = -1
-        # Fraction-of-remaining-distance used for the next point-toward click.
-        # A property of the game's own vacuum strength, so it persists across
-        # levels (matching admorphiq.adapters25.m0r0's dir_map convention) --
-        # only escalated, never reset, by _observe_result.
-        self._fraction = _INITIAL_FRACTION
+        # ABSOLUTE click-ahead distance (px) used for the next point-toward
+        # click. A property of the game's own vacuum strength, so it
+        # persists across levels (matching admorphiq.adapters25.m0r0's
+        # dir_map convention) -- only escalated, never reset, by
+        # _observe_result.
+        self._step_px = _INITIAL_STEP_PX
         self._pending_click: Cell | None = None
         # The click SOURCE tile's bucket key + exact centroid, so
         # _observe_result can (a) credit a no-useful-shift outcome to the
@@ -415,8 +446,8 @@ class Adapter(GameAdapter):
            across frames -- must EITHER have vanished (merged into its
            partner: the mechanic succeeding) OR shifted by at least
            :data:`_MIN_USEFUL_SHIFT` to count as useful. A NOT-useful click
-           escalates the fraction and counts toward its source bucket's
-           dead-click total; crossing :data:`_DEAD_CLICK_THRESHOLD` marks
+           escalates the absolute step size and counts toward its source
+           bucket's dead-click total; crossing :data:`_DEAD_CLICK_THRESHOLD` marks
            the bucket dead for the rest of the level. Neither dead nor
            fatal marks are ever healed by a later useful click, mirroring
            m0r0's dead-cell permanence.
@@ -467,7 +498,7 @@ class Adapter(GameAdapter):
         if useful:
             return
 
-        self._fraction = min(_MAX_FRACTION, self._fraction * _FRACTION_GROWTH)
+        self._step_px = min(_MAX_STEP_PX, self._step_px * _STEP_GROWTH)
         if source_key is not None:
             count = self._dead_click_counts.get(source_key, 0) + 1
             self._dead_click_counts[source_key] = count
@@ -523,4 +554,4 @@ class Adapter(GameAdapter):
         self._pending_source_centroid = src_region["centroid"]
 
         src = (int(round(src_region["centroid"][0])), int(round(src_region["centroid"][1])))
-        return _click_toward(src, dst_point, self._fraction, height, width)
+        return _click_toward(src, dst_point, self._step_px, height, width)
