@@ -1,22 +1,24 @@
-"""Tests for the FT09 glyph-decode logic (R56/R57 gold-trace reverse-
-engineering, 2026-07-15) — the ring/glyph discovery and target-prediction
-functions in ``admorphiq.adapters25.ft09``. See that module's docstring for
-the full mechanic writeup; these tests pin the DECODE RULE itself (colour0
-ink -> the glyph's own center/marker colour, colour2 ink -> the ring's other
-observed colour, click iff mismatched) against small synthetic boards built
-to the same button/pitch/glyph shape measured on the real game, not the
-real 64x64 trace (kept fast and hermetic; the real-trace exact-match
-validation lives in the dev-time decode session's scratchpad scripts, not
-in the committed suite).
+"""Tests for the FT09 glyph-decode logic (R56/R57/R58 gold-trace reverse-
+engineering, 2026-07-15) — the ring/glyph discovery and constraint-
+satisfaction functions in ``admorphiq.adapters25.ft09``. See that module's
+docstring for the full mechanic writeup; these tests pin the DECODE RULE
+itself (colour0 ink -> the covering glyph's marker colour REQUIRED equal,
+colour2 ink -> REQUIRED different, colour3 ink -> no constraint, ALL
+covering glyphs' constraints hold simultaneously) against small synthetic
+boards built to the same button/pitch/glyph shape measured on the real
+game, not the real 64x64 trace (kept fast and hermetic; the real-trace
+exact-match validation lives in the dev-time decode session's scratchpad
+scripts, not in the committed suite).
 """
 
 from __future__ import annotations
 
 from admorphiq.adapters25.ft09 import (
-    _decode_ring_mismatches,
+    _collect_constraints,
     _discover_rings,
     _is_hud_row,
     _read_glyph_compass,
+    _satisfies,
 )
 
 _BG = 5
@@ -115,55 +117,190 @@ def test_read_glyph_compass_matches_the_stamped_ink_pattern():
         assert glyph[name] == ink
 
 
-def test_decode_ring_mismatches_pre_solved_ring_is_empty():
-    """Purpose: a ring whose 8 cells already match their glyph-predicted
-    colours must report ZERO mismatches -- the core "don't click what's
-    already correct" behaviour, measured on 3 of L0's 4 real rings.
+def test_collect_constraints_pre_solved_ring_has_no_unsatisfied_cells():
+    """Purpose: a ring whose 8 cells already satisfy their glyph-derived
+    equality/inequality constraints must report every cell as satisfied --
+    the core "don't click what's already correct" behaviour, measured on 3
+    of L0's 4 real rings.
     Expected feedback: failure means the decode over- or under-detects on
     an already-solved board, which would make the adapter click cells it
     shouldn't (wasting the RHAE efficiency budget) or miss ones it should."""
     grid = _build_ring_board({name: _SOLVED_COLOUR[name] for name in _RING_OFFSETS})
     rings = _discover_rings(grid)
-    mismatches = _decode_ring_mismatches(grid, rings[0])
-    assert mismatches == []
+    coverage = _collect_constraints(grid, rings)
+    assert len(coverage) == 8
+    for cell, constraints in coverage.values():
+        current = grid[cell["bbox"][0]][cell["bbox"][1]]
+        assert _satisfies(current, constraints)
 
 
-def test_decode_ring_mismatches_uniform_other_colour_flags_exactly_the_marker_cells():
+def test_collect_constraints_uniform_other_colour_flags_exactly_the_equal_ink_cells():
     """Purpose: a ring at a uniform "other" colour (mirrors L0's real Q_BR:
-    all 8 cells start at colour9) must flag exactly the ink-0 (marker-
-    target) compass positions as mismatched -- the exact shape of the gold-
-    trace-verified L0 win condition (4 of 8 cells needed clicking, all and
-    only the ones whose glyph predicted the marker colour).
-    Expected feedback: failure means the ink0-vs-ink2 -> marker-vs-other
+    all 8 cells start at colour9) must leave exactly the ink-0 (equality)
+    compass positions unsatisfied -- the exact shape of the gold-trace-
+    verified L0 win condition (4 of 8 cells needed clicking, all and only
+    the ones whose glyph required equality to the marker).
+    Expected feedback: failure means the ink0(equal)-vs-ink2(not-equal)
     mapping itself is wrong, the single most load-bearing rule in the
     decode."""
     grid = _build_ring_board({name: _OTHER for name in _RING_OFFSETS})
     rings = _discover_rings(grid)
-    mismatches = _decode_ring_mismatches(grid, rings[0])
+    coverage = _collect_constraints(grid, rings)
 
-    # Translate each mismatched click-point back to its compass name by
-    # bbox membership, then compare against the ink-0 (marker-target) names.
-    matched_names = set()
+    unsatisfied_names = set()
     for name, cell in rings[0]["ring_cells"].items():
-        r0, c0, r1, c1 = cell["bbox"]
-        for pos, _target in mismatches:
-            if r0 <= pos[0] <= r1 and c0 <= pos[1] <= c1:
-                matched_names.add(name)
+        key = (cell["bbox"][0], cell["bbox"][1])
+        current = grid[cell["bbox"][0]][cell["bbox"][1]]
+        if not _satisfies(current, coverage[key][1]):
+            unsatisfied_names.add(name)
     expected_names = {name for name, ink in _INK_PATTERN.items() if ink == _INK_MARKER}
-    assert matched_names == expected_names
-    assert all(target == _MARKER for _pos, target in mismatches)
+    assert unsatisfied_names == expected_names
 
 
-def test_decode_ring_mismatches_ambiguous_when_only_marker_colour_observed():
-    """Purpose: if every button already shows the marker colour, there is
-    no second observed colour to disambiguate ink-2's target against --
-    the decode must return [] (nothing actionable) rather than guessing,
-    per the module's documented "can't determine 'other'" contract.
-    Expected feedback: failure means the adapter would invent a fabricated
-    target colour instead of correctly declining to act."""
-    grid = _build_ring_board({name: _MARKER for name in _RING_OFFSETS})
+def test_collect_constraints_ink3_means_no_constraint():
+    """Purpose: an ink value other than 0 or 2 (measured: 3, marking a
+    compass position with no real cell on a truncated ring) contributes NO
+    constraint for that position -- any colour there is trivially
+    satisfied.
+    Expected feedback: failure means the adapter would either fabricate a
+    spurious constraint for an unconstrained position or crash on the
+    unrecognised ink value."""
+    pattern = dict(_INK_PATTERN)
+    pattern["E"] = 3  # override one compass position to the "no constraint" ink
+    grid_list = [[_BG] * _SIZE for _ in range(_SIZE)]
+    gr, gc = _GLYPH_CENTER
+    for name, ink in pattern.items():
+        dr, dc = _RING_OFFSETS[name]
+        r0, c0 = gr + dr, gc + dc
+        colour = _MARKER if ink == _INK_MARKER else (_OTHER if ink == _INK_OTHER else 7)
+        _stamp(grid_list, r0, c0, 3, colour)
+    for name, ink in pattern.items():
+        dr, dc = {
+            "NW": (0, 0), "N": (0, 1), "NE": (0, 2),
+            "W": (1, 0), "E": (1, 2),
+            "SW": (2, 0), "S": (2, 1), "SE": (2, 2),
+        }[name]
+        grid_list[gr + dr][gc + dc] = ink
+    grid_list[gr + 1][gc + 1] = _MARKER
+    grid = tuple(tuple(row) for row in grid_list)
+
     rings = _discover_rings(grid)
-    assert _decode_ring_mismatches(grid, rings[0]) == []
+    coverage = _collect_constraints(grid, rings)
+    e_cell = rings[0]["ring_cells"]["E"]
+    e_key = (e_cell["bbox"][0], e_cell["bbox"][1])
+    # E's colour is 7 (neither marker nor other) -- with ink3 (no
+    # constraint), this must still count as satisfied.
+    assert e_key not in coverage or _satisfies(7, coverage[e_key][1])
+
+
+def test_collect_constraints_cell_covered_by_two_glyphs_needs_both_satisfied():
+    """Purpose: when two rings' 8-neighbour reach overlaps at a shared cell
+    (measured on the real L3 board -- glyphs can and do overlap 3-deep near
+    ring boundaries, the exact scenario a coverage-scoping bug on this rule
+    once caused a real falsification-replay failure), that cell's
+    constraint set must be the UNION of both glyphs' requirements, and it
+    is only satisfied when ALL of them hold at once.
+    Expected feedback: failure means multi-glyph overlap silently drops one
+    glyph's requirement, which is exactly the class of bug this test
+    exists to catch."""
+    # Two rings sharing one pitch, positioned so ring B's NW member is ring
+    # A's E member (pitch 6, rings 12 apart on the shared axis).
+    grid_list = [[_BG] * 40 for _ in range(40)]
+
+    def stamp_ring(center, ink_pattern, marker, other):
+        gr, gc = center
+        for name, ink in ink_pattern.items():
+            dr, dc = _RING_OFFSETS[name]
+            r0, c0 = gr + dr, gc + dc
+            colour = marker if ink == _INK_MARKER else other
+            _stamp(grid_list, r0, c0, 3, colour)
+        for name, ink in ink_pattern.items():
+            ddr, ddc = {
+                "NW": (0, 0), "N": (0, 1), "NE": (0, 2),
+                "W": (1, 0), "E": (1, 2),
+                "SW": (2, 0), "S": (2, 1), "SE": (2, 2),
+            }[name]
+            grid_list[gr + ddr][gc + ddc] = ink
+        grid_list[gr + 1][gc + 1] = marker
+
+    # ring A: shared cell is A's E position (offset (0, 6) from A's center,
+    # so A's E button's own bbox top-left is (9+0, 9+6) = (9, 15)).
+    ink_a = {**_INK_PATTERN, "E": _INK_OTHER}  # E must differ from A's marker (8)
+    stamp_ring((9, 9), ink_a, marker=8, other=9)
+    # ring B: centered so its NW member lands exactly on A's E button. NW's
+    # offset is (-6, -6), so solving center + (-6,-6) = (9, 15) gives
+    # center = (15, 21) -- and (15,21) - (9,9) = (6,12), an exact multiple
+    # of the pitch (6) in both dimensions, so both rings sit on ONE shared
+    # lattice (mirroring how the real game's overlapping glyphs are always
+    # on a single consistent pitch, not independently-offset lattices).
+    ink_b = {**_INK_PATTERN, "NW": _INK_MARKER}  # NW must equal B's marker (12)
+    stamp_ring((15, 21), ink_b, marker=12, other=9)
+
+    grid = tuple(tuple(row) for row in grid_list)
+    rings = _discover_rings(grid)
+    assert len(rings) == 2
+    coverage = _collect_constraints(grid, rings)
+
+    shared_key = (9, 15)
+    assert shared_key in coverage
+    constraints = coverage[shared_key][1]
+    assert ("!=", 8) in constraints  # from ring A: E is ink2, marker 8
+    assert ("==", 12) in constraints  # from ring B: NW is ink0, marker 12
+    # Only a colour satisfying BOTH (here, 12) is a valid resting state.
+    assert _satisfies(12, constraints)
+    assert not _satisfies(9, constraints)  # differs from 8 but not ==12
+    assert not _satisfies(8, constraints)  # equals the forbidden marker
+
+
+def test_discover_rings_accepts_a_truncated_ring_with_a_legible_glyph():
+    """Purpose: a ring missing some of its 8 compass members (measured on
+    the real game: an edge-truncated ring near the frame boundary, here
+    simulated by simply not placing some buttons) must still be
+    discovered, with a PARTIAL ``ring_cells`` dict -- not silently dropped
+    the way the original (pre-truncation-support) discovery required all 8.
+    Expected feedback: failure means truncated rings (a real, measured
+    board shape) are invisible to the decode, losing real click targets."""
+    grid_list = [[_BG] * 60 for _ in range(30)]
+    # Ring A: full 8-member ring (needed so button-sized regions >= 8, the
+    # discovery threshold) at center (9, 9).
+    gr, gc = 9, 9
+    for name, ink in _INK_PATTERN.items():
+        dr, dc = _RING_OFFSETS[name]
+        r0, c0 = gr + dr, gc + dc
+        _stamp(grid_list, r0, c0, 3, _SOLVED_COLOUR[name])
+    for name, ink in _INK_PATTERN.items():
+        ddr, ddc = {
+            "NW": (0, 0), "N": (0, 1), "NE": (0, 2),
+            "W": (1, 0), "E": (1, 2),
+            "SW": (2, 0), "S": (2, 1), "SE": (2, 2),
+        }[name]
+        grid_list[gr + ddr][gc + ddc] = ink
+    grid_list[gr + 1][gc + 1] = _MARKER
+
+    # Ring B: TRUNCATED -- glyph present, but only 4 of its 8 members
+    # placed (matching the measured floor: both real truncated rings found
+    # on the live game had exactly 4 real members); the rest are left as
+    # background. Far enough from ring A that no member position
+    # accidentally coincides with A's.
+    br, bc = 9, 45
+    for name in ("W", "E", "N", "S"):
+        dr, dc = _RING_OFFSETS[name]
+        r0, c0 = br + dr, bc + dc
+        _stamp(grid_list, r0, c0, 3, _OTHER)
+    for name, ink in _INK_PATTERN.items():
+        ddr, ddc = {
+            "NW": (0, 0), "N": (0, 1), "NE": (0, 2),
+            "W": (1, 0), "E": (1, 2),
+            "SW": (2, 0), "S": (2, 1), "SE": (2, 2),
+        }[name]
+        grid_list[br + ddr][bc + ddc] = ink
+    grid_list[br + 1][bc + 1] = _MARKER
+
+    grid = tuple(tuple(row) for row in grid_list)
+    rings = _discover_rings(grid)
+    truncated = [r for r in rings if r["glyph_bbox"][:2] == (br, bc)]
+    assert len(truncated) == 1
+    assert set(truncated[0]["ring_cells"]) == {"W", "E", "N", "S"}
 
 
 def test_is_hud_row_excludes_any_region_confined_to_the_last_row():
