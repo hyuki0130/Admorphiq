@@ -167,6 +167,51 @@ class Inspector:
             return {"contained_by": None, "adjacent": []}
         return {"contained_by": obj["contained_by"], "adjacent": obj["adjacent"]}
 
+    def shortest_path(
+        self,
+        start: tuple[int, int],
+        goals: Any,
+        passable_mask: list[list[int]],
+    ) -> list[list[int]] | None:
+        """Pure 4-connected BFS from ``start`` to the nearest ``goal``.
+
+        The LLM supplies EVERYTHING — the start cell, the goal cell(s), and the
+        passability mask (1 = passable). This tool decides NOTHING about the game
+        (not the player, not the goal, not the walls); it only computes a path
+        over the mask it is given. Returns the path as ``[[r, c], …]`` inclusive
+        of start and goal, or ``None`` if unreachable.
+        """
+        from collections import deque
+
+        grid = [list(map(int, row)) for row in passable_mask]
+        if not grid or not grid[0]:
+            return None
+        h, w = len(grid), len(grid[0])
+        goal_list = [tuple(goals)] if (len(goals) == 2 and isinstance(goals[0], int)) \
+            else [tuple(g) for g in goals]
+        goal_set = {(int(r), int(c)) for r, c in goal_list}
+        sr, sc = int(start[0]), int(start[1])
+        if not (0 <= sr < h and 0 <= sc < w):
+            return None
+        prev: dict[tuple[int, int], tuple[int, int] | None] = {(sr, sc): None}
+        q: deque[tuple[int, int]] = deque([(sr, sc)])
+        while q:
+            cur = q.popleft()
+            if cur in goal_set:
+                path: list[list[int]] = []
+                node: tuple[int, int] | None = cur
+                while node is not None:
+                    path.append([node[0], node[1]])
+                    node = prev[node]
+                return path[::-1]
+            cy, cx = cur
+            for ny, nx in ((cy - 1, cx), (cy + 1, cx), (cy, cx - 1), (cy, cx + 1)):
+                if 0 <= ny < h and 0 <= nx < w and (ny, nx) not in prev \
+                        and grid[ny][nx]:
+                    prev[(ny, nx)] = cur
+                    q.append((ny, nx))
+        return None
+
     def action(self, kind: str, row: int | None = None,
                col: int | None = None) -> dict[str, Any]:
         """Record an action request (explicit accounting). MOUSE needs row/col."""

@@ -75,6 +75,28 @@ def test_inspector_ascii_shape():
     assert len(lines) == 8 and all(len(row) == 8 for row in lines)
 
 
+def test_shortest_path_pure_bfs():
+    """Purpose: shortest_path is a PURE BFS over the caller-supplied mask — it
+    finds a path, routes around 0s (walls), and returns None when unreachable.
+
+    Feedback: failure means the LLM's navigation primitive is wrong; a game-aware
+    version would violate the binding 'tool decides nothing' rule.
+    """
+    insp = Inspector({"frames": [[[0]]], "scenes": [[]]})
+    # 3x3 all passable: straight-ish path from (0,0) to (2,2), length 5.
+    passable = [[1, 1, 1], [1, 1, 1], [1, 1, 1]]
+    path = insp.shortest_path((0, 0), (2, 2), passable)
+    assert path[0] == [0, 0] and path[-1] == [2, 2] and len(path) == 5
+
+    # a wall column splits the grid: (0,0) cannot reach (0,2).
+    blocked = [[1, 0, 1], [1, 0, 1], [1, 0, 1]]
+    assert insp.shortest_path((0, 0), (0, 2), blocked) is None
+
+    # multiple goals: nearest is chosen.
+    p2 = insp.shortest_path((0, 0), [(0, 2), (0, 1)], [[1, 1, 1]])
+    assert p2[-1] == [0, 1]
+
+
 def test_inspector_action_accounting():
     """Purpose: action() records requests (does not execute) with MOUSE coords.
 

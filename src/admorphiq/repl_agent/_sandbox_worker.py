@@ -28,7 +28,8 @@ def _run(job: dict[str, Any]) -> dict[str, Any]:
 
     namespace: dict[str, Any] = {"__builtins__": _safe_builtins()}
     # Bind the inspection + action API as plain callables the model code uses.
-    for name in ("objects", "crop", "ascii", "mask", "compare", "relations", "action"):
+    for name in ("objects", "crop", "ascii", "mask", "compare", "relations",
+                 "shortest_path", "action"):
         namespace[name] = getattr(inspector, name)
 
     buf = io.StringIO()

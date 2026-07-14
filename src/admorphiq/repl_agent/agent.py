@@ -66,6 +66,8 @@ _SYSTEM_PROMPT = (
     "adjacent,safe_click}]\n"
     "      crop((y0,x0,y1,x1),t=-1), ascii(region=None,t=-1), mask(id,t=-1), "
     "compare(t1,t2), relations(id,t=-1)\n"
+    "      shortest_path(start, goals, passable_mask) -> path  # YOU supply "
+    "start/goals/passability; pure BFS\n"
     "      action(kind, row=None, col=None)  # perform an action; MOUSE needs "
     "row,col\n"
     "     Inspect BEFORE acting when an effect is unknown; call action(...) in "
