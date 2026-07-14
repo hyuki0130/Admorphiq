@@ -338,6 +338,7 @@ mechanical tool. Do not build another mechanical tool on an unverified mechanic.
 
 - [[r52_ewm-integration]] — the EWM runtime hook this generalizes into a tool.
 - [[r36_graph-frontier-bfs]] — the graph core re-authored here as `graph`.
+- [[r54_vision-llm-policy]] — the vision-LLM-as-policy path built alongside this harness.
 - [[index]]
 
 ### Budget is NOT the graph gap — it's a real strength gap (2026-07-09)

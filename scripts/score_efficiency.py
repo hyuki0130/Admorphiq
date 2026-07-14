@@ -150,6 +150,13 @@ def _make_agent(name: str, game_id: str | None = None):
         from admorphiq.ensemble_bc_agent import EnsembleBCAgent
 
         return EnsembleBCAgent()
+    if name == "vlm":
+        # Vision-LLM-as-policy (R54): a multimodal model reads a labeled frame
+        # image and picks JSON actions per turn. Model via VLM_MODEL env (the
+        # 31B deploy swap is config-only). restart_on_game_over keeps it playing.
+        from admorphiq.vlm_policy import VLMPolicyAgent
+
+        return VLMPolicyAgent()
     return AdmorphiqAdapter()
 
 # ─────────────────────────────── scoring maths ──────────────────────────────

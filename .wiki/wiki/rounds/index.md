@@ -77,6 +77,9 @@ commit, and `[[backlinks]]`. Narrative overview + reliable-metric + resume steps
 | R51 | ewm-quality | few=40/prior sweep: no single config > f15 0.133, BUT per-game config-UNION 0.211 (1.6x) → adaptive multi-config synthesis; 10/18 stable zero-set ⛔ no more config sweeps for those | — | [[r51_fewshot-prior-sweep]] |
 | R52 | ewm-integration | GF_EWM hook built (default OFF) + measured: score delta +0.0000 NULL — no-change pruning redundant with empirical self-loop learning; runtime fit 0.357 (3/24 > gate); R53 = goal-conditioned WM | pending | [[r52_ewm-integration]] |
 | R53 | harness-architecture | 6 generic tools RE-IMPLEMENTED (graph/world_model/dealias/deadsig/paint/llm_goal) on a shared Tool contract + UnifiedAgent self-improving loop (signature → minimal wiki slice → pick tool OR write code → feed-back → re-decide on stall); code-agent alone re86=0/8 → frontier needs the combined loop; 655 tests | b533ca4 | [[r53_unified-harness]] |
+| R54 | vision-llm-as-policy | Built the Reki/forge lever: labeled frame image → multimodal LLM picks ONE JSON action/turn (legal-masked) + reflection memory + dead-signature avoidance + 1-4 plan queue + JSON self-repair; additive `--agent vlm`, 13 tests. Local measure SUSPENDED — gemma4-26b proxy ~26s/changing-turn (su15 30-action probe >700s); policy-quality validation → Kaggle 31B phase B | pending | [[r54_vision-llm-policy]] |
+
+- **vision-llm-as-policy / multimodal / pick-json-action**: [[r54_vision-llm-policy]] (Reki/forge lever built: labeled-image renderer + ollama multimodal + reflection/dead-signature/plan-queue policy loop; model-agnostic VLM_MODEL; local proxy latency → Kaggle 31B validation)
 
 - **graph-search / hud-masking / frontier-bfs**: [[r36_graph-frontier-bfs]] (the deep-level axis; offline env.step ~1000+/s discovery)
 - **forward-model transfer / pretrain**: [[r35_forward-transfer]] (dynamics 52.4% vs BC 0%; pos_weight collapse fix)
