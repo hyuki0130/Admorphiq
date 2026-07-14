@@ -804,3 +804,41 @@ The walls split by measured mechanism — **there is no single fix**:
 fixes multiple walls." Measured: action-first is specific to sb26-class truncation;
 ft09 is repeat-diversification; ls20 is planning. Each wall needs its own
 one-variable fix. Prefer measured mechanism over convenient narrative.
+
+### Item A — out9 offline analyses (Codex work order, no GPU). Closes R55's audit story.
+
+Codex verdict `docs/r55_codex_matched12_review_20260714.md`: audit KILLED (net-negative,
+no capability benefit justifying cost), concept parked as a model-invocable tool. These
+five analyses close R55:
+
+1. **Counterfactual truncation** — throughput is NOT the cause of any OFF>ON difference.
+   OFF clears at 19/19/19 (su15 reps) and 46 (r11l) actions; ON ran 90-92 total. Truncating
+   OFF at ON's action budget still clears. All differences are TRAJECTORY, not budget.
+2. **Prefix divergence (r11l)** — ON≡OFF byte-identical through turn 12 (temp-0.0
+   determinism + identical sandbox/base confirmed); **first divergence at turn 13 = the
+   first audit turn** (audits fired at turns [13,26,51]).
+3. **Audit-content effect (r11l) — the divergence mechanism.** The audit at turn 13
+   crystallized a specific goal: "move black object o15 to green o35 (adjacency)". ON
+   committed to it (clicked (36,10) repeatedly) and ABANDONED the broader exploration that
+   OFF used to clear L1 at action 46. The audit's PREMATURE GOAL-CRYSTALLIZATION diverts
+   the agent off a productive trajectory — the "second cost channel beyond throughput"
+   Codex hypothesized, now measured. r11l is a causal case study (1 pair), not an effect
+   estimate.
+4. **Per-call accounting** — audit turns cost ~1.7-2.2× latency (su15 8838 vs 3949 ms;
+   r11l 7460 vs 4391 ms ≈ +4-5 s/audit). Token counts not captured this run (meta.tokens
+   instrumentation gap — noted for future runs). Latency is a real but SECONDARY cost;
+   divergence is primary.
+5. **Near-progress on the 10 zero-games (not just RHAE)** — the walls are NOT uniform.
+   State-novelty (unique post-hashes / actions) splits them: **high-exploration walls**
+   tr87 100%, bp35 100%, ls20 95%, tu93 96%, sp80 80% — the agent visits mostly-novel
+   states vigorously but never converges on the goal (goal-directed-PLANNING gap → the
+   nav/plan target, NOT an exploration deficit); **medium** ar25 73%, sb26 78%, dc22 75%,
+   g50t 60%; **stuck** ft09 17% novelty / 24% board-change — the repeat-rejection loop
+   traps it in a tiny state set (uniquely the engagement wall that is genuinely stuck).
+   Takeaway: zero-games are exploration-RICH, goal-convergence-POOR — supports goal-directed
+   nav/plan levers, not "more exploration". These are a screening result (1 run/arm), not
+   yet 10 reproducible walls (Codex).
+
+**R55 central conclusion (Codex, confirmed by A): the sandbox fixes created the su15
+capability; scheduled goal revision did not — and on r11l it actively diverted the agent
+from a winning trajectory.**
