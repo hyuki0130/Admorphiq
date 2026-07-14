@@ -4,7 +4,7 @@ round: R56
 axis: generic-kernel-library
 verdict: IN-PROGRESS
 keywords: [generic-kernels, namespace-safe, script25, agent25, dual-scoreboard, declared-intent, primitive-firewall, kernel-library, quarantined-adapter]
-commit: [4303662, 3edcf4d, 1d797d7, 62fac21, f13b433, d377121, a2a62f0, b67cb39, de013aa, 69101ea, 68b802a]
+commit: [4303662, 3edcf4d, 1d797d7, 62fac21, f13b433, d377121, a2a62f0, b67cb39, de013aa, 69101ea, 68b802a, 3151030, cbda9aa, 0a7be09]
 date: 2026-07-15
 ---
 
@@ -146,11 +146,27 @@ writeup and open item.
 - **FT09 live-env smoke run.** The glyph decode above is gold-trace
   verified but has not been run against the live API the way the m0r0 PoC
   adapter below was — that is the next falsification step for this game.
-- **Adapter iteration.** m0r0's hazard-memory fix (uncommitted as of writing)
-  needs a re-measured smoke run before its effect can be reported. A second
-  adapter, `lp85.py` (rare-colour click family — clicks the region whose
-  colour is the rarest on the board), has also landed (uncommitted,
-  unmeasured).
+- **Adapter iteration — resolved, corrected from an earlier stale note on
+  this page.** m0r0's hazard-memory fix (dead-cell memory keyed
+  per-`(cell, action)`, `known_passable` persisted across restarts instead
+  of being wiped each life) landed and was smoke-measured in `4129284`:
+  `known_passable` count 70 -> 132 at the same 500-action budget, still
+  0 levels — the wall is now a BUDGET ceiling (legacy solved the same
+  maze at ~2130 actions), not the hazard-repeat bug this fix targeted.
+  `lp85.py` (rare-colour click family — clicks the region whose colour is
+  the rarest on the board) also landed in the same commit: 0/8 at 500a,
+  consistent with the legacy ceiling. Full-budget re-runs live on the
+  GCP VM, not yet reported here.
+- **KA59 had a real init bug, fixed same session.** The committed adapter
+  (`cbda9aa`) used `self._select_point`/`self._last_select_cell`/
+  `self._select_attempts` without ever initializing them in `__init__` —
+  a latent `AttributeError` on the first select-click cycle. Fixed in
+  `0a7be09`, which also corrects blocked-move attribution to use the
+  actual cell a move was issued for instead of a possibly-stale
+  `_active_cell` right after a select. No dedicated
+  `test_adapters25_ka59.py` exists yet to pin either fix (unlike `ft09`,
+  which has `test_adapters25_ft09.py`) — the gap this bug slipping
+  through exposes.
 - **TR87 feasibility.** `docs/tr87_frame_only_grammar_design_20260715.md`
   (uncommitted, dated 2026-07-15): scopes whether `derive_rewrites` +
   `shapes` + `regions` can crack the TR87 wall (0/6 on the LLM-free card) via

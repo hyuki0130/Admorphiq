@@ -4,7 +4,7 @@ round: R58
 axis: explanation-layer
 verdict: IN-PROGRESS — P0/P1 (Navigation Vertical Slice v0) + P2 (GoalLedger) built; P3 not started; tuning fix RE-VALIDATED (TOPK up, TOP1 regressed — bounded follow-up identified)
 keywords: [explanation-layer, protocol-compiler, typed-intents, enforced-state-machine, goal-ledger, navigation-vertical-slice, playbook, falsification, strike-budget, agent25]
-commit: [5ceb5ec, 3759c4f, 0f105e0, 70686d1, 0a31279, 8166efd]
+commit: [5ceb5ec, 3759c4f, 0f105e0, 70686d1, 0a31279, 8166efd, 29a9ca8]
 date: 2026-07-15
 ---
 
@@ -182,13 +182,23 @@ not a clean win:
   (**MISS -19.1pp**) is real signal recovery, not a wash from new misses
   elsewhere.
 
-**Next bounded fix identified (not yet built as of this page):
-floor-anchoring at the firing threshold** — normalize each detector's
-strength relative to how far past ITS OWN minimum firing bar the evidence
-sits, rather than comparing raw `[0,1]` formulas that saturate at
-different rates across detectors. This is a calibration problem, not a
-sign that any individual detector's formula is wrong in isolation (each
-still passed its own unit tests unchanged).
+### Floor-anchoring fix (`29a9ca8`, same session)
+
+Built: `_floor_anchor(raw, gate_min, gate_max=1.0)` rescales
+`arrival`/`uniformity`/`containment`/`pattern_match`'s raw strength so
+each detector's OWN analytically-derived value-at-its-firing-boundary
+(`gate_min`, documented per detector — a fixed constant for detectors
+whose every term is gated, e.g. `pattern_match`'s ~0.53, or a per-call
+expression when a term is left ungated and cancels out, e.g. `arrival`'s
+`uniqueness_sharpness * 0.5`) maps to a shared floor (`0.2`, uniform
+across all six — a per-detector floor would reintroduce the same
+calibration gap) rather than 0. `raw >= gate_min` holds by construction
+for every fired detector, so the result always lands in `[0.2, 1.0]`.
+`elimination` and `threshold` are NOT floor-anchored this round (left
+unchanged). **Not yet re-validated against the 21-game real-trace set**
+— whether this actually recovers TOP1 back toward 38%+ without giving
+back the TOPK gain is the next honest measurement to run, not yet a
+fresh number as of this page.
 
 ## What's still open
 
@@ -204,12 +214,10 @@ still passed its own unit tests unchanged).
   script25/agent25 dual-scoreboard framing) is not yet measured. The
   adoption-funnel telemetry built in the Navigation Vertical Slice exists
   precisely to make that measurement possible next round.
-- **GoalLedger TOP1 regression (28.6%, was 38.1%) needs the floor-
-  anchoring fix** described above — re-validation (`8166efd`) confirmed
-  TOPK improved substantially (57.1% -> 76.2%) and MISS dropped 19.1pp
-  with zero coverage regressions, but the raw `[0,1]` strength formulas
-  are not comparable ACROSS detectors at the margin, which cost TOP1
-  accuracy even as ranked recall improved. Not yet built as of this page.
+- **GoalLedger floor-anchoring fix is built (`29a9ca8`) but not yet
+  re-validated** against the same 21-game real-trace set — whether it
+  actually recovers TOP1 back toward 38%+ without giving back the TOPK
+  gain (57.1% -> 76.2%) is the next honest measurement to run.
 
 ## Related
 
