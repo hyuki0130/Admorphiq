@@ -71,6 +71,27 @@ PLANNAV_CELLS = [
 ]
 
 
+def basenav_run_plan(games: list[str] | None = None, reps: int = 3) -> list[dict[str, Any]]:
+    """Base vs NAV on the navigation walls (Codex PLAN-gate ruling (c): PLAN dropped
+    from R55 — its goal+milestone eligibility had zero pre-launch exposure).
+
+    Cells {base, nav} × {ls20, g50t, tu93} × ``reps`` = 18 runs @500s. Cells run
+    adjacently per (rep, game) for matched pairing; audit OFF; NAV cap 4/run.
+    Tag = ``{game}_{cell}_r{rep}``. The trigger spec is the re-ruled semantic
+    eligibility (goal-declaration), validated to fire NAV on these games.
+    """
+    gs = games if games is not None else PLANNAV_GAMES
+    cells = [("base", False, False), ("nav", True, False)]
+    plan: list[dict[str, Any]] = []
+    for rep in range(reps):
+        for game in gs:
+            for name, nav, pl in cells:
+                plan.append({"game": game, "cell": name, "rep": rep,
+                             "audit": False, "nav": nav, "plan": pl,
+                             "action_first": False, "repeat_feedback": False})
+    return plan
+
+
 def plannav_run_plan(games: list[str] | None = None, reps: int = 3) -> list[dict[str, Any]]:
     """Decoupled PLAN×NAV 2×2 on the navigation walls (Codex re-ruling).
 

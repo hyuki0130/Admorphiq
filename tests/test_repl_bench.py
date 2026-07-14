@@ -17,12 +17,27 @@ from admorphiq.repl_agent.bench import (
     MATCHED_12_GAMES,
     PLANNAV_GAMES,
     GameDiagnostics,
+    basenav_run_plan,
     engagement_run_plan,
     matched_run_plan,
     plannav_run_plan,
     run_game,
     single_arm_plan,
 )
+
+
+def test_basenav_run_plan():
+    """Purpose: the R55 shipping experiment (Codex PLAN-gate ruling c) is Base vs
+    NAV on the nav walls x 3 reps = 18 runs, audit OFF, PLAN dropped entirely.
+
+    Feedback: failure means the Base-vs-NAV comparison is unbalanced, includes a
+    PLAN cell, or leaks audit.
+    """
+    plan = basenav_run_plan(reps=3)
+    assert len(plan) == 3 * len(PLANNAV_GAMES) * 2  # reps x games x {base,nav} = 18
+    assert all(e["audit"] is False and e["plan"] is False for e in plan)
+    combos = {(e["cell"], e["nav"]) for e in plan}
+    assert combos == {("base", False), ("nav", True)}
 
 
 def test_plannav_run_plan():

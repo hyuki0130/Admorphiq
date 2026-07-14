@@ -204,6 +204,7 @@ def run_experiment() -> dict:
     from admorphiq.repl_agent.bench import (
         MATCHED_12_GAMES,
         GameDiagnostics,
+        basenav_run_plan,
         engagement_run_plan,
         matched_run_plan,
         plannav_run_plan,
@@ -235,6 +236,9 @@ def run_experiment() -> dict:
         default_wall = 500.0
     elif mode == "plannav":
         plan = plannav_run_plan()
+        default_wall = 500.0
+    elif mode == "basenav":
+        plan = basenav_run_plan()
         default_wall = 500.0
     else:
         plan = matched_run_plan(MATCHED_12_GAMES)

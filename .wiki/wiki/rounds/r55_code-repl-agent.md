@@ -899,3 +899,14 @@ combined}×{ls20,g50t,tu93}×3 = 36 runs @500s) is PUSH-READY for NAV but its PL
 null pending a PLAN-eligibility ruling: (a) relax PLAN to goal-only; (b) add a milestone-
 eliciting prompt line to PLAN cells; (c) drop PLAN and run Base-vs-Nav 1×2 now. Recommended (c)
 to run the validated NAV lever immediately; resolve PLAN's milestone source separately.
+
+**RULING (c) — PLAN dropped from R55** (`docs/r55_codex_plan_gate_ruling_20260714.md`): no
+PLAN cells / payload / milestone elicitation / goal-only relaxation; the frozen goal+milestone
+rule is preserved for PLAN's later return, and the zero-exposure is recorded as a pre-launch
+gate failure. Final shipping experiment: **`REPL_EXPERIMENT=basenav`** — Base vs NAV on
+ls20/g50t/tu93 × 3 reps = **18 runs @500s (~2.5h)**, audit OFF, NAV cap 4/run, matched
+pairing (commit pending). **Wired-build pre-launch gate PASSED** (replay of the out9
+raw-output sequences through the REAL `_decide` path): base cell nav_fires=0 on all 3 games;
+nav cell nav_fires=**4** (cap) on ls20/g50t/tu93 — mechanically nonzero NAV exposure confirmed,
+base clean. Pushes tomorrow after the engagement run (kernel serializes); engagement results
+land ~04:00 and are first in the morning queue (`repl_engagement_verdict.py`).
