@@ -621,3 +621,45 @@ first clear the same day via the audit. See memory `project_leaderboard_first_sc
    waste — but keep Codex's "first audit forces a TEST, not a premature switch".
 4. Ship the `430d000` sandbox fixes (allowlist + field alignment) — already
    committed, ride the next push.
+
+### v8 — Codex v7-review: matched OFF/ON experiment + standing gates (2026-07-14)
+
+Codex reviewed the v7 milestone (docs/r55_codex_v7_review_20260714.md): accepted
+su15 as MECHANISM evidence (not an effect estimate) and specified a matched
+experiment. Pre-run fixes + the experiment kernel built (commit-per-item);
+key corrections:
+
+- **Efficiency corrected — su15 L1 was 19 actions, not 107** (`45cbc1d`). The
+  bench continues after L1; 86 of the 105 total were POST-clear (L2 attempts).
+  19 actions vs human 12-22 = **near-human, RHAE ≈ 0.4-1.0** (not 0.013). The
+  new `action_phases()` reports actions-to-first-level-up / before-first-audit /
+  between-audits / revision-to-level-up / after-level-up.
+- **Audit overcount fixed** (`7b2c937`) — a transcript AUDIT scan overcounts
+  (prompt persists across tool-loop rounds; ls20's "4" > the max 3). Explicit
+  `TurnRecord.audit {threshold, action_count, fields}` + `audits_triggered`
+  counter is the real count.
+- **Temperature pinned** (`21adb3c`) — v7 actually sent **0.0** (greedy), not the
+  assumed 0.2; now explicit + manifest-recorded.
+- **Matched experiment** (`7aad83b`) — `MATCHED_12_GAMES` + `matched_run_plan`
+  (interleaved OFF/ON per game, su15 x3 = 28 runs) + kernel
+  `REPL_EXPERIMENT=matched12`; sandbox fixes in BOTH arms; NO nav fix / NO
+  threshold changes; temp pinned; per-run outputs `{game}_{arm}_r{rep}`.
+
+**Standing criteria (Codex, binding):**
+- **Continuation gate**: ON clears su15 ≥ 2/3 replicates AND materially beats OFF;
+  the revision + discriminating action precede every ON clear; across the 12, ON
+  gains ≥ 2 clears over OFF WITHOUT worse aggregate RHAE. If it passes, run the
+  unchanged audit arm on the full 25, then test navigation on ls20/dc22/g50t/tu93.
+- **Efficiency ranking** (RHAE + actions-to-clear now CO-PRIMARY with clear
+  count; the metric squares efficiency & level-weights): (1) post-revision plan
+  quality + short verified execution (short receding-horizon macros with
+  invariants, not long batches); (2) navigation `shortest_path`/plan-then-execute;
+  (3) earlier first audit (saves ≤ ~12 actions — least leverage).
+- **Submission-chain gate** (the REPL arm has NOT earned deployment yet; earns it
+  only when ALL hold): ≥3 reproducible clears across ≥2 mechanic families; ≥2
+  incremental over the LLM-free floor; median clear efficiency within ~3× human;
+  ≥1 L2+ result showing knowledge amortizes; `floor+REPL` beats floor by ≥5% on
+  paired real RHAE with no lost floor clears; uplift survives metamorphic/OOD +
+  a non-oracle router; simulated 110-game runtime < 8h. Integrate as a
+  zero-action plan proposer / pre-action routed controller — NOT a post-stall
+  fallback (stalled actions permanently damage RHAE).
