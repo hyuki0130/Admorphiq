@@ -1,6 +1,6 @@
 """AST-based lint for script25 quarantine adapters (R56).
 
-Enforces two rules on every module under ``src/admorphiq/adapters25/``
+Enforces three rules on every module under ``src/admorphiq/adapters25/``
 (excluding ``__init__.py`` and ``base.py``, which is the one file inside
 the quarantine zone allowed to reach outside it — see its module
 docstring):
@@ -14,7 +14,19 @@ docstring):
    unenforceable, since nothing would stop an adapter from importing a
    brittle legacy solver wholesale and calling it a "kernel composition".
 
-2. **SOFT (warning only)** — a function containing a ``for``/``while`` loop
+2. **HARD (fails the lint)** — the module must actually IMPORT successfully
+   at runtime. AST-level whitelist checking (rule 1) only verifies WHAT is
+   imported, never WHETHER the import actually resolves — a fully
+   whitelisted ``from admorphiq.kernels import some_renamed_function`` is
+   AST-clean but raises ``ImportError`` at runtime (e.g. after a kernel
+   function is renamed/removed and one adapter is not updated). Because
+   ``admorphiq.adapters25.discover_adapters`` imports every adapter module
+   during its package scan, ONE broken module raising on import blocks the
+   ENTIRE adapter registry, not just itself — measured directly (a
+   teammate hit exactly this). Run in a SUBPROCESS so a hard crash in the
+   imported module can't take the lint process itself down.
+
+3. **SOFT (warning only)** — a function containing a ``for``/``while`` loop
    nested more than 2 deep is flagged as a possible own-search
    implementation. This is a CRUDE heuristic (real BFS/DFS is usually 2+
    nested loops or an explicit stack/queue, but genuinely simple
@@ -30,6 +42,8 @@ from __future__ import annotations
 
 import argparse
 import ast
+import os
+import subprocess
 import sys
 from collections.abc import Iterable
 from dataclasses import dataclass, field
@@ -40,6 +54,7 @@ _ADAPTERS_DIR = _REPO_ROOT / "src" / "admorphiq" / "adapters25"
 _EXCLUDED_FILENAMES = {"__init__.py", "base.py"}
 
 _MAX_LOOP_NESTING = 2
+_IMPORT_SMOKE_TIMEOUT_S = 15
 
 
 def _is_stdlib(module_name: str) -> bool:
@@ -58,10 +73,11 @@ class LintResult:
     path: Path
     import_violations: list[str] = field(default_factory=list)
     nesting_warnings: list[str] = field(default_factory=list)
+    import_error: str | None = None
 
     @property
     def ok(self) -> bool:
-        return not self.import_violations
+        return not self.import_violations and self.import_error is None
 
 
 def _check_imports(tree: ast.Module) -> list[str]:
@@ -128,6 +144,71 @@ def _check_nesting(tree: ast.Module, max_depth: int = _MAX_LOOP_NESTING) -> list
     return warnings
 
 
+def _import_code(path: Path) -> str:
+    """The subprocess's own ``-c`` script for importing ``path``.
+
+    A file actually living under ``_ADAPTERS_DIR`` is imported by its REAL
+    dotted module name (``admorphiq.adapters25.<stem>``) via
+    ``importlib.import_module`` — the exact mechanism
+    ``admorphiq.adapters25.discover_adapters`` itself uses to load every
+    adapter during its package scan, so this is a faithful smoke test of
+    "would discover_adapters() choke on this file", including correct
+    resolution of a relative ``from .base import ...``. A file living
+    anywhere else (a synthetic/test path, not a real package member) is
+    imported by file location instead — that path can't resolve a
+    relative import (there is no real parent package to resolve it
+    against), which is accurate: a floating file genuinely cannot be
+    runtime-imported as if it were part of a package it doesn't live in.
+    """
+    if path.resolve().parent == _ADAPTERS_DIR.resolve():
+        module_name = f"admorphiq.adapters25.{path.stem}"
+        return f"import importlib\nimportlib.import_module({module_name!r})\n"
+    return (
+        "import importlib.util\n"
+        "spec = importlib.util.spec_from_file_location("
+        f"'_adapters25_lint_target', {str(path)!r})\n"
+        "module = importlib.util.module_from_spec(spec)\n"
+        "spec.loader.exec_module(module)\n"
+    )
+
+
+def _import_smoke_test(path: Path) -> str | None:
+    """Actually IMPORT ``path`` in a subprocess and report any failure.
+
+    AST-level whitelist checking (:func:`_check_imports`) only verifies
+    WHAT is imported, never WHETHER the import actually resolves — a
+    fully whitelisted ``from admorphiq.kernels import some_renamed_fn`` is
+    AST-clean but raises ``ImportError`` at runtime (e.g. after a kernel
+    function is renamed/removed and one adapter is not updated). Because
+    ``discover_adapters()`` imports every adapter module during its
+    package scan, ONE broken module blocks the ENTIRE registry, not just
+    itself (measured directly — a teammate hit exactly this). Runs in a
+    SUBPROCESS so a hard crash in the imported module can't take the lint
+    process itself down. ``PYTHONPATH`` is set to the repo's ``src/`` so
+    ``admorphiq.*`` resolves the same way every other script in this repo
+    resolves it. Returns ``None`` on success, or the last non-empty line
+    of the subprocess's stderr (the exception's own summary line) on
+    failure/timeout.
+    """
+    env = dict(os.environ)
+    env["PYTHONPATH"] = str(_REPO_ROOT / "src")
+    try:
+        result = subprocess.run(
+            [sys.executable, "-c", _import_code(path)],
+            cwd=str(_REPO_ROOT),
+            env=env,
+            capture_output=True,
+            text=True,
+            timeout=_IMPORT_SMOKE_TIMEOUT_S,
+        )
+    except subprocess.TimeoutExpired:
+        return f"import timed out after {_IMPORT_SMOKE_TIMEOUT_S}s"
+    if result.returncode == 0:
+        return None
+    lines = [line for line in result.stderr.strip().splitlines() if line.strip()]
+    return lines[-1] if lines else f"import failed (exit {result.returncode}, no stderr)"
+
+
 def lint_module(path: Path) -> LintResult:
     source = path.read_text(encoding="utf-8")
     tree = ast.parse(source, filename=str(path))
@@ -135,6 +216,7 @@ def lint_module(path: Path) -> LintResult:
         path=path,
         import_violations=_check_imports(tree),
         nesting_warnings=_check_nesting(tree),
+        import_error=_import_smoke_test(path),
     )
 
 
@@ -171,6 +253,8 @@ def main() -> int:
         print(f"{result.path}:")
         for v in result.import_violations:
             print(f"  FAIL import: {v}")
+        if result.import_error is not None:
+            print(f"  FAIL runtime import: {result.import_error}")
         for w in result.nesting_warnings:
             print(f"  WARN nesting: {w}")
         if result.ok and not result.nesting_warnings:

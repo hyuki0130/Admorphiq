@@ -8,6 +8,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
 
 from adapters25_lint import (  # noqa: E402
+    _ADAPTERS_DIR,
     discover_adapter_paths,
     lint_module,
 )
@@ -24,9 +25,14 @@ def _write(tmp_path: Path, source: str) -> Path:
 def test_valid_adapter_imports_pass():
     """Purpose: an adapter using only stdlib + admorphiq.kernels +
     admorphiq.adapters25.base (absolute imports) must report zero import
-    violations.
-    Expected feedback: failure means the whitelist check is rejecting
-    legitimate imports, which would make every real adapter unwritable."""
+    violations AND actually import successfully at runtime (import_error
+    is None) — proving the two checks agree on genuinely valid code, not
+    just that the AST rule alone is satisfiable.
+    Expected feedback: failure on import_violations means the whitelist
+    check is rejecting legitimate imports, which would make every real
+    adapter unwritable; failure on import_error means the runtime smoke
+    test itself is broken for ordinary, correct code (a false positive
+    that would block every valid adapter)."""
     import tempfile
 
     with tempfile.TemporaryDirectory() as td:
@@ -49,6 +55,7 @@ class Adapter(GameAdapter):
         )
         result = lint_module(path)
         assert result.import_violations == []
+        assert result.import_error is None
         assert result.ok is True
 
 
@@ -86,23 +93,31 @@ def test_non_kernel_admorphiq_import_is_a_violation():
 
 def test_relative_import_of_base_is_allowed_but_other_relative_imports_fail():
     """Purpose: "from .base import X" (the natural same-package import a
-    real adapter file would write) must be allowed; any other relative
-    import shape must be rejected since it cannot be verified against the
-    whitelist without resolving the target.
-    Expected feedback: failure on the .base case would force every adapter
-    to use the (equally valid but more verbose) absolute import form;
-    failure on the other case means an unverifiable relative import path is
-    silently accepted."""
+    real adapter file would write) must be allowed BY THE AST WHITELIST
+    RULE; any other relative import shape must be rejected by that same
+    rule since it cannot be verified against the whitelist without
+    resolving the target. Checked via import_violations specifically (not
+    the broader .ok) because this test writes a FLOATING file outside any
+    real package — the runtime import-smoke check (added alongside this
+    test) correctly reports import_error for it (a relative import
+    genuinely cannot resolve without a real parent package on disk), which
+    is accurate runtime behavior, not a bug; it is simply a different
+    question than "does the AST shape rule allow this pattern".
+    Expected feedback: failure on the .base case's import_violations would
+    force every adapter to use the (equally valid but more verbose)
+    absolute import form; failure on the other case means an unverifiable
+    relative import path is silently accepted by the whitelist rule."""
     import tempfile
 
     with tempfile.TemporaryDirectory() as td:
         ok_path = _write(Path(td), "from .base import GameAdapter\n")
         ok_result = lint_module(ok_path)
-        assert ok_result.ok is True
+        assert ok_result.import_violations == []
 
     with tempfile.TemporaryDirectory() as td2:
         bad_path = _write(Path(td2), "from . import something\n")
         bad_result = lint_module(bad_path)
+        assert bad_result.import_violations != []
         assert bad_result.ok is False
 
 
@@ -257,3 +272,50 @@ def test_real_ft09_adapter_passes_the_lint():
     path = _REPO_ROOT / "src" / "admorphiq" / "adapters25" / "ft09.py"
     result = lint_module(path)
     assert result.import_violations == []
+
+
+def test_import_of_nonexistent_kernel_name_is_a_runtime_hard_failure():
+    """Purpose: the exact regression a teammate hit — an adapter's import
+    line is fully WHITELISTED (admorphiq.kernels is an allowed source) so
+    the AST-level check alone reports zero import_violations, but the
+    specific NAME imported doesn't exist in that module. This must be
+    caught as a HARD failure by the runtime import-smoke check
+    (import_error set, .ok False) — the whole point of adding it, since a
+    kernel rename/removal that misses one adapter is invisible to AST
+    inspection alone (the import statement's SHAPE is fine; only actually
+    trying it reveals the name is gone).
+    Expected feedback: failure means the runtime smoke check either isn't
+    running at all or isn't propagating the subprocess's failure into
+    import_error/.ok, silently letting a broken adapter back into
+    discover_adapters()'s registry undetected."""
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as td:
+        path = _write(
+            Path(td),
+            "from admorphiq.kernels import this_function_does_not_exist\n",
+        )
+        result = lint_module(path)
+        assert result.import_violations == []  # the SHAPE is whitelisted
+        assert result.import_error is not None
+        assert "this_function_does_not_exist" in result.import_error
+        assert result.ok is False
+
+
+def test_real_adapter_files_are_import_smoke_tested_via_dotted_module_name():
+    """Purpose: a file actually living under adapters25/ must be smoke-
+    tested via its REAL dotted module name (admorphiq.adapters25.<stem>),
+    the exact mechanism discover_adapters() itself uses — not the generic
+    file-location loader synthetic test files use — so a relative import
+    (which only resolves with a genuine parent package) is verified
+    correctly for real adapters. All four shipped adapters use absolute
+    imports only, so this also pins that the dotted-name path produces
+    import_error=None for genuinely working code, not just import_violations=[].
+    Expected feedback: failure means the dotted-vs-path branch in
+    _import_smoke_test regressed (e.g. always falling back to the
+    file-location loader), which would silently stop verifying that
+    discover_adapters() can actually load the real adapters."""
+    for name in ("m0r0.py", "lp85.py", "su15.py", "ft09.py"):
+        result = lint_module(_ADAPTERS_DIR / name)
+        assert result.import_error is None, f"{name}: {result.import_error}"
+        assert result.ok is True
