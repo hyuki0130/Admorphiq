@@ -24,7 +24,7 @@
             "evidence:1"
           ],
           "against": [],
-          "strength": 0.4608072916666667
+          "strength": 0.4945068359375
         },
         {
           "id": "goal:2",
@@ -33,7 +33,7 @@
             "evidence:2"
           ],
           "against": [],
-          "strength": 0.2
+          "strength": 0.3125
         }
       ],
       "unresolved_tests": [
@@ -70,7 +70,7 @@
             "evidence:8"
           ],
           "against": [],
-          "strength": 0.37142857142857144
+          "strength": 0.6333333333333334
         },
         {
           "id": "goal:1",
@@ -81,7 +81,7 @@
           "against": [
             "evidence:9"
           ],
-          "strength": 0.35984375
+          "strength": 0.33317057291666663
         },
         {
           "id": "goal:6",
@@ -90,7 +90,7 @@
             "evidence:11"
           ],
           "against": [],
-          "strength": 0.28205128205128205
+          "strength": 0.2553191489361702
         },
         {
           "id": "goal:3",
@@ -101,7 +101,7 @@
             "evidence:7"
           ],
           "against": [],
-          "strength": 0.23764764008373696
+          "strength": 0.10332253427282774
         }
       ],
       "unresolved_tests": [
@@ -118,19 +118,28 @@
     "gt_note": "",
     "repeat_window_available": false,
     "candidates": [
+      "pattern_match",
       "arrival",
       "containment",
-      "pattern_match",
       "elimination"
     ],
     "n_competing": 4,
     "insufficient_evidence": false,
-    "verdict": "TOPK",
+    "verdict": "TOP1",
     "unresolved_tests": [
       "which of ['arrival', 'containment', 'elimination', 'pattern_match'] is the true win condition is not yet determined by static structure alone"
     ],
     "full_result": {
       "goal_candidates": [
+        {
+          "id": "goal:3",
+          "type": "pattern_match",
+          "support": [
+            "evidence:4"
+          ],
+          "against": [],
+          "strength": 0.5333333333333334
+        },
         {
           "id": "goal:1",
           "type": "arrival",
@@ -138,7 +147,7 @@
             "evidence:1"
           ],
           "against": [],
-          "strength": 0.4627604166666667
+          "strength": 0.496337890625
         },
         {
           "id": "goal:2",
@@ -148,16 +157,7 @@
             "evidence:3"
           ],
           "against": [],
-          "strength": 0.2
-        },
-        {
-          "id": "goal:3",
-          "type": "pattern_match",
-          "support": [
-            "evidence:4"
-          ],
-          "against": [],
-          "strength": 0.2
+          "strength": 0.2857142857142857
         },
         {
           "id": "goal:4",
@@ -166,7 +166,7 @@
             "evidence:5"
           ],
           "against": [],
-          "strength": 0.2
+          "strength": 0.09999999999999999
         }
       ],
       "unresolved_tests": [
@@ -200,7 +200,7 @@
             "evidence:1"
           ],
           "against": [],
-          "strength": 0.3575
+          "strength": 0.33072916666666663
         },
         {
           "id": "goal:2",
@@ -209,7 +209,7 @@
             "evidence:2"
           ],
           "against": [],
-          "strength": 0.20067170445004198
+          "strength": 0.003350083752093803
         }
       ],
       "unresolved_tests": [
@@ -246,7 +246,7 @@
             "evidence:5"
           ],
           "against": [],
-          "strength": 0.35238095238095246
+          "strength": 0.6222222222222223
         },
         {
           "id": "goal:1",
@@ -257,7 +257,7 @@
           "against": [
             "evidence:6"
           ],
-          "strength": 0.3140625
+          "strength": 0.249755859375
         },
         {
           "id": "goal:2",
@@ -268,7 +268,7 @@
             "evidence:4"
           ],
           "against": [],
-          "strength": 0.2529411764705883
+          "strength": 0.09285714285714287
         },
         {
           "id": "goal:4",
@@ -277,7 +277,7 @@
             "evidence:7"
           ],
           "against": [],
-          "strength": 0.2
+          "strength": 0.020833333333333332
         }
       ],
       "unresolved_tests": [
@@ -295,9 +295,9 @@
     "repeat_window_available": true,
     "candidates": [
       "pattern_match",
+      "threshold",
       "arrival",
-      "uniformity",
-      "threshold"
+      "uniformity"
     ],
     "n_competing": 4,
     "insufficient_evidence": false,
@@ -314,7 +314,16 @@
             "evidence:5"
           ],
           "against": [],
-          "strength": 0.4957983193277309
+          "strength": 0.7058823529411764
+        },
+        {
+          "id": "goal:5",
+          "type": "threshold",
+          "support": [
+            "evidence:7"
+          ],
+          "against": [],
+          "strength": 0.5
         },
         {
           "id": "goal:1",
@@ -323,7 +332,7 @@
             "evidence:1"
           ],
           "against": [],
-          "strength": 0.45833333333333337
+          "strength": 0.4921875
         },
         {
           "id": "goal:2",
@@ -334,16 +343,7 @@
             "evidence:4"
           ],
           "against": [],
-          "strength": 0.4506760728982952
-        },
-        {
-          "id": "goal:5",
-          "type": "threshold",
-          "support": [
-            "evidence:7"
-          ],
-          "against": [],
-          "strength": 0.4
+          "strength": 0.3240740740740741
         }
       ],
       "unresolved_tests": [
@@ -359,8 +359,8 @@
     "gt_note": "",
     "repeat_window_available": true,
     "candidates": [
-      "arrival",
-      "pattern_match"
+      "pattern_match",
+      "arrival"
     ],
     "n_competing": 2,
     "insufficient_evidence": false,
@@ -371,22 +371,22 @@
     "full_result": {
       "goal_candidates": [
         {
-          "id": "goal:1",
-          "type": "arrival",
-          "support": [
-            "evidence:1"
-          ],
-          "against": [],
-          "strength": 0.4654947916666667
-        },
-        {
           "id": "goal:2",
           "type": "pattern_match",
           "support": [
             "evidence:2"
           ],
           "against": [],
-          "strength": 0.2
+          "strength": 0.5333333333333334
+        },
+        {
+          "id": "goal:1",
+          "type": "arrival",
+          "support": [
+            "evidence:1"
+          ],
+          "against": [],
+          "strength": 0.4989013671875
         }
       ],
       "unresolved_tests": [
@@ -403,8 +403,8 @@
     "repeat_window_available": true,
     "candidates": [
       "threshold",
-      "arrival",
       "containment",
+      "arrival",
       "elimination"
     ],
     "n_competing": 4,
@@ -423,7 +423,17 @@
             "evidence:6"
           ],
           "against": [],
-          "strength": 0.373913043478261
+          "strength": 0.5263157894736843
+        },
+        {
+          "id": "goal:2",
+          "type": "containment",
+          "support": [
+            "evidence:2",
+            "evidence:3"
+          ],
+          "against": [],
+          "strength": 0.33333333333333337
         },
         {
           "id": "goal:1",
@@ -434,17 +444,7 @@
           "against": [
             "evidence:4"
           ],
-          "strength": 0.359921875
-        },
-        {
-          "id": "goal:2",
-          "type": "containment",
-          "support": [
-            "evidence:2",
-            "evidence:3"
-          ],
-          "against": [],
-          "strength": 0.2
+          "strength": 0.333251953125
         },
         {
           "id": "goal:3",
@@ -453,7 +453,7 @@
             "evidence:5"
           ],
           "against": [],
-          "strength": 0.2
+          "strength": 0.00775862068965516
         }
       ],
       "unresolved_tests": [
@@ -472,8 +472,8 @@
     "candidates": [
       "arrival",
       "uniformity",
-      "containment",
-      "elimination"
+      "elimination",
+      "containment"
     ],
     "n_competing": 4,
     "insufficient_evidence": false,
@@ -490,7 +490,7 @@
             "evidence:1"
           ],
           "against": [],
-          "strength": 0.9328125
+          "strength": 0.9580078125
         },
         {
           "id": "goal:2",
@@ -501,7 +501,16 @@
             "evidence:4"
           ],
           "against": [],
-          "strength": 0.5543859649122809
+          "strength": 0.45258620689655177
+        },
+        {
+          "id": "goal:4",
+          "type": "elimination",
+          "support": [
+            "evidence:8"
+          ],
+          "against": [],
+          "strength": 0.03125
         },
         {
           "id": "goal:3",
@@ -512,16 +521,7 @@
             "evidence:7"
           ],
           "against": [],
-          "strength": 0.2
-        },
-        {
-          "id": "goal:4",
-          "type": "elimination",
-          "support": [
-            "evidence:8"
-          ],
-          "against": [],
-          "strength": 0.2
+          "strength": 0.0
         }
       ],
       "unresolved_tests": [
@@ -555,7 +555,7 @@
             "evidence:1"
           ],
           "against": [],
-          "strength": 0.984375
+          "strength": 0.990234375
         },
         {
           "id": "goal:2",
@@ -566,7 +566,7 @@
             "evidence:4"
           ],
           "against": [],
-          "strength": 0.3111111111111111
+          "strength": 0.16216216216216217
         }
       ],
       "unresolved_tests": [
@@ -583,8 +583,8 @@
     "repeat_window_available": true,
     "candidates": [
       "pattern_match",
-      "arrival",
       "containment",
+      "arrival",
       "elimination"
     ],
     "n_competing": 4,
@@ -603,18 +603,7 @@
             "evidence:5"
           ],
           "against": [],
-          "strength": 0.48571428571428577
-        },
-        {
-          "id": "goal:1",
-          "type": "arrival",
-          "support": [
-            "evidence:1"
-          ],
-          "against": [
-            "evidence:6"
-          ],
-          "strength": 0.3141183035714286
+          "strength": 0.7000000000000001
         },
         {
           "id": "goal:2",
@@ -625,7 +614,18 @@
             "evidence:4"
           ],
           "against": [],
-          "strength": 0.29616328230938305
+          "strength": 0.29072067322815415
+        },
+        {
+          "id": "goal:1",
+          "type": "arrival",
+          "support": [
+            "evidence:1"
+          ],
+          "against": [
+            "evidence:6"
+          ],
+          "strength": 0.24981689453125
         },
         {
           "id": "goal:4",
@@ -634,7 +634,7 @@
             "evidence:7"
           ],
           "against": [],
-          "strength": 0.2
+          "strength": 0.0028026905829596493
         }
       ],
       "unresolved_tests": [
@@ -666,7 +666,7 @@
             "evidence:1"
           ],
           "against": [],
-          "strength": 0.29817708333333337
+          "strength": 0.342041015625
         }
       ],
       "unresolved_tests": [],
@@ -702,7 +702,7 @@
           "against": [
             "evidence:4"
           ],
-          "strength": 0.46653645833333335
+          "strength": 0.4998779296875
         },
         {
           "id": "goal:2",
@@ -712,7 +712,7 @@
             "evidence:3"
           ],
           "against": [],
-          "strength": 0.2
+          "strength": 0.4
         },
         {
           "id": "goal:3",
@@ -721,7 +721,7 @@
             "evidence:5"
           ],
           "against": [],
-          "strength": 0.2
+          "strength": 0.0078125
         }
       ],
       "unresolved_tests": [
@@ -757,7 +757,7 @@
             "evidence:1"
           ],
           "against": [],
-          "strength": 0.46653645833333335
+          "strength": 0.4998779296875
         },
         {
           "id": "goal:2",
@@ -768,7 +768,7 @@
             "evidence:4"
           ],
           "against": [],
-          "strength": 0.4181818181818182
+          "strength": 0.30434782608695654
         },
         {
           "id": "goal:3",
@@ -777,7 +777,7 @@
             "evidence:5"
           ],
           "against": [],
-          "strength": 0.2
+          "strength": 0.0625
         }
       ],
       "unresolved_tests": [
@@ -812,7 +812,7 @@
             "evidence:2"
           ],
           "against": [],
-          "strength": 0.2
+          "strength": 0.5
         },
         {
           "id": "goal:2",
@@ -821,7 +821,7 @@
             "evidence:3"
           ],
           "against": [],
-          "strength": 0.2
+          "strength": 0.11666666666666667
         }
       ],
       "unresolved_tests": [
@@ -856,7 +856,7 @@
             "evidence:1"
           ],
           "against": [],
-          "strength": 0.971875
+          "strength": 0.982421875
         },
         {
           "id": "goal:3",
@@ -865,7 +865,7 @@
             "evidence:4"
           ],
           "against": [],
-          "strength": 0.48571428571428577
+          "strength": 0.7000000000000001
         },
         {
           "id": "goal:2",
@@ -875,7 +875,7 @@
             "evidence:3"
           ],
           "against": [],
-          "strength": 0.2
+          "strength": 0.33333333333333337
         }
       ],
       "unresolved_tests": [
@@ -892,8 +892,8 @@
     "repeat_window_available": true,
     "candidates": [
       "arrival",
-      "uniformity",
-      "containment"
+      "containment",
+      "uniformity"
     ],
     "n_competing": 3,
     "insufficient_evidence": false,
@@ -910,18 +910,7 @@
             "evidence:1"
           ],
           "against": [],
-          "strength": 0.95
-        },
-        {
-          "id": "goal:2",
-          "type": "uniformity",
-          "support": [
-            "evidence:2",
-            "evidence:3",
-            "evidence:4"
-          ],
-          "against": [],
-          "strength": 0.3650793650793651
+          "strength": 0.96875
         },
         {
           "id": "goal:3",
@@ -932,7 +921,18 @@
             "evidence:7"
           ],
           "against": [],
-          "strength": 0.3254783308343424
+          "strength": 0.4266392333923015
+        },
+        {
+          "id": "goal:2",
+          "type": "uniformity",
+          "support": [
+            "evidence:2",
+            "evidence:3",
+            "evidence:4"
+          ],
+          "against": [],
+          "strength": 0.24242424242424246
         }
       ],
       "unresolved_tests": [
@@ -968,7 +968,7 @@
             "evidence:8"
           ],
           "against": [],
-          "strength": 0.24938271604938278
+          "strength": 0.20833333333333337
         },
         {
           "id": "goal:2",
@@ -979,7 +979,7 @@
             "evidence:6"
           ],
           "against": [],
-          "strength": 0.22016099291591673
+          "strength": 0.06070821915657665
         },
         {
           "id": "goal:1",
@@ -990,7 +990,7 @@
             "evidence:3"
           ],
           "against": [],
-          "strength": 0.21363636363636365
+          "strength": 0.038888888888888896
         },
         {
           "id": "goal:3",
@@ -999,7 +999,7 @@
             "evidence:7"
           ],
           "against": [],
-          "strength": 0.2
+          "strength": 0.0007936507936507908
         }
       ],
       "unresolved_tests": [
@@ -1015,26 +1015,17 @@
     "gt_note": "",
     "repeat_window_available": true,
     "candidates": [
-      "arrival",
-      "elimination"
+      "elimination",
+      "arrival"
     ],
     "n_competing": 2,
     "insufficient_evidence": false,
-    "verdict": "TOP1",
+    "verdict": "TOPK",
     "unresolved_tests": [
       "which of ['arrival', 'elimination'] is the true win condition is not yet determined by static structure alone"
     ],
     "full_result": {
       "goal_candidates": [
-        {
-          "id": "goal:1",
-          "type": "arrival",
-          "support": [
-            "evidence:1"
-          ],
-          "against": [],
-          "strength": 0.28836805555555556
-        },
         {
           "id": "goal:2",
           "type": "elimination",
@@ -1042,7 +1033,16 @@
             "evidence:2"
           ],
           "against": [],
-          "strength": 0.2
+          "strength": 0.4
+        },
+        {
+          "id": "goal:1",
+          "type": "arrival",
+          "support": [
+            "evidence:1"
+          ],
+          "against": [],
+          "strength": 0.19941406250000002
         }
       ],
       "unresolved_tests": [
@@ -1077,7 +1077,7 @@
             "evidence:1"
           ],
           "against": [],
-          "strength": 0.458984375
+          "strength": 0.4927978515625
         },
         {
           "id": "goal:3",
@@ -1086,7 +1086,7 @@
             "evidence:3"
           ],
           "against": [],
-          "strength": 0.36860215053763445
+          "strength": 0.40032679738562094
         },
         {
           "id": "goal:2",
@@ -1095,7 +1095,7 @@
             "evidence:2"
           ],
           "against": [],
-          "strength": 0.2
+          "strength": 0.018518518518518524
         }
       ],
       "unresolved_tests": [
@@ -1112,8 +1112,8 @@
     "repeat_window_available": true,
     "candidates": [
       "arrival",
-      "uniformity",
       "pattern_match",
+      "uniformity",
       "elimination"
     ],
     "n_competing": 4,
@@ -1131,7 +1131,16 @@
             "evidence:1"
           ],
           "against": [],
-          "strength": 0.862109375
+          "strength": 0.913818359375
+        },
+        {
+          "id": "goal:3",
+          "type": "pattern_match",
+          "support": [
+            "evidence:5"
+          ],
+          "against": [],
+          "strength": 0.6515151515151516
         },
         {
           "id": "goal:2",
@@ -1142,16 +1151,7 @@
             "evidence:4"
           ],
           "against": [],
-          "strength": 0.7043478260869567
-        },
-        {
-          "id": "goal:3",
-          "type": "pattern_match",
-          "support": [
-            "evidence:5"
-          ],
-          "against": [],
-          "strength": 0.4025974025974026
+          "strength": 0.6382978723404256
         },
         {
           "id": "goal:4",
@@ -1160,7 +1160,7 @@
             "evidence:6"
           ],
           "against": [],
-          "strength": 0.2
+          "strength": 0.032786885245901634
         }
       ],
       "unresolved_tests": [
@@ -1177,8 +1177,8 @@
     "repeat_window_available": false,
     "candidates": [
       "uniformity",
-      "arrival",
-      "elimination"
+      "elimination",
+      "arrival"
     ],
     "n_competing": 3,
     "insufficient_evidence": false,
@@ -1198,7 +1198,16 @@
             "evidence:4"
           ],
           "against": [],
-          "strength": 0.4171296296296297
+          "strength": 0.28262108262108265
+        },
+        {
+          "id": "goal:3",
+          "type": "elimination",
+          "support": [
+            "evidence:6"
+          ],
+          "against": [],
+          "strength": 0.25
         },
         {
           "id": "goal:1",
@@ -1209,16 +1218,7 @@
           "against": [
             "evidence:5"
           ],
-          "strength": 0.31422991071428574
-        },
-        {
-          "id": "goal:3",
-          "type": "elimination",
-          "support": [
-            "evidence:6"
-          ],
-          "against": [],
-          "strength": 0.2
+          "strength": 0.24993896484375
         }
       ],
       "unresolved_tests": [
@@ -1253,7 +1253,7 @@
             "evidence:1"
           ],
           "against": [],
-          "strength": 0.46458333333333335
+          "strength": 0.498046875
         },
         {
           "id": "goal:2",
@@ -1262,7 +1262,7 @@
             "evidence:2"
           ],
           "against": [],
-          "strength": 0.2
+          "strength": 0.16666666666666666
         }
       ],
       "unresolved_tests": [
@@ -1293,7 +1293,7 @@
             "evidence:1"
           ],
           "against": [],
-          "strength": 0.3140625
+          "strength": 0.249755859375
         }
       ],
       "unresolved_tests": [],

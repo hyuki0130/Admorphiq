@@ -14,6 +14,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
+
 from admorphiq.explanation.goal_ledger import (
     MAX_CANDIDATES,
     MAX_HANDLES_PER_CANDIDATE,
@@ -417,6 +419,113 @@ def test_elimination_confirmation_penalizes_a_single_uncorroborated_transition()
     strength_confirmed = next(c for c in corroborated["goal_candidates"] if c["type"] == "elimination")["strength"]
 
     assert strength_confirmed > strength_alone
+
+
+# ----- R58 tuning round #2: floor-anchoring ---------------------------------------
+# Approved after tuning round #1's re-measurement found TOPK coverage improved
+# sharply but TOP1 regressed — traced to pattern_match's raw formula already
+# sitting near 0.53 at its OWN minimum firing case, while arrival's ambiguity
+# penalty can legitimately be much lower, so ranking favored "which formula
+# family runs numerically higher" over "how much above ITS OWN bar is this".
+def test_no_fired_candidate_ever_scores_below_the_strength_floor():
+    """Purpose: floor-anchoring's core guarantee — EVERY fired candidate,
+    from every detector, must score >= _STRENGTH_FLOOR (0.2), by the
+    ``raw >= gate_min`` proof documented in each detector's docstring
+    (every gated term in ``raw`` is, by construction, never below its own
+    firing boundary).
+
+    Expected feedback: a pass proves the floor is a real lower bound in
+    practice, not just on paper; a fail means some detector's gate_min
+    derivation is wrong (raw can dip below its own analytic floor).
+    """
+    import admorphiq.explanation.goal_ledger as gl
+
+    original_cap = gl.MAX_CANDIDATES
+    gl.MAX_CANDIDATES = 10
+    try:
+        result = gl.detect(_saturating_observations())
+    finally:
+        gl.MAX_CANDIDATES = original_cap
+    assert len(result["goal_candidates"]) == 6
+    for c in result["goal_candidates"]:
+        assert c["strength"] >= gl._STRENGTH_FLOOR - 1e-9, f"{c['type']} scored {c['strength']} < floor"
+
+
+def test_elimination_with_no_corroboration_lands_exactly_at_the_floor():
+    """Purpose: pins the specific analytic consequence documented in
+    _detect_elimination's docstring — with no ``extra_transitions``,
+    ``confirmation_component`` is stuck at exactly its own gate value
+    (0.5), so ``raw == gate_min`` exactly and the floor-anchored strength
+    must be EXACTLY ``_STRENGTH_FLOOR``, regardless of how clean the single
+    observed vanish otherwise looks.
+
+    Expected feedback: a pass proves the "uncorroborated elimination is
+    never more than 'just barely fired'" design intent holds exactly, not
+    approximately; a fail means size_component/signature_distinctness are
+    leaking into the floor instead of cancelling out.
+    """
+    import admorphiq.explanation.goal_ledger as gl
+
+    before, after = _elimination_pair()
+    result = gl.detect({"before": before, "after": after})
+    strength = next(c for c in result["goal_candidates"] if c["type"] == "elimination")["strength"]
+    assert strength == pytest.approx(gl._STRENGTH_FLOOR)
+
+
+def test_pattern_match_at_its_bare_minimum_lands_near_the_floor_not_above_half():
+    """Purpose: pins the exact regression this round fixes — round-1's
+    unanchored pattern_match formula was measured to sit at ~0.53 raw at
+    its OWN bare-minimum firing case (5 items, 3 colours, no more), which
+    let it systematically outrank other detectors' more genuinely-uncertain
+    evidence. After floor-anchoring, the bare-minimum case must land AT the
+    floor (0.2), not ~0.53.
+
+    Expected feedback: a pass proves the specific mechanism behind the
+    TOP1 regression is closed; a fail means pattern_match would still
+    win ranking comparisons it has no real right to win.
+    """
+    import admorphiq.explanation.goal_ledger as gl
+
+    g = _grid(20, 20)
+    _ring(g, 1, 1, 8, 8, 1)  # one container, exactly 5 items across exactly 3 colours — the bare minimum
+    _dot(g, 2, 2, 2)
+    _dot(g, 2, 4, 3)
+    _dot(g, 2, 6, 5)
+    _dot(g, 4, 2, 2)
+    _dot(g, 4, 4, 3)
+    result = gl.detect({"frame": g})
+    candidate = next(c for c in result["goal_candidates"] if c["type"] == "pattern_match")
+    assert candidate["strength"] == pytest.approx(gl._STRENGTH_FLOOR)
+
+
+def test_strength_still_increases_with_more_evidence_after_anchoring():
+    """Purpose: floor-anchoring must not flatten strength into a constant —
+    a pattern_match candidate with MORE items/colours than the bare
+    minimum must still score higher than one at the bare minimum.
+
+    Expected feedback: a pass proves anchoring rescales rather than
+    collapses the strength signal; a fail would mean "more evidence" no
+    longer differentiates candidates at all.
+    """
+    import admorphiq.explanation.goal_ledger as gl
+
+    minimal = _grid(20, 20)
+    _ring(minimal, 1, 1, 8, 8, 1)
+    _dot(minimal, 2, 2, 2)
+    _dot(minimal, 2, 4, 3)
+    _dot(minimal, 2, 6, 5)
+    _dot(minimal, 4, 2, 2)
+    _dot(minimal, 4, 4, 3)
+    minimal_strength = next(
+        c for c in gl.detect({"frame": minimal})["goal_candidates"] if c["type"] == "pattern_match"
+    )["strength"]
+
+    richer = _pattern_match_frame()  # more items and colours than the bare minimum fixture above
+    richer_strength = next(
+        c for c in gl.detect({"frame": richer})["goal_candidates"] if c["type"] == "pattern_match"
+    )["strength"]
+
+    assert richer_strength >= minimal_strength
 
 
 # ----- the two-hypotheses-or-insufficient-evidence rule (verdict §4) -------------
