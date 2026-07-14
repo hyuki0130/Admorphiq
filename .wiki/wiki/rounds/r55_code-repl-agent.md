@@ -205,3 +205,31 @@ code-REPL arm.
 - [[lb_top_team_research_20260714]] — the M1 top-team evidence.
 - [[r53_unified-harness]] — the current harness; existing generic tools.
 - [[index]]
+
+## Kaggle serving PREFLIGHT: PASS end-to-end [2026-07-14 11:27 KST]
+
+Kernel `jaehyukhyun/admorphiq-qwen-vllm-preflight` v1-v7 debugging chain (each failure root-caused,
+per the observability directive):
+- v1: normal CLI kernel = **Tesla P100 16GB** (27B impossible there).
+- v3: `kaggle kernels push --accelerator NvidiaRtxPro6000` → **NVIDIA RTX PRO 6000 Blackwell,
+  97,887 MiB** — the 96GB GPU is CLI-selectable (enum name measured, not documented in the SDK).
+- v4: vLLM install fixed via kernel_source `philipvonderlind/vllm-deps` (the official example's
+  source) → **vLLM 0.19.1**; in-process LLM() fails on spawn-bootstrap → use api_server subprocess.
+- v5: server healthy @131k ctx (28.51GiB weights, 50.73GiB KV = 415,520 tok, 12.18x concurrency,
+  90.8GiB used) but first inference 500: **flashinfer ninja-JIT fails offline**.
+- v6: backend env sweep still 500 → root cause: **--kv-cache-dtype fp8 + head_dim 256 FORCES the
+  flashinfer prefill kernel** regardless of VLLM_ATTENTION_BACKEND.
+- v7 ✅: drop fp8 KV (bf16) + TRITON_ATTN + VLLM_USE_FLASHINFER_SAMPLER=0 →
+  **first inference OK. SHORT P50=6.00s / P95=6.02s (200 out-tokens); LONG prompts 8k/24k/48k
+  chars all ≈6.0-6.2s (prefill nearly free on Blackwell). KV 207,760 tokens; 6.2x concurrency
+  @131k; model supports 262,144.**
+
+DEPLOY CONFIG (measured): Qwen3.6-27B-FP8 weights (Kaggle model michaelpoluektov/qwen3-6-27b-fp8)
++ vllm-deps kernel source + api_server subprocess `--max-model-len 131072 --enforce-eager
+--gpu-memory-utilization 0.92` + env VLLM_ATTENTION_BACKEND=TRITON_ATTN,
+VLLM_USE_FLASHINFER_SAMPLER=0, VLLM_WORKER_MULTIPROC_METHOD=spawn. Server boot ~195s (well inside
+the 15-min first-action budget if the LLM-free chain acts first). Latency is generation-dominated
+(~35 tok/s eager): cap output tokens per decision; consider dropping --enforce-eager later for
+CUDA-graph speedup. Duck capped context at 64k for throughput; we serve 131k with 6.2x
+concurrency — eviction pressure is halved.
+
