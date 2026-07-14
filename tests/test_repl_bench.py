@@ -15,12 +15,29 @@ from admorphiq.repl_agent.bench import (
     ENGAGEMENT_GUARDS,
     ENGAGEMENT_TARGETS,
     MATCHED_12_GAMES,
+    PLANNAV_GAMES,
     GameDiagnostics,
     engagement_run_plan,
     matched_run_plan,
+    plannav_run_plan,
     run_game,
     single_arm_plan,
 )
+
+
+def test_plannav_run_plan():
+    """Purpose: the decoupled PLAN×NAV 2×2 crosses {base,nav,plan,combined} over
+    the nav walls (ls20/g50t/tu93) x 3 reps = 36 runs, audit OFF, flag combos
+    matching the literal 2x2 crossing.
+
+    Feedback: failure means the 2x2 is unbalanced, mis-flagged, or audit leaks in.
+    """
+    plan = plannav_run_plan(reps=3)
+    assert len(plan) == 3 * len(PLANNAV_GAMES) * 4  # reps x games x cells = 36
+    assert all(e["audit"] is False for e in plan)
+    combos = {(e["cell"], e["nav"], e["plan"]) for e in plan}
+    assert combos == {("base", False, False), ("nav", True, False),
+                      ("plan", False, True), ("combined", True, True)}
 
 
 def test_engagement_run_plan():

@@ -206,6 +206,7 @@ def run_experiment() -> dict:
         GameDiagnostics,
         engagement_run_plan,
         matched_run_plan,
+        plannav_run_plan,
         run_game,
         single_arm_plan,
     )
@@ -232,6 +233,9 @@ def run_experiment() -> dict:
     elif mode == "engagement":
         plan = engagement_run_plan()
         default_wall = 500.0
+    elif mode == "plannav":
+        plan = plannav_run_plan()
+        default_wall = 500.0
     else:
         plan = matched_run_plan(MATCHED_12_GAMES)
         default_wall = 500.0
@@ -252,11 +256,12 @@ def run_experiment() -> dict:
     # entries carry their own {audit, action_first, repeat_feedback} per cell.
     def _cfg(entry: dict) -> dict:
         label = entry.get("cell", entry.get("arm", "on"))
-        if "cell" in entry:  # engagement: flags come from the entry
+        if "cell" in entry:  # engagement / plannav: all flags come from the entry
             return {"label": label, "audit": bool(entry.get("audit", False)),
-                    "nav": False, "plan": False,
-                    "action_first": bool(entry["action_first"]),
-                    "repeat_feedback": bool(entry["repeat_feedback"])}
+                    "nav": bool(entry.get("nav", False)),
+                    "plan": bool(entry.get("plan", False)),
+                    "action_first": bool(entry.get("action_first", False)),
+                    "repeat_feedback": bool(entry.get("repeat_feedback", False))}
         g = lambda k: os.environ.get(k, "0").strip().lower() in _TRUTHY  # noqa: E731
         return {"label": label, "audit": entry.get("arm") == "on",
                 "nav": g("REPL_NAV"), "plan": g("REPL_PLAN"),

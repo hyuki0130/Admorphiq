@@ -60,6 +60,38 @@ ENGAGEMENT_CELLS = [
 ]
 
 
+PLANNAV_GAMES = ["ls20", "g50t", "tu93"]   # diagnosed navigation walls
+
+# (cell name, nav_steering, plan_enabled). audit OFF throughout.
+PLANNAV_CELLS = [
+    ("base", False, False),
+    ("nav", True, False),
+    ("plan", False, True),
+    ("combined", True, True),
+]
+
+
+def plannav_run_plan(games: list[str] | None = None, reps: int = 3) -> list[dict[str, Any]]:
+    """Decoupled PLAN×NAV 2×2 on the navigation walls (Codex re-ruling).
+
+    Cells {base, nav, plan, combined} × {ls20, g50t, tu93} × ``reps`` = 36 runs.
+    Cells run adjacently per (rep, game) for matched comparison; each entry carries
+    its per-cell nav/plan flags; audit OFF for all. Tag = ``{game}_{cell}_r{rep}``.
+    The triggers are goal-declaration eligible (not stall-based) — pre-launch trace
+    replay must show nonzero NAV (and, per the PLAN-eligibility ruling, PLAN)
+    exposure before this runs.
+    """
+    gs = games if games is not None else PLANNAV_GAMES
+    plan: list[dict[str, Any]] = []
+    for rep in range(reps):
+        for game in gs:
+            for name, nav, pl in PLANNAV_CELLS:
+                plan.append({"game": game, "cell": name, "rep": rep,
+                             "audit": False, "nav": nav, "plan": pl,
+                             "action_first": False, "repeat_feedback": False})
+    return plan
+
+
 def engagement_run_plan(reps: int = 2) -> list[dict[str, Any]]:
     """Flag ablation for the engagement walls (R55 item-37 measurement).
 
