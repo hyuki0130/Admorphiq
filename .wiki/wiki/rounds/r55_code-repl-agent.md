@@ -875,4 +875,27 @@ Two flag-gated engagement fixes, both default OFF / byte-identical when off (com
 `REPL_EXPERIMENT=engagement` (commit d904ddb) is PUSH-READY: {base, +action_first,
 +repeat_feedback, +both} × {sb26, ft09 targets + su15, r11l guards} × 2 reps = 32 runs
 @500s (~4.5h), audit OFF throughout, cells adjacent per game, tag `{game}_{cell}_r{rep}`.
-Kernel run_experiment is now entry-driven. 127 repl tests green.
+Kernel run_experiment is now entry-driven. 127 repl tests green. Verdict analyzer
+`scripts/repl_engagement_verdict.py` (commit 0ab0f21) ready.
+
+### Item B RE-RULED — semantic-eligibility triggers, wired; NAV validated, PLAN zero-exposure
+
+Codex re-ruling `docs/r55_codex_trigger_reruling_20260714.md` (option b): drop ALL stall
+predicates; NAV eligible while the model's declared GOAL_HYPOTHESIS matches the nav-signature
+(cd8/max4, NO traversability-graph gate), PLAN while a declared goal+milestone stand
+(cd15/max2); NAV precedence; cooldowns count env actions; level-up invalidates; audit stays
+OFF (no call solicits the goal — it is parsed from the model's own output). Rebuilt
+`triggers.py` accordingly (commit d421beb, 8 tests) and WIRED it into the agent decision loop
+(commit 11164ed): `_decide` → `_triggers.decide()` injects one nudge, `note_declaration(raw)`
+after each parse, `observe_action()` per env action, `invalidate_goal()` on level-up. Both
+flags default OFF ⇒ byte-identical when off. 131 repl tests.
+
+**Codex-mandated pre-launch replay over out9 traces**: NAV exposure NONZERO — fires cap 4 on
+ls20/g50t/tu93 (nav-decls 43-60/game). **PLAN exposure ZERO on all games** — goal+milestone
+declarations = 0, because with the audit off the model emits no explicit MILESTONE in natural
+output. Codex's "require nonzero NAV and PLAN exposure before launch" gate: NAV passes, PLAN
+FAILS. The plannav 2×2 config (`REPL_EXPERIMENT=plannav`, commit f0e5e21: {base,nav,plan,
+combined}×{ls20,g50t,tu93}×3 = 36 runs @500s) is PUSH-READY for NAV but its PLAN cells are
+null pending a PLAN-eligibility ruling: (a) relax PLAN to goal-only; (b) add a milestone-
+eliciting prompt line to PLAN cells; (c) drop PLAN and run Base-vs-Nav 1×2 now. Recommended (c)
+to run the validated NAV lever immediately; resolve PLAN's milestone source separately.
