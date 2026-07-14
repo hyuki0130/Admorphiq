@@ -204,6 +204,7 @@ def test_discover_adapter_paths_excludes_init_and_base():
     assert "__init__.py" not in names
     assert "base.py" not in names
     assert "m0r0.py" in names
+    assert "lp85.py" in names
 
 
 def test_real_m0r0_adapter_passes_the_lint():
@@ -213,5 +214,17 @@ def test_real_m0r0_adapter_passes_the_lint():
     Expected feedback: failure means the m0r0 adapter (or the lint's
     whitelist) drifted out of sync with the quarantine rules."""
     path = _REPO_ROOT / "src" / "admorphiq" / "adapters25" / "m0r0.py"
+    result = lint_module(path)
+    assert result.import_violations == []
+
+
+def test_real_lp85_adapter_passes_the_lint():
+    """Purpose: regression pin -- the actual shipped lp85 adapter (the
+    click-driven sibling of m0r0's movement adapter) must ALSO have zero
+    import violations, proving the quarantine contract holds across a
+    second, differently-shaped adapter, not just the first one written.
+    Expected feedback: failure means the lp85 adapter (or the lint's
+    whitelist) drifted out of sync with the quarantine rules."""
+    path = _REPO_ROOT / "src" / "admorphiq" / "adapters25" / "lp85.py"
     result = lint_module(path)
     assert result.import_violations == []

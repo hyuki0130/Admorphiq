@@ -32,6 +32,21 @@ Those remain out of scope for this maze-navigation proof of concept (see
 that M0R0 is a movement game with a mirror/reflection mechanic and that
 frame-only BFS clears 2/6 levels — the target this adapter's own frontier
 search is trying to reach purely by composing kernels.
+
+Second policy (adapter-owned, not a kernel concern): a first smoke run
+measured GAME_OVER at 151 actions with 0 levels cleared, so this adapter
+sets ``restart_on_game_over = True`` (mirroring
+``GraphFrontierAgent``/``OnlineRLAgent``'s own convention) so the harness
+RESETs the attempt and lets the agent keep exploring within its action
+budget instead of the run simply ending. On its own that would send the
+agent right back into the same fatal (cell, action) pair forever, so it
+also keeps HAZARD MEMORY: :meth:`_observe_result` detects a restart (the
+frame snaps back to the exact start-of-level frame while the adapter's own
+tracked position was NOT the start cell — the env silently repositioned
+the player, which normal movement never does), records the (cell, action)
+pair that caused it, and excludes that pair from future frontier search —
+persisted across restarts WITHIN a level (the hazard is a property of the
+level's layout), reset on level-up alongside the rest of the spatial state.
 """
 
 from __future__ import annotations
@@ -74,6 +89,16 @@ _GIVEUP_DEFAULT = 4000
 # frontier).
 _CARDINAL_FALLBACK: tuple[Cell, ...] = ((-1, 0), (1, 0), (0, -1), (0, 1))
 
+# A cell hazardous under this many DISTINCT actions is declared dead outright
+# (excluded from future path-planning entirely) rather than waiting to try
+# every remaining direction from it too. Measured motivation: a smoke run
+# recorded the SAME cell killing the run on 3 separate actions across 3
+# separate lives (455 of 500 actions spent re-discovering that one spot is
+# fatal regardless of direction) -- 2 independent hazardous directions from
+# one cell is already strong evidence the CELL itself is the trap, not the
+# direction, so this stops the frontier search from ever returning to it.
+_DEAD_CELL_HAZARD_THRESHOLD = 2
+
 
 def _sign(v: int) -> int:
     if v > 0:
@@ -89,6 +114,12 @@ class Adapter(GameAdapter):
     GAME_ID = GAME_ID
 
     def __init__(self, giveup: int = _GIVEUP_DEFAULT) -> None:
+        # Consumed by scripts/score_efficiency.py's run_game: on GAME_OVER it
+        # RESETs the env and keeps calling this same adapter instance instead
+        # of ending the run, so a fatal move costs one action, not the rest
+        # of the budget.
+        self.restart_on_game_over = True
+
         self._giveup = giveup
         self._step = 0
         self._levels_seen = -1
@@ -99,10 +130,22 @@ class Adapter(GameAdapter):
         self._dir_map: dict[int, Cell] = {}
         self._pending_action: int | None = None
         self._prev_grid: tuple[tuple[int, ...], ...] | None = None
+        # The very first frame seen this level (post-reset frames snap back
+        # to this exactly) -- see _observe_result's restart detector.
+        self._level_start_grid: tuple[tuple[int, ...], ...] | None = None
         self._player_cell: Cell = (0, 0)
         self._known_passable: set[Cell] = {(0, 0)}
         self._tried_from: dict[Cell, set[int]] = {}
         self._action_plan: list[int] = []
+        # (cell, action) pairs that triggered GAME_OVER. Persists across
+        # restarts within a level (a property of the layout); cleared on
+        # level-up alongside every other spatial fact.
+        self._hazards: dict[Cell, set[int]] = {}
+        # Cells hazardous under >= _DEAD_CELL_HAZARD_THRESHOLD distinct
+        # actions -- excluded from the passable array and frontier search
+        # entirely (see _passable_array / _nearest_frontier). Persists like
+        # _hazards; cleared on level-up.
+        self._dead_cells: set[Cell] = set()
 
     # ── harness contract ────────────────────────────────────────────────
 
@@ -120,7 +163,7 @@ class Adapter(GameAdapter):
         grid = canonical_layer(latest_frame)
         levels = int(getattr(latest_frame, "levels_completed", 0) or 0)
         if levels != self._levels_seen:
-            self._on_level_up(levels)
+            self._on_level_up(levels, grid)
 
         self._step += 1
         self._observe_result(grid)
@@ -142,14 +185,32 @@ class Adapter(GameAdapter):
 
     # ── level bookkeeping ───────────────────────────────────────────────
 
-    def _on_level_up(self, levels: int) -> None:
+    def _on_level_up(self, levels: int, grid: tuple[tuple[int, ...], ...]) -> None:
         """Drop every SPATIAL fact about the level just left; keep the dir_map."""
         self._levels_seen = levels
         self._pending_action = None
         self._prev_grid = None
+        self._level_start_grid = grid
         self._player_cell = (0, 0)
         self._known_passable = {(0, 0)}
         self._tried_from = {}
+        self._action_plan = []
+        self._hazards = {}
+        self._dead_cells = set()
+
+    def _on_restart(self) -> None:
+        """After a GAME_OVER-triggered RESET, only the player's OWN position
+        resets to the start cell. Every fact already learned about the
+        layout -- known_passable, tried_from (which now includes the fatal
+        action, added by the caller before this runs), hazards, dead_cells,
+        dir_map -- remains true (the maze didn't change, only the attempt
+        did) and is deliberately KEPT so each life compounds on the last
+        instead of re-exploring the same safe cells from scratch every
+        time. Measured necessary: an earlier version wiped known_passable
+        here too, and a smoke run spent ~150 of ~150 actions per life
+        re-discovering the same 70 already-known-safe cells before ever
+        reaching new territory."""
+        self._player_cell = (0, 0)
         self._action_plan = []
 
     # ── measurement: did the pending action move anything? ─────────────
@@ -166,6 +227,21 @@ class Adapter(GameAdapter):
         before = self._prev_grid
         self._pending_action = None
         if action is None or before is None:
+            return
+        # The env silently repositioned the player back to the level's start
+        # (the frame snaps back to the exact first-seen frame) while OUR
+        # tracking still holds a mid-maze position: a GAME_OVER restart just
+        # happened, not a normal move that coincidentally reproduced the
+        # start frame (a legitimate walk-back-to-start would already have
+        # our own _player_cell reading (0, 0), so this branch would not
+        # trigger for it).
+        if self._player_cell != (0, 0) and grid == self._level_start_grid:
+            self._tried_from.setdefault(self._player_cell, set()).add(action)
+            hazard_actions = self._hazards.setdefault(self._player_cell, set())
+            hazard_actions.add(action)
+            if len(hazard_actions) >= _DEAD_CELL_HAZARD_THRESHOLD:
+                self._dead_cells.add(self._player_cell)
+            self._on_restart()
             return
         if before == grid:
             self._tried_from.setdefault(self._player_cell, set()).add(action)
@@ -191,9 +267,35 @@ class Adapter(GameAdapter):
 
     # ── planning: what action to take next ──────────────────────────────
 
+    def _viable_actions(self, cell: Cell, move_ids: list[int]) -> list[int]:
+        """``move_ids`` not yet tried from ``cell`` AND not predicted to step into a dead cell.
+
+        A dead cell already excludes itself from path-PLANNING (see
+        :meth:`_passable_array`), but plain step-by-step exploration (the
+        "try the first untried direction from wherever I currently stand"
+        branch below) does not go through path planning at all -- without
+        this check it would happily walk straight onto a dead cell one
+        normal step at a time, since from the CURRENT cell's own
+        perspective that direction has never been "tried" there before.
+        Whenever the destination is predictable (the action already has a
+        measured unit direction in dir_map), that prediction is trusted
+        even for a never-tried-from-here action; a genuinely unmeasured
+        action is never filtered, since trying it is the only way to ever
+        learn its direction.
+        """
+        tried = self._tried_from.get(cell, set())
+        out = []
+        for a in move_ids:
+            if a in tried:
+                continue
+            unit = self._dir_map.get(a)
+            if unit is not None and (cell[0] + unit[0], cell[1] + unit[1]) in self._dead_cells:
+                continue
+            out.append(a)
+        return out
+
     def _next_action(self, move_ids: list[int]) -> int:
-        tried_here = self._tried_from.get(self._player_cell, set())
-        untried_here = [a for a in move_ids if a not in tried_here]
+        untried_here = self._viable_actions(self._player_cell, move_ids)
         if untried_here:
             return untried_here[0]
 
@@ -218,11 +320,11 @@ class Adapter(GameAdapter):
         return moves[0]
 
     def _nearest_frontier(self, move_ids: list[int]) -> Cell | None:
-        """The known-passable cell nearest the player with an untried direction."""
+        """The known-passable, non-dead cell nearest the player with an untried direction."""
         frontier = [
             cell
             for cell in self._known_passable
-            if any(a not in self._tried_from.get(cell, set()) for a in move_ids)
+            if cell not in self._dead_cells and self._viable_actions(cell, move_ids)
         ]
         if not frontier:
             return None
@@ -252,6 +354,16 @@ class Adapter(GameAdapter):
         return [self._to_absolute(c, origin) for c in path_local]
 
     def _passable_array(self) -> tuple[list[list[bool]], Cell]:
+        """Boolean grid over every known-passable cell EXCEPT dead ones.
+
+        A dead cell (see :data:`_DEAD_CELL_HAZARD_THRESHOLD`) is fatal
+        regardless of which action is pressed there, so it must never be
+        entered even as a waypoint toward some other frontier -- excluding
+        it from the True positions (while still counting it toward the
+        array's bounding box, so the surrounding safe cells stay reachable)
+        makes both grid_shortest_path and grid_distance_field route AROUND
+        it rather than through it.
+        """
         cells = self._known_passable
         rows = [r for r, _c in cells]
         cols = [c for _r, c in cells]
@@ -260,7 +372,8 @@ class Adapter(GameAdapter):
         height, width = r1 - r0 + 1, c1 - c0 + 1
         array = [[False] * width for _ in range(height)]
         for r, c in cells:
-            array[r - r0][c - c0] = True
+            if (r, c) not in self._dead_cells:
+                array[r - r0][c - c0] = True
         return array, (r0, c0)
 
     @staticmethod
