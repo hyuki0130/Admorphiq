@@ -47,7 +47,9 @@ class TurnRecord:
     legal_actions: list[str] = field(default_factory=list)
     prompt_text: str = ""
     image_hash: str = ""
+    image_hashes: list[str] = field(default_factory=list)  # ordered images sent
     raw_output: str = ""
+    finish_reason: str = ""  # stop | length | ... (length = truncated output)
     parsed_tool_calls: list[dict[str, Any]] = field(default_factory=list)
     sandbox_stdout: str = ""
     sandbox_error: str = ""

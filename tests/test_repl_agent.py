@@ -165,6 +165,62 @@ def test_prompt_describes_repl_and_binds_legal_actions():
     assert "MOUSE is NOT available" in p  # legal-action binding
 
 
+def test_client_captures_usage_and_finish_reason(monkeypatch):
+    """Purpose: the client parses vLLM usage (input/output/reasoning/cached) +
+    finish_reason into last_meta (truthfulness #1).
+
+    Feedback: failure means the transcript can't show token cost or detect
+    length truncation.
+    """
+    class _FakeResp:
+        status = 200
+
+        def read(self):
+            return json.dumps({
+                "choices": [{"message": {"content": "UP"}, "finish_reason": "length"}],
+                "usage": {"prompt_tokens": 1200, "completion_tokens": 1536,
+                          "completion_tokens_details": {"reasoning_tokens": 0},
+                          "prompt_tokens_details": {"cached_tokens": 800}},
+            }).encode()
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+    monkeypatch.setenv("REPL_LLM_BASE_URL", "http://x/v1")
+    monkeypatch.setattr(agent_mod.urllib.request, "urlopen",
+                        lambda req, timeout=None: _FakeResp())
+    client = OpenAICompatClient(model="qwen")
+    client.complete("hi")
+    assert client.last_meta["finish_reason"] == "length"
+    assert client.last_meta["tokens"] == {"input": 1200, "output": 1536,
+                                          "reasoning": 0, "cached": 800}
+
+
+def test_agent_records_finish_reason_and_counts_truncation():
+    """Purpose: the agent copies finish_reason + tokens into the transcript and
+    counts a length-truncation.
+
+    Feedback: failure means the su15 truncation finding can't become a tracked
+    metric.
+    """
+    class _StubLLM:
+        last_meta = {"finish_reason": "length", "tokens": {"input": 10, "output": 1536}}
+
+        def complete(self, prompt, images=None):
+            return "some reasoning that got cut off"  # no action -> parse fail
+
+    rec = TranscriptRecorder()
+    agent = ReplAgent(_StubLLM(), recorder=rec)
+    agent.choose_action([], _obs(_frame()))
+    assert agent.truncations == 1
+    turn = rec.records[-1]
+    assert turn.finish_reason == "length"
+    assert turn.tokens == {"input": 10, "output": 1536}
+
+
 def test_llm_error_is_survived_and_recorded():
     """Purpose: a raised LLM call (e.g. a timeout) does NOT end the game — it is
     recorded (latency + error) and the loop falls back to a legal action.

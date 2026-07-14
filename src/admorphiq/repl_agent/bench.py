@@ -28,6 +28,7 @@ class GameDiagnostics:
     llm_calls: int = 0
     llm_errors: int = 0
     parse_failures: int = 0
+    truncations: int = 0
     governor_rejections: int = 0
     sandbox_errors: int = 0
     terminal_reason: str = ""     # win | budget | wall | game_over | env_none | error | done
@@ -126,6 +127,7 @@ def run_game(
     diag.llm_calls = int(getattr(agent, "llm_calls", 0))
     diag.llm_errors = int(getattr(agent, "llm_errors", 0))
     diag.parse_failures = int(getattr(agent, "parse_failures", 0))
+    diag.truncations = int(getattr(agent, "truncations", 0))
     diag.governor_rejections = int(getattr(agent, "governor_rejections", 0))
     diag.sandbox_errors = int(getattr(agent, "sandbox_errors", 0))
     return diag

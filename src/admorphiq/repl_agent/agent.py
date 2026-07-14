@@ -34,7 +34,7 @@ import numpy as np
 from admorphiq.repl_agent.governor import ActionGovernor, ActionRequest, MacroStep
 from admorphiq.repl_agent.sandbox import ObservationStore, run_code
 from admorphiq.repl_agent.segmentation import SceneTracker
-from admorphiq.repl_agent.transcript import TranscriptRecorder, TurnRecord, image_hash
+from admorphiq.repl_agent.transcript import TranscriptRecorder, TurnRecord
 from admorphiq.repl_agent.turn_packet import (
     EnvironmentMemory,
     HistoryTiers,
@@ -131,6 +131,9 @@ class OpenAICompatClient:
         self.timeout = timeout
         self.max_tokens = max_tokens
         self.enable_thinking = enable_thinking
+        # Populated after each complete(): {"finish_reason", "tokens"} so the
+        # agent can record truthful response metadata (usage, truncation).
+        self.last_meta: dict[str, Any] = {}
 
     def complete(self, prompt: str, images: list[str] | None = None) -> str:
         content: Any = prompt
@@ -155,7 +158,20 @@ class OpenAICompatClient:
         )
         with urllib.request.urlopen(req, timeout=self.timeout) as r:
             data = json.loads(r.read())
-        return data["choices"][0]["message"]["content"]
+        choice = data["choices"][0]
+        usage = data.get("usage") or {}
+        details = usage.get("completion_tokens_details") or {}
+        prompt_details = usage.get("prompt_tokens_details") or {}
+        self.last_meta = {
+            "finish_reason": choice.get("finish_reason", ""),
+            "tokens": {
+                "input": usage.get("prompt_tokens", 0),
+                "output": usage.get("completion_tokens", 0),
+                "reasoning": details.get("reasoning_tokens", 0),
+                "cached": prompt_details.get("cached_tokens", 0),
+            },
+        }
+        return choice["message"]["content"]
 
 
 @dataclass
@@ -283,6 +299,7 @@ class ReplAgent:
         self.governor_rejections = 0
         self.sandbox_errors = 0
         self.llm_errors = 0
+        self.truncations = 0
         self._reset_game()
 
     def _reset_game(self) -> None:
@@ -393,6 +410,10 @@ class ReplAgent:
             return
         latency_ms = (time.time() - t0) * 1000.0
         self.llm_calls += 1
+        meta = getattr(self._llm, "last_meta", {}) or {}
+        finish_reason = str(meta.get("finish_reason", ""))
+        if finish_reason == "length":
+            self.truncations += 1
 
         parsed = parse_model_output(raw)
         if parsed.kind == "none":
@@ -419,7 +440,8 @@ class ReplAgent:
 
         chosen = self._queue[0] if self._queue else None
         self._record_turn(obs, prompt, raw, parsed, sandbox_out, sandbox_err,
-                          chosen, frame, latency_ms)
+                          chosen, frame, latency_ms,
+                          finish_reason=finish_reason, tokens=meta.get("tokens"))
 
     def _govern_single(self, a: dict[str, Any], legal: set[str],
                        hw: tuple[int, int], state_hash: str) -> dict[str, Any] | None:
@@ -478,18 +500,25 @@ class ReplAgent:
     def _record_turn(self, obs: Any, prompt: str, raw: str, parsed: ParsedOutput,
                      sandbox_out: str, sandbox_err: str,
                      chosen: dict[str, Any] | None, frame: np.ndarray,
-                     latency_ms: float) -> None:
+                     latency_ms: float, *, finish_reason: str = "",
+                     tokens: dict[str, int] | None = None,
+                     image_hashes: list[str] | None = None) -> None:
         if self._recorder is None:
             return
         rec = TurnRecord(
             turn=self._turn, game_id=self._game_id, level=self._last_levels,
             total_actions=self._governor.total_actions,
             legal_actions=sorted(_legal_names(obs)),
-            prompt_text=prompt, image_hash=image_hash(None), raw_output=raw,
-            parsed_tool_calls=normalize_parse(raw),
+            prompt_text=prompt, image_hashes=image_hashes or [], raw_output=raw,
+            finish_reason=finish_reason, parsed_tool_calls=normalize_parse(raw),
             sandbox_stdout=sandbox_out, sandbox_error=sandbox_err,
-            action=chosen, frame_after_hash=base_hash(frame),
+            action=chosen,
+            # The decision is made ON this frame -> it is the BEFORE hash. The
+            # post-action frame is only observed next turn; the bench event
+            # stream is authoritative for the transition's after-hash.
+            frame_before_hash=base_hash(frame),
             memory_after=self._memory.to_dict(), latency_ms=latency_ms,
+            tokens=tokens or {},
         )
         self._recorder.record(rec)
 
