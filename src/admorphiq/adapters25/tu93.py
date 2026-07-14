@@ -136,6 +136,41 @@ shortest-path-optimal via ``transition_shortest_path`` -- the
 inefficiency is entirely in the EXPLORATION phase before that
 connection exists) is the natural next lever if this game is revisited.
 
+**Predicted-slide (corridor-prediction) efficiency lever -- ATTEMPTED
+and BANKED, not wired in.** The natural efficiency idea -- since slides
+are deterministic given (position, action), predict a slide's landing
+cell by reading the settled frame (a ray-cast or corridor walk) instead
+of learning it by trial -- was tested offline against 630 real level-0
+transitions (collected live, held out to the moment level 1 started so
+the frame and transitions match the same maze layout) and PLATEAUS well
+below a usable accuracy across three variants:
+
+1. Straight pixel ray-cast (assume a fixed per-action cardinal
+   direction, walk in a straight line until a non-floor pixel): **14.9%
+   reproduction**.
+2. Tile-adjacency graph (built from the ACTUAL measured tile bboxes via
+   ``find_regions``, not assumed pixel spacing; walk the graph, STOP at
+   a dead end or a junction with >1 open continuation -- the literal
+   "roll through connected floor, stop at a branch" hypothesis): with
+   each action's entry direction empirically calibrated (all 4
+   candidates tried, best-scoring kept, rather than assumed N/S/E/W):
+   **21.1% reproduction**.
+3. Same graph, "prefer continuing straight through a junction if that
+   option is open" stopping rule: **19.7%**, no improvement.
+
+The residual gap looks STRUCTURAL, not a wrong stopping rule: the
+single least-ambiguous case in the whole dataset (the very first
+recorded move -- the start tile has exactly ONE graph neighbour, and
+the observed result IS that neighbour) is still scored WORSE by the
+empirical calibration than a direction that is provably wrong for it,
+meaning the tile-adjacency graph itself does not correctly capture true
+floor-connectivity beyond the immediate start cell -- either the
+touching-bbox adjacency criterion admits pairs that are not actually
+corridor-connected, or a connectivity signal this analysis hasn't
+identified is missing. Not diagnosed further this round. If revisited,
+start there (the connectivity-graph construction) rather than more
+stopping-rule variants -- the stopping rule was never the bottleneck.
+
 Composition from ``admorphiq.kernels``:
   - :func:`admorphiq.kernels.find_regions` segments the frame into the
     avatar, the goal marker, and (excluded) HUD.
