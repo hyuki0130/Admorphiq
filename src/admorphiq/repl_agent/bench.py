@@ -129,6 +129,8 @@ class GameDiagnostics:
     predictions_made: int = 0
     predictions_correct: int = 0
     governor_rejections: int = 0
+    nav_fires: int = 0            # re-ruled NAV trigger injections this run
+    plan_fires: int = 0           # re-ruled PLAN trigger injections this run
     sandbox_errors: int = 0
     sandbox_infra_errors: int = 0
     sandbox_code_errors: int = 0
@@ -277,6 +279,10 @@ def run_game(
     diag.predictions_made = int(getattr(agent, "predictions_made", 0))
     diag.predictions_correct = int(getattr(agent, "predictions_correct", 0))
     diag.governor_rejections = int(getattr(agent, "governor_rejections", 0))
+    _trig = getattr(agent, "_triggers", None)
+    if _trig is not None:
+        diag.nav_fires = int(_trig.stats.get("nav_fires", 0))
+        diag.plan_fires = int(_trig.stats.get("plan_fires", 0))
     diag.sandbox_errors = int(getattr(agent, "sandbox_errors", 0))
     diag.sandbox_infra_errors = int(getattr(agent, "sandbox_infra_errors", 0))
     diag.sandbox_code_errors = int(getattr(agent, "sandbox_code_errors", 0))

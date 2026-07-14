@@ -77,12 +77,15 @@ def evaluate(run_dir: str) -> dict:
     levels: dict = {g: {c: [] for c in CELLS} for g in games}
     clears: dict = {g: {c: 0 for c in CELLS} for g in games}
     reps_seen: dict = {g: {c: 0 for c in CELLS} for g in games}
+    fires: dict = {c: {"nav": 0, "plan": 0} for c in CELLS}
     for r in runs:
         g, c = r["game"], r["cell"]
         val = faithful_rhae(run_dir, r["tag"], g, baselines)
         rhae[g][c].append(val if val is not None else 0.0)
         acts[g][c].append(int(r["d"].get("actions", 0)))
         levels[g][c].append(int(r["d"].get("levels", 0)))
+        fires[c]["nav"] += int(r["d"].get("nav_fires", 0))
+        fires[c]["plan"] += int(r["d"].get("plan_fires", 0))
         reps_seen[g][c] += 1
         if int(r["d"].get("levels", 0)) >= 1:
             clears[g][c] += 1
@@ -138,6 +141,7 @@ def evaluate(run_dir: str) -> dict:
             "promotable": g1 and g2 and g3 and g4,
             "agg_rhae": round(agg_rhae, 4), "total_clears": total_clears,
             "total_levels": round(total_levels, 2),
+            "nav_fires": fires[cell]["nav"], "plan_fires": fires[cell]["plan"],
         }
 
     # gate 5: lexicographic selection among promotable cells.
@@ -173,6 +177,7 @@ def main() -> None:
                  f"g4={'Y' if v['gate4_throughput_ok'] else 'n'}")
         print(f"  {cell}: {'PROMOTABLE' if v['promotable'] else 'no'}  {flags}  "
               f"clears={v['total_clears']} RHAE={v['agg_rhae']} "
+              f"exposure(nav={v['nav_fires']},plan={v['plan_fires']}) "
               f"new_clear_games={v['new_clear_games']}")
     print(f"  WINNER: {res['winner'] or 'none (no cell passes — use base coverage map)'}")
 
