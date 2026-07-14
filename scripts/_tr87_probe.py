@@ -39,12 +39,25 @@ build rotation-invariant glyph signatures, then checks:
      this probe DID silently overwrite, and a separate Codex review found
      4 conflicting pairs in that version (see
      docs/r56_codex_tr87_review_20260715.md).
+  4. Whether a simple PITCH-MULTIPLE SPLITTER recovers the individual
+     glyphs a background-gap scan merges into one run (the level-1
+     falsification measured in docs/tr87_frame_only_grammar_design_20260715.md
+     §7 -- multi-token rule sides render with NO gap between sibling
+     glyphs, so `occupied_runs` correctly sees one wide run, not several).
+     The splitter is throwaway (not promoted to a kernel yet): detect the
+     single-glyph pitch as the smallest run width anywhere on the board,
+     then divide every run's width by that pitch to recover its token
+     count. Tested against BOTH data/traces/tr87_l1_reset.npz and
+     data/traces/tr87_l2_reset.npz (captured via scripts/_tr87_capture_l1.py
+     / _l2.py), cross-validated against each level's own oracle rule-table
+     token counts (verification-only reads at capture time, hardcoded below
+     with provenance -- this section itself makes no live env calls).
 """
 from __future__ import annotations
 
 import numpy as np
 
-from admorphiq.kernels import crop_to_content, dihedral_transforms
+from admorphiq.kernels import crop_to_content, dihedral_transforms, occupied_runs
 
 BAR1_R0, BAR1_R1, BAR1_FILL = 41, 45, 10
 BAR2_R0, BAR2_R1, BAR2_FILL = 52, 56, 7
@@ -113,6 +126,45 @@ def bracket_x(frame):
 def nearest_col(x):
     centers = [(c0 + c1) / 2 for c0, c1 in BAR2_WINDOWS]
     return min(range(len(centers)), key=lambda i: abs(centers[i] - x))
+
+
+def detect_pitch(runs):
+    """Single-glyph pitch: the smallest run width present on the board.
+
+    Assumes at least one run is a genuine single (unmerged) glyph -- true
+    on every board measured so far (L0/L1/L2 each have at least one 1-token
+    rule side)."""
+    return min(r["end"] - r["start"] for r in runs)
+
+
+def recovered_token_counts(runs, pitch):
+    """For each run, how many pitch-wide glyph slots it represents (width // pitch).
+
+    This IS the throwaway recovery heuristic: no gap/marker detection, just
+    "assume every run's width is an exact multiple of the observed
+    single-glyph pitch, and that multiple is the token count." Returns
+    (counts, exact) where exact is False if any run's width was NOT a clean
+    multiple of pitch (the heuristic's precondition failing -- would mean
+    the recovered counts below are not trustworthy)."""
+    counts = []
+    exact = True
+    for r in runs:
+        width = r["end"] - r["start"]
+        if pitch <= 0 or width % pitch != 0:
+            exact = False
+        counts.append(width // pitch if pitch > 0 else width)
+    return counts, exact
+
+
+# Oracle ground truth (verification-only reads via the running game object
+# at capture time, scripts/_tr87_capture_l1.py / _tr87_capture_l2.py --
+# see docs/tr87_frame_only_grammar_design_20260715.md §7 for the full rule
+# tables). Used ONLY to cross-validate the splitter below; this probe makes
+# no live env calls of its own. Each level's 6 rules' (LHS, RHS) token
+# counts, flattened in rule order (rule0.LHS, rule0.RHS, rule1.LHS, ...) --
+# matches the upper-grid's "2 rules per row-band x 3 bands" render order.
+L1_ORACLE_TOKEN_COUNTS = [1, 1, 1, 3, 1, 2, 1, 2, 1, 3, 1, 1]
+L2_ORACLE_TOKEN_COUNTS = [1, 1, 2, 2, 1, 2, 2, 1, 3, 1, 1, 1]
 
 
 def main() -> None:
@@ -226,6 +278,36 @@ def main() -> None:
     state_sets = [frozenset(s for (c, s, _a) in edges if c == col) for col in range(5)]
     print(f"\nall 5 columns share the exact same canonical state SET (not just the same count)? "
           f"{len(set(state_sets)) == 1}")
+
+    # ---- section 4: does the pitch-multiple splitter recover the tokens the
+    # falsified segmentation merged, on BOTH level 1 and level 2? ----
+    print("\n" + "=" * 70)
+    print("SECTION 4: pitch-multiple splitter, cross-validated against oracle rule tables")
+    print("=" * 70)
+    for label, npz_path, oracle in [
+        ("L1", "data/traces/tr87_l1_reset.npz", L1_ORACLE_TOKEN_COUNTS),
+        ("L2", "data/traces/tr87_l2_reset.npz", L2_ORACLE_TOKEN_COUNTS),
+    ]:
+        frame = np.load(npz_path)["frame"]
+        all_runs = []
+        band_run_counts = []
+        for r0, r1 in UPPER_BANDS:
+            out = occupied_runs(frame, axis="col", bbox=(r0, 0, r1, frame.shape[1] - 1), background=BOARD_BG)
+            all_runs.extend(out["runs"])
+            band_run_counts.append(len(out["runs"]))
+        widths = [r["end"] - r["start"] for r in all_runs]
+        pitch = detect_pitch(all_runs)
+        counts, exact = recovered_token_counts(all_runs, pitch)
+        match = counts == oracle
+        print(f"\n{label} ({npz_path}):")
+        print(f"  runs per band: {band_run_counts} (expect [4, 4, 4] -- 2 rules x (LHS,RHS) per band)")
+        print(f"  measured widths: {widths}")
+        print(f"  detected pitch: {pitch}px")
+        print(f"  arithmetic exact (every width is a clean multiple of pitch)? {exact}")
+        print(f"  recovered token counts: {counts}")
+        print(f"  oracle token counts:    {oracle}")
+        print(f"  {'*** SPLITTER SURVIVES ***' if match else '*** SPLITTER FALSIFIED ***'} "
+              f"({label}: recovered == oracle -> {match})")
 
 
 if __name__ == "__main__":

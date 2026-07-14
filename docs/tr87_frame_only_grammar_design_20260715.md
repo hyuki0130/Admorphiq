@@ -1,20 +1,22 @@
 # TR87 frame-only rewrite-grammar adapter: scoping + prototype (2026-07-15)
 
-**Status: design + prototype done; the adapter build is GATED — do not
-start it.** This scopes whether the R56 kernels (`derive_rewrites`/
-`find_derivation`/`greedy_parse`, `shapes`, `regions`, `parse`) can crack
-the tr87 wall (0/6 for the LLM-free card) once combined with a
-game-specific adapter. **Verdict (updated, §7): the level-0-only
-segmentation approach is FALSIFIED on level 1** — the rotation-confound and
-7-state-dial-cycle measurements (§2) hold, but the gap-based glyph
-segmentation this document's pipeline (§3) depends on cannot distinguish
-"one wide glyph" from "several adjacent glyphs of the same rule side
-rendered with no gap between them," and level 1 has exactly that structure
-(multi-token RHS runs). Per Codex's review
-(`docs/r56_codex_tr87_review_20260715.md`), the multi-day adapter build
-does not proceed past this point until segmentation is fixed and
-re-verified against a representative (multi-token) level. See §7 for the
-full measurement and a validated (not yet built) recovery approach.
+**Status: design + prototype done; adapter build GATE REOPENED (§8) —
+scoping may resume, but is not itself done yet.** This scopes whether the
+R56 kernels (`derive_rewrites`/`find_derivation`/`greedy_parse`, `shapes`,
+`regions`, `parse`) can crack the tr87 wall (0/6 for the LLM-free card) once
+combined with a game-specific adapter. **Verdict history**: §7 measured the
+level-0-only segmentation approach as FALSIFIED on level 1 (raw
+`occupied_runs` merges multi-token rule sides into one run) — the
+rotation-confound and 7-state-dial-cycle measurements (§2) were never in
+question. **§8 (this update) tested a pitch-multiple recovery splitter
+against level 1 AND level 2 (the harder case — multi-token on BOTH LHS and
+RHS) and it recovered all 24 oracle-cross-validated token counts exactly,
+zero misses.** Per Codex's original review
+(`docs/r56_codex_tr87_review_20260715.md`), a splitter surviving 2+
+representative levels reopens the gate — see §8 for the full measurement,
+and "Recommendation" for what's still needed before an adapter build
+starts (the splitter is a throwaway probe function, not yet a promoted
+kernel or an adapter).
 
 > **Claims audit (2026-07-15, Codex interim review)**: two claims in the
 > first version of this doc were overclaims; both are corrected below and
@@ -502,18 +504,18 @@ background vs. non-background, with no notion of "glyph" or fixed pitch.
   (`get_data("alter_rules"/"tree_translation"/"double_translation")` all
   `None`) — consistent with this document's table.
 
-**A validated (not yet built) recovery path, found while investigating the
-falsification**: every one of the 6 merged/split cases in this level had a
-width that was an EXACT integer multiple of the globally-observed
-single-glyph pitch (7px, itself always independently available since some
-window on the board is always single-glyph). A recovery heuristic —
-"detect the single-glyph pitch from any clean run on the board, then split
-any run whose width is a multiple >1 of that pitch into that many equal
-sub-cells" — would have correctly recovered all 6 multi-token cases
-measured here. This is promising but based on ONE level's data; it has NOT
-been implemented or tested against level 2 (multi-token LHS AND RHS per
-Codex's source read) or any level with `alter_rules`/`tree_translation`/
-`double_translation` active.
+**A recovery path, found while investigating the falsification — since
+built and tested against a second level, see §8**: every one of the 6
+merged/split cases in this level had a width that was an EXACT integer
+multiple of the globally-observed single-glyph pitch (7px, itself always
+independently available since some window on the board is always
+single-glyph). A recovery heuristic — "detect the single-glyph pitch from
+any clean run on the board, then split any run whose width is a multiple
+>1 of that pitch into that many equal sub-cells" — would have correctly
+recovered all 6 multi-token cases measured here. At the time this
+paragraph was first written, this was promising but based on ONE level's
+data, untested against level 2 (multi-token LHS AND RHS) or any flagged
+level; §8 closes the first half of that gap.
 
 **Duplicate/conflicting-edge concern, already resolved (prior round, not
 re-investigated here)**: Codex's review separately flagged that the FIRST
@@ -528,33 +530,120 @@ so it's clear this specific Codex finding was about the OLD exact-byte
 graph, already superseded.
 
 Reproducible via `scripts/_tr87_capture_l1.py` (produces `data/traces/
-tr87_l1_reset.npz`) then manual `occupied_runs` measurement against it (not
-yet folded into `scripts/_tr87_probe.py` as a permanent check — the capture
-script's oracle-assistance makes it unsuitable to run unattended the way
-the frame-only probe is; a future round should decide whether to commit the
-captured `.npz` and add a frame-only-only verification step against it).
+tr87_l1_reset.npz`).
+
+## 8. Level 2 capture + the pitch-multiple splitter (2026-07-15, gate-reopening test)
+
+**Level 2 captured — the hardest segmentation case.** `scripts/_tr87_capture_l2.py`
+extends level 1's capture: it clears level 0 then level 1 (chained, same
+oracle-assisted approach, generalized to a variable-length bar2 — see its
+own docstring), landing on level 2 in 46 total actions. Level 2's own oracle
+rule table (verification-only) has 6 rules with **multi-token LHS AND RHS**
+— `[1→1, 2→2, 1→2, 2→1, 3→1, 1→1]` (LHS→RHS token counts) — confirming
+Codex's source-read prediction exactly (level 1 only had multi-token RHS).
+`get_data(...)` confirms level 2 also has no flags set, matching this
+document's table.
+
+**Two bugs found and fixed while building the level-2 capture, both worth
+recording** (the second is a genuine, non-obvious repo-relevant finding, not
+just a script typo):
+
+1. A trivial stale-variable bug: the first draft of `clear_current_level()`
+   returned only the action count, not the final `obs` — so `main()` kept
+   using its OWN original RESET `obs` when saving the "level 2" frame,
+   silently saving level 0's reset frame under the wrong filename. Caught
+   because the saved frame was BYTE-IDENTICAL to `data/traces/tr87.npz`'s
+   own frame 0 — a good general lesson: sanity-check a new capture against
+   byte-equality with a KNOWN-DIFFERENT prior capture, not just against
+   measured widths, which can coincidentally look plausible (this one did,
+   until compared byte-for-byte).
+2. A GENUINE second-order transient: even after fixing (1) and correctly
+   reading `obs.frame[-1]`, the level-1→level-2 transition showed as many
+   as 30 stacked layers (vs. no multi-layer transient at all when the stale
+   bug made everything look deceptively "settled" at n_layers=1) — this
+   reconfirms §7's transient-frame finding (same class as
+   `.wiki/wiki/lessons/size_floor_and_settle_reads.md`'s "Trap 2") rather
+   than contradicting it; the earlier apparent "n_layers=1, no transient
+   needed" reading for level 2 was itself an artifact of bug (1), not a
+   real measurement.
+
+**Pitch-multiple splitter: SURVIVES both level 1 and level 2, exact
+cross-validation, zero misses.** Implemented in `scripts/_tr87_probe.py`
+(new "section 4", throwaway — not promoted to a kernel yet, per the
+assignment): `detect_pitch()` takes the smallest run width anywhere on the
+upper rule-table grid as the single-glyph pitch (always 7px, independently
+re-derived from the board each time, never hardcoded); `recovered_token_counts()`
+divides every run's width by that pitch. Tested against both captured
+levels' upper-grid `occupied_runs` output, cross-validated against each
+level's oracle rule-table token-count sequence (hardcoded as
+`L1_ORACLE_TOKEN_COUNTS`/`L2_ORACLE_TOKEN_COUNTS` constants with capture-time
+provenance — the splitter itself and its cross-validation both run
+frame-only, no live env calls):
+
+| Level | Measured upper-grid widths | Recovered counts | Oracle counts | Match |
+|---|---|---|---|---|
+| L1 | `[7,7,7,21, 7,14,7,14, 7,21,7,7]` | `[1,1,1,3, 1,2,1,2, 1,3,1,1]` | same | **exact, 12/12** |
+| L2 | `[7,7,14,14, 7,14,14,7, 21,7,7,7]` | `[1,1,2,2, 1,2,2,1, 3,1,1,1]` | same | **exact, 12/12** |
+
+24 of 24 token counts recovered exactly across both levels — including
+level 2's multi-token LHS runs (widths 14 and 21 on the LHS side, not just
+RHS), which the splitter recovers identically to RHS runs since it has no
+notion of "which side" a run is on. The width arithmetic is EXACT in every
+case (no run's width was ever off-by-one from a clean pitch multiple) —
+confirms the "no extra pixel gap between sibling glyphs of the same rule
+side" structural claim from §7 generalizes to level 2's harder case too.
+
+**Bar2 fragmentation (§7's separate, opposite failure mode) does NOT
+worsen on level 2 — it's absent.** Measured: level 1's bar2 fragmented
+into 11 messy runs (`[3,1,1,3, 5,5,5,5, 1,1,1]` instead of 7 clean ones);
+level 2's bar2 (also 7 glyphs) segmented into exactly 7 clean 5px runs,
+zero fragmentation. This confirms the fragmentation is a property of WHICH
+SPECIFIC DIGIT SHAPES happen to be on display (some digits have an
+ink-free column within their own cell, most don't) rather than a
+structural property tied to multi-token levels — good news, but also means
+it can recur unpredictably on any level/column and isn't "fixed" by
+anything measured so far.
+
+**What this does and doesn't prove**: the splitter is now validated on 2 of
+6 levels (both `alter_rules`/`tree_translation`/`double_translation`-free),
+with EXACT results on 24/24 tokens across genuinely different rule-token
+shapes (1↔1, 1↔2, 1↔3, 2↔1, 2↔2, 3↔1 all appear across the two levels'
+12 rules). It has NOT been tested against any FLAGGED level (3 remain
+fully uncaptured), and it has not yet been promoted to a kernel, wired into
+an adapter, or used to drive an actual action plan — see "Recommendation."
 
 ## Recommendation
 
-**Gated, per Codex's verdict — do not build the multi-day adapter yet.**
-§7's falsification means the segmentation this document's §3 pipeline
-depends on is validated for exactly one level (0) and disproven for a
-representative second level (1). Before any adapter work: (a) decide
-whether to build and test the pitch-based recovery heuristic from §7
-against level 1 (cheap, a few hours) and ideally level 2 (multi-token BOTH
-sides, unmeasured) before trusting it generalizes; (b) capture level 2
-frames the same disposable-oracle way, since Codex's source read says it
-has multi-token LHS as well as RHS (untested here — this session only
-reached level 1); (c) only once segmentation survives 2+ representative
-levels does the rest of §3's pipeline (rule-pair grouping via gap width,
-`greedy_parse`, the dial executor) become worth building end-to-end. The
-kernel primitives are ready (`occupied_runs`, `color_mode`, `cluster_widths`
-in `kernels/parse.py`; `greedy_parse` now in `kernels/rewrite.py` alongside
-`derive_rewrites`/`find_derivation`, per Codex's primitive rulings) —
-what's gated is composing them into a TR87 adapter before segmentation
-itself is trustworthy. Per Codex's sequencing note, any eventual adapter
-belongs only in the quarantined `script25` package, not `admorphiq`'s main
-tree, and cannot promote R56 on its own (needs `agent25` non-inferiority +
-no hidden-transfer regression). Levels 3-6 (the flagged levels — see the
-corrected table in "Sources read") remain fully unmeasured beyond the flag
-table itself.
+**Gate reopened for scoping, per Codex's own stated criterion ("a splitter
+surviving 2+ representative levels reopens the gate") — but the adapter
+build itself is still not started, and several concrete steps remain
+before it should be.** In order of cheapest-first:
+
+1. **Take the splitter back to Codex** for a primitive-promotion ruling
+   (§8's own measurement is self-reported, not adversarially reviewed) —
+   the same review discipline that caught the original segmentation
+   overclaim should evaluate the recovery heuristic before it's trusted for
+   an adapter.
+2. **If approved, promote `detect_pitch`/`recovered_token_counts` from
+   `scripts/_tr87_probe.py` into a kernel** (likely `kernels/parse.py`
+   alongside `occupied_runs`) — with real tests, not just this probe's
+   print statements.
+3. **Rule-pair grouping still needs its own validation** — §2's gap-width
+   (3px vs 6px) LHS|RHS-split finding was only measured on level 0's
+   uniform case; confirm it still holds now that individual runs may
+   themselves need splitting first (does the 3px/6px gap classification
+   still work BETWEEN split sub-cells and RAW un-split runs consistently?
+   not yet checked).
+4. **`greedy_parse` + the dial executor remain unbuilt** — now unblocked in
+   principle (tokens are recoverable), but still real work: rule extraction
+   from the (now-splittable) upper grid, target derivation via
+   `kernels.rewrite.greedy_parse`, and mapping each bar2 position's current
+   token to its target via the 7-state cycle.
+5. **Levels 3-6 (the flagged levels) remain fully unmeasured** — `alter_rules`
+   in particular needs its own adapter mode (edit-the-rule-table, not
+   edit-bar2) that nothing here has scoped, let alone measured.
+
+Per Codex's sequencing note (unchanged by this update): any eventual
+adapter belongs only in the quarantined `script25` package, not
+`admorphiq`'s main tree, and cannot promote R56 on its own (needs `agent25`
+non-inferiority + no hidden-transfer regression).

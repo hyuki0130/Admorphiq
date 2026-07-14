@@ -60,4 +60,7 @@ the real cause and narrow this page rather than deleting it.
 
 - [[../games/CD82]] — size-floor 40→8 + settle-aware read unlocked 6/6
 - [[../games/SB26]] — canonical-layer (settled) read unlocked L2
+- [[../games/TR87]] — Trap 2 reproduces at level transitions too (measured
+  2026-07-15, 37 layers at the level0→level1 transition; `frame[0]` stale,
+  `frame[-1]` settled)
 - [[../rounds/r53_unified-harness]] — "cd82 paint-solver round", "SB26 L2 CLEARED"
