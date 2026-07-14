@@ -344,13 +344,20 @@ truncated rings) — no fixed pixel offsets.
 levels, 47.62% RHAE, every cleared level at the 1.0 per-level cap**
 (agent action count at or below the human baseline on all 4). This is a
 real live clear, not just an offline gold-trace match. Two levels remain
-open: one (0-indexed 4) has a THIRD glyph type ("commit" glyphs, ink value
-6, edge-normalizing semantics) whose exact win invariant is unresolved —
-a self-contained mystery brief (`scripts/_r58_ft09_l4_mystery_brief.md`)
-is with Codex as of this writing, parallel structure to the L3 formula
-brief below. The other (0-indexed 5) is fully decoded offline but has
-never been reached live because the unsolved level sits in front of it
-sequentially.
+open: one (0-indexed 4) is now **SOLVED** (`docs/r58_codex_ft09_l4_solution_20260715.md`,
+committed `df12717`) — the apparent "third glyph type" was actually two
+things: 3 ordinary stateful cross-toggle BUTTONS (click toggles self
+14<->15 + every existing ink-6 neighbour, a distinct mechanism alongside
+the constraint rule, not a new ink value the rule interprets) constrained
+by 2 real target glyphs discovery had silently DROPPED (3 members each,
+below the 4-member floor tuned for level 6's truncated rings). The core
+constraint rule is fully intact; not yet integrated into the adapter or
+re-smoked — see the lesson page's resolution section for the complete
+writeup, including the finding that this level's apparent decoy->reveal
+was ALSO not real (an engine level-installation lifecycle artifact, not a
+hidden second board). The other level (0-indexed 5) is fully decoded
+offline but has never been reached live because the (until-now) unsolved
+level sits in front of it sequentially.
 
 **A genuine falsification-replay near-miss, root-caused and fixed**: a
 Codex-derived 3-colour-cycle formula (`docs/r58_codex_ft09_l3_formula_20260715.md`)
@@ -381,9 +388,13 @@ regression pin for the trigger-loop bug) and the two open items.
 
 ## Open items
 
-- **FT09 live-env smoke run.** The glyph decode above is gold-trace
-  verified but has not been run against the live API the way the m0r0 PoC
-  adapter below was — that is the next falsification step for this game.
+- **FT09 live-env smoke run — DONE, corrected from an earlier stale note
+  on this page.** The glyph decode has been run against the live API
+  (script25, 2x500-action smoke): 4/6 levels, 47.62% RHAE, reproducible.
+  Remaining FT09 work is now the level-5 solved-but-not-integrated
+  mechanism and the level-6 re-smoke once level 5 lands — see "Measured
+  so far (continued) — ft09" above and
+  [[../lessons/ft09_glyph_decode_20260715]]'s own open items.
 - **Adapter iteration — resolved, corrected from an earlier stale note on
   this page.** m0r0's hazard-memory fix (dead-cell memory keyed
   per-`(cell, action)`, `known_passable` persisted across restarts instead

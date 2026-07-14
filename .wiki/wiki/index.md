@@ -93,7 +93,7 @@ category, drill into specific pages.
 ## Lessons (engineering wisdom from past incidents) (29)
 
 - [[lessons/top_solutions_survey_20260708.md]] — Survey of what is actually open-sourced for ARC-AGI-3 (M1 winners = local-LLM agents), resolution of the leaderboard score-scale confusion (top ~1.56 = 1.56%, not 156%; the 12.58% anchor was the 2025 preview), and the top-3 generic levers to adopt next.
-- [[lessons/online_rl_sprint_round_log.md]] — **🔎 To FIND past work by topic, start at the retrieval map [[rounds_index]]**
+- [[lessons/online_rl_sprint_round_log.md]] — **🔎 To FIND past work by topic, start at the retrieval map [[../rounds/index]]**
 - [[lessons/api_hash_rotation_20260421.md]] — Between 2026-04-20 and 2026-04-21 the API replaced every served env hash; all brittle-internals solvers silently died
 - [[lessons/brittle_tells.md]] — Code smells that indicate a strategy will fail on a new version hash. Use this checklist when reviewing any new `strat_*` function in `src/admorphiq/agent_ensemble.py`.
 - [[lessons/cd82_paint_palette_signature_20260423.md]] — Pre-HUD-masking, CD82's discovery phase reported 71 of 71
@@ -144,30 +144,30 @@ category, drill into specific pages.
 
 ## Top-level dispatch (architecture, selector, log, schema) (46)
 
-- [[rounds/r05_planning-override.md]] — round-log
-- [[rounds/r06_depth-boost.md]] — round-log
-- [[rounds/r07_deploy-online-rl.md]] — round-log
-- [[rounds/r08_budget-depth.md]] — round-log
-- [[rounds/r09_additive-planning.md]] — round-log
-- [[rounds/r10_object-state-hash.md]] — round-log
-- [[rounds/r11_breadth-measure.md]] — round-log
-- [[rounds/r12_clear-rate-stable.md]] — round-log
-- [[rounds/r13_efficiency-insight.md]] — round-log
-- [[rounds/r14_noop-suppress.md]] — round-log
-- [[rounds/r15_dead-action-prune.md]] — round-log
-- [[rounds/r16_object-click-prior.md]] — round-log
-- [[rounds/r17_full25-baseline.md]] — round-log
-- [[rounds/r18_object-prior-full25.md]] — round-log
-- [[rounds/r19_reward-shaping.md]] — round-log
-- [[rounds/r20_shape-coef-sweep.md]] — round-log
-- [[rounds/r21_progress-phi-off.md]] — round-log
-- [[rounds/r22_progress-phi-on.md]] — round-log
-- [[rounds/r23_train-convergence.md]] — round-log
-- [[rounds/r24_bigger-cnn.md]] — round-log
-- [[rounds/r25_object-prior-sweep.md]] — round-log
-- [[rounds/r27b_planning-gate.md]] — round-log
-- [[rounds/r28_keep-across-levels.md]] — round-log
-- [[rounds/r29_warmstart-off.md]] — round-log
+- [[rounds/r05_planning-override.md]] — Goal-directed planning that overrode novelty exploration regressed 4 stable games (AR25/FT09/LP85/M0R0) — first proof that overriding novelty breaks the learner.
+- [[rounds/r06_depth-boost.md]] — Depth-boost / keep-learning-after-levelup regressed LP85's depth — perturbing exploration regresses.
+- [[rounds/r07_deploy-online-rl.md]] — Decided to deploy online-RL solo (not world-model, not ensemble) — world-model is sample-specific and ensemble is metric-negative under squared efficiency.
+- [[rounds/r08_budget-depth.md]] — Raising per-game budget (MAX_ACTIONS 8000) raised depth without regression (LP85 2.33->3.67) — the first non-exploration lever that helped.
+- [[rounds/r09_additive-planning.md]] — Additive goal-directed planning (gated) gave no gain, but diagnosed DC22/TU93 as state explosion from moving objects.
+- [[rounds/r10_object-state-hash.md]] — Object-centric state hashing for the novelty key gave no gain — ARC frames rarely repeat exactly, so it changed nothing.
+- [[rounds/r11_breadth-measure.md]] — Full-25 breadth measurement: the general learner clears 14/25 games on a single seed, much broader than the 6-probe set implied.
+- [[rounds/r12_clear-rate-stable.md]] — 3-seed clear-rate check: 12/14 winners clear on both seeds (stable, not luck); 9 stall at exactly L1, the depth weakness.
+- [[rounds/r13_efficiency-insight.md]] — Inspecting real RHAE game_score showed clears run 4-60x over human action count into near-zero scores — efficiency dominates and depth is the ceiling (L1-only caps ~0.05/game).
+- [[rounds/r14_noop-suppress.md]] — No-op suppression keyed on (exact frame_hash, action) was byte-identical to baseline — exact frames never repeat, so the gate never fired.
+- [[rounds/r15_dead-action-prune.md]] — Frame-invariant dead-action-type + dead-region pruning regressed the score by half, losing S5I5 by removing actions novelty was using.
+- [[rounds/r16_object-click-prior.md]] — Object-centric ACTION6 click prior net-regressed the 9-subset but got CD82/M0R0 to L2 — a depth hint that later fed R19.
+- [[rounds/r17_full25-baseline.md]] — Deployed-card full-25 mean game_score = 0.0051 (14/25 clear, mostly L1) — the honest proxy-leaderboard baseline to beat.
+- [[rounds/r18_object-prior-full25.md]] — Re-testing the object-prior on full-25 gave 0.0047 vs 0.0051 baseline, within single-seed noise — single-seed full-25 runs are unreliable, need >=3 seeds.
+- [[rounds/r19_reward-shaping.md]] — Potential-based reward shaping (Phi=novelty, COEF=0.1) was the first depth lever: M0R0/CD82 reach L2, FT09 4x efficiency, mean 0.0129->0.0134 — the reward-signal axis works where action-selection didn't.
+- [[rounds/r20_shape-coef-sweep.md]] — SHAPE_COEF sweep found 0.1 (0.0134) beats 0.0 baseline (0.0129) and 0.05 (0.0124) — 0.1 is the sweet spot; S5I5's loss is coefficient-independent.
+- [[rounds/r21_progress-phi-off.md]] — A composite Phi=novelty+progress was added but PHI_PROGRESS_W defaulted to 0 and the runner never enabled it, so the result was byte-identical to R19 — new reward terms must be enabled via env in the runner.
+- [[rounds/r22_progress-phi-on.md]] — Re-running with RL_PHI_PROGRESS_W=0.5 actually tested the progress potential: 0.0133 ~= the R19 card's 0.0134, within noise — progress-Phi adds nothing and the code was reverted.
+- [[rounds/r23_train-convergence.md]] — TRAIN_EVERY sweep closed: =4 gives 0.0114, =6 gives 0.0112, both below the =8 card's 0.0134 — more frequent training overtrains this small online learner, so the default stays 8.
+- [[rounds/r24_bigger-cnn.md]] — Widening the online policy CNN's channels 1.5x to try to break the ~0.013 depth ceiling failed decisively (0.0019 vs the card's 0.0134, a clean 27-run 3-seed measure) — slower online convergence, not more capacity, was the problem.
+- [[rounds/r25_object-prior-sweep.md]] — Sweeping the re-added object-centric ACTION6 click prior (P_OBJECT=0.7 and 0.3) closed with both settings below the card (0.0051 and 0.0060 vs 0.0134) — the depth hint from R16 didn't survive a full sweep.
+- [[rounds/r27b_planning-gate.md]] — A loosened world-model planning confidence gate plus a plan-usage counter still measured planned=0 across every game (fallback=2117) — planning never fires even past 2000 actions, the same wall as R10.
+- [[rounds/r28_keep-across-levels.md]] — Keeping the policy/optimizer/buffer across a level-up (refreshing only novelty counts) scored 0.0121, below the card's 0.0134 — confirms R6: a new level is a different state space, so retaining the old policy hinders more than it helps.
+- [[rounds/r29_warmstart-off.md]] — Measuring RL_NO_WARMSTART=1 (training from scratch, no public-gold BC prior) scored 0.0014 vs the warm-started card's 0.0134 — roughly 90% of the deployed card's score is public-gold BC inflation, not the online-RL lever itself.
 - [[rounds/r32_neural-forward-model.md]] — Neural forward model — planning fires on unseen frames (beats the state-uniqueness wall) but 92% takeover crushes novelty; 0.0017 ≈ baseline
 - [[rounds/r33_goal-directed-planning.md]] — Goal-directed planning over the forward model — heuristic and LLM goals both 0.0013 ≈ baseline; the wall is forward-model accuracy
 - [[rounds/r34_metric-reexamination.md]] — Metric reckoning — measured random = 0.0000 on our harness (we beat random); the 0.18/0.25/1.21 anchors were bogus; real top = 12.58%
