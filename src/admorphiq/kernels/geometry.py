@@ -1,6 +1,6 @@
-"""Pure closed-frame, elongated-axis, and covering-offset kernels ("shape
-geometry", R56 — remaining geometry extractions from the Codex decomposition
-table).
+"""Pure closed-frame, fused-ring-splitting, elongated-axis, and
+covering-offset kernels ("shape geometry", R56 — remaining geometry
+extractions from the Codex decomposition table).
 
 Generic geometry the LLM (or a quarantined public-game adapter script)
 composes by supplying frames, regions, and points — no role semantics.
@@ -9,12 +9,15 @@ game-specific labels before landing here): :mod:`admorphiq.delivery`
 (closed-frame / ring detection), :mod:`admorphiq.slider` (elongated-region
 detection, axis/endpoints, point-to-axis projection), :mod:`admorphiq.
 transform_route` (axis snapping, `covering_offsets`-style set cover),
-:mod:`admorphiq.sort_match` (hollow-box + connector extraction), and
+:mod:`admorphiq.sort_match` (hollow-box + connector extraction, and
+``_split_box_pipe``'s box-vs-thin-appendage row-span technique —
+generalised here to :func:`split_fused_frame`, described as a "rectangular
+ring with protruding appendages," no portal/pipe semantics), and
 :mod:`admorphiq.merge_drag` (`point_toward`-style stepping). None of THOSE
 modules' role assignments travel with the math — no "small ring is an item",
-no "foreign cell is a tip", no "ring dot is the required colour". This module
-only measures shapes and plans translations; the caller supplies every
-semantic label.
+no "foreign cell is a tip", no "ring dot is the required colour", no
+"portal"/"pipe". This module only measures shapes and plans translations;
+the caller supplies every semantic label.
 
 Frames are 2D grids of ints (colour indices), normalized internally to a
 tuple of tuples. Regions are plain dicts in the shape produced by
@@ -147,6 +150,168 @@ def closed_frames(frame: Sequence[Sequence[int]], background: int | None = None)
             )
     out.sort(key=lambda d: (d["outer_bbox"][0], d["outer_bbox"][1], d["border_color"]))  # type: ignore[index]
     return out
+
+
+def _span_mode(extents: dict[int, tuple[int, int]]) -> int | None:
+    """The most common (hi - lo + 1) span among a {line_index: (min_cross, max_cross)} map."""
+    if not extents:
+        return None
+    spans = Counter(hi - lo + 1 for lo, hi in extents.values())
+    return spans.most_common(1)[0][0]
+
+
+def _group_appendages(leftover: frozenset[Cell], border_cells: frozenset[Cell]) -> list[dict[str, object]]:
+    visited: set[Cell] = set()
+    groups: list[dict[str, object]] = []
+    for start in sorted(leftover):
+        if start in visited:
+            continue
+        stack = [start]
+        visited.add(start)
+        comp: set[Cell] = set()
+        while stack:
+            cell = stack.pop()
+            comp.add(cell)
+            r, c = cell
+            for dr, dc in _CARDINAL:
+                nxt = (r + dr, c + dc)
+                if nxt in leftover and nxt not in visited:
+                    visited.add(nxt)
+                    stack.append(nxt)
+        attach_candidates = sorted(
+            (r + dr, c + dc)
+            for r, c in comp
+            for dr, dc in _CARDINAL
+            if (r + dr, c + dc) in border_cells
+        )
+        groups.append({"cells": frozenset(comp), "attach_point": attach_candidates[0]})
+    groups.sort(key=lambda g: min(g["cells"]))  # type: ignore[arg-type]
+    return groups
+
+
+def split_fused_frame(
+    region_or_cells: Region | Iterable[Sequence[int]],
+    frame: Sequence[Sequence[int]] | None = None,
+    background: int | None = None,
+) -> dict[str, object] | None:
+    """De-fuse a rectangular hollow ring from same-colour appendages protruding off its edge.
+
+    A ring (as :func:`closed_frames` detects) can end up fused into a SINGLE
+    connected component with a thin same-colour appendage touching its
+    border — e.g. a hollow box with a 1-2px "pipe" bar extending out of one
+    side, both the same colour, so a caller's own connected-component scan
+    treats them as one blob and :func:`closed_frames`'s EXACT
+    cells-equal-border test correctly (but unhelpfully) rejects it. This
+    finds the maximal rectangular ring embedded in ``region_or_cells`` and
+    reports every other same-colour cell as a separate "appendage" group,
+    so the caller can recover both the ring AND what's attached to it,
+    instead of neither.
+
+    ``region_or_cells`` is either a :func:`admorphiq.kernels.regions.
+    find_regions`-shaped region dict (its ``"cells"`` is used) or a bare
+    iterable of ``(row, col)`` cells — both accepted directly, no import of
+    that module. ``frame``/``background`` are OPTIONAL input-contract
+    checks, not used by the geometry itself: when ``frame`` is given, every
+    cell must resolve to the SAME single colour in it (raises
+    ``ValueError`` otherwise — a cell set spanning multiple colours isn't a
+    single fused component at all), and when ``background`` is ALSO given,
+    that colour must not be the background colour.
+
+    Algorithm: for every row/column that has at least one cell, its SPAN
+    (max cross-coordinate − min cross-coordinate + 1, not cell density) is
+    computed — a hollow ring's own top/bottom border rows AND its two
+    side-wall rows all share the exact same span (the ring's width), and
+    likewise every column from the ring's left to right wall shares the
+    ring's height, REGARDLESS of a thin appendage elsewhere widening or
+    heightening the component's overall bounding box. The most common
+    (mode) row-span and column-span are therefore the ring's true width and
+    height; the rows/columns achieving them define the candidate ring
+    bbox. That candidate is validated by requiring its full rectangular
+    border to be a SUBSET of ``region_or_cells`` (not equality, unlike
+    :func:`closed_frames` — extra non-border cells are exactly what makes
+    this a fusion) AND requiring its geometric hole to contain NONE of the
+    given cells (a hole entirely occupied by same-colour cells means this
+    is a solid filled block wearing a ring-shaped candidate, not a genuine
+    hollow ring — e.g. a same-colour blob with no hole never returns a
+    result here, matching :func:`closed_frames`'s own rejection of solid
+    blocks). Returns ``None`` when no candidate survives both checks —
+    never forces a split onto a shape that isn't genuinely a fused ring.
+
+    Every cell not on the recovered border is an appendage candidate;
+    these are grouped by 4-connectivity AMONG THEMSELVES (border cells are
+    excluded from that flood fill, so two appendages that only "connect"
+    via the border stay separate groups) into
+    ``{"cells": frozenset, "attach_point": (row, col)}`` entries —
+    ``attach_point`` is the lexicographically smallest border cell
+    4-adjacent to any cell in that group (deterministic; every appendage
+    group is guaranteed at least one such neighbour, since the input is a
+    single connected component).
+
+    Returns ``{"frame": {"border_cells", "outer_bbox", "inner_bbox",
+    "hole_cells"}, "appendages": [...]}`` on success (field names/shapes
+    matching :func:`closed_frames` where they overlap, plus
+    ``border_cells``); appendages are sorted by their own smallest cell.
+    Does not mutate ``region_or_cells``.
+    """
+    if isinstance(region_or_cells, Mapping):
+        cells = _normalize_cells(region_or_cells["cells"])  # type: ignore[index]
+    else:
+        cells = _normalize_cells(region_or_cells)
+    if not cells:
+        return None
+
+    if frame is not None:
+        grid = _normalize_frame(frame)
+        h, w = len(grid), len(grid[0]) if grid else 0
+        colors = {grid[r][c] for r, c in cells if 0 <= r < h and 0 <= c < w}
+        if len(colors) > 1:
+            raise ValueError(f"region_or_cells spans multiple colours in frame: {colors!r}")
+        if background is not None and colors and next(iter(colors)) == int(background):
+            raise ValueError("region_or_cells is the background colour, not a fused component")
+
+    rows_seen: dict[int, tuple[int, int]] = {}
+    cols_seen: dict[int, tuple[int, int]] = {}
+    for r, c in cells:
+        rlo, rhi = rows_seen.get(r, (c, c))
+        rows_seen[r] = (min(rlo, c), max(rhi, c))
+        clo, chi = cols_seen.get(c, (r, r))
+        cols_seen[c] = (min(clo, r), max(chi, r))
+
+    ring_width = _span_mode(rows_seen)
+    ring_height = _span_mode(cols_seen)
+    if ring_width is None or ring_height is None:
+        return None
+    box_rows = [r for r, (lo, hi) in rows_seen.items() if hi - lo + 1 == ring_width]
+    box_cols = [c for c, (lo, hi) in cols_seen.items() if hi - lo + 1 == ring_height]
+    if not box_rows or not box_cols:
+        return None
+    r0b, r1b = min(box_rows), max(box_rows)
+    c0b, c1b = min(box_cols), max(box_cols)
+    border_cells = _rect_border(r0b, c0b, r1b, c1b)
+    if not border_cells <= cells:
+        return None
+
+    inner: Bbox = (r0b + 1, c0b + 1, r1b - 1, c1b - 1)
+    if inner[0] > inner[2] or inner[1] > inner[3]:
+        return None
+    hole_cells = frozenset(
+        (r, c) for r in range(inner[0], inner[2] + 1) for c in range(inner[1], inner[3] + 1)
+    )
+    if hole_cells & cells:
+        return None
+
+    leftover = cells - border_cells
+    appendages = _group_appendages(leftover, border_cells)
+
+    return {
+        "frame": {
+            "border_cells": border_cells,
+            "outer_bbox": (r0b, c0b, r1b, c1b),
+            "inner_bbox": inner,
+            "hole_cells": hole_cells,
+        },
+        "appendages": appendages,
+    }
 
 
 def elongated_axis(region: Region, min_aspect: float = 3.0) -> dict[str, object] | None:

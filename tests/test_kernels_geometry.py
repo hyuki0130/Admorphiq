@@ -1,4 +1,9 @@
-"""Tests for the pure closed-frame / elongated-axis / covering-offset kernels (R56)."""
+"""Tests for the pure closed-frame / fused-ring-splitting / elongated-axis /
+covering-offset kernels (R56)."""
+
+import copy
+
+import pytest
 
 from admorphiq.kernels import (
     axis_snap,
@@ -8,6 +13,7 @@ from admorphiq.kernels import (
     elongated_axis,
     point_toward,
     project_to_axis,
+    split_fused_frame,
 )
 
 
@@ -226,3 +232,139 @@ def test_connectors_links_two_boxes_three_region_blob_rejected():
         grid2[r][c] = 4
     regions2 = [_region(4, third_box_a), _region(4, third_box_b), _region(4, third_box_c)]
     assert connectors(grid2, regions2, background=0) == []
+
+
+def _ring_cells(r0, c0, r1, c1):
+    return (
+        {(r0, c) for c in range(c0, c1 + 1)}
+        | {(r1, c) for c in range(c0, c1 + 1)}
+        | {(r, c0) for r in range(r0, r1 + 1)}
+        | {(r, c1) for r in range(r0, r1 + 1)}
+    )
+
+
+# A 5x5 ring (outer_bbox (0,0,4,4), inner_bbox (1,1,3,3)) reused across
+# several split_fused_frame tests below.
+_CLEAN_RING = _ring_cells(0, 0, 4, 4)
+
+
+def test_split_fused_frame_clean_ring_has_no_appendages():
+    """Purpose: a ring with nothing fused onto it must report the exact same
+    border/outer/inner bbox closed_frames would (matching field shapes), with
+    an EMPTY appendages list -- the trivial case a real solver relies on when
+    a frame is a genuine standalone ring, not a fusion.
+    Expected feedback: failure means the span-mode reconstruction doesn't
+    recover the ring exactly when there's nothing to disambiguate it from."""
+    out = split_fused_frame(_CLEAN_RING)
+    assert out["frame"]["border_cells"] == frozenset(_CLEAN_RING)
+    assert out["frame"]["outer_bbox"] == (0, 0, 4, 4)
+    assert out["frame"]["inner_bbox"] == (1, 1, 3, 3)
+    assert out["frame"]["hole_cells"] == frozenset((r, c) for r in range(1, 4) for c in range(1, 4))
+    assert out["appendages"] == []
+
+
+def test_split_fused_frame_single_pipe_defuses_with_correct_attach_point():
+    """Purpose: a ring with ONE thin appendage fused onto its top border must
+    still recover the exact ring geometry (unaffected by the appendage) AND
+    report the appendage as its own group with the correct attach_point --
+    the exact SB26 "hollow box + portal pipe fused as one component" scenario
+    this kernel exists to de-fuse.
+    Expected feedback: failure means the row/col span-mode approach gets
+    confused by the appendage's own cells when computing the ring's true
+    width/height, corrupting the recovered bbox."""
+    pipe = {(-2, 2), (-1, 2)}  # sticks up from the top border at column 2
+    fused = _CLEAN_RING | pipe
+    out = split_fused_frame(fused)
+    assert out["frame"]["outer_bbox"] == (0, 0, 4, 4)
+    assert out["frame"]["border_cells"] == frozenset(_CLEAN_RING)
+    assert len(out["appendages"]) == 1
+    appendage = out["appendages"][0]
+    assert appendage["cells"] == frozenset(pipe)
+    assert appendage["attach_point"] == (0, 2)
+
+
+def test_split_fused_frame_two_appendages_are_separate_groups():
+    """Purpose: two DISJOINT appendages fused onto different sides of the
+    ring (one vertical off the top, one horizontal off the right) must be
+    reported as two SEPARATE groups, each with its own correct attach_point
+    -- proving the flood-fill correctly keeps non-touching appendages apart
+    and that the span-mode reconstruction is orientation-agnostic (handles
+    a HORIZONTAL appendage too, not just the vertical case the original
+    sort_match.py reference was scoped to).
+    Expected feedback: failure means appendages merge into one group (the
+    flood-fill traversed through the border) or the horizontal appendage
+    corrupts the ring-height measurement."""
+    pipe_top = {(-1, 2)}
+    pipe_right = {(2, 5), (2, 6)}
+    fused = _CLEAN_RING | pipe_top | pipe_right
+    out = split_fused_frame(fused)
+    assert out["frame"]["outer_bbox"] == (0, 0, 4, 4)
+    assert len(out["appendages"]) == 2
+    by_cells = {a["cells"]: a["attach_point"] for a in out["appendages"]}
+    assert by_cells[frozenset(pipe_top)] == (0, 2)
+    assert by_cells[frozenset(pipe_right)] == (2, 4)
+
+
+def test_split_fused_frame_solid_blob_returns_none():
+    """Purpose: a SOLID filled rectangle (no hole at all) must return None,
+    not a bogus ring-plus-appendages reading with the entire interior
+    misreported as "appendages" -- the same solid-vs-hollow distinction
+    closed_frames makes, preserved here despite the looser (subset, not
+    equality) border test this kernel otherwise uses.
+    Expected feedback: failure means the hole-must-be-cell-free check is
+    missing or wrong, so a filled block gets a spurious ring reading."""
+    blob = {(r, c) for r in range(5) for c in range(5)}
+    assert split_fused_frame(blob) is None
+
+
+def test_split_fused_frame_does_not_mutate_input():
+    """Purpose: the input cell set must be left exactly as given -- a caller
+    that reuses or re-inspects it afterward must not observe any change.
+    Expected feedback: failure means the function mutates shared state
+    in-place, a surprising side effect for a "pure kernel" contract."""
+    pipe = {(-1, 2)}
+    fused = _CLEAN_RING | pipe
+    original = copy.deepcopy(fused)
+    split_fused_frame(fused)
+    assert fused == original
+
+
+def test_split_fused_frame_accepts_a_region_dict_directly():
+    """Purpose: the function must accept EITHER a find_regions-shaped region
+    dict (reading its "cells" key) or a bare iterable of cells -- both are
+    documented entry points, and a caller shouldn't need to unpack a region
+    dict manually before calling.
+    Expected feedback: failure means only one of the two accepted input
+    shapes actually works, silently breaking whichever caller convention
+    isn't covered."""
+    region = _region(7, _CLEAN_RING)
+    out = split_fused_frame(region)
+    assert out["frame"]["outer_bbox"] == (0, 0, 4, 4)
+    assert out["appendages"] == []
+
+
+def test_split_fused_frame_frame_validation_rejects_multi_colour_cells():
+    """Purpose: when frame is supplied, every one of the given cells must
+    resolve to the SAME colour in it -- a cell set spanning multiple
+    colours isn't a genuine single fused component, and silently proceeding
+    would compute geometry over a nonsensical mixed-colour "blob".
+    Expected feedback: failure means the frame cross-check is missing or
+    doesn't actually inspect every cell's colour."""
+    grid = _blank(6, 6, bg=0)
+    _paint_border(grid, 0, 0, 4, 4, 7)
+    grid[0][0] = 3  # one corner cell recoloured -- now spans two colours
+    with pytest.raises(ValueError, match="multiple colours"):
+        split_fused_frame(_ring_cells(0, 0, 4, 4), frame=grid)
+
+
+def test_split_fused_frame_frame_validation_rejects_background_colour():
+    """Purpose: when both frame and background are supplied, a cell set
+    whose colour equals the declared background isn't a fused component at
+    all (it's empty space) -- must raise, not silently compute a
+    "ring" out of background pixels.
+    Expected feedback: failure means the background cross-check is missing,
+    letting a caller accidentally run this on background cells."""
+    grid = _blank(6, 6, bg=0)
+    _paint_border(grid, 0, 0, 4, 4, 0)
+    with pytest.raises(ValueError, match="background"):
+        split_fused_frame(_ring_cells(0, 0, 4, 4), frame=grid, background=0)
