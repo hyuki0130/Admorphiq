@@ -341,3 +341,33 @@ clean. Deferred (next batch, confirmed order): observability truthfulness (wire
 token usage + finish_reason to confirm the truncation fix; fix the after-state
 hash via the event stream) before the namespace deltas. Note: the LLM-free card
 clears su15 3/9 + ls20 1/7 — the REPL arm needs L1 clears next to stay credible.
+
+### Observability truthfulness batch (2026-07-14, obs-1..4)
+
+Per the Codex observability review (causal account before more counters), built
+on the frozen-dataset window while v4 ran:
+
+- **obs-1** (`62471bb`) — wire vLLM token usage {input,output,reasoning,cached} +
+  finish_reason into TurnRecord; add ordered image_hashes; FIX the after-state
+  bug (the decision-time frame is the BEFORE hash; the event stream is
+  authoritative for the after-hash). `truncations` (finish_reason==length)
+  becomes a tracked metric — the su15 finding is now countable.
+- **obs-2** (`66082ec`) — `events.py`: append-only per-event JSONL (flush,
+  monotonic seq) + `derive_summary` (marks `run_incomplete` when no terminal —
+  a killed kernel keeps a truthful record). `run_game` emits game_start /
+  action_executed(+pre_hash) / transition(+post_hash) linked by `action_id` /
+  level_up / reset / exception / terminal; the kernel opens it FIRST and folds
+  the derived summary into the diagnostics.
+- **obs-3** (`4874d23`) — `manifest.py`: `run_manifest.json` at bench start
+  (run_id, git commit+dirty, model, prompt_version, config env, package
+  versions, game list, accelerator, budget, start time); defensive.
+- **obs-4** (`1952c9a`) — a `PREDICT: changed|no_change` line scored against the
+  observed transition (predictions_made/correct) and fed to
+  `EnvironmentMemory.record_prediction` — a deduped falsifiable hypothesis that
+  evolves (support/contradict, bounded). **Fixes the v3 static-memory gap:
+  MEMORY now evolves across turns**, and every turn carries the causal
+  predicted-vs-actual link the directive requires.
+
+71 repl_agent tests, ruff clean, kernel imports clean off-Kaggle. Next in the
+confirmed order: the R1 namespace deltas (shortest_path, action_outcomes/is_dead,
+exclusions). v4 transcript analysis takes precedence when it lands.
