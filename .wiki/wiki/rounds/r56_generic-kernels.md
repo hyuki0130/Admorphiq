@@ -4,7 +4,7 @@ round: R56
 axis: generic-kernel-library
 verdict: IN-PROGRESS
 keywords: [generic-kernels, namespace-safe, script25, agent25, dual-scoreboard, declared-intent, primitive-firewall, kernel-library, quarantined-adapter]
-commit: [4303662, 3edcf4d, 1d797d7, 62fac21, f13b433, d377121, a2a62f0, b67cb39, de013aa, 69101ea]
+commit: [4303662, 3edcf4d, 1d797d7, 62fac21, f13b433, d377121, a2a62f0, b67cb39, de013aa, 69101ea, 68b802a]
 date: 2026-07-15
 ---
 
@@ -122,8 +122,30 @@ silent env repositioning and excluding them from future frontier search — but
 it has not yet been re-measured, so no result is claimed for it here. See
 Open items.)
 
+## Measured so far (continued)
+
+**ft09 glyph-decode adapter** (`src/admorphiq/adapters25/ft09.py`, committed
+`68b802a`) — gold-trace reverse-engineering (replay against captured L0/L1
+frames) falsifies the R16-R18 "coupled GF(2) neighbourhood stencil" reading
+of FT09 entirely: a click only ever changes the clicked cell. The real win
+condition is a 3x3 compass glyph drawn in each ring's own center gap; a
+ring cell needs a click iff its current colour differs from its
+glyph-predicted target, decoded fresh from the frame on every call (no
+caching), which also makes two-phase decoy->reveal boards fall out for
+free. Ring/pitch/glyph geometry is entirely discovered (modal button size,
+mode of measured button-gap distances, `tile_bbox` 3x3 split) — no fixed
+pixel offsets. Falls back to the pre-existing measured-GF(2)-stencil
+machinery, unchanged, via a per-cell click cap + contradiction budget if
+the decode doesn't apply to an unseen board. **Verified byte-for-byte
+offline against gold-trace data; live-env smoke run not yet run** — see
+[[../lessons/ft09_glyph_decode_20260715]] for the full falsification
+writeup and open item.
+
 ## Open items
 
+- **FT09 live-env smoke run.** The glyph decode above is gold-trace
+  verified but has not been run against the live API the way the m0r0 PoC
+  adapter below was — that is the next falsification step for this game.
 - **Adapter iteration.** m0r0's hazard-memory fix (uncommitted as of writing)
   needs a re-measured smoke run before its effect can be reported. A second
   adapter, `lp85.py` (rare-colour click family — clicks the region whose
@@ -155,6 +177,16 @@ Open items.)
 
 ## Related
 
+- [[r57_win-condition-typology]] — mines the same trace/kernel toolkit (R56's
+  `find_regions`/`frame_diff`/`multiset_signature`) at the META level, across
+  all 25 games, to name a transferable vocabulary of win-condition TYPES;
+  ft09's glyph decode above is one game-specific instance of the pattern
+  R57 catalogues generically.
+- [[r58_explanation-layer]] — the Codex verdict on TEACHING the weak offline
+  model to use these kernels (typed intents + enforced state machine +
+  goal-typology detectors), one layer above pure computation; its P2
+  artifact (`GoalLedger`) composes R56 kernels (`find_regions`, `frame_diff`,
+  `multiset_signature`) exactly as script25 adapters do by hand.
 - [[r53_unified-harness]] — the harness whose 6 generic TOOLS this round's
   kernel library sits one layer below: R53 built tool-level primitives
   (`graph`/`world_model`/`dealias`/`deadsig`/`paint`/`llm_goal`) as a

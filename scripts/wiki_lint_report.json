@@ -1,10 +1,31 @@
 {
   "orphans": [
+    "lessons/tools_verdict_dossier_20260714.md",
     "rounds/r07_deploy-online-rl.md",
     "rounds/r25_object-prior-sweep.md",
     "rounds/r28_keep-across-levels.md"
   ],
   "missing_xrefs": [
+    {
+      "page": "lessons/duck_harness_teardown_20260714.md",
+      "detail": "unresolved [[r55_code-repl-agent]]"
+    },
+    {
+      "page": "lessons/duck_harness_teardown_20260714.md",
+      "detail": "unresolved [[r55_code-repl-agent]]"
+    },
+    {
+      "page": "lessons/duck_harness_teardown_20260714.md",
+      "detail": "unresolved [[r54_vision-llm-policy]]"
+    },
+    {
+      "page": "lessons/lb_top_team_research_20260714.md",
+      "detail": "unresolved [[r53_unified-harness]]"
+    },
+    {
+      "page": "lessons/lb_top_team_research_20260714.md",
+      "detail": "unresolved [[r54_vision-llm-policy]]"
+    },
     {
       "page": "lessons/online_rl_sprint_round_log.md",
       "detail": "unresolved [[rounds_index]]"
@@ -12,6 +33,10 @@
     {
       "page": "lessons/online_rl_sprint_round_log.md",
       "detail": "unresolved [[r49_ewm-bench-partial]]"
+    },
+    {
+      "page": "lessons/tools_verdict_dossier_20260714.md",
+      "detail": "unresolved [[r55_code-repl-agent]]"
     },
     {
       "page": "rounds/r05_planning-override.md",
@@ -244,6 +269,34 @@
     {
       "page": "rounds/r36_graph-frontier-bfs.md",
       "detail": "unresolved [[online_rl_sprint_round_log]]"
+    },
+    {
+      "page": "rounds/r54_vision-llm-policy.md",
+      "detail": "unresolved [[lb_top_team_research_20260714]]"
+    },
+    {
+      "page": "rounds/r54_vision-llm-policy.md",
+      "detail": "unresolved [[lb_top_team_research_20260714]]"
+    },
+    {
+      "page": "rounds/r54_vision-llm-policy.md",
+      "detail": "unresolved [[lb_top_team_research_20260714]]"
+    },
+    {
+      "page": "rounds/r54_vision-llm-policy.md",
+      "detail": "unresolved [[lb_top_team_research_20260714]]"
+    },
+    {
+      "page": "rounds/r55_code-repl-agent.md",
+      "detail": "unresolved [[lb_top_team_research_20260714]]"
+    },
+    {
+      "page": "rounds/r55_code-repl-agent.md",
+      "detail": "unresolved [[lb_top_team_research_20260714]]"
+    },
+    {
+      "page": "rounds/r55_code-repl-agent.md",
+      "detail": "unresolved [[duck_harness_teardown_20260714]]"
     }
   ],
   "stale_claims": [],
