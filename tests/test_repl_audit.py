@@ -114,57 +114,81 @@ def test_agent_audit_is_flag_gated_off_by_default():
     assert on.audits_triggered == 1
 
 
-def test_nav_steering_flag_gated():
-    """Purpose: nav steering (default OFF) only injects the shortest_path nudge on
-    audits when enabled — so it never contaminates the matched12 experiment.
+def test_nav_trigger_decoupled_from_audit():
+    """Purpose: the re-ruled NAV trigger (default OFF) injects the shortest_path
+    nudge on the boundary AFTER the model declares a nav-shaped goal — with audit
+    OFF — and never fires when disabled or when no nav goal is declared.
 
-    Feedback: failure means the nav nudge leaks into the audit-only comparison.
+    Feedback: failure means NAV is still audit-coupled, fires without a declared
+    nav goal, or leaks when the flag is off.
     """
     prompts: list[str] = []
 
-    def cap(prompt, images=None):
+    def nav_cap(prompt, images=None):
         prompts.append(prompt)
-        return '{"action":"LEFT"}'
+        return "GOAL_HYPOTHESIS: reach the exit\nLEFT"
 
-    # audit on, nav OFF -> no shortest_path nudge.
-    a = ReplAgent(SimpleNamespace(complete=cap), render_images=False,
-                  audit_enabled=True)
-    for _ in range(13):
+    # nav OFF -> no shortest_path nudge even though a nav goal is declared.
+    a = ReplAgent(SimpleNamespace(complete=nav_cap), render_images=False)
+    for _ in range(6):
         a.choose_action([], _obs(_frame(), avail=(1, 2, 3, 4)))
     assert not any("navigation-shaped (reach" in p for p in prompts)
 
+    # nav ON, audit OFF -> nudge fires after the goal declaration, no AUDIT section.
     prompts.clear()
-    b = ReplAgent(SimpleNamespace(complete=cap), render_images=False,
-                  audit_enabled=True, nav_steering=True)
-    for _ in range(13):
+    b = ReplAgent(SimpleNamespace(complete=nav_cap), render_images=False,
+                  nav_steering=True)
+    for _ in range(6):
         b.choose_action([], _obs(_frame(), avail=(1, 2, 3, 4)))
-    assert any("navigation-shaped (reach" in p and "AUDIT" in p for p in prompts)
+    assert any("navigation-shaped (reach" in p and "AUDIT" not in p for p in prompts)
+
+    # nav ON but the model never declares a nav goal -> never fires.
+    prompts.clear()
+    def flat_cap(prompt, images=None):
+        prompts.append(prompt)
+        return "GOAL: match the colors\nLEFT"
+    c = ReplAgent(SimpleNamespace(complete=flat_cap), render_images=False,
+                  nav_steering=True)
+    for _ in range(6):
+        c.choose_action([], _obs(_frame(), avail=(1, 2, 3, 4)))
+    assert not any("navigation-shaped (reach" in p for p in prompts)
 
 
-def test_post_revision_plan_flag_gated():
-    """Purpose: the post-revision MACRO nudge (default OFF) appears only when a
-    goal is active AND plan_enabled — between audits, not on the audit turn.
+def test_plan_trigger_needs_goal_and_milestone():
+    """Purpose: the re-ruled PLAN trigger (default OFF) requests a MACRO once the
+    model has declared BOTH a goal and a milestone — decoupled from the audit —
+    and never fires with a goal alone or when disabled.
 
-    Feedback: failure means the plan lever contaminates matched12 or fires on the
-    goal-declaration turn.
+    Feedback: failure means PLAN fires without a milestone, stays audit-coupled,
+    or leaks when off.
     """
     prompts: list[str] = []
 
-    def cap(prompt, images=None):
+    def gm_cap(prompt, images=None):
         prompts.append(prompt)
-        # declare a goal at the audit so state.hypothesis is set thereafter.
-        return "GOAL_HYPOTHESIS: reach the exit\nEXPECTED_MILESTONE: exit in 5\nLEFT"
+        return "GOAL_HYPOTHESIS: reach the exit\nMILESTONE: at the door\nLEFT"
 
-    off = ReplAgent(SimpleNamespace(complete=cap), render_images=False,
-                    audit_enabled=True)
-    for _ in range(16):
+    # plan OFF -> no macro nudge.
+    off = ReplAgent(SimpleNamespace(complete=gm_cap), render_images=False)
+    for _ in range(4):
         off.choose_action([], _obs(_frame(), avail=(1, 2, 3, 4)))
-    assert not any('"macro"' in p for p in prompts)  # default off
+    assert not any('"macro"' in p for p in prompts)
 
+    # plan ON + goal & milestone declared -> macro nudge fires, no AUDIT section.
     prompts.clear()
-    on = ReplAgent(SimpleNamespace(complete=cap), render_images=False,
-                   audit_enabled=True, plan_enabled=True)
-    for _ in range(16):
+    on = ReplAgent(SimpleNamespace(complete=gm_cap), render_images=False,
+                   plan_enabled=True)
+    for _ in range(4):
         on.choose_action([], _obs(_frame(), avail=(1, 2, 3, 4)))
-    # after the first audit sets a goal, a later (non-audit) turn requests a macro.
     assert any('"macro"' in p and "AUDIT" not in p for p in prompts)
+
+    # plan ON but only a goal (no milestone) -> never fires.
+    prompts.clear()
+    def goal_only(prompt, images=None):
+        prompts.append(prompt)
+        return "GOAL_HYPOTHESIS: reach the exit\nLEFT"
+    g = ReplAgent(SimpleNamespace(complete=goal_only), render_images=False,
+                  plan_enabled=True)
+    for _ in range(4):
+        g.choose_action([], _obs(_frame(), avail=(1, 2, 3, 4)))
+    assert not any('"macro"' in p for p in prompts)

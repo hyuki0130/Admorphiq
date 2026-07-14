@@ -448,7 +448,12 @@ class ReplAgent:
         self._prev_action: dict[str, Any] | None = None
         self._macro_active = False
         from admorphiq.repl_agent.audit import GoalAuditor
+        from admorphiq.repl_agent.triggers import TriggerController
         self._auditor = GoalAuditor()
+        # Semantic-eligibility PLAN/NAV triggers (re-ruled): per-run caps, so a
+        # fresh controller per game. Fires only when the matching flag is on.
+        self._triggers = TriggerController(nav_enabled=self.nav_steering,
+                                           plan_enabled=self.plan_enabled)
         self._turn = 0
         self._turn_in_level = 0  # per-level action count (reset on level-up)
         self._steps = 0
@@ -494,6 +499,7 @@ class ReplAgent:
 
         action = self._queue.pop(0)
         self._governor.record_executed(action, base_hash(frame))
+        self._triggers.observe_action()  # advance the trigger cooldown clock
         self._prev_frame = frame
         self._prev_scene = scene
         self._prev_action = action
@@ -511,6 +517,7 @@ class ReplAgent:
         self._macro_active = False
         self._prev_scene = None
         self._auditor.reset_level()
+        self._triggers.invalidate_goal()  # a cleared level voids the active goal
         self._turn_in_level = 0  # per-level counter resets on level-up
         self._last_levels = levels
 
@@ -643,11 +650,12 @@ class ReplAgent:
                            if audit_due else None)
         if audit_due:
             base_prompt += self._auditor.prompt_section()
-            if self.nav_steering:
-                base_prompt += _NAV_NUDGE
-        elif self.plan_enabled and self._auditor.state.hypothesis:
-            # Between audits, once a goal is active, request a governed short plan
-            # (not on the audit turn itself — that turn declares the goal).
+        # Re-ruled PLAN/NAV: a goal-declaration trigger (decoupled from the killed
+        # audit) injects at most one intervention this decision, NAV precedence.
+        intervention = self._triggers.decide()
+        if intervention == "nav":
+            base_prompt += _NAV_NUDGE
+        elif intervention == "plan":
             base_prompt += _PLAN_NUDGE
         images, img_hashes = self._render_image(frame)
         self._store.outcomes = self._outcomes  # expose evidence to the sandbox
@@ -680,6 +688,9 @@ class ReplAgent:
                 self.truncations += 1
 
             parsed = parse_model_output(raw, self.action_first)
+            # Update PLAN/NAV eligibility from the model's own declared goal
+            # (no audit solicits it) — affects the NEXT decision boundary.
+            self._triggers.note_declaration(raw)
             if parsed.kind == "none":
                 self.parse_failures += 1
             round_audit = None
