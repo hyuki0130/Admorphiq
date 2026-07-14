@@ -157,6 +157,14 @@ def _make_agent(name: str, game_id: str | None = None):
         from admorphiq.vlm_policy import VLMPolicyAgent
 
         return VLMPolicyAgent()
+    if name == "repl":
+        # Duck-style code-REPL agent (R55): segmentation turn-packet -> LLM writes
+        # code/actions -> sandbox inspection -> governed actions. The LLM endpoint
+        # comes from REPL_LLM_BASE_URL / REPL_LLM_MODEL (vLLM serve or ollama);
+        # constructing the client fails fast when the URL is unset (offline).
+        from admorphiq.repl_agent.agent import OpenAICompatClient, ReplAgent
+
+        return ReplAgent(OpenAICompatClient())
     return AdmorphiqAdapter()
 
 # ─────────────────────────────── scoring maths ──────────────────────────────

@@ -3,7 +3,7 @@ type: reasoning
 round: R55
 axis: code-repl-agent
 keywords: [code-repl, duck, qwen3.6, multimodal, transcript-replay, segmentation-tracker, turn-packet, python-sandbox, inspection-api, action-governor, offline-core, controller-persistence]
-verdict: Round 1 offline core COMPLETE (5 modules, 40 tests, LLM-free; model wiring on Kaggle infra)
+verdict: Round 1 offline core COMPLETE (6 modules incl. loop assembly, 46 tests, LLM-free; --agent repl fails fast offline, model wiring = client swap on Kaggle infra)
 commit: pending
 date: 2026-07-14
 description: R55 builds the offline-testable core of the Duck-style multimodal code-REPL agent per the Codex design consultation — transcript/replay, segmenter+tracker, turn-packet builder, stateless Python sandbox + inspection API, and action governor. All LLM-free and unit-tested (sub-second); the model wiring + Kaggle vLLM bundle is Round 1's second half on Kaggle infra. The R54 vlm_policy JSON-policy arm becomes the Round-2 2x2 ablation's JSON-policy leg.
@@ -154,13 +154,44 @@ repeated state-action, undo accounting, macro length gating, precondition+
 invariant required, arm + stop-on-surprise, complete + level-complete abort),
 0.02s, ruff clean.
 
+## Module 6 — ReplAgent loop assembly (built)
+
+`src/admorphiq/repl_agent/agent.py`. Wires the five modules into one
+harness-contract agent so the Kaggle LLM wiring is a pure client swap:
+`SceneTracker.update → TurnPacketBuilder → LLMClient.complete → parse (code block
+or action/macro JSON) → sandbox inspection → ActionGovernor-vetted actions →
+TranscriptRecorder`. Decisions happen at boundaries only (queue empty / macro
+end), never one LLM call per action.
+
+- `LLMClient` protocol + two impls: `MockLLM` (scripted, offline tests) and
+  `OpenAICompatClient` (thin `/chat/completions` for vLLM-serve OR ollama;
+  endpoint/model via `REPL_LLM_BASE_URL` / `REPL_LLM_MODEL`; constructing without
+  the URL raises immediately so `--agent repl` fails fast offline).
+- `parse_model_output` / `normalize_parse` — deterministic routing of a reply to
+  code / actions / macro / none, and the replay-stable `parsed_tool_calls` form.
+- `ReplAgent` — the loop with an action queue (macros advance via the governor's
+  `observe_after`, stop-on-surprise clears the queue and forces a re-decide),
+  online `SceneTracker`/`ActionGovernor`/`EnvironmentMemory`/`HistoryTiers`, and
+  a safe fallback when no governed action is available. Model-facing names
+  UP/DOWN/LEFT/RIGHT/SPACE/UNDO/MOUSE map to ACTION1-7 (fixed default; learned
+  per-game mapping is a later round).
+- `--agent repl` registered in `scripts/score_efficiency.py` (additive).
+
+6 end-to-end tests driving the full loop offline via MockLLM: parse routing,
+code inspection round-trip + governed action, JSON action governed, illegal
+action rejected → safe fallback, macro stop-on-surprise (continues on change,
+aborts + re-decides on no-change), transcript record→replay equality. 1.6s
+(subprocess sandbox), ruff clean. Fail-fast verified.
+
 ## Round 1 offline core — COMPLETE
 
-All five LLM-free modules built, unit-tested (40 tests total, ruff clean),
+All six LLM-free modules built, unit-tested (46 tests total, ruff clean),
 committed one per module. The package `src/admorphiq/repl_agent/` is generic (no
 game ids) and purely additive — the deployed guards are untouched. This is the
 "exact offline replay" + perception + governed-action spine the design doc calls
-for; it makes one-hour Kaggle iterations scientific.
+for; the loop is assembled and the Kaggle LLM wiring is now a pure client swap
+(`OpenAICompatClient` against a vLLM/ollama endpoint). It makes one-hour Kaggle
+iterations scientific.
 
 **Round 1's second half runs on Kaggle infra (team-lead's side)**: Qwen 3.6 27B
 FP8 vLLM deployment, model-facing prompt wiring (image-before-text for Gemma /
