@@ -52,3 +52,39 @@ falsified for our stack and this page must be updated.
 
 ## Related
 [[r53_unified-harness]], [[size_floor_and_settle_reads]]
+
+## Deep-read addendum (2026-07-14 09:25 KST) — Duck internals + official technical report
+
+**Duck harness specifics** (github.com/Tufalabs/duck-harness, ARC3-Inference/README.md):
+- Perception: raw numeric grid deliberately HIDDEN from the model. Primary = SEGMENTATION summary
+  (connected components, object hashes, boundaries, containment, adjacency); ASCII grid for local
+  checks; images only auxiliary. Variables exposed: current_frame.ascii/.segmentation, history,
+  previous_frame, transitions, last_transition, valid_actions, last_action_result
+  {board_changed, level_completed, game_over, run_complete, reward}.
+- Actions: UP/DOWN/LEFT/RIGHT, SPACE, MOUSE(row=..., col=...) — legacy x/y REJECTED.
+- REPL: stateless per call, stdlib allowlist, 30s timeout. (Context-eviction details + the list
+  of harmful hand-crafted tools are only in Kaggle discussion/717133 — JS/login-gated, needs a
+  human browser.)
+
+**Official technical report** (ARC_AGI_3_Technical_Report.pdf, read in full):
+- Hidden = 55 semi-private + 55 fully-private; BOTH intentionally out-of-distribution vs public
+  ("limited overlap with public mechanics"); semi vs fully differ only in ACCESS. Public 25 is a
+  demonstration interface, not a training resource.
+- No official mechanic-tag taxonomy (scorecard tags derive from available_actions). Env mechanics
+  deliberately undisclosed (4-char ids, anti-leak).
+- Human baseline: 10 humans/env in-person, env kept only if ≥2 independent full-solves; baseline =
+  upper-median best FIRST-RUN action count; action budget = 5× human median.
+- RHAE confirmed: S=min(1.15,(h/a)²), level-index weights, env cap = completed-weight fraction;
+  our scripts/score_efficiency.py is FAITHFUL (1.0 vs 1.15 cap only).
+- **Two leaderboards**: official (no harness, fixed system prompt; frontier ~0.1-0.5%) vs
+  community/Kaggle-code (harness allowed) — we compete in the latter; top 1.61 is that band.
+- Generalization warning (official): a public-tuned harness hit 97.1% on a seen variant and 0.0%
+  on an unseen env — public-specific harnesses collapse on hidden. Brittle-purge re-validated.
+- Envs: Core Knowledge priors only, no language/symbols, ≥6 levels, L1 = tutorial (random
+  sometimes passes), difficulty = COMPOSITION of earlier concepts in later levels — implies
+  cross-level concept reuse is a real lever for depth.
+
+**R54 design deltas applied**: segmentation-first prompt (image auxiliary), row/col MOUSE schema,
+per-turn last_action_result feedback, Reki reflection JSON {what changed, short plan, next 1-4
+actions}.
+
