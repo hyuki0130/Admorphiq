@@ -57,11 +57,31 @@ regressions from model variance.
 7 unit tests (round-trip, forward-compat, recorder JSONL, replay pass, parser-
 regression detect, governor-regression detect), 0.02s, ruff clean.
 
+## Module 2 — Segmenter + tracker (built)
+
+`src/admorphiq/repl_agent/segmentation.py`, built on the repo's generic
+`tools/base.connected_components` (reused, not rewritten; `FrameAnalyzer` stays
+the complementary action-semantics analyzer).
+
+- `SceneTracker.update(frame) -> Scene` — segments the grid and tracks objects
+  with STABLE ids across updates. Primary match key = translation-invariant
+  `shape_hash` + colour (a moved object keeps its id); remaining objects matched
+  by cell overlap, surfacing recolor (1:1, colour changed), split (1 prev : many
+  curr) and merge (many prev : 1 curr). Unmatched current = appeared, unmatched
+  previous = disappeared. Emits a CHANGE event list per turn.
+- `SceneObject` — id, colour, cells, bbox, centroid, area, `shape_hash`, hole
+  count (enclosed-background flood-fill), boundary contact, `contained_by`
+  (smallest strictly-enclosing different-colour object), `adjacent`
+  ({id, direction, gap}), compact `change_history`, and one VERIFIED interior
+  `safe_click` (the on-object cell with the most on-object neighbors — never a
+  hole).
+
+8 unit tests (shape-hash translation invariance, stable id across move, recolor
+keeps id, split event + new ids, appear/disappear, holes + safe-click, containment,
+adjacency direction), 0.79s, ruff clean.
+
 ## Pending modules (Round 1)
 
-- **M2** — segmenter + tracker (stable object IDs across translation, split/merge
-  /appear/disappear events, containment/adjacency, per-object change history, one
-  verified interior click) wrapping `FrameAnalyzer` + `tools/base.connected_components`.
 - **M3** — turn-packet builder (the GAME/LAST_ACTION/CHANGE/SCENE/RECENT_EVENTS/
   MEMORY YAML shape, three-tier history, falsifiable-hypothesis memory).
 - **M4** — stateless Python sandbox (subprocess, stdlib allowlist, bounded
