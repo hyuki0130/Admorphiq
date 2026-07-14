@@ -4,7 +4,7 @@ round: R56
 axis: generic-kernel-library
 verdict: IN-PROGRESS
 keywords: [generic-kernels, namespace-safe, script25, agent25, dual-scoreboard, declared-intent, primitive-firewall, kernel-library, quarantined-adapter, gold-replay-divergence, round-robin-sweep, joint-state-planning]
-commit: [4303662, 3edcf4d, 1d797d7, 62fac21, f13b433, d377121, a2a62f0, b67cb39, de013aa, 69101ea, 68b802a, 3151030, cbda9aa, 0a7be09, 6e238de, f406d55, a3a6644, ae8fd95, 204aab2, 3e7391a, f0b0bcb, b28290e, 010df51, fbd625d, 57b325d, a8299de, efaf004, 362c672, 95c27c4, 569a620, de0510e, 4d9472f, 2209a5f, 9e7f474, b36fd8a, fc36602, 6f81df7, b9b35cd, a314bee, ac8c177, f4e8b11]
+commit: [4303662, 3edcf4d, 1d797d7, 62fac21, f13b433, d377121, a2a62f0, b67cb39, de013aa, 69101ea, 68b802a, 3151030, cbda9aa, 0a7be09, 6e238de, f406d55, a3a6644, ae8fd95, 204aab2, 3e7391a, f0b0bcb, b28290e, 010df51, fbd625d, 57b325d, a8299de, efaf004, 362c672, 95c27c4, 569a620, de0510e, 4d9472f, 2209a5f, 9e7f474, b36fd8a, fc36602, 6f81df7, b9b35cd, a314bee, ac8c177, f4e8b11, 8b48b0b]
 date: 2026-07-15
 ---
 
@@ -63,7 +63,7 @@ metric (2x500-action runs unless noted), not the legacy 25-game card.
 | dc22 | **BANKED at 0/6** | every individual primitive verified correct | `b36fd8a` | walk/stuck/probe/learn architecture is fundamentally REACTIVE; gold's own solution is PROACTIVE/state-gating (set button parity BEFORE walking, not in response to being stuck) — two independently-sound fix attempts (toggler-cycling re-click, parity-combo enumeration) both measured 0/6; the wall is architectural, not a missing heuristic |
 | ka59 | banked at 0/7 | push mechanic WORKS (wall-crossing measured) | `a8299de` | reactive, not planned into the joint solve; re-identify/re-assign overhead eats the action fuse before convergence — a real working primitive with a named remaining gap |
 | su15 | **IN-FLIGHT** | best-so-far: GAME_OVER=11, near-merge 1.9px | `f4158f3` (uncommitted work in progress as of this sweep) | 6 falsification iterations so far (enemy-hazard, select-then-place, absolute-step model all tested against direct measurement); still being actively worked |
-| sp80 | **NOT YET STARTED** | — | — | no `adapters25/sp80.py` exists yet at the time of this sweep |
+| sp80 | **IN-FLIGHT, characterization only** | 2 hypotheses falsified live, no adapter yet | `8b48b0b` | 149-transform stable byte-identical 4-transform cycle (colour8 count 3,3,2,2 then GAME_OVER, spawns at identical positions each cycle) — position-delivery AND transform-count hypotheses both falsified; non-monotonic colour8 count means something is CONSUMED each loop, not accumulated; next-step pointer is characterizing that consumption |
 
 ## Diagnostic method of the night: gold-replay divergence
 
