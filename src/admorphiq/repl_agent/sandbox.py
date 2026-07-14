@@ -292,10 +292,19 @@ def run_code(
         "payload": store.to_payload(),
         "max_output": max_output,
     })
+    # Propagate the PARENT's import paths to the fresh subprocess. On Kaggle
+    # `admorphiq` is injected onto sys.path at runtime (not pip-installed), so
+    # without this the subprocess `-m admorphiq…_sandbox_worker` fails to import
+    # and EVERY run_code errors (measured: v5 replbench_out5, ~100% sandbox
+    # errors — the whole tool loop returned errors instead of inspection data).
+    env = os.environ.copy()
+    existing = env.get("PYTHONPATH", "")
+    paths = [p for p in sys.path if p] + ([existing] if existing else [])
+    env["PYTHONPATH"] = os.pathsep.join(paths)
     try:
         proc = subprocess.run(
             [sys.executable, "-m", "admorphiq.repl_agent._sandbox_worker"],
-            input=job, capture_output=True, text=True, timeout=timeout,
+            input=job, capture_output=True, text=True, timeout=timeout, env=env,
         )
     except subprocess.TimeoutExpired:
         return SandboxResult(timed_out=True, error=f"timeout after {timeout}s")

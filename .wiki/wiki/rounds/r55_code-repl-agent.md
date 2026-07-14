@@ -437,3 +437,67 @@ inspection into real, informed actions. Watch: action-source split
 and whether informed inspection unlocks the first L1 clear. Throughput note: v4's
 g50t/ls20 hit the 150-action cap, but ~70%/29% of those were fallback churn, not
 productive play — v5 changes the character, not just the count.
+
+### v5 full gate evaluation + v6 diagnosis (2026-07-14, replbench_out5)
+
+v5 landed. The machinery gates PASS but the capability gate FAILED (0 clears),
+and the analysis found a P0 infrastructure bug that INVALIDATES the REPL-arm read.
+
+**Integrity gates (mostly PASS):**
+- Illegal MOUSE proposals: **0** on every game (legality binding holds).
+- Executed action SOURCE (from LAST_ACTION disclosure): **70-99% model-chosen**
+  (ls20 99%, dc22 91%, su15 87%, bp35 75%, g50t 70%) — v5 cut the v4 fallback
+  domination (69-86% fallback) sharply. Fallback is disclosed (source=fallback).
+- Governor rejections (bp35 29, g50t 20) are legit **repeat** rejections (illegal
+  MOUSE = 0), i.e. the governor correctly blocking same-state-action retries.
+- Event streams complete: action_executed == transition (100% correlation), all
+  terminal (no run_incomplete). Latency p50 1.7-2.5s / p95 2.7-13s (< target).
+  Throughput 84-246 actions/600s (> 60 target). Parse fail: su15 6/162 = 3.7%
+  (the bare-UNDO gap, fixed 0c9470f, not in this build) else <1%.
+
+**🔴 P0 BUG — the sandbox was NON-FUNCTIONAL on Kaggle.** sandbox_errors ≈ the
+inspection count on every game (bp35 101, dc22 133, su15 84). The error, on ALL
+of them: `Error while finding module specification for
+'admorphiq.repl_agent._sandbox_worker'`. The subprocess sandbox spawns `python -m
+admorphiq…` but `run_code` passed NO env, and on Kaggle `admorphiq` is
+sys.path-INJECTED (not pip-installed) — so the fresh subprocess can't import it
+and EVERY run_code errored. **The tool loop ran but returned ERRORS, not
+inspection data — the model never actually got to inspect via code.** Fixed:
+`run_code` now propagates the parent's sys.path as PYTHONPATH to the subprocess
+(+ test). This means v5's REPL-arm result is INVALID — the REPL was dead; a v6
+re-run is required to truly evaluate it.
+
+**Capability diagnosis (the real question — WHY no clears):** even packet+image-
+only (the model DID have the working segmentation packet), the trace shows the
+core wall. On su15 (paint game, human L1 ≈ 12-22 actions; model used 85):
+- Perception/dynamics are FINE: PREDICT 100%, every action changed the board
+  (nochange=0), every state unique — NOT wandering-in-place.
+- But the model formed an early WRONG goal ("connect the dots — click the next
+  green dot") at t0 and NEVER revised it: every click spawns new green objects
+  (su15's mechanic), which it reads as "continue the chain-reaction/clearing
+  sequence" — indefinitely (t11/t21/t31/t82 all the same hypothesis). **It
+  conflates 'my action changed the board' (trivially true) with 'I progressed
+  toward the goal'.** No win-condition model → can't tell productive change from
+  noise → clicks forever. 85 > 22 actions, so it is NOT a budget problem.
+- This is the GOAL-INFERENCE frontier (project-wide: r51/r52, graph 7/25
+  ceiling) now confirmed at the 27B-multimodal-policy level. Movement games
+  (g50t PREDICT 56%, dc22 72%) add a weaker walls dynamics model on top.
+
+**v6 fix set (ranked by tractability):**
+1. **P0 sandbox PYTHONPATH (DONE this commit)** — makes the REPL actually work on
+   Kaggle. The #1 action: RE-RUN v6 to get a valid REPL-arm evaluation (v5's is
+   confounded — the REPL never ran). Also bump the sandbox-error integrity gate
+   into the kernel summary so this class of bug fails loudly next time.
+2. **Goal-revision signal (tractable, additive)** — the model never revises a
+   wrong goal because nothing tells it it's not progressing. Add to the packet an
+   `actions_since_last_level` counter + an explicit "if this is high, your goal
+   hypothesis is likely WRONG — try a different mechanic" nudge; and make PREDICT/
+   memory score a GOAL-relevant prediction (predict level_completed or a target
+   state), not the trivial board-change it scores now (which is ~always right and
+   never bites). Directly attacks the observed "endless clicking = mistaken
+   progress".
+3. **Honest caveat** — whether a 27B model can infer these win conditions with a
+   WORKING REPL + goal-revision signal is UNKNOWN, because v5's REPL was dead. Do
+   NOT conclude "model too small / pivot to JSON-arm or model-swap" from v5. That
+   decision needs v6 (working REPL) first. If v6 with working inspection + goal
+   revision still clears nothing on su15/ls20, THAT is the model-swap input.

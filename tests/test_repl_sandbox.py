@@ -137,6 +137,32 @@ def test_inspector_action_accounting():
 
 
 # ----- subprocess executor ---------------------------------------------------
+def test_run_code_propagates_pythonpath(monkeypatch):
+    """Purpose: the sandbox subprocess inherits the parent's sys.path via
+    PYTHONPATH so it can import admorphiq when the package is path-injected (not
+    pip-installed) — the Kaggle case where v5's tool loop 100%-errored.
+
+    Feedback: failure means every run_code errors on Kaggle and the REPL is dead.
+    """
+    import admorphiq.repl_agent.sandbox as sb
+
+    captured = {}
+
+    class _Done:
+        returncode = 0
+        stdout = '{"stdout":"","error":"","actions":[]}'
+        stderr = ""
+
+    def _fake_run(cmd, **kw):
+        captured["env"] = kw.get("env")
+        return _Done()
+
+    monkeypatch.setattr(sb.subprocess, "run", _fake_run)
+    run_code("pass", _store_two_frames(), timeout=5)
+    pp = captured["env"]["PYTHONPATH"]
+    assert any(p and p in pp for p in sb.sys.path)  # parent paths propagated
+
+
 def test_run_code_records_actions():
     """Purpose: model code running in the subprocess can inspect and request an
     action, returned to the parent.
