@@ -30,7 +30,65 @@ import json
 import os
 from glob import glob
 
-from repl_bench_compare import action_phases  # sibling script, same dir
+from repl_bench_compare import _load_jsonl, action_phases  # sibling, same dir
+from score_efficiency import game_score, level_score, total_score  # sibling
+
+_ENV_DIR = os.path.join(os.path.dirname(__file__), "..", "environment_files")
+
+
+def load_baselines(env_dir: str = _ENV_DIR) -> dict[str, list[int]]:
+    """title (lowercase) -> per-level human baseline_actions, from metadata.json.
+
+    Enables faithful RHAE offline: the per-level human upper-median action count
+    lives in ``environment_files/{title}/*/metadata.json`` and never changes, so
+    RHAE = level_score(baseline[i], agent_actions_on_level_i) needs no re-run.
+    """
+    out: dict[str, list[int]] = {}
+    for mp in glob(os.path.join(env_dir, "*", "*", "metadata.json")):
+        try:
+            with open(mp) as fh:
+                meta = json.load(fh)
+        except (OSError, json.JSONDecodeError):
+            continue
+        title = str(meta.get("title", "")).lower()
+        base = meta.get("baseline_actions")
+        if title and isinstance(base, list) and base and title not in out:
+            out[title] = [int(x) for x in base]
+    return out
+
+
+def per_level_actions(run_dir: str, tag: str) -> list[int]:
+    """Agent action counts per cleared level, segmented by level_up boundaries.
+
+    Returns one entry per level that was completed (actions spent reaching that
+    level_up). The final, in-progress level is excluded — RHAE only scores
+    cleared levels.
+    """
+    ep = os.path.join(run_dir, "events", f"{tag}.events.jsonl")
+    if not os.path.exists(ep):
+        return []
+    events = _load_jsonl(ep)
+    counts: list[int] = []
+    n = 0
+    for e in events:
+        if e.get("type") == "action_executed":
+            n += 1
+        elif e.get("type") == "level_up":
+            counts.append(n)
+            n = 0
+    return counts
+
+
+def faithful_rhae(run_dir: str, tag: str, title: str,
+                  baselines: dict[str, list[int]]) -> float | None:
+    """Faithful per-game RHAE for one run (level-index weighted, all-levels
+    denominator), or None when no baseline is known for the game."""
+    base = baselines.get(title.lower())
+    if not base:
+        return None
+    acts = per_level_actions(run_dir, tag)
+    scores = [level_score(base[i], a) for i, a in enumerate(acts) if i < len(base)]
+    return game_score(scores, win_levels=len(base))
 
 
 def _split_tag(tag: str) -> tuple[str, str, int] | None:
@@ -84,6 +142,7 @@ def evaluate(run_dir: str, replicate: str = "su15") -> dict:
     runs = load_runs(run_dir)
     if not runs:
         return {"error": f"no diagnostics found under {run_dir}"}
+    baselines = load_baselines()
 
     off_cleared = _cleared_games(runs, "off")
     on_cleared = _cleared_games(runs, "on")
@@ -131,7 +190,16 @@ def evaluate(run_dir: str, replicate: str = "su15") -> dict:
     mean_on = sum(eff["on"]) / len(eff["on"]) if eff["on"] else None
     mean_off = sum(eff["off"]) / len(eff["off"]) if eff["off"] else None
     levels_ok = on_levels >= off_levels
-    eff_ok = (mean_on is None or mean_off is None or mean_on <= mean_off)
+    # Faithful aggregate RHAE per arm: mean per-game RHAE (level-index weighted,
+    # all-levels denominator) over the arm's runs. total_score averages the
+    # present per-game scores, so games without a baseline simply drop out.
+    rhae = {"on": [], "off": []}
+    for r in runs:
+        val = faithful_rhae(run_dir, r["tag"], r["title"], baselines)
+        if val is not None:
+            rhae[r["arm"]].append(val)
+    rhae_on, rhae_off = total_score(rhae["on"]), total_score(rhae["off"])
+    eff_ok = rhae_on >= rhae_off  # the efficiency guard is faithful RHAE
     c3 = coverage_gain >= 2 and levels_ok and eff_ok
 
     return {
@@ -145,6 +213,7 @@ def evaluate(run_dir: str, replicate: str = "su15") -> dict:
                                        "detail": c2_details},
         "C3_coverage": {"pass": c3, "coverage_gain": coverage_gain,
                         "on_levels": on_levels, "off_levels": off_levels,
+                        "rhae_on": round(rhae_on, 4), "rhae_off": round(rhae_off, 4),
                         "mean_actions_to_clear_on": mean_on,
                         "mean_actions_to_clear_off": mean_off,
                         "levels_ok": levels_ok, "efficiency_ok": eff_ok},
@@ -186,6 +255,7 @@ def main() -> None:
     c3 = res["C3_coverage"]
     print(f"  [{'PASS' if c3['pass'] else 'FAIL'}] C3 coverage: +{c3['coverage_gain']} games "
           f"(need +2); levels ON={c3['on_levels']} OFF={c3['off_levels']}; "
+          f"RHAE ON={c3['rhae_on']} OFF={c3['rhae_off']}; "
           f"mean-actions-to-clear ON={_fmt(c3['mean_actions_to_clear_on'])} "
           f"OFF={_fmt(c3['mean_actions_to_clear_off'])}")
     print(f"  GATE: {'PASS' if res['GATE_PASS'] else 'FAIL'}")
