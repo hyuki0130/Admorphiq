@@ -223,6 +223,7 @@ def test_discover_adapter_paths_excludes_init_and_base():
     assert "su15.py" in names
     assert "ft09.py" in names
     assert "sb26.py" in names
+    assert "ka59.py" in names
 
 
 def test_real_m0r0_adapter_passes_the_lint():
@@ -289,6 +290,22 @@ def test_real_sb26_adapter_passes_the_lint():
     assert result.import_violations == []
 
 
+def test_real_ka59_adapter_passes_the_lint():
+    """Purpose: regression pin -- the actual shipped ka59 adapter (the
+    multi-piece delivery/configuration-path sixth mechanic family and the
+    first to compose admorphiq.kernels.configuration_path/reachable_frontier
+    for its planning, rather than the grid-array-specific
+    grid_shortest_path/grid_distance_field pair) must ALSO have zero import
+    violations, proving the quarantine contract holds for an adapter whose
+    state space is an incrementally-measured transition graph, not a fixed
+    grid.
+    Expected feedback: failure means the ka59 adapter (or the lint's
+    whitelist) drifted out of sync with the quarantine rules."""
+    path = _REPO_ROOT / "src" / "admorphiq" / "adapters25" / "ka59.py"
+    result = lint_module(path)
+    assert result.import_violations == []
+
+
 def test_import_of_nonexistent_kernel_name_is_a_runtime_hard_failure():
     """Purpose: the exact regression a teammate hit — an adapter's import
     line is fully WHITELISTED (admorphiq.kernels is an allowed source) so
@@ -330,7 +347,7 @@ def test_real_adapter_files_are_import_smoke_tested_via_dotted_module_name():
     _import_smoke_test regressed (e.g. always falling back to the
     file-location loader), which would silently stop verifying that
     discover_adapters() can actually load the real adapters."""
-    for name in ("m0r0.py", "lp85.py", "su15.py", "ft09.py", "sb26.py"):
+    for name in ("m0r0.py", "lp85.py", "su15.py", "ft09.py", "sb26.py", "ka59.py"):
         result = lint_module(_ADAPTERS_DIR / name)
         assert result.import_error is None, f"{name}: {result.import_error}"
         assert result.ok is True

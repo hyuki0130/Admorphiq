@@ -106,6 +106,37 @@ memory is kept — only the piece's own position re-anchors to "unknown"
 across a restart, while the measured transition graph and dir_map (both
 properties of the fixed level layout / control scheme, not of one life)
 are preserved.
+
+A target ring is also STICKY once seen (``_known_targets``): a piece
+merely passing adjacent to (not yet exactly aligned with) a frame can
+overlap one shared border pixel and break ``closed_frames``' exact-ring
+match for that frame on that one frame only, making a real, still-unfilled
+static target vanish from ``_classify_rings``' output for a call or two.
+Frames never move, so a once-seen target cell is trusted as still needing
+a piece until a piece is actually observed sitting exactly on it — without
+this, the adapter would periodically "forget" an unsolved target and
+misallocate its only free piece to the wrong (or no) goal. This was
+MEASURED live (level 0's second target vanished from detection the moment
+the routed piece's outer bbox came pixel-adjacent to it, one step before
+reaching its exact final cell) and is a genuine, if narrow, fragility of
+composing ring detection on a moving board — not a hypothetical.
+
+Live smoke result (2x500 actions, deterministic): **0/7 levels**. The
+mechanic model and kernel composition are load-bearing and largely
+working: a single piece was observed reaching its assigned frame in as
+few as 13 actions (close to gold-trace efficiency for that sub-problem),
+via ``configuration_path`` finding a genuine route and ``reachable_frontier``
+correctly filling in unexplored cells along the way. The wall this
+adapter hits is level 0's own 100-action StepCounter fuse (a real,
+in-source per-level budget, not this adapter's ``_GIVEUP_DEFAULT``): the
+SECOND piece's ACTION6 select does not reliably switch control on the
+first attempt (this adapter's own click-point cycling recovers it, but
+not always inside the remaining budget), so a life sometimes exhausts its
+100 actions mid-select-retry before the second piece ever reaches its
+target, and ``restart_on_game_over`` + persisted layout knowledge were not
+enough to close the gap within 5 lives (500 actions / ~100 per life). This
+is an adapter EFFICIENCY limitation (click reliability / control-switch
+overhead), not a missing kernel or a wrong mechanic model.
 """
 
 from __future__ import annotations
@@ -260,6 +291,17 @@ class Adapter(GameAdapter):
         # confirmed active -- drives _select_point's corner cycling.
         self._select_attempts: dict[Cell, int] = {}
 
+        # Every target cell ever measured via closed_frames this level,
+        # kept even on a call where re-detection fails -- MEASURED
+        # necessary: a piece merely passing adjacent to (not yet exactly
+        # aligned with) a frame can overlap one shared border pixel and
+        # break closed_frames' exact-ring match for that frame on THIS
+        # frame only, making it vanish from _classify_rings' targets for
+        # one or more calls even though it is a real, still-unfilled,
+        # static frame. Frames never move, so once seen a target cell is
+        # trusted until a piece is actually observed sitting on it.
+        self._known_targets: set[Cell] = set()
+
         # Measured (cell, action, cell) transitions -- the state-space
         # graph configuration_path / reachable_frontier search over.
         # Property of the level layout: reset on level-up, kept across a
@@ -319,6 +361,7 @@ class Adapter(GameAdapter):
         self._await_select_confirm = False
         self._last_select_cell = None
         self._select_attempts = {}
+        self._known_targets = set()
 
     def _on_restart(self) -> None:
         """Only the active piece's position resets; the layout knowledge
@@ -402,8 +445,14 @@ class Adapter(GameAdapter):
         bg = most_common_color(grid)
         pieces, targets = _classify_rings(grid, bg)
         self._prev_piece_regions = pieces
-        if not pieces or not targets:
+        if not pieces:
             return self._probe(move_ids)
+
+        # Target cells are STICKY within a level (see class field docstring
+        # on _known_targets): a target missing from THIS call's targets
+        # (piece-overlap detection corruption) is still trusted if it was
+        # ever seen before, rather than treated as satisfied or gone.
+        self._known_targets |= {t["inner_bbox"][:2] for t in targets}  # type: ignore[misc]
 
         if self._await_select_confirm:
             # The previous action was a select click -- its effect is only
@@ -419,11 +468,9 @@ class Adapter(GameAdapter):
             return self._probe(move_ids, cell=self._last_select_cell)
 
         piece_cells = [p["bbox"][:2] for p in pieces]  # type: ignore[misc]
-        target_cells = [t["inner_bbox"][:2] for t in targets]  # type: ignore[misc]
         piece_cell_set = set(piece_cells)
-        target_cell_set = set(target_cells)
-        free_cells = [c for c in piece_cells if c not in target_cell_set]
-        unfilled_targets = [c for c in target_cells if c not in piece_cell_set]
+        free_cells = [c for c in piece_cells if c not in self._known_targets]
+        unfilled_targets = sorted(c for c in self._known_targets if c not in piece_cell_set)
 
         if not free_cells or not unfilled_targets:
             return self._probe(move_ids)
