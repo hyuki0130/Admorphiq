@@ -17,7 +17,7 @@ category, drill into specific pages.
 - [[games/CD82.md]] — v1 6/6 ✅ (brittle paint_game, hardcoded positions) — Relies on game internals — high v1 score, fails on v2.
 - [[games/CN04.md]] — v1 brittle 1/5 ✅, generic 0/5 ❌ (R23 8B) — Frame-observation solver — generalizes across version hashes.
 - [[games/DC22.md]] — v1 1/6 ✅, v2 1/6 ✅ — Frame-observation solver — generalizes across version hashes.
-- [[games/FT09.md]] — v1 brittle 6/6 ✅, generic 1/6 (R18 GF(2) stencil, L1 only); R56 glyph decode gold-trace verified, live smoke pending — Relies on game internals for the historical v1 brittle solver; the R56
+- [[games/FT09.md]] — v1 brittle 6/6 ✅ (sprite-tag solver, kept for provenance only), generic 4/6 live-cleared, 47.62% RHAE (R56 glyph decode, measured — A multi-ring, multi-glyph constraint-satisfaction toggle puzzle — NOT a
 - [[games/G50T.md]] — v1 brittle 1/7 ✅, generic 0/7 ❌ (R23 8B; previously 1/7 via explore_interact) — Frame-observation solver — generalizes across version hashes.
 - [[games/KA59.md]] — v1 brittle 4/7 ✅, generic 0/7 ❌ (R23 8B; v2 dir-silent) — Relies on game internals — high v1 score, fails on v2.
 - [[games/LF52.md]] — v1 0/10 ❌ — Not yet classified; needs hand review.

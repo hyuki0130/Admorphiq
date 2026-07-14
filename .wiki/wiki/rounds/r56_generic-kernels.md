@@ -4,7 +4,7 @@ round: R56
 axis: generic-kernel-library
 verdict: IN-PROGRESS
 keywords: [generic-kernels, namespace-safe, script25, agent25, dual-scoreboard, declared-intent, primitive-firewall, kernel-library, quarantined-adapter]
-commit: [4303662, 3edcf4d, 1d797d7, 62fac21, f13b433, d377121, a2a62f0, b67cb39, de013aa, 69101ea, 68b802a, 3151030, cbda9aa, 0a7be09, 6e238de, f406d55, a3a6644, ae8fd95, 204aab2, 3e7391a, f0b0bcb, b28290e]
+commit: [4303662, 3edcf4d, 1d797d7, 62fac21, f13b433, d377121, a2a62f0, b67cb39, de013aa, 69101ea, 68b802a, 3151030, cbda9aa, 0a7be09, 6e238de, f406d55, a3a6644, ae8fd95, 204aab2, 3e7391a, f0b0bcb, b28290e, 010df51, fbd625d, 57b325d, a8299de]
 date: 2026-07-15
 ---
 
@@ -234,6 +234,17 @@ to actually clear a level against the live API, not just plan correctly
 offline against gold traces — the plumbing-to-live-result gap the m0r0
 PoC adapter above explicitly left open.
 
+**Updated live result (`57b325d`): 3/8, 0.1446.** L3 decoded via a
+DIFFERENT signal than the L1/L2 connector-geometry path — pure colour
+matching (a hollow icon inside the hub's hole whose colour equals a leaf
+frame's border), kept alongside the connector path since games may use
+either signal. A second real bug fixed in the same commit: the
+largest-hole-cluster frame filter was silently dropping BOTH leaf frames
+(the hub is legitimately the largest), replaced with a content-count >= 2
+threshold (decorative markers measured to have exactly 1). Slot sequence
+matches gold exactly; L1/L2 did not regress; 2x500 deterministic. L4 is
+the next wall (~4000-action plateau).
+
 **Not yet re-measured after this session's fused-frame integration**: a
 LATER same-session commit (`f0b0bcb`, not part of the original `3e7391a`
 clear) wires `split_fused_frame` into `_recover_fused_frames` so the
@@ -284,21 +295,57 @@ diagnosis only, per the R56/adapter division of labour this round.
 ## Measured so far (continued) — ft09
 
 **ft09 glyph-decode adapter** (`src/admorphiq/adapters25/ft09.py`, committed
-`68b802a`) — gold-trace reverse-engineering (replay against captured L0/L1
-frames) falsifies the R16-R18 "coupled GF(2) neighbourhood stencil" reading
-of FT09 entirely: a click only ever changes the clicked cell. The real win
-condition is a 3x3 compass glyph drawn in each ring's own center gap; a
-ring cell needs a click iff its current colour differs from its
-glyph-predicted target, decoded fresh from the frame on every call (no
-caching), which also makes two-phase decoy->reveal boards fall out for
-free. Ring/pitch/glyph geometry is entirely discovered (modal button size,
-mode of measured button-gap distances, `tile_bbox` 3x3 split) — no fixed
-pixel offsets. Falls back to the pre-existing measured-GF(2)-stencil
-machinery, unchanged, via a per-cell click cap + contradiction budget if
-the decode doesn't apply to an unseen board. **Verified byte-for-byte
-offline against gold-trace data; live-env smoke run not yet run** — see
-[[../lessons/ft09_glyph_decode_20260715]] for the full falsification
-writeup and open item.
+`68b802a`, extended `3151030`/`010df51`) — gold-trace reverse-engineering
+falsifies the R16-R18 "coupled GF(2) neighbourhood stencil" reading of
+FT09 entirely: a click only ever changes the clicked cell (plus, on one
+level, a second cell at a fixed MEASURED offset — see the lesson page's
+"cell coupling" section). The real win condition is a constraint set
+collected from EVERY glyph covering a cell (not just the nearest one — a
+coverage-scoping near-miss taught this the hard way, see below), decoded
+fresh from the frame on every call (no caching), which also makes
+two-phase decoy->reveal boards fall out for free. Ring/pitch/glyph
+geometry is entirely discovered (modal button size, mode of measured
+button-gap distances, `tile_bbox` 3x3 split, a measured 4-member floor for
+truncated rings) — no fixed pixel offsets.
+
+**LIVE result (script25, 2x500-action smoke, fully reproducible): 4/6
+levels, 47.62% RHAE, every cleared level at the 1.0 per-level cap**
+(agent action count at or below the human baseline on all 4). This is a
+real live clear, not just an offline gold-trace match. Two levels remain
+open: one (0-indexed 4) has a THIRD glyph type ("commit" glyphs, ink value
+6, edge-normalizing semantics) whose exact win invariant is unresolved —
+a self-contained mystery brief (`scripts/_r58_ft09_l4_mystery_brief.md`)
+is with Codex as of this writing, parallel structure to the L3 formula
+brief below. The other (0-indexed 5) is fully decoded offline but has
+never been reached live because the unsolved level sits in front of it
+sequentially.
+
+**A genuine falsification-replay near-miss, root-caused and fixed**: a
+Codex-derived 3-colour-cycle formula (`docs/r58_codex_ft09_l3_formula_20260715.md`)
+claimed one gold click was redundant; a live deterministic replay omitting
+it FAILED to clear the level, directly contradicting the claim. Root
+cause: the "redundant" cell was covered by a THIRD glyph the original
+2-glyph tabulation missed — full enumeration of every glyph's reach
+against every cell (not "the nearest one or two") resolved it to 18/18
+exact, with the cell turning out to be uniquely determined, not
+ambiguous. This is now the load-bearing coverage-collection rule.
+
+**A separate, real bug found live and fixed**: the adapter's trigger-click
+fallback judged success by "did anything visibly change", which loops
+forever on a board where an ordinary click is always visibly effective
+(measured: 60+ identical clicks, zero contradictions, before the fix).
+Fixed via `_is_wholesale_change` (bbox-set Jaccard overlap, not any-diff)
+plus bounded distinct-cell trigger and per-level action budgets. Score
+unchanged (4/6, 47.62% both before and after), but total actions on the
+same 500-budget smoke dropped from 500 (exhausted) to 195 (a clean bounded
+bail on the unsolved level) — the intended wall-clock fix.
+
+Falls back to the pre-existing measured-GF(2)-stencil machinery, unchanged,
+via a per-cell click cap + seen-colour loop detector + contradiction budget
+if the decode doesn't apply to a board it hasn't seen. See
+[[../lessons/ft09_glyph_decode_20260715]] for the full falsification-
+journey writeup (11 tests in `tests/test_adapters25_ft09.py`, including a
+regression pin for the trigger-loop bug) and the two open items.
 
 ## Open items
 
@@ -326,6 +373,17 @@ writeup and open item.
   `test_adapters25_ka59.py` exists yet to pin either fix (unlike `ft09`,
   which has `test_adapters25_ft09.py`) — the gap this bug slipping
   through exposes.
+- **KA59 push mechanic WORKS (`a8299de`), banked at 0/7.** Measured wall
+  crossing at `(30,27)->(30,39)` — only L0 of the 4 gold levels actually
+  needs a push, and it's now calibrated. Slide execution ticks until 2
+  stable frames plus full re-identification; a deliberate collision walk
+  is the routing last resort. Three repeat-forever bugs fixed in the same
+  commit: identity re-probe without an anchor, a frontier tier that
+  excluded the current cell (ping-pong), and fixed-action repeat on
+  exhausted cells. Still 0/7 live: the push is REACTIVE, not planned into
+  the joint solve, and re-identify/re-assign overhead eats the 100-action
+  fuse before convergence — banked as a real, working primitive with a
+  named remaining gap (planning integration), not a dead end.
 - **TR87 L2 wall.** Corrected from an earlier stale note on this page
   (the design doc is now committed, and a real integration WAS built —
   see "TR87 gate arc" above, not "design + prototype only"). Remaining

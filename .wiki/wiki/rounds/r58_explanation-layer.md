@@ -2,9 +2,9 @@
 type: reasoning
 round: R58
 axis: explanation-layer
-verdict: IN-PROGRESS — P0/P1 (Navigation Vertical Slice v0) + P2 (GoalLedger, calibration-fixed) built; P3 not started; residual TOP1 gap reframed as detector-selectivity (game-context weighting), not calibration — open Codex question
-keywords: [explanation-layer, protocol-compiler, typed-intents, enforced-state-machine, goal-ledger, navigation-vertical-slice, playbook, falsification, strike-budget, agent25, floor-anchoring, detector-selectivity]
-commit: [5ceb5ec, 3759c4f, 0f105e0, 70686d1, 0a31279, 8166efd, 29a9ca8, 2fe6c21]
+verdict: ON HOLD (2026-07-15 dawn) — P0/P1 (Navigation Vertical Slice v0) built; P2 (GoalLedger) through Codex-verdict-#2 tier/adjudication rebuild + confinement-promotion/contradiction-demotion hardening, all real-trace validated; P3 not generalized past navigation; agent25 A/B validation gated on Kaggle engagement results, not further ledger tuning
+keywords: [explanation-layer, protocol-compiler, typed-intents, enforced-state-machine, goal-ledger, navigation-vertical-slice, playbook, falsification, strike-budget, agent25, floor-anchoring, detector-selectivity, evidence-tiers, adjudication, confinement-promotion, contradiction-demotion]
+commit: [5ceb5ec, 3759c4f, 0f105e0, 70686d1, 0a31279, 8166efd, 29a9ca8, 2fe6c21, c679056, 698e050, a1f418b, 9c41887]
 date: 2026-07-15
 ---
 
@@ -222,6 +222,94 @@ game-context weighting (some signal about which detector TYPES are even
 plausible for a given board, before ranking within the fired set) rather
 than any further per-detector strength tuning.
 
+### Codex verdict #2 — replace scalar ranking with tiers + adjudication (`c679056`)
+
+The "SELECTIVITY, not calibration" open question above went back to Codex.
+Verdict (`docs/r58_codex_ledger_ranking_20260715.md`, binding): stop asking
+one scalar strength to carry two different jobs — "how confident is this
+detector in its own claim" and "which TYPE is even plausible for this
+board." Replace sort-by-strength/TOP1-elects with: (1) three EVIDENCE TIERS
+per candidate (`affordance` < `behavioral` < `predicate`, static-structure-
+only up to actual endpoint identification), tier-ordered first, strength
+only breaking ties within a tier; (2) an ADJUDICATION pass computing
+pairwise footprint relations between fired candidates (`shared_evidence` /
+`subsumed_evidence` / `independent_evidence`, plus the R57-declared
+`temporal_composition` between arrival+elimination); (3) a CAP policy that
+keeps ambiguity groups whole (union-find over shared/subsumed edges) rather
+than truncating mid-group; (4) `pattern_match` rebuilt around immediate-
+containment lattice/congruent-pair detection instead of the old "any
+heterogeneous bbox" reading. `GoalLedger` reconceives itself as a capped
+HYPOTHESIS GENERATOR, not an elector — TOP1 is explicitly demoted to a
+legacy/diagnostic-only metric.
+
+### Tuning round #3 — Codex-verdict rebuild (`698e050`)
+
+Implemented the full verdict: evidence stages -> `tier` field, adjudication
+dependencies, union-find cap policy, `pattern_match` replaced wholesale
+(`_immediate_children` transitive reduction + `_lattice_shape` /
+`_find_congruent_panel_pair`, no colour-count floor, single panel capped at
+`affordance`). Measured against the same 21-game real-trace set: **TOP1
+28.6% -> 42.9%** (legacy metric, now diagnostic-only), **recall (TOPK) held
+at 71.4%**, miss attribution 6/6 non-firing (0 cap evictions — nothing
+correct was truncated by the cap), `sc25` reproduces the verdict's own
+worked example exactly. `tn36`'s honest failure mode is named explicitly
+here for the first time: T8 (rewrite) has zero frame evidence per R57's own
+mining, yet `arrival` fires CONFIDENTLY (tier 1/predicate) on it — a
+correctly-computed but wrong-context claim, flagged as future work rather
+than silently patched. 56 tests.
+
+### Transition-window validation exposes two structural gaps (`a1f418b`)
+
+A follow-up measurement pass (no code change) fed each detector a
+`transition_window` (>=2 consecutive early-episode frames, still pre-clear)
+to test the evidence-stage PROMOTION path (`affordance` -> `behavioral`)
+that tuning round #3 built but never validated against real transitions.
+Finding: the promotion test ("did any diff cell intersect the candidate's
+footprint at all") is far too permissive — it fired on **19 of 24 games**,
+almost entirely through coincidental overlap during large, continuous,
+board-spanning per-action diffs (camera pans, HUD/animation churn) rather
+than genuine localized interaction with the candidate. `tn36`'s `arrival`
+promoted all the way to `predicate` (0.862 margin) this way — the exact
+false-confidence case named in tuning round #3, now made WORSE by a second
+mechanism. Also identified: evidence only had an UPWARD path — nothing
+could argue AGAINST a candidate from behavioral data, so a persistently-
+contradicted claim (like `tn36`'s) had no way back down.
+
+### Tuning round #4 — confinement-based promotion + contradiction demotion (`9c41887`)
+
+Two structural fixes, both built on existing primitives (no new kernels, no
+per-game constants):
+
+1. **Confinement-based promotion** (`_is_confined_interaction`): a step's
+   diff must have `>=50%` of its own cells INSIDE the candidate's footprint
+   AND its own bounding box must cover `<50%` of the frame — ruling out
+   diffs large enough to overlap almost anything by sheer size.
+2. **Contradiction demotion**: per-type predicates (arrival: a large diff
+   that is NOT a confined interaction; uniformity: a diff that touches
+   member cells without being confined to any one member; containment/
+   pattern_match: a diff that touches the footprint without staying inside
+   it) reset a candidate's stage back to `affordance` after `>=2` window
+   steps, and clamp margin to the shared floor (`0.2`) after `>=4`
+   persistent steps. One correction made and RE-MEASURED mid-round:
+   arrival's contradiction predicate initially required literal zero-
+   overlap ("no displacement" read as "diff never touches the locus"), but
+   real-trace measurement showed this almost never fires twice for any
+   candidate region bigger than a few cells (`tn36`'s 353-cell/8.6%-of-frame
+   locus gets grazed by chance in 7 of 8 window steps) — corrected to
+   "large AND not-confined", symmetric with the promotion test's own
+   standard.
+
+Measured against the same 24-game windowed set: **promotion count 19/24 ->
+4/24** (only `ft09`/`ka59`/`lf52` now promote, all genuinely confined;
+`sk48`'s prior promotion also reverted under the corrected predicate but has
+zero recall impact, since `sk48`'s gold type is `arrival`, which never fires
+there at all). **`tn36`'s arrival demotes tier 1 (0.862) -> tier 3 (0.2,
+floor-clamped)** — the false-confidence case flagged in tuning round #3 is
+now structurally corrected, not just diagnosed. **`ft09`'s stencil-confined
+uniformity promotion survives** (tier 2, 0.451) — the specific must-not-
+regress check. **Recall (TOPK) unchanged at 71.4%**, 0 cap evictions in
+either frame-only or windowed runs. 40 tests (`tests/test_goal_ledger.py`).
+
 ## What's still open
 
 - **P3 (worked packets)** seeded for navigation only — not generalized to
@@ -235,13 +323,21 @@ than any further per-detector strength tuning.
   (the whole point of this axis, per [[r56_generic-kernels]]'s
   script25/agent25 dual-scoreboard framing) is not yet measured. The
   adoption-funnel telemetry built in the Navigation Vertical Slice exists
-  precisely to make that measurement possible next round.
-- **GoalLedger TOP1 gap is now a SELECTIVITY question, not a calibration
-  one** (see the re-validation section above) — a genuine, correctly-
-  scored detector hit for the wrong TYPE in a given game's context needs
-  some form of game-context weighting to resolve, per the pre-registered
-  open question for the next Codex consultation. Floor-anchoring's own
-  job (cross-detector comparability) is done and proven correct.
+  precisely to make that measurement possible, but this validation is
+  GATED on the Kaggle engagement experiments landing, not on further
+  ledger tuning — see the HOLD note below.
+- **GoalLedger's detector-SELECTIVITY question** (the residual TOP1 gap
+  flagged after the floor-anchoring re-validation, above) was the input to
+  Codex verdict #2 — the tier/adjudication rebuild is Codex's answer to
+  exactly this: tiers separate "how confident is this detector" from
+  "which type is even plausible here", and TOP1 is retired as the metric
+  that question was framed around. Resolved as designed, not patched.
+- **HOLD (2026-07-15 dawn, team-lead directive)**: the ledger has now been
+  through build -> real-data validation -> 3 tuning rounds -> Codex
+  redesign -> 2 more measured rounds (confinement/contradiction). It is
+  in solid shape for the agent25 replay phase. No further ledger rounds
+  until either new Codex L4/engagement results create new work, or the
+  agent25 wiring assignment is sent.
 
 ## Related
 
