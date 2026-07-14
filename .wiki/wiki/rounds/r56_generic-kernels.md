@@ -529,17 +529,36 @@ game's own current status.
   resolved — see "Measured so far (continued) — ft09" above and
   [[../lessons/ft09_glyph_decode_20260715]]'s resolution section. No
   further FT09 work is currently open.
-- **Adapter iteration — resolved, corrected from an earlier stale note on
-  this page.** m0r0's hazard-memory fix (dead-cell memory keyed
+- **Adapter iteration — corrected from an earlier stale note on this
+  page (the "budget ceiling" read below is now FALSIFIED, see the next
+  bullet).** m0r0's hazard-memory fix (dead-cell memory keyed
   per-`(cell, action)`, `known_passable` persisted across restarts instead
   of being wiped each life) landed and was smoke-measured in `4129284`:
   `known_passable` count 70 -> 132 at the same 500-action budget, still
-  0 levels — the wall is now a BUDGET ceiling (legacy solved the same
-  maze at ~2130 actions), not the hazard-repeat bug this fix targeted.
-  `lp85.py` (rare-colour click family — clicks the region whose colour is
-  the rarest on the board) also landed in the same commit: 0/8 at 500a,
-  consistent with the legacy ceiling. Full-budget re-runs live on the
-  GCP VM, not yet reported here.
+  0 levels — hypothesized at the time as a BUDGET ceiling (legacy solved
+  the same maze at ~2130 actions), not the hazard-repeat bug this fix
+  targeted. `lp85.py` (rare-colour click family — clicks the region whose
+  colour is the rarest on the board) also landed in the same commit: 0/8
+  at 500a, consistent with the legacy ceiling (LP85's own budget
+  hypothesis is NOT re-tested by the m0r0 backport below and remains
+  open).
+- **m0r0 budget-ceiling hypothesis FALSIFIED — goal-directed backport
+  still 0/6 at 3000a (`4d9472f`).** The undirected frontier-BFS exploration
+  above was replaced with dc22/ka59's optimistic-passability +
+  shortest-path-to-a-declared-goal pattern: gold-trace investigation
+  (`data/traces/m0r0.npz`) found the goal is a MOVING mirror-partner
+  region (the avatar's own colour is shared by two simultaneously-moving
+  regions; the measured win action is the step that brings them into
+  pixel-adjacency), re-read from the live frame every planning call
+  rather than computed once. A real bug was also fixed in the same
+  commit: GAME_OVER was routed through the full-level-wipe path shared
+  with NOT_PLAYED, discarding all learned hazard/passability facts on
+  every death instead of only resetting position (ported from dc22's own
+  `_on_restart`). **Measured: 0/6 at BOTH 500a and 3000a** — a directed
+  planner with 6x the budget the legacy solver needed still doesn't
+  clear a level, so the wall is a planning/goal-detection bug, not
+  budget. Not yet diagnosed further this session; see
+  [[../games/M0R0]] for the game's own current status.
 - **KA59 had a real init bug, fixed same session.** The committed adapter
   (`cbda9aa`) used `self._select_point`/`self._last_select_cell`/
   `self._select_attempts` without ever initializing them in `__init__` —
