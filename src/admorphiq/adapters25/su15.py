@@ -45,33 +45,38 @@ nothing about tiles, goals, enemies, or merging):
     container reliably renders bigger than the small value tiles it
     receives -- independently re-derived here, not copied from
     merge_drag.py's identical heuristic).
-  - Every other candidate region is a movable value TILE, unless it moved
-    on its own (see HAZARD below).
-  - **HAZARD** (R56 iteration 2, replacing "enemy/downgrade interaction:
-    out of scope" from the first pass): a region that measurably shifted
-    between two frames while its PRE-shift position was nowhere near the
-    click that was just issued is an AUTONOMOUS mover -- something the
-    click did not pull, i.e. plausibly one of the wiki's "enemies that
-    chase fruits". First-pass measurement (14 GAME_OVERs in a 500-action
-    smoke run, with no enemy/tile distinction at all) motivated this.
-    Recent autonomous-mover positions are excluded from the draggable-tile
-    pool, and a merge/gather target is skipped when its own click-path
-    MIDPOINT lands near a recent hazard position (a target whose click
-    would pass through/near where the mover currently is is deprioritized
-    in favour of the next-ranked target).
+  - Every other candidate region is a movable value TILE, unless its
+    coarse position-bucket is DEAD (see below).
+  - **HAZARD role, tried and REMOVED (R56 iteration 2 -> 3 falsification)**:
+    iteration 2 tagged any region that shifted far from the click just
+    issued as an autonomous "enemy" mover and excluded it from targeting.
+    Correctly implemented (a real bug -- SU15's flickering status row
+    initially polluted the signal -- was found and fixed first), it fired
+    ZERO times across a reproduced 500-action run while GAME_OVERs stayed
+    essentially unchanged (14 -> 15). Measured-inert and su15-local, so
+    per the repo's "no speculative safety nets" discipline it is REMOVED
+    here rather than kept dormant; the implementation is preserved in
+    commit ``cb8a205`` if a future measurement ever motivates reviving it.
+  - **Dead-click memory** (R56 iteration 3, replacing the hazard role):
+    the wiki's own lesson log (not the removed hazard theory) records the
+    real mechanism -- repeated clicks on an unresponsive tile accumulate
+    toward GAME_OVER. Mirrors ``admorphiq.adapters25.m0r0``'s dead-cell
+    design: a tile's coarse position-bucket (:func:`_tile_key`) that has
+    been the click SOURCE :data:`_DEAD_CLICK_THRESHOLD` times with no
+    useful shift (see :data:`_MIN_USEFUL_SHIFT`) is marked dead and
+    excluded from future target selection for the rest of the level.
   - Two same-color tiles are a MERGE candidate; a lone tile (or once no
     same-color pair remains) is driven toward the goal (GATHER). Every
     same-color pair is ranked nearest-first, then every lone tile ranked
-    farthest-from-goal-first, and the first entry whose midpoint clears
-    the hazard check is chosen (see :func:`_ranked_targets`).
+    farthest-from-goal-first, and the first (now: only) entry is chosen
+    (see :func:`_ranked_targets`).
   - **Coverage rotation** (R56 iteration 2): if the SAME tile keeps being
-    picked as a click source too many times in a row (a coarse,
-    position-bucketed identity -- regions have no persistent id across
-    frames, see :func:`_tile_key`), the ranking is overridden ONCE and the
-    LEAST-recently-targeted tile is driven toward the goal instead. First
-    pass measured a tile that was never once selected across a full
-    500-action run because a different same-color pair kept out-ranking
-    it every single call.
+    picked as a click source too many times in a row (the same coarse
+    position-bucketed identity dead-click memory uses), the ranking is
+    overridden ONCE and the LEAST-recently-targeted tile is driven toward
+    the goal instead. First pass measured a tile that was never once
+    selected across a full 500-action run because a different same-color
+    pair kept out-ranking it every single call.
   - Candidate regions exclude two classes of chrome, both detected by
     RELATIVE frame geometry, never absolute pixel coordinates: (a) a HUD
     band -- a region spanning almost the full width or height of the frame
@@ -89,18 +94,17 @@ Composition from ``admorphiq.kernels``:
   - :func:`admorphiq.kernels.frame_diff` + :func:`admorphiq.kernels.find_regions`
     (before/after) + :func:`admorphiq.kernels.track_objects` +
     :func:`admorphiq.kernels.motion_vectors` measure whether the last click
-    moved anything at all (fraction escalation) AND, per matched region,
-    whether ITS pre-shift position was far from the click (hazard
-    detection) -- one measurement pass now answers both questions.
+    moved anything at all -- this single measurement now drives BOTH the
+    fraction escalation and dead-click counting.
   - :func:`admorphiq.kernels.point_toward` replaces this adapter's own
     hand-rolled vector arithmetic from the first pass -- composition over
     local math.
 
 Deliberately still out of scope (this is a proof-of-concept, not a full
-solver): merge-order lookahead, and per-tile dead-click memory the way
-``admorphiq.adapters25.m0r0``'s dead-cell tracking works (``restart_on_game_over``
-is set so a GAME_OVER costs one action, not the run, but nothing here
-prevents repeatedly clicking a tile that never responds).
+solver): merge-order lookahead, and any enemy/downgrade interaction
+(``restart_on_game_over`` is set so a GAME_OVER costs one action, not the
+run; dead-click memory addresses the wiki-documented "repeated dead click"
+GAME_OVER path specifically, not a hostile-entity interaction).
 """
 
 from __future__ import annotations
@@ -159,15 +163,12 @@ _MAX_FRACTION = 0.9
 # MAGNITUDE, not a position.
 _MIN_USEFUL_SHIFT = 1.5
 
-# A moved region's PRE-shift centroid farther than this fraction of the
-# frame's own diagonal from the click just issued could not plausibly have
-# been pulled by that click -- it moved on its own. Frame-relative (a
-# fraction of the diagonal), never an absolute pixel radius.
-_HAZARD_MARGIN_FRACTION = 0.12
-# How many recent autonomous-mover positions to remember at once (oldest
-# dropped first) -- bounds memory growth over a long run without needing
-# per-hazard identity tracking across frames.
-_MAX_HAZARD_MEMORY = 6
+# A tile's coarse position-bucket (see _tile_key) that has been the click
+# SOURCE this many times with no useful shift is marked dead -- mirrors
+# admorphiq.adapters25.m0r0's dead-cell threshold, and directly targets the
+# wiki-documented "repeated dead clicks accumulate toward GAME_OVER" cause
+# (unlike the removed hazard mechanism, which measured inert).
+_DEAD_CLICK_THRESHOLD = 3
 
 # If the SAME (coarsely-bucketed) tile has been the click SOURCE this many
 # times in a row, the ranking is overridden once in favour of whichever
@@ -258,14 +259,6 @@ def _tile_key(region: Region) -> tuple[int, int, int]:
     return (region["color"], int(r) // 4, int(c) // 4)
 
 
-def _frame_diagonal(height: int, width: int) -> float:
-    return (height**2 + width**2) ** 0.5
-
-
-def _near_any(point: tuple[float, float], positions: list[Cell], margin: float) -> bool:
-    return any(_dist2(point, p) <= margin * margin for p in positions)
-
-
 def _click_toward(src: Cell, dst: tuple[float, float], fraction: float, height: int, width: int) -> Cell:
     """Click point at ``fraction`` of the src->dst distance, clamped to the frame.
 
@@ -302,10 +295,16 @@ class Adapter(GameAdapter):
         # only escalated, never reset, by _observe_result.
         self._fraction = _INITIAL_FRACTION
         self._pending_click: Cell | None = None
+        # The click SOURCE tile's bucket key, so _observe_result can credit
+        # a no-useful-shift outcome to the right bucket for dead-click
+        # counting. None when the pending click had no identifiable source
+        # region (the frame-centre fallback probe).
+        self._pending_source_key: tuple[int, int, int] | None = None
         self._prev_grid: tuple[tuple[int, ...], ...] | None = None
-        # Recent autonomous-mover ("hazard") positions -- a property of THIS
-        # level's layout, reset on level-up.
-        self._hazard_positions: list[Cell] = []
+        # Dead-click memory -- a property of THIS level's layout, reset on
+        # level-up alongside the rest.
+        self._dead_click_counts: dict[tuple[int, int, int], int] = {}
+        self._dead_buckets: set[tuple[int, int, int]] = set()
         # Coverage-rotation bookkeeping -- also a property of the level.
         self._target_history: dict[tuple[int, int, int], int] = {}
         self._same_target_key: tuple[int, int, int] | None = None
@@ -320,6 +319,7 @@ class Adapter(GameAdapter):
         state = state_name(latest_frame)
         if state in ("NOT_PLAYED", "GAME_OVER") or not has_frame(latest_frame):
             self._pending_click = None
+            self._pending_source_key = None
             self._prev_grid = None
             self._levels_seen = -1
             return reset_action()
@@ -329,8 +329,10 @@ class Adapter(GameAdapter):
         if levels != self._levels_seen:
             self._levels_seen = levels
             self._pending_click = None
+            self._pending_source_key = None
             self._prev_grid = None
-            self._hazard_positions = []
+            self._dead_click_counts = {}
+            self._dead_buckets = set()
             self._target_history = {}
             self._same_target_key = None
             self._same_target_count = 0
@@ -344,6 +346,7 @@ class Adapter(GameAdapter):
             # compose from on this frame.
             self._prev_grid = grid
             self._pending_click = None
+            self._pending_source_key = None
             return reset_action()
 
         target = self._next_target(grid)
@@ -355,63 +358,55 @@ class Adapter(GameAdapter):
     # ── measurement: did the pending click move anything? ───────────────
 
     def _observe_result(self, grid: tuple[tuple[int, ...], ...]) -> None:
-        """Escalate the click-offset fraction, and record any autonomous mover.
+        """Escalate the click-offset fraction, and count a dead click against its source bucket.
 
         Composes frame_diff -> _candidates (before/after) -> track_objects
         -> motion_vectors the same way admorphiq.adapters25.m0r0 measures
-        movement. Matching is done over the SAME chrome-filtered candidate
-        set gameplay decisions use (not raw find_regions output) -- measured
-        necessary: SU15's status row is a full-width band that repaints on
-        almost every action, and track_objects over the UNFILTERED region
-        list matched it as a "moved" region far from any click, flooding
-        hazard memory with nonsense (63, col) positions before this fix.
-        Two questions from ONE measurement pass:
+        movement, over the SAME chrome-filtered candidate set gameplay
+        decisions use (not raw find_regions output) -- measured necessary:
+        SU15's status row is a full-width band that repaints on almost
+        every action and would otherwise pollute matching (this is also
+        why the now-removed hazard mechanism's first pass mis-fired before
+        this same fix was applied to it).
 
-        1. Fraction escalation: the MAGNITUDE of the dominant shift (not its
-           direction -- the click already aims at where the tile should go)
-           decides whether the current fraction is a useful working
-           distance. A diff with no matched region shift (e.g. a merge
-           collapsing two regions into one) still counts as real progress
-           and does not escalate.
-        2. Hazard detection: for EVERY matched region (not just the
-           dominant one), a nonzero shift whose PRE-shift centroid was far
-           from the click just issued could not plausibly have been pulled
-           by that click -- it moved on its own. Its NEW (post-shift)
-           position is remembered as a recent hazard position.
+        A click counts as USEFUL when the frame changed AND (no clean
+        single-object shift was measurable -- e.g. a merge collapsing two
+        regions, still real progress -- OR the measured dominant shift
+        magnitude clears :data:`_MIN_USEFUL_SHIFT`). A NOT-useful click
+        escalates the fraction (as before) and, when it has an
+        identifiable source tile bucket, counts toward that bucket's
+        dead-click total; crossing :data:`_DEAD_CLICK_THRESHOLD` marks the
+        bucket dead for the rest of the level. Never healed by a later
+        useful click, mirroring m0r0's dead-cell permanence.
         """
         point = self._pending_click
+        source_key = self._pending_source_key
         before = self._prev_grid
         self._pending_click = None
+        self._pending_source_key = None
         if point is None or before is None:
             return
+
         diff = frame_diff(before, grid)
-        if diff["count"] == 0:
-            self._fraction = min(_MAX_FRACTION, self._fraction * _FRACTION_GROWTH)
+        useful = diff["count"] > 0
+        if useful:
+            regions_before = _candidates(before)
+            regions_after = _candidates(grid)
+            tracked = track_objects(regions_before, regions_after)
+            dominant = motion_vectors(tracked["matches"])["dominant"]
+            if dominant is not None:
+                magnitude = (dominant[0] ** 2 + dominant[1] ** 2) ** 0.5
+                useful = magnitude >= _MIN_USEFUL_SHIFT
+
+        if useful:
             return
 
-        regions_before = _candidates(before)
-        regions_after = _candidates(grid)
-        tracked = track_objects(regions_before, regions_after)
-
-        height, width = len(grid), len(grid[0]) if grid else 0
-        margin = _HAZARD_MARGIN_FRACTION * _frame_diagonal(height, width)
-        for m in tracked["matches"]:
-            if m["shift"] == (0, 0):
-                continue
-            before_centroid = regions_before[m["before"]]["centroid"]
-            if _dist2(before_centroid, point) ** 0.5 <= margin:
-                continue  # plausibly pulled by our own click
-            after_centroid = regions_after[m["after"]]["centroid"]
-            self._hazard_positions.append((int(round(after_centroid[0])), int(round(after_centroid[1]))))
-            if len(self._hazard_positions) > _MAX_HAZARD_MEMORY:
-                self._hazard_positions.pop(0)
-
-        dominant = motion_vectors(tracked["matches"])["dominant"]
-        if dominant is None:
-            return
-        magnitude = (dominant[0] ** 2 + dominant[1] ** 2) ** 0.5
-        if magnitude < _MIN_USEFUL_SHIFT:
-            self._fraction = min(_MAX_FRACTION, self._fraction * _FRACTION_GROWTH)
+        self._fraction = min(_MAX_FRACTION, self._fraction * _FRACTION_GROWTH)
+        if source_key is not None:
+            count = self._dead_click_counts.get(source_key, 0) + 1
+            self._dead_click_counts[source_key] = count
+            if count >= _DEAD_CLICK_THRESHOLD:
+                self._dead_buckets.add(source_key)
 
     # ── planning: where to click next ────────────────────────────────────
 
@@ -429,9 +424,11 @@ class Adapter(GameAdapter):
         if not tiles:
             return (height // 2, width // 2)
 
-        margin = _HAZARD_MARGIN_FRACTION * _frame_diagonal(height, width)
-        safe_tiles = [t for t in tiles if not _near_any(t["centroid"], self._hazard_positions, margin)]
-        pool = safe_tiles or tiles  # everything hazardous -- still act, don't freeze
+        # Exclude dead-bucketed tiles (repeated no-useful-shift clicks) from
+        # future targeting for the rest of the level -- unless that empties
+        # the pool entirely, in which case still act rather than freeze.
+        alive_tiles = [t for t in tiles if _tile_key(t) not in self._dead_buckets]
+        pool = alive_tiles or tiles
 
         if self._same_target_count > _STALL_ROTATE_THRESHOLD:
             # The same tile has been the click source too many times in a
@@ -442,19 +439,7 @@ class Adapter(GameAdapter):
             least_recent = min(pool, key=lambda t: self._target_history.get(_tile_key(t), -1))
             return self._commit_target(least_recent, goal["centroid"], height, width)
 
-        ranked = _ranked_targets(pool, goal)
-        for src_region, dst_point in ranked:
-            midpoint = (
-                (src_region["centroid"][0] + dst_point[0]) / 2,
-                (src_region["centroid"][1] + dst_point[1]) / 2,
-            )
-            if _near_any(midpoint, self._hazard_positions, margin):
-                continue
-            return self._commit_target(src_region, dst_point, height, width)
-
-        # Every ranked option's path passes near a hazard -- act on the
-        # best-ranked one anyway rather than stall entirely.
-        src_region, dst_point = ranked[0]
+        src_region, dst_point = _ranked_targets(pool, goal)[0]
         return self._commit_target(src_region, dst_point, height, width)
 
     def _commit_target(self, src_region: Region, dst_point: tuple[float, float], height: int, width: int) -> Cell:
@@ -465,6 +450,7 @@ class Adapter(GameAdapter):
             self._same_target_key = key
             self._same_target_count = 1
         self._target_history[key] = self._step
+        self._pending_source_key = key
 
         src = (int(round(src_region["centroid"][0])), int(round(src_region["centroid"][1])))
         return _click_toward(src, dst_point, self._fraction, height, width)
