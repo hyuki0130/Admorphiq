@@ -57,7 +57,36 @@ whenever a click produces no visible change, exactly like the old fraction
 did -- but now escalation makes the click reach FARTHER in absolute terms
 regardless of how close the target already is, matching the measured
 mechanic (a modest, roughly-constant nudge, recomputed fresh every call).
-It never shrinks back down once a click succeeds -- a known simplification.
+
+**R56 iteration 6 -- the absolute-step model REGRESSED (GAME_OVER 14->15,
+true useful-click rate 29%->6.8%), root-caused, and fixed with three
+policy changes, all still composed from ``admorphiq.kernels``:**
+
+1. **Measured floor.** :data:`_MIN_EFFECTIVE_PX` (10.0, the measured
+   working value from the iteration-5 probe -- 5px/7px dead, 10px worked)
+   is a hard floor: ``_step_px`` never starts, escalates, or resets below
+   it.
+2. **Overshoot instead of clamp.** The regression's actual driver:
+   :func:`admorphiq.kernels.point_toward` clamps to the destination
+   exactly when the step would overshoot it -- so once ``_step_px`` grew
+   past a shrinking remaining distance (which happens constantly as a
+   gather nears completion), EVERY click landed exactly ON a tile/goal
+   centroid, a measured no-pull zone (this module's very first probe:
+   clicking directly on a tile produces zero shift). :func:`_click_toward`
+   now detects that regime itself (step >= remaining distance) and
+   computes the click with its own unit-vector arithmetic, deliberately
+   landing PAST the destination -- the vacuum pulls toward the click
+   point, so a click beyond the goal still pulls goal-ward.
+   ``point_toward`` remains in use for the normal (step < remaining)
+   regime; only the clamping regime is bypassed.
+3. **Success-reset de-escalation.** ``_step_px`` still escalates x1.5 on a
+   not-useful click (as iteration 5), but a USEFUL click now resets it
+   back to :data:`_MIN_EFFECTIVE_PX` instead of staying escalated forever.
+   This is what actually bounds the runaway: iteration 5's step only ever
+   grew, so a handful of early misses on a long-distance target permanently
+   inflated it for every LATER, shorter-distance click too. Escalation now
+   tracks "is THIS click succeeding", not "how many failures has this run
+   accumulated overall".
 
 Role assignment (declared HERE, not in the kernel layer, which knows
 nothing about tiles, goals, enemies, or merging):
@@ -194,19 +223,18 @@ _HUD_THICKNESS_FRACTION = 0.06
 _SCATTER_MIN_CLUSTERS = 10
 _SCATTER_MAX_DENSITY = 0.05
 
-# Starting ABSOLUTE click-ahead distance (px) for a point-toward click;
-# escalated (never shrunk) whenever a click measurably moves nothing at
-# all. Unlike a fraction of the remaining distance, this does NOT shrink
-# as a tile approaches its target -- see the module docstring's iteration-5
-# finding (a fraction-based step falls below the effective pull threshold
-# exactly when it matters most, right as a gather nears completion).
-# Starts below the measured working value (10px, one tile/distance) so
-# escalation -- not an assumed constant -- finds the real threshold.
-_INITIAL_STEP_PX = 5.0
+# Measured minimum click-ahead distance (px) that ever registered a shift
+# (iteration-5 probe: 5px/7px dead, 10px worked) -- both the STARTING
+# ``_step_px`` and the floor it is never allowed below, including on
+# success-reset (see the module docstring's iteration-6 section).
+_MIN_EFFECTIVE_PX = 10.0
+# Growth factor applied to _step_px on a not-useful click; reset back to
+# _MIN_EFFECTIVE_PX on a useful one (iteration 6 -- iteration 5's step only
+# ever grew, so a handful of early misses permanently inflated every LATER
+# click too, well past the point it was still needed).
 _STEP_GROWTH = 1.5
 # Capped well under half the board so an escalated step stays a local
-# nudge, never a huge cross-board jump (the failure mode of the old
-# fraction model at its own ceiling).
+# nudge, never a huge cross-board jump.
 _MAX_STEP_PX = 30.0
 # A measured dominant shift smaller than this (in px) is treated the same as
 # "nothing moved" for escalation purposes -- a click that barely nudged
@@ -312,14 +340,28 @@ def _tile_key(region: Region) -> tuple[int, int, int]:
 
 
 def _click_toward(src: Cell, dst: tuple[float, float], step_px: float, height: int, width: int) -> Cell:
-    """Click point ``step_px`` ahead of ``src`` toward ``dst``, clamped to the frame.
+    """Click point ``max(step_px, _MIN_EFFECTIVE_PX)`` ahead of ``src`` toward ``dst``.
 
-    Thin wrapper over admorphiq.kernels.point_toward (which already takes
-    an absolute pixel distance and clamps to ``dst`` itself if ``step_px``
-    would overshoot it) adding only the frame-bounds clamp point_toward
-    doesn't know about.
+    Uses :func:`admorphiq.kernels.point_toward` for the NORMAL regime
+    (step shorter than the remaining src->dst distance). When the step
+    would REACH OR PASS ``dst``, point_toward's own contract clamps the
+    result to ``dst`` exactly -- measured a no-pull zone (this module's
+    very first probe: clicking directly on a tile produces zero shift).
+    That regime is detected here and handled with plain unit-vector
+    arithmetic instead, deliberately overshooting past ``dst`` -- the
+    vacuum pulls toward wherever the click lands, so landing beyond the
+    goal still pulls goal-ward. Clamped to the frame in both regimes,
+    which point_toward itself does not know about.
     """
-    row, col = point_toward(src, dst, distance=step_px)
+    step = max(step_px, _MIN_EFFECTIVE_PX)
+    remaining = _dist2(src, dst) ** 0.5
+    if remaining > 1e-9 and step >= remaining:
+        ux = (dst[0] - src[0]) / remaining
+        uy = (dst[1] - src[1]) / remaining
+        row = int(round(src[0] + ux * step))
+        col = int(round(src[1] + uy * step))
+    else:
+        row, col = point_toward(src, dst, distance=step)
     row = max(0, min(height - 1, row))
     col = max(0, min(width - 1, col))
     return (row, col)
@@ -343,9 +385,9 @@ class Adapter(GameAdapter):
         # ABSOLUTE click-ahead distance (px) used for the next point-toward
         # click. A property of the game's own vacuum strength, so it
         # persists across levels (matching admorphiq.adapters25.m0r0's
-        # dir_map convention) -- only escalated, never reset, by
-        # _observe_result.
-        self._step_px = _INITIAL_STEP_PX
+        # dir_map convention) -- escalated on a not-useful click, reset back
+        # to the floor on a useful one, by _observe_result.
+        self._step_px = _MIN_EFFECTIVE_PX
         self._pending_click: Cell | None = None
         # The click SOURCE tile's bucket key + exact centroid, so
         # _observe_result can (a) credit a no-useful-shift outcome to the
@@ -496,6 +538,12 @@ class Adapter(GameAdapter):
                         useful = (dr * dr + dc * dc) ** 0.5 >= _MIN_USEFUL_SHIFT
 
         if useful:
+            # Success-reset (iteration 6): a click that worked at the
+            # CURRENT step size is evidence that size is (at least) enough
+            # right now -- de-escalate back to the floor rather than
+            # carrying an inflated step from earlier, unrelated failures
+            # into every later, likely-shorter-distance click.
+            self._step_px = _MIN_EFFECTIVE_PX
             return
 
         self._step_px = min(_MAX_STEP_PX, self._step_px * _STEP_GROWTH)
