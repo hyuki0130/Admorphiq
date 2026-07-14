@@ -36,7 +36,7 @@ def test_detect_goal_picks_the_nearest_other_same_colour_region_as_the_mirror_pa
     # though it shares SELF's colour.
     self_region = _region(7, (5, 5, 6, 6))
     regions = [near_partner, far_partner, other_colour, self_region]
-    color, cell = _detect_goal(regions, self_color=7, self_cell=self_cell)
+    color, cell = _detect_goal(regions, self_color=7, self_cell=self_cell, partner_ever_seen=False)
     assert color == 7
     assert cell == (5, 20)
 
@@ -56,7 +56,7 @@ def test_detect_goal_falls_back_to_smallest_singleton_colour_when_no_mirror_part
         _region(9, (10, 10, 11, 11)),  # the smallest singleton -- the goal marker
         _region(4, (20, 20, 25, 25)),  # a bigger singleton, not the goal
     ]
-    color, cell = _detect_goal(regions, self_color=7, self_cell=(5, 5))
+    color, cell = _detect_goal(regions, self_color=7, self_cell=(5, 5), partner_ever_seen=False)
     assert color == 9
     assert cell == (10, 10)
 
@@ -67,9 +67,35 @@ def test_detect_goal_returns_none_when_no_candidate_exists_at_all():
     or fabricate a goal.
     Expected feedback: failure means the adapter would crash or silently
     accept a bogus goal cell on a board this rule genuinely can't read."""
-    assert _detect_goal([], self_color=7, self_cell=(0, 0)) == (None, None)
+    assert _detect_goal([], self_color=7, self_cell=(0, 0), partner_ever_seen=False) == (None, None)
     regions = [_region(2, (0, 0, 1, 1)), _region(2, (5, 5, 6, 6))]  # colour 2 used twice, not singleton
-    assert _detect_goal(regions, self_color=7, self_cell=(0, 0)) == (None, None)
+    assert _detect_goal(regions, self_color=7, self_cell=(0, 0), partner_ever_seen=False) == (None, None)
+
+
+def test_detect_goal_reports_self_as_arrived_when_a_previously_seen_partner_merges():
+    """Purpose: regression pin for the exact bug a first live smoke
+    measured directly -- once a mirror partner has been seen at least once
+    this level, a LATER frame where the two pieces are touching/merged
+    (no longer a separate region) must report SELF's own cell as the goal
+    ("already arrived"), NOT fall through to the singleton-colour fallback
+    and fabricate a goal from an unrelated region (a HUD/border colour in
+    the measured case, which sent the planner chasing it for dozens of
+    wasted actions).
+    Expected feedback: failure means the merge-vs-never-had-a-partner
+    cases are indistinguishable again, reintroducing the exact defect this
+    fix closed."""
+    self_cell = (5, 5)
+    # No separate colour-7 region exists this frame (merged with SELF) --
+    # only an unrelated singleton colour is present.
+    regions = [_region(7, (5, 5, 6, 6)), _region(9, (0, 0, 1, 1))]
+    color, cell = _detect_goal(regions, self_color=7, self_cell=self_cell, partner_ever_seen=True)
+    assert (color, cell) == (7, self_cell)
+
+    # The SAME frame, but the partner was NEVER seen before -- must still
+    # use the singleton fallback (a level that genuinely has no mirror
+    # partner at all).
+    color2, cell2 = _detect_goal(regions, self_color=7, self_cell=self_cell, partner_ever_seen=False)
+    assert (color2, cell2) == (9, (0, 0))
 
 
 def _make_frame(grid: list[list[int]], levels_completed: int = 0) -> SimpleNamespace:

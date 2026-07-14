@@ -157,6 +157,59 @@ hazard) exhausting nearby-but-irrelevant regions before ever reaching
 buttons that plausibly sit on the path to the goal; route-proximity
 ranking spends that same budget on regions more likely to matter.
 
+**Gold-replay divergence analysis (decisive finding)**: neither of the
+above tunings could have worked, and a GOLD-REPLAY divergence check
+against ``data/traces/dc22.npz``'s real level-0 solution (episode 1973,
+20 actions, replayed by feeding this adapter gold's REAL recorded
+frame-before/frame-after transitions and comparing what ``_decide``
+would have picked at each step) proves why. FIRST DIVERGENCE is at
+step 1: state = active_cell (38,10), goal_cell (20,24), dir_map with
+only UP measured, ``known_blocked`` EMPTY. Predicted: continue the
+optimistic walk (nothing looks blocked). Gold: click (48,36) -- roughly
+40 cells away from the avatar. The decisive fact: ``known_blocked``
+stays at EXACTLY ZERO cells for ALL 20 of gold's actions -- gold's path
+never fails a single move, start to WIN. The two real buttons gold uses
+(row36/col48, and row20/col44) sit far outside gold's entire walked
+route (rows 20-40 / cols 10-24), confirming ACTION6 clicks are NOT
+proximity-gated (a click targets a screen coordinate directly, no need
+to walk the avatar there) -- so route-proximity ranking of NEW
+candidates (previous paragraph) actively deprioritizes exactly the
+buttons that matter, and the entire "click only when physically stuck"
+trigger can categorically never fire on gold's own path, since nothing
+on it is ever physically blocked. This is an ARCHITECTURAL gap, not a
+tunable heuristic: the buttons gate something evaluated at the WIN
+CHECK (a state/flag), not the avatar's walkable path.
+
+**Parity-combo enumeration (replaces stuck-triggered probing for
+reaching the goal)**: once >=2 known non-inert TOGGLERS exist (via the
+existing ordinary walk/stuck/discovery machinery above, which still
+runs to build this initial knowledge), the two with the LARGEST
+measured single-click diff are locked in as ``_enum_togglers`` -- gold's
+own two real buttons are exactly the two largest-footprint reveals/
+seesaws measured offline (~97 and ~49 cells), so footprint size is a
+reasonable, measured-consistent proxy for "the buttons that matter"
+without needing to interpret what they do. Each toggler has ~2 states
+(click-parity, matching the measured seesaw alternation), so the full
+state space is 4 combos (``_ENUM_COMBOS``, Gray-code ordered so
+consecutive combos need exactly one click each -- 3 clicks total to
+cover all 4, not 2 per combo). For each untried combo in order: click
+whichever toggler's current parity doesn't match the target, then WALK
+to the goal cell using the existing optimistic planner (clicks are
+free of any walking cost -- no need to approach a button physically).
+If the avatar reaches the goal cell without WIN firing, that combo is
+recorded as failed and the next one is tried. The goal region's own
+appearance (colour/bbox/size, or vanishing) is also compared against
+its FIRST-seen baseline right when a combo's parities are set, purely
+as a diagnostic (``_enum_goal_appearance_changes``) -- per project
+direction this is NOT built into a state-reading gate, since a single
+level's evidence isn't enough to trust a colour-semantic interpretation
+generically. If all 4 combos are tried and still fail, dc22 is banked
+at 0/6: the divergence + enumeration result together are the evidence
+that this level's real mechanic (a proactive win-flag requirement,
+decoupled from physical navigation) sits outside what a reactive
+walk-stuck-probe architecture can express, and the wall is precisely
+located rather than guessed at.
+
 Composition from ``admorphiq.kernels``:
   - :func:`admorphiq.kernels.find_regions` segments the frame into the
     avatar, the goal marker, and every button/wall candidate.
@@ -222,6 +275,13 @@ _HUD_THICKNESS_FRACTION = 0.06
 # reachable button, or a genuinely unsolvable local pocket, must not spin
 # forever clicking every remaining candidate.
 _PROBE_CLICK_CAP = 8
+
+# Parity-combo enumeration order (see module docstring's "Parity-combo
+# enumeration"): (toggler_a_parity, toggler_b_parity) pairs, Gray-code
+# ordered so each successive combo needs exactly ONE click to reach from
+# the previous one (starting from the natural (0, 0) both-unclicked
+# state) -- 3 total transition clicks to cover all 4 combos, not 2*4.
+_ENUM_COMBOS: list[tuple[int, int]] = [(0, 0), (0, 1), (1, 1), (1, 0)]
 
 
 def _is_hud_band(region: Region, height: int, width: int) -> bool:
@@ -334,6 +394,27 @@ class Adapter(GameAdapter):
         # gate).
         self._route_feasible_after_toggle = 0
 
+        # Parity-combo enumeration (see module docstring): once >=2 known
+        # non-inert togglers exist, the two with the LARGEST measured
+        # single-click diff are locked in as ``_enum_togglers`` and every
+        # ``_ENUM_COMBOS`` entry is tried in order -- replaces the
+        # stuck-triggered probe entirely for reaching the goal, since
+        # gold's own solution proved clicks here are proactive/state-
+        # gating, not reactive to physical blockage (see "Re-click
+        # semantics").
+        self._enum_togglers: list[Cell] | None = None
+        self._enum_combo_idx = 0
+        self._enum_tried: set[tuple[int, int]] = set()
+        # The goal region's (colour, bbox, size) as first observed --
+        # the baseline "closed" appearance a combo's effect is compared
+        # against (diagnostic; does not gate the walk-to-confirm step).
+        self._goal_baseline: tuple[Any, ...] | None = None
+        self._enum_checked_appearance: set[tuple[int, int]] = set()
+        # Diagnostic-only: how many combos showed the goal region's own
+        # appearance change (colour/bbox/size, or vanish) once that
+        # combo's parities were set, BEFORE any walk was attempted.
+        self._enum_goal_appearance_changes = 0
+
     # ── harness contract ────────────────────────────────────────────────
 
     def is_done(self, frames: list[Any], latest_frame: Any) -> bool:
@@ -384,6 +465,11 @@ class Adapter(GameAdapter):
         self._probe_clicks_this_episode = 0
         self._tried_togglers_at_state = {}
         self._last_probe_kind = None
+        self._enum_togglers = None
+        self._enum_combo_idx = 0
+        self._enum_tried = set()
+        self._goal_baseline = None
+        self._enum_checked_appearance = set()
 
     def _on_restart(self) -> None:
         """Only the avatar's own position resets; the layout knowledge
@@ -568,11 +654,101 @@ class Adapter(GameAdapter):
             self._goal_color, self._goal_cell = _detect_goal(regions, self._avatar_color)
             if self._goal_cell is None:
                 return self._probe(move_ids)
+            self._goal_baseline = self._goal_appearance(regions)
+
+        if self._enum_togglers is None:
+            self._maybe_start_enumeration()
+
+        if self._enum_togglers is not None and self._enum_combo_idx < len(_ENUM_COMBOS):
+            if self._active_cell == self._goal_cell:
+                # Reached the goal cell under this combo's parities but
+                # WIN didn't fire (is_done() would have stopped the loop
+                # otherwise) -- this combo doesn't gate the door. Try the
+                # next one; the existing defensive _probe below nudges
+                # the avatar one step off the goal cell so the NEXT
+                # combo's walk-to-confirm isn't a degenerate start==goal.
+                self._enum_tried.add(_ENUM_COMBOS[self._enum_combo_idx])
+                self._enum_combo_idx += 1
+            else:
+                action = self._enumeration_decide(regions, move_ids)
+                if action is not None:
+                    return action
 
         if self._active_cell == self._goal_cell:
             return self._probe(move_ids)
 
         return self._route(regions, move_ids, action6_ok)
+
+    def _goal_appearance(self, regions: list[Region]) -> tuple[Any, ...] | None:
+        """The goal region's (colour, bbox, size) in the CURRENT frame, or
+        None if it isn't present at all (vanished) -- compared against
+        ``_goal_baseline`` to see whether a combo's clicks visibly
+        changed the goal marker itself (module docstring's "Reframe the
+        success signal")."""
+        for r in regions:
+            if r["color"] == self._goal_color:
+                return (r["color"], r["bbox"], r["size"])
+        return None
+
+    def _maybe_start_enumeration(self) -> None:
+        """Lock in the two known non-inert TOGGLERS with the LARGEST
+        measured single-click diff as ``_enum_togglers`` -- see module
+        docstring's "Parity-combo enumeration". Requires at least 2 to be
+        known; does nothing (falls back to ordinary walk/stuck/probe
+        discovery) until then."""
+        togglers = [
+            (cell, max((len(d) for d in mem["diffs"]), default=0))
+            for cell, mem in self._button_memory.items()
+            if not mem["inert"] and mem["clicks"] > 0
+        ]
+        if len(togglers) < 2:
+            return
+        togglers.sort(key=lambda t: (-t[1], t[0]))
+        self._enum_togglers = [togglers[0][0], togglers[1][0]]
+
+    def _enumeration_decide(self, regions: list[Region], move_ids: list[int]) -> GameAction | None:
+        """Drive the current combo: click whichever known toggler's
+        parity doesn't yet match the target, then walk toward the goal
+        once both match. Returns None only when every combo has been
+        tried (falls through to ordinary routing, which by this point is
+        just a dead end -- see module docstring)."""
+        assert self._enum_togglers is not None and self._active_cell is not None and self._goal_cell is not None
+        while self._enum_combo_idx < len(_ENUM_COMBOS):
+            target = _ENUM_COMBOS[self._enum_combo_idx]
+            if target in self._enum_tried:
+                self._enum_combo_idx += 1
+                continue
+            cell_a, cell_b = self._enum_togglers
+            parity_a = self._button_memory[cell_a]["clicks"] % 2
+            parity_b = self._button_memory[cell_b]["clicks"] % 2
+            if parity_a != target[0]:
+                return self._click_button(cell_a, kind="enum_set")
+            if parity_b != target[1]:
+                return self._click_button(cell_b, kind="enum_set")
+
+            if target not in self._enum_checked_appearance:
+                self._enum_checked_appearance.add(target)
+                if self._goal_appearance(regions) != self._goal_baseline:
+                    self._enum_goal_appearance_changes += 1
+
+            if not self._dir_map:
+                return self._probe(move_ids)
+            moves = list(self._dir_map.values())
+            move_labels = {unit: action for action, unit in self._dir_map.items()}
+            optimistic = self._optimistic_grid()
+            step = self._first_step(optimistic, self._active_cell, self._goal_cell, moves, move_labels)
+            if step is not None:
+                self._pending_action = step
+                self._pending_kind = "move"
+                self._pending_ref_cell = self._active_cell
+                return simple_action(step)
+
+            # Can't even reach the goal cell under this combo's
+            # passability state -- treat as a failed combo, same as
+            # reaching the goal without triggering WIN.
+            self._enum_tried.add(target)
+            self._enum_combo_idx += 1
+        return None
 
     def _pick_action(self, candidates: list[int], ref_cell: Cell, goal: Cell | None) -> int:
         """Choose among untried ``candidates`` from ``ref_cell``. A

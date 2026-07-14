@@ -133,16 +133,34 @@ def _manhattan(a: Cell, b: Cell) -> int:
 
 
 def _detect_goal(
-    regions: list[Region], self_color: int | None, self_cell: Cell | None
+    regions: list[Region],
+    self_color: int | None,
+    self_cell: Cell | None,
+    partner_ever_seen: bool,
 ) -> tuple[int | None, Cell | None]:
     """The mirror partner's current position when one exists (the NEAREST
     other region sharing the avatar's own colour — see module docstring's
-    offline investigation); DC22's "smallest singleton-coloured region"
-    reading otherwise, for any level that turns out not to use the
-    mirror-partner mechanic. Re-read fresh from the CURRENT frame every
-    call (never cached) -- see module docstring for why a mirror partner's
-    position cannot be a one-time snapshot the way DC22's static marker
-    is."""
+    offline investigation), re-read fresh from the CURRENT frame every call
+    (never cached) -- a mirror partner's position cannot be a one-time
+    snapshot the way DC22's static marker is.
+
+    When ``partner_ever_seen`` is True (this level's mirror partner has
+    been directly observed on some EARLIER call) but no separate partner
+    region is visible on THIS frame, the two pieces are momentarily
+    touching/merged into one connected region (measured directly: both
+    captured gold levels briefly show exactly this right before, and
+    sometimes several actions before, the actual WIN moment -- see module
+    docstring). Reporting ``self_cell`` itself as the goal in that case
+    correctly reads as "already arrived" downstream (``Adapter._decide``'s
+    ``active_cell == goal_cell`` check) rather than falling through to the
+    singleton-colour fallback below and fabricating a goal from an
+    unrelated region -- the exact bug a first live smoke measured directly
+    (the goal jumped to a HUD/border region's position mid-level, sending
+    the planner chasing it for dozens of wasted actions).
+
+    DC22's own "smallest singleton-coloured region" reading is used ONLY
+    when no partner has EVER been seen this level -- for any level that
+    turns out not to use the mirror-partner mechanic at all."""
     if not regions:
         return None, None
     if self_color is not None and self_cell is not None:
@@ -152,6 +170,8 @@ def _detect_goal(
         if partners:
             nearest = min(partners, key=lambda r: _manhattan(r["bbox"][:2], self_cell))
             return self_color, nearest["bbox"][:2]  # type: ignore[index]
+        if partner_ever_seen:
+            return self_color, self_cell
 
     color_counts = Counter(r["color"] for r in regions)
     singleton = [r for r in regions if color_counts[r["color"]] == 1 and r["color"] != self_color]
@@ -181,6 +201,10 @@ class Adapter(GameAdapter):
         self._active_cell: Cell | None = None
         self._goal_color: int | None = None
         self._goal_cell: Cell | None = None
+        # True once a mirror partner has been directly observed as a
+        # SEPARATE region at least once this level -- see _detect_goal's
+        # docstring for why this gates the singleton-colour fallback.
+        self._partner_ever_seen = False
 
         self._pending_action: int | None = None
         self._pending_ref_cell: Cell | None = None
@@ -280,6 +304,7 @@ class Adapter(GameAdapter):
         self._active_cell = None
         self._goal_color = None
         self._goal_cell = None
+        self._partner_ever_seen = False
         self._tried_from = {}
         self._known_blocked = set()
         self._hazards = {}
@@ -412,7 +437,16 @@ class Adapter(GameAdapter):
             ref = self_regions[0]["bbox"][:2]  # type: ignore[assignment]
         self._active_cell = min(self_regions, key=lambda r: _manhattan(r["bbox"][:2], ref))["bbox"][:2]  # type: ignore[assignment]
 
-        self._goal_color, self._goal_cell = _detect_goal(regions, self._self_color, self._active_cell)
+        partners_now = [
+            r
+            for r in regions
+            if r["color"] == self._self_color and r["bbox"][:2] != self._active_cell
+        ]
+        if partners_now:
+            self._partner_ever_seen = True
+        self._goal_color, self._goal_cell = _detect_goal(
+            regions, self._self_color, self._active_cell, self._partner_ever_seen
+        )
         if self._goal_cell is None:
             return self._probe(move_ids)
 
