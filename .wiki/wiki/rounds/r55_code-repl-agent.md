@@ -536,3 +536,42 @@ stays one-variable:
 95 repl tests, ruff clean, kernel imports clean. Per Codex: run v6 P0-only first;
 if a clean v6 (working REPL) still repeats the same false mechanic after real
 transition inspection, v7's audit is the goal-revision evidence.
+
+### v6 (P0-only) analysis — REPL alive, but false mechanic PERSISTS (replbench_out6)
+
+The P0 fix WORKED. vs v5 (comparison harness): inspection_success_rate 0 → ~1.0
+(bp35 1.0, dc22 0.985, g50t 0.89, ls20 0.937, su15 1.0); sandbox_errors ~100 →
+0-10. Actions now flow THROUGH code (source split: su15 code 129 / llm 8 /
+fallback 5; bp35 code 116; dc22 code 125) — the model uses the REPL to act, and
+fallback collapsed. Integrity holds: illegal MOUSE = 0 everywhere.
+
+**But still 0 clears, and the decisive question answers YES on both gaps:**
+1. **False mechanic PERSISTED.** su15 t0 is the SAME wrong "connect the dots /
+   path-following" hypothesis as v5 (su15 is actually vacuum/merge/delivery), and
+   it clicks the same cell (57,6) repeatedly. A working REPL alone did NOT
+   trigger revision.
+2. **Tool-use judgment gap on su15.** su15 ran 136 code turns but only ONE
+   inspection-only — the model used code to FIRE CLICKS, not to investigate the
+   mechanic on the game where it most needed to. (Contrast g50t/ls20, which DID
+   inspect: informed_inspections 18 / 13.) So on the click games the model does
+   not spend the free internal computation on understanding — it acts.
+
+Both are exactly the pre-agreed branch condition. Working inspection is
+necessary but not sufficient; the model needs to be FORCED to falsify its goal.
+
+**Two tractable sandbox bugs fixed (ride the next push, `430d000`):** (a) the
+allowlist lacked `next` (and other common read-only builtins) — valid model code
+NameError'd; added them in the repl worker. (b) `Inspector.objects()` returned
+`color`/none while the packet shows `colors`/`change_history` — code written from
+the packet field names KeyError'd; the Inspector schema now mirrors the packet.
+Residual v6 errors were small (g50t 10, ls20 6) and entirely these two classes.
+
+**Recommendation (pre-agreed branch fires): next run = v7 with `REPL_AUDIT=1`.**
+The GoalAuditor forces, at 12/24/48 actions-without-level, a declared
+GOAL_HYPOTHESIS + bounded MILESTONE + FALSIFIER + ALTERNATIVE + one discriminating
+action, and rejects the goal after two missed milestones — directly attacking
+BOTH the goal-revision gap (makes "connect the dots" falsifiable and forces the
+vacuum/merge alternative on miss) and the tool-use gap (the discriminating-action
+requirement forces an investigative test instead of blind clicking). All other
+levers (image legible at 4×, inspection now working, fallback governed) are
+already in place.
