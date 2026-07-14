@@ -203,6 +203,7 @@ code-REPL arm.
 ## Related
 - [[r54_vision-llm-policy]] — the JSON-policy arm (Round-2 ablation leg).
 - [[lb_top_team_research_20260714]] — the M1 top-team evidence.
+- [[duck_harness_teardown_20260714]] — measured teardown of the #1 Duck harness; the design deltas steering this agent.
 - [[r53_unified-harness]] — the current harness; existing generic tools.
 - [[index]]
 

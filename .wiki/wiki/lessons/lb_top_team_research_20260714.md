@@ -51,7 +51,7 @@ public 25 after a fair bring-up (prompt iterations + the Reki efficiency kit), t
 falsified for our stack and this page must be updated.
 
 ## Related
-[[r53_unified-harness]], [[size_floor_and_settle_reads]], [[r54_vision-llm-policy]] (the R54 build of the vision-LLM-as-policy lever defined here)
+[[r53_unified-harness]], [[size_floor_and_settle_reads]], [[r54_vision-llm-policy]] (the R54 build of the vision-LLM-as-policy lever defined here), [[duck_harness_teardown_20260714]] (measured fact-extraction of the #1 Duck harness + our design deltas)
 
 ## Deep-read addendum (2026-07-14 09:25 KST) — Duck internals + official technical report
 
