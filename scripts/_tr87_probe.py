@@ -39,25 +39,34 @@ build rotation-invariant glyph signatures, then checks:
      this probe DID silently overwrite, and a separate Codex review found
      4 conflicting pairs in that version (see
      docs/r56_codex_tr87_review_20260715.md).
-  4. Whether a simple PITCH-MULTIPLE SPLITTER recovers the individual
-     glyphs a background-gap scan merges into one run (the level-1
-     falsification measured in docs/tr87_frame_only_grammar_design_20260715.md
-     §7 -- multi-token rule sides render with NO gap between sibling
-     glyphs, so `occupied_runs` correctly sees one wide run, not several).
-     The splitter is throwaway (not promoted to a kernel yet): detect the
-     single-glyph pitch as the smallest run width anywhere on the board,
-     then divide every run's width by that pitch to recover its token
-     count. Tested against BOTH data/traces/tr87_l1_reset.npz and
-     data/traces/tr87_l2_reset.npz (captured via scripts/_tr87_capture_l1.py
-     / _l2.py), cross-validated against each level's own oracle rule-table
-     token counts (verification-only reads at capture time, hardcoded below
-     with provenance -- this section itself makes no live env calls).
+  4. Whether the promoted `kernels.parse.split_runs_by_pitch` kernel
+     recovers the individual glyphs a background-gap scan merges into one
+     run (the level-1 falsification measured in
+     docs/tr87_frame_only_grammar_design_20260715.md §7 -- multi-token rule
+     sides render with NO gap between sibling glyphs, so `occupied_runs`
+     correctly sees one wide run, not several). `detect_pitch()` (still
+     throwaway, this probe's own function, NOT part of the kernel per
+     Codex's ruling -- pitch inference is a caller-level semantic
+     hypothesis) picks the smallest run width anywhere on the board as the
+     single-glyph pitch; the actual splitting is delegated to the real
+     kernel, which raises if any run's width isn't an exact multiple
+     (turned into an ASSERTION failure below, not just a printed
+     "exact?" flag as the pre-promotion version of this probe did).
+     ASSERTIONS, not prints, gate this section: a run count mismatch, a
+     kernel-level split failure, or a token-count mismatch against oracle
+     now raises/fails loudly (`docs/r56_codex_tr87_reruling_20260715.md`
+     step 1's explicit requirement). Tested against BOTH data/traces/
+     tr87_l1_reset.npz and data/traces/tr87_l2_reset.npz (captured via
+     scripts/_tr87_capture_l1.py / _l2.py), cross-validated against each
+     level's own oracle rule-table token counts (verification-only reads
+     at capture time, hardcoded below with provenance -- this section
+     itself makes no live env calls).
 """
 from __future__ import annotations
 
 import numpy as np
 
-from admorphiq.kernels import crop_to_content, dihedral_transforms, occupied_runs
+from admorphiq.kernels import crop_to_content, dihedral_transforms, occupied_runs, split_runs_by_pitch
 
 BAR1_R0, BAR1_R1, BAR1_FILL = 41, 45, 10
 BAR2_R0, BAR2_R1, BAR2_FILL = 52, 56, 7
@@ -138,22 +147,18 @@ def detect_pitch(runs):
 
 
 def recovered_token_counts(runs, pitch):
-    """For each run, how many pitch-wide glyph slots it represents (width // pitch).
+    """For each run, how many pitch-wide glyph slots it represents.
 
-    This IS the throwaway recovery heuristic: no gap/marker detection, just
-    "assume every run's width is an exact multiple of the observed
-    single-glyph pitch, and that multiple is the token count." Returns
-    (counts, exact) where exact is False if any run's width was NOT a clean
-    multiple of pitch (the heuristic's precondition failing -- would mean
-    the recovered counts below are not trustworthy)."""
-    counts = []
-    exact = True
-    for r in runs:
-        width = r["end"] - r["start"]
-        if pitch <= 0 or width % pitch != 0:
-            exact = False
-        counts.append(width // pitch if pitch > 0 else width)
-    return counts, exact
+    Delegates the actual split to the promoted `kernels.parse.
+    split_runs_by_pitch` (exact division only -- raises ValueError on any
+    remainder, rather than this probe silently reporting "not exact").
+    Token count per run = how many children `split_runs_by_pitch` produced
+    for that run's `parent_index` (grouped, in input order)."""
+    children = split_runs_by_pitch(runs, pitch, axis="col")
+    counts = [0] * len(runs)
+    for child in children:
+        counts[child["parent_index"]] += 1
+    return counts
 
 
 # Oracle ground truth (verification-only reads via the running game object
@@ -297,17 +302,23 @@ def main() -> None:
             band_run_counts.append(len(out["runs"]))
         widths = [r["end"] - r["start"] for r in all_runs]
         pitch = detect_pitch(all_runs)
-        counts, exact = recovered_token_counts(all_runs, pitch)
-        match = counts == oracle
         print(f"\n{label} ({npz_path}):")
         print(f"  runs per band: {band_run_counts} (expect [4, 4, 4] -- 2 rules x (LHS,RHS) per band)")
         print(f"  measured widths: {widths}")
         print(f"  detected pitch: {pitch}px")
-        print(f"  arithmetic exact (every width is a clean multiple of pitch)? {exact}")
+
+        assert band_run_counts == [4, 4, 4], (
+            f"{label}: expected 4 raw parent runs per rule-table band, got {band_run_counts}"
+        )
+        # recovered_token_counts() calls the real split_runs_by_pitch kernel,
+        # which raises ValueError on any non-exact-multiple width -- letting
+        # that propagate (rather than catching it) IS the "arithmetic exact"
+        # assertion for this section.
+        counts = recovered_token_counts(all_runs, pitch)
         print(f"  recovered token counts: {counts}")
         print(f"  oracle token counts:    {oracle}")
-        print(f"  {'*** SPLITTER SURVIVES ***' if match else '*** SPLITTER FALSIFIED ***'} "
-              f"({label}: recovered == oracle -> {match})")
+        assert counts == oracle, f"{label}: SPLITTER FALSIFIED -- recovered {counts} != oracle {oracle}"
+        print(f"  *** SPLITTER SURVIVES *** ({label}: recovered == oracle)")
 
 
 if __name__ == "__main__":

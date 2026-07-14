@@ -1,6 +1,8 @@
 """Tests for the pure 1D/structural measurement kernels (axis-neutral
-occupied-run projection, generic colour histogram, size-jump clustering)
-(R56)."""
+occupied-run projection, exact pitch-based run splitting, generic colour
+histogram, size-jump clustering) (R56)."""
+
+import copy
 
 import pytest
 
@@ -9,6 +11,7 @@ from admorphiq.kernels import (
     color_mode,
     occupied_runs,
     size_clusters,
+    split_runs_by_pitch,
 )
 
 # Two-row band with THREE two-colour content runs (fill+ink, neither
@@ -149,6 +152,143 @@ def test_color_mode_caller_supplies_the_mask_predicate():
     filtered = [v for v in all_values if v != 9]
     assert color_mode(all_values, k=1) == [{"color": 9, "count": 4}]
     assert color_mode(filtered, k=2) == [{"color": 5, "count": 4}, {"color": 7, "count": 4}]
+
+
+# Three runs shaped exactly like TR87's measured upper-grid widths (7, 14,
+# 21 -- single, double, and triple pitch-multiples), used across several
+# split_runs_by_pitch tests below.
+_PITCH_RUNS = [
+    {"start": 0, "end": 7, "cells": frozenset({(0, 2), (1, 4)})},
+    {"start": 10, "end": 24, "cells": frozenset({(0, 10), (0, 17), (1, 23)})},
+    {"start": 30, "end": 51, "cells": frozenset({(0, 30), (0, 37), (0, 44), (1, 50)})},
+]
+
+
+def test_split_runs_by_pitch_col_axis_recovers_7_14_21():
+    """Purpose: the exact TR87-shaped case -- a 7px (single), 14px (double),
+    and 21px (triple) run must split into 1, 2, and 3 pitch-wide children
+    respectively, with cells correctly partitioned by COLUMN membership in
+    each child's span (axis="col").
+    Expected feedback: failure means the core split loop or the col-axis
+    cell-partition predicate is wrong -- this is the exact measurement that
+    recovered all 24 TR87 tokens across levels 1 and 2."""
+    children = split_runs_by_pitch(_PITCH_RUNS, 7, axis="col")
+    assert len(children) == 6
+    assert children[0] == {"start": 0, "end": 7, "cells": frozenset({(0, 2), (1, 4)}), "parent_index": 0}
+    assert children[1] == {"start": 10, "end": 17, "cells": frozenset({(0, 10)}), "parent_index": 1}
+    assert children[2] == {
+        "start": 17,
+        "end": 24,
+        "cells": frozenset({(0, 17), (1, 23)}),
+        "parent_index": 1,
+    }
+    assert children[3] == {"start": 30, "end": 37, "cells": frozenset({(0, 30)}), "parent_index": 2}
+    assert children[4] == {"start": 37, "end": 44, "cells": frozenset({(0, 37)}), "parent_index": 2}
+    assert children[5] == {
+        "start": 44,
+        "end": 51,
+        "cells": frozenset({(0, 44), (1, 50)}),
+        "parent_index": 2,
+    }
+
+
+def test_split_runs_by_pitch_row_axis_partitions_by_row_not_column():
+    """Purpose: axis="row" must partition cells by ROW membership in each
+    child span, not column -- the transposed dual of the col-axis test,
+    proving axis genuinely changes which coordinate drives both the span
+    arithmetic and the cell filter (a single run here, spanning rows, with
+    cells that would be split differently under the wrong axis).
+    Expected feedback: failure means the axis="row" branch reuses the
+    col-axis cell filter instead of switching to row membership."""
+    runs = [{"start": 0, "end": 14, "cells": frozenset({(2, 0), (2, 9), (12, 5)})}]
+    children = split_runs_by_pitch(runs, 7, axis="row")
+    assert children == [
+        {"start": 0, "end": 7, "cells": frozenset({(2, 0), (2, 9)}), "parent_index": 0},
+        {"start": 7, "end": 14, "cells": frozenset({(12, 5)}), "parent_index": 0},
+    ]
+
+
+def test_split_runs_by_pitch_width_equals_pitch_is_a_single_unchanged_child():
+    """Purpose: a run whose width exactly equals pitch is not a "special
+    case" that bypasses the algorithm -- it naturally produces exactly one
+    child spanning the whole original run, with cells unchanged, via the
+    SAME division logic as any other run (width // pitch == 1).
+    Expected feedback: failure means single-glyph runs (the common case --
+    most TR87 rule sides are 1 token) get mangled or dropped."""
+    runs = [{"start": 5, "end": 12, "cells": frozenset({(0, 5), (0, 11)})}]
+    assert split_runs_by_pitch(runs, 7, axis="col") == [
+        {"start": 5, "end": 12, "cells": frozenset({(0, 5), (0, 11)}), "parent_index": 0}
+    ]
+
+
+def test_split_runs_by_pitch_empty_input_returns_empty():
+    """Purpose: no runs to split means no children, trivially -- must not
+    raise or fabricate output for empty input.
+    Expected feedback: failure means the function crashes or misbehaves on
+    the degenerate empty-list case a caller might legitimately pass (e.g.
+    an all-background band)."""
+    assert split_runs_by_pitch([], 7, axis="col") == []
+
+
+def test_split_runs_by_pitch_rejects_non_positive_pitch():
+    """Purpose: a zero or negative pitch is nonsensical (can't tile a span
+    with zero or negative width) and must be rejected up front, not produce
+    a division-by-zero or an infinite/negative child count.
+    Expected feedback: failure means invalid pitch is silently accepted
+    instead of raising a clear, immediate error."""
+    with pytest.raises(ValueError, match="pitch"):
+        split_runs_by_pitch(_PITCH_RUNS, 0, axis="col")
+    with pytest.raises(ValueError, match="pitch"):
+        split_runs_by_pitch(_PITCH_RUNS, -3, axis="col")
+
+
+def test_split_runs_by_pitch_rejects_unknown_axis():
+    """Purpose: axis is a closed two-value enum ('row'/'col') -- any other
+    value is a caller contract violation and must raise clearly.
+    Expected feedback: failure means an invalid axis is silently treated as
+    one of the two valid values instead of surfaced as an error."""
+    with pytest.raises(ValueError, match="axis"):
+        split_runs_by_pitch(_PITCH_RUNS, 7, axis="diagonal")
+
+
+def test_split_runs_by_pitch_raises_on_nonzero_remainder_never_truncates():
+    """Purpose: EXACT division only -- a run whose width is NOT a clean
+    multiple of pitch (e.g. width 15 against pitch 7, remainder 1) must
+    raise, not silently truncate to 2 children and drop a column, or round
+    to some approximate split. This is the specific behaviour Codex's
+    ruling required: pitch inference belongs to the caller, but once a
+    pitch is supplied, the kernel must never guess through a mismatch.
+    Expected feedback: failure means a genuinely wrong pitch (caller bug,
+    or a run that isn't actually pitch-tileable -- e.g. TR87 bar2's
+    fragmented debris runs) would silently corrupt token boundaries instead
+    of surfacing as an error."""
+    runs = [{"start": 0, "end": 15, "cells": frozenset()}]
+    with pytest.raises(ValueError, match="not an exact multiple"):
+        split_runs_by_pitch(runs, 7, axis="col")
+
+
+def test_split_runs_by_pitch_preserves_parent_index_provenance():
+    """Purpose: every child, whether split from a multi-glyph run or passed
+    through as a single-glyph run, must carry the INDEX of its own run in
+    the input sequence -- this is what lets a caller re-apply grouping
+    already computed over the raw (pre-split) runs, e.g. TR87's gap-width
+    rule-side pairing, to the split children afterward.
+    Expected feedback: failure means downstream grouping logic loses track
+    of which original run (and therefore which rule side) a recovered
+    token came from."""
+    children = split_runs_by_pitch(_PITCH_RUNS, 7, axis="col")
+    assert [c["parent_index"] for c in children] == [0, 1, 1, 2, 2, 2]
+
+
+def test_split_runs_by_pitch_does_not_mutate_input():
+    """Purpose: the input ``runs`` list and its dicts must be left exactly
+    as given -- a caller that reuses the same run list for something else
+    (or re-inspects it after splitting) must not observe any change.
+    Expected feedback: failure means the function mutates shared state
+    in-place, a surprising side effect for a "pure kernel" contract."""
+    original = copy.deepcopy(_PITCH_RUNS)
+    split_runs_by_pitch(_PITCH_RUNS, 7, axis="col")
+    assert _PITCH_RUNS == original
 
 
 def test_cluster_widths_matches_size_clusters_on_the_same_fixture():

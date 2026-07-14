@@ -34,6 +34,7 @@ from admorphiq.kernels.parse import (
     cluster_widths,
     color_mode,
     occupied_runs,
+    split_runs_by_pitch,
 )
 from admorphiq.kernels.paths import (
     configuration_path,
@@ -102,6 +103,7 @@ __all__ = [
     "cluster_widths",
     "color_mode",
     "occupied_runs",
+    "split_runs_by_pitch",
     "greedy_parse",
     "gf2_nullspace",
     "gf2_solve",

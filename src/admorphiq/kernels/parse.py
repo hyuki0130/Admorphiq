@@ -1,6 +1,6 @@
 """Pure 1D/structural measurement kernels: axis-neutral occupied-run
-projection, a generic colour-value histogram, and numeric ratio-jump
-clustering.
+projection, exact pitch-based run splitting, a generic colour-value
+histogram, and numeric ratio-jump clustering.
 
 Distinct from :mod:`admorphiq.kernels.regions` (2D same-colour connected
 components) — these operate on a single axis (a row or column projection of
@@ -12,12 +12,18 @@ connected-component segmentation FRAGMENTS a two-colour (fill+ink) region,
 since one colour's own pixels need not be 4-connected, so isolating "one
 occupied run" needs a positional gap scan, not a colour flood fill. That
 extraction ALSO revealed (Codex review, ``docs/r56_codex_tr87_review_20260715.md``,
-and the level-1 capture in the same design doc) that a background-only gap
-scan cannot, by itself, tell "one wide occupied run" apart from "several
-adjacent runs with no gap between them" — a caller that needs that
-distinction supplies additional structure (a known single-run pitch,
-independent tokenization evidence, etc.); this module only measures what a
-background-gap projection can measure, no more.
+and the level-1/level-2 captures in the same design doc) that a
+background-only gap scan cannot, by itself, tell "one wide occupied run"
+apart from "several adjacent runs with no gap between them" — a caller
+that needs that distinction supplies additional structure (a known
+single-run pitch, independent tokenization evidence, etc.).
+:func:`split_runs_by_pitch` is that caller-driven splitting mechanism
+(promoted after a second Codex ruling, ``docs/r56_codex_tr87_reruling_20260715.md``,
+confirmed the technique against two levels — 24/24 tokens recovered
+exactly) — it takes an EXPLICIT pitch, never infers one (see its own
+docstring for why inference is a caller-level semantic hypothesis, not a
+kernel default). This module only measures/splits what the caller already
+knows how to interpret; it never infers meaning on its own.
 
 Stdlib only — no numpy. These kernels must run inside the sandboxed REPL
 where only the standard library and explicitly provided modules exist.
@@ -135,6 +141,72 @@ def occupied_runs(
         runs.append({"start": s, "end": e, "cells": cells})
     gaps = [runs[i + 1]["start"] - runs[i]["end"] for i in range(len(runs) - 1)]
     return {"runs": runs, "gaps": gaps}
+
+
+def split_runs_by_pitch(runs: Sequence[Run], pitch: int, *, axis: str) -> list[dict[str, Any]]:
+    """Split each of ``runs`` into ``pitch``-wide equal child spans.
+
+    ``pitch`` is a REQUIRED, explicitly-supplied positive int — this kernel
+    does NOT infer it (e.g. via ``min(width)``). Inferring a pitch is a
+    semantic hypothesis ("equal-width tiling applies here") that belongs to
+    the caller, not this mechanical splitter: a run's own minimum width is
+    not always a safe pitch estimate (measured counterexample: TR87 bar2
+    fragments into `[3,1,1,3,...]`-width runs where the smallest width is
+    debris, not a genuine glyph pitch — see
+    ``docs/tr87_frame_only_grammar_design_20260715.md``). The caller
+    selects a clean run family, infers pitch from it (e.g. the smallest
+    width among a KNOWN-single-token group), and passes it in explicitly.
+
+    Exact division only: if a run's width (``end - start``) is not evenly
+    divisible by ``pitch``, this raises ``ValueError`` rather than
+    truncating or rounding — a remainder means ``pitch`` is wrong for that
+    run, and silently producing a partial/misaligned split would be worse
+    than failing loudly. A run whose width exactly equals ``pitch`` yields
+    exactly one (unchanged) child.
+
+    ``axis`` ("row" or "col") must match the axis :func:`occupied_runs` was
+    called with to produce ``runs`` — cells must be partitioned along the
+    matching coordinate. Each child is ``{"start": p, "end": p, "cells":
+    frozenset[(row, col)], "parent_index": i}`` (half-open, like
+    :func:`occupied_runs`'s own runs); ``parent_index`` is ``runs[i]``'s
+    own index in the INPUT sequence, preserved so any grouping already
+    computed over the raw (pre-split) runs — e.g. gap-width-based rule-side
+    pairing — still applies to the split children. A run that needs no
+    splitting still gets a child entry carrying its ``parent_index`` (a
+    uniform "N runs in, M children out, each tagged with its origin"
+    contract, not a special case for the trivial width-equals-pitch run).
+
+    Returns a flat list of children across all input runs, in the same
+    relative order as ``runs`` (all of ``runs[0]``'s children, then all of
+    ``runs[1]``'s, ...). Does not mutate ``runs``. Empty ``runs`` returns
+    ``[]``. Raises ``ValueError`` for a non-positive ``pitch`` or an
+    unknown ``axis``.
+    """
+    if axis not in ("row", "col"):
+        raise ValueError(f"axis must be 'row' or 'col', got {axis!r}")
+    if pitch <= 0:
+        raise ValueError(f"pitch must be positive, got {pitch!r}")
+    children: list[dict[str, Any]] = []
+    for parent_index, run in enumerate(runs):
+        start, end = run["start"], run["end"]
+        width = end - start
+        if width % pitch != 0:
+            raise ValueError(
+                f"run {parent_index} (start={start}, end={end}, width={width}) is not an exact "
+                f"multiple of pitch {pitch} -- refusing to truncate or round"
+            )
+        cells = run["cells"]
+        for i in range(width // pitch):
+            child_start = start + i * pitch
+            child_end = child_start + pitch
+            if axis == "col":
+                child_cells = frozenset((r, c) for r, c in cells if child_start <= c < child_end)
+            else:
+                child_cells = frozenset((r, c) for r, c in cells if child_start <= r < child_end)
+            children.append(
+                {"start": child_start, "end": child_end, "cells": child_cells, "parent_index": parent_index}
+            )
+    return children
 
 
 def color_mode(values: Iterable[Any], k: int = 2) -> list[dict[str, Any]]:
