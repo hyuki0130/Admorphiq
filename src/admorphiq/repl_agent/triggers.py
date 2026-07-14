@@ -1,129 +1,138 @@
-"""No-progress trigger controller for PLAN / NAV interventions (R55 item B).
+"""Semantic-eligibility trigger controller for PLAN / NAV (R55 item-B, re-ruled).
 
-Decoupled from the (killed) goal-audit: these interventions fire on OBSERVED
-stall signals, per the FROZEN trigger definitions in the Codex matched12 review
-(`docs/r55_codex_matched12_review_20260714.md`):
+The frozen STALL predicates were shown by trace-replay to be structurally
+incapable of firing on the diagnosed navigation walls (they move freely and
+change the board every action — no stall). Codex re-ruling
+(`docs/r55_codex_trigger_reruling_20260714.md`) replaces them with unconditional
+GOAL-DECLARATION eligibility, subject only to cooldown and cap:
 
-- PLAN: fire after 12 consecutive environment actions without objective progress
-  OR material state change; cooldown 15 actions; max 2 invocations per run.
-- NAV: fire after 4 movement attempts producing no position/topology progress OR
-  entering a repeated-state loop; cooldown 8 actions; max 4 invocations. Invoke
-  shortest_path only when an observed traversability graph exists; else no-op.
-- Combined: independent triggers, but only ONE intervention may fire on a given
-  action (NAV takes precedence — it is the narrower, movement-specific signal).
+- NAV: eligible while the model's current declared GOAL_HYPOTHESIS matches the
+  frozen nav-signature (reach / navigate / move-to / exit / target). Fires at the
+  first decision boundary after declaration; cooldown 8 executed env actions;
+  max 4/run. NO traversability-graph gate — the nudge exists to make the model
+  build start/goals/passable_mask; noncompliance is logged treatment noise.
+- PLAN: eligible while the current declared goal AND milestone are both nonempty.
+  Cooldown 15 executed env actions; max 2/run.
+- Combined: independent cooldowns/caps; at most one injection per decision
+  boundary; NAV precedence; PLAN stays pending (no eligibility/budget loss) and
+  fires at the next boundary if still eligible.
 
-The controller is a pure state machine over the executed-action stream so it can
-be unit-tested against existing traces before any run. ``observe`` is called once
-per executed env action; ``decide`` is called once before each model decision and
-returns the intervention to inject (or None).
-
-Signal definitions (the observable proxies the agent already computes):
-- objective progress = a level advance (level_up).
-- material state change = the board frame changed (board_changed).
-- movement attempt = an executed action whose type is a movement (UP/DOWN/LEFT/
-  RIGHT/etc.), passed as ``movement=True``.
-- position/topology progress on a movement = the board changed AND the resulting
-  state is novel (not recently seen). A movement that leaves the frame unchanged,
-  or lands on a recently-seen state, is a stall.
-- repeated-state loop = the post-action state hash is within the recent window.
+Rules (Codex): cooldowns count EXECUTED ENV ACTIONS (not LLM/tool rounds); an
+injection consumes cooldown+cap even if the model ignores it; a level-up
+invalidates the active goal + eligibility until a new goal is declared (caps and
+cooldown history persist); repeating the same declaration does not reset
+cooldown. Audit stays OFF — no extra call solicits the goal; the declaration is
+parsed from the model's own turn output.
 """
 
 from __future__ import annotations
 
-from collections import deque
+import re
 from dataclasses import dataclass, field
+
+# Frozen nav-signature: a declared goal is navigation-shaped when it mentions
+# reaching / navigating / moving-to a target, exit, or goal location.
+_NAV_SIGNATURE = re.compile(
+    r"\b(reach|navigate|move\s+.+?\s+to|go\s+to|head\s+to|exit|target|"
+    r"destination|goal\s+(?:cell|position|location|square|tile))\b", re.IGNORECASE)
+_GOAL_RE = re.compile(r"GOAL(?:_HYPOTHESIS)?\s*[:=]\s*(.+)", re.IGNORECASE)
+_MILESTONE_RE = re.compile(r"(?:EXPECTED_)?MILESTONE\s*[:=]\s*(.+)", re.IGNORECASE)
+
+
+def classify_declaration(text: str) -> tuple[bool, bool]:
+    """Parse a model turn's text into (nav_goal, goal_and_milestone).
+
+    nav_goal: the text declares a navigation-shaped goal (nav-signature match on
+    an explicit GOAL line if present, else anywhere in the text).
+    goal_and_milestone: both a nonempty goal AND a nonempty milestone are stated
+    (PLAN eligibility). No audit solicits these — they are read from the model's
+    natural output.
+    """
+    t = text or ""
+    gm = _GOAL_RE.search(t)
+    goal_text = gm.group(1).strip() if gm else ""
+    mm = _MILESTONE_RE.search(t)
+    milestone_text = mm.group(1).strip() if mm else ""
+    nav_scope = goal_text if goal_text else t
+    nav_goal = bool(_NAV_SIGNATURE.search(nav_scope))
+    goal_and_milestone = bool(goal_text) and bool(milestone_text)
+    return nav_goal, goal_and_milestone
 
 
 @dataclass
 class TriggerConfig:
-    plan_no_progress: int = 12
-    plan_cooldown: int = 15
-    plan_max: int = 2
-    nav_move_stall: int = 4
     nav_cooldown: int = 8
     nav_max: int = 4
-    loop_window: int = 8  # recent post-action state hashes for loop detection
+    plan_cooldown: int = 15
+    plan_max: int = 2
 
 
 @dataclass
 class TriggerController:
-    """Frozen PLAN/NAV no-progress triggers. Pure over the executed-action stream."""
+    """Goal-declaration PLAN/NAV triggers (semantic eligibility, re-ruled spec)."""
 
     config: TriggerConfig = field(default_factory=TriggerConfig)
     plan_enabled: bool = False
     nav_enabled: bool = False
 
-    # counters
-    _plan_streak: int = 0          # consecutive actions with no progress + no change
-    _move_stall: int = 0           # consecutive stalled movement attempts
-    _actions: int = 0              # executed env actions this run
-    _plan_last_fire: int = -(10**9)
+    _nav_eligible: bool = False
+    _plan_eligible: bool = False
+    _actions: int = 0
     _nav_last_fire: int = -(10**9)
-    _plan_fires: int = 0
+    _plan_last_fire: int = -(10**9)
     _nav_fires: int = 0
+    _plan_fires: int = 0
 
-    def __post_init__(self) -> None:
-        self._recent: deque[str] = deque(maxlen=self.config.loop_window)
+    def note_declaration(self, text: str) -> None:
+        """Update eligibility from the model's latest turn output."""
+        nav, plan = classify_declaration(text)
+        # Eligibility latches on while a qualifying goal stands; it is cleared
+        # only by a level-up (invalidate_goal). A turn that declares no qualifying
+        # goal does not by itself revoke a still-standing one (the model does not
+        # re-state the goal every turn), but a fresh qualifying declaration keeps
+        # it eligible.
+        if nav:
+            self._nav_eligible = True
+        if plan:
+            self._plan_eligible = True
 
-    def observe(self, *, movement: bool, board_changed: bool, level_up: bool,
-                state_hash: str) -> None:
-        """Update stall counters AFTER an env action executed."""
+    def observe_action(self) -> None:
+        """One executed env action — advances the cooldown clock."""
         self._actions += 1
-        # PLAN: streak of actions with neither objective progress nor material change.
-        if board_changed or level_up:
-            self._plan_streak = 0
-        else:
-            self._plan_streak += 1
-        # NAV: only movement attempts count. A movement makes progress iff the board
-        # changed AND the new state is novel (not in the recent window).
-        if movement:
-            novel = state_hash not in self._recent
-            progressed = board_changed and novel
-            if progressed:
-                self._move_stall = 0
-            else:
-                self._move_stall += 1
-        self._recent.append(state_hash)
 
-    def decide(self, *, has_traversability_graph: bool) -> str | None:
-        """Return 'nav' | 'plan' | None for the upcoming decision. At most one.
+    def invalidate_goal(self) -> None:
+        """Level-up: the active goal + eligibility are void until re-declared.
+        Caps and cooldown history persist (Codex)."""
+        self._nav_eligible = False
+        self._plan_eligible = False
 
-        NAV takes precedence when both are eligible. A NAV trigger whose
-        shortest_path would have no traversability graph is a NO-OP: it does not
-        inject, and does not consume the cooldown/max budget.
+    def decide(self) -> str | None:
+        """Return 'nav' | 'plan' | None for the upcoming decision boundary.
+
+        At most one injection; NAV precedence. An injection consumes cooldown+cap.
         """
         nav_ready = (
-            self.nav_enabled
-            and self._move_stall >= self.config.nav_move_stall
+            self.nav_enabled and self._nav_eligible
             and self._nav_fires < self.config.nav_max
             and (self._actions - self._nav_last_fire) >= self.config.nav_cooldown
         )
-        if nav_ready and has_traversability_graph:
+        if nav_ready:
             self._nav_last_fire = self._actions
             self._nav_fires += 1
-            self._move_stall = 0
             return "nav"
 
         plan_ready = (
-            self.plan_enabled
-            and self._plan_streak >= self.config.plan_no_progress
+            self.plan_enabled and self._plan_eligible
             and self._plan_fires < self.config.plan_max
             and (self._actions - self._plan_last_fire) >= self.config.plan_cooldown
         )
         if plan_ready:
             self._plan_last_fire = self._actions
             self._plan_fires += 1
-            self._plan_streak = 0
             return "plan"
         return None
 
-    def reset_level(self) -> None:
-        """A level advance is progress — clear the stall streaks (caps persist)."""
-        self._plan_streak = 0
-        self._move_stall = 0
-        self._recent.clear()
-
     @property
     def stats(self) -> dict[str, int]:
-        return {"plan_fires": self._plan_fires, "nav_fires": self._nav_fires,
+        return {"nav_fires": self._nav_fires, "plan_fires": self._plan_fires,
                 "actions": self._actions}
