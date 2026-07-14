@@ -842,3 +842,37 @@ five analyses close R55:
 **R55 central conclusion (Codex, confirmed by A): the sandbox fixes created the su15
 capability; scheduled goal revision did not — and on r11l it actively diverted the agent
 from a winning trajectory.**
+
+### Item B — frozen PLAN/NAV triggers: implemented, but 0-fire on the 2×2 games (execution-blocking)
+
+`src/admorphiq/repl_agent/triggers.py` (commit d113628) implements the Codex-frozen
+no-progress triggers as a pure, unit-tested state machine (PLAN 12-no-progress/cd15/max2;
+NAV 4-movement-stall/cd8/max4, shortest_path only with a traversability graph else no-op;
+NAV precedence; level-advance clears streaks; 8 tests). **The implementation is correct;
+the SPEC does not fire here.** Codex's mandatory "unit-test against existing traces before
+running" gate caught it: replaying the out9 action streams, the frozen triggers fire **0×
+on all three 2×2 games (ls20/g50t/tu93)** and 0× on su15/r11l. Cause (measured): these are
+100% MOVEMENT games where the board changes on nearly every action — longest no-change
+streak 0-1 (PLAN needs 12), and movements reach novel states so NAV's move-stall never
+reaches 4. The player moves FREELY and never converges (matches A#5: exploration-rich,
+convergence-poor). Stall-based triggers are structurally blind to non-convergent-but-
+effective wandering. Running the 2×2 as-frozen ⇒ all cells ≡ Base (null). **The plannav
+2×2 config is HELD pending a Codex trigger-def revision.** The reviewed-fallback (my earlier
+"fire shortest_path unconditionally on nav-signature") is now justified by the 0-fire
+evidence per Codex's own "note it as the fallback IF the frozen version underfires" clause.
+
+### Items 37 + C — engagement fixes built + push-ready ablation (unblocked, independent of triggers)
+
+Two flag-gated engagement fixes, both default OFF / byte-identical when off (commit 82e4907):
+- **REPL_ACTION_FIRST** — action/code on line 1, reasoning after; parser takes the FIRST
+  action line so a 512-token truncation can't erase it (sb26's 11/11 length-truncation
+  failures). Codex-endorsed design (v3-analysis review). 6 parser tests; default action-LAST
+  order unchanged.
+- **REPL_REPEAT_FEEDBACK** — when the governor rejects a proposal as repeat/no-effect, the
+  next packet says so explicitly + points to action_outcomes()/is_dead() (ft09's 55/100
+  repeat-rejections; the model wasn't diversifying).
+
+`REPL_EXPERIMENT=engagement` (commit d904ddb) is PUSH-READY: {base, +action_first,
++repeat_feedback, +both} × {sb26, ft09 targets + su15, r11l guards} × 2 reps = 32 runs
+@500s (~4.5h), audit OFF throughout, cells adjacent per game, tag `{game}_{cell}_r{rep}`.
+Kernel run_experiment is now entry-driven. 127 repl tests green.
