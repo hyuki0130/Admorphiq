@@ -109,3 +109,6 @@ def test_agent_audit_is_flag_gated_off_by_default():
     for _ in range(14):
         on.choose_action([], _obs(_frame(), avail=(1, 2, 3, 4)))
     assert any("AUDIT" in p and "GOAL_HYPOTHESIS" in p for p in prompts)
+    # audits_triggered counts REAL firings (once, at the 12 threshold), NOT the
+    # prompt appearances (Codex v7 review: the latter overcounts).
+    assert on.audits_triggered == 1

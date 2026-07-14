@@ -55,6 +55,7 @@ class TurnRecord:
     sandbox_error: str = ""
     action: dict[str, Any] | None = None
     prediction: dict[str, Any] | None = None  # {prediction, hypothesis} pre-action
+    audit: dict[str, Any] | None = None  # {threshold, action_count, fields} when an audit fired
     frame_before_hash: str = ""
     frame_after_hash: str = ""
     frame_before: list[list[int]] | None = None

@@ -60,8 +60,15 @@ class GoalAuditor:
 
     def due(self, turn_in_level: int) -> bool:
         """True when a threshold has been reached that hasn't been audited yet."""
-        return any(turn_in_level >= t and t not in self._audited
-                   for t in self.thresholds)
+        return self.pending_threshold(turn_in_level) is not None
+
+    def pending_threshold(self, turn_in_level: int) -> int | None:
+        """The lowest reached-but-not-yet-audited threshold (the one firing), or
+        None. Used to record the ACTUAL trigger (a transcript prompt scan
+        overcounts because the audit text persists across tool-loop rounds)."""
+        pend = [t for t in self.thresholds
+                if turn_in_level >= t and t not in self._audited]
+        return min(pend) if pend else None
 
     def force_alternative(self) -> bool:
         """After 2 missed milestones, the current goal-or-plan is rejected."""

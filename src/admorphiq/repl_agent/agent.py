@@ -359,6 +359,7 @@ class ReplAgent:
         self.llm_errors = 0
         self.truncations = 0
         self.inspections = 0
+        self.audits_triggered = 0  # real on_audit firings (not prompt appearances)
         self.sandbox_infra_errors = 0  # subprocess import/spawn failures (v5 P0)
         self.sandbox_code_errors = 0   # the model's code raised inside a live worker
         self.predictions_made = 0
@@ -563,6 +564,8 @@ class ReplAgent:
         base_prompt = (_SYSTEM_PROMPT + "\n\n" + self._builder.to_yaml(packet)
                        + _legal_reminder(legal))
         audit_due = self.audit_enabled and self._auditor.due(self._turn_in_level)
+        audit_threshold = (self._auditor.pending_threshold(self._turn_in_level)
+                           if audit_due else None)
         if audit_due:
             base_prompt += self._auditor.prompt_section()
         images, img_hashes = self._render_image(frame)
@@ -598,10 +601,14 @@ class ReplAgent:
             parsed = parse_model_output(raw)
             if parsed.kind == "none":
                 self.parse_failures += 1
+            round_audit = None
             if audit_due:
                 audit_due = False  # process the audit fields once per decision
-                st = self._auditor.on_audit(self._auditor.parse(raw),
-                                            self._turn_in_level)
+                fields = self._auditor.parse(raw)
+                st = self._auditor.on_audit(fields, self._turn_in_level)
+                self.audits_triggered += 1
+                round_audit = {"threshold": audit_threshold,
+                               "action_count": self._turn_in_level, "fields": fields}
                 if st.hypothesis:
                     self._memory.current_plan = [
                         f"GOAL: {st.hypothesis}", f"MILESTONE: {st.milestone}",
@@ -643,7 +650,8 @@ class ReplAgent:
             self._record_turn(obs, prompt, raw, parsed, sandbox_out, sandbox_err,
                               chosen, frame, latency_ms,
                               finish_reason=finish_reason, tokens=meta.get("tokens"),
-                              prediction=prediction, image_hashes=round_hashes)
+                              prediction=prediction, image_hashes=round_hashes,
+                              audit=round_audit)
 
             if self._queue or not inspected_only:
                 return  # got an action / macro / no-usable-output -> done
@@ -738,7 +746,8 @@ class ReplAgent:
                      latency_ms: float, *, finish_reason: str = "",
                      tokens: dict[str, int] | None = None,
                      image_hashes: list[str] | None = None,
-                     prediction: dict[str, Any] | None = None) -> None:
+                     prediction: dict[str, Any] | None = None,
+                     audit: dict[str, Any] | None = None) -> None:
         if self._recorder is None:
             return
         rec = TurnRecord(
@@ -749,7 +758,7 @@ class ReplAgent:
             prompt_text=prompt, image_hashes=image_hashes or [], raw_output=raw,
             finish_reason=finish_reason, parsed_tool_calls=normalize_parse(raw),
             sandbox_stdout=sandbox_out, sandbox_error=sandbox_err,
-            action=chosen, prediction=prediction,
+            action=chosen, prediction=prediction, audit=audit,
             # The decision is made ON this frame -> it is the BEFORE hash. The
             # post-action frame is only observed next turn; the bench event
             # stream is authoritative for the transition's after-hash.
