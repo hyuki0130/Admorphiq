@@ -256,9 +256,11 @@ def run_experiment() -> dict:
             env = arcade.make(gid)
             recorder = TranscriptRecorder(
                 os.path.join(KAGGLE_WORKING, "transcripts", f"{tag}.jsonl"))
+            nav = os.environ.get("REPL_NAV", "0").strip().lower() in (
+                "1", "true", "yes", "on")
             agent = ReplAgent(OpenAICompatClient(), recorder=recorder, game_id=gid,
                               render_images=True, max_tool_rounds=1,
-                              audit_enabled=(arm == "on"))
+                              audit_enabled=(arm == "on"), nav_steering=nav)
             diag = run_game(env, agent, max_actions=MAX_ACTIONS, wall_s=wall_s,
                             reset_action=GameAction.RESET, events=events)
             recorder.close()

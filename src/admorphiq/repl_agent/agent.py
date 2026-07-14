@@ -93,6 +93,15 @@ _SYSTEM_PROMPT = (
 )
 
 
+_NAV_NUDGE = (
+    "\nIf your GOAL_HYPOTHESIS is navigation-shaped (reach / navigate / move an "
+    "object to a target or exit), CALL shortest_path(start, goals, passable_mask) "
+    "in a ```python block — YOU choose the start cell, goal cell(s), and the "
+    "passable (1)/blocked (0) mask from what you observe — then act on the "
+    "returned path's FIRST step."
+)
+
+
 def _legal_reminder(legal: set[str]) -> str:
     line = f"Legal actions THIS turn: {sorted(legal)}."
     if "MOUSE" not in legal:
@@ -331,6 +340,7 @@ class ReplAgent:
         game_id: str = "",
         max_tool_rounds: int = 1,
         audit_enabled: bool = False,
+        nav_steering: bool = False,
         frame_dump_dir: str | None = None,
         frame_dump_every: int = 0,
     ) -> None:
@@ -347,6 +357,9 @@ class ReplAgent:
         # Counter-triggered goal-falsification audit (v7-3). Default OFF so the
         # v6 (P0-only) vs v7 (audit) comparison stays one-variable.
         self.audit_enabled = audit_enabled
+        # Navigation steering (v9): on audits, nudge navigation-shaped goals to
+        # use shortest_path (the LLM still supplies start/goal/mask). Default OFF.
+        self.nav_steering = nav_steering
         # Save the actual rendered PNG every N turns (0 = off) so a human can
         # inspect LEGIBILITY (Codex v5: hashes prove attachment, not legibility).
         self.frame_dump_dir = frame_dump_dir
@@ -574,6 +587,8 @@ class ReplAgent:
                            if audit_due else None)
         if audit_due:
             base_prompt += self._auditor.prompt_section()
+            if self.nav_steering:
+                base_prompt += _NAV_NUDGE
         images, img_hashes = self._render_image(frame)
         self._store.outcomes = self._outcomes  # expose evidence to the sandbox
 

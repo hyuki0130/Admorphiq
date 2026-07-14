@@ -112,3 +112,30 @@ def test_agent_audit_is_flag_gated_off_by_default():
     # audits_triggered counts REAL firings (once, at the 12 threshold), NOT the
     # prompt appearances (Codex v7 review: the latter overcounts).
     assert on.audits_triggered == 1
+
+
+def test_nav_steering_flag_gated():
+    """Purpose: nav steering (default OFF) only injects the shortest_path nudge on
+    audits when enabled — so it never contaminates the matched12 experiment.
+
+    Feedback: failure means the nav nudge leaks into the audit-only comparison.
+    """
+    prompts: list[str] = []
+
+    def cap(prompt, images=None):
+        prompts.append(prompt)
+        return '{"action":"LEFT"}'
+
+    # audit on, nav OFF -> no shortest_path nudge.
+    a = ReplAgent(SimpleNamespace(complete=cap), render_images=False,
+                  audit_enabled=True)
+    for _ in range(13):
+        a.choose_action([], _obs(_frame(), avail=(1, 2, 3, 4)))
+    assert not any("navigation-shaped (reach" in p for p in prompts)
+
+    prompts.clear()
+    b = ReplAgent(SimpleNamespace(complete=cap), render_images=False,
+                  audit_enabled=True, nav_steering=True)
+    for _ in range(13):
+        b.choose_action([], _obs(_frame(), avail=(1, 2, 3, 4)))
+    assert any("navigation-shaped (reach" in p and "AUDIT" in p for p in prompts)
