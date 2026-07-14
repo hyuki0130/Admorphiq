@@ -759,3 +759,38 @@ levels cleared (all runs terminated on the 500s wall):
   (files finished 22:40:21) and spuriously failed C2; re-run on the complete
   package is authoritative. `repl_matched_verdict.py` is correct — the inputs were
   incomplete for ~6s. Always confirm the package is fully downloaded before judging.
+
+### Wall taxonomy (out9 OFF-arm diagnostic) — the 10/12 zero-games are THREE distinct mechanisms
+
+Read-only profiling of the base agent (OFF arm, no audit confound) on the wall
+games. The agent is NOT idle — 76-131 env actions/game, ~1 LLM call/action,
+sandbox_errors 0-2 (REPL healthy, P0 truly fixed). It acts but doesn't solve.
+The walls split by measured mechanism — **there is no single fix**:
+
+1. **Truncation (sb26-dominant).** All 11 sb26 no-action turns are
+   `finish_reason='length'` (raw outputs 1437-1759 chars): the model spends the
+   512-token cap describing the puzzle and is cut off BEFORE emitting the action
+   → parse=none → fallback. Its comprehension is correct (it names the mechanic in
+   the truncated prose); the failure is output-contract, not understanding. The
+   last-line bare-text action recovery can't help (last line is truncated prose).
+   Universal but low-rate elsewhere (ft09 4, bp35 5, tu93 9, dc22 3 truncated
+   no-action turns). **Fix candidate: action-first output contract** (emit
+   action/code first, reason after) — truncation-robust, token-cost-neutral; but
+   su15 succeeded under the current action-last contract, so it needs a
+   one-variable test + regression check. NOT a multi-wall silver bullet.
+2. **Repeat-rejection (ft09-dominant).** ft09 `governor_rejections=55/100`,
+   truncations only 4: the model emits a parsed action 96% of turns but 55 are
+   rejected as repeats by the anti-repeat governor → fallback substitutes (hence
+   60% "source:fallback"). The model re-proposes already-tried actions and doesn't
+   diversify — it isn't registering that its actions were no-ops/rejected. **Fix
+   candidate: surface "last action rejected as repeat / no effect" more forcefully
+   in the packet** so the model diversifies. Action-first does NOT address this.
+3. **Planning (ls20 and the low-fallback explorers).** ls20 uses the REPL heavily
+   (21 inspections) and emits clean actions (4% fallback) yet never reaches the
+   goal; ar25/dc22/g50t/sp80/tr87/tu93 act competently (2-14% fallback) but don't
+   discover the goal. Genuine capability/planning gap — the deepest lever.
+
+**Correction recorded (self-caught):** an interim message overclaimed "action-first
+fixes multiple walls." Measured: action-first is specific to sb26-class truncation;
+ft09 is repeat-diversification; ls20 is planning. Each wall needs its own
+one-variable fix. Prefer measured mechanism over convenient narrative.
