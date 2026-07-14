@@ -80,10 +80,34 @@ the complementary action-semantics analyzer).
 keeps id, split event + new ids, appear/disappear, holes + safe-click, containment,
 adjacency direction), 0.79s, ruff clean.
 
+## Module 3 — Turn-packet builder (built)
+
+`src/admorphiq/repl_agent/turn_packet.py`. Assembles the per-turn prompt in the
+GAME / LAST_ACTION / CHANGE / SCENE / RECENT_EVENTS / MEMORY YAML shape,
+optimized around CHANGES (the full grid stays in the sandbox, not the prompt).
+
+- `TurnPacketBuilder.build(...)` — composes the six sections from the tracked
+  `Scene` (+ prev scene, + frame diff via `tools/base.diff_bbox/diff_cells`).
+  Deterministic (`yaml.safe_dump(sort_keys=False)`, integer-rounded centroids →
+  snapshot-stable) with a token-budget cap that trims the largest section
+  (SCENE.objects, smallest-area first) and flags `_meta.truncated`.
+- `HistoryTiers` — three-tier history: recent full-transition window (4-8) +
+  compact event ledger (20-40); persistent memory is separate.
+- `EnvironmentMemory` — goal_hypotheses / action_semantics / invariants /
+  dead_interventions / learned_options / unresolved_questions / current_plan;
+  surfaces the most-confident non-rejected hypotheses.
+- `Hypothesis` — falsifiable {hypothesis, prediction, confidence, supporting,
+  contradicting, status}. `support` raises confidence (→ confirmed); `contradict`
+  LOWERS it and rejects on sustained contradiction — the contradiction-recovery
+  behavior that stops false theories from entrenching.
+
+8 unit tests (six sections, CHANGE reports move + diff bbox, YAML snapshot
+stability, token-budget object trimming, history compaction, hypothesis
+contradiction recovery, rejected-hypothesis hiding, token estimate), 0.50s, ruff
+clean.
+
 ## Pending modules (Round 1)
 
-- **M3** — turn-packet builder (the GAME/LAST_ACTION/CHANGE/SCENE/RECENT_EVENTS/
-  MEMORY YAML shape, three-tier history, falsifiable-hypothesis memory).
 - **M4** — stateless Python sandbox (subprocess, stdlib allowlist, bounded
   output, timeout) + inspection API (objects/crop/ascii/mask/compare/relations)
   + explicit action accounting.
