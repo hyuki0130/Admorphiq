@@ -4,7 +4,7 @@ round: R56
 axis: generic-kernel-library
 verdict: IN-PROGRESS
 keywords: [generic-kernels, namespace-safe, script25, agent25, dual-scoreboard, declared-intent, primitive-firewall, kernel-library, quarantined-adapter]
-commit: [4303662, 3edcf4d, 1d797d7, 62fac21, f13b433, d377121, a2a62f0, b67cb39, de013aa, 69101ea, 68b802a, 3151030, cbda9aa, 0a7be09, 6e238de, f406d55, a3a6644, ae8fd95, 204aab2, 3e7391a, f0b0bcb]
+commit: [4303662, 3edcf4d, 1d797d7, 62fac21, f13b433, d377121, a2a62f0, b67cb39, de013aa, 69101ea, 68b802a, 3151030, cbda9aa, 0a7be09, 6e238de, f406d55, a3a6644, ae8fd95, 204aab2, 3e7391a, f0b0bcb, b28290e]
 date: 2026-07-15
 ---
 
@@ -112,14 +112,18 @@ export/test counts are a snapshot, not current; this page's are):
 - `3e7391a` — `parse.split_runs_by_pitch` promoted to its STRICT form
   (explicit pitch argument, exact division, provenance recorded) per the
   Codex tr87 re-ruling (`204aab2`) — see "TR87 gate arc" below.
+- `b28290e` — `geometry.recover_occluded_frame` (missing-border-cells
+  recovery via caller-supplied occluders) — `split_fused_frame`'s inverse
+  case; see "Measured so far (continued) — sb26" below for the diagnosis
+  and real-data validation this landed with.
 
 **Result (verified via `admorphiq.kernels.__all__` + a fresh test collection,
 not carried forward from the catalog doc's own snapshot): 9 kernel modules
 (`canonical`, `geometry`, `gf2`, `motion`, `parse`, `paths`, `regions`,
-`rewrite`, `shapes`), 45 public exports, 134 kernel-specific tests
+`rewrite`, `shapes`), 46 public exports, 142 kernel-specific tests
 (`tests/test_kernels_*.py`), ruff clean.** Full function-by-function
 reference for the modules present at `de013aa`: `docs/r56_kernel_catalog.md`
-(does not yet cover `parse`/`gf2`/`split_fused_frame`/strict
+(does not yet cover `parse`/`gf2`/`split_fused_frame`/`recover_occluded_frame`/strict
 `split_runs_by_pitch` — a catalog refresh is an open item below).
 
 ## TR87 gate arc — a multi-step Codex-gated promotion, not a single decision
@@ -237,6 +241,46 @@ adapter can now attempt level 1's previously-unreachable portal frame —
 but this has not yet been run live, so whether it actually clears L1 (or
 further levels) is not yet a measured result, only a built capability.
 
+**Second portal frame diagnosed and closed (`b28290e`, same session)** —
+level 1 actually needs TWO frames for portal detection, and the second
+(colour 8, `outer_bbox (18,18,27,45)`, 70 cells vs its own 72-cell
+perimeter) was still unrecoverable by anything landed so far. Root cause,
+confirmed against the real gold trace (not guessed): the 2 missing border
+cells are occupied by a SEPARATE colour-14 connected component (98
+cells) that is itself a compound shape — a small icon ring connected by a
+2-cell pipe to a SECOND large ring at `outer_bbox (32,18,41,45)` (sb26's
+actual second portal target). The pipe physically crosses the colour-8
+frame's border at exactly its 2 missing cells. This is a genuinely
+DIFFERENT fusion shape than `split_fused_frame`'s case (a foreign-colour
+object crossing a border, not a same-colour appendage fused onto it) —
+recursing `split_fused_frame` into just the colour-14 sub-blob does NOT
+work (confirmed: returns `None`), but calling it on the FULL 98-cell
+blob directly correctly recovers the second ring.
+
+New kernel `recover_occluded_frame(region_or_cells, occluders)`
+(`geometry.py`) closes the colour-8 side: the candidate bbox comes
+directly from its own cells (no mode-span search needed, unlike
+`split_fused_frame` — nothing pushes a MISSING-cells bbox outward the way
+an appendage does), and it only recovers when every missing border cell
+is covered by the union of caller-supplied `occluders`' own cells, plus
+the same hole-must-be-empty guard `split_fused_frame` uses to reject
+solid blocks. Fully caller-parameterized — no portal/pipe/connector
+semantics inside the kernel.
+
+**Real-data validation, full 292-frame sb26 gold trace** (every
+non-background region on every frame checked against every OTHER region
+on that frame as a candidate occluder set): **exactly 30 recoveries, ALL
+of them the same colour-8 frame with the same occluded cells — zero false
+positives anywhere else in the trace.** `split_fused_frame` recovers the
+second ring on **28/28** relevant frames. Composing the two kernels now
+recovers BOTH of sb26's portal frames from one frame — what `connectors()`
+needs (it links exactly two already-detected frames) to reach L2+. 8 new
+tests in `tests/test_kernels_geometry.py` (the real-data one skips
+cleanly when `data/traces/sb26.npz` isn't present locally — `data/` is
+gitignored). **Adapter wiring (composing this into `_recover_fused_frames`
+/ `_plan_sb26` and driving `connectors()`) is not done here** — kernel +
+diagnosis only, per the R56/adapter division of labour this round.
+
 ## Measured so far (continued) — ft09
 
 **ft09 glyph-decode adapter** (`src/admorphiq/adapters25/ft09.py`, committed
@@ -315,6 +359,13 @@ writeup and open item.
   whether it actually clears level 1 (or deeper) now that
   `split_fused_frame` is wired in — see "Measured so far (continued) —
   sb26" above.
+- **sb26's SECOND portal frame is now kernel-recoverable (`b28290e`,
+  `recover_occluded_frame` + `split_fused_frame` composed) but NOT wired
+  into the adapter.** `_recover_fused_frames`/`_plan_sb26` only call
+  `split_fused_frame` today (from `f0b0bcb`) — extending them to also
+  call `recover_occluded_frame` (using every other detected region as a
+  candidate occluder set) and then driving `connectors()` across BOTH
+  recovered frames is the remaining step to reach L2+ on this game.
 
 ## Related
 
