@@ -468,6 +468,164 @@ def test_pattern_match_prefers_congruent_pair_over_lattice_when_both_present():
     assert len(matches) == 1
 
 
+# ----- R58 tuning round #4: confinement-based promotion + contradiction demotion --
+def test_uniformity_promotes_on_confinement_but_not_on_coincidental_global_overlap():
+    """Purpose: the two-condition confinement test
+    (:func:`_is_confined_interaction`) must promote uniformity to
+    'behavioral' when a step's diff is genuinely ABOUT one member's own
+    footprint (a small, fully-inside, local edit), but must NOT promote
+    when a diff merely happens to touch a member's cells while being a
+    large, board-spanning change unrelated to that member specifically
+    (real-trace validation measured this coincidental-overlap pattern
+    firing promotion on ~19/24 games before this fix).
+
+    Expected feedback: a pass proves both halves of the confinement test
+    (fraction-inside AND bbox-locality) are load-bearing; a fail on the
+    first assert means genuine local interactions stopped promoting
+    (over-correction), a fail on the second means coincidental board-wide
+    overlap still promotes (the bug this round fixes).
+    """
+    frame = _uniformity_frame()
+
+    confined = [row[:] for row in frame]
+    confined[1][1], confined[1][2] = 9, 9  # repaint exactly one domino's own two cells
+    promoted = detect({"frame": frame, "transition_window": [frame, confined]})
+    promoted_candidate = next(c for c in promoted["goal_candidates"] if c["type"] == "uniformity")
+    assert promoted_candidate["tier"] == 2
+
+    churned = [row[:] for row in frame]
+    for r in range(7):  # rows 0-6 span every domino row (1 and 4) plus much more — a
+        for c in range(10):  # board-spanning change that only coincidentally covers them
+            churned[r][c] = 77
+    not_promoted = detect({"frame": frame, "transition_window": [frame, churned]})
+    not_promoted_candidate = next(c for c in not_promoted["goal_candidates"] if c["type"] == "uniformity")
+    assert not_promoted_candidate["tier"] == 3
+
+
+def test_uniformity_promotes_on_a_stencil_confined_edit_in_the_overlapping_lattice_case():
+    """Purpose: the exact case named in the round's success bar — a
+    domino/stencil-shaped repeated-region class (the FT09-shaped scenario
+    from the module docstring, where uniformity and pattern_match read
+    overlapping evidence) where a transition edits ONE member's own two
+    cells and nothing else must still promote uniformity to 'behavioral'
+    after the confinement rewrite.
+
+    Expected feedback: a pass proves the round #4 rewrite did not
+    over-correct and break behavioral promotion on genuinely confined,
+    correctly-behaving cases; a fail means real games with legitimately
+    localized toggle interactions would lose evidence strength they
+    earned honestly.
+    """
+    frame = _overlapping_uniformity_pattern_match_frame()
+    edited = [row[:] for row in frame]
+    edited[3][3], edited[3][4] = 0, 0  # erase exactly one domino's own two cells
+    result = detect({"frame": frame, "transition_window": [frame, edited]})
+    candidate = next(c for c in result["goal_candidates"] if c["type"] == "uniformity")
+    assert candidate["tier"] == 2
+
+
+def test_containment_promotes_on_confinement_and_resists_a_single_stray_diff():
+    """Purpose: containment's rewritten promotion path
+    (:func:`_is_confined_interaction` over the sibling-container footprint)
+    behaves the same way as arrival/uniformity's: a local, fully-inside
+    edit promotes to 'behavioral'; a single large diff that only grazes the
+    footprint does not (and does not demote either, since one step is
+    below ``_MIN_CONTRADICTION_STEPS``).
+
+    Expected feedback: a pass proves containment's own call site was wired
+    to the shared confinement helper correctly; a fail means containment
+    silently kept the old bare-intersection test (or broke entirely) when
+    ``frame_area`` was threaded through.
+    """
+    g = _grid(20, 20)
+    _ring(g, 1, 1, 5, 5, 1)
+    _dot(g, 3, 3, 2)
+    _dot(g, 2, 4, 3)
+    _ring(g, 1, 10, 5, 14, 6)
+    _dot(g, 3, 12, 2)
+    _dot(g, 2, 13, 3)
+    _dot(g, 4, 13, 8)  # sibling B has 3 items vs sibling A's 2 — irregular, baseline affordance
+
+    confined = [row[:] for row in g]
+    confined[3][3] = 9  # repaint one item dot's own single cell — inside the footprint
+    promoted = detect({"frame": g, "transition_window": [g, confined]})
+    promoted_candidate = next(c for c in promoted["goal_candidates"] if c["type"] == "containment")
+    assert promoted_candidate["tier"] == 2
+
+    stray = [row[:] for row in g]
+    for r in range(11):  # a large diff spanning >half the frame, only grazing the footprint once
+        for c in range(20):
+            stray[r][c] = 44
+    single_step = detect({"frame": g, "transition_window": [g, stray]})
+    single_step_candidate = next(c for c in single_step["goal_candidates"] if c["type"] == "containment")
+    assert single_step_candidate["tier"] == 3  # never promoted, and one step can't demote either
+
+
+def test_arrival_contradiction_requires_at_least_two_window_steps_not_one():
+    """Purpose: conservativeness requirement from the round's instructions
+    ('contradiction requires the pattern across >=2 window steps, not
+    one') — a single large, zero-overlap transition must NOT demote an
+    otherwise-unambiguous ('predicate') arrival candidate.
+
+    Expected feedback: a pass proves the ``>=_MIN_CONTRADICTION_STEPS``
+    gate is a genuine >=2 check, not an off-by-one ``>=1``; a fail means
+    one unlucky large transition could wrongly strip earned predicate
+    evidence.
+    """
+    frame = _arrival_frame()
+    large_change = [row[:] for row in frame]
+    for r in range(7):  # rows 0-6 — large, but never touches the locus at (8, 8)
+        for c in range(10):
+            large_change[r][c] = 55
+
+    result = detect({"frame": frame, "transition_window": [frame, large_change]})
+    candidate = next(c for c in result["goal_candidates"] if c["type"] == "arrival")
+    assert candidate["tier"] == 1  # still predicate: one contradicting step is not enough
+
+
+def test_arrival_contradiction_demotes_predicate_to_affordance_and_persistent_contradiction_clamps_margin():
+    """Purpose: the round's core new mechanism — across >=2 window steps
+    showing large, board-spanning change with zero overlap at an
+    unambiguous arrival candidate's own locus (no displacement ever
+    observed there), the candidate must demote from 'predicate' directly
+    to 'affordance' (the round's worked example: 'predicate->affordance')
+    with a mechanically-derived 'against' handle citing the contradicting
+    transitions; if the pattern persists past
+    ``_CONTRADICTION_MARGIN_FLOOR_STEPS``, margin is additionally clamped
+    to the strength floor.
+
+    Expected feedback: a pass on the first block proves 2 contradicting
+    steps demote and cite evidence; a pass on the second proves persistent
+    (4-step) contradiction also strips margin to the floor, not just the
+    tier. A fail means unambiguous candidates keep 'predicate' status
+    despite repeated behavioral evidence that the claimed locus is never
+    actually reached.
+    """
+    frame = _arrival_frame()
+
+    def _large_change(color: int) -> list[list[int]]:
+        g = [row[:] for row in frame]
+        for r in range(7):  # rows 0-6 — large, never touches the locus at (8, 8)
+            for c in range(10):
+                g[r][c] = color
+        return g
+
+    step_a = _large_change(55)
+    step_b = _large_change(66)
+    demoted = detect({"frame": frame, "transition_window": [frame, step_a, step_b]})
+    candidate = next(c for c in demoted["goal_candidates"] if c["type"] == "arrival")
+    assert candidate["tier"] == 3
+    assert candidate["against"] != []
+    assert candidate["strength"] > gl._STRENGTH_FLOOR  # 2 steps demotes tier, not yet margin
+
+    step_c = _large_change(55)
+    step_d = _large_change(66)
+    persistent = detect({"frame": frame, "transition_window": [frame, step_a, step_b, step_c, step_d]})
+    persistent_candidate = next(c for c in persistent["goal_candidates"] if c["type"] == "arrival")
+    assert persistent_candidate["tier"] == 3
+    assert persistent_candidate["strength"] == pytest.approx(gl._STRENGTH_FLOOR)
+
+
 # ----- margin / floor-anchoring (retained from tuning rounds #1-#2) -------------
 def test_all_fired_candidates_carry_a_margin_in_unit_interval():
     """Purpose: every candidate from every detector must carry a

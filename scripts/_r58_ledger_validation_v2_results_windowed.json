@@ -8,7 +8,7 @@
     "candidates_capped": [
       [
         "arrival",
-        2,
+        3,
         0.461
       ],
       [
@@ -18,7 +18,7 @@
       ]
     ],
     "tier_by_type": {
-      "arrival": 2,
+      "arrival": 3,
       "elimination": 2
     },
     "candidates_uncapped_types": [
@@ -32,36 +32,36 @@
   {
     "game": "bp35",
     "gt_primary": "arrival",
-    "verdict": "TOP1(legacy)",
+    "verdict": "RECALLED",
     "miss_attribution": null,
     "window_used": true,
     "candidates_capped": [
-      [
-        "arrival",
-        2,
-        0.36
-      ],
       [
         "threshold",
         2,
         0.282
       ],
       [
-        "containment",
+        "elimination",
         2,
-        0.238
+        0.2
       ],
       [
-        "uniformity",
-        2,
-        0.224
+        "pattern_match",
+        3,
+        0.6
+      ],
+      [
+        "arrival",
+        3,
+        0.36
       ]
     ],
     "tier_by_type": {
-      "arrival": 2,
       "threshold": 2,
-      "containment": 2,
-      "uniformity": 2
+      "elimination": 2,
+      "pattern_match": 3,
+      "arrival": 3
     },
     "candidates_uncapped_types": [
       "arrival",
@@ -71,12 +71,12 @@
       "elimination",
       "threshold"
     ],
-    "independent_footprint_groups": 1,
+    "independent_footprint_groups": 2,
     "insufficient_evidence": false,
     "unresolved_tests": [
-      "goal:1/goal:3: whether the candidate region is an isolated target to reach (arrival) or a slot to be filled/matched within the containment structure",
       "goal:1 (arrival) vs goal:6 (threshold): resolve via a targeted probe action before committing to either reading",
-      "goal:2 (uniformity) vs goal:3 (containment): resolve via a targeted probe action before committing to either reading"
+      "goal:5 (elimination) vs goal:6 (threshold): resolve via a targeted probe action before committing to either reading",
+      "goal:1 (arrival) has a structural contradiction \u2014 resolve with a cheap probe before committing"
     ]
   },
   {
@@ -88,12 +88,12 @@
     "candidates_capped": [
       [
         "arrival",
-        2,
+        3,
         0.463
       ],
       [
         "containment",
-        2,
+        3,
         0.2
       ],
       [
@@ -103,8 +103,8 @@
       ]
     ],
     "tier_by_type": {
-      "arrival": 2,
-      "containment": 2,
+      "arrival": 3,
+      "containment": 3,
       "elimination": 2
     },
     "candidates_uncapped_types": [
@@ -115,7 +115,8 @@
     "independent_footprint_groups": 2,
     "insufficient_evidence": false,
     "unresolved_tests": [
-      "goal:1/goal:3: whether the region reached (arrival) is the SAME region later consumed (elimination) \u2014 a delivery composition \u2014 or these are two independent events"
+      "goal:1/goal:3: whether the region reached (arrival) is the SAME region later consumed (elimination) \u2014 a delivery composition \u2014 or these are two independent events",
+      "goal:1 (arrival) has a structural contradiction \u2014 resolve with a cheap probe before committing"
     ]
   },
   {
@@ -127,7 +128,7 @@
     "candidates_capped": [
       [
         "arrival",
-        2,
+        3,
         0.357
       ],
       [
@@ -137,7 +138,7 @@
       ]
     ],
     "tier_by_type": {
-      "arrival": 2,
+      "arrival": 3,
       "threshold": 2
     },
     "candidates_uncapped_types": [
@@ -164,7 +165,7 @@
       ],
       [
         "uniformity",
-        2,
+        3,
         0.253
       ],
       [
@@ -175,7 +176,7 @@
     ],
     "tier_by_type": {
       "arrival": 3,
-      "uniformity": 2,
+      "uniformity": 3,
       "elimination": 2
     },
     "candidates_uncapped_types": [
@@ -199,7 +200,7 @@
     "candidates_capped": [
       [
         "arrival",
-        2,
+        3,
         0.458
       ],
       [
@@ -219,7 +220,7 @@
       ]
     ],
     "tier_by_type": {
-      "arrival": 2,
+      "arrival": 3,
       "uniformity": 2,
       "elimination": 2,
       "threshold": 2
@@ -247,19 +248,21 @@
     "candidates_capped": [
       [
         "arrival",
-        2,
+        3,
         0.465
       ]
     ],
     "tier_by_type": {
-      "arrival": 2
+      "arrival": 3
     },
     "candidates_uncapped_types": [
       "arrival"
     ],
     "independent_footprint_groups": 1,
     "insufficient_evidence": true,
-    "unresolved_tests": []
+    "unresolved_tests": [
+      "goal:1 (arrival) has a structural contradiction \u2014 resolve with a cheap probe before committing"
+    ]
   },
   {
     "game": "ka59",
@@ -270,7 +273,7 @@
     "candidates_capped": [
       [
         "arrival",
-        2,
+        3,
         0.36
       ],
       [
@@ -290,7 +293,7 @@
       ]
     ],
     "tier_by_type": {
-      "arrival": 2,
+      "arrival": 3,
       "containment": 2,
       "elimination": 2,
       "threshold": 2
@@ -334,7 +337,7 @@
       [
         "uniformity",
         3,
-        0.554
+        0.2
       ]
     ],
     "tier_by_type": {
@@ -397,12 +400,12 @@
     "candidates_capped": [
       [
         "arrival",
-        2,
+        3,
         0.314
       ],
       [
         "containment",
-        2,
+        3,
         0.296
       ],
       [
@@ -412,8 +415,8 @@
       ]
     ],
     "tier_by_type": {
-      "arrival": 2,
-      "containment": 2,
+      "arrival": 3,
+      "containment": 3,
       "elimination": 2
     },
     "candidates_uncapped_types": [
@@ -450,7 +453,9 @@
     ],
     "independent_footprint_groups": 1,
     "insufficient_evidence": true,
-    "unresolved_tests": []
+    "unresolved_tests": [
+      "goal:1 (arrival) has a structural contradiction \u2014 resolve with a cheap probe before committing"
+    ]
   },
   {
     "game": "r11l",
@@ -461,12 +466,12 @@
     "candidates_capped": [
       [
         "arrival",
-        2,
+        3,
         0.467
       ],
       [
         "containment",
-        2,
+        3,
         0.2
       ],
       [
@@ -476,8 +481,8 @@
       ]
     ],
     "tier_by_type": {
-      "arrival": 2,
-      "containment": 2,
+      "arrival": 3,
+      "containment": 3,
       "elimination": 2
     },
     "candidates_uncapped_types": [
@@ -501,7 +506,7 @@
     "candidates_capped": [
       [
         "arrival",
-        2,
+        3,
         0.467
       ],
       [
@@ -516,7 +521,7 @@
       ]
     ],
     "tier_by_type": {
-      "arrival": 2,
+      "arrival": 3,
       "uniformity": 3,
       "elimination": 2
     },
@@ -527,7 +532,9 @@
     ],
     "independent_footprint_groups": 3,
     "insufficient_evidence": false,
-    "unresolved_tests": []
+    "unresolved_tests": [
+      "goal:2 (uniformity) has a structural contradiction \u2014 resolve with a cheap probe before committing"
+    ]
   },
   {
     "game": "s5i5",
@@ -582,18 +589,18 @@
       ],
       [
         "containment",
-        2,
+        3,
         0.2
       ],
       [
         "pattern_match",
         3,
-        0.6
+        0.2
       ]
     ],
     "tier_by_type": {
       "arrival": 1,
-      "containment": 2,
+      "containment": 3,
       "pattern_match": 3
     },
     "candidates_uncapped_types": [
@@ -670,26 +677,26 @@
         0.249
       ],
       [
-        "containment",
+        "elimination",
         2,
+        0.2
+      ],
+      [
+        "containment",
+        3,
         0.22
       ],
       [
         "uniformity",
-        2,
-        0.214
-      ],
-      [
-        "elimination",
-        2,
+        3,
         0.2
       ]
     ],
     "tier_by_type": {
       "threshold": 2,
-      "containment": 2,
-      "uniformity": 2,
-      "elimination": 2
+      "elimination": 2,
+      "containment": 3,
+      "uniformity": 3
     },
     "candidates_uncapped_types": [
       "uniformity",
@@ -745,7 +752,7 @@
     "candidates_capped": [
       [
         "arrival",
-        2,
+        3,
         0.459
       ],
       [
@@ -760,7 +767,7 @@
       ]
     ],
     "tier_by_type": {
-      "arrival": 2,
+      "arrival": 3,
       "elimination": 2,
       "threshold": 2
     },
@@ -782,13 +789,13 @@
     "candidates_capped": [
       [
         "arrival",
-        1,
-        0.862
+        3,
+        0.2
       ],
       [
         "uniformity",
-        2,
-        0.704
+        3,
+        0.2
       ],
       [
         "elimination",
@@ -797,8 +804,8 @@
       ]
     ],
     "tier_by_type": {
-      "arrival": 1,
-      "uniformity": 2,
+      "arrival": 3,
+      "uniformity": 3,
       "elimination": 2
     },
     "candidates_uncapped_types": [
@@ -808,7 +815,10 @@
     ],
     "independent_footprint_groups": 3,
     "insufficient_evidence": false,
-    "unresolved_tests": []
+    "unresolved_tests": [
+      "goal:1 (arrival) has a structural contradiction \u2014 resolve with a cheap probe before committing",
+      "goal:2 (uniformity) has a structural contradiction \u2014 resolve with a cheap probe before committing"
+    ]
   },
   {
     "game": "tu93",
@@ -819,13 +829,13 @@
     "candidates_capped": [
       [
         "arrival",
-        2,
+        3,
         0.314
       ],
       [
         "uniformity",
         3,
-        0.417
+        0.2
       ],
       [
         "elimination",
@@ -834,7 +844,7 @@
       ]
     ],
     "tier_by_type": {
-      "arrival": 2,
+      "arrival": 3,
       "uniformity": 3,
       "elimination": 2
     },
@@ -847,7 +857,8 @@
     "insufficient_evidence": false,
     "unresolved_tests": [
       "goal:2 (uniformity) vs goal:3 (elimination): resolve via a targeted probe action before committing to either reading",
-      "goal:1 (arrival) has a structural contradiction \u2014 resolve with a cheap probe before committing"
+      "goal:1 (arrival) has a structural contradiction \u2014 resolve with a cheap probe before committing",
+      "goal:2 (uniformity) has a structural contradiction \u2014 resolve with a cheap probe before committing"
     ]
   },
   {
@@ -859,7 +870,7 @@
     "candidates_capped": [
       [
         "arrival",
-        2,
+        3,
         0.465
       ],
       [
@@ -869,7 +880,7 @@
       ]
     ],
     "tier_by_type": {
-      "arrival": 2,
+      "arrival": 3,
       "elimination": 2
     },
     "candidates_uncapped_types": [
@@ -878,7 +889,9 @@
     ],
     "independent_footprint_groups": 2,
     "insufficient_evidence": false,
-    "unresolved_tests": []
+    "unresolved_tests": [
+      "goal:1 (arrival) has a structural contradiction \u2014 resolve with a cheap probe before committing"
+    ]
   },
   {
     "game": "wa30",
@@ -889,12 +902,12 @@
     "candidates_capped": [
       [
         "arrival",
-        2,
+        3,
         0.314
       ]
     ],
     "tier_by_type": {
-      "arrival": 2
+      "arrival": 3
     },
     "candidates_uncapped_types": [
       "arrival"

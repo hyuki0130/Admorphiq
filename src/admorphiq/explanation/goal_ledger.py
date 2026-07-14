@@ -52,6 +52,41 @@ adopted here:
   not a bare list of competing type names — a weak offline LLM should be
   handed a specific test to run, not four scores to interpret itself.
 
+**R58 tuning round #4 (2026-07-15) — confinement-based promotion +
+contradiction demotion.** Round #3's ``transition_window`` promotion
+(``affordance`` -> ``behavioral``) tested only whether a step's changed
+cells INTERSECTED a candidate's footprint at all. Real-trace validation
+measured this firing on ~19/24 games via large, board-spanning, continuous
+per-action diffs (camera pans, HUD/animation churn) that trivially overlap
+almost any footprint by coincidence — not genuine localized interaction.
+Two structural fixes, both reusing the same primitives (no new kernels,
+no per-game constants):
+
+1. **Confinement-based promotion** (:func:`_is_confined_interaction`):
+   promotion now requires a step's diff to be substantially ABOUT the
+   candidate's footprint (>=``_PROMOTION_MIN_CONFINEMENT_FRAC`` of the
+   diff's own cells lie inside it) AND itself be a LOCAL event (its own
+   bounding box covers less than ``_PROMOTION_MAX_DIFF_BBOX_FRAC`` of the
+   frame — ruling out board-spanning diffs that would satisfy any overlap
+   test by sheer size). ``arrival``/``uniformity``/``containment`` were
+   rebuilt on this helper; ``pattern_match``'s promotion already required a
+   FULL subset match every step (strictly stronger) and needed no change.
+2. **Contradiction demotion**: behavioral evidence can now argue AGAINST a
+   candidate, not just for one. Each detector defines its own contradiction
+   predicate from its own claim (see each ``_detect_*`` docstring) computed
+   over the SAME window; when the contradiction pattern holds across
+   ``>=_MIN_CONTRADICTION_STEPS`` (2 — "not one occurrence") steps, the
+   candidate's evidence stage is reset to ``affordance`` (its honest
+   static-only baseline — chosen over a literal single-rank "-1" step
+   because a ``predicate`` candidate's strength came from STATIC
+   unambiguity/regularity, not from an earned behavioral promotion, so a
+   contradicting window should strip the unearned ``behavioral`` label
+   entirely rather than land there) and an ``against`` evidence handle
+   cites the contradicting transitions. If contradiction persists past
+   ``2 * _MIN_CONTRADICTION_STEPS`` steps, margin is ALSO clamped to the
+   floor (contradiction that keeps recurring, not just crosses the
+   minimum bar, gets the harshest available discount this module has).
+
 Naming follows the verdict's OWN example vocabulary
 (``goals/detectors/{elimination,uniformity,pattern_match,containment,
 arrival}.yaml``) rather than inventing new type names, so a goal
@@ -150,6 +185,16 @@ _TEMPORAL_COMPOSITION_PAIRS: frozenset[frozenset[str]] = frozenset(
     {frozenset({"arrival", "elimination"})}
 )
 
+# R58 tuning round #4: confinement-based promotion + contradiction demotion
+# (see module docstring). A step's diff must be SUBSTANTIALLY about the
+# candidate's footprint (not just touch it) and itself be a LOCAL event to
+# count as promoting evidence; contradiction requires the SAME shape of
+# check to structurally fail across >=2 steps, not one.
+_PROMOTION_MIN_CONFINEMENT_FRAC = 0.5  # >=half the diff's own cells must lie inside the footprint
+_PROMOTION_MAX_DIFF_BBOX_FRAC = 0.5  # the diff's own bbox must cover less than half the frame
+_MIN_CONTRADICTION_STEPS = 2  # "the pattern across >=2 window steps, not one"
+_CONTRADICTION_MARGIN_FLOOR_STEPS = 2 * _MIN_CONTRADICTION_STEPS  # persistent contradiction also clamps margin
+
 Frame = Sequence[Sequence[int]]
 Cell = tuple[int, int]
 
@@ -157,6 +202,41 @@ Cell = tuple[int, int]
 def _mode_color(frame: Frame) -> int:
     counts = Counter(v for row in frame for v in row)
     return counts.most_common(1)[0][0]
+
+
+def _diff_bbox_area(diff: dict[str, Any]) -> int:
+    if diff["bbox"] is None:
+        return 0
+    r0, c0, r1, c1 = diff["bbox"]
+    return (r1 - r0 + 1) * (c1 - c0 + 1)
+
+
+def _is_confined_interaction(diff: dict[str, Any], footprint_cells: frozenset[Cell], frame_area: int) -> bool:
+    """Does ``diff`` (a :func:`admorphiq.kernels.frame_diff` result) count as
+    a CONFINED interaction with ``footprint_cells`` — genuinely ABOUT that
+    footprint, not merely coincidental overlap during a larger unrelated
+    change? Two conditions, both required:
+
+    1. At least ``_PROMOTION_MIN_CONFINEMENT_FRAC`` of the diff's OWN cells
+       lie inside ``footprint_cells``. A tiny sliver of a huge diff touching
+       the footprint by chance fails this; a diff that IS mostly the
+       footprint passes.
+    2. The diff's own bounding box covers less than
+       ``_PROMOTION_MAX_DIFF_BBOX_FRAC`` of the frame — the change itself
+       must be a LOCAL event, not a board-spanning one (a camera pan or
+       full-board animation would otherwise satisfy condition 1 trivially
+       whenever the footprint happens to sit inside its bbox).
+
+    Replaces a bare non-empty-intersection test — real-trace validation
+    (R58 tuning round #4) measured that test firing on ~19/24 games via
+    exactly this kind of board-spanning, non-local change.
+    """
+    if diff["count"] == 0 or frame_area <= 0 or not footprint_cells:
+        return False
+    overlap = len(diff["cells"] & footprint_cells)
+    if overlap == 0 or overlap / diff["count"] < _PROMOTION_MIN_CONFINEMENT_FRAC:
+        return False
+    return _diff_bbox_area(diff) <= _PROMOTION_MAX_DIFF_BBOX_FRAC * frame_area
 
 
 def _floor_anchor(raw: float, gate_min: float, gate_max: float = 1.0) -> float:
@@ -317,10 +397,32 @@ def _detect_arrival(
     **Evidence stage**: ``predicate`` when the candidate is UNAMBIGUOUS
     (exactly one colour-unique, non-dominant region — the endpoint really
     IS identified, not merely one of several plausible readings);
-    ``behavioral`` when a ``transition_window`` is supplied and at least
-    one observed transition's changed cells overlap the candidate's OWN
-    cells (something interacted directly at the locus); ``affordance``
-    otherwise (a plausible target exists, nothing more).
+    ``behavioral`` when a ``transition_window`` shows a CONFINED interaction
+    at the candidate's own cells (:func:`_is_confined_interaction` — R58
+    tuning round #4); ``affordance`` otherwise (a plausible target exists,
+    nothing more).
+
+    **Contradiction (R58 tuning round #4)**: arrival claims a mover
+    eventually reaches this locus. Contradicted when, across
+    ``>=_MIN_CONTRADICTION_STEPS`` window steps, a LARGE/board-spanning
+    change happens (bbox > ``_PROMOTION_MAX_DIFF_BBOX_FRAC`` of the frame)
+    that is NOT a confined interaction with the candidate's own cells (per
+    :func:`_is_confined_interaction`) — repeated evidence that something is
+    actively happening on this board (large global change) without ever
+    once registering as a genuine localized event AT the candidate locus
+    (no displacement). Note this is deliberately NOT a bare
+    zero-overlap-with-the-diff test: a large diff may incidentally graze a
+    handful of the candidate's own cells while remaining overwhelmingly
+    about the rest of the board — measured directly against real trace
+    data, requiring literal zero overlap almost never re-fires twice for
+    any candidate region larger than a few cells, making the mechanism
+    inert. "No displacement" is read as "no CONFINED interaction", exactly
+    the same standard the promotion path itself uses. On contradiction, the
+    stage resets to ``affordance`` (see module docstring for why not a
+    literal "-1 tier" step) and an ``against`` handle cites the
+    contradicting transitions; if the pattern persists past
+    ``_CONTRADICTION_MARGIN_FLOOR_STEPS``, margin is also clamped to the
+    floor.
     """
     if len(regions) < 2 or frame_area <= 0:
         return None
@@ -339,14 +441,36 @@ def _detect_arrival(
 
     stage = "predicate" if len(unique) == 1 else "affordance"
     basis = {"colour_uniqueness", "dominance_exclusion"}
+    against: list[str] = []
     if transition_window and len(transition_window) >= 2:
         candidate_cells: frozenset[Cell] = region["cells"]
+        confined_hit = False
+        contradiction_count = 0
         for a, b in zip(transition_window, transition_window[1:], strict=False):
-            if frame_diff(a, b)["cells"] & candidate_cells:
-                if stage != "predicate":
-                    stage = "behavioral"
-                basis.add("transition_interaction")
-                break
+            diff = frame_diff(a, b)
+            if diff["count"] == 0:
+                continue
+            is_large = _diff_bbox_area(diff) > _PROMOTION_MAX_DIFF_BBOX_FRAC * frame_area
+            if _is_confined_interaction(diff, candidate_cells, frame_area):
+                confined_hit = True
+            elif is_large:
+                contradiction_count += 1
+        if confined_hit and stage != "predicate":
+            stage = "behavioral"
+            basis.add("transition_interaction")
+        if contradiction_count >= _MIN_CONTRADICTION_STEPS:
+            stage = "affordance"
+            basis.add("contradicted_no_displacement")
+            against.append(
+                ledger.evidence(
+                    idx,
+                    f"{contradiction_count} window transitions show large board-spanning change with no "
+                    "confined interaction at the candidate locus — no displacement ever observed there",
+                    frame="window",
+                )
+            )
+            if contradiction_count >= _CONTRADICTION_MARGIN_FLOOR_STEPS:
+                strength = _STRENGTH_FLOOR
 
     note = "region colour occurs nowhere else in the frame and does not dominate (>50%) the board"
     handle = ledger.evidence(idx, note)
@@ -354,7 +478,7 @@ def _detect_arrival(
         "id": ledger.candidate_id(),
         "type": "arrival",
         "support": [handle],
-        "against": [],
+        "against": against,
         "strength": strength,
         "_evidence_stage": stage,
         "_footprint": {"regions": frozenset({idx}), "cells": region["cells"]},
@@ -364,6 +488,7 @@ def _detect_arrival(
 
 def _detect_uniformity(
     regions: list[dict[str, Any]],
+    frame_area: int,
     ledger: _Ledger,
     transition_window: Sequence[Frame] | None,
 ) -> dict[str, Any] | None:
@@ -383,13 +508,24 @@ def _detect_uniformity(
     shape-class population exists — a static permission, nothing more).
     Promoted to ``behavioral`` when a ``transition_window`` shows a
     transition whose changed-cell footprint is a subset of, or equal to,
-    ONE of the class's member regions' own cells — "a changed footprint
-    closely aligned with one repeated N-cell region" (a case named
-    explicitly in the R58 verdict for a public toggle-grid game). No
-    ``predicate`` promotion is implemented — identifying the actual
-    target/constraint PATTERN (which
-    cells must reach which state) is out of scope here and belongs to the
-    ``toggle_linear`` MECHANIC playbook, not this goal-typology ledger.
+    ONE of the class's member regions' own cells, per
+    :func:`_is_confined_interaction` applied to that member's OWN cells
+    (R58 tuning round #4 — replaces a bare subset/superset test that
+    real-trace validation found fired almost as promiscuously as a plain
+    intersection whenever a large diff happened to fully cover one small
+    member region). No ``predicate`` promotion is implemented — identifying
+    the actual target/constraint PATTERN (which cells must reach which
+    state) is out of scope here and belongs to the ``toggle_linear``
+    MECHANIC playbook, not this goal-typology ledger.
+
+    **Contradiction (R58 tuning round #4)**: uniformity claims these member
+    cells behave as ONE coherent repeated-shape class. Contradicted when,
+    across ``>=_MIN_CONTRADICTION_STEPS`` window steps, a diff touches SOME
+    member cell(s) but is NOT a confined interaction with ANY individual
+    member — i.e. the class's cells keep changing in ways that don't look
+    like a clean single-member flip. On contradiction, stage resets to
+    ``affordance`` and an ``against`` handle cites the contradicting
+    transitions; persistent contradiction also clamps margin to the floor.
     """
     if not regions:
         return None
@@ -418,16 +554,37 @@ def _detect_uniformity(
 
         stage = "affordance"
         basis = {"repeated_shape_class"}
+        against: list[str] = []
         if transition_window and len(transition_window) >= 2:
             member_cell_sets = [regions[i]["cells"] for i in members]
+            confined_hit = False
+            contradiction_count = 0
             for a, b in zip(transition_window, transition_window[1:], strict=False):
-                diff_cells = frame_diff(a, b)["cells"]
-                if not diff_cells:
+                diff = frame_diff(a, b)
+                if diff["count"] == 0:
                     continue
-                if any(diff_cells <= mc or mc <= diff_cells for mc in member_cell_sets):
-                    stage = "behavioral"
-                    basis.add("transition_alignment")
-                    break
+                touches_any = any(diff["cells"] & mc for mc in member_cell_sets)
+                confined_to_some = any(_is_confined_interaction(diff, mc, frame_area) for mc in member_cell_sets)
+                if confined_to_some:
+                    confined_hit = True
+                elif touches_any:
+                    contradiction_count += 1
+            if confined_hit:
+                stage = "behavioral"
+                basis.add("transition_alignment")
+            if contradiction_count >= _MIN_CONTRADICTION_STEPS:
+                stage = "affordance"
+                basis.add("contradicted_non_stencil_edits")
+                against.append(
+                    ledger.evidence(
+                        members[0],
+                        f"{contradiction_count} window transitions touch the shape class's cells without "
+                        "confining to any single member's own footprint",
+                        frame="window",
+                    )
+                )
+                if contradiction_count >= _CONTRADICTION_MARGIN_FLOOR_STEPS:
+                    strength = _STRENGTH_FLOOR
 
         sample = members[:MAX_HANDLES_PER_CANDIDATE]
         handles = [
@@ -440,7 +597,7 @@ def _detect_uniformity(
             "id": ledger.candidate_id(),
             "type": "uniformity",
             "support": handles,
-            "against": [],
+            "against": against,
             "strength": strength,
             "_evidence_stage": stage,
             "_footprint": {"regions": frozenset(members), "cells": _cells_of(regions, members)},
@@ -451,6 +608,7 @@ def _detect_uniformity(
 
 def _detect_containment(
     regions: list[dict[str, Any]],
+    frame_area: int,
     containers: dict[int, list[int]],
     ledger: _Ledger,
     transition_window: Sequence[Frame] | None,
@@ -467,9 +625,22 @@ def _detect_containment(
     **Evidence stage**: ``predicate`` when regularity is PERFECT
     (``stdev == 0`` — every sibling holds exactly the same item count, a
     genuine parallel slot structure, not merely roughly-similar);
-    ``behavioral`` when a ``transition_window`` shows a transition whose
-    changed cells touch the containment structure's own footprint (items
-    appearing to move/appear/vanish within it); ``affordance`` otherwise.
+    ``behavioral`` when a ``transition_window`` shows a CONFINED interaction
+    (:func:`_is_confined_interaction`, R58 tuning round #4 — replaces a bare
+    touch test) with the containment structure's own footprint (items
+    appearing to move/appear/vanish within it, not merely caught inside a
+    larger unrelated change); ``affordance`` otherwise.
+
+    **Contradiction (R58 tuning round #4)**: containment claims edits stay
+    WITHIN the sibling-container structure. Contradicted when, across
+    ``>=_MIN_CONTRADICTION_STEPS`` window steps, a diff touches the
+    footprint but is NOT confined to it (:func:`_is_confined_interaction`
+    false) — i.e. edits repeatedly escape the container structure rather
+    than staying inside it (no size floor beyond what confinement itself
+    already implies — "escapes" is about the SHAPE of the change relative
+    to the footprint, not its board coverage). On contradiction, stage
+    resets to ``affordance`` with an ``against`` handle; persistent
+    contradiction also clamps margin to the floor.
     """
     qualifying = {c: items for c, items in containers.items() if len(items) >= _MIN_CONTAINMENT_ITEMS_PER_SIBLING}
     if len(qualifying) < _MIN_CONTAINMENT_SIBLINGS:
@@ -488,13 +659,34 @@ def _detect_containment(
     footprint_cells = _cells_of(regions, all_indices)
     stage = "predicate" if stdev == 0 else "affordance"
     basis = {"sibling_containers", "item_regularity"}
+    against: list[str] = []
     if transition_window and len(transition_window) >= 2:
+        confined_hit = False
+        contradiction_count = 0
         for a, b in zip(transition_window, transition_window[1:], strict=False):
-            if frame_diff(a, b)["cells"] & footprint_cells:
-                if stage != "predicate":
-                    stage = "behavioral"
-                basis.add("transition_interaction")
-                break
+            diff = frame_diff(a, b)
+            if diff["count"] == 0:
+                continue
+            if _is_confined_interaction(diff, footprint_cells, frame_area):
+                confined_hit = True
+            elif diff["cells"] & footprint_cells:
+                contradiction_count += 1
+        if confined_hit and stage != "predicate":
+            stage = "behavioral"
+            basis.add("transition_interaction")
+        if contradiction_count >= _MIN_CONTRADICTION_STEPS:
+            stage = "affordance"
+            basis.add("contradicted_escaping_edits")
+            against.append(
+                ledger.evidence(
+                    all_indices[0],
+                    f"{contradiction_count} window transitions touch the container "
+                    "structure without being confined to it",
+                    frame="window",
+                )
+            )
+            if contradiction_count >= _CONTRADICTION_MARGIN_FLOOR_STEPS:
+                strength = _STRENGTH_FLOOR
 
     sample = list(qualifying.items())[:MAX_HANDLES_PER_CANDIDATE]
     handles = [ledger.evidence(c, f"container region holds {len(items)} item regions") for c, items in sample]
@@ -502,7 +694,7 @@ def _detect_containment(
         "id": ledger.candidate_id(),
         "type": "containment",
         "support": handles,
-        "against": [],
+        "against": against,
         "strength": strength,
         "_evidence_stage": stage,
         "_footprint": {"regions": frozenset(all_indices), "cells": footprint_cells},
@@ -512,6 +704,7 @@ def _detect_containment(
 
 def _detect_pattern_match(
     regions: list[dict[str, Any]],
+    frame_area: int,
     containers_all: dict[int, list[int]],
     ledger: _Ledger,
     transition_window: Sequence[Frame] | None,
@@ -546,7 +739,21 @@ def _detect_pattern_match(
        ``transition_window`` shows every observed change confined to the
        candidate panel's own cells (cumulative localized edits, or a
        low-diff confirm transition following them — both read the same
-       way here: "nothing changed outside the hypothesised canvas").
+       way here: "nothing changed outside the hypothesised canvas"). This
+       promotion test was already a strict FULL-subset check (every
+       changed cell inside the footprint) — strictly stronger than the
+       fractional :func:`_is_confined_interaction` test used elsewhere, so
+       R58 tuning round #4 left it unchanged.
+
+    **Contradiction (R58 tuning round #4)**: pattern_match claims edits
+    stay confined to the canvas/panel footprint. Contradicted when, across
+    ``>=_MIN_CONTRADICTION_STEPS`` window steps, a diff touches the
+    footprint but is NOT a full subset of it — edits repeatedly escaping
+    the hypothesised panel/canvas (no size floor: "escaping" is about
+    whether the diff's own cells stay inside the footprint, not how much
+    of the frame the diff covers). On contradiction, stage resets to
+    ``affordance`` with an ``against`` handle; persistent contradiction
+    also clamps margin to the floor.
 
     **Margin**: for the congruent-pair reading, ``1 - 1/min(len(kids1),
     len(kids2))`` (richer congruent panels = stronger evidence), floor-
@@ -593,26 +800,43 @@ def _detect_pattern_match(
 
     strength = _floor_anchor(raw, gate_min)
     stage = "affordance"
+    against: list[str] = []
     if transition_window and len(transition_window) >= 2:
         confined_edits = 0
         observed = 0
+        contradiction_count = 0
         for a, b in zip(transition_window, transition_window[1:], strict=False):
-            diff_cells = frame_diff(a, b)["cells"]
-            if not diff_cells:
+            diff = frame_diff(a, b)
+            if diff["count"] == 0:
                 continue
             observed += 1
-            if diff_cells <= footprint_cells:
+            if diff["cells"] <= footprint_cells:
                 confined_edits += 1
+            elif diff["cells"] & footprint_cells:
+                contradiction_count += 1
         if observed > 0 and confined_edits == observed:
             stage = "behavioral"
             basis.add("confined_localized_edits")
+        if contradiction_count >= _MIN_CONTRADICTION_STEPS:
+            stage = "affordance"
+            basis.add("contradicted_escaping_edits")
+            against.append(
+                ledger.evidence(
+                    support_region,
+                    f"{contradiction_count} window transitions touch the panel/canvas footprint "
+                    "without being confined to it",
+                    frame="window",
+                )
+            )
+            if contradiction_count >= _CONTRADICTION_MARGIN_FLOOR_STEPS:
+                strength = _STRENGTH_FLOOR
 
     handle = ledger.evidence(support_region, note)
     return {
         "id": ledger.candidate_id(),
         "type": "pattern_match",
         "support": [handle],
-        "against": [],
+        "against": against,
         "strength": strength,
         "_evidence_stage": stage,
         "_footprint": {"regions": frozenset(all_indices), "cells": footprint_cells},
@@ -995,9 +1219,9 @@ def detect(observations: dict[str, Any]) -> dict[str, Any]:
         frame_area = len(frame) * len(frame[0]) if frame and frame[0] else 0
 
         arrival = _detect_arrival(regions, frame_area, ledger, transition_window)
-        uniformity = _detect_uniformity(regions, ledger, transition_window)
-        containment = _detect_containment(regions, containers, ledger, transition_window)
-        pattern_match = _detect_pattern_match(regions, containers, ledger, transition_window)
+        uniformity = _detect_uniformity(regions, frame_area, ledger, transition_window)
+        containment = _detect_containment(regions, frame_area, containers, ledger, transition_window)
+        pattern_match = _detect_pattern_match(regions, frame_area, containers, ledger, transition_window)
 
         if arrival is not None:
             candidates.append(arrival)
