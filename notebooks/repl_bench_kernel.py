@@ -453,9 +453,9 @@ def main() -> None:
     server = boot_vllm_server(_find_model_dir())
     try:
         wait_for_server(VLLM_PORT, SERVER_BOOT_TIMEOUT_S)
-        # REPL_EXPERIMENT=matched12 (paired OFF/ON) or full25 (single-arm audit-ON)
-        # run the experiment path; else the single-arm bench (arm via env flags).
-        if os.environ.get("REPL_EXPERIMENT", "").strip() in ("matched12", "full25"):
+        # Any named REPL_EXPERIMENT (matched12/full25/engagement/plannav/basenav)
+        # runs the experiment path; empty = the single-arm bench (arm via env flags).
+        if os.environ.get("REPL_EXPERIMENT", "").strip():
             summary = run_experiment()
         else:
             summary = run_bench()
