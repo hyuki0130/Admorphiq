@@ -8,7 +8,7 @@ seeds `llm_context/decision_tree.md` first, then walks `[[backlinks]]`.
 Use this index when authoring or auditing: skim the catalog, pick a
 category, drill into specific pages.
 
-**Total pages**: 143.
+**Total pages**: 147.
 
 ## Games (25)
 
@@ -90,7 +90,7 @@ category, drill into specific pages.
 - [[concepts/sprite_cluster.md]] — A connected component of same-color pixels in the frame. The universal primitive for detecting entities without reading game internals.
 - [[concepts/version_hash.md]] — A game's identifier in the ARC Prize API has the form `<title>-<hash>` (e.g. `tn36-ab4f63cc`). The hash is a version fingerprint: games with the same title but different hashes share gameplay rules but differ in internal implementation details that solvers may or may not observe.
 
-## Lessons (engineering wisdom from past incidents) (26)
+## Lessons (engineering wisdom from past incidents) (28)
 
 - [[lessons/top_solutions_survey_20260708.md]] — Survey of what is actually open-sourced for ARC-AGI-3 (M1 winners = local-LLM agents), resolution of the leaderboard score-scale confusion (top ~1.56 = 1.56%, not 156%; the 12.58% anchor was the 2025 preview), and the top-3 generic levers to adopt next.
 - [[lessons/online_rl_sprint_round_log.md]] — **🔎 To FIND past work by topic, start at the retrieval map [[rounds_index]]**
@@ -98,6 +98,7 @@ category, drill into specific pages.
 - [[lessons/brittle_tells.md]] — Code smells that indicate a strategy will fail on a new version hash. Use this checklist when reviewing any new `strat_*` function in `src/admorphiq/agent_ensemble.py`.
 - [[lessons/cd82_paint_palette_signature_20260423.md]] — Pre-HUD-masking, CD82's discovery phase reported 71 of 71
 - [[lessons/dc22_confined_avatar_discriminator_falsified_20260713.md]] — Discovery incident log for the `tools/graph_search.py` region-mask family
+- [[lessons/duck_harness_teardown_20260714.md]] — The Duck (Tufa, M1 #1, 1.21%) is a Qwen 3.6 27B FP8 code-REPL agent: the game is
 - [[lessons/frame_diff_as_probe.md]] — The difference between two consecutive frames is the cheapest, most general signal for classifying entities: what moved is likely the player, what changed locally is likely a toggle, what stays constant is likely background.
 - [[lessons/ft09_stride_button_drop_20260423.md]] — The default observation stride of 8 px samples 64 candidate
 - [[lessons/g1_g4_direct_test_20260422.md]] — Round-5 shipped four generic strategies — `interactive_grid_toggle`,
@@ -115,6 +116,7 @@ category, drill into specific pages.
 - [[lessons/size_floor_and_settle_reads.md]] — Both surfaced repeatedly on 2026-07-14 (SB26, CD82) and each has a general fix.
 - [[lessons/sokoban_search_explosion_20260423.md]] — Frame-hash BFS cannot clear 2-player Sokoban (KA59) inside the Kaggle envelope — branching ~24/step makes a depth-10 search ~10^13 states, far beyond the 15k-state cap. The fix is a specialist `_plan_push_bfs` over `(player_xy, block_set)` tuples with an A* Manhattan-to-goal heuristic.
 - [[lessons/su15_l1_singleton_colors_20260423.md]] — SU15 looks like the canonical merge puzzle, so `_plan_merge`
+- [[lessons/tools_verdict_dossier_20260714.md]] — "Hand-crafted tools are harmful" is a MISREADING of Duck's claim — game-SPECIFIC tools hurt,
 - [[lessons/tr87_dial_match_hypothesis_falsified_20260713.md]] — **✅ RESOLVED 2026-07-14 (verification-only internal read).** The win rule is a
 - [[lessons/trust_regression_not_commits.md]] — Commit messages often reflect a single-game test or an aspirational total. Only a full 25-game regression run produces a trustworthy score. Always cite the regression artifact, never the commit message.
 - [[lessons/v2_hash_obfuscation.md]] — When the ARC Prize API serves a second version hash of a game, game internals (attribute names, sprite tags, method names, level layouts) are re-obfuscated — so any solver that reads those internals fails silently.
@@ -139,7 +141,7 @@ category, drill into specific pages.
 
 - [[llm_context/decision_tree.md]] — Compact dispatch read first by Qwen — default primary adaptive_bfs_solver, peer-swap only on Observable-Signature match, 3-deep fallback_stack by game shape, re-ask on primary failure via each plan's Falsification Signature + Next-Best.
 
-## Top-level dispatch (architecture, selector, log, schema) (41)
+## Top-level dispatch (architecture, selector, log, schema) (43)
 
 - [[rounds/r05_planning-override.md]] — round-log
 - [[rounds/r06_depth-boost.md]] — round-log
@@ -181,6 +183,8 @@ category, drill into specific pages.
 - [[architecture.md]] — Three-layer agent design — Cognition (LLM) / Memory (Wiki) / Action (Strategies) — with explicit dev-time vs Kaggle-time boundaries and a self-improvement loop.
 - [[log.md]] — Append-only chronological record of every dev-time round and significant infra change. Grep `^## \[` for latest entries.
 - [[rounds/r53_unified-harness.md]] — The runtime general agent as a retry loop: one offline model reads a minimal
+- [[rounds/r54_vision-llm-policy.md]] — A multimodal LLM plays the game directly: each turn renders the 64×64 frame to
+- [[rounds/r55_code-repl-agent.md]] — A multimodal coding model with a stateless Python REPL and free internal
 - [[selector.md]] — Feature-driven dispatch rules the Hypothesis Engine LLM uses to pick
 
 ## Raw sources
