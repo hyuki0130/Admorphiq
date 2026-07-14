@@ -29,6 +29,12 @@ from admorphiq.kernels.motion import (
     plan_overwrites,
     track_objects,
 )
+from admorphiq.kernels.parse import (
+    cluster_widths,
+    gap_windows,
+    greedy_parse,
+    window_majority_color,
+)
 from admorphiq.kernels.paths import (
     configuration_path,
     grid_distance_field,
@@ -93,4 +99,8 @@ __all__ = [
     "elongated_axis",
     "point_toward",
     "project_to_axis",
+    "cluster_widths",
+    "gap_windows",
+    "greedy_parse",
+    "window_majority_color",
 ]

@@ -30,6 +30,7 @@ from collections.abc import Iterable, Sequence
 from typing import Any
 
 from admorphiq.kernels._common import normalize_frame as _normalize_frame
+from admorphiq.kernels.parse import cluster_widths
 
 Cell = tuple[int, int]
 Bbox = tuple[int, int, int, int]
@@ -272,23 +273,13 @@ def size_clusters(regions: Sequence[Region], ratio: float = 1.5) -> list[list[in
     the next size divided by the previous size exceeds ``ratio`` — the same
     "measured size outlier" technique :mod:`admorphiq.delivery` uses to
     split items from target zones, generalised to any number of size
-    classes (not just a single item/target binary split). Pure / no
+    classes (not just a single item/target binary split). Delegates to
+    :func:`admorphiq.kernels.parse.cluster_widths` (the same ratio-jump
+    clustering, generalised to any numeric sequence — see its docstring for
+    the full tie/zero-value behaviour this inherits unchanged). Pure / no
     environment access.
     """
-    order = sorted(range(len(regions)), key=lambda i: regions[i]["size"])
-    clusters: list[list[int]] = []
-    current: list[int] = []
-    prev_size: int | None = None
-    for i in order:
-        size = regions[i]["size"]
-        if current and prev_size and (size / prev_size) > ratio:
-            clusters.append(current)
-            current = []
-        current.append(i)
-        prev_size = size
-    if current:
-        clusters.append(current)
-    return clusters
+    return cluster_widths([r["size"] for r in regions], ratio=ratio)
 
 
 def tile_bbox(bbox: Bbox, rows: int, cols: int) -> list[Bbox]:
