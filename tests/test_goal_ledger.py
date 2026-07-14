@@ -61,10 +61,14 @@ def _arrival_frame() -> list[list[int]]:
 
 
 def _uniformity_frame() -> list[list[int]]:
-    """6 disjoint 1x1 dots (alternating colour, identical shape signature)."""
+    """6 disjoint 1x2 domino-shaped regions (a non-trivial 2-cell shape,
+    alternating between 2 colours) — clears the R58 uniformity
+    discriminators (shape > 1 cell, <= 3 distinct colours in the class)
+    while a naive population of 1x1 dots (see test_uniformity_ignores_...)
+    would not."""
     g = _grid(10, 10)
-    for i, (r, c) in enumerate([(1, 1), (1, 3), (1, 5), (3, 1), (3, 3), (3, 5)]):
-        _dot(g, r, c, 2 if i % 2 == 0 else 4)
+    for i, (r, c) in enumerate([(1, 1), (1, 4), (1, 7), (4, 1), (4, 4), (4, 7)]):
+        _fill(g, r, c, r, c + 1, 2 if i % 2 == 0 else 4)
     return g
 
 
@@ -114,6 +118,43 @@ def _threshold_frames() -> list[list[list[int]]]:
     _fill(f3, 1, 0, 1, 1, 11)
     _fill(f3, 2, 0, 2, 2, 11)
     return [f0, f1, f2, f3]
+
+
+def _saturating_observations() -> dict:
+    """A single observations dict deliberately built to fire ALL SIX detector
+    types at once: arrival (colour-7 dot), uniformity (6 disjoint 1x2
+    dominoes — a non-trivial 2-cell shape, clearing the R58 discriminators
+    that a population of 1x1 dots would not), containment (2 ring
+    containers each holding 2 items), pattern_match (1 ring holding 5
+    heterogeneous items), elimination (a before/after pair), threshold (a
+    monotonic repeat-frame window). Used by both the cap-enforcement test
+    and the budget test — the worst-case saturation fixture."""
+    g = _grid(30, 30)
+    _fill(g, 1, 1, 1, 1, 3)
+    _fill(g, 1, 5, 1, 5, 3)
+    _fill(g, 1, 9, 1, 9, 3)
+    _dot(g, 25, 25, 7)  # arrival
+    for i, r in enumerate([22, 22, 22, 26, 26, 26]):
+        c = [10, 14, 18][i % 3]
+        _fill(g, r, c, r, c + 1, 11 if i % 2 == 0 else 12)  # uniformity: 6 dominoes, 2 colours
+    _ring(g, 5, 1, 9, 5, 1)
+    _dot(g, 7, 2, 20)
+    _dot(g, 7, 4, 21)  # containment sibling A
+    _ring(g, 5, 10, 9, 14, 6)
+    _dot(g, 7, 11, 20)
+    _dot(g, 7, 13, 21)  # containment sibling B
+    _ring(g, 12, 1, 20, 9, 4)
+    _dot(g, 14, 2, 2)
+    _dot(g, 14, 4, 3)
+    _dot(g, 14, 6, 5)
+    _dot(g, 16, 2, 8)
+    _dot(g, 16, 4, 9)  # pattern_match container
+
+    before = _grid(30, 30)
+    _dot(before, 27, 27, 30)
+    after = _grid(30, 30)
+
+    return {"frame": g, "before": before, "after": after, "action_repeat_frames": _threshold_frames()}
 
 
 # ----- individual detector tests --------------------------------------------------
@@ -251,8 +292,8 @@ def test_two_distinct_types_firing_clears_insufficient_evidence():
     wrongly rejected.
     """
     g = _arrival_frame()
-    for i, (r, c) in enumerate([(1, 8), (3, 8), (5, 8), (7, 8), (9, 8), (0, 8)]):
-        _dot(g, r, c, 2 if i % 2 == 0 else 5)
+    for i, r in enumerate([0, 1, 3, 5, 7, 9]):
+        _fill(g, r, 8, r, 9, 2 if i % 2 == 0 else 5)  # non-trivial 2-cell dominoes, clears the uniformity gate
     result = detect({"frame": g})
     types = {c["type"] for c in result["goal_candidates"]}
     assert {"arrival", "uniformity"} <= types
@@ -288,36 +329,7 @@ def test_candidate_and_handle_caps_are_enforced_when_everything_fires():
     in the worst case; a fail means an oversaturated frame could blow the
     ledger's own budget.
     """
-    g = _grid(30, 30)
-    _fill(g, 1, 1, 1, 1, 3)
-    _fill(g, 1, 5, 1, 5, 3)
-    _fill(g, 1, 9, 1, 9, 3)
-    _dot(g, 25, 25, 7)  # arrival
-    _ring(g, 5, 1, 9, 5, 1)
-    _dot(g, 7, 2, 20)
-    _dot(g, 7, 4, 21)  # containment sibling A
-    _ring(g, 5, 10, 9, 14, 6)
-    _dot(g, 7, 11, 20)
-    _dot(g, 7, 13, 21)  # containment sibling B
-    _ring(g, 12, 1, 20, 9, 4)
-    _dot(g, 14, 2, 2)
-    _dot(g, 14, 4, 3)
-    _dot(g, 14, 6, 5)
-    _dot(g, 16, 2, 8)
-    _dot(g, 16, 4, 9)  # pattern_match container
-
-    before = _grid(30, 30)
-    _dot(before, 27, 27, 30)
-    after = _grid(30, 30)
-
-    result = detect(
-        {
-            "frame": g,
-            "before": before,
-            "after": after,
-            "action_repeat_frames": _threshold_frames(),
-        }
-    )
+    result = detect(_saturating_observations())
 
     assert len(result["goal_candidates"]) <= MAX_CANDIDATES
     assert len(result["goal_candidates"]) == MAX_CANDIDATES  # this fixture genuinely saturates the cap
@@ -389,28 +401,7 @@ def test_ledger_output_is_within_the_250_token_budget():
     fits the injection budget; a fail means the cap constants need
     tightening before this ships.
     """
-    g = _grid(30, 30)
-    _fill(g, 1, 1, 1, 1, 3)
-    _fill(g, 1, 5, 1, 5, 3)
-    _fill(g, 1, 9, 1, 9, 3)
-    _dot(g, 25, 25, 7)
-    _ring(g, 5, 1, 9, 5, 1)
-    _dot(g, 7, 2, 20)
-    _dot(g, 7, 4, 21)
-    _ring(g, 5, 10, 9, 14, 6)
-    _dot(g, 7, 11, 20)
-    _dot(g, 7, 13, 21)
-    _ring(g, 12, 1, 20, 9, 4)
-    _dot(g, 14, 2, 2)
-    _dot(g, 14, 4, 3)
-    _dot(g, 14, 6, 5)
-    _dot(g, 16, 2, 8)
-    _dot(g, 16, 4, 9)
-    before = _grid(30, 30)
-    _dot(before, 27, 27, 30)
-    after = _grid(30, 30)
-
-    result = detect({"frame": g, "before": before, "after": after, "action_repeat_frames": _threshold_frames()})
+    result = detect(_saturating_observations())
     compact = json.dumps(compact_view(result), separators=(",", ":"))
     assert len(compact) / 4 <= 250, f"compact ledger output ~{len(compact) / 4:.0f} tokens > 250 budget"
 
