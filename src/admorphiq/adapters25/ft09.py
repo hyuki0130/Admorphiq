@@ -61,7 +61,39 @@ doubles as that new board's first real toggle. This adapter treats
 trigger click (not a giveup), and re-runs discovery from scratch after
 every click rather than trusting a stale board reading -- which handles
 the reveal transparently, without special-casing it, because a
-wholesale-different region layout is just a fresh discovery result.
+wholesale-different region layout is just a fresh discovery result. (One
+level's apparent decoy turned out, on later investigation
+(``docs/r58_codex_ft09_l4_solution_20260715.md``), to be an engine-lifecycle
+artifact -- level installation is deferred to the NEXT submitted action, so
+the level-up frame briefly still shows the PREVIOUS level, not a hidden
+board being revealed -- but this adapter needs no special-casing for that
+either, since "always re-discover fresh" already treats a stale frame the
+same way it treats a genuine reveal, and the very next call sees the true
+board.)
+
+Stateful cross-toggle CONTROL glyphs, MEASURED and SOLVED
+(``docs/r58_codex_ft09_l4_solution_20260715.md``): a glyph is classified by
+its own non-center ink pattern (``_classify_glyph``), never by a hardcoded
+game-specific value. An ORDINARY TARGET glyph's non-center inks are all
+within the known constraint alphabet (equal / not-equal / no-cell). A
+CONTROL glyph's non-center inks are each either its OWN marker colour ("don't
+care" -- that compass position mirrors the control's own toggling state) or
+exactly one OTHER shared colour, discovered per-glyph as the control's own
+ACTION STENCIL ink. Clicking a control toggles its own state AND every real
+neighbour marked with that stencil ink; the control's own position is ALSO
+an ordinary constrained cell under OTHER glyphs' reach, exactly like any
+button. This is why the truncated-ring member floor was measured down to 3
+(``_MIN_RING_MEMBERS``) with a legibility guard replacing the old bare
+count: two genuine 3-member target glyphs that constrain a board's controls
+were silently dropped at a 4-member floor. A board with >=1 discovered
+control routes through a one-shot GF(2) toggle-system solve
+(``_build_toggle_system`` / ``Adapter._glyph_target_controlled``) instead of
+the reactive per-cell logic above -- a control's click has side effects on
+OTHER cells that greedy "click whatever's wrong right now" play cannot
+account for without thrashing. Control-free boards are entirely unaffected:
+the reactive path is unchanged, and the two-pass discovery extension that
+lets target glyphs see control centers as members is a no-op when no
+controls exist.
 
 Also documented (``.wiki/wiki/lessons/ft09_stride_button_drop_20260423.md``):
 the legacy solver's default fixed-pixel-stride probe grid lands on FT09's
@@ -160,14 +192,17 @@ _MAX_CANDIDATE_FRACTION = 0.15
 # A (possibly truncated) ring's glyph is anchored by button-shaped regions;
 # a COMPLETE ring has 8 of them, but truncated rings can have fewer -- both
 # real truncated rings measured (a level-5 board, top and bottom board-edge
-# rings) had exactly 4 real members, so 4 is the accept floor: enough margin
-# below a complete ring to admit real truncation, high enough to reject the
-# 1-2-member "candidate centers" that inevitably arise as noise from the
-# button-offset search on any board with more than one ring (a spurious
-# candidate can share ONE member with a real ring by coincidence of pitch
-# geometry; requiring several members makes that vanishingly unlikely).
+# rings) had exactly 4 real members. A THIRD real ring measured with only 3
+# members (docs/r58_codex_ft09_l4_solution_20260715.md: two 3-member target
+# glyphs constraining that board's control buttons, silently dropped by an
+# earlier 4-member floor) forced the floor down to 3 -- the count alone can
+# no longer reject the noise a bare-count floor used to catch (an earlier
+# ">=1 member" floor produced 33 phantom rings on a synthetic multi-ring
+# board), so ``_classify_glyph``'s legibility check is the real filter now:
+# a genuine glyph's ink pattern reads as either an ordinary target or a
+# control stencil, and noise generally reads as neither.
 _RING_SIZE = 8
-_MIN_RING_MEMBERS = 4
+_MIN_RING_MEMBERS = 3
 _COMPASS_ORDER = ("NW", "N", "NE", "W", "C", "E", "SW", "S", "SE")
 _COMPASS_OFFSET_SIGNS = {
     "NW": (-1, -1), "N": (-1, 0), "NE": (-1, 1),
@@ -176,6 +211,7 @@ _COMPASS_OFFSET_SIGNS = {
 }
 _GLYPH_EQUAL_INK = 0  # ink colour that means "this cell's colour must equal the marker"
 _GLYPH_NOT_EQUAL_INK = 2  # ink colour that means "this cell's colour must differ from the marker"
+_GLYPH_NO_CELL_INK = 3  # ink colour that means "no constraint / no real cell here"
 
 # Give up on a specific glyph-predicted cell after this many clicks without
 # reaching a colour that satisfies its constraints (a multi-step colour
@@ -279,6 +315,34 @@ def _cell_class(grid: Grid, bbox: Bbox) -> int:
 # ── glyph decode: ring/pitch/glyph discovery, entirely from frame observation ──
 
 
+def _classify_glyph(glyph: dict[str, int]) -> tuple[str, int | None]:
+    """Classify a discovered glyph's ROLE from its own ink pattern alone --
+    never from a hardcoded game-specific ink literal. Returns ``("target",
+    None)`` when every non-center compass value is within the known
+    constraint alphabet (``_GLYPH_EQUAL_INK`` / ``_GLYPH_NOT_EQUAL_INK`` /
+    ``_GLYPH_NO_CELL_INK``): an ordinary glyph whose reach constrains its
+    neighbours' colours. Returns ``("control", stencil_ink)`` when every
+    non-center value is EITHER the glyph's own marker colour (a "don't
+    care" -- that compass position mirrors the control's own toggling
+    state, see the module docstring's worked example) or exactly ONE other,
+    non-alphabet colour shared across every such position -- that shared
+    colour is the control's ACTION STENCIL ink, discovered per-glyph
+    (measured: 6 on the one board with controls, but never assumed to be
+    that literal). Returns ``("illegible", None)`` for anything else (a
+    mixed bag of non-alphabet colours, or more than one control-ink
+    candidate) -- rejected rather than guessed at, the precision guard the
+    lowered ``_MIN_RING_MEMBERS`` floor needs now that low-member noise
+    candidates are no longer filtered by count alone."""
+    marker = glyph["C"]
+    non_center = [v for name, v in glyph.items() if name != "C"]
+    if all(v in (_GLYPH_EQUAL_INK, _GLYPH_NOT_EQUAL_INK, _GLYPH_NO_CELL_INK) for v in non_center):
+        return ("target", None)
+    other = {v for v in non_center if v != marker}
+    if len(other) == 1:
+        return ("control", next(iter(other)))
+    return ("illegible", None)
+
+
 def _discover_rings(grid: Grid) -> list[dict[str, Any]]:
     """Discover toggle rings and their center glyph gaps, ACCEPTING rings
     truncated by the frame edge. Pure frame observation: button size is the
@@ -291,11 +355,24 @@ def _discover_rings(grid: Grid) -> list[dict[str, Any]]:
     button-position gaps (the min is unreliable -- a smaller gap can be
     cross-cluster noise from an unrelated ring's columns landing nearby,
     measured directly on a real 4-ring board). A candidate glyph gap is
-    accepted whenever it reads as a real glyph (non-background center) --
-    it need not have all 8 compass neighbours present as real buttons; a
-    board-edge-truncated ring simply has fewer (measured directly: 4-5 of
+    accepted whenever it reads as a real glyph (non-background center) with
+    at least ``_MIN_RING_MEMBERS`` real button neighbours AND a LEGIBLE ink
+    pattern (``_classify_glyph`` -- rejects illegible noise now that the
+    member floor alone is too low to do that job, see its own docstring);
+    it need not have all 8 compass neighbours present as real buttons -- a
+    board-edge-truncated ring simply has fewer (measured directly: 3-5 of
     8, the rest cut off by the frame boundary, with the missing positions'
-    own ink value reading 3 -- 'no cell here' -- rather than 0/2)."""
+    own ink value reading ``_GLYPH_NO_CELL_INK`` rather than 0/2).
+
+    A second pass extends the button registry with a synthetic "cell" per
+    discovered CONTROL glyph, keyed at its own glyph_bbox top-left exactly
+    like a real button -- a control's own position is itself clickable and
+    stateful (see the module docstring), and other glyphs' reach must be
+    able to find it as an ordinary member. Every ring's ``ring_cells`` is
+    then re-matched against the extended registry. This is a genuine no-op
+    on any board with zero controls (the registry is unchanged, so
+    re-matching reproduces the exact same result), which is why
+    control-free levels are unaffected by this discovery step at all."""
     if not grid:
         return []
     bg = most_common_color(grid)
@@ -326,7 +403,18 @@ def _discover_rings(grid: Grid) -> list[dict[str, Any]]:
     candidate_centers = {
         (r0 - dr, c0 - dc) for r0, c0 in by_topleft for dr, dc in offsets.values()
     }
-    rings: list[dict[str, Any]] = []
+    # Pass 1: classify every LEGIBLE candidate (target or control), WITHOUT
+    # yet applying the member-count floor. A candidate's own ink pattern is
+    # independent of how many of its neighbours are real buttons, so
+    # classification can happen before membership is finalised -- and it
+    # MUST, because a genuine target glyph's member count can only be
+    # correctly counted AFTER controls are known (see pass 2): one of its
+    # real members can BE a control's own center, which isn't in the plain
+    # button registry yet (measured directly: docs/r58_codex_ft09_l4_
+    # solution_20260715.md's two 3-member target glyphs each have exactly
+    # one control-center member -- checking the floor against by_topleft
+    # alone always undercounts them by exactly the amount that matters).
+    prelim: list[dict[str, Any]] = []
     for cr, cc in candidate_centers:
         if (cr, cc) in by_topleft:
             continue  # a real button, not a glyph gap
@@ -336,10 +424,38 @@ def _discover_rings(grid: Grid) -> list[dict[str, Any]]:
         glyph = _read_glyph_compass(grid, glyph_bbox)
         if glyph["C"] == bg:
             continue  # not a real glyph -- just background at a lattice position
-        neighbours = _ring_neighbours(by_topleft, cr, cc, offsets)
+        kind, control_ink = _classify_glyph(glyph)
+        if kind == "illegible":
+            continue  # neither a readable target pattern nor a readable control stencil
+        prelim.append({"glyph_bbox": glyph_bbox, "kind": kind, "control_ink": control_ink})
+
+    # Pass 2: extend the button registry with a synthetic "cell" per
+    # discovered CONTROL, keyed exactly like a real button -- a control's
+    # own position is itself clickable and stateful (see the module
+    # docstring), and other glyphs' reach must be able to find it as an
+    # ordinary member. A no-op when no controls exist (extended_topleft ==
+    # by_topleft), which is why control-free boards are unaffected.
+    extended_topleft = dict(by_topleft)
+    for cand in prelim:
+        if cand["kind"] != "control":
+            continue
+        r0, c0, r1, c1 = cand["glyph_bbox"]
+        centre_cell = {"bbox": cand["glyph_bbox"], "centroid": ((r0 + r1) / 2, (c0 + c1) / 2)}
+        cand["centre_cell"] = centre_cell
+        extended_topleft[(r0, c0)] = centre_cell
+
+    # Pass 3: NOW match every candidate's members against the (possibly
+    # control-extended) registry and apply the member-count floor -- the
+    # floor's job (reject noise) only makes sense once true membership,
+    # including control-center members, is known.
+    rings: list[dict[str, Any]] = []
+    for cand in prelim:
+        cr, cc = cand["glyph_bbox"][0], cand["glyph_bbox"][1]
+        neighbours = _ring_neighbours(extended_topleft, cr, cc, offsets)
         if len(neighbours) < _MIN_RING_MEMBERS:
             continue  # too few real members to be a genuine (even truncated) ring
-        rings.append({"glyph_bbox": glyph_bbox, "ring_cells": neighbours})
+        cand["ring_cells"] = neighbours
+        rings.append(cand)
     return rings
 
 
@@ -411,6 +527,70 @@ def _satisfies(colour: int, constraints: list[Constraint]) -> bool:
         if op == "!=" and colour == marker:
             return False
     return True
+
+
+def _build_toggle_system(
+    grid: Grid, rings: list[dict[str, Any]]
+) -> tuple[list[Cell], dict[Cell, dict[str, Any]], list[list[int]], list[int]] | None:
+    """Build the GF(2) toggle system for a board with >=1 CONTROL glyph:
+    variables = every clickable position (every ordinary button member of
+    every ring, plus every control's own center); equations = every
+    position covered by at least one constraint (``_collect_constraints``,
+    unchanged -- it already covers control centers transparently once
+    ``_discover_rings``'s extended registry lets target rings find them as
+    members). Clicking an ORDINARY variable toggles only itself. Clicking a
+    CONTROL variable toggles itself AND every real neighbour its own
+    pattern marks with its measured ``control_ink`` (its action stencil --
+    see the module docstring's control-button section). The target bit for
+    each equation is "does this cell's CURRENT colour already satisfy its
+    constraints" (0 = leave it, 1 = needs a net toggle) -- this is what
+    makes recomputing fresh every call converge correctly regardless of
+    click order: a cell already satisfied is never asked to flip again.
+    Returns None when there is nothing to solve (no covered cell at all)."""
+    variables: dict[Cell, dict[str, Any]] = {}
+    control_rings: list[dict[str, Any]] = []
+    for ring in rings:
+        for cell in ring["ring_cells"].values():
+            key = (cell["bbox"][0], cell["bbox"][1])
+            variables[key] = cell
+        if ring["kind"] == "control":
+            r0, c0 = ring["glyph_bbox"][0], ring["glyph_bbox"][1]
+            variables[(r0, c0)] = ring["centre_cell"]
+            control_rings.append(ring)
+
+    coverage = _collect_constraints(grid, rings)
+    if not coverage:
+        return None
+
+    var_keys = sorted(variables.keys())
+    eq_keys = sorted(coverage.keys())
+    var_index = {k: i for i, k in enumerate(var_keys)}
+
+    matrix: list[list[int]] = []
+    target: list[int] = []
+    for eq_key in eq_keys:
+        row = [0] * len(var_keys)
+        row[var_index[eq_key]] = 1  # every clickable cell always self-toggles
+        cell, constraints = coverage[eq_key]
+        current = _cell_class(grid, cell["bbox"])
+        target.append(0 if _satisfies(current, constraints) else 1)
+        matrix.append(row)
+
+    eq_row_of = {k: i for i, k in enumerate(eq_keys)}
+    for ring in control_rings:
+        centre_key = (ring["glyph_bbox"][0], ring["glyph_bbox"][1])
+        j = var_index[centre_key]
+        pattern = _read_glyph_compass(grid, ring["glyph_bbox"])
+        control_ink = ring["control_ink"]
+        for name, cell in ring["ring_cells"].items():
+            if pattern[name] != control_ink:
+                continue  # not part of this control's action stencil
+            neighbour_key = (cell["bbox"][0], cell["bbox"][1])
+            i = eq_row_of.get(neighbour_key)
+            if i is not None:  # an unconstrained stencil neighbour needs no equation
+                matrix[i][j] = 1
+
+    return var_keys, variables, matrix, target
 
 
 class Adapter(GameAdapter):
@@ -757,20 +937,27 @@ class Adapter(GameAdapter):
     # ── planning: which candidate to click next ──────────────────────────
 
     def _glyph_target(self, grid: Grid) -> Cell:
-        """Pick the next glyph-decode click. Re-discovers rings AND rebuilds
-        the full per-cell constraint set fresh from the CURRENT grid every
-        call (never a cached board), so a decoy -> reveal transition
-        (measured on levels 1, 3, and 5: the first click wholesale-replaces
-        the visible region layout with a different, previously invisible
-        ring set) is picked up for free -- a wholesale-different discovery
-        result needs no special-casing, it's just what ``_discover_rings``
-        returns this time. Falls back to the probe/execute/fallback
-        machinery, over the CURRENT (possibly post-reveal) board, whenever
-        the decode has nothing actionable left to try."""
+        """Pick the next glyph-decode click. Re-discovers rings fresh from
+        the CURRENT grid every call (never a cached board), so a decoy ->
+        reveal transition (measured on levels 1, 3, and 5) is picked up for
+        free -- a wholesale-different discovery result needs no
+        special-casing, it's just what ``_discover_rings`` returns this
+        time. A board with >=1 discovered CONTROL glyph routes entirely to
+        ``_glyph_target_controlled`` (a control's click has side effects a
+        reactive per-cell loop can't account for -- see the module
+        docstring); this is the ONLY branch point the control mechanism
+        adds -- every control-free board (levels 0-3, 6) falls straight
+        through to the ORIGINAL reactive logic below, unchanged. Falls back
+        to the probe/execute/fallback machinery, over the CURRENT (possibly
+        post-reveal) board, whenever the decode has nothing actionable left
+        to try."""
         rings = _discover_rings(grid)
         if not rings:
             self._start_probe(grid)
             return self._next_target(grid)
+
+        if any(ring["kind"] == "control" for ring in rings):
+            return self._glyph_target_controlled(grid, rings)
 
         coverage = _collect_constraints(grid, rings)
         if not coverage:
@@ -808,14 +995,69 @@ class Adapter(GameAdapter):
             return self._next_target(grid)
 
         # Nothing unsatisfied anywhere: either a decoy board that needs a
-        # click to reveal its real puzzle (measured on levels 1/3/5 -- the
-        # first click there ALSO looked like "nothing to do" by this same
-        # rule), or genuinely solved (in which case WIN would already have
-        # fired and choose_action wouldn't be called). Try an UNTRIED cell
-        # (across every discovered ring, not just the first) as a trigger
-        # probe -- bounded to _GLYPH_TRIGGER_BUDGET distinct cells, never
-        # the same one twice, so a genuine reveal hiding behind a different
-        # candidate is still found before giving up.
+        # click to reveal its real puzzle, or genuinely solved (in which
+        # case WIN would already have fired and choose_action wouldn't be
+        # called).
+        return self._glyph_trigger_target(grid, rings)
+
+    def _glyph_target_controlled(self, grid: Grid, rings: list[dict[str, Any]]) -> Cell:
+        """Boards with >=1 CONTROL glyph route through a one-shot GF(2)
+        solve (``_build_toggle_system``) instead of the reactive per-cell
+        logic above. Recomputing the solve fresh every call (never a cached
+        queue) keeps the same "always re-discover, never trust stale
+        state" discipline as the rest of this phase -- each call's system
+        reflects exactly what STILL needs fixing from the CURRENT board, so
+        clicking any one needed variable and re-solving next call converges
+        regardless of click order (order-independence measured directly
+        against gold, see ``docs/r58_codex_ft09_l4_solution_20260715.md``).
+        Reuses the SAME per-cell click cap, snapshot, and observe machinery
+        as the reactive path -- a control center is just another ``Cell``
+        key to that bookkeeping, no special-casing needed there."""
+        system = _build_toggle_system(grid, rings)
+        if system is None:
+            self._start_probe(grid)
+            return self._next_target(grid)
+        var_keys, variables, matrix, target_bits = system
+        solution = gf2_solve(matrix, target_bits)
+        if solution is None:
+            # An inconsistent system means the decode is wrong for this
+            # board (or discovery mis-tagged a glyph) -- fall back rather
+            # than guess.
+            self._start_probe(grid)
+            return self._next_target(grid)
+
+        needed = [
+            var_keys[j]
+            for j, bit in enumerate(solution)
+            if bit and self._glyph_click_counts.get(var_keys[j], 0) < _GLYPH_PER_CELL_CLICK_CAP
+        ]
+        if not needed:
+            if any(solution):
+                # Every solved click already hit its cap without the system
+                # converging -- give up on glyph-driven play for this board.
+                self._start_probe(grid)
+                return self._next_target(grid)
+            # The all-zero solution means every constraint is ALREADY
+            # satisfied -- the same "decoy, or genuinely solved" situation
+            # the uncontrolled path handles at its own tail.
+            return self._glyph_trigger_target(grid, rings)
+
+        key = needed[0]
+        cell = variables[key]
+        self._glyph_pending_key = key
+        self._glyph_pending_is_trigger = False
+        self._glyph_pre_click_snapshot = {k: _cell_class(grid, v["bbox"]) for k, v in variables.items()}
+        return _cell_point(cell)
+
+    def _glyph_trigger_target(self, grid: Grid, rings: list[dict[str, Any]]) -> Cell:
+        """Nothing left to fix by the decode's own current read: probe an
+        UNTRIED cell (across every discovered ring, not just the first) as
+        a decoy -> reveal trigger -- bounded to _GLYPH_TRIGGER_BUDGET
+        distinct cells, never the same one twice, so a genuine reveal
+        hiding behind a different candidate is still found before giving
+        up. Shared by both the reactive and the GF(2)-controlled paths --
+        the "what do I click when there's nothing left to fix" question is
+        identical either way."""
         all_ring_cells: dict[Cell, dict[str, Any]] = {}
         for ring in rings:
             for cell in ring["ring_cells"].values():

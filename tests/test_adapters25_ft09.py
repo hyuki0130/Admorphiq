@@ -18,6 +18,8 @@ from types import SimpleNamespace
 from admorphiq.adapters25.ft09 import (
     _GLYPH_TRIGGER_BUDGET,
     Adapter,
+    _build_toggle_system,
+    _classify_glyph,
     _collect_constraints,
     _discover_rings,
     _is_hud_row,
@@ -25,6 +27,7 @@ from admorphiq.adapters25.ft09 import (
     _read_glyph_compass,
     _satisfies,
 )
+from admorphiq.kernels import gf2_solve
 
 _BG = 5
 _MARKER = 8
@@ -417,3 +420,256 @@ def test_no_rings_on_a_board_with_fewer_than_eight_same_sized_regions():
     _stamp(grid, 3, 15, 3, _MARKER)
     grid = tuple(tuple(row) for row in grid)
     assert _discover_rings(grid) == []
+
+
+# ── R58: stateful cross-toggle CONTROL glyphs (docs/r58_codex_ft09_l4_solution_20260715.md) ──
+
+
+def test_classify_glyph_identifies_target_control_and_illegible_patterns():
+    """Purpose: pin the exact classification rule the lowered 3-member ring
+    floor now depends on for precision -- an ordinary glyph (every
+    non-center ink in the known {0,2,3} alphabet) is "target"; a glyph
+    whose non-center values are each either its own marker (don't care) or
+    exactly ONE other shared colour is "control" with that colour as its
+    action-stencil ink; anything else (a genuinely mixed, unreadable
+    pattern) is "illegible".
+    Expected feedback: failure means either a real control glyph would be
+    misread as target/illegible (losing its action-stencil semantics) or
+    random noise would be accepted as a fabricated control (reopening the
+    phantom-ring problem the member-count floor used to prevent alone)."""
+    target = {"C": 8, "NW": 0, "N": 2, "NE": 0, "W": 2, "E": 2, "SW": 0, "S": 2, "SE": 0}
+    assert _classify_glyph(target) == ("target", None)
+
+    control = {"C": 14, "NW": 14, "N": 6, "NE": 14, "W": 6, "E": 6, "SW": 14, "S": 6, "SE": 14}
+    assert _classify_glyph(control) == ("control", 6)
+
+    # A truncated glyph (some positions read the "no cell" ink 3) is still
+    # a legible target -- 3 belongs to the known alphabet.
+    truncated_target = {"C": 8, "NW": 3, "N": 2, "NE": 3, "W": 2, "E": 3, "SW": 3, "S": 0, "SE": 3}
+    assert _classify_glyph(truncated_target) == ("target", None)
+
+    # Two DIFFERENT non-alphabet, non-marker colours -- genuinely
+    # unreadable, must be rejected rather than guessed at.
+    illegible = {"C": 8, "NW": 6, "N": 7, "NE": 8, "W": 8, "E": 8, "SW": 8, "S": 8, "SE": 8}
+    assert _classify_glyph(illegible) == ("illegible", None)
+
+
+def test_discover_rings_accepts_a_legible_3_member_ring():
+    """Purpose: regression pin for the exact Codex-diagnosed bug
+    (docs/r58_codex_ft09_l4_solution_20260715.md) -- two genuine 3-member
+    target glyphs on a real board were silently dropped by a >=4-member
+    floor. A legible 3-member candidate must now be discovered.
+    Expected feedback: failure means _MIN_RING_MEMBERS/the discovery loop
+    regressed back to requiring 4, losing exactly the glyphs that constrain
+    a board's control buttons."""
+    grid_list = [[_BG] * 60 for _ in range(30)]
+    br, bc = 9, 45
+    for name in ("W", "E", "N"):  # exactly 3 real members
+        dr, dc = _RING_OFFSETS[name]
+        r0, c0 = br + dr, bc + dc
+        _stamp(grid_list, r0, c0, 3, _OTHER)
+    # Also need >= 8 same-sized regions on the board for button-size
+    # detection to fire at all -- a full ring elsewhere provides that.
+    gr, gc = 9, 9
+    for name, ink in _INK_PATTERN.items():
+        dr, dc = _RING_OFFSETS[name]
+        r0, c0 = gr + dr, gc + dc
+        _stamp(grid_list, r0, c0, 3, _SOLVED_COLOUR[name])
+    for name, ink in _INK_PATTERN.items():
+        ddr, ddc = {
+            "NW": (0, 0), "N": (0, 1), "NE": (0, 2),
+            "W": (1, 0), "E": (1, 2),
+            "SW": (2, 0), "S": (2, 1), "SE": (2, 2),
+        }[name]
+        grid_list[gr + ddr][gc + ddc] = ink
+    grid_list[gr + 1][gc + 1] = _MARKER
+    # The glyph's own ink image is stamped in full (all 8 compass pixels,
+    # via the same legible _INK_PATTERN alphabet) even though only 3 of
+    # those positions have a REAL button behind them -- exactly how a
+    # truncated ring's ink is rendered on the real game (an ink pixel
+    # exists at every compass position regardless of whether a button
+    # backs it; see the module docstring's truncated-ring section).
+    for name, ink in _INK_PATTERN.items():
+        ddr, ddc = {
+            "NW": (0, 0), "N": (0, 1), "NE": (0, 2),
+            "W": (1, 0), "E": (1, 2),
+            "SW": (2, 0), "S": (2, 1), "SE": (2, 2),
+        }[name]
+        grid_list[br + ddr][bc + ddc] = ink
+    grid_list[br + 1][bc + 1] = _MARKER
+
+    grid = tuple(tuple(row) for row in grid_list)
+    rings = _discover_rings(grid)
+    found = [r for r in rings if r["glyph_bbox"][:2] == (br, bc)]
+    assert len(found) == 1
+    assert set(found[0]["ring_cells"]) == {"W", "E", "N"}
+    assert found[0]["kind"] == "target"
+
+
+def test_discover_rings_rejects_an_illegible_3_member_candidate():
+    """Purpose: precision guard regression pin -- lowering the member floor
+    to 3 must NOT reopen the measured "33 phantom rings" problem. A
+    3-member candidate whose glyph ink pattern is genuinely mixed (two
+    different non-alphabet, non-marker colours) must still be rejected.
+    Expected feedback: failure means the legibility guard isn't actually
+    filtering noise, and the lowered floor alone would accept garbage."""
+    grid_list = [[_BG] * 60 for _ in range(30)]
+    gr, gc = 9, 9
+    for name, ink in _INK_PATTERN.items():
+        dr, dc = _RING_OFFSETS[name]
+        r0, c0 = gr + dr, gc + dc
+        _stamp(grid_list, r0, c0, 3, _SOLVED_COLOUR[name])
+    for name, ink in _INK_PATTERN.items():
+        ddr, ddc = {
+            "NW": (0, 0), "N": (0, 1), "NE": (0, 2),
+            "W": (1, 0), "E": (1, 2),
+            "SW": (2, 0), "S": (2, 1), "SE": (2, 2),
+        }[name]
+        grid_list[gr + ddr][gc + ddc] = ink
+    grid_list[gr + 1][gc + 1] = _MARKER
+
+    br, bc = 9, 45
+    for name in ("W", "E", "N"):
+        dr, dc = _RING_OFFSETS[name]
+        r0, c0 = br + dr, bc + dc
+        _stamp(grid_list, r0, c0, 3, _OTHER)
+    # Mixed, non-alphabet, non-single-shared-value ink: unreadable.
+    mixed = {"NW": 30, "N": 31, "NE": 30, "W": 32, "E": 33, "SW": 30, "S": 30, "SE": 30}
+    for name, ink in mixed.items():
+        ddr, ddc = {
+            "NW": (0, 0), "N": (0, 1), "NE": (0, 2),
+            "W": (1, 0), "E": (1, 2),
+            "SW": (2, 0), "S": (2, 1), "SE": (2, 2),
+        }[name]
+        grid_list[br + ddr][bc + ddc] = ink
+    grid_list[br + 1][bc + 1] = _MARKER
+
+    grid = tuple(tuple(row) for row in grid_list)
+    rings = _discover_rings(grid)
+    assert [r for r in rings if r["glyph_bbox"][:2] == (br, bc)] == []
+
+
+def test_build_toggle_system_control_click_solves_two_constraints_at_once():
+    """Purpose: end-to-end proof of the new GF(2) toggle-system builder,
+    hand-constructed to mirror the exact shape
+    docs/r58_codex_ft09_l4_solution_20260715.md measured: a control glyph B
+    is itself covered by a target glyph A's ink2 ("!=marker") reach at B's
+    CURRENT (violating) colour, and B's own action stencil also reaches an
+    ordinary field cell that a third glyph C separately covers and which
+    ALSO currently violates its own constraint. One click on B's center
+    must satisfy BOTH equations simultaneously (self-toggle + stencil
+    side-effect) -- exactly gold's "control clicks double as compensation"
+    shape, not two separate clicks.
+    Expected feedback: failure means either the self-toggle wiring, the
+    stencil side-effect wiring, or the current-colour-driven target vector
+    is wrong -- the new solver path would either miss a required click or
+    add a spurious one."""
+    grid_list = [[_BG] * 30 for _ in range(30)]
+
+    def stamp_glyph(bbox, pattern):
+        r0, c0, _r1, _c1 = bbox
+        positions = {
+            "NW": (r0, c0), "N": (r0, c0 + 1), "NE": (r0, c0 + 2),
+            "W": (r0 + 1, c0), "E": (r0 + 1, c0 + 2),
+            "SW": (r0 + 2, c0), "S": (r0 + 2, c0 + 1), "SE": (r0 + 2, c0 + 2),
+        }
+        for name, (r, c) in positions.items():
+            grid_list[r][c] = pattern[name]
+        grid_list[r0 + 1][c0 + 1] = pattern["C"]
+
+    a_bbox = (0, 0, 2, 2)
+    b_bbox = (10, 10, 12, 12)
+    c_bbox = (0, 20, 2, 22)
+    e_bbox = (20, 20, 22, 22)  # B's own ordinary action-stencil neighbour
+
+    # A: ordinary target, marker 8. SE reach ("!= 8") covers B's center.
+    stamp_glyph(
+        a_bbox,
+        {"C": 8, "NW": 3, "N": 3, "NE": 3, "W": 3, "E": 3, "SW": 3, "S": 3, "SE": 2},
+    )
+    # B: control, marker 8 (shares A's marker value -- currently violates
+    # A's "!=8" reach), action-stencil ink 6 on its own "E" position.
+    stamp_glyph(
+        b_bbox,
+        {"C": 8, "NW": 8, "N": 8, "NE": 8, "W": 8, "E": 6, "SW": 8, "S": 8, "SE": 8},
+    )
+    # C: ordinary target, marker 9. Its "N" reach ("!= 9") covers E_cell,
+    # which currently sits at colour 9 -- also violating.
+    stamp_glyph(
+        c_bbox,
+        {"C": 9, "NW": 3, "N": 2, "NE": 3, "W": 3, "E": 3, "SW": 3, "S": 3, "SE": 3},
+    )
+    _stamp(grid_list, e_bbox[0], e_bbox[1], 3, 9)
+    grid = tuple(tuple(row) for row in grid_list)
+
+    b_centre_cell = {"bbox": b_bbox, "centroid": (11.0, 11.0)}
+    e_cell = {"bbox": e_bbox, "centroid": (21.0, 21.0)}
+    rings = [
+        {"glyph_bbox": a_bbox, "ring_cells": {"SE": b_centre_cell}, "kind": "target", "control_ink": None},
+        {
+            "glyph_bbox": b_bbox,
+            "ring_cells": {"E": e_cell},
+            "kind": "control",
+            "control_ink": 6,
+            "centre_cell": b_centre_cell,
+        },
+        {"glyph_bbox": c_bbox, "ring_cells": {"N": e_cell}, "kind": "target", "control_ink": None},
+    ]
+
+    system = _build_toggle_system(grid, rings)
+    assert system is not None
+    var_keys, variables, matrix, target = system
+    assert var_keys == [(10, 10), (20, 20)]
+    assert target == [1, 1]  # both B's center and E currently violate their constraints
+    assert matrix == [[1, 0], [1, 1]]  # E's row also carries B's stencil side-effect
+
+    solution = gf2_solve(matrix, target)
+    assert tuple(solution) == (1, 0)  # click B's center once; E is fixed as a side-effect, no direct click needed
+    assert variables[var_keys[0]]["bbox"] == b_bbox
+
+
+def test_glyph_target_routes_to_the_controlled_solver_on_a_board_with_a_control():
+    """Purpose: prove Adapter._glyph_target itself takes the new branch --
+    not just that _build_toggle_system computes correctly in isolation, but
+    that the live decision function picks the control's own center as the
+    click target when the board has a control needing one, and that it
+    does NOT touch the reactive per-cell path (a control-tagged ring must
+    never reach the ``coverage.items()`` reactive loop below the branch).
+    Expected feedback: failure means the routing check in _glyph_target (or
+    the click-point derivation in _glyph_target_controlled) is wrong --
+    the whole L4 integration would be dead code never actually reached."""
+    grid_list = [[_BG] * 30 for _ in range(30)]
+
+    def stamp_glyph(bbox, pattern):
+        r0, c0, _r1, _c1 = bbox
+        positions = {
+            "NW": (r0, c0), "N": (r0, c0 + 1), "NE": (r0, c0 + 2),
+            "W": (r0 + 1, c0), "E": (r0 + 1, c0 + 2),
+            "SW": (r0 + 2, c0), "S": (r0 + 2, c0 + 1), "SE": (r0 + 2, c0 + 2),
+        }
+        for name, (r, c) in positions.items():
+            grid_list[r][c] = pattern[name]
+        grid_list[r0 + 1][c0 + 1] = pattern["C"]
+
+    a_bbox = (0, 0, 2, 2)
+    b_bbox = (10, 10, 12, 12)
+    stamp_glyph(a_bbox, {"C": 8, "NW": 3, "N": 3, "NE": 3, "W": 3, "E": 3, "SW": 3, "S": 3, "SE": 2})
+    stamp_glyph(b_bbox, {"C": 8, "NW": 8, "N": 8, "NE": 8, "W": 8, "E": 6, "SW": 8, "S": 8, "SE": 8})
+    grid = tuple(tuple(row) for row in grid_list)
+
+    b_centre_cell = {"bbox": b_bbox, "centroid": (11.0, 11.0)}
+    rings = [
+        {"glyph_bbox": a_bbox, "ring_cells": {"SE": b_centre_cell}, "kind": "target", "control_ink": None},
+        {
+            "glyph_bbox": b_bbox,
+            "ring_cells": {},
+            "kind": "control",
+            "control_ink": 6,
+            "centre_cell": b_centre_cell,
+        },
+    ]
+
+    adapter = Adapter()
+    target = adapter._glyph_target_controlled(grid, rings)
+    assert target == (11, 11)  # B's own centroid -- the only variable needing a click
+    assert adapter._glyph_pending_key == (10, 10)
