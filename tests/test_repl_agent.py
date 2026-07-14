@@ -146,6 +146,28 @@ def test_openai_client_disables_thinking_and_caps_tokens(monkeypatch):
     assert captured["timeout"] == 300.0
 
 
+def test_image_is_wired_into_the_call():
+    """Purpose: the agent renders the frame and sends it as an image (v5 made it
+    a multimodal agent instead of text-only complete(prompt, None)).
+
+    Feedback: failure means we ship a text-only policy, not the multimodal REPL
+    agent the design requires.
+    """
+    seen = {}
+
+    def capture(prompt, images=None):
+        seen["images"] = images
+        return '{"action":"UP"}'
+
+    ag = ReplAgent(SimpleNamespace(complete=capture))
+    ag.choose_action([], _obs(_frame(), avail=(1, 2, 3, 4)))
+    assert isinstance(seen["images"], list) and len(seen["images"]) == 1
+    assert isinstance(seen["images"][0], str) and seen["images"][0]  # base64 PNG
+    rec_agent = ReplAgent(SimpleNamespace(complete=capture), render_images=False)
+    rec_agent.choose_action([], _obs(_frame(), avail=(1, 2, 3, 4)))
+    assert seen["images"] is None  # JSON-only arm sends no image
+
+
 def test_prompt_describes_repl_and_binds_legal_actions():
     """Purpose: the v4 prompt tells the model the REPL/inspection API exists and
     forbids MOUSE when it is not legal.

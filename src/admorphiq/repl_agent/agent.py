@@ -34,7 +34,11 @@ import numpy as np
 from admorphiq.repl_agent.governor import ActionGovernor, ActionRequest, MacroStep
 from admorphiq.repl_agent.sandbox import ObservationStore, run_code
 from admorphiq.repl_agent.segmentation import SceneTracker
-from admorphiq.repl_agent.transcript import TranscriptRecorder, TurnRecord
+from admorphiq.repl_agent.transcript import (
+    TranscriptRecorder,
+    TurnRecord,
+    image_hash,
+)
 from admorphiq.repl_agent.turn_packet import (
     EnvironmentMemory,
     HistoryTiers,
@@ -307,12 +311,14 @@ class ReplAgent:
         giveup: int = 8000,
         recorder: TranscriptRecorder | None = None,
         token_budget: int = 3000,
+        render_images: bool = True,
     ) -> None:
         from admorphiq.adapter import AdmorphiqAdapter
 
         self._convert = AdmorphiqAdapter._convert_action
         self._llm = llm
         self.giveup = giveup
+        self.render_images = render_images
         self._recorder = recorder
         self._builder = TurnPacketBuilder(token_budget=token_budget)
         self.last_hypothesis: str | None = None
@@ -428,6 +434,23 @@ class ReplAgent:
         text = pred.get("hypothesis") or f"{act} -> {pred['prediction']}"
         self._memory.record_prediction(text, pred["prediction"], correct)
 
+    def _render_image(self, frame: np.ndarray) -> tuple[list[str] | None, list[str]]:
+        """Render the current frame to a labeled PNG for the multimodal call.
+
+        Returns ``(images, image_hashes)``. Disabled (``None``) for the JSON-only
+        arm or if rendering fails (text packet still carries the scene).
+        """
+        if not self.render_images:
+            return None, []
+        try:
+            import base64
+
+            from admorphiq.vlm_policy import render_frame_png
+            png = render_frame_png(np.asarray(frame))
+            return [base64.b64encode(png).decode("ascii")], [image_hash(png)]
+        except Exception:  # noqa: BLE001 — image is an aid; text packet suffices
+            return None, []
+
     def _decide(self, obs: Any, frame: np.ndarray, scene: Any) -> None:
         legal = _legal_names(obs)
         hw = frame.shape
@@ -438,10 +461,11 @@ class ReplAgent:
             prev_frame=self._prev_frame, history=self._history, memory=self._memory)
         prompt = (_SYSTEM_PROMPT + "\n\n" + self._builder.to_yaml(packet)
                   + _legal_reminder(legal))
+        images, img_hashes = self._render_image(frame)
 
         t0 = time.time()
         try:
-            raw = self._llm.complete(prompt, None)
+            raw = self._llm.complete(prompt, images)
         except Exception as exc:  # noqa: BLE001 — a slow/failed call must not end the game
             latency_ms = (time.time() - t0) * 1000.0
             self.llm_calls += 1
@@ -449,7 +473,8 @@ class ReplAgent:
             # Record the failed turn (latency + error visible) and fall through to
             # the safe fallback action, so one slow call does not end the game.
             self._record_turn(obs, prompt, "", parse_model_output(""), "",
-                              f"{type(exc).__name__}: {exc}", None, frame, latency_ms)
+                              f"{type(exc).__name__}: {exc}", None, frame, latency_ms,
+                              image_hashes=img_hashes)
             return
         latency_ms = (time.time() - t0) * 1000.0
         self.llm_calls += 1
@@ -487,7 +512,7 @@ class ReplAgent:
         self._record_turn(obs, prompt, raw, parsed, sandbox_out, sandbox_err,
                           chosen, frame, latency_ms,
                           finish_reason=finish_reason, tokens=meta.get("tokens"),
-                          prediction=prediction)
+                          prediction=prediction, image_hashes=img_hashes)
 
     def _govern_single(self, a: dict[str, Any], legal: set[str],
                        hw: tuple[int, int], state_hash: str) -> dict[str, Any] | None:
