@@ -252,6 +252,20 @@ def test_causal_feedback_in_last_action_and_recent():
     assert "game_id: g1" in p  # defect #10 fixed
 
 
+def test_frame_dump_writes_png(tmp_path):
+    """Purpose: when frame_dump_dir/every are set, the actual rendered PNG is
+    saved for legibility inspection (Codex v5: hashes prove attachment only).
+
+    Feedback: failure means we can't verify the model got a legible image.
+    """
+    agent = ReplAgent(SimpleNamespace(complete=lambda p, i=None: '{"action":"LEFT"}'),
+                      frame_dump_dir=str(tmp_path), frame_dump_every=1,
+                      game_id="g1")
+    agent.choose_action([], _obs(_frame(), avail=(1, 2, 3, 4)))
+    pngs = list(tmp_path.glob("g1_t*.png"))
+    assert pngs and pngs[0].read_bytes()[:8] == b"\x89PNG\r\n\x1a\n"
+
+
 def test_image_is_wired_into_the_call():
     """Purpose: the agent renders the frame and sends it as an image (v5 made it
     a multimodal agent instead of text-only complete(prompt, None)).

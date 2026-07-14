@@ -325,6 +325,8 @@ class ReplAgent:
         game_id: str = "",
         max_tool_rounds: int = 1,
         audit_enabled: bool = False,
+        frame_dump_dir: str | None = None,
+        frame_dump_every: int = 0,
     ) -> None:
         from admorphiq.adapter import AdmorphiqAdapter
 
@@ -339,6 +341,10 @@ class ReplAgent:
         # Counter-triggered goal-falsification audit (v7-3). Default OFF so the
         # v6 (P0-only) vs v7 (audit) comparison stays one-variable.
         self.audit_enabled = audit_enabled
+        # Save the actual rendered PNG every N turns (0 = off) so a human can
+        # inspect LEGIBILITY (Codex v5: hashes prove attachment, not legibility).
+        self.frame_dump_dir = frame_dump_dir
+        self.frame_dump_every = frame_dump_every
         self._recorder = recorder
         self._builder = TurnPacketBuilder(token_budget=token_budget)
         self.last_hypothesis: str | None = None
@@ -524,9 +530,27 @@ class ReplAgent:
 
             from admorphiq.vlm_policy import render_frame_png
             png = render_frame_png(np.asarray(frame))
+            self._maybe_dump_frame(png)
             return [base64.b64encode(png).decode("ascii")], [image_hash(png)]
         except Exception:  # noqa: BLE001 — image is an aid; text packet suffices
             return None, []
+
+    def _maybe_dump_frame(self, png: bytes) -> None:
+        """Persist the actual PNG every ``frame_dump_every`` turns for legibility
+        inspection (Codex v5: hashes prove attachment, not legibility)."""
+        if not self.frame_dump_dir or self.frame_dump_every <= 0:
+            return
+        if self._turn % self.frame_dump_every != 0:
+            return
+        try:
+            import os
+
+            os.makedirs(self.frame_dump_dir, exist_ok=True)
+            name = f"{self._game_id or 'game'}_t{self._turn:04d}.png"
+            with open(os.path.join(self.frame_dump_dir, name), "wb") as fh:
+                fh.write(png)
+        except Exception:  # noqa: BLE001 — telemetry must never break play
+            pass
 
     def _decide(self, obs: Any, frame: np.ndarray, scene: Any) -> None:
         legal = _legal_names(obs)

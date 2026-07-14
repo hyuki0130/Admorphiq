@@ -208,6 +208,10 @@ def run_bench() -> dict:
         max_tool_rounds = 1
     audit_enabled = os.environ.get("REPL_AUDIT", "0").strip().lower() in (
         "1", "true", "yes", "on")
+    try:
+        frame_dump_every = int(os.environ.get("REPL_FRAME_DUMP_EVERY", "10"))
+    except ValueError:
+        frame_dump_every = 10
     arm = "repl" if (render_images or max_tool_rounds > 0) else "json_only"
     # Normalize the effective flags back into the env so run_manifest records the
     # exact arm that ran (config_env captures REPL_-prefixed vars).
@@ -256,7 +260,9 @@ def run_bench() -> dict:
             agent = ReplAgent(OpenAICompatClient(), recorder=recorder, game_id=game_id,
                               render_images=render_images,
                               max_tool_rounds=max_tool_rounds,
-                              audit_enabled=audit_enabled)
+                              audit_enabled=audit_enabled,
+                              frame_dump_dir=os.path.join(KAGGLE_WORKING, "frames"),
+                              frame_dump_every=frame_dump_every)
             diag = run_game(env, agent, max_actions=MAX_ACTIONS, wall_s=WALL_S,
                             reset_action=GameAction.RESET, events=events)
             recorder.close()
