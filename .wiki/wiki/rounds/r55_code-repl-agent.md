@@ -2,9 +2,9 @@
 type: reasoning
 round: R55
 axis: code-repl-agent
-keywords: [code-repl, duck, qwen3.6, multimodal, transcript-replay, segmentation-tracker, turn-packet, python-sandbox, inspection-api, action-governor, offline-core, controller-persistence]
-verdict: Round 1 offline core COMPLETE (6 modules incl. loop assembly, 46 tests, LLM-free; --agent repl fails fast offline, model wiring = client swap on Kaggle infra)
-commit: pending
+keywords: [code-repl, duck, qwen3.6, multimodal, transcript-replay, segmentation-tracker, turn-packet, python-sandbox, inspection-api, action-governor, offline-core, controller-persistence, matched12, engagement-experiment, action-first, repeat-feedback, vllm-nondeterminism, topology-schema-bug, basenav, goal-auditor]
+verdict: Round 1 offline core COMPLETE; matched12 GATE FAIL (audit non-load-bearing); engagement within-session A/B PASS (ACTION_FIRST adopted, REPEAT_FEEDBACK dropped) confounded cross-session by vLLM non-determinism (diagnosed, not a config bug); topology schema bug found + fixed; basenav PUSH-READY, HELD on GPU-quota decision
+commit: d6c339a
 date: 2026-07-14
 description: R55 builds the offline-testable core of the Duck-style multimodal code-REPL agent per the Codex design consultation — transcript/replay, segmenter+tracker, turn-packet builder, stateless Python sandbox + inspection API, and action governor. All LLM-free and unit-tested (sub-second); the model wiring + Kaggle vLLM bundle is Round 1's second half on Kaggle infra. The R54 vlm_policy JSON-policy arm becomes the Round-2 2x2 ablation's JSON-policy leg.
 ---
@@ -912,3 +912,64 @@ raw-output sequences through the REAL `_decide` path): base cell nav_fires=0 on 
 nav cell nav_fires=**4** (cap) on ls20/g50t/tu93 — mechanically nonzero NAV exposure confirmed,
 base clean. Pushes tomorrow after the engagement run (kernel serializes); engagement results
 land ~04:00 and are first in the morning queue (`repl_engagement_verdict.py`).
+
+### Engagement RESULT (2026-07-15, `scratchpad/replbench_out13`, 32 runs) — within-session A/B verdict + a cross-session confound diagnosed
+
+The engagement kernel (`REPL_ACTION_FIRST` / `REPL_REPEAT_FEEDBACK`, 2×2 ×
+{sb26, ft09 targets + su15, r11l guards} × 2 reps) landed after two earlier NULL
+runs (dual-default dispatch bug + a stale dataset, both since fixed). Headline:
+**every one of the 32 runs scored 0 levels, including the su15/r11l base
+(control) arms** — which on its face contradicts matched12
+(`scratchpad/replbench_out9`), where su15's OFF arm cleared L1 in 3/3 reps at 19
+actions and r11l's OFF arm cleared L1 at 46-105 actions.
+
+**Diagnosis (turn-by-turn replay, not assumption):** `run_manifest.json` for
+out13 vs out9 is byte-identical in `config_env` and `versions` (vLLM 0.19.1
+both). Replaying `su15_base_r0` (out13) against `su15_off_r0` (out9) turn by
+turn: turns 0, 1, AND 2's INPUTS (`prompt_text`, `image_hash`,
+`legal_actions`) are byte-identical between the two runs, but the model's own
+chosen action at turn 2 differs — out9 clicks decisively, out13 hesitates
+between two adjacent points in the same region and picks the other one. r11l
+shows the identical pattern. **Verdict: not a config/dataset difference — a
+cross-session vLLM non-determinism artifact.** Full mechanism + falsification
+criteria: [[../lessons/vllm_cross_session_nondeterminism_20260715]].
+
+**Practical consequence: the base arm cannot be compared against out9's OFF arm
+as a replication check** (different server-session "personality"), but the
+WITHIN-out13 A/B comparisons remain valid since all four cells ran on the same
+server instance in the same session:
+
+| Arm | Effect (within-session, vs base) |
+|---|---|
+| `REPL_ACTION_FIRST` | parse failures 8→1, ft09 governor rejections 63.5→1 — **ADOPTED**. Cost: action throughput ~halved (102→59 actions), and surfaced (not caused) the topology KeyErrors below. |
+| `REPL_REPEAT_FEEDBACK` | ft09 governor rejections WORSEN 63.5→89 — **DROPPED**, net-negative. |
+
+This directly supports the R58 protocol-compiler direction (enforcement over
+advisory prompting): `REPL_ACTION_FIRST` is a structural output-contract change
+(action-line-first), not an advisory nudge, and it is the one that worked;
+`REPL_REPEAT_FEEDBACK` is advisory prose ("you were rejected, try something
+else") and it made things worse.
+
+**`afirst` sandbox_errors characterized and FIXED** (ft09 x4, r11l x2, sb26 x1 —
+su15's 1 error is unrelated, a plain syntax error): all 7 were the identical
+`KeyError: 'topology'` traceback. Root cause: `turn_packet.py`'s
+`_object_to_packet` (what the model reads in its PROMPT) nests hole-count as
+`topology.holes`; `sandbox.py`'s `_scene_payload` (what the model's own REPL
+code actually gets from `objects()`) exposed a flat `holes` with no `topology`
+key — model code written from the documented prompt schema KeyError'd in the
+sandbox every time. Fixed (`d6c339a`): `_scene_payload` now nests `topology`
+identically to the packet, the missing `touches_boundary` field (same latent
+drift risk) was added too, and a new regression test in `test_repl_sandbox.py`
+pins the two schemas structurally equal so they can't drift apart silently
+again.
+
+**basenav status: PUSH-READY, HELD** — the pre-launch gate passed (base
+nav_fires=0, nav cell nav_fires=4 cap on ls20/g50t/tu93, all replayed against
+real out9 traces through the wired `_decide` path) and the kernel is ready to
+push, but launch is explicitly HELD pending the user's GPU-quota decision
+(engagement alone consumed ~4.6h of GPU time; basenav is another ~2.5h). Do not
+launch without that go-ahead.
+
+### Related (addendum)
+- [[../lessons/vllm_cross_session_nondeterminism_20260715]] — the cross-session
+  non-determinism mechanism this section diagnosed, with falsification criteria.
