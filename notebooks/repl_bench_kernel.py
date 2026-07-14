@@ -205,6 +205,7 @@ def run_experiment() -> dict:
         GameDiagnostics,
         matched_run_plan,
         run_game,
+        single_arm_plan,
     )
     from admorphiq.repl_agent.events import EventStream, derive_summary
     from admorphiq.repl_agent.manifest import write_manifest
@@ -214,26 +215,34 @@ def run_experiment() -> dict:
     os.environ["REPL_LLM_MODEL"] = VLLM_MODEL_NAME
     os.environ.setdefault("REPL_SANDBOX_TIMEOUT", "30")
     os.environ.setdefault("REPL_LLM_TEMPERATURE", "0.0")
-    try:
-        wall_s = float(os.environ.get("REPL_WALL_S", "500"))
-    except ValueError:
-        wall_s = 500.0
 
     for sub in ("diagnostics", "transcripts", "events"):
         os.makedirs(os.path.join(KAGGLE_WORKING, sub), exist_ok=True)
     envs_dir = _find_dir("environment_files")
     arcade = Arcade(operation_mode=OperationMode.OFFLINE, environments_dir=envs_dir)
-    plan = matched_run_plan(MATCHED_12_GAMES)
+
+    mode = os.environ.get("REPL_EXPERIMENT", "matched12").strip()
+    if mode == "full25":
+        env_infos = (getattr(arcade, "available_environments", None)
+                     or arcade.get_environments())
+        plan = single_arm_plan([info.game_id for info in env_infos], "on")
+        default_wall = 450.0
+    else:
+        plan = matched_run_plan(MATCHED_12_GAMES)
+        default_wall = 500.0
+    try:
+        wall_s = float(os.environ.get("REPL_WALL_S", str(default_wall)))
+    except ValueError:
+        wall_s = default_wall
 
     write_manifest(os.path.join(KAGGLE_WORKING, "run_manifest.json"),
                    model=VLLM_MODEL_NAME, baseline="audit-off",
                    game_list=[p["game"] for p in plan], accelerator=_gpu_name(),
                    max_actions=MAX_ACTIONS, wall_s=wall_s,
-                   expected_artifacts=["experiment=matched12 (OFF/ON interleaved, "
-                                       "su15 x3); temperature pinned 0.0"])
-    print(f"[exp] matched12 plan: {len(plan)} runs, wall={wall_s}s/run", flush=True)
+                   expected_artifacts=[f"experiment={mode}; temperature pinned 0.0"])
+    print(f"[exp] {mode} plan: {len(plan)} runs, wall={wall_s}s/run", flush=True)
 
-    summary: dict[str, dict] = {"_meta": {"experiment": "matched12", "wall_s": wall_s}}
+    summary: dict[str, dict] = {"_meta": {"experiment": mode, "wall_s": wall_s}}
     for entry in plan:
         title, arm, rep = entry["game"], entry["arm"], entry["rep"]
         tag = f"{title}_{arm}_r{rep}"
@@ -406,9 +415,9 @@ def main() -> None:
     server = boot_vllm_server(_find_model_dir())
     try:
         wait_for_server(VLLM_PORT, SERVER_BOOT_TIMEOUT_S)
-        # REPL_EXPERIMENT=matched12 runs the paired OFF/ON audit experiment; else
-        # the single-arm bench (arm chosen by REPL_RENDER_IMAGES/MAX_TOOL_ROUNDS).
-        if os.environ.get("REPL_EXPERIMENT", "").strip() == "matched12":
+        # REPL_EXPERIMENT=matched12 (paired OFF/ON) or full25 (single-arm audit-ON)
+        # run the experiment path; else the single-arm bench (arm via env flags).
+        if os.environ.get("REPL_EXPERIMENT", "").strip() in ("matched12", "full25"):
             summary = run_experiment()
         else:
             summary = run_bench()

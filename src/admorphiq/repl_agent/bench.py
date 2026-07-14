@@ -42,6 +42,12 @@ def matched_run_plan(games: list[str], replicate_game: str = "su15",
     return plan
 
 
+def single_arm_plan(games: list[str], arm: str = "on") -> list[dict[str, Any]]:
+    """One run per game on a single arm — the full-25 audit-ON extension after
+    the matched gate passes."""
+    return [{"game": g, "arm": arm, "rep": 0} for g in games]
+
+
 @dataclass
 class GameDiagnostics:
     """Per-game observability record (serialized to diagnostics/{game}.json)."""

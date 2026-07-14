@@ -16,7 +16,17 @@ from admorphiq.repl_agent.bench import (
     GameDiagnostics,
     matched_run_plan,
     run_game,
+    single_arm_plan,
 )
+
+
+def test_single_arm_plan():
+    """Purpose: the full-25 extension is one audit-ON run per game.
+
+    Feedback: failure means the full-25 run is mis-armed or duplicated.
+    """
+    plan = single_arm_plan(["a", "b", "c"], "on")
+    assert len(plan) == 3 and all(p["arm"] == "on" and p["rep"] == 0 for p in plan)
 
 
 def test_matched_run_plan():
