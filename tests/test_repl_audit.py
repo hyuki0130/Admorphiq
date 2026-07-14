@@ -139,3 +139,32 @@ def test_nav_steering_flag_gated():
     for _ in range(13):
         b.choose_action([], _obs(_frame(), avail=(1, 2, 3, 4)))
     assert any("navigation-shaped (reach" in p and "AUDIT" in p for p in prompts)
+
+
+def test_post_revision_plan_flag_gated():
+    """Purpose: the post-revision MACRO nudge (default OFF) appears only when a
+    goal is active AND plan_enabled — between audits, not on the audit turn.
+
+    Feedback: failure means the plan lever contaminates matched12 or fires on the
+    goal-declaration turn.
+    """
+    prompts: list[str] = []
+
+    def cap(prompt, images=None):
+        prompts.append(prompt)
+        # declare a goal at the audit so state.hypothesis is set thereafter.
+        return "GOAL_HYPOTHESIS: reach the exit\nEXPECTED_MILESTONE: exit in 5\nLEFT"
+
+    off = ReplAgent(SimpleNamespace(complete=cap), render_images=False,
+                    audit_enabled=True)
+    for _ in range(16):
+        off.choose_action([], _obs(_frame(), avail=(1, 2, 3, 4)))
+    assert not any('"macro"' in p for p in prompts)  # default off
+
+    prompts.clear()
+    on = ReplAgent(SimpleNamespace(complete=cap), render_images=False,
+                   audit_enabled=True, plan_enabled=True)
+    for _ in range(16):
+        on.choose_action([], _obs(_frame(), avail=(1, 2, 3, 4)))
+    # after the first audit sets a goal, a later (non-audit) turn requests a macro.
+    assert any('"macro"' in p and "AUDIT" not in p for p in prompts)
