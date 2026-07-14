@@ -16,6 +16,31 @@ import time
 from dataclasses import asdict, dataclass, field
 from typing import Any
 
+# The matched 12-game audit OFF/ON experiment (Codex v8 ruling): 5 carryovers +
+# 2 positive controls, spanning click/paint, transform, hidden-mechanic movement,
+# mixed movement, and maze navigation.
+MATCHED_12_GAMES = [
+    "su15", "ls20", "bp35", "dc22", "g50t", "r11l",
+    "sp80", "ft09", "ar25", "sb26", "tr87", "tu93",
+]
+
+
+def matched_run_plan(games: list[str], replicate_game: str = "su15",
+                     replicates: int = 3) -> list[dict[str, Any]]:
+    """Interleaved OFF/ON run plan for the matched experiment.
+
+    Each game gets an adjacent OFF then ON run (controls for time drift within a
+    pair); ``replicate_game`` gets ``replicates`` OFF/ON pairs. Returns ordered
+    ``{game, arm, rep}`` entries (arm in {"off","on"}).
+    """
+    plan: list[dict[str, Any]] = []
+    for game in games:
+        reps = replicates if game == replicate_game else 1
+        for rep in range(reps):
+            plan.append({"game": game, "arm": "off", "rep": rep})
+            plan.append({"game": game, "arm": "on", "rep": rep})
+    return plan
+
 
 @dataclass
 class GameDiagnostics:

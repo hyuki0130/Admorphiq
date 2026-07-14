@@ -11,7 +11,29 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
-from admorphiq.repl_agent.bench import GameDiagnostics, run_game
+from admorphiq.repl_agent.bench import (
+    MATCHED_12_GAMES,
+    GameDiagnostics,
+    matched_run_plan,
+    run_game,
+)
+
+
+def test_matched_run_plan():
+    """Purpose: the matched experiment plan pairs OFF/ON per game and gives su15
+    3 replicate pairs (Codex v8 ruling).
+
+    Feedback: failure means the OFF/ON comparison is unbalanced or su15 lacks
+    replicates.
+    """
+    plan = matched_run_plan(MATCHED_12_GAMES)
+    assert len(plan) == 28              # 11 games x2 + su15 x6
+    su15 = [p for p in plan if p["game"] == "su15"]
+    assert len(su15) == 6 and sum(1 for p in su15 if p["arm"] == "on") == 3
+    for g in MATCHED_12_GAMES:
+        if g != "su15":
+            arms = sorted(p["arm"] for p in plan if p["game"] == g)
+            assert arms == ["off", "on"]
 
 
 def _obs(state="PLAYING", levels=0):

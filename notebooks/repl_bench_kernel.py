@@ -174,15 +174,102 @@ def _ensure_admorphiq_importable() -> None:
                     pass
 
 
-def _target_game_ids(arcade) -> list[str]:
-    """Filter the offline environments down to the five bench titles."""
+def _target_game_ids(arcade, titles: list[str] | None = None) -> list[str]:
+    """Filter the offline environments down to the requested bench titles."""
+    wanted = titles if titles is not None else BENCH_GAMES
     env_infos = getattr(arcade, "available_environments", None) or arcade.get_environments()
     out: list[str] = []
     for info in env_infos:
         hay = f"{info.game_id} {getattr(info, 'title', '') or ''}".lower()
-        if any(t in hay for t in BENCH_GAMES):
+        if any(t in hay for t in wanted):
             out.append(info.game_id)
     return out
+
+
+def _resolve_title(arcade, title: str) -> str | None:
+    """The first game_id whose id/title matches ``title``."""
+    ids = _target_game_ids(arcade, [title])
+    return ids[0] if ids else None
+
+
+def run_experiment() -> dict:
+    """Matched 12-game audit OFF/ON experiment (Codex v8 ruling). Interleaved
+    OFF/ON per game, su15 x3 replicates, sandbox fixes in both arms, no nav fix,
+    no threshold changes. Per-run outputs suffixed by arm+rep."""
+    from arc_agi import Arcade, GameAction, OperationMode
+
+    from admorphiq.repl_agent.agent import OpenAICompatClient, ReplAgent
+    from admorphiq.repl_agent.bench import (
+        MATCHED_12_GAMES,
+        GameDiagnostics,
+        matched_run_plan,
+        run_game,
+    )
+    from admorphiq.repl_agent.events import EventStream, derive_summary
+    from admorphiq.repl_agent.manifest import write_manifest
+    from admorphiq.repl_agent.transcript import TranscriptRecorder
+
+    os.environ["REPL_LLM_BASE_URL"] = f"http://127.0.0.1:{VLLM_PORT}/v1"
+    os.environ["REPL_LLM_MODEL"] = VLLM_MODEL_NAME
+    os.environ.setdefault("REPL_SANDBOX_TIMEOUT", "30")
+    os.environ.setdefault("REPL_LLM_TEMPERATURE", "0.0")
+    try:
+        wall_s = float(os.environ.get("REPL_WALL_S", "500"))
+    except ValueError:
+        wall_s = 500.0
+
+    for sub in ("diagnostics", "transcripts", "events"):
+        os.makedirs(os.path.join(KAGGLE_WORKING, sub), exist_ok=True)
+    envs_dir = _find_dir("environment_files")
+    arcade = Arcade(operation_mode=OperationMode.OFFLINE, environments_dir=envs_dir)
+    plan = matched_run_plan(MATCHED_12_GAMES)
+
+    write_manifest(os.path.join(KAGGLE_WORKING, "run_manifest.json"),
+                   model=VLLM_MODEL_NAME, baseline="audit-off",
+                   game_list=[p["game"] for p in plan], accelerator=_gpu_name(),
+                   max_actions=MAX_ACTIONS, wall_s=wall_s,
+                   expected_artifacts=["experiment=matched12 (OFF/ON interleaved, "
+                                       "su15 x3); temperature pinned 0.0"])
+    print(f"[exp] matched12 plan: {len(plan)} runs, wall={wall_s}s/run", flush=True)
+
+    summary: dict[str, dict] = {"_meta": {"experiment": "matched12", "wall_s": wall_s}}
+    for entry in plan:
+        title, arm, rep = entry["game"], entry["arm"], entry["rep"]
+        tag = f"{title}_{arm}_r{rep}"
+        events = EventStream(os.path.join(KAGGLE_WORKING, "events", f"{tag}.events.jsonl"))
+        try:
+            gid = _resolve_title(arcade, title)
+            if gid is None:
+                print(f"[exp] {tag}: no env for '{title}' — skip", flush=True)
+                events.close()
+                continue
+            env = arcade.make(gid)
+            recorder = TranscriptRecorder(
+                os.path.join(KAGGLE_WORKING, "transcripts", f"{tag}.jsonl"))
+            agent = ReplAgent(OpenAICompatClient(), recorder=recorder, game_id=gid,
+                              render_images=True, max_tool_rounds=1,
+                              audit_enabled=(arm == "on"))
+            diag = run_game(env, agent, max_actions=MAX_ACTIONS, wall_s=wall_s,
+                            reset_action=GameAction.RESET, events=events)
+            recorder.close()
+        except Exception as exc:  # noqa: BLE001 — one run never kills the experiment
+            diag = GameDiagnostics(game_id=title, terminal_reason="error",
+                                   error=f"{type(exc).__name__}: {exc}")
+        finally:
+            events.close()
+        record = diag.to_dict()
+        record["derived_from_events"] = derive_summary(events.events)
+        record["arm"], record["rep"] = arm, rep
+        with open(os.path.join(KAGGLE_WORKING, "diagnostics", f"{tag}.json"), "w") as f:
+            json.dump(record, f, indent=2)
+        summary[tag] = {"arm": arm, "rep": rep, "levels": diag.levels,
+                        "actions": diag.actions, "audits": diag.audits_triggered,
+                        "sandbox_errors": diag.sandbox_errors, "wall_s": diag.wall_s,
+                        "terminal": diag.terminal_reason}
+        print(f"[exp] {tag}: levels={diag.levels} actions={diag.actions} "
+              f"audits={diag.audits_triggered} sbx_err={diag.sandbox_errors} "
+              f"term={diag.terminal_reason}", flush=True)
+    return summary
 
 
 def run_bench() -> dict:
@@ -318,7 +405,12 @@ def main() -> None:
     server = boot_vllm_server(_find_model_dir())
     try:
         wait_for_server(VLLM_PORT, SERVER_BOOT_TIMEOUT_S)
-        summary = run_bench()
+        # REPL_EXPERIMENT=matched12 runs the paired OFF/ON audit experiment; else
+        # the single-arm bench (arm chosen by REPL_RENDER_IMAGES/MAX_TOOL_ROUNDS).
+        if os.environ.get("REPL_EXPERIMENT", "").strip() == "matched12":
+            summary = run_experiment()
+        else:
+            summary = run_bench()
     finally:
         server.terminate()
         try:
