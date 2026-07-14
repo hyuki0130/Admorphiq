@@ -75,6 +75,31 @@ def test_inspector_ascii_shape():
     assert len(lines) == 8 and all(len(row) == 8 for row in lines)
 
 
+def test_action_outcomes_and_is_dead():
+    """Purpose: action_outcomes/is_dead are pure evidence queries over observed
+    (state, action)->effect; is_dead = observed-but-never-changed.
+
+    Feedback: failure means the model can't consult its own observed dynamics; a
+    version that autonomously suppresses would violate the tools verdict.
+    """
+    payload = {
+        "frames": [[[0, 1], [2, 3]]],
+        "scenes": [[]],
+        "outcomes": {
+            # current-state key computed below; use an explicit state instead.
+            "s1": {"LEFT": {"tries": 3, "changed": 0}, "UP": {"tries": 2, "changed": 2}},
+        },
+    }
+    insp = Inspector(payload)
+    assert insp.action_outcomes("s1")["LEFT"] == {"tries": 3, "changed": 0}
+    assert insp.is_dead("LEFT", "s1") is True     # tried 3x, never changed
+    assert insp.is_dead("UP", "s1") is False      # changed every time
+    assert insp.is_dead("RIGHT", "s1") is False   # never observed -> not dead
+    # MOUSE dict signature.
+    payload["outcomes"]["s1"]["MOUSE:5:6"] = {"tries": 1, "changed": 0}
+    assert insp.is_dead({"action": "MOUSE", "row": 5, "col": 6}, "s1") is True
+
+
 def test_shortest_path_pure_bfs():
     """Purpose: shortest_path is a PURE BFS over the caller-supplied mask — it
     finds a path, routes around 0s (walls), and returns None when unreachable.

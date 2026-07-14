@@ -29,6 +29,14 @@ from admorphiq.repl_agent.segmentation import Scene
 
 _DIGITS = "0123456789abcdef"
 
+
+def _action_signature(action: dict[str, Any]) -> str:
+    """Canonical signature of an action dict (shared by the outcomes log)."""
+    name = str(action.get("action", "")).upper()
+    if name == "MOUSE":
+        return f"MOUSE:{action.get('row')}:{action.get('col')}"
+    return name
+
 # Winner-validated ceiling: the Duck harness allows 30s per REPL toolcall so the
 # model can run in-REPL action-sequence search (see the Duck teardown lesson).
 # Env-configurable so the Kaggle bench can tune it; the output cap stays at 4000.
@@ -75,6 +83,9 @@ class ObservationStore:
     def __init__(self) -> None:
         self.frames: list[np.ndarray] = []
         self.scenes: list[Scene | None] = []
+        # observed {state_hash: {action_sig: {"tries": n, "changed": m}}} — the
+        # evidence action_outcomes()/is_dead() query (populated by the agent).
+        self.outcomes: dict[str, dict[str, dict[str, int]]] = {}
 
     def add(self, frame: np.ndarray, scene: Scene | None = None) -> None:
         self.frames.append(np.asarray(frame))
@@ -84,6 +95,7 @@ class ObservationStore:
         return {
             "frames": [f.astype(int).tolist() for f in self.frames],
             "scenes": [_scene_payload(s) for s in self.scenes],
+            "outcomes": self.outcomes,
         }
 
 
@@ -98,6 +110,7 @@ class Inspector:
     def __init__(self, payload: dict[str, Any]) -> None:
         self.frames: list[np.ndarray] = [np.array(f, dtype=int) for f in payload["frames"]]
         self.scenes: list[list[dict[str, Any]]] = payload["scenes"]
+        self.outcomes: dict[str, Any] = payload.get("outcomes", {})
         self.actions: list[dict[str, Any]] = []
 
     # ----- indexing helpers ---------------------------------------------------
@@ -211,6 +224,26 @@ class Inspector:
                     prev[(ny, nx)] = cur
                     q.append((ny, nx))
         return None
+
+    def _state_key(self, t: int = -1) -> str:
+        import hashlib
+        arr = self.frames[self._fi(t)]
+        return hashlib.md5(np.ascontiguousarray(arr).tobytes()).hexdigest()[:12]
+
+    def action_outcomes(self, state: str | None = None) -> dict[str, Any]:
+        """OBSERVED ``action_sig -> {tries, changed}`` for a state (default: the
+        current frame). Pure evidence — decides nothing; the LLM interprets it."""
+        key = state if state is not None else self._state_key(-1)
+        return dict(self.outcomes.get(key, {}))
+
+    def is_dead(self, action: Any, state: str | None = None) -> bool:
+        """True iff ``action`` was OBSERVED in ``state`` and NEVER changed the
+        board (an evidence query — the governor still owns exact-repeat
+        rejection; this suppresses nothing on its own)."""
+        key = state if state is not None else self._state_key(-1)
+        sig = action if isinstance(action, str) else _action_signature(action)
+        rec = self.outcomes.get(key, {}).get(sig)
+        return bool(rec and rec.get("tries", 0) > 0 and rec.get("changed", 0) == 0)
 
     def action(self, kind: str, row: int | None = None,
                col: int | None = None) -> dict[str, Any]:

@@ -160,6 +160,24 @@ def test_openai_client_disables_thinking_and_caps_tokens(monkeypatch):
     assert captured["timeout"] == 300.0
 
 
+def test_agent_logs_observed_outcomes():
+    """Purpose: the agent records observed (state, action)->changed into the
+    outcomes log that action_outcomes/is_dead query.
+
+    Feedback: failure means the evidence tools have no data to query.
+    """
+    from admorphiq.repl_agent.sandbox import _action_signature
+
+    agent = ReplAgent(SimpleNamespace(complete=lambda p, i=None: '{"action":"LEFT"}'),
+                      render_images=False)
+    f = _frame(obj_col=5)
+    agent.choose_action([], _obs(f, avail=(1, 2, 3, 4)))   # do LEFT
+    agent.choose_action([], _obs(f, avail=(1, 2, 3, 4)))   # same frame -> LEFT was inert
+    sig = _action_signature({"action": "LEFT"})
+    recs = [a[sig] for a in agent._outcomes.values() if sig in a]
+    assert recs and recs[0]["tries"] >= 1 and recs[0]["changed"] == 0
+
+
 def test_fallback_is_governed_no_repeat_in_same_state():
     """Purpose: when the model gives no usable action, the fallback is governed —
     it does not repeat the same action in the SAME state (Codex defect #4/#5: the

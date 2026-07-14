@@ -72,6 +72,8 @@ _SYSTEM_PROMPT = (
     "compare(t1,t2), relations(id,t=-1)\n"
     "      shortest_path(start, goals, passable_mask) -> path  # YOU supply "
     "start/goals/passability; pure BFS\n"
+    "      action_outcomes(state=None), is_dead(action, state=None)  # observed "
+    "(state,action)->effect evidence\n"
     "      action(kind, row=None, col=None)  # perform an action; MOUSE needs "
     "row,col\n"
     "     Inspect BEFORE acting when an effect is unknown; call action(...) in "
@@ -346,6 +348,8 @@ class ReplAgent:
         self.predictions_made = 0
         self.predictions_correct = 0
         self._pending_prediction: dict[str, Any] | None = None
+        # Game-lifetime observed {state_hash: {action_sig: {tries, changed}}}.
+        self._outcomes: dict[str, dict[str, dict[str, int]]] = {}
         self._reset_game()
 
     def _reset_game(self) -> None:
@@ -425,6 +429,9 @@ class ReplAgent:
         if self._prev_action is None or self._prev_frame is None:
             return
         changed = not np.array_equal(frame, self._prev_frame)
+        # Log the observed (state, action) -> outcome for action_outcomes()/
+        # is_dead() evidence queries (keyed by the pre-action state hash).
+        self._log_outcome(base_hash(self._prev_frame), self._prev_action, changed)
         # Outcome of the PREVIOUS action, surfaced next turn in LAST_ACTION so the
         # model does not have to reverse-engineer what its action did.
         self._last_outcome = {
@@ -449,6 +456,18 @@ class ReplAgent:
                     self._queue.append(step.request().to_dict())
             else:  # macro_done / macro_aborted / idle
                 self._macro_active = False
+
+    def _log_outcome(self, state_key: str, action: dict[str, Any] | None,
+                     changed: bool) -> None:
+        if not action:
+            return
+        from admorphiq.repl_agent.sandbox import _action_signature
+        sig = _action_signature(action)
+        rec = self._outcomes.setdefault(state_key, {}).setdefault(
+            sig, {"tries": 0, "changed": 0})
+        rec["tries"] += 1
+        if changed:
+            rec["changed"] += 1
 
     def _score_prediction(self, changed: bool) -> None:
         """Score the previous turn's PREDICT against the observed change and feed
@@ -493,6 +512,7 @@ class ReplAgent:
         base_prompt = (_SYSTEM_PROMPT + "\n\n" + self._builder.to_yaml(packet)
                        + _legal_reminder(legal))
         images, img_hashes = self._render_image(frame)
+        self._store.outcomes = self._outcomes  # expose evidence to the sandbox
 
         # Bounded tool loop: an inspection-only code block gets its stdout RETURNED
         # to the model (no env action) for another round, up to max_tool_rounds.
