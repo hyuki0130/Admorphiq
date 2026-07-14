@@ -318,12 +318,20 @@ def _dist2(a: tuple[float, float], b: tuple[float, float]) -> float:
     return (a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2
 
 
+def _insert_idx(slots: list[Region], centroid_col: float) -> int:
+    """How many of ``slots`` sit strictly left of ``centroid_col`` -- the
+    sorted insertion position a marker at that column implies, matching
+    :func:`_frame_slots`'s own left-to-right sort key."""
+    return sum(1 for s in slots if s["centroid"][1] < centroid_col)
+
+
 def _detect_portals(
     grid: Grid,
     frames: list[dict[str, Any]],
     frame_slots: list[list[Region]],
     background: int,
     markers: list[dict[str, Any]],
+    candidates: list[Region],
 ) -> dict[tuple[int, int], int]:
     """(source_frame_idx, insertion_index) -> destination_frame_idx.
 
@@ -334,35 +342,60 @@ def _detect_portals(
     slot that consumes a placement). ``insertion_index == len(slots)`` means
     "after every real slot".
 
-    Composes admorphiq.kernels.connectors over the frames' own border
-    pseudo-regions to find which two frames a connector links. The
-    INSERTION POINT is then determined primarily from ``markers`` (the
-    :func:`_recover_fused_frames` appendage groups): if a marker of the
-    connector's OWN colour sits inside one frame's hole (a decorative glyph
-    physically drawn INSIDE that frame, not one of its measured item
-    slots -- diagnosed on this exact game: a portal icon sits inside the
-    colour-8 frame's interior at the same row as its slot axis, between two
-    of its real slots), that frame is the portal SOURCE and the insertion
-    index is the marker's own sorted position among that frame's slots (by
-    centroid column, matching :func:`_frame_slots`'s own sort key -- how
-    many of the frame's slots sit strictly left of the marker). This is
-    NECESSARY, not cosmetic: on the same connector, "whichever frame's
-    slots sit nearest the connector's path" is genuinely ambiguous here (a
-    real slot of the OTHER, non-source frame sits column-aligned with the
-    connector and is narrowly closer by raw pixel distance) -- the marker
-    is a stronger, unambiguous signal because it identifies the frame
-    structurally (something drawn INSIDE it, not just spatially near it).
+    TWO independent, composable detection paths, since two DIFFERENT SB26
+    boards were measured to need each:
 
-    Falls back to the OLD nearest-slot proximity heuristic (whichever
-    frame's slots sit closer to the connector's path overall) only when no
-    marker explains either end -- a lower-confidence path, kept rather than
-    dropping the connector outright.
+    1. **Connector-pipe-based** (a physical same-colour pipe fuses two
+       frames together, R56 first pass). Composes admorphiq.kernels.
+       connectors over the frames' own border pseudo-regions. The
+       INSERTION POINT is then determined primarily from ``markers`` (the
+       :func:`_recover_fused_frames` appendage groups): if a marker of the
+       connector's OWN colour sits inside one frame's hole (a decorative
+       glyph physically drawn INSIDE that frame, not one of its measured
+       item slots), that frame is the portal SOURCE and the insertion index
+       is the marker's own sorted column position among that frame's slots
+       (:func:`_insert_idx`). NECESSARY, not cosmetic: "whichever frame's
+       slots sit nearest the connector's path" is genuinely ambiguous on
+       the game this was diagnosed on (a real slot of the OTHER,
+       non-source frame sits column-aligned with the connector and is
+       narrowly closer by raw pixel distance) -- the marker identifies the
+       frame structurally (something drawn INSIDE it), not spatially.
+       Falls back to the nearest-slot proximity heuristic only when no
+       marker explains either end of a found connector.
+
+    2. **Colour-matched icon, no physical connector at all** (a hub frame
+       with MULTIPLE small hollow-ring icons inside its own hole, each
+       icon's colour matching a DIFFERENT leaf frame's own border colour,
+       diagnosed on a 3-frame hub-and-leaf portal level with zero
+       ``connectors()`` hits -- the icons are spatially disconnected from
+       every leaf frame, not fused or piped to anything). For every
+       non-slot content region (:func:`_frame_content` minus
+       :func:`_frame_slots`) inside a frame's hole whose colour matches
+       ANOTHER frame's ``border_color``, that frame is the source and the
+       destination is whichever frame the colour matches; insertion index
+       again from :func:`_insert_idx`. Naturally does not double-fire on a
+       path-1 game: a fused icon there is never a standalone ``candidates``
+       region (it only exists inside the flood-filled blob
+       :func:`split_fused_frame` decomposes), so it never appears in
+       ``_frame_content`` at all.
     """
     if len(frames) < 2:
         return {}
+    portal_of: dict[tuple[int, int], int] = {}
+
+    dest_by_color = {f["border_color"]: idx for idx, f in enumerate(frames)}
+    for src_idx, src_frame in enumerate(frames):
+        slot_ids = {id(s) for s in frame_slots[src_idx]}
+        icons = [r for r in _frame_content(src_frame, candidates) if id(r) not in slot_ids]
+        for icon in icons:
+            dst_idx = dest_by_color.get(icon["color"])
+            if dst_idx is None or dst_idx == src_idx:
+                continue
+            idx = _insert_idx(frame_slots[src_idx], icon["centroid"][1])
+            portal_of.setdefault((src_idx, idx), dst_idx)
+
     frame_regions = [_frame_pseudo_region(f) for f in frames]
     links = connectors(grid, frame_regions, background=background)
-    portal_of: dict[tuple[int, int], int] = {}
     for link in links:
         a, b = link["a"], link["b"]
         path = link["path_cells"]
@@ -376,9 +409,8 @@ def _detect_portals(
             if marker is None:
                 continue
             mcol = sum(c for _r, c in marker["cells"]) / len(marker["cells"])
-            slots = frame_slots[idx]
             source = idx
-            insert_idx = sum(1 for s in slots if s["centroid"][1] < mcol)
+            insert_idx = _insert_idx(frame_slots[idx], mcol)
             break
 
         if source is None:
@@ -396,7 +428,7 @@ def _detect_portals(
             insert_idx = min(range(len(slots)), key=lambda i: min(_dist2(slots[i]["centroid"], p) for p in path))
 
         dest = b if source == a else a
-        portal_of[(source, insert_idx)] = dest
+        portal_of.setdefault((source, insert_idx), dest)
     return portal_of
 
 
@@ -445,25 +477,33 @@ def _dfs_traversal(
     return order
 
 
-def _filter_interactive_frames(frames: list[dict[str, Any]]) -> list[dict[str, Any]]:
+def _filter_interactive_frames(
+    frames: list[dict[str, Any]], candidates: list[Region]
+) -> list[dict[str, Any]]:
     """Drop decorative small-marker frames, keeping only genuine placement targets.
 
     closed_frames() also detects small, single-cell-interior hollow squares
     that are purely decorative styling on the target-sequence markers, not
     interactive slot-holding frames -- measured on SB26 L0: 4 marker frames
-    with a 16-cell hole each, alongside ONE real frame with a 208-cell
-    hole. size_clusters (the SAME kernel this game's whole slot/pool
-    typology was built around) splits frames by hole size; only the
-    LARGEST size class is kept, since a placement-holding frame needs room
-    for actual slot content while a decorative marker does not. A single
-    size class (nothing to split against) keeps everything.
+    with a SINGLE content region each (one decorative dot), alongside ONE
+    real frame with 4 content regions. A frame's own CONTENT COUNT (regions
+    whose cells fall inside its hole, via :func:`_frame_content`) is the
+    discriminator: a genuine placement frame needs room for multiple
+    interactable things (item slots, and possibly portal-marker icons too),
+    a decorative marker structurally has exactly one.
+
+    Superseded a HOLE-SIZE clustering approach (R56, this session): that
+    heuristic assumed every real frame on a board is roughly the same size,
+    which measurably breaks on an asymmetric hub-and-leaf portal-graph
+    board (a 3-portal-frame level where the hub frame's hole is 2x+ larger
+    than either leaf frame's, purely because the hub also hosts portal-icon
+    markers alongside its own item slots) -- it would cluster the leaf
+    frames away from the hub and drop them outright, even though each leaf
+    frame has 2 genuine content regions, same as this function's own
+    ``>= 2`` bar. Content-count generalizes to any number of differently-
+    sized real frames on one board; hole-size clustering does not.
     """
-    if len(frames) < 2:
-        return frames
-    sized = [{"size": len(f["hole_cells"])} for f in frames]
-    clusters = size_clusters(sized, ratio=1.5)
-    largest = max(clusters, key=lambda idxs: sized[idxs[0]]["size"])
-    return [frames[i] for i in largest]
+    return [f for f in frames if len(_frame_content(f, candidates)) >= 2]
 
 
 def _perimeter(bbox: tuple[int, int, int, int]) -> int:
@@ -553,7 +593,7 @@ def _plan_sb26(grid: Grid) -> list[PlanStep] | None:
     bg = most_common_color(grid)
     candidates = _candidates(grid)
     fused_frames, markers = _recover_fused_frames(grid, candidates, bg)
-    frames = _filter_interactive_frames(closed_frames(grid, background=bg) + fused_frames)
+    frames = _filter_interactive_frames(closed_frames(grid, background=bg) + fused_frames, candidates)
     if not frames:
         return None
 
@@ -603,7 +643,7 @@ def _plan_sb26(grid: Grid) -> list[PlanStep] | None:
     frames = [f for f, _s in keep]
     frame_slots = [s for _f, s in keep]
 
-    portal_of = _detect_portals(grid, frames, frame_slots, bg, markers)
+    portal_of = _detect_portals(grid, frames, frame_slots, bg, markers, candidates)
     order = _dfs_traversal(frame_slots, portal_of, len(target_colors))
     if not order:
         return None
