@@ -687,4 +687,39 @@ fresh ("black ring / red object center"). So the composition property (learned
 mechanic amortizing across levels) did NOT visibly help here; L2 is a distinct
 sub-configuration the model re-reasons from scratch. A future lever: carry the
 CONFIRMED mechanic (not just the goal) across the level boundary — relevant to
-the submission-chain's "L2+ knowledge amortizes" condition.
+the submission-chain's "L2+ knowledge amortizes" condition. (NOT built: it would
+be a 4th untested lever before any of plan/nav is measured — deferred per the
+measurement discipline until the matched12 verdict resolves the audit axis.)
+
+### matched12 verdict tooling — how the gate is adjudicated
+
+`scripts/repl_matched_verdict.py` (`2ff7bda`, faithful RHAE `b288679`) reads a
+matched12 run package (`{title}_{arm}_r{rep}` diagnostics + events + transcripts)
+and prints a PASS/FAIL for each Codex-v8 gate condition, so the verdict is
+mechanical, not eyeballed:
+
+- **C1 replicate** — ON clears the replicate game (su15) in ≥2 of 3 reps AND
+  strictly beats the OFF clear count on that game.
+- **C2 causality (revision precedes clear)** — for EVERY ON run that cleared a
+  level, an audit fired (`TurnRecord.audit`) before the first `level_up` in the
+  event stream. Reuses `repl_bench_compare.action_phases`. If ON has zero clears,
+  C2 fails (the causal claim is unsupported).
+- **C3 coverage + efficiency** — ON clears ≥ OFF+2 distinct games AND ON total
+  levels ≥ OFF AND **faithful aggregate RHAE(ON) ≥ RHAE(OFF)**. RHAE is computed
+  OFFLINE with no re-run: per-level human `baseline_actions` from
+  `environment_files/{title}/*/metadata.json`, per-level agent actions segmented
+  from the event stream at `level_up` boundaries, scored via
+  `score_efficiency.level_score/game_score/total_score` (level-index weighted,
+  all-levels denominator). su15 L1 = 19 actions vs baseline 22 → capped 1.0 →
+  game RHAE 1/45 ≈ 0.022 (near-human), corroborating the v7 clear.
+
+**GATE_PASS = C1 ∧ C2 ∧ C3.** On a pass: push `REPL_EXPERIMENT=full25`
+(`ae1cf72`); then one-variable tests of REPL_PLAN / REPL_NAV. 8 tests
+(`tests/test_repl_matched_verdict.py`); repl suite 112 green.
+
+**Kernel history correction:** the 18:39 out8 run was NOT a matched12 result — it
+died at `run_experiment()` on `from arc_agi import ... GameAction` (same class as
+the v1 import bug, recurred in the new function). Fixed `9b67f55` (import from
+`arcengine`); the re-pushed kernel v8 is the first valid matched12 run
+(started 21:19). Both arms run with nav/plan OFF by default → the experiment is a
+clean one-variable (audit OFF vs ON) test; the v9 flag levers do not contaminate it.
