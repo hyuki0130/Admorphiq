@@ -205,6 +205,7 @@ code-REPL arm.
 - [[lb_top_team_research_20260714]] — the M1 top-team evidence.
 - [[duck_harness_teardown_20260714]] — measured teardown of the #1 Duck harness; the design deltas steering this agent.
 - [[r53_unified-harness]] — the current harness; existing generic tools.
+- [[r56_generic-kernels]] — the namespace-safe kernel library built alongside this round; its 37 pure-computation exports (regions/motion/paths/shapes/canonical/geometry/rewrite) are natural code this agent's sandbox can `import admorphiq.kernels` and compose directly, and R55's matched12 goal-inference wall is a strong argument for keeping those kernels policy-free.
 - [[index]]
 
 ## Kaggle serving PREFLIGHT: PASS end-to-end [2026-07-14 11:27 KST]

@@ -8,7 +8,7 @@ seeds `llm_context/decision_tree.md` first, then walks `[[backlinks]]`.
 Use this index when authoring or auditing: skim the catalog, pick a
 category, drill into specific pages.
 
-**Total pages**: 147.
+**Total pages**: 148.
 
 ## Games (25)
 
@@ -141,7 +141,7 @@ category, drill into specific pages.
 
 - [[llm_context/decision_tree.md]] — Compact dispatch read first by Qwen — default primary adaptive_bfs_solver, peer-swap only on Observable-Signature match, 3-deep fallback_stack by game shape, re-ask on primary failure via each plan's Falsification Signature + Next-Best.
 
-## Top-level dispatch (architecture, selector, log, schema) (43)
+## Top-level dispatch (architecture, selector, log, schema) (44)
 
 - [[rounds/r05_planning-override.md]] — round-log
 - [[rounds/r06_depth-boost.md]] — round-log
@@ -185,6 +185,7 @@ category, drill into specific pages.
 - [[rounds/r53_unified-harness.md]] — The runtime general agent as a retry loop: one offline model reads a minimal
 - [[rounds/r54_vision-llm-policy.md]] — A multimodal LLM plays the game directly: each turn renders the 64×64 frame to
 - [[rounds/r55_code-repl-agent.md]] — A multimodal coding model with a stateless Python REPL and free internal
+- [[rounds/r56_generic-kernels.md]] — Extract game-agnostic pure-computation kernels from the 25-game solver card so a
 - [[selector.md]] — Feature-driven dispatch rules the Hypothesis Engine LLM uses to pick
 
 ## Raw sources

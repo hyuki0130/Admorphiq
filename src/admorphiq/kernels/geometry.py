@@ -33,6 +33,8 @@ import itertools
 from collections import Counter
 from collections.abc import Iterable, Mapping, Sequence
 
+from admorphiq.kernels._common import normalize_frame as _normalize_frame
+
 Cell = tuple[int, int]
 Bbox = tuple[int, int, int, int]
 Shift = tuple[int, int]
@@ -46,10 +48,6 @@ _CARDINAL: tuple[Cell, ...] = ((-1, 0), (1, 0), (0, -1), (0, 1))
 # blob — matches the "1-2 cell wide" pipes measured in sort_match's portal
 # links.
 _MAX_CONNECTOR_THICKNESS = 2
-
-
-def _normalize_frame(frame: Sequence[Sequence[int]]) -> Grid:
-    return tuple(tuple(int(v) for v in row) for row in frame)
 
 
 def _normalize_cells(cells: Iterable[Sequence[int]]) -> frozenset[Cell]:
