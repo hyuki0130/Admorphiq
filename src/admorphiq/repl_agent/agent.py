@@ -384,7 +384,7 @@ class ReplAgent:
             self._decide(obs, frame, scene)
             decided = True
         if not self._queue:
-            self._queue = [self._fallback(obs)]
+            self._queue = [self._fallback(obs, base_hash(frame), frame.shape)]
             self._last_source = "fallback"
         elif decided:
             self._last_source = getattr(self, "_decided_source", "llm")
@@ -566,14 +566,31 @@ class ReplAgent:
         else:
             self.governor_rejections += 1
 
-    def _fallback(self, obs: Any) -> dict[str, Any]:
+    def _fallback(self, obs: Any, state_hash: str,
+                  hw: tuple[int, int]) -> dict[str, Any]:
+        """A GOVERNED fallback (Codex defect #4/#5): the fallback used to bypass
+        the governor and could repeat the same action in the same state. Now it
+        runs each candidate through the governor and returns the first accepted
+        (legal + not a repeat) — so the fallback can't loop, and it is disclosed
+        next turn via LAST_ACTION source=fallback.
+        """
         legal = _legal_names(obs)
-        for name in ("UP", "DOWN", "LEFT", "RIGHT", "SPACE"):
-            if name in legal:
-                return {"action": name}
+        candidates: list[dict[str, Any]] = [
+            {"action": n} for n in ("UP", "DOWN", "LEFT", "RIGHT", "SPACE")
+            if n in legal
+        ]
         if "MOUSE" in legal:
-            return {"action": "MOUSE", "row": 32, "col": 32}
-        return {"action": "UNDO"} if "UNDO" in legal else {"action": "RESET"}
+            candidates.append({"action": "MOUSE", "row": hw[0] // 2, "col": hw[1] // 2})
+        if "UNDO" in legal:
+            candidates.append({"action": "UNDO"})
+        if not candidates:
+            return {"action": "RESET"}
+        for c in candidates:
+            req = ActionRequest(c["action"], c.get("row"), c.get("col"))
+            if self._governor.check_single(req, legal=legal, board_hw=hw,
+                                           state_hash=state_hash).accepted:
+                return c
+        return candidates[0]  # all repeat-rejected: still must act
 
     # ----- packet / transcript helpers ---------------------------------------
     def _game_ctx(self, obs: Any, legal: set[str]) -> dict[str, Any]:

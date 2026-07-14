@@ -146,6 +146,26 @@ def test_openai_client_disables_thinking_and_caps_tokens(monkeypatch):
     assert captured["timeout"] == 300.0
 
 
+def test_fallback_is_governed_no_repeat_in_same_state():
+    """Purpose: when the model gives no usable action, the fallback is governed —
+    it does not repeat the same action in the SAME state (Codex defect #4/#5: the
+    old fallback bypassed the governor and could loop).
+
+    Feedback: failure means the agent silently loops one fallback action.
+    """
+    # Model always parses to nothing -> fallback every turn, same (static) frame.
+    agent = ReplAgent(SimpleNamespace(complete=lambda p, i=None: "no action here"),
+                      render_images=False)
+    f = _frame(obj_col=5)
+    a1 = agent.choose_action([], _obs(f, avail=(1, 2, 3, 4)))  # first fallback
+    first = agent._prev_action
+    a2 = agent.choose_action([], _obs(f, avail=(1, 2, 3, 4)))  # same state
+    second = agent._prev_action
+    assert agent._last_source == "fallback"
+    assert first != second        # governed: did not repeat the same action
+    assert a1 is not None and a2 is not None
+
+
 def test_causal_feedback_in_last_action_and_recent():
     """Purpose: LAST_ACTION carries the action + coords + source + outcome, and
     RECENT_TRANSITIONS is serialized (v5 restores the causal history Qwen was
