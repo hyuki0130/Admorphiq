@@ -394,20 +394,29 @@ class Adapter(GameAdapter):
         # gate).
         self._route_feasible_after_toggle = 0
 
-        # Parity-combo enumeration (see module docstring): once >=2 known
-        # non-inert togglers exist, the two with the LARGEST measured
-        # single-click diff are locked in as ``_enum_togglers`` and every
-        # ``_ENUM_COMBOS`` entry is tried in order -- replaces the
-        # stuck-triggered probe entirely for reaching the goal, since
-        # gold's own solution proved clicks here are proactive/state-
-        # gating, not reactive to physical blockage (see "Re-click
-        # semantics").
+        # Parity-combo enumeration (see module docstring): triggered the
+        # FIRST time the avatar reaches ``_goal_cell`` without WIN firing
+        # -- NOT merely once 2 togglers are known (a premature-lock-in
+        # bug, measured: locking in as soon as 2 existed grabbed whatever
+        # small nearby decorative regions route-proximity discovery
+        # found FIRST, not gold's real far-away buttons). By the time the
+        # avatar actually reaches the goal, ordinary walk/stuck/discovery
+        # has had the WHOLE journey to build a much richer button pool.
+        # The two known non-inert togglers with the LARGEST measured
+        # single-click diff are then locked in as ``_enum_togglers`` and
+        # every ``_ENUM_COMBOS`` entry is cycled in order.
         self._enum_togglers: list[Cell] | None = None
         self._enum_combo_idx = 0
         self._enum_tried: set[tuple[int, int]] = set()
+        # True once the CURRENT combo's parities have been fully set and
+        # we're waiting one more choose_action cycle to see whether WIN
+        # fires -- lets ``_enumeration_click`` distinguish "just reached
+        # this combo, give it a chance" from "sat here a full cycle, it
+        # failed".
+        self._enum_awaiting_result = False
         # The goal region's (colour, bbox, size) as first observed --
         # the baseline "closed" appearance a combo's effect is compared
-        # against (diagnostic; does not gate the walk-to-confirm step).
+        # against (diagnostic only).
         self._goal_baseline: tuple[Any, ...] | None = None
         self._enum_checked_appearance: set[tuple[int, int]] = set()
         # Diagnostic-only: how many combos showed the goal region's own
@@ -468,6 +477,7 @@ class Adapter(GameAdapter):
         self._enum_togglers = None
         self._enum_combo_idx = 0
         self._enum_tried = set()
+        self._enum_awaiting_result = False
         self._goal_baseline = None
         self._enum_checked_appearance = set()
 
@@ -484,6 +494,12 @@ class Adapter(GameAdapter):
         self._active_cell = None
         self._probe_clicks_this_episode = 0
         self._last_probe_kind = None
+        # A restart means we got GAME_OVER'd, not WIN -- any in-progress
+        # "just set this combo, waiting to see if it wins" context is
+        # stale, so the current combo gets a fresh await cycle rather
+        # than being falsely concluded failed from a life that ended for
+        # an unrelated reason.
+        self._enum_awaiting_result = False
 
     # ── measurement: did the pending action do anything? ────────────────
 
@@ -656,25 +672,15 @@ class Adapter(GameAdapter):
                 return self._probe(move_ids)
             self._goal_baseline = self._goal_appearance(regions)
 
-        if self._enum_togglers is None:
-            self._maybe_start_enumeration()
-
-        if self._enum_togglers is not None and self._enum_combo_idx < len(_ENUM_COMBOS):
-            if self._active_cell == self._goal_cell:
-                # Reached the goal cell under this combo's parities but
-                # WIN didn't fire (is_done() would have stopped the loop
-                # otherwise) -- this combo doesn't gate the door. Try the
-                # next one; the existing defensive _probe below nudges
-                # the avatar one step off the goal cell so the NEXT
-                # combo's walk-to-confirm isn't a degenerate start==goal.
-                self._enum_tried.add(_ENUM_COMBOS[self._enum_combo_idx])
-                self._enum_combo_idx += 1
-            else:
-                action = self._enumeration_decide(regions, move_ids)
-                if action is not None:
-                    return action
-
         if self._active_cell == self._goal_cell:
+            # First arrival without WIN having fired: ordinary discovery
+            # has now had the WHOLE journey to build a rich button pool
+            # -- lock in enumeration HERE, not merely once 2 togglers
+            # exist (see module docstring's premature-lock-in finding).
+            if self._enum_togglers is None:
+                self._maybe_start_enumeration()
+            if self._enum_togglers is not None and self._enum_combo_idx < len(_ENUM_COMBOS):
+                return self._enumeration_click(regions, move_ids)
             return self._probe(move_ids)
 
         return self._route(regions, move_ids, action6_ok)
@@ -684,7 +690,7 @@ class Adapter(GameAdapter):
         None if it isn't present at all (vanished) -- compared against
         ``_goal_baseline`` to see whether a combo's clicks visibly
         changed the goal marker itself (module docstring's "Reframe the
-        success signal")."""
+        success signal"; diagnostic only)."""
         for r in regions:
             if r["color"] == self._goal_color:
                 return (r["color"], r["bbox"], r["size"])
@@ -694,8 +700,8 @@ class Adapter(GameAdapter):
         """Lock in the two known non-inert TOGGLERS with the LARGEST
         measured single-click diff as ``_enum_togglers`` -- see module
         docstring's "Parity-combo enumeration". Requires at least 2 to be
-        known; does nothing (falls back to ordinary walk/stuck/probe
-        discovery) until then."""
+        known; does nothing (the caller falls back to a plain probe)
+        until then."""
         togglers = [
             (cell, max((len(d) for d in mem["diffs"]), default=0))
             for cell, mem in self._button_memory.items()
@@ -706,24 +712,39 @@ class Adapter(GameAdapter):
         togglers.sort(key=lambda t: (-t[1], t[0]))
         self._enum_togglers = [togglers[0][0], togglers[1][0]]
 
-    def _enumeration_decide(self, regions: list[Region], move_ids: list[int]) -> GameAction | None:
-        """Drive the current combo: click whichever known toggler's
-        parity doesn't yet match the target, then walk toward the goal
-        once both match. Returns None only when every combo has been
-        tried (falls through to ordinary routing, which by this point is
-        just a dead end -- see module docstring)."""
-        assert self._enum_togglers is not None and self._active_cell is not None and self._goal_cell is not None
+    def _any_inert_button(self) -> Cell | None:
+        for cell, mem in self._button_memory.items():
+            if mem["inert"]:
+                return cell
+        return None
+
+    def _enumeration_click(self, regions: list[Region], move_ids: list[int]) -> GameAction:
+        """Drive the current combo from the goal cell -- clicks are
+        position-free, so no walking is needed once the avatar has
+        arrived once (module docstring's spatial-confirmation finding).
+        Cycles: click whichever toggler's parity doesn't match the
+        target; once both match, spend ONE harmless confirming action
+        (an already-known INERT button's click, which is proven to have
+        zero effect on anything) so a genuine post-click frame exists for
+        WIN to fire on; if still not won on the NEXT call, the combo is
+        recorded failed and the next one begins. This same confirm step
+        also uniformly absorbs the case where a target combo happens to
+        already match the CURRENT parities without this method itself
+        having clicked into it (e.g. the very first combo checked)."""
+        assert self._enum_togglers is not None
         while self._enum_combo_idx < len(_ENUM_COMBOS):
             target = _ENUM_COMBOS[self._enum_combo_idx]
             if target in self._enum_tried:
                 self._enum_combo_idx += 1
+                self._enum_awaiting_result = False
                 continue
             cell_a, cell_b = self._enum_togglers
             parity_a = self._button_memory[cell_a]["clicks"] % 2
             parity_b = self._button_memory[cell_b]["clicks"] % 2
-            if parity_a != target[0]:
-                return self._click_button(cell_a, kind="enum_set")
-            if parity_b != target[1]:
+            if (parity_a, parity_b) != target:
+                self._enum_awaiting_result = False
+                if parity_a != target[0]:
+                    return self._click_button(cell_a, kind="enum_set")
                 return self._click_button(cell_b, kind="enum_set")
 
             if target not in self._enum_checked_appearance:
@@ -731,24 +752,20 @@ class Adapter(GameAdapter):
                 if self._goal_appearance(regions) != self._goal_baseline:
                     self._enum_goal_appearance_changes += 1
 
-            if not self._dir_map:
+            if not self._enum_awaiting_result:
+                self._enum_awaiting_result = True
+                waiter = self._any_inert_button()
+                if waiter is not None:
+                    return self._click_button(waiter, kind="enum_confirm")
                 return self._probe(move_ids)
-            moves = list(self._dir_map.values())
-            move_labels = {unit: action for action, unit in self._dir_map.items()}
-            optimistic = self._optimistic_grid()
-            step = self._first_step(optimistic, self._active_cell, self._goal_cell, moves, move_labels)
-            if step is not None:
-                self._pending_action = step
-                self._pending_kind = "move"
-                self._pending_ref_cell = self._active_cell
-                return simple_action(step)
 
-            # Can't even reach the goal cell under this combo's
-            # passability state -- treat as a failed combo, same as
-            # reaching the goal without triggering WIN.
+            # Already waited a full cycle on this exact combo and WIN
+            # still hasn't fired (is_done() would have stopped the loop
+            # otherwise) -- this combo doesn't gate the door.
             self._enum_tried.add(target)
             self._enum_combo_idx += 1
-        return None
+            self._enum_awaiting_result = False
+        return self._probe(move_ids)
 
     def _pick_action(self, candidates: list[int], ref_cell: Cell, goal: Cell | None) -> int:
         """Choose among untried ``candidates`` from ``ref_cell``. A
