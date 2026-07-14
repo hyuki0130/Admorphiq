@@ -38,8 +38,9 @@ clusters, not arithmetic. Running :func:`_plan_sb26` itself (this module's
 own function, not the reference solver) against every one of the 8 levels'
 gold frames found a structurally valid plan (paired pool/slot clicks plus a
 verify) for **7 of 8 levels** -- only level 1 (wiki "L2", the two-frame
-portal case) failed, diagnosed below as a genuine kernel-coverage gap, not
-a bug in this adapter's own logic.
+portal case) failed, diagnosed below as a genuine kernel-coverage gap at
+the time (since resolved -- see "Fused-frame recovery" below), not a bug
+in this adapter's own logic.
 
 Two problems were found and fixed during offline verification, both
 load-bearing:
@@ -61,17 +62,29 @@ load-bearing:
    regions to "colour is in the pool" cleanly removes it without assuming
    any specific chrome colour.
 
-**Kernel gap found (level 1, portal case)**: the two REAL multi-slot frames
-on this level are not pure rectangle borders -- at least one has a portal
-pipe fused onto its own edge as ONE connected component, so
-``closed_frames``'s exact "cells == rectangle border" match rejects it
-outright (it never reaches ``connectors``, which only separates ALREADY-
-distinct thin paths from already-detected regions, not a fused shape).
-``sort_match.py``'s own ``_split_box_pipe`` exists specifically to de-fuse a
-box-plus-protruding-pipe connected component into its two parts; no current
-``admorphiq.kernels`` primitive provides that operation. This adapter
-recognises the resulting under-detection honestly (falls through to the
-idle-click fallback) rather than mis-planning around it.
+**Fused-frame recovery (level 1, portal case) -- formerly a kernel gap,
+now resolved**: the two REAL multi-slot frames on this level are not pure
+rectangle borders -- at least one has a portal pipe fused onto its own
+edge as ONE connected component, so ``closed_frames``'s exact "cells ==
+rectangle border" match rejects it outright (it never reaches
+``connectors``, which only separates ALREADY-distinct thin paths from
+already-detected regions, not a fused shape). ``sort_match.py``'s own
+``_split_box_pipe`` did this de-fusion with a game-specific implementation;
+:func:`admorphiq.kernels.geometry.split_fused_frame` is the generic
+namespace-safe replacement (landed after this adapter's first pass, R56
+kernel round). :func:`_recover_fused_frames` calls it on every candidate
+region whose cell count EXCEEDS its own bounding-box perimeter (a clean
+ring's cells equal its perimeter exactly -- that is ``closed_frames``' own
+test -- so only a region with extra fused cells, or a solid block, is
+tried; ``split_fused_frame`` itself rejects a solid block by returning
+``None``, so the size check is a cheap pre-filter, not a correctness
+guard). The recovered frame is reshaped into the same
+``{"border_color", "outer_bbox", "inner_bbox", "hole_cells"}`` shape
+``closed_frames`` produces and unioned into the frame list BEFORE
+:func:`_filter_interactive_frames` runs, so every downstream consumer
+(slot detection, portal detection, DFS traversal) needs no changes at
+all -- the fused frame is indistinguishable from a clean one once
+recovered.
 
 Role assignment (declared HERE, not in the kernel layer, which knows
 nothing about frames, slots, portals, or targets):
@@ -102,11 +115,12 @@ nothing about frames, slots, portals, or targets):
     NOT a small fixed reusable set).
   - PORTALS: :func:`admorphiq.kernels.geometry.connectors` finds thin paths
     linking exactly two frames (using each frame's own border cells as a
-    pseudo-region). For each connector, whichever frame's slot markers sit
-    closer to the connector's path is the portal's SOURCE (that frame's
-    nearest slot redirects traversal to the OTHER frame). Only reachable
-    when both linked frames are themselves clean rectangle borders -- see
-    the kernel gap above.
+    pseudo-region, rebuilt fresh from ``outer_bbox`` -- a RECOVERED fused
+    frame's outer_bbox already excludes the appendage/pipe cells, so its
+    pseudo-region is identical in shape to a clean frame's and needs no
+    special-casing here). For each connector, whichever frame's slot
+    markers sit closer to the connector's path is the portal's SOURCE
+    (that frame's nearest slot redirects traversal to the OTHER frame).
   - Candidate regions exclude the same two RELATIVE-geometry chrome classes
     ``admorphiq.adapters25.su15`` uses (a HUD band spanning almost the full
     frame width/height while only a few cells thick -- measured: SB26 has a
@@ -116,8 +130,12 @@ nothing about frames, slots, portals, or targets):
 
 Composition from ``admorphiq.kernels``:
   - :func:`admorphiq.kernels.find_regions` segments the frame.
-  - :func:`admorphiq.kernels.closed_frames` detects the portal-graph frames
-    (replacing sort_match's own hollow-rectangle-vs-pipe splitting).
+  - :func:`admorphiq.kernels.closed_frames` detects clean portal-graph
+    frames; :func:`admorphiq.kernels.geometry.split_fused_frame` recovers
+    the ones closed_frames rejects because a same-colour appendage (a
+    fused portal pipe) is part of the same connected component (see
+    "Fused-frame recovery" above; together these replace sort_match's own
+    hollow-rectangle-vs-pipe splitting).
   - :func:`admorphiq.kernels.connectors` detects the portal pipes linking
     frames (replacing sort_match's own endpoint-to-frame-membership scan).
   - :func:`admorphiq.kernels.group_by_axis` separates the target-sequence
@@ -159,7 +177,15 @@ from admorphiq.adapters25.base import (
     simple_action,
     state_name,
 )
-from admorphiq.kernels import closed_frames, connectors, find_regions, frame_diff, group_by_axis, size_clusters
+from admorphiq.kernels import (
+    closed_frames,
+    connectors,
+    find_regions,
+    frame_diff,
+    group_by_axis,
+    size_clusters,
+    split_fused_frame,
+)
 
 GAME_ID = "sb26"
 
@@ -363,16 +389,62 @@ def _filter_interactive_frames(frames: list[dict[str, Any]]) -> list[dict[str, A
     return [frames[i] for i in largest]
 
 
+def _perimeter(bbox: tuple[int, int, int, int]) -> int:
+    r0, c0, r1, c1 = bbox
+    h, w = r1 - r0 + 1, c1 - c0 + 1
+    if h <= 0 or w <= 0:
+        return 0
+    if h == 1 or w == 1:
+        return h * w
+    return 2 * (h + w) - 4
+
+
+def _recover_fused_frames(grid: Grid, candidates: list[Region], bg: int) -> list[dict[str, Any]]:
+    """Frames closed_frames rejects because a same-colour appendage (e.g. a
+    fused portal pipe, see the module docstring's former "kernel gap") is
+    part of the same connected component, breaking closed_frames' exact
+    cells-equal-border match.
+
+    A clean ring's own region has cells == its bbox perimeter EXACTLY
+    (that is closed_frames' own equality test), so it is never even tried
+    here -- only a region with MORE cells than its own bounding-box
+    perimeter (an appendage fused on, or a solid block) is a candidate.
+    :func:`admorphiq.kernels.geometry.split_fused_frame` itself rejects a
+    solid block (its geometric hole would be entirely filled, never a
+    genuine ring) by returning ``None``, so this size check is a cheap
+    pre-filter, not a load-bearing correctness guard.
+    """
+    recovered: list[dict[str, Any]] = []
+    for region in candidates:
+        if region["size"] <= _perimeter(region["bbox"]):
+            continue
+        split = split_fused_frame(region, frame=grid, background=bg)
+        if split is None:
+            continue
+        f = split["frame"]
+        recovered.append(
+            {
+                "border_color": region["color"],
+                "outer_bbox": f["outer_bbox"],
+                "inner_bbox": f["inner_bbox"],
+                "hole_cells": f["hole_cells"],
+            }
+        )
+    return recovered
+
+
 def _plan_sb26(grid: Grid) -> list[PlanStep] | None:
     """The full placement click plan, DFS-ordered, or None if unsupported here."""
     if not grid:
         return None
     bg = most_common_color(grid)
-    frames = _filter_interactive_frames(closed_frames(grid, background=bg))
+    candidates = _candidates(grid)
+    frames = _filter_interactive_frames(
+        closed_frames(grid, background=bg) + _recover_fused_frames(grid, candidates, bg)
+    )
     if not frames:
         return None
 
-    candidates = _candidates(grid)
     all_hole: frozenset[Cell] = frozenset()
     for f in frames:
         all_hole |= f["hole_cells"]
