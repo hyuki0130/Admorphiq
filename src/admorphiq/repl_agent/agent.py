@@ -317,6 +317,7 @@ class ReplAgent:
         token_budget: int = 3000,
         render_images: bool = True,
         game_id: str = "",
+        max_tool_rounds: int = 1,
     ) -> None:
         from admorphiq.adapter import AdmorphiqAdapter
 
@@ -324,6 +325,10 @@ class ReplAgent:
         self._llm = llm
         self.giveup = giveup
         self.render_images = render_images
+        # Bounded tool loop: an inspection-only code block returns its stdout to
+        # the model for up to this many extra rounds before an action is required
+        # (Codex defect #1). 0 = no tool loop (the JSON-only arm).
+        self.max_tool_rounds = max_tool_rounds
         self._recorder = recorder
         self._builder = TurnPacketBuilder(token_budget=token_budget)
         self.last_hypothesis: str | None = None
@@ -337,6 +342,7 @@ class ReplAgent:
         self.sandbox_errors = 0
         self.llm_errors = 0
         self.truncations = 0
+        self.inspections = 0
         self.predictions_made = 0
         self.predictions_correct = 0
         self._pending_prediction: dict[str, Any] | None = None
@@ -484,62 +490,85 @@ class ReplAgent:
             game=self._game_ctx(obs, legal), last_action=self._last_action_dict(),
             scene=scene, prev_scene=self._prev_scene, frame=frame,
             prev_frame=self._prev_frame, history=self._history, memory=self._memory)
-        prompt = (_SYSTEM_PROMPT + "\n\n" + self._builder.to_yaml(packet)
-                  + _legal_reminder(legal))
+        base_prompt = (_SYSTEM_PROMPT + "\n\n" + self._builder.to_yaml(packet)
+                       + _legal_reminder(legal))
         images, img_hashes = self._render_image(frame)
 
-        t0 = time.time()
-        try:
-            raw = self._llm.complete(prompt, images)
-        except Exception as exc:  # noqa: BLE001 — a slow/failed call must not end the game
+        # Bounded tool loop: an inspection-only code block gets its stdout RETURNED
+        # to the model (no env action) for another round, up to max_tool_rounds.
+        # An action/macro (or exhausting the rounds) ends the loop.
+        tool_context = ""
+        for round_i in range(self.max_tool_rounds + 1):
+            prompt = base_prompt + tool_context
+            call_images = images if round_i == 0 else None  # frame is fixed mid-decision
+            round_hashes = img_hashes if round_i == 0 else []
+
+            t0 = time.time()
+            try:
+                raw = self._llm.complete(prompt, call_images)
+            except Exception as exc:  # noqa: BLE001 — a slow/failed call must not end the game
+                latency_ms = (time.time() - t0) * 1000.0
+                self.llm_calls += 1
+                self.llm_errors += 1
+                self._record_turn(obs, prompt, "", parse_model_output(""), "",
+                                  f"{type(exc).__name__}: {exc}", None, frame,
+                                  latency_ms, image_hashes=round_hashes)
+                return
             latency_ms = (time.time() - t0) * 1000.0
             self.llm_calls += 1
-            self.llm_errors += 1
-            # Record the failed turn (latency + error visible) and fall through to
-            # the safe fallback action, so one slow call does not end the game.
-            self._record_turn(obs, prompt, "", parse_model_output(""), "",
-                              f"{type(exc).__name__}: {exc}", None, frame, latency_ms,
-                              image_hashes=img_hashes)
-            return
-        latency_ms = (time.time() - t0) * 1000.0
-        self.llm_calls += 1
-        meta = getattr(self._llm, "last_meta", {}) or {}
-        finish_reason = str(meta.get("finish_reason", ""))
-        if finish_reason == "length":
-            self.truncations += 1
+            meta = getattr(self._llm, "last_meta", {}) or {}
+            finish_reason = str(meta.get("finish_reason", ""))
+            if finish_reason == "length":
+                self.truncations += 1
 
-        parsed = parse_model_output(raw)
-        if parsed.kind == "none":
-            self.parse_failures += 1
-        self._decided_source = {"code": "code", "macro": "macro",
-                                "actions": "llm"}.get(parsed.kind, "llm")
-        prediction = parse_prediction(raw)
-        self._pending_prediction = prediction
-        sandbox_out = sandbox_err = ""
-        chosen: dict[str, Any] | None = None
+            parsed = parse_model_output(raw)
+            if parsed.kind == "none":
+                self.parse_failures += 1
+            self._decided_source = {"code": "code", "macro": "macro",
+                                    "actions": "llm"}.get(parsed.kind, "llm")
+            prediction = parse_prediction(raw)
+            sandbox_out = sandbox_err = ""
+            inspected_only = False
 
-        if parsed.kind == "code" and parsed.code:
-            res = run_code(parsed.code, self._store)
-            sandbox_out, sandbox_err = res.stdout, res.error
-            if res.error:
-                self.sandbox_errors += 1
-            for req in res.actions:
-                d = self._govern_single(req, legal, hw, state_hash)
-                if d is not None:
-                    self._queue.append(d)
-        elif parsed.kind == "macro":
-            self._arm_macro(parsed.macro, legal, hw)
-        elif parsed.kind == "actions":
-            for a in parsed.actions:
-                d = self._govern_single(a, legal, hw, state_hash)
-                if d is not None:
-                    self._queue.append(d)
+            if parsed.kind == "code" and parsed.code:
+                res = run_code(parsed.code, self._store)
+                sandbox_out, sandbox_err = res.stdout, res.error
+                if res.error:
+                    self.sandbox_errors += 1
+                if res.actions:
+                    for req in res.actions:
+                        d = self._govern_single(req, legal, hw, state_hash)
+                        if d is not None:
+                            self._queue.append(d)
+                else:
+                    inspected_only = True  # inspection round — NEVER an env action
+                    self.inspections += 1
+            elif parsed.kind == "macro":
+                self._arm_macro(parsed.macro, legal, hw)
+            elif parsed.kind == "actions":
+                for a in parsed.actions:
+                    d = self._govern_single(a, legal, hw, state_hash)
+                    if d is not None:
+                        self._queue.append(d)
 
-        chosen = self._queue[0] if self._queue else None
-        self._record_turn(obs, prompt, raw, parsed, sandbox_out, sandbox_err,
-                          chosen, frame, latency_ms,
-                          finish_reason=finish_reason, tokens=meta.get("tokens"),
-                          prediction=prediction, image_hashes=img_hashes)
+            chosen = self._queue[0] if self._queue else None
+            if not inspected_only:
+                self._pending_prediction = prediction  # scored against the action
+            self._record_turn(obs, prompt, raw, parsed, sandbox_out, sandbox_err,
+                              chosen, frame, latency_ms,
+                              finish_reason=finish_reason, tokens=meta.get("tokens"),
+                              prediction=prediction, image_hashes=round_hashes)
+
+            if self._queue or not inspected_only:
+                return  # got an action / macro / no-usable-output -> done
+            # inspection-only: return the bounded stdout to the model for one more
+            # round; the fallback (choose_action) only fires after the rounds.
+            tool_context = (
+                f"\n\nTOOL OUTPUT (round {round_i}, inspection only — NO action "
+                f"taken yet):\n{sandbox_out[:1500]}"
+                + (f"\nERROR: {sandbox_err[:400]}" if sandbox_err else "")
+                + "\nNow choose an action (or inspect once more)."
+            )
 
     def _govern_single(self, a: dict[str, Any], legal: set[str],
                        hw: tuple[int, int], state_hash: str) -> dict[str, Any] | None:

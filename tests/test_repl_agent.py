@@ -358,6 +358,39 @@ def test_llm_error_is_survived_and_recorded():
 
 
 # ----- inspection round-trip + governed action -------------------------------
+def test_bounded_tool_loop_returns_stdout_then_acts():
+    """Purpose: an inspection-only code block does NOT take an env action — its
+    stdout is returned to the model, which then acts on the next round (Codex
+    defect #1: v3 ran code once and discarded stdout).
+
+    Feedback: failure means inspection silently falls back to an env action, so
+    the REPL can never inform a decision.
+    """
+    prompts = []
+
+    def scripted(prompt, images=None):
+        prompts.append(prompt)
+        # Round 0: inspection-only code (prints, no action()).
+        if len(prompts) == 1:
+            return "```python\nobjs = objects(-1)\nprint('COUNT', len(objs))\n```"
+        # Round 1: sees the tool output, now acts.
+        assert "TOOL OUTPUT" in prompt and "COUNT" in prompt
+        return '{"action":"LEFT"}'
+
+    rec = TranscriptRecorder()
+    agent = ReplAgent(SimpleNamespace(complete=scripted), recorder=rec,
+                      render_images=False)
+    action = agent.choose_action([], _obs(_frame()))
+    assert action is not None
+    assert agent.inspections == 1        # one inspection round
+    assert agent.llm_calls == 2          # inspection + action, one decision
+    assert agent._prev_action == {"action": "LEFT"}  # acted, no hidden fallback
+    assert agent._last_source == "llm"   # not "fallback"
+    # both rounds recorded (causal account: inspection then action).
+    assert len(rec.records) == 2
+    assert "COUNT" in rec.records[0].sandbox_stdout
+
+
 def test_code_inspection_roundtrip_and_governed_action():
     """Purpose: a model code block that inspects objects() and requests an action
     runs in the sandbox, and the governed action executes.

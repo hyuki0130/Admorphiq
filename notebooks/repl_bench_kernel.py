@@ -251,7 +251,7 @@ def run_bench() -> dict:
             "levels": diag.levels, "actions": diag.actions, "wall_s": diag.wall_s,
             "llm_calls": diag.llm_calls, "llm_errors": diag.llm_errors,
             "terminal": diag.terminal_reason, "parse_failures": diag.parse_failures,
-            "truncations": diag.truncations,
+            "truncations": diag.truncations, "inspections": diag.inspections,
             "predictions": f"{diag.predictions_correct}/{diag.predictions_made}",
             "governor_rejections": diag.governor_rejections,
             "sandbox_errors": diag.sandbox_errors, "error": diag.error,

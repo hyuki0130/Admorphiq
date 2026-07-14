@@ -29,6 +29,7 @@ class GameDiagnostics:
     llm_errors: int = 0
     parse_failures: int = 0
     truncations: int = 0
+    inspections: int = 0
     predictions_made: int = 0
     predictions_correct: int = 0
     governor_rejections: int = 0
@@ -173,6 +174,7 @@ def run_game(
     diag.llm_errors = int(getattr(agent, "llm_errors", 0))
     diag.parse_failures = int(getattr(agent, "parse_failures", 0))
     diag.truncations = int(getattr(agent, "truncations", 0))
+    diag.inspections = int(getattr(agent, "inspections", 0))
     diag.predictions_made = int(getattr(agent, "predictions_made", 0))
     diag.predictions_correct = int(getattr(agent, "predictions_correct", 0))
     diag.governor_rejections = int(getattr(agent, "governor_rejections", 0))
