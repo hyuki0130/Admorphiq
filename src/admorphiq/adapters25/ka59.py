@@ -121,22 +121,58 @@ the routed piece's outer bbox came pixel-adjacent to it, one step before
 reaching its exact final cell) and is a genuine, if narrow, fragility of
 composing ring detection on a moving board — not a hypothetical.
 
-Live smoke result (2x500 actions, deterministic): **0/7 levels**. The
-mechanic model and kernel composition are load-bearing and largely
-working: a single piece was observed reaching its assigned frame in as
-few as 13 actions (close to gold-trace efficiency for that sub-problem),
-via ``configuration_path`` finding a genuine route and ``reachable_frontier``
-correctly filling in unexplored cells along the way. The wall this
-adapter hits is level 0's own 100-action StepCounter fuse (a real,
-in-source per-level budget, not this adapter's ``_GIVEUP_DEFAULT``): the
-SECOND piece's ACTION6 select does not reliably switch control on the
-first attempt (this adapter's own click-point cycling recovers it, but
-not always inside the remaining budget), so a life sometimes exhausts its
-100 actions mid-select-retry before the second piece ever reaches its
-target, and ``restart_on_game_over`` + persisted layout knowledge were not
-enough to close the gap within 5 lives (500 actions / ~100 per life). This
-is an adapter EFFICIENCY limitation (click reliability / control-switch
-overhead), not a missing kernel or a wrong mechanic model.
+Live smoke result (2x500 actions, deterministic): **0/7 levels**, but the
+select-click reliability lever this was measured and fixed for now
+converges immediately (see below), so the remaining wall is a DIFFERENT
+one: reaching a distant target through unexplored territory (see
+"Remaining bottleneck" below) can outrun even a 100-action fuse when no
+push/portal is modeled.
+
+**Select-click reliability, MEASURED and fixed (round 2)**: the first
+version forced a movement probe after every select to infer success
+indirectly, was frequently blocked by an unrelated wall in whatever
+direction it happened to try, and clicked the piece's CENTROID first --
+none of which is what the game actually needs. Two things were measured
+directly from every one of the 14 ACTION6 rows in
+``data/traces/ka59.npz`` (3 different levels):
+
+1. **The verification signal**: a successful select ALWAYS swaps exactly
+   two single pixels -- the piece BECOMING active (its own single hole
+   cell) changes to one specific colour, and whichever piece WAS active
+   changes to a different (non-fixed, sprite-dependent) colour. The
+   ACTIVE colour itself is the same across every observed successful
+   select, on every level -- but this adapter does not hardcode that
+   value: :meth:`Adapter._observe_result` measures it once, the first time
+   a movement genuinely confirms which piece is active (`_active_marker_color`),
+   then :meth:`Adapter._select_confirmation` uses it as a DIRECT,
+   single-pixel-read verification the very next call -- no movement probe
+   needed at all when it succeeds, and a CONCLUSIVE miss (colour known,
+   doesn't match) retries immediately with a different click point rather
+   than wasting an action confirming failure via movement.
+2. **The click point**: every one of the 14 gold ACTION6 clicks lands
+   EXACTLY on the selected piece's own outer-bbox TOP-LEFT corner, never
+   the centroid, to the pixel, across all 3 levels. :meth:`Adapter._select_point`
+   now tries the top-left corner FIRST (centroid demoted to second
+   fallback, corner-cycling kept beyond that as a safety net).
+
+Live-measured result of both fixes together (500-action run,
+``scripts/rounds`` methodology): **5/5 select clicks issued this run
+confirmed the switch on the FIRST attempt** (mean 1.0 attempts/switch,
+down from the earlier version's repeated multi-click cycling that could
+run 10+ attempts at the same point without ever confirming).
+
+**Remaining bottleneck (measured, not select-related)**: with switching
+now near-instant, the piece that needs to reach the far frame (level 0's
+target1, on the OTHER side of a wall from where both pieces spawn) still
+doesn't arrive within budget across several lives -- this is unexplored-
+territory frontier search taking longer than the 100-action fuse allows
+when the correct detour around/through the wall isn't the Manhattan-
+shortest guess (:meth:`Adapter._pick_action`'s goal-distance heuristic
+only orders KNOWN directions; genuine wall-gap discovery still depends on
+:func:`admorphiq.kernels.reachable_frontier`'s untried-direction BFS,
+which has no shortcut for a wide, unexplored wall). This is a navigation-
+budget question, not a select-reliability one -- flagged as the next
+lever, not attempted here.
 """
 
 from __future__ import annotations
@@ -210,6 +246,26 @@ def _ring_region(ring: dict[str, Any]) -> Region:
         "centroid": centroid,
         "size": len(cells),
     }
+
+
+def _piece_marker_color(grid: tuple[tuple[int, ...], ...], outer_bbox: tuple[int, int, int, int]) -> int | None:
+    """The colour at a piece ring's own single interior (hole) cell.
+
+    MEASURED (``.wiki`` was silent on this): a ring qualifies as a "piece"
+    only when its hole is exactly one cell (see ``_classify_rings``), so
+    the hole cell is the ring's own centre -- (r0+1, c0+1) when the ring
+    is a genuine 3x3 ring. Generalised (not hardcoded to 3x3): returns
+    ``None`` when the interior isn't exactly one cell or falls outside the
+    grid, so a caller can fall back to a different verification instead of
+    reading a wrong pixel.
+    """
+    r0, c0, r1, c1 = outer_bbox
+    ir0, ic0, ir1, ic1 = r0 + 1, c0 + 1, r1 - 1, c1 - 1
+    if ir0 != ir1 or ic0 != ic1:
+        return None
+    if not (0 <= ir0 < len(grid) and grid and 0 <= ic0 < len(grid[0])):
+        return None
+    return grid[ir0][ic0]
 
 
 def _classify_rings(
@@ -290,6 +346,17 @@ class Adapter(GameAdapter):
         # Per-cell count of select clicks issued while that cell never
         # confirmed active -- drives _select_point's corner cycling.
         self._select_attempts: dict[Cell, int] = {}
+        # The colour the ACTIVE piece's own centre pixel shows, measured
+        # (never hardcoded) the first time a movement genuinely confirms
+        # which piece is active -- MEASURED on the gold trace to be a
+        # stable per-level constant (every observed successful select in
+        # data/traces/ka59.npz showed the same colour on the newly-active
+        # piece, though the INACTIVE colour varies per piece/sprite). Once
+        # known, a select's success is verifiable by comparing a piece's
+        # own centre pixel colour to this value -- no extra movement probe
+        # needed. Property of the level's sprite assignment: persists
+        # across a GAME_OVER restart (see _on_restart), reset on level-up.
+        self._active_marker_color: int | None = None
 
         # Every target cell ever measured via closed_frames this level,
         # kept even on a call where re-detection fails -- MEASURED
@@ -362,6 +429,7 @@ class Adapter(GameAdapter):
         self._last_select_cell = None
         self._select_attempts = {}
         self._known_targets = set()
+        self._active_marker_color = None
 
     def _on_restart(self) -> None:
         """Only the active piece's position resets; the layout knowledge
@@ -407,6 +475,12 @@ class Adapter(GameAdapter):
         self._transitions.append((from_cell, action, new_cell))
         self._tried_from.setdefault(from_cell, set()).add(action)
         self._active_cell = new_cell
+
+        if self._active_marker_color is None:
+            after_bbox = cur_pieces[match["after"]]["bbox"]  # type: ignore[index]
+            color = _piece_marker_color(grid, after_bbox)  # type: ignore[arg-type]
+            if color is not None:
+                self._active_marker_color = color
 
     def _record_blocked(self, cell: Cell, action: int, prev_pieces: list[Region]) -> None:
         """Mark ``action`` tried from ``cell`` -- UNLESS the destination is
@@ -454,21 +528,42 @@ class Adapter(GameAdapter):
         # ever seen before, rather than treated as satisfied or gone.
         self._known_targets |= {t["inner_bbox"][:2] for t in targets}  # type: ignore[misc]
 
-        if self._await_select_confirm:
-            # The previous action was a select click -- its effect is only
-            # observable via a movement probe (see class docstring), so
-            # this call MUST issue one before any new routing/assignment
-            # decision, rather than recomputing the same "not yet
-            # selected" state and re-clicking. Probe with an action UNTRIED
-            # from the piece we JUST tried to select (not the globally
-            # first move id) -- otherwise a direction that happens to be
-            # wall-blocked for that piece would look identical to "the
-            # click failed" forever, since neither produces a shift.
-            self._await_select_confirm = False
-            return self._probe(move_ids, cell=self._last_select_cell)
-
         piece_cells = [p["bbox"][:2] for p in pieces]  # type: ignore[misc]
         piece_cell_set = set(piece_cells)
+
+        if self._await_select_confirm:
+            self._await_select_confirm = False
+            confirmed = self._select_confirmation(grid, pieces, piece_cells)
+            if confirmed is True:
+                # The clicked piece's own centre pixel already shows the
+                # measured active-marker colour -- no movement probe
+                # needed at all; fall through to route/assign normally
+                # with the now-known active cell, saving the action a
+                # forced probe would have spent.
+                self._active_cell = self._last_select_cell
+            elif confirmed is False:
+                # CONCLUSIVE miss (marker colour is known and does not
+                # match) -- retry immediately with a different point on
+                # the SAME piece rather than spending an action on a
+                # movement probe first; the colour check itself is the
+                # verification, no probe needed to learn this failed.
+                goal_region = next(
+                    p for p, c in zip(pieces, piece_cells) if c == self._last_select_cell
+                )
+                self._pending_action = None
+                self._pending_kind = "select"
+                self._await_select_confirm = True
+                point = self._select_point(goal_region, self._last_select_cell)  # type: ignore[arg-type]
+                return click_action(x=point[1], y=point[0])
+            else:
+                # Inconclusive (marker colour not measured yet this
+                # level, or the piece isn't currently detected at all) --
+                # fall back to a movement probe targeted at the piece we
+                # tried to select, not the globally first move id, so a
+                # direction that happens to be wall-blocked for that
+                # piece isn't confused with "the click failed" (neither
+                # produces a shift on its own).
+                return self._probe(move_ids, cell=self._last_select_cell)
         free_cells = [c for c in piece_cells if c not in self._known_targets]
         unfilled_targets = sorted(c for c in self._known_targets if c not in piece_cell_set)
 
@@ -507,17 +602,49 @@ class Adapter(GameAdapter):
         point = self._select_point(goal_region, goal_cell)
         return click_action(x=point[1], y=point[0])
 
+    def _select_confirmation(
+        self, grid: tuple[tuple[int, ...], ...], pieces: list[Region], piece_cells: list[Cell]
+    ) -> bool | None:
+        """Whether ``self._last_select_cell``'s piece now shows the
+        measured active-marker colour.
+
+        Returns ``True``/``False`` when conclusive, ``None`` when the
+        check cannot be made yet (the marker colour hasn't been measured
+        this level, or the targeted cell isn't currently detected as a
+        piece at all -- e.g. transient re-detection noise) -- the caller
+        falls back to a movement probe only in the ``None`` case.
+        """
+        if self._active_marker_color is None or self._last_select_cell is None:
+            return None
+        if self._last_select_cell not in piece_cells:
+            return None
+        idx = piece_cells.index(self._last_select_cell)
+        color = _piece_marker_color(grid, pieces[idx]["bbox"])  # type: ignore[arg-type]
+        if color is None:
+            return None
+        return color == self._active_marker_color
+
     def _select_point(self, region: Region, cell: Cell) -> Cell:
         """The (row, col) to click for ``region``, varying across repeated
         failed attempts at the SAME cell (bounded corner cycling) rather
-        than clicking the identical centroid forever -- a select that
-        keeps not taking effect may mean the centroid itself lands outside
-        the sprite's own click hit-test, not that clicking never works."""
+        than clicking the identical point forever -- a select that keeps
+        not taking effect may mean that specific point lands outside the
+        sprite's own click hit-test, not that clicking never works.
+
+        The FIRST attempt is the piece's own outer-bbox TOP-LEFT corner,
+        not its centroid -- MEASURED from every one of the 14 gold-trace
+        ACTION6 clicks in ``data/traces/ka59.npz``: each one lands
+        EXACTLY on the selected piece's outer-bbox top-left corner (to
+        the pixel, across 3 different levels), never the centre. Centroid
+        is kept as the second fallback rather than dropped outright, since
+        it is still a valid interior point if the top-left corner ever
+        turns out not to register for some board.
+        """
         attempts = self._select_attempts.get(cell, 0)
         self._select_attempts[cell] = attempts + 1
         centroid = (round(region["centroid"][0]), round(region["centroid"][1]))
         r0, c0, r1, c1 = region["bbox"]
-        candidates = [centroid, (r0, c0), (r1, c1), (r0, c1), (r1, c0)]
+        candidates = [(r0, c0), centroid, (r1, c1), (r0, c1), (r1, c0)]
         return candidates[attempts % len(candidates)]
 
     def _pick_action(self, candidates: list[int], ref_cell: Cell, goal: Cell | None) -> int:
