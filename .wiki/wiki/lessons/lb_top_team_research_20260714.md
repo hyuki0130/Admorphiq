@@ -88,3 +88,32 @@ falsified for our stack and this page must be updated.
 per-turn last_action_result feedback, Reki reflection JSON {what changed, short plan, next 1-4
 actions}.
 
+## Duck writeup FULL TEXT captured (2026-07-14 10:36, discussion/717133 via logged-in browser)
+
+Raw text: `.wiki/raw/duck_writeup_discussion_717133_20260714.txt`. NEW facts beyond the README:
+- **"World Model" = a NOTE carried across turns**: the model writes a `World model:` tagged block
+  in its response; the harness copies it into every subsequent user message until the model
+  overwrites it. That's their whole persistent memory — prompt echo, no code.
+- **Context policy**: 64k hard cap, evict to maintain ~32k input; evict oldest user message +
+  subsequent assistant turns; reasoning blocks removed; system prompt always kept. They note they
+  do NOT yet exploit vLLM prefix caching.
+- **Per-action user message repeats**: game state, valid actions, tool-usage reminder, world-model
+  instructions + current world model, and "collect evidence on what happened before acting."
+- Segmentation tool exists because "printing the whole grid pollutes context" (their words) —
+  4-connected components, adjacency, parent-child.
+- Their own future-work list: context compaction/curated memory, abstract-description perception
+  ("coding models are not trained to reason over ASCII crops").
+
+## Official serving recipe (gregkamradt/arc-agi-3-gpt-oss-120b notebook, pulled 2026-07-14)
+
+An ARC-Prize-team example runs **gpt-oss-120B via vLLM inside the competition kernel** — so
+27B FP8 serving is a solved problem. Exact recipe:
+- `python -m vllm.entrypoints.openai.api_server --model /kaggle/input/models/danielhanchen/
+  gpt-oss-120b/... --max-model-len 64000 --kv-cache-dtype fp8 --tensor-parallel-size 1
+  --enforce-eager` as a subprocess; health-poll until ready (1800s timeout).
+- Agent = openai SDK OpenAI client → local server (matches our repl_agent OpenAICompatClient).
+- vllm + tiktoken encodings from a "vllm-deps" input notebook (offline wheels).
+- ⚠️ **15-minute FIRST-ACTION deadline**: the notebook records start time to avoid missing it —
+  act BEFORE the LLM finishes loading. Our ChainedAgent (LLM-free WMA probe) can take first
+  actions immediately while vLLM boots in the background: natural fit.
+
