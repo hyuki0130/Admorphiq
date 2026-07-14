@@ -198,6 +198,23 @@ def run_bench() -> dict:
     os.environ["REPL_LLM_MODEL"] = VLLM_MODEL_NAME
     os.environ.setdefault("REPL_SANDBOX_TIMEOUT", "30")
 
+    # Arm config so ONE kernel runs either arm (matched A/B): the REPL-enabled arm
+    # (image + tool loop) vs the JSON-only arm (no image, no tool rounds).
+    render_images = os.environ.get("REPL_RENDER_IMAGES", "1").strip().lower() not in (
+        "0", "false", "no", "off")
+    try:
+        max_tool_rounds = int(os.environ.get("REPL_MAX_TOOL_ROUNDS", "1"))
+    except ValueError:
+        max_tool_rounds = 1
+    arm = "repl" if (render_images or max_tool_rounds > 0) else "json_only"
+    # Normalize the effective flags back into the env so run_manifest records the
+    # exact arm that ran (config_env captures REPL_-prefixed vars).
+    os.environ["REPL_RENDER_IMAGES"] = "1" if render_images else "0"
+    os.environ["REPL_MAX_TOOL_ROUNDS"] = str(max_tool_rounds)
+    os.environ["REPL_ARM"] = arm
+    print(f"[bench] arm={arm} render_images={render_images} "
+          f"max_tool_rounds={max_tool_rounds}", flush=True)
+
     from admorphiq.repl_agent.events import EventStream, derive_summary
 
     diag_dir = os.path.join(KAGGLE_WORKING, "diagnostics")
@@ -231,7 +248,9 @@ def run_bench() -> dict:
                 events.close()
                 continue
             recorder = TranscriptRecorder(os.path.join(tr_dir, f"{game_id}.jsonl"))
-            agent = ReplAgent(OpenAICompatClient(), recorder=recorder, game_id=game_id)
+            agent = ReplAgent(OpenAICompatClient(), recorder=recorder, game_id=game_id,
+                              render_images=render_images,
+                              max_tool_rounds=max_tool_rounds)
             diag = run_game(env, agent, max_actions=MAX_ACTIONS, wall_s=WALL_S,
                             reset_action=GameAction.RESET, events=events)
             recorder.close()
