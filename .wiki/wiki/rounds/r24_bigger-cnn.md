@@ -11,6 +11,8 @@ date: 2026-07-03
 
 # R24 — bigger CNN capacity (RL_CNN_WIDTH=1.5)
 
+> Widening the online policy CNN's channels 1.5x to try to break the ~0.013 depth ceiling failed decisively (0.0019 vs the card's 0.0134, a clean 27-run 3-seed measure) — slower online convergence, not more capacity, was the problem.
+
 **Axis**: model-capacity · **Verdict**: FAIL (decisive, clean 27-run measure)
 **Keywords**: cnn-capacity, model-width, convergence-speed, online-training
 
@@ -36,4 +38,4 @@ or the reward/potential axis with proper sweeps (progress-Φ weight, object-prio
 depth hints (R16/R21). Also: efficiency micro-band is ~0.013; the real jump needs reliable L2+.
 
 **Related rounds**: [[r19_reward-shaping]], [[r23_train-convergence]], [[r13_efficiency-insight]]
-See map: [[rounds_index]]. Overview: [[online_rl_sprint_round_log]].
+See map: [[index]]. Overview: [[../lessons/online_rl_sprint_round_log]].

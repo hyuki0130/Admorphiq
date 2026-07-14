@@ -11,6 +11,8 @@ date: 2026-07-02
 
 # R23 — training convergence speed (TRAIN_EVERY sweep)
 
+> TRAIN_EVERY sweep closed: =4 gives 0.0114, =6 gives 0.0112, both below the =8 card's 0.0134 — more frequent training overtrains this small online learner, so the default stays 8.
+
 **Axis**: training-convergence · **Verdict**: FAIL — sweep closed. =4→0.0114, =6→0.0112, both below the =8 card (0.0134). More frequent training = overtraining/instability on this small learner. Default TRAIN_EVERY=8 stays.
 **Keywords**: train-every, gradient-steps, convergence, efficiency, overtraining
 
@@ -26,4 +28,4 @@ On the R19 shaping card, env override RL_TRAIN_EVERY.
   more-frequent training doesn't help this learner (tune-before-discard honored with 2 configs).
 
 **Related rounds**: [[r13_efficiency-insight]], [[r19_reward-shaping]], [[r08_budget-depth]]
-See map: [[rounds_index]]. Overview: [[online_rl_sprint_round_log]].
+See map: [[index]]. Overview: [[../lessons/online_rl_sprint_round_log]].

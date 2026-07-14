@@ -2,8 +2,9 @@
 type: lesson
 date: 2026-07-15
 rounds: R56
-status: live-cleared 4/6 (47.62% RHAE); level 5 (0-indexed 4) mystery with
-  Codex; level 6 fully decoded, unreached live
+status: live-cleared 4/6 (47.62% RHAE); level 5 (0-indexed 4) SOLVED by
+  Codex, not yet integrated/re-smoked; level 6 fully decoded, unreached
+  live
 ---
 
 # FT09 is a multi-glyph constraint-satisfaction puzzle, not a coupled GF(2) neighbourhood stencil (R56)
@@ -14,8 +15,10 @@ status: live-cleared 4/6 (47.62% RHAE); level 5 (0-indexed 4) mystery with
 > glyphs, read via full multi-glyph coverage enumeration (a coverage-
 > scoping near-miss taught that "nearest glyph" is the wrong scope). The
 > R56 `src/admorphiq/adapters25/ft09.py` adapter decodes it directly and
-> live-clears 4/6 levels; two levels remain open for different, documented
-> reasons.
+> live-clears 4/6 levels; a 5th level's mechanic is now SOLVED (Codex —
+> stateful cross-toggle buttons + 2 missed 3-member glyphs, the core rule
+> fully intact) but not yet integrated/re-smoked, and a 6th is fully
+> decoded but unreached live.
 
 ## Symptom
 
@@ -133,7 +136,7 @@ clicked cell and its offset partner, zero exceptions, including every case
 where the partner position is background (correctly predicts "nothing
 happens there").
 
-## A third glyph type — "commit" glyphs (level 5, UNRESOLVED)
+## Level 5's control buttons — apparent "commit glyphs", SOLVED as stateful cross-toggle buttons
 
 On a different level's revealed board, 3 of 9 candidate glyph positions
 were initially read as harmless false-positive discovery noise — their
@@ -141,23 +144,68 @@ ink values (6 and 14) don't match the confirmed 0/2/3 vocabulary, so the
 confirmed rule assigns them zero constraints (correctly harmless under
 that rule, but this was a premature dismissal). All 3 share an IDENTICAL
 pattern: corners = ink 14 ("don't care"), all 4 edges (N/W/E/S) = ink
-**6**, a value never seen on any other level. Clicking DIRECTLY on one of
-these glyphs' own gap position (not a field cell — the glyph's own center)
-produces a real, structured effect: it normalizes that glyph's 4 edge
-members toward "at most one marked", reverting extras to the base colour
-and, in one measured case, also advancing the sole unmarked edge.
+**6**, a value never seen elsewhere. Clicking DIRECTLY on one of these
+glyphs' own gap position (not a field cell — the glyph's own center)
+produces a real, structured effect on nearby cells.
 
-**Two decisive negative replays prove this is structurally necessary, not
-optional error-correction**: (1) clicking exactly the confirmed rule's
-9 predicted target cells (from the 6 "normal" glyphs on this board) does
-NOT clear the level; (2) clicking all 27 field cells once each also does
-NOT clear the level. Gold's actual winning sequence needs 3 additional
-clicks directly on the commit-glyph gap positions, after all 17 target-
-cell clicks. The exact win invariant these commit glyphs enforce is
-UNRESOLVED — full per-click evidence table and 5 concrete open questions
-are in `scripts/_r58_ft09_l4_mystery_brief.md`, with Codex as of this
-writing (parallel structure to the L3 formula brief that produced the
-coverage-scoping fix above).
+**Initial hypothesis (since superseded)**: a "commit" invariant that
+normalizes the 4 edge members toward "at most one marked". Two decisive
+negative replays showed this cluster of clicks is structurally necessary:
+(1) clicking exactly the confirmed rule's 9 predicted target cells (from
+the 6 glyphs then known) does NOT clear the level; (2) clicking all 27
+field cells once each also does NOT clear the level. Both were correct
+evidence that SOMETHING about these positions is required — the
+interpretation of WHAT was wrong.
+
+**Resolution (Codex, `docs/r58_codex_ft09_l4_solution_20260715.md`,
+input brief `scripts/_r58_ft09_l4_mystery_brief.md`)**: there is no
+separate "commit" invariant. The confirmed constraint-satisfaction rule
+holds COMPLETELY. Two independent things were wrong in the original
+investigation:
+
+1. **The 3 positions are ordinary STATEFUL BUTTONS, not a new ink-vocabulary
+   construct.** Clicking one toggles TWO things simultaneously: its own
+   colour 14<->15, AND every existing position painted with ink 6 around
+   it (its own N/W/E/S neighbours) — an "action stencil" the button
+   fires, not a constraint it evaluates. This is a genuinely different
+   MECHANISM (a click causing a structured multi-cell side effect,
+   related to but distinct from level 6's fixed-offset coupling) sitting
+   alongside the constraint-satisfaction rule, not a new ink value the
+   rule needs to interpret.
+2. **Discovery's minimum-member floor (4, tuned from level 6's truncated
+   rings) silently REJECTED two real target glyphs that only have 3
+   members each** (`glyph@(4,14)` and `glyph@(52,46)`). These two,
+   together with the already-known `glyph@(36,22)`, constrain the 3
+   control buttons via perfectly ORDINARY ink-2 ("must differ from
+   marker") constraints — each control button must itself reach colour
+   15, exactly like any other covered field cell.
+
+Gold's 21 clicks resolve exactly: 9 real target-cell clicks, 9
+"compensation" clicks (cells the buttons' action-stencil side effects
+pushed to 15, needing a second click back to 14 to satisfy THEIR OWN
+separate constraint), and 3 control-button clicks (one each, satisfying
+each button's own ink-2 constraint). One field cell, `(20,22)`, is
+touched by the action stencils of TWO different controls and cancels out
+automatically — the only genuinely unconstrained position of 30 stateful
+board cells. Click order is NOT load-bearing (Codex verified gold order,
+full reverse order, and all-controls-first all clear on click 21).
+
+**A second, independent correction from the same Codex pass**: level 5's
+apparent decoy->reveal transition (the "Decoy -> reveal" note in Root
+Cause above) is NOT a real mechanic on this level. The game engine defers
+level installation until the NEXT submitted action (visible in the
+vendored `arcengine` package's `base_game.py`), so what looked like "a
+click reveals a hidden board" is simply the engine finishing the
+installation of level 5's own board and rendering it before processing
+that same click — an engine lifecycle artifact, not a hidden-board design
+choice the way levels 2 and 6 genuinely have.
+
+**Status: adapter integration not yet done.** The wiki/decode-arc
+understanding is complete; `src/admorphiq/adapters25/ft09.py` has not
+been updated to (a) lower/replace the 4-member discovery floor so
+3-member glyphs aren't dropped, (b) model the stateful control-button
+mechanism, or (c) avoid mis-reading level 5's level-start transition as a
+genuine reveal. Re-smoke after that lands.
 
 ## The trigger-click infinite-loop bug (found live, fixed, unrelated to whether level 5 is ever solved)
 
@@ -214,7 +262,8 @@ trigger budget (`_GLYPH_TRIGGER_BUDGET = 5`), and a bounded per-level
 action budget (`_LEVEL_ACTION_BUDGET = 150`) together fall back to the
 pre-existing measured-GF(2)-stencil probe/execute/fallback machinery
 unchanged, if the glyph decode turns out not to apply to some board this
-adapter hasn't seen (level 5, currently). The R16-R18 stencil path is not
+adapter hasn't seen (currently level 5, until the stateful-control-button
+mechanism and the 3-member-glyph discovery fix land). The R16-R18 stencil path is not
 deleted — it remains FT09's second-line strategy, exactly the "no plan
 fits, propose a fix" self-healing shape the architecture doc calls for,
 except decided at dev-time by gold-trace + live evidence instead of a
@@ -222,37 +271,53 @@ runtime LLM proposal.
 
 ## Falsification
 
-This reading is falsified if: (a) a real board is found where a click
-changes a cell OTHER than the clicked one AND the offset/relationship
-can't be explained by the measured coupling model above (breaks "clicks
-only affect their own cell, or a single measured coupled partner"); (b) a
-glyph ink value is observed that is neither 0/2/3 (the confirmed
-vocabulary) NOR the level-5 commit glyphs' 6/14 pattern (would mean a
-FOURTH glyph type exists); (c) a ring is found with fewer than 4 real
-compass members (would mean the measured truncation floor is wrong); or
-(d) a decoy board is found where the reveal trigger is not simply "any
-click, judged by wholesale layout replacement" (would need a more
-specific trigger-detection rule).
+The CONSTRAINT-SATISFACTION rule itself (ink 0/2/3, full-coverage
+enumeration, per-cell simultaneous satisfaction) is falsified if: (a) a
+covered cell's true win-state colour fails to satisfy its full collected
+constraint set on any board where coverage was enumerated exhaustively
+(has not happened on any level checked, including level 5 once correctly
+re-derived); or (b) a genuine glyph ink value is found that is neither
+0/2/3 NOR the ink-6 action-stencil marker (would mean a further distinct
+mechanism exists beyond the two now known).
 
-Conditions (a)-through-(c) as ORIGINALLY WORDED in this lesson's first
-draft have already each been triggered once and resolved by extending the
-model (coupling, the commit-glyph type, truncated rings) rather than by
-abandoning the core rule — that is itself evidence the constraint-
-satisfaction framing is the right level of abstraction, even though its
-FULL vocabulary (ink values, glyph types) is still being discovered
-level-by-level.
+Two SEPARATE, ADJACENT mechanisms sit alongside the core rule rather than
+extending its vocabulary, and are falsified on their own terms: the
+ink-6 stateful-button mechanism is falsified if a board is found where
+clicking an ink-6-patterned glyph position does NOT toggle itself plus
+every existing ink-6 neighbour; the fixed-offset coupling mechanism
+(level 6) is falsified if the offset/partner relationship changes between
+boards without being re-measured per board.
+
+**Historical note**: this lesson's first draft treated "a ring with fewer
+than 4 real compass members" and "an ink value outside 0/2/3" as
+falsifiers of the CORE rule. Both have since occurred (level 5 has real
+3-member glyphs; ink 6 exists) — but in BOTH cases the resolution was
+that the core rule was never wrong, only DISCOVERY'S OWN filtering
+(the member-count floor) and SCOPE (assuming every non-background glyph
+must be a constraint-rule glyph) were incomplete. This is recorded as a
+lesson in itself: a "falsification" of an auxiliary discovery heuristic
+is not automatically a falsification of the underlying model it serves —
+check which layer actually broke before concluding the core hypothesis is
+wrong.
 
 ## Open items
 
-- **Level 5's commit-glyph win invariant** — unresolved, Codex pass in
-  flight on `scripts/_r58_ft09_l4_mystery_brief.md`.
+- **Level 5's mechanism is understood but not integrated.** Concrete
+  adapter work remaining: lower/replace the discovery minimum-member
+  floor (currently 4, silently drops the two real 3-member glyphs this
+  level needs); add the ink-6 stateful-button transition model (click
+  toggles self + every existing ink-6 neighbour) as a new mechanism
+  alongside the constraint rule; ensure level 5's level-start transition
+  is NOT mis-read as a genuine decoy->reveal (it isn't one — see the
+  engine-lifecycle correction above). Re-smoke 2x500 after landing.
 - **Level 6 has never been exercised live** — its mechanic is fully
   decoded and offline-verified (22/22 covered cells match gold's win
   state; the coupling model matches all 13 real gold clicks exactly), but
-  it sits sequentially behind level 5, which is unsolved, so it has never
-  actually been reached in a live run. Once level 5 clears, re-smoke to
-  confirm level 6 also clears as predicted — this is the one remaining
-  "gold-trace verified, live smoke not yet run" gap left in this arc.
+  it sits sequentially behind level 5, so it has never actually been
+  reached in a live run. Once level 5 clears, re-smoke to confirm level 6
+  also clears as predicted — this is the one remaining "gold-trace
+  verified, live smoke not yet run" gap left in this arc, and possibly
+  the last one needed to close it out at 6/6.
 
 ## Related
 

@@ -20,7 +20,7 @@ description: Built the vision-LLM-as-policy agent (the M1 #2/#3 Reki/forge lever
 
 ## Why this round
 
-`[[lb_top_team_research_20260714]]` established that all M1 top-3 use offline LLM
+`[[../lessons/lb_top_team_research_20260714]]` established that all M1 top-3 use offline LLM
 brains, and that the untried lever for our stack is vision-LLM-as-policy (Reki /
 forge): labeled frame image → pick-JSON action + reflection memory (~10 steps) +
 dead-signature avoidance + legal-action constraints + 1-4 action plan queue +
@@ -90,7 +90,7 @@ is <18 GB (the Mac WindowServer-crash ceiling) and the closest local stand-in.
 Any local number here would be a **LOWER BOUND** for the 31B deploy model: the
 26 B-a4b proxy is smaller and QAT-quantized, and the Mac GPU is far slower than
 the Kaggle RTX PRO 6000. A weak/slow proxy result is NOT a verdict on the lever
-(`[[lb_top_team_research_20260714]]` falsification requires a *fair* bring-up at
+(`[[../lessons/lb_top_team_research_20260714]]` falsification requires a *fair* bring-up at
 gemma-31b scale). This round delivers the validated, tested machinery so the
 31B Kaggle run is a config swap (`VLM_MODEL=gemma4:31b-it-q8_0`), not a rebuild.
 
@@ -102,11 +102,11 @@ gemma-31b scale). This round delivers the validated, tested machinery so the
 2. Head-to-head vs the chained card on the public 25 (fair bring-up: prompt
    iterations + the Reki efficiency kit already in the loop).
 3. If it measures below the LLM-free card after a fair bring-up, update the
-   falsification section of `[[lb_top_team_research_20260714]]`.
+   falsification section of `[[../lessons/lb_top_team_research_20260714]]`.
 
 ## Related
 
-- [[lb_top_team_research_20260714]] — the evidence and the lever definition.
+- [[../lessons/lb_top_team_research_20260714]] — the evidence and the lever definition.
 - [[r53_unified-harness]] — the current architecture; gemma SWA latency finding.
 - [[r55_code-repl-agent]] — the code-REPL arm; Round-2 pairs this JSON-policy
   agent against it in the 2×2 ablation.

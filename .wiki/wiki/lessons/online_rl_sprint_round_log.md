@@ -7,7 +7,7 @@ updated: 2026-07-02
 
 # Online-RL Sprint — Durable Round Log (narrative overview)
 
-> **🔎 To FIND past work by topic, start at the retrieval map [[rounds_index]]**
+> **🔎 To FIND past work by topic, start at the retrieval map [[../rounds/index]]**
 > (`.wiki/wiki/rounds/index.md`) — keyword groups → per-round pages. Each round has its own
 > page `.wiki/wiki/rounds/rNN_slug.md` with keywords, verdict, commit, and `[[backlinks]]`.
 > This file is the NARRATIVE overview + reliable-metric + resume steps; the per-round pages
@@ -50,7 +50,7 @@ WHICH action it picks regressed or did nothing. Do not re-try these:
 ## ✅ WHAT WORKED
 | Round | Tried | Result | Committed |
 |---|---|---|---|
-| R7 | deploy online-RL solo (not world-model/ensemble) | transfer-honest | `9c5d207` |
+| [[../rounds/r07_deploy-online-rl]] | deploy online-RL solo (not world-model/ensemble) | transfer-honest | `9c5d207` |
 | R8 | more per-game budget | depth ↑ w/o regression (LP85 2.33→3.67); MAX_ACTIONS 8000 | `850ee02` |
 | R11/R12 | breadth measurement | 14/25 clear, 12/14 STABLE (3-seed) | measure |
 | R13 | RHAE game_score inspection | **EFFICIENCY is the real lever** (clears 4-60x over human → ~0 score) | `00b3ae4` |
@@ -86,11 +86,11 @@ else you measure the old behavior.
 ## 2026-07-04 — "check all possibilities" batch (R25-R28, R27b) ALL FAIL; two structural walls named
 Ran the full remaining candidate set in parallel (code) + serial (measure). None beat the R19 card
 (9-subset 0.0134 / full-25 ~0.005):
-- R25 object-prior sweep (P=0.7→0.0051, P=0.3→0.0060) — starves novelty. DEAD (4 configs w/ R16/R18).
+- [[../rounds/r25_object-prior-sweep|R25]] object-prior sweep (P=0.7→0.0051, P=0.3→0.0060) — starves novelty. DEAD (4 configs w/ R16/R18).
 - R26 progress-Φ sweep (w=0.5→0.0133, w=1.0→0.0124) — reward-shaping axis EXHAUSTED (novelty-only best).
 - R27/R27b world-model+planning — planning NEVER fires (planned=0): tabular (state-sig,action) model
   has no data for near-unique ARC frames. SAME WALL AS R10. DEAD via tabular route.
-- R28 keep-learning-across-levels (0.0121) — new level = different state space; retaining policy hurts.
+- [[../rounds/r28_keep-across-levels|R28]] keep-learning-across-levels (0.0121) — new level = different state space; retaining policy hurts.
   Confirms R6 on a 2nd base. DEAD.
 
 ### TWO NAMED STRUCTURAL WALLS (why micro-levers are exhausted)
@@ -276,7 +276,7 @@ then bricked the session itself (prompt 1.84M tok > 1M; /compact can't shed a qu
 give the path.** Run 2 (20:19, memory-safe): **qwen3:14b exact=0.100 valid=1.00 gain=+0.100**
 (sp80 0.00→0.30 — refinement climb CONFIRMED); qwen3:8b exact=0.000, 2/3 games invalid code.
 30b (the R48 primary) still unmeasured: options = Q3_K_M quant (~13-14GB, fits) / Kaggle 96GB /
-accept 14b as lower bound. Details: [[r49_ewm-bench-partial]].
+accept 14b as lower bound. Details: [[../rounds/r49_ewm-bench-partial]].
 
 ## 2026-07-08 — TOP-SOLUTIONS SURVEY + METRIC CORRECTION (research, R53-adjacent)
 Full survey: [[top_solutions_survey_20260708]]. Load-bearing corrections:

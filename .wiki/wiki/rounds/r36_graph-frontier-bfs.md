@@ -40,7 +40,7 @@ masked-frame hash; (2) graph of observed exact transitions; (3) frontier-driven 
 R35 (neural forward-model transfer test) proceeds in parallel as a complementary question.
 
 **Related**: [[r34_metric-reexamination]], [[r32_neural-forward-model]], [[r10_object-state-hash]],
-[[r12_clear-rate-stable]]. See map: [[rounds_index]]. Overview: [[online_rl_sprint_round_log]].
+[[r12_clear-rate-stable]]. See map: [[index]]. Overview: [[../lessons/online_rl_sprint_round_log]].
 
 ## R36 v1 measurement (2026-07-05 17:24) — implementation defect + a game-changing side discovery
 - v1 RESULT: mean 0.0000 @3000 AND @8000 (identical); only M0R0/R11L clear L1, full budget burned.

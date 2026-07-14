@@ -32,7 +32,7 @@ high), so novelty stays the primary driver and planning only nudges when the mod
 reliable. Keep forward_model.py (the neural predictor is the real asset; the wall it beats is real).
 
 **Related rounds**: [[r27b_planning-gate]], [[r10_object-state-hash]], [[r05_planning-override]], [[r29_warmstart-off]]
-See map: [[rounds_index]]. Overview: [[online_rl_sprint_round_log]].
+See map: [[index]]. Overview: [[../lessons/online_rl_sprint_round_log]].
 
 ## R32b addendum (2026-07-04) — confidence gate didn't help; the wall is GOAL, not activation
 Added a running change-mask prediction-accuracy gate (RL_FWD_MIN_ACC=0.85). Result 0.0013 ≈ baseline

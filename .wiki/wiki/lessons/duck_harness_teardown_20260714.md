@@ -132,7 +132,7 @@ multimodality**, not tools (WU:147).
 
 | Axis | Duck | our `repl_agent` (R55) | Improvement opportunity |
 |---|---|---|---|
-| Perception | ASCII + 4× image + per-frame 4-conn segmentation (adjacency, parent-child) | segmentation-first turn packet with **stable object IDs across frames** + split/merge/appear/disappear events + containment/adjacency + holes + verified safe_click ([[r55_code-repl-agent]] M2) | add abstract-description perception (their named gap); our cross-frame tracking already exceeds their per-frame segmentation |
+| Perception | ASCII + 4× image + per-frame 4-conn segmentation (adjacency, parent-child) | segmentation-first turn packet with **stable object IDs across frames** + split/merge/appear/disappear events + containment/adjacency + holes + verified safe_click ([[../rounds/r55_code-repl-agent]] M2) | add abstract-description perception (their named gap); our cross-frame tracking already exceeds their per-frame segmentation |
 | Memory | free-text `World model:` note, overwrite-only | **falsifiable-hypothesis** memory {hypothesis, prediction, confidence, supporting, contradicting, status} + contradiction recovery + structured invariants/dead-interventions/options (M3) | directly implements their "curated memory" future-work; ours DOWNGRADES false theories they entrench |
 | Context mgmt | oldest-first eviction, 64k cap / 32k target | **3-tier history** (recent window / event ledger / persistent memory) + token-budgeted turn packet trimming largest section (M3) | event-triggered compaction (their ask) already designed; consider matching their 64k/32k envelope for the growing-chat variant |
 | Governance | none — prompt-steering only; drop UNDO | **ActionGovernor**: legal enforcement, repeated state-action prevention, macro gating (per-step precondition+invariant, stop-on-surprise), undo accounting (M5) | we ENFORCE mechanically what they beg the prompt to do → fewer wasted actions, structural not hopeful |
@@ -157,5 +157,5 @@ or a later write-up revision, correct it here with the new provenance.
 ## Related
 - the reference-only standing rule (memory `feedback-no-copying-winners`) — the reference-only standing rule.
 - [[lb_top_team_research_20260714]] — the M1 top-team survey this deepens.
-- [[r55_code-repl-agent]] — our code-REPL agent these deltas steer.
-- [[r54_vision-llm-policy]] — the JSON-policy arm (Reki/forge lever).
+- [[../rounds/r55_code-repl-agent]] — our code-REPL agent these deltas steer.
+- [[../rounds/r54_vision-llm-policy]] — the JSON-policy arm (Reki/forge lever).

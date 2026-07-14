@@ -26,7 +26,7 @@ worktree copy was lost).
   goal makes goal-directed planning beat baseline.
 
 **Related rounds**: [[r32_neural-forward-model]], [[r29_warmstart-off]], [[r13_efficiency-insight]]
-See map: [[rounds_index]]. Overview: [[online_rl_sprint_round_log]].
+See map: [[index]]. Overview: [[../lessons/online_rl_sprint_round_log]].
 
 ## R33b result (2026-07-05) — LLM goal = heuristic goal = baseline (forward-model accuracy is the wall)
 R33b (LLM goal via qwen3:8b at discovery, warm-start OFF) = 0.0013 — IDENTICAL to R33a heuristic

@@ -11,6 +11,8 @@ date: 2026-07-04
 
 # R27b — loosened planning gate + plan-usage counter
 
+> A loosened world-model planning confidence gate plus a plan-usage counter still measured planned=0 across every game (fallback=2117) — planning never fires even past 2000 actions, the same wall as R10.
+
 **Axis**: world-model-planning · **Verdict**: FAIL (root-cause diagnosed)
 
 Re-added planning with a LOOSENED confidence gate + a plan-usage counter in the TICK line. Result:
@@ -30,4 +32,4 @@ world-model would need a LEARNED (neural) forward model that generalizes across 
 much bigger build, and R24 showed bigger nets don't converge online within budget. Card stays.
 
 **Related rounds**: [[r10_object-state-hash]], [[r24_bigger-cnn]], [[r19_reward-shaping]]
-See map: [[rounds_index]]. Overview: [[online_rl_sprint_round_log]].
+See map: [[index]]. Overview: [[../lessons/online_rl_sprint_round_log]].

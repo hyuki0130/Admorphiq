@@ -33,4 +33,4 @@ forward model stays a SECONDARY asset (could improve with more data/epochs/pos_w
 training). PRIMARY deep-level path = R36 explicit graph (exact transitions, no accuracy question).
 
 **Related**: [[r36_graph-frontier-bfs]], [[r32_neural-forward-model]], [[r29_warmstart-off]]
-See map: [[rounds_index]].
+See map: [[index]].

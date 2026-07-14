@@ -37,4 +37,4 @@ keywords: [tools, hand-crafted, duck, reki, tolani, tool-evolution, dossier, lea
    R55 Round 1 inventory.
 
 ## Related
-[[lb_top_team_research_20260714]], [[duck_harness_teardown_20260714]], [[r55_code-repl-agent]]
+[[lb_top_team_research_20260714]], [[duck_harness_teardown_20260714]], [[../rounds/r55_code-repl-agent]]

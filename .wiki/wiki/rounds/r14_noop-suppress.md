@@ -11,10 +11,12 @@ date: 2026-07-02
 
 # R14 — noop suppress
 
+> No-op suppression keyed on (exact frame_hash, action) was byte-identical to baseline — exact frames never repeat, so the gate never fired.
+
 **Axis**: efficiency action-selection · **Verdict**: FAIL (byte-identical)
 **Keywords**: noop-suppress, exact-frame-hash
 
 No-op suppression keyed on (exact frame_hash, action). Byte-identical result — exact frames never repeat so the gate never fired.
 
 **Related rounds**: [[r15_dead-action-prune]]
-See the map: [[rounds_index]]. Deployed-card lineage + reliable metric: [[online_rl_sprint_round_log]].
+See the map: [[index]]. Deployed-card lineage + reliable metric: [[../lessons/online_rl_sprint_round_log]].

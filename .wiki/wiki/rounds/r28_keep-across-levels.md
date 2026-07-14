@@ -11,6 +11,8 @@ date: 2026-07-04
 
 # R28 — keep-learning-across-levels
 
+> Keeping the policy/optimizer/buffer across a level-up (refreshing only novelty counts) scored 0.0121, below the card's 0.0134 — confirms R6: a new level is a different state space, so retaining the old policy hinders more than it helps.
+
 **Axis**: depth-transition · **Verdict**: FAIL
 On level-up, keep policy/optimizer/buffer, refresh only novelty counts (env RL_KEEP_ACROSS_LEVELS,
 default OFF = card). Retry of R6 on the R19 shaping base. Result: mean game_score 0.0121 < card
@@ -19,4 +21,4 @@ card. Confirms R6: a new level is a DIFFERENT state space, so retaining the old 
 than helps. keep-learning axis DEAD (2 bases: R6 pre-shaping + R28 shaping). Card stays.
 
 **Related rounds**: [[r06_depth-boost]], [[r19_reward-shaping]], [[r13_efficiency-insight]]
-See map: [[rounds_index]]. Overview: [[online_rl_sprint_round_log]].
+See map: [[index]]. Overview: [[../lessons/online_rl_sprint_round_log]].

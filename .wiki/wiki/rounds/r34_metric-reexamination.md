@@ -41,4 +41,4 @@ wrong. ACTION ITEM: purge the unverified 0.18/0.25/1.21 baselines from the docs;
 top) and ~0.001 (RHAE random) as the real anchors.
 
 **Related**: [[r29_warmstart-off]], [[r13_efficiency-insight]], [[r33_goal-directed-planning]]
-See map: [[rounds_index]]. Overview: [[online_rl_sprint_round_log]]. MEASURED: random = **0.0000**, stochastic = **0.0000** on our 9-game harness (27 runs each) — random clears NOTHING. Confirms: our from-scratch online-RL (0.0014) clearly BEATS random; we are NOT sub-random. The '0.18 random' baseline is empirically false on the faithful RHAE harness.
+See map: [[index]]. Overview: [[../lessons/online_rl_sprint_round_log]]. MEASURED: random = **0.0000**, stochastic = **0.0000** on our 9-game harness (27 runs each) — random clears NOTHING. Confirms: our from-scratch online-RL (0.0014) clearly BEATS random; we are NOT sub-random. The '0.18 random' baseline is empirically false on the faithful RHAE harness.

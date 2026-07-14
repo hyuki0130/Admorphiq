@@ -11,10 +11,12 @@ date: 2026-07-01
 
 # R05 — planning override
 
+> Goal-directed planning that overrode novelty exploration regressed 4 stable games (AR25/FT09/LP85/M0R0) — first proof that overriding novelty breaks the learner.
+
 **Axis**: action-selection · **Verdict**: FAIL (regressed 4 stable games)
 **Keywords**: planning, goal-directed, exploration-override
 
 Goal-directed planning that OVERRODE novelty exploration. Regressed AR25/FT09/LP85/M0R0. First proof that overriding novelty breaks the learner.
 
 **Related rounds**: [[r09_additive-planning]], [[r19_reward-shaping]]
-See the map: [[rounds_index]]. Deployed-card lineage + reliable metric: [[online_rl_sprint_round_log]].
+See the map: [[index]]. Deployed-card lineage + reliable metric: [[../lessons/online_rl_sprint_round_log]].

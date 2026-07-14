@@ -26,7 +26,7 @@ internal computation (inspect transitions, test geometric hypotheses, build an
 explicit controller) WITHOUT spending environment actions, and reuse happens at
 the facts / options / controller-code levels — never exact trace replay.
 Complexity has a real tax (forge/Tufa: extra machinery hurt), so Round 1 is
-minimal with no elaborate reflection. Related: [[lb_top_team_research_20260714]],
+minimal with no elaborate reflection. Related: [[../lessons/lb_top_team_research_20260714]],
 [[r54_vision-llm-policy]] (the JSON-policy arm for the Round-2 2×2 ablation),
 [[r53_unified-harness]].
 
@@ -202,8 +202,9 @@ code-REPL arm.
 
 ## Related
 - [[r54_vision-llm-policy]] — the JSON-policy arm (Round-2 ablation leg).
-- [[lb_top_team_research_20260714]] — the M1 top-team evidence.
-- [[duck_harness_teardown_20260714]] — measured teardown of the #1 Duck harness; the design deltas steering this agent.
+- [[../lessons/lb_top_team_research_20260714]] — the M1 top-team evidence.
+- [[../lessons/duck_harness_teardown_20260714]] — measured teardown of the #1 Duck harness; the design deltas steering this agent.
+- [[../lessons/tools_verdict_dossier_20260714]] — the "hand-crafted tools" verdict, binding for this round's Round 1 inventory.
 - [[r53_unified-harness]] — the current harness; existing generic tools.
 - [[r56_generic-kernels]] — the namespace-safe kernel library built alongside this round; its 37 pure-computation exports (regions/motion/paths/shapes/canonical/geometry/rewrite) are natural code this agent's sandbox can `import admorphiq.kernels` and compose directly, and R55's matched12 goal-inference wall is a strong argument for keeping those kernels policy-free.
 - [[index]]

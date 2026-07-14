@@ -11,6 +11,8 @@ date: 2026-07-03
 
 # R25 — object-prior P_OBJECT sweep
 
+> Sweeping the re-added object-centric ACTION6 click prior (P_OBJECT=0.7 and 0.3) closed with both settings below the card (0.0051 and 0.0060 vs 0.0134) — the depth hint from R16 didn't survive a full sweep.
+
 **Axis**: exploration-prior · **Verdict**: sweeping (tune-before-discard)
 **Keywords**: object-prior, objectness, action6, click-prior, p-object, depth
 
@@ -26,4 +28,4 @@ Re-added the object-centric ACTION6 click prior (reverted after R16/R18) as env 
   R16/R18). Card stays.
 
 **Related rounds**: [[r16_object-click-prior]], [[r18_object-prior-full25]], [[r19_reward-shaping]]
-See map: [[rounds_index]]. Overview: [[online_rl_sprint_round_log]].
+See map: [[index]]. Overview: [[../lessons/online_rl_sprint_round_log]].

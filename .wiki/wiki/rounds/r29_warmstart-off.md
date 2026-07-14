@@ -11,6 +11,8 @@ date: 2026-07-04
 
 # R29 — warm-start OFF (transfer-honest baseline)
 
+> Measuring RL_NO_WARMSTART=1 (training from scratch, no public-gold BC prior) scored 0.0014 vs the warm-started card's 0.0134 — roughly 90% of the deployed card's score is public-gold BC inflation, not the online-RL lever itself.
+
 **Axis**: transfer-honesty · **Verdict**: CRITICAL REFRAMING
 
 The deployed card warm-starts the per-game policy from `bc_policy_v6.pt`, trained on PUBLIC-25 gold.
@@ -41,7 +43,7 @@ Do NOT keep optimizing warm-start-ON public scores — that is proxy-gaming (the
 warns about). All future RL-spine rounds should be judged with warm-start OFF (transfer-honest).
 
 **Related rounds**: [[r13_efficiency-insight]], [[r19_reward-shaping]], [[r17_full25-baseline]]
-See map: [[rounds_index]]. Overview: [[online_rl_sprint_round_log]].
+See map: [[index]]. Overview: [[../lessons/online_rl_sprint_round_log]].
 
 ## R30 addendum (2026-07-04) — shaping does NOT transfer either
 warm-start OFF + shaping OFF = 0.0015 ≈ R29 (warm-start OFF + shaping ON) = 0.0014 (noise; R30 even

@@ -11,10 +11,12 @@ date: 2026-07-01
 
 # R06 — depth boost
 
+> Depth-boost / keep-learning-after-levelup regressed LP85's depth — perturbing exploration regresses.
+
 **Axis**: action-selection · **Verdict**: FAIL (LP85 depth down)
 **Keywords**: depth, level-transition, keep-learning
 
 Depth-boost / keep-learning-after-levelup. Regressed LP85 depth. Perturbing exploration regresses.
 
 **Related rounds**: [[r13_efficiency-insight]], [[r19_reward-shaping]]
-See the map: [[rounds_index]]. Deployed-card lineage + reliable metric: [[online_rl_sprint_round_log]].
+See the map: [[index]]. Deployed-card lineage + reliable metric: [[../lessons/online_rl_sprint_round_log]].
