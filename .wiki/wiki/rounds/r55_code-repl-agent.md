@@ -371,3 +371,37 @@ on the frozen-dataset window while v4 ran:
 71 repl_agent tests, ruff clean, kernel imports clean off-Kaggle. Next in the
 confirmed order: the R1 namespace deltas (shortest_path, action_outcomes/is_dead,
 exclusions). v4 transcript analysis takes precedence when it lands.
+
+### v5 build — Codex v3-analysis review fixes (2026-07-14)
+
+Codex re-mined the v3 transcripts (docs/r55_codex_v3_analysis_review_20260714.md):
+2 of my diagnoses corrected (memory is static because NOTHING mutated it — not
+downstream of the REPL; truncation was inferred not proven) + 10 missed defects,
+4 structural. Implemented the big four + parser/coords/trim/tokens, one axis per
+commit:
+
+- **v5-1** (`d7ddabf`) — wire the rendered image into complete() (was
+  complete(prompt, None) — a text-only policy, not multimodal). render_images
+  flag for the JSON-only arm.
+- **v5-2** (`e8b1f53`) — restore causal feedback: LAST_ACTION carries action +
+  coords + source + outcome (board_changed/level/game_over); RECENT_TRANSITIONS
+  serialized (HistoryTiers.recent was never sent); RECENT_EVENTS tagged with
+  turn+action; game_id threaded (was always empty).
+- **v5-3** (`3d508f3`) — governed + disclosed fallback: 74/173 v3 turns ran a
+  hidden ungoverned fallback that could loop; now every fallback candidate is
+  governor-vetted (first legal non-repeat) and disclosed via source=fallback.
+- **v5-5** (`772892d`) — parser recovers a bare action ONLY from the last line
+  (no stale mid-reasoning recovery); coordinate fields renamed `_rc`
+  (safe_click_rc/bbox_rc/centroid_rc) in packet AND Inspector; trimming keeps
+  changed objects first + visible objects_shown marker; max_tokens 1536→512.
+- **v5-4** (`d12388c`) — bounded tool loop: inspection-only code returns its
+  stdout to the model (NO env action) for up to max_tool_rounds, then it acts;
+  inspection never triggers a hidden fallback; each round is its own TurnRecord.
+  `inspections` counter added.
+
+79 repl_agent tests, ruff clean, kernel imports clean. v5 targets Codex's
+integrity gates (0% illegal proposals, 0 stale-parse, 100% proposal→governor→
+executed correlation, disclosed fallback, inspection→0 env actions). Next: v4
+transcript legality-confirmation check when it lands, then the remaining
+namespace deltas (action_outcomes/is_dead) + the matched JSON-only arm
+(render_images=False + max_tool_rounds=0).
