@@ -196,7 +196,8 @@ def run_experiment() -> dict:
     """Matched 12-game audit OFF/ON experiment (Codex v8 ruling). Interleaved
     OFF/ON per game, su15 x3 replicates, sandbox fixes in both arms, no nav fix,
     no threshold changes. Per-run outputs suffixed by arm+rep."""
-    from arc_agi import Arcade, GameAction, OperationMode
+    from arc_agi import Arcade, OperationMode
+    from arcengine import GameAction
 
     from admorphiq.repl_agent.agent import OpenAICompatClient, ReplAgent
     from admorphiq.repl_agent.bench import (
