@@ -405,3 +405,35 @@ executed correlation, disclosed fallback, inspection→0 env actions). Next: v4
 transcript legality-confirmation check when it lands, then the remaining
 namespace deltas (action_outcomes/is_dead) + the matched JSON-only arm
 (render_images=False + max_tool_rounds=0).
+
+### v4 legality-confirmation check (2026-07-14, scratchpad/replbench_out4)
+
+v4 (legality-prompt) landed. The legality binding WORKED and the prompt
+description alone moved REPL engagement — but revealed the dominant failure mode
+that v5 was built to fix.
+
+- **Q1 legality binding: FULLY EFFECTIVE.** g50t/ls20 (no MOUSE) had **0 illegal
+  MOUSE proposals** (v3: 33 / 22). Governor rejections dropped to 4 / 7 (legit
+  repeats, not illegal actions).
+- **Q3 (the decisive finding): the prompt description ALONE engaged the REPL** —
+  code blocks went from 0 (v3) to the majority of turns (bp35 93/107, g50t
+  99/149, su15 58/74). BUT ~95% are **inspection-only** (no `action()` call):
+  g50t 94/99, bp35 86/93, su15 49/58. Since v4 **discards sandbox stdout**, those
+  inspection turns produce no action → **fallback**. Fallback rate is dominated
+  by this exact chain: bp35 86% fallback (86 inspection-only), g50t 69% (94),
+  su15 81% (49). **This is precisely what v5's bounded tool loop fixes** — the
+  model is already trying to inspect; v5 returns the stdout so those turns become
+  productive. Strong forward validation of v5's #1 fix.
+- **Q2 su15 parse failures (2):** both were a final-line bare `UNDO` (su15 is
+  legal `[MOUSE, UNDO]`) that the bare-text parser did not recognize → dropped →
+  fallback. Fixed: `UNDO` added to the movement regex (test added). Lands next
+  push.
+- No `_rc` / `shortest_path` usage yet (both post-date v4 — expected).
+
+**v5 expectation update:** because v4 proves the model inspects heavily but
+blindly, v5's stdout-return should sharply cut the fallback rate and convert
+inspection into real, informed actions. Watch: action-source split
+(code-with-action vs fallback), REPL engagement = code-that-informs-an-action,
+and whether informed inspection unlocks the first L1 clear. Throughput note: v4's
+g50t/ls20 hit the 150-action cap, but ~70%/29% of those were fallback churn, not
+productive play — v5 changes the character, not just the count.

@@ -117,6 +117,15 @@ def test_parse_bare_movement_word():
     assert p.actions == [{"action": "LEFT"}]
 
 
+def test_parse_bare_undo():
+    """Purpose: bare UNDO parses (su15 exposes [MOUSE, UNDO] and the v4 model
+    emitted a final-line UNDO that the parser dropped -> parse failure).
+
+    Feedback: failure means legal UNDO turns fall back on MOUSE+UNDO games.
+    """
+    assert parse_model_output("reasoning\nUNDO").actions == [{"action": "UNDO"}]
+
+
 def test_json_preferred_over_bare_text():
     """Purpose: a valid JSON action still wins over the bare-text fallback.
 

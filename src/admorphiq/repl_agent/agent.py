@@ -225,7 +225,7 @@ def strip_thinking(text: str) -> str:
 
 
 _MOUSE_RE = re.compile(r"MOUSE\s*\(\s*(\d+)\s*,\s*(\d+)\s*\)", re.IGNORECASE)
-_MOVE_RE = re.compile(r"^\s*(UP|DOWN|LEFT|RIGHT|SPACE|RESET)\s*$", re.IGNORECASE)
+_MOVE_RE = re.compile(r"^\s*(UP|DOWN|LEFT|RIGHT|SPACE|UNDO|RESET)\s*$", re.IGNORECASE)
 
 
 _PREDICT_RE = re.compile(
