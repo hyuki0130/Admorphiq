@@ -793,17 +793,23 @@ class Adapter(GameAdapter):
             if path:
                 # configuration_path returns only action LABELS -- replay
                 # them through the SAME successors closure to recover the
-                # expected state after each hop, so later hops can be
-                # validated against reality before executing (see
-                # __init__'s docstring). Deterministic and cheap: this is
-                # the identical closure BFS just searched with.
+                # state EACH hop expects to find itself in BEFORE it runs
+                # (its precondition), so later hops can be validated
+                # against reality before executing (see __init__'s
+                # docstring). expected_states[i] is the state produced by
+                # path[i] -- i.e. the precondition for path[i+1] -- so
+                # pending_plan (path[1:]) pairs with expected_states[:-1]
+                # (drop the FINAL state, which is the goal itself and has
+                # no further queued action to precede). Deterministic and
+                # cheap: this is the identical closure BFS just searched
+                # with.
                 expected_states: list[JointState] = []
                 cur = state
                 for step_action in path:
                     cur = next(ns for act, ns in successors(cur) if act == step_action)
                     expected_states.append(cur)
                 self._pending_plan = list(path[1:])
-                self._pending_plan_expected = expected_states[1:]
+                self._pending_plan_expected = expected_states[:-1]
                 return path[0]
 
         # No gap-improving joint move is currently known/reachable -- try
