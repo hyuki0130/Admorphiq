@@ -227,6 +227,7 @@ def test_discover_adapter_paths_excludes_init_and_base():
     assert "vc33.py" in names
     assert "tr87.py" in names
     assert "dc22.py" in names
+    assert "tu93.py" in names
 
 
 def test_real_m0r0_adapter_passes_the_lint():
@@ -355,6 +356,23 @@ def test_real_dc22_adapter_passes_the_lint():
     assert result.import_violations == []
 
 
+def test_real_tu93_adapter_passes_the_lint():
+    """Purpose: regression pin -- the actual shipped tu93 adapter (the
+    slide-until-wall maze navigation tenth mechanic family: an
+    incrementally-discovered transition graph over
+    admorphiq.kernels.transition_shortest_path, the first adapter where
+    the SAME action from the SAME cell is deterministic but the delta
+    varies by position, ruling out every other movement adapter's fixed
+    per-action dir_map/grid_shortest_path design) must ALSO have zero
+    import violations, proving the quarantine contract holds for a
+    graph-based (not grid-array-based) planner.
+    Expected feedback: failure means the tu93 adapter (or the lint's
+    whitelist) drifted out of sync with the quarantine rules."""
+    path = _REPO_ROOT / "src" / "admorphiq" / "adapters25" / "tu93.py"
+    result = lint_module(path)
+    assert result.import_violations == []
+
+
 def test_import_of_nonexistent_kernel_name_is_a_runtime_hard_failure():
     """Purpose: the exact regression a teammate hit — an adapter's import
     line is fully WHITELISTED (admorphiq.kernels is an allowed source) so
@@ -406,6 +424,7 @@ def test_real_adapter_files_are_import_smoke_tested_via_dotted_module_name():
         "vc33.py",
         "tr87.py",
         "dc22.py",
+        "tu93.py",
     ):
         result = lint_module(_ADAPTERS_DIR / name)
         assert result.import_error is None, f"{name}: {result.import_error}"
