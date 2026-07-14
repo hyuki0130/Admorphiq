@@ -206,11 +206,14 @@ def run_bench() -> dict:
         max_tool_rounds = int(os.environ.get("REPL_MAX_TOOL_ROUNDS", "1"))
     except ValueError:
         max_tool_rounds = 1
+    audit_enabled = os.environ.get("REPL_AUDIT", "0").strip().lower() in (
+        "1", "true", "yes", "on")
     arm = "repl" if (render_images or max_tool_rounds > 0) else "json_only"
     # Normalize the effective flags back into the env so run_manifest records the
     # exact arm that ran (config_env captures REPL_-prefixed vars).
     os.environ["REPL_RENDER_IMAGES"] = "1" if render_images else "0"
     os.environ["REPL_MAX_TOOL_ROUNDS"] = str(max_tool_rounds)
+    os.environ["REPL_AUDIT"] = "1" if audit_enabled else "0"
     os.environ["REPL_ARM"] = arm
     print(f"ARM={arm}", flush=True)  # self-identify in stdout
     print(f"[bench] arm={arm} render_images={render_images} "
@@ -252,7 +255,8 @@ def run_bench() -> dict:
             recorder = TranscriptRecorder(os.path.join(tr_dir, f"{game_id}.jsonl"))
             agent = ReplAgent(OpenAICompatClient(), recorder=recorder, game_id=game_id,
                               render_images=render_images,
-                              max_tool_rounds=max_tool_rounds)
+                              max_tool_rounds=max_tool_rounds,
+                              audit_enabled=audit_enabled)
             diag = run_game(env, agent, max_actions=MAX_ACTIONS, wall_s=WALL_S,
                             reset_action=GameAction.RESET, events=events)
             recorder.close()

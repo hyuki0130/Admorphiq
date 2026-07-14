@@ -324,6 +324,7 @@ class ReplAgent:
         render_images: bool = True,
         game_id: str = "",
         max_tool_rounds: int = 1,
+        audit_enabled: bool = False,
     ) -> None:
         from admorphiq.adapter import AdmorphiqAdapter
 
@@ -335,6 +336,9 @@ class ReplAgent:
         # the model for up to this many extra rounds before an action is required
         # (Codex defect #1). 0 = no tool loop (the JSON-only arm).
         self.max_tool_rounds = max_tool_rounds
+        # Counter-triggered goal-falsification audit (v7-3). Default OFF so the
+        # v6 (P0-only) vs v7 (audit) comparison stays one-variable.
+        self.audit_enabled = audit_enabled
         self._recorder = recorder
         self._builder = TurnPacketBuilder(token_budget=token_budget)
         self.last_hypothesis: str | None = None
@@ -369,6 +373,8 @@ class ReplAgent:
         self._prev_scene = None
         self._prev_action: dict[str, Any] | None = None
         self._macro_active = False
+        from admorphiq.repl_agent.audit import GoalAuditor
+        self._auditor = GoalAuditor()
         self._turn = 0
         self._turn_in_level = 0  # per-level action count (reset on level-up)
         self._steps = 0
@@ -430,6 +436,7 @@ class ReplAgent:
         self._queue.clear()
         self._macro_active = False
         self._prev_scene = None
+        self._auditor.reset_level()
         self._turn_in_level = 0  # per-level counter resets on level-up
         self._last_levels = levels
 
@@ -455,6 +462,15 @@ class ReplAgent:
             {"turn": self._turn, "action": self._prev_action,
              "source": self._last_source, "board_changed": changed}, events)
         self._score_prediction(changed)
+        if self.audit_enabled:
+            status = self._auditor.check_milestone(self._turn_in_level, level_up)
+            if status in ("met", "missed"):
+                st = self._auditor.state
+                # A GOAL hypothesis is supported ONLY when its milestone is met,
+                # contradicted when missed (not by mere board change — v7-4).
+                self._memory.record_progress(
+                    st.hypothesis or "current goal", st.milestone, st.falsifier,
+                    milestone_met=(status == "met"))
         if self._macro_active:
             status = self._governor.observe_after(
                 board_changed=changed, level_completed=level_up,
@@ -522,6 +538,9 @@ class ReplAgent:
             prev_frame=self._prev_frame, history=self._history, memory=self._memory)
         base_prompt = (_SYSTEM_PROMPT + "\n\n" + self._builder.to_yaml(packet)
                        + _legal_reminder(legal))
+        audit_due = self.audit_enabled and self._auditor.due(self._turn_in_level)
+        if audit_due:
+            base_prompt += self._auditor.prompt_section()
         images, img_hashes = self._render_image(frame)
         self._store.outcomes = self._outcomes  # expose evidence to the sandbox
 
@@ -555,6 +574,14 @@ class ReplAgent:
             parsed = parse_model_output(raw)
             if parsed.kind == "none":
                 self.parse_failures += 1
+            if audit_due:
+                audit_due = False  # process the audit fields once per decision
+                st = self._auditor.on_audit(self._auditor.parse(raw),
+                                            self._turn_in_level)
+                if st.hypothesis:
+                    self._memory.current_plan = [
+                        f"GOAL: {st.hypothesis}", f"MILESTONE: {st.milestone}",
+                        f"FALSIFIER: {st.falsifier}"]
             self._decided_source = {"code": "code", "macro": "macro",
                                     "actions": "llm"}.get(parsed.kind, "llm")
             prediction = parse_prediction(raw)
