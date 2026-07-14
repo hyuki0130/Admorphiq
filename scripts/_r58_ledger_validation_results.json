@@ -1,0 +1,1191 @@
+[
+  {
+    "game": "ar25",
+    "gt_primary": "arrival",
+    "gt_secondary": null,
+    "gt_note": "",
+    "repeat_window_available": true,
+    "candidates": [
+      "elimination"
+    ],
+    "n_competing": 1,
+    "insufficient_evidence": true,
+    "verdict": "MISS",
+    "unresolved_tests": [],
+    "full_result": {
+      "goal_candidates": [
+        {
+          "id": "goal:1",
+          "type": "elimination",
+          "support": [
+            "evidence:1"
+          ],
+          "against": []
+        }
+      ],
+      "unresolved_tests": [],
+      "insufficient_evidence": true
+    }
+  },
+  {
+    "game": "bp35",
+    "gt_primary": "arrival",
+    "gt_secondary": null,
+    "gt_note": "",
+    "repeat_window_available": true,
+    "candidates": [
+      "uniformity",
+      "containment",
+      "pattern_match",
+      "elimination"
+    ],
+    "n_competing": 4,
+    "insufficient_evidence": false,
+    "verdict": "MISS",
+    "unresolved_tests": [
+      "which of ['containment', 'elimination', 'pattern_match', 'uniformity'] is the true win condition is not yet determined by static structure alone"
+    ],
+    "full_result": {
+      "goal_candidates": [
+        {
+          "id": "goal:1",
+          "type": "uniformity",
+          "support": [
+            "evidence:1",
+            "evidence:2",
+            "evidence:3"
+          ],
+          "against": []
+        },
+        {
+          "id": "goal:2",
+          "type": "containment",
+          "support": [
+            "evidence:4",
+            "evidence:5",
+            "evidence:6"
+          ],
+          "against": []
+        },
+        {
+          "id": "goal:3",
+          "type": "pattern_match",
+          "support": [
+            "evidence:7"
+          ],
+          "against": []
+        },
+        {
+          "id": "goal:4",
+          "type": "elimination",
+          "support": [
+            "evidence:8"
+          ],
+          "against": []
+        }
+      ],
+      "unresolved_tests": [
+        "which of ['containment', 'elimination', 'pattern_match', 'uniformity'] is the true win condition is not yet determined by static structure alone"
+      ],
+      "insufficient_evidence": false
+    }
+  },
+  {
+    "game": "cd82",
+    "gt_primary": "pattern_match",
+    "gt_secondary": "arrival",
+    "gt_note": "",
+    "repeat_window_available": false,
+    "candidates": [
+      "arrival",
+      "containment",
+      "pattern_match",
+      "elimination"
+    ],
+    "n_competing": 4,
+    "insufficient_evidence": false,
+    "verdict": "TOPK",
+    "unresolved_tests": [
+      "which of ['arrival', 'containment', 'elimination', 'pattern_match'] is the true win condition is not yet determined by static structure alone"
+    ],
+    "full_result": {
+      "goal_candidates": [
+        {
+          "id": "goal:1",
+          "type": "arrival",
+          "support": [
+            "evidence:1"
+          ],
+          "against": []
+        },
+        {
+          "id": "goal:2",
+          "type": "containment",
+          "support": [
+            "evidence:2",
+            "evidence:3"
+          ],
+          "against": []
+        },
+        {
+          "id": "goal:3",
+          "type": "pattern_match",
+          "support": [
+            "evidence:4"
+          ],
+          "against": []
+        },
+        {
+          "id": "goal:4",
+          "type": "elimination",
+          "support": [
+            "evidence:5"
+          ],
+          "against": []
+        }
+      ],
+      "unresolved_tests": [
+        "which of ['arrival', 'containment', 'elimination', 'pattern_match'] is the true win condition is not yet determined by static structure alone"
+      ],
+      "insufficient_evidence": false
+    }
+  },
+  {
+    "game": "cn04",
+    "gt_primary": "arrival",
+    "gt_secondary": null,
+    "gt_note": "",
+    "repeat_window_available": true,
+    "candidates": [
+      "threshold"
+    ],
+    "n_competing": 1,
+    "insufficient_evidence": true,
+    "verdict": "MISS",
+    "unresolved_tests": [],
+    "full_result": {
+      "goal_candidates": [
+        {
+          "id": "goal:1",
+          "type": "threshold",
+          "support": [
+            "evidence:1"
+          ],
+          "against": []
+        }
+      ],
+      "unresolved_tests": [],
+      "insufficient_evidence": true
+    }
+  },
+  {
+    "game": "dc22",
+    "gt_primary": "arrival",
+    "gt_secondary": "elimination",
+    "gt_note": "",
+    "repeat_window_available": false,
+    "candidates": [
+      "arrival",
+      "uniformity",
+      "pattern_match",
+      "elimination"
+    ],
+    "n_competing": 4,
+    "insufficient_evidence": false,
+    "verdict": "TOP1",
+    "unresolved_tests": [
+      "which of ['arrival', 'elimination', 'pattern_match', 'uniformity'] is the true win condition is not yet determined by static structure alone",
+      "goal:1 (arrival) has a structural contradiction \u2014 resolve with a cheap probe before committing"
+    ],
+    "full_result": {
+      "goal_candidates": [
+        {
+          "id": "goal:1",
+          "type": "arrival",
+          "support": [
+            "evidence:1"
+          ],
+          "against": [
+            "evidence:6"
+          ]
+        },
+        {
+          "id": "goal:2",
+          "type": "uniformity",
+          "support": [
+            "evidence:2",
+            "evidence:3",
+            "evidence:4"
+          ],
+          "against": []
+        },
+        {
+          "id": "goal:3",
+          "type": "pattern_match",
+          "support": [
+            "evidence:5"
+          ],
+          "against": []
+        },
+        {
+          "id": "goal:4",
+          "type": "elimination",
+          "support": [
+            "evidence:7"
+          ],
+          "against": []
+        }
+      ],
+      "unresolved_tests": [
+        "which of ['arrival', 'elimination', 'pattern_match', 'uniformity'] is the true win condition is not yet determined by static structure alone",
+        "goal:1 (arrival) has a structural contradiction \u2014 resolve with a cheap probe before committing"
+      ],
+      "insufficient_evidence": false
+    }
+  },
+  {
+    "game": "ft09",
+    "gt_primary": "uniformity",
+    "gt_secondary": null,
+    "gt_note": "",
+    "repeat_window_available": true,
+    "candidates": [
+      "uniformity",
+      "pattern_match",
+      "elimination",
+      "threshold"
+    ],
+    "n_competing": 4,
+    "insufficient_evidence": false,
+    "verdict": "TOP1",
+    "unresolved_tests": [
+      "which of ['elimination', 'pattern_match', 'threshold', 'uniformity'] is the true win condition is not yet determined by static structure alone"
+    ],
+    "full_result": {
+      "goal_candidates": [
+        {
+          "id": "goal:1",
+          "type": "uniformity",
+          "support": [
+            "evidence:1",
+            "evidence:2",
+            "evidence:3"
+          ],
+          "against": []
+        },
+        {
+          "id": "goal:2",
+          "type": "pattern_match",
+          "support": [
+            "evidence:4"
+          ],
+          "against": []
+        },
+        {
+          "id": "goal:3",
+          "type": "elimination",
+          "support": [
+            "evidence:5"
+          ],
+          "against": []
+        },
+        {
+          "id": "goal:4",
+          "type": "threshold",
+          "support": [
+            "evidence:6"
+          ],
+          "against": []
+        }
+      ],
+      "unresolved_tests": [
+        "which of ['elimination', 'pattern_match', 'threshold', 'uniformity'] is the true win condition is not yet determined by static structure alone"
+      ],
+      "insufficient_evidence": false
+    }
+  },
+  {
+    "game": "g50t",
+    "gt_primary": "unclassified",
+    "gt_secondary": null,
+    "gt_note": "",
+    "repeat_window_available": true,
+    "candidates": [
+      "arrival",
+      "pattern_match"
+    ],
+    "n_competing": 2,
+    "insufficient_evidence": false,
+    "verdict": "N/A(unclassified)",
+    "unresolved_tests": [
+      "which of ['arrival', 'pattern_match'] is the true win condition is not yet determined by static structure alone"
+    ],
+    "full_result": {
+      "goal_candidates": [
+        {
+          "id": "goal:1",
+          "type": "arrival",
+          "support": [
+            "evidence:1"
+          ],
+          "against": []
+        },
+        {
+          "id": "goal:2",
+          "type": "pattern_match",
+          "support": [
+            "evidence:2"
+          ],
+          "against": []
+        }
+      ],
+      "unresolved_tests": [
+        "which of ['arrival', 'pattern_match'] is the true win condition is not yet determined by static structure alone"
+      ],
+      "insufficient_evidence": false
+    }
+  },
+  {
+    "game": "ka59",
+    "gt_primary": "elimination",
+    "gt_secondary": "unsupported(T4 delivery)",
+    "gt_note": "",
+    "repeat_window_available": true,
+    "candidates": [
+      "arrival",
+      "containment",
+      "elimination",
+      "threshold"
+    ],
+    "n_competing": 4,
+    "insufficient_evidence": false,
+    "verdict": "TOPK",
+    "unresolved_tests": [
+      "which of ['arrival', 'containment', 'elimination', 'threshold'] is the true win condition is not yet determined by static structure alone",
+      "goal:1 (arrival) has a structural contradiction \u2014 resolve with a cheap probe before committing"
+    ],
+    "full_result": {
+      "goal_candidates": [
+        {
+          "id": "goal:1",
+          "type": "arrival",
+          "support": [
+            "evidence:1"
+          ],
+          "against": [
+            "evidence:4"
+          ]
+        },
+        {
+          "id": "goal:2",
+          "type": "containment",
+          "support": [
+            "evidence:2",
+            "evidence:3"
+          ],
+          "against": []
+        },
+        {
+          "id": "goal:3",
+          "type": "elimination",
+          "support": [
+            "evidence:5"
+          ],
+          "against": []
+        },
+        {
+          "id": "goal:4",
+          "type": "threshold",
+          "support": [
+            "evidence:6"
+          ],
+          "against": []
+        }
+      ],
+      "unresolved_tests": [
+        "which of ['arrival', 'containment', 'elimination', 'threshold'] is the true win condition is not yet determined by static structure alone",
+        "goal:1 (arrival) has a structural contradiction \u2014 resolve with a cheap probe before committing"
+      ],
+      "insufficient_evidence": false
+    }
+  },
+  {
+    "game": "lf52",
+    "gt_primary": "containment",
+    "gt_secondary": null,
+    "gt_note": "R57 itself grades this LOW CONFIDENCE",
+    "repeat_window_available": true,
+    "candidates": [
+      "uniformity",
+      "containment",
+      "elimination"
+    ],
+    "n_competing": 3,
+    "insufficient_evidence": false,
+    "verdict": "TOPK",
+    "unresolved_tests": [
+      "which of ['containment', 'elimination', 'uniformity'] is the true win condition is not yet determined by static structure alone"
+    ],
+    "full_result": {
+      "goal_candidates": [
+        {
+          "id": "goal:1",
+          "type": "uniformity",
+          "support": [
+            "evidence:1",
+            "evidence:2",
+            "evidence:3"
+          ],
+          "against": []
+        },
+        {
+          "id": "goal:2",
+          "type": "containment",
+          "support": [
+            "evidence:4",
+            "evidence:5",
+            "evidence:6"
+          ],
+          "against": []
+        },
+        {
+          "id": "goal:3",
+          "type": "elimination",
+          "support": [
+            "evidence:7"
+          ],
+          "against": []
+        }
+      ],
+      "unresolved_tests": [
+        "which of ['containment', 'elimination', 'uniformity'] is the true win condition is not yet determined by static structure alone"
+      ],
+      "insufficient_evidence": false
+    }
+  },
+  {
+    "game": "lp85",
+    "gt_primary": "arrival",
+    "gt_secondary": "threshold(ambiguous)",
+    "gt_note": "",
+    "repeat_window_available": true,
+    "candidates": [
+      "uniformity"
+    ],
+    "n_competing": 1,
+    "insufficient_evidence": true,
+    "verdict": "MISS",
+    "unresolved_tests": [],
+    "full_result": {
+      "goal_candidates": [
+        {
+          "id": "goal:1",
+          "type": "uniformity",
+          "support": [
+            "evidence:1",
+            "evidence:2",
+            "evidence:3"
+          ],
+          "against": []
+        }
+      ],
+      "unresolved_tests": [],
+      "insufficient_evidence": true
+    }
+  },
+  {
+    "game": "ls20",
+    "gt_primary": "arrival",
+    "gt_secondary": null,
+    "gt_note": "",
+    "repeat_window_available": true,
+    "candidates": [
+      "arrival",
+      "containment",
+      "pattern_match",
+      "elimination"
+    ],
+    "n_competing": 4,
+    "insufficient_evidence": false,
+    "verdict": "TOP1",
+    "unresolved_tests": [
+      "which of ['arrival', 'containment', 'elimination', 'pattern_match'] is the true win condition is not yet determined by static structure alone",
+      "goal:1 (arrival) has a structural contradiction \u2014 resolve with a cheap probe before committing"
+    ],
+    "full_result": {
+      "goal_candidates": [
+        {
+          "id": "goal:1",
+          "type": "arrival",
+          "support": [
+            "evidence:1"
+          ],
+          "against": [
+            "evidence:6"
+          ]
+        },
+        {
+          "id": "goal:2",
+          "type": "containment",
+          "support": [
+            "evidence:2",
+            "evidence:3",
+            "evidence:4"
+          ],
+          "against": []
+        },
+        {
+          "id": "goal:3",
+          "type": "pattern_match",
+          "support": [
+            "evidence:5"
+          ],
+          "against": []
+        },
+        {
+          "id": "goal:4",
+          "type": "elimination",
+          "support": [
+            "evidence:7"
+          ],
+          "against": []
+        }
+      ],
+      "unresolved_tests": [
+        "which of ['arrival', 'containment', 'elimination', 'pattern_match'] is the true win condition is not yet determined by static structure alone",
+        "goal:1 (arrival) has a structural contradiction \u2014 resolve with a cheap probe before committing"
+      ],
+      "insufficient_evidence": false
+    }
+  },
+  {
+    "game": "m0r0",
+    "gt_primary": "arrival",
+    "gt_secondary": null,
+    "gt_note": "",
+    "repeat_window_available": false,
+    "candidates": [
+      "arrival"
+    ],
+    "n_competing": 1,
+    "insufficient_evidence": true,
+    "verdict": "TOP1",
+    "unresolved_tests": [],
+    "full_result": {
+      "goal_candidates": [
+        {
+          "id": "goal:1",
+          "type": "arrival",
+          "support": [
+            "evidence:1"
+          ],
+          "against": []
+        }
+      ],
+      "unresolved_tests": [],
+      "insufficient_evidence": true
+    }
+  },
+  {
+    "game": "r11l",
+    "gt_primary": "threshold",
+    "gt_secondary": null,
+    "gt_note": "R57 grades LOW CONFIDENCE, ambiguous vs unsupported T8",
+    "repeat_window_available": true,
+    "candidates": [
+      "arrival",
+      "uniformity",
+      "containment",
+      "elimination"
+    ],
+    "n_competing": 4,
+    "insufficient_evidence": false,
+    "verdict": "MISS",
+    "unresolved_tests": [
+      "which of ['arrival', 'containment', 'elimination', 'uniformity'] is the true win condition is not yet determined by static structure alone",
+      "goal:1 (arrival) has a structural contradiction \u2014 resolve with a cheap probe before committing"
+    ],
+    "full_result": {
+      "goal_candidates": [
+        {
+          "id": "goal:1",
+          "type": "arrival",
+          "support": [
+            "evidence:1"
+          ],
+          "against": [
+            "evidence:7"
+          ]
+        },
+        {
+          "id": "goal:2",
+          "type": "uniformity",
+          "support": [
+            "evidence:2",
+            "evidence:3",
+            "evidence:4"
+          ],
+          "against": []
+        },
+        {
+          "id": "goal:3",
+          "type": "containment",
+          "support": [
+            "evidence:5",
+            "evidence:6"
+          ],
+          "against": []
+        },
+        {
+          "id": "goal:4",
+          "type": "elimination",
+          "support": [
+            "evidence:8"
+          ],
+          "against": []
+        }
+      ],
+      "unresolved_tests": [
+        "which of ['arrival', 'containment', 'elimination', 'uniformity'] is the true win condition is not yet determined by static structure alone",
+        "goal:1 (arrival) has a structural contradiction \u2014 resolve with a cheap probe before committing"
+      ],
+      "insufficient_evidence": false
+    }
+  },
+  {
+    "game": "re86",
+    "gt_primary": "containment",
+    "gt_secondary": null,
+    "gt_note": "",
+    "repeat_window_available": true,
+    "candidates": [
+      "arrival",
+      "uniformity",
+      "elimination"
+    ],
+    "n_competing": 3,
+    "insufficient_evidence": false,
+    "verdict": "MISS",
+    "unresolved_tests": [
+      "which of ['arrival', 'elimination', 'uniformity'] is the true win condition is not yet determined by static structure alone"
+    ],
+    "full_result": {
+      "goal_candidates": [
+        {
+          "id": "goal:1",
+          "type": "arrival",
+          "support": [
+            "evidence:1"
+          ],
+          "against": []
+        },
+        {
+          "id": "goal:2",
+          "type": "uniformity",
+          "support": [
+            "evidence:2",
+            "evidence:3",
+            "evidence:4"
+          ],
+          "against": []
+        },
+        {
+          "id": "goal:3",
+          "type": "elimination",
+          "support": [
+            "evidence:5"
+          ],
+          "against": []
+        }
+      ],
+      "unresolved_tests": [
+        "which of ['arrival', 'elimination', 'uniformity'] is the true win condition is not yet determined by static structure alone"
+      ],
+      "insufficient_evidence": false
+    }
+  },
+  {
+    "game": "s5i5",
+    "gt_primary": "arrival",
+    "gt_secondary": null,
+    "gt_note": "axis-projected variant, ledger only does 2D bbox",
+    "repeat_window_available": true,
+    "candidates": [
+      "uniformity",
+      "containment",
+      "elimination"
+    ],
+    "n_competing": 3,
+    "insufficient_evidence": false,
+    "verdict": "MISS",
+    "unresolved_tests": [
+      "which of ['containment', 'elimination', 'uniformity'] is the true win condition is not yet determined by static structure alone"
+    ],
+    "full_result": {
+      "goal_candidates": [
+        {
+          "id": "goal:1",
+          "type": "uniformity",
+          "support": [
+            "evidence:1",
+            "evidence:2",
+            "evidence:3"
+          ],
+          "against": []
+        },
+        {
+          "id": "goal:2",
+          "type": "containment",
+          "support": [
+            "evidence:4",
+            "evidence:5"
+          ],
+          "against": []
+        },
+        {
+          "id": "goal:3",
+          "type": "elimination",
+          "support": [
+            "evidence:6"
+          ],
+          "against": []
+        }
+      ],
+      "unresolved_tests": [
+        "which of ['containment', 'elimination', 'uniformity'] is the true win condition is not yet determined by static structure alone"
+      ],
+      "insufficient_evidence": false
+    }
+  },
+  {
+    "game": "sb26",
+    "gt_primary": "containment",
+    "gt_secondary": null,
+    "gt_note": "",
+    "repeat_window_available": true,
+    "candidates": [
+      "uniformity",
+      "containment",
+      "pattern_match"
+    ],
+    "n_competing": 3,
+    "insufficient_evidence": false,
+    "verdict": "TOPK",
+    "unresolved_tests": [
+      "which of ['containment', 'pattern_match', 'uniformity'] is the true win condition is not yet determined by static structure alone"
+    ],
+    "full_result": {
+      "goal_candidates": [
+        {
+          "id": "goal:1",
+          "type": "uniformity",
+          "support": [
+            "evidence:1",
+            "evidence:2",
+            "evidence:3"
+          ],
+          "against": []
+        },
+        {
+          "id": "goal:2",
+          "type": "containment",
+          "support": [
+            "evidence:4",
+            "evidence:5"
+          ],
+          "against": []
+        },
+        {
+          "id": "goal:3",
+          "type": "pattern_match",
+          "support": [
+            "evidence:6"
+          ],
+          "against": []
+        }
+      ],
+      "unresolved_tests": [
+        "which of ['containment', 'pattern_match', 'uniformity'] is the true win condition is not yet determined by static structure alone"
+      ],
+      "insufficient_evidence": false
+    }
+  },
+  {
+    "game": "sc25",
+    "gt_primary": "pattern_match",
+    "gt_secondary": "uniformity",
+    "gt_note": "R57 calls phase1/phase2 a hybrid; either type counts as a hit",
+    "repeat_window_available": true,
+    "candidates": [
+      "uniformity",
+      "containment"
+    ],
+    "n_competing": 2,
+    "insufficient_evidence": false,
+    "verdict": "TOP1",
+    "unresolved_tests": [
+      "which of ['containment', 'uniformity'] is the true win condition is not yet determined by static structure alone"
+    ],
+    "full_result": {
+      "goal_candidates": [
+        {
+          "id": "goal:1",
+          "type": "uniformity",
+          "support": [
+            "evidence:1",
+            "evidence:2",
+            "evidence:3"
+          ],
+          "against": []
+        },
+        {
+          "id": "goal:2",
+          "type": "containment",
+          "support": [
+            "evidence:4",
+            "evidence:5",
+            "evidence:6"
+          ],
+          "against": []
+        }
+      ],
+      "unresolved_tests": [
+        "which of ['containment', 'uniformity'] is the true win condition is not yet determined by static structure alone"
+      ],
+      "insufficient_evidence": false
+    }
+  },
+  {
+    "game": "sk48",
+    "gt_primary": "arrival",
+    "gt_secondary": null,
+    "gt_note": "",
+    "repeat_window_available": true,
+    "candidates": [
+      "uniformity",
+      "containment",
+      "elimination",
+      "threshold"
+    ],
+    "n_competing": 4,
+    "insufficient_evidence": false,
+    "verdict": "MISS",
+    "unresolved_tests": [
+      "which of ['containment', 'elimination', 'threshold', 'uniformity'] is the true win condition is not yet determined by static structure alone"
+    ],
+    "full_result": {
+      "goal_candidates": [
+        {
+          "id": "goal:1",
+          "type": "uniformity",
+          "support": [
+            "evidence:1",
+            "evidence:2",
+            "evidence:3"
+          ],
+          "against": []
+        },
+        {
+          "id": "goal:2",
+          "type": "containment",
+          "support": [
+            "evidence:4",
+            "evidence:5",
+            "evidence:6"
+          ],
+          "against": []
+        },
+        {
+          "id": "goal:3",
+          "type": "elimination",
+          "support": [
+            "evidence:7"
+          ],
+          "against": []
+        },
+        {
+          "id": "goal:4",
+          "type": "threshold",
+          "support": [
+            "evidence:8"
+          ],
+          "against": []
+        }
+      ],
+      "unresolved_tests": [
+        "which of ['containment', 'elimination', 'threshold', 'uniformity'] is the true win condition is not yet determined by static structure alone"
+      ],
+      "insufficient_evidence": false
+    }
+  },
+  {
+    "game": "sp80",
+    "gt_primary": "arrival",
+    "gt_secondary": "pattern_match",
+    "gt_note": "",
+    "repeat_window_available": true,
+    "candidates": [
+      "arrival",
+      "elimination"
+    ],
+    "n_competing": 2,
+    "insufficient_evidence": false,
+    "verdict": "TOP1",
+    "unresolved_tests": [
+      "which of ['arrival', 'elimination'] is the true win condition is not yet determined by static structure alone"
+    ],
+    "full_result": {
+      "goal_candidates": [
+        {
+          "id": "goal:1",
+          "type": "arrival",
+          "support": [
+            "evidence:1"
+          ],
+          "against": []
+        },
+        {
+          "id": "goal:2",
+          "type": "elimination",
+          "support": [
+            "evidence:2"
+          ],
+          "against": []
+        }
+      ],
+      "unresolved_tests": [
+        "which of ['arrival', 'elimination'] is the true win condition is not yet determined by static structure alone"
+      ],
+      "insufficient_evidence": false
+    }
+  },
+  {
+    "game": "su15",
+    "gt_primary": "containment",
+    "gt_secondary": null,
+    "gt_note": "",
+    "repeat_window_available": true,
+    "candidates": [
+      "uniformity",
+      "elimination",
+      "threshold"
+    ],
+    "n_competing": 3,
+    "insufficient_evidence": false,
+    "verdict": "MISS",
+    "unresolved_tests": [
+      "which of ['elimination', 'threshold', 'uniformity'] is the true win condition is not yet determined by static structure alone"
+    ],
+    "full_result": {
+      "goal_candidates": [
+        {
+          "id": "goal:1",
+          "type": "uniformity",
+          "support": [
+            "evidence:1",
+            "evidence:2",
+            "evidence:3"
+          ],
+          "against": []
+        },
+        {
+          "id": "goal:2",
+          "type": "elimination",
+          "support": [
+            "evidence:4"
+          ],
+          "against": []
+        },
+        {
+          "id": "goal:3",
+          "type": "threshold",
+          "support": [
+            "evidence:5"
+          ],
+          "against": []
+        }
+      ],
+      "unresolved_tests": [
+        "which of ['elimination', 'threshold', 'uniformity'] is the true win condition is not yet determined by static structure alone"
+      ],
+      "insufficient_evidence": false
+    }
+  },
+  {
+    "game": "tn36",
+    "gt_primary": "unsupported(T8 programmatic)",
+    "gt_secondary": null,
+    "gt_note": "",
+    "repeat_window_available": true,
+    "candidates": [
+      "uniformity",
+      "pattern_match",
+      "elimination"
+    ],
+    "n_competing": 3,
+    "insufficient_evidence": false,
+    "verdict": "N/A(expected-unsupported)",
+    "unresolved_tests": [
+      "which of ['elimination', 'pattern_match', 'uniformity'] is the true win condition is not yet determined by static structure alone"
+    ],
+    "full_result": {
+      "goal_candidates": [
+        {
+          "id": "goal:1",
+          "type": "uniformity",
+          "support": [
+            "evidence:1",
+            "evidence:2",
+            "evidence:3"
+          ],
+          "against": []
+        },
+        {
+          "id": "goal:2",
+          "type": "pattern_match",
+          "support": [
+            "evidence:4"
+          ],
+          "against": []
+        },
+        {
+          "id": "goal:3",
+          "type": "elimination",
+          "support": [
+            "evidence:5"
+          ],
+          "against": []
+        }
+      ],
+      "unresolved_tests": [
+        "which of ['elimination', 'pattern_match', 'uniformity'] is the true win condition is not yet determined by static structure alone"
+      ],
+      "insufficient_evidence": false
+    }
+  },
+  {
+    "game": "tu93",
+    "gt_primary": "arrival",
+    "gt_secondary": null,
+    "gt_note": "",
+    "repeat_window_available": false,
+    "candidates": [
+      "arrival",
+      "uniformity",
+      "elimination"
+    ],
+    "n_competing": 3,
+    "insufficient_evidence": false,
+    "verdict": "TOP1",
+    "unresolved_tests": [
+      "which of ['arrival', 'elimination', 'uniformity'] is the true win condition is not yet determined by static structure alone",
+      "goal:1 (arrival) has a structural contradiction \u2014 resolve with a cheap probe before committing"
+    ],
+    "full_result": {
+      "goal_candidates": [
+        {
+          "id": "goal:1",
+          "type": "arrival",
+          "support": [
+            "evidence:1"
+          ],
+          "against": [
+            "evidence:5"
+          ]
+        },
+        {
+          "id": "goal:2",
+          "type": "uniformity",
+          "support": [
+            "evidence:2",
+            "evidence:3",
+            "evidence:4"
+          ],
+          "against": []
+        },
+        {
+          "id": "goal:3",
+          "type": "elimination",
+          "support": [
+            "evidence:6"
+          ],
+          "against": []
+        }
+      ],
+      "unresolved_tests": [
+        "which of ['arrival', 'elimination', 'uniformity'] is the true win condition is not yet determined by static structure alone",
+        "goal:1 (arrival) has a structural contradiction \u2014 resolve with a cheap probe before committing"
+      ],
+      "insufficient_evidence": false
+    }
+  },
+  {
+    "game": "vc33",
+    "gt_primary": "arrival",
+    "gt_secondary": null,
+    "gt_note": "",
+    "repeat_window_available": true,
+    "candidates": [
+      "arrival",
+      "elimination"
+    ],
+    "n_competing": 2,
+    "insufficient_evidence": false,
+    "verdict": "TOP1",
+    "unresolved_tests": [
+      "which of ['arrival', 'elimination'] is the true win condition is not yet determined by static structure alone"
+    ],
+    "full_result": {
+      "goal_candidates": [
+        {
+          "id": "goal:1",
+          "type": "arrival",
+          "support": [
+            "evidence:1"
+          ],
+          "against": []
+        },
+        {
+          "id": "goal:2",
+          "type": "elimination",
+          "support": [
+            "evidence:2"
+          ],
+          "against": []
+        }
+      ],
+      "unresolved_tests": [
+        "which of ['arrival', 'elimination'] is the true win condition is not yet determined by static structure alone"
+      ],
+      "insufficient_evidence": false
+    }
+  },
+  {
+    "game": "wa30",
+    "gt_primary": "unsupported(T4 delivery)",
+    "gt_secondary": null,
+    "gt_note": "",
+    "repeat_window_available": true,
+    "candidates": [
+      "arrival"
+    ],
+    "n_competing": 1,
+    "insufficient_evidence": true,
+    "verdict": "N/A(expected-unsupported)",
+    "unresolved_tests": [],
+    "full_result": {
+      "goal_candidates": [
+        {
+          "id": "goal:1",
+          "type": "arrival",
+          "support": [
+            "evidence:1"
+          ],
+          "against": []
+        }
+      ],
+      "unresolved_tests": [],
+      "insufficient_evidence": true
+    }
+  }
+]
