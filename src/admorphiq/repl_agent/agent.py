@@ -77,7 +77,10 @@ _SYSTEM_PROMPT = (
     "NOT click — move instead.\n"
     "  - Coordinates are (row, col) = (y, x), each 0-63.\n"
     "  - Do NOT print the whole board. At most ~4 short lines of reasoning, then "
-    "the code block or action line LAST."
+    "the code block or action line LAST.\n"
+    "  - Before your action, add ONE line `PREDICT: changed` or `PREDICT: "
+    "no_change` — whether your action will change the board — then a few words "
+    "of why. This is scored against what actually happens."
 )
 
 
@@ -217,6 +220,25 @@ _MOUSE_RE = re.compile(r"MOUSE\s*\(\s*(\d+)\s*,\s*(\d+)\s*\)", re.IGNORECASE)
 _MOVE_RE = re.compile(r"^\s*(UP|DOWN|LEFT|RIGHT|SPACE|RESET)\s*$", re.IGNORECASE)
 
 
+_PREDICT_RE = re.compile(
+    r"PREDICT\s*:\s*(no[_ ]?change|changed|change)\b[\s:.\-]*(.*)", re.IGNORECASE)
+
+
+def parse_prediction(text: str) -> dict[str, Any] | None:
+    """Extract a ``PREDICT: changed|no_change — <reason>`` line, if present.
+
+    Returns ``{"prediction": "changed"|"no_change", "hypothesis": <reason>}`` so
+    the agent can score it against the observed transition next turn.
+    """
+    m = _PREDICT_RE.search(text or "")
+    if not m:
+        return None
+    pred = "no_change" if m.group(1).lower().replace(" ", "_").startswith("no") \
+        else "changed"
+    reason = m.group(2).strip().lstrip("-—:.() ").strip()
+    return {"prediction": pred, "hypothesis": reason[:200]}
+
+
 def _bare_text_action(text: str) -> dict[str, Any] | None:
     """Accept the model's NATURAL bare-text action as a fallback.
 
@@ -300,6 +322,9 @@ class ReplAgent:
         self.sandbox_errors = 0
         self.llm_errors = 0
         self.truncations = 0
+        self.predictions_made = 0
+        self.predictions_correct = 0
+        self._pending_prediction: dict[str, Any] | None = None
         self._reset_game()
 
     def _reset_game(self) -> None:
@@ -374,6 +399,7 @@ class ReplAgent:
         changed = not np.array_equal(frame, self._prev_frame)
         events = [f"{e['type']} {e.get('id', '')}".strip() for e in scene.events]
         self._history.push({"action": self._prev_action, "changed": changed}, events)
+        self._score_prediction(changed)
         if self._macro_active:
             status = self._governor.observe_after(
                 board_changed=changed, level_completed=level_up,
@@ -384,6 +410,21 @@ class ReplAgent:
                     self._queue.append(step.request().to_dict())
             else:  # macro_done / macro_aborted / idle
                 self._macro_active = False
+
+    def _score_prediction(self, changed: bool) -> None:
+        """Score the previous turn's PREDICT against the observed change and feed
+        the falsifiable memory (so MEMORY evolves — the v3 static-memory gap)."""
+        pred = self._pending_prediction
+        if pred is None:
+            return
+        self._pending_prediction = None
+        correct = (pred["prediction"] == "changed") == changed
+        self.predictions_made += 1
+        if correct:
+            self.predictions_correct += 1
+        act = (self._prev_action or {}).get("action", "?")
+        text = pred.get("hypothesis") or f"{act} -> {pred['prediction']}"
+        self._memory.record_prediction(text, pred["prediction"], correct)
 
     def _decide(self, obs: Any, frame: np.ndarray, scene: Any) -> None:
         legal = _legal_names(obs)
@@ -418,6 +459,8 @@ class ReplAgent:
         parsed = parse_model_output(raw)
         if parsed.kind == "none":
             self.parse_failures += 1
+        prediction = parse_prediction(raw)
+        self._pending_prediction = prediction
         sandbox_out = sandbox_err = ""
         chosen: dict[str, Any] | None = None
 
@@ -441,7 +484,8 @@ class ReplAgent:
         chosen = self._queue[0] if self._queue else None
         self._record_turn(obs, prompt, raw, parsed, sandbox_out, sandbox_err,
                           chosen, frame, latency_ms,
-                          finish_reason=finish_reason, tokens=meta.get("tokens"))
+                          finish_reason=finish_reason, tokens=meta.get("tokens"),
+                          prediction=prediction)
 
     def _govern_single(self, a: dict[str, Any], legal: set[str],
                        hw: tuple[int, int], state_hash: str) -> dict[str, Any] | None:
@@ -502,7 +546,8 @@ class ReplAgent:
                      chosen: dict[str, Any] | None, frame: np.ndarray,
                      latency_ms: float, *, finish_reason: str = "",
                      tokens: dict[str, int] | None = None,
-                     image_hashes: list[str] | None = None) -> None:
+                     image_hashes: list[str] | None = None,
+                     prediction: dict[str, Any] | None = None) -> None:
         if self._recorder is None:
             return
         rec = TurnRecord(
@@ -512,7 +557,7 @@ class ReplAgent:
             prompt_text=prompt, image_hashes=image_hashes or [], raw_output=raw,
             finish_reason=finish_reason, parsed_tool_calls=normalize_parse(raw),
             sandbox_stdout=sandbox_out, sandbox_error=sandbox_err,
-            action=chosen,
+            action=chosen, prediction=prediction,
             # The decision is made ON this frame -> it is the BEFORE hash. The
             # post-action frame is only observed next turn; the bench event
             # stream is authoritative for the transition's after-hash.

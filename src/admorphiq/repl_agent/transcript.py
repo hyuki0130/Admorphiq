@@ -54,6 +54,7 @@ class TurnRecord:
     sandbox_stdout: str = ""
     sandbox_error: str = ""
     action: dict[str, Any] | None = None
+    prediction: dict[str, Any] | None = None  # {prediction, hypothesis} pre-action
     frame_before_hash: str = ""
     frame_after_hash: str = ""
     frame_before: list[list[int]] | None = None

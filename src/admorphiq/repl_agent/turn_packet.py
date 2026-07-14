@@ -94,6 +94,29 @@ class EnvironmentMemory:
     def add_hypothesis(self, h: Hypothesis) -> None:
         self.goal_hypotheses.append(h)
 
+    def record_prediction(self, text: str, prediction: str, correct: bool,
+                          cap: int = 32) -> Hypothesis:
+        """Score a per-turn prediction, evolving a deduped falsifiable hypothesis.
+
+        Finds the existing hypothesis with the same (text, prediction) or creates
+        one, then ``support``\\ s it on a correct prediction / ``contradict``\\ s
+        on a wrong one — so confidence tracks the model's real predictive
+        accuracy instead of a static note. Bounded: drops the oldest rejected
+        (else oldest) hypothesis past ``cap``.
+        """
+        h = next((x for x in self.goal_hypotheses
+                  if x.hypothesis == text and x.prediction == prediction), None)
+        if h is None:
+            h = Hypothesis(hypothesis=text, prediction=prediction, confidence=0.5)
+            self.goal_hypotheses.append(h)
+        (h.support if correct else h.contradict)(
+            "observed match" if correct else "observed mismatch")
+        if len(self.goal_hypotheses) > cap:
+            rejected = [i for i, x in enumerate(self.goal_hypotheses)
+                        if x.status == "rejected"]
+            self.goal_hypotheses.pop(rejected[0] if rejected else 0)
+        return h
+
     def active_hypotheses(self) -> list[Hypothesis]:
         return [h for h in self.goal_hypotheses if h.status != "rejected"]
 

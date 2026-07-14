@@ -22,6 +22,7 @@ from admorphiq.repl_agent.agent import (
     ReplAgent,
     normalize_parse,
     parse_model_output,
+    parse_prediction,
     strip_thinking,
 )
 from admorphiq.repl_agent.transcript import TranscriptRecorder, TranscriptReplayer
@@ -219,6 +220,38 @@ def test_agent_records_finish_reason_and_counts_truncation():
     turn = rec.records[-1]
     assert turn.finish_reason == "length"
     assert turn.tokens == {"input": 10, "output": 1536}
+
+
+def test_parse_prediction():
+    """Purpose: a PREDICT line is parsed into {prediction, hypothesis}.
+
+    Feedback: failure means predictions can't be scored against transitions.
+    """
+    assert parse_prediction("PREDICT: changed — box moves left\nLEFT") == {
+        "prediction": "changed", "hypothesis": "box moves left"}
+    assert parse_prediction("PREDICT: no_change (wall blocks)\nLEFT")["prediction"] \
+        == "no_change"
+    assert parse_prediction("just an action\nLEFT") is None
+
+
+def test_prediction_scored_and_memory_evolves():
+    """Purpose: a per-turn PREDICT is scored against the observed change, counted,
+    and fed to the falsifiable memory so MEMORY stops being static (the v3 gap).
+
+    Feedback: failure means the causal 'predicted vs actual' account the
+    observability directive requires is missing.
+    """
+    # Turn 1: predict changed + move; turn 2: the frame actually changed.
+    llm = MockLLM(["PREDICT: changed — I move right\n{\"action\":\"RIGHT\"}",
+                   "PREDICT: no_change\n{\"action\":\"LEFT\"}"])
+    agent = ReplAgent(llm)
+    agent.choose_action([], _obs(_frame(obj_col=5)))   # sets pending prediction
+    agent.choose_action([], _obs(_frame(obj_col=7)))   # frame changed -> score it
+    assert agent.predictions_made == 1
+    assert agent.predictions_correct == 1               # predicted changed, it did
+    mem = agent._memory.to_dict()
+    assert mem["goal_hypotheses"]                        # memory is no longer static
+    assert mem["goal_hypotheses"][0]["prediction"] == "changed"
 
 
 def test_llm_error_is_survived_and_recorded():

@@ -252,12 +252,14 @@ def run_bench() -> dict:
             "llm_calls": diag.llm_calls, "llm_errors": diag.llm_errors,
             "terminal": diag.terminal_reason, "parse_failures": diag.parse_failures,
             "truncations": diag.truncations,
+            "predictions": f"{diag.predictions_correct}/{diag.predictions_made}",
             "governor_rejections": diag.governor_rejections,
             "sandbox_errors": diag.sandbox_errors, "error": diag.error,
         }
         print(f"[bench] {game_id}: levels={diag.levels} actions={diag.actions} "
               f"wall={diag.wall_s}s llm={diag.llm_calls} llm_err={diag.llm_errors} "
-              f"trunc={diag.truncations} term={diag.terminal_reason} "
+              f"trunc={diag.truncations} pred={diag.predictions_correct}/"
+              f"{diag.predictions_made} term={diag.terminal_reason} "
               f"parse_fail={diag.parse_failures} gov_rej={diag.governor_rejections} "
               f"sbx_err={diag.sandbox_errors}", flush=True)
     return summary
