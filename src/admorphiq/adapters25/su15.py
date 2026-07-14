@@ -222,6 +222,34 @@ _HUD_THICKNESS_FRACTION = 0.06
 # necessary: SU15's diagonal step-line.
 _SCATTER_MIN_CLUSTERS = 10
 _SCATTER_MAX_DENSITY = 0.05
+# Proximity radius (px, centroid-to-centroid) for grouping one colour's own
+# regions into spatial SUBGROUPS before the scatter test runs -- a real bug
+# measured directly (R56, gold-replay divergence against su15.npz L1/L2): a
+# single UNRELATED same-coloured region far from a genuinely dense, real
+# tile inflated that colour's overall bbox enough to push the WHOLE group's
+# density under _SCATTER_MAX_DENSITY, silently excluding the real tile's
+# every fragment from candidates entirely (not mis-ranked -- gone). Grouping
+# by single-linkage chaining at this radius scopes the density test to each
+# LOCAL cluster: a real tile's own fragments (measured ~2-8px apart) chain
+# into one subgroup with its own tight bbox regardless of a distant stray;
+# a genuinely scattered decorative pattern (SU15's diagonal step-line,
+# consecutive dots ~2.8px apart) still chains into one elongated subgroup
+# and is still correctly measured as sparse over its own (large) bbox.
+_SUBGROUP_RADIUS = 10.0
+# Gap-tolerant clustering radius (kernels.find_regions' own `gap` param --
+# same-colour CELLS within Chebyshev distance gap+1 join one region) used
+# for the CANDIDATE-EMISSION pass only (never for scatter classification,
+# which needs gap=0's fine-grained fragments to preserve the true sparse-
+# pattern signal -- see _candidates). Measured (R56, 9-level offline
+# acceptance table over every opening frame in su15.npz): a single game
+# tile renders as ~15-17 DISCONNECTED same-colour fragments (a symmetric
+# bowtie sprite shape, not one connected blob); gap=2 fuses every such
+# bowtie into one region with a true aggregate centroid on all 9 levels
+# while never merging two GENUINELY distinct same-coloured tiles (e.g. L9's
+# 4 separate colour-9 tiles, sizes [49,64,69,69] spread 61px apart, stay 4
+# distinct regions through gap=4) -- the smallest gap value that fully
+# resolves every measured bowtie case.
+_CANDIDATE_GAP = 2
 
 # Measured minimum click-ahead distance (px) that ever registered a shift
 # (iteration-5 probe: 5px/7px dead, 10px worked) -- both the STARTING
@@ -264,32 +292,99 @@ def _is_hud_band(region: Region, height: int, width: int) -> bool:
     return full_width_thin or full_height_thin
 
 
+def _spatial_subgroups(regions: list[Region], radius: float) -> list[list[Region]]:
+    """Single-linkage chain ``regions`` (already ONE colour, by construction
+    of every caller here) into subgroups: two regions join the same
+    subgroup when their centroid distance is at most ``radius``, and
+    membership is TRANSITIVE (a chain of close regions groups together
+    even when its two ends are farther apart than ``radius``) -- exactly
+    the property that keeps a real tile's own fragments (and a genuinely
+    elongated decorative line, whose consecutive dots are each close to
+    their neighbour) in ONE subgroup, while a single distant, unrelated
+    region of the same colour never joins either."""
+    n = len(regions)
+    parent = list(range(n))
+
+    def find(i: int) -> int:
+        while parent[i] != i:
+            parent[i] = parent[parent[i]]
+            i = parent[i]
+        return i
+
+    def union(i: int, j: int) -> None:
+        ri, rj = find(i), find(j)
+        if ri != rj:
+            parent[ri] = rj
+
+    for i in range(n):
+        for j in range(i + 1, n):
+            if _dist2(regions[i]["centroid"], regions[j]["centroid"]) <= radius * radius:
+                union(i, j)
+
+    groups: dict[int, list[Region]] = {}
+    for i in range(n):
+        groups.setdefault(find(i), []).append(regions[i])
+    return list(groups.values())
+
+
 def _scatter_colors(regions: list[Region]) -> set[int]:
+    """Colours whose regions are scattered decoration, not movable tiles.
+
+    Groups each colour's OWN regions into spatial subgroups first (see
+    :func:`_spatial_subgroups`) and applies the min-clusters/density test
+    per subgroup -- a colour is scattered if ANY of its subgroups
+    independently qualifies. Necessary (not just a robustness nicety):
+    testing density over a colour's FULL region list, unscoped, measured a
+    real bug (R56, gold-replay divergence against su15.npz) -- one
+    UNRELATED same-coloured region far from a genuinely dense real tile
+    inflated the whole colour's bbox enough to push density under
+    threshold, silently excluding the real tile's every fragment from
+    candidates."""
     by_color: dict[int, list[Region]] = {}
     for r in regions:
         by_color.setdefault(r["color"], []).append(r)
     out: set[int] = set()
     for color, rs in by_color.items():
-        if len(rs) < _SCATTER_MIN_CLUSTERS:
-            continue
-        rows = [r["centroid"][0] for r in rs]
-        cols = [r["centroid"][1] for r in rs]
-        bbox_area = (max(rows) - min(rows) + 1) * (max(cols) - min(cols) + 1)
-        if bbox_area > 0 and len(rs) / bbox_area < _SCATTER_MAX_DENSITY:
-            out.add(color)
+        for group in _spatial_subgroups(rs, _SUBGROUP_RADIUS):
+            if len(group) < _SCATTER_MIN_CLUSTERS:
+                continue
+            rows = [r["centroid"][0] for r in group]
+            cols = [r["centroid"][1] for r in group]
+            bbox_area = (max(rows) - min(rows) + 1) * (max(cols) - min(cols) + 1)
+            if bbox_area > 0 and len(group) / bbox_area < _SCATTER_MAX_DENSITY:
+                out.add(color)
+                break
     return out
 
 
 def _candidates(grid: tuple[tuple[int, ...], ...]) -> list[Region]:
-    """Non-chrome regions: excludes background, HUD bands, and scattered colors."""
+    """Non-chrome candidate objects: excludes background, HUD bands, and
+    scattered colors, with fragmented tile sprites fused into one region
+    per physical object.
+
+    TWO passes, deliberately at different granularities (see
+    :data:`_CANDIDATE_GAP`'s docstring for the measured justification):
+    scatter classification runs on the FINE-grained (``gap=0``) region
+    list, since a genuinely scattered decorative pattern's own sparse
+    signature is only visible at native resolution -- gap-tolerant fusion
+    would merge it into one elongated blob and hide that signature just as
+    it correctly fuses a real fragmented tile's own pieces. The actual
+    candidate list returned is built from the GAP-FUSED (``gap=
+    _CANDIDATE_GAP``) regions, filtering out whichever colours the
+    fine-grained pass flagged as scattered, so a real tile gets ONE
+    candidate entry with a true aggregate centroid instead of ~15-17
+    fragment entries."""
     if not grid:
         return []
     height, width = len(grid), len(grid[0])
     total = height * width
     bg = most_common_color(grid)
-    regions = find_regions(grid, background=bg)
-    non_hud = [r for r in regions if not _is_hud_band(r, height, width)]
-    scatter = _scatter_colors(non_hud)
+
+    fine = find_regions(grid, background=bg, gap=0)
+    scatter = _scatter_colors([r for r in fine if not _is_hud_band(r, height, width)])
+
+    fused = find_regions(grid, background=bg, gap=_CANDIDATE_GAP)
+    non_hud = [r for r in fused if not _is_hud_band(r, height, width)]
     return [r for r in non_hud if r["color"] not in scatter and r["size"] <= total * _MAX_CANDIDATE_FRACTION]
 
 
@@ -310,7 +405,7 @@ def _same_color_pairs(tiles: list[Region]) -> list[tuple[Region, Region]]:
 
 
 def _ranked_targets(
-    tiles: list[Region], goal: Region
+    tiles: list[Region], goal: Region, *, prefer_lone: bool = False
 ) -> list[tuple[Region, tuple[float, float]]]:
     """(source_tile, destination_point) pairs in preferred order.
 
@@ -319,11 +414,36 @@ def _ranked_targets(
     so a straggler is never abandoned half-walked while a closer tile sits
     idle). The caller picks the first entry whose click path clears the
     hazard check.
+
+    ``prefer_lone=True`` moves COLOUR-UNIQUE tiles (no same-coloured
+    partner exists anywhere in ``tiles``) ahead of every pair, instead of
+    behind. Used ONLY for the very first decision this level (no click has
+    been issued yet, so there is zero movement evidence): a same-colour
+    PAIR is an unverified guess at this point (two regions sharing a
+    colour by coincidence, e.g. static decoration, look identical to a
+    genuine mergeable pair with no prior observation to tell them apart --
+    measured directly, R56 gold-replay divergence against su15.npz L1: the
+    default ordering picked two never-moving decorative regions as its
+    first click, where gold instead probed the one colour-UNIQUE, genuinely
+    movable tile). A colour-unique tile carries no such ambiguity -- it is
+    the only candidate of its colour, so there is nothing to misidentify it
+    as. Tiles that DO have a partner are never reordered by this flag (they
+    stay in their normal after-pairs position) -- only genuinely unique
+    tiles jump the queue.
     """
-    out: list[tuple[Region, tuple[float, float]]] = [(a, b["centroid"]) for a, b in _same_color_pairs(tiles)]
-    for t in sorted(tiles, key=lambda r: -_dist2(r["centroid"], goal["centroid"])):
-        out.append((t, goal["centroid"]))
-    return out
+    pairs: list[tuple[Region, tuple[float, float]]] = [(a, b["centroid"]) for a, b in _same_color_pairs(tiles)]
+    lone: list[tuple[Region, tuple[float, float]]] = [
+        (t, goal["centroid"]) for t in sorted(tiles, key=lambda r: -_dist2(r["centroid"], goal["centroid"]))
+    ]
+    if not prefer_lone:
+        return pairs + lone
+
+    color_counts: dict[int, int] = {}
+    for t in tiles:
+        color_counts[t["color"]] = color_counts.get(t["color"], 0) + 1
+    lone_unique = [entry for entry in lone if color_counts[entry[0]["color"]] == 1]
+    lone_rest = [entry for entry in lone if color_counts[entry[0]["color"]] != 1]
+    return lone_unique + pairs + lone_rest
 
 
 def _tile_key(region: Region) -> tuple[int, int, int]:
@@ -413,6 +533,11 @@ class Adapter(GameAdapter):
         self._target_history: dict[tuple[int, int, int], int] = {}
         self._same_target_key: tuple[int, int, int] | None = None
         self._same_target_count = 0
+        # Clicks committed so far THIS level -- gates _ranked_targets'
+        # prefer_lone flag (see that function's docstring): on click 0
+        # (zero movement evidence yet), a colour-unique tile is preferred
+        # over trusting a same-colour pair guess. Reset on level-up.
+        self._clicks_this_level = 0
 
     # ── harness contract ────────────────────────────────────────────────
 
@@ -444,6 +569,7 @@ class Adapter(GameAdapter):
             self._target_history = {}
             self._same_target_key = None
             self._same_target_count = 0
+            self._clicks_this_level = 0
 
         self._step += 1
         self._observe_result(grid)
@@ -571,12 +697,24 @@ class Adapter(GameAdapter):
 
         # Exclude dead-bucketed (repeated no-useful-shift clicks) AND
         # fatal-bucketed (one click that immediately GAME_OVER'd) tiles
-        # from future targeting for the rest of the level -- unless that
-        # empties the pool entirely, in which case still act rather than
-        # freeze.
+        # from future targeting for the rest of the level. A real,
+        # measured bug this fixed (R56, live-smoke diagnostic against the
+        # candidate-fix above): the PREVIOUS version fell back to the
+        # FULL unfiltered tile list whenever every tile happened to be
+        # excluded, which -- once enough tiles accumulate dead status --
+        # RE-ENABLES tiles already PROVEN dead/fatal, producing an
+        # infinite retry loop on a confirmed-useless source (measured
+        # live: a static decoration dead-bucketed at step 8 got re-picked
+        # at step 19 via exactly this path). If every candidate is
+        # confirmed dead/fatal, there is nothing left worth clicking on
+        # purpose -- degrade to the same harmless centre re-probe used
+        # when there are no candidates at all, never resurrect a proven-
+        # useless bucket.
         excluded = self._dead_buckets | self._fatal_buckets
         alive_tiles = [t for t in tiles if _tile_key(t) not in excluded]
-        pool = alive_tiles or tiles
+        if not alive_tiles:
+            return (height // 2, width // 2)
+        pool = alive_tiles
 
         if self._same_target_count > _STALL_ROTATE_THRESHOLD:
             # The same tile has been the click source too many times in a
@@ -587,10 +725,16 @@ class Adapter(GameAdapter):
             least_recent = min(pool, key=lambda t: self._target_history.get(_tile_key(t), -1))
             return self._commit_target(least_recent, goal["centroid"], height, width)
 
-        src_region, dst_point = _ranked_targets(pool, goal)[0]
+        # Zero clicks committed yet this level: no movement evidence exists
+        # to confirm a same-colour pair is real (see _ranked_targets'
+        # prefer_lone docstring) -- probe a colour-unique tile first if one
+        # exists.
+        prefer_lone = self._clicks_this_level == 0
+        src_region, dst_point = _ranked_targets(pool, goal, prefer_lone=prefer_lone)[0]
         return self._commit_target(src_region, dst_point, height, width)
 
     def _commit_target(self, src_region: Region, dst_point: tuple[float, float], height: int, width: int) -> Cell:
+        self._clicks_this_level += 1
         key = _tile_key(src_region)
         if key == self._same_target_key:
             self._same_target_count += 1
