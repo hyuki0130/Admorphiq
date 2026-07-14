@@ -663,3 +663,28 @@ key corrections:
   a non-oracle router; simulated 110-game runtime < 8h. Integrate as a
   zero-action plan proposer / pre-action routed controller — NOT a post-stall
   fallback (stalled actions permanently damage RHAE).
+
+### v9 — next levers (flag-gated, built while matched12 runs) + su15 L2 finding
+
+Built the next levers, all default-OFF so they don't touch the matched12
+comparison and each becomes its own one-variable test after the verdict:
+
+- **REPL_PLAN** (`383e4f4`, Codex #1 efficiency lever) — while a goal is active,
+  between audits the prompt requests a short 2-5 step MACRO (precondition +
+  predicted invariant per step) through the existing governor macro machinery
+  (arm → stop-on-surprise → re-plan). Converts post-revision wandering into
+  verified short bursts. Not on the goal-declaration turn.
+- **REPL_NAV** (`8b0d9f5`) — for the ls20/dc22/g50t/tu93 nav class, audits nudge
+  the model to CALL `shortest_path` with its OWN start/goal/passable_mask (tool
+  decides nothing).
+- **REPL_EXPERIMENT=full25** (`ae1cf72`) — 25 games × single audit-ON arm
+  (~450s/run ~3.2h), ready to push after the matched12 gate passes.
+
+**su15 L2 finding (v7 post-L1 segment):** L1 cleared at idx 20, then 95 records
+on L2, **never reaching L2 clear**. On L2 the model did NOT carry the L1 revised
+mechanic ("moving objects to zones") across the boundary — it re-hypothesized
+fresh ("black ring / red object center"). So the composition property (learned
+mechanic amortizing across levels) did NOT visibly help here; L2 is a distinct
+sub-configuration the model re-reasons from scratch. A future lever: carry the
+CONFIRMED mechanic (not just the goal) across the level boundary — relevant to
+the submission-chain's "L2+ knowledge amortizes" condition.
