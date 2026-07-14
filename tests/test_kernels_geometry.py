@@ -2,6 +2,7 @@
 covering-offset kernels (R56)."""
 
 import copy
+from pathlib import Path
 
 import pytest
 
@@ -13,8 +14,14 @@ from admorphiq.kernels import (
     elongated_axis,
     point_toward,
     project_to_axis,
+    recover_occluded_frame,
     split_fused_frame,
 )
+
+# data/ is gitignored (not a committed asset) -- the real-data check below
+# skips itself when the trace isn't present locally, rather than failing a
+# fresh clone or CI checkout that never downloaded it.
+_SB26_TRACE = Path(__file__).resolve().parent.parent / "data" / "traces" / "sb26.npz"
 
 
 def _blank(h, w, bg=0):
@@ -368,3 +375,150 @@ def test_split_fused_frame_frame_validation_rejects_background_colour():
     _paint_border(grid, 0, 0, 4, 4, 0)
     with pytest.raises(ValueError, match="background"):
         split_fused_frame(_ring_cells(0, 0, 4, 4), frame=grid, background=0)
+
+
+# ---- recover_occluded_frame: the inverse case (MISSING, not extra, border cells) ----
+
+
+def test_recover_occluded_frame_recovers_ring_when_gap_matches_an_occluder():
+    """Purpose: the exact SB26 second-portal-frame scenario this kernel was
+    built for -- a ring missing two border cells because a differently-
+    coloured pipe crosses exactly there. Occluder cells covering precisely
+    the gap must recover the FULL geometric border (including the two
+    currently-foreign-coloured cells), report them as occluded_cells, and
+    attribute them to the contributing occluder.
+    Expected feedback: failure means either the gap-detection (bbox from the
+    ring's own cells) or the occluder-coverage check is wrong -- the primary
+    contract this kernel exists to satisfy."""
+    gapped = _CLEAN_RING - {(4, 2), (4, 3)}
+    occluder = {(4, 2), (4, 3), (5, 2), (5, 3)}  # extends past the ring too, like a real pipe
+    out = recover_occluded_frame(gapped, occluders=[occluder])
+    assert out["frame"]["border_cells"] == frozenset(_CLEAN_RING)
+    assert out["frame"]["outer_bbox"] == (0, 0, 4, 4)
+    assert out["frame"]["inner_bbox"] == (1, 1, 3, 3)
+    assert out["occluded_cells"] == frozenset({(4, 2), (4, 3)})
+    assert out["occluded_by"] == [{"occluder_index": 0, "cells": frozenset({(4, 2), (4, 3)})}]
+
+
+def test_recover_occluded_frame_splits_credit_across_multiple_occluders():
+    """Purpose: when two DIFFERENT missing cells are each covered by a
+    DIFFERENT occluder, both must be recovered and occluded_by must report
+    both contributors separately, by index -- proving credit assignment is
+    per-occluder, not just a pooled "some occluder somewhere" check.
+    Expected feedback: failure means the union-coverage check works but the
+    per-occluder attribution (occluded_by) collapses distinct sources into
+    one, which would break a caller trying to identify which occluder
+    crosses the border where."""
+    gapped = _CLEAN_RING - {(0, 2), (4, 2)}
+    occluder_top = {(0, 2), (-1, 2)}
+    occluder_bottom = {(4, 2), (5, 2)}
+    out = recover_occluded_frame(gapped, occluders=[occluder_top, occluder_bottom])
+    assert out["occluded_cells"] == frozenset({(0, 2), (4, 2)})
+    by_index = {e["occluder_index"]: e["cells"] for e in out["occluded_by"]}
+    assert by_index == {0: frozenset({(0, 2)}), 1: frozenset({(4, 2)})}
+
+
+def test_recover_occluded_frame_unexplained_gap_returns_none():
+    """Purpose: a missing border cell NOT covered by any supplied occluder
+    means the gap is genuinely unexplained -- possibly just absent, not
+    occluded -- and must NOT be silently recovered. This is the core safety
+    property distinguishing "provable occlusion" from "any incomplete ring
+    gets patched up."
+    Expected feedback: failure means the kernel forces a recovery even when
+    no evidence supports it, which would corrupt downstream slot/portal
+    detection on a genuinely broken or partially-drawn frame."""
+    gapped = _CLEAN_RING - {(4, 2), (4, 3)}
+    occluder = {(4, 2)}  # only explains ONE of the two missing cells
+    assert recover_occluded_frame(gapped, occluders=[occluder]) is None
+
+
+def test_recover_occluded_frame_no_missing_cells_returns_none():
+    """Purpose: a candidate whose cells already form a complete ring (no
+    gap at all) is not an occlusion case -- this kernel deliberately does
+    NOT act as a superset of closed_frames, keeping composition explicit
+    (callers try closed_frames first, this only as a fallback).
+    Expected feedback: failure means the kernel silently duplicates
+    closed_frames' job instead of staying a distinct fallback tool."""
+    assert recover_occluded_frame(_CLEAN_RING, occluders=[{(9, 9)}]) is None
+
+
+def test_recover_occluded_frame_solid_blob_missing_corner_returns_none():
+    """Purpose: a solid filled rectangle (interior cells present) that also
+    happens to be missing one border cell must still be rejected -- the
+    hole-must-be-cell-free check applies here exactly as it does in
+    split_fused_frame, so a filled block is never mistaken for a hollow
+    ring merely because an occluder can explain its one gap.
+    Expected feedback: failure means the hole-emptiness guard was dropped
+    when adapting split_fused_frame's validation to this inverse case."""
+    blob = {(r, c) for r in range(5) for c in range(5)} - {(0, 0)}
+    out = recover_occluded_frame(blob, occluders=[{(0, 0)}])
+    assert out is None
+
+
+def test_recover_occluded_frame_accepts_region_dicts_for_both_arguments():
+    """Purpose: both the candidate AND each occluder must accept EITHER a
+    find_regions-shaped region dict or a bare cell iterable, matching
+    split_fused_frame's dual entry-point convention -- a caller composing
+    straight from find_regions output should never need to manually unpack
+    "cells" from either side.
+    Expected feedback: failure means one of the two dict-accepting code
+    paths (candidate vs. occluder) was implemented but not the other."""
+    gapped = _CLEAN_RING - {(4, 2), (4, 3)}
+    candidate_region = _region(7, gapped)
+    occluder_region = _region(14, {(4, 2), (4, 3)})
+    out = recover_occluded_frame(candidate_region, occluders=[occluder_region])
+    assert out["frame"]["outer_bbox"] == (0, 0, 4, 4)
+    assert out["occluded_cells"] == frozenset({(4, 2), (4, 3)})
+
+
+def test_recover_occluded_frame_does_not_mutate_inputs():
+    """Purpose: neither the candidate cell set nor any occluder's cell set
+    may be mutated -- matching split_fused_frame's identical no-mutation
+    contract, since both are meant to compose freely with a caller's own
+    still-in-use region lists.
+    Expected feedback: failure means the kernel mutates shared state
+    in-place, a surprising side effect for a "pure kernel" contract."""
+    gapped = _CLEAN_RING - {(4, 2), (4, 3)}
+    occluder = {(4, 2), (4, 3)}
+    gapped_before, occluder_before = copy.deepcopy(gapped), copy.deepcopy(occluder)
+    recover_occluded_frame(gapped, occluders=[occluder])
+    assert gapped == gapped_before
+    assert occluder == occluder_before
+
+
+@pytest.mark.skipif(not _SB26_TRACE.exists(), reason="data/traces/sb26.npz not present locally (gitignored)")
+def test_recover_occluded_frame_real_sb26_second_portal_frame():
+    """Purpose: real-data check against the actual SB26 gold-trace frame
+    this kernel was built to diagnose -- level_index 1, frame 10 of
+    data/traces/sb26.npz. The colour-8 ring at outer_bbox (18,18,27,45) is
+    missing exactly the two cells (27,34)/(27,35) where a colour-14 portal
+    pipe (one 98-cell connected component spanning an icon, a connecting
+    pipe, and a second embedded ring at outer_bbox (32,18,41,45)) crosses
+    its bottom border. Composing recover_occluded_frame (for the colour-8
+    frame, occluder = the colour-14 blob) with split_fused_frame (for the
+    colour-14 blob's own embedded second ring) must recover BOTH of
+    sb26's two portal frames from one frame, closing the gap the R56 round
+    page recorded as sb26's remaining kernel-coverage limitation.
+    Expected feedback: failure means the diagnosis or the kernel doesn't
+    actually hold on the real game data it was built from -- a synthetic-
+    only pass would be insufficient evidence for this specific claim."""
+    import numpy as np
+
+    from admorphiq.kernels import find_regions
+
+    data = np.load(_SB26_TRACE, allow_pickle=True)
+    frame = data["frames"][10]
+    grid = tuple(tuple(int(v) for v in row) for row in frame)
+    regions = find_regions(grid, background=4)
+
+    frame_a = next(r for r in regions if r["color"] == 8 and r["bbox"] == (18, 18, 27, 45))
+    pipe = next(r for r in regions if r["color"] == 14 and r["bbox"] == (21, 18, 41, 45))
+
+    recovered_a = recover_occluded_frame(frame_a, occluders=[pipe])
+    assert recovered_a is not None
+    assert recovered_a["frame"]["outer_bbox"] == (18, 18, 27, 45)
+    assert recovered_a["occluded_cells"] == frozenset({(27, 34), (27, 35)})
+
+    recovered_b = split_fused_frame(pipe)
+    assert recovered_b is not None
+    assert recovered_b["frame"]["outer_bbox"] == (32, 18, 41, 45)

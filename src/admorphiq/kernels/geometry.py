@@ -19,6 +19,15 @@ no "foreign cell is a tip", no "ring dot is the required colour", no
 "portal"/"pipe". This module only measures shapes and plans translations;
 the caller supplies every semantic label.
 
+:func:`recover_occluded_frame` (R56, 2026-07-15, sb26 second-portal-frame
+diagnosis — not generalised from an existing reference module the way the
+functions above are; built directly from measuring the shape defect) is
+:func:`split_fused_frame`'s inverse case: a rectangular ring with MISSING
+border cells because a DIFFERENT-coloured, already-detected structure
+overlaps them, rather than extra same-colour cells fused on. "Occluder" is
+purely the caller's own supplied cell sets — no connector/pipe/portal
+semantics inside the kernel.
+
 Frames are 2D grids of ints (colour indices), normalized internally to a
 tuple of tuples. Regions are plain dicts in the shape produced by
 :mod:`admorphiq.kernels.regions`'s ``find_regions`` — ``{"color", "cells",
@@ -311,6 +320,111 @@ def split_fused_frame(
             "hole_cells": hole_cells,
         },
         "appendages": appendages,
+    }
+
+
+def recover_occluded_frame(
+    region_or_cells: Region | Iterable[Sequence[int]],
+    occluders: Sequence[Region | Iterable[Sequence[int]]],
+) -> dict[str, object] | None:
+    """Recover a rectangular hollow ring whose border is missing cells because
+    OTHER, already-detected structures' own cells occupy those positions.
+
+    Distinct from :func:`split_fused_frame`'s failure mode: that function
+    handles a ring with EXTRA same-colour cells fused onto it (appendage
+    protruding off the border). This handles the opposite shape defect — a
+    ring with FEWER cells than its own bbox's perimeter, because a portion
+    of the border is covered by a DIFFERENT connected component (a foreign-
+    colour object crossing or overlapping it) rather than genuinely absent.
+    Real motivating case: a portal-linked frame whose bottom edge is crossed
+    by a connector pipe of a different colour — the pipe's own cells occupy
+    exactly the two border positions it passes through, so :func:`closed_frames`'
+    exact cells-equal-border test correctly (but unhelpfully) rejects the
+    frame, even though its own bbox and every OTHER border cell are intact.
+
+    ``region_or_cells`` is the candidate ring's own detected cells (same
+    dict-or-bare-iterable acceptance as :func:`split_fused_frame`, no import
+    of :mod:`admorphiq.kernels.regions`). ``occluders`` is a caller-supplied
+    sequence of OTHER already-detected regions/cell-sets — this kernel does
+    no detection of its own; it only checks whether they explain the gap.
+
+    Algorithm: the candidate bbox is directly ``(min_row, min_col, max_row,
+    max_col)`` of ``region_or_cells`` itself (no mode-span search needed,
+    unlike :func:`split_fused_frame` — a ring missing border cells still has
+    its TRUE bbox, since nothing pushes the extent outward the way an
+    appendage does). ``missing = full_perimeter(bbox) - region_or_cells``.
+    If ``missing`` is empty, this candidate is already a complete ring (not
+    an occlusion case at all) and this kernel returns ``None`` — deliberately
+    NOT a superset of :func:`closed_frames`, so composition stays explicit:
+    call ``closed_frames`` first, fall back to this only when it rejects a
+    candidate. Every cell in ``missing`` must be covered by the UNION of
+    ``occluders``' own cells, and the bbox's geometric hole must contain
+    NONE of ``region_or_cells`` (same solid-block rejection as
+    :func:`split_fused_frame` — a filled block missing a few border pixels
+    by coincidence is not a hollow ring). Any missing cell NOT explained by
+    an occluder means the gap is genuinely unexplained (absent, not
+    occluded) and this returns ``None`` — never forces a recovery onto a
+    shape whose defect isn't provably an occlusion.
+
+    Returns ``{"frame": {"border_cells", "outer_bbox", "inner_bbox",
+    "hole_cells"}, "occluded_cells": frozenset, "occluded_by": [...]}`` on
+    success. ``border_cells`` is the FULL geometric perimeter (including the
+    recovered, currently-foreign-coloured cells) — matching
+    :func:`closed_frames`' contract so a recovered frame is a drop-in
+    replacement for downstream consumers. ``occluded_by`` is one entry per
+    ``occluders`` index that contributed at least one covering cell:
+    ``{"occluder_index": int, "cells": frozenset}`` — lets a caller identify
+    WHICH occluder crosses this frame's border, e.g. to build a connector
+    relationship, without this kernel knowing anything about connectors or
+    portals itself.
+    """
+    if isinstance(region_or_cells, Mapping):
+        cells = _normalize_cells(region_or_cells["cells"])  # type: ignore[index]
+    else:
+        cells = _normalize_cells(region_or_cells)
+    if not cells:
+        return None
+
+    rows = [r for r, _c in cells]
+    cols = [c for _r, c in cells]
+    r0b, r1b, c0b, c1b = min(rows), max(rows), min(cols), max(cols)
+    border_cells = _rect_border(r0b, c0b, r1b, c1b)
+    missing = border_cells - cells
+    if not missing:
+        return None
+
+    occluder_sets = [
+        _normalize_cells(o["cells"]) if isinstance(o, Mapping) else _normalize_cells(o)  # type: ignore[index]
+        for o in occluders
+    ]
+    covered = frozenset().union(*occluder_sets) if occluder_sets else frozenset()
+    if not missing <= covered:
+        return None
+
+    inner: Bbox = (r0b + 1, c0b + 1, r1b - 1, c1b - 1)
+    if inner[0] > inner[2] or inner[1] > inner[3]:
+        return None
+    hole_cells = frozenset(
+        (r, c) for r in range(inner[0], inner[2] + 1) for c in range(inner[1], inner[3] + 1)
+    )
+    if hole_cells & cells:
+        return None
+
+    occluded_by = [
+        {"occluder_index": i, "cells": hit}
+        for i, oset in enumerate(occluder_sets)
+        if (hit := missing & oset)
+    ]
+
+    return {
+        "frame": {
+            "border_cells": border_cells,
+            "outer_bbox": (r0b, c0b, r1b, c1b),
+            "inner_bbox": inner,
+            "hole_cells": hole_cells,
+        },
+        "occluded_cells": missing,
+        "occluded_by": occluded_by,
     }
 
 

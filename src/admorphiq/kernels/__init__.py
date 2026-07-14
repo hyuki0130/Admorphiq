@@ -20,6 +20,7 @@ from admorphiq.kernels.geometry import (
     elongated_axis,
     point_toward,
     project_to_axis,
+    recover_occluded_frame,
     split_fused_frame,
 )
 from admorphiq.kernels.gf2 import gf2_nullspace, gf2_solve
@@ -101,6 +102,7 @@ __all__ = [
     "elongated_axis",
     "point_toward",
     "project_to_axis",
+    "recover_occluded_frame",
     "split_fused_frame",
     "cluster_widths",
     "color_mode",
