@@ -1,12 +1,20 @@
 # TR87 frame-only rewrite-grammar adapter: scoping + prototype (2026-07-15)
 
-**Status: design + prototype done; NOT built.** This scopes whether the
-R56 kernels (`derive_rewrites`/`find_derivation`, `shapes`, `regions`)
-can crack the tr87 wall (0/6 for the LLM-free card) once combined with a
-game-specific adapter. Verdict: **feasible, and the hardest sub-problem
-(glyph tokenization) is now measured, not hypothesized** — but a real
-solver is a multi-day build, not a same-session patch. See "Recommendation"
-at the end.
+**Status: design + prototype done; the adapter build is GATED — do not
+start it.** This scopes whether the R56 kernels (`derive_rewrites`/
+`find_derivation`/`greedy_parse`, `shapes`, `regions`, `parse`) can crack
+the tr87 wall (0/6 for the LLM-free card) once combined with a
+game-specific adapter. **Verdict (updated, §7): the level-0-only
+segmentation approach is FALSIFIED on level 1** — the rotation-confound and
+7-state-dial-cycle measurements (§2) hold, but the gap-based glyph
+segmentation this document's pipeline (§3) depends on cannot distinguish
+"one wide glyph" from "several adjacent glyphs of the same rule side
+rendered with no gap between them," and level 1 has exactly that structure
+(multi-token RHS runs). Per Codex's review
+(`docs/r56_codex_tr87_review_20260715.md`), the multi-day adapter build
+does not proceed past this point until segmentation is fixed and
+re-verified against a representative (multi-token) level. See §7 for the
+full measurement and a validated (not yet built) recovery approach.
 
 > **Claims audit (2026-07-15, Codex interim review)**: two claims in the
 > first version of this doc were overclaims; both are corrected below and
@@ -20,7 +28,15 @@ at the end.
 > `double_translation` — it is a structurally different flag (it changes
 > WHICH row the player edits, not how the win-check re-expands a matched
 > rule) and the three flags are independent booleans a level can combine,
-> not a 3-way choice.
+> not a 3-way choice. **A third correction, found while capturing level 1
+> (§7)**: `.wiki/wiki/games/TR87.md`'s claim "`ACTION1` is the forward
+> step" is WRONG — `tr87.py:1006` (`pxdsteijos = -1 if self.action.id ==
+> GameAction.ACTION1 else 1`) shows `ACTION1` is the BACKWARD (-1) dial
+> step and `ACTION2` is forward (+1); flagged here, wiki page not yet
+> corrected (out of this doc's scope, but noted so it isn't silently
+> carried forward — this doc's own probe was direction-agnostic and
+> unaffected, but a live executor would press the wrong button on every
+> "step forward" if it trusted the wiki page as written).
 
 ## Sources read
 
@@ -95,8 +111,17 @@ at the end.
   LAST level combines all three. None of levels 4-6 have captured frames
   (see §1), so the `alter_rules`/`tree_translation`/`double_translation`
   variants remain unmeasured and undesigned beyond this table.
+
+  **One more precision the table above doesn't show**: `bsqsshqpox()` tests
+  `tree_translation` with `if` and `double_translation` with `elif`
+  (`tr87.py`, inside the rule-match loop) — so on level 6 (the only level
+  with BOTH flags True), `tree_translation`'s branch always wins and
+  `double_translation`'s branch is DEAD CODE for every level this game
+  actually ships. A future adapter targeting level 6 only needs to handle
+  `tree_translation`'s re-expansion, never a combined
+  `tree_translation`+`double_translation` interaction — there isn't one.
 - `src/admorphiq/kernels/` (`rewrite.py`, `regions.py`, `shapes.py`,
-  `geometry.py`) — the available building blocks.
+  `geometry.py`, `parse.py`) — the available building blocks.
 
 ## 1. What captured data exists
 
@@ -302,13 +327,28 @@ not bar2), not a `greedy_parse`/`find_derivation` variant.
 
 ## 5. Kernel gaps this exposes
 
-> **Update (follow-up round, same day): gaps #1-#4 below are now CLOSED.**
-> `src/admorphiq/kernels/parse.py` (commit `1aab383`) landed
-> `gap_windows`, `window_majority_color`, `cluster_widths` (and
-> `regions.size_clusters` now delegates to it), and `greedy_parse` —
-> exactly the four primitives scoped below. Left as originally written for
-> the record of what was missing at scoping time; gap #5 (untested across
-> levels/flags) remains open.
+> **Update (2 follow-up rounds, same day): gaps #1-#4 below are now CLOSED,
+> under DIFFERENT names/locations than first landed (Codex primitive
+> review).** Round 1 (`commit 1aab383`) landed `gap_windows`,
+> `window_majority_color`, `cluster_widths`, `greedy_parse` all in a new
+> `parse.py` — exactly the four primitives scoped below, but under names
+> Codex's review (`docs/r56_codex_tr87_review_20260715.md`) pushed back on.
+> Round 2 (uncommitted at time of writing) applied those rulings: `gap_windows`
+> → **`occupied_runs(frame, axis="row"|"col", bbox=None, background=None)`**
+> (axis-neutral, no "window"/token-implying naming, takes a bbox instead of
+> requiring a pre-sliced band); `window_majority_color` → **removed**,
+> replaced by a fully generic **`color_mode(values, k=2)`** histogram (no
+> ink/minority semantics — the caller filters/selects values before
+> calling, e.g. from `occupied_runs`' own `"cells"` output); `greedy_parse`
+> → **moved into `kernels/rewrite.py`** (same behaviour, now living
+> alongside `derive_rewrites`/`find_derivation` with an explicit "use BFS
+> search diagnostically, never as an action-driving fallback" cross-warning
+> in both directions); `cluster_widths` unchanged (Codex's own ruling: "this
+> is exactly what you built," keep as-is). Left the numbered list below as
+> originally written for the record of what was missing at scoping time;
+> gap #5 (untested across levels/flags) remains open — and §7 below
+> FALSIFIES the segmentation approach these gaps were meant to enable, on a
+> second level.
 
 1. **No kernel does "segment a row-band into glyph windows by background
    gap."** `kernels.regions.find_regions` segments by *same-colour*
@@ -359,38 +399,162 @@ not bar2), not a `greedy_parse`/`find_derivation` variant.
    that targets rule-table glyph slots instead of bar2 columns; this is a
    design/adapter gap, not a missing kernel primitive.
 
-## 6. Feasibility verdict
+## 6. Feasibility verdict (pre-§7; superseded — kept for the record)
 
-**Confirmed feasible in principle, and de-risked further than the
-2026-07-14 banking note left it**: the glyph-tokenization sub-problem
-(the part flagged "feature-scale" in the round log) is now a *measured*
-16→12-token rotation-invariant alphabet with a working extraction recipe,
-not an open question. The rule-pair grouping (gap-width) and the dial's
-7-state cycle are both independently re-confirmed from frames — including
-genuine cycle CLOSURE and reverse-inverse confirmation (see §2's corrected
-measurement), not just a distinct-state count. What remains unbuilt: (a)
-the adapter code implementing §3's pipeline end-to-end as `admorphiq`
-game-specific glue (analogous to `rotation.py`/`slider.py`) — the 4 kernel
-primitives it composes now exist (`kernels/parse.py`, see §5's update);
-(b) the dial-executor (map current↔target token via the 7-cycle, emit
-ACTION1/2 counts + ACTION3/4 navigation — straightforward once tokens are
-known); and (c) coverage for the 3 independent per-level flags beyond the
-no-flags case measured here, INCLUDING a second adapter mode for
-`alter_rules` specifically (edit-the-rule-table, not edit-bar2 — see gap
-#5), none of which have captured data to prototype against.
+**De-risked further than the 2026-07-14 banking note left it**: the
+glyph-tokenization sub-problem (the part flagged "feature-scale" in the
+round log) is now a *measured* 16→12-token rotation-invariant alphabet with
+a working extraction recipe on the ONE level tested. The rule-pair grouping
+(gap-width) and the dial's 7-state cycle are both independently
+re-confirmed from frames — including genuine cycle CLOSURE and
+reverse-inverse confirmation (see §2), not just a distinct-state count.
+
+**This verdict was written before testing a second level and is now
+KNOWN INCOMPLETE — see §7.** The segmentation approach these numbers rest
+on does not survive level 1 (a level with multi-token rule sides). The
+measurements above are still true (rotation confound, dial cycle) but
+"feasible" for the segmentation step specifically was premature; §7 is the
+current verdict.
+
+## 7. Level 1 capture — the gate test (2026-07-15, Codex's cheapest falsification step)
+
+Codex's review (`docs/r56_codex_tr87_review_20260715.md`) identified the
+single cheapest test that could falsify this document's segmentation
+approach: level 0 (the only captured level) happens to have EVERY rule's
+LHS and RHS be exactly one glyph — level 1 has RHS runs of 2 and 3 glyphs.
+If `occupied_runs`'s background-gap scan can't tell "one wide glyph" from
+"several adjacent glyphs with no gap between them," it will silently merge
+a multi-glyph run into one window. This was directly tested.
+
+**How the level-1 frame was captured**: no capture existed for any level
+but 0. A disposable, non-shipped, dev-only script
+(`scripts/_tr87_capture_l1.py`, never wired into the shipped agent or any
+test) runs ONE local episode via `arc_agi.Arcade` (the same offline harness
+`scripts/test_tr87_*.py` already use — `environment_files/tr87/cd924810/
+tr87.py` executes in-process; no Kaggle submission involved) and reads the
+running game object's OWN rule table (`env._game.cifzvbcuwqe`, `.
+zvojhrjxxm`, `.ztgmtnnufb` — verification-only, exactly the established
+precedent, but used here to ADVANCE the game rather than build a solver) to
+compute which buttons clear level 0. **15 actions** (well under level 0's
+128-action budget) reliably clear it. Two bugs were found and fixed while
+building this script, both worth recording:
+
+1. **`ACTION1`/`ACTION2` direction was backwards from what the wiki
+   claims** (see the top-of-document audit note) — using the wiki's
+   claimed direction made the capture script clear NO columns at all;
+   reading `tr87.py:1006` directly resolved it.
+2. **The exact same "transient multi-layer frame" issue the SB26 lesson
+   documents** (`.wiki/wiki/rounds/r53_unified-harness.md`) reproduces for
+   TR87: right at the level-0→level-1 transition, `obs.frame` carries **37
+   layers**, and `frame[0]` is STALE (its move-counter row still shows
+   level 0's partially-used budget) while `frame[-1]` is the settled
+   current frame (a fresh, full budget bar). The capture script now reads
+   `frame[-1]`, confirmed by row-63's move-counter going from a partial bar
+   to a full one between the two.
+
+**Measurement: SEGMENTATION FALSIFIED, cross-validated exactly against oracle ground truth.**
+Using the SAME oracle row bounds as level 0 (rows 41-45/52-56/4-28 — these
+DO transfer across levels, confirmed) but freshly discovering fill colours,
+extents, and windows (nothing about level 1's specific layout was assumed),
+`occupied_runs` on the settled level-1 frame's upper rule-table bands
+measured window widths of:
+
+- band 0 (rows 4-10): `[7, 7, 7, 21]`
+- band 1 (rows 13-19): `[7, 14, 7, 14]`
+- band 2 (rows 22-28): `[7, 21, 7, 7]`
+
+7px is one glyph (the same pitch measured on level 0). 14 and 21 are EXACT
+multiples (2x, 3x) — and cross-checking against `env._game.cifzvbcuwqe`
+(verification-only oracle read) for this exact level, all 6 rules' LHS/RHS
+token counts are `[1→1, 1→3, 1→2, 1→2, 1→3, 1→1]`, and every single one of
+the 12 measured window widths matches its corresponding rule side's token
+count times 7px EXACTLY (`7,7` then `7,21` in band 0 = rule0's 1→1 then
+rule1's 1→3; `7,14` then `7,14` in band 1 = rule2's 1→2 then rule3's 1→2;
+`7,21` then `7,7` in band 2 = rule4's 1→3 then rule5's 1→1). Zero
+discrepancies across all 12 windows. This is not a coincidental pixel-width
+match — it is a direct, oracle-confirmed demonstration that
+`occupied_runs`'s background-gap scan merges a multi-token rule side into
+one window, exactly as Codex predicted.
+
+A SEPARATE, second segmentation fragility was also found on this same
+frame: bar2's own individual glyphs (single-token per the level's OWN
+authored layout — bar1 has 4 clean single-glyph windows matching its 4
+authored B-family glyphs) fragmented into small pieces (`[3,1,1,3, 5,5,5,5,
+1,1,1]` instead of clean 7px runs) at 2 of its 5 slot positions — the
+OPPOSITE failure mode (one glyph splitting apart) rather than multiple
+glyphs merging, most likely because that specific digit's ink pattern
+leaves an entire column background-only within its own 7px cell width,
+which a background-only gap scan misreads as an inter-glyph gap. Both
+failure modes stem from the same root cause: `occupied_runs` only sees
+background vs. non-background, with no notion of "glyph" or fixed pitch.
+
+**What DID generalize to level 1 (not falsified)**:
+- Row-band positions (bar1/bar2/upper-grid rows) are level-independent —
+  the SAME oracle rows worked on a structurally different level.
+- Ink colour = 5 stayed constant across a THIRD glyph family (level 1 uses
+  B-family, fill=7, and C-family, fill=11 — both still ink=5), strengthening
+  rather than weakening that earlier finding.
+- The "4 windows per row-band = 2 complete rules per band" structural
+  layout held (level 1's bands still show 4 windows each, just with
+  variable widths instead of level 0's uniform 7px).
+- Level 1 (per the corrected flag table) genuinely has no flags set,
+  confirmed directly from the running level object
+  (`get_data("alter_rules"/"tree_translation"/"double_translation")` all
+  `None`) — consistent with this document's table.
+
+**A validated (not yet built) recovery path, found while investigating the
+falsification**: every one of the 6 merged/split cases in this level had a
+width that was an EXACT integer multiple of the globally-observed
+single-glyph pitch (7px, itself always independently available since some
+window on the board is always single-glyph). A recovery heuristic —
+"detect the single-glyph pitch from any clean run on the board, then split
+any run whose width is a multiple >1 of that pitch into that many equal
+sub-cells" — would have correctly recovered all 6 multi-token cases
+measured here. This is promising but based on ONE level's data; it has NOT
+been implemented or tested against level 2 (multi-token LHS AND RHS per
+Codex's source read) or any level with `alter_rules`/`tree_translation`/
+`double_translation` active.
+
+**Duplicate/conflicting-edge concern, already resolved (prior round, not
+re-investigated here)**: Codex's review separately flagged that the FIRST
+version of the dial-cycle probe's graph builder silently overwrote
+conflicting `(frame, action)` edges (4 conflicting pairs found in that
+version). This was already fixed in the prior correction round: the
+current `scripts/_tr87_probe.py` collects every `(column, signature,
+action)` observation into a set and explicitly checks for conflicts before
+building the graph — 0 of 70 edges conflict in the corrected (column,
+signature)-abstracted version. No new investigation was needed here; flagged
+so it's clear this specific Codex finding was about the OLD exact-byte
+graph, already superseded.
+
+Reproducible via `scripts/_tr87_capture_l1.py` (produces `data/traces/
+tr87_l1_reset.npz`) then manual `occupied_runs` measurement against it (not
+yet folded into `scripts/_tr87_probe.py` as a permanent check — the capture
+script's oracle-assistance makes it unsuitable to run unattended the way
+the frame-only probe is; a future round should decide whether to commit the
+captured `.npz` and add a frame-only-only verification step against it).
 
 ## Recommendation
 
-This is a real, scoped round (not a same-session patch): with the 4
-kernel primitives from §5 now landed, the next step is the TR87 adapter
-itself, validated against level 1's (index 0's) captured frames end-to-end
-(extract → derive expected bar2 → confirm it equals a KNOWN correct bar2
-state, which would require either a captured "is_gold"/solved trace — none
-exists yet, all `is_gold` are `False` — or one bounded live verification
-run). The dial executor (step count math + bracket navigation) is the
-cheapest remaining piece. Levels 4-6 (the flagged levels — see the
-corrected table in "Sources read") should be scoped as an explicit
-follow-up once level-specific frames are captured, not assumed to
-generalize from level 1 — and `alter_rules` in particular needs its own
-adapter-mode design (edit-the-rule-table), not just "more of the same
-pipeline" on new data.
+**Gated, per Codex's verdict — do not build the multi-day adapter yet.**
+§7's falsification means the segmentation this document's §3 pipeline
+depends on is validated for exactly one level (0) and disproven for a
+representative second level (1). Before any adapter work: (a) decide
+whether to build and test the pitch-based recovery heuristic from §7
+against level 1 (cheap, a few hours) and ideally level 2 (multi-token BOTH
+sides, unmeasured) before trusting it generalizes; (b) capture level 2
+frames the same disposable-oracle way, since Codex's source read says it
+has multi-token LHS as well as RHS (untested here — this session only
+reached level 1); (c) only once segmentation survives 2+ representative
+levels does the rest of §3's pipeline (rule-pair grouping via gap width,
+`greedy_parse`, the dial executor) become worth building end-to-end. The
+kernel primitives are ready (`occupied_runs`, `color_mode`, `cluster_widths`
+in `kernels/parse.py`; `greedy_parse` now in `kernels/rewrite.py` alongside
+`derive_rewrites`/`find_derivation`, per Codex's primitive rulings) —
+what's gated is composing them into a TR87 adapter before segmentation
+itself is trustworthy. Per Codex's sequencing note, any eventual adapter
+belongs only in the quarantined `script25` package, not `admorphiq`'s main
+tree, and cannot promote R56 on its own (needs `agent25` non-inferiority +
+no hidden-transfer regression). Levels 3-6 (the flagged levels — see the
+corrected table in "Sources read") remain fully unmeasured beyond the flag
+table itself.
