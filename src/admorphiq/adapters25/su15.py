@@ -65,6 +65,26 @@ nothing about tiles, goals, enemies, or merging):
     been the click SOURCE :data:`_DEAD_CLICK_THRESHOLD` times with no
     useful shift (see :data:`_MIN_USEFUL_SHIFT`) is marked dead and
     excluded from future target selection for the rest of the level.
+    Iteration 3's "useful" check measured a DOMINANT shift ANYWHERE on the
+    frame, which turned out to always find something to credit (100%
+    useful-shift rate, dead-click memory never firing) even while a
+    forensic 6-action-window trace showed the SAME merge target being
+    re-clicked 5+ times with the intended pair never actually converging.
+    Iteration 4 tightens "useful" to require the CLICK'S OWN SOURCE tile
+    (identified in ``regions_before`` by nearest centroid to the exact
+    point recorded at commit time) to be the one that moved -- a merge
+    collapsing the source into its partner (the source vanishing) also
+    counts as useful, since that IS the mechanic succeeding.
+  - **Fatal-click memory** (R56 iteration 4): a forensic trace of the
+    first 3 GAME_OVERs (reproduced identically, deterministic env) found
+    the SAME click target killing the run 3/3 times, always immediately
+    after several identical stalled clicks elsewhere. One death is
+    sufficient evidence -- unlike dead-click memory's repeat-count
+    threshold, a source bucket whose click was IMMEDIATELY followed by a
+    GAME_OVER (detected the same way ``admorphiq.adapters25.m0r0`` detects
+    a restart snap-back: the frame reverts to the exact level-start frame
+    while the PRE-click frame had already diverged from it) is excluded
+    permanently for the rest of the level on the FIRST occurrence.
   - Two same-color tiles are a MERGE candidate; a lone tile (or once no
     same-color pair remains) is driven toward the goal (GATHER). Every
     same-color pair is ranked nearest-first, then every lone tile ranked
@@ -92,10 +112,11 @@ nothing about tiles, goals, enemies, or merging):
 Composition from ``admorphiq.kernels``:
   - :func:`admorphiq.kernels.find_regions` segments the frame.
   - :func:`admorphiq.kernels.frame_diff` + :func:`admorphiq.kernels.find_regions`
-    (before/after) + :func:`admorphiq.kernels.track_objects` +
-    :func:`admorphiq.kernels.motion_vectors` measure whether the last click
-    moved anything at all -- this single measurement now drives BOTH the
-    fraction escalation and dead-click counting.
+    (before/after) + :func:`admorphiq.kernels.track_objects` measure
+    whether the click's OWN source tile moved (or merged away) -- this
+    single measurement drives fraction escalation, dead-click counting,
+    AND (via a separate frame-identity comparison against the level's
+    start frame) fatal-click memory.
   - :func:`admorphiq.kernels.point_toward` replaces this adapter's own
     hand-rolled vector arithmetic from the first pass -- composition over
     local math.
@@ -122,7 +143,7 @@ from admorphiq.adapters25.base import (
     reset_action,
     state_name,
 )
-from admorphiq.kernels import find_regions, frame_diff, motion_vectors, point_toward, track_objects
+from admorphiq.kernels import find_regions, frame_diff, point_toward, track_objects
 
 GAME_ID = "su15"
 
@@ -295,16 +316,26 @@ class Adapter(GameAdapter):
         # only escalated, never reset, by _observe_result.
         self._fraction = _INITIAL_FRACTION
         self._pending_click: Cell | None = None
-        # The click SOURCE tile's bucket key, so _observe_result can credit
-        # a no-useful-shift outcome to the right bucket for dead-click
-        # counting. None when the pending click had no identifiable source
-        # region (the frame-centre fallback probe).
+        # The click SOURCE tile's bucket key + exact centroid, so
+        # _observe_result can (a) credit a no-useful-shift outcome to the
+        # right bucket for dead-click counting and (b) re-identify that
+        # SAME region in the next frame's candidate list to check whether
+        # IT specifically moved. Both None when the pending click had no
+        # identifiable source region (the frame-centre fallback probe).
         self._pending_source_key: tuple[int, int, int] | None = None
+        self._pending_source_centroid: tuple[float, float] | None = None
         self._prev_grid: tuple[tuple[int, ...], ...] | None = None
+        # The very first frame seen this level -- a GAME_OVER-triggered
+        # restart snaps back to exactly this frame (see _observe_result's
+        # fatal-click detector), mirroring admorphiq.adapters25.m0r0's own
+        # restart-snapback technique.
+        self._level_start_grid: tuple[tuple[int, ...], ...] | None = None
         # Dead-click memory -- a property of THIS level's layout, reset on
         # level-up alongside the rest.
         self._dead_click_counts: dict[tuple[int, int, int], int] = {}
         self._dead_buckets: set[tuple[int, int, int]] = set()
+        # Fatal-click memory -- one-shot, also reset on level-up.
+        self._fatal_buckets: set[tuple[int, int, int]] = set()
         # Coverage-rotation bookkeeping -- also a property of the level.
         self._target_history: dict[tuple[int, int, int], int] = {}
         self._same_target_key: tuple[int, int, int] | None = None
@@ -320,6 +351,7 @@ class Adapter(GameAdapter):
         if state in ("NOT_PLAYED", "GAME_OVER") or not has_frame(latest_frame):
             self._pending_click = None
             self._pending_source_key = None
+            self._pending_source_centroid = None
             self._prev_grid = None
             self._levels_seen = -1
             return reset_action()
@@ -330,9 +362,12 @@ class Adapter(GameAdapter):
             self._levels_seen = levels
             self._pending_click = None
             self._pending_source_key = None
+            self._pending_source_centroid = None
             self._prev_grid = None
+            self._level_start_grid = grid
             self._dead_click_counts = {}
             self._dead_buckets = set()
+            self._fatal_buckets = set()
             self._target_history = {}
             self._same_target_key = None
             self._same_target_count = 0
@@ -347,6 +382,7 @@ class Adapter(GameAdapter):
             self._prev_grid = grid
             self._pending_click = None
             self._pending_source_key = None
+            self._pending_source_centroid = None
             return reset_action()
 
         target = self._next_target(grid)
@@ -358,45 +394,75 @@ class Adapter(GameAdapter):
     # ── measurement: did the pending click move anything? ───────────────
 
     def _observe_result(self, grid: tuple[tuple[int, ...], ...]) -> None:
-        """Escalate the click-offset fraction, and count a dead click against its source bucket.
+        """Detect a fatal click, else measure whether the click's OWN source tile moved.
 
-        Composes frame_diff -> _candidates (before/after) -> track_objects
-        -> motion_vectors the same way admorphiq.adapters25.m0r0 measures
-        movement, over the SAME chrome-filtered candidate set gameplay
-        decisions use (not raw find_regions output) -- measured necessary:
-        SU15's status row is a full-width band that repaints on almost
-        every action and would otherwise pollute matching (this is also
-        why the now-removed hazard mechanism's first pass mis-fired before
-        this same fix was applied to it).
+        Two DISTINCT questions, checked in order:
 
-        A click counts as USEFUL when the frame changed AND (no clean
-        single-object shift was measurable -- e.g. a merge collapsing two
-        regions, still real progress -- OR the measured dominant shift
-        magnitude clears :data:`_MIN_USEFUL_SHIFT`). A NOT-useful click
-        escalates the fraction (as before) and, when it has an
-        identifiable source tile bucket, counts toward that bucket's
-        dead-click total; crossing :data:`_DEAD_CLICK_THRESHOLD` marks the
-        bucket dead for the rest of the level. Never healed by a later
-        useful click, mirroring m0r0's dead-cell permanence.
+        1. Fatal-click detection: the frame reverting to EXACTLY the
+           level's start frame, when the frame just BEFORE this click had
+           already diverged from it, means a GAME_OVER-triggered restart
+           just happened (mirrors admorphiq.adapters25.m0r0's own restart
+           snap-back detector) -- the click that was just issued killed the
+           run. Its source bucket is excluded permanently for the rest of
+           the level; nothing else in this method runs for that call.
+        2. Otherwise, "useful": composes frame_diff -> _candidates
+           (before/after) -> track_objects, matching the SAME
+           chrome-filtered candidate set gameplay decisions use (not raw
+           find_regions output -- SU15's status row would otherwise
+           pollute matching). The click's SOURCE tile -- re-identified in
+           ``regions_before`` by nearest centroid to the exact point
+           recorded at commit time, since regions carry no persistent id
+           across frames -- must EITHER have vanished (merged into its
+           partner: the mechanic succeeding) OR shifted by at least
+           :data:`_MIN_USEFUL_SHIFT` to count as useful. A NOT-useful click
+           escalates the fraction and counts toward its source bucket's
+           dead-click total; crossing :data:`_DEAD_CLICK_THRESHOLD` marks
+           the bucket dead for the rest of the level. Neither dead nor
+           fatal marks are ever healed by a later useful click, mirroring
+           m0r0's dead-cell permanence.
         """
         point = self._pending_click
         source_key = self._pending_source_key
+        source_centroid = self._pending_source_centroid
         before = self._prev_grid
         self._pending_click = None
         self._pending_source_key = None
+        self._pending_source_centroid = None
         if point is None or before is None:
             return
 
+        if before != self._level_start_grid and grid == self._level_start_grid:
+            if source_key is not None:
+                self._fatal_buckets.add(source_key)
+            return
+
         diff = frame_diff(before, grid)
-        useful = diff["count"] > 0
-        if useful:
+        if diff["count"] == 0:
+            useful = False
+        elif source_centroid is None:
+            # No identifiable source tile (the frame-centre fallback probe)
+            # -- can't be pickier than "something changed".
+            useful = True
+        else:
             regions_before = _candidates(before)
             regions_after = _candidates(grid)
-            tracked = track_objects(regions_before, regions_after)
-            dominant = motion_vectors(tracked["matches"])["dominant"]
-            if dominant is not None:
-                magnitude = (dominant[0] ** 2 + dominant[1] ** 2) ** 0.5
-                useful = magnitude >= _MIN_USEFUL_SHIFT
+            if not regions_before:
+                useful = False
+            else:
+                tracked = track_objects(regions_before, regions_after)
+                source_idx = min(
+                    range(len(regions_before)),
+                    key=lambda i: _dist2(regions_before[i]["centroid"], source_centroid),
+                )
+                if source_idx in tracked["vanished"]:
+                    useful = True  # merged into its partner -- the mechanic succeeding
+                else:
+                    match = next((m for m in tracked["matches"] if m["before"] == source_idx), None)
+                    if match is None:
+                        useful = False
+                    else:
+                        dr, dc = match["shift"]
+                        useful = (dr * dr + dc * dc) ** 0.5 >= _MIN_USEFUL_SHIFT
 
         if useful:
             return
@@ -424,10 +490,13 @@ class Adapter(GameAdapter):
         if not tiles:
             return (height // 2, width // 2)
 
-        # Exclude dead-bucketed tiles (repeated no-useful-shift clicks) from
-        # future targeting for the rest of the level -- unless that empties
-        # the pool entirely, in which case still act rather than freeze.
-        alive_tiles = [t for t in tiles if _tile_key(t) not in self._dead_buckets]
+        # Exclude dead-bucketed (repeated no-useful-shift clicks) AND
+        # fatal-bucketed (one click that immediately GAME_OVER'd) tiles
+        # from future targeting for the rest of the level -- unless that
+        # empties the pool entirely, in which case still act rather than
+        # freeze.
+        excluded = self._dead_buckets | self._fatal_buckets
+        alive_tiles = [t for t in tiles if _tile_key(t) not in excluded]
         pool = alive_tiles or tiles
 
         if self._same_target_count > _STALL_ROTATE_THRESHOLD:
@@ -451,6 +520,7 @@ class Adapter(GameAdapter):
             self._same_target_count = 1
         self._target_history[key] = self._step
         self._pending_source_key = key
+        self._pending_source_centroid = src_region["centroid"]
 
         src = (int(round(src_region["centroid"][0])), int(round(src_region["centroid"][1])))
         return _click_toward(src, dst_point, self._fraction, height, width)
