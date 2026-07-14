@@ -193,6 +193,25 @@ def test_memory_hides_rejected_hypotheses():
     assert "keep me" in texts and "reject me" not in texts
 
 
+def test_record_progress_scores_on_milestone_not_change():
+    """Purpose: a GOAL hypothesis is supported only when its declared MILESTONE is
+    met and contradicted when missed (goal-grade), carrying a falsifier — unlike
+    the removed board-change record that ANY change supported (Codex v5 review).
+
+    Feedback: failure means the memory can self-confirm a false goal again.
+    """
+    mem = EnvironmentMemory()
+    h = mem.record_progress("deliver A to zone G", milestone="A enters G in 8 actions",
+                            falsifier="A never reaches G", milestone_met=False)
+    assert h.milestone and h.falsifier
+    assert h.contradicting_events  # a missed milestone contradicts, not supports
+    d = mem.to_dict()["goal_hypotheses"]
+    # one miss lowers confidence; the falsifier/milestone are surfaced.
+    hh = next((x for x in d if x["hypothesis"] == "deliver A to zone G"), None)
+    if hh:  # may be rejected+hidden after enough misses
+        assert hh["milestone"] and hh["falsifier"]
+
+
 def test_estimate_tokens_monotone():
     """Purpose: the token estimate grows with text length (budget math sanity).
 

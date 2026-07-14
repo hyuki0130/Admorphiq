@@ -86,9 +86,10 @@ _SYSTEM_PROMPT = (
     "  - Coordinates are (row, col) = (y, x), each 0-63.\n"
     "  - Do NOT print the whole board. At most ~4 short lines of reasoning, then "
     "the code block or action line LAST.\n"
-    "  - Before your action, add ONE line `PREDICT: changed` or `PREDICT: "
-    "no_change` — whether your action will change the board — then a few words "
-    "of why. This is scored against what actually happens."
+    "  - Before your action, add ONE line `EFFECT_PREDICT: changed` or "
+    "`EFFECT_PREDICT: no_change` — whether your action will change the board "
+    "(dynamics, NOT goal progress) — then a few words of why. Scored against what "
+    "actually happens."
 )
 
 
@@ -229,14 +230,17 @@ _MOVE_RE = re.compile(r"^\s*(UP|DOWN|LEFT|RIGHT|SPACE|UNDO|RESET)\s*$", re.IGNOR
 
 
 _PREDICT_RE = re.compile(
-    r"PREDICT\s*:\s*(no[_ ]?change|changed|change)\b[\s:.\-]*(.*)", re.IGNORECASE)
+    r"(?:EFFECT_)?PREDICT\s*:\s*(no[_ ]?change|changed|change)\b[\s:.\-]*(.*)",
+    re.IGNORECASE)
 
 
 def parse_prediction(text: str) -> dict[str, Any] | None:
-    """Extract a ``PREDICT: changed|no_change — <reason>`` line, if present.
+    """Extract an ``EFFECT_PREDICT: changed|no_change — <reason>`` line (accepts
+    the legacy ``PREDICT:`` too), if present.
 
     Returns ``{"prediction": "changed"|"no_change", "hypothesis": <reason>}`` so
-    the agent can score it against the observed transition next turn.
+    the agent can score the DYNAMICS prediction against the observed transition
+    next turn (this is not a goal-progress prediction).
     """
     m = _PREDICT_RE.search(text or "")
     if not m:
@@ -475,8 +479,13 @@ class ReplAgent:
             rec["changed"] += 1
 
     def _score_prediction(self, changed: bool) -> None:
-        """Score the previous turn's PREDICT against the observed change and feed
-        the falsifiable memory (so MEMORY evolves — the v3 static-memory gap)."""
+        """Score the previous turn's EFFECT_PREDICT (board-change dynamics) as a
+        pure accuracy counter.
+
+        It is DELIBERATELY not written into goal_hypotheses: a board-change
+        prediction is supported by ANY change, so feeding it to the goal memory
+        self-confirmed false stories (Codex v5 review). Goal hypotheses are
+        populated only by the milestone-scored audit (record_progress)."""
         pred = self._pending_prediction
         if pred is None:
             return
@@ -485,9 +494,6 @@ class ReplAgent:
         self.predictions_made += 1
         if correct:
             self.predictions_correct += 1
-        act = (self._prev_action or {}).get("action", "?")
-        text = pred.get("hypothesis") or f"{act} -> {pred['prediction']}"
-        self._memory.record_prediction(text, pred["prediction"], correct)
 
     def _render_image(self, frame: np.ndarray) -> tuple[list[str] | None, list[str]]:
         """Render the current frame to a labeled PNG for the multimodal call.

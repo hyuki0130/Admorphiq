@@ -362,24 +362,22 @@ def test_parse_prediction():
     assert parse_prediction("just an action\nLEFT") is None
 
 
-def test_prediction_scored_and_memory_evolves():
-    """Purpose: a per-turn PREDICT is scored against the observed change, counted,
-    and fed to the falsifiable memory so MEMORY stops being static (the v3 gap).
+def test_effect_prediction_scored_but_not_written_to_goal_memory():
+    """Purpose: the EFFECT_PREDICT (board-change dynamics) is scored as an
+    accuracy counter but is DELIBERATELY not written into goal_hypotheses — a
+    board-change is supported by ANY change, so feeding it to goal memory
+    self-confirmed false stories (Codex v5 review).
 
-    Feedback: failure means the causal 'predicted vs actual' account the
-    observability directive requires is missing.
+    Feedback: failure means the memory re-acquires the self-confirmation bug.
     """
-    # Turn 1: predict changed + move; turn 2: the frame actually changed.
-    llm = MockLLM(["PREDICT: changed — I move right\n{\"action\":\"RIGHT\"}",
-                   "PREDICT: no_change\n{\"action\":\"LEFT\"}"])
-    agent = ReplAgent(llm)
+    llm = MockLLM(["EFFECT_PREDICT: changed — I move right\n{\"action\":\"RIGHT\"}",
+                   "EFFECT_PREDICT: no_change\n{\"action\":\"LEFT\"}"])
+    agent = ReplAgent(llm, render_images=False)
     agent.choose_action([], _obs(_frame(obj_col=5)))   # sets pending prediction
     agent.choose_action([], _obs(_frame(obj_col=7)))   # frame changed -> score it
     assert agent.predictions_made == 1
-    assert agent.predictions_correct == 1               # predicted changed, it did
-    mem = agent._memory.to_dict()
-    assert mem["goal_hypotheses"]                        # memory is no longer static
-    assert mem["goal_hypotheses"][0]["prediction"] == "changed"
+    assert agent.predictions_correct == 1               # dynamics prediction was right
+    assert agent._memory.to_dict()["goal_hypotheses"] == []  # NOT self-confirmed
 
 
 def test_llm_error_is_survived_and_recorded():

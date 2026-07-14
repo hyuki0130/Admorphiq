@@ -48,6 +48,11 @@ class Hypothesis:
     hypothesis: str
     prediction: str = ""
     confidence: float = 0.5
+    # A GOAL hypothesis must be falsifiable: a bounded-horizon milestone whose
+    # absence refutes it (Codex v5 review — board-change 'support' confirmed
+    # false stories because ANY change supported them). Empty = not goal-grade.
+    milestone: str = ""
+    falsifier: str = ""
     supporting_events: list[str] = field(default_factory=list)
     contradicting_events: list[str] = field(default_factory=list)
     status: str = "active"  # active | rejected | confirmed
@@ -72,6 +77,8 @@ class Hypothesis:
         return {
             "hypothesis": self.hypothesis,
             "prediction": self.prediction,
+            "milestone": self.milestone,
+            "falsifier": self.falsifier,
             "confidence": round(self.confidence, 2),
             "supporting_events": list(self.supporting_events[-4:]),
             "contradicting_events": list(self.contradicting_events[-4:]),
@@ -94,23 +101,26 @@ class EnvironmentMemory:
     def add_hypothesis(self, h: Hypothesis) -> None:
         self.goal_hypotheses.append(h)
 
-    def record_prediction(self, text: str, prediction: str, correct: bool,
-                          cap: int = 32) -> Hypothesis:
-        """Score a per-turn prediction, evolving a deduped falsifiable hypothesis.
+    def record_progress(self, hypothesis: str, milestone: str, falsifier: str,
+                        milestone_met: bool, cap: int = 32) -> Hypothesis:
+        """Score a GOAL hypothesis against its declared bounded-horizon milestone.
 
-        Finds the existing hypothesis with the same (text, prediction) or creates
-        one, then ``support``\\ s it on a correct prediction / ``contradict``\\ s
-        on a wrong one — so confidence tracks the model's real predictive
-        accuracy instead of a static note. Bounded: drops the oldest rejected
-        (else oldest) hypothesis past ``cap``.
+        Unlike the removed board-change ``record_prediction`` (which any change
+        'supported', so it self-confirmed false stories — Codex v5 review), a goal
+        hypothesis is only SUPPORTED when its declared milestone was actually MET,
+        and CONTRADICTED when the milestone was missed. It must carry a milestone
+        + falsifier to be goal-grade. Deduped by hypothesis text; bounded by
+        ``cap`` (oldest rejected dropped first).
         """
-        h = next((x for x in self.goal_hypotheses
-                  if x.hypothesis == text and x.prediction == prediction), None)
+        h = next((x for x in self.goal_hypotheses if x.hypothesis == hypothesis), None)
         if h is None:
-            h = Hypothesis(hypothesis=text, prediction=prediction, confidence=0.5)
+            h = Hypothesis(hypothesis=hypothesis, milestone=milestone,
+                           falsifier=falsifier, confidence=0.5)
             self.goal_hypotheses.append(h)
-        (h.support if correct else h.contradict)(
-            "observed match" if correct else "observed mismatch")
+        else:
+            h.milestone, h.falsifier = milestone, falsifier
+        (h.support if milestone_met else h.contradict)(
+            f"milestone {'met' if milestone_met else 'MISSED'}: {milestone}")
         if len(self.goal_hypotheses) > cap:
             rejected = [i for i, x in enumerate(self.goal_hypotheses)
                         if x.status == "rejected"]
