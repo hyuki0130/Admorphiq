@@ -3811,3 +3811,11 @@ changes.
   (~13% measured on v6) remains the open question.
 - Submission scheduled for the 09:00 KST slot reset (v10, submission.parquet).
 
+## v10 hidden score: 0.20 — second transfer datapoint [2026-07-14 18:12 KST]
+
+Submission #54664749 (proxy 5.8307) scored **0.20** on the hidden set (v6: proxy 1.072 → 0.14).
+The +4.7 proxy gained from mechanic-solver depth (cd82 6/6, sb26, su15) bought only +0.06 hidden —
+public-specific solver capability barely transfers. Treat pairs descriptively (Codex rule).
+The same afternoon, the R55 repl agent produced its FIRST level clear (su15 L1, 107 actions) via
+the v7 REPL_AUDIT falsification-audit run — the generic-behavior track is the hidden-LB lever.
+
