@@ -26,6 +26,7 @@ class GameDiagnostics:
     actions: int = 0
     wall_s: float = 0.0
     llm_calls: int = 0
+    llm_errors: int = 0
     parse_failures: int = 0
     governor_rejections: int = 0
     sandbox_errors: int = 0
@@ -123,6 +124,7 @@ def run_game(
     diag.wall_s = round(clock() - start, 3)
     diag.levels = _levels(obs) if obs is not None else prev_levels
     diag.llm_calls = int(getattr(agent, "llm_calls", 0))
+    diag.llm_errors = int(getattr(agent, "llm_errors", 0))
     diag.parse_failures = int(getattr(agent, "parse_failures", 0))
     diag.governor_rejections = int(getattr(agent, "governor_rejections", 0))
     diag.sandbox_errors = int(getattr(agent, "sandbox_errors", 0))

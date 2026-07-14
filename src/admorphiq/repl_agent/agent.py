@@ -49,6 +49,18 @@ NAME_BY_ID = {v: k for k, v in ID_BY_NAME.items()}
 
 _CODE_BLOCK = re.compile(r"```(?:python)?\s*\n(.*?)```", re.DOTALL | re.IGNORECASE)
 
+# Appended to the turn packet: pin the output contract so the model ends with a
+# parseable action. `/no_think` is Qwen's soft directive to skip chain-of-thought
+# (belt-and-braces with the client's enable_thinking=false).
+_OUTPUT_INSTRUCTION = (
+    "\n\n/no_think\n"
+    "Respond with your chosen action as the LAST line, in ONE of these forms:\n"
+    '  JSON: {"action": "MOUSE", "row": <0-63>, "col": <0-63>}  (or "UP"/"DOWN"/'
+    '"LEFT"/"RIGHT"/"SPACE" with no row/col)\n'
+    "  or a bare action line: MOUSE(row, col)  or  UP / DOWN / LEFT / RIGHT / SPACE\n"
+    "Do not print the whole board. Keep reasoning brief."
+)
+
 
 class LLMClient(Protocol):
     """A minimal completion interface — the only model dependency of the loop."""
@@ -82,12 +94,17 @@ class OpenAICompatClient:
     """
 
     def __init__(self, base_url: str | None = None, model: str | None = None,
-                 timeout: float = 120.0) -> None:
+                 timeout: float = 300.0, max_tokens: int = 1000,
+                 enable_thinking: bool = False) -> None:
         self.base_url = (base_url or os.environ.get("REPL_LLM_BASE_URL", "")).rstrip("/")
         if not self.base_url:
             raise RuntimeError("REPL_LLM_BASE_URL is not set — cannot serve the REPL agent")
         self.model = model or os.environ.get("REPL_LLM_MODEL", "")
+        # 300s (not 120s): a first-run bug was Qwen 3.6 emitting 9-11k chars of
+        # chain-of-thought at ~35 tok/s, timing out the client mid-answer.
         self.timeout = timeout
+        self.max_tokens = max_tokens
+        self.enable_thinking = enable_thinking
 
     def complete(self, prompt: str, images: list[str] | None = None) -> str:
         content: Any = prompt
@@ -101,6 +118,10 @@ class OpenAICompatClient:
             "messages": [{"role": "user", "content": content}],
             "temperature": 0.0,
             "stream": False,
+            "max_tokens": self.max_tokens,
+            # vLLM passes chat_template_kwargs to the Qwen template; disabling
+            # thinking removes the 9-11k-char CoT that blew the latency budget.
+            "chat_template_kwargs": {"enable_thinking": self.enable_thinking},
         }
         req = urllib.request.Request(
             f"{self.base_url}/chat/completions", data=json.dumps(body).encode(),
@@ -132,8 +153,53 @@ def _extract_json(text: str) -> dict[str, Any] | None:
         return None
 
 
+def strip_thinking(text: str) -> str:
+    """Remove a Qwen ``<think>…</think>`` chain-of-thought before parsing.
+
+    Keeps the text after the last ``</think>`` (the actual answer). If a
+    ``<think>`` opened but never closed (truncated CoT), there is no answer —
+    return "" so parsing falls through to the safe fallback.
+    """
+    if not text:
+        return ""
+    lower = text.lower()
+    close = lower.rfind("</think>")
+    if close != -1:
+        return text[close + len("</think>"):].strip()
+    if "<think>" in lower:
+        return ""  # unclosed thinking block => no usable answer
+    return text
+
+
+_MOUSE_RE = re.compile(r"MOUSE\s*\(\s*(\d+)\s*,\s*(\d+)\s*\)", re.IGNORECASE)
+_MOVE_RE = re.compile(r"^\s*(UP|DOWN|LEFT|RIGHT|SPACE|RESET)\s*$", re.IGNORECASE)
+
+
+def _bare_text_action(text: str) -> dict[str, Any] | None:
+    """Accept the model's NATURAL bare-text action as a fallback.
+
+    Qwen tends to end with a plain ``MOUSE(row, col)`` or a lone movement word
+    rather than the requested JSON. Scan non-empty lines from the end and take
+    the first that is an action. MOUSE is (row, col) per the coordinate rule.
+    """
+    for line in reversed([ln for ln in text.splitlines() if ln.strip()]):
+        m = _MOUSE_RE.search(line)
+        if m:
+            return {"action": "MOUSE", "row": int(m.group(1)), "col": int(m.group(2))}
+        mv = _MOVE_RE.match(line)
+        if mv:
+            return {"action": mv.group(1).upper()}
+    return None
+
+
 def parse_model_output(raw: str) -> ParsedOutput:
-    """Parse a reply into code / action(s) / macro / none (deterministic)."""
+    """Parse a reply into code / action(s) / macro / none (deterministic).
+
+    Strips any ``<think>`` block first, then tries: a python code block, a JSON
+    object (macro / plan / single action), and finally a BARE-TEXT action
+    (``MOUSE(r, c)`` / ``UP`` / …) — the shape Qwen naturally emits.
+    """
+    raw = strip_thinking(raw)
     m = _CODE_BLOCK.search(raw or "")
     if m:
         return ParsedOutput(kind="code", code=m.group(1).strip())
@@ -145,6 +211,9 @@ def parse_model_output(raw: str) -> ParsedOutput:
             return ParsedOutput(kind="actions", actions=obj["plan"])
         if "action" in obj:
             return ParsedOutput(kind="actions", actions=[obj])
+    bare = _bare_text_action(raw or "")
+    if bare is not None:
+        return ParsedOutput(kind="actions", actions=[bare])
     return ParsedOutput(kind="none")
 
 
@@ -187,6 +256,7 @@ class ReplAgent:
         self.parse_failures = 0
         self.governor_rejections = 0
         self.sandbox_errors = 0
+        self.llm_errors = 0
         self._reset_game()
 
     def _reset_game(self) -> None:
@@ -280,10 +350,20 @@ class ReplAgent:
             game=self._game_ctx(obs, legal), last_action=self._last_action_dict(),
             scene=scene, prev_scene=self._prev_scene, frame=frame,
             prev_frame=self._prev_frame, history=self._history, memory=self._memory)
-        prompt = self._builder.to_yaml(packet)
+        prompt = self._builder.to_yaml(packet) + _OUTPUT_INSTRUCTION
 
         t0 = time.time()
-        raw = self._llm.complete(prompt, None)
+        try:
+            raw = self._llm.complete(prompt, None)
+        except Exception as exc:  # noqa: BLE001 — a slow/failed call must not end the game
+            latency_ms = (time.time() - t0) * 1000.0
+            self.llm_calls += 1
+            self.llm_errors += 1
+            # Record the failed turn (latency + error visible) and fall through to
+            # the safe fallback action, so one slow call does not end the game.
+            self._record_turn(obs, prompt, "", parse_model_output(""), "",
+                              f"{type(exc).__name__}: {exc}", None, frame, latency_ms)
+            return
         latency_ms = (time.time() - t0) * 1000.0
         self.llm_calls += 1
 

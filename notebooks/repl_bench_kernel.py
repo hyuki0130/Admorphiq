@@ -218,19 +218,21 @@ def run_bench() -> dict:
             from admorphiq.repl_agent.bench import GameDiagnostics
             diag = GameDiagnostics(game_id=game_id, terminal_reason="error",
                                    error=f"{type(exc).__name__}: {exc}")
+        diag.game_id = diag.game_id or game_id  # env may not expose game_id
         with open(os.path.join(diag_dir, f"{game_id}.json"), "w") as f:
             json.dump(diag.to_dict(), f, indent=2)
         summary[game_id] = {
             "levels": diag.levels, "actions": diag.actions, "wall_s": diag.wall_s,
-            "llm_calls": diag.llm_calls, "terminal": diag.terminal_reason,
-            "parse_failures": diag.parse_failures,
+            "llm_calls": diag.llm_calls, "llm_errors": diag.llm_errors,
+            "terminal": diag.terminal_reason, "parse_failures": diag.parse_failures,
             "governor_rejections": diag.governor_rejections,
             "sandbox_errors": diag.sandbox_errors, "error": diag.error,
         }
         print(f"[bench] {game_id}: levels={diag.levels} actions={diag.actions} "
-              f"wall={diag.wall_s}s llm={diag.llm_calls} term={diag.terminal_reason} "
-              f"parse_fail={diag.parse_failures} gov_rej={diag.governor_rejections} "
-              f"sbx_err={diag.sandbox_errors}", flush=True)
+              f"wall={diag.wall_s}s llm={diag.llm_calls} llm_err={diag.llm_errors} "
+              f"term={diag.terminal_reason} parse_fail={diag.parse_failures} "
+              f"gov_rej={diag.governor_rejections} sbx_err={diag.sandbox_errors}",
+              flush=True)
     return summary
 
 

@@ -266,3 +266,35 @@ Kernel metadata (model `michaelpoluektov/qwen3-6-27b-fp8`, kernel_source
 `philipvonderlind/vllm-deps`, dataset `jaehyukhyun/admorphiq-src`, competition
 source) + the push/poll ceremony are the team-lead's side. 54 repl_agent tests
 pass, ruff clean.
+
+### v1 first-run debug → v3 fixes (2026-07-14, transcript-localized)
+
+The kernel v1 real-LLM run (RTX PRO 6000) surfaced integration bugs that the
+transcripts localized exactly (the observability design paying off on run #1):
+all 5 games TimeoutError — su15/ls20/bp35 hit the 120s client timeout with 0
+completed calls; dc22/g50t each got ONE ~102s response that PARSE-FAILED.
+
+Root causes (from `transcripts/*.jsonl`): (1) Qwen 3.6 thinking mode ON → 8.8-10.9k
+chars of chain-of-thought at ~35 tok/s eager = 70-100s+/call, timing the client
+out; (2) the "parse failure" was near-success — after `</think>` the model emitted
+a clean bare-text `MOUSE(46, 35)`, correct perception+reasoning, only the output
+CONTRACT mismatched (not JSON/code).
+
+v3 fixes (one axis: the output/latency contract — perception untouched):
+1. **Disable thinking** — `OpenAICompatClient` sends
+   `chat_template_kwargs={"enable_thinking": false}` + `max_tokens=1000`; prompt
+   appends a `/no_think` belt-and-braces + an explicit "action as the LAST line"
+   output contract (`_OUTPUT_INSTRUCTION`).
+2. **Client timeout 120s → 300s**.
+3. **Parser robustness** — `strip_thinking` removes `<think>…</think>` before
+   parsing; a bare-text fallback accepts `MOUSE(r, c)` / `UP|DOWN|LEFT|RIGHT|SPACE`
+   as the last action line (verified against the actual 8827-char dc22 output →
+   `{"action":"MOUSE","row":46,"col":35}`). JSON still preferred when present.
+4. **Resilience + latency wiring** — a raised LLM call (timeout) is caught,
+   recorded (latency + error in the transcript), counted (`llm_errors`), and the
+   game continues via the safe fallback instead of ending. `llm_errors` added to
+   `GameDiagnostics` + the kernel summary; the empty `game_id` field is filled.
+
+60 repl_agent tests pass (+6: strip_thinking, bare-text from the real dc22 tail,
+bare movement, JSON-preferred, client body disables thinking + caps tokens + 300s,
+LLM-error survival), ruff clean.
