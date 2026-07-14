@@ -501,3 +501,38 @@ core wall. On su15 (paint game, human L1 ≈ 12-22 actions; model used 85):
    NOT conclude "model too small / pivot to JSON-arm or model-swap" from v5. That
    decision needs v6 (working REPL) first. If v6 with working inspection + goal
    revision still clears nothing on su15/ls20, THAT is the model-swap input.
+
+### v7 build — Codex v5-review safeguards + fixes (2026-07-14, flag-gated for v6)
+
+Codex reviewed the v5 gate evaluation (docs/r55_codex_v5_review_20260714.md):
+accepted the P0 invalidation but scoped it (only REPL-usefulness/capability
+metrics are invalid; illegal-0%, event completeness, latency stay valid),
+amended su15 to "wrong JOINT mechanic/goal model under a degraded tool path",
+and specified the v7 goal-revision mechanism. Built the safeguards + fixes,
+commit-per-item; the audit is flag-gated (default OFF) so v6 (P0-only) vs v7
+stays one-variable:
+
+- **v7-1** (`a9a0ed0`) — `sandbox_self_test()` spawns the REAL worker subprocess
+  before play and the kernel HARD-ABORTS on failure (the mocked test only proved
+  PYTHONPATH is passed); `SandboxResult.infra_error` separates a subprocess
+  import/spawn crash (the v5 P0) from the model's code raising — counted
+  separately in diagnostics.
+- **v7-2** (`609d39a`) — real per-level `turn_in_level` (was aliasing the
+  game-lifetime turn, never reset on level-up; transcript field now populated).
+- **v7-4** (`19b2eea`) — de-self-confirm memory: the per-turn PREDICT is
+  relabeled EFFECT_PREDICT (dynamics, scored as a counter only) and NO LONGER
+  written to goal_hypotheses (a board-change 'supported' any story); Hypothesis
+  gains milestone+falsifier, and record_progress supports a goal ONLY when its
+  declared bounded-horizon milestone is met.
+- **v7-3** (`9c30ad7`) — `GoalAuditor`: at 12/24/48 actions-without-level it
+  demands GOAL_HYPOTHESIS / EXPECTED_MILESTONE(within N) / FALSIFIER /
+  ALTERNATIVE_HYPOTHESIS + one discriminating action; the first audit forces an
+  informative TEST, a milestone missed twice forces the alternative. Flag-gated
+  (`audit_enabled`, kernel `REPL_AUDIT`).
+- **v7-5** (`959697b`) — save the actual rendered PNG every N turns
+  (`frame_dump_dir`/`REPL_FRAME_DUMP_EVERY`) for human legibility inspection
+  (hashes prove attachment, not legibility).
+
+95 repl tests, ruff clean, kernel imports clean. Per Codex: run v6 P0-only first;
+if a clean v6 (working REPL) still repeats the same false mechanic after real
+transition inspection, v7's audit is the goal-revision evidence.
