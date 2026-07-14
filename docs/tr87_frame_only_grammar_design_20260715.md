@@ -8,6 +8,20 @@ game-specific adapter. Verdict: **feasible, and the hardest sub-problem
 solver is a multi-day build, not a same-session patch. See "Recommendation"
 at the end.
 
+> **Claims audit (2026-07-15, Codex interim review)**: two claims in the
+> first version of this doc were overclaims; both are corrected below and
+> the audit trail is kept at the end of §2 and in the "Sources read" bullet
+> for `tr87.py`, per wiki doctrine (record the journey, not just the fixed
+> state). Short version: (1) the "7-state cyclic dial" claim originally
+> rested on seeing 7 distinct states with the sample data running out
+> before observing an actual return-to-start — closure is now DIRECTLY
+> measured (see §2); (2) `alter_rules` was mischaracterized as one of
+> "three per-level output-translation modes" alongside `tree_translation`/
+> `double_translation` — it is a structurally different flag (it changes
+> WHICH row the player edits, not how the win-check re-expands a matched
+> rule) and the three flags are independent booleans a level can combine,
+> not a 3-way choice.
+
 ## Sources read
 
 - `.wiki/wiki/lessons/tr87_dial_match_hypothesis_falsified_20260713.md` —
@@ -35,8 +49,52 @@ at the end.
   state's sprite `.set_rotation(old.rotation)`); win-check `bsqsshqpox()`
   is a **deterministic greedy left-to-right parse** of bar1 (first
   rule in list order whose LHS matches at the current position wins, no
-  backtracking) with 3 per-level output modes (`alter_rules`,
-  `tree_translation`, `double_translation`).
+  backtracking).
+
+  **Correction (Codex review): the 3 per-level flags are independent
+  booleans, not a 3-way mode choice, and `alter_rules` is not a peer of
+  the other two.** Re-read of `on_set_level`/`step()` (both
+  verification-only): `tree_translation` and `double_translation` genuinely
+  ARE about the win-check's derivation logic — both re-expand a matched
+  rule's RHS through a second lookup before comparing against bar2
+  (`tree_translation`: each RHS glyph is looked up as ANOTHER rule's
+  `LHS[0]` and replaced by that rule's own RHS; `double_translation`: a
+  hidden `tjaqvwdgkxe`-tagged sprite indirection resolves both sides
+  through a second rule). `alter_rules` is a different KIND of flag
+  entirely: it decides, at level load, WHICH row gets the per-glyph random
+  dial-offset (bar2, when `alter_rules` is absent/False — the case this
+  session captured — or every glyph in the rule table itself, `self.
+  cifzvbcuwqe`, when `alter_rules` is True), and it ALSO redirects what
+  `ACTION1`-`ACTION4` edit at runtime: bar2 (the `else` branch) normally,
+  but **the flattened rule-table glyph list itself**
+  (`[set for rule in self.cifzvbcuwqe for set in rule]`) when
+  `alter_rules` is True — bar2 is left untouched by the player in that
+  mode. The win-check (`bsqsshqpox`) always compares `self.zvojhrjxxm`
+  (bar1) against `self.ztgmtnnufb` (bar2) regardless of `alter_rules`, so
+  when `alter_rules` is True the puzzle becomes "edit the RULE TABLE until
+  the ALREADY-FIXED bar1/bar2 pair happens to satisfy the derivation" — a
+  materially different task shape than "edit bar2 to derive from a fixed
+  rule table," which is what the rest of this document (and everything
+  measured in §2/§3/§4) assumes. The flags also are NOT mutually exclusive
+  — reading every level's own `data={...}` (or its absence) directly:
+
+  | Level (index) | `alter_rules` | `tree_translation` | `double_translation` |
+  |---|---|---|---|
+  | 1 (0) — **captured, this doc's data** | — | — | — |
+  | 2 (1) | — | — | — |
+  | 3 (2) | — | — | — |
+  | 4 (3) | — | — | ✓ |
+  | 5 (4) | ✓ | — | — |
+  | 6 (5) | ✓ | ✓ | ✓ |
+
+  So the only captured level (index 0 / "Level 1") is the SIMPLEST case —
+  no flags at all, matching everything this document measures and designs
+  around — but three of the six levels have zero flags (not one "simple
+  mode" among several peers), one level is `double_translation`-only, one
+  is `alter_rules`-only (the edit-the-rule-table variant), and only the
+  LAST level combines all three. None of levels 4-6 have captured frames
+  (see §1), so the `alter_rules`/`tree_translation`/`double_translation`
+  variants remain unmeasured and undesigned beyond this table.
 - `src/admorphiq/kernels/` (`rewrite.py`, `regions.py`, `shapes.py`,
   `geometry.py`) — the available building blocks.
 
@@ -51,10 +109,13 @@ Located via repo-wide search (`find . -iname "*tr87*"`):
 | `data/transitions/train/tr87.npz` | 2000 rows: `frames`/`next_frames` (int16), `actions` (0-indexed `{0,1,2,3}`) | **multi-step chaining** (see below: 1927/1928 before-frames connect into another sample's after-frame — a connected transition graph, not one trace, but walkable) |
 | `scripts/rounds/*/games/*tr87*.json`, `scripts/test_tr87_*.py` | prior LLM-benchmark results / earlier hand probes | historical context only |
 
-Both `.npz` files are **level 0 only** (no captures exist for levels 1-5,
-which use the `alter_rules`/`tree_translation`/`double_translation` modes).
-This scoping and prototype is therefore level-0-only; the other 3 modes are
-designed on paper (from the verification-only read) but not measured.
+Both `.npz` files are **level 0 only** (no captures exist for levels 1-5;
+see the "Sources read" correction above for exactly which of the 3
+independent flags — `alter_rules`, `tree_translation`, `double_translation`
+— each of those uncaptured levels sets). This scoping and prototype is
+therefore level-0-only (the one level with none of the 3 flags set); the
+flagged levels are discussed on paper (from the verification-only read)
+but not measured.
 
 ## 2. Confirmed structural findings (measured, not assumed)
 
@@ -105,22 +166,59 @@ vs 4/5 rotation-invariant — the missing 1 is expected, bar2's random
 initial dial offset need not land on a state the rule table happens to
 reference.)
 
-**The dial is confirmed to cycle through exactly 7 distinct states**,
-independently re-derived from frames (not read off `kjgicbtgrt = 7` and
-assumed) via a transition-graph walk: chaining `action=1` (dial-step) hops
-from a fixed start state through `data/transitions/train/tr87.npz`'s
-connected graph visits **7 states before the sample data runs out, all
-7 pairwise distinct** (both under rotation-invariant AND translation-only
-signatures — the counts are equal, confirming a slot's own on-screen
-rotation stays fixed across its own 7-state cycle, matching
-`wpbnovjwkv`'s rotation-preserving clone). The reverse action (`action=0`)
-walks the same 7 states backward, consistent with the source's documented
-ACTION1=+1/ACTION2=-1 exact-inverse relationship. Note: the exploration
-data ran out before observing the literal wraparound-to-start edge, so
-"exactly 7, cyclic" rests on the 7-distinct-states count plus the source's
-own `% (len(states)-1)` modular step logic, not a directly observed
-7th-hop-returns-to-start frame — a real solver should re-verify closure
-live, cheaply (7-8 presses).
+**The dial is confirmed to CLOSE a 7-state cycle — not merely to show 7
+distinct states.** The first pass at this measurement (see "Claims audit"
+below) chained EXACT frame bytes from one fixed start and stopped at 7
+distinct states purely because the sample data ran out, never observing an
+actual return to the start — that is evidence of "at least 7 states," not
+of a closed 7-cycle. The corrected measurement instead builds an
+ABSTRACTED graph over `(column, rotation-invariant signature, action)` —
+merging any two raw samples that agree on one column's own dial-state even
+if they differ elsewhere on the board (different bracket position on
+another sample, etc.) — from all 949 dial-step samples in `data/
+transitions/train/tr87.npz` (of 2000 total; the rest are bracket-move
+samples), after verifying, PER SAMPLE, that the bracket didn't move (0 of
+949 did). Walking `action=1` from a fixed start state on this graph:
+
+- All 5 columns: **exactly 7 distinct canonical states**, and the walk
+  **CLOSES — returns to the exact start state — after exactly 7 hops**,
+  for every column. This is genuine closure, directly observed in the
+  data (not inferred from a state count or a modular-arithmetic reading of
+  the source).
+- The reverse action (`action=0`) is confirmed, hop-by-hop, to be the
+  EXACT inverse of every forward hop on the closed cycle: **7/7 hops
+  confirmed for every column** (`edges[(col, s_{i+1}, 0)] == s_i` checked
+  directly against the graph, not assumed from the source's `ACTION1=+1/
+  ACTION2=-1` documentation).
+- A further, unplanned finding: **all 5 columns share the exact identical
+  SET of 7 canonical signatures** (not just the same count) — consistent
+  with the 7 shapes being one shared "digit" pattern library reused across
+  glyph LETTER-families (which differ only in fill colour, not ink
+  pattern; see the ink-colour finding above), though this session did not
+  chase that hypothesis further.
+
+**Conflict-checked, not silently merged.** The fuller Codex review (`docs/
+r56_codex_tr87_review_20260715.md`) additionally found that the FIRST
+version of this probe's graph builder used a plain dict assignment that
+silently overwrites a duplicate `(frame, action)` key on conflict — and
+found 4 such conflicting pairs in that exact-byte version. The corrected
+probe collects every `(column, signature, action)` observation into a SET
+first and explicitly reports how many keys have more than one distinct
+outcome (i.e. are genuinely nondeterministic in the sampled data) before
+building the graph used for the walk above: **0 of 70 edges conflict** —
+every one of the 949 dial-step samples used agrees with every other sample
+sharing its `(column, signature, action)` key. This is a materially
+different (and stronger) result than the old exact-byte version's 4
+conflicts, most plausibly because THIS abstraction discards exactly the
+kind of irrelevant elsewhere-on-the-board pixel variation (a different
+sample's bracket-adjacent rendering, unrelated dial state elsewhere) that
+made two "different" exact frames collide under the coarser
+`(column, signature)` key while genuinely agreeing on the one dial's own
+transition.
+
+Reproducible via `scripts/_tr87_probe.py`'s "section 3" (the script now
+performs this abstracted-graph closure test, with the conflict check, in
+place of the original exact-byte chain).
 
 ## 3. Design: pipeline as kernel compositions
 
@@ -164,7 +262,8 @@ for glyph segmentation** here (see Kernel Gap §1) but remain useful for
 other structural sub-problems (e.g. clustering the 12 upper-grid windows
 into rule-pairs by centroid position is exactly `group_by_axis`'s job,
 once windows are found); `kernels.rewrite.find_derivation` is a candidate
-*fallback* engine (§4) but is not what the primary L1 parse needs.
+*fallback* engine (§4) but is not what the primary no-flags-level parse
+needs.
 
 ## 4. `derive_rewrites`/`find_derivation` is NOT the primary engine for the simple mode — a genuine, useful finding
 
@@ -178,22 +277,38 @@ branching BFS over *all* rule/position choices, because they're designed
 for the general case where multiple derivations may exist and the
 target must be searched for).
 
-**Implication**: the L1 (`alter_rules=False`) adapter needs a new,
-simpler primitive — "greedy tokenize `bar1_tokens` by the rule LHS list in
-order, concatenate the matched RHS's" — not a BFS search. `find_derivation`
-remains useful as a **defensive fallback**: if the greedy parse fails to
-cover all of bar1 (a real possibility if an adapter's rule extraction
-mis-orders or mis-splits a rule), a bounded `find_derivation`-style search
-over the *same* rule set could recover a valid tiling the naive greedy
-parse missed, or explicitly report "genuinely unparseable — extraction
-bug" rather than silently producing a wrong plan. The `tree_translation`
-and `double_translation` modes (unmeasured — no captured data at those
-levels) are more clearly derivation-shaped (recursive RHS re-expansion),
-and are closer to what `find_derivation` was built for — but each is its
-own bespoke traversal per the source, not a single generic search, so
-should be scoped as its own follow-up once level 1+ frames exist.
+**Implication**: the adapter for the no-flags levels (1-3; this session's
+captured data is level 1/index 0) needs a new, simpler primitive — "greedy
+tokenize `bar1_tokens` by the rule LHS list in order, concatenate the
+matched RHS's" — not a BFS search. This is now built:
+`kernels.parse.greedy_parse` (landed in the follow-up round after this
+doc, see `src/admorphiq/kernels/parse.py`). `find_derivation` remains
+useful as a **defensive fallback**: if the greedy parse fails to cover all
+of bar1 (a real possibility if an adapter's rule extraction mis-orders or
+mis-splits a rule), a bounded `find_derivation`-style search over the
+*same* rule set could recover a valid tiling the naive greedy parse
+missed, or explicitly report "genuinely unparseable — extraction bug"
+rather than silently producing a wrong plan. The `tree_translation` and
+`double_translation` flags (unmeasured — no captured data at the levels
+that set them; see the corrected level/flag table in "Sources read") are
+more clearly derivation-shaped (recursive RHS re-expansion via a second
+rule lookup), and are closer to what `find_derivation` was built for — but
+each is its own bespoke traversal per the source, not a single generic
+search, so should be scoped as its own follow-up once frames for those
+levels exist. `alter_rules` (also unmeasured) is NOT a derivation-shape
+variant at all — see the "Sources read" correction — it changes which row
+the player edits, so it needs its own adapter design (edit the rule table,
+not bar2), not a `greedy_parse`/`find_derivation` variant.
 
 ## 5. Kernel gaps this exposes
+
+> **Update (follow-up round, same day): gaps #1-#4 below are now CLOSED.**
+> `src/admorphiq/kernels/parse.py` (commit `1aab383`) landed
+> `gap_windows`, `window_majority_color`, `cluster_widths` (and
+> `regions.size_clusters` now delegates to it), and `greedy_parse` —
+> exactly the four primitives scoped below. Left as originally written for
+> the record of what was missing at scoping time; gap #5 (untested across
+> levels/flags) remains open.
 
 1. **No kernel does "segment a row-band into glyph windows by background
    gap."** `kernels.regions.find_regions` segments by *same-colour*
@@ -236,7 +351,13 @@ should be scoped as its own follow-up once level 1+ frames exist.
    session only had level-0 data. Whether canonical (dihedral) signatures
    remain a clean 1:1 token alphabet under `alter_rules`'s additional
    random per-glyph cyclic offset (applied at load time to the rule
-   sprites themselves, not just bar2) is unmeasured.
+   sprites themselves, not just bar2) is unmeasured. Beyond token
+   equality, `alter_rules` also needs an entirely separate ADAPTER MODE no
+   kernel gap here covers: when it's set, `ACTION1`-`ACTION4` edit the rule
+   table itself (not bar2 — see the "Sources read" correction), so the
+   adapter's action-planning step (§3's last stage) needs a second variant
+   that targets rule-table glyph slots instead of bar2 columns; this is a
+   design/adapter gap, not a missing kernel primitive.
 
 ## 6. Feasibility verdict
 
@@ -245,27 +366,31 @@ should be scoped as its own follow-up once level 1+ frames exist.
 (the part flagged "feature-scale" in the round log) is now a *measured*
 16→12-token rotation-invariant alphabet with a working extraction recipe,
 not an open question. The rule-pair grouping (gap-width) and the dial's
-7-state cycle are both independently re-confirmed from frames. What
-remains unbuilt: (a) the adapter code implementing §3's pipeline end-to-end
-as `admorphiq` game-specific glue (analogous to `rotation.py`/`slider.py`),
-(b) the new small kernel primitives in §5 (gap-window segmentation, local
-majority colour, greedy token parse, gap-width clustering — all
-individually cheap, none currently exist), (c) the dial-executor (map
-current↔target token via the 7-cycle, emit ACTION1/2 counts + ACTION3/4
-navigation — straightforward once tokens are known), and (d) coverage for
-the 3 per-level modes beyond L1's simple case, which have zero captured
-data to prototype against.
+7-state cycle are both independently re-confirmed from frames — including
+genuine cycle CLOSURE and reverse-inverse confirmation (see §2's corrected
+measurement), not just a distinct-state count. What remains unbuilt: (a)
+the adapter code implementing §3's pipeline end-to-end as `admorphiq`
+game-specific glue (analogous to `rotation.py`/`slider.py`) — the 4 kernel
+primitives it composes now exist (`kernels/parse.py`, see §5's update);
+(b) the dial-executor (map current↔target token via the 7-cycle, emit
+ACTION1/2 counts + ACTION3/4 navigation — straightforward once tokens are
+known); and (c) coverage for the 3 independent per-level flags beyond the
+no-flags case measured here, INCLUDING a second adapter mode for
+`alter_rules` specifically (edit-the-rule-table, not edit-bar2 — see gap
+#5), none of which have captured data to prototype against.
 
 ## Recommendation
 
-This is a real, scoped round (not a same-session patch): build the 4
-small kernel primitives in §5 first (each is independently testable,
-cheap, reusable beyond TR87), then the TR87 adapter on top, validated
-against level 0's captured frames end-to-end (extract → derive expected
-bar2 → confirm it equals a KNOWN correct bar2 state, which would require
-either a captured "is_gold"/solved trace — none exists yet, all `is_gold`
-are `False` — or one bounded live verification run). The dial executor
-(step count math + bracket navigation) is the cheapest remaining piece.
-Levels 1-5 (the 3 output modes) should be scoped as a explicit follow-up
-once level-specific frames are captured, not assumed to generalize from
-level 0.
+This is a real, scoped round (not a same-session patch): with the 4
+kernel primitives from §5 now landed, the next step is the TR87 adapter
+itself, validated against level 1's (index 0's) captured frames end-to-end
+(extract → derive expected bar2 → confirm it equals a KNOWN correct bar2
+state, which would require either a captured "is_gold"/solved trace — none
+exists yet, all `is_gold` are `False` — or one bounded live verification
+run). The dial executor (step count math + bracket navigation) is the
+cheapest remaining piece. Levels 4-6 (the flagged levels — see the
+corrected table in "Sources read") should be scoped as an explicit
+follow-up once level-specific frames are captured, not assumed to
+generalize from level 1 — and `alter_rules` in particular needs its own
+adapter-mode design (edit-the-rule-table), not just "more of the same
+pipeline" on new data.
