@@ -4,126 +4,96 @@ Turns R57's win-condition typology mining
 (``docs/r57_win_condition_typology_20260715.md``) into a set of cheap,
 kernel-composed, PRE-CLEAR detectors — no level-up labels, no gold data,
 no game identity, ever, at runtime. ``detect(observations)`` is a pure
-function: it runs every detector that has enough input to fire, returns a
-capped, compact set of competing goal candidates plus any unresolved
-structural ambiguity, and is silent (an empty result) rather than
-speculative when the evidence doesn't support a call.
+function: it runs every detector that has enough input to fire, and returns
+a **capped hypothesis set**, not an elected winner.
 
-**Evidence-strength scoring (R58 tuning round, 2026-07-15, real-trace
-validation).** Every candidate carries a ``"strength"`` in ``[0, 1]``
-computed ONLY from that detector's own structural evidence (never a
-per-game constant) — candidates are sorted by strength descending, ties
-broken by detector-execution order (Python's stable sort over the
-fixed-order append list below does this for free). This was added after
-validating the v1 (unscored) ledger against real early-trace frames for
-all 24 R57-evidenced games: unscored, "the first detector that fired" was
-a meaningless proxy for confidence (``elimination``/``threshold`` could
-never rank first regardless of evidence quality, purely because they run
-later in a fixed pipeline). Each detector's strength formula and its
-rationale are documented in that detector's own docstring, below.
-That validation pass also found two concrete over-firing patterns fixed
-here as STRUCTURAL discriminators (never per-game constants):
-``elimination`` firing on essentially any single early transition (almost
-any action changes SOME region's exact signature somewhere on a real
-board), and ``uniformity`` firing on decorative 1-cell texture noise
-indistinguishable, under a naive same-shape count, from a real toggle
-grid. See the per-detector docstrings for exactly what changed.
+**R58 tuning round #3 (2026-07-15) — reconceptualization per Codex verdict
+`docs/r58_codex_ledger_ranking_20260715.md`.** Two prior rounds (evidence-
+strength scoring, then floor-anchoring) tried to make the six detectors'
+``"strength"`` values comparable enough to sort into a single ranked list
+and elect a TOP1 winner. Real-trace validation across three measurement
+rounds (same 24-game battery) showed this framing was wrong at the root:
+floor-anchoring is a mathematically correct normalization of each
+detector's margin ABOVE ITS OWN FIRING GATE, but a ``0.45`` from
+``arrival`` and a ``0.45`` from ``uniformity`` never estimated the same
+probability, likelihood ratio, or information gain — their gates, evidence
+modalities, and formulas differ, so sorting them into one scalar order
+asserts more comparability than the formulas support. Codex's verdict,
+adopted here:
 
-**Floor-anchoring (R58 tuning round #2, 2026-07-15).** Re-measuring the
-round-1 scoring against the same 24 games found coverage (TOPK) improved
-sharply but top-rank accuracy (TOP1) REGRESSED — traced to the six raw
-formulas having very different values AT their own minimum firing
-threshold (``pattern_match``'s two gates already put its floor near 0.53;
-``arrival``'s ambiguity penalty can push its floor far lower), so a
-detector that "just barely" fired could outrank one with much stronger
-relative evidence purely because its formula family sits higher on
-average. Every detector's raw formula is now rescaled via
-:func:`_floor_anchor`: ``strength = FLOOR + (1-FLOOR) * (raw - gate_min) /
-(gate_max - gate_min)``, where ``gate_min`` is the formula's value
-evaluated ANALYTICALLY at its own firing boundary (documented per detector
-below) and ``gate_max = 1.0`` for all six (each raw formula is a product
-of ``[0, 1]``-bounded terms). This is provably safe: for every detector,
-``raw >= gate_min`` by construction — gate_min substitutes each term that
-has an explicit ``_MIN_*``/``_MAX_*`` gate with its boundary value while
-leaving every other (already-observed, ungated) term at its ACTUAL value
-shared with ``raw``, and a fired detector's gated terms are by definition
-never below their own gate. So ``strength`` always lands in
-``[FLOOR, 1.0]``, and ``FLOOR`` (a component that "just barely fired")
-becomes a comparable floor across all six detector families — the
-semantics of ranking became "how far above ITS OWN bar is this candidate",
-not "which formula family happens to run numerically higher".
+- ``GoalLedger`` is a **capped hypothesis generator**, not a six-class
+  classifier. ``"strength"`` is kept but is a detector-LOCAL MARGIN above
+  that detector's own gate — never a cross-detector confidence score.
+- Every candidate carries an **evidence stage** (``affordance`` <
+  ``behavioral`` < ``predicate``, weakest to strongest) reflecting WHAT KIND
+  of evidence built it — a static frame permitting the type, an observed
+  transition behaving as the type predicts, or an actual reference/endpoint
+  identified — not how numerically large its raw formula happened to run.
+  Ranking is TIER FIRST; candidates within the same tier are genuine ties
+  (``"strength"``/detector order only break ties for deterministic
+  presentation, never to claim one is "more true").
+- An **adjudication pass** computes pairwise evidence-DEPENDENCY relations
+  between fired candidates via footprint set operations (``shared_evidence``,
+  ``subsumed_evidence``, ``independent_evidence``) plus one structural,
+  type-level relation (``temporal_composition``, R57's own documented T4 =
+  arrival∘elimination composition) — never a hard mutual-exclusion table.
+  R57 itself records several type PAIRS as compositional or co-occurring
+  (T4 = T1+T2; T6 is itself "a fixed-cell pattern match"; at least one
+  public game genuinely has both a pattern-building phase and an
+  arrival/exit phase), so a learned or hand-written "only one of these can
+  be true" table would encode the wrong semantics. Shared evidence is
+  marked, never silently double-counted or silently deleted.
+- Capping to ``MAX_CANDIDATES`` preserves the highest evidence tiers, BOTH
+  sides of an explicit ambiguity (a ``shared_evidence``/``subsumed_evidence``
+  pair), and candidates with mutually INDEPENDENT footprints, before
+  falling back to margin/detector-order as a final size-control tie-break.
+- ``unresolved_tests`` are now CONCRETE structural probes ("whether edits
+  follow a translated fixed stencil or directly repaint one canvas slot"),
+  not a bare list of competing type names — a weak offline LLM should be
+  handed a specific test to run, not four scores to interpret itself.
 
 Naming follows the verdict's OWN example vocabulary
 (``goals/detectors/{elimination,uniformity,pattern_match,containment,
 arrival}.yaml``) rather than inventing new type names, so a goal
 candidate's ``"type"`` field is directly one of those five plus one R58
-addition (``threshold`` — justified below). Each detector's docstring
-cross-references which R57 typology letter (T1-T8) it operationalizes —
-by LETTER only, never by public-game name (``scripts/explanation_lint.py``
-enforces that on this file, same as every other file in the package; the
-full per-game provenance for each type lives in R57's own doc, not here).
+addition (``threshold``). Each detector's docstring cross-references which
+R57 typology letter (T1-T8) it operationalizes — by LETTER only, never by
+public-game name (``scripts/explanation_lint.py`` enforces that on this
+file, same as every other file in the package; the full per-game
+provenance for each type lives in R57's own doc, not here).
 
 Coverage vs. R57's 8 types, and why:
 
-  - ``arrival``       <- T1 Reach/Target-Coincidence. Supported: a
-    colour-unique, smaller-than-median region is a cheap, zero-action,
-    single-frame structural proxy for "the marked locus" (R57's biggest
-    bucket: movement AND click sub-forms both reduce to a distinguished
-    target locus).
-  - ``uniformity``     <- T6 Toggle-Parity. Supported: many same-shape
-    regions (grid of repeated cells) is the zero-action structural
-    precondition R57 measured on its cleanest single signal in the whole
-    mining pass (a constant-shape stencil flip every level). NOTE: firing
-    does not prove GF(2) structure (verdict §4's "uniformity does not
-    prove GF(2)") — it only proposes the HYPOTHESIS that the win
-    condition is "these repeated cells reach a uniform/target state";
-    confirming GF(2) linearity is the ``toggle_linear`` MECHANIC
-    playbook's job, not this ledger's.
-  - ``containment``    <- T3 Assignment/Matching. Supported: >=2 sibling
-    container regions each holding >=2 item regions is a zero-action
-    structural proxy for the bordered-box/slot family R57 frame-verified
-    on two of its games (a portal-graph sort and a sprite-to-target
-    assignment).
-  - ``pattern_match``  <- T5 Fill/Paint-to-Pattern. Supported: exactly ONE
-    container region holding many (>=5) HETEROGENEOUS (>=3 distinct
-    colours) item regions, as opposed to containment's >=2 SIMILAR
-    siblings — proxying R57's evidence for a single growing, multi-colour
-    canvas per level (frame-verified there via a full-block-vs-single-
-    action diff contrast).
-  - ``elimination``    <- T2 Elimination/Obstacle-Consumption. Supported,
-    but needs a before/after frame PAIR (the "material transition"
-    ledger trigger, not first observation) — a region present before is
-    entirely absent after, matching R57's frame-verified door/obstacle
-    and box-consumption evidence.
-  - ``threshold``      <- T7 Threshold/Repeated-Action-Count. Supported,
-    R58 ADDITION beyond the verdict's five named examples (R57 judged
-    this a genuine, distinct type from two independent repeated-action
-    build-up games). Needs a short window (>=3) of frames observed under
-    ONE repeated action; a monotonic frame_diff trend is the zero-label
-    proxy for a hidden counter approaching a threshold.
+  - ``arrival``       <- T1 Reach/Target-Coincidence.
+  - ``uniformity``     <- T6 Toggle-Parity ("NOTE: firing does not prove
+    GF(2) structure — it only proposes the HYPOTHESIS that the win
+    condition is 'these repeated cells reach a uniform/target state';
+    confirming GF(2) linearity is the ``toggle_linear`` MECHANIC playbook's
+    job, not this ledger's" — verdict §4).
+  - ``containment``    <- T3 Assignment/Matching.
+  - ``pattern_match``  <- T5 Fill/Paint-to-Pattern. REBUILT this round (see
+    :func:`_detect_pattern_match`) — the v1/v2 heterogeneous-bbox-container
+    proxy did not implement R57's actual canvas/reference-relationship
+    sketch and is replaced by an immediate-containment-hierarchy +
+    addressable-lattice / congruent-panel-pair detector.
+  - ``elimination``    <- T2 Elimination/Obstacle-Consumption. Needs a
+    before/after frame PAIR — inherently transitional evidence, so its tier
+    ranges ``behavioral``/``predicate`` only, never ``affordance``.
+  - ``threshold``      <- T7 Threshold/Repeated-Action-Count, R58 ADDITION
+    beyond the verdict's five named examples. Needs a repeated-action
+    window — also inherently transitional, ``behavioral`` only.
   - T4 Delivery/Carry-and-Place — **UNSUPPORTED as an independent
-    detector.** R57 found T4 is compositionally T1 (a NON-player region
-    reaching a locus) + T2 (that same region then vanishing/converting to
-    a "delivered" marker). This ledger is a pure per-call function with
-    no persistent identity tracking across multiple ``detect()``
-    invocations, so it cannot itself correlate "the region that arrived
-    is the SAME region that later vanished" — that correlation is a
-    harness-level job (compare two ``detect()`` calls' ``arrival``/
-    ``elimination`` evidence over time), not a new zero-action structural
-    primitive. Shipping a "delivery" detector here would just be
-    ``arrival`` and ``elimination`` under a third name with no new
-    evidence behind it.
+    detector**, but its compositional relationship to ``arrival`` +
+    ``elimination`` IS now represented structurally via
+    ``temporal_composition`` in the adjudication pass (not correlated
+    across ``detect()`` calls — this ledger is still stateless per call;
+    the relation is declared once, type-level, from R57's own typology,
+    not inferred from any per-game footprint overlap).
   - T8 Programmatic/Rewrite-Derivation — **UNSUPPORTED, explicitly, not a
-    weak proxy.** R57's own coverage table is blunt about this: the one
-    game that anchored this type's typology label has **zero** captured
-    level-up events across the entire mining pass — its T8 label rests
-    entirely on a one-time inspection of that game's implementation
-    (verification-only, never generalizable to a hidden game). No
-    frame-only signature for "this is a rewrite/program-derivation game"
-    was ever validated against real data. A structural stand-in (e.g. "a
-    linear 1-D strip of repeated cells, as opposed to uniformity's 2-D
-    grid") was considered and rejected — per the explicit R58 instruction
-    to mark a type ledger-unsupported rather than ship a stretch.
+    weak proxy.** R57's own coverage table is blunt: the one game that
+    anchored this type's typology label has zero captured level-up events
+    across the entire mining pass; its label rests entirely on a one-time
+    source inspection, never validated against real frame data.
 """
 
 from __future__ import annotations
@@ -132,7 +102,13 @@ from collections import Counter
 from collections.abc import Sequence
 from typing import Any
 
-from admorphiq.kernels import find_regions, frame_diff, multiset_signature, region_relations
+from admorphiq.kernels import (
+    find_regions,
+    frame_diff,
+    group_by_axis,
+    multiset_signature,
+    region_relations,
+)
 
 MAX_CANDIDATES = 4
 MAX_HANDLES_PER_CANDIDATE = 3
@@ -141,28 +117,41 @@ MAX_UNRESOLVED = 3
 # Structural thresholds. Deliberately small integers, not tuned to any one
 # game's exact geometry (that would smuggle a public-game constant back
 # into a "generic" detector — the R56 toolbase-verdict failure mode this
-# package exists to avoid). ``_MAX_UNIFORM_SHAPE_COLORS`` is new in the R58
-# tuning round (see :func:`_detect_uniformity`); everything else here is
-# unchanged from v1 — this tuning round is strength scoring plus two named
-# discriminators, NOT a general threshold sweep.
+# package exists to avoid).
 _MIN_UNIFORM_GRID_COUNT = 6
 _MAX_UNIFORM_SHAPE_COLORS = 3
 _MIN_UNIFORM_SHAPE_CELLS = 2  # ">1 cell", named for use in gate_min derivations below
 _MIN_CONTAINMENT_SIBLINGS = 2
 _MIN_CONTAINMENT_ITEMS_PER_SIBLING = 2
-_MIN_PATTERN_MATCH_ITEMS = 5
-_MIN_PATTERN_MATCH_DISTINCT_COLORS = 3
+_MIN_LATTICE_CHILDREN = 4  # a 2x2 addressable grid is the smallest genuine lattice
+_MIN_PANEL_PAIR_CHILDREN = 2
 _MIN_THRESHOLD_REPEATS = 3
 _MIN_THRESHOLD_DIFFS = 2  # named for use in gate_min derivations below (was a bare literal)
 
-# Floor-anchoring (R58 tuning round #2): FLOOR is where a "just barely
-# cleared this detector's own firing gate" candidate lands after rescaling;
-# team-lead-suggested 0.2, uniform across all six detectors (a per-detector
-# floor would just reintroduce the calibration-gap problem this exists to
-# fix). See module docstring and :func:`_floor_anchor`.
+# Floor-anchoring: FLOOR is where a "just barely cleared this detector's own
+# firing gate" candidate lands after rescaling; uniform across all six
+# detectors (a per-detector floor would just reintroduce the calibration
+# problem this exists to fix). Per the R58 tuning-round-3 verdict, this
+# value is now explicitly a detector-LOCAL MARGIN — see the module
+# docstring — not a cross-detector confidence estimate, so its exact value
+# matters far less than it did when candidates were sorted by it alone.
 _STRENGTH_FLOOR = 0.2
 
+# Evidence-stage tiers (verdict §"Concrete ranking design"): predicate is
+# STRONGEST (an actual reference/endpoint identified), affordance is
+# WEAKEST (static structure merely permits the type). Rank 1 = best.
+_TIER_RANK: dict[str, int] = {"predicate": 1, "behavioral": 2, "affordance": 3}
+
+# The one structural, type-level compositional relation R57 documents
+# explicitly (T4 Delivery = T1 Reach/Target-Coincidence + T2
+# Elimination/Obstacle-Consumption composed over time) — declared once,
+# generically, never inferred from a specific game's footprint overlap.
+_TEMPORAL_COMPOSITION_PAIRS: frozenset[frozenset[str]] = frozenset(
+    {frozenset({"arrival", "elimination"})}
+)
+
 Frame = Sequence[Sequence[int]]
+Cell = tuple[int, int]
 
 
 def _mode_color(frame: Frame) -> int:
@@ -171,14 +160,17 @@ def _mode_color(frame: Frame) -> int:
 
 
 def _floor_anchor(raw: float, gate_min: float, gate_max: float = 1.0) -> float:
-    """Rescale ``raw`` (a detector's un-anchored strength) so ``gate_min``
+    """Rescale ``raw`` (a detector's un-anchored margin) so ``gate_min``
     (that formula's value at its OWN minimum firing threshold — computed
     analytically per detector, see each ``_detect_*`` docstring) maps to
-    ``_STRENGTH_FLOOR`` and ``gate_max`` maps to ``1.0``. See the module
-    docstring's "Floor-anchoring" section for why this exists and the proof
-    that ``raw >= gate_min`` always holds by construction (so the result is
-    always in ``[_STRENGTH_FLOOR, 1.0]``); the ``max(0.0, min(1.0, ...))``
-    clamp is defensive only (floating-point safety), not load-bearing.
+    ``_STRENGTH_FLOOR`` and ``gate_max`` maps to ``1.0``. Provably safe:
+    ``raw >= gate_min`` always holds by construction (a fired detector's
+    gated terms are, by definition, never below their own gate), so the
+    result is always in ``[_STRENGTH_FLOOR, 1.0]``. The
+    ``max(0.0, min(1.0, ...))`` clamp is defensive only (floating-point
+    safety), not load-bearing. This value remains a detector-LOCAL margin
+    (see module docstring) — comparable across candidates of the SAME
+    detector, not across detectors.
     """
     denom = max(gate_max - gate_min, 1e-9)
     return _STRENGTH_FLOOR + (1 - _STRENGTH_FLOOR) * max(0.0, min(1.0, (raw - gate_min) / denom))
@@ -213,6 +205,10 @@ class _Ledger:
 
 
 def _containers_map(relations: list[dict[str, Any]]) -> dict[int, list[int]]:
+    """ALL bbox descendants per container (region_relations' 'contains' is
+    already transitively closed — every strictly-containing pair, not just
+    immediate parent/child). See :func:`_immediate_children` for the
+    transitive reduction the new ``pattern_match`` detector needs."""
     containers: dict[int, list[int]] = {}
     for rel in relations:
         if rel["relation"] == "contains":
@@ -220,45 +216,111 @@ def _containers_map(relations: list[dict[str, Any]]) -> dict[int, list[int]]:
     return containers
 
 
-def _detect_arrival(regions: list[dict[str, Any]], frame_area: int, ledger: _Ledger) -> dict[str, Any] | None:
+def _immediate_children(regions: list[dict[str, Any]], containers_all: dict[int, list[int]]) -> dict[int, list[int]]:
+    """Transitive reduction of ``containers_all`` to IMMEDIATE containment
+    only: for every descendant, its immediate parent is the containing
+    region with the SMALLEST bbox area among all regions that contain it —
+    by construction, no other container can sit strictly between the
+    tightest enclosing container and the descendant, since the tightest
+    one IS the smallest. Pure set/geometry reasoning, no game constants.
+    """
+    descendant_to_containers: dict[int, list[int]] = {}
+    for p, descendants in containers_all.items():
+        for d in descendants:
+            descendant_to_containers.setdefault(d, []).append(p)
+
+    def _area(idx: int) -> int:
+        r0, c0, r1, c1 = regions[idx]["bbox"]
+        return (r1 - r0 + 1) * (c1 - c0 + 1)
+
+    immediate: dict[int, list[int]] = {}
+    for d, parents in descendant_to_containers.items():
+        tightest = min(parents, key=_area)
+        immediate.setdefault(tightest, []).append(d)
+    return immediate
+
+
+def _lattice_shape(regions: list[dict[str, Any]], children: list[int]) -> tuple[int, int] | None:
+    """Do ``children`` (region indices) form a regular, addressable
+    two-axis slot lattice? Groups by row then by column (:func:`group_by_axis`)
+    and requires >=2 rows, >=2 columns, and a UNIFORM row width AND column
+    height (every row has the same child count, every column has the same
+    child count) — a strict, self-consistent MxN grid, not merely "roughly
+    aligned". Returns ``(n_rows, n_cols)`` or ``None``.
+    """
+    if len(children) < _MIN_LATTICE_CHILDREN:
+        return None
+    subset = [regions[i] for i in children]
+    row_groups = group_by_axis(subset, axis="row")
+    col_groups = group_by_axis(subset, axis="col")
+    n_rows, n_cols = len(row_groups), len(col_groups)
+    if n_rows < 2 or n_cols < 2:
+        return None
+    row_sizes = {len(g) for g in row_groups}
+    col_sizes = {len(g) for g in col_groups}
+    if len(row_sizes) != 1 or len(col_sizes) != 1:
+        return None
+    return (n_rows, n_cols)
+
+
+def _find_congruent_panel_pair(
+    regions: list[dict[str, Any]], immediate: dict[int, list[int]]
+) -> tuple[int, list[int], int, list[int], str] | None:
+    """Two DIFFERENT immediate-containment container regions whose children
+    counts match (and whose lattice shapes match, if both form lattices) —
+    a canvas/reference pair suitable for comparison. Deterministic: returns
+    the first congruent pair found in ``immediate``'s (regions-sorted,
+    hence deterministic) iteration order.
+    """
+    items = [(c, kids) for c, kids in immediate.items() if len(kids) >= _MIN_PANEL_PAIR_CHILDREN]
+    for i in range(len(items)):
+        for j in range(i + 1, len(items)):
+            c1, kids1 = items[i]
+            c2, kids2 = items[j]
+            if len(kids1) != len(kids2):
+                continue
+            shape1 = _lattice_shape(regions, kids1)
+            shape2 = _lattice_shape(regions, kids2)
+            tag = "congruent_lattice" if (shape1 and shape1 == shape2) else "congruent_count"
+            return (c1, kids1, c2, kids2, tag)
+    return None
+
+
+def _cells_of(regions: list[dict[str, Any]], indices: Sequence[int]) -> frozenset[Cell]:
+    out: set[Cell] = set()
+    for i in indices:
+        out |= regions[i]["cells"]
+    return frozenset(out)
+
+
+def _detect_arrival(
+    regions: list[dict[str, Any]],
+    frame_area: int,
+    ledger: _Ledger,
+    transition_window: Sequence[Frame] | None,
+) -> dict[str, Any] | None:
     """T1 Reach/Target-Coincidence -> ``arrival``. See module docstring.
 
-    **R58 tuning round — size filter replaced.** v1 excluded any candidate
-    ABOVE the median region size, meant to rule out one large dominant
-    panel. Real-trace validation found this backfired: many real boards
-    fragment their background into a large population of small decorative
-    pieces, dragging the median size well below a genuine target/player
-    sprite's size — the median filter then excluded the CORRECT target
-    (measured directly: on one game the wiki's own winning strategy names
-    the exact colour the ledger found and then discarded, purely because
-    that region was above the median). Replaced with DOMINANCE exclusion:
-    only a region covering more than half the frame is excluded; every
-    other colour-unique region, regardless of its size relative to the
-    population's median, is now a candidate. This still rules out "one
-    huge dominant panel" (>50% of the board can't also be a small target
-    marker) without penalizing an ordinary-or-larger-than-median sprite.
+    Fires when >=1 region's colour occurs nowhere else in the frame AND its
+    size does not dominate (>50% of) the board — a colour-unique,
+    non-dominant region is the candidate marked locus. Among such
+    candidates, the smallest is picked (sharpest single-locus reading).
 
-    **Strength** = ``uniqueness_sharpness * size_distinctness``:
+    **Margin** = ``uniqueness_sharpness * size_distinctness``:
+    ``uniqueness_sharpness = 1/n_candidates`` (fewer competing unique-colour
+    regions = sharper signal); ``size_distinctness = 1 - size/frame_area``
+    (smaller relative to the board reads as more marker-like). Floor-
+    anchored with ``gate_min = uniqueness_sharpness_actual * 0.5`` (only the
+    size term is gated, at the dominance boundary; sharpness is ungated and
+    cancels out of the rescaling).
 
-    - ``uniqueness_sharpness = 1 / n_candidates`` — how many OTHER
-      colour-unique, non-dominant regions exist in this same frame. Exactly
-      one candidate is an unambiguous signal (sharpness 1.0); four tied
-      candidates split the confidence four ways, since it's unclear which
-      one is "the" marked locus.
-    - ``size_distinctness = 1 - size / frame_area`` — smaller relative to
-      the whole board reads as more marker-like (a player/goal sprite is
-      usually a small fraction of the board; a large-but-still-unique-
-      coloured region reads as weaker evidence, without being excluded
-      outright the way the old median filter did).
-
-    **Floor-anchored (R58 tuning round #2).** The only explicitly GATED
-    term is size, at the dominance boundary (``size == 0.5 * frame_area``
-    gives ``size_distinctness == 0.5``); ``uniqueness_sharpness`` has no
-    fixed gate (``n_candidates`` is unbounded above), so it is left at its
-    ACTUAL value in both ``raw`` and ``gate_min`` — it cancels out of the
-    rescaling, meaning the floor-anchoring here rescales purely on HOW
-    DOMINANT the candidate is, at whatever ambiguity level this frame
-    actually has: ``gate_min = uniqueness_sharpness * 0.5``.
+    **Evidence stage**: ``predicate`` when the candidate is UNAMBIGUOUS
+    (exactly one colour-unique, non-dominant region — the endpoint really
+    IS identified, not merely one of several plausible readings);
+    ``behavioral`` when a ``transition_window`` is supplied and at least
+    one observed transition's changed cells overlap the candidate's OWN
+    cells (something interacted directly at the locus); ``affordance``
+    otherwise (a plausible target exists, nothing more).
     """
     if len(regions) < 2 or frame_area <= 0:
         return None
@@ -274,64 +336,60 @@ def _detect_arrival(regions: list[dict[str, Any]], frame_area: int, ledger: _Led
     raw = uniqueness_sharpness * size_distinctness
     gate_min = uniqueness_sharpness * 0.5
     strength = _floor_anchor(raw, gate_min)
+
+    stage = "predicate" if len(unique) == 1 else "affordance"
+    basis = {"colour_uniqueness", "dominance_exclusion"}
+    if transition_window and len(transition_window) >= 2:
+        candidate_cells: frozenset[Cell] = region["cells"]
+        for a, b in zip(transition_window, transition_window[1:], strict=False):
+            if frame_diff(a, b)["cells"] & candidate_cells:
+                if stage != "predicate":
+                    stage = "behavioral"
+                basis.add("transition_interaction")
+                break
+
     note = "region colour occurs nowhere else in the frame and does not dominate (>50%) the board"
     handle = ledger.evidence(idx, note)
-    return {"id": ledger.candidate_id(), "type": "arrival", "support": [handle], "against": [], "strength": strength}
+    return {
+        "id": ledger.candidate_id(),
+        "type": "arrival",
+        "support": [handle],
+        "against": [],
+        "strength": strength,
+        "_evidence_stage": stage,
+        "_footprint": {"regions": frozenset({idx}), "cells": region["cells"]},
+        "_basis": basis,
+    }
 
 
-def _detect_uniformity(regions: list[dict[str, Any]], ledger: _Ledger) -> dict[str, Any] | None:
+def _detect_uniformity(
+    regions: list[dict[str, Any]],
+    ledger: _Ledger,
+    transition_window: Sequence[Frame] | None,
+) -> dict[str, Any] | None:
     """T6 Toggle-Parity -> ``uniformity``. See module docstring.
 
-    **R58 tuning round — two discriminators added.** v1 picked whichever
-    shape-signature class had the MOST members, with no check on what that
-    shape actually was. Real-trace validation found this over-fires on
-    decorative background texture: several games' single biggest
-    same-shape class was a population of dozens to hundreds of TRIVIAL
-    1x1-cell regions (a dithered/textured backdrop), which is
-    indistinguishable under a naive "most members" rule from a genuine
-    toggle grid. The one true-positive game's winning class was
-    qualitatively different: a non-trivial multi-cell shape spanning only
-    2 colours. Two hard discriminators now apply to EVERY candidate shape
-    class, and classes are tried in population-descending order so a large
-    disqualified (trivial) class no longer masks a smaller genuine one
-    further down:
+    Fires when >=``_MIN_UNIFORM_GRID_COUNT`` regions share an identical
+    translation-invariant shape signature, that shape spans >1 cell, and
+    the class uses <=``_MAX_UNIFORM_SHAPE_COLORS`` distinct colours
+    (candidate classes tried in population-descending order, so a
+    disqualified large class never masks a smaller valid one).
 
-    1. the shape must span more than 1 cell (kills 1x1 decorative noise);
-    2. the class's members must use ``<= _MAX_UNIFORM_SHAPE_COLORS``
-       distinct colours (a coherent toggle grid alternates between a
-       handful of states; a class spanning many unrelated colours reads as
-       incidental co-occurrence, not one grid).
+    **Margin** = ``population_frac * non_triviality * colour_fit``, floor-
+    anchored with ``gate_min = (_MIN_UNIFORM_GRID_COUNT/n_total) * 0.5 *
+    (1/3)`` (ALL three terms are gated, so this is a pure per-call number).
 
-    Known accepted residual false positive (not fixed by this round):
-    genuine repeated MULTI-cell tiling that isn't a toggle grid at all
-    (e.g. maze wall tiles) still passes both discriminators — that needs a
-    connectivity/legend-based discriminator this round does not add.
-
-    **Strength** = ``population_frac * non_triviality * colour_fit``:
-
-    - ``population_frac = len(members) / n_total_regions`` — scale-
-      invariant fraction of the board's OWN region population in this
-      class (works whether the board has 20 or 200 regions, no fixed
-      count reference needed).
-    - ``non_triviality = 1 - 1/shape_cell_count`` — saturates toward 1 as
-      the repeated shape gets larger/more distinctive; a bare 2-cell shape
-      (the minimum that clears discriminator 1) still scores modestly (0.5).
-    - ``colour_fit = 1 - (n_colours - 1) / _MAX_UNIFORM_SHAPE_COLORS`` —
-      reuses the SAME cap as discriminator 2 rather than a new constant: a
-      single-colour class scores 1.0, a class right at the cap scores low
-      but still positive.
-
-    **Floor-anchored (R58 tuning round #2).** ALL THREE terms are
-    explicitly GATED (member count >= ``_MIN_UNIFORM_GRID_COUNT``, shape
-    cells > ``_MIN_UNIFORM_SHAPE_CELLS - 1``, colours <=
-    ``_MAX_UNIFORM_SHAPE_COLORS``), so ``gate_min`` substitutes every term
-    at its own boundary: ``(_MIN_UNIFORM_GRID_COUNT / n_total) * (1 -
-    1/_MIN_UNIFORM_SHAPE_CELLS) * (1 - (_MAX_UNIFORM_SHAPE_COLORS - 1) /
-    _MAX_UNIFORM_SHAPE_COLORS)``, which simplifies to exactly
-    ``_MIN_UNIFORM_GRID_COUNT / (2 * _MAX_UNIFORM_SHAPE_COLORS * n_total)``
-    at current constants (``1 / n_total`` — a clean per-call floor: "if
-    this exact shape class existed, but at the smallest population, the
-    smallest non-trivial shape, and the most colours still allowed").
+    **Evidence stage**: ``affordance`` by default (a repeated non-trivial
+    shape-class population exists — a static permission, nothing more).
+    Promoted to ``behavioral`` when a ``transition_window`` shows a
+    transition whose changed-cell footprint is a subset of, or equal to,
+    ONE of the class's member regions' own cells — "a changed footprint
+    closely aligned with one repeated N-cell region" (a case named
+    explicitly in the R58 verdict for a public toggle-grid game). No
+    ``predicate`` promotion is implemented — identifying the actual
+    target/constraint PATTERN (which
+    cells must reach which state) is out of scope here and belongs to the
+    ``toggle_linear`` MECHANIC playbook, not this goal-typology ledger.
     """
     if not regions:
         return None
@@ -357,6 +415,20 @@ def _detect_uniformity(regions: list[dict[str, Any]], ledger: _Ledger) -> dict[s
             * (1 - (_MAX_UNIFORM_SHAPE_COLORS - 1) / _MAX_UNIFORM_SHAPE_COLORS)
         )
         strength = _floor_anchor(raw, gate_min)
+
+        stage = "affordance"
+        basis = {"repeated_shape_class"}
+        if transition_window and len(transition_window) >= 2:
+            member_cell_sets = [regions[i]["cells"] for i in members]
+            for a, b in zip(transition_window, transition_window[1:], strict=False):
+                diff_cells = frame_diff(a, b)["cells"]
+                if not diff_cells:
+                    continue
+                if any(diff_cells <= mc or mc <= diff_cells for mc in member_cell_sets):
+                    stage = "behavioral"
+                    basis.add("transition_alignment")
+                    break
+
         sample = members[:MAX_HANDLES_PER_CANDIDATE]
         handles = [
             ledger.evidence(
@@ -370,36 +442,34 @@ def _detect_uniformity(regions: list[dict[str, Any]], ledger: _Ledger) -> dict[s
             "support": handles,
             "against": [],
             "strength": strength,
+            "_evidence_stage": stage,
+            "_footprint": {"regions": frozenset(members), "cells": _cells_of(regions, members)},
+            "_basis": basis,
         }
     return None
 
 
 def _detect_containment(
-    regions: list[dict[str, Any]], containers: dict[int, list[int]], ledger: _Ledger
+    regions: list[dict[str, Any]],
+    containers: dict[int, list[int]],
+    ledger: _Ledger,
+    transition_window: Sequence[Frame] | None,
 ) -> dict[str, Any] | None:
     """T3 Assignment/Matching -> ``containment``. See module docstring.
 
-    Firing criteria unchanged this round (not a target of the approved
-    tuning fixes) — only strength scoring is new.
+    Fires when >=``_MIN_CONTAINMENT_SIBLINGS`` sibling container regions
+    each hold >=``_MIN_CONTAINMENT_ITEMS_PER_SIBLING`` item regions.
 
-    **Strength** = ``sibling_component * regularity``:
+    **Margin** = ``sibling_component * regularity``, floor-anchored with
+    ``gate_min = (1 - 1/_MIN_CONTAINMENT_SIBLINGS) * regularity_actual``
+    (only sibling count is gated; regularity is ungated and cancels).
 
-    - ``sibling_component = 1 - 1/n_siblings`` — saturating in the sibling
-      COUNT (2 siblings is the minimum that can fire at all, scoring 0.5;
-      more corroborating siblings raise confidence toward 1).
-    - ``regularity = 1 - stdev(item_counts) / mean(item_counts)`` (clamped
-      to ``[0, 1]``) — a real slot-grid/pool structure holds roughly EQUAL
-      item counts per sibling; wildly uneven counts read as an incidental
-      bbox-containment match rather than a designed matching structure.
-
-    **Floor-anchored (R58 tuning round #2).** Only ``sibling_component`` is
-    explicitly GATED (``n_siblings >= _MIN_CONTAINMENT_SIBLINGS``);
-    ``regularity`` has no fixed gate (a real containment structure can
-    legitimately have item counts as uneven as the board allows), so it is
-    left at its ACTUAL value in both ``raw`` and ``gate_min`` and cancels
-    out: ``gate_min = (1 - 1/_MIN_CONTAINMENT_SIBLINGS) * regularity`` —
-    "how strong would this SAME regularity be with only the bare-minimum
-    number of siblings."
+    **Evidence stage**: ``predicate`` when regularity is PERFECT
+    (``stdev == 0`` — every sibling holds exactly the same item count, a
+    genuine parallel slot structure, not merely roughly-similar);
+    ``behavioral`` when a ``transition_window`` shows a transition whose
+    changed cells touch the containment structure's own footprint (items
+    appearing to move/appear/vanish within it); ``affordance`` otherwise.
     """
     qualifying = {c: items for c, items in containers.items() if len(items) >= _MIN_CONTAINMENT_ITEMS_PER_SIBLING}
     if len(qualifying) < _MIN_CONTAINMENT_SIBLINGS:
@@ -413,6 +483,19 @@ def _detect_containment(
     raw = sibling_component * regularity
     gate_min = (1 - 1 / _MIN_CONTAINMENT_SIBLINGS) * regularity
     strength = _floor_anchor(raw, gate_min)
+
+    all_indices = list(qualifying.keys()) + [i for items in qualifying.values() for i in items]
+    footprint_cells = _cells_of(regions, all_indices)
+    stage = "predicate" if stdev == 0 else "affordance"
+    basis = {"sibling_containers", "item_regularity"}
+    if transition_window and len(transition_window) >= 2:
+        for a, b in zip(transition_window, transition_window[1:], strict=False):
+            if frame_diff(a, b)["cells"] & footprint_cells:
+                if stage != "predicate":
+                    stage = "behavioral"
+                basis.add("transition_interaction")
+                break
+
     sample = list(qualifying.items())[:MAX_HANDLES_PER_CANDIDATE]
     handles = [ledger.evidence(c, f"container region holds {len(items)} item regions") for c, items in sample]
     return {
@@ -421,56 +504,119 @@ def _detect_containment(
         "support": handles,
         "against": [],
         "strength": strength,
+        "_evidence_stage": stage,
+        "_footprint": {"regions": frozenset(all_indices), "cells": footprint_cells},
+        "_basis": basis,
     }
 
 
 def _detect_pattern_match(
-    regions: list[dict[str, Any]], containers: dict[int, list[int]], ledger: _Ledger
+    regions: list[dict[str, Any]],
+    containers_all: dict[int, list[int]],
+    ledger: _Ledger,
+    transition_window: Sequence[Frame] | None,
 ) -> dict[str, Any] | None:
     """T5 Fill/Paint-to-Pattern -> ``pattern_match``. See module docstring.
 
-    Firing criteria unchanged this round — only strength scoring is new.
+    **R58 tuning round #3 — REPLACED, not tightened.** The v1/v2 detector
+    tested only "exactly one bbox-container holds >=5 heterogeneous
+    (>=3-colour) descendants" — ALL bbox descendants (not immediate
+    children), and a 3-colour floor that directly conflicts with binary
+    (2-colour) grids. It never implemented R57's actual T5 sketch: a
+    canvas/reference RELATIONSHIP with accumulated editing evidence. Per
+    the Codex verdict, this rebuild:
 
-    **Strength** = ``item_richness * colour_richness``, both saturating
-    ``1 - 1/n`` forms (consistent with the other detectors' population-
-    based components): more items, and more distinct colours among them,
-    read as stronger evidence of a genuine heterogeneous painting canvas
-    rather than an incidental few-item, few-colour coincidence.
+    1. Reduces bbox containment to an IMMEDIATE-containment hierarchy
+       (:func:`_immediate_children` — transitive reduction).
+    2. Finds a panel/canvas hypothesis via EITHER:
+       (a) one container's immediate children form a regular, addressable
+           two-axis slot LATTICE (:func:`_lattice_shape`), OR
+       (b) TWO containers have CONGRUENT slot geometry — matching child
+           counts (and matching lattice shape, if both are lattices) —
+           suitable for canvas/reference comparison
+           (:func:`_find_congruent_panel_pair`).
+    3. No colour-count requirement of any kind (fixes a binary/2-colour
+       grid conflict flagged in the R58 verdict) and no "exactly one
+       container" requirement (fixes a known false-positive class flagged
+       there too — an incidental heterogeneous blob inside one large bbox
+       no longer qualifies unless it ALSO forms a genuine lattice or has a
+       congruent sibling panel).
+    4. A single static panel/pair is ``affordance`` ONLY (never strong
+       evidence on its own) — promoted to ``behavioral`` when a
+       ``transition_window`` shows every observed change confined to the
+       candidate panel's own cells (cumulative localized edits, or a
+       low-diff confirm transition following them — both read the same
+       way here: "nothing changed outside the hypothesised canvas").
 
-    **Floor-anchored (R58 tuning round #2).** BOTH terms are explicitly
-    GATED (items >= ``_MIN_PATTERN_MATCH_ITEMS``, colours >=
-    ``_MIN_PATTERN_MATCH_DISTINCT_COLORS``), so ``gate_min`` is a FIXED
-    constant independent of any per-call data: ``(1 -
-    1/_MIN_PATTERN_MATCH_ITEMS) * (1 - 1/_MIN_PATTERN_MATCH_DISTINCT_COLORS)``
-    ≈ 0.533 at current constants. This is the exact formula this detector
-    was measured to sit ABOVE right at its own minimum firing case in the
-    R58 tuning-round-1 regression — pattern_match's floor was already high
-    relative to detectors like ``arrival`` whose gate_min can be much
-    lower under ambiguity, which is what motivated this whole
-    floor-anchoring round.
+    **Margin**: for the congruent-pair reading, ``1 - 1/min(len(kids1),
+    len(kids2))`` (richer congruent panels = stronger evidence), floor-
+    anchored at the minimum pair size (``_MIN_PANEL_PAIR_CHILDREN``); for
+    the single-lattice reading, ``1 - 1/n_children``, floor-anchored at the
+    minimum lattice size (``_MIN_LATTICE_CHILDREN``, a 2x2 grid). If BOTH
+    hypotheses are found, the congruent pair is preferred (a two-panel
+    canvas/reference claim is structurally stronger than one lattice
+    alone) — only one candidate fires per call, consistent with every
+    other detector here.
     """
-    heterogeneous = []
-    for c, items in containers.items():
-        colors = {regions[i]["color"] for i in items}
-        if len(items) >= _MIN_PATTERN_MATCH_ITEMS and len(colors) >= _MIN_PATTERN_MATCH_DISTINCT_COLORS:
-            heterogeneous.append((c, items, colors))
-    if len(heterogeneous) != 1:
+    immediate = _immediate_children(regions, containers_all)
+    pair_hit = _find_congruent_panel_pair(regions, immediate)
+    lattice_hit: tuple[int, list[int], tuple[int, int]] | None = None
+    if pair_hit is None:
+        for container_idx, kids in immediate.items():
+            shape = _lattice_shape(regions, kids)
+            if shape is not None:
+                lattice_hit = (container_idx, kids, shape)
+                break
+    if pair_hit is None and lattice_hit is None:
         return None
-    c, items, colors = heterogeneous[0]
-    item_richness = 1 - 1 / len(items)
-    colour_richness = 1 - 1 / len(colors)
-    raw = item_richness * colour_richness
-    gate_min = (1 - 1 / _MIN_PATTERN_MATCH_ITEMS) * (1 - 1 / _MIN_PATTERN_MATCH_DISTINCT_COLORS)
+
+    basis: set[str] = {"immediate_containment"}
+    if pair_hit is not None:
+        c1, kids1, c2, kids2, tag = pair_hit
+        basis.add(tag)
+        all_indices = [c1, c2, *kids1, *kids2]
+        footprint_cells = _cells_of(regions, all_indices)
+        smaller = min(len(kids1), len(kids2))
+        raw = 1 - 1 / smaller
+        gate_min = 1 - 1 / _MIN_PANEL_PAIR_CHILDREN
+        note = f"two container regions hold congruent children ({len(kids1)} vs {len(kids2)}, {tag})"
+        support_region = c1
+    else:
+        container_idx, kids, shape = lattice_hit  # type: ignore[misc]
+        basis.add("addressable_lattice")
+        all_indices = [container_idx, *kids]
+        footprint_cells = _cells_of(regions, all_indices)
+        raw = 1 - 1 / len(kids)
+        gate_min = 1 - 1 / _MIN_LATTICE_CHILDREN
+        note = f"container region's children form a regular {shape[0]}x{shape[1]} addressable lattice"
+        support_region = container_idx
+
     strength = _floor_anchor(raw, gate_min)
-    handle = ledger.evidence(
-        c, f"container region holds {len(items)} item regions spanning {len(colors)} distinct colours"
-    )
+    stage = "affordance"
+    if transition_window and len(transition_window) >= 2:
+        confined_edits = 0
+        observed = 0
+        for a, b in zip(transition_window, transition_window[1:], strict=False):
+            diff_cells = frame_diff(a, b)["cells"]
+            if not diff_cells:
+                continue
+            observed += 1
+            if diff_cells <= footprint_cells:
+                confined_edits += 1
+        if observed > 0 and confined_edits == observed:
+            stage = "behavioral"
+            basis.add("confined_localized_edits")
+
+    handle = ledger.evidence(support_region, note)
     return {
         "id": ledger.candidate_id(),
         "type": "pattern_match",
         "support": [handle],
         "against": [],
         "strength": strength,
+        "_evidence_stage": stage,
+        "_footprint": {"regions": frozenset(all_indices), "cells": footprint_cells},
+        "_basis": basis,
     }
 
 
@@ -500,62 +646,25 @@ def _detect_elimination(
     extra_transitions: Sequence[tuple[Frame, Frame]] | None = None,
 ) -> dict[str, Any] | None:
     """T2 Elimination/Obstacle-Consumption -> ``elimination``. Needs a
-    before/after PAIR (a material transition), not a single frame. See
-    module docstring.
+    before/after PAIR (a material transition), not a single frame — so,
+    unlike the four frame-based detectors above, its evidence is inherently
+    TRANSITIONAL: its tier ranges ``behavioral``/``predicate`` only, never
+    ``affordance`` (there is no "static-only" elimination reading).
 
-    **R58 tuning round — corroboration is now a strength PENALTY, not a
-    firing gate.** v1 fired (and scored, once strength existed) off a
-    SINGLE transition alone. Real-trace validation found this over-fires
-    badly: on a real board, almost any single action changes some region's
-    exact (colour, shape) signature somewhere, for reasons unrelated to the
-    game's actual win condition (camera/layout redraws, cosmetic
-    animation) — measured directly on two games where the "vanished"
-    region the detector caught was NOT the door/box R57 identified as the
-    real elimination event. This still FIRES off one transition (a
-    harness's first-observation-adjacent call must keep working — this is
-    a scoring change, not a new hard gate) but its strength is penalized
-    unless corroborated by ``extra_transitions``: additional (before,
-    after) pairs the caller supplies when a short window of history is
-    available (e.g. a few early transitions already observed in normal
-    play — still no level-up label, still pre-clear).
+    **Margin** = ``size_component * signature_distinctness *
+    confirmation_component`` (unchanged since the R58 tuning-round-1/2
+    passes — see prior round's inline history if needed); floor-anchored
+    with ``gate_min = size_component_actual * signature_distinctness_actual
+    * 0.5`` (only confirmation is gated, at its own provable floor of 0.5 —
+    the primary transition alone always contributes >=1 to
+    ``n_transitions_with_a_vanish``).
 
-    **Strength** = ``size_component * signature_distinctness *
-    confirmation_component``:
-
-    - ``size_component`` — ``1 - |vanished_frac - median_frac| /
-      max(vanished_frac, median_frac)`` where both fractions are of the
-      SAME board's own frame area. Reads "how close is this vanish's size
-      to a typical (median) region's size on this same board" — closer to
-      typical scores higher than either a single-pixel blip or a
-      whole-scene-sized reshuffle, using only this board's own population
-      as the reference (no fixed size constant).
-    - ``signature_distinctness = 1 / n_distinct_vanished_signatures`` — how
-      many DIFFERENT ``(colour, shape)`` pairs vanished in the SAME
-      transition; one clean vanish is unambiguous (1.0), a transition where
-      many signatures vanish at once (a scene-wide reshuffle) is ambiguous
-      about which one, if any, is the meaningful event.
-    - ``confirmation_component = min(1, n_transitions_with_a_vanish / 2)`` —
-      the corroboration penalty: exactly one available transition (no
-      ``extra_transitions``) scores 0.5; two or more transitions
-      independently showing SOME vanish event reach full confidence 1.0.
-      Deliberately counts "a vanish recurred", not "the identical object
-      vanished twice" — tracking one object's identity ACROSS transitions
-      is exactly the harness-level correlation problem this ledger's own
-      module docstring rules out of scope for the T4 (delivery) case.
-
-    **Floor-anchored (R58 tuning round #2).** Only ``confirmation_component``
-    is explicitly gated, and its own floor is provable directly from the
-    formula: the PRIMARY transition alone always contributes >= 1 to
-    ``n_transitions_with_a_vanish`` (this function already returned ``None``
-    above if it didn't), so ``confirmation_component >= min(1, 1/2) = 0.5``
-    always. ``size_component``/``signature_distinctness`` have no fixed
-    gate, so they stay at their ACTUAL values in both ``raw`` and
-    ``gate_min`` and cancel out: ``gate_min = size_component *
-    signature_distinctness * 0.5``. Net effect: with NO ``extra_transitions``
-    (confirmation stuck at exactly 0.5), ``raw == gate_min`` exactly, so
-    strength lands EXACTLY at ``_STRENGTH_FLOOR`` regardless of how clean
-    the single observed vanish looked — an uncorroborated elimination call
-    is, by design, never more than "just barely fired" confidence.
+    **Evidence stage**: ``predicate`` when CORROBORATED (``extra_transitions``
+    supplied and at least one shows an independent vanish, i.e.
+    ``confirmation_component == 1.0`` — a recurring elimination-shaped
+    event is stronger identification than a single occurrence);
+    ``behavioral`` otherwise (an uncorroborated single-transition vanish is
+    still real transitional evidence, just weaker).
     """
     regs_before, vanished = _vanished_signatures(before, after, background)
     if not vanished:
@@ -580,6 +689,8 @@ def _detect_elimination(
     raw = size_component * signature_distinctness * confirmation_component
     gate_min = size_component * signature_distinctness * 0.5
     strength = _floor_anchor(raw, gate_min)
+
+    stage = "predicate" if confirmation_component >= 1.0 else "behavioral"
     handle = ledger.evidence(
         idx, "region present before the transition has no matching (colour, shape) after it", frame="before"
     )
@@ -589,31 +700,23 @@ def _detect_elimination(
         "support": [handle],
         "against": [],
         "strength": strength,
+        "_evidence_stage": stage,
+        "_footprint": {"regions": frozenset({idx}), "cells": regs_before[idx]["cells"]},
+        "_basis": {"vanished_signature", "corroborated" if stage == "predicate" else "single_transition"},
     }
 
 
 def _detect_threshold(action_repeat_frames: Sequence[Frame], ledger: _Ledger) -> dict[str, Any] | None:
     """T7 Threshold/Repeated-Action-Count -> ``threshold``. Needs a short
-    window of frames under one repeated action. See module docstring.
+    window of frames under one repeated action — also inherently
+    transitional evidence, so its tier is fixed at ``behavioral`` (no
+    ``affordance`` reading is possible; no ``predicate`` promotion is
+    implemented — identifying the actual threshold VALUE a hidden counter
+    must cross is out of scope for a structural proxy).
 
-    Firing criteria unchanged this round — only strength scoring is new.
-
-    **Strength** = ``run_length_component * magnitude_component``:
-
-    - ``run_length_component = 1 - 1/n_diffs`` — a longer confirmed
-      monotonic run is stronger evidence than the minimum 2-diff run that
-      barely clears the firing gate.
-    - ``magnitude_component = |diffs[-1] - diffs[0]| / max(diffs[-1],
-      diffs[0], 1)`` — a trend that grows/shrinks by a large relative
-      amount is a clearer signal than one that's technically monotonic but
-      barely moves (e.g. 1 cell to 2 cells, still monotonic, weak evidence).
-
-    **Floor-anchored (R58 tuning round #2).** Only ``run_length_component``
-    is explicitly gated (``n_diffs >= _MIN_THRESHOLD_DIFFS``);
-    ``magnitude_component`` has no fixed gate (the relative swing can
-    legitimately be tiny for a real, valid trend), so it stays at its
-    ACTUAL value in both ``raw`` and ``gate_min`` and cancels out:
-    ``gate_min = (1 - 1/_MIN_THRESHOLD_DIFFS) * magnitude_component``.
+    **Margin** = ``run_length_component * magnitude_component``, floor-
+    anchored with ``gate_min = 0.5 * magnitude_component_actual`` (only
+    run-length is gated; magnitude is ungated and cancels).
     """
     if len(action_repeat_frames) < _MIN_THRESHOLD_REPEATS:
         return None
@@ -635,20 +738,187 @@ def _detect_threshold(action_repeat_frames: Sequence[Frame], ledger: _Ledger) ->
     handle = ledger.evidence(
         None, f"frame_diff cell count trends {direction} across {len(diffs)} repeats of one action", diffs=diffs
     )
+    footprint_cells: frozenset[Cell] = frozenset()
+    for a, b in zip(action_repeat_frames, action_repeat_frames[1:], strict=False):
+        footprint_cells |= frame_diff(a, b)["cells"]
     return {
         "id": ledger.candidate_id(),
         "type": "threshold",
         "support": [handle],
         "against": [],
         "strength": strength,
+        "_evidence_stage": "behavioral",
+        "_footprint": {"regions": frozenset(), "cells": footprint_cells},
+        "_basis": {"monotonic_diff_trend"},
     }
 
 
-def _build_unresolved(candidates: list[dict[str, Any]]) -> list[str]:
+# ----- adjudication pass: footprint-dependency relations ------------------------
+def _footprint_relation(a: dict[str, Any], b: dict[str, Any]) -> str | None:
+    """Pairwise footprint-set relation between two candidates' ``_footprint``
+    cell sets — pure set arithmetic, no game constants. Returns
+    ``"subsumed_evidence"`` when one footprint is a (non-empty) subset of
+    the other, ``"shared_evidence"`` when they overlap without either
+    containing the other, ``"independent_evidence"`` when disjoint, or
+    ``None`` when either footprint is empty (nothing to compare).
+    """
+    fa = a["_footprint"]["cells"]
+    fb = b["_footprint"]["cells"]
+    if not fa or not fb:
+        return None
+    if fa <= fb or fb <= fa:
+        return "subsumed_evidence"
+    if fa & fb:
+        return "shared_evidence"
+    return "independent_evidence"
+
+
+def _adjudicate(candidates: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """All pairwise dependency relations among fired candidates. A pair may
+    carry BOTH a footprint relation and ``temporal_composition`` (they are
+    independent axes: footprint overlap is about evidence reuse,
+    ``temporal_composition`` is about R57's own declared type-level
+    compositions). Every relation is symmetric; each pair is emitted once.
+    """
+    relations: list[dict[str, Any]] = []
+    for i in range(len(candidates)):
+        for j in range(i + 1, len(candidates)):
+            a, b = candidates[i], candidates[j]
+            rel = _footprint_relation(a, b)
+            if rel is not None:
+                relations.append({"a": a["id"], "b": b["id"], "relation": rel})
+            if frozenset({a["type"], b["type"]}) in _TEMPORAL_COMPOSITION_PAIRS:
+                relations.append({"a": a["id"], "b": b["id"], "relation": "temporal_composition"})
+    return relations
+
+
+# ----- capping: preserve tiers, ambiguity pairs, and independent footprints -----
+def _cluster_ambiguity_groups(
+    candidates: list[dict[str, Any]], dependencies: list[dict[str, Any]]
+) -> list[list[dict[str, Any]]]:
+    """Union-find over ``shared_evidence``/``subsumed_evidence`` edges only —
+    an "explicit ambiguity" per the verdict's cap policy, kept or dropped
+    TOGETHER. ``independent_evidence``/``temporal_composition`` never merge
+    a group (independence is the opposite signal; composition is a noted
+    relationship, not an evidence tension forcing joint retention).
+    """
+    parent = {c["id"]: c["id"] for c in candidates}
+
+    def find(x: str) -> str:
+        while parent[x] != x:
+            parent[x] = parent[parent[x]]
+            x = parent[x]
+        return x
+
+    def union(x: str, y: str) -> None:
+        rx, ry = find(x), find(y)
+        if rx != ry:
+            parent[rx] = ry
+
+    for dep in dependencies:
+        if dep["relation"] in ("shared_evidence", "subsumed_evidence"):
+            union(dep["a"], dep["b"])
+
+    by_root: dict[str, list[dict[str, Any]]] = {}
+    for c in candidates:
+        by_root.setdefault(find(c["id"]), []).append(c)
+    return list(by_root.values())
+
+
+def _apply_cap(
+    candidates: list[dict[str, Any]], dependencies: list[dict[str, Any]], max_candidates: int
+) -> list[dict[str, Any]]:
+    """Cap to ``max_candidates`` while preserving (in priority order): the
+    highest evidence tiers, both sides of an explicit ambiguity (an
+    ambiguity GROUP is added or skipped as a unit — never split, except as
+    a last-resort truncation when a single group alone exceeds the cap),
+    and coverage of mutually INDEPENDENT footprints (greedy: at each step,
+    prefer the best-tier remaining group that adds the most previously-
+    uncovered footprint). Margin/detector-order are the FINAL tie-break,
+    applied only to sequence groups that are otherwise equal.
+    """
+    if len(candidates) <= max_candidates:
+        return candidates
+    groups = _cluster_ambiguity_groups(candidates, dependencies)
+    for g in groups:
+        g.sort(key=lambda c: (_TIER_RANK[c["_evidence_stage"]], -c["strength"]))
+
+    def group_tier(g: list[dict[str, Any]]) -> int:
+        return min(_TIER_RANK[c["_evidence_stage"]] for c in g)
+
+    def group_margin(g: list[dict[str, Any]]) -> float:
+        return max(c["strength"] for c in g)
+
+    def group_cells(g: list[dict[str, Any]]) -> frozenset[Cell]:
+        out: set[Cell] = set()
+        for c in g:
+            out |= c["_footprint"]["cells"]
+        return frozenset(out)
+
+    remaining = list(groups)
+    selected: list[dict[str, Any]] = []
+    covered: set[Cell] = set()
+    while remaining and len(selected) < max_candidates:
+
+        def key(g: list[dict[str, Any]]) -> tuple[int, int, float]:
+            new_coverage = len(group_cells(g) - covered)
+            return (group_tier(g), -new_coverage, -group_margin(g))
+
+        best = min(remaining, key=key)
+        remaining.remove(best)
+        room = max_candidates - len(selected)
+        selected.extend(best[:room])  # truncate only if a single group alone overflows the cap
+        covered |= group_cells(best)
+    selected.sort(key=lambda c: (_TIER_RANK[c["_evidence_stage"]], -c["strength"]))
+    return selected
+
+
+# ----- unresolved_tests: concrete structural probes -----------------------------
+_PROBE_TEMPLATES: dict[frozenset[str], str] = {
+    frozenset({"uniformity", "pattern_match"}): (
+        "whether edits follow a translated fixed stencil (uniformity) or directly repaint one "
+        "addressable canvas slot (pattern_match)"
+    ),
+    frozenset({"arrival", "elimination"}): (
+        "whether the region reached (arrival) is the SAME region later consumed (elimination) — a "
+        "delivery composition — or these are two independent events"
+    ),
+    frozenset({"arrival", "containment"}): (
+        "whether the candidate region is an isolated target to reach (arrival) or a slot to be "
+        "filled/matched within the containment structure"
+    ),
+    frozenset({"containment", "pattern_match"}): (
+        "whether children must be individually matched to slots (containment) or the container is "
+        "painted/filled as a whole (pattern_match)"
+    ),
+}
+
+
+def _probe_for(a: dict[str, Any], b: dict[str, Any]) -> str:
+    key = frozenset({a["type"], b["type"]})
+    if key in _PROBE_TEMPLATES:
+        return f"{a['id']}/{b['id']}: {_PROBE_TEMPLATES[key]}"
+    return (
+        f"{a['id']} ({a['type']}) vs {b['id']} ({b['type']}): resolve via a targeted probe action "
+        "before committing to either reading"
+    )
+
+
+def _build_unresolved(candidates: list[dict[str, Any]], dependencies: list[dict[str, Any]]) -> list[str]:
+    ids_present = {c["id"] for c in candidates}
+    by_id = {c["id"]: c for c in candidates}
     notes: list[str] = []
-    types = sorted({c["type"] for c in candidates})
-    if len(types) >= 2:
-        notes.append(f"which of {types} is the true win condition is not yet determined by static structure alone")
+    seen_pairs: set[frozenset[str]] = set()
+    for dep in dependencies:
+        if dep["a"] not in ids_present or dep["b"] not in ids_present:
+            continue
+        if dep["relation"] not in ("shared_evidence", "subsumed_evidence"):
+            continue
+        pair_key = frozenset({dep["a"], dep["b"]})
+        if pair_key in seen_pairs:
+            continue
+        seen_pairs.add(pair_key)
+        notes.append(_probe_for(by_id[dep["a"]], by_id[dep["b"]]))
     for c in candidates:
         if c["against"]:
             notes.append(
@@ -658,53 +928,62 @@ def _build_unresolved(candidates: list[dict[str, Any]]) -> list[str]:
 
 
 def detect(observations: dict[str, Any]) -> dict[str, Any]:
-    """Run every detector that has enough input, return goal candidates.
+    """Run every detector that has enough input, return a CAPPED HYPOTHESIS
+    SET — not an elected winner (see module docstring, R58 tuning round #3).
 
     ``observations`` (all keys optional; each detector uses only what it
     needs):
 
     - ``frame``: the current/first frame. Drives ``arrival``,
       ``uniformity``, ``containment``, ``pattern_match`` (all zero-action,
-      single-frame).
+      single-frame at minimum).
     - ``background``: explicit background colour override; defaults to the
       frame's mode colour.
+    - ``transition_window``: optional list of >=2 CONSECUTIVE observed
+      frames (still pre-clear — no level-up label, just more early
+      observation). Used by ``arrival``/``uniformity``/``containment``/
+      ``pattern_match`` to promote from ``affordance`` to ``behavioral``
+      evidence stage when observed transitions behave as the type
+      predicts. ``detect()`` remains pure/stateless — this is caller-
+      supplied data, not internal memory.
     - ``before`` / ``after``: a material-transition frame pair. Drives
-      ``elimination``.
+      ``elimination`` (inherently transitional; never ``affordance``).
     - ``extra_transitions``: optional additional ``(before, after)`` pairs
-      (beyond the primary ``before``/``after``) — corroborating evidence
-      for ``elimination``'s confirmation-strength component (R58 tuning
-      round). Still pre-clear: just more early observed transitions, no
-      level-up label.
+      beyond the primary one — corroborating evidence for ``elimination``'s
+      confirmation component and its ``predicate`` promotion.
     - ``action_repeat_frames``: a short (>=3) sequence of frames observed
-      under one repeated action. Drives ``threshold``.
+      under one repeated action. Drives ``threshold`` (inherently
+      transitional; always ``behavioral``).
 
     Returns ``{"goal_candidates": [...], "unresolved_tests": [...],
-    "insufficient_evidence": bool, "evidence_detail": {...}}``.
-    ``evidence_detail`` is HARNESS-ONLY bookkeeping (which region/frame each
-    evidence handle points at) — call :func:`compact_view` on the result
-    before injecting it into a model turn; the verdict's own example output
-    shape (§4) has no such field.
+    "insufficient_evidence": bool, "evidence_detail": {...}, "dependencies":
+    [...]}``. Each ``goal_candidates`` entry additionally carries
+    ``"tier"`` (1=predicate, 2=behavioral, 3=affordance — the compact,
+    injectable form of ``_evidence_stage``). ``evidence_detail`` and
+    ``dependencies`` are HARNESS-ONLY bookkeeping — call :func:`compact_view`
+    before injecting into a model turn.
 
     Per verdict §4: "goal type and mechanic intent must remain separate" —
-    this function never mentions or selects a playbook/intent name, only a
-    win-condition TYPE. Each detector fires at most once per call and the
-    six detector types are mutually distinct by construction, so
-    ``insufficient_evidence`` is simply "fewer than two candidates fired"
-    (see the two-hypotheses-or-insufficient-evidence rule, verdict §4).
+    this function never mentions or selects a playbook/intent name, only
+    win-condition TYPES. ``insufficient_evidence`` is "fewer than two
+    candidates fired" (verdict's two-hypotheses-or-insufficient-evidence
+    rule), computed on the UNCAPPED fired set — capping is an injection-size
+    concern, not an evidence-strength one.
 
-    **Candidate ordering (R58 tuning round).** ``goal_candidates`` is sorted
-    by ``"strength"`` descending before capping — each detector's strength
-    formula is in its own docstring. Ties keep the original fixed
-    detector-execution order (``arrival``, ``uniformity``, ``containment``,
-    ``pattern_match``, ``elimination``, ``threshold``) via Python's stable
-    sort. Before this round, the FIRST-FIRED candidate (an artifact of
-    pipeline position, not evidence quality) stood in for "top pick" —
-    validated against real traces to be a poor proxy, since ``elimination``
-    and ``threshold`` could never rank first regardless of how strong their
-    evidence was.
+    **Ranking (R58 tuning round #3).** ``goal_candidates`` is TIER-ORDERED
+    first (predicate > behavioral > affordance), margin/detector-order only
+    breaking ties for deterministic presentation — never asserting one
+    same-tier candidate is "more true" than another. Capping
+    (:func:`_apply_cap`) preserves top tiers, both sides of an explicit
+    ambiguity, and independent-footprint coverage before falling back to
+    margin. This replaces the R58 tuning-round-1/2 "sort everything by one
+    scalar strength" design, which real-trace validation (three measurement
+    rounds, `docs/r58_codex_ledger_ranking_20260715.md`) showed asserted
+    more cross-detector comparability than the formulas actually supported.
     """
     ledger = _Ledger()
     candidates: list[dict[str, Any]] = []
+    transition_window = observations.get("transition_window")
 
     frame = observations.get("frame")
     if frame is not None:
@@ -715,10 +994,10 @@ def detect(observations: dict[str, Any]) -> dict[str, Any]:
         containers = _containers_map(relations)
         frame_area = len(frame) * len(frame[0]) if frame and frame[0] else 0
 
-        arrival = _detect_arrival(regions, frame_area, ledger)
-        uniformity = _detect_uniformity(regions, ledger)
-        containment = _detect_containment(regions, containers, ledger)
-        pattern_match = _detect_pattern_match(regions, containers, ledger)
+        arrival = _detect_arrival(regions, frame_area, ledger, transition_window)
+        uniformity = _detect_uniformity(regions, ledger, transition_window)
+        containment = _detect_containment(regions, containers, ledger, transition_window)
+        pattern_match = _detect_pattern_match(regions, containers, ledger, transition_window)
 
         if arrival is not None:
             candidates.append(arrival)
@@ -759,37 +1038,36 @@ def detect(observations: dict[str, Any]) -> dict[str, Any]:
         if threshold is not None:
             candidates.append(threshold)
 
-    # Sort by strength descending; Python's stable sort preserves the fixed
-    # append order above (arrival, uniformity, containment, pattern_match,
-    # elimination, threshold) as the tie-break, per verdict §4/team-lead
-    # ruling ("ties by detector order").
-    candidates.sort(key=lambda c: -c["strength"])
-
-    # insufficient_evidence reflects the TRUE evidence found, before capping
-    # (capping is an injection-size concern, not an evidence-strength one).
     insufficient_evidence = len(candidates) < 2
-    capped = candidates[:MAX_CANDIDATES]
-    # unresolved_tests is built from the CAPPED list so every id it cites is
-    # guaranteed to actually appear in the returned goal_candidates.
+    dependencies = _adjudicate(candidates)
+    capped = _apply_cap(candidates, dependencies, MAX_CANDIDATES)
+
+    compact_candidates = [
+        {k: v for k, v in c.items() if not k.startswith("_")} | {"tier": _TIER_RANK[c["_evidence_stage"]]}
+        for c in capped
+    ]
     return {
-        "goal_candidates": capped,
-        "unresolved_tests": _build_unresolved(capped)[:MAX_UNRESOLVED],
+        "goal_candidates": compact_candidates,
+        "unresolved_tests": _build_unresolved(capped, dependencies)[:MAX_UNRESOLVED],
         "insufficient_evidence": insufficient_evidence,
         "evidence_detail": ledger.evidence_detail,
+        "dependencies": dependencies,
     }
 
 
 def compact_view(result: dict[str, Any]) -> dict[str, Any]:
     """The injectable subset of :func:`detect`'s output — drops
-    ``evidence_detail`` (harness-only), matching the verdict §4 example
-    output shape exactly: ``{"goal_candidates", "unresolved_tests"}`` plus
-    the ``insufficient_evidence`` flag this module adds (verdict: "Require
-    either two distinct competing goal hypotheses or an explicit
-    insufficient_evidence declaration"). ``"unknown"`` is not re-declared
-    here — it is already always selectable at SELECT_INTENT
+    ``evidence_detail`` and ``dependencies`` (harness-only), matching the
+    verdict §4 example output shape: ``{"goal_candidates", "unresolved_tests"}``
+    plus the ``insufficient_evidence`` flag this module adds (verdict:
+    "Require either two distinct competing goal hypotheses or an explicit
+    insufficient_evidence declaration") and the ``"tier"`` field this R58
+    tuning-round-3 rebuild adds to each candidate (verdict: "A compact
+    candidate could add only `\"tier\": 2`"). ``"unknown"`` is not
+    re-declared here — it is already always selectable at SELECT_INTENT
     (:attr:`admorphiq.explanation.protocol.ExplanationProtocol.allowed_intents`);
     a low/insufficient ledger is exactly the signal that should route a
     caller toward it, not a field this pure function needs to assert for
     itself.
     """
-    return {k: v for k, v in result.items() if k != "evidence_detail"}
+    return {k: v for k, v in result.items() if k not in ("evidence_detail", "dependencies")}

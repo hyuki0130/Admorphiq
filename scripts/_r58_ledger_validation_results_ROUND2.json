@@ -12,7 +12,9 @@
     "n_competing": 2,
     "insufficient_evidence": false,
     "verdict": "TOP1",
-    "unresolved_tests": [],
+    "unresolved_tests": [
+      "which of ['arrival', 'elimination'] is the true win condition is not yet determined by static structure alone"
+    ],
     "full_result": {
       "goal_candidates": [
         {
@@ -22,8 +24,7 @@
             "evidence:1"
           ],
           "against": [],
-          "strength": 0.4608072916666667,
-          "tier": 3
+          "strength": 0.4608072916666667
         },
         {
           "id": "goal:2",
@@ -32,11 +33,12 @@
             "evidence:2"
           ],
           "against": [],
-          "strength": 0.2,
-          "tier": 2
+          "strength": 0.2
         }
       ],
-      "unresolved_tests": [],
+      "unresolved_tests": [
+        "which of ['arrival', 'elimination'] is the true win condition is not yet determined by static structure alone"
+      ],
       "insufficient_evidence": false
     }
   },
@@ -47,41 +49,20 @@
     "gt_note": "",
     "repeat_window_available": true,
     "candidates": [
-      "threshold",
-      "elimination",
       "pattern_match",
-      "arrival"
+      "arrival",
+      "threshold",
+      "containment"
     ],
     "n_competing": 4,
     "insufficient_evidence": false,
     "verdict": "TOPK",
     "unresolved_tests": [
-      "goal:1 (arrival) vs goal:6 (threshold): resolve via a targeted probe action before committing to either reading",
-      "goal:5 (elimination) vs goal:6 (threshold): resolve via a targeted probe action before committing to either reading",
+      "which of ['arrival', 'containment', 'pattern_match', 'threshold'] is the true win condition is not yet determined by static structure alone",
       "goal:1 (arrival) has a structural contradiction \u2014 resolve with a cheap probe before committing"
     ],
     "full_result": {
       "goal_candidates": [
-        {
-          "id": "goal:6",
-          "type": "threshold",
-          "support": [
-            "evidence:11"
-          ],
-          "against": [],
-          "strength": 0.28205128205128205,
-          "tier": 2
-        },
-        {
-          "id": "goal:5",
-          "type": "elimination",
-          "support": [
-            "evidence:10"
-          ],
-          "against": [],
-          "strength": 0.2,
-          "tier": 2
-        },
         {
           "id": "goal:4",
           "type": "pattern_match",
@@ -89,8 +70,7 @@
             "evidence:8"
           ],
           "against": [],
-          "strength": 0.6000000000000001,
-          "tier": 3
+          "strength": 0.37142857142857144
         },
         {
           "id": "goal:1",
@@ -101,13 +81,31 @@
           "against": [
             "evidence:9"
           ],
-          "strength": 0.35984375,
-          "tier": 3
+          "strength": 0.35984375
+        },
+        {
+          "id": "goal:6",
+          "type": "threshold",
+          "support": [
+            "evidence:11"
+          ],
+          "against": [],
+          "strength": 0.28205128205128205
+        },
+        {
+          "id": "goal:3",
+          "type": "containment",
+          "support": [
+            "evidence:5",
+            "evidence:6",
+            "evidence:7"
+          ],
+          "against": [],
+          "strength": 0.23764764008373696
         }
       ],
       "unresolved_tests": [
-        "goal:1 (arrival) vs goal:6 (threshold): resolve via a targeted probe action before committing to either reading",
-        "goal:5 (elimination) vs goal:6 (threshold): resolve via a targeted probe action before committing to either reading",
+        "which of ['arrival', 'containment', 'pattern_match', 'threshold'] is the true win condition is not yet determined by static structure alone",
         "goal:1 (arrival) has a structural contradiction \u2014 resolve with a cheap probe before committing"
       ],
       "insufficient_evidence": false
@@ -122,13 +120,14 @@
     "candidates": [
       "arrival",
       "containment",
+      "pattern_match",
       "elimination"
     ],
-    "n_competing": 3,
+    "n_competing": 4,
     "insufficient_evidence": false,
-    "verdict": "MISS",
+    "verdict": "TOPK",
     "unresolved_tests": [
-      "goal:1/goal:3: whether the region reached (arrival) is the SAME region later consumed (elimination) \u2014 a delivery composition \u2014 or these are two independent events"
+      "which of ['arrival', 'containment', 'elimination', 'pattern_match'] is the true win condition is not yet determined by static structure alone"
     ],
     "full_result": {
       "goal_candidates": [
@@ -139,8 +138,7 @@
             "evidence:1"
           ],
           "against": [],
-          "strength": 0.4627604166666667,
-          "tier": 3
+          "strength": 0.4627604166666667
         },
         {
           "id": "goal:2",
@@ -150,22 +148,29 @@
             "evidence:3"
           ],
           "against": [],
-          "strength": 0.2,
-          "tier": 3
+          "strength": 0.2
         },
         {
           "id": "goal:3",
-          "type": "elimination",
+          "type": "pattern_match",
           "support": [
             "evidence:4"
           ],
           "against": [],
-          "strength": 0.2,
-          "tier": 2
+          "strength": 0.2
+        },
+        {
+          "id": "goal:4",
+          "type": "elimination",
+          "support": [
+            "evidence:5"
+          ],
+          "against": [],
+          "strength": 0.2
         }
       ],
       "unresolved_tests": [
-        "goal:1/goal:3: whether the region reached (arrival) is the SAME region later consumed (elimination) \u2014 a delivery composition \u2014 or these are two independent events"
+        "which of ['arrival', 'containment', 'elimination', 'pattern_match'] is the true win condition is not yet determined by static structure alone"
       ],
       "insufficient_evidence": false
     }
@@ -184,7 +189,7 @@
     "insufficient_evidence": false,
     "verdict": "TOP1",
     "unresolved_tests": [
-      "goal:1 (arrival) vs goal:2 (threshold): resolve via a targeted probe action before committing to either reading"
+      "which of ['arrival', 'threshold'] is the true win condition is not yet determined by static structure alone"
     ],
     "full_result": {
       "goal_candidates": [
@@ -195,8 +200,7 @@
             "evidence:1"
           ],
           "against": [],
-          "strength": 0.3575,
-          "tier": 3
+          "strength": 0.3575
         },
         {
           "id": "goal:2",
@@ -205,12 +209,11 @@
             "evidence:2"
           ],
           "against": [],
-          "strength": 0.20067170445004198,
-          "tier": 2
+          "strength": 0.20067170445004198
         }
       ],
       "unresolved_tests": [
-        "goal:1 (arrival) vs goal:2 (threshold): resolve via a targeted probe action before committing to either reading"
+        "which of ['arrival', 'threshold'] is the true win condition is not yet determined by static structure alone"
       ],
       "insufficient_evidence": false
     }
@@ -222,19 +225,29 @@
     "gt_note": "",
     "repeat_window_available": false,
     "candidates": [
+      "pattern_match",
       "arrival",
       "uniformity",
       "elimination"
     ],
-    "n_competing": 3,
+    "n_competing": 4,
     "insufficient_evidence": false,
-    "verdict": "TOP1",
+    "verdict": "TOPK",
     "unresolved_tests": [
-      "goal:1 (arrival) vs goal:2 (uniformity): resolve via a targeted probe action before committing to either reading",
+      "which of ['arrival', 'elimination', 'pattern_match', 'uniformity'] is the true win condition is not yet determined by static structure alone",
       "goal:1 (arrival) has a structural contradiction \u2014 resolve with a cheap probe before committing"
     ],
     "full_result": {
       "goal_candidates": [
+        {
+          "id": "goal:3",
+          "type": "pattern_match",
+          "support": [
+            "evidence:5"
+          ],
+          "against": [],
+          "strength": 0.35238095238095246
+        },
         {
           "id": "goal:1",
           "type": "arrival",
@@ -242,10 +255,9 @@
             "evidence:1"
           ],
           "against": [
-            "evidence:5"
+            "evidence:6"
           ],
-          "strength": 0.3140625,
-          "tier": 3
+          "strength": 0.3140625
         },
         {
           "id": "goal:2",
@@ -256,22 +268,20 @@
             "evidence:4"
           ],
           "against": [],
-          "strength": 0.2529411764705883,
-          "tier": 3
+          "strength": 0.2529411764705883
         },
         {
-          "id": "goal:3",
+          "id": "goal:4",
           "type": "elimination",
           "support": [
-            "evidence:6"
+            "evidence:7"
           ],
           "against": [],
-          "strength": 0.2,
-          "tier": 2
+          "strength": 0.2
         }
       ],
       "unresolved_tests": [
-        "goal:1 (arrival) vs goal:2 (uniformity): resolve via a targeted probe action before committing to either reading",
+        "which of ['arrival', 'elimination', 'pattern_match', 'uniformity'] is the true win condition is not yet determined by static structure alone",
         "goal:1 (arrival) has a structural contradiction \u2014 resolve with a cheap probe before committing"
       ],
       "insufficient_evidence": false
@@ -284,21 +294,28 @@
     "gt_note": "",
     "repeat_window_available": true,
     "candidates": [
+      "pattern_match",
       "arrival",
       "uniformity",
-      "elimination",
       "threshold"
     ],
     "n_competing": 4,
     "insufficient_evidence": false,
     "verdict": "TOPK",
     "unresolved_tests": [
-      "goal:1 (arrival) vs goal:4 (threshold): resolve via a targeted probe action before committing to either reading",
-      "goal:2 (uniformity) vs goal:3 (elimination): resolve via a targeted probe action before committing to either reading",
-      "goal:2 (uniformity) vs goal:4 (threshold): resolve via a targeted probe action before committing to either reading"
+      "which of ['arrival', 'pattern_match', 'threshold', 'uniformity'] is the true win condition is not yet determined by static structure alone"
     ],
     "full_result": {
       "goal_candidates": [
+        {
+          "id": "goal:3",
+          "type": "pattern_match",
+          "support": [
+            "evidence:5"
+          ],
+          "against": [],
+          "strength": 0.4957983193277309
+        },
         {
           "id": "goal:1",
           "type": "arrival",
@@ -306,8 +323,7 @@
             "evidence:1"
           ],
           "against": [],
-          "strength": 0.45833333333333337,
-          "tier": 3
+          "strength": 0.45833333333333337
         },
         {
           "id": "goal:2",
@@ -318,34 +334,20 @@
             "evidence:4"
           ],
           "against": [],
-          "strength": 0.4506760728982952,
-          "tier": 3
+          "strength": 0.4506760728982952
         },
         {
-          "id": "goal:3",
-          "type": "elimination",
-          "support": [
-            "evidence:5"
-          ],
-          "against": [],
-          "strength": 0.2,
-          "tier": 2
-        },
-        {
-          "id": "goal:4",
+          "id": "goal:5",
           "type": "threshold",
           "support": [
-            "evidence:6"
+            "evidence:7"
           ],
           "against": [],
-          "strength": 0.4,
-          "tier": 2
+          "strength": 0.4
         }
       ],
       "unresolved_tests": [
-        "goal:1 (arrival) vs goal:4 (threshold): resolve via a targeted probe action before committing to either reading",
-        "goal:2 (uniformity) vs goal:3 (elimination): resolve via a targeted probe action before committing to either reading",
-        "goal:2 (uniformity) vs goal:4 (threshold): resolve via a targeted probe action before committing to either reading"
+        "which of ['arrival', 'pattern_match', 'threshold', 'uniformity'] is the true win condition is not yet determined by static structure alone"
       ],
       "insufficient_evidence": false
     }
@@ -357,12 +359,15 @@
     "gt_note": "",
     "repeat_window_available": true,
     "candidates": [
-      "arrival"
+      "arrival",
+      "pattern_match"
     ],
-    "n_competing": 1,
-    "insufficient_evidence": true,
+    "n_competing": 2,
+    "insufficient_evidence": false,
     "verdict": "N/A(unclassified)",
-    "unresolved_tests": [],
+    "unresolved_tests": [
+      "which of ['arrival', 'pattern_match'] is the true win condition is not yet determined by static structure alone"
+    ],
     "full_result": {
       "goal_candidates": [
         {
@@ -372,12 +377,22 @@
             "evidence:1"
           ],
           "against": [],
-          "strength": 0.4654947916666667,
-          "tier": 3
+          "strength": 0.4654947916666667
+        },
+        {
+          "id": "goal:2",
+          "type": "pattern_match",
+          "support": [
+            "evidence:2"
+          ],
+          "against": [],
+          "strength": 0.2
         }
       ],
-      "unresolved_tests": [],
-      "insufficient_evidence": true
+      "unresolved_tests": [
+        "which of ['arrival', 'pattern_match'] is the true win condition is not yet determined by static structure alone"
+      ],
+      "insufficient_evidence": false
     }
   },
   {
@@ -387,21 +402,29 @@
     "gt_note": "",
     "repeat_window_available": true,
     "candidates": [
+      "threshold",
       "arrival",
       "containment",
-      "elimination",
-      "threshold"
+      "elimination"
     ],
     "n_competing": 4,
     "insufficient_evidence": false,
     "verdict": "TOPK",
     "unresolved_tests": [
-      "goal:1/goal:2: whether the candidate region is an isolated target to reach (arrival) or a slot to be filled/matched within the containment structure",
-      "goal:1 (arrival) vs goal:4 (threshold): resolve via a targeted probe action before committing to either reading",
-      "goal:2 (containment) vs goal:3 (elimination): resolve via a targeted probe action before committing to either reading"
+      "which of ['arrival', 'containment', 'elimination', 'threshold'] is the true win condition is not yet determined by static structure alone",
+      "goal:1 (arrival) has a structural contradiction \u2014 resolve with a cheap probe before committing"
     ],
     "full_result": {
       "goal_candidates": [
+        {
+          "id": "goal:4",
+          "type": "threshold",
+          "support": [
+            "evidence:6"
+          ],
+          "against": [],
+          "strength": 0.373913043478261
+        },
         {
           "id": "goal:1",
           "type": "arrival",
@@ -411,8 +434,7 @@
           "against": [
             "evidence:4"
           ],
-          "strength": 0.359921875,
-          "tier": 3
+          "strength": 0.359921875
         },
         {
           "id": "goal:2",
@@ -422,8 +444,7 @@
             "evidence:3"
           ],
           "against": [],
-          "strength": 0.2,
-          "tier": 3
+          "strength": 0.2
         },
         {
           "id": "goal:3",
@@ -432,24 +453,12 @@
             "evidence:5"
           ],
           "against": [],
-          "strength": 0.2,
-          "tier": 2
-        },
-        {
-          "id": "goal:4",
-          "type": "threshold",
-          "support": [
-            "evidence:6"
-          ],
-          "against": [],
-          "strength": 0.373913043478261,
-          "tier": 2
+          "strength": 0.2
         }
       ],
       "unresolved_tests": [
-        "goal:1/goal:2: whether the candidate region is an isolated target to reach (arrival) or a slot to be filled/matched within the containment structure",
-        "goal:1 (arrival) vs goal:4 (threshold): resolve via a targeted probe action before committing to either reading",
-        "goal:2 (containment) vs goal:3 (elimination): resolve via a targeted probe action before committing to either reading"
+        "which of ['arrival', 'containment', 'elimination', 'threshold'] is the true win condition is not yet determined by static structure alone",
+        "goal:1 (arrival) has a structural contradiction \u2014 resolve with a cheap probe before committing"
       ],
       "insufficient_evidence": false
     }
@@ -462,17 +471,15 @@
     "repeat_window_available": true,
     "candidates": [
       "arrival",
-      "pattern_match",
       "uniformity",
-      "containment"
+      "containment",
+      "elimination"
     ],
     "n_competing": 4,
     "insufficient_evidence": false,
     "verdict": "TOPK",
     "unresolved_tests": [
-      "goal:1/goal:3: whether the candidate region is an isolated target to reach (arrival) or a slot to be filled/matched within the containment structure",
-      "goal:2 (uniformity) vs goal:3 (containment): resolve via a targeted probe action before committing to either reading",
-      "goal:3/goal:4: whether children must be individually matched to slots (containment) or the container is painted/filled as a whole (pattern_match)"
+      "which of ['arrival', 'containment', 'elimination', 'uniformity'] is the true win condition is not yet determined by static structure alone"
     ],
     "full_result": {
       "goal_candidates": [
@@ -483,18 +490,7 @@
             "evidence:1"
           ],
           "against": [],
-          "strength": 0.9328125,
-          "tier": 1
-        },
-        {
-          "id": "goal:4",
-          "type": "pattern_match",
-          "support": [
-            "evidence:8"
-          ],
-          "against": [],
-          "strength": 0.6000000000000001,
-          "tier": 3
+          "strength": 0.9328125
         },
         {
           "id": "goal:2",
@@ -505,8 +501,7 @@
             "evidence:4"
           ],
           "against": [],
-          "strength": 0.5543859649122809,
-          "tier": 3
+          "strength": 0.5543859649122809
         },
         {
           "id": "goal:3",
@@ -517,14 +512,20 @@
             "evidence:7"
           ],
           "against": [],
-          "strength": 0.2,
-          "tier": 3
+          "strength": 0.2
+        },
+        {
+          "id": "goal:4",
+          "type": "elimination",
+          "support": [
+            "evidence:8"
+          ],
+          "against": [],
+          "strength": 0.2
         }
       ],
       "unresolved_tests": [
-        "goal:1/goal:3: whether the candidate region is an isolated target to reach (arrival) or a slot to be filled/matched within the containment structure",
-        "goal:2 (uniformity) vs goal:3 (containment): resolve via a targeted probe action before committing to either reading",
-        "goal:3/goal:4: whether children must be individually matched to slots (containment) or the container is painted/filled as a whole (pattern_match)"
+        "which of ['arrival', 'containment', 'elimination', 'uniformity'] is the true win condition is not yet determined by static structure alone"
       ],
       "insufficient_evidence": false
     }
@@ -542,7 +543,9 @@
     "n_competing": 2,
     "insufficient_evidence": false,
     "verdict": "TOP1",
-    "unresolved_tests": [],
+    "unresolved_tests": [
+      "which of ['arrival', 'uniformity'] is the true win condition is not yet determined by static structure alone"
+    ],
     "full_result": {
       "goal_candidates": [
         {
@@ -552,8 +555,7 @@
             "evidence:1"
           ],
           "against": [],
-          "strength": 0.984375,
-          "tier": 1
+          "strength": 0.984375
         },
         {
           "id": "goal:2",
@@ -564,11 +566,12 @@
             "evidence:4"
           ],
           "against": [],
-          "strength": 0.3111111111111111,
-          "tier": 3
+          "strength": 0.3111111111111111
         }
       ],
-      "unresolved_tests": [],
+      "unresolved_tests": [
+        "which of ['arrival', 'uniformity'] is the true win condition is not yet determined by static structure alone"
+      ],
       "insufficient_evidence": false
     }
   },
@@ -579,20 +582,29 @@
     "gt_note": "",
     "repeat_window_available": true,
     "candidates": [
+      "pattern_match",
       "arrival",
       "containment",
       "elimination"
     ],
-    "n_competing": 3,
+    "n_competing": 4,
     "insufficient_evidence": false,
-    "verdict": "TOP1",
+    "verdict": "TOPK",
     "unresolved_tests": [
-      "goal:1/goal:2: whether the candidate region is an isolated target to reach (arrival) or a slot to be filled/matched within the containment structure",
-      "goal:2 (containment) vs goal:3 (elimination): resolve via a targeted probe action before committing to either reading",
+      "which of ['arrival', 'containment', 'elimination', 'pattern_match'] is the true win condition is not yet determined by static structure alone",
       "goal:1 (arrival) has a structural contradiction \u2014 resolve with a cheap probe before committing"
     ],
     "full_result": {
       "goal_candidates": [
+        {
+          "id": "goal:3",
+          "type": "pattern_match",
+          "support": [
+            "evidence:5"
+          ],
+          "against": [],
+          "strength": 0.48571428571428577
+        },
         {
           "id": "goal:1",
           "type": "arrival",
@@ -600,10 +612,9 @@
             "evidence:1"
           ],
           "against": [
-            "evidence:5"
+            "evidence:6"
           ],
-          "strength": 0.3141183035714286,
-          "tier": 3
+          "strength": 0.3141183035714286
         },
         {
           "id": "goal:2",
@@ -614,23 +625,20 @@
             "evidence:4"
           ],
           "against": [],
-          "strength": 0.29616328230938305,
-          "tier": 3
+          "strength": 0.29616328230938305
         },
         {
-          "id": "goal:3",
+          "id": "goal:4",
           "type": "elimination",
           "support": [
-            "evidence:6"
+            "evidence:7"
           ],
           "against": [],
-          "strength": 0.2,
-          "tier": 2
+          "strength": 0.2
         }
       ],
       "unresolved_tests": [
-        "goal:1/goal:2: whether the candidate region is an isolated target to reach (arrival) or a slot to be filled/matched within the containment structure",
-        "goal:2 (containment) vs goal:3 (elimination): resolve via a targeted probe action before committing to either reading",
+        "which of ['arrival', 'containment', 'elimination', 'pattern_match'] is the true win condition is not yet determined by static structure alone",
         "goal:1 (arrival) has a structural contradiction \u2014 resolve with a cheap probe before committing"
       ],
       "insufficient_evidence": false
@@ -658,8 +666,7 @@
             "evidence:1"
           ],
           "against": [],
-          "strength": 0.29817708333333337,
-          "tier": 3
+          "strength": 0.29817708333333337
         }
       ],
       "unresolved_tests": [],
@@ -681,7 +688,7 @@
     "insufficient_evidence": false,
     "verdict": "MISS",
     "unresolved_tests": [
-      "goal:1/goal:2: whether the candidate region is an isolated target to reach (arrival) or a slot to be filled/matched within the containment structure",
+      "which of ['arrival', 'containment', 'elimination'] is the true win condition is not yet determined by static structure alone",
       "goal:1 (arrival) has a structural contradiction \u2014 resolve with a cheap probe before committing"
     ],
     "full_result": {
@@ -695,8 +702,7 @@
           "against": [
             "evidence:4"
           ],
-          "strength": 0.46653645833333335,
-          "tier": 3
+          "strength": 0.46653645833333335
         },
         {
           "id": "goal:2",
@@ -706,8 +712,7 @@
             "evidence:3"
           ],
           "against": [],
-          "strength": 0.2,
-          "tier": 3
+          "strength": 0.2
         },
         {
           "id": "goal:3",
@@ -716,12 +721,11 @@
             "evidence:5"
           ],
           "against": [],
-          "strength": 0.2,
-          "tier": 2
+          "strength": 0.2
         }
       ],
       "unresolved_tests": [
-        "goal:1/goal:2: whether the candidate region is an isolated target to reach (arrival) or a slot to be filled/matched within the containment structure",
+        "which of ['arrival', 'containment', 'elimination'] is the true win condition is not yet determined by static structure alone",
         "goal:1 (arrival) has a structural contradiction \u2014 resolve with a cheap probe before committing"
       ],
       "insufficient_evidence": false
@@ -741,7 +745,9 @@
     "n_competing": 3,
     "insufficient_evidence": false,
     "verdict": "MISS",
-    "unresolved_tests": [],
+    "unresolved_tests": [
+      "which of ['arrival', 'elimination', 'uniformity'] is the true win condition is not yet determined by static structure alone"
+    ],
     "full_result": {
       "goal_candidates": [
         {
@@ -751,8 +757,7 @@
             "evidence:1"
           ],
           "against": [],
-          "strength": 0.46653645833333335,
-          "tier": 3
+          "strength": 0.46653645833333335
         },
         {
           "id": "goal:2",
@@ -763,8 +768,7 @@
             "evidence:4"
           ],
           "against": [],
-          "strength": 0.4181818181818182,
-          "tier": 3
+          "strength": 0.4181818181818182
         },
         {
           "id": "goal:3",
@@ -773,11 +777,12 @@
             "evidence:5"
           ],
           "against": [],
-          "strength": 0.2,
-          "tier": 2
+          "strength": 0.2
         }
       ],
-      "unresolved_tests": [],
+      "unresolved_tests": [
+        "which of ['arrival', 'elimination', 'uniformity'] is the true win condition is not yet determined by static structure alone"
+      ],
       "insufficient_evidence": false
     }
   },
@@ -789,14 +794,13 @@
     "repeat_window_available": true,
     "candidates": [
       "containment",
-      "pattern_match",
       "elimination"
     ],
-    "n_competing": 3,
+    "n_competing": 2,
     "insufficient_evidence": false,
     "verdict": "MISS",
     "unresolved_tests": [
-      "goal:1/goal:2: whether children must be individually matched to slots (containment) or the container is painted/filled as a whole (pattern_match)"
+      "which of ['containment', 'elimination'] is the true win condition is not yet determined by static structure alone"
     ],
     "full_result": {
       "goal_candidates": [
@@ -808,32 +812,20 @@
             "evidence:2"
           ],
           "against": [],
-          "strength": 0.2,
-          "tier": 1
+          "strength": 0.2
         },
         {
           "id": "goal:2",
-          "type": "pattern_match",
+          "type": "elimination",
           "support": [
             "evidence:3"
           ],
           "against": [],
-          "strength": 0.4666666666666668,
-          "tier": 3
-        },
-        {
-          "id": "goal:3",
-          "type": "elimination",
-          "support": [
-            "evidence:4"
-          ],
-          "against": [],
-          "strength": 0.2,
-          "tier": 2
+          "strength": 0.2
         }
       ],
       "unresolved_tests": [
-        "goal:1/goal:2: whether children must be individually matched to slots (containment) or the container is painted/filled as a whole (pattern_match)"
+        "which of ['containment', 'elimination'] is the true win condition is not yet determined by static structure alone"
       ],
       "insufficient_evidence": false
     }
@@ -846,16 +838,14 @@
     "repeat_window_available": true,
     "candidates": [
       "arrival",
-      "containment",
-      "pattern_match"
+      "pattern_match",
+      "containment"
     ],
     "n_competing": 3,
     "insufficient_evidence": false,
     "verdict": "TOPK",
     "unresolved_tests": [
-      "goal:1/goal:2: whether the candidate region is an isolated target to reach (arrival) or a slot to be filled/matched within the containment structure",
-      "goal:1 (arrival) vs goal:3 (pattern_match): resolve via a targeted probe action before committing to either reading",
-      "goal:2/goal:3: whether children must be individually matched to slots (containment) or the container is painted/filled as a whole (pattern_match)"
+      "which of ['arrival', 'containment', 'pattern_match'] is the true win condition is not yet determined by static structure alone"
     ],
     "full_result": {
       "goal_candidates": [
@@ -866,8 +856,16 @@
             "evidence:1"
           ],
           "against": [],
-          "strength": 0.971875,
-          "tier": 1
+          "strength": 0.971875
+        },
+        {
+          "id": "goal:3",
+          "type": "pattern_match",
+          "support": [
+            "evidence:4"
+          ],
+          "against": [],
+          "strength": 0.48571428571428577
         },
         {
           "id": "goal:2",
@@ -877,24 +875,11 @@
             "evidence:3"
           ],
           "against": [],
-          "strength": 0.2,
-          "tier": 3
-        },
-        {
-          "id": "goal:3",
-          "type": "pattern_match",
-          "support": [
-            "evidence:4"
-          ],
-          "against": [],
-          "strength": 0.6000000000000001,
-          "tier": 3
+          "strength": 0.2
         }
       ],
       "unresolved_tests": [
-        "goal:1/goal:2: whether the candidate region is an isolated target to reach (arrival) or a slot to be filled/matched within the containment structure",
-        "goal:1 (arrival) vs goal:3 (pattern_match): resolve via a targeted probe action before committing to either reading",
-        "goal:2/goal:3: whether children must be individually matched to slots (containment) or the container is painted/filled as a whole (pattern_match)"
+        "which of ['arrival', 'containment', 'pattern_match'] is the true win condition is not yet determined by static structure alone"
       ],
       "insufficient_evidence": false
     }
@@ -908,16 +893,13 @@
     "candidates": [
       "arrival",
       "uniformity",
-      "containment",
-      "pattern_match"
+      "containment"
     ],
-    "n_competing": 4,
+    "n_competing": 3,
     "insufficient_evidence": false,
     "verdict": "TOPK",
     "unresolved_tests": [
-      "goal:2 (uniformity) vs goal:3 (containment): resolve via a targeted probe action before committing to either reading",
-      "goal:2/goal:4: whether edits follow a translated fixed stencil (uniformity) or directly repaint one addressable canvas slot (pattern_match)",
-      "goal:3/goal:4: whether children must be individually matched to slots (containment) or the container is painted/filled as a whole (pattern_match)"
+      "which of ['arrival', 'containment', 'uniformity'] is the true win condition is not yet determined by static structure alone"
     ],
     "full_result": {
       "goal_candidates": [
@@ -928,8 +910,7 @@
             "evidence:1"
           ],
           "against": [],
-          "strength": 0.95,
-          "tier": 1
+          "strength": 0.95
         },
         {
           "id": "goal:2",
@@ -940,8 +921,7 @@
             "evidence:4"
           ],
           "against": [],
-          "strength": 0.3650793650793651,
-          "tier": 3
+          "strength": 0.3650793650793651
         },
         {
           "id": "goal:3",
@@ -952,24 +932,11 @@
             "evidence:7"
           ],
           "against": [],
-          "strength": 0.3254783308343424,
-          "tier": 3
-        },
-        {
-          "id": "goal:4",
-          "type": "pattern_match",
-          "support": [
-            "evidence:8"
-          ],
-          "against": [],
-          "strength": 0.6444444444444444,
-          "tier": 3
+          "strength": 0.3254783308343424
         }
       ],
       "unresolved_tests": [
-        "goal:2 (uniformity) vs goal:3 (containment): resolve via a targeted probe action before committing to either reading",
-        "goal:2/goal:4: whether edits follow a translated fixed stencil (uniformity) or directly repaint one addressable canvas slot (pattern_match)",
-        "goal:3/goal:4: whether children must be individually matched to slots (containment) or the container is painted/filled as a whole (pattern_match)"
+        "which of ['arrival', 'containment', 'uniformity'] is the true win condition is not yet determined by static structure alone"
       ],
       "insufficient_evidence": false
     }
@@ -982,39 +949,26 @@
     "repeat_window_available": true,
     "candidates": [
       "threshold",
-      "elimination",
       "containment",
-      "uniformity"
+      "uniformity",
+      "elimination"
     ],
     "n_competing": 4,
     "insufficient_evidence": false,
     "verdict": "MISS",
     "unresolved_tests": [
-      "goal:1 (uniformity) vs goal:2 (containment): resolve via a targeted probe action before committing to either reading",
-      "goal:1 (uniformity) vs goal:5 (threshold): resolve via a targeted probe action before committing to either reading",
-      "goal:2 (containment) vs goal:4 (elimination): resolve via a targeted probe action before committing to either reading"
+      "which of ['containment', 'elimination', 'threshold', 'uniformity'] is the true win condition is not yet determined by static structure alone"
     ],
     "full_result": {
       "goal_candidates": [
         {
-          "id": "goal:5",
-          "type": "threshold",
-          "support": [
-            "evidence:9"
-          ],
-          "against": [],
-          "strength": 0.24938271604938278,
-          "tier": 2
-        },
-        {
           "id": "goal:4",
-          "type": "elimination",
+          "type": "threshold",
           "support": [
             "evidence:8"
           ],
           "against": [],
-          "strength": 0.2,
-          "tier": 2
+          "strength": 0.24938271604938278
         },
         {
           "id": "goal:2",
@@ -1025,8 +979,7 @@
             "evidence:6"
           ],
           "against": [],
-          "strength": 0.22016099291591673,
-          "tier": 3
+          "strength": 0.22016099291591673
         },
         {
           "id": "goal:1",
@@ -1037,14 +990,20 @@
             "evidence:3"
           ],
           "against": [],
-          "strength": 0.21363636363636365,
-          "tier": 3
+          "strength": 0.21363636363636365
+        },
+        {
+          "id": "goal:3",
+          "type": "elimination",
+          "support": [
+            "evidence:7"
+          ],
+          "against": [],
+          "strength": 0.2
         }
       ],
       "unresolved_tests": [
-        "goal:1 (uniformity) vs goal:2 (containment): resolve via a targeted probe action before committing to either reading",
-        "goal:1 (uniformity) vs goal:5 (threshold): resolve via a targeted probe action before committing to either reading",
-        "goal:2 (containment) vs goal:4 (elimination): resolve via a targeted probe action before committing to either reading"
+        "which of ['containment', 'elimination', 'threshold', 'uniformity'] is the true win condition is not yet determined by static structure alone"
       ],
       "insufficient_evidence": false
     }
@@ -1062,7 +1021,9 @@
     "n_competing": 2,
     "insufficient_evidence": false,
     "verdict": "TOP1",
-    "unresolved_tests": [],
+    "unresolved_tests": [
+      "which of ['arrival', 'elimination'] is the true win condition is not yet determined by static structure alone"
+    ],
     "full_result": {
       "goal_candidates": [
         {
@@ -1072,8 +1033,7 @@
             "evidence:1"
           ],
           "against": [],
-          "strength": 0.28836805555555556,
-          "tier": 3
+          "strength": 0.28836805555555556
         },
         {
           "id": "goal:2",
@@ -1082,11 +1042,12 @@
             "evidence:2"
           ],
           "against": [],
-          "strength": 0.2,
-          "tier": 2
+          "strength": 0.2
         }
       ],
-      "unresolved_tests": [],
+      "unresolved_tests": [
+        "which of ['arrival', 'elimination'] is the true win condition is not yet determined by static structure alone"
+      ],
       "insufficient_evidence": false
     }
   },
@@ -1098,13 +1059,15 @@
     "repeat_window_available": true,
     "candidates": [
       "arrival",
-      "elimination",
-      "threshold"
+      "threshold",
+      "elimination"
     ],
     "n_competing": 3,
     "insufficient_evidence": false,
     "verdict": "MISS",
-    "unresolved_tests": [],
+    "unresolved_tests": [
+      "which of ['arrival', 'elimination', 'threshold'] is the true win condition is not yet determined by static structure alone"
+    ],
     "full_result": {
       "goal_candidates": [
         {
@@ -1114,18 +1077,7 @@
             "evidence:1"
           ],
           "against": [],
-          "strength": 0.458984375,
-          "tier": 3
-        },
-        {
-          "id": "goal:2",
-          "type": "elimination",
-          "support": [
-            "evidence:2"
-          ],
-          "against": [],
-          "strength": 0.2,
-          "tier": 2
+          "strength": 0.458984375
         },
         {
           "id": "goal:3",
@@ -1134,11 +1086,21 @@
             "evidence:3"
           ],
           "against": [],
-          "strength": 0.36860215053763445,
-          "tier": 2
+          "strength": 0.36860215053763445
+        },
+        {
+          "id": "goal:2",
+          "type": "elimination",
+          "support": [
+            "evidence:2"
+          ],
+          "against": [],
+          "strength": 0.2
         }
       ],
-      "unresolved_tests": [],
+      "unresolved_tests": [
+        "which of ['arrival', 'elimination', 'threshold'] is the true win condition is not yet determined by static structure alone"
+      ],
       "insufficient_evidence": false
     }
   },
@@ -1151,12 +1113,15 @@
     "candidates": [
       "arrival",
       "uniformity",
+      "pattern_match",
       "elimination"
     ],
-    "n_competing": 3,
+    "n_competing": 4,
     "insufficient_evidence": false,
     "verdict": "N/A(expected-unsupported)",
-    "unresolved_tests": [],
+    "unresolved_tests": [
+      "which of ['arrival', 'elimination', 'pattern_match', 'uniformity'] is the true win condition is not yet determined by static structure alone"
+    ],
     "full_result": {
       "goal_candidates": [
         {
@@ -1166,8 +1131,7 @@
             "evidence:1"
           ],
           "against": [],
-          "strength": 0.862109375,
-          "tier": 1
+          "strength": 0.862109375
         },
         {
           "id": "goal:2",
@@ -1178,21 +1142,30 @@
             "evidence:4"
           ],
           "against": [],
-          "strength": 0.7043478260869567,
-          "tier": 3
+          "strength": 0.7043478260869567
         },
         {
           "id": "goal:3",
-          "type": "elimination",
+          "type": "pattern_match",
           "support": [
             "evidence:5"
           ],
           "against": [],
-          "strength": 0.2,
-          "tier": 2
+          "strength": 0.4025974025974026
+        },
+        {
+          "id": "goal:4",
+          "type": "elimination",
+          "support": [
+            "evidence:6"
+          ],
+          "against": [],
+          "strength": 0.2
         }
       ],
-      "unresolved_tests": [],
+      "unresolved_tests": [
+        "which of ['arrival', 'elimination', 'pattern_match', 'uniformity'] is the true win condition is not yet determined by static structure alone"
+      ],
       "insufficient_evidence": false
     }
   },
@@ -1203,31 +1176,19 @@
     "gt_note": "",
     "repeat_window_available": false,
     "candidates": [
-      "arrival",
       "uniformity",
+      "arrival",
       "elimination"
     ],
     "n_competing": 3,
     "insufficient_evidence": false,
-    "verdict": "TOP1",
+    "verdict": "TOPK",
     "unresolved_tests": [
-      "goal:2 (uniformity) vs goal:3 (elimination): resolve via a targeted probe action before committing to either reading",
+      "which of ['arrival', 'elimination', 'uniformity'] is the true win condition is not yet determined by static structure alone",
       "goal:1 (arrival) has a structural contradiction \u2014 resolve with a cheap probe before committing"
     ],
     "full_result": {
       "goal_candidates": [
-        {
-          "id": "goal:1",
-          "type": "arrival",
-          "support": [
-            "evidence:1"
-          ],
-          "against": [
-            "evidence:5"
-          ],
-          "strength": 0.31422991071428574,
-          "tier": 3
-        },
         {
           "id": "goal:2",
           "type": "uniformity",
@@ -1237,8 +1198,18 @@
             "evidence:4"
           ],
           "against": [],
-          "strength": 0.4171296296296297,
-          "tier": 3
+          "strength": 0.4171296296296297
+        },
+        {
+          "id": "goal:1",
+          "type": "arrival",
+          "support": [
+            "evidence:1"
+          ],
+          "against": [
+            "evidence:5"
+          ],
+          "strength": 0.31422991071428574
         },
         {
           "id": "goal:3",
@@ -1247,12 +1218,11 @@
             "evidence:6"
           ],
           "against": [],
-          "strength": 0.2,
-          "tier": 2
+          "strength": 0.2
         }
       ],
       "unresolved_tests": [
-        "goal:2 (uniformity) vs goal:3 (elimination): resolve via a targeted probe action before committing to either reading",
+        "which of ['arrival', 'elimination', 'uniformity'] is the true win condition is not yet determined by static structure alone",
         "goal:1 (arrival) has a structural contradiction \u2014 resolve with a cheap probe before committing"
       ],
       "insufficient_evidence": false
@@ -1271,7 +1241,9 @@
     "n_competing": 2,
     "insufficient_evidence": false,
     "verdict": "TOP1",
-    "unresolved_tests": [],
+    "unresolved_tests": [
+      "which of ['arrival', 'elimination'] is the true win condition is not yet determined by static structure alone"
+    ],
     "full_result": {
       "goal_candidates": [
         {
@@ -1281,8 +1253,7 @@
             "evidence:1"
           ],
           "against": [],
-          "strength": 0.46458333333333335,
-          "tier": 3
+          "strength": 0.46458333333333335
         },
         {
           "id": "goal:2",
@@ -1291,11 +1262,12 @@
             "evidence:2"
           ],
           "against": [],
-          "strength": 0.2,
-          "tier": 2
+          "strength": 0.2
         }
       ],
-      "unresolved_tests": [],
+      "unresolved_tests": [
+        "which of ['arrival', 'elimination'] is the true win condition is not yet determined by static structure alone"
+      ],
       "insufficient_evidence": false
     }
   },
@@ -1321,8 +1293,7 @@
             "evidence:1"
           ],
           "against": [],
-          "strength": 0.3140625,
-          "tier": 3
+          "strength": 0.3140625
         }
       ],
       "unresolved_tests": [],

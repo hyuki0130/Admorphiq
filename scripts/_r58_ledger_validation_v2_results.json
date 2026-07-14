@@ -1,0 +1,767 @@
+[
+  {
+    "game": "ar25",
+    "gt_primary": "arrival",
+    "verdict": "TOP1(legacy)",
+    "miss_attribution": null,
+    "candidates_capped": [
+      [
+        "arrival",
+        3,
+        0.461
+      ],
+      [
+        "elimination",
+        2,
+        0.2
+      ]
+    ],
+    "candidates_uncapped_types": [
+      "arrival",
+      "elimination"
+    ],
+    "independent_footprint_groups": 2,
+    "insufficient_evidence": false,
+    "unresolved_tests": []
+  },
+  {
+    "game": "bp35",
+    "gt_primary": "arrival",
+    "verdict": "RECALLED",
+    "miss_attribution": null,
+    "candidates_capped": [
+      [
+        "threshold",
+        2,
+        0.282
+      ],
+      [
+        "elimination",
+        2,
+        0.2
+      ],
+      [
+        "pattern_match",
+        3,
+        0.6
+      ],
+      [
+        "arrival",
+        3,
+        0.36
+      ]
+    ],
+    "candidates_uncapped_types": [
+      "arrival",
+      "uniformity",
+      "containment",
+      "pattern_match",
+      "elimination",
+      "threshold"
+    ],
+    "independent_footprint_groups": 2,
+    "insufficient_evidence": false,
+    "unresolved_tests": [
+      "goal:1 (arrival) vs goal:6 (threshold): resolve via a targeted probe action before committing to either reading",
+      "goal:5 (elimination) vs goal:6 (threshold): resolve via a targeted probe action before committing to either reading",
+      "goal:1 (arrival) has a structural contradiction \u2014 resolve with a cheap probe before committing"
+    ]
+  },
+  {
+    "game": "cd82",
+    "gt_primary": "pattern_match",
+    "verdict": "MISS",
+    "miss_attribution": "non_firing",
+    "candidates_capped": [
+      [
+        "arrival",
+        3,
+        0.463
+      ],
+      [
+        "containment",
+        3,
+        0.2
+      ],
+      [
+        "elimination",
+        2,
+        0.2
+      ]
+    ],
+    "candidates_uncapped_types": [
+      "arrival",
+      "containment",
+      "elimination"
+    ],
+    "independent_footprint_groups": 2,
+    "insufficient_evidence": false,
+    "unresolved_tests": [
+      "goal:1/goal:3: whether the region reached (arrival) is the SAME region later consumed (elimination) \u2014 a delivery composition \u2014 or these are two independent events"
+    ]
+  },
+  {
+    "game": "cn04",
+    "gt_primary": "arrival",
+    "verdict": "TOP1(legacy)",
+    "miss_attribution": null,
+    "candidates_capped": [
+      [
+        "arrival",
+        3,
+        0.357
+      ],
+      [
+        "threshold",
+        2,
+        0.201
+      ]
+    ],
+    "candidates_uncapped_types": [
+      "arrival",
+      "threshold"
+    ],
+    "independent_footprint_groups": 1,
+    "insufficient_evidence": false,
+    "unresolved_tests": [
+      "goal:1 (arrival) vs goal:2 (threshold): resolve via a targeted probe action before committing to either reading"
+    ]
+  },
+  {
+    "game": "dc22",
+    "gt_primary": "arrival",
+    "verdict": "TOP1(legacy)",
+    "miss_attribution": null,
+    "candidates_capped": [
+      [
+        "arrival",
+        3,
+        0.314
+      ],
+      [
+        "uniformity",
+        3,
+        0.253
+      ],
+      [
+        "elimination",
+        2,
+        0.2
+      ]
+    ],
+    "candidates_uncapped_types": [
+      "arrival",
+      "uniformity",
+      "elimination"
+    ],
+    "independent_footprint_groups": 2,
+    "insufficient_evidence": false,
+    "unresolved_tests": [
+      "goal:1 (arrival) vs goal:2 (uniformity): resolve via a targeted probe action before committing to either reading",
+      "goal:1 (arrival) has a structural contradiction \u2014 resolve with a cheap probe before committing"
+    ]
+  },
+  {
+    "game": "ft09",
+    "gt_primary": "uniformity",
+    "verdict": "RECALLED",
+    "miss_attribution": null,
+    "candidates_capped": [
+      [
+        "arrival",
+        3,
+        0.458
+      ],
+      [
+        "uniformity",
+        3,
+        0.451
+      ],
+      [
+        "elimination",
+        2,
+        0.2
+      ],
+      [
+        "threshold",
+        2,
+        0.4
+      ]
+    ],
+    "candidates_uncapped_types": [
+      "arrival",
+      "uniformity",
+      "elimination",
+      "threshold"
+    ],
+    "independent_footprint_groups": 1,
+    "insufficient_evidence": false,
+    "unresolved_tests": [
+      "goal:1 (arrival) vs goal:4 (threshold): resolve via a targeted probe action before committing to either reading",
+      "goal:2 (uniformity) vs goal:3 (elimination): resolve via a targeted probe action before committing to either reading",
+      "goal:2 (uniformity) vs goal:4 (threshold): resolve via a targeted probe action before committing to either reading"
+    ]
+  },
+  {
+    "game": "g50t",
+    "gt_primary": "unclassified",
+    "verdict": "N/A(unclassified)",
+    "miss_attribution": null,
+    "candidates_capped": [
+      [
+        "arrival",
+        3,
+        0.465
+      ]
+    ],
+    "candidates_uncapped_types": [
+      "arrival"
+    ],
+    "independent_footprint_groups": 1,
+    "insufficient_evidence": true,
+    "unresolved_tests": []
+  },
+  {
+    "game": "ka59",
+    "gt_primary": "elimination",
+    "verdict": "RECALLED",
+    "miss_attribution": null,
+    "candidates_capped": [
+      [
+        "arrival",
+        3,
+        0.36
+      ],
+      [
+        "containment",
+        3,
+        0.2
+      ],
+      [
+        "elimination",
+        2,
+        0.2
+      ],
+      [
+        "threshold",
+        2,
+        0.374
+      ]
+    ],
+    "candidates_uncapped_types": [
+      "arrival",
+      "containment",
+      "elimination",
+      "threshold"
+    ],
+    "independent_footprint_groups": 1,
+    "insufficient_evidence": false,
+    "unresolved_tests": [
+      "goal:1/goal:2: whether the candidate region is an isolated target to reach (arrival) or a slot to be filled/matched within the containment structure",
+      "goal:1 (arrival) vs goal:4 (threshold): resolve via a targeted probe action before committing to either reading",
+      "goal:2 (containment) vs goal:3 (elimination): resolve via a targeted probe action before committing to either reading"
+    ]
+  },
+  {
+    "game": "lf52",
+    "gt_primary": "containment",
+    "verdict": "RECALLED",
+    "miss_attribution": null,
+    "candidates_capped": [
+      [
+        "arrival",
+        1,
+        0.933
+      ],
+      [
+        "pattern_match",
+        3,
+        0.6
+      ],
+      [
+        "uniformity",
+        3,
+        0.554
+      ],
+      [
+        "containment",
+        3,
+        0.2
+      ]
+    ],
+    "candidates_uncapped_types": [
+      "arrival",
+      "uniformity",
+      "containment",
+      "pattern_match",
+      "elimination"
+    ],
+    "independent_footprint_groups": 1,
+    "insufficient_evidence": false,
+    "unresolved_tests": [
+      "goal:1/goal:3: whether the candidate region is an isolated target to reach (arrival) or a slot to be filled/matched within the containment structure",
+      "goal:2 (uniformity) vs goal:3 (containment): resolve via a targeted probe action before committing to either reading",
+      "goal:3/goal:4: whether children must be individually matched to slots (containment) or the container is painted/filled as a whole (pattern_match)"
+    ]
+  },
+  {
+    "game": "lp85",
+    "gt_primary": "arrival",
+    "verdict": "TOP1(legacy)",
+    "miss_attribution": null,
+    "candidates_capped": [
+      [
+        "arrival",
+        1,
+        0.984
+      ],
+      [
+        "uniformity",
+        3,
+        0.311
+      ]
+    ],
+    "candidates_uncapped_types": [
+      "arrival",
+      "uniformity"
+    ],
+    "independent_footprint_groups": 2,
+    "insufficient_evidence": false,
+    "unresolved_tests": []
+  },
+  {
+    "game": "ls20",
+    "gt_primary": "arrival",
+    "verdict": "TOP1(legacy)",
+    "miss_attribution": null,
+    "candidates_capped": [
+      [
+        "arrival",
+        3,
+        0.314
+      ],
+      [
+        "containment",
+        3,
+        0.296
+      ],
+      [
+        "elimination",
+        2,
+        0.2
+      ]
+    ],
+    "candidates_uncapped_types": [
+      "arrival",
+      "containment",
+      "elimination"
+    ],
+    "independent_footprint_groups": 1,
+    "insufficient_evidence": false,
+    "unresolved_tests": [
+      "goal:1/goal:2: whether the candidate region is an isolated target to reach (arrival) or a slot to be filled/matched within the containment structure",
+      "goal:2 (containment) vs goal:3 (elimination): resolve via a targeted probe action before committing to either reading",
+      "goal:1 (arrival) has a structural contradiction \u2014 resolve with a cheap probe before committing"
+    ]
+  },
+  {
+    "game": "m0r0",
+    "gt_primary": "arrival",
+    "verdict": "TOP1(legacy)",
+    "miss_attribution": null,
+    "candidates_capped": [
+      [
+        "arrival",
+        3,
+        0.298
+      ]
+    ],
+    "candidates_uncapped_types": [
+      "arrival"
+    ],
+    "independent_footprint_groups": 1,
+    "insufficient_evidence": true,
+    "unresolved_tests": []
+  },
+  {
+    "game": "r11l",
+    "gt_primary": "threshold",
+    "verdict": "MISS",
+    "miss_attribution": "non_firing",
+    "candidates_capped": [
+      [
+        "arrival",
+        3,
+        0.467
+      ],
+      [
+        "containment",
+        3,
+        0.2
+      ],
+      [
+        "elimination",
+        2,
+        0.2
+      ]
+    ],
+    "candidates_uncapped_types": [
+      "arrival",
+      "containment",
+      "elimination"
+    ],
+    "independent_footprint_groups": 2,
+    "insufficient_evidence": false,
+    "unresolved_tests": [
+      "goal:1/goal:2: whether the candidate region is an isolated target to reach (arrival) or a slot to be filled/matched within the containment structure",
+      "goal:1 (arrival) has a structural contradiction \u2014 resolve with a cheap probe before committing"
+    ]
+  },
+  {
+    "game": "re86",
+    "gt_primary": "containment",
+    "verdict": "MISS",
+    "miss_attribution": "non_firing",
+    "candidates_capped": [
+      [
+        "arrival",
+        3,
+        0.467
+      ],
+      [
+        "uniformity",
+        3,
+        0.418
+      ],
+      [
+        "elimination",
+        2,
+        0.2
+      ]
+    ],
+    "candidates_uncapped_types": [
+      "arrival",
+      "uniformity",
+      "elimination"
+    ],
+    "independent_footprint_groups": 3,
+    "insufficient_evidence": false,
+    "unresolved_tests": []
+  },
+  {
+    "game": "s5i5",
+    "gt_primary": "arrival",
+    "verdict": "MISS",
+    "miss_attribution": "non_firing",
+    "candidates_capped": [
+      [
+        "containment",
+        1,
+        0.2
+      ],
+      [
+        "pattern_match",
+        3,
+        0.467
+      ],
+      [
+        "elimination",
+        2,
+        0.2
+      ]
+    ],
+    "candidates_uncapped_types": [
+      "containment",
+      "pattern_match",
+      "elimination"
+    ],
+    "independent_footprint_groups": 2,
+    "insufficient_evidence": false,
+    "unresolved_tests": [
+      "goal:1/goal:2: whether children must be individually matched to slots (containment) or the container is painted/filled as a whole (pattern_match)"
+    ]
+  },
+  {
+    "game": "sb26",
+    "gt_primary": "containment",
+    "verdict": "RECALLED",
+    "miss_attribution": null,
+    "candidates_capped": [
+      [
+        "arrival",
+        1,
+        0.972
+      ],
+      [
+        "containment",
+        3,
+        0.2
+      ],
+      [
+        "pattern_match",
+        3,
+        0.6
+      ]
+    ],
+    "candidates_uncapped_types": [
+      "arrival",
+      "containment",
+      "pattern_match"
+    ],
+    "independent_footprint_groups": 1,
+    "insufficient_evidence": false,
+    "unresolved_tests": [
+      "goal:1/goal:2: whether the candidate region is an isolated target to reach (arrival) or a slot to be filled/matched within the containment structure",
+      "goal:1 (arrival) vs goal:3 (pattern_match): resolve via a targeted probe action before committing to either reading",
+      "goal:2/goal:3: whether children must be individually matched to slots (containment) or the container is painted/filled as a whole (pattern_match)"
+    ]
+  },
+  {
+    "game": "sc25",
+    "gt_primary": "pattern_match",
+    "verdict": "RECALLED",
+    "miss_attribution": null,
+    "candidates_capped": [
+      [
+        "arrival",
+        1,
+        0.95
+      ],
+      [
+        "uniformity",
+        3,
+        0.365
+      ],
+      [
+        "containment",
+        3,
+        0.325
+      ],
+      [
+        "pattern_match",
+        3,
+        0.644
+      ]
+    ],
+    "candidates_uncapped_types": [
+      "arrival",
+      "uniformity",
+      "containment",
+      "pattern_match"
+    ],
+    "independent_footprint_groups": 2,
+    "insufficient_evidence": false,
+    "unresolved_tests": [
+      "goal:2 (uniformity) vs goal:3 (containment): resolve via a targeted probe action before committing to either reading",
+      "goal:2/goal:4: whether edits follow a translated fixed stencil (uniformity) or directly repaint one addressable canvas slot (pattern_match)",
+      "goal:3/goal:4: whether children must be individually matched to slots (containment) or the container is painted/filled as a whole (pattern_match)"
+    ]
+  },
+  {
+    "game": "sk48",
+    "gt_primary": "arrival",
+    "verdict": "MISS",
+    "miss_attribution": "non_firing",
+    "candidates_capped": [
+      [
+        "threshold",
+        2,
+        0.249
+      ],
+      [
+        "elimination",
+        2,
+        0.2
+      ],
+      [
+        "containment",
+        3,
+        0.22
+      ],
+      [
+        "uniformity",
+        3,
+        0.214
+      ]
+    ],
+    "candidates_uncapped_types": [
+      "uniformity",
+      "containment",
+      "pattern_match",
+      "elimination",
+      "threshold"
+    ],
+    "independent_footprint_groups": 1,
+    "insufficient_evidence": false,
+    "unresolved_tests": [
+      "goal:1 (uniformity) vs goal:2 (containment): resolve via a targeted probe action before committing to either reading",
+      "goal:1 (uniformity) vs goal:5 (threshold): resolve via a targeted probe action before committing to either reading",
+      "goal:2 (containment) vs goal:4 (elimination): resolve via a targeted probe action before committing to either reading"
+    ]
+  },
+  {
+    "game": "sp80",
+    "gt_primary": "arrival",
+    "verdict": "TOP1(legacy)",
+    "miss_attribution": null,
+    "candidates_capped": [
+      [
+        "arrival",
+        3,
+        0.288
+      ],
+      [
+        "elimination",
+        2,
+        0.2
+      ]
+    ],
+    "candidates_uncapped_types": [
+      "arrival",
+      "elimination"
+    ],
+    "independent_footprint_groups": 2,
+    "insufficient_evidence": false,
+    "unresolved_tests": []
+  },
+  {
+    "game": "su15",
+    "gt_primary": "containment",
+    "verdict": "MISS",
+    "miss_attribution": "non_firing",
+    "candidates_capped": [
+      [
+        "arrival",
+        3,
+        0.459
+      ],
+      [
+        "elimination",
+        2,
+        0.2
+      ],
+      [
+        "threshold",
+        2,
+        0.369
+      ]
+    ],
+    "candidates_uncapped_types": [
+      "arrival",
+      "elimination",
+      "threshold"
+    ],
+    "independent_footprint_groups": 3,
+    "insufficient_evidence": false,
+    "unresolved_tests": []
+  },
+  {
+    "game": "tn36",
+    "gt_primary": "unsupported(T8 programmatic)",
+    "verdict": "N/A(expected-unsupported)",
+    "miss_attribution": null,
+    "candidates_capped": [
+      [
+        "arrival",
+        1,
+        0.862
+      ],
+      [
+        "uniformity",
+        3,
+        0.704
+      ],
+      [
+        "elimination",
+        2,
+        0.2
+      ]
+    ],
+    "candidates_uncapped_types": [
+      "arrival",
+      "uniformity",
+      "elimination"
+    ],
+    "independent_footprint_groups": 3,
+    "insufficient_evidence": false,
+    "unresolved_tests": []
+  },
+  {
+    "game": "tu93",
+    "gt_primary": "arrival",
+    "verdict": "TOP1(legacy)",
+    "miss_attribution": null,
+    "candidates_capped": [
+      [
+        "arrival",
+        3,
+        0.314
+      ],
+      [
+        "uniformity",
+        3,
+        0.417
+      ],
+      [
+        "elimination",
+        2,
+        0.2
+      ]
+    ],
+    "candidates_uncapped_types": [
+      "arrival",
+      "uniformity",
+      "elimination"
+    ],
+    "independent_footprint_groups": 2,
+    "insufficient_evidence": false,
+    "unresolved_tests": [
+      "goal:2 (uniformity) vs goal:3 (elimination): resolve via a targeted probe action before committing to either reading",
+      "goal:1 (arrival) has a structural contradiction \u2014 resolve with a cheap probe before committing"
+    ]
+  },
+  {
+    "game": "vc33",
+    "gt_primary": "arrival",
+    "verdict": "TOP1(legacy)",
+    "miss_attribution": null,
+    "candidates_capped": [
+      [
+        "arrival",
+        3,
+        0.465
+      ],
+      [
+        "elimination",
+        2,
+        0.2
+      ]
+    ],
+    "candidates_uncapped_types": [
+      "arrival",
+      "elimination"
+    ],
+    "independent_footprint_groups": 2,
+    "insufficient_evidence": false,
+    "unresolved_tests": []
+  },
+  {
+    "game": "wa30",
+    "gt_primary": "unsupported(T4 delivery)",
+    "verdict": "N/A(expected-unsupported)",
+    "miss_attribution": null,
+    "candidates_capped": [
+      [
+        "arrival",
+        3,
+        0.314
+      ]
+    ],
+    "candidates_uncapped_types": [
+      "arrival"
+    ],
+    "independent_footprint_groups": 1,
+    "insufficient_evidence": true,
+    "unresolved_tests": []
+  }
+]

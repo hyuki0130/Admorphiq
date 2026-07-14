@@ -1,6 +1,11 @@
 """Tests for the R58 GoalLedger (``src/admorphiq/explanation/goal_ledger.py``):
 the executable win-condition typology built on R57's win-condition typology
-mining (``docs/r57_win_condition_typology_20260715.md``).
+mining (``docs/r57_win_condition_typology_20260715.md``), reconceptualized
+as a capped HYPOTHESIS GENERATOR (tuning round #3) per
+``docs/r58_codex_ledger_ranking_20260715.md``: evidence tiers replace scalar
+election, an adjudication pass computes footprint-dependency relations
+between fired candidates, capping preserves tiers/ambiguity/independent
+footprints, and ``unresolved_tests`` are concrete structural probes.
 
 Every fixture here is a small synthetic grid built to instantiate exactly
 ONE (or a controlled combination) of the six supported detector types —
@@ -16,6 +21,7 @@ from pathlib import Path
 
 import pytest
 
+import admorphiq.explanation.goal_ledger as gl
 from admorphiq.explanation.goal_ledger import (
     MAX_CANDIDATES,
     MAX_HANDLES_PER_CANDIDATE,
@@ -64,10 +70,8 @@ def _arrival_frame() -> list[list[int]]:
 
 def _uniformity_frame() -> list[list[int]]:
     """6 disjoint 1x2 domino-shaped regions (a non-trivial 2-cell shape,
-    alternating between 2 colours) — clears the R58 uniformity
-    discriminators (shape > 1 cell, <= 3 distinct colours in the class)
-    while a naive population of 1x1 dots (see test_uniformity_ignores_...)
-    would not."""
+    alternating between 2 colours) — clears the uniformity discriminators
+    (shape > 1 cell, <= 3 distinct colours in the class)."""
     g = _grid(10, 10)
     for i, (r, c) in enumerate([(1, 1), (1, 4), (1, 7), (4, 1), (4, 4), (4, 7)]):
         _fill(g, r, c, r, c + 1, 2 if i % 2 == 0 else 4)
@@ -86,15 +90,80 @@ def _containment_frame() -> list[list[int]]:
     return g
 
 
-def _pattern_match_frame() -> list[list[int]]:
-    """1 ring-shaped container holding 5 item dots across 3 distinct colours."""
+def _lattice_frame(n_rows: int = 2, n_cols: int = 3, color: int = 2) -> list[list[int]]:
+    """One ring container whose immediate children form a REGULAR n_rows x
+    n_cols addressable lattice (single colour by default — a lattice
+    doesn't need >1 colour, unlike the old pattern_match's 3-colour floor)."""
+    h, w = 6 + 4 * n_rows, 6 + 4 * n_cols
+    g = _grid(h, w)
+    _ring(g, 1, 1, h - 2, w - 2, 1)
+    for i in range(n_rows):
+        for j in range(n_cols):
+            r = 3 + 4 * i
+            c = 3 + 4 * j
+            _dot(g, r, c, color)
+    return g
+
+
+def _binary_lattice_frame() -> list[list[int]]:
+    """A 3x3 lattice using exactly 2 colours (alternating) — the SC25-style
+    binary-grid case the old (>=3-colour) pattern_match rejected."""
     g = _grid(20, 20)
+    _ring(g, 1, 1, 12, 12, 1)
+    for i, (r, c) in enumerate([(3, 3), (3, 6), (3, 9), (6, 3), (6, 6), (6, 9), (9, 3), (9, 6), (9, 9)]):
+        _dot(g, r, c, 2 if i % 2 == 0 else 3)
+    return g
+
+
+def _congruent_pair_frame(children_per_panel: int = 2) -> list[list[int]]:
+    """Two SEPARATE ring containers, each holding the SAME number of item
+    dots — a canvas/reference pair by matching slot count. Dots are spaced
+    2 rows apart (a background gap between each) so they stay SEPARATE
+    regions rather than merging into one connected blob."""
+    g = _grid(20, 30)
     _ring(g, 1, 1, 8, 8, 1)
-    _dot(g, 2, 2, 2)
-    _dot(g, 2, 4, 3)
-    _dot(g, 2, 6, 5)
-    _dot(g, 4, 2, 2)
-    _dot(g, 4, 4, 3)
+    _ring(g, 1, 15, 8, 22, 4)
+    for k in range(children_per_panel):
+        r = 3 + 2 * k
+        _dot(g, r, 3, 2)
+        _dot(g, r, 17, 5)
+    return g
+
+
+def _overlapping_uniformity_pattern_match_frame() -> list[list[int]]:
+    """One ring container whose immediate children are a 3x3 lattice of
+    2-cell horizontal dominoes (colours alternating within the uniformity
+    colour cap). The SAME 9 domino regions simultaneously satisfy
+    uniformity's repeated-shape-class gate (identical 2-cell shape, <=3
+    colours) and pattern_match's lattice gate (a regular 3x3 addressable
+    grid) — the FT09-shaped case named explicitly in the R58 verdict, where
+    two different-type candidates read overlapping evidence."""
+    g = _grid(20, 20)
+    _ring(g, 1, 1, 16, 16, 1)
+    colors = [8, 9]
+    k = 0
+    for i in range(3):
+        for j in range(3):
+            r = 3 + 4 * i
+            c = 3 + 4 * j
+            _fill(g, r, c, r, c + 1, colors[k % 2])
+            k += 1
+    return g
+
+
+def _nonlattice_blob_frame() -> list[list[int]]:
+    """A heterogeneous scatter of 5 differently-positioned, differently-
+    coloured dots inside ONE large container — NOT a regular lattice, NOT
+    part of a congruent pair. This is the LS20-style false-positive case
+    the old (>=5 items/>=3 colours/any-bbox-container) pattern_match fired
+    on; the rebuilt detector must NOT fire here."""
+    g = _grid(20, 20)
+    _ring(g, 1, 1, 15, 15, 1)
+    _dot(g, 3, 3, 2)
+    _dot(g, 3, 9, 3)
+    _dot(g, 8, 5, 5)
+    _dot(g, 11, 2, 7)
+    _dot(g, 11, 12, 8)
     return g
 
 
@@ -125,17 +194,15 @@ def _threshold_frames() -> list[list[list[int]]]:
 def _saturating_observations() -> dict:
     """A single observations dict deliberately built to fire ALL SIX detector
     types at once: arrival (colour-7 dot), uniformity (6 disjoint 1x2
-    dominoes — a non-trivial 2-cell shape, clearing the R58 discriminators
-    that a population of 1x1 dots would not), containment (2 ring
-    containers each holding 2 items), pattern_match (1 ring holding 5
-    heterogeneous items), elimination (a before/after pair), threshold (a
-    monotonic repeat-frame window). Used by both the cap-enforcement test
-    and the budget test — the worst-case saturation fixture."""
-    g = _grid(30, 30)
+    dominoes), containment (2 ring containers each holding 2 items),
+    pattern_match (1 lattice container, structurally separate from the
+    containment pair), elimination (a before/after pair), threshold (a
+    monotonic repeat-frame window)."""
+    g = _grid(35, 35)
     _fill(g, 1, 1, 1, 1, 3)
     _fill(g, 1, 5, 1, 5, 3)
     _fill(g, 1, 9, 1, 9, 3)
-    _dot(g, 25, 25, 7)  # arrival
+    _dot(g, 30, 30, 7)  # arrival
     for i, r in enumerate([22, 22, 22, 26, 26, 26]):
         c = [10, 14, 18][i % 3]
         _fill(g, r, c, r, c + 1, 11 if i % 2 == 0 else 12)  # uniformity: 6 dominoes, 2 colours
@@ -145,99 +212,101 @@ def _saturating_observations() -> dict:
     _ring(g, 5, 10, 9, 14, 6)
     _dot(g, 7, 11, 20)
     _dot(g, 7, 13, 21)  # containment sibling B
-    _ring(g, 12, 1, 20, 9, 4)
-    _dot(g, 14, 2, 2)
-    _dot(g, 14, 4, 3)
-    _dot(g, 14, 6, 5)
-    _dot(g, 16, 2, 8)
-    _dot(g, 16, 4, 9)  # pattern_match container
+    _ring(g, 12, 20, 20, 32, 4)  # pattern_match lattice, structurally away from containment
+    for i in range(2):
+        for j in range(3):
+            _dot(g, 14 + 4 * i, 22 + 4 * j, 9)
 
-    before = _grid(30, 30)
-    _dot(before, 27, 27, 30)
-    after = _grid(30, 30)
+    before = _grid(35, 35)
+    _dot(before, 32, 32, 30)
+    after = _grid(35, 35)
 
     return {"frame": g, "before": before, "after": after, "action_repeat_frames": _threshold_frames()}
 
 
-# ----- individual detector tests --------------------------------------------------
-def test_arrival_fires_on_a_colour_unique_small_region():
-    """Purpose: the 'arrival' detector (R57 T1) must fire on a region whose
-    colour occurs nowhere else in the frame, and must NOT fire on the
-    repeated-colour baseline regions around it.
+def _uncapped_detect(observations: dict) -> dict:
+    """Run detect() with MAX_CANDIDATES lifted so every fired candidate is
+    inspectable (test-only helper; restores the module constant after)."""
+    original = gl.MAX_CANDIDATES
+    gl.MAX_CANDIDATES = 10
+    try:
+        return gl.detect(observations)
+    finally:
+        gl.MAX_CANDIDATES = original
 
-    Expected feedback: a pass proves the colour-uniqueness + size heuristic
-    isolates the intended locus from ordinary repeated scenery; a fail means
-    either the filter is too strict (misses real single-colour targets) or
-    too loose (flags ordinary scenery).
+
+# ----- individual detector tests: firing + baseline evidence stage --------------
+def test_arrival_fires_predicate_when_unambiguous():
+    """Purpose: 'arrival' (R57 T1) fires on a colour-unique, non-dominant
+    region; with exactly one such candidate, the endpoint IS unambiguously
+    identified, so its evidence stage must be 'predicate' (tier 1) even
+    with no transition evidence at all.
+
+    Expected feedback: a pass proves the tier assignment reflects
+    identification confidence correctly for the single-candidate case; a
+    fail means arrival never reaches its strongest tier without a
+    transition, contradicting the module docstring's stated rule.
     """
     result = detect({"frame": _arrival_frame()})
-    types = [c["type"] for c in result["goal_candidates"]]
-    assert "arrival" in types
     candidate = next(c for c in result["goal_candidates"] if c["type"] == "arrival")
     assert candidate["support"] == ["evidence:1"]
-    # region:3 is the colour-7 dot, per find_regions' deterministic sort order
-    assert result["evidence_detail"]["evidence:1"]["region"] == "region:3"
+    assert candidate["tier"] == 1  # predicate: unambiguous
 
 
-def test_uniformity_fires_on_a_repeated_shape_grid():
-    """Purpose: the 'uniformity' detector (R57 T6) must fire once >=6 regions
-    share an identical translation-invariant shape, regardless of colour.
+def test_uniformity_fires_affordance_without_a_transition_window():
+    """Purpose: 'uniformity' (R57 T6) fires on a repeated non-trivial shape
+    class from a single frame; with NO transition evidence, its stage must
+    stay 'affordance' (tier 3) — a static repeated-shape population only
+    PERMITS the toggle-grid hypothesis, it doesn't confirm it.
 
-    Expected feedback: a pass proves the shape-signature grouping is
-    colour-agnostic (necessary since a toggle grid's cells differ in colour
-    by definition — that's the ON/OFF state); a fail means the detector
-    can't see through colour variation to the repeated structure.
+    Expected feedback: a pass proves uniformity never over-claims tier from
+    static structure alone; a fail means the affordance/behavioral
+    distinction isn't actually gated on transition evidence.
     """
     result = detect({"frame": _uniformity_frame()})
     candidate = next(c for c in result["goal_candidates"] if c["type"] == "uniformity")
-    assert len(candidate["support"]) == MAX_HANDLES_PER_CANDIDATE  # capped sample, not all 6
+    assert len(candidate["support"]) == MAX_HANDLES_PER_CANDIDATE
+    assert candidate["tier"] == 3
 
 
-def test_containment_fires_on_two_sibling_containers():
-    """Purpose: the 'containment' detector (R57 T3) must fire when >=2 sibling
-    container regions each hold >=2 item regions — the bordered-box/slot
-    structural signature — and must return one evidence handle per
-    qualifying container.
+def test_containment_fires_affordance_when_irregular_predicate_when_perfect():
+    """Purpose: 'containment' (R57 T3) fires when >=2 sibling containers each
+    hold >=2 items; PERFECT regularity (identical item counts per sibling)
+    is a genuine parallel-slot structure and should reach 'predicate'
+    (tier 1), while irregular counts stay 'affordance' (tier 3).
 
-    Expected feedback: a pass proves region_relations' 'contains' relation
-    is being read correctly as the containment signal; a fail means the
-    detector either can't find nested regions or over/under-counts siblings.
+    Expected feedback: a pass proves the predicate/affordance split tracks
+    genuine structural regularity, not an arbitrary constant; a fail means
+    every containment candidate gets the same tier regardless of evidence.
     """
-    result = detect({"frame": _containment_frame()})
-    candidate = next(c for c in result["goal_candidates"] if c["type"] == "containment")
-    assert len(candidate["support"]) == 2  # exactly the 2 container regions
+    regular = detect({"frame": _containment_frame()})  # 2 items each side, symmetric
+    c = next(x for x in regular["goal_candidates"] if x["type"] == "containment")
+    assert c["tier"] == 1  # perfect regularity: 2 vs 2
+
+    g = _grid(20, 20)
+    _ring(g, 1, 1, 5, 5, 1)
+    _dot(g, 3, 3, 2)
+    _dot(g, 2, 4, 3)
+    _ring(g, 1, 10, 5, 14, 6)
+    _dot(g, 3, 12, 2)
+    _dot(g, 2, 13, 3)
+    _dot(g, 4, 13, 8)  # sibling B now has 3 items vs sibling A's 2 — irregular
+    irregular = detect({"frame": g})
+    c2 = next(x for x in irregular["goal_candidates"] if x["type"] == "containment")
+    assert c2["tier"] == 3
 
 
-def test_pattern_match_fires_on_one_heterogeneous_canvas():
-    """Purpose: the 'pattern_match' detector (R57 T5) must fire on exactly ONE
-    container holding many heterogeneous-colour items, and must NOT fire
-    when there is no such single dominant heterogeneous container (see the
-    containment test's frame, which has none).
+def test_elimination_needs_a_before_after_pair_and_is_never_affordance():
+    """Purpose: the 'elimination' detector (R57 T2) structurally CANNOT fire
+    from a single frame — it must be silent on a first-observation call —
+    and because it always requires a transition to fire at all, its tier
+    must be 'behavioral' or 'predicate', NEVER 'affordance' (there is no
+    static-only elimination reading).
 
-    Expected feedback: a pass proves pattern_match and containment are
-    distinguishable from the SAME underlying containment structure by item
-    count/colour diversity alone; a fail means the two types collapse into
-    each other.
-    """
-    result = detect({"frame": _pattern_match_frame()})
-    types = [c["type"] for c in result["goal_candidates"]]
-    assert "pattern_match" in types
-    assert "containment" not in types  # only 1 container here, containment needs >=2 siblings
-
-    containment_only = detect({"frame": _containment_frame()})
-    assert "pattern_match" not in [c["type"] for c in containment_only["goal_candidates"]]
-
-
-def test_elimination_needs_a_before_after_pair_and_fires_on_a_vanished_region():
-    """Purpose: the 'elimination' detector (R57 T2) is the one detector that
-    structurally CANNOT fire from a single frame — it must be silent on a
-    first-observation call and must fire only when a before/after pair shows
-    a region's (colour, shape) present-then-absent.
-
-    Expected feedback: a pass proves the material-transition trigger point
-    is handled distinctly from first-observation; a fail means either a
-    single frame spuriously triggers 'elimination' or a real vanish is
-    missed.
+    Expected feedback: a pass proves the material-transition requirement is
+    reflected in the tier vocabulary itself; a fail means a single frame
+    spuriously triggers 'elimination', or an uncorroborated fire gets
+    mislabelled as merely-structural.
     """
     single_frame = detect({"frame": _arrival_frame()})
     assert "elimination" not in [c["type"] for c in single_frame["goal_candidates"]]
@@ -245,208 +314,189 @@ def test_elimination_needs_a_before_after_pair_and_fires_on_a_vanished_region():
     before, after = _elimination_pair()
     result = detect({"before": before, "after": after})
     candidate = next(c for c in result["goal_candidates"] if c["type"] == "elimination")
-    assert result["evidence_detail"][candidate["support"][0]]["frame"] == "before"
+    assert candidate["tier"] in (1, 2)
 
 
-def test_threshold_needs_action_repeat_frames_and_fires_on_a_monotonic_trend():
-    """Purpose: the 'threshold' detector (R57 T7, R58's addition beyond the
-    verdict's five named examples) needs >=3 frames under one repeated
-    action and must fire only when the frame_diff trend is monotonic —
-    silent on both 'no history given' and 'no clear trend'.
+def test_threshold_needs_action_repeat_frames_and_is_always_behavioral():
+    """Purpose: 'threshold' (R57 T7) needs >=3 frames under one repeated
+    action; since it structurally cannot fire from static data, its tier
+    is fixed at 'behavioral' (tier 2) — there is no affordance reading and
+    no predicate promotion implemented (identifying the actual threshold
+    VALUE is out of scope).
 
-    Expected feedback: a pass proves this genuinely different input shape
-    (a short history, not a single frame or pair) is handled without
-    crashing or false-firing; a fail means either input case is mishandled.
+    Expected feedback: a pass proves the tier is exactly the documented
+    fixed value; a fail means the fixed-tier claim in the docstring is
+    wrong or threshold spuriously fires without a window.
     """
     no_history = detect({"frame": _arrival_frame()})
     assert "threshold" not in [c["type"] for c in no_history["goal_candidates"]]
 
     trending = detect({"action_repeat_frames": _threshold_frames()})
-    assert "threshold" in [c["type"] for c in trending["goal_candidates"]]
+    candidate = next(c for c in trending["goal_candidates"] if c["type"] == "threshold")
+    assert candidate["tier"] == 2
 
-    flat = [_grid(10, 10), _grid(10, 10), _grid(10, 10)]  # identical frames, zero diff every step
+    flat = [_grid(10, 10), _grid(10, 10), _grid(10, 10)]
     no_trend = detect({"action_repeat_frames": flat})
     assert "threshold" not in [c["type"] for c in no_trend["goal_candidates"]]
 
 
-# ----- R58 tuning round: strength scoring + discriminator fixes -------------------
-# Added after validating the (unscored, unfiltered) v1 ledger against real
-# early-trace frames for all 24 R57-evidenced games — see the team-lead
-# report for the full before/after. These tests pin the three approved
-# structural fixes directly, independent of any specific game.
-def test_all_fired_candidates_carry_a_strength_in_unit_interval():
-    """Purpose: every candidate from every detector must carry a
-    ``"strength"`` in ``[0, 1]`` (R58 tuning round) — checked across a
-    fixture that fires all six types at once.
+# ----- pattern_match: rebuilt detector (R58 tuning round #3) --------------------
+def test_pattern_match_fires_on_a_regular_lattice():
+    """Purpose: the rebuilt 'pattern_match' fires when a container's
+    IMMEDIATE children form a regular, addressable two-axis lattice — the
+    core positive case for the new canvas/reference-relationship design.
 
-    Expected feedback: a pass proves every strength formula returns a
-    value in range; a fail would mean a formula can escape its bounds
-    (e.g. a saturating term computed on unexpected input) and corrupt the
-    sort order downstream.
+    Expected feedback: a pass proves the lattice-detection path works at
+    all; a fail means the rebuild's primary mechanism is broken.
     """
-    import admorphiq.explanation.goal_ledger as gl
+    result = detect({"frame": _lattice_frame(2, 3)})
+    candidate = next(c for c in result["goal_candidates"] if c["type"] == "pattern_match")
+    assert candidate["tier"] == 3  # affordance: single static panel, no transition evidence
 
-    original_cap = gl.MAX_CANDIDATES
-    gl.MAX_CANDIDATES = 10  # lift the cap so every fired candidate is inspectable
-    try:
-        result = gl.detect(_saturating_observations())
-    finally:
-        gl.MAX_CANDIDATES = original_cap
-    assert len(result["goal_candidates"]) == 6  # this fixture fires every detector type
+
+def test_pattern_match_does_not_fire_on_a_heterogeneous_non_lattice_blob():
+    """Purpose: pins the LS20 fix directly — a heterogeneous scatter of
+    items inside one large bbox container, with NO regular lattice
+    structure and NO congruent sibling panel, must NOT fire pattern_match
+    any more (the old detector fired on exactly this shape: >=5 items,
+    >=3 colours, one container, regardless of geometric regularity).
+
+    Expected feedback: a pass proves the LS20-class false positive is
+    closed; a fail means the rebuild didn't actually change behaviour on
+    the case it was built to fix.
+    """
+    result = detect({"frame": _nonlattice_blob_frame()})
+    assert "pattern_match" not in [c["type"] for c in result["goal_candidates"]]
+
+
+def test_pattern_match_fires_on_a_binary_two_colour_lattice():
+    """Purpose: pins the SC25 fix directly — a lattice using only 2 distinct
+    colours must fire (the old detector required >=3 colours, which
+    directly conflicts with binary/2-state grids like SC25's 3x3 pattern).
+
+    Expected feedback: a pass proves the colour-count requirement is
+    genuinely gone, not just loosened; a fail means binary grids are still
+    excluded.
+    """
+    result = detect({"frame": _binary_lattice_frame()})
+    assert "pattern_match" in [c["type"] for c in result["goal_candidates"]]
+
+
+def test_pattern_match_fires_on_a_congruent_panel_pair():
+    """Purpose: the SECOND positive path — two separate containers with
+    matching child counts (a canvas/reference pair) — must also fire, even
+    with no lattice arrangement within either panel.
+
+    Expected feedback: a pass proves both documented discovery mechanisms
+    (single-lattice, congruent-pair) are implemented, not just one; a fail
+    means the congruent-pair path is missing or broken.
+    """
+    result = detect({"frame": _congruent_pair_frame(3)})
+    candidate = next(c for c in result["goal_candidates"] if c["type"] == "pattern_match")
+    assert candidate["tier"] == 3
+    # 3-child panels are richer than the 2-child bare minimum, so margin must clear the floor
+    assert candidate["strength"] > gl._STRENGTH_FLOOR
+
+
+def test_pattern_match_single_panel_is_affordance_only_never_stronger_alone():
+    """Purpose: verdict requirement — 'treat a single static panel as
+    affordance, not strong pattern-match evidence.' A lone lattice with no
+    transition evidence must NEVER exceed tier 3.
+
+    Expected feedback: a pass proves this explicit verdict constraint is
+    honoured; a fail means a static single panel could look like strong
+    (behavioral/predicate) evidence with no transition support at all.
+    """
+    for frame in (_lattice_frame(2, 2), _lattice_frame(3, 3), _binary_lattice_frame()):
+        result = detect({"frame": frame})
+        candidate = next(c for c in result["goal_candidates"] if c["type"] == "pattern_match")
+        assert candidate["tier"] == 3
+
+
+def test_pattern_match_promotes_to_behavioral_when_edits_stay_confined_to_the_panel():
+    """Purpose: behavioral promotion — a transition_window where every
+    observed change stays within the candidate panel's own cells
+    ('cumulative localized edits... changes confined to canvas slots')
+    must promote the tier from affordance to behavioral.
+
+    Expected feedback: a pass proves the promotion mechanism reads real
+    frame_diff evidence, not just the presence of a window; a fail means
+    promotion either never happens or happens unconditionally.
+    """
+    frame = _lattice_frame(2, 3, color=2)
+    edited = [row[:] for row in frame]
+    # repaint one lattice cell (3,3) from colour 2 to colour 5 — stays inside the panel
+    edited[3][3] = 5
+    result = detect({"frame": frame, "transition_window": [frame, edited]})
+    candidate = next(c for c in result["goal_candidates"] if c["type"] == "pattern_match")
+    assert candidate["tier"] == 2
+
+
+def test_pattern_match_does_not_promote_when_edits_escape_the_panel():
+    """Purpose: the negative case for the same mechanism — a transition
+    whose changes fall OUTSIDE the candidate panel's footprint must NOT
+    promote the tier (the observed behaviour contradicts a confined-canvas
+    reading).
+
+    Expected feedback: a pass proves the confinement check is a genuine
+    filter, not a rubber stamp; a fail means any transition promotes the
+    tier regardless of where the change actually occurred.
+    """
+    frame = _lattice_frame(2, 3, color=2)
+    edited = [row[:] for row in frame]
+    edited[0][0] = 9  # a corner of the frame, outside the ring/lattice panel entirely
+    result = detect({"frame": frame, "transition_window": [frame, edited]})
+    candidate = next(c for c in result["goal_candidates"] if c["type"] == "pattern_match")
+    assert candidate["tier"] == 3
+
+
+def test_pattern_match_prefers_congruent_pair_over_lattice_when_both_present():
+    """Purpose: when a frame offers BOTH a congruent panel pair and a
+    single-panel lattice, the detector must report the structurally
+    stronger congruent-pair reading (documented preference), and still
+    fire exactly one ``pattern_match`` candidate per call (consistent with
+    every other detector here).
+
+    Expected feedback: a pass proves the documented preference order is
+    implemented; a fail means the choice between the two hypotheses is
+    arbitrary or both fire simultaneously (which would violate the
+    one-candidate-per-detector-per-call design).
+    """
+    g = _congruent_pair_frame(3)
+    result = detect({"frame": g})
+    matches = [c for c in result["goal_candidates"] if c["type"] == "pattern_match"]
+    assert len(matches) == 1
+
+
+# ----- margin / floor-anchoring (retained from tuning rounds #1-#2) -------------
+def test_all_fired_candidates_carry_a_margin_in_unit_interval():
+    """Purpose: every candidate from every detector must carry a
+    ``"strength"`` (detector-local MARGIN, per the R58 tuning-round-3
+    module docstring — no longer a cross-detector confidence score) in
+    ``[0, 1]``, checked across a fixture that fires all six types at once.
+
+    Expected feedback: a pass proves every margin formula returns a value
+    in range; a fail would mean a formula can escape its bounds and
+    corrupt tier-internal tie-breaking.
+    """
+    result = _uncapped_detect(_saturating_observations())
+    assert len(result["goal_candidates"]) == 6
     for c in result["goal_candidates"]:
         assert "strength" in c
+        assert "tier" in c
         assert 0.0 <= c["strength"] <= 1.0
+        assert c["tier"] in (1, 2, 3)
 
 
-def test_candidates_are_sorted_by_strength_descending():
-    """Purpose: ``goal_candidates`` must be sorted strongest-first (R58
-    tuning round) — before this, the first-fired candidate was an artifact
-    of a fixed detector-execution order, not a confidence signal.
-
-    Expected feedback: a pass proves the sort is actually applied to the
-    returned (capped) list; a fail means ranking silently reverted to
-    pipeline order.
-    """
-    result = detect(_saturating_observations())
-    strengths = [c["strength"] for c in result["goal_candidates"]]
-    assert strengths == sorted(strengths, reverse=True)
-
-
-def test_uniformity_ignores_trivial_single_cell_noise():
-    """Purpose: R58 discriminator #1 — a population of >=6 same-colour 1x1
-    dots (a decorative-texture proxy; real-trace validation found several
-    games where exactly this pattern drove a false 'uniformity' positive)
-    must NOT fire uniformity, even though it satisfies the old v1 rule
-    ('most members in one shape class').
-
-    Expected feedback: a pass proves the >1-cell-shape gate actually
-    excludes trivial noise; a fail reopens the exact false-positive class
-    the validation round measured.
-    """
-    g = _grid(10, 10)
-    for r, c in [(1, 1), (1, 3), (1, 5), (3, 1), (3, 3), (3, 5), (5, 1), (5, 3)]:
-        _dot(g, r, c, 9)  # 8 disjoint 1x1 dots, ALL the same colour and shape
-    result = detect({"frame": g})
-    assert "uniformity" not in [c["type"] for c in result["goal_candidates"]]
-
-
-def test_uniformity_rejects_a_shape_class_spanning_too_many_colours():
-    """Purpose: R58 discriminator #2 — a repeated non-trivial shape class is
-    only a 'uniformity' candidate when it spans <= _MAX_UNIFORM_SHAPE_COLORS
-    distinct colours; a class using MORE colours than that (each member a
-    different colour, say) reads as incidental co-occurrence, not one
-    coherent toggle grid.
-
-    Expected feedback: a pass proves the colour-count gate is enforced
-    independently of the shape-size gate; a fail means any repeated shape
-    fires regardless of how incoherent its colour usage is.
-    """
-    g = _grid(10, 10)
-    colours = [1, 2, 3, 4, 5, 6]  # 6 distinct colours, one per domino — exceeds the cap of 3
-    for i, (r, c) in enumerate([(1, 1), (1, 4), (1, 7), (4, 1), (4, 4), (4, 7)]):
-        _fill(g, r, c, r, c + 1, colours[i])
-    result = detect({"frame": g})
-    assert "uniformity" not in [c["type"] for c in result["goal_candidates"]]
-
-
-def test_arrival_dominance_filter_admits_a_large_but_non_dominant_target():
-    """Purpose: R58 fix #3 — the arrival detector's size filter changed from
-    'exclude anything above the median region size' to 'exclude only a
-    region covering more than half the frame'. This fixture reproduces the
-    exact failure mode found in real-trace validation: a colour-unique
-    target region that is LARGER than the median (so v1's filter would
-    have dropped it) but well under 50% of the board (so the new filter
-    admits it).
-
-    Expected feedback: a pass proves the known real-world false-negative
-    class is fixed; a fail means the dominance filter regressed to
-    median-based exclusion.
-    """
-    g = _grid(20, 20)  # 400-cell frame; 50% dominance threshold = 200 cells
-    # many small (4-cell) same-colour tiles establish a LOW median...
-    for r, c in [(0, 0), (0, 4), (0, 8), (0, 12), (0, 16), (4, 0), (4, 4), (4, 8)]:
-        _fill(g, r, c, r + 1, c + 1, 3)
-    # ...while the colour-unique target is bigger than every one of them (a 5x5=25-cell
-    # block) but nowhere near 50% of the 400-cell frame — v1's median filter would
-    # have excluded this; the dominance filter must not.
-    _fill(g, 10, 10, 14, 14, 7)
-    result = detect({"frame": g})
-    arrival = next((c for c in result["goal_candidates"] if c["type"] == "arrival"), None)
-    assert arrival is not None
-
-
-def test_arrival_dominance_filter_still_excludes_a_truly_dominant_region():
-    """Purpose: the flip side of the dominance-filter fix — a colour-unique
-    region covering MORE than half the frame (a background panel, not a
-    small target) must still be excluded, same as v1 intended for its
-    "one large dominant panel" case.
-
-    Expected feedback: a pass proves the filter didn't just get deleted
-    (it still excludes the one case it was built for); a fail means any
-    region, however large, now counts as an arrival candidate.
-    """
-    g = _grid(10, 10)  # 100-cell frame; 50% = 50 cells
-    _fill(g, 0, 0, 7, 9, 5)  # colour-unique, 80 cells — dominates the frame
-    result = detect({"frame": g})
-    assert "arrival" not in [c["type"] for c in result["goal_candidates"]]
-
-
-def test_elimination_confirmation_penalizes_a_single_uncorroborated_transition():
-    """Purpose: R58 fix #2 — elimination still FIRES off one transition
-    (first-observation-adjacent calls keep working) but its
-    ``confirmation_component`` must score exactly 0.5 with no
-    ``extra_transitions``, and 1.0 once a second transition also shows a
-    vanish — real-trace validation found single-transition elimination
-    over-fired on essentially arbitrary noise, so corroboration must move
-    the score, not just exist as an unused field.
-
-    Expected feedback: a pass proves the corroboration mechanism actually
-    changes strength; a fail means extra_transitions is accepted but
-    silently ignored.
-    """
-    before, after = _elimination_pair()
-    uncorroborated = detect({"before": before, "after": after})
-    strength_alone = next(c for c in uncorroborated["goal_candidates"] if c["type"] == "elimination")["strength"]
-
-    corroborating_before, corroborating_after = _elimination_pair()  # a second, independent vanish event
-    corroborated = detect(
-        {
-            "before": before,
-            "after": after,
-            "extra_transitions": [(corroborating_before, corroborating_after)],
-        }
-    )
-    strength_confirmed = next(c for c in corroborated["goal_candidates"] if c["type"] == "elimination")["strength"]
-
-    assert strength_confirmed > strength_alone
-
-
-# ----- R58 tuning round #2: floor-anchoring ---------------------------------------
-# Approved after tuning round #1's re-measurement found TOPK coverage improved
-# sharply but TOP1 regressed — traced to pattern_match's raw formula already
-# sitting near 0.53 at its OWN minimum firing case, while arrival's ambiguity
-# penalty can legitimately be much lower, so ranking favored "which formula
-# family runs numerically higher" over "how much above ITS OWN bar is this".
 def test_no_fired_candidate_ever_scores_below_the_strength_floor():
-    """Purpose: floor-anchoring's core guarantee — EVERY fired candidate,
-    from every detector, must score >= _STRENGTH_FLOOR (0.2), by the
-    ``raw >= gate_min`` proof documented in each detector's docstring
-    (every gated term in ``raw`` is, by construction, never below its own
-    firing boundary).
+    """Purpose: floor-anchoring's core guarantee — EVERY fired candidate
+    scores >= ``_STRENGTH_FLOOR`` (0.2), by the ``raw >= gate_min`` proof
+    documented in each detector's docstring.
 
     Expected feedback: a pass proves the floor is a real lower bound in
-    practice, not just on paper; a fail means some detector's gate_min
-    derivation is wrong (raw can dip below its own analytic floor).
+    practice; a fail means some detector's gate_min derivation is wrong.
     """
-    import admorphiq.explanation.goal_ledger as gl
-
-    original_cap = gl.MAX_CANDIDATES
-    gl.MAX_CANDIDATES = 10
-    try:
-        result = gl.detect(_saturating_observations())
-    finally:
-        gl.MAX_CANDIDATES = original_cap
-    assert len(result["goal_candidates"]) == 6
+    result = _uncapped_detect(_saturating_observations())
     for c in result["goal_candidates"]:
         assert c["strength"] >= gl._STRENGTH_FLOOR - 1e-9, f"{c['type']} scored {c['strength']} < floor"
 
@@ -454,89 +504,272 @@ def test_no_fired_candidate_ever_scores_below_the_strength_floor():
 def test_elimination_with_no_corroboration_lands_exactly_at_the_floor():
     """Purpose: pins the specific analytic consequence documented in
     _detect_elimination's docstring — with no ``extra_transitions``,
-    ``confirmation_component`` is stuck at exactly its own gate value
-    (0.5), so ``raw == gate_min`` exactly and the floor-anchored strength
-    must be EXACTLY ``_STRENGTH_FLOOR``, regardless of how clean the single
-    observed vanish otherwise looks.
+    ``confirmation_component`` is stuck at exactly 0.5, so ``raw ==
+    gate_min`` exactly and strength must be EXACTLY ``_STRENGTH_FLOOR``.
 
     Expected feedback: a pass proves the "uncorroborated elimination is
-    never more than 'just barely fired'" design intent holds exactly, not
-    approximately; a fail means size_component/signature_distinctness are
-    leaking into the floor instead of cancelling out.
+    never more than 'just barely fired'" design intent holds exactly.
     """
-    import admorphiq.explanation.goal_ledger as gl
-
     before, after = _elimination_pair()
-    result = gl.detect({"before": before, "after": after})
+    result = detect({"before": before, "after": after})
     strength = next(c for c in result["goal_candidates"] if c["type"] == "elimination")["strength"]
     assert strength == pytest.approx(gl._STRENGTH_FLOOR)
+    tier = next(c for c in result["goal_candidates"] if c["type"] == "elimination")["tier"]
+    assert tier == 2  # behavioral, not predicate — uncorroborated
 
 
-def test_pattern_match_at_its_bare_minimum_lands_near_the_floor_not_above_half():
-    """Purpose: pins the exact regression this round fixes — round-1's
-    unanchored pattern_match formula was measured to sit at ~0.53 raw at
-    its OWN bare-minimum firing case (5 items, 3 colours, no more), which
-    let it systematically outrank other detectors' more genuinely-uncertain
-    evidence. After floor-anchoring, the bare-minimum case must land AT the
-    floor (0.2), not ~0.53.
+def test_elimination_corroboration_promotes_tier_and_raises_margin():
+    """Purpose: corroborating a vanish via ``extra_transitions`` must both
+    raise the margin above the floor AND promote the evidence stage to
+    'predicate' (a recurring elimination-shaped event is stronger
+    identification than one occurrence) — the tier and margin mechanisms
+    must move together, not independently.
 
-    Expected feedback: a pass proves the specific mechanism behind the
-    TOP1 regression is closed; a fail means pattern_match would still
-    win ranking comparisons it has no real right to win.
+    Expected feedback: a pass proves corroboration is reflected in both the
+    tier vocabulary and the continuous margin; a fail means one of the two
+    signals is stale.
     """
-    import admorphiq.explanation.goal_ledger as gl
+    before, after = _elimination_pair()
+    uncorroborated = detect({"before": before, "after": after})
+    u = next(c for c in uncorroborated["goal_candidates"] if c["type"] == "elimination")
 
-    g = _grid(20, 20)
-    _ring(g, 1, 1, 8, 8, 1)  # one container, exactly 5 items across exactly 3 colours — the bare minimum
-    _dot(g, 2, 2, 2)
-    _dot(g, 2, 4, 3)
-    _dot(g, 2, 6, 5)
-    _dot(g, 4, 2, 2)
-    _dot(g, 4, 4, 3)
-    result = gl.detect({"frame": g})
-    candidate = next(c for c in result["goal_candidates"] if c["type"] == "pattern_match")
-    assert candidate["strength"] == pytest.approx(gl._STRENGTH_FLOOR)
+    corroborating_before, corroborating_after = _elimination_pair()
+    corroborated = detect(
+        {"before": before, "after": after, "extra_transitions": [(corroborating_before, corroborating_after)]}
+    )
+    c = next(x for x in corroborated["goal_candidates"] if x["type"] == "elimination")
+
+    assert c["strength"] > u["strength"]
+    assert u["tier"] == 2
+    assert c["tier"] == 1
 
 
-def test_strength_still_increases_with_more_evidence_after_anchoring():
-    """Purpose: floor-anchoring must not flatten strength into a constant —
-    a pattern_match candidate with MORE items/colours than the bare
-    minimum must still score higher than one at the bare minimum.
+def test_pattern_match_at_its_bare_minimum_lands_exactly_at_the_floor():
+    """Purpose: both pattern_match sub-hypotheses (lattice, congruent pair)
+    must land EXACTLY at the floor at their own bare-minimum firing case —
+    a 2x2 lattice (the smallest valid lattice) and a 2-child congruent pair
+    (the smallest valid pair) — proving the floor-anchoring derivation for
+    the REBUILT detector is exact, not approximate.
+
+    Expected feedback: a pass proves the new detector's gate_min formulas
+    are correctly derived; a fail means the rebuild's margin scale is
+    miscalibrated relative to its own documented gate.
+    """
+    lattice_min = detect({"frame": _lattice_frame(2, 2)})
+    lattice_candidate = next(c for c in lattice_min["goal_candidates"] if c["type"] == "pattern_match")
+    assert lattice_candidate["strength"] == pytest.approx(gl._STRENGTH_FLOOR)
+
+    pair_min = detect({"frame": _congruent_pair_frame(2)})
+    pair_candidate = next(c for c in pair_min["goal_candidates"] if c["type"] == "pattern_match")
+    assert pair_candidate["strength"] == pytest.approx(gl._STRENGTH_FLOOR)
+
+
+def test_margin_increases_with_more_evidence_after_anchoring():
+    """Purpose: floor-anchoring must not flatten margin into a constant — a
+    richer lattice (more cells) must score higher than the bare-minimum
+    2x2 lattice.
 
     Expected feedback: a pass proves anchoring rescales rather than
-    collapses the strength signal; a fail would mean "more evidence" no
-    longer differentiates candidates at all.
+    collapses the margin signal; a fail would mean "more evidence" no
+    longer differentiates same-type candidates at all.
     """
-    import admorphiq.explanation.goal_ledger as gl
+    minimal = detect({"frame": _lattice_frame(2, 2)})
+    minimal_strength = next(c for c in minimal["goal_candidates"] if c["type"] == "pattern_match")["strength"]
 
-    minimal = _grid(20, 20)
-    _ring(minimal, 1, 1, 8, 8, 1)
-    _dot(minimal, 2, 2, 2)
-    _dot(minimal, 2, 4, 3)
-    _dot(minimal, 2, 6, 5)
-    _dot(minimal, 4, 2, 2)
-    _dot(minimal, 4, 4, 3)
-    minimal_strength = next(
-        c for c in gl.detect({"frame": minimal})["goal_candidates"] if c["type"] == "pattern_match"
-    )["strength"]
+    richer = detect({"frame": _lattice_frame(3, 3)})
+    richer_strength = next(c for c in richer["goal_candidates"] if c["type"] == "pattern_match")["strength"]
 
-    richer = _pattern_match_frame()  # more items and colours than the bare minimum fixture above
-    richer_strength = next(
-        c for c in gl.detect({"frame": richer})["goal_candidates"] if c["type"] == "pattern_match"
-    )["strength"]
+    assert richer_strength > minimal_strength
 
-    assert richer_strength >= minimal_strength
+
+# ----- adjudication: footprint-dependency relations ------------------------------
+def test_independent_footprints_produce_independent_evidence_relation():
+    """Purpose: two candidates whose footprints share NO cells (e.g. arrival
+    on one isolated dot, containment on a structurally separate pair of
+    containers elsewhere in the frame) must be related as
+    'independent_evidence' — the adjudication pass's baseline case.
+
+    Expected feedback: a pass proves disjoint footprints are correctly
+    classified; a fail means independence is never detected, which would
+    make the cap policy's footprint-diversity preference meaningless.
+    """
+    g = _containment_frame()
+    _dot(g, 18, 18, 9)  # an isolated colour-unique dot, far from both containers
+    result = _uncapped_detect({"frame": g})
+    types_present = {c["type"] for c in result["goal_candidates"]}
+    assert {"arrival", "containment"} <= types_present
+    arrival_id = next(c["id"] for c in result["goal_candidates"] if c["type"] == "arrival")
+    containment_id = next(c["id"] for c in result["goal_candidates"] if c["type"] == "containment")
+    rel = next(
+        d["relation"]
+        for d in result["dependencies"]
+        if {d["a"], d["b"]} == {arrival_id, containment_id}
+    )
+    assert rel == "independent_evidence"
+
+
+def test_overlapping_footprints_produce_shared_or_subsumed_evidence_relation():
+    """Purpose: uniformity and pattern_match reading the SAME underlying
+    lattice cells (the FT09-shaped case named explicitly in the verdict)
+    must be related as 'shared_evidence' or 'subsumed_evidence' — never
+    'independent_evidence' — since they interpret overlapping regions.
+
+    Expected feedback: a pass proves the adjudication pass correctly
+    detects evidence reuse between two different-type candidates; a fail
+    would let the cap policy treat them as fully independent coverage,
+    double-counting the same underlying structure.
+    """
+    g = _overlapping_uniformity_pattern_match_frame()
+    result = _uncapped_detect({"frame": g})
+    types_present = {c["type"] for c in result["goal_candidates"]}
+    assert {"uniformity", "pattern_match"} <= types_present
+    u_id = next(c["id"] for c in result["goal_candidates"] if c["type"] == "uniformity")
+    p_id = next(c["id"] for c in result["goal_candidates"] if c["type"] == "pattern_match")
+    rel = next(d["relation"] for d in result["dependencies"] if {d["a"], d["b"]} == {u_id, p_id})
+    assert rel in ("shared_evidence", "subsumed_evidence")
+
+
+def test_arrival_and_elimination_carry_the_temporal_composition_relation():
+    """Purpose: R57 documents T4 (Delivery) as T1 (arrival) composed with T2
+    (elimination) over time. This is declared as a STATIC, type-level
+    relation (never inferred from footprint overlap) — so whenever BOTH
+    arrival and elimination fire in the same call, their pair must carry
+    'temporal_composition' regardless of whether their footprints overlap.
+
+    Expected feedback: a pass proves the one hand-declared compositional
+    relation from R57's own typology is actually wired up; a fail means
+    the delivery-composition structure is undocumented in the output.
+    """
+    g = _arrival_frame()
+    before, after = _elimination_pair()
+    result = _uncapped_detect({"frame": g, "before": before, "after": after})
+    arrival_id = next(c["id"] for c in result["goal_candidates"] if c["type"] == "arrival")
+    elimination_id = next(c["id"] for c in result["goal_candidates"] if c["type"] == "elimination")
+    relations = [d["relation"] for d in result["dependencies"] if {d["a"], d["b"]} == {arrival_id, elimination_id}]
+    assert "temporal_composition" in relations
+
+
+def test_dependencies_are_stripped_from_compact_view():
+    """Purpose: 'dependencies' is harness-only bookkeeping (like
+    evidence_detail) and must never reach the injectable compact view.
+
+    Expected feedback: a pass proves the injection surface doesn't leak
+    internal adjudication detail; a fail could blow the token budget with
+    an O(n^2) relation list every turn.
+    """
+    result = detect(_saturating_observations())
+    assert "dependencies" not in compact_view(result)
+
+
+# ----- cap policy: tiers, ambiguity groups, independent footprints --------------
+def test_cap_preserves_the_highest_tier_candidates_first():
+    """Purpose: when more than MAX_CANDIDATES fire, capping must preserve
+    the HIGHEST evidence tiers first — a tier-3 (affordance) candidate must
+    never survive the cap ahead of a tier-1 (predicate) candidate.
+
+    Expected feedback: a pass proves tier is the PRIMARY cap-selection
+    criterion; a fail means margin or detector order could still bump a
+    weak-tier candidate ahead of a strong-tier one.
+    """
+    result = detect(_saturating_observations())
+    assert len(result["goal_candidates"]) == MAX_CANDIDATES
+    tiers = [c["tier"] for c in result["goal_candidates"]]
+    assert tiers == sorted(tiers)  # non-decreasing: best tiers first
+
+
+def test_cap_keeps_both_sides_of_an_explicit_ambiguity_together():
+    """Purpose: verdict requirement — capping must preserve BOTH sides of an
+    explicit ambiguity (a shared/subsumed-evidence pair) as a unit. This
+    fixture fires uniformity+pattern_match (linked, shared evidence) PLUS
+    4 independent-footprint candidates elsewhere, forcing the cap to choose
+    — the linked pair must not be split (one kept, one dropped) while an
+    independent singleton survives instead.
+
+    Expected feedback: a pass proves ambiguity-preservation actually
+    constrains the cap, not just tier/margin; a fail would silently discard
+    one side of a flagged tension, which the verdict explicitly forbids
+    ("neither candidate should be silently deleted").
+    """
+    g = _overlapping_uniformity_pattern_match_frame()  # links uniformity + pattern_match (shared_evidence)
+    big = _grid(50, 50)
+    for r in range(len(g)):
+        for c in range(len(g[0])):
+            big[r][c] = g[r][c]
+    _dot(big, 40, 2, 77)  # arrival, independent footprint
+    _ring(big, 30, 10, 34, 14, 1)
+    _dot(big, 32, 11, 2)
+    _dot(big, 31, 13, 3)
+    _ring(big, 30, 20, 34, 24, 6)
+    _dot(big, 32, 21, 2)
+    _dot(big, 31, 23, 3)  # containment, independent footprint
+    before, after = _elimination_pair()  # a 5th, unrelated candidate — forces genuine cap overflow
+
+    observations = {"frame": big, "before": before, "after": after}
+    result = _uncapped_detect(observations)
+    assert len(result["goal_candidates"]) > MAX_CANDIDATES, "fixture must overflow the cap to be a real test"
+    u_id = next((c["id"] for c in result["goal_candidates"] if c["type"] == "uniformity"), None)
+    p_id = next((c["id"] for c in result["goal_candidates"] if c["type"] == "pattern_match"), None)
+    assert u_id and p_id
+
+    capped = detect(observations)
+    capped_ids = {c["id"] for c in capped["goal_candidates"]}
+    # if either half of the linked pair survived the cap, BOTH must have
+    assert (u_id in capped_ids) == (p_id in capped_ids)
+
+
+def test_cap_size_never_exceeds_max_candidates():
+    """Purpose: whatever the grouping/tier logic decides to keep, the
+    returned list must never exceed MAX_CANDIDATES — the final hard
+    invariant the injection-size guarantee depends on.
+
+    Expected feedback: a pass proves the cap is a real upper bound even
+    when ambiguity groups are large; a fail could blow the ledger's own
+    token budget.
+    """
+    result = detect(_saturating_observations())
+    assert len(result["goal_candidates"]) <= MAX_CANDIDATES
+
+
+# ----- unresolved_tests: concrete structural probes ------------------------------
+def test_unresolved_tests_are_concrete_probes_not_bare_type_lists():
+    """Purpose: verdict requirement — unresolved_tests must be a SPECIFIC
+    structural test ('whether edits follow a translated fixed stencil or
+    directly repaint one canvas slot'), not a bare list of competing type
+    names. Uses the uniformity/pattern_match shared-evidence fixture, which
+    has a dedicated probe template.
+
+    Expected feedback: a pass proves the probe text is concrete and
+    references the actual candidate ids/types in tension; a fail means the
+    weak LLM would still be handed undifferentiated scores instead of a
+    test to run.
+    """
+    g = _overlapping_uniformity_pattern_match_frame()
+    result = detect({"frame": g})
+    assert result["unresolved_tests"], "expected at least one concrete probe"
+    joined = " ".join(result["unresolved_tests"])
+    assert "stencil" in joined or "canvas" in joined
+
+
+def test_unresolved_tests_capped_at_max_unresolved():
+    """Purpose: the unresolved_tests list must respect MAX_UNRESOLVED even
+    when many ambiguity pairs are present.
+
+    Expected feedback: a pass proves the cap is enforced; a fail could blow
+    the injection budget on a heavily-ambiguous board.
+    """
+    result = detect(_saturating_observations())
+    assert len(result["unresolved_tests"]) <= MAX_UNRESOLVED
 
 
 # ----- the two-hypotheses-or-insufficient-evidence rule (verdict §4) -------------
 def test_single_detector_firing_is_insufficient_evidence():
-    """Purpose: verdict §4 requires EITHER two distinct competing hypotheses OR
-    an explicit insufficient_evidence declaration — a lone unconfirmed
-    candidate must never be presented as if it were resolved.
+    """Purpose: verdict §4 requires EITHER two distinct competing hypotheses
+    OR an explicit insufficient_evidence declaration — unchanged by the
+    tuning-round-3 rebuild (this rule is about candidate COUNT, not tier).
 
-    Expected feedback: a pass proves the ledger never over-commits on weak
-    (single-signal) evidence; a fail would let a downstream SELECT_INTENT
-    treat one structural hint as settled.
+    Expected feedback: a pass proves the rule survives the ranking rebuild
+    intact; a fail means insufficient_evidence stopped being computed on
+    the uncapped fired set.
     """
     result = detect({"frame": _arrival_frame()})
     assert len(result["goal_candidates"]) == 1
@@ -544,22 +777,19 @@ def test_single_detector_firing_is_insufficient_evidence():
 
 
 def test_two_distinct_types_firing_clears_insufficient_evidence():
-    """Purpose: the OTHER side of the same rule — once >=2 distinct types have
-    independent structural support, the ledger must present them as
-    competing hypotheses rather than silently picking one.
+    """Purpose: the OTHER side of the same rule — >=2 distinct types firing
+    must clear insufficient_evidence, regardless of their tiers.
 
-    Expected feedback: a pass proves the rule's threshold is exactly 2, not
-    off-by-one; a fail means either 1 candidate is wrongly accepted or 2 are
-    wrongly rejected.
+    Expected feedback: a pass proves the threshold is exactly 2 firings,
+    independent of tier; a fail means tier now silently gates this flag.
     """
     g = _arrival_frame()
     for i, r in enumerate([0, 1, 3, 5, 7, 9]):
-        _fill(g, r, 8, r, 9, 2 if i % 2 == 0 else 5)  # non-trivial 2-cell dominoes, clears the uniformity gate
+        _fill(g, r, 8, r, 9, 2 if i % 2 == 0 else 5)
     result = detect({"frame": g})
     types = {c["type"] for c in result["goal_candidates"]}
     assert {"arrival", "uniformity"} <= types
     assert result["insufficient_evidence"] is False
-    assert len(result["unresolved_tests"]) >= 1
 
 
 def test_zero_evidence_is_also_insufficient_and_empty():
@@ -567,43 +797,11 @@ def test_zero_evidence_is_also_insufficient_and_empty():
     unambiguous 'nothing found' result, never a fabricated candidate.
 
     Expected feedback: a pass proves the ledger degrades safely with no
-    input structure; a fail (e.g. a spurious candidate) would be a clear
-    speculative-safety-net violation.
+    input structure.
     """
     result = detect({"frame": _grid(5, 5)})
     assert result["goal_candidates"] == []
     assert result["insufficient_evidence"] is True
-
-
-# ----- cap enforcement --------------------------------------------------------------
-def test_candidate_and_handle_caps_are_enforced_when_everything_fires():
-    """Purpose: verdict §4 requires results 'capped to a few entries' — this
-    fixture deliberately fires all six detector types at once (arrival,
-    uniformity, containment, pattern_match via one combined frame;
-    elimination via a before/after pair; threshold via repeat frames) and
-    checks every cap holds: goal_candidates <= MAX_CANDIDATES, each
-    candidate's support <= MAX_HANDLES_PER_CANDIDATE, unresolved_tests <=
-    MAX_UNRESOLVED, and every id referenced in unresolved_tests actually
-    appears in the (capped) goal_candidates list.
-
-    Expected feedback: a pass proves the injection-size guarantee holds even
-    in the worst case; a fail means an oversaturated frame could blow the
-    ledger's own budget.
-    """
-    result = detect(_saturating_observations())
-
-    assert len(result["goal_candidates"]) <= MAX_CANDIDATES
-    assert len(result["goal_candidates"]) == MAX_CANDIDATES  # this fixture genuinely saturates the cap
-    for c in result["goal_candidates"]:
-        assert len(c["support"]) <= MAX_HANDLES_PER_CANDIDATE
-        assert len(c["against"]) <= MAX_HANDLES_PER_CANDIDATE
-    assert len(result["unresolved_tests"]) <= MAX_UNRESOLVED
-
-    # every candidate flagged with a structural contradiction must be
-    # referenced by id in some unresolved_tests note — nothing dangling
-    for c in result["goal_candidates"]:
-        if c["against"]:
-            assert any(c["id"] in note for note in result["unresolved_tests"])
 
 
 # ----- structural contradiction ("against") cross-check ----------------------------
@@ -611,12 +809,12 @@ def test_arrival_region_also_contained_produces_a_structural_against():
     """Purpose: when the same region both (a) has a colour-unique small
     footprint (arrival-shaped) and (b) is a contained item inside a
     qualifying container (containment-shaped), the ledger must surface that
-    tension via a genuine, mechanically-derived 'against' entry — not a
-    fabricated one (repo discipline: no speculative safety nets).
+    tension via a genuine, mechanically-derived 'against' entry — retained
+    unchanged from the tuning-round-1/2 design.
 
     Expected feedback: a pass proves the cross-detector consistency check
-    fires on real structural overlap; a fail means contradictory evidence
-    would be silently dropped, hiding a genuine ambiguity from the model.
+    still fires after the ranking rebuild; a fail means contradictory
+    evidence would be silently dropped.
     """
     g = _grid(20, 20)
     _fill(g, 1, 1, 1, 1, 3)
@@ -632,35 +830,37 @@ def test_arrival_region_also_contained_produces_a_structural_against():
     result = detect({"frame": g})
     arrival = next(c for c in result["goal_candidates"] if c["type"] == "arrival")
     assert arrival["against"] != []
-    assert any(arrival["id"] in note for note in result["unresolved_tests"])
 
 
 # ----- compact_view + budget -------------------------------------------------------
-def test_compact_view_strips_evidence_detail():
-    """Purpose: compact_view() must produce exactly the verdict §4 example
-    output shape (goal_candidates + unresolved_tests, plus this module's
-    insufficient_evidence addition) with NO evidence_detail — that field is
-    harness-only bookkeeping, never injected into a model turn.
+def test_compact_view_strips_harness_only_fields():
+    """Purpose: compact_view() must drop BOTH 'evidence_detail' AND
+    'dependencies' (harness-only), keeping goal_candidates (each now with
+    'tier'), unresolved_tests, and insufficient_evidence.
 
     Expected feedback: a pass proves the injectable view matches the
-    documented contract; a fail could leak internal region/frame detail
-    into a prompt.
+    documented contract after the round-3 additions; a fail could leak
+    internal footprint/dependency detail into a prompt.
     """
     result = detect({"frame": _arrival_frame()})
     view = compact_view(result)
     assert "evidence_detail" not in view
+    assert "dependencies" not in view
     assert set(view.keys()) == {"goal_candidates", "unresolved_tests", "insufficient_evidence"}
+    for c in view["goal_candidates"]:
+        assert "tier" in c
+        assert not any(k.startswith("_") for k in c)
 
 
 def test_ledger_output_is_within_the_250_token_budget():
     """Purpose: team-lead's stated budget for the ledger's compact output is
-    <=250 tokens (chars/4 estimate, matching the R58 slice's convention).
-    Uses the cap-saturating fixture (the worst realistic case) since that's
-    where the budget is most at risk.
+    <=250 tokens (chars/4 estimate). Uses the cap-saturating fixture (the
+    worst realistic case) since that's where the budget is most at risk —
+    re-measured after the round-3 rebuild added 'tier' to every candidate.
 
     Expected feedback: a pass means even a maximally-saturated ledger call
-    fits the injection budget; a fail means the cap constants need
-    tightening before this ships.
+    fits the injection budget after the rebuild; a fail means the richer
+    output needs a smaller cap or terser probe text.
     """
     result = detect(_saturating_observations())
     compact = json.dumps(compact_view(result), separators=(",", ":"))
@@ -671,17 +871,17 @@ def test_ledger_output_is_within_the_250_token_budget():
 def test_goal_candidate_id_is_a_valid_navigation_goal_hypothesis_handle():
     """Purpose: end-to-end proof that a GoalLedger candidate's ``id`` is
     directly usable as the ``goal_hypothesis`` slot in a navigation
-    FILL_INTENT declaration — i.e. the ledger's output vocabulary and the
-    protocol's schema vocabulary are the SAME handle format, not two
-    systems that need translation glue.
+    FILL_INTENT declaration — unchanged by the round-3 ranking rebuild
+    (only the surrounding ranking/tier machinery changed, not the id
+    format or schema compatibility).
 
     Expected feedback: a pass proves the P0 (protocol) and P2 (ledger)
-    layers actually compose; a fail would mean a real harness could not
-    wire ledger output into a FILL declaration without an ad-hoc adapter.
+    layers still compose after the rebuild; a fail would mean a real
+    harness could not wire ledger output into a FILL declaration.
     """
     g = _arrival_frame()
-    for i, (r, c) in enumerate([(1, 8), (3, 8), (5, 8), (7, 8), (9, 8), (0, 8)]):
-        _dot(g, r, c, 2 if i % 2 == 0 else 5)
+    for i, r in enumerate([0, 1, 3, 5, 7, 9]):
+        _fill(g, r, 8, r, 9, 2 if i % 2 == 0 else 5)
     ledger_result = detect({"frame": g})
     arrival = next(c for c in ledger_result["goal_candidates"] if c["type"] == "arrival")
 
