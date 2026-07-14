@@ -112,6 +112,13 @@ _NAV_NUDGE = (
     "returned path's FIRST step."
 )
 
+_ACTION_FIRST_NUDGE = (
+    "\nOUTPUT ORDER: put your chosen action FIRST — the very first line must be "
+    "either a single bare action (e.g. `MOUSE(r, c)` or `UP`) or the opening of a "
+    "```python block. Do ALL reasoning and EFFECT_PREDICT AFTER it. This guarantees "
+    "your action survives even if the reply is cut off."
+)
+
 
 def _legal_reminder(legal: set[str]) -> str:
     line = f"Legal actions THIS turn: {sorted(legal)}."
@@ -277,18 +284,24 @@ def parse_prediction(text: str) -> dict[str, Any] | None:
     return {"prediction": pred, "hypothesis": reason[:200]}
 
 
-def _bare_text_action(text: str) -> dict[str, Any] | None:
-    """Accept the model's bare-text action ONLY from the LAST non-empty line.
+def _bare_text_action(text: str, action_first: bool = False) -> dict[str, Any] | None:
+    """Accept the model's bare-text action from a single decisive line.
 
-    Codex v3 review: scanning all lines recovered a STALE action mentioned mid-
-    reasoning (su15 t4 executed an incidental ``MOUSE(63,58)`` from an earlier
-    explanatory line while the real final line was truncated). Per the action-
-    LAST contract, only the final line counts — no incidental recovery.
+    Default (action-LAST contract): only the LAST non-empty line counts. Codex v3
+    review: scanning all lines recovered a STALE action mentioned mid-reasoning
+    (su15 t4 executed an incidental ``MOUSE(63,58)`` from an earlier explanatory
+    line while the real final line was truncated) — so the final line is the only
+    one that counts, no incidental recovery.
+
+    ``action_first`` (R55 engagement fix, flag-gated): the FIRST non-empty line
+    counts instead. Under the action-first contract the model emits its action on
+    line 1 then reasons, so a 512-token truncation of the trailing reasoning can
+    no longer erase the action (sb26's 11/11 length-truncation parse failures).
     """
     lines = [ln for ln in text.splitlines() if ln.strip()]
     if not lines:
         return None
-    line = lines[-1]
+    line = lines[0] if action_first else lines[-1]
     m = _MOUSE_RE.search(line)
     if m:
         return {"action": "MOUSE", "row": int(m.group(1)), "col": int(m.group(2))}
@@ -298,14 +311,23 @@ def _bare_text_action(text: str) -> dict[str, Any] | None:
     return None
 
 
-def parse_model_output(raw: str) -> ParsedOutput:
+def parse_model_output(raw: str, action_first: bool = False) -> ParsedOutput:
     """Parse a reply into code / action(s) / macro / none (deterministic).
 
     Strips any ``<think>`` block first, then tries: a python code block, a JSON
     object (macro / plan / single action), and finally a BARE-TEXT action
     (``MOUSE(r, c)`` / ``UP`` / …) — the shape Qwen naturally emits.
+
+    ``action_first`` (flag-gated engagement fix): try the FIRST-line bare action
+    BEFORE the whole-text code/JSON scan, so a leading action line wins over a
+    code block that appears later in the (possibly truncated) reasoning. Default
+    False keeps the action-LAST order byte-identical.
     """
     raw = strip_thinking(raw)
+    if action_first:
+        bare = _bare_text_action(raw or "", action_first=True)
+        if bare is not None:
+            return ParsedOutput(kind="actions", actions=[bare])
     m = _CODE_BLOCK.search(raw or "")
     if m:
         return ParsedOutput(kind="code", code=m.group(1).strip())
@@ -317,15 +339,16 @@ def parse_model_output(raw: str) -> ParsedOutput:
             return ParsedOutput(kind="actions", actions=obj["plan"])
         if "action" in obj:
             return ParsedOutput(kind="actions", actions=[obj])
-    bare = _bare_text_action(raw or "")
-    if bare is not None:
-        return ParsedOutput(kind="actions", actions=[bare])
+    if not action_first:
+        bare = _bare_text_action(raw or "")
+        if bare is not None:
+            return ParsedOutput(kind="actions", actions=[bare])
     return ParsedOutput(kind="none")
 
 
-def normalize_parse(raw: str) -> list[dict[str, Any]]:
+def normalize_parse(raw: str, action_first: bool = False) -> list[dict[str, Any]]:
     """The parsed_tool_calls form recorded in the transcript (replay-stable)."""
-    p = parse_model_output(raw)
+    p = parse_model_output(raw, action_first)
     if p.kind == "code":
         return [{"tool": "code", "code": p.code}]
     if p.kind == "macro":
@@ -353,6 +376,8 @@ class ReplAgent:
         audit_enabled: bool = False,
         nav_steering: bool = False,
         plan_enabled: bool = False,
+        action_first: bool = False,
+        repeat_feedback: bool = False,
         frame_dump_dir: str | None = None,
         frame_dump_every: int = 0,
     ) -> None:
@@ -376,6 +401,13 @@ class ReplAgent:
         # active, request a short receding-horizon MACRO (governed, stop-on-
         # surprise via the existing macro machinery). Default OFF.
         self.plan_enabled = plan_enabled
+        # Engagement fixes (R55), both flag-gated default OFF (one-variable):
+        # action-first output contract (parse the FIRST line so 512-token
+        # truncation can't erase the action — sb26), and explicit repeat-rejection
+        # feedback in the next packet (ft09's 55/100 governor repeat-rejections).
+        self.action_first = action_first
+        self.repeat_feedback = repeat_feedback
+        self._last_rejection: str = ""  # surfaced next turn when repeat_feedback on
         # Save the actual rendered PNG every N turns (0 = off) so a human can
         # inspect LEGIBILITY (Codex v5: hashes prove attachment, not legibility).
         self.frame_dump_dir = frame_dump_dir
@@ -598,6 +630,14 @@ class ReplAgent:
             prev_frame=self._prev_frame, history=self._history, memory=self._memory)
         base_prompt = (_SYSTEM_PROMPT + "\n\n" + self._builder.to_yaml(packet)
                        + _legal_reminder(legal))
+        if self.action_first:
+            base_prompt += _ACTION_FIRST_NUDGE
+        if self.repeat_feedback and self._last_rejection:
+            base_prompt += (
+                f"\nNOTE: your previous proposal was rejected — {self._last_rejection}. "
+                "Choose a DIFFERENT action; consult action_outcomes()/is_dead() for "
+                "what has already been tried at this state and had no effect.")
+            self._last_rejection = ""
         audit_due = self.audit_enabled and self._auditor.due(self._turn_in_level)
         audit_threshold = (self._auditor.pending_threshold(self._turn_in_level)
                            if audit_due else None)
@@ -639,7 +679,7 @@ class ReplAgent:
             if finish_reason == "length":
                 self.truncations += 1
 
-            parsed = parse_model_output(raw)
+            parsed = parse_model_output(raw, self.action_first)
             if parsed.kind == "none":
                 self.parse_failures += 1
             round_audit = None
@@ -713,6 +753,9 @@ class ReplAgent:
                                           state_hash=state_hash)
         if not dec.accepted:
             self.governor_rejections += 1
+            if self.repeat_feedback:
+                self._last_rejection = (
+                    f"{req.action} was rejected ({dec.reason})")
             return None
         return dec.action
 
@@ -797,7 +840,8 @@ class ReplAgent:
             total_actions=self._governor.total_actions,
             legal_actions=sorted(_legal_names(obs)),
             prompt_text=prompt, image_hashes=image_hashes or [], raw_output=raw,
-            finish_reason=finish_reason, parsed_tool_calls=normalize_parse(raw),
+            finish_reason=finish_reason,
+            parsed_tool_calls=normalize_parse(raw, self.action_first),
             sandbox_stdout=sandbox_out, sandbox_error=sandbox_err,
             action=chosen, prediction=prediction, audit=audit,
             # The decision is made ON this frame -> it is the BEFORE hash. The

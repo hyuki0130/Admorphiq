@@ -37,6 +37,7 @@ BENCH_GAMES = ["su15", "ls20", "bp35", "dc22", "g50t"]
 MAX_ACTIONS = 150
 WALL_S = 600.0
 VLLM_PORT = 8199
+_TRUTHY = ("1", "true", "yes", "on")  # env-flag truthy values (module-wide)
 VLLM_MODEL_NAME = "qwen"
 SERVER_BOOT_TIMEOUT_S = 1200.0
 
@@ -256,13 +257,15 @@ def run_experiment() -> dict:
             env = arcade.make(gid)
             recorder = TranscriptRecorder(
                 os.path.join(KAGGLE_WORKING, "transcripts", f"{tag}.jsonl"))
-            _truthy = ("1", "true", "yes", "on")
-            nav = os.environ.get("REPL_NAV", "0").strip().lower() in _truthy
-            plan = os.environ.get("REPL_PLAN", "0").strip().lower() in _truthy
+            nav = os.environ.get("REPL_NAV", "0").strip().lower() in _TRUTHY
+            plan = os.environ.get("REPL_PLAN", "0").strip().lower() in _TRUTHY
+            afirst = os.environ.get("REPL_ACTION_FIRST", "0").strip().lower() in _TRUTHY
+            rfb = os.environ.get("REPL_REPEAT_FEEDBACK", "0").strip().lower() in _TRUTHY
             agent = ReplAgent(OpenAICompatClient(), recorder=recorder, game_id=gid,
                               render_images=True, max_tool_rounds=1,
                               audit_enabled=(arm == "on"), nav_steering=nav,
-                              plan_enabled=plan)
+                              plan_enabled=plan, action_first=afirst,
+                              repeat_feedback=rfb)
             diag = run_game(env, agent, max_actions=MAX_ACTIONS, wall_s=wall_s,
                             reset_action=GameAction.RESET, events=events)
             recorder.close()
@@ -364,6 +367,10 @@ def run_bench() -> dict:
                               render_images=render_images,
                               max_tool_rounds=max_tool_rounds,
                               audit_enabled=audit_enabled,
+                              action_first=os.environ.get(
+                                  "REPL_ACTION_FIRST", "0").strip().lower() in _TRUTHY,
+                              repeat_feedback=os.environ.get(
+                                  "REPL_REPEAT_FEEDBACK", "0").strip().lower() in _TRUTHY,
                               frame_dump_dir=os.path.join(KAGGLE_WORKING, "frames"),
                               frame_dump_every=frame_dump_every)
             diag = run_game(env, agent, max_actions=MAX_ACTIONS, wall_s=WALL_S,
