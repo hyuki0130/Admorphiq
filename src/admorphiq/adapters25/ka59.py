@@ -161,18 +161,75 @@ confirmed the switch on the FIRST attempt** (mean 1.0 attempts/switch,
 down from the earlier version's repeated multi-click cycling that could
 run 10+ attempts at the same point without ever confirming).
 
-**Remaining bottleneck (measured, not select-related)**: with switching
-now near-instant, the piece that needs to reach the far frame (level 0's
-target1, on the OTHER side of a wall from where both pieces spawn) still
-doesn't arrive within budget across several lives -- this is unexplored-
-territory frontier search taking longer than the 100-action fuse allows
-when the correct detour around/through the wall isn't the Manhattan-
-shortest guess (:meth:`Adapter._pick_action`'s goal-distance heuristic
-only orders KNOWN directions; genuine wall-gap discovery still depends on
-:func:`admorphiq.kernels.reachable_frontier`'s untried-direction BFS,
-which has no shortcut for a wide, unexplored wall). This is a navigation-
-budget question, not a select-reliability one -- flagged as the next
-lever, not attempted here.
+**Optimistic goal-directed exploration (round 3)**: replaced the
+incrementally-discovered-graph ``configuration_path`` search with
+:func:`admorphiq.kernels.grid_shortest_path` over an OPTIMISTIC
+passability array (:meth:`Adapter._optimistic_grid`) -- every cell is
+assumed passable except ones in ``_known_blocked`` (a CONFIRMED wall, see
+:meth:`Adapter._record_blocked`), so the piece beelines straight toward
+its assigned target through unexplored territory instead of only
+trusting cells an individually-confirmed frontier crawl has already
+visited. A refuted step costs exactly one action and adds one cell to
+``_known_blocked``; the next call's fresh optimistic search routes around
+it. When even the optimistic search finds no route at all (the target is
+sealed off by CONFIRMED walls, not merely unexplored space -- the only
+way an optimistic search can fail), :func:`admorphiq.kernels.reachable_frontier`
+provides candidates ranked by :func:`admorphiq.kernels.grid_distance_field`
+seeded FROM the target (not from the current cell), so exploration still
+trends toward the goal.
+
+Two further bugs surfaced and were fixed while measuring this:
+
+1. **Solved-target flicker**: a piece sitting EXACTLY inside its own
+   frame can itself become momentarily undetectable as a ring (same root
+   cause as the sticky-target fix above, one level deeper) -- this made
+   an ALREADY-SOLVED target look unfilled again for a call, misrouting
+   the other piece back onto it. Fixed with a second sticky set,
+   ``_solved_targets``, that only clears on a GAME_OVER restart (unlike
+   ``_known_targets`` -- a solved placement genuinely reverts when the
+   environment resets every piece to its level-start position, but a
+   target's mere EXISTENCE does not).
+2. **Action-priority trap**: :meth:`Adapter._pick_action` used to
+   deprioritize any never-measured direction behind every already-known
+   one, scored by distance. Once ``_route`` started depending on
+   ``grid_shortest_path`` with ONLY ``self._dir_map``'s currently-known
+   deltas as its move set, this became a real bug: a target reachable
+   only via a direction not yet in ``dir_map`` is invisible to the
+   optimistic planner (that direction isn't in its move set at all), so
+   the adapter kept re-trying known-but-useless directions from
+   ever-more cells instead of ever trying the one still-unmeasured
+   direction that mattered. Fixed by trying any never-measured direction
+   FIRST, unconditionally -- learning a new delta strictly increases what
+   the planner can route through.
+
+**Measured result**: with both fixes, all 4 directions are now learned
+within the first ~8 actions of a level (previously one direction could
+stay unmeasured for 25+ actions), and the optimistic planner replans
+promptly on a refutation (32 replans across a full 500-action run, each
+one a single wasted action, not a wasted multi-step plan). Level 0's
+active piece was DEFINITIVELY measured to never reach past column 30 in
+any of its explored rows, with cell (30, 33) explicitly recorded as a
+CONFIRMED wall -- landing exactly inside the wall region independently
+identified by the earlier gold-trace frame analysis (columns ~33-38).
+This is now hard, repeatable evidence -- not merely an efficiency
+shortfall -- that level 0's second target is genuinely unreachable by
+pure movement: the gold solution crosses this same boundary only via a
+collision-triggered push-slide (see "Push-mechanic correction" below),
+which this adapter still does not model. Optimistic exploration is
+therefore confirmed working exactly as designed; the remaining 0/7 is a
+missing MECHANIC, not a search-budget or heuristic problem.
+
+**Push-mechanic correction**: an earlier pass of this docstring claimed
+"no pushing occurs on levels 0, 1, or 3" -- WRONG for level 0, corrected
+here for the record. Tracing the full 12-action gold solution
+frame-by-frame (raw ``find_regions``, not just piece-class rings) shows
+one piece deliberately colliding with the other, triggering a multi-tick
+push-slide that carries the second piece a long distance (column 27 to
+42) past the same wall region this adapter's own exploration independently
+confirmed impassable by direct movement. Modeling this (detecting a
+collision-triggered slide, waiting it out, re-identifying positions
+afterward) is a nontrivial adapter-scope change and is NOT attempted
+here -- flagged for a future round.
 """
 
 from __future__ import annotations
@@ -194,7 +251,9 @@ from admorphiq.adapters25.base import (
 from admorphiq.kernels import (
     assign_pairs,
     closed_frames,
-    configuration_path,
+    grid_distance_field,
+    grid_shortest_path,
+    path_to_moves,
     reachable_frontier,
     size_clusters,
     track_objects,
@@ -368,16 +427,41 @@ class Adapter(GameAdapter):
         # static frame. Frames never move, so once seen a target cell is
         # trusted until a piece is actually observed sitting on it.
         self._known_targets: set[Cell] = set()
+        # Target cells CONFIRMED solved (a piece's own cell exactly
+        # matched it on some past call) -- sticky the same way, and for
+        # the SAME underlying reason: a piece sitting exactly inside its
+        # frame can itself become undetectable as a ring for a call or
+        # two (its outer bbox now coincides with the frame's own
+        # geometry), which would make _decide think that target is
+        # unfilled again and re-route the WRONG piece back onto it,
+        # oscillating between goals -- MEASURED live (this adapter's own
+        # already-placed piece disappeared from piece_cells for single
+        # calls, sending its sibling chasing an already-solved target).
+        # Reset on a GAME_OVER restart too (unlike _known_targets): the
+        # environment reverts every piece to its level-start position on
+        # RESET, so "solved" genuinely stops being true, unlike "this
+        # target exists" which remains true forever within the level.
+        self._solved_targets: set[Cell] = set()
 
         # Measured (cell, action, cell) transitions -- the state-space
-        # graph configuration_path / reachable_frontier search over.
+        # graph reachable_frontier searches over for exploration ranking.
         # Property of the level layout: reset on level-up, kept across a
         # GAME_OVER restart (the walls didn't move, only the active
         # piece's position did).
         self._transitions: list[tuple[Cell, int, Cell]] = []
-        self._adj: dict[Cell, list[tuple[int, Cell]]] = {}
         self._tried_from: dict[Cell, set[int]] = {}
-        self._action_plan: list[int] = []
+        # Cells CONFIRMED blocked (a move attempt failed with no other
+        # piece at the destination -- see _record_blocked). Every other
+        # cell is OPTIMISTICALLY assumed passable by _optimistic_grid, so
+        # routing beelines through unexplored territory instead of only
+        # trusting individually-confirmed-safe cells -- see _route.
+        self._known_blocked: set[Cell] = set()
+
+        # Diagnostic-only: how many times the optimistic straight-line
+        # plan was refuted (a NEW cell entered _known_blocked, forcing a
+        # different route on the next call). Never reset -- a whole-run
+        # total, not a per-level state the adapter's own behaviour reads.
+        self._replans = 0
 
     # ── harness contract ────────────────────────────────────────────────
 
@@ -422,27 +506,30 @@ class Adapter(GameAdapter):
         self._prev_piece_regions = None
         self._active_cell = None
         self._transitions = []
-        self._adj = {}
         self._tried_from = {}
-        self._action_plan = []
+        self._known_blocked = set()
         self._await_select_confirm = False
         self._last_select_cell = None
         self._select_attempts = {}
         self._known_targets = set()
+        self._solved_targets = set()
         self._active_marker_color = None
 
     def _on_restart(self) -> None:
         """Only the active piece's position resets; the layout knowledge
-        (transitions/tried_from/dir_map) is kept -- see class docstring."""
+        (transitions/tried_from/dir_map) is kept -- see class docstring.
+        ``_solved_targets`` is ALSO cleared here (unlike layout knowledge):
+        RESET reverts every piece to its level-start position, so a target
+        that was solved before this GAME_OVER genuinely stops being solved."""
         self._pending_action = None
         self._pending_kind = None
         self._prev_grid = None
         self._prev_piece_regions = None
         self._active_cell = None
-        self._action_plan = []
         self._await_select_confirm = False
         self._last_select_cell = None
         self._select_attempts = {}
+        self._solved_targets = set()
 
     # ── measurement: did the pending action move a piece? ───────────────
 
@@ -471,7 +558,6 @@ class Adapter(GameAdapter):
         shift: Cell = tuple(match["shift"])  # type: ignore[assignment]
         self._dir_map.setdefault(action, shift)
         new_cell = (from_cell[0] + shift[0], from_cell[1] + shift[1])
-        self._adj.setdefault(from_cell, []).append((action, new_cell))
         self._transitions.append((from_cell, action, new_cell))
         self._tried_from.setdefault(from_cell, set()).add(action)
         self._active_cell = new_cell
@@ -486,7 +572,14 @@ class Adapter(GameAdapter):
         """Mark ``action`` tried from ``cell`` -- UNLESS the destination is
         currently occupied by another piece, in which case the block is
         state-dependent (that piece may move away later), not a permanent
-        wall, so it is deliberately left unrecorded (see class docstring)."""
+        wall, so it is deliberately left unrecorded (see class docstring).
+
+        A genuine wall (destination NOT occupied by another piece) is also
+        added to ``_known_blocked`` -- the fact _optimistic_grid reads to
+        stop assuming that cell passable -- and counted as a replan: the
+        NEXT optimistic beeline attempt will route around it instead of
+        repeating the same refuted assumption.
+        """
         unit = self._dir_map.get(action)
         if unit is None:
             self._tried_from.setdefault(cell, set()).add(action)
@@ -496,6 +589,9 @@ class Adapter(GameAdapter):
         if dest in other_cells:
             return
         self._tried_from.setdefault(cell, set()).add(action)
+        if dest not in self._known_blocked:
+            self._known_blocked.add(dest)
+            self._replans += 1
 
     # ── planning ─────────────────────────────────────────────────────────
 
@@ -564,8 +660,14 @@ class Adapter(GameAdapter):
                 # piece isn't confused with "the click failed" (neither
                 # produces a shift on its own).
                 return self._probe(move_ids, cell=self._last_select_cell)
+
+        # A target's SOLVED status is sticky too, once observed (see the
+        # field docstring): a piece sitting exactly inside its frame can
+        # itself become momentarily undetectable, which must not make an
+        # already-placed target look unfilled again.
+        self._solved_targets |= self._known_targets & piece_cell_set
         free_cells = [c for c in piece_cells if c not in self._known_targets]
-        unfilled_targets = sorted(c for c in self._known_targets if c not in piece_cell_set)
+        unfilled_targets = sorted(self._known_targets - self._solved_targets)
 
         if not free_cells or not unfilled_targets:
             return self._probe(move_ids)
@@ -650,30 +752,37 @@ class Adapter(GameAdapter):
     def _pick_action(self, candidates: list[int], ref_cell: Cell, goal: Cell | None) -> int:
         """Choose among untried ``candidates`` from ``ref_cell``.
 
-        With no ``goal`` (identity still unknown, or no useful hint
-        available), the first candidate in ``move_ids`` order is used --
-        arbitrary but deterministic. With a ``goal``, a candidate whose
-        MEASURED direction (``dir_map``) is already known is scored by the
-        Manhattan distance its predicted destination leaves to ``goal``
-        (ascending -- prefer directions that measurably approach the goal);
-        a candidate with no measured direction yet is deprioritized behind
-        every measured one (tier 1 vs tier 0) since trying it can only be
-        evaluated AFTER the fact, but is still tried once every measured
-        direction from this cell is exhausted, so every action still gets
-        learned eventually. This exists purely to spend fewer of a level's
-        tightly fused action budget wandering AWAY from a known target once
-        enough of the control scheme is already measured -- it never
-        invents a destination the adapter hasn't actually observed.
+        A candidate whose direction has NEVER been measured anywhere
+        (``not in self._dir_map``) is tried FIRST, unconditionally --
+        MEASURED live to be necessary: with ``_route`` now planning via
+        ``grid_shortest_path`` over ``self._dir_map.values()``, a target
+        that requires a direction still absent from ``dir_map`` is
+        UNREACHABLE to the optimistic planner no matter how much budget it
+        gets (that direction is not even in its move set) -- learning a
+        brand-new delta strictly increases what the planner can route
+        through, which is worth more than any already-known direction's
+        distance score. The earlier version scored an unmeasured candidate
+        behind every measured one (preferring "closer, even if it's
+        provably not the way there" over "unknown, but might be exactly
+        what's missing") and could loop indefinitely re-trying known
+        directions from ever-more cells while genuinely needing a
+        direction it never once attempted.
+
+        Once every candidate is measured, ties break by the Manhattan
+        distance each candidate's predicted destination leaves to
+        ``goal`` (ascending); with no ``goal`` at all (identity still
+        unknown), the first candidate in ``move_ids`` order is used.
         """
+        unmeasured = [a for a in candidates if a not in self._dir_map]
+        if unmeasured:
+            return unmeasured[0]
         if goal is None:
             return candidates[0]
 
-        def score(action: int) -> tuple[int, int]:
-            unit = self._dir_map.get(action)
-            if unit is None:
-                return (1, 0)
-            dest = (ref_cell[0] + unit[0], ref_cell[1] + unit[1])
-            return (0, abs(dest[0] - goal[0]) + abs(dest[1] - goal[1]))
+        def score(action: int) -> int:
+            dr, dc = self._dir_map[action]
+            dest = (ref_cell[0] + dr, ref_cell[1] + dc)
+            return abs(dest[0] - goal[0]) + abs(dest[1] - goal[1])
 
         return min(candidates, key=score)
 
@@ -694,8 +803,31 @@ class Adapter(GameAdapter):
         self._pending_kind = "move"
         return simple_action(move_ids[0])
 
+    def _optimistic_grid(self, height: int = 64, width: int = 64) -> list[list[bool]]:
+        """A ``grid_shortest_path``-shaped passability array: every cell is
+        ``True`` (passable) EXCEPT the ones in ``_known_blocked``.
+
+        This is the "optimistic" half of optimistic replanning -- genuinely
+        unexplored territory is ASSUMED passable rather than excluded, so a
+        shortest-path search beelines the piece straight toward its target
+        instead of only trusting cells a slow, individually-confirmed
+        frontier crawl has already visited. A wrong assumption costs
+        exactly one refuted action (see ``_record_blocked``), after which
+        the next call's grid excludes it and reroutes -- see ``_route``.
+        """
+        grid = [[True] * width for _ in range(height)]
+        for r, c in self._known_blocked:
+            if 0 <= r < height and 0 <= c < width:
+                grid[r][c] = False
+        return grid
+
     def _route(self, goal_target: Cell, move_ids: list[int]) -> GameAction:
         if self._active_cell == goal_target:
+            return self._probe(move_ids)
+        if not self._dir_map:
+            # No direction measured yet at all -- nothing for grid_shortest_path
+            # to plan with; fall back to a plain probe until at least one
+            # action's delta is known.
             return self._probe(move_ids)
 
         # Every move this function issues is hypothesized to originate from
@@ -703,43 +835,39 @@ class Adapter(GameAdapter):
         # _pending_ref_cell to attribute a blocked outcome correctly.
         self._pending_ref_cell = self._active_cell
 
-        if self._action_plan:
-            action = self._action_plan.pop(0)
-            self._pending_action = action
-            self._pending_kind = "move"
-            return simple_action(action)
+        moves = list(self._dir_map.values())
+        move_labels = {unit: action for action, unit in self._dir_map.items()}
+        optimistic = self._optimistic_grid()
 
-        path = configuration_path(
-            initial=self._active_cell,
-            goal_test=lambda c: c == goal_target,
-            successors=lambda c: self._adj.get(c, []),
-        )
-        if path:
-            self._action_plan = list(path)  # type: ignore[arg-type]
-            action = self._action_plan.pop(0)
-            self._pending_action = action
+        step = self._first_step(optimistic, self._active_cell, goal_target, moves, move_labels)
+        if step is not None:
+            self._pending_action = step
             self._pending_kind = "move"
-            return simple_action(action)
+            return simple_action(step)
 
+        # The optimistic planner found NO route at all -- goal_target is
+        # sealed off by CONFIRMED walls, not merely unexplored space (an
+        # optimistic search only fails this way, since every unknown cell
+        # is assumed open). Fall back to frontier exploration, but rank
+        # candidates by proximity to the GOAL (grid_distance_field seeded
+        # FROM the target over the same optimistic map) rather than
+        # proximity to the current cell, so expansion still trends toward
+        # the goal instead of flooding outward blindly.
         tried_pairs = {(cell, a) for cell, acts in self._tried_from.items() for a in acts}
         frontier = reachable_frontier(self._transitions, self._active_cell, tried_pairs)
         if frontier:
-            cell, action = frontier[0]
+            goal_distances = grid_distance_field(optimistic, [goal_target], moves=moves)
+            ranked = sorted(frontier, key=lambda pair: goal_distances.get(pair[0], float("inf")))
+            cell, action = ranked[0]
             if cell == self._active_cell:
                 self._pending_action = action  # type: ignore[assignment]
                 self._pending_kind = "move"
                 return simple_action(action)  # type: ignore[arg-type]
-            sub_path = configuration_path(
-                initial=self._active_cell,
-                goal_test=lambda c: c == cell,
-                successors=lambda c: self._adj.get(c, []),
-            )
-            if sub_path:
-                self._action_plan = list(sub_path)  # type: ignore[arg-type]
-                action = self._action_plan.pop(0)
-                self._pending_action = action
+            sub_step = self._first_step(optimistic, self._active_cell, cell, moves, move_labels)  # type: ignore[arg-type]
+            if sub_step is not None:
+                self._pending_action = sub_step
                 self._pending_kind = "move"
-                return simple_action(action)
+                return simple_action(sub_step)
 
         untried = [a for a in move_ids if a not in self._tried_from.get(self._active_cell, set())]
         if untried:
@@ -749,3 +877,21 @@ class Adapter(GameAdapter):
             return simple_action(action)
 
         return self._probe(move_ids)
+
+    @staticmethod
+    def _first_step(
+        grid: list[list[bool]],
+        start: Cell,
+        goal: Cell,
+        moves: list[Cell],
+        move_labels: dict[Cell, int],
+    ) -> int | None:
+        """The first action of ``grid_shortest_path(grid, start, goal)``, or
+        ``None`` when unreachable on ``grid`` or the path is degenerate."""
+        path = grid_shortest_path(grid, start, goal, moves=moves)
+        if not path or len(path) < 2:
+            return None
+        try:
+            return path_to_moves(path[:2], move_labels)[0]
+        except ValueError:
+            return None
