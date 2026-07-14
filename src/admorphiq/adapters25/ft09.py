@@ -151,13 +151,13 @@ _GLYPH_CONTRADICTION_CAP = 2
 
 
 def _is_hud_row(bbox: Bbox, grid: Grid) -> bool:
-    """A region spanning the FULL first-and-last row of the frame is the
-    bottom HUD/status bar (a step counter or similar chrome), not a
-    clickable cell -- excluded everywhere a candidate list is built. HUD-row
-    contamination measured directly: a step counter incrementing every
-    action inflates a region's diff bbox to span the whole frame, drowning
-    out the real interaction points (see the FT09 decode session's CD82
-    cross-reference)."""
+    """A region confined entirely to the frame's LAST row (its bbox both
+    starts and ends there, any column span) is the bottom HUD/status bar (a
+    step counter or similar chrome), not a clickable cell -- excluded
+    everywhere a candidate list is built. HUD-row contamination measured
+    directly: a step counter incrementing every action inflates a region's
+    diff bbox to span the whole frame, drowning out the real interaction
+    points (see the FT09 decode session's CD82 cross-reference)."""
     if not grid:
         return False
     last_row = len(grid) - 1
@@ -195,12 +195,17 @@ def _cell_class(grid: Grid, bbox: Bbox) -> int:
 
 def _discover_rings(grid: Grid) -> list[dict[str, Any]]:
     """Discover 8-cell toggle rings and their center glyph gaps. Pure frame
-    observation: button size is the modal size among same-sized regions
-    occurring >= 8 times (a ring's own member count); pitch is the MODE of
-    measured button-position gaps (the min is unreliable -- a smaller gap
-    can be cross-cluster noise from an unrelated ring's columns landing
-    close by, measured directly on a real 4-ring board); a ring is any gap
-    position whose all 8 compass-offset neighbours are button regions."""
+    observation: button size is the LARGEST size among same-sized regions
+    occurring >= 8 times (a ring's own member count) -- largest, not most
+    populous, because a glyph's own ink can fragment into many small
+    same-sized pixels whose count can coincidentally rival or exceed the
+    true button count on a small (single-ring) board, while buttons are
+    consistently the larger regions on every measured board; pitch is the
+    MODE of measured button-position gaps (the min is unreliable -- a
+    smaller gap can be cross-cluster noise from an unrelated ring's columns
+    landing close by, measured directly on a real 4-ring board); a ring is
+    any gap position whose all 8 compass-offset neighbours are button
+    regions."""
     if not grid:
         return []
     bg = most_common_color(grid)
@@ -209,7 +214,7 @@ def _discover_rings(grid: Grid) -> list[dict[str, Any]]:
     button_sizes = [s for s, c in size_counts.items() if c >= _RING_SIZE]
     if not button_sizes:
         return []
-    button_size = max(button_sizes, key=lambda s: size_counts[s])
+    button_size = max(button_sizes)
     buttons = [r for r in regions if r["size"] == button_size]
     by_topleft = {(r["bbox"][0], r["bbox"][1]): r for r in buttons}
 
@@ -228,27 +233,33 @@ def _discover_rings(grid: Grid) -> list[dict[str, Any]]:
         for name, (dr, dc) in _COMPASS_OFFSET_SIGNS.items()
     }
 
+    candidate_centers = {
+        (r0 - dr, c0 - dc) for r0, c0 in by_topleft for dr, dc in offsets.values()
+    }
     rings: list[dict[str, Any]] = []
-    seen_centers: set[Cell] = set()
-    for r0, c0 in by_topleft:
-        for dr, dc in offsets.values():
-            cr, cc = r0 - dr, c0 - dc
-            if (cr, cc) in seen_centers or (cr, cc) in by_topleft:
-                continue
-            neighbours: dict[str, dict[str, Any]] = {}
-            ok = True
-            for name, (odr, odc) in offsets.items():
-                pos = (cr + odr, cc + odc)
-                if pos not in by_topleft:
-                    ok = False
-                    break
-                neighbours[name] = by_topleft[pos]
-            if not ok:
-                continue
-            seen_centers.add((cr, cc))
-            glyph_bbox: Bbox = (cr, cc, cr + btn_h - 1, cc + btn_w - 1)
-            rings.append({"glyph_bbox": glyph_bbox, "ring_cells": neighbours})
+    for cr, cc in candidate_centers:
+        if (cr, cc) in by_topleft:
+            continue  # a real button, not a glyph gap
+        neighbours = _ring_neighbours(by_topleft, cr, cc, offsets)
+        if neighbours is None:
+            continue
+        glyph_bbox: Bbox = (cr, cc, cr + btn_h - 1, cc + btn_w - 1)
+        rings.append({"glyph_bbox": glyph_bbox, "ring_cells": neighbours})
     return rings
+
+
+def _ring_neighbours(
+    by_topleft: dict[Cell, dict[str, Any]], cr: int, cc: int, offsets: dict[str, Cell]
+) -> dict[str, dict[str, Any]] | None:
+    """The 8 button regions at ``(cr, cc)``'s compass offsets, or ``None`` if
+    any compass position isn't a button (not a complete ring)."""
+    neighbours: dict[str, dict[str, Any]] = {}
+    for name, (odr, odc) in offsets.items():
+        pos = (cr + odr, cc + odc)
+        if pos not in by_topleft:
+            return None
+        neighbours[name] = by_topleft[pos]
+    return neighbours
 
 
 def _read_glyph_compass(grid: Grid, glyph_bbox: Bbox) -> dict[str, int]:
@@ -474,6 +485,46 @@ class Adapter(GameAdapter):
         self._solve_from_measured_stencil()
         self._phase = "execute"
 
+    def _observe_glyph_click(self, point: Cell, grid: Grid, diff: dict[str, Any]) -> None:
+        """Verify the just-made glyph-phase click against its prediction. A
+        trigger click (no predicted colour -- see ``_glyph_target``) succeeds
+        if ANYTHING changed at all, since its only purpose is testing for a
+        decoy -> reveal transition. A real mismatch click succeeds once the
+        clicked cell shows its predicted target colour; a colour NEVER seen
+        before for that specific cell is treated as genuine progress along a
+        measured multi-step cycle (the cell stays mismatched and gets
+        re-clicked, bounded by the per-cell click cap in ``_glyph_target``);
+        a true no-op (nothing changed) or a REPEATED colour (a loop that
+        never reaches target) is a contradiction -- the decode is wrong for
+        this cell, and enough contradictions abandon glyph-driven play for
+        the level in favour of the probe/execute/fallback machinery."""
+        target = self._glyph_pending_target
+        is_trigger = self._glyph_pending_is_trigger
+        self._glyph_pending_target = None
+        self._glyph_pending_is_trigger = False
+
+        if is_trigger:
+            if diff["count"] > 0:
+                self._glyph_trigger_attempts = 0
+            elif self._glyph_trigger_attempts + 1 >= _GLYPH_CONTRADICTION_CAP:
+                self._start_probe(grid)
+            else:
+                self._glyph_trigger_attempts += 1
+            return
+
+        self._glyph_click_counts[point] = self._glyph_click_counts.get(point, 0) + 1
+        r, c = point
+        current = grid[r][c]
+        if current == target:
+            return  # reached its predicted target -- no longer mismatched
+
+        seen = self._glyph_seen_colours.setdefault(point, set())
+        if diff["count"] == 0 or current in seen:
+            self._glyph_contradictions += 1
+            if self._glyph_contradictions >= _GLYPH_CONTRADICTION_CAP:
+                self._start_probe(grid)
+        seen.add(current)
+
     def _resume_after_revival(self) -> None:
         """Re-solve from the ALREADY-measured stencil after a same-level
         GAME_OVER revival — free (no new clicks), and necessary because any
@@ -538,7 +589,57 @@ class Adapter(GameAdapter):
 
     # ── planning: which candidate to click next ──────────────────────────
 
+    def _glyph_target(self, grid: Grid) -> Cell:
+        """Pick the next glyph-decode click. Re-discovers rings fresh from
+        the CURRENT grid every call (never a cached board), so a decoy ->
+        reveal transition (measured on L1 and L3: the first click wholesale-
+        replaces the visible region layout with a different, previously
+        invisible ring set) is picked up for free -- a wholesale-different
+        discovery result needs no special-casing, it's just what
+        ``_discover_rings`` returns this time. Falls back to the probe/
+        execute/fallback machinery, over the CURRENT (possibly post-reveal)
+        board, whenever the decode has nothing actionable left to try."""
+        rings = _discover_rings(grid)
+        if not rings:
+            self._start_probe(grid)
+            return self._next_target(grid)
+
+        mismatches: list[tuple[Cell, int]] = []
+        for ring in rings:
+            mismatches.extend(_decode_ring_mismatches(grid, ring))
+        actionable = [
+            (cell, target)
+            for cell, target in mismatches
+            if self._glyph_click_counts.get(cell, 0) < _GLYPH_PER_CELL_CLICK_CAP
+        ]
+        if actionable:
+            cell, target = actionable[0]
+            self._glyph_pending_target = target
+            self._glyph_pending_is_trigger = False
+            return cell
+
+        if mismatches:
+            # Every mismatched cell already hit its per-cell click cap --
+            # the decode isn't converging on this board; give up on it.
+            self._start_probe(grid)
+            return self._next_target(grid)
+
+        # No mismatches anywhere: either a decoy board that needs a click to
+        # reveal its real puzzle (measured on L1/L3 -- the first click there
+        # ALSO looked like "nothing to click" by this same rule), or
+        # genuinely solved (in which case WIN would already have fired and
+        # choose_action wouldn't be called). Click the first discovered
+        # ring's first button as a bounded trigger probe.
+        first_ring = rings[0]
+        first_cell = next(iter(first_ring["ring_cells"].values()))
+        self._glyph_pending_target = None
+        self._glyph_pending_is_trigger = True
+        return _cell_point(first_cell)
+
     def _next_target(self, grid: Grid) -> Cell:
+        if self._phase == "glyph":
+            return self._glyph_target(grid)
+
         if not self._candidates:
             h = len(grid) or 1
             w = len(grid[0]) if grid else 1
