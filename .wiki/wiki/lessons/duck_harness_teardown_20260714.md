@@ -14,6 +14,22 @@ description: Measured fact-extraction of the Duck (Tufa, M1 #1) harness — REPL
 > facts (with provenance) and our attack surface. REFERENCE-ONLY per
 > the reference-only standing rule (memory `feedback-no-copying-winners`) — we BEAT it, never copy it.
 
+## 🎯 Transfer comparison — the whole argument for R55
+
+The strategically decisive number is NOT the public score, it is the **transfer
+ratio** (hidden LB ÷ public):
+
+| Approach | Public | Hidden LB | Transfer |
+|---|---|---|---|
+| **Duck** (generic code-REPL LLM) | 1.6002 | 1.21 | **~76%** |
+| **Our card** (mechanic-solver, BC v6) | 1.072 | 0.14 | **~13%** |
+
+Duck loses only a quarter crossing to the hidden 110 games; our mechanic-solver
+card loses seven-eighths. A generic model-in-the-driver-seat approach GENERALIZES;
+a public-tuned solver memorizes. That ratio — not the public number — is the
+entire case for building `repl_agent` (R55). Provenance: Duck WU:64,139; our card
+(memory `project-bc-transfer-ceiling` / `project-online-rl-baseline`).
+
 ## Provenance (sources)
 
 - **Submission wrapper notebook** (infra only; the solver is an attached dataset,
@@ -121,7 +137,7 @@ multimodality**, not tools (WU:147).
 | Context mgmt | oldest-first eviction, 64k cap / 32k target | **3-tier history** (recent window / event ledger / persistent memory) + token-budgeted turn packet trimming largest section (M3) | event-triggered compaction (their ask) already designed; consider matching their 64k/32k envelope for the growing-chat variant |
 | Governance | none — prompt-steering only; drop UNDO | **ActionGovernor**: legal enforcement, repeated state-action prevention, macro gating (per-step precondition+invariant, stop-on-surprise), undo accounting (M5) | we ENFORCE mechanically what they beg the prompt to do → fewer wasted actions, structural not hopeful |
 | Replay / iteration | GitHub context viewer; no deterministic replay | **TranscriptReplayer** re-parses + re-governs with no model, localizing harness-vs-model regressions (M1) | enables scientific 1h Kaggle iteration; Duck cannot separate harness bugs from model variance (their 0.4 std) |
-| Sandbox | REPL 30s / 4096 chars, reset per call, NOT isolated | **subprocess** sandbox, stdlib allowlist, bounded output, hard timeout+kill, `action()` RECORDS (never executes) (M4) | isolated + safe (their acknowledged risk); RAISE our default timeout toward their 30s to allow in-REPL search; match 4096 output cap |
+| Sandbox | REPL 30s / 4096 chars, reset per call, NOT isolated | **subprocess** sandbox, stdlib allowlist, bounded output (4000), **default timeout now 30s** (`REPL_SANDBOX_TIMEOUT`), hard timeout+kill, `action()` RECORDS (never executes) (M4) | DONE: matched their 30s ceiling (was 2s) so in-REPL search has room; we remain isolated + safe (their acknowledged risk); output cap 4000 ≈ their 4096 |
 | Model | Qwen 3.6 27B FP8 / vLLM | model-agnostic `OpenAICompatClient` (vLLM or ollama), config swap (M6) | primary = same Qwen3.6-27B-FP8; our client already supports the exact endpoint |
 | Budgeting | soft deadline (~10min pre-budget), n_passes=1, gateway wait 600s | Round-1-second-half (Kaggle side) | adopt their per-game soft-deadline + concurrency; keep RESET-keeps-level semantics (we already do) |
 
