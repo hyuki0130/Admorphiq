@@ -723,3 +723,39 @@ the v1 import bug, recurred in the new function). Fixed `9b67f55` (import from
 `arcengine`); the re-pushed kernel v8 is the first valid matched12 run
 (started 21:19). Both arms run with nav/plan OFF by default → the experiment is a
 clean one-variable (audit OFF vs ON) test; the v9 flag levers do not contaminate it.
+
+### matched12 RESULT (2026-07-14 22:40, `replbench_out9`) — GATE FAIL; the v7 audit clear was NOT audit-attributable
+
+28 runs completed (12 games interleaved OFF/ON, su15 ×3). Verdict via
+`repl_matched_verdict.py`: **C1 FAIL, C2 PASS, C3 FAIL → GATE FAIL.** Per-game
+levels cleared (all runs terminated on the 500s wall):
+
+| Game | OFF levels | ON levels | note |
+|---|---|---|---|
+| su15 | 1,1,1 (3/3) | 1,1,1 (3/3) | BOTH clear L1 at **19 actions**, every rep |
+| r11l | **1** (L1@46a) | **0** (3 audits) | audit arm LOST the clear |
+| ar25 bp35 dc22 ft09 g50t ls20 sb26 sp80 tr87 tu93 | 0 | 0 | 10/12 walls — neither arm cracks |
+
+- **The decisive falsification** — su15 (the v7 "first LLM clear") clears
+  **identically with and without the audit**: OFF 3/3 at 19 L1 actions (no audit),
+  ON 3/3 at 19 L1 actions (audit fires at 12). **The base agent clears su15; the
+  audit adds nothing to the outcome.** C2 is causally VALID (audit@12 precedes
+  clear@19) but NON-LOAD-BEARING — the matched OFF arm reaches the same clear
+  without any audit. The v7 single-game inference ("audit → first clear") is
+  falsified; the matched experiment did exactly its job.
+- **Audit is net-NEGATIVE here**: coverage ON 1 game vs OFF 2 (lost r11l);
+  aggregate faithful RHAE ON 0.0048 < OFF 0.0055. Mechanism: under the wall
+  budget the audit's extra LLM calls cut env-action throughput (tu93 ON 49 vs OFF
+  86 actions; r11l ON 90 vs OFF 105) → r11l never reached its action-46 L1 that
+  OFF cleared. The audit reshuffles budget, it does not create capability.
+- **Continuation gate NOT met → do NOT advance the audit arm to full-25.** The
+  GoalAuditor as designed is not the lever. Before fully discarding (tune-before-
+  discard): the only tunable is the wall-throughput cost (cheaper/rarer audits),
+  but even a zero-cost audit would not ADD clears — su15 is audit-redundant and
+  10/12 are base-capability walls. **The real lever is the base agent's inability
+  to crack 10/12 games, not goal-revision.** The LLM arm's headline "growth" via
+  the audit was a false positive; the next lever must target the zero-games.
+- Tooling note: the first verdict run at 22:40:15 raced the transcript download
+  (files finished 22:40:21) and spuriously failed C2; re-run on the complete
+  package is authoritative. `repl_matched_verdict.py` is correct — the inputs were
+  incomplete for ~6s. Always confirm the package is fully downloaded before judging.
