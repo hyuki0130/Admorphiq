@@ -1,0 +1,59 @@
+# navigation.v1 — machine-readable protocol card, injected only after
+# SELECT_INTENT commits to "navigation" (R58 verdict §3/§5). Runtime
+# artifact: no game identity/adapter import/coordinate/palette (lint-enforced).
+id: navigation.v1
+version: 1
+supersedes: null
+
+activation:
+  requires_all:
+    - legal_action.move
+    - discrete_regions_present
+  supporting:
+    - one_region_repeatedly_displaces_under_directional_actions
+    - blocked_direction_produces_no_displacement
+  contraindications:
+    - only_legal_action_is_mouse_click
+    - no_region_displaces_under_any_directional_action
+
+roles:
+  required: [mover, goal_cell]
+  hypotheses_only: [passable_region_class, blocked_region_class]
+
+confirm:
+  probe: press_one_directional_action_and_diff_frames
+  prediction: exactly_one_tracked_region_displaces_by_one_cell_or_stays_with_no_change
+  max_attempts: 3
+
+pipeline:
+  - op: find_regions
+  - op: track_objects
+  - op: grid_shortest_path
+  - op: path_to_moves
+
+decision_rules:
+  - when: mover_did_not_displace_on_confirm_probe
+    do: retry_confirm_with_next_directional_action
+  - when: all_directions_probed_and_none_displace_the_same_region
+    do: reject_navigation_try_next_intent
+  - when: goal_unreachable_under_current_passable_mask
+    do: widen_passable_hypothesis_or_reject
+
+falsification:
+  strong:
+    - mover_moves_opposite_to_planned_direction
+    - a_different_region_displaces_than_the_declared_mover
+  weak:
+    - mover_does_not_follow_planned_step
+  weak_strikes: 2
+  on_reject: return_to_intent_selection
+
+memory:
+  game_scope: [action_to_direction_map]
+  level_scope: [passable_mask, role_assignments, hazard_cells]
+  attempt_scope: [pending_plan, pending_prediction]
+  note: hazard_cells persist across mid-level restarts (silent reposition-to-start with the tracked position unchanged); cleared on level-up.
+
+budgets:
+  confirmation_actions: 3
+  committed_actions_before_recheck: 2

@@ -1,0 +1,63 @@
+{
+  "$id": "explanation/intents/navigation.schema.json",
+  "title": "fill_navigation",
+  "description": "FILL_INTENT decoder contract for the 'navigation' family (R58 verdict §2). Emitted only after SELECT_INTENT has already committed to 'navigation' — this becomes the single-item allowlist schema for that turn. Every spatial field is an observation-store HANDLE (harness-owned object reference), never a literal grid, mask, or pixel coordinate — the model supplies semantics (which region is the mover, which cell is the goal), the harness resolves handles and runs the kernel.",
+  "type": "object",
+  "required": [
+    "intent",
+    "mover",
+    "start",
+    "goals",
+    "passable_mask",
+    "action_map",
+    "goal_hypothesis",
+    "support",
+    "falsifier"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "intent": { "const": "navigation" },
+    "mover": {
+      "type": "string",
+      "pattern": "^region:[A-Za-z0-9_]+$",
+      "description": "The tracked region the plan will displace."
+    },
+    "start": {
+      "type": "string",
+      "pattern": "^cell:[A-Za-z0-9_]+$",
+      "description": "The mover's current cell handle."
+    },
+    "goals": {
+      "type": "array",
+      "items": { "type": "string", "pattern": "^cell:[A-Za-z0-9_]+$" },
+      "minItems": 1,
+      "description": "Candidate goal cells, tried in order; the first reachable one is planned."
+    },
+    "passable_mask": {
+      "type": "string",
+      "pattern": "^mask:[A-Za-z0-9_]+$",
+      "description": "Handle to the caller-declared passability grid (harness-owned, never printed inline)."
+    },
+    "action_map": {
+      "type": "string",
+      "pattern": "^action_map:[A-Za-z0-9_]+$",
+      "description": "Handle to the measured (row,col)-delta -> action-id map used to turn the path into moves."
+    },
+    "goal_hypothesis": {
+      "type": "string",
+      "pattern": "^goal:[A-Za-z0-9_]+$",
+      "description": "Which win-condition-typology goal candidate this plan is trying to satisfy (kept separate from the mechanic intent per verdict §4)."
+    },
+    "support": {
+      "type": "array",
+      "items": { "type": "string", "pattern": "^evidence:[A-Za-z0-9_]+$" },
+      "minItems": 1,
+      "description": "At least one evidence handle grounding mover/passability, per verdict §6 (appearance-only evidence cannot activate a family)."
+    },
+    "falsifier": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Which playbook falsifier name (strong or weak) this specific commitment is staked on."
+    }
+  }
+}

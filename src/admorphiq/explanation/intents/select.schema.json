@@ -1,0 +1,24 @@
+{
+  "$id": "explanation/intents/select.schema.json",
+  "title": "select_intent",
+  "description": "SELECT_INTENT decoder contract (R58 verdict §2). The allowed values for 'intent' are NOT enumerated here — they are a short DYNAMIC allowlist the harness supplies at runtime (playbook ids currently loaded, plus the always-legal escape value 'unknown'). This schema only shapes the envelope: a lowercase snake_case intent name plus evidence-handle citations, never raw prose.",
+  "type": "object",
+  "required": ["intent", "support"],
+  "additionalProperties": false,
+  "properties": {
+    "intent": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]*$",
+      "description": "One playbook id from the harness's current dynamic allowlist, or 'unknown'."
+    },
+    "support": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^evidence:[A-Za-z0-9_]+$"
+      },
+      "minItems": 0,
+      "description": "Observation-store evidence handles, never inline prose claims. May be empty only when intent == 'unknown'."
+    }
+  }
+}
