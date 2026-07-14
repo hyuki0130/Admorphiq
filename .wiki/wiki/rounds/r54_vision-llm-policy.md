@@ -108,4 +108,6 @@ gemma-31b scale). This round delivers the validated, tested machinery so the
 
 - [[lb_top_team_research_20260714]] — the evidence and the lever definition.
 - [[r53_unified-harness]] — the current architecture; gemma SWA latency finding.
+- [[r55_code-repl-agent]] — the code-REPL arm; Round-2 pairs this JSON-policy
+  agent against it in the 2×2 ablation.
 - [[index]]

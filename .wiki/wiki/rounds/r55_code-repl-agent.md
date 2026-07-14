@@ -3,7 +3,7 @@ type: reasoning
 round: R55
 axis: code-repl-agent
 keywords: [code-repl, duck, qwen3.6, multimodal, transcript-replay, segmentation-tracker, turn-packet, python-sandbox, inspection-api, action-governor, offline-core, controller-persistence]
-verdict: building (Round 1 offline core — LLM-free, unit-tested)
+verdict: Round 1 offline core COMPLETE (5 modules, 40 tests, LLM-free; model wiring on Kaggle infra)
 commit: pending
 date: 2026-07-14
 description: R55 builds the offline-testable core of the Duck-style multimodal code-REPL agent per the Codex design consultation — transcript/replay, segmenter+tracker, turn-packet builder, stateless Python sandbox + inspection API, and action governor. All LLM-free and unit-tested (sub-second); the model wiring + Kaggle vLLM bundle is Round 1's second half on Kaggle infra. The R54 vlm_policy JSON-policy arm becomes the Round-2 2x2 ablation's JSON-policy leg.
@@ -130,14 +130,44 @@ spent) and REQUESTS actions; each call runs in a throwaway subprocess.
 accounting, subprocess action round-trip, syntax-error report, disallowed-import
 block, hard-timeout kill), 3.1s (subprocess spawns), ruff clean.
 
-## Pending modules (Round 1)
+## Module 5 — Action governor (built)
 
-- **M5** — action governor (legal-action enforcement, repeated state-action
-  prevention, macro gating with per-step precondition+invariant + stop-on-
-  surprise, MOUSE(row,col) convention, undo accounting).
+`src/admorphiq/repl_agent/governor.py`. Sits between the model's requested
+actions and the env, enforcing the design's action discipline so the model can't
+damage RHAE with reactive/repeated moves. Deterministic (model-free) so the
+replayer can re-derive every decision.
 
-Round 1's second half (Qwen 3.6 FP8 vLLM deployment, latency at 8/12/16
-concurrency, one paired public-25 vs ChainedAgent) runs on Kaggle infra.
+- **Legal-action enforcement** — requested action must be in the current legal
+  set; MOUSE(row, col) must be in bounds (row = y, col = x, zero-based).
+- **Repeated state-action prevention** — the same action in the same state
+  (frame hash) is rejected the second time.
+- **Macro gating** — a 2-8 step macro is admitted ONLY if every step states a
+  precondition AND a predicted invariant; it arms + returns step 1, executes
+  step-by-step, and ABORTS on surprise (unexpected change / unexpected no-change
+  / level completion / game over / signature mismatch). `observe_after` returns
+  continue / macro_done / macro_aborted:<reason>.
+- **Undo accounting** — UNDO is charged as one env action (probe+undo = two);
+  `total_actions` / `undo_count` track it.
+
+9 unit tests (illegal reject, legal accept, MOUSE bounds + missing coords,
+repeated state-action, undo accounting, macro length gating, precondition+
+invariant required, arm + stop-on-surprise, complete + level-complete abort),
+0.02s, ruff clean.
+
+## Round 1 offline core — COMPLETE
+
+All five LLM-free modules built, unit-tested (40 tests total, ruff clean),
+committed one per module. The package `src/admorphiq/repl_agent/` is generic (no
+game ids) and purely additive — the deployed guards are untouched. This is the
+"exact offline replay" + perception + governed-action spine the design doc calls
+for; it makes one-hour Kaggle iterations scientific.
+
+**Round 1's second half runs on Kaggle infra (team-lead's side)**: Qwen 3.6 27B
+FP8 vLLM deployment, model-facing prompt wiring (image-before-text for Gemma /
+turn packet), P50/P95 latency at 8/12/16 concurrency, zero parser/serving
+crashes, and one paired public-25 result vs ChainedAgent. The R54 `vlm_policy`
+JSON-policy agent is the Round-2 2×2 ablation's JSON-policy arm against this
+code-REPL arm.
 
 ## Related
 - [[r54_vision-llm-policy]] — the JSON-policy arm (Round-2 ablation leg).
