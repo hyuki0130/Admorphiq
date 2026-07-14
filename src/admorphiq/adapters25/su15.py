@@ -88,6 +88,79 @@ policy changes, all still composed from ``admorphiq.kernels``:**
    tracks "is THIS click succeeding", not "how many failures has this run
    accumulated overall".
 
+**R56 iteration 7 -- perception layer fixed via gold-replay divergence
+(2026-07-15), four real bugs closed, STILL 0/9 -- BANKED here with a named
+next-hypothesis, not resolved.** Replayed ``data/traces/su15.npz``'s L1
+gold block against this adapter's own ``_next_target``/``_candidates``:
+
+1. **Fragment fusion.** A single game tile renders as ~15-17
+   DISCONNECTED same-colour regions (a symmetric bowtie sprite, not one
+   connected blob) -- ``_candidates`` had no fusion step, so every
+   fragment was its own spurious candidate. Fixed via
+   :func:`admorphiq.kernels.find_regions`'s own ``gap`` parameter
+   (gap-tolerant cell clustering -- no new kernel needed): a 9-level
+   offline acceptance table over every opening frame in ``su15.npz``
+   showed ``gap=2`` fuses every measured bowtie into one region with a
+   true aggregate centroid while NEVER merging two genuinely distinct
+   same-coloured tiles (L9's 4 separate colour-9 tiles, 61px apart, stay
+   4 distinct regions through ``gap=4``). See :data:`_CANDIDATE_GAP`.
+2. **Scatter-detection stray contamination.** The old ``_scatter_colors``
+   measured density over a colour's FULL region list unscoped -- one
+   UNRELATED same-coloured region far from a real, dense tile inflated
+   the whole group's bbox enough to push density under threshold,
+   silently deleting the real tile's every fragment from candidates (not
+   mis-ranked -- gone). Fixed via :func:`_spatial_subgroups` (see
+   :data:`_SUBGROUP_RADIUS`): density is now measured per LOCAL subgroup,
+   computed on the FINE-grained (``gap=0``) region list specifically
+   (gap-fusion would hide a genuine scattered pattern's own sparse
+   signature the same way it correctly fuses a real tile's fragments).
+3. **First-click pair-preference.** On the very first, zero-evidence
+   decision, ``_ranked_targets`` defaulted to a same-colour PAIR guess --
+   unable to distinguish two coincidentally-same-coloured STATIC
+   decorations from a genuine mergeable pair with no prior observation.
+   Measured directly: the adapter's first click targeted two never-moving
+   decorative regions where gold instead targeted the one colour-unique,
+   genuinely movable tile. Fixed via ``prefer_lone=True`` on click 0 only
+   (:attr:`Adapter._clicks_this_level` gates it, resets every level).
+4. **Pool-exhaustion re-enabling dead tiles** (found via LIVE-smoke
+   diagnostic on the above fixes, not the original divergence replay).
+   ``_next_target``'s "unless that empties the pool entirely" fallback
+   reverted to the FULL unfiltered tile list once every candidate
+   accumulated dead/fatal status -- re-enabling tiles already PROVEN
+   useless, an infinite retry loop (measured live: a static decoration
+   dead-bucketed at step 8 got re-picked at step 19 via exactly this
+   path). Fixed: degrade to the harmless centre re-probe instead of ever
+   resurrecting a proven-dead bucket.
+
+Acceptance: re-ran the divergence replay after the fixes -- click 1's
+source now matches gold's exactly (centroid ``(53, 10)``, the
+colour-unique tile), not the static ``(5, 31)``/``(59, 4)`` decoration
+pair. The 9-level offline candidate table confirms correct fusion with
+zero over-merging anywhere. **Live smoke (2x500 + 1x3000a): still 0/9,
+game_score 0.0, reproducible.** The candidate-detection layer is now
+verified correct end-to-end; the wall has moved from perception to
+mechanic understanding.
+
+**NEXT HYPOTHESIS (not yet built -- the explicit reopen pointer for a
+future session, per the team's "bank, don't re-derive" convention).** A
+live diagnostic traced the correctly-identified click-1 target
+(``(53, 10)``, colour 0, size 5) across ~15 further steps post-fix: it is
+STATIC -- unchanged across steps 6, 8, 10, 11 despite being repeatedly
+clicked -- while a SEPARATE, larger (~48-54 size) colour-0 blob is the
+one whose position actually changes every single step. This suggests the
+"vacuum" mechanic (the game's own name) may PULL a distant object toward
+the click point rather than DRAG the region nearest the click: the
+moving ~50-cell blob is likely the controlled/pulled entity, and the
+small static tiles (like ``(53, 10)``) may be targets/receptacles/anchor
+markers, not the thing being dragged. If so, this adapter's entire
+source-tile IDENTITY model -- "the region nearest the click point is the
+thing being moved", used throughout dead-click/fatal-click/useful-shift
+tracking -- needs re-deriving from gold with THIS frame specifically
+before any further policy work; the click-POSITION divergence fix above
+is directionally correct (matches gold) but may be built on the wrong
+object-identity assumption. See ``.wiki/wiki/games/SU15.md`` for the same
+finding cross-linked into the wiki.
+
 Role assignment (declared HERE, not in the kernel layer, which knows
 nothing about tiles, goals, enemies, or merging):
 

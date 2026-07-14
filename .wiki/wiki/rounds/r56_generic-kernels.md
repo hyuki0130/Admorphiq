@@ -62,7 +62,7 @@ metric (2x500-action runs unless noted), not the legacy 25-game card.
 | tu93 | 2/9 @3000a (0/9 @500a) | banked | `9e7f474`/`ac8c177` | slide-until-wall maze, transition-graph baseline; corridor-prediction efficiency lever explicitly banked, not pursued further this round |
 | dc22 | **BANKED at 0/6** | every individual primitive verified correct | `b36fd8a` | walk/stuck/probe/learn architecture is fundamentally REACTIVE; gold's own solution is PROACTIVE/state-gating (set button parity BEFORE walking, not in response to being stuck) — two independently-sound fix attempts (toggler-cycling re-click, parity-combo enumeration) both measured 0/6; the wall is architectural, not a missing heuristic |
 | ka59 | banked at 0/7 | push mechanic WORKS (wall-crossing measured) | `a8299de` | reactive, not planned into the joint solve; re-identify/re-assign overhead eats the action fuse before convergence — a real working primitive with a named remaining gap |
-| su15 | **IN-FLIGHT** | best-so-far: GAME_OVER=11, near-merge 1.9px | `f4158f3` (uncommitted work in progress as of this sweep) | 6 falsification iterations so far (enemy-hazard, select-then-place, absolute-step model all tested against direct measurement); still being actively worked |
+| su15 | **BANKED at 0/9** | candidate-detection layer verified correct end-to-end | `26ebeb6` | iteration 7: 4 real perception bugs closed via gold-replay divergence (fragment fusion via `find_regions(gap=2)`, scatter-detection stray contamination, first-click pair-preference, pool-exhaustion re-enabling dead tiles) — click 1 now matches gold exactly; still 0/9 live, wall moved to a source-IDENTITY question (a live diagnostic found the correctly-identified click-1 target is STATIC while a separate, larger blob is what actually moves — the "vacuum pulls a distant object" hypothesis is the named reopen pointer, not yet built) |
 | sp80 | **IN-FLIGHT, characterization only** | 2 hypotheses falsified live, no adapter yet | `8b48b0b` | 149-transform stable byte-identical 4-transform cycle (colour8 count 3,3,2,2 then GAME_OVER, spawns at identical positions each cycle) — position-delivery AND transform-count hypotheses both falsified; non-monotonic colour8 count means something is CONSUMED each loop, not accumulated; next-step pointer is characterizing that consumption |
 
 ## Diagnostic method of the night: gold-replay divergence
@@ -103,7 +103,19 @@ different CLASS of bug:
   place, escalate-only policy) against a direct gold/live measurement
   before trying the next, rather than guessing broadly — each iteration's
   commit message names the exact falsified claim and the measured
-  evidence, not just the next thing tried.
+  evidence, not just the next thing tried. Iteration 7 (`26ebeb6`)
+  finally applied the method to the CANDIDATE-DETECTION layer itself
+  (previous iterations tuned click mechanics on top of unverified
+  candidates): replaying gold's L1 clicks against `_next_target` found
+  the adapter's very first decision targeted a coincidentally-same-
+  coloured STATIC decoration pair instead of the one colour-unique,
+  genuinely movable tile gold used — plus three more bugs the same
+  replay + a 9-level offline table + a live-smoke diagnostic surfaced
+  (fragment-sprite fusion, a stray-region scatter-contamination bug, a
+  dead-bucket pool-exhaustion re-enable). All four fixed and verified;
+  still 0/9 live, BANKED with a named next-hypothesis (source-tile
+  IDENTITY, not click position, may be the wrong model — see
+  [[../games/SU15]] for the full trace evidence).
 
 The common thread: a strategy can be "individually correct" at every
 piece (as dc22's re-click fix and lp85's original rarity ranking both
