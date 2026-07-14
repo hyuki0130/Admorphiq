@@ -8,7 +8,7 @@ seeds `llm_context/decision_tree.md` first, then walks `[[backlinks]]`.
 Use this index when authoring or auditing: skim the catalog, pick a
 category, drill into specific pages.
 
-**Total pages**: 142.
+**Total pages**: 143.
 
 ## Games (25)
 
@@ -90,7 +90,7 @@ category, drill into specific pages.
 - [[concepts/sprite_cluster.md]] — A connected component of same-color pixels in the frame. The universal primitive for detecting entities without reading game internals.
 - [[concepts/version_hash.md]] — A game's identifier in the ARC Prize API has the form `<title>-<hash>` (e.g. `tn36-ab4f63cc`). The hash is a version fingerprint: games with the same title but different hashes share gameplay rules but differ in internal implementation details that solvers may or may not observe.
 
-## Lessons (engineering wisdom from past incidents) (25)
+## Lessons (engineering wisdom from past incidents) (26)
 
 - [[lessons/top_solutions_survey_20260708.md]] — Survey of what is actually open-sourced for ARC-AGI-3 (M1 winners = local-LLM agents), resolution of the leaderboard score-scale confusion (top ~1.56 = 1.56%, not 156%; the 12.58% anchor was the 2025 preview), and the top-3 generic levers to adopt next.
 - [[lessons/online_rl_sprint_round_log.md]] — **🔎 To FIND past work by topic, start at the retrieval map [[rounds_index]]**
@@ -105,6 +105,7 @@ category, drill into specific pages.
 - [[lessons/hardcoded_is_anti.md]] — Any hardcoded mapping of `level → solution` is a bet that level layouts stay identical. They do not. Every hardcoded solver eventually breaks; the only question is how much score it takes with it when it does.
 - [[lessons/inferential_budget_vs_algo_20260423.md]] — `scripts/probe_inferential_direct.py` ran the I-Agent against 10
 - [[lessons/ka59_v2_action6_semantic_20260423.md]] — The `ka59-9f096b4a` (v1) → `ka59-38d34dbb` (v2) hash rotation
+- [[lessons/lb_top_team_research_20260714.md]] — M1 top-3 all use offline LLM brains (Gemma-4-31B ×2, Qwen 3.6 27B); the untried lever for us is vision-LLM-as-policy; our model pick and brittle-purge direction are independently validated.
 - [[lessons/merge_drag_stall_causes_game_over_20260713.md]] — Live-traced SU15 L3 (post L1+L2 clear) on `merge_drag.py` /
 - [[lessons/prefix_aware_navigation_20260423.md]] — `_plan_navigation` must resume BFS from the current level start using the cumulative prefix and chain `solve_all_levels` internally; R20 accidentally dropped multi-level chaining (AR25/M0R0 regressed 2→1), and R22 restored it with prefix awareness so one plan call clears multiple levels in sequence.
 - [[lessons/schema_enforcement_round1_20260421.md]] — Measurement log for the R7 round-1 bench. The operational rules it
