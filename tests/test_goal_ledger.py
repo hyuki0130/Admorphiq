@@ -267,6 +267,158 @@ def test_threshold_needs_action_repeat_frames_and_fires_on_a_monotonic_trend():
     assert "threshold" not in [c["type"] for c in no_trend["goal_candidates"]]
 
 
+# ----- R58 tuning round: strength scoring + discriminator fixes -------------------
+# Added after validating the (unscored, unfiltered) v1 ledger against real
+# early-trace frames for all 24 R57-evidenced games — see the team-lead
+# report for the full before/after. These tests pin the three approved
+# structural fixes directly, independent of any specific game.
+def test_all_fired_candidates_carry_a_strength_in_unit_interval():
+    """Purpose: every candidate from every detector must carry a
+    ``"strength"`` in ``[0, 1]`` (R58 tuning round) — checked across a
+    fixture that fires all six types at once.
+
+    Expected feedback: a pass proves every strength formula returns a
+    value in range; a fail would mean a formula can escape its bounds
+    (e.g. a saturating term computed on unexpected input) and corrupt the
+    sort order downstream.
+    """
+    import admorphiq.explanation.goal_ledger as gl
+
+    original_cap = gl.MAX_CANDIDATES
+    gl.MAX_CANDIDATES = 10  # lift the cap so every fired candidate is inspectable
+    try:
+        result = gl.detect(_saturating_observations())
+    finally:
+        gl.MAX_CANDIDATES = original_cap
+    assert len(result["goal_candidates"]) == 6  # this fixture fires every detector type
+    for c in result["goal_candidates"]:
+        assert "strength" in c
+        assert 0.0 <= c["strength"] <= 1.0
+
+
+def test_candidates_are_sorted_by_strength_descending():
+    """Purpose: ``goal_candidates`` must be sorted strongest-first (R58
+    tuning round) — before this, the first-fired candidate was an artifact
+    of a fixed detector-execution order, not a confidence signal.
+
+    Expected feedback: a pass proves the sort is actually applied to the
+    returned (capped) list; a fail means ranking silently reverted to
+    pipeline order.
+    """
+    result = detect(_saturating_observations())
+    strengths = [c["strength"] for c in result["goal_candidates"]]
+    assert strengths == sorted(strengths, reverse=True)
+
+
+def test_uniformity_ignores_trivial_single_cell_noise():
+    """Purpose: R58 discriminator #1 — a population of >=6 same-colour 1x1
+    dots (a decorative-texture proxy; real-trace validation found several
+    games where exactly this pattern drove a false 'uniformity' positive)
+    must NOT fire uniformity, even though it satisfies the old v1 rule
+    ('most members in one shape class').
+
+    Expected feedback: a pass proves the >1-cell-shape gate actually
+    excludes trivial noise; a fail reopens the exact false-positive class
+    the validation round measured.
+    """
+    g = _grid(10, 10)
+    for r, c in [(1, 1), (1, 3), (1, 5), (3, 1), (3, 3), (3, 5), (5, 1), (5, 3)]:
+        _dot(g, r, c, 9)  # 8 disjoint 1x1 dots, ALL the same colour and shape
+    result = detect({"frame": g})
+    assert "uniformity" not in [c["type"] for c in result["goal_candidates"]]
+
+
+def test_uniformity_rejects_a_shape_class_spanning_too_many_colours():
+    """Purpose: R58 discriminator #2 — a repeated non-trivial shape class is
+    only a 'uniformity' candidate when it spans <= _MAX_UNIFORM_SHAPE_COLORS
+    distinct colours; a class using MORE colours than that (each member a
+    different colour, say) reads as incidental co-occurrence, not one
+    coherent toggle grid.
+
+    Expected feedback: a pass proves the colour-count gate is enforced
+    independently of the shape-size gate; a fail means any repeated shape
+    fires regardless of how incoherent its colour usage is.
+    """
+    g = _grid(10, 10)
+    colours = [1, 2, 3, 4, 5, 6]  # 6 distinct colours, one per domino — exceeds the cap of 3
+    for i, (r, c) in enumerate([(1, 1), (1, 4), (1, 7), (4, 1), (4, 4), (4, 7)]):
+        _fill(g, r, c, r, c + 1, colours[i])
+    result = detect({"frame": g})
+    assert "uniformity" not in [c["type"] for c in result["goal_candidates"]]
+
+
+def test_arrival_dominance_filter_admits_a_large_but_non_dominant_target():
+    """Purpose: R58 fix #3 — the arrival detector's size filter changed from
+    'exclude anything above the median region size' to 'exclude only a
+    region covering more than half the frame'. This fixture reproduces the
+    exact failure mode found in real-trace validation: a colour-unique
+    target region that is LARGER than the median (so v1's filter would
+    have dropped it) but well under 50% of the board (so the new filter
+    admits it).
+
+    Expected feedback: a pass proves the known real-world false-negative
+    class is fixed; a fail means the dominance filter regressed to
+    median-based exclusion.
+    """
+    g = _grid(20, 20)  # 400-cell frame; 50% dominance threshold = 200 cells
+    # many small (4-cell) same-colour tiles establish a LOW median...
+    for r, c in [(0, 0), (0, 4), (0, 8), (0, 12), (0, 16), (4, 0), (4, 4), (4, 8)]:
+        _fill(g, r, c, r + 1, c + 1, 3)
+    # ...while the colour-unique target is bigger than every one of them (a 5x5=25-cell
+    # block) but nowhere near 50% of the 400-cell frame — v1's median filter would
+    # have excluded this; the dominance filter must not.
+    _fill(g, 10, 10, 14, 14, 7)
+    result = detect({"frame": g})
+    arrival = next((c for c in result["goal_candidates"] if c["type"] == "arrival"), None)
+    assert arrival is not None
+
+
+def test_arrival_dominance_filter_still_excludes_a_truly_dominant_region():
+    """Purpose: the flip side of the dominance-filter fix — a colour-unique
+    region covering MORE than half the frame (a background panel, not a
+    small target) must still be excluded, same as v1 intended for its
+    "one large dominant panel" case.
+
+    Expected feedback: a pass proves the filter didn't just get deleted
+    (it still excludes the one case it was built for); a fail means any
+    region, however large, now counts as an arrival candidate.
+    """
+    g = _grid(10, 10)  # 100-cell frame; 50% = 50 cells
+    _fill(g, 0, 0, 7, 9, 5)  # colour-unique, 80 cells — dominates the frame
+    result = detect({"frame": g})
+    assert "arrival" not in [c["type"] for c in result["goal_candidates"]]
+
+
+def test_elimination_confirmation_penalizes_a_single_uncorroborated_transition():
+    """Purpose: R58 fix #2 — elimination still FIRES off one transition
+    (first-observation-adjacent calls keep working) but its
+    ``confirmation_component`` must score exactly 0.5 with no
+    ``extra_transitions``, and 1.0 once a second transition also shows a
+    vanish — real-trace validation found single-transition elimination
+    over-fired on essentially arbitrary noise, so corroboration must move
+    the score, not just exist as an unused field.
+
+    Expected feedback: a pass proves the corroboration mechanism actually
+    changes strength; a fail means extra_transitions is accepted but
+    silently ignored.
+    """
+    before, after = _elimination_pair()
+    uncorroborated = detect({"before": before, "after": after})
+    strength_alone = next(c for c in uncorroborated["goal_candidates"] if c["type"] == "elimination")["strength"]
+
+    corroborating_before, corroborating_after = _elimination_pair()  # a second, independent vanish event
+    corroborated = detect(
+        {
+            "before": before,
+            "after": after,
+            "extra_transitions": [(corroborating_before, corroborating_after)],
+        }
+    )
+    strength_confirmed = next(c for c in corroborated["goal_candidates"] if c["type"] == "elimination")["strength"]
+
+    assert strength_confirmed > strength_alone
+
+
 # ----- the two-hypotheses-or-insufficient-evidence rule (verdict §4) -------------
 def test_single_detector_firing_is_insufficient_evidence():
     """Purpose: verdict §4 requires EITHER two distinct competing hypotheses OR

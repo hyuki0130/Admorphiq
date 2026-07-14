@@ -6,40 +6,25 @@
     "gt_note": "",
     "repeat_window_available": true,
     "candidates": [
-      "arrival",
       "elimination"
     ],
-    "n_competing": 2,
-    "insufficient_evidence": false,
-    "verdict": "TOP1",
-    "unresolved_tests": [
-      "which of ['arrival', 'elimination'] is the true win condition is not yet determined by static structure alone"
-    ],
+    "n_competing": 1,
+    "insufficient_evidence": true,
+    "verdict": "MISS",
+    "unresolved_tests": [],
     "full_result": {
       "goal_candidates": [
         {
           "id": "goal:1",
-          "type": "arrival",
+          "type": "elimination",
           "support": [
             "evidence:1"
           ],
-          "against": [],
-          "strength": 0.4945068359375
-        },
-        {
-          "id": "goal:2",
-          "type": "elimination",
-          "support": [
-            "evidence:2"
-          ],
-          "against": [],
-          "strength": 0.3125
+          "against": []
         }
       ],
-      "unresolved_tests": [
-        "which of ['arrival', 'elimination'] is the true win condition is not yet determined by static structure alone"
-      ],
-      "insufficient_evidence": false
+      "unresolved_tests": [],
+      "insufficient_evidence": true
     }
   },
   {
@@ -49,64 +34,58 @@
     "gt_note": "",
     "repeat_window_available": true,
     "candidates": [
+      "uniformity",
+      "containment",
       "pattern_match",
-      "arrival",
-      "threshold",
-      "containment"
+      "elimination"
     ],
     "n_competing": 4,
     "insufficient_evidence": false,
-    "verdict": "TOPK",
+    "verdict": "MISS",
     "unresolved_tests": [
-      "which of ['arrival', 'containment', 'pattern_match', 'threshold'] is the true win condition is not yet determined by static structure alone",
-      "goal:1 (arrival) has a structural contradiction \u2014 resolve with a cheap probe before committing"
+      "which of ['containment', 'elimination', 'pattern_match', 'uniformity'] is the true win condition is not yet determined by static structure alone"
     ],
     "full_result": {
       "goal_candidates": [
         {
-          "id": "goal:4",
-          "type": "pattern_match",
-          "support": [
-            "evidence:8"
-          ],
-          "against": [],
-          "strength": 0.6333333333333334
-        },
-        {
           "id": "goal:1",
-          "type": "arrival",
+          "type": "uniformity",
           "support": [
-            "evidence:1"
+            "evidence:1",
+            "evidence:2",
+            "evidence:3"
           ],
-          "against": [
-            "evidence:9"
-          ],
-          "strength": 0.33317057291666663
+          "against": []
         },
         {
-          "id": "goal:6",
-          "type": "threshold",
+          "id": "goal:2",
+          "type": "containment",
           "support": [
-            "evidence:11"
+            "evidence:4",
+            "evidence:5",
+            "evidence:6"
           ],
-          "against": [],
-          "strength": 0.2553191489361702
+          "against": []
         },
         {
           "id": "goal:3",
-          "type": "containment",
+          "type": "pattern_match",
           "support": [
-            "evidence:5",
-            "evidence:6",
             "evidence:7"
           ],
-          "against": [],
-          "strength": 0.10332253427282774
+          "against": []
+        },
+        {
+          "id": "goal:4",
+          "type": "elimination",
+          "support": [
+            "evidence:8"
+          ],
+          "against": []
         }
       ],
       "unresolved_tests": [
-        "which of ['arrival', 'containment', 'pattern_match', 'threshold'] is the true win condition is not yet determined by static structure alone",
-        "goal:1 (arrival) has a structural contradiction \u2014 resolve with a cheap probe before committing"
+        "which of ['containment', 'elimination', 'pattern_match', 'uniformity'] is the true win condition is not yet determined by static structure alone"
       ],
       "insufficient_evidence": false
     }
@@ -118,36 +97,26 @@
     "gt_note": "",
     "repeat_window_available": false,
     "candidates": [
-      "pattern_match",
       "arrival",
       "containment",
+      "pattern_match",
       "elimination"
     ],
     "n_competing": 4,
     "insufficient_evidence": false,
-    "verdict": "TOP1",
+    "verdict": "TOPK",
     "unresolved_tests": [
       "which of ['arrival', 'containment', 'elimination', 'pattern_match'] is the true win condition is not yet determined by static structure alone"
     ],
     "full_result": {
       "goal_candidates": [
         {
-          "id": "goal:3",
-          "type": "pattern_match",
-          "support": [
-            "evidence:4"
-          ],
-          "against": [],
-          "strength": 0.5333333333333334
-        },
-        {
           "id": "goal:1",
           "type": "arrival",
           "support": [
             "evidence:1"
           ],
-          "against": [],
-          "strength": 0.496337890625
+          "against": []
         },
         {
           "id": "goal:2",
@@ -156,8 +125,15 @@
             "evidence:2",
             "evidence:3"
           ],
-          "against": [],
-          "strength": 0.2857142857142857
+          "against": []
+        },
+        {
+          "id": "goal:3",
+          "type": "pattern_match",
+          "support": [
+            "evidence:4"
+          ],
+          "against": []
         },
         {
           "id": "goal:4",
@@ -165,8 +141,7 @@
           "support": [
             "evidence:5"
           ],
-          "against": [],
-          "strength": 0.09999999999999999
+          "against": []
         }
       ],
       "unresolved_tests": [
@@ -182,40 +157,25 @@
     "gt_note": "",
     "repeat_window_available": true,
     "candidates": [
-      "arrival",
       "threshold"
     ],
-    "n_competing": 2,
-    "insufficient_evidence": false,
-    "verdict": "TOP1",
-    "unresolved_tests": [
-      "which of ['arrival', 'threshold'] is the true win condition is not yet determined by static structure alone"
-    ],
+    "n_competing": 1,
+    "insufficient_evidence": true,
+    "verdict": "MISS",
+    "unresolved_tests": [],
     "full_result": {
       "goal_candidates": [
         {
           "id": "goal:1",
-          "type": "arrival",
+          "type": "threshold",
           "support": [
             "evidence:1"
           ],
-          "against": [],
-          "strength": 0.33072916666666663
-        },
-        {
-          "id": "goal:2",
-          "type": "threshold",
-          "support": [
-            "evidence:2"
-          ],
-          "against": [],
-          "strength": 0.003350083752093803
+          "against": []
         }
       ],
-      "unresolved_tests": [
-        "which of ['arrival', 'threshold'] is the true win condition is not yet determined by static structure alone"
-      ],
-      "insufficient_evidence": false
+      "unresolved_tests": [],
+      "insufficient_evidence": true
     }
   },
   {
@@ -225,29 +185,20 @@
     "gt_note": "",
     "repeat_window_available": false,
     "candidates": [
-      "pattern_match",
       "arrival",
       "uniformity",
+      "pattern_match",
       "elimination"
     ],
     "n_competing": 4,
     "insufficient_evidence": false,
-    "verdict": "TOPK",
+    "verdict": "TOP1",
     "unresolved_tests": [
       "which of ['arrival', 'elimination', 'pattern_match', 'uniformity'] is the true win condition is not yet determined by static structure alone",
       "goal:1 (arrival) has a structural contradiction \u2014 resolve with a cheap probe before committing"
     ],
     "full_result": {
       "goal_candidates": [
-        {
-          "id": "goal:3",
-          "type": "pattern_match",
-          "support": [
-            "evidence:5"
-          ],
-          "against": [],
-          "strength": 0.6222222222222223
-        },
         {
           "id": "goal:1",
           "type": "arrival",
@@ -256,8 +207,7 @@
           ],
           "against": [
             "evidence:6"
-          ],
-          "strength": 0.249755859375
+          ]
         },
         {
           "id": "goal:2",
@@ -267,8 +217,15 @@
             "evidence:3",
             "evidence:4"
           ],
-          "against": [],
-          "strength": 0.09285714285714287
+          "against": []
+        },
+        {
+          "id": "goal:3",
+          "type": "pattern_match",
+          "support": [
+            "evidence:5"
+          ],
+          "against": []
         },
         {
           "id": "goal:4",
@@ -276,8 +233,7 @@
           "support": [
             "evidence:7"
           ],
-          "against": [],
-          "strength": 0.020833333333333332
+          "against": []
         }
       ],
       "unresolved_tests": [
@@ -294,60 +250,56 @@
     "gt_note": "",
     "repeat_window_available": true,
     "candidates": [
+      "uniformity",
       "pattern_match",
-      "threshold",
-      "arrival",
-      "uniformity"
+      "elimination",
+      "threshold"
     ],
     "n_competing": 4,
     "insufficient_evidence": false,
-    "verdict": "TOPK",
+    "verdict": "TOP1",
     "unresolved_tests": [
-      "which of ['arrival', 'pattern_match', 'threshold', 'uniformity'] is the true win condition is not yet determined by static structure alone"
+      "which of ['elimination', 'pattern_match', 'threshold', 'uniformity'] is the true win condition is not yet determined by static structure alone"
     ],
     "full_result": {
       "goal_candidates": [
         {
-          "id": "goal:3",
-          "type": "pattern_match",
-          "support": [
-            "evidence:5"
-          ],
-          "against": [],
-          "strength": 0.7058823529411764
-        },
-        {
-          "id": "goal:5",
-          "type": "threshold",
-          "support": [
-            "evidence:7"
-          ],
-          "against": [],
-          "strength": 0.5
-        },
-        {
           "id": "goal:1",
-          "type": "arrival",
+          "type": "uniformity",
           "support": [
-            "evidence:1"
+            "evidence:1",
+            "evidence:2",
+            "evidence:3"
           ],
-          "against": [],
-          "strength": 0.4921875
+          "against": []
         },
         {
           "id": "goal:2",
-          "type": "uniformity",
+          "type": "pattern_match",
           "support": [
-            "evidence:2",
-            "evidence:3",
             "evidence:4"
           ],
-          "against": [],
-          "strength": 0.3240740740740741
+          "against": []
+        },
+        {
+          "id": "goal:3",
+          "type": "elimination",
+          "support": [
+            "evidence:5"
+          ],
+          "against": []
+        },
+        {
+          "id": "goal:4",
+          "type": "threshold",
+          "support": [
+            "evidence:6"
+          ],
+          "against": []
         }
       ],
       "unresolved_tests": [
-        "which of ['arrival', 'pattern_match', 'threshold', 'uniformity'] is the true win condition is not yet determined by static structure alone"
+        "which of ['elimination', 'pattern_match', 'threshold', 'uniformity'] is the true win condition is not yet determined by static structure alone"
       ],
       "insufficient_evidence": false
     }
@@ -359,8 +311,8 @@
     "gt_note": "",
     "repeat_window_available": true,
     "candidates": [
-      "pattern_match",
-      "arrival"
+      "arrival",
+      "pattern_match"
     ],
     "n_competing": 2,
     "insufficient_evidence": false,
@@ -371,22 +323,20 @@
     "full_result": {
       "goal_candidates": [
         {
-          "id": "goal:2",
-          "type": "pattern_match",
-          "support": [
-            "evidence:2"
-          ],
-          "against": [],
-          "strength": 0.5333333333333334
-        },
-        {
           "id": "goal:1",
           "type": "arrival",
           "support": [
             "evidence:1"
           ],
-          "against": [],
-          "strength": 0.4989013671875
+          "against": []
+        },
+        {
+          "id": "goal:2",
+          "type": "pattern_match",
+          "support": [
+            "evidence:2"
+          ],
+          "against": []
         }
       ],
       "unresolved_tests": [
@@ -402,10 +352,10 @@
     "gt_note": "",
     "repeat_window_available": true,
     "candidates": [
-      "threshold",
-      "containment",
       "arrival",
-      "elimination"
+      "containment",
+      "elimination",
+      "threshold"
     ],
     "n_competing": 4,
     "insufficient_evidence": false,
@@ -417,13 +367,14 @@
     "full_result": {
       "goal_candidates": [
         {
-          "id": "goal:4",
-          "type": "threshold",
+          "id": "goal:1",
+          "type": "arrival",
           "support": [
-            "evidence:6"
+            "evidence:1"
           ],
-          "against": [],
-          "strength": 0.5263157894736843
+          "against": [
+            "evidence:4"
+          ]
         },
         {
           "id": "goal:2",
@@ -432,19 +383,7 @@
             "evidence:2",
             "evidence:3"
           ],
-          "against": [],
-          "strength": 0.33333333333333337
-        },
-        {
-          "id": "goal:1",
-          "type": "arrival",
-          "support": [
-            "evidence:1"
-          ],
-          "against": [
-            "evidence:4"
-          ],
-          "strength": 0.333251953125
+          "against": []
         },
         {
           "id": "goal:3",
@@ -452,8 +391,15 @@
           "support": [
             "evidence:5"
           ],
-          "against": [],
-          "strength": 0.00775862068965516
+          "against": []
+        },
+        {
+          "id": "goal:4",
+          "type": "threshold",
+          "support": [
+            "evidence:6"
+          ],
+          "against": []
         }
       ],
       "unresolved_tests": [
@@ -470,62 +416,49 @@
     "gt_note": "R57 itself grades this LOW CONFIDENCE",
     "repeat_window_available": true,
     "candidates": [
-      "arrival",
       "uniformity",
-      "elimination",
-      "containment"
+      "containment",
+      "elimination"
     ],
-    "n_competing": 4,
+    "n_competing": 3,
     "insufficient_evidence": false,
     "verdict": "TOPK",
     "unresolved_tests": [
-      "which of ['arrival', 'containment', 'elimination', 'uniformity'] is the true win condition is not yet determined by static structure alone"
+      "which of ['containment', 'elimination', 'uniformity'] is the true win condition is not yet determined by static structure alone"
     ],
     "full_result": {
       "goal_candidates": [
         {
           "id": "goal:1",
-          "type": "arrival",
+          "type": "uniformity",
           "support": [
-            "evidence:1"
+            "evidence:1",
+            "evidence:2",
+            "evidence:3"
           ],
-          "against": [],
-          "strength": 0.9580078125
+          "against": []
         },
         {
           "id": "goal:2",
-          "type": "uniformity",
+          "type": "containment",
           "support": [
-            "evidence:2",
-            "evidence:3",
-            "evidence:4"
+            "evidence:4",
+            "evidence:5",
+            "evidence:6"
           ],
-          "against": [],
-          "strength": 0.45258620689655177
-        },
-        {
-          "id": "goal:4",
-          "type": "elimination",
-          "support": [
-            "evidence:8"
-          ],
-          "against": [],
-          "strength": 0.03125
+          "against": []
         },
         {
           "id": "goal:3",
-          "type": "containment",
+          "type": "elimination",
           "support": [
-            "evidence:5",
-            "evidence:6",
             "evidence:7"
           ],
-          "against": [],
-          "strength": 0.0
+          "against": []
         }
       ],
       "unresolved_tests": [
-        "which of ['arrival', 'containment', 'elimination', 'uniformity'] is the true win condition is not yet determined by static structure alone"
+        "which of ['containment', 'elimination', 'uniformity'] is the true win condition is not yet determined by static structure alone"
       ],
       "insufficient_evidence": false
     }
@@ -537,42 +470,27 @@
     "gt_note": "",
     "repeat_window_available": true,
     "candidates": [
-      "arrival",
       "uniformity"
     ],
-    "n_competing": 2,
-    "insufficient_evidence": false,
-    "verdict": "TOP1",
-    "unresolved_tests": [
-      "which of ['arrival', 'uniformity'] is the true win condition is not yet determined by static structure alone"
-    ],
+    "n_competing": 1,
+    "insufficient_evidence": true,
+    "verdict": "MISS",
+    "unresolved_tests": [],
     "full_result": {
       "goal_candidates": [
         {
           "id": "goal:1",
-          "type": "arrival",
-          "support": [
-            "evidence:1"
-          ],
-          "against": [],
-          "strength": 0.990234375
-        },
-        {
-          "id": "goal:2",
           "type": "uniformity",
           "support": [
+            "evidence:1",
             "evidence:2",
-            "evidence:3",
-            "evidence:4"
+            "evidence:3"
           ],
-          "against": [],
-          "strength": 0.16216216216216217
+          "against": []
         }
       ],
-      "unresolved_tests": [
-        "which of ['arrival', 'uniformity'] is the true win condition is not yet determined by static structure alone"
-      ],
-      "insufficient_evidence": false
+      "unresolved_tests": [],
+      "insufficient_evidence": true
     }
   },
   {
@@ -582,14 +500,14 @@
     "gt_note": "",
     "repeat_window_available": true,
     "candidates": [
-      "pattern_match",
-      "containment",
       "arrival",
+      "containment",
+      "pattern_match",
       "elimination"
     ],
     "n_competing": 4,
     "insufficient_evidence": false,
-    "verdict": "TOPK",
+    "verdict": "TOP1",
     "unresolved_tests": [
       "which of ['arrival', 'containment', 'elimination', 'pattern_match'] is the true win condition is not yet determined by static structure alone",
       "goal:1 (arrival) has a structural contradiction \u2014 resolve with a cheap probe before committing"
@@ -597,13 +515,14 @@
     "full_result": {
       "goal_candidates": [
         {
-          "id": "goal:3",
-          "type": "pattern_match",
+          "id": "goal:1",
+          "type": "arrival",
           "support": [
-            "evidence:5"
+            "evidence:1"
           ],
-          "against": [],
-          "strength": 0.7000000000000001
+          "against": [
+            "evidence:6"
+          ]
         },
         {
           "id": "goal:2",
@@ -613,19 +532,15 @@
             "evidence:3",
             "evidence:4"
           ],
-          "against": [],
-          "strength": 0.29072067322815415
+          "against": []
         },
         {
-          "id": "goal:1",
-          "type": "arrival",
+          "id": "goal:3",
+          "type": "pattern_match",
           "support": [
-            "evidence:1"
+            "evidence:5"
           ],
-          "against": [
-            "evidence:6"
-          ],
-          "strength": 0.24981689453125
+          "against": []
         },
         {
           "id": "goal:4",
@@ -633,8 +548,7 @@
           "support": [
             "evidence:7"
           ],
-          "against": [],
-          "strength": 0.0028026905829596493
+          "against": []
         }
       ],
       "unresolved_tests": [
@@ -665,8 +579,7 @@
           "support": [
             "evidence:1"
           ],
-          "against": [],
-          "strength": 0.342041015625
+          "against": []
         }
       ],
       "unresolved_tests": [],
@@ -681,14 +594,15 @@
     "repeat_window_available": true,
     "candidates": [
       "arrival",
+      "uniformity",
       "containment",
       "elimination"
     ],
-    "n_competing": 3,
+    "n_competing": 4,
     "insufficient_evidence": false,
     "verdict": "MISS",
     "unresolved_tests": [
-      "which of ['arrival', 'containment', 'elimination'] is the true win condition is not yet determined by static structure alone",
+      "which of ['arrival', 'containment', 'elimination', 'uniformity'] is the true win condition is not yet determined by static structure alone",
       "goal:1 (arrival) has a structural contradiction \u2014 resolve with a cheap probe before committing"
     ],
     "full_result": {
@@ -700,32 +614,39 @@
             "evidence:1"
           ],
           "against": [
-            "evidence:4"
-          ],
-          "strength": 0.4998779296875
+            "evidence:7"
+          ]
         },
         {
           "id": "goal:2",
-          "type": "containment",
+          "type": "uniformity",
           "support": [
             "evidence:2",
-            "evidence:3"
+            "evidence:3",
+            "evidence:4"
           ],
-          "against": [],
-          "strength": 0.4
+          "against": []
         },
         {
           "id": "goal:3",
+          "type": "containment",
+          "support": [
+            "evidence:5",
+            "evidence:6"
+          ],
+          "against": []
+        },
+        {
+          "id": "goal:4",
           "type": "elimination",
           "support": [
-            "evidence:5"
+            "evidence:8"
           ],
-          "against": [],
-          "strength": 0.0078125
+          "against": []
         }
       ],
       "unresolved_tests": [
-        "which of ['arrival', 'containment', 'elimination'] is the true win condition is not yet determined by static structure alone",
+        "which of ['arrival', 'containment', 'elimination', 'uniformity'] is the true win condition is not yet determined by static structure alone",
         "goal:1 (arrival) has a structural contradiction \u2014 resolve with a cheap probe before committing"
       ],
       "insufficient_evidence": false
@@ -756,8 +677,7 @@
           "support": [
             "evidence:1"
           ],
-          "against": [],
-          "strength": 0.4998779296875
+          "against": []
         },
         {
           "id": "goal:2",
@@ -767,8 +687,7 @@
             "evidence:3",
             "evidence:4"
           ],
-          "against": [],
-          "strength": 0.30434782608695654
+          "against": []
         },
         {
           "id": "goal:3",
@@ -776,8 +695,7 @@
           "support": [
             "evidence:5"
           ],
-          "against": [],
-          "strength": 0.0625
+          "against": []
         }
       ],
       "unresolved_tests": [
@@ -793,39 +711,48 @@
     "gt_note": "axis-projected variant, ledger only does 2D bbox",
     "repeat_window_available": true,
     "candidates": [
+      "uniformity",
       "containment",
       "elimination"
     ],
-    "n_competing": 2,
+    "n_competing": 3,
     "insufficient_evidence": false,
     "verdict": "MISS",
     "unresolved_tests": [
-      "which of ['containment', 'elimination'] is the true win condition is not yet determined by static structure alone"
+      "which of ['containment', 'elimination', 'uniformity'] is the true win condition is not yet determined by static structure alone"
     ],
     "full_result": {
       "goal_candidates": [
         {
           "id": "goal:1",
-          "type": "containment",
+          "type": "uniformity",
           "support": [
             "evidence:1",
-            "evidence:2"
+            "evidence:2",
+            "evidence:3"
           ],
-          "against": [],
-          "strength": 0.5
+          "against": []
         },
         {
           "id": "goal:2",
+          "type": "containment",
+          "support": [
+            "evidence:4",
+            "evidence:5"
+          ],
+          "against": []
+        },
+        {
+          "id": "goal:3",
           "type": "elimination",
           "support": [
-            "evidence:3"
+            "evidence:6"
           ],
-          "against": [],
-          "strength": 0.11666666666666667
+          "against": []
         }
       ],
       "unresolved_tests": [
-        "which of ['containment', 'elimination'] is the true win condition is not yet determined by static structure alone"
+        "which of ['containment', 'elimination', 'uniformity'] is the true win condition is not yet determined by static structure alone"
       ],
       "insufficient_evidence": false
     }
@@ -837,49 +764,48 @@
     "gt_note": "",
     "repeat_window_available": true,
     "candidates": [
-      "arrival",
-      "pattern_match",
-      "containment"
+      "uniformity",
+      "containment",
+      "pattern_match"
     ],
     "n_competing": 3,
     "insufficient_evidence": false,
     "verdict": "TOPK",
     "unresolved_tests": [
-      "which of ['arrival', 'containment', 'pattern_match'] is the true win condition is not yet determined by static structure alone"
+      "which of ['containment', 'pattern_match', 'uniformity'] is the true win condition is not yet determined by static structure alone"
     ],
     "full_result": {
       "goal_candidates": [
         {
           "id": "goal:1",
-          "type": "arrival",
+          "type": "uniformity",
           "support": [
-            "evidence:1"
+            "evidence:1",
+            "evidence:2",
+            "evidence:3"
           ],
-          "against": [],
-          "strength": 0.982421875
-        },
-        {
-          "id": "goal:3",
-          "type": "pattern_match",
-          "support": [
-            "evidence:4"
-          ],
-          "against": [],
-          "strength": 0.7000000000000001
+          "against": []
         },
         {
           "id": "goal:2",
           "type": "containment",
           "support": [
-            "evidence:2",
-            "evidence:3"
+            "evidence:4",
+            "evidence:5"
           ],
-          "against": [],
-          "strength": 0.33333333333333337
+          "against": []
+        },
+        {
+          "id": "goal:3",
+          "type": "pattern_match",
+          "support": [
+            "evidence:6"
+          ],
+          "against": []
         }
       ],
       "unresolved_tests": [
-        "which of ['arrival', 'containment', 'pattern_match'] is the true win condition is not yet determined by static structure alone"
+        "which of ['containment', 'pattern_match', 'uniformity'] is the true win condition is not yet determined by static structure alone"
       ],
       "insufficient_evidence": false
     }
@@ -891,52 +817,40 @@
     "gt_note": "R57 calls phase1/phase2 a hybrid; either type counts as a hit",
     "repeat_window_available": true,
     "candidates": [
-      "arrival",
-      "containment",
-      "uniformity"
+      "uniformity",
+      "containment"
     ],
-    "n_competing": 3,
+    "n_competing": 2,
     "insufficient_evidence": false,
-    "verdict": "TOPK",
+    "verdict": "TOP1",
     "unresolved_tests": [
-      "which of ['arrival', 'containment', 'uniformity'] is the true win condition is not yet determined by static structure alone"
+      "which of ['containment', 'uniformity'] is the true win condition is not yet determined by static structure alone"
     ],
     "full_result": {
       "goal_candidates": [
         {
           "id": "goal:1",
-          "type": "arrival",
+          "type": "uniformity",
           "support": [
-            "evidence:1"
+            "evidence:1",
+            "evidence:2",
+            "evidence:3"
           ],
-          "against": [],
-          "strength": 0.96875
-        },
-        {
-          "id": "goal:3",
-          "type": "containment",
-          "support": [
-            "evidence:5",
-            "evidence:6",
-            "evidence:7"
-          ],
-          "against": [],
-          "strength": 0.4266392333923015
+          "against": []
         },
         {
           "id": "goal:2",
-          "type": "uniformity",
+          "type": "containment",
           "support": [
-            "evidence:2",
-            "evidence:3",
-            "evidence:4"
+            "evidence:4",
+            "evidence:5",
+            "evidence:6"
           ],
-          "against": [],
-          "strength": 0.24242424242424246
+          "against": []
         }
       ],
       "unresolved_tests": [
-        "which of ['arrival', 'containment', 'uniformity'] is the true win condition is not yet determined by static structure alone"
+        "which of ['containment', 'uniformity'] is the true win condition is not yet determined by static structure alone"
       ],
       "insufficient_evidence": false
     }
@@ -948,10 +862,10 @@
     "gt_note": "",
     "repeat_window_available": true,
     "candidates": [
-      "threshold",
-      "containment",
       "uniformity",
-      "elimination"
+      "containment",
+      "elimination",
+      "threshold"
     ],
     "n_competing": 4,
     "insufficient_evidence": false,
@@ -962,13 +876,14 @@
     "full_result": {
       "goal_candidates": [
         {
-          "id": "goal:4",
-          "type": "threshold",
+          "id": "goal:1",
+          "type": "uniformity",
           "support": [
-            "evidence:8"
+            "evidence:1",
+            "evidence:2",
+            "evidence:3"
           ],
-          "against": [],
-          "strength": 0.20833333333333337
+          "against": []
         },
         {
           "id": "goal:2",
@@ -978,19 +893,7 @@
             "evidence:5",
             "evidence:6"
           ],
-          "against": [],
-          "strength": 0.06070821915657665
-        },
-        {
-          "id": "goal:1",
-          "type": "uniformity",
-          "support": [
-            "evidence:1",
-            "evidence:2",
-            "evidence:3"
-          ],
-          "against": [],
-          "strength": 0.038888888888888896
+          "against": []
         },
         {
           "id": "goal:3",
@@ -998,8 +901,15 @@
           "support": [
             "evidence:7"
           ],
-          "against": [],
-          "strength": 0.0007936507936507908
+          "against": []
+        },
+        {
+          "id": "goal:4",
+          "type": "threshold",
+          "support": [
+            "evidence:8"
+          ],
+          "against": []
         }
       ],
       "unresolved_tests": [
@@ -1015,34 +925,32 @@
     "gt_note": "",
     "repeat_window_available": true,
     "candidates": [
-      "elimination",
-      "arrival"
+      "arrival",
+      "elimination"
     ],
     "n_competing": 2,
     "insufficient_evidence": false,
-    "verdict": "TOPK",
+    "verdict": "TOP1",
     "unresolved_tests": [
       "which of ['arrival', 'elimination'] is the true win condition is not yet determined by static structure alone"
     ],
     "full_result": {
       "goal_candidates": [
         {
-          "id": "goal:2",
-          "type": "elimination",
-          "support": [
-            "evidence:2"
-          ],
-          "against": [],
-          "strength": 0.4
-        },
-        {
           "id": "goal:1",
           "type": "arrival",
           "support": [
             "evidence:1"
           ],
-          "against": [],
-          "strength": 0.19941406250000002
+          "against": []
+        },
+        {
+          "id": "goal:2",
+          "type": "elimination",
+          "support": [
+            "evidence:2"
+          ],
+          "against": []
         }
       ],
       "unresolved_tests": [
@@ -1058,48 +966,47 @@
     "gt_note": "",
     "repeat_window_available": true,
     "candidates": [
-      "arrival",
-      "threshold",
-      "elimination"
+      "uniformity",
+      "elimination",
+      "threshold"
     ],
     "n_competing": 3,
     "insufficient_evidence": false,
     "verdict": "MISS",
     "unresolved_tests": [
-      "which of ['arrival', 'elimination', 'threshold'] is the true win condition is not yet determined by static structure alone"
+      "which of ['elimination', 'threshold', 'uniformity'] is the true win condition is not yet determined by static structure alone"
     ],
     "full_result": {
       "goal_candidates": [
         {
           "id": "goal:1",
-          "type": "arrival",
+          "type": "uniformity",
           "support": [
-            "evidence:1"
-          ],
-          "against": [],
-          "strength": 0.4927978515625
-        },
-        {
-          "id": "goal:3",
-          "type": "threshold",
-          "support": [
+            "evidence:1",
+            "evidence:2",
             "evidence:3"
           ],
-          "against": [],
-          "strength": 0.40032679738562094
+          "against": []
         },
         {
           "id": "goal:2",
           "type": "elimination",
           "support": [
-            "evidence:2"
+            "evidence:4"
           ],
-          "against": [],
-          "strength": 0.018518518518518524
+          "against": []
+        },
+        {
+          "id": "goal:3",
+          "type": "threshold",
+          "support": [
+            "evidence:5"
+          ],
+          "against": []
         }
       ],
       "unresolved_tests": [
-        "which of ['arrival', 'elimination', 'threshold'] is the true win condition is not yet determined by static structure alone"
+        "which of ['elimination', 'threshold', 'uniformity'] is the true win condition is not yet determined by static structure alone"
       ],
       "insufficient_evidence": false
     }
@@ -1111,60 +1018,47 @@
     "gt_note": "",
     "repeat_window_available": true,
     "candidates": [
-      "arrival",
-      "pattern_match",
       "uniformity",
+      "pattern_match",
       "elimination"
     ],
-    "n_competing": 4,
+    "n_competing": 3,
     "insufficient_evidence": false,
     "verdict": "N/A(expected-unsupported)",
     "unresolved_tests": [
-      "which of ['arrival', 'elimination', 'pattern_match', 'uniformity'] is the true win condition is not yet determined by static structure alone"
+      "which of ['elimination', 'pattern_match', 'uniformity'] is the true win condition is not yet determined by static structure alone"
     ],
     "full_result": {
       "goal_candidates": [
         {
           "id": "goal:1",
-          "type": "arrival",
+          "type": "uniformity",
           "support": [
-            "evidence:1"
+            "evidence:1",
+            "evidence:2",
+            "evidence:3"
           ],
-          "against": [],
-          "strength": 0.913818359375
-        },
-        {
-          "id": "goal:3",
-          "type": "pattern_match",
-          "support": [
-            "evidence:5"
-          ],
-          "against": [],
-          "strength": 0.6515151515151516
+          "against": []
         },
         {
           "id": "goal:2",
-          "type": "uniformity",
+          "type": "pattern_match",
           "support": [
-            "evidence:2",
-            "evidence:3",
             "evidence:4"
           ],
-          "against": [],
-          "strength": 0.6382978723404256
+          "against": []
         },
         {
-          "id": "goal:4",
+          "id": "goal:3",
           "type": "elimination",
           "support": [
-            "evidence:6"
+            "evidence:5"
           ],
-          "against": [],
-          "strength": 0.032786885245901634
+          "against": []
         }
       ],
       "unresolved_tests": [
-        "which of ['arrival', 'elimination', 'pattern_match', 'uniformity'] is the true win condition is not yet determined by static structure alone"
+        "which of ['elimination', 'pattern_match', 'uniformity'] is the true win condition is not yet determined by static structure alone"
       ],
       "insufficient_evidence": false
     }
@@ -1176,39 +1070,19 @@
     "gt_note": "",
     "repeat_window_available": false,
     "candidates": [
+      "arrival",
       "uniformity",
-      "elimination",
-      "arrival"
+      "elimination"
     ],
     "n_competing": 3,
     "insufficient_evidence": false,
-    "verdict": "TOPK",
+    "verdict": "TOP1",
     "unresolved_tests": [
       "which of ['arrival', 'elimination', 'uniformity'] is the true win condition is not yet determined by static structure alone",
       "goal:1 (arrival) has a structural contradiction \u2014 resolve with a cheap probe before committing"
     ],
     "full_result": {
       "goal_candidates": [
-        {
-          "id": "goal:2",
-          "type": "uniformity",
-          "support": [
-            "evidence:2",
-            "evidence:3",
-            "evidence:4"
-          ],
-          "against": [],
-          "strength": 0.28262108262108265
-        },
-        {
-          "id": "goal:3",
-          "type": "elimination",
-          "support": [
-            "evidence:6"
-          ],
-          "against": [],
-          "strength": 0.25
-        },
         {
           "id": "goal:1",
           "type": "arrival",
@@ -1217,8 +1091,25 @@
           ],
           "against": [
             "evidence:5"
+          ]
+        },
+        {
+          "id": "goal:2",
+          "type": "uniformity",
+          "support": [
+            "evidence:2",
+            "evidence:3",
+            "evidence:4"
           ],
-          "strength": 0.24993896484375
+          "against": []
+        },
+        {
+          "id": "goal:3",
+          "type": "elimination",
+          "support": [
+            "evidence:6"
+          ],
+          "against": []
         }
       ],
       "unresolved_tests": [
@@ -1252,8 +1143,7 @@
           "support": [
             "evidence:1"
           ],
-          "against": [],
-          "strength": 0.498046875
+          "against": []
         },
         {
           "id": "goal:2",
@@ -1261,8 +1151,7 @@
           "support": [
             "evidence:2"
           ],
-          "against": [],
-          "strength": 0.16666666666666666
+          "against": []
         }
       ],
       "unresolved_tests": [
@@ -1292,8 +1181,7 @@
           "support": [
             "evidence:1"
           ],
-          "against": [],
-          "strength": 0.249755859375
+          "against": []
         }
       ],
       "unresolved_tests": [],
