@@ -446,6 +446,54 @@ regression pins for the trigger-loop bug, glyph classification, the
 3-member floor, and the GF(2) control-glyph solver) — FT09's decode arc is
 now COMPLETE, 6/6 live, no open items remain on this game.
 
+## Measured so far (continued) — dc22
+
+**dc22 adapter** (`src/admorphiq/adapters25/dc22.py`, committed `0e59f88`)
+— a button-barrier navigation adapter reusing ka59's optimistic-passability
+navigation design (genuinely-unexplored cells assumed passable, so a button
+click that opens new territory is discovered by simply trying to walk
+there, rather than requiring button->barrier semantics to be understood).
+Avatar and goal are both identified structurally, not by any hardcoded
+colour: the avatar by FIRST-movement-probe region tracking (`track_objects`,
+mirroring ka59's identity-by-movement technique), the goal by being the
+smallest SINGLETON-coloured region excluding the avatar's own colour
+(measured on the offline gold trace: goal + avatar are both far smaller
+than any other singleton-coloured region on the board). A measured SEESAW
+gate (one button's click opens one path while simultaneously closing a
+DIFFERENT one, confirmed by direct before/after diffing, not assumed) is
+handled without needing to interpret WHAT a button does: every cell that
+changes after a probe click is simply dropped from `_known_blocked`
+("unknown again, optimistically passable"), and the existing
+blocked-cell-record path re-adds any that turn out still blocked the next
+time routing tries to walk through them — sidestepping button->barrier
+semantics entirely, including the re-closing case.
+
+**Live probe (2x500-action smoke): 0/6, but every measured primitive is
+individually CORRECT** — avatar identification, goal identification,
+`dir_map`, and effective-vs-inert probe click classification all verified
+against the live trace, not just the offline gold trace. The wall is a
+probe-SEMANTICS gap, not a plumbing gap: `_live_regions`'s "effective
+click" classifier counts a probe click as effective whenever ANY cell
+changes, but this over-counts COSMETIC indicator flips (small paired
+marker regions that flip colour on every click, whether or not a barrier
+actually moved) as genuine barrier-opening events — the same false-signal
+shape `frame_diff`'s HUD-masking convention exists to filter, but not yet
+applied at the probe-classification layer here. A second, independent gap:
+the adapter's "never re-probe a region once probed this level" rule
+(borrowed from vc33's own measured lesson that re-probing wastes a
+budgeted action on an already-known result) conflicts with dc22's own gold
+trace, which clicks the SAME button region twice at different points in
+the level — a genuine SEESAW re-visit, not wasted repetition, that the
+current never-re-probe rule incorrectly forbids.
+
+Both gaps are diagnosed with a specific fix direction (compose dc22's own
+probe-effect measurement through the existing HUD/cosmetic-diff filtering
+convention, and relax "never re-probe" to "never re-probe UNLESS a
+seesaw-reopen is suspected") but neither fix has landed or been
+re-measured yet — banked as two named, falsifiable gaps rather than a
+vague "0/6, needs work." See [[../games/DC22]] for the game's own current
+status.
+
 ## Open items
 
 - **FT09 — DONE, complete arc.** The glyph decode has been run against the
@@ -487,12 +535,21 @@ now COMPLETE, 6/6 live, no open items remain on this game.
   the joint solve, and re-identify/re-assign overhead eats the 100-action
   fuse before convergence — banked as a real, working primitive with a
   named remaining gap (planning integration), not a dead end.
-- **TR87 L2 wall.** Corrected from an earlier stale note on this page
-  (the design doc is now committed, and a real integration WAS built —
-  see "TR87 gate arc" above, not "design + prototype only"). Remaining
-  gap: the L2 KILL is now isolated to bar1 fragmentation specifically,
-  not a vague "segmentation is hard" — the next step is a bar1-specific
-  fix attempt, not another scoping round.
+- **TR87 L2 wall — RESOLVED, corrected from an earlier stale note on
+  this page.** The bar1-fragmentation KILL this note originally flagged
+  (from step 5, `3e7391a`) was closed by step 6's lattice fix
+  (`efaf004`, `extract_bar_tokens` composing `split_runs_by_pitch`
+  positionally instead of a second `occupied_runs` pass) and packaged
+  into the live adapter in step 7 (`362c672`). TR87 is now 3/6 live
+  (L0-L2), every cleared level at the 1.0 efficiency cap — see "TR87
+  gate arc" above for the full 7-step provenance. Remaining scope is
+  L3-L5 (`alter_rules`/`tree_translation`/`double_translation`),
+  deliberately banked unmeasured, not a wiring gap.
+- **DC22 probe-semantics gap.** See "Measured so far (continued) — dc22"
+  above for the two named gaps (cosmetic-indicator-flip false positives in
+  the effective-click classifier, and the never-re-probe rule conflicting
+  with the gold trace's genuine seesaw re-visit). Both have a specific
+  fix direction identified but neither is built or re-measured yet.
 - **Declared-intent offloading interface** (task #42) — per current team
   coordination, this is pending the engagement/basenav experiment results
   before design work starts. The design should account for **8** intent
