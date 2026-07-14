@@ -3,8 +3,8 @@ type: reasoning
 round: R56
 axis: generic-kernel-library
 verdict: IN-PROGRESS
-keywords: [generic-kernels, namespace-safe, script25, agent25, dual-scoreboard, declared-intent, primitive-firewall, kernel-library, quarantined-adapter]
-commit: [4303662, 3edcf4d, 1d797d7, 62fac21, f13b433, d377121, a2a62f0, b67cb39, de013aa, 69101ea, 68b802a, 3151030, cbda9aa, 0a7be09, 6e238de, f406d55, a3a6644, ae8fd95, 204aab2, 3e7391a, f0b0bcb, b28290e, 010df51, fbd625d, 57b325d, a8299de, efaf004, 362c672]
+keywords: [generic-kernels, namespace-safe, script25, agent25, dual-scoreboard, declared-intent, primitive-firewall, kernel-library, quarantined-adapter, gold-replay-divergence, round-robin-sweep, joint-state-planning]
+commit: [4303662, 3edcf4d, 1d797d7, 62fac21, f13b433, d377121, a2a62f0, b67cb39, de013aa, 69101ea, 68b802a, 3151030, cbda9aa, 0a7be09, 6e238de, f406d55, a3a6644, ae8fd95, 204aab2, 3e7391a, f0b0bcb, b28290e, 010df51, fbd625d, 57b325d, a8299de, efaf004, 362c672, 95c27c4, 569a620, de0510e, 4d9472f, 2209a5f, 9e7f474, b36fd8a, fc36602, 6f81df7, b9b35cd, a314bee, ac8c177, f4e8b11]
 date: 2026-07-15
 ---
 
@@ -43,6 +43,72 @@ interface is **declared-intent offloading** (the model declares a typed problem 
 supplies the semantics; the harness auto-invokes the matching kernel) — explicitly
 NOT a flat namespace of 30+ function names dumped into the prompt, which the
 verdict predicted would make adoption WORSE, not better.
+
+## Adapter scoreboard (current, end-of-night sweep)
+
+Per-game script25 status as of this sweep. "Banked" = a genuine negative
+or capped result recorded with its own falsification writeup, not an
+unmeasured gap. Live smoke numbers are `script25`'s own faithful RHAE
+metric (2x500-action runs unless noted), not the legacy 25-game card.
+
+| Game | Status | Live result | Commit | Notes |
+|---|---|---|---|---|
+| ft09 | **COMPLETE** | 6/6, 100% RHAE, 88 actions, every level @1.0 cap | `95c27c4` | glyph-decode grammar + GF(2) control-glyph solver; no open items |
+| tr87 | 3/6 live | L0-L2 all @1.0 efficiency cap (17/54, 35/58, 26/40a) | `362c672` | 7-step Codex-gated grammar arc; L3-L5 (`alter_rules`/`tree_translation`/`double_translation`) deliberately banked unmeasured |
+| sb26 | 3/8 live | 0.1446 | `57b325d` | L4 falsified-and-banked: structurally-identical board, different (undiscriminated) mechanic — genuinely open question, not a wiring gap |
+| lp85 | 1/8 live | 2.48% (0.0248); L1 18a vs 17 human, score 0.89 | `f4e8b11` | divergence-first: candidate GRANULARITY was the root cause (a rare region can hold several functionally distinct pixels, not one clickable point) — fixed with per-pixel enumeration (`a314bee`), then a round-robin probe-queue redesign + local-focus promotion cut L1 from 69→18 actions (`f4e8b11`) |
+| m0r0 | 1/6 live | joint-state planner, desync-capable | `b9b35cd` | mirror-pair mechanic (every action moves BOTH a SELF and PARTNER region simultaneously, independently blockable) modeled via `configuration_path` joint-state hill-climbing; 4 measured bugs fixed en route (GAME_OVER memory wipe, goal-merge fallback, off-lattice routing target, fuzzy self/partner mismatch) plus a peer-relative outlier-rejection fix (`6f81df7`) |
+| vc33 | 1/7 live | new mechanic identified | `569a620` | escalating click-counter with a decoy penalty — a genuinely NEW win-condition shape for this round's typology |
+| tu93 | 2/9 @3000a (0/9 @500a) | banked | `9e7f474`/`ac8c177` | slide-until-wall maze, transition-graph baseline; corridor-prediction efficiency lever explicitly banked, not pursued further this round |
+| dc22 | **BANKED at 0/6** | every individual primitive verified correct | `b36fd8a` | walk/stuck/probe/learn architecture is fundamentally REACTIVE; gold's own solution is PROACTIVE/state-gating (set button parity BEFORE walking, not in response to being stuck) — two independently-sound fix attempts (toggler-cycling re-click, parity-combo enumeration) both measured 0/6; the wall is architectural, not a missing heuristic |
+| ka59 | banked at 0/7 | push mechanic WORKS (wall-crossing measured) | `a8299de` | reactive, not planned into the joint solve; re-identify/re-assign overhead eats the action fuse before convergence — a real working primitive with a named remaining gap |
+| su15 | **IN-FLIGHT** | best-so-far: GAME_OVER=11, near-merge 1.9px | `f4158f3` (uncommitted work in progress as of this sweep) | 6 falsification iterations so far (enemy-hazard, select-then-place, absolute-step model all tested against direct measurement); still being actively worked |
+| sp80 | **NOT YET STARTED** | — | — | no `adapters25/sp80.py` exists yet at the time of this sweep |
+
+## Diagnostic method of the night: gold-replay divergence
+
+The single method that cracked the most rounds tonight, used consistently
+across unrelated games: replay a level's GOLD trace
+(`data/traces/<game>.npz`, label-generation only, never imported at
+runtime) frame-by-frame against the adapter's OWN candidate/decision
+logic, and find the exact STEP where they diverge — not "does the
+strategy sound right" but "where, precisely, does the live decision
+differ from what gold's own recorded actions did, and why". This is
+offline-only (dev-time consultation of gold, never live-loop access) and
+distinct from live-smoke measurement, which comes after: divergence
+analysis picks the hypothesis, live smoke confirms or falsifies it.
+
+Three concrete cracks this method produced tonight, each a genuinely
+different CLASS of bug:
+
+- **dc22's architecture question** — replaying gold's own click sequence
+  against the adapter's reactive walk-stuck-probe loop showed gold
+  clicking buttons BEFORE ever getting stuck (state-gating), not in
+  response to a blocked path — the reactive architecture was asking the
+  wrong question entirely, not missing a heuristic. This reframing is
+  what let the dc22 thread end in a clean BANKED verdict (an honest
+  architectural mismatch) instead of another "still 0/6, try one more
+  heuristic" cycle.
+- **lp85's granularity bug** — replaying gold's level-0 clicks against the
+  adapter's own region ranking found the winning pixel belonged to a
+  40-pixel rare-coloured region whose CENTROID was a completely different
+  pixel; frame-diffing gold's own clicks in that region additionally
+  showed several DISTINCT functional pixels within one connected blob
+  (a HUD-visible fill bar advanced by 4 of them, a 5th, different pixel
+  triggered WIN) — a class of bug no amount of "which region to click
+  first" ranking could ever have found, only per-pixel replay could.
+- **su15's perception bugs** — the multi-iteration su15 arc (6 rounds,
+  `77a4c53` through `f4158f3`) used the same discipline at smaller grain
+  each time: falsify one specific hypothesis (enemy-hazard, select-then-
+  place, escalate-only policy) against a direct gold/live measurement
+  before trying the next, rather than guessing broadly — each iteration's
+  commit message names the exact falsified claim and the measured
+  evidence, not just the next thing tried.
+
+The common thread: a strategy can be "individually correct" at every
+piece (as dc22's re-click fix and lp85's original rarity ranking both
+were) and still fail, because the DIVERGENCE is in a layer the piece-level
+correctness check never examines — gold-replay is the layer that finds it.
 
 ## What was built tonight
 
@@ -446,6 +512,63 @@ regression pins for the trigger-loop bug, glyph classification, the
 3-member floor, and the GF(2) control-glyph solver) — FT09's decode arc is
 now COMPLETE, 6/6 live, no open items remain on this game.
 
+## Measured so far (continued) — lp85
+
+**lp85 adapter** (`src/admorphiq/adapters25/lp85.py`) — a rare-colour
+click game, previously measured 0/8 on the VM's full-budget run
+(~4000 actions) despite the wiki recording a known win pixel
+(`click_c8_(30,4)`). Diagnosed via gold-replay divergence (see the
+"Diagnostic method" section above): replaying `data/traces/lp85.npz`'s
+gold level-0 block against the adapter's own candidate ranking found the
+winning pixel `(30,4)` belongs to a 40-pixel rare-coloured region whose
+own CENTROID — the ONLY point the old adapter ever tried per region — is
+a completely DIFFERENT pixel, `(32,5)`. Frame-diffing gold's own clicks
+in that region showed why collapsing a region to its centroid is
+categorically wrong here: four adjacent pixels within the SAME blob each
+independently advance a HUD-visible fill bar (a real, frame-observable
+reaction) without winning, and only a fifth, different pixel triggers
+WIN. A single connected region can hold several functionally distinct
+targets. Two competing hypotheses (a repeated-click/vc33-style counter
+mechanic; a GAME_OVER fuse killing each life before reaching the region)
+were checked against the SAME gold replay in one pass and directly
+FALSIFIED (all 69 gold clicks are on distinct pixels; gold shows zero
+GAME_OVER events).
+
+**Fix 1 (`a314bee`): per-pixel candidate enumeration — 0/8 → 1/8.**
+`_region_candidates` now enumerates EVERY pixel of each qualifying
+region (rarest colour total first, then position within a colour)
+instead of one centroid per region — exactly mirroring the RETIRED
+`agent_ensemble.strat_click_rare`'s own `np.argwhere(frame == color)`
+enumeration, which is how this game was originally won pre-quarantine.
+Live: 1/8, level 1 clears in 69 actions (vs human baseline 17, score
+0.06) — matching gold's own action count for that level exactly, since
+the per-pixel rarity sweep effectively reproduces gold's own
+label-generation strategy action-for-action.
+
+**Fix 2 (`f4e8b11`): round-robin queue + local-focus promotion —
+0.17% → 2.48% (14.6x), L1 18a vs 17 human (score 0.89, near the 1.0
+cap).** The first fix's flat per-pixel ordering still grouped one
+region's pixels fully consecutive before the next, so the productive
+region (ranked 3rd-rarest) still had to wait for two entirely inert
+colours' full pixel counts (32 + 32 = 64 pixels) to exhaust first —
+reproducing gold's own breadth-first inefficiency almost exactly. A
+first attempt at "promote a responsive region's remaining pixels ahead
+of the outer sweep" was measured to be a NO-OP against that baseline
+(a region's own pixels were ALREADY consecutive by construction, so
+there was nothing to promote past). The actual fix rebuilt the BASE
+queue itself as ROUND-ROBIN across regions (one untried pixel per
+region per round, rarity order within a round) — reaching every
+region's own first pixel after a single pass over every rarer-or-tied
+region, not after exhausting their full pixel counts — with local-focus
+promotion then providing the genuine escape hatch once a region reacts.
+
+Falls back to `learn_point_operators`-prioritized re-cycling once every
+candidate has been tried once, unchanged from before. 8 tests in
+`tests/test_adapters25_lp85.py` (per-pixel enumeration, rarity/position
+ordering, chrome exclusion, round-robin base ordering, promotion
+mechanics including the unknown/exhausted-region no-op case, and an
+end-to-end `choose_action`-loop pin).
+
 ## Measured so far (continued) — dc22
 
 **dc22 adapter** (`src/admorphiq/adapters25/dc22.py`, committed `0e59f88`)
@@ -532,6 +655,23 @@ clicking only when stuck. **Measured: still 0/6 at 500a
 (`scripts/rounds/script25_dc22_smoke7`)** — a different, also-individually-
 sound mechanism, also not sufficient on its own.
 
+**BANKED at 0/6 (`b36fd8a`), final verdict for this round.** With BOTH a
+reactive re-click fix (toggler-cycling) AND a proactive parity-combo
+enumeration independently measuring 0/6, the pattern across both negative
+results is the real finding: this adapter's whole walk/stuck/probe/learn
+architecture only ever ACTS in response to being stuck (reactively) or,
+at best, pre-sets state once via a fixed enumeration schedule — but gold's
+own solution is genuinely STATE-GATED throughout (specific button parity
+combinations are prerequisites for specific walk segments, decided BEFORE
+attempting them, not triggered by failure). This is an architectural
+mismatch between "reactive walk-stuck-probe-learn" and "proactive
+state-gated win check", not a missing heuristic, a wrong ranking, or an
+unaddressed classifier gap — no further heuristic tuning within the
+current architecture is expected to close it. Banked here with the full
+falsification writeup (both fix attempts' own measurements) rather than
+continuing to iterate reactive-loop heuristics against a proactive
+requirement.
+
 ## Open items
 
 - **FT09 — DONE, complete arc.** The glyph decode has been run against the
@@ -554,32 +694,27 @@ sound mechanism, also not sufficient on its own.
   at 500a, consistent with the legacy ceiling (LP85's own budget
   hypothesis is NOT re-tested by the m0r0 backport below and remains
   open).
-- **m0r0 budget-ceiling hypothesis FALSIFIED — goal-directed backport
-  still 0/6 at 3000a (`4d9472f`).** The undirected frontier-BFS exploration
-  above was replaced with dc22/ka59's optimistic-passability +
-  shortest-path-to-a-declared-goal pattern: gold-trace investigation
-  (`data/traces/m0r0.npz`) found the goal is a MOVING mirror-partner
-  region (the avatar's own colour is shared by two simultaneously-moving
-  regions; the measured win action is the step that brings them into
-  pixel-adjacency), re-read from the live frame every planning call
-  rather than computed once. A real bug was also fixed in the same
-  commit: GAME_OVER was routed through the full-level-wipe path shared
-  with NOT_PLAYED, discarding all learned hazard/passability facts on
-  every death instead of only resetting position (ported from dc22's own
-  `_on_restart`). **Measured: 0/6 at BOTH 500a and 3000a** — a directed
-  planner with 6x the budget the legacy solver needed still doesn't
-  clear a level, so the wall is a planning/goal-detection bug, not
-  budget. **Follow-up, same round — a real goal-jump bug fixed, still
-  0/6 (`2209a5f`):** a live smoke measured `_detect_goal` fabricating a
-  goal from an unrelated HUD/border region whenever the mirror partner
-  briefly merges into the avatar's own region (both gold levels show
-  this right before, sometimes several actions before, the actual WIN
-  moment), sending the planner chasing it for dozens of wasted actions.
-  Fixed by tracking `partner_ever_seen` and reporting the avatar's own
-  cell as the goal when merged (reads as "already arrived" downstream).
-  Measured: still 0/6 at 3000a (`scripts/rounds/script25_m0r0_smoke3`) —
-  a real, verified fix, not sufficient alone. See [[../games/M0R0]] for
-  the game's own current status.
+- **m0r0 — RESOLVED to 1/6 live, corrected from an earlier stale note on
+  this page.** Full arc: the undirected frontier-BFS baseline (0/6 at
+  both 500a and the VM's ~4000a full-budget run) was replaced with dc22/
+  ka59's optimistic-passability + shortest-path-to-a-declared-goal
+  pattern (`fc36602`) once gold-trace investigation (`data/traces/
+  m0r0.npz`) found the goal is a MOVING mirror-partner region (the
+  avatar's own colour is shared by two simultaneously-moving regions,
+  each independently blockable; the measured win action is the step that
+  brings them into pixel-adjacency) — still 0/6 at first (`4d9472f`,
+  `2209a5f`: a goal-jump bug where a merged partner fabricated a goal
+  from an unrelated HUD region was found and fixed, not sufficient
+  alone). This single-agent framing was itself then replaced with a
+  genuine JOINT-STATE planner (`6f81df7`/`b9b35cd`): every action moves
+  BOTH the self and partner region simultaneously (not "self chases a
+  moving target"), so `kernels.configuration_path` now hill-climbs the
+  JOINT `(self_cell, partner_cell)` state toward a smaller combined gap,
+  using per-side measured dynamics and per-side optimistic passability.
+  A peer-relative outlier-rejection fix (`6f81df7`) also closed a
+  spurious-magnitude bug in the per-level dir_map bootstrap. **Live:
+  1/6** (`b9b35cd`) — the joint-state architecture is now the canonical
+  m0r0 model. See [[../games/M0R0]] for the game's own current status.
 - **KA59 had a real init bug, fixed same session.** The committed adapter
   (`cbda9aa`) used `self._select_point`/`self._last_select_cell`/
   `self._select_attempts` without ever initializing them in `__init__` —
@@ -611,14 +746,25 @@ sound mechanism, also not sufficient on its own.
   gate arc" above for the full 7-step provenance. Remaining scope is
   L3-L5 (`alter_rules`/`tree_translation`/`double_translation`),
   deliberately banked unmeasured, not a wiring gap.
-- **DC22 probe-semantics gap — one of two named gaps closed-but-still-0/6,
-  the other still open.** See "Measured so far (continued) — dc22" above.
-  The re-probe/toggler gap was built (per-button click memory, cosmetic-
-  signature subtraction, stuck-state toggler cycling, route-proximity
-  ranking) and live-measured 6 times, still 0/6 — a genuine negative
-  result on that gap, not an unmeasured banking. The cosmetic-indicator-
-  flip false positives in the pre-toggle "effective click" classifier are
-  UNTOUCHED by this fix and remain the next thing to try.
+- **DC22 — BANKED at 0/6, corrected from an earlier stale note on this
+  page.** See "Measured so far (continued) — dc22" above. Two
+  independently-sound fix attempts were built and live-measured, both
+  still 0/6: the re-probe/toggler gap fix (per-button click memory,
+  cosmetic-signature subtraction, stuck-state toggler cycling,
+  route-proximity ranking; `de0510e`, 6 live smokes) and a parity-combo
+  enumeration (`2209a5f`, Gray-code button-state gating instead of
+  reactive stuck-triggered probing). The FINAL diagnosis (`b36fd8a`):
+  gold's own solution is PROACTIVE/state-gating — it sets button parity
+  BEFORE ever walking into a wall — while this adapter's whole
+  walk-stuck-probe-learn architecture is fundamentally REACTIVE (a
+  button click only ever happens in response to being stuck). No amount
+  of tuning the reactive loop's heuristics can produce proactive
+  behaviour; the wall is architectural, not a missing heuristic or an
+  unaddressed classifier gap (the cosmetic-indicator-flip false-positive
+  concern this bullet previously flagged is superseded by this finding
+  — a probe-classification fix would not have closed an architectural
+  mismatch). Banked with the full falsification writeup at commit
+  `b36fd8a`; see [[../games/DC22]] for the game's own current status.
 - **Declared-intent offloading interface** (task #42) — per current team
   coordination, this is pending the engagement/basenav experiment results
   before design work starts. The design should account for **8** intent
