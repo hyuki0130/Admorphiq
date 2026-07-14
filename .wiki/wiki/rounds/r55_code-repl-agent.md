@@ -298,3 +298,46 @@ v3 fixes (one axis: the output/latency contract — perception untouched):
 60 repl_agent tests pass (+6: strip_thinking, bare-text from the real dc22 tail,
 bare movement, JSON-preferred, client body disables thinking + caps tokens + 300s,
 LLM-error survival), ruff clean.
+
+### v3 first full run analysis → v4 fixes (2026-07-14)
+
+v3 (thinking-off) ran clean end-to-end: all 5 games played to the 600s wall, 0
+timeouts, 0 llm_errors, **0 clears**, all wall-bound (~15-21s/call). Transcript
+analysis (`scratchpad/replbench_out3`, 173 turns) — answers from the traces:
+
+1. **g50t/ls20 governor "storms" = ILLEGAL MOUSE, not repeat-rejection.** g50t
+   legal={UP,DOWN,LEFT,RIGHT,SPACE} (no MOUSE) yet the model proposed MOUSE **33
+   times**; ls20 (no MOUSE) **22 times**. The governor rejected each (→ fallback,
+   `exec=None`). Repeat-(state,action) count ≈ 0. Root cause: nothing bound the
+   model to `GAME.legal_actions`.
+2. **su15 8 parse failures = LENGTH TRUNCATION.** Every failed turn was 2.4-3.2k
+   chars of reasoning ending mid-sentence (no action line) — the model reasoned
+   past `max_tokens=1000` and got cut.
+3. **REPL usage = ZERO.** 0 code blocks, 0 inspection calls (`objects/crop/
+   compare`), 0 sandbox output across ALL 173 turns. The model only emits bare
+   actions (`llm_calls ≈ actions`). The code-REPL premise was never engaged —
+   the prompt (turn packet + a thin "output one action" instruction) never told
+   the model the sandbox/inspection API exists.
+4. **Memory = STATIC.** 1 unique MEMORY state across every turn; goal_hypotheses
+   / dead_interventions never populated. The falsifiable-memory infra is present
+   but nothing feeds it (downstream of REPL engagement).
+5. **Latency = OUTPUT-dominated.** ~35 tok/s eager; su15 mean 21.7s (2-3.2k-char
+   outputs), g50t mean 14.8s (shorter). Input prefill is cheap; per-turn cost is
+   generation length. Fewer turns (28-41) because each call is slow → brevity is
+   also a throughput lever.
+
+**v4 fixes (one axis each, generic, perception untouched):**
+1. **Prompt contract / system prompt** (`_SYSTEM_PROMPT` + `_legal_reminder`) —
+   describes the REPL + the exact inspection API (objects/crop/ascii/mask/compare/
+   relations/action), invites a ```python block OR one action line, HARD-binds
+   "use ONLY GAME.legal_actions; if MOUSE not listed, do not click" with the
+   concrete legal set injected per turn, and demands brevity (≤4 lines). Targets
+   findings 1 (illegal clicks) + 3 (REPL dark) + helps 2/5 (shorter outputs).
+2. **Generation budget** — `max_tokens 1000 → 1536` headroom for the turns that
+   still reason to completion (finding 2). Modest to bound the latency cost.
+
+61 repl_agent tests pass (+1: prompt describes REPL + binds legal actions), ruff
+clean. Deferred (next batch, confirmed order): observability truthfulness (wire
+token usage + finish_reason to confirm the truncation fix; fix the after-state
+hash via the event stream) before the namespace deltas. Note: the LLM-free card
+clears su15 3/9 + ls20 1/7 — the REPL arm needs L1 clears next to stay credible.

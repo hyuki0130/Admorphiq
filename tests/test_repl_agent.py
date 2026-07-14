@@ -141,8 +141,28 @@ def test_openai_client_disables_thinking_and_caps_tokens(monkeypatch):
     client = OpenAICompatClient(model="qwen")
     assert client.complete("hi") == "UP"
     assert captured["body"]["chat_template_kwargs"] == {"enable_thinking": False}
-    assert captured["body"]["max_tokens"] == 1000
+    assert captured["body"]["max_tokens"] == 1536
     assert captured["timeout"] == 300.0
+
+
+def test_prompt_describes_repl_and_binds_legal_actions():
+    """Purpose: the v4 prompt tells the model the REPL/inspection API exists and
+    forbids MOUSE when it is not legal.
+
+    Feedback: failure means the model stays blind to the sandbox (v3 used it 0
+    times) and keeps proposing illegal clicks on movement games.
+    """
+    seen = {}
+
+    def capture(prompt, images=None):
+        seen["prompt"] = prompt
+        return '{"action":"UP"}'
+
+    ag = ReplAgent(SimpleNamespace(complete=capture))
+    ag.choose_action([], _obs(_frame(), avail=(1, 2, 3, 4)))  # movement only, no MOUSE
+    p = seen["prompt"]
+    assert "python" in p and "objects(" in p and "action(" in p
+    assert "MOUSE is NOT available" in p  # legal-action binding
 
 
 def test_llm_error_is_survived_and_recorded():

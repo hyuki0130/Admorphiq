@@ -49,17 +49,43 @@ NAME_BY_ID = {v: k for k, v in ID_BY_NAME.items()}
 
 _CODE_BLOCK = re.compile(r"```(?:python)?\s*\n(.*?)```", re.DOTALL | re.IGNORECASE)
 
-# Appended to the turn packet: pin the output contract so the model ends with a
-# parseable action. `/no_think` is Qwen's soft directive to skip chain-of-thought
-# (belt-and-braces with the client's enable_thinking=false).
-_OUTPUT_INSTRUCTION = (
-    "\n\n/no_think\n"
-    "Respond with your chosen action as the LAST line, in ONE of these forms:\n"
-    '  JSON: {"action": "MOUSE", "row": <0-63>, "col": <0-63>}  (or "UP"/"DOWN"/'
-    '"LEFT"/"RIGHT"/"SPACE" with no row/col)\n'
-    "  or a bare action line: MOUSE(row, col)  or  UP / DOWN / LEFT / RIGHT / SPACE\n"
-    "Do not print the whole board. Keep reasoning brief."
+# System-prompt preamble (v4): the v3 run showed the model NEVER used the REPL
+# (0 code blocks / 0 inspection calls across 173 turns) and clicked illegally on
+# movement games (55 illegal MOUSE proposals) — because nothing told it the
+# sandbox exists or bound it to the legal set. This describes the REPL + tools +
+# the legal-action rule + brevity. Generic (no game specifics).
+_SYSTEM_PROMPT = (
+    "/no_think\n"
+    "You are an agent playing an unknown 2D grid game. GOAL: complete as many "
+    "LEVELS as possible using FEW actions (action efficiency is scored).\n\n"
+    "You control a stateless Python REPL pre-loaded with the current frames. "
+    "Each turn do ONE of:\n"
+    "  (A) Write a SINGLE ```python block to INSPECT and/or ACT with these "
+    "functions:\n"
+    "      objects(t=-1) -> [{id,color,bbox,centroid,area,holes,contained_by,"
+    "adjacent,safe_click}]\n"
+    "      crop((y0,x0,y1,x1),t=-1), ascii(region=None,t=-1), mask(id,t=-1), "
+    "compare(t1,t2), relations(id,t=-1)\n"
+    "      action(kind, row=None, col=None)  # perform an action; MOUSE needs "
+    "row,col\n"
+    "     Inspect BEFORE acting when an effect is unknown; call action(...) in "
+    "the block to move.\n"
+    "  (B) Or, if the move is clear, output ONE action line: MOUSE(row, col) or "
+    "UP / DOWN / LEFT / RIGHT / SPACE.\n\n"
+    "HARD RULES:\n"
+    "  - Use ONLY the actions in GAME.legal_actions. If MOUSE is not listed, DO "
+    "NOT click — move instead.\n"
+    "  - Coordinates are (row, col) = (y, x), each 0-63.\n"
+    "  - Do NOT print the whole board. At most ~4 short lines of reasoning, then "
+    "the code block or action line LAST."
 )
+
+
+def _legal_reminder(legal: set[str]) -> str:
+    line = f"Legal actions THIS turn: {sorted(legal)}."
+    if "MOUSE" not in legal:
+        line += " MOUSE is NOT available — use a movement action."
+    return "\n\n" + line + " Respond now with a python block or one action line."
 
 
 class LLMClient(Protocol):
@@ -94,7 +120,7 @@ class OpenAICompatClient:
     """
 
     def __init__(self, base_url: str | None = None, model: str | None = None,
-                 timeout: float = 300.0, max_tokens: int = 1000,
+                 timeout: float = 300.0, max_tokens: int = 1536,
                  enable_thinking: bool = False) -> None:
         self.base_url = (base_url or os.environ.get("REPL_LLM_BASE_URL", "")).rstrip("/")
         if not self.base_url:
@@ -350,7 +376,8 @@ class ReplAgent:
             game=self._game_ctx(obs, legal), last_action=self._last_action_dict(),
             scene=scene, prev_scene=self._prev_scene, frame=frame,
             prev_frame=self._prev_frame, history=self._history, memory=self._memory)
-        prompt = self._builder.to_yaml(packet) + _OUTPUT_INSTRUCTION
+        prompt = (_SYSTEM_PROMPT + "\n\n" + self._builder.to_yaml(packet)
+                  + _legal_reminder(legal))
 
         t0 = time.time()
         try:
