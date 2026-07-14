@@ -575,3 +575,49 @@ vacuum/merge alternative on miss) and the tool-use gap (the discriminating-actio
 requirement forces an investigative test instead of blind clicking). All other
 levers (image legible at 4×, inspection now working, fallback governed) are
 already in place.
+
+### 🎉 v7 (REPL_AUDIT=1) — FIRST LLM-agent clear: su15 L1 via the audit (replbench_out7)
+
+**su15 levels=1 — the first level cleared by the code-REPL LLM agent**, on the
+exact game whose false "connect the dots" mechanic persisted through v5 and v6.
+The continuation gate (≥1 sanity L1) PASSED.
+
+**Causal chain (the audit is the lever):** the GoalAuditor fired at the 12/24
+action thresholds. At the first audit (idx 12) the model still declared the wrong
+"guide the green trail to the red target" goal — but WITH a falsifier + an
+alternative. At the SECOND audit (idx 13) it REVISED the mechanic to "guide the
+four moving objects into target zones" (toward su15's real vacuum/merge/delivery
+mechanic), and L1 cleared ~7 turns later (first level>=1 record at idx 20).
+Forcing a declared, falsifiable goal + alternative broke the loop that a working
+REPL alone (v6) did not. ~107 actions total for L1 (human 12-22; ~12 pre-first-
+audit); the clear itself came fast once the mechanic flipped.
+
+- **Audit fires reliably on all games** (3-5 audits each) with LOW overhead:
+  llm_calls barely exceed actions (su15 115/107, g50t 168/144) — audits are part
+  of the decision, not extra rounds. Inspections dropped modestly vs v6 (8-27)
+  but not crowded out (g50t still 27).
+- **Integrity holds**: illegal MOUSE = 0 everywhere; sandbox_errors already 0-2
+  (the `430d000` allowlist + field-alignment fixes will take them to ~0 next run).
+- **ls20 did NOT clear** (budget cap at 150): audits fired (4×) and the model
+  revised to a plausible NAVIGATION goal ("navigate the player to the target"),
+  but didn't solve within budget — a CONTROL/efficiency gap (it never used
+  `shortest_path` for the declared navigation), not a goal-inference failure.
+
+**Leaderboard double-confirmation (same day):** v10 hidden publicScore = 0.20
+(public proxy 5.83, mechanic-solver depth) vs v6 0.14 (proxy 1.072). +4.7 proxy
+from public-game solvers bought only +0.06 hidden — public-specific capability
+barely transfers, exactly the R55 thesis; and R55's generic agent scored its
+first clear the same day via the audit. See memory `project_leaderboard_first_score`.
+
+**v8 recommendation (ranked):**
+1. **Scale the audit** — it works (su15 proof); run REPL_AUDIT=1 on more games /
+   the full 25 to measure the clear count. This is the headline lever now.
+2. **Navigation efficiency (ls20-class)** — the model forms a roughly-right
+   navigation goal but never uses `shortest_path`, so it wanders under budget.
+   Nudge the audit's discriminating-action toward `shortest_path` for declared
+   navigation goals, and/or the packet toward a plan-then-execute step.
+3. **First-audit earliness** — ~12 pre-revision actions wasted before the first
+   audit. A slightly earlier first threshold (measured, one-variable) could cut
+   waste — but keep Codex's "first audit forces a TEST, not a premature switch".
+4. Ship the `430d000` sandbox fixes (allowlist + field alignment) — already
+   committed, ride the next push.
