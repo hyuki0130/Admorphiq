@@ -78,16 +78,84 @@ routing tries to walk through them.
 walks the OPTIMISTIC grid (see ``admorphiq.adapters25.ka59``'s design,
 reused here for a single avatar instead of multiple pieces) toward the
 goal. Only when the optimistic planner AND the broader known-cell
-frontier fallback BOTH report no progress does the adapter click a
-candidate button region (nearest to the avatar's current position,
-excluding the avatar's and goal's own colours and any region already
-probed this level -- MEASURED necessary, per
-``admorphiq.adapters25.vc33``'s lesson, that a probed region should never
-be re-probed even if it turned out inert, since re-probing wastes a
-budgeted action for a result already known). Bounded at
+frontier fallback BOTH report no progress does the adapter probe a
+button (see "Re-click semantics" below for which one). Bounded at
 ``_PROBE_CLICK_CAP`` clicks per stuck episode so a board with no
 reachable button (or a genuinely unsolvable local pocket) cannot spin
 forever.
+
+**Re-click semantics (added after the first live 2x500 smoke measured
+0/6)**: the FIRST cut of this adapter treated every probed region as
+permanently done once clicked -- a direct application of
+``admorphiq.adapters25.vc33``'s lesson that a WRONG click can have a
+persistent side effect, so re-probing was thought to always waste a
+budgeted action for a result already known. Re-reading this adapter's
+OWN "Mechanic model" measurements against the gold trace exposed a
+contradiction: gold clicks the SAME board position TWICE (once early,
+once later) -- the "never re-click" rule structurally forbids the gold
+solution, because the measured seesaw (one block opens while a
+DIFFERENT block closes, same click) means some buttons are genuine
+STATE TOGGLERS whose effect must be applied, undone, and re-applied at
+different points along the route, not fired once and forgotten.
+
+Per-button click memory (``_button_memory``, keyed by the button's own
+cell) now distinguishes two classes, decided from direct per-button
+observation, never assumed:
+
+- **INERT** -- the button's FIRST click showed literally zero diff
+  (beyond HUD). Never re-clicked; the original vc33-derived "don't waste
+  a budgeted action on an already-known result" reasoning still applies
+  here, since a genuinely do-nothing region cannot start doing something
+  later.
+- **TOGGLER** -- the button showed ANY diff at least once. Stays
+  eligible for re-click for as long as the level lasts. A second (or
+  later) click of the SAME button teaches its **cosmetic signature**:
+  cells that repeat on EVERY click of that specific button (the running
+  intersection of all its own observed diffs) are noise -- e.g. the
+  measured "indicator clusters" that flip colour on every click of one
+  particular button regardless of whether that click did anything
+  structural. Subtracting the cosmetic signature from a click's raw diff
+  gives that click's real (non-cosmetic) effect footprint. A first click
+  can't compute this yet (no second data point), so its whole diff
+  counts provisionally.
+
+``_find_toggler_reclick`` decides WHEN a re-click is worth spending a
+probe budget on. The first cut gated this on a SPATIAL heuristic (a
+toggler's accumulated effect footprint overlapping a cell CURRENTLY in
+``_known_blocked``) -- a live 500-step probe measured ZERO reclicks
+under that gate: this adapter's OWN "Offline verification" measurements
+above already showed WHY it can't work -- click 1's effect is a 97-cell
+REVEAL that lands far from any specific blocking cell, so a reveal-class
+toggler's effect footprint has no reason to spatially coincide with
+whatever cell the avatar is currently stuck against. Correlating
+"where a button's effect lands" with "where the avatar happens to be
+stuck" conflates two unrelated things.
+
+Replaced with **stuck-state toggler cycling**: no spatial heuristic at
+all. When genuinely stuck, try each known non-inert toggler ONCE per
+distinct **stuck state** -- a key of (avatar cell, the click-parity of
+every known toggler, used as a cheap proxy for "which of its ~2
+observed states it is currently in" since the measured seesaw
+alternates). ``_route`` itself is the effectiveness signal: the very
+next ``choose_action`` call re-attempts the optimistic beeline
+(``_first_step``) with whatever ``_known_blocked`` the click's raw diff
+produced; if it now succeeds where it didn't before, the click helped
+-- measured by the planner, not guessed by a spatial proxy
+(``_route_feasible_after_toggle`` counts this for diagnostics). With a
+small number of known togglers this is bounded per stuck-episode by
+construction (at most one click per toggler per distinct state), on top
+of the existing ``_PROBE_CLICK_CAP``.
+
+New (never-before-clicked) candidate buttons are ranked by proximity to
+the **hypothetical route** -- the shortest path from the avatar to the
+goal PRETENDING every cell is passable (``_hypothetical_route_cells``)
+-- rather than proximity to the avatar's current position. A live
+500-step probe under the old avatar-proximity ranking spent 32 of the
+run's ~128-action-per-life budget (see "Mechanic model" -- GAME_OVER
+fired at steps 128/257/385, an evident per-life action fuse, not a
+hazard) exhausting nearby-but-irrelevant regions before ever reaching
+buttons that plausibly sit on the path to the goal; route-proximity
+ranking spends that same budget on regions more likely to matter.
 
 Composition from ``admorphiq.kernels``:
   - :func:`admorphiq.kernels.find_regions` segments the frame into the
@@ -226,16 +294,45 @@ class Adapter(GameAdapter):
         # possibly-stale "this is a wall" belief forever.
         self._known_blocked: set[Cell] = set()
 
-        # Button regions already probed this level (by their own cell),
-        # regardless of effect -- never re-probed (see module docstring's
-        # vc33 cross-reference).
-        self._probed_buttons: set[Cell] = set()
+        # Per-button click memory, keyed by the button region's own cell
+        # (bbox top-left), persisting across restarts within a level (see
+        # module docstring's vc33 cross-reference: a probed region's
+        # measured effect is never re-derived from scratch). Each entry:
+        # {"centroid": (row, col), "clicks": int, "diffs": [frozenset, ...]
+        # (one raw HUD-excluded diff per click, in order), "cosmetic":
+        # frozenset (cells that repeat on EVERY click of THIS button, once
+        # >=2 clicks are observed), "inert": bool (True only when the
+        # FIRST click showed literally zero diff -- a genuinely inert
+        # region is never re-clicked; a region that showed ANY diff at
+        # least once stays eligible for a re-click, see
+        # ``_find_toggler_reclick``)}.
+        self._button_memory: dict[Cell, dict[str, Any]] = {}
         self._probe_clicks_this_episode = 0
+
+        # Stuck-state toggler cycling (see module docstring's "Re-click
+        # semantics"): maps a stuck-state key (see ``_stuck_state_key``)
+        # to the set of toggler cells already tried AT that state, so the
+        # SAME toggler is never re-clicked twice for the SAME state (a
+        # click that changes the state -- flips a toggler's parity, or
+        # moves the avatar -- naturally produces a NEW key and permits
+        # trying again).
+        self._tried_togglers_at_state: dict[tuple[Any, ...], set[Cell]] = {}
+        # Diagnostic-only: which tier the last probe click came from, so
+        # ``_route`` can tell whether the NEXT re-plan attempt follows a
+        # toggler re-click (see ``_route_feasible_after_toggle`` below).
+        self._last_probe_kind: str | None = None  # "toggler_reclick" | "new_candidate" | None
 
         # Diagnostic-only counters.
         self._replans = 0
         self._probes_effective = 0
         self._probes_inert = 0
+        self._probes_toggler_reclick = 0
+        # Times a toggler re-click was immediately followed by the
+        # optimistic beeline succeeding where it previously didn't --
+        # the planner's OWN measured effectiveness signal for a re-click
+        # (see module docstring: replaces the falsified spatial-overlap
+        # gate).
+        self._route_feasible_after_toggle = 0
 
     # ── harness contract ────────────────────────────────────────────────
 
@@ -283,13 +380,16 @@ class Adapter(GameAdapter):
         self._goal_cell = None
         self._tried_from = {}
         self._known_blocked = set()
-        self._probed_buttons = set()
+        self._button_memory = {}
         self._probe_clicks_this_episode = 0
+        self._tried_togglers_at_state = {}
+        self._last_probe_kind = None
 
     def _on_restart(self) -> None:
         """Only the avatar's own position resets; the layout knowledge
-        (dir_map, known_blocked, probed_buttons) is kept -- the walls and
-        button effects didn't change, only the current attempt did."""
+        (dir_map, known_blocked, button_memory, tried_togglers_at_state)
+        is kept -- the walls and button effects didn't change, only the
+        current attempt did."""
         self._pending_action = None
         self._pending_kind = None
         self._pending_ref_cell = None
@@ -297,6 +397,7 @@ class Adapter(GameAdapter):
         self._prev_grid = None
         self._active_cell = None
         self._probe_clicks_this_episode = 0
+        self._last_probe_kind = None
 
     # ── measurement: did the pending action do anything? ────────────────
 
@@ -380,17 +481,29 @@ class Adapter(GameAdapter):
         after: tuple[tuple[int, ...], ...],
         probe_cell: Cell | None,
     ) -> None:
-        """Whether a button click changed ANYTHING -- never interpreted
-        semantically (see module docstring): every changed cell is just
-        removed from ``_known_blocked`` so the optimistic planner is
-        willing to try walking through it again, whether it turns out
-        open or (re-discovered the normal way) still blocked.
+        """Whether a button click changed ANYTHING. The RAW diff always
+        drives ``_known_blocked`` (never interpreted semantically -- see
+        module docstring): every changed cell is removed so the
+        optimistic planner is willing to try walking through it again,
+        whether it turns out open or (re-discovered the normal way)
+        still blocked. This part never needs cosmetic/structural
+        classification -- a freed cell that is still genuinely blocked
+        self-corrects the next time routing tries to walk through it.
 
         HUD cells (e.g. the step counter, which increments every action
         regardless of the click) are excluded from ``changed`` using the
         SAME measured ``_is_hud_band`` region test every other candidate
-        list in this file uses -- not a hardcoded row/column guess."""
+        list in this file uses -- not a hardcoded row/column guess.
+
+        Separately, this button's OWN click memory is updated (see
+        ``_button_memory``'s docstring in ``__init__``) -- this is what
+        decides whether the button is ever worth re-clicking, and is kept
+        deliberately independent of the ``_known_blocked`` update above
+        (see module docstring's "Re-click semantics" section)."""
         if probe_cell is None:
+            return
+        mem = self._button_memory.get(probe_cell)
+        if mem is None:
             return
         height, width = len(before), (len(before[0]) if before else 0)
         bg_before = most_common_color(before)
@@ -399,9 +512,33 @@ class Adapter(GameAdapter):
             if _is_hud_band(r, height, width):
                 hud_cells |= r["cells"]  # type: ignore[arg-type]
         diff = frame_diff(before, after)
-        changed = {c for c in diff["cells"] if c not in hud_cells}  # type: ignore[union-attr]
+        changed = frozenset(c for c in diff["cells"] if c not in hud_cells)  # type: ignore[union-attr]
         if changed:
             self._known_blocked -= changed
+
+        mem["diffs"].append(changed)
+        mem["clicks"] += 1
+        if mem["clicks"] == 1:
+            # A first click can't yet distinguish cosmetic noise from a
+            # real effect (see module docstring) -- a completely empty
+            # first diff is the only signal available at this point: the
+            # region is genuinely inert (no visible reaction at all) and
+            # is never clicked again. Anything else counts as effective
+            # for now; the SECOND click (if any) teaches the cosmetic
+            # signature and refines this.
+            mem["inert"] = not changed
+            effective = bool(changed)
+        else:
+            # >=2 clicks of this SAME button: cells that repeat on EVERY
+            # click are its measured cosmetic signature (per-button, from
+            # direct observation -- not assumed). Subtract them from THIS
+            # click's diff to get the click's real (non-cosmetic) effect.
+            cosmetic = mem["diffs"][0]
+            for d in mem["diffs"][1:]:
+                cosmetic = cosmetic & d
+            mem["cosmetic"] = cosmetic
+            effective = bool(changed - cosmetic)
+        if effective:
             self._probes_effective += 1
         else:
             self._probes_inert += 1
@@ -510,6 +647,14 @@ class Adapter(GameAdapter):
         optimistic = self._optimistic_grid()
 
         step = self._first_step(optimistic, self._active_cell, self._goal_cell, moves, move_labels)
+        if self._last_probe_kind == "toggler_reclick":
+            # The planner's OWN re-plan is the effectiveness signal for
+            # the last re-click (module docstring: replaces the
+            # falsified spatial-overlap gate) -- diagnostic only, does
+            # not change what action gets taken.
+            if step is not None:
+                self._route_feasible_after_toggle += 1
+            self._last_probe_kind = None
         if step is not None:
             self._pending_action = step
             self._pending_kind = "move"
@@ -558,24 +703,110 @@ class Adapter(GameAdapter):
         if self._probe_clicks_this_episode >= _PROBE_CLICK_CAP:
             return None
         assert self._active_cell is not None
+
+        # Tier 1: stuck-state toggler cycling (module docstring's
+        # "Re-click semantics" -- replaces the falsified spatial-overlap
+        # gate). Re-clicking a known toggler is itself a planning move --
+        # the seesaw case (one block opens while another closes) needs
+        # exactly this: walk segment 1, toggle, walk segment 2, and
+        # toggle again (a new stuck state, since the toggler's own parity
+        # flipped) if the first segment is needed once more.
+        reclick_cell = self._find_toggler_reclick()
+        if reclick_cell is not None:
+            self._probes_toggler_reclick += 1
+            return self._click_button(reclick_cell, kind="toggler_reclick")
+
+        # Tier 2: a brand-new, never-clicked candidate region, ranked by
+        # proximity to the HYPOTHETICAL route toward the goal (module
+        # docstring: a reveal-class button's effect can be far from the
+        # avatar's current position but still sit near the route it
+        # needs), falling back to avatar-proximity when no route/dir_map
+        # exists yet to rank against.
         candidates = [
             r
             for r in regions
             if r["color"] not in (self._avatar_color, self._goal_color)
-            and r["bbox"][:2] not in self._probed_buttons
+            and r["bbox"][:2] not in self._button_memory
         ]
         if not candidates:
             return None
-        candidates.sort(
-            key=lambda r: abs(r["centroid"][0] - self._active_cell[0])  # type: ignore[index]
-            + abs(r["centroid"][1] - self._active_cell[1])  # type: ignore[index]
-        )
+        candidates = self._rank_candidates_by_route(candidates)
         target = candidates[0]
         cell: Cell = target["bbox"][:2]  # type: ignore[assignment]
-        self._probed_buttons.add(cell)
+        self._button_memory[cell] = {
+            "centroid": target["centroid"],
+            "clicks": 0,
+            "diffs": [],
+            "cosmetic": frozenset(),
+            "inert": False,
+        }
+        return self._click_button(cell, kind="new_candidate")
+
+    def _stuck_state_key(self) -> tuple[Any, ...]:
+        """(avatar cell, sorted (toggler cell, click-parity) pairs) --
+        click parity is a cheap, measured-consistent proxy for "which of
+        its ~2 observed states a toggler is currently in" (the seesaw
+        alternates on each click). Two calls at the SAME avatar position
+        with every known toggler in the SAME parity are the SAME stuck
+        state; a click that flips any toggler's parity (or moves the
+        avatar) produces a genuinely new key."""
+        toggler_states = tuple(
+            sorted(
+                (cell, mem["clicks"] % 2)
+                for cell, mem in self._button_memory.items()
+                if not mem["inert"] and mem["clicks"] > 0
+            )
+        )
+        return (self._active_cell, toggler_states)
+
+    def _find_toggler_reclick(self) -> Cell | None:
+        """The first known non-inert toggler not yet tried AT the current
+        stuck state (see ``_stuck_state_key``) -- no spatial heuristic;
+        ``_route``'s own next re-plan attempt (``_route_feasible_after_toggle``)
+        is what measures whether a given re-click actually helped."""
+        key = self._stuck_state_key()
+        tried = self._tried_togglers_at_state.setdefault(key, set())
+        for cell, mem in self._button_memory.items():
+            if mem["inert"] or mem["clicks"] == 0 or cell in tried:
+                continue
+            tried.add(cell)
+            return cell
+        return None
+
+    def _hypothetical_route_cells(self) -> set[Cell]:
+        """The shortest avatar->goal path PRETENDING every cell is
+        passable -- a fixed reference line for "where the route would go
+        absent any barriers", used to rank which new button candidate is
+        worth probing first (module docstring's "Re-click semantics")."""
+        if self._active_cell is None or self._goal_cell is None or not self._dir_map:
+            return set()
+        moves = list(self._dir_map.values())
+        height = width = 64
+        all_passable = [[True] * width for _ in range(height)]
+        path = grid_shortest_path(all_passable, self._active_cell, self._goal_cell, moves=moves)
+        return set(path) if path else set()
+
+    def _rank_candidates_by_route(self, candidates: list[Region]) -> list[Region]:
+        assert self._active_cell is not None
+        route_cells = self._hypothetical_route_cells()
+        if route_cells:
+            def route_distance(r: Region) -> int:
+                rr, rc = r["centroid"]  # type: ignore[misc]
+                return min(abs(rr - cr) + abs(rc - cc) for cr, cc in route_cells)
+
+            return sorted(candidates, key=route_distance)
+        return sorted(
+            candidates,
+            key=lambda r: abs(r["centroid"][0] - self._active_cell[0])  # type: ignore[index]
+            + abs(r["centroid"][1] - self._active_cell[1]),  # type: ignore[index]
+        )
+
+    def _click_button(self, cell: Cell, kind: str) -> GameAction:
+        mem = self._button_memory[cell]
         self._probe_clicks_this_episode += 1
         self._pending_action = None
         self._pending_kind = "probe"
         self._pending_probe_cell = cell
-        row, col = (round(target["centroid"][0]), round(target["centroid"][1]))  # type: ignore[index]
+        self._last_probe_kind = kind
+        row, col = (round(mem["centroid"][0]), round(mem["centroid"][1]))
         return click_action(x=col, y=row)

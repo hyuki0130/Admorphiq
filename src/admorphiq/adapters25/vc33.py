@@ -51,6 +51,25 @@ NOT "one correct click wins" the way LP85 is:
   makes the correct target's own requirement climb again before it can
   ever be satisfied.
 
+**Discriminator search (bounded, inconclusive)**: gold wins in 7 total
+actions with zero wasted commitment, meaning the gold policy identified
+the correct region without ever needing to test the decoy -- worth
+checking whether a structural signal exists that would let this adapter
+skip straight to it too. :func:`admorphiq.kernels.region_relations` shows
+both colour-9 regions are symmetric in shape (``contains``/``adjacent``
+to their own local colour-0 panel, ``aligned_col`` with each other,
+``adjacent`` to the same colour-5 region) -- the only measured
+difference is the SIZE of each one's containing panel (848 cells for
+the decoy's, 368 for the winner's). This is the one candidate found in a
+bounded search; it was NOT adopted as an ordering signal, because with
+only ONE gold level available for this game there is no second data
+point to confirm "smaller containing panel" is a real, generalizable
+rule rather than a coincidence of this specific level's layout -- an
+unverifiable single-level correlation is not a principled discriminator,
+just a guess wearing a measurement's clothing. Left as an open lever:
+if a future round gets gold coverage on additional VC33 levels, re-check
+whether this panel-size relationship holds up before adopting it.
+
 **Fix (this version)**: after the initial single-pass-per-candidate
 probe (unchanged from LP85 -- still how the two same-colour candidates
 get discovered and colour-ranked at all, though this ALSO means the

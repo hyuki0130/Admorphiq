@@ -1,0 +1,13 @@
+{
+  "game_id": "dc22-fdcac232",
+  "win_levels": 6,
+  "levels_completed": 0,
+  "elapsed_s": 3.0,
+  "total_actions": 500,
+  "per_level": [],
+  "game_score": 0.0,
+  "has_baseline": true,
+  "llm_hypothesis": null,
+  "title": "DC22",
+  "adapter": "dc22"
+}
