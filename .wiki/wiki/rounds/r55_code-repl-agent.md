@@ -785,10 +785,20 @@ The walls split by measured mechanism — **there is no single fix**:
    diversify — it isn't registering that its actions were no-ops/rejected. **Fix
    candidate: surface "last action rejected as repeat / no effect" more forcefully
    in the packet** so the model diversifies. Action-first does NOT address this.
-3. **Planning (ls20 and the low-fallback explorers).** ls20 uses the REPL heavily
-   (21 inspections) and emits clean actions (4% fallback) yet never reaches the
-   goal; ar25/dc22/g50t/sp80/tr87/tu93 act competently (2-14% fallback) but don't
-   discover the goal. Genuine capability/planning gap — the deepest lever.
+3. **Navigation-without-path-planning (the DOMINANT class — 7 of 10 walls:
+   dc22 ar25 g50t sp80 tr87 tu93 ls20).** MEASURED, not "vague capability gap":
+   the model articulates the correct navigation/reach goal constantly (nav-goal
+   mentions 35-100/game; e.g. dc22 "reach the exit at row 63, navigate around red
+   blocks o8/o27") and acts EFFECTIVELY (board-change 60-100%) — but calls the
+   `shortest_path` REPL tool **0 times across ALL of them**. It does greedy
+   per-turn movement and never computes a route, so it wanders effectively but
+   doesn't reach the goal within budget. This is NOT a comprehension or engagement
+   failure — it's a tool-adoption failure: the path-planner exists in the sandbox
+   and the model never invokes it. **Fix candidate: make the `shortest_path` nudge
+   fire whenever a navigation goal is articulated / on nav-signature games —
+   DECOUPLED from the audit** (REPL_NAV is currently audit-gated, and audit is
+   dead per the matched12 result). This is the highest-leverage lever by game
+   count (7/10) and is a clean one-variable test.
 
 **Correction recorded (self-caught):** an interim message overclaimed "action-first
 fixes multiple walls." Measured: action-first is specific to sb26-class truncation;
