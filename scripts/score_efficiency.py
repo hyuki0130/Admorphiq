@@ -27,6 +27,7 @@ import argparse
 import json
 import sys
 import time
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
@@ -239,15 +240,23 @@ def run_game(
     baseline: list[int] | None,
     agent_name: str = "ensemble",
     max_actions: int = _MAX_ACTIONS,
+    adapter_factory: Callable[[], Any] | None = None,
 ) -> dict[str, Any]:
     """Run one game with the selected agent and record per-level action counts.
+
+    ``adapter_factory``, when given, builds the agent object directly instead
+    of resolving ``agent_name`` through :func:`_make_agent` — lets an
+    external caller (e.g. ``scripts/script25.py``, which drives its own
+    quarantined per-game adapters) reuse this exact env-stepping loop and
+    scoring maths without duplicating them. ``agent_name`` is still recorded
+    in the returned dict's callers as a label in that case.
 
     Returns a dict with keys:
       game_id, title, win_levels, levels_completed,
       per_level (list of {level, agent_actions, human_actions, score}),
       game_score, has_baseline, error (only on failure)
     """
-    adapter = _make_agent(agent_name, game_id=game_id)
+    adapter = adapter_factory() if adapter_factory is not None else _make_agent(agent_name, game_id=game_id)
 
     env = arcade.make(game_id)
     if env is None:
