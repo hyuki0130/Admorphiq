@@ -50,22 +50,26 @@ brittle 6/8 by sprite-tag read, prior generic 0/8). Level 1 solves cleanly: the
 colour-9 cross covers its four targets, the colour-11 cross covers its four, and
 the engine wins once both are placed.
 
-**BANKED wall — level 2+ needs RECOLOUR delivery**: ``_target_boxes`` is
-generalised to "a coloured pixel flanked by the border colour on either axis
-pair" so it now detects L2's taller gate-bar targets too (12 colour-9 + 12
-colour-11 cells, measured). The colour-9 and colour-11 movables cover their
-targets cleanly (single covering offsets), BUT level 2 has **four** movables
-(measured colours 9, 11, 12, 13) and only two target colours — the colour-12 and
-colour-13 movables have NO matching target, so they must be routed through a
-changer LINE to RECOLOUR them to 9 / 11 before covering the remaining targets.
-This adapter has no recolour model, so it cycles the two extra movables idle and
-never completes the level. **REOPEN** with a recolour-delivery model: detect the
-changer lines, model a movable→changer overlap as a colour-transform edge, and
-plan "recolour to the needed colour, then cover" per surplus movable. No
-hardcoded coordinates/palettes/sequences were added; the adapter runs to budget.
-The mechanic decode (movables / targets / changers / selection-cycle / recolour)
-plus the working L1 covering solve are the deliverables — the prior wiki had
-only the three tag names.
+**BANKED wall — level 2 (recolour hypothesis FALSIFIED by observation)**:
+``_target_boxes`` is generalised to "a coloured pixel flanked by the border
+colour on either axis pair" so it now detects L2's taller gate-bar targets (12
+colour-9 + 12 colour-11 cells, measured), and ``_active_movable`` is anchored on
+the marker's neighbouring body pixel (not loose bbox containment, which had read
+a phantom colour not present in the frame). With those fixes the colour-9 and
+colour-11 movables cover their targets cleanly, but L2 has a SURPLUS movable
+(colour 12, plus companion colour-13 pixels) that is HIDDEN when unselected
+(renders as background) and has NO matching target. The natural hypothesis —
+route it through a changer LINE to recolour it to 9/11 — was TESTED by
+observation and does NOT hold: driving the selected colour-12 movable across the
+colour-9 changer line for 40 moves in every direction left its colour-12 pixel
+count unchanged (no flip to 9 or 11). So L2's win mechanism for the surplus
+hidden movable is genuinely unresolved — it is NOT the recolour delivery
+hypothesised. **REOPEN** requires first re-deriving, by observation, what the
+surplus movable must do (reach its own hidden target? enable another piece?),
+since neither "recolour" nor "cover a colour-12 target" is supported by the
+frames. No hardcoded coordinates/palettes/sequences were added; the adapter runs
+to budget. The working L1 covering solve and the falsified-recolour finding are
+the deliverables.
 
 Composition from ``admorphiq.kernels``:
   - :func:`admorphiq.kernels.find_regions` segments movables / target boxes.
@@ -246,15 +250,21 @@ class Adapter(GameAdapter):
         return None
 
     def _active_movable(self, grid: tuple[tuple[int, ...], ...], marker: Cell) -> tuple[int, frozenset[Cell]] | None:
-        """The active movable's colour and full cell set: the connected
-        component (colour-4-gap-bridged so the selection-marker hole and any
-        changer split don't fragment it) whose bbox contains the marker."""
+        """The active movable's colour and full cell set: the colour-4-gap-
+        bridged connected component whose body TOUCHES the selection marker.
+
+        Anchored on a body pixel ADJACENT to the marker, not merely on bbox
+        containment — a large sparse cross's bbox can enclose the marker of a
+        DIFFERENT movable, which made the colour read as a phantom (a colour not
+        even present in the frame). The region owning one of the marker's own
+        neighbours is unambiguously the piece the marker sits inside."""
         bg = most_common_color(grid)
         regions = find_regions(grid, background=(bg, _BORDER_COLOR, _SELECTION_COLOR), gap=1)
-        for reg in regions:
-            r0, c0, r1, c1 = reg["bbox"]
-            if r0 <= marker[0] <= r1 and c0 <= marker[1] <= c1:
-                return (reg["color"], reg["cells"])  # type: ignore[return-value]
+        neighbours = {(marker[0] + dr, marker[1] + dc) for dr in (-1, 0, 1) for dc in (-1, 0, 1)}
+        touching = [reg for reg in regions if reg["cells"] & neighbours]
+        if touching:
+            reg = max(touching, key=lambda r: r["size"])
+            return (reg["color"], reg["cells"])  # type: ignore[return-value]
         return None
 
     # ── planning ────────────────────────────────────────────────────────
