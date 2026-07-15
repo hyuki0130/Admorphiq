@@ -161,7 +161,9 @@ _GIVEUP_DEFAULT = 4000
 # token that rides the rings and the FIXED destination marker both render in one
 # shared colour but differ in shape (a solid block vs a hollow 4-corner frame).
 _BUTTON_COLORS = frozenset({8, 14})  # rotation controls (two directions)
-_MARKER_COLOR = 11  # moving goal token (solid) + fixed target frame (hollow corners)
+# Marker colour classes are DISCOVERED per level (a colour appearing as both a
+# solid moving token and hollow corner-frame targets), not fixed — L2 has one
+# class, L3 has two (goal + goal-o) that must all be placed to win.
 _SOLID_MIN_SIZE = 3  # a marker region this size or larger is a solid moving token
 _DEST_CLUSTER_SPAN = 6  # corner pixels within this L∞ span form one target frame
 _PLANNER_BUDGET = 40  # max rotation-sequence length the BFS may return
@@ -278,10 +280,17 @@ def _cint(region: dict[str, Any]) -> Cell:
 
 
 def _planner_background(grid: tuple[tuple[int, ...], ...]) -> frozenset[int]:
-    """The single most-common colour — the backdrop the ring planner segments
-    against. Other chrome colours survive as oversized regions the size/colour
-    filters below discard, so one exclusion is enough."""
-    return frozenset({most_common_color(grid)})
+    """The two most-common colours — the board backdrop + its panel/chrome fill.
+    Both must be excluded: with only the top colour excluded, the second backdrop
+    survives as regions that the generic marker-colour discovery can mistake for
+    a token class. Marker tokens and ring tiles are small and far rarer than
+    either backdrop, so dropping the top two never removes a real token colour."""
+    counts: dict[int, int] = {}
+    for row in grid:
+        for v in row:
+            counts[v] = counts.get(v, 0) + 1
+    top = sorted(counts, key=lambda c: (-counts[c], c))[:2]
+    return frozenset(top)
 
 
 def _detect_buttons(regions: list[dict[str, Any]]) -> list[Cell]:
@@ -292,42 +301,69 @@ def _detect_buttons(regions: list[dict[str, Any]]) -> list[Cell]:
     return sorted(_cint(r) for r in regions if int(r["color"]) in _BUTTON_COLORS)
 
 
-def _detect_goal_cells(regions: list[dict[str, Any]]) -> list[Cell]:
-    """Moving goal tokens = SOLID marker-colour regions (a filled block), as
-    opposed to the hollow 4-corner target frames of the same colour."""
-    return sorted(
-        _cint(r)
+def _detect_marker_colors(regions: list[dict[str, Any]]) -> frozenset[int]:
+    """The colour classes that behave as (moving solid token, fixed hollow
+    target) pairs: a colour that appears BOTH as a solid block AND as a hollow
+    4-corner target frame (a ≥3-dot cluster). A level may have several such
+    classes (LP85 L3 has two — goal/target and goal-o/target-o — that must all
+    be placed to win), so detection is not tied to a single hard-coded colour.
+    Requiring a real corner *frame* (not just any stray small region) is what
+    stops ordinary coloured ring tiles from being mistaken for markers."""
+    solids = {
+        int(r["color"])
         for r in regions
-        if int(r["color"]) == _MARKER_COLOR and int(r["size"]) >= _SOLID_MIN_SIZE
+        if int(r["color"]) not in _BUTTON_COLORS and int(r["size"]) >= _SOLID_MIN_SIZE
+    }
+    return frozenset(c for c in solids if _detect_dests(regions, frozenset({c})))
+
+
+def _detect_movers(regions: list[dict[str, Any]], colors: frozenset[int]) -> list[tuple[int, Cell]]:
+    """Moving goal tokens = SOLID regions of a marker colour, tagged with their
+    colour class (so a token is only ever matched to a same-class target)."""
+    return sorted(
+        (int(r["color"]), _cint(r))
+        for r in regions
+        if int(r["color"]) in colors and int(r["size"]) >= _SOLID_MIN_SIZE
     )
 
 
-def _detect_dest_cells(regions: list[dict[str, Any]]) -> list[Cell]:
-    """Fixed destinations = the centres of the hollow 4-corner target frames.
-    Marker-colour pixels that are NOT part of a solid block are the corner dots;
-    cluster the dots by proximity and take each cluster's centre."""
-    corners = [
-        _cint(r)
-        for r in regions
-        if int(r["color"]) == _MARKER_COLOR and int(r["size"]) < _SOLID_MIN_SIZE
-    ]
-    dests: list[Cell] = []
+def _cluster_frame_centres(corners: list[Cell]) -> list[Cell]:
+    """Group the loose corner dots of one colour into hollow target frames and
+    return each frame's centre. Dots within ``_DEST_CLUSTER_SPAN`` (L∞) form one
+    group; a group of ≥3 (a 4-corner frame, tolerating one occlusion) yields its
+    rounded centroid."""
     used: set[int] = set()
+    centres: list[Cell] = []
     for i, a in enumerate(corners):
         if i in used:
             continue
         group = [a]
         used.add(i)
         for j, b in enumerate(corners):
-            if j in used:
-                continue
-            if abs(a[0] - b[0]) <= _DEST_CLUSTER_SPAN and abs(a[1] - b[1]) <= _DEST_CLUSTER_SPAN:
+            if j not in used and abs(a[0] - b[0]) <= _DEST_CLUSTER_SPAN and abs(
+                a[1] - b[1]
+            ) <= _DEST_CLUSTER_SPAN:
                 group.append(b)
                 used.add(j)
-        if len(group) >= 3:  # a target frame is 4 corners; tolerate one occlusion
+        if len(group) >= 3:
             rr = round(sum(p[0] for p in group) / len(group))
             cc = round(sum(p[1] for p in group) / len(group))
-            dests.append((rr, cc))
+            centres.append((rr, cc))
+    return centres
+
+
+def _detect_dests(regions: list[dict[str, Any]], colors: frozenset[int]) -> list[tuple[int, Cell]]:
+    """Fixed destinations = the centres of the hollow 4-corner target frames,
+    tagged with their colour class. The non-solid marker-colour pixels are the
+    corner dots; cluster them per colour and take each cluster's centre."""
+    dests: list[tuple[int, Cell]] = []
+    for color in colors:
+        corners = [
+            _cint(r)
+            for r in regions
+            if int(r["color"]) == color and int(r["size"]) < _SOLID_MIN_SIZE
+        ]
+        dests.extend((color, centre) for centre in _cluster_frame_centres(corners))
     return sorted(dests)
 
 
@@ -385,8 +421,9 @@ class Adapter(GameAdapter):
         self._planner_active = True
         self._phase = "settle"  # settle -> detect -> learn -> execute (or abort)
         self._bg: frozenset[int] = frozenset()
+        self._marker_colors: frozenset[int] = frozenset()  # (mover, target) colour classes
         self._buttons: list[Cell] = []  # button click cells (row, col)
-        self._dests: list[Cell] = []  # fixed target destination cells
+        self._dests: list[tuple[int, Cell]] = []  # (colour class, destination cell)
         self._ops: dict[str, dict[Cell, Cell]] = {}  # learned per-button rotations
         self._learn_idx = 0  # button whose press we are awaiting the result of
         self._pre_frame: tuple[tuple[int, ...], ...] | None = None
@@ -452,7 +489,7 @@ class Adapter(GameAdapter):
             self._phase = "learn"
             self._learn_idx = 0
             self._pre_frame = grid
-            self._pre_goals = _detect_goal_cells(find_regions(grid, background=self._bg))
+            self._pre_goals = self._mover_cells(grid)
             return self._click_button(0)
 
         if self._phase == "learn":
@@ -460,7 +497,7 @@ class Adapter(GameAdapter):
             self._learn_idx += 1
             if self._learn_idx < len(self._buttons):
                 self._pre_frame = grid
-                self._pre_goals = _detect_goal_cells(find_regions(grid, background=self._bg))
+                self._pre_goals = self._mover_cells(grid)
                 return self._click_button(self._learn_idx)
             # every control learned — self-test gate, then plan
             if self._selftest_fails >= 2 or not self._build_plan(grid):
@@ -475,20 +512,30 @@ class Adapter(GameAdapter):
 
         return None
 
+    def _mover_cells(self, grid: tuple[tuple[int, ...], ...]) -> list[Cell]:
+        """Current positions of every moving token (all colour classes)."""
+        regions = find_regions(grid, background=self._bg)
+        return [cell for _color, cell in _detect_movers(regions, self._marker_colors)]
+
     def _detect(self, grid: tuple[tuple[int, ...], ...]) -> bool:
         """Segment the frame into rotation controls, moving goal tokens, and
-        fixed destinations. Returns whether the level looks like a solvable ring
-        puzzle (≥1 control, equal non-zero counts of goals and destinations)."""
+        fixed destinations across ALL colour classes. Returns whether the level
+        looks like a solvable ring puzzle: ≥1 control, ≥1 moving token, and each
+        colour class has as many movers as destinations (so a full placement
+        exists)."""
         self._bg = _planner_background(grid)
         regions = find_regions(grid, background=self._bg)
         self._buttons = _detect_buttons(regions)
-        goals = _detect_goal_cells(regions)
-        self._dests = _detect_dest_cells(regions)
-        return (
-            len(self._buttons) >= 1
-            and len(goals) >= 1
-            and len(goals) == len(self._dests)
-        )
+        self._marker_colors = _detect_marker_colors(regions)
+        movers = _detect_movers(regions, self._marker_colors)
+        self._dests = _detect_dests(regions, self._marker_colors)
+        mover_counts: dict[int, int] = {}
+        for color, _cell in movers:
+            mover_counts[color] = mover_counts.get(color, 0) + 1
+        dest_counts: dict[int, int] = {}
+        for color, _cell in self._dests:
+            dest_counts[color] = dest_counts.get(color, 0) + 1
+        return len(self._buttons) >= 1 and len(movers) >= 1 and mover_counts == dest_counts
 
     def _learn_button(self, idx: int, grid: tuple[tuple[int, ...], ...]) -> None:
         """Learn button ``idx``'s rotation from the frame pair spanning its
@@ -497,12 +544,17 @@ class Adapter(GameAdapter):
         before = _token_regions(find_regions(self._pre_frame, background=self._bg))
         after = _token_regions(find_regions(grid, background=self._bg))
         diff = frame_diff(self._pre_frame, grid)
-        succ = complete_cycle(learn_cyclic_successor(before, after, diff["cells"]))
+        # Pass every token centroid so a ring cell that stayed the same colour
+        # (invisible in the diff) is recovered geometrically rather than dropped.
+        candidates = [_cint(r) for r in before]
+        succ = complete_cycle(
+            learn_cyclic_successor(before, after, diff["cells"], candidate_cells=candidates)
+        )
         if len(succ) < 2:
             return  # inert control (off-viewport / non-rotating) — skip it
         self._ops[f"b{idx}"] = succ
-        post_goals = set(_detect_goal_cells(find_regions(grid, background=self._bg)))
-        # Self-test: any goal on this ring must land where the map predicts.
+        post_goals = set(self._mover_cells(grid))
+        # Self-test: any moving token on this ring must land where the map predicts.
         for g in self._pre_goals:
             if g in succ and succ[g] not in post_goals:
                 self._selftest_fails += 1
@@ -519,12 +571,21 @@ class Adapter(GameAdapter):
                 if cell not in seen:
                     seen.add(cell)
                     lattice.append(cell)
-        goals = _detect_goal_cells(find_regions(grid, background=self._bg))
-        if len(goals) != len(self._dests) or not goals:
+        movers = _detect_movers(find_regions(grid, background=self._bg), self._marker_colors)
+        if not movers or len(movers) != len(self._dests):
             return False
-        tokens = [_snap(g, lattice) for g in goals]
-        dests = [_snap(d, lattice) for d in self._dests]
-        plan = plan_token_assignment(ops, tokens, dests, budget=_PLANNER_BUDGET)
+        tokens = [_snap(cell, lattice) for _color, cell in movers]
+        token_labels = [color for color, _cell in movers]
+        dests = [_snap(cell, lattice) for _color, cell in self._dests]
+        dest_labels = [color for color, _cell in self._dests]
+        plan = plan_token_assignment(
+            ops,
+            tokens,
+            dests,
+            labels=token_labels,
+            goal_labels=dest_labels,
+            budget=_PLANNER_BUDGET,
+        )
         if not plan:
             return False
         self._plan = deque(plan)
@@ -550,6 +611,7 @@ class Adapter(GameAdapter):
         # spend one inert click letting the new board settle before detecting.
         self._planner_active = True
         self._phase = "detect" if levels == 0 else "settle"
+        self._marker_colors = frozenset()
         self._buttons = []
         self._dests = []
         self._ops = {}

@@ -57,10 +57,40 @@ def _cyclic_order(cells: Sequence[Cell]) -> list[Cell]:
     return order
 
 
+def _augment_ring_cells(order: list[Cell], candidates: Iterable[Cell]) -> list[Cell]:
+    """Insert fully-unobserved ring cells into a tour by filling its gaps.
+
+    A ring cell whose token shares a colour with BOTH neighbours never changes
+    colour under a rotation, so it is absent from the diff and from ``order`` —
+    leaving one oversized hop where it belongs. Its token region still exists on
+    the frame, so for each hop far longer than the median we splice in the
+    nearest candidate cell sitting at that gap's midpoint.
+    """
+    extra = [c for c in candidates if c not in set(order)]
+    if not extra or len(order) < 3:
+        return order
+    hops = sorted(_dist2(order[i], order[(i + 1) % len(order)]) for i in range(len(order)))
+    med = hops[len(hops) // 2] or 1
+    out: list[Cell] = []
+    avail = list(extra)
+    for i in range(len(order)):
+        a = order[i]
+        b = order[(i + 1) % len(order)]
+        out.append(a)
+        if _dist2(a, b) > 2.25 * med and avail:
+            mid = ((a[0] + b[0]) / 2.0, (a[1] + b[1]) / 2.0)
+            cand = min(avail, key=lambda c: (c[0] - mid[0]) ** 2 + (c[1] - mid[1]) ** 2)
+            if (cand[0] - mid[0]) ** 2 + (cand[1] - mid[1]) ** 2 <= 1.5 * med:
+                out.append(cand)
+                avail.remove(cand)
+    return out
+
+
 def learn_cyclic_successor(
     before_regions: Sequence[Mapping[str, object]],
     after_regions: Sequence[Mapping[str, object]],
     changed_cells: Iterable[Cell],
+    candidate_cells: Iterable[Cell] | None = None,
 ) -> dict[Cell, Cell]:
     """Recover one rotation control's ``{cell: successor}`` map from a single
     press, using pre-segmented token regions and the set of changed frame cells.
@@ -79,7 +109,11 @@ def learn_cyclic_successor(
 
     ``before_regions`` / ``after_regions`` are ``find_regions`` outputs (each a
     mapping with ``color``, ``cells`` and ``centroid``); ``changed_cells`` is the
-    frame-diff cell set. Cells are ``(row, col)`` integer region centroids.
+    frame-diff cell set. Cells are ``(row, col)`` integer region centroids. Pass
+    ``candidate_cells`` (all on-board token centroids) to recover ring cells that
+    are FULLY unobserved — a token sharing a colour with both neighbours never
+    changes, so it is spliced back in geometrically at the tour's oversized gap
+    (without it a ring learns one cell short and a multi-step plan drifts off).
     """
     changed = {(int(r), int(c)) for (r, c) in changed_cells}
 
@@ -110,11 +144,19 @@ def learn_cyclic_successor(
     # before_color[cur] for the most cells. This yields one n-cycle by
     # construction — no spurious sub-cycles from local same-colour ambiguity.
     order = _cyclic_order(ring_cells)
+    if candidate_cells is not None:
+        order = _augment_ring_cells(order, candidate_cells)
     n = len(order)
 
     def agreement(step: int) -> int:
+        # Only cells with observed colours vote; spliced-in invisible cells
+        # (no colour entry) still receive a successor from the tour order.
         return sum(
-            1 for i in range(n) if after_color[order[(i + step) % n]] == before_color[order[i]]
+            1
+            for i in range(n)
+            if order[i] in before_color
+            and order[(i + step) % n] in after_color
+            and after_color[order[(i + step) % n]] == before_color[order[i]]
         )
 
     step = 1 if agreement(1) >= agreement(-1) else -1
@@ -165,6 +207,8 @@ def plan_token_assignment(
     tokens: Iterable[Cell],
     goals: Iterable[Cell],
     *,
+    labels: Iterable[object] | None = None,
+    goal_labels: Iterable[object] | None = None,
     budget: int,
     max_states: int = 200_000,
 ) -> list[str] | None:
@@ -174,7 +218,10 @@ def plan_token_assignment(
     Purpose: the search half of a ring-puzzle solver. ``operators`` maps a
     control name (e.g. ``"A_R"``) to its ``{cell: successor}`` permutation;
     ``tokens`` are the moving tokens' current cells; ``goals`` are the target
-    cells. Tokens are interchangeable — success is ``set(tokens) == set(goals)``.
+    cells. By default tokens are interchangeable. Pass ``labels`` /
+    ``goal_labels`` (parallel to ``tokens`` / ``goals``) to make the match
+    CLASS-AWARE — a token only satisfies a goal of the same label — for a board
+    with several distinct token/target kinds (e.g. two colour classes).
 
     Expected feedback: returns the shortest control-name list (length ≤
     ``budget``) reaching the goal assignment, or ``None`` if unreachable within
@@ -182,24 +229,37 @@ def plan_token_assignment(
     compose to the goal — either the maps are wrong/incomplete or the budget is
     too small; the caller should fall back, not retry blindly.
     """
-    goal_set = frozenset((int(r), int(c)) for (r, c) in goals)
-    start = tuple(sorted((int(r), int(c)) for (r, c) in tokens))
-    if len(start) != len(goal_set):
+    toks = [(int(r), int(c)) for (r, c) in tokens]
+    gls = [(int(r), int(c)) for (r, c) in goals]
+    lab = list(labels) if labels is not None else [None] * len(toks)
+    glab = list(goal_labels) if goal_labels is not None else [None] * len(gls)
+    if len(toks) != len(gls) or len(lab) != len(toks) or len(glab) != len(gls):
         return None
-    if frozenset(start) == goal_set:
+    goal_set = frozenset(zip(glab, gls))
+    start = tuple(sorted(zip(lab, toks), key=lambda p: (repr(p[0]), p[1])))
+
+    def as_set(state: tuple) -> frozenset:
+        return frozenset(state)
+
+    if as_set(start) == goal_set:
         return []
     ops = {name: dict(mp) for name, mp in operators.items()}
-    seen: set[tuple[Cell, ...]] = {start}
-    q: deque[tuple[tuple[Cell, ...], list[str]]] = deque([(start, [])])
+    seen: set[tuple] = {start}
+    q: deque[tuple[tuple, list[str]]] = deque([(start, [])])
     while q:
         state, path = q.popleft()
         if len(path) >= budget:
             continue
         for name, mp in ops.items():
-            nxt = apply_successor(mp, state)
+            nxt = tuple(
+                sorted(
+                    ((lb, mp.get(pos, pos)) for lb, pos in state),
+                    key=lambda p: (repr(p[0]), p[1]),
+                )
+            )
             if nxt in seen:
                 continue
-            if frozenset(nxt) == goal_set:
+            if as_set(nxt) == goal_set:
                 return [*path, name]
             seen.add(nxt)
             if len(seen) > max_states:

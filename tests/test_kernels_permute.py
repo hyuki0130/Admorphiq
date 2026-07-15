@@ -138,6 +138,70 @@ def test_plan_finds_shortest_control_sequence_to_goal():
     assert plan == ["R", "R"]
 
 
+def test_learn_recovers_a_fully_invisible_ring_cell_via_candidates():
+    """Purpose: a ring cell whose colour matches BOTH neighbours never changes
+    under a rotation, so it is absent from the frame diff -- learning from the
+    diff alone drops it and the cycle comes back one cell short, which drifts a
+    multi-step plan off target. Passing every token centroid as
+    ``candidate_cells`` must splice that cell back geometrically into the tour's
+    oversized gap.
+
+    Expected feedback: PASS = with ``candidate_cells`` the completed cycle covers
+    ALL ring cells including the invisible one, while omitting it leaves that cell
+    out -- proving the augmentation, not luck, is what recovers it. This is what
+    keeps LP85's ring maps complete when adjacent tiles share a colour.
+    """
+    colors = [1, 2, 3, 4, 5, 6, 7, 7]  # only LOOP[7] shares a colour with LOOP[6]
+    before, after, changed = _rotate_regions(colors, step=1)
+    invisible = _LOOP[7]  # (2, 0) -- its occupant moves but the diff never shows it
+    assert invisible not in changed
+
+    without = complete_cycle(learn_cyclic_successor(before, after, changed))
+    assert invisible not in (set(without) | set(without.values()))
+
+    candidates = list(_LOOP)  # every on-board token centroid
+    with_cands = complete_cycle(
+        learn_cyclic_successor(before, after, changed, candidate_cells=candidates)
+    )
+    cells = set(with_cands) | set(with_cands.values())
+    assert cells == set(_LOOP)  # the invisible cell is back
+    seen, cur = set(), invisible
+    for _ in range(len(_LOOP)):
+        seen.add(cur)
+        cur = with_cands[cur]
+    assert seen == set(_LOOP) and cur == invisible  # one full cycle through it
+
+
+def test_plan_is_class_aware_when_labels_given():
+    """Purpose: with several token/target classes (e.g. two marker colours), a
+    token must only satisfy a SAME-class goal. On two DISJOINT rings a class-'a'
+    token confined to ring 1 can never reach ring 2, so asking it to occupy a
+    ring-2 cell must fail — proving the label constraint is enforced, not just
+    position.
+
+    Expected feedback: PASS = the correctly-labelled goal (each token to a cell
+    on its own reachable ring) is planned, while routing a token to the other
+    class's ring is ``None``. This is what lets LP85 L3's two marker colours be
+    placed jointly without one cross-satisfying the other's target.
+    """
+    ring1 = [(0, 0), (0, 2), (2, 2), (2, 0)]
+    ring2 = [(0, 10), (0, 12), (2, 12), (2, 10)]
+    r1 = {ring1[i]: ring1[(i + 1) % 4] for i in range(4)}
+    r2 = {ring2[i]: ring2[(i + 1) % 4] for i in range(4)}
+    ops = {"R1": r1, "R2": r2}
+    tokens = [ring1[0], ring2[0]]
+    labels = ["a", "b"]
+    ok = plan_token_assignment(
+        ops, tokens, [ring1[1], ring2[1]], labels=labels, goal_labels=["a", "b"], budget=6
+    )
+    assert ok is not None and set(ok) <= {"R1", "R2"} and len(ok) == 2
+    # ask the ring-1 'a' token to reach a ring-2 cell -> impossible
+    unreachable = plan_token_assignment(
+        ops, tokens, [ring2[1], ring2[3]], labels=labels, goal_labels=["a", "b"], budget=6
+    )
+    assert unreachable is None
+
+
 def test_plan_returns_none_when_goal_unreachable_within_budget():
     """Purpose: an honest failure signal when no composition reaches the goal in
     budget — the caller must fall back, not loop.

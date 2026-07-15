@@ -12,7 +12,17 @@ from __future__ import annotations
 from collections import deque
 from types import SimpleNamespace
 
-from admorphiq.adapters25.lp85 import Adapter, _candidates_with_region, _region_candidates, _round_robin_queue
+from admorphiq.adapters25.lp85 import (
+    Adapter,
+    _candidates_with_region,
+    _detect_dests,
+    _detect_marker_colors,
+    _detect_movers,
+    _planner_background,
+    _region_candidates,
+    _round_robin_queue,
+)
+from admorphiq.kernels import find_regions
 
 
 def _blank_grid(size: int, bg: int) -> list[list[int]]:
@@ -242,3 +252,82 @@ def test_adapter_finishes_a_responsive_region_before_returning_to_the_outer_swee
     # wedged between them) once the first one reacts.
     idx9 = [i for i, p in enumerate(clicked_order) if p in ((1, 1), (1, 2))]
     assert idx9 == [0, 1]
+
+
+def _stamp_frame(grid: list[list[int]], top_left: tuple[int, int], colour: int) -> None:
+    """Stamp a solid 2x2 moving token of ``colour`` at ``top_left``."""
+    r, c = top_left
+    _stamp(grid, [(r, c), (r, c + 1), (r + 1, c), (r + 1, c + 1)], colour)
+
+
+def _stamp_target(grid: list[list[int]], centre: tuple[int, int], colour: int) -> None:
+    """Stamp a hollow 4-corner target frame of ``colour`` centred on ``centre``."""
+    r, c = centre
+    _stamp(grid, [(r - 2, c - 2), (r - 2, c + 2), (r + 2, c - 2), (r + 2, c + 2)], colour)
+
+
+def test_detect_marker_colors_finds_every_class_and_matches_movers_to_dests():
+    """Purpose: pin the L3 generalization -- marker classes are DISCOVERED per
+    level (a colour appearing as both a solid moving token AND a hollow 4-corner
+    target frame), not the single hard-coded colour the L2 code used. LP85 L3 has
+    TWO classes (goal + goal-o) that must all be placed to win, so detection must
+    surface both, each with its movers tagged by class and matched to same-class
+    destinations.
+
+    Expected feedback: PASS = both marker colours are found, and _detect_movers /
+    _detect_dests tag and pair them by class (each class has equal mover/dest
+    counts at the right centroids). Failure means the adapter regressed to a
+    single-colour reading and would misdetect (or reject) any multi-class level."""
+    size = 64
+    grid = _blank_grid(size, bg=0)
+    # A chrome panel so the two-most-common background exclusion has a real
+    # second colour to drop -- markers stay rare and survive it.
+    for r in range(40, 52):
+        _stamp(grid, [(r, c) for c in range(2, 30)], 3)
+    # Two button controls (colour 8) so detection has ≥1 control.
+    _stamp(grid, [(1, 12), (1, 13)], 8)
+    # Class colour-11: solid token + its own hollow target frame.
+    _stamp_frame(grid, (20, 40), 11)
+    _stamp_target(grid, (28, 16), 11)
+    # Class colour-12: solid token + its own hollow target frame.
+    _stamp_frame(grid, (34, 18), 12)
+    _stamp_target(grid, (28, 46), 12)
+
+    tup = tuple(tuple(row) for row in grid)
+    bg = _planner_background(tup)
+    assert 0 in bg and 3 in bg  # both backdrops excluded, neither marker colour
+    regions = find_regions(tup, background=bg)
+
+    marker_colors = _detect_marker_colors(regions)
+    assert marker_colors == frozenset({11, 12})
+
+    movers = _detect_movers(regions, marker_colors)
+    dests = _detect_dests(regions, marker_colors)
+    # Each class contributes exactly one mover and one destination.
+    assert sorted(color for color, _ in movers) == [11, 12]
+    assert sorted(color for color, _ in dests) == [11, 12]
+    assert dict(dests) == {11: (28, 16), 12: (28, 46)}
+
+
+def test_detect_marker_colors_ignores_a_solid_without_a_target_frame():
+    """Purpose: a solid coloured blob that has NO matching hollow target frame is
+    an ordinary ring tile / decoration, NOT a marker class -- requiring a real
+    4-corner frame is what stops the multi-class discovery from mistaking every
+    coloured region for a mover.
+
+    Expected feedback: PASS = a lone solid colour (no frame) is excluded from the
+    marker set. Failure means detection over-triggers and would inject phantom
+    token classes, breaking the mover==dest count gate that guards planning."""
+    size = 64
+    grid = _blank_grid(size, bg=0)
+    for r in range(40, 52):
+        _stamp(grid, [(r, c) for c in range(2, 30)], 3)
+    _stamp(grid, [(1, 12), (1, 13)], 8)
+    # Colour-11 is a proper class (solid + frame); colour-7 is a bare solid.
+    _stamp_frame(grid, (20, 40), 11)
+    _stamp_target(grid, (28, 16), 11)
+    _stamp_frame(grid, (34, 18), 7)  # solid only, no corner frame
+
+    tup = tuple(tuple(row) for row in grid)
+    regions = find_regions(tup, background=_planner_background(tup))
+    assert _detect_marker_colors(regions) == frozenset({11})
