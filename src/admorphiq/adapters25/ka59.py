@@ -292,11 +292,37 @@ corridor (:data:`_LAUNCH_CORRIDOR_DEPTH`) from ``_known_blocked`` before
 routing -- those cells are approach cells the launchee itself traversed,
 not confirmed walls. With both, the pusher reaches ``behind`` cleanly and
 drives in, the launchee slides across the wall (measured (30,30)->(30,45)),
-both frames fill, and ``levels_completed -> 1``. L1+ have different launch
-geometry (a vertical launch, unit (3,0)) and do not yet clear inside the
-budget -- the joint planner is L0-validated, deeper levels are follow-up.
+both frames fill, and ``levels_completed -> 1``.
+
+**L1 = heterogeneous size-matched placement (R56 L1 round, gated path added,
+2026-07-15).** L1 is NOT a launch level (the earlier "vertical launch (3,0)"
+note was an artifact of the launch path mis-routing L1's under-detection, now
+corrected). It is a DIFFERENT structure: four hollow FRAMES of several inner
+sizes (measured inner areas 9/18/18/36) plus four SOLID (non-ring) pieces
+whose own bbox area matches a frame's inner area (9/18/18/36). Solid pieces are
+invisible to :func:`closed_frames`, so a gated path detects them via
+:func:`find_regions` and assigns pieces to frames BY SIZE. The gate is the
+frame inner-size-class count (:func:`_frame_inner_areas`): >1 class routes to
+:func:`_classify_hetero` + the size-matched ``_assign`` and suppresses
+active-marker learning (solid pieces have no hole marker, so all
+identification is movement-based); a single class (L0) is left byte-identical.
+The placement itself reuses the existing ``_decide`` select+walk+fill loop.
+
+**L1 does NOT clear -- banked, transport mechanic missing.** MEASURED: the
+size-matched placement fills exactly the TWO frames that share the pieces'
+chamber ((51,51) and (39,54)); the other two ((9,9), (42,6)) sit in
+wall-sealed chambers (the board is split by color-15/color-2 barriers into
+three regions) that are UNREACHABLE by 3px-step walking -- a bg-connectivity
+flood from the piece start reaches only those same two frames. Crossing
+chambers needs a transport mechanic (the color-2 strips look like portals, or
+a launch-through-wall as on L0) that this adapter does not model. This is a
+genuinely new structure beyond size-matched placement, banked here and in
+``.wiki/wiki/games/KA59.md`` rather than speculatively half-built. So L1
+placement measurably progresses (2 of 4 frames) but the level stays 1/7 until
+the transport layer is a dedicated follow-up.
+
 The legacy per-call ``_decide`` remains as the fallback for anything the
-2-piece orchestrator does not model, so the 0/7 floor cannot regress.
+2-piece orchestrator does not model, so the 1/7 floor cannot regress.
 """
 
 from __future__ import annotations
@@ -319,6 +345,7 @@ from admorphiq.adapters25.base import (
 from admorphiq.kernels import (
     assign_pairs,
     closed_frames,
+    find_regions,
     grid_distance_field,
     grid_shortest_path,
     path_to_moves,
@@ -339,6 +366,12 @@ _GIVEUP_DEFAULT = 4000
 # into "piece" vs "frame" size classes. 1.5 matches every other script25
 # adapter's use of size_clusters (sb26, m0r0) -- no game-specific tuning.
 _SIZE_CLUSTER_RATIO = 1.5
+
+# Minimum inner-bbox area for a ring to count as a placement FRAME (target).
+# A ring PIECE's own interior is a single cell (area 1); a real frame's hole
+# is large enough to seat a piece. 4 cleanly separates the two on every
+# measured level (L0 frames inner area 9, pieces inner 1; L1 frames 9/18/36).
+_MIN_FRAME_INNER_AREA = 4
 
 # A push-slide, once triggered, is MEASURED (read from the level 0 gold
 # trace + a read-only source review) to consume every submitted action as
@@ -442,22 +475,61 @@ def _piece_marker_color(grid: tuple[tuple[int, ...], ...], outer_bbox: tuple[int
     return grid[ir0][ic0]
 
 
+def _frame_inner_areas(rings: list[dict[str, Any]]) -> list[int]:
+    """The distinct inner-bbox areas of rings large enough to be placement
+    FRAMES (>= _MIN_FRAME_INNER_AREA), i.e. the frame SIZE CLASSES on a
+    board. One class == the L0 two-equal-frames model; more than one == a
+    heterogeneous size-matched board (L1+) -- this is the gate between the
+    original ring-launch path and the solid-piece placement path."""
+    return sorted(
+        {_bbox_area(r["inner_bbox"]) for r in rings if _bbox_area(r["inner_bbox"]) >= _MIN_FRAME_INNER_AREA}
+    )
+
+
+def _classify_hetero(
+    grid: tuple[tuple[int, ...], ...], background: int, rings: list[dict[str, Any]]
+) -> tuple[list[Region], list[dict[str, Any]]]:
+    """Heterogeneous size-matched placement (L1+): frames are hollow rings of
+    several inner sizes; pieces are SOLID shapes (NOT hollow rings) whose own
+    bbox area equals some frame's inner-bbox area (the "this piece fits this
+    frame" test, MEASURED on L1: piece bbox areas 9/18/18/36 exactly match
+    frame inner areas 9/18/18/36).
+
+    Pieces are found with :func:`find_regions` (any connected non-background
+    shape), NOT :func:`closed_frames` -- the larger L1 pieces are solid and
+    invisible to ring detection. A region only counts as a piece when its
+    bbox area matches a frame inner area, which cleanly excludes the frame
+    borders themselves (outer areas 25/40/64, none of which equal an inner
+    area) and any large background structure.
+    """
+    frames = [r for r in rings if _bbox_area(r["inner_bbox"]) >= _MIN_FRAME_INNER_AREA]
+    frame_inner_areas = {_bbox_area(f["inner_bbox"]) for f in frames}
+    pieces = [reg for reg in find_regions(grid, background=background) if _bbox_area(reg["bbox"]) in frame_inner_areas]
+    return pieces, frames
+
+
 def _classify_rings(
     grid: tuple[tuple[int, ...], ...], background: int
 ) -> tuple[list[Region], list[dict[str, Any]]]:
     """Split every ring on ``grid`` into (piece regions, matching frame rings).
 
-    Pieces are the smallest outer-bbox size class; a frame ring only
-    qualifies as a usable target when its ``inner_bbox`` area matches SOME
-    detected piece's own ``outer_bbox`` area (the measured "this frame
-    accepts this piece class" test -- see module docstring's level-2 scope
-    note). Frame rings whose interior matches no piece class are returned
-    neither as pieces nor as targets: this adapter has no piece to route
-    there and must not mis-plan around them.
+    Dispatches on the frame SIZE-CLASS count (see :func:`_frame_inner_areas`):
+    more than one class routes to :func:`_classify_hetero` (L1+ solid-piece
+    size-matched placement); a single class falls through to the original
+    two-equal-ring model below (L0), which is left byte-identical.
+
+    (Single-class path) Pieces are the smallest outer-bbox size class; a frame
+    ring only qualifies as a usable target when its ``inner_bbox`` area matches
+    SOME detected piece's own ``outer_bbox`` area (the measured "this frame
+    accepts this piece class" test). Frame rings whose interior matches no
+    piece class are returned neither as pieces nor as targets: this adapter
+    has no piece to route there and must not mis-plan around them.
     """
     rings = closed_frames(grid, background=background)
     if len(rings) < 2:
         return [], []
+    if len(_frame_inner_areas(rings)) > 1:
+        return _classify_hetero(grid, background, rings)
     areas = [_bbox_area(r["outer_bbox"]) for r in rings]
     clusters = size_clusters([{"size": a} for a in areas], ratio=_SIZE_CLUSTER_RATIO)
     if len(clusters) < 2:
@@ -491,6 +563,14 @@ class Adapter(GameAdapter):
         # levels and restarts: the control scheme is a property of the
         # game, not the layout or the current life.
         self._dir_map: dict[int, Cell] = {}
+
+        # True on a heterogeneous size-matched board (L1+: several frame size
+        # classes, solid non-ring pieces). Set fresh every choose_action from
+        # the frame. Its ONLY behavioural effect is to suppress
+        # active-marker-colour learning (solid pieces have no single-cell hole
+        # marker), forcing robust movement-based identification for all
+        # pieces; the placement itself reuses the same select+walk machinery.
+        self._hetero = False
 
         self._pending_action: int | None = None
         self._pending_kind: str | None = None  # "move" | "select" | None
@@ -638,6 +718,8 @@ class Adapter(GameAdapter):
         levels = int(getattr(latest_frame, "levels_completed", 0) or 0)
         if levels != self._levels_seen:
             self._on_level_up(levels)
+
+        self._hetero = len(_frame_inner_areas(closed_frames(grid, background=most_common_color(grid)))) > 1
 
         self._step += 1
         self._observe_result(grid)
@@ -803,9 +885,16 @@ class Adapter(GameAdapter):
             self._tried_from.setdefault(from_cell, set()).add(action)
             self._active_cell = (from_cell[0] + shift[0], from_cell[1] + shift[1])
             self._identity_tried = set()
-            color = _piece_marker_color(grid, cur_pieces[match["after"]]["bbox"])  # type: ignore[arg-type,index]
-            if color is not None:
-                self._active_marker_color = color
+            # On a heterogeneous board the pieces are SOLID (no single-cell
+            # hole marker), so never learn a marker colour there -- keep every
+            # move on this track_objects identification path. Learning a marker
+            # from the one 3x3 piece that DOES have a hole would strand the
+            # larger pieces (their _piece_marker_color is None) in a failed
+            # marker read.
+            if not self._hetero:
+                color = _piece_marker_color(grid, cur_pieces[match["after"]]["bbox"])  # type: ignore[arg-type,index]
+                if color is not None:
+                    self._active_marker_color = color
             return
 
         # Marker known: attribute the move to the ACTIVE piece's OWN
@@ -1148,12 +1237,36 @@ class Adapter(GameAdapter):
 
     # ── planning (legacy fallback) ──────────────────────────────────────
 
-    def _assign(self, free_cells: list[Cell], unfilled_targets: list[Cell]) -> dict[Cell, Cell]:
+    def _assign(
+        self,
+        free_cells: list[Cell],
+        unfilled_targets: list[Cell],
+        piece_area: dict[Cell, int] | None = None,
+        target_area: dict[Cell, int] | None = None,
+    ) -> dict[Cell, Cell]:
+        """Nearest-distance bipartite assignment of pieces to targets.
+
+        When ``piece_area``/``target_area`` are supplied (heterogeneous board),
+        a piece may only go to a frame whose inner area equals the piece's own
+        bbox area -- a size mismatch adds a prohibitive penalty so same-size
+        ties then resolve by Manhattan distance. On a single-size board every
+        area is equal, so the penalty is a no-op and this is byte-identical to
+        the pure-distance assignment (verified: L0 unchanged)."""
+
+        def cost(p: Cell, t: Cell) -> int:
+            c = abs(p[0] - t[0]) + abs(p[1] - t[1])
+            if piece_area is not None and target_area is not None:
+                pa, ta = piece_area.get(p), target_area.get(t)
+                # Penalise only a CONFIRMED size mismatch; if either area is
+                # unknown this call (a frame momentarily undetected), fall back
+                # to pure distance rather than wrongly forbidding the pair.
+                if pa is not None and ta is not None and pa != ta:
+                    c += 100_000
+            return c
+
         if not free_cells or not unfilled_targets:
             return {}
-        matrix = [
-            [-(abs(p[0] - t[0]) + abs(p[1] - t[1])) for t in unfilled_targets] for p in free_cells
-        ]
+        matrix = [[-cost(p, t) for t in unfilled_targets] for p in free_cells]
         pairs = assign_pairs(matrix)
         return {free_cells[i]: unfilled_targets[j] for i, j in pairs}
 
@@ -1240,7 +1353,15 @@ class Adapter(GameAdapter):
         if not free_cells or not unfilled_targets:
             return self._probe(move_ids)
 
-        assignment = self._assign(free_cells, unfilled_targets)
+        if self._hetero:
+            # Heterogeneous board: match pieces to frames BY SIZE (piece bbox
+            # area == frame inner area), ties by distance. Areas read fresh
+            # from this call's detections.
+            piece_area = {p["bbox"][:2]: _bbox_area(p["bbox"]) for p in pieces}  # type: ignore[misc]
+            target_area = {t["inner_bbox"][:2]: _bbox_area(t["inner_bbox"]) for t in targets}  # type: ignore[misc]
+            assignment = self._assign(free_cells, unfilled_targets, piece_area, target_area)
+        else:
+            assignment = self._assign(free_cells, unfilled_targets)
 
         if self._active_cell in assignment:
             other_cells = [c for c in piece_cells if c != self._active_cell]
