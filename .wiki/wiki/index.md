@@ -20,7 +20,7 @@ category, drill into specific pages.
 - [[games/FT09.md]] — v1 brittle 6/6 ✅ (sprite-tag solver, kept for provenance only), generic LIVE 6/6, 100% RHAE, 88 total actions (R56 glyph decode — A multi-ring, multi-glyph constraint-satisfaction toggle puzzle — NOT a
 - [[games/G50T.md]] — v1 brittle 1/7 (explore_interact, unreliable) — A reactive Sokoban / Adventures-of-Lolo maze: move a player to a hidden goal past enemies that step when you step — NOT an "explore-interact" game.
 - [[games/KA59.md]] — v1 brittle 4/7 ✅, generic 0/7 ❌ (R23 8B; v2 dir-silent) — Relies on game internals — high v1 score, fails on v2.
-- [[games/LF52.md]] — v1 0/10 ❌ — Not yet classified; needs hand review.
+- [[games/LF52.md]] — v1 0/10 (agent regression; lone 1/10 only at 50000 ensemble budget) — Move a cursor and click game objects to LINK them; a level wins on an internal completion flag, within a per-level action budget. First characterised in R56 (was "Unknown post-regression").
 - [[games/LP85.md]] — v1 1/8 ✅ — Frame-observation solver — generalizes across version hashes.
 - [[games/LS20.md]] — v1 1/7 (brittle, hardcoded L1 -- STALE, see below) — A shape/color/rotation-MATCHING maze: the avatar carries a token
 - [[games/M0R0.md]] — v1 brittle n/a (no brittle solver — pure generic), generic 2/6 ✅ (R23 8B via bfs_state_space) — Frame-observation solver — generalizes across version hashes.
