@@ -90,14 +90,21 @@ palettes, or level solutions — only the frame-keyed graph and kernel BFS).
 **Banked wall — L2+ (honest; reopen pointer here).** Three compounding
 obstacles, each measured from the game source (read offline for
 understanding only) and/or live:
-  1. **Hidden-counter non-determinism.** The masked step counter is hidden
+  1. **Hidden-counter non-determinism — real, but its "obvious" fix is a
+     MEASURED DEAD END (R56 2026-07-15).** The masked step counter is hidden
      state: two frames with the same ``(position, appearance)`` but different
      remaining steps hash identically, yet one steps normally and the other
      dies and repositions — so ``(key, action)`` is not perfectly
-     deterministic (a mild ``admorphiq.tools.dealias`` inter-collision). The
-     last-seen edge is adequate for L1's short solution but degrades deeper
-     planning; a dealias-style action-history augmentation of the key is the
-     fix.
+     deterministic (a mild ``admorphiq.tools.dealias`` inter-collision;
+     MEASURED: 83.3% of repeated L2 edges are consistent, so ~17% collide).
+     The tempting dealias fix — fold the last K actions into the key — DOES
+     lift per-edge determinism (K=3 → 93.9%), but it is COUNTERPRODUCTIVE
+     overall: it fragments the state space (L2 distinct nodes 33 → 3676) and
+     destroys the frame key's SELF-LOCATING property, which is exactly what
+     the BFS-from-start relies on — so with K≥2 even L1 stops clearing (the
+     1/7 floor regresses). Determinism was never the L2 bottleneck;
+     TRACTABILITY (a small, self-locating graph) is, and augmentation trades
+     it away. So the last-seen edge stays; the counter is left aliased.
   2. **Refill-gated long solutions.** L2's human baseline is 123 actions but
      a life is only ~21 steps (StepCounter 42 / default StepsDecrement 2),
      and EVERY life-loss resets position, token, AND goal progress. The level
@@ -109,8 +116,13 @@ understanding only) and/or live:
      ``(key, action)`` genuinely non-deterministic) and, on later levels, a
      Fog flag that hides structure — both break the static-structure
      assumption the frame key relies on.
-Reopen order: augment the key with recent-action history (obstacle 1) first,
-since it also stabilises the graph under obstacles 2–3.
+Reopen order (REVISED after the R56 measurement above): obstacle 1's
+key-augmentation is OFF the table (it regresses the floor). The real L2 gate
+is obstacle 2 — refill-gated long solutions — so the reopen is a REFILL-AWARE
+search: detect step-refill cells (a region that vanishes when collected, akin
+to the goal-reveal) and bias BFS-from-start to route through them before the
+goal, extending the ~21-step life enough to reach L2's ~123-action solution.
+Obstacle 3 (moving hazards + fog) stays banked for L3+.
 
 Composition from ``admorphiq.kernels``:
   - :func:`admorphiq.kernels.find_regions` segments each frame into the
