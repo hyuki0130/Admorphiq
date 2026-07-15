@@ -270,15 +270,33 @@ KNOWN cell had every action already tried (a case that did not exist
 before push-triggered re-routing made revisiting an exhausted cell
 common) -- fixed by cycling through actions instead of repeating one.
 
-Despite all of this, **the 2x500 smoke result is still 0/7** -- the push
-executes and crosses the wall, but the system as a whole (assignment +
-select + push-settle + optimistic exploration, now interacting for the
-first time) does not yet converge to a full level clear within the
-100-action fuse across the available lives. The remaining gap was not
-further root-caused given time spent; likely candidates are assignment
-not coordinating WHICH piece should push versus walk, and the overhead
-of re-identifying and re-assigning from scratch after every push and
-restart. Flagged honestly as unresolved rather than claimed fixed.
+Earlier this stalled at 0/7 -- the push executed and crossed the wall in
+isolation, but the launch never fired inside the full assignment/select/
+place loop.
+
+**Launch fired + L0 cleared (round 5, 2026-07-15) -- 1/7 MEASURED.** Root
+cause was a collision-misread poisoning the launch corridor. When the
+place phase walks the far piece into the wall it stops one cell short of
+the cross-wall band; the orchestrator then flags a launch and the OTHER
+piece must reach the cell one step BEHIND the (now wall-adjacent) launchee
+and drive into it. But every approach step toward the launchee reads as
+"did not move" (the engine consumes it as the momentum push, not a 1-cell
+advance), so ``_record_blocked`` banked each approach cell as a PERMANENT
+wall -- after which the optimistic router beelined AWAY from the launchee
+forever and the launch was unreachable. Two measured facts fixed it:
+(1) the momentum slide fires ONLY when the pusher moves INTO the launchee's
+own cell (``active + unit == launchee``); a hit from two cells away leaves
+the launchee unmoved (the launch counter ticked but nothing slid -- MEASURED);
+(2) ``_orch_launch`` therefore un-poisons the collinear-behind approach
+corridor (:data:`_LAUNCH_CORRIDOR_DEPTH`) from ``_known_blocked`` before
+routing -- those cells are approach cells the launchee itself traversed,
+not confirmed walls. With both, the pusher reaches ``behind`` cleanly and
+drives in, the launchee slides across the wall (measured (30,30)->(30,45)),
+both frames fill, and ``levels_completed -> 1``. L1+ have different launch
+geometry (a vertical launch, unit (3,0)) and do not yet clear inside the
+budget -- the joint planner is L0-validated, deeper levels are follow-up.
+The legacy per-call ``_decide`` remains as the fallback for anything the
+2-piece orchestrator does not model, so the 0/7 floor cannot regress.
 """
 
 from __future__ import annotations
@@ -333,6 +351,42 @@ _PUSH_SETTLE_STABLE_FRAMES = 2
 # other script25 adapter's settle-wait convention (sb26's _SETTLE_MAX_WAIT)
 # so a slide that never stabilizes (misdetection) can't hang the adapter.
 _PUSH_SETTLE_MAX_TICKS = 10
+
+# --- explicit joint-plan orchestrator (KA59 L0 recipe) tunables ---
+# Consecutive walk steps that fail to reduce the active piece's Manhattan
+# distance to its assigned target before the target is flagged as
+# LAUNCH-NEEDED (the piece is jammed against a wall on the axis it must
+# cross). MEASURED on L0: walking the far piece right stalls at the wall
+# after ~2 no-progress steps; 3 gives one step of slack against a single
+# detour before escalating to a launch.
+_STALL_LIMIT = 3
+# Consecutive select clicks that never make the intended piece active
+# before the orchestrator gives up and hands back to the legacy _decide
+# fallback -- bounds the select-loop failure mode that sank the earlier
+# greedy prototype (a select re-issued forever with no frame-verified
+# state change). _select_point cycles through 5 click points, so this
+# gives every candidate point at least one try before bailing.
+_SELECT_STREAK_MAX = 6
+# Per-level cap on launches -- one suffices for L0; the bound stops a
+# relaunch loop if a launch fails to make the target reachable (the piece
+# stalls, re-flags launch, launches again, ...). After the cap the
+# orchestrator falls back rather than burn the life re-launching.
+_MAX_LAUNCHES = 2
+# A normal per-action step moves the active piece one fixed small delta
+# (MEASURED 3px). A displacement larger than this many cells is a
+# push-slide's momentum carry, never a single-action delta -- used to keep
+# a launch slide out of the learned dir_map move set.
+_MAX_STEP_CELLS = 6
+# Depth (in learned step-units, collinear-behind the launchee along the
+# launch axis) of the pusher-APPROACH corridor that _orch_launch un-poisons
+# from _known_blocked before routing. MEASURED necessary (KA59 L0): a piece
+# stepping toward the launchee reads as "did not move" (the engine consumes
+# the action as the momentum push, not a 1-cell advance), so _record_blocked
+# banks the approach cell as a permanent wall; left poisoned, the optimistic
+# router then beelines AWAY from the launchee forever and the launch never
+# fires. These cells are approach cells the launchee itself traversed, not
+# confirmed walls, so clearing them to this depth is safe.
+_LAUNCH_CORRIDOR_DEPTH = 3
 
 
 def _bbox_area(bbox: tuple[int, int, int, int]) -> int:
@@ -539,6 +593,29 @@ class Adapter(GameAdapter):
         # post-push re-identification).
         self._identity_tried: set[int] = set()
 
+        # ── explicit joint-plan orchestrator state (KA59 L0 recipe) ──
+        # Target cells the orchestrator has FLAGGED as needing a launch: the
+        # active piece walking toward one stalled against a wall on the axis
+        # it had to cross. Persists until the launch executes (cleared on the
+        # push-settle completion in choose_action), so the joint plan does
+        # LAUNCH-first then walk-place, never placing the pusher before it
+        # has shoved the launchee across.
+        self._launch_targets: set[Cell] = set()
+        # Stall bookkeeping for the CURRENT walk goal: the goal being walked
+        # to, the best (smallest) Manhattan distance to it seen so far, and
+        # how many consecutive steps since that best did not improve. Reset
+        # whenever the goal changes or a new best is reached.
+        self._walk_goal: Cell | None = None
+        self._walk_best: int = 1 << 30
+        self._walk_stall: int = 0
+        # Consecutive select clicks issued without the intended piece
+        # becoming active -- the loop-guard for the select-orchestration
+        # failure the earlier prototype hit. Reset to 0 the moment a select
+        # is confirmed (the intended piece reads as active).
+        self._select_streak: int = 0
+        # Launches executed this level -- bounds relaunch loops.
+        self._launches_done: int = 0
+
     # ── harness contract ────────────────────────────────────────────────
 
     def is_done(self, frames: list[Any], latest_frame: Any) -> bool:
@@ -592,6 +669,15 @@ class Adapter(GameAdapter):
                 self._active_cell = None
                 self._identity_tried = set()
                 self._prev_piece_regions = None
+                # The launch this slide resolved is DONE: clear every launch
+                # flag + walk-stall bookkeeping so the joint plan resumes at
+                # its walk-place phase (the launchee is now across the wall)
+                # instead of trying to launch again from the new layout.
+                self._launch_targets = set()
+                self._walk_goal = None
+                self._walk_best = 1 << 30
+                self._walk_stall = 0
+                self._select_streak = 0
                 # Fall through to normal planning this same call.
             else:
                 self._pending_action = None
@@ -599,7 +685,14 @@ class Adapter(GameAdapter):
                 self._prev_grid = grid
                 return simple_action(move_ids[0]) if move_ids else reset_action()
 
-        action = self._decide(grid, move_ids, action6_ok)
+        # The explicit joint-plan orchestrator owns the 2-piece placement
+        # case (the KA59 L0 launch-then-walk recipe); it hands back None on
+        # anything it does not model (>2 pieces, no free piece, marker not
+        # yet learned enough), and _decide -- the legacy per-call
+        # re-derivation -- runs as the fallback.
+        action = self._orchestrate(grid, move_ids, action6_ok)
+        if action is None:
+            action = self._decide(grid, move_ids, action6_ok)
         self._prev_grid = grid
         return action
 
@@ -624,6 +717,20 @@ class Adapter(GameAdapter):
         self._push_settling = False
         self._push_settle_stable = 0
         self._push_settle_ticks = 0
+        self._reset_orch()
+
+    def _reset_orch(self) -> None:
+        """Clear the joint-plan orchestrator's committed state (launch
+        flags, walk-stall bookkeeping, select loop-guard, launch count).
+        Called on a level-up and a GAME_OVER restart -- both revert every
+        piece to its level-start layout, so a flagged launch or an
+        in-progress walk goal is stale."""
+        self._launch_targets = set()
+        self._walk_goal = None
+        self._walk_best = 1 << 30
+        self._walk_stall = 0
+        self._select_streak = 0
+        self._launches_done = 0
 
     def _on_restart(self) -> None:
         """Only the active piece's position resets; the layout knowledge
@@ -644,8 +751,23 @@ class Adapter(GameAdapter):
         self._push_settling = False
         self._push_settle_stable = 0
         self._push_settle_ticks = 0
+        self._reset_orch()
 
     # ── measurement: did the pending action move a piece? ───────────────
+
+    def _marker_cell(
+        self, grid: tuple[tuple[int, ...], ...], pieces: list[Region]
+    ) -> Cell | None:
+        """The outer-bbox top-left of the piece whose interior marker equals
+        ``_active_marker_color`` on ``grid`` -- the ACTIVE piece, read
+        directly. ``None`` when the marker colour isn't known yet or no
+        piece currently shows it."""
+        if self._active_marker_color is None:
+            return None
+        for region in pieces:
+            if _piece_marker_color(grid, region["bbox"]) == self._active_marker_color:  # type: ignore[arg-type]
+                return region["bbox"][:2]  # type: ignore[return-value]
+        return None
 
     def _observe_result(self, grid: tuple[tuple[int, ...], ...]) -> None:
         action = self._pending_action
@@ -660,32 +782,59 @@ class Adapter(GameAdapter):
 
         bg = most_common_color(grid)
         cur_pieces, _targets = _classify_rings(grid, bg)
-        tracked = track_objects(prev_pieces, cur_pieces)
-        moved = [m for m in tracked["matches"] if tuple(m["shift"]) != (0, 0)]  # type: ignore[arg-type]
-        if len(moved) != 1:
-            if ref_cell is not None:
-                self._record_blocked(ref_cell, action, prev_pieces)
-            else:
-                # Identity-probing with no anchor cell (see _probe) --
-                # track this action as tried-while-blind so the next probe
-                # varies instead of repeating the same refuted guess.
-                self._identity_tried.add(action)
-            return
 
-        match = moved[0]
-        from_cell: Cell = prev_pieces[match["before"]]["bbox"][:2]  # type: ignore[index]
-        shift: Cell = tuple(match["shift"])  # type: ignore[assignment]
-        self._dir_map.setdefault(action, shift)
-        new_cell = (from_cell[0] + shift[0], from_cell[1] + shift[1])
-        self._tried_from.setdefault(from_cell, set()).add(action)
-        self._active_cell = new_cell
-        self._identity_tried = set()
-
+        # Bootstrap: before the active-marker colour is known there is no
+        # per-piece identity signal, so fall back ONCE to track_objects
+        # (pieces are well-separated at level start, its most reliable case)
+        # to attribute the first move AND learn the marker colour.
         if self._active_marker_color is None:
-            after_bbox = cur_pieces[match["after"]]["bbox"]  # type: ignore[index]
-            color = _piece_marker_color(grid, after_bbox)  # type: ignore[arg-type]
+            tracked = track_objects(prev_pieces, cur_pieces)
+            moved = [m for m in tracked["matches"] if tuple(m["shift"]) != (0, 0)]  # type: ignore[arg-type]
+            if len(moved) != 1:
+                if ref_cell is not None:
+                    self._record_blocked(ref_cell, action, prev_pieces)
+                else:
+                    self._identity_tried.add(action)
+                return
+            match = moved[0]
+            from_cell: Cell = prev_pieces[match["before"]]["bbox"][:2]  # type: ignore[index]
+            shift: Cell = tuple(match["shift"])  # type: ignore[assignment]
+            self._dir_map.setdefault(action, shift)
+            self._tried_from.setdefault(from_cell, set()).add(action)
+            self._active_cell = (from_cell[0] + shift[0], from_cell[1] + shift[1])
+            self._identity_tried = set()
+            color = _piece_marker_color(grid, cur_pieces[match["after"]]["bbox"])  # type: ignore[arg-type,index]
             if color is not None:
                 self._active_marker_color = color
+            return
+
+        # Marker known: attribute the move to the ACTIVE piece's OWN
+        # displacement (read from the marker before and after), NOT via
+        # track_objects -- two identically-coloured ring pieces confuse
+        # track_objects' nearest-match, which corrupted dir_map with a
+        # wrong-signed delta (a RIGHT step learned as LEFT). The active
+        # piece is unambiguous, so its shift is the true action delta.
+        prev_active = self._marker_cell(self._prev_grid, prev_pieces)
+        cur_active = self._marker_cell(grid, cur_pieces)
+        if prev_active is not None and cur_active is not None and cur_active != prev_active:
+            shift = (cur_active[0] - prev_active[0], cur_active[1] - prev_active[1])
+            # A normal step is one fixed small delta; a large jump is a
+            # push-slide's momentum, not a per-action delta -- never let it
+            # pollute dir_map (which the planner uses as its move set).
+            if abs(shift[0]) + abs(shift[1]) <= _MAX_STEP_CELLS:
+                self._dir_map.setdefault(action, shift)
+                self._tried_from.setdefault(prev_active, set()).add(action)
+            self._active_cell = cur_active
+            self._identity_tried = set()
+        else:
+            # The active piece did not move -- a wall (or a collision that
+            # left the pusher in place). Attribute to the pre-move active
+            # cell so the wall is recorded against the right cell.
+            anchor = prev_active if prev_active is not None else ref_cell
+            if anchor is not None:
+                self._record_blocked(anchor, action, prev_pieces)
+            else:
+                self._identity_tried.add(action)
 
     def _record_blocked(self, cell: Cell, action: int, prev_pieces: list[Region]) -> None:
         """Mark ``action`` tried from ``cell`` -- UNLESS the destination is
@@ -723,7 +872,281 @@ class Adapter(GameAdapter):
             self._known_blocked.add(dest)
             self._replans += 1
 
-    # ── planning ─────────────────────────────────────────────────────────
+    # ── explicit joint-plan orchestrator (KA59 L0 recipe) ───────────────
+    #
+    # A small, frame-verified state machine that executes the validated L0
+    # recipe robustly: assign pieces->frames, LAUNCH the piece whose frame
+    # is across a wall (walking toward it stalls) by shoving it with the
+    # OTHER piece, then greedy-walk each piece onto its frame's inner
+    # top-left. Every decision is read fresh from the settled frame; the
+    # only committed state is the launch flag + a stall counter + a select
+    # loop-guard. All coordinates are DERIVED per level (piece/target cells,
+    # assignment, launch axis) -- none are hardcoded.
+    #
+    # Identity is a direct frame read, not a fragile move-tracking chain:
+    # the ACTIVE piece is the one whose interior marker cell equals
+    # ``_active_marker_color`` (MEASURED -- every inactive piece shows a
+    # non-zero coloured dot, the active piece's interior reads background;
+    # see the marker probe in the round notes). That makes select
+    # verification a single-frame check and removes the select loop that
+    # sank the earlier greedy prototype.
+
+    def _active_piece(
+        self, grid: tuple[tuple[int, ...], ...], pieces: list[Region], piece_cells: list[Cell]
+    ) -> Cell | None:
+        """The cell of the currently-active piece, read from the interior
+        marker, or ``None`` when the marker colour hasn't been learned yet
+        or no piece currently shows it (transient detection noise)."""
+        if self._active_marker_color is None:
+            return None
+        for cell, region in zip(piece_cells, pieces):
+            if _piece_marker_color(grid, region["bbox"]) == self._active_marker_color:
+                return cell
+        return None
+
+    def _identify_probe(self, move_ids: list[int]) -> GameAction:
+        """One movement action to reveal which piece is active + learn a
+        direction delta + (first time) the active-marker colour.
+
+        Prefers an action whose delta is NOT yet in ``_dir_map`` -- the
+        orchestrator needs ALL four direction deltas measured before it can
+        pick a launch axis (the launch direction, e.g. RIGHT, is often one
+        the walk-place phase never needed and so never learned). Falls back
+        to a not-yet-tried direction, then to a step-cycled one, so a
+        wall-blocked probe still varies instead of repeating."""
+        unmeasured = [a for a in move_ids if a not in self._dir_map]
+        pool = unmeasured or [a for a in move_ids if a not in self._identity_tried]
+        action = pool[0] if pool else move_ids[self._step % len(move_ids)]
+        self._pending_action = action
+        self._pending_kind = "move"
+        self._pending_ref_cell = None
+        return simple_action(action)
+
+    def _launch_unit(self, src: Cell, dst: Cell) -> Cell | None:
+        """The known dir_map delta that points from ``src`` toward ``dst``
+        along the DOMINANT axis (the direction a launch must send the
+        launchee), or ``None`` if that direction hasn't been measured yet."""
+        dr, dc = dst[0] - src[0], dst[1] - src[1]
+        if abs(dr) >= abs(dc):
+            want = (1 if dr > 0 else -1, 0)
+        else:
+            want = (0, 1 if dc > 0 else -1)
+        for unit in self._dir_map.values():
+            sign = (
+                0 if unit[0] == 0 else (1 if unit[0] > 0 else -1),
+                0 if unit[1] == 0 else (1 if unit[1] > 0 else -1),
+            )
+            if sign == want:
+                return unit
+        return None
+
+    def _walk_toward(self, src: Cell, goal: Cell, move_ids: list[int]) -> int | None:
+        """The next action to move the active piece from ``src`` toward
+        ``goal`` -- the optimistic-grid shortest step, or (if the optimistic
+        beeline is sealed by confirmed walls) an untried direction from
+        ``src`` to discover a way around. ``None`` when nothing is left to
+        try (fully walled)."""
+        if src == goal or not self._dir_map:
+            return None
+        moves = list(self._dir_map.values())
+        labels = {unit: action for action, unit in self._dir_map.items()}
+        step = self._first_step(self._optimistic_grid(), src, goal, moves, labels)
+        if step is not None:
+            return step
+        untried = [a for a in move_ids if a not in self._tried_from.get(src, set())]
+        if untried:
+            return self._pick_action(untried, src, goal)
+        return None
+
+    def _emit_move(self, action: int, ref: Cell) -> GameAction:
+        self._pending_action = action
+        self._pending_kind = "move"
+        self._pending_ref_cell = ref
+        return simple_action(action)
+
+    def _emit_select(
+        self,
+        want: Cell,
+        pieces: list[Region],
+        piece_cells: list[Cell],
+        action6_ok: bool,
+    ) -> GameAction | None:
+        """Click to make ``want`` the active piece. Returns ``None`` (hand
+        to fallback) when ACTION6 is unavailable or the select loop-guard
+        trips -- so a select that never takes effect can't spin forever."""
+        if not action6_ok:
+            return None
+        self._select_streak += 1
+        if self._select_streak > _SELECT_STREAK_MAX:
+            self._select_streak = 0
+            return None
+        region = next(p for p, c in zip(pieces, piece_cells) if c == want)
+        point = self._select_point(region, want)
+        self._pending_action = None
+        self._pending_kind = "select"
+        return click_action(x=point[1], y=point[0])
+
+    def _orchestrate(
+        self, grid: tuple[tuple[int, ...], ...], move_ids: list[int], action6_ok: bool
+    ) -> GameAction | None:
+        """Drive the launch-then-walk joint plan for the 2-piece placement
+        case; return ``None`` for anything it doesn't model so _decide runs."""
+        if not move_ids:
+            return None
+        bg = most_common_color(grid)
+        pieces, targets = _classify_rings(grid, bg)
+        if not pieces or len(pieces) > 2:
+            return None
+        self._prev_piece_regions = pieces
+        piece_cells = [p["bbox"][:2] for p in pieces]  # type: ignore[misc]
+        piece_set = set(piece_cells)
+
+        # Sticky target + solved bookkeeping, identical semantics to _decide.
+        self._known_targets |= {t["inner_bbox"][:2] for t in targets}  # type: ignore[misc]
+        self._solved_targets |= self._known_targets & piece_set
+        unfilled = sorted(self._known_targets - self._solved_targets)
+        free = [c for c in piece_cells if c not in self._known_targets]
+        if not unfilled or not free:
+            return None  # nothing to place -> fallback probes / waits for WIN
+
+        # Bootstrap: the active-marker colour, a currently-identified active
+        # piece, AND all four direction deltas must be known before any
+        # goal-directed step or launch-axis lookup is meaningful -- the
+        # launch direction is frequently one the walk-place phase never
+        # exercises, so it is learned here up front rather than discovered
+        # too late (which stranded an earlier version in an identify loop).
+        active = self._active_piece(grid, pieces, piece_cells)
+        if (
+            self._active_marker_color is None
+            or active is None
+            or len(self._dir_map) < len(move_ids)
+        ):
+            return self._identify_probe(move_ids)
+
+        assignment = self._assign(free, unfilled)
+        if not assignment:
+            return None
+        # FAR-first: the target whose assigned piece is farthest is served
+        # first -- it is the one that may need a launch, and doing it first
+        # keeps the OTHER piece unplaced to act as the pusher.
+        far_piece, far_target = max(
+            assignment.items(), key=lambda kv: abs(kv[0][0] - kv[1][0]) + abs(kv[0][1] - kv[1][1])
+        )
+
+        if far_target in self._launch_targets and len(free) >= 2 and action6_ok:
+            return self._orch_launch(
+                grid, active, pieces, piece_cells, far_piece, far_target, free, move_ids
+            )
+        return self._orch_place(
+            grid, active, far_piece, far_target, pieces, piece_cells, move_ids, action6_ok
+        )
+
+    def _orch_place(
+        self,
+        grid: tuple[tuple[int, ...], ...],
+        active: Cell,
+        piece: Cell,
+        target: Cell,
+        pieces: list[Region],
+        piece_cells: list[Cell],
+        move_ids: list[int],
+        action6_ok: bool,
+    ) -> GameAction | None:
+        """Walk ``piece`` onto ``target``; if it stalls against a wall,
+        flag the target as launch-needed (a piece can only reach it via a
+        momentum shove from the other piece)."""
+        if active != piece:
+            return self._emit_select(piece, pieces, piece_cells, action6_ok)
+        self._select_streak = 0
+
+        # Stall tracking against THIS goal.
+        dist = abs(active[0] - target[0]) + abs(active[1] - target[1])
+        if target != self._walk_goal:
+            self._walk_goal, self._walk_best, self._walk_stall = target, dist, 0
+        elif dist < self._walk_best:
+            self._walk_best, self._walk_stall = dist, 0
+        else:
+            self._walk_stall += 1
+
+        step = self._walk_toward(active, target, move_ids)
+        if step is not None and self._walk_stall < _STALL_LIMIT:
+            return self._emit_move(step, active)
+
+        # No progress: escalate to a launch if there's a partner to push
+        # with and the relaunch budget isn't spent; else hand to fallback.
+        if len(piece_cells) >= 2 and self._launches_done < _MAX_LAUNCHES:
+            self._launch_targets.add(target)
+            self._walk_goal, self._walk_best, self._walk_stall = None, 1 << 30, 0
+            return self._emit_select(
+                next(c for c in piece_cells if c != active),
+                pieces,
+                piece_cells,
+                action6_ok,
+            )
+        return None
+
+    def _orch_launch(
+        self,
+        grid: tuple[tuple[int, ...], ...],
+        active: Cell,
+        pieces: list[Region],
+        piece_cells: list[Cell],
+        launchee: Cell,
+        target: Cell,
+        free: list[Cell],
+        move_ids: list[int],
+    ) -> GameAction | None:
+        """Shove ``launchee`` toward ``target``: select the OTHER piece as
+        the pusher, walk it to the cell one step behind ``launchee`` along
+        the launch axis, then step INTO ``launchee`` to trigger the
+        momentum slide (the push-settle path takes over from there)."""
+        unit = self._launch_unit(launchee, target)
+        if unit is None:
+            return self._identify_probe(move_ids)  # learn the launch direction first
+        behind = (launchee[0] - unit[0], launchee[1] - unit[1])
+        # Clear the launch corridor of cells poisoned by the collision-
+        # misread: a piece stepping toward the launchee reads as "did not
+        # move" (the engine consumes it as the momentum push, not a 1-cell
+        # advance) and _record_blocked banks the destination as a permanent
+        # wall. Every cell collinear-behind the launchee within the commit
+        # window is a pusher APPROACH cell, not a confirmed wall -- the
+        # launchee itself sat on / traversed them -- so un-poison them or
+        # the optimistic router beelines AWAY from the launchee forever.
+        for k in range(1, _LAUNCH_CORRIDOR_DEPTH + 2):
+            self._known_blocked.discard((launchee[0] - unit[0] * k, launchee[1] - unit[1] * k))
+        pusher = min(
+            (c for c in free if c != launchee),
+            key=lambda c: abs(c[0] - behind[0]) + abs(c[1] - behind[1]),
+        )
+        if active != pusher:
+            return self._emit_select(pusher, pieces, piece_cells, action6_ok=True)
+        self._select_streak = 0
+        # Exactly one step behind the launchee along the axis -> step IN to
+        # its cell to collide. MEASURED (KA59 L0 recipe): the momentum slide
+        # fires only when the pusher moves INTO the launchee's own cell
+        # (dest == launchee), NOT when it stops one gap-cell short -- a hit
+        # from two cells away leaves the launchee unmoved (measured: the
+        # launch counter incremented but the launchee never slid). So the
+        # pusher must first reach `behind` cleanly (the corridor un-poison
+        # above makes that possible), then drive in.
+        if (active[0] + unit[0], active[1] + unit[1]) == launchee:
+            launch_action = next(a for a, u in self._dir_map.items() if u == unit)
+            self._launches_done += 1
+            # The collision starts a multi-tick momentum slide -- arm the
+            # settle path so the next choose_action rides out the ticks and
+            # re-identifies positions (which jump unpredictably) afterward.
+            self._push_settling = True
+            return self._emit_move(launch_action, active)
+        # Not yet one-behind: close the gap toward the behind-cell (or
+        # straight at the launchee if the behind-cell is itself unreachable).
+        step = self._walk_toward(active, behind, move_ids)
+        if step is None:
+            step = self._walk_toward(active, launchee, move_ids)
+        if step is None:
+            return None
+        return self._emit_move(step, active)
+
+    # ── planning (legacy fallback) ──────────────────────────────────────
 
     def _assign(self, free_cells: list[Cell], unfilled_targets: list[Cell]) -> dict[Cell, Cell]:
         if not free_cells or not unfilled_targets:
