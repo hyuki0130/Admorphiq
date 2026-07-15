@@ -139,11 +139,36 @@ replay):
     exploration REACH under obstacle-1 non-determinism, not the refill
     arithmetic (obstacle 2, now shown solvable-in-principle). The refill layer
     was reverted (inert while the wedge dominates; kept the floor byte-clean).
-Reopen: make the exploration robust to counter-aliasing FIRST (e.g. verify-on-
-replay long plans, or a life-budgeted plan that re-derives on death without
-re-hashing to a colliding key) so the agent can reach the changer; only then
-does the (validated) refill layer pay off. Obstacle 3 (moving hazards + fog)
-stays banked for L3+.
+Reopen order (RE-REVISED again after the R56c open-loop measurement, 2026-07-15):
+an OPEN-LOOP execution + deepest-first exploration + refill layer was BUILT and
+MEASURED. It confirmed the team-lead's reframe — **open-loop legs SURVIVE**
+(measured: 49/50 committed 21-action legs complete, ZERO deaths mid-leg) — so
+the environment IS deterministic under an action sequence and the earlier "~3%
+survival" was a per-step re-keying artifact, not real dying. Two real bugs were
+found and fixed along the way: (a) the start anchor was captured from the
+level-TRANSITION frame, not the settled full-life start, so ``cur == start``
+never matched and no leg ever launched — fixed by anchoring on full-life frames;
+(b) death detection by ``cur == start`` conflated a blocked first move with a
+death — fixed via COUNTER-GROWTH (steps only jump up on death/refill). With
+those, deepest-first-by-SHORTEST-PATH legs (deepest-by-action-count finds
+21-step LOOPS) lifted L2 coverage from ~13 to **37 states**.
+
+BUT L2 still does NOT clear: coverage PLATEAUS at 37 of ~56 life-reachable
+positions (flat from action 800 through 3200) and NEVER reaches the changer
+(max avatar x = 39 vs the changer's 49; rotation stays 0). The binding wall is
+now precisely located: it is NOT open-loop survival (confirmed working) and NOT
+the refill arithmetic — it is **frame-key GRAPH FIDELITY**. Counter-aliasing
+corrupts the recorded edges enough that the discovered graph represents only a
+37-state subset that does not contain the changer path, so BFS over it caps
+there. The whole experimental build was reverted (no L2 clear = no score, and it
+was not L1-byte-identical); L2 stays 1/7, floor pristine.
+
+Reopen (the real one): stop keying state on the aliased frame. The environment
+is deterministic from reset, so key exploration state by the AGENT'S OWN ACTION
+PREFIX since the last death/start (ground truth, alias-free) rather than the
+frame hash — then the graph is faithful, open-loop legs (already proven to
+survive) reach the changer, and the validated refill+45-action plan pays off.
+Obstacle 3 (moving hazards + fog) stays banked for L3+.
 
 Composition from ``admorphiq.kernels``:
   - :func:`admorphiq.kernels.find_regions` segments each frame into the
