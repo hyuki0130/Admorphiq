@@ -3,6 +3,22 @@
 *** QUARANTINE — MODEL-NEVER-VISIBLE. See admorphiq.adapters25's package
 docstring. ***
 
+**STATUS: 1/6 (L0 only) — L1 desync-maze BANKED (R56 depth, 2026-07-15).**
+Gold-replay divergence (``data/traces/m0r0.npz`` level_index 1, the only
+oracle) fully isolated the L1 wall: the winning path must fully DIVERGE the
+mirror column-gap to reach offset descent-doors, then exploit a wall to
+desync rows — a maneuver a greedy ``gap < current`` objective structurally
+forbids. Two planner objectives measured this session both clear 0 L1
+levels (greedy: 0 in 1113 L1 actions; merge-goal joint BFS budget 20k: 0 in
+2500). The win state is frame-readable (row-gap==0 while column-gap is
+pinned at its wall-capped floor) but the PATH is a ~65k-state joint
+(self×partner) maze whose descent doors are not derivable from any frame
+scalar and only learnable by exhaustive reactive wall-mapping — hits the
+"joint space explodes past a bounded search" stop rule. Full evidence +
+control-scheme decode: ``.wiki/wiki/games/M0R0.md``. The joint-state planner
+below is retained (it clears L0 and is the correct architecture for any
+gold-generated L2+ reopen); nothing here is edited by the bank.
+
 **Second backport (this revision, R56 2026-07-15)**: replaces the FIRST
 backport's "declare the mirror partner's current position as a fixed goal
 cell, then run single-agent shortest-path toward it" model (measured 0/6
