@@ -70,6 +70,37 @@ just a guess wearing a measurement's clothing. Left as an open lever:
 if a future round gets gold coverage on additional VC33 levels, re-check
 whether this panel-size relationship holds up before adopting it.
 
+**R56 iteration 2 -- the containing-panel discriminator VERIFIED LIVE and
+ADOPTED for L0 efficiency (2026-07-15).** The open lever above is now
+resolved for L0 by direct live measurement, not correlation: clicking
+ONLY the smaller-containing-panel colour-9 region (368 vs 848) clears L0
+in exactly 3 clicks, never touching the decoy. So :func:`_region_candidates`
+now orders by ascending CONTAINING-PANEL size first -- a click TARGET is a
+small region NESTED inside a larger panel (both colour-9 regions are;
+chrome/panel colours are not contained), and the winner's panel is the
+smaller. Non-contained candidates get an unbounded panel key, so they sort
+after every nested target but keep their old rarest-colour order among
+themselves (byte-identical behaviour on levels with no nested target). This
+makes ``_candidates[0]`` the winner, and a new LEAD-COMMIT phase in
+:meth:`_next_target` clicks it exclusively (``_LEAD_ATTEMPTS``) BEFORE
+probing any other candidate, so the decoy is never touched and the
+requirement never inflates. **Measured: L0 in 3 actions (was 54), score 1.0
+capped vs a 7-action human, game_score 0.0006 -> 0.0357 (60x).** If the lead
+does not clear within its budget (a mis-ranked or deeper level), control
+falls through to the original probe-all + sustain recycle, so the 1/7 floor
+is preserved.
+
+**L1 (=level index 1) BANKED -- deeper structure, no gold oracle.** L1 is
+also a two-colour-9 layout, but the 3-click lead does NOT clear it (its
+human baseline is 18 vs L0's 7, and the game source shows the real mechanic
+is a CONNECT/ALIGN puzzle -- clicking a connector with valid before/after
+aligned neighbours moves tokens; win = all tokens aligned to matching slots,
+``ielczunthe``). The L0 "click the region 3x" behaviour is a surface case
+of that (a single already-aligned connector). L1 needs the connector-chain
+sequence decoded, and ``data/traces/vc33.npz`` covers ONLY level 0 (no L1+
+gold), so there is no oracle -- banked as the reopen pointer, not chased
+blind.
+
 **Fix (this version)**: after the initial single-pass-per-candidate
 probe (unchanged from LP85 -- still how the two same-colour candidates
 get discovered and colour-ranked at all, though this ALSO means the
@@ -145,6 +176,11 @@ _MAX_CANDIDATE_FRACTION = 0.15
 # by the time sustained commitment starts. 10 keeps comfortable margin
 # over the measured worst case (6) observed after heavy decoy clicking.
 _SUSTAIN_ATTEMPTS = 10
+# Clicks spent committing to the top-ranked candidate (the containing-panel
+# winner) BEFORE probing any other candidate. Enough to satisfy the winner's
+# bare requirement (measured 3 on L0, with headroom for a slightly deeper
+# level) while capping the waste if the discriminator mis-ranks.
+_LEAD_ATTEMPTS = 6
 
 
 def _region_candidates(grid: tuple[tuple[int, ...], ...]) -> list[Cell]:
@@ -171,9 +207,46 @@ def _region_candidates(grid: tuple[tuple[int, ...], ...]) -> list[Cell]:
     for r in candidates:
         color_total[r["color"]] = color_total.get(r["color"], 0) + r["size"]
 
+    # Among identically-rare same-colour candidates (the module docstring's
+    # two colour-9 regions — one WINNER, one DECOY whose clicks inflate the
+    # winner's requirement), the winner's own CONTAINING PANEL is the smaller
+    # one (measured live: 368 vs 848; clicking ONLY the smaller-panel region
+    # clears L0 in 3 clicks, never touching the decoy). So break the rarity
+    # tie by ascending containing-panel size, putting the winner first —
+    # ``_next_target`` commits to it exclusively, so the decoy is never
+    # clicked and the requirement never inflates. A candidate with no
+    # containing panel sorts as if its panel were unbounded (after any that
+    # have one), and the previous ``(colour, bbox)`` key remains the final,
+    # fully deterministic tiebreak.
+    def _panel_size(target: dict[str, Any]) -> int:
+        tb = target["bbox"]
+        best = None
+        for r in regions:
+            rb = r["bbox"]
+            if (
+                r["size"] > target["size"]
+                and rb[0] <= tb[0]
+                and rb[1] <= tb[1]
+                and rb[2] >= tb[2]
+                and rb[3] >= tb[3]
+            ):
+                if best is None or r["size"] < best:
+                    best = r["size"]
+        return best if best is not None else total_cells + 1
+
+    # Order by containing-panel size FIRST: a click TARGET is a small region
+    # nested inside a larger panel (both colour-9 regions on L0 are; the
+    # chrome/panel colours are not contained in anything), and among nested
+    # targets the WINNER's panel is the smaller (368 vs the decoy's 848).
+    # Non-contained candidates get an unbounded panel key, so they sort after
+    # every contained target but keep their original rarest-colour ordering
+    # among themselves (preserving the old behaviour on levels with no nested
+    # target). This makes ``_candidates[0]`` the winner for the L0 decoy
+    # layout, which the lead-commit in ``_next_target`` then clears in ~3
+    # clicks without ever touching the decoy.
     ordered = sorted(
         candidates,
-        key=lambda r: (color_total[r["color"]], r["color"], r["bbox"]),
+        key=lambda r: (_panel_size(r), color_total[r["color"]], r["color"], r["bbox"]),
     )
     out: list[Cell] = []
     seen: set[Cell] = set()
@@ -217,6 +290,11 @@ class Adapter(GameAdapter):
         self._sustain_idx = 0
         self._sustain_target: Cell | None = None
         self._sustain_remaining = 0
+        # Lead-commit phase: click the top-ranked (containing-panel winner)
+        # candidate exclusively before probing any other, so the decoy is
+        # never touched. Reset every level.
+        self._lead_clicks = 0
+        self._lead_done = False
 
     # ── harness contract ────────────────────────────────────────────────
 
@@ -262,6 +340,8 @@ class Adapter(GameAdapter):
         self._sustain_idx = 0
         self._sustain_target = None
         self._sustain_remaining = 0
+        self._lead_clicks = 0
+        self._lead_done = False
 
     # ── measurement: did the pending click do anything? ─────────────────
 
@@ -286,6 +366,22 @@ class Adapter(GameAdapter):
             h = len(grid) or 1
             w = len(grid[0]) if grid else 1
             return (h // 2, w // 2)
+
+        # LEAD COMMIT (efficiency): click the TOP-ranked candidate — the
+        # winner picked by the containing-panel discriminator in
+        # ``_region_candidates`` — exclusively FIRST, before probing any
+        # other candidate. Probing every candidate once (the pass below)
+        # would click the DECOY sibling and inflate the winner's own
+        # requirement (module docstring), so a correct top-rank clears in its
+        # bare requirement (measured: 3 clicks on L0) with the decoy never
+        # touched. If the lead does not clear within its budget the
+        # discriminator may have mis-ranked, so control falls through to the
+        # original probe-all + sustain recycle, preserving the floor.
+        if not self._lead_done:
+            if self._lead_clicks < _LEAD_ATTEMPTS:
+                self._lead_clicks += 1
+                return self._candidates[0]
+            self._lead_done = True
 
         if self._cursor < len(self._candidates):
             target = self._candidates[self._cursor]

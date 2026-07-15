@@ -35,7 +35,7 @@ category, drill into specific pages.
 - [[games/TN36.md]] — v1 brittle 7/7 ✅ (uses frame.zpzcmabenn direct call), generic 0/7 ❌ (R23 8B; bit-panel combinatorial too deep) — Bit-encoded action program: click bits to set a number, click play to execute, navigate player to goal; brittle solver passes v1 but collapses on v2.
 - [[games/TR87.md]] — v1 brittle 1/6 ✅ (hardcoded L1 rotation values), generic 0/6 ❌ (superseded by script25, see below) — A token-rewrite-grammar puzzle (NOT a geometric rotation puzzle, NOT a
 - [[games/TU93.md]] — v1 2/9 ✅, v2 2/9 ✅ — Relies on game internals — high v1 score, fails on v2.
-- [[games/VC33.md]] — v1 1/7 ✅, v2 1/7 ✅ — Frame-observation solver — generalizes across version hashes.
+- [[games/VC33.md]] — v1 1/7 ✅, v2 1/7 ✅ — Frame-observation solver; L0 cleared super-human-efficiently by picking the winner of two decoy-paired regions via its smaller containing panel and committing to it exclusively.
 - [[games/WA30.md]] — v1 brittle 2/9 (sprite tags wbmdvjhthc/geezpjgiyd/pkbufziase — non-transferable), generic 0/9 (R23 8B agent regression baseline) — A single worker moves on a grid and uses one context-interact action to pick up items and deliver them to target zones; a level wins when EVERY target zone is satisfied — a multi-item delivery, not a single-goal navigation.
 
 ## Game Types (15)
