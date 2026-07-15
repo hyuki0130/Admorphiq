@@ -9,28 +9,44 @@ BP35 as a gravity platformer the legacy `bp35_platformer` cleared 1/9 (L0 in
 mines it as a platformer whose win is reaching a fixed `+`-shaped exit
 marker. Reading the game source offline (``environment_files/bp35/*/
 bp35.py``; dev-time only, the adapter reads only frames at runtime) plus a
-live determinism probe establish the mechanic and — critically — that it is
-DETERMINISTIC and per-action, so a ``(state, action) -> state`` transition
-graph is valid here (the team's platformer worry about time-driven
-autonomous motion was checked and ruled out; see below).
+live probe establish the mechanic. **CORRECTION (R56b, 2026-07-15): the
+"deterministic per-action gravity" claim below was WRONG — it rested on a
+flawed probe, and a follow-up dynamics probe (for the planner reopen) shows
+BP35 is a MOMENTUM platformer with HIDDEN velocity, which aliases the
+frame-key transition graph.** See "R56b dynamics correction" below; the
+adapter still ships as the frontier explorer (0/9), now honestly characterised.
 
-**Determinism check (done FIRST, per the platformer risk)**: a live
-repeat-probe issuing the same action from a fresh env twice produced
-byte-identical results, and successive same-action steps settle to a 1-pixel
-diff (a HUD step counter, masked here). Gravity resolves WITHIN a step — the
-player falls to rest as part of processing one action — rather than drifting
-autonomously between actions. So the state graph is well-formed.
+**Determinism check (ORIGINAL, now KNOWN-FLAWED)**: a live repeat-probe
+issued the same action from a fresh env twice and got byte-identical results,
+concluding "deterministic per-action gravity". The flaw: that probe issued
+ACTION1, which is NOT in ``available_actions`` ([3,4,6,7]) — a no-op that
+trivially reproduces (it only ticks the step counter). It never exercised the
+real controls, so it proved nothing about the actual dynamics.
 
-**Actual mechanic (move + click-destroy platformer)**:
+**R56b dynamics correction (the real mechanic)** — measured by a proper
+probe of the available controls:
 
-- ``available_actions = [3, 4, 6, 7]``. ACTION3/ACTION4 move the player
-  horizontally; the player then falls under gravity to rest. ACTION6 clicks
-  a destructible block to remove it (opening a passage or dropping the
-  player). ACTION7 undoes. The board has a terrain colour, a grid of
-  destructible blocks (small same-size clusters), a player, and a `+`-shaped
-  EXIT marker.
-- WIN = the player reaches the exit marker (read from the engine's own state
-  — the adapter reacts only to its WIN signal, never hardcodes the marker).
+- ``available_actions = [3, 4, 6, 7]``. ACTION3/ACTION4 are MOMENTUM moves,
+  not fixed steps: pressing ACTION4 repeatedly displaced the player by
+  2,6,6,6,6,3 cells on successive presses (ACCELERATION), so the same action
+  from the same VISIBLE position gives different displacements depending on
+  accumulated velocity. Velocity is not in the frame.
+- The EXIT RECEDES: the ``+`` marker stays a fixed 2 cells ahead of the
+  player as it moves right (player col 20→22→28…, exit col 22→24→30…), so it
+  is NOT a fixed goal a route can target — "plan a path to the exit" is
+  ill-posed.
+- Clicking the colour-14 block centroids does NOTHING to the player/exit
+  (inert at those coordinates), so the "destroy-then-fall" model is
+  unconfirmed.
+- WIN = the engine's own WIN signal (never hardcoded).
+
+**Consequence**: because velocity is hidden, the same masked frame can
+transition differently under the same action — the ``(frame-state, action) ->
+frame-state`` graph is ALIASED (a hidden-state game, R53 "dealias" territory).
+So the planner reopen pointer below ("learn the dynamics, plan a route via
+configuration_path") is built on three FALSIFIED assumptions (fixed exit,
+fixed displacement, droppable blocks) and is NOT pursued — building it would
+be speculative code on a wrong model (same call as the tn36 opcode planner).
 
 **Why a generic MOVE+CLICK frontier explorer**: BP35 mixes two action
 kinds, so this adapter generalises the transition-graph frontier explorer to
@@ -55,16 +71,20 @@ search discovers the transitions:
     :func:`admorphiq.kernels.reachable_frontier`).
 
 **Measured result — BANKED at 0/9**: Smoke:
-- ``--max-actions 1000``: 0/9 levels, game_score 0.0 (deterministic); also
-  0/9 at 10000 actions. L0's optimal solve is short (16 actions) but the
-  hybrid alphabet has ~10-17 candidates per state (moves + every block/marker
-  centroid) and the winning destroy-then-fall-then-navigate route is a
-  specific deep sequence — blind frontier search branches too widely to hit
-  it at these budgets. Below the internals-tuned legacy `bp35_platformer`
-  1/9 (0/9 generic). Reopen pointer: a gravity-aware planner that learns the
-  fall dynamics from observed transitions (exact, since physics is
-  deterministic per the probe) and plans a destroy+move route via
-  ``configuration_path``.
+- ``--max-actions 1000``: 0/9 levels, game_score 0.0; also 0/9 at 10000.
+  Below the internals-tuned legacy `bp35_platformer` 1/9 (0/9 generic). The
+  frontier explorer cannot compose a win here, and — per the R56b dynamics
+  correction above — it is worse than "deep target": the game has HIDDEN
+  velocity, so the frame-key transition graph is aliased (the same masked
+  frame transitions differently under the same action), and the exit recedes
+  with the player. Reopen pointer (REVISED, harder than my original): this is
+  a MOMENTUM platformer, so a solver must first recover the hidden velocity
+  state (an R53 "dealias"-style hash augmentation that includes recent motion,
+  not just the current frame), then model the acceleration dynamics + the
+  receding-exit relation before any route planner. The original "learn fall
+  dynamics + configuration_path to a fixed exit" pointer is FALSIFIED (fixed
+  exit, fixed displacement, droppable blocks all disproven) and must not be
+  built as-is.
 
 Composition from ``admorphiq.kernels``:
   - :func:`admorphiq.kernels.find_regions` masks the HUD and enumerates the
