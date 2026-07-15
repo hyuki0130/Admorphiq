@@ -1,115 +1,62 @@
-"""script25 quarantined adapter: SK48 (snake pattern-matching puzzle).
+"""script25 quarantined adapter: SK48 (snake shape / pattern-matching puzzle).
 
 *** QUARANTINE — MODEL-NEVER-VISIBLE. See admorphiq.adapters25's package
 docstring. ***
 
-``.wiki/wiki/games/SK48.md`` (read for reference, not imported) records
-SK48 as a snake-style movement game the legacy ``sk48_snake`` cleared 1/8
-(later lost to a budget-starvation regression, since restored), and
-``docs/r57_win_condition_typology_20260715.md`` mines it as a T1-arrival
-type ("head reaches food, region count grows +2"). Reading the game source
-offline (``environment_files/sk48/*/sk48.py``; dev-time only, the adapter
-reads only frames at runtime) refines that: SK48 is not a plain eat-food
-snake — it is a snake SHAPE / PATTERN-MATCHING puzzle.
+``.wiki/wiki/games/SK48.md`` (read for reference, not imported) and this
+file's own history record SK48 as a snake SHAPE / PATTERN-MATCHING puzzle,
+NOT a plain eat-food snake. Reading the game source offline
+(``environment_files/sk48/*/sk48.py``; dev-time only, the adapter reads only
+frames at runtime) decoded the full rule set:
 
-**Actual mechanic (shape-to-template) — measured**:
-
-- The board is split by a divider into a TOP arena (the controllable
-  snake(s) + a row of coloured target cells) and a BOTTOM TEMPLATE showing
-  the goal pattern.
-- ACTION1-4 move the ACTIVE snake: pressing its facing direction GROWS a new
-  head segment, pressing the reverse RETRACTS the tail, and a side press
-  pushes the body along. ACTION6 clicks to select which snake is active
-  (levels can pair a controllable snake with a template partner); ACTION7
-  UNDOES the last move (a real reversible back-edge).
+- The board is split by a row-53 divider into a TOP arena (controllable
+  snake(s) + a row of coloured target cells) and a BOTTOM TEMPLATE (each
+  controllable snake's partner snake, whose body overlaps its own coloured
+  cells — the pattern to reproduce).
+- ACTION1-4 move the ACTIVE snake: pressing its facing direction GROWS a head
+  segment at the anchored tail, pressing the reverse RETRACTS the front, and a
+  side press PUSHES the whole body sideways (allowed only where a side-push
+  gate ``irkeobngyh`` sits, via an intricate segment/target-cell push
+  recursion ``bnrdrdiakd``). ACTION6 selects which snake is active; ACTION7
+  UNDOES the last move (a free, budget-costless back-edge).
 - WIN (the engine's ``gvtmoopqgy``): every controllable snake must be shaped
-  so the sequence of coloured cells its body overlaps MATCHES its template
-  partner's colour pattern, cell for cell. This is read from the source but
-  NEVER hardcoded here — the adapter reacts only to the engine's own WIN
-  state.
-- Each level grants a fixed MOVE BUDGET (196); exhausting it LOSES
-  (GAME_OVER). So blind exploration is dangerous: every wasted move eats the
-  shared budget before the shaping is found.
+  so the ordered colours of the target cells its body overlaps match its
+  template partner's colour sequence, segment for segment.
+- Each level grants a fixed 196-move budget; exhausting it LOSES.
 
-**Why a generic transition-graph explorer, not a bespoke solver**: solving
-the shaping requires reasoning about which colour sequence the snake body
-traces as it moves, matched against a per-level template — reconstructing
-that faithfully would rebuild the game's own overlap/match bookkeeping, the
-game-specific "second brain" the R56 codex verdict
-(``docs/r56_codex_toolbase_verdict_20260715.md``) forbids in the namespace.
-Instead this adapter treats SK48 as a GENERIC state-space search — and a
-snake's full body configuration is captured for free by canonicalising the
-whole (HUD-masked) frame, which is exactly the state key a growing-body game
-needs:
+**Why the online frame-only explorer banked at 0/8 (measured R56):** the win
+progress IS frame-visible but SPARSE (matched segments light a checkmark only
+near completion — gold L0 stays flat 0 matches for 8 of 13 moves), so a greedy
+/ frontier search over any frame-derived score has no gradient. That is why
+the transition-graph explorer (kept here as the FALLBACK) clears nothing.
 
-  - Every board state is canonicalised into a hashable key
-    (:func:`admorphiq.kernels.canonical_key`, ``mode="exact"``) after the
-    edge/divider HUD bands are masked (:func:`admorphiq.kernels.find_regions`
-    finds them), so the snake body IS the state.
-  - Every observed ``(state, action, next_state)`` transition is recorded
-    (moves ACTION1-4 and the UNDO ACTION7; the click-select ACTION6 is
-    skipped — its coordinate space is unbounded and the level-1 board has a
-    single active snake).
-  - The policy is systematic frontier expansion over that graph: an untried
-    action from the current state, else route
-    (:func:`admorphiq.kernels.transition_shortest_path`) to the nearest
-    visited state with an untried action (a small BFS over the same recorded
-    edges, :meth:`_nearest_untried` — mirroring
-    ``admorphiq.adapters25.tu93``'s reason for not using
-    :func:`admorphiq.kernels.reachable_frontier`: its universe is
-    already-OBSERVED edges only, so it cannot surface a state's never-
-    ATTEMPTED action).
+**The tractable path, now BUILT (this file):** a FAITHFUL OFFLINE SIMULATOR of
+the grow/retract/push semantics + A* toward the EXACT internal template-match
+goal (computed in-simulator, sidestepping the sparse-signal wall). The
+simulator was validated in lockstep against the live engine internals (gold L0
+13-move replay + ~900 random moves, zero divergence; L0-L4 solutions replayed
+to real engine wins). At runtime the adapter reconstructs the simulator state
+from the frame alone (:func:`_parse_state`), searches offline, and executes the
+found move sequence, re-planning per level. It is GATED: if the frame parse or
+search fails (e.g. levels whose non-controllable snakes have colour-5-bordered
+near-invisible heads at the frame edge — a NAMED divergence, L2+), it falls
+back to the transition-graph explorer, preserving the 0/8 floor.
 
-**Measured result — BANKED at 0/8 (R56 iteration 2, 2026-07-15 — refined via
-gold-oracle replay + win-signal analysis).** ``--max-actions 1000``: 0/8,
-game_score 0.0, deterministic.
+**Measured (R56 dedicated session, 2026-07-15):** frame-parsed sim+search
+clears **L0 (14 moves, human 61) + L1 (31 moves, human 177)** — SUPER-HUMAN,
+SK48's first stable generic clear, retiring the last original 0-bank. L2+ gate
+to the explorer (edge-snake parse divergence, banked).
 
-**Why the online frame-only search cannot work (measured, the load-bearing
-finding).** The engine's own win progress IS frame-visible: each matched
-template segment lights a checkmark sprite (``kevthtkmzm``, a 2×2 block of
-colour ``0``) in the BOTTOM/template half, so ``count(colour-0 cells, rows >
-divider) == 12 + 4·(matched segments)`` — a clean, quarantine-legal progress
-read. BUT replaying ``data/traces/sk48.npz``'s gold L0 solution (13 moves,
-below the human baseline 61) through the live engine shows this signal is
-SPARSE: it stays flat at 0 matches for the FIRST 8 of the 13 moves, then jumps
-0→1→2. And there is no dense frame-visible companion: the top-arena
-target-cell count is non-monotonic (48→56→48 across the same replay — the
-snake body transiently recolours cells, it does not deplete targets as it
-covers them). So a greedy / hill-climb / frontier search over any
-frame-derived score has NO gradient until the shape is ~8 moves from complete
-— it would need depth-~8 lookahead, and the 196-move budget (with a
-try-then-``ACTION7``-undo cost of 2 moves per probe) makes that infeasible.
-This is why the generic explorer here, and any online scorer, clears nothing.
-
-**The tractable path (the lead's plan) and why it is deferred, not done.**
-The state IS fully frame-derivable (snake body cells + head/facing + target
-cells + the template colour sequence + arena walls), and the moves are
-deterministic, so the correct approach is a FAITHFUL OFFLINE SIMULATOR: build
-the grow/retract/push transition, search it toward the exact body-order
-overlap-match goal (computed internally, sidestepping the sparse-signal
-problem entirely), then emit the winning move sequence. The blocker is build
-SIZE, not frame-readability: the push operator ``bnrdrdiakd`` is an intricate
-~50-line recursion (segment-vs-segment pushing, arena-wall ``qzvlbxkjgk``
-collision, target-cell ``ebribtrdgw`` displacement, the ``irkeobngyh``
-side-push gate, and the ``pzzwlsmdt``/``rztawzist`` sliding markers), and gold
-L0 uses push on ~8 of its 13 moves, so push is essential even for level 0.
-Reproducing it faithfully + validating against gold's 13-move L0 win is a
-large, self-contained build reserved for a dedicated session. Reopen: port
-grow/retract/push, oracle-test against ``data/traces/sk48.npz`` L0, then
-A*/IDA* over the simulator with the exact template-match as the goal test.
-
-Composition from ``admorphiq.kernels``:
-  - :func:`admorphiq.kernels.find_regions` masks the edge/divider HUD bands
-    before canonicalisation.
-  - :func:`admorphiq.kernels.canonical_key` hashes the masked board (snake
-    body included) into a stable state key.
+Composition from ``admorphiq.kernels`` (fallback explorer only):
+  - :func:`admorphiq.kernels.find_regions` masks the edge/divider HUD bands.
+  - :func:`admorphiq.kernels.canonical_key` hashes the masked board.
   - :func:`admorphiq.kernels.transition_shortest_path` routes over the
-    incrementally-discovered transition graph to the nearest state with an
-    untried action.
+    incrementally-discovered transition graph.
 """
 
 from __future__ import annotations
 
+import heapq
 from collections import deque
 from typing import Any
 
@@ -132,16 +79,499 @@ Cell = tuple[int, int]
 Region = dict[str, Any]
 Grid = tuple[tuple[int, ...], ...]
 
+# ── simulator geometry constants (decoded from the game source) ────────────
+_STEP = 6  # udenqlsrfq: one grid unit
+_DIVIDER = 53  # fzjeqdahvs: TOP arena above, BOTTOM template below
+_BUDGET_MAX = 196  # qiercdohl per level
+_CELL_COLORS = (8, 9, 12, 14)  # target-cell (elmjchdqcn) remap colours
+_HEAD_BORDER = (6, 15)  # visible head-box border colours (ejlpqgojjt/udbuodqlxv)
+# rotation -> facing direction (hhvuoijeua); action id -> move (ghcqtpzzlq)
+_DIRS = {0: (1, 0), 90: (0, 1), 180: (-1, 0), 270: (0, -1)}
+_MOVES = {1: (0, -1), 2: (0, 1), 3: (-1, 0), 4: (1, 0)}
+_ROT_OF_DIR = {(1, 0): 0, (0, 1): 90, (-1, 0): 180, (0, -1): 270}
+
 _GIVEUP_DEFAULT = 4000
+_SEARCH_EXPANSIONS = 400000
 
 _HUD_SPAN_FRACTION = 0.85
 _HUD_THICKNESS_FRACTION = 0.06
 
 
+# ════════════════════════════════════════════════════════════════════════
+# Faithful offline simulator (grow / retract / side-push + exact win test).
+# Pure Python; mirrors environment_files/sk48/*/sk48.py member-for-member with
+# the multi-tick slide animation collapsed to the settled state.
+# ════════════════════════════════════════════════════════════════════════
+
+
+class _Seg:
+    __slots__ = ("x", "y", "rot")
+
+    def __init__(self, x: int, y: int, rot: int) -> None:
+        self.x, self.y, self.rot = x, y, rot
+
+
+class _CellObj:
+    __slots__ = ("x", "y", "color")
+
+    def __init__(self, x: int, y: int, color: int) -> None:
+        self.x, self.y, self.color = x, y, color
+
+
+class _Head:
+    __slots__ = ("x", "y", "rot", "color")
+
+    def __init__(self, x: int, y: int, rot: int, color: int) -> None:
+        self.x, self.y, self.rot, self.color = x, y, rot, color
+
+
+class _Rect:
+    __slots__ = ("x", "y", "w", "h")
+
+    def __init__(self, x: int, y: int, w: int, h: int) -> None:
+        self.x, self.y, self.w, self.h = x, y, w, h
+
+    def contains(self, px: int, py: int) -> bool:
+        return self.x <= px < self.x + self.w and self.y <= py < self.y + self.h
+
+
+class _Sim:
+    """Deterministic SK48 world model over sprite positions."""
+
+    def __init__(self, state: dict[str, Any]) -> None:
+        self.heads: list[_Head] = state["heads"]
+        self.bodies: dict[int, list[_Seg]] = {id(h): list(b) for h, b in state["bodies"]}
+        self.cells: list[_CellObj] = list(state["cells"])
+        self.partner: dict[int, _Head] = dict(state["partner"])
+        self.check_count: dict[int, int] = dict(state["check_count"])
+        self.active: _Head = state["active"]
+        self.arena: _Rect = state["arena"]
+        self.obstacles: list[_Rect] = list(state["obstacles"])
+        self.gates: list[_Rect] = list(state["gates"])
+        self.budget: int = state["budget"]
+        self._retract_extra: _Seg | None = None
+
+    # ── search support ──────────────────────────────────────────────────
+    def clone(self) -> _Sim:
+        heads = [_Head(h.x, h.y, h.rot, h.color) for h in self.heads]
+        hmap = {id(oh): nh for oh, nh in zip(self.heads, heads)}
+        bodies = [(hmap[id(h)], [_Seg(s.x, s.y, s.rot) for s in self.bodies[id(h)]]) for h in self.heads]
+        cells = [_CellObj(c.x, c.y, c.color) for c in self.cells]
+        partner = {id(hmap[cid]): hmap[id(p)] for cid, p in self.partner.items()}
+        check_count = {id(hmap[pid]): n for pid, n in self.check_count.items()}
+        return _Sim({
+            "heads": heads, "bodies": bodies, "cells": cells, "partner": partner,
+            "check_count": check_count, "active": hmap[id(self.active)], "arena": self.arena,
+            "obstacles": self.obstacles, "gates": self.gates, "budget": self.budget,
+        })
+
+    def key(self) -> tuple:
+        parts = []
+        for h in self.heads:
+            body = tuple((s.x, s.y) for s in self.bodies[id(h)])
+            parts.append((h.color, h.x, h.y, body))
+        parts.sort()
+        cells = tuple(sorted((c.x, c.y, c.color) for c in self.cells))
+        return (self.active.color, self.active.x, self.active.y, tuple(parts), cells)
+
+    # ── helpers ───────────────────────────────────────────────────────────
+    def _all_segs(self) -> list[_Seg]:
+        segs: list[_Seg] = []
+        for b in self.bodies.values():
+            segs.extend(b)
+        return segs
+
+    def _seg_at(self, x: int, y: int, horiz: bool, exclude: _Seg | None = None) -> _Seg | None:
+        """qtjqovumxf (body segment) at exact (x,y) with matching orientation."""
+        segs = self._all_segs()
+        if self._retract_extra is not None:
+            segs.append(self._retract_extra)
+        for s in segs:
+            if s is exclude:
+                continue
+            if s.x == x and s.y == y and ((s.rot in (0, 180)) == horiz):
+                return s
+        return None
+
+    def _cell_at(self, x: int, y: int) -> _CellObj | None:
+        for c in self.cells:
+            if c.x == x and c.y == y:
+                return c
+        return None
+
+    def _wall(self, spr: Any, dx_dir: int, dy_dir: int, w: int = _STEP, h: int = _STEP) -> bool:
+        """qzvlbxkjgk: moving spr by dir hits an arena edge or an obstacle."""
+        x, y = spr.x + dx_dir * _STEP, spr.y + dy_dir * _STEP
+        a = self.arena
+        if x < a.x or x + w > a.x + a.w:
+            return True
+        if y < a.y or y + h > a.y + a.h:
+            return True
+        for o in self.obstacles:
+            if o.contains(x, y):
+                return True
+        return False
+
+    # ── win test (gvtmoopqgy) ────────────────────────────────────────────
+    def _overlaps(self, head: _Head) -> list[_CellObj]:
+        out = []
+        for s in self.bodies[id(head)]:
+            c = self._cell_at(s.x, s.y)
+            if c is not None:
+                out.append(c)
+        return out
+
+    def is_win(self) -> bool:
+        ov = {id(h): self._overlaps(h) for h in self.heads}
+        win = True
+        for cid, partner in self.partner.items():
+            ctrl_ov = ov[cid]
+            part_ov = ov[id(partner)]
+            n = self.check_count[id(partner)]
+            for i in range(n):
+                if i >= len(ctrl_ov):
+                    win = False
+                elif part_ov[i].color != ctrl_ov[i].color:
+                    win = False
+        return win
+
+    # ── push recursion (bnrdrdiakd) ──────────────────────────────────────
+    def _push(self, spr: Any, dx_dir: int, dy_dir: int, pushed: set[int], from_spr: Any = None) -> bool:
+        if id(spr) in pushed:
+            return True
+        is_seg = isinstance(spr, _Seg)
+        if self._wall(spr, dx_dir, dy_dir):
+            if not (is_seg and (_DIRS[spr.rot] == (-dx_dir, -dy_dir) or self._wall(spr, 0, 0))):
+                return False
+        dx, dy = dx_dir * _STEP, dy_dir * _STEP
+        if is_seg:
+            for ox, oy in ((0, 0), (dx, dy)):
+                c = self._cell_at(spr.x + ox, spr.y + oy)
+                if c is not None:
+                    seg_dir_x, _sy = _DIRS[spr.rot]
+                    if self._push(c, dx_dir, dy_dir, pushed, from_spr=spr):
+                        pushed.add(id(c))
+                    elif (seg_dir_x == 0) != (dx_dir == 0):
+                        return False
+        else:  # cell
+            horiz = dx_dir != 0
+            for ox, oy in ((0, 0), (dx, dy)):
+                seg = self._seg_at(spr.x + ox, spr.y + oy, not horiz, exclude=from_spr)
+                if seg is not None:
+                    seg_dir_x, _sy = _DIRS[seg.rot]
+                    if (seg_dir_x == 0) != (dx_dir == 0):
+                        return False
+            nxt = self._cell_at(spr.x + dx, spr.y + dy)
+            if nxt is not None and not self._push(nxt, dx_dir, dy_dir, pushed):
+                return False
+        pushed.add(id(spr))
+        return True
+
+    # ── move (hgivzuhjvj), animation collapsed ────────────────────────────
+    def step(self, action_id: int) -> None:
+        if action_id not in _MOVES:
+            return
+        self.budget -= 1
+        move_x, move_y = _MOVES[action_id]
+        dx, dy = move_x * _STEP, move_y * _STEP
+        head = self.active
+        body = self.bodies[id(head)]
+        base = _DIRS[head.rot]
+        pushed: set[int] = set()
+        objmap = {id(o): o for o in self._all_segs() + self.cells + self.heads}
+
+        if (move_x, move_y) == base:  # GROW
+            if self._wall(body[-1], move_x, move_y):
+                return
+            for s in body:
+                self._push(s, move_x, move_y, pushed)
+            new_seg = _Seg(head.x, head.y, head.rot)
+            body.insert(0, new_seg)
+            objmap[id(new_seg)] = new_seg
+        elif (move_x, move_y) == (-base[0], -base[1]):  # RETRACT
+            if len(body) == 1:
+                return
+            removed = body.pop(0)
+            self._retract_extra = removed
+            for s in body:
+                self._push(s, move_x, move_y, pushed)
+            self._retract_extra = None
+        else:  # SIDE push — only where a gate sits
+            gx = head.x + 2 + dx // 2
+            gy = head.y + 2 + dy // 2
+            if not any(g.contains(gx, gy) for g in self.gates):
+                return
+            for s in body:
+                if not self._push(s, move_x, move_y, pushed):
+                    return
+            pushed.add(id(head))
+
+        for oid in pushed:
+            o = objmap.get(oid)
+            if o is not None:
+                o.x += dx
+                o.y += dy
+
+
+# ════════════════════════════════════════════════════════════════════════
+# A* search toward the exact template match.
+# ════════════════════════════════════════════════════════════════════════
+
+
+def _template_seq(sim: _Sim, partner: _Head) -> list[int]:
+    ov = sim._overlaps(partner)
+    return [c.color for c in ov[: sim.check_count[id(partner)]]]
+
+
+def _matched_prefix(ctrl_colors: list[int], tmpl: list[int]) -> int:
+    m = 0
+    for i in range(min(len(ctrl_colors), len(tmpl))):
+        if ctrl_colors[i] == tmpl[i]:
+            m += 1
+        else:
+            break
+    return m
+
+
+def _heuristic(sim: _Sim) -> int:
+    total = 0
+    for cid, partner in sim.partner.items():
+        ctrl = next(h for h in sim.heads if id(h) == cid)
+        tmpl = _template_seq(sim, partner)
+        cov = [c.color for c in sim._overlaps(ctrl)]
+        matched = _matched_prefix(cov, tmpl)
+        remaining = len(tmpl) - matched
+        total += 6 * remaining
+        if remaining:
+            need = tmpl[matched]
+            body = sim.bodies[id(ctrl)]
+            targets = [c for c in sim.cells if c.color == need]
+            if targets and body:
+                total += min(abs(s.x - c.x) + abs(s.y - c.y) for s in body for c in targets) // 6
+    return total
+
+
+def _search(
+    sim0: _Sim,
+    max_expansions: int = _SEARCH_EXPANSIONS,
+    budget_cap: int = _BUDGET_MAX,
+    weight: int = 2,
+) -> list[int] | None:
+    if sim0.is_win():
+        return []
+    start = sim0.clone()
+    counter = 0
+    pq = [(_heuristic(start), 0, counter, start, [])]
+    best_g = {start.key(): 0}
+    expansions = 0
+    while pq and expansions < max_expansions:
+        _f, g, _c, sim, path = heapq.heappop(pq)
+        k = sim.key()
+        if best_g.get(k, 1 << 30) < g:
+            continue
+        expansions += 1
+        for a in (1, 2, 3, 4):
+            nxt = sim.clone()
+            nxt.step(a)
+            if nxt.budget < 0:
+                continue
+            npath = path + [a]
+            if nxt.is_win():
+                return npath
+            ng = g + 1
+            if ng > budget_cap:
+                continue
+            nk = nxt.key()
+            if best_g.get(nk, 1 << 30) <= ng:
+                continue
+            best_g[nk] = ng
+            counter += 1
+            heapq.heappush(pq, (ng + weight * _heuristic(nxt), ng, counter, nxt, npath))
+    return None
+
+
+# ════════════════════════════════════════════════════════════════════════
+# Frame-only state parser (64x64 colour grid -> simulator init state, or None).
+# ════════════════════════════════════════════════════════════════════════
+
+
+def _at(grid: Grid, r: int, c: int) -> int:
+    if 0 <= r < len(grid) and 0 <= c < len(grid[0]):
+        return grid[r][c]
+    return -1
+
+
+def _parse_budget(grid: Grid) -> int:
+    row = grid[_DIVIDER]
+    n2 = sum(1 for v in row if v == 2)
+    return max(1, round(n2 / len(row) * _BUDGET_MAX))
+
+
+def _parse_cells(grid: Grid) -> list[_CellObj]:
+    """4x4 solid colour blocks -> target-cell sprite (x=col-1, y=row-1)."""
+    h, w = len(grid), len(grid[0])
+    out: list[_CellObj] = []
+    seen: set[Cell] = set()
+    for r in range(1, h - 3):
+        for c in range(1, w - 3):
+            col = grid[r][c]
+            if col not in _CELL_COLORS or (r, c) in seen:
+                continue
+            if not all(grid[r + dr][c + dc] == col for dr in range(4) for dc in range(4)):
+                continue
+            for dr in range(4):
+                for dc in range(4):
+                    seen.add((r + dr, c + dc))
+            out.append(_CellObj(c - 1, r - 1, col))
+    return out
+
+
+def _parse_heads(grid: Grid) -> list[tuple[int, int, int]]:
+    """6x6 boxes with a solid colour-6/15 border -> (x, y, border_colour)."""
+    h, w = len(grid), len(grid[0])
+    out: list[tuple[int, int, int]] = []
+    for r in range(h - 5):
+        for c in range(w - 5):
+            b = grid[r][c]
+            if b not in _HEAD_BORDER:
+                continue
+            top = all(grid[r][c + k] == b for k in range(6))
+            bot = all(grid[r + 5][c + k] == b for k in range(6))
+            side = grid[r + 1][c] == b and grid[r + 4][c] == b
+            if top and bot and side:
+                out.append((c, r, b))
+    return out
+
+
+def _is_seg(grid: Grid, x: int, y: int, horiz: bool) -> bool:
+    """Body segment at (x,y)? Its dashed 1/2 (active) or 2/3 (inactive) pattern
+    edge-pixels sit on the two middle rows (horizontal) or cols (vertical); this
+    survives a target cell showing through the transparent interior."""
+    if horiz:
+        e = (_at(grid, y + 2, x), _at(grid, y + 3, x), _at(grid, y + 2, x + 5), _at(grid, y + 3, x + 5))
+    else:
+        e = (_at(grid, y, x + 2), _at(grid, y, x + 3), _at(grid, y + 5, x + 2), _at(grid, y + 5, x + 3))
+    return all(v in (1, 2, 3) for v in e) and e[0] != e[1]
+
+
+def _parse_arena(grid: Grid) -> _Rect | None:
+    """Largest solid colour-4 rectangle above the divider (the floor sprite)."""
+    rows_runs = []
+    for r in range(_DIVIDER):
+        best = cur = start = bestc = 0
+        for c in range(len(grid[0])):
+            if grid[r][c] == 4:
+                if cur == 0:
+                    start = c
+                cur += 1
+                if cur > best:
+                    best, bestc = cur, start
+            else:
+                cur = 0
+        rows_runs.append((best, bestc, r))
+    maxrun = max(rows_runs, key=lambda t: t[0])
+    if maxrun[0] < 12:
+        return None
+    width, c0, _r = maxrun
+    rset = [r for (run, cc, r) in rows_runs if run >= width - 2 and abs(cc - c0) <= 4]
+    return _Rect(c0, min(rset), width, max(rset) - min(rset) + 1)
+
+
+def _parse_gates(grid: Grid) -> list[_Rect]:
+    """Side-push gate rails: 2-wide runs (>=8 long) of adjacent colour-2/3
+    columns/rows. Stacked gates merge into one rail; a body segment's dashes
+    never form two adjacent full 2/3 lines of length >=8."""
+    h, w = len(grid), len(grid[0])
+    out: list[_Rect] = []
+    for c in range(w - 1):
+        r = 0
+        while r < h:
+            if _at(grid, r, c) in (2, 3) and _at(grid, r, c + 1) in (2, 3):
+                r0 = r
+                while r < h and _at(grid, r, c) in (2, 3) and _at(grid, r, c + 1) in (2, 3):
+                    r += 1
+                if r - r0 >= 8:
+                    out.append(_Rect(c, r0, 2, r - r0))
+            else:
+                r += 1
+    for r in range(h - 1):
+        c = 0
+        while c < w:
+            if _at(grid, r, c) in (2, 3) and _at(grid, r + 1, c) in (2, 3):
+                c0 = c
+                while c < w and _at(grid, r, c) in (2, 3) and _at(grid, r + 1, c) in (2, 3):
+                    c += 1
+                if c - c0 >= 8:
+                    out.append(_Rect(c0, r, c - c0, 2))
+            else:
+                c += 1
+    return out
+
+
+def _parse_state(grid: Grid) -> dict[str, Any] | None:
+    """Reconstruct a simulator init-state from a settled 64x64 frame, or None
+    when the board cannot be parsed unambiguously (the adapter then gates to
+    the transition-graph explorer). Returns None e.g. on levels whose
+    non-controllable snakes have colour-5-bordered near-invisible heads at the
+    frame edge (a NAMED divergence — those heads carry body segments the walk
+    cannot anchor, so the reconstruction would be incomplete)."""
+    if not grid or len(grid) < 64 or len(grid[0]) < 64:
+        return None
+    raw_heads = _parse_heads(grid)
+    if not raw_heads:
+        return None
+    arena = _parse_arena(grid)
+    if arena is None:
+        return None
+
+    heads: list[_Head] = []
+    bodies: list[tuple[_Head, list[_Seg]]] = []
+    for (x, y, bcol) in raw_heads:
+        facing = None
+        for d in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            if _is_seg(grid, x + _STEP * d[0], y + _STEP * d[1], d[0] != 0):
+                facing = d
+                break
+        if facing is None:
+            return None  # 1-segment / ambiguous snake: gate to fallback
+        rot = _ROT_OF_DIR[facing]
+        head = _Head(x, y, rot, bcol)
+        segs = [_Seg(x, y, rot)]
+        k = 1
+        while _is_seg(grid, x + _STEP * k * facing[0], y + _STEP * k * facing[1], facing[0] != 0):
+            segs.append(_Seg(x + _STEP * k * facing[0], y + _STEP * k * facing[1], rot))
+            k += 1
+        heads.append(head)
+        bodies.append((head, segs))
+
+    partner: dict[int, _Head] = {}
+    check_count: dict[int, int] = {}
+    tops = [h for h in heads if h.y < _DIVIDER]
+    bots = [h for h in heads if h.y >= _DIVIDER]
+    for ch in tops:
+        mate = next((b for b in bots if b.color == ch.color), None)
+        if mate is not None:
+            partner[id(ch)] = mate
+            mate_body = next(b for hh, b in bodies if hh is mate)
+            check_count[id(mate)] = len(mate_body) - 1
+    if not partner:
+        return None
+
+    active = min(tops, key=lambda h: (h.y, h.x))
+    return {
+        "heads": heads, "bodies": bodies, "cells": _parse_cells(grid), "partner": partner,
+        "check_count": check_count, "active": active, "arena": arena,
+        "obstacles": [], "gates": _parse_gates(grid), "budget": _parse_budget(grid),
+    }
+
+
+# ════════════════════════════════════════════════════════════════════════
+# Fallback: generic transition-graph frontier exploration (the R56 explorer,
+# which banks 0/8 but is the safe floor when the simulator cannot be built).
+# ════════════════════════════════════════════════════════════════════════
+
+
 def _is_hud_band(region: Region, height: int, width: int) -> bool:
-    """A thin strip spanning most of one axis, OR pinned to a frame edge —
-    catches SK48's full-width arena divider and any edge-pinned status bar;
-    both are static, so masking them only stabilises the state key."""
     r0, c0, r1, c1 = region["bbox"]
     h, w = r1 - r0 + 1, c1 - c0 + 1
     thickness = max(1, int(height * _HUD_THICKNESS_FRACTION))
@@ -171,87 +601,35 @@ def _mask_hud(grid: Grid) -> Grid:
     )
 
 
-class Adapter(GameAdapter):
+class _Explorer:
     """Generic transition-graph frontier exploration over HUD-masked
-    frame-canonical states (snake body captured in the key), composed from
-    admorphiq.kernels."""
+    frame-canonical states (snake body captured in the key)."""
 
-    GAME_ID = GAME_ID
-
-    def __init__(self, giveup: int = _GIVEUP_DEFAULT) -> None:
-        # An exhausted per-level move budget ends the attempt in GAME_OVER;
-        # restart and keep the learned graph so each life compounds.
-        self.restart_on_game_over = True
-
-        self._giveup = giveup
-        self._step = 0
-        self._levels_seen = -1
-
+    def __init__(self) -> None:
         self._pending_action: int | None = None
         self._pending_key: Any | None = None
-
-        # Incrementally-discovered transition graph over masked board states.
-        # ``_edges`` is the same graph as an adjacency map kept in step so
-        # _nearest_untried's BFS stays linear. All reset on level-up, kept
-        # across a mid-level GAME_OVER restart.
         self._transitions: list[tuple[Any, int, Any]] = []
         self._edges: dict[Any, dict[int, Any]] = {}
         self._tried_from: dict[Any, set[int]] = {}
 
-    # ── harness contract ────────────────────────────────────────────────
-
-    def is_done(self, frames: list[Any], latest_frame: Any) -> bool:
-        return state_name(latest_frame) == "WIN" or self._step >= self._giveup
-
-    def choose_action(self, frames: list[Any], latest_frame: Any) -> GameAction:
-        state = state_name(latest_frame)
-        if state == "GAME_OVER":
-            self._on_restart()
-            return reset_action()
-        if state == "NOT_PLAYED" or not has_frame(latest_frame):
-            self._pending_action = None
-            self._pending_key = None
-            self._levels_seen = -1
-            return reset_action()
-
-        grid = canonical_layer(latest_frame)
-        levels = int(getattr(latest_frame, "levels_completed", 0) or 0)
-        if levels != self._levels_seen:
-            self._on_level_up(levels)
-
-        self._step += 1
-        cur_key = canonical_key(_mask_hud(grid), mode="exact")
-        self._observe_result(cur_key)
-
-        simple_ids, _action6_ok = available_action_ids(latest_frame)
-        # Moves + UNDO. ACTION6 (click-select) is skipped: its coordinate
-        # space is unbounded and the shallow levels have one active snake.
-        act_ids = sorted(a for a in simple_ids if a in (1, 2, 3, 4, 7))
-        if not act_ids:
-            self._pending_action = None
-            self._pending_key = None
-            return simple_action(simple_ids[0]) if simple_ids else reset_action()
-
-        action = self._decide(cur_key, act_ids)
-        self._pending_action = action
-        self._pending_key = cur_key
-        return simple_action(action)
-
-    # ── level / restart bookkeeping ─────────────────────────────────────
-
-    def _on_level_up(self, levels: int) -> None:
-        self._levels_seen = levels
+    def on_level_up(self) -> None:
         self._pending_action = None
         self._pending_key = None
         self._transitions = []
         self._edges = {}
         self._tried_from = {}
 
-    def _on_restart(self) -> None:
+    def on_restart(self) -> None:
         self._pending_action = None
         self._pending_key = None
 
-    # ── measurement: record the observed transition ─────────────────────
+    def choose(self, grid: Grid, act_ids: list[int]) -> int:
+        cur_key = canonical_key(_mask_hud(grid), mode="exact")
+        self._observe_result(cur_key)
+        action = self._decide(cur_key, act_ids)
+        self._pending_action = action
+        self._pending_key = cur_key
+        return action
 
     def _observe_result(self, cur_key: Any) -> None:
         action = self._pending_action
@@ -264,30 +642,19 @@ class Adapter(GameAdapter):
         self._edges.setdefault(prev_key, {})[action] = cur_key
         self._tried_from.setdefault(prev_key, set()).add(action)
 
-    # ── planning ─────────────────────────────────────────────────────────
-
     def _decide(self, cur_key: Any, act_ids: list[int]) -> int:
         tried = self._tried_from.get(cur_key, set())
         untried = [a for a in act_ids if a not in tried]
         if untried:
             return untried[0]
-
         target = self._nearest_untried(cur_key, act_ids)
         if target is not None and target != cur_key:
             path = transition_shortest_path(self._transitions, cur_key, target)
             if path:
                 return int(path[0])
-
         return act_ids[0]
 
     def _nearest_untried(self, start_key: Any, act_ids: list[int]) -> Any | None:
-        """BFS over the KNOWN transition graph from ``start_key``; return the
-        nearest state (including ``start_key``) that still has an untried
-        action, or None if every reachable state is fully explored.
-        Hand-rolled rather than :func:`admorphiq.kernels.reachable_frontier`
-        for the same reason ``admorphiq.adapters25.tu93`` gives (its universe
-        is observed edges only, so it cannot surface a never-attempted
-        action)."""
         visited = {start_key}
         queue: deque[Any] = deque([start_key])
         while queue:
@@ -300,3 +667,95 @@ class Adapter(GameAdapter):
                     visited.add(nxt)
                     queue.append(nxt)
         return None
+
+
+# ════════════════════════════════════════════════════════════════════════
+# Adapter: simulator-search plan first (gated), transition-graph explorer as
+# the safe fallback.
+# ════════════════════════════════════════════════════════════════════════
+
+
+class Adapter(GameAdapter):
+    """Frame-parsed faithful-simulator A* plan per level, with a
+    transition-graph explorer fallback when the parse or search fails."""
+
+    GAME_ID = GAME_ID
+
+    def __init__(self, giveup: int = _GIVEUP_DEFAULT) -> None:
+        self.restart_on_game_over = True
+        self._giveup = giveup
+        self._step = 0
+        self._levels_seen = -1
+        self._plan: list[int] = []
+        self._plan_failed = False  # this level fell back to the explorer
+        self._need_settle = False  # frame is a fresh-level animation; settle first
+        self._explorer = _Explorer()
+
+    # ── harness contract ─────────────────────────────────────────────────
+    def is_done(self, frames: list[Any], latest_frame: Any) -> bool:
+        return state_name(latest_frame) == "WIN" or self._step >= self._giveup
+
+    def choose_action(self, frames: list[Any], latest_frame: Any) -> GameAction:
+        state = state_name(latest_frame)
+        if state == "GAME_OVER":
+            self._explorer.on_restart()
+            self._plan = []
+            return reset_action()
+        if state == "NOT_PLAYED" or not has_frame(latest_frame):
+            self._reset_level(-1)
+            return reset_action()
+
+        levels = int(getattr(latest_frame, "levels_completed", 0) or 0)
+        if levels != self._levels_seen:
+            # A fresh level; its first frame is a win-flash composite. Issue one
+            # free ACTION7 (undo — a no-op with a single snapshot) to settle,
+            # then plan on the settled frame.
+            self._reset_level(levels)
+            if levels > 0:
+                self._need_settle = True
+                return simple_action(7)
+
+        self._step += 1
+        grid = canonical_layer(latest_frame)
+        simple_ids, _a6 = available_action_ids(latest_frame)
+        act_ids = sorted(a for a in simple_ids if a in (1, 2, 3, 4, 7))
+        if not act_ids:
+            return simple_action(simple_ids[0]) if simple_ids else reset_action()
+
+        if self._need_settle:
+            self._need_settle = False
+            self._build_plan(grid)
+
+        if not self._plan and not self._plan_failed and self._levels_seen == 0 and self._step == 1:
+            # Level 0: RESET frame is already settled; plan immediately.
+            self._build_plan(grid)
+
+        if self._plan:
+            return simple_action(self._plan.pop(0))
+
+        # Fallback: transition-graph explorer for this level.
+        self._plan_failed = True
+        move_ids = [a for a in act_ids] or [simple_ids[0]]
+        return simple_action(self._explorer.choose(grid, move_ids))
+
+    # ── planning ──────────────────────────────────────────────────────────
+    def _reset_level(self, levels: int) -> None:
+        self._levels_seen = levels
+        self._plan = []
+        self._plan_failed = False
+        self._need_settle = False
+        self._explorer.on_level_up()
+
+    def _build_plan(self, grid: Grid) -> None:
+        state = _parse_state(grid)
+        if state is None:
+            self._plan_failed = True
+            return
+        try:
+            sol = _search(_Sim(state))
+        except Exception:
+            sol = None
+        if sol:
+            self._plan = list(sol)
+        else:
+            self._plan_failed = True
