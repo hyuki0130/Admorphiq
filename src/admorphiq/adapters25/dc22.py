@@ -210,6 +210,35 @@ decoupled from physical navigation) sits outside what a reactive
 walk-stuck-probe architecture can express, and the wall is precisely
 located rather than guessed at.
 
+**Proactive state-gate plan ALSO falsified (R56 gold-replay + decouple
+validation)**: a follow-up attempt tried the "detect the win-gate, satisfy it
+proactively, then walk to the goal" restructure. Validated it BEFORE building
+and it does not hold:
+  - Gold's L0 solution (episode 1973, verified to replay to WIN on the live
+    env) is 20 actions that INTERLEAVE walk and toggle: move up, click A
+    (48,36; a 97-cell one-time REVEAL), walk up+right, click B (44,20; a
+    49-cell SEESAW), walk up, click A AGAIN (17-cell indicator flip), walk to
+    goal -> WIN. B's seesaw gates different path SEGMENTS, so it must be
+    toggled at a specific point ALONG the route, not set once up front.
+  - Decoupling was tested directly: setting gold's end button-state up front
+    (click A, or A+B, or A+B+A) and then walking greedily to the goal
+    (multi-direction, distance-reducing) NEVER reaches the goal — every variant
+    hits GAME_OVER at the ~128-action per-life fuse far from the goal. So
+    "set state then walk" cannot express this level; the walk and the toggles
+    are inseparable.
+  - The parity enumeration also cannot represent gold's winning state: A is
+    clicked TWICE (even parity, but its ONE-TIME reveal is triggered) while
+    parity-0 is indistinguishable from 0 clicks (no reveal). Reveal is a
+    one-time effect distinct from parity, absent from the 4-combo space.
+So dc22 L0 is an INTERLEAVED walk+toggle sequence (a segment-by-segment plan:
+walk to a sub-goal, toggle the segment's gate, walk to the next), under a tight
+~128-action fuse -- not a proactive state-gate. **REOPEN** with a sequential-
+subgoal planner that discovers segment boundaries (where a walk blocks), clicks
+the largest-diff toggler to open the next segment, and tracks one-time reveals
+separately from parity -- a genuine build, not a state-gate enumerator. dc22
+stays 0/6 with the wall now precisely located across three falsified plans
+(reactive stuck-probe / parity-enumeration / proactive decoupled state-gate).
+
 Composition from ``admorphiq.kernels``:
   - :func:`admorphiq.kernels.find_regions` segments the frame into the
     avatar, the goal marker, and every button/wall candidate.
@@ -959,12 +988,22 @@ class Adapter(GameAdapter):
         is what measures whether a given re-click actually helped."""
         key = self._stuck_state_key()
         tried = self._tried_togglers_at_state.setdefault(key, set())
-        for cell, mem in self._button_memory.items():
-            if mem["inert"] or mem["clicks"] == 0 or cell in tried:
-                continue
-            tried.add(cell)
-            return cell
-        return None
+        # Prefer the LARGEST-cumulative-diff toggler first: gold's own two
+        # buttons are the largest-footprint reveal/seesaw (~97 and ~49 cells),
+        # so a stuck segment is far more likely opened by a big-diff toggler
+        # than by a small decorative one -- focuses the tight per-life action
+        # fuse on the buttons that plausibly gate the route.
+        eligible = [
+            (cell, mem)
+            for cell, mem in self._button_memory.items()
+            if not mem["inert"] and mem["clicks"] > 0 and cell not in tried
+        ]
+        if not eligible:
+            return None
+        eligible.sort(key=lambda cm: (-max((len(d) for d in cm[1]["diffs"]), default=0), cm[0]))
+        cell = eligible[0][0]
+        tried.add(cell)
+        return cell
 
     def _hypothetical_route_cells(self) -> set[Cell]:
         """The shortest avatar->goal path PRETENDING every cell is
