@@ -34,6 +34,16 @@ facing-up offset can't serve), the adapter falls back to the generic
 transition-graph frontier exploration the previous build used, so it never
 regresses below that baseline.
 
+**L1 divergence (banked 2026-07-15, see WA30.md)**: L1 adds a second,
+AUTONOMOUS agent (a ``kdweefinfi``-tagged sprite; measured colour 12) that
+picks up and delivers boxes ON ITS OWN every step, independent of the player —
+a live single-step probe shows it moving on every action regardless of the
+command. The board is therefore non-stationary and the static precomputed
+carry plan desyncs; the true worker is the colour-14 ``wbmdvjhthc`` mover but
+fixing detection alone does not clear L1. Clearing it needs a reactive
+cooperative (multi-agent, replan-every-step) delivery planner — a new
+composition beyond this static-plan model. L1 stays on the graph fallback.
+
 **Why namespace-safe**: the adapter assigns roles (which cluster is the
 worker, which are boxes, which cells are goals) and declares the mechanic
 hypothesis (delivery), but the assignment, routing, and path conversion all
