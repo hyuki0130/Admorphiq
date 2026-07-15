@@ -181,6 +181,7 @@ explicitly "banked" even by the more mature reference module.
 
 from __future__ import annotations
 
+from itertools import permutations
 from typing import Any
 
 from admorphiq.adapters25.base import (
@@ -627,18 +628,19 @@ def _frame_slot_layout(frame: dict[str, Any], candidates: list[Region]) -> list[
     return layout
 
 
-def _detect_pool_portal(
+def _detect_pool_portals(
     grid: Grid, frames: list[dict[str, Any]], bg: int, frame_bottom: int
-) -> dict[str, Any] | None:
-    """A PORTAL piece sitting in the bottom pool band (not yet placed), or None.
+) -> list[dict[str, Any]]:
+    """Every PORTAL piece sitting in the bottom pool band (not yet placed).
 
     Unlike L1-L3's portals (fixed board features already inside a frame's hole),
-    a deeper level can put a portal in the POOL as a hollow-ring piece the player
-    must PLACE into a slot. :func:`admorphiq.kernels.closed_frames` detects it as
-    a small hollow ring; it is told apart from the top-band target swatches (also
-    hollow rings) by lying BELOW every interactive frame, and from a decorative
-    ring by its border colour matching a real frame's border (that frame is the
-    portal's destination). Returns ``{"row", "col", "dest_color"}`` or None."""
+    a deeper level can put portals in the POOL as hollow-ring pieces the player
+    must PLACE into slots. :func:`admorphiq.kernels.closed_frames` detects each as
+    a small hollow ring; they are told apart from the top-band target swatches
+    (also hollow rings) by lying BELOW every interactive frame, and from a
+    decorative ring by a border colour that names a real frame (that frame is the
+    portal's destination). Each entry is ``{"row", "col", "dest_color"}``, sorted
+    left-to-right."""
     portals: list[dict[str, Any]] = []
     frame_colors = {f["border_color"] for f in frames}
     for cf in closed_frames(grid, background=bg):
@@ -648,10 +650,18 @@ def _detect_pool_portal(
             continue  # a top-band target swatch or an interactive frame, not a pool piece
         if cf["border_color"] not in frame_colors:
             continue  # a ring whose colour names no frame is not a portal
-        portals.append({"row": crow, "col": (c0 + c1) / 2, "dest_color": cf["border_color"]})
-    if len(portals) != 1:
-        return None  # exactly one pool portal is the supported case
-    return portals[0]
+        portals.append({"row": crow, "col": (c0 + c1) / 2, "dest_color": int(cf["border_color"])})
+    portals.sort(key=lambda p: p["col"])
+    return portals
+
+
+def _detect_pool_portal(
+    grid: Grid, frames: list[dict[str, Any]], bg: int, frame_bottom: int
+) -> dict[str, Any] | None:
+    """The single pool portal, or None unless exactly one is present (the L4
+    case — the two-portal L5 case has its own solver)."""
+    portals = _detect_pool_portals(grid, frames, bg, frame_bottom)
+    return portals[0] if len(portals) == 1 else None
 
 
 def _plan_sb26_pool_portal(grid: Grid) -> list[PlanStep] | None:
@@ -770,16 +780,280 @@ def _build_pool_portal_plan(
     return plan
 
 
+def _simulate_portal_dfs(
+    root: int, kinds: list[list[tuple[str, Any]]], n_targets: int
+) -> list[tuple[int, int]] | None:
+    """The item-visit sequence of the DFS the game runs from ``root``, stopped
+    once ``n_targets`` items are visited.
+
+    Faithful to the game's own traversal (source ``dbfxrigdqx``/``rfdjlhefnd``):
+    slots are visited left-to-right; a PORTAL slot descends into its destination
+    frame (a zero-target jump), and after that frame is fully traversed the walk
+    RETURNS and continues at the next slot. An ITEM slot is a visit that consumes
+    the next target. Frames MAY be re-entered — two portals to one frame traverse
+    it twice (L5), and a pair of MUTUAL portals cycle A→B→A→B until the target
+    count is met (L8) — so this is an iterative walk BOUNDED by ``n_targets`` (the
+    game wins the moment the last target is filled), with a step cap that rejects
+    a degenerate loop that never fills targets (the game FAILs those). Returns the
+    exact-length visit list, or None if the walk ends early or spins. ``kinds[f][s]``
+    is ``("portal", dest_idx)`` or ``("item", (f, s))``."""
+    stack: list[list[int]] = [[root, 0]]
+    order: list[tuple[int, int]] = []
+    steps = 0
+    max_steps = n_targets * 8 + 128
+    while stack and len(order) < n_targets:
+        steps += 1
+        if steps > max_steps:
+            return None  # a non-productive loop — the game's loop-guard FAILs it too
+        f, s = stack[-1]
+        slots = kinds[f]
+        if s >= len(slots):
+            stack.pop()  # frame exhausted — return to the parent, past its portal slot
+            if stack:
+                stack[-1][1] += 1
+            continue
+        kind = slots[s]
+        if kind[0] == "portal":
+            stack.append([kind[1], 0])
+        else:
+            order.append(kind[1])
+            stack[-1][1] += 1
+    return order if len(order) == n_targets else None
+
+
+# Minimum row-centroid gap (pixels) between two target-swatch ROWS. The target
+# sequence is a band of hollow-ring swatches above the frames; a long sequence
+# wraps onto multiple rows (measured: L8's 12 targets span two rows), which must
+# be read top row first then left-to-right, NOT globally by column (that
+# interleaves the rows). Swatches within one row share a row centroid; rows are
+# separated by more than a swatch's own height.
+_TARGET_ROW_GAP = 4
+
+
+def _read_target_sequence(target_rings: list[dict[str, Any]]) -> list[int]:
+    """The target colour sequence in READING order: top row left-to-right, then
+    each lower row. Reading globally by column would interleave a wrapped
+    multi-row band (see :data:`_TARGET_ROW_GAP`)."""
+    if not target_rings:
+        return []
+    entries = sorted(
+        (((cf["outer_bbox"][0] + cf["outer_bbox"][2]) / 2, cf["outer_bbox"][1], int(cf["border_color"]))
+         for cf in target_rings),
+        key=lambda e: (e[0], e[1]),
+    )
+    rows: list[list[tuple[float, int, int]]] = [[]]
+    last_row: float | None = None
+    for r, c, color in entries:
+        if last_row is not None and r - last_row > _TARGET_ROW_GAP:
+            rows.append([])
+        rows[-1].append((r, c, color))
+        last_row = r
+    sequence: list[int] = []
+    for row in rows:
+        sequence.extend(color for _r, _c, color in sorted(row, key=lambda e: e[1]))
+    return sequence
+
+
+def _read_targets_and_pool(
+    grid: Grid,
+    frames: list[dict[str, Any]],
+    candidates: list[Region],
+    bg: int,
+    frame_top: int,
+    portals: list[dict[str, Any]],
+) -> tuple[list[int], dict[int, list[tuple[int, int]]]] | None:
+    """The target colour sequence (top-band ring borders, traversal order) and
+    the pool colour swatches (colour -> click points), or None if unreadable.
+    Shared by the one- and two-portal solvers. The pool excludes the hollow
+    portal rings (matched by position)."""
+    target_rings = [
+        cf
+        for cf in closed_frames(grid, background=bg)
+        if (cf["outer_bbox"][0] + cf["outer_bbox"][2]) / 2 < frame_top
+    ]
+    target_colors = _read_target_sequence(target_rings)
+    if not target_colors:
+        return None
+    all_hole: frozenset[Cell] = frozenset()
+    for f in frames:
+        all_hole |= f["hole_cells"]
+    band_candidates = [r for r in candidates if not (r["cells"] & all_hole)]
+    bands = group_by_axis(band_candidates, axis="row", tolerance=_BAND_TOLERANCE)
+    if len(bands) < 2:
+        return None
+    bottom_band = [band_candidates[i] for i in bands[-1]]
+    pool: dict[int, list[tuple[int, int]]] = {}
+    for r in sorted(bottom_band, key=lambda r: (r["centroid"][1], r["centroid"][0])):
+        if r["color"] == bg:
+            continue
+        if any(
+            abs(r["centroid"][1] - p["col"]) <= 2 and abs(r["centroid"][0] - p["row"]) <= 3
+            for p in portals
+        ):
+            continue  # a hollow portal ring, not a colour swatch
+        pool.setdefault(int(r["color"]), []).append(
+            (int(round(r["centroid"][0])), int(round(r["centroid"][1])))
+        )
+    return target_colors, pool
+
+
+# Upper bound on how many pool portals the multi-portal search will enumerate.
+# Enumeration is permutations(empty_slots, n_portals); the measured deep levels
+# use up to 3 portals, and 4 keeps the search well-bounded. Beyond this the
+# solver bows out (returns None) rather than risk a slow plan inside one step.
+_MAX_POOL_PORTALS = 4
+
+
+def _plan_sb26_multi_portal(grid: Grid) -> list[PlanStep] | None:
+    """Placement plan when TWO OR MORE portals must be placed from the pool
+    (L5/L6-class).
+
+    Pool portals routed into the frames make the DFS traverse destination frames
+    extra times (their item slots re-read against later target positions), so a
+    few physical slots produce a longer target sequence — e.g. two portals to one
+    leaf traverse it twice (L5), three portals from an all-portal root visit three
+    leaves once each (L6). Exact search: enumerate the portals over empty slots
+    (never a portal's own destination frame), SIMULATE the resulting DFS, assign
+    the target sequence to the item-visit order, and accept the first placement
+    where every slot's colour is consistent across its (possibly repeated) visits,
+    pre-filled slots agree, and the pool can supply the empties. Gated on >= 2
+    pool portals (the one-portal L4 case has its own solver, so L1-L4 stay
+    byte-identical); returns None on any unsupported shape."""
+    if not grid:
+        return None
+    bg = most_common_color(grid)
+    candidates = _candidates(grid)
+    fused_frames, _markers = _recover_fused_frames(grid, candidates, bg)
+    frames = _filter_interactive_frames(closed_frames(grid, background=bg) + fused_frames, candidates)
+    if len(frames) < 2:
+        return None
+    frame_bottom = max(f["outer_bbox"][2] for f in frames)
+    frame_top = min(f["outer_bbox"][0] for f in frames)
+    portals = _detect_pool_portals(grid, frames, bg, frame_bottom)
+    if not 2 <= len(portals) <= _MAX_POOL_PORTALS:
+        return None
+
+    border_to_idx = {f["border_color"]: i for i, f in enumerate(frames)}
+    dests = [border_to_idx.get(p["dest_color"]) for p in portals]
+    if any(d is None for d in dests):
+        return None
+    layouts = [_frame_slot_layout(f, candidates) for f in frames]
+    if any(not layout for layout in layouts):
+        return None
+    read = _read_targets_and_pool(grid, frames, candidates, bg, frame_top, portals)
+    if read is None:
+        return None
+    target_colors, pool = read
+
+    empty = [
+        (fi, si) for fi, layout in enumerate(layouts) for si, slot in enumerate(layout) if slot["content"] is None
+    ]
+    for placement in permutations(empty, len(portals)):
+        if any(placement[i][0] == dests[i] for i in range(len(portals))):
+            continue  # a portal cannot target the frame it sits in
+        kinds: list[list[tuple[str, Any]]] = [
+            [("item", (fi, si)) for si in range(len(layouts[fi]))] for fi in range(len(frames))
+        ]
+        for i, (fi, si) in enumerate(placement):
+            kinds[fi][si] = ("portal", dests[i])
+        order = _simulate_portal_dfs(0, kinds, len(target_colors))
+        if order is None:
+            continue
+        slot_color: dict[tuple[int, int], int] = {}
+        if not _assign_colors(order, target_colors, slot_color):
+            continue
+        if not _placement_consistent(layouts, placement, slot_color, pool):
+            continue
+        return _build_multi_portal_plan(portals, placement, layouts, slot_color, pool)
+    return None
+
+
+def _assign_colors(
+    order: list[tuple[int, int]], target_colors: list[int], slot_color: dict[tuple[int, int], int]
+) -> bool:
+    """Map each item visit to its target colour; a slot re-read by a second portal
+    pass must carry the SAME colour both times. Fills ``slot_color`` in place,
+    returns whether the assignment is conflict-free."""
+    for key, tcol in zip(order, target_colors):
+        if key in slot_color:
+            if slot_color[key] != tcol:
+                return False
+        else:
+            slot_color[key] = tcol
+    return True
+
+
+def _placement_consistent(
+    layouts: list[list[dict[str, Any]]],
+    placement: tuple[tuple[int, int], ...],
+    slot_color: dict[tuple[int, int], int],
+    pool: dict[int, list[tuple[int, int]]],
+) -> bool:
+    """Every non-portal slot is visited and gets a colour, pre-filled slots keep
+    their fixed colour, and the pool can supply every empty slot's colour."""
+    portal_slots = set(placement)
+    need: dict[int, int] = {}
+    for fi, layout in enumerate(layouts):
+        for si, slot in enumerate(layout):
+            key = (fi, si)
+            if key in portal_slots:
+                continue
+            if key not in slot_color:
+                return False  # an item slot the traversal never reaches
+            if slot["content"] is not None:
+                if slot["content"] != slot_color[key]:
+                    return False
+            else:
+                need[slot_color[key]] = need.get(slot_color[key], 0) + 1
+    return all(len(pool.get(color, [])) >= cnt for color, cnt in need.items())
+
+
+def _build_multi_portal_plan(
+    portals: list[dict[str, Any]],
+    placement: tuple[tuple[int, int], ...],
+    layouts: list[list[dict[str, Any]]],
+    slot_color: dict[tuple[int, int], int],
+    pool: dict[int, list[tuple[int, int]]],
+) -> list[PlanStep]:
+    """Place each portal into its slot, then each empty slot's colour (in DFS
+    visit order), then verify."""
+    plan: list[PlanStep] = []
+    for portal, (fi, si) in zip(portals, placement):
+        slot = layouts[fi][si]
+        plan.append(("click", int(round(portal["row"])), int(round(portal["col"]))))
+        plan.append(("click", int(round(slot["row"])), int(round(slot["col"]))))
+    used: dict[int, int] = {}
+    portal_slots = set(placement)
+    for (fi, si), color in slot_color.items():
+        if (fi, si) in portal_slots:
+            continue
+        slot = layouts[fi][si]
+        if slot["content"] is not None:
+            continue
+        k = used.get(color, 0)
+        used[color] = k + 1
+        prow, pcol = pool[color][k]
+        plan.append(("click", prow, pcol))
+        plan.append(("click", int(round(slot["row"])), int(round(slot["col"]))))
+    plan.append(("simple", _VERIFY_ACTION))
+    return plan
+
+
 def _plan_sb26(grid: Grid) -> list[PlanStep] | None:
     """The full placement click plan, DFS-ordered, or None if unsupported here."""
     if not grid:
         return None
     # A portal sitting in the pool (a piece to place) is a distinct, deeper case
     # from L1-L3's fixed in-frame portals; try it first and fall through when the
-    # board is not that shape, so the L1-L3 path is byte-identical.
+    # board is not that shape, so the L1-L3 path is byte-identical. The one- and
+    # two-portal pool cases are separate gated solvers so each shallower level
+    # stays byte-identical.
     pool_portal_plan = _plan_sb26_pool_portal(grid)
     if pool_portal_plan is not None:
         return pool_portal_plan
+    two_portal_plan = _plan_sb26_multi_portal(grid)
+    if two_portal_plan is not None:
+        return two_portal_plan
     bg = most_common_color(grid)
     candidates = _candidates(grid)
     fused_frames, markers = _recover_fused_frames(grid, candidates, bg)
