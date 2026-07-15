@@ -932,6 +932,60 @@ probe (set-one-bit / single-click-from-reset) belongs BEFORE any planner build.
 (lf52), `cfde3a1` (sc25), `757e4b2` (s5i5), `e9ce9ec` (reflection kernel),
 `79ec697` (flow kernel), `ea15a44` (delivery kernel), `f586fd3` (ACTION7 fix).
 
+## Depth phase — deeper levels via faithful state-models (2026-07-15 evening)
+
+The afternoon reached 25/25 adapter COVERAGE (mostly L0/L1). The evening pushed
+DEPTH on the games whose structure a faithful forward-model could search. Every
+number below is verified against its committed `scripts/rounds/script25_<game>_*/
+SUMMARY.txt` (see the "Provenance" line) — not a commit-message recollection;
+one afternoon lane's unverified claim is the subject of
+[[../lessons/false_claim_verification_20260715]].
+
+| game | before | after | game_score | mechanism (verified) |
+|---|---|---|---|---|
+| sk48 | 0/8 | **3/8** | **0.1667** | faithful move-sim + A*; L2 via colour-5-bordered edge-snake parse; all clears super-human |
+| lp85 | 1/8 | **3/8** | **0.1637** | ring-permutation planner (`kernels/permute.py`, tour+direction-vote); L2 & L3 capped 1.0 |
+| su15 | 0/9 | **3/9** | **0.1035** | vacuum-pull merge-and-deliver decoded from source (resolved 9 prior vacuum-RING iterations) |
+| sb26 | (afternoon) | **8/8** | **0.846** | N-portal DFS placement simulator (`_simulate_portal_dfs`), 170 actions |
+| cd82 | (afternoon) | **6/6** | **0.98** | ring-paint replan-one-op, 97 actions |
+| ka59 | 0/7 | **1/7** | **0.0205** | L0 launch-then-walk joint placement; L1 3-round arc banked (placement→slide→invisible-walk) |
+| dc22 | 0/6 | **1/6** | **0.0272** | `plan_gated_path` product-graph (position × passability); L0 78a vs 59h (per-level 0.572) |
+| tu93 | 2/9 | 2/9 | **0.0028** (was 0.0002) | goal-directed frontier expansion (11.6× efficiency, floor held) |
+| cn04 | 0/6 | **1/6** | **0.0309** | geometric partner-matching (pair A live); the 2-pair global assignment was validated OFFLINE only, live stays 1/6 — NOT a 2-level clear |
+
+**Provenance (SUMMARY dirs):** `script25_sk48_edge`, `script25_lp85_l3` +
+`_l4det2`, `script25_su15_sim_final` + `_enemy1`, `script25_sb26_l8b`,
+`script25_cd82_smoke3`, `script25_ka59_l1char1`, `script25_dc22_gated`,
+`script25_tu93_goalward3000` + `_3000b`, `script25_cn04_smoke2`. Commits:
+`5189ded`/`dd0f750`/`d5eb5d5` (su15), `df0eb6f` (dc22), `6f61c11`/`b24d7ac`/
+`0cf4f16`/`a2b7cb2` (ka59), `6760b09`/`476b209`/`799e718` (sk48), `a2e6d2e`/
+`58987eb`/`fe1a06a`/`ed147a0`/`5dcdcbf`/`17619ea` (lp85), `6fd466c` (tu93),
+`2c1ed0f` (cd82), `4513a4a`/`e9e0b19` (sb26), `1879864`/`1e5006b`/`650e530` (cn04).
+
+**The load-bearing pattern of the evening: a FAITHFUL OFFLINE STATE-MODEL, then
+search it.** Six of the clears above are the same shape — reconstruct the game's
+exact state machine offline (portal traversal for sb26, slide/move semantics for
+sk48, ring rotations for lp85, joint configuration for m0r0's afternoon 1/6,
+position×passability product for dc22, vacuum-merge cascade for su15) and drive a
+DFS / A* / BFS over it, instead of learning from sparse live reward. This is now
+a named, reusable design rule — see [[../lessons/faithful_offline_simulator_20260715]].
+The rule's trigger is exactly the sk48 case: when the live WIN signal is too
+SPARSE to learn from (sk48's win fires once, at the end), a faithful offline
+simulator is the only way to search the plan space cheaply.
+
+**Two honest banks, verified against SUMMARYs, not upgraded:**
+- **ka59 L1** — a genuine 3-round arc (placement fill → slide-hypothesis →
+  invisible colour-15-walk correction) that still does not clear; floor held at
+  1/7. Documented, not overstated.
+- **cn04** — the geometric partner-matching solves pair A and pair B's selection
+  offline, but the LIVE measured result is **1/6 @ 0.0309** (every
+  `script25_cn04_*` SUMMARY agrees; cn04 has 6 levels, and no run reached 2).
+  Recorded as 1/6, explicitly not the "2/5 @ 0.20" an interim note claimed.
+
+su15's L3+ wall (enemies reverse the merge cascade) and lp85's L4 wall (dense
+20-ring self-test rejects single-press reconstruction) are both banked as
+NEW-STRUCTURE ceilings on their game pages, not threshold tweaks.
+
 ## Related
 
 - [[r57_win-condition-typology]] — mines the same trace/kernel toolkit (R56's

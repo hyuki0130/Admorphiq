@@ -8,7 +8,7 @@ seeds `llm_context/decision_tree.md` first, then walks `[[backlinks]]`.
 Use this index when authoring or auditing: skim the catalog, pick a
 category, drill into specific pages.
 
-**Total pages**: 153.
+**Total pages**: 155.
 
 ## Games (25)
 
@@ -18,10 +18,10 @@ category, drill into specific pages.
 - [[games/CN04.md]] — v1 brittle 1/5 (zig3_A2A4, hash-tuned) — A rigid-arrangement puzzle: select a sprite, rotate and slide it so its connector-marker stubs coincide with another sprite's — NOT a click game.
 - [[games/DC22.md]] — v1 1/6 ✅ (R56 generic gated-maze planner; L0 78 actions, score 0.572), v2 1/6 ✅ — Frame-observation solver — generalizes across version hashes.
 - [[games/FT09.md]] — v1 brittle 6/6 ✅ (sprite-tag solver, kept for provenance only), generic LIVE 6/6, 100% RHAE, 88 total actions (R56 glyph decode — A multi-ring, multi-glyph constraint-satisfaction toggle puzzle — NOT a
-- [[games/G50T.md]] — v1 brittle 1/7 (explore_interact, unreliable) — A reactive Sokoban / Adventures-of-Lolo maze: move a player to a hidden goal past enemies that step when you step — NOT an "explore-interact" game.
+- [[games/G50T.md]] — v1 brittle 1/7 (explore_interact, unreliable) — A full *Adventures of Lolo* / Sokoban-with-logic puzzle: navigate a player to a hidden goal through a wall maze, using button→gate→toggle-block circuits, past DETERMINISTIC wall-following patrol enemies, within a scroll-timer budget — with an ACTION5 record-replay "ghost" mechanic. NOT a simple "reactive sokoban", and NOT "explore-interact".
 - [[games/KA59.md]] — v1 brittle 4/7 ✅ (hardcoded L1-L4 push sequences, non-transferable) — Multi-piece placement + momentum-push. NOT classic box-to-goal Sokoban — validated 2026-07-15.
 - [[games/LF52.md]] — v1 0/10 (agent regression; lone 1/10 only at 50000 ensemble budget) — Move a cursor and click game objects to LINK them; a level wins on an internal completion flag, within a per-level action budget. First characterised in R56 (was "Unknown post-regression").
-- [[games/LP85.md]] — v1 1/8 ✅ — Frame-observation solver — generalizes across version hashes.
+- [[games/LP85.md]] — v1 3/8 ✅ (L1 + L2 + L3 cleared, game_score 0.1637, up from 2/8 @ 0.0803) — multi-class ring-permutation planner SHIPPED — **Mechanic corrected R56 (2026-07-15, from the game source):** LP85 is a
 - [[games/LS20.md]] — v1 1/7 (brittle, hardcoded L1 -- STALE, see below) — A shape/color/rotation-MATCHING maze: the avatar carries a token
 - [[games/M0R0.md]] — v1 brittle n/a (no brittle solver — pure generic), generic 2/6 ✅ (R23 8B via bfs_state_space) — Frame-observation solver — generalizes across version hashes.
 - [[games/R11L.md]] — The only action is ACTION6 (click): select a creature's leg, then click to drag it; each body follows the CENTROID of its own legs, and a level wins when every creature's body is arranged onto its matching target nest — NOT a repeat-count or symbol sequence.
@@ -29,12 +29,12 @@ category, drill into specific pages.
 - [[games/S5I5.md]] — v1 brittle 1/8 (s5i5_slider, reads sprite tags) — A click-only slider puzzle: click a track's far/near half to slide its goal marker ±1 unit along an axis until it lands on its target. R56 = first frame-only clear (1/8), matching brittle without any sprite tags.
 - [[games/SB26.md]] — v1 8/8 ✅ (brittle, internals) — A portal-graph traversal puzzle disguised as a simple reference/pool
 - [[games/SC25.md]] — v1 brittle 2/6 (legacy spell_cast, reads sprite names — brittle) — A TWO-PHASE spell game per level: click a 3×3 grid to toggle cells until the
-- [[games/SK48.md]] — v1 0/8 (agent regression); R56 script25 explorer 0/8 @1000, v2 0/8 (same) — Move a snake so the sequence of coloured cells its body overlaps matches a per-level TEMPLATE pattern, within a fixed move budget — NOT a plain eat-food snake or a reach-exit maze.
+- [[games/SK48.md]] — v1 3/8 (R56b faithful-sim + A* + edge-snake parse, script25 @1000, game_score 0.1667), v2 3/8 (same board) — Move a snake so the sequence of coloured cells its body overlaps matches a per-level TEMPLATE pattern, within a fixed move budget — NOT a plain eat-food snake or a reach-exit maze.
 - [[games/SP80.md]] — v1 L0 efficient clear (score 1.0 @ 10 actions); 1/6 depth, v2 same (frame-only, never reads internals) — Place deflector/block pieces during a CHANGE phase, then a SPILL phase drops water from a fixed source; a level wins only when the flow covers EVERY target region without hitting a hazard — NOT a reach-the-goal maze.
-- [[games/SU15.md]] — v1 brittle 9/9 ✅ (uses game.hmeulfxgy/peiiyyzum/rqdsgrklq attrs), generic 0/9 ❌ (R23 8B; same-color-pair=0 at L1) — A single PLAYER blob follows clicks exactly (gold-replay + live-verified); the level clears via a stateful tile MERGE/CONVERSION swept out along the player's path — NOT a click-attract "vacuum", and NOT reaching a goal tile.
+- [[games/SU15.md]] — v1 brittle 9/9 ✅ (uses game.hmeulfxgy/peiiyyzum/rqdsgrklq attrs), generic 0/9 ❌ (R23 8B; same-color-pair=0 at L1) — A click runs a radius-8 VACUUM that pulls nearby fruits toward it; two same-value fruits that overlap merge to value+1 (2048-style); a level clears when the exact (value, count) multiset of fruits sits inside the goal-zone sprite bbox(es). The iteration-8 "click-to-steer player" model was FALSIFIED — the "player" was the vacuum-ring animation artifact.
 - [[games/TN36.md]] — v1 brittle 7/7 ✅ (uses frame.zpzcmabenn direct call), generic 0/7 ❌ (R23 8B; bit-panel combinatorial too deep) — Bit-encoded action program: click bits to set a number, click play to execute, navigate player to goal; brittle solver passes v1 but collapses on v2.
 - [[games/TR87.md]] — v1 brittle 1/6 ✅ (hardcoded L1 rotation values), generic 0/6 ❌ (superseded by script25, see below) — A token-rewrite-grammar puzzle (NOT a geometric rotation puzzle, NOT a
-- [[games/TU93.md]] — v1 2/9 ✅, v2 2/9 ✅ — Relies on game internals — high v1 score, fails on v2.
+- [[games/TU93.md]] — v1 2/9 ✅ (game_score 0.0028 — goal-directed exploration, 11.6× the blind 0.00024), v2 2/9 ✅ — Relies on game internals — high v1 score, fails on v2.
 - [[games/VC33.md]] — v1 1/7 ✅, v2 1/7 ✅ — Frame-observation solver; L0 cleared super-human-efficiently by picking the winner of two decoy-paired regions via its smaller containing panel and committing to it exclusively.
 - [[games/WA30.md]] — v1 brittle 2/9 (sprite tags wbmdvjhthc/geezpjgiyd/pkbufziase — non-transferable), generic 0/9 (R23 8B agent regression baseline) — A single worker moves on a grid and uses one context-interact action to pick up items and deliver them to target zones; a level wins when EVERY target zone is satisfied — a multi-item delivery, not a single-goal navigation.
 
@@ -90,7 +90,7 @@ category, drill into specific pages.
 - [[concepts/sprite_cluster.md]] — A connected component of same-color pixels in the frame. The universal primitive for detecting entities without reading game internals.
 - [[concepts/version_hash.md]] — A game's identifier in the ARC Prize API has the form `<title>-<hash>` (e.g. `tn36-ab4f63cc`). The hash is a version fingerprint: games with the same title but different hashes share gameplay rules but differ in internal implementation details that solvers may or may not observe.
 
-## Lessons (engineering wisdom from past incidents) (31)
+## Lessons (engineering wisdom from past incidents) (33)
 
 - [[lessons/top_solutions_survey_20260708.md]] — Survey of what is actually open-sourced for ARC-AGI-3 (M1 winners = local-LLM agents), resolution of the leaderboard score-scale confusion (top ~1.56 = 1.56%, not 156%; the 12.58% anchor was the 2025 preview), and the top-3 generic levers to adopt next.
 - [[lessons/online_rl_sprint_round_log.md]] — **🔎 To FIND past work by topic, start at the retrieval map [[../rounds/index]]**
@@ -99,6 +99,8 @@ category, drill into specific pages.
 - [[lessons/cd82_paint_palette_signature_20260423.md]] — Pre-HUD-masking, CD82's discovery phase reported 71 of 71
 - [[lessons/dc22_confined_avatar_discriminator_falsified_20260713.md]] — Discovery incident log for the `tools/graph_search.py` region-mask family
 - [[lessons/duck_harness_teardown_20260714.md]] — The Duck (Tufa, M1 #1, 1.21%) is a Qwen 3.6 27B FP8 code-REPL agent: the game is
+- [[lessons/faithful_offline_simulator_20260715.md]] — Six R56 clears this sprint share one shape: rebuild the game's exact state
+- [[lessons/false_claim_verification_20260715.md]] — A lane reported a nonexistent commit and a two-part result that were both later
 - [[lessons/frame_diff_as_probe.md]] — The difference between two consecutive frames is the cheapest, most general signal for classifying entities: what moved is likely the player, what changed locally is likely a toggle, what stays constant is likely background.
 - [[lessons/ft09_glyph_decode_20260715.md]] — Gold-trace reverse-engineering falsifies the R16-R18 "clicking couples
 - [[lessons/ft09_stride_button_drop_20260423.md]] — The default observation stride of 8 px samples 64 candidate
