@@ -7,6 +7,7 @@ from admorphiq.kernels import (
     multisets_equal,
     region_relations,
     size_clusters,
+    template_occupancy,
     tile_bbox,
 )
 
@@ -236,3 +237,40 @@ def test_tile_bbox_exact_cover_no_overlap():
     full = {(r, c) for r in range(0, 7) for c in range(0, 8)}
     assert all_cells == full
     assert total_area == 56
+
+
+def test_template_occupancy_reads_full_3x3_from_partial_marks():
+    """Purpose: reading a displayed template must place marks against the FULL
+    block geometry, so a template with marks in only some rows/cols still maps
+    each mark to its true 3x3 cell — the failure mode that made a partial
+    (e.g. 2-of-3-rows) target mislocate when binned against the marks' own
+    bounding box instead of the block extent.
+    Expected feedback: a wrong occupancy cell means the block is being tiled
+    from the marks' extent rather than the supplied ``bbox``, or the per-axis
+    binning is off."""
+    # Block spans rows 50-58, cols 12-19; marks only in the top-left corner
+    # region (SC25 L1's measured target: top-left, top-middle, middle-middle).
+    block = (50, 12, 58, 19)
+    marks = [(51.5, 12.5), (51.5, 15.5), (54.5, 15.5)]
+    occ = template_occupancy(marks, block, 3, 3)
+    assert occ == (
+        (True, True, False),
+        (False, True, False),
+        (False, False, False),
+    )
+
+
+def test_template_occupancy_clamps_edge_points_and_rejects_bad_dims():
+    """Purpose: a centroid landing exactly on the far border (sub-pixel drift)
+    must clamp into the last tile rather than fall off the grid, and a
+    non-positive rows/cols must raise — the input-boundary contract.
+    Expected feedback: an IndexError instead of clamping, or no ValueError on
+    rows<=0, means the boundary handling regressed."""
+    occ = template_occupancy([(0, 0), (9, 9)], (0, 0, 9, 9), 2, 2)
+    assert occ[0][0] is True and occ[1][1] is True
+    try:
+        template_occupancy([], (0, 0, 3, 3), 0, 2)
+    except ValueError:
+        pass
+    else:  # pragma: no cover - the assert is the failure signal
+        raise AssertionError("expected ValueError for rows<=0")

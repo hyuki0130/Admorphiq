@@ -50,26 +50,33 @@ brittle 6/8 by sprite-tag read, prior generic 0/8). Level 1 solves cleanly: the
 colour-9 cross covers its four targets, the colour-11 cross covers its four, and
 the engine wins once both are placed.
 
-**BANKED wall — level 2 (recolour hypothesis FALSIFIED by observation)**:
-``_target_boxes`` is generalised to "a coloured pixel flanked by the border
-colour on either axis pair" so it now detects L2's taller gate-bar targets (12
-colour-9 + 12 colour-11 cells, measured), and ``_active_movable`` is anchored on
-the marker's neighbouring body pixel (not loose bbox containment, which had read
-a phantom colour not present in the frame). With those fixes the colour-9 and
-colour-11 movables cover their targets cleanly, but L2 has a SURPLUS movable
-(colour 12, plus companion colour-13 pixels) that is HIDDEN when unselected
-(renders as background) and has NO matching target. The natural hypothesis —
-route it through a changer LINE to recolour it to 9/11 — was TESTED by
-observation and does NOT hold: driving the selected colour-12 movable across the
-colour-9 changer line for 40 moves in every direction left its colour-12 pixel
-count unchanged (no flip to 9 or 11). So L2's win mechanism for the surplus
-hidden movable is genuinely unresolved — it is NOT the recolour delivery
-hypothesised. **REOPEN** requires first re-deriving, by observation, what the
-surplus movable must do (reach its own hidden target? enable another piece?),
-since neither "recolour" nor "cover a colour-12 target" is supported by the
-frames. No hardcoded coordinates/palettes/sequences were added; the adapter runs
-to budget. The working L1 covering solve and the falsified-recolour finding are
-the deliverables.
+**BANKED wall — level 2 (mechanism READ from a gold replay; frame-only
+covering blocked by an invisible movable)**: ``_target_boxes`` now detects L2's
+gate targets (12 colour-9 + 12 colour-11 cells) and ``_active_movable`` is
+anchored on the marker's neighbouring body pixel (fixing a phantom-colour read).
+Two hypotheses were tested and killed by observation: (a) RECOLOUR — driving the
+surplus movable across the colour-9 changer line for 40 moves left its colour
+unchanged; (b) "cover a colour-12 target" — there are none. Then a GOLD-REPLAY
+divergence analysis (the brittle solver's recorded trace, ``data/traces/re86.npz``,
+which replays 6/6 on this env — v1↔v2 geometry is identical) read the true
+mechanism off the winning frames:
+  - L2 has THREE movables (colours 9, 12, 13). The colour-9 movable covers the
+    colour-9 gates; the SURPLUS colour-12 AND colour-13 movables together cover
+    the COLOUR-11 gate region (at the win frame those gates render colour 12/13,
+    not 11). So a colour-11 "target" is a COMPOUND gate satisfied by two
+    differently-coloured movables — not a single colour match.
+  - Gold works each movable via ACTION5 selection cycling, moving each to its
+    covering spot. NO recolour anywhere.
+  - The colour-13 movable is INVISIBLE EVEN WHEN SELECTED (only its marker
+    shows; its body renders as background), so it has NO frame-observable shape
+    for ``covering_offsets``.
+**REOPEN**: the frame-only covering spine cannot place the invisible movable
+(no shape). It needs marker-only navigation — move the invisible movable's
+MARKER to a target cell derived from the compound colour-11 gate region — plus
+a target model where the colour-11 gates are assigned across the two surplus
+movables. That is a real research increment. No hardcoded coordinates/palettes/
+sequences were added; the adapter runs to budget. The working L1 covering solve,
+the two falsified hypotheses, and the gold-read mechanism are the deliverables.
 
 Composition from ``admorphiq.kernels``:
   - :func:`admorphiq.kernels.find_regions` segments movables / target boxes.

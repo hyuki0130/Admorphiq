@@ -50,6 +50,25 @@ action. Three pieces make it work here:
     bands. Only the LEFT/RIGHT edges are masked, never top/bottom — the grid's
     bottom row sits on the bottom frame edge and must be kept.
 
+**Directed pattern solve (`_directed_click`) — READ the target, don't search
+for it.** Blind toggle-search reaches SOME multi-cell redraw first, but the
+game HIGHLIGHTS near-matches (a within-one-cell toggle also redraws several
+cells), so a search commits to a non-winning near-match. Instead the adapter
+reads the DISPLAYED target: the colour-marked preview widget beside the grid.
+Its mark centroids are binned to the grid's rows×cols by
+:func:`admorphiq.kernels.template_occupancy` (`_read_target`); the target is
+locked only after two consecutive equal reads (the level-entry frame still
+shows the PREVIOUS level's preview until the first action redraws it). The
+matched display is ``base XOR target`` (``base`` = the parity-0 cell colours,
+captured on the settled frame AFTER the first action — every level's first
+click is eaten by an intro/settle redraw WITHOUT toggling, so that frame is
+both settled and parity-0). The solver then clicks exactly the cells whose
+shown colour differs from that target display, predicting each click's toggle
+so the transient post-click cursor colour can't cause a re-click loop. This is
+efficient (≈ the toggle count, not a search) AND lands on the EXACT match, so
+the cast is genuine. Falls through to the BFS explorer when the target is not
+yet readable (early frames) or on any unseen layout.
+
 Two measured subtleties the planner needs:
   - **Death-artifact discard** — a click-budget overrun resets the attempt to
     the pristine start; the only way to reach the start key is a reset, so an
@@ -61,29 +80,34 @@ Two measured subtleties the planner needs:
     MULTIPLE grid cells (measured 3–4) while a plain toggle changes exactly 1;
     off-grid changes (the near-match preview widget) are ignored. Cast
     detection is suppressed on the first action of an attempt (a one-frame
-    board-settle redraw from the start key).
+    board-settle redraw from the start key). Kept as confirmation now that the
+    directed solve reaches the EXACT match, not merely a near-match.
 
-**Measured: L0 cleared, 1829 actions (human baseline 36) → 1/6.** Generic (no
-hardcoded coordinates, palettes, or level solutions).
+**Measured: L0+L1+L2 cleared → 3/6, game_score 0.0427.** L1 clears in 9 actions
+(human baseline 6 → per-level RHAE 0.44, near human-efficient — the directed
+solve makes the pattern phase ~N clicks). Generic (no hardcoded coordinates,
+palettes, or level solutions). Beats the brittle legacy 2/6 (which read sprite
+names).
 
-**Banked wall — L1+ (honest; reopen pointer here).** L1 does NOT clear. Root
-cause, isolated by measurement: the game visually HIGHLIGHTS near-matches — a
-toggle that brings the grid to within one cell of the target redraws multiple
-grid cells, structurally indistinguishable from the exact-match auto-cast by
-redraw-span alone. So the frame-only cast signal commits to a non-winning
-near-match state and navigates from it (its 15 post-cast states are a closed
-region with no path to the exit; the real match + 2 moves would win). The
-redraw-span signal is sufficient for L0 (its match is the first multi-cell
-event reached) but ambiguous once near-matches highlight. Reopen by reading
-the DISPLAYED target pattern (a colour-marked preview) to identify the exact
-required 3×3 toggle state, then click precisely the differing cells — a real
-perception step, not a search. Separately, L3+ also require first CLICKING a
-spell sprite to select the target (levels 0–2 auto-select it), which the
-grid-only click set does not yet include.
+**Banked wall — remaining (honest; reopen pointers here).** Two limiters:
+  1. **Navigation efficiency (L0, L2).** The PATTERN phase is now cheap, but
+     the post-cast navigate-to-exit is still a blind BFS over the move graph
+     (L0 ≈ 460 actions, L2 ≈ 1380) — it clears but far from the ~12/~30-move
+     human paths, so those levels barely score. Reopen: detect the player
+     (the region that moves under ACTION1-4, identity-by-movement) and the
+     exit marker, then ``grid_shortest_path`` straight to it — the same
+     efficient navigation ``admorphiq.adapters25.ls20``/``tu93`` use.
+  2. **L3+ spell selection.** Levels 0–2 auto-select the target spell; L3+
+     require first CLICKING a spell sprite to choose which pattern is the
+     target. Reopen by adding the spell-icon regions to the click-target set
+     and reading the selected spell's preview.
 
 Composition from ``admorphiq.kernels``:
   - :func:`admorphiq.kernels.find_regions` segments each frame into the grid
-    cells, the player, static structure, and (excluded) the budget bar.
+    cells, the preview marks, the player, static structure, and (excluded)
+    the budget bar.
+  - :func:`admorphiq.kernels.template_occupancy` reads the colour-marked
+    target preview as an ``rows`` x ``cols`` boolean pattern.
   - :func:`admorphiq.kernels.configuration_path` BFS-plans the shortest
     known-edge action path from the current key to the nearest key that still
     has an untried action (BFS anchored at the level-start key).
@@ -104,7 +128,7 @@ from admorphiq.adapters25.base import (
     simple_action,
     state_name,
 )
-from admorphiq.kernels import configuration_path, find_regions
+from admorphiq.kernels import configuration_path, find_regions, template_occupancy
 
 GAME_ID = "sc25"
 
@@ -131,6 +155,11 @@ _SPAN_FRACTION = 0.4
 _MIN_LATTICE_CELLS = 9
 _MAX_LATTICE_CELLS = 25
 _MAX_CELL_AREA_FRACTION = 0.02
+
+# The target-pattern preview sits beside the grid, within roughly the grid's
+# own row band; a mark centroid this many rows outside that band is not part
+# of the preview (rejects unrelated small UI specks elsewhere on the frame).
+_PREVIEW_ROW_MARGIN = 6
 
 # Cast detection. A single grid-cell toggle changes exactly ONE cell (its
 # old + new region signatures); the pattern-match auto-cast redraws MULTIPLE
@@ -180,6 +209,20 @@ class Adapter(GameAdapter):
         self._plan: list[Label] = []
         self._plan_expected: list[StateKey] = []
 
+        # ── directed pattern-solve (read the displayed target, click the
+        # differing cells) — the efficient path that replaces blind toggle
+        # search. See _directed_click. All reset per level.
+        self._cur_grid: tuple[tuple[int, ...], ...] | None = None
+        self._grid_pos: dict[tuple[int, int], tuple[int, int]] | None = None
+        self._base: dict[tuple[int, int], int] | None = None  # parity-0 cell colours
+        self._two: tuple[int, int] | None = None  # the two grid-cell colours
+        self._cell_last: dict[tuple[int, int], int] = {}  # last non-cursor colour per cell
+        self._target: frozenset[tuple[int, int]] | None = None  # locked target 3x3 ON-set
+        self._target_prev: frozenset[tuple[int, int]] | None = None
+        self._target_display: dict[tuple[int, int], int] | None = None
+        self._cell_size: int | None = None  # the lattice cell size (marks are smaller)
+        self._level_frames = 0  # frames seen this level (0 = the transitional entry frame)
+
         # Keys known to be POST-CAST (the pattern has been matched and cast).
         # A pre-cast key offers CLICK actions only (so the player never moves
         # during the pattern phase → the search stays a clean ≤512 toggle
@@ -216,6 +259,8 @@ class Adapter(GameAdapter):
             self._on_level_up(levels)
 
         self._step += 1
+        self._level_frames += 1
+        self._cur_grid = grid
         cur_key = self._state_key(grid)
         if self._start_key is None:
             self._start_key = cur_key
@@ -246,6 +291,16 @@ class Adapter(GameAdapter):
         self._plan = []
         self._plan_expected = []
         self._post_cast_keys = set()
+        self._cur_grid = None
+        self._grid_pos = None
+        self._base = None
+        self._two = None
+        self._cell_last = {}
+        self._target = None
+        self._target_prev = None
+        self._target_display = None
+        self._cell_size = None
+        self._level_frames = 0
 
     # ── perception ───────────────────────────────────────────────────────
 
@@ -280,6 +335,7 @@ class Adapter(GameAdapter):
             rows = {round(m["centroid"][0]) for m in members}
             cols = {round(m["centroid"][1]) for m in members}
             if len(rows) >= 3 and len(cols) >= 3:
+                self._cell_size = _size
                 self._click_cells = sorted(
                     (round(m["centroid"][1]), round(m["centroid"][0])) for m in members
                 )
@@ -304,6 +360,138 @@ class Adapter(GameAdapter):
             return simple_action(label)
         _tag, x, y = label
         return click_action(x, y)
+
+    # ── directed pattern solve (read the displayed target) ───────────────
+
+    def _directed_click(self) -> Label | None:
+        """A click on the next grid cell whose SHOWN colour differs from its
+        target-matched colour, or ``None`` when the target is not yet readable
+        or the grid already matches. This reads the DISPLAYED target (the
+        colour-marked preview widget) and drives the grid to it, rather than
+        blind-searching the toggle space — so it is efficient AND lands on the
+        EXACT match (no near-match false cast). It is self-correcting: it
+        compares the live display each frame, so a level's one-frame intro/
+        settle offset just costs one extra click."""
+        grid = self._cur_grid
+        if not grid or not self._click_cells:
+            return None
+        if self._grid_pos is None:
+            self._grid_pos = self._grid_index()
+        gp = self._grid_pos
+        if not gp:
+            return None
+        # Capture the parity-0 base colours on the first clean frame (a level
+        # start / post-death reset shows every cell in one of two colours, no
+        # transient cursor). _two = those two colours.
+        if self._base is None and self._level_frames >= 2:
+            distinct = sorted({grid[y][x] for (x, y) in gp.values()})
+            if len(distinct) <= 2:
+                self._base = {pos: grid[y][x] for pos, (x, y) in gp.items()}
+                self._two = (distinct[0], distinct[-1])
+                self._cell_last = dict(self._base)
+        if self._base is None or self._two is None:
+            return None  # no clean base frame yet — let BFS act (settle)
+        # Each cell's last non-cursor colour (a colour outside _two = the
+        # transient click cursor; keep the cell's prior known colour).
+        for pos, (x, y) in gp.items():
+            if grid[y][x] in self._two:
+                self._cell_last[pos] = grid[y][x]
+        # Lock the target once two consecutive frames agree (the entry frame
+        # shows the PREVIOUS level's preview until the first action redraws it;
+        # stability rejects that stale read).
+        read = self._read_target(grid)
+        if self._target is None and read is not None and read == self._target_prev:
+            self._target = read
+            flip = {self._two[0]: self._two[1], self._two[1]: self._two[0]}
+            self._target_display = {
+                pos: (self._base[pos] if pos not in read else flip[self._base[pos]]) for pos in gp
+            }
+        self._target_prev = read
+        if self._target_display is None:
+            return None
+        flip = {self._two[0]: self._two[1], self._two[1]: self._two[0]}
+        for pos in sorted(gp):
+            shown = self._cell_last.get(pos)
+            if shown is not None and shown != self._target_display[pos]:
+                x, y = gp[pos]
+                # PREDICT this cell's toggle: next frame the just-clicked cell
+                # shows the transient cursor colour (not in _two), so the loop
+                # above cannot re-read its true state and would otherwise
+                # re-click it forever. On a level's no-op intro click (no
+                # toggle) the cell stays visible next frame and the loop
+                # overrides this prediction with the true reading — so both the
+                # toggle and the no-op case self-correct.
+                self._cell_last[pos] = flip.get(shown, shown)
+                return ("c", x, y)
+        return None  # grid already matches the target — the cast fires now
+
+    def _grid_index(self) -> dict[tuple[int, int], tuple[int, int]]:
+        """Map each ``(row_index, col_index)`` of the grid to its ``(x, y)``
+        click coordinate, from the detected lattice cells."""
+        cells = self._click_cells or []
+        ys = sorted({c[1] for c in cells})
+        xs = sorted({c[0] for c in cells})
+        return {(ys.index(cy), xs.index(cx)): (cx, cy) for cx, cy in cells}
+
+    def _read_target(self, grid: tuple[tuple[int, ...], ...]) -> frozenset[tuple[int, int]] | None:
+        """The target ON-positions read from the colour-marked preview: small
+        mark regions of a colour not used by the grid cells, in their own
+        block beside the grid, binned to the grid's rows x cols by
+        :func:`admorphiq.kernels.template_occupancy`."""
+        if not grid or not self._click_cells or self._grid_pos is None:
+            return None
+        height, width = len(grid), len(grid[0])
+        cells = self._click_cells
+        gc0 = min(c[0] for c in cells)
+        gr0, gr1 = min(c[1] for c in cells), max(c[1] for c in cells)
+        grid_colours = {grid[y][x] for (x, y) in cells}
+        # A preview MARK is a small dot strictly SMALLER than an interactive
+        # grid cell — so the preview's own border/interior blocks (which are
+        # much larger, and off-grid, and non-grid-coloured) are never mistaken
+        # for marks (measured: without this the border binned to a phantom
+        # centre mark, corrupting the target).
+        mark_max = self._cell_size if self._cell_size else int(_MAX_CELL_AREA_FRACTION * height * width)
+        regions = self._live_regions(grid)
+        marks = [
+            r
+            for r in regions
+            if r["size"] < mark_max
+            and r["color"] not in grid_colours
+            and r["centroid"][1] < gc0
+            and gr0 - _PREVIEW_ROW_MARGIN <= r["centroid"][0] <= gr1 + _PREVIEW_ROW_MARGIN
+        ]
+        if not marks:
+            return None
+        pts = [m["centroid"] for m in marks]
+        block = self._enclosing_block(regions, marks, pts)
+        rows = max(k[0] for k in self._grid_pos) + 1
+        cols = max(k[1] for k in self._grid_pos) + 1
+        occ = template_occupancy(pts, block, rows, cols)
+        return frozenset((ri, ci) for ri in range(rows) for ci in range(cols) if occ[ri][ci])
+
+    def _enclosing_block(self, regions, marks, pts):
+        """The tightest region bbox enclosing every mark centroid (the preview
+        block that defines the template's full extent), else the marks' own
+        bounding box when no enclosing region exists."""
+        markset = {id(m) for m in marks}
+        best = None
+        for r in regions:
+            if id(r) in markset:
+                continue
+            r0, c0, r1, c1 = r["bbox"]
+            if all(r0 <= mr <= r1 and c0 <= mc <= c1 for mr, mc in pts):
+                area = (r1 - r0) * (c1 - c0)
+                if best is None or area < best[0]:
+                    best = (area, r["bbox"])
+        if best is not None:
+            return best[1]
+        boxes = [m["bbox"] for m in marks]
+        return (
+            min(b[0] for b in boxes),
+            min(b[1] for b in boxes),
+            max(b[2] for b in boxes),
+            max(b[3] for b in boxes),
+        )
 
     # ── measurement ──────────────────────────────────────────────────────
 
@@ -377,6 +565,18 @@ class Adapter(GameAdapter):
         is handled entirely by :meth:`_labels_for_key` (pre-cast keys offer
         clicks, post-cast keys offer moves), so this planner is game-agnostic:
         it just routes to the nearest key that still has an untried action."""
+        # Pattern phase: if the displayed target is readable, click precisely
+        # the cells whose shown colour differs from the target-matched colour
+        # (a directed solve, not a search) — clears the pattern in ~N clicks
+        # instead of blindly toggling, and lands on the EXACT match (so the
+        # cast is genuine, not a near-match false positive). Falls through to
+        # BFS exploration when the target is not yet readable (the first frames
+        # of a level, before the preview redraws) or on any unseen layout.
+        if cur_key not in self._post_cast_keys:
+            directed = self._directed_click()
+            if directed is not None:
+                return directed
+
         successors = self._successors()
 
         if self._plan_expected and self._plan_expected[0] == cur_key:

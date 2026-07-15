@@ -312,3 +312,55 @@ def _fair_partition(total: int, n: int) -> list[int]:
         raise ValueError(f"n must be positive, got {n!r}")
     base, rem = divmod(total, n)
     return [base + 1 if i < rem else base for i in range(n)]
+
+
+def template_occupancy(
+    points: Iterable[tuple[float, float]],
+    bbox: Bbox,
+    rows: int,
+    cols: int,
+) -> tuple[tuple[bool, ...], ...]:
+    """Read a small displayed template as an ``rows`` x ``cols`` boolean grid.
+
+    ``points`` are ``(row, col)`` marker centres (e.g. the centroids of the
+    mark regions inside a pattern-preview widget); ``bbox`` is the inclusive
+    ``(r0, c0, r1, c1)`` extent of the template block those marks live in. The
+    block is tiled by :func:`tile_bbox` (the same integer-fair partition used
+    everywhere in this module), and each point sets the cell of the sub-tile
+    it falls in — so a partially-filled template (marks in only some rows or
+    columns) is still read against the FULL block geometry, not just the
+    marks' own bounding box (which would mislocate them). A point on or
+    outside an edge is clamped into the nearest border tile, tolerating the
+    sub-pixel drift of a centroid near a tile boundary. Purely computational —
+    the CALLER supplies which regions are marks and the block extent (roles
+    this kernel never infers); it only bins. ``rows``/``cols`` must be
+    positive.
+    """
+    if rows <= 0 or cols <= 0:
+        raise ValueError(f"rows and cols must be positive, got {rows!r}, {cols!r}")
+    r0, c0, r1, c1 = bbox
+    grid = [[False] * cols for _ in range(rows)]
+    row_edges = _cumulative_edges(r0, _fair_partition(r1 - r0 + 1, rows))
+    col_edges = _cumulative_edges(c0, _fair_partition(c1 - c0 + 1, cols))
+    for pr, pc in points:
+        ri = _bin_index(pr, row_edges, rows)
+        ci = _bin_index(pc, col_edges, cols)
+        grid[ri][ci] = True
+    return tuple(tuple(row) for row in grid)
+
+
+def _cumulative_edges(start: int, sizes: list[int]) -> list[int]:
+    """Right-exclusive boundaries of consecutive tiles beginning at ``start``."""
+    edges = [start]
+    for s in sizes:
+        edges.append(edges[-1] + s)
+    return edges
+
+
+def _bin_index(value: float, edges: list[int], n: int) -> int:
+    """Which of the ``n`` bins (delimited by ``edges``) ``value`` falls in,
+    clamped to ``[0, n-1]`` for values on or past either border."""
+    for i in range(n):
+        if value < edges[i + 1]:
+            return max(0, i)
+    return n - 1
