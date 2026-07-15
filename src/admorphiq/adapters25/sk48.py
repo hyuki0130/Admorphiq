@@ -60,23 +60,43 @@ needs:
     already-OBSERVED edges only, so it cannot surface a state's never-
     ATTEMPTED action).
 
-**Measured result — BANKED at 0/8**: Smoke:
-- ``--max-actions 1000``: 0/8 levels, game_score 0.0 (deterministic) — the
-  explorer does not even shape the level-0 snake (human baseline 61 moves)
-  within the smoke budget. This is below the legacy `sk48_snake` 1/8, which
-  was itself budget-fragile and read snake internals (see the wiki page).
+**Measured result — BANKED at 0/8 (R56 iteration 2, 2026-07-15 — refined via
+gold-oracle replay + win-signal analysis).** ``--max-actions 1000``: 0/8,
+game_score 0.0, deterministic.
 
-The shape-matching win is a combinatorial body-configuration target, and the
-196-move budget resets the search on every exhaustion, so blind search
-clears only shallow levels. The honest characterisation matches the codex
-verdict's BP35/DC22 guidance: the lever is LEARNED OBJECT DYNAMICS (how each
-press grows/retracts/pushes the body) + configuration-space planning toward
-the template-matching colour trace, not blind search. Reopen pointer: a
-generic "snake-body operator" model that infers the grow/retract/push
-transition from observed moves and lets ``configuration_path`` plan a
-template-matching shape — the same shape as the codex-proposed
-``learn_point_operators`` / ``plan_overwrites`` pair, generalised to a
-growing polyomino body.
+**Why the online frame-only search cannot work (measured, the load-bearing
+finding).** The engine's own win progress IS frame-visible: each matched
+template segment lights a checkmark sprite (``kevthtkmzm``, a 2×2 block of
+colour ``0``) in the BOTTOM/template half, so ``count(colour-0 cells, rows >
+divider) == 12 + 4·(matched segments)`` — a clean, quarantine-legal progress
+read. BUT replaying ``data/traces/sk48.npz``'s gold L0 solution (13 moves,
+below the human baseline 61) through the live engine shows this signal is
+SPARSE: it stays flat at 0 matches for the FIRST 8 of the 13 moves, then jumps
+0→1→2. And there is no dense frame-visible companion: the top-arena
+target-cell count is non-monotonic (48→56→48 across the same replay — the
+snake body transiently recolours cells, it does not deplete targets as it
+covers them). So a greedy / hill-climb / frontier search over any
+frame-derived score has NO gradient until the shape is ~8 moves from complete
+— it would need depth-~8 lookahead, and the 196-move budget (with a
+try-then-``ACTION7``-undo cost of 2 moves per probe) makes that infeasible.
+This is why the generic explorer here, and any online scorer, clears nothing.
+
+**The tractable path (the lead's plan) and why it is deferred, not done.**
+The state IS fully frame-derivable (snake body cells + head/facing + target
+cells + the template colour sequence + arena walls), and the moves are
+deterministic, so the correct approach is a FAITHFUL OFFLINE SIMULATOR: build
+the grow/retract/push transition, search it toward the exact body-order
+overlap-match goal (computed internally, sidestepping the sparse-signal
+problem entirely), then emit the winning move sequence. The blocker is build
+SIZE, not frame-readability: the push operator ``bnrdrdiakd`` is an intricate
+~50-line recursion (segment-vs-segment pushing, arena-wall ``qzvlbxkjgk``
+collision, target-cell ``ebribtrdgw`` displacement, the ``irkeobngyh``
+side-push gate, and the ``pzzwlsmdt``/``rztawzist`` sliding markers), and gold
+L0 uses push on ~8 of its 13 moves, so push is essential even for level 0.
+Reproducing it faithfully + validating against gold's 13-move L0 win is a
+large, self-contained build reserved for a dedicated session. Reopen: port
+grow/retract/push, oracle-test against ``data/traces/sk48.npz`` L0, then
+A*/IDA* over the simulator with the exact template-match as the goal test.
 
 Composition from ``admorphiq.kernels``:
   - :func:`admorphiq.kernels.find_regions` masks the edge/divider HUD bands
