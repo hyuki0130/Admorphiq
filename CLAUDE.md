@@ -1629,8 +1629,9 @@ dc22) or a learned reflection/flow kernel (ar25/sp80 super-human L0) or goal-dir
 (tu93); pattern named in `.wiki/wiki/lessons/faithful_offline_simulator_20260715.md`. New-structure
 PARK list (honestly banked WITH decoded mechanics, not failures): ar25 L1 (parallel-mirror double
 reflection), lp85 L4 (dense 20-ring self-test), su15 L3+ (enemy-reversed cascade), sk48 L3+
-(non-ACTION6 `sys_click`), bp35 / g50t / re86 / s5i5 / sc25 / tr87 / wa30. **Card = 14.98% official
-(r56s7, @5000, ceph-build); ~16% at HEAD (arithmetic) pending r56s8.** ⚠️ **Dual-scoreboard doctrine (non-negotiable):** the script25 number is
+(non-ACTION6 `sys_click`), bp35 / g50t / re86 / s5i5 / sc25 / tr87 / wa30. **Card = 18.02% FINAL official
+(r56s9, @5000, ceph-build, e2b1794 HEAD, landed 2026-07-16 03:32; ls20 0.357 + sp80 0.143 confirmed;
+prior snapshots: r56s7 14.98%, r56s8 16.21% — each matched its arithmetic prediction exactly).** ⚠️ **Dual-scoreboard doctrine (non-negotiable):** the script25 number is
 KERNEL EXPRESSIVENESS (can a from-scratch generic composition EXPRESS the clear), and is NEVER
 reported as agent capability; promotion to the deployable card is via **agent25** — the offline
 model orchestrating the kernels UNAIDED. Round index: `.wiki/wiki/rounds/index.md` (r56 entry).

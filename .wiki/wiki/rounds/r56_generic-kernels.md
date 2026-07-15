@@ -1033,6 +1033,28 @@ r56s8 lands.
 **Day arc:** morning **5.85%** → r56s6 (14:08 HEAD) **~15.0%** → r56s7 (16:11
 HEAD) **14.98% official** → r56s8 (current HEAD) **pending ~16%**.
 
+## Final closing card — r56s9 full-25 (landed 2026-07-16 03:32 KST)
+
+Two confirming runs landed overnight, each matching its arithmetic prediction
+EXACTLY (deterministic adapters — every per-game number byte-matched its smoke):
+
+- **r56s8** (20:00 HEAD, budget=5000, env=ceph-build): **4.0532 / 25 = 16.21%**
+  — confirmed the 16.21% estimate above to four decimals. Snapshot predates the
+  ls20 offline-reconstruction (`57eb823`/`e2b1794`) and sp80 multi-piece
+  (`401a6e1`) landings.
+- **r56s9** (e2b1794 HEAD — all 2026-07-15 work included, budget=5000,
+  env=ceph-build, per-game SUMMARYs in `~/r56s9/` on the VM):
+  **4.5056 / 25 = 18.02% — the R56 round's FINAL official card.**
+  Deltas vs r56s8: ls20 0.0000→**0.3571** (4/7, all levels super-human),
+  sp80 0.0476→**0.1429** (2/6, both super-human). All other 23 games
+  byte-identical across s8/s9.
+
+**R56 round summary:** deployed LLM-free card 5.83% → **18.02%** (3.09×) in one
+round, via 25/25 quarantined kernel-composition adapters. Games at ≥0.1: ft09
+1.0, cd82 0.98, sb26 0.846, ls20 0.357, tr87 0.286, cn04 0.20, sk48 0.167,
+lp85 0.164, sp80 0.143, su15 0.104. Expressiveness only — promotion still
+gates through agent25 + hidden transfer per the Codex verdict.
+
 ## Related
 
 - [[r57_win-condition-typology]] — mines the same trace/kernel toolkit (R56's
