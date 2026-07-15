@@ -381,3 +381,64 @@ def test_plan_carry_delivery_two_targets_and_infeasible_cases():
     wall = [[True] * 6 for _ in range(6)]
     wall[1][5] = False  # the seat cell (1,5) for target (0,5) is blocked
     assert plan_carry_delivery((5, 0), [(0, 0)], [(0, 5)], off, wall, _ML, 9) is None
+
+
+# ── plan_push (single-box Sokoban push reachability) ────────────────────────
+
+from admorphiq.kernels.paths import plan_push  # noqa: E402
+
+
+def _replay_push(pusher, box, plan, move_labels):
+    """Replay a push plan: a step INTO the box cell pushes it; return the box's
+    final cell. Mirrors classic Sokoban semantics the kernel plans for."""
+    label_to_delta = {v: k for k, v in move_labels.items()}
+    pu, bx = pusher, box
+    for a in plan:
+        dr, dc = label_to_delta[a]
+        nxt = (pu[0] + dr, pu[1] + dc)
+        if nxt == bx:
+            bx = (bx[0] + dr, bx[1] + dc)
+        pu = nxt
+    return bx
+
+
+def test_plan_push_straight_line_pushes_box_to_target():
+    """Purpose: with the pusher already behind the box on a clear lane, a
+    straight push must walk the box cell-by-cell to the target; replaying the
+    plan must land the box exactly on the target.
+    Expected feedback: failure means the push-direction reachability gate or
+    the box-advance model is wrong, so no Sokoban push would ever land."""
+    plan = plan_push((2, 0), (2, 2), (2, 5), _OPEN6, _ML)
+    assert plan is not None
+    assert _replay_push((2, 0), (2, 2), plan, _ML) == (2, 5)
+
+
+def test_plan_push_repositions_the_pusher_around_a_corner():
+    """Purpose: to push the box along a NEW axis the pusher must first walk
+    around to the opposite side (the box is an obstacle during that walk);
+    the plan must include that repositioning and still land the box on a
+    target that requires a direction change.
+    Expected feedback: failure means the planner can't sequence
+    reposition-then-push — the whole point of push reachability — so any
+    non-straight Sokoban goal is unreachable."""
+    plan = plan_push((2, 0), (2, 2), (5, 2), _OPEN6, _ML)
+    assert plan is not None
+    assert _replay_push((2, 0), (2, 2), plan, _ML) == (5, 2)
+
+
+def test_plan_push_none_when_target_is_walled_off():
+    """Purpose: when a wall blocks every push lane to the target the planner
+    must return None (not a partial or looping plan) so the caller falls back.
+    Expected feedback: failure means an impossible push is 'executed',
+    wasting budget instead of trying another piece/strategy."""
+    # A FULL wall column at col 4 seals the box (col<4) from the target (col 6).
+    grid = [[c != 4 for c in range(8)] for _ in range(6)]
+    assert plan_push((2, 0), (2, 2), (2, 6), grid, _ML) is None
+
+
+def test_plan_push_empty_when_box_already_on_target():
+    """Purpose: a box already on the target needs no pushing — return [] (a
+    distinct 'done' signal), never None.
+    Expected feedback: failure means the caller can't tell a solved box from
+    an unsolvable one."""
+    assert plan_push((0, 0), (3, 3), (3, 3), _OPEN6, _ML) == []

@@ -472,3 +472,73 @@ def plan_carry_delivery(
         plan.append(interact_label)
         cur = _seat_cell(targets[ti])
     return plan
+
+
+def plan_push(
+    pusher: Cell,
+    box: Cell,
+    target: Cell,
+    passable: Sequence[Sequence[object]],
+    move_labels: dict[Cell, Hashable],
+    max_states: int = 100_000,
+) -> list[Hashable] | None:
+    """Plan a single-box Sokoban push from ``box`` to ``target``.
+
+    Classic push reachability: a push in direction ``d`` moves the box one
+    cell to ``box + d`` and requires the PUSHER to first stand on the pre-push
+    cell ``box - d`` and step in ``+d``. So each push is gated on the pusher
+    being able to REACH ``box - d`` from its current cell over ``passable``
+    with the box treated as an obstacle (:func:`grid_shortest_path`). BFS over
+    ``(box, pusher)`` states: from each state, for every direction whose
+    destination and pre-push cell are passable and whose pre-push cell the
+    pusher can reach, emit the repositioning moves followed by the push move;
+    the pusher ends on the box's old cell.
+
+    ``move_labels`` maps the four cardinal ``(dr, dc)`` steps to action labels;
+    the returned sequence interleaves repositioning walks and push steps.
+    Returns the action-label list, ``[]`` when ``box`` already equals
+    ``target``, or ``None`` when no push sequence reaches ``target`` within
+    ``max_states`` expanded box states. Pure / no environment access.
+
+    Models the reachability geometry of a ONE-cell-per-push box, not
+    momentum/slide variants (a game where a pushed object slides multiple
+    cells needs its own successor rule); a multi-box game orders single-box
+    plans externally (e.g. via :func:`plan_delivery`'s assignment shape).
+    """
+    if box == target:
+        return []
+    h, w = _grid_dims(passable)
+    if not _in_bounds(box, h, w) or not _in_bounds(target, h, w):
+        return None
+
+    def _passable_except_box(current_box: Cell) -> list[list[bool]]:
+        grid = [[bool(passable[r][c]) for c in range(w)] for r in range(h)]
+        grid[current_box[0]][current_box[1]] = False
+        return grid
+
+    start = (box, pusher)
+    visited = {start}
+    queue: deque[tuple[tuple[Cell, Cell], list[Hashable]]] = deque([(start, [])])
+    expanded = 0
+    while queue and expanded < max_states:
+        (cur_box, cur_pusher), labels = queue.popleft()
+        expanded += 1
+        blocked = _passable_except_box(cur_box)
+        for (dr, dc), label in move_labels.items():
+            dest = (cur_box[0] + dr, cur_box[1] + dc)
+            pre = (cur_box[0] - dr, cur_box[1] - dc)
+            if not _in_bounds(dest, h, w) or not _is_passable(passable, dest):
+                continue
+            if not _in_bounds(pre, h, w) or not blocked[pre[0]][pre[1]]:
+                continue
+            reposition = grid_shortest_path(blocked, cur_pusher, pre)
+            if reposition is None:
+                continue
+            new_state = (dest, cur_box)  # pusher ends on the box's old cell
+            if new_state[0] == target:
+                return labels + path_to_moves(reposition, move_labels) + [label]
+            if new_state in visited:
+                continue
+            visited.add(new_state)
+            queue.append((new_state, labels + path_to_moves(reposition, move_labels) + [label]))
+    return None
