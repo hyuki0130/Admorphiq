@@ -50,17 +50,28 @@ memory/exploration problem the frame-only signals here cannot fully see.
 local env)**:
   - **Level 1 — CLEARED** generically, ~36 actions (one chirality RESET +
     a rotate + an exact translate), ``game_score`` 0.031 on the 6-level RHAE.
-  - **Level 2+ — BANKED.** Level 2 already has 4 sprites and ~12 marker stubs
-    (multiple pairs). This adapter models ONE active sprite whose marker LINE
-    must match ONE target line; it has no global multi-piece assignment (which
-    of the 12 stubs pairs with which, and which sprite to move where), so it
-    thrashes without solving. Level 3+ additionally hide the targets (grey
-    masking above). REOPEN by (a) adding a global marker-pairing step —
-    ``kernels.assign_pairs`` over stub shape/adjacency to decide the target
-    correspondence, then solve pieces in sequence — and (b) a select-and-probe
-    memory for grey-masked levels (click each sprite once to reveal and cache
-    its stub positions before planning). Both are real research increments,
-    not a tuning tweak; the single-pair spine here is the prerequisite.
+  - **Level 2 — multi-piece pairing IMPLEMENTED; PAIR A solves, pair B
+    banked.** Two fixes unblocked L2: (1) a **stale-render skip** — a mid-game
+    level-up shows one transition frame (the old board, no colour-8 stubs)
+    before the engine's one-step ``next_level`` delay draws the real board, so
+    the adapter idles one benign action until stubs appear (``_awaiting_render``);
+    (2) **geometric partner-matching** (``_partner_group``) — L2 has 4 sprites
+    with stub counts [2, 4, 4, 2], but pairing is by STUB GEOMETRY not sprite
+    count (the two 2-stub sprites are a diagonal pair vs a horizontal pair —
+    NOT congruent). The partner is the k-stub subset of the other sprites'
+    stubs whose pairwise-distance signature matches the active sprite's own
+    stubs (rotation/reflection invariant — the geometric core of
+    ``kernels.assign_pairs``). With this, the active 2-stub sprite correctly
+    locks a congruent diagonal target sub-pair on the 4-stub sprite, orients,
+    translates, and PAIR A coincides — then ``_advance_to_next_pair`` re-locks
+    for the next pair. **Pair B is banked**: after the active sprite slides
+    onto its partner the two sprite bodies OVERLAP, and the ACTION6
+    ``_select_a_sprite`` click no longer switches the active piece cleanly, so
+    the second pair never gets a live active sprite to plan from. REOPEN =
+    occlusion-robust re-selection (click a solid, non-overlapped cell of an
+    unsolved sprite and confirm the colour-0 body actually moved to it).
+    Level 3+ additionally hide the targets (grey masking) — a separate
+    select-and-probe-memory increment, left banked.
 
 **HUD**: row 0 is a step-countdown bar drawn in colours 0 and 4 (the source
 ``lvealyvptn.render_interface`` writes the top scanline). Colour 0 there is
@@ -84,6 +95,7 @@ algorithms, or their own search).
 
 from __future__ import annotations
 
+from itertools import combinations
 from typing import Any
 
 from admorphiq.adapters25.base import (
@@ -183,6 +195,14 @@ class Adapter(GameAdapter):
         self._pending_action: int | None = None
         self._pending_active_centroid: Cell | None = None
         self._prev_grid: tuple[tuple[int, ...], ...] | None = None
+        # A level-up shows one STALE transition frame (the previous level's
+        # final render, before the engine's one-step next_level delay draws
+        # the new board): measured on L1->L2, the first frame still has the
+        # old background and NO colour-8 stubs, then the real board (4 sprites,
+        # 12 stubs) appears after one action. Locking targets off that stale
+        # frame corrupts the whole level, so we idle one benign action until
+        # colour-8 stubs actually appear.
+        self._awaiting_render = False
 
     # ── harness contract ────────────────────────────────────────────────
 
@@ -208,9 +228,22 @@ class Adapter(GameAdapter):
 
         self._step += 1
         regions = find_regions(grid, background=bg)
-        self._observe_result(regions)
 
         simple_ids, action6_ok = available_action_ids(latest_frame)
+        move_ids = [a for a in simple_ids if a in (1, 2, 3, 4)]
+        # Skip the stale post-level-up transition frame: idle a benign action
+        # (NOT tracked, so it never pollutes dir/centroid measurement) until
+        # the real board's colour-8 stubs render.
+        if self._awaiting_render:
+            if any(reg["color"] == _MARKER_COLOR for reg in regions):
+                self._awaiting_render = False
+            else:
+                self._pending_action = None
+                self._pending_active_centroid = None
+                self._prev_grid = grid
+                return simple_action(move_ids[0]) if move_ids else reset_action()
+
+        self._observe_result(regions)
         action = self._decide(regions, simple_ids, action6_ok)
         self._prev_grid = grid
         return action
@@ -230,6 +263,9 @@ class Adapter(GameAdapter):
         self._pending_action = None
         self._pending_active_centroid = None
         self._prev_grid = None
+        # Level 0 renders immediately (NOT_PLAYED -> board), but a mid-game
+        # level-up shows one stale transition frame first; idle past it.
+        self._awaiting_render = levels > 0
 
     def _on_restart(self) -> None:
         # Keep the measured control facts (dir signs, cell size) — the marker
@@ -282,18 +318,65 @@ class Adapter(GameAdapter):
         return [_centroid_px(reg) for reg in regions if reg["color"] == _MARKER_COLOR]
 
     def _lock_targets(self, regions: list[Region]) -> None:
-        """First clean sighting (no body overlap): split visible marker
-        stubs into MINE (near the active body) vs TARGET (the rest) purely
-        by proximity, and remember the targets — they never move, so this
-        classification survives the active body later sliding onto them."""
+        """Split visible stubs into MINE (near the active body) vs the rest,
+        then lock the active sprite's PARTNER stubs as the target: the other
+        sprite whose stub COUNT matches the active sprite's (a level can hold
+        several sprite pairs — L1 is one 2-stub pair, L2 is two 2-stub + two
+        4-stub sprites). Matching only the partner's stubs, not every other
+        stub, is what lets the same rotate+translate coincidence loop solve
+        one pair at a time (kernels.assign_pairs-style count/shape pairing)."""
         active = self._active_regions(regions)
         markers = self._markers(regions)
         if not markers or not active:
             return
         margin = _ATTACH_CELLS * self._cell()
-        target = [m for m in markers if self._min_body_dist(m, active) > margin]
-        self._targets = target
+        mine = [m for m in markers if self._min_body_dist(m, active) <= margin]
+        others = [m for m in markers if self._min_body_dist(m, active) > margin]
+        partner = self._partner_group(mine, others, regions) if mine else None
+        self._targets = partner if partner else others
         self._targets_locked = True
+
+    def _partner_group(
+        self, mine: list[Cell], others: list[Cell], regions: list[Region]
+    ) -> list[Cell] | None:
+        """The subset of ``others`` that is RIGIDLY CONGRUENT to the active
+        sprite's own stubs — the k target stubs whose pairwise-distance
+        multiset matches ``mine``'s (rotation/reflection invariant), so the
+        active sprite can rotate+translate to coincide its stubs onto them.
+        This is the geometric core of kernels.assign_pairs pairing: the
+        partner is defined by matching STUB GEOMETRY, not sprite identity or
+        stub count alone (measured on L2: the two 2-stub sprites are NOT
+        congruent — a diagonal pair vs a horizontal pair — so count matching
+        is wrong; the active's diagonal pair matches a diagonal sub-pair of a
+        4-stub sprite instead). None when no congruent subset exists."""
+        k = len(mine)
+        if k < 2 or len(others) < k:
+            return None
+        mine_sig = self._dist_sig(mine)
+        active = self._active_regions(regions)
+        candidates: list[list[Cell]] = []
+        for sub in combinations(sorted(others), k):
+            if self._sig_matches(self._dist_sig(list(sub)), mine_sig):
+                candidates.append(list(sub))
+        if not candidates:
+            return None
+        if len(candidates) > 1 and active:
+            candidates.sort(key=lambda g: self._min_body_dist(g[0], active))
+        return candidates[0]
+
+    def _dist_sig(self, pts: list[Cell]) -> tuple[int, ...]:
+        return tuple(
+            sorted(
+                round(((a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2) ** 0.5)
+                for i, a in enumerate(pts)
+                for b in pts[i + 1 :]
+            )
+        )
+
+    def _sig_matches(self, a: tuple[int, ...], b: tuple[int, ...]) -> bool:
+        """Two distance signatures match within a 1px per-entry tolerance
+        (integer-rounded centroids drift up to ~1px)."""
+        return len(a) == len(b) and all(abs(x - y) <= 1 for x, y in zip(a, b))
 
     def _bbox_dist(self, point: Cell, region: Region) -> int:
         r0, c0, r1, c1 = region["bbox"]
@@ -315,12 +398,17 @@ class Adapter(GameAdapter):
         show an unsatisfied stub (a satisfied one has recoloured to 3 and so
         no longer appears among the colour-8 markers)."""
         markers = self._markers(regions)
+        # MINE = only the ACTIVE sprite's own stubs (near its body) — NOT every
+        # stub far from the partner targets, which on a multi-sprite board
+        # would wrongly pull in the OTHER pairs' stubs and make the shape match
+        # impossible. Body-proximity is the same signal ``_lock_targets`` uses.
+        active = self._active_regions(regions)
+        margin = _ATTACH_CELLS * self._cell()
+        mine = [m for m in markers if active and self._min_body_dist(m, active) <= margin]
         # Half a cell: a target's OWN still-unsatisfied stub sits essentially
         # on it (so it registers as remaining), and an active-sprite marker
-        # only leaves ``mine`` once it has genuinely coincided — never merely
-        # while approaching.
+        # only leaves ``mine`` once it has genuinely coincided.
         tol = max(1, self._cell() // 2)
-        mine = [m for m in markers if self._nearest(m, self._targets) > tol]
         remaining = [t for t in self._targets if self._nearest(t, markers) <= tol]
         return mine, remaining
 
@@ -380,9 +468,28 @@ class Adapter(GameAdapter):
         # satisfied one).
         my_markers = self._body_markers(regions)
         unsatisfied = self._unsatisfied_targets(regions, cell)
-        if not my_markers or not unsatisfied:
+        if not unsatisfied:
+            # This pair's stubs have all coincided. If any sprite still has
+            # unsatisfied (colour-8) stubs, this is a multi-pair level: select
+            # the next unsolved sprite and re-lock its own partner.
+            if eight_count > 0:
+                self._advance_to_next_pair()
+                return self._select_a_sprite(regions, action6_ok, move_ids)
+            return self._probe_move(active, move_ids)
+        if not my_markers:
             return self._probe_move(active, move_ids)
         return self._translate_step(my_markers, unsatisfied, cell, move_ids, active)
+
+    def _advance_to_next_pair(self) -> None:
+        """Reset only the per-pair state so the next-selected sprite re-locks
+        its own partner and re-orients — the measured control facts (dir signs,
+        cell pitch) are level-wide and kept."""
+        self._targets = []
+        self._targets_locked = False
+        self._oriented = False
+        self._marker_offsets = None
+        self._pre_rot_remaining = 0
+        self._attempt = 0
 
     def _latch_orientation(self, mine: list[Cell], active: list[Region]) -> None:
         """Record my markers as fixed offsets from the active-body centroid at
