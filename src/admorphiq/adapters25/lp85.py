@@ -93,7 +93,7 @@ FRONT of the queue immediately -- a responsive region is finished (win,
 or its own pixel budget exhausted) before the round-robin sweep resumes
 elsewhere, instead of waiting for its turn in a future round.
 
-**L2 divergence — BANKED (2026-07-15, not fixed by this adapter).** The
+**L2 SOLVED (2026-07-15) by the ring-permutation planner below.** The
 "click the rare pixel" reading is a coincidence of L1's tiny scale, not the
 game's mechanic. LP85 is a ring-rotation permutation puzzle: each button
 sprite carries a ``button_<id>_<L|R>`` tag; clicking it CYCLICALLY ROTATES a
@@ -109,18 +109,17 @@ the 17-action human) -- luck of scale, no ring model. L2 = 2 targets + 2 goals
 + 3 rings (A 26 cells, B/C 10 each, B/C overlap A at 2 cells; NO fdgmtkfrxl):
 a genuine Hungarian-rings coupling. It IS tractable -- offline BFS over goal
 positions finds an 8-move solution (264 states) and that sequence, replayed
-through the real engine, clears L2. The blocker for a FRAME-ONLY solver is
-learning each ring's full successor map from frame diffs: ring cells carry
-multi-coloured tiles so rotation is usually visible, but a few adjacent cells
-share a colour (ring A 3, B 2) and same-colour swaps leave no diff -- so one
-press per ring misses 2-3 links, which must be completed geometrically or via
-a 2nd press. The gold trace (``data/traces/lp85.npz``) never solves L2
-(``levels_completed_after`` maxes at 1). A real reopen needs a NEW generic
-kernel (learn cyclic permutation operators from single-press diffs + BFS to a
-target assignment) plus the ring-learning completion; deprioritised under
-diminishing-returns discipline; the sweep stays as the L1 floor (1/8,
-game_score 0.0248, near-human). See ``.wiki/wiki/games/LP85.md`` for the full
-mechanism bank.
+through the real engine, clears L2. The one FRAME-ONLY obstacle -- learning
+each ring's full successor map when a few adjacent cells share a colour (ring A
+3, B 2) so their swap leaves no diff -- is handled by ordering the changed cells
+into their cyclic loop and voting the rotation direction by colour agreement
+(``kernels.permute.learn_cyclic_successor``), which reconstructs one clean
+n-cycle regardless of that local ambiguity. The planner below (``_planner_step``
+/ ``_detect`` / ``_learn_button`` / ``_build_plan``) runs first on every level;
+on any failure (detection, self-test, or an unreachable plan) it hands off to
+the rare-colour sweep, so the L1 floor is never lost. MEASURED: 2/8 levels,
+game_score 0.0803 (up from the sweep-only 1/8 @ 0.0248). See
+``.wiki/wiki/games/LP85.md`` for the full write-up.
 """
 
 from __future__ import annotations
@@ -138,7 +137,14 @@ from admorphiq.adapters25.base import (
     reset_action,
     state_name,
 )
-from admorphiq.kernels import find_regions, frame_diff, learn_point_operators
+from admorphiq.kernels import (
+    complete_cycle,
+    find_regions,
+    frame_diff,
+    learn_cyclic_successor,
+    learn_point_operators,
+    plan_token_assignment,
+)
 
 GAME_ID = "lp85"
 
@@ -147,6 +153,18 @@ Bbox = tuple[int, int, int, int]
 
 # Per-level safety cap, mirroring admorphiq.adapters25.m0r0's giveup convention.
 _GIVEUP_DEFAULT = 4000
+
+# ── LP85 ring-solver semantics (adapter-declared; kernels stay game-agnostic) ──
+# Verified by driving the real engine (see module docstring's L2 section): each
+# button sprite is a rotation control; pressing it cyclically rotates a ring of
+# board cells. Buttons render in two colours by rotation direction; the MOVING
+# token that rides the rings and the FIXED destination marker both render in one
+# shared colour but differ in shape (a solid block vs a hollow 4-corner frame).
+_BUTTON_COLORS = frozenset({8, 14})  # rotation controls (two directions)
+_MARKER_COLOR = 11  # moving goal token (solid) + fixed target frame (hollow corners)
+_SOLID_MIN_SIZE = 3  # a marker region this size or larger is a solid moving token
+_DEST_CLUSTER_SPAN = 6  # corner pixels within this L∞ span form one target frame
+_PLANNER_BUDGET = 40  # max rotation-sequence length the BFS may return
 
 # A region spanning at least this fraction of the frame's own cell count is a
 # board-spanning panel / backdrop, not a discrete clickable target. Excludes
@@ -254,6 +272,76 @@ def _round_robin_queue(candidates: list[Cell], region_of: dict[Cell, Bbox]) -> d
     return queue
 
 
+def _cint(region: dict[str, Any]) -> Cell:
+    r, c = region["centroid"]
+    return (round(r), round(c))
+
+
+def _planner_background(grid: tuple[tuple[int, ...], ...]) -> frozenset[int]:
+    """The single most-common colour — the backdrop the ring planner segments
+    against. Other chrome colours survive as oversized regions the size/colour
+    filters below discard, so one exclusion is enough."""
+    return frozenset({most_common_color(grid)})
+
+
+def _detect_buttons(regions: list[dict[str, Any]]) -> list[Cell]:
+    """Rotation-control click cells: every region whose colour is a declared
+    button colour, sorted for determinism. Inert picks (a control whose centroid
+    lands off the playable viewport) simply learn an empty rotation and are
+    dropped before planning."""
+    return sorted(_cint(r) for r in regions if int(r["color"]) in _BUTTON_COLORS)
+
+
+def _detect_goal_cells(regions: list[dict[str, Any]]) -> list[Cell]:
+    """Moving goal tokens = SOLID marker-colour regions (a filled block), as
+    opposed to the hollow 4-corner target frames of the same colour."""
+    return sorted(
+        _cint(r)
+        for r in regions
+        if int(r["color"]) == _MARKER_COLOR and int(r["size"]) >= _SOLID_MIN_SIZE
+    )
+
+
+def _detect_dest_cells(regions: list[dict[str, Any]]) -> list[Cell]:
+    """Fixed destinations = the centres of the hollow 4-corner target frames.
+    Marker-colour pixels that are NOT part of a solid block are the corner dots;
+    cluster the dots by proximity and take each cluster's centre."""
+    corners = [
+        _cint(r)
+        for r in regions
+        if int(r["color"]) == _MARKER_COLOR and int(r["size"]) < _SOLID_MIN_SIZE
+    ]
+    dests: list[Cell] = []
+    used: set[int] = set()
+    for i, a in enumerate(corners):
+        if i in used:
+            continue
+        group = [a]
+        used.add(i)
+        for j, b in enumerate(corners):
+            if j in used:
+                continue
+            if abs(a[0] - b[0]) <= _DEST_CLUSTER_SPAN and abs(a[1] - b[1]) <= _DEST_CLUSTER_SPAN:
+                group.append(b)
+                used.add(j)
+        if len(group) >= 3:  # a target frame is 4 corners; tolerate one occlusion
+            rr = round(sum(p[0] for p in group) / len(group))
+            cc = round(sum(p[1] for p in group) / len(group))
+            dests.append((rr, cc))
+    return sorted(dests)
+
+
+def _token_regions(regions: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """The small non-button regions that ride the rings (coloured tiles + goal
+    tokens). The successor learner further restricts to the ones that actually
+    moved, so including static corner dots here is harmless."""
+    return [r for r in regions if int(r["color"]) not in _BUTTON_COLORS and int(r["size"]) <= 6]
+
+
+def _snap(cell: Cell, lattice: list[Cell]) -> Cell:
+    return min(lattice, key=lambda q: (q[0] - cell[0]) ** 2 + (q[1] - cell[1]) ** 2)
+
+
 class Adapter(GameAdapter):
     """Rarity-ranked click-target probing composed entirely from admorphiq.kernels."""
 
@@ -291,6 +379,21 @@ class Adapter(GameAdapter):
         self._pending_click: Cell | None = None
         self._prev_grid: tuple[tuple[int, ...], ...] | None = None
 
+        # ── ring-permutation planner state (tried first each level; on any
+        # failure the adapter falls back to the rare-colour sweep above, so the
+        # L1 floor is never lost) ──
+        self._planner_active = True
+        self._phase = "settle"  # settle -> detect -> learn -> execute (or abort)
+        self._bg: frozenset[int] = frozenset()
+        self._buttons: list[Cell] = []  # button click cells (row, col)
+        self._dests: list[Cell] = []  # fixed target destination cells
+        self._ops: dict[str, dict[Cell, Cell]] = {}  # learned per-button rotations
+        self._learn_idx = 0  # button whose press we are awaiting the result of
+        self._pre_frame: tuple[tuple[int, ...], ...] | None = None
+        self._pre_goals: list[Cell] = []
+        self._plan: deque[str] = deque()
+        self._selftest_fails = 0
+
     # ── harness contract ────────────────────────────────────────────────
 
     def is_done(self, frames: list[Any], latest_frame: Any) -> bool:
@@ -310,13 +413,122 @@ class Adapter(GameAdapter):
             self._on_level_up(levels, grid)
 
         self._step += 1
-        self._observe_result(grid)
 
+        if self._planner_active:
+            action = self._planner_step(grid)
+            if action is not None:
+                self._prev_grid = grid
+                return action
+            # Planner gave up on this level — fall through to the sweep, which
+            # keeps the proven L1 floor (and GAME_OVER restarts reset cleanly).
+            self._planner_active = False
+            self._pending_click = None
+
+        self._observe_result(grid)
         target = self._next_target(grid)
         self._prev_grid = grid
         self._pending_click = target
         row, col = target
         return click_action(x=col, y=row)
+
+    # ── ring-permutation planner ────────────────────────────────────────
+
+    def _click_button(self, idx: int) -> GameAction:
+        row, col = self._buttons[idx]
+        return click_action(x=col, y=row)
+
+    def _planner_step(self, grid: tuple[tuple[int, ...], ...]) -> GameAction | None:
+        """Drive the learn→plan→execute machine one step; return the action to
+        take, or ``None`` to abort to the sweep. ``grid`` is the frame resulting
+        from the previous action (the result of the click just issued)."""
+        if self._phase == "settle":
+            # One inert click lets a just-completed level transition render.
+            self._phase = "detect"
+            return click_action(x=0, y=0)
+
+        if self._phase == "detect":
+            if not self._detect(grid):
+                return None
+            self._phase = "learn"
+            self._learn_idx = 0
+            self._pre_frame = grid
+            self._pre_goals = _detect_goal_cells(find_regions(grid, background=self._bg))
+            return self._click_button(0)
+
+        if self._phase == "learn":
+            self._learn_button(self._learn_idx, grid)
+            self._learn_idx += 1
+            if self._learn_idx < len(self._buttons):
+                self._pre_frame = grid
+                self._pre_goals = _detect_goal_cells(find_regions(grid, background=self._bg))
+                return self._click_button(self._learn_idx)
+            # every control learned — self-test gate, then plan
+            if self._selftest_fails >= 2 or not self._build_plan(grid):
+                return None
+            self._phase = "execute"
+
+        if self._phase == "execute":
+            if not self._plan:
+                return None  # plan ran out without a win — hand off to the sweep
+            name = self._plan.popleft()
+            return self._click_button(int(name[1:]))
+
+        return None
+
+    def _detect(self, grid: tuple[tuple[int, ...], ...]) -> bool:
+        """Segment the frame into rotation controls, moving goal tokens, and
+        fixed destinations. Returns whether the level looks like a solvable ring
+        puzzle (≥1 control, equal non-zero counts of goals and destinations)."""
+        self._bg = _planner_background(grid)
+        regions = find_regions(grid, background=self._bg)
+        self._buttons = _detect_buttons(regions)
+        goals = _detect_goal_cells(regions)
+        self._dests = _detect_dest_cells(regions)
+        return (
+            len(self._buttons) >= 1
+            and len(goals) >= 1
+            and len(goals) == len(self._dests)
+        )
+
+    def _learn_button(self, idx: int, grid: tuple[tuple[int, ...], ...]) -> None:
+        """Learn button ``idx``'s rotation from the frame pair spanning its
+        press, and self-test it against the observed goal displacement."""
+        assert self._pre_frame is not None
+        before = _token_regions(find_regions(self._pre_frame, background=self._bg))
+        after = _token_regions(find_regions(grid, background=self._bg))
+        diff = frame_diff(self._pre_frame, grid)
+        succ = complete_cycle(learn_cyclic_successor(before, after, diff["cells"]))
+        if len(succ) < 2:
+            return  # inert control (off-viewport / non-rotating) — skip it
+        self._ops[f"b{idx}"] = succ
+        post_goals = set(_detect_goal_cells(find_regions(grid, background=self._bg)))
+        # Self-test: any goal on this ring must land where the map predicts.
+        for g in self._pre_goals:
+            if g in succ and succ[g] not in post_goals:
+                self._selftest_fails += 1
+                break
+
+    def _build_plan(self, grid: tuple[tuple[int, ...], ...]) -> bool:
+        ops = {k: v for k, v in self._ops.items() if len(v) >= 2}
+        if not ops:
+            return False
+        lattice: list[Cell] = []
+        seen: set[Cell] = set()
+        for mp in ops.values():
+            for cell in (*mp.keys(), *mp.values()):
+                if cell not in seen:
+                    seen.add(cell)
+                    lattice.append(cell)
+        goals = _detect_goal_cells(find_regions(grid, background=self._bg))
+        if len(goals) != len(self._dests) or not goals:
+            return False
+        tokens = [_snap(g, lattice) for g in goals]
+        dests = [_snap(d, lattice) for d in self._dests]
+        plan = plan_token_assignment(ops, tokens, dests, budget=_PLANNER_BUDGET)
+        if not plan:
+            return False
+        self._plan = deque(plan)
+        return True
 
     # ── level bookkeeping ───────────────────────────────────────────────
 
@@ -331,6 +543,21 @@ class Adapter(GameAdapter):
         self._recycle_cursor = 0
         self._responsive = set()
         self._observations = []
+        # Re-arm the ring planner for the new level (a level's rings/targets are
+        # its own; nothing carries over). Falls back to the sweep on failure.
+        # The initial level's first frame is already settled, so detect it
+        # immediately; a mid-game level transition renders one frame late, so
+        # spend one inert click letting the new board settle before detecting.
+        self._planner_active = True
+        self._phase = "detect" if levels == 0 else "settle"
+        self._buttons = []
+        self._dests = []
+        self._ops = {}
+        self._learn_idx = 0
+        self._pre_frame = None
+        self._pre_goals = []
+        self._plan = deque()
+        self._selftest_fails = 0
 
     # ── measurement: did the pending click do anything? ─────────────────
 

@@ -60,6 +60,12 @@ from admorphiq.kernels.paths import (
     slide_endpoint,
     transition_shortest_path,
 )
+from admorphiq.kernels.permute import (
+    apply_successor,
+    complete_cycle,
+    learn_cyclic_successor,
+    plan_token_assignment,
+)
 from admorphiq.kernels.regions import (
     find_regions,
     group_by_axis,
@@ -138,6 +144,10 @@ __all__ = [
     "color_mode",
     "occupied_runs",
     "split_runs_by_pitch",
+    "apply_successor",
+    "complete_cycle",
+    "learn_cyclic_successor",
+    "plan_token_assignment",
     "greedy_parse",
     "gf2_nullspace",
     "gf2_solve",
