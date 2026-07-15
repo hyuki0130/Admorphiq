@@ -12,7 +12,7 @@ category, drill into specific pages.
 
 ## Games (25)
 
-- [[games/AR25.md]] — v1 2/8 (legacy bfs_state_space, ~500K expansions), v2 2/8 (same) — Movable colour glyphs are drawn together with their reflections across a movable mirror bar; a level is won when every goal cell is covered by some piece pixel or one of its reflections — NOT a single-avatar maze.
+- [[games/AR25.md]] — v1 L0 efficient clear (score 1.0 @ 23 actions); 1/8 depth, v2 same (frame-only, never reads internals) — Movable colour glyphs are drawn together with their reflections across a movable mirror bar; a level is won when every goal cell is covered by some piece pixel or one of its reflections — NOT a single-avatar maze.
 - [[games/BP35.md]] — v1 brittle 1/9 ✅, generic 0/9 ❌ (R23 8B) — Frame-observation solver — generalizes across version hashes.
 - [[games/CD82.md]] — v1 6/6 ✅ (brittle paint_game, hardcoded positions) — Relies on game internals — high v1 score, fails on v2.
 - [[games/CN04.md]] — v1 brittle 1/5 (zig3_A2A4, hash-tuned) — A rigid-arrangement puzzle: select a sprite, rotate and slide it so its connector-marker stubs coincide with another sprite's — NOT a click game.
@@ -29,7 +29,7 @@ category, drill into specific pages.
 - [[games/S5I5.md]] — v1 brittle 1/8 ✅, generic 0/8 ❌ (R23 8B; brittle reads myzmclysbl/zylvdxoiuq sprite tags) — Relies on game internals — high v1 score, fails on v2.
 - [[games/SB26.md]] — v1 8/8 ✅ (brittle, internals) — A portal-graph traversal puzzle disguised as a simple reference/pool
 - [[games/SC25.md]] — v1 brittle n/a (uses generic spell_cast), generic 0/6 ❌ (R23 8B; previously 2/6 via spell_cast pick — Qwen didn't select it under R23 anchor) — Frame-observation solver — generalizes across version hashes.
-- [[games/SK48.md]] — v1 0/8 ❌, v2 0/8 ❌ — Not yet classified; needs hand review.
+- [[games/SK48.md]] — v1 0/8 (agent regression); R56 script25 explorer 0/8 @1000, v2 0/8 (same) — Move a snake so the sequence of coloured cells its body overlaps matches a per-level TEMPLATE pattern, within a fixed move budget — NOT a plain eat-food snake or a reach-exit maze.
 - [[games/SP80.md]] — v1 1/6 (legacy bfs_state_space); R56 script25 explorer 1/6, v2 1/6 (same) — Place deflector/block pieces during a CHANGE phase, then a SPILL phase drops water from a fixed source; a level wins only when the flow covers EVERY target region without hitting a hazard — NOT a reach-the-goal maze.
 - [[games/SU15.md]] — v1 brittle 9/9 ✅ (uses game.hmeulfxgy/peiiyyzum/rqdsgrklq attrs), generic 0/9 ❌ (R23 8B; same-color-pair=0 at L1) — 2048-style color merging via click-attract radius, with enemies as downgraders; solver reads internal fruit/enemy/goal lists, fails on v2.
 - [[games/TN36.md]] — v1 brittle 7/7 ✅ (uses frame.zpzcmabenn direct call), generic 0/7 ❌ (R23 8B; bit-panel combinatorial too deep) — Bit-encoded action program: click bits to set a number, click play to execute, navigate player to goal; brittle solver passes v1 but collapses on v2.
