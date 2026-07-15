@@ -507,3 +507,74 @@ def test_slide_chain_no_other_movers_is_a_plain_slide():
     single-mover slide, an inconsistency between the two kernels."""
     grid = _floor(["######", "#....#", "######"])
     assert slide_chain(grid, (1, 1), (0, 1), [], "until_wall") == {(1, 1): (1, 4)}
+
+
+# ── plan_gated_path (button-barrier / gated-maze product-graph planner) ──────
+
+from admorphiq.kernels.paths import plan_gated_path  # noqa: E402
+
+
+def test_plan_gated_path_toggles_a_barrier_then_walks_through():
+    """Purpose: a wall blocks the only route; a toggle removes it. The planner
+    must emit the toggle THEN walk through the now-open cell — the core
+    interleave of button-press and movement.
+    Expected feedback: failure means the product-graph search doesn't treat a
+    passability-mutating action as an edge, so no gated maze ever solves."""
+    # Row 1 corridor with a wall at (1,3); toggle 'open' removes it.
+    base_walls = frozenset({(1, 3)})
+    move_labels = {(0, 1): "right", (0, -1): "left"}
+
+    def passable(cell, walls):
+        r, c = cell
+        return 0 <= r < 3 and 0 <= c < 6 and cell not in walls
+
+    toggles = [("open", lambda w: frozenset(w - {(1, 3)}))]
+    plan = plan_gated_path((1, 0), (1, 5), base_walls, passable, toggles, move_labels)
+    assert plan is not None
+    assert "open" in plan
+    # The toggle must come before the walk crosses column 3.
+    assert plan.index("open") < plan.count("right")
+
+
+def test_plan_gated_path_seesaw_needs_the_toggle_in_a_specific_state():
+    """Purpose: a seesaw toggle (symmetric-difference on a cell set) opens one
+    segment while closing another; the planner must find the state in which
+    the goal-side segment is open, toggling as needed.
+    Expected feedback: failure means the planner can't reason over a state
+    that a toggle flips both ways — the exact dc22 seesaw."""
+    seesaw = frozenset({(1, 2)})  # closed initially; toggle opens it
+    base_walls = frozenset({(1, 2)})
+    move_labels = {(0, 1): "R", (0, -1): "L"}
+
+    def passable(cell, walls):
+        r, c = cell
+        return r == 1 and 0 <= c < 5 and cell not in walls
+
+    toggles = [("flip", lambda w: frozenset(w ^ seesaw))]
+    plan = plan_gated_path((1, 0), (1, 4), base_walls, passable, toggles, move_labels)
+    assert plan is not None and "flip" in plan
+
+
+def test_plan_gated_path_none_when_no_toggle_opens_the_route():
+    """Purpose: when no toggle can open a path to the goal, the planner must
+    return None rather than loop or emit a partial plan.
+    Expected feedback: failure means an unsolvable gated board 'plans' anyway,
+    wasting the action budget."""
+    base_walls = frozenset({(1, 3)})
+    move_labels = {(0, 1): "R"}
+
+    def passable(cell, walls):
+        r, c = cell
+        return r == 1 and 0 <= c < 6 and cell not in walls
+
+    # The only toggle opens an IRRELEVANT cell, never (1,3).
+    toggles = [("noop", lambda w: frozenset(w - {(2, 2)}))]
+    assert plan_gated_path((1, 0), (1, 5), base_walls, passable, toggles, move_labels) is None
+
+
+def test_plan_gated_path_empty_when_already_at_goal():
+    """Purpose: start == goal needs no actions — return [] (a distinct
+    'already solved' from None).
+    Expected feedback: failure means the caller can't distinguish solved from
+    unsolvable."""
+    assert plan_gated_path((0, 0), (0, 0), frozenset(), lambda c, w: True, [], {}) == []

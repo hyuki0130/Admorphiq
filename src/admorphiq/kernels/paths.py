@@ -647,3 +647,65 @@ def slide_chain(
             continue
         break
     return moved
+
+
+def plan_gated_path(
+    start: Cell,
+    goal: Cell,
+    layer0: Hashable,
+    passable: Callable[[Cell, Hashable], bool],
+    toggles: Sequence[tuple[Hashable, Callable[[Hashable], Hashable]]],
+    move_labels: dict[Cell, Hashable],
+    max_states: int = 100_000,
+) -> list[Hashable] | None:
+    """Shortest action path to ``goal`` where some actions MUTATE passability.
+
+    Generic button-barrier / gated-maze planner — the product-graph search for
+    a game where walking is interleaved with toggles that change WHICH cells
+    are walkable (a revealed region, a seesaw gate, a barrier flip). BFS over
+    the product state ``(cell, layer)``:
+
+    - **move edges**: step to an adjacent cell (``move_labels`` supplies the
+      cardinal ``(dr, dc)`` -> action-label map) when
+      ``passable(next_cell, layer)`` holds in the CURRENT layer.
+    - **toggle edges**: apply a toggle — emit its label and replace ``layer``
+      with ``mutate(layer)`` while staying in place (a button click is
+      position-free; it changes the passability layer, not the avatar's cell).
+
+    ``layer`` is any hashable the caller uses to encode the toggle state (e.g.
+    a tuple of bits, or a frozenset of applied effects); ``passable(cell,
+    layer)`` and each ``mutate(layer) -> layer`` are caller-supplied so the
+    kernel holds no game semantics — it only searches the product graph.
+    Returns the action-label sequence (moves + toggle labels), ``[]`` when
+    ``start == goal``, or ``None`` when ``goal`` is unreachable within
+    ``max_states`` expanded states. Unit-cost BFS (shortest in action count).
+    Pure / no environment access.
+    """
+    if start == goal:
+        return []
+    start_state = (start, layer0)
+    visited = {start_state}
+    queue: deque[tuple[tuple[Cell, Hashable], list[Hashable]]] = deque([(start_state, [])])
+    expanded = 0
+    while queue and expanded < max_states:
+        (cell, layer), path = queue.popleft()
+        expanded += 1
+        for (dr, dc), label in move_labels.items():
+            nxt = (cell[0] + dr, cell[1] + dc)
+            if not passable(nxt, layer):
+                continue
+            state = (nxt, layer)
+            if nxt == goal:
+                return path + [label]
+            if state in visited:
+                continue
+            visited.add(state)
+            queue.append((state, path + [label]))
+        for label, mutate in toggles:
+            new_layer = mutate(layer)
+            state = (cell, new_layer)
+            if state in visited:
+                continue
+            visited.add(state)
+            queue.append((state, path + [label]))
+    return None
