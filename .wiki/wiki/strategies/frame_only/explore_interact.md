@@ -37,7 +37,7 @@ dispatched_from: strat_explore_and_interact in agent_ensemble.py
 
 | Game | v1 | v2 |
 |------|-----|-----|
-| [[../../games/G50T]] | 1/7 | n/a |
+| [[../../games/G50T]] | n/a | n/a (R56: does NOT reproduce — G50T is a reactive sokoban, see its page) |
 
 ## Observable Signature
 
@@ -78,4 +78,4 @@ When the falsification signature triggers, try (in priority order):
 ## Sources
 
 - `src/admorphiq/agent_ensemble.py` — `strat_explore_and_interact` implementation (registry name `explore_interact`)
-- 2026-04-20 regression: G50T 1/7 via this strategy
+- 2026-04-20 regression claimed G50T 1/7 via this strategy; R56 measurement does NOT reproduce it (G50T is a reactive sokoban maze, blind explore dies on hazards)

@@ -28,4 +28,4 @@ refactor_status: frame_only_works
 
 | Game | v1 | v2 | Strategy |
 |------|-----|-----|----------|
-| [[../games/G50T]] | 1/7 | n/a | explore_interact (frame_only) |
+| [[../games/G50T]] | 0/7 | n/a | RECLASSIFIED → [[sokoban]] (R56: reactive maze, not explore-interact) |

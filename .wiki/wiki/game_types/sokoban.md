@@ -30,6 +30,7 @@ A* search over (player_pos, tuple(block_positions)) state space, with pushes as 
 | Game | v1 | v2 | Strategy |
 |------|-----|-----|----------|
 | [[../games/KA59]] | 4/7 | 0/7 | ka59_sokoban (hardcoded push sequences) |
+| [[../games/G50T]] | 0/7 | n/a | reactive maze + UNDO + hidden goal (R56, banked wall) |
 
 ## Edge cases
 
