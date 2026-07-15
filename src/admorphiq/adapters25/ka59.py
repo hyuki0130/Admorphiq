@@ -308,31 +308,39 @@ active-marker learning (solid pieces have no hole marker, so all
 identification is movement-based); a single class (L0) is left byte-identical.
 The placement itself reuses the existing ``_decide`` select+walk+fill loop.
 
-**L1 transport = color-15 SLIDE-BANDS (traced from gold), one fix landed, full
-clear banked.** MEASURED: size-matched placement fills the TWO frames in the
-pieces' own chamber ((51,51),(39,54)); the other two ((9,9),(42,6)) sit across
-color-15 barriers, UNREACHABLE by plain 3px walking (a bg-connectivity flood
-from the piece start reaches only the two same-chamber frames; including
-color-15 as passable reaches all four). Frame-by-frame gold tracing settled the
-mechanic: color-15 is a SLIDE band -- stepping into it carries the piece a long
-fixed distance ACROSS it into the next chamber (the piece goes undetectable
-mid-slide, exactly like L0's launch), NOT a portal and NOT a wall.
+**L1 transport = INVISIBLE traversal through color-15 terrain (corrected from
+the earlier "slide" guess).** MEASURED: size-matched placement fills the TWO
+frames in the pieces' own chamber ((51,51),(39,54)); the other two ((9,9),
+(42,6)) sit across color-15 barriers, unreachable on the plain-bg 3px grid
+(a bg-connectivity flood from the piece start reaches only the two same-chamber
+frames; including color-15 as passable reaches all four). A robust
+Hungarian-matched trace of the gold shows NO momentum slide anywhere in L1
+play (the only >6px jump is the L0->L1 board reload): the crossing is a
+straight 3px WALK through the color-15 band, during which the piece is
+UNDETECTABLE to find_regions (it never appears sitting on a color-15 cell) and
+reappears on the far side -- a detection dropout, not a launch. (The earlier
+"slide band / align-then-slide channel" reading was wrong; the reappearance
+jump is what track_objects sees, and the >_MAX_STEP_CELLS guard in
+:meth:`_observe_result` correctly keeps that reappearance jump out of dir_map.)
 
-The fix landed this round: :meth:`_observe_result`'s hetero bootstrap now
-GUARDS against recording a slide displacement (> _MAX_STEP_CELLS) as a dir_map
-delta. Without it, the first accidental slide poisoned the move set (e.g.
-"left = -24 cols") and every subsequent optimistic route became garbage --
-the exact oscillation the first L1 pass showed. With the guard, dir_map stays
-clean and pieces DO cross chambers (measured: reach the far-left region).
+Two correct foundations are in place: (1) that dir_map guard; (2)
+:data:`_passable_terrain` + the color-15 skip in :meth:`_record_blocked` -- a
+"did not move" reading whose destination is a large traversable STRUCTURE is a
+dropout, not a wall, so it is never banked as one (else the router seals off
+the only inter-chamber route).
 
-Still 1/7: reaching the top-left frame (9,9) needs a SECOND, vertical slide up
-through the rows-24-27 band at a specific channel column (the gold aligns the
-piece to the frame's column FIRST, then slides up). Robustly navigating
-multiple slide-bands (locate each band + its channel, align, slide in the
-right direction, resume walking) is a band-aware routing subsystem, not a
-bounded fix -- banked here and in ``.wiki/wiki/games/KA59.md`` rather than
-speculatively half-built. Placement + one-band crossing work; multi-band
-far-corner navigation is the dedicated follow-up.
+**Still 1/7 -- banked, blocker is BLIND-TRANSIT DRIVING (non-frame-observable).**
+Because the piece is invisible while inside the band, ``_active_cell`` is lost
+mid-crossing, so the optimistic router cannot keep driving one direction
+through the band -- it probes/re-identifies and never pushes through the
+rows-24-27 span up to (9,9). Reliably crossing needs a blind-drive-through
+subsystem (on entering terrain, commit to the entry direction for a bounded
+window, then re-detect on the far side -- like L0's push-settle blind window),
+whose exit model cannot be validated from the single gold trace (only two
+crossings, piece invisible throughout transit). Per the stop rule (the crossing
+depends on state not frame-readable during transit), this is banked here and in
+``.wiki/wiki/games/KA59.md`` rather than speculatively built. Placement + the
+two foundations are the base a dedicated blind-transit round builds on.
 
 The legacy per-call ``_decide`` remains as the fallback for anything the
 2-piece orchestrator does not model, so the 1/7 floor cannot regress.
@@ -385,6 +393,12 @@ _SIZE_CLUSTER_RATIO = 1.5
 # is large enough to seat a piece. 4 cleanly separates the two on every
 # measured level (L0 frames inner area 9, pieces inner 1; L1 frames 9/18/36).
 _MIN_FRAME_INNER_AREA = 4
+
+# Minimum cell count for a non-background colour to count as traversable
+# "terrain" (a large structure a piece crosses while invisible to detection),
+# vs a small object (frame/piece/marker) that blocks normally. ~10% of the
+# 64x64 board; on L1 the color-15 band is 1512 cells, frames/pieces < 120.
+_TERRAIN_MIN_CELLS = 400
 
 # A push-slide, once triggered, is MEASURED (read from the level 0 gold
 # trace + a read-only source review) to consume every submitted action as
@@ -466,6 +480,20 @@ def _ring_region(ring: dict[str, Any]) -> Region:
         "centroid": centroid,
         "size": len(cells),
     }
+
+
+def _terrain_colors(grid: tuple[tuple[int, ...], ...], background: int) -> set[int]:
+    """Non-background colours covering a LARGE area of the board -- the big
+    structures (the color-15 band on L1) a piece traverses while undetectable
+    to find_regions. A move into such a cell reads as "did not move" (the
+    piece is just invisible there, MEASURED), so :meth:`_record_blocked` must
+    not bank it as a wall. Small non-bg objects (frames, pieces, markers) are
+    excluded by the area threshold, so they still block normally."""
+    counts: dict[int, int] = {}
+    for row in grid:
+        for v in row:
+            counts[v] = counts.get(v, 0) + 1
+    return {c for c, n in counts.items() if c != background and n >= _TERRAIN_MIN_CELLS}
 
 
 def _piece_marker_color(grid: tuple[tuple[int, ...], ...], outer_bbox: tuple[int, int, int, int]) -> int | None:
@@ -584,6 +612,18 @@ class Adapter(GameAdapter):
         # marker), forcing robust movement-based identification for all
         # pieces; the placement itself reuses the same select+walk machinery.
         self._hetero = False
+
+        # Colours of large non-background STRUCTURES a piece traverses while
+        # INVISIBLE to find_regions (MEASURED on L1: the chambers connect only
+        # THROUGH the color-15 band, and no piece is ever detected sitting ON
+        # a color-15 cell -- it vanishes mid-band and reappears on the far
+        # side, like the launch animation). A move into such a cell reads as
+        # "did not move" (the piece is just undetectable there), so it must
+        # NOT be banked as a permanent wall (see _record_blocked) or the
+        # router walls off the ONLY route between chambers. Derived fresh each
+        # hetero turn; empty on the L0 path (no effect there).
+        self._passable_terrain: set[int] = set()
+        self._cur_grid: tuple[tuple[int, ...], ...] | None = None
 
         self._pending_action: int | None = None
         self._pending_kind: str | None = None  # "move" | "select" | None
@@ -732,7 +772,10 @@ class Adapter(GameAdapter):
         if levels != self._levels_seen:
             self._on_level_up(levels)
 
-        self._hetero = len(_frame_inner_areas(closed_frames(grid, background=most_common_color(grid)))) > 1
+        bg_now = most_common_color(grid)
+        self._hetero = len(_frame_inner_areas(closed_frames(grid, background=bg_now))) > 1
+        self._cur_grid = grid
+        self._passable_terrain = _terrain_colors(grid, bg_now) if self._hetero else set()
 
         self._step += 1
         self._observe_result(grid)
@@ -981,6 +1024,18 @@ class Adapter(GameAdapter):
         other_cells = {p["bbox"][:2] for p in prev_pieces}
         if dest in other_cells:
             self._push_settling = True
+            return
+        # If the destination is a large traversable STRUCTURE (color-15 band),
+        # a "did not move" reading is a detection dropout -- the piece is just
+        # invisible mid-band, not walled -- so never bank it as a wall, or the
+        # router seals off the only inter-chamber route (MEASURED on L1).
+        if (
+            self._passable_terrain
+            and self._cur_grid is not None
+            and 0 <= dest[0] < len(self._cur_grid)
+            and 0 <= dest[1] < len(self._cur_grid[0])
+            and self._cur_grid[dest[0]][dest[1]] in self._passable_terrain
+        ):
             return
         self._tried_from.setdefault(cell, set()).add(action)
         if dest not in self._known_blocked:

@@ -17,6 +17,7 @@ from admorphiq.adapters25.ka59 import (
     Adapter,
     _classify_hetero,
     _frame_inner_areas,
+    _terrain_colors,
 )
 
 
@@ -115,6 +116,28 @@ def test_assign_is_pure_distance_when_no_area_maps_given():
     a, b = (0, 0), (0, 10)
     ta, tb = (0, 1), (0, 11)
     assert adapter._assign([a, b], [ta, tb]) == {a: ta, b: tb}
+
+
+def test_terrain_colors_picks_large_structures_not_small_objects():
+    """Purpose: _terrain_colors must flag only LARGE non-background structures
+    (the color-15 band a piece crosses while invisible to detection), so
+    _record_blocked skips banking them as walls; small objects (frames,
+    pieces, markers) stay below the area threshold and therefore still block
+    normally. Background is never terrain.
+    Expected feedback: failure means either the connective band is treated as
+    a wall (router seals off the only inter-chamber route -> no crossing) or a
+    small object is wrongly treated as passable terrain (piece routes through
+    a frame/piece it should stop at)."""
+    bg = 1
+    g = [[bg] * 64 for _ in range(64)]
+    for r in range(0, 40):  # a large color-15 structure (1640 cells >> threshold)
+        for c in range(0, 41):
+            g[r][c] = 15
+    for r in range(50, 53):  # a small color-14 piece (9 cells)
+        for c in range(50, 53):
+            g[r][c] = 14
+    grid = tuple(tuple(row) for row in g)
+    assert _terrain_colors(grid, bg) == {15}  # only the big structure; not 14, not bg
 
 
 def _hollow_ring(g: list[list[int]], colour: int, r0: int, c0: int, r1: int, c1: int) -> None:
