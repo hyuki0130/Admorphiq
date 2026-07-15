@@ -43,7 +43,7 @@ from __future__ import annotations
 
 import itertools
 from collections import Counter
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Callable, Iterable, Mapping, Sequence
 
 from admorphiq.kernels._common import normalize_frame as _normalize_frame
 
@@ -640,3 +640,123 @@ def connectors(
         )
     )
     return out
+
+
+def _zero_sum_offset_patterns(count: int, radius: int) -> Iterable[tuple[Shift, ...]]:
+    """Deterministic offset-tuples of length ``count`` that each sum to
+    ``(0, 0)``, at roughly ``radius`` magnitude — the building block for
+    :func:`points_with_centroid`'s straddle fallback.
+
+    Uses symmetric ``(+o, -o)`` pairs along four directions (diagonal ``\\``,
+    diagonal ``/``, vertical, horizontal); an odd ``count`` gets a single
+    ``(0, 0)`` centre plus pairs. At ``radius == 0`` the only pattern is all
+    points stacked on the centre (a legal zero-sum set — the caller decides
+    whether coincident points are acceptable via ``is_free``).
+    """
+    if count <= 0:
+        return
+    if radius == 0:
+        # Coincident points are a valid zero-sum set only when a single point
+        # is requested; for count >= 2 stacking every point on the centre
+        # produces overlapping cells (which many callers — e.g. placing
+        # distinct objects — cannot use), so at radius 0 those callers advance
+        # to the first genuinely spread (radius 1) pattern instead.
+        if count == 1:
+            yield ((0, 0),)
+        return
+    directions: list[tuple[Shift, Shift]] = [
+        ((-radius, -radius), (radius, radius)),
+        ((-radius, radius), (radius, -radius)),
+        ((-radius, 0), (radius, 0)),
+        ((0, -radius), (0, radius)),
+    ]
+    n_pairs = count // 2
+    has_centre = count % 2 == 1
+    # Same direction for all pairs (simple, spread along one axis), then a
+    # mixed pattern cycling the four directions so a blocked axis has an
+    # alternative.
+    for base in directions:
+        pattern: list[Shift] = []
+        for k in range(n_pairs):
+            a, b = base
+            scale = k + 1
+            pattern.append((a[0] * scale, a[1] * scale))
+            pattern.append((b[0] * scale, b[1] * scale))
+        if has_centre:
+            pattern.append((0, 0))
+        yield tuple(pattern)
+    if n_pairs >= 2:
+        mixed: list[Shift] = []
+        for k in range(n_pairs):
+            a, b = directions[k % len(directions)]
+            mixed.append(a)
+            mixed.append(b)
+        if has_centre:
+            mixed.append((0, 0))
+        yield tuple(mixed)
+
+
+def points_with_centroid(
+    target: Sequence[int],
+    count: int,
+    is_free: Callable[[Cell], bool],
+    current: Sequence[Sequence[int]] | None = None,
+    max_radius: int = 24,
+) -> list[Cell] | None:
+    """Choose ``count`` integer cells whose mean is ``target``, every cell
+    satisfying ``is_free``, preferring the fewest moves from ``current``.
+
+    The mean is exact under floor division: a returned set ``pts`` satisfies
+    ``sum(r for r, _ in pts) // count == target[0]`` and likewise for the
+    column — matching a caller (e.g. a game placing a body at the integer
+    centroid of its parts) that reads the centroid back as ``sum // count``.
+
+    Search order, cheapest first:
+
+    1. **Already solved** — if ``current`` has ``count`` cells whose floor
+       centroid is ``target`` and all are free, it is returned unchanged (zero
+       moves).
+    2. **Move one** — keep ``count - 1`` of ``current`` fixed and place the
+       remaining cell at exactly the position that makes the sum
+       ``count * target`` (so the floored mean is ``target``); the smallest
+       such single move that lands on a free cell wins. This is the
+       minimum-click solution and is what the RHAE metric rewards.
+    3. **Straddle** — ignoring ``current``, place ``count`` free cells that
+       sum to ``count * target`` via symmetric zero-sum offset patterns at
+       increasing radius (:func:`_zero_sum_offset_patterns`).
+
+    Returns the chosen cells, or ``None`` if no free configuration is found
+    within ``max_radius``. ``is_free`` is the caller's obstacle predicate
+    (e.g. "not a hazard / in bounds"); this kernel owns no board knowledge.
+    Pure apart from calling ``is_free``.
+    """
+    if count <= 0:
+        return None
+    tr, tc = int(target[0]), int(target[1])
+    need_r, need_c = tr * count, tc * count
+
+    if current is not None:
+        cur = [(int(r), int(c)) for r, c in current]
+        if len(cur) == count:
+            sr = sum(p[0] for p in cur)
+            sc = sum(p[1] for p in cur)
+            if sr // count == tr and sc // count == tc and all(is_free(p) for p in cur):
+                return list(cur)
+            best: tuple[int, list[Cell]] | None = None
+            for i in range(count):
+                need = (need_r - (sr - cur[i][0]), need_c - (sc - cur[i][1]))
+                if is_free(need):
+                    disp = abs(need[0] - cur[i][0]) + abs(need[1] - cur[i][1])
+                    if best is None or disp < best[0]:
+                        cand = list(cur)
+                        cand[i] = need
+                        best = (disp, cand)
+            if best is not None:
+                return best[1]
+
+    for radius in range(max_radius + 1):
+        for pattern in _zero_sum_offset_patterns(count, radius):
+            cells = [(tr + dr, tc + dc) for dr, dc in pattern]
+            if all(is_free(c) for c in cells):
+                return cells
+    return None

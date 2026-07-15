@@ -103,7 +103,12 @@ from admorphiq.adapters25.base import (
     reset_action,
     state_name,
 )
-from admorphiq.kernels import canonical_key, find_regions, transition_shortest_path
+from admorphiq.kernels import (
+    canonical_key,
+    find_regions,
+    points_with_centroid,
+    transition_shortest_path,
+)
 
 GAME_ID = "r11l"
 
@@ -123,6 +128,107 @@ _HUD_THICKNESS_FRACTION = 0.06
 # clickable thing" size gate, no game-specific pixel count.
 _MIN_CAND_SIZE = 1
 _MAX_CAND_SIZE = 400
+
+# A non-background region at least this big is treated as a WALL/HAZARD
+# (r11l's `bvzgd-*` level walls, plus the edge counter column): the planner
+# must not place a leg on one (the game refuses such placements). A structural
+# threshold, not a game-specific pixel count — pieces (legs) and the small
+# body/target rings are all well under it.
+_HAZARD_MIN_SIZE = 28
+# Interactive PIECE size band (a leg / body / target marker) — excludes both
+# single-pixel decoration (leg-to-body connector dots) and wall-sized slabs.
+_MIN_PIECE_SIZE = 6
+_MAX_PIECE_SIZE = 27
+# A clickable FOOT (leg) is a compact blob; a leg-to-body LIMB line is thin
+# (low bbox fill). Feet fill ~0.5 of their bbox, limbs ~0.15.
+_MIN_LEG_FILL = 0.35
+# Squared-distance tolerance for "a ring sits at the legs' centroid" (== the
+# body). ~4 px, comfortably inside a body marker's own extent.
+_BODY_CENTROID_TOL2 = 16.0
+# A placed leg needs this many cells of clear background around its centre —
+# roughly the leg sprite's half-extent — so legs land separated from the nest
+# and each other (overlapping placements collide and burn the game's strikes).
+_LEG_CLEAR_RADIUS = 2
+
+
+def _hazard_cells(grid: Grid, bg: int) -> set[Cell]:
+    """Cells belonging to a wall/hazard region — any non-background region at
+    or above :data:`_HAZARD_MIN_SIZE`. The planner treats these as unplaceable
+    (the game refuses a leg drop that collides with one)."""
+    cells: set[Cell] = set()
+    for region in find_regions(grid, background=bg):
+        if region["size"] >= _HAZARD_MIN_SIZE:
+            cells |= region["cells"]
+    return cells
+
+
+def _analyze_creature(grid: Grid, bg: int, hazard: set[Cell]) -> tuple[list[Cell], Cell] | None:
+    """Detect a single centroid-assembly creature: its LEG cells and the
+    TARGET-nest centre its body must reach, purely from frame structure.
+
+    Model (validated live, see the module docstring's Mechanics): a creature's
+    body sits at the integer CENTROID of its legs; two markers of the SAME
+    colour are the body (near the legs' centroid) and the target nest (the
+    other one). Legs are the piece-sized regions of the OTHER colours.
+
+    Returns ``(leg_centres, target_centre)`` or ``None`` when the structure is
+    not a clean single-creature layout (the caller then falls back to the
+    generic explorer). No colour or coordinate constants — only sizes, the
+    same-colour-pair signature, and centroid-nearness.
+    """
+    # gap=2 so a ring-shaped nest drawn as scattered pixels fuses into one
+    # piece-sized region (its outline points sit within a 3-cell bridge).
+    pieces = [
+        r
+        for r in find_regions(grid, background=bg, gap=2)
+        if _MIN_PIECE_SIZE <= r["size"] <= _MAX_PIECE_SIZE
+        and not (r["cells"] & hazard)
+    ]
+    if len(pieces) < 3:
+        return None
+
+    def _fill(r: Region) -> float:
+        r0, c0, r1, c1 = r["bbox"]
+        area = (r1 - r0 + 1) * (c1 - c0 + 1)
+        return r["size"] / area if area else 0.0
+
+    # Compact pieces are the clickable FEET (legs); thin low-fill pieces are
+    # the leg-to-body limb lines (not selectable), excluded from leg candidates.
+    compact = [r for r in pieces if _fill(r) >= _MIN_LEG_FILL]
+    if len(compact) < 2:
+        return None
+
+    by_color: dict[int, list[Region]] = {}
+    for r in pieces:
+        by_color.setdefault(r["color"], []).append(r)
+
+    # The BODY/TARGET share a colour (a same-colour ring pair). The right pair
+    # is the one whose body sits on the CENTROID of the compact legs (the
+    # game's defining invariant: body == mean of its legs) — this rejects the
+    # limb-line colour, which also has two regions but neither at the centroid.
+    for color, rings in by_color.items():
+        if len(rings) < 2:
+            continue
+        legs = [r for r in compact if r["color"] != color]
+        if not legs:
+            continue
+        lc = (
+            sum(r["centroid"][0] for r in legs) / len(legs),
+            sum(r["centroid"][1] for r in legs) / len(legs),
+        )
+
+        def _d2(r: Region, lc: tuple[float, float] = lc) -> float:
+            return (r["centroid"][0] - lc[0]) ** 2 + (r["centroid"][1] - lc[1]) ** 2
+
+        nearest = min(rings, key=_d2)
+        if _d2(nearest) > _BODY_CENTROID_TOL2:
+            continue  # no ring at the legs' centroid -> not the body/target colour
+        others = [r for r in rings if r is not nearest]
+        target = max(others, key=_d2)  # the ring farthest from the body = the nest
+        leg_centres = [(int(round(r["centroid"][0])), int(round(r["centroid"][1]))) for r in legs]
+        target_centre = (int(round(target["centroid"][0])), int(round(target["centroid"][1])))
+        return leg_centres, target_centre
+    return None
 
 
 def _is_hud_band(region: Region, height: int, width: int) -> bool:
@@ -212,6 +318,16 @@ class Adapter(GameAdapter):
         self._tried_from: dict[Any, set[Cell]] = {}
         self._cands_at: dict[Any, list[Cell]] = {}
 
+        # Centroid-assembly PLANNER state (tried once per level before the
+        # explorer). ``_plan`` is a queue of (kind, cell) clicks — a "select"
+        # (click a leg to select it) then a "place" (click the destination,
+        # which animates); the place step is re-issued until the masked board
+        # settles. ``_plan_attempted`` gates it to one shot per level.
+        self._plan: list[tuple[str, Cell]] | None = None
+        self._plan_attempted = False
+        self._plan_place_issued = False
+        self._plan_last_masked: Grid | None = None
+
     # ── harness contract ────────────────────────────────────────────────
 
     def is_done(self, frames: list[Any], latest_frame: Any) -> bool:
@@ -236,8 +352,17 @@ class Adapter(GameAdapter):
         self._step += 1
         bg = most_common_color(grid)
         hud = _hud_cells(grid, bg)
-        cur_key = canonical_key(_mask_hud(grid, hud), mode="exact")
+        masked = _mask_hud(grid, hud)
+        cur_key = canonical_key(masked, mode="exact")
         self._observe_result(cur_key)
+
+        # Centroid-assembly planner first (one shot per level); when it has no
+        # plan or is exhausted it returns None and the generic explorer runs.
+        planned = self._planner_step(grid, bg, masked)
+        if planned is not None:
+            self._pending_click = None  # planner clicks are not explorer edges
+            self._pending_key = None
+            return click_action(x=planned[1], y=planned[0])
 
         cands = self._cands_at.get(cur_key)
         if cands is None:
@@ -265,10 +390,90 @@ class Adapter(GameAdapter):
         self._edges = {}
         self._tried_from = {}
         self._cands_at = {}
+        self._plan = None
+        self._plan_attempted = False
+        self._plan_place_issued = False
+        self._plan_last_masked = None
 
     def _on_restart(self) -> None:
         self._pending_click = None
         self._pending_key = None
+        # A restart means a placement went wrong (a strike); abandon the
+        # one-shot plan and let the explorer take over rather than repeat it.
+        self._plan = None
+        self._plan_attempted = True
+
+    # ── centroid-assembly planner ───────────────────────────────────────
+
+    def _build_plan(self, grid: Grid, bg: int) -> list[tuple[str, Cell]] | None:
+        """Detect the creature and compute a select→place click plan that
+        lands its body (the legs' centroid) on the target nest, avoiding
+        hazards. Returns ``None`` when the layout is not a clean single
+        creature (the explorer then runs)."""
+        hazard = _hazard_cells(grid, bg)
+        det = _analyze_creature(grid, bg, hazard)
+        if det is None:
+            return None
+        leg_centres, target = det
+        height, width = len(grid), len(grid[0])
+
+        def is_free(cell: Cell) -> bool:
+            # Require a clear BACKGROUND neighbourhood, not merely non-hazard:
+            # a leg sprite has extent, and a cell on the target nest / another
+            # marker overlaps it. Demanding empty bg pushes the legs to
+            # well-separated open cells (clear of the nest and of each other),
+            # avoiding the transit collisions that trigger the game's strikes.
+            r, c = cell
+            for dr in range(-_LEG_CLEAR_RADIUS, _LEG_CLEAR_RADIUS + 1):
+                for dc in range(-_LEG_CLEAR_RADIUS, _LEG_CLEAR_RADIUS + 1):
+                    rr, cc = r + dr, c + dc
+                    if not (0 <= rr < height and 0 <= cc < width):
+                        return False
+                    if grid[rr][cc] != bg or (rr, cc) in hazard:
+                        return False
+            return True
+
+        dests = points_with_centroid(target, len(leg_centres), is_free, current=leg_centres)
+        if dests is None:
+            return None
+        plan: list[tuple[str, Cell]] = []
+        for leg, dest in zip(leg_centres, dests):
+            if tuple(leg) == tuple(dest):
+                continue  # leg already positioned; no click needed
+            plan.append(("select", leg))
+            plan.append(("place", dest))
+        return plan or None
+
+    def _planner_step(self, grid: Grid, bg: int, masked: Grid) -> Cell | None:
+        """Emit the next planner click, or ``None`` to defer to the explorer.
+
+        The plan is built once per level. A ``select`` click is instant (issued
+        once, advance next call); a ``place`` click starts an animation, so it
+        is re-issued until the HUD-masked board SETTLES (stops changing between
+        calls), then the plan advances."""
+        if self._plan is None and not self._plan_attempted:
+            self._plan_attempted = True
+            self._plan = self._build_plan(grid, bg)
+            self._plan_place_issued = False
+            self._plan_last_masked = None
+        if not self._plan:
+            return None
+
+        kind, cell = self._plan[0]
+        if kind == "select":
+            self._plan.pop(0)
+            self._plan_place_issued = False
+            self._plan_last_masked = None
+            return cell
+        # place: settled when the masked board matches the previous call's.
+        if self._plan_place_issued and masked == self._plan_last_masked:
+            self._plan.pop(0)
+            self._plan_place_issued = False
+            self._plan_last_masked = None
+            return self._planner_step(grid, bg, masked)
+        self._plan_place_issued = True
+        self._plan_last_masked = masked
+        return cell
 
     # ── measurement: record the observed transition ─────────────────────
 

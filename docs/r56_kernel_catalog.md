@@ -294,6 +294,7 @@ as the 7th), beyond the verdict doc's original six.
 | `axis_snap(offset, tolerance=1) -> Shift` | Snaps a near-axis `(dr, dc)` offset to the pure axis when the minor component is `<= tolerance` AND strictly smaller than the major one; otherwise unchanged. |
 | `covering_offsets(shape_cells, target_points) -> list[Shift]` | A minimal set of translations of `shape_cells` covering every point in `target_points` — exact minimum set cover for <=12 candidates, greedy most-newly-covered-first above that. |
 | `connectors(frame, regions, background=None) -> list[dict]` | Thin (<=2 cells thick) same-colour paths linking EXACTLY two of `regions` (cells already claimed by any `regions` entry are excluded from the search). `{"a","b","path_cells","color"}` per connector. |
+| `points_with_centroid(target, count, is_free, current=None, max_radius=24) -> list[Cell] \| None` | Choose `count` cells whose floor-division centroid equals `target`, each satisfying the caller's `is_free` obstacle predicate, preferring the fewest moves from `current` (already-solved → zero moves; else move ONE leg to the exact centroid-fixing cell; else a symmetric zero-sum straddle at growing radius). Coincident points only for `count==1`. r11l's centroid-assembly planner (a body sits at the integer centroid of its legs). |
 
 ```python
 >>> closed_frames([[3,3,3],[3,0,3],[3,3,3]], background=0)
