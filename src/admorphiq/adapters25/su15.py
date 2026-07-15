@@ -161,6 +161,52 @@ is directionally correct (matches gold) but may be built on the wrong
 object-identity assumption. See ``.wiki/wiki/games/SU15.md`` for the same
 finding cross-linked into the wiki.
 
+**R56 iteration 8 -- gold-replay divergence RESOLVES the source-identity
+reopen: SU15 is CLICK-TO-STEER NAVIGATION, not vacuum-pull. The whole
+vacuum-merge-nearest model above is WRONG.** (2026-07-15; ``data/traces/
+su15.npz`` replayed frame-by-frame + confirmed live.)
+
+1. **A single PLAYER follows clicks EXACTLY.** Across all 9 gold levels the
+   moving entity is ONE blob (colour 0, ~48-52 cells) whose centroid lands
+   AT the click point every step (click-distance -> 0). A live follow-test
+   (five clicks 7px apart along a diagonal) reproduced it: one colour-0
+   size-48 region sat on each click, dist 0, every time. The small static
+   tiles near a click (e.g. ``(53, 10)`` colour 0 size 5, the iteration-7
+   "target") are DECOYS/anchors -- they never move. So the reopen's guess
+   was RIGHT that the ~50-cell blob is the controlled entity, but the
+   mechanic is not "vacuum pulls a distant object toward the click" -- it is
+   "the PLAYER moves to wherever you click". There is NO vacuum, NO
+   click-near-a-tile-to-drag-it; the region nearest the click is irrelevant.
+2. **The gold trace TRANSFERS to the live env.** Replaying gold's exact 101
+   clicks on the live ``su15-1944f8ab`` env (gold was recorded on
+   ``su15-4c352900``) clears ALL 9 levels (WIN) -- su15's per-level layouts
+   are identical across hashes; the hash is cosmetic. So gold's clicks are a
+   valid oracle for every level here.
+3. **The WIN is a stateful MERGE/CONVERSION, not "reach a goal tile"
+   (falsified two ways).** (a) Steering the player ONTO the largest colour-9
+   tile (they merge into one region at its centroid) does NOT clear L0. (b)
+   Steering the player to gold's exact winning cell ``(19, 44)`` and holding
+   does NOT clear L0 either. Gold cleared L0 on the specific click that moved
+   the player ``(24,39)->(19,44)`` while the colour histogram changed
+   ``{9: -8, 5: +11, 3: -1}`` -- i.e. the player's diagonal SWEEP converts
+   tiles as it passes, and the level clears when the swept configuration
+   reaches the goal spec, not when the player reaches a position.
+4. **Enemies exist and cause GAME_OVER on contact.** Steering the player
+   toward a colour-3 tile GAME_OVERed within ~5 steps -- colour-3 (and
+   similar small tiles) behave like the wiki's "enemies chase / downgrade".
+
+**NAMED MISSING CAPABILITY (the redirected reopen):** REPLACE this module's
+vacuum-merge model with player-steering navigation -- (i) identify the
+player as the colour-0 blob that lands on the last click (or the largest
+movable non-container blob); (ii) decode the MERGE/CONVERSION rules (what the
+player's contact/sweep does to each tile colour, and what target
+configuration -- from the goal spec -- triggers the level clear); (iii) plan
+a collecting SWEEP path that reaches that configuration while AVOIDING enemy
+tiles; (iv) steer with :func:`admorphiq.kernels.point_toward` (already
+correct). The player-steering primitive is trivial (the player follows
+clicks); the depth is entirely in the merge-rule decode + collecting-path
+plan. Gold (9/9 live) is the oracle for validating any such planner.
+
 Role assignment (declared HERE, not in the kernel layer, which knows
 nothing about tiles, goals, enemies, or merging):
 
