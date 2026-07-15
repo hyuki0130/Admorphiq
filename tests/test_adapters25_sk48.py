@@ -19,9 +19,11 @@ from admorphiq.adapters25.sk48 import (
     _CellObj,
     _Head,
     _is_seg,
+    _parse_arena,
     _parse_budget,
     _parse_cells,
     _parse_gates,
+    _parse_heads,
     _parse_state,
     _Rect,
     _search,
@@ -163,3 +165,50 @@ def test_parse_gates_merges_stacked_rails():
     assert any(gt.x == 13 and gt.y == 14 and gt.h >= 16 for gt in gates)
     # a check-point inside the rail is contained (enables a side-push there)
     assert any(gt.contains(13, 20) for gt in gates)
+
+
+def test_parse_arena_recovers_occluded_floor():
+    """Purpose: on deeper levels an edge snake / target cells occlude the top and
+    interior of the colour-4 floor, so a per-row-run scan under-reads the arena
+    height (measured on agent-L2: it returned y0=30 instead of 6, and search
+    then found nothing). The connected-component bbox must recover the FULL
+    rect around interior holes, while ignoring the disconnected colour-4 pixels
+    inside a head box sitting in the left corridor.
+    Expected feedback: a shrunk arena walls off the reachable cells and the A*
+    silently returns None — the level regresses to the 0/8 explorer."""
+    g = [[5] * 64 for _ in range(64)]
+    # a 40x40 colour-4 floor at (11,6)
+    for r in range(6, 46):
+        for c in range(11, 51):
+            g[r][c] = 4
+    # an edge snake occludes a vertical strip (cols 29-34) for the top rows only
+    for r in range(6, 30):
+        for c in range(29, 35):
+            g[r][c] = 11
+    # a head box in the LEFT corridor carries interior colour-4 pixels,
+    # disconnected from the floor (must not extend the bbox left)
+    g[43][7] = g[43][8] = 4
+    arena = _parse_arena(tuple(tuple(r) for r in g))
+    assert arena is not None
+    assert (arena.x, arena.y) == (11, 6)
+    assert (arena.w, arena.h) == (40, 40)
+
+
+def test_parse_heads_detects_colour5_bordered_edge_snake():
+    """Purpose: the obstacle snakes (xtuqlbebvk/zkekdulqku) render with a
+    background-colour border, so only their 2x2 colour-10/11 CENTRE block shows;
+    the head origin is (block_col-2, block_row-2). Without this the edge snake's
+    body is orphaned and the whole level (agent-L2) fails to reconstruct.
+    Expected feedback: a miss drops the edge snake, so the simulator's physics
+    and cell layout diverge from the engine and the found plan does not win
+    live; a wrong origin walks the body from the wrong anchor."""
+    g = [[5] * 64 for _ in range(64)]
+    # colour-11 centre block at (31,2) -> head origin (29,0)
+    g[2][31] = g[2][32] = g[3][31] = g[3][32] = 11
+    # a visible colour-6 head box at (5,42) must still be found alongside it
+    for k in range(6):
+        g[42][5 + k] = g[47][5 + k] = 6
+    g[43][5] = g[46][5] = 6
+    heads = _parse_heads(tuple(tuple(r) for r in g))
+    assert (29, 0, 11) in heads
+    assert (5, 42, 6) in heads

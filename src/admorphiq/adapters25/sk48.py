@@ -38,14 +38,28 @@ simulator was validated in lockstep against the live engine internals (gold L0
 to real engine wins). At runtime the adapter reconstructs the simulator state
 from the frame alone (:func:`_parse_state`), searches offline, and executes the
 found move sequence, re-planning per level. It is GATED: if the frame parse or
-search fails (e.g. levels whose non-controllable snakes have colour-5-bordered
-near-invisible heads at the frame edge — a NAMED divergence, L2+), it falls
-back to the transition-graph explorer, preserving the 0/8 floor.
+search fails, it falls back to the transition-graph explorer, preserving the
+0/8 floor.
+
+**The colour-5-bordered edge snakes (:func:`_parse_heads`, R56b).** From
+agent-L2 (source ``Level 3``) on, levels add a partner-LESS obstacle snake whose
+head (``xtuqlbebvk``/``zkekdulqku``) renders with a background-colour border, so
+only its 2x2 colour-10/11 CENTRE block shows. The engine pairs snakes by that
+centre pixel (== the border colour for the visible ``ejlpqgojjt``/``udbuodqlxv``
+heads), so ``_parse_heads`` detects both renderings and the body walk
+reconstructs the obstacle; ``active`` is pinned to a CONTROLLABLE (partnered)
+head so A* moves the right snake. The floor rect is recovered as the largest
+colour-4 CONNECTED COMPONENT's bbox (:func:`_parse_arena`) because those
+obstacle snakes + target cells occlude the floor's top/interior, defeating the
+old per-row-run scan.
 
 **Measured (R56 dedicated session, 2026-07-15):** frame-parsed sim+search
-clears **L0 (14 moves, human 61) + L1 (31 moves, human 177)** — SUPER-HUMAN,
-SK48's first stable generic clear, retiring the last original 0-bank. L2+ gate
-to the explorer (edge-snake parse divergence, banked).
+clears **L0 (14 moves, human 61) + L1 (31 moves, human 177) + L2 (36 moves,
+human 101)** — all SUPER-HUMAN, 3/8, game_score 0.1667 (deterministic x2). The
+remaining wall is ACTION6 MULTI-SNAKE selection: agent-L3+ (source ``Level 4``
+on) have TWO+ controllable snakes each matching its own template, so a
+single-active-snake A* cannot win; the parse succeeds but search gates to the
+explorer, and modelling snake selection in the search is a separate round.
 
 Composition from ``admorphiq.kernels`` (fallback explorer only):
   - :func:`admorphiq.kernels.find_regions` masks the edge/divider HUD bands.
@@ -85,6 +99,7 @@ _DIVIDER = 53  # fzjeqdahvs: TOP arena above, BOTTOM template below
 _BUDGET_MAX = 196  # qiercdohl per level
 _CELL_COLORS = (8, 9, 12, 14)  # target-cell (elmjchdqcn) remap colours
 _HEAD_BORDER = (6, 15)  # visible head-box border colours (ejlpqgojjt/udbuodqlxv)
+_EDGE_HEAD_CORE = (10, 11)  # colour-5-bordered head centres (xtuqlbebvk/zkekdulqku)
 # rotation -> facing direction (hhvuoijeua); action id -> move (ghcqtpzzlq)
 _DIRS = {0: (1, 0), 90: (0, 1), 180: (-1, 0), 270: (0, -1)}
 _MOVES = {1: (0, -1), 2: (0, 1), 3: (-1, 0), 4: (1, 0)}
@@ -427,7 +442,20 @@ def _parse_cells(grid: Grid) -> list[_CellObj]:
 
 
 def _parse_heads(grid: Grid) -> list[tuple[int, int, int]]:
-    """6x6 boxes with a solid colour-6/15 border -> (x, y, border_colour)."""
+    """Snake head boxes -> (x, y, id_colour).
+
+    Two renderings share the ``epdquznwmq`` tag and the same win-relevant
+    identity (the engine pairs snakes by the head sprite's centre pixel, which
+    equals the border colour for the visible boxes):
+
+    - Visible control/template heads: 6x6 boxes with a solid colour-6/15 border.
+    - Colour-5-bordered heads (``xtuqlbebvk``/``zkekdulqku``, the partner-less
+      obstacle snakes on deeper levels): the border is background so only the
+      2x2 colour-10/11 CENTRE block renders. Its top-left sits at (x+2, y+2)
+      under every rotation (the block is rotation-symmetric), so the head origin
+      is (block_col-2, block_row-2). Detecting these is what lets the body walk
+      reconstruct the edge snake the head-border scan misses.
+    """
     h, w = len(grid), len(grid[0])
     out: list[tuple[int, int, int]] = []
     for r in range(h - 5):
@@ -440,6 +468,15 @@ def _parse_heads(grid: Grid) -> list[tuple[int, int, int]]:
             side = grid[r + 1][c] == b and grid[r + 4][c] == b
             if top and bot and side:
                 out.append((c, r, b))
+    seen: set[Cell] = set()
+    for r in range(h - 1):
+        for c in range(w - 1):
+            v = grid[r][c]
+            if v not in _EDGE_HEAD_CORE or (r, c) in seen:
+                continue
+            if grid[r][c + 1] == v and grid[r + 1][c] == v and grid[r + 1][c + 1] == v:
+                seen |= {(r, c), (r, c + 1), (r + 1, c), (r + 1, c + 1)}
+                out.append((c - 2, r - 2, v))
     return out
 
 
@@ -454,27 +491,44 @@ def _is_seg(grid: Grid, x: int, y: int, horiz: bool) -> bool:
     return all(v in (1, 2, 3) for v in e) and e[0] != e[1]
 
 
+def _flood4(grid: Grid, r0: int, c0: int, seen: set[Cell]) -> list[Cell]:
+    """4-connected colour-4 component above the divider from a seed."""
+    comp: list[Cell] = []
+    stack = [(r0, c0)]
+    seen.add((r0, c0))
+    w = len(grid[0])
+    while stack:
+        r, c = stack.pop()
+        comp.append((r, c))
+        for dr, dc in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            nr, nc = r + dr, c + dc
+            if 0 <= nr < _DIVIDER and 0 <= nc < w and (nr, nc) not in seen and grid[nr][nc] == 4:
+                seen.add((nr, nc))
+                stack.append((nr, nc))
+    return comp
+
+
 def _parse_arena(grid: Grid) -> _Rect | None:
-    """Largest solid colour-4 rectangle above the divider (the floor sprite)."""
-    rows_runs = []
+    """Bounding box of the LARGEST colour-4 connected component above the
+    divider (the floor sprite). A connected component — not a per-row run —
+    because on deeper levels sprites (edge snakes, target cells) occlude the
+    interior/top of the floor, breaking the run-based scan; the floor stays one
+    4-connected region around those holes, and head-interior colour-4 pixels
+    (which sit in the corridor, disconnected from the floor) form small separate
+    components that lose to the floor on size."""
+    seen: set[Cell] = set()
+    best: list[Cell] = []
     for r in range(_DIVIDER):
-        best = cur = start = bestc = 0
         for c in range(len(grid[0])):
-            if grid[r][c] == 4:
-                if cur == 0:
-                    start = c
-                cur += 1
-                if cur > best:
-                    best, bestc = cur, start
-            else:
-                cur = 0
-        rows_runs.append((best, bestc, r))
-    maxrun = max(rows_runs, key=lambda t: t[0])
-    if maxrun[0] < 12:
+            if grid[r][c] == 4 and (r, c) not in seen:
+                comp = _flood4(grid, r, c, seen)
+                if len(comp) > len(best):
+                    best = comp
+    if len(best) < 12:
         return None
-    width, c0, _r = maxrun
-    rset = [r for (run, cc, r) in rows_runs if run >= width - 2 and abs(cc - c0) <= 4]
-    return _Rect(c0, min(rset), width, max(rset) - min(rset) + 1)
+    rs = [p[0] for p in best]
+    cs = [p[1] for p in best]
+    return _Rect(min(cs), min(rs), max(cs) - min(cs) + 1, max(rs) - min(rs) + 1)
 
 
 def _parse_gates(grid: Grid) -> list[_Rect]:
@@ -557,7 +611,10 @@ def _parse_state(grid: Grid) -> dict[str, Any] | None:
     if not partner:
         return None
 
-    active = min(tops, key=lambda h: (h.y, h.x))
+    # Active must be a CONTROLLABLE snake (one that has a template partner); the
+    # partner-less edge snakes are top-of-arena too but are obstacles, and would
+    # otherwise win the (y, x) tie-break at the frame edge and misdirect A*.
+    active = min((h for h in tops if id(h) in partner), key=lambda h: (h.y, h.x))
     return {
         "heads": heads, "bodies": bodies, "cells": _parse_cells(grid), "partner": partner,
         "check_count": check_count, "active": active, "arena": arena,
