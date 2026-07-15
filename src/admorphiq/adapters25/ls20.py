@@ -163,12 +163,29 @@ corrupts the recorded edges enough that the discovered graph represents only a
 there. The whole experimental build was reverted (no L2 clear = no score, and it
 was not L1-byte-identical); L2 stays 1/7, floor pristine.
 
-Reopen (the real one): stop keying state on the aliased frame. The environment
-is deterministic from reset, so key exploration state by the AGENT'S OWN ACTION
-PREFIX since the last death/start (ground truth, alias-free) rather than the
-frame hash — then the graph is faithful, open-loop legs (already proven to
-survive) reach the changer, and the validated refill+45-action plan pays off.
-Obstacle 3 (moving hazards + fog) stays banked for L3+.
+The ACTION-PREFIX reopen was then PROTOTYPED (R56d, 2026-07-15) and MEASURED —
+and it too banks, closing the L2 investigation for the frame-keyed paradigm.
+Prefix-keying is sound in principle (replaying a stored prefix from root is
+deterministic, so it reaches its frontier reliably where the aliased graph did
+not), but the prototype exposed the compounding blocker: to replay ANY prefix
+the agent must first be cleanly AT ROOT, and reaching root goes through the
+death -> full-frame OVERLAY -> settle transition, during which the frame does
+NOT hash to root (measured: root detection ``root_ok=False`` on every attempt),
+so replays never land on their frontier (``reached=False``). Behind that sits
+the irreducible cost: every frontier must be RE-REACHED from root each 21-action
+life (deaths reset position/token/goal), so covering the ~56-state life-reachable
+pocket is O(states x depth) ~ >1000 actions before the deep 45-action solution
+can even be stumbled on. Across FOUR rounds (refill / open-loop / deepest-first /
+prefix) coverage peaked at 37 of 56 states and the agent NEVER reached the
+rotation changer (max avatar x = 39 vs its 49). L2 rests at 1/7.
+
+Settled conclusion: L2 is winnable (validated 45-action live plan) but NOT via
+frame-keyed online exploration under full-reset 21-action lives — the
+exploration economics don't close in budget. A future attempt would need a
+different substrate entirely: an OFFLINE maze reconstruction (walls/changer/
+refills/goal parsed from the frame, like the sk48 simulator) + the already-proven
+joint BFS, executed open-loop. Obstacle 3 (moving hazards + fog) stays banked for
+L3+.
 
 Composition from ``admorphiq.kernels``:
   - :func:`admorphiq.kernels.find_regions` segments each frame into the
