@@ -375,3 +375,100 @@ def plan_delivery(
         plan.append(interact_label)
         cur = deliver[1]
     return plan
+
+
+def plan_carry_delivery(
+    worker: Cell,
+    pickups: Sequence[Cell],
+    targets: Sequence[Cell],
+    carry_offset: Cell,
+    passable: Sequence[Sequence[object]],
+    move_labels: dict[Cell, Hashable],
+    interact_label: Hashable,
+    match: Callable[[int, int], bool] | None = None,
+    max_states: int = 100_000,
+) -> list[Hashable] | None:
+    """Plan a delivery where a carried object FOLLOWS the worker at a fixed offset.
+
+    The offset-routing generalisation of :func:`plan_delivery` for carry /
+    follower games: an object picked up rides at ``carry_offset`` from the
+    worker (``object_cell == worker_cell + carry_offset``) until dropped. To
+    seat the object ON a cell ``C`` — whether that is a pickup point (stand so
+    the object-to-be lies at ``C``) or a delivery target (stand so the carried
+    object lands on ``C``) — the worker must be at ``C - carry_offset``. So
+    every leg routes the worker to ``cell - carry_offset`` and interacts there,
+    which is the whole trick: seating a fixed-offset follower on a target is
+    pure translation of the target by ``-carry_offset``.
+
+    Assigns each target a pickup (:func:`admorphiq.kernels.assign_pairs`, min
+    Manhattan cost, optional ``match(pi, ti)`` gate), orders the pairs
+    nearest-first from the worker's running position, and for each routes
+    ``worker -> (pickup - carry_offset)`` interact ``-> (target - carry_offset)``
+    interact via :func:`grid_shortest_path` + :func:`path_to_moves`.
+
+    Returns the action-label list, ``[]`` when there are no targets, or
+    ``None`` when infeasible (more targets than pickups, no compatible pickup,
+    or an unroutable leg). ``move_labels`` maps the four cardinal steps to
+    action labels; ``interact_label`` is the pick/drop action.
+
+    Note: like :func:`plan_delivery`, this plans the ROUTES and interaction
+    points, not game-specific interaction preconditions (a facing/rotation the
+    pick may require, or follower-collision along the carry path). A caller
+    whose game needs those refines the returned sequence (e.g. inserts a
+    facing nudge before a pickup interact) or encodes them in ``passable``.
+    Pure / no environment access.
+    """
+    if not targets:
+        return []
+    if not pickups or len(pickups) < len(targets):
+        return None
+    allowed = match if match is not None else (lambda _pi, _ti: True)
+    off_r, off_c = carry_offset
+
+    def _seat_cell(cell: Cell) -> Cell:
+        return (cell[0] - off_r, cell[1] - off_c)
+
+    def _route(frm: Cell, cell: Cell) -> list[Hashable] | None:
+        path = grid_shortest_path(passable, frm, _seat_cell(cell))
+        if path is None:
+            return None
+        return path_to_moves(path, move_labels)
+
+    def _manhattan(a: Cell, b: Cell) -> int:
+        return abs(a[0] - b[0]) + abs(a[1] - b[1])
+
+    ineligible = -(1 << 30)
+    score_matrix = [
+        [(-_manhattan(pu, tg) if allowed(pi, ti) else ineligible) for ti, tg in enumerate(targets)]
+        for pi, pu in enumerate(pickups)
+    ]
+    pairs = [(pi, ti) for pi, ti in assign_pairs(score_matrix) if allowed(pi, ti)]
+    if len(pairs) < len(targets):
+        return None
+
+    remaining = list(pairs)
+    cur = worker
+    plan: list[Hashable] = []
+    while remaining:
+        best_idx: int | None = None
+        best_route: list[Hashable] | None = None
+        for k, (pi, _ti) in enumerate(remaining):
+            route = _route(cur, pickups[pi])
+            if route is None:
+                continue
+            if best_route is None or len(route) < len(best_route):
+                best_idx = k
+                best_route = route
+        if best_idx is None or best_route is None:
+            return None
+        pi, ti = remaining.pop(best_idx)
+        plan.extend(best_route)
+        plan.append(interact_label)
+        cur = _seat_cell(pickups[pi])
+        deliver = _route(cur, targets[ti])
+        if deliver is None:
+            return None
+        plan.extend(deliver)
+        plan.append(interact_label)
+        cur = _seat_cell(targets[ti])
+    return plan

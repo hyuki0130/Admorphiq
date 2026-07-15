@@ -50,6 +50,7 @@ from admorphiq.kernels.paths import (
     grid_distance_field,
     grid_shortest_path,
     path_to_moves,
+    plan_carry_delivery,
     plan_delivery,
     reachable_frontier,
     transition_shortest_path,
@@ -61,6 +62,7 @@ from admorphiq.kernels.regions import (
     multisets_equal,
     region_relations,
     size_clusters,
+    template_occupancy,
     tile_bbox,
 )
 from admorphiq.kernels.rewrite import derive_rewrites, find_derivation, greedy_parse
@@ -84,6 +86,7 @@ __all__ = [
     "grid_distance_field",
     "grid_shortest_path",
     "path_to_moves",
+    "plan_carry_delivery",
     "plan_delivery",
     "reachable_frontier",
     "transition_shortest_path",
@@ -106,6 +109,7 @@ __all__ = [
     "multiset_signature",
     "multisets_equal",
     "size_clusters",
+    "template_occupancy",
     "tile_bbox",
     "canonical_key",
     "choose_canonicalization",

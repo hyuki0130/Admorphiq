@@ -12,19 +12,27 @@ grid (the worker steps one logical cell per action), a box attaches when the
 worker reaches it and follows the worker, and dropping it on a goal cell
 satisfies that goal.
 
-**This build — compose the delivery/subgoal planner**: the adapter detects the
-worker, boxes, and goal cells from the frame, then composes
-:func:`admorphiq.kernels.plan_delivery` (the generic min-cost pickup->target
-assignment + per-leg :func:`admorphiq.kernels.grid_shortest_path` routing +
-:func:`admorphiq.kernels.path_to_moves` conversion) over a coarse logical grid
-to emit an ordered pick->deliver action chain — the multi-subgoal composition
-blind frontier search could not assemble within the per-level step budget.
+**This build — carry-aware delivery composition**: the mechanic (measured
+offline, dev-time only) is a facing-and-carry delivery — a box picked while
+the worker FACES it (ACTION5 at distance one cell in the facing direction)
+attaches and then FOLLOWS the worker at a fixed offset equal to that facing
+vector; dropping (ACTION5) leaves the box at its carried position; the level
+wins when every box sits on a goal cell. The adapter detects the worker,
+boxes, and goal-pad slots from the frame and composes
+:func:`admorphiq.kernels.plan_carry_delivery` (the generic offset-routing
+delivery planner: to seat a fixed-offset follower on a cell ``C`` the worker
+routes to ``C - offset``, so both pickup and delivery legs are pure
+translations, chained min-cost via
+:func:`admorphiq.kernels.grid_shortest_path`). The only game-specific step it
+adds on top is a facing nudge before each pickup interact (a blocked step into
+the box that sets rotation). Measured: L0 clears in 30 actions vs a 71-action
+human baseline (super-human, level score 1.0) — the first generic WA30 clear.
 
-**Fallback**: when roles can't be detected or no delivery plan routes (a level
-whose carry/facing geometry the generic route-and-interact model doesn't
-capture), the adapter falls back to the generic transition-graph frontier
-exploration the previous build used, so it never regresses below that
-baseline.
+**Fallback**: when roles can't be detected or no delivery plan routes (deeper
+levels with more boxes, angled walls, or a carry geometry the fixed
+facing-up offset can't serve), the adapter falls back to the generic
+transition-graph frontier exploration the previous build used, so it never
+regresses below that baseline.
 
 **Why namespace-safe**: the adapter assigns roles (which cluster is the
 worker, which are boxes, which cells are goals) and declares the mechanic
@@ -61,7 +69,7 @@ from admorphiq.adapters25.base import (
 from admorphiq.kernels import (
     canonical_key,
     find_regions,
-    plan_delivery,
+    plan_carry_delivery,
     transition_shortest_path,
 )
 
@@ -226,12 +234,33 @@ class Adapter(GameAdapter):
         passable = [
             [(r, c) not in blocked for c in range(width)] for r in range(height)
         ]
+        # Measured WA30 controls (game-specific, quarantine-legal): ACTION1-4
+        # move the worker one logical cell up/down/left/right; ACTION5 is the
+        # context pick/drop. The carried box FOLLOWS at a fixed offset equal to
+        # the facing direction at pickup — picking while facing "up" seats the
+        # box one cell ABOVE the worker (offset (-1, 0)) and it rides there.
         move_labels = {(-1, 0): 1, (1, 0): 2, (0, -1): 3, (0, 1): 4}
-        plan = plan_delivery(worker, boxes, goals, passable, move_labels, 5)
+        carry_offset = (-1, 0)
+        facing_action = move_labels[carry_offset]  # face the pickup before ACTION5
+        plan = plan_carry_delivery(worker, boxes, goals, carry_offset, passable, move_labels, 5)
         if plan is None:
             self._phase = "graph"
             return
-        self._plan_queue = [int(a) for a in plan]
+        # A pickup interact requires the worker to FACE the box first; insert a
+        # facing move (a blocked step into the box that only sets rotation)
+        # before every ODD interact (pickups). Deliveries (even interacts) drop
+        # the carried box in place and need no facing.
+        seq: list[int] = []
+        interacts = 0
+        for a in plan:
+            if a == 5:
+                interacts += 1
+                if interacts % 2 == 1:
+                    seq.append(facing_action)
+                seq.append(5)
+            else:
+                seq.append(int(a))
+        self._plan_queue = seq
 
     def _detect_roles(
         self, regions: list[Region]

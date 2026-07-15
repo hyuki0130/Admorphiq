@@ -342,3 +342,42 @@ def test_plan_delivery_empty_targets_is_empty_plan():
     Expected feedback: failure means the caller can't distinguish a solved
     board from an unsolvable one."""
     assert plan_delivery((0, 0), [(0, 4)], [], _OPEN6, _ML, 5) == []
+
+
+# ── plan_carry_delivery (fixed-offset follower delivery) ────────────────────
+
+from admorphiq.kernels.paths import plan_carry_delivery  # noqa: E402
+
+
+def test_plan_carry_delivery_seats_follower_on_targets_via_offset():
+    """Purpose: a carried object rides at a fixed offset from the worker; to
+    seat it on a target the worker must stand at target - offset. The plan's
+    interact points, replayed, must place the worker at (pickup - offset) and
+    (target - offset) — the whole offset-routing trick.
+    Expected feedback: failure means the follower lands one offset away from
+    every target, so no carry-game delivery ever completes."""
+    offset = (-1, 0)  # object rides one cell ABOVE the worker
+    plan = plan_carry_delivery((5, 0), [(0, 0)], [(0, 5)], offset, _OPEN6, _ML, 9)
+    assert plan is not None
+    assert plan.count(9) == 2
+    pos, interacted = _apply((5, 0), plan, _ML)
+    pick_from, drop_from = interacted
+    assert pick_from == (0 - offset[0], 0 - offset[1])   # (1, 0): object at (0,0)
+    assert drop_from == (0 - offset[0], 5 - offset[1])   # (1, 5): object lands on (0,5)
+
+
+def test_plan_carry_delivery_two_targets_and_infeasible_cases():
+    """Purpose: chaining two follower deliveries yields four interacts; and
+    the infeasible guards (more targets than pickups, unroutable seat cell)
+    return None so the adapter falls back.
+    Expected feedback: failure means either the multi-delivery chain is broken
+    or an impossible carry plan is 'executed' instead of falling back."""
+    off = (-1, 0)
+    plan = plan_carry_delivery((5, 0), [(2, 0), (2, 4)], [(0, 1), (0, 5)], off, _OPEN6, _ML, 9)
+    assert plan is not None and plan.count(9) == 4
+    assert plan_carry_delivery((5, 0), [(0, 0)], [(0, 3), (0, 5)], off, _OPEN6, _ML, 9) is None
+    # seat cell for the target is off-grid (target (0,c) - offset (-1,0) = (1,c) ok),
+    # but a target whose seat cell is blocked is unroutable:
+    wall = [[True] * 6 for _ in range(6)]
+    wall[1][5] = False  # the seat cell (1,5) for target (0,5) is blocked
+    assert plan_carry_delivery((5, 0), [(0, 0)], [(0, 5)], off, wall, _ML, 9) is None
