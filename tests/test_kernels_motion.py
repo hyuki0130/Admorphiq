@@ -437,3 +437,104 @@ def test_plan_reflection_coverage_returns_none_without_a_model():
     piece = {(2, 2), (2, 3)}
     assert plan_reflection_coverage(piece, [], {(2, 2)}, {4: (0, 1)}, (12, 12)) is None
     assert plan_reflection_coverage(piece, [("col", 19)], {(2, 2)}, {}, (12, 12)) is None
+
+
+# ── fluid-flow kernels (learn_flow_operators / simulate_flow / plan) ────────
+
+from admorphiq.kernels import (  # noqa: E402
+    learn_flow_operators,
+    plan_flow_coverage,
+    simulate_flow,
+)
+
+
+def _flow_layer(h, w, water_cells, bg=0, water=6):
+    g = [[bg] * w for _ in range(h)]
+    for r, c in water_cells:
+        g[r][c] = water
+    return tuple(tuple(row) for row in g)
+
+
+def test_learn_flow_operators_recovers_fall_direction_and_source():
+    """Purpose: from a spill's stacked animation layers (each layer one tick,
+    water accumulating a downward trail), learn_flow_operators must recover
+    the flowing colour, the unit fall direction, and the layer-0 emit cells —
+    the model simulate_flow/plan_flow_coverage are seeded from.
+    Expected feedback: failure means the SP80-class adapter learns the wrong
+    flow geometry (e.g. sideways instead of down) and every simulated layout
+    is wrong."""
+    layers = [
+        _flow_layer(8, 6, {(1, 3)}),
+        _flow_layer(8, 6, {(1, 3), (2, 3)}),
+        _flow_layer(8, 6, {(1, 3), (2, 3), (3, 3)}),
+    ]
+    model = learn_flow_operators(layers, background=0)
+    assert model["flow_color"] == 6
+    assert model["fall_dir"] == (1, 0)
+    assert model["source_cells"] == frozenset({(1, 3)})
+
+
+def test_simulate_flow_straight_fall_covers_a_target_interior():
+    """Purpose: with no obstacles, fluid falls straight down and satisfies a
+    target only when it enters the target's INTERIOR (both perpendicular
+    neighbours are the same region) — the exact SP80 win rule.
+    Expected feedback: failure means the coverage test is wrong (edge hits
+    counted as covered, or interior hits missed), so plans would be scored
+    against the wrong win condition."""
+    target = frozenset({(8, 3), (8, 4), (8, 5)})  # centre col 4
+    res = simulate_flow([(0, 4)], frozenset(), [target], (1, 0), (10, 10))
+    assert res["satisfied"] == frozenset({0})
+    # A source offset to a target EDGE column (3) is not an interior hit.
+    res_edge = simulate_flow([(0, 3)], frozenset(), [target], (1, 0), (10, 10))
+    assert res_edge["satisfied"] == frozenset()
+
+
+def test_simulate_flow_splits_around_a_block_to_cover_two_targets():
+    """Purpose: fluid hitting an obstacle must spread perpendicular to the
+    fall and resume falling off both edges, so ONE source can satisfy two
+    targets flanking a centred block — the core SP80 deflection mechanic the
+    learned model reproduces.
+    Expected feedback: failure means the split rule is wrong (water passes
+    through, or spreads the wrong way), so no two-target layout would ever
+    verify as a win in planning."""
+    block = frozenset({(3, 3), (3, 4), (3, 5)})  # centred under the source col 4
+    left = frozenset({(8, 1), (8, 2), (8, 3)})  # centre col 2
+    right = frozenset({(8, 5), (8, 6), (8, 7)})  # centre col 6
+    res = simulate_flow([(0, 4)], block, [left, right], (1, 0), (10, 10))
+    assert res["satisfied"] == frozenset({0, 1})
+
+
+def test_plan_flow_coverage_finds_a_block_placement_covering_all_targets():
+    """Purpose: plan_flow_coverage must search movable-block translations for
+    one whose simulated flow satisfies EVERY target, returning the shortest
+    action sequence — the SP80 layout-planning step.
+    Expected feedback: failure means the planner can't turn a learned flow
+    model into a covering layout, so L0 would fall back to slow blind search."""
+    # A 3-wide block one column left of centred; moving it right by 1 centres
+    # it under the source so the split reaches both target interiors.
+    movable = frozenset({(3, 2), (3, 3), (3, 4)})
+    delta_map = {4: (0, 1), 3: (0, -1)}
+    left = frozenset({(8, 1), (8, 2), (8, 3)})
+    right = frozenset({(8, 5), (8, 6), (8, 7)})
+    plan = plan_flow_coverage(movable, delta_map, frozenset(), [(0, 4)], [left, right], (1, 0), (10, 10))
+    assert plan is not None
+    # Execute the plan and confirm the resulting layout truly covers both.
+    anchor = (0, 0)
+    for a in plan:
+        dr, dc = delta_map[a]
+        anchor = (anchor[0] + dr, anchor[1] + dc)
+    placed = frozenset((r + anchor[0], c + anchor[1]) for r, c in movable)
+    res = simulate_flow([(0, 4)], placed, [left, right], (1, 0), (10, 10))
+    assert res["satisfied"] == frozenset({0, 1})
+
+
+def test_plan_flow_coverage_returns_none_without_a_model():
+    """Purpose: with no movable, no targets, no deltas, or a zero fall
+    direction the planner cannot predict any flow and must return None so the
+    adapter falls back to graph exploration.
+    Expected feedback: failure means the adapter would 'execute' an invalid
+    empty plan instead of falling back."""
+    mv = frozenset({(3, 2), (3, 3)})
+    assert plan_flow_coverage(mv, {}, frozenset(), [(0, 4)], [frozenset({(8, 4)})], (1, 0), (10, 10)) is None
+    assert plan_flow_coverage(mv, {4: (0, 1)}, frozenset(), [(0, 4)], [], (1, 0), (10, 10)) is None
+    assert plan_flow_coverage(mv, {4: (0, 1)}, frozenset(), [(0, 4)], [frozenset({(8, 4)})], (0, 0), (10, 10)) is None

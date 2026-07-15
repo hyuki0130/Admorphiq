@@ -27,6 +27,7 @@ where only the standard library and explicitly provided modules exist.
 
 from __future__ import annotations
 
+from collections import deque
 from collections.abc import Iterable, Mapping, Sequence
 
 from admorphiq.kernels._common import normalize_frame as _normalize_frame
@@ -650,6 +651,225 @@ def plan_reflection_coverage(
 
     def _goal(anchor: Shift) -> bool:
         return target <= _render(anchor)
+
+    def _successors(anchor: Shift) -> list[tuple[object, Shift]]:
+        out: list[tuple[object, Shift]] = []
+        for label, (dr, dc) in moves:
+            nxt = (anchor[0] + dr, anchor[1] + dc)
+            if _in_bounds(nxt):
+                out.append((label, nxt))
+        return out
+
+    return configuration_path((0, 0), _goal, _successors, max_states=max_states)
+
+
+# ── fluid flow ("learned flow operators") ──────────────────────────────────
+#
+# Provenance: extracted as the generic core of the SP80-class water-routing
+# family (``src/admorphiq/adapters25/sp80.py``), the fluid analogue of the
+# :func:`learn_point_operators`/:func:`plan_overwrites` and
+# :func:`learn_reflection_operators`/:func:`plan_reflection_coverage` pairs.
+# A fluid is emitted from source cells and streams in a fall direction,
+# flowing AROUND obstacles (spreading along an obstacle's leading face and
+# resuming its fall past the obstacle's edges); a target region is "covered"
+# only when fluid reaches its interior. This module learns the fall direction
+# from an observed spill (whose successive animation layers are its ticks),
+# simulates the flow for a caller-supplied obstacle layout, and plans a
+# movable-obstacle placement whose flow covers every target. It knows nothing
+# about water, blocks-as-roles, or actions — only frames, caller-declared
+# role cell sets, and a caller-supplied target list.
+
+
+def _centroid(cells: frozenset[Cell]) -> tuple[float, float]:
+    n = len(cells)
+    return (sum(r for r, _c in cells) / n, sum(c for _r, c in cells) / n)
+
+
+def learn_flow_operators(
+    layer_frames: Sequence[Sequence[Sequence[int]]], background: int | None = None
+) -> dict[str, object]:
+    """Learn a fluid-flow dynamics model from an observed spill animation.
+
+    ``layer_frames`` is the stack of same-shape frames a spill exposes as its
+    successive animation ticks (a mirror puzzle would use before/after pairs;
+    a spill exposes the whole trajectory at once, one layer per tick). Purely
+    from those frames this recovers:
+
+    - **flow_color**: the colour whose cell count strictly GROWS across the
+      early layers — the flowing substance accumulating a trail as it streams.
+    - **fall_dir**: the unit ``(dr, dc)`` direction the flow front advances,
+      taken from the dominant axis of the flow centroid's movement between the
+      first two layers it grows across (normalized to a unit step, so the
+      simulator fills every cell along the way regardless of the animation's
+      per-tick pixel stride).
+    - **source_cells**: the flow cells in the FIRST layer — the emit points a
+      simulation seeds from.
+
+    Returns ``{"flow_color", "fall_dir", "source_cells"}``; ``flow_color`` is
+    ``None`` and ``fall_dir`` ``(0, 0)`` when no growing-flow layer sequence
+    is present (the caller then falls back to a geometry-derived direction).
+    Pure / no environment access.
+    """
+    frames = [_normalize_frame(f) for f in layer_frames]
+    if len(frames) < 2:
+        return {"flow_color": None, "fall_dir": (0, 0), "source_cells": frozenset()}
+
+    def _color_cells(frame: Frame, color: int) -> frozenset[Cell]:
+        return frozenset(
+            (r, c) for r, row in enumerate(frame) for c, v in enumerate(row) if v == color
+        )
+
+    # The flowing substance: the colour whose count in layer 0 is smallest yet
+    # grows in layer 1 (a trail accumulating), excluding the background.
+    candidates: dict[int, int] = {}
+    for r, row in enumerate(frames[0]):
+        for v in row:
+            if background is None or v != background:
+                candidates[v] = candidates.get(v, 0) + 1
+    flow_color: int | None = None
+    for color in sorted(candidates, key=lambda k: (candidates[k], k)):
+        c0 = len(_color_cells(frames[0], color))
+        c1 = len(_color_cells(frames[1], color))
+        if c1 > c0:
+            flow_color = color
+            break
+    if flow_color is None:
+        return {"flow_color": None, "fall_dir": (0, 0), "source_cells": frozenset()}
+
+    source_cells = _color_cells(frames[0], flow_color)
+    prev = source_cells
+    fall_dir: Shift = (0, 0)
+    for frame in frames[1:]:
+        cur = _color_cells(frame, flow_color)
+        added = cur - prev
+        if added:
+            cr, cc = _centroid(added)
+            pr, pc = _centroid(prev)
+            dr, dc = cr - pr, cc - pc
+            fall_dir = (1, 0) if abs(dr) >= abs(dc) else (0, 1)
+            if abs(dr) >= abs(dc):
+                fall_dir = (1 if dr >= 0 else -1, 0)
+            else:
+                fall_dir = (0, 1 if dc >= 0 else -1)
+            break
+        prev = cur
+    return {"flow_color": flow_color, "fall_dir": fall_dir, "source_cells": source_cells}
+
+
+def _flow_targets_index(target_regions: Sequence[Iterable[Sequence[int]]]) -> dict[Cell, int]:
+    index: dict[Cell, int] = {}
+    for tid, region in enumerate(target_regions):
+        for cell in region:
+            index[(int(cell[0]), int(cell[1]))] = tid
+    return index
+
+
+def simulate_flow(
+    source_cells: Iterable[Sequence[int]],
+    blocked_cells: Iterable[Sequence[int]],
+    target_regions: Sequence[Iterable[Sequence[int]]],
+    fall_dir: Shift,
+    bounds: tuple[int, int],
+    max_cells: int = 1_000_000,
+) -> dict[str, object]:
+    """Simulate fluid flow from ``source_cells`` and report target coverage.
+
+    Fluid advances one cell per step in ``fall_dir``. When the cell ahead is
+    off-grid it stops; when it is ``blocked`` the fluid SPREADS to the two
+    cells perpendicular to ``fall_dir`` (flowing along the obstacle's leading
+    face) and continues from there — the generic "flow around an obstacle"
+    rule, no game physics assumed beyond the caller-declared fall direction.
+    A target region is marked SATISFIED when fluid enters a cell of it whose
+    two perpendicular neighbours are the SAME target region (an interior hit,
+    not a glancing edge). Deterministic BFS over wetted cells.
+
+    Returns ``{"satisfied": frozenset[int], "water_cells": frozenset[Cell]}``
+    — the indices of covered ``target_regions`` and every wetted cell. Pure /
+    no environment access.
+    """
+    height, width = bounds
+    blocked = _normalize_cells(blocked_cells)
+    target_of = _flow_targets_index(target_regions)
+    perp = ((fall_dir[1], fall_dir[0]), (-fall_dir[1], -fall_dir[0]))
+
+    satisfied: set[int] = set()
+    wet: set[Cell] = set()
+    queue: deque[Cell] = deque()
+    seen: set[Cell] = set()
+    for cell in source_cells:
+        c = (int(cell[0]), int(cell[1]))
+        if c not in seen:
+            seen.add(c)
+            queue.append(c)
+    while queue and len(seen) < max_cells:
+        r, c = queue.popleft()
+        wet.add((r, c))
+        nr, nc = r + fall_dir[0], c + fall_dir[1]
+        if not (0 <= nr < height and 0 <= nc < width):
+            continue
+        if (nr, nc) in blocked:
+            for dr, dc in perp:
+                lr, lc = r + dr, c + dc
+                if 0 <= lr < height and 0 <= lc < width and (lr, lc) not in seen and (lr, lc) not in blocked:
+                    seen.add((lr, lc))
+                    queue.append((lr, lc))
+            continue
+        tid = target_of.get((nr, nc))
+        if tid is not None:
+            left = (nr + perp[0][0], nc + perp[0][1])
+            right = (nr + perp[1][0], nc + perp[1][1])
+            if target_of.get(left) == tid and target_of.get(right) == tid:
+                satisfied.add(tid)
+                continue
+        if (nr, nc) not in seen:
+            seen.add((nr, nc))
+            queue.append((nr, nc))
+    return {"satisfied": frozenset(satisfied), "water_cells": frozenset(wet)}
+
+
+def plan_flow_coverage(
+    movable_cells: Iterable[Sequence[int]],
+    delta_map: Mapping[object, Shift],
+    static_blocked: Iterable[Sequence[int]],
+    source_cells: Iterable[Sequence[int]],
+    target_regions: Sequence[Iterable[Sequence[int]]],
+    fall_dir: Shift,
+    bounds: tuple[int, int],
+    max_states: int = 100_000,
+) -> list[object] | None:
+    """Plan a movable-obstacle placement whose flow covers every target.
+
+    Searches translations of ``movable_cells`` (moves drawn from ``delta_map``,
+    a ``{action_label: (dr, dc)}`` map of measured per-action displacements)
+    for one where :func:`simulate_flow` — over ``static_blocked`` plus the
+    translated movable obstacle — satisfies EVERY region in
+    ``target_regions``. The movable obstacle is kept fully on-grid at every
+    step. BFS via :func:`admorphiq.kernels.configuration_path` over the
+    movable's translation offsets, so the returned list of action labels is
+    the shortest such sequence, ``[]`` if the current placement already
+    covers, or ``None`` when no covering placement is reachable (or the model
+    is empty / ``fall_dir`` is zero). Pure / no environment access.
+    """
+    movable = _normalize_cells(movable_cells)
+    static = _normalize_cells(static_blocked)
+    n_targets = len(target_regions)
+    if not movable or not target_regions or not delta_map or fall_dir == (0, 0):
+        return None
+    height, width = bounds
+    r0 = min(r for r, _c in movable)
+    r1 = max(r for r, _c in movable)
+    c0 = min(c for _r, c in movable)
+    c1 = max(c for _r, c in movable)
+    moves = list(delta_map.items())
+    source = _normalize_cells(source_cells)
+
+    def _in_bounds(anchor: Shift) -> bool:
+        return 0 <= r0 + anchor[0] and r1 + anchor[0] < height and 0 <= c0 + anchor[1] and c1 + anchor[1] < width
+
+    def _goal(anchor: Shift) -> bool:
+        placed = frozenset((r + anchor[0], c + anchor[1]) for r, c in movable)
+        result = simulate_flow(source, static | placed, target_regions, fall_dir, bounds)
+        return len(result["satisfied"]) == n_targets  # type: ignore[arg-type]
 
     def _successors(anchor: Shift) -> list[tuple[object, Shift]]:
         out: list[tuple[object, Shift]] = []
