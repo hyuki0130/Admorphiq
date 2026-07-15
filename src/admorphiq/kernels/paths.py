@@ -27,6 +27,8 @@ from __future__ import annotations
 from collections import deque
 from collections.abc import Callable, Hashable, Iterable, Sequence
 
+from admorphiq.kernels.shapes import assign_pairs
+
 Cell = tuple[int, int]
 _CARDINAL: tuple[Cell, ...] = ((-1, 0), (1, 0), (0, -1), (0, 1))
 
@@ -260,3 +262,116 @@ def path_to_moves(
             )
         moves.append(move_labels[delta])
     return moves
+
+
+def _route_to_adjacent(
+    worker: Cell,
+    cell: Cell,
+    passable: Sequence[Sequence[object]],
+    move_labels: dict[Cell, Hashable],
+) -> tuple[list[Hashable], Cell] | None:
+    """Shortest route from ``worker`` to a passable cardinal neighbour of
+    ``cell``, as ``(move_labels, arrival_cell)``, or None if none is reachable.
+
+    Used to stand a worker NEXT to a pickup/target (an interaction happens
+    from an adjacent cell, not on top of the item). The neighbour with the
+    shortest path wins; ``move_labels`` converts the waypoint path to action
+    labels via :func:`path_to_moves`.
+    """
+    best: tuple[list[Cell], Cell] | None = None
+    for dr, dc in _CARDINAL:
+        neighbour = (cell[0] + dr, cell[1] + dc)
+        path = grid_shortest_path(passable, worker, neighbour)
+        if path is not None and (best is None or len(path) < len(best[0])):
+            best = (path, neighbour)
+    if best is None:
+        return None
+    return path_to_moves(best[0], move_labels), best[1]
+
+
+def plan_delivery(
+    worker: Cell,
+    pickups: Sequence[Cell],
+    targets: Sequence[Cell],
+    passable: Sequence[Sequence[object]],
+    move_labels: dict[Cell, Hashable],
+    interact_label: Hashable,
+    match: Callable[[int, int], bool] | None = None,
+    max_states: int = 100_000,
+) -> list[Hashable] | None:
+    """Compose an ordered pick->deliver action sequence covering every target.
+
+    Generic subgoal composition over a passability grid — the reusable core of
+    the delivery/sokoban family (a worker ferries pickups to target zones):
+
+    1. **Assign** each target a pickup at minimum total Manhattan pairing cost
+       (:func:`admorphiq.kernels.assign_pairs`), honouring an optional
+       ``match(pickup_index, target_index) -> bool`` gate (colour/shape
+       compatibility) — a disallowed pair is made ineligible.
+    2. **Order** the assigned pairs nearest-first from the worker's RUNNING
+       position (a pickup's adjacent approach nearest the worker goes next).
+    3. **Route** each pair: worker -> a passable cell adjacent to the pickup
+       (:func:`_route_to_adjacent`), ``interact_label``, -> a passable cell
+       adjacent to the target, ``interact_label`` — advancing the worker's
+       position to each arrival cell as legs chain.
+
+    ``move_labels`` maps the four cardinal ``(dr, dc)`` steps to action labels
+    (:func:`path_to_moves`); ``interact_label`` is the pick/drop action.
+    Returns the concatenated action-label list, or ``None`` when no feasible
+    assignment exists or any leg is unroutable. ``[]`` when there are no
+    targets. Pure / no environment access.
+
+    Note: this plans the ROUTES and the interaction points; it does not model
+    game-specific interaction preconditions (facing/rotation, carry-follow
+    collisions) — a caller whose game needs those refines the returned
+    sequence or supplies a passability grid that already encodes them.
+    """
+    if not targets:
+        return []
+    if not pickups or len(pickups) < len(targets):
+        return None
+    allowed = match if match is not None else (lambda _pi, _ti: True)
+
+    def _manhattan(a: Cell, b: Cell) -> int:
+        return abs(a[0] - b[0]) + abs(a[1] - b[1])
+
+    # Rows = pickups, cols = targets (pickups >= targets, so assign_pairs
+    # covers every target). Ineligible pairs get a large finite penalty so
+    # they are only chosen when no feasible pair can fill that target.
+    ineligible = -(1 << 30)
+    score_matrix = [
+        [(-_manhattan(pu, tg) if allowed(pi, ti) else ineligible) for ti, tg in enumerate(targets)]
+        for pi, pu in enumerate(pickups)
+    ]
+    assignment = assign_pairs(score_matrix)  # list of (pickup_index, target_index)
+    pairs = [(pi, ti) for pi, ti in assignment if allowed(pi, ti)]
+    if len(pairs) < len(targets):
+        return None  # some target has no compatible pickup
+
+    remaining = list(pairs)
+    cur = worker
+    plan: list[Hashable] = []
+    while remaining:
+        # Nearest assigned pickup (by real route length) from here.
+        best_idx: int | None = None
+        best_route: tuple[list[Hashable], Cell] | None = None
+        for k, (pi, _ti) in enumerate(remaining):
+            route = _route_to_adjacent(cur, pickups[pi], passable, move_labels)
+            if route is None:
+                continue
+            if best_route is None or len(route[0]) < len(best_route[0]):
+                best_idx = k
+                best_route = route
+        if best_idx is None or best_route is None:
+            return None
+        pi, ti = remaining.pop(best_idx)
+        plan.extend(best_route[0])
+        plan.append(interact_label)
+        cur = best_route[1]
+        deliver = _route_to_adjacent(cur, targets[ti], passable, move_labels)
+        if deliver is None:
+            return None
+        plan.extend(deliver[0])
+        plan.append(interact_label)
+        cur = deliver[1]
+    return plan

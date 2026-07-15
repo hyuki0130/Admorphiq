@@ -99,6 +99,19 @@ inference, or player/item semantics travels with the math.
 | `reachable_frontier(transitions, start_key, tried) -> list[(state, label)]` | `(state, label)` pairs reachable from `start_key` and not in the caller-supplied `tried` set, nearest-BFS-distance-first. Owns no novelty tracking itself. |
 | `configuration_path(initial, goal_test, successors, max_states=100_000) -> list[label] \| None` | Generic BFS over any hashable state space; `goal_test`/`successors` must be deterministic. `[]` when `initial` already satisfies `goal_test`. |
 | `path_to_moves(path, move_labels) -> list[label]` | Converts consecutive waypoint deltas to labels via a caller-supplied `{(dr,dc): label}` map; raises `ValueError` on an uncalibrated/non-adjacent hop. |
+| `plan_delivery(worker, pickups, targets, passable, move_labels, interact_label, match=None, max_states=100000) -> list[label] \| None` | Ordered pick->deliver subgoal composition: assign each target a pickup (`assign_pairs`, min Manhattan cost, optional `match(pi,ti)` gate), order the pairs nearest-first from the worker's running position, and route each `worker -> adjacent(pickup) -> interact -> adjacent(target) -> interact` leg (`grid_shortest_path` + `path_to_moves`). `[]` when no targets; `None` when infeasible (more targets than pickups, no compatible pickup, or an unroutable leg). Plans routes + interaction points only — does NOT model game-specific interaction preconditions (facing/rotation, carry-follow); a caller whose game needs those refines the result or encodes them in the passability grid. |
+
+The delivery planner (`plan_delivery`) is the generic "ordered subgoal
+composition over a worker + pickups + targets" core — the reusable half of the
+delivery/sokoban family (`admorphiq.adapters25.wa30`). It composes
+`assign_pairs` (from `shapes.py`) with `grid_shortest_path` / `path_to_moves`;
+`paths.py` therefore now imports `shapes.py` (no cycle: `shapes.py` is
+stdlib-only). It knows nothing about wa30 — the caller supplies the roles, the
+passability grid, the move-label map, and the interact action. Its deliberate
+limit (documented in its docstring): it plans routes and interaction points,
+not carry/facing physics, so a game whose delivery requires the carried item
+to follow the worker onto the goal needs that modelled by the adapter, not the
+kernel.
 
 ```python
 >>> grid_shortest_path([[True, False], [True, True]], (0,0), (1,1))

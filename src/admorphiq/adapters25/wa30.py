@@ -3,81 +3,43 @@
 *** QUARANTINE — MODEL-NEVER-VISIBLE. See admorphiq.adapters25's package
 docstring. ***
 
-``.wiki/wiki/games/WA30.md`` (read for reference, not imported) records
-WA30 as a delivery game the legacy ``wa30_analytical`` cleared 2/9 by
-reading sprite tags (``wbmdvjhthc`` worker, ``geezpjgiyd`` targets,
-``pkbufziase`` pickups) — brittle, non-transferable. The generic R23 8B
-agent scored 0/9 on it. ``docs/r57_win_condition_typology_20260715.md``
-mines it as a delivery type ("worker navigates pickups and drop-off
-zones"). Reading the game source offline (``environment_files/wa30/*/
-wa30.py``; dev-time only, the adapter reads only frames at runtime) confirms
-the mechanic exactly and — importantly — that it uses NO click:
+``.wiki/wiki/games/WA30.md`` (read for reference, not imported): a single
+WORKER moves with ACTION1-4 and uses ACTION5 as a context interact — picking
+up a box and delivering it to a goal zone. WIN = every box on a goal cell. The
+mechanic (read offline, dev-time only; the adapter reads only frames at
+runtime) is a facing-and-carry delivery: everything sits on a coarse logical
+grid (the worker steps one logical cell per action), a box attaches when the
+worker reaches it and follows the worker, and dropping it on a goal cell
+satisfies that goal.
 
-**Actual mechanic (pick-carry-drop delivery) — 5 simple actions, no
-coordinates**:
+**This build — compose the delivery/subgoal planner**: the adapter detects the
+worker, boxes, and goal cells from the frame, then composes
+:func:`admorphiq.kernels.plan_delivery` (the generic min-cost pickup->target
+assignment + per-leg :func:`admorphiq.kernels.grid_shortest_path` routing +
+:func:`admorphiq.kernels.path_to_moves` conversion) over a coarse logical grid
+to emit an ordered pick->deliver action chain — the multi-subgoal composition
+blind frontier search could not assemble within the per-level step budget.
 
-- A single WORKER moves on a grid. ``ACTION1..4`` move it one cell (with
-  collision / pushing). ``ACTION5`` is a context INTERACT: standing next to
-  a PICKUP item picks it up (the item disappears / the worker's appearance
-  changes to show it is carrying); standing next to a matching TARGET zone
-  delivers it.
-- WIN (the engine's ``ymzfopzgbq``): every TARGET zone is satisfied
-  (delivered to). Read from the source but NEVER hardcoded here — the
-  adapter reacts only to the engine's own WIN state.
-- A per-level step budget drives a GAME_OVER on exhaustion.
+**Fallback**: when roles can't be detected or no delivery plan routes (a level
+whose carry/facing geometry the generic route-and-interact model doesn't
+capture), the adapter falls back to the generic transition-graph frontier
+exploration the previous build used, so it never regresses below that
+baseline.
 
-**Why the generic transition-graph explorer FITS here (unlike the click /
-continuous-shape games)**: the entire delivery state — worker position,
-which pickups remain, which targets are satisfied, and whether the worker is
-currently carrying (its pixels change) — is fully visible in the frame, and
-the action set is just the 5 simple actions. So canonicalising the
-(HUD-masked) frame gives a faithful, DISCRETE state key, and the win is a
-reachability target in that state graph rather than a continuous placement.
-This is the exact shape the wiki's ``bfs_state_space`` template was meant
-for, re-expressed through namespace-safe kernels:
-
-  - Every board state is canonicalised into a hashable key
-    (:func:`admorphiq.kernels.canonical_key`, ``mode="exact"``) after the
-    edge-pinned HUD band (a bottom-row step counter) is masked
-    (:func:`admorphiq.kernels.find_regions` finds it), so the same
-    worker/item configuration always maps to the same key.
-  - Every observed ``(state, action, next_state)`` transition (moves
-    ACTION1-4 and the interact ACTION5) is recorded.
-  - The policy is systematic frontier expansion over that graph: an untried
-    action from the current state, else route
-    (:func:`admorphiq.kernels.transition_shortest_path`) to the nearest
-    visited state with an untried action (a small BFS over the same recorded
-    edges, :meth:`_nearest_untried` — mirroring
-    ``admorphiq.adapters25.tu93``'s reason for not using
-    :func:`admorphiq.kernels.reachable_frontier`: its universe is
-    already-OBSERVED edges only, so it cannot surface a state's never-
-    ATTEMPTED action).
-
-**Measured result — BANKED at 0/9**: Smoke:
-- ``--max-actions 1000``: 0/9 levels, game_score 0.0 (deterministic); also
-  0/9 at 5000 actions. The win chains SEVERAL deliveries (L0's human
-  baseline is 71 moves across multiple target zones), a multi-subgoal
-  planning problem blind frontier search does not compose before the
-  per-level step budget resets the attempt. The generic explorer clears
-  single-goal reachability (as on AR25/SP80/R11L level 0) but not chained
-  delivery. This is below the legacy `wa30_analytical` 2/9, which read
-  sprite tags + min-cost matching (0/9 generic, non-transferable).
-
-Reopen pointer: a generic delivery/subgoal-planner kernel (the codex
-verdict's ``delivery.py`` decomposition — closed-frame detection, size
-clustering, bbox/slot tiling, configuration-space BFS, path-to-action) that,
-from the detected worker + persistent pickup/target regions and the observed
-ACTION5 pick/deliver effect, plans a min-cost pickup→target assignment and
-routes via ``grid_shortest_path`` / ``configuration_path``.
+**Why namespace-safe**: the adapter assigns roles (which cluster is the
+worker, which are boxes, which cells are goals) and declares the mechanic
+hypothesis (delivery), but the assignment, routing, and path conversion all
+live in ``admorphiq.kernels`` — no hardcoded coordinates, colours, or bespoke
+search here.
 
 Composition from ``admorphiq.kernels``:
-  - :func:`admorphiq.kernels.find_regions` masks the edge-pinned HUD band
-    before canonicalisation.
-  - :func:`admorphiq.kernels.canonical_key` hashes the masked board (worker,
-    pickups, targets, carry-state) into a stable state key.
-  - :func:`admorphiq.kernels.transition_shortest_path` routes over the
-    incrementally-discovered transition graph to the nearest state with an
-    untried action.
+  - :func:`admorphiq.kernels.find_regions` segments the board (role detection,
+    HUD masking).
+  - :func:`admorphiq.kernels.plan_delivery` plans the pick->deliver chain over
+    the detected roles and a passability grid.
+  - :func:`admorphiq.kernels.canonical_key` /
+    :func:`admorphiq.kernels.transition_shortest_path` drive the graph
+    fallback.
 """
 
 from __future__ import annotations
@@ -96,7 +58,12 @@ from admorphiq.adapters25.base import (
     simple_action,
     state_name,
 )
-from admorphiq.kernels import canonical_key, find_regions, transition_shortest_path
+from admorphiq.kernels import (
+    canonical_key,
+    find_regions,
+    plan_delivery,
+    transition_shortest_path,
+)
 
 GAME_ID = "wa30"
 
@@ -105,15 +72,17 @@ Region = dict[str, Any]
 Grid = tuple[tuple[int, ...], ...]
 
 _GIVEUP_DEFAULT = 4000
-
 _HUD_SPAN_FRACTION = 0.85
 _HUD_THICKNESS_FRACTION = 0.06
+
+# The board is rendered at 4 px per logical cell (the worker steps one logical
+# cell = 4 px per action); planning runs on the downscaled logical grid.
+_CELL = 4
 
 
 def _is_hud_band(region: Region, height: int, width: int) -> bool:
     """A thin strip spanning most of one axis, OR pinned to a frame edge —
-    catches WA30's bottom-row step counter so the state key stays stable
-    across the ticking count."""
+    catches WA30's bottom-row step counter."""
     r0, c0, r1, c1 = region["bbox"]
     h, w = r1 - r0 + 1, c1 - c0 + 1
     thickness = max(1, int(height * _HUD_THICKNESS_FRACTION))
@@ -143,29 +112,33 @@ def _mask_hud(grid: Grid) -> Grid:
     )
 
 
+def _logical(cell_bbox: tuple[int, int, int, int]) -> Cell:
+    """The logical-grid cell of a region's bbox centre (frame px / _CELL)."""
+    r0, c0, r1, c1 = cell_bbox
+    return ((r0 + r1) // 2 // _CELL, (c0 + c1) // 2 // _CELL)
+
+
 class Adapter(GameAdapter):
-    """Generic transition-graph frontier exploration over HUD-masked
-    frame-canonical states (worker/pickup/target/carry state captured in the
-    key), composed from admorphiq.kernels."""
+    """Compose the delivery/subgoal planner over detected worker/box/goal
+    roles; fall back to generic transition-graph frontier exploration.
+    Composed from admorphiq.kernels."""
 
     GAME_ID = GAME_ID
 
     def __init__(self, giveup: int = _GIVEUP_DEFAULT) -> None:
-        # An exhausted per-level step budget ends the attempt in GAME_OVER;
-        # restart and keep the learned graph so each life compounds.
         self.restart_on_game_over = True
-
         self._giveup = giveup
         self._step = 0
         self._levels_seen = -1
 
+        # phase: "plan" (compute + execute a delivery chain once), "graph".
+        self._phase = "plan"
+        self._plan_queue: list[int] = []
+        self._planned = False
+
+        # graph-fallback state.
         self._pending_action: int | None = None
         self._pending_key: Any | None = None
-
-        # Incrementally-discovered transition graph over masked board states.
-        # ``_edges`` is the same graph as an adjacency map kept in step so
-        # _nearest_untried's BFS stays linear. All reset on level-up, kept
-        # across a mid-level GAME_OVER restart.
         self._transitions: list[tuple[Any, int, Any]] = []
         self._edges: dict[Any, dict[int, Any]] = {}
         self._tried_from: dict[Any, set[int]] = {}
@@ -181,9 +154,7 @@ class Adapter(GameAdapter):
             self._on_restart()
             return reset_action()
         if state == "NOT_PLAYED" or not has_frame(latest_frame):
-            self._pending_action = None
-            self._pending_key = None
-            self._levels_seen = -1
+            self._reset_for_new_env()
             return reset_action()
 
         grid = canonical_layer(latest_frame)
@@ -192,27 +163,23 @@ class Adapter(GameAdapter):
             self._on_level_up(levels)
 
         self._step += 1
-        cur_key = canonical_key(_mask_hud(grid), mode="exact")
-        self._observe_result(cur_key)
 
         simple_ids, _action6_ok = available_action_ids(latest_frame)
-        # Moves + the context INTERACT (ACTION5). WA30 exposes no coordinate
-        # action, so the whole alphabet is these 5 simple ids.
         act_ids = sorted(a for a in simple_ids if a in (1, 2, 3, 4, 5))
         if not act_ids:
-            self._pending_action = None
-            self._pending_key = None
             return simple_action(simple_ids[0]) if simple_ids else reset_action()
 
-        action = self._decide(cur_key, act_ids)
-        self._pending_action = action
-        self._pending_key = cur_key
-        return simple_action(action)
+        if self._phase == "plan":
+            return self._plan_step(grid, act_ids)
+        return self._graph_step(grid, act_ids)
 
     # ── level / restart bookkeeping ─────────────────────────────────────
 
     def _on_level_up(self, levels: int) -> None:
         self._levels_seen = levels
+        self._phase = "plan"
+        self._planned = False
+        self._plan_queue = []
         self._pending_action = None
         self._pending_key = None
         self._transitions = []
@@ -222,8 +189,126 @@ class Adapter(GameAdapter):
     def _on_restart(self) -> None:
         self._pending_action = None
         self._pending_key = None
+        if self._phase == "plan":
+            self._planned = False
+            self._plan_queue = []
 
-    # ── measurement: record the observed transition ─────────────────────
+    def _reset_for_new_env(self) -> None:
+        self._levels_seen = -1
+        self._on_level_up(-1)
+
+    # ── phase 1: compute + execute the delivery chain ───────────────────
+
+    def _plan_step(self, grid: Grid, act_ids: list[int]) -> GameAction:
+        if not self._planned:
+            self._planned = True
+            self._build_plan(grid)
+        if self._plan_queue:
+            a = self._plan_queue.pop(0)
+            return simple_action(a if a in act_ids else act_ids[0])
+        self._phase = "graph"
+        return self._graph_step(grid, act_ids)
+
+    def _build_plan(self, grid: Grid) -> None:
+        bg = most_common_color(grid)
+        masked = _mask_hud(grid)
+        regions = [r for r in find_regions(masked, background=bg) if not _is_hud_band(r, len(grid), len(grid[0]))]
+        roles = self._detect_roles(regions)
+        if roles is None:
+            self._phase = "graph"
+            return
+        worker, boxes, goals = roles
+        height = len(grid) // _CELL
+        width = len(grid[0]) // _CELL
+        # Passable everywhere except where a box currently sits (the worker
+        # cannot stand on a box); goal cells are passable delivery spots.
+        blocked = set(boxes)
+        passable = [
+            [(r, c) not in blocked for c in range(width)] for r in range(height)
+        ]
+        move_labels = {(-1, 0): 1, (1, 0): 2, (0, -1): 3, (0, 1): 4}
+        plan = plan_delivery(worker, boxes, goals, passable, move_labels, 5)
+        if plan is None:
+            self._phase = "graph"
+            return
+        self._plan_queue = [int(a) for a in plan]
+
+    def _detect_roles(
+        self, regions: list[Region]
+    ) -> tuple[Cell, list[Cell], list[Cell]] | None:
+        """Worker = the singleton marker colour (one region of a colour no
+        other region shares); boxes = the small same-shape cluster class;
+        goals = the logical cells of the largest remaining static region (the
+        delivery pad). All in logical-grid coordinates. None when the roles
+        can't be separated."""
+        if not regions:
+            return None
+        by_color: dict[int, list[Region]] = {}
+        for r in regions:
+            by_color.setdefault(r["color"], []).append(r)
+        # Worker: a colour owned by exactly one region (the mover).
+        singletons = [regs[0] for regs in by_color.values() if len(regs) == 1]
+        if not singletons:
+            return None
+        # Boxes: a same-colour class of 2+ regions that are all the SAME size
+        # (a uniform repeated sprite), preferring the most populous such class.
+        # This distinguishes the box class from an incidentally-shared colour
+        # whose regions differ in size (e.g. sprite cores + a large pad border
+        # both drawn in one colour).
+        uniform = [
+            (color, regs)
+            for color, regs in by_color.items()
+            if len(regs) >= 2 and len({r["size"] for r in regs}) == 1
+        ]
+        if not uniform:
+            return None
+        box_color, box_regs = max(uniform, key=lambda kv: (len(kv[1]), -kv[0]))
+        boxes = [_logical(r["bbox"]) for r in box_regs]
+        # Goal pad: the largest region whose colour is neither the box colour
+        # nor a box-core colour, tiled into its logical cells.
+        pad_candidates = [
+            r for r in regions if r["color"] != box_color and _logical(r["bbox"]) not in boxes
+        ]
+        if not pad_candidates:
+            return None
+        pad = max(pad_candidates, key=lambda r: r["size"])
+        goals = self._pad_cells(pad["bbox"], len(boxes))
+        # Worker: the singleton nearest in size to a box (the mover, not the pad).
+        worker_region = min(
+            singletons, key=lambda r: (abs(r["size"] - box_regs[0]["size"]), r["bbox"])
+        )
+        worker = _logical(worker_region["bbox"])
+        if not boxes or not goals:
+            return None
+        return worker, boxes, goals
+
+    def _pad_cells(self, bbox: tuple[int, int, int, int], count: int) -> list[Cell]:
+        """The distinct logical cells a delivery pad spans (its bbox sampled
+        on the logical grid), capped at ``count`` (one per box)."""
+        r0, c0, r1, c1 = bbox
+        cells: list[Cell] = []
+        seen: set[Cell] = set()
+        r = r0
+        while r <= r1:
+            c = c0
+            while c <= c1:
+                lc = (r // _CELL, c // _CELL)
+                if lc not in seen:
+                    seen.add(lc)
+                    cells.append(lc)
+                c += _CELL
+            r += _CELL
+        return cells[:count] if count else cells
+
+    # ── phase 2: generic transition-graph frontier fallback ─────────────
+
+    def _graph_step(self, grid: Grid, act_ids: list[int]) -> GameAction:
+        cur_key = canonical_key(_mask_hud(grid), mode="exact")
+        self._observe_result(cur_key)
+        action = self._decide(cur_key, act_ids)
+        self._pending_action = action
+        self._pending_key = cur_key
+        return simple_action(action)
 
     def _observe_result(self, cur_key: Any) -> None:
         action = self._pending_action
@@ -236,30 +321,23 @@ class Adapter(GameAdapter):
         self._edges.setdefault(prev_key, {})[action] = cur_key
         self._tried_from.setdefault(prev_key, set()).add(action)
 
-    # ── planning ─────────────────────────────────────────────────────────
-
     def _decide(self, cur_key: Any, act_ids: list[int]) -> int:
         tried = self._tried_from.get(cur_key, set())
         untried = [a for a in act_ids if a not in tried]
         if untried:
             return untried[0]
-
         target = self._nearest_untried(cur_key, act_ids)
         if target is not None and target != cur_key:
             path = transition_shortest_path(self._transitions, cur_key, target)
             if path:
                 return int(path[0])
-
         return act_ids[0]
 
     def _nearest_untried(self, start_key: Any, act_ids: list[int]) -> Any | None:
         """BFS over the KNOWN transition graph from ``start_key``; return the
-        nearest state (including ``start_key``) that still has an untried
-        action, or None if every reachable state is fully explored.
+        nearest state with an untried action, or None if fully explored.
         Hand-rolled rather than :func:`admorphiq.kernels.reachable_frontier`
-        for the same reason ``admorphiq.adapters25.tu93`` gives (its universe
-        is observed edges only, so it cannot surface a never-attempted
-        action)."""
+        for the same reason ``admorphiq.adapters25.tu93`` gives."""
         visited = {start_key}
         queue: deque[Any] = deque([start_key])
         while queue:

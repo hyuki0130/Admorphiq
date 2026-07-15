@@ -246,3 +246,99 @@ def test_path_to_moves_raises_on_non_adjacent_hop():
     path = [(0, 0), (5, 5)]
     with pytest.raises(ValueError):
         path_to_moves(path, {(0, 1): "right"})
+
+
+# ── plan_delivery (delivery/subgoal composition) ────────────────────────────
+
+from admorphiq.kernels.paths import plan_delivery  # noqa: E402
+
+_OPEN6 = [[True] * 6 for _ in range(6)]
+_ML = {(-1, 0): 1, (1, 0): 2, (0, -1): 3, (0, 1): 4}  # cardinal deltas -> action ids
+
+
+def _apply(worker, plan, move_labels):
+    """Replay a plan's MOVE steps (interacts are no-ops here) and return the
+    worker's final cell plus the set of cells it interacted-from."""
+    label_to_delta = {v: k for k, v in move_labels.items()}
+    pos = worker
+    interacted = []
+    for a in plan:
+        if a in label_to_delta:
+            dr, dc = label_to_delta[a]
+            pos = (pos[0] + dr, pos[1] + dc)
+        else:
+            interacted.append(pos)
+    return pos, interacted
+
+
+def test_plan_delivery_single_delivery_reaches_pickup_then_target():
+    """Purpose: one pickup, one target — the plan must route the worker
+    adjacent to the pickup, interact, route adjacent to the target, interact.
+    Replaying the moves must leave the worker orthogonally adjacent to each at
+    its two interact points.
+    Expected feedback: failure means the composed route/interact sequence
+    doesn't actually stand the worker next to the item, so no delivery fires."""
+    plan = plan_delivery((0, 0), [(0, 4)], [(5, 5)], _OPEN6, _ML, 5)
+    assert plan is not None
+    assert plan.count(5) == 2  # one pick, one drop
+    _pos, interacted = _apply((0, 0), plan, _ML)
+    assert len(interacted) == 2
+    pick_from, drop_from = interacted
+    assert abs(pick_from[0] - 0) + abs(pick_from[1] - 4) == 1  # adjacent to pickup
+    assert abs(drop_from[0] - 5) + abs(drop_from[1] - 5) == 1  # adjacent to target
+
+
+def test_plan_delivery_two_ordered_deliveries_interact_four_times():
+    """Purpose: two pickups + two targets must yield exactly four interacts
+    (pick, drop, pick, drop) chained from the worker's running position.
+    Expected feedback: failure means the multi-subgoal chaining is broken
+    (a leg dropped, or the worker position not advanced between legs) — the
+    exact thing blind frontier search can't compose."""
+    plan = plan_delivery((0, 0), [(0, 4), (4, 0)], [(5, 5), (2, 2)], _OPEN6, _ML, 5)
+    assert plan is not None
+    assert plan.count(5) == 4
+
+
+def test_plan_delivery_respects_match_predicate_for_assignment():
+    """Purpose: when a match predicate gates which (pickup, target) pairs are
+    compatible (colour/shape), the assignment must only pair compatible items
+    — the min-cost assignment must not pair a pickup with a target the caller
+    forbade.
+    Expected feedback: failure means a colour-mismatched delivery would be
+    planned, which the game would reject, wasting the whole plan."""
+    # pickup 0 matches ONLY target 1; pickup 1 matches ONLY target 0. The
+    # unconstrained min-cost pairing would prefer (0->0),(1->1) by distance,
+    # so this proves the predicate actually overrides distance.
+    pickups = [(0, 1), (5, 4)]
+    targets = [(0, 2), (5, 5)]
+
+    def match(pi, ti):
+        return (pi, ti) in {(0, 1), (1, 0)}
+
+    plan = plan_delivery((0, 0), pickups, targets, _OPEN6, _ML, 5, match=match)
+    assert plan is not None
+    assert plan.count(5) == 4
+
+
+def test_plan_delivery_none_when_infeasible_or_unroutable():
+    """Purpose: more targets than pickups (a target can't be served), no
+    compatible pickup for a target, and an unreachable leg must all yield
+    None so the caller falls back rather than executing a partial plan.
+    Expected feedback: failure means the adapter 'executes' an impossible
+    delivery instead of falling back to graph exploration."""
+    assert plan_delivery((0, 0), [(0, 4)], [(5, 5), (2, 2)], _OPEN6, _ML, 5) is None
+    # no compatible pickup for target 0
+    assert plan_delivery((0, 0), [(0, 4)], [(5, 5)], _OPEN6, _ML, 5, match=lambda pi, ti: False) is None
+    # a full wall column isolates the pickup from the worker
+    wall = [[True] * 6 for _ in range(6)]
+    for r in range(6):
+        wall[r][2] = False
+    assert plan_delivery((0, 0), [(0, 5)], [(5, 5)], wall, _ML, 5) is None
+
+
+def test_plan_delivery_empty_targets_is_empty_plan():
+    """Purpose: with nothing to deliver the plan is empty (``[]``), not None
+    — a distinct 'already done' signal from 'infeasible'.
+    Expected feedback: failure means the caller can't distinguish a solved
+    board from an unsolvable one."""
+    assert plan_delivery((0, 0), [(0, 4)], [], _OPEN6, _ML, 5) == []

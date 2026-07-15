@@ -50,6 +50,7 @@ from admorphiq.kernels.paths import (
     grid_distance_field,
     grid_shortest_path,
     path_to_moves,
+    plan_delivery,
     reachable_frontier,
     transition_shortest_path,
 )
@@ -83,6 +84,7 @@ __all__ = [
     "grid_distance_field",
     "grid_shortest_path",
     "path_to_moves",
+    "plan_delivery",
     "reachable_frontier",
     "transition_shortest_path",
     "changed_region_attribution",
