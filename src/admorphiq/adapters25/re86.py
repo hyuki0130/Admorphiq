@@ -70,13 +70,27 @@ mechanism off the winning frames:
   - The colour-13 movable is INVISIBLE EVEN WHEN SELECTED (only its marker
     shows; its body renders as background), so it has NO frame-observable shape
     for ``covering_offsets``.
-**REOPEN**: the frame-only covering spine cannot place the invisible movable
-(no shape). It needs marker-only navigation — move the invisible movable's
-MARKER to a target cell derived from the compound colour-11 gate region — plus
-a target model where the colour-11 gates are assigned across the two surplus
-movables. That is a real research increment. No hardcoded coordinates/palettes/
-sequences were added; the adapter runs to budget. The working L1 covering solve,
-the two falsified hypotheses, and the gold-read mechanism are the deliverables.
+**Compound-covering implementation plan ALSO falsified (validate-before-build)**:
+before building, the covering-offset partition was tested and does NOT hold —
+covering_offsets of a surplus colour-12 movable onto the colour-11 gates (or any
+top/bottom subset) returns a size-5/6 set (no single-offset cover), and in the
+gold play the colour-12 movable moves DOWN to row 48, AWAY from the colour-11
+gates (rows 2-18). Per-movable gold journeys (from ``data/traces/re86.npz``):
+colour-9 movable → colour-9 gates; the INVISIBLE colour-13 movable → (12,21),
+which is the piece that actually covers the colour-11 gate region; the colour-12
+movable → row 48 (a target this adapter cannot locate — no colour-12 gate
+exists). So the real assignment is NOT "the 12+13 pair covers colour-11 by
+covering-offset"; it is per-piece and involves an invisible mover plus a
+colour-12 target off the gate grid.
+**REOPEN** (precise ground truth now recorded): (a) footprint-probe the invisible
+colour-13 movable — drive its marker and read which cells recolour, to recover
+its shape, then cover the colour-11 gates; (b) locate the colour-12 movable's
+own target (its gold end is row 48; find what it satisfies there); (c) keep the
+covering spine for the visible colour-9 movable. This is a genuine multi-piece
+build, not a covering-offset extension. No hardcoded coordinates/palettes/
+sequences were added; the adapter runs to budget. The working L1 solve, three
+falsified hypotheses (recolour / colour-12-target / compound-covering), and the
+gold-read per-movable journeys are the deliverables.
 
 Composition from ``admorphiq.kernels``:
   - :func:`admorphiq.kernels.find_regions` segments movables / target boxes.
