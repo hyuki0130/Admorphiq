@@ -442,3 +442,68 @@ def test_plan_push_empty_when_box_already_on_target():
     Expected feedback: failure means the caller can't tell a solved box from
     an unsolvable one."""
     assert plan_push((0, 0), (3, 3), (3, 3), _OPEN6, _ML) == []
+
+
+# ── slide_endpoint / slide_chain (deterministic slide prediction) ───────────
+
+from admorphiq.kernels.paths import slide_chain, slide_endpoint  # noqa: E402
+
+
+def _floor(rows):
+    """Grid from ascii: '.' = passable floor, anything else = wall."""
+    return [[ch == "." for ch in row] for row in rows]
+
+
+def test_slide_endpoint_until_wall_runs_to_the_last_open_cell():
+    """Purpose: an ice/momentum slide advances in the pressed direction until
+    the cell ahead is a wall (or the grid edge) and stops on the last open
+    cell — the core deterministic-slide prediction.
+    Expected feedback: failure means every slide landing is mispredicted, so
+    a slide-maze planner routes to the wrong cells."""
+    grid = _floor(["#######", "#.....#", "#######"])
+    assert slide_endpoint(grid, (1, 1), (0, 1), "until_wall") == (1, 5)
+    # already against the wall in that direction -> self-loop (not an error).
+    assert slide_endpoint(grid, (1, 5), (0, 1), "until_wall") == (1, 5)
+
+
+def test_slide_endpoint_until_bend_stops_at_a_junction():
+    """Purpose: the 'roll through a straight corridor, stop where it branches'
+    rule must halt at the first cell with an open perpendicular exit, not run
+    to the wall past it.
+    Expected feedback: failure means corridor-bend prediction overshoots or
+    stops short, mislocating where a rolling mover comes to rest."""
+    # Corridor row 1 opens downward at col 3 (a junction) before the wall.
+    grid = _floor(["#######", "#...#.#", "###.###", "###.###"])
+    assert slide_endpoint(grid, (1, 1), (0, 1), "until_bend") == (1, 3)
+
+
+def test_slide_endpoint_rejects_an_unknown_stop_rule():
+    """Purpose: stop rules are a closed data vocabulary; an unknown rule must
+    raise rather than silently behave like a default — a caller typo should
+    fail loudly.
+    Expected feedback: failure means a mistyped stop rule silently plans with
+    the wrong physics."""
+    import pytest as _pytest
+
+    with _pytest.raises(ValueError):
+        slide_endpoint(_floor(["..."]), (0, 0), (0, 1), "until_teleport")
+
+
+def test_slide_chain_shoves_a_lane_of_movers():
+    """Purpose: a momentum launch (ka59-style) must chain — the launcher
+    slides into the mover ahead, which is shoved and slides on, each stopping
+    by the rule; the returned map records every mover that moved.
+    Expected feedback: failure means chained shoves are dropped or
+    mispositioned, so a momentum-push planner mis-predicts the whole lane."""
+    grid = _floor(["######", "#....#", "######"])
+    moved = slide_chain(grid, (1, 1), (0, 1), [(1, 3)], "until_wall")
+    assert moved == {(1, 1): (1, 2), (1, 3): (1, 4)}
+
+
+def test_slide_chain_no_other_movers_is_a_plain_slide():
+    """Purpose: with no other movers the chain degenerates to a single slide
+    to the wall — a plain slide is the zero-obstacle case of a shove.
+    Expected feedback: failure means the chain path diverges from the
+    single-mover slide, an inconsistency between the two kernels."""
+    grid = _floor(["######", "#....#", "######"])
+    assert slide_chain(grid, (1, 1), (0, 1), [], "until_wall") == {(1, 1): (1, 4)}

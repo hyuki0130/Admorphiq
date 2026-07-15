@@ -55,6 +55,8 @@ from admorphiq.kernels.paths import (
     plan_delivery,
     plan_push,
     reachable_frontier,
+    slide_chain,
+    slide_endpoint,
     transition_shortest_path,
 )
 from admorphiq.kernels.regions import (
@@ -92,6 +94,8 @@ __all__ = [
     "plan_delivery",
     "plan_push",
     "reachable_frontier",
+    "slide_chain",
+    "slide_endpoint",
     "transition_shortest_path",
     "changed_region_attribution",
     "frame_diff",

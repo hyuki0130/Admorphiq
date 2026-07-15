@@ -542,3 +542,108 @@ def plan_push(
             visited.add(new_state)
             queue.append((new_state, labels + path_to_moves(reposition, move_labels) + [label]))
     return None
+
+
+def slide_endpoint(
+    passable: Sequence[Sequence[object]],
+    start: Cell,
+    direction: Cell,
+    stop: str = "until_wall",
+    max_steps: int | None = None,
+) -> Cell:
+    """Predict where a mover launched from ``start`` in ``direction`` slides to.
+
+    Deterministic slide (ice-maze / momentum) prediction over a passability
+    grid, with the STOP RULE supplied as DATA (not a code fork the caller must
+    branch on):
+
+    - ``"until_wall"``: advance while the cell ahead is passable; stop on the
+      last passable cell before a wall or the grid edge (classic ice slide).
+    - ``"until_adjacent_obstacle"``: alias of ``"until_wall"`` for a mover
+      that occupies a single cell (it stops the cell before the obstacle
+      either way) — named separately so a caller can declare intent.
+    - ``"until_bend"``: advance while the cell ahead is passable AND the
+      CURRENT cell has no open perpendicular exit; stop AT the first cell that
+      has an open perpendicular neighbour (a junction/bend) or before a wall.
+      This is the "roll through a straight corridor, stop where it branches"
+      rule.
+
+    ``direction`` is a unit ``(dr, dc)``. Returns the endpoint cell, which is
+    ``start`` itself when the first step is already blocked (a self-loop —
+    a real, useful observation, not an error). ``max_steps`` bounds the walk
+    (default: the grid's own size, so a fully-open lane still terminates).
+    Pure / no environment access.
+    """
+    h, w = _grid_dims(passable)
+    if h == 0 or w == 0:
+        return start
+    if stop not in ("until_wall", "until_adjacent_obstacle", "until_bend"):
+        raise ValueError(f"unknown stop rule {stop!r}")
+    limit = max_steps if max_steps is not None else h * w
+    dr, dc = direction
+    perp = ((dc, dr), (-dc, -dr))
+    cur = start
+    for _ in range(limit):
+        nxt = (cur[0] + dr, cur[1] + dc)
+        if not _in_bounds(nxt, h, w) or not _is_passable(passable, nxt):
+            return cur
+        cur = nxt
+        if stop == "until_bend":
+            for pr, pc in perp:
+                side = (cur[0] + pr, cur[1] + pc)
+                if _in_bounds(side, h, w) and _is_passable(passable, side):
+                    return cur
+    return cur
+
+
+def slide_chain(
+    passable: Sequence[Sequence[object]],
+    start: Cell,
+    direction: Cell,
+    movers: Iterable[Cell],
+    stop: str = "until_wall",
+    max_steps: int | None = None,
+) -> dict[Cell, Cell]:
+    """Slide the mover at ``start``, chaining shoves through other ``movers``.
+
+    Momentum push: the mover at ``start`` slides in ``direction`` (per
+    :func:`slide_endpoint`, treating OTHER movers as obstacles); if its path is
+    blocked by another mover, that mover is shoved and slides on in the same
+    direction, recursively, each stopping by ``stop``. Returns
+    ``{old_cell: new_cell}`` for every mover that moved (movers that did not
+    move are omitted). The launched mover ends immediately behind wherever the
+    front of the chain settles. Models the ka59-style "launch shoves the lane"
+    slide; a caller supplying no other ``movers`` gets a plain single slide.
+    Pure / no environment access.
+    """
+    h, w = _grid_dims(passable)
+    positions = {(int(m[0]), int(m[1])) for m in movers}
+    positions.discard(start)
+    dr, dc = direction
+
+    def _blocked(cell: Cell) -> list[list[bool]]:
+        grid = [[bool(passable[r][c]) for c in range(w)] for r in range(h)]
+        for pr, pc in positions:
+            if _in_bounds((pr, pc), h, w):
+                grid[pr][pc] = False
+        return grid
+
+    moved: dict[Cell, Cell] = {}
+    cur = start
+    max_iters = len(positions) + 1  # each mover shoved at most once, plus the launcher
+    for _ in range(max_iters):
+        endpoint = slide_endpoint(_blocked(cur), cur, direction, stop=stop, max_steps=max_steps)
+        if endpoint != cur:
+            moved[cur] = endpoint
+        ahead = (endpoint[0] + dr, endpoint[1] + dc)
+        if ahead in positions:
+            # Shove the mover directly ahead: it becomes the new slider.
+            positions.discard(ahead)
+            if endpoint != cur:
+                # The launcher settles where it stopped; continue the chain
+                # from the shoved mover's cell.
+                pass
+            cur = ahead
+            continue
+        break
+    return moved
