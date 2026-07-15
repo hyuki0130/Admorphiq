@@ -306,3 +306,134 @@ def test_plan_overwrites_returns_none_when_unsolvable():
         {"footprint": frozenset({(0, 0)}), "writes": {(0, 0): 6}, "support": 1, "points": [(0, 0)]},
     ]
     assert plan_overwrites(initial, target, operators, max_steps=8) is None
+
+
+# ── reflective-symmetry kernels (learn_reflection_operators / plan) ─────────
+
+from admorphiq.kernels import (  # noqa: E402
+    learn_reflection_operators,
+    plan_reflection_coverage,
+    reflect_cells,
+    reflection_orbit,
+)
+
+_MIRROR_K = 19  # doubled vertical-axis position: reflect column c -> 19 - c
+
+
+def _reflect_v(cells, k=_MIRROR_K):
+    return {(r, k - c) for r, c in cells}
+
+
+def _render_mirror(piece_cells, piece_color=5, image_color=4, h=24, w=24, bg=0):
+    """A frame with ``piece_cells`` painted ``piece_color`` and its vertical
+    reflection painted ``image_color`` (the distinct colour a kaleidoscope
+    renders reflections in), on a ``bg`` field."""
+    g = [[bg] * w for _ in range(h)]
+    for r, c in _reflect_v(piece_cells):
+        if 0 <= r < h and 0 <= c < w:
+            g[r][c] = image_color
+    for r, c in piece_cells:
+        g[r][c] = piece_color
+    return tuple(tuple(row) for row in g)
+
+
+def test_reflect_cells_col_and_row_axes():
+    """Purpose: reflect_cells must implement the doubled-axis convention
+    exactly — a 'col' axis mirrors the column (c -> k - c) and a 'row' axis
+    mirrors the row (r -> k - r) — because the whole coverage planner's
+    footprint prediction is built on this one transform.
+    Expected feedback: failure means every reflected footprint is wrong, so
+    plan_reflection_coverage would target the wrong cells."""
+    assert reflect_cells({(2, 3)}, ("col", 19)) == frozenset({(2, 16)})
+    assert reflect_cells({(2, 3)}, ("row", 10)) == frozenset({(8, 3)})
+
+
+def test_reflection_orbit_single_axis_is_involution_and_two_axes_close():
+    """Purpose: the orbit under one axis is exactly the cells plus their one
+    reflection (reflection is an involution — no infinite growth), and under
+    two axes it closes to a finite set clipped to bounds (a mirror only
+    renders on-grid).
+    Expected feedback: failure means the rendered footprint is either
+    incomplete (misses a reflected copy, undercounting coverage) or fails to
+    terminate on a multi-axis board."""
+    single = reflection_orbit({(2, 3)}, [("col", 19)], bounds=(24, 24))
+    assert single == frozenset({(2, 3), (2, 16)})
+    two = reflection_orbit({(2, 3)}, [("col", 19), ("row", 10)], bounds=(24, 24))
+    # (2,3) -> col:(2,16) -> row:(8,16); (2,3) -> row:(8,3); closure of 4.
+    assert two == frozenset({(2, 3), (2, 16), (8, 3), (8, 16)})
+
+
+def test_learn_reflection_operators_recovers_axis_piece_and_deltas():
+    """Purpose: from a column-move observation (which splits the piece from
+    its reflected image by opposite column shift) plus a row-move
+    observation, the kernel must recover the vertical mirror axis, the
+    driven piece's colours, its FULL colour-membership footprint (not
+    track_objects' possibly-undercounted matched subset), and the per-action
+    displacement map.
+    Expected feedback: failure means the AR25-class adapter cannot build a
+    dynamics model from its probes — the axis, piece, or deltas would be
+    wrong and no correct coverage plan could follow."""
+    piece = {(2, 2), (2, 3), (3, 2), (3, 3)}
+    obs = [
+        {"before": _render_mirror(piece), "after": _render_mirror({(r, c + 1) for r, c in piece}), "label": 4},
+        {"before": _render_mirror(piece), "after": _render_mirror({(r + 1, c) for r, c in piece}), "label": 2},
+    ]
+    model = learn_reflection_operators(obs, background=0)
+    assert model["axes"] == [("col", _MIRROR_K)]
+    assert model["piece_colors"] == frozenset({5})
+    assert model["delta_map"] == {4: (0, 1), 2: (1, 0)}
+    assert model["piece_cells"] == frozenset(piece)  # exact full footprint
+    assert 4 in model["moving_colors"] and 5 in model["moving_colors"]
+
+
+def test_learn_reflection_operators_no_axis_split_returns_empty_model():
+    """Purpose: when no observation splits a piece from an image by opposite
+    shift (e.g. only same-direction motion was seen), the kernel must return
+    an empty axes/piece model rather than fabricating a mirror — the caller
+    reads this as 'reflection model unavailable, fall back'.
+    Expected feedback: failure means a caller would plan against a
+    hallucinated axis on a board that isn't a reflective-coverage puzzle."""
+    piece = {(2, 2), (2, 3)}
+    # A lone frame with no image cluster: a single moving region, no split.
+    def _plain(cells, h=12, w=12):
+        g = [[0] * w for _ in range(h)]
+        for r, c in cells:
+            g[r][c] = 5
+        return tuple(tuple(row) for row in g)
+
+    obs = [{"before": _plain(piece), "after": _plain({(r, c + 1) for r, c in piece}), "label": 4}]
+    model = learn_reflection_operators(obs, background=0)
+    assert model["axes"] == []
+    assert model["piece_cells"] == frozenset()
+    assert model["delta_map"] == {}
+
+
+def test_plan_reflection_coverage_finds_a_covering_motion():
+    """Purpose: given a learned single-axis model, the planner must return a
+    piece-move sequence whose rendered footprint (piece + reflection) covers
+    a target, and executing that sequence must actually achieve coverage.
+    Expected feedback: failure means the coverage search is wrong — either
+    it can't find a reachable covering anchor, or the anchor it returns
+    doesn't cover, which is exactly the AR25 win condition."""
+    piece = {(2, 2), (2, 3), (3, 2), (3, 3)}
+    axes = [("col", _MIRROR_K)]
+    delta_map = {4: (0, 1), 3: (0, -1), 2: (1, 0), 1: (-1, 0)}
+    target = _reflect_v({(r, c + 5) for r, c in piece})  # image of piece moved right 5
+    plan = plan_reflection_coverage(piece, axes, target, delta_map, (24, 24))
+    assert plan is not None
+    anchor = (0, 0)
+    for a in plan:
+        dr, dc = delta_map[a]
+        anchor = (anchor[0] + dr, anchor[1] + dc)
+    moved = frozenset((r + anchor[0], c + anchor[1]) for r, c in piece)
+    assert target <= reflection_orbit(moved, axes, bounds=(24, 24))
+
+
+def test_plan_reflection_coverage_returns_none_without_a_model():
+    """Purpose: with no axes (or no deltas) the planner cannot predict any
+    footprint and must return None, never a spurious empty/partial plan.
+    Expected feedback: failure means the AR25 adapter would 'execute' an
+    invalid plan instead of falling back to graph exploration."""
+    piece = {(2, 2), (2, 3)}
+    assert plan_reflection_coverage(piece, [], {(2, 2)}, {4: (0, 1)}, (12, 12)) is None
+    assert plan_reflection_coverage(piece, [("col", 19)], {(2, 2)}, {}, (12, 12)) is None

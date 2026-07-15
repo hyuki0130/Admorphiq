@@ -4,110 +4,67 @@
 docstring. ***
 
 ``.wiki/wiki/games/AR25.md`` (read for reference, not imported) records
-AR25 as the canonical "generic state-space BFS" template: a movement game
-the legacy ``strat_bfs_state_space`` cleared 2/8 on BOTH the v1 and v2
-hashes by hashing the whole frame into a state key and searching. That
-wiki page's "player navigates around walls to a goal cell" model is,
-however, WRONG about the actual mechanic — direct reading of the game
-source plus a live probe (offline, dev-time only; this adapter reads only
-frames at runtime) shows AR25 is not a single-avatar maze at all.
+AR25's actual mechanic (measured offline, dev-time only; this adapter reads
+only frames at runtime): the board holds one or more MOVABLE glyph pieces,
+each rendered TOGETHER WITH its reflections across every mirror bar,
+recursively (a kaleidoscope). A level is WON by COVERAGE — a fixed goal glyph
+must be entirely covered by some piece pixel or one of its reflections. A
+single ACTION1-4 press translates the active piece one cell, and every
+reflected image moves by the reflection of that displacement, so one press
+changes a LARGE number of pixels at once.
 
-**Actual mechanic (mirror-reflection coverage) — measured, not the wiki's
-navigation model**:
+**Why the earlier blind explorer stalled**: the previous R56 build treated
+AR25 as a generic transition-graph search over the joint piece/mirror
+configuration. That reaches the legacy solver's 2/8 depth but only at a huge
+budget (L0 in ~835 actions vs a 32-action human baseline), scoring ~0 on the
+squared-efficiency metric — because blind search is BLIND to the reflection
+coupling that makes a move so consequential.
 
-- The board has several MOVABLE glyph pieces (distinct colours, e.g. a
-  colour-5 shape and a colour-4 shape on level 0) and one or more MIRROR
-  BARS (a thin full-height / full-width band, colour 10 on level 0). A
-  piece is rendered TOGETHER WITH its reflections across every mirror bar,
-  recursively (a kaleidoscope, up to depth 12 in the engine) — so a single
-  ACTION1-4 press changes a LARGE number of pixels at once (the piece plus
-  all its mirror images move together), measured at 109 changed pixels per
-  move on level 0, NOT the ~1-cell diff a single-avatar step produces.
-- The WIN condition is COVERAGE: a fixed set of goal cells (a colour-11
-  target glyph, 45 cells on level 0) must ALL be covered by some piece
-  pixel or one of its reflections. This is read straight from the engine's
-  own ``vplrhaovhr`` (all goal cells non-empty) but is NOT hardcoded here —
-  the adapter never reads goal geometry; it only reacts to the engine's
-  own WIN state.
-- Controls: ACTION1-4 move the ACTIVE piece one cell (some pieces are
-  axis-constrained). ACTION5 CYCLES which piece is active. ACTION6 selects
-  a piece by click. ACTION7 UNDOES the last move (a real back-edge). A
-  per-level STEP COUNTER (a shrinking edge bar) ends the attempt in
-  GAME_OVER when exhausted.
+**This build — learn the reflection model, then plan coverage**: the adapter
+now composes the reflective-symmetry motion kernels
+(:func:`admorphiq.kernels.learn_reflection_operators` /
+:func:`admorphiq.kernels.plan_reflection_coverage`, the reflective analogue of
+the ``learn_point_operators``/``plan_overwrites`` pair the R56 codex verdict
+proposed, ``docs/r56_codex_toolbase_verdict_20260715.md``):
 
-**Why a generic transition-graph explorer, not a bespoke solver**: the
-effective state is the joint configuration of every movable piece PLUS the
-mirror bar PLUS which piece is active — and the reflection rule couples a
-move to many pixels. Faithfully simulating the kaleidoscope to run a
-configuration-space plan would mean re-implementing the game's own
-rendering, which is exactly the game-specific "second brain" the R56 codex
-verdict (``docs/r56_codex_toolbase_verdict_20260715.md``) forbids in the
-namespace. Instead this adapter treats AR25 the way the wiki's own
-template intends — a GENERIC state-space search — but re-expressed through
-namespace-safe kernels rather than a bespoke BFS:
+  1. **Probe** — issue each of ACTION1-4 once, each immediately followed by
+     ACTION7 (UNDO), so every measured transition starts from the same level-
+     start board. Each move + its reflected images translate together;
+     :func:`learn_reflection_operators` recovers, purely from these frames,
+     the mirror axis (from a column-move that splits the piece from its
+     image), which cells are the driven piece, and the piece's per-action
+     displacement.
+  2. **Plan** — the goal glyph is the largest static (never-moving,
+     non-HUD) cluster; :func:`plan_reflection_coverage` searches piece
+     translations for one whose rendered footprint (piece + reflections)
+     covers that glyph, returning a short action sequence.
+  3. **Execute** — run the planned actions; the engine's own WIN fires as
+     soon as coverage is achieved.
 
-  - Every visible board state is canonicalised into a hashable key
-    (:func:`admorphiq.kernels.canonical_key`, ``mode="exact"``) AFTER the
-    edge-pinned HUD bands (step counter, progress bar) are masked out, so
-    the same piece configuration always maps to the same key regardless of
-    the ticking counter — otherwise every action would look like a brand-
-    new state and no graph would ever form.
-  - Every observed ``(state, action, next_state)`` transition (ACTION1-5
-    and ACTION7 — the click ACTION6 is skipped, since ACTION5 already
-    reaches every piece and click-coordinate exploration is an unbounded
-    space) is recorded, and the engine's UNDO gives cheap back-edges.
-  - The decision policy is systematic frontier expansion over that graph:
-    take an untried action from the current state if one exists, else route
-    (:func:`admorphiq.kernels.transition_shortest_path`) to the nearest
-    already-visited state that still has an untried action (a small BFS over
-    the SAME recorded edges, :meth:`_nearest_untried` — mirroring
-    ``admorphiq.adapters25.tu93``'s own reason for not using
-    :func:`admorphiq.kernels.reachable_frontier` here: that kernel's
-    universe is already-OBSERVED edges only, so it cannot surface a state's
-    never-ATTEMPTED action, which is exactly what exploration needs).
+**Fallback**: when the reflection model can't be learned (no axis-splitting
+observation — e.g. an axis-constrained single-direction piece, or a level
+whose mechanic isn't single-piece reflective coverage) or no covering plan
+exists (multi-piece joint levels), the adapter falls back to the same
+generic transition-graph frontier exploration the previous build used, so
+deeper levels never regress below that baseline.
 
-**Measured result — coverage-parity with the legacy solver, BANKED on
-efficiency**: the namespace-safe kernel composition reaches the SAME 2/8
-depth the legacy brittle ``strat_bfs_state_space`` reached, generically —
-but blind state-space exploration over the joint piece/mirror configuration
-is combinatorial, so it needs a huge budget and the RHAE metric (squared
-efficiency) scores it ≈ 0 against the 32-233 human action baselines:
-
-- ``--max-actions 1000`` (default ``giveup=4000``): 1/8 levels — L0 cleared
-  in 835 actions vs a 32-action human baseline, game_score 4.1e-05
-  (deterministic).
-- ``--max-actions 3000``: still 1/8 — the extra actions explore level 1's
-  reachable states without yet hitting the coverage-WIN configuration.
-- Longer exploratory run (``giveup=30000``, NOT the standard smoke): 2/8 —
-  L1/level-2 falls after 14791 actions (vs a 50-action human baseline),
-  matching the legacy solver's own 2/8 coverage. This confirms the kernels
-  are EXPRESSIVE enough to reach the legacy depth without any game-internal
-  reads; the gap to the legacy card is budget/efficiency, not capability.
-
-The legacy 2/8 came from ``strat_bfs_state_space`` at a ~500K-state-
-expansion budget and also scored ≈ 0 on efficiency. The honest
-characterisation matches the codex verdict's BP35/DC22 guidance: the lever
-is not more blind search but LEARNED OBJECT DYNAMICS + configuration-space
-planning that models the reflection coupling — which cannot be built
-namespace-safe without either re-implementing the kaleidoscope (a second
-brain) or a much richer generic "learned reflective operator" kernel that
-does not yet exist. Reopen pointer: a ``learn_reflection_operators`` motion
-kernel that
-infers, from observed before/after frames, the mirror axis and the
-piece→reflected-image map, then lets ``configuration_path`` plan coverage
-in that learned model — the same shape as the codex-proposed
-``learn_point_operators``/``plan_overwrites`` pair, generalised to
-reflective symmetry.
+**Why namespace-safe**: the adapter assigns roles (which cluster is the goal,
+which is the piece) and declares the mechanic hypothesis (reflective
+coverage), but every pixel algorithm and every search lives in
+``admorphiq.kernels`` — no hardcoded coordinates, colours, mirror positions,
+or bespoke BFS here. The reflection axis, piece footprint, per-action
+displacements, and goal glyph are all learned from the live frames.
 
 Composition from ``admorphiq.kernels``:
-  - :func:`admorphiq.kernels.find_regions` segments the board so the
-    edge-pinned HUD bands (step counter, progress bar) can be masked before
-    canonicalisation.
-  - :func:`admorphiq.kernels.canonical_key` hashes the masked board into a
-    stable state key.
-  - :func:`admorphiq.kernels.transition_shortest_path` routes over the
-    incrementally-discovered transition graph to the nearest state with an
-    untried action.
+  - :func:`admorphiq.kernels.find_regions` segments the board (HUD masking +
+    static-goal detection).
+  - :func:`admorphiq.kernels.learn_reflection_operators` learns the mirror
+    dynamics model from the probe transitions.
+  - :func:`admorphiq.kernels.plan_reflection_coverage` plans the covering
+    piece motion in that learned model.
+  - :func:`admorphiq.kernels.canonical_key` /
+    :func:`admorphiq.kernels.transition_shortest_path` drive the graph-
+    frontier fallback exploration.
 """
 
 from __future__ import annotations
@@ -126,7 +83,13 @@ from admorphiq.adapters25.base import (
     simple_action,
     state_name,
 )
-from admorphiq.kernels import canonical_key, find_regions, transition_shortest_path
+from admorphiq.kernels import (
+    canonical_key,
+    find_regions,
+    learn_reflection_operators,
+    plan_reflection_coverage,
+    transition_shortest_path,
+)
 
 GAME_ID = "ar25"
 
@@ -153,7 +116,9 @@ def _is_hud_band(region: Region, height: int, width: int) -> bool:
     and its right-column progress bar are both edge-pinned; the shrinking
     counter escapes the span-fraction test once it drops below the
     threshold, so the edge-pinned test is measured-necessary here exactly as
-    in ``admorphiq.adapters25.tu93``."""
+    in ``admorphiq.adapters25.tu93``. The full-length mirror bar is also
+    caught by the full-span test — harmless, because the reflection axis is
+    learned from the piece/image MOTION, not from the bar's pixels."""
     r0, c0, r1, c1 = region["bbox"]
     h, w = r1 - r0 + 1, c1 - c0 + 1
     thickness = max(1, int(height * _HUD_THICKNESS_FRACTION))
@@ -168,8 +133,8 @@ def _is_hud_band(region: Region, height: int, width: int) -> bool:
 
 def _mask_hud(grid: Grid) -> Grid:
     """Return ``grid`` with every edge-pinned HUD band overwritten by the
-    background colour, so a canonical key reflects only the play area (the
-    piece / mirror configuration) and not the ticking step counter."""
+    background colour, so region detection reflects only the play area (the
+    piece / image / goal configuration) and not the ticking step counter."""
     if not grid or not grid[0]:
         return grid
     height, width = len(grid), len(grid[0])
@@ -186,9 +151,42 @@ def _mask_hud(grid: Grid) -> Grid:
     )
 
 
+def _undo_available(latest_frame: Any) -> bool:
+    """Whether ACTION7 (UNDO) is offered this frame.
+
+    ``base.available_action_ids`` only surfaces ids 1-5, so the undo the
+    probe schedule needs is read from the raw ``available_actions`` here."""
+    for a in getattr(latest_frame, "available_actions", []) or []:
+        aid = a if isinstance(a, int) else getattr(a, "value", getattr(a, "id", None))
+        if aid == 7:
+            return True
+    return False
+
+
+def _detect_goal(grid: Grid, background: int, moving_colors: frozenset[int]) -> frozenset[Cell] | None:
+    """The largest static (non-moving-colour) region's cells, the goal glyph.
+
+    ``moving_colors`` is what :func:`learn_reflection_operators` measured to
+    move under the probes (the piece, its reflected image, any marker riding
+    the piece); the goal is the biggest remaining coloured cluster, which the
+    win condition requires the piece's rendered footprint to cover. Returns
+    None when no static cluster exists."""
+    best: frozenset[Cell] | None = None
+    best_size = 0
+    for region in find_regions(grid, background=background):
+        if region["color"] in moving_colors:
+            continue
+        if region["size"] > best_size:
+            best_size = region["size"]
+            best = frozenset(region["cells"])
+    return best
+
+
 class Adapter(GameAdapter):
-    """Generic transition-graph frontier exploration over HUD-masked
-    frame-canonical states, composed from admorphiq.kernels."""
+    """Learn AR25's reflection dynamics from probe transitions, then plan a
+    covering piece motion; fall back to generic transition-graph frontier
+    exploration when the reflection model is unavailable. Composed entirely
+    from admorphiq.kernels."""
 
     GAME_ID = GAME_ID
 
@@ -201,18 +199,26 @@ class Adapter(GameAdapter):
         self._step = 0
         self._levels_seen = -1
 
+        # ── reflection probe/plan state (per level) ────────────────────────
+        # phase: "probe" (measuring), "plan" (executing a covering sequence),
+        # "graph" (fallback frontier exploration once reflection is spent).
+        self._phase = "probe"
+        self._start_grid: Grid | None = None
+        self._observations: list[dict[str, Any]] = []
+        self._probe_queue: list[int] = []
+        self._probe_ready = False
+        self._pending_probe_action: int | None = None
+        self._pending_probe_before: Grid | None = None
+        self._plan_queue: list[int] = []
+
+        # ── graph-fallback state ───────────────────────────────────────────
+        # The incrementally-discovered transition graph over masked board
+        # states (UNDO gives cheap back-edges). ``_transitions`` is the flat
+        # triple list ``transition_shortest_path`` consumes; ``_edges`` is the
+        # same graph as an adjacency map maintained IN STEP so
+        # :meth:`_nearest_untried`'s BFS stays linear in the graph size.
         self._pending_action: int | None = None
         self._pending_key: Any | None = None
-
-        # The incrementally-discovered transition graph over masked board
-        # states, UNDO back-edges included. ``_transitions`` is the flat
-        # triple list ``transition_shortest_path`` consumes; ``_edges`` is the
-        # same graph as an adjacency map maintained IN STEP (never rebuilt
-        # from scratch) so :meth:`_nearest_untried`'s BFS stays linear in the
-        # graph size rather than re-folding every triple each decision — the
-        # difference matters once a run explores tens of thousands of states.
-        # Both reset on level-up (new board), kept across a mid-level
-        # GAME_OVER restart (same board, new attempt).
         self._transitions: list[tuple[Any, int, Any]] = []
         self._edges: dict[Any, dict[int, Any]] = {}
         self._tried_from: dict[Any, set[int]] = {}
@@ -228,9 +234,7 @@ class Adapter(GameAdapter):
             self._on_restart()
             return reset_action()
         if state == "NOT_PLAYED" or not has_frame(latest_frame):
-            self._pending_action = None
-            self._pending_key = None
-            self._levels_seen = -1
+            self._reset_for_new_env()
             return reset_action()
 
         grid = canonical_layer(latest_frame)
@@ -239,28 +243,41 @@ class Adapter(GameAdapter):
             self._on_level_up(levels)
 
         self._step += 1
-        cur_key = canonical_key(_mask_hud(grid), mode="exact")
-        self._observe_result(cur_key)
+        masked = _mask_hud(grid)
+        if self._start_grid is None:
+            self._start_grid = masked
 
         simple_ids, _action6_ok = available_action_ids(latest_frame)
         # ACTION6 (click-select) is skipped: ACTION5 already cycles through
         # every selectable piece, and click-coordinate exploration is an
-        # unbounded 64x64 space that would swamp the transition graph.
-        act_ids = sorted(a for a in simple_ids if a in (1, 2, 3, 4, 5, 7))
+        # unbounded 64x64 space that would swamp the fallback graph. ACTION7
+        # (undo) is offered for probe back-edges but read separately, since
+        # base.available_action_ids only surfaces ids 1-5.
+        move_ids = [a for a in simple_ids if a in (1, 2, 3, 4, 5)]
+        act_ids = sorted(set(move_ids) | ({7} if _undo_available(latest_frame) else set()))
         if not act_ids:
-            self._pending_action = None
-            self._pending_key = None
             return simple_action(simple_ids[0]) if simple_ids else reset_action()
 
-        action = self._decide(cur_key, act_ids)
-        self._pending_action = action
-        self._pending_key = cur_key
-        return simple_action(action)
+        if self._phase == "probe":
+            return self._probe_step(masked, act_ids)
+        if self._phase == "plan":
+            return self._plan_step(masked, act_ids)
+        return self._graph_step(masked, act_ids)
 
     # ── level / restart bookkeeping ─────────────────────────────────────
 
     def _on_level_up(self, levels: int) -> None:
+        """A new level is a new board: re-probe and re-plan from scratch, and
+        drop the fallback graph (its states belonged to the old board)."""
         self._levels_seen = levels
+        self._phase = "probe"
+        self._start_grid = None
+        self._observations = []
+        self._probe_queue = []
+        self._probe_ready = False
+        self._pending_probe_action = None
+        self._pending_probe_before = None
+        self._plan_queue = []
         self._pending_action = None
         self._pending_key = None
         self._transitions = []
@@ -268,13 +285,118 @@ class Adapter(GameAdapter):
         self._tried_from = {}
 
     def _on_restart(self) -> None:
-        """Only the in-flight pending action is dropped; the learned
-        transition graph is kept -- the board layout didn't change on a
-        step-counter GAME_OVER, only the current attempt did."""
+        """GAME_OVER reset the current attempt back to the level start. Drop
+        the in-flight pending actions; if reflection probing/planning was
+        still under way (board is back at start), restart that pipeline so it
+        re-measures cleanly. The fallback graph is kept — its states are the
+        same board."""
         self._pending_action = None
         self._pending_key = None
+        self._pending_probe_action = None
+        self._pending_probe_before = None
+        if self._phase in ("probe", "plan"):
+            self._phase = "probe"
+            self._start_grid = None
+            self._observations = []
+            self._probe_queue = []
+            self._probe_ready = False
+            self._plan_queue = []
 
-    # ── measurement: record the observed transition ─────────────────────
+    def _reset_for_new_env(self) -> None:
+        self._levels_seen = -1
+        self._on_level_up(-1)
+
+    # ── phase 1: probe (measure reflection transitions) ─────────────────
+
+    def _probe_step(self, masked: Grid, act_ids: list[int]) -> GameAction:
+        # Record the result of the previous probe MOVE (undo steps are not
+        # recorded -- they only restore the start board for the next probe).
+        if self._pending_probe_action is not None:
+            if self._pending_probe_action in (1, 2, 3, 4) and self._pending_probe_before is not None:
+                self._observations.append(
+                    {
+                        "before": self._pending_probe_before,
+                        "after": masked,
+                        "label": self._pending_probe_action,
+                    }
+                )
+            self._pending_probe_action = None
+            self._pending_probe_before = None
+
+        if not self._probe_ready:
+            can_undo = 7 in act_ids
+            queue: list[int] = []
+            for a in (1, 2, 3, 4):
+                if a in act_ids:
+                    queue.append(a)
+                    if can_undo:
+                        queue.append(7)
+            self._probe_queue = queue
+            self._probe_ready = True
+
+        if self._probe_queue:
+            a = self._probe_queue.pop(0)
+            if a in (1, 2, 3, 4):
+                # ``masked`` is the level-start board here (restored by the
+                # preceding undo), so every observation's ``before`` is the
+                # same reference the plan is computed from.
+                self._pending_probe_action = a
+                self._pending_probe_before = masked
+            return simple_action(a)
+
+        self._build_plan()
+        if self._phase == "plan":
+            return self._plan_step(masked, act_ids)
+        return self._graph_step(masked, act_ids)
+
+    def _build_plan(self) -> None:
+        """Learn the reflection model from the probes and, if it yields a
+        covering plan, arm the plan queue; otherwise fall through to graph."""
+        start = self._start_grid
+        if start is None:
+            self._phase = "graph"
+            return
+        bg = most_common_color(start)
+        model = learn_reflection_operators(self._observations, background=bg)
+        axes = model["axes"]
+        piece_cells = model["piece_cells"]
+        delta_map = model["delta_map"]
+        if not axes or not piece_cells or not delta_map:
+            self._phase = "graph"
+            return
+        moving = model["moving_colors"] | model["piece_colors"]
+        target = _detect_goal(start, bg, moving)
+        if not target:
+            self._phase = "graph"
+            return
+        bounds = (len(start), len(start[0]))
+        plan = plan_reflection_coverage(piece_cells, axes, target, delta_map, bounds)
+        if plan:
+            self._plan_queue = [int(a) for a in plan]
+            self._phase = "plan"
+        else:
+            self._phase = "graph"
+
+    # ── phase 2: execute the covering plan ───────────────────────────────
+
+    def _plan_step(self, masked: Grid, act_ids: list[int]) -> GameAction:
+        if self._plan_queue:
+            return simple_action(self._plan_queue.pop(0))
+        # Plan spent without WIN -- hand off to frontier exploration for the
+        # remaining budget (e.g. the model's coverage prediction diverged, or
+        # the piece was blocked before reaching the planned anchor).
+        self._phase = "graph"
+        return self._graph_step(masked, act_ids)
+
+    # ── phase 3: generic transition-graph frontier fallback ─────────────
+
+    def _graph_step(self, masked: Grid, act_ids: list[int]) -> GameAction:
+        cur_key = canonical_key(masked, mode="exact")
+        self._observe_result(cur_key)
+        action = self._decide(cur_key, act_ids)
+        self._pending_action = action
+        self._pending_key = cur_key
+        return simple_action(action)
 
     def _observe_result(self, cur_key: Any) -> None:
         action = self._pending_action
@@ -286,8 +408,6 @@ class Adapter(GameAdapter):
         self._transitions.append((prev_key, action, cur_key))
         self._edges.setdefault(prev_key, {})[action] = cur_key
         self._tried_from.setdefault(prev_key, set()).add(action)
-
-    # ── planning ─────────────────────────────────────────────────────────
 
     def _decide(self, cur_key: Any, act_ids: list[int]) -> int:
         tried = self._tried_from.get(cur_key, set())
