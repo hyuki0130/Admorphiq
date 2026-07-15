@@ -95,28 +95,29 @@ elsewhere, instead of waiting for its turn in a future round.
 
 **L2 divergence — BANKED (2026-07-15, not fixed by this adapter).** The
 "click the rare pixel" reading is a coincidence of L1's tiny scale, not the
-game's mechanic. The game source (``environment_files/lp85/305b61c3/lp85.py``,
-read offline dev-time only) shows LP85 is a ring-rotation permutation puzzle:
-each button sprite carries a ``button_<id>_<L|R>`` tag; clicking it calls
-``chmfaflqhy`` which CYCLICALLY ROTATES a numbered ring of pieces (R: pos
-n->n+1 wrap max->1; L: the exact inverse), and rings OVERLAP (a cell belongs
-to several buttons' rings -- a Hungarian-rings-class group). Win
-``khartslnwa`` = EVERY ``bghvgbtwcb`` piece on a ``goal`` cell AND every
-``fdgmtkfrxl`` piece on a ``goal-o`` cell, within a hard per-level press
-budget (L1 13, L2 60). L1 has one target piece and few rings, so the
-round-robin per-pixel sweep stumbles onto the productive button in 18 presses
-(near the 17-action human) -- luck of scale, with no model of which ring to
-rotate or how far. L2 has two ``bghvgbtwcb`` + an ``fdgmtkfrxl`` on overlapping
-rings: it requires a PLANNED rotation sequence that moves each target to its
-goal without displacing an already-placed one, which the sweep cannot produce
-(measured: only 3 of 36 rare-region probes moved any piece). The gold trace
-(``data/traces/lp85.npz``) never solves L2 either (``levels_completed_after``
-maxes at 1), so there is no demonstration to replay -- the mechanism read
-comes from the source, not a gold journey. A real reopen needs a NEW
-frame-only ring-permutation planner (detect target/goal object pairs; learn
-each button's ring by pressing once and reading the piece displacements via
-``frame_diff`` / ``learn_point_operators``; search a rotation sequence within
-budget). That is well beyond the click sweep and deprioritised under
+game's mechanic. LP85 is a ring-rotation permutation puzzle: each button
+sprite carries a ``button_<id>_<L|R>`` tag; clicking it CYCLICALLY ROTATES a
+numbered ring (R: pos n->n+1 wrap; L: the exact inverse), and rings OVERLAP
+(Hungarian-rings-class group). Verified by DRIVING the real engine offline:
+the FIXED objects are the targets (``bghvgbtwcb`` color-11 4-corner sprite,
+``fdgmtkfrxl`` color-12); what RIDES the rings and rotates is the ``goal``
+sprite (color-11 SOLID 2x2). Win = each moving goal lands centered inside a
+fixed target's 4-corner frame (``goal`` at target ``(x+1, y+1)``). L1 = 1
+target + 1 goal + 1 ring, won in 4 presses (goal rides ring A to the target);
+the round-robin sweep stumbles onto the productive button in 18 presses (near
+the 17-action human) -- luck of scale, no ring model. L2 = 2 targets + 2 goals
++ 3 rings (A 26 cells, B/C 10 each, B/C overlap A at 2 cells; NO fdgmtkfrxl):
+a genuine Hungarian-rings coupling. It IS tractable -- offline BFS over goal
+positions finds an 8-move solution (264 states) and that sequence, replayed
+through the real engine, clears L2. The blocker for a FRAME-ONLY solver is
+learning each ring's full successor map from frame diffs: ring cells carry
+multi-coloured tiles so rotation is usually visible, but a few adjacent cells
+share a colour (ring A 3, B 2) and same-colour swaps leave no diff -- so one
+press per ring misses 2-3 links, which must be completed geometrically or via
+a 2nd press. The gold trace (``data/traces/lp85.npz``) never solves L2
+(``levels_completed_after`` maxes at 1). A real reopen needs a NEW generic
+kernel (learn cyclic permutation operators from single-press diffs + BFS to a
+target assignment) plus the ring-learning completion; deprioritised under
 diminishing-returns discipline; the sweep stays as the L1 floor (1/8,
 game_score 0.0248, near-human). See ``.wiki/wiki/games/LP85.md`` for the full
 mechanism bank.
