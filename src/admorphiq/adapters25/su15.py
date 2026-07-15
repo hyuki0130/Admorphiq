@@ -207,6 +207,33 @@ correct). The player-steering primitive is trivial (the player follows
 clicks); the depth is entirely in the merge-rule decode + collecting-path
 plan. Gold (9/9 live) is the oracle for validating any such planner.
 
+**R56 iteration 9 -- attempted the sweep-conversion RULE DECODE (the reopen's
+step ii); it hits the "rule is not frame-local" bank guard.** Per-click
+before->after cell-transition analysis over gold's L0 block shows the
+transitions are MOVEMENT-DOMINATED, not a conversion: every click's dominant
+changes are ``(5->0): ~44`` and ``(0->5): ~44`` -- i.e. the colour-0 PLAYER
+sprite (~48 cells) translating ~7px over a colour-5 FLOOR (its vacated cells
+revert to 5; its new cells were 5 -> become 0). Colour 5 is the floor under
+the player, NOT the arena (that is colour 4). The only WIN-relevant signal is
+SPARSE ABSORPTION: on the L0 win click the transitions include ``(9->0): 9``
+(the player absorbed 9 cells of the colour-9 goal tile) and that triggered
+the clear. So there is no clean local "player over colour-X converts it to Y"
+rule to fit and simulate -- the model is "player NAVIGATES the colour-5 floor
+and ABSORBS goal tiles on contact; the level clears at an absorption
+threshold", entangled with the player's own identity/growth (the trailing
+colour-15 blob is a tail/companion, +~6 cells shifting each step). Two live
+falsifications from iteration 8 already rule out the simple absorption reads
+(player ONTO the c9 tile merges but does NOT win; holding at gold's winning
+cell does NOT win) -- so the absorption is progressive/threshold-gated in a
+way a single contact does not capture. The refined reopen is therefore
+DEEPER than "decode a conversion rule": it is a snake/absorb-navigation whose
+win is a progressive goal-tile-absorption threshold -- decode THAT (how much
+of which tile, in what manner) against gold before any planner. Banked here
+because the frame-local conversion-rule oracle test (reproduce gold's
+histogram trajectory from a local rule) is not passable: the histogram
+trajectory is dominated by player translation, and the sparse absorption
+events are not a position/contact function this analysis could pin.
+
 Role assignment (declared HERE, not in the kernel layer, which knows
 nothing about tiles, goals, enemies, or merging):
 
