@@ -18,7 +18,7 @@ category, drill into specific pages.
 - [[games/CN04.md]] — v1 brittle 1/5 (zig3_A2A4, hash-tuned) — A rigid-arrangement puzzle: select a sprite, rotate and slide it so its connector-marker stubs coincide with another sprite's — NOT a click game.
 - [[games/DC22.md]] — v1 1/6 ✅, v2 1/6 ✅ — Frame-observation solver — generalizes across version hashes.
 - [[games/FT09.md]] — v1 brittle 6/6 ✅ (sprite-tag solver, kept for provenance only), generic LIVE 6/6, 100% RHAE, 88 total actions (R56 glyph decode — A multi-ring, multi-glyph constraint-satisfaction toggle puzzle — NOT a
-- [[games/G50T.md]] — v1 brittle 1/7 ✅, generic 0/7 ❌ (R23 8B; previously 1/7 via explore_interact) — Frame-observation solver — generalizes across version hashes.
+- [[games/G50T.md]] — v1 brittle 1/7 (explore_interact, unreliable) — A reactive Sokoban / Adventures-of-Lolo maze: move a player to a hidden goal past enemies that step when you step — NOT an "explore-interact" game.
 - [[games/KA59.md]] — v1 brittle 4/7 ✅, generic 0/7 ❌ (R23 8B; v2 dir-silent) — Relies on game internals — high v1 score, fails on v2.
 - [[games/LF52.md]] — v1 0/10 ❌ — Not yet classified; needs hand review.
 - [[games/LP85.md]] — v1 1/8 ✅ — Frame-observation solver — generalizes across version hashes.
@@ -36,7 +36,7 @@ category, drill into specific pages.
 - [[games/TR87.md]] — v1 brittle 1/6 ✅ (hardcoded L1 rotation values), generic 0/6 ❌ (superseded by script25, see below) — A token-rewrite-grammar puzzle (NOT a geometric rotation puzzle, NOT a
 - [[games/TU93.md]] — v1 2/9 ✅, v2 2/9 ✅ — Relies on game internals — high v1 score, fails on v2.
 - [[games/VC33.md]] — v1 1/7 ✅, v2 1/7 ✅ — Frame-observation solver — generalizes across version hashes.
-- [[games/WA30.md]] — v1 brittle 2/9 ✅ (sprite tags wbmdvjhthc/wyzquhjerd/pkbufziase), generic 0/9 ❌ (R23 8B; multi-entity probe ambiguity) — Relies on game internals — high v1 score, fails on v2.
+- [[games/WA30.md]] — v1 brittle 2/9 (sprite tags wbmdvjhthc/geezpjgiyd/pkbufziase — non-transferable), generic 0/9 (R23 8B agent regression baseline) — A single worker moves on a grid and uses one context-interact action to pick up items and deliver them to target zones; a level wins when EVERY target zone is satisfied — a multi-item delivery, not a single-goal navigation.
 
 ## Game Types (15)
 
