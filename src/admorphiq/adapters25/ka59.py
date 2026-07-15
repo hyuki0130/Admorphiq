@@ -308,18 +308,31 @@ active-marker learning (solid pieces have no hole marker, so all
 identification is movement-based); a single class (L0) is left byte-identical.
 The placement itself reuses the existing ``_decide`` select+walk+fill loop.
 
-**L1 does NOT clear -- banked, transport mechanic missing.** MEASURED: the
-size-matched placement fills exactly the TWO frames that share the pieces'
-chamber ((51,51) and (39,54)); the other two ((9,9), (42,6)) sit in
-wall-sealed chambers (the board is split by color-15/color-2 barriers into
-three regions) that are UNREACHABLE by 3px-step walking -- a bg-connectivity
-flood from the piece start reaches only those same two frames. Crossing
-chambers needs a transport mechanic (the color-2 strips look like portals, or
-a launch-through-wall as on L0) that this adapter does not model. This is a
-genuinely new structure beyond size-matched placement, banked here and in
-``.wiki/wiki/games/KA59.md`` rather than speculatively half-built. So L1
-placement measurably progresses (2 of 4 frames) but the level stays 1/7 until
-the transport layer is a dedicated follow-up.
+**L1 transport = color-15 SLIDE-BANDS (traced from gold), one fix landed, full
+clear banked.** MEASURED: size-matched placement fills the TWO frames in the
+pieces' own chamber ((51,51),(39,54)); the other two ((9,9),(42,6)) sit across
+color-15 barriers, UNREACHABLE by plain 3px walking (a bg-connectivity flood
+from the piece start reaches only the two same-chamber frames; including
+color-15 as passable reaches all four). Frame-by-frame gold tracing settled the
+mechanic: color-15 is a SLIDE band -- stepping into it carries the piece a long
+fixed distance ACROSS it into the next chamber (the piece goes undetectable
+mid-slide, exactly like L0's launch), NOT a portal and NOT a wall.
+
+The fix landed this round: :meth:`_observe_result`'s hetero bootstrap now
+GUARDS against recording a slide displacement (> _MAX_STEP_CELLS) as a dir_map
+delta. Without it, the first accidental slide poisoned the move set (e.g.
+"left = -24 cols") and every subsequent optimistic route became garbage --
+the exact oscillation the first L1 pass showed. With the guard, dir_map stays
+clean and pieces DO cross chambers (measured: reach the far-left region).
+
+Still 1/7: reaching the top-left frame (9,9) needs a SECOND, vertical slide up
+through the rows-24-27 band at a specific channel column (the gold aligns the
+piece to the frame's column FIRST, then slides up). Robustly navigating
+multiple slide-bands (locate each band + its channel, align, slide in the
+right direction, resume walking) is a band-aware routing subsystem, not a
+bounded fix -- banked here and in ``.wiki/wiki/games/KA59.md`` rather than
+speculatively half-built. Placement + one-band crossing work; multi-band
+far-corner navigation is the dedicated follow-up.
 
 The legacy per-call ``_decide`` remains as the fallback for anything the
 2-piece orchestrator does not model, so the 1/7 floor cannot regress.
@@ -881,6 +894,19 @@ class Adapter(GameAdapter):
             match = moved[0]
             from_cell: Cell = prev_pieces[match["before"]]["bbox"][:2]  # type: ignore[index]
             shift: Cell = tuple(match["shift"])  # type: ignore[assignment]
+            if abs(shift[0]) + abs(shift[1]) > _MAX_STEP_CELLS:
+                # A SLIDE across passable terrain, not a unit step -- MEASURED
+                # on L1: stepping into a color-15 band carries the piece a long
+                # fixed distance across it into the next chamber (the piece
+                # goes undetectable mid-slide, exactly like L0's launch). Never
+                # record this displacement as a dir_map delta: doing so poisons
+                # the move set (e.g. "left = -24 cols") and every subsequent
+                # optimistic route becomes garbage -- the exact oscillation the
+                # first L1 pass showed after an accidental crossing. Just adopt
+                # the landing cell and force re-identification.
+                self._active_cell = (from_cell[0] + shift[0], from_cell[1] + shift[1])
+                self._identity_tried = set()
+                return
             self._dir_map.setdefault(action, shift)
             self._tried_from.setdefault(from_cell, set()).add(action)
             self._active_cell = (from_cell[0] + shift[0], from_cell[1] + shift[1])

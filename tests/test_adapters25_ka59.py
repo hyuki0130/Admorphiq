@@ -115,3 +115,62 @@ def test_assign_is_pure_distance_when_no_area_maps_given():
     a, b = (0, 0), (0, 10)
     ta, tb = (0, 1), (0, 11)
     assert adapter._assign([a, b], [ta, tb]) == {a: ta, b: tb}
+
+
+def _hollow_ring(g: list[list[int]], colour: int, r0: int, c0: int, r1: int, c1: int) -> None:
+    """Paint a hollow rectangular ring border (interior left as-is) so
+    closed_frames detects it as a frame with inner_bbox one cell inside."""
+    for r in range(r0, r1 + 1):
+        for c in range(c0, c1 + 1):
+            if r in (r0, r1) or c in (c0, c1):
+                g[r][c] = colour
+
+
+def _region(color: int, bbox: tuple[int, int, int, int]) -> dict:
+    r0, c0, r1, c1 = bbox
+    cells = frozenset((r, c) for r in range(r0, r1 + 1) for c in range(c0, c1 + 1))
+    rows = [r for r, _ in cells]
+    cols = [c for _, c in cells]
+    return {
+        "color": color,
+        "bbox": bbox,
+        "cells": cells,
+        "centroid": (sum(rows) / len(cells), sum(cols) / len(cells)),
+        "size": len(cells),
+    }
+
+
+def test_observe_result_hetero_slide_does_not_poison_dir_map():
+    """Purpose: regression pin for the L1 transport fix -- on a heterogeneous
+    board a move can trigger a SLIDE (a long fixed carry across a color-15
+    band into the next chamber), MEASURED to move a piece far more than one
+    unit step. That displacement must NOT be recorded as a dir_map delta:
+    doing so poisons the optimistic router's move set (e.g. "left = -24
+    cols") and every subsequent route becomes garbage -- the exact
+    oscillation the first L1 pass showed. The guard must instead adopt the
+    landing cell and leave dir_map untouched so normal 3px routing resumes in
+    the new chamber.
+    Expected feedback: failure means a slide re-poisons dir_map, reopening the
+    cross-chamber oscillation bug and blocking any future band-aware routing."""
+    bg = 1
+    g = [[bg] * 64 for _ in range(64)]
+    _hollow_ring(g, 4, 0, 0, 4, 4)  # frame, inner area 9  -> triggers >1 size class
+    _hollow_ring(g, 4, 0, 10, 4, 17)  # frame, inner area 18
+    # The piece AFTER a slide: a solid 3x3 (bbox area 9) far from its origin.
+    for r in range(30, 33):
+        for c in range(54, 57):
+            g[r][c] = 14
+    grid = tuple(tuple(row) for row in g)
+
+    adapter = Adapter()
+    adapter._hetero = True
+    adapter._active_marker_color = None  # solid pieces -> movement identification
+    adapter._prev_grid = grid  # only needs to be non-None
+    adapter._prev_piece_regions = [_region(14, (30, 30, 32, 32))]  # origin, 24 cols left of landing
+    adapter._pending_action = 4
+    adapter._pending_kind = "move"
+
+    adapter._observe_result(grid)
+
+    assert adapter._active_cell == (30, 54)  # landing adopted
+    assert adapter._dir_map == {}  # the 24-col slide was NOT recorded as a delta
