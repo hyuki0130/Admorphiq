@@ -16,13 +16,18 @@ goal-matching / rotation-changer / refill-budget / goal-blocking contracts.
 
 from __future__ import annotations
 
+from collections import Counter
+
 from admorphiq.adapters25.ls20 import (
     _BASE_SHAPES,
     _CELL,
+    _FLOOR_COLOR,
     _PALETTE,
     _SHAPE_ROT,
     _STEP_DECR,
     _STEP_FULL,
+    _WALL_COLOR,
+    _classify_changer,
     _decode_shape3,
     _solve,
 )
@@ -77,6 +82,32 @@ def test_decode_shape3_rejects_non_shape_and_offpalette():
     assert _decode_shape3({(0, 0): _PALETTE[0]}) is None  # single cell: no shape
     off = {cell: 7 for cell in _base_fill(0)}  # colour 7 is not in the palette
     assert _decode_shape3(off) is None
+
+
+def test_classify_changer_types_by_icon_signature():
+    """Purpose: pin the changer-type classifier's ordering — the colour changer
+    icon (soyhouuebz) carries a colour-0 pixel AND a multi-palette icon, so the
+    palette test MUST precede the colour-0 shape test or a colour changer is
+    mis-typed "shape" (the exact bug that made L3/L4 unsolvable before this
+    fix). Also: a changer only exists on a FLOOR cell — colour-1 markers on WALL
+    cells (push-walls / arena edges) must NOT register as rotation changers.
+    Expected feedback: a failure means the parser mis-reads which attribute a
+    changer cycles, and the joint BFS plans a route that can never match the
+    goal token."""
+    # rotation icon: floor-dominant cell carrying colour-1 (+ colour-0) pixels.
+    rot = Counter({_FLOOR_COLOR: 20, 0: 3, 1: 2})
+    assert _classify_changer(rot, _FLOOR_COLOR) == "rot"
+    # colour icon: floor cell with a multi-palette icon AND one colour-0 pixel.
+    color = Counter({_FLOOR_COLOR: 16, 9: 2, 14: 2, 8: 2, 12: 2, 0: 1})
+    assert _classify_changer(color, _FLOOR_COLOR) == "color"
+    # shape icon: floor cell with colour-0 pixels only.
+    shape = Counter({_FLOOR_COLOR: 21, 0: 4})
+    assert _classify_changer(shape, _FLOOR_COLOR) == "shape"
+    # colour-1 marker on a WALL cell (dom colour-4) is NOT a rotation changer.
+    wall_marker = Counter({_WALL_COLOR: 20, 1: 5})
+    assert _classify_changer(wall_marker, _WALL_COLOR) is None
+    # plain floor is not a changer.
+    assert _classify_changer(Counter({_FLOOR_COLOR: 25}), _FLOOR_COLOR) is None
 
 
 def _corridor(length: int) -> dict[tuple[int, int], object]:

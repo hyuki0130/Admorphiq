@@ -211,6 +211,29 @@ def _decode_goal_preview(grid: Grid, gx: int, gy: int) -> tuple[int, int, int] |
     return _decode_shape3(cbc)
 
 
+def _classify_changer(hh: Counter, dom: int) -> str | None:
+    """Type a lattice cell's changer icon, or ``None`` if it is not a changer.
+
+    A changer sits on a FLOOR cell (dom == ``_FLOOR_COLOR``); requiring floor
+    excludes the colour-1 decorative arena-edge / push-wall markers, which sit
+    on colour-4 WALL cells. Signatures, tested in this ORDER (the colour changer
+    also carries one colour-0 pixel, so the multi-palette test MUST precede the
+    colour-0 shape test, or a colour changer is mis-typed "shape"):
+      - rotation (``rhsxkxzdjz``): carries a colour-1 pixel;
+      - colour (``soyhouuebz``): a >= 2 distinct-palette-colour icon;
+      - shape (``mkjdaccuuf``): colour-0 pixels only.
+    """
+    if dom != _FLOOR_COLOR:
+        return None
+    if hh.get(_ROT_MARK, 0) > 0:
+        return "rot"
+    if sum(1 for c in _PALETTE if hh.get(c, 0) > 0) >= 2:
+        return "color"
+    if hh.get(_SHAPE_MARK, 0) > 0:
+        return "shape"
+    return None
+
+
 def _find_avatar(grid: Grid) -> Cell | None:
     """The avatar marker: a 5x5 block, top two rows colour 12, bottom three 9."""
     H, W = len(grid), len(grid[0])
@@ -250,27 +273,14 @@ def _parse(grid: Grid) -> dict[str, Any] | None:
                 continue
             hh = _cell_counts(grid, x, y)
             dom = hh.most_common(1)[0][0]
-            pal = sum(hh.get(c, 0) for c in _PALETTE)
-            if dom == _GOAL_BORDER and pal >= 3:
-                req = _decode_goal_preview(grid, x, y)
+            if dom == _GOAL_BORDER and sum(hh.get(c, 0) for c in _PALETTE) >= 3:
                 goals.append((x, y))
                 if goal_req is None:
-                    goal_req = req
-            if hh.get(_ROT_MARK, 0) > 0:
-                changers[(x, y)] = "rot"
-            elif hh.get(_SHAPE_MARK, 0) > 0 and dom == _FLOOR_COLOR:
-                changers[(x, y)] = "shape"
-    # colour changers: floor cell carrying >= 2 distinct palette colours (its
-    # multi-colour icon), never a goal (dom 5) or an already-typed changer.
-    for x in xs:
-        for y in ys:
-            if y >= _PLAYABLE_MAX_ROW or (x, y) in changers or (x, y) in goals:
+                    goal_req = _decode_goal_preview(grid, x, y)
                 continue
-            hh = _cell_counts(grid, x, y)
-            if hh.most_common(1)[0][0] != _FLOOR_COLOR:
-                continue
-            if sum(1 for c in _PALETTE if hh.get(c, 0) > 0) >= 2:
-                changers[(x, y)] = "color"
+            kind = _classify_changer(hh, dom)
+            if kind is not None:
+                changers[(x, y)] = kind
 
     if len(goals) != 1 or goal_req is None:
         return None  # multi-goal / undecodable — gate to explorer
