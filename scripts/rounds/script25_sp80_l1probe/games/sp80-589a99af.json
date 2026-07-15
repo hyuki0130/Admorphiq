@@ -1,0 +1,20 @@
+{
+  "game_id": "sp80-589a99af",
+  "win_levels": 6,
+  "levels_completed": 1,
+  "elapsed_s": 2.67,
+  "total_actions": 1000,
+  "per_level": [
+    {
+      "level": 1,
+      "agent_actions": 10,
+      "human_actions": 39,
+      "score": 1.0
+    }
+  ],
+  "game_score": 0.047619,
+  "has_baseline": true,
+  "llm_hypothesis": null,
+  "title": "SP80",
+  "adapter": "sp80"
+}
