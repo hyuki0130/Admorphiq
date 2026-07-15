@@ -163,6 +163,16 @@ _DELIVERED_MARGIN = 1
 # An enemy centroid closer than this to a fruit makes delivering that fruit
 # risky — nudge it away from the enemy instead of toward the goal.
 _ENEMY_DANGER = 9.0
+# Enemy chase is deterministic (source ``sgmsqapcxe``): every enemy steps
+# 1-2 px/axis toward the NEAREST non-vacuumed fruit each vacuum sub-step, ~4
+# sub-steps per click, so it converges up to this many px toward its target
+# per click. Used to PREDICT where the swarm will be next click when choosing
+# a merge zone.
+_ENEMY_REACH = 8.0
+# A merge midpoint at least this far from every predicted enemy position is
+# treated as safe for the ~4-step merge; below it, lure the swarm first. Set
+# above _ENEMY_REACH so the pair is out of one click's convergence.
+_ENEMY_CLEARANCE = 12.0
 # A dominant frame change smaller than this (px, on the diff bbox) counts as
 # "nothing usefully moved" for lead escalation.
 _MIN_USEFUL_DIFF = 1.5
@@ -411,12 +421,16 @@ class Adapter(GameAdapter):
     def _merge_move(self, fruits: list[Region], enemies: list[Region]) -> Cell | None:
         """One click toward merging the lowest value that still has a pair.
 
-        Picks the lowest value with ≥2 fruits, takes its two nearest members,
-        and: clicks their midpoint once they are close enough for a single
-        vacuum to overlap them (within _MERGE_DIST), otherwise pulls the pair
-        member farther from the other toward its partner (composed via
-        :meth:`_deliver_click`, which keeps the click inside grab range and
-        dodges an adjacent enemy). Returns None when no value has a pair.
+        Picks the lowest value with ≥2 fruits. With NO enemies (L0-L2), the
+        two NEAREST members are merged — midpoint click within _MERGE_DIST,
+        else pull one toward the other (byte-identical to the pre-enemy
+        behaviour, so the 3/9 floor is untouched). With enemies present (L3+),
+        the pair is instead chosen for maximum clearance from the PREDICTED
+        enemy swarm (:meth:`_predict_enemies`): the merge zone that the chasing
+        pack is least able to reach during the ~4-step merge. If even the best
+        pair sits inside the swarm's one-click reach, the pack is LURED
+        (:meth:`_lure_click`) instead of feeding it a fruit to downgrade.
+        Returns None only when no value has a pair.
         """
         by_value: dict[int, list[Region]] = {}
         for f in fruits:
@@ -425,12 +439,76 @@ class Adapter(GameAdapter):
         if not pair_values:
             return None
         group = by_value[pair_values[0]]
-        a, b = self._nearest_pair(group)
-        ac = _centroid(a)
-        bc = _centroid(b)
+
+        if not enemies:
+            a, b = self._nearest_pair(group)
+            return self._merge_pair_click(a, b, enemies)
+
+        predicted = self._predict_enemies(fruits, enemies)
+        best: tuple[float, Region, Region] | None = None
+        for i in range(len(group)):
+            for j in range(i + 1, len(group)):
+                mid = self._midpoint(group[i], group[j])
+                clearance = min((_dist(mid, p) for p in predicted), default=_ENEMY_CLEARANCE)
+                # Tie-break toward closer pairs (cheaper merge) by subtracting
+                # a small fraction of the pair distance from the clearance key.
+                key = clearance - 0.01 * _dist(_centroid(group[i]), _centroid(group[j]))
+                if best is None or key > best[0]:
+                    best = (key, group[i], group[j])
+        assert best is not None
+        _key, a, b = best
+        if min((_dist(self._midpoint(a, b), p) for p in predicted), default=_ENEMY_CLEARANCE) < _ENEMY_CLEARANCE:
+            return self._lure_click(a, b, enemies)
+        return self._merge_pair_click(a, b, enemies)
+
+    def _merge_pair_click(self, a: Region, b: Region, enemies: list[Region]) -> Cell:
+        """Midpoint click when the pair is within one vacuum's grab of both,
+        else pull one member toward the other."""
+        ac, bc = _centroid(a), _centroid(b)
         if _dist(ac, bc) <= _MERGE_DIST:
             return _clamp_click((ac[0] + bc[0]) / 2.0, (ac[1] + bc[1]) / 2.0)
         return self._deliver_click(a, bc, enemies)
+
+    @staticmethod
+    def _midpoint(a: Region, b: Region) -> tuple[float, float]:
+        ac, bc = _centroid(a), _centroid(b)
+        return ((ac[0] + bc[0]) / 2.0, (ac[1] + bc[1]) / 2.0)
+
+    @staticmethod
+    def _predict_enemies(fruits: list[Region], enemies: list[Region]) -> list[tuple[float, float]]:
+        """Where each enemy will be next click: ``_ENEMY_REACH`` px toward its
+        nearest fruit (the source's deterministic chase). A frame-derived
+        forecast used only to place merges out of the swarm's reach."""
+        out: list[tuple[float, float]] = []
+        for e in enemies:
+            ec = _centroid(e)
+            target = _nearest(ec, fruits)
+            if target is None:
+                out.append(ec)
+                continue
+            tc = _centroid(target)
+            d = _dist(ec, tc)
+            if d <= 1e-9:
+                out.append(ec)
+                continue
+            step = min(_ENEMY_REACH, d)
+            out.append((ec[0] + (tc[0] - ec[0]) / d * step, ec[1] + (tc[1] - ec[1]) / d * step))
+        return out
+
+    def _lure_click(self, a: Region, b: Region, enemies: list[Region]) -> Cell:
+        """Click on the enemy swarm's centroid to VACUUM the pack (the source
+        exempts vacuumed enemies from chasing and gives them a cooldown),
+        clearing the merge zone for the next click. Biased slightly AWAY from
+        the merge pair so the lure pulls the swarm off the fruits rather than
+        onto them."""
+        ex = sum(_centroid(e)[0] for e in enemies) / len(enemies)
+        ey = sum(_centroid(e)[1] for e in enemies) / len(enemies)
+        mid = self._midpoint(a, b)
+        d = _dist((ex, ey), mid)
+        if d > 1e-9:
+            ex += (ex - mid[0]) / d * _VACUUM_RADIUS
+            ey += (ey - mid[1]) / d * _VACUUM_RADIUS
+        return _clamp_click(ex, ey)
 
     @staticmethod
     def _nearest_pair(group: list[Region]) -> tuple[Region, Region]:
