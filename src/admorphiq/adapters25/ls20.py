@@ -116,13 +116,34 @@ understanding only) and/or live:
      ``(key, action)`` genuinely non-deterministic) and, on later levels, a
      Fog flag that hides structure — both break the static-structure
      assumption the frame key relies on.
-Reopen order (REVISED after the R56 measurement above): obstacle 1's
-key-augmentation is OFF the table (it regresses the floor). The real L2 gate
-is obstacle 2 — refill-gated long solutions — so the reopen is a REFILL-AWARE
-search: detect step-refill cells (a region that vanishes when collected, akin
-to the goal-reveal) and bias BFS-from-start to route through them before the
-goal, extending the ~21-step life enough to reach L2's ~123-action solution.
-Obstacle 3 (moving hazards + fog) stays banked for L3+.
+Reopen order (RE-REVISED after the R56b refill measurement, 2026-07-15):
+obstacle 1's key-augmentation is OFF the table (regresses the floor), and a
+REFILL-AWARE search was BUILT and MEASURED — the refill arithmetic CLOSES but
+does NOT clear L2, because obstacle 1 (not 2) is the binding wall. Measured
+facts (offline joint BFS over the engine-extracted L2 maze + faithful live
+replay):
+  - L2 IS solvable in **45 actions** (human 123) — a single life-chain that
+    hits the lone rotation changer (0->270 needs 3 passes) and collects a
+    refill mid-run to survive past the 21-action life. Refills ARE
+    frame-separable: a step-refill pickup both drops a region (the cell
+    vanishes) AND grows the counter band (rows 61-62, filled-cell count =
+    current_steps) — a clean two-signal detector.
+  - BUT the online frame-keyed BFS-from-start WEDGES at ~11-14 states with the
+    token rotation NEVER leaving 0 — it never reaches the changer at (49,45),
+    ~20 actions out. This wedge is present in the BASELINE too (measured, not
+    caused by refill logic): a plan long enough to reach the changer crosses
+    the death boundary, and with ~17% per-edge counter-aliasing a ~20-action
+    plan survives intact only ~0.83^20 ~= 3% of the time, so the agent cannot
+    reliably reach and EXPAND the far states where a refill would even matter.
+  - So refill-awareness is NECESSARY-but-not-SUFFICIENT: the binding L2 gate is
+    exploration REACH under obstacle-1 non-determinism, not the refill
+    arithmetic (obstacle 2, now shown solvable-in-principle). The refill layer
+    was reverted (inert while the wedge dominates; kept the floor byte-clean).
+Reopen: make the exploration robust to counter-aliasing FIRST (e.g. verify-on-
+replay long plans, or a life-budgeted plan that re-derives on death without
+re-hashing to a colliding key) so the agent can reach the changer; only then
+does the (validated) refill layer pay off. Obstacle 3 (moving hazards + fog)
+stays banked for L3+.
 
 Composition from ``admorphiq.kernels``:
   - :func:`admorphiq.kernels.find_regions` segments each frame into the
