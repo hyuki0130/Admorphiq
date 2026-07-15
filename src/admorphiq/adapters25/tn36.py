@@ -75,16 +75,36 @@ cell), and it composes namespace-safe kernels exactly like
   goal. Below the cheating legacy 7/7 (which set the program via a
   game-internal call); 0/7 is the honest frame-only floor for this game.
 
-Reopen pointer: (1) learn the bit->movement OPCODE by setting one bit at
-``y=44``, pressing play, and measuring the player's displacement vector per
-frame; (2) model the multi-frame program (each play advances a frame; detect
-the frame count needed to reach the goal); (3) solve the target trajectory
-with :func:`admorphiq.kernels.gf2_solve` / :func:`admorphiq.kernels.derive_rewrites`
-over the (likely linear) opcode structure, then set + play each frame within
-the deadline. The controls are reachable; the missing piece is the
-game-model (opcode learning + multi-frame planning) between detection and
-exploitation — exactly the "game-model phase" the wiki's prior attempts
-flagged as the gap.
+**Opcode-learning attempt (R56b, 2026-07-15) — the structure RESISTS, deeper
+divergence banked**: the natural reopen ("learn bit->movement by set-one-bit-
+then-play, then solve the trajectory") was ATTEMPTED and does not
+materialise. A live probe set each single bit at ``y=44`` in isolation,
+pressed PLAY, and stepped the run to completion: the player (a colour-11
+region at grid (36,32), goal at (14,32)) moved by ZERO on every single-bit
+program. Cross-checked with the source, the reason is structural, not a probe
+error:
+
+- The player's per-frame POSITION comes from level data
+  (``qllkobvsuk = level.get_data("Positions")``, applied by ``skgnriqpob``),
+  NOT from a bit->displacement map — so there is no single-bit displacement
+  operator to learn in the first place.
+- The winning program is MULTI-FRAME (v1 L0 gold = ``[3,3,3,3,3]``, five
+  frames each of value 3), and each frame has its OWN saved bit-panel value
+  (``lhhjnfuvau[frame]``, switched by ``skgnriqpob(index)``) — but the
+  FRAME-SELECTOR control (how the player advances the edit cursor between the
+  five frames with only the one visible bit row) is NOT identifiable from the
+  frame, and the wiki's two prior refactor attempts could not find it either.
+
+So the real blocker is not "learn a linear opcode + gf2_solve" — it is
+reverse-engineering the stateful multi-frame EDITOR (frame advancement +
+how a frame's value maps to the level-data trajectory gate), which is a
+multi-session decode, not a single planner. That is why this ships as the
+click-frontier explorer (0/7) with the map, not a planner: adding an
+unvalidated planner would be speculative code against a win this probe shows
+is not reachable by the hypothesised opcode model. Next attempt starts from
+these harder facts: find the frame-selector first (probe for a control whose
+click changes WHICH frame's bits the visible row edits), then model the
+frame-value -> trajectory-gate relation before any solver.
 
 Composition from ``admorphiq.kernels``: find_regions, canonical_key,
 transition_shortest_path (as above).
