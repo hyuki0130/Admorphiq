@@ -15,7 +15,7 @@ category, drill into specific pages.
 - [[games/AR25.md]] — v1 2/8 (legacy bfs_state_space, ~500K expansions), v2 2/8 (same) — Movable colour glyphs are drawn together with their reflections across a movable mirror bar; a level is won when every goal cell is covered by some piece pixel or one of its reflections — NOT a single-avatar maze.
 - [[games/BP35.md]] — v1 brittle 1/9 ✅, generic 0/9 ❌ (R23 8B) — Frame-observation solver — generalizes across version hashes.
 - [[games/CD82.md]] — v1 6/6 ✅ (brittle paint_game, hardcoded positions) — Relies on game internals — high v1 score, fails on v2.
-- [[games/CN04.md]] — v1 brittle 1/5 ✅, generic 0/5 ❌ (R23 8B) — Frame-observation solver — generalizes across version hashes.
+- [[games/CN04.md]] — v1 brittle 1/5 (zig3_A2A4, hash-tuned) — A rigid-arrangement puzzle: select a sprite, rotate and slide it so its connector-marker stubs coincide with another sprite's — NOT a click game.
 - [[games/DC22.md]] — v1 1/6 ✅, v2 1/6 ✅ — Frame-observation solver — generalizes across version hashes.
 - [[games/FT09.md]] — v1 brittle 6/6 ✅ (sprite-tag solver, kept for provenance only), generic LIVE 6/6, 100% RHAE, 88 total actions (R56 glyph decode — A multi-ring, multi-glyph constraint-satisfaction toggle puzzle — NOT a
 - [[games/G50T.md]] — v1 brittle 1/7 ✅, generic 0/7 ❌ (R23 8B; previously 1/7 via explore_interact) — Frame-observation solver — generalizes across version hashes.

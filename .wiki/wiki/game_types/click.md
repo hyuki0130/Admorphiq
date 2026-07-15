@@ -1,6 +1,6 @@
 ---
 type: game_type
-examples: [CD82, FT09, CN04, LP85, VC33]
+examples: [CD82, FT09, LP85, VC33]
 refactor_status: partial (some frame-only wins, some brittle)
 ---
 
@@ -34,7 +34,6 @@ refactor_status: partial (some frame-only wins, some brittle)
 |------|-----|-----|----------|------|
 | [[../games/LP85]] | 1/8 | n/a | click_c8_(30,4) | frame_only |
 | [[../games/VC33]] | 1/7 | 1/7 | click_c9_(33,60) | frame_only |
-| [[../games/CN04]] | 1/5 | 0/6 | zig3_A2A4 | frame_only |
 | [[../games/CD82]] | 6/6 | n/a | paint_game | brittle |
 | [[../games/FT09]] | 6/6 | n/a | lights_out | brittle |
 

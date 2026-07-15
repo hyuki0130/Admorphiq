@@ -30,6 +30,7 @@ Bipartite matching (sprite → target) + per-pair routing through appropriate ch
 | Game | v1 | v2 | Strategy |
 |------|-----|-----|----------|
 | [[../games/RE86]] | 6/8 | 0/8 | re86_analytical (brittle) |
+| [[../games/CN04]] | 1/5 | 1/6 | rigid marker alignment (rotate+translate, generic) |
 
 ## Edge cases
 
