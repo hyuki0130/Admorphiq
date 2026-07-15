@@ -142,6 +142,10 @@ _MAX_PIECE_SIZE = 27
 # A clickable FOOT (leg) is a compact blob; a leg-to-body LIMB line is thin
 # (low bbox fill). Feet fill ~0.5 of their bbox, limbs ~0.15.
 _MIN_LEG_FILL = 0.35
+# A BODY marker is very compact (fills ~0.8 of its bbox); its TARGET nest is a
+# low-fill ring (~0.24). This threshold separates a body from both its own
+# target and from the feet (~0.5), so a creature colour = one body + one nest.
+_BODY_FILL = 0.6
 # Squared-distance tolerance for "a ring sits at the legs' centroid" (== the
 # body). ~4 px, comfortably inside a body marker's own extent.
 _BODY_CENTROID_TOL2 = 16.0
@@ -149,6 +153,12 @@ _BODY_CENTROID_TOL2 = 16.0
 # roughly the leg sprite's half-extent — so legs land separated from the nest
 # and each other (overlapping placements collide and burn the game's strikes).
 _LEG_CLEAR_RADIUS = 2
+# A drag animation settles in a handful of frames; a placement still unsettled
+# after this many is stuck (the board changed under the plan) — abandon it.
+_PLACE_STUCK_LIMIT = 12
+# A new level's legs animate in; build the plan only once the detected creature
+# signature has held for this many consecutive frames (past the animation).
+_SETTLE_FRAMES = 3
 
 
 def _hazard_cells(grid: Grid, bg: int) -> set[Cell]:
@@ -162,19 +172,30 @@ def _hazard_cells(grid: Grid, bg: int) -> set[Cell]:
     return cells
 
 
-def _analyze_creature(grid: Grid, bg: int, hazard: set[Cell]) -> tuple[list[Cell], Cell] | None:
-    """Detect a single centroid-assembly creature: its LEG cells and the
-    TARGET-nest centre its body must reach, purely from frame structure.
+def _fill(region: Region) -> float:
+    """Fraction of a region's bounding box its cells occupy — a compact foot/
+    body fills ~0.5-0.8, a thin limb line ~0.15."""
+    r0, c0, r1, c1 = region["bbox"]
+    area = (r1 - r0 + 1) * (c1 - c0 + 1)
+    return region["size"] / area if area else 0.0
 
-    Model (validated live, see the module docstring's Mechanics): a creature's
-    body sits at the integer CENTROID of its legs; two markers of the SAME
-    colour are the body (near the legs' centroid) and the target nest (the
-    other one). Legs are the piece-sized regions of the OTHER colours.
 
-    Returns ``(leg_centres, target_centre)`` or ``None`` when the structure is
-    not a clean single-creature layout (the caller then falls back to the
-    generic explorer). No colour or coordinate constants — only sizes, the
-    same-colour-pair signature, and centroid-nearness.
+def _analyze_creatures(grid: Grid, bg: int, hazard: set[Cell]) -> list[tuple[list[Cell], Cell]] | None:
+    """Detect ALL centroid-assembly creatures on the board — one ``(leg_centres,
+    target_centre)`` per creature — purely from frame structure.
+
+    Model (validated live, see the module docstring): each creature is a BODY
+    that sits at the integer CENTROID of its own clickable LEGS, plus a
+    same-colour TARGET nest the body must reach. A body is a COMPACT high-fill
+    marker; its target is a low-fill ring of the same colour. Legs are the
+    other compact pieces; each is assigned to the NEAREST body (the assignment
+    is self-labelling because a body sits on its legs' mean), and the grouping
+    is verified — a group whose centroid is not near its body is rejected.
+
+    Returns the per-creature list (>= 1) or ``None`` when no clean creature is
+    found (the caller then falls back to the generic explorer). No colour or
+    coordinate constants — only sizes, bbox-fill, the same-colour body/target
+    signature, and centroid-nearness.
     """
     # gap=2 so a ring-shaped nest drawn as scattered pixels fuses into one
     # piece-sized region (its outline points sit within a 3-cell bridge).
@@ -187,48 +208,57 @@ def _analyze_creature(grid: Grid, bg: int, hazard: set[Cell]) -> tuple[list[Cell
     if len(pieces) < 3:
         return None
 
-    def _fill(r: Region) -> float:
-        r0, c0, r1, c1 = r["bbox"]
-        area = (r1 - r0 + 1) * (c1 - c0 + 1)
-        return r["size"] / area if area else 0.0
-
-    # Compact pieces are the clickable FEET (legs); thin low-fill pieces are
-    # the leg-to-body limb lines (not selectable), excluded from leg candidates.
-    compact = [r for r in pieces if _fill(r) >= _MIN_LEG_FILL]
-    if len(compact) < 2:
-        return None
-
     by_color: dict[int, list[Region]] = {}
     for r in pieces:
         by_color.setdefault(r["color"], []).append(r)
 
-    # The BODY/TARGET share a colour (a same-colour ring pair). The right pair
-    # is the one whose body sits on the CENTROID of the compact legs (the
-    # game's defining invariant: body == mean of its legs) — this rejects the
-    # limb-line colour, which also has two regions but neither at the centroid.
-    for color, rings in by_color.items():
-        if len(rings) < 2:
+    # A creature colour has a COMPACT body (high fill) plus at least one other
+    # same-colour region (its low-fill target ring). Two thin limb lines share
+    # a colour too, but neither is high-fill, so that colour is rejected.
+    bodies: list[tuple[Region, Region]] = []  # (body, target)
+    body_colors: set[int] = set()
+    for color, regs in by_color.items():
+        if len(regs) < 2:
             continue
-        legs = [r for r in compact if r["color"] != color]
-        if not legs:
+        body = max(regs, key=_fill)
+        if _fill(body) < _BODY_FILL:
             continue
-        lc = (
-            sum(r["centroid"][0] for r in legs) / len(legs),
-            sum(r["centroid"][1] for r in legs) / len(legs),
+        target = min((r for r in regs if r is not body), key=_fill)
+        bodies.append((body, target))
+        body_colors.add(color)
+    if not bodies:
+        return None
+
+    # Legs = compact pieces that are NOT a body/target ring colour.
+    legs = [r for r in pieces if r["color"] not in body_colors and _fill(r) >= _MIN_LEG_FILL]
+    if not legs:
+        return None
+
+    def _d2(a: tuple[float, float], b: tuple[float, float]) -> float:
+        return (a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2
+
+    # Assign each leg to the nearest body (self-labelling: a body sits on its
+    # own legs' mean).
+    groups: dict[int, list[Region]] = {i: [] for i in range(len(bodies))}
+    for leg in legs:
+        i = min(range(len(bodies)), key=lambda i: _d2(leg["centroid"], bodies[i][0]["centroid"]))
+        groups[i].append(leg)
+
+    creatures: list[tuple[list[Cell], Cell]] = []
+    for i, (body, target) in enumerate(bodies):
+        grp = groups[i]
+        if not grp:
+            return None  # a body with no legs -> layout not understood; defer
+        centroid = (
+            sum(r["centroid"][0] for r in grp) / len(grp),
+            sum(r["centroid"][1] for r in grp) / len(grp),
         )
-
-        def _d2(r: Region, lc: tuple[float, float] = lc) -> float:
-            return (r["centroid"][0] - lc[0]) ** 2 + (r["centroid"][1] - lc[1]) ** 2
-
-        nearest = min(rings, key=_d2)
-        if _d2(nearest) > _BODY_CENTROID_TOL2:
-            continue  # no ring at the legs' centroid -> not the body/target colour
-        others = [r for r in rings if r is not nearest]
-        target = max(others, key=_d2)  # the ring farthest from the body = the nest
-        leg_centres = [(int(round(r["centroid"][0])), int(round(r["centroid"][1]))) for r in legs]
+        if _d2(centroid, body["centroid"]) > _BODY_CENTROID_TOL2:
+            return None  # grouping inconsistent with the body-at-centroid invariant
+        leg_centres = [(int(round(r["centroid"][0])), int(round(r["centroid"][1]))) for r in grp]
         target_centre = (int(round(target["centroid"][0])), int(round(target["centroid"][1])))
-        return leg_centres, target_centre
-    return None
+        creatures.append((leg_centres, target_centre))
+    return creatures
 
 
 def _is_hud_band(region: Region, height: int, width: int) -> bool:
@@ -327,6 +357,12 @@ class Adapter(GameAdapter):
         self._plan_attempted = False
         self._plan_place_issued = False
         self._plan_last_masked: Grid | None = None
+        self._plan_place_count = 0
+        # Creature signature (per-creature leg counts) held while waiting for a
+        # new level's entry animation to settle, plus how many consecutive
+        # frames it has held.
+        self._settle_ref: tuple[int, ...] | None = None
+        self._settle_count = 0
 
     # ── harness contract ────────────────────────────────────────────────
 
@@ -394,6 +430,9 @@ class Adapter(GameAdapter):
         self._plan_attempted = False
         self._plan_place_issued = False
         self._plan_last_masked = None
+        self._plan_place_count = 0
+        self._settle_ref = None
+        self._settle_count = 0
 
     def _on_restart(self) -> None:
         self._pending_click = None
@@ -406,23 +445,22 @@ class Adapter(GameAdapter):
     # ── centroid-assembly planner ───────────────────────────────────────
 
     def _build_plan(self, grid: Grid, bg: int) -> list[tuple[str, Cell]] | None:
-        """Detect the creature and compute a select→place click plan that
-        lands its body (the legs' centroid) on the target nest, avoiding
-        hazards. Returns ``None`` when the layout is not a clean single
-        creature (the explorer then runs)."""
+        """Detect every creature and compute a select→place click plan that
+        lands each body (its legs' centroid) on its target nest, avoiding
+        hazards. Returns ``None`` when no clean creature is found (the explorer
+        then runs)."""
         hazard = _hazard_cells(grid, bg)
-        det = _analyze_creature(grid, bg, hazard)
-        if det is None:
+        creatures = _analyze_creatures(grid, bg, hazard)
+        if not creatures:
             return None
-        leg_centres, target = det
         height, width = len(grid), len(grid[0])
 
         def is_free(cell: Cell) -> bool:
             # Require a clear BACKGROUND neighbourhood, not merely non-hazard:
-            # a leg sprite has extent, and a cell on the target nest / another
-            # marker overlaps it. Demanding empty bg pushes the legs to
-            # well-separated open cells (clear of the nest and of each other),
-            # avoiding the transit collisions that trigger the game's strikes.
+            # a leg sprite has extent, and a cell on a nest / another marker
+            # overlaps it. Demanding empty bg pushes the legs to well-separated
+            # open cells (clear of the nests and of each other), avoiding the
+            # transit collisions that trigger the game's strikes.
             r, c = cell
             for dr in range(-_LEG_CLEAR_RADIUS, _LEG_CLEAR_RADIUS + 1):
                 for dc in range(-_LEG_CLEAR_RADIUS, _LEG_CLEAR_RADIUS + 1):
@@ -433,34 +471,63 @@ class Adapter(GameAdapter):
                         return False
             return True
 
-        dests = points_with_centroid(target, len(leg_centres), is_free, current=leg_centres)
-        if dests is None:
-            return None
         plan: list[tuple[str, Cell]] = []
-        for leg, dest in zip(leg_centres, dests):
-            if tuple(leg) == tuple(dest):
-                continue  # leg already positioned; no click needed
-            plan.append(("select", leg))
-            plan.append(("place", dest))
+        for leg_centres, target in creatures:
+            dests = points_with_centroid(target, len(leg_centres), is_free, current=leg_centres)
+            if dests is None:
+                return None
+            for leg, dest in zip(leg_centres, dests):
+                if tuple(leg) == tuple(dest):
+                    continue  # leg already positioned; no click needed
+                plan.append(("select", leg))
+                plan.append(("place", dest))
         return plan or None
 
     def _planner_step(self, grid: Grid, bg: int, masked: Grid) -> Cell | None:
         """Emit the next planner click, or ``None`` to defer to the explorer.
 
-        The plan is built once per level. A ``select`` click is instant (issued
-        once, advance next call); a ``place`` click starts an animation, so it
-        is re-issued until the HUD-masked board SETTLES (stops changing between
-        calls), then the plan advances."""
+        The plan is built once per level, but only once the level's own
+        entry/win animation has SETTLED (two identical masked frames) — a plan
+        built on the transition frame would see the previous level's leftover
+        pieces and mis-place. While waiting, a hazard cell is clicked (a
+        refused no-op) so the animation can advance without disturbing the
+        board. A ``select`` click is instant (issued once, advance next call);
+        a ``place`` click animates, so it is re-issued until the masked board
+        settles, then the plan advances."""
         if self._plan is None and not self._plan_attempted:
+            # A new level's legs animate into place over many frames (the
+            # detected leg count oscillates), so gate plan-building on the
+            # CREATURE SIGNATURE (per-creature leg counts) being non-empty and
+            # unchanged for a few consecutive frames — a raw frame-equality
+            # settle stabilises on transient mid-animation frames. While
+            # waiting, click a hazard cell (a refused no-op).
+            sig = self._creature_signature(grid, bg)
+            if sig is not None and sig == self._settle_ref:
+                self._settle_count += 1
+            else:
+                self._settle_ref = sig
+                self._settle_count = 0
+            if sig is None or self._settle_count < _SETTLE_FRAMES:
+                return self._safe_wait_cell(grid, bg)
             self._plan_attempted = True
             self._plan = self._build_plan(grid, bg)
             self._plan_place_issued = False
             self._plan_last_masked = None
+            self._plan_place_count = 0
         if not self._plan:
             return None
 
         kind, cell = self._plan[0]
         if kind == "select":
+            # Validate against the CURRENT board: if the leg we planned to
+            # select is no longer there, the plan was built on a since-changed
+            # frame (e.g. a level-entry animation that held the previous
+            # level's pieces), so discard it and rebuild once settled.
+            if not self._leg_present(grid, bg, cell):
+                self._plan = None
+                self._plan_attempted = False
+                self._settle_ref = None
+                return self._safe_wait_cell(grid, bg)
             self._plan.pop(0)
             self._plan_place_issued = False
             self._plan_last_masked = None
@@ -470,10 +537,51 @@ class Adapter(GameAdapter):
             self._plan.pop(0)
             self._plan_place_issued = False
             self._plan_last_masked = None
+            self._plan_place_count = 0
             return self._planner_step(grid, bg, masked)
+        # A placement that never settles means the board changed under the plan
+        # (a level transition, or the leg was not where the plan assumed) —
+        # abandon and rebuild once settled rather than re-clicking forever.
+        self._plan_place_count += 1
+        if self._plan_place_count > _PLACE_STUCK_LIMIT:
+            self._plan = None
+            self._plan_attempted = False
+            self._settle_ref = None
+            self._plan_place_count = 0
+            return self._safe_wait_cell(grid, bg)
         self._plan_place_issued = True
         self._plan_last_masked = masked
         return cell
+
+    def _safe_wait_cell(self, grid: Grid, bg: int) -> Cell | None:
+        """A hazard cell whose click the game refuses (a no-op) — used to burn
+        a frame while a level animation settles, without disturbing the board.
+        ``None`` (defer to the explorer) if the board has no hazard region."""
+        hazard = _hazard_cells(grid, bg)
+        return min(hazard) if hazard else None
+
+    def _creature_signature(self, grid: Grid, bg: int) -> tuple[int, ...] | None:
+        """A hashable summary of the detected creatures (sorted per-creature leg
+        counts), or ``None`` when no creature is found. Used to detect when a
+        new level's leg-spawn animation has settled (the signature stops
+        changing) before committing to a plan."""
+        creatures = _analyze_creatures(grid, bg, _hazard_cells(grid, bg))
+        if not creatures:
+            return None
+        return tuple(sorted(len(legs) for legs, _t in creatures))
+
+    def _leg_present(self, grid: Grid, bg: int, cell: Cell) -> bool:
+        """Whether a detected leg currently sits near ``cell`` — the freshness
+        check that catches a plan built on a since-changed (transition) frame."""
+        hazard = _hazard_cells(grid, bg)
+        creatures = _analyze_creatures(grid, bg, hazard)
+        if not creatures:
+            return False
+        for leg_centres, _target in creatures:
+            for lc in leg_centres:
+                if (lc[0] - cell[0]) ** 2 + (lc[1] - cell[1]) ** 2 <= _BODY_CENTROID_TOL2:
+                    return True
+        return False
 
     # ── measurement: record the observed transition ─────────────────────
 
