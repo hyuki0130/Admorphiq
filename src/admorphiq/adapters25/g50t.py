@@ -17,20 +17,52 @@ G50T is a reactive grid puzzle in the Sokoban / *Adventures of Lolo* family.
   single PLAYER piece one logical cell (the render pitch is 6 px/cell,
   ``jarvstobjt=6``); the sign of each action is MEASURED, never assumed.
   **ACTION5 is UNDO** (it reverts the last move — the controller's
-  ``pmlawcgvcp`` pops the move history), not an interact.
+  ``pmlawcgvcp`` pops the move history) — see the CORRECTION below: it is NOT
+  a cheap single-step undo but a full-rewind record-replay phase mechanic.
 - A move is ANIMATED over ~4-5 engine steps; inputs are ignored mid-animation
   (the engine only advances the animation), so an agent streams one action
   per step and the move lands when the animation settles. A blocked move
   (into a wall) settles immediately with no displacement.
 - The level WINS when the player reaches the goal sprite's cell (source:
-  player position == goal position offset by (+1,+1)). The goal is a specific
-  sprite with no frame-distinguishable label, so this adapter has NO oracle
-  for the goal cell — it must reach it by exploration.
-- The level is LOST when the player touches a hazard/enemy (a death flag) OR
-  a slow left-scrolling timer sprite exits the left edge (a global move
-  budget). Enemies REACT to the player's moves (they step when the player
-  steps), so a cell that was safe under one enemy configuration can be fatal
-  under another — the state is not the player cell alone.
+  ``safkknjslo`` = player position == goal position offset by (+1,+1)). The
+  goal is a specific sprite with no frame-distinguishable label, so this
+  adapter has NO oracle for the goal cell — it must reach it by exploration.
+- The level is LOST when the player touches a hazard/enemy (a death flag,
+  ``pddqxjztas``, set after a multi-tick death animation) OR a slow
+  left-scrolling timer sprite exits the left edge (a global move budget,
+  ``abjneovbvx``).
+
+**COMPLETE MECHANIC (R56 iteration 2, 2026-07-15 — corrects the brief's
+"reactive sokoban / model the joint (player,enemy) state" framing, which was
+INCOMPLETE).** Full source read of ``environment_files/g50t/5849a774/g50t.py``
+(7 levels, one controller class ``qxlodtievc`` + ~13 entity classes) shows
+G50T is a full *Adventures of Lolo* / Sokoban-with-logic puzzle:
+
+- **Enemies are DETERMINISTIC WALL/TRACK-FOLLOWING PATROLLERS, not chasers.**
+  ``utmhrglxzq.oymsmftmdy`` picks the first of [keep heading, turn, turn,
+  reverse] that stays on the enemy's own track sprite; it never reads the
+  player position. Death = the enemy ending a move overlapping the player.
+  So an enemy's path is a pure function of its track geometry + start heading
+  + move count — EXCEPT it is also blocked by gates (below), so it couples to
+  the circuit state, not just to time.
+- **Button → gate → toggle-block CIRCUITS.** ``lqtxaumfed`` (pressure plates,
+  tag ``medyellngi``) wire to ``alyzsfkumg`` gates (tag ``hxztohfdlx``) and
+  ``yyzqramdhd`` toggle-blocks (tag ``kjrcloicja``); stepping a plate opens/
+  closes wired blocks, changing which cells (and which enemy steps) are
+  passable. Level 1 already has a plate + a toggle-block — even the first
+  level is a circuit puzzle, not free navigation.
+- **ACTION5 is a RECORD-REPLAY GHOST mechanic, NOT a single-step undo.**
+  ``pmlawcgvcp`` → ``tqzseunaxh`` rewinds the ENTIRE path back to the start
+  cell, banks the just-taken path as a replaying GHOST clone
+  (``rloltuowth``), and advances a waypoint phase (``drofvwhbxb`` /
+  ``rlazdofsxb``). Cooperating with your own recorded ghosts across passes is
+  a core solving tool, not a recovery back-edge. The win (``safkknjslo``) does
+  not require waypoints, so a NON-ACTION5 policy sees a plain (player, enemy,
+  circuit) puzzle — but many levels are unsolvable without the ghosts.
+- **Collision is per-pixel SPRITE-MASK.** ``esidlbhbhw`` reads each sprite's
+  ``pixels`` array (with rotation) to test passability; walls, enemy tracks,
+  gates and the button→gate wiring are object references + bitmaps, not
+  recoverable from the flat colour frame.
 
 **Why a blind explorer fails (measured, the load-bearing wall)**: a randomised
 / greedy-toward-corner exploration dies ~7 times per 1000 actions on the
@@ -61,16 +93,31 @@ this clears **0/7**. Two measured obstacles, both real research increments:
      player within budget on level 1's tight, wall-blocked start. REOPEN with
      per-object tracking (``kernels.track_objects`` across settled frames) that
      correlates each object's displacement with the issued action's axis.
-  2. **The reactive-enemy non-Markov property** defeats a player-cell-only
-     graph — a learned-safe edge turns fatal when the enemy phase differs, so
-     hazard memory alone cannot converge. REOPEN with a JOINT state (player
-     cell + each enemy cell) so the transition graph is Markov, plus modelling
-     ACTION5-undo as a graph edge to back out of traps cheaply.
+  2. **The load-bearing state is NOT frame-readable — the deep bank (R56
+     iteration 2).** A joint (player, enemy) transition graph is not enough:
+     passability depends on the button->gate->toggle CIRCUIT state, and the
+     circuit wiring, the enemy tracks, the walls and the gates are all
+     per-pixel SPRITE MASKS + object references (``esidlbhbhw`` reads
+     ``sprite.pixels``), which the flat colour frame cannot recover (a wall
+     pixel, a walkable-track pixel and a closed-gate pixel can share a colour;
+     the plate->block wiring is invisible). A validate-first live probe (40
+     exploratory moves on level 1) confirmed: the player IS identifiable by
+     action-correlation (a small region shifts one cell with left/right), no
+     region moves without a command except the scroll timer, and the player
+     dies on a static hazard while boxed in a corridor gated by the circuit —
+     so level 1 is a plate-gate-hazard puzzle, not a coverage or joint-enemy
+     problem. A faithful frame-only simulate-and-search is therefore
+     infeasible; solving it needs the sprite bitmaps + circuit topology
+     (available only via the source, which the runtime adapter must not read).
+     BANKED as deep.
 
-The mechanic characterisation above (undo, animation, reactive hazards, hidden
-goal, scroll timer) is the banked deliverable that unblocks both — the prior
-wiki recorded the mechanic as "unknown". No hardcoded coordinates/palettes/
-sequences were added; the adapter runs to budget as a clean 0/7 best-effort.
+The complete mechanic characterisation above (patrol-not-chase enemies,
+button->gate->toggle circuits, the ACTION5 record-replay ghost/waypoint
+mechanic, per-pixel-mask collision, animation, hidden goal, scroll timer) is
+the banked deliverable — it corrects the prior "reactive sokoban, model the
+joint state" framing, which under-modelled the game. No hardcoded coordinates/
+palettes/sequences were added; the adapter runs to budget as a clean 0/7
+best-effort (verified 0/7 @1000, game_score 0.0, deterministic).
 
 Composition from ``admorphiq.kernels``:
   - :func:`admorphiq.kernels.find_regions` segments the frame; the player is
