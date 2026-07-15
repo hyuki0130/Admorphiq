@@ -92,6 +92,34 @@ interleaved with every other region's own pixels) are promoted to the
 FRONT of the queue immediately -- a responsive region is finished (win,
 or its own pixel budget exhausted) before the round-robin sweep resumes
 elsewhere, instead of waiting for its turn in a future round.
+
+**L2 divergence — BANKED (2026-07-15, not fixed by this adapter).** The
+"click the rare pixel" reading is a coincidence of L1's tiny scale, not the
+game's mechanic. The game source (``environment_files/lp85/305b61c3/lp85.py``,
+read offline dev-time only) shows LP85 is a ring-rotation permutation puzzle:
+each button sprite carries a ``button_<id>_<L|R>`` tag; clicking it calls
+``chmfaflqhy`` which CYCLICALLY ROTATES a numbered ring of pieces (R: pos
+n->n+1 wrap max->1; L: the exact inverse), and rings OVERLAP (a cell belongs
+to several buttons' rings -- a Hungarian-rings-class group). Win
+``khartslnwa`` = EVERY ``bghvgbtwcb`` piece on a ``goal`` cell AND every
+``fdgmtkfrxl`` piece on a ``goal-o`` cell, within a hard per-level press
+budget (L1 13, L2 60). L1 has one target piece and few rings, so the
+round-robin per-pixel sweep stumbles onto the productive button in 18 presses
+(near the 17-action human) -- luck of scale, with no model of which ring to
+rotate or how far. L2 has two ``bghvgbtwcb`` + an ``fdgmtkfrxl`` on overlapping
+rings: it requires a PLANNED rotation sequence that moves each target to its
+goal without displacing an already-placed one, which the sweep cannot produce
+(measured: only 3 of 36 rare-region probes moved any piece). The gold trace
+(``data/traces/lp85.npz``) never solves L2 either (``levels_completed_after``
+maxes at 1), so there is no demonstration to replay -- the mechanism read
+comes from the source, not a gold journey. A real reopen needs a NEW
+frame-only ring-permutation planner (detect target/goal object pairs; learn
+each button's ring by pressing once and reading the piece displacements via
+``frame_diff`` / ``learn_point_operators``; search a rotation sequence within
+budget). That is well beyond the click sweep and deprioritised under
+diminishing-returns discipline; the sweep stays as the L1 floor (1/8,
+game_score 0.0248, near-human). See ``.wiki/wiki/games/LP85.md`` for the full
+mechanism bank.
 """
 
 from __future__ import annotations
