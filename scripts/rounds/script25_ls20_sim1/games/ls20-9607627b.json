@@ -1,0 +1,26 @@
+{
+  "game_id": "ls20-9607627b",
+  "win_levels": 7,
+  "levels_completed": 2,
+  "elapsed_s": 8.69,
+  "total_actions": 3000,
+  "per_level": [
+    {
+      "level": 1,
+      "agent_actions": 13,
+      "human_actions": 22,
+      "score": 1.0
+    },
+    {
+      "level": 2,
+      "agent_actions": 45,
+      "human_actions": 123,
+      "score": 1.0
+    }
+  ],
+  "game_score": 0.107143,
+  "has_baseline": true,
+  "llm_hypothesis": null,
+  "title": "LS20",
+  "adapter": "ls20"
+}

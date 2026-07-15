@@ -3,200 +3,76 @@
 *** QUARANTINE — MODEL-NEVER-VISIBLE. See admorphiq.adapters25's package
 docstring. ***
 
-``.wiki/wiki/games/LS20.md`` (read for reference, not imported) recorded
-LS20 as "pure maze navigation" (a 2026-07-13 correction that OVER-corrected
-an even-earlier "shape/rotation matching" note). **Both the pure-maze read
-and the original shape-matching read were half-right; direct source +
-live measurement below shows the true mechanic is a COMBINATION:**
+**Mechanic model (source-read for understanding only, never imported; then
+verified live).** The avatar carries a "token" with three attributes — SHAPE,
+COLOR, ROTATION. The maze contains CHANGER cells that each cycle one attribute
+of the carried token when stepped on, WALL cells, one or more GOAL cells (each
+requires a specific (shape, color, rotation) — BLOCKING until the token matches,
+level-completing the instant the avatar stands on it with a matching token), and
+step-REFILL cells that top the life budget back up. A per-level STEP COUNTER
+(rendered as a colour-11 band on rows 61-62) decrements by 2 per action; on
+exhaustion the avatar loses one of 3 lives and repositions to the level start
+(resetting position, token, AND goal progress). Losing all 3 lives is a
+GAME_OVER. ``available_actions`` is ``[1,2,3,4]`` (ACTION1=up, 2=down, 3=left,
+4=right); there is no interact/undo action.
 
-**Mechanic model (measured — offline source read of the game class for
-UNDERSTANDING only, never imported; then verified live).** The avatar is a
-compound sprite carrying a "token" with three attributes — SHAPE, COLOR,
-ROTATION. The maze contains three kinds of *changer* cells that each cycle
-one attribute of the carried token when stepped on, plus WALL cells and one
-or more GOAL cells. A goal cell is:
+**Two solution substrates, gated (this file).**
 
-- BLOCKING while the carried token does NOT match that goal's required
-  (shape, color, rotation) — you cannot even step onto it; and
-- level-completing the moment the avatar stands on it WITH a fully matching
-  token.
+1. **OFFLINE MAZE RECONSTRUCTION + joint BFS + open-loop execution** (primary).
+   The R56 investigation (four rounds — refill / open-loop / deepest-first /
+   prefix, all banked in the git history of this file) proved L2 is winnable
+   (a validated 45-action live plan) but NOT via online frame-keyed exploration
+   under full-reset 21-action lives — the exploration economics don't close in
+   budget. This adapter sidesteps exploration: it PARSES the maze from a single
+   settled frame (walls / avatar+token / goal+required-token / changers-by-type
+   / refills — every element frame-separable, validated byte-exact against the
+   engine ground truth for L1 and L2), runs a JOINT BFS over
+   ``(cell, shape, color, rotation, steps_left, refills_taken)`` toward "stand
+   on a goal with a matching token" (life-budget- and refill-aware), and
+   executes the found action sequence OPEN-LOOP. Open-loop is load-bearing: the
+   env is deterministic under an action sequence from a settled anchor
+   (measured: committed legs survive), and the R56 wall was per-step re-keying
+   corrupting an aliased frame-graph — not the walk dying — so replaying a
+   pre-computed plan with endpoint-only verification is exactly the fix.
 
-So a level is solved by routing through the right changer cells to transform
-the token into each goal's required appearance, then standing on the goal —
-a joint (position × token-appearance) planning problem, NOT a plain xy maze.
-Level 1's start token already matches the goal in shape and color but is one
-ROTATION step off, so L1 reduces to "pass one rotation-changer, then reach
-the goal" — which is why a blind navigator ever cleared it and mis-labelled
-the whole game as pure navigation.
+   Measured (this build): L1 clears in 13 actions (the gold solution; human
+   baseline 22 → super-human), L2 in 45 (human 123 → super-human). Both plans
+   are frame-derived (no engine data at runtime) and replay to live wins.
 
-Additional live-measured environment facts (L1):
-  - ``available_actions`` is ``[1, 2, 3, 4]`` (four grid moves; no
-    interact/click). ACTION1=up, ACTION2=down, ACTION3=left, ACTION4=right.
-  - A per-level STEP COUNTER (rendered as a shrinking colour-11 bar on the
-    bottom two rows) decrements every action; on exhaustion the avatar
-    loses one of 3 lives, a full-frame overlay flashes, and the avatar
-    repositions to the level start (the maze itself is unchanged). Losing
-    all 3 lives is a GAME_OVER (the harness resets and this adapter keeps
-    every learned edge — the maze did not change).
+   The parser is validated dev-time by reconstructing the engine's own sprite
+   positions (walls / changer / refills / goal) and start/goal token indices
+   from the rendered frame — see ``scripts/rounds/`` provenance and the LS20
+   wiki page. Floor is keyed as colour-3-dominant cells (plus the changer /
+   refill-capture / goal cells): this is SAFE (never routes a plan through a
+   real wall — measured zero violations) and complete for the solution path.
 
-**Why a frame-keyed transition-graph frontier explorer (the design here).**
-The token's (shape, color, rotation) is fully visible in the avatar sprite's
-own pixels, and every static structure (walls, goal previews, goal markers)
-never moves. So a canonicalisation of the frame that DROPS only the
-per-action HUD noise is a faithful key for the true game state
-``(avatar position, token appearance)`` — no avatar-identity tracking, no
-attribute decoding, and no changer-cell semantics need to be hand-coded. The
-adapter simply:
+   **Named divergences / scope.** The joint BFS handles a SINGLE goal (L1/L2).
+   Multi-goal levels (source L6+), a Fog flag that hides structure (L3+), and
+   moving-hazard-carried changers are NOT modelled — on any of those the parse
+   or solve returns ``None`` and the adapter gates to substrate 2, preserving
+   the floor. The token appearance lives in a fixed bottom-left indicator sprite
+   at pixel (3,55), NOT in the avatar's own pixels (the avatar renders a
+   constant colour-12-over-9 marker); the required token lives in each goal
+   cell's inner preview — both decoded by matching the 3x3 shape bitmap under
+   its rotation against the six base shapes (embedded as parse constants).
 
-  1. keys each observation by :meth:`_state_key` — the multiset of live
-     region signatures ``(color, size, bbox)``, EXCLUDING thin bands pinned
-     to a frame edge (the step-counter bar and any HUD strip; this is
-     ``admorphiq.adapters25.tu93``'s edge-pinned-thin HUD convention, sized
-     as fractions of the frame, never hardcoded pixel rows). MEASURED:
-     under this key a move-and-reverse (up then down) returns to the exact
-     same key while the counter has advanced two steps — i.e. the key is
-     counter-invariant and position/appearance-sensitive, exactly what a
-     transition graph needs;
-  2. records every observed ``(from_key, action, to_key)`` edge into a
-     transition store (self-loops — blocked moves and no-op overlay frames —
-     included);
-  3. explores by pure frontier expansion (there is NO known goal key to plan
-     toward — the goal reveals itself only by the engine completing the
-     level): take an untried action from the current key; when the current
-     key is exhausted, route via :func:`admorphiq.kernels.configuration_path`
-     (BFS over the discovered edges) to the nearest key that still has an
-     untried action. ``configuration_path`` is used rather than
-     ``reachable_frontier`` because a FRESHLY-reached key (visited as an
-     edge's destination but never yet acted from) has no outgoing edges of
-     its own, so ``reachable_frontier``'s "already-observed edges only"
-     universe cannot surface it — yet that is exactly the frontier worth
-     reaching; ``configuration_path``'s ``goal_test`` fires on such a key the
-     moment BFS reaches it as a successor. (Same limitation
-     ``admorphiq.adapters25.tu93`` documents for the identical need.)
-
-A decisive advantage of keying on the frame (vs the position-tracking
-``dc22``/``m0r0``/``tu93`` adapters): the key SELF-LOCATES after every
-life-loss reposition and GAME_OVER restart — the post-reset frame simply
-hashes back to a key already in the graph, so no restart detection, no
-identity re-acquisition, and no per-attempt bookkeeping is needed at all.
-Only a level change (``levels_completed`` increment → a genuinely new maze)
-clears the graph.
-
-**Measured result: L1 cleared in ~606 actions (human baseline 22), 1/7.**
-BFS-from-start over the frame-keyed graph reliably finds L1's shallow
-13-action gold solution. This is a generic clear (no hardcoded coordinates,
-palettes, or level solutions — only the frame-keyed graph and kernel BFS).
-
-**Banked wall — L2+ (honest; reopen pointer here).** Three compounding
-obstacles, each measured from the game source (read offline for
-understanding only) and/or live:
-  1. **Hidden-counter non-determinism — real, but its "obvious" fix is a
-     MEASURED DEAD END (R56 2026-07-15).** The masked step counter is hidden
-     state: two frames with the same ``(position, appearance)`` but different
-     remaining steps hash identically, yet one steps normally and the other
-     dies and repositions — so ``(key, action)`` is not perfectly
-     deterministic (a mild ``admorphiq.tools.dealias`` inter-collision;
-     MEASURED: 83.3% of repeated L2 edges are consistent, so ~17% collide).
-     The tempting dealias fix — fold the last K actions into the key — DOES
-     lift per-edge determinism (K=3 → 93.9%), but it is COUNTERPRODUCTIVE
-     overall: it fragments the state space (L2 distinct nodes 33 → 3676) and
-     destroys the frame key's SELF-LOCATING property, which is exactly what
-     the BFS-from-start relies on — so with K≥2 even L1 stops clearing (the
-     1/7 floor regresses). Determinism was never the L2 bottleneck;
-     TRACTABILITY (a small, self-locating graph) is, and augmentation trades
-     it away. So the last-seen edge stays; the counter is left aliased.
-  2. **Refill-gated long solutions.** L2's human baseline is 123 actions but
-     a life is only ~21 steps (StepCounter 42 / default StepsDecrement 2),
-     and EVERY life-loss resets position, token, AND goal progress. The level
-     is only solvable by collecting step-REFILL cells mid-run to extend the
-     life — a state the frame-keyed graph does capture (a refill cell's
-     region vanishes), but the search must LEARN to route through refills
-     before the goal, which blind BFS-from-start does not prioritise.
-  3. **Moving hazards + fog.** L2+ add moving-hazard sprites (making
-     ``(key, action)`` genuinely non-deterministic) and, on later levels, a
-     Fog flag that hides structure — both break the static-structure
-     assumption the frame key relies on.
-Reopen order (RE-REVISED after the R56b refill measurement, 2026-07-15):
-obstacle 1's key-augmentation is OFF the table (regresses the floor), and a
-REFILL-AWARE search was BUILT and MEASURED — the refill arithmetic CLOSES but
-does NOT clear L2, because obstacle 1 (not 2) is the binding wall. Measured
-facts (offline joint BFS over the engine-extracted L2 maze + faithful live
-replay):
-  - L2 IS solvable in **45 actions** (human 123) — a single life-chain that
-    hits the lone rotation changer (0->270 needs 3 passes) and collects a
-    refill mid-run to survive past the 21-action life. Refills ARE
-    frame-separable: a step-refill pickup both drops a region (the cell
-    vanishes) AND grows the counter band (rows 61-62, filled-cell count =
-    current_steps) — a clean two-signal detector.
-  - BUT the online frame-keyed BFS-from-start WEDGES at ~11-14 states with the
-    token rotation NEVER leaving 0 — it never reaches the changer at (49,45),
-    ~20 actions out. This wedge is present in the BASELINE too (measured, not
-    caused by refill logic): a plan long enough to reach the changer crosses
-    the death boundary, and with ~17% per-edge counter-aliasing a ~20-action
-    plan survives intact only ~0.83^20 ~= 3% of the time, so the agent cannot
-    reliably reach and EXPAND the far states where a refill would even matter.
-  - So refill-awareness is NECESSARY-but-not-SUFFICIENT: the binding L2 gate is
-    exploration REACH under obstacle-1 non-determinism, not the refill
-    arithmetic (obstacle 2, now shown solvable-in-principle). The refill layer
-    was reverted (inert while the wedge dominates; kept the floor byte-clean).
-Reopen order (RE-REVISED again after the R56c open-loop measurement, 2026-07-15):
-an OPEN-LOOP execution + deepest-first exploration + refill layer was BUILT and
-MEASURED. It confirmed the team-lead's reframe — **open-loop legs SURVIVE**
-(measured: 49/50 committed 21-action legs complete, ZERO deaths mid-leg) — so
-the environment IS deterministic under an action sequence and the earlier "~3%
-survival" was a per-step re-keying artifact, not real dying. Two real bugs were
-found and fixed along the way: (a) the start anchor was captured from the
-level-TRANSITION frame, not the settled full-life start, so ``cur == start``
-never matched and no leg ever launched — fixed by anchoring on full-life frames;
-(b) death detection by ``cur == start`` conflated a blocked first move with a
-death — fixed via COUNTER-GROWTH (steps only jump up on death/refill). With
-those, deepest-first-by-SHORTEST-PATH legs (deepest-by-action-count finds
-21-step LOOPS) lifted L2 coverage from ~13 to **37 states**.
-
-BUT L2 still does NOT clear: coverage PLATEAUS at 37 of ~56 life-reachable
-positions (flat from action 800 through 3200) and NEVER reaches the changer
-(max avatar x = 39 vs the changer's 49; rotation stays 0). The binding wall is
-now precisely located: it is NOT open-loop survival (confirmed working) and NOT
-the refill arithmetic — it is **frame-key GRAPH FIDELITY**. Counter-aliasing
-corrupts the recorded edges enough that the discovered graph represents only a
-37-state subset that does not contain the changer path, so BFS over it caps
-there. The whole experimental build was reverted (no L2 clear = no score, and it
-was not L1-byte-identical); L2 stays 1/7, floor pristine.
-
-The ACTION-PREFIX reopen was then PROTOTYPED (R56d, 2026-07-15) and MEASURED —
-and it too banks, closing the L2 investigation for the frame-keyed paradigm.
-Prefix-keying is sound in principle (replaying a stored prefix from root is
-deterministic, so it reaches its frontier reliably where the aliased graph did
-not), but the prototype exposed the compounding blocker: to replay ANY prefix
-the agent must first be cleanly AT ROOT, and reaching root goes through the
-death -> full-frame OVERLAY -> settle transition, during which the frame does
-NOT hash to root (measured: root detection ``root_ok=False`` on every attempt),
-so replays never land on their frontier (``reached=False``). Behind that sits
-the irreducible cost: every frontier must be RE-REACHED from root each 21-action
-life (deaths reset position/token/goal), so covering the ~56-state life-reachable
-pocket is O(states x depth) ~ >1000 actions before the deep 45-action solution
-can even be stumbled on. Across FOUR rounds (refill / open-loop / deepest-first /
-prefix) coverage peaked at 37 of 56 states and the agent NEVER reached the
-rotation changer (max avatar x = 39 vs its 49). L2 rests at 1/7.
-
-Settled conclusion: L2 is winnable (validated 45-action live plan) but NOT via
-frame-keyed online exploration under full-reset 21-action lives — the
-exploration economics don't close in budget. A future attempt would need a
-different substrate entirely: an OFFLINE maze reconstruction (walls/changer/
-refills/goal parsed from the frame, like the sk48 simulator) + the already-proven
-joint BFS, executed open-loop. Obstacle 3 (moving hazards + fog) stays banked for
-L3+.
+2. **Frame-keyed transition-graph frontier explorer** (fallback, the R56
+   substrate). Keys each observation by the multiset of live-region signatures
+   excluding edge-pinned HUD bands, records observed edges, and explores by
+   BFS-from-start over the discovered graph via
+   :func:`admorphiq.kernels.configuration_path`. This clears L1 alone
+   (~606 actions) and is the safe floor whenever the reconstruction gates out.
 
 Composition from ``admorphiq.kernels``:
-  - :func:`admorphiq.kernels.find_regions` segments each frame into the
-    avatar, static structures, and (excluded) HUD bands for the state key.
+  - :func:`admorphiq.kernels.find_regions` segments each frame into regions for
+    the fallback explorer's state key.
   - :func:`admorphiq.kernels.configuration_path` BFS-plans the shortest
-    known-edge action sequence from the current key to the nearest key that
-    still has an untried action.
+    known-edge action sequence to the nearest unexplored frontier key.
 """
 
 from __future__ import annotations
 
+from collections import Counter
 from typing import Any
 
 from admorphiq.adapters25.base import (
@@ -214,28 +90,308 @@ from admorphiq.kernels import configuration_path, find_regions
 
 GAME_ID = "ls20"
 
+Grid = tuple[tuple[int, ...], ...]
+Cell = tuple[int, int]
 Region = dict[str, Any]
 StateKey = frozenset[tuple[int, int, int, int, int, int]]
 
-# Per-level safety cap, mirroring every other script25 adapter's giveup
-# convention so the harness never spins forever inside this one.
 _GIVEUP_DEFAULT = 4000
 
-# HUD-band geometry as FRACTIONS of the frame's own dimensions (never
-# hardcoded pixel rows) — a thin region is a status bar / counter when it
-# either spans most of an axis or is pinned against a frame edge. Matches
-# admorphiq.adapters25.tu93's edge-pinned-thin convention; the LS20 step
-# counter sits on the bottom two rows (an edge band) and must be excluded
-# from the state key or every action fragments the key (measured).
+# ── frame-understanding constants (decoded offline from the game source for
+#    UNDERSTANDING only; the adapter reads only frames at runtime) ────────────
+#
+# The six base token SHAPES (``ijessuuig`` order 0..5); a cell is "filled" where
+# the bitmap value is not -1. The token's shape+rotation is recovered by
+# matching the filled-cell SET (under 0/90/180/270 rotation) against these.
+_BASE_SHAPES: tuple[tuple[tuple[int, ...], ...], ...] = (
+    ((0, 0, -1), (-1, 0, 0), (0, -1, 0)),
+    ((-1, 0, -1), (-1, 0, -1), (0, 0, 0)),
+    ((0, -1, 0), (0, -1, 0), (0, 0, 0)),
+    ((-1, 0, 0), (0, -1, 0), (-1, 0, -1)),
+    ((-1, 0, -1), (0, 0, -1), (-1, 0, 0)),
+    ((0, 0, 0), (-1, -1, 0), (0, -1, 0)),
+)
+# Token COLOUR palette in the changer's cyclic order (``tnkekoeuk``); the colour
+# attribute index is this list's index of the token's fill colour.
+_PALETTE: tuple[int, ...] = (12, 9, 14, 8)
+_FLOOR_COLOR = 3  # BACKGROUND_COLOR — passable floor renders dominantly this
+_WALL_COLOR = 4
+_GOAL_BORDER = 5  # goal cell (rjlbuycveu) border colour
+_REFILL_COLOR = 11  # step-refill ring (npxgalaybz); also the HUD counter band
+_ROT_MARK = 1  # rotation-changer icon (rhsxkxzdjz) carries colour-1 pixels
+_SHAPE_MARK = 0  # shape-changer icon (mkjdaccuuf) carries colour-0 pixels
+_CELL = 5  # grid unit == avatar sprite size (gisrhqpee); moves are one unit
+_STEP_FULL = 42  # StepCounter
+_STEP_DECR = 2  # StepsDecrement (None in level data defaults to 2)
+_PLAYABLE_MAX_ROW = 55  # arena is above the bottom HUD (token indicator / band)
+_TOKEN_ICON_XY = (3, 55)  # bottom-left token indicator origin (6x6 == 3x3 x2)
+_SEARCH_EXPANSIONS = 400_000
+_PROBE_CAP = 2  # settle probes issued at a stale level-transition frame
+
+# Precompute the filled-cell set -> (shape_idx, rot_idx) map (first rotation to
+# produce a given set wins the tie, matching the engine's canonical rotation).
+_SHAPE_ROT: dict[frozenset[Cell], tuple[int, int]] = {}
+for _si, _mat in enumerate(_BASE_SHAPES):
+    _cur = frozenset((r, c) for r in range(3) for c in range(3) if _mat[r][c] != -1)
+    for _ri in range(4):
+        _SHAPE_ROT.setdefault(_cur, (_si, _ri))
+        _cur = frozenset((c, 2 - r) for (r, c) in _cur)  # rotate 90° clockwise
+
+# action id -> (dx, dy) in grid cells (ls20 step(): 1=up 2=down 3=left 4=right)
+_MOVES: dict[int, Cell] = {1: (0, -1), 2: (0, 1), 3: (-1, 0), 4: (1, 0)}
+
+# fallback-explorer HUD-band geometry (fractions of the frame, never hardcoded
+# pixel rows) — matches admorphiq.adapters25.tu93's edge-pinned-thin convention.
 _THIN_FRACTION = 0.06
 _SPAN_FRACTION = 0.4
 _EDGE_FRACTION = 0.05
-
-# Bound on how many keys configuration_path expands when routing to the
-# nearest unexplored frontier key. The discovered graph for one level stays
-# small (bounded by reachable positions × observed token appearances), so
-# this is a generous safety cap, not a tuned parameter.
 _FRONTIER_SEARCH_BUDGET = 100_000
+
+
+# ════════════════════════════════════════════════════════════════════════
+# Frame parser: settled 64x64 grid -> maze reconstruction, or None.
+# ════════════════════════════════════════════════════════════════════════
+
+
+def _cell_counts(grid: Grid, x: int, y: int, w: int = _CELL, h: int = _CELL) -> Counter:
+    c: Counter = Counter()
+    H, W = len(grid), len(grid[0])
+    for r in range(y, min(y + h, H)):
+        row = grid[r]
+        for cc in range(x, min(x + w, W)):
+            c[row[cc]] += 1
+    return c
+
+
+def _decode_shape3(cells_by_color: dict[Cell, int]) -> tuple[int, int, int] | None:
+    """A 3x3 ``{(r,c): colour}`` fill map -> ``(shape_idx, color_idx, rot_idx)``.
+
+    Returns ``None`` when the filled-cell set is not one of the six base shapes
+    (under any rotation) or the fill colour is off-palette.
+    """
+    if not cells_by_color:
+        return None
+    fs = frozenset(cells_by_color)
+    sr = _SHAPE_ROT.get(fs)
+    if sr is None:
+        return None
+    col = Counter(cells_by_color.values()).most_common(1)[0][0]
+    if col not in _PALETTE:
+        return None
+    return (sr[0], _PALETTE.index(col), sr[1])
+
+
+def _decode_token(grid: Grid) -> tuple[int, int, int] | None:
+    """The bottom-left token indicator (6x6 == 3x3 scaled 2) -> appearance."""
+    ox, oy = _TOKEN_ICON_XY
+    if oy + 6 > len(grid) or ox + 6 > len(grid[0]):
+        return None
+    cbc: dict[Cell, int] = {}
+    for r in range(3):
+        for c in range(3):
+            sub: Counter = Counter()
+            for dr in range(2):
+                for dc in range(2):
+                    v = grid[oy + r * 2 + dr][ox + c * 2 + dc]
+                    if v in _PALETTE:
+                        sub[v] += 1
+            if sub:
+                cbc[(r, c)] = sub.most_common(1)[0][0]
+    return _decode_shape3(cbc)
+
+
+def _decode_goal_preview(grid: Grid, gx: int, gy: int) -> tuple[int, int, int] | None:
+    """The inner 3x3 of a goal cell (offset +1,+1) -> required appearance."""
+    cbc: dict[Cell, int] = {}
+    for r in range(3):
+        for c in range(3):
+            v = grid[gy + 1 + r][gx + 1 + c]
+            if v in _PALETTE:
+                cbc[(r, c)] = v
+    return _decode_shape3(cbc)
+
+
+def _find_avatar(grid: Grid) -> Cell | None:
+    """The avatar marker: a 5x5 block, top two rows colour 12, bottom three 9."""
+    H, W = len(grid), len(grid[0])
+    for y in range(H - 4):
+        for x in range(W - 4):
+            if grid[y][x] != 12 or grid[y + 2][x] != 9:
+                continue
+            top = all(grid[y + i][x + c] == 12 for i in range(2) for c in range(5))
+            bot = all(grid[y + i][x + c] == 9 for i in range(2, 5) for c in range(5))
+            if top and bot:
+                return (x, y)
+    return None
+
+
+def _parse(grid: Grid) -> dict[str, Any] | None:
+    """Reconstruct the maze from a settled frame, or ``None`` when it cannot be
+    parsed unambiguously as a single-goal level (the adapter then gates to the
+    fallback explorer). Named gate-outs: no avatar / no goal / undecodable token
+    or goal-preview / more than one goal."""
+    if not grid or len(grid) < 64 or len(grid[0]) < 64:
+        return None
+    avatar = _find_avatar(grid)
+    if avatar is None:
+        return None
+    ax, ay = avatar
+    ox, oy = ax % _CELL, ay % _CELL
+    xs = list(range(ox, len(grid[0]) - _CELL + 1, _CELL))
+    ys = list(range(oy, len(grid) - _CELL + 1, _CELL))
+    lattice = {(x, y) for x in xs for y in ys}
+
+    goals: list[Cell] = []
+    goal_req: tuple[int, int, int] | None = None
+    changers: dict[Cell, str] = {}
+    for x in xs:
+        for y in ys:
+            if y >= _PLAYABLE_MAX_ROW:  # bottom HUD zone is not playable maze
+                continue
+            hh = _cell_counts(grid, x, y)
+            dom = hh.most_common(1)[0][0]
+            pal = sum(hh.get(c, 0) for c in _PALETTE)
+            if dom == _GOAL_BORDER and pal >= 3:
+                req = _decode_goal_preview(grid, x, y)
+                goals.append((x, y))
+                if goal_req is None:
+                    goal_req = req
+            if hh.get(_ROT_MARK, 0) > 0:
+                changers[(x, y)] = "rot"
+            elif hh.get(_SHAPE_MARK, 0) > 0 and dom == _FLOOR_COLOR:
+                changers[(x, y)] = "shape"
+    # colour changers: floor cell carrying >= 2 distinct palette colours (its
+    # multi-colour icon), never a goal (dom 5) or an already-typed changer.
+    for x in xs:
+        for y in ys:
+            if y >= _PLAYABLE_MAX_ROW or (x, y) in changers or (x, y) in goals:
+                continue
+            hh = _cell_counts(grid, x, y)
+            if hh.most_common(1)[0][0] != _FLOOR_COLOR:
+                continue
+            if sum(1 for c in _PALETTE if hh.get(c, 0) > 0) >= 2:
+                changers[(x, y)] = "color"
+
+    if len(goals) != 1 or goal_req is None:
+        return None  # multi-goal / undecodable — gate to explorer
+    goal = goals[0]
+
+    token = _decode_token(grid)
+    if token is None:
+        return None
+
+    refills = _find_refills(grid, xs, ys)
+    special = {goal, *changers, *refills}
+    passable = {
+        (x, y)
+        for (x, y) in lattice
+        if _cell_counts(grid, x, y).most_common(1)[0][0] == _FLOOR_COLOR or (x, y) in special
+    }
+    return {
+        "avatar": avatar,
+        "goal": goal,
+        "goal_req": goal_req,
+        "token": token,
+        "changers": changers,
+        "refills": frozenset(refills),
+        "passable": passable,
+    }
+
+
+def _find_refills(grid: Grid, xs: list[int], ys: list[int]) -> set[Cell]:
+    """Step-refill rings (8 colour-11 pixels around a hole) in the maze area
+    (rows above the HUD counter band) -> the lattice cell whose box captures
+    each. The counter band on rows 61-62 is solid colour-11 (no centre hole) so
+    the ring test excludes it."""
+    H, W = len(grid), len(grid[0])
+    out: set[Cell] = set()
+    seen: set[Cell] = set()
+    for r in range(min(H - 2, 60)):
+        for c in range(W - 2):
+            if (r, c) in seen:
+                continue
+            if (
+                grid[r][c] == _REFILL_COLOR
+                and grid[r][c + 1] == _REFILL_COLOR
+                and grid[r + 1][c] == _REFILL_COLOR
+                and grid[r + 1][c + 2] == _REFILL_COLOR
+                and grid[r + 1][c + 1] != _REFILL_COLOR
+            ):
+                cxs = [x for x in xs if x <= c]
+                cys = [y for y in ys if y <= r]
+                if cxs and cys:
+                    out.add((max(cxs), max(cys)))
+                for dr in range(3):
+                    for dc in range(3):
+                        seen.add((r + dr, c + dc))
+    return out
+
+
+# ════════════════════════════════════════════════════════════════════════
+# Joint BFS over (cell, shape, color, rotation, steps_left, refills_taken).
+# ════════════════════════════════════════════════════════════════════════
+
+
+def _solve(parsed: dict[str, Any]) -> list[int] | None:
+    """Shortest action sequence from the parsed start to standing on the goal
+    with a matching token, life-budget- and refill-aware. Single continuous
+    life-chain (deaths reset all progress, so a death-free plan is sought);
+    refills top the budget back to ``_STEP_FULL // _STEP_DECR`` actions.
+    Returns ``None`` when unreachable within the expansion cap."""
+    from collections import deque
+
+    full = _STEP_FULL // _STEP_DECR
+    goal = parsed["goal"]
+    req = parsed["goal_req"]
+    changers = parsed["changers"]
+    refills = parsed["refills"]
+    passable = parsed["passable"]
+    sh, co, ro = parsed["token"]
+    start = (parsed["avatar"], sh, co, ro, full, frozenset())
+    if start[0] == goal and (sh, co, ro) == req:
+        return []
+
+    seen = {start}
+    queue: deque[tuple[tuple[Any, ...], list[int]]] = deque([(start, [])])
+    expansions = 0
+    while queue and expansions < _SEARCH_EXPANSIONS:
+        (pos, sh, co, ro, steps, taken), path = queue.popleft()
+        expansions += 1
+        if steps <= 0:
+            continue
+        px, py = pos
+        for aid, (dx, dy) in _MOVES.items():
+            npos = (px + dx * _CELL, py + dy * _CELL)
+            if npos not in passable:
+                continue
+            nsh, nco, nro, nsteps, ntaken = sh, co, ro, steps - 1, taken
+            kind = changers.get(npos)
+            if kind == "rot":
+                nro = (nro + 1) % 4
+            elif kind == "color":
+                nco = (nco + 1) % 4
+            elif kind == "shape":
+                nsh = (nsh + 1) % 6
+            if npos in refills and npos not in taken:
+                nsteps = full
+                ntaken = taken | {npos}
+            if nsteps < 0:
+                continue
+            if npos == goal and (nsh, nco, nro) != req:
+                continue  # goal is blocking until the token matches
+            nxt = (npos, nsh, nco, nro, nsteps, ntaken)
+            if nxt in seen:
+                continue
+            if npos == goal and (nsh, nco, nro) == req:
+                return path + [aid]
+            seen.add(nxt)
+            queue.append((nxt, path + [aid]))
+    return None
+
+
+# ════════════════════════════════════════════════════════════════════════
+# Fallback: frame-keyed transition-graph frontier explorer (R56 substrate).
+# ════════════════════════════════════════════════════════════════════════
 
 
 def _is_hud_band(region: Region, height: int, width: int) -> bool:
@@ -252,104 +408,39 @@ def _is_hud_band(region: Region, height: int, width: int) -> bool:
     return False
 
 
-class Adapter(GameAdapter):
-    """Frame-keyed transition-graph frontier explorer composed from admorphiq.kernels."""
+class _Explorer:
+    """Frame-keyed transition-graph frontier explorer, BFS-from-start over the
+    discovered edges (the R56 substrate; clears L1 alone in ~606 actions)."""
 
-    GAME_ID = GAME_ID
-
-    def __init__(self, giveup: int = _GIVEUP_DEFAULT) -> None:
-        # Keep learned edges across a GAME_OVER restart — the maze layout is
-        # unchanged, only the current attempt (and hidden step counter) reset.
-        self.restart_on_game_over = True
-
-        self._giveup = giveup
-        self._step = 0
-        self._levels_seen = -1
-
-        # Discovered transition graph for THIS level: every observed
-        # (from_key, action, to_key) triple, self-loops included. Reset on a
-        # level change (new maze); kept across mid-level restarts.
+    def __init__(self) -> None:
         self._transitions: list[tuple[StateKey, int, StateKey]] = []
         self._tried_from: dict[StateKey, set[int]] = {}
-
-        # The level-start key (position + token both reset to start on every
-        # life-loss AND level begin). Captured on the first frame of a level;
-        # the BFS-from-start expansion order is anchored here (see _decide).
         self._start_key: StateKey | None = None
-
-        # A committed replay plan from start toward the globally-nearest
-        # unexpanded frontier, drained one action per decision. Each entry of
-        # ``_plan_expected`` is the key we expect to be at BEFORE popping the
-        # matching ``_plan`` action — a mismatch (a life-loss reset mid-plan,
-        # or the hidden-counter non-determinism) invalidates the rest.
         self._plan: list[int] = []
         self._plan_expected: list[StateKey] = []
-
         self._pending_action: int | None = None
         self._pending_key: StateKey | None = None
 
-    # ── harness contract ────────────────────────────────────────────────
-
-    def is_done(self, frames: list[Any], latest_frame: Any) -> bool:
-        return state_name(latest_frame) == "WIN" or self._step >= self._giveup
-
-    def choose_action(self, frames: list[Any], latest_frame: Any) -> GameAction:
-        state = state_name(latest_frame)
-        if state == "GAME_OVER":
-            self._pending_action = None
-            self._pending_key = None
-            return reset_action()
-        if state == "NOT_PLAYED" or not has_frame(latest_frame):
-            self._pending_action = None
-            self._pending_key = None
-            self._levels_seen = -1
-            return reset_action()
-
-        grid = canonical_layer(latest_frame)
-        levels = int(getattr(latest_frame, "levels_completed", 0) or 0)
-        if levels != self._levels_seen:
-            self._on_level_up(levels)
-
-        self._step += 1
-        cur_key = self._state_key(grid)
-        if self._start_key is None:
-            self._start_key = cur_key
-        self._observe_result(cur_key)
-
-        simple_ids, _action6_ok = available_action_ids(latest_frame)
-        move_ids = sorted(a for a in simple_ids if a in (1, 2, 3, 4))
-        if not move_ids:
-            self._pending_action = None
-            self._pending_key = None
-            return simple_action(simple_ids[0]) if simple_ids else reset_action()
-
-        action = self._decide(cur_key, move_ids)
-        self._pending_action = action
-        self._pending_key = cur_key
-        return simple_action(action)
-
-    # ── level bookkeeping ────────────────────────────────────────────────
-
-    def _on_level_up(self, levels: int) -> None:
-        """A level change means a genuinely new maze — drop every learned
-        edge. (A mid-level life-loss / GAME_OVER does NOT come through here;
-        those keep the graph, since the maze is unchanged and the post-reset
-        frame simply re-hashes to a key already in the graph.)"""
-        self._levels_seen = levels
-        self._pending_action = None
-        self._pending_key = None
+    def on_level_up(self) -> None:
         self._transitions = []
         self._tried_from = {}
         self._start_key = None
         self._plan = []
         self._plan_expected = []
+        self._pending_action = None
+        self._pending_key = None
 
-    # ── state key ────────────────────────────────────────────────────────
+    def choose(self, grid: Grid, move_ids: list[int]) -> int:
+        cur_key = self._state_key(grid)
+        if self._start_key is None:
+            self._start_key = cur_key
+        self._observe_result(cur_key)
+        action = self._decide(cur_key, move_ids)
+        self._pending_action = action
+        self._pending_key = cur_key
+        return action
 
-    def _state_key(self, grid: tuple[tuple[int, ...], ...]) -> StateKey:
-        """Multiset of live-region signatures, excluding HUD bands — a
-        counter-invariant, position/appearance-sensitive key (see module
-        docstring's measurement)."""
+    def _state_key(self, grid: Grid) -> StateKey:
         if not grid:
             return frozenset()
         height, width = len(grid), len(grid[0])
@@ -361,8 +452,6 @@ class Adapter(GameAdapter):
             if not _is_hud_band(r, height, width)
         )
 
-    # ── measurement: record the edge the pending action produced ──────────
-
     def _observe_result(self, cur_key: StateKey) -> None:
         action = self._pending_action
         from_key = self._pending_key
@@ -373,38 +462,18 @@ class Adapter(GameAdapter):
         self._transitions.append((from_key, action, cur_key))
         self._tried_from.setdefault(from_key, set()).add(action)
 
-    # ── planning: BFS-from-start frontier exploration ─────────────────────
-
     def _decide(self, cur_key: StateKey, move_ids: list[int]) -> int:
-        """Expand the graph in order of distance FROM THE START key.
-
-        The level's start (position + token) is where every life-loss returns
-        us for free, and the winning state is shallow (measured: L1's gold
-        solution is 13 actions). So the right order is BFS from start — expand
-        the globally-shallowest unexpanded frontier first — NOT depth-first
-        from the current node, which gets lost deepening one arbitrary branch
-        of a large (position × token-appearance) space before ever reaching
-        the shallow goal (measured: DFS-order found 147 states in 1000 actions
-        without clearing). There is no known goal key to plan toward: a solved
-        level reveals itself only when expanding a state steps onto the goal
-        with a matching token and the engine completes the level.
-        """
         successors = self._successors()
-
-        # 1. Drain a committed contiguous plan while reality still matches it.
         if self._plan_expected and self._plan_expected[0] == cur_key:
             self._plan_expected.pop(0)
             return self._plan.pop(0)
         self._plan = []
         self._plan_expected = []
-
-        # 2. Find the globally-shallowest unexpanded frontier (BFS FROM START)
-        #    and the contiguous path start->frontier.
         target = self._shallowest_frontier(move_ids, successors)
         if target is not None:
             target_key, from_start = target
             if cur_key == target_key:
-                return self._untried(cur_key, move_ids)[0]  # expand it now
+                return self._untried(cur_key, move_ids)[0]
             anchor = self._start_key if cur_key == self._start_key else cur_key
             route = (
                 from_start
@@ -415,24 +484,12 @@ class Adapter(GameAdapter):
             )
             if route:
                 return self._launch(anchor, route, successors)
-
-        # 3. The globally-shallowest frontier is unreachable from this deep
-        #    position (a different branch, no known edge back except via
-        #    start) — expand the current node if it still can be, else burn a
-        #    step (cycling by step so a single self-loop can't wedge the run)
-        #    to let the counter return us to start, where the BFS plan above
-        #    becomes executable again.
         untried_here = self._untried(cur_key, move_ids)
         if untried_here:
             return untried_here[0]
-        return move_ids[self._step % len(move_ids)]
+        return move_ids[0]
 
     def _shallowest_frontier(self, move_ids, successors):
-        """``(frontier_key, path_from_start)`` for the unexpanded key nearest
-        the start key, via BFS over the discovered edges. ``None`` when the
-        start key is unknown or every reachable key is fully expanded.
-        ``configuration_path`` from the start returns the shortest such path,
-        so the first-found frontier is the globally shallowest."""
         if self._start_key is None:
             return None
 
@@ -450,8 +507,6 @@ class Adapter(GameAdapter):
         return target_key, path
 
     def _replay(self, anchor: StateKey, actions, successors) -> StateKey | None:
-        """The key reached by replaying ``actions`` from ``anchor`` over the
-        known edges, or ``None`` if any action has no recorded edge yet."""
         cur = anchor
         for action in actions:
             edges = dict(successors(cur))
@@ -461,10 +516,6 @@ class Adapter(GameAdapter):
         return cur
 
     def _launch(self, anchor: StateKey, plan, successors) -> int:
-        """Commit ``plan`` (a contiguous action path from ``anchor`` == the
-        current key) with its per-step expected keys, then execute the first
-        action. Later decisions drain the rest as long as reality tracks the
-        expected keys (a life-loss reset mid-plan invalidates it)."""
         self._plan = list(plan)
         expected = [anchor]
         cur = anchor
@@ -472,7 +523,7 @@ class Adapter(GameAdapter):
             cur = dict(successors(cur))[action]
             expected.append(cur)
         self._plan_expected = expected
-        self._plan_expected.pop(0)  # anchor == current key, consumed now
+        self._plan_expected.pop(0)
         return self._plan.pop(0)
 
     def _untried(self, key: StateKey, move_ids: list[int]) -> list[int]:
@@ -480,12 +531,6 @@ class Adapter(GameAdapter):
         return [a for a in move_ids if a not in tried]
 
     def _successors(self):
-        """Closure over the discovered edges, shaped as
-        :func:`admorphiq.kernels.configuration_path` requires — ``state ->
-        iterable of (action, next_state)`` — with the LAST-seen destination
-        kept per ``(state, action)`` (the counter is hidden state, so a
-        ``(key, action)`` can rarely resolve to different keys across
-        attempts; the freshest observation is the best available guess)."""
         edges: dict[StateKey, dict[int, StateKey]] = {}
         for from_key, action, to_key in self._transitions:
             edges.setdefault(from_key, {})[action] = to_key
@@ -494,3 +539,88 @@ class Adapter(GameAdapter):
             return list(edges.get(key, {}).items())
 
         return successors
+
+
+# ════════════════════════════════════════════════════════════════════════
+# Adapter: offline reconstruction (open-loop) first, explorer fallback.
+# ════════════════════════════════════════════════════════════════════════
+
+
+class Adapter(GameAdapter):
+    """Offline maze-reconstruction + joint-BFS + open-loop plan per level,
+    gating to the frame-keyed explorer when the parse or search fails."""
+
+    GAME_ID = GAME_ID
+
+    def __init__(self, giveup: int = _GIVEUP_DEFAULT) -> None:
+        self.restart_on_game_over = True
+        self._giveup = giveup
+        self._step = 0
+        self._levels_seen = -1
+        self._plan: list[int] = []
+        self._plan_committed = False  # tried (and either planned or failed) this level
+        self._plan_failed = False  # this level fell back to the explorer
+        self._probes = 0  # settle probes issued at a stale transition frame
+        self._explorer = _Explorer()
+
+    # ── harness contract ─────────────────────────────────────────────────
+    def is_done(self, frames: list[Any], latest_frame: Any) -> bool:
+        return state_name(latest_frame) == "WIN" or self._step >= self._giveup
+
+    def choose_action(self, frames: list[Any], latest_frame: Any) -> GameAction:
+        state = state_name(latest_frame)
+        if state == "GAME_OVER":
+            self._plan = []
+            self._plan_committed = False
+            self._plan_failed = False
+            self._probes = 0
+            self._explorer._pending_action = None
+            self._explorer._pending_key = None
+            return reset_action()
+        if state == "NOT_PLAYED" or not has_frame(latest_frame):
+            self._reset_level(-1)
+            return reset_action()
+
+        levels = int(getattr(latest_frame, "levels_completed", 0) or 0)
+        if levels != self._levels_seen:
+            self._reset_level(levels)
+
+        self._step += 1
+        grid = canonical_layer(latest_frame)
+        simple_ids, _a6 = available_action_ids(latest_frame)
+        move_ids = sorted(a for a in simple_ids if a in (1, 2, 3, 4))
+        if not move_ids:
+            return simple_action(simple_ids[0]) if simple_ids else reset_action()
+
+        # 1. Drain a committed open-loop plan.
+        if self._plan:
+            return simple_action(self._plan.pop(0))
+
+        # 2. Try the offline reconstruction once per level (until it commits a
+        #    plan or the settle probes run out), planning from the CURRENT
+        #    (post-probe) frame so a stale transition frame is absorbed.
+        if not self._plan_committed and not self._plan_failed:
+            parsed = _parse(grid)
+            if parsed is not None:
+                plan = _solve(parsed)
+                if plan:
+                    self._plan = list(plan)
+                    self._plan_committed = True
+                    return simple_action(self._plan.pop(0))
+            if self._probes < _PROBE_CAP:
+                # Stale/unsettled transition frame: probe once (any move), then
+                # re-parse+plan from the resulting settled frame next turn.
+                self._probes += 1
+                return simple_action(move_ids[0])
+            self._plan_failed = True
+
+        # 3. Fallback: frame-keyed explorer for this level.
+        return simple_action(self._explorer.choose(grid, move_ids))
+
+    def _reset_level(self, levels: int) -> None:
+        self._levels_seen = levels
+        self._plan = []
+        self._plan_committed = False
+        self._plan_failed = False
+        self._probes = 0
+        self._explorer.on_level_up()
