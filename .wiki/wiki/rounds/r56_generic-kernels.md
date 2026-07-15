@@ -995,6 +995,44 @@ su15's L3+ wall (enemies reverse the merge cascade) and lp85's L4 wall (dense
 20-ring self-test rejects single-press reconstruction) are both banked as
 NEW-STRUCTURE ceilings on their game pages, not threshold tweaks.
 
+## Official closing card — r56s7 full-25 (2026-07-15 night)
+
+**Total = 3.7450 / 25 = 14.98%** — the day's official kernel-expressiveness card.
+Triple: **budget = 5000, env = ceph-build (VM), HEAD = 16:11 (a2b7cb2-era)**,
+per-game SUMMARYs in `~/r56s7/` on the VM. Arithmetic re-verified locally
+(summed the 25 game_scores = 3.7450 exactly). Deployed-card proxy 5.83% →
+**2.57× the deployable baseline**. This is EXPRESSIVENESS (script25), never
+reported as agent capability — see the dual-scoreboard doctrine in this round.
+
+| game | score | game | score | game | score |
+|---|---|---|---|---|---|
+| ft09 | 1.0000 (88a) | vc33 | 0.0357 | m0r0 | 0.0057 |
+| cd82 | 0.9800 (97a) | ar25 | 0.0278 | tu93 | 0.0002 |
+| sb26 | 0.8460 (170a) | re86 | 0.0278 | ls20 | 0.0000 (1/7, scores ~0) |
+| tr87 | 0.2857 (503a) | dc22 | 0.0272 | bp35 | 0.0000 |
+| cn04 | 0.2000 (2/5 @5000) | lp85 | 0.0248¹ | g50t | 0.0000 |
+| su15 | 0.1035 (3/9) | ka59 | 0.0205 | lf52 | 0.0000 |
+| r11l | 0.0476 | wa30 | 0.0222 | s5i5 | 0.0000 |
+| sp80 | 0.0476 | | | sk48 | 0.0000² |
+| sc25 | 0.0427 | | | tn36 | 0.0000 |
+
+¹ lp85 0.0248 is the PRE-planner 1/8 — the r56s7 snapshot predates the
+ring-permutation planner (now 3/8 @ 0.1637, commit `ed147a0`).
+² sk48 0.0000 is the PRE-simulator 0/8 — snapshot predates the faithful
+simulator (now 3/8 @ 0.1667, commit `476b209`). tu93 0.0002 likewise predates
+goal-directed frontier (now 0.0028, commit `6fd466c`).
+
+**HEAD estimate (NOT measured — do not cite as a card).** Swapping the three
+post-snapshot landings into the r56s7 sum (lp85 0.0248→0.1637, sk48 0→0.1667,
+tu93 0.0002→0.0028) gives an ARITHMETIC estimate of **4.0532 / 25 = 16.21%**.
+This is an addition, not a run — the confirming measurement is **r56s8**
+(launched ~20:00, current HEAD, same budget=5000 / env=ceph-build), PENDING.
+Per the (value, budget, env) triple rule, 16.21% is not asserted as a card until
+r56s8 lands.
+
+**Day arc:** morning **5.85%** → r56s6 (14:08 HEAD) **~15.0%** → r56s7 (16:11
+HEAD) **14.98% official** → r56s8 (current HEAD) **pending ~16%**.
+
 ## Related
 
 - [[r57_win-condition-typology]] — mines the same trace/kernel toolkit (R56's
