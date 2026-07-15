@@ -74,12 +74,22 @@ local env)**:
     pair A the remaining stubs no longer split into clean same-sprite pairs — a
     sprite's stubs pair INDIVIDUALLY across several sprites (the active's 2
     diagonal stubs matched a diagonal SUB-pair of a 4-stub sprite, leaving that
-    sprite's other 2 stubs to pair elsewhere). REOPEN = a GLOBAL stub-to-stub
-    assignment (``kernels.assign_pairs`` over all stubs at once by congruence,
-    committing a consistent matching up front) instead of the current greedy
-    per-active-sprite congruent-subset search, which can pick a locally-valid
-    but globally-inconsistent partner. Level 3+ additionally hide the targets
-    (grey masking) — a separate select-and-probe-memory increment, left banked.
+    sprite's other 2 stubs to pair elsewhere). The GLOBAL stub-to-stub
+    assignment was then VALIDATED offline before building, and it surfaces a
+    genuine FOURTH structure: a greedy congruence mover-ordering (repeatedly
+    pick any sprite whose full stub set is congruent to a stationary subset,
+    solve it, remove those stubs) gets STUCK — after a few pairs it strands two
+    remaining pairs that are NOT congruent to each other (measured: a dist-12.4
+    pair on one sprite and a dist-16.2 pair on another), so neither can move
+    onto the other. Stub CONSUMPTION changes later congruences, so a valid
+    solve needs a GLOBAL constraint-satisfaction over all 12 stubs at once
+    (which 2-subsets pair AND a mover ordering under which every mover's full
+    stub set maps congruently), not the greedy per-mover search. Per the
+    round's explicit stop rule, this is BANKED at the fourth layer: the durable
+    value shipped is the reusable machinery (stale-frame skip, geometric
+    congruence pairing, occlusion-robust selection) plus the located wall.
+    Level 3+ additionally hide the targets (grey masking) — a separate
+    select-and-probe-memory increment, left banked.
 
 **HUD**: row 0 is a step-countdown bar drawn in colours 0 and 4 (the source
 ``lvealyvptn.render_interface`` writes the top scanline). Colour 0 there is
