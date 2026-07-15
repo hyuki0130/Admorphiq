@@ -40,20 +40,30 @@ mechanic is solvable from pixels. Level 1: two goals already axis-aligned with
 their targets (7 far-half clicks on the H-track, 6 on the V-track); the greedy
 learns each track's effect and drives each goal home.
 
-**BANKED wall — level 2+**: the goal/target split by BLOB SIZE (goal small,
-target large) breaks on L2, where both colour-13 blobs are size 5 and a goal
-starts visually coincident with a target (clicking splits a size-5 blob into a
-size-1 goal that moves off and a size-4 target). Two REOPEN increments, both
-real: (1) **movement-based goal/target discrimination** — probe a click and
-classify the blob that MOVES as the goal, the static one as the target, rather
-than thresholding size; (2) **rotation** — deeper levels require a goal to move
-on the axis its slider does not currently offer, needing a rotate-button click
-(the ``myzmclysbl`` handle) to switch the slider's axis before covering; detect
-the rotate buttons (small clickables distinct from the track frame) and measure
-their axis-swap effect. No hardcoded coordinates/palettes/sequences were added;
-the adapter runs to budget. The mechanic decode (sliders / goals / targets /
-resize-moves-goal / rotate-swaps-axis / collision-reverts) plus the working L1
-solve are the deliverables — the prior wiki had only the two tag names.
+**Level 2 — two reopens landed, a third structure BANKED (stop rule)**:
+  1. **Movement-based goal/target discrimination — DONE.** L2's two colour-13
+     blobs both start size 5 (a goal coincident with its target), so the size
+     split saw only targets. Fix: defer locking until a small goal blob is
+     visible; before that, probe a track click to SPLIT the merged blob — the
+     piece that moves is the goal (revealed as size 1), the static one is the
+     target (size 4). Verified: goal detected, target locked, goal driven.
+  2. **Directional controls — DONE.** The compact colour-4 boxes are not
+     rotate buttons but DIRECTIONAL slider controls (measured: one moves the
+     goal +col, another −row, etc.). Added them as candidates so the
+     effect-learning greedy measures and uses them. Plus **collision-revert
+     handling** (``_dead``): a click that produces no goal movement (a maxed
+     slider / reverted collision) is skipped until any goal moves again.
+  3. **BANKED third structure — the goal cannot REACH its target by
+     translation.** Measured: the goal's column control maxes/collides at col
+     43 while its target sits at col 52 (9 px unreachable), and the row control
+     can shave the row gap but never the column gap, so the greedy oscillates
+     without converging. Reaching the target needs TRUE rotation (swap the
+     slider's axis to extend past the block) — a genuinely separate control
+     from the directional colour-4 boxes, not yet frame-located. Per the
+     round's stop rule this is banked rather than pursued further. L1 (1/8)
+     unaffected; no hardcoded coordinates/sequences added; the machinery
+     (movement-split, directional-control candidates, dead-click reverts) is
+     the durable value.
 
 Composition from ``admorphiq.kernels``:
   - :func:`admorphiq.kernels.find_regions` segments the colour-13 goal/target
@@ -84,6 +94,11 @@ Region = dict[str, Any]
 _GIVEUP_DEFAULT = 4000
 _MARKER_COLOR = 13
 _TRACK_COLOR = 2
+# Rotate buttons render as compact colour-4 boxes (measured ~5x5, size ~18) —
+# distinct from the full-width colour-4 HUD strip on the bottom row.
+_ROTATE_COLOR = 4
+_ROTATE_MIN_SIZE = 8
+_ROTATE_MAX_SIZE = 32
 # A colour-13 blob at or below this size is a movable goal; larger is a target.
 _GOAL_MAX_SIZE = 2
 # A goal within this pixel distance of its target counts as placed (one unit is
@@ -121,6 +136,12 @@ class Adapter(GameAdapter):
         self._candidates: list[Cell] = []
         self._probe_idx = 0
         self._effect: dict[Cell, tuple[int, Cell]] = {}
+        # Clicks that produced NO goal movement at the current configuration — a
+        # slider maxed at its extent, or a collision-reverted move. Skipped so
+        # the greedy abandons an exhausted control and probes another axis;
+        # cleared whenever any goal actually moves (the state changed, so a
+        # previously-blocked control may now be free).
+        self._dead: set[Cell] = set()
 
         self._pending_point: Cell | None = None
         self._pending_goals: list[Cell] = []
@@ -167,14 +188,39 @@ class Adapter(GameAdapter):
         self._candidates = []
         self._probe_idx = 0
         self._effect = {}
+        self._dead = set()
         self._pending_point = None
         self._pending_goals = []
 
     def _lock(self, regions: list[Region], grid: tuple[tuple[int, ...], ...]) -> None:
         markers = [r for r in regions if r["color"] == _MARKER_COLOR]
         self._targets = [_centroid(r) for r in markers if r["size"] > _GOAL_MAX_SIZE]
-        self._candidates = self._make_candidates(regions)
+        # Candidates = track edge-midpoints PLUS the compact colour-4 control
+        # boxes. Measured (reopen #2): those boxes are the DIRECTIONAL slider
+        # controls — one moves the goal +col, another -row, etc. — so a goal
+        # that can only close one axis via the track edges reaches the other
+        # axis through them. Which control moves which way is MEASURED by the
+        # effect-learning greedy, never assumed.
+        self._candidates = self._make_candidates(regions) + self._control_buttons(regions, grid)
         self._targets_locked = True
+
+    def _control_buttons(self, regions: list[Region], grid: tuple[tuple[int, ...], ...]) -> list[Cell]:
+        """Centroids of the compact colour-4 control boxes — small, roughly
+        square regions (excludes the full-width colour-4 HUD strip). Each is a
+        directional slider control whose actual effect is measured live."""
+        h = len(grid)
+        out: list[Cell] = []
+        for reg in regions:
+            if reg["color"] != _ROTATE_COLOR:
+                continue
+            if not (_ROTATE_MIN_SIZE <= reg["size"] <= _ROTATE_MAX_SIZE):
+                continue
+            r0, c0, r1, c1 = reg["bbox"]
+            bw, bh = c1 - c0 + 1, r1 - r0 + 1
+            if abs(bw - bh) > 3 or r0 <= 0 or r1 >= h - 1:
+                continue
+            out.append(_centroid(reg))
+        return out
 
     def _make_candidates(self, regions: list[Region]) -> list[Cell]:
         """Edge-midpoint click points of every slider-track frame (colour 2).
@@ -207,7 +253,13 @@ class Adapter(GameAdapter):
             return
         moved = self._moved_goal(before, goals)
         if moved is None:
+            # No goal moved: this control is exhausted/blocked at the current
+            # configuration (a maxed slider or a collision-reverted move).
+            self._dead.add(point)
             return
+        # A goal moved: the configuration changed, so any control that was
+        # blocked before may now be free again.
+        self._dead.clear()
         old, new = moved
         delta = (new[0] - old[0], new[1] - old[1])
         if delta == (0, 0):
@@ -235,8 +287,22 @@ class Adapter(GameAdapter):
     # ── planning ────────────────────────────────────────────────────────
 
     def _decide(self, grid: tuple[tuple[int, ...], ...], regions: list[Region], goals: list[Cell]) -> Cell:
+        if not self._candidates:
+            self._candidates = self._make_candidates(regions)
         if not self._targets_locked:
-            self._lock(regions, grid)
+            if goals:
+                # A small (movable) goal blob is now visible: lock the targets
+                # from the CURRENT state and restart effect-probing with the
+                # goal trackable.
+                self._lock(regions, grid)
+                self._probe_idx = 0
+            else:
+                # No small goal blob yet — on deeper levels a goal starts
+                # COINCIDENT with its target (a merged size-5 blob), so the
+                # size split sees only targets. Probe a track to split the
+                # merged blob: the piece that MOVES is the goal (movement-based
+                # discrimination), revealed as a small blob next frame.
+                return self._commit(self._next_probe(), goals)
 
         # A measured click that strictly reduces its served goal's residual.
         improving = self._best_improving(goals)
@@ -249,10 +315,8 @@ class Adapter(GameAdapter):
             self._probe_idx += 1
             return self._commit(point, goals)
 
-        # Everything measured and nothing improves: either solved, or the
-        # remaining goals need an axis no track currently offers (rotation —
-        # not modelled). Re-probe candidates in case a collision earlier
-        # blocked a move that is now free.
+        # Everything measured and nothing improves: either solved, or a
+        # collision-reverted move earlier is now free. Re-probe candidates.
         if self._candidates:
             point = self._candidates[self._step % len(self._candidates)]
             return self._commit(point, goals)
@@ -262,6 +326,8 @@ class Adapter(GameAdapter):
         best_point: Cell | None = None
         best_gain = 0
         for point, (target_i, delta) in self._effect.items():
+            if point in self._dead:
+                continue
             target = self._targets[target_i]
             goal = self._goal_for_target(goals, target)
             if goal is None:
@@ -281,6 +347,17 @@ class Adapter(GameAdapter):
         if not candidates:
             return None
         return min(candidates, key=lambda g: _dist(g, target))
+
+    def _next_probe(self) -> Cell:
+        """The next un-probed candidate click (then cycles) — used to bootstrap
+        movement-based goal discovery before any goal is size-visible."""
+        if not self._candidates:
+            return (0, 0)
+        if self._probe_idx < len(self._candidates):
+            point = self._candidates[self._probe_idx]
+            self._probe_idx += 1
+            return point
+        return self._candidates[self._step % len(self._candidates)]
 
     def _commit(self, point: Cell, goals: list[Cell]) -> Cell:
         self._pending_point = point
