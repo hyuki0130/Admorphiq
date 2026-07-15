@@ -53,14 +53,28 @@ verdict forbids); the explorer instead discovers transitions:
   uncharacterised. Matches the legacy 0/10 (a lone 1/10 existed only at a
   50000 ensemble budget and never transferred).
 
-The connect-puzzle win needs a specific sequence of cursor-positioned object
-links, and blind frontier search over the combined move+click alphabet does
-not compose it (and the per-level action budget resets the attempt). Reopen
-pointer: detect the linkable objects and the cursor, learn the click→link
-effect from observed transitions, and plan the link sequence with
-``configuration_path`` — the same learned-operator shape as the other banked
-adapters, specialised to object linking. This is the first generic
-characterisation of a game the card had left entirely unknown.
+**R56b validation probe (2026-07-15) — the link-operator premise is
+FALSIFIED; do NOT build a positional planner.** A validate-first probe (run
+BEFORE any build, per the bp35 lesson) established:
+- The click effect IS deterministic and frame-observable (two fresh envs
+  clicking the same object produce byte-identical frames; re-clicking the
+  same object is idle — diffs [21,1,1] — so there is no hidden accumulation).
+- BUT the effect is INPUT-POSITION-INDEPENDENT: an ACTION6 click grows a
+  fixed colour-9 region at the SAME game-determined location regardless of
+  WHERE it clicks (all four directions + far-apart coordinates produce the
+  identical +20-cell growth at grid (17-20,16-21)), AND regardless of any
+  preceding ACTION1-4 cursor moves (which do not shift the growth at all).
+So there is no POSITIONAL click→link operator to learn — ACTION6 is a fixed
+predetermined "advance", and the cursor does not steer it. The planner
+premise ("learn a positional operator, plan a link sequence via
+configuration_path") is therefore falsified: whatever the true control
+modality is (timing / a hidden mode / a specific object subset-and-order the
+frame does not expose), it is not the frame-derived positional link this
+approach assumed. Banked at 0/10 without building — the decisive probe saved
+the speculative planner. Reopen pointer (harder): the observable draw is a
+side-effect animation; identify the REAL state the game gates the win on
+(likely not the colour-9 growth) and what genuinely varies the outcome
+before assuming any operator exists.
 
 Composition from ``admorphiq.kernels``: find_regions, canonical_key,
 transition_shortest_path (as above).
