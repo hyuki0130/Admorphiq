@@ -241,6 +241,13 @@ _BAND_TOLERANCE = 3.0
 # admorphiq.world_model_agent's own _PORTAL_SETTLE_MAX.
 _SETTLE_MAX_WAIT = 6
 
+# Bounded number of planning attempts per level. A level-entry frame can be a
+# transient where the board (e.g. the pool piece colours on the pool-portal
+# level) has not fully rendered; each failed attempt idles one frame to let it
+# settle. Generous enough to cover the settle, small enough to bail on a
+# genuinely unsupported layout rather than spin.
+_PLAN_MAX_TRIES = 8
+
 # Consecutive drained clicks producing zero visible change before the
 # remaining plan is abandoned (a wrong layout guess should not be drained
 # blindly to the end). Mirrors world_model_agent's own
@@ -586,10 +593,193 @@ def _recover_fused_frames(
     return recovered, markers
 
 
+def _frame_slot_layout(frame: dict[str, Any], candidates: list[Region]) -> list[dict[str, Any]]:
+    """EVERY slot of a frame, left-to-right, with its content — empty or a
+    pre-placed item's colour.
+
+    :func:`_frame_slots` returns only the empty-marker class (the placement
+    targets); this returns the FULL slot row including any pre-placed colour
+    items, which the pool-portal solver needs because a pre-filled slot's fixed
+    colour PINS where a placed portal can go. Each entry is ``{"col", "row",
+    "content", "region"}`` where ``content`` is ``None`` (empty spot) or the
+    item's colour. Empty markers are the smallest size class (measured smaller
+    than any colour item — the same discriminator :func:`_frame_slots` uses); a
+    single size class means every slot is empty.
+    """
+    content = _frame_content(frame, candidates)
+    if not content:
+        return []
+    clusters = size_clusters(content, ratio=1.5)
+    smallest = min(clusters, key=lambda idxs: content[idxs[0]]["size"])
+    empty_ids = {id(content[i]) for i in smallest}
+    multi_class = len(clusters) > 1
+    layout: list[dict[str, Any]] = []
+    for r in sorted(content, key=lambda r: (r["centroid"][1], r["centroid"][0])):
+        is_empty = (not multi_class) or id(r) in empty_ids
+        layout.append(
+            {
+                "col": r["centroid"][1],
+                "row": r["centroid"][0],
+                "content": None if is_empty else int(r["color"]),
+                "region": r,
+            }
+        )
+    return layout
+
+
+def _detect_pool_portal(
+    grid: Grid, frames: list[dict[str, Any]], bg: int, frame_bottom: int
+) -> dict[str, Any] | None:
+    """A PORTAL piece sitting in the bottom pool band (not yet placed), or None.
+
+    Unlike L1-L3's portals (fixed board features already inside a frame's hole),
+    a deeper level can put a portal in the POOL as a hollow-ring piece the player
+    must PLACE into a slot. :func:`admorphiq.kernels.closed_frames` detects it as
+    a small hollow ring; it is told apart from the top-band target swatches (also
+    hollow rings) by lying BELOW every interactive frame, and from a decorative
+    ring by its border colour matching a real frame's border (that frame is the
+    portal's destination). Returns ``{"row", "col", "dest_color"}`` or None."""
+    portals: list[dict[str, Any]] = []
+    frame_colors = {f["border_color"] for f in frames}
+    for cf in closed_frames(grid, background=bg):
+        r0, c0, r1, c1 = cf["outer_bbox"]
+        crow = (r0 + r1) / 2
+        if crow <= frame_bottom:
+            continue  # a top-band target swatch or an interactive frame, not a pool piece
+        if cf["border_color"] not in frame_colors:
+            continue  # a ring whose colour names no frame is not a portal
+        portals.append({"row": crow, "col": (c0 + c1) / 2, "dest_color": cf["border_color"]})
+    if len(portals) != 1:
+        return None  # exactly one pool portal is the supported case
+    return portals[0]
+
+
+def _plan_sb26_pool_portal(grid: Grid) -> list[PlanStep] | None:
+    """Placement plan when the portal is a POOL piece to be PLACED (deeper level).
+
+    The portal occupies one root-frame slot; the DFS then reads
+    ``root[0..k-1] + dest[all] + root[k+1..]`` in traversal order, which must
+    equal the target sequence. A pre-placed slot's fixed colour pins the only
+    consistent portal position ``k``. Solves for ``k``, then places the portal
+    into root slot ``k`` and each remaining colour into its DFS-ordered slot.
+    Returns None (caller falls through to the fixed-portal planner) whenever the
+    board is not this shape, so L1-L3 are untouched."""
+    if not grid:
+        return None
+    bg = most_common_color(grid)
+    candidates = _candidates(grid)
+    fused_frames, _markers = _recover_fused_frames(grid, candidates, bg)
+    frames = _filter_interactive_frames(closed_frames(grid, background=bg) + fused_frames, candidates)
+    if len(frames) != 2:
+        return None  # the measured pool-portal case is a 2-frame root+dest board
+    frame_bottom = max(f["outer_bbox"][2] for f in frames)
+    frame_top = min(f["outer_bbox"][0] for f in frames)
+    portal = _detect_pool_portal(grid, frames, bg, frame_bottom)
+    if portal is None:
+        return None
+
+    root = frames[0]  # kernel order (outer bbox top-left) — the DFS root
+    dest_idx = next((i for i, f in enumerate(frames) if f["border_color"] == portal["dest_color"]), None)
+    if dest_idx is None or dest_idx == 0:
+        return None  # a portal cannot target the root
+    root_slots = _frame_slot_layout(root, candidates)
+    dest_slots = _frame_slot_layout(frames[dest_idx], candidates)
+    if len(root_slots) < 2 or not dest_slots:
+        return None
+
+    # The target sequence is the row of hollow-ring swatches ABOVE the frames;
+    # closed_frames reads each ring's BORDER colour cleanly (a plain colour-region
+    # read would also pick up each ring's interior hole colour). Column order =
+    # traversal order.
+    target_rings = [
+        cf
+        for cf in closed_frames(grid, background=bg)
+        if (cf["outer_bbox"][0] + cf["outer_bbox"][2]) / 2 < frame_top
+    ]
+    target_colors = [
+        int(cf["border_color"]) for cf in sorted(target_rings, key=lambda cf: cf["outer_bbox"][1])
+    ]
+    if not target_colors:
+        return None
+
+    all_hole: frozenset[Cell] = frozenset()
+    for f in frames:
+        all_hole |= f["hole_cells"]
+    band_candidates = [r for r in candidates if not (r["cells"] & all_hole)]
+    bands = group_by_axis(band_candidates, axis="row", tolerance=_BAND_TOLERANCE)
+    if len(bands) < 2:
+        return None
+    bottom_band = [band_candidates[i] for i in bands[-1]]
+
+    # Pool solid swatches (colour -> queue of click points, left-to-right),
+    # EXCLUDING the portal ring itself (the bottom-band region nearest it).
+    pool: dict[int, list[tuple[int, int]]] = {}
+    for r in sorted(bottom_band, key=lambda r: (r["centroid"][1], r["centroid"][0])):
+        if r["color"] == bg:
+            continue
+        if abs(r["centroid"][1] - portal["col"]) <= 2 and abs(r["centroid"][0] - portal["row"]) <= 3:
+            continue  # this is the portal piece, not a colour swatch
+        pool.setdefault(int(r["color"]), []).append(
+            (int(round(r["centroid"][0])), int(round(r["centroid"][1])))
+        )
+
+    # Solve for the portal slot k: the DFS order it induces must read the target
+    # sequence, and every pre-filled slot's fixed colour must agree.
+    for k in range(len(root_slots)):
+        if root_slots[k]["content"] is not None:
+            continue  # the portal must land on an EMPTY root slot
+        order = root_slots[:k] + dest_slots + root_slots[k + 1 :]
+        if len(order) != len(target_colors):
+            continue
+        assign = list(zip(order, target_colors))
+        if any(s["content"] is not None and s["content"] != t for s, t in assign):
+            continue
+        need: dict[int, int] = {}
+        for s, t in assign:
+            if s["content"] is None:
+                need[t] = need.get(t, 0) + 1
+        if any(len(pool.get(color, [])) < cnt for color, cnt in need.items()):
+            continue
+        return _build_pool_portal_plan(portal, root_slots[k], assign, pool)
+    return None
+
+
+def _build_pool_portal_plan(
+    portal: dict[str, Any],
+    portal_slot: dict[str, Any],
+    assign: list[tuple[dict[str, Any], int]],
+    pool: dict[int, list[tuple[int, int]]],
+) -> list[PlanStep]:
+    """The click plan: place the portal into its slot, then each empty slot's
+    colour in DFS order, then verify. Each placement is a pool-pick then a
+    slot-click (the game's own pick-then-place gesture)."""
+    plan: list[PlanStep] = [
+        ("click", int(round(portal["row"])), int(round(portal["col"]))),
+        ("click", int(round(portal_slot["row"])), int(round(portal_slot["col"]))),
+    ]
+    used: dict[int, int] = {}
+    for slot, color in assign:
+        if slot["content"] is not None:
+            continue  # already on the board — the DFS reads it in place
+        k = used.get(color, 0)
+        used[color] = k + 1
+        prow, pcol = pool[color][k]
+        plan.append(("click", prow, pcol))
+        plan.append(("click", int(round(slot["row"])), int(round(slot["col"]))))
+    plan.append(("simple", _VERIFY_ACTION))
+    return plan
+
+
 def _plan_sb26(grid: Grid) -> list[PlanStep] | None:
     """The full placement click plan, DFS-ordered, or None if unsupported here."""
     if not grid:
         return None
+    # A portal sitting in the pool (a piece to place) is a distinct, deeper case
+    # from L1-L3's fixed in-frame portals; try it first and fall through when the
+    # board is not that shape, so the L1-L3 path is byte-identical.
+    pool_portal_plan = _plan_sb26_pool_portal(grid)
+    if pool_portal_plan is not None:
+        return pool_portal_plan
     bg = most_common_color(grid)
     candidates = _candidates(grid)
     fused_frames, markers = _recover_fused_frames(grid, candidates, bg)
@@ -685,7 +875,7 @@ class Adapter(GameAdapter):
         self._step = 0
         self._levels_seen = -1
         self._plan: list[PlanStep] = []
-        self._plan_attempted = False
+        self._plan_tries = 0
         self._settle_wait = 0
         self._prev_grid: Grid | None = None
         self._stall_count = 0
@@ -721,8 +911,14 @@ class Adapter(GameAdapter):
 
         simple_ids, action6_ok = available_action_ids(latest_frame)
 
-        if not self._plan and not self._plan_attempted:
-            self._plan_attempted = True
+        # Retry planning (bounded) until a plan is found: a level-entry frame can
+        # be a transient (the pool renders its piece colours a frame or two after
+        # the level loads — measured on the pool-portal level), so a single
+        # attempt on the first frame reads an incomplete board. Idle (a harmless
+        # corner click) between tries lets the board settle. L1-L3 find their plan
+        # on the first good frame, so their behaviour is unchanged.
+        if not self._plan and self._plan_tries < _PLAN_MAX_TRIES:
+            self._plan_tries += 1
             plan = _plan_sb26(grid)
             if plan:
                 self._plan = plan
@@ -734,7 +930,7 @@ class Adapter(GameAdapter):
 
     def _reset_level_state(self) -> None:
         self._plan = []
-        self._plan_attempted = False
+        self._plan_tries = 0
         self._settle_wait = 0
         self._prev_grid = None
         self._stall_count = 0
@@ -770,8 +966,7 @@ class Adapter(GameAdapter):
             if aid not in simple_ids:
                 continue
             return simple_action(aid)
-        # No plan (unsupported layout, or exhausted) -- a harmless idle
-        # click at the frame's own observed centre rather than crash.
-        height = len(grid) or 1
-        width = len(grid[0]) if grid else 1
-        return click_action(x=width // 2, y=height // 2)
+        # No plan yet (settling, unsupported layout, or exhausted) -- a harmless
+        # idle click at the padding corner (never a sys_click sprite) so a
+        # transient board can settle without perturbing any slot or pool piece.
+        return click_action(x=0, y=0)
