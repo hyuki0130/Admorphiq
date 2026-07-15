@@ -457,6 +457,44 @@ class Adapter(GameAdapter):
 
         return self._route(move_ids)
 
+    def _learned_action_dirs(self) -> dict[int, tuple[float, float]]:
+        """Average (dr, dc) each action id has produced across every
+        non-self-loop transition recorded so far. TU93's slide lands where a
+        corridor stops, so a single action is not a fixed vector -- but its
+        MEAN direction is a stable, frame-free signal of which way that action
+        tends to push the avatar, learned purely from the graph the adapter is
+        already building. Used only to ORDER untried probes toward the goal;
+        never to predict a landing cell (that avenue is closed, see the module
+        docstring / TU93.md)."""
+        sums: dict[int, tuple[int, int]] = {}
+        counts: dict[int, int] = {}
+        for from_cell, action, to_cell in self._transitions:
+            dr, dc = to_cell[0] - from_cell[0], to_cell[1] - from_cell[1]
+            if dr == 0 and dc == 0:
+                continue
+            sr, sc = sums.get(action, (0, 0))
+            sums[action] = (sr + dr, sc + dc)
+            counts[action] = counts.get(action, 0) + 1
+        return {a: (sums[a][0] / counts[a], sums[a][1] / counts[a]) for a in sums}
+
+    def _goal_ward_order(self, actions: list[int], from_cell: Cell) -> list[int]:
+        """Order ``actions`` so the one whose learned mean direction points
+        most toward the goal is tried FIRST (greedy goal-directed probing).
+        Actions with no learned direction yet keep their numeric order after
+        the ranked ones. Falls back to the input order when the goal is unknown
+        -- the frontier still gets explored, just not yet goal-biased."""
+        if self._goal_cell is None or not actions:
+            return actions
+        gr, gc = self._goal_cell[0] - from_cell[0], self._goal_cell[1] - from_cell[1]
+        norm = (gr * gr + gc * gc) ** 0.5
+        if norm == 0:
+            return actions
+        dirs = self._learned_action_dirs()
+        known = [a for a in actions if a in dirs]
+        unknown = [a for a in actions if a not in dirs]
+        known.sort(key=lambda a: -(dirs[a][0] * gr + dirs[a][1] * gc) / norm)
+        return known + unknown
+
     def _probe(self, move_ids: list[int]) -> GameAction:
         ref_cell = self._active_cell
         self._pending_ref_cell = ref_cell
@@ -464,7 +502,7 @@ class Adapter(GameAdapter):
             tried = self._tried_from.get(ref_cell, set())
             untried = [a for a in move_ids if a not in tried]
             if untried:
-                action = untried[0]
+                action = self._goal_ward_order(untried, ref_cell)[0]
                 self._pending_action = action
                 return simple_action(action)
         # No ref_cell (avatar identity not yet known) or every action
@@ -479,30 +517,44 @@ class Adapter(GameAdapter):
         return simple_action(action)
 
     def _nearest_untried(self, move_ids: list[int]) -> Cell | None:
-        """BFS over the KNOWN slide graph from ``_active_cell``; returns
-        the nearest cell (including ``_active_cell`` itself, distance 0)
-        that still has an action in ``move_ids`` not yet recorded in
-        ``_tried_from``, or None if every reachable cell has been fully
-        explored. Hand-rolled rather than
-        :func:`admorphiq.kernels.reachable_frontier` -- see module
-        docstring for why that kernel's "already-observed edges only"
+        """Pick the next frontier cell to expand toward -- a cell reachable in
+        the KNOWN slide graph that still has an untried action. The current
+        cell (distance 0) wins outright when it has an untried action, because
+        probing where the avatar already stands costs no walk. Otherwise, of
+        every reachable untried-frontier cell, return the one CLOSEST TO THE
+        GOAL by Manhattan distance (greedy goal-directed frontier expansion),
+        tie-broken by graph-hop nearness. This is the efficiency lever: blind
+        nearest-frontier expansion explored the whole maze away from the goal;
+        biasing the frontier toward the goal connects the graph far sooner.
+        Returns None when every reachable cell is fully explored. Hand-rolled
+        rather than :func:`admorphiq.kernels.reachable_frontier` -- see the
+        module docstring for why that kernel's "already-observed edges only"
         universe doesn't fit "find an UNTRIED action" here."""
         assert self._active_cell is not None
         edges: dict[Cell, dict[int, Cell]] = {}
         for state, action, nxt in self._transitions:
             edges.setdefault(state, {})[action] = nxt
+        # Distance-0 free probe: no walk needed, and it may connect the goal now.
+        if any(a not in self._tried_from.get(self._active_cell, set()) for a in move_ids):
+            return self._active_cell
         visited = {self._active_cell}
         queue: deque[Cell] = deque([self._active_cell])
+        frontier: list[Cell] = []  # BFS order preserved -> graph-hop tie-break
         while queue:
             cell = queue.popleft()
             tried_here = self._tried_from.get(cell, set())
             if any(a not in tried_here for a in move_ids):
-                return cell
+                frontier.append(cell)
             for _action, nxt in edges.get(cell, {}).items():
                 if nxt not in visited:
                     visited.add(nxt)
                     queue.append(nxt)
-        return None
+        if not frontier:
+            return None
+        if self._goal_cell is None:
+            return frontier[0]
+        gr, gc = self._goal_cell
+        return min(frontier, key=lambda c: abs(c[0] - gr) + abs(c[1] - gc))
 
     def _route(self, move_ids: list[int]) -> GameAction:
         assert self._active_cell is not None and self._goal_cell is not None
@@ -520,7 +572,7 @@ class Adapter(GameAdapter):
         if target_cell is not None:
             if target_cell == self._active_cell:
                 untried = [a for a in move_ids if a not in self._tried_from.get(self._active_cell, set())]
-                action = untried[0]
+                action = self._goal_ward_order(untried, self._active_cell)[0]
             else:
                 sub_path = transition_shortest_path(self._transitions, self._active_cell, target_cell)
                 action = sub_path[0] if sub_path else move_ids[0]  # type: ignore[assignment]
