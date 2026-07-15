@@ -25,10 +25,15 @@ neither visible from the prose alone:
    **1/6 @ 0.0476** — the transient "L1 super-human" was a misattribution; the
    real L1 wall is a body-swept-path collision (banked in `4f24d68`).
 
-The same class of gap appeared again in the evening-recording task itself: an
-interim note claimed "cn04 2/5 @ 0.20", but every `script25_cn04_*` SUMMARY caps
-at **1/6 @ 0.0309** (cn04 has 6 levels; no run reached 2). Recording the SUMMARY
-number instead of the note is the whole discipline.
+A subtler variant appeared in the evening-recording task itself and is the more
+instructive case: an interim note claimed "cn04 2/5 @ 0.20". Every LOCAL
+`script25_cn04_*` SUMMARY caps at **1/6 @ 0.0309**, so at first pass the note
+looked false — but that first pass was ALSO incomplete: the local smokes are
+@1000, and re-verifying on the VM (ceph-build) found **2/5 @ 0.2000** is real at
+@5000 (`r56s7`, 16:11 HEAD). Both numbers are genuine measurements under
+different budgets. The discipline is not "trust the SUMMARY you happen to have"
+— it is "carry the budget + env with the number" (see the Prevention sibling
+rule). Recording only the @1000 figure would have been its own false claim.
 
 ## Root Cause
 
@@ -51,6 +56,15 @@ committed `SUMMARY.txt`, but prose hides all three.
   or a number with no backing artifact, is rejected — not softened.
 - Offline-validation and live-clear are different claims; the wiki records the
   MEASURED live number and names the offline result as offline.
+- **Sibling rule — a number without its budget + env is not a number.** The cn04
+  case proves verification cuts BOTH ways: the interim "cn04 2/5 @ 0.20" looked
+  false against the @1000 Mac smokes (1/6), but was GENUINE at @5000 on the VM
+  (`r56s7`, env `2fe56bfb`, 2/5 @ 0.2000). Neither figure is wrong; each is only
+  meaningful WITH its budget and env hash attached. A score is a triple
+  (value, budget, env), not a scalar — an over-correction that drops the other
+  budget's real measurement is its own false claim. Record every budget-
+  conditional result with both, and flag env-hash level-count differences
+  (cn04: 5 levels on the VM hash vs 6 locally).
 
 ## Recovery
 

@@ -951,12 +951,13 @@ one afternoon lane's unverified claim is the subject of
 | ka59 | 0/7 | **1/7** | **0.0205** | L0 launch-then-walk joint placement; L1 3-round arc banked (placement→slide→invisible-walk) |
 | dc22 | 0/6 | **1/6** | **0.0272** | `plan_gated_path` product-graph (position × passability); L0 78a vs 59h (per-level 0.572) |
 | tu93 | 2/9 | 2/9 | **0.0028** (was 0.0002) | goal-directed frontier expansion (11.6× efficiency, floor held) |
-| cn04 | 0/6 | **1/6** | **0.0309** | geometric partner-matching (pair A live); the 2-pair global assignment was validated OFFLINE only, live stays 1/6 — NOT a 2-level clear |
+| cn04 | 0/? | **1/6 @1000** / **2/5 @5000** | **0.0309** / **0.2000** | geometric partner-matching; BUDGET-CONDITIONAL — 1/6 @1000 (Mac local, env `-2fe56bfb` shows /6) but **2/5 @5000** (VM ceph-build `r56s7`, 16:11 HEAD, env `2fe56bfb` shows /5). L2's occlusion-robust re-selection (`1e5006b`) needs the larger budget |
 
 **Provenance (SUMMARY dirs):** `script25_sk48_edge`, `script25_lp85_l3` +
 `_l4det2`, `script25_su15_sim_final` + `_enemy1`, `script25_sb26_l8b`,
 `script25_cd82_smoke3`, `script25_ka59_l1char1`, `script25_dc22_gated`,
-`script25_tu93_goalward3000` + `_3000b`, `script25_cn04_smoke2`. Commits:
+`script25_tu93_goalward3000` + `_3000b`, `script25_cn04_smoke2` (@1000 local) +
+VM `~/r56s6`/`~/r56s7` (@5000, ceph-build). Commits:
 `5189ded`/`dd0f750`/`d5eb5d5` (su15), `df0eb6f` (dc22), `6f61c11`/`b24d7ac`/
 `0cf4f16`/`a2b7cb2` (ka59), `6760b09`/`476b209`/`799e718` (sk48), `a2e6d2e`/
 `58987eb`/`fe1a06a`/`ed147a0`/`5dcdcbf`/`17619ea` (lp85), `6fd466c` (tu93),
@@ -977,10 +978,18 @@ simulator is the only way to search the plan space cheaply.
 - **ka59 L1** — a genuine 3-round arc (placement fill → slide-hypothesis →
   invisible colour-15-walk correction) that still does not clear; floor held at
   1/7. Documented, not overstated.
-- **cn04** — the geometric partner-matching solves pair A and pair B's selection
-  offline, but the LIVE measured result is **1/6 @ 0.0309** (every
-  `script25_cn04_*` SUMMARY agrees; cn04 has 6 levels, and no run reached 2).
-  Recorded as 1/6, explicitly not the "2/5 @ 0.20" an interim note claimed.
+- **cn04 — a BUDGET-CONDITIONAL result, both numbers real.** The @1000 Mac
+  smokes (`script25_cn04_*`) all show **1/6 @ 0.0309**, so an interim "2/5 @ 0.20"
+  looked false at first pass — but re-verifying on the VM (ceph-build, byte-quoted
+  from `~/r56s6` and `~/r56s7`) shows it is genuine at a larger budget: `r56s6`
+  (14:08 HEAD, @5000) = **1/5 @ 0.0667**, `r56s7` (16:11 HEAD, @5000) = **2/5 @
+  0.2000**. cn04 L2 does NOT clear @1000 but DOES @5000 once the occlusion-robust
+  re-selection (`1e5006b`) has enough budget. Both are recorded with their
+  budget+env, per the sibling rule below. (Env-hash `2fe56bfb` reports **5**
+  levels on the VM vs **6** locally — a preview/version discrepancy noted on the
+  CN04 page.) The lesson is not "one number was wrong" — it is
+  [[../lessons/false_claim_verification_20260715]]'s sibling rule: **a number
+  without its budget + env is not a number.**
 
 su15's L3+ wall (enemies reverse the merge cascade) and lp85's L4 wall (dense
 20-ring self-test rejects single-press reconstruction) are both banked as
