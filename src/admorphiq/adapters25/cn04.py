@@ -64,14 +64,22 @@ local env)**:
     ``kernels.assign_pairs``). With this, the active 2-stub sprite correctly
     locks a congruent diagonal target sub-pair on the 4-stub sprite, orients,
     translates, and PAIR A coincides — then ``_advance_to_next_pair`` re-locks
-    for the next pair. **Pair B is banked**: after the active sprite slides
-    onto its partner the two sprite bodies OVERLAP, and the ACTION6
-    ``_select_a_sprite`` click no longer switches the active piece cleanly, so
-    the second pair never gets a live active sprite to plan from. REOPEN =
-    occlusion-robust re-selection (click a solid, non-overlapped cell of an
-    unsolved sprite and confirm the colour-0 body actually moved to it).
-    Level 3+ additionally hide the targets (grey masking) — a separate
-    select-and-probe-memory increment, left banked.
+    for the next pair. Re-selection of the next sprite is occlusion-robust
+    (``_solid_click_cell``): a box-shaped sprite's centroid is a transparent
+    HOLE, so a centroid click selects nothing — clicking a SOLID cell outside
+    the overlapping active body is what actually switches the active piece
+    (verified live: the active body moves to the newly-clicked sprite). **Pair
+    B is banked at the ASSIGNMENT step**: the second active sprite (4 stubs)
+    then finds no congruent partner and rotates without latching, because after
+    pair A the remaining stubs no longer split into clean same-sprite pairs — a
+    sprite's stubs pair INDIVIDUALLY across several sprites (the active's 2
+    diagonal stubs matched a diagonal SUB-pair of a 4-stub sprite, leaving that
+    sprite's other 2 stubs to pair elsewhere). REOPEN = a GLOBAL stub-to-stub
+    assignment (``kernels.assign_pairs`` over all stubs at once by congruence,
+    committing a consistent matching up front) instead of the current greedy
+    per-active-sprite congruent-subset search, which can pick a locally-valid
+    but globally-inconsistent partner. Level 3+ additionally hide the targets
+    (grey masking) — a separate select-and-probe-memory increment, left banked.
 
 **HUD**: row 0 is a step-countdown bar drawn in colours 0 and 4 (the source
 ``lvealyvptn.render_interface`` writes the top scanline). Colour 0 there is
@@ -643,8 +651,23 @@ class Adapter(GameAdapter):
         target_body = self._body_near_markers(bodies, markers)
         if target_body is None:
             return self._probe_move(self._active_regions(regions), move_ids)
-        r, c = _centroid_px(target_body)
+        r, c = self._solid_click_cell(target_body, regions)
         return click_action(x=c, y=r)
+
+    def _solid_click_cell(self, target: Region, regions: list[Region]) -> Cell:
+        """A SOLID pixel of ``target`` to click — its centroid can fall in a
+        hollow (a box-shaped sprite's hole is transparent, so a centroid click
+        selects nothing and the active piece never switches). Prefer a cell
+        outside the current active body's bbox too, so the click isn't
+        swallowed by an overlapping just-moved sprite on top of it."""
+        cells = sorted(target["cells"])  # type: ignore[arg-type]
+        active = self._active_regions(regions)
+        if active:
+            r0, c0, r1, c1 = active[0]["bbox"]
+            outside = [(r, c) for r, c in cells if not (r0 <= r <= r1 and c0 <= c <= c1)]
+            if outside:
+                cells = outside
+        return cells[len(cells) // 2]
 
     def _body_near_markers(self, bodies: list[Region], markers: list[Cell]) -> Region | None:
         if not bodies or not markers:
