@@ -29,4 +29,4 @@ Discrete planning on (slider_axes, goal_positions) state; minimize total click +
 
 | Game | v1 | v2 | Strategy |
 |------|-----|-----|----------|
-| [[../games/S5I5]] | 1/8 | 0/8 | s5i5_slider (brittle) |
+| [[../games/S5I5]] | 1/8 | 1/8 | s5i5_slider (brittle); R56 effect-learning greedy = first frame-only clear (L1) |
