@@ -1582,6 +1582,15 @@ and don't re-derive conclusions already recorded. Every new strategy must refere
 rounds it builds on / avoids. This is the "write the wiki + log and always consult them before
 planning" discipline.
 
+**A number is a TRIPLE (value, budget, env) — and every commit hash is verified before it is
+accepted (2026-07-15).** Before recording or accepting any result: (a) `git cat-file -t <hash>`
+every cited commit — a hash that does not resolve is rejected, not softened; (b) read the score
+off the committed `SUMMARY.txt`/JSON, not from memory; (c) carry the BUDGET and ENV with the number
+— the same adapter can score 1/6 @1000 and 2/5 @5000 on a different env hash (the cn04 case), so a
+scalar without its budget+env is not a number, and an over-correction that drops the other budget's
+real measurement is itself a false claim. Rules + the r11l nonexistent-commit incident:
+`.wiki/wiki/lessons/false_claim_verification_20260715.md`.
+
 ## Dev/Test Environment + Methods (2026-07-08, north-star era — KEEP CURRENT)
 
 The agent is now a **self-improving tool-orchestrating harness** (spec:
@@ -1606,10 +1615,32 @@ tool OR writes Python (`tools/code_agent.py`) → run → feed the transition to
 Measured: code-agent ALONE re86 = 0/8 → frontier transform games need the combined tool+code loop,
 not code in isolation. Round page: [[.wiki/wiki/rounds/r53_unified-harness]]. 679 tests, ruff clean.
 
+**R56 DEPTH PHASE (2026-07-15) — CURRENT status; supersedes the R53 chained-card block below.**
+The spine is now the **namespace-safe generic kernel library** + **quarantined script25 adapters**
+(Codex verdict; `src/admorphiq/kernels/` + `src/admorphiq/adapters25/`, AST-enforced no-hardcoding
+lint). **25/25 adapter coverage** (was 10). **3 games fully conquered**: ft09 6/6 @ **1.0** (88a,
+glyph decode), cd82 6/6 @ **0.98** (97a), sb26 8/8 @ **0.846** (170a, portal-DFS simulator).
+Depth-phase clears, all SUMMARY-verified — source of truth `.wiki/wiki/rounds/r56_generic-kernels.md`:
+sk48 3/8 @0.1667, lp85 3/8 @0.1637, su15 3/9 @0.1035, ka59 1/7 @0.0205, dc22 1/6 @0.0272, tu93
+→0.0028 (goal-directed frontier, 11.6×), cn04 BUDGET-CONDITIONAL 1/6@1000 local / 2/5@5000 VM. Over
+a dozen levels clear at human-or-better efficiency (per-level 1.0). The load-bearing method is
+**learn an operator/state-model, then PLAN** — a faithful offline simulator DFS/A* (sb26/sk48/lp85/
+dc22) or a learned reflection/flow kernel (ar25/sp80 super-human L0) or goal-directed frontier
+(tu93); pattern named in `.wiki/wiki/lessons/faithful_offline_simulator_20260715.md`. New-structure
+PARK list (honestly banked WITH decoded mechanics, not failures): ar25 L1 (parallel-mirror double
+reflection), lp85 L4 (dense 20-ring self-test), su15 L3+ (enemy-reversed cascade), sk48 L3+
+(non-ACTION6 `sys_click`), bp35 / g50t / re86 / s5i5 / sc25 / tr87 / wa30. **Card ≈15%+ — final
+r56s7 aggregate pending.** ⚠️ **Dual-scoreboard doctrine (non-negotiable):** the script25 number is
+KERNEL EXPRESSIVENESS (can a from-scratch generic composition EXPRESS the clear), and is NEVER
+reported as agent capability; promotion to the deployable card is via **agent25** — the offline
+model orchestrating the kernels UNAIDED. Round index: `.wiki/wiki/rounds/index.md` (r56 entry).
+
+**[SUPERSEDED by the R56 depth phase above — kept for history]**
 **R53 SINGLE-ARTIFACT (2026-07-13): `--agent chained` @8000 = 15/25 cleared, 1.076% MEASURED**
 (ChainedAgent = WMA probe first → unified handover; + runner-level 30k retry adds ka59 → 16;
 sk48 is chain-fragile, zero score impact). Anchors: online-RL 0.51%, M1 1.21%, top ~1.56%.
 
+**[SUPERSEDED by the R56 depth phase above — kept for history]**
 **R53 card (2026-07-11): 17/25 under the 3-PASS FALLBACK policy, RHAE proxy ≈ 0.9%** —
 (1) unified@8000: 12 SOLID (cd82 cn04 ft09 lf52 lp85 m0r0 r11l sk48 sp80 tn36 tu93 vc33);
 (2) unified@30k retry: ka59 + ar25 (3-sample; ar25 needed 100k in legacy); (3) worldmodel@2000
@@ -1626,13 +1657,16 @@ road: RICHER GOAL EVIDENCE, which is also the efficiency (RHAE) axis's root. Par
 verified (script-file launch standard); GPU quota (1) blocks a second GPU VM without account
 upgrade.
 
-**WHERE we develop/measure — GCP VM = Kaggle-identical** (the 24GB Mac CANNOT run 30B models or
-parallel; it crashes — Mac is edit/lint/pytest only):
-- `ewm-bench` / `asia-east1-a` / `g4-standard-48` (RTX PRO 6000 **96GB**), SPOT. Start:
-  `gcloud compute instances start ewm-bench --zone=asia-east1-a`; STOP when idle. Repo at
-  `~/admorphiq` (`~/.local/bin/uv run python …`); 25 games in `environment_files/`; ollama has
-  gemma4-31b-q8 + gpt-oss-120b. Budget ~$36 of GCP credits (2-3 VMs OK). Details + transfer recipe:
-  memory `project_dev_test_env`.
+**WHERE we develop/measure (updated 2026-07-15 — GCP credits EXHAUSTED)** (the 24GB Mac CANNOT run
+30B models or parallel; it crashes — Mac is edit/lint/pytest only):
+- **CPU bench env = `ceph-build`** (`ssh -i ~/VM/keys/nfw-dev.pem ubuntu@ceph-build`, 64c / 251GB;
+  repo at `~/admorphiq`). Parallel per-game **script25 is the OFFICIAL measurement** here; a
+  byte-exact repro of the old GCP box for everything that does not need a GPU. This is where the
+  R56 script25 cards (incl. the cn04 @5000 `r56s7` run) are measured.
+- **GCP now costs real money** (free-trial credits spent) — spin a GPU VM ONLY for GPU work and
+  ONLY with user awareness; the old `ewm-bench` (`g4-standard-48`, RTX PRO 6000 96GB) is deleted.
+- **NHN GPU instances under evaluation** (a 2×V100 candidate for the LLM/EWM benches) — not yet the
+  standard. Details + transfer recipe: memory `project_dev_test_env` / `project_cpu_dev_vm_ceph_build`.
 
 **HOW we test (on the VM):**
 - Full-game score: `uv run python scripts/score_efficiency.py --agent graph_frontier --titles
