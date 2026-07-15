@@ -96,14 +96,25 @@ def canonical_layer(latest_frame: Any) -> Grid:
 
 
 def available_action_ids(latest_frame: Any) -> tuple[list[int], bool]:
-    """``(simple action ids 1..5 available, whether ACTION6 is available)``."""
+    """``(simple non-coordinate action ids available, whether ACTION6 is available)``.
+
+    "Simple" = a non-coordinate action an adapter can issue directly via
+    :func:`simple_action`: ACTION1-5 and ACTION7 (undo/cancel). ACTION6 is the
+    only coordinate action, so it is reported as the separate ``action6_ok``
+    flag rather than in the id list; RESET (id 0) is excluded because adapters
+    drive it explicitly through their own reset paths, not as a chosen move.
+    Ids are returned in ``available_actions`` order (callers that need a
+    stable order sort themselves). Note: ACTION7 was previously dropped here,
+    which silently made undo unreachable for every adapter that filtered on
+    this list — see ``tests/test_base_available_actions.py``.
+    """
     simple_ids: list[int] = []
     action6_ok = False
     for a in getattr(latest_frame, "available_actions", []) or []:
         aid = a if isinstance(a, int) else getattr(a, "value", getattr(a, "id", None))
         if aid is None:
             continue
-        if 1 <= aid <= 5:
+        if aid in (1, 2, 3, 4, 5, 7):
             simple_ids.append(aid)
         elif aid == 6:
             action6_ok = True
