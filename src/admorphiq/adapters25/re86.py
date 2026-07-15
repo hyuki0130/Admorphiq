@@ -50,22 +50,22 @@ brittle 6/8 by sprite-tag read, prior generic 0/8). Level 1 solves cleanly: the
 colour-9 cross covers its four targets, the colour-11 cross covers its four, and
 the engine wins once both are placed.
 
-**BANKED wall — level 2+**: level 2's targets are NOT the 3×3 colour-4-bordered
-boxes level 1 uses (``_target_boxes`` finds none on L2), so the adapter has no
-goals there and cycles idle. Two REOPEN increments, both real:
-  1. **General target detection.** L1 targets are a colour-4 border around a
-     coloured centre; L2 draws the ``vzuwsebntu`` goal differently. Generalise
-     to "static, non-movable, non-changer coloured region" (segment, then
-     exclude the two marker-carrying movables and the changer lines by motion /
-     shape) rather than the 4-border template used here.
-  2. **Recolour delivery.** Deeper levels require routing a movable through a
-     changer (a colour line) to recolour it to a target's colour before
-     covering. Model the changer overlap as a colour-transform edge and treat
-     "match colour, then cover" as the per-movable plan.
-No hardcoded coordinates/palettes/sequences were added; the adapter runs to
-budget. The mechanic decode (movables / targets / changers / selection-cycle /
-recolour) plus the working L1 covering solve are the deliverables — the prior
-wiki had only the three tag names.
+**BANKED wall — level 2+ needs RECOLOUR delivery**: ``_target_boxes`` is
+generalised to "a coloured pixel flanked by the border colour on either axis
+pair" so it now detects L2's taller gate-bar targets too (12 colour-9 + 12
+colour-11 cells, measured). The colour-9 and colour-11 movables cover their
+targets cleanly (single covering offsets), BUT level 2 has **four** movables
+(measured colours 9, 11, 12, 13) and only two target colours — the colour-12 and
+colour-13 movables have NO matching target, so they must be routed through a
+changer LINE to RECOLOUR them to 9 / 11 before covering the remaining targets.
+This adapter has no recolour model, so it cycles the two extra movables idle and
+never completes the level. **REOPEN** with a recolour-delivery model: detect the
+changer lines, model a movable→changer overlap as a colour-transform edge, and
+plan "recolour to the needed colour, then cover" per surplus movable. No
+hardcoded coordinates/palettes/sequences were added; the adapter runs to budget.
+The mechanic decode (movables / targets / changers / selection-cycle / recolour)
+plus the working L1 covering solve are the deliverables — the prior wiki had
+only the three tag names.
 
 Composition from ``admorphiq.kernels``:
   - :func:`admorphiq.kernels.find_regions` segments movables / target boxes.
@@ -108,24 +108,25 @@ def _sign(v: int) -> int:
 
 
 def _target_boxes(grid: tuple[tuple[int, ...], ...]) -> list[Cell]:
-    """Centres of colour-bordered target boxes: a non-border, non-background
-    pixel enclosed on all four sides by the border colour. Returns
-    ``(row, col)`` per box (the colour is ``grid[row][col]``). Frame-only, no
-    sprite-tag read."""
+    """Cells of colour-bordered target gates: a non-border, non-background,
+    non-selection pixel flanked by the border colour on a PAIR of opposite
+    sides — left+right OR top+bottom. This covers both the 3×3 fully-bordered
+    box (satisfies either pair) and the taller gate bars used on deeper levels
+    (a colour column flanked left/right by the border), which the all-four-
+    sides rule missed. Returns ``(row, col)`` per gate cell (the required
+    colour is ``grid[row][col]``). Frame-only, no sprite-tag read."""
     boxes: list[Cell] = []
     h = len(grid)
     w = len(grid[0]) if grid else 0
+    b = _BORDER_COLOR
     for r in range(1, h - 1):
         for c in range(1, w - 1):
             v = grid[r][c]
-            if v in (_BORDER_COLOR, _SELECTION_COLOR):
+            if v in (b, _SELECTION_COLOR):
                 continue
-            if (
-                grid[r - 1][c] == _BORDER_COLOR
-                and grid[r + 1][c] == _BORDER_COLOR
-                and grid[r][c - 1] == _BORDER_COLOR
-                and grid[r][c + 1] == _BORDER_COLOR
-            ):
+            horizontal = grid[r][c - 1] == b and grid[r][c + 1] == b
+            vertical = grid[r - 1][c] == b and grid[r + 1][c] == b
+            if horizontal or vertical:
                 boxes.append((r, c))
     return boxes
 
