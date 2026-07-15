@@ -444,6 +444,7 @@ def test_plan_reflection_coverage_returns_none_without_a_model():
 from admorphiq.kernels import (  # noqa: E402
     learn_flow_operators,
     plan_flow_coverage,
+    plan_flow_coverage_multi,
     simulate_flow,
 )
 
@@ -538,3 +539,80 @@ def test_plan_flow_coverage_returns_none_without_a_model():
     assert plan_flow_coverage(mv, {}, frozenset(), [(0, 4)], [frozenset({(8, 4)})], (1, 0), (10, 10)) is None
     assert plan_flow_coverage(mv, {4: (0, 1)}, frozenset(), [(0, 4)], [], (1, 0), (10, 10)) is None
     assert plan_flow_coverage(mv, {4: (0, 1)}, frozenset(), [(0, 4)], [frozenset({(8, 4)})], (0, 0), (10, 10)) is None
+
+
+def test_plan_flow_coverage_multi_covers_three_targets_with_two_deflectors():
+    """Purpose: plan_flow_coverage_multi must jointly place SEVERAL movable
+    deflectors so their combined flow satisfies every target — the SP80 L1+
+    multi-piece layout step a single-block plan cannot solve. It returns a
+    (piece_index, action_label) sequence and never overlaps a piece onto a
+    target, another piece, or the source.
+    Expected feedback: failure means deeper SP80 levels (3 pieces / 3 targets)
+    can never be planned, and the adapter is stuck at the single-piece ceiling."""
+    # Two 3-wide deflectors, each one column left of where it must deflect flow
+    # into a flanking target. A single block cannot reach both flanks; the joint
+    # search must move each block right by one so both interiors get wet.
+    piece_a = frozenset({(3, 1), (3, 2), (3, 3)})
+    piece_b = frozenset({(3, 5), (3, 6), (3, 7)})
+    delta_map = {4: (0, 1), 3: (0, -1)}
+    source = [(0, 2), (0, 6)]
+    left = frozenset({(8, 1), (8, 2), (8, 3)})
+    right = frozenset({(8, 5), (8, 6), (8, 7)})
+    targets = [left, right]
+    plan = plan_flow_coverage_multi(
+        [piece_a, piece_b], delta_map, frozenset(), source, targets, (1, 0), (10, 10)
+    )
+    assert plan is not None
+    # Replay the plan and confirm the final joint layout truly covers both.
+    anchors = [(0, 0), (0, 0)]
+    for idx, label in plan:
+        dr, dc = delta_map[label]
+        anchors[idx] = (anchors[idx][0] + dr, anchors[idx][1] + dc)
+    placed = frozenset()
+    for cells, (dr, dc) in zip((piece_a, piece_b), anchors):
+        placed |= frozenset((r + dr, c + dc) for r, c in cells)
+    res = simulate_flow(source, placed, targets, (1, 0), (10, 10))
+    assert res["satisfied"] == frozenset({0, 1})
+
+
+def test_plan_flow_coverage_multi_never_places_a_piece_on_a_target():
+    """Purpose: a piece placed on a target cell would block the very flow that
+    must wet it, so every state the joint search visits must keep pieces off the
+    targets, the source, and each other — the legality invariant.
+    Expected feedback: failure means the planner could return a self-defeating
+    layout that blocks a target it claims to satisfy."""
+    piece_a = frozenset({(3, 1), (3, 2), (3, 3)})
+    piece_b = frozenset({(3, 5), (3, 6), (3, 7)})
+    delta_map = {4: (0, 1), 3: (0, -1)}
+    source = [(0, 2), (0, 6)]
+    targets = [frozenset({(8, 1), (8, 2), (8, 3)}), frozenset({(8, 5), (8, 6), (8, 7)})]
+    plan = plan_flow_coverage_multi(
+        [piece_a, piece_b], delta_map, frozenset(), source, targets, (1, 0), (10, 10)
+    )
+    assert plan is not None
+    anchors = [(0, 0), (0, 0)]
+    seen: set = set()
+    target_cells = frozenset().union(*targets) | frozenset(source)
+    for idx, label in plan:
+        dr, dc = delta_map[label]
+        anchors[idx] = (anchors[idx][0] + dr, anchors[idx][1] + dc)
+    for cells, (dr, dc) in zip((piece_a, piece_b), anchors):
+        placed = frozenset((r + dr, c + dc) for r, c in cells)
+        assert not (placed & target_cells)
+        assert not (placed & seen)
+        seen |= placed
+
+
+def test_plan_flow_coverage_multi_returns_none_when_uncoverable():
+    """Purpose: when no joint placement can satisfy every target (or the model
+    is empty), the planner returns None so the adapter falls back to graph
+    exploration rather than committing a doomed spill.
+    Expected feedback: failure means the adapter would waste its scarce spill
+    attempts on an unreachable layout."""
+    piece = frozenset({(3, 4)})
+    delta_map = {4: (0, 1), 3: (0, -1)}
+    # A single 1-cell piece cannot split flow to two far-apart targets.
+    far = [frozenset({(8, 0)}), frozenset({(8, 9)})]
+    assert plan_flow_coverage_multi([piece], delta_map, frozenset(), [(0, 4)], far, (1, 0), (10, 10)) is None
+    assert plan_flow_coverage_multi([], delta_map, frozenset(), [(0, 4)], far, (1, 0), (10, 10)) is None
+    assert plan_flow_coverage_multi([piece], {}, frozenset(), [(0, 4)], far, (1, 0), (10, 10)) is None

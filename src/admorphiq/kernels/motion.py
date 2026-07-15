@@ -880,3 +880,94 @@ def plan_flow_coverage(
         return out
 
     return configuration_path((0, 0), _goal, _successors, max_states=max_states)
+
+
+def plan_flow_coverage_multi(
+    movable_pieces: Sequence[Iterable[Sequence[int]]],
+    delta_map: Mapping[object, Shift],
+    static_blocked: Iterable[Sequence[int]],
+    source_cells: Iterable[Sequence[int]],
+    target_regions: Sequence[Iterable[Sequence[int]]],
+    fall_dir: Shift,
+    bounds: tuple[int, int],
+    max_states: int = 200_000,
+) -> list[tuple[int, object]] | None:
+    """Plan placements of SEVERAL movable pieces whose combined flow covers every
+    target — the N-piece generalisation of :func:`plan_flow_coverage`.
+
+    Each piece in ``movable_pieces`` (a cell-set) translates independently by the
+    measured per-action displacements in ``delta_map`` (``{action_label: (dr,
+    dc)}``, shared by all pieces since one action moves the selected piece by one
+    step). BFS via :func:`configuration_path` over the joint state
+    ``(anchor_0, ..., anchor_{n-1})`` of every piece's translation offset. A
+    placement is LEGAL only when every piece stays fully on-grid and no piece
+    cell overlaps another piece, ``static_blocked``, ``source_cells``, or any
+    target region (a piece sitting on a target would block the very cell the flow
+    must wet). The goal fires when :func:`simulate_flow`, over ``static_blocked``
+    plus all placed pieces, satisfies EVERY region in ``target_regions``.
+
+    Returns the shortest ``[(piece_index, action_label), ...]`` sequence (``[]``
+    when the pieces already cover), or ``None`` when no covering joint placement
+    is reachable within ``max_states`` (or the model is empty / ``fall_dir`` is
+    zero). Pure / no environment access.
+    """
+    pieces = [_normalize_cells(p) for p in movable_pieces]
+    static = _normalize_cells(static_blocked)
+    source = _normalize_cells(source_cells)
+    n_targets = len(target_regions)
+    if not pieces or not target_regions or not delta_map or fall_dir == (0, 0):
+        return None
+    height, width = bounds
+    target_cells = frozenset(
+        (int(cell[0]), int(cell[1])) for region in target_regions for cell in region
+    )
+    forbidden = static | source | target_cells
+    bboxes = [
+        (min(r for r, _c in p), max(r for r, _c in p), min(c for _r, c in p), max(c for _r, c in p))
+        for p in pieces
+    ]
+    moves = list(delta_map.items())
+
+    def _placed(anchors: tuple[Shift, ...]) -> list[frozenset[Cell]]:
+        return [
+            frozenset((r + a[0], c + a[1]) for r, c in p) for p, a in zip(pieces, anchors)
+        ]
+
+    def _in_bounds(i: int, anchor: Shift) -> bool:
+        r0, r1, c0, c1 = bboxes[i]
+        return 0 <= r0 + anchor[0] and r1 + anchor[0] < height and 0 <= c0 + anchor[1] and c1 + anchor[1] < width
+
+    def _legal(placed: list[frozenset[Cell]]) -> bool:
+        seen: set[Cell] = set()
+        for cells in placed:
+            if cells & forbidden or cells & seen:
+                return False
+            seen |= cells
+        return True
+
+    def _goal_multi(anchors: tuple[Shift, ...]) -> bool:
+        placed = _placed(anchors)
+        if not _legal(placed):
+            return False
+        blocked = static
+        for cells in placed:
+            blocked = blocked | cells
+        result = simulate_flow(source, blocked, target_regions, fall_dir, bounds)
+        return len(result["satisfied"]) == n_targets  # type: ignore[arg-type]
+
+    def _successors_multi(
+        anchors: tuple[Shift, ...],
+    ) -> list[tuple[tuple[int, object], tuple[Shift, ...]]]:
+        out: list[tuple[tuple[int, object], tuple[Shift, ...]]] = []
+        for i in range(len(anchors)):
+            for label, (dr, dc) in moves:
+                nxt_anchor = (anchors[i][0] + dr, anchors[i][1] + dc)
+                if not _in_bounds(i, nxt_anchor):
+                    continue
+                nxt = anchors[:i] + (nxt_anchor,) + anchors[i + 1:]
+                if _legal(_placed(nxt)):
+                    out.append(((i, label), nxt))
+        return out
+
+    initial = tuple((0, 0) for _ in pieces)
+    return configuration_path(initial, _goal_multi, _successors_multi, max_states=max_states)

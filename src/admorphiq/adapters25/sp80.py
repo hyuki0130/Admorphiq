@@ -76,6 +76,7 @@ from admorphiq.adapters25.base import (
     GameAdapter,
     available_action_ids,
     canonical_layer,
+    click_action,
     has_frame,
     most_common_color,
     reset_action,
@@ -87,6 +88,7 @@ from admorphiq.kernels import (
     find_regions,
     learn_flow_operators,
     plan_flow_coverage,
+    plan_flow_coverage_multi,
     transition_shortest_path,
 )
 
@@ -195,6 +197,7 @@ class Adapter(GameAdapter):
         # (execute a covering layout + commit), "graph" (fallback).
         self._phase = "learn"
         self._learned = False
+        self._spill_committed = False
         self._flow_model: dict[str, Any] | None = None
         self._movable_color: int | None = None
         self._delta_map: dict[int, Cell] = {}
@@ -202,6 +205,25 @@ class Adapter(GameAdapter):
         self._probe_ready = False
         self._pending_probe: tuple[int, Grid] | None = None
         self._plan_queue: list[int] = []
+
+        # multi-piece flow state ("classify" probes each candidate to split the
+        # movable deflector pieces from the static targets by SELECTION response;
+        # "execute" runs the joint select-and-move plan then commits the spill).
+        # Only reached for levels whose single-piece plan cannot cover — L0 keeps
+        # the single-piece path untouched.
+        self._piece_colors: set[int] = set()
+        self._classify_queue: list[tuple[Cell, int]] = []
+        self._classify_pending: tuple[Cell, int] | None = None
+        self._exec_plan: list[tuple[int, int]] = []
+        self._exec_pieces: list[frozenset[Cell]] = []
+        self._exec_pos = 0
+        self._exec_pending_move: int | None = None
+        self._committed = False
+        self._clean_grid: Grid = ()
+        self._restore_steps = 0
+        self._m_source = frozenset()
+        self._m_fall = (0, 0)
+        self._m_flow_color = None
 
         # graph-fallback state.
         self._pending_action: int | None = None
@@ -242,6 +264,12 @@ class Adapter(GameAdapter):
             return self._probe_step(grid, act_ids)
         if self._phase == "plan":
             return self._plan_step(grid, act_ids)
+        if self._phase == "restore":
+            return self._restore_step(grid, act_ids)
+        if self._phase == "classify":
+            return self._classify_step(grid, act_ids)
+        if self._phase == "execute":
+            return self._execute_step(grid, act_ids)
         return self._graph_step(grid, act_ids)
 
     # ── level / restart bookkeeping ─────────────────────────────────────
@@ -250,6 +278,7 @@ class Adapter(GameAdapter):
         self._levels_seen = levels
         self._phase = "learn"
         self._learned = False
+        self._spill_committed = False
         self._flow_model = None
         self._movable_color = None
         self._delta_map = {}
@@ -257,11 +286,27 @@ class Adapter(GameAdapter):
         self._probe_ready = False
         self._pending_probe = None
         self._plan_queue = []
+        self._reset_multi()
         self._pending_action = None
         self._pending_key = None
         self._transitions = []
         self._edges = {}
         self._tried_from = {}
+
+    def _reset_multi(self) -> None:
+        self._piece_colors = set()
+        self._classify_queue = []
+        self._classify_pending = None
+        self._exec_plan = []
+        self._exec_pieces = []
+        self._exec_pos = 0
+        self._exec_pending_move = None
+        self._committed = False
+        self._clean_grid = ()
+        self._restore_steps = 0
+        self._m_source: frozenset[Cell] = frozenset()
+        self._m_fall: Cell = (0, 0)
+        self._m_flow_color: int | None = None
 
     def _on_restart(self) -> None:
         """GAME_OVER reset the attempt to the level start (spill counter reset
@@ -270,15 +315,17 @@ class Adapter(GameAdapter):
         self._pending_action = None
         self._pending_key = None
         self._pending_probe = None
-        if self._phase in ("learn", "probe", "plan"):
+        if self._phase in ("learn", "probe", "plan", "classify", "execute"):
             self._phase = "learn"
             self._learned = False
+            self._spill_committed = False
             self._flow_model = None
             self._movable_color = None
             self._delta_map = {}
             self._probe_queue = []
             self._probe_ready = False
             self._plan_queue = []
+            self._reset_multi()
 
     def _reset_for_new_env(self) -> None:
         self._levels_seen = -1
@@ -289,9 +336,12 @@ class Adapter(GameAdapter):
     def _learn_step(self, latest_frame: Any, grid: Grid, act_ids: list[int]) -> GameAction:
         layers = getattr(latest_frame, "frame", None) or []
         if len(layers) > 1:
-            # The spill animation: every tick as one layer. Learn once, then
-            # let the (failed) spill resolve back to the change phase.
-            if not self._learned:
+            # A spill animation exposes every tick as one layer. Only learn from
+            # the spill WE committed in the change phase — on entry to a deeper
+            # level the previous level's winning-spill animation is still playing
+            # (a stale, opposite-direction flow), so learning from it would fit
+            # the wrong fall direction. Wait for our own sacrificial spill.
+            if self._spill_committed and not self._learned:
                 model = learn_flow_operators(layers, background=most_common_color(grid))
                 if model["fall_dir"] != (0, 0) and model["source_cells"]:
                     self._flow_model = model
@@ -302,10 +352,19 @@ class Adapter(GameAdapter):
             return simple_action(1 if 1 in act_ids else act_ids[0])
         # Single-layer (change) phase.
         if self._learned:
+            # Snapshot the clean, post-sacrificial-spill piece arrangement before
+            # the probe displaces the auto-selected piece — the multi-piece path
+            # restores to this exact board so no re-arranging spill is needed.
+            self._clean_grid = grid
             self._phase = "probe"
             return self._probe_step(grid, act_ids)
-        if 5 in act_ids:
+        if not self._spill_committed and 5 in act_ids:
+            self._spill_committed = True
             return simple_action(5)  # commit the sacrificial spill
+        if self._spill_committed:
+            # Committed but the spill resolved without a learnable model.
+            self._phase = "graph"
+            return self._graph_step(grid, act_ids)
         self._phase = "graph"
         return self._graph_step(grid, act_ids)
 
@@ -333,6 +392,8 @@ class Adapter(GameAdapter):
         self._build_plan(grid)
         if self._phase == "plan":
             return self._plan_step(grid, act_ids)
+        if self._phase == "restore":
+            return self._restore_step(grid, act_ids)
         return self._graph_step(grid, act_ids)
 
     def _build_plan(self, grid: Grid) -> None:
@@ -351,7 +412,16 @@ class Adapter(GameAdapter):
         bounds = (len(grid), len(grid[0]))
         plan = plan_flow_coverage(movable, self._delta_map, frozenset(), source, targets, fall, bounds)
         if plan is None:
-            self._phase = "graph"
+            # A single deflector cannot cover these targets. Levels past L0 place
+            # SEVERAL movable pieces (each selected by an ACTION6 click); switch
+            # to the multi-piece path. The probe just displaced the auto-selected
+            # piece, so first walk it back to its clean pre-probe position (a spill
+            # would re-arrange every piece); classify + joint plan then run on the
+            # restored clean board.
+            self._m_source = source
+            self._m_fall = fall
+            self._m_flow_color = flow_color
+            self._phase = "restore"
             return
         # Append the commit (ACTION5) that spills the planned, covering layout.
         self._plan_queue = [int(a) for a in plan] + [5]
@@ -390,6 +460,163 @@ class Adapter(GameAdapter):
             return simple_action(self._plan_queue.pop(0))
         self._phase = "graph"
         return self._graph_step(grid, act_ids)
+
+    # ── multi-piece: classify pieces vs targets, then joint select+move ──
+
+    def _downstream_regions(
+        self, grid: Grid, bg: int, src_cen: tuple[float, float], fall: Cell, exclude_colors: set[int]
+    ) -> list[Region]:
+        """Non-HUD regions downstream of the source (in the fall direction),
+        excluding ``exclude_colors`` — the pieces and targets in the play area."""
+        height, width = len(grid), len(grid[0])
+        out: list[Region] = []
+        for region in find_regions(grid, background=bg):
+            if _is_hud_band(region, height, width):
+                continue
+            if region["color"] in exclude_colors:
+                continue
+            cen = region["centroid"]
+            downstream = (cen[0] - src_cen[0]) * fall[0] + (cen[1] - src_cen[1]) * fall[1]
+            if downstream <= 0:
+                continue
+            out.append(region)
+        return out
+
+    def _restore_step(self, grid: Grid, act_ids: list[int]) -> GameAction:
+        """Walk the probe-displaced (currently-selected) piece back to its clean
+        pre-probe position, then classify on the restored board. Only that one
+        piece moved during the probe, so restoring it makes the board identical
+        to the clean snapshot the joint plan is computed from."""
+        if self._movable_color is None or not self._clean_grid:
+            self._phase = "graph"
+            return self._graph_step(grid, act_ids)
+        self._restore_steps += 1
+        target = _cells_of_color(self._clean_grid, self._movable_color)
+        cur = _cells_of_color(grid, self._movable_color)
+        # Restored (or a move is stuck against a wall / budget spent) — classify.
+        if not target or not cur or cur == target or self._restore_steps > 16:
+            self._start_classify(grid, self._m_source, self._m_fall, self._m_flow_color)
+            if self._phase == "classify":
+                return self._classify_step(grid, act_ids)
+            return self._graph_step(grid, act_ids)
+        # Step the selected piece one move toward its clean centroid.
+        tcen = _centroid(target)
+        ccen = _centroid(cur)
+        best_action: int | None = None
+        best_dist = abs(ccen[0] - tcen[0]) + abs(ccen[1] - tcen[1])
+        for action, (dr, dc) in self._delta_map.items():
+            if action not in act_ids:
+                continue
+            nd = abs(ccen[0] + dr - tcen[0]) + abs(ccen[1] + dc - tcen[1])
+            if nd < best_dist:
+                best_dist = nd
+                best_action = action
+        if best_action is None:
+            # Cannot get closer (blocked or already aligned enough) — proceed.
+            self._start_classify(grid, self._m_source, self._m_fall, self._m_flow_color)
+            if self._phase == "classify":
+                return self._classify_step(grid, act_ids)
+            return self._graph_step(grid, act_ids)
+        return simple_action(best_action)
+
+    def _start_classify(self, grid: Grid, source: frozenset[Cell], fall: Cell, flow_color: int | None) -> None:
+        """Queue the downstream candidate regions for ACTION6 select-probing so
+        the movable pieces (which turn the selected colour on click) are split
+        from the static targets (which do not). Ordered source-nearest first,
+        since deflector pieces sit between the source and the far targets."""
+        bg = most_common_color(grid)
+        self._m_source = source
+        self._m_fall = fall
+        self._m_flow_color = flow_color
+        src_cen = _centroid(source)
+        exclude = {flow_color} if flow_color is not None else set()
+        cands = self._downstream_regions(grid, bg, src_cen, fall, exclude)
+        self._piece_colors = {self._movable_color} if self._movable_color is not None else set()
+        ranked: list[tuple[float, Cell, int]] = []
+        for region in cands:
+            if region["color"] == self._movable_color:
+                continue
+            cen = region["centroid"]
+            dist = abs(cen[0] - src_cen[0]) + abs(cen[1] - src_cen[1])
+            ranked.append((dist, (round(cen[0]), round(cen[1])), region["color"]))
+        ranked.sort(key=lambda t: t[0])
+        self._classify_queue = [(cell, color) for _d, cell, color in ranked]
+        self._classify_pending = None
+        if not self._classify_queue:
+            self._phase = "graph"
+            return
+        self._phase = "classify"
+
+    def _classify_step(self, grid: Grid, act_ids: list[int]) -> GameAction:
+        if self._classify_pending is not None:
+            cell, color_before = self._classify_pending
+            self._classify_pending = None
+            s_cells = _cells_of_color(grid, self._movable_color) if self._movable_color is not None else frozenset()
+            if s_cells:
+                scen = _centroid(s_cells)
+                # The probed candidate is a movable piece iff the selected
+                # (movable-colour) region jumped onto the clicked cell.
+                if abs(scen[0] - cell[0]) <= 2 and abs(scen[1] - cell[1]) <= 2:
+                    self._piece_colors.add(color_before)
+                    self._build_multi_plan(grid)
+                    if self._phase == "execute":
+                        return self._execute_step(grid, act_ids)
+                    return self._graph_step(grid, act_ids)
+        if self._classify_queue:
+            cell, color = self._classify_queue.pop(0)
+            self._classify_pending = (cell, color)
+            return click_action(cell[1], cell[0])  # x=col, y=row
+        self._phase = "graph"
+        return self._graph_step(grid, act_ids)
+
+    def _build_multi_plan(self, grid: Grid) -> None:
+        bg = most_common_color(grid)
+        src_cen = _centroid(self._m_source)
+        exclude = {self._m_flow_color} if self._m_flow_color is not None else set()
+        regs = self._downstream_regions(grid, bg, src_cen, self._m_fall, exclude)
+        pieces = [frozenset(r["cells"]) for r in regs if r["color"] in self._piece_colors]
+        targets = [frozenset(r["cells"]) for r in regs if r["color"] not in self._piece_colors]
+        if len(pieces) < 2 or not targets:
+            self._phase = "graph"
+            return
+        bounds = (len(grid), len(grid[0]))
+        plan = plan_flow_coverage_multi(
+            pieces, self._delta_map, frozenset(), self._m_source, targets, self._m_fall, bounds
+        )
+        if plan is None:
+            self._phase = "graph"
+            return
+        self._exec_plan = [(int(i), int(lbl)) for i, lbl in plan]
+        self._exec_pieces = list(pieces)
+        self._exec_pos = 0
+        self._exec_pending_move = None
+        self._committed = False
+        self._phase = "execute"
+
+    def _execute_step(self, grid: Grid, act_ids: list[int]) -> GameAction:
+        if self._exec_pending_move is not None:
+            idx = self._exec_pending_move
+            self._exec_pending_move = None
+            s_cells = _cells_of_color(grid, self._movable_color) if self._movable_color is not None else frozenset()
+            if s_cells:
+                self._exec_pieces[idx] = s_cells
+            self._exec_pos += 1
+        if self._exec_pos >= len(self._exec_plan):
+            if 5 in act_ids and not self._committed:
+                self._committed = True
+                return simple_action(5)
+            self._phase = "graph"
+            return self._graph_step(grid, act_ids)
+        idx, action_id = self._exec_plan[self._exec_pos]
+        s_cells = _cells_of_color(grid, self._movable_color) if self._movable_color is not None else frozenset()
+        if s_cells and s_cells == self._exec_pieces[idx]:
+            if action_id in act_ids:
+                self._exec_pending_move = idx
+                return simple_action(action_id)
+            self._phase = "graph"
+            return self._graph_step(grid, act_ids)
+        cen = _centroid(self._exec_pieces[idx])
+        return click_action(round(cen[1]), round(cen[0]))  # x=col, y=row
 
     # ── phase 4: generic transition-graph frontier fallback ─────────────
 
