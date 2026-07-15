@@ -29,6 +29,7 @@ from admorphiq.adapters25.ls20 import (
     _WALL_COLOR,
     _classify_changer,
     _decode_shape3,
+    _detect_pushwalls,
     _solve,
 )
 
@@ -108,6 +109,56 @@ def test_classify_changer_types_by_icon_signature():
     assert _classify_changer(wall_marker, _WALL_COLOR) is None
     # plain floor is not a changer.
     assert _classify_changer(Counter({_FLOOR_COLOR: 25}), _FLOOR_COLOR) is None
+
+
+def test_detect_pushwalls_reads_direction_from_the_edge_line():
+    """Purpose: a push-wall renders as a 5-pixel colour-1 edge LINE and pushes
+    the avatar TOWARD that edge (the sprite body extends into the neighbour), so
+    the collision cell is one cell past the line and the direction points that
+    way. Pin all four orientations.
+    Expected feedback: a failure means the offline model shoves the avatar the
+    wrong way (or to the wrong cell) and every push-wall level desyncs on replay."""
+    cell, n = _CELL, 3
+    xs = ys = [cell * i for i in range(n)]
+
+    def grid_with_line(edge: str) -> tuple[tuple[int, ...], ...]:
+        # a colour-1 line on one edge of cell (cell, cell) == (5,5); floor else.
+        g = [[_FLOOR_COLOR] * (cell * n) for _ in range(cell * n)]
+        bx, by = cell, cell
+        for k in range(cell):
+            if edge == "right":
+                g[by + k][bx + cell - 1] = 1
+            elif edge == "left":
+                g[by + k][bx] = 1
+            elif edge == "bottom":
+                g[by + cell - 1][bx + k] = 1
+            elif edge == "top":
+                g[by][bx + k] = 1
+        return tuple(tuple(r) for r in g)
+
+    assert _detect_pushwalls(grid_with_line("right"), xs, ys) == {(cell * 2, cell): (1, 0)}
+    assert _detect_pushwalls(grid_with_line("left"), xs, ys) == {(0, cell): (-1, 0)}
+    assert _detect_pushwalls(grid_with_line("bottom"), xs, ys) == {(cell, cell * 2): (0, 1)}
+    assert _detect_pushwalls(grid_with_line("top"), xs, ys) == {(cell, 0): (0, -1)}
+
+
+def test_solve_slides_off_a_pushwall_and_stops_before_the_goal():
+    """Purpose: stepping onto a push-wall collision cell must slide the avatar in
+    the push direction, stopping before a wall OR the goal (the engine's push
+    stops at goal cells), after which a normal move lands on the goal — the exact
+    L3 endgame (a down-push stops one cell above the goal).
+    Expected feedback: a failure means the push slide over/under-shoots or lands
+    on the goal directly, which the live engine never allows."""
+    # corridor (0,0)-(20,0); (5,0) is a right-pushing collision cell.
+    passable = {(_CELL * i, 0) for i in range(5)}
+    parsed = {
+        "avatar": (0, 0), "goal": (_CELL * 4, 0), "goal_req": (5, 1, 0),
+        "token": (5, 1, 0), "changers": {}, "refills": frozenset(),
+        "passable": passable, "pushwalls": {(_CELL, 0): (1, 0)},
+    }
+    # step right onto (5,0) -> slides to (15,0) (stops before goal (20,0)),
+    # then one more right move lands on the goal.
+    assert _solve(parsed) == [4, 4]
 
 
 def _corridor(length: int) -> dict[tuple[int, int], object]:

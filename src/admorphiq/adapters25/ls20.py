@@ -35,9 +35,16 @@ GAME_OVER. ``available_actions`` is ``[1,2,3,4]`` (ACTION1=up, 2=down, 3=left,
    corrupting an aliased frame-graph — not the walk dying — so replaying a
    pre-computed plan with endpoint-only verification is exactly the fix.
 
-   Measured (this build): L1 clears in 13 actions (the gold solution; human
-   baseline 22 → super-human), L2 in 45 (human 123 → super-human). Both plans
-   are frame-derived (no engine data at runtime) and replay to live wins.
+   Measured (this build): L1 clears in 13 actions (human 22), L2 in 45 (123),
+   L3 in 39 (73), L4 in 52 (84) — all super-human, all frame-derived (no engine
+   data at runtime) and replaying to live wins. L3/L4 add PUSH-WALLS
+   (``gbvqrjtaqo``): static sprites that, on contact, shove the avatar a
+   deterministic distance. A push-wall is a transition RULE, not a dynamic
+   hazard — it renders as a 5-pixel colour-1 edge line whose orientation gives
+   the push direction (see :func:`_detect_pushwalls`), and the shove slides the
+   avatar until the next wall or goal, so the joint BFS absorbs it as a
+   different successor edge (measured: an L3 up-move onto (9,5) is shoved right
+   to (34,5); L4 clears with all 8 push-walls).
 
    The parser is validated dev-time by reconstructing the engine's own sprite
    positions (walls / changer / refills / goal) and start/goal token indices
@@ -46,11 +53,14 @@ GAME_OVER. ``available_actions`` is ``[1,2,3,4]`` (ACTION1=up, 2=down, 3=left,
    refill-capture / goal cells): this is SAFE (never routes a plan through a
    real wall — measured zero violations) and complete for the solution path.
 
-   **Named divergences / scope.** The joint BFS handles a SINGLE goal (L1/L2).
-   Multi-goal levels (source L6+), a Fog flag that hides structure (L3+), and
-   moving-hazard-carried changers are NOT modelled — on any of those the parse
-   or solve returns ``None`` and the adapter gates to substrate 2, preserving
-   the floor. The token appearance lives in a fixed bottom-left indicator sprite
+   **Named divergences / scope.** The joint BFS handles a SINGLE goal with a
+   STATIC maze + changers + refills + push-walls (L1-L4). NOT modelled: MOVING
+   changers (source L5, carried by a moving hazard), MULTI-goal levels (L6), and
+   a Fog flag that hides structure (L7). On multi-goal / Fog the parse returns
+   ``None`` (gates to substrate 2); on a moving changer the parse succeeds but
+   the open-loop plan desyncs and drains, then the adapter falls to substrate 2
+   — either way the floor is preserved. The token appearance lives in a fixed
+   bottom-left indicator sprite
    at pixel (3,55), NOT in the avatar's own pixels (the avatar renders a
    constant colour-12-over-9 marker); the required token lives in each goal
    cell's inner preview — both decoded by matching the 3x3 shape bitmap under
@@ -305,7 +315,32 @@ def _parse(grid: Grid) -> dict[str, Any] | None:
         "changers": changers,
         "refills": frozenset(refills),
         "passable": passable,
+        "pushwalls": _detect_pushwalls(grid, xs, ys),
     }
+
+
+def _detect_pushwalls(grid: Grid, xs: list[int], ys: list[int]) -> dict[Cell, Cell]:
+    """``{collision_cell: (dx, dy)}`` for each static push-wall (``gbvqrjtaqo``).
+
+    A push-wall renders as a 5-pixel colour-1 edge LINE on one side of its cell;
+    the sprite body extends past that edge into the neighbouring cell, so the
+    push goes TOWARD the edge and the avatar collides one cell over (measured:
+    an L3 up-move onto (9,5) is shoved right to (34,5)). The push then slides the
+    avatar in ``(dx,dy)`` until the next cell is a wall OR a goal (goals are in
+    the engine's push-stop set) — see ``_solve``.
+    """
+    out: dict[Cell, Cell] = {}
+    for x in xs:
+        for y in ys:
+            if all(grid[y + r][x + 4] == _ROT_MARK for r in range(5)):
+                out[(x + _CELL, y)] = (1, 0)
+            elif all(grid[y + r][x] == _ROT_MARK for r in range(5)):
+                out[(x - _CELL, y)] = (-1, 0)
+            elif all(grid[y + 4][x + c] == _ROT_MARK for c in range(5)):
+                out[(x, y + _CELL)] = (0, 1)
+            elif all(grid[y][x + c] == _ROT_MARK for c in range(5)):
+                out[(x, y - _CELL)] = (0, -1)
+    return out
 
 
 def _find_refills(grid: Grid, xs: list[int], ys: list[int]) -> set[Cell]:
@@ -356,6 +391,7 @@ def _solve(parsed: dict[str, Any]) -> list[int] | None:
     changers = parsed["changers"]
     refills = parsed["refills"]
     passable = parsed["passable"]
+    pushwalls = parsed.get("pushwalls", {})
     sh, co, ro = parsed["token"]
     start = (parsed["avatar"], sh, co, ro, full, frozenset())
     if start[0] == goal and (sh, co, ro) == req:
@@ -374,6 +410,19 @@ def _solve(parsed: dict[str, Any]) -> list[int] | None:
             npos = (px + dx * _CELL, py + dy * _CELL)
             if npos not in passable:
                 continue
+            # Stepping onto a push-wall collision cell slides the avatar in the
+            # push direction until the next cell is a wall or the goal (the
+            # engine stops the push before goal cells). The destination effect
+            # then applies at the landing cell.
+            push = pushwalls.get(npos)
+            if push is not None:
+                pdx, pdy = push
+                while True:
+                    slid = (npos[0] + pdx * _CELL, npos[1] + pdy * _CELL)
+                    if slid in passable and slid != goal:
+                        npos = slid
+                    else:
+                        break
             nsh, nco, nro, nsteps, ntaken = sh, co, ro, steps - 1, taken
             kind = changers.get(npos)
             if kind == "rot":
