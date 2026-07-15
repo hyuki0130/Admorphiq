@@ -811,6 +811,127 @@ requirement.
   [[../games/SB26]]) — not a wiring gap, a genuinely unexplained per-board
   mechanic difference.
 
+## Expansion sprint — 25/25 adapter coverage (2026-07-15 afternoon)
+
+A single-afternoon parallel-teammate sprint took script25 adapter coverage
+from 10 games to **25/25** (12 new adapters). Every number below is measured
+(2x500-action live smoke on the adapter's own faithful RHAE loop unless noted);
+each 0-bank ships with the game's mechanic DECODED and documented in the
+adapter's module docstring (`src/admorphiq/adapters25/<game>.py`), not left as
+an unmeasured gap.
+
+**New clears (frame-only, no game-internal reads):**
+
+| Game | Result | Commit | Mechanic + note |
+|---|---|---|---|
+| ar25 | 2/8 | `83c39f6` | mirror-reflection COVERAGE; learned-operator planner, L0 super-human (23a vs 32 human, level score 1.0) |
+| re86 | 1/8 | `bfc5c18`/`2222a2e` | delivery + colour-assignment; **FIRST generic clear** (brittle ceiling was 6/8 via sprite tags); L2 wall = recolour |
+| s5i5 | 1/8 | `757e4b2` | slider / goal-to-target; **first frame-only clear**, ties the brittle 1/8 |
+| ls20 | 1/7 | `c8a7fd3` | shape/color/rotation-match maze — joint (position × token-appearance) BFS, not plain xy maze |
+| sp80 | 1/6 | `6e86293`/`79ec697` | water-routing / spill-coverage; learned flow-operator planner, L0 super-human (10a vs 39 human, level score 1.0) |
+| cn04 | 1/6 | `b7c6234` | rigid connector-marker arrangement (rotate+translate) — the old `zig3_A2A4` blind zig-zag scores 0 on the v2 hash |
+| r11l | 1/6 | `7d2d17c` | click-driven drag-assembly (body follows leg centroids); resolves R57's unresolved T7/T8 case |
+| sc25 | 1/6 | `cfde3a1` | two-phase pattern-toggle (auto-cast on match) then navigate; frame-keyed BFS with per-key click/move split clears L0 |
+
+**Honest 0-banks with decoded mechanics** (measured negative, mechanic
+documented, reopen pointer named): sk48 (`b24651e`, snake shape/pattern-match),
+wa30 (`b34931b`/`ea15a44`, pick-carry-drop delivery), g50t (`dccc135`,
+reactive Lolo-family maze, ACTION5=undo), bp35 (`f5447ac`/`e5e8217`, momentum
+platformer), tn36 (`292d275`/`6eb0c02`, bit-panel programming puzzle), lf52
+(`9587a5b`, cursor-move + click-to-connect, least-characterised public game).
+
+### Learned-operator + configuration_path = 2/2 super-human levels
+
+The round's strongest positive result: when an adapter LEARNS the game's
+transition operator from its own undo-bracketed probes and then plans coverage
+over the learned model (instead of blind frontier search), it clears at or
+below the human action count.
+
+- **Reflection kernel** (`e9ce9ec`, `learn_reflection_operators` /
+  `plan_reflection_coverage`) — ar25 L0 in 23 actions vs a 32-action human
+  baseline (level score 1.0), where the earlier blind transition-graph search
+  needed ~835 actions for the same depth (scoring ~0 on squared-efficiency
+  because it is blind to the reflection coupling that makes each move
+  consequential).
+- **Flow kernel** (`79ec697`, learned flow-operator + coverage planning) —
+  sp80 L0 in 10 actions vs a 39-action human baseline (level score 1.0).
+- **Delivery kernel** (`ea15a44`, `plan_delivery`: min-cost pickup->target
+  assignment + per-leg `grid_shortest_path` + `path_to_moves`) landed and
+  composes cleanly, but wa30 stays 0/9 — blocked on carry-follow physics (a
+  box attaches and FOLLOWS the worker rather than teleporting to the goal), a
+  divergence the generic route-and-interact model does not yet capture (open
+  task #48).
+
+### Three reusable explorer patterns
+
+The blind explorers that clear single-goal games generalise across three
+action alphabets, each reusable for the next game of its shape:
+
+- **pure-move** frontier explorer (transition-graph BFS over ACTION1-4).
+- **pure-click alphabet** — r11l's click-frontier over salient region
+  centroids (ACTION6-only games).
+- **hybrid move+click** — bp35's combined alphabet (simple move ids PLUS a
+  bounded set of clicks at salient centroids) for games that mix both.
+
+### Uniform-depth thesis
+
+Across every new adapter the same ceiling recurs: a blind explorer clears a
+level whose win is SINGLE-GOAL reachability (walk/route to one place, or click
+one discoverable target), and never clears a level requiring a CHAINED or
+PRECISE MULTI-SUBGOAL plan (deliver N boxes in order, transform a token
+through K changer cells, set a multi-frame bit program). Every 0-bank's reopen
+pointer therefore targets a LEARNED-OPERATOR kernel (learn the game's operator,
+plan over the learned model), which is exactly the axis the ar25/sp80
+super-human clears validate — not another blind-search budget bump.
+
+### Two falsified reopen pointers, banked docs-only
+
+Two games had a plausible "learn the dynamics, plan a route" reopen pointer
+that a proper probe FALSIFIED before any planner was built — banked honestly
+rather than shipping speculative code on a wrong model:
+
+- **tn36** (`6eb0c02`) — the bits do not directly encode a route; they gate
+  level-DATA trajectories run by a stateful multi-frame interpreter. The single
+  visible bit row is ONE program frame; the winning program is a SEQUENCE of
+  frame values advanced by play clicks, and the multi-frame editor's
+  frame-SELECTOR is not frame-identifiable. The space of multi-frame bit
+  programs is combinatorial — an opcode-learning planner would be speculative.
+- **bp35** (`e5e8217`) — a momentum platformer with ACCELERATION and HIDDEN
+  velocity, so the masked frame-key transition graph is ALIASED (R53 "dealias"
+  territory); the `+` exit RECEDES 2 cells ahead of the player (no fixed goal a
+  route can target); and clicking the colour-14 block centroids is inert (the
+  "destroy-then-fall" model is unconfirmed). All three assumptions the reopen
+  pointer rested on (fixed exit, fixed displacement, droppable blocks) are
+  falsified.
+
+Both falsifications came from probe-validity failures generalised into
+[[../lessons/probe_validity_20260715]]: a determinism probe must use an action
+that is actually AVAILABLE and actually MOVES the agent (bp35's original probe
+issued the unavailable `ACTION1`, a no-op that trivially reproduced and falsely
+"confirmed" determinism); a diff THRESHOLD can mask a real effect (tn36's 3-px
+bit toggles were dropped by a large-diff sweep — cross-check the wiki's
+recorded layout before trusting a fresh probe); and a decisive single-variable
+probe (set-one-bit / single-click-from-reset) belongs BEFORE any planner build.
+
+### Base fix + measurement environment
+
+- **ACTION7 now surfaced** (`f586fd3`, task #46) —
+  `adapters25.base.available_action_ids` was dropping ACTION7 (undo), which
+  several mechanics (ar25 probe-undo, sk48/g50t undo) depend on; re-measured
+  with no regression on the games that do not use it.
+- **CPU bench env: `ceph-build`** — a free 64-core VM reproduced the GCP
+  `r56s4` numbers BYTE-EXACTLY in a 10-game parallel run, and is now the
+  official CPU bench environment (GCP credits are exhausted; see
+  `memory/project_cpu_dev_vm_ceph_build.md`). script25's RHAE loop is
+  CPU-only, so no GPU is needed for adapter measurement.
+
+**Provenance commits (this sprint):** `83c39f6` (ar25), `c8a7fd3` (ls20),
+`6e86293` (sp80 adapter), `b7c6234` (cn04), `7d2d17c` (r11l), `b24651e` (sk48),
+`b34931b` (wa30 adapter), `dccc135` (g50t), `f5447ac`+`e5e8217` (bp35),
+`fdc2b53`+`bfc5c18`+`2222a2e` (re86), `292d275`+`6eb0c02` (tn36), `9587a5b`
+(lf52), `cfde3a1` (sc25), `757e4b2` (s5i5), `e9ce9ec` (reflection kernel),
+`79ec697` (flow kernel), `ea15a44` (delivery kernel), `f586fd3` (ACTION7 fix).
+
 ## Related
 
 - [[r57_win-condition-typology]] — mines the same trace/kernel toolkit (R56's
