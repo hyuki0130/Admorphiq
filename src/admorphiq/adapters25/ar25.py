@@ -86,12 +86,22 @@ from admorphiq.adapters25.base import (
 from admorphiq.kernels import (
     canonical_key,
     find_regions,
+    learn_geared_operators,
     learn_reflection_operators,
+    plan_geared_coverage,
     plan_reflection_coverage,
     transition_shortest_path,
 )
 
 GAME_ID = "ar25"
+
+# Inverse of each move used to restore the board between geared probes (opposite
+# directions cancel in the linear geared regime, verified on AR25 L1). ACTION5
+# (mode cycle) and ACTION7 are handled separately.
+_GEARED_INV = {1: 2, 2: 1, 3: 4, 4: 3}
+# The smallest static cluster treated as a goal glyph in the geared path (below
+# this is HUD/scenery/marker noise). AR25 L1's goal is 72 cells.
+_GEARED_MIN_GOAL = 20
 
 Cell = tuple[int, int]
 Region = dict[str, Any]
@@ -200,8 +210,10 @@ class Adapter(GameAdapter):
         self._levels_seen = -1
 
         # ── reflection probe/plan state (per level) ────────────────────────
-        # phase: "probe" (measuring), "plan" (executing a covering sequence),
-        # "graph" (fallback frontier exploration once reflection is spent).
+        # phase: "probe" (measuring reflection), "geared_probe" (measuring the
+        # integer-multiple co-motion regime once reflection is empty), "plan"
+        # (executing a covering sequence), "graph" (fallback frontier
+        # exploration once every learned model is spent).
         self._phase = "probe"
         self._start_grid: Grid | None = None
         self._observations: list[dict[str, Any]] = []
@@ -210,6 +222,17 @@ class Adapter(GameAdapter):
         self._pending_probe_action: int | None = None
         self._pending_probe_before: Grid | None = None
         self._plan_queue: list[int] = []
+
+        # ── geared probe state (per level, entered only when reflection is
+        # empty AND the integer-multiple co-motion signature is present) ─────
+        # Probes ACTION1-4 in each of the two ACTION5-toggled control modes,
+        # each move undone by its opposite so every measurement starts from the
+        # same board, then learns a per-piece per-control displacement model.
+        self._geared_tried = False
+        self._g_sched: list[tuple[int, str, str | None]] | None = None
+        self._g_ip = 0
+        self._g_obs: list[dict[str, Any]] = []
+        self._g_pending: tuple[str, Grid] | None = None
 
         # ── graph-fallback state ───────────────────────────────────────────
         # The incrementally-discovered transition graph over masked board
@@ -260,6 +283,8 @@ class Adapter(GameAdapter):
 
         if self._phase == "probe":
             return self._probe_step(masked, act_ids)
+        if self._phase == "geared_probe":
+            return self._geared_probe_step(masked, act_ids)
         if self._phase == "plan":
             return self._plan_step(masked, act_ids)
         return self._graph_step(masked, act_ids)
@@ -278,6 +303,11 @@ class Adapter(GameAdapter):
         self._pending_probe_action = None
         self._pending_probe_before = None
         self._plan_queue = []
+        self._geared_tried = False
+        self._g_sched = None
+        self._g_ip = 0
+        self._g_obs = []
+        self._g_pending = None
         self._pending_action = None
         self._pending_key = None
         self._transitions = []
@@ -294,13 +324,18 @@ class Adapter(GameAdapter):
         self._pending_key = None
         self._pending_probe_action = None
         self._pending_probe_before = None
-        if self._phase in ("probe", "plan"):
+        if self._phase in ("probe", "geared_probe", "plan"):
             self._phase = "probe"
             self._start_grid = None
             self._observations = []
             self._probe_queue = []
             self._probe_ready = False
             self._plan_queue = []
+            self._geared_tried = False
+            self._g_sched = None
+            self._g_ip = 0
+            self._g_obs = []
+            self._g_pending = None
 
     def _reset_for_new_env(self) -> None:
         self._levels_seen = -1
@@ -347,11 +382,14 @@ class Adapter(GameAdapter):
         self._build_plan()
         if self._phase == "plan":
             return self._plan_step(masked, act_ids)
+        if self._phase == "geared_probe":
+            return self._geared_probe_step(masked, act_ids)
         return self._graph_step(masked, act_ids)
 
     def _build_plan(self) -> None:
         """Learn the reflection model from the probes and, if it yields a
-        covering plan, arm the plan queue; otherwise fall through to graph."""
+        covering plan, arm the plan queue; otherwise try the geared regime, and
+        only then fall through to graph."""
         start = self._start_grid
         if start is None:
             self._phase = "graph"
@@ -362,12 +400,12 @@ class Adapter(GameAdapter):
         piece_cells = model["piece_cells"]
         delta_map = model["delta_map"]
         if not axes or not piece_cells or not delta_map:
-            self._phase = "graph"
+            self._enter_geared_or_graph()
             return
         moving = model["moving_colors"] | model["piece_colors"]
         target = _detect_goal(start, bg, moving)
         if not target:
-            self._phase = "graph"
+            self._enter_geared_or_graph()
             return
         bounds = (len(start), len(start[0]))
         plan = plan_reflection_coverage(piece_cells, axes, target, delta_map, bounds)
@@ -375,7 +413,20 @@ class Adapter(GameAdapter):
             self._plan_queue = [int(a) for a in plan]
             self._phase = "plan"
         else:
+            self._enter_geared_or_graph()
+
+    def _enter_geared_or_graph(self) -> None:
+        """Reflection produced no covering plan. Try the geared integer-multiple
+        co-motion regime ONCE (its own probe schedule initialises lazily on the
+        first geared step), otherwise fall through to graph exploration. L0
+        never reaches here — it yields a reflection axis — so this path is
+        byte-identical to the previous behaviour on every reflection-solvable
+        level."""
+        if self._geared_tried:
             self._phase = "graph"
+            return
+        self._phase = "geared_probe"
+        self._g_sched = None
 
     # ── phase 2: execute the covering plan ───────────────────────────────
 
@@ -387,6 +438,124 @@ class Adapter(GameAdapter):
         # the piece was blocked before reaching the planned anchor).
         self._phase = "graph"
         return self._graph_step(masked, act_ids)
+
+    # ── phase 1b: geared integer-multiple co-motion probe + plan ─────────
+
+    def _geared_probe_step(self, masked: Grid, act_ids: list[int]) -> GameAction:
+        """Probe ACTION1-4 in each of the two ACTION5-toggled control modes,
+        each move restored by its opposite, recording labelled transitions for
+        :func:`learn_geared_operators`. Falls back to graph when the mode
+        controls are unavailable or no covering plan is found."""
+        if self._g_sched is None:
+            if not {1, 2, 3, 4, 5}.issubset(act_ids):
+                # The geared regime needs the four moves + the mode cycle; if any
+                # is missing this is not the geared-coverage shape.
+                self._geared_tried = True
+                self._phase = "graph"
+                return self._graph_step(masked, act_ids)
+            self._geared_tried = True
+            self._g_obs = []
+            self._g_pending = None
+            self._g_ip = 0
+            # Schedule: measure each move (M) then restore it with the opposite
+            # (R); a mode cycle (T, ACTION5) between the two modes and one more
+            # to return to the first mode. ``before`` is captured live per M, so
+            # the two modes' distinct reference boards are handled automatically.
+            sched: list[tuple[int, str, str | None]] = []
+            for tag in ("A", "B"):
+                for a in (1, 2, 3, 4):
+                    sched.append((a, "M", f"{tag}{a}"))
+                    sched.append((_GEARED_INV[a], "R", None))
+                sched.append((5, "T", None))
+            self._g_sched = sched
+
+        # Record the previous measure's result frame.
+        if self._g_pending is not None:
+            label, before = self._g_pending
+            self._g_obs.append({"before": before, "after": masked, "label": label})
+            self._g_pending = None
+
+        if self._g_ip < len(self._g_sched):
+            action, kind, label = self._g_sched[self._g_ip]
+            self._g_ip += 1
+            if kind == "M":
+                self._g_pending = (label, masked)  # type: ignore[assignment]
+            return simple_action(action)
+
+        return self._build_geared_plan(masked, act_ids)
+
+    def _build_geared_plan(self, masked: Grid, act_ids: list[int]) -> GameAction:
+        """Learn the geared model from the two-mode probes, detect the static
+        goal glyph(s), plan a covering drive, and arm the plan queue; fall back
+        to graph when no model or no covering plan is available. ``masked`` is
+        the post-probe board (restored to the first mode's reference), the frame
+        the plan's offsets are computed against."""
+        bg = most_common_color(masked)
+        model = learn_geared_operators(self._g_obs, background=bg)
+        pieces = model["pieces"]
+        if not pieces:
+            self._phase = "graph"
+            return self._graph_step(masked, act_ids)
+
+        # Goal glyph(s): the largest static clusters, by POSITION (a colour can
+        # be both a moving piece and a static goal, so colour-membership cannot
+        # classify them -- only "never moved under any probe" does).
+        moving_cells: set[Cell] = set()
+        for piece in pieces:
+            moving_cells |= piece["cells"]
+        height, width = len(masked), len(masked[0])
+        goal_grid = tuple(
+            tuple(
+                masked[r][c] if (masked[r][c] != bg and (r, c) not in moving_cells) else bg
+                for c in range(width)
+            )
+            for r in range(height)
+        )
+        goals = [
+            frozenset(region["cells"])
+            for region in find_regions(goal_grid, background=bg)
+            if region["size"] >= _GEARED_MIN_GOAL
+        ]
+        if not goals:
+            self._phase = "graph"
+            return self._graph_step(masked, act_ids)
+
+        plan = plan_geared_coverage(pieces, goals, model["labels"], max_count=25)
+        if not plan:
+            largest = sorted(goals, key=len, reverse=True)[:1]
+            plan = plan_geared_coverage(pieces, largest, model["labels"], max_count=25)
+        if not plan:
+            self._phase = "graph"
+            return self._graph_step(masked, act_ids)
+
+        self._plan_queue = self._geared_plan_to_actions(plan)
+        self._phase = "plan"
+        return self._plan_step(masked, act_ids)
+
+    def _geared_plan_to_actions(self, plan: list[tuple[str, int]]) -> list[int]:
+        """Flatten a ``[(label, +1|-1), ...]`` geared plan to a mode-sequenced
+        action-id queue. The probe ends in mode A, so mode-A controls run first;
+        one ACTION5 cycles to mode B for its controls. A negative net count runs
+        the opposite move (the geared inverse)."""
+        net: dict[str, int] = {}
+        for label, sign in plan:
+            net[label] = net.get(label, 0) + sign
+        a_labels = [label for label in net if label.startswith("A") and net[label]]
+        b_labels = [label for label in net if label.startswith("B") and net[label]]
+
+        def presses(label: str, count: int) -> list[int]:
+            base = int(label[1])
+            action = base if count > 0 else _GEARED_INV[base]
+            return [action] * abs(count)
+
+        actions: list[int] = []
+        for label in a_labels:
+            actions.extend(presses(label, net[label]))
+        if b_labels:
+            actions.append(5)  # cycle to mode B
+            for label in b_labels:
+                actions.extend(presses(label, net[label]))
+        return actions
 
     # ── phase 3: generic transition-graph frontier fallback ─────────────
 

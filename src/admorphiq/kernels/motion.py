@@ -29,6 +29,7 @@ from __future__ import annotations
 
 from collections import deque
 from collections.abc import Iterable, Mapping, Sequence
+from math import gcd
 
 from admorphiq.kernels._common import normalize_frame as _normalize_frame
 from admorphiq.kernels.paths import configuration_path
@@ -729,6 +730,260 @@ def plan_reflection_coverage(
         return out
 
     return configuration_path((0, 0), _goal, _successors, max_states=max_states)
+
+
+# ── geared integer-multiple co-motion ("learned geared operators") ─────────
+#
+# Provenance: the generic core of the AR25-class L1 "geared kaleidoscope"
+# (``.wiki/wiki/games/AR25.md``, 2026-07-16 decode). Where
+# :func:`learn_reflection_operators` needs an OPPOSITE-shift reflection pair,
+# this models the complementary regime measured on AR25 L1: co-moving groups
+# that translate in the SAME direction at INTEGER MULTIPLES of a base step
+# (one press moves piece A by 1x and piece B by 2x), which no static-mirror
+# arrangement can produce (a mirror image moves at exactly -1x). It learns,
+# purely from labelled before/after transitions, a per-piece per-control
+# displacement model and plans control counts whose UNION footprint covers a
+# caller-supplied target. It knows nothing about players, goals, mirrors, or
+# actions — only frames, caller-supplied labels, and caller-supplied targets.
+
+
+def _cell_color(frame: Frame, cell: Cell) -> int:
+    return frame[cell[0]][cell[1]]
+
+
+def learn_geared_operators(
+    observations: Sequence[Mapping[str, object]], background: int | None = None
+) -> dict[str, object]:
+    """Learn a multi-piece integer-multiple ("geared") translation model.
+
+    ``observations`` is ``[{"before": frame, "after": frame, "label":
+    hashable}, ...]`` — each one labelled CONTROL applied from a board, which
+    translates one or more pieces (possibly several pieces at DIFFERENT
+    integer multiples of a base step, possibly all in the same direction: the
+    geared kaleidoscope). Unlike :func:`learn_reflection_operators` this does
+    NOT require an opposite-shift reflection pair; every co-moving group is
+    modelled as a translating piece with its own per-control displacement.
+
+    Pieces are identified by their SHIFT SIGNATURE across the observed
+    controls: two moving cells belong to the same piece iff they shift
+    identically under EVERY label (a cell that does not move under a label
+    contributes ``(0, 0)`` for it). Each piece records its reference footprint
+    (``cells`` + ``colors``, read from the frame where the cell was first seen
+    moving) and its per-control displacement ``shifts = {label: (dr, dc)}``
+    (only the nonzero controls are stored; the planner treats a missing label
+    as ``(0, 0)``).
+
+    Returns ``{"pieces": [{"cells", "colors", "shifts"}], "labels": [...],
+    "moving_colors": frozenset, "base_step": int}``. ``labels`` preserves
+    first-seen order; ``base_step`` is the gcd of every shift magnitude (the
+    "1x" unit, ``0`` when nothing moved). ``pieces`` is empty when no control
+    moved anything. Pure / no environment access.
+    """
+    labels: list[object] = []
+    # cell -> {label: shift}, and cell -> reference colour (first sighting).
+    cell_shifts: dict[Cell, dict[object, Shift]] = {}
+    cell_color: dict[Cell, int] = {}
+    for obs in observations:
+        label = obs.get("label")  # type: ignore[attr-defined]
+        if label not in labels:
+            labels.append(label)
+        before = _normalize_frame(obs["before"])  # type: ignore[arg-type]
+        after = _normalize_frame(obs["after"])  # type: ignore[arg-type]
+        for shift, group in _shift_groups(before, after, background).items():
+            if shift == (0, 0):
+                continue
+            for cell in group["cells"]:  # type: ignore[union-attr]
+                cell_shifts.setdefault(cell, {})[label] = shift
+                cell_color.setdefault(cell, _cell_color(before, cell))
+
+    # Partition moving cells into pieces by identical shift-signature.
+    pieces_by_sig: dict[tuple[Shift, ...], list[Cell]] = {}
+    for cell, shifts in cell_shifts.items():
+        sig = tuple(shifts.get(label, (0, 0)) for label in labels)
+        pieces_by_sig.setdefault(sig, []).append(cell)
+
+    pieces: list[dict[str, object]] = []
+    all_magnitudes: list[int] = []
+    for sig, cells in pieces_by_sig.items():
+        shifts = {label: s for label, s in zip(labels, sig) if s != (0, 0)}
+        for dr, dc in shifts.values():
+            if dr:
+                all_magnitudes.append(abs(dr))
+            if dc:
+                all_magnitudes.append(abs(dc))
+        pieces.append(
+            {
+                "cells": frozenset(cells),
+                "colors": frozenset(cell_color[c] for c in cells),
+                "shifts": shifts,
+            }
+        )
+
+    base_step = 0
+    for m in all_magnitudes:
+        base_step = gcd(base_step, m)
+    moving_colors: frozenset[int] = frozenset(c for p in pieces for c in p["colors"])  # type: ignore[union-attr]
+    return {
+        "pieces": pieces,
+        "labels": labels,
+        "moving_colors": moving_colors,
+        "base_step": base_step,
+    }
+
+
+def render_geared(
+    pieces: Sequence[Mapping[str, object]], counts: Mapping[object, int]
+) -> frozenset[Cell]:
+    """The union footprint of every piece translated by ``counts`` presses.
+
+    Each piece (from :func:`learn_geared_operators`) is translated by
+    ``sum(counts[label] * shift for label, shift in piece["shifts"])`` — the
+    linear geared dynamics: applying a control ``n`` times moves the piece
+    ``n`` times its measured per-press displacement, and controls superpose.
+    Pure / no environment access.
+    """
+    out: set[Cell] = set()
+    for piece in pieces:
+        dr = dc = 0
+        shifts: Mapping[object, Shift] = piece["shifts"]  # type: ignore[assignment]
+        for label, (sr, sc) in shifts.items():
+            n = counts.get(label, 0)
+            dr += n * sr
+            dc += n * sc
+        for r, c in piece["cells"]:  # type: ignore[union-attr]
+            out.add((r + dr, c + dc))
+    return frozenset(out)
+
+
+def _covering_offsets(piece_cells: frozenset[Cell], target: frozenset[Cell]) -> list[Shift]:
+    """Every translation ``o`` with ``target <= (piece_cells + o)``.
+
+    An offset covers the target iff, shifted back by ``o``, every target cell
+    lands on a piece cell. Candidates are seeded from one target cell against
+    every piece cell (any covering offset must map SOME piece cell onto that
+    target cell) and then filtered against the whole target."""
+    if not piece_cells or not target:
+        return []
+    piece = set(piece_cells)
+    g0 = next(iter(target))
+    candidates = {(g0[0] - p[0], g0[1] - p[1]) for p in piece}
+    return [
+        o for o in candidates
+        if all((g[0] - o[0], g[1] - o[1]) in piece for g in target)
+    ]
+
+
+def _decompose_offset(
+    offset: Shift, shifts: Mapping[object, Shift], max_count: int
+) -> dict[object, int] | None:
+    """Express ``offset`` as integer press counts of ``shifts``' AXIS-ALIGNED
+    controls, or None.
+
+    The geared regime's controls translate along a single axis, so the row and
+    column components decompose independently: pick a row-only control whose
+    row shift divides ``offset``'s row component (within ``max_count`` presses)
+    and a column-only control for its column component. Returns ``{label:
+    count}`` (count may be negative → the inverse control), or None when either
+    component is not an integer multiple of any single-axis control (e.g. a
+    diagonal-only model — the caller then falls back to search)."""
+    o_r, o_c = int(offset[0]), int(offset[1])
+    counts: dict[object, int] = {}
+    for want, pick_row in ((o_r, True), (o_c, False)):
+        if want == 0:
+            continue
+        chosen: tuple[object, int] | None = None
+        for label, (sr, sc) in shifts.items():
+            axis, other = (sr, sc) if pick_row else (sc, sr)
+            if other == 0 and axis != 0 and want % axis == 0 and abs(want // axis) <= max_count:
+                chosen = (label, want // axis)
+                break
+        if chosen is None:
+            return None
+        counts[chosen[0]] = counts.get(chosen[0], 0) + chosen[1]
+    return counts
+
+
+def _counts_to_steps(counts: Mapping[object, int]) -> list[tuple[object, int]]:
+    """Flatten net per-label counts to a ``[(label, +1|-1), ...]`` step list."""
+    steps: list[tuple[object, int]] = []
+    for label, n in counts.items():
+        sign = 1 if n > 0 else -1
+        steps.extend((label, sign) for _ in range(abs(n)))
+    return steps
+
+
+def plan_geared_coverage(
+    pieces: Sequence[Mapping[str, object]],
+    targets: Sequence[Iterable[Sequence[int]]],
+    labels: Sequence[object],
+    max_count: int = 30,
+    max_states: int = 200_000,
+) -> list[tuple[object, int]] | None:
+    """Plan control counts whose union piece footprint covers every target.
+
+    Finds integer NET counts per control ``label`` (each control appliable
+    forward ``+1`` / backward ``-1``, an inverse cancelling it) for which
+    :func:`render_geared` is a SUPERSET of every set in ``targets`` (ALL
+    targets covered simultaneously).
+
+    Two tiers. **Tier 1 (linear lattice solve)** exploits the geared dynamics
+    being LINEAR: a target is covered by translating one piece by a fixed
+    offset (:func:`_covering_offsets`), and that offset decomposes directly
+    into press counts along the piece's axis-aligned controls
+    (:func:`_decompose_offset`) — so the covering counts are computed, not
+    searched, which finds the deep (tens-of-presses) plans real games need. A
+    tier-1 candidate is returned only if it covers EVERY target
+    (verified via :func:`render_geared`). **Tier 2 (BFS fallback)** — for
+    diagonal-control or genuinely-coupled multi-target cases tier 1 cannot
+    close — is the shallow per-label BFS via
+    :func:`admorphiq.kernels.configuration_path`.
+
+    Returns the ordered ``[(label, +1|-1), ...]`` steps (``[]`` when the
+    initial placement already covers), or ``None`` when no covering
+    configuration is found within the bounds or the model / targets are empty.
+    Pure / no environment access.
+    """
+    target_sets = [frozenset((int(r), int(c)) for r, c in t) for t in targets]
+    target_sets = [t for t in target_sets if t]
+    labels = list(labels)
+    if not pieces or not target_sets or not labels:
+        return None
+
+    def _covers_all(counts: Mapping[object, int]) -> bool:
+        covered = render_geared(pieces, counts)
+        return all(t <= covered for t in target_sets)
+
+    # Tier 1 — linear lattice solve. A single count-vector must cover every
+    # target (all pieces move together), so seed candidates from each target's
+    # (piece, covering-offset) decompositions and keep the first that covers
+    # ALL targets.
+    for target in target_sets:
+        for piece in pieces:
+            cells: frozenset[Cell] = piece["cells"]  # type: ignore[assignment]
+            if len(cells) < len(target):
+                continue  # too small to cover
+            shifts: Mapping[object, Shift] = piece["shifts"]  # type: ignore[assignment]
+            for offset in _covering_offsets(cells, target):
+                counts = _decompose_offset(offset, shifts, max_count)
+                if counts is not None and _covers_all(counts):
+                    return _counts_to_steps(counts)
+
+    # Tier 2 — shallow BFS fallback over the per-label net-count lattice.
+    def _goal(state: tuple[int, ...]) -> bool:
+        return _covers_all(dict(zip(labels, state)))
+
+    def _successors(state: tuple[int, ...]) -> list[tuple[tuple[object, int], tuple[int, ...]]]:
+        out: list[tuple[tuple[object, int], tuple[int, ...]]] = []
+        for i in range(len(state)):
+            for delta in (1, -1):
+                nv = state[i] + delta
+                if -max_count <= nv <= max_count:
+                    nxt = state[:i] + (nv,) + state[i + 1:]
+                    out.append(((labels[i], delta), nxt))
+        return out
+
+    initial = tuple(0 for _ in labels)
+    return configuration_path(initial, _goal, _successors, max_states=max_states)
 
 
 # ── fluid flow ("learned flow operators") ──────────────────────────────────

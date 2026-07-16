@@ -650,3 +650,136 @@ def test_separate_by_motion_reports_no_motion_when_nothing_moved():
     out = separate_by_motion(frame, frame, background=0)
     assert out["cells"] == frozenset()
     assert out["shift"] == (0, 0)
+
+
+# ── geared integer-multiple co-motion kernels ──────────────────────────────
+
+from admorphiq.kernels import (  # noqa: E402
+    learn_geared_operators,
+    plan_geared_coverage,
+    render_geared,
+)
+
+
+def _geared_k1_k2_frames():
+    """A 12x12 scene with two pieces: colour 5 (rows 2-3) and colour 4 (rows
+    6-7). One control 'R' moves colour 5 by +1 col (1x) and colour 4 by +2 col
+    (2x) — same direction, integer multiples (the AR25-L1 geared signature)."""
+    before = [[0] * 12 for _ in range(12)]
+    after = [[0] * 12 for _ in range(12)]
+    for r in (2, 3):
+        for c in (2, 3):
+            before[r][c] = 5
+            after[r][c + 1] = 5  # 1x
+    for r in (6, 7):
+        for c in (2, 3):
+            before[r][c] = 4
+            after[r][c + 2] = 4  # 2x
+    return before, after
+
+
+def test_learn_geared_operators_recovers_two_pieces_at_1x_and_2x():
+    """Purpose: prove the geared learner separates two co-moving pieces by their
+    per-control displacement and recovers the 1x/2x integer-multiple shifts and
+    base step from a single labelled transition. Expected feedback: a FAIL means
+    the geared dynamics AR25 L1 exhibits cannot be learned frame-only, so no
+    coverage plan over them is trustworthy."""
+    before, after = _geared_k1_k2_frames()
+    model = learn_geared_operators([{"before": before, "after": after, "label": "R"}], background=0)
+    assert model["base_step"] == 1
+    assert model["moving_colors"] == frozenset({4, 5})
+    by_color = {next(iter(p["colors"])): p for p in model["pieces"]}
+    assert set(by_color) == {4, 5}
+    assert by_color[5]["shifts"] == {"R": (0, 1)}
+    assert by_color[4]["shifts"] == {"R": (0, 2)}
+    assert by_color[5]["cells"] == frozenset({(2, 2), (2, 3), (3, 2), (3, 3)})
+
+
+def test_learn_reflection_operators_is_empty_on_the_geared_regime():
+    """Purpose: pin the complementary-regime boundary — the SAME same-direction
+    integer-multiple data that the geared learner models yields NO reflection
+    axis (a reflection needs an opposite-shift pair). Expected feedback: a FAIL
+    (reflection learner inventing an axis here) would mean the two learners
+    overlap and the adapter's gate (reflection-empty -> try geared) is unsound."""
+    before, after = _geared_k1_k2_frames()
+    refl = learn_reflection_operators([{"before": before, "after": after, "label": "R"}], background=0)
+    assert refl["axes"] == []
+    assert refl["piece_cells"] == frozenset()
+
+
+def test_render_geared_translates_each_piece_by_its_gear_ratio():
+    """Purpose: the render is linear per piece — n presses move a piece n times
+    its per-press shift, so at R=3 colour 5 moves 3 cols and colour 4 moves 6.
+    Expected feedback: a FAIL means coverage search would evaluate the wrong
+    footprint and could 'solve' a configuration the live game does not reach."""
+    before, after = _geared_k1_k2_frames()
+    model = learn_geared_operators([{"before": before, "after": after, "label": "R"}], background=0)
+    rendered = render_geared(model["pieces"], {"R": 3})
+    assert (2, 5) in rendered and (3, 6) in rendered  # colour-5 piece at +3 cols
+    assert (6, 8) in rendered and (7, 9) in rendered  # colour-4 piece at +6 cols
+
+
+def test_plan_geared_coverage_covers_two_targets_with_one_coupled_drive():
+    """Purpose: the decisive joint-coverage property — a SINGLE net drive must
+    cover TWO targets at once because the two pieces are coupled through the
+    same control at different gear ratios (target for the 1x piece at +3, for
+    the 2x piece at +6, both reached at R=3). Expected feedback: a FAIL means
+    the planner cannot express the coupled multi-goal search AR25 L1 needs."""
+    before, after = _geared_k1_k2_frames()
+    model = learn_geared_operators([{"before": before, "after": after, "label": "R"}], background=0)
+    target_1x = {(2, 5), (2, 6), (3, 5), (3, 6)}  # colour-5 footprint at +3
+    target_2x = {(6, 8), (6, 9), (7, 8), (7, 9)}  # colour-4 footprint at +6
+    plan = plan_geared_coverage(model["pieces"], [target_1x, target_2x], model["labels"])
+    assert plan == [("R", 1), ("R", 1), ("R", 1)]
+    counts = {"R": sum(d for _l, d in plan)}
+    covered = render_geared(model["pieces"], counts)
+    assert target_1x <= covered and target_2x <= covered
+
+
+def test_plan_geared_coverage_returns_none_when_out_of_reach():
+    """Purpose: within a tight press budget an unreachable target yields None,
+    not a bogus plan. Expected feedback: a FAIL means the adapter would execute
+    a non-covering sequence and waste budget instead of falling back."""
+    before, after = _geared_k1_k2_frames()
+    model = learn_geared_operators([{"before": before, "after": after, "label": "R"}], background=0)
+    far = {(2, 30), (2, 31)}  # colour-5 piece cannot reach col 30 within max_count=1
+    assert plan_geared_coverage(model["pieces"], [far], model["labels"], max_count=1) is None
+    assert plan_geared_coverage([], [{(0, 0)}], ["R"]) is None
+    assert plan_geared_coverage(model["pieces"], [], model["labels"]) is None
+
+
+def test_plan_geared_coverage_lattice_solves_deep_two_axis_offset():
+    """Purpose: the linear-lattice tier finds a DEEP (tens-of-presses) covering
+    plan a shallow BFS would miss — one piece driven +24 rows and -18 cols by
+    two axis controls, exactly the AR25-L1 shape (color-4 covers the color-11
+    goal at offset (24,-18) via 8 down + 3 left presses). Expected feedback: a
+    FAIL means the planner regresses to BFS depth and cannot clear real geared
+    levels even though the dynamics are learned correctly."""
+    n = 40
+    piece = [(r, c) for r in (2, 3) for c in (20, 21)]
+    down_before = [[0] * n for _ in range(n)]
+    down_after = [[0] * n for _ in range(n)]
+    left_before = [[0] * n for _ in range(n)]
+    left_after = [[0] * n for _ in range(n)]
+    for r, c in piece:
+        down_before[r][c] = 5
+        down_after[r + 3][c] = 5  # 'D' moves (+3, 0)
+        left_before[r][c] = 5
+        left_after[r][c - 6] = 5  # 'L' moves (0, -6)
+    model = learn_geared_operators(
+        [
+            {"before": down_before, "after": down_after, "label": "D"},
+            {"before": left_before, "after": left_after, "label": "L"},
+        ],
+        background=0,
+    )
+    (p,) = model["pieces"]
+    assert p["shifts"] == {"D": (3, 0), "L": (0, -6)}
+    target = {(r + 24, c - 18) for r, c in piece}  # rows 26-27, cols 2-3
+    plan = plan_geared_coverage(model["pieces"], [target], model["labels"], max_count=25)
+    assert plan is not None
+    counts: dict[object, int] = {}
+    for label, d in plan:
+        counts[label] = counts.get(label, 0) + d
+    assert counts == {"D": 8, "L": 3}
+    assert target <= render_geared(model["pieces"], counts)

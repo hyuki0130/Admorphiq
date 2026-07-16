@@ -109,14 +109,15 @@ def test_build_plan_arms_a_covering_plan_from_reflection_probes():
     assert all(a in (1, 2, 3, 4) for a in adapter._plan_queue)
 
 
-def test_build_plan_falls_back_to_graph_without_a_reflection_model():
+def test_build_plan_hands_off_to_geared_probe_without_a_reflection_model():
     """Purpose: when the probes reveal no mirror (no axis-splitting
-    observation), _build_plan must switch to the 'graph' phase rather than
-    plan against a hallucinated model — this is what keeps deeper /
-    non-reflective levels at the generic-explorer baseline instead of
-    regressing.
-    Expected feedback: failure means the adapter would either crash or
-    execute an invalid plan on a level its reflection model can't describe."""
+    observation), _build_plan must NOT plan against a hallucinated reflection
+    model — it hands off to the geared integer-multiple co-motion probe, which
+    itself falls to the generic graph explorer if no geared plan is found. This
+    is what keeps deeper / non-reflective levels off an invalid reflection plan
+    while giving the geared regime (AR25 L1) a chance before graph.
+    Expected feedback: failure means the adapter would either crash or execute
+    an invalid reflection plan on a level its mirror model can't describe."""
     piece = {(2, 2), (2, 3)}
 
     def _plain(cells, h=12, w=12):
@@ -132,7 +133,7 @@ def test_build_plan_falls_back_to_graph_without_a_reflection_model():
         {"before": start, "after": _plain({(r, c + 1) for r, c in piece}), "label": 4},
     ]
     adapter._build_plan()
-    assert adapter._phase == "graph"
+    assert adapter._phase == "geared_probe"
     assert adapter._plan_queue == []
 
 
