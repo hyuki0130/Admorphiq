@@ -2,10 +2,10 @@
 type: lesson
 date: 2026-07-15
 rounds: R56
-status: three probe-validity failures diagnosed and fixed during the R56
-  expansion sprint (bp35 flawed determinism probe, tn36 masked bit-toggle,
-  general decisive-single-variable rule)
-keywords: [probe-validity, available-actions, diff-threshold, determinism-probe, single-variable-probe, false-confirmation]
+status: five probe-validity failures diagnosed and fixed (R56 bp35 determinism /
+  tn36 bit-toggle / decisive-single-variable; R59 r11l bare-stepping probe
+  degenerates display_to_grid + faithful passive-read recovery)
+keywords: [probe-validity, available-actions, diff-threshold, determinism-probe, single-variable-probe, false-confirmation, standalone-probe-unfaithful, display-to-grid-degenerate, faithful-passive-read, run-the-runner-path]
 ---
 
 # A probe only measures what its action actually exercises (R56)
@@ -45,6 +45,20 @@ characterise. Three concrete instances this round:
 3. **Hypotheses built before a decisive probe.** Several adapters spent
    action budget testing broad mechanic guesses that a single set-one-bit /
    single-click-from-reset probe would have settled first.
+4. **r11l "clicks never move legs" (FALSE — a standalone probe that did not
+   replicate the runner path).** A bare-stepping probe (its own
+   `env.step(click_action(...))` loop, plus poking `env._game.camera` /
+   monkeypatching internals) concluded that L1 placement clicks never move a
+   leg and blamed a "level-dependent camera transform". Both were artifacts:
+   outside the harness's render/observation cadence the camera's
+   `display_to_grid` DEGENERATES — it mapped EVERY click to grid `(0,0)`, so
+   the probe's placements went off-board and refused. The tell that the probe
+   was unfaithful: **L0 clears in the very same loop**, which is impossible if
+   `display_to_grid` were really returning `(0,0)` for all clicks. A standalone
+   probe that contradicts a known-good behaviour (L0 clearing) is measuring its
+   own scaffold, not the game. The real faults were ordinary: some placements
+   collide with the arena wall and are refused, and the rigid plan derails
+   under refusals. See [[../games/R11L]].
 
 ## Root Cause
 
@@ -73,6 +87,19 @@ the false conclusion convincing: consistency is not validity.
   one variable and measure its exact effect first. Cheap decisive probes
   retire whole hypothesis branches that would otherwise cost action budget to
   falsify indirectly.
+- **A standalone probe MUST replicate the runner path, and a probe that
+  contradicts known-good behaviour is measuring itself.** Effects that only
+  hold inside the harness's render/observation cadence (e.g. r11l's
+  `camera.display_to_grid`, or the `data=` payload the `score_efficiency`
+  loop passes on complex actions) silently degenerate in a bare
+  `env.step` loop. Before trusting a standalone probe, confirm it reproduces a
+  KNOWN result (a level the real adapter clears); if the probe says something
+  the runner already disproves (r11l L0 clears, yet the probe claims no click
+  ever lands), the probe is broken, not the game. **Prefer FAITHFUL PASSIVE
+  READS: run the ACTUAL adapter loop and read `env._game` internals passively
+  (no monkeypatching) after each real adapter action.** That gave r11l its
+  ground truth — legs DO move on valid placements — that every standalone
+  probe got wrong.
 
 ## Recovery
 
@@ -100,3 +127,6 @@ counterexamples this round.
   surfaced all three instances.
 - [[../games/BP35]], [[../games/TN36]] — the two adapters whose banked
   divergences carry the measured counterexamples.
+- [[../games/R11L]] — the R59 counterexample: a bare-stepping probe
+  degenerated `display_to_grid` and produced two wrong claims (no click lands /
+  camera transform), corrected by faithful passive reads inside the real loop.
