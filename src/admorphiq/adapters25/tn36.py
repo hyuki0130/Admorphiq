@@ -1,118 +1,40 @@
-"""script25 quarantined adapter: TN36 (bit-panel programming puzzle).
+"""script25 quarantined adapter: TN36 (opcode-column program-synthesis).
 
 *** QUARANTINE — MODEL-NEVER-VISIBLE. See admorphiq.adapters25's package
 docstring. ***
 
-``.wiki/wiki/games/TN36.md`` records TN36 as a programming puzzle the legacy
-`strat_tn36_puzzle` cleared 7/7 by CHEATING — calling the game-internal
-``frame.zpzcmabenn(val)`` to set the bit program directly (0/7 generic).
-``docs/r57_win_condition_typology_20260715.md`` mines it as a programming
-puzzle whose single `ACTION6` "run" re-simulates a whole trajectory. This
-adapter is the frame-only attempt; it is BANKED, with the ENCODING MAP fully
-documented below (the team's explicit ask for this game).
+**Mechanic (fully decoded R56e, built R56f).** TN36 is a program-synthesis
+puzzle. A row of N OPCODE COLUMNS (each a small stack of bit cells encoding a
+number `value = Σ 1<<i`) sits above a play button. You set each column's value
+by clicking its bit cells, click play ONCE, and the player sprite then executes
+the columns left-to-right as a fixed instruction set (`dfguzecnsr`, unit 4px):
+`1/34`=left, `2`=right, `3`=down, `33`=up, `10-13`=double-move, `5/6/7/16`=
+rotate, `8/9`=scale±, `14/15/63`=recolour, `0`=noop/reset. WIN = the player
+matches the goal in x, y, rotation, scale AND colour. Every ACTION6 advances a
+deadline wall one cell (~61-click budget on L0). The R56b "unfindable
+frame-selector" bank was FALSE — the frames ARE the visible columns.
 
-**Encoding map — decoded from the game source (offline, dev-time only;
-``environment_files/tn36/*/tn36.py``)**:
+**This adapter (R56f) — frame-only, goal-directed.** It reads the board from
+the frame (no engine internals): the bit-panel box, its columns and each bit
+cell's on/off (a bit renders as the BACKGROUND colour when ON, a foreground
+colour when OFF), the play button, and the player + goal sprites. It then
+SEARCHES per-column move opcodes in a small offline simulator to move the
+player onto the goal, sets each column's bits to the chosen opcode, and clicks
+play. L0 (player straight above goal, 5 columns) clears in ~7 clicks: all
+columns = opcode 3 (down×5).
 
-- ``available_actions = [6]`` — click only. The 64x64 frame IS the display
-  (ACTION6 x/y are validated to 0..63, so display == grid, scale 1).
-- **Bit panels**: a program VALUE is a binary number over a row of bit cells
-  — ``yfozlxgytl.kbswvermjk == sum(1 << i for i, cell in enumerate(cells)
-  if cell.on)``. ``zpzcmabenn(v)`` (the cheat) just sets each cell from a
-  bit of ``v``. A level has a SEQUENCE of such panels (``thofkgziyd``), i.e.
-  a multi-instruction program, not one number.
-- **Opcode semantics**: running the program replays a trajectory —
-  ``skgnriqpob(i)`` applies instruction ``i`` as a position + rotation +
-  scale transform of the player sprite (``ahmihpsrbh`` / ``sowhkehyjk`` /
-  ``oekthfoxly``). So each panel value is an opcode over movement transforms.
-- **Deadline**: a colour-9 wall bar (top row) advances one cell LEFT on
-  EVERY click (``yrddcregck.nmslpsqyvb`` — halved cadence at level_index>=5);
-  the level LOSES when it passes the goal (``fisapprjnh`` false). Budget is
-  generous on L0 (>60 clicks measured) but every bit-toggle costs deadline.
-- **Run / win**: a click on the PLAY region sets ``nwjrtjcxpo`` (running);
-  the trajectory animates (the huge per-run frame churn the typology saw);
-  WIN when the player reaches the goal (``yxabhsirzl``).
+**Scope**: movement-only levels (the search covers the move opcodes). Levels
+needing rotation/scale/colour matching, interior walls / toggling kill-zones,
+or multi-run checkpoint sequencing are not yet modelled — those columns fall
+outside the move search and are banked for the follow-up build. The floor is
+the L0 clear.
 
-**Measured layout (live probe, this build — corrected against the wiki's
-prior refactor findings)**: the interactive controls ARE frame-reachable at
-scale 1. The BIT ROW is at grid ``y=44`` (cells at cols ~21, 26, 31, 36, 41)
-— clicking one toggles it (colour 5 <-> 1, a ~3-pixel change, plus the
-1-pixel deadline advance). The PLAY button is at grid rows 51-59, cols 32-40
-— clicking it runs the program (a ~70-pixel churn). The big colour-4 cells
-at rows 9-28 are the program DISPLAY, not the toggles (an earlier sweep that
-filtered for large diffs missed the tiny bit-toggle; corrected here). So a
-generic agent CAN toggle bits and press play.
-
-**Measured wall**: even with the controls reachable, blind frontier search
-does not clear (0/7), matching the wiki's two prior frame-only refactor
-attempts (detection worked, enumeration scored 0/7). TN36 is a STATEFUL
-MULTI-FRAME interpreter: the single visible bit row is ONE program frame,
-and the winning program is a SEQUENCE of frame values (v1 L0 gold is
-``[3,3,3,3,3]`` — five frames of value 3), advanced by play clicks. The
-space of multi-frame bit programs is combinatorial (R6's "bit-panel
-combinatorial search infeasible"), the per-click deadline caps attempts, and
-a blind click-frontier neither learns the bit->movement opcode nor composes
-the multi-frame sequence. This is the firm wall.
-
-**Why a generic click-frontier explorer anyway**: it is the honest,
-measurable generic baseline (it will press PLAY and attempt every salient
-cell), and it composes namespace-safe kernels exactly like
-``admorphiq.adapters25.r11l``:
-
-  - :func:`admorphiq.kernels.find_regions` enumerates the salient click
-    candidates and masks the edge-pinned HUD.
-  - :func:`admorphiq.kernels.canonical_key` hashes the masked board.
-  - :func:`admorphiq.kernels.transition_shortest_path` routes over the
-    incrementally-discovered transition graph to the nearest state with an
-    untried click (:meth:`_nearest_untried`, the same
-    ``admorphiq.adapters25.tu93`` rationale for not using
-    :func:`admorphiq.kernels.reachable_frontier`).
-
-**Measured result — BANKED at 0/7**:
-- ``--max-actions 1000``: 0/7 levels, game_score 0.0 (deterministic). The
-  explorer presses PLAY and clicks every salient cell, but with no reachable
-  bit-toggle it can only run the all-zero program, which never reaches the
-  goal. Below the cheating legacy 7/7 (which set the program via a
-  game-internal call); 0/7 is the honest frame-only floor for this game.
-
-**Opcode-learning attempt (R56b, 2026-07-15) — the structure RESISTS, deeper
-divergence banked**: the natural reopen ("learn bit->movement by set-one-bit-
-then-play, then solve the trajectory") was ATTEMPTED and does not
-materialise. A live probe set each single bit at ``y=44`` in isolation,
-pressed PLAY, and stepped the run to completion: the player (a colour-11
-region at grid (36,32), goal at (14,32)) moved by ZERO on every single-bit
-program. Cross-checked with the source, the reason is structural, not a probe
-error:
-
-- The player's per-frame POSITION comes from level data
-  (``qllkobvsuk = level.get_data("Positions")``, applied by ``skgnriqpob``),
-  NOT from a bit->displacement map — so there is no single-bit displacement
-  operator to learn in the first place.
-- The winning program is MULTI-FRAME (v1 L0 gold = ``[3,3,3,3,3]``, five
-  frames each of value 3), and each frame has its OWN saved bit-panel value
-  (``lhhjnfuvau[frame]``, switched by ``skgnriqpob(index)``) — but the
-  FRAME-SELECTOR control (how the player advances the edit cursor between the
-  five frames with only the one visible bit row) is NOT identifiable from the
-  frame, and the wiki's two prior refactor attempts could not find it either.
-
-So the real blocker is not "learn a linear opcode + gf2_solve" — it is
-reverse-engineering the stateful multi-frame EDITOR (frame advancement +
-how a frame's value maps to the level-data trajectory gate), which is a
-multi-session decode, not a single planner. That is why this ships as the
-click-frontier explorer (0/7) with the map, not a planner: adding an
-unvalidated planner would be speculative code against a win this probe shows
-is not reachable by the hypothesised opcode model. Next attempt starts from
-these harder facts: find the frame-selector first (probe for a control whose
-click changes WHICH frame's bits the visible row edits), then model the
-frame-value -> trajectory-gate relation before any solver.
-
-Composition from ``admorphiq.kernels``: find_regions, canonical_key,
-transition_shortest_path (as above).
+Composition from ``admorphiq.kernels``: find_regions (board + panel parse).
 """
 
 from __future__ import annotations
 
-from collections import deque
+from itertools import product
 from typing import Any
 
 from admorphiq.adapters25.base import (
@@ -125,99 +47,46 @@ from admorphiq.adapters25.base import (
     reset_action,
     state_name,
 )
-from admorphiq.kernels import canonical_key, find_regions, transition_shortest_path
+from admorphiq.kernels import find_regions
 
 GAME_ID = "tn36"
 
 Cell = tuple[int, int]
-Region = dict[str, Any]
 Grid = tuple[tuple[int, ...], ...]
 
-_GIVEUP_DEFAULT = 4000
+_GIVEUP_DEFAULT = 200
 
-_HUD_SPAN_FRACTION = 0.85
-_HUD_THICKNESS_FRACTION = 0.06
+# Click camera offset: a click at display x maps to grid col x+2, so to hit a
+# cell whose frame column is C we click at C-2 (measured on tn36-ef4dde99).
+_CLICK_DX = -2
 
-_MIN_CAND_SIZE = 1
-_MAX_CAND_SIZE = 400
+# Move opcodes and their per-execution cell displacement (dx, dy), unit = 1
+# cell. The search only uses single-cell moves — enough for straight-line
+# levels like L0; double-moves and non-move opcodes are a follow-up.
+_MOVE_OPCODES: dict[int, Cell] = {
+    1: (-1, 0),
+    2: (1, 0),
+    3: (0, 1),
+    33: (0, -1),
+    34: (-1, 0),
+}
 
-
-def _is_hud_band(region: Region, height: int, width: int) -> bool:
-    """A thin strip spanning most of one axis, OR pinned to a frame edge —
-    catches TN36's top-row deadline bar (which advances every click) so it
-    does not fragment the state key on every step."""
-    r0, c0, r1, c1 = region["bbox"]
-    h, w = r1 - r0 + 1, c1 - c0 + 1
-    thickness = max(1, int(height * _HUD_THICKNESS_FRACTION))
-    thickness_w = max(1, int(width * _HUD_THICKNESS_FRACTION))
-    full_width_thin = w >= width * _HUD_SPAN_FRACTION and h <= thickness
-    full_height_thin = h >= height * _HUD_SPAN_FRACTION and w <= thickness_w
-    edge_pinned_thin = (h <= thickness and (r0 == 0 or r1 == height - 1)) or (
-        w <= thickness_w and (c0 == 0 or c1 == width - 1)
-    )
-    return full_width_thin or full_height_thin or edge_pinned_thin
-
-
-def _hud_cells(grid: Grid, bg: int) -> set[Cell]:
-    height, width = len(grid), len(grid[0])
-    cells: set[Cell] = set()
-    for region in find_regions(grid, background=bg):
-        if _is_hud_band(region, height, width):
-            cells |= region["cells"]
-    return cells
-
-
-def _mask_hud(grid: Grid, hud: set[Cell]) -> Grid:
-    if not hud:
-        return grid
-    bg = most_common_color(grid)
-    return tuple(
-        tuple(bg if (r, c) in hud else grid[r][c] for c in range(len(grid[0])))
-        for r in range(len(grid))
-    )
-
-
-def _click_candidates(grid: Grid, hud: set[Cell], bg: int) -> list[Cell]:
-    """Deterministic list of click-target cells: the rounded centroid of
-    every salient (non-background, non-HUD) region within the size gate
-    (bit cells + the play button)."""
-    height, width = len(grid), len(grid[0])
-    cells: list[Cell] = []
-    seen: set[Cell] = set()
-    for region in find_regions(grid, background=bg):
-        if _is_hud_band(region, height, width):
-            continue
-        if not (_MIN_CAND_SIZE <= region["size"] <= _MAX_CAND_SIZE):
-            continue
-        cr, cc = region["centroid"]
-        cell = (int(round(cr)), int(round(cc)))
-        if 0 <= cell[0] < height and 0 <= cell[1] < width and cell not in seen and cell not in hud:
-            seen.add(cell)
-            cells.append(cell)
-    return sorted(cells)
+_CELL_PX = 4  # CSPOIQWER — one opcode move = 4 frame pixels
 
 
 class Adapter(GameAdapter):
-    """Generic click-frontier exploration over HUD-masked frame-canonical
-    states (click alphabet = salient region centroids), composed from
-    admorphiq.kernels. See the module docstring's BANKED encoding map."""
+    """Frame-only opcode-column program synthesis: parse the panel, search a
+    move program that lands the player on the goal, set bits, play."""
 
     GAME_ID = GAME_ID
 
     def __init__(self, giveup: int = _GIVEUP_DEFAULT) -> None:
         self.restart_on_game_over = True
-
         self._giveup = giveup
         self._step = 0
         self._levels_seen = -1
-
-        self._pending_click: Cell | None = None
-        self._pending_key: Any | None = None
-
-        self._transitions: list[tuple[Any, Cell, Any]] = []
-        self._edges: dict[Any, dict[Cell, Any]] = {}
-        self._tried_from: dict[Any, set[Cell]] = {}
-        self._cands_at: dict[Any, list[Cell]] = {}
+        self._clicks: list[Cell] = []
+        self._played = False
 
     # ── harness contract ────────────────────────────────────────────────
 
@@ -227,101 +96,252 @@ class Adapter(GameAdapter):
     def choose_action(self, frames: list[Any], latest_frame: Any) -> GameAction:
         state = state_name(latest_frame)
         if state == "GAME_OVER":
-            self._on_restart()
+            self._reset_plan()
             return reset_action()
         if state == "NOT_PLAYED" or not has_frame(latest_frame):
-            self._pending_click = None
-            self._pending_key = None
             self._levels_seen = -1
+            self._reset_plan()
             return reset_action()
 
-        grid = canonical_layer(latest_frame)
         levels = int(getattr(latest_frame, "levels_completed", 0) or 0)
         if levels != self._levels_seen:
-            self._on_level_up(levels)
+            self._levels_seen = levels
+            self._reset_plan()
 
         self._step += 1
-        bg = most_common_color(grid)
-        hud = _hud_cells(grid, bg)
-        cur_key = canonical_key(_mask_hud(grid, hud), mode="exact")
-        self._observe_result(cur_key)
 
-        cands = self._cands_at.get(cur_key)
-        if cands is None:
-            cands = _click_candidates(grid, hud, bg)
-            self._cands_at[cur_key] = cands
-        if not cands:
-            self._pending_click = None
-            self._pending_key = None
+        if self._clicks:
+            return click_action(*self._clicks.pop(0))
+        if self._played:
+            # Program already sent for this board; wait for the outcome by
+            # issuing harmless idle clicks (they advance the wall but let the
+            # execution animation resolve into WIN / next level).
+            return click_action(0, 0)
+
+        grid = canonical_layer(latest_frame)
+        plan = _plan(grid)
+        if plan is None:
             return reset_action()
+        self._clicks = plan
+        self._played = True
+        return click_action(*self._clicks.pop(0))
 
-        cell = self._decide(cur_key, cands)
-        self._pending_click = cell
-        self._pending_key = cur_key
-        return click_action(x=cell[1], y=cell[0])
+    def _reset_plan(self) -> None:
+        self._clicks = []
+        self._played = False
 
-    # ── level / restart bookkeeping ─────────────────────────────────────
 
-    def _on_level_up(self, levels: int) -> None:
-        self._levels_seen = levels
-        self._pending_click = None
-        self._pending_key = None
-        self._transitions = []
-        self._edges = {}
-        self._tried_from = {}
-        self._cands_at = {}
+# ── planning ────────────────────────────────────────────────────────────────
 
-    def _on_restart(self) -> None:
-        self._pending_click = None
-        self._pending_key = None
 
-    # ── measurement: record the observed transition ─────────────────────
-
-    def _observe_result(self, cur_key: Any) -> None:
-        click = self._pending_click
-        prev_key = self._pending_key
-        self._pending_click = None
-        self._pending_key = None
-        if click is None or prev_key is None:
-            return
-        self._transitions.append((prev_key, click, cur_key))
-        self._edges.setdefault(prev_key, {})[click] = cur_key
-        self._tried_from.setdefault(prev_key, set()).add(click)
-
-    # ── planning ─────────────────────────────────────────────────────────
-
-    def _decide(self, cur_key: Any, cands: list[Cell]) -> Cell:
-        tried = self._tried_from.get(cur_key, set())
-        untried = [c for c in cands if c not in tried]
-        if untried:
-            return untried[0]
-
-        target = self._nearest_untried(cur_key)
-        if target is not None and target != cur_key:
-            path = transition_shortest_path(self._transitions, cur_key, target)
-            if path:
-                return path[0]  # type: ignore[return-value]
-
-        return cands[0]
-
-    def _nearest_untried(self, start_key: Any) -> Any | None:
-        """BFS over the KNOWN transition graph from ``start_key``; return the
-        nearest visited state (including ``start_key``) that still has an
-        untried candidate click, or None if fully explored. Hand-rolled
-        rather than :func:`admorphiq.kernels.reachable_frontier` for the same
-        reason ``admorphiq.adapters25.tu93`` gives (its universe is observed
-        edges only, so it cannot surface a never-tried candidate)."""
-        visited = {start_key}
-        queue: deque[Any] = deque([start_key])
-        while queue:
-            state = queue.popleft()
-            cands = self._cands_at.get(state)
-            if cands is not None:
-                tried = self._tried_from.get(state, set())
-                if any(c not in tried for c in cands):
-                    return state
-            for _cell, nxt in self._edges.get(state, {}).items():
-                if nxt not in visited:
-                    visited.add(nxt)
-                    queue.append(nxt)
+def _plan(grid: Grid) -> list[Cell] | None:
+    """Return the click sequence (bit toggles then play) that solves a
+    movement level, or None if the board cannot be parsed / searched."""
+    board = _parse(grid)
+    if board is None:
         return None
+    columns, play_click, blobs = board
+    if len(blobs) < 2 or not columns:
+        return None
+
+    program = _search_program(columns, blobs)
+    if program is None:
+        return None
+
+    clicks: list[Cell] = []
+    for col, opcode in zip(columns, program):
+        clicks.extend(_column_toggle_clicks(col, opcode))
+    clicks.append(play_click)
+    return clicks
+
+
+def _search_program(columns: list[dict], blobs: list[Cell]) -> list[int] | None:
+    """Search a per-column move opcode assignment that lands the player on the
+    goal in the offline simulator. Tries both blob-as-player assignments so the
+    player/goal ambiguity (they share a colour) resolves itself."""
+    n = len(columns)
+    max_bits = max(len(c["bits"]) for c in columns)
+    # Opcodes expressible within every column's bit width.
+    opcodes = [op for op in _MOVE_OPCODES if op < (1 << max_bits)]
+    if not opcodes or n > 6:
+        return None
+
+    def cells(a: int, b: int) -> int:
+        return int(round((b - a) / _CELL_PX))
+
+    for start, goal in ((blobs[0], blobs[1]), (blobs[1], blobs[0])):
+        target = (cells(start[0], goal[0]), cells(start[1], goal[1]))
+        found = _search_delta(opcodes, n, target)
+        if found is not None:
+            return found
+    return None
+
+
+def _search_delta(opcodes: list[int], n: int, target: Cell) -> list[int] | None:
+    """Find n opcodes whose summed displacement equals ``target`` (cells)."""
+    tdx, tdy = target
+    # Prune: try the straight cases first (all same opcode), then the product.
+    for op in opcodes:
+        dx, dy = _MOVE_OPCODES[op]
+        if dx * n == tdx and dy * n == tdy:
+            return [op] * n
+    if n <= 6:
+        for combo in product(opcodes, repeat=n):
+            sx = sum(_MOVE_OPCODES[o][0] for o in combo)
+            sy = sum(_MOVE_OPCODES[o][1] for o in combo)
+            if sx == tdx and sy == tdy:
+                return list(combo)
+    return None
+
+
+def _column_toggle_clicks(col: dict, opcode: int) -> list[Cell]:
+    """Clicks that set ``col`` to ``opcode``: for each bit, toggle iff its
+    current on/off differs from the opcode's bit. Bit i (LSB first, ordered by
+    the cell's position) contributes 1<<i."""
+    clicks: list[Cell] = []
+    for i, bit in enumerate(col["bits"]):
+        want_on = bool(opcode & (1 << i))
+        if bit["on"] != want_on:
+            clicks.append((bit["col"] + _CLICK_DX, bit["row"]))
+    return clicks
+
+
+# ── frame parse ───────────────────────────────────────────────────────────────
+
+
+def _parse(grid: Grid):
+    """Parse (columns, play_click, blobs) from the frame, or None.
+
+    The frame has an OUTER border colour (most common) and an inner PLAYFIELD
+    background (the large dark region enclosing everything). Crucially a bit
+    "lights" to the border colour when ON, so we must parse against the
+    PLAYFIELD background, not the border — otherwise ON bits vanish.
+
+    columns: list of {bits: [{row, col, on}]} left-to-right.
+    play_click: (x, y) click point for the play button.
+    blobs: player & goal anchors (bbox top-left as (x, y)), same colour.
+    """
+    if not grid or not grid[0]:
+        return None
+    border = most_common_color(grid)
+    height = len(grid)
+
+    # Playfield background = the largest region that is not the border.
+    outer = find_regions(grid, background=border)
+    field = max(outer, key=lambda rg: rg["size"], default=None)
+    if field is None:
+        return None
+    playfield = field["color"]
+
+    regions = find_regions(grid, background=playfield)
+
+    # Play button = the largest region low in the frame (below the bit band),
+    # excluding the border and the deadline bar spanning the top.
+    play = _find_play_button(regions, height, border)
+    if play is None:
+        return None
+    play_x, play_y = play
+
+    # Player + goal = a colour with exactly two equal-size small regions above
+    # the bit band; anchor on each bbox top-left (matches the sprite origin).
+    blobs = _find_blobs(regions, border, playfield)
+    if len(blobs) < 2:
+        return None
+    blob_bottom = max(y for _, y in blobs)
+
+    # Bit cells: small regions in the band between the blobs and the play
+    # button. A bit is ON when its colour == border (it "lights" to border), OFF
+    # otherwise. Two bit colours: border (on) and one off colour.
+    band_top = blob_bottom
+    band_bot = play_y
+    inner = [
+        rg
+        for rg in regions
+        if rg["size"] <= 8
+        and band_top < rg["centroid"][0] < band_bot
+        and rg["color"] != playfield
+    ]
+    if len(inner) < 2:
+        return None
+    on_color = border
+
+    columns = _group_columns(inner, on_color)
+    if not columns:
+        return None
+
+    return columns, (play_x, play_y), blobs
+
+
+def _group_columns(inner: list[dict], on_color: int) -> list[dict]:
+    """Cluster bit cells into columns by x, each column's bits ordered by y
+    (top→bottom = LSB→MSB). Marks each bit on/off by colour == on_color."""
+    cells = [
+        {
+            "row": int(round(rg["centroid"][0])),
+            "col": int(round(rg["centroid"][1])),
+            "on": rg["color"] == on_color,
+        }
+        for rg in inner
+    ]
+    cells.sort(key=lambda b: b["col"])
+    columns: list[dict] = []
+    cur: list[dict] = []
+    last_col = None
+    for b in cells:
+        if last_col is not None and b["col"] - last_col > 3:
+            columns.append({"bits": sorted(cur, key=lambda x: x["row"])})
+            cur = []
+        cur.append(b)
+        last_col = b["col"]
+    if cur:
+        columns.append({"bits": sorted(cur, key=lambda x: x["row"])})
+    if not columns:
+        return []
+    # Keep only columns with the modal bit count (the real opcode columns).
+    widths = [len(c["bits"]) for c in columns]
+    common = max(set(widths), key=widths.count)
+    return [c for c in columns if len(c["bits"]) == common]
+
+
+def _find_play_button(regions: list[dict], height: int, border: int):
+    """The play button = the largest region in the bottom third of the frame,
+    excluding the border colour (it is a distinct icon on the playfield).
+    Returns the (x, y) click point (with the camera offset applied)."""
+    best = None
+    for rg in regions:
+        cr, cc = rg["centroid"]
+        if cr < height * 0.66 or rg["color"] == border:
+            continue
+        if best is None or rg["size"] > best[0]:
+            best = (rg["size"], int(round(cc)) + _CLICK_DX, int(round(cr)))
+    if best is None:
+        return None
+    return best[1], best[2]
+
+
+def _find_blobs(regions: list[dict], border: int, playfield: int) -> list[Cell]:
+    """Player + goal sprites: two equal-size same-colour regions (they share a
+    colour and are ~4x4). Anchor on each bbox TOP-LEFT = (col, row) = (x, y),
+    which matches the engine sprite origin (centroids are clip-skewed).
+    Returns them ordered top→bottom."""
+    by_color: dict[int, list[dict]] = {}
+    for rg in regions:
+        if rg["color"] in (border, playfield):
+            continue
+        if 8 <= rg["size"] <= 20:
+            by_color.setdefault(rg["color"], []).append(rg)
+    # Player/goal = a colour with EXACTLY two blocky regions (the program
+    # DISPLAY colour appears many times, so it is excluded by this count). If
+    # several qualify, prefer the vertically-aligned pair (same x = a mover and
+    # its target).
+    best = None
+    for _color, rgs in by_color.items():
+        if len(rgs) != 2:
+            continue
+        misalign = abs(rgs[0]["bbox"][1] - rgs[1]["bbox"][1])
+        if best is None or misalign < best[0]:
+            best = (misalign, rgs)
+    if best is None:
+        return []
+    rgs = sorted(best[1], key=lambda rg: rg["bbox"][0])
+    return [(rg["bbox"][1], rg["bbox"][0]) for rg in rgs]
