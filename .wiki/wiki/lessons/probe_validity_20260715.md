@@ -2,10 +2,11 @@
 type: lesson
 date: 2026-07-15
 rounds: R56
-status: five probe-validity failures diagnosed and fixed (R56 bp35 determinism /
+status: six probe-validity failures diagnosed and fixed (R56 bp35 determinism /
   tn36 bit-toggle / decisive-single-variable; R59 r11l bare-stepping probe
-  degenerates display_to_grid + faithful passive-read recovery)
-keywords: [probe-validity, available-actions, diff-threshold, determinism-probe, single-variable-probe, false-confirmation, standalone-probe-unfaithful, display-to-grid-degenerate, faithful-passive-read, run-the-runner-path]
+  degenerates display_to_grid + faithful passive-read recovery; R59 set_level+RESET
+  non-restoration blocks deep-level chirality/replay probes on sk48 + cn04)
+keywords: [probe-validity, available-actions, diff-threshold, determinism-probe, single-variable-probe, false-confirmation, standalone-probe-unfaithful, display-to-grid-degenerate, faithful-passive-read, run-the-runner-path, set-level-reset-non-restoration, deep-level-forcing]
 ---
 
 # A probe only measures what its action actually exercises (R56)
@@ -59,6 +60,21 @@ characterise. Three concrete instances this round:
    own scaffold, not the game. The real faults were ordinary: some placements
    collide with the arena wall and are refused, and the rigid plan derails
    under refusals. See [[../games/R11L]].
+5. **`set_level(n)` + `reset_action()` does NOT restore a fresh level-n state
+   (INCONCLUSIVE, two games).** Forcing a deep level with `env._game.set_level(n)`
+   reaches level n's board, but the follow-up `reset_action()` the runner path
+   would issue between levels does NOT re-initialise it to the pristine
+   first-entry state — internal counters / selection / momentary state carry
+   over. This makes any probe that depends on entering level n CLEANLY
+   untestable locally: sk48's replay env kept `budget=196` after
+   `set_level+ACTION7` (moves silently swallowed until the parse env was
+   separated from the replay env), and cn04's L3 chirality auto-select
+   (swap 0 → RESET → swap 1) reached `n8=0` but the win never fired under the
+   forced entry, so whether the auto-select transition works on a NATURAL L3
+   entry stayed unconfirmed on local budgets (L3 is only reachable naturally on
+   the VM @5000). The tell is the same as instance 4: the forced-entry result
+   contradicts what the real runner path produces. See [[../games/SK48]],
+   [[../games/CN04]].
 
 ## Root Cause
 
@@ -100,6 +116,17 @@ the false conclusion convincing: consistency is not validity.
   (no monkeypatching) after each real adapter action.** That gave r11l its
   ground truth — legs DO move on valid placements — that every standalone
   probe got wrong.
+- **`set_level(n)` reaches a deep level but does NOT reproduce a natural entry;
+  treat any result that hinges on the post-`set_level` `reset_action()` as
+  INCONCLUSIVE, not a verdict.** The forced board carries internal counters /
+  selection / momentary state that a natural level-n entry would not, so a
+  between-level transition (a fresh budget, a chirality auto-select, a replay
+  from step 0) does not fire the way it would on the runner path. When a probe
+  needs a clean level-n entry and that level is only reachable naturally on the
+  VM, the honest bank is "feasible offline, natural-entry confirmation pending
+  on the VM" — do NOT record a local forced-entry pass/fail as the answer.
+  Confirmed for sk48 (replay budget frozen at 196) and cn04 (L3 chirality
+  auto-select).
 
 ## Recovery
 
