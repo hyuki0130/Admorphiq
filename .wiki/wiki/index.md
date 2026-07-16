@@ -8,12 +8,12 @@ seeds `llm_context/decision_tree.md` first, then walks `[[backlinks]]`.
 Use this index when authoring or auditing: skim the catalog, pick a
 category, drill into specific pages.
 
-**Total pages**: 155.
+**Total pages**: 156.
 
 ## Games (25)
 
 - [[games/AR25.md]] — v1 L0 efficient clear (score 1.0 @ 23 actions); 1/8 depth, v2 same (frame-only, never reads internals) — Movable colour glyphs are drawn together with their reflections across a movable mirror bar; a level is won when every goal cell is covered by some piece pixel or one of its reflections — NOT a single-avatar maze.
-- [[games/BP35.md]] — v1 brittle 1/9 (bp35_platformer, frame-only but internals-tuned), generic 0/9 (R23 8B agent regression baseline) — Move the player horizontally and click destructible blocks so gravity drops it toward a fixed `+`-shaped exit marker; win = the player reaches the exit. Physics is DETERMINISTIC and per-action (gravity resolves within a step).
+- [[games/BP35.md]] — v1 brittle 1/9 (bp35_platformer, internals-tuned), generic 0/9 (R23 8B agent regression baseline) — Move the player horizontally and click destructible blocks so gravity drops it toward a fixed `+`-shaped exit marker; win = the player reaches the exit. Physics is DETERMINISTIC and per-action (gravity resolves within a step).
 - [[games/CD82.md]] — v1 6/6 ✅ (brittle paint_game, hardcoded positions) — Relies on game internals — high v1 score, fails on v2. SUPERSEDED: the R56
 - [[games/CN04.md]] — v1 brittle 1/5 (zig3_A2A4, hash-tuned) — A rigid-arrangement puzzle: select a sprite, rotate and slide it so its connector-marker stubs coincide with another sprite's — NOT a click game.
 - [[games/DC22.md]] — v1 1/6 ✅ (R56 generic gated-maze planner; L0 78 actions, score 0.572), v2 1/6 ✅ — Frame-observation solver — generalizes across version hashes.
@@ -29,7 +29,7 @@ category, drill into specific pages.
 - [[games/S5I5.md]] — v1 brittle 1/8 (s5i5_slider, reads sprite tags) — A click-only slider puzzle: click a track's far/near half to slide its goal marker ±1 unit along an axis until it lands on its target. R56 = first frame-only clear (1/8), matching brittle without any sprite tags.
 - [[games/SB26.md]] — v1 8/8 ✅ (brittle, internals) — A portal-graph traversal puzzle disguised as a simple reference/pool
 - [[games/SC25.md]] — v1 brittle 2/6 (legacy spell_cast, reads sprite names — brittle) — A TWO-PHASE spell game per level: click a 3×3 grid to toggle cells until the
-- [[games/SK48.md]] — v1 3/8 (R56b faithful-sim + A* + edge-snake parse, script25 @1000, game_score 0.1667), v2 3/8 (same board) — Move a snake so the sequence of coloured cells its body overlaps matches a per-level TEMPLATE pattern, within a fixed move budget — NOT a plain eat-food snake or a reach-exit maze.
+- [[games/SK48.md]] — v1 4/8 (R59 multi-snake A*, script25 @1000, game_score 0.2778, deterministic x2), v2 4/8 (same board) — Move a snake so the sequence of coloured cells its body overlaps matches a per-level TEMPLATE pattern, within a fixed move budget — NOT a plain eat-food snake or a reach-exit maze.
 - [[games/SP80.md]] — v1 L0+L1 efficient clear (both score 1.0; L0 10a vs 39h, L1 16a vs 58h); 2/6 depth, game_score 0.1429, v2 same (frame-only, never reads internals) — Place deflector/block pieces during a CHANGE phase, then a SPILL phase drops water from a fixed source; a level wins only when the flow covers EVERY target region without hitting a hazard — NOT a reach-the-goal maze.
 - [[games/SU15.md]] — v1 brittle 9/9 ✅ (uses game.hmeulfxgy/peiiyyzum/rqdsgrklq attrs), generic 0/9 ❌ (R23 8B; same-color-pair=0 at L1) — A click runs a radius-8 VACUUM that pulls nearby fruits toward it; two same-value fruits that overlap merge to value+1 (2048-style); a level clears when the exact (value, count) multiset of fruits sits inside the goal-zone sprite bbox(es). The iteration-8 "click-to-steer player" model was FALSIFIED — the "player" was the vacuum-ring animation artifact.
 - [[games/TN36.md]] — v1 brittle 7/7 ✅ (uses frame.zpzcmabenn direct call), generic 0/7 ❌ (R23 8B; bit-panel combinatorial too deep) — Bit-encoded action program: click bits to set a number, click play to execute, navigate player to goal; brittle solver passes v1 but collapses on v2.
@@ -146,7 +146,7 @@ category, drill into specific pages.
 
 - [[llm_context/decision_tree.md]] — Compact dispatch read first by Qwen — default primary adaptive_bfs_solver, peer-swap only on Observable-Signature match, 3-deep fallback_stack by game shape, re-ask on primary failure via each plan's Falsification Signature + Next-Best.
 
-## Top-level dispatch (architecture, selector, log, schema) (46)
+## Top-level dispatch (architecture, selector, log, schema) (47)
 
 - [[rounds/r05_planning-override.md]] — Goal-directed planning that overrode novelty exploration regressed 4 stable games (AR25/FT09/LP85/M0R0) — first proof that overriding novelty breaks the learner.
 - [[rounds/r06_depth-boost.md]] — Depth-boost / keep-learning-after-levelup regressed LP85's depth — perturbing exploration regresses.
@@ -193,6 +193,7 @@ category, drill into specific pages.
 - [[rounds/r56_generic-kernels.md]] — Extract game-agnostic pure-computation kernels from the 25-game solver card so a
 - [[rounds/r57_win-condition-typology.md]] — Offline gold-trace mining across all 25 public games names eight
 - [[rounds/r58_explanation-layer.md]] — Codex verdict on teaching the offline model to use R56's kernel suite:
+- [[rounds/r59_depth-wave.md]] — One-day parallel depth sprint on the [[r56_generic-kernels]] base: 6 teammate lanes, each
 - [[selector.md]] — Feature-driven dispatch rules the Hypothesis Engine LLM uses to pick
 
 ## Raw sources
