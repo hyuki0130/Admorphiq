@@ -30,6 +30,11 @@ from admorphiq.adapters25.ls20 import (
     _classify_changer,
     _decode_shape3,
     _detect_pushwalls,
+    _detect_pushwalls_pixel,
+    _l5_bfs,
+    _l5_mover_advance,
+    _l5_step,
+    _snap_to_lattice,
     _solve,
 )
 
@@ -230,3 +235,163 @@ def test_solve_returns_none_when_token_cannot_be_transformed():
         "refills": frozenset(), "passable": passable,
     }
     assert _solve(parsed) is None
+
+
+# ── L5 pixel push-carry model + moving-changer joint BFS ─────────────────────
+
+
+def test_snap_to_lattice_maps_offset_sprites_to_containing_cell():
+    """Purpose: pixel-offset refill/wall sprites are triggered at the AVATAR
+    lattice cell whose 5x5 box contains the sprite top-left (engine
+    ``mrznumynfe`` containment). Pin the snap for the measured L5 offsets.
+    Expected feedback: a failure means refills never fire in the sim, so the
+    life budget is wrong and the L5 BFS finds no death-free plan."""
+    ox, oy = 4, 0  # avatar at x%5==4, y%5==0 (the measured L5 lattice)
+    assert _snap_to_lattice(15, 46, ox, oy) == (14, 45)
+    assert _snap_to_lattice(45, 6, ox, oy) == (44, 5)
+    assert _snap_to_lattice(10, 11, ox, oy) == (9, 10)
+    assert _snap_to_lattice(49, 35, ox, oy) == (49, 35)  # already on the lattice
+
+
+def test_detect_pushwalls_pixel_recovers_offset_sprite_and_direction():
+    """Purpose: an L5 push-wall renders a length-5 colour-1 LINE bordering a
+    colour-4 wall; the push goes AWAY from the wall and the sprite top-left is
+    recovered exactly (even when pixel-offset from the lattice). Pin all four
+    orientations, including a sprite whose top row is off the 5-lattice.
+    Expected feedback: a failure means the collision cell / carry direction is
+    wrong and the L5 open-loop plan desyncs on the first push."""
+    H = W = 20
+
+    def frame():
+        return [[_FLOOR_COLOR] * W for _ in range(H)]
+
+    # down wall: wall above (row 3), line at row 4 -> sprite (10,4), push (0,1).
+    g = frame()
+    for c in range(10, 15):
+        g[3][c] = _WALL_COLOR
+        g[4][c] = 1
+    walls = _detect_pushwalls_pixel(tuple(tuple(r) for r in g))
+    assert (10, 4, 0, 1) in walls
+
+    # up wall: line at row 9, wall below (row 10) -> sprite (10,5), push (0,-1).
+    g = frame()
+    for c in range(10, 15):
+        g[9][c] = 1
+        g[10][c] = _WALL_COLOR
+    walls = _detect_pushwalls_pixel(tuple(tuple(r) for r in g))
+    assert (10, 5, 0, -1) in walls
+
+    # right wall: line at col 5, wall left (col 4) -> sprite (5,10), push (1,0).
+    g = frame()
+    for r in range(10, 15):
+        g[r][4] = _WALL_COLOR
+        g[r][5] = 1
+    walls = _detect_pushwalls_pixel(tuple(tuple(r) for r in g))
+    assert (5, 10, 1, 0) in walls
+
+    # left wall: line at col 9, wall right (col 10) -> sprite (5,10), push (-1,0).
+    g = frame()
+    for r in range(10, 15):
+        g[r][9] = 1
+        g[r][10] = _WALL_COLOR
+    walls = _detect_pushwalls_pixel(tuple(tuple(r) for r in g))
+    assert (5, 10, -1, 0) in walls
+
+
+def test_l5_mover_advance_bounces_along_the_track():
+    """Purpose: the moving rot-changer patrols a horizontal track one cell per
+    successful move, reversing at the ends (engine ``dboxixicic``). Pin the
+    14<->24 bounce cycle used at L5.
+    Expected feedback: a failure means the mover phase desyncs and the rotation
+    crossings in the plan land on the wrong frames."""
+    track = (14, 19, 24)
+    mx, mdir = 19, 1  # heading right
+    seq = []
+    for _ in range(8):
+        mx, mdir = _l5_mover_advance(track, mx, mdir)
+        seq.append(mx)
+    assert seq == [24, 19, 14, 19, 24, 19, 14, 19]
+
+
+def _l5_maze(**over):
+    """A minimal L5-style maze dict for the pixel sim; overridable per test."""
+    base = {
+        "hard_walls": frozenset(),
+        "goal": (100, 0),
+        "goal_req": (0, 0, 0),
+        "changers": {},
+        "refills": frozenset(),
+        "pushwalls": (),
+        "fjzuynaokm": frozenset(),
+        "mover_track": (),
+        "mover_my": -1,
+        "step_full": 21,
+    }
+    base.update(over)
+    return base
+
+
+def test_l5_step_carries_avatar_by_wall_width_until_a_blocking_cell():
+    """Purpose: stepping into a push-wall's bounding box carries the avatar
+    ``ullzqnksoj`` wall-widths in the push direction, stopping one width before
+    a blocking (``fjzuynaokm``) cell — the exact pixel carry the lattice model
+    could not express.
+    Expected feedback: a failure means the carry distance is wrong and every L5
+    push desyncs against the live engine."""
+    # right-pushing wall sprite at (15,10); blocking cell at (35,10).
+    maze = _l5_maze(
+        pushwalls=((15, 10, 1, 0, _CELL, _CELL),),
+        fjzuynaokm=frozenset({(35, 10)}),
+        goal=(999, 999),
+    )
+    # avatar at (10,10) steps right onto (15,10) -> collides, carried right.
+    # carry: wall_cx=16; checks (21,10),(26,10),(31,10),(36,10); (36,10) is not
+    # blocking but (35,10) is — checks land on 16+5k so first blocking multiple
+    # is where 16+5k reaches >=35 in fjzuynaokm. Here (35,10) not on 16+5k grid,
+    # so choose a blocking cell exactly on the grid for a crisp assertion.
+    maze = _l5_maze(
+        pushwalls=((15, 10, 1, 0, _CELL, _CELL),),
+        fjzuynaokm=frozenset({(31, 10)}),  # 16 + 5*3 == 31 -> k=3, dist=2
+        goal=(999, 999),
+    )
+    s = (10, 10, 0, 0, 0, 5, frozenset(), -1, 1)
+    ns = _l5_step(maze, s, 4)  # move right
+    # avatar at (15,10) collides, carried by dir*width*dist = (1*5*2, 0) = (10,0)
+    assert (ns[0], ns[1]) == (25, 10)
+
+
+def test_l5_step_mover_cell_cycles_rotation_and_refill_tops_life():
+    """Purpose: landing on the mover's CURRENT cell cycles rotation (the mover is
+    a rot changer), and stepping onto a refill resets the life budget — the two
+    dynamic effects the joint BFS depends on.
+    Expected feedback: a failure means the plan mis-counts rotation crossings or
+    the life budget, so a valid death-free plan is missed."""
+    # mover on a 1-cell track at (20,0); avatar steps right from (15,0) onto it
+    # AFTER the mover advances to (20,0) (single-cell track stays at 20).
+    maze = _l5_maze(mover_track=(20,), mover_my=0, goal=(999, 999))
+    s = (15, 0, 0, 0, 0, 5, frozenset(), 20, 1)
+    ns = _l5_step(maze, s, 4)
+    assert (ns[0], ns[1]) == (20, 0) and ns[4] == 1  # rotation 0 -> 1
+
+    # refill: stepping onto a refill cell tops life back to step_full.
+    maze = _l5_maze(refills=frozenset({(20, 0)}), goal=(999, 999), step_full=21)
+    s = (15, 0, 0, 0, 0, 3, frozenset(), -1, 1)
+    ns = _l5_step(maze, s, 4)
+    assert ns[5] == 21 and (20, 0) in ns[6]  # steps refilled, refill marked taken
+
+
+def test_l5_bfs_routes_through_the_moving_changer_for_rotation():
+    """Purpose: end-to-end pin of the joint BFS — when the goal needs a rotation
+    only the moving changer supplies, the plan must time the avatar onto the
+    mover's cell, then reach the goal.
+    Expected feedback: a failure means the moving-changer joint search is broken
+    and L5 cannot be solved frame-only."""
+    # mover patrols x in {5,10} at y=0, starting at x=10 heading LEFT (mdir 3).
+    # avatar at (10,0): a LEFT move advances the mover 10->5 and lands the avatar
+    # on (5,0) == the mover's new cell -> rot 0->1; a DOWN move then reaches the
+    # goal (5,5) which needs rot 1 (the goal itself is NOT the mover cell, so the
+    # goal-blocking-until-matched rule does not deadlock the rotation).
+    maze = _l5_maze(goal=(5, 5), goal_req=(0, 0, 1), mover_track=(5, 10), mover_my=0)
+    start = (10, 0, 0, 0, 0, 21, frozenset(), 10, 3)
+    plan = _l5_bfs(maze, start)
+    assert plan == [3, 2]

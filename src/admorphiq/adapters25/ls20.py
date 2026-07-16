@@ -343,6 +343,287 @@ def _detect_pushwalls(grid: Grid, xs: list[int], ys: list[int]) -> dict[Cell, Ce
     return out
 
 
+# ════════════════════════════════════════════════════════════════════════
+# L5 pixel-faithful push-carry model + moving-changer joint BFS.
+#
+# L5 adds two mechanics the lattice static model can't capture:
+#   (a) push-walls whose SPRITES are pixel-offset from the avatar lattice, so
+#       collision is a sprite bounding-box overlap (``prpxgfxlcm``) and the carry
+#       distance steps by the wall's WIDTH (``ullzqnksoj``) — NOT lattice-cell
+#       equality; and
+#   (b) a MOVING rotation changer that patrols a horizontal track one cell per
+#       SUCCESSFUL avatar move (``dboxixicic``), bouncing at the ends.
+# Both are exactly replicated below at the PIXEL level (validated by 720-action
+# lockstep against the live engine, 0 divergence), so a joint BFS over
+# ``(ax, ay, sh, co, ro, steps_left, refills_taken, mover_x, mover_dir)`` plans a
+# death-free action sequence executed OPEN-LOOP. The mover's track + phase are
+# learned at runtime from a few settled observation frames (the mover renders a
+# colour-1 rot icon at its live cell), then the maze is parsed and solved. See
+# the LS20 wiki page for the full derivation.
+# ════════════════════════════════════════════════════════════════════════
+
+_L5_LIFE = _STEP_FULL // _STEP_DECR  # per-life action budget (21)
+_L5_OBS_CAP = 10  # settled observation frames to learn the mover cycle
+_L5_SEARCH_CAP = 3_000_000  # joint-BFS expansion cap
+_MOVER_WATCH_CHECKS = 4  # rot-changer frames to confirm a level is static (no mover)
+
+
+def _detect_rot_cell(grid: Grid) -> Cell | None:
+    """The single rotation-changer lattice cell in a settled frame, or ``None``.
+    Used to watch for the L5 mover's motion while the static plan drains — it
+    reads the same rot-changer the parser classifies, so a change across frames
+    means the changer moved (i.e. this is the L5 moving-changer level)."""
+    parsed = _parse_l5_maze(grid)
+    if parsed is None:
+        return None
+    rots = [c for c, k in parsed["changers"].items() if k == "rot"]
+    return rots[0] if len(rots) == 1 else None
+
+
+def _detect_pushwalls_pixel(grid: Grid) -> list[tuple[int, int, int, int]]:
+    """Push-walls as ``(sprite_x, sprite_y, dx, dy)`` from length-5 colour-1
+    LINES that border a colour-4 wall. Each push-wall (``gbvqrjtaqo``) renders a
+    5-pixel colour-1 edge line with the wall body on ONE side; the push goes
+    AWAY from that wall. The sprite top-left is recovered from the line + edge:
+      horizontal line, wall above -> push down, sprite top-left = line start;
+      horizontal line, wall below -> push up, sprite top = line row - 4;
+      vertical line, wall left -> push right, sprite left = line col;
+      vertical line, wall right -> push left, sprite left = line col - 4.
+    Pixel-exact vs engine ground truth on all 8 L5 walls. The mover's rot icon
+    is 2-3 scattered pixels (never a length-5 line) so it is excluded here.
+    """
+    H, W = len(grid), len(grid[0])
+    out: list[tuple[int, int, int, int]] = []
+    consumed: set[Cell] = set()
+    for y in range(H):
+        x = 0
+        while x <= W - _CELL:
+            if all(grid[y][x + i] == _ROT_MARK for i in range(_CELL)):
+                above = grid[y - 1][x] if y - 1 >= 0 else -9
+                below = grid[y + 1][x] if y + 1 < H else -9
+                if above == _WALL_COLOR:
+                    out.append((x, y, 0, 1))
+                    consumed.update((x + i, y) for i in range(_CELL))
+                elif below == _WALL_COLOR:
+                    out.append((x, y - 4, 0, -1))
+                    consumed.update((x + i, y) for i in range(_CELL))
+                x += _CELL
+            else:
+                x += 1
+    for x in range(W):
+        y = 0
+        while y <= H - _CELL:
+            if all(grid[y + i][x] == _ROT_MARK for i in range(_CELL)) and (x, y) not in consumed:
+                left = grid[y][x - 1] if x - 1 >= 0 else -9
+                right = grid[y][x + 1] if x + 1 < W else -9
+                if left == _WALL_COLOR:
+                    out.append((x, y, 1, 0))
+                    consumed.update((x, y + i) for i in range(_CELL))
+                elif right == _WALL_COLOR:
+                    out.append((x - 4, y, -1, 0))
+                    consumed.update((x, y + i) for i in range(_CELL))
+                y += _CELL
+            else:
+                y += 1
+    return out
+
+
+def _read_life(grid: Grid) -> int:
+    """Life remaining in ACTIONS, read from the step-counter band. The band
+    (``hbuhvkxlhc.render_interface``) starts at col 13 and fills one colour-11-
+    family cell per remaining ``current_steps`` (empty cells render as floor);
+    ``current_steps`` decrements by ``_STEP_DECR`` per action, so
+    ``actions = filled // _STEP_DECR``. Bounded to the counter width."""
+    H, W = len(grid), len(grid[0])
+    row = min(61, H - 2)
+    filled = sum(1 for c in range(13, min(13 + _STEP_FULL, W)) if grid[row][c] != _FLOOR_COLOR)
+    return filled // _STEP_DECR
+
+
+def _snap_to_lattice(sx: int, sy: int, ox: int, oy: int) -> Cell:
+    """The avatar-lattice cell whose 5x5 box contains sprite top-left (sx,sy) —
+    matching the engine's ``mrznumynfe`` containment trigger for pixel-offset
+    refill/wall sprites."""
+    return (sx - (sx - ox) % _CELL, sy - (sy - oy) % _CELL)
+
+
+def _parse_l5_maze(grid: Grid) -> dict[str, Any] | None:
+    """Reconstruct the L5 static maze (everything except the mover's live
+    phase) from a settled frame, or ``None`` if it does not look like a
+    single-goal push-wall level. The mover appears here as a ``rot`` changer at
+    its current cell; the caller strips it after learning its motion."""
+    avatar = _find_avatar(grid)
+    if avatar is None:
+        return None
+    ax, ay = avatar
+    ox, oy = ax % _CELL, ay % _CELL
+    xs = list(range(ox, len(grid[0]) - _CELL + 1, _CELL))
+    ys = list(range(oy, len(grid) - _CELL + 1, _CELL))
+
+    pushwalls = [(sx, sy, dx, dy, _CELL, _CELL) for (sx, sy, dx, dy) in _detect_pushwalls_pixel(grid)]
+
+    goals: list[Cell] = []
+    goal_req: tuple[int, int, int] | None = None
+    changers: dict[Cell, str] = {}
+    hard_walls: set[Cell] = set()
+    passable: set[Cell] = set()
+    for x in xs:
+        for y in ys:
+            hh = _cell_counts(grid, x, y)
+            dom = hh.most_common(1)[0][0]
+            if y < _PLAYABLE_MAX_ROW and dom == _GOAL_BORDER and sum(hh.get(c, 0) for c in _PALETTE) >= 3:
+                goals.append((x, y))
+                if goal_req is None:
+                    goal_req = _decode_goal_preview(grid, x, y)
+                passable.add((x, y))
+                continue
+            if dom == _FLOOR_COLOR:
+                passable.add((x, y))
+            else:
+                hard_walls.add((x, y))
+            if y < _PLAYABLE_MAX_ROW:
+                kind = _classify_changer(hh, dom)
+                if kind is not None:
+                    changers[(x, y)] = kind
+    if len(goals) != 1 or goal_req is None:
+        return None
+    goal = goals[0]
+    token = _decode_token(grid)
+    if token is None:
+        return None
+    refills = {_snap_to_lattice(sx, sy, ox, oy) for (sx, sy) in _find_refill_sprites(grid)}
+    # avatar cell is not a wall; push collision cells must be passable
+    hard_walls.discard(avatar)
+    passable.add(avatar)
+    for (sx, sy, dx, dy, w, h) in pushwalls:
+        passable.add((sx, sy))
+    return {
+        "avatar": avatar,
+        "goal": goal,
+        "goal_req": goal_req,
+        "token": token,
+        "changers": changers,
+        "refills": frozenset(refills),
+        "passable": frozenset(passable),
+        "hard_walls": frozenset(hard_walls),
+        "pushwalls": tuple(pushwalls),
+    }
+
+
+def _find_refill_sprites(grid: Grid) -> set[Cell]:
+    """Raw refill-ring sprite top-left pixels (colour-11 ring with a hole),
+    above the HUD band. Pixel positions (may be off-lattice; caller snaps)."""
+    H, W = len(grid), len(grid[0])
+    out: set[Cell] = set()
+    seen: set[Cell] = set()
+    for r in range(min(H - 2, 60)):
+        for c in range(W - 2):
+            if (r, c) in seen:
+                continue
+            if (
+                grid[r][c] == _REFILL_COLOR
+                and grid[r][c + 1] == _REFILL_COLOR
+                and grid[r + 1][c] == _REFILL_COLOR
+                and grid[r + 1][c + 2] == _REFILL_COLOR
+                and grid[r + 1][c + 1] != _REFILL_COLOR
+            ):
+                out.add((c, r))
+                for dr in range(3):
+                    for dc in range(3):
+                        seen.add((r + dr, c + dc))
+    return out
+
+
+def _l5_mover_advance(track: tuple[int, ...], mx: int, mdir: int) -> tuple[int, int]:
+    """One mover step along a horizontal track; bounce at the ends. Advances
+    ONLY on a successful avatar move (caller does not call this on a block)."""
+    if not track or mx < 0 or len(track) < 2:
+        return mx, mdir  # no track or a single-cell track: mover stays put
+    lo, hi = min(track), max(track)
+    step = _CELL if mdir == 1 else -_CELL
+    cand = mx + step
+    if lo <= cand <= hi:
+        return cand, mdir
+    mdir = 3 if mdir == 1 else 1
+    step = _CELL if mdir == 1 else -_CELL
+    return mx + step, mdir
+
+
+def _l5_carry_dist(fjz: frozenset[Cell], sx: int, sy: int, dx: int, dy: int, w: int, h: int) -> int:
+    """``ullzqnksoj``: wall-widths the avatar is carried before a blocking cell."""
+    wall_cx, wall_cy = sx + dx, sy + dy
+    for k in range(1, 12):
+        if (wall_cx + dx * w * k, wall_cy + dy * h * k) in fjz:
+            return max(0, k - 1)
+    return 0
+
+
+def _l5_step(maze: dict[str, Any], s: tuple, action: int) -> tuple:
+    """One engine step at the pixel level. ``s`` =
+    ``(ax, ay, sh, co, ro, steps, taken, mx, mdir)``."""
+    ax, ay, sh, co, ro, steps, taken, mx, mdir = s
+    dx, dy = _MOVES[action]
+    prov_mx, prov_mdir = _l5_mover_advance(maze["mover_track"], mx, mdir)
+    nx, ny = ax + dx * _CELL, ay + dy * _CELL
+    matched_goal = (nx, ny) == maze["goal"] and (sh, co, ro) == maze["goal_req"]
+    if (nx, ny) in maze["hard_walls"] or ((nx, ny) == maze["goal"] and not matched_goal):
+        return s  # blocked: mover undoes, avatar stays
+    ax, ay = nx, ny
+    kind = maze["changers"].get((ax, ay))
+    if maze["mover_track"] and (ax, ay) == (prov_mx, maze["mover_my"]):
+        kind = "rot"
+    if kind == "rot":
+        ro = (ro + 1) % 4
+    elif kind == "color":
+        co = (co + 1) % 4
+    elif kind == "shape":
+        sh = (sh + 1) % 6
+    nsteps = steps - 1
+    if (ax, ay) in maze["refills"] and (ax, ay) not in taken:
+        nsteps = maze["step_full"]
+        taken = taken | {(ax, ay)}
+    if nsteps >= 0:
+        for (sx, sy, pdx, pdy, w, h) in maze["pushwalls"]:
+            if ax < sx + w and sx < ax + _CELL and ay < sy + h and sy < ay + _CELL:
+                dist = _l5_carry_dist(maze["fjzuynaokm"], sx, sy, pdx, pdy, w, h)
+                if dist > 0:
+                    ax += pdx * w * dist
+                    ay += pdy * h * dist
+                    break
+    return (ax, ay, sh, co, ro, nsteps, taken, prov_mx, prov_mdir)
+
+
+def _l5_bfs(maze: dict[str, Any], start: tuple) -> list[int] | None:
+    """Death-free joint BFS over the pixel sim toward standing on the goal with
+    a matching token, refill- and life-aware. Returns the action sequence."""
+    from collections import deque
+
+    goal, req = maze["goal"], maze["goal_req"]
+
+    def won(st: tuple) -> bool:
+        return (st[0], st[1]) == goal and (st[2], st[3], st[4]) == req
+
+    if won(start):
+        return []
+    seen = {start}
+    queue: deque[tuple[tuple, list[int]]] = deque([(start, [])])
+    exp = 0
+    while queue and exp < _L5_SEARCH_CAP:
+        s, path = queue.popleft()
+        exp += 1
+        if s[5] <= 0:  # out of life
+            continue
+        for aid in (1, 2, 3, 4):
+            ns = _l5_step(maze, s, aid)
+            if ns[5] < 0 or ns in seen:
+                continue
+            if won(ns):
+                return path + [aid]
+            seen.add(ns)
+            queue.append((ns, path + [aid]))
+    return None
+
+
 def _find_refills(grid: Grid, xs: list[int], ys: list[int]) -> set[Cell]:
     """Step-refill rings (8 colour-11 pixels around a hole) in the maze area
     (rows above the HUD counter band) -> the lattice cell whose box captures
@@ -621,6 +902,15 @@ class Adapter(GameAdapter):
         self._plan_failed = False  # this level fell back to the explorer
         self._probes = 0  # settle probes issued at a stale transition frame
         self._explorer = _Explorer()
+        # L5 moving-changer path. ``_mover_watch_cell`` watches a rot-changer for
+        # motion while the static plan drains (zero L1-L4 cost); once motion is
+        # seen, ``_l5_armed`` gates the pixel path, whose observation state is
+        # ``_l5_state`` (None -> "observing" -> "done") + ``_l5_obs`` (mover cells).
+        self._mover_watch_cell: Cell | None = None
+        self._mover_checks = 0
+        self._l5_armed = False
+        self._l5_state: str | None = None
+        self._l5_obs: list[Cell] = []
 
     # ── harness contract ─────────────────────────────────────────────────
     def is_done(self, frames: list[Any], latest_frame: Any) -> bool:
@@ -633,6 +923,11 @@ class Adapter(GameAdapter):
             self._plan_committed = False
             self._plan_failed = False
             self._probes = 0
+            self._mover_watch_cell = None
+            self._mover_checks = 0
+            self._l5_armed = False
+            self._l5_state = None
+            self._l5_obs = []
             self._explorer._pending_action = None
             self._explorer._pending_key = None
             return reset_action()
@@ -651,11 +946,44 @@ class Adapter(GameAdapter):
         if not move_ids:
             return simple_action(simple_ids[0]) if simple_ids else reset_action()
 
-        # 1. Drain a committed open-loop plan.
+        # 1. Drain a committed open-loop plan. While the static plan drains, WATCH
+        #    the rot-changer cell (zero action cost): if it moves, this is the L5
+        #    moving-changer level — abandon the (desyncing) static plan and arm the
+        #    pixel path; if it stays put over a few checks it is a static level
+        #    (L1-L4) and the plan drains normally, untouched.
         if self._plan:
-            return simple_action(self._plan.pop(0))
+            if self._mover_watch_cell is not None:
+                cur_rot = _detect_rot_cell(grid)
+                if cur_rot is not None and cur_rot != self._mover_watch_cell:
+                    self._plan = []
+                    self._mover_watch_cell = None
+                    self._l5_armed = True
+                    self._l5_state = None
+                    self._l5_obs = []
+                    self._plan_committed = False
+                elif cur_rot is not None:
+                    self._mover_checks += 1
+                    if self._mover_checks >= _MOVER_WATCH_CHECKS:
+                        self._mover_watch_cell = None
+                    return simple_action(self._plan.pop(0))
+                else:
+                    return simple_action(self._plan.pop(0))
+            else:
+                return simple_action(self._plan.pop(0))
 
-        # 2. Try the offline reconstruction once per level (until it commits a
+        # 2. L5 pixel path — only once the moving changer has been confirmed. It
+        #    observes the mover cycle, reconstructs the pixel maze and joint-BFS
+        #    plans a death-free open-loop sequence.
+        if self._l5_armed and not self._plan_failed:
+            l5_action = self._try_l5(grid, move_ids)
+            if l5_action is not None:
+                return simple_action(l5_action)
+            # L5 confirmed but unsolved -> drop to the explorer floor (the static
+            # reconstruction can't model the mover, so re-trying it would loop).
+            self._l5_armed = False
+            self._plan_failed = True
+
+        # 3. Try the offline reconstruction once per level (until it commits a
         #    plan or the settle probes run out), planning from the CURRENT
         #    (post-probe) frame so a stale transition frame is absorbed.
         if not self._plan_committed and not self._plan_failed:
@@ -665,6 +993,7 @@ class Adapter(GameAdapter):
                 if plan:
                     self._plan = list(plan)
                     self._plan_committed = True
+                    self._arm_mover_watch(grid)
                     return simple_action(self._plan.pop(0))
             if self._probes < _PROBE_CAP:
                 # Stale/unsettled transition frame: probe once (any move), then
@@ -673,8 +1002,89 @@ class Adapter(GameAdapter):
                 return simple_action(move_ids[0])
             self._plan_failed = True
 
-        # 3. Fallback: frame-keyed explorer for this level.
+        # 4. Fallback: frame-keyed explorer for this level.
         return simple_action(self._explorer.choose(grid, move_ids))
+
+    def _arm_mover_watch(self, grid: Grid) -> None:
+        """Arm the rot-changer motion watch when the just-committed static level
+        could be the L5 moving-changer level (push-walls present + a rot-changer).
+        On any other level this leaves the watch disarmed (zero L1-L4 impact)."""
+        parsed = _parse_l5_maze(grid)
+        if parsed is None or not parsed["pushwalls"]:
+            self._mover_watch_cell = None
+            return
+        rots = [c for c, k in parsed["changers"].items() if k == "rot"]
+        self._mover_watch_cell = rots[0] if rots else None
+        self._mover_checks = 0
+
+    def _try_l5(self, grid: Grid, move_ids: list[int]) -> int | None:
+        """The armed L5 path (called only after the moving changer is confirmed).
+        Observes the mover cell over a few SETTLED frames to learn its track +
+        phase, then reconstructs the pixel maze and joint-BFS plans a death-free
+        open-loop sequence. Returns an observation move, the first plan action, or
+        ``None`` when it gives up (caller drops to the explorer floor)."""
+        if self._l5_state == "done":
+            return None
+        parsed = _parse_l5_maze(grid)
+        if parsed is None:
+            return move_ids[0]  # unsettled: settle (we know this is L5)
+        if self._l5_state is None:
+            self._l5_state = "observing"
+            self._l5_obs = []
+        rots = [c for c, k in parsed["changers"].items() if k == "rot"]
+        if rots:
+            self._l5_obs.append(rots[0])
+        xs = [c[0] for c in self._l5_obs]
+        enough = len(self._l5_obs) >= 5 and len(set(xs)) >= 3
+        if enough or len(self._l5_obs) >= _L5_OBS_CAP:
+            self._l5_state = "done"
+            if len(set(xs)) < 2:
+                return None
+            plan = self._plan_l5(grid, parsed)
+            if plan:
+                self._plan = plan
+                self._plan_committed = True
+                return self._plan.pop(0)
+            return None
+        # issue a safe observation move (a successful move advances the mover)
+        ax, ay = parsed["avatar"]
+        for act in (4, 3, 2, 1):
+            dx, dy = _MOVES[act]
+            nb = (ax + dx * _CELL, ay + dy * _CELL)
+            if nb in parsed["passable"] and nb != parsed["goal"] and nb not in parsed["hard_walls"]:
+                return act
+        return move_ids[0]
+
+    def _plan_l5(self, grid: Grid, parsed: dict[str, Any]) -> list[int] | None:
+        """Build the pixel maze from the observed mover cycle + the settled
+        parse, then joint-BFS a death-free plan (or ``None``)."""
+        obs = self._l5_obs
+        xs = [c[0] for c in obs]
+        my = obs[0][1]
+        track = tuple(sorted(set(range(min(xs), max(xs) + 1, _CELL))))
+        mx = obs[-1][0]
+        mdir = 1
+        for j in range(len(obs) - 1, 0, -1):
+            if obs[j][0] != obs[j - 1][0]:
+                mdir = 1 if obs[j][0] > obs[j - 1][0] else 3
+                break
+        changers = {c: k for c, k in parsed["changers"].items() if not (k == "rot" and c == (mx, my))}
+        maze = {
+            "hard_walls": parsed["hard_walls"],
+            "goal": parsed["goal"],
+            "goal_req": parsed["goal_req"],
+            "changers": changers,
+            "refills": parsed["refills"],
+            "pushwalls": parsed["pushwalls"],
+            "fjzuynaokm": frozenset(set(parsed["hard_walls"]) | {parsed["goal"]}),
+            "mover_track": track,
+            "mover_my": my,
+            "step_full": _L5_LIFE,
+        }
+        sh, co, ro = parsed["token"]
+        ax, ay = parsed["avatar"]
+        start = (ax, ay, sh, co, ro, _read_life(grid), frozenset(), mx, mdir)
+        return _l5_bfs(maze, start)
 
     def _reset_level(self, levels: int) -> None:
         self._levels_seen = levels
@@ -682,4 +1092,9 @@ class Adapter(GameAdapter):
         self._plan_committed = False
         self._plan_failed = False
         self._probes = 0
+        self._mover_watch_cell = None
+        self._mover_checks = 0
+        self._l5_armed = False
+        self._l5_state = None
+        self._l5_obs = []
         self._explorer.on_level_up()
