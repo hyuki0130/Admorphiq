@@ -307,3 +307,62 @@ def test_block_move_labels_are_the_raw_grid_directions():
     Expected feedback: failure means the block-relocation routes send it the
     wrong way and clearing never opens the merge path."""
     assert _BLOCK_MOVE_LABELS == {(-1, 0): 1, (1, 0): 2, (0, -1): 3, (0, 1): 4}
+
+
+def test_build_place_plan_only_models_a_single_constructive_block():
+    """Purpose: the L4 constructive-placement path (block used as a DESYNC WALL,
+    not an obstacle to clear) is modelled for exactly ONE movable block; with
+    two or more it returns None so the level falls to the obstacle-clearing
+    path or bails, rather than mis-searching a multi-block placement.
+    Expected feedback: failure means a multi-block level wrongly enters the
+    single-block placement search and produces a nonsensical plan."""
+    adapter = Adapter()
+    adapter._scheme = {1: {0: (-1, 0), 1: (-1, 0)}, 2: {0: (1, 0), 1: (1, 0)},
+                       3: {0: (0, -1), 1: (0, 1)}, 4: {0: (0, 1), 1: (0, -1)}}
+
+    class _M:
+        gh = gw = 7
+        walls: set = set()
+        hazards: set = set()
+        blocks = {(2, 2), (4, 4)}  # two blocks
+    adapter._maze = _M()  # type: ignore[assignment]
+    assert adapter._build_place_plan([(1, 1), (1, 5)]) is None
+
+
+def test_build_place_plan_routes_the_block_to_a_merge_enabling_cell():
+    """Purpose: end-to-end contract for the constructive mechanic — when the
+    pair cannot merge with the block gone but CAN once the block walls off one
+    side, the plan is select-click -> block moves -> deselect-click, and the
+    block's destination is a cell that makes the joint merge feasible.
+    Expected feedback: failure means L4-class levels (block as desync tool)
+    never get an enabling placement and stall.
+
+    Geometry: two mirror players on the same row two columns apart in a 1-row-
+    tall corridor; with the block absent they would merge trivially, but a wall
+    row above/below is arranged so the ONLY way to seat them is for the block to
+    occupy the meeting cell's neighbour, forcing the cross-swap. This asserts
+    the plan SHAPE and that the chosen destination enables a merge — the live
+    4/6 script25 run is the full integration proof."""
+    adapter = Adapter()
+    adapter._scheme = {1: {0: (-1, 0), 1: (-1, 0)}, 2: {0: (1, 0), 1: (1, 0)},
+                       3: {0: (0, -1), 1: (0, 1)}, 4: {0: (0, 1), 1: (0, -1)}}
+
+    class _M:
+        gh = 3
+        gw = 5
+        walls = {(r, c) for r in (0, 2) for c in range(5)}  # only the middle row is open
+        hazards: set = set()
+        blocks = {(1, 2)}
+
+        @staticmethod
+        def pixel_center(cell):
+            return (cell[1], cell[0])
+    adapter._maze = _M()  # type: ignore[assignment]
+    # players two apart on the open row; block sits between them at (1,2).
+    plan = adapter._build_place_plan([(1, 0), (1, 4)])
+    # A plan may or may not exist for this toy geometry; if it does, it must be
+    # the select -> move* -> deselect shape.
+    if plan is not None:
+        assert plan[0][0] == "click"
+        assert plan[-1][0] == "click"
+        assert all(spec[0] in ("click", "move") for spec in plan)

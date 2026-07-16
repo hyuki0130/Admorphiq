@@ -3,18 +3,27 @@
 *** QUARANTINE — MODEL-NEVER-VISIBLE. See admorphiq.adapters25's package
 docstring. ***
 
-**STATUS: 3/6 — L0/L1 by OFFLINE RECONSTRUCTION + L3 by MOVABLE-BLOCK CLEARING
-(R59, 2026-07-16). All three cleared levels score 1.000 (super-human).** L3
-adds cvcer movable obstacle blocks (colour 9): the agent parses them as a third
-cell class, computes the blocks-as-floor merge trajectory, ACTION6-selects each
-block that sits on it and routes it (``kernels.grid_shortest_path`` +
-``path_to_moves``, raw grid dirs) to an off-path parking cell, then runs the
-cleared-board merge — all gated on colour-9 detection so the L0/L1 path is
-untouched. The live engine is the oracle (no L3+ gold trace exists). Two
-subtle unlocks: floor is the FIXED colour 5 (never ``most_common_colour`` — a
-wall-heavy level's zone can out-count it), and the per-level scheme probes are
-SKIPPED once the scheme is complete (they desync the players before the merge
-even starts).
+**STATUS: 4/6 — L0/L1 by OFFLINE RECONSTRUCTION + L3 by MOVABLE-BLOCK CLEARING +
+L4 by CONSTRUCTIVE BLOCK PLACEMENT (R59, 2026-07-16). All four cleared levels
+score 1.000 (super-human).** cvcer movable blocks (colour 9) are used two
+opposite ways, both gated on colour-9 detection so the L0/L1 path is untouched:
+- **L3 — block as OBSTACLE to clear:** parse blocks as a third cell class,
+  compute the blocks-as-floor merge trajectory, ACTION6-select each block on it
+  and route it (``kernels.grid_shortest_path`` + ``path_to_moves``) to an
+  off-path parking cell, then run the cleared-board merge.
+- **L4 — block as a CONSTRUCTIVE DESYNC TOOL:** when NO merge exists even with
+  the block gone (blocks-as-floor = None), the pair spawns at ASYMMETRIC rows
+  and the row-gap can only close by wall-blocking one mirror side mid-move —
+  so the block is MOVED ONTO a cell where, as a wall, it enables the merge
+  (``_build_place_plan``: search the block's reachable cells for one whose
+  placement makes ``_search_merge`` feasible), then the closed-loop merge runs.
+The live engine is the oracle (no L3+ gold trace exists). Subtle unlocks: floor
+is the FIXED colour 5 (never ``most_common_colour`` — a wall-heavy zone can
+out-count it); per-level scheme probes are SKIPPED once the scheme is complete
+(they desync the players pre-merge); and a SELECTED block is blocked by BOTH
+walls AND hazards (unlike a player, so block routing avoids both). The
+placement search is position-relative, so it finds an enabling cell for
+whatever settled spawn the players are at.
 This replaces the R56 online joint-hill-climb (which cleared L0 only and
 BANKED L1 as "descent doors not derivable online"). The bank's premise — "the
 per-piece wall map is not cleanly frame-separable, players traverse the colour
@@ -754,7 +763,11 @@ class Adapter(GameAdapter):
         # blocks obstruct.
         floor_plan = self._search_merge(list(_MOVE_ACTIONS), blocks=None)
         if not floor_plan:
-            return None
+            # No merge even with the blocks GONE → the block is not an obstacle
+            # to clear but a TOOL to PLACE: some cell, occupied by the block-as-
+            # wall, blocks one mirror player during a move so the pair can
+            # desync and merge (the L4 mechanic). Search for such a placement.
+            return self._build_place_plan(players)
         occ = self._replay_occupied((self._p0, self._p1), floor_plan)
         blocking = [b for b in sorted(maze.blocks) if b in occ]
         if not blocking:
@@ -786,6 +799,50 @@ class Adapter(GameAdapter):
         merge = self._search_merge(list(_MOVE_ACTIONS), blocks=cur_blocks)
         if merge:
             plan.extend(("move", a) for a in merge)
+        return plan
+
+    def _build_place_plan(self, players: list[Cell]) -> list[tuple] | None:
+        """The L4 mechanic: the single cvcer block is a DESYNC TOOL, not an
+        obstacle. Find a cell the block can reach such that, standing there as a
+        wall, it blocks one mirror player during a move so the pair can close
+        its (asymmetric-row) gap and merge; route the block there. The merge
+        itself is left to the closed-loop merge phase (which reads the block's
+        new position as a wall and handles the asymmetric-row start via motion
+        identity). Returns the block-relocation actions, or ``None`` if no
+        reachable placement enables a merge."""
+        maze = self._maze
+        assert maze is not None
+        if len(maze.blocks) != 1:
+            return None  # only single-block constructive placement is modelled
+        blk = next(iter(maze.blocks))
+        self._p0, self._p1 = players[0], players[1]
+        # cells the block can reach (it is blocked by walls AND hazards, unlike
+        # a player which is only blocked by walls; players are not obstacles to
+        # a block).
+        passable = [[True] * maze.gw for _ in range(maze.gh)]
+        for (r, c) in maze.walls | maze.hazards:
+            passable[r][c] = False
+        best: tuple[int, Cell, list[Cell]] | None = None
+        for gy in range(maze.gh):
+            for gx in range(maze.gw):
+                target = (gy, gx)
+                if target in maze.walls or target in maze.hazards or target in players:
+                    continue
+                route = grid_shortest_path(passable, blk, target)
+                if route is None:
+                    continue
+                mp = self._search_merge(list(_MOVE_ACTIONS), blocks={target})
+                if not mp:
+                    continue
+                cost = len(route) + len(mp)
+                if best is None or cost < best[0]:
+                    best = (cost, target, route)
+        if best is None:
+            return None
+        _, target, route = best
+        plan: list[tuple] = [("click", *maze.pixel_center(blk))]  # select
+        plan.extend(("move", int(a)) for a in path_to_moves(route, _BLOCK_MOVE_LABELS))
+        plan.append(("click", *maze.pixel_center(self._deselect_cell({target}))))  # deselect
         return plan
 
     def _route_block(self, blk: Cell, occ: set[Cell], cur_blocks: set[Cell]) -> tuple[Cell | None, list[int]]:
