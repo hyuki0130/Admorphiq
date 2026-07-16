@@ -56,27 +56,46 @@ space:
     nearest visited state with an untried click (a small BFS over the same
     recorded edges, :meth:`_nearest_untried`).
 
-**Measured result — BANKED at 1/6 (ties the legacy card more efficiently)**:
-- ``--max-actions 1000``: 1/6 levels — L0 cleared in 238 clicks vs a
-  22-click human baseline, game_score 0.000407 (deterministic). The legacy
-  `seq_search` needed 505 clicks for the same L0.
-- ``--max-actions 30000`` (raised ``giveup``): still 1/6 — the explorer
-  never advances past level 0, confirming deeper multi-creature levels are a
-  hard plateau for blind click search, not merely a budget shortfall.
+**L0 (single creature): centroid-assembly PLANNER** — the one-shot
+select→place plan (:meth:`_build_plan`) clears L0 super-humanly (4 actions vs a
+22-action human baseline, game_score 0.0476).
 
-Even with the click alphabet bounded to region centroids, the assembly is a
-CONTINUOUS centroid-placement problem: the winning leg configuration is
+**L1+ (≥2 creatures): FROZEN-TARGET controller** (:meth:`_frozen_step`) —
+compute each creature's final leg configuration ONCE
+(:func:`admorphiq.kernels.points_with_centroid`) and HOLD it, so legs drive
+toward STATIONARY goals instead of the moving targets that stalled the earlier
+re-planner. Each cycle maps current legs (:meth:`_detect_legs`, a
+grouping-free compact-piece detector that does not go blind mid-transit) to the
+frozen cells by nearest-assignment, drives one unplaced leg, never disturbs a
+placed one; a refused cell is marked bad and its creature re-solved.
+
+**Measured result — still BANKED at 1/6 (L0 byte-identical, 0.0476)**:
+- ``--max-actions 1000``, deterministic: 1/6. The frozen controller drives REAL
+  engine moves on L1 (verified by a passive ``env._game.bbijaigbknc`` read;
+  strike count stays 0, so placements STICK — the old "engine reverts the
+  placement" hypothesis is falsified) but does not converge under the engine's
+  60-action HARD per-level budget (source ``_max_actions=60``; select, place,
+  AND refused place each cost one action).
+- The remaining wall is SELECT mis-targeting: the engine SELECTS only when a
+  click lands inside a leg's bbox, else it treats the click as a PLACE of the
+  still-selected leg (source ACTION6 handler), so a stale/missed select
+  silently drives the wrong leg off its frozen cell. This controller verifies
+  the place OUTCOME, not the select, so it cannot catch the miss.
+
+The generic click-frontier explorer (below) remains the fallback for boards
+neither planner recognises. On its own it never advances past L0: the assembly
+is a CONTINUOUS centroid-placement problem whose winning configuration is
 rarely any single salient centroid, so a frontier search over "click an
-existing region" cannot construct it except by luck, and each wrong
-placement risks one of the 5 collision strikes before GAME_OVER. The honest
-characterisation matches the codex verdict's guidance: the lever is LEARNED
-OBJECT DYNAMICS (which click drags which leg, how the body follows) +
-configuration-space planning toward the target, not blind click search.
-Reopen pointer: a generic "click-drag operator" motion kernel that infers,
-from observed click→leg-move transitions, the drag map and the body-follows-
-centroid rule, letting ``configuration_path`` plan a target-covering leg
-arrangement — the same shape as the codex-proposed ``learn_point_operators``
-/ ``plan_overwrites`` pair, generalised to click-drag assembly.
+existing region" cannot construct it except by luck.
+
+Reopen pointer (L1, sharpened by R60 engine ground truth — see
+``.wiki/wiki/games/R11L.md`` Notes R60): verify the SELECT, not the place. The
+engine recolours the selected leg to colour 0 (unselected legs are colour 3),
+so the currently-selected leg is frame-detectable as the lone colour-0 piece.
+Confirm the intended leg is the selected one BEFORE issuing a place — a place
+while the wrong leg is selected is the destructive move that drives a placed
+leg off its frozen cell. That is the only remaining blocker between the frozen-
+target controller and an L1 clear, and it fits inside the 60-action budget.
 
 Composition from ``admorphiq.kernels``:
   - :func:`admorphiq.kernels.find_regions` segments the board into salient
@@ -90,6 +109,7 @@ Composition from ``admorphiq.kernels``:
 
 from __future__ import annotations
 
+import os
 from collections import deque
 from typing import Any
 
@@ -159,12 +179,16 @@ _PLACE_STUCK_LIMIT = 12
 # A new level's legs animate in; build the plan only once the detected creature
 # signature has held for this many consecutive frames (past the animation).
 _SETTLE_FRAMES = 3
-# Continuous-replanning bound for multi-creature levels: rebuild the plan this
-# many times from the re-detected board before giving up to the explorer. Each
-# rebuild advances at most a few legs, so this comfortably covers a 2–3 creature
-# assembly (5 legs × a couple of retries each) without spinning forever when a
-# target is genuinely unreachable.
-_MAX_REBUILDS = 60
+# FROZEN-TARGET controller bound (multi-creature levels): total leg placements
+# attempted before giving up to the explorer. A 2–3 creature assembly is 5–7
+# legs; each leg needs at most a couple of select retries, so this covers the
+# arrangement without spinning when a target is genuinely unreachable.
+_MAX_FROZEN_MOVES = 48
+# Alternate select cells to try for one leg when a placement does not fire: the
+# leg's rounded centroid can fall on a background pixel of a non-convex sprite,
+# so on a miss we click a different FILLED cell of the same leg before deciding
+# the destination itself is refused.
+_MAX_SELECT_RETRY = 3
 
 
 def _hazard_cells(grid: Grid, bg: int) -> set[Cell]:
@@ -373,16 +397,41 @@ class Adapter(GameAdapter):
         self._plan_place_issued = False
         self._plan_last_masked: Grid | None = None
         self._plan_place_count = 0
-        # CONTINUOUS re-planning for MULTI-creature levels: a single-shot plan is
-        # brittle because any placement the engine refuses (a leg drag whose
-        # 5px footprint clips the arena wall — the frame-only `is_free` cannot
-        # match the engine's exact sprite collision) leaves later select clicks
-        # grabbing a leg that never moved, and the rigid queue derails. When ≥2
-        # creatures are detected the plan is REBUILT from the freshly re-detected
-        # board every time it drains, so a refused move is simply re-planned next
-        # cycle. Single-creature levels (L0) keep the one-shot path byte-identical.
+        # FROZEN-TARGET controller for MULTI-creature levels. The one-shot plan
+        # and its continuous-rebuild predecessor both chased MOVING goals:
+        # ``points_with_centroid`` recomputed from CURRENT leg positions every
+        # rebuild shifted each leg's destination cycle to cycle, so legs never
+        # converged. Fix: when ≥2 creatures are detected, compute each creature's
+        # FINAL leg configuration ONCE (the fixed-point: cells whose floor
+        # centroid is the nest, all placeable) and HOLD it; re-detection then only
+        # maps CURRENT legs to those FROZEN cells and drives the next unplaced leg
+        # to its frozen cell, never disturbing a leg already on target. Single-
+        # creature levels (L0) keep the one-shot path byte-identical.
         self._multi = False
-        self._rebuilds = 0
+        # Per-creature frozen destination cells (index-parallel to
+        # ``_frozen_creatures``) and the initial (leg_centres, target) used to
+        # recompute one creature's cells when a destination is marked bad. ``None``
+        # frozen dests means the build failed → defer to the explorer.
+        self._frozen_by_creature: list[list[Cell]] | None = None
+        self._frozen_creatures: list[tuple[list[Cell], Cell]] = []
+        self._frozen_bad: set[Cell] = set()
+        self._frozen_moves = 0
+        # In-flight single-leg move: select the leg (click a filled cell of it,
+        # retrying alternates on a miss) then place at its frozen cell (re-issued
+        # until the drag settles, then the outcome is verified).
+        self._fc_phase: str | None = None  # None | "select" | "place"
+        self._fc_leg_pre: Cell | None = None
+        self._fc_dest: Cell | None = None
+        self._fc_dest_creature = -1
+        self._fc_select_cells: list[Cell] = []
+        self._fc_retry = 0
+        self._fc_place_issued = False
+        self._fc_place_masked: Grid | None = None
+        self._fc_place_count = 0
+        # Per-placement trajectory log (intended dest vs observed move) — banked
+        # for the reopen note when convergence stalls. Printed only under the
+        # R11L_DEBUG env flag; never in a normal scored run.
+        self._fc_trajectory: list[tuple[Cell, Cell, bool]] = []
         # Creature signature (per-creature leg counts) held while waiting for a
         # new level's entry animation to settle, plus how many consecutive
         # frames it has held.
@@ -459,13 +508,35 @@ class Adapter(GameAdapter):
         self._settle_ref = None
         self._settle_count = 0
         self._multi = False
-        self._rebuilds = 0
+        self._frozen_by_creature = None
+        self._frozen_creatures = []
+        self._frozen_bad = set()
+        self._frozen_moves = 0
+        self._reset_move()
+        self._fc_trajectory = []
+
+    def _reset_move(self) -> None:
+        self._fc_phase = None
+        self._fc_leg_pre = None
+        self._fc_dest = None
+        self._fc_dest_creature = -1
+        self._fc_select_cells = []
+        self._fc_retry = 0
+        self._fc_place_issued = False
+        self._fc_place_masked = None
+        self._fc_place_count = 0
 
     def _on_restart(self) -> None:
         self._pending_click = None
         self._pending_key = None
-        # A restart means a placement went wrong (a strike); abandon the
-        # one-shot plan and let the explorer take over rather than repeat it.
+        # A restart on a SINGLE-creature level means a placement went wrong (a
+        # strike); abandon the one-shot plan and let the explorer take over. On a
+        # MULTI-creature level the frozen destinations are board-invariant, so
+        # keep them and resume driving legs toward the same cells (each life
+        # compounds); only the in-flight move is reset.
+        if self._multi:
+            self._reset_move()
+            return
         self._plan = None
         self._plan_attempted = True
 
@@ -552,21 +623,25 @@ class Adapter(GameAdapter):
             if sig is None or self._settle_count < _SETTLE_FRAMES:
                 return self._safe_wait_cell(grid, bg)
             self._plan_attempted = True
-            self._plan = self._build_plan(grid, bg)
-            self._plan_place_issued = False
-            self._plan_last_masked = None
-            self._plan_place_count = 0
+            # Route on creature count: ≥2 creatures use the FROZEN-TARGET
+            # controller (compute-once destinations); a single creature keeps the
+            # byte-identical one-shot plan (L0).
+            creatures = _analyze_creatures(grid, bg, _hazard_cells(grid, bg))
+            if creatures is not None and len(creatures) >= 2:
+                self._multi = True
+                self._build_frozen(grid, bg, creatures)
+            else:
+                self._plan = self._build_plan(grid, bg)
+                self._plan_place_issued = False
+                self._plan_last_masked = None
+                self._plan_place_count = 0
+
+        if self._multi:
+            if self._frozen_by_creature is None:
+                return None  # frozen build failed → defer to the explorer
+            return self._frozen_step(grid, bg, masked)
+
         if not self._plan:
-            # A drained/empty plan on a MULTI-creature level: some legs may not
-            # have reached their targets (a refused placement, or a centroid that
-            # needs another pass). Re-plan from the freshly re-detected board
-            # rather than falling through to the explorer — the continuous loop.
-            if self._multi and self._rebuilds < _MAX_REBUILDS:
-                self._rebuilds += 1
-                self._plan_attempted = False
-                self._settle_ref = None
-                self._settle_count = 0
-                return self._safe_wait_cell(grid, bg)
             return None
 
         kind, cell = self._plan[0]
@@ -634,6 +709,237 @@ class Adapter(GameAdapter):
                 if (lc[0] - cell[0]) ** 2 + (lc[1] - cell[1]) ** 2 <= _BODY_CENTROID_TOL2:
                     return True
         return False
+
+    # ── frozen-target controller (multi-creature) ───────────────────────
+
+    def _is_free(self, grid: Grid, bg: int, hazard: set[Cell], cell: Cell, radius: int) -> bool:
+        """Whether a leg can be placed at ``cell``: a clear BACKGROUND
+        neighbourhood of the given ``radius`` (the leg sprite's half-extent),
+        clear of the arena wall/hazard regions. Approximates the engine's
+        octagon-wall collision by the parsed passable region — a placement whose
+        footprint overlaps a wall or another marker is refused by the engine."""
+        r, c = cell
+        height, width = len(grid), len(grid[0])
+        for dr in range(-radius, radius + 1):
+            for dc in range(-radius, radius + 1):
+                rr, cc = r + dr, c + dc
+                if not (0 <= rr < height and 0 <= cc < width):
+                    return False
+                if grid[rr][cc] != bg or (rr, cc) in hazard:
+                    return False
+        return True
+
+    def _solve_creature(self, grid: Grid, bg: int, hazard: set[Cell], ci: int) -> list[Cell] | None:
+        """Compute one creature's frozen leg destinations: cells whose floor
+        centroid is its nest, preferring the fewest moves from the creature's
+        INITIAL legs, and excluding any destination already marked bad. Radius-2
+        clearance first (keeps well-separated placements), radius-1 fallback for a
+        nest wedged against a wall."""
+        legs, target = self._frozen_creatures[ci]
+        for radius in (_LEG_CLEAR_RADIUS, 1):
+            dests = points_with_centroid(
+                target,
+                len(legs),
+                lambda c, _r=radius: self._is_free(grid, bg, hazard, c, _r)
+                and (int(c[0]), int(c[1])) not in self._frozen_bad,
+                current=legs,
+            )
+            if dests is not None:
+                return [(int(r), int(c)) for r, c in dests]
+        return None
+
+    def _build_frozen(self, grid: Grid, bg: int, creatures: list[tuple[list[Cell], Cell]]) -> None:
+        """Compute and FREEZE every creature's final leg configuration ONCE. The
+        destinations are held for the rest of the level (only a refused cell is
+        later replaced), so legs drive toward STATIONARY goals instead of the
+        cycle-to-cycle moving targets that stalled the earlier re-planner."""
+        hazard = _hazard_cells(grid, bg)
+        self._frozen_creatures = [
+            ([(int(r), int(c)) for r, c in legs], (int(target[0]), int(target[1])))
+            for legs, target in creatures
+        ]
+        self._frozen_bad = set()
+        by_creature: list[list[Cell]] = []
+        for ci in range(len(self._frozen_creatures)):
+            dests = self._solve_creature(grid, bg, hazard, ci)
+            if dests is None:
+                self._frozen_by_creature = None
+                return
+            by_creature.append(dests)
+        self._frozen_by_creature = by_creature
+
+    def _recompute_creature(self, grid: Grid, bg: int, ci: int) -> None:
+        """Re-solve one creature's frozen destinations after a cell was marked
+        bad (its footprint clipped the wall). Leaves the old cells if no clean
+        replacement exists — the bad cell is filtered out of the active set
+        regardless, so the creature simply has one fewer reachable placement."""
+        if ci < 0 or self._frozen_by_creature is None:
+            return
+        dests = self._solve_creature(grid, bg, _hazard_cells(grid, bg), ci)
+        if dests is not None:
+            self._frozen_by_creature[ci] = dests
+
+    def _active_dests(self) -> list[tuple[Cell, int]]:
+        """Every frozen destination cell (with its creature index) not marked
+        bad. The controller drives one unplaced leg to one of these each move."""
+        out: list[tuple[Cell, int]] = []
+        for ci, cells in enumerate(self._frozen_by_creature or []):
+            for cell in cells:
+                if cell not in self._frozen_bad:
+                    out.append((cell, ci))
+        return out
+
+    def _detect_legs(self, grid: Grid, bg: int, hazard: set[Cell]) -> list[Region]:
+        """The compact clickable LEG regions on the current board — the same
+        piece/body/leg discrimination :func:`_analyze_creatures` uses, but WITHOUT
+        the per-creature grouping/consistency check, so it stays robust mid-
+        arrangement (when a body sits momentarily off its legs' centroid)."""
+        height, width = len(grid), len(grid[0])
+        pieces = [
+            r
+            for r in find_regions(grid, background=bg, gap=2)
+            if _MIN_PIECE_SIZE <= r["size"] <= _MAX_PIECE_SIZE
+            and not (r["cells"] & hazard)
+            and not _is_hud_band(r, height, width)
+        ]
+        by_color: dict[int, list[Region]] = {}
+        for r in pieces:
+            by_color.setdefault(r["color"], []).append(r)
+        body_colors: set[int] = set()
+        for color, regs in by_color.items():
+            if len(regs) < 2:
+                continue
+            if _fill(max(regs, key=_fill)) >= _BODY_FILL:
+                body_colors.add(color)
+        return [r for r in pieces if r["color"] not in body_colors and _fill(r) >= _MIN_LEG_FILL]
+
+    @staticmethod
+    def _leg_centre(region: Region) -> Cell:
+        return (int(round(region["centroid"][0])), int(round(region["centroid"][1])))
+
+    def _leg_click_cells(self, region: Region) -> list[Cell]:
+        """Select-click candidates for one leg: its rounded centroid first, then
+        the nearest FILLED cells of the region — the alternates tried on a miss
+        (a non-convex leg's centroid can land on a background pixel)."""
+        cr, cc = region["centroid"]
+        out: list[Cell] = [(int(round(cr)), int(round(cc)))]
+        for p in sorted(region["cells"], key=lambda q: (q[0] - cr) ** 2 + (q[1] - cc) ** 2):
+            if p not in out:
+                out.append((int(p[0]), int(p[1])))
+            if len(out) >= _MAX_SELECT_RETRY + 1:
+                break
+        return out
+
+    def _log_traj(self, moved: bool) -> None:
+        if self._fc_dest is None or self._fc_leg_pre is None:
+            return
+        self._fc_trajectory.append((self._fc_dest, self._fc_leg_pre, moved))
+        if os.environ.get("R11L_DEBUG"):
+            import sys
+
+            print(
+                f"[r11l] move#{self._frozen_moves} leg{self._fc_leg_pre} "
+                f"-> dest{self._fc_dest} moved={moved} bad={len(self._frozen_bad)}",
+                file=sys.stderr,
+                flush=True,
+            )
+
+    def _frozen_issue_select(self) -> Cell:
+        """Emit the next select click (a filled cell of the target leg) and move
+        to the place phase; a fresh place-settle window opens."""
+        cell = self._fc_select_cells.pop(0)
+        self._fc_phase = "place"
+        self._fc_place_issued = False
+        self._fc_place_masked = None
+        self._fc_place_count = 0
+        return cell
+
+    def _frozen_step(self, grid: Grid, bg: int, masked: Grid) -> Cell | None:
+        """One controller click. Maps the CURRENT legs to the FROZEN destination
+        cells, then either continues an in-flight place, or begins moving the next
+        unplaced leg to its nearest free frozen cell. Returns ``None`` to bank to
+        the explorer when convergence stalls."""
+        hazard = _hazard_cells(grid, bg)
+        leg_regions = self._detect_legs(grid, bg, hazard)
+        legs = [self._leg_centre(r) for r in leg_regions]
+        dests = self._active_dests()
+
+        def near(a: Cell, b: Cell) -> bool:
+            return (a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2 <= _BODY_CENTROID_TOL2
+
+        if self._fc_phase == "place":
+            return self._frozen_place(grid, bg, masked, legs, near)
+
+        unoccupied = [(d, ci) for d, ci in dests if not any(near(d, leg) for leg in legs)]
+        if not unoccupied:
+            # Every frozen cell carries a leg → each body is on its target →
+            # WIN is imminent; idle on a refused hazard click until it registers.
+            return self._safe_wait_cell(grid, bg)
+        if self._frozen_moves >= _MAX_FROZEN_MOVES:
+            return None  # banked: stalled short of convergence → defer to explorer
+
+        # An unplaced leg is one not already sitting on a frozen cell; never
+        # disturb a placed leg (the re86 never-disturb rule under frozen targets).
+        free = [
+            (r, self._leg_centre(r))
+            for r in leg_regions
+            if not any(near(self._leg_centre(r), d) for d, _ in dests)
+        ]
+        if not free:
+            return None  # no leg left to move but a cell is open → banked
+        best: tuple[int, Region, Cell, Cell, int] | None = None
+        for d, ci in unoccupied:
+            for region, lc in free:
+                dist = (lc[0] - d[0]) ** 2 + (lc[1] - d[1]) ** 2
+                if best is None or dist < best[0]:
+                    best = (dist, region, lc, d, ci)
+        assert best is not None
+        _dist, region, lc, dest, ci = best
+        self._fc_leg_pre = lc
+        self._fc_dest = dest
+        self._fc_dest_creature = ci
+        self._fc_select_cells = self._leg_click_cells(region)
+        self._fc_retry = 0
+        return self._frozen_issue_select()
+
+    def _frozen_place(
+        self, grid: Grid, bg: int, masked: Grid, legs: list[Cell], near: Any
+    ) -> Cell | None:
+        """The place phase: click the frozen destination, re-issued until the
+        drag settles, then verify the intended leg reached it. On a miss, retry an
+        alternate select cell; when those are exhausted the destination itself is
+        refused (footprint clips the wall) → mark it bad, re-solve the creature."""
+        if self._fc_place_issued and masked == self._fc_place_masked:
+            assert self._fc_dest is not None and self._fc_leg_pre is not None
+            moved = any(near(self._fc_dest, leg) for leg in legs) and not any(
+                near(self._fc_leg_pre, leg) for leg in legs
+            )
+            self._log_traj(moved)
+            if moved:
+                self._frozen_moves += 1
+                self._reset_move()
+                return self._frozen_step(grid, bg, masked)
+            self._fc_retry += 1
+            if self._fc_select_cells and self._fc_retry <= _MAX_SELECT_RETRY:
+                return self._frozen_issue_select()
+            self._frozen_bad.add(self._fc_dest)
+            self._recompute_creature(grid, bg, self._fc_dest_creature)
+            self._frozen_moves += 1
+            self._reset_move()
+            return self._frozen_step(grid, bg, masked)
+
+        self._fc_place_count += 1
+        if self._fc_place_count > _PLACE_STUCK_LIMIT:
+            self._log_traj(False)
+            assert self._fc_dest is not None
+            self._frozen_bad.add(self._fc_dest)
+            self._recompute_creature(grid, bg, self._fc_dest_creature)
+            self._frozen_moves += 1
+            self._reset_move()
+            return self._frozen_step(grid, bg, masked)
+        self._fc_place_issued = True
+        self._fc_place_masked = masked
+        return self._fc_dest
 
     # ── measurement: record the observed transition ─────────────────────
 
