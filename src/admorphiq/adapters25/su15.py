@@ -181,34 +181,107 @@ _MIN_USEFUL_DIFF = 1.5
 # value -> sprite side length (laalrfemee sizes). A fruit-model position is the
 # sprite TOP-LEFT in (x=col, y=row); a value-0 fruit is a single cell.
 _SIZE = (1, 2, 3, 4, 5, 7, 8, 9, 10)
-_SUBSTEPS = 4  # gdamdvokm
-_PULL_PX = 4  # ikskfqldi
+_SUBSTEPS = 4  # gdamdvokm (bjetwxoaq) — vacuum sub-steps per click
+_PULL_PX = 4  # ikskfqldi (stqbquzms) — fruit pull px/axis per sub-step
+# Enemy sprite (source ``sprites["enemy"]``): a 4-row × 5-col star. Its centre
+# (``qmecbepbyz``) is top-left + (width//2, height//2) = (x+2, y+2).
+_ENEMY_W = 5
+_ENEMY_H = 4
+# A class-1 enemy (source tag ``gulrbtyssc``, the ONLY enemy kind on L3) steps
+# this many px/axis toward the nearest fruit each vacuum sub-step (``wwvazosegn``:
+# ``lvkjczbkpm = 1``; classes 2/3 step 2, absent on L3).
+_ENEMY_STEP = 1
+# A vacuumed class-1 enemy is pulled along the fixed enemy-centre->click unit ray
+# at ``_PULL_PX * 0.85`` px/sub-step (source ``cmfhziahuk``), NOT clamped at the
+# click (unlike fruits). Over _SUBSTEPS that is ~13.6 px toward the click.
+_ENEMY_VAC_FRAC = 0.85
+# Play-area clamp bounds (source ``gnexwlqinp`` / ``ncfmodluov`` + grid 64).
+_CLAMP_TOP = 10
+_CLAMP_BOTTOM = 63
+_GRID_WH = 64
 
 
-def _sim_click(model: list[list[int]], cx: int, cy: int) -> list[list[int]]:
-    """One vacuum click on a fruit-only model (pull + same-value merge).
+def _euclid_in_radius(cx: int, cy: int, x: int, y: int, w: int, h: int, radius: int = _VACUUM_RADIUS) -> bool:
+    """Engine ``yrufkxnmou``: is ``(cx, cy)`` within ``radius`` (EUCLIDEAN) of the
+    sprite's bbox? The click point is clamped to ``[x, x+w-1] × [y, y+h-1]`` and
+    the squared distance to that nearest bbox cell compared to ``radius²``."""
+    px = x if cx < x else (x + w - 1 if cx > x + w - 1 else cx)
+    py = y if cy < y else (y + h - 1 if cy > y + h - 1 else cy)
+    dx = cx - px
+    dy = cy - py
+    return dx * dx + dy * dy <= radius * radius
 
-    Faithful to the source's per-sub-step pull (each in-radius fruit steps up to
-    ``_PULL_PX`` px/axis toward the click over ``_SUBSTEPS`` sub-steps, clamped at
-    the click) and its union-find merge (a clump of N same-value OVERLAPPING
-    fruits collapses to ONE value+1 at the group centroid). Validated
-    byte-faithful on the value-multiset over the proven 19-click L3 win (0
-    mismatches vs the live engine). The enemy is NOT modelled here — it is read
-    live each step; the winning choreography keeps it off the fruits, so the
-    fruit model stays in sync (0 re-syncs measured), immune to the per-step
-    perception noise that breaks a frame-reactive cascade. Coordinates are
-    ``[x=col, y=row, value]`` sprite top-left."""
-    fs = [f[:] for f in model]
 
-    def in_radius(f: list[int]) -> bool:
-        sz = _SIZE[f[2]]
-        nx = max(f[0], min(cx, f[0] + sz - 1))
-        ny = max(f[1], min(cy, f[1] + sz - 1))
-        return abs(nx - cx) <= _VACUUM_RADIUS and abs(ny - cy) <= _VACUUM_RADIUS
+def _clamp_pos(x: float, y: float, w: int, h: int) -> tuple[int, int]:
+    """Engine play-area clamp: ``x`` into ``[0, 64-w]``; ``y`` into
+    ``[10, min(63, 64-h)]``."""
+    xi = int(round(x))
+    yi = int(round(y))
+    if xi < 0:
+        xi = 0
+    if xi > _GRID_WH - w:
+        xi = _GRID_WH - w
+    if yi < _CLAMP_TOP:
+        yi = _CLAMP_TOP
+    if yi > _CLAMP_BOTTOM:
+        yi = _CLAMP_BOTTOM
+    if yi > _GRID_WH - h:
+        yi = _GRID_WH - h
+    return xi, yi
 
-    sel = [f for f in fs if in_radius(f)]
+
+def _bbox_overlap(ax: int, ay: int, aw: int, ah: int, bx: int, by: int, bw: int, bh: int) -> bool:
+    """Engine ``rukauvoumh`` half-open-bbox overlap test."""
+    if ax + aw <= bx or bx + bw <= ax:
+        return False
+    if ay + ah <= by or by + bh <= ay:
+        return False
+    return True
+
+
+def _sim_click_full(
+    fruits: list[list[int]], enemies: list[list[int]], cx: int, cy: int
+) -> tuple[list[list[int]], list[list[int]], bool]:
+    """FAITHFUL one-click sim of fruits AND enemies (source ``ctohhyezgx`` →
+    ``lyaaynsyhw`` ×``_SUBSTEPS`` → ``ivbqcpwjdw`` merge), interleaving the
+    per-sub-step enemy chase (``wwvazosegn``) exactly as the engine does.
+
+    ``fruits`` are ``[x=col, y=row, value]`` sprite top-lefts; ``enemies`` are
+    ``[x=col, y=row]`` top-lefts of the 5×4 star. Returns
+    ``(fruits', enemies', contact)`` where ``contact`` is True iff a
+    NON-vacuumed enemy's bbox overlapped a fruit's bbox during any sub-step —
+    i.e. a downgrade (``sbfzybbszx``) would have fired. The margin search treats
+    ``contact=True`` as an unsafe plan and never relies on the post-contact
+    knockback dynamics (which this sim deliberately does not model, since a
+    margin-safe plan never triggers them). The fruit half is byte-identical to
+    :func:`_sim_click`; with ``enemies=[]`` this returns exactly ``_sim_click``'s
+    fruit result and ``contact=False``."""
+    fs = [f[:] for f in fruits]
+    es = [e[:] for e in enemies]
+
+    # ── ctohhyezgx: select vacuumed fruits and enemies by the engine's EXACT
+    # euclidean bbox test (yrufkxnmou). (The older _sim_click used a looser
+    # Chebyshev test — validated only on the win sequence; it OVER-selects
+    # diagonal fruits and mis-merges on arbitrary clicks, so the faithful sim
+    # uses euclidean.) ──
+    sel_fruit = [f for f in fs if _euclid_in_radius(cx, cy, f[0], f[1], _SIZE[f[2]], _SIZE[f[2]])]
+    # Vacuumed enemies: fixed unit ray from enemy CENTRE to the click, float
+    # top-left accumulator (source itlxknnsz / rzfgsshuk).
+    vac_enemy: dict[int, tuple[float, float, float, float]] = {}
+    for i, e in enumerate(es):
+        if _euclid_in_radius(cx, cy, e[0], e[1], _ENEMY_W, _ENEMY_H):
+            ecx = e[0] + _ENEMY_W // 2
+            ecy = e[1] + _ENEMY_H // 2
+            vx = float(cx - ecx)
+            vy = float(cy - ecy)
+            d = (vx * vx + vy * vy) ** 0.5
+            ux, uy = (vx / d, vy / d) if d > 0.0 else (0.0, 0.0)
+            vac_enemy[i] = (ux, uy, float(e[0]), float(e[1]))
+
+    contact = False
     for _ in range(_SUBSTEPS):
-        for f in sel:
+        # 1) Move vacuumed fruits toward the click (clamped per axis).
+        for f in sel_fruit:
             dx, dy = cx - f[0], cy - f[1]
             if dx > 0:
                 f[0] += min(_PULL_PX, dx)
@@ -218,7 +291,43 @@ def _sim_click(model: list[list[int]], cx: int, cy: int) -> list[list[int]]:
                 f[1] += min(_PULL_PX, dy)
             elif dy < 0:
                 f[1] += max(-_PULL_PX, dy)
+        # 2) Move vacuumed enemies along their fixed ray (float accumulate).
+        step = _PULL_PX * _ENEMY_VAC_FRAC
+        for i, (ux, uy, fx, fy) in list(vac_enemy.items()):
+            fx += ux * step
+            fy += uy * step
+            xi, yi = _clamp_pos(fx, fy, _ENEMY_W, _ENEMY_H)
+            es[i][0], es[i][1] = xi, yi
+            vac_enemy[i] = (ux, uy, float(xi), float(yi))
+        # 3) wwvazosegn: chase for every NON-vacuumed enemy, 1px/axis toward the
+        #    nearest fruit's centre (recomputed each sub-step).
+        for i, e in enumerate(es):
+            if i in vac_enemy:
+                continue
+            if not fs:
+                continue
+            ecx = e[0] + _ENEMY_W // 2
+            ecy = e[1] + _ENEMY_H // 2
+            best = min(
+                fs, key=lambda f: (f[0] + _SIZE[f[2]] // 2 - ecx) ** 2 + (f[1] + _SIZE[f[2]] // 2 - ecy) ** 2
+            )
+            tx = best[0] + _SIZE[best[2]] // 2
+            ty = best[1] + _SIZE[best[2]] // 2
+            sx = _ENEMY_STEP if tx > ecx else (-_ENEMY_STEP if tx < ecx else 0)
+            sy = _ENEMY_STEP if ty > ecy else (-_ENEMY_STEP if ty < ecy else 0)
+            e[0], e[1] = _clamp_pos(e[0] + sx, e[1] + sy, _ENEMY_W, _ENEMY_H)
+        # 4) Collision: a NON-vacuumed enemy overlapping a fruit downgrades it
+        #    (sbfzybbszx). Margin-safe plans avoid this — flag and keep going.
+        for i, e in enumerate(es):
+            if i in vac_enemy:
+                continue
+            for f in fs:
+                if _bbox_overlap(e[0], e[1], _ENEMY_W, _ENEMY_H, f[0], f[1], _SIZE[f[2]], _SIZE[f[2]]):
+                    contact = True
+                    break
 
+    # ── ivbqcpwjdw: union-find same-value OVERLAP merge (identical to
+    # _sim_click). ──
     def touch(a: list[int], b: list[int]) -> bool:
         sa, sb = _SIZE[a[2]], _SIZE[b[2]]
         return not (a[0] + sa <= b[0] or b[0] + sb <= a[0] or a[1] + sa <= b[1] or b[1] + sb <= a[1])
@@ -243,13 +352,13 @@ def _sim_click(model: list[list[int]], cx: int, cy: int) -> list[list[int]]:
     for idxs in groups.values():
         if len(idxs) >= 2:
             v = fs[idxs[0]][2] + 1
-            nsz = _SIZE[v]
+            nsz = _SIZE[v] if v < len(_SIZE) else _SIZE[-1]
             gx = round(sum(fs[k][0] for k in idxs) / len(idxs))
             gy = round(sum(fs[k][1] for k in idxs) / len(idxs))
             out.append([gx - (nsz - 1) // 2, gy - (nsz - 1) // 2, v])
         else:
             out.append(fs[idxs[0]])
-    return out
+    return out, es, contact
 
 
 def _bbox_hw(region: Region) -> tuple[float, float]:
@@ -414,11 +523,17 @@ class Adapter(GameAdapter):
         self._pending_click: Cell | None = None
         self._prev_grid: tuple[tuple[int, ...], ...] | None = None
         # Internal fruit model (list of [x=col, y=row, value]) for enemy levels:
-        # parsed once from the settled frame, then advanced by _sim_click per
-        # click so the exact-parity cascade is immune to per-step perception
-        # noise (the measured cause of frame-reactive L3 failure). The enemy is
-        # read live each step. None until the level's opening frame settles.
+        # parsed once from the settled frame, then advanced by _sim_click_full
+        # per click (fruits AND enemy in one faithful sim) so the exact-parity
+        # cascade + enemy-lure choreography run OPEN-LOOP, immune to the per-step
+        # perception noise that sinks a frame-reactive planner. None until the
+        # level's opening frame settles; re-seeded from live only on divergence.
         self._model: list[list[int]] | None = None
+        # Internal enemy model (list of [x=col, y=row] sprite top-lefts), seeded
+        # and advanced alongside _model by _sim_click_full — the enemy is now
+        # simulated open-loop, NOT read live each step (the live read + Chebyshev
+        # fruit sim was the measured cause of the 3/9 L3 stall).
+        self._enemy_model: list[list[int]] | None = None
         self._model_settle = 0
         self._last_click_xy: Cell | None = None
         # Static-goal memory: colour-9 disks that have not moved. Seeded on
@@ -448,6 +563,7 @@ class Adapter(GameAdapter):
             self._lead_px = float(_LEAD_PX)
             self._goal_anchors = [_centroid(g) for g in _classify(grid)[0]]
             self._model = None
+            self._enemy_model = None
             self._model_settle = 0
             self._last_click_xy = None
 
@@ -493,28 +609,35 @@ class Adapter(GameAdapter):
     # Corners (in x=col, y=row) the enemy is lured toward — far from the fruits
     # so vacuuming it there does not also grab a merge fruit.
     _MODEL_CORNERS = ((2, 12), (2, 60), (60, 12), (60, 60), (2, 36), (60, 36), (2, 53), (60, 53))
-    # Base lure-danger radius (the value the proven engine choreography used).
-    # A FIXED threshold cannot both merge and protect robustly frame-only: ~15
-    # is fragile to ±1px seed drift, ~20 perpetually lures (the enemy is always
-    # within range) and starves the cascade — the reason a plan SEARCH (enemy
-    # in-sim), not a fixed reactive threshold, is the robust close (see SU15.md).
-    _MODEL_LURE_BASE = 15.0
+    # Base lure-danger radius. MEASURED optimum of the enemy-in-sim margin
+    # search (`scripts/_su15_enemy_sim.py --search`): with the FAITHFUL
+    # fruits+enemy sim, lure_base=20 WINS 9/9 under all ±1px seed perturbations
+    # (23-click plan); 15 is a fragile 6/9, 12 contacts, ≥28 over-lures and
+    # starves the cascade. The corner set does not affect the outcome — the lure
+    # aggression is the sole sensitive knob. (The prior comment claimed "20
+    # starves"; that was measured under the Chebyshev _sim_click fruit model,
+    # which over-merges — the faithful euclidean _sim_click_full inverts it.)
+    _MODEL_LURE_BASE = 20.0
 
     def _model_action(self, grid: tuple[tuple[int, ...], ...], n_layers: int) -> Cell | None:
-        """Model-driven cascade for enemy levels (L3+): advance an internal
-        fruit model with :func:`_sim_click` so the exact-parity cascade never
-        depends on the noisy live fruit read, while the enemy is read live.
-        Returns the ``(row, col)`` click, or ``None`` to defer to the byte-
-        identical no-enemy :meth:`_plan` (L0-L2, or a detection miss)."""
+        """OPEN-LOOP model-driven cascade for enemy levels (L3+): seed a fruit +
+        enemy model ONCE from the settled frame, then advance BOTH with the
+        faithful :func:`_sim_click_full` per click and emit the margin-robust
+        lure choreography. The enemy is simulated, not read live — the live read
+        + Chebyshev fruit sim was the measured 3/9 stall. A live re-parse each
+        step corrects the model only on divergence (a downgrade the sim's
+        margin-safe plan should never cause). Returns the ``(row, col)`` click,
+        or ``None`` to defer to the byte-identical no-enemy :meth:`_plan`
+        (L0-L2, or a detection miss)."""
         goals, fruits, enemies = _classify(grid)
         if not enemies:
             return None
         goals = self._prefer_static_goals(goals) or self._anchor_goals()
 
-        if self._model is None:
+        if self._model is None or self._enemy_model is None:
             # A multi-layer transient at level entry mis-reads the board; wait a
             # few frames (a click at row 0 is out of play — the engine ignores
-            # it — so it is a harmless settle action). Seed the model once the
+            # it — so it is a harmless settle action). Seed both models once the
             # frame settles and a full fruit set is visible.
             if n_layers > 1 and self._model_settle < 4:
                 self._model_settle += 1
@@ -524,17 +647,29 @@ class Adapter(GameAdapter):
             self._model = [
                 [int(round(_centroid(f)[1])), int(round(_centroid(f)[0])), _value(f)] for f in fruits
             ]
+            self._enemy_model = [self._enemy_topleft(e) for e in enemies]
 
+        # PURE OPEN-LOOP after the settle-seed — NO per-click live re-sync. The
+        # merge/vacuum animation resolves over several engine sub-steps, so a
+        # live re-parse LAGS the sim by ~1 click; a naive mid-cascade reseed
+        # reverts a good merge and strands the exact-parity cascade (measured,
+        # commit 4a2d044). The sim is faithful (validated: contact-free fruit
+        # multiset 0 mismatches / 200 frames, enemy chase ≤4px) and the plan is
+        # margin-robust (9/9 under ±1px seed drift), so the sim is trusted end
+        # to end — this is exactly what cleared L3 live (22 clicks).
         model = self._model
-        if not model:
+        enemy_model = self._enemy_model
+        if not model or not enemy_model:
             return None
 
         def to_xy(region: Region) -> tuple[float, float]:
             r, c = _centroid(region)
             return (c, r)
 
+        # Enemy position comes from the SIM model (open-loop), picking the enemy
+        # nearest the fruit cascade as the threat the choreography reacts to.
         enemy_xy = min(
-            (to_xy(e) for e in enemies),
+            ((e[0] + _ENEMY_W // 2.0, e[1] + _ENEMY_H // 2.0) for e in enemy_model),
             key=lambda e: min((_dist(e, (f[0], f[1])) for f in model), default=0.0),
         )
         goal_xy = to_xy(goals[0]) if goals else (float(_GRID // 2), float(_GRID // 2))
@@ -544,8 +679,16 @@ class Adapter(GameAdapter):
             return None
         cx = max(0, min(_GRID - 1, int(round(click_xy[0]))))
         cy = max(_PLAY_TOP, min(_PLAY_BOTTOM, int(round(click_xy[1]))))
-        self._model = _sim_click(model, cx, cy)
+        self._model, self._enemy_model, _contact = _sim_click_full(model, enemy_model, cx, cy)
         return (cy, cx)
+
+    @staticmethod
+    def _enemy_topleft(region: Region) -> list[int]:
+        """Sprite top-left ``[x=col, y=row]`` of a fused enemy region, from its
+        centroid minus the 5×4 star's half-extent — the seed for the enemy
+        model that :func:`_sim_click_full` advances."""
+        cr, cc = _centroid(region)
+        return [int(round(cc)) - _ENEMY_W // 2, int(round(cr)) - _ENEMY_H // 2]
 
     def _model_heuristic(
         self, model: list[list[int]], enemy_xy: tuple[float, float], goal_xy: tuple[float, float]
