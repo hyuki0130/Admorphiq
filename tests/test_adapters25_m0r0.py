@@ -404,3 +404,39 @@ def test_successors_open_a_gate_when_a_player_stands_on_its_plate():
     # moving right now enters (2,2).
     out_open = dict(succ(((2, 1), (0, 0))))
     assert out_open[4][0] == (2, 2)
+
+
+def test_detect_gates_reads_zone_from_padding_not_hazard_heavy_interior():
+    """Purpose: regression pin for the L6 gate-detection bug — zone colours
+    (used to EXCLUDE static maze walls from gate detection) must be read from
+    the letterbox PADDING, not the maze interior. A hazard-heavy level (L6: 62
+    wyiex cells vs a handful of jggua walls) gives the hazard colour a higher
+    in-maze count than the true zone, which would wrongly classify a real gate
+    colour as 'zone' and drop its group (sealing a room). The padding is always
+    zone-filled regardless of maze contents.
+    Expected feedback: failure means a hazard-heavy gated level loses a gate
+    group and becomes unsolvable (a room stays sealed)."""
+    from admorphiq.adapters25.m0r0 import _FLOOR_COLOR, _detect_gates
+
+    scale, gh, gw = 4, 5, 5
+    off = (64 - gh * scale) // 2
+    g = [[11] * 64 for _ in range(64)]  # padding + everything = zone colour 11
+    # maze interior: mostly hazard (checkerboard colour 8 over floor 5), with a
+    # colour-14 gate — a 3-cell wall (row 0) and a 1-cell plate (row 4).
+    for gy in range(gh):
+        for gx in range(gw):
+            r0, c0 = off + gy * scale, off + gx * scale
+            for rr in range(r0, r0 + scale):
+                for cc in range(c0, c0 + scale):
+                    if gy == 0 and gx in (1, 2, 3):
+                        g[rr][cc] = 14          # gate wall (3 cells)
+                    elif gy == 4 and gx == 2:
+                        g[rr][cc] = 14          # plate (1 cell)
+                    else:
+                        g[rr][cc] = 8 if (rr + cc) % 2 == 0 else _FLOOR_COLOR  # hazard
+    grid = tuple(tuple(r) for r in g)
+    plates, gate_walls = _detect_gates(grid, off, off, scale, gh, gw, _FLOOR_COLOR, _PLAYER)
+    # colour 14 must be found as a gate (zone is 11, from the padding), NOT
+    # excluded because colour 8 dominates the interior.
+    assert 14 in gate_walls and gate_walls[14] == {(0, 1), (0, 2), (0, 3)}
+    assert 14 in plates and plates[14] == {(4, 2)}

@@ -12,9 +12,18 @@ conditional WALL; the wall is passable IFF a player stands on a plate of that
 group, recomputed every step (MOMENTARY). The gate state is a pure function of
 the players' positions, so the joint BFS node stays ``(p0, p1)`` and
 ``_successors`` computes the closed gate walls per node. Gate cells are detected
-as colours that are NOT floor/player/block/hazard and NOT one of the two
-dominant ZONE colours — so a level whose zone colour is 12/14/15 (L1-L4) never
-mis-reads its static walls as gates.
+as colours that are NOT floor/player/block/hazard and NOT one of the two ZONE
+colours — where the zone colours are read from the LETTERBOX PADDING (always
+zone-filled), NOT the maze interior (a hazard-heavy level would give the hazard
+colour a higher in-maze count than the true zone and drop a real gate group).
+So a level whose zone colour is 12/14/15 (L1-L4) never mis-reads its static
+walls as gates.
+
+The merge phase is COMMIT-TO-PLAN: the joint BFS plans the merge once, executes
+it open-loop, and re-plans only when an observed frame diverges from the plan's
+prediction — this avoids the per-frame shortest-path re-plan oscillating around
+a blocked meeting cell, while still self-correcting a wrong identity on the
+frame it diverges.
 
 cvcer movable blocks (colour 9) are used two opposite ways, both gated on
 colour-9 detection so the L0/L1 path is untouched:
@@ -283,21 +292,33 @@ def _detect_gates(
     ``(plates, gate_walls)``, each keyed by group colour.
 
     A gate colour is any colour that is NOT floor / player / block / hazard and
-    NOT one of the two dominant ZONE colours (the maze-wall fill, which is the
-    top-2 most-frequent non-floor/non-player colours). This is what stops a
-    level whose zone colour happens to be 12/14/15 (L1-L4) from mis-reading its
-    static walls as gates — there the gate colour IS the zone colour, so it is
-    excluded. Within a gate colour, a single-cell region is a PLATE
-    (``hnutp``), a multi-cell region a conditional WALL (``dfnuk``).
+    NOT one of the two dominant ZONE colours (the maze-wall fill). This is what
+    stops a level whose zone colour happens to be 12/14/15 (L1-L4) from
+    mis-reading its static walls as gates — there the gate colour IS the zone
+    colour, so it is excluded. Within a gate colour, a single-cell region is a
+    PLATE (``hnutp``), a multi-cell region a conditional WALL (``dfnuk``).
+
+    The zone colours are read from the LETTERBOX PADDING (outside the centered
+    maze), NOT from the maze interior: the padding is always zone-filled
+    (colour1 left half / colour2 right half), whereas a hazard-heavy level (L6:
+    62 wyiex cells vs a handful of jggua walls) would give the HAZARD colour a
+    higher in-maze count than the true zone, wrongly excluding a real gate
+    colour as "zone". The padding is reliable regardless of maze contents.
     """
-    # Pixel counts per colour, to find the two zone (maze-wall) colours.
     counts: dict[int, int] = {}
-    for r in range(off_y, min(off_y + gh * scale, len(grid))):
+    h = len(grid)
+    w = len(grid[0]) if h else 0
+    y1, y2 = off_y, off_y + gh * scale
+    x1, x2 = off_x, off_x + gw * scale
+    for r in range(h):
         row = grid[r]
-        for c in range(off_x, min(off_x + gw * scale, len(row))):
+        inside_rows = y1 <= r < y2
+        for c in range(w):
+            if inside_rows and x1 <= c < x2:
+                continue  # skip the maze interior; count only the padding
             v = row[c]
-            if v == background or v == player_color:
-                continue
+            if v == background or v == player_color or v == 0:
+                continue  # 0 = letterbox/HUD, not a zone colour
             counts[v] = counts.get(v, 0) + 1
     zone = {c for c, _ in sorted(counts.items(), key=lambda kv: -kv[1])[:2]}
     excluded = {background, player_color, _BLOCK_COLOR, _HAZARD_COLOR} | zone
@@ -439,6 +460,16 @@ class Adapter(GameAdapter):
         # GameAction at drain time (ACTION6 is a mutable singleton, so a
         # pre-built click would be clobbered by the next one). None = not built.
         self._clear_plan: list[tuple] | None = None
+        # COMMIT-TO-PLAN merge queue: the merge is planned ONCE by the joint BFS
+        # and executed open-loop, re-planning ONLY when an observed frame
+        # diverges from the model's prediction. Re-planning the shortest path
+        # EVERY frame otherwise oscillates around a hazard-blocked meeting cell
+        # (the pair flips up/down forever because equal-length detours pick
+        # contradictory first moves — the L6 defect). ``_merge_expected[i]`` is
+        # the sorted joint state that must be OBSERVED before ``_merge_plan[i]``
+        # runs (its precondition); a mismatch drops the plan and re-plans.
+        self._merge_plan: list[int] = []
+        self._merge_expected: list[tuple[Cell, Cell]] = []
 
     # ── harness contract ────────────────────────────────────────────────
 
@@ -568,38 +599,69 @@ class Adapter(GameAdapter):
                 return click_action(rest[0], rest[1])
             return simple_action(rest[0])
 
-        # Phase B — closed-loop merge over the ORDERED joint identity state.
-        # Re-plan the shortest merge path from the OBSERVED state every
-        # decision and take only its first action; BFS is cheap on these small
-        # mazes and single-step transitions are exact (byte-exact wall map), so
-        # this follows the shortest path with zero open-loop drift and any
-        # surprise simply re-routes next frame.
+        # Phase B — COMMIT-TO-PLAN merge. Plan the shortest merge ONCE, execute
+        # it open-loop, and re-plan ONLY when the observed frame diverges from
+        # the plan's prediction. This kills the per-frame re-plan oscillation
+        # (equal-length detours around a blocked meeting cell) while still
+        # self-correcting a wrong identity or a surprise on the frame it happens.
         players = self._current_players(grid)
         if len(players) < 2:
             # merged (or about to win) — idle a legal move; harness WIN check
             # decides.
             self._last_action = None
             self._prev_merge_players = None
+            self._merge_plan = []
+            self._merge_expected = []
             return simple_action(move_ids[0])
-        # Identity from OBSERVED motion: the two players just moved by
-        # {scheme[a][0], scheme[a][1]}; the one whose displacement matches
-        # scheme[last_action][0] is player-0. This reads identity directly off
-        # the frame (no fragile prediction/flip heuristic) and is exact whenever
-        # the pair actually moved.
+        # Identity from OBSERVED motion: the pair just moved by
+        # {scheme[a][0], scheme[a][1]}; the cell displaced by scheme[last_action][0]
+        # is player-0 (exact whenever it moved).
         self._assign_identity(players)
+        obs_state = tuple(players)  # sorted
 
+        # Drain the committed plan while reality still matches its next
+        # precondition.
+        if self._merge_plan and self._merge_expected and self._merge_expected[0] == obs_state:
+            self._no_plan_streak = 0
+            self._prev_merge_players = players
+            self._merge_expected.pop(0)
+            a = self._merge_plan.pop(0)
+            self._last_action = a
+            return simple_action(a)
+
+        # Diverged or no plan queued — re-plan once from the observed state.
+        self._merge_plan = []
+        self._merge_expected = []
         blocks = self._current_blocks(grid)
         plan = self._search_merge(move_ids, blocks)
         if plan:
             self._no_plan_streak = 0
             self._prev_merge_players = players
-            self._last_action = plan[0]
-            return simple_action(plan[0])
+            self._merge_expected = self._merge_prestates(plan, blocks)
+            self._merge_plan = list(plan)
+            self._merge_expected.pop(0)
+            a = self._merge_plan.pop(0)
+            self._last_action = a
+            return simple_action(a)
         # No merge plan (unmodelled variant) — gated explorer preserving floor.
         self._no_plan_streak += 1
         self._prev_merge_players = players
         self._last_action = self._explore(move_ids)
         return simple_action(self._last_action)
+
+    def _merge_prestates(self, plan: list[int], blocks: set[Cell]) -> list[tuple[Cell, Cell]]:
+        """The sorted joint state to OBSERVE before each queued action — its
+        precondition — by replaying ``plan`` through the identical successor
+        closure the search used. ``[0]`` is the current state; ``[i]`` is the
+        state produced by ``plan[i-1]``. Used to detect open-loop divergence."""
+        successors = self._successors(list(_MOVE_ACTIONS), blocks)
+        cur: JointState = (self._p0, self._p1)  # type: ignore[assignment]
+        pre: list[tuple[Cell, Cell]] = []
+        for a in plan:
+            pre.append(tuple(sorted(cur)))  # type: ignore[arg-type]
+            nxt = next((ns for act, ns in successors(cur) if act == a), cur)
+            cur = nxt
+        return pre
 
     def _identity_or_sorted(self, grid: tuple) -> list[Cell]:
         """The two players in the identity order established SO FAR this level
