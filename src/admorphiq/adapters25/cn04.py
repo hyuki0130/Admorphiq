@@ -182,6 +182,46 @@ def _mask_hud(grid: tuple[tuple[int, ...], ...], bg: int) -> tuple[tuple[int, ..
     return tuple((bg,) * width if r == 0 else row for r, row in enumerate(grid))
 
 
+# ── grey-masked levels (L3+): joint rigid arrangement executor ─────────────
+# On GreyMasking levels the non-active sprites (and their stubs) render in the
+# background colour, so only the SELECTED sprite shows its native body + its
+# colour-8 stubs; there is NO colour-0 active body (that is the L1/L2 signature).
+# The win still needs every sprite's stubs to coincide with a partner's of the
+# same HIDDEN colour (8-8 / 13-13, both displayed as 8 — the L1 chirality,
+# generalised). L3 has three 2-stub sprites; the arrangement is a JOINT rigid
+# co-placement: fix the widest-span sprite, coincide the mid sprite's stub onto
+# it at the rotation whose LEFTOVER stub-pair distance equals the third
+# sprite's span, then that third sprite bridges the two leftover stubs. The
+# hidden 8-vs-13 is invisible, so on a full display-coincidence WITHOUT a win we
+# RESET and retry the alternate stub assignment (chirality). All measured +
+# validated live (R59); no hardcoded coordinates — the plan is searched from the
+# frame-cached stub geometry.
+_GREY_MASK_COLOR = 4
+
+
+def _rot90(v: Cell) -> Cell:
+    """A stub-vector rotated 90 degrees clockwise (matches ACTION5, measured)."""
+    return (v[1], -v[0])
+
+
+def _rot_cycle(v: Cell) -> list[Cell]:
+    out = [v]
+    for _ in range(3):
+        out.append(_rot90(out[-1]))
+    return out
+
+
+def _vlen(a: Cell, b: Cell) -> float:
+    return ((a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2) ** 0.5
+
+
+def _vmatch(v: Cell, t: Cell, tol: int = 3) -> bool:
+    """Stub-vector v matches target t up to sign (a 2-stub pair is unordered)."""
+    return (abs(v[0] - t[0]) <= tol and abs(v[1] - t[1]) <= tol) or (
+        abs(v[0] + t[0]) <= tol and abs(v[1] + t[1]) <= tol
+    )
+
+
 class Adapter(GameAdapter):
     """Rigid connector-marker alignment composed from admorphiq.kernels."""
 
@@ -223,6 +263,22 @@ class Adapter(GameAdapter):
         self._pre_rot_remaining = 0
         self._attempt = 0
         self._max_attempts = 1
+
+        # Grey-masked (L3+) joint-arrangement controller state — a per-frame
+        # stage machine, active only when the grey-mask signature is present
+        # (so L1/L2 stay byte-identical). See _masked_decide.
+        self._m_phase = "probe"  # probe -> exec -> reset(chirality)
+        self._m_cache: dict[int, dict[str, Any]] = {}  # colour -> {stubs, sel}
+        self._m_seen: set[Cell] = set()  # probed grey-blob centres
+        self._m_swap = 0  # chirality attempt (0, then 1 flips which ref stub is the 8)
+        self._m_plan: dict[str, Any] | None = None  # {m1,m2,ref,r14,c15_8}
+        self._m_rot_done = 0  # ACTION5s issued so far for the m1 fixed rotation
+        self._m_stage = 0  # exec sub-stage index
+        self._m_reset_pending = False
+        self._m_last_click: Cell | None = None  # last grey-blob centre clicked to select
+        self._m_c14_13: Cell | None = None  # captured leftover stub of mover1 after placing
+        self._m_rot_tries = 0  # bound on ACTION5s while matching a rotation
+        self._m_q: list[int] | None = None  # computed translate move queue (rows-then-cols)
 
         self._pending_action: int | None = None
         self._pending_active_centroid: Cell | None = None
@@ -275,6 +331,23 @@ class Adapter(GameAdapter):
                 self._prev_grid = grid
                 return simple_action(move_ids[0]) if move_ids else reset_action()
 
+        # Chirality retry: a full display-coincidence that did not win means the
+        # hidden 8/13 pairing is swapped — RESET to the pristine board and
+        # re-solve with the alternate stub assignment.
+        if self._m_reset_pending:
+            self._m_reset_pending = False
+            self._m_reset_for_retry()
+            self._prev_grid = grid
+            return reset_action()
+
+        # Grey-masked levels (L3+) use the joint-arrangement controller; L1/L2
+        # (colour-0 active body, no grey blobs) fall through to the existing
+        # single-pair path unchanged.
+        if self._masked_signature(regions, bg):
+            action = self._masked_decide(regions, action6_ok, move_ids)
+            self._prev_grid = grid
+            return action
+
         self._observe_result(regions)
         action = self._decide(regions, simple_ids, action6_ok)
         self._prev_grid = grid
@@ -298,6 +371,38 @@ class Adapter(GameAdapter):
         # Level 0 renders immediately (NOT_PLAYED -> board), but a mid-game
         # level-up shows one stale transition frame first; idle past it.
         self._awaiting_render = levels > 0
+        # Fresh grey-mask controller for the new level.
+        self._m_phase = "probe"
+        self._m_cache = {}
+        self._m_seen = set()
+        self._m_swap = 0
+        self._m_plan = None
+        self._m_rot_done = 0
+        self._m_stage = 0
+        self._m_reset_pending = False
+        self._m_last_click = None
+        self._m_c14_13 = None
+        self._m_rot_tries = 0
+        self._m_q = None
+
+    def _m_reset_for_retry(self) -> None:
+        """Chirality retry: keep the swap counter, re-probe the pristine board
+        (the plan re-derives identically; swap flips the stub assignment)."""
+        self._m_phase = "probe"
+        self._m_cache = {}
+        self._m_seen = set()
+        self._m_plan = None
+        self._m_rot_done = 0
+        self._m_stage = 0
+        self._m_last_click = None
+        self._m_c14_13 = None
+        self._m_rot_tries = 0
+        self._m_q = None
+
+    def _m_goto(self, stage: int) -> None:
+        self._m_stage = stage
+        self._m_rot_tries = 0
+        self._m_q = None
 
     def _on_restart(self) -> None:
         # Keep the measured control facts (dir signs, cell size) — the marker
@@ -309,6 +414,196 @@ class Adapter(GameAdapter):
         self._pending_action = None
         self._pending_active_centroid = None
         self._prev_grid = None
+
+    # ── grey-masked (L3+) joint-arrangement controller ───────────────────
+
+    def _masked_signature(self, regions: list[Region], bg: int) -> bool:
+        """L3+ (GreyMasking) signature: grey-mask blobs present AND no colour-0
+        active body. L1/L2 render the active sprite as colour 0 and have no grey
+        blobs, so this is False there and they keep the single-pair path."""
+        has_grey = any(r["color"] == _GREY_MASK_COLOR and r["size"] >= 9 for r in regions)
+        has_c0 = any(r["color"] == _ACTIVE_COLOR for r in regions)
+        return has_grey and not has_c0
+
+    def _m_perceive(self, regions: list[Region]) -> dict[str, Any]:
+        nat = [r for r in regions if r["color"] not in (_GREY_MASK_COLOR, _MARKER_COLOR, _SATISFIED_COLOR)]
+        ab = max(nat, key=lambda r: r["size"]) if nat else None
+        stubs = sorted(_centroid_px(r) for r in regions if r["color"] == _MARKER_COLOR)
+        grey = [r for r in regions if r["color"] == _GREY_MASK_COLOR and r["size"] >= 9]
+        return {"active": ab["color"] if ab else None, "abody": ab, "stubs": stubs,
+                "n8": len(stubs), "sat": sum(1 for r in regions if r["color"] == _SATISFIED_COLOR),
+                "grey": grey}
+
+    def _m_solid_cell(self, region: Region) -> Cell:
+        cells = sorted(region["cells"])  # type: ignore[arg-type]
+        return cells[len(cells) // 2]
+
+    def _m_vec(self, stubs: list[Cell]) -> Cell:
+        return (stubs[1][0] - stubs[0][0], stubs[1][1] - stubs[0][1])
+
+    def _masked_decide(self, regions: list[Region], action6_ok: bool, move_ids: list[int]) -> GameAction:
+        p = self._m_perceive(regions)
+        if self._m_phase == "probe":
+            return self._m_probe(p, action6_ok, move_ids)
+        return self._m_exec(p, move_ids)
+
+    def _m_probe(self, p: dict[str, Any], action6_ok: bool, move_ids: list[int]) -> GameAction:
+        """Select each sprite once (clicking its solid grey blob) and cache its
+        two stubs + its select-cell. When all three are cached, build the joint
+        plan and switch to execution."""
+        if p["active"] is not None and p["active"] not in self._m_cache and p["n8"] == 2:
+            sel = self._m_last_click
+            if sel is None and p["abody"] is not None:
+                sel = self._m_solid_cell(p["abody"])  # initially-active sprite: its own cell
+            self._m_cache[p["active"]] = {"stubs": list(p["stubs"]), "sel": sel}
+        if len(self._m_cache) >= 3:
+            self._m_plan = self._m_build_plan()
+            self._m_phase = "exec"
+            self._m_stage = 0
+            self._m_last_click = None
+            if self._m_plan is None:
+                return simple_action(move_ids[0]) if move_ids else reset_action()
+            return self._m_exec(p, move_ids)
+        nxt = None
+        for gb in p["grey"]:
+            cell = self._m_solid_cell(gb)
+            if cell not in self._m_seen:
+                nxt = cell
+                break
+        if nxt is None or not action6_ok:
+            return simple_action(move_ids[0]) if move_ids else reset_action()
+        self._m_seen.add(nxt)
+        self._m_last_click = nxt
+        return click_action(x=nxt[1], y=nxt[0])
+
+    def _m_build_plan(self) -> dict[str, Any] | None:
+        """The joint arrangement from the frame-cached geometry: fix the
+        widest-span sprite (ref); find the mid-span sprite (m1)'s rotation index
+        r14 (from its cached orientation) and which of ref's stubs is the 8
+        (c15_8) so coinciding m1's stub onto ref's leaves a LEFTOVER stub-pair
+        distance equal to the third sprite (m2)'s span (so m2 bridges). Returns
+        the first geometric match; the hidden 8/13 pairing is invisible, so the
+        controller flips c15_8 (chirality) on a coincidence-without-win."""
+        cache = self._m_cache
+        spans = {c: _vlen(d["stubs"][0], d["stubs"][1]) for c, d in cache.items()}
+        if len(spans) < 3:
+            return None
+        ref = max(spans, key=lambda c: spans[c])
+        m2 = min(spans, key=lambda c: spans[c])
+        m1 = next(c for c in spans if c not in (ref, m2))
+        rst = cache[ref]["stubs"]
+        v14_cycle = _rot_cycle(self._m_vec(cache[m1]["stubs"]))
+        v11_rots = _rot_cycle(self._m_vec(cache[m2]["stubs"]))
+        for c15_8 in range(2):
+            s8, s13 = rst[c15_8], rst[1 - c15_8]
+            for r14, v14 in enumerate(v14_cycle):
+                c14_13 = (s8[0] + v14[0], s8[1] + v14[1])
+                bridge = (s13[0] - c14_13[0], s13[1] - c14_13[1])
+                if any(_vmatch(vr, bridge) for vr in v11_rots):
+                    return {"m1": m1, "m2": m2, "ref": ref, "r14": r14, "c15_8": c15_8}
+        return None
+
+    def _m_select_click(self, colour: int) -> GameAction:
+        d = self._m_cache.get(colour)
+        if d and d["sel"] is not None:
+            r, c = d["sel"]
+            return click_action(x=c, y=r)
+        return simple_action(5)
+
+    def _m_move_toward(self, src: Cell, dst: Cell) -> int | None:
+        """The measured move id (A1 up/A2 down/A3 left/A4 right, 1 cell) that
+        most reduces src->dst; None when already coincident (within a cell)."""
+        dr, dc = dst[0] - src[0], dst[1] - src[1]
+        if abs(dr) < 2 and abs(dc) < 2:
+            return None
+        if abs(dr) >= abs(dc):
+            return 2 if dr > 0 else 1
+        return 4 if dc > 0 else 3
+
+    def _m_delta_q(self, src: Cell, dst: Cell) -> list[int]:
+        """Move queue to translate ``src`` onto ``dst`` — ROWS first then COLS
+        (the validated order; a dominant-axis order routes a stub through a
+        premature coincidence). Each move is one measured cell (3 px)."""
+        dr, dc = dst[0] - src[0], dst[1] - src[1]
+        q = ([2] * (dr // 3) if dr > 0 else [1] * ((-dr) // 3))
+        q += ([4] * (dc // 3) if dc > 0 else [3] * ((-dc) // 3))
+        return q
+
+    def _m_exec(self, p: dict[str, Any], move_ids: list[int]) -> GameAction:
+        """Per-frame stage machine driving the planned arrangement live, mirror
+        of the validated offline solver: rotate m1 by the FIXED plan index r14
+        (rotate-until-vector-matches is sign-ambiguous and flips 8/13), coincide
+        m1's stub nearest s8, then rotate/translate m2 to bridge the LIVE leftover
+        stub. ``_m_swap`` flips which ref stub is the 8 (hidden-pairing chirality)."""
+        pl = self._m_plan
+        assert pl is not None
+        rst = self._m_cache[pl["ref"]]["stubs"]
+        a8 = pl["c15_8"] ^ (self._m_swap & 1)
+        s8, s13 = rst[a8], rst[1 - a8]
+        st = self._m_stage
+        if st == 0:  # select m1
+            if p["active"] == pl["m1"]:
+                self._m_goto(1)
+                return self._m_exec(p, move_ids)
+            return self._m_select_click(pl["m1"])
+        if st == 1:  # rotate m1 by exactly r14 quarter-turns
+            if self._m_rot_done >= pl["r14"]:
+                self._m_goto(2)
+                return self._m_exec(p, move_ids)
+            self._m_rot_done += 1
+            return simple_action(5)
+        if st == 2:  # translate m1's stub nearest s8 onto s8
+            if self._m_q is None:
+                if p["n8"] != 2:
+                    if p["stubs"]:
+                        self._m_c14_13 = p["stubs"][0]
+                    self._m_goto(3)
+                    return self._m_exec(p, move_ids)
+                src = min(p["stubs"], key=lambda s: _vlen(s, s8))
+                self._m_q = self._m_delta_q(src, s8)
+            if self._m_q:
+                return simple_action(self._m_q.pop(0))
+            self._m_c14_13 = p["stubs"][0] if p["stubs"] else self._m_c14_13
+            self._m_goto(3)
+            return self._m_exec(p, move_ids)
+        if st == 3:  # select m2 (the bridger)
+            if p["active"] == pl["m2"]:
+                self._m_goto(4)
+                return self._m_exec(p, move_ids)
+            return self._m_select_click(pl["m2"])
+        if st == 4:  # rotate m2 until its stub-vector matches the LIVE bridge
+            if self._m_c14_13 is None:
+                self._m_goto(6)
+                return self._m_exec(p, move_ids)
+            bridge = (s13[0] - self._m_c14_13[0], s13[1] - self._m_c14_13[1])
+            if p["n8"] == 2 and _vmatch(self._m_vec(p["stubs"]), bridge):
+                self._m_goto(5)
+                return self._m_exec(p, move_ids)
+            if self._m_rot_tries >= 4:
+                self._m_goto(6)
+                return self._m_exec(p, move_ids)
+            self._m_rot_tries += 1
+            return simple_action(5)
+        if st == 5:  # translate m2 onto the nearest live bridge point
+            if self._m_q is None:
+                targets = [t for t in (self._m_c14_13, s13) if t is not None]
+                if p["n8"] == 0 or not targets or not p["stubs"]:
+                    self._m_goto(6)
+                    return self._m_exec(p, move_ids)
+                s0 = p["stubs"][0]
+                t0 = min(targets, key=lambda t: _vlen(s0, t))
+                self._m_q = self._m_delta_q(s0, t0)
+            if self._m_q:
+                return simple_action(self._m_q.pop(0))
+            self._m_goto(6)
+            return self._m_exec(p, move_ids)
+        # st >= 6: arrangement placed. If it did not win (a level-up would have
+        # reset us), flip the hidden-pairing chirality and RESET to retry once.
+        if self._m_swap < 1:
+            self._m_swap += 1
+            self._m_reset_for_retry()
+            return reset_action()
+        return simple_action(move_ids[0]) if move_ids else reset_action()
 
     # ── measurement: what did the pending move do to the active body? ────
 
