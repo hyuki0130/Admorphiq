@@ -15,8 +15,9 @@ live probe establish the mechanic. **CORRECTION CHAIN: the original
 velocity" — and R59 OVERTURNS that too.** The R59 re-examination (source read +
 faithful ``env._game`` probes) shows BP35 IS deterministic and fully
 frame-observable after all — the "acceleration" was fall distances and the
-"receding exit" was camera scroll. See "R59 RE-EXAMINATION" below; the adapter
-still ships as the frontier explorer (0/9) pending a dedicated solver pass.
+"receding exit" was camera scroll. See "R59 RE-EXAMINATION" below. R59 then
+BUILT the dedicated solver on this ground truth: the adapter now ships a
+frame-only faithful-sim BFS solver that clears L0 (1/9 @ 0.0145, was 0/9).
 
 **Determinism check (ORIGINAL, now KNOWN-FLAWED)**: a live repeat-probe
 issued the same action from a fresh env twice and got byte-identical results,
@@ -53,62 +54,30 @@ FRAME-OBSERVABLE grid platformer (world 11×36, gravity dy=-1):
 
 **Consequence**: BP35 is a clean deterministic planning problem, state =
 (player world cell, set of destroyed blocks) — NO hidden state, so the R56b
-"aliased hidden-velocity" framing is wrong. The solve is a (position,
-destroyed-blocks) BFS/A* over {move+fall, destroy+climb}, the same shape as
-sk48's faithful-simulator solve. This adapter still ships as the frontier
-explorer (0/9) because that build is a DEDICATED pass: a naive hand model AND a
-real-engine replay-BFS both failed to find the known-solvable L0 (the legacy
-brittle solver clears it), so the move+fall+destroy dynamics need lockstep
-validation against the engine (the sk48 lesson) before a solver can trust them.
-See ``.wiki/wiki/games/BP35.md`` "Reopen".
+"aliased hidden-velocity" framing is wrong.
 
-**Why a generic MOVE+CLICK frontier explorer**: BP35 mixes two action
-kinds, so this adapter generalises the transition-graph frontier explorer to
-a HYBRID action alphabet — the simple move ids PLUS a bounded set of clicks
-at the frame's salient region centroids (the destructible blocks), rather
-than the unbounded 64x64 click space. Planning the gravity-aware
-destroy-then-fall route faithfully would re-implement the platformer physics
-(a game-specific "second brain" the R56 codex verdict forbids); instead the
-search discovers the transitions:
+**R59 SOLVER (shipped) — clears L0 frame-only, 0/9 -> 1/9 @ 0.0145
+(deterministic).** The dedicated build validated the mechanic by lockstep
+replay (a faithful world-coord sim reproduces the legacy L0 solution
+step-for-step vs the engine, and the sim's 15-action BFS solution replays to
+WIN live), then the runtime :class:`Adapter` runs it frame-only:
 
-  - Every board state is canonicalised (:func:`admorphiq.kernels.canonical_key`,
-    ``mode="exact"``) after the edge-pinned HUD is masked
-    (:func:`admorphiq.kernels.find_regions`).
-  - The candidate ACTIONS at a state are the available moves plus a click on
-    each salient centroid (recorded per state so routing knows the options).
-  - Every observed ``(state, action_label, next_state)`` transition is
-    recorded; the policy takes an untried action at the current state, else
-    routes (:func:`admorphiq.kernels.transition_shortest_path`) to the
-    nearest visited state with an untried action (:meth:`_nearest_untried`,
-    a small BFS over the same edges — same rationale as
-    ``admorphiq.adapters25.tu93`` for not using
-    :func:`admorphiq.kernels.reachable_frontier`).
+  - PARSE: the 64x64 frame is a scrolling window over the 11x36 world (camera
+    follows the player, ``cam_y = player_y*6 - 36``). Sample each cell's centre
+    to a kind via :data:`_KIND` (5=wall, 10=pass, 14=destroy, 7=gem) and merge
+    into an accumulating world map, keyed RELATIVE to the player marker so its
+    pixel offset cancels.
+  - TRACK: player x is EXACT from the colour-9 marker's screen column (camera x
+    fixed); y is carried by the sim (the player is camera-locked at screen
+    row 36, so y is not on screen).
+  - SEARCH: BFS over (player cell, destroyed-block set) with {move+fall,
+    destroy a neighbour block (climb if it is directly above)} toward the gem;
+    when the gem is still off-screen, steer by VISITED-AWARE frontier
+    exploration (lowest-y unvisited reachable cell) so the climb reveals the
+    gem without dead-ending. Ties the internals-tuned legacy 1/9 but FRAME-ONLY.
+  - L1-L8 remain (spike handling + deeper-level exploration tuning).
 
-**Measured result — BANKED at 0/9**: Smoke:
-- ``--max-actions 1000``: 0/9 levels, game_score 0.0; also 0/9 at 10000.
-  Below the internals-tuned legacy `bp35_platformer` 1/9 (0/9 generic). The
-  frontier explorer cannot compose a win: its state key is the raw
-  camera-relative frame (the same world position looks different at different
-  camera scroll) and it has no model of the climb / block-clearing the solve
-  needs. Reopen pointer (R59, CORRECTED — the R56b "hidden velocity" pointer is
-  withdrawn): BP35 is DETERMINISTIC and fully observable, so the solve is a
-  (player world cell, destroyed-blocks) BFS/A* over {move+fall, destroy+climb} —
-  the sk48 faithful-simulator shape. Build a lockstep-validated move+fall+destroy
-  simulator (a naive model + real-engine replay-BFS both failed to find the
-  known-solvable L0, so the dynamics need validation), a frame parser that
-  de-aliases the camera scroll by tracking the player's WORLD position, then
-  search to the gem. Open sub-puzzle: the search stays confined to y≥16 because
-  the path-opening blocks above the y=15 wall are OFF-SCREEN until the player
-  climbs — the correct simulator must resolve this (L0 is winnable; the legacy
-  brittle solver proves it).
-
-Composition from ``admorphiq.kernels``:
-  - :func:`admorphiq.kernels.find_regions` masks the HUD and enumerates the
-    destructible-block click candidates.
-  - :func:`admorphiq.kernels.canonical_key` hashes the masked board into a
-    stable state key.
-  - :func:`admorphiq.kernels.transition_shortest_path` routes over the
-    incrementally-discovered transition graph.
+Pure Python + the frame; no game internals. See ``.wiki/wiki/games/BP35.md``.
 """
 
 from __future__ import annotations
