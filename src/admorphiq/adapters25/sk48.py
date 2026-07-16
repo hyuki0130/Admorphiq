@@ -520,8 +520,27 @@ def _parse_budget(grid: Grid) -> int:
     return max(1, round(n2 / len(row) * _BUDGET_MAX))
 
 
+def _cell_block(grid: Grid, r: int, c: int, col: int) -> bool:
+    """Whether the 4x4 at (r,c) is a target cell of colour ``col``. A clean cell
+    is a solid 4x4; a cell OCCLUDED by a body segment keeps its full 12-pixel
+    BORDER RING in ``col`` while only its inner 2x2 is overwritten by the body's
+    transparent-interior colour (measured: the border ring survives, the body's
+    dashes fall OUTSIDE the 4x4 — source Level 5's template covers its cell this
+    way). Checking the border ring (not all 16) reads occluded cells too; the
+    inner 2x2 is left unconstrained. False positives (a non-cell 4x4 whose ring
+    happens to be a cell colour) are pinned OUT by the L0-L3 parse-fixture test."""
+    for cc in range(c, c + 4):  # top + bottom edges
+        if grid[r][cc] != col or grid[r + 3][cc] != col:
+            return False
+    for rr in range(r + 1, r + 3):  # left + right edges (corners already done)
+        if grid[rr][c] != col or grid[rr][c + 3] != col:
+            return False
+    return True
+
+
 def _parse_cells(grid: Grid) -> list[_CellObj]:
-    """4x4 solid colour blocks -> target-cell sprite (x=col-1, y=row-1)."""
+    """4x4 colour blocks -> target-cell sprite (x=col-1, y=row-1). Detects cells
+    OCCLUDED by a body segment via their surviving border ring (see _cell_block)."""
     h, w = len(grid), len(grid[0])
     out: list[_CellObj] = []
     seen: set[Cell] = set()
@@ -530,7 +549,7 @@ def _parse_cells(grid: Grid) -> list[_CellObj]:
             col = grid[r][c]
             if col not in _CELL_COLORS or (r, c) in seen:
                 continue
-            if not all(grid[r + dr][c + dc] == col for dr in range(4) for dc in range(4)):
+            if not _cell_block(grid, r, c, col):
                 continue
             for dr in range(4):
                 for dc in range(4):
@@ -627,6 +646,51 @@ def _parse_arena(grid: Grid) -> _Rect | None:
     rs = [p[0] for p in best]
     cs = [p[1] for p in best]
     return _Rect(min(cs), min(rs), max(cs) - min(cs) + 1, max(rs) - min(rs) + 1)
+
+
+def _parse_walls(grid: Grid, arena: _Rect) -> list[_Rect]:
+    """Interior collision walls (`mkgqjopcjn`, source Level 5+) -> obstacle
+    rects. A wall renders as a solid rectangular block of the BACKGROUND colour
+    sitting INSIDE the colour-4 arena floor — a hole in the floor, isolated from
+    the outside background by the floor around it. A background-colour component
+    is a wall when it is STRICTLY inside the arena bbox (the outside background
+    leaks in at the edge and is rejected) and fills its own bounding box (solid —
+    this rejects the edge-snake heads' hollow background-colour border rings).
+    Returns _Rect(x=col, y=row) in the sim's grid coordinates."""
+    # The BACKGROUND colour is the frame corner, NOT most_common_color — the
+    # colour-4 FLOOR is the frame's most common colour, so most_common_color
+    # returns 4 and would never see the background-coloured (5) wall.
+    bg = grid[0][0]
+    y0, y1 = arena.y, arena.y + arena.h
+    x0, x1 = arena.x, arena.x + arena.w
+    seen: set[Cell] = set()
+    out: list[_Rect] = []
+    for r in range(y0, y1):
+        for c in range(x0, x1):
+            if grid[r][c] != bg or (r, c) in seen:
+                continue
+            comp: list[Cell] = []
+            stack = [(r, c)]
+            seen.add((r, c))
+            touches_edge = False
+            while stack:
+                rr, cc = stack.pop()
+                comp.append((rr, cc))
+                if rr == y0 or rr == y1 - 1 or cc == x0 or cc == x1 - 1:
+                    touches_edge = True
+                for dr, dc in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                    nr, nc = rr + dr, cc + dc
+                    if y0 <= nr < y1 and x0 <= nc < x1 and (nr, nc) not in seen and grid[nr][nc] == bg:
+                        seen.add((nr, nc))
+                        stack.append((nr, nc))
+            if touches_edge or len(comp) < 4:
+                continue
+            rs = [p[0] for p in comp]
+            cs = [p[1] for p in comp]
+            br0, br1, bc0, bc1 = min(rs), max(rs), min(cs), max(cs)
+            if len(comp) == (br1 - br0 + 1) * (bc1 - bc0 + 1):
+                out.append(_Rect(bc0, br0, bc1 - bc0 + 1, br1 - br0 + 1))
+    return out
 
 
 def _parse_gates(grid: Grid) -> list[_Rect]:
@@ -732,7 +796,8 @@ def _parse_state(grid: Grid) -> dict[str, Any] | None:
     return {
         "heads": heads, "bodies": bodies, "cells": cells, "partner": partner,
         "check_count": check_count, "active": active, "arena": arena,
-        "obstacles": [], "gates": _parse_gates(grid), "budget": _parse_budget(grid),
+        "obstacles": _parse_walls(grid, arena), "gates": _parse_gates(grid),
+        "budget": _parse_budget(grid),
     }
 
 
