@@ -244,7 +244,54 @@ def _classify(grid: tuple[tuple[int, ...], ...]) -> tuple[list[Region], list[Reg
             # Colour alone is unambiguous for the value colours; the play-area
             # and chrome filters above already removed ring/arena/padding/HUD.
             fruits.append(r)
-    return goals, fruits, enemies
+    return goals, fruits, _fuse_enemies(enemies)
+
+
+# A star ENEMY renders (at gap=0) as several tiny disconnected fragments within
+# its own small sprite bbox. Fragments of ONE enemy sit within this many px of
+# each other; two DISTINCT enemies are farther apart. Single-linkage chaining
+# below this distance fuses one star's fragments into one entity — WITHOUT this,
+# each fragment was counted as a separate enemy (a 1-enemy L3 star read as ~6
+# phantom enemies, mis-driving the chase prediction and lure — the measured
+# root cause of L3=0).
+_ENEMY_FUSE_DIST = 7.0
+
+
+def _fuse_enemies(fragments: list[Region]) -> list[Region]:
+    """Single-linkage cluster enemy fragments into one region per real enemy.
+
+    Each output region carries a size-weighted centroid, unioned bbox, and
+    summed size so the downstream chase-prediction / lure / danger logic sees
+    ONE entity per star, not its fragments."""
+    if len(fragments) <= 1:
+        return fragments
+    n = len(fragments)
+    parent = list(range(n))
+
+    def find(i: int) -> int:
+        while parent[i] != i:
+            parent[i] = parent[parent[i]]
+            i = parent[i]
+        return i
+
+    for i in range(n):
+        for j in range(i + 1, n):
+            if _dist(_centroid(fragments[i]), _centroid(fragments[j])) <= _ENEMY_FUSE_DIST:
+                parent[find(i)] = find(j)
+    groups: dict[int, list[Region]] = {}
+    for i in range(n):
+        groups.setdefault(find(i), []).append(fragments[i])
+    fused: list[Region] = []
+    for members in groups.values():
+        total = sum(m["size"] for m in members) or 1
+        cr = sum(_centroid(m)[0] * m["size"] for m in members) / total
+        cc = sum(_centroid(m)[1] * m["size"] for m in members) / total
+        r0 = min(m["bbox"][0] for m in members)
+        c0 = min(m["bbox"][1] for m in members)
+        r1 = max(m["bbox"][2] for m in members)
+        c1 = max(m["bbox"][3] for m in members)
+        fused.append({"color": members[0]["color"], "centroid": (cr, cc), "bbox": (r0, c0, r1, c1), "size": total})
+    return fused
 
 
 def _value(region: Region) -> int:
@@ -368,6 +415,17 @@ class Adapter(GameAdapter):
         if not goals or not fruits:
             return (_GRID // 2, _GRID // 2)
 
+        # With an enemy on the board (L3+), the cascade only survives if the
+        # enemy is driven OUT of play — a proven reactive choreography (a full
+        # L3 clear in 19 clicks was found against the live engine): merge the
+        # nearest low-value pair, but whenever the enemy threatens any idle
+        # (non-merging) fruit, first lure it to the fruit-emptiest corner, with
+        # aggression that scales up as fruit values climb and the board thins
+        # (the late v2->v3 merge is the fragile one). Gated on enemies so the
+        # no-enemy L0-L2 path below stays byte-identical (3/9 floor).
+        if enemies:
+            return self._enemy_plan(goals, fruits, enemies)
+
         # Value climbs only by merging exact PAIRS in sequence (the source's
         # union-find collapses a clump of N same-value fruits to ONE value+1,
         # not N/2 — so piling everything together is wrong; pairs must be
@@ -417,6 +475,78 @@ class Adapter(GameAdapter):
             return goals
         kept = [g for g in goals if any(_dist(_centroid(g), a) <= _VACUUM_RADIUS for a in self._goal_anchors)]
         return kept or goals
+
+    def _enemy_plan(self, goals: list[Region], fruits: list[Region], enemies: list[Region]) -> Cell:
+        """Reactive enemy-aware cascade (proven to clear L3 live in 19 clicks).
+
+        Merge the nearest lowest-value pair; but if any enemy is within a
+        value-scaled danger radius of a fruit NOT in that pair, first LURE the
+        enemy toward the corner farthest from all fruits (vacuuming it there
+        pulls it off the cascade and, at a wall, pins it). Deliver the top fruit
+        once no pair remains."""
+        by_value: dict[int, list[Region]] = {}
+        for f in fruits:
+            by_value.setdefault(_value(f), []).append(f)
+        pair_values = sorted(v for v, fs in by_value.items() if len(fs) >= 2)
+        if not pair_values:
+            undelivered = [f for f in fruits if not any(_inside_goal(f, g) for g in goals)]
+            if not undelivered:
+                return (_GRID // 2, _GRID // 2)
+            fruit = max(undelivered, key=lambda f: (_value(f), f["size"]))
+            goal = _nearest(_centroid(fruit), goals)
+            if goal is None:
+                return (_GRID // 2, _GRID // 2)
+            return self._deliver_click(fruit, _centroid(goal), enemies)
+
+        group = by_value[pair_values[0]]
+        a, b = self._parity_safe_pair(group)
+        pair_c = {id(a), id(b)}
+        others = [f for f in fruits if id(f) not in pair_c]
+        max_val = max(_value(f) for f in fruits)
+        # Aggression climbs with the value being built and as the board thins.
+        danger = _ENEMY_DANGER + 4.0 * max_val + max(0, 5 - len(fruits)) * 3.0
+        if others:
+            for e in enemies:
+                ec = _centroid(e)
+                if min(_dist(ec, _centroid(f)) for f in others) < danger:
+                    return self._lure_to_corner(e, fruits)
+        return self._merge_pair_click(a, b, enemies)
+
+    @staticmethod
+    def _parity_safe_pair(group: list[Region]) -> tuple[Region, Region]:
+        """The nearest same-value pair whose merge midpoint has NO third group
+        member within a vacuum radius — so the single merge click grabs exactly
+        two fruits. The source's union-find collapses a clump of N same-value
+        fruits to ONE value+1 (not N/2), so a 3-fruit grab loses cascade parity
+        (8->4->2->1 needs every merge to consume exactly a pair); this keeps the
+        count even. Falls back to the plain nearest pair if none is isolated."""
+        ordered: list[tuple[float, Region, Region]] = []
+        for i in range(len(group)):
+            for j in range(i + 1, len(group)):
+                ordered.append((_dist(_centroid(group[i]), _centroid(group[j])), group[i], group[j]))
+        ordered.sort(key=lambda t: t[0])
+        for _d, a, b in ordered:
+            mid = ((_centroid(a)[0] + _centroid(b)[0]) / 2.0, (_centroid(a)[1] + _centroid(b)[1]) / 2.0)
+            if all(id(o) in (id(a), id(b)) or _dist(mid, _centroid(o)) > _VACUUM_RADIUS for o in group):
+                return a, b
+        return ordered[0][1], ordered[0][2]
+
+    def _lure_to_corner(self, enemy: Region, fruits: list[Region]) -> Cell:
+        """Vacuum the enemy one hop toward the play-field corner that is
+        farthest from every fruit — pulls it off the cascade toward an empty
+        wall where repeated lures pin it, without grabbing a merge fruit."""
+        corners = [
+            (_PLAY_TOP, 2), (_PLAY_TOP, _GRID - 2), (_PLAY_BOTTOM, 2), (_PLAY_BOTTOM, _GRID - 2),
+            (_PLAY_TOP, _GRID // 2), (_PLAY_BOTTOM, _GRID // 2),
+        ]
+        park = max(corners, key=lambda c: min((_dist(c, _centroid(f)) for f in fruits), default=0.0))
+        ec = _centroid(enemy)
+        d = _dist(ec, park)
+        if d <= 1e-9:
+            return _clamp_click(*ec)
+        row = ec[0] + (park[0] - ec[0]) / d * _VACUUM_RADIUS
+        col = ec[1] + (park[1] - ec[1]) / d * _VACUUM_RADIUS
+        return _clamp_click(row, col)
 
     def _merge_move(self, fruits: list[Region], enemies: list[Region]) -> Cell | None:
         """One click toward merging the lowest value that still has a pair.
