@@ -41,10 +41,24 @@ full coincidence with no WIN as a wrong-chirality signal and rotates 180
 degrees (two more ACTION5) to swap the endpoints, then re-aligns. At most a
 handful of orientations exist, so this terminates.
 
-**Grey masking (levels 3-6, ``GreyMasking`` in the source)**: non-active
-sprites — and their marker stubs — are rendered as background, so the target
-markers are simply INVISIBLE until a sprite is selected. Those levels are a
-memory/exploration problem the frame-only signals here cannot fully see.
+**Grey masking (levels 3-6, ``GreyMasking`` in the source; DECODED + live-probed
+R59 2026-07-16)**: the source's ``uqlndqojuf`` render step recolours, per frame,
+every NON-active sprite (body AND stubs) to colour 4 — a GREY distinct from the
+level background (12/9/15), so a non-active sprite shows as a uniform grey blob
+with its stubs HIDDEN (a satisfied stub still shows as colour 3). The ACTIVE
+sprite keeps its NATIVE colour and its colour-8 stubs stay visible — and, unlike
+L1/L2, it is NOT recoloured to 0, so there is NO colour-0 body on these levels.
+Reveal is PER-SPRITE: ACTION6 on a sprite makes it active and reveals ITS OWN
+stubs while the previously-active sprite reverts to grey (only one sprite's stubs
+are visible at a time). Non-active sprites do not move, so each sprite's stub
+positions can be cached absolutely once probed. This is why these levels need a
+select-and-probe MEMORY layer — but the arrangement solve beneath the mask is the
+SAME global rigid-arrangement CSP banked for L2 (see CN04.md "Levels 3-6"): L3's
+3 sprites have all-different 2-stub line lengths (18 / 15.3 / 21.2 px), so no
+sprite is whole-piece congruent to another and the 6 stubs must pair in a cross
+3-cycle. So the reveal is bounded but the solve is not — BANKED. (The current
+adapter also hard-blocks at L3 start: no colour-0 body ⇒ no active detected ⇒ no
+markers ⇒ it probe-moves forever, never clicking to reveal.)
 
 **Measured coverage / banked walls (v2 hash ``cn04-2fe56bfb``, the only
 local env)**:
