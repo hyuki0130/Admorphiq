@@ -50,6 +50,46 @@ def test_search_resolves_player_goal_orientation() -> None:
     assert program == [2, 2, 2]
 
 
+def _cols6(values: list[int]):
+    """n 6-bit columns preset to ``values`` (bits ON where the value bit is set),
+    cells stacked top→bottom = bit0..bit5 at rows 33,36,...,48."""
+    out = []
+    for v in values:
+        bits = [
+            {"row": 33 + 3 * i, "col": 39 + 5 * len(out), "on": bool(v & (1 << i))}
+            for i in range(6)
+        ]
+        out.append({"bits": bits})
+    return out
+
+
+def test_search_finds_up_program_on_6bit_columns() -> None:
+    """L1 shape: player 4 cells above (goal below→above), 4 six-bit columns.
+
+    Opcode 33 (up) needs 6 bits, so this proves the bit-width filter admits it
+    and the search returns four 33s. Pass = [33,33,33,33]; fail = the up-move or
+    6-bit width handling regressed.
+    """
+    columns = _cols6([0, 0, 0, 0])
+    # player (x45,y24) above? goal (x44,y7): player is FIRST (fill-ranked
+    # upstream); Δ = 4 cells up.
+    program = _search_program(columns, [(45, 24), (44, 7)])
+    assert program == [33, 33, 33, 33]
+
+
+def test_toggle_clicks_encode_opcode_33_as_bits_0_and_5() -> None:
+    """Opcode 33 = 0b100001 must set the TOP (bit0) and BOTTOM (bit5) cell.
+
+    Pass = exactly the row-33 and row-48 cells are clicked (the validated
+    weight-2^rank layout); fail = the bit-weight ordering regressed, which would
+    set the wrong opcode and lose the level.
+    """
+    col = _cols6([0])[0]
+    clicks = _column_toggle_clicks(col, 33)
+    rows = sorted(cy for _cx, cy in clicks)
+    assert rows == [33, 48]
+
+
 def test_toggle_clicks_only_flip_mismatched_bits() -> None:
     """Setting a column already at the target must emit no clicks.
 

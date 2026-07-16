@@ -87,6 +87,7 @@ class Adapter(GameAdapter):
         self._levels_seen = -1
         self._clicks: list[Cell] = []
         self._played = False
+        self._settle = 0
 
     # ── harness contract ────────────────────────────────────────────────
 
@@ -105,10 +106,20 @@ class Adapter(GameAdapter):
 
         levels = int(getattr(latest_frame, "levels_completed", 0) or 0)
         if levels != self._levels_seen:
+            first = self._levels_seen == -1
             self._levels_seen = levels
             self._reset_plan()
+            # A level TRANSITION animates for several frames; parsing that
+            # transient board mis-reads it (and then the whole level's deadline
+            # is wasted idling on a wrong program). Settle before the first
+            # parse of a NEW level — the very first board is already settled.
+            self._settle = 0 if first else 6
 
         self._step += 1
+
+        if self._settle > 0:
+            self._settle -= 1
+            return click_action(0, 0)
 
         if self._clicks:
             return click_action(*self._clicks.pop(0))
@@ -226,18 +237,25 @@ def _parse(grid: Grid):
     border = most_common_color(grid)
     height = len(grid)
 
-    # Playfield background = the largest region that is not the border.
+    # Editor panel = the darkest (min colour value) LARGE region that is not the
+    # border. On single-panel levels (L0) it is the whole dark playfield; on
+    # multi-panel levels (L1) it is the colour-0 editable panel, distinct from a
+    # lighter reference panel that merely DISPLAYS the target. Selecting by
+    # min-colour (0 = darkest) rather than size picks the editor either way.
     outer = find_regions(grid, background=border)
-    field = max(outer, key=lambda rg: rg["size"], default=None)
-    if field is None:
+    large = [rg for rg in outer if rg["size"] >= 80]
+    if not large:
         return None
-    playfield = field["color"]
+    editor = min(large, key=lambda rg: rg["color"])
+    playfield = editor["color"]
+    er0, ec0, er1, ec1 = editor["bbox"]
 
     regions = find_regions(grid, background=playfield)
 
-    # Play button = the largest region low in the frame (below the bit band),
-    # excluding the border and the deadline bar spanning the top.
-    play = _find_play_button(regions, height, border)
+    # Play button = the largest non-border region low in the frame whose x
+    # overlaps the editor panel (multi-panel levels have a second play button
+    # under the reference panel — pick the editor's).
+    play = _find_play_button(regions, height, border, ec0, ec1)
     if play is None:
         return None
     play_x, play_y = play
@@ -249,9 +267,11 @@ def _parse(grid: Grid):
         return None
     blob_bottom = max(y for _, y in blobs)
 
-    # Bit cells: small regions in the band between the blobs and the play
-    # button. A bit is ON when its colour == border (it "lights" to border), OFF
-    # otherwise. Two bit colours: border (on) and one off colour.
+    # Bit cells: small regions inside the editor panel's x-span, in the band
+    # between the blobs and the play button. A bit is ON when its colour ==
+    # border (it "lights" to the border colour), OFF otherwise. Each column has
+    # 2..6 such cells stacked top→bottom = bit0..bitN (weight 2^i, validated
+    # live by per-cell click).
     band_top = blob_bottom
     band_bot = play_y
     inner = [
@@ -259,6 +279,7 @@ def _parse(grid: Grid):
         for rg in regions
         if rg["size"] <= 8
         and band_top < rg["centroid"][0] < band_bot
+        and ec0 <= rg["centroid"][1] <= ec1
         and rg["color"] != playfield
     ]
     if len(inner) < 2:
@@ -303,14 +324,17 @@ def _group_columns(inner: list[dict], on_color: int) -> list[dict]:
     return [c for c in columns if len(c["bits"]) == common]
 
 
-def _find_play_button(regions: list[dict], height: int, border: int):
-    """The play button = the largest region in the bottom third of the frame,
-    excluding the border colour (it is a distinct icon on the playfield).
-    Returns the (x, y) click point (with the camera offset applied)."""
+def _find_play_button(regions: list[dict], height: int, border: int, ec0: int, ec1: int):
+    """The play button = the largest non-border region in the bottom third of
+    the frame whose x overlaps the editor panel span ``[ec0, ec1]`` (multi-panel
+    levels carry a second play button under the reference panel — this picks the
+    editor's). Returns the (x, y) click point with the camera offset applied."""
     best = None
     for rg in regions:
         cr, cc = rg["centroid"]
         if cr < height * 0.66 or rg["color"] == border:
+            continue
+        if not (ec0 <= cc <= ec1):
             continue
         if best is None or rg["size"] > best[0]:
             best = (rg["size"], int(round(cc)) + _CLICK_DX, int(round(cr)))
@@ -343,5 +367,13 @@ def _find_blobs(regions: list[dict], border: int, playfield: int) -> list[Cell]:
             best = (misalign, rgs)
     if best is None:
         return []
-    rgs = sorted(best[1], key=lambda rg: rg["bbox"][0])
+    # The PLAYER renders as a SOLID block, the GOAL as a sparse outline/marker,
+    # so the player has the higher fill ratio (colour pixels / bbox area).
+    # Ordering player-first removes the move-search's orientation ambiguity
+    # (both blobs otherwise admit a valid straight program).
+    def fill(rg: dict) -> float:
+        r0, c0, r1, c1 = rg["bbox"]
+        return rg["size"] / max(1, (r1 - r0 + 1) * (c1 - c0 + 1))
+
+    rgs = sorted(best[1], key=fill, reverse=True)
     return [(rg["bbox"][1], rg["bbox"][0]) for rg in rgs]
