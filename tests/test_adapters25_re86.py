@@ -14,7 +14,12 @@ from types import SimpleNamespace
 
 from arcengine import GameAction
 
-from admorphiq.adapters25.re86 import Adapter, _sign, _target_boxes
+from admorphiq.adapters25.re86 import (
+    Adapter,
+    _sign,
+    _station_boxes,
+    _target_boxes,
+)
 
 
 def test_active_movable_is_the_centroid_nearest_region_not_the_largest():
@@ -117,3 +122,36 @@ def test_choose_action_returns_a_gameaction_and_measures_a_move():
     assert isinstance(a2, GameAction)
     if pending is not None:
         assert pending in ad._dir  # the displacement was measured
+
+
+def test_station_boxes_reads_swatch_colour_and_box_from_colour2_border():
+    """Purpose: an L4+ changer station is a solid swatch inside a colour-2
+    bordered box; ``_station_boxes`` must return the swatch colour (the colour a
+    mismatched movable is recoloured to on contact) keyed to the box centre, plus
+    the box bbox used to reject station swatches from the movable parse.
+    Expected feedback: failure means L4 loses its recolour destinations, so no
+    movable can be routed to match its gates."""
+    bg = 5
+    grid = [[bg] * 12 for _ in range(12)]
+    # A colour-2 bordered 4x4 box at rows 2-5, cols 2-5, colour-7 swatch inside.
+    for r in range(2, 6):
+        grid[r][2] = grid[r][5] = 2
+        grid[2][r] = grid[5][r] = 2
+    grid[3][3] = grid[3][4] = grid[4][3] = grid[4][4] = 7
+    grid_t = tuple(tuple(r) for r in grid)
+    by_color, boxes = _station_boxes(grid_t)
+    assert by_color == {7: (3, 3)}
+    assert boxes == [(2, 2, 5, 5)]
+
+
+def test_l4_recolour_want_aligns_column_before_moving_vertically():
+    """Purpose: routing a movable to its changer station must align the COLUMN
+    first (horizontal, in the station-free interior) and only then move
+    vertically along the target's column — every station is on an edge row, so
+    this avoids re-recolouring against a different-colour station en route.
+    Expected feedback: failure means a route can cross a wrong-colour station and
+    corrupt the recolour, breaking the L4 assignment."""
+    # Far in column: must move horizontally toward the station column first.
+    assert Adapter._l4_recolour_want((30, 10), (6, 30)) == (0, 1)
+    # Column aligned (within tolerance): now move vertically toward the row.
+    assert Adapter._l4_recolour_want((30, 29), (6, 30)) == (-1, 0)
