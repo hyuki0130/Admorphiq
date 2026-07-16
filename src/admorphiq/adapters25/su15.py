@@ -91,7 +91,6 @@ convention).**
 
 from __future__ import annotations
 
-from collections import Counter
 from typing import Any
 
 from admorphiq.adapters25.base import (
@@ -494,6 +493,11 @@ class Adapter(GameAdapter):
     # Corners (in x=col, y=row) the enemy is lured toward — far from the fruits
     # so vacuuming it there does not also grab a merge fruit.
     _MODEL_CORNERS = ((2, 12), (2, 60), (60, 12), (60, 60), (2, 36), (60, 36), (2, 53), (60, 53))
+    # Base lure-danger radius (the value the proven engine choreography used).
+    # A FIXED threshold cannot both merge and protect robustly frame-only: ~15
+    # is fragile to ±1px seed drift, ~20 perpetually lures (the enemy is always
+    # within range) and starves the cascade — the reason a plan SEARCH (enemy
+    # in-sim), not a fixed reactive threshold, is the robust close (see SU15.md).
     _MODEL_LURE_BASE = 15.0
 
     def _model_action(self, grid: tuple[tuple[int, ...], ...], n_layers: int) -> Cell | None:
@@ -517,17 +521,6 @@ class Adapter(GameAdapter):
                 return (0, 0)
             if len(fruits) < 2:
                 return None
-            self._model = [
-                [int(round(_centroid(f)[1])), int(round(_centroid(f)[0])), _value(f)] for f in fruits
-            ]
-
-        # Re-sync safety net: if the live fruit value-multiset diverges from the
-        # model (an enemy landed a downgrade the fruit-only model can't see),
-        # re-seed positions+values from the live frame so the cascade continues
-        # from reality rather than a stale plan.
-        live_ms = Counter(_value(f) for f in fruits)
-        model_ms = Counter(f[2] for f in self._model)
-        if live_ms != model_ms and len(fruits) >= 2:
             self._model = [
                 [int(round(_centroid(f)[1])), int(round(_centroid(f)[0])), _value(f)] for f in fruits
             ]
