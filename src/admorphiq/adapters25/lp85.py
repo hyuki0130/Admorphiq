@@ -167,6 +167,13 @@ _BUTTON_COLORS = frozenset({8, 14})  # rotation controls (two directions)
 _SOLID_MIN_SIZE = 3  # a marker region this size or larger is a solid moving token
 _DEST_CLUSTER_SPAN = 6  # corner pixels within this L∞ span form one target frame
 _PLANNER_BUDGET = 40  # max rotation-sequence length the BFS may return
+# Stall give-up: once the ring planner has deactivated (given up) on a level the
+# sweep cannot clear (only reachable at level index >= 2 — L0/L1 stay on the
+# proven sweep path), stop after this many further no-progress sweep actions.
+# Score-neutral under RHAE (actions after the last clear don't affect the score;
+# an uncleared level is 0 regardless) — it only spares the ~3.3s/action dense-
+# render sweep from grinding the whole budget with zero chance of a clear.
+_STALL_GIVEUP = 300
 
 # A region spanning at least this fraction of the frame's own cell count is a
 # board-spanning panel / backdrop, not a discrete clickable target. Excludes
@@ -430,11 +437,24 @@ class Adapter(GameAdapter):
         self._pre_goals: list[Cell] = []
         self._plan: deque[str] = deque()
         self._selftest_fails = 0
+        # No-progress sweep actions since the planner gave up on the current
+        # level (reset every level-up); drives the stall give-up in is_done.
+        self._sweep_steps = 0
 
     # ── harness contract ────────────────────────────────────────────────
 
     def is_done(self, frames: list[Any], latest_frame: Any) -> bool:
-        return state_name(latest_frame) == "WIN" or self._step >= self._giveup
+        if state_name(latest_frame) == "WIN" or self._step >= self._giveup:
+            return True
+        # Stall give-up: the planner has deactivated on a level the sweep cannot
+        # clear (index >= 2, so L0/L1's proven sweep path is untouched) and no
+        # level-up has happened for _STALL_GIVEUP further sweep actions — nothing
+        # more can be cleared here, so stop instead of grinding the budget.
+        return (
+            not self._planner_active
+            and self._levels_seen >= 2
+            and self._sweep_steps >= _STALL_GIVEUP
+        )
 
     def choose_action(self, frames: list[Any], latest_frame: Any) -> GameAction:
         state = state_name(latest_frame)
@@ -461,6 +481,7 @@ class Adapter(GameAdapter):
             self._planner_active = False
             self._pending_click = None
 
+        self._sweep_steps += 1  # count no-progress sweep actions for the stall give-up
         self._observe_result(grid)
         target = self._next_target(grid)
         self._prev_grid = grid
@@ -628,6 +649,7 @@ class Adapter(GameAdapter):
         self._pre_goals = []
         self._plan = deque()
         self._selftest_fails = 0
+        self._sweep_steps = 0  # a level-up clears the stall counter
 
     # ── measurement: did the pending click do anything? ─────────────────
 

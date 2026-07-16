@@ -331,3 +331,50 @@ def test_detect_marker_colors_ignores_a_solid_without_a_target_frame():
     tup = tuple(tuple(row) for row in grid)
     regions = find_regions(tup, background=_planner_background(tup))
     assert _detect_marker_colors(regions) == frozenset({11})
+
+
+# ── stall give-up (R59 addendum: wall-time fix, score-neutral) ────────────────
+
+
+def _play_frame():
+    return SimpleNamespace(state=SimpleNamespace(name="PLAYING"))
+
+
+def test_stall_giveup_fires_once_planner_failed_and_sweep_stalled():
+    """Purpose: after the ring planner deactivates on a level index >= 2 the sweep
+    cannot clear, is_done must return True once _STALL_GIVEUP no-progress sweep
+    actions have elapsed — sparing lp85's full-25 run from grinding thousands of
+    zero-value dense-render sweep clicks (~3.7h -> minutes).
+    Expected feedback: PASS proves the give-up arms in the genuinely stalled
+    state; a failure means either the wall-time bug persists or it stops early."""
+    from admorphiq.adapters25.lp85 import _STALL_GIVEUP
+
+    ad = Adapter()
+    ad._levels_seen = 3  # on L4 (L1-L3 cleared)
+    ad._planner_active = False  # planner gave up
+    ad._sweep_steps = _STALL_GIVEUP
+    assert ad.is_done([], _play_frame()) is True
+
+
+def test_stall_giveup_never_fires_on_the_L1_sweep_path():
+    """Purpose: L0/L1 (index < 2) are cleared by the sweep itself, so the give-up
+    must NEVER arm there, even after many sweep actions.
+    Expected feedback: PASS guarantees the proven L1 sweep clear is not aborted."""
+    from admorphiq.adapters25.lp85 import _STALL_GIVEUP
+
+    ad = Adapter()
+    ad._levels_seen = 0  # on L1
+    ad._planner_active = False
+    ad._sweep_steps = _STALL_GIVEUP * 5
+    assert ad.is_done([], _play_frame()) is False
+
+
+def test_stall_giveup_never_fires_while_planner_active():
+    """Purpose: while the planner is still working (L2/L3, which it clears), the
+    give-up must not arm regardless of the counter.
+    Expected feedback: PASS confirms an in-progress planned clear is never cut."""
+    ad = Adapter()
+    ad._levels_seen = 3
+    ad._planner_active = True
+    ad._sweep_steps = 10**6
+    assert ad.is_done([], _play_frame()) is False
