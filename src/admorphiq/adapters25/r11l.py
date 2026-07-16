@@ -199,11 +199,20 @@ def _analyze_creatures(grid: Grid, bg: int, hazard: set[Cell]) -> list[tuple[lis
     """
     # gap=2 so a ring-shaped nest drawn as scattered pixels fuses into one
     # piece-sized region (its outline points sit within a 3-cell bridge).
+    # HUD-band regions are dropped too, not just the big hazard slabs: an
+    # edge-pinned WALL FRAGMENT (e.g. a 7px sliver of the top border) is under
+    # the hazard size floor yet is not a piece — left in, it is mistaken for a
+    # leg, joins the nearest creature's leg group, and shifts that group's
+    # centroid off its body so the consistency check fails and detection aborts
+    # (measured on live L1: this alone returned None on the real 2-creature
+    # frame). Masking HUD bands out of the piece set is the fix.
+    height, width = len(grid), len(grid[0])
     pieces = [
         r
         for r in find_regions(grid, background=bg, gap=2)
         if _MIN_PIECE_SIZE <= r["size"] <= _MAX_PIECE_SIZE
         and not (r["cells"] & hazard)
+        and not _is_hud_band(r, height, width)
     ]
     if len(pieces) < 3:
         return None
@@ -455,15 +464,19 @@ class Adapter(GameAdapter):
             return None
         height, width = len(grid), len(grid[0])
 
-        def is_free(cell: Cell) -> bool:
+        def is_free(cell: Cell, radius: int) -> bool:
             # Require a clear BACKGROUND neighbourhood, not merely non-hazard:
             # a leg sprite has extent, and a cell on a nest / another marker
             # overlaps it. Demanding empty bg pushes the legs to well-separated
             # open cells (clear of the nests and of each other), avoiding the
-            # transit collisions that trigger the game's strikes.
+            # transit collisions that trigger the game's strikes. The clearance
+            # RADIUS is relaxed per creature (below) — the full half-extent is
+            # preferred, but a target wedged against a wall (a deep level's
+            # 3-leg nest) admits no radius-2-clear arrangement, so a tighter
+            # radius-1 fallback keeps such a creature solvable.
             r, c = cell
-            for dr in range(-_LEG_CLEAR_RADIUS, _LEG_CLEAR_RADIUS + 1):
-                for dc in range(-_LEG_CLEAR_RADIUS, _LEG_CLEAR_RADIUS + 1):
+            for dr in range(-radius, radius + 1):
+                for dc in range(-radius, radius + 1):
                     rr, cc = r + dr, c + dc
                     if not (0 <= rr < height and 0 <= cc < width):
                         return False
@@ -473,7 +486,17 @@ class Adapter(GameAdapter):
 
         plan: list[tuple[str, Cell]] = []
         for leg_centres, target in creatures:
-            dests = points_with_centroid(target, len(leg_centres), is_free, current=leg_centres)
+            # Prefer the full clearance (radius 2); relax to radius 1 only when
+            # the target's neighbourhood is too tight for it. Radius 2 first
+            # keeps every already-solvable creature (e.g. L0's) byte-identical —
+            # the fallback only fires where the strict radius returns nothing.
+            dests = None
+            for radius in (_LEG_CLEAR_RADIUS, 1):
+                dests = points_with_centroid(
+                    target, len(leg_centres), lambda cell, _r=radius: is_free(cell, _r), current=leg_centres
+                )
+                if dests is not None:
+                    break
             if dests is None:
                 return None
             for leg, dest in zip(leg_centres, dests):
