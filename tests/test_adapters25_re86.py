@@ -17,6 +17,34 @@ from arcengine import GameAction
 from admorphiq.adapters25.re86 import Adapter, _sign, _target_boxes
 
 
+def test_active_movable_is_the_centroid_nearest_region_not_the_largest():
+    """Purpose: the SELECTED movable carries the marker at its geometric centre,
+    so ``_active_movable`` must return the region whose centroid is nearest the
+    marker — even when a larger region's sparse body overlaps the marker's
+    neighbourhood. Pin that the small plus the marker sits inside wins over a
+    bigger cross whose bounding box also reaches the marker.
+    Expected feedback: failure resurrects the L2 mis-selection bug where the
+    planner drove a big cross's covering offset while the engine moved the other
+    piece, oscillating without ever converging."""
+    bg = 5
+    grid = [[bg] * 24 for _ in range(24)]
+    # A big colour-7 X (sparse, ~24 cells) whose arms sweep across the frame and
+    # reach toward the marker's neighbourhood, centroid near the middle.
+    for i in range(20):
+        grid[2 + i][2 + i] = 7
+        grid[2 + i][21 - i] = 7
+    # A small colour-8 plus (12 cells) tightly centred on the marker at (11,11).
+    grid[11][11] = 0  # selection marker at the plus centre
+    for d in range(1, 4):
+        grid[11 - d][11] = grid[11 + d][11] = 8
+        grid[11][11 - d] = grid[11][11 + d] = 8
+    grid_t = tuple(tuple(r) for r in grid)
+    ad = Adapter()
+    active = ad._active_movable(grid_t, (11, 11))
+    assert active is not None
+    assert active[0] == 8  # the plus the marker sits inside, not the bigger X
+
+
 def _frame(grid: list[list[int]], levels: int = 0, state: str = "NOT_FINISHED") -> SimpleNamespace:
     return SimpleNamespace(
         frame=[[list(row) for row in grid]],

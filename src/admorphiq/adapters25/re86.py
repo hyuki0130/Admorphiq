@@ -45,52 +45,54 @@ walled move, and — crucially — **never disturb a movable already at offset
 to work the other one instead.
 
 **Measured coverage**: on the local env (``re86-8af5384d``) this clears
-**1/8** (``game_score`` 0.028) — the FIRST generic clear of this game (baseline:
-brittle 6/8 by sprite-tag read, prior generic 0/8). Level 1 solves cleanly: the
-colour-9 cross covers its four targets, the colour-11 cross covers its four, and
-the engine wins once both are placed.
+**2/8** (``game_score`` 0.033, deterministic ×3) — up from 1/8. Baseline:
+brittle 6/8 by sprite-tag read, prior generic 0/8. Both L1 and L2 solve through
+the SAME covering spine (no per-level code): each colour-coded movable is driven
+to the single translation that covers its matching-colour gates, selection is
+cycled with ACTION5, and a placed movable is never disturbed.
 
-**BANKED wall — level 2 (mechanism READ from a gold replay; frame-only
-covering blocked by an invisible movable)**: ``_target_boxes`` now detects L2's
-gate targets (12 colour-9 + 12 colour-11 cells) and ``_active_movable`` is
-anchored on the marker's neighbouring body pixel (fixing a phantom-colour read).
-Two hypotheses were tested and killed by observation: (a) RECOLOUR — driving the
-surplus movable across the colour-9 changer line for 40 moves left its colour
-unchanged; (b) "cover a colour-12 target" — there are none. Then a GOLD-REPLAY
-divergence analysis (the brittle solver's recorded trace, ``data/traces/re86.npz``,
-which replays 6/6 on this env — v1↔v2 geometry is identical) read the true
-mechanism off the winning frames:
-  - L2 has THREE movables (colours 9, 12, 13). The colour-9 movable covers the
-    colour-9 gates; the SURPLUS colour-12 AND colour-13 movables together cover
-    the COLOUR-11 gate region (at the win frame those gates render colour 12/13,
-    not 11). So a colour-11 "target" is a COMPOUND gate satisfied by two
-    differently-coloured movables — not a single colour match.
-  - Gold works each movable via ACTION5 selection cycling, moving each to its
-    covering spot. NO recolour anywhere.
-  - The colour-13 movable is INVISIBLE EVEN WHEN SELECTED (only its marker
-    shows; its body renders as background), so it has NO frame-observable shape
-    for ``covering_offsets``.
-**Compound-covering implementation plan ALSO falsified (validate-before-build)**:
-before building, the covering-offset partition was tested and does NOT hold —
-covering_offsets of a surplus colour-12 movable onto the colour-11 gates (or any
-top/bottom subset) returns a size-5/6 set (no single-offset cover), and in the
-gold play the colour-12 movable moves DOWN to row 48, AWAY from the colour-11
-gates (rows 2-18). Per-movable gold journeys (from ``data/traces/re86.npz``):
-colour-9 movable → colour-9 gates; the INVISIBLE colour-13 movable → (12,21),
-which is the piece that actually covers the colour-11 gate region; the colour-12
-movable → row 48 (a target this adapter cannot locate — no colour-12 gate
-exists). So the real assignment is NOT "the 12+13 pair covers colour-11 by
-covering-offset"; it is per-piece and involves an invisible mover plus a
-colour-12 target off the gate grid.
-**REOPEN** (precise ground truth now recorded): (a) footprint-probe the invisible
-colour-13 movable — drive its marker and read which cells recolour, to recover
-its shape, then cover the colour-11 gates; (b) locate the colour-12 movable's
-own target (its gold end is row 48; find what it satisfies there); (c) keep the
-covering spine for the visible colour-9 movable. This is a genuine multi-piece
-build, not a covering-offset extension. No hardcoded coordinates/palettes/
-sequences were added; the adapter runs to budget. The working L1 solve, three
-falsified hypotheses (recolour / colour-12-target / compound-covering), and the
-gold-read per-movable journeys are the deliverables.
+**Level 2 SOLVED (R59) — two frame-only perception fixes, NO new mechanic**:
+the earlier "banked wall" was two perception bugs, not a mechanic gap. Ground
+truth was read from the game source win-check (``jeiavrvavi``: every
+non-border target-map cell must be covered by a matching-colour movable pixel)
+and confirmed frame-for-frame against the gold replay (``data/traces/re86.npz``,
+replays 6/6 live). L2 has THREE movables — a colour-12 X, a colour-13 diamond
+OUTLINE, a colour-9 plus — and TEN gates (colour-9 ×4, colour-12 ×3, colour-13
+×3). The covering solve places each movable's centre at colour-9 → (48,27),
+colour-12 → (48,18), colour-13 → (12,21); those destinations are DERIVED by
+``covering_offsets`` from the frame-read gate geometry, never hardcoded (they
+match the gold win frame exactly). Two prior beliefs were FALSIFIED by live
+observation:
+  - "colour-13 is invisible" — it is fully visible during play (35–39 px every
+    frame); the earlier read failed only on a STALE first frame (below). No
+    footprint-probe or shape recovery is needed.
+  - "compound colour-11 gate / off-grid colour-12 target / recolour" — none
+    exist; the true gate colours are 9/12/13 and no changer/wall is present on
+    L2, so there is no recolour.
+
+The two fixes:
+  1. **Settle before locking targets.** A level LOAD renders a transient
+     camera-transition frame — shifted, showing two colour-9/-11 crosses and 24
+     phantom gates — before the engine snaps to steady world coordinates after
+     ONE env-step. Locking targets on that first frame captured the phantom
+     gate set and doomed the level. ``_decide`` now defers the lock one step
+     (a selection cycle settles the render without moving a piece). Generic
+     level-load discipline, not a game constant.
+  2. **Select by centroid, not by size.** The marker sits at the SELECTED
+     movable's centre, so ``_active_movable`` returns the centroid-nearest
+     region. The old "largest region touching a marker neighbour" rule returned
+     the big colour-12 X whenever its sparse body overlapped the colour-13
+     diamond's marker, so the planner drove the X's offset while the engine
+     moved the diamond — an endless oscillation.
+A third robustness fix (``_decide`` measures every move direction before
+covering-navigating an unplaced piece) stops a piece whose larger covering axis
+is a still-unmeasured direction from oscillating on the only axis it has learned.
+
+**Residual (efficiency, not correctness)**: the colour-13 diamond is a hollow
+outline; occlusion + gap-bridged extraction makes its cell set jitter ±1–2 px,
+so ``covering_offsets`` is non-stationary and the greedy wanders (~140 actions
+vs the gold's 36) before landing a clean cover. The clear is reliable and
+deterministic; a stable hollow-outline extractor is the open efficiency lever.
 
 Composition from ``admorphiq.kernels``:
   - :func:`admorphiq.kernels.find_regions` segments movables / target boxes.
@@ -184,6 +186,15 @@ class Adapter(GameAdapter):
         # set stays valid all level (same discipline as m0r0/cn04).
         self._targets_by_color: dict[int, list[Cell]] = {}
         self._targets_locked = False
+        # A level LOAD renders a transient camera-transition frame: the scene
+        # is shifted and the movables/gates render in stale colours (measured
+        # on L2 — the first post-load frame shows two colour-9/-11 crosses and
+        # 24 phantom gates, then the engine snaps to steady WORLD coordinates
+        # after ONE env-step, revealing the true three movables + ten gates).
+        # Locking targets on that first frame captures the phantom gate set and
+        # dooms the level. Defer locking until the scene has settled (one step),
+        # a generic level-load discipline, not a game-specific constant.
+        self._settled = False
         # (marker_cell, action) pairs that produced no displacement (blocked by
         # a wall/edge) — the covering planner routes around them by axis.
         self._blocked: set[tuple[Cell, int]] = set()
@@ -230,6 +241,7 @@ class Adapter(GameAdapter):
         self._stall = 0
         self._targets_by_color = {}
         self._targets_locked = False
+        self._settled = False
         self._blocked = set()
 
     def _lock_targets(self, grid: tuple[tuple[int, ...], ...]) -> None:
@@ -271,28 +283,53 @@ class Adapter(GameAdapter):
         return None
 
     def _active_movable(self, grid: tuple[tuple[int, ...], ...], marker: Cell) -> tuple[int, frozenset[Cell]] | None:
-        """The active movable's colour and full cell set: the colour-4-gap-
-        bridged connected component whose body TOUCHES the selection marker.
+        """The SELECTED movable's colour and full cell set: the colour-4-gap-
+        bridged connected component whose CENTROID is nearest the selection
+        marker.
 
-        Anchored on a body pixel ADJACENT to the marker, not merely on bbox
-        containment — a large sparse cross's bbox can enclose the marker of a
-        DIFFERENT movable, which made the colour read as a phantom (a colour not
-        even present in the frame). The region owning one of the marker's own
-        neighbours is unambiguously the piece the marker sits inside."""
+        The engine stamps the marker at the selected movable's geometric
+        CENTRE, so centroid-proximity names it unambiguously. The earlier rule
+        (largest region touching a marker NEIGHBOUR) picked the wrong piece
+        whenever two movables overlap near the marker: a big sparse cross's
+        gap-bridged body reaches the marker of a DIFFERENT, smaller movable and
+        won the size tie, so the planner drove the cross's offset while the
+        engine moved the other piece — an endless oscillation. Centroid-nearest
+        also rejects the HUD (step bar / letterbox) for free: their centroids
+        sit far from any movable's marker."""
         bg = most_common_color(grid)
         regions = find_regions(grid, background=(bg, _BORDER_COLOR, _SELECTION_COLOR), gap=1)
-        neighbours = {(marker[0] + dr, marker[1] + dc) for dr in (-1, 0, 1) for dc in (-1, 0, 1)}
-        touching = [reg for reg in regions if reg["cells"] & neighbours]
-        if touching:
-            reg = max(touching, key=lambda r: r["size"])
-            return (reg["color"], reg["cells"])  # type: ignore[return-value]
-        return None
+        best: Region | None = None
+        best_d: int | None = None
+        for reg in regions:
+            cells = reg["cells"]
+            if len(cells) < 8:
+                # Gate centres are size-1; movables are dozens of px. The floor
+                # keeps a stray gate pixel from ever reading as the movable.
+                continue
+            cy = sum(c[0] for c in cells) / len(cells)
+            cx = sum(c[1] for c in cells) / len(cells)
+            d = round(abs(cy - marker[0]) + abs(cx - marker[1]))
+            if best_d is None or d < best_d:
+                best_d = d
+                best = reg
+        if best is None:
+            return None
+        return (best["color"], best["cells"])  # type: ignore[return-value]
 
     # ── planning ────────────────────────────────────────────────────────
 
     def _decide(self, grid: tuple[tuple[int, ...], ...], move_ids: list[int], can_cycle: bool) -> GameAction:
         if not move_ids:
             return reset_action()
+        if not self._settled:
+            # Let the level-load camera transition resolve before reading the
+            # gates. A selection cycle (ACTION5) settles the render without
+            # moving any piece; when cycling is unavailable, a probe move does
+            # the same at the cost of a 3px displacement of the active movable.
+            self._settled = True
+            if can_cycle:
+                return simple_action(5)
+            return self._probe(self._marker(grid), move_ids)
         if not self._targets_locked:
             self._lock_targets(grid)
         marker = self._marker(grid)
@@ -321,15 +358,25 @@ class Adapter(GameAdapter):
             # wins.
             return simple_action(5) if can_cycle else self._probe(marker, move_ids)
 
+        # Measure EVERY move direction before covering-navigating. Without this,
+        # a piece whose larger covering axis is a still-unmeasured direction
+        # never learns it: ``_covering_move`` keeps returning a move on the
+        # smaller, already-measured axis, so that axis is the only one ever
+        # exercised and the piece oscillates around an off-grid target forever
+        # (measured: the diamond, needing LEFT, only ever learned up/down and
+        # never converged). One probe per unmeasured direction (≤3 extra steps,
+        # paid once per level since ``_dir`` is action→world-direction and
+        # shared across pieces) unblocks efficient two-axis navigation. Safe:
+        # only reached for an UNPLACED active piece, so it never disturbs a
+        # piece already covering its gates.
+        untried = [a for a in move_ids if a not in self._dir]
+        if untried:
+            return self._probe(marker, move_ids)
+
         move = self._covering_move(dr, dc, marker, move_ids)
         if move is not None:
             return move
-        # Every covering axis is blocked or unmeasured: probe an unmeasured
-        # move (to learn a direction) else cycle to the other movable.
-        want_axes = [(_sign(dr), 0)] if dr else []
-        want_axes += [(0, _sign(dc))] if dc else []
-        if any(self._move_for(w, move_ids) is None for w in want_axes):
-            return self._probe(marker, move_ids)
+        # Every covering axis is blocked: cycle to work the other movable.
         return simple_action(5) if can_cycle else self._probe(marker, move_ids)
 
     def _covering_move(self, dr: int, dc: int, marker: Cell, move_ids: list[int]) -> GameAction | None:
