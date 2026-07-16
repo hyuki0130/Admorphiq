@@ -112,6 +112,18 @@ the false conclusion convincing: consistency is not validity.
   one variable and measure its exact effect first. Cheap decisive probes
   retire whole hypothesis branches that would otherwise cost action budget to
   falsify indirectly.
+- **A frame-diff "restoration" check proves the DISPLAY is restored, NOT the
+  hidden game state.** cn04 R60: a `level_reset` restored the visible board to a
+  0-cell diff, which "proved" the retry board was pristine — yet the exact
+  winning execution then failed, because the engine's win-check keys on the
+  ORIGINAL marker colours (a hidden 8/13 identity the frame renders identically),
+  and the re-clone's in-place `color_remap` scrambled them. Any state that does
+  not render into the frame (hidden colours, RNG seeds, internal counters) is
+  invisible to a pixel diff, so "the board looks identical" is NOT "the game
+  state is identical". When a result hinges on restoration, confirm it with a
+  BEHAVIOURAL invariant (does a known-winning sequence still win after the
+  restore?), not a frame comparison. The decisive test was exactly that: fresh
+  board wins, RESET-then-same-sequence loses → the RESET corrupts hidden state.
 - **A standalone probe MUST replicate the runner path, and a probe that
   contradicts known-good behaviour is measuring itself.** Effects that only
   hold inside the harness's render/observation cadence (e.g. r11l's
