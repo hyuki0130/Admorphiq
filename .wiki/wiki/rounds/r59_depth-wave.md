@@ -27,6 +27,13 @@ commit: 9b8e2e8 (measurement HEAD); post-HEAD: bc04e63, 6b6ad2e, b2128c9, 36d23c
 | re86 | 0.0060 | 0.0328 (2/8) | L2 merged-blob bank → cleared |
 | others | — | unchanged | ft09 1.0, cd82 0.98, sb26 0.846, ls20 0.3571, tr87 0.2857, cn04 0.2000 (2/5 @5000 VM), sp80 0.1429, lp85 0.1637, su15 0.1035 … |
 
+## r59s2 official (2026-07-17 00:36 KST, ceph-build, @5000, HEAD cc1e4dc)
+
+`games=25 total=5.5615 → 22.25%` — EXACTLY the arithmetic prediction. Only 2 rows moved vs
+r59s1 (re86 0.0328→0.1162, su15 0.1035→0.1923); the other 23 byte-identical across two full
+runs. r59s3 launched at the overnight HEAD (m0r0 6/6 @1.0, ls20 6/7 @0.75, su15 6/9 @0.4368,
+lf52+g50t first clears, ar25 2/8) — arithmetic prediction ≈ **26.4%**.
+
 ## Post-measurement landings (in HEAD, not in r59s1; next full-25 picks them up)
 
 - **su15 3/9 → 4/9 @ 0.1923** (bc04e63): enemy-in-sim — per-sub-step chase+vacuum ported into
