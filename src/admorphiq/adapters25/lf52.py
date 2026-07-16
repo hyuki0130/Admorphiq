@@ -1,193 +1,103 @@
-"""script25 quarantined adapter: LF52 (cursor-move + click-to-connect puzzle).
+"""script25 quarantined adapter: LF52 (peg-solitaire jump-and-capture).
 
 *** QUARANTINE — MODEL-NEVER-VISIBLE. See admorphiq.adapters25's package
 docstring. ***
 
-LF52 is the LEAST-characterized public game: ``.wiki/wiki/games/LF52.md``
-had it as "Unknown post-regression", the legacy card is 0/10 (one
-budget-fragile 1/10 via a generic strategy only at total_budget=50000), and
-``docs/r57_win_condition_typology_20260715.md`` could only guess "pairwise
-elimination/matching (low confidence)". This adapter characterises it from
-the source + a live probe (offline, dev-time only) and provides the
-first generic frame-only baseline.
+**Mechanic — CORRECTED (2026-07-16, R56b park FALSIFIED by faithful live
+reads).** The prior bank claimed LF52's ACTION6 click was an
+"input-position-INDEPENDENT side-effect animation" with "no positional
+operator to plan over", and banked 0/10 as unclearable. That was a probe
+artifact: on level 1 an empty-space click triggers a fixed tutorial-hint
+blink (``sgxkqallyv`` -> ``bhdfjlqapap``) at a game-determined spot, so a
+sweep that clicks arbitrary cells sees the SAME growth regardless of where it
+clicked — and mistakes the hint for the game response. Reading the source
+(``dghsidbuet`` click dispatch) and driving the REAL env loop shows the true
+mechanic:
 
-**Characterisation (source read + live probe)**:
+- **LF52 is PEG SOLITAIRE.** ACTION6 hit-tests the clicked cell:
+  clicking a PIECE (``fozwvlovdui``) SELECTS it (``xpcuvjyrgu`` attaches a
+  direction arrow for each legal jump); clicking a legal LANDING cell fires
+  the jump (``cfilhtifcb``) — the piece hops two cells over an adjacent piece,
+  which is CAPTURED and removed. A jump ``P -> P+2d`` is legal iff ``P+d``
+  holds a piece and ``P+2d`` is an empty board slot. WIN fires when the board
+  is reduced to ONE piece (``tdcblgbfxw`` -> ``win()``; levels 6/7 win at two).
+  The per-level ACTION-COUNT budget (``asqvqzpfdi`` vs 64 / 64*5 / 64*10) is
+  the LOSE gate. ACTION1-4 shift walls on some deep levels; peg solitaire needs
+  ONLY ACTION6 clicks.
+- **Board is frame-parseable**: on a 6-pixel lattice, PIECES are one colour
+  (14 on L0) at size ~12, board SLOTS another colour (1 on L0) at size ~16.
+  A slot with no piece on it is an empty hole a jump can land in.
 
-- Two frame LAYERS that are BYTE-IDENTICAL (same histogram, same per-action
-  diff) — the second layer is redundant, so keying on layer 0 (this repo's
-  ``canonical_layer`` convention) loses no state.
-- ``available_actions = [1, 2, 3, 4, 6, 7]``. ACTION1-4 move a CURSOR one
-  cell (a ~1-pixel diff — a small marker relocates). ACTION6 clicks:
-  clicking a game object (source names ``fozwvlovdui`` / ``lgbyiaitpdi`` /
-  ``cwyrzsciwms``) triggers a CONNECT/LINK operation (``xpcuvjyrgu`` walks
-  neighbours and links them, ``oyzpaylqco`` = "attach") — a ~21-pixel diff;
-  a click in the bottom-left corner (x<16, y>48) triggers a redraw. ACTION7
-  undoes.
-- WIN is an internal completion flag (``iajuzrgttrv``); LOSE fires on an
-  internal fail flag or a per-level ACTION-COUNT budget that scales with the
-  level index (``asqvqzpfdi`` vs 64 / 64*5 / 64*10). So the mechanic is a
-  connect/link puzzle (matching-adjacent, consistent with the typology's
-  low-confidence guess), NOT plain navigation.
+**Live verification (faithful passive read, 2026-07-16)**: driving the real
+``env.step`` loop with 8 ACTION6 clicks (4 jumps: select piece, click landing
+cell) on L0's 5-piece line ``(1,2)(2,2)(4,2)(5,3)(5,5)`` advanced
+``levels_completed`` 0 -> 1. So the click IS positional and controllable; the
+park's "unclearable" verdict is wrong.
 
-**Why a generic MOVE+CLICK frontier explorer**: the action set mixes cursor
-moves and object clicks, so this adapter reuses the hybrid-alphabet
-transition-graph explorer (see ``admorphiq.adapters25.bp35``): the candidate
-actions at a state are the available simple moves PLUS a click on each
-salient region centroid (the game objects), bounded rather than the 64x64
-click space. Modelling the connect semantics faithfully would rebuild the
-game's own object graph (a game-specific "second brain" the R56 codex
-verdict forbids); the explorer instead discovers transitions:
+**Method — faithful offline simulator + DFS** (the sb26/sk48 pattern,
+[[../lessons/faithful_offline_simulator_20260715]]): parse the visible board
+into (pieces, cells) lattice sets, DFS the jump graph offline for a sequence
+reducing to one piece, then replay it — two clicks per jump (piece centroid,
+then landing centroid). No engine internals at runtime; pieces/slots/lattice
+all come from :func:`admorphiq.kernels.find_regions`.
 
-  - :func:`admorphiq.kernels.canonical_key` (``mode="exact"``) over the
-    HUD-masked layer-0 frame is the state key.
-  - Candidate actions per state = moves + clicks on
-    :func:`admorphiq.kernels.find_regions` centroids.
-  - :func:`admorphiq.kernels.transition_shortest_path` routes to the nearest
-    visited state with an untried action (:meth:`_nearest_untried`, the same
-    ``admorphiq.adapters25.tu93`` rationale for not using
-    :func:`admorphiq.kernels.reachable_frontier`).
+**Scope / honest limits (banked deeper levels)**: the reduce-to-one model
+clears levels whose full board is on-screen with a monochrome piece set. Deep
+levels add board scrolling (camera pans off-screen pieces into view on
+reaching per-level target cells), coloured red/blue pieces with pairing
+constraints, and the two-piece win — those parse partially and are banked, not
+forced. The generic simulator here is the first LF52 clear path; extending it
+to the scroll/colour levels is the reopen pointer.
 
-**Measured result — BANKED at 0/10**:
-- ``--max-actions 1000``: 0/10 levels, game_score 0.0 (deterministic). The
-  first generic frame-only measurement of a game the card had left entirely
-  uncharacterised. Matches the legacy 0/10 (a lone 1/10 existed only at a
-  50000 ensemble budget and never transferred).
-
-**R56b validation probe (2026-07-15) — the link-operator premise is
-FALSIFIED; do NOT build a positional planner.** A validate-first probe (run
-BEFORE any build, per the bp35 lesson) established:
-- The click effect IS deterministic and frame-observable (two fresh envs
-  clicking the same object produce byte-identical frames; re-clicking the
-  same object is idle — diffs [21,1,1] — so there is no hidden accumulation).
-- BUT the effect is INPUT-POSITION-INDEPENDENT: an ACTION6 click grows a
-  fixed colour-9 region at the SAME game-determined location regardless of
-  WHERE it clicks (all four directions + far-apart coordinates produce the
-  identical +20-cell growth at grid (17-20,16-21)), AND regardless of any
-  preceding ACTION1-4 cursor moves (which do not shift the growth at all).
-So there is no POSITIONAL click→link operator to learn — ACTION6 is a fixed
-predetermined "advance", and the cursor does not steer it. The planner
-premise ("learn a positional operator, plan a link sequence via
-configuration_path") is therefore falsified: whatever the true control
-modality is (timing / a hidden mode / a specific object subset-and-order the
-frame does not expose), it is not the frame-derived positional link this
-approach assumed. Banked at 0/10 without building — the decisive probe saved
-the speculative planner. Reopen pointer (harder): the observable draw is a
-side-effect animation; identify the REAL state the game gates the win on
-(likely not the colour-9 growth) and what genuinely varies the outcome
-before assuming any operator exists.
-
-Composition from ``admorphiq.kernels``: find_regions, canonical_key,
-transition_shortest_path (as above).
+Composition from ``admorphiq.kernels``: find_regions (board parse).
 """
 
 from __future__ import annotations
 
-from collections import deque
 from typing import Any
 
 from admorphiq.adapters25.base import (
     GameAction,
     GameAdapter,
-    available_action_ids,
     canonical_layer,
     click_action,
     has_frame,
     most_common_color,
     reset_action,
-    simple_action,
     state_name,
 )
-from admorphiq.kernels import canonical_key, find_regions, transition_shortest_path
+from admorphiq.kernels import find_regions
 
 GAME_ID = "lf52"
 
-Cell = tuple[int, int]
-Region = dict[str, Any]
+Cell = tuple[int, int]  # lattice (gx, gy)
 Grid = tuple[tuple[int, ...], ...]
-Label = tuple[str, Any]
 
 _GIVEUP_DEFAULT = 4000
 
-_HUD_SPAN_FRACTION = 0.85
-_HUD_THICKNESS_FRACTION = 0.06
+_LATTICE_PITCH = 6
+# A board cell renders as a ~4x4 block on the 6px lattice; the size window
+# keeps genuine cells and drops 1px decorations and the whole-frame bg blob.
+_MIN_CELL_SIZE = 6
+_MAX_CELL_SIZE = 30
 
-_MIN_CAND_SIZE = 1
-_MAX_CAND_SIZE = 400
+_DIRS: tuple[Cell, ...] = ((1, 0), (-1, 0), (0, 1), (0, -1))
 
-
-def _is_hud_band(region: Region, height: int, width: int) -> bool:
-    """A thin strip spanning most of one axis, OR pinned to a frame edge —
-    masks any edge-pinned status bar so the state key stays stable."""
-    r0, c0, r1, c1 = region["bbox"]
-    h, w = r1 - r0 + 1, c1 - c0 + 1
-    thickness = max(1, int(height * _HUD_THICKNESS_FRACTION))
-    thickness_w = max(1, int(width * _HUD_THICKNESS_FRACTION))
-    full_width_thin = w >= width * _HUD_SPAN_FRACTION and h <= thickness
-    full_height_thin = h >= height * _HUD_SPAN_FRACTION and w <= thickness_w
-    edge_pinned_thin = (h <= thickness and (r0 == 0 or r1 == height - 1)) or (
-        w <= thickness_w and (c0 == 0 or c1 == width - 1)
-    )
-    return full_width_thin or full_height_thin or edge_pinned_thin
-
-
-def _hud_cells(grid: Grid, bg: int) -> set[Cell]:
-    height, width = len(grid), len(grid[0])
-    cells: set[Cell] = set()
-    for region in find_regions(grid, background=bg):
-        if _is_hud_band(region, height, width):
-            cells |= region["cells"]
-    return cells
-
-
-def _mask_hud(grid: Grid, hud: set[Cell]) -> Grid:
-    if not hud:
-        return grid
-    bg = most_common_color(grid)
-    return tuple(
-        tuple(bg if (r, c) in hud else grid[r][c] for c in range(len(grid[0])))
-        for r in range(len(grid))
-    )
-
-
-def _click_candidates(grid: Grid, hud: set[Cell], bg: int) -> list[Cell]:
-    """Deterministic list of click-target cells: the rounded centroid of
-    every salient (non-background, non-HUD) region within the size gate."""
-    height, width = len(grid), len(grid[0])
-    cells: list[Cell] = []
-    seen: set[Cell] = set()
-    for region in find_regions(grid, background=bg):
-        if _is_hud_band(region, height, width):
-            continue
-        if not (_MIN_CAND_SIZE <= region["size"] <= _MAX_CAND_SIZE):
-            continue
-        cr, cc = region["centroid"]
-        cell = (int(round(cr)), int(round(cc)))
-        if 0 <= cell[0] < height and 0 <= cell[1] < width and cell not in seen and cell not in hud:
-            seen.add(cell)
-            cells.append(cell)
-    return sorted(cells)
+_DFS_NODE_CAP = 200_000
 
 
 class Adapter(GameAdapter):
-    """Generic MOVE+CLICK transition-graph frontier exploration over
-    HUD-masked frame-canonical states, composed from admorphiq.kernels."""
+    """Frame-only faithful peg-solitaire simulator + DFS + click replay."""
 
     GAME_ID = GAME_ID
 
     def __init__(self, giveup: int = _GIVEUP_DEFAULT) -> None:
         self.restart_on_game_over = True
-
         self._giveup = giveup
         self._step = 0
         self._levels_seen = -1
-
-        self._pending_label: Label | None = None
-        self._pending_key: Any | None = None
-
-        self._transitions: list[tuple[Any, Label, Any]] = []
-        self._edges: dict[Any, dict[Label, Any]] = {}
-        self._tried_from: dict[Any, set[Label]] = {}
-        self._cands_at: dict[Any, list[Label]] = {}
+        # Replay queue of resolved pixel clicks for the current level's plan.
+        self._clicks: list[Cell] = []
 
     # ── harness contract ────────────────────────────────────────────────
 
@@ -197,116 +107,157 @@ class Adapter(GameAdapter):
     def choose_action(self, frames: list[Any], latest_frame: Any) -> GameAction:
         state = state_name(latest_frame)
         if state == "GAME_OVER":
-            self._on_restart()
+            self._clicks = []
             return reset_action()
         if state == "NOT_PLAYED" or not has_frame(latest_frame):
-            self._pending_label = None
-            self._pending_key = None
             self._levels_seen = -1
+            self._clicks = []
             return reset_action()
 
-        grid = canonical_layer(latest_frame)
         levels = int(getattr(latest_frame, "levels_completed", 0) or 0)
         if levels != self._levels_seen:
-            self._on_level_up(levels)
+            self._levels_seen = levels
+            self._clicks = []
 
         self._step += 1
-        bg = most_common_color(grid)
-        hud = _hud_cells(grid, bg)
-        cur_key = canonical_key(_mask_hud(grid, hud), mode="exact")
-        self._observe_result(cur_key)
 
-        cands = self._cands_at.get(cur_key)
-        if cands is None:
-            cands = self._build_candidates(grid, hud, bg, latest_frame)
-            self._cands_at[cur_key] = cands
-        if not cands:
-            self._pending_label = None
-            self._pending_key = None
+        if self._clicks:
+            return click_action(*self._clicks.pop(0))
+
+        grid = canonical_layer(latest_frame)
+        board = _parse_board(grid)
+        if board is None:
+            return reset_action()
+        pieces, cells, pixel_of = board
+
+        plan = _solve(pieces, cells)
+        if not plan:
             return reset_action()
 
-        label = self._decide(cur_key, cands)
-        self._pending_label = label
-        self._pending_key = cur_key
-        return self._to_action(label)
+        # Expand each jump into (select piece, click landing) pixel clicks.
+        clicks: list[Cell] = []
+        for src, dst in plan:
+            clicks.append(pixel_of(src))
+            clicks.append(pixel_of(dst))
+        self._clicks = clicks
+        return click_action(*self._clicks.pop(0))
 
-    def _build_candidates(self, grid: Grid, hud: set[Cell], bg: int, latest_frame: Any) -> list[Label]:
-        simple_ids, action6_ok = available_action_ids(latest_frame)
-        moves: list[Label] = [("m", a) for a in sorted(simple_ids)]
-        clicks: list[Label] = (
-            [("c", cell) for cell in _click_candidates(grid, hud, bg)] if action6_ok else []
-        )
-        return moves + clicks
 
-    def _to_action(self, label: Label) -> GameAction:
-        kind, payload = label
-        if kind == "m":
-            return simple_action(int(payload))
-        row, col = payload
-        return click_action(x=col, y=row)
+# ── board parse ────────────────────────────────────────────────────────────
 
-    # ── level / restart bookkeeping ─────────────────────────────────────
 
-    def _on_level_up(self, levels: int) -> None:
-        self._levels_seen = levels
-        self._pending_label = None
-        self._pending_key = None
-        self._transitions = []
-        self._edges = {}
-        self._tried_from = {}
-        self._cands_at = {}
+def _parse_board(grid: Grid):
+    """Parse the visible frame into (pieces, cells, pixel_of).
 
-    def _on_restart(self) -> None:
-        self._pending_label = None
-        self._pending_key = None
-
-    # ── measurement: record the observed transition ─────────────────────
-
-    def _observe_result(self, cur_key: Any) -> None:
-        label = self._pending_label
-        prev_key = self._pending_key
-        self._pending_label = None
-        self._pending_key = None
-        if label is None or prev_key is None:
-            return
-        self._transitions.append((prev_key, label, cur_key))
-        self._edges.setdefault(prev_key, {})[label] = cur_key
-        self._tried_from.setdefault(prev_key, set()).add(label)
-
-    # ── planning ─────────────────────────────────────────────────────────
-
-    def _decide(self, cur_key: Any, cands: list[Label]) -> Label:
-        tried = self._tried_from.get(cur_key, set())
-        untried = [c for c in cands if c not in tried]
-        if untried:
-            return untried[0]
-
-        target = self._nearest_untried(cur_key)
-        if target is not None and target != cur_key:
-            path = transition_shortest_path(self._transitions, cur_key, target)
-            if path:
-                return path[0]  # type: ignore[return-value]
-
-        return cands[0]
-
-    def _nearest_untried(self, start_key: Any) -> Any | None:
-        """BFS over the KNOWN transition graph from ``start_key``; return the
-        nearest visited state (including ``start_key``) that still has an
-        untried candidate action, or None if fully explored. Hand-rolled
-        rather than :func:`admorphiq.kernels.reachable_frontier` for the same
-        reason ``admorphiq.adapters25.tu93`` gives (its universe is observed
-        edges only, so it cannot surface a never-tried candidate)."""
-        visited = {start_key}
-        queue: deque[Any] = deque([start_key])
-        while queue:
-            state = queue.popleft()
-            cands = self._cands_at.get(state)
-            if cands is not None:
-                tried = self._tried_from.get(state, set())
-                if any(c not in tried for c in cands):
-                    return state
-            for _label, nxt in self._edges.get(state, {}).items():
-                if nxt not in visited:
-                    visited.add(nxt)
-                    queue.append(nxt)
+    ``pieces`` and ``cells`` are lattice-coordinate sets ((gx, gy)); ``cells``
+    is every board slot INCLUDING those a piece sits on. ``pixel_of`` maps a
+    lattice cell to an integer (x, y) frame click point (detected centroid
+    when known, linear lattice extrapolation otherwise). Returns None when the
+    frame has no lattice board (piece and slot colours not separable).
+    """
+    if not grid or not grid[0]:
         return None
+    bg = most_common_color(grid)
+    regions = [
+        r
+        for r in find_regions(grid, background=bg)
+        if _MIN_CELL_SIZE <= r["size"] <= _MAX_CELL_SIZE
+    ]
+    if len(regions) < 3:
+        return None
+
+    # Colour with the most cell-regions = the empty board slots; the next
+    # most common cell colour = the movable pieces. Picking the single
+    # most-common non-slot colour (rather than "any non-slot colour") drops
+    # one-off decorations like the colour-9 selection/animation marker, which
+    # is cell-sized but is not a piece.
+    by_color: dict[int, int] = {}
+    for r in regions:
+        by_color[r["color"]] = by_color.get(r["color"], 0) + 1
+    ranked = sorted(by_color.items(), key=lambda kv: (-kv[1], kv[0]))
+    if len(ranked) < 2:
+        return None  # no distinct piece colour on the board -> nothing to plan
+    slot_color = ranked[0][0]
+    piece_color = ranked[1][0]
+
+    # Lattice origin = min centroid, so gx/gy are non-negative small integers.
+    rows = [r["centroid"][0] for r in regions]
+    cols = [r["centroid"][1] for r in regions]
+    row0, col0 = min(rows), min(cols)
+
+    def to_lattice(cr: float, cc: float) -> Cell:
+        return (
+            int(round((cc - col0) / _LATTICE_PITCH)),
+            int(round((cr - row0) / _LATTICE_PITCH)),
+        )
+
+    pieces: set[Cell] = set()
+    cells: set[Cell] = set()
+    detected: dict[Cell, Cell] = {}
+    for r in regions:
+        cr, cc = r["centroid"]
+        gx, gy = to_lattice(cr, cc)
+        if r["color"] not in (slot_color, piece_color):
+            continue  # decoration / marker not on the peg-solitaire board
+        cells.add((gx, gy))
+        detected[(gx, gy)] = (int(round(cc)), int(round(cr)))
+        if r["color"] == piece_color:
+            pieces.add((gx, gy))
+    # A piece covers its slot, so occupied lattice points are board cells too.
+    cells |= pieces
+    if not pieces:
+        return None
+
+    def pixel_of(cell: Cell) -> Cell:
+        if cell in detected:
+            return detected[cell]
+        gx, gy = cell
+        return (int(round(col0 + gx * _LATTICE_PITCH)), int(round(row0 + gy * _LATTICE_PITCH)))
+
+    return pieces, cells, pixel_of
+
+
+# ── faithful simulator + search ─────────────────────────────────────────────
+
+
+def _solve(pieces: set[Cell], cells: set[Cell]) -> list[tuple[Cell, Cell]]:
+    """DFS the peg-solitaire jump graph for a sequence reducing to one piece.
+
+    Returns a list of (source_cell, landing_cell) jumps, or [] if none found.
+    A jump ``P -> P+2d`` is legal iff ``P+d`` holds a piece and ``P+2d`` is an
+    empty board slot; it removes ``P`` and ``P+d`` and adds ``P+2d``.
+    """
+    start = frozenset(pieces)
+    seen: set[frozenset] = set()
+    nodes = 0
+
+    def moves(state: frozenset) -> list[tuple[Cell, Cell]]:
+        out: list[tuple[Cell, Cell]] = []
+        for (px, py) in state:
+            for dx, dy in _DIRS:
+                mid = (px + dx, py + dy)
+                land = (px + 2 * dx, py + 2 * dy)
+                if mid in state and land in cells and land not in state:
+                    out.append(((px, py), land))
+        return out
+
+    def dfs(state: frozenset) -> list[tuple[Cell, Cell]] | None:
+        nonlocal nodes
+        if len(state) == 1:
+            return []
+        if state in seen:
+            return None
+        seen.add(state)
+        nodes += 1
+        if nodes > _DFS_NODE_CAP:
+            return None
+        for (px, py), land in moves(state):
+            mid = ((px + land[0]) // 2, (py + land[1]) // 2)
+            nxt = frozenset((state - {(px, py), mid}) | {land})
+            rest = dfs(nxt)
+            if rest is not None:
+                return [((px, py), land), *rest]
+        return None
+
+    result = dfs(start)
+    return result or []
