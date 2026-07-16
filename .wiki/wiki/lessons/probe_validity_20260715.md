@@ -4,8 +4,9 @@ date: 2026-07-15
 rounds: R56
 status: six probe-validity failures diagnosed and fixed (R56 bp35 determinism /
   tn36 bit-toggle / decisive-single-variable; R59 r11l bare-stepping probe
-  degenerates display_to_grid + faithful passive-read recovery; R59 set_level+RESET
-  non-restoration blocks deep-level chirality/replay probes on sk48 + cn04)
+  degenerates display_to_grid + faithful passive-read recovery; R59 sk48 set_level
+  replay-budget artifact; R59 cn04 set_level+RESET blame CORRECTED to a real
+  executor bug after the VM reproduced the failure)
 keywords: [probe-validity, available-actions, diff-threshold, determinism-probe, single-variable-probe, false-confirmation, standalone-probe-unfaithful, display-to-grid-degenerate, faithful-passive-read, run-the-runner-path, set-level-reset-non-restoration, deep-level-forcing]
 ---
 
@@ -68,13 +69,21 @@ characterise. Three concrete instances this round:
    over. This makes any probe that depends on entering level n CLEANLY
    untestable locally: sk48's replay env kept `budget=196` after
    `set_level+ACTION7` (moves silently swallowed until the parse env was
-   separated from the replay env), and cn04's L3 chirality auto-select
-   (swap 0 → RESET → swap 1) reached `n8=0` but the win never fired under the
-   forced entry, so whether the auto-select transition works on a NATURAL L3
-   entry stayed unconfirmed on local budgets (L3 is only reachable naturally on
-   the VM @5000). The tell is the same as instance 4: the forced-entry result
-   contradicts what the real runner path produces. See [[../games/SK48]],
-   [[../games/CN04]].
+   separated from the replay env) — a genuine set_level artifact. **cn04 was a
+   MISATTRIBUTION, now CORRECTED (R59 VM diagnosis).** The initial bank blamed
+   this caveat for cn04's L3 chirality auto-select reaching `n8=0` without a win
+   under `set_level(2)`, calling it "unconfirmed until the VM." When the VM
+   measured the NATURAL chain it ALSO failed (2/5, L3 not cleared) — proving
+   `set_level(2)` had FAITHFULLY reproduced the failure all along, and the real
+   cause was a bug in OUR executor (the chirality RESET re-probes and derives a
+   different plan, so "swap flip" is not "same geometry, opposite pairing"). The
+   engine's `handle_reset` was read directly: a mid-game RESET takes the
+   `level_reset()` branch and restores the current level pristinely — the
+   harness was faithful; our code was wrong. Lesson: "the set_level/RESET harness
+   caveat" is a convenient explanation that can MASK a real bug — before banking
+   a deep-level result as "harness-INCONCLUSIVE", read the engine's reset path
+   and check whether the forced entry actually diverges from the runner path (for
+   cn04 it did not). See [[../games/SK48]], [[../games/CN04]].
 
 ## Root Cause
 
@@ -125,8 +134,14 @@ the false conclusion convincing: consistency is not validity.
   needs a clean level-n entry and that level is only reachable naturally on the
   VM, the honest bank is "feasible offline, natural-entry confirmation pending
   on the VM" — do NOT record a local forced-entry pass/fail as the answer.
-  Confirmed for sk48 (replay budget frozen at 196) and cn04 (L3 chirality
-  auto-select).
+  Confirmed genuine for sk48 (replay budget frozen at 196). But this caveat is
+  ALSO a convenient excuse that can mask a real bug: cn04's L3 failure was
+  initially banked as "harness-INCONCLUSIVE, pending VM" and then the VM
+  reproduced the SAME failure — the forced `set_level(2)` entry had been faithful
+  all along, and the bug was in our executor. Before invoking the caveat, READ
+  the engine's reset path (`base_game.handle_reset` → `level_reset` restores the
+  current level pristinely mid-game) and verify the forced entry actually
+  diverges from the runner path; if it doesn't, the local result IS the answer.
 
 ## Recovery
 
