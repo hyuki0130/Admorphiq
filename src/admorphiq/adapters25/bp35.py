@@ -119,117 +119,181 @@ from typing import Any
 from admorphiq.adapters25.base import (
     GameAction,
     GameAdapter,
-    available_action_ids,
     canonical_layer,
     click_action,
     has_frame,
-    most_common_color,
     reset_action,
     simple_action,
     state_name,
 )
-from admorphiq.kernels import canonical_key, find_regions, transition_shortest_path
 
 GAME_ID = "bp35"
 
 Cell = tuple[int, int]
-Region = dict[str, Any]
 Grid = tuple[tuple[int, ...], ...]
-# An action label is either a move ("m", action_id) or a click ("c", (row, col)).
-Label = tuple[str, Any]
+
+# Frame colour -> world-cell kind (cell-centre sampled; see BP35.md):
+#   5 = solid terrain/wall, 10 = open/passable, 14 = destructible block,
+#   7 = the '+' exit gem. 0/3/15 are HUD/letterbox and read as unknown.
+_KIND = {5: "wall", 10: "pass", 14: "destroy", 7: "gem"}
+_PLAYER_COLOR = 9
+_CELL_PX = 6  # each world cell renders 6x6 px (measured)
+_GRAV = -1  # this game's gravity is "up" (toward decreasing world y)
+_PLAN_LEG = 3  # actions taken per plan before re-parsing + re-planning
+_PLAN_CAP = 8000  # BFS expansion cap per plan
 
 _GIVEUP_DEFAULT = 4000
 
-_HUD_SPAN_FRACTION = 0.85
-_HUD_THICKNESS_FRACTION = 0.06
 
-# A click candidate must be a small-enough region to be an interactive block,
-# not the big terrain slab — a pure "is this a clickable thing" size gate.
-_MIN_CAND_SIZE = 1
-_MAX_CAND_SIZE = 400
-
-
-def _is_hud_band(region: Region, height: int, width: int) -> bool:
-    """A thin strip spanning most of one axis, OR pinned to a frame edge —
-    catches BP35's bottom-row step counter (the 1-px-per-step autonomous
-    change the determinism probe saw) so the state key stays stable."""
-    r0, c0, r1, c1 = region["bbox"]
-    h, w = r1 - r0 + 1, c1 - c0 + 1
-    thickness = max(1, int(height * _HUD_THICKNESS_FRACTION))
-    thickness_w = max(1, int(width * _HUD_THICKNESS_FRACTION))
-    full_width_thin = w >= width * _HUD_SPAN_FRACTION and h <= thickness
-    full_height_thin = h >= height * _HUD_SPAN_FRACTION and w <= thickness_w
-    edge_pinned_thin = (h <= thickness and (r0 == 0 or r1 == height - 1)) or (
-        w <= thickness_w and (c0 == 0 or c1 == width - 1)
-    )
-    return full_width_thin or full_height_thin or edge_pinned_thin
+def _marker(grid: Grid) -> Cell | None:
+    """The player sprite's marker (colour-9) centroid in frame pixels, or None
+    when the player is mid-animation and not drawn. The parser reads every other
+    cell RELATIVE to this point, so its exact pixel offset within the player
+    cell cancels out."""
+    rs = 0
+    cs = 0
+    n = 0
+    for r, row in enumerate(grid):
+        for c, v in enumerate(row):
+            if v == _PLAYER_COLOR:
+                rs += r
+                cs += c
+                n += 1
+    if n == 0:
+        return None
+    return (round(rs / n), round(cs / n))
 
 
-def _hud_cells(grid: Grid, bg: int) -> set[Cell]:
-    height, width = len(grid), len(grid[0])
-    cells: set[Cell] = set()
-    for region in find_regions(grid, background=bg):
-        if _is_hud_band(region, height, width):
-            cells |= region["cells"]
-    return cells
-
-
-def _mask_hud(grid: Grid, hud: set[Cell]) -> Grid:
-    if not hud:
-        return grid
-    bg = most_common_color(grid)
-    return tuple(
-        tuple(bg if (r, c) in hud else grid[r][c] for c in range(len(grid[0])))
-        for r in range(len(grid))
-    )
-
-
-def _click_candidates(grid: Grid, hud: set[Cell], bg: int) -> list[Cell]:
-    """Deterministic list of click-target cells: the rounded centroid of
-    every salient (non-background, non-HUD) region within the size gate."""
-    height, width = len(grid), len(grid[0])
-    cells: list[Cell] = []
-    seen: set[Cell] = set()
-    for region in find_regions(grid, background=bg):
-        if _is_hud_band(region, height, width):
+def _parse(grid: Grid, marker: Cell, pabs: Cell, world: dict[Cell, str]) -> None:
+    """Merge the visible cells into ``world`` (abs cell -> kind). A world cell
+    at relative ``(kx, ky)`` from the player renders at frame
+    ``(marker_row + ky*6, marker_col + kx*6)`` (the player is camera-locked at
+    its marker), so its absolute cell is ``(pabs.x + kx, pabs.y + ky)``."""
+    h = len(grid)
+    w = len(grid[0]) if grid else 0
+    for ky in range(-8, 9):
+        fr = marker[0] + ky * _CELL_PX
+        if not (0 <= fr < h):
             continue
-        if not (_MIN_CAND_SIZE <= region["size"] <= _MAX_CAND_SIZE):
+        for kx in range(-4, 10):
+            fc = marker[1] + kx * _CELL_PX
+            if 0 <= fc < w:
+                kind = _KIND.get(grid[fr][fc])
+                if kind:
+                    world[(pabs[0] + kx, pabs[1] + ky)] = kind
+    world[pabs] = "pass"
+
+
+def _fall(world: dict[Cell, str], x: int, y: int, soft: bool) -> tuple[str, Cell]:
+    """Deterministic gravity fall from ``(x, y)`` in the gravity direction until
+    a non-passable cell. ``soft`` (exploration mode) treats an UNKNOWN cell as a
+    landing floor (a reveal point); otherwise unknown is a wall."""
+    cur = (x, y)
+    ny = y + _GRAV
+    n = 0
+    while world.get((x, ny)) == "pass" and n < 40:
+        cur = (x, ny)
+        ny += _GRAV
+        n += 1
+    v = world.get((x, ny))
+    kind = v if v is not None else ("soft" if soft else "wall")
+    if kind == "gem":
+        return ("WIN", (x, ny))
+    if kind == "spike":
+        return ("DEAD", cur)
+    return ("OK", cur)
+
+
+def _successors(world: dict[Cell, str], pos: Cell, soft: bool) -> list[tuple[str, str, Cell, Cell | None]]:
+    """Every (label, result, new_pos, destroyed_cell) from ``pos``: move
+    left/right (1 cell + fall) and click a destructible NEIGHBOUR (left / right /
+    the cell directly above, which climbs the cleared column)."""
+    out: list[tuple[str, str, Cell, Cell | None]] = []
+    for d, nm in ((1, "R"), (-1, "L")):
+        nx = pos[0] + d
+        if pos[0] + d < 0:  # engine treats x<0 as a wall bump
+            out.append((nm, "OK", pos, None))
             continue
-        cr, cc = region["centroid"]
-        cell = (int(round(cr)), int(round(cc)))
-        if 0 <= cell[0] < height and 0 <= cell[1] < width and cell not in seen and cell not in hud:
-            seen.add(cell)
-            cells.append(cell)
-    return sorted(cells)
+        k = world.get((nx, pos[1]))
+        if k == "gem":
+            out.append((nm, "WIN", (nx, pos[1]), None))
+            continue
+        if k in ("wall", "destroy", "spike"):
+            out.append((nm, "OK", pos, None))
+            continue
+        res, np_ = _fall(world, nx, pos[1], soft)
+        out.append((nm, res, np_, None))
+    for cx, cy, nm in ((pos[0] - 1, pos[1], "CL"), (pos[0] + 1, pos[1], "CR"), (pos[0], pos[1] + _GRAV, "CA")):
+        if world.get((cx, cy)) == "destroy":
+            w2 = dict(world)
+            w2[(cx, cy)] = "pass"
+            if (cx, cy) == (pos[0], pos[1] + _GRAV):
+                res, np_ = _fall(w2, pos[0], pos[1] + _GRAV, soft)
+                out.append((nm, res, np_, (cx, cy)))
+            else:
+                out.append((nm, "OK", pos, (cx, cy)))
+    return out
+
+
+def _plan(world: dict[Cell, str], start: Cell, gem: Cell | None, visited: set[Cell]) -> list[str] | None:
+    """BFS over (player cell, destroyed-block set). Goal = reach the gem when it
+    is known; otherwise (exploration) steer toward the lowest-y UNVISITED
+    reachable cell — visited-awareness stops the climb dead-ending and
+    oscillating in one column. Returns the first-found winning path, else the
+    path to the best frontier cell."""
+    seen: set[tuple[Cell, frozenset[Cell]]] = {(start, frozenset())}
+    q: deque[tuple[Cell, frozenset[Cell], list[str]]] = deque([(start, frozenset(), [])])
+    best: list[str] | None = None
+    best_sc: int | None = None
+    exp = 0
+    soft = gem is None
+    while q and exp < _PLAN_CAP:
+        pos, destroyed, path = q.popleft()
+        exp += 1
+        w = dict(world)
+        for c in destroyed:
+            w[c] = "pass"
+        if gem is not None:
+            sc = abs(pos[1] - gem[1]) + abs(pos[0] - gem[0])
+        else:
+            sc = pos[1] + (0 if pos not in visited else 1000)
+        if path and (best_sc is None or sc < best_sc):
+            best_sc = sc
+            best = path
+        for nm, res, np_, clk in _successors(w, pos, soft):
+            if res == "WIN":
+                return path + [nm]
+            if res == "DEAD":
+                continue
+            nd = destroyed | ({clk} if clk else set())
+            st = (np_, nd)
+            if st not in seen:
+                seen.add(st)
+                q.append((np_, nd, path + [nm]))
+    return best
 
 
 class Adapter(GameAdapter):
-    """Generic MOVE+CLICK transition-graph frontier exploration over
-    HUD-masked frame-canonical states, composed from admorphiq.kernels."""
+    """Frame-only deterministic solver: parse the camera-scrolled window into an
+    accumulating world map (kinds from colour), track the player by the marker's
+    screen column, and BFS over (cell, destroyed-blocks) toward the gem, climbing
+    to reveal it. Pure Python + the frame; no game internals."""
 
     GAME_ID = GAME_ID
 
     def __init__(self, giveup: int = _GIVEUP_DEFAULT) -> None:
         self.restart_on_game_over = True
-
         self._giveup = giveup
         self._step = 0
         self._levels_seen = -1
+        self._reset_level()
 
-        self._pending_label: Label | None = None
-        self._pending_key: Any | None = None
-
-        # Transition graph over masked board states. Labels are moves or
-        # clicks (see ``Label``). ``_edges`` mirrors ``_transitions`` as an
-        # adjacency map kept in step so _nearest_untried stays linear.
-        # ``_cands_at`` records each visited state's own action alphabet (it
-        # is frame-derived — the click set depends on the current blocks).
-        self._transitions: list[tuple[Any, Label, Any]] = []
-        self._edges: dict[Any, dict[Label, Any]] = {}
-        self._tried_from: dict[Any, set[Label]] = {}
-        self._cands_at: dict[Any, list[Label]] = {}
-
-    # ── harness contract ────────────────────────────────────────────────
+    def _reset_level(self) -> None:
+        self._world: dict[Cell, str] = {}
+        self._pabs: Cell = (0, 0)
+        self._visited: set[Cell] = set()
+        self._col0: int | None = None
+        self._queue: list[str] = []
 
     def is_done(self, frames: list[Any], latest_frame: Any) -> bool:
         return state_name(latest_frame) == "WIN" or self._step >= self._giveup
@@ -237,117 +301,46 @@ class Adapter(GameAdapter):
     def choose_action(self, frames: list[Any], latest_frame: Any) -> GameAction:
         state = state_name(latest_frame)
         if state == "GAME_OVER":
-            self._on_restart()
+            self._reset_level()
             return reset_action()
         if state == "NOT_PLAYED" or not has_frame(latest_frame):
-            self._pending_label = None
-            self._pending_key = None
             self._levels_seen = -1
             return reset_action()
 
         grid = canonical_layer(latest_frame)
         levels = int(getattr(latest_frame, "levels_completed", 0) or 0)
         if levels != self._levels_seen:
-            self._on_level_up(levels)
-
+            self._levels_seen = levels
+            self._reset_level()
         self._step += 1
-        bg = most_common_color(grid)
-        hud = _hud_cells(grid, bg)
-        cur_key = canonical_key(_mask_hud(grid, hud), mode="exact")
-        self._observe_result(cur_key)
 
-        cands = self._cands_at.get(cur_key)
-        if cands is None:
-            cands = self._build_candidates(grid, hud, bg, latest_frame)
-            self._cands_at[cur_key] = cands
-        if not cands:
-            self._pending_label = None
-            self._pending_key = None
-            return reset_action()
+        marker = _marker(grid)
+        if marker is None:
+            # Player mid-animation: nudge a frame to redraw it.
+            return simple_action(4)
+        if self._col0 is None:
+            self._col0 = marker[1]
+        # x is exact from the marker column (camera x is fixed); y is carried by
+        # the sim (the player is camera-locked, so y is not on screen).
+        self._pabs = (round((marker[1] - self._col0) / _CELL_PX), self._pabs[1])
+        _parse(grid, marker, self._pabs, self._world)
+        self._visited.add(self._pabs)
 
-        label = self._decide(cur_key, cands)
-        self._pending_label = label
-        self._pending_key = cur_key
-        return self._to_action(label)
+        if not self._queue:
+            gem = next((c for c, k in self._world.items() if k == "gem"), None)
+            path = _plan(self._world, self._pabs, gem, self._visited)
+            self._queue = list(path[:_PLAN_LEG]) if path else ["R"]
 
-    def _build_candidates(self, grid: Grid, hud: set[Cell], bg: int, latest_frame: Any) -> list[Label]:
-        simple_ids, action6_ok = available_action_ids(latest_frame)
-        moves: list[Label] = [("m", a) for a in sorted(simple_ids)]
-        clicks: list[Label] = (
-            [("c", cell) for cell in _click_candidates(grid, hud, bg)] if action6_ok else []
-        )
-        return moves + clicks
+        action = self._queue.pop(0)
+        soft = not any(k == "gem" for k in self._world.values())
+        for nm, _res, np_, _clk in _successors(self._world, self._pabs, soft):
+            if nm == action:
+                self._pabs = (self._pabs[0], np_[1])
+                break
 
-    def _to_action(self, label: Label) -> GameAction:
-        kind, payload = label
-        if kind == "m":
-            return simple_action(int(payload))
-        row, col = payload
-        return click_action(x=col, y=row)
-
-    # ── level / restart bookkeeping ─────────────────────────────────────
-
-    def _on_level_up(self, levels: int) -> None:
-        self._levels_seen = levels
-        self._pending_label = None
-        self._pending_key = None
-        self._transitions = []
-        self._edges = {}
-        self._tried_from = {}
-        self._cands_at = {}
-
-    def _on_restart(self) -> None:
-        self._pending_label = None
-        self._pending_key = None
-
-    # ── measurement: record the observed transition ─────────────────────
-
-    def _observe_result(self, cur_key: Any) -> None:
-        label = self._pending_label
-        prev_key = self._pending_key
-        self._pending_label = None
-        self._pending_key = None
-        if label is None or prev_key is None:
-            return
-        self._transitions.append((prev_key, label, cur_key))
-        self._edges.setdefault(prev_key, {})[label] = cur_key
-        self._tried_from.setdefault(prev_key, set()).add(label)
-
-    # ── planning ─────────────────────────────────────────────────────────
-
-    def _decide(self, cur_key: Any, cands: list[Label]) -> Label:
-        tried = self._tried_from.get(cur_key, set())
-        untried = [c for c in cands if c not in tried]
-        if untried:
-            return untried[0]
-
-        target = self._nearest_untried(cur_key)
-        if target is not None and target != cur_key:
-            path = transition_shortest_path(self._transitions, cur_key, target)
-            if path:
-                return path[0]  # type: ignore[return-value]
-
-        return cands[0]
-
-    def _nearest_untried(self, start_key: Any) -> Any | None:
-        """BFS over the KNOWN transition graph from ``start_key``; return the
-        nearest visited state (including ``start_key``) that still has an
-        untried candidate action, or None if every reachable state is fully
-        explored. Hand-rolled rather than
-        :func:`admorphiq.kernels.reachable_frontier` for the same reason
-        ``admorphiq.adapters25.tu93`` gives (its universe is observed edges
-        only, so it cannot surface a never-tried candidate)."""
-        visited = {start_key}
-        queue: deque[Any] = deque([start_key])
-        while queue:
-            state = queue.popleft()
-            cands = self._cands_at.get(state)
-            if cands is not None:
-                tried = self._tried_from.get(state, set())
-                if any(c not in tried for c in cands):
-                    return state
-            for _label, nxt in self._edges.get(state, {}).items():
-                if nxt not in visited:
-                    visited.add(nxt)
-                    queue.append(nxt)
-        return None
+        if action == "R":
+            return simple_action(4)
+        if action == "L":
+            return simple_action(3)
+        dx, dy = {"CA": (0, _GRAV), "CL": (-1, 0), "CR": (1, 0)}[action]
+        return click_action(x=marker[1] + dx * _CELL_PX, y=marker[0] + dy * _CELL_PX)
