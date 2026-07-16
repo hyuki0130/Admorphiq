@@ -1,162 +1,82 @@
-"""script25 quarantined adapter: M0R0 (mirrored-maze navigation family).
+"""script25 quarantined adapter: M0R0 (mirror-players merge-maze).
 
 *** QUARANTINE — MODEL-NEVER-VISIBLE. See admorphiq.adapters25's package
 docstring. ***
 
-**STATUS: 1/6 (L0 only) — L1 desync-maze BANKED (R56 depth, 2026-07-15).**
-Gold-replay divergence (``data/traces/m0r0.npz`` level_index 1, the only
-oracle) fully isolated the L1 wall: the winning path must fully DIVERGE the
-mirror column-gap to reach offset descent-doors, then exploit a wall to
-desync rows — a maneuver a greedy ``gap < current`` objective structurally
-forbids. Two planner objectives measured this session both clear 0 L1
-levels (greedy: 0 in 1113 L1 actions; merge-goal joint BFS budget 20k: 0 in
-2500). The win state is frame-readable (row-gap==0 while column-gap is
-pinned at its wall-capped floor) but the PATH is a ~65k-state joint
-(self×partner) maze whose descent doors are not derivable from any frame
-scalar and only learnable by exhaustive reactive wall-mapping — hits the
-"joint space explodes past a bounded search" stop rule. Full evidence +
-control-scheme decode: ``.wiki/wiki/games/M0R0.md``. The joint-state planner
-below is retained (it clears L0 and is the correct architecture for any
-gold-generated L2+ reopen); nothing here is edited by the bank.
+**STATUS: 2/6 — L0 + L1 cleared by OFFLINE RECONSTRUCTION (R59, 2026-07-16).**
+This replaces the R56 online joint-hill-climb (which cleared L0 only and
+BANKED L1 as "descent doors not derivable online"). The bank's premise — "the
+per-piece wall map is not cleanly frame-separable, players traverse the colour
+zones" — was a LIVE-DECODE MISREAD, falsified this round by rendering the real
+engine frame and comparing to ground truth: **the full wall map IS
+byte-exactly frame-separable** (floor = background colour, walls = the
+non-floor zone cells). With the complete maze parsed UP FRONT (not learned
+reactively under optimistic passability), an offline joint BFS trivially finds
+the merge path the online hill-climb structurally could not.
 
-**Second backport (this revision, R56 2026-07-15)**: replaces the FIRST
-backport's "declare the mirror partner's current position as a fixed goal
-cell, then run single-agent shortest-path toward it" model (measured 0/6
-at both 500 and 3000 actions -- see the round page's Open items) with a
-genuine JOINT-STATE planner. The first backport's own bug: EVERY action
-moves BOTH pieces simultaneously (see "Joint dynamics" below), so
-"path-plan SELF toward wherever the partner currently sits" is asking the
-wrong question -- the partner is not a stationary or independently-moving
-obstacle, it is the OTHER HALF of a single joint action's effect. Treating
-it as a fixed waypoint means the "target" moves out from under the plan
-on every single step.
+**Decoded mechanics (verified against environment_files/m0r0/*/m0r0.py ground
+truth AND the data/traces/m0r0.npz gold oracle; dev-time only, this file never
+reads either at runtime):**
 
-**Joint dynamics -- MEASURED live (this file never reads
-``data/traces/m0r0.npz`` at runtime; that file was consulted OFFLINE,
-dev-time only, to design this measurement, exactly as every other
-adapter's offline-investigation discipline works). Confirmed by
-re-deriving the same result from the gold trace across BOTH captured
-levels (different measured cell sizes, 5px level 0 / 4px level 1) with
-zero game-title/id branching in the code below**:
+- **Two mirror players** share one colour (10 in both live hashes); the SAME
+  action moves BOTH on the same frame. In grid coordinates the control scheme
+  is a game CONSTANT: two actions move both players the SAME way along rows
+  (row-symmetric), the other two move them in OPPOSITE columns
+  (column-antisymmetric). Each side is independently WALL-BLOCKED — a wall
+  stops one side while the other moves, which is the ONLY way to break the
+  ``left_col + right_col = const`` column invariant (the "desync" the maze
+  forces to pass its single-file gaps).
+- **Win = the two players MERGE onto the same cell** (engine ``next_level``
+  fires when no un-merged player remains). Column parity: an even start gap
+  closes exactly; an odd gap closes to adjacency and merges via the engine's
+  cross-swap-to-midpoint rule (both modelled below).
+- **Walls** = the maze sprite's cells, rendered as the level's zone colours
+  (which VARY per level — so walls are detected as "not floor / not player /
+  not hazard", never by a fixed colour). A blocked move leaves the side in
+  place.
+- **Hazards** (``wyiex``, colour 8, checkerboarded over floor) do NOT block —
+  a player physically moves ONTO one and that triggers a full soft-reset of
+  both players to the level start. So any joint action landing EITHER player
+  on a hazard is FORBIDDEN in search (a skipped successor), never modelled as
+  a blocked stay.
+- HUD noise to ignore: colour-0/background step-counter bars live only in the
+  outermost frame ring (rows/cols 0 and 63); the maze is always inset, so the
+  parse excludes that ring when bounding the maze.
 
-- SELF and the mirror PARTNER share one colour; the SAME action id moves
-  BOTH regions on the SAME frame.
-- Each side's own resulting displacement is measured independently and
-  can be BLOCKED independently (a wall stops one side's movement while
-  the other side moves freely under the identical action) -- gold's own
-  solution deliberately exploits this to break/restore row-sync between
-  the two pieces (see "Win condition" below).
-- No FIXED horizontal/vertical split is assumed in the CODE (that would
-  be baking one level's observed shape in as a game-wide constant) --
-  ``_partner_dir_map`` is measured the same way ``_dir_map`` always was,
-  action by action, independently. It happens to come out antisymmetric
-  in one axis and symmetric in the other on both captured levels, but
-  the planner below works from whatever is actually measured, not from
-  that expectation.
-- The per-axis PIXEL SCALE is a property of THIS level's own grid, not
-  the game (measured directly: level 0 stepped 5px/action, level 1
-  4px/action) -- both dir_maps' MAGNITUDES are reset (not carried over)
-  on level-up, always replaced by a fresh clean measurement. The SIGN of
-  each action's direction (which button is up/down/left/right, per side)
-  DOES transfer across levels -- that part of the control scheme is a
-  genuine game-wide constant -- and is kept in ``_dir_sign``/
-  ``_partner_dir_sign`` to disambiguate the first re-measurement on a new
-  level when more than one same-radius candidate exists.
+**Runtime pipeline (per level):**
 
-**Win condition -- measured, NOT assumed uniform across levels (a real
-finding, not a guess)**: aggregating every WIN-triggering transition
-across all 5 repeated gold demonstrations of level 0 and level 1 (10
-transitions total, byte-identical geometry within each level, so this is
-reproducible, not noise):
+1. **Measure** the control scheme by probing the 4 move actions once each
+   (``kernels.find_regions`` + nearest-match tracking). The scheme is a game
+   constant, so it PERSISTS across levels and a blocked probe (reads a
+   zero delta) never clobbers a known non-zero one — the R59 bug that made
+   ACTION1 look like a no-op after a settle step landed a player on the top
+   wall, which silently froze the column invariant and hid every desync path.
+2. **Parse** the full maze (floor / wall / hazard grid + the two player cells)
+   from the settled frame via a centered-grid solve (offset can EXCEED the
+   cell scale, so the offset is derived by player-pixel alignment + content
+   bbox, not ``pixel % scale``).
+3. **Search** the JOINT ordered state ``(player0_cell, player1_cell)`` with
+   :func:`admorphiq.kernels.configuration_path` for the shortest merge path,
+   using the measured per-side dynamics + parsed walls (block) + hazards
+   (forbid). Identity ordering (which physical player is "player0") is carried
+   from the measurement phase and re-matched each frame by nearest.
+4. **Execute** the plan while tracking the joint state it PREDICTS after each
+   action; a live mismatch (a wall the parse missed, or a wrong identity
+   assignment) drops the rest of the plan and re-plans from the observed
+   state — closed-loop robustness on top of an offline-computed plan.
 
-- Level 0: win fires when the two regions' bboxes become COLUMN-adjacent
-  (touching, closing the column gap fully to 0) -- and level 0's row gap
-  is 0 throughout its entire captured trace (no asymmetric vertical block
-  ever occurs), so this alone is also "both axes simultaneously at their
-  own floor".
-- Level 1: win fires when the ROW gap closes to exactly 0 via a
-  successful (one-side-blocked) vertical action -- but the COLUMN gap at
-  that exact moment is a nonzero 4px (one full measured cell), NOT
-  touching. Tracing the full 40-action gold sequence shows this 4px
-  column gap is itself a WALL-CAPPED FLOOR: an earlier inward-closing
-  action at the identical 4px gap produces `(0, 0)` on BOTH sides
-  simultaneously (neither side can close it further), and row-gap==0
-  alone is reached MANY times earlier in the same trace WITHOUT winning
-  (steps where column gap is still 12-36px) -- so row-gap==0 is necessary
-  but not sufficient either; level 1's win is the moment row-gap==0 is
-  achieved WHILE column-gap is independently already pinned at its own
-  floor.
-- Combined, well-evidenced hypothesis: **win = a joint state where BOTH
-  axes are simultaneously at their own wall-capped minimum gap** (that
-  floor is 0 when unobstructed, or a positive wall-capped value
-  otherwise -- discovered by search, never hardcoded). This is NOT
-  proven for a third, unseen M0R0-family level, so the planner below
-  never hardcodes a specific target gap -- it greedily hill-climbs toward
-  smaller total gap using the MEASURED joint dynamics and lets the live
-  engine's own WIN signal (``is_done()`` / ``state_name()``) be the only
-  authority on whether a given joint state actually won. A state that
-  looks gap-minimal but doesn't win simply becomes the new starting point
-  for another round of hill-climbing.
+If no merge plan is found (e.g. an L3+ variant that adds clickable blocks this
+adapter does not model), it degrades to an untried-action explorer, preserving
+the L0 floor. GAME_OVER resets the current attempt while keeping every parsed
+fact.
 
-**Planner**: ``kernels.configuration_path`` (generic BFS over a
-caller-supplied state space) searches the JOINT state ``(self_cell,
-partner_cell)`` for the shortest path to any REACHABLE state with a
-strictly smaller combined gap than the current one -- a greedy
-hill-climbing step, re-planned every single decision (existing
-``_route``-style single-step replanning), not a one-shot fixed target.
-Each side's own movement in the search uses the SAME optimistic
-passability convention as every other script25 adapter: a destination
-cell is assumed passable unless CONFIRMED blocked by an earlier failed
-attempt (``_known_blocked`` for self, ``_partner_known_blocked`` for the
-partner -- two independent sets, since the two sides are independently
-blockable). When no improving state is reachable within budget, the
-adapter falls back to trying the current joint state's own untried
-actions (to discover new walls) exactly like the pre-existing
-``_probe``/frontier mechanism.
-
-A minimal DC22-style singleton-marker fallback is kept for the
-(unobserved-in-gold, but not ruled out for a private-set variant) case
-where no second same-coloured region is ever seen this level at all --
-i.e. a genuinely non-mirrored M0R0-family level.
-
-Kept unchanged from the first backport (still correct, not touched by
-this revision): GAME_OVER handling via ``_on_restart`` (preserves every
-learned wall/hazard fact, only resets the current attempt's tracked
-position -- matches DC22's own control-flow shape), hazard-memory
-(``_hazards``/``_dead_cells``, dead-cell threshold), and SELF's own
-identity re-acquisition after a restart via nearest-to-level-start-cell
-(never an arbitrary "first same-coloured region", to avoid ever locking
-onto the partner by mistake).
-
-Composition from ``admorphiq.kernels``:
-  - :func:`admorphiq.kernels.find_regions` + :func:`admorphiq.kernels.track_objects`
-    identify SELF (mirroring ``admorphiq.adapters25.dc22``'s
-    identity-by-movement technique) and, every call thereafter, the
-    CURRENT partner position.
-  - :func:`admorphiq.kernels.configuration_path` searches the JOINT state
-    space for a gap-improving move, using the measured per-side dynamics
-    and per-side optimistic passability.
-
-Hazard memory (kept from the first backport, unchanged in spirit -- this
-game's own GAME_OVER trap is orthogonal to the goal-direction model): a
-first smoke run measured GAME_OVER at 151 actions with 0 levels cleared,
-so this adapter keeps ``restart_on_game_over = True`` and tracks (cell,
-action) pairs that trigger a fatal reposition -- :meth:`_observe_result`
-detects this two ways: (a) the harness's own explicit ``state ==
-"GAME_OVER"``, handled via :meth:`_on_restart` (preserves every learned
-fact, only resets the current attempt's position); (b) a SILENT
-reposition (the frame snaps back to the exact start-of-level frame while
-this adapter's own tracked position was mid-maze) for any engine that
-never reports an explicit GAME_OVER state for this outcome. Either way, a
-cell hazardous under >= ``_DEAD_CELL_HAZARD_THRESHOLD`` distinct actions
-is excluded from the joint search entirely, persisted across restarts
-within a level, and reset on level-up alongside the rest of the spatial
-state.
+Composition from ``admorphiq.kernels``: :func:`find_regions` (player/region
+detection) and :func:`configuration_path` (the joint BFS). All pixel
+classification is plain-Python iteration over the observation grid.
 """
 
 from __future__ import annotations
 
-from collections import Counter
 from typing import Any
 
 from admorphiq.adapters25.base import (
@@ -170,227 +90,236 @@ from admorphiq.adapters25.base import (
     simple_action,
     state_name,
 )
-from admorphiq.kernels import configuration_path, find_regions, track_objects
+from admorphiq.kernels import configuration_path, find_regions
 
 GAME_ID = "m0r0"
 
 Cell = tuple[int, int]
-Region = dict[str, Any]
 JointState = tuple[Cell, Cell]
 
-# Per-level safety cap, mirroring every other script25 adapter's giveup
-# convention so the harness never spins forever inside this one.
 _GIVEUP_DEFAULT = 4000
-
-# A cell hazardous under this many DISTINCT actions is declared dead outright
-# (excluded from future path-planning entirely) rather than waiting to try
-# every remaining direction from it too. Measured motivation (pre-backport):
-# a smoke run recorded the SAME cell killing the run on 3 separate actions
-# across 3 separate lives (455 of 500 actions spent re-discovering that one
-# spot is fatal regardless of direction) -- 2 independent hazardous
-# directions from one cell is already strong evidence the CELL itself is the
-# trap, not the direction, so this stops the frontier search from ever
-# returning to it. Kept unchanged by this backport.
-_DEAD_CELL_HAZARD_THRESHOLD = 2
-
-# Bound on how many joint states configuration_path expands per decision --
-# a joint state space can be much larger than a single-agent one (product
-# of two positions), so this is deliberately smaller than a single-agent
-# search's typical budget; a hill-climbing step only needs to find ONE
-# improving state, not exhaustively map the space.
-_JOINT_SEARCH_BUDGET = 4000
+# wyiex hazard colour (fixed sprite colour across both live hashes; a player
+# entering one triggers a soft reset — see module docstring).
+_HAZARD_COLOR = 8
+# Bound on joint states expanded per merge search. A joint (self x partner)
+# space is the product of two positions but each maze is small (<= ~15x15),
+# so this comfortably covers a full search.
+_MERGE_SEARCH_BUDGET = 200_000
+_MOVE_ACTIONS = (1, 2, 3, 4)
+# Consecutive decisions with NO merge plan before giving up the whole run (an
+# unmodelled level variant). Generous enough that a genuinely long search or a
+# transient settle frame never trips it.
+_NO_PLAN_GIVEUP = 200
 
 
 def _manhattan(a: Cell, b: Cell) -> int:
     return abs(a[0] - b[0]) + abs(a[1] - b[1])
 
 
-def _sign(v: int) -> int:
-    if v > 0:
-        return 1
-    if v < 0:
-        return -1
-    return 0
+def _player_blocks(grid: tuple[tuple[int, ...], ...], color: int) -> list[tuple[Cell, int, int]]:
+    """``(top_left, height, width)`` of every region of ``color`` (kernels)."""
+    out: list[tuple[Cell, int, int]] = []
+    for reg in find_regions(grid, background=None):
+        if reg["color"] != color:
+            continue
+        r0, c0, r1, c1 = reg["bbox"]
+        out.append(((r0, c0), r1 - r0 + 1, c1 - c0 + 1))
+    return out
 
 
-def _cell_sign(shift: Cell) -> Cell:
-    return (_sign(shift[0]), _sign(shift[1]))
+def _median(vals: list[int]) -> int:
+    s = sorted(vals)
+    n = len(s)
+    if n == 0:
+        return 0
+    return s[n // 2] if n % 2 else (s[n // 2 - 1] + s[n // 2]) // 2
 
 
-def _magnitude(shift: Cell) -> int:
-    return abs(shift[0]) + abs(shift[1])
+def _solve_axis(scale: int, player_px: list[int], content_lo: int, content_hi: int) -> tuple[int, int] | None:
+    """Centered-grid ``(dim, offset)`` for one axis.
+
+    The tightest centered grid (largest offset, ``offset = (64 - dim*scale)//2``)
+    whose offset aligns EVERY player pixel to a cell boundary and whose span
+    contains all maze content ``[content_lo, content_hi]``. Needed because the
+    true offset can EXCEED ``scale`` (a 13-wide grid at scale 4 has offset 6),
+    so ``pixel % scale`` is not the offset.
+    """
+    best: tuple[int, int] | None = None
+    for dim in range(1, 64 // scale + 1):
+        off = (64 - dim * scale) // 2
+        if off < 0:
+            continue
+        if not all(0 <= (px - off) < dim * scale and (px - off) % scale == 0 for px in player_px):
+            continue
+        if off > content_lo or off + dim * scale < content_hi + 1:
+            continue
+        if best is None or off > best[1]:
+            best = (dim, off)
+    return best
 
 
-def _rematch_radius(dir_map: dict[int, Cell]) -> int:
-    """Bound for a bounded nearest-match re-measurement, from PEER
-    magnitudes already confirmed for this same piece/level (never a fixed
-    constant -- see ``_observe_piece``'s docstring for the bug this
-    replaces).
+class _Maze:
+    """A parsed level: geometry + wall/hazard sets + the two player cells."""
 
-    Once >=1 action's magnitude is confirmed this level, a fresh
-    measurement is accepted only within 2x the MEDIAN confirmed magnitude
-    -- an outlier candidate that far from every peer is rejected outright
-    rather than stored, because a wrong move vocabulary poisons every
-    joint-state plan built from it afterward (measured directly: a
-    spurious match at a fixed 20px radius produced a (0, -20) magnitude
-    while three peer actions all correctly measured 4, corrupting
-    ``_joint_successors``' own move set for the rest of the level).
+    __slots__ = ("gh", "gw", "scale", "off_y", "off_x", "walls", "hazards", "players")
 
-    Before any peer exists (the very first action measured this level for
-    this piece), falls back to a conservative absolute cap -- both
-    per-level pixel scales measured so far (4px, 5px) sit comfortably
-    under it, so it constrains the very first guess without assuming a
-    specific scale."""
-    if not dir_map:
-        return 8
-    magnitudes = sorted(_magnitude(v) for v in dir_map.values())
-    n = len(magnitudes)
-    median = magnitudes[n // 2] if n % 2 else (magnitudes[n // 2 - 1] + magnitudes[n // 2]) / 2
-    return max(1, int(2 * median))
+    def __init__(self, gh, gw, scale, off_y, off_x, walls, hazards, players):
+        self.gh = gh
+        self.gw = gw
+        self.scale = scale
+        self.off_y = off_y
+        self.off_x = off_x
+        self.walls: set[Cell] = walls
+        self.hazards: set[Cell] = hazards
+        self.players: list[Cell] = players
+
+    def to_grid(self, px_cell: Cell) -> Cell:
+        return ((px_cell[0] - self.off_y) // self.scale, (px_cell[1] - self.off_x) // self.scale)
 
 
-def _gap_score(self_cell: Cell, partner_cell: Cell) -> int:
-    """Combined row+column separation between the two pieces -- the
-    quantity the joint planner hill-climbs downward. A plain Manhattan
-    distance: no axis-specific "closing direction" is assumed here (that
-    would bake in the measured-but-not-guaranteed-universal horizontal/
-    vertical split from the module docstring); the planner only needs
-    SOME scalar that decreases as the pieces approach whatever
-    configuration the live engine considers a win, and Manhattan distance
-    decreases under both observed win patterns (level 0's full column
-    closure and level 1's row closure)."""
-    return _manhattan(self_cell, partner_cell)
+def _classify_cell(grid, r0: int, c0: int, scale: int, background: int, player_color: int) -> str:
+    """One grid cell -> ``"hazard"`` (any colour-8 pixel), ``"floor"`` (a
+    background/player pixel and no hazard), or ``"wall"`` (neither)."""
+    has_hazard = False
+    has_floor = False
+    h = len(grid)
+    w = len(grid[0]) if h else 0
+    for rr in range(r0, min(r0 + scale, h)):
+        grow = grid[rr]
+        for cc in range(c0, min(c0 + scale, w)):
+            val = grow[cc]
+            if val == _HAZARD_COLOR:
+                has_hazard = True
+            elif val == background or val == player_color:
+                has_floor = True
+    if has_hazard:
+        return "hazard"
+    return "floor" if has_floor else "wall"
 
 
-def _detect_singleton_marker(regions: list[Region], self_color: int | None) -> Cell | None:
-    """DC22-style fallback goal: the smallest singleton-coloured region
-    excluding SELF's own colour. Used ONLY when no second SELF-coloured
-    region has EVER been observed this level -- i.e. a level that turns
-    out not to use the mirror-partner mechanic both captured gold levels
-    showed. Not exercised by either captured level; kept as a documented,
-    narrow safety net for an unseen variant, not the primary path."""
-    if not regions:
+def _parse_maze(grid: tuple[tuple[int, ...], ...], player_color: int) -> _Maze | None:
+    """Frame -> ``_Maze`` (floor = background, hazard = colour-8-present cell,
+    wall = anything else), or ``None`` when the two players are not resolvable."""
+    if not grid:
         return None
-    color_counts = Counter(r["color"] for r in regions)
-    singleton = [r for r in regions if color_counts[r["color"]] == 1 and r["color"] != self_color]
-    if not singleton:
+    blocks = _player_blocks(grid, player_color)
+    if len(blocks) < 2:
         return None
-    goal = min(singleton, key=lambda r: r["size"])
-    return goal["bbox"][:2]  # type: ignore[index]
+    scale = _median([h for _, h, _ in blocks] + [w for _, _, w in blocks])
+    if scale < 1:
+        return None
+    background = most_common_color(grid)
+
+    # Maze content bbox = floor/player/hazard pixels, excluding the outer HUD
+    # ring (rows/cols 0 and 63 carry the step-counter bars in the background
+    # colour, which would otherwise inflate the bbox to the frame edge).
+    top = left = 64
+    bot = right = -1
+    h = len(grid)
+    w = len(grid[0]) if h else 0
+    for r in range(1, min(h, 63)):
+        row = grid[r]
+        for c in range(1, min(w, 63)):
+            v = row[c]
+            if v == background or v == player_color or v == _HAZARD_COLOR:
+                if r < top:
+                    top = r
+                if r > bot:
+                    bot = r
+                if c < left:
+                    left = c
+                if c > right:
+                    right = c
+    if bot < 0:
+        return None
+
+    prow = [tl[0] for tl, _, _ in blocks]
+    pcol = [tl[1] for tl, _, _ in blocks]
+    ay = _solve_axis(scale, prow, top, bot)
+    ax = _solve_axis(scale, pcol, left, right)
+    if ay is None or ax is None:
+        return None
+    gh, off_y = ay
+    gw, off_x = ax
+
+    walls: set[Cell] = set()
+    hazards: set[Cell] = set()
+    for gy in range(gh):
+        for gx in range(gw):
+            kind = _classify_cell(grid, off_y + gy * scale, off_x + gx * scale, scale, background, player_color)
+            if kind == "hazard":
+                hazards.add((gy, gx))
+            elif kind == "wall":
+                walls.add((gy, gx))
+
+    players = sorted(((tl[0] - off_y) // scale, (tl[1] - off_x) // scale) for tl, _, _ in blocks)
+    return _Maze(gh, gw, scale, off_y, off_x, walls, hazards, players)
 
 
 class Adapter(GameAdapter):
-    """Joint-state hill-climbing navigation composed entirely from admorphiq.kernels."""
+    """Offline-reconstruction merge-maze solver composed from admorphiq.kernels."""
 
     GAME_ID = GAME_ID
 
     def __init__(self, giveup: int = _GIVEUP_DEFAULT) -> None:
         self.restart_on_game_over = True
-
         self._giveup = giveup
         self._step = 0
         self._levels_seen = -1
 
-        # action_id -> CONFIRMED pixel delta (dr, dc) of SELF's / the
-        # PARTNER's own region, for THIS level. Reset (not persisted) on
-        # level-up: the per-axis pixel SCALE is a property of the level's
-        # own grid, not the game (measured: 5px/action on one level,
-        # 4px/action on another), so a magnitude carried over from a
-        # different level is actively wrong, not just stale.
-        self._dir_map: dict[int, Cell] = {}
-        self._partner_dir_map: dict[int, Cell] = {}
-        # action_id -> measured SIGN (-1/0/+1 per axis), one per side. This
-        # DOES persist across levels/restarts (the control scheme is a
-        # game-wide constant) and seeds disambiguation the first time an
-        # action is re-measured on a new level (see _observe_piece).
-        self._dir_sign: dict[int, Cell] = {}
-        self._partner_dir_sign: dict[int, Cell] = {}
-        self._self_color: int | None = None
-        self._active_cell: Cell | None = None
-        # The partner's current position, re-read fresh every call (never
-        # cached) -- see module docstring's "Joint dynamics": the partner
-        # moves on every action, so a stale position is wrong immediately.
-        self._partner_cell: Cell | None = None
-        # True once a second SELF-coloured region has been directly
-        # observed at least once this level -- gates the DC22-style
-        # singleton fallback (see _detect_singleton_marker).
-        self._partner_ever_seen = False
-        # Fallback-only static goal (singleton marker), used exclusively
-        # when no partner has ever been seen this level.
-        self._marker_cell: Cell | None = None
+        # action_id -> {player_index: (dr, dc)} in GRID units. Persists across
+        # levels (the control scheme is a game constant); a blocked probe
+        # (zero delta) never overwrites a known non-zero one.
+        self._scheme: dict[int, dict[int, Cell]] = {a: {} for a in _MOVE_ACTIONS}
+        self._player_color: int | None = None
+        # consecutive decisions that produced no merge plan (drives is_done's
+        # unmodelled-variant bail); reset on any level-up.
+        self._no_plan_streak = 0
 
-        self._pending_action: int | None = None
-        self._pending_ref_cell: Cell | None = None
-        self._pending_partner_ref_cell: Cell | None = None
+        self._reset_level_state()
+
+    def _reset_level_state(self) -> None:
+        self._maze: _Maze | None = None
+        # the current sorted joint state (index 0/1 aligned with self._scheme)
+        self._p0: Cell | None = None
+        self._p1: Cell | None = None
+        # measurement bookkeeping for the current level
+        self._measure_prev: list[Cell] | None = None
+        self._measure_action: int | None = None
+        self._measure_queue: list[int] = list(_MOVE_ACTIONS)
         self._prev_grid: tuple[tuple[int, ...], ...] | None = None
-        # A multi-hop gap-improving plan from configuration_path, drained
-        # ONE action per decision instead of being recomputed from scratch
-        # every step -- necessary because a genuine improving path can
-        # require a temporary WORSENING hop (gold's own solution
-        # deliberately desyncs row-alignment before resyncing it), and
-        # re-deriving "does gap improve relative to the new, worse
-        # baseline" every single step degenerates into undoing the very
-        # first hop forever (measured directly via a live diagnostic: an
-        # infinite gap=10<->20 oscillation, worsen then "improve" back to
-        # exactly where it started). ``_pending_plan_expected`` is the
-        # joint state the plan predicts AFTER each queued action, checked
-        # against the ACTUAL observed state before every drain -- a
-        # newly-discovered wall invalidates the rest of the plan rather
-        # than blindly continuing it.
-        self._pending_plan: list[int] = []
-        self._pending_plan_expected: list[JointState] = []
-        # The very first frame seen this level (post-reset frames snap back
-        # to this exactly) -- see _observe_result's silent-reposition
-        # detector.
-        self._level_start_grid: tuple[tuple[int, ...], ...] | None = None
-        # SELF's / the partner's own position the first time each was ever
-        # measured this level (cached once). Used to re-acquire identity
-        # after ANY restart (_active_cell/_partner_cell go back to None)
-        # among the >= 1 same-coloured regions on the board --
-        # nearest-to-start-position is a robust, measured-necessary
-        # disambiguator, since picking an arbitrary same-coloured region
-        # would risk swapping the two pieces' identities.
-        self._level_start_cell: Cell | None = None
-        self._partner_start_cell: Cell | None = None
-
-        self._tried_from: dict[Cell, set[int]] = {}
-        self._partner_tried_from: dict[Cell, set[int]] = {}
-        # Cells CONFIRMED blocked, one set per side -- the two pieces are
-        # independently blockable (see module docstring). Every other cell
-        # is OPTIMISTICALLY assumed passable; nothing removes a cell once
-        # added (no button/toggle mechanic in this game, unlike DC22).
-        self._known_blocked: set[Cell] = set()
-        self._partner_known_blocked: set[Cell] = set()
-
-        # (cell, action) pairs that triggered a fatal reposition. Persists
-        # across restarts WITHIN a level (a property of the layout);
-        # cleared on level-up alongside every other spatial fact. Kept from
-        # the first backport, unchanged in spirit.
-        self._hazards: dict[Cell, set[int]] = {}
-        # Cells hazardous under >= _DEAD_CELL_HAZARD_THRESHOLD distinct
-        # actions -- excluded from the joint search entirely (see
-        # _joint_successors). Persists like _hazards.
-        self._dead_cells: set[Cell] = set()
-
-        self._replans = 0
+        self._pending_action: int | None = None
+        self._settle_tries = 0
+        # the action just issued, used to predict identity across a crossing
+        self._last_action: int | None = None
 
     # ── harness contract ────────────────────────────────────────────────
 
     def is_done(self, frames: list[Any], latest_frame: Any) -> bool:
-        return state_name(latest_frame) == "WIN" or self._step >= self._giveup
+        # Bail once a level yields NO merge plan for a sustained stretch (an
+        # unmodelled variant, e.g. one that adds clickable blocks): the search
+        # is deterministic, so a long run of empty plans will not spontaneously
+        # recover, and continuing only burns the shared action budget without
+        # changing the score. A level that merely needs a long path always
+        # returns a (non-empty) plan, so its streak stays at zero.
+        return (
+            state_name(latest_frame) == "WIN"
+            or self._step >= self._giveup
+            or self._no_plan_streak >= _NO_PLAN_GIVEUP
+        )
 
     def choose_action(self, frames: list[Any], latest_frame: Any) -> GameAction:
         state = state_name(latest_frame)
         if state == "GAME_OVER":
-            # A fatal reposition just happened, but the maze layout (walls,
-            # hazards) didn't change -- only the current attempt did.
-            # Matches DC22's own correct GAME_OVER handling.
-            self._on_restart()
+            # A soft reset happened (a player hit a hazard). Keep every parsed
+            # fact; only the current attempt's plan/identity is stale.
+            self._plan = []
+            self._expected = []
+            self._p0 = self._p1 = None
+            self._pending_action = None
             return reset_action()
         if state == "NOT_PLAYED" or not has_frame(latest_frame):
             self._pending_action = None
-            self._pending_ref_cell = None
-            self._pending_partner_ref_cell = None
             self._prev_grid = None
             self._levels_seen = -1
             return reset_action()
@@ -398,17 +327,14 @@ class Adapter(GameAdapter):
         grid = canonical_layer(latest_frame)
         levels = int(getattr(latest_frame, "levels_completed", 0) or 0)
         if levels != self._levels_seen:
-            self._on_level_up(levels, grid)
+            self._levels_seen = levels
+            self._reset_level_state()
 
         self._step += 1
-        self._observe_result(grid)
 
-        simple_ids, _action6_ok = available_action_ids(latest_frame)
-        move_ids = sorted(a for a in simple_ids if a in (1, 2, 3, 4))
+        simple_ids, _ = available_action_ids(latest_frame)
+        move_ids = [a for a in _MOVE_ACTIONS if a in simple_ids]
         if not move_ids:
-            # No movement actions exposed at all -- nothing for a maze plan
-            # to compose from. Degrade to whatever else is available rather
-            # than crash; this adapter simply has no traction on this frame.
             self._prev_grid = grid
             self._pending_action = None
             return simple_action(simple_ids[0]) if simple_ids else reset_action()
@@ -418,465 +344,266 @@ class Adapter(GameAdapter):
         self._pending_action = action
         return simple_action(action)
 
-    # ── level / restart bookkeeping ─────────────────────────────────────
+    # ── player colour discovery ─────────────────────────────────────────
 
-    def _on_level_up(self, levels: int, grid: tuple[tuple[int, ...], ...]) -> None:
-        """Drop every SPATIAL fact about the level just left, INCLUDING
-        both dir_maps' confirmed magnitudes (a property of THIS level's
-        own grid, not the game -- see module docstring). dir_sign for
-        both sides survives -- the control scheme itself is a game-wide
-        constant."""
-        self._levels_seen = levels
-        self._pending_action = None
-        self._pending_ref_cell = None
-        self._pending_partner_ref_cell = None
-        self._pending_plan = []
-        self._pending_plan_expected = []
-        self._prev_grid = None
-        self._level_start_grid = grid
-        self._level_start_cell = None
-        self._partner_start_cell = None
-        self._active_cell = None
-        self._partner_cell = None
-        self._partner_ever_seen = False
-        self._marker_cell = None
-        self._tried_from = {}
-        self._partner_tried_from = {}
-        self._known_blocked = set()
-        self._partner_known_blocked = set()
-        self._hazards = {}
-        self._dead_cells = set()
-        self._dir_map = {}
-        self._partner_dir_map = {}
+    def _discover_player_color(self, before: tuple, after: tuple) -> None:
+        """Player colour = the (non-background) colour whose regions shifted
+        between ``before`` and ``after`` under the just-issued probe."""
+        bg = most_common_color(after)
+        before_by_color: dict[int, list[Cell]] = {}
+        for reg in find_regions(before, background=None):
+            if reg["color"] == bg:
+                continue
+            before_by_color.setdefault(reg["color"], []).append((reg["bbox"][0], reg["bbox"][1]))
+        best: tuple[int, int] | None = None
+        for reg in find_regions(after, background=None):
+            color = reg["color"]
+            if color == bg or color not in before_by_color:
+                continue
+            here = (reg["bbox"][0], reg["bbox"][1])
+            if here not in before_by_color[color]:
+                # a region of this colour moved
+                count = len(before_by_color[color])
+                if best is None or count < best[1]:
+                    best = (color, count)
+        if best is not None:
+            self._player_color = best[0]
 
-    def _on_restart(self) -> None:
-        """Only the two pieces' own tracked positions reset; every fact
-        already learned about the layout (dir_maps, known_blocked sets,
-        hazards, dead_cells, tried_from) remains true (the maze didn't
-        change, only the attempt did) and is deliberately KEPT so each
-        life compounds on the last instead of re-exploring from scratch
-        every time. The queued multi-hop plan is dropped -- a restart
-        means something just went wrong (a hazard), so re-planning fresh
-        from whatever position is re-acquired is safer than blindly
-        continuing a plan computed for the pre-restart position."""
-        self._pending_action = None
-        self._pending_ref_cell = None
-        self._pending_partner_ref_cell = None
-        self._pending_plan = []
-        self._pending_plan_expected = []
-        self._prev_grid = None
-        self._active_cell = None
-        self._partner_cell = None
+    # ── decision ────────────────────────────────────────────────────────
 
-    # ── measurement: did the pending action move SELF / the partner? ───
+    def _decide(self, grid: tuple, move_ids: list[int]) -> int:
+        # Phase A — measure the control scheme (and discover player colour on
+        # the very first probe).
+        if self._measure_action is not None:
+            self._absorb_probe(grid)
 
-    def _observe_result(self, grid: tuple[tuple[int, ...], ...]) -> None:
-        action = self._pending_action
-        ref_cell = self._pending_ref_cell
-        partner_ref_cell = self._pending_partner_ref_cell
+        if self._player_color is None:
+            # First ever action: issue a probe; discovery happens on absorb.
+            self._measure_action = self._measure_queue.pop(0) if self._measure_queue else 1
+            self._measure_prev = None
+            return self._measure_action
+
+        # (re)parse the maze once the player colour is known.
+        if self._maze is None:
+            maze = _parse_maze(grid, self._player_color)
+            if maze is None or len(maze.players) < 2:
+                # level-up transition frame (previous merged block) — settle
+                self._settle_tries += 1
+                if self._settle_tries > 3:
+                    return move_ids[0]
+                return move_ids[0]
+            self._maze = maze
+            self._settle_tries = 0
+
+        # Probe every move action ONCE per level. This both (re)confirms the
+        # scheme (blocked probes never clobber a known delta) and — critically
+        # — establishes the two players' IDENTITY order at the level start,
+        # BEFORE any crossing, by nearest-tracking across the small probes.
+        # Identity matters: the mirror control scheme means applying player-0's
+        # delta to the wrong physical player flips the column direction, which
+        # is exactly why a position-sorted state diverges once the pair crosses.
+        if self._measure_queue:
+            a = self._measure_queue.pop(0)
+            self._measure_prev = list(self._identity_or_sorted(grid))
+            self._measure_action = a
+            return a
+        self._measure_action = None
+
+        # Phase B — closed-loop merge over the ORDERED joint identity state.
+        # Re-plan the shortest merge path from the OBSERVED state every
+        # decision and take only its first action; BFS is cheap on these small
+        # mazes and single-step transitions are exact (byte-exact wall map), so
+        # this follows the shortest path with zero open-loop drift and any
+        # surprise simply re-routes next frame.
+        players = self._current_players(grid)
+        if len(players) < 2:
+            # merged (or about to win) — idle a legal move; harness WIN check
+            # decides.
+            self._last_action = None
+            return move_ids[0]
+        self._assign_identity(players)
+
+        plan = self._search_merge(move_ids)
+        if plan:
+            self._no_plan_streak = 0
+            self._last_action = plan[0]
+            return plan[0]
+        # No merge plan (unmodelled variant) — gated explorer preserving floor.
+        self._no_plan_streak += 1
+        self._last_action = None
+        return self._explore(move_ids)
+
+    def _identity_or_sorted(self, grid: tuple) -> list[Cell]:
+        """The two players in the identity order established SO FAR this level
+        (or sorted, before any is established)."""
+        players = self._current_players(grid)
+        if self._p0 is not None and self._p1 is not None and len(players) == 2:
+            self._assign_identity(players)
+            return [self._p0, self._p1]
+        return players
+
+    def _assign_identity(self, players: list[Cell]) -> None:
+        """Map the two observed cells to ordered identities p0/p1. When a prior
+        assignment exists, match by the ACTION-PREDICTED positions (robust to a
+        column crossing that a plain position-nearest match would mis-handle);
+        otherwise bootstrap from sorted order (uncrossed at the level start)."""
+        a, b = players[0], players[1]
+        if self._p0 is None or self._p1 is None or self._maze is None:
+            self._p0, self._p1 = a, b
+            return
+        pred0, pred1 = self._p0, self._p1
+        act = self._last_action
+        if act is not None and 0 in self._scheme[act] and 1 in self._scheme[act]:
+            pred0 = self._offset(self._p0, self._scheme[act][0], self._maze)
+            pred1 = self._offset(self._p1, self._scheme[act][1], self._maze)
+        keep = _manhattan(a, pred0) + _manhattan(b, pred1)
+        swap = _manhattan(a, pred1) + _manhattan(b, pred0)
+        self._p0, self._p1 = (a, b) if keep <= swap else (b, a)
+
+    # ── measurement helpers ─────────────────────────────────────────────
+
+    def _absorb_probe(self, grid: tuple) -> None:
+        action = self._measure_action
+        self._measure_action = None
+        if action is None:
+            return
         before = self._prev_grid
-        self._pending_action = None
-        self._pending_ref_cell = None
-        self._pending_partner_ref_cell = None
-        if action is None or before is None:
+        if before is not None and self._player_color is None:
+            self._discover_player_color(before, grid)
+        if self._player_color is None:
             return
-
-        # A SILENT reposition: the frame snaps back to the exact
-        # level-start frame while this adapter's own tracking still holds
-        # a position DIFFERENT from where SELF started this level -- a
-        # fatal reposition just happened without the harness ever
-        # reporting an explicit GAME_OVER state for it.
-        if (
-            self._active_cell is not None
-            and self._level_start_cell is not None
-            and self._active_cell != self._level_start_cell
-            and grid == self._level_start_grid
-        ):
-            self._record_hazard(ref_cell, action)
-            self._on_restart()
+        # Parse the level geometry (same maze in `before` and `grid`) so the
+        # very first probe — the one that also discovered the player colour —
+        # still records its scheme delta cleanly, measured at the START
+        # position (where a move is most likely unblocked) rather than being
+        # deferred to the end of the queue.
+        if self._maze is None:
+            self._maze = _parse_maze(grid, self._player_color)
+        prev = self._measure_prev
+        if prev is None and before is not None and self._maze is not None:
+            prev = self._grid_players(before)
+        cur = self._current_players(grid)
+        if prev is None or len(prev) < 2 or len(cur) < 2:
             return
+        used: set[int] = set()
+        matched: list[Cell | None] = [None, None]
+        for i, p in enumerate(prev[:2]):
+            best: tuple[int, int, Cell] | None = None
+            for j, q in enumerate(cur):
+                if j in used:
+                    continue
+                d = _manhattan(p, q)
+                if best is None or d < best[0]:
+                    best = (d, j, q)
+            if best is not None:
+                used.add(best[1])
+                matched[i] = best[2]
+                delta = (best[2][0] - p[0], best[2][1] - p[1])
+                if delta != (0, 0):
+                    self._scheme[action][i] = delta
+        # Carry the identity order (which physical cell is player-0 / player-1)
+        # forward from this probe so it is established BEFORE any crossing.
+        if matched[0] is not None and matched[1] is not None:
+            self._p0, self._p1 = matched[0], matched[1]
 
-        bg_before = most_common_color(before)
-        regions_before = find_regions(before, background=bg_before)
+    def _grid_players(self, grid: tuple) -> list[Cell]:
+        return self._current_players(grid)
 
-        if self._self_color is None:
-            bg_cur = most_common_color(grid)
-            regions_cur = find_regions(grid, background=bg_cur)
-            tracked = track_objects(regions_before, regions_cur)
-            moved = [m for m in tracked["matches"] if tuple(m["shift"]) != (0, 0)]  # type: ignore[arg-type]
-            if len(moved) != 1:
-                return
-            match = moved[0]
-            from_cell: Cell = regions_before[match["before"]]["bbox"][:2]  # type: ignore[index]
-            shift: Cell = tuple(match["shift"])  # type: ignore[assignment]
-            self._self_color = regions_before[match["before"]]["color"]  # type: ignore[assignment]
-            self._level_start_cell = from_cell
-            self._dir_map.setdefault(action, shift)
-            self._dir_sign[action] = _cell_sign(shift)
-            self._tried_from.setdefault(from_cell, set()).add(action)
-            self._active_cell = (from_cell[0] + shift[0], from_cell[1] + shift[1])
-            return
+    def _scheme_complete(self) -> bool:
+        return all(0 in self._scheme[a] and 1 in self._scheme[a] for a in _MOVE_ACTIONS)
 
-        bg_cur = most_common_color(grid)
-        same_colour_cur = [r for r in find_regions(grid, background=bg_cur) if r["color"] == self._self_color]
+    def _current_players(self, grid: tuple) -> list[Cell]:
+        """The occupied player GRID CELLS (not region bboxes). Enumerating by
+        cell — every player pixel mapped through the maze's scale/offset —
+        keeps the two players DISTINCT even when they become adjacent and
+        ``find_regions`` connects them into a single region (the R59 bug that
+        made an about-to-merge pair look like one player and stalled the
+        final crossing move)."""
+        if self._player_color is None or self._maze is None:
+            return []
+        maze = self._maze
+        cells: set[Cell] = set()
+        for reg in find_regions(grid, background=None):
+            if reg["color"] != self._player_color:
+                continue
+            for r, c in reg["cells"]:
+                cells.add(((r - maze.off_y) // maze.scale, (c - maze.off_x) // maze.scale))
+        return sorted(cells)
 
-        if ref_cell is not None:
-            new_self = self._observe_piece(
-                ref_cell,
-                action,
-                same_colour_cur,
-                self._dir_map,
-                self._dir_sign,
-                self._tried_from,
-                self._known_blocked,
-                exclude_cell=None,
-            )
-            if new_self is not None:
-                self._active_cell = new_self
+    # ── joint search ────────────────────────────────────────────────────
 
-        if partner_ref_cell is not None:
-            new_partner = self._observe_piece(
-                partner_ref_cell,
-                action,
-                same_colour_cur,
-                self._partner_dir_map,
-                self._partner_dir_sign,
-                self._partner_tried_from,
-                self._partner_known_blocked,
-                # Never let the partner-tracking match land on SELF's own
-                # just-updated cell -- the two pieces share a colour, so
-                # without this exclusion a frame where the partner didn't
-                # move could nearest-match onto SELF instead (measured-
-                # necessary the same way SELF's own ref_cell-first
-                # discipline was, see _observe_piece's docstring).
-                exclude_cell=self._active_cell,
-            )
-            if new_partner is not None:
-                self._partner_cell = new_partner
-                if self._partner_start_cell is None:
-                    self._partner_start_cell = new_partner
-                self._partner_ever_seen = True
-            else:
-                # No separate partner region this frame -- either merged
-                # with SELF (about to win, or already did) or genuinely
-                # not present. Never fabricated from an unrelated region;
-                # simply left unknown for this frame.
-                self._partner_cell = None
+    def _successors(self, move_ids: list[int]):
+        maze = self._maze
+        assert maze is not None
+        walls = maze.walls
+        hazards = maze.hazards
+        gh, gw = maze.gh, maze.gw
+        scheme = self._scheme
+        usable = [a for a in move_ids if 0 in scheme[a] and 1 in scheme[a]]
 
-    def _observe_piece(
-        self,
-        ref_cell: Cell,
-        action: int,
-        same_colour_cur: list[Region],
-        dir_map: dict[int, Cell],
-        dir_sign: dict[int, Cell],
-        tried_from: dict[Cell, set[int]],
-        known_blocked: set[Cell],
-        exclude_cell: Cell | None,
-    ) -> Cell | None:
-        """Generic single-piece movement measurement, used for BOTH SELF
-        and the partner (same exact-match-first logic, parameterized by
-        which dir_map/dir_sign/tried_from/known_blocked to update).
-        ``ref_cell`` is where this piece was BEFORE the action (recorded
-        by the caller before issuing it, never re-derived by fuzzy
-        matching). Returns the piece's new cell, or ``None`` if it can't
-        be identified this frame (e.g. it merged with the other piece, or
-        genuinely vanished) -- callers must NOT overwrite their own
-        tracked cell with ``None``.
-
-        EXACT position checks first (never fuzzy nearest-match when the
-        possibilities are known): either this piece is still exactly at
-        ref_cell (blocked) or exactly at the PREDICTED destination
-        (dir_map[action], once CONFIRMED this level -- dir_map is reset
-        every level-up, so this is always a same-level confirmation, never
-        a stale cross-level guess) -- a same-coloured OTHER piece can sit
-        CLOSER to ref_cell than this piece's own true post-action position
-        on some frames, so "nearest region to ref_cell" would silently
-        lock onto the wrong piece.
-
-        When the magnitude is unconfirmed for THIS level (never measured
-        yet, or wiped at level-up because a different level's pixel scale
-        doesn't transfer -- see module docstring), falls through to a
-        bounded nearest-match re-measurement, preferring whichever
-        candidate matches dir_sign's PRIOR direction for this action (the
-        control scheme DOES transfer across levels) as a tie-break before
-        plain nearest. The bound itself is PEER-relative, not a fixed
-        constant -- see ``_rematch_radius``'s docstring for the exact bug
-        (a spurious 20px-boundary match) this replaces: once >=1 action's
-        magnitude is already confirmed for this piece/level, a candidate
-        farther than 2x the median confirmed magnitude is an outlier and
-        is REJECTED outright (this action stays unconfirmed for the next
-        genuine attempt) rather than ever being stored -- a wrong move
-        vocabulary poisons every plan built from it afterward."""
-        candidates = [r for r in same_colour_cur if exclude_cell is None or r["bbox"][:2] != exclude_cell]
-        cur_cells = {r["bbox"][:2] for r in candidates}
-
-        predicted = dir_map.get(action)
-        if predicted is not None:
-            dest = (ref_cell[0] + predicted[0], ref_cell[1] + predicted[1])
-            if dest in cur_cells:
-                tried_from.setdefault(ref_cell, set()).add(action)
-                return dest
-            if ref_cell in cur_cells:
-                self._record_blocked(ref_cell, action, dir_map, tried_from, known_blocked)
-                return ref_cell
-            # Neither exact position holds -- a genuine within-level
-            # anomaly (e.g. a coupling side-effect) after this action's
-            # magnitude was already confirmed once this level. Record
-            # tried without touching dir_map from an unreliable guess.
-            tried_from.setdefault(ref_cell, set()).add(action)
-            return None
-
-        radius = _rematch_radius(dir_map)
-        radius_candidates = [r for r in candidates if _manhattan(r["bbox"][:2], ref_cell) <= radius]
-        if not radius_candidates:
-            # Every candidate is an outlier relative to this piece's own
-            # peer-confirmed magnitudes (or, pre-peer, past the
-            # conservative absolute cap) -- reject rather than guess; this
-            # action's magnitude stays unconfirmed, never poisoned.
-            tried_from.setdefault(ref_cell, set()).add(action)
-            return None
-        prior_sign = dir_sign.get(action)
-        if prior_sign is not None:
-            sign_matched = [
-                r
-                for r in radius_candidates
-                if _cell_sign(tuple(a - b for a, b in zip(r["bbox"][:2], ref_cell))) == prior_sign  # type: ignore[arg-type]
-            ]
-            if sign_matched:
-                radius_candidates = sign_matched
-        near = min(radius_candidates, key=lambda r: _manhattan(r["bbox"][:2], ref_cell))
-        new_cell: Cell = near["bbox"][:2]  # type: ignore[assignment]
-        if new_cell == ref_cell:
-            self._record_blocked(ref_cell, action, dir_map, tried_from, known_blocked)
-            return ref_cell
-        shift = (new_cell[0] - ref_cell[0], new_cell[1] - ref_cell[1])
-        dir_map[action] = shift
-        dir_sign[action] = _cell_sign(shift)
-        tried_from.setdefault(ref_cell, set()).add(action)
-        return new_cell
-
-    def _record_blocked(
-        self,
-        cell: Cell,
-        action: int,
-        dir_map: dict[int, Cell],
-        tried_from: dict[Cell, set[int]],
-        known_blocked: set[Cell],
-    ) -> None:
-        """Mark ``action`` tried from ``cell`` for whichever piece owns
-        ``dir_map``/``tried_from``/``known_blocked``, and if its measured
-        direction is known, add the refuted destination to
-        ``known_blocked`` -- the fact the joint search reads to stop
-        assuming that destination passable for THIS side."""
-        tried_from.setdefault(cell, set()).add(action)
-        unit = dir_map.get(action)
-        if unit is None:
-            return
-        dest = (cell[0] + unit[0], cell[1] + unit[1])
-        if dest not in known_blocked:
-            known_blocked.add(dest)
-            self._replans += 1
-
-    def _record_hazard(self, cell: Cell | None, action: int | None) -> None:
-        if cell is None or action is None:
-            return
-        self._tried_from.setdefault(cell, set()).add(action)
-        hazard_actions = self._hazards.setdefault(cell, set())
-        hazard_actions.add(action)
-        if len(hazard_actions) >= _DEAD_CELL_HAZARD_THRESHOLD:
-            self._dead_cells.add(cell)
-
-    # ── planning ─────────────────────────────────────────────────────────
-
-    def _decide(self, grid: tuple[tuple[int, ...], ...], move_ids: list[int]) -> int:
-        if self._self_color is None:
-            return self._probe(move_ids)
-
-        bg = most_common_color(grid)
-        regions = find_regions(grid, background=bg)
-        self_regions = [r for r in regions if r["color"] == self._self_color]
-        if not self_regions:
-            return self._probe(move_ids)
-        # After a restart _active_cell is None -- re-acquire identity via
-        # the cached level-start position (never an arbitrary "first
-        # region found"), since the partner (same colour) can otherwise be
-        # picked up as SELF by mistake.
-        ref = self._active_cell if self._active_cell is not None else self._level_start_cell
-        if ref is None:
-            ref = self_regions[0]["bbox"][:2]  # type: ignore[assignment]
-        self._active_cell = min(self_regions, key=lambda r: _manhattan(r["bbox"][:2], ref))["bbox"][:2]  # type: ignore[assignment]
-
-        partner_ref = self._partner_cell if self._partner_cell is not None else self._partner_start_cell
-        partner_candidates = [r for r in self_regions if r["bbox"][:2] != self._active_cell]
-        if partner_candidates:
-            if partner_ref is not None:
-                self._partner_cell = min(
-                    partner_candidates, key=lambda r: _manhattan(r["bbox"][:2], partner_ref)
-                )["bbox"][:2]  # type: ignore[assignment]
-            else:
-                self._partner_cell = partner_candidates[0]["bbox"][:2]  # type: ignore[assignment]
-            self._partner_ever_seen = True
-        else:
-            self._partner_cell = None
-
-        if self._partner_cell is not None:
-            self._marker_cell = None
-            if self._active_cell == self._partner_cell:
-                # Degenerate: exact overlap already (should be rare -- a
-                # true merge usually collapses to ONE region instead --
-                # but if it happens, there's nothing left to close).
-                return self._probe(move_ids)
-            return self._route_joint(move_ids)
-
-        if self._partner_ever_seen:
-            # The partner was seen before but isn't visible THIS frame --
-            # most likely merged with SELF (i.e. very likely already won,
-            # or about to be on the next is_done() check). Never fabricate
-            # a goal from an unrelated region here; just idle/probe and
-            # let the harness's own WIN check decide.
-            return self._probe(move_ids)
-
-        # No partner ever observed this level at all -- fall back to the
-        # DC22-style singleton-marker reading for a non-mirrored variant.
-        if self._marker_cell is None:
-            self._marker_cell = _detect_singleton_marker(regions, self._self_color)
-        if self._marker_cell is None:
-            return self._probe(move_ids)
-        if self._active_cell == self._marker_cell:
-            return self._probe(move_ids)
-        return self._route_to_marker(move_ids)
-
-    def _joint_successors(self, move_ids: list[int]):
-        """Closure over the CURRENT measured dynamics/known-blocked sets,
-        shaped exactly as ``kernels.configuration_path`` requires:
-        ``state -> iterable of (action, next_state)``. Only actions
-        measured for BOTH sides participate -- an action unmeasured for
-        either side has no predictable joint effect yet (bootstrapped
-        separately via ``_probe``, matching the existing "measure unknown
-        actions first" discipline)."""
-        usable = [a for a in move_ids if a in self._dir_map and a in self._partner_dir_map]
+        def _step(cell: Cell, d: Cell) -> Cell:
+            nxt = (cell[0] + d[0], cell[1] + d[1])
+            if 0 <= nxt[0] < gh and 0 <= nxt[1] < gw and nxt not in walls:
+                return nxt
+            return cell
 
         def successors(state: JointState):
-            self_cell, partner_cell = state
-            for action in usable:
-                s_delta = self._dir_map[action]
-                p_delta = self._partner_dir_map[action]
-                s_dest = (self_cell[0] + s_delta[0], self_cell[1] + s_delta[1])
-                p_dest = (partner_cell[0] + p_delta[0], partner_cell[1] + p_delta[1])
-                s_next = self_cell if s_dest in self._known_blocked or s_dest in self._dead_cells else s_dest
-                p_next = (
-                    partner_cell
-                    if p_dest in self._partner_known_blocked or p_dest in self._dead_cells
-                    else p_dest
-                )
-                next_state = (s_next, p_next)
-                if next_state == state:
+            p0, p1 = state
+            for a in usable:
+                n0 = _step(p0, scheme[a][0])
+                n1 = _step(p1, scheme[a][1])
+                if n0 in hazards or n1 in hazards:
                     continue
-                yield action, next_state
+                # engine cross-swap merge for an odd (adjacent) approach
+                if p0[0] == p1[0] and abs(p0[1] - p1[1]) == 1 and ((n0 == p1 and n1 == p0) or n0 == n1):
+                    mid = ((p0[0] + p1[0]) // 2, (p0[1] + p1[1]) // 2)
+                    yield a, (mid, mid)
+                    continue
+                ns: JointState = (n0, n1)
+                if ns == state:
+                    continue
+                yield a, ns
 
         return successors
 
-    def _route_joint(self, move_ids: list[int]) -> int:
-        assert self._active_cell is not None and self._partner_cell is not None
-        state: JointState = (self._active_cell, self._partner_cell)
+    def _search_merge(self, move_ids: list[int]) -> list[int] | None:
+        if self._maze is None or self._p0 is None or self._p1 is None:
+            return None
+        start: JointState = (self._p0, self._p1)
+        successors = self._successors(move_ids)
 
-        self._pending_ref_cell = self._active_cell
-        self._pending_partner_ref_cell = self._partner_cell
+        def goal(state: JointState) -> bool:
+            return state[0] == state[1]
 
-        # Drain a QUEUED plan when reality still matches its prediction --
-        # see __init__'s docstring for why single-step replanning breaks a
-        # genuine "worsen then improve" detour (measured directly: an
-        # infinite gap oscillation). A mismatch (a newly-discovered wall
-        # changed what's actually reachable) drops the rest of the plan
-        # and falls through to a fresh search below.
-        if self._pending_plan_expected and self._pending_plan_expected[0] == state:
-            action = self._pending_plan.pop(0)
-            self._pending_plan_expected.pop(0)
-            return action
-        self._pending_plan = []
-        self._pending_plan_expected = []
+        path = configuration_path(start, goal, successors, max_states=_MERGE_SEARCH_BUDGET)
+        return list(path) if path else None
 
-        current_gap = _gap_score(*state)
-
-        if self._dir_map and self._partner_dir_map:
-            successors = self._joint_successors(move_ids)
-
-            def goal_test(s: JointState) -> bool:
-                return _gap_score(*s) < current_gap
-
-            path = configuration_path(state, goal_test, successors, max_states=_JOINT_SEARCH_BUDGET)
-            if path:
-                # configuration_path returns only action LABELS -- replay
-                # them through the SAME successors closure to recover the
-                # state EACH hop expects to find itself in BEFORE it runs
-                # (its precondition), so later hops can be validated
-                # against reality before executing (see __init__'s
-                # docstring). expected_states[i] is the state produced by
-                # path[i] -- i.e. the precondition for path[i+1] -- so
-                # pending_plan (path[1:]) pairs with expected_states[:-1]
-                # (drop the FINAL state, which is the goal itself and has
-                # no further queued action to precede). Deterministic and
-                # cheap: this is the identical closure BFS just searched
-                # with.
-                expected_states: list[JointState] = []
-                cur = state
-                for step_action in path:
-                    cur = next(ns for act, ns in successors(cur) if act == step_action)
-                    expected_states.append(cur)
-                self._pending_plan = list(path[1:])
-                self._pending_plan_expected = expected_states[:-1]
-                return path[0]
-
-        # No gap-improving joint move is currently known/reachable -- try
-        # SELF's own untried actions from the current cell first (a
-        # not-yet-measured action might be the one that actually helps),
-        # falling back to the partner's untried actions, so newly
-        # discovered dynamics keep feeding the joint search on the next
-        # decision.
-        untried_self = self._viable_actions(self._active_cell, move_ids, self._tried_from)
-        if untried_self:
-            return untried_self[0]
-        untried_partner = self._viable_actions(self._partner_cell, move_ids, self._partner_tried_from)
-        if untried_partner:
-            return untried_partner[0]
-
-        # Truly stuck under current knowledge: nothing untried anywhere
-        # relevant, and no reachable joint state improves the gap. Retry
-        # the first move (cheap) in case a state elsewhere in the
-        # already-explored joint frontier was missed by the budget.
-        return move_ids[0]
-
-    def _route_to_marker(self, move_ids: list[int]) -> int:
-        """Single-agent fallback routing toward ``_marker_cell`` for the
-        non-mirrored-variant case -- no joint state involved, so this is
-        just "try the untried action whose measured delta best reduces
-        Manhattan distance to the marker"."""
-        assert self._active_cell is not None and self._marker_cell is not None
-        untried = self._viable_actions(self._active_cell, move_ids, self._tried_from)
-        if not untried:
+    def _explore(self, move_ids: list[int]) -> int:
+        """Gated fallback: an untried move that most reduces the player gap,
+        else the first legal move. Preserves the cleared-level floor when no
+        merge plan is available (an unmodelled variant)."""
+        if self._maze is None or self._p0 is None or self._p1 is None:
             return move_ids[0]
+        scheme = self._scheme
+        maze = self._maze
+        best_action = move_ids[0]
+        best_gap = None
+        for a in move_ids:
+            if 0 not in scheme[a] or 1 not in scheme[a]:
+                return a  # measure an unknown action first
+            n0 = self._offset(self._p0, scheme[a][0], maze)
+            n1 = self._offset(self._p1, scheme[a][1], maze)
+            if n0 in maze.hazards or n1 in maze.hazards:
+                continue
+            gap = _manhattan(n0, n1)
+            if best_gap is None or gap < best_gap:
+                best_gap = gap
+                best_action = a
+        return best_action
 
-        measured = [a for a in untried if a in self._dir_map]
-        if not measured:
-            return untried[0]
-
-        def score(action: int) -> int:
-            dr, dc = self._dir_map[action]
-            dest = (self._active_cell[0] + dr, self._active_cell[1] + dc)  # type: ignore[index]
-            return _manhattan(dest, self._marker_cell)  # type: ignore[arg-type]
-
-        return min(measured, key=score)
-
-    def _viable_actions(self, cell: Cell, move_ids: list[int], tried_from: dict[Cell, set[int]]) -> list[int]:
-        tried = tried_from.get(cell, set())
-        return [a for a in move_ids if a not in tried]
-
-    def _probe(self, move_ids: list[int]) -> int:
-        self._pending_ref_cell = self._active_cell
-        self._pending_partner_ref_cell = self._partner_cell
-        if self._active_cell is not None:
-            untried = self._viable_actions(self._active_cell, move_ids, self._tried_from)
-            if untried:
-                return untried[0]
-        return move_ids[0]
+    @staticmethod
+    def _offset(cell: Cell, d: Cell, maze: _Maze) -> Cell:
+        nxt = (cell[0] + d[0], cell[1] + d[1])
+        if 0 <= nxt[0] < maze.gh and 0 <= nxt[1] < maze.gw and nxt not in maze.walls:
+            return nxt
+        return cell
