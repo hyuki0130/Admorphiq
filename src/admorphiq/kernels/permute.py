@@ -57,6 +57,43 @@ def _cyclic_order(cells: Sequence[Cell]) -> list[Cell]:
     return order
 
 
+def _close_cycle(order: Sequence[Cell], observed: Mapping[Cell, Cell]) -> dict[Cell, Cell]:
+    """Weave authoritative observed links into one cycle over ``order``.
+
+    Walks the loop cell by cell: take the observed successor when present (these
+    are ground truth — a unique-colour token maps directly to where its colour
+    went, pinning even a TWISTED loop whose true link is geometrically far), and
+    otherwise step to the adjacent unvisited cell in the geometric tour ``order``
+    (the unobserved links are the short same-colour gaps — including a spliced
+    fully-invisible cell — where tour adjacency is the correct bridge). Produces a
+    single Hamiltonian cycle covering every cell in ``order``."""
+    universe = list(order)
+    n = len(universe)
+    pos = {c: i for i, c in enumerate(universe)}
+    obs = {k: v for k, v in observed.items() if k in pos and v in pos}
+    succ: dict[Cell, Cell] = {}
+    visited: set[Cell] = set()
+    start = universe[0]
+    cur = start
+    for _ in range(n):
+        visited.add(cur)
+        nxt: Cell | None = None
+        if cur in obs and obs[cur] not in visited:
+            nxt = obs[cur]
+        else:
+            i = pos[cur]
+            for cand in (universe[(i + 1) % n], universe[(i - 1) % n]):
+                if cand not in visited:
+                    nxt = cand
+                    break
+            if nxt is None:
+                unv = [c for c in universe if c not in visited]
+                nxt = min(unv, key=lambda t: _dist2(cur, t)) if unv else start
+        succ[cur] = nxt
+        cur = nxt
+    return succ
+
+
 def _augment_ring_cells(order: list[Cell], candidates: Iterable[Cell]) -> list[Cell]:
     """Insert fully-unobserved ring cells into a tour by filling its gaps.
 
@@ -147,6 +184,31 @@ def learn_cyclic_successor(
     if candidate_cells is not None:
         order = _augment_ring_cells(order, candidate_cells)
     n = len(order)
+
+    # OBSERVATION-FIRST: a cell whose before-colour is UNIQUE on the ring maps
+    # directly to the (single) cell showing that colour afterward — this recovers
+    # the true successor even across a TWISTED loop whose link is geometrically
+    # far (measured on LP85 L4, where the nearest-neighbour tour below returns the
+    # wrong simple-rectangle order). When the unique-colour links pin a clear
+    # majority, take them as authoritative and geometrically fill only the short
+    # same-colour gaps; otherwise fall through to the tour + direction vote.
+    before_count: dict[int, int] = {}
+    for col in before_color.values():
+        before_count[col] = before_count.get(col, 0) + 1
+    after_by_color: dict[int, list[Cell]] = {}
+    for cell, col in after_color.items():
+        after_by_color.setdefault(col, []).append(cell)
+    order_set = set(order)
+    observed: dict[Cell, Cell] = {}
+    for cell in order:
+        bc = before_color.get(cell)
+        if bc is None or before_count.get(bc, 0) != 1:
+            continue
+        cands = after_by_color.get(bc, [])
+        if len(cands) == 1 and cands[0] in order_set and cands[0] != cell:
+            observed[cell] = cands[0]
+    if len(observed) >= max(2, n // 2) and len(set(observed.values())) == len(observed):
+        return _close_cycle(order, observed)
 
     def agreement(step: int) -> int:
         # Only cells with observed colours vote; spliced-in invisible cells

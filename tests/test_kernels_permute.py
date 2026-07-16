@@ -67,6 +67,31 @@ def test_learn_recovers_full_cycle_with_distinct_colors():
     assert seen == set(_LOOP) and cur == _LOOP[0]
 
 
+def test_learn_recovers_a_twisted_loop_via_observed_successors():
+    """Purpose: pin the observation-first fix for TWISTED rings (measured on LP85
+    L4). The true loop runs down two parallel columns in the SAME direction, so
+    its cross-gap link is geometrically FAR — the nearest-neighbour tour returns
+    the wrong simple-rectangle order. With distinct colours, the observed
+    colour-successor must recover the true twist regardless of geometry.
+
+    Expected feedback: PASS = ``succ`` equals the true twisted rotation (a single
+    cycle following the far cross-gap links). A failure means the learner fell
+    back to the geometric tour and mis-ordered the ring — exactly the L4 wall.
+    """
+    # Two columns; both traversed top->bottom, so (6,4)->(2,14) and (6,14)->(2,4)
+    # are the true (far) links, not the near (6,4)->(6,14) rectangle link.
+    loop = [(2, 4), (3, 4), (4, 4), (5, 4), (6, 4), (2, 14), (3, 14), (4, 14), (5, 14), (6, 14)]
+    n = len(loop)
+    colors = list(range(11, 11 + n))  # all distinct
+    before = [_region(colors[i], loop[i]) for i in range(n)]
+    after_color = {loop[(i + 1) % n]: colors[i] for i in range(n)}
+    after = [_region(after_color[loop[i]], loop[i]) for i in range(n)]
+    changed = set(loop)
+    succ = learn_cyclic_successor(before, after, changed)
+    true_succ = {loop[i]: loop[(i + 1) % n] for i in range(n)}
+    assert succ == true_succ  # the far cross-gap twist links, not the rectangle order
+
+
 def test_learn_recovers_cycle_despite_adjacent_duplicate_colours():
     """Purpose: adjacent same-colour tiles make an occupant's move locally
     invisible/ambiguous; the tour+vote strategy must still reconstruct one clean
