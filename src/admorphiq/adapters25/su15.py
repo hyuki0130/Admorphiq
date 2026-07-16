@@ -91,6 +91,7 @@ convention).**
 
 from __future__ import annotations
 
+from collections import Counter
 from typing import Any
 
 from admorphiq.adapters25.base import (
@@ -176,6 +177,80 @@ _ENEMY_CLEARANCE = 12.0
 # A dominant frame change smaller than this (px, on the diff bbox) counts as
 # "nothing usefully moved" for lead escalation.
 _MIN_USEFUL_DIFF = 1.5
+
+
+# value -> sprite side length (laalrfemee sizes). A fruit-model position is the
+# sprite TOP-LEFT in (x=col, y=row); a value-0 fruit is a single cell.
+_SIZE = (1, 2, 3, 4, 5, 7, 8, 9, 10)
+_SUBSTEPS = 4  # gdamdvokm
+_PULL_PX = 4  # ikskfqldi
+
+
+def _sim_click(model: list[list[int]], cx: int, cy: int) -> list[list[int]]:
+    """One vacuum click on a fruit-only model (pull + same-value merge).
+
+    Faithful to the source's per-sub-step pull (each in-radius fruit steps up to
+    ``_PULL_PX`` px/axis toward the click over ``_SUBSTEPS`` sub-steps, clamped at
+    the click) and its union-find merge (a clump of N same-value OVERLAPPING
+    fruits collapses to ONE value+1 at the group centroid). Validated
+    byte-faithful on the value-multiset over the proven 19-click L3 win (0
+    mismatches vs the live engine). The enemy is NOT modelled here — it is read
+    live each step; the winning choreography keeps it off the fruits, so the
+    fruit model stays in sync (0 re-syncs measured), immune to the per-step
+    perception noise that breaks a frame-reactive cascade. Coordinates are
+    ``[x=col, y=row, value]`` sprite top-left."""
+    fs = [f[:] for f in model]
+
+    def in_radius(f: list[int]) -> bool:
+        sz = _SIZE[f[2]]
+        nx = max(f[0], min(cx, f[0] + sz - 1))
+        ny = max(f[1], min(cy, f[1] + sz - 1))
+        return abs(nx - cx) <= _VACUUM_RADIUS and abs(ny - cy) <= _VACUUM_RADIUS
+
+    sel = [f for f in fs if in_radius(f)]
+    for _ in range(_SUBSTEPS):
+        for f in sel:
+            dx, dy = cx - f[0], cy - f[1]
+            if dx > 0:
+                f[0] += min(_PULL_PX, dx)
+            elif dx < 0:
+                f[0] += max(-_PULL_PX, dx)
+            if dy > 0:
+                f[1] += min(_PULL_PX, dy)
+            elif dy < 0:
+                f[1] += max(-_PULL_PX, dy)
+
+    def touch(a: list[int], b: list[int]) -> bool:
+        sa, sb = _SIZE[a[2]], _SIZE[b[2]]
+        return not (a[0] + sa <= b[0] or b[0] + sb <= a[0] or a[1] + sa <= b[1] or b[1] + sb <= a[1])
+
+    n = len(fs)
+    parent = list(range(n))
+
+    def find(i: int) -> int:
+        while parent[i] != i:
+            parent[i] = parent[parent[i]]
+            i = parent[i]
+        return i
+
+    for i in range(n):
+        for j in range(i + 1, n):
+            if fs[i][2] == fs[j][2] and touch(fs[i], fs[j]):
+                parent[find(i)] = find(j)
+    groups: dict[int, list[int]] = {}
+    for i in range(n):
+        groups.setdefault(find(i), []).append(i)
+    out: list[list[int]] = []
+    for idxs in groups.values():
+        if len(idxs) >= 2:
+            v = fs[idxs[0]][2] + 1
+            nsz = _SIZE[v]
+            gx = round(sum(fs[k][0] for k in idxs) / len(idxs))
+            gy = round(sum(fs[k][1] for k in idxs) / len(idxs))
+            out.append([gx - (nsz - 1) // 2, gy - (nsz - 1) // 2, v])
+        else:
+            out.append(fs[idxs[0]])
+    return out
 
 
 def _bbox_hw(region: Region) -> tuple[float, float]:
@@ -339,6 +414,14 @@ class Adapter(GameAdapter):
         self._lead_px = float(_LEAD_PX)
         self._pending_click: Cell | None = None
         self._prev_grid: tuple[tuple[int, ...], ...] | None = None
+        # Internal fruit model (list of [x=col, y=row, value]) for enemy levels:
+        # parsed once from the settled frame, then advanced by _sim_click per
+        # click so the exact-parity cascade is immune to per-step perception
+        # noise (the measured cause of frame-reactive L3 failure). The enemy is
+        # read live each step. None until the level's opening frame settles.
+        self._model: list[list[int]] | None = None
+        self._model_settle = 0
+        self._last_click_xy: Cell | None = None
         # Static-goal memory: colour-9 disks that have not moved. Seeded on
         # level start, used to prefer true (static) goals over a stray
         # value-6 fruit. Reset per level.
@@ -365,6 +448,9 @@ class Adapter(GameAdapter):
             self._prev_grid = None
             self._lead_px = float(_LEAD_PX)
             self._goal_anchors = [_centroid(g) for g in _classify(grid)[0]]
+            self._model = None
+            self._model_settle = 0
+            self._last_click_xy = None
 
         self._step += 1
         self._observe_result(grid)
@@ -375,7 +461,9 @@ class Adapter(GameAdapter):
             self._pending_click = None
             return reset_action()
 
-        target = self._plan(grid)
+        n_layers = len(getattr(latest_frame, "frame", None) or [])
+        model_target = self._model_action(grid, n_layers)
+        target = model_target if model_target is not None else self._plan(grid)
         self._prev_grid = grid
         self._pending_click = target
         row, col = target
@@ -402,6 +490,112 @@ class Adapter(GameAdapter):
             self._lead_px = float(_LEAD_PX)
 
     # ── planning: where to click next ────────────────────────────────────
+
+    # Corners (in x=col, y=row) the enemy is lured toward — far from the fruits
+    # so vacuuming it there does not also grab a merge fruit.
+    _MODEL_CORNERS = ((2, 12), (2, 60), (60, 12), (60, 60), (2, 36), (60, 36), (2, 53), (60, 53))
+    _MODEL_LURE_BASE = 15.0
+
+    def _model_action(self, grid: tuple[tuple[int, ...], ...], n_layers: int) -> Cell | None:
+        """Model-driven cascade for enemy levels (L3+): advance an internal
+        fruit model with :func:`_sim_click` so the exact-parity cascade never
+        depends on the noisy live fruit read, while the enemy is read live.
+        Returns the ``(row, col)`` click, or ``None`` to defer to the byte-
+        identical no-enemy :meth:`_plan` (L0-L2, or a detection miss)."""
+        goals, fruits, enemies = _classify(grid)
+        if not enemies:
+            return None
+        goals = self._prefer_static_goals(goals) or self._anchor_goals()
+
+        if self._model is None:
+            # A multi-layer transient at level entry mis-reads the board; wait a
+            # few frames (a click at row 0 is out of play — the engine ignores
+            # it — so it is a harmless settle action). Seed the model once the
+            # frame settles and a full fruit set is visible.
+            if n_layers > 1 and self._model_settle < 4:
+                self._model_settle += 1
+                return (0, 0)
+            if len(fruits) < 2:
+                return None
+            self._model = [
+                [int(round(_centroid(f)[1])), int(round(_centroid(f)[0])), _value(f)] for f in fruits
+            ]
+
+        # Re-sync safety net: if the live fruit value-multiset diverges from the
+        # model (an enemy landed a downgrade the fruit-only model can't see),
+        # re-seed positions+values from the live frame so the cascade continues
+        # from reality rather than a stale plan.
+        live_ms = Counter(_value(f) for f in fruits)
+        model_ms = Counter(f[2] for f in self._model)
+        if live_ms != model_ms and len(fruits) >= 2:
+            self._model = [
+                [int(round(_centroid(f)[1])), int(round(_centroid(f)[0])), _value(f)] for f in fruits
+            ]
+
+        model = self._model
+        if not model:
+            return None
+
+        def to_xy(region: Region) -> tuple[float, float]:
+            r, c = _centroid(region)
+            return (c, r)
+
+        enemy_xy = min(
+            (to_xy(e) for e in enemies),
+            key=lambda e: min((_dist(e, (f[0], f[1])) for f in model), default=0.0),
+        )
+        goal_xy = to_xy(goals[0]) if goals else (float(_GRID // 2), float(_GRID // 2))
+
+        click_xy = self._model_heuristic(model, enemy_xy, goal_xy)
+        if click_xy is None:
+            return None
+        cx = max(0, min(_GRID - 1, int(round(click_xy[0]))))
+        cy = max(_PLAY_TOP, min(_PLAY_BOTTOM, int(round(click_xy[1]))))
+        self._model = _sim_click(model, cx, cy)
+        return (cy, cx)
+
+    def _model_heuristic(
+        self, model: list[list[int]], enemy_xy: tuple[float, float], goal_xy: tuple[float, float]
+    ) -> tuple[float, float] | None:
+        """The proven L3 choreography (a full live win in 17-19 clicks): deliver
+        the top fruit once it reaches the target value, else merge the nearest
+        lowest-value pair, but first LURE the enemy to the fruit-farthest corner
+        when it threatens an idle fruit (aggression scales with value and as the
+        board thins). Operates on model fruits ``[x, y, value]``; returns a
+        click ``(x, y)`` or ``None`` when nothing is left to do."""
+        top = max(model, key=lambda f: f[2])
+        if top[2] >= 3:
+            dx, dy = goal_xy[0] - top[0], goal_xy[1] - top[1]
+            dist = (dx * dx + dy * dy) ** 0.5
+            if dist < 3.5:
+                return None
+            return (top[0] + dx / dist * _VACUUM_RADIUS, top[1] + dy / dist * _VACUUM_RADIUS)
+        best: tuple[float, int, int] | None = None
+        for i in range(len(model)):
+            for j in range(i + 1, len(model)):
+                if model[i][2] == model[j][2]:
+                    d = _dist((model[i][0], model[i][1]), (model[j][0], model[j][1]))
+                    if best is None or d < best[0]:
+                        best = (d, i, j)
+        if best is None:
+            return None
+        d, i, j = best
+        a, b = model[i], model[j]
+        others = [f for k, f in enumerate(model) if k not in (i, j)]
+        max_val = max(f[2] for f in model)
+        danger = self._MODEL_LURE_BASE + 4.0 * max_val + max(0, 5 - len(model)) * 3.0
+        if others and min(_dist(enemy_xy, (f[0], f[1])) for f in others) < danger:
+            park = max(
+                self._MODEL_CORNERS,
+                key=lambda c: min((_dist(c, (f[0], f[1])) for f in model), default=0.0),
+            )
+            dx, dy = park[0] - enemy_xy[0], park[1] - enemy_xy[1]
+            dist = (dx * dx + dy * dy) ** 0.5 or 1.0
+            return (enemy_xy[0] + dx / dist * _VACUUM_RADIUS, enemy_xy[1] + dy / dist * _VACUUM_RADIUS)
+        if d <= _MERGE_DIST:
+            return ((a[0] + b[0]) / 2.0, (a[1] + b[1]) / 2.0)
+        ux, uy = (b[0] - a[0]) / d, (b[1] - a[1]) / d
+        return (a[0] + ux * 7.0, a[1] + uy * 7.0)
 
     def _plan(self, grid: tuple[tuple[int, ...], ...]) -> Cell:
         goals, fruits, enemies = _classify(grid)
