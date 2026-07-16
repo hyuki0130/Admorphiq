@@ -86,6 +86,74 @@ def frame_diff(before: Sequence[Sequence[int]], after: Sequence[Sequence[int]]) 
     return {"cells": cells, "bbox": bbox, "count": len(cells)}
 
 
+def separate_by_motion(
+    before: Sequence[Sequence[int]],
+    after: Sequence[Sequence[int]],
+    background: int | Iterable[int] | None = None,
+) -> dict[str, object]:
+    """Isolate the ONE object that translated between two frames of a scene in
+    which every OTHER object stayed still — even when the moved object is
+    perceptually MERGED (same colour, touching) with the static ones so plain
+    connected components cannot tell them apart.
+
+    Only the moved object changes cells; its shared static overlap is identical
+    in both frames. Let ``appeared`` be the foreground cells in ``after`` but not
+    ``before`` (the object's leading edge) and ``vanished`` those in ``before``
+    but not ``after`` (its trailing edge). The object shifted by ``delta ≈
+    centroid(appeared) − centroid(vanished)``; its AFTER footprint is every
+    ``after`` foreground cell whose pre-image ``cell − delta`` was ``before``
+    foreground, restricted to the group 8-connected to ``appeared`` — so a
+    static cell whose pre-image is only coincidentally foreground is dropped.
+
+    Returns ``{"cells": frozenset[(row, col)], "shift": (dr, dc)}`` for the moved
+    object in the AFTER frame, or ``{"cells": frozenset(), "shift": (0, 0)}``
+    when nothing translated (no leading/trailing edges). ``background`` is a
+    colour or iterable of colours treated as empty. Pure / no environment
+    access.
+    """
+    a = _normalize_frame(after)
+    b = _normalize_frame(before)
+    if background is None:
+        bg: frozenset[int] = frozenset()
+    elif isinstance(background, int):
+        bg = frozenset((background,))
+    else:
+        bg = frozenset(int(x) for x in background)
+    h = len(a)
+    w = len(a[0]) if h else 0
+
+    def _fg(frame: Frame) -> set[Cell]:
+        return {(r, c) for r in range(h) for c in range(w) if frame[r][c] not in bg}
+
+    bfg = _fg(b)
+    afg = _fg(a)
+    appeared = afg - bfg
+    vanished = bfg - afg
+    if not appeared or not vanished:
+        return {"cells": frozenset(), "shift": (0, 0)}
+    ar = sum(r for r, _c in appeared) / len(appeared)
+    ac = sum(c for _r, c in appeared) / len(appeared)
+    vr = sum(r for r, _c in vanished) / len(vanished)
+    vc = sum(c for _r, c in vanished) / len(vanished)
+    delta = (round(ar - vr), round(ac - vc))
+    cand = {(r, c) for (r, c) in afg if (r - delta[0], c - delta[1]) in bfg}
+    cand |= appeared  # the leading edge landed on formerly-background cells
+
+    piece: set[Cell] = set()
+    frontier: deque[Cell] = deque(c for c in appeared if c in cand)
+    seen: set[Cell] = set(frontier)
+    while frontier:
+        r, c = frontier.popleft()
+        piece.add((r, c))
+        for dr in (-1, 0, 1):
+            for dc in (-1, 0, 1):
+                nb = (r + dr, c + dc)
+                if nb in cand and nb not in seen:
+                    seen.add(nb)
+                    frontier.append(nb)
+    return {"cells": frozenset(piece), "shift": delta}
+
+
 def changed_region_attribution(
     diff_cells: Iterable[Sequence[int]], regions: Sequence[Region]
 ) -> list[int]:

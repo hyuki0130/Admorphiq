@@ -94,10 +94,29 @@ so ``covering_offsets`` is non-stationary and the greedy wanders (~140 actions
 vs the gold's 36) before landing a clean cover. The clear is reliable and
 deterministic; a stable hollow-outline extractor is the open efficiency lever.
 
+**Level 3 SOLVED (R60) — separation-by-motion + per-piece gate-claiming**:
+deep levels merge SEVERAL same-colour movables into one region, so the
+single-piece covering spine cannot address them (``find_regions`` returns one
+132px blob for three overlapping colour-8 pieces). Since only the SELECTED
+movable moves per action, a probe move perpendicular to the merge seam isolates
+it: :func:`admorphiq.kernels.separate_by_motion` returns the moved object's
+cells from the motion delta even while merged. With all pieces and all gates the
+same colour the win is a geometric set-cover no single piece can satisfy, so the
+controller (:meth:`Adapter._decide_multi`, gated on level index >= 2 so L1/L2
+stay byte-identical) claims gates piece by piece:
+:func:`admorphiq.kernels.max_coverage_offset` picks the translation covering the
+most still-unclaimed gates, the piece is driven there, those gates are frozen,
+and ACTION5 cycles to the next piece — never re-driving a placed one. Measured
+**3/8 @ game_score 0.1162 (deterministic ×3)**, up from 2/8 @ 0.0328.
+
 Composition from ``admorphiq.kernels``:
   - :func:`admorphiq.kernels.find_regions` segments movables / target boxes.
   - :func:`admorphiq.kernels.covering_offsets` finds a translation of the
-    active movable's shape onto its matching-colour target cells.
+    active movable's shape onto its matching-colour target cells (L1/L2).
+  - :func:`admorphiq.kernels.separate_by_motion` isolates one merged same-colour
+    movable from the others by its motion (L3+ separation pre-step).
+  - :func:`admorphiq.kernels.max_coverage_offset` picks the single translation
+    covering the most still-unclaimed gates (L3+ per-piece gate-claiming).
 """
 
 from __future__ import annotations
@@ -115,7 +134,12 @@ from admorphiq.adapters25.base import (
     simple_action,
     state_name,
 )
-from admorphiq.kernels import covering_offsets, find_regions
+from admorphiq.kernels import (
+    covering_offsets,
+    find_regions,
+    max_coverage_offset,
+    separate_by_motion,
+)
 
 GAME_ID = "re86"
 
@@ -199,6 +223,22 @@ class Adapter(GameAdapter):
         # a wall/edge) — the covering planner routes around them by axis.
         self._blocked: set[tuple[Cell, int]] = set()
 
+        # ── L3+ separation-and-claim state (multi-piece, same-colour merge) ──
+        # On deep levels several same-colour movables render as ONE merged
+        # region, so the covering spine cannot address them individually. Gated
+        # on level index (>= 2) so L1/L2 stay byte-identical. Gates claimed by a
+        # placed piece are frozen so later pieces target only the rest; a placed
+        # piece's footprint is recorded and never re-driven.
+        self._claimed: set[Cell] = set()
+        self._placed: list[frozenset[Cell]] = []
+        # The active piece's shape as offsets from the selection marker, learned
+        # ONCE from a perpendicular separating move (separate_by_motion isolates
+        # the moved piece cleanly only across the merge seam); then the piece is
+        # tracked by the marker without re-separating every step.
+        self._shape_rel: frozenset[Cell] | None = None
+        self._sep_pending = False
+        self._sep_steps = 0
+
     # ── harness contract ────────────────────────────────────────────────
 
     def is_done(self, frames: list[Any], latest_frame: Any) -> bool:
@@ -243,6 +283,11 @@ class Adapter(GameAdapter):
         self._targets_locked = False
         self._settled = False
         self._blocked = set()
+        self._claimed = set()
+        self._placed = []
+        self._shape_rel = None
+        self._sep_pending = False
+        self._sep_steps = 0
 
     def _lock_targets(self, grid: tuple[tuple[int, ...], ...]) -> None:
         by_color: dict[int, list[Cell]] = {}
@@ -332,6 +377,12 @@ class Adapter(GameAdapter):
             return self._probe(self._marker(grid), move_ids)
         if not self._targets_locked:
             self._lock_targets(grid)
+        if self._levels_seen >= 2:
+            # Deep levels merge several same-colour movables into one region; the
+            # single-piece covering spine below cannot address them. Route to the
+            # separation-and-claim controller (gated on level index so L1/L2 are
+            # byte-identical).
+            return self._decide_multi(grid, move_ids, can_cycle)
         marker = self._marker(grid)
         if marker is None:
             return self._probe(marker, move_ids)
@@ -410,3 +461,88 @@ class Adapter(GameAdapter):
         untried = [a for a in move_ids if a not in self._dir]
         action = untried[0] if untried else move_ids[0]
         return self._issue(action, marker)
+
+    # ── L3+ separation-and-claim controller ─────────────────────────────
+
+    def _all_gates(self) -> list[Cell]:
+        return [c for cells in self._targets_by_color.values() for c in cells]
+
+    def _vert_move(self, move_ids: list[int]) -> int:
+        """A measured VERTICAL move (UP preferred) — perpendicular to a
+        horizontal merge seam, so :func:`separate_by_motion` isolates the moved
+        piece cleanly (a move parallel to an elongated neighbour over-includes)."""
+        for want in ((-1, 0), (1, 0)):
+            a = self._move_for(want, move_ids)
+            if a is not None:
+                return a
+        return move_ids[0]
+
+    def _decide_multi(self, grid: tuple[tuple[int, ...], ...], move_ids: list[int], can_cycle: bool) -> GameAction:
+        """Separate merged same-colour pieces by motion, then claim gates piece
+        by piece. Learn each active piece's shape ONCE from a perpendicular
+        separating move, drive it to the translation covering the most still-
+        unclaimed gates, freeze those gates, and cycle to the next piece."""
+        bg = most_common_color(grid)
+        marker = self._marker(grid)
+        if marker is None:
+            return self._probe(marker, move_ids)
+        if any(a not in self._dir for a in move_ids):
+            return self._probe(marker, move_ids)  # measure all move directions once
+
+        unclaimed = [g for g in self._all_gates() if g not in self._claimed]
+        if not unclaimed:
+            return simple_action(5) if can_cycle else self._probe(marker, move_ids)
+
+        if self._shape_rel is None:
+            sep_cells: frozenset[Cell] = frozenset()
+            if self._sep_pending and self._prev_grid is not None:
+                sep = separate_by_motion(
+                    self._prev_grid, grid, background=(bg, _BORDER_COLOR, _SELECTION_COLOR)
+                )
+                sep_cells = sep["cells"]  # type: ignore[assignment]
+            if sep_cells and self._marker_within(sep_cells, marker):
+                # Anchor the isolated piece to the marker (colour-0 at its centre,
+                # excluded from the colour set) so it can be tracked without
+                # re-separating every step.
+                self._shape_rel = frozenset((r - marker[0], c - marker[1]) for r, c in sep_cells)
+                self._sep_pending = False
+                self._sep_steps = 0
+            else:
+                self._sep_pending = True
+                self._sep_steps += 1
+                if self._sep_steps > 10:
+                    self._sep_pending = False
+                    self._sep_steps = 0
+                    return simple_action(5) if can_cycle else self._probe(marker, move_ids)
+                vm = self._vert_move(move_ids)
+                if (marker, vm) in self._blocked:
+                    other = self._move_for((1, 0) if self._dir.get(vm) == (-1, 0) else (-1, 0), move_ids)
+                    vm = other if other is not None else vm
+                return self._issue(vm, marker)
+
+        cur = [(marker[0] + dr, marker[1] + dc) for dr, dc in self._shape_rel]
+        best = max_coverage_offset(cur, unclaimed)
+        if best is None or not best[1]:
+            self._shape_rel = None  # this piece reaches no unclaimed gate; try another
+            return simple_action(5) if can_cycle else self._probe(marker, move_ids)
+        (odr, odc), covered = best
+        if (odr, odc) == (0, 0):
+            for i in covered:
+                self._claimed.add(unclaimed[i])
+            self._placed.append(frozenset(cur))
+            self._shape_rel = None  # placed; never re-drive it — cycle to the next piece
+            return simple_action(5) if can_cycle else self._probe(marker, move_ids)
+        move = self._covering_move(odr, odc, marker, move_ids)
+        if move is not None:
+            return move
+        self._shape_rel = None  # every covering axis walled; work another piece
+        return simple_action(5) if can_cycle else self._probe(marker, move_ids)
+
+    @staticmethod
+    def _marker_within(cells: frozenset[Cell], marker: Cell) -> bool:
+        """Whether the selection marker sits inside the bounding box of a
+        motion-isolated piece — the acceptance test that the separation captured
+        the SELECTED piece (not a stray static fragment)."""
+        rs = [r for r, _c in cells]
+        cs = [c for _r, c in cells]
+        return min(rs) <= marker[0] <= max(rs) and min(cs) <= marker[1] <= max(cs)

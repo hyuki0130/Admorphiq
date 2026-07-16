@@ -6,6 +6,7 @@ from admorphiq.kernels import (
     learn_point_operators,
     motion_vectors,
     plan_overwrites,
+    separate_by_motion,
     track_objects,
 )
 
@@ -616,3 +617,36 @@ def test_plan_flow_coverage_multi_returns_none_when_uncoverable():
     assert plan_flow_coverage_multi([piece], delta_map, frozenset(), [(0, 4)], far, (1, 0), (10, 10)) is None
     assert plan_flow_coverage_multi([], delta_map, frozenset(), [(0, 4)], far, (1, 0), (10, 10)) is None
     assert plan_flow_coverage_multi([piece], {}, frozenset(), [(0, 4)], far, (1, 0), (10, 10)) is None
+
+
+def test_separate_by_motion_isolates_the_moved_object_from_a_merged_blob():
+    """Purpose: two same-colour shapes touching form ONE connected component,
+    so find_regions cannot tell them apart; when only one translates,
+    separate_by_motion must return exactly the MOVED shape's after-cells,
+    isolated from the static one, via the motion delta + connectivity.
+    Expected feedback: a FAIL means a merged multi-piece scene (re86 L3) cannot
+    be de-fused by motion, so the covering planner operates on the fused blob."""
+    # before: mover B (row 5, cols 4-8) touching static A (row 5, cols 9-12) —
+    # one merged colour-8 bar. after: B moved UP one row, detaching from A.
+    before = [[0] * 16 for _ in range(16)]
+    after = [[0] * 16 for _ in range(16)]
+    for c in range(4, 9):
+        before[5][c] = 8
+        after[4][c] = 8  # B moved up
+    for c in range(9, 13):
+        before[5][c] = 8
+        after[5][c] = 8  # A static
+    out = separate_by_motion(before, after, background=0)
+    assert out["shift"] == (-1, 0)
+    assert out["cells"] == frozenset((4, c) for c in range(4, 9))
+
+
+def test_separate_by_motion_reports_no_motion_when_nothing_moved():
+    """Purpose: with identical frames there is no leading/trailing edge, so the
+    kernel reports an empty moved-object and zero shift rather than inventing a
+    piece. Expected feedback: a FAIL means the caller would probe-loop forever
+    treating a static scene as if a piece just moved."""
+    frame = [[0, 0, 0], [0, 8, 8], [0, 0, 0]]
+    out = separate_by_motion(frame, frame, background=0)
+    assert out["cells"] == frozenset()
+    assert out["shift"] == (0, 0)

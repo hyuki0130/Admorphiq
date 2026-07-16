@@ -577,6 +577,39 @@ def covering_offsets(
     return chosen
 
 
+def max_coverage_offset(
+    shape_cells: Iterable[Sequence[int]], target_points: Sequence[Sequence[int]]
+) -> tuple[Shift, frozenset[int]] | None:
+    """The single translation of ``shape_cells`` covering the MOST
+    ``target_points`` at once, as ``(offset, covered_indices)``.
+
+    Unlike :func:`covering_offsets` (a minimal SET of translations covering
+    ALL points — which returns several offsets when no one translation
+    covers everything), this returns the ONE offset with maximal coverage:
+    the greedy building block for claiming a SUBSET of targets with one piece
+    when a scene has more targets than any single piece can cover at once
+    (e.g. several separate movable pieces sharing one target field). Candidate
+    offsets are ``{point - cell}`` (only these align a shape cell onto a
+    point); ties favour the numerically smallest offset. Returns ``None`` when
+    either input is empty. Pure / no environment access.
+    """
+    shape = _normalize_cells(shape_cells)
+    points = [(int(r), int(c)) for r, c in target_points]
+    if not shape or not points:
+        return None
+    candidate_set: set[Shift] = set()
+    for pr, pc in points:
+        for sr, sc in shape:
+            candidate_set.add((pr - sr, pc - sc))
+    best: tuple[Shift, frozenset[int]] | None = None
+    for off in sorted(candidate_set):
+        translated = {(sr + off[0], sc + off[1]) for sr, sc in shape}
+        covered = frozenset(i for i, p in enumerate(points) if p in translated)
+        if best is None or len(covered) > len(best[1]):
+            best = (off, covered)
+    return best
+
+
 def connectors(
     frame: Sequence[Sequence[int]], regions: Sequence[Region], background: int | None = None
 ) -> list[dict[str, object]]:

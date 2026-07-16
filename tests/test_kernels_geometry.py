@@ -12,6 +12,7 @@ from admorphiq.kernels import (
     connectors,
     covering_offsets,
     elongated_axis,
+    max_coverage_offset,
     point_toward,
     project_to_axis,
     recover_occluded_frame,
@@ -522,3 +523,25 @@ def test_recover_occluded_frame_real_sb26_second_portal_frame():
     recovered_b = split_fused_frame(pipe)
     assert recovered_b is not None
     assert recovered_b["frame"]["outer_bbox"] == (32, 18, 41, 45)
+
+
+def test_max_coverage_offset_claims_the_subset_one_piece_can_cover():
+    """Purpose: when a piece cannot cover every target at once, gate-claiming
+    needs the SINGLE translation covering the most targets (unlike
+    covering_offsets, which returns a multi-offset set). A horizontal 2-cell
+    piece over three points must pick the offset landing on the adjacent PAIR.
+    Expected feedback: a FAIL means a multi-piece cover (re86 L3) cannot greedily
+    assign each piece the subset it reaches, so no partition is found."""
+    shape = [(0, 0), (0, 1)]
+    points = [(5, 5), (5, 6), (9, 9)]
+    off, covered = max_coverage_offset(shape, points)
+    assert off == (5, 5)
+    assert covered == frozenset({0, 1})
+
+
+def test_max_coverage_offset_none_on_empty_input():
+    """Purpose: empty shape or empty target list has no coverage to maximise.
+    Expected feedback: a FAIL means the claimer would crash or fabricate an
+    offset on a degenerate scene."""
+    assert max_coverage_offset([], [(1, 1)]) is None
+    assert max_coverage_offset([(0, 0)], []) is None
