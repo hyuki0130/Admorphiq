@@ -159,6 +159,12 @@ _PLACE_STUCK_LIMIT = 12
 # A new level's legs animate in; build the plan only once the detected creature
 # signature has held for this many consecutive frames (past the animation).
 _SETTLE_FRAMES = 3
+# Continuous-replanning bound for multi-creature levels: rebuild the plan this
+# many times from the re-detected board before giving up to the explorer. Each
+# rebuild advances at most a few legs, so this comfortably covers a 2–3 creature
+# assembly (5 legs × a couple of retries each) without spinning forever when a
+# target is genuinely unreachable.
+_MAX_REBUILDS = 60
 
 
 def _hazard_cells(grid: Grid, bg: int) -> set[Cell]:
@@ -367,6 +373,16 @@ class Adapter(GameAdapter):
         self._plan_place_issued = False
         self._plan_last_masked: Grid | None = None
         self._plan_place_count = 0
+        # CONTINUOUS re-planning for MULTI-creature levels: a single-shot plan is
+        # brittle because any placement the engine refuses (a leg drag whose
+        # 5px footprint clips the arena wall — the frame-only `is_free` cannot
+        # match the engine's exact sprite collision) leaves later select clicks
+        # grabbing a leg that never moved, and the rigid queue derails. When ≥2
+        # creatures are detected the plan is REBUILT from the freshly re-detected
+        # board every time it drains, so a refused move is simply re-planned next
+        # cycle. Single-creature levels (L0) keep the one-shot path byte-identical.
+        self._multi = False
+        self._rebuilds = 0
         # Creature signature (per-creature leg counts) held while waiting for a
         # new level's entry animation to settle, plus how many consecutive
         # frames it has held.
@@ -442,6 +458,8 @@ class Adapter(GameAdapter):
         self._plan_place_count = 0
         self._settle_ref = None
         self._settle_count = 0
+        self._multi = False
+        self._rebuilds = 0
 
     def _on_restart(self) -> None:
         self._pending_click = None
@@ -462,6 +480,7 @@ class Adapter(GameAdapter):
         creatures = _analyze_creatures(grid, bg, hazard)
         if not creatures:
             return None
+        self._multi = len(creatures) >= 2
         height, width = len(grid), len(grid[0])
 
         def is_free(cell: Cell, radius: int) -> bool:
@@ -538,6 +557,16 @@ class Adapter(GameAdapter):
             self._plan_last_masked = None
             self._plan_place_count = 0
         if not self._plan:
+            # A drained/empty plan on a MULTI-creature level: some legs may not
+            # have reached their targets (a refused placement, or a centroid that
+            # needs another pass). Re-plan from the freshly re-detected board
+            # rather than falling through to the explorer — the continuous loop.
+            if self._multi and self._rebuilds < _MAX_REBUILDS:
+                self._rebuilds += 1
+                self._plan_attempted = False
+                self._settle_ref = None
+                self._settle_count = 0
+                return self._safe_wait_cell(grid, bg)
             return None
 
         kind, cell = self._plan[0]
