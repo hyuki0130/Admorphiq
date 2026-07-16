@@ -624,6 +624,187 @@ def _l5_bfs(maze: dict[str, Any], start: tuple) -> list[int] | None:
     return None
 
 
+# ════════════════════════════════════════════════════════════════════════
+# L6 pixel model: EITHER-ORDER multi-goal + THREE synchronously-phased movers.
+#
+# L6 (source `pbznecvnfr`/`bejndxqqzf`) needs the avatar to stand on EACH of
+# several goals with THAT goal's own matching token; a satisfied goal is removed
+# (stops blocking) and the level completes when all are satisfied — an either-
+# order coverage, modelled as a satisfied-goals frozenset in the search state.
+# It also carries THREE moving changers (rot + shape on horizontal tracks, colour
+# on a 2D region) that all advance ONCE per successful avatar move and all undo on
+# a block (engine steps/undoes every `wsoslqeku` together) — so they share one
+# phase and the joint search stays tractable. Each mover follows `npdjlrkhsg`
+# (try dir, dir-1, dir+1, dir+2 over its track cells). The tracks + current
+# (pos,dir) are learned frame-only from a short observation window (each mover
+# renders its kind icon at its live cell; associate BY KIND). Validated: the
+# frame-only pipeline joint-BFS-plans a sequence that replays to a live L6 win.
+# ════════════════════════════════════════════════════════════════════════
+
+# nakogfhyus direction vectors: 0=down 1=right 2=up 3=left (engine order).
+_L6_DIRVEC: dict[int, Cell] = {0: (0, 1), 1: (1, 0), 2: (0, -1), 3: (-1, 0)}
+_L6_OBS_CAP = 30  # max observation moves to learn the mover cycles
+_L6_STABLE_NEED = 5  # observation moves with no new mover cell => tracks complete
+_L6_SEARCH_CAP = 8_000_000
+
+
+def _l6_mover_step(cells: frozenset[Cell], x: int, y: int, d: int) -> tuple[int, int, int]:
+    """One `dboxixicic.npdjlrkhsg` step over a mover's track cells."""
+    for cand in (d, (d - 1) % 4, (d + 1) % 4, (d + 2) % 4):
+        dx, dy = _L6_DIRVEC[cand]
+        nx, ny = x + dx * _CELL, y + dy * _CELL
+        if (nx, ny) in cells:
+            return (nx, ny, cand)
+    return (x, y, d)
+
+
+def _l6_dir_from(prev: Cell, cur: Cell) -> int | None:
+    """The `npdjlrkhsg` direction implied by a mover's step prev -> cur, or None
+    if they are not one grid unit apart (mover did not advance)."""
+    v = (cur[0] - prev[0], cur[1] - prev[1])
+    for d, (dx, dy) in _L6_DIRVEC.items():
+        if (dx * _CELL, dy * _CELL) == v:
+            return d
+    return None
+
+
+def _l6_step(maze: dict[str, Any], s: tuple, action: int) -> tuple:
+    """One engine step for L6. ``s`` =
+    ``(ax, ay, sh, co, ro, steps, taken, movers, satisfied)`` where ``movers`` is
+    a tuple of ``(x, y, dir)`` parallel to ``maze['mover_kinds']``/``['mover_tracks']``
+    and ``satisfied`` is the frozenset of covered goal indices."""
+    ax, ay, sh, co, ro, steps, taken, movers, sat = s
+    dx, dy = _MOVES[action]
+    prov = tuple(_l6_mover_step(maze["mover_tracks"][i], *movers[i]) for i in range(len(movers)))
+    nx, ny = ax + dx * _CELL, ay + dy * _CELL
+    blocked = (nx, ny) in maze["hard_walls"]
+    for gi, gc in enumerate(maze["goals"]):
+        if (nx, ny) == gc and gi not in sat and (sh, co, ro) != maze["reqs"][gi]:
+            blocked = True
+    if blocked:
+        return s
+    ax, ay = nx, ny
+    for i, mk in enumerate(maze["mover_kinds"]):
+        if (ax, ay) == (prov[i][0], prov[i][1]):
+            if mk == "rot":
+                ro = (ro + 1) % 4
+            elif mk == "color":
+                co = (co + 1) % 4
+            elif mk == "shape":
+                sh = (sh + 1) % 6
+    nsteps = steps - 1
+    if (ax, ay) in maze["refills"] and (ax, ay) not in taken:
+        nsteps = maze["step_full"]
+        taken = taken | {(ax, ay)}
+    if nsteps >= 0:
+        for (sx, sy, pdx, pdy, w, h) in maze["pushwalls"]:
+            if ax < sx + w and sx < ax + _CELL and ay < sy + h and sy < ay + _CELL:
+                dist = _l5_carry_dist(maze["fjzuynaokm"], sx, sy, pdx, pdy, w, h)
+                if dist > 0:
+                    ax += pdx * w * dist
+                    ay += pdy * h * dist
+                    break
+    nsat = sat
+    for gi, gc in enumerate(maze["goals"]):
+        if gi not in sat and (ax, ay) == gc and (sh, co, ro) == maze["reqs"][gi]:
+            nsat = sat | {gi}
+    return (ax, ay, sh, co, ro, nsteps, taken, prov, nsat)
+
+
+def _l6_bfs(maze: dict[str, Any], start: tuple) -> list[int] | None:
+    """Death-free joint BFS to cover ALL goals (each with its matching token),
+    refill/life-aware, over the multi-mover pixel sim."""
+    from collections import deque
+
+    ngoals = len(maze["goals"])
+    if len(start[8]) == ngoals:
+        return []
+    seen = {start}
+    queue: deque[tuple[tuple, list[int]]] = deque([(start, [])])
+    exp = 0
+    while queue and exp < _L6_SEARCH_CAP:
+        s, path = queue.popleft()
+        exp += 1
+        if s[5] <= 0:
+            continue
+        for aid in (1, 2, 3, 4):
+            ns = _l6_step(maze, s, aid)
+            if ns[5] < 0 or ns == s or ns in seen:
+                continue
+            if len(ns[8]) == ngoals:
+                return path + [aid]
+            seen.add(ns)
+            queue.append((ns, path + [aid]))
+    return None
+
+
+def _parse_l6_maze(grid: Grid) -> dict[str, Any] | None:
+    """Reconstruct an L6 (multi-goal) maze from a settled frame, or ``None``.
+    Like :func:`_parse_l5_maze` but keeps ALL goals + per-goal required tokens;
+    the moving changers appear as rot/shape/color changer cells (the caller
+    learns their tracks). Returns None if there is no avatar / undecodable token
+    or goal preview."""
+    avatar = _find_avatar(grid)
+    if avatar is None:
+        return None
+    ax, ay = avatar
+    ox, oy = ax % _CELL, ay % _CELL
+    xs = list(range(ox, len(grid[0]) - _CELL + 1, _CELL))
+    ys = list(range(oy, len(grid) - _CELL + 1, _CELL))
+    pushwalls = [(sx, sy, dx, dy, _CELL, _CELL) for (sx, sy, dx, dy) in _detect_pushwalls_pixel(grid)]
+    goals: list[Cell] = []
+    reqs: list[tuple[int, int, int]] = []
+    changers: dict[Cell, str] = {}
+    hard: set[Cell] = set()
+    passable: set[Cell] = set()
+    for x in xs:
+        for y in ys:
+            hh = _cell_counts(grid, x, y)
+            dom = hh.most_common(1)[0][0]
+            if y < _PLAYABLE_MAX_ROW and dom == _GOAL_BORDER and sum(hh.get(c, 0) for c in _PALETTE) >= 3:
+                req = _decode_goal_preview(grid, x, y)
+                if req is None:
+                    return None
+                goals.append((x, y))
+                reqs.append(req)
+                passable.add((x, y))
+                continue
+            if dom == _FLOOR_COLOR:
+                passable.add((x, y))
+            else:
+                hard.add((x, y))
+            if y < _PLAYABLE_MAX_ROW:
+                kind = _classify_changer(hh, dom)
+                if kind is not None:
+                    changers[(x, y)] = kind
+    token = _decode_token(grid)
+    if token is None or not goals:
+        return None
+    refills = {_snap_to_lattice(sx, sy, ox, oy) for (sx, sy) in _find_refill_sprites(grid)}
+    hard.discard(avatar)
+    passable.add(avatar)
+    for (sx, sy, dx, dy, w, h) in pushwalls:
+        passable.add((sx, sy))
+    return {
+        "avatar": avatar,
+        "goals": goals,
+        "reqs": reqs,
+        "changers": changers,
+        "hard_walls": frozenset(hard),
+        "passable": frozenset(passable),
+        "refills": frozenset(refills),
+        "token": token,
+        "pushwalls": tuple(pushwalls),
+    }
+
+
+def _band_count(grid: Grid) -> int:
+    """Raw non-floor cell count in the step-counter band (== current_steps)."""
+    H, W = len(grid), len(grid[0])
+    row = min(61, H - 2)
+    return sum(1 for c in range(13, min(13 + _STEP_FULL, W)) if grid[row][c] != _FLOOR_COLOR)
+
+
 def _find_refills(grid: Grid, xs: list[int], ys: list[int]) -> set[Cell]:
     """Step-refill rings (8 colour-11 pixels around a hole) in the maze area
     (rows above the HUD counter band) -> the lattice cell whose box captures
@@ -911,6 +1092,15 @@ class Adapter(GameAdapter):
         self._l5_armed = False
         self._l5_state: str | None = None
         self._l5_obs: list[Cell] = []
+        # L6 multi-goal path: observation of the 3 phase-synced movers by KIND.
+        self._l6_state: str | None = None
+        self._l6_visited: dict[str, set[Cell]] = {}
+        self._l6_order: dict[str, list[Cell]] = {}
+        self._l6_obs_moves = 0
+        self._l6_stable = 0
+        self._l6_prev_av: Cell | None = None
+        self._l6_band_prev: int | None = None
+        self._l6_decr: int | None = None
 
     # ── harness contract ─────────────────────────────────────────────────
     def is_done(self, frames: list[Any], latest_frame: Any) -> bool:
@@ -928,6 +1118,10 @@ class Adapter(GameAdapter):
             self._l5_armed = False
             self._l5_state = None
             self._l5_obs = []
+            self._l6_state = None
+            self._l6_visited = {}
+            self._l6_order = {}
+            self._l6_obs_moves = 0
             self._explorer._pending_action = None
             self._explorer._pending_key = None
             return reset_action()
@@ -970,6 +1164,16 @@ class Adapter(GameAdapter):
                     return simple_action(self._plan.pop(0))
             else:
                 return simple_action(self._plan.pop(0))
+
+        # 1.5 L6 multi-goal + moving-changer path (gated on >=2 goals, which only
+        #     L6 has — L1-L5 are single-goal and fall straight through). Observes
+        #     the three phase-synced movers, then joint-BFS plans multi-goal
+        #     coverage. On not-L6 or any failure it returns None and the existing
+        #     single-goal paths run, so the 5/7 floor is untouched.
+        if not self._plan_committed and not self._plan_failed:
+            l6_action = self._try_l6(grid, move_ids)
+            if l6_action is not None:
+                return simple_action(l6_action)
 
         # 2. L5 pixel path — only once the moving changer has been confirmed. It
         #    observes the mover cycle, reconstructs the pixel maze and joint-BFS
@@ -1086,6 +1290,99 @@ class Adapter(GameAdapter):
         start = (ax, ay, sh, co, ro, _read_life(grid), frozenset(), mx, mdir)
         return _l5_bfs(maze, start)
 
+    def _try_l6(self, grid: Grid, move_ids: list[int]) -> int | None:
+        """L6 multi-goal path. Gated on >=2 goals (only L6 has them). Observes
+        the three phase-synced movers (rot/shape/color, one per kind icon) until
+        their tracks stop growing, then joint-BFS plans multi-goal coverage.
+        Returns an observation move, the first plan action, or ``None`` (not L6,
+        or gave up -> single-goal paths / explorer floor run)."""
+        if self._l6_state == "done":
+            return None
+        parsed = _parse_l6_maze(grid)
+        if parsed is None:
+            return move_ids[0] if self._l6_state == "observing" else None
+        if self._l6_state is None:
+            if len(parsed["goals"]) < 2:
+                self._l6_state = "done"  # single-goal level -> not L6
+                return None
+            self._l6_state = "observing"
+            self._l6_visited = {"rot": set(), "shape": set(), "color": set()}
+            self._l6_order = {"rot": [], "shape": [], "color": []}
+            self._l6_obs_moves = 0
+            self._l6_stable = 0
+            self._l6_prev_av = None
+            self._l6_band_prev = None
+            self._l6_decr = None
+        av = parsed["avatar"]
+        band = _band_count(grid)
+        if self._l6_prev_av is None or av != self._l6_prev_av:  # last move succeeded
+            grew = False
+            for c, k in parsed["changers"].items():
+                if k in self._l6_visited:
+                    if c not in self._l6_visited[k]:
+                        grew = True
+                    self._l6_visited[k].add(c)
+                    self._l6_order[k].append(c)
+            self._l6_stable = 0 if grew else self._l6_stable + 1
+            if self._l6_band_prev is not None and self._l6_decr is None:
+                delta = self._l6_band_prev - band
+                if delta > 0:  # a clean (non-refill) successful move reveals decr
+                    self._l6_decr = delta
+        self._l6_prev_av = av
+        self._l6_band_prev = band
+        if (self._l6_obs_moves >= 6 and self._l6_stable >= _L6_STABLE_NEED) or self._l6_obs_moves >= _L6_OBS_CAP:
+            self._l6_state = "done"
+            plan = self._plan_l6(grid, parsed)
+            if plan:
+                self._plan = plan
+                self._plan_committed = True
+                return self._plan.pop(0)
+            return None
+        # issue a safe successful move (advances all movers once)
+        self._l6_obs_moves += 1
+        for act in (4, 3, 2, 1):
+            dx, dy = _MOVES[act]
+            nb = (av[0] + dx * _CELL, av[1] + dy * _CELL)
+            if nb in parsed["passable"] and nb not in parsed["hard_walls"] and nb not in parsed["goals"]:
+                return act
+        return move_ids[0]
+
+    def _plan_l6(self, grid: Grid, parsed: dict[str, Any]) -> list[int] | None:
+        """Build the L6 pixel maze from the observed mover tracks + the settled
+        multi-goal parse, then joint-BFS a death-free coverage plan (or None)."""
+        kinds = [k for k in ("rot", "shape", "color") if self._l6_visited[k]]
+        if not kinds:
+            return None
+        tracks = [frozenset(self._l6_visited[k]) for k in kinds]
+        curmov: list[tuple[int, int, int]] = []
+        for k in kinds:
+            seq = self._l6_order[k]
+            pos = seq[-1]
+            d = 1
+            for j in range(len(seq) - 1, 0, -1):
+                dd = _l6_dir_from(seq[j - 1], seq[j])
+                if dd is not None:
+                    d = dd
+                    break
+            curmov.append((pos[0], pos[1], d))
+        decr = self._l6_decr or _STEP_DECR
+        maze = {
+            "goals": parsed["goals"],
+            "reqs": parsed["reqs"],
+            "hard_walls": parsed["hard_walls"],
+            "refills": parsed["refills"],
+            "pushwalls": parsed["pushwalls"],
+            "fjzuynaokm": frozenset(set(parsed["hard_walls"]) | set(parsed["goals"])),
+            "mover_kinds": kinds,
+            "mover_tracks": tracks,
+            "step_full": _STEP_FULL // decr,
+        }
+        ax, ay = parsed["avatar"]
+        sh, co, ro = parsed["token"]
+        start = (ax, ay, sh, co, ro, _band_count(grid) // decr, frozenset(),
+                 tuple(curmov), frozenset())
+        return _l6_bfs(maze, start)
+
     def _reset_level(self, levels: int) -> None:
         self._levels_seen = levels
         self._plan = []
@@ -1097,4 +1394,8 @@ class Adapter(GameAdapter):
         self._l5_armed = False
         self._l5_state = None
         self._l5_obs = []
+        self._l6_state = None
+        self._l6_visited = {}
+        self._l6_order = {}
+        self._l6_obs_moves = 0
         self._explorer.on_level_up()

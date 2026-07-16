@@ -34,6 +34,10 @@ from admorphiq.adapters25.ls20 import (
     _l5_bfs,
     _l5_mover_advance,
     _l5_step,
+    _l6_bfs,
+    _l6_dir_from,
+    _l6_mover_step,
+    _l6_step,
     _snap_to_lattice,
     _solve,
 )
@@ -395,3 +399,93 @@ def test_l5_bfs_routes_through_the_moving_changer_for_rotation():
     start = (10, 0, 0, 0, 0, 21, frozenset(), 10, 3)
     plan = _l5_bfs(maze, start)
     assert plan == [3, 2]
+
+
+# ── L6 multi-goal (either-order) + 3-synchronous-mover model ─────────────────
+
+
+def _l6_maze(**over):
+    """A minimal L6-style maze dict for the multi-goal pixel sim."""
+    base = {
+        "goals": [(100, 0)],
+        "reqs": [(0, 0, 0)],
+        "hard_walls": frozenset(),
+        "refills": frozenset(),
+        "pushwalls": (),
+        "fjzuynaokm": frozenset(),
+        "mover_kinds": [],
+        "mover_tracks": [],
+        "step_full": 42,
+    }
+    base.update(over)
+    return base
+
+
+def _l6_start(ax, ay, token=(0, 0, 0), steps=42, movers=(), sat=frozenset()):
+    return (ax, ay, token[0], token[1], token[2], steps, frozenset(), tuple(movers), sat)
+
+
+def test_l6_mover_step_follows_the_track_in_2d():
+    """Purpose: the L6 mover follows npdjlrkhsg (try dir, dir-1, dir+1, dir+2)
+    over its track cells — pin both a horizontal continue and a 2D turn at a
+    region corner.
+    Expected feedback: a failure means a mover's phase desyncs and the L6 plan's
+    changer crossings land on wrong frames."""
+    horiz = frozenset({(14, 35), (19, 35), (24, 35)})
+    assert _l6_mover_step(horiz, 19, 35, 1) == (24, 35, 1)  # continue right
+    assert _l6_mover_step(horiz, 24, 35, 1) == (19, 35, 3)  # bounce to left
+    # 2D region corner: heading right at the region's right edge turns.
+    region = frozenset({(19, 20), (24, 20), (19, 25), (24, 25)})
+    nx, ny, nd = _l6_mover_step(region, 24, 20, 1)
+    assert (nx, ny) in region and (nx, ny) != (24, 20)  # it moved to an on-track cell
+
+
+def test_l6_dir_from_infers_direction_between_observed_cells():
+    """Purpose: the mover direction is learned from two consecutive observed
+    cells; pin the nakogfhyus mapping and the None case (no unit step).
+    Expected feedback: a failure means the observed mover seeds the sim with the
+    wrong heading and the plan desyncs."""
+    assert _l6_dir_from((19, 35), (24, 35)) == 1  # right
+    assert _l6_dir_from((24, 35), (19, 35)) == 3  # left
+    assert _l6_dir_from((19, 20), (19, 25)) == 0  # down
+    assert _l6_dir_from((19, 25), (19, 20)) == 2  # up
+    assert _l6_dir_from((19, 35), (29, 35)) is None  # two cells apart -> not a step
+
+
+def test_l6_step_satisfies_a_goal_only_with_its_own_matching_token():
+    """Purpose: each L6 goal is covered only by standing on it with THAT goal's
+    required token; an unsatisfied goal blocks a mismatched token, and a
+    satisfied goal is removed (passable). Pin both.
+    Expected feedback: a failure means the either-order coverage is mis-modelled
+    and the multi-goal BFS plans an impossible or premature win."""
+    # goal A@(5,0) needs token (0,0,1); the avatar arrives matching -> covered.
+    maze = _l6_maze(goals=[(5, 0), (10, 0)], reqs=[(0, 0, 1), (0, 0, 2)], goal=None)
+    s = _l6_start(0, 0, token=(0, 0, 1))
+    ns = _l6_step(maze, s, 4)  # right onto (5,0) with matching token
+    assert 0 in ns[8] and (ns[0], ns[1]) == (5, 0)
+    # with a MISMATCHED token the same move is blocked (avatar stays).
+    s2 = _l6_start(0, 0, token=(0, 0, 0))
+    ns2 = _l6_step(maze, s2, 4)
+    assert ns2 == s2  # blocked: goal A unsatisfied and token mismatched
+
+
+def test_l6_bfs_covers_both_goals_either_order():
+    """Purpose: end-to-end pin of the multi-goal joint BFS — a two-goal corridor
+    where each goal needs a different rotation supplied by a mover; the plan must
+    cover BOTH (order free) to win.
+    Expected feedback: a failure means the satisfied-goals bitmask or the joint
+    multi-mover search is broken and L6 cannot be solved."""
+    # y=0 line: goals at (5,0) req rot1 and (15,0) req rot2; a rot-mover patrols
+    # (10,0)-(20,0). Reaching a mover cell bumps rotation; the avatar covers both.
+    maze = _l6_maze(
+        goals=[(5, 0), (15, 0)], reqs=[(0, 0, 1), (0, 0, 2)],
+        mover_kinds=["rot"], mover_tracks=[frozenset({(20, 0), (25, 0)})],
+    )
+    start = _l6_start(0, 0, token=(0, 0, 1), movers=[(20, 0, 1)])
+    plan = _l6_bfs(maze, start)
+    assert plan is not None
+    # replay the plan through the sim and assert both goals end covered.
+    s = start
+    for a in plan:
+        s = _l6_step(maze, s, a)
+    assert len(s[8]) == 2
