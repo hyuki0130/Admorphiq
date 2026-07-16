@@ -2,8 +2,8 @@
 round: r59
 axis: script25 depth (kernel expressiveness) — faithful-sim + learned-operator wave 2
 keywords: [m0r0, pressure-plate, gates, bp35, frontier-exploration, su15, enemy-in-sim, re86, separation-by-motion, sk48, lockstep, reachability, lp85, twist-topology, ls20, moving-changer, r59s1, full-25]
-verdict: PASS — official card 18.02% → 21.56% (r59s1 @ HEAD 9b8e2e8); post-measurement landings put current HEAD arithmetic ≈ 22.25%
-commit: 9b8e2e8 (measurement HEAD); post-HEAD: bc04e63, 6b6ad2e, b2128c9, 36d23cd, 3b6c11c, 0197b8b, fa8e3bc
+verdict: PASS — official card 18.02% → 21.56% (r59s1) → 22.25% (r59s2) → **26.38% (r59s3, 2026-07-17 00:52)**; every run matched its arithmetic prediction exactly
+commit: 9b8e2e8 (r59s1 HEAD) / cc1e4dc (r59s2 HEAD) / f8144df-era (r59s3 HEAD); landings: bc04e63, 6b6ad2e, b2128c9, 36d23cd, 3b6c11c, 0197b8b, fa8e3bc, 12bda52, a1701f9, 0abeb0d, 2bdea69, e698ed8(ls20 L5), 02fe3d8, f677aed, 9647858, e536f65
 ---
 
 # R59 — depth wave 2 (parallel 6-lane team, 2026-07-16)
@@ -33,6 +33,18 @@ commit: 9b8e2e8 (measurement HEAD); post-HEAD: bc04e63, 6b6ad2e, b2128c9, 36d23c
 r59s1 (re86 0.0328→0.1162, su15 0.1035→0.1923); the other 23 byte-identical across two full
 runs. r59s3 launched at the overnight HEAD (m0r0 6/6 @1.0, ls20 6/7 @0.75, su15 6/9 @0.4368,
 lf52+g50t first clears, ar25 2/8) — arithmetic prediction ≈ **26.4%**.
+
+## r59s3 official (2026-07-17 00:52 KST, ceph-build, @5000) — **26.38%**
+
+`games=25 total=6.5940 → 26.38%` — the overnight-wave HEAD. Exactly 6 rows moved vs r59s2,
+each matching its lane-reported value precisely: ar25 0.0278→0.0833 (geared-copy L1),
+g50t 0→0.0357 (FIRST clear, ACTION5 ghost), lf52 0→0.0182 (FIRST clear, peg solitaire),
+ls20 0.3571→**0.7500** (L5 pixel push-carry + L6 multi-goal 3-mover, L1-L6 all 1.0),
+m0r0 0.7143→**1.0000** (L6 joint block-pin — FULLY CONQUERED), su15 0.1923→0.4368
+(spare-sacrifice + idx5). Post-HEAD: tn36 first clear e536f65 (+0.0357 game) → next-run
+arithmetic ≈ **26.52%**. **MILESTONE: all 25 games clear ≥1 level** (last zero game tn36
+fell at 00:41). Day arc 18.02% → 26.38% (+8.4pp, 1.46×). With the lp85 stall give-up
+(7ac5a00) the full-25 wall time dropped from ~3.7h to ~15min.
 
 ## Post-measurement landings (in HEAD, not in r59s1; next full-25 picks them up)
 
