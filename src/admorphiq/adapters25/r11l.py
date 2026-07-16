@@ -76,11 +76,10 @@ placed one; a refused cell is marked bad and its creature re-solved.
   placement" hypothesis is falsified) but does not converge under the engine's
   60-action HARD per-level budget (source ``_max_actions=60``; select, place,
   AND refused place each cost one action).
-- The remaining wall is SELECT mis-targeting: the engine SELECTS only when a
-  click lands inside a leg's bbox, else it treats the click as a PLACE of the
-  still-selected leg (source ACTION6 handler), so a stale/missed select
-  silently drives the wrong leg off its frozen cell. This controller verifies
-  the place OUTCOME, not the select, so it cannot catch the miss.
+- This committed version uses GLOBAL nearest-assignment across all frozen
+  cells, which mismatches legs across the two creatures (thrash). R60b measured
+  that legs are frame-separable by creature colour and that the real fix is
+  PER-CREATURE (per-colour) assignment — see the corrected reopen pointer below.
 
 The generic click-frontier explorer (below) remains the fallback for boards
 neither planner recognises. On its own it never advances past L0: the assembly
@@ -88,14 +87,25 @@ is a CONTINUOUS centroid-placement problem whose winning configuration is
 rarely any single salient centroid, so a frontier search over "click an
 existing region" cannot construct it except by luck.
 
-Reopen pointer (L1, sharpened by R60 engine ground truth — see
-``.wiki/wiki/games/R11L.md`` Notes R60): verify the SELECT, not the place. The
-engine recolours the selected leg to colour 0 (unselected legs are colour 3),
-so the currently-selected leg is frame-detectable as the lone colour-0 piece.
-Confirm the intended leg is the selected one BEFORE issuing a place — a place
-while the wrong leg is selected is the destructive move that drives a placed
-leg off its frozen cell. That is the only remaining blocker between the frozen-
-target controller and an L1 clear, and it fits inside the 60-action budget.
+Reopen pointer (L1, corrected by R60b engine ground truth — see
+``.wiki/wiki/games/R11L.md`` Notes R60/R60b). TWO earlier hypotheses are
+FALSIFIED by passive engine reads:
+  - Selection is NOT frame-visible. The engine's ``color_remap(3,0)`` on the
+    selected leg does NOT change its rendered centroid colour (it keeps its
+    CREATURE colour), so select cannot be verified by a "colour-0 marker".
+  - Legs ARE frame-distinguishable by CREATURE COLOUR (L1: colour 12 = 3-leg,
+    colour 15 = 2-leg), so the right fix for the global-nearest THRASH is
+    PER-CREATURE (per-colour) assignment — a leg only ever driven to its own
+    creature's frozen cells. That structure was tried and REGRESSED because the
+    creature BODY (it sits at its legs' centroid) leaks into ``_detect_legs`` and
+    gets driven like a leg, and driving a body to a bad centroid FIRES the
+    body-collision strike (measured strk 0→5 → GAME_OVER — so L1 strikes ARE
+    reachable, correcting the earlier "obstacles off-screen, no strikes" claim).
+Corrected reopen: (1) make ``_detect_legs`` exclude the body per creature (the
+body is the high-fill piece nearest a creature's leg centroid; legs are the
+lower-fill satellites) so only true legs are driven; (2) assign per-creature by
+colour; (3) under the 60-action budget, avoid refused placements and never drive
+a body — prefer minimal-move frozen configs.
 
 Composition from ``admorphiq.kernels``:
   - :func:`admorphiq.kernels.find_regions` segments the board into salient
