@@ -10,7 +10,7 @@ solve is measured separately by ``scripts/script25.py``).
 
 from __future__ import annotations
 
-from admorphiq.adapters25.r11l import _analyze_creatures, _hazard_cells
+from admorphiq.adapters25.r11l import Adapter, _analyze_creatures, _hazard_cells
 
 _BG = 5
 
@@ -107,6 +107,52 @@ def test_detects_two_creatures_and_groups_legs_by_body():
     assert len(by_size[0][0]) == 2  # creature B: 2 legs
     assert len(by_size[1][0]) == 3  # creature A: 3 legs
     assert {tuple(c) for c in by_size[1][0]} == {(10, 10), (10, 30), (30, 20)}
+
+
+def test_l1_body_free_detection_and_per_creature_colour_grouping():
+    """Purpose (R60c): on the measured r11l L1 layout — a colour-12 creature
+    (3 legs + body + target ring) and a colour-15 creature (2 legs + body +
+    target) — the FROZEN-TARGET controller's detectors behave as its
+    per-creature assignment requires: ``_detect_legs`` returns EXACTLY the 5
+    legs (bodies and target rings excluded), ``_detect_bodies`` returns each
+    creature's body keyed by colour, and ``_build_frozen`` keys each creature to
+    its BODY colour (sampled by nearest body to the leg centroid, NOT the hollow
+    target-ring centroid which reads background). Expected feedback: a FAIL
+    means legs mis-group across creatures (the R60b thrash) or a body is driven
+    like a leg (which fires the body-collision strike)."""
+    cells: dict[tuple[int, int], int] = {}
+    # colour-12 creature: 3 legs, body at their centroid ~(12,25), target ring.
+    for lc in [(6, 17), (9, 49), (21, 8)]:
+        cells.update(_leg(*lc, 3))
+    cells.update(_body(11, 24, 12))
+    cells.update(_ring(51, 40, 12))
+    # colour-15 creature: 2 legs, body at their centroid ~(41,49), target ring.
+    for lc in [(35, 45), (48, 54)]:
+        cells.update(_leg(*lc, 3))
+    cells.update(_body(41, 50, 15))
+    cells.update(_ring(18, 57, 15))
+    grid = _grid(cells)
+    ad = Adapter()
+    hazard = _hazard_cells(grid, _BG)
+
+    legs = {ad._leg_centre(r) for r in ad._detect_legs(grid, _BG, hazard)}
+    assert legs == {(6, 17), (9, 49), (21, 8), (35, 45), (48, 54)}
+
+    bodies = ad._detect_bodies(grid, _BG, hazard)
+    assert set(bodies) == {12, 15}
+    assert abs(bodies[12][0] - 12) <= 2 and abs(bodies[12][1] - 25) <= 2
+    assert abs(bodies[15][0] - 42) <= 2 and abs(bodies[15][1] - 51) <= 2
+
+    creatures = _analyze_creatures(grid, _BG, hazard)
+    assert creatures is not None and len(creatures) == 2
+    ad._build_frozen(grid, _BG, creatures)
+    # Each creature is keyed to the colour of the body nearest its leg centroid;
+    # the 3-leg creature -> colour 12, the 2-leg creature -> colour 15.
+    color_by_legs = {
+        len(legs_c): ad._frozen_colors[i] for i, (legs_c, _t) in enumerate(ad._frozen_creatures)
+    }
+    assert color_by_legs[3] == 12
+    assert color_by_legs[2] == 15
 
 
 def test_returns_none_on_non_creature_layout():

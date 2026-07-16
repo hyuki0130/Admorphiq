@@ -64,22 +64,24 @@ select→place plan (:meth:`_build_plan`) clears L0 super-humanly (4 actions vs 
 compute each creature's final leg configuration ONCE
 (:func:`admorphiq.kernels.points_with_centroid`) and HOLD it, so legs drive
 toward STATIONARY goals instead of the moving targets that stalled the earlier
-re-planner. Each cycle maps current legs (:meth:`_detect_legs`, a
-grouping-free compact-piece detector that does not go blind mid-transit) to the
-frozen cells by nearest-assignment, drives one unplaced leg, never disturbs a
-placed one; a refused cell is marked bad and its creature re-solved.
+re-planner. Legs (:meth:`_detect_legs` — colour 0/3 pieces; the colour-12/15
+bodies and target rings are excluded) are grouped PER CREATURE by NEAREST BODY
+(:meth:`_detect_bodies`; each creature keyed to the colour of the body nearest
+its leg centroid), then each cycle drives one unplaced leg to its creature's
+nearest free frozen cell — never disturbing a placed leg, never selecting a
+body. A refused cell is marked bad and its creature re-solved.
 
 **Measured result — still BANKED at 1/6 (L0 byte-identical, 0.0476)**:
-- ``--max-actions 1000``, deterministic: 1/6. The frozen controller drives REAL
-  engine moves on L1 (verified by a passive ``env._game.bbijaigbknc`` read;
-  strike count stays 0, so placements STICK — the old "engine reverts the
-  placement" hypothesis is falsified) but does not converge under the engine's
-  60-action HARD per-level budget (source ``_max_actions=60``; select, place,
-  AND refused place each cost one action).
-- This committed version uses GLOBAL nearest-assignment across all frozen
-  cells, which mismatches legs across the two creatures (thrash). R60b measured
-  that legs are frame-separable by creature colour and that the real fix is
-  PER-CREATURE (per-colour) assignment — see the corrected reopen pointer below.
+- ``--max-actions 1000``, deterministic: 1/6. The controller drives REAL engine
+  moves on L1 (passive ``env._game.bbijaigbknc`` read; ``strk0`` all run — the
+  grouping is correct and no body is ever dragged) but does not converge under
+  the 60-action HARD per-level budget (source ``_max_actions=60``; select,
+  place, AND refused place each cost one action).
+- **The final wall is WALL-EDGE placement.** The pumlzd creature's target
+  ``(18,57)`` sits at the arena wall edge, so its frozen cells (col ~57) are
+  REFUSED by the engine (``gabrtablhx`` collision the frame-only ``is_free``
+  cannot match), and recompute-on-refusal thrashes cells near the wall
+  (``bad`` 0→9), burning the budget before convergence.
 
 The generic click-frontier explorer (below) remains the fallback for boards
 neither planner recognises. On its own it never advances past L0: the assembly
@@ -87,25 +89,16 @@ is a CONTINUOUS centroid-placement problem whose winning configuration is
 rarely any single salient centroid, so a frontier search over "click an
 existing region" cannot construct it except by luck.
 
-Reopen pointer (L1, corrected by R60b engine ground truth — see
-``.wiki/wiki/games/R11L.md`` Notes R60/R60b). TWO earlier hypotheses are
-FALSIFIED by passive engine reads:
-  - Selection is NOT frame-visible. The engine's ``color_remap(3,0)`` on the
-    selected leg does NOT change its rendered centroid colour (it keeps its
-    CREATURE colour), so select cannot be verified by a "colour-0 marker".
-  - Legs ARE frame-distinguishable by CREATURE COLOUR (L1: colour 12 = 3-leg,
-    colour 15 = 2-leg), so the right fix for the global-nearest THRASH is
-    PER-CREATURE (per-colour) assignment — a leg only ever driven to its own
-    creature's frozen cells. That structure was tried and REGRESSED because the
-    creature BODY (it sits at its legs' centroid) leaks into ``_detect_legs`` and
-    gets driven like a leg, and driving a body to a bad centroid FIRES the
-    body-collision strike (measured strk 0→5 → GAME_OVER — so L1 strikes ARE
-    reachable, correcting the earlier "obstacles off-screen, no strikes" claim).
-Corrected reopen: (1) make ``_detect_legs`` exclude the body per creature (the
-body is the high-fill piece nearest a creature's leg centroid; legs are the
-lower-fill satellites) so only true legs are driven; (2) assign per-creature by
-colour; (3) under the 60-action budget, avoid refused placements and never drive
-a body — prefer minimal-move frozen configs.
+Reopen pointer (L1 final wall — see ``.wiki/wiki/games/R11L.md`` Notes R60c).
+The measured FRAME structure (correcting an R60b coordinate-confusion artifact):
+LEGS are colour 3 / colour 0-when-selected (fill ~0.48, NOT creature-coloured —
+so grouping is by nearest BODY, not by leg colour); BODIES are colour 12/15 at
+fill ~0.80; TARGET rings are colour 12/15 at fill ~0.24. Grouping, body
+exclusion, and strike avoidance are SOLVED. The only block left is wall-edge
+placement under the DISPLAY→GRID camera transform near the octagon wall: either
+(a) LEARN the placeable region from observed click→move successes (which cells
+actually accept a leg) rather than the frame ``is_free`` predicate, or (b)
+recover the display↔grid map so ``is_free`` matches the engine's collision.
 
 Composition from ``admorphiq.kernels``:
   - :func:`admorphiq.kernels.find_regions` segments the board into salient
@@ -424,6 +417,14 @@ class Adapter(GameAdapter):
         # frozen dests means the build failed → defer to the explorer.
         self._frozen_by_creature: list[list[Cell]] | None = None
         self._frozen_creatures: list[tuple[list[Cell], Cell]] = []
+        # Each frozen creature's BODY/TARGET colour (sampled from the frame at the
+        # target ring at build time). This is the creature-identity key: legs
+        # themselves are NOT creature-coloured (measured — every leg renders as
+        # colour 3, or colour 0 while selected), so current legs are matched to a
+        # creature by NEAREST BODY (a body is a same-colour high-fill piece), and
+        # a creature's body is found each cycle as the high-fill piece of this
+        # colour. No colour is hardcoded — it is read from the frame per level.
+        self._frozen_colors: list[int] = []
         self._frozen_bad: set[Cell] = set()
         self._frozen_moves = 0
         # In-flight single-leg move: select the leg (click a filled cell of it,
@@ -520,6 +521,7 @@ class Adapter(GameAdapter):
         self._multi = False
         self._frozen_by_creature = None
         self._frozen_creatures = []
+        self._frozen_colors = []
         self._frozen_bad = set()
         self._frozen_moves = 0
         self._reset_move()
@@ -768,6 +770,21 @@ class Adapter(GameAdapter):
             ([(int(r), int(c)) for r, c in legs], (int(target[0]), int(target[1])))
             for legs, target in creatures
         ]
+        # Creature identity colour = the colour of the BODY nearest this
+        # creature's leg centroid (a body sits at its legs' mean). Sampling the
+        # target ring's centroid instead reads background — the ring is hollow —
+        # so the body must be matched by position, not a centre pixel. Used to
+        # re-find the creature's body each cycle for leg→creature grouping.
+        bodies = self._detect_bodies(grid, bg, hazard)
+        self._frozen_colors = []
+        for legs, _t in self._frozen_creatures:
+            cr = sum(leg[0] for leg in legs) / len(legs)
+            cc = sum(leg[1] for leg in legs) / len(legs)
+            if bodies:
+                col = min(bodies, key=lambda c: (bodies[c][0] - cr) ** 2 + (bodies[c][1] - cc) ** 2)
+            else:
+                col = -1
+            self._frozen_colors.append(col)
         self._frozen_bad = set()
         by_creature: list[list[Cell]] = []
         for ci in range(len(self._frozen_creatures)):
@@ -789,14 +806,21 @@ class Adapter(GameAdapter):
         if dests is not None:
             self._frozen_by_creature[ci] = dests
 
-    def _active_dests(self) -> list[tuple[Cell, int]]:
-        """Every frozen destination cell (with its creature index) not marked
-        bad. The controller drives one unplaced leg to one of these each move."""
-        out: list[tuple[Cell, int]] = []
-        for ci, cells in enumerate(self._frozen_by_creature or []):
-            for cell in cells:
-                if cell not in self._frozen_bad:
-                    out.append((cell, ci))
+    def _detect_bodies(self, grid: Grid, bg: int, hazard: set[Cell]) -> dict[int, Cell]:
+        """Each creature's BODY centre keyed by colour: the compact HIGH-FILL
+        piece of a creature colour (measured L1: bodies fill ~0.8 at colour 12/15,
+        while legs are colour 0/3 at ~0.48 and target rings ~0.24). Used to match
+        current legs to their creature by nearest body, robustly through the
+        body-follows-centroid motion (the body is always rendered)."""
+        height, width = len(grid), len(grid[0])
+        out: dict[int, Cell] = {}
+        for r in find_regions(grid, background=bg, gap=2):
+            if not (_MIN_PIECE_SIZE <= r["size"] <= _MAX_PIECE_SIZE):
+                continue
+            if (r["cells"] & hazard) or _is_hud_band(r, height, width):
+                continue
+            if _fill(r) >= _BODY_FILL:
+                out.setdefault(r["color"], self._leg_centre(r))
         return out
 
     def _detect_legs(self, grid: Grid, bg: int, hazard: set[Cell]) -> list[Region]:
@@ -865,45 +889,61 @@ class Adapter(GameAdapter):
         return cell
 
     def _frozen_step(self, grid: Grid, bg: int, masked: Grid) -> Cell | None:
-        """One controller click. Maps the CURRENT legs to the FROZEN destination
-        cells, then either continues an in-flight place, or begins moving the next
-        unplaced leg to its nearest free frozen cell. Returns ``None`` to bank to
-        the explorer when convergence stalls."""
+        """One controller click. Groups the CURRENT legs by NEAREST BODY (so a
+        leg is only ever driven to its OWN creature's frozen cells — never mixed
+        across creatures), then either continues an in-flight place or begins
+        moving the next unplaced leg to its creature's nearest free frozen cell.
+        Only real legs (colour 0/3) are ever selected, so a body is never dragged.
+        Returns ``None`` to bank to the explorer when convergence stalls."""
         hazard = _hazard_cells(grid, bg)
         leg_regions = self._detect_legs(grid, bg, hazard)
-        legs = [self._leg_centre(r) for r in leg_regions]
-        dests = self._active_dests()
+        bodies = self._detect_bodies(grid, bg, hazard)
 
         def near(a: Cell, b: Cell) -> bool:
             return (a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2 <= _BODY_CENTROID_TOL2
 
         if self._fc_phase == "place":
+            legs = [self._leg_centre(r) for r in leg_regions]
             return self._frozen_place(grid, bg, masked, legs, near)
 
-        unoccupied = [(d, ci) for d, ci in dests if not any(near(d, leg) for leg in legs)]
-        if not unoccupied:
-            # Every frozen cell carries a leg → each body is on its target →
-            # WIN is imminent; idle on a refused hazard click until it registers.
+        # Anchor each creature at its body (fallback: its static target if the
+        # body is momentarily undetected), then assign each leg to the creature
+        # whose anchor is nearest.
+        n = len(self._frozen_by_creature or [])
+        anchors = [bodies.get(self._frozen_colors[ci], self._frozen_creatures[ci][1]) for ci in range(n)]
+        creature_legs: list[list[tuple[Region, Cell]]] = [[] for _ in range(n)]
+        for r in leg_regions:
+            lc = self._leg_centre(r)
+            ci = min(range(n), key=lambda i: (lc[0] - anchors[i][0]) ** 2 + (lc[1] - anchors[i][1]) ** 2)
+            creature_legs[ci].append((r, lc))
+
+        any_open = False
+        best: tuple[int, Region, Cell, Cell, int] | None = None
+        for ci, cells in enumerate(self._frozen_by_creature or []):
+            active = [c for c in cells if c not in self._frozen_bad]
+            regs = creature_legs[ci]
+            open_cells = [c for c in active if not any(near(c, lc) for _r, lc in regs)]
+            if open_cells:
+                any_open = True
+            # Free legs of THIS creature: not already sitting on one of its cells
+            # (never disturb a placed leg — the re86 never-disturb rule).
+            free = [(r, lc) for r, lc in regs if not any(near(lc, c) for c in active)]
+            for cell in open_cells:
+                for region, lc in free:
+                    dist = (lc[0] - cell[0]) ** 2 + (lc[1] - cell[1]) ** 2
+                    if best is None or dist < best[0]:
+                        best = (dist, region, lc, cell, ci)
+
+        if not any_open:
+            # Every creature's legs sit on its frozen cells → each body is on its
+            # target → WIN is imminent; idle on a refused hazard click until it
+            # registers.
             return self._safe_wait_cell(grid, bg)
         if self._frozen_moves >= _MAX_FROZEN_MOVES:
             return None  # banked: stalled short of convergence → defer to explorer
+        if best is None:
+            return None  # a cell is open but its creature has no free leg → banked
 
-        # An unplaced leg is one not already sitting on a frozen cell; never
-        # disturb a placed leg (the re86 never-disturb rule under frozen targets).
-        free = [
-            (r, self._leg_centre(r))
-            for r in leg_regions
-            if not any(near(self._leg_centre(r), d) for d, _ in dests)
-        ]
-        if not free:
-            return None  # no leg left to move but a cell is open → banked
-        best: tuple[int, Region, Cell, Cell, int] | None = None
-        for d, ci in unoccupied:
-            for region, lc in free:
-                dist = (lc[0] - d[0]) ** 2 + (lc[1] - d[1]) ** 2
-                if best is None or dist < best[0]:
-                    best = (dist, region, lc, d, ci)
-        assert best is not None
         _dist, region, lc, dest, ci = best
         self._fc_leg_pre = lc
         self._fc_dest = dest
