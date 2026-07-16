@@ -3,10 +3,21 @@
 *** QUARANTINE — MODEL-NEVER-VISIBLE. See admorphiq.adapters25's package
 docstring. ***
 
-**STATUS: 4/6 — L0/L1 by OFFLINE RECONSTRUCTION + L3 by MOVABLE-BLOCK CLEARING +
-L4 by CONSTRUCTIVE BLOCK PLACEMENT (R59, 2026-07-16). All four cleared levels
-score 1.000 (super-human).** cvcer movable blocks (colour 9) are used two
-opposite ways, both gated on colour-9 detection so the L0/L1 path is untouched:
+**STATUS: 5/6 — L0/L1 OFFLINE RECONSTRUCTION + L3 MOVABLE-BLOCK CLEARING + L4
+CONSTRUCTIVE BLOCK PLACEMENT + L5 MOMENTARY PRESSURE-PLATE GATES (R59,
+2026-07-16). All five cleared levels score 1.000 (super-human).**
+
+L5 adds `dfnuk`/`hnutp` gate groups: each group has a 1-cell PLATE and a 3-cell
+conditional WALL; the wall is passable IFF a player stands on a plate of that
+group, recomputed every step (MOMENTARY). The gate state is a pure function of
+the players' positions, so the joint BFS node stays ``(p0, p1)`` and
+``_successors`` computes the closed gate walls per node. Gate cells are detected
+as colours that are NOT floor/player/block/hazard and NOT one of the two
+dominant ZONE colours — so a level whose zone colour is 12/14/15 (L1-L4) never
+mis-reads its static walls as gates.
+
+cvcer movable blocks (colour 9) are used two opposite ways, both gated on
+colour-9 detection so the L0/L1 path is untouched:
 - **L3 — block as OBSTACLE to clear:** parse blocks as a third cell class,
   compute the blocks-as-floor merge trajectory, ACTION6-select each block on it
   and route it (``kernels.grid_shortest_path`` + ``path_to_moves``) to an
@@ -198,11 +209,14 @@ def _solve_axis(scale: int, player_px: list[int], content_lo: int, content_hi: i
 
 
 class _Maze:
-    """A parsed level: geometry + wall/hazard/block sets + the two player cells."""
+    """A parsed level: geometry + wall/hazard/block sets + the two player cells,
+    plus the pressure-plate gate groups (L5)."""
 
-    __slots__ = ("gh", "gw", "scale", "off_y", "off_x", "walls", "hazards", "players", "blocks")
+    __slots__ = ("gh", "gw", "scale", "off_y", "off_x", "walls", "hazards",
+                 "players", "blocks", "plates", "gate_walls")
 
-    def __init__(self, gh, gw, scale, off_y, off_x, walls, hazards, players, blocks):
+    def __init__(self, gh, gw, scale, off_y, off_x, walls, hazards, players, blocks,
+                 plates=None, gate_walls=None):
         self.gh = gh
         self.gw = gw
         self.scale = scale
@@ -212,6 +226,11 @@ class _Maze:
         self.hazards: set[Cell] = hazards
         self.players: list[Cell] = players
         self.blocks: set[Cell] = blocks  # cvcer movable obstacle cells
+        # Pressure-plate gates (dfnuk/hnutp), keyed by group colour: a player on
+        # any plate of a group makes that group's conditional walls passable
+        # (momentary — recomputed every step from the players' positions).
+        self.plates: dict[int, set[Cell]] = plates or {}
+        self.gate_walls: dict[int, set[Cell]] = gate_walls or {}
 
     def to_grid(self, px_cell: Cell) -> Cell:
         return ((px_cell[0] - self.off_y) // self.scale, (px_cell[1] - self.off_x) // self.scale)
@@ -255,6 +274,49 @@ def _classify_cell(grid, r0: int, c0: int, scale: int, background: int, player_c
     if has8:
         return "wall"
     return "floor" if has_floor else "wall"
+
+
+def _detect_gates(
+    grid, off_y: int, off_x: int, scale: int, gh: int, gw: int, background: int, player_color: int
+) -> tuple[dict[int, set[Cell]], dict[int, set[Cell]]]:
+    """Pressure-plate gate groups (L5's ``dfnuk``/``hnutp``) as
+    ``(plates, gate_walls)``, each keyed by group colour.
+
+    A gate colour is any colour that is NOT floor / player / block / hazard and
+    NOT one of the two dominant ZONE colours (the maze-wall fill, which is the
+    top-2 most-frequent non-floor/non-player colours). This is what stops a
+    level whose zone colour happens to be 12/14/15 (L1-L4) from mis-reading its
+    static walls as gates — there the gate colour IS the zone colour, so it is
+    excluded. Within a gate colour, a single-cell region is a PLATE
+    (``hnutp``), a multi-cell region a conditional WALL (``dfnuk``).
+    """
+    # Pixel counts per colour, to find the two zone (maze-wall) colours.
+    counts: dict[int, int] = {}
+    for r in range(off_y, min(off_y + gh * scale, len(grid))):
+        row = grid[r]
+        for c in range(off_x, min(off_x + gw * scale, len(row))):
+            v = row[c]
+            if v == background or v == player_color:
+                continue
+            counts[v] = counts.get(v, 0) + 1
+    zone = {c for c, _ in sorted(counts.items(), key=lambda kv: -kv[1])[:2]}
+    excluded = {background, player_color, _BLOCK_COLOR, _HAZARD_COLOR} | zone
+
+    plates: dict[int, set[Cell]] = {}
+    gate_walls: dict[int, set[Cell]] = {}
+    for reg in find_regions(grid, background=None):
+        color = reg["color"]
+        if color in excluded:
+            continue
+        cells = {((r - off_y) // scale, (c - off_x) // scale) for r, c in reg["cells"]}
+        cells = {(gy, gx) for gy, gx in cells if 0 <= gy < gh and 0 <= gx < gw}
+        if not cells:
+            continue
+        if len(cells) == 1:
+            plates.setdefault(color, set()).update(cells)
+        else:
+            gate_walls.setdefault(color, set()).update(cells)
+    return plates, gate_walls
 
 
 def _parse_maze(grid: tuple[tuple[int, ...], ...], player_color: int) -> _Maze | None:
@@ -320,7 +382,17 @@ def _parse_maze(grid: tuple[tuple[int, ...], ...], player_color: int) -> _Maze |
                 movable.add((gy, gx))
 
     players = sorted(((tl[0] - off_y) // scale, (tl[1] - off_x) // scale) for tl, _, _ in blocks)
-    return _Maze(gh, gw, scale, off_y, off_x, walls, hazards, players, movable)
+
+    # Pressure-plate gates (L5): the classify loop above marked the gate cells
+    # as static walls (they are non-floor); reclassify them out of `walls` and
+    # into the gate groups. Plates are walkable floor; conditional walls block
+    # only while their group is closed (handled in _successors).
+    plates, gate_walls = _detect_gates(grid, off_y, off_x, scale, gh, gw, background, player_color)
+    for cells in plates.values():
+        walls -= cells
+    for cells in gate_walls.values():
+        walls -= cells
+    return _Maze(gh, gw, scale, off_y, off_x, walls, hazards, players, movable, plates, gate_walls)
 
 
 class Adapter(GameAdapter):
@@ -665,18 +737,35 @@ class Adapter(GameAdapter):
         gh, gw = maze.gh, maze.gw
         scheme = self._scheme
         usable = [a for a in move_ids if 0 in scheme[a] and 1 in scheme[a]]
+        plates = maze.plates
+        gate_walls = maze.gate_walls
 
-        def _step(cell: Cell, d: Cell) -> Cell:
+        def _closed_gate_walls(state: JointState) -> set[Cell]:
+            """The gate-wall cells that block in THIS state — a group's walls
+            block unless one of the two players stands on one of its plates
+            (momentary gate; the wall set is a pure function of the positions)."""
+            if not gate_walls:
+                return set()
+            p0, p1 = state
+            closed: set[Cell] = set()
+            for color, ws in gate_walls.items():
+                pls = plates.get(color, set())
+                if p0 not in pls and p1 not in pls:
+                    closed |= ws
+            return closed
+
+        def _step(cell: Cell, d: Cell, blocked: set[Cell]) -> Cell:
             nxt = (cell[0] + d[0], cell[1] + d[1])
-            if 0 <= nxt[0] < gh and 0 <= nxt[1] < gw and nxt not in walls:
+            if 0 <= nxt[0] < gh and 0 <= nxt[1] < gw and nxt not in walls and nxt not in blocked:
                 return nxt
             return cell
 
         def successors(state: JointState):
             p0, p1 = state
+            blocked = _closed_gate_walls(state)
             for a in usable:
-                n0 = _step(p0, scheme[a][0])
-                n1 = _step(p1, scheme[a][1])
+                n0 = _step(p0, scheme[a][0], blocked)
+                n1 = _step(p1, scheme[a][1], blocked)
                 if n0 in hazards or n1 in hazards:
                     continue
                 # engine cross-swap merge for an odd (adjacent) approach

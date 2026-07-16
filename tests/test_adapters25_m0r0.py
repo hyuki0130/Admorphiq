@@ -166,6 +166,8 @@ def test_successors_forbid_hazard_block_wall_and_merge_on_crossing():
         gh, gw = 5, 5
         walls = {(0, 2)}
         hazards = {(2, 4)}
+        plates: dict = {}
+        gate_walls: dict = {}
     adapter._maze = _M()  # type: ignore[assignment]
 
     succ = adapter._successors([1, 2, 3, 4])
@@ -353,6 +355,8 @@ def test_build_place_plan_routes_the_block_to_a_merge_enabling_cell():
         walls = {(r, c) for r in (0, 2) for c in range(5)}  # only the middle row is open
         hazards: set = set()
         blocks = {(1, 2)}
+        plates: dict = {}
+        gate_walls: dict = {}
 
         @staticmethod
         def pixel_center(cell):
@@ -366,3 +370,37 @@ def test_build_place_plan_routes_the_block_to_a_merge_enabling_cell():
         assert plan[0][0] == "click"
         assert plan[-1][0] == "click"
         assert all(spec[0] in ("click", "move") for spec in plan)
+
+
+def test_successors_open_a_gate_when_a_player_stands_on_its_plate():
+    """Purpose: the L5 momentary pressure-plate contract — a conditional gate
+    wall blocks movement UNLESS one of the two players stands on a plate of the
+    wall's group, and this is recomputed from the players' positions every step
+    (no latched bits). Player-0 stepping onto the plate must make the group's
+    wall passable for player-1 on the SAME action.
+    Expected feedback: failure means the joint search either treats gates as
+    permanent walls (L5 never solves) or as always-open (plans through closed
+    gates and diverges live)."""
+    adapter = Adapter()
+    adapter._scheme = {1: {0: (-1, 0), 1: (-1, 0)}, 2: {0: (1, 0), 1: (1, 0)},
+                       3: {0: (0, -1), 1: (0, 1)}, 4: {0: (0, 1), 1: (0, -1)}}
+
+    class _M:
+        gh, gw = 5, 5
+        walls: set = set()
+        hazards: set = set()
+        # group colour 14: plate at (0,0), a conditional wall at (2,2).
+        plates = {14: {(0, 0)}}
+        gate_walls = {14: {(2, 2)}}
+    adapter._maze = _M()  # type: ignore[assignment]
+    succ = adapter._successors([1, 2, 3, 4])
+
+    # Neither player on the plate -> the gate wall at (2,2) BLOCKS: player-0 at
+    # (2,1) moving right (ACTION4, +col) stays put.
+    out_closed = dict(succ(((2, 1), (4, 4))))
+    assert out_closed[4][0] == (2, 1)
+
+    # Player-1 standing on the plate (0,0) -> the gate OPENS: player-0 at (2,1)
+    # moving right now enters (2,2).
+    out_open = dict(succ(((2, 1), (0, 0))))
+    assert out_open[4][0] == (2, 2)
