@@ -3,7 +3,18 @@
 *** QUARANTINE — MODEL-NEVER-VISIBLE. See admorphiq.adapters25's package
 docstring. ***
 
-**STATUS: 2/6 — L0 + L1 cleared by OFFLINE RECONSTRUCTION (R59, 2026-07-16).**
+**STATUS: 3/6 — L0/L1 by OFFLINE RECONSTRUCTION + L3 by MOVABLE-BLOCK CLEARING
+(R59, 2026-07-16). All three cleared levels score 1.000 (super-human).** L3
+adds cvcer movable obstacle blocks (colour 9): the agent parses them as a third
+cell class, computes the blocks-as-floor merge trajectory, ACTION6-selects each
+block that sits on it and routes it (``kernels.grid_shortest_path`` +
+``path_to_moves``, raw grid dirs) to an off-path parking cell, then runs the
+cleared-board merge — all gated on colour-9 detection so the L0/L1 path is
+untouched. The live engine is the oracle (no L3+ gold trace exists). Two
+subtle unlocks: floor is the FIXED colour 5 (never ``most_common_colour`` — a
+wall-heavy level's zone can out-count it), and the per-level scheme probes are
+SKIPPED once the scheme is complete (they desync the players before the merge
+even starts).
 This replaces the R56 online joint-hill-climb (which cleared L0 only and
 BANKED L1 as "descent doors not derivable online"). The bank's premise — "the
 per-piece wall map is not cleanly frame-separable, players traverse the colour
@@ -84,13 +95,14 @@ from admorphiq.adapters25.base import (
     GameAdapter,
     available_action_ids,
     canonical_layer,
+    click_action,
     has_frame,
     most_common_color,
     reset_action,
     simple_action,
     state_name,
 )
-from admorphiq.kernels import configuration_path, find_regions
+from admorphiq.kernels import configuration_path, find_regions, grid_shortest_path, path_to_moves
 
 GAME_ID = "m0r0"
 
@@ -99,8 +111,26 @@ JointState = tuple[Cell, Cell]
 
 _GIVEUP_DEFAULT = 4000
 # wyiex hazard colour (fixed sprite colour across both live hashes; a player
-# entering one triggers a soft reset — see module docstring).
+# entering one triggers a soft reset — see module docstring). A wyiex cell
+# renders as a CHECKERBOARD of colour 8 over the floor colour, which
+# distinguishes it from a SOLID colour-8 zone WALL (some levels' wall zone is
+# also colour 8 — see _classify_cell).
 _HAZARD_COLOR = 8
+# cvcer movable-block colour (a selectable obstacle that blocks players like a
+# wall until relocated) and the colour it remaps to WHILE selected. See the
+# "L3 movable blocks" section of the module docstring.
+_BLOCK_COLOR = 9
+_SELECTED_COLOR = 11
+# The maze FLOOR colour — the engine's fixed Camera background (5) on every
+# level and hash. NOT derived via most-common-colour: a wall-heavy level's zone
+# colour can out-count the floor (e.g. L3's colour-15 zone), which would then
+# be mistaken for the background and every floor cell mis-read as a wall.
+_FLOOR_COLOR = 5
+# Canonical block-move scheme in grid (row, col): the SELECTED block moves in
+# raw grid directions (ACTION1 up / 2 down / 3 left / 4 right), verified live
+# on both hashes. Unlike the mirror players, a block is a single unmirrored
+# mover, so this is a fixed game constant, not a per-side measurement.
+_BLOCK_MOVE_LABELS: dict[Cell, int] = {(-1, 0): 1, (1, 0): 2, (0, -1): 3, (0, 1): 4}
 # Bound on joint states expanded per merge search. A joint (self x partner)
 # space is the product of two positions but each maze is small (<= ~15x15),
 # so this comfortably covers a full search.
@@ -159,11 +189,11 @@ def _solve_axis(scale: int, player_px: list[int], content_lo: int, content_hi: i
 
 
 class _Maze:
-    """A parsed level: geometry + wall/hazard sets + the two player cells."""
+    """A parsed level: geometry + wall/hazard/block sets + the two player cells."""
 
-    __slots__ = ("gh", "gw", "scale", "off_y", "off_x", "walls", "hazards", "players")
+    __slots__ = ("gh", "gw", "scale", "off_y", "off_x", "walls", "hazards", "players", "blocks")
 
-    def __init__(self, gh, gw, scale, off_y, off_x, walls, hazards, players):
+    def __init__(self, gh, gw, scale, off_y, off_x, walls, hazards, players, blocks):
         self.gh = gh
         self.gw = gw
         self.scale = scale
@@ -172,28 +202,49 @@ class _Maze:
         self.walls: set[Cell] = walls
         self.hazards: set[Cell] = hazards
         self.players: list[Cell] = players
+        self.blocks: set[Cell] = blocks  # cvcer movable obstacle cells
 
     def to_grid(self, px_cell: Cell) -> Cell:
         return ((px_cell[0] - self.off_y) // self.scale, (px_cell[1] - self.off_x) // self.scale)
 
+    def pixel_center(self, cell: Cell) -> Cell:
+        """Display pixel (x, y) at the centre of a grid cell — for ACTION6 clicks."""
+        return (self.off_x + cell[1] * self.scale + self.scale // 2,
+                self.off_y + cell[0] * self.scale + self.scale // 2)
+
 
 def _classify_cell(grid, r0: int, c0: int, scale: int, background: int, player_color: int) -> str:
-    """One grid cell -> ``"hazard"`` (any colour-8 pixel), ``"floor"`` (a
-    background/player pixel and no hazard), or ``"wall"`` (neither)."""
-    has_hazard = False
-    has_floor = False
+    """One grid cell -> ``"block"`` / ``"hazard"`` / ``"wall"`` / ``"floor"``.
+
+    - a cvcer movable block (colour 9 present) → ``"block"`` (it obstructs like
+      a wall until relocated);
+    - a wyiex hazard renders as a CHECKERBOARD of colour 8 over the floor, so a
+      cell with BOTH colour 8 and the floor colour → ``"hazard"``;
+    - SOLID colour 8 (no floor pixel) is a zone WALL, not a hazard — some
+      levels' wall zone is colour 8 (e.g. L3 ``npwxa=[15,8]``), which would be
+      mass-mis-read as hazards without the checkerboard test;
+    - background/player pixels (and nothing else) → ``"floor"``; everything
+      else (other solid zone colours) → ``"wall"``.
+    """
+    has8 = has_floor = has_block = False
     h = len(grid)
     w = len(grid[0]) if h else 0
     for rr in range(r0, min(r0 + scale, h)):
         grow = grid[rr]
         for cc in range(c0, min(c0 + scale, w)):
             val = grow[cc]
-            if val == _HAZARD_COLOR:
-                has_hazard = True
+            if val == _BLOCK_COLOR:
+                has_block = True
+            elif val == _HAZARD_COLOR:
+                has8 = True
             elif val == background or val == player_color:
                 has_floor = True
-    if has_hazard:
+    if has_block:
+        return "block"
+    if has8 and has_floor:
         return "hazard"
+    if has8:
+        return "wall"
     return "floor" if has_floor else "wall"
 
 
@@ -208,11 +259,15 @@ def _parse_maze(grid: tuple[tuple[int, ...], ...], player_color: int) -> _Maze |
     scale = _median([h for _, h, _ in blocks] + [w for _, _, w in blocks])
     if scale < 1:
         return None
-    background = most_common_color(grid)
+    background = _FLOOR_COLOR
 
-    # Maze content bbox = floor/player/hazard pixels, excluding the outer HUD
-    # ring (rows/cols 0 and 63 carry the step-counter bars in the background
-    # colour, which would otherwise inflate the bbox to the frame edge).
+    # Maze content bbox = FLOOR (background) + player pixels ONLY, excluding the
+    # outer HUD ring (rows/cols 0 and 63 carry step-counter bars). Colour 8 is
+    # deliberately NOT used to bound the maze: a colour-8 wall zone bleeds into
+    # the letterbox PADDING (which is zone-filled), which would inflate the bbox
+    # to the frame edge and break the centered-grid solve. The floor colour only
+    # ever appears INSIDE the maze, so it bounds it cleanly (hazard cells still
+    # contain floor pixels under their checkerboard, so they are included too).
     top = left = 64
     bot = right = -1
     h = len(grid)
@@ -221,7 +276,7 @@ def _parse_maze(grid: tuple[tuple[int, ...], ...], player_color: int) -> _Maze |
         row = grid[r]
         for c in range(1, min(w, 63)):
             v = row[c]
-            if v == background or v == player_color or v == _HAZARD_COLOR:
+            if v == background or v == player_color:
                 if r < top:
                     top = r
                 if r > bot:
@@ -244,6 +299,7 @@ def _parse_maze(grid: tuple[tuple[int, ...], ...], player_color: int) -> _Maze |
 
     walls: set[Cell] = set()
     hazards: set[Cell] = set()
+    movable: set[Cell] = set()
     for gy in range(gh):
         for gx in range(gw):
             kind = _classify_cell(grid, off_y + gy * scale, off_x + gx * scale, scale, background, player_color)
@@ -251,9 +307,11 @@ def _parse_maze(grid: tuple[tuple[int, ...], ...], player_color: int) -> _Maze |
                 hazards.add((gy, gx))
             elif kind == "wall":
                 walls.add((gy, gx))
+            elif kind == "block":
+                movable.add((gy, gx))
 
     players = sorted(((tl[0] - off_y) // scale, (tl[1] - off_x) // scale) for tl, _, _ in blocks)
-    return _Maze(gh, gw, scale, off_y, off_x, walls, hazards, players)
+    return _Maze(gh, gw, scale, off_y, off_x, walls, hazards, players, movable)
 
 
 class Adapter(GameAdapter):
@@ -290,8 +348,16 @@ class Adapter(GameAdapter):
         self._prev_grid: tuple[tuple[int, ...], ...] | None = None
         self._pending_action: int | None = None
         self._settle_tries = 0
-        # the action just issued, used to predict identity across a crossing
+        # the action just issued, used to read identity from the OBSERVED
+        # motion on the next frame (which player moved by scheme[a][0] is p0).
         self._last_action: int | None = None
+        # the players' positions BEFORE the last action, to measure that motion.
+        self._prev_merge_players: list[Cell] | None = None
+        # queued block-clearing action SPECS — ("click", x, y) or ("move", id)
+        # — built once per level from the parsed board and turned into a fresh
+        # GameAction at drain time (ACTION6 is a mutable singleton, so a
+        # pre-built click would be clobbered by the next one). None = not built.
+        self._clear_plan: list[tuple] | None = None
 
     # ── harness contract ────────────────────────────────────────────────
 
@@ -341,8 +407,7 @@ class Adapter(GameAdapter):
 
         action = self._decide(grid, move_ids)
         self._prev_grid = grid
-        self._pending_action = action
-        return simple_action(action)
+        return action
 
     # ── player colour discovery ─────────────────────────────────────────
 
@@ -381,7 +446,7 @@ class Adapter(GameAdapter):
             # First ever action: issue a probe; discovery happens on absorb.
             self._measure_action = self._measure_queue.pop(0) if self._measure_queue else 1
             self._measure_prev = None
-            return self._measure_action
+            return simple_action(self._measure_action)
 
         # (re)parse the maze once the player colour is known.
         if self._maze is None:
@@ -389,25 +454,38 @@ class Adapter(GameAdapter):
             if maze is None or len(maze.players) < 2:
                 # level-up transition frame (previous merged block) — settle
                 self._settle_tries += 1
-                if self._settle_tries > 3:
-                    return move_ids[0]
-                return move_ids[0]
+                return simple_action(move_ids[0])
             self._maze = maze
             self._settle_tries = 0
 
-        # Probe every move action ONCE per level. This both (re)confirms the
-        # scheme (blocked probes never clobber a known delta) and — critically
-        # — establishes the two players' IDENTITY order at the level start,
-        # BEFORE any crossing, by nearest-tracking across the small probes.
-        # Identity matters: the mirror control scheme means applying player-0's
-        # delta to the wrong physical player flips the column direction, which
-        # is exactly why a position-sorted state diverges once the pair crosses.
-        if self._measure_queue:
+        # Probe the move actions to learn the control scheme — but ONLY until it
+        # is complete. It is a game constant, so once L0 has measured it, later
+        # levels skip probing entirely: the probes MOVE the players, and on a
+        # level like L3 that desyncs them to asymmetric rows before the merge
+        # even starts (the winning path starts from the clean symmetric spawn).
+        # Identity no longer needs the probes — it is read from the first real
+        # move's OBSERVED motion (see _assign_identity).
+        if self._measure_queue and not self._scheme_complete():
             a = self._measure_queue.pop(0)
             self._measure_prev = list(self._identity_or_sorted(grid))
             self._measure_action = a
-            return a
+            return simple_action(a)
+        self._measure_queue = []
         self._measure_action = None
+
+        # Phase B0 — CLEAR movable blocks off the merge path (L3-class levels).
+        # Built once from the parsed board (deterministic), drained one action
+        # per frame (ACTION6 select/deselect clicks + block moves). A block
+        # obstructs the players like a wall; relocating those on the merge
+        # trajectory to off-path parking cells opens the merge. Gated: only runs
+        # when cvcer blocks are actually detected.
+        if self._maze.blocks and self._clear_plan is None:
+            self._clear_plan = self._build_clear_plan(grid) or []
+        if self._clear_plan:
+            kind, *rest = self._clear_plan.pop(0)
+            if kind == "click":
+                return click_action(rest[0], rest[1])
+            return simple_action(rest[0])
 
         # Phase B — closed-loop merge over the ORDERED joint identity state.
         # Re-plan the shortest merge path from the OBSERVED state every
@@ -420,18 +498,27 @@ class Adapter(GameAdapter):
             # merged (or about to win) — idle a legal move; harness WIN check
             # decides.
             self._last_action = None
-            return move_ids[0]
+            self._prev_merge_players = None
+            return simple_action(move_ids[0])
+        # Identity from OBSERVED motion: the two players just moved by
+        # {scheme[a][0], scheme[a][1]}; the one whose displacement matches
+        # scheme[last_action][0] is player-0. This reads identity directly off
+        # the frame (no fragile prediction/flip heuristic) and is exact whenever
+        # the pair actually moved.
         self._assign_identity(players)
 
-        plan = self._search_merge(move_ids)
+        blocks = self._current_blocks(grid)
+        plan = self._search_merge(move_ids, blocks)
         if plan:
             self._no_plan_streak = 0
+            self._prev_merge_players = players
             self._last_action = plan[0]
-            return plan[0]
+            return simple_action(plan[0])
         # No merge plan (unmodelled variant) — gated explorer preserving floor.
         self._no_plan_streak += 1
-        self._last_action = None
-        return self._explore(move_ids)
+        self._prev_merge_players = players
+        self._last_action = self._explore(move_ids)
+        return simple_action(self._last_action)
 
     def _identity_or_sorted(self, grid: tuple) -> list[Cell]:
         """The two players in the identity order established SO FAR this level
@@ -443,21 +530,47 @@ class Adapter(GameAdapter):
         return players
 
     def _assign_identity(self, players: list[Cell]) -> None:
-        """Map the two observed cells to ordered identities p0/p1. When a prior
-        assignment exists, match by the ACTION-PREDICTED positions (robust to a
-        column crossing that a plain position-nearest match would mis-handle);
-        otherwise bootstrap from sorted order (uncrossed at the level start)."""
+        """Map the two observed cells to ordered identities p0/p1 from the
+        OBSERVED motion of the last action. The two players just displaced by
+        ``{scheme[a][0], scheme[a][1]}`` (mirror opposites in the column axis),
+        so the cell whose displacement from its previous position matches
+        ``scheme[a][0]`` is player-0. This reads identity straight off the frame
+        and is exact whenever the pair moved; if it didn't move (both blocked)
+        or there is no prior frame, identity is kept / bootstrapped by proximity.
+
+        This replaced a prediction-then-flip heuristic that could oscillate:
+        after the block-clearing phase the pair can sit at asymmetric rows with
+        a mirror-ambiguous assignment, and only the actual observed motion
+        disambiguates it without a self-fighting correction loop."""
         a, b = players[0], players[1]
-        if self._p0 is None or self._p1 is None or self._maze is None:
+        prev = self._prev_merge_players
+        act = self._last_action
+        if (
+            prev is not None
+            and len(prev) == 2
+            and act is not None
+            and 0 in self._scheme[act]
+            and 1 in self._scheme[act]
+        ):
+            # match each current cell to its nearest previous cell, then to the
+            # scheme's two expected displacements.
+            target0 = self._scheme[act][0]
+            best_pair: tuple[int, Cell, Cell] | None = None
+            for cur0, cur1 in ((a, b), (b, a)):
+                # cur0 assumed p0 (moved by target0 from some prev cell)
+                cost = min(_manhattan(cur0, (p[0] + target0[0], p[1] + target0[1])) for p in prev)
+                if best_pair is None or cost < best_pair[0]:
+                    best_pair = (cost, cur0, cur1)
+            if best_pair is not None:
+                self._p0, self._p1 = best_pair[1], best_pair[2]
+                return
+        if self._p0 is None or self._p1 is None:
             self._p0, self._p1 = a, b
             return
-        pred0, pred1 = self._p0, self._p1
-        act = self._last_action
-        if act is not None and 0 in self._scheme[act] and 1 in self._scheme[act]:
-            pred0 = self._offset(self._p0, self._scheme[act][0], self._maze)
-            pred1 = self._offset(self._p1, self._scheme[act][1], self._maze)
-        keep = _manhattan(a, pred0) + _manhattan(b, pred1)
-        swap = _manhattan(a, pred1) + _manhattan(b, pred0)
+        # No usable motion this frame — keep identity by proximity to the prior
+        # assignment (handles a blocked no-op without dropping identity).
+        keep = _manhattan(a, self._p0) + _manhattan(b, self._p1)
+        swap = _manhattan(a, self._p1) + _manhattan(b, self._p0)
         self._p0, self._p1 = (a, b) if keep <= swap else (b, a)
 
     # ── measurement helpers ─────────────────────────────────────────────
@@ -532,10 +645,13 @@ class Adapter(GameAdapter):
 
     # ── joint search ────────────────────────────────────────────────────
 
-    def _successors(self, move_ids: list[int]):
+    def _successors(self, move_ids: list[int], blocks: set[Cell] | None = None):
         maze = self._maze
         assert maze is not None
-        walls = maze.walls
+        # cvcer blocks obstruct players exactly like walls (until relocated by
+        # the clearing phase). Union them in so the merge search never plans
+        # through a block.
+        walls = maze.walls | (blocks if blocks is not None else set())
         hazards = maze.hazards
         gh, gw = maze.gh, maze.gw
         scheme = self._scheme
@@ -566,17 +682,150 @@ class Adapter(GameAdapter):
 
         return successors
 
-    def _search_merge(self, move_ids: list[int]) -> list[int] | None:
+    def _search_merge(self, move_ids: list[int], blocks: set[Cell] | None = None) -> list[int] | None:
         if self._maze is None or self._p0 is None or self._p1 is None:
             return None
         start: JointState = (self._p0, self._p1)
-        successors = self._successors(move_ids)
+        successors = self._successors(move_ids, blocks)
 
         def goal(state: JointState) -> bool:
             return state[0] == state[1]
 
         path = configuration_path(start, goal, successors, max_states=_MERGE_SEARCH_BUDGET)
         return list(path) if path else None
+
+    def _current_blocks(self, grid: tuple) -> set[Cell]:
+        """cvcer block cells RIGHT NOW (colour 9), re-read each frame — their
+        positions change as the clearing phase relocates them."""
+        if self._maze is None:
+            return set()
+        maze = self._maze
+        cells: set[Cell] = set()
+        for reg in find_regions(grid, background=None):
+            if reg["color"] != _BLOCK_COLOR:
+                continue
+            for r, c in reg["cells"]:
+                cells.add(((r - maze.off_y) // maze.scale, (c - maze.off_x) // maze.scale))
+        return cells
+
+    # ── block clearing (L3-class movable obstacles) ─────────────────────
+
+    def _replay_occupied(self, start: JointState, plan: list[int]) -> set[Cell]:
+        """Every grid cell either player occupies along ``plan`` (blocks treated
+        as floor). Used to find which cvcer blocks sit ON the merge path."""
+        maze = self._maze
+        assert maze is not None
+        scheme = self._scheme
+
+        def _step(cell: Cell, d: Cell) -> Cell:
+            nxt = (cell[0] + d[0], cell[1] + d[1])
+            if 0 <= nxt[0] < maze.gh and 0 <= nxt[1] < maze.gw and nxt not in maze.walls:
+                return nxt
+            return cell
+
+        occ = {start[0], start[1]}
+        st = start
+        for a in plan:
+            p0, p1 = st
+            n0 = _step(p0, scheme[a][0])
+            n1 = _step(p1, scheme[a][1])
+            if p0[0] == p1[0] and abs(p0[1] - p1[1]) == 1 and ((n0 == p1 and n1 == p0) or n0 == n1):
+                mid = ((p0[0] + p1[0]) // 2, (p0[1] + p1[1]) // 2)
+                st = (mid, mid)
+            else:
+                st = (n0, n1)
+            occ.add(st[0])
+            occ.add(st[1])
+        return occ
+
+    def _build_clear_plan(self, grid: tuple) -> list[tuple] | None:
+        """Offline plan (deterministic) that relocates every cvcer block sitting
+        on the merge path to an off-path parking cell, so the joint merge opens.
+        Each relocation = ACTION6 select-click on the block, block-move actions
+        routed by :func:`grid_shortest_path`, ACTION6 deselect-click on a floor
+        cell. Returns the queued actions, or ``None`` if any block can't be
+        parked (the merge phase then bails via the no-plan streak)."""
+        maze = self._maze
+        players = self._current_players(grid)
+        if maze is None or len(players) < 2 or not maze.blocks:
+            return []
+        self._p0, self._p1 = players[0], players[1]
+        # merge path with blocks as FLOOR — its trajectory tells us which
+        # blocks obstruct.
+        floor_plan = self._search_merge(list(_MOVE_ACTIONS), blocks=None)
+        if not floor_plan:
+            return None
+        occ = self._replay_occupied((self._p0, self._p1), floor_plan)
+        blocking = [b for b in sorted(maze.blocks) if b in occ]
+        if not blocking:
+            return []
+
+        cur_blocks = set(maze.blocks)
+        plan: list[tuple] = []
+        for blk in blocking:
+            park, route = self._route_block(blk, occ, cur_blocks)
+            if park is None:
+                return None
+            sx, sy = maze.pixel_center(blk)
+            plan.append(("click", sx, sy))               # select the block
+            plan.extend(("move", a) for a in route)      # walk it to parking
+            dx, dy = maze.pixel_center(self._deselect_cell(cur_blocks | {park}))
+            plan.append(("click", dx, dy))               # deselect
+            cur_blocks.discard(blk)
+            cur_blocks.add(park)
+
+        # Append the merge itself, computed OPEN-LOOP over the now-cleared board
+        # (parked blocks as walls) from the current sorted identity. Clearing
+        # never moves the players, so this start position is exact. Open-loop
+        # (vs the closed-loop re-planner) is deliberate: after clearing, the pair
+        # can sit at asymmetric rows where per-frame identity re-derivation
+        # oscillates, whereas the one-shot ordered plan — validated to a live win
+        # — applies cleanly. If it under-shoots, the closed-loop merge still runs
+        # afterwards as a fallback.
+        self._p0, self._p1 = players[0], players[1]
+        merge = self._search_merge(list(_MOVE_ACTIONS), blocks=cur_blocks)
+        if merge:
+            plan.extend(("move", a) for a in merge)
+        return plan
+
+    def _route_block(self, blk: Cell, occ: set[Cell], cur_blocks: set[Cell]) -> tuple[Cell | None, list[int]]:
+        """Nearest off-path parking cell for ``blk`` and the block-move actions
+        to reach it. The block routes over cells that are not walls / hazards /
+        OTHER blocks (players are not obstacles to a block)."""
+        maze = self._maze
+        assert maze is not None
+        gh, gw = maze.gh, maze.gw
+        passable = [[True] * gw for _ in range(gh)]
+        for (r, c) in maze.walls | maze.hazards:
+            passable[r][c] = False
+        for b in cur_blocks:
+            if b != blk:
+                passable[b[0]][b[1]] = False
+        best: tuple[Cell, list[Cell]] | None = None
+        for gy in range(gh):
+            for gx in range(gw):
+                cell = (gy, gx)
+                if cell in occ or cell in maze.walls or cell in maze.hazards or cell in cur_blocks:
+                    continue
+                path = grid_shortest_path(passable, blk, cell)
+                if path is not None and (best is None or len(path) < len(best[1])):
+                    best = (cell, path)
+        if best is None:
+            return None, []
+        park, path = best
+        return park, [int(a) for a in path_to_moves(path, _BLOCK_MOVE_LABELS)]
+
+    def _deselect_cell(self, cur_blocks: set[Cell]) -> Cell:
+        """Any non-cvcer floor cell — clicking it deselects the held block
+        (clicking a cvcer would just select a DIFFERENT block)."""
+        maze = self._maze
+        assert maze is not None
+        for gy in range(maze.gh):
+            for gx in range(maze.gw):
+                cell = (gy, gx)
+                if cell not in maze.walls and cell not in maze.hazards and cell not in cur_blocks:
+                    return cell
+        return (0, 0)
 
     def _explore(self, move_ids: list[int]) -> int:
         """Gated fallback: an untried move that most reduces the player gap,

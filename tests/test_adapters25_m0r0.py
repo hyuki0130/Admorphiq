@@ -12,9 +12,11 @@ findings (each was a real bug fixed this round):
     them, which stalled the final merge move);
   - the mirror control scheme so a hazard forbids a joint move, a wall blocks
     one side independently, and an adjacent pair merges via the cross-swap;
-  - identity assignment that survives a column crossing via action-prediction;
+  - identity read from OBSERVED motion so a column crossing never inverts the
+    mirrored controls;
   - the persistent scheme where a BLOCKED probe never clobbers a known delta
-    (the bug that made ACTION1 look like a no-op after a settle step).
+    (the bug that made ACTION1 look like a no-op after a settle step);
+  - cvcer movable-block classification + relocation (L3), which lifts 2/6→3/6.
 
 See the module docstring for the ground-truth + gold-oracle investigation.
 """
@@ -24,6 +26,7 @@ from __future__ import annotations
 from types import SimpleNamespace
 
 from admorphiq.adapters25.m0r0 import (
+    _BLOCK_MOVE_LABELS,
     Adapter,
     _classify_cell,
     _parse_maze,
@@ -33,6 +36,7 @@ from admorphiq.adapters25.m0r0 import (
 _BG = 5
 _PLAYER = 10
 _HAZARD = 8
+_BLOCK = 9  # cvcer movable-block colour
 _WALL = 11  # a zone colour; the parser must not key on this specific value
 
 
@@ -54,6 +58,8 @@ def _build_frame(cellmap: dict[tuple[int, int], str], gh: int, gw: int, scale: i
                         g[rr][cc] = _WALL
                     elif kind == "haz":
                         g[rr][cc] = _HAZARD if (rr + cc) % 2 == 0 else _BG
+                    elif kind == "block":
+                        g[rr][cc] = _BLOCK  # cvcer movable block (colour 9)
                     elif kind in ("p0", "p1"):
                         g[rr][cc] = _PLAYER
                     else:
@@ -177,26 +183,21 @@ def test_successors_forbid_hazard_block_wall_and_merge_on_crossing():
     assert 4 not in out3
 
 
-def test_assign_identity_survives_a_column_crossing():
-    """Purpose: the two players share a colour and can swap left/right order
-    when they cross. A plain position-nearest match would then flip which
-    physical player is 'player0', flipping the mirrored column controls.
-    Identity must be resolved against the ACTION-PREDICTED positions instead.
+def test_assign_identity_reads_a_column_crossing_from_observed_motion():
+    """Purpose: the two players share a colour and swap left/right order when
+    they cross columns. Identity must be read from the OBSERVED motion — the
+    cell whose displacement matches scheme[action][0] is player-0 — so the
+    mirrored column controls are never inverted.
     Expected feedback: failure means the plan inverts its column moves after a
     crossing and drives the pair APART (the R59 corner-spreading stall)."""
     adapter = Adapter()
-    adapter._scheme = {4: {0: (0, 1), 1: (0, -1)}}
-
-    class _M:
-        gh, gw = 5, 5
-        walls: set = set()
-        hazards: set = set()
-    adapter._maze = _M()  # type: ignore[assignment]
-    adapter._p0, adapter._p1 = (2, 2), (2, 3)  # p0 left, p1 right
-    adapter._last_action = 4  # p0 -> (2,3), p1 -> (2,2): they cross
-
-    # observed cells (sorted) are (2,2),(2,3); prediction says p0 is now the
-    # RIGHT one (2,3) and p1 the LEFT one (2,2).
+    adapter._scheme = {a: {} for a in (1, 2, 3, 4)}
+    adapter._scheme[4] = {0: (0, 1), 1: (0, -1)}
+    # Previous frame: p0 at (2,2), p1 at (2,3). ACTION4 moves p0 by (0,1) to
+    # (2,3) and p1 by (0,-1) to (2,2) — they cross. player-0 is now the cell
+    # (2,3) because it is the one displaced by scheme[4][0]=(0,1).
+    adapter._prev_merge_players = [(2, 2), (2, 3)]
+    adapter._last_action = 4
     adapter._assign_identity([(2, 2), (2, 3)])
     assert adapter._p0 == (2, 3)
     assert adapter._p1 == (2, 2)
@@ -259,3 +260,50 @@ def test_is_done_bails_after_sustained_no_plan_streak():
     assert adapter.is_done([], frame) is False
     adapter._no_plan_streak = 10_000
     assert adapter.is_done([], frame) is True
+
+
+def test_classify_cell_distinguishes_block_solid8_wall_and_checkerboard_hazard():
+    """Purpose: L3's zone WALL colour is 8 — the same colour a wyiex hazard
+    uses — so the classifier must tell them apart by the checkerboard: a
+    hazard cell mixes colour 8 with floor pixels, a zone wall is SOLID 8, and a
+    cvcer movable block is colour 9.
+    Expected feedback: failure means half of L3 is mass-mis-read as hazards
+    (solid-8 walls) or the blocks vanish into the floor, and the merge never
+    plans correctly."""
+    off = (64 - 4) // 2
+
+    def _solid(color):
+        return tuple(tuple(color for _ in range(64)) for _ in range(64))
+
+    assert _classify_cell(_solid(_BLOCK), off, off, 4, _BG, _PLAYER) == "block"
+    assert _classify_cell(_solid(_HAZARD), off, off, 4, _BG, _PLAYER) == "wall"  # SOLID 8 = zone wall
+    haz = _build_frame({(0, 0): "haz"}, 1, 1, 4)  # checkerboard 8-over-floor
+    assert _classify_cell(haz, off, off, 4, _BG, _PLAYER) == "hazard"
+
+
+def test_parse_maze_reports_cvcer_blocks_separately_from_walls():
+    """Purpose: the parse must surface cvcer movable blocks as ``maze.blocks``
+    (not folded into walls), so the clearing phase knows what to relocate,
+    while a wall-heavy floor colour (colour 5 is a fixed constant, never the
+    most-common colour) still bounds the grid.
+    Expected feedback: failure means the adapter cannot see the blocks and
+    treats L3 as an unsolvable static maze."""
+    cellmap = {(gy, gx): "floor" for gy in range(5) for gx in range(5)}
+    cellmap[(1, 1)] = "p0"
+    cellmap[(1, 3)] = "p1"
+    cellmap[(2, 2)] = "block"
+    cellmap[(3, 3)] = "wall"
+    maze = _parse_maze(_build_frame(cellmap, 5, 5, 12), _PLAYER)
+    assert maze is not None
+    assert (2, 2) in maze.blocks
+    assert (2, 2) not in maze.walls
+    assert (3, 3) in maze.walls
+
+
+def test_block_move_labels_are_the_raw_grid_directions():
+    """Purpose: a SELECTED cvcer block moves in raw grid directions (up/down/
+    left/right for ACTION1/2/3/4), verified live — used to route it via
+    grid_shortest_path.
+    Expected feedback: failure means the block-relocation routes send it the
+    wrong way and clearing never opens the merge path."""
+    assert _BLOCK_MOVE_LABELS == {(-1, 0): 1, (1, 0): 2, (0, -1): 3, (0, 1): 4}
