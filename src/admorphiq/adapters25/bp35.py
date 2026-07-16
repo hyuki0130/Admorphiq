@@ -9,12 +9,14 @@ BP35 as a gravity platformer the legacy `bp35_platformer` cleared 1/9 (L0 in
 mines it as a platformer whose win is reaching a fixed `+`-shaped exit
 marker. Reading the game source offline (``environment_files/bp35/*/
 bp35.py``; dev-time only, the adapter reads only frames at runtime) plus a
-live probe establish the mechanic. **CORRECTION (R56b, 2026-07-15): the
-"deterministic per-action gravity" claim below was WRONG — it rested on a
-flawed probe, and a follow-up dynamics probe (for the planner reopen) shows
-BP35 is a MOMENTUM platformer with HIDDEN velocity, which aliases the
-frame-key transition graph.** See "R56b dynamics correction" below; the
-adapter still ships as the frontier explorer (0/9), now honestly characterised.
+live probe establish the mechanic. **CORRECTION CHAIN: the original
+"deterministic per-action gravity" claim rested on a flawed ACTION1 no-op probe
+(known-bad); R56b then over-corrected to a "MOMENTUM platformer with HIDDEN
+velocity" — and R59 OVERTURNS that too.** The R59 re-examination (source read +
+faithful ``env._game`` probes) shows BP35 IS deterministic and fully
+frame-observable after all — the "acceleration" was fall distances and the
+"receding exit" was camera scroll. See "R59 RE-EXAMINATION" below; the adapter
+still ships as the frontier explorer (0/9) pending a dedicated solver pass.
 
 **Determinism check (ORIGINAL, now KNOWN-FLAWED)**: a live repeat-probe
 issued the same action from a fresh env twice and got byte-identical results,
@@ -23,30 +25,42 @@ ACTION1, which is NOT in ``available_actions`` ([3,4,6,7]) — a no-op that
 trivially reproduces (it only ticks the step counter). It never exercised the
 real controls, so it proved nothing about the actual dynamics.
 
-**R56b dynamics correction (the real mechanic)** — measured by a proper
-probe of the available controls:
+**R59 RE-EXAMINATION (2026-07-16) — the R56b momentum bank is OVERTURNED.**
+Reading the source (``pywlvyklps``/``fsvnqdbzrp``/``gwfodrkvzx``/``pbsitubcfd``)
+plus faithful ``env._game`` probes shows BP35 is a DETERMINISTIC, fully
+FRAME-OBSERVABLE grid platformer (world 11×36, gravity dy=-1):
 
-- ``available_actions = [3, 4, 6, 7]``. ACTION3/ACTION4 are MOMENTUM moves,
-  not fixed steps: pressing ACTION4 repeatedly displaced the player by
-  2,6,6,6,6,3 cells on successive presses (ACCELERATION), so the same action
-  from the same VISIBLE position gives different displacements depending on
-  accumulated velocity. Velocity is not in the frame.
-- The EXIT RECEDES: the ``+`` marker stays a fixed 2 cells ahead of the
-  player as it moves right (player col 20→22→28…, exit col 22→24→30…), so it
-  is NOT a fixed goal a route can target — "plan a path to the exit" is
-  ill-posed.
-- Clicking the colour-14 block centroids does NOTHING to the player/exit
-  (inert at those coordinates), so the "destroy-then-fall" model is
-  unconfirmed.
+- ``available_actions = [3, 4, 6, 7]``. ACTION3/ACTION4 move the player EXACTLY
+  ONE cell horizontally, then it falls deterministically until landing. The
+  R56b "2,6,6,6,6,3 acceleration" was a MISREAD of FALL DISTANCES (1 horizontal
+  + N vertical); measured world positions are clean unit steps
+  ((3,23)→(4,23)→(5,23)→(6,23)→(7,20)→(8,20)). There is NO velocity — the
+  ``(position)→(position)`` graph is NOT aliased.
+- The EXIT is FIXED at world (3,7). The R56b "receding exit" was a CAMERA
+  artifact: the frame is a scrolling window over the tall level and the camera
+  follows the player, so the exit's SCREEN column drifts while its WORLD cell
+  never moves.
+- Clicks are FUNCTIONAL (R56b "inert" is FALSE): ACTION6 on a colour-14
+  ``qclfkhjnaac`` block DESTROYS it (measured 14→5); clicking the block DIRECTLY
+  ABOVE the player makes it CLIMB the cleared column (measured (7,20)→(7,16)).
+  ``pbsitubcfd`` only relocates the player when the clicked cell is exactly
+  ``(px, py-1)`` — other clicks still remove the block but don't move the
+  player, which is why the R56b probe (watching only player/exit position)
+  called them inert. Screen→world is ``hyntnfvpgl(x, y+camera_y)`` (offset 0,
+  scale 6): the adapter clicks the block's FRAME centroid, camera handled
+  engine-side.
 - WIN = the engine's own WIN signal (never hardcoded).
 
-**Consequence**: because velocity is hidden, the same masked frame can
-transition differently under the same action — the ``(frame-state, action) ->
-frame-state`` graph is ALIASED (a hidden-state game, R53 "dealias" territory).
-So the planner reopen pointer below ("learn the dynamics, plan a route via
-configuration_path") is built on three FALSIFIED assumptions (fixed exit,
-fixed displacement, droppable blocks) and is NOT pursued — building it would
-be speculative code on a wrong model (same call as the tn36 opcode planner).
+**Consequence**: BP35 is a clean deterministic planning problem, state =
+(player world cell, set of destroyed blocks) — NO hidden state, so the R56b
+"aliased hidden-velocity" framing is wrong. The solve is a (position,
+destroyed-blocks) BFS/A* over {move+fall, destroy+climb}, the same shape as
+sk48's faithful-simulator solve. This adapter still ships as the frontier
+explorer (0/9) because that build is a DEDICATED pass: a naive hand model AND a
+real-engine replay-BFS both failed to find the known-solvable L0 (the legacy
+brittle solver clears it), so the move+fall+destroy dynamics need lockstep
+validation against the engine (the sk48 lesson) before a solver can trust them.
+See ``.wiki/wiki/games/BP35.md`` "Reopen".
 
 **Why a generic MOVE+CLICK frontier explorer**: BP35 mixes two action
 kinds, so this adapter generalises the transition-graph frontier explorer to
@@ -73,18 +87,20 @@ search discovers the transitions:
 **Measured result — BANKED at 0/9**: Smoke:
 - ``--max-actions 1000``: 0/9 levels, game_score 0.0; also 0/9 at 10000.
   Below the internals-tuned legacy `bp35_platformer` 1/9 (0/9 generic). The
-  frontier explorer cannot compose a win here, and — per the R56b dynamics
-  correction above — it is worse than "deep target": the game has HIDDEN
-  velocity, so the frame-key transition graph is aliased (the same masked
-  frame transitions differently under the same action), and the exit recedes
-  with the player. Reopen pointer (REVISED, harder than my original): this is
-  a MOMENTUM platformer, so a solver must first recover the hidden velocity
-  state (an R53 "dealias"-style hash augmentation that includes recent motion,
-  not just the current frame), then model the acceleration dynamics + the
-  receding-exit relation before any route planner. The original "learn fall
-  dynamics + configuration_path to a fixed exit" pointer is FALSIFIED (fixed
-  exit, fixed displacement, droppable blocks all disproven) and must not be
-  built as-is.
+  frontier explorer cannot compose a win: its state key is the raw
+  camera-relative frame (the same world position looks different at different
+  camera scroll) and it has no model of the climb / block-clearing the solve
+  needs. Reopen pointer (R59, CORRECTED — the R56b "hidden velocity" pointer is
+  withdrawn): BP35 is DETERMINISTIC and fully observable, so the solve is a
+  (player world cell, destroyed-blocks) BFS/A* over {move+fall, destroy+climb} —
+  the sk48 faithful-simulator shape. Build a lockstep-validated move+fall+destroy
+  simulator (a naive model + real-engine replay-BFS both failed to find the
+  known-solvable L0, so the dynamics need validation), a frame parser that
+  de-aliases the camera scroll by tracking the player's WORLD position, then
+  search to the gem. Open sub-puzzle: the search stays confined to y≥16 because
+  the path-opening blocks above the y=15 wall are OFF-SCREEN until the player
+  climbs — the correct simulator must resolve this (L0 is winnable; the legacy
+  brittle solver proves it).
 
 Composition from ``admorphiq.kernels``:
   - :func:`admorphiq.kernels.find_regions` masks the HUD and enumerates the
