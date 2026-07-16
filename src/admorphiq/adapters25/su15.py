@@ -370,6 +370,117 @@ def _sim_click_full(
     return out, es, contact
 
 
+# Cooldown (sub-steps) an enemy gets after eating a fruit — source
+# ``tfaferyux + djoqfdlzu + 1``. During it the enemy's chase is frozen.
+_ENEMY_COOLDOWN = 9
+
+
+def _sim_click_sacrifice(
+    fruits: list[list[int]], enemies: list[list[int]], cx: int, cy: int
+) -> tuple[list[list[int]], list[list[int]], bool]:
+    """Variant of :func:`_sim_click_full` for the spare-sacrifice plan (multi-
+    enemy levels whose target needs only a SUBSET of the fruits, e.g. L4's four
+    value-1s): a value-0 enemy contact DESTROYS that spare (source ``rzdkhogqmi``
+    branch — removed + the enemy frozen ``_ENEMY_COOLDOWN`` sub-steps), while a
+    value≥1 contact sets ``bad`` (a cascade-fruit downgrade the plan must avoid).
+    ``enemies`` are ``[x, y, cooldown]`` sprite top-lefts. Returns
+    ``(fruits', enemies', bad)``."""
+    fs = [f[:] for f in fruits]
+    es = [e[:] for e in enemies]
+    sel_fruit = [f for f in fs if _euclid_in_radius(cx, cy, f[0], f[1], _SIZE[f[2]], _SIZE[f[2]])]
+    vac: dict[int, tuple[float, float, float, float]] = {}
+    for i, e in enumerate(es):
+        if _euclid_in_radius(cx, cy, e[0], e[1], _ENEMY_W, _ENEMY_H):
+            ecx, ecy = e[0] + _ENEMY_W // 2, e[1] + _ENEMY_H // 2
+            vx, vy = float(cx - ecx), float(cy - ecy)
+            d = (vx * vx + vy * vy) ** 0.5
+            ux, uy = (vx / d, vy / d) if d > 0 else (0.0, 0.0)
+            vac[i] = (ux, uy, float(e[0]), float(e[1]))
+    bad = False
+    dead: set[int] = set()
+    for _ in range(_SUBSTEPS):
+        for f in sel_fruit:
+            dx, dy = cx - f[0], cy - f[1]
+            if dx > 0:
+                f[0] += min(_PULL_PX, dx)
+            elif dx < 0:
+                f[0] += max(-_PULL_PX, dx)
+            if dy > 0:
+                f[1] += min(_PULL_PX, dy)
+            elif dy < 0:
+                f[1] += max(-_PULL_PX, dy)
+        step = _PULL_PX * _ENEMY_VAC_FRAC
+        for i, (ux, uy, fx, fy) in list(vac.items()):
+            fx += ux * step
+            fy += uy * step
+            xi, yi = _clamp_pos(fx, fy, _ENEMY_W, _ENEMY_H)
+            es[i][0], es[i][1] = xi, yi
+            vac[i] = (ux, uy, float(xi), float(yi))
+        alive = [k for k in range(len(fs)) if k not in dead]
+        for i, e in enumerate(es):
+            if i in vac or e[2] > 0 or not alive:
+                continue
+            ecx, ecy = e[0] + _ENEMY_W // 2, e[1] + _ENEMY_H // 2
+            best = min(
+                alive,
+                key=lambda k: (fs[k][0] + _SIZE[fs[k][2]] // 2 - ecx) ** 2
+                + (fs[k][1] + _SIZE[fs[k][2]] // 2 - ecy) ** 2,
+            )
+            tx = fs[best][0] + _SIZE[fs[best][2]] // 2
+            ty = fs[best][1] + _SIZE[fs[best][2]] // 2
+            sx = _ENEMY_STEP if tx > ecx else (-_ENEMY_STEP if tx < ecx else 0)
+            sy = _ENEMY_STEP if ty > ecy else (-_ENEMY_STEP if ty < ecy else 0)
+            e[0], e[1] = _clamp_pos(e[0] + sx, e[1] + sy, _ENEMY_W, _ENEMY_H)
+        for i, e in enumerate(es):
+            if i in vac:
+                continue
+            for k in range(len(fs)):
+                if k in dead:
+                    continue
+                if _bbox_overlap(e[0], e[1], _ENEMY_W, _ENEMY_H, fs[k][0], fs[k][1], _SIZE[fs[k][2]], _SIZE[fs[k][2]]):
+                    if fs[k][2] == 0:
+                        dead.add(k)
+                        e[2] = _ENEMY_COOLDOWN
+                    else:
+                        bad = True
+        for e in es:
+            if e[2] > 0:
+                e[2] -= 1
+    fs = [f for k, f in enumerate(fs) if k not in dead]
+
+    def touch(a: list[int], b: list[int]) -> bool:
+        sa, sb = _SIZE[a[2]], _SIZE[b[2]]
+        return not (a[0] + sa <= b[0] or b[0] + sb <= a[0] or a[1] + sa <= b[1] or b[1] + sb <= a[1])
+
+    n = len(fs)
+    parent = list(range(n))
+
+    def find(i: int) -> int:
+        while parent[i] != i:
+            parent[i] = parent[parent[i]]
+            i = parent[i]
+        return i
+
+    for i in range(n):
+        for j in range(i + 1, n):
+            if fs[i][2] == fs[j][2] and touch(fs[i], fs[j]):
+                parent[find(i)] = find(j)
+    groups: dict[int, list[int]] = {}
+    for i in range(n):
+        groups.setdefault(find(i), []).append(i)
+    out: list[list[int]] = []
+    for idxs in groups.values():
+        if len(idxs) >= 2:
+            v = fs[idxs[0]][2] + 1
+            nsz = _SIZE[v] if v < len(_SIZE) else _SIZE[-1]
+            gx = round(sum(fs[k][0] for k in idxs) / len(idxs))
+            gy = round(sum(fs[k][1] for k in idxs) / len(idxs))
+            out.append([gx - (nsz - 1) // 2, gy - (nsz - 1) // 2, v])
+        else:
+            out.append(fs[idxs[0]])
+    return out, es, bad
+
+
 def _bbox_hw(region: Region) -> tuple[float, float]:
     r0, c0, r1, c1 = region["bbox"]
     return (r1 - r0 + 1) / 2.0, (c1 - c0 + 1) / 2.0
@@ -658,6 +769,14 @@ class Adapter(GameAdapter):
             ]
             self._enemy_model = [self._enemy_topleft(e) for e in enemies]
 
+        # TWO+ enemies (e.g. L4): the single-lure cascade can't keep both off the
+        # merge targets (measured — no fruit-free park exists). Route to the
+        # spare-sacrifice plan, which drives the enemies into the value-0 field to
+        # eat spares while the value-1 cascade + delivery proceed. Gated on enemy
+        # count, so the single-enemy L3 path below stays byte-identical (floor 4/9).
+        if len(enemies) >= 2:
+            return self._sacrifice_action(goals)
+
         # PURE OPEN-LOOP after the settle-seed — NO per-click live re-sync. The
         # merge/vacuum animation resolves over several engine sub-steps, so a
         # live re-parse LAGS the sim by ~1 click; a naive mid-cascade reseed
@@ -693,11 +812,92 @@ class Adapter(GameAdapter):
 
     @staticmethod
     def _enemy_topleft(region: Region) -> list[int]:
-        """Sprite top-left ``[x=col, y=row]`` of a fused enemy region, from its
-        centroid minus the 5×4 star's half-extent — the seed for the enemy
-        model that :func:`_sim_click_full` advances."""
+        """Sprite top-left ``[x=col, y=row, cooldown=0]`` of a fused enemy region,
+        from its centroid minus the 5×4 star's half-extent — the seed for the
+        enemy model. The single-enemy path (:func:`_sim_click_full`) ignores the
+        cooldown field; the sacrifice path (:func:`_sim_click_sacrifice`) uses it."""
         cr, cc = _centroid(region)
-        return [int(round(cc)) - _ENEMY_W // 2, int(round(cr)) - _ENEMY_H // 2]
+        return [int(round(cc)) - _ENEMY_W // 2, int(round(cr)) - _ENEMY_H // 2, 0]
+
+    # Spare-sacrifice plan tuning (multi-enemy levels, e.g. L4). MEASURED margin
+    # optimum (`scripts/_su15_enemy_sim.py --sacrifice --level 4`): lure 16-28 ×
+    # sink 52-60 all WIN 9/9 under ±1px perturbations; 20/56 sits mid-plateau.
+    _SACRIFICE_LURE = 20.0
+    _SACRIFICE_SINK = 56.0
+
+    def _sacrifice_action(self, goals: list[Region]) -> Cell | None:
+        """OPEN-LOOP spare-sacrifice cascade for multi-enemy levels: lure any
+        enemy threatening a cascade fruit (value≥1) DOWN into the value-0 field
+        (where it eats spares and freezes), merge the value-1s and deliver the
+        value-3 — advancing the fruit+enemy model with :func:`_sim_click_sacrifice`
+        (value-0 destruction modelled). Live-verified to clear L4."""
+        model = self._model
+        enemy_model = self._enemy_model
+        if not model or not enemy_model:
+            return None
+        goal_xy = (float(_GRID // 2), float(_GRID // 2))
+        if goals:
+            gr, gc = _centroid(goals[0])
+            goal_xy = (gc, gr)
+        click_xy = self._sacrifice_heuristic(model, enemy_model, goal_xy)
+        if click_xy is None:
+            return None
+        cx = max(0, min(_GRID - 1, int(round(click_xy[0]))))
+        cy = max(_PLAY_TOP, min(_PLAY_BOTTOM, int(round(click_xy[1]))))
+        self._model, self._enemy_model, _bad = _sim_click_sacrifice(model, enemy_model, cx, cy)
+        return (cy, cx)
+
+    def _sacrifice_heuristic(
+        self, model: list[list[int]], enemies: list[list[int]], goal_xy: tuple[float, float]
+    ) -> tuple[float, float] | None:
+        """One sacrifice click. Deliver the top fruit once value≥3 (from its
+        centre, grab-safe lead); else lure a NON-frozen enemy that threatens a
+        cascade (value≥1) fruit DOWN to its side of the value-0 sink; else merge
+        the lowest-value pair (cascade first)."""
+        r = _VACUUM_RADIUS
+        top = max(model, key=lambda f: f[2])
+        if top[2] >= 3:
+            sz = _SIZE[top[2]]
+            cx0, cy0 = top[0] + sz // 2, top[1] + sz // 2
+            dx, dy = goal_xy[0] - cx0, goal_xy[1] - cy0
+            d = (dx * dx + dy * dy) ** 0.5 or 1.0
+            lead = max(1.0, min(d, r - sz / 2.0 - 0.5))
+            return (cx0 + dx / d * lead, cy0 + dy / d * lead)
+        cascade = [f for f in model if f[2] >= 1]
+        threat: list[int] | None = None
+        best = 1e9
+        for e in enemies:
+            if e[2] > 0 or not cascade:
+                continue
+            ex, ey = e[0] + _ENEMY_W // 2, e[1] + _ENEMY_H // 2
+            g = min(((ex - f[0]) ** 2 + (ey - f[1]) ** 2) ** 0.5 for f in cascade)
+            if g < self._SACRIFICE_LURE and g < best:
+                best = g
+                threat = e
+        if threat is not None:
+            ex, ey = threat[0] + _ENEMY_W // 2, threat[1] + _ENEMY_H // 2
+            tx = 2 if ex < _GRID // 2 else _GRID - 3
+            dx, dy = tx - ex, self._SACRIFICE_SINK - ey
+            d = (dx * dx + dy * dy) ** 0.5 or 1.0
+            return (ex + dx / d * r, ey + dy / d * r)
+        by_val: dict[int, list[list[int]]] = {}
+        for f in model:
+            by_val.setdefault(f[2], []).append(f)
+        pv = sorted(v for v, fs in by_val.items() if len(fs) >= 2 and v >= 1)
+        if not pv:
+            pv = sorted(v for v, fs in by_val.items() if len(fs) >= 2)
+        if not pv:
+            return None
+        grp = by_val[pv[0]]
+        a, b = min(
+            ((grp[i], grp[j]) for i in range(len(grp)) for j in range(i + 1, len(grp))),
+            key=lambda p: (p[0][0] - p[1][0]) ** 2 + (p[0][1] - p[1][1]) ** 2,
+        )
+        d = ((a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2) ** 0.5
+        if d <= _MERGE_DIST:
+            return ((a[0] + b[0]) / 2.0, (a[1] + b[1]) / 2.0)
+        ux, uy = (b[0] - a[0]) / d, (b[1] - a[1]) / d
+        return (a[0] + ux * 7.0, a[1] + uy * 7.0)
 
     def _model_heuristic(
         self, model: list[list[int]], enemy_xy: tuple[float, float], goal_xy: tuple[float, float]

@@ -509,12 +509,320 @@ def run_live_joint(arcade, park="midedge", lure_base=18.0, cross_gate=20.0, idx=
     print(f"  FINAL level_index={fin} ({'CLEARED L%d' % idx if fin > idx else 'did NOT clear'})")
 
 
+# ── spare-sacrifice plan class (3rd) ───────────────────────────────────────
+# The spec is [3,1]: only the four value-1s are needed (4->2->1). The four
+# value-0s are SPARE — deliberately let the enemies EAT them (source: a value-0
+# contact `rzdkhogqmi` destroys the fruit after ~4 knockback sub-steps AND gives
+# the enemy a `tfaferyux+djoqfdlzu+1 = 9` sub-step cooldown, freezing its chase
+# ~2 clicks). So a `_sim_click_sacrifice` models value-0 DESTRUCTION + cooldown
+# (allowed) and value>=1 DOWNGRADE (a cascade-fruit hit → REJECT). Enemies carry
+# a 3rd field = cooldown (sub-steps). Kept in the probe only — su15.py (the
+# shipped adapter, floor 4/9) is untouched unless a robust winner is found.
+_COOLDOWN = 9  # tfaferyux + djoqfdlzu + 1
+
+
+def _sim_click_sacrifice(fruits, enemies, cx, cy):
+    """Like `su15._sim_click_full` but: value-0 enemy contact DESTROYS the fruit
+    (removed) and sets that enemy's cooldown to `_COOLDOWN` sub-steps (frozen
+    chase); value>=1 contact sets ``bad`` (a cascade-fruit downgrade → reject).
+    ``enemies`` are ``[x, y, cooldown]``. Returns ``(fruits', enemies', bad)``."""
+    fs = [f[:] for f in fruits]
+    es = [e[:] for e in enemies]
+    ew, eh = su15._ENEMY_W, su15._ENEMY_H
+    sel_fruit = [f for f in fs if su15._euclid_in_radius(cx, cy, f[0], f[1], su15._SIZE[f[2]], su15._SIZE[f[2]])]
+    vac = {}
+    for i, e in enumerate(es):
+        if su15._euclid_in_radius(cx, cy, e[0], e[1], ew, eh):
+            ecx, ecy = e[0] + ew // 2, e[1] + eh // 2
+            vx, vy = float(cx - ecx), float(cy - ecy)
+            d = (vx * vx + vy * vy) ** 0.5
+            ux, uy = (vx / d, vy / d) if d > 0 else (0.0, 0.0)
+            vac[i] = (ux, uy, float(e[0]), float(e[1]))
+    bad = False
+    dead = set()  # indices of destroyed value-0 fruits
+    for _ in range(su15._SUBSTEPS):
+        for f in sel_fruit:
+            dx, dy = cx - f[0], cy - f[1]
+            if dx > 0:
+                f[0] += min(su15._PULL_PX, dx)
+            elif dx < 0:
+                f[0] += max(-su15._PULL_PX, dx)
+            if dy > 0:
+                f[1] += min(su15._PULL_PX, dy)
+            elif dy < 0:
+                f[1] += max(-su15._PULL_PX, dy)
+        step = su15._PULL_PX * su15._ENEMY_VAC_FRAC
+        for i, (ux, uy, fx, fy) in list(vac.items()):
+            fx += ux * step
+            fy += uy * step
+            xi, yi = su15._clamp_pos(fx, fy, ew, eh)
+            es[i][0], es[i][1] = xi, yi
+            vac[i] = (ux, uy, float(xi), float(yi))
+        alive = [k for k in range(len(fs)) if k not in dead]
+        for i, e in enumerate(es):
+            if i in vac or e[2] > 0 or not alive:
+                continue
+            ecx, ecy = e[0] + ew // 2, e[1] + eh // 2
+            best = min(alive, key=lambda k: (fs[k][0] + su15._SIZE[fs[k][2]] // 2 - ecx) ** 2
+                       + (fs[k][1] + su15._SIZE[fs[k][2]] // 2 - ecy) ** 2)
+            tx = fs[best][0] + su15._SIZE[fs[best][2]] // 2
+            ty = fs[best][1] + su15._SIZE[fs[best][2]] // 2
+            sx = 1 if tx > ecx else (-1 if tx < ecx else 0)
+            sy = 1 if ty > ecy else (-1 if ty < ecy else 0)
+            e[0], e[1] = su15._clamp_pos(e[0] + sx, e[1] + sy, ew, eh)
+        for i, e in enumerate(es):
+            if i in vac:
+                continue
+            for k in range(len(fs)):
+                if k in dead:
+                    continue
+                if su15._bbox_overlap(e[0], e[1], ew, eh, fs[k][0], fs[k][1],
+                                      su15._SIZE[fs[k][2]], su15._SIZE[fs[k][2]]):
+                    if fs[k][2] == 0:
+                        dead.add(k)
+                        e[2] = _COOLDOWN
+                    else:
+                        bad = True
+        for e in es:
+            if e[2] > 0:
+                e[2] -= 1
+    fs = [f for k, f in enumerate(fs) if k not in dead]
+    # same-value overlap merge (identical to the full sim)
+    n = len(fs)
+    parent = list(range(n))
+
+    def find(i):
+        while parent[i] != i:
+            parent[i] = parent[parent[i]]
+            i = parent[i]
+        return i
+
+    def touch(a, b):
+        sa, sb = su15._SIZE[a[2]], su15._SIZE[b[2]]
+        return not (a[0] + sa <= b[0] or b[0] + sb <= a[0] or a[1] + sa <= b[1] or b[1] + sb <= a[1])
+
+    for i in range(n):
+        for j in range(i + 1, n):
+            if fs[i][2] == fs[j][2] and touch(fs[i], fs[j]):
+                parent[find(i)] = find(j)
+    groups = {}
+    for i in range(n):
+        groups.setdefault(find(i), []).append(i)
+    out = []
+    for idxs in groups.values():
+        if len(idxs) >= 2:
+            v = fs[idxs[0]][2] + 1
+            nsz = su15._SIZE[v] if v < len(su15._SIZE) else su15._SIZE[-1]
+            gx = round(sum(fs[k][0] for k in idxs) / len(idxs))
+            gy = round(sum(fs[k][1] for k in idxs) / len(idxs))
+            out.append([gx - (nsz - 1) // 2, gy - (nsz - 1) // 2, v])
+        else:
+            out.append(fs[idxs[0]])
+    return out, es, bad
+
+
+def _sacrifice_choreograph(model, enemies, goal_xy, lure_base, sink):
+    """Sacrifice choreography: lure any enemy that threatens a value-1 (a cascade
+    fruit) DOWN toward its side of the value-0 field (``sink`` rows), where it
+    eats spares and freezes; meanwhile merge the value-1 pairs and deliver.
+    ``enemies`` = ``[x,y,cd]``. Returns a click or None."""
+    R = su15._VACUUM_RADIUS
+    exy = [(e[0] + su15._ENEMY_W // 2, e[1] + su15._ENEMY_H // 2) for e in enemies]
+    top = max(model, key=lambda f: f[2])
+    if top[2] >= 3:
+        # Deliver from the fruit CENTRE with a grab-safe lead: a size-`sz` fruit's
+        # near edge must stay within the vacuum radius, so the click sits at most
+        # `R - sz/2` px from the centre (aiming top-left + R overshoots on a
+        # diagonal for a size-4 fruit and stalls delivery — measured).
+        sz = su15._SIZE[top[2]]
+        cx0, cy0 = top[0] + sz // 2, top[1] + sz // 2
+        dx, dy = goal_xy[0] - cx0, goal_xy[1] - cy0
+        d = (dx * dx + dy * dy) ** 0.5 or 1.0
+        lead = max(1.0, min(d, R - sz / 2.0 - 0.5))
+        return (cx0 + dx / d * lead, cy0 + dy / d * lead)
+    cascade = [f for f in model if f[2] >= 1]  # the fruits we must protect
+    # If a NON-frozen enemy is within danger of a cascade fruit, lure it down.
+    danger = lure_base
+    threat = None
+    best = 1e9
+    for e, c in zip(exy, enemies):
+        if c[2] > 0:  # already frozen/eating — safe
+            continue
+        if not cascade:
+            continue
+        g = min(((e[0] - f[0]) ** 2 + (e[1] - f[1]) ** 2) ** 0.5 for f in cascade)
+        if g < danger and g < best:
+            best = g
+            threat = e
+    if threat is not None:
+        # sink target on the threat's own side (x kept, driven to the low rows)
+        tx = 2 if threat[0] < 32 else 61
+        ty = sink
+        dx, dy = tx - threat[0], ty - threat[1]
+        d = (dx * dx + dy * dy) ** 0.5 or 1.0
+        return (threat[0] + dx / d * R, threat[1] + dy / d * R)
+    # No threat — merge the lowest-value pair (cascade first).
+    by_val = {}
+    for f in model:
+        by_val.setdefault(f[2], []).append(f)
+    pv = sorted(v for v, fs in by_val.items() if len(fs) >= 2 and v >= 1)
+    if not pv:
+        pv = sorted(v for v, fs in by_val.items() if len(fs) >= 2)
+    if not pv:
+        return None
+    grp = by_val[pv[0]]
+    a, b = min(((grp[i], grp[j]) for i in range(len(grp)) for j in range(i + 1, len(grp))),
+               key=lambda p: (p[0][0] - p[1][0]) ** 2 + (p[0][1] - p[1][1]) ** 2)
+    d = ((a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2) ** 0.5
+    if d <= su15._MERGE_DIST:
+        return ((a[0] + b[0]) / 2.0, (a[1] + b[1]) / 2.0)
+    ux, uy = (b[0] - a[0]) / d, (b[1] - a[1]) / d
+    return (a[0] + ux * 7.0, a[1] + uy * 7.0)
+
+
+def _run_plan_sacrifice(fruits, enemy, goal_c, goal_bbox, lure_base, sink, max_clicks=90):
+    model = [f[:] for f in fruits]
+    enemies = [[e[0], e[1], 0] for e in enemy]
+    for k in range(max_clicks):
+        if _delivered(model, goal_bbox):
+            return "win", k
+        if not [f for f in model if f[2] >= 1]:
+            return "lostcascade", k  # all value-1s gone → can't build a 3
+        click = _sacrifice_choreograph(model, enemies, goal_c, lure_base, sink)
+        if click is None:
+            return "stuck", k
+        cx = max(0, min(63, int(round(click[0]))))
+        cy = max(10, min(62, int(round(click[1]))))
+        model, enemies, bad = _sim_click_sacrifice(model, enemies, cx, cy)
+        if bad:
+            return "downgrade", k
+    return "budget", max_clicks
+
+
+def validate_sacrifice(arcade, lure_base=24.0, sink=56.0, idx=4) -> None:
+    """Lockstep the destruction path: drive the SAME sacrifice-choreography clicks
+    through BOTH the live engine and `_sim_click_sacrifice`, comparing the fruit
+    multiset each click. Verifies value-0 destroys (multiset shrinks identically)
+    and flags where a value>=1 downgrade appears (the sim's `bad`, which it does
+    not model past)."""
+    env, game = _make_level(arcade, idx)
+    goal_c, goal_bbox = _goal(game)
+    model = [list(f) for f in _fruits(game)]
+    enemies = [[e[0], e[1], 0] for e in _enemies(game)]
+    print(f"L{idx} SACRIFICE lockstep: seed ms={_ms(_fruits(game))} lure={lure_base} sink={sink}")
+    mism = 0
+    for k in range(60):
+        click = _sacrifice_choreograph(model, enemies, goal_c, lure_base, sink)
+        if click is None:
+            print(f"  plan done at {k}")
+            break
+        cx = max(0, min(63, int(round(click[0]))))
+        cy = max(10, min(62, int(round(click[1]))))
+        model, enemies, bad = _sim_click_sacrifice(model, enemies, cx, cy)
+        _step_click(env, cx, cy)
+        live = _fruits(game)
+        sim_ms = _ms([[f[0], f[1], f[2]] for f in model])
+        live_ms = _ms(live)
+        ok = sim_ms == live_ms
+        if not ok:
+            mism += 1
+        print(f"[{k:02d}] click({cx},{cy}) simMS={sim_ms} liveMS={live_ms} {'ok' if ok else 'MISMATCH'} bad={bad}")
+        if bad or not ok:
+            print("  (sim flagged downgrade / diverged — destruction-path check ends here)")
+            break
+        if game.level_index != idx:
+            print(f"  cleared L{idx}")
+            break
+    print(f"SACRIFICE lockstep: multiset mismatches (pre-downgrade) = {mism}")
+
+
+def run_live_sacrifice(arcade, lure_base=16.0, sink=56.0, idx=4, reparse=False) -> None:
+    """Execute the sacrifice plan on the LIVE engine. Default pure open-loop
+    (advance the sim, emit its clicks); ``reparse`` re-seeds fruit positions +
+    values from the live frame each click (enemy cooldown kept from the sim,
+    since it is not frame-observable) to correct the sim's ~1-spare destruction-
+    timing drift while trusting the sim only for cooldown book-keeping."""
+    env, game = _make_level(arcade, idx)
+    goal_c, _bbox = _goal(game)
+    model = [list(f) for f in _fruits(game)]
+    enemies = [[e[0], e[1], 0] for e in _enemies(game)]
+    print(f"LIVE sacrifice L{idx}: seed ms={_ms(_fruits(game))} lure={lure_base} sink={sink} reparse={reparse}")
+    for k in range(80):
+        state = game._state.name if hasattr(game._state, "name") else str(game._state)
+        if game.level_index != idx or state == "WIN":
+            print(f"  CLEARED at click {k} (state={state}, level_index={game.level_index})")
+            return
+        if not [f for f in model if f[2] >= 1]:
+            print(f"  cascade lost at click {k} (no value-1 left)")
+            break
+        click = _sacrifice_choreograph(model, enemies, goal_c, lure_base, sink)
+        if click is None:
+            print(f"  plan done at click {k}")
+            break
+        cx = max(0, min(63, int(round(click[0]))))
+        cy = max(10, min(62, int(round(click[1]))))
+        model, enemies, _bad = _sim_click_sacrifice(model, enemies, cx, cy)
+        _step_click(env, cx, cy)
+        if reparse:
+            live = _fruits(game)
+            live_enemies = _enemies(game)
+            model = [list(f) for f in live]
+            # keep sim cooldowns, refresh enemy positions from live (index-matched)
+            new_e = []
+            for i, le in enumerate(live_enemies):
+                cd = enemies[i][2] if i < len(enemies) else 0
+                new_e.append([le[0], le[1], cd])
+            enemies = new_e
+    fin = game.level_index
+    print(f"  FINAL level_index={fin} ({'CLEARED L%d' % idx if fin > idx else 'did NOT clear'})")
+
+
+def search_sacrifice(arcade, idx: int = 4) -> None:
+    """Search the spare-sacrifice plan (lure_base × sink-row); accept only plans
+    that WIN under ALL ±1px perturbations, allowing value-0 kills but rejecting
+    any value>=1 downgrade."""
+    _env, game = _make_level(arcade, idx)
+    fruits = _fruits(game)
+    enemy = _enemies(game)
+    goal_c, goal_bbox = _goal(game)
+    print(f"L{idx} SACRIFICE search: fruits={fruits} enemies={enemy} goal_c={goal_c}")
+    lure_bases = [16.0, 20.0, 24.0, 28.0, 32.0]
+    sinks = [52.0, 56.0, 60.0]
+    perturbs = [(0, 0), (1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (-1, -1), (1, -1), (-1, 1)]
+    results = []
+    for lb in lure_bases:
+        for sk in sinks:
+            outs = []
+            for dx, dy in perturbs:
+                pf, pe = _perturb(fruits, enemy, dx, dy)
+                outs.append(_run_plan_sacrifice(pf, pe, goal_c, goal_bbox, lb, sk))
+            wins = sum(1 for o, _ in outs if o == "win")
+            base_out, base_k = outs[0]
+            robust = wins == len(perturbs)
+            results.append((lb, sk, wins, len(perturbs), base_out, base_k, robust))
+            tag = "  ROBUST-WIN" if robust else ""
+            print(f"lure={lb:4.0f} sink={sk:4.0f}  wins={wins}/{len(perturbs)} base={base_out}@{base_k}{tag}")
+    robust = [r for r in results if r[6]]
+    print(f"\nSACRIFICE SEARCH SUMMARY L{idx}: {len(robust)} drift-robust winner(s) of {len(results)} configs")
+    if not robust:
+        best = max(results, key=lambda r: (r[2], -r[5]))
+        print(
+            f"  best (non-robust): lure={best[0]:.0f} sink={best[1]:.0f} "
+            f"wins={best[2]}/{best[3]} base={best[4]}@{best[5]}"
+        )
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--frames", type=int, default=20)
     ap.add_argument("--seeds", type=int, default=1)
     ap.add_argument("--search", action="store_true")
     ap.add_argument("--joint", action="store_true")
+    ap.add_argument("--sacrifice", action="store_true")
+    ap.add_argument("--val-sac", dest="val_sac", action="store_true")
+    ap.add_argument("--live-sac", dest="live_sac", action="store_true")
+    ap.add_argument("--reparse", action="store_true")
+    ap.add_argument("--sink", type=float, default=56.0)
     ap.add_argument("--live", action="store_true")
     ap.add_argument("--live-joint", action="store_true")
     ap.add_argument("--lure", type=float, default=20.0)
@@ -523,6 +831,15 @@ def main() -> None:
     ap.add_argument("--level", type=int, default=3)
     args = ap.parse_args()
     arcade = Arcade(operation_mode=OperationMode.OFFLINE)
+    if args.sacrifice:
+        search_sacrifice(arcade, args.level)
+        return
+    if args.val_sac:
+        validate_sacrifice(arcade, args.lure, args.sink, args.level)
+        return
+    if args.live_sac:
+        run_live_sacrifice(arcade, args.lure, args.sink, args.level, args.reparse)
+        return
     if args.joint:
         search_joint(arcade, args.level)
         return
