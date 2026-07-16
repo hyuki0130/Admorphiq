@@ -329,18 +329,208 @@ def run_live_openloop(arcade, lure_base: float = 20.0, idx: int = 3) -> None:
     print(f"  FINAL level_index={fin} ({'CLEARED L%d' % idx if fin > idx else 'did NOT clear'})")
 
 
+# ── joint (side-parallel merge + timed cross-merge) plan class ─────────────
+# For TWO independent chasers (L4): merge each side's pair on its own side while
+# luring THAT side's enemy to a fruit-free PARK, then combine the two value-2s in
+# a window when both enemies are clear of the merge midpoint. Strict contact=reject
+# so an accepted plan provably never downgrades ANY fruit.
+
+
+def _dist(a, b):
+    return ((a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2) ** 0.5
+
+
+def _joint_choreograph(model, enemies_xy, goal_xy, lure_base, park_l, park_r, cross_gate):
+    """Side-parallel joint choreography. ``park_l``/``park_r`` are the lure
+    targets for the left/right (by x<32) enemy; ``cross_gate`` is the enemy
+    clearance required before a FAR (cross-side) merge. Returns a click or None."""
+    R = su15._VACUUM_RADIUS
+    top = max(model, key=lambda f: f[2])
+    if top[2] >= 3:
+        dx, dy = goal_xy[0] - top[0], goal_xy[1] - top[1]
+        d = (dx * dx + dy * dy) ** 0.5
+        if d < 3.5:
+            return None
+        return (top[0] + dx / d * R, top[1] + dy / d * R)
+
+    by_val: dict[int, list] = {}
+    for f in model:
+        by_val.setdefault(f[2], []).append(f)
+    pair_vals = sorted(v for v, fs in by_val.items() if len(fs) >= 2)
+    if not pair_vals:
+        # No pair to merge — deliver the top fruit toward the goal.
+        dx, dy = goal_xy[0] - top[0], goal_xy[1] - top[1]
+        d = (dx * dx + dy * dy) ** 0.5 or 1.0
+        return (top[0] + dx / d * R, top[1] + dy / d * R)
+    v = pair_vals[0]
+    grp = by_val[v]
+    # Among candidate same-value pairs, pick the SAFEST merge (midpoint farthest
+    # from both enemies) — this defers the exposed cross-merge until enemies clear.
+    cand = []
+    for i in range(len(grp)):
+        for j in range(i + 1, len(grp)):
+            a, b = grp[i], grp[j]
+            mid = ((a[0] + b[0]) / 2.0, (a[1] + b[1]) / 2.0)
+            safety = min((_dist(mid, e) for e in enemies_xy), default=1e9)
+            cand.append((safety, a, b, mid))
+    cand.sort(key=lambda t: -t[0])
+    _safety, a, b, mid = cand[0]
+    pair_ids = {id(a), id(b)}
+    others = [f for f in model if id(f) not in pair_ids]
+    far = _dist((a[0], a[1]), (b[0], b[1])) > su15._MERGE_DIST
+    max_val = max(f[2] for f in model)
+    danger = lure_base + 4.0 * max_val + max(0, 5 - len(model)) * 3.0
+
+    # Which enemy (if any) must be lured before we act? An enemy threatens if it
+    # is within `danger` of an idle fruit; for a FAR merge, also if it is within
+    # `cross_gate` of the merge midpoint (it would reach the exposed transit).
+    urgent = None
+    best = 1e9
+    for e in enemies_xy:
+        urg = min((_dist(e, (f[0], f[1])) for f in others), default=1e9)
+        thr = danger
+        if far:
+            urg = min(urg, _dist(e, mid))
+            thr = max(danger, cross_gate)
+        if urg < thr and urg < best:
+            best = urg
+            urgent = e
+    if urgent is not None:
+        park = park_l if urgent[0] < 32 else park_r
+        dx, dy = park[0] - urgent[0], park[1] - urgent[1]
+        d = (dx * dx + dy * dy) ** 0.5 or 1.0
+        return (urgent[0] + dx / d * R, urgent[1] + dy / d * R)
+    if _dist((a[0], a[1]), (b[0], b[1])) <= su15._MERGE_DIST:
+        return mid
+    d = _dist((a[0], a[1]), (b[0], b[1]))
+    ux, uy = (b[0] - a[0]) / d, (b[1] - a[1]) / d
+    return (a[0] + ux * 7.0, a[1] + uy * 7.0)
+
+
+def _run_plan_joint(fruits, enemy, goal_c, goal_bbox, lure_base, park_l, park_r, cross_gate, max_clicks=80):
+    model = [f[:] for f in fruits]
+    enemies = [e[:] for e in enemy]
+    for k in range(max_clicks):
+        if _delivered(model, goal_bbox):
+            return "win", k
+        if not model:
+            return "stuck", k
+        click = _joint_choreograph(model, _enemies_xy(enemies), goal_c, lure_base, park_l, park_r, cross_gate)
+        if click is None:
+            return "stuck", k
+        cx = max(0, min(63, int(round(click[0]))))
+        cy = max(10, min(62, int(round(click[1]))))
+        model, enemies, contact = su15._sim_click_full(model, enemies, cx, cy)
+        if contact:
+            return "contact", k
+    return "budget", max_clicks
+
+
+# Park-pair candidates (x=col, y=row). Mid-height side edges sit BETWEEN the top
+# value-1 fruits (rows ~25) and the bottom value-0 fruits (rows ~55), so a lured
+# enemy there is clear of every fruit; the bottom/split options are also tried.
+_PARK_PAIRS = {
+    "midedge": ((1, 40), (62, 40)),
+    "midhi": ((1, 33), (62, 33)),
+    "midlo": ((1, 46), (62, 46)),
+    "topcorner": ((1, 12), (62, 12)),
+    "splitout": ((1, 37), (62, 37)),
+}
+
+
+def search_joint(arcade, idx: int = 4) -> None:
+    """Search the side-parallel joint plan (park-pair × lure_base × cross_gate);
+    accept only plans that WIN under ALL ±1px perturbations."""
+    _env, game = _make_level(arcade, idx)
+    fruits = _fruits(game)
+    enemy = _enemies(game)
+    goal_c, goal_bbox = _goal(game)
+    print(f"L{idx} JOINT search: fruits={fruits} enemies={enemy} goal_c={goal_c}")
+    lure_bases = [14.0, 18.0, 22.0, 26.0]
+    cross_gates = [14.0, 20.0, 26.0]
+    perturbs = [(0, 0), (1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (-1, -1), (1, -1), (-1, 1)]
+    results = []
+    for pname, (pl, pr) in _PARK_PAIRS.items():
+        for lb in lure_bases:
+            for cg in cross_gates:
+                outs = []
+                for dx, dy in perturbs:
+                    pf, pe = _perturb(fruits, enemy, dx, dy)
+                    outs.append(_run_plan_joint(pf, pe, goal_c, goal_bbox, lb, pl, pr, cg))
+                wins = sum(1 for o, _ in outs if o == "win")
+                base_out, base_k = outs[0]
+                robust = wins == len(perturbs)
+                results.append((pname, lb, cg, wins, len(perturbs), base_out, base_k, robust))
+                if robust or wins >= len(perturbs) - 2:
+                    tag = "  ROBUST-WIN" if robust else ""
+                    print(
+                        f"park={pname:9s} lure={lb:4.0f} cross_gate={cg:4.0f}  "
+                        f"wins={wins}/{len(perturbs)} base={base_out}@{base_k}{tag}"
+                    )
+    robust = [r for r in results if r[7]]
+    print(f"\nJOINT SEARCH SUMMARY L{idx}: {len(robust)} drift-robust winner(s) of {len(results)} configs")
+    if robust:
+        for r in sorted(robust, key=lambda r: r[6]):
+            print(f"  ROBUST: park={r[0]} lure={r[1]:.0f} cross_gate={r[2]:.0f} base_clicks={r[6]}")
+    else:
+        best = max(results, key=lambda r: (r[3], -r[6]))
+        print(
+            f"  best (non-robust): park={best[0]} lure={best[1]:.0f} cross_gate={best[2]:.0f} "
+            f"wins={best[3]}/{best[4]} base={best[5]}@{best[6]}"
+        )
+
+
+def run_live_joint(arcade, park="midedge", lure_base=18.0, cross_gate=20.0, idx=4) -> None:
+    """Execute the joint plan OPEN-LOOP on the LIVE engine (transfer test for a
+    robust winner). Pure open-loop, settled checkpoints (one obs per action)."""
+    env, game = _make_level(arcade, idx)
+    model = _fruits(game)
+    enemies = _enemies(game)
+    goal_c, _bbox = _goal(game)
+    pl, pr = _PARK_PAIRS[park]
+    print(f"LIVE joint L{idx}: fruits={len(model)} enemies={enemies} park={park} lure={lure_base} cg={cross_gate}")
+    for k in range(80):
+        state = game._state.name if hasattr(game._state, "name") else str(game._state)
+        if game.level_index != idx or state == "WIN":
+            print(f"  cleared at click {k} (state={state}, level_index={game.level_index})")
+            return
+        if not model:
+            print("  board empty — stopping")
+            break
+        click = _joint_choreograph(model, _enemies_xy(enemies), goal_c, lure_base, pl, pr, cross_gate)
+        if click is None:
+            print(f"  plan exhausted at click {k}")
+            break
+        cx = max(0, min(63, int(round(click[0]))))
+        cy = max(10, min(62, int(round(click[1]))))
+        _step_click(env, cx, cy)
+        model, enemies, _c = su15._sim_click_full(model, enemies, cx, cy)
+    fin = game.level_index
+    print(f"  FINAL level_index={fin} ({'CLEARED L%d' % idx if fin > idx else 'did NOT clear'})")
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--frames", type=int, default=20)
     ap.add_argument("--seeds", type=int, default=1)
     ap.add_argument("--search", action="store_true")
+    ap.add_argument("--joint", action="store_true")
     ap.add_argument("--live", action="store_true")
+    ap.add_argument("--live-joint", action="store_true")
     ap.add_argument("--lure", type=float, default=20.0)
+    ap.add_argument("--park", default="midedge")
+    ap.add_argument("--cross-gate", type=float, default=20.0)
     ap.add_argument("--level", type=int, default=3)
     args = ap.parse_args()
     arcade = Arcade(operation_mode=OperationMode.OFFLINE)
+    if args.joint:
+        search_joint(arcade, args.level)
+        return
     if args.search:
         search(arcade, args.level)
+        return
+    if args.live_joint:
+        run_live_joint(arcade, args.park, args.lure, args.cross_gate, args.level)
         return
     if args.live:
         run_live_openloop(arcade, args.lure, args.level)
