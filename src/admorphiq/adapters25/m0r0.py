@@ -3,9 +3,18 @@
 *** QUARANTINE — MODEL-NEVER-VISIBLE. See admorphiq.adapters25's package
 docstring. ***
 
-**STATUS: 5/6 — L0/L1 OFFLINE RECONSTRUCTION + L3 MOVABLE-BLOCK CLEARING + L4
-CONSTRUCTIVE BLOCK PLACEMENT + L5 MOMENTARY PRESSURE-PLATE GATES (R59,
-2026-07-16). All five cleared levels score 1.000 (super-human).**
+**STATUS: 6/6 @ game_score 1.0 — m0r0 FULLY CONQUERED (R59, 2026-07-16). All
+six levels score 1.000 (human-or-better).** L0/L1 OFFLINE RECONSTRUCTION + L3
+MOVABLE-BLOCK CLEARING + L4 CONSTRUCTIVE BLOCK PLACEMENT + L5 MOMENTARY
+PRESSURE-PLATE GATES + L6 JOINT BLOCK-PIN × GATE-COORDINATION.
+
+L6 combines all three mechanics (block + two gate groups + 62 hazards): the
+block is a DESYNC PIN — a player pressed against the movable block STAYS on a
+plate while the mirror passes a gate. `_build_joint_block_plan` searches the
+joint ``(p0, p1, block)`` state (``kernels.configuration_path``) with player-
+moves (mirror, gate-aware, block-as-wall) + block-relocate macros (block routes
+over walls+hazards+CLOSED gate walls); it is gated to fire only on a level with
+BOTH gate walls AND a single block, so L3/L4/L5 are byte-untouched.
 
 L5 adds `dfnuk`/`hnutp` gate groups: each group has a 1-cell PLATE and a 3-cell
 conditional WALL; the wall is passable IFF a player stands on a plate of that
@@ -164,6 +173,10 @@ _BLOCK_MOVE_LABELS: dict[Cell, int] = {(-1, 0): 1, (1, 0): 2, (0, -1): 3, (0, 1)
 # space is the product of two positions but each maze is small (<= ~15x15),
 # so this comfortably covers a full search.
 _MERGE_SEARCH_BUDGET = 200_000
+# Bound on the joint (p0, p1, block) states expanded for the L6 pin+gate
+# planner — larger than the plain merge because the block position triples the
+# space (measured ~326k reachable on L6; give headroom).
+_JOINT_BLOCK_BUDGET = 800_000
 _MOVE_ACTIONS = (1, 2, 3, 4)
 # Consecutive decisions with NO merge plan before giving up the whole run (an
 # unmodelled level variant). Generous enough that a genuinely long search or a
@@ -592,7 +605,15 @@ class Adapter(GameAdapter):
         # trajectory to off-path parking cells opens the merge. Gated: only runs
         # when cvcer blocks are actually detected.
         if self._maze.blocks and self._clear_plan is None:
-            self._clear_plan = self._build_clear_plan(grid) or []
+            if self._maze.gate_walls:
+                # Block + gates (L6): the block is a DESYNC PIN coordinated with
+                # the gates — the joint (p0, p1, block) planner handles that;
+                # the simpler static-placement path can return a spurious plan
+                # here, so the joint planner takes precedence.
+                self._clear_plan = self._build_joint_block_plan(grid) or self._build_clear_plan(grid) or []
+            else:
+                # Block, no gates (L3 obstacle-clear / L4 constructive placement).
+                self._clear_plan = self._build_clear_plan(grid) or self._build_joint_block_plan(grid) or []
         if self._clear_plan:
             kind, *rest = self._clear_plan.pop(0)
             if kind == "click":
@@ -995,6 +1016,118 @@ class Adapter(GameAdapter):
         plan.extend(("move", int(a)) for a in path_to_moves(route, _BLOCK_MOVE_LABELS))
         plan.append(("click", *maze.pixel_center(self._deselect_cell({target}))))  # deselect
         return plan
+
+    def _build_joint_block_plan(self, grid: tuple) -> list[tuple] | None:
+        """The L6 mechanic: one cvcer block used as a DESYNC PIN, coordinated
+        with pressure-plate gates. Neither obstacle-clear (L3) nor a static
+        constructive placement (L4) works — the two mirror players must reach a
+        shared cell across a maze where the only inter-room crossing is the
+        block cell and passing a gate needs a player HELD on a plate while the
+        mirror moves, which only the block (as a movable wall pinning one side)
+        can arrange.
+
+        Searches the JOINT state ``(p0, p1, block)`` via
+        :func:`admorphiq.kernels.configuration_path` with two transition kinds:
+          - player-move (both mirror, blocked independently by walls / the block
+            / hazards / CLOSED gate walls — gate state = which group has a player
+            on a plate, a pure function of the positions);
+          - block-relocate: the block walks to any cell reachable over
+            walls+hazards+closed-gate-walls (players are not obstacles to it),
+            players unchanged.
+        Returns the whole solve as click/move specs (select-click, block moves,
+        deselect-click, and player moves), or ``None`` if no merge is found or
+        the level is not a single-block gated board.
+        """
+        maze = self._maze
+        players = self._current_players(grid)
+        if maze is None or len(players) < 2 or len(maze.blocks) != 1:
+            return None
+        scheme = self._scheme
+        if not all(0 in scheme[a] and 1 in scheme[a] for a in _MOVE_ACTIONS):
+            return None
+        gh, gw = maze.gh, maze.gw
+        walls, hazards = maze.walls, maze.hazards
+        plates, gate_walls = maze.plates, maze.gate_walls
+        gate_walls_all = set().union(*gate_walls.values()) if gate_walls else set()
+        blk0 = next(iter(maze.blocks))
+        start = (players[0], players[1], blk0)
+
+        def open_groups(a: Cell, b: Cell) -> frozenset:
+            return frozenset(col for col, ps in plates.items() if a in ps or b in ps)
+
+        def closed_walls(o: frozenset) -> set[Cell]:
+            out: set[Cell] = set()
+            for col, ws in gate_walls.items():
+                if col not in o:
+                    out |= ws
+            return out
+
+        def p_passable(cell: Cell, block: Cell, o: frozenset) -> bool:
+            r, c = cell
+            if not (0 <= r < gh and 0 <= c < gw) or cell in walls or cell == block or cell in hazards:
+                return False
+            if cell in gate_walls_all:
+                for col, ws in gate_walls.items():
+                    if cell in ws:
+                        return col in o
+            return True
+
+        def block_reach(bs: Cell, closed: frozenset | set) -> set[Cell]:
+            obst = walls | hazards | closed
+            seen = {bs}
+            frontier = [bs]
+            while frontier:
+                cx = frontier.pop()
+                for dr, dc in ((-1, 0), (1, 0), (0, -1), (0, 1)):
+                    nx = (cx[0] + dr, cx[1] + dc)
+                    if 0 <= nx[0] < gh and 0 <= nx[1] < gw and nx not in obst and nx not in seen:
+                        seen.add(nx)
+                        frontier.append(nx)
+            return seen
+
+        def successors(state):
+            a, b, blk = state
+            o = open_groups(a, b)
+            for act in _MOVE_ACTIONS:
+                na = (a[0] + scheme[act][0][0], a[1] + scheme[act][0][1])
+                nb = (b[0] + scheme[act][1][0], b[1] + scheme[act][1][1])
+                na = na if p_passable(na, blk, o) else a
+                nb = nb if p_passable(nb, blk, o) else b
+                if (na, nb) != (a, b):
+                    yield ("m", act), (na, nb, blk)
+            for nblk in block_reach(blk, closed_walls(o)):
+                if nblk != blk:
+                    yield ("b", nblk), (a, b, nblk)
+
+        path = configuration_path(start, lambda s: s[0] == s[1], successors, max_states=_JOINT_BLOCK_BUDGET)
+        if not path:
+            return None
+
+        # Translate the label path into click/move specs, re-simulating to know
+        # the block's position + the gate state at each relocate.
+        specs: list[tuple] = []
+        a, b, blk = start
+        for label in path:
+            if label[0] == "m":
+                act = label[1]
+                o = open_groups(a, b)
+                na = (a[0] + scheme[act][0][0], a[1] + scheme[act][0][1])
+                nb = (b[0] + scheme[act][1][0], b[1] + scheme[act][1][1])
+                a = na if p_passable(na, blk, o) else a
+                b = nb if p_passable(nb, blk, o) else b
+                specs.append(("move", act))
+            else:
+                target = label[1]
+                obst = walls | hazards | closed_walls(open_groups(a, b))
+                passable = [[(r, c) not in obst for c in range(gw)] for r in range(gh)]
+                route = grid_shortest_path(passable, blk, target)
+                if route is None:
+                    return None
+                specs.append(("click", *maze.pixel_center(blk)))
+                specs.extend(("move", int(mv)) for mv in path_to_moves(route, _BLOCK_MOVE_LABELS))
+                specs.append(("click", *maze.pixel_center(self._deselect_cell({target}))))
+                blk = target
+        return specs
 
     def _route_block(self, blk: Cell, occ: set[Cell], cur_blocks: set[Cell]) -> tuple[Cell | None, list[int]]:
         """Nearest off-path parking cell for ``blk`` and the block-move actions
