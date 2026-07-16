@@ -75,6 +75,46 @@ def _serial(state):
     }
 
 
+def test_sk48_sim_lockstep_l4_wall():
+    """The sim's wall + move model must stay FAITHFUL to the live engine on
+    agent-L4 (source Level 5, the wall level). Drives a maneuver that exercises
+    the wall + side-gates on both the live game and the reconstructed sim and
+    asserts the control body + cells match step-for-step.
+
+    Expected feedback: green = the wall/side-push model still matches the engine
+    (so the R59 topological verdict — L4 unsolvable-as-modelled — stands on a
+    faithful sim, not a sim bug); a failure means a sim change broke fidelity and
+    the wall handling must be re-derived against the live engine.
+    """
+    from admorphiq.adapters25.sk48 import _parse_state, _Sim
+
+    arcade = Arcade(operation_mode=OperationMode.OFFLINE)
+    gid = next(e.game_id for e in arcade.get_environments() if "sk48" in e.game_id)
+    penv = arcade.make(gid)
+    penv._game.set_level(4)
+    sim = _Sim(_parse_state(canonical_layer(penv.step(GameAction.ACTION7))))
+    env = arcade.make(gid)
+    g = env._game
+    g.set_level(4)
+    mm = {1: GameAction.ACTION1, 2: GameAction.ACTION2, 3: GameAction.ACTION3, 4: GameAction.ACTION4}
+
+    def live():
+        top = next(t for t in g.xpmcmtbcv)
+        body = sorted((s.x, s.y) for s in g.mwfajkguqx[top])
+        cells = sorted((c.x, c.y, int(c.pixels[1, 1])) for c in g.vbelzuaian)
+        return body, cells
+
+    def simstate():
+        c = next(h for h in sim.heads if id(h) in sim.partner)
+        return sorted((s.x, s.y) for s in sim.bodies[id(c)]), sorted((cc.x, cc.y, cc.color) for cc in sim.cells)
+
+    assert live() == simstate(), "L4 init parse != live"
+    for mv in (3, 3, 3, 4, 4, 4, 4, 1, 1, 2, 2, 4, 3, 1, 2, 4):
+        env.step(mm[mv])
+        sim.step(mv)
+        assert live() == simstate(), f"sim diverged from live after move {mv}"
+
+
 @pytest.mark.parametrize("level", sorted(_EXPECTED))
 def test_sk48_floor_parse_unchanged(level):
     """The L0-L3 (source 1-4) parse must stay byte-identical to the 4/8 floor
