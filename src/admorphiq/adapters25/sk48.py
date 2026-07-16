@@ -709,12 +709,28 @@ def _parse_state(grid: Grid) -> dict[str, Any] | None:
     if not partner:
         return None
 
+    cells = _parse_cells(grid)
+    # The template's own body may fully cover its target cells; _parse_cells only
+    # sees a cell as a SOLID 4x4 block, so a cell occluded by a body segment is
+    # MISSED, leaving that template's goal sequence incomplete (fewer parsed
+    # cells than its check_count). Bail to the explorer rather than plan toward a
+    # goal we cannot fully reconstruct (a NAMED divergence — source Level 5's
+    # template occludes a colour-9 cell; reconstructing occluded cell colours
+    # through the body's transparent interior is the reopen). Also guards the
+    # is_win index. Never fires on L0-L3 (their templates parse fully).
+    cell_pos = {(c.x, c.y) for c in cells}
+    for mate in partner.values():
+        mate_body = next(b for hh, b in bodies if hh is mate)
+        covered = sum(1 for s in mate_body if (s.x, s.y) in cell_pos)
+        if covered < check_count[id(mate)]:
+            return None
+
     # Active must be a CONTROLLABLE snake (one that has a template partner); the
     # partner-less edge snakes are top-of-arena too but are obstacles, and would
     # otherwise win the (y, x) tie-break at the frame edge and misdirect A*.
     active = min((h for h in tops if id(h) in partner), key=lambda h: (h.y, h.x))
     return {
-        "heads": heads, "bodies": bodies, "cells": _parse_cells(grid), "partner": partner,
+        "heads": heads, "bodies": bodies, "cells": cells, "partner": partner,
         "check_count": check_count, "active": active, "arena": arena,
         "obstacles": [], "gates": _parse_gates(grid), "budget": _parse_budget(grid),
     }
