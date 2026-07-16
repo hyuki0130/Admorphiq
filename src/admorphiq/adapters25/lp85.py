@@ -499,8 +499,9 @@ class Adapter(GameAdapter):
                 self._pre_frame = grid
                 self._pre_goals = self._mover_cells(grid)
                 return self._click_button(self._learn_idx)
-            # every control learned — self-test gate, then plan
-            if self._selftest_fails >= 2 or not self._build_plan(grid):
+            # every control learned — plan from the self-test-clean rings only
+            # (mislearned maps were dropped in _learn_button, so no global abort).
+            if not self._build_plan(grid):
                 return None
             self._phase = "execute"
 
@@ -552,13 +553,20 @@ class Adapter(GameAdapter):
         )
         if len(succ) < 2:
             return  # inert control (off-viewport / non-rotating) — skip it
-        self._ops[f"b{idx}"] = succ
         post_goals = set(self._mover_cells(grid))
-        # Self-test: any moving token on this ring must land where the map predicts.
+        # Self-test then DROP-on-fail: a ring whose learned map mispredicts an
+        # observed goal move is a WRONG map (it would corrupt the plan), so it is
+        # excluded rather than counted toward a global abort. L4 is pressed by
+        # ~16 buttons that rotate only 2 real rings; the correct (self-test-clean)
+        # rotations are kept and the mislearned/edge presses dropped, instead of
+        # the old "abort the whole plan after 2 failures" which tripped on the
+        # redundant multi-button-per-ring learning even when the real rings were
+        # learned correctly.
         for g in self._pre_goals:
             if g in succ and succ[g] not in post_goals:
                 self._selftest_fails += 1
-                break
+                return  # drop this mislearned map
+        self._ops[f"b{idx}"] = succ
 
     def _build_plan(self, grid: tuple[tuple[int, ...], ...]) -> bool:
         ops = {k: v for k, v in self._ops.items() if len(v) >= 2}
