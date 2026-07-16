@@ -65,6 +65,24 @@ committed `SUMMARY.txt`, but prose hides all three.
   budget's real measurement is its own false claim. Record every budget-
   conditional result with both, and flag env-hash level-count differences
   (cn04: 5 levels on the VM hash vs 6 locally).
+- **Sibling rule — verify the LOADER, not just the number: `arcade.make("s5i5")`
+  (short name) resolves a different content dir than the scoring path.** When a
+  game_id maps to two local variant dirs (s5i5: `18d95033/` + `a48e4b1d/`), the
+  arcade's SHORT-NAME `make("s5i5")` and the SCORING path (`get_environments()` +
+  `make(game_id)`, which `score_efficiency.run_game`/`script25` use) can resolve
+  to DIFFERENT dirs — and a `date_downloaded` metadata "bump" does NOT reliably
+  force the scoring path. The s5i5 slip: a "forced a48e4b1d → 1/8" claim was made
+  from a short-name check that actually loaded `18d95033`, while the script25 run
+  it was meant to characterise loaded `18d95033` too — so "both variants clear"
+  was false; `a48e4b1d` genuinely scores **0/8** (proven by moving `18d95033/`
+  aside so only `a48e4b1d/` remains, then `run_game` → 0/8). RULE: to attribute a
+  score to a specific content variant, either (a) move the OTHER variant dir aside
+  and run the real `run_game`/`script25` loop, or (b) read that run's own
+  `Successfully loaded game class … from environment_files/<game>/<HASH>/…` log
+  line — never infer the loaded variant from a separate short-name `make()` in a
+  different process. A "1/8 vs 0/8" split across machines was, after this, fully
+  explained as each arcade resolving the game_id to a different variant dir — NOT
+  a platform-execution bug. (Full arc: `.wiki/wiki/games/S5I5.md` R60 section.)
 
 ## Recovery
 
@@ -91,3 +109,5 @@ exactly as trustworthy as the artifacts, which is the point.
 - [[faithful_offline_simulator_20260715]] — the sibling discipline from the same
   sprint: trust a faithful artifact (a replayed state-model / committed SUMMARY)
   over an offline mechanic guess or a remembered number.
+- [[../games/S5I5]] — the loader-divergence case (short-name `make` vs scoring
+  path) that added the "verify the loader, not just the number" sibling rule.
