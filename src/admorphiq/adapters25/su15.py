@@ -325,6 +325,15 @@ def _sim_click_full(
                 if _bbox_overlap(e[0], e[1], _ENEMY_W, _ENEMY_H, f[0], f[1], _SIZE[f[2]], _SIZE[f[2]]):
                     contact = True
                     break
+        # Two same-tag enemies that overlap MERGE UP a tier (source fzolkosujg →
+        # vwucsjocjy: a faster class-2/3 enemy spawns). That is not modelled here,
+        # so a plan that collides two enemies is flagged unsafe (reject) — it must
+        # keep them apart, which a margin-safe lure does anyway. No-op for the
+        # single-enemy L3 (needs ≥2 enemies, e.g. L4).
+        for i in range(len(es)):
+            for j in range(i + 1, len(es)):
+                if _bbox_overlap(es[i][0], es[i][1], _ENEMY_W, _ENEMY_H, es[j][0], es[j][1], _ENEMY_W, _ENEMY_H):
+                    contact = True
 
     # ── ivbqcpwjdw: union-find same-value OVERLAP merge (identical to
     # _sim_click). ──

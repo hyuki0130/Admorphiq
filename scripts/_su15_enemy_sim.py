@@ -29,14 +29,24 @@ from admorphiq.adapters25.base import click_action, reset_action  # noqa: E402
 _VAL_BY_COLOR = {c: v for v, c in enumerate(su15._VAL_COLORS)}
 
 
-def _make_l3(arcade):
-    """su15 env at level index 3 (source ``set_level(3)``); returns (env, game)."""
+def _make_level(arcade, idx: int):
+    """su15 env at level ``idx`` (source ``set_level``); returns (env, game)."""
     env = arcade.make("su15")
     env.step(reset_action())
     game = env._game  # noqa: SLF001 — verification-only
-    game.set_level(3)
-    assert game.level_index == 3, f"expected L3, got {game.level_index}"
+    game.set_level(idx)
+    assert game.level_index == idx, f"expected L{idx}, got {game.level_index}"
     return env, game
+
+
+def _goal(game) -> tuple[tuple[int, int], tuple[int, int, int, int]]:
+    """(centre (x,y), bbox (x0,y0,x1,y1)) of the level's goal disk, from
+    internals — the win target, read per level rather than hardcoded."""
+    for s in game.powykypsm:
+        h, w = s.pixels.shape
+        x, y = int(s.x), int(s.y)
+        return (x + w // 2, y + h // 2), (x, y, x + w - 1, y + h - 1)
+    return (32, 32), (28, 28, 36, 36)
 
 
 def _fruits(game) -> list[list[int]]:
@@ -74,24 +84,30 @@ def _apply_live(env, game, cx: int, cy: int):
 
 
 def _enemy_err(sim_e: list[list[int]], live_e: list[list[int]]) -> float:
-    """Max over enemies of the top-left L-inf position error (px)."""
+    """Max over enemies of the top-left L-inf position error (px). Index-matched
+    when counts are equal (sim preserves input order and the engine keeps the
+    enemy list stable when no merge fires); nearest-match otherwise."""
     if not sim_e or not live_e:
         return 0.0
     err = 0.0
+    if len(sim_e) == len(live_e):
+        for s, lv in zip(sim_e, live_e):
+            err = max(err, max(abs(s[0] - lv[0]), abs(s[1] - lv[1])))
+        return err
     for s in sim_e:
         d = min(max(abs(s[0] - le[0]), abs(s[1] - le[1])) for le in live_e)
         err = max(err, d)
     return err
 
 
-def validate(arcade, n_frames: int, seed: int = 0) -> None:
+def validate(arcade, n_frames: int, seed: int = 0, idx: int = 3) -> None:
     """Drive random legal clicks; after each, compare _sim_click_full's
     prediction (advanced from the PREVIOUS live state) against the live engine.
     Prints per-click fruit-multiset match, enemy position error, contact flag."""
     rng = random.Random(seed)
-    env, game = _make_l3(arcade)
+    env, game = _make_level(arcade, idx)
     lf, le = _fruits(game), _enemies(game)
-    print(f"L3 seed: {len(lf)} fruits {_ms(lf)}, {len(le)} enemies at {le}")
+    print(f"L{idx} seed: {len(lf)} fruits {_ms(lf)}, {len(le)} enemies at {le}")
     ms_mismatch = 0
     enemy_err_max = 0.0
     cf_mismatch = 0  # contact-FREE fruit-multiset mismatches (must be 0)
@@ -100,8 +116,9 @@ def validate(arcade, n_frames: int, seed: int = 0) -> None:
         # Bias clicks near a fruit or the enemy so the sim's interesting paths
         # (vacuum-pull + chase) are actually exercised, not just no-ops.
         if le and rng.random() < 0.5:
-            cx = max(0, min(63, le[0][0] + rng.randint(-6, 6)))
-            cy = max(10, min(62, le[0][1] + rng.randint(-6, 6)))
+            en = rng.choice(le)
+            cx = max(0, min(63, en[0] + rng.randint(-6, 6)))
+            cy = max(10, min(62, en[1] + rng.randint(-6, 6)))
         elif lf:
             f = rng.choice(lf)
             cx = max(0, min(63, f[0] + rng.randint(-6, 6)))
@@ -124,7 +141,7 @@ def validate(arcade, n_frames: int, seed: int = 0) -> None:
             f"[{k:02d}] click({cx},{cy}) simMS={_ms(sim_f)} liveMS={_ms(lf)} "
             f"ms={'ok' if ms_ok else 'MISMATCH'} enemyErr={eerr:.0f} contact={contact} {flag}"
         )
-        if game.level_index != 3 or not lf:
+        if game.level_index != idx or not lf:
             print("  (level changed / board empty — stopping)")
             break
     print(
@@ -135,31 +152,31 @@ def validate(arcade, n_frames: int, seed: int = 0) -> None:
 
 
 # ── margin search ────────────────────────────────────────────────────────
-# Goal disk bbox (col1..9, row53..61), centre (5, 57) — read from internals.
-_GOAL_C = (5, 57)  # (x=col, y=row)
-_GOAL_BBOX = (1, 53, 9, 61)  # (x0, y0, x1, y1) inclusive
 
 
-def _delivered_v3(fruits: list[list[int]]) -> bool:
-    """Win (spec [3,1]): exactly one value-3 fruit whose centre is inside the
-    goal bbox, and no fruit of value > 3 (over-merge)."""
-    x0, y0, x1, y1 = _GOAL_BBOX
-    v3_in = 0
+def _delivered(fruits: list[list[int]], goal_bbox: tuple[int, int, int, int], target: int = 3) -> bool:
+    """Win (spec [``target``,1]): exactly one ``target``-value fruit whose centre
+    is inside the goal bbox, and no fruit of value > ``target`` (over-merge)."""
+    x0, y0, x1, y1 = goal_bbox
+    hit = 0
     for f in fruits:
-        if f[2] > 3:
+        if f[2] > target:
             return False
-        if f[2] == 3:
-            cx = f[0] + su15._SIZE[3] // 2
-            cy = f[1] + su15._SIZE[3] // 2
+        if f[2] == target:
+            cx = f[0] + su15._SIZE[target] // 2
+            cy = f[1] + su15._SIZE[target] // 2
             if x0 <= cx <= x1 and y0 <= cy <= y1:
-                v3_in += 1
-    return v3_in == 1
+                hit += 1
+    return hit == 1
 
 
-def _choreograph(model, enemy_xy, goal_xy, lure_base, corners):
-    """Standalone mirror of the adapter's proven ``_model_heuristic`` (the
-    17-click live win), parametrised by lure aggression ``lure_base`` and the
-    ``corners`` the enemy is lured toward. Returns a click ``(x, y)`` or None."""
+def _choreograph(model, enemies_xy, goal_xy, lure_base, corners):
+    """Multi-enemy mirror of the adapter's proven L3 choreography, parametrised
+    by lure aggression ``lure_base`` and the lure ``corners``. ``enemies_xy`` is
+    a LIST of enemy centres. Deliver the top fruit once it reaches value ≥3; else
+    merge the nearest lowest-value pair — but if ANY enemy threatens an idle
+    (non-merging) fruit, first LURE the MOST urgent enemy (closest to an idle
+    fruit) to the fruit-farthest corner. Returns a click ``(x, y)`` or None."""
     R = su15._VACUUM_RADIUS
 
     def dist(a, b):
@@ -186,30 +203,37 @@ def _choreograph(model, enemy_xy, goal_xy, lure_base, corners):
     others = [f for k, f in enumerate(model) if k not in (i, j)]
     max_val = max(f[2] for f in model)
     danger = lure_base + 4.0 * max_val + max(0, 5 - len(model)) * 3.0
-    if others and min(dist(enemy_xy, (f[0], f[1])) for f in others) < danger:
-        park = max(corners, key=lambda c: min((dist(c, (f[0], f[1])) for f in model), default=0.0))
-        dx, dy = park[0] - enemy_xy[0], park[1] - enemy_xy[1]
-        dd = (dx * dx + dy * dy) ** 0.5 or 1.0
-        return (enemy_xy[0] + dx / dd * R, enemy_xy[1] + dy / dd * R)
+    if others and enemies_xy:
+        urgency = [(min(dist(e, (f[0], f[1])) for f in others), e) for e in enemies_xy]
+        gap, e = min(urgency, key=lambda t: t[0])
+        if gap < danger:
+            park = max(corners, key=lambda c: min((dist(c, (f[0], f[1])) for f in model), default=0.0))
+            dx, dy = park[0] - e[0], park[1] - e[1]
+            dd = (dx * dx + dy * dy) ** 0.5 or 1.0
+            return (e[0] + dx / dd * R, e[1] + dy / dd * R)
     if d <= su15._MERGE_DIST:
         return ((a[0] + b[0]) / 2.0, (a[1] + b[1]) / 2.0)
     ux, uy = (b[0] - a[0]) / d, (b[1] - a[1]) / d
     return (a[0] + ux * 7.0, a[1] + uy * 7.0)
 
 
-def _run_plan(fruits, enemy, lure_base, corners, max_clicks=48):
+def _enemies_xy(enemies):
+    return [(e[0] + su15._ENEMY_W // 2, e[1] + su15._ENEMY_H // 2) for e in enemies]
+
+
+def _run_plan(fruits, enemy, goal_c, goal_bbox, lure_base, corners, max_clicks=64):
     """Drive ``_choreograph`` open-loop over the FAITHFUL full sim from a given
     seed. Returns (outcome, clicks) where outcome in {win, contact, stuck,
-    budget}. ``contact`` = the enemy downgraded a fruit (plan is unsafe)."""
+    budget}. ``contact`` = an enemy downgraded a fruit OR two enemies merged
+    (both unsafe/unmodelled → the plan is rejected)."""
     model = [f[:] for f in fruits]
     enemies = [e[:] for e in enemy]
     for k in range(max_clicks):
-        if _delivered_v3(model):
+        if _delivered(model, goal_bbox):
             return "win", k
-        if not enemies:
+        if not model:
             return "stuck", k
-        ex, ey = enemies[0][0] + su15._ENEMY_W // 2, enemies[0][1] + su15._ENEMY_H // 2
-        click = _choreograph(model, (ex, ey), _GOAL_C, lure_base, corners)
+        click = _choreograph(model, _enemies_xy(enemies), goal_c, lure_base, corners)
         if click is None:
             return "stuck", k
         cx = max(0, min(63, int(round(click[0]))))
@@ -226,22 +250,22 @@ def _perturb(fruits, enemy, dx, dy):
     return f2, e2
 
 
-def search(arcade) -> None:
+def search(arcade, idx: int = 3) -> None:
     """Enumerate (lure_base × corner-set) choreography variants; for each, run
     the faithful sim from the PARSED seed and from ±1px perturbations. Accept a
     plan only if it WINS under ALL perturbations (drift-robust margin)."""
-    _env, game = _make_l3(arcade)
+    _env, game = _make_level(arcade, idx)
     fruits = _fruits(game)
     enemy = _enemies(game)
-    print(f"L3 seed: fruits={fruits} enemy={enemy} goal={_GOAL_C}")
+    goal_c, goal_bbox = _goal(game)
+    print(f"L{idx} seed: fruits={fruits} enemies={enemy} goal_c={goal_c} bbox={goal_bbox}")
 
     corner_sets = {
         "adapter8": su15.Adapter._MODEL_CORNERS,
         "far4": ((2, 12), (2, 60), (60, 60), (60, 12)),
-        "rightwall": ((60, 12), (60, 36), (60, 60), (2, 60)),
-        "topright": ((60, 12), (2, 60), (60, 60)),
+        "corners6": ((2, 12), (2, 60), (60, 12), (60, 60), (2, 36), (60, 36)),
     }
-    lure_bases = [12.0, 16.0, 20.0, 24.0, 28.0, 32.0]
+    lure_bases = [12.0, 15.0, 18.0, 20.0, 24.0, 28.0, 32.0, 36.0]
     # ±1px perturbations of EVERY object (the frame-parse rounding drift).
     perturbs = [(0, 0), (1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (-1, -1), (1, -1), (-1, 1)]
 
@@ -251,7 +275,7 @@ def search(arcade) -> None:
             outcomes = []
             for dx, dy in perturbs:
                 pf, pe = _perturb(fruits, enemy, dx, dy)
-                out, k = _run_plan(pf, pe, lb, corners)
+                out, k = _run_plan(pf, pe, goal_c, goal_bbox, lb, corners)
                 outcomes.append((out, k))
             wins = sum(1 for o, _ in outcomes if o == "win")
             base_out, base_k = outcomes[0]
@@ -263,37 +287,37 @@ def search(arcade) -> None:
                 f"base={base_out}@{base_k}{tag}"
             )
     robust = [r for r in results if r[6]]
-    print(f"\nSEARCH SUMMARY: {len(robust)} drift-robust winning plan(s) of {len(results)} configs")
+    print(f"\nSEARCH SUMMARY L{idx}: {len(robust)} drift-robust winning plan(s) of {len(results)} configs")
     if robust:
         for r in sorted(robust, key=lambda r: r[5]):
             print(f"  ROBUST: corners={r[0]} lure_base={r[1]:.0f} base_clicks={r[5]}")
     else:
-        best = max(results, key=lambda r: r[2])
-        print(f"  best (non-robust): corners={best[0]} lure_base={best[1]:.0f} wins={best[2]}/{best[3]}")
+        best = max(results, key=lambda r: (r[2], -r[5]))
+        print(
+            f"  best (non-robust): corners={best[0]} lure_base={best[1]:.0f} "
+            f"wins={best[2]}/{best[3]} base={best[4]}@{best[5]}"
+        )
 
 
-def run_live_openloop(arcade, lure_base: float = 20.0) -> None:
-    """Decisive transfer test: seed the sim ONCE from L3's parsed state, run the
-    margin-robust choreography OPEN-LOOP through the faithful sim, and execute
-    each click on the LIVE engine. Reports whether the level clears live — this
-    is what proves the sim-driven plan transfers (the committed adapter's live
-    enemy read + Chebyshev fruit sim is what stalls at 3/9)."""
-    env, game = _make_l3(arcade)
+def run_live_openloop(arcade, lure_base: float = 20.0, idx: int = 3) -> None:
+    """Decisive transfer test: seed the sim ONCE from the parsed level state, run
+    the margin-robust choreography OPEN-LOOP through the faithful sim, and execute
+    each click on the LIVE engine. Reports whether the level clears live."""
+    env, game = _make_level(arcade, idx)
     model = _fruits(game)
     enemies = _enemies(game)
+    goal_c, _goal_bbox = _goal(game)
     corners = su15.Adapter._MODEL_CORNERS
-    print(f"LIVE open-loop L3: seed fruits={len(model)} enemy={enemies} lure_base={lure_base}")
-    for k in range(48):
+    print(f"LIVE open-loop L{idx}: seed fruits={len(model)} enemies={enemies} lure_base={lure_base}")
+    for k in range(64):
         state = game._state.name if hasattr(game._state, "name") else str(game._state)
-        if game.level_index != 3 or state == "WIN":
+        if game.level_index != idx or state == "WIN":
             print(f"  cleared at click {k} (state={state}, level_index={game.level_index})")
             return
-        if not enemies:
-            print("  sim enemy gone — stopping")
+        if not model:
+            print("  board empty — stopping")
             break
-        ex = enemies[0][0] + su15._ENEMY_W // 2
-        ey = enemies[0][1] + su15._ENEMY_H // 2
-        click = _choreograph(model, (ex, ey), _GOAL_C, lure_base, corners)
+        click = _choreograph(model, _enemies_xy(enemies), goal_c, lure_base, corners)
         if click is None:
             print(f"  plan exhausted at click {k}")
             break
@@ -302,7 +326,7 @@ def run_live_openloop(arcade, lure_base: float = 20.0) -> None:
         _step_click(env, cx, cy)
         model, enemies, _c = su15._sim_click_full(model, enemies, cx, cy)
     fin = game.level_index
-    print(f"  FINAL level_index={fin} ({'CLEARED L3' if fin > 3 else 'did NOT clear'})")
+    print(f"  FINAL level_index={fin} ({'CLEARED L%d' % idx if fin > idx else 'did NOT clear'})")
 
 
 def main() -> None:
@@ -312,17 +336,18 @@ def main() -> None:
     ap.add_argument("--search", action="store_true")
     ap.add_argument("--live", action="store_true")
     ap.add_argument("--lure", type=float, default=20.0)
+    ap.add_argument("--level", type=int, default=3)
     args = ap.parse_args()
     arcade = Arcade(operation_mode=OperationMode.OFFLINE)
     if args.search:
-        search(arcade)
+        search(arcade, args.level)
         return
     if args.live:
-        run_live_openloop(arcade, args.lure)
+        run_live_openloop(arcade, args.lure, args.level)
         return
     for s in range(args.seeds):
-        print(f"===== validation seed {s} =====")
-        validate(arcade, args.frames, seed=s)
+        print(f"===== validation seed {s} (L{args.level}) =====")
+        validate(arcade, args.frames, seed=s, idx=args.level)
 
 
 if __name__ == "__main__":
