@@ -86,6 +86,24 @@ def _regions_raw(grid) -> list[dict]:
     return out
 
 
+def _detected(grid, adapter) -> dict:
+    """The adapter's own detection outputs, SORTED — exactly what its planner keys
+    on. If these match across machines but the chosen action differs, the bug is a
+    min()/max() tie-break; if these differ, it's perception (find_regions / colour
+    thresholds); if the frame_hash already differs, it's the engine, not us."""
+    bg = most_common_color(grid)
+    regions = find_regions(grid, background=bg, connectivity=8)
+    goals = sorted([int(x) for x in c] for c in adapter._goals(regions))
+    targets = sorted(
+        [int(x) for x in s5i5._centroid(r)]
+        for r in regions
+        if r["color"] == s5i5._MARKER_COLOR and r["size"] > s5i5._GOAL_MAX_SIZE
+    )
+    tracks = sorted([int(x) for x in c] for c in adapter._make_candidates(regions))
+    controls = sorted([int(x) for x in c] for c in adapter._control_buttons(regions, grid))
+    return {"goals": goals, "targets": targets, "tracks": tracks, "controls": controls}
+
+
 def _action_tuple(action) -> list:
     aid = getattr(action, "value", None) or getattr(getattr(action, "id", None), "value", None) or str(action)
     data = {}
@@ -135,6 +153,7 @@ def trace(target_hash: str, n_actions: int, out_path: str) -> None:
                 rec["frame_hash"] = _frame_hash(grid)
                 rec["levels"] = int(getattr(obs, "levels_completed", 0) or 0)
                 rec["regions_raw"] = _regions_raw(grid)
+                rec["detected"] = _detected(grid, adapter)
             action = adapter.choose_action([], obs)
             rec["action"] = _action_tuple(action)
             # adapter internal decision state AFTER the choice (the trajectory drivers)
@@ -151,7 +170,14 @@ def trace(target_hash: str, n_actions: int, out_path: str) -> None:
             # divergent step (then inspect that step's full record).
             rec["digest"] = hashlib.md5(
                 json.dumps(
-                    [rec.get("frame_hash"), rec.get("regions_raw"), rec["action"], rec["candidates"], rec["probe_idx"]],
+                    [
+                        rec.get("frame_hash"),
+                        rec.get("regions_raw"),
+                        rec.get("detected"),
+                        rec["action"],
+                        rec["candidates"],
+                        rec["probe_idx"],
+                    ],
                     sort_keys=True,
                 ).encode()
             ).hexdigest()[:10]
