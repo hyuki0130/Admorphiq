@@ -79,6 +79,7 @@ from admorphiq.adapters25.base import (
     GameAdapter,
     available_action_ids,
     canonical_layer,
+    click_action,
     has_frame,
     most_common_color,
     reset_action,
@@ -402,6 +403,103 @@ def _search(
             best_g[nk] = ng
             counter += 1
             heapq.heappush(pq, (ng + weight * _heuristic(nxt), ng, counter, nxt, npath))
+    return None
+
+
+# ════════════════════════════════════════════════════════════════════════
+# Multi-snake A* (levels with 2+ controllable snakes, source Level 4+).
+# ════════════════════════════════════════════════════════════════════════
+# The deeper levels have a partner-LESS "free" snake (the initially-active one)
+# plus 2+ partnered CONTROL snakes, each of which must be shaped so its
+# body-overlap colour sequence matches its bottom template. Two facts decoded +
+# live-verified (R59) drive this search:
+#   - Selection semantics (ACTION6): the initially-active snake is the FREE one;
+#     ACTION6 can switch to any partnered CONTROL and between controls, but can
+#     NEVER return to the free snake (it is not in the engine's click-pair map).
+#     Selection does NOT cost the move budget (only ACTION1-4 decrement it), so
+#     it is a budget-free search edge (still counted as a plan step).
+#   - The free snake is a TOOL: moving it PUSHES the target cells (the same push
+#     recursion as the controls), which is often how a control's required cells
+#     are brought under it. (Measured: L3/source-Level-4 wins in 29 free-snake
+#     moves alone — the free snake positions the cells to satisfy both controls,
+#     no selection needed — but the search models selection for the general case.)
+
+
+def _free_head(sim: _Sim) -> _Head | None:
+    """The partner-less top-arena head = the initially-active free snake."""
+    frees = [h for h in sim.heads if h.y < _DIVIDER and id(h) not in sim.partner]
+    return frees[0] if frees else None
+
+
+def _control_heads(sim: _Sim) -> list[_Head]:
+    """The partnered top controls, in stable head order — the ONLY
+    ACTION6-selectable snakes (the free snake is never re-selectable)."""
+    return [h for h in sim.heads if id(h) in sim.partner]
+
+
+# A plan step is a move id (int) OR a ("sel", head_x, head_y) selection click.
+PlanStep = int | tuple[str, int, int]
+
+
+def _search_multi(
+    sim0: _Sim,
+    max_expansions: int = _SEARCH_EXPANSIONS,
+    budget_cap: int = _BUDGET_MAX,
+    weight: int = 2,
+) -> list[PlanStep] | None:
+    """A* over (board configuration x active-snake) toward the joint template
+    match, with moves on the active snake AND budget-free selection of any
+    control as edges. Returns a mixed move/selection plan, or None."""
+    fh = _free_head(sim0)
+    if fh is not None:
+        sim0.active = fh  # start on the free snake (matches the live engine)
+    if sim0.is_win():
+        return []
+    start = sim0.clone()
+    counter = 0
+    pq: list[tuple] = [(_heuristic(start), 0, counter, start, [])]
+    best_g = {start.key(): 0}
+    expansions = 0
+    while pq and expansions < max_expansions:
+        _f, g, _c, sim, path = heapq.heappop(pq)
+        k = sim.key()
+        if best_g.get(k, 1 << 30) < g:
+            continue
+        expansions += 1
+        for a in (1, 2, 3, 4):
+            nxt = sim.clone()
+            nxt.step(a)
+            if nxt.budget < 0:
+                continue
+            npath = path + [a]
+            if nxt.is_win():
+                return npath
+            ng = g + 1
+            if ng > budget_cap:
+                continue
+            nk = nxt.key()
+            if best_g.get(nk, 1 << 30) <= ng:
+                continue
+            best_g[nk] = ng
+            counter += 1
+            heapq.heappush(pq, (ng + weight * _heuristic(nxt), ng, counter, nxt, npath))
+        # Selection edges: switch active to each control (budget-free). Recorded
+        # as a click at that control's head origin (centre offset applied at
+        # execution). Re-identify the control after clone by its stable index.
+        for i, hh in enumerate(_control_heads(sim)):
+            if hh is sim.active:
+                continue
+            nxt = sim.clone()
+            nxt.active = _control_heads(nxt)[i]
+            ng = g + 1
+            nk = nxt.key()
+            if best_g.get(nk, 1 << 30) <= ng:
+                continue
+            best_g[nk] = ng
+            counter += 1
+            heapq.heappush(
+                pq, (ng + weight * _heuristic(nxt), ng, counter, nxt, path + [("sel", hh.x, hh.y)])
+            )
     return None
 
 
@@ -788,7 +886,14 @@ class Adapter(GameAdapter):
             self._build_plan(grid)
 
         if self._plan:
-            return simple_action(self._plan.pop(0))
+            step = self._plan.pop(0)
+            if isinstance(step, int):
+                return simple_action(step)
+            # ("sel", head_x, head_y): ACTION6-click the control's centre to
+            # switch active (offset +3,+3 from the head origin lands on the solid
+            # centre — verified live; the corner is transparent and selects None).
+            _tag, hx, hy = step
+            return click_action(hx + 3, hy + 3)
 
         # Fallback: transition-graph explorer for this level.
         self._plan_failed = True
@@ -809,7 +914,13 @@ class Adapter(GameAdapter):
             self._plan_failed = True
             return
         try:
-            sol = _search(_Sim(state))
+            # 2+ partnered controls (source Level 4+) => multi-snake search with
+            # selection; otherwise the single-active-snake search, byte-identical
+            # to the L0-L2 behaviour (gate on the multi-controllable signature).
+            if len(state["partner"]) >= 2:
+                sol = _search_multi(_Sim(state))
+            else:
+                sol = _search(_Sim(state))
         except Exception:
             sol = None
         if sol:
