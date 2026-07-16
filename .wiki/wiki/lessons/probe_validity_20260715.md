@@ -124,6 +124,20 @@ the false conclusion convincing: consistency is not validity.
   BEHAVIOURAL invariant (does a known-winning sequence still win after the
   restore?), not a frame comparison. The decisive test was exactly that: fresh
   board wins, RESET-then-same-sequence loses → the RESET corrupts hidden state.
+- **A `set_level(n)` + render-KICK harness can make an UNSOLVABLE level look
+  solvable — the kick action mutates the board.** cn04 R60b: to get a rendered
+  frame after `set_level(2)` the harness stepped ONE action. With an `ACTION5`
+  kick (which ROTATES the active sprite) the arrangement plan won; with an
+  `ACTION7` kick (no rotation, pristine orientation) NEITHER chirality won —
+  because the ACTION5 rotation happened to place a sprite into a solvable pose.
+  Every prior "L3 feasible offline" proof had used the ACTION5 kick, so the
+  feasibility was a harness artifact, not a property of the level; the VM (whose
+  natural entry idles a *translate*, leaving orientation pristine) matched the
+  ACTION7 result and scored 2/5. Lesson: the render-kick is part of the initial
+  condition — choose a kick that does NOT change solvability (or reach the level
+  by its NATURAL path), and when a "feasible" result depends on which benign
+  action you used to render, treat it as unproven until the natural entry
+  confirms it.
 - **A standalone probe MUST replicate the runner path, and a probe that
   contradicts known-good behaviour is measuring itself.** Effects that only
   hold inside the harness's render/observation cadence (e.g. r11l's
