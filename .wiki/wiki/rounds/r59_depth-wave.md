@@ -2,7 +2,7 @@
 round: r59
 axis: script25 depth (kernel expressiveness) — faithful-sim + learned-operator wave 2
 keywords: [m0r0, pressure-plate, gates, bp35, frontier-exploration, su15, enemy-in-sim, re86, separation-by-motion, sk48, lockstep, reachability, lp85, twist-topology, ls20, moving-changer, r59s1, full-25]
-verdict: PASS — official card 18.02% → 21.56% (r59s1) → 22.25% (r59s2) → **26.38% (r59s3, 2026-07-17 00:52)**; every run matched its arithmetic prediction exactly
+verdict: PASS — official card 18.02% → 21.56% (r59s1) → 22.25% (r59s2) → 26.38% (r59s3) → **27.25% (r59s4, 2026-07-17 02:14)**; every run matched its arithmetic prediction exactly
 commit: 9b8e2e8 (r59s1 HEAD) / cc1e4dc (r59s2 HEAD) / f8144df-era (r59s3 HEAD); landings: bc04e63, 6b6ad2e, b2128c9, 36d23cd, 3b6c11c, 0197b8b, fa8e3bc, 12bda52, a1701f9, 0abeb0d, 2bdea69, e698ed8(ls20 L5), 02fe3d8, f677aed, 9647858, e536f65
 ---
 
@@ -45,6 +45,16 @@ m0r0 0.7143→**1.0000** (L6 joint block-pin — FULLY CONQUERED), su15 0.1923�
 arithmetic ≈ **26.52%**. **MILESTONE: all 25 games clear ≥1 level** (last zero game tn36
 fell at 00:41). Day arc 18.02% → 26.38% (+8.4pp, 1.46×). With the lp85 stall give-up
 (7ac5a00) the full-25 wall time dropped from ~3.7h to ~15min.
+
+## r59s4 official (2026-07-17 02:14 KST, ceph-build, @5000) — **27.25%**
+
+`games=25 total=6.8122 → 27.25%` — exact arithmetic match (7th consecutive). Two rows moved
+vs r59s3: tn36 0→0.1071 (L0+L1 first clears, opcode-panel program synthesis; L2 parked on the
+unfindable tozzsf frame-selector), re86 0.1162→0.2273 (L4 multi-piece recolour-routing FSM;
+L5 parked: 3 movables + 3→2 set-cover + mid-edge station). Late-night closes: ls20 L7 parked
+(life-gated fog observation — two independent approaches falsified), s5i5 a48e4b1d
+rotation-walled (perception fix built + reverted card-neutral), cn04 closed 2/5 (render-kick
+artifact), tn36 L2 / g50t L1 / re86 L5 / lp85 σ² parked with complete specs.
 
 ## Post-measurement landings (in HEAD, not in r59s1; next full-25 picks them up)
 

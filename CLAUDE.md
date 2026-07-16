@@ -1629,14 +1629,15 @@ dc22) or a learned reflection/flow kernel (ar25/sp80 super-human L0) or goal-dir
 (tu93); pattern named in `.wiki/wiki/lessons/faithful_offline_simulator_20260715.md`. New-structure
 PARK list (honestly banked WITH decoded mechanics, not failures): ar25 L1 (parallel-mirror double
 reflection), lp85 L4 (dense 20-ring self-test), su15 L3+ (enemy-reversed cascade), sk48 L3+
-(non-ACTION6 `sys_click`), bp35 / g50t / re86 / s5i5 / sc25 / tr87 / wa30. **Card = 26.38% official
-(r59s3, @5000, ceph-build, landed 2026-07-17 00:52; supersedes r59s2 22.25% / r59s1 21.56% /
-r56s9 18.02% — every run matched its arithmetic prediction exactly). MILESTONE 2026-07-17: ALL
+(non-ACTION6 `sys_click`), bp35 / g50t / re86 / s5i5 / sc25 / tr87 / wa30. **Card = 27.25% official
+(r59s4, @5000, ceph-build, landed 2026-07-17 02:14; supersedes r59s3 26.38% / r59s2 22.25% /
+r59s1 21.56% / r56s9 18.02% — every run an exact arithmetic match). MILESTONE 2026-07-17: ALL
 25 games clear ≥1 level (tn36, the last zero game, fell via opcode-panel program synthesis;
-post-r59s3 arithmetic ≈26.52%). Fully conquered: ft09 1.0 · m0r0 1.0 · cd82 0.98 · sb26 0.846;
-ls20 6/7 @0.75 (L1-L6 all per-level 1.0). R59-R60 depth wave: faithful-sim + learned-operator +
-park-verification-first (5 parks overturned: ka59/vc33/g50t/lf52/tn36). lp85 stall give-up
-(7ac5a00) cut full-25 wall time ~3.7h → ~15min. Round page: `.wiki/wiki/rounds/r59_depth-wave.md`.)** ⚠️ **Dual-scoreboard doctrine (non-negotiable):** the script25 number is
+now 2/7 with L0+L1 both per-level 1.0). Fully conquered: ft09 1.0 · m0r0 1.0 · cd82 0.98 ·
+sb26 0.846; ls20 6/7 @0.75 (L1-L6 all per-level 1.0); re86 4/8 @0.2273. R59-R61 depth wave:
+faithful-sim + learned-operator + park-verification-first (5 parks overturned:
+ka59/vc33/g50t/lf52/tn36). lp85 stall give-up (7ac5a00) cut full-25 wall time ~3.7h → ~15min.
+Round page: `.wiki/wiki/rounds/r59_depth-wave.md`.)** ⚠️ **Dual-scoreboard doctrine (non-negotiable):** the script25 number is
 KERNEL EXPRESSIVENESS (can a from-scratch generic composition EXPRESS the clear), and is NEVER
 reported as agent capability; promotion to the deployable card is via **agent25** — the offline
 model orchestrating the kernels UNAIDED. Round index: `.wiki/wiki/rounds/index.md` (r56 entry).
