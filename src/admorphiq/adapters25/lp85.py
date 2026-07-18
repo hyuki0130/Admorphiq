@@ -124,6 +124,7 @@ game_score 0.0803 (up from the sweep-only 1/8 @ 0.0248). See
 
 from __future__ import annotations
 
+import math
 from collections import deque
 from typing import Any
 
@@ -179,6 +180,10 @@ _PLANNER_BUDGET = 40  # max rotation-sequence length the BFS may return
 # cleanly separates L4 (20) from every earlier level (≤8) and L5 (9), so L1–L3 keep
 # the byte-identical single-press path.
 _MULTIPRESS_BUTTON_MIN = 12
+# A COARSE-scale board (large tile unit) also takes the multi-press path: its rings
+# are big enough that the 2-press signature under-determines them (LP85 L5, unit 16,
+# 2 rings of 21/5 cells). L1–L4 have unit 4, below this, so they are unaffected.
+_MULTIPRESS_UNIT_MIN = 9
 _MP_MIN_FOOTPRINT = 30  # a single press moving ≥ this many cells rotates a real ring
 _MP_MIN_RING = 15  # a grouped ring must reach this many cells to count as learnable
 _MP_MIN_PRESSES = 8  # earliest press count at which to test the all-exact stop
@@ -324,37 +329,73 @@ def _detect_buttons(regions: list[dict[str, Any]]) -> list[Cell]:
     return sorted(_cint(r) for r in regions if int(r["color"]) in _BUTTON_COLORS)
 
 
-def _detect_marker_colors(regions: list[dict[str, Any]]) -> frozenset[int]:
+def _scale_unit(regions: list[dict[str, Any]], bg: frozenset[int]) -> int:
+    """The board's TILE UNIT — the modal size of a small non-background region.
+
+    LP85's internal grid shrinks with level depth (L4 57×57, L5 27×32), so the
+    canonical 64×64 render scales each sprite up: a ring tile / goal token is
+    ~4px on L4 but ~16px on L5, and a single-pixel target corner is ~1px vs ~4px.
+    Every size threshold (solid-vs-corner, ring-tile cap, cluster span) must
+    therefore scale with the board, not use a fixed pixel count. The modal small
+    region is the 2×2 tile/goal block, so its size is the unit the rest derive
+    from. Returns 4 (the L1–L4 unit) when nothing small is present, so those
+    levels reproduce the original fixed thresholds exactly."""
+    small = [
+        int(r["size"])
+        for r in regions
+        if int(r["color"]) not in bg and 1 <= int(r["size"]) <= 32
+    ]
+    if not small:
+        return 4
+    counts: dict[int, int] = {}
+    for s in small:
+        counts[s] = counts.get(s, 0) + 1
+    return max(counts, key=lambda s: (counts[s], -s))
+
+
+def _detect_marker_colors(
+    regions: list[dict[str, Any]],
+    solid_min: int = _SOLID_MIN_SIZE,
+    span: int = _DEST_CLUSTER_SPAN,
+) -> frozenset[int]:
     """The colour classes that behave as (moving solid token, fixed hollow
     target) pairs: a colour that appears BOTH as a solid block AND as a hollow
     4-corner target frame (a ≥3-dot cluster). A level may have several such
     classes (LP85 L3 has two — goal/target and goal-o/target-o — that must all
     be placed to win), so detection is not tied to a single hard-coded colour.
     Requiring a real corner *frame* (not just any stray small region) is what
-    stops ordinary coloured ring tiles from being mistaken for markers."""
+    stops ordinary coloured ring tiles from being mistaken for markers.
+
+    ``solid_min`` / ``span`` scale with the board (see :func:`_scale_unit`); at
+    their defaults they reproduce the original fixed L1–L4 thresholds."""
     solids = {
         int(r["color"])
         for r in regions
-        if int(r["color"]) not in _BUTTON_COLORS and int(r["size"]) >= _SOLID_MIN_SIZE
+        if int(r["color"]) not in _BUTTON_COLORS and int(r["size"]) >= solid_min
     }
-    return frozenset(c for c in solids if _detect_dests(regions, frozenset({c})))
+    return frozenset(c for c in solids if _detect_dests(regions, frozenset({c}), solid_min, span))
 
 
-def _detect_movers(regions: list[dict[str, Any]], colors: frozenset[int]) -> list[tuple[int, Cell]]:
+def _detect_movers(
+    regions: list[dict[str, Any]], colors: frozenset[int], solid_min: int = _SOLID_MIN_SIZE
+) -> list[tuple[int, Cell]]:
     """Moving goal tokens = SOLID regions of a marker colour, tagged with their
-    colour class (so a token is only ever matched to a same-class target)."""
+    colour class (so a token is only ever matched to a same-class target). A
+    target's corner blocks are smaller than ``solid_min`` (they are single sprite
+    pixels, the goal token is a full 2×2 block), so they are excluded here."""
     return sorted(
         (int(r["color"]), _cint(r))
         for r in regions
-        if int(r["color"]) in colors and int(r["size"]) >= _SOLID_MIN_SIZE
+        if int(r["color"]) in colors and int(r["size"]) >= solid_min
     )
 
 
-def _cluster_frame_centres(corners: list[Cell]) -> list[Cell]:
+def _cluster_frame_centres(corners: list[Cell], span: int = _DEST_CLUSTER_SPAN) -> list[Cell]:
     """Group the loose corner dots of one colour into hollow target frames and
-    return each frame's centre. Dots within ``_DEST_CLUSTER_SPAN`` (L∞) form one
-    group; a group of ≥3 (a 4-corner frame, tolerating one occlusion) yields its
-    rounded centroid."""
+    return each frame's centre. Dots within ``span`` (L∞) form one group; a group
+    of ≥3 (a 4-corner frame, tolerating one occlusion) yields its rounded
+    centroid. ``span`` scales with the board so a target frame drawn at a larger
+    render scale (wider corner spacing) still clusters."""
     used: set[int] = set()
     centres: list[Cell] = []
     for i, a in enumerate(corners):
@@ -363,9 +404,7 @@ def _cluster_frame_centres(corners: list[Cell]) -> list[Cell]:
         group = [a]
         used.add(i)
         for j, b in enumerate(corners):
-            if j not in used and abs(a[0] - b[0]) <= _DEST_CLUSTER_SPAN and abs(
-                a[1] - b[1]
-            ) <= _DEST_CLUSTER_SPAN:
+            if j not in used and abs(a[0] - b[0]) <= span and abs(a[1] - b[1]) <= span:
                 group.append(b)
                 used.add(j)
         if len(group) >= 3:
@@ -375,26 +414,39 @@ def _cluster_frame_centres(corners: list[Cell]) -> list[Cell]:
     return centres
 
 
-def _detect_dests(regions: list[dict[str, Any]], colors: frozenset[int]) -> list[tuple[int, Cell]]:
+def _detect_dests(
+    regions: list[dict[str, Any]],
+    colors: frozenset[int],
+    solid_min: int = _SOLID_MIN_SIZE,
+    span: int = _DEST_CLUSTER_SPAN,
+) -> list[tuple[int, Cell]]:
     """Fixed destinations = the centres of the hollow 4-corner target frames,
-    tagged with their colour class. The non-solid marker-colour pixels are the
-    corner dots; cluster them per colour and take each cluster's centre."""
+    tagged with their colour class. The sub-``solid_min`` marker-colour regions
+    are the corner dots (single sprite pixels); cluster them per colour and take
+    each cluster's centre."""
     dests: list[tuple[int, Cell]] = []
     for color in colors:
         corners = [
             _cint(r)
             for r in regions
-            if int(r["color"]) == color and int(r["size"]) < _SOLID_MIN_SIZE
+            if int(r["color"]) == color and int(r["size"]) < solid_min
         ]
-        dests.extend((color, centre) for centre in _cluster_frame_centres(corners))
+        dests.extend((color, centre) for centre in _cluster_frame_centres(corners, span))
     return sorted(dests)
 
 
-def _token_regions(regions: list[dict[str, Any]]) -> list[dict[str, Any]]:
+def _token_regions(
+    regions: list[dict[str, Any]], tile_max: int = 6
+) -> list[dict[str, Any]]:
     """The small non-button regions that ride the rings (coloured tiles + goal
     tokens). The successor learner further restricts to the ones that actually
-    moved, so including static corner dots here is harmless."""
-    return [r for r in regions if int(r["color"]) not in _BUTTON_COLORS and int(r["size"]) <= 6]
+    moved, so including static corner dots here is harmless. ``tile_max`` scales
+    with the board so larger-render ring tiles (LP85 L5 ~16px) are not dropped."""
+    return [
+        r
+        for r in regions
+        if int(r["color"]) not in _BUTTON_COLORS and int(r["size"]) <= tile_max
+    ]
 
 
 def _snap(cell: Cell, lattice: list[Cell]) -> Cell:
@@ -456,6 +508,12 @@ class Adapter(GameAdapter):
         # No-progress sweep actions since the planner gave up on the current
         # level (reset every level-up); drives the stall give-up in is_done.
         self._sweep_steps = 0
+        # Board scale (set per level in _detect; defaults = the L1–L4 unit so any
+        # pre-detect access reproduces the original fixed thresholds).
+        self._unit = 4
+        self._solid_min = _SOLID_MIN_SIZE
+        self._span = _DEST_CLUSTER_SPAN
+        self._tile_max = 6
         # ── multi-press ring learner state (armed only on the L4+ many-controls
         # signature; L1–L3 leave these untouched on the single-press path) ──
         self._multipress = False
@@ -625,12 +683,14 @@ class Adapter(GameAdapter):
         return click_action(x=col, y=row)
 
     def _mp_absorb_ring(self, button: Cell, cells: frozenset[Cell]) -> None:
-        """Merge a button's moved-cell footprint into the ring it overlaps, or
-        start a new ring. Many buttons rotate the same ring (redundant/opposite-
-        direction controls); grouping by ≥50% cell overlap collapses them to the
-        distinct rings actually present."""
+        """Merge a button's moved-cell footprint into the SAME ring, or start a new
+        one. The two directions (L/R) of one ring move the SAME cells, so a same-ring
+        button has a near-identical footprint (Jaccard ≈ 1), while a DIFFERENT ring
+        overlaps only where the rings cross. Grouping by Jaccard ≥ 0.6 keeps a small
+        ring that shares a few cells with a big one (LP85 L5: ring B=5 crosses ring
+        A=21) as its own ring, where an overlap-of-the-smaller rule wrongly merged it."""
         for i, (rep, rc) in enumerate(self._mp_rings):
-            if len(cells & rc) >= 0.5 * min(len(cells), len(rc)):
+            if len(cells & rc) / max(1, len(cells | rc)) >= 0.6:
                 self._mp_rings[i] = (rep, rc | cells)
                 return
         self._mp_rings.append((button, set(cells)))
@@ -641,7 +701,7 @@ class Adapter(GameAdapter):
         centroids from the first frame; a cell whose colour never changed is static
         (off-ring) and excluded before matching."""
         regions0 = find_regions(frames[0], background=self._bg)
-        cells = [_cint(r) for r in regions0 if int(r["size"]) <= 6]
+        cells = [_cint(r) for r in regions0 if int(r["size"]) <= self._tile_max]
         series: dict[Cell, tuple[int, ...]] = {}
         for (rr, cc) in cells:
             s = tuple(int(frames[t][rr][cc]) for t in range(len(frames)))
@@ -665,8 +725,8 @@ class Adapter(GameAdapter):
                     seen.add(cell)
                     lattice.append(cell)
         regions = find_regions(grid, background=self._bg)
-        movers = _detect_movers(regions, self._marker_colors)
-        dests = _detect_dests(regions, self._marker_colors)
+        movers = _detect_movers(regions, self._marker_colors, self._solid_min)
+        dests = _detect_dests(regions, self._marker_colors, self._solid_min, self._span)
         if not movers or len(movers) != len(dests):
             return False
         tokens = [_snap(cell, lattice) for _color, cell in movers]
@@ -689,7 +749,7 @@ class Adapter(GameAdapter):
     def _mover_cells(self, grid: tuple[tuple[int, ...], ...]) -> list[Cell]:
         """Current positions of every moving token (all colour classes)."""
         regions = find_regions(grid, background=self._bg)
-        return [cell for _color, cell in _detect_movers(regions, self._marker_colors)]
+        return [cell for _color, cell in _detect_movers(regions, self._marker_colors, self._solid_min)]
 
     def _detect(self, grid: tuple[tuple[int, ...], ...]) -> bool:
         """Segment the frame into rotation controls, moving goal tokens, and
@@ -699,20 +759,31 @@ class Adapter(GameAdapter):
         exists)."""
         self._bg = _planner_background(grid)
         regions = find_regions(grid, background=self._bg)
+        # Board tile unit + derived, scale-relative size thresholds. At the L1–L4
+        # unit (4) these equal the original fixed constants, so those levels are
+        # byte-identical; L5's coarser render (unit 16) relaxes them proportionally.
+        self._unit = _scale_unit(regions, self._bg)
+        self._solid_min = max(_SOLID_MIN_SIZE, self._unit // 2)
+        self._span = max(_DEST_CLUSTER_SPAN, 3 * math.isqrt(self._unit))
+        self._tile_max = max(6, 2 * self._unit)
         self._buttons = _detect_buttons(regions)
-        self._marker_colors = _detect_marker_colors(regions)
-        movers = _detect_movers(regions, self._marker_colors)
-        self._dests = _detect_dests(regions, self._marker_colors)
+        self._marker_colors = _detect_marker_colors(regions, self._solid_min, self._span)
+        movers = _detect_movers(regions, self._marker_colors, self._solid_min)
+        self._dests = _detect_dests(regions, self._marker_colors, self._solid_min, self._span)
         mover_counts: dict[int, int] = {}
         for color, _cell in movers:
             mover_counts[color] = mover_counts.get(color, 0) + 1
         dest_counts: dict[int, int] = {}
         for color, _cell in self._dests:
             dest_counts[color] = dest_counts.get(color, 0) + 1
-        # Many controls over few rings ⇒ single-press ordering fails (L4 σ²
-        # conflict); take the full-series multi-press path instead. L1–L3 stay on
-        # the single-press path (byte-identical) since their button counts are ≤8.
-        self._multipress = len(self._buttons) >= _MULTIPRESS_BUTTON_MIN
+        # Take the full-series multi-press path when single-press ordering would
+        # fail: either MANY controls over few rings (L4, σ² conflict, ≥12 buttons)
+        # OR a COARSE-scale board (L5, unit ≥ 9) whose big rings the 2-press
+        # signature under-determines just like L4's. L1–L3 (unit 4, ≤8 buttons)
+        # stay byte-identical on the single-press path.
+        self._multipress = (
+            len(self._buttons) >= _MULTIPRESS_BUTTON_MIN or self._unit >= _MULTIPRESS_UNIT_MIN
+        )
         return len(self._buttons) >= 1 and len(movers) >= 1 and mover_counts == dest_counts
 
     def _learn_button(self, idx: int, grid: tuple[tuple[int, ...], ...]) -> None:

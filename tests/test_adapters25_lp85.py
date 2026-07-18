@@ -10,6 +10,7 @@ region must be probed pixel-by-pixel, not centroid-only.
 from __future__ import annotations
 
 from collections import deque
+from math import isqrt
 from types import SimpleNamespace
 
 from admorphiq.adapters25.lp85 import (
@@ -21,6 +22,7 @@ from admorphiq.adapters25.lp85 import (
     _planner_background,
     _region_candidates,
     _round_robin_queue,
+    _scale_unit,
 )
 from admorphiq.kernels import find_regions
 
@@ -378,3 +380,55 @@ def test_stall_giveup_never_fires_while_planner_active():
     ad._planner_active = True
     ad._sweep_steps = 10**6
     assert ad.is_done([], _play_frame()) is False
+
+
+def _stamp_block(grid: list[list[int]], top_left: tuple[int, int], n: int, colour: int) -> None:
+    """Stamp a solid n×n block of ``colour`` (a token/tile at a larger render scale)."""
+    r, c = top_left
+    _stamp(grid, [(r + dr, c + dc) for dr in range(n) for dc in range(n)], colour)
+
+
+def test_detection_is_scale_robust_for_a_coarse_board():
+    """Purpose: pin the LP85 L5 fix — on a COARSE-scale board (small internal grid
+    → large render scale) a target's corners render as size-4 BLOCKS and the goal
+    token as a size-16 block, so the fixed L1–L4 thresholds (solid≥3, span 6)
+    mis-bucket every corner as a solid and find no target frame. The scale-derived
+    thresholds (unit 16 → solid≥8, span 12) must recover the target and the mover.
+
+    Expected feedback: PASS = _scale_unit reads the 16-px tile unit, and with the
+    derived solid_min/span the target frame's centre is a destination and the
+    size-16 block is the mover (corners excluded); with the DEFAULT thresholds the
+    colour is NOT detected as a marker at all — proving the scale relativity is
+    load-bearing, not cosmetic. This is what lets the L5 planner engage."""
+    size = 64
+    grid = _blank_grid(size, bg=0)
+    for r in range(48, 60):  # second backdrop to drop
+        _stamp(grid, [(r, c) for c in range(2, 40)], 3)
+    _stamp_block(grid, (1, 10), 2, 8)  # a button control
+    # Coarse ring tiles (colour 9, 4×4 = size 16) set the modal unit to 16.
+    for c in (2, 8, 14, 20, 26):
+        _stamp_block(grid, (30, c), 4, 9)
+    # Marker colour-11: a size-16 goal token + a target whose 4 corners are size-4.
+    _stamp_block(grid, (20, 40), 4, 11)  # goal token, size 16
+    for (dr, dc) in ((0, 0), (0, 6), (6, 0), (6, 6)):  # 4 corners, size 4, span 6
+        _stamp_block(grid, (4 + dr, 16 + dc), 2, 11)
+
+    tup = tuple(tuple(row) for row in grid)
+    bg = _planner_background(tup)
+    regions = find_regions(tup, background=bg)
+
+    unit = _scale_unit(regions, bg)
+    assert unit == 16  # modal small region = the 4×4 tile/token
+    solid_min = max(3, unit // 2)  # 8
+    span = max(6, 3 * isqrt(unit))  # 12
+
+    # scale-derived thresholds recover the marker, its target, and its mover
+    marker = _detect_marker_colors(regions, solid_min, span)
+    assert marker == frozenset({11})
+    dests = _detect_dests(regions, marker, solid_min, span)
+    movers = _detect_movers(regions, marker, solid_min)
+    assert [c for c, _ in dests] == [11] and len(dests) == 1
+    assert [c for c, _ in movers] == [11] and len(movers) == 1  # the size-16 block only
+
+    # the fixed L1–L4 thresholds miss it entirely (corners look like solids)
+    assert _detect_marker_colors(regions) == frozenset()
