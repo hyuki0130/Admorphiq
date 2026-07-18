@@ -196,6 +196,25 @@ _MP_MAX_PRESSES = 26  # give up learning a ring after this many presses (> ring 
 # render sweep from grinding the whole budget with zero chance of a clear.
 _STALL_GIVEUP = 300
 
+# ── coupled-button ring learner (L6 signature: MANY small rings driven by a FEW
+# SHARED buttons — one click rotates a whole ring-GROUP) ──
+# Distinct from the L4/L5 dense-ring multipress path: L6's 36 rings (nine size-8,
+# eighteen size-3, three size-2) collapse to exactly 7 clickable buttons because
+# their sprites overlap, and 3 goal tokens must be routed JOINTLY through those
+# coupled operators to 3 clustered targets. Each button is learned as a MULTI-cycle
+# permutation (the union of its group's rings — NOT a single ring), from K presses,
+# with goal-occluded samples masked and each goal's own visible motion injected as an
+# authoritative edge for the cell it rides (a goal on the ring being rotated occludes
+# exactly one cell throughout that button's learning, so its successor is unlearnable
+# from tiles alone — the goal's before→after motion supplies it). Signature measured
+# on the real engine: L6 = unit 4, 7 buttons, 3 movers/3 dests; L1–L5 never match
+# (movers ≤ 2), so the coupled path is L6-only and fails closed to the sweep.
+_CB_MOVERS_MIN = 3   # the multi-goal routing regime (L1–L5 have ≤ 2 movers)
+_CB_BUTTONS_MIN = 7  # a few shared buttons rotate the whole ring set
+_CB_K = 8            # presses per button to certify its permutation (≤80-budget safe:
+#                      7 buttons × 8 = 56 learning + a ≤19-press plan < the 80 StepCounter)
+_CB_PLAN_BUDGET = 30  # max joint-rotation plan length the BFS may return
+
 # A region spanning at least this fraction of the frame's own cell count is a
 # board-spanning panel / backdrop, not a discrete clickable target. Excludes
 # chrome without any fixed pixel-count constant -- the threshold scales with
@@ -505,6 +524,130 @@ def _snap(cell: Cell, lattice: list[Cell]) -> Cell:
     return min(lattice, key=lambda q: (q[0] - cell[0]) ** 2 + (q[1] - cell[1]) ** 2)
 
 
+_CB_WILD = -99  # sentinel: a colour sample hidden by a goal token (unusable)
+
+
+def _goal_hidden(occ_cells: set[Cell], rr: int, cc: int) -> bool:
+    """Whether a goal token overlaps the tile at ``(rr, cc)`` (its 3×3 neighbourhood
+    intersects the goal's occupied pixels), so that tile's colour sample is unusable."""
+    return any((rr + dy, cc + dx) in occ_cells for dy in (-1, 0, 1) for dx in (-1, 0, 1))
+
+
+def _detect_coupled_buttons(
+    regions: list[dict[str, Any]], unit: int
+) -> list[Cell]:
+    """The clickable rotation buttons on a coupled-button board, HUD-filtered.
+
+    A real button renders as a mid-sized button-colour block (~2.5·unit px); the HUD
+    draws smaller marker dots (< 2·unit, the level/step indicators) and a board-long
+    progress bar (> 10·unit) in the same colour. Bounding the size to [2·unit, 10·unit]
+    keeps the buttons and drops both HUD artefacts (measured on LP85 L6: 13 raw
+    colour-8/14 regions → the 7 real buttons)."""
+    lo, hi = 2 * unit, 10 * unit
+    return sorted(
+        _cint(r)
+        for r in regions
+        if int(r["color"]) in _BUTTON_COLORS and lo <= int(r["size"]) <= hi
+    )
+
+
+def _learn_coupled_map(
+    frames: list[tuple[tuple[int, ...], ...]],
+    bg: frozenset[int],
+    marker: frozenset[int],
+    solid_min: int,
+    tile_max: int,
+    unit: int,
+) -> dict[Cell, Cell]:
+    """Learn one shared button's ``{cell: successor}`` permutation — the UNION of its
+    ring group's cycles — from ``K+1`` frames spanning ``K`` presses of that one button.
+
+    Purpose: a coupled button rotates several rings at once, so its map is a union of
+    disjoint cycles (NOT a single ring); recover it robustly under two hazards. (1) A
+    goal token (marker colour) sitting on a tile HIDES that tile's colour — mask those
+    samples (``_CB_WILD``) so they neither confirm nor contradict an edge. (2) The goal
+    riding the ring being rotated occludes exactly ONE cell for the whole window, so its
+    successor is unlearnable from tiles — inject the goal's OWN visible before→after
+    motion as an authoritative edge (measured: this fills the 2 residual mis-edges per
+    big button, taking the map from 92% to exact).
+
+    Expected feedback: returns a bijection over the moved tile cells (+ goal-occluded
+    cells via injection). Masked samples are ignored in scoring, so occlusion no longer
+    corrupts edges; a crude cell-mask (dropping whole occluded cells) was MEASURED to
+    lose ring cells and is intentionally NOT used."""
+    occ: list[set[Cell]] = []
+    gsol: list[list[Cell]] = []
+    for f in frames:
+        regs = find_regions(f, background=bg)
+        oc: set[Cell] = set()
+        gs: list[Cell] = []
+        for r in regs:
+            if int(r["color"]) in marker and int(r["size"]) >= solid_min:
+                for (y, x) in r["cells"]:  # type: ignore[union-attr]
+                    oc.add((int(y), int(x)))
+                gs.append(_cint(r))
+        occ.append(oc)
+        gsol.append(sorted(gs))
+
+    regs0 = find_regions(frames[0], background=bg)
+    cells = [
+        _cint(r)
+        for r in regs0
+        if int(r["color"]) not in _BUTTON_COLORS and int(r["size"]) <= tile_max
+    ]
+    series: dict[Cell, tuple[int, ...]] = {}
+    for (rr, cc) in cells:
+        s: list[int] = [
+            _CB_WILD if _goal_hidden(occ[t], rr, cc) else int(frames[t][rr][cc])
+            for t in range(len(frames))
+        ]
+        if len({v for v in s if v != _CB_WILD}) > 1:
+            series[(rr, cc)] = tuple(s)
+
+    keys = list(series)
+    scored: list[tuple[int, Cell, Cell]] = []
+    for a in keys:
+        sa = series[a]
+        for b in keys:
+            if b == a:
+                continue
+            sb = series[b]
+            good = sum(
+                1
+                for t in range(1, len(sb))
+                if sb[t] != _CB_WILD and sa[t - 1] != _CB_WILD and sb[t] == sa[t - 1]
+            )
+            bad = sum(
+                1
+                for t in range(1, len(sb))
+                if sb[t] != _CB_WILD and sa[t - 1] != _CB_WILD and sb[t] != sa[t - 1]
+            )
+            if good > 0:
+                scored.append((good - 2 * bad, a, b))
+    scored.sort(key=lambda e: -e[0])
+    succ: dict[Cell, Cell] = {}
+    used: set[Cell] = set()
+    for score, a, b in scored:
+        if score <= 0 or a in succ or b in used:
+            continue
+        succ[a] = b
+        used.add(b)
+
+    # Inject each goal's observed motion as an authoritative edge (fills the cell the
+    # goal occludes throughout this button's learning); it overrides any tile edge.
+    reach = (3 * unit) ** 2
+    for t in range(1, len(gsol)):
+        if not gsol[t]:
+            continue
+        for pb in gsol[t - 1]:
+            cand = min(gsol[t], key=lambda c: (c[0] - pb[0]) ** 2 + (c[1] - pb[1]) ** 2)
+            if cand != pb and (cand[0] - pb[0]) ** 2 + (cand[1] - pb[1]) ** 2 <= reach:
+                for k in [k for k, v in succ.items() if v == cand and k != pb]:
+                    del succ[k]
+                succ[pb] = cand
+    return succ
+
+
 class Adapter(GameAdapter):
     """Rarity-ranked click-target probing composed entirely from admorphiq.kernels."""
 
@@ -576,6 +719,14 @@ class Adapter(GameAdapter):
         self._mp_frames: list[tuple[tuple[int, ...], ...]] = []  # press frames for the current ring
         self._mp_ops: dict[str, dict[Cell, Cell]] = {}  # learned forward ring maps
         self._mp_rep: dict[str, Cell] = {}  # op name → representative button cell
+        # ── coupled-button learner state (armed only on the L6 signature; L1–L5
+        # never enter it) ──
+        self._coupled = False
+        self._cb_buttons: list[Cell] = []  # the few shared rotation buttons
+        self._cb_idx = 0  # button currently being learned
+        self._cb_presses = 0  # presses issued for the current button
+        self._cb_frames: list[tuple[tuple[int, ...], ...]] = []  # its press-frame window
+        self._cb_maps: dict[Cell, dict[Cell, Cell]] = {}  # button cell → learned permutation
 
     # ── harness contract ────────────────────────────────────────────────
 
@@ -643,6 +794,15 @@ class Adapter(GameAdapter):
         if self._phase == "detect":
             if not self._detect(grid):
                 return None
+            if self._coupled:
+                # L6 structure: learn each of the few shared buttons as a multi-cycle
+                # permutation, then route the 3 goals jointly. Begin pressing button 0.
+                self._phase = "cb_learn"
+                self._cb_idx = 0
+                self._cb_presses = 1
+                self._cb_frames = [grid]
+                self._cb_maps = {}
+                return self._click_cell(self._cb_buttons[0])
             if self._multipress:
                 # L4+ structure: learn each ring from its full colour time-series.
                 self._phase = "mp_scan"
@@ -655,6 +815,32 @@ class Adapter(GameAdapter):
             self._pre_frame = grid
             self._pre_goals = self._mover_cells(grid)
             return self._click_button(0)
+
+        if self._phase == "cb_learn":
+            # grid is the result of the press just issued; accumulate the window and,
+            # once this button has been pressed _CB_K times, learn its permutation and
+            # advance to the next button (or plan once every button is learned).
+            self._cb_frames.append(grid)
+            if self._cb_presses < _CB_K:
+                self._cb_presses += 1
+                return self._click_cell(self._cb_buttons[self._cb_idx])
+            self._cb_maps[self._cb_buttons[self._cb_idx]] = _learn_coupled_map(
+                list(self._cb_frames),
+                self._bg,
+                self._marker_colors,
+                self._solid_min,
+                self._tile_max,
+                self._unit,
+            )
+            self._cb_idx += 1
+            if self._cb_idx < len(self._cb_buttons):
+                self._cb_frames = [grid]
+                self._cb_presses = 1
+                return self._click_cell(self._cb_buttons[self._cb_idx])
+            # every button learned — plan the joint 3-token routing, or fail to sweep
+            if not self._cb_build_plan(grid):
+                return None
+            self._phase = "execute"
 
         if self._phase == "mp_scan":
             # grid is the result of pressing buttons[_mp_scan_idx]; record which
@@ -724,6 +910,8 @@ class Adapter(GameAdapter):
             if not self._plan:
                 return None  # plan ran out without a win — hand off to the sweep
             name = self._plan.popleft()
+            if self._coupled:  # coupled plan items ARE button cells
+                return self._click_cell(name)
             if name in self._mp_rep:  # multi-press ring op ("r0"/"r1"/…)
                 return self._click_cell(self._mp_rep[name])
             return self._click_button(int(name[1:]))
@@ -798,6 +986,43 @@ class Adapter(GameAdapter):
         self._plan = deque(plan)
         return True
 
+    def _cb_build_plan(self, grid: tuple[tuple[int, ...], ...]) -> bool:
+        """Joint-route all goal tokens onto their same-class targets by BFS over the
+        coupled buttons' learned permutations. The plan is a list of BUTTON CELLS
+        (each op name IS the button to press). Fails closed (→ sweep) on no maps, a
+        mover/dest mismatch, or an unreachable assignment."""
+        ops = {cell: mp for cell, mp in self._cb_maps.items() if len(mp) >= 2}
+        if not ops:
+            return False
+        lattice: list[Cell] = []
+        seen: set[Cell] = set()
+        for mp in ops.values():
+            for cell in (*mp.keys(), *mp.values()):
+                if cell not in seen:
+                    seen.add(cell)
+                    lattice.append(cell)
+        regions = find_regions(grid, background=self._bg)
+        movers = _detect_movers(regions, self._marker_colors, self._solid_min)
+        dests = _detect_dests(regions, self._marker_colors, self._solid_min, self._span)
+        if not movers or len(movers) != len(dests):
+            return False
+        tokens = [_snap(cell, lattice) for _color, cell in movers]
+        token_labels = [color for color, _cell in movers]
+        goals = [_snap(cell, lattice) for _color, cell in dests]
+        goal_labels = [color for color, _cell in dests]
+        plan = plan_token_assignment(
+            ops,
+            tokens,
+            goals,
+            labels=token_labels,
+            goal_labels=goal_labels,
+            budget=_CB_PLAN_BUDGET,
+        )
+        if not plan:
+            return False
+        self._plan = deque(plan)
+        return True
+
     def _mover_cells(self, grid: tuple[tuple[int, ...], ...]) -> list[Cell]:
         """Current positions of every moving token (all colour classes)."""
         regions = find_regions(grid, background=self._bg)
@@ -836,6 +1061,19 @@ class Adapter(GameAdapter):
         self._multipress = (
             len(self._buttons) >= _MULTIPRESS_BUTTON_MIN or self._unit >= _MULTIPRESS_UNIT_MIN
         )
+        # Coupled-button regime (L6): a FINE board with 3+ goals routed jointly through
+        # a FEW shared buttons. It takes priority over the dense-ring multipress path
+        # (L6 also trips the ≥12-button gate, but its rings are small and coupled, not
+        # dense). L1–L5 have ≤2 movers, so they never enter this path.
+        self._cb_buttons = _detect_coupled_buttons(regions, self._unit)
+        self._coupled = (
+            self._unit == 4
+            and len(movers) >= _CB_MOVERS_MIN
+            and len(self._cb_buttons) >= _CB_BUTTONS_MIN
+            and mover_counts == dest_counts
+        )
+        if self._coupled:
+            self._multipress = False
         return len(self._buttons) >= 1 and len(movers) >= 1 and mover_counts == dest_counts
 
     def _learn_button(self, idx: int, grid: tuple[tuple[int, ...], ...]) -> None:
@@ -939,6 +1177,14 @@ class Adapter(GameAdapter):
         self._mp_frames = []
         self._mp_ops = {}
         self._mp_rep = {}
+        # Re-arm the coupled-button learner fresh per level (engages only if this
+        # level's own detect sees the L6 coupled signature).
+        self._coupled = False
+        self._cb_buttons = []
+        self._cb_idx = 0
+        self._cb_presses = 0
+        self._cb_frames = []
+        self._cb_maps = {}
 
     # ── measurement: did the pending click do anything? ─────────────────
 

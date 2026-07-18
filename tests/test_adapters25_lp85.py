@@ -17,9 +17,11 @@ from admorphiq.adapters25.lp85 import (
     Adapter,
     _candidates_with_region,
     _cluster_frame_centres,
+    _detect_coupled_buttons,
     _detect_dests,
     _detect_marker_colors,
     _detect_movers,
+    _learn_coupled_map,
     _planner_background,
     _region_candidates,
     _round_robin_queue,
@@ -476,3 +478,83 @@ def test_cluster_frame_centres_preserves_separated_and_occluded_frames():
     # a coarse-board frame (wider corner spacing) still clusters as one
     coarse = [(10, 10), (10, 18), (18, 10), (18, 18)]
     assert _cluster_frame_centres(coarse, span=12) == [(14, 14)]
+
+
+def _grid_blocks(size: int, bg: int, blocks: list[tuple[tuple[int, int], int]]):
+    """Build a frame tuple with 2×2 blocks of given colours at given top-lefts."""
+    g = _blank_grid(size, bg)
+    for (tl, colour) in blocks:
+        _stamp_block(g, tl, 2, colour)
+    return tuple(tuple(row) for row in g)
+
+
+def test_detect_coupled_buttons_filters_hud_by_size():
+    """Purpose: pin the LP85 L6 button filter — real rotation buttons render as
+    mid-sized button-colour blocks, while the HUD draws smaller marker dots and a
+    board-long progress bar in the SAME colour. Only the mid-sized blocks are
+    clickable buttons.
+
+    Expected feedback: PASS = size-in-[2·unit, 10·unit] keeps the two real buttons and
+    drops both the sub-2·unit HUD dot and the >10·unit progress bar; a FAIL means the
+    coupled path would try to click HUD chrome (or miss real buttons)."""
+    size = 64
+    grid = _blank_grid(size, bg=0)
+    # a large non-button filler so the background is {0, 6} — keeps the button
+    # colours (8/14) rare, mirroring L6 where the board fill, not the buttons,
+    # dominates (else the progress bar's colour would be read as background).
+    _stamp(grid, [(r, c) for r in range(20, 60) for c in range(20, 60)], 6)
+    _stamp_block(grid, (2, 2), 3, 8)     # real button: size 9 (~2.5·unit at unit 4)
+    _stamp_block(grid, (2, 10), 3, 14)   # real button: size 9, other direction colour
+    _stamp(grid, [(0, 0)], 8)            # HUD dot: size 1 (< 2·unit)
+    _stamp(grid, [(62, c) for c in range(64)], 14)  # progress bar: size 64 (> 10·unit)
+    tup = tuple(tuple(r) for r in grid)
+    regions = find_regions(tup, background=_planner_background(tup))
+    buttons = _detect_coupled_buttons(regions, unit=4)
+    # exactly the two real buttons survive (HUD dot + bar dropped)
+    assert len(buttons) == 2
+
+
+def test_learn_coupled_map_recovers_a_union_of_cycles():
+    """Purpose: a coupled button rotates SEVERAL rings at once, so its learned map
+    must be a UNION of disjoint cycles — NOT forced into one ring. Two independent
+    2-cell rings that swap under the press must both be recovered.
+
+    Expected feedback: PASS = each cell maps to its own ring partner (an involution:
+    two disjoint 2-cycles), proving the learner does not impose a single cycle; a FAIL
+    means grouped-button maps are corrupted (the exact bug that stalled L6)."""
+    # ring 1 = {(10,10),(10,20)} swap colours 1↔2; ring 2 = {(20,10),(20,20)} swap 3↔4
+    f0 = _grid_blocks(48, 0, [((10, 10), 1), ((10, 20), 2), ((20, 10), 3), ((20, 20), 4)])
+    f1 = _grid_blocks(48, 0, [((10, 10), 2), ((10, 20), 1), ((20, 10), 4), ((20, 20), 3)])
+    f2 = _grid_blocks(48, 0, [((10, 10), 1), ((10, 20), 2), ((20, 10), 3), ((20, 20), 4)])
+    succ = _learn_coupled_map(
+        [f0, f1, f2], frozenset({0}), frozenset({11}), solid_min=3, tile_max=8, unit=4
+    )
+    assert len(succ) == 4
+    # involution: each cell's successor's successor is itself → union of 2-cycles
+    for k in succ:
+        assert succ[succ[k]] == k
+    # each cell pairs with its SAME-ROW partner (its own ring), not the other ring
+    for k, v in succ.items():
+        assert k[0] == v[0] and k != v
+
+
+def test_learn_coupled_map_injects_goal_motion_for_occluded_cells():
+    """Purpose: pin the L6-clearing fix — a goal token (marker colour) riding the ring
+    being rotated OCCLUDES its cell in every sample, so that cell's successor is
+    unlearnable from tiles; the goal's OWN visible before→after motion must supply it.
+
+    Expected feedback: PASS = the occluded cell's edge (goal start → goal end) appears
+    in the learned map via injection, even though its tile colour was hidden every
+    frame; a FAIL means occluded ring cells stay unlearned and the joint plan drifts
+    (the measured cause of L6 not clearing before this fix)."""
+    # A visible ring pair (recovered from tiles) + a goal (colour 11) that moves
+    # (30,10)->(30,20)->(30,10), occluding whichever cell it sits on each frame.
+    f0 = _grid_blocks(48, 0, [((10, 10), 1), ((10, 20), 2), ((30, 10), 11), ((30, 20), 5)])
+    f1 = _grid_blocks(48, 0, [((10, 10), 2), ((10, 20), 1), ((30, 10), 5), ((30, 20), 11)])
+    f2 = _grid_blocks(48, 0, [((10, 10), 1), ((10, 20), 2), ((30, 10), 11), ((30, 20), 5)])
+    succ = _learn_coupled_map(
+        [f0, f1, f2], frozenset({0}), frozenset({11}), solid_min=3, tile_max=8, unit=4
+    )
+    # the goal's observed motion is injected as an authoritative edge
+    assert succ.get((30, 10)) == (30, 20)
+    assert succ.get((30, 20)) == (30, 10)
