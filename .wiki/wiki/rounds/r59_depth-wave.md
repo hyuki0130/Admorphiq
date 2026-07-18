@@ -2,7 +2,7 @@
 round: r59
 axis: script25 depth (kernel expressiveness) — faithful-sim + learned-operator wave 2
 keywords: [m0r0, pressure-plate, gates, bp35, frontier-exploration, su15, enemy-in-sim, re86, separation-by-motion, sk48, lockstep, reachability, lp85, twist-topology, ls20, moving-changer, r59s1, full-25]
-verdict: PASS — official card 18.02% → 21.56% (r59s1) → 22.25% (r59s2) → 26.38% (r59s3) → **27.25% (r59s4, 2026-07-17 02:14)**; every run matched its arithmetic prediction exactly
+verdict: PASS — official card 18.02% → 21.56% (r59s1) → 22.25% (r59s2) → 26.38% (r59s3) → 27.25% (r59s4) → **27.80% (r59s5, 2026-07-18 17:03)**; every run matched its arithmetic prediction exactly
 commit: 9b8e2e8 (r59s1 HEAD) / cc1e4dc (r59s2 HEAD) / f8144df-era (r59s3 HEAD); landings: bc04e63, 6b6ad2e, b2128c9, 36d23cd, 3b6c11c, 0197b8b, fa8e3bc, 12bda52, a1701f9, 0abeb0d, 2bdea69, e698ed8(ls20 L5), 02fe3d8, f677aed, 9647858, e536f65
 ---
 
@@ -55,6 +55,18 @@ L5 parked: 3 movables + 3→2 set-cover + mid-edge station). Late-night closes: 
 (life-gated fog observation — two independent approaches falsified), s5i5 a48e4b1d
 rotation-walled (perception fix built + reverted card-neutral), cn04 closed 2/5 (render-kick
 artifact), tn36 L2 / g50t L1 / re86 L5 / lp85 σ² parked with complete specs.
+
+## r59s5 official (2026-07-18 17:03 KST, ceph-build, @5000) — **27.80%**
+
+`games=25 total=6.9511 → 27.80%` — 8th consecutive exact arithmetic match. ONE row moved
+vs r59s4: re86 0.2273 → **0.3662 (5/8)** via the L5 multi-piece recolour-routing solve
+(d63c823): flood-drive discovery (a move DURING a recolour flood drives the piece — the
+"geometric wall" was the flood-wait carrying the body into station-14), ACTION5-as-flood-wait,
+push-into-corner (same-colour overlap never re-floods), rightward centre-waypoint ascent.
+Loader lesson strengthened (6e9ca3e): re86 is the INVERSE confirming instance of the s5i5
+short-name-vs-scoring-path divergence — attribute scores only from the run's own loaded-hash
+log line. Post-r59s5 state: g50t L1 = camera-lock scrolling SLAM park (107f3f9); re86 L6-L8
+frontier recorded; remaining queue all multi-session parks with complete specs.
 
 ## Post-measurement landings (in HEAD, not in r59s1; next full-25 picks them up)
 
