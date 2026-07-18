@@ -41,7 +41,7 @@ sys.path.insert(0, str(REPO / "src"))
 from arc_agi import Arcade, OperationMode  # noqa: E402
 
 from admorphiq.adapters25 import su15  # noqa: E402
-from admorphiq.adapters25.base import click_action, reset_action  # noqa: E402
+from admorphiq.adapters25.base import canonical_layer, click_action, reset_action  # noqa: E402
 
 _VAL_BY_COLOR = {c: v for v, c in enumerate(su15._VAL_COLORS)}
 _KB_SHAKE = 4                      # rmziewkdi (shake sub-steps)
@@ -339,9 +339,90 @@ def run_live(arcade, max_clicks: int, verbose: bool) -> bool:
     return False
 
 
+def _frame_fruits(grid):
+    """Frame-only fruit read [x=col, y=row, value] via su15._classify."""
+    _g, fr, _e = su15._classify(grid)
+    out = []
+    for f in fr:
+        r, c = f["centroid"]
+        out.append([int(round(c)), int(round(r)), su15._COLOR_VAL.get(f["color"], -1)])
+    return out
+
+
+def _frame_goals(grid):
+    g, _f, _e = su15._classify(grid)
+    return sorted((int(round(gg["centroid"][1])), int(round(gg["centroid"][0]))) for gg in g)
+
+
+def run_percep(arcade, max_clicks: int) -> None:
+    """Perception-fidelity diagnostic along the WINNING oracle trajectory: drive the
+    oracle's internal-read DECISIONS and, each click, compare FRAME perception
+    (su15._classify + goal anchors) against internal ground truth. Shows whether a
+    frame-only closed-loop port can ride the knife-edge, or exactly where it diverges.
+    MEASURED: goal anchors match truth exactly; fruit reads LAG internal state by the
+    downgrade/merge animation (~1 click) + colour-9 goals mis-read as phantom value-6
+    fruits + value-0 single-cell misses -> the frame cannot ride idx6's knife-edge."""
+    env, game = _make(arcade)
+    gs = _goals_xy(game)
+    g1 = min(gs, key=lambda g: g[1])
+    g2 = max(gs, key=lambda g: g[1])
+    latest = _step(env, 32, 10)
+    anchors = _frame_goals(canonical_layer(latest))
+    print(f"truth goals={gs}  frame-anchors={anchors}  (anchors_match={sorted(gs) == anchors})")
+
+    def in_goal(f, g):
+        c = _center(f)
+        return abs(c[0] - g[0]) <= 5 and abs(c[1] - g[1]) <= 5
+
+    diverge = 0
+    for k in range(max_clicks):
+        if game.level_index != _IDX:
+            print(f"*** oracle CLEARED at click {k} ***")
+            break
+        tf, _te = _snap(game)
+        ff = _frame_fruits(canonical_layer(latest))
+        ok = _ms(tf) == _ms(ff)
+        diverge += not ok
+        print(f"[{k:02d}] truthMS={_ms(tf)} frameMS={_ms(ff)} {'OK' if ok else 'DIVERGE'}")
+        threes = [f for f in tf if f[2] == 3]
+        cascade = [f for f in tf if 1 <= f[2] <= 2]
+        in_g1 = [f for f in threes if in_goal(f, g1)]
+        undelivered = [f for f in threes if not in_goal(f, g1) and not in_goal(f, g2)]
+        click = None
+        if undelivered:
+            f = undelivered[0]
+            tgt = g1 if not in_g1 else g2
+            c = _center(f)
+            dx, dy = tgt[0] - c[0], tgt[1] - c[1]
+            d = (dx * dx + dy * dy) ** 0.5 or 1.0
+            lead = max(1.0, min(d, R - SZ[f[2]] / 2.0 - 0.5))
+            click = (c[0] + dx / d * lead, c[1] + dy / d * lead)
+        elif len(cascade) >= 2:
+            by: dict[int, list] = {}
+            for f in cascade:
+                by.setdefault(f[2], []).append(f)
+            pv = sorted(v for v, fs in by.items() if len(fs) >= 2)
+            if pv:
+                grp = by[pv[0]]
+                a, b = min(((grp[i], grp[j]) for i in range(len(grp)) for j in range(i + 1, len(grp))),
+                           key=lambda p: _dist(_center(p[0]), _center(p[1])))
+                ca, cb = _center(a), _center(b)
+                d = _dist(ca, cb)
+                if d <= su15._MERGE_DIST:
+                    click = ((ca[0] + cb[0]) / 2.0, (ca[1] + cb[1]) / 2.0)
+                else:
+                    ux, uy = (cb[0] - ca[0]) / d, (cb[1] - ca[1]) / d
+                    click = (ca[0] + ux * 7.0, ca[1] + uy * 7.0)
+        if click is None:
+            click = (32, 11)
+        latest = _step(env, click[0], click[1])
+    print(f"\nPERCEP diagnostic: frame-fruit divergences from truth = {diverge} (anchors are exact)")
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--val-dg", dest="val_dg", action="store_true", help="lockstep sim vs live")
+    ap.add_argument("--percep", action="store_true", help="frame-vs-truth perception diagnostic")
     ap.add_argument("--live", action="store_true", help="closed-loop winnability driver")
     ap.add_argument("--seeds", type=int, default=3)
     ap.add_argument("--frames", type=int, default=25)
@@ -349,6 +430,9 @@ def main() -> None:
     ap.add_argument("--verbose", action="store_true")
     args = ap.parse_args()
     arcade = Arcade(operation_mode=OperationMode.OFFLINE)
+    if args.percep:
+        run_percep(arcade, args.max)
+        return
     if args.live:
         run_live(arcade, args.max, args.verbose)
         return
