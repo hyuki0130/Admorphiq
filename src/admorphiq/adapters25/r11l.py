@@ -204,6 +204,15 @@ _ASTAR_MAX_EXPAND = 12000
 # this far from every other leg (own and other creatures', including a stationary
 # leg that has not moved yet) keeps them individually detectable.
 _LEG_SEP = 10
+# Chebyshev radius for proximity-clustering multi-colour body fragments (and
+# scattered target-ring fragments) into one piece in the colour-blind detector.
+_CLUSTER_SEP = 6
+# Speculative-target-trial (R87): body-centroid tolerance around a colour-blind
+# candidate target centre (< engine overlap tolerance body_half+target_half), and
+# the number of settled all-placed frames to wait for a win before advancing to
+# the next candidate.
+_TRIAL_TARGET_TOL = 4
+_TRIAL_IDLE_FRAMES = 3
 
 
 def near_d2(a: Cell, b: Cell) -> int:
@@ -231,8 +240,22 @@ def _fill(region: Region) -> float:
 
 
 def _analyze_creatures(grid: Grid, bg: int, hazard: set[Cell]) -> list[tuple[list[Cell], Cell]] | None:
-    """Detect ALL centroid-assembly creatures on the board — one ``(leg_centres,
-    target_centre)`` per creature — purely from frame structure.
+    """Detect ALL centroid-assembly creatures — one ``(leg_centres, target_centre)``
+    per creature — from frame structure. Tries the per-colour detector first (the
+    proven L0-L2 path); when it returns ``None`` (a board whose creature bodies are
+    MULTI-COLOUR with colours shared across creatures, e.g. L3's `dirwzt` variants —
+    the per-colour "one body colour = one creature" assumption is void there),
+    falls back to a colour-BLIND connectivity detector. The fallback fires ONLY
+    when the colour path fails, so L0-L2 detection is byte-identical."""
+    by_color = _analyze_creatures_bycolor(grid, bg, hazard)
+    if by_color is not None:
+        return by_color
+    conn = _analyze_creatures_connectivity(grid, bg, hazard)
+    return conn[0] if conn is not None else None
+
+
+def _analyze_creatures_bycolor(grid: Grid, bg: int, hazard: set[Cell]) -> list[tuple[list[Cell], Cell]] | None:
+    """Per-colour centroid-assembly detection (the L0-L2 path).
 
     Model (validated live, see the module docstring): each creature is a BODY
     that sits at the integer CENTROID of its own clickable LEGS, plus a
@@ -243,9 +266,9 @@ def _analyze_creatures(grid: Grid, bg: int, hazard: set[Cell]) -> list[tuple[lis
     is verified — a group whose centroid is not near its body is rejected.
 
     Returns the per-creature list (>= 1) or ``None`` when no clean creature is
-    found (the caller then falls back to the generic explorer). No colour or
-    coordinate constants — only sizes, bbox-fill, the same-colour body/target
-    signature, and centroid-nearness.
+    found (the caller then tries the connectivity fallback, else the explorer).
+    No colour or coordinate constants — only sizes, bbox-fill, the same-colour
+    body/target signature, and centroid-nearness.
     """
     # gap=2 so a ring-shaped nest drawn as scattered pixels fuses into one
     # piece-sized region (its outline points sit within a 3-cell bridge).
@@ -318,6 +341,135 @@ def _analyze_creatures(grid: Grid, bg: int, hazard: set[Cell]) -> list[tuple[lis
         target_centre = (int(round(target["centroid"][0])), int(round(target["centroid"][1])))
         creatures.append((leg_centres, target_centre))
     return creatures
+
+
+def _cluster_regions(regions: list[Region], sep: int) -> list[list[Region]]:
+    """Union-find proximity clustering of regions by chebyshev(centroid) <= sep.
+    Used to fuse a MULTI-COLOUR body (several adjacent high-fill pieces of
+    different colours) into one creature body, colour-blind."""
+    n = len(regions)
+    parent = list(range(n))
+
+    def find(a: int) -> int:
+        while parent[a] != a:
+            parent[a] = parent[parent[a]]
+            a = parent[a]
+        return a
+
+    for i in range(n):
+        ci = regions[i]["centroid"]
+        for j in range(i + 1, n):
+            cj = regions[j]["centroid"]
+            if max(abs(ci[0] - cj[0]), abs(ci[1] - cj[1])) <= sep:
+                parent[find(i)] = find(j)
+    groups: dict[int, list[Region]] = {}
+    for i in range(n):
+        groups.setdefault(find(i), []).append(regions[i])
+    return list(groups.values())
+
+
+def _cluster_centre(cluster: list[Region]) -> Cell:
+    rs = [r["centroid"][0] for r in cluster]
+    cs = [r["centroid"][1] for r in cluster]
+    return (int(round(sum(rs) / len(rs))), int(round(sum(cs) / len(cs))))
+
+
+def _target_score(body_cols: set[int], target_cols: set[int]) -> tuple[int, int]:
+    """Rank a (body, target) colour-set match: NESTED first (the target ring's
+    colours are a subset of the body's, or vice-versa — the measured signature of
+    a real creature ring, since a ring shares its body's colours while a decoy
+    fragment carries a foreign colour), then by raw overlap. Returns a sort key
+    (higher = better); ``(0, 0)`` when the colours are disjoint (not a candidate)."""
+    ov = len(body_cols & target_cols)
+    if ov == 0:
+        return (0, 0)
+    nested = 1 if (body_cols <= target_cols or target_cols <= body_cols) else 0
+    return (nested, ov)
+
+
+def _greedy_target_assign(
+    body_colours: list[set[int]], target_centres: list[Cell], target_colours: list[set[int]], body_centres: list[Cell]
+) -> list[Cell]:
+    """One-to-one body->target assignment, best match first (NESTED colour sets
+    before raw overlap — see :func:`_target_score`). A body with no overlapping
+    target keeps its own centre (a non-winning placeholder the trial replaces)."""
+    pairs: list[tuple[tuple[int, int], int, int]] = []
+    for i in range(len(body_colours)):
+        for ti in range(len(target_centres)):
+            score = _target_score(body_colours[i], target_colours[ti])
+            if score != (0, 0):
+                pairs.append((score, i, ti))
+    pairs.sort(key=lambda p: (-p[0][0], -p[0][1], p[1], p[2]))
+    assigned: dict[int, Cell] = {}
+    used_t: set[int] = set()
+    for _score, i, ti in pairs:
+        if i in assigned or ti in used_t:
+            continue
+        assigned[i] = target_centres[ti]
+        used_t.add(ti)
+    return [assigned.get(i, body_centres[i]) for i in range(len(body_colours))]
+
+
+def _analyze_creatures_connectivity(
+    grid: Grid, bg: int, hazard: set[Cell]
+) -> tuple[list[tuple[list[Cell], Cell]], list[list[Cell]]] | None:
+    """Colour-BLIND multi-creature detection for boards the per-colour path fails
+    on (bodies MULTI-COLOUR with shared colours). Fill bands separate the pieces:
+    bodies (fill >= ``_BODY_FILL``), legs (``[_MIN_LEG_FILL, _BODY_FILL)``), target
+    rings (fill < ``_MIN_LEG_FILL``). High-fill body pieces are proximity-clustered
+    into N creature bodies (colour-blind); legs are assigned to the nearest body;
+    targets are matched to bodies by COLOUR-SET overlap (each creature's ring shares
+    its body's colours). Returns ``(creatures, candidates)`` where ``creatures[i] =
+    (leg_centres, best_guess_target)`` and ``candidates[i]`` is the ordered list of
+    plausible target centres (best-first) for the ambiguous-target trial, or
+    ``None`` when < 2 clean body clusters (this fallback is multi-creature only)."""
+    height, width = len(grid), len(grid[0])
+    pieces = [
+        r
+        for r in find_regions(grid, background=bg, gap=2)
+        if _MIN_PIECE_SIZE <= r["size"] <= _MAX_PIECE_SIZE
+        and not (r["cells"] & hazard)
+        and not _is_hud_band(r, height, width)
+    ]
+    bodies_p = [r for r in pieces if _fill(r) >= _BODY_FILL]
+    legs_p = [r for r in pieces if _MIN_LEG_FILL <= _fill(r) < _BODY_FILL]
+    targets_p = [r for r in pieces if _fill(r) < _MIN_LEG_FILL]
+    if len(bodies_p) < 2 or not legs_p:
+        return None
+    body_clusters = _cluster_regions(bodies_p, _CLUSTER_SEP)
+    if len(body_clusters) < 2:
+        return None
+    n = len(body_clusters)
+    body_centres = [_cluster_centre(c) for c in body_clusters]
+    body_colours = [{r["color"] for r in c} for c in body_clusters]
+    target_clusters = _cluster_regions(targets_p, _CLUSTER_SEP) if targets_p else []
+    target_centres = [_cluster_centre(c) for c in target_clusters]
+    target_colours = [{r["color"] for r in c} for c in target_clusters]
+
+    groups: list[list[Cell]] = [[] for _ in range(n)]
+    for lp in legs_p:
+        lc = (int(round(lp["centroid"][0])), int(round(lp["centroid"][1])))
+        i = min(range(n), key=lambda k: (lc[0] - body_centres[k][0]) ** 2 + (lc[1] - body_centres[k][1]) ** 2)
+        groups[i].append(lc)
+    if any(not g for g in groups):
+        return None
+
+    best = _greedy_target_assign(body_colours, target_centres, target_colours, body_centres)
+    candidates: list[list[Cell]] = []
+    for i in range(n):
+        scored = [
+            (_target_score(body_colours[i], target_colours[ti]), target_centres[ti])
+            for ti in range(len(target_clusters))
+            if _target_score(body_colours[i], target_colours[ti]) != (0, 0)
+        ]
+        scored.sort(key=lambda s: (-s[0][0], -s[0][1], s[1]))
+        cand = [tc for _score, tc in scored] or [body_centres[i]]
+        if best[i] in cand:
+            cand.remove(best[i])
+        cand.insert(0, best[i])
+        candidates.append(cand)
+    creatures = [(groups[i], best[i]) for i in range(n)]
+    return creatures, candidates
 
 
 def _is_hud_band(region: Region, height: int, width: int) -> bool:
@@ -457,6 +609,20 @@ class Adapter(GameAdapter):
         self._moves: list[tuple[Cell, Cell, Cell]] | None = None
         self._move_idx = 0
         self._learned_haz: set[Cell] = set()
+        # SPECULATIVE-TARGET-TRIAL (R87) for boards detected via the colour-blind
+        # fallback, where a creature's target ring is not uniquely identifiable
+        # from colour/geometry (L3: `orrqlj`'s two unique colours split across
+        # clusters → ≥4 equally-plausible targets). Rather than guess, ACT: place
+        # the unambiguous creatures, then drive the ambiguous creature's body to
+        # each candidate target IN TURN until the engine's own win fires ("the win
+        # condition is the missing sensor"). ``_target_candidates[i]`` is creature
+        # i's ordered candidate target centres; ``_cand_idx[i]`` the one currently
+        # in play; ``_trial_idle`` counts settled frames spent with all legs placed
+        # but no level-up, before advancing to the next candidate.
+        self._use_trial = False
+        self._target_candidates: list[list[Cell]] | None = None
+        self._cand_idx: list[int] = []
+        self._trial_idle = 0
         # Geometry measured once at build from the frame: the piece (leg/body)
         # half-extent and each creature's target bbox — used by the planner's
         # placeable / body-safe / overlap tests. No hardcoded size: read from the
@@ -565,6 +731,10 @@ class Adapter(GameAdapter):
         self._learned_haz = set()
         self._piece_half = 2
         self._cr_target_box = []
+        self._use_trial = False
+        self._target_candidates = None
+        self._cand_idx = []
+        self._trial_idle = 0
         self._reset_move()
         self._fc_trajectory = []
 
@@ -684,9 +854,25 @@ class Adapter(GameAdapter):
             # Route on creature count: ≥2 creatures use the FROZEN-TARGET
             # controller (compute-once destinations); a single creature keeps the
             # byte-identical one-shot plan (L0).
-            creatures = _analyze_creatures(grid, bg, _hazard_cells(grid, bg))
-            if creatures is not None and len(creatures) >= 2:
+            hz = _hazard_cells(grid, bg)
+            bycolor = _analyze_creatures_bycolor(grid, bg, hz)
+            conn = _analyze_creatures_connectivity(grid, bg, hz) if bycolor is None else None
+            if bycolor is not None and len(bycolor) >= 2:
+                # The proven per-colour path (L0-L2): fixed per-creature targets,
+                # no trial.
                 self._multi = True
+                self._use_trial = False
+                self._target_candidates = None
+                self._build_frozen(grid, bg, bycolor)
+            elif conn is not None and len(conn[0]) >= 2:
+                # Colour-blind fallback (L3+): fixed leg groups + AMBIGUOUS targets
+                # resolved by the speculative trial.
+                creatures, candidates = conn
+                self._multi = True
+                self._use_trial = True
+                self._target_candidates = candidates
+                self._cand_idx = [0] * len(creatures)
+                self._trial_idle = 0
                 self._build_frozen(grid, bg, creatures)
             else:
                 self._plan = self._build_plan(grid, bg)
@@ -812,7 +998,16 @@ class Adapter(GameAdapter):
         ]
         self._cr_target_box = []
         for _legs, target in self._frozen_creatures:
-            box = self._region_box_near(pieces, target)
+            if self._use_trial:
+                # Colour-blind targets are cluster CENTRES of scattered ring
+                # fragments, not clean regions, so the nearest-region box would be
+                # a lone fragment. Use a fixed tolerance box: a body centroid within
+                # ``_TRIAL_TARGET_TOL`` of the centre overlaps the ring (engine
+                # overlap tolerance ≈ body_half + target_half).
+                tr, tc = target
+                box = (tr - _TRIAL_TARGET_TOL, tc - _TRIAL_TARGET_TOL, tr + _TRIAL_TARGET_TOL, tc + _TRIAL_TARGET_TOL)
+            else:
+                box = self._region_box_near(pieces, target)
             self._cr_target_box.append(box)
 
     @staticmethod
@@ -1112,6 +1307,40 @@ class Adapter(GameAdapter):
             placed.extend(final_cfg)
         return moves
 
+    def _advance_trial(self, grid: Grid, bg: int, masked: Grid) -> Cell | None:
+        """Speculative-target-trial step (colour-blind path only). Called once all
+        planned legs are placed but no win registered. Idles a few settled frames
+        (the win may still be animating), then re-targets the first creature with an
+        untried candidate to its NEXT candidate and rebuilds — driving that
+        creature's body to the new target. Returns the next click, or ``None`` when
+        still idling or when every candidate is exhausted (give up → the caller
+        idles / the explorer takes over)."""
+        self._trial_idle += 1
+        if self._trial_idle < _TRIAL_IDLE_FRAMES:
+            return None  # give the win a chance to register before re-targeting
+        ci = None
+        for i in range(len(self._frozen_creatures)):
+            if self._target_candidates and self._cand_idx[i] + 1 < len(self._target_candidates[i]):
+                ci = i
+                break
+        if ci is None:
+            return None  # all candidates tried — the level is genuinely unreached
+        self._cand_idx[ci] += 1
+        new_target = self._target_candidates[ci][self._cand_idx[ci]]  # type: ignore[index]
+        legs, _old = self._frozen_creatures[ci]
+        self._frozen_creatures[ci] = (legs, new_target)
+        self._cr_target_box[ci] = (
+            new_target[0] - _TRIAL_TARGET_TOL,
+            new_target[1] - _TRIAL_TARGET_TOL,
+            new_target[0] + _TRIAL_TARGET_TOL,
+            new_target[1] + _TRIAL_TARGET_TOL,
+        )
+        self._moves = None  # rebuild: already-placed creatures re-plan to 0 moves
+        self._move_idx = 0
+        self._trial_idle = 0
+        self._reset_move()
+        return self._frozen_step(grid, bg, masked)
+
     def _frozen_step(self, grid: Grid, bg: int, masked: Grid) -> Cell | None:
         """One controller click, driven by the strike-aware move plan. Builds the
         ordered plan once (rebuilds on a learned strike), then executes the next
@@ -1145,8 +1374,17 @@ class Adapter(GameAdapter):
         # a move whose OWN leg is elsewhere but another leg happens to sit near the
         # destination (measured: it left a creature one leg short of its target).
         if self._move_idx >= len(self._moves):
-            # All planned moves done → both bodies overlap their targets → WIN is
-            # imminent; idle on a refused hazard click until it registers.
+            # All planned moves done. For the per-colour path both bodies are on
+            # their (known) targets → WIN is imminent; idle until it registers.
+            # For the colour-blind TRIAL path, if no win registers after a few
+            # settled frames, the ambiguous creature's current candidate target was
+            # wrong → advance it to the next candidate and rebuild (the level does
+            # not advance on a wrong target, so this idle-then-advance IS the
+            # "engine win as the missing sensor" loop).
+            if self._use_trial:
+                trial = self._advance_trial(grid, bg, masked)
+                if trial is not None:
+                    return trial
             return self._safe_wait_cell(grid, bg)
         if self._frozen_moves >= _MAX_FROZEN_MOVES:
             return None  # too many attempts → defer to the explorer

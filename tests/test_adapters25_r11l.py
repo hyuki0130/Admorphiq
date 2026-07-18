@@ -223,3 +223,56 @@ def test_strike_aware_plan_is_body_hazard_free_and_separates_legs():
     r0, c0, r1, c1 = ad._cr_target_box[0]
     assert r0 <= body[0] <= r1 and c0 <= body[1] <= c1
     assert body not in hazard
+
+
+def test_connectivity_fallback_groups_legs_and_picks_nested_target():
+    """Purpose (R87): the colour-BLIND fallback must (a) fuse a MULTI-COLOUR body
+    (two adjacent high-fill pieces of different colours) into ONE creature and
+    assign its legs correctly, and (b) pick the creature's real target ring by the
+    NESTED colour-set signature (target colours subset of body colours, or vice
+    versa) over a non-nested decoy of equal raw overlap. This is the exact L3 wall
+    — bodies multi-colour with shared colours — that the per-colour detector fails
+    on and the connectivity + nested-discriminator path resolves.
+
+    Expected feedback: a FAIL means multi-colour-body levels (r11l L3+) mis-detect
+    (no creatures, or legs split across phantom colour-bodies) or the target trial
+    starts on a decoy, so L3 never clears efficiently."""
+    from admorphiq.adapters25.r11l import _analyze_creatures_bycolor, _analyze_creatures_connectivity
+
+    cells: dict[tuple[int, int], int] = {}
+    # Creature A: body = colours 12 + 14 (two adjacent solid squares) at ~(20,20);
+    # 2 legs colour 3 at (10,20),(30,20) -> centroid (20,20).
+    cells.update(_body(18, 18, 12, size=3))
+    cells.update(_body(18, 21, 14, size=3))
+    cells.update(_leg(10, 20, 3))
+    cells.update(_leg(30, 20, 3))
+    cells.update(_ring(50, 50, 14))  # NESTED target ({14} subset of {12,14})
+    # Non-nested decoy of equal raw overlap: colours 10 + 12 near (40,40).
+    cells.update(_ring(40, 40, 10))
+    cells.update(_ring(40, 43, 12))
+    # Creature B: body = colours 8 + 9 at ~(20,50); 2 legs at (10,50),(30,50).
+    cells.update(_body(18, 48, 8, size=3))
+    cells.update(_body(18, 51, 9, size=3))
+    cells.update(_leg(10, 50, 3))
+    cells.update(_leg(30, 50, 3))
+    cells.update(_ring(50, 10, 9))  # NESTED target ({9} subset of {8,9})
+    grid = _grid(cells)
+    hazard = _hazard_cells(grid, _BG)
+
+    # Multi-colour bodies + shared/foreign target colours defeat the per-colour path.
+    assert _analyze_creatures_bycolor(grid, _BG, hazard) is None
+
+    result = _analyze_creatures_connectivity(grid, _BG, hazard)
+    assert result is not None
+    creatures, candidates = result
+    assert len(creatures) == 2
+    assert all(len(legs) == 2 for legs, _t in creatures)  # each body's 2 legs grouped
+
+    # Creature A (leg centroid ~ (20,20)) must best-guess the NESTED ring (50,50),
+    # never the non-nested decoy near (40,40).
+    def centroid(legs):
+        return (sum(p[0] for p in legs) / len(legs), sum(p[1] for p in legs) / len(legs))
+
+    a = min(creatures, key=lambda cr: (centroid(cr[0])[0] - 20) ** 2 + (centroid(cr[0])[1] - 20) ** 2)
+    _legs_a, target_a = a
+    assert abs(target_a[0] - 50) <= 2 and abs(target_a[1] - 50) <= 2, f"picked decoy, got {target_a}"
