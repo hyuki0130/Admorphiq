@@ -1629,13 +1629,13 @@ dc22) or a learned reflection/flow kernel (ar25/sp80 super-human L0) or goal-dir
 (tu93); pattern named in `.wiki/wiki/lessons/faithful_offline_simulator_20260715.md`. New-structure
 PARK list (honestly banked WITH decoded mechanics, not failures): ar25 L1 (parallel-mirror double
 reflection), lp85 L4 (dense 20-ring self-test), su15 L3+ (enemy-reversed cascade), sk48 L3+
-(non-ACTION6 `sys_click`), bp35 / g50t / re86 / s5i5 / sc25 / tr87 / wa30. **Card = 28.47% official
-(r59s6, @5000, ceph-build, landed 2026-07-18 18:31; sequence r56s9 18.02 → 21.56 → 22.25 →
-26.38 → 27.25 → 27.80 → 28.47 — nine consecutive exact arithmetic matches). MILESTONE
+(non-ACTION6 `sys_click`), bp35 / g50t / re86 / s5i5 / sc25 / tr87 / wa30. **Card = 29.25% official
+(r59s7, @5000, ceph-build, landed 2026-07-18 20:31; sequence r56s9 18.02 → 21.56 → 22.25 →
+26.38 → 27.25 → 27.80 → 28.47 → 29.25 — ten consecutive single-diff-verified runs). MILESTONE
 2026-07-17: ALL 25 games clear ≥1 level. Fully conquered: ft09 1.0 · m0r0 1.0 · cd82 0.98 ·
-sb26 0.846; ls20 6/7 @0.75 (L1-L6 all 1.0); re86 6/8 @0.5329 (recolour-routing L5 +
-reshape-and-place L6, both super-efficient; = the brittle solver's historical ceiling,
-frame-only; L7 hybrid decoded+queued). R59-R64 depth wave: faithful-sim + learned-operator +
+sb26 0.846; ls20 6/7 @0.75 (L1-L6 all 1.0); re86 **7/8 @0.7273** (L5 recolour-routing + L6
+reshape-and-place + L7 hybrid — PAST the brittle solver's 6/8 ceiling, frame-only; L8
+decoded, build in flight for 8/8). R59-R65 depth wave: faithful-sim + learned-operator +
 park-verification-first (5 parks overturned). lp85 stall give-up cut full-25 wall time
 ~3.7h → ~15min. Round page: `.wiki/wiki/rounds/r59_depth-wave.md`.)** ⚠️ **Dual-scoreboard doctrine (non-negotiable):** the script25 number is
 KERNEL EXPRESSIVENESS (can a from-scratch generic composition EXPRESS the clear), and is NEVER

@@ -2,7 +2,7 @@
 round: r59
 axis: script25 depth (kernel expressiveness) — faithful-sim + learned-operator wave 2
 keywords: [m0r0, pressure-plate, gates, bp35, frontier-exploration, su15, enemy-in-sim, re86, separation-by-motion, sk48, lockstep, reachability, lp85, twist-topology, ls20, moving-changer, r59s1, full-25]
-verdict: PASS — official card 18.02% → 21.56% (r59s1) → 22.25% (r59s2) → 26.38% (r59s3) → 27.25% (r59s4) → 27.80% (r59s5) → **28.47% (r59s6, 2026-07-18 18:31)**; every run matched its arithmetic prediction exactly (9 consecutive)
+verdict: PASS — official card 18.02% → 21.56% → 22.25% → 26.38% → 27.25% → 27.80% → 28.47% → **29.25% (r59s7, 2026-07-18 20:31)**; ten consecutive single-diff-verified runs
 commit: 9b8e2e8 (r59s1 HEAD) / cc1e4dc (r59s2 HEAD) / f8144df-era (r59s3 HEAD); landings: bc04e63, 6b6ad2e, b2128c9, 36d23cd, 3b6c11c, 0197b8b, fa8e3bc, 12bda52, a1701f9, 0abeb0d, 2bdea69, e698ed8(ls20 L5), 02fe3d8, f677aed, 9647858, e536f65
 ---
 
@@ -78,6 +78,16 @@ corridor bar-control placer with deliberate-collision sequencing, L6 at 68a vs h
 capped 1.0 at weight 6. re86 sprint arc: 1/8 → 6/8, level with the brittle solver's
 historical ceiling, pure frame-only. L7 decoded as a recolour+reshape+place HYBRID (1caf774,
 queued); L8 unopened.
+
+## r59s7 official (2026-07-18 20:31 KST, ceph-build, @5000) — **29.25%**
+
+`games=25 total=7.3122 → 29.25%`. ONE row moved vs r59s6: re86 0.5329 → **0.7273 (7/8)** via
+the L7 recolour+reshape+place hybrid (d1c5e1c) — PAST the brittle solver's historical 6/8
+ceiling, frame-only. Method: a faithful offline simulator of the engine's cross-collision
+handler + BFS'd push sequences (22/22 live-validated), the occlusion-vs-flood identity
+breakthrough (cycle-index identity + occlusion-safe drive), width-aware recolour. L8 probed
++ decoded (a64eda5: SIMPLER than L7 — two outlines, no crosses) — build in flight for
+**8/8 = 5th full conquest**.
 
 ## Post-measurement landings (in HEAD, not in r59s1; next full-25 picks them up)
 
