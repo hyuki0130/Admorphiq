@@ -72,15 +72,17 @@ EVERY intermediate body centroid avoids the body-hazard. Key elements:
 Drove the R85 adapter to L3 (Level7, `dirwzt` variants) and read the engine:
 3 creatures (3-leg + two 2-leg), a central in-play `defgjl-Level7` (18×17), and
 **all three have strike-free plans (3+2+2 ≈ 14 actions)** — the config-space
-spine APPLIES and L3 is winnable. But `_analyze_creatures` returns **None**: the
-richer L3 frame has **6 colour regions passing the `_BODY_FILL`=0.6 threshold for
-3 real creatures** (decoy body sprites), so nearest-body grouping splits the 7
-real legs across 6 candidate bodies and the consistency check aborts. This is a
-DETECTION-DISCRIMINATION problem, not a planner one — a dedicated round, NOT a
-bounded pass. Reopen: keep a body only if it has BOTH a same-colour target ring
-AND a consistent centroid leg group (reject decoy colours), then the strike-aware
-planner clears L3. Likely the same shape for L4/L5. See [[../games/R11L]] Notes
-R85b.
+spine APPLIES and L3 is winnable. But `_analyze_creatures` returns **None**, and
+the ROOT cause (engine-verified) is that **L3 creature BODIES are MULTI-COLOUR
+with colours SHARED across creatures** (`yeogyfgrhcew`=14+11, `blxuubrengnt`=9+8,
+`orrqlj…pumlzd`=12+14+15 — colour 14 shared), which voids the "one body colour =
+one creature" assumption `_analyze_creatures` groups by. This is a many-to-many
+colour→creature map — NOT a threshold tweak or decoy-filter (an earlier
+triple-matching guess is CORRECTED here). Reopen = a DEDICATED detection
+re-architecture (multi-session): segment creatures by SPATIAL CONNECTIVITY
+(colour-blind), match each body to a leg group + target ring, then the proven
+strike-aware planner clears L3 (3+2+2 ≈ 14 actions). Likely gates L4/L5 too. See
+[[../games/R11L]] Notes R85b.
 
 Related: [[r84_bounded-frontier-scan]] · [[../games/R11L]] ·
 [[../lessons/faithful_offline_simulator_20260715]]
