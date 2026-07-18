@@ -1,12 +1,23 @@
 {
-  "orphans": [],
+  "orphans": [
+    "rounds/r59_depth-wave.md"
+  ],
   "missing_xrefs": [
     {
       "page": "rounds/r29_warmstart-off.md",
       "detail": "unresolved [[project-bc-transfer-ceiling]]"
     }
   ],
-  "stale_claims": [],
+  "stale_claims": [
+    {
+      "page": "games/LP85.md",
+      "detail": "frontmatter status_v1=3 but regression baseline shows 1"
+    },
+    {
+      "page": "games/SK48.md",
+      "detail": "frontmatter status_v1=4 but regression baseline shows 0"
+    }
+  ],
   "r23c_gaps": [],
   "missing_summary": [],
   "duplicate_titles": []

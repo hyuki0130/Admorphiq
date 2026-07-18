@@ -8,11 +8,11 @@ seeds `llm_context/decision_tree.md` first, then walks `[[backlinks]]`.
 Use this index when authoring or auditing: skim the catalog, pick a
 category, drill into specific pages.
 
-**Total pages**: 156.
+**Total pages**: 157.
 
 ## Games (25)
 
-- [[games/AR25.md]] — v1 L0 efficient clear (score 1.0 @ 23 actions); 1/8 depth, v2 same (frame-only, never reads internals) — Movable colour glyphs are drawn together with their reflections across a movable mirror bar; a level is won when every goal cell is covered by some piece pixel or one of its reflections — NOT a single-avatar maze.
+- [[games/AR25.md]] — v1 2/8 depth — L0 super-human (1.0 @ 23a); L1 cleared via geared-copy coverage (game_score 0.0833), v2 same (frame-only, never reads internals) — Movable colour glyphs are drawn together with their reflections across a movable mirror bar; a level is won when every goal cell is covered by some piece pixel or one of its reflections — NOT a single-avatar maze.
 - [[games/BP35.md]] — v1 brittle 1/9 (bp35_platformer, internals-tuned), generic 0/9 (R23 8B agent regression baseline) — Move the player horizontally and click destructible blocks so gravity drops it toward a fixed `+`-shaped exit marker; win = the player reaches the exit. Physics is DETERMINISTIC and per-action (gravity resolves within a step).
 - [[games/CD82.md]] — v1 6/6 ✅ (brittle paint_game, hardcoded positions) — Relies on game internals — high v1 score, fails on v2. SUPERSEDED: the R56
 - [[games/CN04.md]] — v1 brittle 1/5 (zig3_A2A4, hash-tuned) — A rigid-arrangement puzzle: select a sprite, rotate and slide it so its connector-marker stubs coincide with another sprite's — NOT a click game.
@@ -20,7 +20,7 @@ category, drill into specific pages.
 - [[games/FT09.md]] — v1 brittle 6/6 ✅ (sprite-tag solver, kept for provenance only), generic LIVE 6/6, 100% RHAE, 88 total actions (R56 glyph decode — A multi-ring, multi-glyph constraint-satisfaction toggle puzzle — NOT a
 - [[games/G50T.md]] — v1 brittle 1/7 (explore_interact, unreliable) — A full *Adventures of Lolo* / Sokoban-with-logic puzzle: navigate a player to a hidden goal through a wall maze, using button→gate→toggle-block circuits, past DETERMINISTIC wall-following patrol enemies, within a scroll-timer budget — with an ACTION5 record-replay "ghost" mechanic. NOT a simple "reactive sokoban", and NOT "explore-interact".
 - [[games/KA59.md]] — v1 brittle 4/7 ✅ (hardcoded L1-L4 push sequences, non-transferable) — Multi-piece placement + momentum-push. NOT classic box-to-goal Sokoban — validated 2026-07-15.
-- [[games/LF52.md]] — v1 0/10 (agent regression; lone 1/10 only at 50000 ensemble budget) — Move a cursor and click game objects to LINK them; a level wins on an internal completion flag, within a per-level action budget. First characterised in R56 (was "Unknown post-regression").
+- [[games/LF52.md]] — v1 0/10 (legacy agent regression) — Select a piece, jump it over an adjacent piece into an empty board slot; the
 - [[games/LP85.md]] — v1 3/8 ✅ (L1 + L2 + L3 cleared, game_score 0.1637, up from 2/8 @ 0.0803) — multi-class ring-permutation planner SHIPPED — **Mechanic corrected R56 (2026-07-15, from the game source):** LP85 is a
 - [[games/LS20.md]] — v1 1/7 (brittle, hardcoded L1 -- STALE, see below) — A shape/color/rotation-MATCHING maze: the avatar carries a token
 - [[games/M0R0.md]] — v1 brittle n/a (no brittle solver — pure generic), generic 2/6 ✅ (R23 8B via bfs_state_space) — Frame-observation solver — generalizes across version hashes.
@@ -32,19 +32,20 @@ category, drill into specific pages.
 - [[games/SK48.md]] — v1 4/8 (R59 multi-snake A*, script25 @1000, game_score 0.2778, deterministic x2), v2 4/8 (same board) — Move a snake so the sequence of coloured cells its body overlaps matches a per-level TEMPLATE pattern, within a fixed move budget — NOT a plain eat-food snake or a reach-exit maze.
 - [[games/SP80.md]] — v1 L0+L1 efficient clear (both score 1.0; L0 10a vs 39h, L1 16a vs 58h); 2/6 depth, game_score 0.1429, v2 same (frame-only, never reads internals) — Place deflector/block pieces during a CHANGE phase, then a SPILL phase drops water from a fixed source; a level wins only when the flow covers EVERY target region without hitting a hazard — NOT a reach-the-goal maze.
 - [[games/SU15.md]] — v1 brittle 9/9 ✅ (uses game.hmeulfxgy/peiiyyzum/rqdsgrklq attrs), generic 0/9 ❌ (R23 8B; same-color-pair=0 at L1) — A click runs a radius-8 VACUUM that pulls nearby fruits toward it; two same-value fruits that overlap merge to value+1 (2048-style); a level clears when the exact (value, count) multiset of fruits sits inside the goal-zone sprite bbox(es). The iteration-8 "click-to-steer player" model was FALSIFIED — the "player" was the vacuum-ring animation artifact.
-- [[games/TN36.md]] — v1 brittle 7/7 ✅ (uses frame.zpzcmabenn direct call), generic 0/7 ❌ (R23 8B; bit-panel combinatorial too deep) — Bit-encoded action program: click bits to set a number, click play to execute, navigate player to goal; brittle solver passes v1 but collapses on v2.
+- [[games/TN36.md]] — v1 brittle 7/7 ✅ (uses frame.zpzcmabenn direct call), generic 0/7 ❌ (R23 8B; bit-panel combinatorial too deep) — Set a row of multi-bit OPCODE columns, click play once; the player executes
 - [[games/TR87.md]] — v1 brittle 1/6 ✅ (hardcoded L1 rotation values), generic 0/6 ❌ (superseded by script25, see below) — A token-rewrite-grammar puzzle (NOT a geometric rotation puzzle, NOT a
 - [[games/TU93.md]] — v1 2/9 ✅ (game_score 0.0028 — goal-directed exploration, 11.6× the blind 0.00024), v2 2/9 ✅ — Relies on game internals — high v1 score, fails on v2.
 - [[games/VC33.md]] — v1 1/7 ✅, v2 1/7 ✅ — Frame-observation solver; L0 cleared super-human-efficiently by picking the winner of two decoy-paired regions via its smaller containing panel and committing to it exclusively.
 - [[games/WA30.md]] — v1 brittle 2/9 (sprite tags wbmdvjhthc/geezpjgiyd/pkbufziase — non-transferable), generic 0/9 (R23 8B agent regression baseline) — A single worker moves on a grid and uses one context-interact action to pick up items and deliver them to target zones; a level wins when EVERY target zone is satisfied — a multi-item delivery, not a single-goal navigation.
 
-## Game Types (15)
+## Game Types (16)
 
 - [[game_types/click.md]] — The level advances when the agent clicks specific pixels; movement actions are usually not needed.
 - [[game_types/delivery.md]] — A worker picks up items at pickup zones and delivers them to matching target zones; multiple items per level.
 - [[game_types/hybrid.md]] — Combines movement with interactive objects; progression requires both navigation and targeted interaction (`ACTION5`, specific clicks).
 - [[game_types/merge_puzzle.md]] — 2048-style color merging: same-color sprites that overlap become color+1; secondary entities (enemies) can downgrade.
 - [[game_types/movement.md]] — Player navigates a 2D grid; actions map to directions; walls block; goal reached by path. Most generalizable game type — frame-only BFS suffices for many.
+- [[game_types/peg_solitaire.md]] — Jump a piece over an orthogonally-adjacent piece into the empty board slot two cells beyond; the jumped piece is CAPTURED and removed. Reduce the board to one piece to win.
 - [[game_types/platformer.md]] — Gravity acts on the player; horizontal movement plus block-destruction lets the agent fall to or uncover goals.
 - [[game_types/programming_puzzle.md]] — Player encodes a short program via clickable state cells, triggers execution via a "play" button, observes a player/cursor entity execute the program. Goal: reach target cell.
 - [[game_types/rotation.md]] — Rotate pieces to match a reference pattern.
