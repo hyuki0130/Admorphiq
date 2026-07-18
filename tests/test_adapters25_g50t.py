@@ -6,9 +6,11 @@ crossed by banking an ACTION5 ghost that seats on the plate and holds it open
 while the reset player walks through (see the adapter module docstring). These
 tests pin the pure, load-bearing pieces: the closed-loop hop selector, the
 plate-candidate ordering, and — the crux — that the time-gated route BFS only
-crosses a barrier cell AFTER the ghost has seated (move index > Lg). The live
-first-clear itself (1/7 @ 0.0357, deterministic) is proven by the script25
-measurement, not by a unit test.
+crosses a barrier cell AFTER the ghost has seated (move index > Lg). L1 adds a
+SECOND nested circuit, cleared by the ``_L1TwoGhost`` generator (see the module
+docstring / .wiki/wiki/games/G50T.md "L1 CLEARED"). The live clears themselves
+(L0+L1 = 2/7 @ 0.1071, deterministic ×2) are proven by the script25 measurement,
+not by a unit test.
 """
 
 from __future__ import annotations

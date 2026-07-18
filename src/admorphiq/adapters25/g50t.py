@@ -111,6 +111,282 @@ _SETTLE_MAX = 40        # frames to wait for the post-ACTION5 rewind
 _PLAN_BUDGET = 200_000  # joint (cell, moves) states for the route BFS
 
 
+class _L1TwoGhost:
+    """Frame-only two-ghost nested-circuit solver for L1+, exposed as a generator
+    (:meth:`run`) so the per-call adapter can drive it: ``grid = yield action``
+    returns the frame observed after that action (env lag-1, handled in the batch
+    reconcile). No hardcoded cells -- plates/barriers are DISCOVERED from the
+    colour-8 frontier + floor-expansion-on-seat, and barrier open/closed state is
+    read live from the frame (colour 5 = open, 8 = closed), so no ghost-clock
+    (Lg) arithmetic is needed. See ``.wiki/wiki/games/G50T.md`` "L1 CLEARED".
+    """
+
+    def __init__(self) -> None:
+        self.off: Cell | None = None
+        self.goal: Cell | None = None
+        self.pcell: Cell | None = None
+        self.grid: Grid | None = None
+        self.blocked: set[tuple[Cell, int]] = set()
+        self.barriers: set[Cell] = set()
+
+    # ── perception ──────────────────────────────────────────────────────
+    def _nine(self, grid: Grid) -> list[dict[str, Any]]:
+        out = []
+        for reg in find_regions(grid, background=None):
+            if reg["color"] != _MOVER_COLOR:
+                continue
+            r0 = reg["bbox"][0]
+            if 7 <= r0 <= 58 and 8 <= reg["size"] <= 40:
+                out.append(reg)
+        return out
+
+    def _to_cell(self, cy: float, cx: float) -> Cell:
+        return (round((cy - self.off[0]) / _CELL_PX), round((cx - self.off[1]) / _CELL_PX))  # type: ignore[index]
+
+    def _obs_player(self, grid: Grid) -> Cell | None:
+        cands = [self._to_cell(*(r["centroid"])) for r in self._nine(grid)]
+        if not cands:
+            return None
+        cands = [c for c in cands if c != self.goal] or cands
+        if self.pcell is not None:
+            pc = self.pcell
+            return min(cands, key=lambda c: abs(c[0] - pc[0]) + abs(c[1] - pc[1]))
+        return cands[0]
+
+    def _floor(self, grid: Grid) -> set[Cell]:
+        if not grid or not grid[0]:
+            return set()
+        h = len(grid)
+        w = len(grid[0])
+        cells: set[Cell] = set()
+        i = 0
+        while self.off[0] + i * _CELL_PX < h - 2:  # type: ignore[index]
+            j = 0
+            while self.off[1] + j * _CELL_PX < w - 2:  # type: ignore[index]
+                if grid[self.off[0] + i * _CELL_PX][self.off[1] + j * _CELL_PX] == _FLOOR_COLOR:  # type: ignore[index]
+                    cells.add((i, j))
+                j += 1
+            i += 1
+        return cells
+
+    def _color(self, grid: Grid, cell: Cell) -> int:
+        r = self.off[0] + cell[0] * _CELL_PX  # type: ignore[index]
+        c = self.off[1] + cell[1] * _CELL_PX  # type: ignore[index]
+        if 0 <= r < len(grid) and 0 <= c < len(grid[0]):
+            return grid[r][c]
+        return -1
+
+    def _open_barriers(self) -> set[Cell]:
+        return {c for c in self.barriers if self._color(self.grid, c) == _FLOOR_COLOR}
+
+    def _wall_bump(self, cell: Cell) -> int | None:
+        floor = self._floor(self.grid)
+        for a, (dr, dc) in _MOVE_VEC.items():
+            if (cell[0] + dr, cell[1] + dc) not in floor:
+                return a
+        return None
+
+    def _reach(self, passable: set[Cell], start: Cell) -> set[Cell]:
+        seen = {start}
+        q: deque[Cell] = deque([start])
+        while q:
+            cur = q.popleft()
+            for a, (dr, dc) in _MOVE_VEC.items():
+                if (cur, a) in self.blocked:
+                    continue
+                n = (cur[0] + dr, cur[1] + dc)
+                if n in passable and n not in seen:
+                    seen.add(n)
+                    q.append(n)
+        return seen
+
+    def _plan(self, start: Cell, target: Cell, enter: Cell | None) -> list[int] | None:
+        pass_set = self._floor(self.grid) | self._open_barriers()
+        seen = {start}
+        parent: dict[Cell, tuple[int, Cell]] = {}
+        q: deque[Cell] = deque([start])
+        while q:
+            cur = q.popleft()
+            if cur == target:
+                acts: list[int] = []
+                c = cur
+                while c in parent:
+                    a, p = parent[c]
+                    acts.append(a)
+                    c = p
+                return acts[::-1]
+            for a, (dr, dc) in _MOVE_VEC.items():
+                if (cur, a) in self.blocked:
+                    continue
+                n = (cur[0] + dr, cur[1] + dc)
+                if (n in pass_set or n == target or n == enter) and n not in seen:
+                    seen.add(n)
+                    parent[n] = (a, cur)
+                    q.append(n)
+        return None
+
+    def _frontier8(self, region: set[Cell]) -> set[Cell]:
+        out: set[Cell] = set()
+        for cell in region:
+            for dr, dc in _MOVE_VEC.values():
+                n = (cell[0] + dr, cell[1] + dc)
+                if n not in region and self._color(self.grid, n) == _CIRCUIT_COLOR:
+                    out.add(n)
+        return out
+
+    # ── generator primitives (``grid = yield action``) ──────────────────
+    def _step(self, a: int):
+        g = yield a
+        self.grid = g
+        return g
+
+    def _batch(self, plan: list[int]):
+        """Open-loop plan + one flush no-op, then reconcile the lag-1 obs log.
+        Returns (confirmed_cell, wall) where wall=(cell,action) if a sprite-mask
+        wall was hit. Assumes the pipeline is drained at entry."""
+        start = self.pcell
+        planned = [start]
+        for a in plan:
+            dr, dc = _MOVE_VEC[a]
+            planned.append((planned[-1][0] + dr, planned[-1][1] + dc))
+        obs_log: list[Cell | None] = [start]
+        for a in plan:
+            g = yield from self._step(a)
+            p = self._obs_player(g)
+            obs_log.append(p)
+            if p is None:
+                return start, None
+        wb = self._wall_bump(planned[-1]) or self._wall_bump(start) or 1  # type: ignore[arg-type]
+        g = yield from self._step(wb)
+        pf = self._obs_player(g)
+        obs_log.append(pf if pf is not None else obs_log[-1])
+        # lag-1: obs_log[k+2] is the true position after plan[k].
+        for k in range(len(plan)):
+            true_after = obs_log[k + 2] if k + 2 < len(obs_log) else obs_log[-1]
+            if true_after == planned[k + 1]:
+                continue
+            self.blocked.add((planned[k], plan[k]))
+            self.pcell = planned[k]
+            return planned[k], (planned[k], plan[k])
+        self.pcell = planned[-1]
+        return planned[-1], None
+
+    def _filler(self):
+        floor = self._floor(self.grid)
+        for a, (dr, dc) in _MOVE_VEC.items():
+            n = (self.pcell[0] + dr, self.pcell[1] + dc)  # type: ignore[index]
+            if n in floor and (self.pcell, a) not in self.blocked:
+                yield from self._batch([a])
+                return
+        wb = self._wall_bump(self.pcell) or 1  # type: ignore[arg-type]
+        yield from self._step(wb)
+
+    def _drive(self, target: Cell, enter: Cell | None = None, cycles: int = 80, max_wait: int = 45):
+        waited = 0
+        for _ in range(cycles):
+            if self.pcell == target:
+                return True
+            if not self._nine(self.grid):
+                return False
+            plan = self._plan(self.pcell, target, enter)  # type: ignore[arg-type]
+            if not plan:
+                if waited >= max_wait:
+                    return False
+                waited += 1
+                yield from self._filler()
+                continue
+            _conf, wall = yield from self._batch(plan)
+            if self.pcell == target:
+                return True
+            if wall is None and _conf != target:
+                if waited >= max_wait:
+                    return False
+                waited += 1
+                yield from self._filler()
+        return self.pcell == target
+
+    def _discover(self, seated: set[Cell], wait: int, known_plates: list[Cell]):
+        floor = self._floor(self.grid)
+        reach_seat = self._reach(floor | seated, self.pcell)  # type: ignore[arg-type]
+        near = {(c[0] + dr, c[1] + dc) for c in self.barriers for dr, dc in _MOVE_VEC.values()} | self.barriers
+        pool = self._frontier8(reach_seat) - self.barriers - set(known_plates) - near
+        p = self.pcell
+        ordered = sorted(pool, key=lambda c: abs(c[0] - p[0]) + abs(c[1] - p[1]))  # type: ignore[index]
+        cands: list[Cell] = []
+        for cand in ordered:
+            for a, (dr, dc) in _MOVE_VEC.items():
+                ap = (cand[0] - dr, cand[1] - dc)
+                if ap in reach_seat and (ap, a) not in self.blocked:
+                    cands.append(cand)
+                    break
+        for cand in cands:
+            fb = self._floor(self.grid)
+            ok = yield from self._drive(cand, enter=cand, max_wait=wait)
+            added = {c for c in (self._floor(self.grid) - fb) if c != cand}
+            if ok and added:
+                return cand, added
+        return None, None
+
+    def _settle_rewind(self, spawn: Cell, tries: int = 12):
+        for _ in range(tries):
+            obs = self._obs_player(self.grid)
+            if obs is not None:
+                self.pcell = obs
+            if self.pcell == spawn:
+                return
+            wb = self._wall_bump(self.pcell) or 1  # type: ignore[arg-type]
+            yield from self._step(wb)
+
+    def _identify(self):
+        g = yield from self._step(_MOVES[1])  # snap probe (a displacing move)
+        idc = [(r["centroid"][0], r["centroid"][1]) for r in self._nine(g)]
+        for a in (2, 4, 1, 3, 2, 4, 1, 3):
+            g = yield from self._step(a)
+            now = [(r["centroid"][0], r["centroid"][1]) for r in self._nine(g)]
+            moved = [c for c in now if all(abs(c[0] - o[0]) + abs(c[1] - o[1]) > 2 for o in idc)]
+            static = [c for c in now if any(abs(c[0] - o[0]) + abs(c[1] - o[1]) <= 2 for o in idc)]
+            if moved:
+                self.off = (int(round(moved[0][0])) % _CELL_PX, int(round(moved[0][1])) % _CELL_PX)
+                self.pcell = self._to_cell(*moved[0])
+                self.goal = self._to_cell(*static[0]) if static else None
+                wb = self._wall_bump(self.pcell) or 1
+                g = yield from self._step(wb)  # drain the pending identify move
+                op = self._obs_player(g)
+                if op is not None:
+                    self.pcell = op
+                return
+            idc = now
+
+    def run(self):
+        """Drive: identify -> seat ghost B -> seat ghost A -> walk to goal. Yields
+        one action per env step; ``grid = yield action`` feeds the next frame."""
+        self.grid = yield  # prime
+        yield from self._identify()
+        if self.off is None or self.goal is None:
+            while True:
+                yield _MOVES[0]
+        spawn = self.pcell
+        plate_b, barr_b = yield from self._discover(set(), 0, [])
+        if plate_b is None:
+            while True:
+                yield _MOVES[0]
+        self.barriers |= barr_b
+        yield from self._step(_ACTION5)  # bank ghost B
+        yield from self._settle_rewind(spawn)  # type: ignore[arg-type]
+        plate_a, barr_a = yield from self._discover(barr_b, 60, [plate_b])
+        if plate_a is None:
+            while True:
+                yield _MOVES[0]
+        self.barriers |= barr_a
+        yield from self._step(_ACTION5)  # bank ghost A
+        yield from self._settle_rewind(spawn)  # type: ignore[arg-type]
+        for gt in (self.goal, (self.goal[0] + 1, self.goal[1] + 1),
+                   (self.goal[0] + 1, self.goal[1]), (self.goal[0], self.goal[1] + 1)):
+            yield from self._drive(gt, enter=gt, cycles=60)
+        while True:
+            yield _MOVES[0]
+
+
 class Adapter(GameAdapter):
     """Momentary-plate + record-replay-ghost solver composed from admorphiq.kernels."""
 
@@ -151,6 +427,8 @@ class Adapter(GameAdapter):
         # motion tracking
         self._prev_player: Cell | None = None
         self._explore_i = 0
+        # L1+ two-ghost generator solver (created on first L1 frame)
+        self._l1_gen: Any = None
 
     # ── harness contract ────────────────────────────────────────────────
 
@@ -179,7 +457,25 @@ class Adapter(GameAdapter):
         if not move_ids:
             return simple_action(simple_ids[0]) if simple_ids else reset_action()
 
+        # L1+ (nested two-ghost circuits): drive the dedicated generator solver.
+        # L0 stays on the single-ghost FSM below (byte-identical).
+        if levels >= 1 and can_ghost:
+            act = self._l1_action(grid)
+            if act in move_ids or act == _ACTION5:
+                return simple_action(act)
+            return simple_action(move_ids[0])
+
         return simple_action(self._decide(grid, move_ids, can_ghost))
+
+    def _l1_action(self, grid: Grid) -> int:
+        """Drive the persistent L1 two-ghost generator one step (per-call)."""
+        if self._l1_gen is None:
+            self._l1_gen = _L1TwoGhost().run()
+            next(self._l1_gen)  # prime to the first ``grid = yield``
+        try:
+            return self._l1_gen.send(grid)
+        except StopIteration:
+            return _MOVES[0]
 
     # ── perception ──────────────────────────────────────────────────────
 
