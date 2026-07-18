@@ -104,37 +104,44 @@ def main():
             print(f"  it{it} sethrel st r0={st['r0']} c0={st['c0']} c1={st['c1']} vrel={st['vrel']} hrel={st['hrel']} mk={mk}")
 
         if phase == "sethrel":
-            if st["hrel"] >= hrel_t:
-                phase = "carry_right"; print(f"  [it{it}] hrel set = {st['hrel']} @r0={st['r0']} c0={st['c0']}"); continue
-            # must col-overlap the obstacle and sit ABOVE it, then push DOWN.
-            if not (st["c0"] <= ob[3] and st["c1"] >= ob[1]):
-                act = 4 if (st["c0"] + st["c1"]) // 2 < obc else 3
+            # MEASURED control law (re86_l7_barshift.py): with the VBAR COL inside
+            # the obstacle cols and the frame ABOVE the obstacle rows, a DOWN push
+            # shifts the hbar DOWN +3 (frame stays put) until it pins at the frame
+            # bottom (hrel = h-1 = 18). UP pushes only translate. So: settle in the
+            # GAP (rows below the stations, above the obstacle), align the vbar into
+            # the obstacle cols, then push DOWN to hrel_t.
+            if st["ha"] >= st["r1"]:   # hbar at the frame bottom row
+                phase = "carry_right"; print(f"  [it{it}] hrel set: ha={st['ha']} r0={st['r0']} c0={st['c0']} va={st['va']}"); continue
+            in_gap = st["r0"] >= 7 and st["r1"] < ob[0]
+            if not in_gap:
+                act = 1 if st["r1"] >= ob[0] else 2
                 last_act = act; obs = step(env, A[act]); continue
-            if st["r1"] >= ob[0] - 1 and st["hrel"] == 9:
-                # need to be above so a down-push pins the hbar at the obstacle top
-                last_act = 1; obs = step(env, A[1]); continue
-            last_act = 2; obs = step(env, A[2]); continue  # push DOWN -> hrel+3
+            if not (ob[1] <= st["va"] <= ob[3]):   # vbar col not in the obstacle
+                act = 4 if st["va"] < (ob[1] + ob[3]) // 2 else 3
+                last_act = act; obs = step(env, A[act]); continue
+            last_act = 2; obs = step(env, A[2]); continue  # push DOWN -> hbar +3
 
         if phase == "carry_right":
-            # clear obstacle rows (up) then move right out of the obstacle columns
-            if st["c0"] < ob[3] + 1 and st["r1"] >= ob[0] - 1:
-                last_act = 1; obs = step(env, A[1]); continue  # rise clear of obstacle rows
-            if st["c0"] < c0_t:
-                last_act = 4; obs = step(env, A[4]); continue  # right, out of obstacle cols
+            # free RIGHT to vbar col = vbar_col (frame stays in the gap rows, above
+            # the obstacle -> no collision); then carry_place drops it down.
+            if st["va"] < vbar_col:
+                last_act = 4; obs = step(env, A[4]); continue
+            if st["va"] > vbar_col:
+                last_act = 3; obs = step(env, A[3]); continue
             phase = "carry_place"; continue
 
         if phase == "carry_place":
             if all(t in reg["cells"] for t in tgt):
                 print(f"  [it{it}] CROSS PLACED bbox={reg['bbox']} covers {tgt}"); break
-            # at cols right of the obstacle -> free vertical + horizontal to r0_t,c0_t
-            if st["c0"] != c0_t:
-                act = 4 if st["c0"] < c0_t else 3
-            elif st["r0"] != r0_t:
-                act = 2 if st["r0"] < r0_t else 1
-            else:
-                act = 5
-            last_act = act if act != 5 else last_act
-            obs = step(env, A[act]); continue
+            # vbar col is right of the obstacle now -> free vertical drop to r0_t.
+            if st["r0"] < r0_t:
+                last_act = 2; obs = step(env, A[2]); continue
+            if st["r0"] > r0_t:
+                last_act = 1; obs = step(env, A[1]); continue
+            if st["va"] != vbar_col:
+                act = 4 if st["va"] < vbar_col else 3
+                last_act = act; obs = step(env, A[act]); continue
+            obs = step(env, A[5]); continue
     else:
         g = canonical_layer(obs)
         mk2 = marker(g) or (0, 0)
