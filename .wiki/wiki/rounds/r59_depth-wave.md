@@ -2,7 +2,7 @@
 round: r59
 axis: script25 depth (kernel expressiveness) — faithful-sim + learned-operator wave 2
 keywords: [m0r0, pressure-plate, gates, bp35, frontier-exploration, su15, enemy-in-sim, re86, separation-by-motion, sk48, lockstep, reachability, lp85, twist-topology, ls20, moving-changer, r59s1, full-25]
-verdict: PASS — official card 18.02% → 21.56% → 22.25% → 26.38% → 27.25% → 27.80% → 28.47% → 29.25% → **29.53% (r59s8, 2026-07-18 22:05)**; eleven consecutive single-diff-verified runs
+verdict: PASS — official card 18.02% → 21.56% → 22.25% → 26.38% → 27.25% → 27.80% → 28.47% → 29.25% → 29.53% → **30.53% (r59s9, 2026-07-19 00:42) — first 30% crossing**; twelve consecutive single-diff-verified runs
 commit: 9b8e2e8 (r59s1 HEAD) / cc1e4dc (r59s2 HEAD) / f8144df-era (r59s3 HEAD); landings: bc04e63, 6b6ad2e, b2128c9, 36d23cd, 3b6c11c, 0197b8b, fa8e3bc, 12bda52, a1701f9, 0abeb0d, 2bdea69, e698ed8(ls20 L5), 02fe3d8, f677aed, 9647858, e536f65
 ---
 
@@ -100,6 +100,17 @@ Real model: fixed camera, lag-1, plain frame-readable maze; reactive barrier gat
 state IS frame-observable, colour 5/8 — no ghost-clock arithmetic). N-ghost architecture
 landed (15dc74c); L2 decoded to its real question (no reachable plate — ghost-path pressing,
 this time measured with CORRECT tracking) and parked.
+
+## r59s9 official (2026-07-19 00:42 KST, ceph-build, @5000) — **30.53%, FIRST 30% CROSSING**
+
+`games=25 total=7.6336 → 30.53%`. ONE row moved vs r59s8: ls20 0.75 → **1.0000 (7/7 —
+FULLY CONQUERED, 5th full-conquest game, 377 total actions, every level per-level 1.0)** via
+the L7 Fog clear (1e5cb6f): the refill-chained observation post angle, which REFUTED the two
+prior passes' "no reachable cell sees the whole track" wall (posts (49,15)/(49,20) see all
+six track cells — the real blocker was push-wall-aware navigation to REACH the column).
+Second game in two days whose terminal wall was a prior pass's measurement artifact (after
+g50t's goal-tracking bug). Full-conquest roster: ft09 1.0 · m0r0 1.0 · ls20 1.0 · cd82 0.98 ·
+sb26 0.846.
 
 ## Post-measurement landings (in HEAD, not in r59s1; next full-25 picks them up)
 
