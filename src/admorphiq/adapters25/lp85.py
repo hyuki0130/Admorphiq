@@ -651,6 +651,73 @@ def _learn_coupled_map(
                 for k in [k for k, v in succ.items() if v == cand and k != pb]:
                     del succ[k]
                 succ[pb] = cand
+    return _repair_open_chain(succ, frames, bg)
+
+
+def _repair_open_chain(
+    succ: dict[Cell, Cell],
+    frames: list[tuple[tuple[int, ...], ...]],
+    bg: frozenset[int],
+) -> dict[Cell, Cell]:
+    """Close an OPEN-CHAIN ring in a coupled map by geometric re-ordering.
+
+    Purpose: a clean coupled rotation map is a COMPLETE permutation — every ring is
+    a closed cycle, so no cell lacks a predecessor or a successor. When one ring
+    reuses a handful of colours, two of its cells share an identical colour
+    time-series and the series bijection mis-links them, degrading that ONE ring
+    into an open chain (a single head + single tail) while the other rings stay
+    closed cycles (measured on LP85 L8: ring E, a 16-cell ring, fragments; rings D
+    and F recover as pure 14/15-cycles). Rebuild ONLY the open-chain cells with
+    ``learn_cyclic_successor`` (position-based nearest-neighbour tour + direction
+    vote — immune to colour periodicity), keep the closed cycles untouched, and
+    splice the result back into a full permutation the joint planner can simulate.
+
+    Expected feedback: a complete permutation (no head/tail — every measured L1–L7
+    coupled map) is returned BYTE-IDENTICAL, so the deploy floor is untouched. Only
+    a fragmented map is repaired; if no press pair yields a clean single cycle over
+    the chain cells the map is returned unchanged (the caller drops maps it cannot
+    plan on)."""
+    heads = set(succ) - set(succ.values())
+    tails = set(succ.values()) - set(succ)
+    if not heads and not tails:
+        return succ  # complete permutation → unchanged (L1–L7 byte-identical)
+    # Open-chain cells: a cell whose forward walk runs off a tail instead of
+    # looping — i.e. it is on the fragmented ring, not a closed cycle.
+    chain: set[Cell] = set(tails)
+    for c in succ:
+        cur, hops = c, 0
+        while cur in succ and hops <= len(succ):
+            cur = succ[cur]
+            hops += 1
+            if cur == c:
+                break
+        else:
+            chain.add(c)
+    if len(chain) < 3:
+        return succ
+    for t in range(len(frames) - 1):
+        before, after = frames[t], frames[t + 1]
+        br = find_regions(before, background=bg)
+        ar = find_regions(after, background=bg)
+
+        def _near(reg: dict[str, Any], _chain: set[Cell] = chain) -> bool:
+            cy, cx = round(reg["centroid"][0]), round(reg["centroid"][1])
+            return any(abs(cy - c[0]) + abs(cx - c[1]) <= 2 for c in _chain)
+
+        br_c = [r for r in br if _near(r)]
+        ar_c = [r for r in ar if _near(r)]
+        chg = [
+            cell
+            for cell in frame_diff(before, after)["cells"]
+            if any(abs(cell[0] - c[0]) + abs(cell[1] - c[1]) <= 2 for c in chain)
+        ]
+        rep = complete_cycle(
+            learn_cyclic_successor(br_c, ar_c, chg, candidate_cells=list(chain))
+        )
+        if rep and is_single_cycle(rep) and len(rep) >= len(chain):
+            out = {c: s for c, s in succ.items() if c not in chain}
+            out.update(rep)
+            return out
     return succ
 
 

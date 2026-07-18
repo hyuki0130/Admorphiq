@@ -24,6 +24,7 @@ from admorphiq.adapters25.lp85 import (
     _learn_coupled_map,
     _planner_background,
     _region_candidates,
+    _repair_open_chain,
     _round_robin_queue,
     _scale_unit,
 )
@@ -598,3 +599,49 @@ def test_start_coupled_retry_arms_only_with_the_coupling_signature():
     _stamp_block(bare, (30, 25), 2, 11)
     assert other._start_coupled_retry(tuple(tuple(r) for r in bare)) is None
     assert not other._coupled
+
+
+def _ring_grid(colors_at: dict[tuple[int, int], int], size: int = 20) -> tuple[tuple[int, ...], ...]:
+    """A ``size``x``size`` background-0 grid with a 3x3 tile of the given colour
+    centred at each ``(row, col)`` — so ``find_regions`` yields one region per
+    tile whose centroid is exactly that cell."""
+    g = [[0] * size for _ in range(size)]
+    for (r, c), col in colors_at.items():
+        for dr in (-1, 0, 1):
+            for dc in (-1, 0, 1):
+                g[r + dr][c + dc] = col
+    return tuple(tuple(row) for row in g)
+
+
+def test_repair_open_chain_leaves_complete_permutation_byte_identical():
+    """Purpose: a clean coupled rotation map (a COMPLETE permutation — every ring
+    a closed cycle, no head/tail) MUST be returned unchanged, so the L8 open-chain
+    repair never perturbs the byte-identical L1–L7 deploy floor (7/8 @ 0.4769).
+    Expected feedback: failure means the repair fires on clean maps and puts the
+    sacred floor at risk of a silent regression."""
+    closed = {(6, 6): (6, 12), (6, 12): (12, 12), (12, 12): (12, 6), (12, 6): (6, 6)}
+    out = _repair_open_chain(dict(closed), frames=[], bg=frozenset({0}))
+    assert out == closed
+
+
+def test_repair_open_chain_closes_a_fragmented_ring_into_a_single_cycle():
+    """Purpose: when within-ring colour periodicity degrades one ring into an OPEN
+    chain (a single head + tail) the repair must rebuild it geometrically from the
+    press frames into a single closed cycle — this is exactly what lets L8's
+    fragmented ring E become a plannable rotation (7/8 → 8/8).
+    Expected feedback: failure means fragmented L8 rings stay open chains and the
+    joint planner cannot simulate them, so L8 never clears."""
+    ring = [(6, 6), (6, 12), (12, 12), (12, 6)]  # a square ring, cyclic order
+    before = _ring_grid({ring[0]: 3, ring[1]: 4, ring[2]: 5, ring[3]: 6})
+    # one clockwise step: each cell's occupant colour moves to the next ring cell.
+    after = _ring_grid({ring[1]: 3, ring[2]: 4, ring[3]: 5, ring[0]: 6})
+    # an OPEN chain: the closing edge (12,6)->(6,6) is missing (head=(6,6), tail=(12,6)).
+    broken = {ring[0]: ring[1], ring[1]: ring[2], ring[2]: ring[3]}
+    out = _repair_open_chain(dict(broken), frames=[before, after], bg=frozenset({0}))
+    assert set(out) == set(ring)
+    # it is now a single closed 4-cycle (every cell has a predecessor and successor).
+    assert set(out.keys()) == set(out.values())
+    order = [ring[0]]
+    for _ in range(len(ring)):
+        order.append(out[order[-1]])
+    assert order[-1] == ring[0] and len(set(order[:-1])) == len(ring)
