@@ -134,15 +134,20 @@ def assign_pieces(movs, clusters):
     return {best_perm[ci]: (clusters[ci]["color"], clusters[ci]["cells"]) for ci in range(nC)}
 
 
-def route_move(cen, half, target_box, other_boxes, dirmap, move_ids):
+def route_move(cen, half, target_box, other_boxes, dirmap, move_ids, walls=frozenset()):
     """One action toward target_box centre via grid_shortest_path over a 3px-cell
-    passability grid with other_boxes inflated by `half`. Returns action id or None."""
+    passability grid with other_boxes inflated by `half` AND learned `walls`
+    (interior-wall centre-cells discovered from failed moves). Returns action id
+    or None."""
     n = 64 // CELL + 1
     passable = [[True] * n for _ in range(n)]
     for (r0, c0, r1, c1) in other_boxes:
         for i in range(max(0, (r0 - half) // CELL), min(n, (r1 + half) // CELL + 1)):
             for j in range(max(0, (c0 - half) // CELL), min(n, (c1 + half) // CELL + 1)):
                 passable[i][j] = False
+    for (wi, wj) in walls:
+        if 0 <= wi < n and 0 <= wj < n:
+            passable[wi][wj] = False
     start = (cen[0] // CELL, cen[1] // CELL)
     tr = (target_box[0] + target_box[2]) // 2
     tc = (target_box[1] + target_box[3]) // 2
@@ -196,9 +201,11 @@ def main():
     # track pieces by identity (index into a stable list keyed on entry centroid)
     pieces = [{"orig": m["color"], "cen": m["cen"], "cells": m["cells"],
                "color": m["color"], "target": None, "cluster": None,
-               "shape_rel": None, "placed": False, "half": (max(max(r for r,_ in m['cells'])-min(r for r,_ in m['cells']), max(c for _,c in m['cells'])-min(c for _,c in m['cells'])))//2 + 1}
+               "shape_rel": None, "placed": False, "walls": set(),
+               "half": (max(max(r for r,_ in m['cells'])-min(r for r,_ in m['cells']), max(c for _,c in m['cells'])-min(c for _,c in m['cells'])))//2 + 1}
               for m in movs0]
     assign = None
+    last_move = None  # (piece_index, pixel_centroid, want_dir) for wall-learning
 
     def try_assign():
         nonlocal assign
@@ -247,20 +254,30 @@ def main():
     # ── main control loop ──
     MAXS = 4000
     win = False
+    loop_i = 0
     while steps < MAXS:
         grid = canonical_layer(obs)
         track(grid)
+        marker = marker_of(grid)
+        # WALL-LEARNING (ported from L4 _l4_blocked): the driven move recorded the
+        # marker position it started from; if the marker did not advance toward
+        # `want`, an interior wall sits at the cell the centre would have entered —
+        # fold it into that piece's passability. Marker-to-marker (both exact 3px).
+        if last_move is not None:
+            pi, prev_pos, want = last_move
+            if marker is not None:
+                adv = (marker[0] - prev_pos[0]) * want[0] + (marker[1] - prev_pos[1]) * want[1]
+                if adv < 2:  # did not advance a full 3px cell in the intended dir
+                    wcell = (prev_pos[0] // CELL + want[0], prev_pos[1] // CELL + want[1])
+                    pieces[pi]["walls"].add(wcell)
+            last_move = None
+
         if assign is None:
             try_assign()
         lv = int(getattr(obs, "levels_completed", 0) or 0)
         if lv >= 5 or str(obs.state).endswith("WIN"):
             win = True; break
-        if steps % 200 == 0:
-            print(f"  @{steps} assign={'set' if assign else 'None'} "
-                  f"pieces={[(p['orig'], p['color'], p['target'], p['cen']) for p in pieces]} "
-                  f"gates8={len(gate_acc[8])}")
         move_ids = [1, 2, 3, 4]
-        marker = marker_of(grid)
         # selected piece = the one whose bbox contains the marker
         sel = None
         if marker is not None:
@@ -268,6 +285,12 @@ def main():
                 rs = [r for r, _ in p["cells"]]; cs = [c for _, c in p["cells"]]
                 if rs and min(rs) - 1 <= marker[0] <= max(rs) + 1 and min(cs) - 1 <= marker[1] <= max(cs) + 1:
                     sel = i; break
+        _trace = (loop_i < 50) or (steps % 200 == 0)
+        if _trace:
+            print(f"  @{steps} i{loop_i} assign={'set' if assign else 'None'} marker={marker} sel={sel} "
+                  f"colors={[p['color'] for p in pieces]} targets={[p['target'] for p in pieces]} "
+                  f"walls={[len(p['walls']) for p in pieces]} cens={[p['cen'] for p in pieces]}")
+        loop_i += 1
         if sel is None:
             obs = env.step(A[5]); steps += 1; continue
 
@@ -284,15 +307,22 @@ def main():
         if not recolour_done:
             if p["color"] == p["target"]:
                 obs = env.step(A[5]); steps += 1; continue  # done; select another
-            # route to target station
+            # MARKER-ANCHOR the driven piece: the parse centroid jitters +-4px
+            # (marker exclusion + gate subtraction shift the region) and confounds
+            # wall-learning; the colour-0 marker is the sprite's exact centre and
+            # moves in clean 3px steps (L4 lesson). Fall back to parse only if the
+            # marker is momentarily hidden (recolour flood).
+            pos = marker if marker is not None else p["cen"]
             tcol = p["target"]
             tbox = next((b for b in station_boxes if b[0] <= stations[tcol][0] <= b[2] and b[1] <= stations[tcol][1] <= b[3]), None)
             others = [b for b in station_boxes if b is not tbox]
-            a = route_move(p["cen"], p["half"], tbox, others, dirmap, move_ids)
+            a = route_move(pos, p["half"], tbox, others, dirmap, move_ids, p["walls"])
             if steps % 100 == 0:
-                print(f"    recolour p{sel}(c{p['color']}->{tcol}) cen={p['cen']} half={p['half']} route_action={a}")
+                print(f"    recolour p{sel}(c{p['color']}->{tcol}) pos={pos} half={p['half']} "
+                      f"walls={len(p['walls'])} route_action={a}")
             if a is None:
                 obs = env.step(A[5]); steps += 1; continue
+            last_move = (sel, pos, dirmap[a])
             obs = env.step(A[a]); steps += 1
             continue
 
