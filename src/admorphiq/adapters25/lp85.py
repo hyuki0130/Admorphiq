@@ -141,8 +141,10 @@ from admorphiq.kernels import (
     complete_cycle,
     find_regions,
     frame_diff,
+    is_single_cycle,
     learn_cyclic_successor,
     learn_point_operators,
+    learn_successor_from_series,
     plan_token_assignment,
 )
 
@@ -167,6 +169,20 @@ _BUTTON_COLORS = frozenset({8, 14})  # rotation controls (two directions)
 _SOLID_MIN_SIZE = 3  # a marker region this size or larger is a solid moving token
 _DEST_CLUSTER_SPAN = 6  # corner pixels within this L∞ span form one target frame
 _PLANNER_BUDGET = 40  # max rotation-sequence length the BFS may return
+# ── multi-press ring learner (L4+ signature: many controls over few rings) ──
+# Single-press ordering under-determines a ring whose tokens reuse colours (LP85
+# L4: 6 colours over 20 cells → a 2-press σ² signature collides, no self-consistent
+# cycle closes). When the level exposes MANY rotation controls (a structure with
+# lots of redundant/decoy buttons rotating just a couple of dense rings — L4 shows
+# 20 buttons vs ≤8 on L1–L3), switch to learning each ring from the FULL colour
+# time-series of its cells over repeated presses of one control. The threshold
+# cleanly separates L4 (20) from every earlier level (≤8) and L5 (9), so L1–L3 keep
+# the byte-identical single-press path.
+_MULTIPRESS_BUTTON_MIN = 12
+_MP_MIN_FOOTPRINT = 30  # a single press moving ≥ this many cells rotates a real ring
+_MP_MIN_RING = 15  # a grouped ring must reach this many cells to count as learnable
+_MP_MIN_PRESSES = 8  # earliest press count at which to test the all-exact stop
+_MP_MAX_PRESSES = 26  # give up learning a ring after this many presses (> ring size)
 # Stall give-up: once the ring planner has deactivated (given up) on a level the
 # sweep cannot clear (only reachable at level index >= 2 — L0/L1 stay on the
 # proven sweep path), stop after this many further no-progress sweep actions.
@@ -440,6 +456,16 @@ class Adapter(GameAdapter):
         # No-progress sweep actions since the planner gave up on the current
         # level (reset every level-up); drives the stall give-up in is_done.
         self._sweep_steps = 0
+        # ── multi-press ring learner state (armed only on the L4+ many-controls
+        # signature; L1–L3 leave these untouched on the single-press path) ──
+        self._multipress = False
+        self._mp_rings: list[tuple[Cell, set[Cell]]] = []  # (rep button, footprint cells)
+        self._mp_scan_idx = 0  # button being footprint-scanned
+        self._mp_pre: tuple[tuple[int, ...], ...] | None = None  # pre-press frame for scan diff
+        self._mp_ring_idx = 0  # ring being learned
+        self._mp_frames: list[tuple[tuple[int, ...], ...]] = []  # press frames for the current ring
+        self._mp_ops: dict[str, dict[Cell, Cell]] = {}  # learned forward ring maps
+        self._mp_rep: dict[str, Cell] = {}  # op name → representative button cell
 
     # ── harness contract ────────────────────────────────────────────────
 
@@ -507,11 +533,69 @@ class Adapter(GameAdapter):
         if self._phase == "detect":
             if not self._detect(grid):
                 return None
+            if self._multipress:
+                # L4+ structure: learn each ring from its full colour time-series.
+                self._phase = "mp_scan"
+                self._mp_rings = []
+                self._mp_scan_idx = 0
+                self._mp_pre = grid
+                return self._click_button(0)
             self._phase = "learn"
             self._learn_idx = 0
             self._pre_frame = grid
             self._pre_goals = self._mover_cells(grid)
             return self._click_button(0)
+
+        if self._phase == "mp_scan":
+            # grid is the result of pressing buttons[_mp_scan_idx]; record which
+            # cells it moved and group big footprints into distinct rings.
+            d = frame_diff(self._mp_pre, grid)
+            if d["count"] >= _MP_MIN_FOOTPRINT:
+                self._mp_absorb_ring(
+                    self._buttons[self._mp_scan_idx], frozenset(d["cells"])
+                )
+            self._mp_scan_idx += 1
+            enough = len(self._mp_rings) >= 2 and all(
+                len(rc) >= _MP_MIN_RING for _b, rc in self._mp_rings
+            )
+            if not enough and self._mp_scan_idx < len(self._buttons):
+                self._mp_pre = grid
+                return self._click_button(self._mp_scan_idx)
+            # scan finished — start learning the first ring (or abort to sweep)
+            self._mp_rings = [r for r in self._mp_rings if len(r[1]) >= _MP_MIN_RING]
+            if not self._mp_rings:
+                return None
+            self._phase = "mp_learn"
+            self._mp_ring_idx = 0
+            self._mp_frames = [grid]
+            self._mp_ops = {}
+            self._mp_rep = {}
+            return self._click_cell(self._mp_rings[0][0])
+
+        if self._phase == "mp_learn":
+            self._mp_frames.append(grid)
+            rep = self._mp_rings[self._mp_ring_idx][0]
+            presses = len(self._mp_frames) - 1
+            stop = False
+            if presses >= _MP_MIN_PRESSES:
+                succ, all_exact = self._mp_match(self._mp_frames)
+                if all_exact and is_single_cycle(succ):
+                    name = f"r{self._mp_ring_idx}"
+                    self._mp_ops[name] = dict(succ)
+                    self._mp_rep[name] = rep
+                    stop = True
+            if not stop and presses >= _MP_MAX_PRESSES:
+                stop = True  # ring never learned cleanly — drop it, keep the rest
+            if not stop:
+                return self._click_cell(rep)
+            self._mp_ring_idx += 1
+            if self._mp_ring_idx < len(self._mp_rings):
+                self._mp_frames = [grid]
+                return self._click_cell(self._mp_rings[self._mp_ring_idx][0])
+            # every ring learned — plan from the self-consistent maps only
+            if not self._mp_build_plan(grid):
+                return None
+            self._phase = "execute"
 
         if self._phase == "learn":
             self._learn_button(self._learn_idx, grid)
@@ -530,9 +614,77 @@ class Adapter(GameAdapter):
             if not self._plan:
                 return None  # plan ran out without a win — hand off to the sweep
             name = self._plan.popleft()
+            if name in self._mp_rep:  # multi-press ring op ("r0"/"r1"/…)
+                return self._click_cell(self._mp_rep[name])
             return self._click_button(int(name[1:]))
 
         return None
+
+    def _click_cell(self, cell: Cell) -> GameAction:
+        row, col = cell
+        return click_action(x=col, y=row)
+
+    def _mp_absorb_ring(self, button: Cell, cells: frozenset[Cell]) -> None:
+        """Merge a button's moved-cell footprint into the ring it overlaps, or
+        start a new ring. Many buttons rotate the same ring (redundant/opposite-
+        direction controls); grouping by ≥50% cell overlap collapses them to the
+        distinct rings actually present."""
+        for i, (rep, rc) in enumerate(self._mp_rings):
+            if len(cells & rc) >= 0.5 * min(len(cells), len(rc)):
+                self._mp_rings[i] = (rep, rc | cells)
+                return
+        self._mp_rings.append((button, set(cells)))
+
+    def _mp_match(self, frames: list[tuple[tuple[int, ...], ...]]) -> tuple[dict[Cell, Cell], bool]:
+        """Recover the current ring's successor map from every ring cell's colour
+        time-series across the accumulated press frames. Cells are the small tile
+        centroids from the first frame; a cell whose colour never changed is static
+        (off-ring) and excluded before matching."""
+        regions0 = find_regions(frames[0], background=self._bg)
+        cells = [_cint(r) for r in regions0 if int(r["size"]) <= 6]
+        series: dict[Cell, tuple[int, ...]] = {}
+        for (rr, cc) in cells:
+            s = tuple(int(frames[t][rr][cc]) for t in range(len(frames)))
+            if len(set(s)) > 1:
+                series[(rr, cc)] = s
+        return learn_successor_from_series(series)
+
+    def _mp_build_plan(self, grid: tuple[tuple[int, ...], ...]) -> bool:
+        """BFS a forward-only rotation sequence over the multi-press-learned rings
+        that lands every moving token on its same-class destination. Forward-only
+        (no inverse ops) keeps execution to pressing the learned representative
+        buttons — n-1 forward presses reach what one inverse press would."""
+        ops = {k: v for k, v in self._mp_ops.items() if len(v) >= 2}
+        if not ops:
+            return False
+        lattice: list[Cell] = []
+        seen: set[Cell] = set()
+        for mp in ops.values():
+            for cell in (*mp.keys(), *mp.values()):
+                if cell not in seen:
+                    seen.add(cell)
+                    lattice.append(cell)
+        regions = find_regions(grid, background=self._bg)
+        movers = _detect_movers(regions, self._marker_colors)
+        dests = _detect_dests(regions, self._marker_colors)
+        if not movers or len(movers) != len(dests):
+            return False
+        tokens = [_snap(cell, lattice) for _color, cell in movers]
+        token_labels = [color for color, _cell in movers]
+        goals = [_snap(cell, lattice) for _color, cell in dests]
+        dest_labels = [color for color, _cell in dests]
+        plan = plan_token_assignment(
+            ops,
+            tokens,
+            goals,
+            labels=token_labels,
+            goal_labels=dest_labels,
+            budget=_PLANNER_BUDGET,
+        )
+        if not plan:
+            return False
+        self._plan = deque(plan)
+        return True
 
     def _mover_cells(self, grid: tuple[tuple[int, ...], ...]) -> list[Cell]:
         """Current positions of every moving token (all colour classes)."""
@@ -557,6 +709,10 @@ class Adapter(GameAdapter):
         dest_counts: dict[int, int] = {}
         for color, _cell in self._dests:
             dest_counts[color] = dest_counts.get(color, 0) + 1
+        # Many controls over few rings ⇒ single-press ordering fails (L4 σ²
+        # conflict); take the full-series multi-press path instead. L1–L3 stay on
+        # the single-press path (byte-identical) since their button counts are ≤8.
+        self._multipress = len(self._buttons) >= _MULTIPRESS_BUTTON_MIN
         return len(self._buttons) >= 1 and len(movers) >= 1 and mover_counts == dest_counts
 
     def _learn_button(self, idx: int, grid: tuple[tuple[int, ...], ...]) -> None:
@@ -650,6 +806,16 @@ class Adapter(GameAdapter):
         self._plan = deque()
         self._selftest_fails = 0
         self._sweep_steps = 0  # a level-up clears the stall counter
+        # Re-arm the multi-press learner fresh per level (it engages only if this
+        # level's own detect sees the many-controls signature).
+        self._multipress = False
+        self._mp_rings = []
+        self._mp_scan_idx = 0
+        self._mp_pre = None
+        self._mp_ring_idx = 0
+        self._mp_frames = []
+        self._mp_ops = {}
+        self._mp_rep = {}
 
     # ── measurement: did the pending click do anything? ─────────────────
 

@@ -257,6 +257,88 @@ def complete_cycle(succ: Mapping[Cell, Cell]) -> dict[Cell, Cell]:
     return out
 
 
+def is_single_cycle(succ: Mapping[Cell, Cell]) -> bool:
+    """Whether ``succ`` is one Hamiltonian cycle over its own cells.
+
+    Purpose: validate that a learned ``{cell: successor}`` map is a single closed
+    loop (as a rotation ring must be) rather than several disjoint sub-cycles or a
+    partial chain. A map that is not one cycle is a mis-learned ring the planner
+    must reject.
+
+    Expected feedback: ``True`` iff following successors from any cell visits every
+    cell exactly once before returning to the start; ``False`` for an empty map, a
+    broken chain, or a fragmented multi-cycle.
+    """
+    if not succ:
+        return False
+    start = next(iter(succ))
+    cur = start
+    for step in range(1, len(succ) + 1):
+        nxt = succ.get(cur)
+        if nxt is None:
+            return False
+        if nxt == start:
+            return step == len(succ)
+        cur = nxt
+    return False
+
+
+def learn_successor_from_series(
+    series: Mapping[Cell, Sequence[int]],
+) -> tuple[dict[Cell, Cell], bool]:
+    """Recover a rotation ring's full ``{cell: successor}`` map from the colour
+    TIME-SERIES each ring cell shows over K repeated presses of ONE control.
+
+    Purpose: single-press learning under-determines a ring's cyclic order when its
+    tokens reuse colours — a 2-press ``(colour, next-colour)`` signature still
+    collides (measured on LP85 L4: only 12/17 cells resolve, and the fix-point
+    finds no self-consistent cycle). Pressing the SAME control K times and matching
+    each cell's FULL colour series uniquely fingerprints every ring cell, so the
+    order is recovered even under heavy colour duplication AND twist topology.
+
+    Model: a rotation moves occupants along a fixed loop, so the colour at cell
+    ``σ(a)`` one press later equals the colour at ``a`` now — ``c_{σ(a)}[t] ==
+    c_a[t-1]`` for all ``t``. Thus ``σ(a)`` is the cell whose series is ``a``'s
+    delayed by one step. Edges are scored by how many time-steps agree and assigned
+    highest-first as a bijection (each target used once), which avoids the double-
+    assignment a per-cell arg-max makes under ties.
+
+    ``series`` maps each moved ring cell to its length-(K+1) colour series (the
+    colour at that FIXED frame cell across the K+1 frames spanning K presses). Only
+    cells that actually changed colour belong on the rotated ring — the caller
+    filters static cells out before calling.
+
+    Expected feedback: returns ``(succ, all_exact)``. ``succ`` is a bijection over
+    the input cells; ``all_exact`` is ``True`` iff every assigned successor matched
+    its predecessor's shifted series at EVERY time-step (a perfect fingerprint).
+    The caller presses until ``all_exact`` AND :func:`is_single_cycle` both hold —
+    a partial window (K below the ring size) can yield a spurious single cycle whose
+    edges are not all exact, so the exact-match flag is the trustworthy stop signal.
+    """
+    cells = list(series)
+    edges: list[tuple[int, Cell, Cell]] = []
+    for a in cells:
+        sa = series[a]
+        for b in cells:
+            if b == a:
+                continue
+            sb = series[b]
+            score = sum(1 for t in range(1, len(sb)) if sb[t] == sa[t - 1])
+            edges.append((score, a, b))
+    edges.sort(key=lambda e: -e[0])
+    succ: dict[Cell, Cell] = {}
+    used: set[Cell] = set()
+    all_exact = True
+    for score, a, b in edges:
+        if a in succ or b in used:
+            continue
+        succ[a] = b
+        used.add(b)
+        if score < len(series[a]) - 1:
+            all_exact = False
+    return succ, all_exact
+
+
 def apply_successor(succ: Mapping[Cell, Cell], positions: Iterable[Cell]) -> tuple[Cell, ...]:
     """Advance every token one step along a rotation: ``pos -> succ[pos]`` (a
     token off this ring, i.e. not a key, stays put). Returns the new positions

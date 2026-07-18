@@ -8,7 +8,9 @@ cycles, and BFS-planning a control sequence onto goal cells.
 from admorphiq.kernels.permute import (
     apply_successor,
     complete_cycle,
+    is_single_cycle,
     learn_cyclic_successor,
+    learn_successor_from_series,
     plan_token_assignment,
 )
 
@@ -239,3 +241,75 @@ def test_plan_returns_none_when_goal_unreachable_within_budget():
     ops = {"R": learn_cyclic_successor(before, after, changed)}
     assert plan_token_assignment(ops, [_LOOP[0]], [(99, 99)], budget=10) is None
     assert plan_token_assignment(ops, [_LOOP[0]], [_LOOP[3]], budget=2) is None
+
+
+def _rotation_series(order, necklace, presses):
+    """Colour time-series each ring cell shows over ``presses`` R-rotations.
+
+    ``order`` is the ring's true cyclic cell order; ``necklace[i]`` is the colour
+    of the occupant that starts on ``order[i]``. An R press moves each occupant to
+    the next cell, so cell ``order[j]`` at time ``t`` holds ``necklace[(j-t) % n]``.
+    """
+    n = len(order)
+    return {
+        cell: tuple(necklace[(j - t) % n] for t in range(presses + 1))
+        for j, cell in enumerate(order)
+    }
+
+
+def test_is_single_cycle_distinguishes_loop_from_fragments():
+    """Purpose: pin ``is_single_cycle`` — a learned ring map must be ONE closed
+    loop, not fragments, for the planner to trust it.
+
+    Expected feedback: PASS = True for a single Hamiltonian cycle; False for an
+    empty map, a broken chain, and two disjoint sub-cycles (the exact mis-learn
+    the exact-match stop guards against).
+    """
+    loop = {(0, 0): (0, 1), (0, 1): (0, 2), (0, 2): (0, 0)}
+    assert is_single_cycle(loop) is True
+    assert is_single_cycle({}) is False
+    assert is_single_cycle({(0, 0): (0, 1), (0, 1): (0, 2)}) is False  # tail, no return
+    two = {(0, 0): (0, 1), (0, 1): (0, 0), (5, 5): (5, 6), (5, 6): (5, 5)}
+    assert is_single_cycle(two) is False
+
+
+def test_learn_from_series_recovers_ring_under_duplicate_colours():
+    """Purpose: the multi-press learner must recover a ring's full cyclic order
+    even when its tokens reuse colours — the exact case where single-press σ²
+    under-determines the order (LP85 L4: 6 colours over 20 cells, the fix-point
+    finds no self-consistent cycle).
+
+    Expected feedback: PASS = over a full cycle of presses the recovered successor
+    map equals the TRUE ring order and reports ``all_exact`` (every cell's colour
+    series uniquely fingerprints its successor); the map is one clean cycle. This
+    is what lets LP85 L4 be learned where the 2-press signature collides.
+    """
+    # 6-cell ring, aperiodic necklace with every colour repeated (1,2,3 each twice)
+    order = [(0, 0), (0, 2), (0, 4), (2, 4), (2, 2), (2, 0)]
+    necklace = [1, 2, 1, 3, 2, 3]
+    true_succ = {order[i]: order[(i + 1) % 6] for i in range(6)}
+    series = _rotation_series(order, necklace, presses=6)
+    succ, all_exact = learn_successor_from_series(series)
+    assert succ == true_succ
+    assert all_exact is True
+    assert is_single_cycle(succ) is True
+
+
+def test_learn_from_series_needs_multiple_presses_under_duplicates():
+    """Purpose: pin WHY the learner presses many times — under duplicate colours a
+    single press is not enough to fingerprint successors, so a too-short window can
+    certify a WRONG map (all-exact + single-cycle yet not the true order). This is
+    why the adapter's stop only fires well above one press.
+
+    Expected feedback: PASS = a ONE-press window recovers a map that differs from
+    the true ring order (single press insufficient), while a full-cycle window
+    recovers the true order exactly. Demonstrates the multi-press necessity that
+    resolved the LP85 L4 σ² conflict.
+    """
+    order = [(0, 0), (0, 2), (0, 4), (2, 4), (2, 2), (2, 0)]
+    necklace = [1, 1, 2, 2, 3, 3]  # heavy adjacent duplication
+    true_succ = {order[i]: order[(i + 1) % 6] for i in range(6)}
+    one, _ = learn_successor_from_series(_rotation_series(order, necklace, presses=1))
+    full, exact = learn_successor_from_series(_rotation_series(order, necklace, presses=6))
+    assert one != true_succ  # one press cannot disambiguate the duplicate colours
+    assert full == true_succ and exact is True

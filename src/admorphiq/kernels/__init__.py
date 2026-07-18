@@ -69,7 +69,9 @@ from admorphiq.kernels.paths import (
 from admorphiq.kernels.permute import (
     apply_successor,
     complete_cycle,
+    is_single_cycle,
     learn_cyclic_successor,
+    learn_successor_from_series,
     plan_token_assignment,
 )
 from admorphiq.kernels.regions import (
@@ -158,7 +160,9 @@ __all__ = [
     "split_runs_by_pitch",
     "apply_successor",
     "complete_cycle",
+    "is_single_cycle",
     "learn_cyclic_successor",
+    "learn_successor_from_series",
     "plan_token_assignment",
     "greedy_parse",
     "gf2_nullspace",
