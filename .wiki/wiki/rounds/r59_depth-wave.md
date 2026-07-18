@@ -2,7 +2,7 @@
 round: r59
 axis: script25 depth (kernel expressiveness) — faithful-sim + learned-operator wave 2
 keywords: [m0r0, pressure-plate, gates, bp35, frontier-exploration, su15, enemy-in-sim, re86, separation-by-motion, sk48, lockstep, reachability, lp85, twist-topology, ls20, moving-changer, r59s1, full-25]
-verdict: PASS — official card 18.02% → 21.56% → 22.25% → 26.38% → 27.25% → 27.80% → 28.47% → **29.25% (r59s7, 2026-07-18 20:31)**; ten consecutive single-diff-verified runs
+verdict: PASS — official card 18.02% → 21.56% → 22.25% → 26.38% → 27.25% → 27.80% → 28.47% → 29.25% → **29.53% (r59s8, 2026-07-18 22:05)**; eleven consecutive single-diff-verified runs
 commit: 9b8e2e8 (r59s1 HEAD) / cc1e4dc (r59s2 HEAD) / f8144df-era (r59s3 HEAD); landings: bc04e63, 6b6ad2e, b2128c9, 36d23cd, 3b6c11c, 0197b8b, fa8e3bc, 12bda52, a1701f9, 0abeb0d, 2bdea69, e698ed8(ls20 L5), 02fe3d8, f677aed, 9647858, e536f65
 ---
 
@@ -88,6 +88,18 @@ handler + BFS'd push sequences (22/22 live-validated), the occlusion-vs-flood id
 breakthrough (cycle-index identity + occlusion-safe drive), width-aware recolour. L8 probed
 + decoded (a64eda5: SIMPLER than L7 — two outlines, no crosses) — build in flight for
 **8/8 = 5th full conquest**.
+
+## r59s8 official (2026-07-18 22:05 KST, ceph-build, @5000) — **29.53%**
+
+`games=25 total=7.3836 → 29.53%`. ONE row moved vs r59s7: g50t 0.0357 → **0.1071 (2/7)** —
+the first-ever g50t L1 clear (87c48bb), resolving the EIGHT-lane saga with one perception
+root-cause: TWO colour-9 blobs (moving player + static goal); every prior diagnostic's
+min()-selection locked onto the GOAL, manufacturing the fake camera-lock, fake lag-2, fake
+offset-instability, and fake "no reachable plate" (all now ⛔-marked SUPERSEDED in G50T.md).
+Real model: fixed camera, lag-1, plain frame-readable maze; reactive barrier gating (barrier
+state IS frame-observable, colour 5/8 — no ghost-clock arithmetic). N-ghost architecture
+landed (15dc74c); L2 decoded to its real question (no reachable plate — ghost-path pressing,
+this time measured with CORRECT tracking) and parked.
 
 ## Post-measurement landings (in HEAD, not in r59s1; next full-25 picks them up)
 
