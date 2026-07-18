@@ -18,6 +18,8 @@ from admorphiq.adapters25.re86 import (
     Adapter,
     _l5_gate_colors,
     _l5_hazard_between,
+    _l6_cross_state,
+    _l6_obstacle_box,
     _sign,
     _station_boxes,
     _target_boxes,
@@ -209,3 +211,71 @@ def test_l5_hazard_between_flags_a_mid_edge_station_on_the_vertical_leg():
     # Same piece but its cluster is just below it (row 50) — no foreign station on
     # that short leg → no hazard, so the direct cover route is used.
     assert not _l5_hazard_between(sbox, own_color=9, marker=(54, 5), crow=50, half=half)
+
+
+def test_l6_is_rect_distinguishes_outline_from_cross_targets():
+    """Purpose: L6 has two pieces distinguished ONLY by target geometry (no
+    sprite-tag read) — the OUTLINE piece's four targets are a rectangle's four
+    corners; the CROSS piece's four are a plus (a shared-col pair + a shared-row
+    pair that is NOT a 2x2 grid). ``Adapter._l6_is_rect`` must separate them.
+    Expected feedback: failure means the two movables would be mis-assigned (the
+    cross driven as an outline or vice versa), so neither reaches its target and
+    L6 never clears."""
+    outline_corners = [(30, 45), (30, 54), (57, 45), (57, 54)]
+    cross_plus = [(6, 12), (9, 9), (9, 30), (27, 12)]
+    assert Adapter._l6_is_rect(outline_corners)
+    assert not Adapter._l6_is_rect(cross_plus)
+
+
+def test_l6_derive_cross_targets_are_frame_derived_not_hardcoded():
+    """Purpose: the cross's placement targets (frame top-left + bar frame-relative
+    positions) must be DERIVED from its four tips, never hardcoded — so a
+    hash-rotated L6 with shifted tips still solves. Pin that for the measured tips
+    the derivation yields the config proven to cover all four live.
+    Expected feedback: failure means the cross would be carried to the wrong
+    frame position and miss its tips (regressing the 6/8 clear); a hardcoded
+    constant sneaking in would also break this on any shifted-tip input."""
+    ad = Adapter()
+    ad._l6_cross_tgt = [(6, 12), (9, 9), (9, 30), (27, 12)]
+    ad._l6_size = 25
+    ad._l6_derive_cross_targets()
+    # Tc = 12 (cols 12 shared by the two vertical tips), Tr = 9 (row shared by the
+    # two horizontal tips); anchor the frame's far edges on Rbot=27 / Cright=30.
+    assert ad._l6_r0_t == 27 - 24
+    assert ad._l6_c0_t == 30 - 24
+    assert ad._l6_vrel_t == 12 - ad._l6_c0_t
+    assert ad._l6_hrel_t == 9 - ad._l6_r0_t
+
+
+def test_l6_obstacle_box_finds_the_static_colour1_blob():
+    """Purpose: the reshape anchor is the static colour-1 central obstacle; a push
+    that pixel-overlaps it triggers the reshape, so the controller must locate its
+    bbox frame-only. Pin that ``_l6_obstacle_box`` returns the blob's bounds and
+    ignores a stray single colour-1 pixel.
+    Expected feedback: failure means the corridor tests and reshape alignment lose
+    their anchor and the L6 controller cannot place either piece."""
+    bg = 5
+    grid = [[bg] * 40 for _ in range(40)]
+    for r in range(28, 36):
+        for c in range(28, 36):
+            grid[r][c] = 1
+    grid[2][2] = 1  # a stray single colour-1 pixel must be ignored (size floor)
+    box = _l6_obstacle_box(tuple(tuple(row) for row in grid))
+    assert box == (28, 28, 35, 35)
+
+
+def test_l6_cross_state_reads_bar_positions_of_a_plus():
+    """Purpose: the cross is controlled by its vertical/horizontal bar positions
+    within a fixed frame; ``_l6_cross_state`` must recover the vbar abs col + hbar
+    abs row (and their frame-relative offsets) from the pixel set.
+    Expected feedback: failure means the bar-shift control loses its state read and
+    the corridor solver cannot know when a bar reached its target."""
+    cells = set()
+    for r in range(0, 25):  # vertical bar at col 6
+        cells.add((r, 6))
+    for c in range(0, 25):  # horizontal bar at row 6
+        cells.add((6, c))
+    s = _l6_cross_state(frozenset(cells))
+    assert s["r0"] == 0 and s["c0"] == 0
+    assert s["va"] == 6 and s["ha"] == 6
+    assert s["vrel"] == 6 and s["hrel"] == 6

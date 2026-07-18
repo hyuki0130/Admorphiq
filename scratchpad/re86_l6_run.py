@@ -35,7 +35,10 @@ def run(arc: Arcade, max_actions: int) -> dict:
     env = arc.make("re86")
     obs = env.observation_space
     win_levels = obs.win_levels
-    baseline = list(getattr(obs, "baseline_actions", None) or [])
+    info = getattr(env, "env_info", None)
+    if callable(info):
+        info = info()
+    baseline = list(getattr(info, "baseline_actions", None) or getattr(obs, "baseline_actions", None) or [])
     prev = obs.levels_completed
     total = 0
     this_lvl = 0

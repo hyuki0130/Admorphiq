@@ -395,6 +395,48 @@ def _l5_route(
     return None
 
 
+# ── L6 helpers (reshape-and-place; two movables + a static colour-1 obstacle) ──
+# L6 has NO changer stations. movable-11 is a hollow SQUARE outline that reshapes
+# perimeter-conserving on obstacle collision (aligned rows + right pushes drive
+# 19×19→28×10); movable-9 is a CROSS that SHIFTS its vertical/horizontal bar ±3
+# WITHIN a fixed 25×25 frame on collision (a horizontal collision moves the vbar,
+# a vertical one the hbar), driven through the collision-free corridors to cover
+# its four target cells. Frame-only; source read only informed the mechanic.
+_OBSTACLE_COLOR = 1
+
+
+def _l6_obstacle_box(grid: tuple[tuple[int, ...], ...]) -> tuple[int, int, int, int] | None:
+    """The static colour-1 central obstacle's bbox (r0, c0, r1, c1), or None. It is
+    the reshape anchor — a push that pixel-overlaps it triggers the reshape."""
+    bg = most_common_color(grid)
+    for reg in find_regions(grid, background=bg, gap=1):
+        if reg["color"] == _OBSTACLE_COLOR and len(reg["cells"]) > 10:
+            rs = [r for r, _c in reg["cells"]]
+            cs = [c for _r, c in reg["cells"]]
+            return (min(rs), min(cs), max(rs), max(cs))
+    return None
+
+
+def _l6_bbox(cells: Iterable[Cell]) -> tuple[int, int, int, int]:
+    rs = [r for r, _c in cells]
+    cs = [c for _r, c in cells]
+    return min(rs), max(rs), min(cs), max(cs)
+
+
+def _l6_cross_state(cells: frozenset[Cell]) -> dict[str, int]:
+    """Frame bbox + vertical-bar abs col + horizontal-bar abs row + their
+    frame-relative positions, for the movable-9 cross. The vbar/hbar are the
+    (near-)full columns/rows of the fixed 25×25 frame; the ±3 collision shift
+    repositions them, so their frame-relative index is the reshape control."""
+    r0, r1, c0, c1 = _l6_bbox(cells)
+    h, w = r1 - r0 + 1, c1 - c0 + 1
+    vcols = [c for c in range(c0, c1 + 1) if sum((r, c) in cells for r in range(r0, r1 + 1)) >= h * 0.7]
+    hrows = [r for r in range(r0, r1 + 1) if sum((r, c) in cells for c in range(c0, c1 + 1)) >= w * 0.7]
+    va = vcols[len(vcols) // 2] if vcols else c0
+    ha = hrows[len(hrows) // 2] if hrows else r0
+    return {"r0": r0, "r1": r1, "c0": c0, "c1": c1, "va": va, "ha": ha, "vrel": va - c0, "hrel": ha - r0}
+
+
 class Adapter(GameAdapter):
     """Covering-offset greedy delivery composed from admorphiq.kernels."""
 
@@ -501,6 +543,40 @@ class Adapter(GameAdapter):
         # wall at that centre-cell; folded into the piece's passability).
         self._l5_last_move: tuple[int, Cell, Cell] | None = None
 
+        # ── L6 state (reshape-and-place; two movables + a static colour-1
+        # obstacle, NO changer stations). Gated on level index (>= 5) + the L6
+        # signature so L1-L5 stay byte-identical. movable-11 is a hollow square
+        # outline (tag 0036…) that reshapes perimeter-conserving on obstacle
+        # collision; movable-9 is a cross that SHIFTS its bars ±3 within a fixed
+        # frame on collision. Decoded + validated live in
+        # ``scratchpad/re86_l6_solveL6.py`` before this port. ──
+        self._l6_settle = 0
+        self._l6_locked = False
+        self._l6_applies = False
+        self._l6_obstacle: tuple[int, int, int, int] | None = None  # r0,c0,r1,c1
+        # The two pieces are distinguished by TARGET geometry (frame-only): the
+        # OUTLINE piece's four target cells are a rectangle's corners; the CROSS
+        # piece's four are a plus (a shared-col pair + a shared-row pair).
+        self._l6_cross_color: int | None = None
+        self._l6_outline_color: int | None = None
+        self._l6_cross_tgt: list[Cell] = []
+        self._l6_outline_tgt: list[Cell] = []
+        # Cross placement targets, DERIVED from its four tips (never hardcoded):
+        # frame top-left (r0_t, c0_t) and the bar frame-relative positions that
+        # land the vbar/hbar on the tips' shared col/row.
+        self._l6_r0_t = 0
+        self._l6_c0_t = 0
+        self._l6_vrel_t = 0
+        self._l6_hrel_t = 0
+        self._l6_size = 25
+        self._l6_piece = "cross"  # place the CROSS (corridor bar-control) first, then the OUTLINE
+        self._l6_p9 = "vrel"  # vrel → hrel_rise → hrel_left → hrel_down → carry_up → carry_left → done
+        self._l6_p11 = "align"  # align → reshape → place → done
+        # outline place state (marker-anchored shape + wall learning).
+        self._l6_shape_rel: frozenset[Cell] | None = None
+        self._l6_walls: set[Cell] = set()
+        self._l6_last_move: tuple[Cell, Cell] | None = None  # (marker, want_dir)
+
     # ── harness contract ────────────────────────────────────────────────
 
     def is_done(self, frames: list[Any], latest_frame: Any) -> bool:
@@ -574,6 +650,25 @@ class Adapter(GameAdapter):
         self._l5_pieces = None
         self._l5_order = []
         self._l5_last_move = None
+        self._l6_settle = 0
+        self._l6_locked = False
+        self._l6_applies = False
+        self._l6_obstacle = None
+        self._l6_cross_color = None
+        self._l6_outline_color = None
+        self._l6_cross_tgt = []
+        self._l6_outline_tgt = []
+        self._l6_r0_t = 0
+        self._l6_c0_t = 0
+        self._l6_vrel_t = 0
+        self._l6_hrel_t = 0
+        self._l6_size = 25
+        self._l6_piece = "cross"
+        self._l6_p9 = "vrel"
+        self._l6_p11 = "align"
+        self._l6_shape_rel = None
+        self._l6_walls = set()
+        self._l6_last_move = None
 
     def _lock_targets(self, grid: tuple[tuple[int, ...], ...]) -> None:
         by_color: dict[int, list[Cell]] = {}
@@ -664,6 +759,13 @@ class Adapter(GameAdapter):
             return self._probe(self._marker(grid), move_ids)
         if not self._targets_locked:
             self._lock_targets(grid)
+        if self._levels_seen >= 5:
+            # L6 is reshape-and-place: two movables + a static colour-1 obstacle,
+            # NO changer stations (so the L5 recolour FSM does not apply). Gated on
+            # level index (>= 5) + the L6 signature (no stations + a colour-1
+            # central obstacle) so L1-L5 stay byte-identical; if the signature
+            # fails the controller falls back to _decide_l5 (harmless).
+            return self._decide_l6(grid, move_ids, can_cycle)
         if self._levels_seen >= 4:
             # L5 has THREE movables, an uneven 3→2 set-cover assignment, and a
             # MID-EDGE changer station that the L4 edge-row route would clip — a
@@ -1282,6 +1384,223 @@ class Adapter(GameAdapter):
         if act is None:
             return self._l5_emit(5)
         return self._l5_emit(act, marker, active, self._dir[act])
+
+    # ── L6 controller (reshape-and-place: two movables + a static obstacle) ──
+    # Ported from the live-validated ``scratchpad/re86_l6_solveL6.py`` (deterministic
+    # L6 clear). Two pieces, placed sequentially (neither disturbs the other; the
+    # win is a simultaneous snapshot):
+    #   • the CROSS (movable-9 analogue): a fixed 25×25 frame whose vertical/
+    #     horizontal bar SHIFTS ±3 on an obstacle collision. Driven through the
+    #     collision-free CORRIDORS (a horizontal move while row-overlapping the
+    #     obstacle shifts the vbar; a vertical move while col-overlapping shifts
+    #     the hbar), colliding ONLY deliberately to set each bar, then carried to
+    #     the frame position that lands the bars on its four target tips.
+    #   • the OUTLINE (movable-11 analogue): a hollow square that reshapes
+    #     perimeter-conserving on obstacle collision (align rows → push right to
+    #     the target height) then `_l5_route`-placed with the obstacle inflated
+    #     asymmetrically so the translate never re-collides.
+    # All targets/dims are DERIVED from the frame (never hardcoded): the OUTLINE
+    # piece is the one whose four target cells are a rectangle's corners; the
+    # CROSS piece's four are a plus (a shared-col pair + a shared-row pair).
+    @staticmethod
+    def _l6_is_rect(tgts: list[Cell]) -> bool:
+        rows = sorted({r for r, _c in tgts})
+        cols = sorted({c for _r, c in tgts})
+        cellset = set(tgts)
+        return len(rows) == 2 and len(cols) == 2 and all((r, c) in cellset for r in rows for c in cols)
+
+    def _l6_lock(self, grid: tuple[tuple[int, ...], ...]) -> None:
+        stations, _boxes = _station_boxes(grid)
+        ob = _l6_obstacle_box(grid)
+        by_color: dict[int, list[Cell]] = {}
+        for r, c in _target_boxes(grid):
+            by_color.setdefault(grid[r][c], []).append((r, c))
+        movs = _l5_movables(grid, set(), [], subtract_boxes=False)
+        cross_size = self._l6_size
+        for m in movs:
+            tg = by_color.get(m["color"], [])
+            if len(tg) < 4:
+                continue
+            if self._l6_is_rect(tg):
+                self._l6_outline_color = m["color"]
+                self._l6_outline_tgt = tg
+            else:
+                self._l6_cross_color = m["color"]
+                self._l6_cross_tgt = tg
+                r0, r1, c0, c1 = _l6_bbox(m["cells"])
+                cross_size = max(r1 - r0 + 1, c1 - c0 + 1)
+        self._l6_size = cross_size
+        self._l6_obstacle = ob
+        self._l6_applies = (
+            not stations
+            and ob is not None
+            and self._l6_cross_color is not None
+            and self._l6_outline_color is not None
+        )
+        if self._l6_applies:
+            self._l6_derive_cross_targets()
+        self._l6_locked = True
+
+    def _l6_derive_cross_targets(self) -> None:
+        """From the cross's four tips, derive the frame top-left (r0_t, c0_t) and
+        bar frame-relative positions (vrel_t, hrel_t) that cover all four. The two
+        tips sharing a COLUMN give the vbar target col + vertical span; the two
+        sharing a ROW give the hbar target row + horizontal span. Anchoring the
+        frame's bottom/right edge on the far tips (r0_t = Rbot-(size-1),
+        c0_t = Cright-(size-1)) keeps all four inside the fixed-size frame."""
+        tips = self._l6_cross_tgt
+        col_counts = Counter(c for _r, c in tips)
+        row_counts = Counter(r for r, _c in tips)
+        tc = next(c for c, n in col_counts.items() if n >= 2)
+        tr = next(r for r, n in row_counts.items() if n >= 2)
+        verts = [t for t in tips if t[1] == tc]
+        horis = [t for t in tips if t[0] == tr]
+        r_bot = max(r for r, _c in verts)
+        c_right = max(c for _r, c in horis)
+        size = self._l6_size
+        self._l6_r0_t = r_bot - (size - 1)
+        self._l6_c0_t = c_right - (size - 1)
+        self._l6_vrel_t = tc - self._l6_c0_t
+        self._l6_hrel_t = tr - self._l6_r0_t
+
+    def _l6_movable(self, grid: tuple[tuple[int, ...], ...], color: int) -> Region | None:
+        for m in _l5_movables(grid, set(), [], subtract_boxes=False):
+            if m["color"] == color:
+                return m
+        return None
+
+    @staticmethod
+    def _l6_selected(m: Region, marker: Cell) -> bool:
+        cen = m["cen"]
+        return abs(cen[0] - marker[0]) <= 15 and abs(cen[1] - marker[1]) <= 15
+
+    def _decide_l6(self, grid: tuple[tuple[int, ...], ...], move_ids: list[int], can_cycle: bool) -> GameAction:
+        if not move_ids:
+            return reset_action()
+        marker = self._marker(grid)
+        for a, v in self._dir_global.items():
+            self._dir.setdefault(a, v)
+        if any(a not in self._dir for a in move_ids):
+            return self._probe(marker, move_ids)
+        if self._l6_settle < 2:
+            self._l6_settle += 1
+            return simple_action(5) if can_cycle else self._probe(marker, move_ids)
+        if not self._l6_locked:
+            self._l6_lock(grid)
+        if not self._l6_applies:
+            # Signature mismatch (a different game's L6 / a changer-station level):
+            # fall back to the L5 controller (fails harmlessly, never crashes).
+            return self._decide_l5(grid, move_ids, can_cycle)
+        if self._l6_piece == "cross":
+            if self._l6_p9 != "done":
+                return self._l6_step_cross(grid, marker, move_ids, can_cycle)
+            self._l6_piece = "outline"
+        return self._l6_step_outline(grid, marker, move_ids, can_cycle)
+
+    def _l6_cycle(self, marker: Cell | None, move_ids: list[int], can_cycle: bool) -> GameAction:
+        return simple_action(5) if can_cycle else self._probe(marker, move_ids)
+
+    def _l6_mv(self, want: Cell, marker: Cell | None, move_ids: list[int], can_cycle: bool) -> GameAction:
+        a = self._move_for(want, move_ids)
+        return simple_action(a) if a is not None else self._l6_cycle(marker, move_ids, can_cycle)
+
+    def _l6_step_cross(
+        self, grid: tuple[tuple[int, ...], ...], marker: Cell | None, move_ids: list[int], can_cycle: bool
+    ) -> GameAction:
+        assert self._l6_obstacle is not None and self._l6_cross_color is not None
+        m = self._l6_movable(grid, self._l6_cross_color)
+        if m is None or marker is None or not self._l6_selected(m, marker):
+            return self._l6_cycle(marker, move_ids, can_cycle)
+        s = _l6_cross_state(m["cells"])
+        ob = self._l6_obstacle
+        orow = (ob[0] + ob[2]) // 2
+        phase = self._l6_p9
+        if phase == "vrel":
+            if s["vrel"] == self._l6_vrel_t:
+                self._l6_p9 = "hrel_rise"
+                return self._l6_step_cross(grid, marker, move_ids, can_cycle)
+            cr = (s["r0"] + s["r1"]) // 2
+            if s["c0"] < ob[3] - 2:  # not in the right corridor: restore (free)
+                return self._l6_mv((0, 1), marker, move_ids, can_cycle)
+            if abs(cr - orow) > 3:  # align rows to the obstacle band for the collision
+                return self._l6_mv((1, 0) if cr < orow else (-1, 0), marker, move_ids, can_cycle)
+            return self._l6_mv((0, -1) if s["vrel"] > self._l6_vrel_t else (0, 1), marker, move_ids, can_cycle)
+        if phase == "hrel_rise":
+            if s["r0"] <= self._l6_r0_t:  # in the above-obstacle corridor
+                self._l6_p9 = "hrel_left"
+                return self._l6_step_cross(grid, marker, move_ids, can_cycle)
+            return self._l6_mv((-1, 0), marker, move_ids, can_cycle)
+        if phase == "hrel_left":
+            # move left until the frame col-overlaps the obstacle for the vertical
+            # collision, while keeping the vbar (col c0+vrel_t) left of it.
+            if s["c0"] <= ob[1] - self._l6_size // 2:
+                self._l6_p9 = "hrel_down"
+                return self._l6_step_cross(grid, marker, move_ids, can_cycle)
+            return self._l6_mv((0, -1), marker, move_ids, can_cycle)
+        if phase == "hrel_down":
+            if s["hrel"] == self._l6_hrel_t:
+                self._l6_p9 = "carry_up"
+                return self._l6_step_cross(grid, marker, move_ids, can_cycle)
+            return self._l6_mv((1, 0) if s["hrel"] > self._l6_hrel_t else (-1, 0), marker, move_ids, can_cycle)
+        if phase == "carry_up":
+            if s["r0"] <= self._l6_r0_t:
+                self._l6_p9 = "carry_left"
+                return self._l6_step_cross(grid, marker, move_ids, can_cycle)
+            return self._l6_mv((-1, 0), marker, move_ids, can_cycle)
+        # carry_left: reach c0_t, then verify coverage.
+        if s["c0"] != self._l6_c0_t:
+            return self._l6_mv((0, -1) if s["c0"] > self._l6_c0_t else (0, 1), marker, move_ids, can_cycle)
+        if all(t in m["cells"] for t in self._l6_cross_tgt):
+            self._l6_p9 = "done"
+        return self._l6_cycle(marker, move_ids, can_cycle)
+
+    def _l6_step_outline(
+        self, grid: tuple[tuple[int, ...], ...], marker: Cell | None, move_ids: list[int], can_cycle: bool
+    ) -> GameAction:
+        assert self._l6_obstacle is not None and self._l6_outline_color is not None
+        m = self._l6_movable(grid, self._l6_outline_color)
+        if m is None or marker is None or not self._l6_selected(m, marker):
+            return self._l6_cycle(marker, move_ids, can_cycle)
+        ob = self._l6_obstacle
+        tgt = self._l6_outline_tgt
+        tr0, tr1, tc0, tc1 = _l6_bbox(tgt)
+        th, tw = tr1 - tr0 + 1, tc1 - tc0 + 1
+        obr = (ob[0] + ob[2]) // 2
+        r0, r1, _c0, _c1 = _l6_bbox(m["cells"])
+        if self._l6_p11 == "align":
+            cr = (r0 + r1) // 2
+            if abs(cr - obr) <= 2:
+                self._l6_p11 = "reshape"
+                return self._l6_step_outline(grid, marker, move_ids, can_cycle)
+            return self._l6_mv((-1, 0) if cr > obr else (1, 0), marker, move_ids, can_cycle)
+        if self._l6_p11 == "reshape":
+            if (r1 - r0 + 1) >= th:  # reshaped to the target height (perimeter-conserving)
+                self._l6_p11 = "place"
+                return self._l6_step_outline(grid, marker, move_ids, can_cycle)
+            return self._l6_mv((0, 1), marker, move_ids, can_cycle)  # push right into the obstacle
+        # place — route the reshaped outline centre to the target rectangle centre,
+        # obstacle inflated asymmetrically so a translate never re-collides.
+        half_h = th // 2 + 1
+        half_w = tw // 2 + 1
+        avoid = (ob[0] - half_h, ob[1] - half_w, ob[2] + half_h, ob[3] + half_w)
+        tgt_cen = ((tr0 + tr1) // 2, (tc0 + tc1) // 2)
+        if self._l6_last_move is not None:
+            pm, want = self._l6_last_move
+            adv = (marker[0] - pm[0]) * want[0] + (marker[1] - pm[1]) * want[1]
+            if adv < 2:
+                self._l6_walls.add((pm[0] // _CELL_PX + want[0], pm[1] // _CELL_PX + want[1]))
+            self._l6_last_move = None
+        if self._l6_shape_rel is None:
+            self._l6_shape_rel = frozenset((r - marker[0], c - marker[1]) for r, c in m["cells"])
+        cur = {(marker[0] + dr, marker[1] + dc) for dr, dc in self._l6_shape_rel}
+        if sum(1 for t in tgt if t in cur) == len(tgt):
+            self._l6_p11 = "done"
+            return self._l6_cycle(marker, move_ids, can_cycle)  # placed — hold
+        act = _l5_route(marker, tgt_cen, 0, [avoid], self._l6_walls, self._dir, move_ids)
+        if act is None:
+            return self._l6_cycle(marker, move_ids, can_cycle)
+        self._l6_last_move = (marker, self._dir[act])
+        return simple_action(act)
 
     def _decide_l4(self, grid: tuple[tuple[int, ...], ...], move_ids: list[int], can_cycle: bool) -> GameAction:
         """Two mismatched-colour movables each routed through a matching-colour
