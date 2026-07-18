@@ -25,8 +25,16 @@ Contains:
     re-downgraded, so both value-3s must land near-simultaneously — a knife-edge the
     sim drift + goal-detection dropout both break).
 
+  * ``--pin`` — the R75 VACUUM-PIN choreography on the oracle (live reads). Same
+    cascade+deliver as ``--live`` but pins a free enemy that threatens an
+    already-delivered value-3. MEASURED: ``--danger>=16`` clears idx6 at click 10
+    (deterministic ×2), proving the pin choreography is a VALID solution GIVEN
+    PERFECT PERCEPTION; ``--danger<=12`` BREAKS the win (zero-slack double-race).
+    The frame-only port is blocked upstream of the pin (see SU15.md §R75).
+
 Usage: uv run python scripts/_su15_idx6_downgrade.py --val-dg --seeds 3
        uv run python scripts/_su15_idx6_downgrade.py --live
+       uv run python scripts/_su15_idx6_downgrade.py --pin --danger 16
 """
 from __future__ import annotations
 
@@ -339,6 +347,94 @@ def run_live(arcade, max_clicks: int, verbose: bool) -> bool:
     return False
 
 
+def _ecenter(e):
+    return (e[0] + EW // 2, e[1] + EH // 2)
+
+
+def run_pin(arcade, max_clicks: int, danger: float, verbose: bool) -> bool:
+    """Closed-loop ORACLE with the VACUUM-PIN branch (R75). Same live reads as
+    :func:`run_live`, but before delivering the second value-3 it PINS a free
+    enemy (``cd==0``) that has come within ``danger`` px of an already-delivered
+    value-3 — one vacuum click pushing that enemy away from its goal so it cannot
+    re-downgrade the delivered fruit (surprise #2). MEASURED: ``danger>=16``
+    clears idx6 at click 10 (deterministic), pinning enemy2 twice while the merge
+    value-3 is hauled to g1; a late/small pin (``danger<=12``) instead BREAKS the
+    8-click no-pin win, because diverting one click to the pin lets the OTHER free
+    enemy catch the still-undelivered value-3 — idx6's win is a zero-slack
+    simultaneous double-race. This proves the pin choreography is a VALID
+    solution GIVEN PERFECT PERCEPTION; the frame-only port is blocked upstream
+    (see SU15.md §R75)."""
+    env, game = _make(arcade)
+    gs = _goals_xy(game)
+    g1 = min(gs, key=lambda g: g[1])
+    g2 = max(gs, key=lambda g: g[1])
+
+    def in_goal(f, g):
+        c = _center(f)
+        return abs(c[0] - g[0]) <= 5 and abs(c[1] - g[1]) <= 5
+
+    for k in range(max_clicks):
+        if game.level_index != _IDX:
+            print(f"*** CLEARED idx6 at click {k} (pin, danger={danger}) ***")
+            return True
+        fr, en = _snap(game)
+        if not fr:
+            break
+        threes = [f for f in fr if f[2] == 3]
+        cascade = [f for f in fr if 1 <= f[2] <= 2]
+        in_g1 = [f for f in threes if in_goal(f, g1)]
+        delivered = [f for f in threes if in_goal(f, g1) or in_goal(f, g2)]
+        undelivered = [f for f in threes if f not in delivered]
+        click = None
+        why = ""
+        if delivered and undelivered:
+            for f in delivered:
+                fc = _center(f)
+                for e in en:
+                    if e[2] > 0:
+                        continue
+                    ec = _ecenter(e)
+                    if _dist(ec, fc) <= danger:
+                        dx, dy = ec[0] - fc[0], ec[1] - fc[1]
+                        d = (dx * dx + dy * dy) ** 0.5 or 1.0
+                        click, why = (ec[0] + dx / d * R, ec[1] + dy / d * R), "pin"
+                        break
+                if click is not None:
+                    break
+        if click is None and undelivered:
+            f = undelivered[0]
+            tgt = g1 if not in_g1 else g2
+            c = _center(f)
+            dx, dy = tgt[0] - c[0], tgt[1] - c[1]
+            d = (dx * dx + dy * dy) ** 0.5 or 1.0
+            lead = max(1.0, min(d, R - SZ[f[2]] / 2.0 - 0.5))
+            click, why = (c[0] + dx / d * lead, c[1] + dy / d * lead), "deliver3"
+        elif click is None and len(cascade) >= 2:
+            by: dict[int, list] = {}
+            for f in cascade:
+                by.setdefault(f[2], []).append(f)
+            pv = sorted(v for v, fs in by.items() if len(fs) >= 2)
+            if pv:
+                grp = by[pv[0]]
+                a, b = min(((grp[i], grp[j]) for i in range(len(grp)) for j in range(i + 1, len(grp))),
+                           key=lambda p: _dist(_center(p[0]), _center(p[1])))
+                ca, cb = _center(a), _center(b)
+                d = _dist(ca, cb)
+                if d <= su15._MERGE_DIST:
+                    click, why = ((ca[0] + cb[0]) / 2.0, (ca[1] + cb[1]) / 2.0), "merge"
+                else:
+                    ux, uy = (cb[0] - ca[0]) / d, (cb[1] - ca[1]) / d
+                    click, why = (ca[0] + ux * 7.0, ca[1] + uy * 7.0), "gather"
+        if click is None:
+            click, why = (32, 11), "idle"
+        _step(env, *click)
+        if verbose:
+            f2, _ = _snap(game)
+            print(f"[{k:02d}] {why:9s} vals={sorted(f[2] for f in f2)}")
+    print(f"did NOT clear (pin, danger={danger}, final level_index={game.level_index})")
+    return False
+
+
 def _frame_fruits(grid):
     """Frame-only fruit read [x=col, y=row, value] via su15._classify."""
     _g, fr, _e = su15._classify(grid)
@@ -514,6 +610,8 @@ def main() -> None:
     ap.add_argument("--val-dg", dest="val_dg", action="store_true", help="lockstep sim vs live")
     ap.add_argument("--percep", action="store_true", help="frame-vs-truth perception diagnostic")
     ap.add_argument("--live", action="store_true", help="closed-loop winnability driver")
+    ap.add_argument("--pin", action="store_true", help="oracle + vacuum-pin choreography (R75)")
+    ap.add_argument("--danger", type=float, default=16.0, help="pin trigger radius (px)")
     ap.add_argument("--seeds", type=int, default=3)
     ap.add_argument("--frames", type=int, default=25)
     ap.add_argument("--max", type=int, default=40)
@@ -526,6 +624,9 @@ def main() -> None:
         return
     if args.percep:
         run_percep(arcade, args.max)
+        return
+    if args.pin:
+        run_pin(arcade, args.max, args.danger, args.verbose)
         return
     if args.live:
         run_live(arcade, args.max, args.verbose)
