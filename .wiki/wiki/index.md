@@ -8,7 +8,7 @@ seeds `llm_context/decision_tree.md` first, then walks `[[backlinks]]`.
 Use this index when authoring or auditing: skim the catalog, pick a
 category, drill into specific pages.
 
-**Total pages**: 157.
+**Total pages**: 159.
 
 ## Games (25)
 
@@ -21,7 +21,7 @@ category, drill into specific pages.
 - [[games/G50T.md]] — v1 brittle 1/7 (explore_interact, unreliable) — A full *Adventures of Lolo* / Sokoban-with-logic puzzle: navigate a player to a hidden goal through a wall maze, using button→gate→toggle-block circuits, past DETERMINISTIC wall-following patrol enemies, within a scroll-timer budget — with an ACTION5 record-replay "ghost" mechanic. NOT a simple "reactive sokoban", and NOT "explore-interact".
 - [[games/KA59.md]] — v1 brittle 4/7 ✅ (hardcoded L1-L4 push sequences, non-transferable) — Multi-piece placement + momentum-push. NOT classic box-to-goal Sokoban — validated 2026-07-15.
 - [[games/LF52.md]] — v1 0/10 (legacy agent regression) — Select a piece, jump it over an adjacent piece into an empty board slot; the
-- [[games/LP85.md]] — v1 3/8 ✅ (L1 + L2 + L3 cleared, game_score 0.1637, up from 2/8 @ 0.0803) — multi-class ring-permutation planner SHIPPED — **Mechanic corrected R56 (2026-07-15, from the game source):** LP85 is a
+- [[games/LP85.md]] — v1 8/8 ✅ FULLY CONQUERED (game_score 0.6992, deterministic ×2 @400/@700) — L4 σ² via multi-press full-series learner (R60); L5 scale-robust detection; L6 CLEARED R72 (coupled 7-button learner + goal-edge injection, 70a=0.735); L7 CLEARED R73 (49a=0.282); **L8 CLEARED R78 (task #101): open-chain geometric repair in `_learn_coupled_map` — a fragmented ring degrades into an incomplete permutation (open chain), rebuilt via `learn_cyclic_successor` restricted to the chain cells; L8 = 47a @ 1.0 (super-human, human 159). Floor L0–L6 byte-identical (agent_actions 8/17/24/40/45/70/49 unchanged); gate = complete-permutation → no-op.** Separator research §R77, build §R78 — **Mechanic corrected R56 (2026-07-15, from the game source):** LP85 is a
 - [[games/LS20.md]] — v1 1/7 (brittle, hardcoded L1 -- STALE, see below) — A shape/color/rotation-MATCHING maze: the avatar carries a token
 - [[games/M0R0.md]] — v1 brittle n/a (no brittle solver — pure generic), generic 2/6 ✅ (R23 8B via bfs_state_space) — Frame-observation solver — generalizes across version hashes.
 - [[games/R11L.md]] — The only action is ACTION6 (click): select a creature's leg, then click to drag it; each body follows the CENTROID of its own legs, and a level wins when every creature's body is arranged onto its matching target nest — NOT a repeat-count or symbol sequence.
@@ -91,7 +91,7 @@ category, drill into specific pages.
 - [[concepts/sprite_cluster.md]] — A connected component of same-color pixels in the frame. The universal primitive for detecting entities without reading game internals.
 - [[concepts/version_hash.md]] — A game's identifier in the ARC Prize API has the form `<title>-<hash>` (e.g. `tn36-ab4f63cc`). The hash is a version fingerprint: games with the same title but different hashes share gameplay rules but differ in internal implementation details that solvers may or may not observe.
 
-## Lessons (engineering wisdom from past incidents) (33)
+## Lessons (engineering wisdom from past incidents) (35)
 
 - [[lessons/top_solutions_survey_20260708.md]] — Survey of what is actually open-sourced for ARC-AGI-3 (M1 winners = local-LLM agents), resolution of the leaderboard score-scale confusion (top ~1.56 = 1.56%, not 156%; the 12.58% anchor was the 2025 preview), and the top-3 generic levers to adopt next.
 - [[lessons/online_rl_sprint_round_log.md]] — **🔎 To FIND past work by topic, start at the retrieval map [[../rounds/index]]**
@@ -100,6 +100,7 @@ category, drill into specific pages.
 - [[lessons/cd82_paint_palette_signature_20260423.md]] — Pre-HUD-masking, CD82's discovery phase reported 71 of 71
 - [[lessons/dc22_confined_avatar_discriminator_falsified_20260713.md]] — Discovery incident log for the `tools/graph_search.py` region-mask family
 - [[lessons/duck_harness_teardown_20260714.md]] — The Duck (Tufa, M1 #1, 1.21%) is a Qwen 3.6 27B FP8 code-REPL agent: the game is
+- [[lessons/env_metadata_duplicate_game_id_20260719.md]] — 15 of 25 games kept a stale old-hash dir whose metadata.json claimed the NEW game_id; arc_agi resolves duplicate ids by rglob scan order, so APFS (Mac) and ext4 (ceph-build) silently loaded DIFFERENT game content under the SAME reported game_id.
 - [[lessons/faithful_offline_simulator_20260715.md]] — Six R56 clears this sprint share one shape: rebuild the game's exact state
 - [[lessons/false_claim_verification_20260715.md]] — A lane reported a nonexistent commit and a two-part result that were both later
 - [[lessons/frame_diff_as_probe.md]] — The difference between two consecutive frames is the cheapest, most general signal for classifying entities: what moved is likely the player, what changed locally is likely a toggle, what stays constant is likely background.
@@ -114,6 +115,7 @@ category, drill into specific pages.
 - [[lessons/merge_drag_stall_causes_game_over_20260713.md]] — Live-traced SU15 L3 (post L1+L2 clear) on `merge_drag.py` /
 - [[lessons/prefix_aware_navigation_20260423.md]] — `_plan_navigation` must resume BFS from the current level start using the cumulative prefix and chain `solve_all_levels` internally; R20 accidentally dropped multi-level chaining (AR25/M0R0 regressed 2→1), and R22 restored it with prefix awareness so one plan call clears multiple levels in sequence.
 - [[lessons/probe_validity_20260715.md]] — Three separate R56 adapters were misled by probes that LOOKED conclusive
+- [[lessons/scale_relative_thresholds_20260719.md]] — An absolute pixel constant (`size >= 3`, `size <= 6`, `span <= 6`, a coordinate) is a
 - [[lessons/schema_enforcement_round1_20260421.md]] — Measurement log for the R7 round-1 bench. The operational rules it
 - [[lessons/seed_reorder_regression_20260625.md]] — Reordering `derive_seed_pages` to place env-specific seeds (game_type /
 - [[lessons/selector_is_advisory_not_enforced_20260421.md]] — Discovery incident log: R6 bench (2026-04-21) proved Qwen 3 14B

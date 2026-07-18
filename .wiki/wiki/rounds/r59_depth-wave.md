@@ -2,7 +2,7 @@
 round: r59
 axis: script25 depth (kernel expressiveness) — faithful-sim + learned-operator wave 2
 keywords: [m0r0, pressure-plate, gates, bp35, frontier-exploration, su15, enemy-in-sim, re86, separation-by-motion, sk48, lockstep, reachability, lp85, twist-topology, ls20, moving-changer, r59s1, full-25]
-verdict: PASS — official card 18.02% → 21.56% → 22.25% → 26.38% → 27.25% → 27.80% → 28.47% → 29.25% → 29.53% → 30.53% (first 30% crossing) → 30.61% → 31.08% → 31.57% → 31.79% → **32.68% (r59s14, 2026-07-19 05:54)**; seventeen consecutive single-diff-verified runs; lp85 FULLY CONQUERED 8/8 (sixth conquest)
+verdict: PASS — official card 18.02% → 21.56% → 22.25% → 26.38% → 27.25% → 27.80% → 28.47% → 29.25% → 29.53% → 30.53% (first 30% crossing) → 30.61% → 31.08% → 31.57% → 31.79% → 32.68% → **32.11% (r59s15 ENV-CORRECTION, 2026-07-19 06:21)** — 15 stale env dirs archived, cn04's stale inflation removed (-0.169) + s5i5 recovered (+0.028); lp85 FULLY CONQUERED 8/8 (sixth conquest)
 commit: 9b8e2e8 (r59s1 HEAD) / cc1e4dc (r59s2 HEAD) / f8144df-era (r59s3 HEAD); landings: bc04e63, 6b6ad2e, b2128c9, 36d23cd, 3b6c11c, 0197b8b, fa8e3bc, 12bda52, a1701f9, 0abeb0d, 2bdea69, e698ed8(ls20 L5), 02fe3d8, f677aed, 9647858, e536f65
 ---
 
@@ -184,6 +184,25 @@ merge click is 1px-unplaceable) → parked at the sub-pixel-perception wall. g50
 source-decoded (3 plate→barrier→block chains), colour-11 premise self-falsified pre-build,
 parked at the ghost-reachability wall. Conquest roster: ft09 1.0 · m0r0 1.0 · ls20 1.0 ·
 cd82 0.98 · sb26 0.846 · **lp85 0.6992**.
+
+## r59s15 ENV-CORRECTION official (2026-07-19 06:21 KST, ceph-build, @5000) — **32.11%**
+
+`games=25 total=8.0278 → 32.11%`. NOT a single-diff run BY DESIGN: this is the measurement-
+integrity correction after the duplicate-game_id audit (see
+[[../lessons/env_metadata_duplicate_game_id_20260719]]). 15 of 25 games carried a stale
+old-hash dir whose metadata.json claimed the NEW game_id; arc_agi resolves duplicate ids by
+rglob filesystem order, so ceph-build (ext4) had been loading OLD content for FIVE games
+(cn04/s5i5/sc25/tn36/tu93) while reporting the new game_id — found via the s5i5
+zero-recovery round (a83d82d) + a full loader-line audit of r59s14. All 15 stale dirs
+archived to environment_files_archive/ on both machines; r59s15 loader lines verified
+current-content for all five. Diff vs r59s14 — exactly two rows moved:
+- **cn04 2/5 @ 0.2000 → 1/6 @ 0.0309** (stale-content inflation removed; the historical
+  "budget-conditional cn04 1/6@1000 local vs 2/5@5000 VM" anomaly is hereby CLOSED as
+  content divergence, not budget)
+- **s5i5 0/8 → 1/8 @ 0.0278** (recovery predicted by R79)
+- sc25/tn36/tu93: identical scores on current content (adapter behavior transfers).
+32.68 → 32.11 is an integrity correction, not a regression: the card now measures the
+API-current content deterministically on any filesystem.
 
 ## Post-measurement landings (in HEAD, not in r59s1; next full-25 picks them up)
 

@@ -1629,13 +1629,16 @@ dc22) or a learned reflection/flow kernel (ar25/sp80 super-human L0) or goal-dir
 (tu93); pattern named in `.wiki/wiki/lessons/faithful_offline_simulator_20260715.md`. New-structure
 PARK list (honestly banked WITH decoded mechanics, not failures): ar25 L1 (parallel-mirror double
 reflection), lp85 L4 (dense 20-ring self-test), su15 L3+ (enemy-reversed cascade), sk48 L3+
-(non-ACTION6 `sys_click`), bp35 / g50t / re86 / s5i5 / sc25 / tr87 / wa30. **Card = 32.68% official
-(r59s14, @5000, ceph-build, landed 2026-07-19 05:54; sequence r56s9 18.02 → 21.56 → 22.25 →
-26.38 → 27.25 → 27.80 → 28.47 → 29.25 → 29.53 → 30.53 (first 30% crossing) → 30.61 → 31.08 →
-31.57 → 31.79 → 32.68 — seventeen consecutive single-diff-verified runs; **lp85 FULLY
-CONQUERED 8/8 @0.6992, the SIXTH conquest**, L8 super-human 47a/159h=1.0 via open-chain
-geometric repair — the colour bijection's cycle decomposition IS the ring separator;
-complete-vs-incomplete-permutation gate, floor-safe by construction). MILESTONE 2026-07-17: ALL 25 games clear ≥1 level. FULLY
+(non-ACTION6 `sys_click`), bp35 / g50t / re86 / s5i5 / sc25 / tr87 / wa30. **Card = 32.11% official
+(r59s15 ENV-CORRECTION, @5000, ceph-build, landed 2026-07-19 06:21; sequence r56s9 18.02 →
+… → 31.79 → 32.68 (r59s14: **lp85 FULLY CONQUERED 8/8 @0.6992, the SIXTH conquest**, L8
+super-human 47a/159h=1.0 via open-chain geometric repair — the colour bijection's cycle
+decomposition IS the ring separator; complete-vs-incomplete-permutation gate) → 32.11
+(r59s15: 15 stale duplicate-game_id env dirs archived on both machines — ceph-build had
+been loading OLD content for cn04/s5i5/sc25/tn36/tu93 by ext4 rglob order; cn04 stale
+inflation removed 0.2000→0.0309, s5i5 recovered 0→0.0278; the historical
+"budget-conditional cn04" anomaly = content divergence, CLOSED; lesson
+`.wiki/wiki/lessons/env_metadata_duplicate_game_id_20260719.md`)). MILESTONE 2026-07-17: ALL 25 games clear ≥1 level. FULLY
 CONQUERED (6): ft09 1.0 · m0r0 1.0 · **ls20 1.0 (7/7, Fog cleared via refill-chained
 observation post — the "no cell sees the track" wall was a prior-pass artifact)** · cd82
 0.98 · sb26 0.846 · **lp85 0.6992 (8/8, R70-R78 ladder 3/8→8/8: time-series ring learner →
