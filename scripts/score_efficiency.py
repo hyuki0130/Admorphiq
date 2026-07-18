@@ -229,6 +229,22 @@ def total_score(game_scores: list[float]) -> float:
     return sum(game_scores) / len(game_scores)
 
 
+def reported_levels_completed(max_reached: int, final_frame_levels: int) -> int:
+    """The levels-completed count to REPORT for a run — the MAX reached, not the
+    final-frame count.
+
+    A ``restart_on_game_over`` agent that clears level N then GAME_OVERs on N+1
+    is RESET, so the final frame's ``levels_completed`` reads a LOWER value (0
+    after a full reset) than the run actually completed. The per-level scores
+    (and thus ``game_score``) are built from the level-TRANSITION log and already
+    credit those clears, so the reported completion count must use the running
+    max to stay consistent — otherwise the row is internally inconsistent (the
+    measured lf52 case: 0/10 levels displayed yet ``game_score`` 0.0182 = its L0
+    clear at 1.0). ``max_reached`` is the running max of ``levels_completed``
+    (monotonic, only advanced on a transition)."""
+    return max(max_reached, final_frame_levels)
+
+
 # ─────────────────────────────── run loop ───────────────────────────────────
 
 _MAX_ACTIONS = 50_000  # per-game budget (matches WikiAgent default)
@@ -322,7 +338,11 @@ def run_game(
                 break
 
     elapsed = time.time() - start
-    levels_completed: int = obs.levels_completed if obs else prev_levels
+    # Report the MAX levels reached, not the final post-reset frame count — see
+    # reported_levels_completed (the lf52 0/10-yet-0.0182 inconsistency fix).
+    levels_completed: int = reported_levels_completed(
+        prev_levels, obs.levels_completed if obs else 0
+    )
     # Record the LLM goal hypothesis (when the general agent ran with an LLM)
     # so the bench output shows what the reasoning layer proposed per game.
     llm_hypothesis = getattr(adapter, "last_hypothesis", None)

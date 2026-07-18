@@ -19,6 +19,23 @@ _SPEC.loader.exec_module(_MOD)
 level_score = _MOD.level_score
 game_score = _MOD.game_score
 total_score = _MOD.total_score
+reported_levels_completed = _MOD.reported_levels_completed
+
+
+def test_reported_levels_uses_max_reached_not_post_reset_count():
+    """Purpose: a ``restart_on_game_over`` run that clears level 0 then
+    GAME_OVER-resets must REPORT the max levels reached (1), not the post-reset
+    final-frame count (0) — so the levels column stays consistent with the RHAE
+    ``game_score`` (which credits the cleared level). This pins the measured
+    lf52 anomaly: 0/10 levels displayed yet game_score 0.0182 (= its L0 clear
+    at 1.0, weighted 1/55).
+    Expected feedback: failure means the card silently UNDER-reports levels for
+    every restart-on-game-over game that clears a level then game-overs, making
+    rows look internally inconsistent (nonzero score, zero levels)."""
+    assert reported_levels_completed(1, 0) == 1  # cleared L0, then reset to 0
+    assert reported_levels_completed(0, 0) == 0  # never cleared anything
+    assert reported_levels_completed(3, 3) == 3  # no reset — both agree
+    assert reported_levels_completed(2, 1) == 2  # reached 2, ended on 1
 
 
 # ─────────────────────────────── level_score ────────────────────────────────
