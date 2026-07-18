@@ -48,15 +48,29 @@ body→target by colour-set overlap. It does not resolve:
 
 ## Verdict + reopen
 
-**Multi-session detection round, NOT bounded.** Leg-grouping is de-risked and
-reusable; the open problem is robust target-ring identification under
-colour-sharing + hollow-ring cluster-splitting. Candidate future approaches (a
-dedicated round): (a) parse the ring GEOMETRY (a target is a hollow ring; decoys
-are thin connector lines / solid fragments) to filter to exactly 3 ring-shaped
-low-fill clusters before colour matching; (b) use a stronger creature-identity
-signal than colour sets (e.g. the engine's sprite grouping is not frame-visible,
-so this needs a geometric/topological ring detector). Once target assignment is
-robust, the proven strike-aware planner clears L3 (3+2+2 ≈ 14 actions, verified in
-R85b) and likely L4/L5.
+**Multi-session detection round, NOT bounded — and the colour-SET ring-matching
+spec is itself STRUCTURALLY ambiguous (proven), so it cannot be the fix.** Exact
+numbers: bodies `yeogy{11,14}`, `blxuub{8,9}`, `orrqlj{12,14,15}`; real targets
+`T(12,50){11,14}`, `T(52,19){1,8,9}`, `T(51,36){15}`. `yeogy` and `blxuub` match
+uniquely (overlap 2). But `orrqlj`'s body carries TWO colours (12 and 15) that are
+each unique to it yet appear in DIFFERENT low-fill clusters — its real target
+`(51,36){15}` and a decoy `(17,12){10,12}` each match by a unique orrqlj colour
+(overlap 1). Global one-to-one assignment maximizing total overlap therefore has
+≥4 equally-optimal solutions (all total 5), only one correct. Ring-GEOMETRY
+filtering does NOT rescue it either: the 3 real rings (pix 6/12/18) are not
+size/shape-separable from the decoys (pix 12-25). **No colour/geometry signal in
+the frame uniquely identifies orrqlj's target.**
+
+Leg-grouping is de-risked and reusable; target identification is the genuine wall.
+Two reopen options, both a DEDICATED round (a decision, not a bounded pass):
+- (a) **Speculative-target-trial** (the one viable path): place the 2 unambiguous
+  creatures, then drive `orrqlj`'s body to each candidate target IN TURN until the
+  engine's win fires (all 3 bodies on target). Cost ≈ 30-45 actions vs the 60
+  budget — feasible but tight and budget-risky; a real runtime-strategy build.
+- (b) **Richer perception** — a signal beyond colour/geometry to pin each target
+  to its creature (none found in the frame so far).
+
+Once target assignment is robust, the proven strike-aware planner clears L3
+(3+2+2 ≈ 14 actions, verified in R85b) and likely L4/L5.
 
 Related: [[r85_r11l-strike-aware-assembly]] · [[../games/R11L]] Notes R85b.
