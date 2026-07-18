@@ -2,7 +2,7 @@
 round: r59
 axis: script25 depth (kernel expressiveness) — faithful-sim + learned-operator wave 2
 keywords: [m0r0, pressure-plate, gates, bp35, frontier-exploration, su15, enemy-in-sim, re86, separation-by-motion, sk48, lockstep, reachability, lp85, twist-topology, ls20, moving-changer, r59s1, full-25]
-verdict: PASS — official card 18.02% → 21.56% → 22.25% → 26.38% → 27.25% → 27.80% → 28.47% → 29.25% → 29.53% → **30.53% (r59s9, 2026-07-19 00:42) — first 30% crossing**; twelve consecutive single-diff-verified runs
+verdict: PASS — official card 18.02% → 21.56% → 22.25% → 26.38% → 27.25% → 27.80% → 28.47% → 29.25% → 29.53% → 30.53% (first 30% crossing) → **30.61% (r59s10, 2026-07-19 02:03)**; thirteen consecutive single-diff-verified runs
 commit: 9b8e2e8 (r59s1 HEAD) / cc1e4dc (r59s2 HEAD) / f8144df-era (r59s3 HEAD); landings: bc04e63, 6b6ad2e, b2128c9, 36d23cd, 3b6c11c, 0197b8b, fa8e3bc, 12bda52, a1701f9, 0abeb0d, 2bdea69, e698ed8(ls20 L5), 02fe3d8, f677aed, 9647858, e536f65
 ---
 
@@ -111,6 +111,17 @@ six track cells — the real blocker was push-wall-aware navigation to REACH the
 Second game in two days whose terminal wall was a prior pass's measurement artifact (after
 g50t's goal-tracking bug). Full-conquest roster: ft09 1.0 · m0r0 1.0 · ls20 1.0 · cd82 0.98 ·
 sb26 0.846.
+
+## r59s10 official (2026-07-19 02:03 KST, ceph-build, @5000) — **30.61%**
+
+`games=25 total=7.6513 → 30.61%`. ONE row moved vs r59s9: lp85 0.1637 → **0.1814 (4/8)** via
+the σ² conflict resolution (0a8b08a): the conflict was REAL under-determination (6 colours /
+20 cells — 2-press pair signatures collide); fix = learn from the FULL colour TIME-SERIES
+over K presses (σ(a) = the cell whose series is a's delayed one step; certify only at K≥8 —
+a single press can yield an all-exact single-cycle that is WRONG). New generic kernel
+learn_successor_from_series. su15 idx6 closed at 6/9 (winnability PROVEN — 8-click oracle;
+both oracle-free routes fail on ONE ±1-step root cause; lag-compensating predictor = reopen).
+lp85 L5 probed: blocker = corner-target detection at render scale (queued #91).
 
 ## Post-measurement landings (in HEAD, not in r59s1; next full-25 picks them up)
 
