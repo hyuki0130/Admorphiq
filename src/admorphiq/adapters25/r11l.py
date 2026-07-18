@@ -60,28 +60,32 @@ space:
 select→place plan (:meth:`_build_plan`) clears L0 super-humanly (4 actions vs a
 22-action human baseline, game_score 0.0476).
 
-**L1+ (≥2 creatures): FROZEN-TARGET controller** (:meth:`_frozen_step`) —
-compute each creature's final leg configuration ONCE
-(:func:`admorphiq.kernels.points_with_centroid`) and HOLD it, so legs drive
-toward STATIONARY goals instead of the moving targets that stalled the earlier
-re-planner. Legs (:meth:`_detect_legs` — colour 0/3 pieces; the colour-12/15
-bodies and target rings are excluded) are grouped PER CREATURE by NEAREST BODY
-(:meth:`_detect_bodies`; each creature keyed to the colour of the body nearest
-its leg centroid), then each cycle drives one unplaced leg to its creature's
-nearest free frozen cell — never disturbing a placed leg, never selecting a
-body. A refused cell is marked bad and its creature re-solved.
+**L1+ (≥2 creatures): STRIKE-AWARE MOVE PLANNER** (:meth:`_build_move_plan`,
+:meth:`_plan_creature`, :meth:`_frozen_step`). Per creature, a best-first search
+(A*, cost = number of moves) over the joint leg configuration finds an ORDERED
+sequence of single-leg moves that lands the body (its legs' centroid) inside the
+target ring's bbox while EVERY intermediate body centroid avoids the body-hazard.
+The body-hazard is the generic ``_hazard_cells`` set (all large non-background
+regions = the arena wall PLUS the in-play ``defgjl`` obstacle), reused
+colour-agnostically — the missing piece the earlier controller lacked. Creatures
+are planned in sequence, each keeping every placed leg ``_LEG_SEP`` from the
+others (own and other creatures'), so no two legs fuse under region detection and
+each stays selectable. Legs are detected (:meth:`_detect_legs`) and grouped per
+creature by NEAREST BODY (:meth:`_detect_bodies`); a move is executed as
+select(exact planned from-cell)→place(dest); a move that unexpectedly does not
+fire learns its predicted body centroid as a hazard (part of the obstacle renders
+as other colours) and replans within the 5-strike budget.
 
-**Measured result — still BANKED at 1/6 (L0 byte-identical, 0.0476)**:
-- ``--max-actions 1000``, deterministic: 1/6. The controller drives REAL engine
-  moves on L1 (passive ``env._game.bbijaigbknc`` read; ``strk0`` all run — the
-  grouping is correct and no body is ever dragged) but does not converge under
-  the 60-action HARD per-level budget (source ``_max_actions=60``; select,
-  place, AND refused place each cost one action).
-- **The final wall is WALL-EDGE placement.** The pumlzd creature's target
-  ``(18,57)`` sits at the arena wall edge, so its frozen cells (col ~57) are
-  REFUSED by the engine (``gabrtablhx`` collision the frame-only ``is_free``
-  cannot match), and recompute-on-refusal thrashes cells near the wall
-  (``bad`` 0→9), burning the budget before convergence.
+**Measured result (R85, 2026-07-19) — r11l 3/6 @ 0.2551, deterministic ×2**
+(``--max-actions`` 600 and 3000 identical; loader ``r11l/495a7899``): L0 1.0
+(7 actions, byte-identical floor), L1 0.8403 (36 actions), L2 0.8920 (54
+actions). The strike-aware planner generalises past the two creatures of L1 to
+the 4-leg ``grhcew`` creature of L2. This SUPERSEDES the R60c "wall-edge
+placement is infeasible / DISPLAY→GRID camera transform" bank, which was WRONG:
+the camera is IDENTITY, both L1 creatures have 121/121 geometrically-feasible
+wall-free arrangements, and the true wall was the un-modelled ``defgjl`` body
+obstacle (a 70×36 band over rows ~22-58, NOT off-screen as R60c claimed) that
+strikes and reverts any move whose body centroid lands on it.
 
 The generic click-frontier explorer (below) remains the fallback for boards
 neither planner recognises. On its own it never advances past L0: the assembly
@@ -89,16 +93,11 @@ is a CONTINUOUS centroid-placement problem whose winning configuration is
 rarely any single salient centroid, so a frontier search over "click an
 existing region" cannot construct it except by luck.
 
-Reopen pointer (L1 final wall — see ``.wiki/wiki/games/R11L.md`` Notes R60c).
-The measured FRAME structure (correcting an R60b coordinate-confusion artifact):
-LEGS are colour 3 / colour 0-when-selected (fill ~0.48, NOT creature-coloured —
-so grouping is by nearest BODY, not by leg colour); BODIES are colour 12/15 at
-fill ~0.80; TARGET rings are colour 12/15 at fill ~0.24. Grouping, body
-exclusion, and strike avoidance are SOLVED. The only block left is wall-edge
-placement under the DISPLAY→GRID camera transform near the octagon wall: either
-(a) LEARN the placeable region from observed click→move successes (which cells
-actually accept a leg) rather than the frame ``is_free`` predicate, or (b)
-recover the display↔grid map so ``is_free`` matches the engine's collision.
+FRAME structure (measured): LEGS are colour 3 / colour 0-when-selected (fill
+~0.48, NOT creature-coloured — grouping is by nearest BODY); BODIES are colour
+12/15 at fill ~0.80; TARGET rings are colour 12/15 at fill ~0.24; the wall and
+the ``defgjl`` obstacle are large regions (both in ``_hazard_cells``). Deeper
+levels (L3+, ``dirwzt`` variants) stay for a future round.
 
 Composition from ``admorphiq.kernels``:
   - :func:`admorphiq.kernels.find_regions` segments the board into salient
@@ -112,6 +111,7 @@ Composition from ``admorphiq.kernels``:
 
 from __future__ import annotations
 
+import heapq
 import os
 from collections import deque
 from typing import Any
@@ -192,6 +192,23 @@ _MAX_FROZEN_MOVES = 48
 # so on a miss we click a different FILLED cell of the same leg before deciding
 # the destination itself is refused.
 _MAX_SELECT_RETRY = 3
+# Best-first search bound for one creature's strike-aware move plan. A 2-3 leg
+# assembly over a coarse candidate grid converges in a handful of expansions; this
+# ceiling only guards against a pathological board (then the planner defers).
+_ASTAR_MAX_EXPAND = 12000
+# Minimum chebyshev distance between any two leg CENTRES the planner will place.
+# Two leg blobs closer than this fuse under the gap-2 region detector; the merged
+# blob then exceeds the piece-size gate and is dropped entirely, so the adapter can
+# no longer find that leg to select/verify it — the measured L1 stall (orrqlj's 3rd
+# leg landing 7 cells from pumlzd's, close enough to fuse). Keeping every placed leg
+# this far from every other leg (own and other creatures', including a stationary
+# leg that has not moved yet) keeps them individually detectable.
+_LEG_SEP = 10
+
+
+def near_d2(a: Cell, b: Cell) -> int:
+    """Squared Euclidean distance between two cells (integer)."""
+    return (a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2
 
 
 def _hazard_cells(grid: Grid, bg: int) -> set[Cell]:
@@ -411,29 +428,50 @@ class Adapter(GameAdapter):
         # to its frozen cell, never disturbing a leg already on target. Single-
         # creature levels (L0) keep the one-shot path byte-identical.
         self._multi = False
-        # Per-creature frozen destination cells (index-parallel to
-        # ``_frozen_creatures``) and the initial (leg_centres, target) used to
-        # recompute one creature's cells when a destination is marked bad. ``None``
-        # frozen dests means the build failed → defer to the explorer.
-        self._frozen_by_creature: list[list[Cell]] | None = None
+        # Per-creature INITIAL (leg_centres, target_centre), captured once at
+        # build; the strike-aware planner drives the current legs from here.
         self._frozen_creatures: list[tuple[list[Cell], Cell]] = []
-        # Each frozen creature's BODY/TARGET colour (sampled from the frame at the
-        # target ring at build time). This is the creature-identity key: legs
-        # themselves are NOT creature-coloured (measured — every leg renders as
-        # colour 3, or colour 0 while selected), so current legs are matched to a
-        # creature by NEAREST BODY (a body is a same-colour high-fill piece), and
-        # a creature's body is found each cycle as the high-fill piece of this
-        # colour. No colour is hardcoded — it is read from the frame per level.
+        # Each creature's BODY/TARGET colour, used to match current legs to their
+        # creature by NEAREST BODY (legs themselves are NOT creature-coloured —
+        # measured: every leg renders as colour 3, or colour 0 while selected — so
+        # a body, a same-colour high-fill piece, is the identity anchor). No colour
+        # is hardcoded; it is read from the frame per level.
         self._frozen_colors: list[int] = []
-        self._frozen_bad: set[Cell] = set()
         self._frozen_moves = 0
+        # STRIKE-AWARE move plan (R85). Measured on the live L1: moving a leg
+        # re-centres its body to the legs' new mean, and if that BODY position
+        # overlaps the in-play ``defgjl`` obstacle the engine fires a STRIKE and
+        # REVERTS the move (5 strikes → game over). The frozen greedy driver only
+        # modelled leg-vs-wall collision, so its minimum-displacement moves drove
+        # the body through the obstacle and thrashed. The obstacle is a large
+        # non-background region, so it is already in the generic ``_hazard_cells``
+        # set — reused here as a BODY hazard (colour-agnostic, no per-level
+        # constant). Per creature we search an ORDERED sequence of single-leg
+        # moves (best-first, cost = #moves) where every intermediate body centroid
+        # avoids that hazard set, landing the body overlapping its target. The two
+        # creatures' plans are independent (one creature's leg never moves the
+        # other's body), so they concatenate. ``_moves`` is that ordered plan;
+        # ``None`` means "needs (re)building". ``_learned_haz`` accumulates body
+        # cells that struck despite the frame prior (part of the obstacle renders
+        # as other colours), refining the model online within the 5-strike budget.
+        self._moves: list[tuple[Cell, Cell, Cell]] | None = None
+        self._move_idx = 0
+        self._learned_haz: set[Cell] = set()
+        # Geometry measured once at build from the frame: the piece (leg/body)
+        # half-extent and each creature's target bbox — used by the planner's
+        # placeable / body-safe / overlap tests. No hardcoded size: read from the
+        # detected regions.
+        self._piece_half = 2
+        self._cr_target_box: list[tuple[int, int, int, int]] = []
+        # In-flight move's predicted body centroid (for the learned-hazard update
+        # when a placement unexpectedly does not fire).
+        self._fc_pred_body: Cell | None = None
         # In-flight single-leg move: select the leg (click a filled cell of it,
         # retrying alternates on a miss) then place at its frozen cell (re-issued
         # until the drag settles, then the outcome is verified).
         self._fc_phase: str | None = None  # None | "select" | "place"
         self._fc_leg_pre: Cell | None = None
         self._fc_dest: Cell | None = None
-        self._fc_dest_creature = -1
         self._fc_select_cells: list[Cell] = []
         self._fc_retry = 0
         self._fc_place_issued = False
@@ -519,11 +557,14 @@ class Adapter(GameAdapter):
         self._settle_ref = None
         self._settle_count = 0
         self._multi = False
-        self._frozen_by_creature = None
         self._frozen_creatures = []
         self._frozen_colors = []
-        self._frozen_bad = set()
         self._frozen_moves = 0
+        self._moves = None
+        self._move_idx = 0
+        self._learned_haz = set()
+        self._piece_half = 2
+        self._cr_target_box = []
         self._reset_move()
         self._fc_trajectory = []
 
@@ -531,7 +572,7 @@ class Adapter(GameAdapter):
         self._fc_phase = None
         self._fc_leg_pre = None
         self._fc_dest = None
-        self._fc_dest_creature = -1
+        self._fc_pred_body = None
         self._fc_select_cells = []
         self._fc_retry = 0
         self._fc_place_issued = False
@@ -547,6 +588,11 @@ class Adapter(GameAdapter):
         # keep them and resume driving legs toward the same cells (each life
         # compounds); only the in-flight move is reset.
         if self._multi:
+            # A multi-creature restart means the 5-strike budget was spent; the
+            # learned body-hazard cells are kept (each life refines the model),
+            # but the ordered plan is rebuilt from the revived board.
+            self._moves = None
+            self._move_idx = 0
             self._reset_move()
             return
         self._plan = None
@@ -649,8 +695,6 @@ class Adapter(GameAdapter):
                 self._plan_place_count = 0
 
         if self._multi:
-            if self._frozen_by_creature is None:
-                return None  # frozen build failed → defer to the explorer
             return self._frozen_step(grid, bg, masked)
 
         if not self._plan:
@@ -722,49 +766,78 @@ class Adapter(GameAdapter):
                     return True
         return False
 
-    # ── frozen-target controller (multi-creature) ───────────────────────
+    # ── strike-aware move planner (multi-creature) ──────────────────────
 
-    def _is_free(self, grid: Grid, bg: int, hazard: set[Cell], cell: Cell, radius: int) -> bool:
-        """Whether a leg can be placed at ``cell``: a clear BACKGROUND
-        neighbourhood of the given ``radius`` (the leg sprite's half-extent),
-        clear of the arena wall/hazard regions. Approximates the engine's
-        octagon-wall collision by the parsed passable region — a placement whose
-        footprint overlaps a wall or another marker is refused by the engine."""
+    @staticmethod
+    def _box_clear(cell: Cell, half: int, blocked: set[Cell], height: int, width: int, require_inbounds: bool) -> bool:
+        """Whether the ``(2*half+1)`` footprint box centred at ``cell`` touches no
+        cell of ``blocked``. ``require_inbounds`` also rejects a box clipping the
+        board edge — set for LEG placement (the engine refuses a leg that clips the
+        arena wall, and an edge-clipped leg is unreliable) and clear for the BODY
+        (the body can sit against the edge; only obstacle overlap strikes)."""
         r, c = cell
-        height, width = len(grid), len(grid[0])
-        for dr in range(-radius, radius + 1):
-            for dc in range(-radius, radius + 1):
-                rr, cc = r + dr, c + dc
+        for dr in range(-half, half + 1):
+            rr = r + dr
+            for dc in range(-half, half + 1):
+                cc = c + dc
                 if not (0 <= rr < height and 0 <= cc < width):
-                    return False
-                if grid[rr][cc] != bg or (rr, cc) in hazard:
+                    if require_inbounds:
+                        return False
+                    continue
+                if (rr, cc) in blocked:
                     return False
         return True
 
-    def _solve_creature(self, grid: Grid, bg: int, hazard: set[Cell], ci: int) -> list[Cell] | None:
-        """Compute one creature's frozen leg destinations: cells whose floor
-        centroid is its nest, preferring the fewest moves from the creature's
-        INITIAL legs, and excluding any destination already marked bad. Radius-2
-        clearance first (keeps well-separated placements), radius-1 fallback for a
-        nest wedged against a wall."""
-        legs, target = self._frozen_creatures[ci]
-        for radius in (_LEG_CLEAR_RADIUS, 1):
-            dests = points_with_centroid(
-                target,
-                len(legs),
-                lambda c, _r=radius: self._is_free(grid, bg, hazard, c, _r)
-                and (int(c[0]), int(c[1])) not in self._frozen_bad,
-                current=legs,
-            )
-            if dests is not None:
-                return [(int(r), int(c)) for r, c in dests]
-        return None
+    def _measure_geometry(self, grid: Grid, bg: int, hazard: set[Cell]) -> None:
+        """Measure, from the frame, the piece half-extent (legs and bodies are the
+        same small marker) and each creature's TARGET bbox — the planner's overlap
+        and footprint sizes, read from detected regions, never hardcoded."""
+        legs = self._detect_legs(grid, bg, hazard)
+        half = 2
+        if legs:
+            spans = [max(r["bbox"][2] - r["bbox"][0], r["bbox"][3] - r["bbox"][1]) for r in legs]
+            half = max(1, max(spans) // 2)
+        self._piece_half = half
+        # Only piece-sized, non-hazard, non-HUD regions are candidates for the
+        # target ring — the giant wall / obstacle regions are large and must not
+        # be matched (matching the obstacle gives a huge bbox that any body
+        # trivially "overlaps", a false win goal).
+        height, width = len(grid), len(grid[0])
+        pieces = [
+            r
+            for r in find_regions(grid, background=bg, gap=2)
+            if _MIN_PIECE_SIZE <= r["size"] <= _MAX_PIECE_SIZE
+            and not (r["cells"] & hazard)
+            and not _is_hud_band(r, height, width)
+        ]
+        self._cr_target_box = []
+        for _legs, target in self._frozen_creatures:
+            box = self._region_box_near(pieces, target)
+            self._cr_target_box.append(box)
+
+    @staticmethod
+    def _region_box_near(regions: list[Region], centre: Cell) -> tuple[int, int, int, int]:
+        """The bbox of the region whose centroid is nearest ``centre`` — used to
+        recover the TARGET nest's extent (the frozen target is stored as a centre
+        only). Falls back to a unit box when no region is found."""
+        best: Region | None = None
+        best_d: float | None = None
+        for r in regions:
+            cr, cc = r["centroid"]
+            d = (cr - centre[0]) ** 2 + (cc - centre[1]) ** 2
+            if best_d is None or d < best_d:
+                best_d = d
+                best = r
+        if best is None:
+            return (centre[0] - 1, centre[1] - 1, centre[0] + 1, centre[1] + 1)
+        r0, c0, r1, c1 = best["bbox"]
+        return (int(r0), int(c0), int(r1), int(c1))
 
     def _build_frozen(self, grid: Grid, bg: int, creatures: list[tuple[list[Cell], Cell]]) -> None:
-        """Compute and FREEZE every creature's final leg configuration ONCE. The
-        destinations are held for the rest of the level (only a refused cell is
-        later replaced), so legs drive toward STATIONARY goals instead of the
-        cycle-to-cycle moving targets that stalled the earlier re-planner."""
+        """Capture the multi-creature level once: initial legs, target centre, the
+        creature-identity body colour, and the frame geometry the strike-aware
+        planner needs. The move plan itself is built lazily (and rebuilt on a
+        learned strike) in :meth:`_frozen_step`."""
         hazard = _hazard_cells(grid, bg)
         self._frozen_creatures = [
             ([(int(r), int(c)) for r, c in legs], (int(target[0]), int(target[1])))
@@ -785,26 +858,138 @@ class Adapter(GameAdapter):
             else:
                 col = -1
             self._frozen_colors.append(col)
-        self._frozen_bad = set()
-        by_creature: list[list[Cell]] = []
-        for ci in range(len(self._frozen_creatures)):
-            dests = self._solve_creature(grid, bg, hazard, ci)
-            if dests is None:
-                self._frozen_by_creature = None
-                return
-            by_creature.append(dests)
-        self._frozen_by_creature = by_creature
+        self._measure_geometry(grid, bg, hazard)
+        self._moves = None
+        self._move_idx = 0
+        self._frozen_moves = 0
 
-    def _recompute_creature(self, grid: Grid, bg: int, ci: int) -> None:
-        """Re-solve one creature's frozen destinations after a cell was marked
-        bad (its footprint clipped the wall). Leaves the old cells if no clean
-        replacement exists — the bad cell is filtered out of the active set
-        regardless, so the creature simply has one fewer reachable placement."""
-        if ci < 0 or self._frozen_by_creature is None:
-            return
-        dests = self._solve_creature(grid, bg, _hazard_cells(grid, bg), ci)
-        if dests is not None:
-            self._frozen_by_creature[ci] = dests
+    @staticmethod
+    def _cheb(a: Cell, b: Cell) -> int:
+        return max(abs(a[0] - b[0]), abs(a[1] - b[1]))
+
+    def _move_candidates(self, grid: Grid, hazard: set[Cell], target_centre: Cell, avoid: set[Cell]) -> list[Cell]:
+        """Leg-destination candidates for the planner: a coarse wall/obstacle-free
+        grid over the board plus a fine ring around the creature's target, so a
+        precise final centroid is reachable. Each candidate's leg footprint is
+        clear of the hazard regions and in bounds, and at least ``_LEG_SEP`` from
+        every ``avoid`` cell (another creature's legs — kept separable)."""
+        height, width = len(grid), len(grid[0])
+        half = self._piece_half
+
+        def ok(cell: Cell) -> bool:
+            if not self._box_clear(cell, half, hazard, height, width, True):
+                return False
+            return all(self._cheb(cell, a) >= _LEG_SEP for a in avoid)
+
+        out: list[Cell] = []
+        seen: set[Cell] = set()
+        for r in range(0, height, 2):
+            for c in range(0, width, 2):
+                cell = (r, c)
+                if cell not in seen and ok(cell):
+                    seen.add(cell)
+                    out.append(cell)
+        tr, tc = target_centre
+        for dr in range(-8, 9):
+            for dc in range(-8, 9):
+                cell = (tr + dr, tc + dc)
+                if cell not in seen and ok(cell):
+                    seen.add(cell)
+                    out.append(cell)
+        return out
+
+    def _plan_creature(
+        self, grid: Grid, bg: int, body_haz: set[Cell], legs: list[Cell], ci: int, avoid: set[Cell]
+    ) -> tuple[list[tuple[Cell, Cell, Cell]], tuple[Cell, ...]] | None:
+        """Best-first search of an ORDERED single-leg-move sequence that lands
+        creature ``ci``'s body (its legs' centroid) overlapping its target while
+        EVERY intermediate body centroid stays clear of the body hazard (wall +
+        obstacle) and every leg stays ``_LEG_SEP`` from its siblings and the
+        ``avoid`` legs. Returns ``(ordered (from, to, body_after) moves, final leg
+        config)``, or ``None`` if none is found."""
+        height, width = len(grid), len(grid[0])
+        half = self._piece_half
+        target_centre = self._frozen_creatures[ci][1]
+        target_box = self._cr_target_box[ci]
+        cands = self._move_candidates(grid, _hazard_cells(grid, bg), target_centre, avoid)
+        n = len(legs)
+        if n == 0:
+            return None
+        start = tuple((int(r), int(c)) for r, c in legs)
+
+        def centroid(cfg: tuple[Cell, ...]) -> Cell:
+            return (sum(p[0] for p in cfg) // n, sum(p[1] for p in cfg) // n)
+
+        def heuristic(cfg: tuple[Cell, ...]) -> int:
+            b = centroid(cfg)
+            return abs(b[0] - target_centre[0]) + abs(b[1] - target_centre[1])
+
+        r0, c0, r1, c1 = target_box
+
+        def is_goal(cfg: tuple[Cell, ...]) -> bool:
+            # Require the body CENTROID inside the target ring's bbox (not merely a
+            # bbox-touch): a boundary sliver leaves only a 1-cell corner overlap
+            # that is not a reliable pixel collision, so the engine win does not
+            # fire (measured on pumlzd). A centroid over the ring guarantees a
+            # solid overlap. The body must also be strike-clear.
+            b = centroid(cfg)
+            return (
+                r0 <= b[0] <= r1
+                and c0 <= b[1] <= c1
+                and self._box_clear(b, half, body_haz, height, width, False)
+            )
+
+        parents: dict[tuple[Cell, ...], tuple[tuple[Cell, ...], int, Cell] | None] = {start: None}
+        pq: list[tuple[int, int, int, tuple[Cell, ...]]] = [(heuristic(start), 0, 0, start)]
+        tie = 1
+        expand = 0
+        goal_cfg: tuple[Cell, ...] | None = None
+        while pq and expand < _ASTAR_MAX_EXPAND:
+            _, cost, _, cfg = heapq.heappop(pq)
+            if is_goal(cfg):
+                goal_cfg = cfg
+                break
+            expand += 1
+            for nxt, moved_leg, dest in self._neighbours(cfg, cands, n, centroid, half, body_haz, height, width):
+                if nxt not in parents:
+                    parents[nxt] = (cfg, moved_leg, dest)
+                    heapq.heappush(pq, (cost + 1 + heuristic(nxt), cost + 1, tie, nxt))
+                    tie += 1
+        if goal_cfg is None:
+            return None
+        path: list[tuple[Cell, Cell, Cell]] = []
+        cur = goal_cfg
+        while parents[cur] is not None:
+            prev, moved_leg, dest = parents[cur]  # type: ignore[misc]
+            path.append((prev[moved_leg], dest, centroid(cur)))
+            cur = prev
+        path.reverse()
+        return path, goal_cfg
+
+    def _neighbours(
+        self,
+        cfg: tuple[Cell, ...],
+        cands: list[Cell],
+        n: int,
+        centroid: Any,
+        half: int,
+        body_haz: set[Cell],
+        height: int,
+        width: int,
+    ):
+        """Yield ``(next_cfg, moved_leg_index, dest)`` for every single-leg
+        relocation to a candidate cell whose resulting body centroid is
+        hazard-clear (a strike-free move) and that stays ``_LEG_SEP`` from this
+        creature's other legs (so the placed legs remain individually detectable)."""
+        for i in range(n):
+            for dest in cands:
+                if dest == cfg[i]:
+                    continue
+                if any(self._cheb(dest, cfg[j]) < _LEG_SEP for j in range(n) if j != i):
+                    continue
+                nxt = cfg[:i] + (dest,) + cfg[i + 1 :]
+                if self._box_clear(centroid(nxt), half, body_haz, height, width, False):
+                    yield nxt, i, dest
 
     def _detect_bodies(self, grid: Grid, bg: int, hazard: set[Cell]) -> dict[int, Cell]:
         """Each creature's BODY centre keyed by colour: the compact HIGH-FILL
@@ -873,7 +1058,8 @@ class Adapter(GameAdapter):
 
             print(
                 f"[r11l] move#{self._frozen_moves} leg{self._fc_leg_pre} "
-                f"-> dest{self._fc_dest} moved={moved} bad={len(self._frozen_bad)}",
+                f"-> dest{self._fc_dest} body{self._fc_pred_body} moved={moved} "
+                f"learned_haz={len(self._learned_haz)} move_idx={self._move_idx}",
                 file=sys.stderr,
                 flush=True,
             )
@@ -888,16 +1074,54 @@ class Adapter(GameAdapter):
         self._fc_place_count = 0
         return cell
 
+    def _build_move_plan(self, grid: Grid, bg: int, leg_regions: list[Region]) -> list[tuple[Cell, Cell, Cell]] | None:
+        """Assemble the whole level's ordered strike-free move list: group the
+        CURRENT legs to their creature by nearest body (fallback target), then
+        concatenate each creature's :meth:`_plan_creature` sequence (the plans are
+        independent — one creature's leg never moves another's body). ``None`` when
+        detection is inconsistent or any creature has no strike-free plan."""
+        hazard = _hazard_cells(grid, bg)
+        body_haz = hazard | self._learned_haz
+        bodies = self._detect_bodies(grid, bg, hazard)
+        n_cr = len(self._frozen_creatures)
+        anchors = [bodies.get(self._frozen_colors[ci], self._frozen_creatures[ci][1]) for ci in range(n_cr)]
+        groups: list[list[Cell]] = [[] for _ in range(n_cr)]
+        for r in leg_regions:
+            lc = self._leg_centre(r)
+            ci = min(range(n_cr), key=lambda i: (lc[0] - anchors[i][0]) ** 2 + (lc[1] - anchors[i][1]) ** 2)
+            groups[ci].append(lc)
+        # Plan creatures in sequence, each avoiding the FINAL legs of already-planned
+        # creatures plus the CURRENT legs of not-yet-planned ones, so no leg lands
+        # adjacent to another (which would fuse them under region detection and
+        # break selection). The plans stay independent for execution.
+        moves: list[tuple[Cell, Cell, Cell]] = []
+        placed: list[Cell] = []
+        for ci in range(n_cr):
+            legs = groups[ci]
+            if len(legs) != len(self._frozen_creatures[ci][0]):
+                return None  # detection churn — wait a frame and rebuild
+            avoid = set(placed)
+            for cj in range(n_cr):
+                if cj != ci:
+                    avoid.update(groups[cj])
+            result = self._plan_creature(grid, bg, body_haz, legs, ci, avoid)
+            if result is None:
+                return None
+            seq, final_cfg = result
+            moves.extend(seq)
+            placed.extend(final_cfg)
+        return moves
+
     def _frozen_step(self, grid: Grid, bg: int, masked: Grid) -> Cell | None:
-        """One controller click. Groups the CURRENT legs by NEAREST BODY (so a
-        leg is only ever driven to its OWN creature's frozen cells — never mixed
-        across creatures), then either continues an in-flight place or begins
-        moving the next unplaced leg to its creature's nearest free frozen cell.
-        Only real legs (colour 0/3) are ever selected, so a body is never dragged.
-        Returns ``None`` to bank to the explorer when convergence stalls."""
+        """One controller click, driven by the strike-aware move plan. Builds the
+        ordered plan once (rebuilds on a learned strike), then executes the next
+        move as select(current leg)→place(dest). A move whose leg does not actually
+        shift (a mispredicted body strike, or a wall refusal) learns its predicted
+        body centroid as a hazard and forces a replan. Only detected leg pieces are
+        ever selected, so a body is never dragged. Returns ``None`` to defer to the
+        explorer when no strike-free plan exists or the attempt budget is spent."""
         hazard = _hazard_cells(grid, bg)
         leg_regions = self._detect_legs(grid, bg, hazard)
-        bodies = self._detect_bodies(grid, bg, hazard)
 
         def near(a: Cell, b: Cell) -> bool:
             return (a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2 <= _BODY_CENTROID_TOL2
@@ -906,59 +1130,57 @@ class Adapter(GameAdapter):
             legs = [self._leg_centre(r) for r in leg_regions]
             return self._frozen_place(grid, bg, masked, legs, near)
 
-        # Anchor each creature at its body (fallback: its static target if the
-        # body is momentarily undetected), then assign each leg to the creature
-        # whose anchor is nearest.
-        n = len(self._frozen_by_creature or [])
-        anchors = [bodies.get(self._frozen_colors[ci], self._frozen_creatures[ci][1]) for ci in range(n)]
-        creature_legs: list[list[tuple[Region, Cell]]] = [[] for _ in range(n)]
-        for r in leg_regions:
-            lc = self._leg_centre(r)
-            ci = min(range(n), key=lambda i: (lc[0] - anchors[i][0]) ** 2 + (lc[1] - anchors[i][1]) ** 2)
-            creature_legs[ci].append((r, lc))
+        if self._moves is None:
+            self._moves = self._build_move_plan(grid, bg, leg_regions)
+            self._move_idx = 0
+            if self._moves is None:
+                # Detection not settled / no plan yet — idle a frame and retry.
+                return self._safe_wait_cell(grid, bg)
+        if not self._moves:
+            return None  # no strike-free plan at all → defer to the explorer
 
-        any_open = False
-        best: tuple[int, Region, Cell, Cell, int] | None = None
-        for ci, cells in enumerate(self._frozen_by_creature or []):
-            active = [c for c in cells if c not in self._frozen_bad]
-            regs = creature_legs[ci]
-            open_cells = [c for c in active if not any(near(c, lc) for _r, lc in regs)]
-            if open_cells:
-                any_open = True
-            # Free legs of THIS creature: not already sitting on one of its cells
-            # (never disturb a placed leg — the re86 never-disturb rule).
-            free = [(r, lc) for r, lc in regs if not any(near(lc, c) for c in active)]
-            for cell in open_cells:
-                for region, lc in free:
-                    dist = (lc[0] - cell[0]) ** 2 + (lc[1] - cell[1]) ** 2
-                    if best is None or dist < best[0]:
-                        best = (dist, region, lc, cell, ci)
-
-        if not any_open:
-            # Every creature's legs sit on its frozen cells → each body is on its
-            # target → WIN is imminent; idle on a refused hazard click until it
-            # registers.
+        # Moves are executed STRICTLY in order from the config the plan was built
+        # on (each verified before advancing), so no "already-satisfied" skip is
+        # needed — and a skip keyed on "any leg near this dest" would wrongly drop
+        # a move whose OWN leg is elsewhere but another leg happens to sit near the
+        # destination (measured: it left a creature one leg short of its target).
+        if self._move_idx >= len(self._moves):
+            # All planned moves done → both bodies overlap their targets → WIN is
+            # imminent; idle on a refused hazard click until it registers.
             return self._safe_wait_cell(grid, bg)
         if self._frozen_moves >= _MAX_FROZEN_MOVES:
-            return None  # banked: stalled short of convergence → defer to explorer
-        if best is None:
-            return None  # a cell is open but its creature has no free leg → banked
+            return None  # too many attempts → defer to the explorer
 
-        _dist, region, lc, dest, ci = best
-        self._fc_leg_pre = lc
+        from_cell, dest, pred_body = self._moves[self._move_idx]
+        if not leg_regions:
+            self._moves = None
+            return self._safe_wait_cell(grid, bg)
+        region = min(leg_regions, key=lambda r: near_d2(self._leg_centre(r), from_cell))
+        if near_d2(self._leg_centre(region), from_cell) > _BODY_CENTROID_TOL2:
+            # No leg near the planned from-cell (the board drifted under the plan)
+            # — rebuild from the current board.
+            self._moves = None
+            return self._safe_wait_cell(grid, bg)
+        # SELECT by clicking the EXACT planned from-cell first: the engine selects
+        # the leg whose bbox contains the click, so this grabs the intended leg even
+        # when the detected region centroid drifted (e.g. two legs a hair over the
+        # separation floor fuse into one region whose centroid sits between them, in
+        # NEITHER leg's bbox). The region's own filled cells follow as retries.
+        self._fc_leg_pre = from_cell
         self._fc_dest = dest
-        self._fc_dest_creature = ci
-        self._fc_select_cells = self._leg_click_cells(region)
+        self._fc_pred_body = pred_body
+        self._fc_select_cells = [from_cell] + [c for c in self._leg_click_cells(region) if c != from_cell]
         self._fc_retry = 0
         return self._frozen_issue_select()
 
     def _frozen_place(
         self, grid: Grid, bg: int, masked: Grid, legs: list[Cell], near: Any
     ) -> Cell | None:
-        """The place phase: click the frozen destination, re-issued until the
-        drag settles, then verify the intended leg reached it. On a miss, retry an
-        alternate select cell; when those are exhausted the destination itself is
-        refused (footprint clips the wall) → mark it bad, re-solve the creature."""
+        """The place phase: click the destination, re-issued until the drag
+        settles, then verify the intended leg reached it. On success advance the
+        plan; on a persistent miss retry an alternate select cell, then learn the
+        predicted body centroid as a hazard (a mispredicted strike, since part of
+        the obstacle renders as other colours) and replan."""
         if self._fc_place_issued and masked == self._fc_place_masked:
             assert self._fc_dest is not None and self._fc_leg_pre is not None
             moved = any(near(self._fc_dest, leg) for leg in legs) and not any(
@@ -966,14 +1188,16 @@ class Adapter(GameAdapter):
             )
             self._log_traj(moved)
             if moved:
+                self._move_idx += 1
                 self._frozen_moves += 1
                 self._reset_move()
                 return self._frozen_step(grid, bg, masked)
             self._fc_retry += 1
             if self._fc_select_cells and self._fc_retry <= _MAX_SELECT_RETRY:
                 return self._frozen_issue_select()
-            self._frozen_bad.add(self._fc_dest)
-            self._recompute_creature(grid, bg, self._fc_dest_creature)
+            if self._fc_pred_body is not None:
+                self._learned_haz.add(self._fc_pred_body)
+            self._moves = None
             self._frozen_moves += 1
             self._reset_move()
             return self._frozen_step(grid, bg, masked)
@@ -981,9 +1205,9 @@ class Adapter(GameAdapter):
         self._fc_place_count += 1
         if self._fc_place_count > _PLACE_STUCK_LIMIT:
             self._log_traj(False)
-            assert self._fc_dest is not None
-            self._frozen_bad.add(self._fc_dest)
-            self._recompute_creature(grid, bg, self._fc_dest_creature)
+            if self._fc_pred_body is not None:
+                self._learned_haz.add(self._fc_pred_body)
+            self._moves = None
             self._frozen_moves += 1
             self._reset_move()
             return self._frozen_step(grid, bg, masked)

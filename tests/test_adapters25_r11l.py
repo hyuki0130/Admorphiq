@@ -10,7 +10,7 @@ solve is measured separately by ``scripts/script25.py``).
 
 from __future__ import annotations
 
-from admorphiq.adapters25.r11l import Adapter, _analyze_creatures, _hazard_cells
+from admorphiq.adapters25.r11l import _LEG_SEP, Adapter, _analyze_creatures, _hazard_cells
 
 _BG = 5
 
@@ -167,3 +167,59 @@ def test_returns_none_on_non_creature_layout():
     grid = _grid(cells)
     hazard = _hazard_cells(grid, _BG)
     assert _analyze_creatures(grid, _BG, hazard) is None
+
+
+def test_strike_aware_plan_is_body_hazard_free_and_separates_legs():
+    """Purpose (R85): the multi-creature strike-aware move planner must (a) never
+    emit a move whose resulting BODY centroid lands on a body-hazard cell — the
+    engine punishes a body dragged onto the in-play obstacle with a strike and
+    reverts the move — and (b) keep every placed leg at least ``_LEG_SEP`` from
+    the others, since closer legs fuse under region detection and become
+    unselectable. Built on a synthetic board whose hazard blob covers the naive
+    exact-centroid target cell, so the planner must use the target-box tolerance
+    to seat the body just off the hazard.
+
+    Expected feedback: a FAIL means the planner would drive a body through the
+    obstacle (spending the 5-strike budget) or place legs the adapter can no
+    longer tell apart — the two execution failures measured while building R85,
+    each of which left the live L1 at 1/6."""
+    ad = Adapter()
+    ad._piece_half = 2
+    # One 2-leg creature well below a target near (12, 30); a hazard rectangle
+    # (size >> the hazard floor) sits over the target's own centre row band, so a
+    # body seated exactly on the target centre would strike.
+    legs = [(40, 24), (40, 36)]  # body starts at their mean (40, 30)
+    target_centre = (12, 30)
+    ad._frozen_creatures = [(legs, target_centre)]
+    ad._cr_target_box = [(9, 27, 15, 33)]  # 7x7 ring bbox around the target
+    ad._learned_haz = set()
+
+    g = [[_BG] * 64 for _ in range(64)]
+    haz_cells: set[tuple[int, int]] = set()
+    for r in range(12, 18):  # covers the target centre row 12 and below
+        for c in range(26, 35):
+            g[r][c] = 8
+            haz_cells.add((r, c))
+    grid = tuple(tuple(row) for row in g)
+    hazard = _hazard_cells(grid, _BG)  # the colour-8 rectangle is a large region
+    assert haz_cells <= hazard  # the blob is recognised as a hazard
+
+    result = ad._plan_creature(grid, _BG, hazard, legs, 0, avoid=set())
+    assert result is not None, "a strike-free plan should exist (target box extends above the hazard)"
+    moves, final_cfg = result
+
+    # (a) every move's predicted body centroid is off the body hazard.
+    for _frm, _to, body_after in moves:
+        assert body_after not in hazard, f"planned body {body_after} lands on the obstacle (would strike)"
+
+    # (b) the final legs are mutually separated.
+    for i in range(len(final_cfg)):
+        for j in range(i + 1, len(final_cfg)):
+            assert ad._cheb(final_cfg[i], final_cfg[j]) >= _LEG_SEP
+
+    # goal actually reached: the final body centroid sits inside the target bbox.
+    n = len(final_cfg)
+    body = (sum(p[0] for p in final_cfg) // n, sum(p[1] for p in final_cfg) // n)
+    r0, c0, r1, c1 = ad._cr_target_box[0]
+    assert r0 <= body[0] <= r1 and c0 <= body[1] <= c1
+    assert body not in hazard
