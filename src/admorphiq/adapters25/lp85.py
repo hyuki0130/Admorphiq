@@ -390,28 +390,80 @@ def _detect_movers(
     )
 
 
+def _extract_frames_at(
+    pts: list[Cell], ptset: set[Cell], side: int, need: int
+) -> tuple[list[Cell], set[Cell]]:
+    """Greedily claim disjoint axis-aligned squares of a fixed ``side`` from the
+    top-left. Each square is a candidate hollow frame ``{(r,c),(r,c+s),(r+s,c),
+    (r+s,c+s)}``; it is accepted when at least ``need`` of its 4 corners are
+    present and unused (the top-left corner always required, so the global-minimum
+    unused dot — necessarily some real frame's top-left — anchors the claim).
+    Returns the accepted frame centres and the set of corners consumed."""
+    used: set[Cell] = set()
+    centres: list[Cell] = []
+    for (r, c) in pts:
+        if (r, c) in used:
+            continue
+        square = [(r, c), (r, c + side), (r + side, c), (r + side, c + side)]
+        present = [p for p in square if p in ptset and p not in used]
+        if len(present) >= need and (r, c) in present:
+            used.update(present)
+            rr = round(sum(p[0] for p in square) / 4)
+            cc = round(sum(p[1] for p in square) / 4)
+            centres.append((rr, cc))
+    return centres, used
+
+
 def _cluster_frame_centres(corners: list[Cell], span: int = _DEST_CLUSTER_SPAN) -> list[Cell]:
     """Group the loose corner dots of one colour into hollow target frames and
-    return each frame's centre. Dots within ``span`` (L∞) form one group; a group
-    of ≥3 (a 4-corner frame, tolerating one occlusion) yields its rounded
-    centroid. ``span`` scales with the board so a target frame drawn at a larger
-    render scale (wider corner spacing) still clusters."""
-    used: set[int] = set()
-    centres: list[Cell] = []
-    for i, a in enumerate(corners):
-        if i in used:
-            continue
-        group = [a]
-        used.add(i)
-        for j, b in enumerate(corners):
-            if j not in used and abs(a[0] - b[0]) <= span and abs(a[1] - b[1]) <= span:
-                group.append(b)
-                used.add(j)
-        if len(group) >= 3:
-            rr = round(sum(p[0] for p in group) / len(group))
-            cc = round(sum(p[1] for p in group) / len(group))
-            centres.append((rr, cc))
-    return centres
+    return each frame's centre.
+
+    A hollow 4-corner target renders 4 corner dots at the corners of a square whose
+    side is the sprite footprint. Single-linkage clustering (the earlier span-group
+    rule) MERGES adjacent frames when the inter-frame gap is no larger than the
+    intra-frame corner span — measured on LP85 L6, where 3 targets sit corner-pitch
+    apart (both gaps = 3), collapsing all 12 corners into ONE dest and stalling the
+    planner. Instead DERIVE the square side from the corner geometry (a gap that
+    appears as both a horizontal and a vertical frame edge) and extract DISJOINT
+    squares greedily from the top-left, so each corner belongs to exactly one frame.
+
+    ``span`` scales with the board (see :func:`_scale_unit`); it only bounds the
+    largest plausible frame side here (a coarse render draws wider frames), so
+    distant lone frames are never joined into one oversized square.
+
+    A well-separated frame (LP85 L2/L3/L5) has exactly one same-row and one
+    same-col edge, so it extracts as a single square unchanged; an occluded frame
+    (3 corners) is recovered by the leftover pass. Preserves the prior ≥3-corner
+    occlusion tolerance while separating tightly-packed frames."""
+    pts = sorted(set(corners))
+    if len(pts) < 3:
+        return []
+    ptset = set(pts)
+    rows: dict[int, list[int]] = {}
+    cols: dict[int, list[int]] = {}
+    for (r, c) in pts:
+        rows.setdefault(r, []).append(c)
+        cols.setdefault(c, []).append(r)
+    side_cap = max(6, 2 * span)
+    hgaps = {abs(a - b) for cs in rows.values() for a in cs for b in cs if a < b}
+    vgaps = {abs(a - b) for rs in cols.values() for a in rs for b in rs if a < b}
+    cands = sorted(s for s in (hgaps & vgaps) if 1 <= s <= side_cap)
+    if not cands:
+        cands = sorted(s for s in (hgaps | vgaps) if 1 <= s <= side_cap)
+    best: list[Cell] = []
+    best_cover = -1
+    for side in cands:
+        # strict 4-corner squares first, then recover occluded (3-corner) frames
+        # from the leftovers so a lone missing corner still yields its centre.
+        f4, u4 = _extract_frames_at(pts, ptset, side, 4)
+        leftover = [p for p in pts if p not in u4]
+        f3, u3 = _extract_frames_at(leftover, ptset - u4, side, 3)
+        centres = sorted(f4 + f3)
+        cover = len(u4) + len(u3)
+        if cover > best_cover or (cover == best_cover and len(centres) < len(best)):
+            best_cover = cover
+            best = centres
+    return best
 
 
 def _detect_dests(

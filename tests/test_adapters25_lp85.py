@@ -16,6 +16,7 @@ from types import SimpleNamespace
 from admorphiq.adapters25.lp85 import (
     Adapter,
     _candidates_with_region,
+    _cluster_frame_centres,
     _detect_dests,
     _detect_marker_colors,
     _detect_movers,
@@ -432,3 +433,46 @@ def test_detection_is_scale_robust_for_a_coarse_board():
 
     # the fixed L1–L4 thresholds miss it entirely (corners look like solids)
     assert _detect_marker_colors(regions) == frozenset()
+
+
+def test_cluster_frame_centres_separates_tightly_packed_frames():
+    """Purpose: pin the LP85 L6 detection fix — three hollow target frames packed
+    corner-pitch apart (the inter-frame gap equals the intra-frame corner span, both
+    = 3) must resolve to THREE distinct centres. The earlier single-linkage span
+    grouping merged all 12 corners into one dest (movers=3 vs dests=1 → DETECT_OK
+    false, the L6 wall); disjoint 4-corner-square extraction keeps them separate.
+
+    Expected feedback: PASS = the real L6 corner geometry yields exactly 3 centres,
+    one per frame; a FAIL (1 or 2 centres) means the packed-frame separation
+    regressed and L6 detection is broken again. The lattice used is the measured
+    L6 render: rows {26,29,32,35} × cols {25,28,31,34} in a brick arrangement."""
+    # frame A rows{26,29}×cols{25,28}; B rows{26,29}×cols{31,34}; C rows{32,35}×cols{28,31}
+    corners = [
+        (26, 25), (26, 28), (29, 25), (29, 28),  # A
+        (26, 31), (26, 34), (29, 31), (29, 34),  # B
+        (32, 28), (32, 31), (35, 28), (35, 31),  # C
+    ]
+    centres = _cluster_frame_centres(corners, span=6)
+    assert len(centres) == 3, centres
+    # each centre is the middle of its own 3-pitch square (±rounding), all distinct
+    assert sorted(centres) == [(28, 26), (28, 32), (34, 30)]
+
+
+def test_cluster_frame_centres_preserves_separated_and_occluded_frames():
+    """Purpose: the L6 packed-frame fix must NOT change the well-separated /
+    occluded cases the L2/L3/L5 planner already relies on — a lone frame is one
+    centre, two distant frames are two, and a 3-corner (one occluded) frame still
+    yields its centre.
+
+    Expected feedback: PASS = separated frames still cluster 1:1 and a 3-corner
+    frame is tolerated; a FAIL means the disjoint-square extraction broke the
+    separated-frame contract (a floor-level regression risk for L2/L3/L5)."""
+    lone = [(10, 10), (10, 13), (13, 10), (13, 13)]
+    assert _cluster_frame_centres(lone, span=6) == [(12, 12)]
+    two = lone + [(40, 40), (40, 43), (43, 40), (43, 43)]
+    assert _cluster_frame_centres(two, span=6) == [(12, 12), (42, 42)]
+    occluded = [(10, 10), (10, 13), (13, 10)]  # one corner missing
+    assert _cluster_frame_centres(occluded, span=6) == [(12, 12)]
+    # a coarse-board frame (wider corner spacing) still clusters as one
+    coarse = [(10, 10), (10, 18), (18, 10), (18, 18)]
+    assert _cluster_frame_centres(coarse, span=12) == [(14, 14)]
