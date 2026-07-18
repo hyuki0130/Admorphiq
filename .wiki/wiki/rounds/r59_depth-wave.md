@@ -2,7 +2,7 @@
 round: r59
 axis: script25 depth (kernel expressiveness) — faithful-sim + learned-operator wave 2
 keywords: [m0r0, pressure-plate, gates, bp35, frontier-exploration, su15, enemy-in-sim, re86, separation-by-motion, sk48, lockstep, reachability, lp85, twist-topology, ls20, moving-changer, r59s1, full-25]
-verdict: PASS — official card 18.02% → 21.56% → 22.25% → 26.38% → 27.25% → 27.80% → 28.47% → 29.25% → 29.53% → 30.53% (first 30% crossing) → 30.61% → 31.08% → 31.57% → 31.79% → 32.68% → **32.11% (r59s15 ENV-CORRECTION, 2026-07-19 06:21)** — 15 stale env dirs archived, cn04's stale inflation removed (-0.169) + s5i5 recovered (+0.028); lp85 FULLY CONQUERED 8/8 (sixth conquest)
+verdict: PASS — official card 18.02% → 21.56% → 22.25% → 26.38% → 27.25% → 27.80% → 28.47% → 29.25% → 29.53% → 30.53% (first 30% crossing) → 30.61% → 31.08% → 31.57% → 31.79% → 32.68% → 32.11% (r59s15 ENV-CORRECTION) → **32.94% (r59s16, 2026-07-19 07:57)** — r11l 3/6 strike-aware planner; lp85 FULLY CONQUERED 8/8 (sixth conquest); first full loader-line audit 25/25 clean
 commit: 9b8e2e8 (r59s1 HEAD) / cc1e4dc (r59s2 HEAD) / f8144df-era (r59s3 HEAD); landings: bc04e63, 6b6ad2e, b2128c9, 36d23cd, 3b6c11c, 0197b8b, fa8e3bc, 12bda52, a1701f9, 0abeb0d, 2bdea69, e698ed8(ls20 L5), 02fe3d8, f677aed, 9647858, e536f65
 ---
 
@@ -203,6 +203,23 @@ current-content for all five. Diff vs r59s14 — exactly two rows moved:
 - sc25/tn36/tu93: identical scores on current content (adapter behavior transfers).
 32.68 → 32.11 is an integrity correction, not a regression: the card now measures the
 API-current content deterministically on any filesystem.
+
+## r59s16 official (2026-07-19 07:57 KST, ceph-build, @5000) — **32.94%**
+
+`games=25 total=8.2353 → 32.94%`. ONE row moved vs r59s15: r11l 0.0476 → **0.2551 (3/6)** via
+the strike-aware drag-assembly planner (9c5afc0, R85): the R84 scan's sole open-bounded
+item, and its R60c bank fell as the FIFTH re-measurement-killed wall of the sprint — camera
+is IDENTITY (no DISPLAY→GRID transform ever existed), 121/121 wall-free arrangements were
+feasible; the true mechanic is body-recentres-to-legs'-mean + engine STRIKE-AND-REVERT on
+obstacle overlap. Fix: per-creature A* over single-leg moves with body-centroid hazard
+avoidance + leg-separation ≥10 (closer legs fuse under gap-2 detection and exceed the
+piece-size gate) + exact-from-cell selection. L1 36a=0.84, L2 54a=0.89. First full-25 with
+the MANDATORY loader-line audit: 25/25 loaded-dir == row game_id. R84 frontier scan
+(d2eebe1) preceded this: bounded frontier otherwise exhausted — 3 ⛔ settled (tr87/sk48/
+sc25), 6 multi-session parks (dc22/wa30/ar25/vc33/bp35/sp80). r11l L3 follow-ons: same
+config-space class, plans verified (≈14a); colour-blind leg-grouping SOLVED (2+2+3), wall
+narrowed to target-ring assignment (multi-colour shared bodies → 4-way colour-overlap tie);
+ring-GEOMETRY detection round in flight (R87).
 
 ## Post-measurement landings (in HEAD, not in r59s1; next full-25 picks them up)
 
