@@ -23,14 +23,41 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 from arc_agi import Arcade, OperationMode
 from arcengine import GameAction
 from admorphiq.adapters25.re86 import Adapter, _station_boxes
-from admorphiq.adapters25.base import canonical_layer
-from admorphiq.kernels import max_coverage_offset, grid_shortest_path
+from admorphiq.adapters25.base import canonical_layer, most_common_color
+from admorphiq.kernels import max_coverage_offset, grid_shortest_path, find_regions
 from re86_l5_ctrl import (
     parse_movables, scan_gate_cells, cluster, assign_pieces, marker_of, reach_l5,
 )
 
 A = {1: GameAction.ACTION1, 2: GameAction.ACTION2, 3: GameAction.ACTION3, 4: GameAction.ACTION4, 5: GameAction.ACTION5}
 CELL = 3
+BORDER, STA_BORDER, MARK = 4, 2, 0
+
+
+def parse2(grid, gate_cells, station_boxes):
+    """FIX (b): parse movables SUBTRACTING both gate cells AND station-box pixels.
+    A recoloured colour-9 body abutting the colour-9 station-9 swatch merges under
+    plain connected components (same colour); subtracting the station BOX region
+    (by box, not colour) keeps the piece's true shape/centroid so tracking survives
+    the merge. Mirrors the L4 gate-cell-subtraction pattern extended to stations."""
+    bg = most_common_color(grid)
+    exclude = {bg, BORDER, STA_BORDER, MARK}
+    gc = set(gate_cells)
+    def in_box(r, c):
+        return any(r0 - 1 <= r <= r1 + 1 and c0 - 1 <= c <= c1 + 1 for r0, c0, r1, c1 in station_boxes)
+    out = []
+    for reg in find_regions(grid, background=bg, gap=1):
+        if reg["color"] in exclude:
+            continue
+        cells = frozenset((r, c) for (r, c) in reg["cells"] if (r, c) not in gc and not in_box(r, c))
+        if not (20 <= len(cells) <= 120):
+            continue
+        rs = [r for r, _ in cells]; cs = [c for _, c in cells]
+        if max(rs) - min(rs) < 3 or max(cs) - min(cs) < 3:
+            continue
+        cen = (sum(rs) // len(cells), sum(cs) // len(cells))
+        out.append({"color": reg["color"], "cells": cells, "cen": cen})
+    return out
 
 
 def route_to(pos, goal_px, half, avoid_boxes, walls, dirmap, move_ids):
@@ -164,7 +191,7 @@ def main():
     print("ORDER:", [(pieces[i]["orig"], pieces[i]["target"], round(clu_row(pieces[i]))) for i in order])
 
     def track(grid):
-        movs = parse_movables(grid, all_gate(), station_boxes)
+        movs = parse2(grid, all_gate(), station_boxes)
         known = {8, 9} | {p["orig"] for p in pieces}
         used = set()
         for p in pieces:
@@ -236,9 +263,21 @@ def main():
             obs = env.step(A[5]); steps += 1; continue  # cycle to the active piece
 
         if p["color"] != p["target"]:
-            # RECOLOUR: route marker to the target station, avoiding all others
             others = [b for c, b in sbox.items() if c != p["target"]]
-            act = route_to(marker, stations[p["target"]], p["half"], others, p["walls"], dirmap, move_ids)
+            tb = sbox[p["target"]]
+            # FIX (a): EDGE-ONLY approach. The recolour fires on FIRST body overlap
+            # (L4 finding), so once the body bbox touches the target station box,
+            # STOP pushing in (that is what wedges into the corner and stalls the
+            # flood) — retreat toward the cover cluster instead; the 1-frame flip
+            # completes and the piece is already leaving.
+            body = (marker[0] - p["half"], marker[1] - p["half"], marker[0] + p["half"], marker[1] + p["half"])
+            overlaps = not (body[2] < tb[0] or body[0] > tb[2] or body[3] < tb[1] or body[1] > tb[3])
+            if overlaps:
+                ccen = (sum(r for r, _ in p["cluster"]) // len(p["cluster"]),
+                        sum(c for _, c in p["cluster"]) // len(p["cluster"]))
+                act = route_to(marker, ccen, p["half"], others, p["walls"], dirmap, move_ids)
+            else:
+                act = route_to(marker, stations[p["target"]], p["half"], others, p["walls"], dirmap, move_ids)
             if act is None:
                 obs = env.step(A[5]); steps += 1; continue
             last_move = (active, marker, dirmap[act])
