@@ -489,3 +489,78 @@ def test_l6_bfs_covers_both_goals_either_order():
     for a in plan:
         s = _l6_step(maze, s, a)
     assert len(s[8]) == 2
+
+
+# ── L7 (Fog) path: gate separation + vertical-mover sim contracts ────────────
+
+from admorphiq.adapters25.ls20 import (  # noqa: E402
+    _GOAL_BORDER,
+    _L7_FOG_MIN,
+    _l7_bfs,
+    _l7_fog_count,
+    _l7_step,
+)
+
+
+def test_l7_fog_gate_separates_fogged_from_unfogged():
+    """Purpose: the L7 gate (colour-5 pixel count) must fire on a fogged frame and
+    NOT on an unfogged one — this is the ONLY guard keeping the L7 path off L1-L6,
+    so a leak would let the fog-blind parser corrupt an earlier level.
+    Expected feedback: a failure means the gate threshold is mis-set and the 6/7
+    floor is at risk (or L7 never activates)."""
+    floor = [[_FLOOR_COLOR] * 64 for _ in range(64)]
+    # an unfogged frame with only a small goal border (a few colour-5 pixels)
+    for r in range(5):
+        floor[r][10] = _GOAL_BORDER
+    assert _l7_fog_count(tuple(tuple(row) for row in floor)) <= _L7_FOG_MIN
+    # a fogged frame: a large solid colour-5 field outside a small disc
+    fogged = [[_GOAL_BORDER] * 64 for _ in range(64)]
+    assert _l7_fog_count(tuple(tuple(row) for row in fogged)) > _L7_FOG_MIN
+
+
+def _l7_maze(**kw):
+    m = {
+        "goal": (99, 99),
+        "goal_req": (9, 9, 9),
+        "hard_walls": frozenset(),
+        "refills": frozenset(),
+        "static_changers": {},
+        "track": frozenset({(5, 0), (5, 5)}),
+        "pushwalls": {},
+        "fjzuynaokm": frozenset(),
+        "step_full": 50,
+    }
+    m.update(kw)
+    return m
+
+
+def test_l7_step_vertical_mover_bumps_rotation_on_landing():
+    """Purpose: the L7 mover patrols a VERTICAL track (unlike L5's horizontal one),
+    advancing once per successful move; landing on its NEW cell bumps the token
+    rotation. Pin both the vertical step and the rotation coupling.
+    Expected feedback: a failure means the vertical mover model is wrong and the
+    open-loop plan desyncs at the first rotation crossing."""
+    maze = _l7_maze()
+    # mover at (5,5) heading up (dir 2); avatar one cell left of (5,0).
+    s = (0, 0, 0, 0, 0, 10, frozenset(), (5, 5, 2))
+    ns = _l7_step(maze, s, 4)  # avatar right onto (5,0); mover steps (5,5)->(5,0)
+    assert (ns[0], ns[1]) == (5, 0)  # avatar moved one cell right
+    assert ns[7][:2] == (5, 0)  # mover advanced up one cell
+    assert ns[4] == 1  # landing on the mover's new cell bumped rotation 0 -> 1
+
+
+def test_l7_bfs_solves_single_goal_via_vertical_mover():
+    """Purpose: end-to-end pin of the L7 joint BFS — reach the goal with a matching
+    rotation supplied by the vertical mover, life-aware. This is the search that
+    the fog capture feeds; it must find a death-free plan that replays.
+    Expected feedback: a failure means the L7 planner cannot solve the L5-class
+    single-goal + vertical-mover level and 7/7 regresses to 6/7."""
+    maze = _l7_maze(goal=(10, 10), goal_req=(0, 0, 1), track=frozenset({(5, 5), (5, 10)}))
+    # avatar left of the mover's descent cell; mover at (5,5) heading down.
+    start = (0, 10, 0, 0, 0, 50, frozenset(), (5, 5, 0))
+    plan = _l7_bfs(maze, start)
+    assert plan is not None
+    s = start
+    for a in plan:
+        s = _l7_step(maze, s, a)
+    assert (s[0], s[1]) == (10, 10) and (s[2], s[3], s[4]) == (0, 0, 1)

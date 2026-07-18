@@ -835,6 +835,266 @@ def _find_refills(grid: Grid, xs: list[int], ys: list[int]) -> set[Cell]:
 
 
 # ════════════════════════════════════════════════════════════════════════
+# L7 (Fog): proximity partial-observability + a MOVING rotation changer on a
+# VERTICAL track. `render_interface` paints every pixel > 20px (Euclidean) from
+# the avatar centre with the fog colour (== `_GOAL_BORDER`), so only a radius-20
+# disc renders truthfully. The static maze is REVEALED across a push-wall-aware
+# exploration sweep (accumulating memory), the single mover's full track is
+# captured from a "full-view" observation post (a column-adjacent cell that sees
+# the whole track) via a REFILL-CHAINED loiter, and the L5-class joint BFS then
+# plans a death-free open-loop sequence. Gated on the fog signature so L1-L6 are
+# byte-identical. See the LS20 wiki page (2026-07-19) for the full derivation.
+# ════════════════════════════════════════════════════════════════════════
+
+_L7_FOG_MIN = 600  # colour-5 pixel count above which the frame is fogged (L7).
+_L7_FOG_RADIUS = 20.0
+_L7_LIFE = _STEP_FULL // _STEP_DECR
+_L7_EXPLORE_CAP = 700
+_L7_SEARCH_CAP = 12_000_000
+_NB4 = ((0, -1), (0, 1), (-1, 0), (1, 0))
+
+
+def _l7_fog_count(grid: Grid) -> int:
+    return sum(1 for row in grid for v in row if v == _GOAL_BORDER)
+
+
+def _l7_cell_vis(cx: int, cy: int, ax: int, ay: int) -> bool:
+    """True if lattice cell (cx,cy) is fully inside the radius-20 fog disc around
+    the avatar sprite centre — all four corners within range."""
+    import math
+
+    ccx, ccy = ax + 1.5, ay + 1.5
+    return all(
+        math.dist((cy + dy, cx + dx), (ccy, ccx)) <= _L7_FOG_RADIUS
+        for dx in (0, 4)
+        for dy in (0, 4)
+    )
+
+
+def _l7_parse_disc(grid: Grid, mem: dict[str, Any]) -> Cell | None:
+    """Accumulate the truthful (disc-interior) cells into ``mem``: walls / floor /
+    goal(+req) / static changers / refills / push-walls / token. Floor and refill
+    classifications are STICKY (a fog-edge wall misread never overwrites floor; a
+    collected refill stays a refill location — restored on death). Returns the
+    avatar cell, or ``None`` when the frame has no parseable avatar."""
+    avatar = _find_avatar(grid)
+    if avatar is None:
+        return None
+    ax, ay = avatar
+    ox, oy = ax % _CELL, ay % _CELL
+    mem["ox"], mem["oy"] = ox, oy
+    tok = _decode_token(grid)
+    if tok is not None:
+        mem["token"] = tok
+    static: dict[Cell, str] = mem["static"]
+    for (sx, sy, dx, dy) in _detect_pushwalls_pixel(grid):
+        if _l7_cell_vis(sx, sy, ax, ay):
+            mem["pushwalls"][(sx, sy)] = (dx, dy)
+    for (rx, ry) in _find_refill_sprites(grid):
+        c = _snap_to_lattice(rx, ry, ox, oy)
+        if _l7_cell_vis(c[0], c[1], ax, ay):
+            static[c] = "refill"
+    xs = list(range(ox, len(grid[0]) - _CELL + 1, _CELL))
+    ys = list(range(oy, len(grid) - _CELL + 1, _CELL))
+    for x in xs:
+        for y in ys:
+            if not _l7_cell_vis(x, y, ax, ay):
+                continue
+            hh = _cell_counts(grid, x, y)
+            dom = hh.most_common(1)[0][0]
+            if y < _PLAYABLE_MAX_ROW and dom == _GOAL_BORDER and sum(hh.get(c, 0) for c in _PALETTE) >= 3:
+                static[(x, y)] = "goal"
+                mem["goal"] = (x, y)
+                if mem["goal_req"] is None:
+                    r = _decode_goal_preview(grid, x, y)
+                    if r:
+                        mem["goal_req"] = r
+                continue
+            kind = _classify_changer(hh, dom) if y < _PLAYABLE_MAX_ROW else None
+            if kind is not None:
+                mem["changers"][kind].add((x, y))
+                if static.get((x, y)) not in ("refill", "goal"):
+                    static[(x, y)] = "floor"
+            elif dom == _FLOOR_COLOR:
+                if static.get((x, y)) not in ("refill", "goal"):
+                    static[(x, y)] = "floor"
+            elif dom == _WALL_COLOR:
+                if static.get((x, y)) != "floor":
+                    static[(x, y)] = "wall"
+    static[avatar] = "floor"
+    return avatar
+
+
+def _l7_fresh_rot(grid: Grid, avatar: Cell, xm: int) -> list[Cell]:
+    """The mover's CURRENT rot-icon cell(s) read FRESH from this frame at column
+    ``xm`` (unpolluted by accumulated memory). L7 has exactly one mover and no
+    static rot-changer, so this returns its single current cell (or []/many when
+    it is partly fogged — the caller records only when exactly one is seen)."""
+    out: list[Cell] = []
+    ax, ay = avatar
+    for y in range(0, _PLAYABLE_MAX_ROW, _CELL):
+        if not _l7_cell_vis(xm, y, ax, ay):
+            continue
+        hh = _cell_counts(grid, xm, y)
+        dom = hh.most_common(1)[0][0]
+        if _classify_changer(hh, dom) == "rot":
+            out.append((xm, y))
+    return out
+
+
+def _l7_apply_push(cell: Cell, pushwalls: dict[Cell, Cell], fj: frozenset[Cell]) -> Cell:
+    ax, ay = cell
+    for (sx, sy), (pdx, pdy) in pushwalls.items():
+        if ax < sx + _CELL and sx < ax + _CELL and ay < sy + _CELL and sy < ay + _CELL:
+            dist = _l5_carry_dist(fj, sx, sy, pdx, pdy, _CELL, _CELL)
+            if dist > 0:
+                return (ax + pdx * _CELL * dist, ay + pdy * _CELL * dist)
+            break
+    return (ax, ay)
+
+
+def _l7_nav(
+    pss: set[Cell],
+    walls: frozenset[Cell],
+    pushwalls: dict[Cell, Cell],
+    fj: frozenset[Cell],
+    refills: set[Cell],
+    goal: Cell | None,
+    start: Cell,
+    targets: set[Cell],
+    life: int,
+) -> int | None:
+    """Life + push-wall + refill-aware BFS to any target; first action or None.
+    Push-wall slides are applied so routing avoids the deflection zone (the naive
+    shortest path deflects off the y<=30 push-walls and never reaches the column)."""
+    from collections import deque
+
+    if not targets:
+        return None
+    seen = {(start, life, frozenset())}
+    queue: deque[tuple[Cell, int, frozenset[Cell], list[int]]] = deque([(start, life, frozenset(), [])])
+    while queue:
+        cell, lf, taken, path = queue.popleft()
+        if cell in targets and path:
+            return path[0]
+        if lf <= 0:
+            continue
+        for aid, (dx, dy) in _MOVES.items():
+            nb = (cell[0] + dx * _CELL, cell[1] + dy * _CELL)
+            if nb in walls or nb == goal or nb not in pss:
+                continue
+            nb = _l7_apply_push(nb, pushwalls, fj)
+            if nb not in pss:
+                continue
+            nl, nt = lf - 1, taken
+            if nb in refills and nb not in taken:
+                nl, nt = _L7_LIFE, taken | {nb}
+            if nl < 0:
+                continue
+            key = (nb, nl, nt)
+            if key in seen:
+                continue
+            seen.add(key)
+            queue.append((nb, nl, nt, path + [aid]))
+    return None
+
+
+def _l7_step(maze: dict[str, Any], s: tuple, action: int) -> tuple:
+    """One engine step for L7. ``s`` =
+    ``(ax, ay, sh, co, ro, steps, taken, mstate)`` where ``mstate`` = ``(mx, my,
+    mdir)`` is the vertical mover's cell + `npdjlrkhsg` direction."""
+    ax, ay, sh, co, ro, steps, taken, mst = s
+    dx, dy = _MOVES[action]
+    prov = _l6_mover_step(maze["track"], *mst)
+    nx, ny = ax + dx * _CELL, ay + dy * _CELL
+    matched = (nx, ny) == maze["goal"] and (sh, co, ro) == maze["goal_req"]
+    if (nx, ny) in maze["hard_walls"] or ((nx, ny) == maze["goal"] and not matched):
+        return s
+    ax, ay = nx, ny
+    kind = maze["static_changers"].get((ax, ay))
+    if (ax, ay) == (prov[0], prov[1]):
+        kind = "rot"
+    if kind == "rot":
+        ro = (ro + 1) % 4
+    elif kind == "color":
+        co = (co + 1) % 4
+    elif kind == "shape":
+        sh = (sh + 1) % 6
+    nsteps = steps - 1
+    if (ax, ay) in maze["refills"] and (ax, ay) not in taken:
+        nsteps = maze["step_full"]
+        taken = taken | {(ax, ay)}
+    if nsteps >= 0:
+        for (sx, sy), (pdx, pdy) in maze["pushwalls"].items():
+            if ax < sx + _CELL and sx < ax + _CELL and ay < sy + _CELL and sy < ay + _CELL:
+                dist = _l5_carry_dist(maze["fjzuynaokm"], sx, sy, pdx, pdy, _CELL, _CELL)
+                if dist > 0:
+                    ax += pdx * _CELL * dist
+                    ay += pdy * _CELL * dist
+                    break
+    return (ax, ay, sh, co, ro, nsteps, taken, prov)
+
+
+def _l7_frontier(mem: dict[str, Any], pss: set[Cell]) -> set[Cell]:
+    """Revealed floor cells with an unrevealed in-arena neighbour (the exploration
+    frontier under fog)."""
+    static = mem["static"]
+    out: set[Cell] = set()
+    for c in pss:
+        for dx, dy in _NB4:
+            nb = (c[0] + dx * _CELL, c[1] + dy * _CELL)
+            if nb not in static and 4 <= nb[0] < 60 and 0 <= nb[1] < _PLAYABLE_MAX_ROW:
+                out.add(c)
+                break
+    return out
+
+
+def _l7_new_mem() -> dict[str, Any]:
+    return {
+        "static": {},
+        "goal": None,
+        "goal_req": None,
+        "changers": {"shape": set(), "color": set(), "rot": set()},
+        "pushwalls": {},
+        "token": None,
+        "ox": 4,
+        "oy": 0,
+    }
+
+
+def _l7_bfs(maze: dict[str, Any], start: tuple) -> list[int] | None:
+    """Death-free joint BFS to stand on the goal with a matching token, life- and
+    refill-aware, over the L7 pixel sim (single goal + 2 static changers + 1
+    vertical mover + push-walls)."""
+    from collections import deque
+
+    goal, req = maze["goal"], maze["goal_req"]
+
+    def won(st: tuple) -> bool:
+        return (st[0], st[1]) == goal and (st[2], st[3], st[4]) == req
+
+    if won(start):
+        return []
+    seen = {start}
+    queue: deque[tuple[tuple, list[int]]] = deque([(start, [])])
+    exp = 0
+    while queue and exp < _L7_SEARCH_CAP:
+        s, path = queue.popleft()
+        exp += 1
+        if s[5] <= 0:
+            continue
+        for aid in (1, 2, 3, 4):
+            ns = _l7_step(maze, s, aid)
+            if ns[5] < 0 or ns == s or ns in seen:
+                continue
+            if won(ns):
+                return path + [aid]
+            seen.add(ns)
+            queue.append((ns, path + [aid]))
+    return None
+
+
+# ════════════════════════════════════════════════════════════════════════
 # Joint BFS over (cell, shape, color, rotation, steps_left, refills_taken).
 # ════════════════════════════════════════════════════════════════════════
 
@@ -1101,6 +1361,17 @@ class Adapter(GameAdapter):
         self._l6_prev_av: Cell | None = None
         self._l6_band_prev: int | None = None
         self._l6_decr: int | None = None
+        # L7 (Fog) path: reveal-then-loiter-then-plan, gated on the fog signature.
+        self._l7_mem: dict[str, Any] = _l7_new_mem()
+        self._l7_phase: str | None = None  # None -> explore -> loiter -> plan -> done/failed
+        self._l7_xm: int | None = None
+        self._l7_obs_y: set[int] = set()
+        self._l7_rot_seq: list[Cell] = []
+        self._l7_saw_rev = {"min": False, "max": False}
+        self._l7_consumed: set[Cell] = set()
+        self._l7_prev_band: int | None = None
+        self._l7_m0: Cell | None = None
+        self._l7_explore_steps = 0
 
     # ── harness contract ─────────────────────────────────────────────────
     def is_done(self, frames: list[Any], latest_frame: Any) -> bool:
@@ -1122,6 +1393,16 @@ class Adapter(GameAdapter):
             self._l6_visited = {}
             self._l6_order = {}
             self._l6_obs_moves = 0
+            self._l7_mem = _l7_new_mem()
+            self._l7_phase = None
+            self._l7_xm = None
+            self._l7_obs_y = set()
+            self._l7_rot_seq = []
+            self._l7_saw_rev = {"min": False, "max": False}
+            self._l7_consumed = set()
+            self._l7_prev_band = None
+            self._l7_m0 = None
+            self._l7_explore_steps = 0
             self._explorer._pending_action = None
             self._explorer._pending_key = None
             return reset_action()
@@ -1164,6 +1445,20 @@ class Adapter(GameAdapter):
                     return simple_action(self._plan.pop(0))
             else:
                 return simple_action(self._plan.pop(0))
+
+        # 1.25 L7 fog gate. The fog paints everything outside a radius-20 disc with
+        #     colour-5 (== the goal-border colour), so a fogged frame reads as a
+        #     giant goal to the L1-L6 parsers — they MUST be bypassed. The gate
+        #     (colour-5 pixel count) cleanly separates L7 (~3000) from L1-L6 (<=482,
+        #     measured), so this can never fire on an earlier level: L1-L6 stay
+        #     byte-identical. The L7 path reveals the maze, captures the mover's
+        #     vertical track from a full-view post via a refill-chained loiter, and
+        #     joint-BFS plans; on any failure it returns None -> explorer floor.
+        if _l7_fog_count(grid) > _L7_FOG_MIN:
+            l7_action = self._try_l7(grid, move_ids)
+            if l7_action is not None:
+                return simple_action(l7_action)
+            return simple_action(self._explorer.choose(grid, move_ids))
 
         # 1.5 L6 multi-goal + moving-changer path (gated on >=2 goals, which only
         #     L6 has — L1-L5 are single-goal and fall straight through). Observes
@@ -1383,6 +1678,156 @@ class Adapter(GameAdapter):
                  tuple(curmov), frozenset())
         return _l6_bfs(maze, start)
 
+    def _try_l7(self, grid: Grid, move_ids: list[int]) -> int | None:
+        """The L7 (Fog) path: reveal the maze under proximity fog, capture the
+        single vertical mover's full track from a full-view observation post via a
+        refill-chained loiter, then joint-BFS a death-free plan and commit it
+        open-loop. Returns an action, or ``None`` when it gives up (caller drops to
+        the explorer floor). Called only on fogged frames (gate guarantees L7)."""
+        mem = self._l7_mem
+        av = _l7_parse_disc(grid, mem)
+        if av is None:
+            return move_ids[0]  # unsettled/animation frame: settle
+        if self._l7_phase is None:
+            self._l7_phase = "explore"
+        band = _band_count(grid) // _STEP_DECR
+        static = mem["static"]
+        refills = {c for c, t in static.items() if t == "refill"}
+        walls = frozenset(c for c, t in static.items() if t == "wall")
+        goal = mem["goal"]
+        fj = frozenset(walls | ({goal} if goal else set()))
+        pss = {c for c, t in static.items() if t in ("floor", "goal", "refill")}
+        # track consumed refills (faithful plan anchor); a death restores all
+        if self._l7_prev_band is not None and band > self._l7_prev_band:
+            if av in refills:
+                self._l7_consumed.add(av)
+            elif band >= _L7_LIFE - 1:
+                self._l7_consumed.clear()
+        self._l7_prev_band = band
+        if mem["changers"]["rot"]:
+            self._l7_xm = min(c[0] for c in mem["changers"]["rot"])
+        xm = self._l7_xm
+
+        for _ in range(4):  # allow at most a few phase transitions per turn
+            if self._l7_phase == "explore":
+                self._l7_explore_steps += 1
+                if self._l7_explore_steps > _L7_EXPLORE_CAP:
+                    return None
+                if xm is not None:
+                    posts = {c for c in pss if c[0] == xm - _CELL}
+                    if av in posts and len(_l7_fresh_rot(grid, av, xm)) == 1:
+                        self._l7_phase = "loiter"
+                        continue
+                    tgt = posts or _l7_frontier(mem, pss)
+                else:
+                    tgt = _l7_frontier(mem, pss)
+                nav = _l7_nav(pss, walls, mem["pushwalls"], fj, refills, goal, av, tgt, band)
+                if nav is None and band <= 3 and refills:
+                    nav = _l7_nav(pss, walls, mem["pushwalls"], fj, refills, goal, av, refills, band)
+                if nav is not None:
+                    return nav
+                for aid, (dx, dy) in _MOVES.items():
+                    nb = (av[0] + dx * _CELL, av[1] + dy * _CELL)
+                    if nb not in static and 4 <= nb[0] < 60 and 0 <= nb[1] < _PLAYABLE_MAX_ROW:
+                        return aid
+                return move_ids[0]
+
+            if self._l7_phase == "loiter":
+                posts = {c for c in pss if c[0] == xm - _CELL}
+                rot = _l7_fresh_rot(grid, av, xm)
+                if av in posts and band > 3:
+                    if len(rot) == 1:
+                        mc = rot[0]
+                        self._l7_obs_y.add(mc[1])
+                        if not self._l7_rot_seq or self._l7_rot_seq[-1] != mc:
+                            self._l7_rot_seq.append(mc)
+                        seq = self._l7_rot_seq
+                        if len(seq) >= 3:
+                            a, b, c = seq[-3][1], seq[-2][1], seq[-1][1]
+                            if a < b > c:
+                                self._l7_saw_rev["max"] = True
+                            if a > b < c:
+                                self._l7_saw_rev["min"] = True
+                    if len(self._l7_obs_y) >= 2 and self._l7_saw_rev["min"] and self._l7_saw_rev["max"]:
+                        self._l7_phase = "plan"
+                        continue
+                    for aid, (dx, dy) in _MOVES.items():
+                        nb = (av[0] + dx * _CELL, av[1] + dy * _CELL)
+                        if nb in posts and nb != goal:
+                            return aid
+                    return move_ids[0]
+                tgt = refills if (band <= 3 and refills) else posts
+                nav = _l7_nav(pss, walls, mem["pushwalls"], fj, refills, goal, av, tgt, band)
+                return nav if nav is not None else move_ids[0]
+
+            if self._l7_phase == "plan":
+                if not self._l7_obs_y:
+                    return None
+                track = frozenset(
+                    (xm, y) for y in range(min(self._l7_obs_y), max(self._l7_obs_y) + 1, _CELL)
+                )
+                fullview = {
+                    c
+                    for c in pss
+                    if c[0] == xm - _CELL
+                    and all(_l7_cell_vis(t[0], t[1], c[0], c[1]) for t in track)
+                }
+                if not fullview:
+                    return None
+                if av not in fullview:
+                    nav = _l7_nav(pss, walls, mem["pushwalls"], fj, refills, goal, av, fullview, band)
+                    return nav if nav is not None else move_ids[0]
+                rot = _l7_fresh_rot(grid, av, xm)
+                if len(rot) != 1:
+                    for aid, (dx, dy) in _MOVES.items():
+                        nb = (av[0] + dx * _CELL, av[1] + dy * _CELL)
+                        if nb in fullview and nb != goal:
+                            return aid
+                    return move_ids[0]
+                if self._l7_m0 is None:
+                    self._l7_m0 = rot[0]
+                    for aid, (dx, dy) in _MOVES.items():
+                        nb = (av[0] + dx * _CELL, av[1] + dy * _CELL)
+                        if nb in fullview and nb != goal:
+                            return aid
+                    return move_ids[0]
+                m1 = rot[0]
+                mdir = 0
+                if self._l7_m0 != m1:
+                    v = (m1[0] - self._l7_m0[0], m1[1] - self._l7_m0[1])
+                    for d, (dx, dy) in _L6_DIRVEC.items():
+                        if (dx * _CELL, dy * _CELL) == v:
+                            mdir = d
+                            break
+                if mem["token"] is None or goal is None or mem["goal_req"] is None:
+                    return None
+                maze = {
+                    "goal": goal,
+                    "goal_req": mem["goal_req"],
+                    "hard_walls": walls,
+                    "refills": frozenset(refills),
+                    "static_changers": {
+                        **{c: "shape" for c in mem["changers"]["shape"]},
+                        **{c: "color" for c in mem["changers"]["color"]},
+                    },
+                    "track": track,
+                    "pushwalls": dict(mem["pushwalls"]),
+                    "fjzuynaokm": frozenset(walls | {goal}),
+                    "step_full": _L7_LIFE,
+                }
+                sh, co, ro = mem["token"]
+                start = (av[0], av[1], sh, co, ro, band, frozenset(self._l7_consumed), (m1[0], m1[1], mdir))
+                plan = _l7_bfs(maze, start)
+                if plan:
+                    self._plan = list(plan)
+                    self._plan_committed = True
+                    self._l7_phase = "done"
+                    return self._plan.pop(0)
+                self._l7_phase = "failed"
+                return None
+            return None
+        return move_ids[0]
+
     def _reset_level(self, levels: int) -> None:
         self._levels_seen = levels
         self._plan = []
@@ -1398,4 +1843,14 @@ class Adapter(GameAdapter):
         self._l6_visited = {}
         self._l6_order = {}
         self._l6_obs_moves = 0
+        self._l7_mem = _l7_new_mem()
+        self._l7_phase = None
+        self._l7_xm = None
+        self._l7_obs_y = set()
+        self._l7_rot_seq = []
+        self._l7_saw_rev = {"min": False, "max": False}
+        self._l7_consumed = set()
+        self._l7_prev_band = None
+        self._l7_m0 = None
+        self._l7_explore_steps = 0
         self._explorer.on_level_up()
