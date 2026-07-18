@@ -2,7 +2,7 @@
 round: r59
 axis: script25 depth (kernel expressiveness) — faithful-sim + learned-operator wave 2
 keywords: [m0r0, pressure-plate, gates, bp35, frontier-exploration, su15, enemy-in-sim, re86, separation-by-motion, sk48, lockstep, reachability, lp85, twist-topology, ls20, moving-changer, r59s1, full-25]
-verdict: PASS — official card 18.02% → 21.56% → 22.25% → 26.38% → 27.25% → 27.80% → 28.47% → 29.25% → 29.53% → 30.53% (first 30% crossing) → 30.61% → 31.08% → 31.57% → **31.79% (r59s13, 2026-07-19 04:06)**; sixteen consecutive single-diff-verified runs
+verdict: PASS — official card 18.02% → 21.56% → 22.25% → 26.38% → 27.25% → 27.80% → 28.47% → 29.25% → 29.53% → 30.53% (first 30% crossing) → 30.61% → 31.08% → 31.57% → 31.79% → **32.68% (r59s14, 2026-07-19 05:54)**; seventeen consecutive single-diff-verified runs; lp85 FULLY CONQUERED 8/8 (sixth conquest)
 commit: 9b8e2e8 (r59s1 HEAD) / cc1e4dc (r59s2 HEAD) / f8144df-era (r59s3 HEAD); landings: bc04e63, 6b6ad2e, b2128c9, 36d23cd, 3b6c11c, 0197b8b, fa8e3bc, 12bda52, a1701f9, 0abeb0d, 2bdea69, e698ed8(ls20 L5), 02fe3d8, f677aed, 9647858, e536f65
 ---
 
@@ -162,6 +162,28 @@ defeats K=20 and gap-4 clustering; both fixes measured card-neutral and REVERTED
 zero dead code); multi-session bank with three candidate directions. Also the THIRD
 stale-frame park refuted by settled-frame verification (L8's "movers=3/dests=2" was an
 artifact) — verify-don't-trust-parks again.
+
+## r59s14 official (2026-07-19 05:54 KST, ceph-build, @5000) — **32.68% — lp85 FULLY CONQUERED (sixth)**
+
+`games=25 total=8.1691 → 32.68%`. ONE row moved vs r59s13: lp85 0.4769 → **0.6992 (8/8)** via
+the L8 open-chain geometric repair (3e5ca3a): the R77 insight — the colour bijection's own
+cycle decomposition IS the ring separator (no spatial separator needed; the three banked
+spatial candidates retired) — implemented as `_repair_open_chain` with a
+complete-vs-incomplete-PERMUTATION gate (heads=keys−values, tails=values−keys; both empty →
+unchanged), floor-safe BY CONSTRUCTION and measured no-op on every L1-L7 coupled map. The
+R77 "fixed point" trigger was found INERT at build time (fragmentation renders as chain
+heads/tails, never m[c]==c self-loops) — gate-check-first discipline caught it pre-splice.
+Open-chain cells rebuilt by learn_cyclic_successor (position-based, immune to within-ring
+colour periodicity), goal-injection fills the occluded 16th cell, spliced → complete
+[16,15,14] map → _cb_build_plan finds the plan. **L8: 47a vs human 159 = per-level 1.0
+SUPER-HUMAN.** Deterministic ×2 (@400/@700 identical), L0-L6 byte-identical
+(8/17/24/40/45/70/49). su15 idx6 closed in parallel this night (R75-R75d): vacuum-pin
+ORACLE-VALIDATED (run_pin --danger 16, @10 ×2) but FOUR frame-only perception routes
+measured-falsified — the wall is the integer 64×64 observation space itself (the oracle
+merge click is 1px-unplaceable) → parked at the sub-pixel-perception wall. g50t L2:
+source-decoded (3 plate→barrier→block chains), colour-11 premise self-falsified pre-build,
+parked at the ghost-reachability wall. Conquest roster: ft09 1.0 · m0r0 1.0 · ls20 1.0 ·
+cd82 0.98 · sb26 0.846 · **lp85 0.6992**.
 
 ## Post-measurement landings (in HEAD, not in r59s1; next full-25 picks them up)
 

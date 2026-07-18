@@ -1629,15 +1629,18 @@ dc22) or a learned reflection/flow kernel (ar25/sp80 super-human L0) or goal-dir
 (tu93); pattern named in `.wiki/wiki/lessons/faithful_offline_simulator_20260715.md`. New-structure
 PARK list (honestly banked WITH decoded mechanics, not failures): ar25 L1 (parallel-mirror double
 reflection), lp85 L4 (dense 20-ring self-test), su15 L3+ (enemy-reversed cascade), sk48 L3+
-(non-ACTION6 `sys_click`), bp35 / g50t / re86 / s5i5 / sc25 / tr87 / wa30. **Card = 31.79% official
-(r59s13, @5000, ceph-build, landed 2026-07-19 04:06; sequence r56s9 18.02 → 21.56 → 22.25 →
+(non-ACTION6 `sys_click`), bp35 / g50t / re86 / s5i5 / sc25 / tr87 / wa30. **Card = 32.68% official
+(r59s14, @5000, ceph-build, landed 2026-07-19 05:54; sequence r56s9 18.02 → 21.56 → 22.25 →
 26.38 → 27.25 → 27.80 → 28.47 → 29.25 → 29.53 → 30.53 (first 30% crossing) → 30.61 → 31.08 →
-31.57 → 31.79 — sixteen consecutive single-diff-verified runs; lp85 7/8 @0.4769: L6
-occlusion-robust coupled maps + L7 failure-triggered coupled retry; L8 honestly parked —
-interleaved+colour-duplicated ring separation, multi-session). MILESTONE 2026-07-17: ALL 25 games clear ≥1 level. FULLY
-CONQUERED (5): ft09 1.0 · m0r0 1.0 · **ls20 1.0 (7/7, Fog cleared via refill-chained
+31.57 → 31.79 → 32.68 — seventeen consecutive single-diff-verified runs; **lp85 FULLY
+CONQUERED 8/8 @0.6992, the SIXTH conquest**, L8 super-human 47a/159h=1.0 via open-chain
+geometric repair — the colour bijection's cycle decomposition IS the ring separator;
+complete-vs-incomplete-permutation gate, floor-safe by construction). MILESTONE 2026-07-17: ALL 25 games clear ≥1 level. FULLY
+CONQUERED (6): ft09 1.0 · m0r0 1.0 · **ls20 1.0 (7/7, Fog cleared via refill-chained
 observation post — the "no cell sees the track" wall was a prior-pass artifact)** · cd82
-0.98 · sb26 0.846; re86 7/8 @0.7273 (past the brittle 6/8 ceiling; L8 provably unwinnable
+0.98 · sb26 0.846 · **lp85 0.6992 (8/8, R70-R78 ladder 3/8→8/8: time-series ring learner →
+scale-robust thresholds → occlusion-robust coupled maps → failure-triggered coupled retry →
+open-chain geometric repair)**; re86 7/8 @0.7273 (past the brittle 6/8 ceiling; L8 provably unwinnable
 as modelled); g50t 2/7 @0.1071 (8-lane saga resolved by ONE perception root-cause — two
 colour-9 blobs, diagnostics tracked the static GOAL). Twice in two days a terminal wall was
 a measurement artifact: verify-don't-trust parks. R59-R67 depth wave: faithful-sim +
