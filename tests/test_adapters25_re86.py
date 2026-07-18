@@ -16,6 +16,8 @@ from arcengine import GameAction
 
 from admorphiq.adapters25.re86 import (
     Adapter,
+    _l5_gate_colors,
+    _l5_hazard_between,
     _sign,
     _station_boxes,
     _target_boxes,
@@ -155,3 +157,55 @@ def test_l4_recolour_want_aligns_column_before_moving_vertically():
     assert Adapter._l4_recolour_want((30, 10), (6, 30)) == (0, 1)
     # Column aligned (within tolerance): now move vertically toward the row.
     assert Adapter._l4_recolour_want((30, 29), (6, 30)) == (-1, 0)
+
+
+def test_l5_gate_colors_excludes_movable_colours():
+    """Purpose: L5 gate colours are station-swatch colours that appear as
+    ISOLATED (≤4-px) marks outside a station box AND are not a current movable
+    colour. A movable whose colour is ALSO a station colour (11/14 on this env)
+    sheds thin ≤4-px sprite-arm fragments; those must NOT be counted as gate
+    cells. Pin that a station colour present as an isolated mark is a gate colour
+    UNLESS it is a movable colour.
+    Expected feedback: failure resurrects the measured runaway where gate colours
+    included the movable colours, the gate accumulator grew without bound as
+    pieces moved, the assignment never locked, and the reveal nudged a piece into
+    a station and mis-recoloured it."""
+    bg = 5
+    grid = [[bg] * 20 for _ in range(20)]
+    # A station box (colour-2 border) with a colour-3 swatch — colour 3 is a
+    # station colour but appears ONLY inside its box (no loose marks) → not a gate.
+    for r in range(1, 5):
+        grid[r][1] = grid[r][4] = 2
+        grid[1][r] = grid[4][r] = 2
+    grid[2][2] = grid[2][3] = grid[3][2] = grid[3][3] = 3
+    # An isolated colour-7 mark (a real gate cell) far from the box.
+    grid[12][12] = 7
+    # An isolated colour-9 mark — but colour 9 is a MOVABLE colour → excluded.
+    grid[15][15] = 9
+    grid_t = tuple(tuple(r) for r in grid)
+    _stations, boxes = _station_boxes(grid_t)
+    station_colors = {3, 7, 9}  # what the caller derives from the station swatches
+    gate_colors = _l5_gate_colors(grid_t, boxes, station_colors, movable_colors={9, 12})
+    assert 7 in gate_colors  # isolated station-colour mark, not a movable colour
+    assert 9 not in gate_colors  # a movable colour, excluded despite the loose mark
+    assert 3 not in gate_colors  # only inside its box, no loose mark
+
+
+def test_l5_hazard_between_flags_a_mid_edge_station_on_the_vertical_leg():
+    """Purpose: the L5 corner-route fix. A colour-9 piece recolours at the
+    bottom-left corner station-9 then must reach the TOP cluster; a mid-edge
+    station (station-14, left column, between the corner and the top) would clip
+    the fat body on a straight ascent. ``_l5_hazard_between`` must flag exactly
+    that geometry so the cover phase detours to the station-free centre column,
+    and must NOT flag a piece whose vertical leg passes no foreign station.
+    Expected feedback: failure means the top colour-9 piece ascends the left
+    column into station-14 and re-recolours 9→14, so L5 never clears."""
+    # station boxes keyed by swatch colour (row0,col0,row1,col1).
+    sbox = {9: (52, 3, 57, 8), 14: (26, 2, 32, 8), 8: (52, 53, 57, 58)}
+    half = 11
+    # Piece is colour 9 at the corner (row 54, col 5); its cluster is at the top
+    # (row 6). station-14 (col 5, row 29) sits on that vertical leg near col 5.
+    assert _l5_hazard_between(sbox, own_color=9, marker=(54, 5), crow=6, half=half)
+    # Same piece but its cluster is just below it (row 50) — no foreign station on
+    # that short leg → no hazard, so the direct cover route is used.
+    assert not _l5_hazard_between(sbox, own_color=9, marker=(54, 5), crow=50, half=half)

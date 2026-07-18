@@ -60,6 +60,25 @@ def parse2(grid, gate_cells, station_boxes):
     return out
 
 
+def hazard_between(sbox, own_color, marker, crow, half):
+    """True if a station of a colour OTHER than own_color lies vertically between
+    the piece (centre `marker`) and its cluster (row `crow`) AND near the piece's
+    current column — i.e. the fat body would clip that station on a vertical leg
+    and re-recolour. Every station sits on an EDGE column, so this only fires on a
+    left/right-column ascent/descent past a mid-edge station (station-14, mid-left
+    row 29, for the top colour-9 piece routing between the bottom-left corner
+    station-9 and the top cluster). The board CENTRE is station-free, so the cure
+    is always to move horizontally to the centre column first."""
+    lo, hi = sorted((marker[0], crow))
+    for c, b in sbox.items():
+        if c == own_color:
+            continue
+        sr, sc = (b[0] + b[2]) // 2, (b[1] + b[3]) // 2
+        if lo - half <= sr <= hi + half and abs(sc - marker[1]) <= half + CELL:
+            return True
+    return False
+
+
 def route_to(pos, goal_px, half, avoid_boxes, walls, dirmap, move_ids):
     """One action stepping the CENTRE from `pos` toward pixel `goal_px` via
     grid_shortest_path over a 3px-cell grid with `avoid_boxes` inflated by `half`
@@ -257,27 +276,28 @@ def main():
         loop_i += 1
 
         if marker is None:
-            # 1-frame flood: wait WITHOUT cycling (a move no-ops on the frozen piece)
-            obs = env.step(A[1]); steps += 1; continue
+            # Recolour flood: wait by CYCLING (ACTION5). Measured (re86_l5_flood.py):
+            # a MOVE wait does NOT no-op the piece during a flood — an UP wait drives
+            # the tall body straight up the left column into station-11/station-14
+            # and re-recolours it AWAY from 9; a DOWN wait pins it re-flooding at the
+            # corner. ACTION5 moves NO piece, so the 1-frame recolour resolves and the
+            # marker returns with the piece stably recoloured. Selection is re-synced
+            # by nearest-centroid on the next visible frame.
+            obs = env.step(A[5]); steps += 1; continue
         if sel != active:
             obs = env.step(A[5]); steps += 1; continue  # cycle to the active piece
 
         if p["color"] != p["target"]:
+            # Drive the piece INTO its target station until the recolour fires.
+            # Measured: the recolour needs a real body overlap (colour-11 flips to 9
+            # only when pushed to the corner), and once recoloured the piece sits
+            # STABLY over its same-colour station (a same-colour overlap never
+            # re-floods) — so there is no corner wedge to retreat from; the cover
+            # phase pulls it out rightward. route_to inflates every NON-target
+            # station by the body half-extent, so the approach path never clips a
+            # wrong-colour station (station-14/station-11 on the way to station-9).
             others = [b for c, b in sbox.items() if c != p["target"]]
-            tb = sbox[p["target"]]
-            # FIX (a): EDGE-ONLY approach. The recolour fires on FIRST body overlap
-            # (L4 finding), so once the body bbox touches the target station box,
-            # STOP pushing in (that is what wedges into the corner and stalls the
-            # flood) — retreat toward the cover cluster instead; the 1-frame flip
-            # completes and the piece is already leaving.
-            body = (marker[0] - p["half"], marker[1] - p["half"], marker[0] + p["half"], marker[1] + p["half"])
-            overlaps = not (body[2] < tb[0] or body[0] > tb[2] or body[3] < tb[1] or body[1] > tb[3])
-            if overlaps:
-                ccen = (sum(r for r, _ in p["cluster"]) // len(p["cluster"]),
-                        sum(c for _, c in p["cluster"]) // len(p["cluster"]))
-                act = route_to(marker, ccen, p["half"], others, p["walls"], dirmap, move_ids)
-            else:
-                act = route_to(marker, stations[p["target"]], p["half"], others, p["walls"], dirmap, move_ids)
+            act = route_to(marker, stations[p["target"]], p["half"], others, p["walls"], dirmap, move_ids)
             if act is None:
                 obs = env.step(A[5]); steps += 1; continue
             last_move = (active, marker, dirmap[act])
@@ -294,12 +314,33 @@ def main():
             p["phase"] = "done"
             print(f"  PLACED p{active}({p['orig']}->{p['color']}) covering {len(need)} cells @marker={marker}")
             continue
+        # RIGHTWARD WAYPOINT (the L5 geometric wall). colour-11 recolours 9 at the
+        # bottom-left corner station-9 but is forced by coverage onto the TOP
+        # cluster, so it must trek far up the LEFT column — where station-14
+        # (mid-left, row 29) sits only ~25px above station-9, less than the 22px
+        # fat body, so ascending the left edge clips it and re-recolours 9->14.
+        # Every station lives on an EDGE column, so the board CENTRE is
+        # station-free: if a different-colour station lies vertically between the
+        # piece and its cluster AND near the piece's current column, first pull
+        # horizontally to the cluster's centre column, then let the router take the
+        # clean central northward leg. Precisely gated (only the hazardous ascent
+        # trips it) so the 8-piece and the bottom-9 piece keep their direct routes.
+        crow = sum(r for r, _ in need) // len(need)
+        ccol = sum(c for _, c in need) // len(need)
+        hazard = hazard_between(sbox, p["color"], marker, crow, p["half"])
+        others = [b for c, b in sbox.items() if c != p["color"]]
+        if hazard and abs(marker[1] - ccol) > CELL:
+            act = route_to(marker, (marker[0], ccol), p["half"], others, p["walls"], dirmap, move_ids)
+            if act is None:
+                obs = env.step(A[5]); steps += 1; continue
+            last_move = (active, marker, dirmap[act])
+            obs = env.step(A[act]); steps += 1
+            continue
         best = max_coverage_offset(list(cur), need)
         if best is None:
             obs = env.step(A[5]); steps += 1; continue
         (odr, odc), _ = best
         goal_px = (marker[0] + odr, marker[1] + odc)
-        others = [b for c, b in sbox.items() if c != p["color"]]
         act = route_to(marker, goal_px, p["half"], others, p["walls"], dirmap, move_ids)
         if act is None:
             obs = env.step(A[5]); steps += 1; continue

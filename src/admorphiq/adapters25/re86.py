@@ -122,6 +122,8 @@ Composition from ``admorphiq.kernels``:
 from __future__ import annotations
 
 from collections import Counter
+from collections.abc import Iterable
+from itertools import permutations
 from typing import Any
 
 from admorphiq.adapters25.base import (
@@ -138,6 +140,7 @@ from admorphiq.adapters25.base import (
 from admorphiq.kernels import (
     covering_offsets,
     find_regions,
+    grid_shortest_path,
     max_coverage_offset,
     separate_by_motion,
 )
@@ -219,6 +222,177 @@ def _target_boxes(grid: tuple[tuple[int, ...], ...]) -> list[Cell]:
             if horizontal or vertical:
                 boxes.append((r, c))
     return boxes
+
+
+# ── L5 helpers (three movables, uneven 3→2 set-cover, mid-edge station) ──
+# L5 breaks three assumptions the two-piece L4 FSM hard-codes: THREE movables,
+# a 3-movable→2-colour set-cover (not a 1:1 pairing), and a MID-EDGE changer
+# station that a naive edge-row route would clip. The helpers below are frame-
+# only (no sprite-tag read); the controller is ``Adapter._decide_l5``. Decoded
+# + validated live in ``scratchpad/re86_l5_ctrl2.py`` before this port.
+
+
+def _l5_gate_colors(
+    grid: tuple[tuple[int, ...], ...],
+    station_boxes: list[tuple[int, int, int, int]],
+    station_colors: set[int],
+    movable_colors: set[int],
+) -> set[int]:
+    """The gate-canvas target colours: station swatch colours that also appear
+    as ISOLATED (≤4 px) marks OUTSIDE every station box AND are not a current
+    movable colour. The win-check canvas paints each required gate cell in the
+    colour a movable must recolour INTO, and a movable can only reach a colour
+    that has a matching changer station — so the gate colours are the station
+    colours present as loose marks. Excluding the movables' OWN colours is
+    essential: a movable's thin sprite arms shed ≤4-px fragments in its colour
+    (11/14 here are ALSO station colours), which would otherwise be miscounted
+    as gate cells and grow without bound as the piece moves. A movable's target
+    gate colour always differs from its original colour (that is the point of
+    recolouring), so the exclusion never drops a real gate colour. Derived, not
+    hardcoded (measured to yield {8, 9} on this env's L5)."""
+    found: set[int] = set()
+    for reg in find_regions(grid, background=None, gap=0):
+        col = reg["color"]
+        if col not in station_colors or col in movable_colors or len(reg["cells"]) > 4:
+            continue
+        r, c = next(iter(reg["cells"]))
+        if _in_boxes((r, c), station_boxes, pad=0):
+            continue
+        found.add(col)
+    return found
+
+
+def _l5_scan_gates(
+    grid: tuple[tuple[int, ...], ...],
+    station_boxes: list[tuple[int, int, int, int]],
+    gate_colors: set[int],
+) -> dict[int, set[Cell]]:
+    """Isolated (≤4-px component) gate-canvas cells per gate colour, excluding
+    station-box interiors. Movable bodies are dense blobs and a recoloured
+    movable's cells read as a large same-colour region — the size floor keeps
+    only the loose gate marks. Two of the gate cells start OCCLUDED by a movable
+    body, so the caller ACCUMULATES this across frames as pieces move."""
+    found: dict[int, set[Cell]] = {c: set() for c in gate_colors}
+    for reg in find_regions(grid, background=None, gap=0):
+        col = reg["color"]
+        if col not in gate_colors or len(reg["cells"]) > 4:
+            continue
+        r, c = next(iter(reg["cells"]))
+        if _in_boxes((r, c), station_boxes, pad=0):
+            continue
+        found[col].update(reg["cells"])
+    return found
+
+
+def _l5_movables(
+    grid: tuple[tuple[int, ...], ...],
+    gate_cells: set[Cell],
+    station_boxes: list[tuple[int, int, int, int]],
+    subtract_boxes: bool,
+) -> list[dict[str, Any]]:
+    """Movable sprites for L5: colour regions that are not gates/stations/HUD,
+    with gate cells subtracted. When ``subtract_boxes`` is set, station-box
+    pixels are subtracted too (by BOX, not colour) so a recoloured body abutting
+    its same-colour station keeps its true shape/centroid — the L4 gate-cell-
+    subtraction pattern extended to the shared corner station."""
+    bg = most_common_color(grid)
+    exclude = {bg, _BORDER_COLOR, _STATION_BORDER, _SELECTION_COLOR}
+    out: list[dict[str, Any]] = []
+    for reg in find_regions(grid, background=bg, gap=1):
+        if reg["color"] in exclude:
+            continue
+        cells = frozenset(
+            (r, c)
+            for (r, c) in reg["cells"]
+            if (r, c) not in gate_cells and not (subtract_boxes and _in_boxes((r, c), station_boxes, pad=1))
+        )
+        if not (20 <= len(cells) <= 120):
+            continue
+        rs = [r for r, _c in cells]
+        cs = [c for _r, c in cells]
+        if max(rs) - min(rs) < 3 or max(cs) - min(cs) < 3:
+            continue
+        cen = (sum(rs) // len(cells), sum(cs) // len(cells))
+        if not subtract_boxes and _in_boxes(cen, station_boxes, pad=1):
+            continue
+        out.append({"color": reg["color"], "cells": cells, "cen": cen})
+    return out
+
+
+def _l5_cluster(cells: Iterable[Cell], radius: int = 20) -> list[list[Cell]]:
+    """Group gate cells into spatial clusters (single-link, Manhattan radius).
+    The colour-9 gate cells fall into TWO clusters (a top pair and a bottom
+    quad) that must be covered by two DIFFERENT movables."""
+    clusters: list[list[Cell]] = []
+    for cell in cells:
+        for cl in clusters:
+            if any(abs(cell[0] - x) + abs(cell[1] - y) <= radius for x, y in cl):
+                cl.append(cell)
+                break
+        else:
+            clusters.append([cell])
+    return clusters
+
+
+def _l5_hazard_between(
+    sbox: dict[int, tuple[int, int, int, int]],
+    own_color: int,
+    marker: Cell,
+    crow: int,
+    half: int,
+) -> bool:
+    """True if a station of a colour OTHER than ``own_color`` lies vertically
+    between the piece (centre ``marker``) and its cluster (row ``crow``) AND near
+    the piece's current column — i.e. the fat body would clip that station on a
+    vertical leg and re-recolour. Every station sits on an EDGE column, so this
+    only fires on a left/right-column ascent past a mid-edge station (station-14,
+    mid-left, for the top colour-9 piece routing between the bottom-left corner
+    station-9 and the top cluster). The board CENTRE is station-free, so the cure
+    is to move horizontally to the cluster's centre column first."""
+    lo, hi = sorted((marker[0], crow))
+    for c, b in sbox.items():
+        if c == own_color:
+            continue
+        sr, sc = (b[0] + b[2]) // 2, (b[1] + b[3]) // 2
+        if lo - half <= sr <= hi + half and abs(sc - marker[1]) <= half + _CELL_PX:
+            return True
+    return False
+
+
+def _l5_route(
+    pos: Cell,
+    goal_px: Cell,
+    half: int,
+    avoid_boxes: list[tuple[int, int, int, int]],
+    walls: set[Cell],
+    dirmap: dict[int, Cell],
+    move_ids: list[int],
+) -> int | None:
+    """One action stepping the CENTRE from ``pos`` toward pixel ``goal_px`` via
+    ``kernels.grid_shortest_path`` over a 3-px-cell passability grid with
+    ``avoid_boxes`` inflated by ``half`` (the body half-extent) and learned
+    ``walls`` impassable. Returns the measured move id or ``None``."""
+    n = 64 // _CELL_PX + 1
+    passable = [[True] * n for _ in range(n)]
+    for (r0, c0, r1, c1) in avoid_boxes:
+        for i in range(max(0, (r0 - half) // _CELL_PX), min(n, (r1 + half) // _CELL_PX + 1)):
+            for j in range(max(0, (c0 - half) // _CELL_PX), min(n, (c1 + half) // _CELL_PX + 1)):
+                passable[i][j] = False
+    for (wi, wj) in walls:
+        if 0 <= wi < n and 0 <= wj < n:
+            passable[wi][wj] = False
+    start = (pos[0] // _CELL_PX, pos[1] // _CELL_PX)
+    goal = (min(n - 1, max(0, goal_px[0] // _CELL_PX)), min(n - 1, max(0, goal_px[1] // _CELL_PX)))
+    passable[start[0]][start[1]] = True
+    passable[goal[0]][goal[1]] = True
+    path = grid_shortest_path(passable, start, goal)
+    if not path or len(path) < 2:
+        return None
+    want = (path[1][0] - start[0], path[1][1] - start[1])
+    for a, sign in dirmap.items():
+        if a in move_ids and sign == want:
+            return a
+    return None
 
 
 class Adapter(GameAdapter):
@@ -307,6 +481,26 @@ class Adapter(GameAdapter):
         self._l4_moved_id = 0
         self._l4_moved_cen: Cell | None = None
 
+        # ── L5 state (three movables, uneven 3→2 set-cover, mid-edge station).
+        # Gated on level index (>= 4) so L1-L4 stay byte-identical. ──
+        self._l5_settle = 0
+        self._l5_locked = False
+        self._l5_stations: dict[int, Cell] = {}
+        self._l5_station_boxes: list[tuple[int, int, int, int]] = []
+        self._l5_sbox: dict[int, tuple[int, int, int, int]] = {}
+        self._l5_gate_colors: set[int] = set()
+        self._l5_gate_acc: dict[int, set[Cell]] = {}
+        self._l5_phase = "reveal"  # "reveal" -> "solve"
+        self._l5_reveal_steps = 0
+        self._l5_prev_total = -1
+        self._l5_stable = 0
+        self._l5_pieces: list[dict[str, Any]] | None = None
+        self._l5_order: list[int] = []
+        # (piece_index, marker_pos, want_dir) of the last directional move, for
+        # marker-to-marker wall learning (a move that did not advance ⟹ interior
+        # wall at that centre-cell; folded into the piece's passability).
+        self._l5_last_move: tuple[int, Cell, Cell] | None = None
+
     # ── harness contract ────────────────────────────────────────────────
 
     def is_done(self, frames: list[Any], latest_frame: Any) -> bool:
@@ -366,6 +560,20 @@ class Adapter(GameAdapter):
         self._l4_last_move = None
         self._l4_moved_id = 0
         self._l4_moved_cen = None
+        self._l5_settle = 0
+        self._l5_locked = False
+        self._l5_stations = {}
+        self._l5_station_boxes = []
+        self._l5_sbox = {}
+        self._l5_gate_colors = set()
+        self._l5_gate_acc = {}
+        self._l5_phase = "reveal"
+        self._l5_reveal_steps = 0
+        self._l5_prev_total = -1
+        self._l5_stable = 0
+        self._l5_pieces = None
+        self._l5_order = []
+        self._l5_last_move = None
 
     def _lock_targets(self, grid: tuple[tuple[int, ...], ...]) -> None:
         by_color: dict[int, list[Cell]] = {}
@@ -456,6 +664,12 @@ class Adapter(GameAdapter):
             return self._probe(self._marker(grid), move_ids)
         if not self._targets_locked:
             self._lock_targets(grid)
+        if self._levels_seen >= 4:
+            # L5 has THREE movables, an uneven 3→2 set-cover assignment, and a
+            # MID-EDGE changer station that the L4 edge-row route would clip — a
+            # dedicated N-piece controller. Gated on level index so L1-L4 stay
+            # byte-identical (the L4 FSM never runs on L5, nor vice versa).
+            return self._decide_l5(grid, move_ids, can_cycle)
         if self._levels_seen >= 3:
             # L4+ introduces the CHANGER/recolour mechanic: two mismatched-colour
             # movables must each be routed through a matching-colour station to
@@ -763,6 +977,311 @@ class Adapter(GameAdapter):
             self._l4_moved_id = self._l4_sel
             self._l4_moved_cen = cen
         return simple_action(action)
+
+    # ── L5 controller (three movables, uneven 3→2 set-cover, mid-edge station)
+    # Ported from the live-validated ``scratchpad/re86_l5_ctrl2.py`` (deterministic
+    # 5th-level clear at 367 actions). The three structural additions over L4:
+    #   1. N-piece tracking + nearest-centroid selection (the L4 2-piece toggle
+    #      cannot express three pieces sharing colour 9).
+    #   2. A 3→2 set-cover assignment: one movable recolours to the "single"
+    #      colour and covers it; two movables recolour to the "split" colour and
+    #      cover one gate cluster each.
+    #   3. A station-avoiding path planner (``_l5_route`` over ``grid_shortest_
+    #      path``) instead of L4's edge-row column-align — L5 has a MID-EDGE
+    #      station (station-14) that the edge-row heuristic would clip.
+    # The load-bearing recolour discipline (measured, ``re86_l5_flood.py``): a
+    # move during a recolour flood is NOT a no-op — it drives the frozen-looking
+    # body into a neighbouring station and re-recolours it — so the flood-wait
+    # CYCLES (ACTION5 moves no piece); and the two colour-9 pieces recolour at the
+    # single shared corner station strictly one-at-a-time (top-cluster piece
+    # first, so it vacates the corner before the bottom one arrives).
+    def _decide_l5(self, grid: tuple[tuple[int, ...], ...], move_ids: list[int], can_cycle: bool) -> GameAction:
+        if not move_ids:
+            return reset_action()
+        marker = self._marker(grid)
+        # Reuse the level-invariant move map measured on L1-L4 (a probe at L5
+        # would drive a movable into a station and mis-recolour it).
+        for a, v in self._dir_global.items():
+            self._dir.setdefault(a, v)
+        if any(a not in self._dir for a in move_ids):
+            return self._probe(marker, move_ids)
+        # Let the level-load transition settle before reading the static station
+        # boxes + gate marks (a cycle moves no piece).
+        if self._l5_settle < 2:
+            self._l5_settle += 1
+            return simple_action(5) if can_cycle else self._probe(marker, move_ids)
+        if not self._l5_locked:
+            self._l5_stations, self._l5_station_boxes = _station_boxes(grid)
+            sbox: dict[int, tuple[int, int, int, int]] = {}
+            for col, cen in self._l5_stations.items():
+                for b in self._l5_station_boxes:
+                    if b[0] <= cen[0] <= b[2] and b[1] <= cen[1] <= b[3]:
+                        sbox[col] = b
+                        break
+            self._l5_sbox = sbox
+            movs0 = _l5_movables(grid, set(), self._l5_station_boxes, subtract_boxes=False)
+            mov_colors = {m["color"] for m in movs0}
+            self._l5_gate_colors = _l5_gate_colors(
+                grid, self._l5_station_boxes, set(self._l5_stations), mov_colors
+            )
+            self._l5_gate_acc = {c: set() for c in self._l5_gate_colors}
+            self._l5_locked = True
+        if not self._l5_gate_colors:
+            return simple_action(5) if can_cycle else self._probe(marker, move_ids)
+        if self._l5_phase == "reveal":
+            return self._l5_reveal(grid, move_ids, can_cycle, marker)
+        return self._l5_solve(grid, move_ids, can_cycle, marker)
+
+    def _l5_all_gates(self) -> set[Cell]:
+        return {cell for cells in self._l5_gate_acc.values() for cell in cells}
+
+    def _l5_refresh_gates(self, grid: tuple[tuple[int, ...], ...]) -> None:
+        scanned = _l5_scan_gates(grid, self._l5_station_boxes, self._l5_gate_colors)
+        for c, cells in scanned.items():
+            self._l5_gate_acc[c].update(cells)
+
+    def _l5_emit(
+        self,
+        action: int,
+        marker_pos: Cell | None = None,
+        piece_idx: int | None = None,
+        want: Cell | None = None,
+    ) -> GameAction:
+        """Issue an action; record a directional move (piece + pre-move marker +
+        intended direction) for next-frame marker-to-marker wall learning. A
+        cycle (ACTION5) records nothing (it moves no piece)."""
+        if action != 5 and piece_idx is not None and marker_pos is not None and want is not None:
+            self._l5_last_move = (piece_idx, marker_pos, want)
+        else:
+            self._l5_last_move = None
+        return simple_action(action)
+
+    def _l5_reveal(
+        self, grid: tuple[tuple[int, ...], ...], move_ids: list[int], can_cycle: bool, marker: Cell | None
+    ) -> GameAction:
+        """Accumulate the gate-canvas cells (two start OCCLUDED by the rightmost
+        movable body) by nudging that piece LEFT — away from the right-edge
+        stations, so no accidental recolour. Lock the assignment only once the
+        gate set is STABLE and a full-cover 3-way assignment exists; an early,
+        partial gate set makes the coverage-max permutation pick the WRONG
+        mapping (measured)."""
+        self._l5_refresh_gates(grid)
+        total = sum(len(v) for v in self._l5_gate_acc.values())
+        if total == self._l5_prev_total:
+            self._l5_stable += 1
+        else:
+            self._l5_stable = 0
+            self._l5_prev_total = total
+        self._l5_reveal_steps += 1
+        # Complete once the gate set is STABLE (two colour-8 cells start occluded
+        # by the rightmost movable body and only appear after it is nudged clear;
+        # locking before the full set is revealed picks the WRONG permutation) AND
+        # a full-cover 3-way assignment exists (a partial set has none).
+        settled = self._l5_reveal_steps >= 8 and self._l5_stable >= 3
+        if (settled or self._l5_reveal_steps > 40) and self._l5_build(grid):
+            self._l5_phase = "solve"
+            return self._l5_solve(grid, move_ids, can_cycle, marker)
+        movs = _l5_movables(grid, self._l5_all_gates(), self._l5_station_boxes, subtract_boxes=False)
+        if not movs:
+            return simple_action(5) if can_cycle else self._probe(marker, move_ids)
+        rightmost = max(range(len(movs)), key=lambda i: movs[i]["cen"][1])
+        selm = self._l5_marker_piece(movs, marker)
+        if selm != rightmost:
+            return simple_action(5) if can_cycle else self._probe(marker, move_ids)
+        left = self._move_for((0, -1), move_ids)
+        if left is None:
+            return simple_action(5) if can_cycle else self._probe(marker, move_ids)
+        return self._l5_emit(left)
+
+    @staticmethod
+    def _l5_marker_piece(movs: list[dict[str, Any]], marker: Cell | None) -> int | None:
+        """Index of the movable whose (padded) bbox contains the selection
+        marker — the SELECTED piece."""
+        if marker is None:
+            return None
+        for i, m in enumerate(movs):
+            rs = [r for r, _c in m["cells"]]
+            cs = [c for _r, c in m["cells"]]
+            if min(rs) - 2 <= marker[0] <= max(rs) + 2 and min(cs) - 2 <= marker[1] <= max(cs) + 2:
+                return i
+        return None
+
+    def _l5_build(self, grid: tuple[tuple[int, ...], ...]) -> bool:
+        """Parse three movables + cluster the gate cells, then choose the full-
+        cover 3→2 assignment: the gate colour whose cells form TWO clusters is
+        the SPLIT colour (two movables, one cluster each); the other is the
+        SINGLE colour (one movable covers all its cells). Returns True and sets
+        ``_l5_pieces`` + ``_l5_order`` only when a FULL-cover assignment exists
+        (the reveal gate — a partial set has no full cover)."""
+        movs = _l5_movables(grid, self._l5_all_gates(), self._l5_station_boxes, subtract_boxes=False)
+        if len(movs) != 3:
+            return False
+        clusters_by = {c: _l5_cluster(self._l5_gate_acc[c]) for c in self._l5_gate_colors}
+        split = [c for c, cls in clusters_by.items() if len(cls) == 2]
+        single = [c for c, cls in clusters_by.items() if len(cls) == 1]
+        if len(split) != 1 or len(single) != 1:
+            return False
+        scolor, ucolor = split[0], single[0]
+        sclusters = clusters_by[scolor]
+        ucells = [cell for cl in clusters_by[ucolor] for cell in cl]
+
+        def cov(mi: int, cells: list[Cell]) -> int:
+            best = max_coverage_offset(list(movs[mi]["cells"]), cells)
+            return len(best[1]) if best else 0
+
+        best_rank: tuple[int, int] = (-1, -1)
+        chosen: tuple[int, dict[int, list[Cell]]] | None = None
+        for u_mi in range(3):
+            rest = [i for i in range(3) if i != u_mi]
+            for m0, m1 in permutations(rest, 2):
+                cu = cov(u_mi, ucells)
+                c0, c1 = cov(m0, sclusters[0]), cov(m1, sclusters[1])
+                full = cu == len(ucells) and c0 == len(sclusters[0]) and c1 == len(sclusters[1])
+                rank = (1 if full else 0, cu + c0 + c1)
+                if rank > best_rank:
+                    best_rank = rank
+                    chosen = (u_mi, {m0: sclusters[0], m1: sclusters[1]})
+        if chosen is None or best_rank[0] != 1:
+            return False
+        u_mi, a_split = chosen
+        pieces: list[dict[str, Any]] = []
+        for mi, m in enumerate(movs):
+            if mi == u_mi:
+                tcol, cluster_cells, is_single = ucolor, list(ucells), True
+            else:
+                tcol, cluster_cells, is_single = scolor, list(a_split[mi]), False
+            rs = [r for r, _c in m["cells"]]
+            cs = [c for _r, c in m["cells"]]
+            half = max(max(rs) - min(rs), max(cs) - min(cs)) // 2 + 1
+            pieces.append({
+                "orig": m["color"], "color": m["color"], "target": tcol,
+                "cluster": cluster_cells, "cen": m["cen"], "cells": m["cells"],
+                "half": half, "walls": set(), "shape_rel": None,
+                "phase": "recolour", "is_single": is_single,
+            })
+        self._l5_pieces = pieces
+
+        # Processing order: the single-colour piece first (its cover zone is clear
+        # of the shared corner station), then the two split-colour pieces TOP
+        # cluster BEFORE bottom — both recolour at the single corner station, so
+        # send the top-bound one up and away first, leaving the corner free for
+        # the bottom one (bottom-first collides the two same-colour bodies there).
+        def clu_row(i: int) -> float:
+            cl = pieces[i]["cluster"]
+            return sum(r for r, _c in cl) / max(1, len(cl))
+
+        self._l5_order = sorted(range(3), key=lambda i: (pieces[i]["target"] != ucolor, clu_row(i)))
+        return True
+
+    def _l5_track(self, grid: tuple[tuple[int, ...], ...]) -> None:
+        """Match the three tracked pieces to the freshly-parsed movables by
+        nearest centroid (≤22 px). Colour is updated only to a KNOWN colour (a
+        gate colour or the piece's original) so a mid-flood transient colour does
+        not corrupt identity. Station-box pixels are subtracted so a recoloured
+        body abutting its same-colour station keeps its true shape."""
+        pieces = self._l5_pieces
+        if pieces is None:
+            return
+        movs = _l5_movables(grid, self._l5_all_gates(), self._l5_station_boxes, subtract_boxes=True)
+        known = set(self._l5_gate_colors) | {p["orig"] for p in pieces}
+        used: set[int] = set()
+        for p in pieces:
+            best, bd = None, None
+            for mi, m in enumerate(movs):
+                if mi in used:
+                    continue
+                d = abs(m["cen"][0] - p["cen"][0]) + abs(m["cen"][1] - p["cen"][1])
+                if bd is None or d < bd:
+                    bd, best = d, mi
+            if best is not None and bd is not None and bd <= 22:
+                used.add(best)
+                p["cen"] = movs[best]["cen"]
+                p["cells"] = movs[best]["cells"]
+                if movs[best]["color"] in known:
+                    p["color"] = movs[best]["color"]
+
+    def _l5_solve(
+        self, grid: tuple[tuple[int, ...], ...], move_ids: list[int], can_cycle: bool, marker: Cell | None
+    ) -> GameAction:
+        pieces = self._l5_pieces
+        assert pieces is not None
+        self._l5_track(grid)
+        # Keep revealing the occluded single-colour gate cells until the first
+        # recolour (the scan is clean while all bodies hold their original
+        # colours); refresh the single piece's cover cluster from the growing set.
+        any_recoloured = any(p["color"] in self._l5_gate_colors and p["color"] != p["orig"] for p in pieces)
+        if not any_recoloured:
+            self._l5_refresh_gates(grid)
+            for p in pieces:
+                if p["is_single"]:
+                    p["cluster"] = list(self._l5_gate_acc[p["target"]])
+        # marker-to-marker wall learning for the piece the last move drove.
+        if self._l5_last_move is not None and marker is not None:
+            pi, prev_pos, want = self._l5_last_move
+            adv = (marker[0] - prev_pos[0]) * want[0] + (marker[1] - prev_pos[1]) * want[1]
+            if adv < 2:
+                pieces[pi]["walls"].add((prev_pos[0] // _CELL_PX + want[0], prev_pos[1] // _CELL_PX + want[1]))
+        self._l5_last_move = None
+
+        active = next((i for i in self._l5_order if pieces[i]["phase"] != "done"), None)
+        if active is None:
+            return simple_action(5) if can_cycle else self._probe(marker, move_ids)
+        p = pieces[active]
+        # selection = NEAREST CENTROID to the marker (a placed piece's large cover
+        # bbox can contain another piece's position and steal a bbox-based pick).
+        sel = None
+        if marker is not None:
+            sel = min(
+                range(3),
+                key=lambda i: abs(pieces[i]["cen"][0] - marker[0]) + abs(pieces[i]["cen"][1] - marker[1]),
+            )
+        if marker is None:
+            return self._l5_emit(5)  # recolour flood: CYCLE (a move would mis-recolour)
+        if sel != active:
+            return self._l5_emit(5)  # cycle selection to the active piece
+
+        if p["color"] != p["target"]:
+            # Drive INTO the target station until the recolour fires; once
+            # recoloured the piece sits stably over its same-colour station (a
+            # same-colour overlap never re-floods), so the cover phase pulls it
+            # out. Non-target stations inflated by the half-extent are avoided.
+            others = [b for c, b in self._l5_sbox.items() if c != p["target"]]
+            act = _l5_route(marker, self._l5_stations[p["target"]], p["half"], others, p["walls"], self._dir, move_ids)
+            if act is None:
+                return self._l5_emit(5)
+            return self._l5_emit(act, marker, active, self._dir[act])
+
+        # COVER — marker-anchor the shape once, then drive it onto its cluster.
+        if p["shape_rel"] is None:
+            p["shape_rel"] = frozenset((r - marker[0], c - marker[1]) for r, c in p["cells"])
+        cur = {(marker[0] + dr, marker[1] + dc) for dr, dc in p["shape_rel"]}
+        need = p["cluster"]
+        if not need:
+            return self._l5_emit(5)
+        if sum(1 for gt in need if gt in cur) == len(need):
+            p["phase"] = "done"
+            return self._l5_emit(5)  # placed; hold (cycle) while the others finish
+        crow = sum(r for r, _c in need) // len(need)
+        ccol = sum(c for _r, c in need) // len(need)
+        others = [b for c, b in self._l5_sbox.items() if c != p["color"]]
+        # RIGHTWARD WAYPOINT: if a different-colour station lies on the vertical
+        # leg near this column (station-14 above the corner station-9 for the top
+        # colour-9 piece), pull horizontally to the cluster's centre column first
+        # — the board centre is station-free, so the vertical leg is then clean.
+        if _l5_hazard_between(self._l5_sbox, p["color"], marker, crow, p["half"]) and abs(marker[1] - ccol) > _CELL_PX:
+            act = _l5_route(marker, (marker[0], ccol), p["half"], others, p["walls"], self._dir, move_ids)
+            if act is None:
+                return self._l5_emit(5)
+            return self._l5_emit(act, marker, active, self._dir[act])
+        best = max_coverage_offset(list(cur), need)
+        if best is None:
+            return self._l5_emit(5)
+        (odr, odc), _cov = best
+        goal_px = (marker[0] + odr, marker[1] + odc)
+        act = _l5_route(marker, goal_px, p["half"], others, p["walls"], self._dir, move_ids)
+        if act is None:
+            return self._l5_emit(5)
+        return self._l5_emit(act, marker, active, self._dir[act])
 
     def _decide_l4(self, grid: tuple[tuple[int, ...], ...], move_ids: list[int], can_cycle: bool) -> GameAction:
         """Two mismatched-colour movables each routed through a matching-colour
