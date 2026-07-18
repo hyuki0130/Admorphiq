@@ -103,3 +103,5 @@ commit, and `[[backlinks]]`. Narrative overview + reliable-metric + resume steps
 - ⛔ **Do NOT re-try action-selection tweaks** — 8 rounds failed; the novelty learner's action
   choice is a tight local optimum.
 - ✅ **Iterate the reward-signal / potential axis** — the only lever that opened DEPTH (R19).
+
+- **bounded-frontier / queue-scan / open-bounded / r11l-placeability / frontier-exhausted**: [[r84_bounded-frontier-scan]] (task #108 audit of 10 non-conquered games; verdict: bounded frontier essentially exhausted — 3 SETTLED-⛔ tr87/sk48/sc25, 6 MULTI-SESSION dc22/wa30/ar25/vc33/bp35/sp80, 1 marginal OPEN-BOUNDED = r11l L1 learned-placeability)
