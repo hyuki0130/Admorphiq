@@ -214,6 +214,12 @@ _CB_BUTTONS_MIN = 7  # a few shared buttons rotate the whole ring set
 _CB_K = 8            # presses per button to certify its permutation (≤80-budget safe:
 #                      7 buttons × 8 = 56 learning + a ≤19-press plan < the 80 StepCounter)
 _CB_PLAN_BUDGET = 30  # max joint-rotation plan length the BFS may return
+# Failure-triggered coupled RETRY thresholds (L7: 2 goals, 2 coupled press-cells). Lower
+# than the direct-detect gate because the retry ONLY fires after the normal planner has
+# already failed — so a lower bar cannot regress a level the normal planner clears (it
+# never reaches the retry). L7 = 2 movers, 2 distinct coupled buttons ({B}, {A,D}).
+_CB_RETRY_MOVERS_MIN = 2
+_CB_RETRY_BUTTONS_MIN = 2
 
 # A region spanning at least this fraction of the frame's own cell count is a
 # board-spanning panel / backdrop, not a discrete clickable target. Excludes
@@ -727,6 +733,7 @@ class Adapter(GameAdapter):
         self._cb_presses = 0  # presses issued for the current button
         self._cb_frames: list[tuple[tuple[int, ...], ...]] = []  # its press-frame window
         self._cb_maps: dict[Cell, dict[Cell, Cell]] = {}  # button cell → learned permutation
+        self._cb_tried = False  # coupled retry has been attempted on this level
 
     # ── harness contract ────────────────────────────────────────────────
 
@@ -760,6 +767,18 @@ class Adapter(GameAdapter):
 
         if self._planner_active:
             action = self._planner_step(grid)
+            # Failure-triggered coupled RETRY: if the single-press/multipress planner
+            # gave up on a fine board that has coupled buttons and ≥2 goals, try the
+            # coupled path before falling to the sweep. This is strictly upside — it
+            # only fires AFTER the normal planner has failed, so a level the normal
+            # planner already clears (L2/L3/L5 win on single-press, never reaching
+            # here) is byte-identical. It catches L7, whose {A,D} coupled button the
+            # single-press learner cannot order as one ring (L6 enters coupled directly
+            # via its ≥3-mover detect signature and never needs this retry).
+            if action is None and not self._coupled and not self._cb_tried:
+                retry = self._start_coupled_retry(grid)
+                if retry is not None:
+                    action = retry
             if action is not None:
                 self._prev_grid = grid
                 return action
@@ -1023,6 +1042,30 @@ class Adapter(GameAdapter):
         self._plan = deque(plan)
         return True
 
+    def _start_coupled_retry(self, grid: tuple[tuple[int, ...], ...]) -> GameAction | None:
+        """After the normal planner failed, arm the coupled path if this fine board
+        has coupled buttons and ≥2 goals (the L7 case: a `{A,D}` button the single-press
+        learner cannot order as one ring). Returns the first coupled learning press, or
+        ``None`` when the coupling signature is absent (→ sweep). The per-level scale
+        semantics (`_bg`/`_marker_colors`/`_solid_min`/`_unit`) were already set by the
+        preceding `_detect`, so no extra probing is needed."""
+        if self._unit != 4:
+            return None
+        regions = find_regions(grid, background=self._bg)
+        movers = _detect_movers(regions, self._marker_colors, self._solid_min)
+        buttons = _detect_coupled_buttons(regions, self._unit)
+        if len(movers) < _CB_RETRY_MOVERS_MIN or len(buttons) < _CB_RETRY_BUTTONS_MIN:
+            return None
+        self._cb_tried = True
+        self._coupled = True
+        self._cb_buttons = buttons
+        self._cb_maps = {}
+        self._cb_idx = 0
+        self._cb_presses = 1
+        self._cb_frames = [grid]
+        self._phase = "cb_learn"
+        return self._click_cell(buttons[0])
+
     def _mover_cells(self, grid: tuple[tuple[int, ...], ...]) -> list[Cell]:
         """Current positions of every moving token (all colour classes)."""
         regions = find_regions(grid, background=self._bg)
@@ -1185,6 +1228,7 @@ class Adapter(GameAdapter):
         self._cb_presses = 0
         self._cb_frames = []
         self._cb_maps = {}
+        self._cb_tried = False
 
     # ── measurement: did the pending click do anything? ─────────────────
 

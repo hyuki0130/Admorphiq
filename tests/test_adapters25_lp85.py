@@ -558,3 +558,43 @@ def test_learn_coupled_map_injects_goal_motion_for_occluded_cells():
     # the goal's observed motion is injected as an authoritative edge
     assert succ.get((30, 10)) == (30, 20)
     assert succ.get((30, 20)) == (30, 10)
+
+
+def test_start_coupled_retry_arms_only_with_the_coupling_signature():
+    """Purpose: pin the L7 failure-triggered retry gate — after the normal planner
+    fails, the coupled path arms ONLY when the fine board shows coupled buttons and
+    ≥2 goals; otherwise it returns None (→ sweep). This is what lets L7 clear without
+    risking L2/L3 (which never reach the retry because their single-press planner wins).
+
+    Expected feedback: PASS = a grid with ≥2 buttons + 2 movers arms coupled (returns a
+    press, sets ``_coupled``/``_cb_tried``); a grid with no buttons returns None and
+    leaves the planner uncoupled. A FAIL means the retry could mis-fire (regressing a
+    working level) or fail to arm on L7."""
+    adapter = Adapter()
+    adapter._bg = frozenset({0})
+    adapter._marker_colors = frozenset({11})
+    adapter._solid_min = 3
+    adapter._unit = 4
+
+    # coupling signature present: 2 buttons (colour 8/14, size 9) + 2 goal solids (11)
+    grid = _blank_grid(48, bg=0)
+    _stamp_block(grid, (2, 2), 3, 8)
+    _stamp_block(grid, (2, 20), 3, 14)
+    _stamp_block(grid, (30, 5), 2, 11)
+    _stamp_block(grid, (30, 25), 2, 11)
+    tup = tuple(tuple(r) for r in grid)
+    action = adapter._start_coupled_retry(tup)
+    assert action is not None
+    assert adapter._coupled and adapter._cb_tried and adapter._phase == "cb_learn"
+
+    # no buttons → no coupling signature → does not arm
+    other = Adapter()
+    other._bg = frozenset({0})
+    other._marker_colors = frozenset({11})
+    other._solid_min = 3
+    other._unit = 4
+    bare = _blank_grid(48, bg=0)
+    _stamp_block(bare, (30, 5), 2, 11)
+    _stamp_block(bare, (30, 25), 2, 11)
+    assert other._start_coupled_retry(tuple(tuple(r) for r in bare)) is None
+    assert not other._coupled
