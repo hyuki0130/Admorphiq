@@ -83,6 +83,18 @@ committed `SUMMARY.txt`, but prose hides all three.
   different process. A "1/8 vs 0/8" split across machines was, after this, fully
   explained as each arcade resolving the game_id to a different variant dir — NOT
   a platform-execution bug. (Full arc: `.wiki/wiki/games/S5I5.md` R60 section.)
+  - **Confirming instance (re86, R62, 2026-07-18) — the INVERSE direction, same
+    rule.** re86 also has two local variant dirs (`4e57566e/` v1 + `8af5384d/` v2).
+    Here the SHORT-name `make("re86")` loaded the CORRECT `8af5384d` (where the L5
+    fix scores 5/8), while the SCORING path `make("re86-8af5384d")` mis-resolved to
+    the WRONG `4e57566e` (v1, 4/8) — the OPPOSITE of the s5i5 slip. Neither entry
+    point is inherently "the right one": which dir a `game_id`/short-name resolves
+    to is arcade- and machine-dependent (the local Mac mis-resolved; ceph-build's
+    official `script25` loaded `8af5384d`, confirmed by reading the r59s4 run's own
+    `Successfully loaded … from environment_files/re86/8af5384d/…` log line). RULE
+    reaffirmed: attribute a score to a variant ONLY from that run's load-log line
+    (or by moving the other dir aside), never from a sibling `make()`. (Full arc:
+    `.wiki/wiki/games/RE86.md` L5 SOLVED section.)
 
 ## Recovery
 
