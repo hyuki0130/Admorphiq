@@ -1629,15 +1629,15 @@ dc22) or a learned reflection/flow kernel (ar25/sp80 super-human L0) or goal-dir
 (tu93); pattern named in `.wiki/wiki/lessons/faithful_offline_simulator_20260715.md`. New-structure
 PARK list (honestly banked WITH decoded mechanics, not failures): ar25 L1 (parallel-mirror double
 reflection), lp85 L4 (dense 20-ring self-test), su15 L3+ (enemy-reversed cascade), sk48 L3+
-(non-ACTION6 `sys_click`), bp35 / g50t / re86 / s5i5 / sc25 / tr87 / wa30. **Card = 27.80% official
-(r59s5, @5000, ceph-build, landed 2026-07-18 17:03; sequence r56s9 18.02 → r59s1 21.56 → r59s2
-22.25 → r59s3 26.38 → r59s4 27.25 → r59s5 27.80 — every run an exact arithmetic match).
-MILESTONE 2026-07-17: ALL 25 games clear ≥1 level. Fully conquered: ft09 1.0 · m0r0 1.0 ·
-cd82 0.98 · sb26 0.846; ls20 6/7 @0.75 (L1-L6 all per-level 1.0); re86 5/8 @0.3662 (L5
-multi-piece recolour-routing; flood-drive discovery). R59-R62 depth wave: faithful-sim +
-learned-operator + park-verification-first (5 parks overturned: ka59/vc33/g50t/lf52/tn36;
-g50t L1 root cause = camera-lock scrolling → SLAM park). lp85 stall give-up (7ac5a00) cut
-full-25 wall time ~3.7h → ~15min. Round page: `.wiki/wiki/rounds/r59_depth-wave.md`.)** ⚠️ **Dual-scoreboard doctrine (non-negotiable):** the script25 number is
+(non-ACTION6 `sys_click`), bp35 / g50t / re86 / s5i5 / sc25 / tr87 / wa30. **Card = 28.47% official
+(r59s6, @5000, ceph-build, landed 2026-07-18 18:31; sequence r56s9 18.02 → 21.56 → 22.25 →
+26.38 → 27.25 → 27.80 → 28.47 — nine consecutive exact arithmetic matches). MILESTONE
+2026-07-17: ALL 25 games clear ≥1 level. Fully conquered: ft09 1.0 · m0r0 1.0 · cd82 0.98 ·
+sb26 0.846; ls20 6/7 @0.75 (L1-L6 all 1.0); re86 6/8 @0.5329 (recolour-routing L5 +
+reshape-and-place L6, both super-efficient; = the brittle solver's historical ceiling,
+frame-only; L7 hybrid decoded+queued). R59-R64 depth wave: faithful-sim + learned-operator +
+park-verification-first (5 parks overturned). lp85 stall give-up cut full-25 wall time
+~3.7h → ~15min. Round page: `.wiki/wiki/rounds/r59_depth-wave.md`.)** ⚠️ **Dual-scoreboard doctrine (non-negotiable):** the script25 number is
 KERNEL EXPRESSIVENESS (can a from-scratch generic composition EXPRESS the clear), and is NEVER
 reported as agent capability; promotion to the deployable card is via **agent25** — the offline
 model orchestrating the kernels UNAIDED. Round index: `.wiki/wiki/rounds/index.md` (r56 entry).
