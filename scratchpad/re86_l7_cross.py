@@ -50,14 +50,25 @@ def main():
     print(f"idx_color={idx_color}")
 
     CROSS = 10
-    obr = (ob[0] + ob[2]) // 2
+    TGT = 11
+    tby = {}
+    for r, c in _target_boxes(g):
+        tby.setdefault(g[r][c], []).append((r, c))
+    tgt = sorted(tby[TGT])                 # [(30,45),(48,39),(48,51)]
+    hbar_row = max(set(r for r, _c in tgt), key=lambda r: sum(1 for rr, _c in tgt if rr == r))
+    vbar_col = next(c for r, c in tgt if r != hbar_row)   # 45
+    top_row = min(r for r, _c in tgt)      # 30
+    # frame: 19 tall/wide. vbar natural frame-rel col 9 -> c0 = vbar_col-9. hbar at
+    # abs hbar_row = bottom (frame-rel 18) -> hrel_t=18; r0 = hbar_row-18.
+    c0_t = vbar_col - 9
+    r0_t = hbar_row - 18
+    hrel_t = 18
+    print(f"  cross->{TGT}: hbar_row={hbar_row} vbar_col={vbar_col} -> r0_t={r0_t} c0_t={c0_t} hrel_t={hrel_t}")
     obc = (ob[1] + ob[3]) // 2
+    scen11 = stations[TGT]
     last_act = 2
-    # Phase A: bring colour-10 BELOW the obstacle and col-overlapping it, then push
-    # UP and log hrel/vrel. Route: drive down to rows > ob bottom, col-align to obc.
-    phase = "approach"
-    logged = []
-    for it in range(200):
+    phase = "recolour"
+    for it in range(500):
         g = canonical_layer(obs)
         mk = marker(g)
         if mk is None:
@@ -65,28 +76,70 @@ def main():
         if idx_color[sel] != CROSS:
             obs = step(env, A[5]); sel = (sel + 1) % 3; continue
         reg = region_at(g, mk, sboxes)
+        cur_color = reg["color"] if reg else None
+
+        if phase == "recolour":
+            if cur_color == TGT:
+                phase = "sethrel"; print(f"  [it{it}] recoloured -> {TGT}"); continue
+            # Rise to a CLEAR ZONE above the obstacle (centre row <= ob[0]-11 so
+            # the 19-tall body clears the obstacle rows), THEN horizontal-align to
+            # the station column, THEN up into it. Aligning lower would col-collide
+            # the obstacle (bar-shift) or, in the bottom cluster, occlude the marker.
+            clear = ob[0] - 11
+            if abs(mk[1] - scen11[1]) > 2:
+                want = (-1, 0) if mk[0] > clear else (0, 1 if mk[1] < scen11[1] else -1)
+            else:
+                want = (-1, 0)
+            act = {(-1, 0): 1, (1, 0): 2, (0, -1): 3, (0, 1): 4}[want]
+            last_act = act; obs = step(env, A[act]); continue
+
         if reg is None:
-            obs = step(env, A[last_act]); continue
+            # recoloured piece abuts its top station -> parse-merged/occluded; pull
+            # DOWN off the station until the region re-acquires.
+            if phase in ("sethrel",) and it % 20 == 0:
+                print(f"  it{it} {phase} reg=None mk={mk} regs={[(m['color'],m['bbox']) for m in l7_regions(g,sboxes)]}")
+            last_act = 2; obs = step(env, A[2]); continue
         st = _l6_cross_state(reg["cells"])
-        if phase == "approach":
-            # want the frame BELOW the obstacle (r0 > ob[2]) and col-overlapping
-            if st["c0"] > obc - 2:
-                last_act = 3; obs = step(env, A[3]); continue   # move left to col-align
-            if st["c1"] < obc + 2:
-                last_act = 4; obs = step(env, A[4]); continue
-            if st["r0"] <= ob[2] + 1:
-                last_act = 2; obs = step(env, A[2]); continue   # move down below obstacle
-            phase = "pushup"
-            print(f"  approach done: state r0={st['r0']} c0={st['c0']} vrel={st['vrel']} hrel={st['hrel']}")
-            continue
-        if phase == "pushup":
-            logged.append((st["r0"], st["c0"], st["vrel"], st["hrel"]))
-            if len(logged) >= 8:
-                break
-            last_act = 1; obs = step(env, A[1]); continue  # push UP into obstacle
-    print("  pushup log (r0,c0,vrel,hrel):")
-    for row in logged:
-        print("   ", row)
+        if phase == "sethrel" and it % 15 == 0:
+            print(f"  it{it} sethrel st r0={st['r0']} c0={st['c0']} c1={st['c1']} vrel={st['vrel']} hrel={st['hrel']} mk={mk}")
+
+        if phase == "sethrel":
+            if st["hrel"] >= hrel_t:
+                phase = "carry_right"; print(f"  [it{it}] hrel set = {st['hrel']} @r0={st['r0']} c0={st['c0']}"); continue
+            # must col-overlap the obstacle and sit ABOVE it, then push DOWN.
+            if not (st["c0"] <= ob[3] and st["c1"] >= ob[1]):
+                act = 4 if (st["c0"] + st["c1"]) // 2 < obc else 3
+                last_act = act; obs = step(env, A[act]); continue
+            if st["r1"] >= ob[0] - 1 and st["hrel"] == 9:
+                # need to be above so a down-push pins the hbar at the obstacle top
+                last_act = 1; obs = step(env, A[1]); continue
+            last_act = 2; obs = step(env, A[2]); continue  # push DOWN -> hrel+3
+
+        if phase == "carry_right":
+            # clear obstacle rows (up) then move right out of the obstacle columns
+            if st["c0"] < ob[3] + 1 and st["r1"] >= ob[0] - 1:
+                last_act = 1; obs = step(env, A[1]); continue  # rise clear of obstacle rows
+            if st["c0"] < c0_t:
+                last_act = 4; obs = step(env, A[4]); continue  # right, out of obstacle cols
+            phase = "carry_place"; continue
+
+        if phase == "carry_place":
+            if all(t in reg["cells"] for t in tgt):
+                print(f"  [it{it}] CROSS PLACED bbox={reg['bbox']} covers {tgt}"); break
+            # at cols right of the obstacle -> free vertical + horizontal to r0_t,c0_t
+            if st["c0"] != c0_t:
+                act = 4 if st["c0"] < c0_t else 3
+            elif st["r0"] != r0_t:
+                act = 2 if st["r0"] < r0_t else 1
+            else:
+                act = 5
+            last_act = act if act != 5 else last_act
+            obs = step(env, A[act]); continue
+    else:
+        g = canonical_layer(obs)
+        mk2 = marker(g) or (0, 0)
+        r = region_at(g, mk2, sboxes)
+        print(f"  cross leg UNFINISHED phase={phase} state={_l6_cross_state(r['cells']) if r else None}")
 
 
 if __name__ == "__main__":
