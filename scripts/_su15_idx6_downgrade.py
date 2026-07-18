@@ -419,6 +419,96 @@ def run_percep(arcade, max_clicks: int) -> None:
     print(f"\nPERCEP diagnostic: frame-fruit divergences from truth = {diverge} (anchors are exact)")
 
 
+def _frame_enemies(grid):
+    """Frame-only enemy read [x=col, y=row, cooldown]. Cooldown is NOT frame-
+    observable, so it is reported 0 — the de-lag sim's cooldown accounting therefore
+    starts blind (this is one of the measured limits of the predictor route)."""
+    _g, _f, en = su15._classify(grid)
+    out = []
+    for e in en:
+        r, c = e["centroid"]
+        out.append([int(round(c)), int(round(r)), 0])
+    return out
+
+
+def run_predict(arcade, max_clicks: int) -> None:
+    """LAG-COMPENSATING PREDICTOR diagnostic [reopen (c)]. The frame lags internal
+    truth by ~1 click; de-lag it by running the validated ``sim_click_downgrade`` one
+    step ahead of the frame read (using the LAST issued click), then drive the winning
+    oracle choreography on the RECOVERED state. Measures whether de-lagging collapses
+    the frame-vs-truth divergence (13/17 raw) toward 0 and whether it clears idx6 —
+    isolating the predictor's contribution from the perception + vacuum-pin parts."""
+    env, game = _make(arcade)
+    gs = _goals_xy(game)
+    anchors = set(gs)
+    g1 = min(gs, key=lambda g: g[1])
+    g2 = max(gs, key=lambda g: g[1])
+    latest = _step(env, 32, 10)
+    last_click: tuple[float, float] | None = (32, 10)
+
+    def in_goal_c(c, g):
+        return abs(c[0] - g[0]) <= 5 and abs(c[1] - g[1]) <= 5
+
+    def declutter(fruits):
+        # drop phantom value-6 fruits sitting on a goal anchor (mis-read goal disks)
+        return [f for f in fruits if not (f[2] == 6 and any(in_goal_c((f[0], f[1]), g) for g in anchors))]
+
+    raw_div = pred_div = 0
+    for k in range(max_clicks):
+        if game.level_index != _IDX:
+            print(f"*** PREDICTOR CLEARED idx6 at click {k} ***")
+            return
+        truth_f, _te = _snap(game)
+        ff = declutter(_frame_fruits(canonical_layer(latest)))
+        fe = _frame_enemies(canonical_layer(latest))
+        # de-lag: advance the (lagging) frame read one click via the faithful sim
+        if last_click is not None:
+            pf, _pe = sim_click_downgrade(ff, fe, int(round(last_click[0])), int(round(last_click[1])))
+        else:
+            pf = ff
+        raw_div += _ms(truth_f) != _ms(ff)
+        pred_div += _ms(truth_f) != _ms(pf)
+        print(f"[{k:02d}] truthMS={_ms(truth_f)} rawMS={_ms(ff)} predMS={_ms(pf)} "
+              f"{'PRED_OK' if _ms(truth_f) == _ms(pf) else 'pred_diverge'}")
+        # drive the winning choreography on the PREDICTED (de-lagged) fruits
+        threes = [f for f in pf if f[2] == 3]
+        cascade = [f for f in pf if 1 <= f[2] <= 2]
+        in_g1 = [f for f in threes if in_goal_c((f[0], f[1]), g1)]
+        undelivered = [f for f in threes if not in_goal_c((f[0], f[1]), g1) and not in_goal_c((f[0], f[1]), g2)]
+        click = None
+        if undelivered:
+            f = undelivered[0]
+            tgt = g1 if not in_g1 else g2
+            c = (f[0], f[1])
+            dx, dy = tgt[0] - c[0], tgt[1] - c[1]
+            d = (dx * dx + dy * dy) ** 0.5 or 1.0
+            lead = max(1.0, min(d, R - SZ[f[2]] / 2.0 - 0.5))
+            click = (c[0] + dx / d * lead, c[1] + dy / d * lead)
+        elif len(cascade) >= 2:
+            by: dict[int, list] = {}
+            for f in cascade:
+                by.setdefault(f[2], []).append(f)
+            pv = sorted(v for v, fs in by.items() if len(fs) >= 2)
+            if pv:
+                grp = by[pv[0]]
+                a, b = min(((grp[i], grp[j]) for i in range(len(grp)) for j in range(i + 1, len(grp))),
+                           key=lambda p: _dist((p[0][0], p[0][1]), (p[1][0], p[1][1])))
+                ca, cb = (a[0], a[1]), (b[0], b[1])
+                d = _dist(ca, cb)
+                if d <= su15._MERGE_DIST:
+                    click = ((ca[0] + cb[0]) / 2.0, (ca[1] + cb[1]) / 2.0)
+                else:
+                    ux, uy = (cb[0] - ca[0]) / d, (cb[1] - ca[1]) / d
+                    click = (ca[0] + ux * 7.0, ca[1] + uy * 7.0)
+        if click is None:
+            click = (32, 11)
+        last_click = click
+        latest = _step(env, click[0], click[1])
+    print(f"\nPREDICTOR diagnostic: raw frame divergences={raw_div}, "
+          f"DE-LAGGED divergences={pred_div} (of {max_clicks}); did NOT clear "
+          f"(final level_index={game.level_index})")
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--val-dg", dest="val_dg", action="store_true", help="lockstep sim vs live")
@@ -428,8 +518,12 @@ def main() -> None:
     ap.add_argument("--frames", type=int, default=25)
     ap.add_argument("--max", type=int, default=40)
     ap.add_argument("--verbose", action="store_true")
+    ap.add_argument("--predict", action="store_true", help="lag-compensating predictor diagnostic")
     args = ap.parse_args()
     arcade = Arcade(operation_mode=OperationMode.OFFLINE)
+    if args.predict:
+        run_predict(arcade, args.max)
+        return
     if args.percep:
         run_percep(arcade, args.max)
         return
