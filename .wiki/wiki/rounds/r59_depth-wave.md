@@ -2,7 +2,7 @@
 round: r59
 axis: script25 depth (kernel expressiveness) — faithful-sim + learned-operator wave 2
 keywords: [m0r0, pressure-plate, gates, bp35, frontier-exploration, su15, enemy-in-sim, re86, separation-by-motion, sk48, lockstep, reachability, lp85, twist-topology, ls20, moving-changer, r59s1, full-25]
-verdict: PASS — official card 18.02% → 21.56% → 22.25% → 26.38% → 27.25% → 27.80% → 28.47% → 29.25% → 29.53% → 30.53% (first 30% crossing) → 30.61% → **31.08% (r59s11, 2026-07-19 02:25)**; fourteen consecutive single-diff-verified runs
+verdict: PASS — official card 18.02% → 21.56% → 22.25% → 26.38% → 27.25% → 27.80% → 28.47% → 29.25% → 29.53% → 30.53% (first 30% crossing) → 30.61% → 31.08% → **31.57% (r59s12, 2026-07-19 03:44)**; fifteen consecutive single-diff-verified runs
 commit: 9b8e2e8 (r59s1 HEAD) / cc1e4dc (r59s2 HEAD) / f8144df-era (r59s3 HEAD); landings: bc04e63, 6b6ad2e, b2128c9, 36d23cd, 3b6c11c, 0197b8b, fa8e3bc, 12bda52, a1701f9, 0abeb0d, 2bdea69, e698ed8(ls20 L5), 02fe3d8, f677aed, 9647858, e536f65
 ---
 
@@ -133,6 +133,18 @@ multipress gate. Bonus: L1 improved 18a/0.892 → 8a/1.0 (disclosed deviation, K
 deterministic improvement). New transfer lesson: scale_relative_thresholds_20260719 ("fixed
 pixel thresholds are scale debt", sibling of the colour-constant lesson). lp85 ladder mapped:
 L6 = dedicated wall (27+ rings, dests mismatch), L7 likely cheap after L6, L8 = L6's class.
+
+## r59s12 official (2026-07-19 03:44 KST, ceph-build, @5000) — **31.57%**
+
+`games=25 total=7.8921 → 31.57%`. ONE row moved vs r59s11: lp85 0.2997 → **0.4222 (6/8)** via
+the L6 occlusion-robust coupled-map build (e5913ad): 36 rings = 7 coupled press-cells;
+temporal-mask goal-occluded samples + inject each goal's OWN motion as the authoritative edge
+for its occluded cell; class-aware joint 3-token BFS, 70 of 80 budget (56 learn + 14 plan);
+L6 70a/human60 = 0.735. L7 banked with the runtime-coupling-probe gate spec (frame-count-
+identical to L3 — lowering the static gate would regress L2/L3 from 1.0; §R72). lp85 sprint
+arc: 3/8 → 6/8 across four rounds (time-series learner, scale-robust thresholds,
+corner-square extraction, occlusion-robust coupled maps — four generic perception/learning
+upgrades).
 
 ## Post-measurement landings (in HEAD, not in r59s1; next full-25 picks them up)
 

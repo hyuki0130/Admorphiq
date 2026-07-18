@@ -1629,11 +1629,11 @@ dc22) or a learned reflection/flow kernel (ar25/sp80 super-human L0) or goal-dir
 (tu93); pattern named in `.wiki/wiki/lessons/faithful_offline_simulator_20260715.md`. New-structure
 PARK list (honestly banked WITH decoded mechanics, not failures): ar25 L1 (parallel-mirror double
 reflection), lp85 L4 (dense 20-ring self-test), su15 L3+ (enemy-reversed cascade), sk48 L3+
-(non-ACTION6 `sys_click`), bp35 / g50t / re86 / s5i5 / sc25 / tr87 / wa30. **Card = 31.08% official
-(r59s11, @5000, ceph-build, landed 2026-07-19 02:25; sequence r56s9 18.02 → 21.56 → 22.25 →
-26.38 → 27.25 → 27.80 → 28.47 → 29.25 → 29.53 → 30.53 (first 30% crossing) → 30.61 → 31.08 —
-fourteen consecutive single-diff-verified runs; lp85 5/8 via time-series ring learner +
-scale-robust thresholds, plus an L1 improvement to 1.0). MILESTONE 2026-07-17: ALL 25 games clear ≥1 level. FULLY
+(non-ACTION6 `sys_click`), bp35 / g50t / re86 / s5i5 / sc25 / tr87 / wa30. **Card = 31.57% official
+(r59s12, @5000, ceph-build, landed 2026-07-19 03:44; sequence r56s9 18.02 → 21.56 → 22.25 →
+26.38 → 27.25 → 27.80 → 28.47 → 29.25 → 29.53 → 30.53 (first 30% crossing) → 30.61 → 31.08 →
+31.57 — fifteen consecutive single-diff-verified runs; lp85 6/8 @0.4222 via occlusion-robust
+coupled-map L6 build on top of the time-series ring learner + scale-robust thresholds). MILESTONE 2026-07-17: ALL 25 games clear ≥1 level. FULLY
 CONQUERED (5): ft09 1.0 · m0r0 1.0 · **ls20 1.0 (7/7, Fog cleared via refill-chained
 observation post — the "no cell sees the track" wall was a prior-pass artifact)** · cd82
 0.98 · sb26 0.846; re86 7/8 @0.7273 (past the brittle 6/8 ceiling; L8 provably unwinnable
