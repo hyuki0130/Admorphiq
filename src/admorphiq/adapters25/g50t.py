@@ -109,6 +109,7 @@ _ACTION5 = 5
 _STUCK_TRIES = 4        # re-issues of one hop before treating the player as blocked
 _SETTLE_MAX = 40        # frames to wait for the post-ACTION5 rewind
 _PLAN_BUDGET = 200_000  # joint (cell, moves) states for the route BFS
+_MAX_GHOSTS = 4         # ceiling on nested circuits to seat before walking to goal
 
 
 class _L1TwoGhost:
@@ -358,28 +359,33 @@ class _L1TwoGhost:
             idc = now
 
     def run(self):
-        """Drive: identify -> seat ghost B -> seat ghost A -> walk to goal. Yields
-        one action per env step; ``grid = yield action`` feeds the next frame."""
+        """Drive: identify -> seat ghosts on successive nested circuits until the
+        goal is reachable -> walk to the goal. Generalises from L1's two circuits
+        to N (the level's ``gpkhwmwioo`` waypoint count sets the ghost allowance;
+        each seat opens one more barrier, exposing the next plate). Yields one
+        action per env step; ``grid = yield action`` feeds the next frame."""
         self.grid = yield  # prime
         yield from self._identify()
         if self.off is None or self.goal is None:
             while True:
                 yield _MOVES[0]
         spawn = self.pcell
-        plate_b, barr_b = yield from self._discover(set(), 0, [])
-        if plate_b is None:
-            while True:
-                yield _MOVES[0]
-        self.barriers |= barr_b
-        yield from self._step(_ACTION5)  # bank ghost B
-        yield from self._settle_rewind(spawn)  # type: ignore[arg-type]
-        plate_a, barr_a = yield from self._discover(barr_b, 60, [plate_b])
-        if plate_a is None:
-            while True:
-                yield _MOVES[0]
-        self.barriers |= barr_a
-        yield from self._step(_ACTION5)  # bank ghost A
-        yield from self._settle_rewind(spawn)  # type: ignore[arg-type]
+        seated: set[Cell] = set()      # barrier cells with a seated ghost (open on replay)
+        known_plates: list[Cell] = []
+        for _ghost in range(_MAX_GHOSTS):
+            # stop seating once the goal is reachable assuming all seated barriers
+            # open (they all will, once their ghosts replay in the final walk).
+            if self.goal in self._reach(self._floor(self.grid) | seated, self.pcell):  # type: ignore[arg-type]
+                break
+            wait = 60 if seated else 0
+            plate, barr = yield from self._discover(seated, wait, known_plates)
+            if plate is None:
+                break
+            self.barriers |= barr
+            known_plates.append(plate)
+            yield from self._step(_ACTION5)  # bank this circuit's ghost
+            yield from self._settle_rewind(spawn)  # type: ignore[arg-type]
+            seated |= barr
         for gt in (self.goal, (self.goal[0] + 1, self.goal[1] + 1),
                    (self.goal[0] + 1, self.goal[1]), (self.goal[0], self.goal[1] + 1)):
             yield from self._drive(gt, enter=gt, cycles=60)
