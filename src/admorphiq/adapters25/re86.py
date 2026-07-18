@@ -121,7 +121,7 @@ Composition from ``admorphiq.kernels``:
 
 from __future__ import annotations
 
-from collections import Counter
+from collections import Counter, deque
 from collections.abc import Iterable
 from itertools import permutations
 from typing import Any
@@ -437,6 +437,167 @@ def _l6_cross_state(cells: frozenset[Cell]) -> dict[str, int]:
     return {"r0": r0, "r1": r1, "c0": c0, "c1": c1, "va": va, "ha": ha, "vrel": va - c0, "hrel": ha - r0}
 
 
+# ── L7 (recolour + bar-shift/reshape + place hybrid) ─────────────────────────
+# L7 brings the changer stations BACK (unlike L6) plus the single colour-1
+# obstacle, and THREE movables whose colours match NO target: each must route to
+# its matching-colour station and recolour, then bar-shift/reshape against the
+# obstacle, then place on its matching-colour target, all three covering
+# SIMULTANEOUSLY (the snapshot win). The CROSS bar-shift is planned by BFS over a
+# faithful offline simulator of the engine's collision handler (source
+# ``ucpbzrcoui`` else-branch @2004-2059): a push colliding with the obstacle
+# shifts the bar OPPOSITE to the obstacle-occupied axis, or pins/translates
+# otherwise. Decoded + live-validated (22/22 scripted pushes match the engine) in
+# ``scratchpad/re86_l7_sim.py`` + ``re86_l7_simval.py``; the full 3-leg clear is
+# ``scratchpad/re86_l7_full.py``. All targets/dims are FRAME-DERIVED.
+_L7_STEP = 3
+
+
+def _l7_cross_collides(
+    x: int, y: int, vrel: int, hrel: int, w: int, h: int, ob: tuple[int, int, int, int]
+) -> bool:
+    """A cross pixel (its full vbar column or hbar row) intersects the obstacle."""
+    r0, c0, r1, c1 = ob
+    vbar_col = x + vrel
+    hbar_row = y + hrel
+    vbar_hits = c0 <= vbar_col <= c1 and y <= r1 and y + h - 1 >= r0
+    hbar_hits = r0 <= hbar_row <= r1 and x <= c1 and x + w - 1 >= c0
+    return vbar_hits or hbar_hits
+
+
+def _l7_cross_sim(
+    state: tuple[int, int, int, int], dx: int, dy: int, w: int, h: int, ob: tuple[int, int, int, int]
+) -> tuple[int, int, int, int]:
+    """One push of the re86 CROSS handler, in (x=col, y=row, vrel, hrel) space.
+    Bounds-checked on the sprite CENTRE (``rtivumgcjd``); on an obstacle collision
+    the pushed bar SETS (frame reverts, bar shifts) when the OTHER axis's bar is in
+    the obstacle, PINS (frame translates, abs bar fixed) when its OWN bar is, and
+    is BLOCKED when both are; otherwise a free translation."""
+    x, y, vrel, hrel = state
+    r0, c0, r1, c1 = ob
+    nx, ny = x + dx, y + dy
+    if not (0 <= nx + w // 2 < 64 and 0 <= ny + h // 2 < 64):
+        return (x, y, vrel, hrel)
+    if not _l7_cross_collides(nx, ny, vrel, hrel, w, h, ob):
+        return (nx, ny, vrel, hrel)
+    vbar_in = c0 <= nx + vrel <= c1
+    hbar_in = r0 <= ny + hrel <= r1
+    if dx != 0:
+        a = -_L7_STEP if dx > 0 else _L7_STEP
+        b = _L7_STEP if dx > 0 else -_L7_STEP
+        can_a = (vrel > 0) if dx > 0 else (vrel < w - 2)
+        can_b = (vrel < w - 2) if dx > 0 else (vrel > 0)
+        if vbar_in and hbar_in:
+            return (x, y, vrel, hrel)
+        if vbar_in:
+            return (nx, ny, vrel + a, hrel) if can_a else (x, y, vrel, hrel)
+        if hbar_in:
+            return (x, y, vrel + b, hrel) if can_b else (x, y, vrel, hrel)
+        return (nx, ny, vrel, hrel)
+    a = -_L7_STEP if dy > 0 else _L7_STEP
+    b = _L7_STEP if dy > 0 else -_L7_STEP
+    can_a = (hrel > 0) if dy > 0 else (hrel < h - 2)
+    can_b = (hrel < h - 2) if dy > 0 else (hrel > 0)
+    if hbar_in and vbar_in:
+        return (x, y, vrel, hrel)
+    if hbar_in:
+        return (nx, ny, vrel, hrel + a) if can_a else (x, y, vrel, hrel)
+    if vbar_in:
+        return (x, y, vrel, hrel + b) if can_b else (x, y, vrel, hrel)
+    return (nx, ny, vrel, hrel)
+
+
+# push -> (dx=col, dy=row) and -> (dr,dc) direction for the measured move map.
+_L7_SIM_DIRS = {1: (0, -_L7_STEP), 2: (0, _L7_STEP), 3: (-_L7_STEP, 0), 4: (_L7_STEP, 0)}
+_L7_SIM_WANT = {1: (-1, 0), 2: (1, 0), 3: (0, -1), 4: (0, 1)}
+
+
+def _l7_bfs_plan(
+    start: tuple[int, int, int, int],
+    goal: tuple[int, int, int, int],
+    w: int,
+    h: int,
+    ob: tuple[int, int, int, int],
+    valid: Any = None,
+    max_nodes: int = 200000,
+) -> list[Cell] | None:
+    """BFS a push sequence (list of (dr,dc) directions) from ``start`` to ``goal``
+    over the exact cross simulator; ``valid(state)`` prunes states the plan must
+    never enter (e.g. rising into the station row)."""
+    start = tuple(start)  # type: ignore[assignment]
+    goal = tuple(goal)  # type: ignore[assignment]
+    if start == goal:
+        return []
+    seen = {start}
+    q: deque[tuple[tuple[int, int, int, int], list[Cell]]] = deque([(start, [])])
+    while q and len(seen) < max_nodes:
+        st, path = q.popleft()
+        for a, (dx, dy) in _L7_SIM_DIRS.items():
+            ns = _l7_cross_sim(st, dx, dy, w, h, ob)
+            if ns in seen or (valid is not None and not valid(ns)):
+                continue
+            if ns == goal:
+                return path + [_L7_SIM_WANT[a]]
+            seen.add(ns)
+            q.append((ns, path + [_L7_SIM_WANT[a]]))
+    return None
+
+
+def _l7_regions(
+    grid: tuple[tuple[int, ...], ...], station_boxes: list[tuple[int, int, int, int]]
+) -> list[dict[str, Any]]:
+    """Movable regions for L7 (frame-only): station-box pixels subtracted so a
+    recoloured piece abutting its same-colour station keeps its shape; excludes
+    bg/border/station-border/marker/obstacle. Each entry carries the bbox."""
+    bg = most_common_color(grid)
+    exclude = {bg, _BORDER_COLOR, _STATION_BORDER, _SELECTION_COLOR, _OBSTACLE_COLOR}
+    out: list[dict[str, Any]] = []
+    for reg in find_regions(grid, background=bg, gap=1):
+        if reg["color"] in exclude:
+            continue
+        cells = frozenset(c for c in reg["cells"] if not _in_boxes(c, station_boxes, pad=1))
+        if len(cells) < 12:
+            continue
+        rs = [r for r, _c in cells]
+        cs = [c for _r, c in cells]
+        if max(rs) - min(rs) < 3 or max(cs) - min(cs) < 3:
+            continue
+        cen = (sum(rs) // len(cells), sum(cs) // len(cells))
+        if _in_boxes(cen, station_boxes, pad=1):
+            continue
+        out.append(
+            {"color": reg["color"], "cells": cells, "cen": cen,
+             "bbox": (min(rs), max(rs), min(cs), max(cs))}
+        )
+    return out
+
+
+def _l7_region_at(
+    grid: tuple[tuple[int, ...], ...], marker: Cell, station_boxes: list[tuple[int, int, int, int]]
+) -> dict[str, Any] | None:
+    """Tightest movable region whose bbox contains the marker (the selected
+    piece's live shape once it has separated from the spawn cluster)."""
+    best: tuple[dict[str, Any], int] | None = None
+    for m in _l7_regions(grid, station_boxes):
+        r0, r1, c0, c1 = m["bbox"]
+        if r0 - 1 <= marker[0] <= r1 + 1 and c0 - 1 <= marker[1] <= c1 + 1:
+            area = (r1 - r0) * (c1 - c0)
+            if best is None or area < best[1]:
+                best = (m, area)
+    return best[0] if best else None
+
+
+def _l7_full_bars(cells: frozenset[Cell]) -> tuple[int, int]:
+    """(#full-height columns, #full-width rows) of a region — distinguishes a
+    hollow-rectangle OUTLINE (2 + 2 edges) from a CROSS (1 vbar + 1 hbar)."""
+    rs = [r for r, _c in cells]
+    cs = [c for _r, c in cells]
+    r0, r1, c0, c1 = min(rs), max(rs), min(cs), max(cs)
+    h, w = r1 - r0 + 1, c1 - c0 + 1
+    full_cols = sum(1 for c in range(c0, c1 + 1) if sum((r, c) in cells for r in range(r0, r1 + 1)) >= h * 0.7)
+    full_rows = sum(1 for r in range(r0, r1 + 1) if sum((r, c) in cells for c in range(c0, c1 + 1)) >= w * 0.7)
+    return full_cols, full_rows
+
+
 class Adapter(GameAdapter):
     """Covering-offset greedy delivery composed from admorphiq.kernels."""
 
@@ -577,6 +738,34 @@ class Adapter(GameAdapter):
         self._l6_walls: set[Cell] = set()
         self._l6_last_move: tuple[Cell, Cell] | None = None  # (marker, want_dir)
 
+        # ── L7 state (recolour + bar-shift/reshape + place hybrid; three
+        # mismatched-colour movables + changer stations + a colour-1 obstacle).
+        # Gated on level index (>= 6) + the L7 signature (stations present AND a
+        # colour-1 obstacle) so L1-L6 stay byte-identical. Identity under the tight
+        # spawn overlap is CYCLE-INDEX (a piece's selection-cycle slot never
+        # changes, even after recolour); the drive is occlusion-safe (marker None =
+        # OCCLUSION, re-issue the current move, never ACTION5). Decoded + validated
+        # live in ``scratchpad/re86_l7_*.py`` before this port. ──
+        self._l7_settle = 0
+        self._l7_locked = False
+        self._l7_applies = False
+        self._l7_stations: dict[int, Cell] = {}
+        self._l7_sbox: dict[int, tuple[int, int, int, int]] = {}
+        self._l7_sboxes: list[tuple[int, int, int, int]] = []
+        self._l7_obstacle: tuple[int, int, int, int] | None = None
+        self._l7_tby: dict[int, list[Cell]] = {}
+        self._l7_spawn_cen: dict[int, Cell] = {}
+        self._l7_idx_color: list[int] = []
+        self._l7_sel = 0
+        self._l7_legs: list[dict[str, Any]] = []
+        self._l7_leg_i = 0
+        self._l7_phase = ""
+        self._l7_plan: list[Cell] = []
+        self._l7_last_dir: Cell = (-1, 0)
+        self._l7_walls: set[Cell] = set()
+        self._l7_shape_rel: frozenset[Cell] | None = None
+        self._l7_out_last_move: tuple[Cell, Cell] | None = None
+
     # ── harness contract ────────────────────────────────────────────────
 
     def is_done(self, frames: list[Any], latest_frame: Any) -> bool:
@@ -669,6 +858,25 @@ class Adapter(GameAdapter):
         self._l6_shape_rel = None
         self._l6_walls = set()
         self._l6_last_move = None
+        self._l7_settle = 0
+        self._l7_locked = False
+        self._l7_applies = False
+        self._l7_stations = {}
+        self._l7_sbox = {}
+        self._l7_sboxes = []
+        self._l7_obstacle = None
+        self._l7_tby = {}
+        self._l7_spawn_cen = {}
+        self._l7_idx_color = []
+        self._l7_sel = 0
+        self._l7_legs = []
+        self._l7_leg_i = 0
+        self._l7_phase = ""
+        self._l7_plan = []
+        self._l7_last_dir = (-1, 0)
+        self._l7_walls = set()
+        self._l7_shape_rel = None
+        self._l7_out_last_move = None
 
     def _lock_targets(self, grid: tuple[tuple[int, ...], ...]) -> None:
         by_color: dict[int, list[Cell]] = {}
@@ -759,6 +967,15 @@ class Adapter(GameAdapter):
             return self._probe(self._marker(grid), move_ids)
         if not self._targets_locked:
             self._lock_targets(grid)
+        if self._levels_seen >= 6:
+            # L7 is the recolour+reshape+place HYBRID: changer stations return
+            # (unlike L6) alongside the colour-1 obstacle, and three movables whose
+            # colours match no target. Gated on level index (>= 6) + the L7
+            # signature (stations present AND a colour-1 obstacle) so L1-L6 stay
+            # byte-identical; if the signature fails it falls back to _decide_l6.
+            stations, _sb = _station_boxes(grid)
+            if stations and _l6_obstacle_box(grid) is not None:
+                return self._decide_l7(grid, move_ids, can_cycle)
         if self._levels_seen >= 5:
             # L6 is reshape-and-place: two movables + a static colour-1 obstacle,
             # NO changer stations (so the L5 recolour FSM does not apply). Gated on
@@ -1601,6 +1818,328 @@ class Adapter(GameAdapter):
             return self._l6_cycle(marker, move_ids, can_cycle)
         self._l6_last_move = (marker, self._dir[act])
         return simple_action(act)
+
+    # ── L7 (recolour + bar-shift/reshape + place hybrid) ────────────────────
+    def _decide_l7(self, grid: tuple[tuple[int, ...], ...], move_ids: list[int], can_cycle: bool) -> GameAction:
+        if not move_ids:
+            return reset_action()
+        marker = self._marker(grid)
+        for a, v in self._dir_global.items():
+            self._dir.setdefault(a, v)
+        if any(a not in self._dir for a in move_ids):
+            return self._probe(marker, move_ids)
+        if self._l7_settle < 3:
+            self._l7_settle += 1
+            return self._l7_cycle(marker, move_ids, can_cycle, track=False)
+        if not self._l7_locked:
+            self._l7_lock(grid)
+        if not self._l7_applies:
+            # Signature mismatch (not the 3-piece L7 scene): fall back to _decide_l6
+            # (itself harmless on a non-L6 scene) so the 6/8 floor is never risked.
+            return self._decide_l6(grid, move_ids, can_cycle)
+        if len(self._l7_idx_color) < 3:
+            # Calibrate cycle-index -> spawn colour. Three ACTION5s form a full
+            # cycle, so it self-calibrates regardless of the settle count: after it
+            # the engine selection is back at idx_color[0]'s slot (sel stays 0).
+            if marker is not None:
+                self._l7_idx_color.append(self._l7_nearest_spawn(marker))
+            return self._l7_cycle(marker, move_ids, can_cycle, track=False)
+        if self._l7_leg_i >= len(self._l7_legs):
+            return self._l7_cycle(marker, move_ids, can_cycle)
+        leg = self._l7_legs[self._l7_leg_i]
+        if leg["kind"] == "outline":
+            return self._l7_step_outline(grid, marker, move_ids, can_cycle, leg)
+        return self._l7_step_cross(grid, marker, move_ids, can_cycle, leg)
+
+    def _l7_lock(self, grid: tuple[tuple[int, ...], ...]) -> None:
+        stations, sboxes = _station_boxes(grid)
+        self._l7_stations = stations
+        self._l7_sboxes = sboxes
+        sbox: dict[int, tuple[int, int, int, int]] = {}
+        for col, cen in stations.items():
+            for b in sboxes:
+                if b[0] <= cen[0] <= b[2] and b[1] <= cen[1] <= b[3]:
+                    sbox[col] = b
+                    break
+        self._l7_sbox = sbox
+        self._l7_obstacle = _l6_obstacle_box(grid)
+        tby: dict[int, list[Cell]] = {}
+        for r, c in _target_boxes(grid):
+            tby.setdefault(grid[r][c], []).append((r, c))
+        self._l7_tby = tby
+        regs = _l7_regions(grid, sboxes)
+        self._l7_spawn_cen = {m["color"]: m["cen"] for m in regs}
+        self._l7_legs = self._l7_assign(regs, tby)
+        self._l7_applies = (
+            self._l7_obstacle is not None
+            and len(regs) == 3
+            and len(self._l7_spawn_cen) == 3
+            and len(self._l7_legs) == 3
+        )
+        if self._l7_applies:
+            self._l7_next_leg_phase()
+        self._l7_locked = True
+
+    @staticmethod
+    def _l7_assign(regs: list[dict[str, Any]], tby: dict[int, list[Cell]]) -> list[dict[str, Any]]:
+        """Frame-only 1:1 assignment. The target that is a rectangle's corners
+        (2 cells) → the OUTLINE movable (2 full-edge cols + 2 full-edge rows); the
+        two PLUS targets → the two CROSS movables, widest cross to the widest plus
+        (by hbar column span). No colours are hardcoded."""
+        rect_color = next((col for col, cells in tby.items() if len(cells) == 2), None)
+        plus_colors = [col for col in tby if col != rect_color and len(tby[col]) >= 3]
+        if rect_color is None or len(plus_colors) != 2:
+            return []
+        outline: dict[str, Any] | None = None
+        crosses: list[dict[str, Any]] = []
+        for m in regs:
+            fc, fr = _l7_full_bars(m["cells"])
+            if fc >= 2 and fr >= 2:
+                outline = m
+            else:
+                crosses.append(m)
+        if outline is None or len(crosses) != 2:
+            return []
+        plus_colors.sort(key=lambda col: max(c for _r, c in tby[col]) - min(c for _r, c in tby[col]), reverse=True)
+        crosses.sort(key=lambda m: m["bbox"][3] - m["bbox"][2], reverse=True)
+
+        def half_w(m: dict[str, Any]) -> int:
+            return (m["bbox"][3] - m["bbox"][2] + 1) // 2
+
+        # Order: the crosses first (they share the obstacle, worked one at a time),
+        # the outline last. Pieces never collide, so placed ones stay put.
+        return [
+            {"kind": "cross", "color": crosses[0]["color"], "tgt_color": plus_colors[0], "half_w": half_w(crosses[0])},
+            {"kind": "cross", "color": crosses[1]["color"], "tgt_color": plus_colors[1], "half_w": half_w(crosses[1])},
+            {"kind": "outline", "color": outline["color"], "tgt_color": rect_color, "half_w": half_w(outline)},
+        ]
+
+    def _l7_next_leg_phase(self) -> None:
+        self._l7_plan = []
+        self._l7_shape_rel = None
+        self._l7_out_last_move = None
+        if self._l7_leg_i < len(self._l7_legs):
+            self._l7_phase = "recolour" if self._l7_legs[self._l7_leg_i]["kind"] == "outline" else "reco_right"
+
+    def _l7_nearest_spawn(self, marker: Cell) -> int:
+        return min(
+            self._l7_spawn_cen,
+            key=lambda k: abs(self._l7_spawn_cen[k][0] - marker[0]) + abs(self._l7_spawn_cen[k][1] - marker[1]),
+        )
+
+    def _l7_cycle(self, marker: Cell | None, move_ids: list[int], can_cycle: bool, track: bool = True) -> GameAction:
+        if can_cycle:
+            if track:
+                self._l7_sel = (self._l7_sel + 1) % 3
+            return simple_action(5)
+        return self._probe(marker, move_ids)
+
+    def _l7_mv_dir(
+        self, want: Cell, marker: Cell | None, move_ids: list[int], can_cycle: bool, hold: bool = False
+    ) -> GameAction:
+        a = self._move_for(want, move_ids)
+        if a is None:
+            return self._l7_cycle(marker, move_ids, can_cycle)
+        if not hold:
+            self._l7_last_dir = want
+        return simple_action(a)
+
+    def _l7_mv_act(
+        self, a: int | None, default: Cell, marker: Cell | None, move_ids: list[int], can_cycle: bool
+    ) -> GameAction:
+        if a is None:
+            return self._l7_mv_dir(default, marker, move_ids, can_cycle)
+        if a in self._dir:
+            self._l7_last_dir = self._dir[a]
+        return simple_action(a)
+
+    @staticmethod
+    def _l7_cross_place_target(tgt: list[Cell]) -> tuple[int, int]:
+        """Plus/T target -> (vbar col, hbar row): the col shared by >=2 tips is the
+        vbar; the row shared by >=2 tips is the hbar."""
+        hbar_row = Counter(r for r, _c in tgt).most_common(1)[0][0]
+        vbar_col = Counter(c for _r, c in tgt).most_common(1)[0][0]
+        return vbar_col, hbar_row
+
+    def _l7_step_cross(
+        self,
+        grid: tuple[tuple[int, ...], ...],
+        marker: Cell | None,
+        move_ids: list[int],
+        can_cycle: bool,
+        leg: dict[str, Any],
+    ) -> GameAction:
+        assert self._l7_obstacle is not None
+        color = leg["color"]
+        tgt_color = leg["tgt_color"]
+        ob = self._l7_obstacle
+        st_col = self._l7_stations[tgt_color][1]
+        tgt = sorted(self._l7_tby[tgt_color])
+        if marker is None:
+            # OCCLUSION (or a 1-frame flood): re-issue the current drive, never
+            # ACTION5 (which would desync the cycle-index selection).
+            return self._l7_mv_dir(self._l7_last_dir, marker, move_ids, can_cycle, hold=True)
+        if self._l7_idx_color[self._l7_sel] != color:
+            return self._l7_cycle(marker, move_ids, can_cycle)
+        reg = _l7_region_at(grid, marker, self._l7_sboxes)
+        cur = reg["color"] if reg else None
+        phase = self._l7_phase
+        # Recolour: detour RIGHT of the obstacle (a wide hbar pins if risen through
+        # it), up above it, left to the station column, then up so ONLY the 1-wide
+        # vbar tip enters that one station.
+        if phase == "reco_right":
+            if cur == tgt_color:
+                phase = "settle"
+            elif marker[1] < ob[3] + leg["half_w"] + 2:
+                self._l7_phase = phase
+                return self._l7_mv_dir((0, 1), marker, move_ids, can_cycle)
+            else:
+                phase = "reco_up1"
+        if phase == "reco_up1":
+            if cur == tgt_color:
+                phase = "settle"
+            elif marker[0] > 18:
+                self._l7_phase = phase
+                return self._l7_mv_dir((-1, 0), marker, move_ids, can_cycle)
+            else:
+                phase = "reco_left"
+        if phase == "reco_left":
+            if cur == tgt_color:
+                phase = "settle"
+            elif marker[1] > st_col + 1:
+                self._l7_phase = phase
+                return self._l7_mv_dir((0, -1), marker, move_ids, can_cycle)
+            elif marker[1] < st_col - 1:
+                self._l7_phase = phase
+                return self._l7_mv_dir((0, 1), marker, move_ids, can_cycle)
+            else:
+                phase = "reco_up2"
+        if phase == "reco_up2":
+            if cur == tgt_color:
+                phase = "settle"
+            else:
+                self._l7_phase = phase
+                return self._l7_mv_dir((-1, 0), marker, move_ids, can_cycle)
+        if phase == "settle":
+            if reg is None or reg["bbox"][0] < 7:
+                self._l7_phase = phase
+                return self._l7_mv_dir((1, 0), marker, move_ids, can_cycle)
+            phase = "plan"
+        if phase == "plan":
+            if reg is None:
+                self._l7_phase = phase
+                return self._l7_mv_dir(self._l7_last_dir, marker, move_ids, can_cycle, hold=True)
+            s = _l6_cross_state(reg["cells"])
+            w = s["c1"] - s["c0"] + 1
+            h = s["r1"] - s["r0"] + 1
+            st = (s["c0"], s["r0"], s["va"] - s["c0"], s["ha"] - s["r0"])
+            vbar_col, hbar_row = self._l7_cross_place_target(tgt)
+            place_x = min(c for _r, c in tgt)
+            place_y = min(r for r, _c in tgt)
+            goal = (place_x, place_y, vbar_col - place_x, hbar_row - place_y)
+            self._l7_plan = _l7_bfs_plan(st, goal, w, h, ob, valid=lambda z: z[1] >= 7) or []
+            phase = "exec"
+        # exec: replay the BFS plan; verify placement from LIVE cells; re-plan when
+        # the plan empties without a clear (robust to any sim/engine drift).
+        if reg is not None and all(t in reg["cells"] for t in tgt):
+            self._l7_leg_i += 1
+            self._l7_next_leg_phase()
+            return self._l7_cycle(marker, move_ids, can_cycle)
+        if reg is None:
+            self._l7_phase = phase
+            return self._l7_mv_dir(self._l7_last_dir, marker, move_ids, can_cycle, hold=True)
+        if not self._l7_plan:
+            self._l7_phase = "plan"
+            return self._l7_mv_dir((1, 0), marker, move_ids, can_cycle)
+        want = self._l7_plan[0]
+        a = self._move_for(want, move_ids)
+        if a is None:
+            self._l7_plan = []
+            self._l7_phase = "plan"
+            return self._l7_cycle(marker, move_ids, can_cycle)
+        self._l7_plan.pop(0)
+        self._l7_last_dir = want
+        self._l7_phase = phase
+        return simple_action(a)
+
+    def _l7_step_outline(
+        self,
+        grid: tuple[tuple[int, ...], ...],
+        marker: Cell | None,
+        move_ids: list[int],
+        can_cycle: bool,
+        leg: dict[str, Any],
+    ) -> GameAction:
+        assert self._l7_obstacle is not None
+        out_color = leg["color"]
+        rect_color = leg["tgt_color"]
+        ob = self._l7_obstacle
+        tgt9 = sorted(self._l7_tby[rect_color])
+        tr = [r for r, _c in tgt9]
+        tc = [c for _r, c in tgt9]
+        rect = (min(tr), max(tr), min(tc), max(tc))
+        th, tw = rect[1] - rect[0] + 1, rect[3] - rect[2] + 1
+        obc = (ob[1] + ob[3]) // 2
+        if marker is None:
+            return self._l7_mv_dir(self._l7_last_dir, marker, move_ids, can_cycle, hold=True)
+        if self._l7_idx_color[self._l7_sel] != out_color:
+            return self._l7_cycle(marker, move_ids, can_cycle)
+        reg = _l7_region_at(grid, marker, self._l7_sboxes)
+        cur = reg["color"] if reg else None
+        phase = self._l7_phase
+        if phase == "recolour":
+            if cur == rect_color:
+                phase = "reshape"
+            else:
+                scen = self._l7_stations[rect_color]
+                if marker[0] > 36:
+                    want: Cell = (-1, 0)
+                elif abs(marker[1] - scen[1]) > 2:
+                    want = (0, 1 if marker[1] < scen[1] else -1)
+                else:
+                    want = (-1, 0)
+                self._l7_phase = phase
+                return self._l7_mv_dir(want, marker, move_ids, can_cycle)
+        if phase == "reshape":
+            if reg is not None:
+                r0, r1, c0, c1 = reg["bbox"]
+                if (r1 - r0 + 1) <= th:  # reshaped to the wide target height
+                    phase = "place"
+                else:
+                    col_overlap = c0 <= ob[3] and c1 >= ob[1]
+                    below_needed = r1 < ob[0]
+                    if not col_overlap or below_needed:
+                        goal = (max(ob[0] - 7, 14), obc)
+                        a = _l5_route(
+                            marker, goal, 7, list(self._l7_sbox.values()), self._l7_walls, self._dir, move_ids
+                        )
+                        self._l7_phase = phase
+                        return self._l7_mv_act(a, (1, 0), marker, move_ids, can_cycle)
+                    self._l7_phase = phase
+                    return self._l7_mv_dir((1, 0), marker, move_ids, can_cycle)  # push DOWN = vertical reshape
+            else:
+                col_overlap = ob[1] - 7 <= marker[1] <= ob[3] + 7
+                below_needed = marker[0] < ob[0] - 6
+                if not col_overlap or below_needed:
+                    goal = (max(ob[0] - 7, 14), obc)
+                    a = _l5_route(marker, goal, 7, list(self._l7_sbox.values()), self._l7_walls, self._dir, move_ids)
+                    self._l7_phase = phase
+                    return self._l7_mv_act(a, (1, 0), marker, move_ids, can_cycle)
+                self._l7_phase = phase
+                return self._l7_mv_dir((1, 0), marker, move_ids, can_cycle)
+        # place — route the reshaped outline centre to the target rect centre, the
+        # obstacle inflated asymmetrically so a translate never re-collides.
+        if reg is None:
+            return self._l7_mv_dir(self._l7_last_dir, marker, move_ids, can_cycle, hold=True)
+        if all(t in reg["cells"] for t in tgt9):
+            self._l7_leg_i += 1
+            self._l7_next_leg_phase()
+            return self._l7_cycle(marker, move_ids, can_cycle)
+        tgt_cen = ((rect[0] + rect[1]) // 2, (rect[2] + rect[3]) // 2)
+        avoid = (ob[0] - th, ob[1] - tw, ob[2] + th, ob[3] + tw)
+        a = _l5_route(marker, tgt_cen, 0, list(self._l7_sbox.values()) + [avoid], self._l7_walls, self._dir, move_ids)
+        self._l7_phase = "place"
+        return self._l7_mv_act(a, (-1, 0), marker, move_ids, can_cycle)
 
     def _decide_l4(self, grid: tuple[tuple[int, ...], ...], move_ids: list[int], can_cycle: bool) -> GameAction:
         """Two mismatched-colour movables each routed through a matching-colour

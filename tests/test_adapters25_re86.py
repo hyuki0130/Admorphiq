@@ -20,6 +20,9 @@ from admorphiq.adapters25.re86 import (
     _l5_hazard_between,
     _l6_cross_state,
     _l6_obstacle_box,
+    _l7_bfs_plan,
+    _l7_cross_sim,
+    _l7_full_bars,
     _sign,
     _station_boxes,
     _target_boxes,
@@ -279,3 +282,115 @@ def test_l6_cross_state_reads_bar_positions_of_a_plus():
     assert s["r0"] == 0 and s["c0"] == 0
     assert s["va"] == 6 and s["ha"] == 6
     assert s["vrel"] == 6 and s["hrel"] == 6
+
+
+# ── L7 (recolour + bar-shift/reshape + place hybrid) ─────────────────────────
+
+_L7_OB = (28, 28, 35, 35)  # the colour-1 obstacle box shared by L6/L7
+
+
+def test_l7_full_bars_distinguishes_outline_from_cross():
+    """Purpose: L7's three movables are classified frame-only — the OUTLINE (hollow
+    rectangle) has 2 full-length edge columns + 2 full-length edge rows, a CROSS
+    has exactly 1 full column (vbar) + 1 full row (hbar). ``_l7_full_bars`` must
+    return (2,2) for the outline and (1,1) for a cross so the assignment can route
+    the reshaper to the rectangle target and the two crosses to the plus targets.
+    Expected feedback: failure means the outline/cross roles swap, so a cross is
+    driven as a reshaper (or vice versa) and no piece reaches its target."""
+    outline = set()
+    for i in range(13):  # 13x13 hollow square outline (4 edges)
+        outline |= {(0, i), (12, i), (i, 0), (i, 12)}
+    cross = set()
+    for i in range(19):  # 19x19 plus (1 vbar col 9 + 1 hbar row 9)
+        cross |= {(i, 9), (9, i)}
+    assert _l7_full_bars(frozenset(outline)) == (2, 2)
+    assert _l7_full_bars(frozenset(cross)) == (1, 1)
+
+
+def test_l7_cross_sim_vbar_set_on_hbar_in_obstacle_left_push():
+    """Purpose: the load-bearing bar-SET op. With the HBAR row inside the obstacle
+    rows and the VBAR col OUTSIDE the obstacle cols, a LEFT push must revert the
+    frame (no translation) and shift the vbar −3 (abs col −3). This is how colour-7
+    walks its vbar to the target column.
+    Expected feedback: failure means the simulator (hence the BFS place plan)
+    disagrees with the engine and the cross never reaches its target col — it was
+    live-validated 22/22 pushes, so a break here is a real divergence."""
+    # 37x19 cross, hbar row 30 (in obstacle rows 28-35), vbar col 24 (out of 28-35).
+    # x=6, y=... : hrel places hbar at row 30, vrel places vbar at col 24.
+    x, y, w, h = 6, 12, 37, 19
+    vrel, hrel = 18, 18  # vbar col 24, hbar row 30
+    before = (x, y, vrel, hrel)
+    after = _l7_cross_sim(before, -3, 0, w, h, _L7_OB)  # LEFT push (dx=-3)
+    assert after == (x, y, vrel - 3, hrel)  # frame unchanged, vbar shifted -3
+
+
+def test_l7_cross_sim_free_translation_when_no_bar_in_obstacle():
+    """Purpose: away from the obstacle a push is a plain translation of the whole
+    frame (bars keep their frame-relative offsets) — the carry mode used to
+    position the cross before/after a bar-set.
+    Expected feedback: failure means the plan mis-models free motion and the BFS
+    routes the piece incorrectly around the board."""
+    before = (6, 45, 18, 9)  # spawn-like, far below the obstacle
+    after = _l7_cross_sim(before, 0, -3, 6, 6, _L7_OB)  # a small clear cross moving up
+    assert after == (6, 42, 18, 9)
+
+
+def test_l7_bfs_plan_reaches_the_colour8_place_state():
+    """Purpose: the cross bar-shift+place is PLANNED by BFS over the faithful
+    simulator (not a hand FSM). Pin that a plan exists from a post-recolour state
+    to the colour-8 plus place-state (frame x=3,y=9,vrel=6,hrel=6) and that
+    replaying it on the simulator lands exactly on the goal.
+    Expected feedback: failure means the L7 colour-7 leg has no reachable plan and
+    7/8 regresses to 6/8 — the goal was live-verified reachable (~21 pushes)."""
+    w, h = 37, 19
+    start = (18, 9, 18, 9)
+    goal = (3, 9, 6, 6)
+    plan = _l7_bfs_plan(start, goal, w, h, _L7_OB, valid=lambda z: z[1] >= 7)
+    assert plan is not None
+    st = start
+    want_to_push = {(-1, 0): (0, -3), (1, 0): (0, 3), (0, -1): (-3, 0), (0, 1): (3, 0)}
+    for want in plan:
+        dx, dy = want_to_push[want]
+        st = _l7_cross_sim(st, dx, dy, w, h, _L7_OB)
+    assert st == goal
+
+
+def test_l7_assign_is_frame_only_rect_to_outline_widest_cross_to_widest_plus():
+    """Purpose: the 1:1 movable→target assignment is derived from FRAME geometry
+    only — the 2-cell rectangle-corner target goes to the outline (2+2 bars), and
+    the wider plus target goes to the wider cross. No colours are hardcoded.
+    Expected feedback: failure means a hash-rotated L7 (different colours) would be
+    mis-assigned and none of the three pieces would place, so L7 never clears."""
+    # Targets: colour-9 = 2-cell rect corners; colour-8 = wide plus; colour-11 = narrow plus.
+    tby = {
+        9: [(18, 57), (24, 39)],
+        8: [(9, 9), (15, 3), (15, 36), (27, 9)],
+        11: [(30, 45), (48, 39), (48, 51)],
+    }
+    # Movables: a 13x13 outline (colour 12), a 37-wide cross (colour 7), a 19-wide
+    # cross (colour 10) — only bbox width + bar counts matter here.
+    outline_cells = frozenset(
+        {(0, i) for i in range(13)} | {(12, i) for i in range(13)}
+        | {(i, 0) for i in range(13)} | {(i, 12) for i in range(13)}
+    )
+    wide_cross = frozenset({(i, 18) for i in range(19)} | {(9, i) for i in range(37)})
+    narrow_cross = frozenset({(i, 9) for i in range(19)} | {(9, i) for i in range(19)})
+    regs = [
+        {"color": 12, "cells": outline_cells, "bbox": (0, 12, 0, 12)},
+        {"color": 7, "cells": wide_cross, "bbox": (0, 18, 0, 36)},
+        {"color": 10, "cells": narrow_cross, "bbox": (0, 18, 0, 18)},
+    ]
+    legs = Adapter._l7_assign(regs, tby)
+    by_color = {leg["color"]: leg for leg in legs}
+    assert by_color[12]["kind"] == "outline" and by_color[12]["tgt_color"] == 9
+    assert by_color[7]["kind"] == "cross" and by_color[7]["tgt_color"] == 8  # widest -> widest plus
+    assert by_color[10]["kind"] == "cross" and by_color[10]["tgt_color"] == 11
+
+
+def test_l7_cross_place_target_reads_plus_bars():
+    """Purpose: a cross's place target (vbar col, hbar row) is the col shared by the
+    vertical tips and the row shared by the horizontal tips of its plus target.
+    Expected feedback: failure means the BFS goal is wrong and the cross places off
+    its tips."""
+    tgt8 = [(9, 9), (15, 3), (15, 36), (27, 9)]  # vbar col 9, hbar row 15
+    assert Adapter._l7_cross_place_target(tgt8) == (9, 15)
