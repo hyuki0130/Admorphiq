@@ -1,15 +1,16 @@
-"""re86 L7 scratch controller (R65): per-piece recolour -> reshape -> place FSM,
-frame-only. The three movables SPAWN OVERLAPPING, so colour-based frame tracking
-loses a piece behind another; identity is tracked by nearest-centroid-to-marker
-(the selection marker = the selected piece's exact centre), the L5 discipline.
+"""re86 L7 scratch controller (R66): CYCLE-INDEX identity + per-piece
+recolour->reshape->place FSM, frame-only.
 
-Assignment (frame-derived, feasibility-proven):
-  outline colour-12 -> recolour 9 -> vertical reshape 13x13->7x19 -> place
-     rows 18-24 cols 39-57 (corners cover target-9 (18,57),(24,39))
-  cross colour-7  -> recolour 8 -> bar-shift -> cover target-8 plus
-  cross colour-10 -> recolour 11 -> bar-shift -> cover target-11 plus
-Recolour leg = column-align in the interior then drive UP the target column
-(only that station is in the column). dir 1=up 2=down 3=left 4=right.
+The three movables SPAWN OVERLAPPING, so colour/centroid parse loses a piece.
+KEY: a piece's SELECTION-CYCLE POSITION (sprite index) never changes, even after
+recolour — so cycle-index is bulletproof identity. Calibrate index->spawn-colour
+once (the engine cycle order is fixed), then track the selected index by counting
+confirmed ACTION5 advances (a flood-wait ACTION5 does NOT advance selection — the
+flood branch returns early @2103), and drive the selected piece by its marker.
+
+This build validates the OUTLINE leg (colour-12 -> recolour 9 -> vertical reshape
+13x13->19x7 -> place rows18-24 cols39-57) end-to-end frame-only. dir 1=up 2=down
+3=left 4=right.
 """
 from __future__ import annotations
 import sys
@@ -42,16 +43,21 @@ def marker(grid):
     return None
 
 
+def _in_boxes(cell, boxes, pad=1):
+    r, c = cell
+    return any(b[0] - pad <= r <= b[2] + pad and b[1] - pad <= c <= b[3] + pad for b in boxes)
+
+
 def l7_regions(grid, station_boxes):
-    """All movable-ish colour regions (excluding bg/border/station/obstacle),
-    with bbox + centroid. Under overlap a piece may be missing/merged."""
     bg = most_common_color(grid)
     exclude = {bg, 4, 2, 0, _OBST}
     out = []
     for reg in find_regions(grid, background=bg, gap=1):
         if reg["color"] in exclude:
             continue
-        cells = frozenset(reg["cells"])
+        # Subtract station-box pixels so a RECOLOURED piece abutting its same-
+        # colour station swatch keeps its true shape/centroid (the L5 discipline).
+        cells = frozenset(c for c in reg["cells"] if not _in_boxes(c, station_boxes, pad=1))
         if len(cells) < 12:
             continue
         rs = [r for r, _c in cells]; cs = [c for _r, c in cells]
@@ -63,6 +69,19 @@ def l7_regions(grid, station_boxes):
         out.append({"color": reg["color"], "cells": cells, "cen": cen,
                     "bbox": (min(rs), max(rs), min(cs), max(cs))})
     return out
+
+
+def region_at(grid, mk, sboxes):
+    """Tightest region whose bbox contains the marker (the selected piece's live
+    shape once it has separated from the cluster)."""
+    best = None
+    for m in l7_regions(grid, sboxes):
+        r0, r1, c0, c1 = m["bbox"]
+        if r0 - 1 <= mk[0] <= r1 + 1 and c0 - 1 <= mk[1] <= c1 + 1:
+            area = (r1 - r0) * (c1 - c0)
+            if best is None or area < best[1]:
+                best = (m, area)
+    return best[0] if best else None
 
 
 def main():
@@ -87,57 +106,56 @@ def main():
     for r, c in _target_boxes(g):
         tby.setdefault(g[r][c], []).append((r, c))
     regs = l7_regions(g, sboxes)
-    print(f"L7 stations={stations} obstacle={ob}")
-    print(f"targets={ {k: sorted(v) for k, v in tby.items()} }")
-    for m in regs:
-        print(f"  spawn colour={m['color']} bbox={m['bbox']} cen={m['cen']}")
+    spawn_cen = {m["color"]: m["cen"] for m in regs}
+    print(f"L7 stations={stations} obstacle={ob} targets={ {k: sorted(v) for k,v in tby.items()} }")
 
-    # rectangle target colour = the one with 2 cells not sharing row/col (outline)
+    # ---- calibrate cycle-index -> spawn-colour (fixed identity) ----
+    def nearest_spawn(mk):
+        return min(spawn_cen, key=lambda k: abs(spawn_cen[k][0] - mk[0]) + abs(spawn_cen[k][1] - mk[1]))
+
+    idx_color = []
+    for _k in range(3):
+        idx_color.append(nearest_spawn(marker(canonical_layer(obs))))
+        obs = step(env, A[5])
+    sel = 0
+    print(f"cycle idx_color = {idx_color} (sel=0)")
+
+    def do_cycle():
+        """Issue ACTION5. If a flood is active (marker None) the engine does NOT
+        advance selection; otherwise sel advances by one."""
+        nonlocal obs, sel
+        flooding = marker(canonical_layer(obs)) is None
+        obs = step(env, A[5])
+        if not flooding:
+            sel = (sel + 1) % 3
+
     rect_color = next(k for k, v in tby.items() if len(v) == 2)
     tgt9 = sorted(tby[rect_color])
     tr = [r for r, _c in tgt9]; tc = [c for _r, c in tgt9]
     rect = (min(tr), max(tr), min(tc), max(tc))
     th, tw = rect[1] - rect[0] + 1, rect[3] - rect[2] + 1
-    outline_spawn_color = 12  # frame-parseable at spawn (hollow); assignment: 12->rect
-    print(f"outline colour=12 -> recolour {rect_color}, rect {rect} ({th}x{tw})")
-
-    # ---- pure marker-based identity: track each piece's centre ONLY from the
-    # marker (the selection marker = the selected piece's exact centre; parse
-    # centroids are noisy under overlap). Init from the clean spawn parse. ----
-    pcen = {m["color"]: m["cen"] for m in regs}  # {spawn-colour: centre}
-    OUT = 12  # outline piece identity = its spawn colour
-
-    def sel_color(mk):
-        return min(pcen, key=lambda k: abs(pcen[k][0] - mk[0]) + abs(pcen[k][1] - mk[1]))
-
-    def region_at(grid, mk):
-        """The isolated region whose bbox tightly contains the marker (valid once
-        the piece has separated from the bottom cluster)."""
-        best = None
-        for m in l7_regions(grid, sboxes):
-            r0, r1, c0, c1 = m["bbox"]
-            if r0 - 1 <= mk[0] <= r1 + 1 and c0 - 1 <= mk[1] <= c1 + 1:
-                # prefer the tighter bbox (an overlapping neighbour has a looser fit)
-                area = (r1 - r0) * (c1 - c0)
-                if best is None or area < best[1]:
-                    best = (m, area)
-        return best[0] if best else None
+    OUT = 12
+    print(f"outline colour={OUT} -> recolour {rect_color}, rect {rect} ({th}x{tw})")
 
     phase = "recolour"
     walls = set()
-    half = 7
-    for it in range(500):
+    obc = (ob[1] + ob[3]) // 2
+    # NEVER press ACTION5 when the marker is invisible: mk=None means the selected
+    # piece's centre marker is OCCLUDED by another piece's body (measured:
+    # colour-10's hbar renders over colour-12's centre), NOT necessarily a flood.
+    # A5 on an occluded frame cycles the engine and desyncs selection. Instead,
+    # re-issue the current drive move (a move never cycles; a flood harmlessly
+    # ignores it and advances; occlusion keeps the piece moving until the marker
+    # re-emerges). A5 fires ONLY on a visible marker, so the count stays synced.
+    last_act = 1  # default nudge (up) before the first real move
+    for it in range(700):
         g = canonical_layer(obs)
         mk = marker(g)
         if mk is None:
-            obs = step(env, A[5]); continue  # flood wait
-        sel = sel_color(mk)
-        pcen[sel] = mk  # the marker is the selected piece's exact centre
-        if it < 40:
-            print(f"  it{it} mk={mk} sel={sel} phase={phase} pcen={pcen}")
-        if sel != OUT:
-            obs = step(env, A[5]); continue  # cycle to our piece
-        reg = region_at(g, mk)
+            obs = step(env, A[last_act]); continue  # occluded/flood: hold the drive
+        if idx_color[sel] != OUT:
+            obs = step(env, A[5]); sel = (sel + 1) % 3; continue  # visible -> real cycle
+        reg = region_at(g, mk, sboxes)
         cur_color = reg["color"] if reg else None
 
         if phase == "recolour":
@@ -146,40 +164,57 @@ def main():
                 print(f"  [it{it}] recoloured -> {rect_color} bbox={reg['bbox']}")
                 continue
             scen = stations[rect_color]
-            want = (0, 1 if mk[1] < scen[1] else -1) if abs(mk[1] - scen[1]) > 2 else (-1, 0)
-            act = next((a for a, v in DIRMAP.items() if v == want), None)
-            if it < 80:
-                print(f"  it{it} REC mk={mk} col={cur_color} want={want}")
-            obs = step(env, A[act] if act else A[5]); continue
+            # UP-FIRST separation, then column-align, then up into the station.
+            if mk[0] > 36:
+                want = (-1, 0)
+            elif abs(mk[1] - scen[1]) > 2:
+                want = (0, 1 if mk[1] < scen[1] else -1)
+            else:
+                want = (-1, 0)
+            act = next((a for a, v in DIRMAP.items() if v == want), 1)
+            last_act = act
+            obs = step(env, A[act]); continue
 
         if phase == "reshape":
-            if reg is None:
-                obs = step(env, A[5]); continue
-            r0, r1, c0, c1 = reg["bbox"]
-            h, w = r1 - r0 + 1, c1 - c0 + 1
-            if h <= th:
-                phase = "place"
-                print(f"  [it{it}] reshaped to {h}x{w} @({r0},{c0})")
-                continue
-            obc = (ob[1] + ob[3]) // 2
-            if not (c0 <= ob[3] and c1 >= ob[1]):
-                goal = (max(ob[0] - 6, 12), obc)  # above obstacle, col-aligned
-                act = _l5_route(mk, goal, half, list(sbox.values()), walls, DIRMAP, MOVE_IDS)
-                obs = step(env, A[act] if act else A[5]); continue
-            obs = step(env, A[2]); continue  # push DOWN = vertical reshape
+            # Route by MARKER (reg may vanish under occlusion/station-merge); use
+            # reg only to read the reshaped height + col-overlap when available.
+            if reg is not None:
+                r0, r1, c0, c1 = reg["bbox"]
+                h, w = r1 - r0 + 1, c1 - c0 + 1
+                if h <= th:
+                    phase = "place"
+                    print(f"  [it{it}] reshaped to {h}x{w} @({r0},{c0})")
+                    continue
+                col_overlap = c0 <= ob[3] and c1 >= ob[1]
+                below_needed = r1 < ob[0]
+            else:
+                # approx from the marker (outline half-width ~6, half-height ~6)
+                col_overlap = ob[1] - 7 <= mk[1] <= ob[3] + 7
+                below_needed = mk[0] < ob[0] - 6
+            if not col_overlap or below_needed:
+                # route the centre to just above the obstacle, col-aligned to it
+                goal = (max(ob[0] - 7, 14), obc)
+                act = _l5_route(mk, goal, 7, list(sbox.values()), walls, DIRMAP, MOVE_IDS) or 2
+                last_act = act
+                obs = step(env, A[act]); continue
+            last_act = 2
+            obs = step(env, A[2]); continue  # push DOWN -> vertical reshape
 
         if phase == "place":
             if reg is None:
-                obs = step(env, A[5]); continue
+                obs = step(env, A[last_act]); continue
             if all(t in reg["cells"] for t in tgt9):
                 print(f"  [it{it}] OUTLINE PLACED bbox={reg['bbox']} covers {tgt9}")
                 break
             tgt_cen = ((rect[0] + rect[1]) // 2, (rect[2] + rect[3]) // 2)
             avoid = (ob[0] - th, ob[1] - tw, ob[2] + th, ob[3] + tw)
-            act = _l5_route(mk, tgt_cen, 0, list(sbox.values()) + [avoid], walls, DIRMAP, MOVE_IDS)
-            obs = step(env, A[act] if act else A[5]); continue
+            act = _l5_route(mk, tgt_cen, 0, list(sbox.values()) + [avoid], walls, DIRMAP, MOVE_IDS) or 1
+            last_act = act
+            obs = step(env, A[act]); continue
     else:
-        print(f"  outline leg unfinished phase={phase} pcen={pcen}")
+        g = canonical_layer(obs)
+        mk2 = marker(g) or (0, 0)
+        print(f"  outline leg UNFINISHED phase={phase} sel={sel} reg={region_at(g, mk2, sboxes)}")
 
 
 if __name__ == "__main__":
