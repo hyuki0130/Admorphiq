@@ -2,7 +2,7 @@
 round: r59
 axis: script25 depth (kernel expressiveness) — faithful-sim + learned-operator wave 2
 keywords: [m0r0, pressure-plate, gates, bp35, frontier-exploration, su15, enemy-in-sim, re86, separation-by-motion, sk48, lockstep, reachability, lp85, twist-topology, ls20, moving-changer, r59s1, full-25]
-verdict: PASS — official card 18.02% → 21.56% → 22.25% → 26.38% → 27.25% → 27.80% → 28.47% → 29.25% → 29.53% → 30.53% (first 30% crossing) → 30.61% → 31.08% → **31.57% (r59s12, 2026-07-19 03:44)**; fifteen consecutive single-diff-verified runs
+verdict: PASS — official card 18.02% → 21.56% → 22.25% → 26.38% → 27.25% → 27.80% → 28.47% → 29.25% → 29.53% → 30.53% (first 30% crossing) → 30.61% → 31.08% → 31.57% → **31.79% (r59s13, 2026-07-19 04:06)**; sixteen consecutive single-diff-verified runs
 commit: 9b8e2e8 (r59s1 HEAD) / cc1e4dc (r59s2 HEAD) / f8144df-era (r59s3 HEAD); landings: bc04e63, 6b6ad2e, b2128c9, 36d23cd, 3b6c11c, 0197b8b, fa8e3bc, 12bda52, a1701f9, 0abeb0d, 2bdea69, e698ed8(ls20 L5), 02fe3d8, f677aed, 9647858, e536f65
 ---
 
@@ -145,6 +145,23 @@ identical to L3 — lowering the static gate would regress L2/L3 from 1.0; §R72
 arc: 3/8 → 6/8 across four rounds (time-series learner, scale-robust thresholds,
 corner-square extraction, occlusion-robust coupled maps — four generic perception/learning
 upgrades).
+
+## r59s13 official (2026-07-19 04:06 KST, ceph-build, @5000) — **31.79%**
+
+`games=25 total=7.9468 → 31.79%`. ONE row moved vs r59s12: lp85 0.4222 → **0.4769 (7/8)** via
+the L7 failure-triggered coupled retry (a26a20f): L7 is frame-count-identical to L3, so
+instead of the banked prophylactic coupling probe, the coupled path arms ONLY when the
+single-press planner returns None — "did the normal planner fail?" IS the discriminator.
+L2/L3/L5 win on single-press and never reach the retry (byte-identical, zero extra presses);
+L7 clears in 49a = 0.282. Design principle worth naming: **prefer failure-triggered fallback
+over prophylactic probing when the failure itself is observable and cheap**. lp85 session arc
+R70–R74: 3/8 → 7/8. L8 attempted (R74, bank a7b1cc8): footprint-adaptive K learned 44/45
+cells with PERFECT reconciliation and a GT 18-press solution EXISTS under budget, but the 3
+coupled rings (D=14/E=16/F=15) are spatially INTERLEAVED + colour-duplicated — separation
+defeats K=20 and gap-4 clustering; both fixes measured card-neutral and REVERTED (clean 7/8,
+zero dead code); multi-session bank with three candidate directions. Also the THIRD
+stale-frame park refuted by settled-frame verification (L8's "movers=3/dests=2" was an
+artifact) — verify-don't-trust-parks again.
 
 ## Post-measurement landings (in HEAD, not in r59s1; next full-25 picks them up)
 
