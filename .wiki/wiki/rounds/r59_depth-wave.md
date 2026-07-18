@@ -2,7 +2,7 @@
 round: r59
 axis: script25 depth (kernel expressiveness) — faithful-sim + learned-operator wave 2
 keywords: [m0r0, pressure-plate, gates, bp35, frontier-exploration, su15, enemy-in-sim, re86, separation-by-motion, sk48, lockstep, reachability, lp85, twist-topology, ls20, moving-changer, r59s1, full-25]
-verdict: PASS — official card 18.02% → 21.56% → 22.25% → 26.38% → 27.25% → 27.80% → 28.47% → 29.25% → 29.53% → 30.53% (first 30% crossing) → **30.61% (r59s10, 2026-07-19 02:03)**; thirteen consecutive single-diff-verified runs
+verdict: PASS — official card 18.02% → 21.56% → 22.25% → 26.38% → 27.25% → 27.80% → 28.47% → 29.25% → 29.53% → 30.53% (first 30% crossing) → 30.61% → **31.08% (r59s11, 2026-07-19 02:25)**; fourteen consecutive single-diff-verified runs
 commit: 9b8e2e8 (r59s1 HEAD) / cc1e4dc (r59s2 HEAD) / f8144df-era (r59s3 HEAD); landings: bc04e63, 6b6ad2e, b2128c9, 36d23cd, 3b6c11c, 0197b8b, fa8e3bc, 12bda52, a1701f9, 0abeb0d, 2bdea69, e698ed8(ls20 L5), 02fe3d8, f677aed, 9647858, e536f65
 ---
 
@@ -122,6 +122,17 @@ a single press can yield an all-exact single-cycle that is WRONG). New generic k
 learn_successor_from_series. su15 idx6 closed at 6/9 (winnability PROVEN — 8-click oracle;
 both oracle-free routes fail on ONE ±1-step root cause; lag-compensating predictor = reopen).
 lp85 L5 probed: blocker = corner-target detection at render scale (queued #91).
+
+## r59s11 official (2026-07-19 02:25 KST, ceph-build, @5000) — **31.08%**
+
+`games=25 total=7.7696 → 31.08%`. ONE row moved vs r59s10: lp85 0.1814 → **0.2997 (5/8)** via
+the scale-robust detection fix (5551b78): L5's 27×32 grid renders sprites ~4× so EVERY fixed
+pixel threshold mis-fired at once; fix = derived tile unit u with relative thresholds that
+EQUAL the old constants at u=4 (L2-L4 byte-identical) + Jaccard ring grouping + coarse-board
+multipress gate. Bonus: L1 improved 18a/0.892 → 8a/1.0 (disclosed deviation, KEPT — strict
+deterministic improvement). New transfer lesson: scale_relative_thresholds_20260719 ("fixed
+pixel thresholds are scale debt", sibling of the colour-constant lesson). lp85 ladder mapped:
+L6 = dedicated wall (27+ rings, dests mismatch), L7 likely cheap after L6, L8 = L6's class.
 
 ## Post-measurement landings (in HEAD, not in r59s1; next full-25 picks them up)
 
