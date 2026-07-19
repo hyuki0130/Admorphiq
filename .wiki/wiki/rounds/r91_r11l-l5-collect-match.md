@@ -2,8 +2,8 @@
 round: R91
 axis: r11l L5 collect-match build (task #116) — decode + perception + solver + navigation
 keywords: r11l, l5, level5, whkxtx, collect-match, colour-set, puukul, collector, absorb, teleport-absorption, subset-cover, drag-assembly
-verdict: Pass 1 DONE (mechanic decoded live + teleport-absorption). PERCEPTION-WALL RETRACTED — the colour-10 field is a ONE-FRAME ENTRY ARTIFACT (clears after the first action, exactly what the existing _SETTLE_FRAMES gate waits for); on the SETTLED frame all elements detect cleanly (2 collectors, 4 collectibles, 2 real targets). Build proceeds. Floor 4/6 byte-identical.
-commit: (this round)
+verdict: Pass 1-3 built. Mechanic decoded + teleport-absorption; perception-wall RETRACTED (colour-10 = 1-frame entry artifact); collect-match CONTROLLER (detection+solver+closed-loop, MEASURED-correct detection/assign) SHIPPED gated + floor-safe (4/6 @ 0.2594 byte-identical, verified ×2). L5 NOT yet cleared: greedy single-leg controller can't seat the body next to the wall within 60 actions — needs a 2-leg coordinated _plan_creature-style A* + wall pad (precise continuation banked).
+commit: d901501, 6e7da27, cfe8fdd, 061c82d
 ---
 
 # R91 — r11l L5 collect-and-colour-set-match build
@@ -148,5 +148,45 @@ frame-only, colours read from the frame, no hardcoded coordinates):
 The build (perception → subset/assign → closed-loop navigation with teleport
 absorption, re-detecting each step) proceeds from here; probe `_r11l_l5_occlude.py`
 + `_r11l_l5_settled.py` kept.
+
+### R91c — collect-match CONTROLLER built (detection+solver+closed-loop), floor-safe; L5 not yet cleared — navigation-efficiency wall
+
+Commit `061c82d`. The Level-5 handler is implemented in `src/admorphiq/adapters25/r11l.py`,
+gated behind the collect-match signature so L0-L4 are **byte-identical (verified
+4/6 @ 0.2594 twice)**:
+- `_detect_collect_match` — MEASURED-correct on the live board: 2 collectors
+  ((34,34) 2-leg, (52,42) 3-leg), 4 collectibles (8@,9@,11@,14@), 2 targets
+  ({8,9}@(28,13), {11,14}@(9,48)). Key fix over the first cut: cluster legs by
+  NEAREST BODY (colour-0 solid blob, fill≥0.78) — a single leg-proximity threshold
+  can't separate the two collectors (their legs interleave: inter-collector 13 <
+  intra 18). The body-fill discriminator (`_CM_BODY_FILL=0.78`: collector body
+  ~0.84 vs collectible ~0.7) is what keeps the gate OFF on L0-L4 coloured bodies.
+- `_setup_collect_match` — subset-cover + cheaper collector↔target permutation
+  (both L5 permutations are near-equal cost; picked the marginally cheaper).
+- `_collect_step`/`_collect_place` — closed-loop greedy single-leg controller,
+  re-detects each step, teleport-absorption model, learns engine-refused cells
+  (`_cm_bad`, the R88 under-covering-wall pattern) so it reroutes.
+
+**The wall (navigation efficiency).** Traced live (`scripts/_r11l_l5_trace.py`,
+`R11L_DEBUG=1`): the controller activates and assigns correctly but absorbs
+NOTHING and burns the 60-action budget. Root cause is measured, not guessed: to
+put the body centroid on a wall-adjacent collectible (e.g. 14@(53,19)) with ONE
+leg fixed, the moved leg would need row ~71 (off-board), so the greedy keeps
+proposing row-61 cells that the engine's true wall REFUSES (frame hazard
+under-covers it). Learned-refusal reroutes but there are too many wall cells to
+mark within 60 actions. **A single-leg greedy cannot seat the body next to the
+wall; it needs a 2-LEG COORDINATED plan** — exactly the shape of the existing
+`_plan_creature` A* (ordered single-leg moves landing the body in a target box
+while every intermediate centroid avoids a hazard).
+
+**Precise continuation (next pass):** replace the greedy `_collect_pick_move`
+with a `_plan_creature`-style A* over the collector's FULL leg config, goal =
+body centroid within `_CM_ABSORB_TOL` of the next collectible (then the target
+box), hazard = wall PLUS the wrong collectibles (avoid over-absorbing), and PAD
+the wall hazard a cell (the collectibles sit near the wall, so a few refusals are
+unavoidable — pad to cut them). Then handle the post-absorption re-detection: once
+a collector absorbs, its body GAINS colour (no longer colourless) — `_detect_collect_match`
+must track a collector that has turned coloured (match by body POSITION continuity,
+not just the colourless test). Probe `_r11l_l5_trace.py` kept.
 
 Related: [[r89_r11l-l5-probe]] · [[r85_r11l-strike-aware-assembly]] · [[../games/R11L]].
