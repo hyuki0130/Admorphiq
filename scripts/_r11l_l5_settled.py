@@ -9,8 +9,7 @@ from arc_agi import Arcade, OperationMode
 from arcengine import GameAction
 
 from admorphiq.adapters25.base import canonical_layer, most_common_color
-from admorphiq.adapters25.r11l import _fill, _hazard_cells, _is_hud_band
-from admorphiq.adapters25.r11l import Adapter
+from admorphiq.adapters25.r11l import Adapter, _fill, _hazard_cells, _is_hud_band
 from admorphiq.kernels import find_regions
 
 
