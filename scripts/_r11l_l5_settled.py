@@ -61,7 +61,8 @@ def main() -> None:
     # legs = colour 3/0 crosses.
     print("\n=== classification attempt ===")
     legs = [r for r in regs if r["color"] in (0, 3, 4) and 8 <= r["size"] <= 16]
-    print(f"legs (col 0/3/4, sz8-16): {[(r['color'], (round(r['centroid'][0]),round(r['centroid'][1]))) for r in legs]}")
+    leg_info = [(r["color"], (round(r["centroid"][0]), round(r["centroid"][1]))) for r in legs]
+    print(f"legs (col 0/3/4, sz8-16): {leg_info}")
     colourful = [r for r in regs if r["color"] in (6, 7, 8, 9, 11, 12, 13, 14, 15)]
     # group colourful by proximity into rings/blobs
     used = [False] * len(colourful)
