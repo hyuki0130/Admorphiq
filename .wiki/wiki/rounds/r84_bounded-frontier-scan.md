@@ -27,7 +27,7 @@ bounded candidate exists (r11l L1).
 | **ar25** | 2/8 @0.0833 | L2 | MULTI-SESSION | "well beyond one bounded pass; banked docs-only; closes the sprint at 2/8"; reopen = a JOINT geared-coverage kernel (two-mode control model first). |
 | **vc33** | 1/7 @0.0357 | L1 | MULTI-SESSION | "L1+ banked (no gold oracle) … beyond a bounded pass and not a small gated fix." |
 | **bp35** | 1/9 @0.0145 | L1 | MULTI-SESSION | reopen "REVISED — harder than the original"; the path-opening blocks are OFF-SCREEN above the viewport (needs viewport-scroll reconstruction). |
-| **sp80** | 2/6 @0.1429 | L2 | MULTI-SESSION | L1 cleared (bounded); "L2+ (angled deflectors) stay graph fallback" — needs a new deflector flow-rule model, not a bounded tweak. |
+| **sp80** | 2/6 @0.1429 | L2 | MULTI-SESSION | ⚠️ **premise CORRECTED by [[r92_sp80-l2-premise-correction]]**: L2 has NO angled deflectors (the "L2+ deflector flow-rule" citation was a MISDIAGNOSIS — those sprite tags don't exist; real deflectors are L5/L6). L2 = straight-block multi-source/multi-piece coverage, SAME physics as L1. Still MULTI-SESSION, but for multi-piece perception/tracking (self-inflicted merge), NOT a new flow rule. |
 | **r11l** | 1/6 @0.0476 | L1 (idx1) | **OPEN-BOUNDED (marginal)** | "Grouping, body-exclusion, strike-avoidance are SOLVED; only edge-placement feasibility remains." Untried option (a): **learn the placeable region from observed click→move successes** instead of the frame `is_free` predicate (which fails under the DISPLAY→GRID camera transform near the octagon wall). |
 
 ## Ranked OPEN-BOUNDED opportunities (by RHAE gain = level-weight × plausibility)
