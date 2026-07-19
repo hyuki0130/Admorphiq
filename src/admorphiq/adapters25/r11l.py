@@ -234,6 +234,11 @@ _CM_ABSORB_TOL = 4
 # single-leg moves; this covers the arrangement within the 60-action engine
 # budget without spinning if a waypoint is unreachable.
 _CM_MAX_MOVES = 56
+# A place click STARTS the drag (havofgepjpl=1) but the leg only reaches the
+# destination on the FOLLOWING engine step — so success is detected by the leg
+# ARRIVING at the dest, re-issuing the place until it does; this many re-issues
+# without arrival means the placement was genuinely refused.
+_CM_PLACE_WAIT = 6
 
 
 def near_d2(a: Cell, b: Cell) -> int:
@@ -1770,6 +1775,10 @@ class Adapter(GameAdapter):
         cm = self._detect_collect_match(grid, bg, hazard)
         if cm is None:
             # Detection momentarily lost (legs mid-transit) — idle a frame.
+            if os.environ.get("R11L_DEBUG"):
+                import sys
+
+                print(f"[cm] DETECT-NONE legs={self._cm_leg_cells(grid, bg, hazard)}", file=sys.stderr, flush=True)
             return self._safe_wait_cell(grid, bg)
         collectors, collectibles, targets = cm
         if self._cm_ci >= len(self._cm_assign):
@@ -1825,24 +1834,26 @@ class Adapter(GameAdapter):
         """The place phase for the collect-match controller: click the destination,
         re-issue until the drag settles, then re-decide (whether or not the move
         fired — a refused placement just replans greedily). No strike on Level 5, so
-        no strike, but a placement whose footprint clips the true wall is REFUSED
-        (the frame hazard under-covers it) — a refused dest is learned as bad so the
-        greedy controller reroutes instead of re-picking it."""
-        settled = self._fc_place_issued and masked == self._fc_place_masked
-        stuck = self._fc_place_count > _PLACE_STUCK_LIMIT
-        if settled or stuck:
-            legs_now = self._cm_leg_cells(grid, bg, _hazard_cells(grid, bg))
-            assert self._fc_dest is not None
-            moved = any(near_d2(self._fc_dest, leg) <= _BODY_CENTROID_TOL2 for leg in legs_now)
-            if not moved:
-                self._cm_bad.add(self._fc_dest)  # engine refused this cell
-            self._reset_move()
+        no strike. A place click STARTS the drag but the leg only ARRIVES at the
+        destination on the following engine step, so success is verified by a leg
+        actually reaching the dest — the place is re-issued until it does. Only after
+        ``_CM_PLACE_WAIT`` re-issues without arrival is the cell learned as genuinely
+        refused (so the controller reroutes). (The earlier masked-unchanged "settle"
+        fired one step too early — the drag-start frame is identical to the pre-click
+        frame — and wrongly marked good cells bad, freezing every leg.)"""
+        assert self._fc_dest is not None
+        legs_now = self._cm_leg_cells(grid, bg, _hazard_cells(grid, bg))
+        if any(near_d2(self._fc_dest, leg) <= _BODY_CENTROID_TOL2 for leg in legs_now):
+            self._reset_move()  # a leg reached the destination → move succeeded
             self._cm_moves_done += 1
             return self._collect_step(grid, bg, masked)
         self._fc_place_count += 1
-        self._fc_place_issued = True
-        self._fc_place_masked = masked
-        return self._fc_dest
+        if self._fc_place_count > _CM_PLACE_WAIT:
+            self._cm_bad.add(self._fc_dest)  # never arrived → engine refused it
+            self._reset_move()
+            self._cm_moves_done += 1
+            return self._collect_step(grid, bg, masked)
+        return self._fc_dest  # re-issue; let the drag complete
 
     # ── measurement: record the observed transition ─────────────────────
 
