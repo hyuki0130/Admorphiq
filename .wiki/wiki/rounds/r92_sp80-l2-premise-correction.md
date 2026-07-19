@@ -70,6 +70,33 @@ Live trace of the current adapter on L2 (`scratchpad/probe_sp80_l2*.py`):
 5. Gate the multi-source path on an L2-class signature (≥3 sources OR ≥4 pieces)
    so L0/L1 stay byte-identical (floor SACRED: L0 1.0 / L1 1.0).
 
+## Faithfulness addendum (measured — changes the build plan)
+
+Ported the engine spill droplet-BFS offline (`scratchpad/sp80_faithful.py`):
+
+- **`simulate_flow` is NOT faithful for L2.** Engine covers 2/3 targets with
+  NO blocks (side sources self-satisfy by spreading AROUND the cup corner into
+  the mouth); `simulate_flow` reports 0/3 (it flows THROUGH non-interior target
+  corner cells + ignores the hazard). So Pass 2 cannot reuse the existing flow
+  kernel as the L2 oracle — it needs the faithful spread-around + wall-hazard
+  semantics. L0/L1 clear only because their geometry stays in the kernel's
+  faithful mouth-aligned regime.
+- **Hazard fatal + straight blocks only SPLIT.** Any droplet touching the y=15
+  wall fails the level even with all targets satisfied. Water is never absorbed.
+  The middle source (x=6, a non-cup column) must be steered into cup1, but a
+  straight block SPLITS a stream (only L5/L6 `tuvkdkhdokr` turn one) → the other
+  branch heads for a hazard column. A 60k random 4-block search found 0 hazard-
+  free 3/3 layouts — but L2 HAS a human baseline so it IS solvable; the 0-wins
+  reflects random search being a poor solver over 4 independent blocks (needs
+  structured CHANNELING), not hardness. Border `bodekplurlf16` = OFF-grid ring
+  only; the fatal wall is the in-grid y=15 `waoewejnqzc` row.
+
+**Pass-2 step 0 (revised):** validate the port against the live engine on the
+known L0/L1 winners (reproduce offline), THEN run a proper channeling search
+(BFS/greedy over placements) with the faithful oracle — not random — to find the
+hazard-free covering layout, then wire perception (pristine 4-piece snapshot +
+colour-9 tracking) + execution around it.
+
 ## Next-pass state
 
 Pass 2 = the perception/tracking rebuild per the spec above, in a separate
