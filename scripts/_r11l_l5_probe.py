@@ -77,7 +77,7 @@ def main() -> None:
         tgt = data["gosubdcyegamj"]
         bstr = f"{body.name}@{sprite_box(body)} col={pos_colours(body)}" if body else "None"
         tstr = f"{tgt.name}@{sprite_box(tgt)} col={pos_colours(tgt)}" if tgt else "None"
-        lstr = [f"{l.name}@({l.x},{l.y}) col={pos_colours(l)}" for l in legs]
+        lstr = [f"{lg.name}@({lg.x},{lg.y}) col={pos_colours(lg)}" for lg in legs]
         print(f"  [{name!r}] dirwzt={'dirwzt' in name}")
         print(f"      body(collector)={bstr}")
         print(f"      target={tstr}")

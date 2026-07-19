@@ -8,8 +8,7 @@ from arc_agi import Arcade, OperationMode
 from arcengine import GameAction
 
 from admorphiq.adapters25.base import canonical_layer, most_common_color
-from admorphiq.adapters25.r11l import _fill, _hazard_cells, _is_hud_band
-from admorphiq.adapters25.r11l import Adapter
+from admorphiq.adapters25.r11l import Adapter, _fill
 from admorphiq.kernels import find_regions
 
 
@@ -29,7 +28,9 @@ def main() -> None:
             break
         steps += 1
         if obs.state.name == "GAME_OVER":
-            obs = env.step(GameAction.RESET); steps += 1; continue
+            obs = env.step(GameAction.RESET)
+            steps += 1
+            continue
         if int(getattr(obs, "levels_completed", 0) or 0) >= 4:
             break
 

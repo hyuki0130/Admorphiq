@@ -9,7 +9,7 @@ from arc_agi import Arcade, OperationMode
 from arcengine import GameAction
 
 from admorphiq.adapters25.base import canonical_layer, most_common_color
-from admorphiq.adapters25.r11l import _fill, _hazard_cells, _is_hud_band, Adapter
+from admorphiq.adapters25.r11l import Adapter, _fill, _is_hud_band
 from admorphiq.kernels import find_regions
 
 
@@ -29,7 +29,9 @@ def main() -> None:
             break
         steps += 1
         if obs.state.name == "GAME_OVER":
-            obs = env.step(GameAction.RESET); steps += 1; continue
+            obs = env.step(GameAction.RESET)
+            steps += 1
+            continue
         if int(getattr(obs, "levels_completed", 0) or 0) >= 4:
             break
 
@@ -48,7 +50,8 @@ def main() -> None:
         for lg in legs:
             print(f"  leg {name}: ({lg.x},{lg.y}) {lg.width}x{lg.height}")
     for c in game.owuypsqbino:
-        print(f"  collectible {c.name}: ({c.x},{c.y}) {c.width}x{c.height} col={{int(x) for x in np.unique(c.pixels) if x>0}}")
+        cols = {int(x) for x in np.unique(c.pixels) if x > 0}
+        print(f"  collectible {c.name}: ({c.x},{c.y}) {c.width}x{c.height} col={cols}")
 
     print("\n=== FRAME REGIONS (size>=4, sorted by colour then size) ===")
     print(f"{'col':>4} {'sz':>4} {'fill':>5} {'centroid':>12} {'bbox':>20} {'hud':>4}")
@@ -67,13 +70,15 @@ def main() -> None:
         if used[i]:
             continue
         ci = ri["centroid"]
-        group = [ri]; used[i] = True
+        group = [ri]
+        used[i] = True
         for j in range(i+1, len(small)):
             if used[j]:
                 continue
             cj = small[j]["centroid"]
             if abs(ci[0]-cj[0]) <= 4 and abs(ci[1]-cj[1]) <= 4:
-                group.append(small[j]); used[j] = True
+                group.append(small[j])
+                used[j] = True
         cols = {g["color"] for g in group}
         rows = [g["bbox"][0] for g in group]+[g["bbox"][2] for g in group]
         colsb = [g["bbox"][1] for g in group]+[g["bbox"][3] for g in group]

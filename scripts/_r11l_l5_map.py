@@ -27,7 +27,9 @@ def main() -> None:
             break
         steps += 1
         if obs.state.name == "GAME_OVER":
-            obs = env.step(GameAction.RESET); steps += 1; continue
+            obs = env.step(GameAction.RESET)
+            steps += 1
+            continue
         if int(getattr(obs, "levels_completed", 0) or 0) >= 4:
             break
 
