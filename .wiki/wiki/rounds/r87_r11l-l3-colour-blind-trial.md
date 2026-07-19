@@ -58,13 +58,26 @@ falsified in R86); the crack came from a discriminator R86 missed.
   goal-in-box near the central obstacle — measured @600, per-level [7,36,54]); padding
   only the intermediate moves (goal at true half) thrashes (timeout, no clear). Both
   fail the "L3 must still clear" constraint; reverted to R87 (ba4b39e).
-- **The real efficiency lever = the REPLAN-CHURN, and it is NOT bounded.** The 172a
-  is strike-triggered replans that re-place already-placed creatures, because
-  `_build_move_plan` re-groups legs to creatures via colour anchors
-  (`_frozen_colors`/`_detect_bodies`) that are UNRELIABLE for MULTI-COLOUR bodies.
-  Fixing it = PERSIST the leg→creature assignment across replans (track each leg
-  through transit) instead of re-detecting by colour — a detection/grouping
-  restructure (a dedicated round, real regression risk to the 4/6), not a tweak.
+- **The persistent-leg-tracking restructure ALSO FAILED (R88 task #114, ⛔) — the
+  churn's re-detection VARIABILITY was load-bearing.** Built it: `_creature_legs`
+  seeded from the build grouping, updated on each verified move, `_build_move_plan`
+  reads it (colour-blind path only) instead of re-detecting. L0-L2 stayed
+  byte-identical (7/36/54), but **L3 REGRESSED to 3/6 with 11 strikes** (was 2).
+  Root cause: with tracking the replan is fully DETERMINISTIC, so after a strike it
+  regenerates the SAME striking plan on the central obstacle — the learned-hazard
+  doesn't fix it because the frame hazard misses the true (non-hazard-coloured)
+  obstacle cell, so the new plan just strikes a different missed cell, looping to 11
+  strikes and losing the clear. The re-detection "churn" I tried to remove was
+  accidentally load-bearing: its frame-to-frame variability let the planner ESCAPE
+  strike loops. Reverted to R87 (ba4b39e).
+- **VERDICT: 4/6 @ 0.2594 is the honest ceiling for L3 efficiency.** Both efficiency
+  levers (hazard-pad, leg-tracking) fail at the SAME root: the frame hazard set does
+  not match the engine's obstacle pixels (part of `defgjl-Level7` renders as
+  non-hazard colours). Any deterministic single-life planner strike-loops there; the
+  only thing that clears is the stochastic re-detect+learn+replan loop (172a). A real
+  fix needs a FAITHFUL body-obstacle model (recover the exact obstacle mask the
+  engine collides against) — a perception research problem, not a planner tweak. ⛔
+  do not re-try pad or tracking.
 - **L5** (5th level) uncracked — a further multi-creature level; next depth round.
 
 Related: [[r85_r11l-strike-aware-assembly]] · [[r86_r11l-l3-connectivity-detection]]
