@@ -1646,17 +1646,24 @@ class Adapter(GameAdapter):
         self._cm_body = [c[0] for c in collectors]
         self._piece_half = 2
 
+        def manh(a: Cell, b: Cell) -> int:
+            return abs(a[0] - b[0]) + abs(a[1] - b[1])
+
         def path_cost(body: Cell, tgt: Any) -> int:
+            # MANHATTAN travel (proportional to leg-move count), NOT squared distance
+            # — squared over-penalises one long hop and mis-assigns the collector far
+            # from a wall-adjacent collectible to it (measured: it sent whkxtx across
+            # the board to a piece whkxtx-2 was already sitting next to).
             cols, centre, _box = tgt
             remaining = [p for c, p in collectibles if c in cols]
             cur = body
             cost = 0
             while remaining:
-                nxt = min(remaining, key=lambda p: near_d2(cur, p))
-                cost += near_d2(cur, nxt)
+                nxt = min(remaining, key=lambda p: manh(cur, p))
+                cost += manh(cur, nxt)
                 cur = nxt
                 remaining.remove(nxt)
-            return cost + near_d2(cur, centre)
+            return cost + manh(cur, centre)
 
         n = len(collectors)
         best_perm: tuple[int, ...] | None = None
@@ -1698,34 +1705,56 @@ class Adapter(GameAdapter):
         avoid_pts: list[Cell],
         other_legs: list[Cell],
     ) -> tuple[Cell, Cell] | None:
-        """Greedy single-leg move: pick ``(from_leg, dest)`` that minimises the
-        resulting body centroid's distance to ``goal``, subject to the new centroid
-        NOT landing on a wrong collectible (``avoid_pts`` — over-absorbing a foreign
-        colour breaks the win colour-set), legs staying ``_LEG_SEP`` apart (own +
-        the other collector's), and the dest footprint being placeable."""
+        """Pick the next single-leg move ``(from_leg, dest)`` toward seating the body
+        CENTROID exactly on ``goal``. A single greedy leg move cannot reach a goal
+        next to the wall (the other leg fixed would need an off-board cell), so the
+        FINAL leg configuration is solved for BOTH legs with ``points_with_centroid``
+        (the proven L0 kernel: cells whose floor-centroid == goal, minimal moves from
+        the current legs, each footprint placeable). We then step ONE leg toward its
+        solved cell, choosing an order whose intermediate centroid does not sweep a
+        wrong collectible (``avoid_pts`` — over-absorbing a foreign colour breaks the
+        win colour-set). The wall footprint is padded a cell (its true mask
+        under-covers the frame hazard); a learned-refused cell (``_cm_bad``) is
+        excluded; a wall-adjacent goal that admits no padded config falls back to the
+        tight footprint."""
         n = len(legs)
         if n == 0:
             return None
-        cands = self._move_candidates(grid, hazard, goal, set(other_legs))
-        best: tuple[Cell, Cell] | None = None
-        best_key: int | None = None
+        height, width = len(grid), len(grid[0])
+        half = self._piece_half
+        avoid_other = set(other_legs)
+
+        def free(pad: int) -> Any:
+            def _is_free(cell: Cell) -> bool:
+                if any(self._cheb(cell, b) <= 1 for b in self._cm_bad):
+                    return False
+                if not self._box_clear(cell, half + pad, hazard, height, width, True):
+                    return False
+                return all(self._cheb(cell, a) >= _LEG_SEP for a in avoid_other)
+
+            return _is_free
+
+        dests: list[Cell] | None = None
+        for pad in (1, 0):
+            dests = points_with_centroid(goal, n, free(pad), current=legs)
+            if dests is not None:
+                break
+        if dests is None:
+            return None
+        # Step ONE leg toward its solved cell; prefer an order whose intermediate
+        # body centroid avoids the wrong collectibles.
+        fallback: tuple[Cell, Cell] | None = None
         for i in range(n):
-            for dest in cands:
-                if dest == legs[i]:
-                    continue
-                if any(self._cheb(dest, b) <= 1 for b in self._cm_bad):
-                    continue  # the engine refused this cell before — do not re-pick
-                if any(self._cheb(dest, legs[j]) < _LEG_SEP for j in range(n) if j != i):
-                    continue
-                new_legs = legs[:i] + [dest] + legs[i + 1 :]
-                nb = (sum(p[0] for p in new_legs) // n, sum(p[1] for p in new_legs) // n)
-                if any(self._cheb(nb, ap) <= _CM_ABSORB_TOL for ap in avoid_pts):
-                    continue
-                key = near_d2(nb, goal)
-                if best_key is None or key < best_key:
-                    best_key = key
-                    best = (legs[i], dest)
-        return best
+            if tuple(legs[i]) == tuple(dests[i]):
+                continue
+            new_legs = legs[:i] + [dests[i]] + legs[i + 1 :]
+            nb = (sum(p[0] for p in new_legs) // n, sum(p[1] for p in new_legs) // n)
+            if fallback is None:
+                fallback = (legs[i], dests[i])
+            if any(self._cheb(nb, ap) <= _CM_ABSORB_TOL for ap in avoid_pts):
+                continue
+            return (legs[i], dests[i])
+        return fallback
 
     def _collect_step(self, grid: Grid, bg: int, masked: Grid) -> Cell | None:
         """One collect-match controller click. Drives the ACTIVE collector's body
