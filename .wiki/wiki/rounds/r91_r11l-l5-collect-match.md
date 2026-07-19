@@ -179,7 +179,36 @@ wall; it needs a 2-LEG COORDINATED plan** — exactly the shape of the existing
 `_plan_creature` A* (ordered single-leg moves landing the body in a target box
 while every intermediate centroid avoids a hazard).
 
-**Precise continuation (next pass):** replace the greedy `_collect_pick_move`
+### R91d — nav planner + assignment fixed; wall = arena-WALL PLACEABILITY under-coverage (learned-placeability is the fix)
+
+Commits `cdc56ab` (+ `061c82d`). Two improvements shipped (floor byte-identical
+4/6 @ 0.2594, 8 tests green): (1) `_collect_pick_move` now solves BOTH legs' final
+cells with `points_with_centroid` (seats the centroid exactly on the goal) instead
+of a greedy one-leg step; (2) `_setup_collect_match` uses MANHATTAN path cost — the
+squared cost mis-assigned the FAR collector to a wall-adjacent collectible; Manhattan
+gives the natural assignment (whkxtx→{8,9}, whkxtx-2→{11,14}, verified).
+
+**Root cause of the non-clear, now ISOLATED (manual engine probe, disposable):**
+select→place DOES work on L5 and is PREDICTABLE — a manual place moved a whkxtx leg
+and the leg CENTER lands at the clicked frame cell (engine `leg = click − half`, a
+near-identity transform, NOT a rotation despite the wakneh-90° wall). So the
+controller's legs-don't-move is NOT a coordinate/select bug: the solved cells near a
+goal are ENGINE-REFUSED because the frame hazard SIGNIFICANTLY UNDER-COVERS the L5
+octagon wall (the R59/R88 lesson), and `points_with_centroid` keeps proposing
+wall-marginal cells (learned-refusal + a 1-cell pad don't cover enough of the gap
+within 60 actions). Cells were refused even top-center, confirming the frame wall
+model is too thin.
+
+**Precise continuation (the real fix = LEARNED PLACEABILITY, R59's original r11l
+reopen):** don't trust the frame `is_free`/hazard for wall cells — LEARN the
+placeable region online from observed click→move outcomes (a placement that fires =
+that cell is free; a refused one = blocked), and feed that learned mask to
+`points_with_centroid`'s `is_free`. Seed it by probing a few placements at level
+start. This is the same "learn which cells accept a leg" lever R59 named for L1 and
+is now the gating piece for L5's collect-match navigation. THEN handle the
+post-absorption re-detection (below).
+
+**Superseded earlier guess (kept for the record):** replace the greedy `_collect_pick_move`
 with a `_plan_creature`-style A* over the collector's FULL leg config, goal =
 body centroid within `_CM_ABSORB_TOL` of the next collectible (then the target
 box), hazard = wall PLUS the wrong collectibles (avoid over-absorbing), and PAD
