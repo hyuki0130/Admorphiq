@@ -1629,8 +1629,12 @@ dc22) or a learned reflection/flow kernel (ar25/sp80 super-human L0) or goal-dir
 (tu93); pattern named in `.wiki/wiki/lessons/faithful_offline_simulator_20260715.md`. New-structure
 PARK list (honestly banked WITH decoded mechanics, not failures): ar25 L1 (parallel-mirror double
 reflection), lp85 L4 (dense 20-ring self-test), su15 L3+ (enemy-reversed cascade), sk48 L3+
-(non-ACTION6 `sys_click`), bp35 / g50t / re86 / s5i5 / sc25 / tr87 / wa30. **Card = 32.94% official
-(r59s16, @5000, ceph-build, landed 2026-07-19 07:57; sequence r56s9 18.02 →
+(non-ACTION6 `sys_click`), bp35 / g50t / re86 / s5i5 / sc25 / tr87 / wa30. **Card = 32.96% official
+(r59s17, @5000, ceph-build, landed 2026-07-19 10:04; r11l 4/6 @0.2594 — L3 cleared via
+colour-blind connectivity detection + NESTED colour-set discriminator + trial net; both L3
+efficiency levers ⛔ (stochastic re-detect churn is LOAD-BEARING — frame hazard
+under-covers the engine obstacle mask); r11l L5 = collect-and-colour-set-match,
+multi-session, committed as the first post-R84 multi-session build. Sequence r56s9 18.02 →
 … → 31.79 → 32.68 (r59s14: **lp85 FULLY CONQUERED 8/8 @0.6992, the SIXTH conquest**, L8
 super-human 47a/159h=1.0 via open-chain geometric repair — the colour bijection's cycle
 decomposition IS the ring separator; complete-vs-incomplete-permutation gate) → 32.11

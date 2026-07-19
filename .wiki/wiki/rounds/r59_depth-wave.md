@@ -2,7 +2,7 @@
 round: r59
 axis: script25 depth (kernel expressiveness) — faithful-sim + learned-operator wave 2
 keywords: [m0r0, pressure-plate, gates, bp35, frontier-exploration, su15, enemy-in-sim, re86, separation-by-motion, sk48, lockstep, reachability, lp85, twist-topology, ls20, moving-changer, r59s1, full-25]
-verdict: PASS — official card 18.02% → 21.56% → 22.25% → 26.38% → 27.25% → 27.80% → 28.47% → 29.25% → 29.53% → 30.53% (first 30% crossing) → 30.61% → 31.08% → 31.57% → 31.79% → 32.68% → 32.11% (r59s15 ENV-CORRECTION) → **32.94% (r59s16, 2026-07-19 07:57)** — r11l 3/6 strike-aware planner; lp85 FULLY CONQUERED 8/8 (sixth conquest); first full loader-line audit 25/25 clean
+verdict: PASS — official card 18.02% → 21.56% → 22.25% → 26.38% → 27.25% → 27.80% → 28.47% → 29.25% → 29.53% → 30.53% (first 30% crossing) → 30.61% → 31.08% → 31.57% → 31.79% → 32.68% → 32.11% (r59s15 ENV-CORRECTION) → 32.94% → **32.96% (r59s17, 2026-07-19 10:04)** — r11l 4/6 (L3 nested-discriminator clear); lp85 FULLY CONQUERED 8/8 (sixth conquest); loader audits clean
 commit: 9b8e2e8 (r59s1 HEAD) / cc1e4dc (r59s2 HEAD) / f8144df-era (r59s3 HEAD); landings: bc04e63, 6b6ad2e, b2128c9, 36d23cd, 3b6c11c, 0197b8b, fa8e3bc, 12bda52, a1701f9, 0abeb0d, 2bdea69, e698ed8(ls20 L5), 02fe3d8, f677aed, 9647858, e536f65
 ---
 
@@ -220,6 +220,24 @@ sc25), 6 multi-session parks (dc22/wa30/ar25/vc33/bp35/sp80). r11l L3 follow-ons
 config-space class, plans verified (≈14a); colour-blind leg-grouping SOLVED (2+2+3), wall
 narrowed to target-ring assignment (multi-colour shared bodies → 4-way colour-overlap tie);
 ring-GEOMETRY detection round in flight (R87).
+
+## r59s17 official (2026-07-19 10:04 KST, ceph-build, @5000) — **32.96%**
+
+`games=25 total=8.2396 → 32.96%`. ONE row moved vs r59s16: r11l 0.2551 → **0.2594 (4/6)** via
+the L3 clear (ba4b39e, R87): colour-blind connectivity detection (fill-band split +
+proximity-fused multi-colour bodies, perfect 2+2+3 leg grouping) + the NESTED colour-set
+discriminator (real target ⊆ body or body ⊆ target; decoys always carry a foreign colour —
+uniquely resolves what raw overlap left 4-way tied) + a speculative-target-trial net ("the
+win is the missing sensor"). Loader audit 25/25 clean. HONEST caveat: L3 clears at 172a
+(0.023) — strike-learn churn on the central obstacle. BOTH efficiency levers measured-dead
+and ⛔ banked (4622f37, fb4d181): hazard-pad regresses L3 to 3/6 or thrashes;
+deterministic leg-tracking loops to 11 strikes — **the stochastic re-detect churn is
+LOAD-BEARING** because the frame hazard under-covers the engine's true obstacle mask; the
+real efficiency reopen is a faithful body-obstacle mask (perception research). L5 probed
+(bbac3e2, R89): NEW hybrid collect-and-colour-set-match mechanic (collector absorbs
+collided piece pixels; win = accumulated set EQUALS target set) — multi-session, spec'd,
+committed as the first post-R84 multi-session build (biggest live single-level weight,
+5/21). r11l bounded frontier closes at 4/6; session arc 1/6 → 4/6.
 
 ## Post-measurement landings (in HEAD, not in r59s1; next full-25 picks them up)
 
