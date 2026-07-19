@@ -2,7 +2,7 @@
 round: R91
 axis: r11l L5 collect-match build (task #116) — decode + perception + solver + navigation
 keywords: r11l, l5, level5, whkxtx, collect-match, colour-set, puukul, collector, absorb, teleport-absorption, subset-cover, drag-assembly
-verdict: (in progress) Pass 1 perception CONFIRMED live — mechanic fully decoded, teleport-absorption simplification found; build continues
+verdict: Pass 1 DONE (mechanic fully decoded live + teleport-absorption simplification); Pass 3 BANKED on a frame-PERCEPTION wall — an interface overlay (colour-10 collector-reach field + colour-1 leg->body tendons) occludes/fragments the small collectibles (one, rengnt-8, fully hidden at entry). Multi-session perception round. Floor 4/6 byte-identical (no adapter change).
 commit: (this round)
 ---
 
@@ -66,5 +66,61 @@ body region). Perception is sufficient for a frame-only solver.
   avoids the wrong collectibles; legs stay `_LEG_SEP` apart and off the wall.
 - **Pass 4 compose + gate** behind an L5-specific trigger (colourless-collector /
   puukul-collectible signature) so L0-L4 stay byte-identical.
+
+## Pass 2 — subset + assignment (SPECIFIED, trivial here)
+
+Per target, required collectibles = the subset whose colour UNION == target colour
+set. On L5 each colour maps to exactly one collectible, so: target {8,9} ←
+{rengnt(8), blxuub(9)}; target {11,14} ← {yeogyf(11), grhcew(14)}. Bodies start
+empty and are interchangeable → assign the 2 collectors to the 2 targets by cheaper
+total path. Write it as a general subset-cover over colours so L6 (more `puukul`
+variety) reuses it.
+
+## Pass 3 — navigation: BANKED on a frame-PERCEPTION wall (multi-session)
+
+The L5 render is NOT the clean board L0-L4 detection assumes. An engine interface
+(`xeuvojjxyk`, added in `on_set_level` for this level) draws, ON TOP of the board:
+- **colour-1 tendon LINES** from each leg to its collector body (Bresenham,
+  overwriting only bg/colour-10). 85 cells at entry.
+- a **colour-10 collector-reach FIELD** around the collector body (235 cells,
+  bbox rows 14-57 × cols 13-58 — nearly the whole interior).
+
+Measured consequences on the clean L5-entry frame (`scripts/_r11l_l5_map.py`,
+`_r11l_l5_overlay.py`, disposable):
+- The camera transform is scale=1/offset=0, but frame_row = sprite.y + h//2 and
+  frame_col = sprite.x + w//2 hold for the 7×7 TARGET rings and the collector body,
+  yet the puukul CENTRES land on bg — the small collectibles are DISPLACED /
+  occluded by the overlay, not where the naive map predicts.
+- The 2 real TARGETS are cleanly frame-visible as TWO-colour ~7×7 hollow rings:
+  blxuubrengnt{8,9} and yeogyfgrhcew{11,14} (each a colour-a arc adjacent to a
+  colour-b arc). This is a good discriminator vs the single-colour dirwzt rings.
+- The 4 COLLECTIBLES are single-colour ~5×5 blobs, but **not all are visible at
+  entry**: colour-8 has only 10 cells on the whole frame — all of them the target's
+  8-side ring — so the `rengnt`(8) collectible is FULLY OCCLUDED under the colour-10
+  field. colour-14 shows spurious extra fragments. So a one-shot entry-frame scan
+  cannot see all 4 collectibles.
+
+**The wall = robust frame perception of collectors + collectibles under this
+overlay.** It is a dedicated perception round, not a bounded pass. **Actionable
+leads for the next lane** (the overlay is also SIGNAL):
+1. **Mask the overlay first**: colour-1 and colour-10 are overlay-only (never a game
+   piece) → set them to bg before segmenting. (Verify colour-10 is never a real piece
+   on other levels before shipping any gate.)
+2. **Collectors via the colour-1 tendons OR the leg centroid**: each collector body =
+   the centroid of its own legs; legs are the colour-3/0 crosses (as L0-L4). The
+   colour-1 tendons converge on each body → free leg↔collector grouping (2 groups:
+   2-leg + 3-leg).
+3. **Targets** = the 2 TWO-colour ~7×7 rings (colour-set = the ring's two colours).
+   dirwzt rings are single-colour → skip.
+4. **Occluded collectibles need dynamic re-observation**: the colour-10 field is
+   around the ACTIVE collector (the one whose leg is selected). Selecting the other
+   collector's leg (a click) moves the field and reveals a hidden collectible — so
+   perception must re-scan as the board changes (the R88 stochastic re-detect
+   pattern), not trust the entry frame. This couples with Pass-3 navigation.
+
+Because Pass 3 needs this perception layer first, NO adapter code was written — the
+floor stays byte-identical 4/6 @ 0.2594. Disposable probes kept for the next lane:
+`scripts/_r11l_l5_probe.py` (ground truth), `_r11l_l5_map.py` (grid→frame map),
+`_r11l_l5_overlay.py` (overlay masking + collectible scan).
 
 Related: [[r89_r11l-l5-probe]] · [[r85_r11l-strike-aware-assembly]] · [[../games/R11L]].
