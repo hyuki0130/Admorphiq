@@ -51,10 +51,20 @@ falsified in R86); the crack came from a discriminator R86 missed.
 
 ## Reopen
 
-- **L3 efficiency (single-life clear)** — pad the connectivity-path body-hazard by
-  1 (halves the missed-fringe strikes, measured on L1) and stop the replan-churn
-  that re-places already-placed creatures; a ~54a single-life L3 (score ~0.6) would
-  take r11l game_score 0.259 → ~0.37 (+~0.4pp card). The bigger lever than coverage.
+- **L3 efficiency (single-life clear) — the PAD lever is MEASURED-DEAD (R88 attempt,
+  ⛔ do not re-try).** Padding the connectivity-path body-hazard by 1 does NOT
+  transfer from L1's off-to-side band to L3's central obstacle: padding the body
+  footprint EVERYWHERE regresses L3 to 3/6 (the dilated body can't satisfy
+  goal-in-box near the central obstacle — measured @600, per-level [7,36,54]); padding
+  only the intermediate moves (goal at true half) thrashes (timeout, no clear). Both
+  fail the "L3 must still clear" constraint; reverted to R87 (ba4b39e).
+- **The real efficiency lever = the REPLAN-CHURN, and it is NOT bounded.** The 172a
+  is strike-triggered replans that re-place already-placed creatures, because
+  `_build_move_plan` re-groups legs to creatures via colour anchors
+  (`_frozen_colors`/`_detect_bodies`) that are UNRELIABLE for MULTI-COLOUR bodies.
+  Fixing it = PERSIST the leg→creature assignment across replans (track each leg
+  through transit) instead of re-detecting by colour — a detection/grouping
+  restructure (a dedicated round, real regression risk to the 4/6), not a tweak.
 - **L5** (5th level) uncracked — a further multi-creature level; next depth round.
 
 Related: [[r85_r11l-strike-aware-assembly]] · [[r86_r11l-l3-connectivity-detection]]
