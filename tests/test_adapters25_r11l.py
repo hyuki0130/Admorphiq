@@ -225,6 +225,84 @@ def test_strike_aware_plan_is_body_hazard_free_and_separates_legs():
     assert body not in hazard
 
 
+def _collectible(top, left, color):
+    """A solid single-colour blob (L-shape, bbox 5x3 → ~0.67 fill) matching the
+    game's ``puukul`` collectibles — above the leg fill band, below the fuller
+    collector-body fill."""
+    offs = [(0, 1), (1, 0), (1, 1), (2, 0), (2, 1), (3, 0), (3, 1), (3, 2), (4, 1), (4, 2)]
+    return {(top + dr, left + dc): color for dr, dc in offs}
+
+
+def _tworing(cr, cc, c1, c2):
+    """A HOLLOW 7x7 ring with colour ``c1`` on the left arc and ``c2`` on the
+    right — the collect-match target nest (its colour SET is what a collector must
+    match). Low bbox-fill, two colours."""
+    left = [(-3, -1), (-2, -2), (-1, -3), (1, -3), (2, -2), (3, -1)]
+    right = [(-3, 1), (-2, 2), (-1, 3), (1, 3), (2, 2), (3, 1)]
+    out = {(cr + dr, cc + dc): c1 for dr, dc in left}
+    out.update({(cr + dr, cc + dc): c2 for dr, dc in right})
+    return out
+
+
+def test_collect_match_detects_colourless_collectors_collectibles_and_two_colour_targets():
+    """Purpose (R91): on a Level-5-style collect-match board — two COLOURLESS
+    collectors (a solid colour-0 body at each leg group's centroid), four solid
+    single-colour collectibles (colours 8/9/11/14), and two 2-colour target rings
+    ({8,9} and {11,14}) — ``_detect_collect_match`` returns exactly two collectors,
+    the four collectibles, and the two real targets (their colour SETS the union of
+    collectible colours). Expected feedback: a FAIL means the L5 controller never
+    engages (wrong/absent detection) or mis-reads the goal, so L5 cannot clear —
+    while a false POSITIVE on a coloured-body board (next test) would regress the
+    L0-L4 floor."""
+    ad = Adapter()
+    cells: dict[tuple[int, int], int] = {}
+    # Collector A: colourless (colour-0) body at ~(20,20); legs colour 3.
+    cells.update(_body(18, 18, 0, size=4))
+    cells.update(_leg(10, 20, 3))
+    cells.update(_leg(30, 20, 3))
+    # Collector B: colourless body at ~(20,45); legs colour 0 (a selected leg).
+    cells.update(_body(18, 43, 0, size=4))
+    cells.update(_leg(10, 45, 0))
+    cells.update(_leg(30, 45, 0))
+    # Four collectibles (well clear of the collectors and each other).
+    cells.update(_collectible(5, 5, 8))
+    cells.update(_collectible(5, 55, 9))
+    cells.update(_collectible(55, 5, 11))
+    cells.update(_collectible(55, 55, 14))
+    # Two 2-colour target rings.
+    cells.update(_tworing(40, 20, 8, 9))
+    cells.update(_tworing(40, 45, 11, 14))
+    grid = _grid(cells)
+    hazard = _hazard_cells(grid, _BG)
+    cm = ad._detect_collect_match(grid, _BG, hazard)
+    assert cm is not None
+    collectors, collectibles, targets = cm
+    assert len(collectors) == 2
+    assert {c for c, _p in collectibles} == {8, 9, 11, 14}
+    assert {frozenset(t[0]) for t in targets} == {frozenset({8, 9}), frozenset({11, 14})}
+
+
+def test_collect_match_returns_none_on_coloured_body_drag_board():
+    """Purpose (R91 floor-safety): the collect-match gate must NOT fire on the
+    coloured-body drag-assembly of L0-L4 — every creature there has a COLOURED body
+    whose colour is its own target-ring colour, so no colourless collector remains.
+    Reuses the two-creature drag layout. Expected feedback: a FAIL means collect-
+    match could hijack an L0-L4 frame and regress the sacred 4/6 floor."""
+    ad = Adapter()
+    cells: dict[tuple[int, int], int] = {}
+    for lc in [(10, 10), (10, 30), (30, 20)]:
+        cells.update(_leg(*lc, 3))
+    cells.update(_body(15, 18, 6))
+    cells.update(_ring(50, 10, 6))
+    for lc in [(50, 45), (58, 55)]:
+        cells.update(_leg(*lc, 0))
+    cells.update(_body(52, 48, 9))
+    cells.update(_ring(20, 55, 9))
+    grid = _grid(cells)
+    hazard = _hazard_cells(grid, _BG)
+    assert ad._detect_collect_match(grid, _BG, hazard) is None
+
+
 def test_connectivity_fallback_groups_legs_and_picks_nested_target():
     """Purpose (R87): the colour-BLIND fallback must (a) fuse a MULTI-COLOUR body
     (two adjacent high-fill pieces of different colours) into ONE creature and

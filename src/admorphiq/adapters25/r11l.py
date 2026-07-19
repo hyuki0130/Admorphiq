@@ -112,6 +112,7 @@ Composition from ``admorphiq.kernels``:
 from __future__ import annotations
 
 import heapq
+import itertools
 import os
 from collections import deque
 from typing import Any
@@ -213,6 +214,26 @@ _CLUSTER_SEP = 6
 # the next candidate.
 _TRIAL_TARGET_TOL = 4
 _TRIAL_IDLE_FRAMES = 3
+
+# ── collect-match (Level 5 whkxtx) constants ────────────────────────────────
+# A collector body / collectible piece renders as a SOLID blob (fills most of its
+# bbox); a target NEST is a HOLLOW ring (low fill). Legs are a mid-fill cross.
+# These are structural fill bands (read from the frame), never game constants.
+_CM_BLOB_FILL = 0.6          # solid collectible / collector-body fill floor
+_CM_BODY_FILL = 0.78         # a collector BODY is a fuller solid blob than a
+#                              collectible (measured: body ~0.84, collectible ~0.7)
+_CM_RING_FILL = 0.35         # target ring hollow-fill ceiling
+_CM_LEG_FILL_LO = 0.35       # leg-cross fill band (below the solid-blob floor)
+_CM_LEG_FILL_HI = 0.56
+# Body-centroid <= this chebyshev of a collectible centre ⇒ the 5×5 bodies
+# bbox-overlap ⇒ the engine absorbs it (havofgepjpl=1 teleport: absorption is
+# checked at the body's post-move centroid). Half-extent 2 + 2 = 4.
+_CM_ABSORB_TOL = 4
+# Give-up bound for the collect-match controller (per level): a 2-collector board
+# is ~4 collectibles + 2 targets = a handful of body waypoints, each a few
+# single-leg moves; this covers the arrangement within the 60-action engine
+# budget without spinning if a waypoint is unreachable.
+_CM_MAX_MOVES = 56
 
 
 def near_d2(a: Cell, b: Cell) -> int:
@@ -653,6 +674,28 @@ class Adapter(GameAdapter):
         self._settle_ref: tuple[int, ...] | None = None
         self._settle_count = 0
 
+        # COLLECT-MATCH controller (Level 5 whkxtx). When the collect-match
+        # signature is detected (≥2 colourless collectors = leg-group centroids,
+        # solid single-colour collectibles, 2+-colour target rings), a closed-loop
+        # controller drives one collector at a time: greedily move a single leg so
+        # the body centroid steps toward its next goal (an unabsorbed collectible
+        # whose colour its target needs, then the target), avoiding the OTHER
+        # collector's collectibles (over-absorbing a foreign colour breaks the win
+        # colour-set equality). Re-detects every step (havofgepjpl=1 ⇒ absorption
+        # at the post-move centroid; the board is re-observed after each drag).
+        # ``_cm_assign[ci] = (target_colours, target_centre, target_box)`` fixes
+        # each collector's goal; ``_cm_body[ci]`` tracks its body position across
+        # re-detection (nearest-match); ``_cm_ci`` is the collector in play.
+        self._cm_active = False
+        self._cm_assign: list[tuple[frozenset[int], Cell, tuple[int, int, int, int]]] = []
+        self._cm_body: list[Cell] = []
+        self._cm_ci = 0
+        self._cm_moves_done = 0
+        # Cells whose placement the ENGINE refused (its wall mask under-covered by
+        # the frame hazard — the R88 lesson) — excluded from future move picks so
+        # the greedy controller does not re-pick the same refused destination.
+        self._cm_bad: set[Cell] = set()
+
     # ── harness contract ────────────────────────────────────────────────
 
     def is_done(self, frames: list[Any], latest_frame: Any) -> bool:
@@ -737,6 +780,12 @@ class Adapter(GameAdapter):
         self._trial_idle = 0
         self._reset_move()
         self._fc_trajectory = []
+        self._cm_active = False
+        self._cm_assign = []
+        self._cm_body = []
+        self._cm_ci = 0
+        self._cm_moves_done = 0
+        self._cm_bad = set()
 
     def _reset_move(self) -> None:
         self._fc_phase = None
@@ -757,6 +806,16 @@ class Adapter(GameAdapter):
         # MULTI-creature level the frozen destinations are board-invariant, so
         # keep them and resume driving legs toward the same cells (each life
         # compounds); only the in-flight move is reset.
+        if self._cm_active:
+            # A collect-match restart (budget spent) revives the board to its
+            # initial layout; re-detect and re-set-up fresh (the assignment is
+            # board-invariant) so the controller drives from the true start.
+            self._cm_active = False
+            self._plan_attempted = False
+            self._settle_ref = None
+            self._settle_count = 0
+            self._reset_move()
+            return
         if self._multi:
             # A multi-creature restart means the 5-strike budget was spent; the
             # learned body-hazard cells are kept (each life refines the model),
@@ -842,7 +901,12 @@ class Adapter(GameAdapter):
             # unchanged for a few consecutive frames — a raw frame-equality
             # settle stabilises on transient mid-animation frames. While
             # waiting, click a hazard cell (a refused no-op).
-            sig = self._creature_signature(grid, bg)
+            # Prefer the collect-match signature when that structure is present
+            # (Level 5): it is stable across the entry animation, whereas the
+            # drag-assembly creature signature can transiently fire on L5's solid
+            # blobs. Falls back to the creature signature for L0-L4.
+            _cm0 = self._detect_collect_match(grid, bg, _hazard_cells(grid, bg))
+            sig = self._collect_signature(_cm0) if _cm0 is not None else self._creature_signature(grid, bg)
             if sig is not None and sig == self._settle_ref:
                 self._settle_count += 1
             else:
@@ -857,7 +921,14 @@ class Adapter(GameAdapter):
             hz = _hazard_cells(grid, bg)
             bycolor = _analyze_creatures_bycolor(grid, bg, hz)
             conn = _analyze_creatures_connectivity(grid, bg, hz) if bycolor is None else None
-            if bycolor is not None and len(bycolor) >= 2:
+            cm = self._detect_collect_match(grid, bg, hz) if bycolor is None else None
+            if cm is not None:
+                # Level 5 collect-match: colourless collectors absorb collectibles
+                # to match a target colour set. Its distinct signature (colourless
+                # collectors + colour-set target rings) takes priority — it is
+                # never present on the coloured-body drag-assembly of L0-L4.
+                self._setup_collect_match(grid, bg, cm)
+            elif bycolor is not None and len(bycolor) >= 2:
                 # The proven per-colour path (L0-L2): fixed per-creature targets,
                 # no trial.
                 self._multi = True
@@ -879,6 +950,9 @@ class Adapter(GameAdapter):
                 self._plan_place_issued = False
                 self._plan_last_masked = None
                 self._plan_place_count = 0
+
+        if self._cm_active:
+            return self._collect_step(grid, bg, masked)
 
         if self._multi:
             return self._frozen_step(grid, bg, masked)
@@ -1449,6 +1523,294 @@ class Adapter(GameAdapter):
             self._frozen_moves += 1
             self._reset_move()
             return self._frozen_step(grid, bg, masked)
+        self._fc_place_issued = True
+        self._fc_place_masked = masked
+        return self._fc_dest
+
+    # ── collect-match controller (Level 5 whkxtx) ───────────────────────
+
+    def _detect_collect_match(
+        self, grid: Grid, bg: int, hazard: set[Cell]
+    ) -> tuple[
+        list[tuple[Cell, list[Cell]]],
+        list[tuple[int, Cell]],
+        list[tuple[frozenset[int], Cell, tuple[int, int, int, int]]],
+    ] | None:
+        """Frame-only Level-5 collect-match detection. Returns
+        ``(collectors, collectibles, targets)`` or ``None``:
+          collectors   = ``[(body_centre, [leg_cells])]`` — one per COLOURLESS
+                         collector (a leg group whose centroid carries NO coloured
+                         solid blob; this is what distinguishes L5 from the
+                         COLOURED-body drag-assembly of L0-L4, so the whole gate is
+                         off there).
+          collectibles = ``[(colour, centre)]`` — solid single-colour blobs whose
+                         colour some target needs.
+          targets      = ``[(frozenset colours, centre, box)]`` — HOLLOW rings with
+                         >=2 colours, all of them collectible colours (the `dirwzt`
+                         distractor rings are single-colour or carry a non-collectible
+                         colour, so they drop out).
+        ``None`` unless there are >=2 collectors, >=2 such targets, one collector
+        per target, and >=1 needed collectible. No colour/coordinate constant — only
+        fill bands, sizes, and colour-set structure read from the frame."""
+        height, width = len(grid), len(grid[0])
+
+        def centre(r: Region) -> Cell:
+            return (int(round(r["centroid"][0])), int(round(r["centroid"][1])))
+
+        regs = [
+            r
+            for r in find_regions(grid, background=bg, gap=2)
+            if not (r["cells"] & hazard) and not _is_hud_band(r, height, width)
+        ]
+        # HOLLOW ring fragments carry the target (and dirwzt) colours. Their colours
+        # bound what counts as a "collectible colour" — a solid blob matters only if
+        # its colour appears in a ring (this excludes the puukul sprites' shared
+        # structural-0 halves, whose colour is in no ring).
+        rings = [
+            r
+            for r in regs
+            if _MIN_PIECE_SIZE <= r["size"] <= _MAX_PIECE_SIZE and _fill(r) < _CM_RING_FILL
+        ]
+        ring_colours = {r["color"] for r in rings}
+        solid = [
+            r
+            for r in regs
+            if _MIN_PIECE_SIZE <= r["size"] <= _MAX_PIECE_SIZE and _fill(r) >= _CM_BLOB_FILL
+        ]
+        # Collectibles = the LESS-solid coloured blobs whose colour is a ring colour;
+        # collector BODIES = the FULLER solid blobs whose colour is NOT a collectible
+        # colour (the whkxtx bodies render colourless — colour distinct from every
+        # target/collectible; on L0-L4 the drag body's colour IS its ring colour, so
+        # it is classified a collectible-coloured blob and no colourless body remains
+        # ⇒ the whole gate returns None there).
+        collectible_regs = [r for r in solid if _fill(r) < _CM_BODY_FILL and r["color"] in ring_colours]
+        collectible_colours = {r["color"] for r in collectible_regs}
+        targets: list[tuple[frozenset[int], Cell, tuple[int, int, int, int]]] = []
+        for cluster in _cluster_regions(rings, _CLUSTER_SEP):
+            cols = frozenset(r["color"] for r in cluster)
+            if len(cols) < 2 or not cols <= collectible_colours:
+                continue
+            r0 = min(r["bbox"][0] for r in cluster)
+            c0 = min(r["bbox"][1] for r in cluster)
+            r1 = max(r["bbox"][2] for r in cluster)
+            c1 = max(r["bbox"][3] for r in cluster)
+            targets.append((cols, ((r0 + r1) // 2, (c0 + c1) // 2), (int(r0), int(c0), int(r1), int(c1))))
+        if len(targets) < 2:
+            return None
+        needed = set().union(*(t[0] for t in targets))
+        collectibles = [(r["color"], centre(r)) for r in collectible_regs if r["color"] in needed]
+        if not collectibles:
+            return None
+        # Collector bodies: full solid blobs whose colour is NOT a collectible colour.
+        body_regs = [r for r in solid if _fill(r) >= _CM_BODY_FILL and r["color"] not in collectible_colours]
+        if len(body_regs) < 2 or len(body_regs) != len(targets):
+            return None
+        body_centres = [centre(r) for r in body_regs]
+        # Legs (colour-cross fill band) → nearest collector body (the body sits at its
+        # legs' centroid, so nearest-body grouping is self-labelling).
+        legs = [
+            r
+            for r in regs
+            if _MIN_PIECE_SIZE <= r["size"] <= _MAX_PIECE_SIZE
+            and _CM_LEG_FILL_LO <= _fill(r) <= _CM_LEG_FILL_HI
+        ]
+        if len(legs) < len(body_regs):
+            return None
+        groups: list[list[Cell]] = [[] for _ in body_regs]
+        for lg in legs:
+            lc = centre(lg)
+            i = min(range(len(body_regs)), key=lambda k: near_d2(lc, body_centres[k]))
+            groups[i].append(lc)
+        if any(not g for g in groups):
+            return None
+        collectors = [(body_centres[i], groups[i]) for i in range(len(body_regs))]
+        return collectors, collectibles, targets
+
+    @staticmethod
+    def _collect_signature(cm: Any) -> tuple[Any, ...]:
+        """A stable hashable summary of the collect-match structure — used by the
+        settle gate to detect the entry animation has finished."""
+        collectors, collectibles, targets = cm
+        return (
+            "cm",
+            len(collectors),
+            tuple(sorted(c for c, _p in collectibles)),
+            tuple(sorted(tuple(sorted(t[0])) for t in targets)),
+        )
+
+    def _setup_collect_match(self, grid: Grid, bg: int, cm: Any) -> None:
+        """Assign each collector a target (the cheaper permutation by total
+        body→needed-collectibles→target path) and enter the closed-loop controller."""
+        collectors, collectibles, targets = cm
+        self._cm_active = True
+        self._cm_body = [c[0] for c in collectors]
+        self._piece_half = 2
+
+        def path_cost(body: Cell, tgt: Any) -> int:
+            cols, centre, _box = tgt
+            remaining = [p for c, p in collectibles if c in cols]
+            cur = body
+            cost = 0
+            while remaining:
+                nxt = min(remaining, key=lambda p: near_d2(cur, p))
+                cost += near_d2(cur, nxt)
+                cur = nxt
+                remaining.remove(nxt)
+            return cost + near_d2(cur, centre)
+
+        n = len(collectors)
+        best_perm: tuple[int, ...] | None = None
+        best: int | None = None
+        for perm in itertools.permutations(range(len(targets))):
+            tot = sum(path_cost(collectors[i][0], targets[perm[i]]) for i in range(n))
+            if best is None or tot < best:
+                best = tot
+                best_perm = perm
+        assert best_perm is not None
+        self._cm_assign = [
+            (targets[best_perm[i]][0], targets[best_perm[i]][1], targets[best_perm[i]][2])
+            for i in range(n)
+        ]
+        self._cm_ci = 0
+        self._cm_moves_done = 0
+
+    def _cm_leg_cells(self, grid: Grid, bg: int, hazard: set[Cell]) -> list[Cell]:
+        """All leg centres on the current board (colour-cross fill band) — used to
+        verify a placement actually moved a leg (the engine refuses placements whose
+        footprint clips its true wall, which the frame hazard under-covers)."""
+        height, width = len(grid), len(grid[0])
+        out: list[Cell] = []
+        for r in find_regions(grid, background=bg, gap=2):
+            if not (_MIN_PIECE_SIZE <= r["size"] <= _MAX_PIECE_SIZE):
+                continue
+            if (r["cells"] & hazard) or _is_hud_band(r, height, width):
+                continue
+            if _CM_LEG_FILL_LO <= _fill(r) <= _CM_LEG_FILL_HI:
+                out.append((int(round(r["centroid"][0])), int(round(r["centroid"][1]))))
+        return out
+
+    def _collect_pick_move(
+        self,
+        grid: Grid,
+        hazard: set[Cell],
+        legs: list[Cell],
+        goal: Cell,
+        avoid_pts: list[Cell],
+        other_legs: list[Cell],
+    ) -> tuple[Cell, Cell] | None:
+        """Greedy single-leg move: pick ``(from_leg, dest)`` that minimises the
+        resulting body centroid's distance to ``goal``, subject to the new centroid
+        NOT landing on a wrong collectible (``avoid_pts`` — over-absorbing a foreign
+        colour breaks the win colour-set), legs staying ``_LEG_SEP`` apart (own +
+        the other collector's), and the dest footprint being placeable."""
+        n = len(legs)
+        if n == 0:
+            return None
+        cands = self._move_candidates(grid, hazard, goal, set(other_legs))
+        best: tuple[Cell, Cell] | None = None
+        best_key: int | None = None
+        for i in range(n):
+            for dest in cands:
+                if dest == legs[i]:
+                    continue
+                if any(self._cheb(dest, b) <= 1 for b in self._cm_bad):
+                    continue  # the engine refused this cell before — do not re-pick
+                if any(self._cheb(dest, legs[j]) < _LEG_SEP for j in range(n) if j != i):
+                    continue
+                new_legs = legs[:i] + [dest] + legs[i + 1 :]
+                nb = (sum(p[0] for p in new_legs) // n, sum(p[1] for p in new_legs) // n)
+                if any(self._cheb(nb, ap) <= _CM_ABSORB_TOL for ap in avoid_pts):
+                    continue
+                key = near_d2(nb, goal)
+                if best_key is None or key < best_key:
+                    best_key = key
+                    best = (legs[i], dest)
+        return best
+
+    def _collect_step(self, grid: Grid, bg: int, masked: Grid) -> Cell | None:
+        """One collect-match controller click. Drives the ACTIVE collector's body
+        (its legs' centroid) toward its next goal — the nearest still-present needed
+        collectible, then its target — by moving ONE leg, avoiding the other
+        collector's collectibles. Re-detects every call (havofgepjpl=1 ⇒ absorption
+        is at the post-move centroid; the board is re-observed after each drag).
+        Advances to the next collector when the active one's target is satisfied."""
+        hazard = _hazard_cells(grid, bg)
+        if self._fc_phase == "place":
+            return self._collect_place(grid, bg, masked)
+
+        cm = self._detect_collect_match(grid, bg, hazard)
+        if cm is None:
+            # Detection momentarily lost (legs mid-transit) — idle a frame.
+            return self._safe_wait_cell(grid, bg)
+        collectors, collectibles, targets = cm
+        if self._cm_ci >= len(self._cm_assign):
+            return self._safe_wait_cell(grid, bg)  # all collectors done → idle to WIN
+        if self._cm_moves_done >= _CM_MAX_MOVES:
+            return None  # give up → the explorer
+
+        # Track the active collector across re-detection by nearest body.
+        want = self._cm_body[self._cm_ci]
+        ci_now = min(range(len(collectors)), key=lambda i: near_d2(collectors[i][0], want))
+        body, leg_cells = collectors[ci_now]
+        self._cm_body[self._cm_ci] = body
+        target_cols, target_centre, target_box = self._cm_assign[self._cm_ci]
+
+        # Unabsorbed needed collectibles = present collectibles whose colour the
+        # target needs (an absorbed one is removed from the board).
+        need = [(c, p) for c, p in collectibles if c in target_cols]
+        r0, c0, r1, c1 = target_box
+        body_in_target = r0 <= body[0] <= r1 and c0 <= body[1] <= c1
+        if not need and body_in_target:
+            self._cm_ci += 1  # this collector's set matches and it is on target
+            return self._collect_step(grid, bg, masked)
+
+        goal = min((p for _c, p in need), key=lambda p: near_d2(body, p)) if need else target_centre
+        avoid_pts = [p for c, p in collectibles if c not in target_cols]
+        other_legs: list[Cell] = []
+        for i, (_b, lcs) in enumerate(collectors):
+            if i != ci_now:
+                other_legs.extend(lcs)
+
+        move = self._collect_pick_move(grid, hazard, leg_cells, goal, avoid_pts, other_legs)
+        if os.environ.get("R11L_DEBUG"):
+            import sys
+
+            print(
+                f"[cm] ci={self._cm_ci} body={body} goal={goal} need={[c for c, _ in need]} "
+                f"legs={leg_cells} move={move} moves_done={self._cm_moves_done}",
+                file=sys.stderr,
+                flush=True,
+            )
+        if move is None:
+            self._cm_moves_done += 1
+            return self._safe_wait_cell(grid, bg)
+        from_cell, dest = move
+        self._fc_leg_pre = from_cell
+        self._fc_dest = dest
+        self._fc_pred_body = None
+        self._fc_select_cells = [from_cell]
+        self._fc_retry = 0
+        return self._frozen_issue_select()
+
+    def _collect_place(self, grid: Grid, bg: int, masked: Grid) -> Cell | None:
+        """The place phase for the collect-match controller: click the destination,
+        re-issue until the drag settles, then re-decide (whether or not the move
+        fired — a refused placement just replans greedily). No strike on Level 5, so
+        no strike, but a placement whose footprint clips the true wall is REFUSED
+        (the frame hazard under-covers it) — a refused dest is learned as bad so the
+        greedy controller reroutes instead of re-picking it."""
+        settled = self._fc_place_issued and masked == self._fc_place_masked
+        stuck = self._fc_place_count > _PLACE_STUCK_LIMIT
+        if settled or stuck:
+            legs_now = self._cm_leg_cells(grid, bg, _hazard_cells(grid, bg))
+            assert self._fc_dest is not None
+            moved = any(near_d2(self._fc_dest, leg) <= _BODY_CENTROID_TOL2 for leg in legs_now)
+            if not moved:
+                self._cm_bad.add(self._fc_dest)  # engine refused this cell
+            self._reset_move()
+            self._cm_moves_done += 1
+            return self._collect_step(grid, bg, masked)
+        self._fc_place_count += 1
         self._fc_place_issued = True
         self._fc_place_masked = masked
         return self._fc_dest
