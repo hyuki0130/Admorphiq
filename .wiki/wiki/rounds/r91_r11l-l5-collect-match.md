@@ -2,7 +2,7 @@
 round: R91
 axis: r11l L5 collect-match build (task #116) — decode + perception + solver + navigation
 keywords: r11l, l5, level5, whkxtx, collect-match, colour-set, puukul, collector, absorb, teleport-absorption, subset-cover, drag-assembly
-verdict: Pass 1 DONE (mechanic fully decoded live + teleport-absorption simplification); Pass 3 BANKED on a frame-PERCEPTION wall — an interface overlay (colour-10 collector-reach field + colour-1 leg->body tendons) occludes/fragments the small collectibles (one, rengnt-8, fully hidden at entry). Multi-session perception round. Floor 4/6 byte-identical (no adapter change).
+verdict: Pass 1 DONE (mechanic decoded live + teleport-absorption). PERCEPTION-WALL RETRACTED — the colour-10 field is a ONE-FRAME ENTRY ARTIFACT (clears after the first action, exactly what the existing _SETTLE_FRAMES gate waits for); on the SETTLED frame all elements detect cleanly (2 collectors, 4 collectibles, 2 real targets). Build proceeds. Floor 4/6 byte-identical.
 commit: (this round)
 ---
 
@@ -122,5 +122,31 @@ Because Pass 3 needs this perception layer first, NO adapter code was written �
 floor stays byte-identical 4/6 @ 0.2594. Disposable probes kept for the next lane:
 `scripts/_r11l_l5_probe.py` (ground truth), `_r11l_l5_map.py` (grid→frame map),
 `_r11l_l5_overlay.py` (overlay masking + collectible scan).
+
+### R91b — PERCEPTION WALL RETRACTED (the colour-10 field is a one-frame entry artifact)
+
+`scripts/_r11l_l5_occlude.py`: after the FIRST action on L5 the colour-10 field drops
+from 235 cells to **0** and colour-8 jumps 10→17 — the "occluded" `rengnt`(8)
+collectible becomes fully visible. So colour-10 is an ENTRY/interface transient that
+clears on the first `complete_action`, NOT a persistent occluder. The existing
+`_SETTLE_FRAMES` gate (which clicks refused wall cells while the level animates in)
+already waits past exactly this, so detection on the settled frame is clean.
+
+`scripts/_r11l_l5_settled.py` validates the SETTLED-frame detector signatures (all
+frame-only, colours read from the frame, no hardcoded coordinates):
+- **Collectors (2)** = colour-0 SOLID ~5×5 blobs (size ~21, fill ~0.84) sitting at the
+  centroid of their leg groups; equivalently detect legs (colour-3 crosses + the one
+  colour-0 SELECTED leg, fill ~0.48 size ~12), proximity-cluster into 2 groups,
+  body = group centroid (matches the mechanic).
+- **Collectibles (4)** = SOLID single-colour blobs, fill ≥ ~0.6 (size ~10-11), colours
+  {8,9,11,14}. (The dirwzt target rings share those colours but are HOLLOW, fill ~0.24
+  — fill separates them.)
+- **Real targets (2)** = TWO-colour hollow ~7×7 rings {8,9}@ and {11,14}@; dirwzt
+  targets are SINGLE-colour rings (remapped 7/9/14) — separated by 2-colour + the R87
+  nested-colour-set discriminator (`_target_score`).
+
+The build (perception → subset/assign → closed-loop navigation with teleport
+absorption, re-detecting each step) proceeds from here; probe `_r11l_l5_occlude.py`
++ `_r11l_l5_settled.py` kept.
 
 Related: [[r89_r11l-l5-probe]] · [[r85_r11l-strike-aware-assembly]] · [[../games/R11L]].
