@@ -2,7 +2,7 @@
 round: r93
 axis: agent25 (LLM orchestration) — tool-fork-and-patch falsification
 keywords: [agent25, solver-core, source-card, patch-loop, tool-fork, hypothesis-dsl, no-repeat-rule, gpt-oss-offline, codex-review, stall-matrix]
-verdict: IN PROGRESS — foundation landed (ea3bf21); falsification measurement pending on Kaggle gemma4
+verdict: THESIS SURVIVES — v3 paint×cd82 = PATCH_WINS (first positive agent25 outcome ever; patch doubled transition diversity 128 vs 64 on the pre-registered lexicographic metric); toggle×vc33 blocked by the 6th harness edge (patch's own future import mid-file), fixed + re-running
 commit: ea3bf21
 ---
 
@@ -139,6 +139,32 @@ Consequences: (a) v3's patch-arm numbers carry NO driver handicap — the compar
 clean; (b) the R94 upper-bound check's harness half is PROVEN (a verbatim working core
 drives to tool-parity through the sandbox); what R94 must measure is only whether the
 LLM can return/retain such a core intact.
+
+## v3 VERDICT (2026-07-22 01:04 KST) — **PATCH_WINS on paint×cd82: the thesis SURVIVES**
+
+| case | parent | patch | verdict |
+|---|---|---|---|
+| paint×cd82 | 0 lv / 64 states / 64 trans / noop .36 | 0 lv / 64 states / **128 trans** / noop .36 | **PATCH_WINS** |
+| toggle×vc33 | 2 lv / 834 states | execute fail (6th harness edge) | PATCH_INVALID |
+
+- **First positive agent25 outcome in the project's history.** On the PRE-REGISTERED
+  lexicographic metric (levels > distinct states > distinct transitions), gemma4's patch
+  — its own diagnosis: *"the stall seen in logs where the same coordinate is clicked
+  repeatedly… try the next largest region to break the deadlock"* — DOUBLED reproducible
+  transition diversity (128 vs 64) over the original tool on a matched 2000-action replay
+  from RESET, with the driver proven fair by the verbatim-core control. Per the
+  Codex-agreed criterion (win on ≥1 of 2 distinct failure cases), the user's
+  tool-fork-and-patch thesis survives falsification: **the model CAN causally debug our
+  code with feedback — the capability R92 proved absent for from-scratch authoring.**
+- Honest bounds: it is the THIRD-tier win (no level cleared, no new states — richer
+  exploration, not yet goal attainment); one case, one model, temp 0. The follow-ups
+  (hypothesis DSL, no-repeat rule, iteration ≥2 of the patch loop, R94 adapter templates)
+  are what convert exploration-improvement into level clears.
+- toggle×vc33: the model's full-card patch carries its OWN `from __future__ import
+  annotations`; the prelude precedes it → mid-file SyntaxError → the _MAX_STENCIL=1024
+  patch never ran. 6th harness edge; driver now strips the patch's future-import line
+  (its copy is already first), regression-pinned (17th test). Re-run pending.
+- Artifacts: `scripts/rounds/R93/*_v3.json`.
 
 ## Next
 

@@ -218,8 +218,15 @@ def run_patched_step(
     # it the REAL signature's annotations (`Any`, `Callable`) evaluate at def
     # time and NameError. Prepend unconditionally (harmless if repeated) — the
     # measured v1 run failed at execute on BOTH cases for exactly this.
+    # A full-card-style patch carries its OWN future import; after the prelude
+    # it would sit mid-file -> SyntaxError (v3 toggle, the 6th harness edge).
+    # The driver already puts the future import first, so strip the patch's.
+    body = "\n".join(
+        ln for ln in patched_code.splitlines()
+        if not ln.strip().startswith("from __future__ import")
+    )
     driver = ("from __future__ import annotations\n\n" + prelude
-              + "\n\n" + patched_code
+              + "\n\n" + body
               + f"\n\n{core_fn}(current_frame, transitions, act)\n")
     trans = [
         (t["action"], t["xy"], t["before"], t["after"]) for t in level_transitions

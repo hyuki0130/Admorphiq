@@ -344,3 +344,25 @@ def test_truncated_reply_fails_parse_not_execute():
     code, err = ppl.validate_patch(truncated, "toggle_core")
     assert code is None
     assert "fenced" in err
+
+
+def test_full_card_patch_with_own_future_import_executes(bridge_on):
+    """Purpose: pin the v3 toggle failure — a full-card-style patch that carries
+    its OWN `from __future__ import annotations` must not SyntaxError when the
+    prelude precedes it (the driver strips the patch's future import; its own
+    copy is already first in the file).
+
+    Expected feedback: pass ⇒ full-card patches (gemma4's actual v2/v3 vc33
+    style) execute; fail ⇒ the 6th harness edge is back and every full-card
+    patch dies at execute."""
+    patch = (
+        "from __future__ import annotations\n"
+        "_MAX_STENCIL = 1024\n"
+        "def toggle_core(current_frame, transitions, act, trace=None):\n"
+        "    act('CLICK', 5, 5)\n"
+    )
+    res = ppl.run_patched_step(patch, "toggle_core",
+                               np.zeros((8, 8), dtype=np.int16), [],
+                               prelude=ppl._card_prelude("toggle", "toggle_core"))
+    assert res.error == ""
+    assert res.actions == [("ACTION6", (5, 5))]
