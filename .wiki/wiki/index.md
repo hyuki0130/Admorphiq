@@ -8,7 +8,7 @@ seeds `llm_context/decision_tree.md` first, then walks `[[backlinks]]`.
 Use this index when authoring or auditing: skim the catalog, pick a
 category, drill into specific pages.
 
-**Total pages**: 159.
+**Total pages**: 167.
 
 ## Games (25)
 
@@ -149,7 +149,7 @@ category, drill into specific pages.
 
 - [[llm_context/decision_tree.md]] — Compact dispatch read first by Qwen — default primary adaptive_bfs_solver, peer-swap only on Observable-Signature match, 3-deep fallback_stack by game shape, re-ask on primary failure via each plan's Falsification Signature + Next-Best.
 
-## Top-level dispatch (architecture, selector, log, schema) (47)
+## Top-level dispatch (architecture, selector, log, schema) (55)
 
 - [[rounds/r05_planning-override.md]] — Goal-directed planning that overrode novelty exploration regressed 4 stable games (AR25/FT09/LP85/M0R0) — first proof that overriding novelty breaks the learner.
 - [[rounds/r06_depth-boost.md]] — Depth-boost / keep-learning-after-levelup regressed LP85's depth — perturbing exploration regresses.
@@ -197,6 +197,14 @@ category, drill into specific pages.
 - [[rounds/r57_win-condition-typology.md]] — Offline gold-trace mining across all 25 public games names eight
 - [[rounds/r58_explanation-layer.md]] — Codex verdict on teaching the offline model to use R56's kernel suite:
 - [[rounds/r59_depth-wave.md]] — One-day parallel depth sprint on the [[r56_generic-kernels]] base: 6 teammate lanes, each
+- [[rounds/r84_bounded-frontier-scan.md]] — (no description)
+- [[rounds/r85_r11l-strike-aware-assembly.md]] — (no description)
+- [[rounds/r86_r11l-l3-connectivity-detection.md]] — (no description)
+- [[rounds/r87_r11l-l3-colour-blind-trial.md]] — (no description)
+- [[rounds/r89_r11l-l5-probe.md]] — (no description)
+- [[rounds/r91_r11l-l5-collect-match.md]] — (no description)
+- [[rounds/r92_agent25-kernel-bridge.md]] — The runtime code-agent LLM could not call the r59 kernel library that produced the
+- [[rounds/r92_sp80-l2-premise-correction.md]] — sp80 L2 has NO angled deflectors (premise falsified) — it is straight-block
 - [[selector.md]] — Feature-driven dispatch rules the Hypothesis Engine LLM uses to pick
 
 ## Raw sources
