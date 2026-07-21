@@ -189,7 +189,13 @@ def run_patched_step(
     otherwise absent from the sandbox namespace). Returns the ``CodeResult``."""
     from admorphiq.tools.code_agent import run_code
 
-    driver = patched_code + f"\n\n{core_fn}(current_frame, transitions, act)\n"
+    # The source card opens with `from __future__ import annotations`; models
+    # routinely omit it when returning just the patched function — and without
+    # it the REAL signature's annotations (`Any`, `Callable`) evaluate at def
+    # time and NameError. Prepend unconditionally (harmless if repeated) — the
+    # measured v1 run failed at execute on BOTH cases for exactly this.
+    driver = ("from __future__ import annotations\n\n" + patched_code
+              + f"\n\n{core_fn}(current_frame, transitions, act)\n")
     trans = [
         (t["action"], t["xy"], t["before"], t["after"]) for t in level_transitions
     ]
@@ -386,6 +392,8 @@ def _run_patch(
         res = run_patched_step(patched_code, core_fn, frame, level_transitions)
         if res.error:
             stats["errors"] += 1
+            stats["last_error"] = res.error  # keep the TEXT — v1 discarded it,
+            # leaving 'execute' failures undiagnosable from the result JSON
         actions = [_to_step(name, xy) for name, xy in res.actions]
         if actions:
             stats["any_action"] = True
@@ -410,6 +418,7 @@ def _run_patch(
         stats["invocations"] > 0 and stats["errors"] == stats["invocations"]
         and not stats["any_action"]
     )
+    metrics["execute_error"] = stats.get("last_error")
     return metrics, execute_failed
 
 
