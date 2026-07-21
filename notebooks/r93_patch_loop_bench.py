@@ -155,11 +155,32 @@ def wait_for_server(port: int, timeout_s: float) -> None:
 
 
 # %%
+def _gptoss_offline_env() -> None:
+    """gpt-oss offline vocab fix (verified with network blocked): openai_harmony
+    loads o200k_base/cl100k_base from TIKTOKEN_ENCODINGS_BASE (plain filenames)
+    instead of fetching openaipublic.blob.core.windows.net. Files ship in the
+    jaehyukhyun/tiktoken-encodings-offline dataset."""
+    for root, _dirs, files in os.walk("/kaggle/input"):
+        if "o200k_base.tiktoken" in files:
+            os.environ["TIKTOKEN_ENCODINGS_BASE"] = root
+            break
+    else:
+        raise RuntimeError("o200k_base.tiktoken not found — attach tiktoken-encodings-offline")
+    os.environ["HF_HUB_OFFLINE"] = "1"
+    os.environ["TRANSFORMERS_OFFLINE"] = "1"
+    from openai_harmony import HarmonyEncodingName, load_harmony_encoding
+    enc = load_harmony_encoding(HarmonyEncodingName.HARMONY_GPT_OSS)
+    print(f"[preflight] harmony offline OK from {os.environ['TIKTOKEN_ENCODINGS_BASE']} "
+          f"tokens={enc.encode('preflight', allowed_special='all')[:3]}", flush=True)
+
+
 def main() -> None:
     if ON_KAGGLE:
         install_wheels_offline()
         model_dir, served = _find_model_dir()
         print(f"[model] {model_dir} served-name={served}", flush=True)
+        if served == "gptoss":
+            _gptoss_offline_env()  # BEFORE vLLM boots (env inherited)
         server = boot_vllm_server(model_dir, served)
         wait_for_server(VLLM_PORT, BOOT_TIMEOUT_S)
     else:
