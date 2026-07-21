@@ -74,6 +74,14 @@ re-run D3). Note the meta-lesson: D1's live-score parity PASSED while D3 caught 
 slice — the two gates test different things (adapter parity ≠ template drivability),
 Codex's layering was right.
 
+## Certify-orchestration extraction (97be189) — adapter parity v2 PASSED
+
+The D3-fail fix: press-until-certify (per-button evidence accumulation across ALL its
+presses, series learning, certify gate with the adapter's adaptive press cap, re-press
+least-pressed uncertified control) extracted INTO the core; adapter delegates to the same
+functions. **Parity v2: 8/8 @0.6992 exact** — extraction preserved behaviour. Card now
+47.5KB. Upper-bound gate v2 (certified card via sandbox) running.
+
 ## In flight
 
 - **D3 upper-bound gate**: verbatim arrangement card driven through the run_code sandbox
