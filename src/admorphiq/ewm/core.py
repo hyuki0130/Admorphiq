@@ -278,7 +278,10 @@ _SAFE_BUILTIN_NAMES = (
     # iter + next: the arrangement card's is_single_cycle (bundled for the R94
     # press-until-certify certify gate) walks the cycle with next(iter(succ)); both
     # are pure iterator builtins, as safe as the map/zip/enumerate already listed.
-    "frozenset repr iter next"
+    # id: the simdfs card tracks parsed-region OBJECT IDENTITY within one exec
+    # (set membership of dicts from a single parse pass) — pure, side-effect-free,
+    # and identity is coherent inside one card invocation.
+    "frozenset repr iter next id"
 ).split()
 
 
