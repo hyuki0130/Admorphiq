@@ -1,0 +1,58 @@
+{
+  "model": "gptoss",
+  "budget": 2000,
+  "verdicts": {
+    "toggle:vc33": "PARENT_HOLDS",
+    "paint:cd82": "PARENT_HOLDS"
+  },
+  "results": [
+    {
+      "tool": "toggle",
+      "game": "vc33",
+      "budget": 2000,
+      "parent": {
+        "levels": 2,
+        "actions": 2000,
+        "distinct_states": 834,
+        "distinct_transitions": 1509,
+        "noop_rate": 0.11465295629820052
+      },
+      "patch": {
+        "levels": 0,
+        "actions": 2000,
+        "distinct_states": 50,
+        "distinct_transitions": 98,
+        "noop_rate": 0.0,
+        "execute_error": null,
+        "failure_stage": null,
+        "patched_code": "def toggle_core(\n    current_frame: Any,\n    transitions: list[dict[str, Any]],\n    act: Callable[..., None],\n    trace: list[str] | None = None,\n) -> None:\n    \"\"\"Lights\u2011out core with fallback for non\u2011linear boards.\n\n    1. Rebuild click stencils from observed transitions.\n    2. If we have enough stencils, try a GF(2) solve for a uniform board.\n       *If the board is already uniform or the solve succeeds (even with an\n       empty plan) we stop \u2013 no more probing is needed.*\n    3. If the GF(2) solve fails (inconsistent system) we assume the game is\n       non\u2011linear and fall back to a greedy \u201cclick every ON cell\u201d strategy.\n    4. If we still have too few stencils, continue systematic probing.\n    \"\"\"\n    frame = np.asarray(current_frame)\n\n    # ------------------------------------------------------------------\n    # 1.  Re\u2011build stencils from the transition log.\n    # ------------------------------------------------------------------\n    stencils = _stencils_from_transitions(transitions)\n\n    # ------------------------------------------------------------------\n    # 2.  Quick uniform\u2011board check (all background or all foreground).\n    # ------------------------------------------------------------------\n    bits, off_color, _on_color = _binarize(frame)\n    if bits.size == 0 or bits.mean() == 0.0 or bits.mean() == 1.0:\n        # Board already uniform \u2013 nothing to do.\n        if trace is not None:\n            trace.append(\"board already uniform\")\n        return\n\n    # ------------------------------------------------------------------\n    # 3.  Try the linear GF(2) solver when we have enough stencils.\n    # ------------------------------------------------------------------\n    if len(stencils) >= _MIN_STENCILS:\n        plan = _solve_board(frame, stencils, trace)\n        if plan is not None:                     # <-- accept empty plan as solved\n            if trace is not None:\n                trace.append(f\"plan={'empty' if not plan else len(plan)} clicks\")\n            for (x, y) in plan:\n                act(\"CLICK\", x, y)\n            return\n\n        # --------------------------------------------------------------\n        # 3b.  Linear solve failed \u2192 fall back to greedy clicking.\n        # --------------------------------------------------------------\n        if trace is not None:\n            trace.append(\"GF2 failed \u2013 falling back to greedy ON\u2011cell clicks\")\n        # Click every cell that is currently ON (i.e. not the background colour).\n        h, w = bits.shape\n        for y in range(h):\n            for x in range(w):\n                if bits[y, x] == 1:\n                    act(\"CLICK\", x, y)\n        return\n\n    # ------------------------------------------------------------------\n    # 4.  Not enough stencils yet \u2013 continue systematic probing.\n    # ------------------------------------------------------------------\n    probe = _next_probe(frame, set(stencils))\n    if probe is not None:\n        if trace is not None:\n            trace.append(\n                f\"stencils={len(stencils)} (<{_MIN_STENCILS}) -> \"\n                f\"probe ({probe[0]},{probe[1]})\"\n            )\n        act(\"CLICK\", probe[0], probe[1])"
+      },
+      "verdict": "PARENT_HOLDS",
+      "llm_latency_s": 34.55411787999992
+    },
+    {
+      "tool": "paint",
+      "game": "cd82",
+      "budget": 2000,
+      "parent": {
+        "levels": 0,
+        "actions": 2000,
+        "distinct_states": 64,
+        "distinct_transitions": 64,
+        "noop_rate": 0.36359000509943906
+      },
+      "patch": {
+        "levels": 0,
+        "actions": 2000,
+        "distinct_states": 64,
+        "distinct_transitions": 64,
+        "noop_rate": 0.36359000509943906,
+        "execute_error": null,
+        "failure_stage": null,
+        "patched_code": "def _non_fill_regions(\n    frame: np.ndarray, fill: int\n) -> list[list[tuple[int, int]]]:\n    \"\"\"4\u2011connected components of cells whose value is *not* `fill`.\"\"\"\n    f = np.asarray(frame)\n    h, w = f.shape\n    seen = np.zeros((h, w), dtype=bool)\n    out: list[list[tuple[int, int]]] = []\n    for r in range(h):\n        for c in range(w):\n            if seen[r, c] or int(f[r, c]) == fill:\n                continue\n            comp: list[tuple[int, int]] = []\n            stack = [(r, c)]\n            seen[r, c] = True\n            while stack:\n                y, x = stack.pop()\n                comp.append((y, x))\n                for ny, nx in ((y + 1, x), (y - 1, x), (y, x + 1), (y, x - 1)):\n                    if 0 <= ny < h and 0 <= nx < w and not seen[ny, nx] \\\n                            and int(f[ny, nx]) != fill:\n                        seen[ny, nx] = True\n                        stack.append((ny, nx))\n            out.append(comp)\n    return out\n\n\ndef paint_core(\n    current_frame: Any,\n    transitions: list[dict[str, Any]],\n    act: Callable[..., None],\n    trace: list[str] | None = None,\n) -> None:\n    \"\"\"\n    Paint/flood core: infer the fill colour from observed click transitions;\n    once confirmed, queue clicks filling the largest remaining *non\u2011fill*\n    regions; before it is confirmed, queue one probe click to elicit the\n    mechanic.\n    \"\"\"\n    frame = np.asarray(current_frame)\n    fill = _infer_fill_color(transitions)\n\n    # ------------------------------------------------------------------\n    # 1\ufe0f\u20e3  Fill colour still unknown \u2192 probe a single region (as before)\n    # ------------------------------------------------------------------\n    if fill < 0:\n        if trace is not None:\n            trace.append(\"fill mechanic unconfirmed -> probe 1 region\")\n        clicks = paint_plan(frame, max_clicks=1, trace=trace)\n        for (x, y) in clicks:\n            act(\"CLICK\", x, y)\n        return\n\n    # ------------------------------------------------------------------\n    # 2\ufe0f\u20e3  Fill colour known \u2192 click on the largest region that is NOT\n    #     already filled with `fill`.\n    # ------------------------------------------------------------------\n    if trace is not None:\n        trace.append(f\"fill_color={fill} -> fill remaining regions\")\n\n    # Find components of cells whose colour differs from the confirmed fill.\n    comps = _non_fill_regions(frame, fill)\n\n    # No more work to do.\n    if not comps:\n        if trace is not None:\n            trace.append(\"no remaining non\u2011fill regions\")\n        return\n\n    # Deterministic ordering: largest size first, then top\u2011left cell.\n    comps.sort(key=lambda comp: (-len(comp), comp[0]))\n\n    clicks: list[tuple[int, int]] = []\n    for comp in comps[:14]:          # respect the original max_clicks limit\n        ys = [p[0] for p in comp]\n        xs = [p[1] for p in comp]\n        cy = int(round(sum(ys) / len(ys)))\n        cx = int(round(sum(xs) / len(xs)))\n        # Ensure the chosen point is actually inside the component.\n        if (cy, cx) not in comp:\n            cy, cx = comp[len(comp) // 2]\n        clicks.append((cx, cy))\n\n    for (x, y) in clicks:\n        act(\"CLICK\", x, y)"
+      },
+      "verdict": "PARENT_HOLDS",
+      "llm_latency_s": 31.20101003000036
+    }
+  ]
+}

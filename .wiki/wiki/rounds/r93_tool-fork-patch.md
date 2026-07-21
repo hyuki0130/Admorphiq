@@ -183,6 +183,28 @@ capability's limits: the model repairs code well when its causal diagnosis is RI
 (paint), and a plausible-but-wrong diagnosis (toggle) produces a worse solver — exactly
 why matched-replay gating (keep-parent-on-loss) must stay in any deployed loop.
 
+## gpt-oss-120b A/B (2026-07-22 02:38 KST) — the BIGGER model LOSES to gemma4
+
+Same 2 cases, same harness, same budgets (`admorphiq-r93-patchloop-gptoss` v1; offline
+harmony vocab worked — preflight OK, first successful gpt-oss Kaggle serve):
+
+| case | gemma4 (R93 final) | gpt-oss-120b | verdict |
+|---|---|---|---|
+| paint×cd82 | **PATCH_WINS** (128tr, deadlock fix) | PARENT_HOLDS (64/64/64 — behaviourally a NO-OP rewrite) | gemma4 |
+| toggle×vc33 | PARENT_HOLDS (127st/182tr) | PARENT_HOLDS (50st/98tr — worse) | tie (both lose) |
+
+- Both gpt-oss patches executed cleanly (0 harness failures — the pipeline is now robust
+  across model families). Its code is STYLISTICALLY sophisticated (fallback strategies,
+  uniform-board early-exit, a rewritten `_non_fill_regions`) but **missed both causal
+  diagnoses**: the paint patch's region rewrite changed nothing behaviourally (identical
+  metrics to parent), where gemma4's trace-grounded deadlock fix doubled transitions.
+  Latency similar (31-35s vs gemma4 54-124s — actually FASTER).
+- **Per the pre-registered Codex rule ("promote only if it wins replay progress or
+  clears"): gpt-oss-120b is NOT promoted. gemma4-31b-it stays the patcher.** Scale did
+  not buy causal diagnosis on this task — consistent with R50b (honest-K8 bench: gemma4
+  0.133 ≫ gpt-oss-120b 0.039). The "bigger reasoner" lever the user asked to try is now
+  MEASURED and closed. Artifact: `scripts/rounds/R93/r93_patch_loop_bench_gptoss.json`.
+
 ## Next
 
 1. ~~`scripts/probe_patch_loop.py`~~ DONE (fa171ce) + Kaggle wrapper (b6dad26).
