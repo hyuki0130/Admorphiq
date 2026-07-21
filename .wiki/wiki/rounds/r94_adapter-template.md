@@ -58,6 +58,22 @@ so the template-vs-generic differentiation would be weak.
   agent, NOT the adapter path; its 1/8 is meaningless for this gate. script25.py is the
   adapter driver, and its `--out` takes a DIRECTORY.)
 
+## D3 upper-bound gate — FAILING as designed to catch (2026-07-22 03:05 interim)
+
+The verbatim `source_card("arrangement")` driven through the run_code sandbox on lp85 is
+at **0 levels by step 750+** (the delegated adapter: 8/8 in 300). Root cause read from
+the core: it does SINGLE-press learning + "probe next unpressed control", but the
+conquest's load-bearing orchestration is **press-until-certify / adaptive-K** (press the
+SAME button repeatedly until its ring's effect map certifies) — and that stayed
+ADAPTER-LOCAL. The bare core is a token-slice template; Codex's exact D3 rationale
+("if the supplied source solution cannot reproduce its own conquest, STOP") fired
+correctly on the first try. The paired experiment is BLOCKED until the core carries the
+certify orchestration — extension build in flight (extract the adapter's real
+press-until-certify policy into the core, preserve 8/8 adapter parity by construction,
+re-run D3). Note the meta-lesson: D1's live-score parity PASSED while D3 caught the
+slice — the two gates test different things (adapter parity ≠ template drivability),
+Codex's layering was right.
+
 ## In flight
 
 - **D3 upper-bound gate**: verbatim arrangement card driven through the run_code sandbox
