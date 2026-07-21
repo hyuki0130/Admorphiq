@@ -10,8 +10,8 @@
 #   4. a telemetry-wrapped llm counts code prompts / `K.` usage / latency; the run
 #      FAILS if the ON arm never issued a code prompt (the bridge would be inert).
 #
-# Model is Qwen3.6-27B-FP8 (proven-installable on Kaggle); this measures the
-# bridge's lift UNDER Qwen, not a cross-model comparison to the gemma4 history.
+# Model-agnostic: serves whichever single HF model the kernel attaches (Qwen or
+# gemma4), served-name auto-derived. Run the same notebook per model to compare.
 
 # %%
 from __future__ import annotations
@@ -32,8 +32,11 @@ KAGGLE_WORKING = "/kaggle/working"
 BENCH_GAMES = ["ls20", "vc33", "m0r0", "cd82"]
 MAX_ACTIONS = 300
 VLLM_PORT = 8199
-VLLM_MODEL_NAME = "qwen"
-BOOT_TIMEOUT_S = 1200.0
+# served-model-name is derived from the mounted model dir (qwen / gemma4 / ...),
+# so ONE notebook serves whichever model the kernel attaches.
+VLLM_MODEL_NAME = os.environ.get("VLLM_MODEL_NAME", "served")
+MAX_MODEL_LEN = 32768
+BOOT_TIMEOUT_S = 1500.0
 
 
 # %%
@@ -50,18 +53,30 @@ def _find_dir(name: str, root: str = "/kaggle/input", max_depth: int = 6) -> str
     return os.path.join(root, name)
 
 
-def _find_model_dir() -> str:
-    """The unique dir under /kaggle/input holding config.json whose path mentions
-    qwen. Asserts a single match so a stray mount can't select the wrong model."""
-    hits = []
-    for cur, _dirs, files in os.walk("/kaggle/input"):
-        if "config.json" in files and "qwen" in cur.lower():
-            hits.append(cur)
+def _find_model_dir() -> tuple[str, str]:
+    """The unique HF weights dir under /kaggle/input/models (config.json), plus a
+    served-name tag derived from its path (qwen / gemma4 / ...). Model-agnostic so
+    one notebook serves whichever single model the kernel attaches; asserts a
+    single match so a stray mount can't select the wrong model."""
+    roots = ["/kaggle/input/models", "/kaggle/input"]
+    hits: list[str] = []
+    for root in roots:
+        if not os.path.isdir(root):
+            continue
+        for cur, _dirs, files in os.walk(root):
+            if "config.json" in files and "/models/" in cur:
+                hits.append(cur)
+        if hits:
+            break
+    hits = sorted(set(hits))
     if not hits:
-        raise RuntimeError("Qwen model dir (config.json) not found under /kaggle/input")
-    if len(set(hits)) > 1:
-        raise RuntimeError(f"ambiguous Qwen model dirs: {hits}")
-    return hits[0]
+        raise RuntimeError("no HF model dir (config.json) under /kaggle/input/models")
+    if len(hits) > 1:
+        raise RuntimeError(f"ambiguous model dirs: {hits}")
+    d = hits[0]
+    low = d.lower()
+    tag = "gemma4" if "gemma" in low else "qwen" if "qwen" in low else "served"
+    return d, tag
 
 
 def install_wheels_offline() -> None:
@@ -84,7 +99,7 @@ def install_wheels_offline() -> None:
         print("[install] no vLLM wheels found; assuming preinstalled")
 
 
-def boot_vllm_server(model_dir: str) -> subprocess.Popen:
+def boot_vllm_server(model_dir: str, served_name: str) -> subprocess.Popen:
     """vLLM OpenAI api_server with the R55 measured-good offline config."""
     env = os.environ.copy()
     env["VLLM_ATTENTION_BACKEND"] = "TRITON_ATTN"
@@ -93,8 +108,8 @@ def boot_vllm_server(model_dir: str) -> subprocess.Popen:
     cmd = [
         sys.executable, "-m", "vllm.entrypoints.openai.api_server",
         "--model", model_dir,
-        "--served-model-name", VLLM_MODEL_NAME,
-        "--max-model-len", "131072",
+        "--served-model-name", served_name,
+        "--max-model-len", str(MAX_MODEL_LEN),
         "--enforce-eager",
         "--gpu-memory-utilization", "0.92",
         "--port", str(VLLM_PORT),
@@ -247,11 +262,12 @@ def _run_arm(arcade, game_id: str, bridge_on: bool) -> dict:
 
 # %%
 def main() -> None:
+    served = VLLM_MODEL_NAME
     if ON_KAGGLE:
         install_wheels_offline()
-        model_dir = _find_model_dir()
-        print(f"[model] {model_dir}")
-        server = boot_vllm_server(model_dir)
+        model_dir, served = _find_model_dir()
+        print(f"[model] {model_dir} served-name={served}")
+        server = boot_vllm_server(model_dir, served)
         wait_for_server(VLLM_PORT, BOOT_TIMEOUT_S)
     else:
         server = None
@@ -259,10 +275,10 @@ def main() -> None:
     _ensure_admorphiq_importable()
     _ensure_score_efficiency_importable()
 
-    # Backend wiring: harness llm -> local vLLM OpenAI server (served name "qwen").
+    # Backend wiring: harness llm -> local vLLM OpenAI server (served name auto-derived).
     os.environ["HARNESS_LLM_BACKEND"] = "openai"
     os.environ["HARNESS_LLM_BASE_URL"] = f"http://127.0.0.1:{VLLM_PORT}/v1"
-    os.environ["HARNESS_LLM_MODEL"] = VLLM_MODEL_NAME
+    os.environ["HARNESS_LLM_MODEL"] = served
     os.environ["HARNESS_CODE_ESC"] = "1"  # let the model escalate to code (bridge lives there)
 
     from arc_agi import Arcade, OperationMode
@@ -302,7 +318,7 @@ def main() -> None:
             results.append(res)
 
     out = {
-        "games": BENCH_GAMES, "max_actions": MAX_ACTIONS, "model": VLLM_MODEL_NAME,
+        "games": BENCH_GAMES, "max_actions": MAX_ACTIONS, "model": served,
         "results": results,
     }
     with open(os.path.join(KAGGLE_WORKING, "agent25_bench.json"), "w") as f:
