@@ -112,6 +112,13 @@ before/after sandbox contract.
 - Differentiation is cleaner than lp85's: generic tools have NO simulator+DFS machinery.
 - Source self-reproduction preflight (sandbox path) required before the holdout gate.
 
+## sb26 simdfs distillation (2b85b6b) — parity PASSED; self-reproduction gate running
+
+Eligibility pre-check passed (portal-sort static between actions). Engine extracted to
+`kernels/simdfs.py` (frame→board parse → faithful simulator → DFS → click plan), adapter
+delegates, card 71.5KB. **Parity: 8/8 @0.846 in 170 actions — exact.** Sandbox
+self-reproduction gate (the one lp85 failed twice) in flight.
+
 ## In flight
 
 - **D3 upper-bound gate**: verbatim arrangement card driven through the run_code sandbox
