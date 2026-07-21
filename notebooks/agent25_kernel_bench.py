@@ -145,6 +145,31 @@ def _ensure_admorphiq_importable() -> None:
             sys.path.insert(0, cand)
 
 
+def _ensure_score_efficiency_importable() -> None:
+    """Put the dir holding scripts/score_efficiency.py on sys.path. The dataset
+    mount layout varies (CLI vs competition-attached), so locate it by walk."""
+    try:
+        import score_efficiency  # noqa: F401
+        return
+    except ImportError:
+        pass
+    roots = ["/kaggle/input", os.getcwd()]
+    for root in roots:
+        if not os.path.isdir(root):
+            continue
+        for cur, dirs, files in os.walk(root):
+            if cur.count("/") > 10:
+                dirs[:] = []
+                continue
+            if "score_efficiency.py" in files and cur not in sys.path:
+                sys.path.insert(0, cur)
+                try:
+                    import score_efficiency  # noqa: F401
+                    return
+                except ImportError:
+                    continue
+
+
 # %%
 class _LLMTelemetry:
     """Wrap an llm(messages)->str callable to count calls, latency, and whether
@@ -232,8 +257,7 @@ def main() -> None:
         server = None
 
     _ensure_admorphiq_importable()
-    sys.path.insert(0, os.path.join(os.getcwd(), "scripts"))
-    sys.path.insert(0, "/kaggle/input/admorphiq-src/scripts")
+    _ensure_score_efficiency_importable()
 
     # Backend wiring: harness llm -> local vLLM OpenAI server (served name "qwen").
     os.environ["HARNESS_LLM_BACKEND"] = "openai"
