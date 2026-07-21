@@ -416,7 +416,11 @@ def _run_patch(
 def _find_game(game_query: str) -> tuple[Any, Any]:
     from arc_agi import Arcade, OperationMode
 
-    arcade = Arcade(operation_mode=OperationMode.OFFLINE)
+    # On Kaggle the environment files live in a mounted dataset, not the repo
+    # default — the bench wrapper passes their dir via ARC_ENVIRONMENTS_DIR.
+    envs_dir = os.environ.get("ARC_ENVIRONMENTS_DIR")
+    arcade = (Arcade(operation_mode=OperationMode.OFFLINE, environments_dir=envs_dir)
+              if envs_dir else Arcade(operation_mode=OperationMode.OFFLINE))
     want = game_query.strip().lower()
     match = next(
         (e for e in arcade.get_environments()
