@@ -108,13 +108,22 @@ agent25 signal ever measured:
 
 ## Next
 
-1. `scripts/probe_patch_loop.py` (in build): parent run → patch ask (source_card +
-   trace + free-form python) → validate (1 error-feedback retry) → matched patch replay
-   from RESET → lexicographic verdict JSON. Per-stage failure telemetry.
-2. Kaggle gemma4 run on the 2 failure cases → THE falsification verdict.
-3. If signal: add hypothesis DSL (Codex #1) + no-repeat rule (Codex #2) + ensemble
-   (Codex #3); gpt-oss 2-case A/B. If both cases fail: agent25 FINAL shelve; the
-   private-110 lever stays dev-time kernel generality.
+1. ~~`scripts/probe_patch_loop.py`~~ DONE (fa171ce) + Kaggle wrapper (b6dad26).
+2. v2 Kaggle gemma4 run on the 2 failure cases (RUNNING) → THE falsification verdict.
+3. If signal: hypothesis DSL (Codex #1, task #121) + no-repeat rule (Codex #2, #122) +
+   gpt-oss 2-case A/B (push dir pre-staged; model `danielhanchen/gpt-oss-120b`).
+   If both cases fail on a CLEAN harness: read patched codes + execute_error before any
+   shelve call (v1 lesson), then decide.
+4. **R94 — adapter-template patching (user-directed 2026-07-22, task #123).** Extend the
+   fork-and-patch loop from generic tool cores to the CONQUERED ADAPTERS: classify an
+   unseen game's mechanism family from observable signatures → hand the nearest
+   conquered adapter's distilled solver engine as the patch template ("이 변종에 맞게
+   수정/추가하라") → same patch/replay machinery. Prereqs: per-family engine distillation
+   with source_card parity (adapters are 20-90KB, cannot ship whole; public-specialized
+   constants explicitly marked "re-derive from YOUR observations"), and an UPPER-BOUND
+   check first (verbatim conquered core must complete its own game — driving ability
+   before modification ability). The strongest transfer lever for family-overlapping
+   private games; novel families stay generic-tools + hypothesis-DSL territory.
 
 ## Related
 
