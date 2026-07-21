@@ -1050,68 +1050,37 @@ def _plan_progress(plan: list[PlanStep], transitions: list[dict[str, Any]]) -> i
     return done
 
 
-def simdfs_core(
-    current_frame: Any,
-    transitions: list[dict[str, Any]],
-    act: Callable[..., None],
-    trace: list[str] | None = None,
-) -> None:
-    """Sandbox-runnable portal-sort engine: derive the plan from the level's
-    PRISTINE board, reconstruct how much of it is already in flight from the
-    observed transitions, and QUEUE only the REMAINING steps.
+def _first_real_click_index(transitions: list[dict[str, Any]]) -> int:
+    """Index of the first transition that is NOT an idle-settle corner click.
 
-    Carries the sb26 conquest's load-bearing SIMULATOR + DFS + placement solver
-    (:func:`simdfs_plan`) PLUS its plan-or-settle orchestration -- but critically
-    NOT by re-parsing ``current_frame`` fresh every call (R94 D3-2 fix): the
-    adapter's own faithful policy computes the plan ONCE per level, from the
-    PRISTINE level-entry board, and drains it open-loop across many env steps
-    WITHOUT ever re-parsing a partially-filled board (:func:`simdfs_plan`'s slot/
-    pool detection assumes empty slot markers and an unconsumed pool -- a board
-    mid-plan does not have that shape and is not reliably re-parseable; a naive
-    re-parse-every-refill core stalls forever the moment the sandbox's per-refill
-    action cap truncates a >8-step plan mid-flight, since the NEXT refill's
-    current frame is already partially sorted). Since this core is invoked fresh
-    each refill with no persistent state, it reconstructs that "plan once, drain
-    incrementally" policy from the growing ``transitions`` list instead:
-    ``transitions[0]["before"]`` is the level's pristine board (transitions
-    accumulate per level, cleared on level-up -- the established convention every
-    solver-core caller in this codebase uses), so the plan is re-derived from
-    THAT rather than from the possibly-mid-plan ``current_frame``, and only the
-    plan's un-executed tail (:func:`_plan_progress`) is queued. This also fixes
-    R94 D3-1 (the sandbox's ``queue[:8]`` cap silently dropping the plan's final
-    verify step): the tail naturally starts wherever the cap left off, so the
-    verify step is queued on whichever later refill reaches it, instead of being
-    permanently lost.
-
-    When NO plan is derivable at all from the pristine board (a genuine
-    transient / unsupported layout, matching the adapter's own level-entry
-    settle-wait), queues one harmless idle corner click so the board settles and
-    the next refill retries -- the adapter's own documented "never perturbs a
-    slot or pool piece" corner-click policy (its ``_next_action`` fallback).
-    Instrumented ``trace`` lines (remaining-plan length, or the settle decision)
-    give a patcher localization evidence.
+    :func:`simdfs_core` (and the live adapter's own ``_next_action`` fallback)
+    both use ``CLICK`` at ``(x=0, y=0)`` -- "a harmless idle click at the
+    padding corner ... so a transient board can settle without perturbing any
+    slot or pool piece" (the adapter's own docstring) -- as the SOLE "no plan
+    yet, let the board settle" no-op. A run of leading idle-settle clicks at
+    the start of a level (the level-transition render taking several real env
+    steps to finish, independent of any action) must NOT be mistaken for
+    progress against a real plan, and the frame observed just before the
+    FIRST of them is still the same transient snapshot as before -- so it is
+    the wrong anchor for :func:`simdfs_core`'s in-flight-plan reconstruction.
+    This finds the transition where actual plan drainage began instead.
+    Returns ``len(transitions)`` when every transition so far is an
+    idle-settle click (or the list is empty) -- "no real plan has started
+    yet".
     """
-    grid = _normalize_frame(current_frame)
-    pristine = _normalize_frame(transitions[0]["before"]) if transitions else grid
-    plan = simdfs_plan(pristine)
-    if not plan:
-        if trace is not None:
-            trace.append("no plan (transient/unsupported board) -> idle-settle, retry next refill")
-        act("CLICK", 0, 0)
-        return
-    done = _plan_progress(plan, transitions)
-    remaining = plan[done:]
-    if not remaining:
-        if trace is not None:
-            trace.append(f"plan={len(plan)} steps already fully observed -> nothing to queue")
-        return
-    if trace is not None:
-        clicks = sum(1 for step in remaining if step[0] == "click")
-        trace.append(
-            f"plan={len(plan)} steps, {done} already executed -> queue {len(remaining)} "
-            f"remaining ({clicks} clicks)"
-        )
-    for step in remaining:
+    for i, t in enumerate(transitions):
+        xy = t.get("xy")
+        if xy is not None and (int(xy[0]), int(xy[1])) == (0, 0):
+            continue
+        return i
+    return len(transitions)
+
+
+def _emit_plan(plan: list[PlanStep], act: Callable[..., None]) -> None:
+    """QUEUE every step of ``plan`` through ``act`` (click steps as ACTION6,
+    simple steps by their mapped name) -- the shared emission body both tiers
+    of :func:`simdfs_core` use."""
+    for step in plan:
         if step[0] == "click":
             _kind, row, col = step
             act("CLICK", int(col), int(row))
@@ -1119,3 +1088,90 @@ def simdfs_core(
             name = _SIMPLE_ACTION_NAMES.get(step[1])
             if name is not None:
                 act(name)
+
+
+def simdfs_core(
+    current_frame: Any,
+    transitions: list[dict[str, Any]],
+    act: Callable[..., None],
+    trace: list[str] | None = None,
+) -> None:
+    """Sandbox-runnable portal-sort engine, two tiers per call.
+
+    **Tier 1 -- try the FRESHEST board first, every single call.** This
+    mirrors the live adapter's own policy exactly: ``choose_action`` retries
+    ``simdfs_plan(grid)`` on the CURRENT frame every call while ``self._plan``
+    is empty, NEVER anchoring to a stale snapshot. This is what lets a
+    still-settling level-entry board (the game engine renders a
+    level-transition animation over several real env steps, independent of
+    what action is taken meanwhile) recover the instant it becomes parseable
+    (R94 D3-3 fix: an earlier version of this core anchored to
+    ``transitions[0]["before"]`` unconditionally once transitions were
+    non-empty -- which, whenever one or more leading idle-settle clicks
+    preceded the board actually settling, permanently pinned the "pristine"
+    lookup to that still-transient FIRST-ever frame and never re-tried a
+    fresher one; L2's entry board never recovered across 2500+ steps because
+    of exactly this). When the current board IS pristine/parseable, this
+    always finds a plan whose steps have not executed yet (a partially-filled
+    mid-plan board reliably fails to re-parse -- see Tier 2's docstring --
+    so Tier 1 never wrongly "discovers" a plan mid-execution).
+
+    **Tier 2 -- the current board does not parse.** A plan is most likely
+    already IN FLIGHT and has partially filled the board
+    (:func:`simdfs_plan`'s slot/pool detection assumes empty slot markers and
+    an unconsumed pool -- a board mid-plan does not have that shape and is not
+    reliably re-parseable). This is reconstructed from the PRISTINE snapshot
+    at which it was actually discovered: the ``before`` of the first
+    transition that is NOT an idle-settle corner click
+    (:func:`_first_real_click_index` -- correctly skipping any leading
+    idle-settle rounds, unlike blindly using ``transitions[0]``), replaying
+    :func:`_plan_progress` against the transitions from that point on and
+    queuing only the REMAINING plan steps. This also fixes R94 D3-1 (the
+    sandbox's ``queue[:8]`` cap silently dropping the plan's final verify
+    step): the tail naturally starts wherever the cap left off, so the verify
+    step is queued on whichever later refill reaches it, instead of being
+    permanently lost.
+
+    When NO plan is derivable at all (neither tier succeeds -- a genuine
+    transient / unsupported layout), queues one harmless idle corner click so
+    the board settles and the next refill retries -- the adapter's own
+    documented "never perturbs a slot or pool piece" corner-click policy (its
+    ``_next_action`` fallback). Instrumented ``trace`` lines give a patcher
+    localization evidence.
+    """
+    grid = _normalize_frame(current_frame)
+
+    fresh_plan = simdfs_plan(grid)
+    if fresh_plan:
+        if trace is not None:
+            clicks = sum(1 for step in fresh_plan if step[0] == "click")
+            trace.append(f"fresh plan={len(fresh_plan)} steps ({clicks} clicks) -> queue")
+        _emit_plan(fresh_plan, act)
+        return
+
+    start = _first_real_click_index(transitions)
+    if start < len(transitions):
+        pristine = _normalize_frame(transitions[start]["before"])
+        inflight_plan = simdfs_plan(pristine)
+        if inflight_plan:
+            done = _plan_progress(inflight_plan, transitions[start:])
+            remaining = inflight_plan[done:]
+            if remaining:
+                if trace is not None:
+                    clicks = sum(1 for step in remaining if step[0] == "click")
+                    trace.append(
+                        f"in-flight plan={len(inflight_plan)} steps, {done} already executed -> "
+                        f"queue {len(remaining)} remaining ({clicks} clicks)"
+                    )
+                _emit_plan(remaining, act)
+                return
+            if trace is not None:
+                trace.append(
+                    f"in-flight plan={len(inflight_plan)} steps already fully observed -> "
+                    "nothing to queue"
+                )
+            return
+
+    if trace is not None:
+        trace.append("no plan (transient/unsupported board) -> idle-settle, retry next refill")
+    act("CLICK", 0, 0)

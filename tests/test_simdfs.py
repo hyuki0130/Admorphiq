@@ -197,6 +197,51 @@ def test_simdfs_core_idle_settle_on_unplannable_board():
     assert any("idle-settle" in line for line in trace), trace
 
 
+def test_simdfs_core_recovers_after_leading_idle_settle_clicks():
+    """Purpose: R94 D3-3 regression test. A level-entry board (e.g. a wiki "L2"
+    with a portal graph -- see the sb26 adapter's own module docstring) can take
+    several real env steps to settle (a level-transition render animation,
+    independent of any action taken); the core correctly idle-settles while it
+    isn't parseable yet, exactly like the adapter's own bounded settle+retry
+    policy. Once the board settles into a parseable shape, a fresh parse must
+    succeed IMMEDIATELY -- REGARDLESS of how many leading idle-settle
+    transitions already accumulated this level. A core that anchors its
+    in-flight-plan lookup to ``transitions[0]["before"]`` unconditionally (an
+    earlier, since-fixed version of this core) would stay pinned to that
+    still-transient FIRST-ever frame forever and never recover -- the exact
+    reported production bug (L2 entry never advanced across 2500+ steps).
+
+    Expected feedback: pass ⇒ the core recovers the instant the board settles,
+    regardless of prior idle-settle rounds; fail ⇒ a still-transient
+    level-entry board permanently poisons the plan lookup (idle-settle
+    forever, no level past the first one ever clears)."""
+    transient = np.zeros((32, 32), dtype=np.int64)  # not yet parseable
+    settled = _mini_portal_board()  # becomes parseable once rendering finishes
+    transitions: list[dict[str, Any]] = []
+
+    # Two leading idle-settle rounds while the board is still transient.
+    for _ in range(2):
+        rec, act = _collect_act()
+        trace: list[str] = []
+        simdfs_core(transient, transitions, act, trace)
+        assert rec == [("CLICK", 0, 0)], rec
+        assert any("idle-settle" in line for line in trace), trace
+        transitions.append({
+            "action": "CLICK", "xy": [0, 0], "before": transient, "after": transient,
+        })
+
+    # The board settles: current_frame is now the pristine, fully-parseable
+    # board -- the core must recover a FRESH plan immediately, ignoring the two
+    # leading idle-settle transitions already recorded.
+    rec, act = _collect_act()
+    trace = []
+    simdfs_core(settled, transitions, act, trace)
+    clicks = [(name, x, y) for name, x, y in rec if name == "CLICK"]
+    assert len(clicks) == 4, rec  # the 2-slot board's full pick+place plan
+    assert ("SPACE", None, None) in rec, rec
+    assert any("fresh plan=" in line for line in trace), trace
+
+
 def test_simdfs_core_continues_inflight_plan_across_refills():
     """Purpose: R94 D3-2 regression test. A >8-step plan (4 slots -> 8 clicks + 1
     verify = 9 steps) gets truncated by the sandbox's own ``run_code`` action cap

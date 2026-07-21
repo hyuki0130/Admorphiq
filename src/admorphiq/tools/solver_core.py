@@ -124,7 +124,9 @@ from admorphiq.kernels.simdfs import (  # noqa: F401
     _detect_pool_portals,
     _detect_portals,
     _dfs_traversal,
+    _emit_plan,
     _filter_interactive_frames,
+    _first_real_click_index,
     _frame_content,
     _frame_pseudo_region,
     _frame_slot_layout,
@@ -493,7 +495,11 @@ _CARD_FNS: dict[str, list[Callable[..., Any] | str]] = {
         # transitions list (pristine-board re-derivation + progress matching),
         # so the stateless core drains a >8-step plan across sandbox refills
         # instead of stalling once the board is no longer pristine.
-        _plan_step_key, _plan_progress, simdfs_core,
+        _plan_step_key, _plan_progress,
+        # R94 D3-3 fix: fresh-board-first retry (never anchors to a stale
+        # transient snapshot) + idle-settle-aware pristine lookup, so a
+        # still-settling level-entry board recovers instead of stalling forever.
+        _first_real_click_index, _emit_plan, simdfs_core,
     ],
 }
 
