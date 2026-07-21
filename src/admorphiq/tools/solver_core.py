@@ -78,19 +78,50 @@ def _stencils_from_transitions(
     return stencils
 
 
-def _next_probe(
-    frame: np.ndarray, clicked: set[tuple[int, int]],
-) -> tuple[int, int] | None:
-    """A click on a cell not yet clicked — foreground cells first (the actual
-    interactive/lit cells), then a coarse grid to cover the rest. Deterministic."""
+def _component_centroids(frame: np.ndarray) -> list[tuple[int, int]]:
+    """Rounded (x, y) centroids of the 4-connected same-colour foreground
+    regions, in row-major discovery order (background = most common colour).
+    Self-contained (np + builtins only) so it runs inside the code sandbox."""
     f = np.asarray(frame)
     h, w = f.shape
     hist = color_histogram(f)
-    bg = int(hist.argmax()) if hist.any() else 0
-    candidates: list[tuple[int, int]] = []
-    ys, xs = np.where(f != bg)
-    for y, x in zip(ys, xs):
-        candidates.append((int(x), int(y)))
+    bg = int(hist.argmax()) if hist.any() else -1
+    seen = [[False] * w for _ in range(h)]
+    out: list[tuple[int, int]] = []
+    for y in range(h):
+        for x in range(w):
+            if seen[y][x]:
+                continue
+            seen[y][x] = True
+            color = int(f[y, x])
+            if color == bg:
+                continue
+            cells = [(y, x)]
+            stack = [(y, x)]
+            while stack:
+                cy, cx = stack.pop()
+                for ny, nx in ((cy - 1, cx), (cy + 1, cx), (cy, cx - 1), (cy, cx + 1)):
+                    if 0 <= ny < h and 0 <= nx < w and not seen[ny][nx] \
+                            and int(f[ny, nx]) == color:
+                        seen[ny][nx] = True
+                        cells.append((ny, nx))
+                        stack.append((ny, nx))
+            cy = sum(c[0] for c in cells) / len(cells)
+            cx = sum(c[1] for c in cells) / len(cells)
+            out.append((int(round(cx)), int(round(cy))))
+    return out
+
+
+def _next_probe(
+    frame: np.ndarray, clicked: set[tuple[int, int]],
+) -> tuple[int, int] | None:
+    """A click on a cell not yet clicked — component CENTROIDS first (the actual
+    interactive cells; probing every foreground pixel burns the budget inside
+    one object and was measured to lose vc33 2 -> 0 levels), then a coarse grid.
+    Deterministic; mirrors the pre-refactor ToggleTool probe order."""
+    f = np.asarray(frame)
+    h, w = f.shape
+    candidates: list[tuple[int, int]] = list(_component_centroids(f))
     step = max(1, min(h, w) // 8)
     for y in range(step // 2, h, step):
         for x in range(step // 2, w, step):
@@ -289,8 +320,8 @@ _CARD_HEADER = (
 _CARD_FNS: dict[str, list[Callable[..., Any]]] = {
     "toggle": [
         color_histogram, _binarize, _gf2_solve,
-        _diff_cells, _stencils_from_transitions, _next_probe, _solve_board,
-        toggle_core,
+        _diff_cells, _stencils_from_transitions, _component_centroids, _next_probe,
+        _solve_board, toggle_core,
     ],
     "paint": [
         _bg_regions, paint_plan, _infer_fill_color, paint_core,
