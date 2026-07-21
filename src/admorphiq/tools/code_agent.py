@@ -15,6 +15,8 @@ built + measured separately.
 
 from __future__ import annotations
 
+import os
+import types
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -25,6 +27,28 @@ from admorphiq.ewm.core import (
     _safe_builtins,
     extract_code,
 )
+
+
+def _kernel_api_enabled() -> bool:
+    """agent25 kernel bridge gate. Default OFF keeps the deployed prompt/behaviour
+    byte-identical until the bridge is measured on a GPU host."""
+    return os.environ.get("HARNESS_KERNEL_API", "").lower() in ("1", "true", "yes", "on")
+
+
+def _kernel_namespace() -> types.SimpleNamespace:
+    """The ``K`` object of curated r59 kernels for the code sandbox."""
+    from admorphiq.tools.kernel_api import KERNEL_API
+
+    return types.SimpleNamespace(**KERNEL_API)
+
+
+def _system_content() -> str:
+    """System prompt; appends the kernel toolbox card when the bridge is on."""
+    if _kernel_api_enabled():
+        from admorphiq.tools.kernel_api import KERNEL_CARDS
+
+        return _SYSTEM + "\n\n" + KERNEL_CARDS
+    return _SYSTEM
 
 
 @dataclass
@@ -82,6 +106,10 @@ def run_code(
         "history": list(history),
         "valid_actions": list(valid_actions),
         "act": act,
+        # r59 kernel vocabulary (agent25 bridge). Inert unless the prompt tells
+        # the model it exists (gated by HARNESS_KERNEL_API in the prompt builder),
+        # so injecting it here leaves default behaviour byte-identical.
+        "K": _kernel_namespace(),
     }
     code = extract_code(code_text)
     try:
@@ -142,7 +170,7 @@ def build_code_prompt(
         + f"valid_actions = {valid_actions}\nrecent = {recent}\n\n"
         "Infer the goal, then write the ```python block."
     )
-    return [{"role": "system", "content": _SYSTEM}, {"role": "user", "content": user}]
+    return [{"role": "system", "content": _system_content()}, {"role": "user", "content": user}]
 
 
 def build_refine_prompt(
@@ -165,7 +193,7 @@ def build_refine_prompt(
         "Diagnose why the previous block did not clear the level, then write a "
         "REVISED ```python block."
     )
-    return [{"role": "system", "content": _SYSTEM}, {"role": "user", "content": user}]
+    return [{"role": "system", "content": _system_content()}, {"role": "user", "content": user}]
 
 
 def _frame_summary(frame: np.ndarray) -> str:
