@@ -2,7 +2,7 @@
 round: r94
 axis: agent25 — adapter-template patching (characteristics→solution game cards)
 keywords: [agent25, adapter-template, game-cards, arrangement-core, lp85, s5i5, paired-holdout, upper-bound-gate, structural-delegation, oracle-routing, gptoss-ab]
-verdict: IN PROGRESS — D1 parity gate PASSED (delegated lp85 reproduces 8/8 @0.6992 exactly); D3 sandbox upper-bound + gpt-oss A/B running
+verdict: ALL GATES PASSED — sb26 simdfs card reproduces the FULL conquest through the LLM patch sandbox (8/8 in 131 actions, vs adapter 170; v4 cap-proof continuation); adapter parity 8/8 @0.846 exact throughout; lp85 = pair-ineligible (time-series). D5 paired holdout (sk48, pre-registered arms) is the live experiment
 commit: 07c81eb
 ---
 
@@ -141,6 +141,16 @@ running on the same executor.
 Adapter parity held 8/8 @0.846 EXACT at every rung (v1/v2/v3 — delegation never broke).
 The direct-call multi-level clear proves the extracted ENGINE is complete; the residual
 work is purely the stateless-continuation semantics under the sandbox contract.
+
+| **v4** | **PASSED: 8/8 levels in 131 actions, 2.2s** (fewer than the adapter's 170 — the
+open-loop plan chunks replay without the adapter's re-checks) | — | cap-proof continuation
+(7229844): original-plan-from-level-start + prefix match + next chunk + no-progress guard |
+
+**THE UPPER-BOUND GATE IS PROVEN (2026-07-22 05:56)** — the user's completion requirement
+("우리가 클리어하는 게임을 주면 견본만으로 똑같이 완주해야") holds: a conquered-solution
+template drives its own game to FULL conquest through the exact pipeline an LLM patch
+runs in. Any failure in the D5 holdout is now attributable to the MODEL's adaptation,
+not the template or the plumbing.
 
 ## D5 PRE-REGISTRATION (frozen 2026-07-22 05:53, before any gate-v4/holdout result)
 
