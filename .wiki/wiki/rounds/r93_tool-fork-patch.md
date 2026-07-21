@@ -237,6 +237,21 @@ a final patcher**. Frozen rules:
    fit bias; one session per model aliases session↔model; shared 20k completion budget ≠
    equal usable patch budget under reasoning; single-reset = one trajectory, not robustness.
 
+## Breadth bench — gpt-oss reasoning-HIGH arm landed (2026-07-22 08:02); gemma4 arm running
+
+**The user's tune-before-discard demand is vindicated by measurement**: with the reasoning
+channel ON (effort=high, 20k budget), gpt-oss-120b scored **9 PATCH_WINS of 15 scored
+cases** (5 harness errors: 3 per-case timeouts rc=-9, 2 probe crashes rc=1 — reported
+separately) — versus **0/2 with the channel off**. On the PRE-REGISTERED primary set:
+**3/4 wins** (toggle×ft09 tr1→136, toggle×sc25 tr1→174 — both parents fully inert;
+paint×cd82 tr64→**348**, larger than gemma4's 128; toggle×vc33 still PARENT_HOLDS vs the
+2-level parent). Zero truncations, zero invalids — the config corrections were clean.
+My earlier "gpt-oss loses, lever closed" one-shot verdict is now MEASURED-WRONG twice
+over. Per the f53a82e pre-registration this remains CANDIDATE data — the paired
+McNemar comparison runs when the gemma4 20-case arm completes; no winner is declared
+without the untouched-holdout ×3-session confirmation. Artifact:
+`scripts/rounds/R93/r93_breadth_gptoss_high.json`.
+
 ## Next
 
 1. ~~`scripts/probe_patch_loop.py`~~ DONE (fa171ce) + Kaggle wrapper (b6dad26).
