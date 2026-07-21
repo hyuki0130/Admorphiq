@@ -130,6 +130,18 @@ orchestration again — the D3 gate keeps catching exactly what it exists to cat
 interface ineligibility: the game is static/action-boundary expressible. Fix round
 running on the same executor.
 
+## Gate ladder (sb26, chronological — each rung = trace-diagnosed targeted fix)
+
+| rung | sandbox gate result | diagnosis (from instrumented trace) | fix |
+|---|---|---|---|
+| v1 | 0 levels (plan ran once, then idle forever) | 9th non-click plan step dropped at plan→act seam; mid-game re-parse rejected partially-sorted boards | emit non-click steps; plan-in-flight reconstruction (f09be60) |
+| v2 | **L1 cleared** @step ~100, then L2 stall ×2400 steps | pristine L2 ENTRY board rejected ("transient/unsupported") — parse covered L1-style boards only | extract the adapter's real per-level parse acceptance (e099e53) |
+| v3 | direct-call clears **L2→L3→L4** (settle→plan→LEVEL UP per level); card path first hit `id` NameError (fixed 46f1738), then stalls at L2 | **run_code's 8-action cap**: 15-step plan chunked at 8; in-flight detection missed the capped prefix → unsound mid-state re-plan → non-terminating 2-click cycle | v4 (in build): reconstruct the ORIGINAL plan deterministically from the level-start board (transitions[0].before), match executed prefix, emit next chunk; no-progress guard |
+
+Adapter parity held 8/8 @0.846 EXACT at every rung (v1/v2/v3 — delegation never broke).
+The direct-call multi-level clear proves the extracted ENGINE is complete; the residual
+work is purely the stateless-continuation semantics under the sandbox contract.
+
 ## In flight
 
 - **D3 upper-bound gate**: verbatim arrangement card driven through the run_code sandbox
