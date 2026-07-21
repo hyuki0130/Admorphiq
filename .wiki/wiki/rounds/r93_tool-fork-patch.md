@@ -205,6 +205,38 @@ harmony vocab worked — preflight OK, first successful gpt-oss Kaggle serve):
   0.133 ≫ gpt-oss-120b 0.039). The "bigger reasoner" lever the user asked to try is now
   MEASURED and closed. Artifact: `scripts/rounds/R93/r93_patch_loop_bench_gptoss.json`.
 
+## PRE-REGISTRATION — breadth model-comparison protocol (frozen 2026-07-22 03:33 KST,
+## BEFORE any breadth result was seen; Codex-designed, gpt-5.6-sol)
+
+The running 20-case × 2-model breadth bench is **candidate selection ONLY — it cannot name
+a final patcher**. Frozen rules:
+
+1. **Family compatibility, predeclared** (from wiki mechanics, before results):
+   - toggle-compatible: **vc33** (click flips cell sets), **ft09** (lights-out/GF(2)),
+     **sc25** (3×3 toggle phase).
+   - paint-compatible: **cd82** (flood/recolour).
+   - ALL OTHER (tool,game) pairs — lf52 (peg-jump), lp85 (arrangement), s5i5 (slider),
+     su15 (vacuum-merge), sb26 (portal-sort), r11l (drag-assembly), and every cross pair —
+     are WRONG-FAMILY: secondary "misrouting/OOD robustness" report, excluded from the
+     primary metric. (Honest consequence: the primary set is only 4 cases — this bench
+     CANNOT crown a winner by construction; it selects candidates and maps families.)
+2. **Scoring**: paired discordant analysis per case (D_A = gemma4 wins where gptoss doesn't,
+   D_B converse), exact two-sided McNemar on discordants, per-family breakdown,
+   PATCH_INVALID = non-win reported separately, win MAGNITUDES reported (a +1-transition
+   win ≠ a 2× win).
+3. **Nomination rule** (this run): nominate a model only if exact paired p<0.05 AND it leads
+   in both families AND ≥20pt primary win-rate advantage AND its invalid rate is not higher.
+4. **Final verdict rule**: nomination → confirm on UNTOUCHED holdout games, ≥3 independently
+   restarted counterbalanced server sessions, same-direction result with 95% CI lower bound
+   > 0 for the paired advantage. Otherwise **NO WINNER** (route by family or keep both).
+   No qualitative override.
+5. **gpt-oss telemetry required**: reasoning/output token counts, finish reasons, truncation
+   check — a slow-reasoning timeout must not be scored as a model failure. Effort sweep only
+   on a dev set, never selected on these same 20 outcomes.
+6. **Acknowledged confounds** (carried, not resolved here): gemma-tuned prompt/card = prompt-
+   fit bias; one session per model aliases session↔model; shared 20k completion budget ≠
+   equal usable patch budget under reasoning; single-reset = one trajectory, not robustness.
+
 ## Next
 
 1. ~~`scripts/probe_patch_loop.py`~~ DONE (fa171ce) + Kaggle wrapper (b6dad26).
