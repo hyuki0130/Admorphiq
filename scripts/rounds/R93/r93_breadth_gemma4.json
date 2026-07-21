@@ -1,0 +1,488 @@
+{
+  "model": "gemma4",
+  "budget": 2000,
+  "verdicts": {
+    "toggle:vc33": "PARENT_HOLDS",
+    "paint:vc33": "PATCH_WINS",
+    "toggle:cd82": "ERROR",
+    "paint:cd82": "PATCH_WINS",
+    "toggle:ft09": "PATCH_WINS",
+    "paint:ft09": "PATCH_WINS",
+    "toggle:sc25": "PATCH_WINS",
+    "paint:sc25": "PATCH_WINS",
+    "toggle:lf52": "PARENT_HOLDS",
+    "paint:lf52": "PATCH_WINS",
+    "toggle:lp85": "PATCH_WINS",
+    "paint:lp85": "PARENT_HOLDS",
+    "toggle:s5i5": "PARENT_HOLDS",
+    "paint:s5i5": "PARENT_HOLDS",
+    "toggle:su15": "PATCH_WINS",
+    "paint:su15": "PATCH_WINS",
+    "toggle:sb26": "PATCH_WINS",
+    "paint:sb26": "PATCH_WINS",
+    "toggle:r11l": "PATCH_INVALID",
+    "paint:r11l": "PATCH_WINS"
+  },
+  "results": [
+    {
+      "tool": "toggle",
+      "game": "vc33",
+      "budget": 2000,
+      "parent": {
+        "levels": 2,
+        "actions": 2000,
+        "distinct_states": 834,
+        "distinct_transitions": 1509,
+        "noop_rate": 0.11465295629820052
+      },
+      "patch": {
+        "levels": 0,
+        "actions": 2000,
+        "distinct_states": 127,
+        "distinct_transitions": 182,
+        "noop_rate": 0.0,
+        "execute_error": null,
+        "failure_stage": null,
+        "patched_code": "from __future__ import annotations\n\n# \u2500\u2500 SANDBOX CONTRACT \u2014 you may PATCH the core function below \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n# It runs in a sandbox with ONLY: np (numpy), Python builtins, and the\n# helper fns whose source is shown here. NO imports (they are blocked).\n\n_MAX_STENCIL = 1024  # Increased to handle large-scale toggles (rows/cols/etc)\n_MIN_STENCILS = 4\n\ndef color_histogram(frame: np.ndarray, ncolors: int = 16) -> np.ndarray:\n    \"\"\"Count of each colour index 0..ncolors-1 in the grid.\"\"\"\n    flat = np.asarray(frame).ravel()\n    return np.bincount(flat[(flat >= 0) & (flat < ncolors)], minlength=ncolors)\n\n\ndef _binarize(frame: np.ndarray) -> tuple[np.ndarray, int, int]:\n    \"\"\"Reduce the board to a 0/1 grid: the most common colour is OFF (0), the\n    rest ON (1). Returns (bits, off_color, on_color).\"\"\"\n    hist = color_histogram(frame)\n    off = int(hist.argmax()) if hist.any() else 0\n    on_candidates = [c for c in range(len(hist)) if hist[c] > 0 and c != off]\n    on = on_candidates[0] if on_candidates else off\n    bits = (frame != off).astype(np.uint8)\n    return bits, off, on\n\n\ndef _gf2_solve(a: np.ndarray, b: np.ndarray) -> np.ndarray | None:\n    \"\"\"Solve A\u00b7x = b over GF(2) by Gaussian elimination.\"\"\"\n    m = np.concatenate([a.copy() % 2, (b.copy() % 2).reshape(-1, 1)], axis=1).astype(np.uint8)\n    rows, cols = m.shape\n    nvars = cols - 1\n    pivot_col_of_row: list[int] = []\n    r = 0\n    for c in range(nvars):\n        piv = None\n        for rr in range(r, rows):\n            if m[rr, c]:\n                piv = rr\n                break\n        if piv is None:\n            continue\n        m[[r, piv]] = m[[piv, r]]\n        for rr in range(rows):\n            if rr != r and m[rr, c]:\n                m[rr] ^= m[r]\n        pivot_col_of_row.append(c)\n        r += 1\n        if r == rows:\n            break\n    for rr in range(rows):\n        if not m[rr, :nvars].any() and m[rr, nvars]:\n            return None\n    x = np.zeros(nvars, dtype=np.uint8)\n    for i, c in enumerate(pivot_col_of_row):\n        x[c] = m[i, nvars]\n    return x\n\n\ndef _diff_cells(before: Any, after: Any) -> list[tuple[int, int]]:\n    \"\"\"The (row, col) cells that differ between two same-shape grids.\"\"\"\n    a = np.asarray(before)\n    b = np.asarray(after)\n    if a.shape != b.shape:\n        return []\n    ys, xs = np.where(a != b)\n    return [(int(y), int(x)) for y, x in zip(ys, xs)]\n\n\ndef _stencils_from_transitions(\n    transitions: list[dict[str, Any]],\n) -> dict[tuple[int, int], set[tuple[int, int]]]:\n    \"\"\"Rebuild each click's toggle stencil from observed click transitions.\"\"\"\n    stencils: dict[tuple[int, int], set[tuple[int, int]]] = {}\n    for t in transitions:\n        xy = t.get(\"xy\")\n        if xy is None:\n            continue\n        cells = _diff_cells(t[\"before\"], t[\"after\"])\n        if 1 <= len(cells) <= _MAX_STENCIL:\n            stencils[(int(xy[0]), int(xy[1]))] = set(cells)\n    return stencils\n\n\ndef _component_centroids(frame: np.ndarray) -> list[tuple[int, int]]:\n    \"\"\"Rounded (x, y) centroids of the 4-connected same-colour foreground regions.\"\"\"\n    f = np.asarray(frame)\n    h, w = f.shape\n    hist = color_histogram(f)\n    bg = int(hist.argmax()) if hist.any() else -1\n    seen = [[False] * w for _ in range(h)]\n    out: list[tuple[int, int]] = []\n    for y in range(h):\n        for x in range(w):\n            if seen[y][x]:\n                continue\n            seen[y][x] = True\n            color = int(f[y, x])\n            if color == bg:\n                continue\n            cells = [(y, x)]\n            stack = [(y, x)]\n            while stack:\n                cy, cx = stack.pop()\n                for ny, nx in ((cy - 1, cx), (cy + 1, cx), (cy, cx - 1), (cy, cx + 1)):\n                    if 0 <= ny < h and 0 <= nx < w and not seen[ny][nx] \\\n                            and int(f[ny, nx]) == color:\n                        seen[ny][nx] = True\n                        cells.append((ny, nx))\n                        stack.append((ny, nx))\n            cy = sum(c[0] for c in cells) / len(cells)\n            cx = sum(c[1] for c in cells) / len(cells)\n            out.append((int(round(cx)), int(round(cy))))\n    return out\n\n\ndef _next_probe(\n    frame: np.ndarray, clicked: set[tuple[int, int]],\n) -> tuple[int, int] | None:\n    \"\"\"Deterministic probe order: centroids then coarse grid.\"\"\"\n    f = np.asarray(frame)\n    h, w = f.shape\n    candidates: list[tuple[int, int]] = list(_component_centroids(f))\n    step = max(1, min(h, w) // 8)\n    for y in range(step // 2, h, step):\n        for x in range(step // 2, w, step):\n            candidates.append((x, y))\n    for x, y in candidates:\n        if (x, y) not in clicked:\n            return (x, y)\n    return None\n\n\ndef _solve_board(\n    frame: np.ndarray,\n    stencils: dict[tuple[int, int], set[tuple[int, int]]],\n    trace: list[str] | None = None,\n) -> list[tuple[int, int]] | None:\n    \"\"\"Build A\u00b7x = b over GF(2) and return the best click plan.\"\"\"\n    bits, _off, _on = _binarize(np.asarray(frame))\n    h, w = bits.shape\n    clicks = sorted(stencils)\n    n_cells = h * w\n    a = np.zeros((n_cells, len(clicks)), dtype=np.uint8)\n    for j, click in enumerate(clicks):\n        for (r, c) in stencils[click]:\n            if 0 <= r < h and 0 <= c < w:\n                a[r * w + c, j] = 1\n    best: list[tuple[int, int]] | None = None\n    for target in (0, 1):\n        b = ((bits.reshape(-1) ^ target) % 2).astype(np.uint8)\n        x = _gf2_solve(a, b)\n        if x is None:\n            if trace is not None:\n                trace.append(f\"GF2 inconsistent for target={target}\")\n            continue\n        plan = [(int(clicks[j][0]), int(clicks[j][1]))\n                for j in range(len(clicks)) if x[j]]\n        if plan and (best is None or len(plan) < len(best)):\n            best = plan\n    return best\n\n\ndef toggle_core(\n    current_frame: Any,\n    transitions: list[dict[str, Any]],\n    act: Callable[..., None],\n    trace: list[str] | None = None,\n) -> None:\n    \"\"\"Lights-out core: rebuild click stencils, solve, or probe.\"\"\"\n    frame = np.asarray(current_frame)\n    stencils = _stencils_from_transitions(transitions)\n    \n    if len(stencils) >= _MIN_STENCILS:\n        plan = _solve_board(frame, stencils, trace)\n        if plan:\n            if trace is not None:\n                trace.append(f\"plan={len(plan)} clicks\")\n            for (x, y) in plan:\n                act(\"CLICK\", x, y)\n            return\n            \n    probe = _next_probe(frame, set(stencils))\n    if probe is not None:\n        if trace is not None:\n            trace.append(\n                f\"stencils={len(stencils)} (<{_MIN_STENCILS} or no plan) -> \"\n                f\"probe ({probe[0]},{probe[1]})\"\n            )\n        act(\"CLICK\", probe[0], probe[1])"
+      },
+      "verdict": "PARENT_HOLDS",
+      "llm_latency_s": 123.83199647600031
+    },
+    {
+      "tool": "paint",
+      "game": "vc33",
+      "budget": 2000,
+      "parent": {
+        "levels": 0,
+        "actions": 2000,
+        "distinct_states": 50,
+        "distinct_transitions": 49,
+        "noop_rate": 0.0
+      },
+      "patch": {
+        "levels": 0,
+        "actions": 2000,
+        "distinct_states": 50,
+        "distinct_transitions": 52,
+        "noop_rate": 0.0,
+        "execute_error": null,
+        "failure_stage": null,
+        "patched_code": "def paint_core(\n    current_frame: Any,\n    transitions: list[dict[str, Any]],\n    act: Callable[..., None],\n    trace: list[str] | None = None,\n) -> None:\n    \"\"\"Paint/flood core: infer the fill colour from observed click transitions;\n    once confirmed, queue clicks filling the largest remaining background regions;\n    before it is confirmed, queue one probe click to elicit the mechanic.\n    \n    PATCH: If we are stuck in a probe loop (many transitions but no confirmed fill),\n    we allow the full paint_plan to execute to break the deadlock.\n    \"\"\"\n    frame = np.asarray(current_frame)\n    fill = _infer_fill_color(transitions)\n    \n    # Check if we have been probing for a while without confirmation\n    # If we have more than 5 click transitions and still no fill, \n    # the mechanic might be low-impact (small fills) or the threshold is too high.\n    click_count = sum(1 for t in transitions if t.get(\"xy\") is not None)\n    \n    if fill < 0:\n        if click_count > 5:\n            if trace is not None:\n                trace.append(\"fill unconfirmed but probe limit reached -> attempting full plan\")\n            clicks = paint_plan(frame, trace=trace)\n        else:\n            if trace is not None:\n                trace.append(\"fill mechanic unconfirmed -> probe 1 region\")\n            clicks = paint_plan(frame, max_clicks=1, trace=trace)\n    else:\n        if trace is not None:\n            trace.append(f\"fill_color={fill} -> fill regions\")\n        clicks = paint_plan(frame, trace=trace)\n        \n    for (x, y) in clicks:\n        act(\"CLICK\", x, y)"
+      },
+      "verdict": "PATCH_WINS",
+      "llm_latency_s": 33.78789715200037
+    },
+    {
+      "tool": "toggle",
+      "game": "cd82",
+      "error": "probe rc=-9, no output"
+    },
+    {
+      "tool": "paint",
+      "game": "cd82",
+      "budget": 2000,
+      "parent": {
+        "levels": 0,
+        "actions": 2000,
+        "distinct_states": 64,
+        "distinct_transitions": 64,
+        "noop_rate": 0.36359000509943906
+      },
+      "patch": {
+        "levels": 0,
+        "actions": 2000,
+        "distinct_states": 64,
+        "distinct_transitions": 128,
+        "noop_rate": 0.36359000509943906,
+        "execute_error": null,
+        "failure_stage": null,
+        "patched_code": "def paint_core(\n    current_frame: Any,\n    transitions: list[dict[str, Any]],\n    act: Callable[..., None],\n    trace: list[str] | None = None,\n) -> None:\n    \"\"\"Paint/flood core: infer the fill colour from observed click transitions;\n    once confirmed, queue clicks filling the largest remaining background regions;\n    before it is confirmed, queue one probe click to elicit the mechanic.\n    If stuck probing the same spot without success, it will try the next largest region.\"\"\"\n    frame = np.asarray(current_frame)\n    fill = _infer_fill_color(transitions)\n    \n    if fill < 0:\n        # Check if the last few actions were unsuccessful probes at the same location\n        # to prevent infinite loops on a single coordinate.\n        last_clicks = [t.get(\"xy\") for t in transitions[-5:] if t.get(\"action\") == \"CLICK\"]\n        \n        if trace is not None:\n            trace.append(\"fill mechanic unconfirmed -> probe region\")\n        \n        # Get multiple candidate regions to avoid getting stuck on one\n        comps = _bg_regions(frame)\n        comps.sort(key=lambda comp: (-len(comp), comp[0]))\n        \n        if not comps:\n            return\n\n        # If we've been clicking the largest region without success, try the next one\n        probe_idx = 0\n        if last_clicks:\n            last_xy = last_clicks[-1]\n            # Calculate center of the largest region\n            c0 = comps[0]\n            cy0, cx0 = int(round(sum(p[0] for p in c0)/len(c0))), int(round(sum(p[1] for p in c0)/len(c0)))\n            if [cx0, cy0] == last_xy:\n                # Try the second largest region if it exists\n                probe_idx = 1 if len(comps) > 1 else 0\n        \n        target_comp = comps[probe_idx]\n        ys = [p[0] for p in target_comp]\n        xs = [p[1] for p in target_comp]\n        cy = int(round(sum(ys) / len(ys)))\n        cx = int(round(sum(xs) / len(xs)))\n        if int(frame[cy, cx]) != _BACKGROUND:\n            cy, cx = target_comp[len(target_comp) // 2]\n            \n        act(\"CLICK\", cx, cy)\n    else:\n        if trace is not None:\n            trace.append(f\"fill_color={fill} -> fill regions\")\n        clicks = paint_plan(frame, trace=trace)\n        for (x, y) in clicks:\n            act(\"CLICK\", x, y)"
+      },
+      "verdict": "PATCH_WINS",
+      "llm_latency_s": 46.43204958299975
+    },
+    {
+      "tool": "toggle",
+      "game": "ft09",
+      "budget": 2000,
+      "parent": {
+        "levels": 0,
+        "actions": 2000,
+        "distinct_states": 1,
+        "distinct_transitions": 1,
+        "noop_rate": 1.0
+      },
+      "patch": {
+        "levels": 0,
+        "actions": 2000,
+        "distinct_states": 17,
+        "distinct_transitions": 136,
+        "noop_rate": 0.9919959979989995,
+        "execute_error": null,
+        "failure_stage": null,
+        "patched_code": "from __future__ import annotations\n\ndef toggle_core(\n    current_frame: Any,\n    transitions: list[dict[str, Any]],\n    act: Callable[..., None],\n    trace: list[str] | None = None,\n) -> None:\n    \"\"\"Lights-out core: rebuild click stencils from the observed transitions,\n    GF(2)-solve for a uniform board and queue the plan; if there are not yet\n    enough stencils (<_MIN_STENCILS), queue the next systematic probe click.\n    \n    FIX: Track all attempted clicks in the probe set, not just those that \n    resulted in a valid stencil, to prevent infinite loops on dead cells.\n    \"\"\"\n    frame = np.asarray(current_frame)\n    stencils = _stencils_from_transitions(transitions)\n    \n    # Track every coordinate that has been clicked at least once\n    all_clicked = set()\n    for t in transitions:\n        xy = t.get(\"xy\")\n        if xy is not None:\n            all_clicked.add((int(xy[0]), int(xy[1])))\n\n    if len(stencils) >= _MIN_STENCILS:\n        plan = _solve_board(frame, stencils, trace)\n        if plan:\n            if trace is not None:\n                trace.append(f\"plan={len(plan)} clicks\")\n            for (x, y) in plan:\n                act(\"CLICK\", x, y)\n            return\n            \n    # Use all_clicked instead of set(stencils) to ensure we move past dead cells\n    probe = _next_probe(frame, all_clicked)\n    if probe is not None:\n        if trace is not None:\n            trace.append(\n                f\"stencils={len(stencils)} (<{_MIN_STENCILS}) -> \"\n                f\"probe ({probe[0]},{probe[1]})\"\n            )\n        act(\"CLICK\", probe[0], probe[1])"
+      },
+      "verdict": "PATCH_WINS",
+      "llm_latency_s": 33.10484569300024
+    },
+    {
+      "tool": "paint",
+      "game": "ft09",
+      "budget": 2000,
+      "parent": {
+        "levels": 0,
+        "actions": 2000,
+        "distinct_states": 1,
+        "distinct_transitions": 1,
+        "noop_rate": 1.0
+      },
+      "patch": {
+        "levels": 0,
+        "actions": 2000,
+        "distinct_states": 1,
+        "distinct_transitions": 4,
+        "noop_rate": 1.0,
+        "execute_error": null,
+        "failure_stage": null,
+        "patched_code": "def paint_core(\n    current_frame: Any,\n    transitions: list[dict[str, Any]],\n    act: Callable[..., None],\n    trace: list[str] | None = None,\n) -> None:\n    \"\"\"Paint/flood core: infer the fill colour from observed click transitions;\n    once confirmed, queue clicks filling the largest remaining background regions;\n    before it is confirmed, queue multiple probe clicks to elicit the mechanic.\"\"\"\n    frame = np.asarray(current_frame)\n    \n    # Dynamic background detection: if 0 isn't the most common, it might not be the BG\n    # However, to stay safe with the provided helper, we check if 0 is prevalent.\n    # If we are stalling, we try to find the most common color as the background.\n    bg_color = _BACKGROUND\n    if transitions and all(t.get(\"changed\", 0) == 0 for t in transitions[-5:]):\n        # If last 5 clicks did nothing, the background might not be 0\n        vals, counts = np.unique(frame, return_counts=True)\n        bg_color = int(vals[counts.argmax()])\n        if trace is not None:\n            trace.append(f\"stalling detected -> switching bg_color to {bg_color}\")\n\n    fill = _infer_fill_color(transitions, background=bg_color)\n    \n    if fill < 0:\n        if trace is not None:\n            trace.append(\"fill mechanic unconfirmed -> probing multiple regions\")\n        # Probe up to 3 largest regions to break potential deadlocks/invalid centers\n        clicks = paint_plan(frame, background=bg_color, max_clicks=3, trace=trace)\n    else:\n        if trace is not None:\n            trace.append(f\"fill_color={fill} -> fill regions\")\n        clicks = paint_plan(frame, background=bg_color, trace=trace)\n        \n    for (x, y) in clicks:\n        act(\"CLICK\", x, y)"
+      },
+      "verdict": "PATCH_WINS",
+      "llm_latency_s": 39.09855928199977
+    },
+    {
+      "tool": "toggle",
+      "game": "sc25",
+      "budget": 2000,
+      "parent": {
+        "levels": 0,
+        "actions": 2000,
+        "distinct_states": 1,
+        "distinct_transitions": 1,
+        "noop_rate": 1.0
+      },
+      "patch": {
+        "levels": 0,
+        "actions": 2000,
+        "distinct_states": 72,
+        "distinct_transitions": 174,
+        "noop_rate": 0.3846552617936755,
+        "execute_error": null,
+        "failure_stage": null,
+        "patched_code": "def toggle_core(\n    current_frame: Any,\n    transitions: list[dict[str, Any]],\n    act: Callable[..., None],\n    trace: list[str] | None = None,\n) -> None:\n    \"\"\"Lights-out core: rebuild click stencils from the observed transitions,\n    GF(2)-solve for a uniform board and queue the plan; if there are not yet\n    enough stencils (<_MIN_STENCILS), queue the next systematic probe click.\n    \n    FIX: Track all attempted clicks from transitions to prevent infinite loops \n    on cells that cause 0 changes.\"\"\"\n    frame = np.asarray(current_frame)\n    stencils = _stencils_from_transitions(transitions)\n    \n    # Track every coordinate that has been clicked, even if it didn't produce a stencil\n    all_clicked = set()\n    for t in transitions:\n        xy = t.get(\"xy\")\n        if xy is not None:\n            all_clicked.add((int(xy[0]), int(xy[1])))\n\n    if len(stencils) >= _MIN_STENCILS:\n        plan = _solve_board(frame, stencils, trace)\n        if plan:\n            if trace is not None:\n                trace.append(f\"plan={len(plan)} clicks\")\n            for (x, y) in plan:\n                act(\"CLICK\", x, y)\n            return\n            \n    probe = _next_probe(frame, all_clicked)\n    if probe is not None:\n        if trace is not None:\n            trace.append(\n                f\"stencils={len(stencils)} (<{_MIN_STENCILS}) -> \"\n                f\"probe ({probe[0]},{probe[1]})\"\n            )\n        act(\"CLICK\", probe[0], probe[1])"
+      },
+      "verdict": "PATCH_WINS",
+      "llm_latency_s": 30.24775806099933
+    },
+    {
+      "tool": "paint",
+      "game": "sc25",
+      "budget": 2000,
+      "parent": {
+        "levels": 0,
+        "actions": 2000,
+        "distinct_states": 6,
+        "distinct_transitions": 6,
+        "noop_rate": 0.9974987493746873
+      },
+      "patch": {
+        "levels": 0,
+        "actions": 2000,
+        "distinct_states": 34,
+        "distinct_transitions": 50,
+        "noop_rate": 0.5074626865671642,
+        "execute_error": null,
+        "failure_stage": null,
+        "patched_code": "def paint_core(\n    current_frame: Any,\n    transitions: list[dict[str, Any]],\n    act: Callable[..., None],\n    trace: list[str] | None = None,\n) -> None:\n    \"\"\"Paint/flood core: infer the fill colour from observed click transitions;\n    once confirmed, queue clicks filling the largest remaining background regions;\n    before it is confirmed, queue one probe click to elicit the mechanic.\n    Includes a check to avoid repeating failed click coordinates.\"\"\"\n    frame = np.asarray(current_frame)\n    fill = _infer_fill_color(transitions)\n    \n    # Identify coordinates that were recently clicked but caused 0 changes\n    failed_coords = set()\n    for t in transitions[-10:]: # Look at recent history\n        if t.get(\"xy\") is not None:\n            before = np.asarray(t[\"before\"])\n            after = np.asarray(t[\"after\"])\n            if before.shape == after.shape and np.array_equal(before, after):\n                failed_coords.add(tuple(t[\"xy\"]))\n\n    if fill < 0:\n        if trace is not None:\n            trace.append(\"fill mechanic unconfirmed -> probe 1 region\")\n        clicks = paint_plan(frame, max_clicks=1, trace=trace)\n    else:\n        if trace is not None:\n            trace.append(f\"fill_color={fill} -> fill regions\")\n        clicks = paint_plan(frame, trace=trace)\n\n    # Filter out clicks that have already failed to produce a change\n    final_clicks = []\n    for pt in clicks:\n        if pt in failed_coords:\n            # If the center failed, try to find any other background cell in the region\n            # Since paint_plan doesn't return the components, we re-run a limited search\n            # or simply skip to the next region to avoid the stall.\n            continue \n        final_clicks.append(pt)\n\n    # If all planned clicks were filtered out, try the first available background cell\n    if not final_clicks and clicks:\n        # Fallback: try a different point in the largest region if possible\n        # For simplicity in this patch, we just take the first click and offset it\n        # to break the loop, or let the system no-op to avoid infinite loops.\n        pass\n\n    for (x, y) in final_clicks:\n        act(\"CLICK\", x, y)"
+      },
+      "verdict": "PATCH_WINS",
+      "llm_latency_s": 37.30873212299957
+    },
+    {
+      "tool": "toggle",
+      "game": "lf52",
+      "budget": 2000,
+      "parent": {
+        "levels": 0,
+        "actions": 2000,
+        "distinct_states": 228,
+        "distinct_transitions": 258,
+        "noop_rate": 0.0
+      },
+      "patch": {
+        "levels": 0,
+        "actions": 2000,
+        "distinct_states": 211,
+        "distinct_transitions": 260,
+        "noop_rate": 0.0,
+        "execute_error": null,
+        "failure_stage": null,
+        "patched_code": "from __future__ import annotations\n\n# \u2500\u2500 SANDBOX CONTRACT \u2014 you may PATCH the core function below \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n# It runs in a sandbox with ONLY: np (numpy), Python builtins, and the\n# helper fns whose source is shown here. NO imports (they are blocked).\n# current_frame = list[list[int]] grid; transitions = list of\n#   {'action': str, 'xy': [x, y] | None, 'before': grid, 'after': grid};\n# act(name, x=None, y=None) QUEUES an action ('CLICK' with x=col, y=row).\n\n_MAX_STENCIL = 1024  # Increased significantly to handle large-scale toggle patterns\n_MIN_STENCILS = 4\n\ndef color_histogram(frame: np.ndarray, ncolors: int = 16) -> np.ndarray:\n    \"\"\"Count of each colour index 0..ncolors-1 in the grid.\"\"\"\n    flat = np.asarray(frame).ravel()\n    return np.bincount(flat[(flat >= 0) & (flat < ncolors)], minlength=ncolors)\n\n\ndef _binarize(frame: np.ndarray) -> tuple[np.ndarray, int, int]:\n    \"\"\"Reduce the board to a 0/1 grid: the most common colour is OFF (0), the\n    rest ON (1). Returns (bits, off_color, on_color) \u2014 a two-colour board is the\n    toggle-game assumption; a multi-colour board simply won't solve cleanly.\"\"\"\n    hist = color_histogram(frame)\n    off = int(hist.argmax()) if hist.any() else 0\n    on_candidates = [c for c in range(len(hist)) if hist[c] > 0 and c != off]\n    on = on_candidates[0] if on_candidates else off\n    bits = (frame != off).astype(np.uint8)\n    return bits, off, on\n\n\ndef _gf2_solve(a: np.ndarray, b: np.ndarray) -> np.ndarray | None:\n    \"\"\"Solve A\u00b7x = b over GF(2) by Gaussian elimination. ``a`` is (n_cells,\n    n_vars) uint8, ``b`` is (n_cells,) uint8. Returns one solution x (n_vars,)\n    or None if inconsistent. Free variables are set to 0 (fewest clicks bias).\"\"\"\n    m = np.concatenate([a.copy() % 2, (b.copy() % 2).reshape(-1, 1)], axis=1).astype(np.uint8)\n    rows, cols = m.shape\n    nvars = cols - 1\n    pivot_col_of_row: list[int] = []\n    r = 0\n    for c in range(nvars):\n        piv = None\n        for rr in range(r, rows):\n            if m[rr, c]:\n                piv = rr\n                break\n        if piv is None:\n            continue\n        m[[r, piv]] = m[[piv, r]]\n        for rr in range(rows):\n            if rr != r and m[rr, c]:\n                m[rr] ^= m[r]\n        pivot_col_of_row.append(c)\n        r += 1\n        if r == rows:\n            break\n    # Consistency: any all-zero row on the left with a 1 on the right => no solution.\n    for rr in range(rows):\n        if not m[rr, :nvars].any() and m[rr, nvars]:\n            return None\n    x = np.zeros(nvars, dtype=np.uint8)\n    for i, c in enumerate(pivot_col_of_row):\n        x[c] = m[i, nvars]\n    return x\n\n\ndef _diff_cells(before: Any, after: Any) -> list[tuple[int, int]]:\n    \"\"\"The (row, col) cells that differ between two same-shape grids.\"\"\"\n    a = np.asarray(before)\n    b = np.asarray(after)\n    if a.shape != b.shape:\n        return []\n    ys, xs = np.where(a != b)\n    return [(int(y), int(x)) for y, x in zip(ys, xs)]\n\n\ndef _stencils_from_transitions(\n    transitions: list[dict[str, Any]],\n) -> dict[tuple[int, int], set[tuple[int, int]]]:\n    \"\"\"Rebuild each click's toggle stencil from observed click transitions: the\n    set of cells a click at (x, y) flipped, kept only if it is small (1.._MAX).\"\"\"\n    stencils: dict[tuple[int, int], set[tuple[int, int]]] = {}\n    for t in transitions:\n        xy = t.get(\"xy\")\n        if xy is None:\n            continue\n        cells = _diff_cells(t[\"before\"], t[\"after\"])\n        if 1 <= len(cells) <= _MAX_STENCIL:\n            stencils[(int(xy[0]), int(xy[1]))] = set(cells)\n    return stencils\n\n\ndef _component_centroids(frame: np.ndarray) -> list[tuple[int, int]]:\n    \"\"\"Rounded (x, y) centroids of the 4-connected same-colour foreground\n    regions, in row-major discovery order (background = most common colour).\n    Self-contained (np + builtins only) so it runs inside the code sandbox.\"\"\"\n    f = np.asarray(frame)\n    h, w = f.shape\n    hist = color_histogram(f)\n    bg = int(hist.argmax()) if hist.any() else -1\n    seen = [[False] * w for _ in range(h)]\n    out: list[tuple[int, int]] = []\n    for y in range(h):\n        for x in range(w):\n            if seen[y][x]:\n                continue\n            seen[y][x] = True\n            color = int(f[y, x])\n            if color == bg:\n                continue\n            cells = [(y, x)]\n            stack = [(y, x)]\n            while stack:\n                cy, cx = stack.pop()\n                for ny, nx in ((cy - 1, cx), (cy + 1, cx), (cy, cx - 1), (cy, cx + 1)):\n                    if 0 <= ny < h and 0 <= nx < w and not seen[ny][nx] \\\n                            and int(f[ny, nx]) == color:\n                        seen[ny][nx] = True\n                        cells.append((ny, nx))\n                        stack.append((ny, nx))\n            cy = sum(c[0] for c in cells) / len(cells)\n            cx = sum(c[1] for c in cells) / len(cells)\n            out.append((int(round(cx)), int(round(cy))))\n    return out\n\n\ndef _next_probe(\n    frame: np.ndarray, clicked: set[tuple[int, int]],\n) -> tuple[int, int] | None:\n    \"\"\"A click on a cell not yet clicked \u2014 component CENTROIDS first (the actual\n    interactive cells; probing every foreground pixel burns the budget inside\n    one object and was measured to lose vc33 2 -> 0 levels), then a coarse grid.\n    Deterministic; mirrors the pre-refactor ToggleTool probe order.\"\"\"\n    f = np.asarray(frame)\n    h, w = f.shape\n    candidates: list[tuple[int, int]] = list(_component_centroids(f))\n    step = max(1, min(h, w) // 8)\n    for y in range(step // 2, h, step):\n        for x in range(step // 2, w, step):\n            candidates.append((x, y))\n    for x, y in candidates:\n        if (x, y) not in clicked:\n            return (x, y)\n    return None\n\n\ndef _solve_board(\n    frame: np.ndarray,\n    stencils: dict[tuple[int, int], set[tuple[int, int]]],\n    trace: list[str] | None = None,\n) -> list[tuple[int, int]] | None:\n    \"\"\"Build A\u00b7x = b over GF(2) from the learned stencils and current board, for\n    BOTH uniform targets (all-off / all-on); return the (x, y) click plan for\n    whichever solves with the fewest clicks, or None if neither solves.\"\"\"\n    bits, _off, _on = _binarize(np.asarray(frame))\n    h, w = bits.shape\n    clicks = sorted(stencils)\n    n_cells = h * w\n    a = np.zeros((n_cells, len(clicks)), dtype=np.uint8)\n    for j, click in enumerate(clicks):\n        for (r, c) in stencils[click]:\n            if 0 <= r < h and 0 <= c < w:\n                a[r * w + c, j] = 1\n    best: list[tuple[int, int]] | None = None\n    for target in (0, 1):\n        b = ((bits.reshape(-1) ^ target) % 2).astype(np.uint8)\n        x = _gf2_solve(a, b)\n        if x is None:\n            if trace is not None:\n                trace.append(f\"GF2 inconsistent for target={target}\")\n            continue\n        plan = [(int(clicks[j][0]), int(clicks[j][1]))\n                for j in range(len(clicks)) if x[j]]\n        if plan and (best is None or len(plan) < len(best)):\n            best = plan\n    return best\n\n\ndef toggle_core(\n    current_frame: Any,\n    transitions: list[dict[str, Any]],\n    act: Callable[..., None],\n    trace: list[str] | None = None,\n) -> None:\n    \"\"\"Lights-out core: rebuild click stencils from the observed transitions,\n    GF(2)-solve for a uniform board and queue the plan; if there are not yet\n    enough stencils (<_MIN_STENCILS), queue the next systematic probe click.\"\"\"\n    frame = np.asarray(current_frame)\n    stencils = _stencils_from_transitions(transitions)\n    if len(stencils) >= _MIN_STENCILS:\n        plan = _solve_board(frame, stencils, trace)\n        if plan:\n            if trace is not None:\n                trace.append(f\"plan={len(plan)} clicks\")\n            for (x, y) in plan:\n                act(\"CLICK\", x, y)\n            return\n    probe = _next_probe(frame, set(stencils))\n    if probe is not None:\n        if trace is not None:\n            trace.append(\n                f\"stencils={len(stencils)} (<{_MIN_STENCILS}) -> \"\n                f\"probe ({probe[0]},{probe[1]})\"\n            )\n        act(\"CLICK\", probe[0], probe[1])"
+      },
+      "verdict": "PARENT_HOLDS",
+      "llm_latency_s": 149.49751167199975
+    },
+    {
+      "tool": "paint",
+      "game": "lf52",
+      "budget": 2000,
+      "parent": {
+        "levels": 0,
+        "actions": 2000,
+        "distinct_states": 64,
+        "distinct_transitions": 125,
+        "noop_rate": 0.0
+      },
+      "patch": {
+        "levels": 0,
+        "actions": 2000,
+        "distinct_states": 291,
+        "distinct_transitions": 1690,
+        "noop_rate": 0.0,
+        "execute_error": null,
+        "failure_stage": null,
+        "patched_code": "def paint_core(\n    current_frame: Any,\n    transitions: list[dict[str, Any]],\n    act: Callable[..., None],\n    trace: list[str] | None = None,\n) -> None:\n    \"\"\"Paint/flood core: infer the fill colour from observed click transitions;\n    once confirmed, queue clicks filling the largest remaining background regions.\n    If progress stalls (same regions persist), it shifts the target point within the region.\"\"\"\n    frame = np.asarray(current_frame)\n    fill = _infer_fill_color(transitions)\n    \n    # Detect stalling: if the last few clicks changed very few pixels, \n    # we might be clicking the 'wrong' part of a background region.\n    stalling = False\n    if len(transitions) > 5:\n        recent_changes = [t.get(\"changed\", 0) for t in transitions[-5:] if t.get(\"xy\") is not None]\n        if recent_changes and max(recent_changes) <= 1:\n            stalling = True\n\n    if fill < 0:\n        if trace is not None:\n            trace.append(\"fill mechanic unconfirmed -> probe 1 region\")\n        clicks = paint_plan(frame, max_clicks=1, trace=trace)\n    else:\n        if trace is not None:\n            trace.append(f\"fill_color={fill} -> fill regions\" + (\" (stalling detected)\" if stalling else \"\"))\n        \n        # If stalling, we override paint_plan's deterministic center\n        # by picking a different point from the components.\n        comps = _bg_regions(frame)\n        comps.sort(key=lambda comp: (-len(comp), comp[0]))\n        \n        clicks = []\n        for i, comp in enumerate(comps[:14]):\n            if stalling:\n                # Use a pseudo-random index based on transition length to vary the click point\n                idx = (len(transitions) + i) % len(comp)\n                y, x = comp[idx]\n            else:\n                # Standard center logic\n                ys = [p[0] for p in comp]\n                xs = [p[1] for p in comp]\n                cy, cx = int(round(sum(ys)/len(ys))), int(round(sum(xs)/len(xs)))\n                if int(frame[cy, cx]) != 0: # 0 is _BACKGROUND\n                    cy, cx = comp[len(comp) // 2]\n                x, y = cx, cy\n            clicks.append((x, y))\n            \n        if trace is not None:\n            trace.append(f\"paint regions={len(comps)} -> {len(clicks)} clicks\")\n\n    for (x, y) in clicks:\n        act(\"CLICK\", x, y)"
+      },
+      "verdict": "PATCH_WINS",
+      "llm_latency_s": 46.02887128299881
+    },
+    {
+      "tool": "toggle",
+      "game": "lp85",
+      "budget": 2000,
+      "parent": {
+        "levels": 0,
+        "actions": 2000,
+        "distinct_states": 1,
+        "distinct_transitions": 1,
+        "noop_rate": 1.0
+      },
+      "patch": {
+        "levels": 0,
+        "actions": 2000,
+        "distinct_states": 5,
+        "distinct_transitions": 106,
+        "noop_rate": 0.9979989994997499,
+        "execute_error": null,
+        "failure_stage": null,
+        "patched_code": "def toggle_core(\n    current_frame: Any,\n    transitions: list[dict[str, Any]],\n    act: Callable[..., None],\n    trace: list[str] | None = None,\n) -> None:\n    \"\"\"Lights-out core: rebuild click stencils from the observed transitions,\n    GF(2)-solve for a uniform board and queue the plan; if there are not yet\n    enough stencils (<_MIN_STENCILS), queue the next systematic probe click.\"\"\"\n    frame = np.asarray(current_frame)\n    stencils = _stencils_from_transitions(transitions)\n    \n    # FIX: Track ALL coordinates that have been clicked, not just those that \n    # produced a valid stencil. This prevents getting stuck on no-op cells.\n    all_clicked = set()\n    for t in transitions:\n        xy = t.get(\"xy\")\n        if xy is not None:\n            all_clicked.add((int(xy[0]), int(xy[1])))\n\n    if len(stencils) >= _MIN_STENCILS:\n        plan = _solve_board(frame, stencils, trace)\n        if plan:\n            if trace is not None:\n                trace.append(f\"plan={len(plan)} clicks\")\n            for (x, y) in plan:\n                act(\"CLICK\", x, y)\n            return\n            \n    # Use all_clicked instead of set(stencils) to ensure we move to the next probe\n    probe = _next_probe(frame, all_clicked)\n    if probe is not None:\n        if trace is not None:\n            trace.append(\n                f\"stencils={len(stencils)} (<{_MIN_STENCILS}) -> \"\n                f\"probe ({probe[0]},{probe[1]})\"\n            )\n        act(\"CLICK\", probe[0], probe[1])"
+      },
+      "verdict": "PATCH_WINS",
+      "llm_latency_s": 32.527440560001196
+    },
+    {
+      "tool": "paint",
+      "game": "lp85",
+      "budget": 2000,
+      "parent": {
+        "levels": 0,
+        "actions": 2000,
+        "distinct_states": 1,
+        "distinct_transitions": 1,
+        "noop_rate": 1.0
+      },
+      "patch": {
+        "levels": 0,
+        "actions": 2000,
+        "distinct_states": 1,
+        "distinct_transitions": 1,
+        "noop_rate": 1.0,
+        "execute_error": null,
+        "failure_stage": null,
+        "patched_code": "def paint_core(\n    current_frame: Any,\n    transitions: list[dict[str, Any]],\n    act: Callable[..., None],\n    trace: list[str] | None = None,\n) -> None:\n    \"\"\"Paint/flood core: dynamically infer the background color from the frame,\n    then infer the fill colour from observed click transitions;\n    once confirmed, queue clicks filling the largest remaining background regions.\"\"\"\n    frame = np.asarray(current_frame)\n    \n    # Dynamically determine the background color (most frequent color in the frame)\n    vals, counts = np.unique(frame, return_counts=True)\n    bg_color = int(vals[counts.argmax()])\n    \n    # Infer the fill color using the detected background\n    # We need to pass the detected bg_color to _infer_fill_color\n    # Since _infer_fill_color is a helper, we implement the logic here or \n    # assume we can't change the helper's signature but can call it.\n    # However, the provided _infer_fill_color takes a background argument.\n    fill = _infer_fill_color(transitions, background=bg_color)\n    \n    if fill < 0:\n        if trace is not None:\n            trace.append(f\"fill mechanic unconfirmed (bg={bg_color}) -> probe 1 region\")\n        clicks = paint_plan(frame, background=bg_color, max_clicks=1, trace=trace)\n    else:\n        if trace is not None:\n            trace.append(f\"fill_color={fill} (bg={bg_color}) -> fill regions\")\n        clicks = paint_plan(frame, background=bg_color, trace=trace)\n        \n    for (x, y) in clicks:\n        act(\"CLICK\", x, y)"
+      },
+      "verdict": "PARENT_HOLDS",
+      "llm_latency_s": 27.774945163000666
+    },
+    {
+      "tool": "toggle",
+      "game": "s5i5",
+      "budget": 2000,
+      "parent": {
+        "levels": 0,
+        "actions": 2000,
+        "distinct_states": 299,
+        "distinct_transitions": 971,
+        "noop_rate": 0.0
+      },
+      "patch": {
+        "levels": 0,
+        "actions": 2000,
+        "distinct_states": 56,
+        "distinct_transitions": 191,
+        "noop_rate": 0.0,
+        "execute_error": null,
+        "failure_stage": null,
+        "patched_code": "from __future__ import annotations\n\ndef toggle_core(\n    current_frame: Any,\n    transitions: list[dict[str, Any]],\n    act: Callable[..., None],\n    trace: list[str] | None = None,\n) -> None:\n    \"\"\"Lights-out core: rebuild click stencils from the observed transitions,\n    GF(2)-solve for a uniform board and queue the plan; if there are not yet\n    enough stencils, queue the next systematic probe click.\"\"\"\n    \n    # Patch: Increase MAX_STENCIL internally to handle larger toggle patterns\n    # that might be causing the 'stencils < 4' stall.\n    global _MAX_STENCIL\n    _MAX_STENCIL = 100 \n    \n    frame = np.asarray(current_frame)\n    stencils = _stencils_from_transitions(transitions)\n    \n    # Use a hardcoded minimum to avoid potential shadowing issues seen in trace\n    if len(stencils) >= 4:\n        plan = _solve_board(frame, stencils, trace)\n        if plan:\n            if trace is not None:\n                trace.append(f\"plan={len(plan)} clicks\")\n            for (x, y) in plan:\n                act(\"CLICK\", x, y)\n            return\n            \n    probe = _next_probe(frame, set(stencils))\n    if probe is not None:\n        if trace is not None:\n            trace.append(\n                f\"stencils={len(stencils)} -> \"\n                f\"probe ({probe[0]},{probe[1]})\"\n            )\n        act(\"CLICK\", probe[0], probe[1])"
+      },
+      "verdict": "PARENT_HOLDS",
+      "llm_latency_s": 49.67469666800025
+    },
+    {
+      "tool": "paint",
+      "game": "s5i5",
+      "budget": 2000,
+      "parent": {
+        "levels": 0,
+        "actions": 2000,
+        "distinct_states": 50,
+        "distinct_transitions": 49,
+        "noop_rate": 0.0
+      },
+      "patch": {
+        "levels": 0,
+        "actions": 2000,
+        "distinct_states": 50,
+        "distinct_transitions": 49,
+        "noop_rate": 0.0,
+        "execute_error": null,
+        "failure_stage": null,
+        "patched_code": "def paint_core(\n    current_frame: Any,\n    transitions: list[dict[str, Any]],\n    act: Callable[..., None],\n    trace: list[str] | None = None,\n) -> None:\n    \"\"\"Paint/flood core: dynamically infer the background color from the frame,\n    then infer the fill colour from observed click transitions;\n    once confirmed, queue clicks filling the largest remaining background regions.\"\"\"\n    frame = np.asarray(current_frame)\n    \n    # Dynamically determine background: the most frequent color in the frame\n    # is usually the background in these puzzles.\n    vals, counts = np.unique(frame, return_counts=True)\n    dynamic_bg = int(vals[counts.argmax()])\n    \n    # If the most frequent color is the only color, we can't paint.\n    if len(vals) <= 1:\n        if trace is not None:\n            trace.append(\"single color frame -> nothing to paint\")\n        return\n\n    # Use the dynamic background for inference and planning\n    # We override the internal _BACKGROUND logic by passing dynamic_bg\n    \n    # Redefine _infer_fill_color locally or pass bg to it\n    def _infer_fill_color_dynamic(trans, bg):\n        votes: dict[int, int] = {}\n        for t in trans:\n            if t.get(\"xy\") is None:\n                continue\n            before = np.asarray(t[\"before\"])\n            after = np.asarray(t[\"after\"])\n            if before.shape != after.shape:\n                continue\n            diff = before != after\n            n = int(diff.sum())\n            if n == 0:\n                continue\n            olds = before[diff]\n            news = after[diff]\n            bg_mask = olds == bg\n            if not bg_mask.any():\n                continue\n            vals_n, counts_n = np.unique(news[bg_mask], return_counts=True)\n            if int(counts_n.max()) >= 0.6 * n:\n                top = int(vals_n[counts_n.argmax()])\n                votes[top] = votes.get(top, 0) + 1\n        if not votes:\n            return -1\n        return max(votes, key=lambda k: votes[k])\n\n    fill = _infer_fill_color_dynamic(transitions, dynamic_bg)\n    \n    if fill < 0:\n        if trace is not None:\n            trace.append(f\"bg={dynamic_bg}, fill unconfirmed -> probe 1 region\")\n        clicks = paint_plan(frame, background=dynamic_bg, max_clicks=1, trace=trace)\n    else:\n        if trace is not None:\n            trace.append(f\"bg={dynamic_bg}, fill_color={fill} -> fill regions\")\n        clicks = paint_plan(frame, background=dynamic_bg, trace=trace)\n        \n    for (x, y) in clicks:\n        act(\"CLICK\", x, y)"
+      },
+      "verdict": "PARENT_HOLDS",
+      "llm_latency_s": 40.30517806199896
+    },
+    {
+      "tool": "toggle",
+      "game": "su15",
+      "budget": 2000,
+      "parent": {
+        "levels": 0,
+        "actions": 2000,
+        "distinct_states": 1,
+        "distinct_transitions": 1,
+        "noop_rate": 1.0
+      },
+      "patch": {
+        "levels": 1,
+        "actions": 2000,
+        "distinct_states": 455,
+        "distinct_transitions": 508,
+        "noop_rate": 0.7661943319838057,
+        "execute_error": null,
+        "failure_stage": null,
+        "patched_code": "def toggle_core(\n    current_frame: Any,\n    transitions: list[dict[str, Any]],\n    act: Callable[..., None],\n    trace: list[str] | None = None,\n) -> None:\n    \"\"\"Lights-out core: rebuild click stencils from the observed transitions,\n    GF(2)-solve for a uniform board and queue the plan; if there are not yet\n    enough stencils (<_MIN_STENCILS), queue the next systematic probe click.\"\"\"\n    frame = np.asarray(current_frame)\n    stencils = _stencils_from_transitions(transitions)\n    \n    # FIX: Track ALL coordinates that have been clicked, not just those that \n    # produced a valid stencil. This prevents the solver from stalling on \n    # cells that cause 0 changes or >_MAX_STENCIL changes.\n    all_clicked = set()\n    for t in transitions:\n        xy = t.get(\"xy\")\n        if xy is not None:\n            all_clicked.add((int(xy[0]), int(xy[1])))\n\n    if len(stencils) >= _MIN_STENCILS:\n        plan = _solve_board(frame, stencils, trace)\n        if plan:\n            if trace is not None:\n                trace.append(f\"plan={len(plan)} clicks\")\n            for (x, y) in plan:\n                act(\"CLICK\", x, y)\n            return\n            \n    probe = _next_probe(frame, all_clicked)\n    if probe is not None:\n        if trace is not None:\n            trace.append(\n                f\"stencils={len(stencils)} (<{_MIN_STENCILS}) -> \"\n                f\"probe ({probe[0]},{probe[1]})\"\n            )\n        act(\"CLICK\", probe[0], probe[1])"
+      },
+      "verdict": "PATCH_WINS",
+      "llm_latency_s": 32.01942340200003
+    },
+    {
+      "tool": "paint",
+      "game": "su15",
+      "budget": 2000,
+      "parent": {
+        "levels": 0,
+        "actions": 2000,
+        "distinct_states": 1,
+        "distinct_transitions": 1,
+        "noop_rate": 1.0
+      },
+      "patch": {
+        "levels": 0,
+        "actions": 2000,
+        "distinct_states": 3,
+        "distinct_transitions": 4,
+        "noop_rate": 0.9989994997498749,
+        "execute_error": null,
+        "failure_stage": null,
+        "patched_code": "def paint_core(\n    current_frame: Any,\n    transitions: list[dict[str, Any]],\n    act: Callable[..., None],\n    trace: list[str] | None = None,\n) -> None:\n    \"\"\"Paint/flood core: infer the fill colour from observed click transitions;\n    once confirmed, queue clicks filling the largest remaining background regions;\n    before it is confirmed, queue one probe click to elicit the mechanic.\n    If probes are failing, it attempts to click different cells to avoid stalling.\"\"\"\n    frame = np.asarray(current_frame)\n    fill = _infer_fill_color(transitions)\n    \n    if fill < 0:\n        # Check if the last few clicks were identical and produced no change\n        stalled = False\n        if len(transitions) >= 1:\n            last_t = transitions[-1]\n            if last_t.get(\"xy\") is not None:\n                before = np.asarray(last_t[\"before\"])\n                after = np.asarray(last_t[\"after\"])\n                if np.array_equal(before, after):\n                    # We are clicking but nothing is happening. \n                    # To break the loop, we need to avoid the deterministic center.\n                    stalled = True\n\n        if trace is not None:\n            trace.append(f\"fill mechanic unconfirmed {'(stalled)' if stalled else ''} -> probe\")\n        \n        # If stalled, we modify the frame slightly to force paint_plan to pick \n        # a different region or we can just use a different max_clicks/logic.\n        # Here, we'll use a simple trick: if stalled, we try to click a random \n        # background cell instead of the center.\n        if stalled:\n            comps = _bg_regions(frame)\n            if comps:\n                # Pick the first available background cell of the largest component\n                # instead of the center to break the deterministic loop.\n                target_comp = comps[0]\n                # Use a cell that isn't the center (e.g., the first one)\n                cy, cx = target_comp[0]\n                clicks = [(cx, cy)]\n            else:\n                clicks = []\n        else:\n            clicks = paint_plan(frame, max_clicks=1, trace=trace)\n    else:\n        if trace is not None:\n            trace.append(f\"fill_color={fill} -> fill regions\")\n        clicks = paint_plan(frame, trace=trace)\n        \n    for (x, y) in clicks:\n        act(\"CLICK\", x, y)"
+      },
+      "verdict": "PATCH_WINS",
+      "llm_latency_s": 42.12949316400045
+    },
+    {
+      "tool": "toggle",
+      "game": "sb26",
+      "budget": 2000,
+      "parent": {
+        "levels": 0,
+        "actions": 2000,
+        "distinct_states": 1,
+        "distinct_transitions": 1,
+        "noop_rate": 1.0
+      },
+      "patch": {
+        "levels": 0,
+        "actions": 2000,
+        "distinct_states": 136,
+        "distinct_transitions": 268,
+        "noop_rate": 0.06845084920226453,
+        "execute_error": null,
+        "failure_stage": null,
+        "patched_code": "def toggle_core(\n    current_frame: Any,\n    transitions: list[dict[str, Any]],\n    act: Callable[..., None],\n    trace: list[str] | None = None,\n) -> None:\n    \"\"\"Lights-out core: rebuild click stencils from the observed transitions,\n    GF(2)-solve for a uniform board and queue the plan; if there are not yet\n    enough stencils (<_MIN_STENCILS), queue the next systematic probe click.\n    \n    FIX: Track all attempted clicks from transitions to prevent infinite \n    probing of non-responsive cells.\n    \"\"\"\n    frame = np.asarray(current_frame)\n    stencils = _stencils_from_transitions(transitions)\n    \n    # Track every coordinate that has been clicked, even if it didn't \n    # produce a valid stencil (e.g., changed 0 cells).\n    clicked_coords = set()\n    for t in transitions:\n        xy = t.get(\"xy\")\n        if xy is not None:\n            clicked_coords.add((int(xy[0]), int(xy[1])))\n\n    if len(stencils) >= _MIN_STENCILS:\n        plan = _solve_board(frame, stencils, trace)\n        if plan:\n            if trace is not None:\n                trace.append(f\"plan={len(plan)} clicks\")\n            for (x, y) in plan:\n                act(\"CLICK\", x, y)\n            return\n            \n    probe = _next_probe(frame, clicked_coords)\n    if probe is not None:\n        if trace is not None:\n            trace.append(\n                f\"stencils={len(stencils)} (<{_MIN_STENCILS}) -> \"\n                f\"probe ({probe[0]},{probe[1]})\"\n            )\n        act(\"CLICK\", probe[0], probe[1])"
+      },
+      "verdict": "PATCH_WINS",
+      "llm_latency_s": 31.870310426998913
+    },
+    {
+      "tool": "paint",
+      "game": "sb26",
+      "budget": 2000,
+      "parent": {
+        "levels": 0,
+        "actions": 2000,
+        "distinct_states": 1,
+        "distinct_transitions": 1,
+        "noop_rate": 1.0
+      },
+      "patch": {
+        "levels": 0,
+        "actions": 2000,
+        "distinct_states": 1,
+        "distinct_transitions": 2,
+        "noop_rate": 1.0,
+        "execute_error": null,
+        "failure_stage": null,
+        "patched_code": "def paint_core(\n    current_frame: Any,\n    transitions: list[dict[str, Any]],\n    act: Callable[..., None],\n    trace: list[str] | None = None,\n) -> None:\n    \"\"\"Paint/flood core: infer the fill colour from observed click transitions;\n    once confirmed, queue clicks filling the largest remaining background regions;\n    before it is confirmed, queue one probe click to elicit the mechanic.\n    If the last probe failed to change the frame, try a different point in the region.\"\"\"\n    frame = np.asarray(current_frame)\n    fill = _infer_fill_color(transitions)\n    \n    if fill < 0:\n        # Check if the last action was a CLICK that resulted in no change\n        last_failed_xy = None\n        if transitions:\n            last_t = transitions[-1]\n            if last_t.get(\"action\") == \"CLICK\" and last_t.get(\"xy\") is not None:\n                before = np.asarray(last_t[\"before\"])\n                after = np.asarray(last_t[\"after\"])\n                if np.array_equal(before, after):\n                    last_failed_xy = tuple(last_t[\"xy\"])\n\n        if trace is not None:\n            trace.append(f\"fill mechanic unconfirmed -> probe 1 region (last_fail={last_failed_xy})\")\n        \n        # Get the target region\n        comps = _bg_regions(frame)\n        if not comps:\n            return\n        \n        # Sort to find the largest region (matching paint_plan logic)\n        comps.sort(key=lambda comp: (-len(comp), comp[0]))\n        target_comp = comps[0]\n        \n        # If the center point failed, pick a different point in the same component\n        # to avoid getting stuck on a non-interactive background cell.\n        ys = [p[0] for p in target_comp]\n        xs = [p[1] for p in target_comp]\n        cy, cx = int(round(sum(ys) / len(ys))), int(round(sum(xs) / len(xs)))\n        \n        if (cx, cy) == last_failed_xy:\n            # Try the first available cell in the component instead of the center\n            cy, cx = target_comp[0]\n            if (cx, cy) == last_failed_xy:\n                # If the component only has one cell and it failed, we can't do much\n                # but we'll try the next largest component if available\n                if len(comps) > 1:\n                    cy, cx = comps[1][0]\n                else:\n                    return\n\n        act(\"CLICK\", cx, cy)\n    else:\n        if trace is not None:\n            trace.append(f\"fill_color={fill} -> fill regions\")\n        clicks = paint_plan(frame, trace=trace)\n        for (x, y) in clicks:\n            act(\"CLICK\", x, y)"
+      },
+      "verdict": "PATCH_WINS",
+      "llm_latency_s": 44.891750333001255
+    },
+    {
+      "tool": "toggle",
+      "game": "r11l",
+      "budget": 2000,
+      "parent": {
+        "levels": 0,
+        "actions": 2000,
+        "distinct_states": 1237,
+        "distinct_transitions": 1386,
+        "noop_rate": 0.0
+      },
+      "patch": {
+        "levels": 0,
+        "actions": 0,
+        "distinct_states": 0,
+        "distinct_transitions": 0,
+        "noop_rate": 0.0,
+        "failure_stage": "validate",
+        "patched_code": "```python\nfrom __future__ import annotations\nimport numpy as np\nfrom typing import Any, Callable\n\n# \u2500\u2500 SANDBOX CONTRACT \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\n_MAX_STENCIL = 256  # Increased to handle larger toggle patterns\n_MIN_STENCILS = 4\n\ndef color_histogram(frame: np.ndarray, ncolors: int = 16) -> np.ndarray:\n    \"\"\"Count of each colour index 0..ncolors-1 in the grid.\"\"\"\n    flat = np.asarray(frame).ravel()\n    return np.bincount(flat[(flat >= 0) & (flat < ncolors)], minlength=ncolors)\n\n\ndef _binarize(frame: np.ndarray) -> tuple[np.ndarray, int, int]:\n    \"\"\"Reduce the board to a 0/1 grid: the most common colour is OFF (0), the\n    rest ON (1).\"\"\"\n    hist = color_histogram(frame)\n    off = int(hist.argmax()) if hist.any() else 0\n    on_candidates = [c for c in range(len(hist)) if hist[c] > 0 and c != off]\n    on = on_candidates[0] if on_candidates else off\n    bits = (frame != off).astype(np.uint8)\n    return bits, off, on\n\n\ndef _gf2_solve(a: np.ndarray, b: np.ndarray) -> np.ndarray | None:\n    \"\"\"Solve A\u00b7x = b over GF(2) by Gaussian elimination.\"\"\"\n    m = np.concatenate([a.copy() % 2, (b.copy() % 2).reshape(-1, 1)], axis=1).astype(np.uint8)\n    rows, cols = m.shape\n    nvars = cols - 1\n    pivot_col_of_row: list[int] = []\n    r = 0\n    for c in range(nvars):\n        piv = None\n        for rr in range(r, rows):\n            if m[rr, c]:\n                piv = rr\n                break\n        if piv is None:\n            continue\n        m[[r, piv]] = m[[piv, r]]\n        for rr in range(rows):\n            if rr != r and m[rr, c]:\n                m[rr] ^= m[r]\n        pivot_col_of_row.append(c)\n        r += 1\n        if r == rows:\n            break\n    for rr in range(rows):\n        if not m[rr, :nvars].any() and m[rr, nvars]:\n            return None\n    x = np.zeros(nvars, dtype=np.uint8)\n    for i, c in enumerate(pivot_col_of_row):\n        x[c] = m[i, nvars]\n    return x\n\n\ndef _diff_cells(before: Any, after: Any) -> list[tuple[int, int]]:\n    \"\"\"The (row, col) cells that differ between two same-shape grids.\"\"\"\n    a = np.asarray(before)\n    b = np.asarray(after)\n    if a.shape != b.shape:\n        return []\n    ys, xs = np.where(a != b)\n    return [(int(y), int(x)) for y, x in zip(ys, xs)]\n\n\ndef _stencils_from_transitions(\n    transitions: list[dict[str, Any]],\n) -> dict[tuple[int, int], set[tuple[int, int]]]:\n    \"\"\"Rebuild each click's toggle stencil from observed click transitions.\"\"\"\n    stencils: dict[tuple[int, int], set[tuple[int, int]]] = {}\n    for t in transitions:\n        xy = t.get(\"xy\")\n        if xy is None:\n            continue\n        cells = _diff_cells(t[\"before\"], t[\"after\"])\n        if 1 <= len(cells) <= _MAX_STENCIL:\n            stencils[(int(xy[0]), int(xy[1]))] = set(cells)\n    return stencils\n\n\ndef _component_centroids(frame: np.ndarray) -> list[tuple[int, int]]:\n    \"\"\"Rounded (x, y) centroids of the 4-connected same-colour foreground regions.\"\"\"\n    f = np.asarray(frame)\n    h, w = f.shape\n    hist = color_histogram(f)\n    bg = int(hist.argmax()) if hist.any() else -1\n    seen = [[False] * w for _ in range(h)]\n    out: list[tuple[int, int]] = []\n    for y in range(h):\n        for x in range(w):\n            if seen[y][x]:\n                continue\n            seen[y][x] = True\n            color = int(f[y, x])\n            if color == bg:\n                continue\n            cells = [(y, x)]\n            stack = [(y, x)]\n            while stack:\n                cy, cx = stack.pop()\n                for ny, nx in ((cy - 1, cx), (cy + 1, cx), (cy, cx - 1), (cy, cx + 1)):\n                    if 0 <= ny < h and 0 <= nx < w and not seen[ny][nx] \\\n                            and int(f[ny, nx]) == color:\n                        seen[ny][nx] = True\n                        cells.append((ny, nx))\n                        stack.append((ny, nx))\n            cy = sum(c[0] for c in cells) / len(cells)\n            cx = sum(c[1] for c in cells) / len(cells)\n            out.append((int(round(cx)), int(round(cy))))\n    return out\n\n\ndef _next_probe(\n    frame: np.ndarray, clicked: set[tuple[int, int]],\n) -> tuple[int, int] | None:\n    \"\"\"Deterministic probe order: centroids then coarse grid.\"\"\"\n    f = np.asarray(frame)\n    h, w = f.shape\n    candidates: list[tuple[int, int]] = list(_component_centroids(f))\n    step = max(1, min(h, w) // 8)\n    for y in range(step // 2, h, step):\n        for x in range(step // 2, w, step):\n            candidates.append((x, y))\n    for x, y in candidates:\n        if (x, y) not in clicked:\n            return (x, y)\n    return None\n\n\ndef _solve_board(\n    frame: np.ndarray,\n    stencils: dict[tuple[int, int], set[tuple[int, int]]],\n    trace: list[str] | None = None,\n) -> list[tuple[int, int]] | None:\n    \"\"\"Build A\u00b7x = b over GF(2) and solve for uniform targets.\"\"\"\n    bits, _off, _on = _binarize(np.asarray(frame))\n    h, w = bits.shape\n    clicks = sorted(stencils)\n    n_cells = h * w\n    a = np.zeros((n_cells, len(clicks)), dtype=np.uint8)\n    for j, click in enumerate(clicks):\n        for (r, c) in stencils[click]:\n            if 0 <= r < h and 0 <= c < w:\n                a[r * w + c, j] = 1\n    best: list[tuple[int, int]] | None = None\n    for target in (0, 1):\n        b = ((bits.reshape(-1) ^ target) % 2).astype(np.uint8)\n        x = _gf2_solve(a, b)\n        if x is None:\n            if trace is not None:\n                trace.append(f\"GF2 inconsistent for target={target}\")\n            continue\n        plan = [(int(clicks[j][0]), int(clicks[j][1]))\n                for j in range(len(clicks)) if x[j]]\n        if plan and (best is None or len(plan) < len(best)):\n            best = plan\n    return best\n\n\ndef toggle_core(\n    current_frame: Any,\n    transitions: list[dict[str, Any]],\n    act: Callable[..., None],\n    trace: list[str] | None = None,\n) -> None:\n    \"\"\"Lights-out core: rebuild stencils, solve GF(2), or probe.\"\"\"\n    frame = np.asarray(current_frame)\n    stencils = _stencils_from_transitions(transitions)\n    \n    if len(stencils) >= _MIN_STENCILS:\n        plan = _solve_board(frame, stencils, trace)\n        if plan:\n            if trace is not None:\n                trace.append(f\"plan={len(plan)} clicks\")\n            for (x, y) in plan:\n                act(\"CLICK\", x, y)\n            return\n\n    probe = _next_probe(frame, set(stencils))\n    if probe is not None:\n        if trace is not None:\n            trace.append(\n                f\"stencils={len(stencils)} (probing) -> \"\n                f\"probe ({probe[0]},{probe[1]})\"\n            )\n        act(\"CLICK\", probe[0], probe[1])\n```"
+      },
+      "verdict": "PATCH_INVALID",
+      "llm_latency_s": 251.79729479800153
+    },
+    {
+      "tool": "paint",
+      "game": "r11l",
+      "budget": 2000,
+      "parent": {
+        "levels": 0,
+        "actions": 2000,
+        "distinct_states": 88,
+        "distinct_transitions": 116,
+        "noop_rate": 0.0
+      },
+      "patch": {
+        "levels": 0,
+        "actions": 2000,
+        "distinct_states": 99,
+        "distinct_transitions": 118,
+        "noop_rate": 0.0,
+        "execute_error": null,
+        "failure_stage": null,
+        "patched_code": "def paint_core(\n    current_frame: Any,\n    transitions: list[dict[str, Any]],\n    act: Callable[..., None],\n    trace: list[str] | None = None,\n) -> None:\n    \"\"\"Paint/flood core: dynamically infer background and fill colors to \n    handle levels where background is not 0.\"\"\"\n    frame = np.asarray(current_frame)\n    \n    # 1. Dynamically infer background color\n    # The background is usually the most common color in the frame, \n    # or the color that is being replaced in transitions.\n    if transitions:\n        # Look at the most recent successful click to see what was replaced\n        last_t = transitions[-1]\n        if last_t.get(\"xy\") is not None:\n            before = np.asarray(last_t[\"before\"])\n            after = np.asarray(last_t[\"after\"])\n            diff = before != after\n            if diff.any():\n                # The most common 'before' color among changed cells is likely the background\n                vals, counts = np.unique(before[diff], return_counts=True)\n                bg_color = int(vals[counts.argmax()])\n            else:\n                bg_color = _BACKGROUND\n        else:\n            bg_color = _BACKGROUND\n    else:\n        # Fallback to most common color in frame\n        vals, counts = np.unique(frame, return_counts=True)\n        bg_color = int(vals[counts.argmax()])\n\n    # 2. Infer fill color based on the detected background\n    fill = _infer_fill_color(transitions, background=bg_color)\n    \n    if fill < 0:\n        if trace is not None:\n            trace.append(f\"fill unconfirmed (bg={bg_color}) -> probe\")\n        clicks = paint_plan(frame, background=bg_color, max_clicks=1, trace=trace)\n    else:\n        if trace is not None:\n            trace.append(f\"bg={bg_color}, fill={fill} -> fill regions\")\n        clicks = paint_plan(frame, background=bg_color, trace=trace)\n        \n    for (x, y) in clicks:\n        act(\"CLICK\", x, y)"
+      },
+      "verdict": "PATCH_WINS",
+      "llm_latency_s": 36.90455200199722
+    }
+  ]
+}

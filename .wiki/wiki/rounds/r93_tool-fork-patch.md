@@ -252,6 +252,18 @@ McNemar comparison runs when the gemma4 20-case arm completes; no winner is decl
 without the untouched-holdout ×3-session confirmation. Artifact:
 `scripts/rounds/R93/r93_breadth_gptoss_high.json`.
 
+## Breadth PAIRED scoring (2026-07-22 08:46, per the f53a82e pre-registration) — NO NOMINATION
+
+gemma4 arm landed: 12 PATCH_WINS / 18 scored (1 ERROR, 1 PATCH_INVALID); primary 3/4 —
+IDENTICAL to gptoss-high. Paired discordant analysis: PRIMARY both-win 3 / both-lose 1
+(vc33), D_gemma4=0, D_gptoss=0, exact McNemar p=1.000; ALL-20: D_gemma4=2 (paint lf52,
+paint vc33), D_gptoss=1 (paint s5i5), p=1.000, 6 excluded (errors/invalid). Per the frozen
+nomination rule: **NO MODEL NOMINATED — statistically indistinguishable at proper configs.**
+Secondary: gemma4 fewer harness errors (2 vs 5). THE substantive finding: the patch
+mechanism beat the parent tool on **11 of 20 cases** across models — the R93 tool-fork
+thesis holds at breadth, not just on the original 2 cases. Artifacts:
+`scripts/rounds/R93/r93_breadth_gemma4.json` + `r93_breadth_gptoss_high.json`.
+
 ## Next
 
 1. ~~`scripts/probe_patch_loop.py`~~ DONE (fa171ce) + Kaggle wrapper (b6dad26).
