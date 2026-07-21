@@ -249,7 +249,15 @@ def extract_code(text: str) -> str:
     return text.strip()
 
 
-_ALLOWED_IMPORTS = {"math", "copy", "itertools", "collections", "functools"}
+# ``__future__`` is a compiler directive (no runtime side effects); it is
+# whitelisted so REAL annotated source (e.g. solver_core cards) can be re-exec'd
+# in the sandbox without its def-time annotations raising NameError. ``numpy`` is
+# whitelisted because ``np`` is already injected and trusted — its lazy internal
+# submodule imports (e.g. ``numpy._core._methods`` on the first reduction) must
+# not fail inside the sandbox, and permitting them grants no new capability.
+_ALLOWED_IMPORTS = {
+    "__future__", "numpy", "math", "copy", "itertools", "collections", "functools",
+}
 
 
 def _safe_import(name: str, *args: Any, **kwargs: Any) -> Any:

@@ -47,8 +47,9 @@ def test_signature_detects_nondeterminism():
     a = np.zeros((8, 8), dtype=np.int64)
     b = a.copy(); b[0, 0] = 1
     c = a.copy(); c[7, 7] = 2
-    # identical prev+action (0) yielding two different next frames -> nondeterministic
-    sig = compute_signature(_Obs([1, 2]), [(a, 0, b), (a, 0, c)])
+    # identical prev+action (Step (1, None)) yielding two different next frames
+    # -> nondeterministic. Transitions carry the full Step now, not a bare int.
+    sig = compute_signature(_Obs([1, 2]), [(a, (1, None), b), (a, (1, None), c)])
     assert sig.nondeterminism > 0.0
 
 

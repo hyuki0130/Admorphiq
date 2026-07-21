@@ -188,18 +188,19 @@ class ToolCallAgent(UnifiedAgent):
         simple_ids, action6 = availability(obs)
         valid = [_NAME[i] for i in simple_ids if i in _NAME] + (["MOUSE"] if action6 else [])
         hist = [
-            {"action": _NAME.get(a, f"ACTION{a}"), "changed": bool((p != n).any())}
+            {"action": _NAME.get(a[0], f"ACTION{a[0]}"), "changed": bool((p != n).any())}
             for p, a, n in self._transitions[-10:]
         ]
         per: dict[Any, list[int]] = {}
         for p, a, n in self._transitions[-200:]:
-            per.setdefault(a, []).append(int((p != n).sum()))
+            per.setdefault(a[0], []).append(int((p != n).sum()))
         dynamics = "\n".join(
             f"- {_NAME.get(a, f'ACTION{a}')}: {len(v)} tries, "
             f"{sum(1 for x in v if x)}/{len(v)} changed, median {int(np.median(v))} cells"
             for a, v in sorted(per.items(), key=lambda kv: str(kv[0]))
         ) or None
-        trans = [(_NAME.get(a, f"ACTION{a}"), p, n) for p, a, n in self._transitions[-12:]]
+        trans = [(_NAME.get(a[0], f"ACTION{a[0]}"), a[1], p, n)
+                 for p, a, n in self._transitions[-12:]]
         self.code_calls += 1
         try:
             if self._last_code is not None and self._last_code[1] == self._last_levels:

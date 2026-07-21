@@ -111,7 +111,8 @@ def _transitions() -> list:
     before[1, 1] = 3
     after = np.zeros((6, 6), dtype=int)
     after[1, 2] = 3  # the 3 moved one cell right
-    return [("RIGHT", before, after)]
+    # (action_name, xy, before, after) — a movement carries no click xy (None).
+    return [("RIGHT", None, before, after)]
 
 
 def test_transitions_exposed_when_bridge_on(bridge_on) -> None:

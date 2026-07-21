@@ -72,7 +72,8 @@ def run_code(
     valid_actions: list[str],
     timeout: float = 5.0,
     *,
-    transitions: list[tuple[str, np.ndarray, np.ndarray]] | None = None,
+    transitions: list[tuple[str, tuple[int, int] | None, np.ndarray, np.ndarray]]
+    | None = None,
 ) -> CodeResult:
     """Execute a model-written code block against the game state, return actions.
 
@@ -82,6 +83,12 @@ def run_code(
     actions (``name`` in UP/DOWN/LEFT/RIGHT/SPACE/ACTION7 or 'MOUSE'/'CLICK' with
     x,y). No file/network/clock. Errors and prints are captured; a broken block
     yields an empty action queue (the caller falls back), never a crash.
+
+    ``transitions`` (kernel bridge only) carries the full observed Step —
+    ``(action_name, xy, before, after)`` — so click coordinates survive into the
+    sandbox; a toggle/paint solver core cannot rebuild stencils/fills without the
+    ``xy``. It is serialized as ``{"action", "xy": [x, y] | None, "before",
+    "after"}`` dicts.
     """
     queue: list[tuple[str, tuple[int, int] | None]] = []
     out: list[str] = []
@@ -116,8 +123,13 @@ def run_code(
     if _kernel_api_enabled():
         ns["K"] = _kernel_namespace()
         ser = [
-            {"action": a, "before": np.asarray(p).tolist(), "after": np.asarray(n).tolist()}
-            for a, p, n in (transitions or [])
+            {
+                "action": a,
+                "xy": ([int(xy[0]), int(xy[1])] if xy is not None else None),
+                "before": np.asarray(p).tolist(),
+                "after": np.asarray(n).tolist(),
+            }
+            for a, xy, p, n in (transitions or [])
         ]
         ns["transitions"] = ser
         ns["previous_frame"] = ser[-1]["before"] if ser else None

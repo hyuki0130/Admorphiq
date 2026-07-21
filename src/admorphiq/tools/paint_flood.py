@@ -13,13 +13,13 @@ next step and is measured separately.
 
 from __future__ import annotations
 
-from collections import deque
 from dataclasses import dataclass
 from typing import Any
 
 import numpy as np
 
 from admorphiq.tools.base import Step, frame_2d, has_frame
+from admorphiq.tools.solver_core import paint_core, paint_plan
 
 BACKGROUND = 0  # colour index 0 is background across ARC-AGI-3 frames
 
@@ -81,30 +81,6 @@ def detect_flood_mechanic(
     )
 
 
-def _components(mask: np.ndarray) -> list[list[tuple[int, int]]]:
-    """4-connected components of True cells (local; no external dep)."""
-    seen = np.zeros_like(mask, dtype=bool)
-    out: list[list[tuple[int, int]]] = []
-    h, w = mask.shape
-    for r in range(h):
-        for c in range(w):
-            if not mask[r, c] or seen[r, c]:
-                continue
-            comp: list[tuple[int, int]] = []
-            q = deque([(r, c)])
-            seen[r, c] = True
-            while q:
-                y, x = q.popleft()
-                comp.append((y, x))
-                for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1)):
-                    ny, nx = y + dy, x + dx
-                    if 0 <= ny < h and 0 <= nx < w and mask[ny, nx] and not seen[ny, nx]:
-                        seen[ny, nx] = True
-                        q.append((ny, nx))
-            out.append(comp)
-    return out
-
-
 def propose_fill_clicks(
     frame: np.ndarray, fill_color: int, max_clicks: int = 14,
 ) -> list[tuple[int, int]]:
@@ -112,22 +88,13 @@ def propose_fill_clicks(
 
     Targets the LARGEST still-background 4-connected components first (a click in
     each floods it), returning their centroids as ``(x=col, y=row)`` — the ACTION6
-    convention. Regions already the fill colour are skipped. Deterministic:
-    components sorted by descending size then position.
+    convention. Delegates to ``solver_core.paint_plan`` so the region-selection
+    logic has ONE implementation (the same code the paint core / LLM card runs);
+    ``fill_color`` is accepted for API compatibility but region-finding is driven
+    by the background colour.
     """
-    f = np.asarray(frame, dtype=np.int16)
-    comps = _components(f == BACKGROUND)
-    comps.sort(key=lambda comp: (-len(comp), comp[0]))
-    clicks: list[tuple[int, int]] = []
-    for comp in comps[:max_clicks]:
-        ys = [p[0] for p in comp]
-        xs = [p[1] for p in comp]
-        cy, cx = int(round(np.mean(ys))), int(round(np.mean(xs)))
-        # snap the centroid onto an actual background cell of this component
-        if f[cy, cx] != BACKGROUND:
-            cy, cx = comp[len(comp) // 2]
-        clicks.append((cx, cy))
-    return clicks
+    return paint_plan(np.asarray(frame, dtype=np.int16),
+                      background=BACKGROUND, max_clicks=max_clicks)
 
 
 class PaintFloodTool:
@@ -158,8 +125,9 @@ class PaintFloodTool:
         self._frames: list[np.ndarray] = []
         self._acts: list[int] = []
         self._nexts: list[np.ndarray] = []
+        self._xys: list[list[int] | None] = []  # click (x, y) per transition
         self._fill_color: int = -1
-        self._fill_queue: list[tuple[int, int]] = []
+        self._trace: list[str] = []  # last propose()'s core decision log
 
     def observe(self, prev: np.ndarray, action: Step, changed: bool) -> None:
         """Queue a click transition; completed against the next frame we see."""
@@ -172,14 +140,24 @@ class PaintFloodTool:
         """Complete a queued click transition against the frame just observed."""
         if self._pending is None or not has_frame(obs):
             return
-        prev, _action = self._pending
+        prev, action = self._pending
         self._pending = None
         cur = frame_2d(obs).astype(np.int16)
         if cur.shape != prev.shape:
             return
+        xy = action[1]
         self._frames.append(prev)
         self._acts.append(6)
         self._nexts.append(cur)
+        self._xys.append([int(xy[0]), int(xy[1])] if xy is not None else None)
+
+    def _records(self) -> list[dict[str, Any]]:
+        """Observed click transitions as the dict shape the core / sandbox reads:
+        ``{"action", "xy": [x, y] | None, "before", "after"}``."""
+        return [
+            {"action": "CLICK", "xy": xy, "before": b, "after": n}
+            for b, xy, n in zip(self._frames, self._xys, self._nexts)
+        ]
 
     def detect(self, frames: list[Any], obs: Any) -> float:
         """Confidence this is a paint/flood game, from observed click fills only."""
@@ -195,18 +173,20 @@ class PaintFloodTool:
         return min(1.0, mechanic.confidence)
 
     def propose(self, frames: list[Any], obs: Any) -> list[Step]:
-        """Click the largest still-background region toward the inferred fill."""
+        """Delegate the fill-or-probe decision to ``solver_core.paint_core`` — the
+        SAME code the LLM patches and the code sandbox executes. The core infers
+        the fill colour from the recorded click transitions and queues clicks
+        toward the largest remaining background regions (or one probe click)."""
         self._absorb_pending(obs)
         if not has_frame(obs):
             return []
         frame = frame_2d(obs).astype(np.int16)
-        if self._fill_color < 0:
-            # Mechanic not yet confirmed -- probe a background region to elicit it.
-            targets = propose_fill_clicks(frame, fill_color=-1, max_clicks=1)
-        else:
-            if not self._fill_queue:
-                self._fill_queue = propose_fill_clicks(frame, self._fill_color)
-            targets = self._fill_queue[:1]
-            if self._fill_queue:
-                self._fill_queue.pop(0)
-        return [(6, (x, y)) for x, y in targets]
+        self._trace = []
+        plan: list[Step] = []
+
+        def _act(name: str, x: int | None = None, y: int | None = None) -> None:
+            if x is not None and y is not None:
+                plan.append((6, (int(x), int(y))))
+
+        paint_core(frame, self._records(), _act, self._trace)
+        return plan

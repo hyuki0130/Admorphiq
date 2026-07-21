@@ -17,6 +17,7 @@ from pathlib import Path
 import numpy as np
 
 from admorphiq.tools.base import (
+    Step,
     availability,
     base_hash,
     changed_mask,
@@ -47,12 +48,14 @@ class Signature:
 
 
 def compute_signature(
-    obs: object, transitions: list[tuple[np.ndarray, int, np.ndarray]]
+    obs: object, transitions: list[tuple[np.ndarray, Step, np.ndarray]]
 ) -> Signature:
     """Derive the observable signature from availability + observed transitions.
 
-    ``transitions`` is a list of (prev_frame, action_id, next_frame) the agent
-    has actually taken this game — the only evidence available offline.
+    ``transitions`` is a list of (prev_frame, Step, next_frame) the agent has
+    actually taken this game — the only evidence available offline. ``Step`` is
+    ``(action_id, optional (x, y))``; only the action id matters for the
+    signature.
     """
     simple_ids, action6 = availability(obs)
     avail = list(simple_ids) + ([6] if action6 else [])
@@ -64,17 +67,18 @@ def compute_signature(
     seen: dict[tuple[str, int], str] = {}
     nd = pairs = 0
     for prev, act, nxt in transitions:
+        aid = act[0]
         m = changed_mask(prev, nxt)
         changed = int(m.sum()) if m.size else 0
         recolor.append(changed)
-        if act <= 4 and changed > 0:
+        if aid <= 4 and changed > 0:
             simple_n += 1
             bb = diff_bbox(prev, nxt)
             if bb is not None:
                 area = (bb[2] - bb[0] + 1) * (bb[3] - bb[1] + 1)
                 if changed <= 40 and area <= 400:
                     small_local += 1
-        key = (base_hash(prev), int(act))
+        key = (base_hash(prev), int(aid))
         h = base_hash(nxt)
         if key in seen:
             pairs += 1

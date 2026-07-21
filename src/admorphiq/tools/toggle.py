@@ -25,7 +25,6 @@ from admorphiq.tools.base import (
     availability,
     changed_mask,
     color_histogram,
-    connected_components,
     frame_2d,
     has_frame,
 )
@@ -33,10 +32,10 @@ from admorphiq.tools.base import (
 __all__ = ["ToggleTool"]
 
 # A click's flipped-cell set counts as a toggle STENCIL only if it is small and
-# local (lights-out flips ~1-5 cells), not a full-board repaint.
+# local (lights-out flips ~1-5 cells), not a full-board repaint. The minimum
+# stencil count before a solve is attempted lives in ``solver_core`` (the core
+# owns the solve/probe decision).
 _MAX_STENCIL = 12
-# Learn at least this many distinct click stencils before attempting a solve.
-_MIN_STENCILS = 4
 
 
 def _binarize(frame: np.ndarray) -> tuple[np.ndarray, int, int]:
@@ -95,11 +94,15 @@ class ToggleTool:
         self.reset()
 
     def reset(self) -> None:
-        # click (x, y) -> frozenset of flipped (row, col) cells (its stencil)
+        # click (x, y) -> frozenset of flipped (row, col) cells (its stencil).
+        # Kept for detect(); the solve/probe DECISION is delegated to solver_core.
         self._stencils: dict[tuple[int, int], frozenset[tuple[int, int]]] = {}
         self._prev_click: tuple[int, int] | None = None
         self._last_frame: np.ndarray = np.zeros((1, 1), dtype=np.int64)
-        self._solution: list[Step] | None = None
+        # Raw click transitions the core rebuilds stencils from (same dict shape
+        # the code sandbox sees): {"action", "xy": [x, y], "before", "after"}.
+        self._records: list[dict[str, Any]] = []
+        self._trace: list[str] = []  # last propose()'s core decision log
         self._toggle_evidence = 0   # clicks that flipped a small local set
         self._click_evidence = 0    # clicks observed at all
 
@@ -125,81 +128,43 @@ class ToggleTool:
                 if 1 <= len(cells) <= _MAX_STENCIL:
                     self._toggle_evidence += 1
                     self._stencils[self._prev_click] = cells
-                    self._solution = None  # new evidence invalidates a stale plan
+            # Record the raw transition (regardless of flip size) so the core can
+            # rebuild stencils from the SAME evidence the code sandbox would see.
+            if self._last_frame.shape == prev2d.shape:
+                self._records.append({
+                    "action": "CLICK",
+                    "xy": [self._prev_click[0], self._prev_click[1]],
+                    "before": self._last_frame,
+                    "after": prev2d,
+                })
+                self._records = self._records[-256:]
         self._prev_click = (int(action[1][0]), int(action[1][1])) if action[1] is not None else None
         self._last_frame = prev2d
 
     def propose(self, frames: list[Any], obs: Any) -> list[Step]:
-        """Once enough stencils are known, solve the board over GF(2) and return
-        the clicks that reach a uniform target; otherwise probe an unclicked cell
-        to learn more stencils."""
+        """Delegate the solve-or-probe decision to ``solver_core.toggle_core`` —
+        the SAME code the LLM patches and the code sandbox executes. The core
+        rebuilds stencils from the recorded transitions, GF(2)-solves for a
+        uniform board, and queues either the click plan or the next probe."""
         if not has_frame(obs):
             return []
         frame = frame_2d(obs)
         _, action6_ok = availability(obs)
         if not action6_ok:
             return []
+        # Lazy import breaks the toggle <-> solver_core cycle (solver_core reuses
+        # _gf2_solve / _binarize from this module).
+        from admorphiq.tools.solver_core import toggle_core
 
-        if self._solution:
-            return self._solution[:]
+        self._trace = []
+        plan: list[Step] = []
 
-        if len(self._stencils) >= _MIN_STENCILS:
-            plan = self._solve_board(frame)
-            if plan:
-                self._solution = plan
-                return plan[:]
+        def _act(name: str, x: int | None = None, y: int | None = None) -> None:
+            if x is not None and y is not None:
+                plan.append((6, (int(x), int(y))))
 
-        # Not enough evidence yet: probe a cell we haven't clicked, to learn a
-        # new stencil (grid-ordered so coverage is systematic).
-        probe = self._next_probe(frame)
-        return [probe] if probe is not None else []
-
-    # ── solving ──────────────────────────────────────────────────────────────
-
-    def _solve_board(self, frame: np.ndarray) -> list[Step] | None:
-        """Build A·x = b over GF(2) from the learned stencils and current board,
-        for BOTH uniform targets (all-off / all-on); return the click plan for
-        whichever solves with the fewest clicks."""
-        bits, _off, _on = _binarize(frame)
-        h, w = bits.shape
-        clicks = sorted(self._stencils)
-        cell_index = {(r, c): r * w + c for r in range(h) for c in range(w)}
-        n_cells = h * w
-        a = np.zeros((n_cells, len(clicks)), dtype=np.uint8)
-        for j, click in enumerate(clicks):
-            for (r, c) in self._stencils[click]:
-                if 0 <= r < h and 0 <= c < w:
-                    a[cell_index[(r, c)], j] = 1
-
-        best: list[Step] | None = None
-        for target in (0, 1):
-            b = ((bits.reshape(-1) ^ target) % 2).astype(np.uint8)
-            x = _gf2_solve(a, b)
-            if x is None:
-                continue
-            plan = [(6, (int(clicks[j][0]), int(clicks[j][1]))) for j in range(len(clicks)) if x[j]]
-            if plan and (best is None or len(plan) < len(best)):
-                best = plan
-        return best
-
-    def _next_probe(self, frame: np.ndarray) -> Step | None:
-        """A click on a cell not yet clicked. Prefer the CENTROIDS of the board's
-        distinct-colour components (the actual interactive cells — a blind pixel
-        grid misses cells that sit at non-grid offsets, which starves stencil
-        learning); fall back to a coarse grid to cover the rest."""
-        candidates: list[tuple[int, int]] = []
-        for comp in connected_components(frame):
-            cy, cx = comp["centroid"]
-            candidates.append((int(round(cx)), int(round(cy))))
-        h, w = frame.shape
-        step = max(1, min(h, w) // 8)
-        for y in range(step // 2, h, step):
-            for x in range(step // 2, w, step):
-                candidates.append((x, y))
-        for x, y in candidates:
-            if (x, y) not in self._stencils and (x, y) != self._prev_click:
-                return (6, (int(x), int(y)))
-        return None
+        toggle_core(frame, self._records, _act, self._trace)
+        return plan
 
 
 def _to_2d(arr: Any) -> np.ndarray:

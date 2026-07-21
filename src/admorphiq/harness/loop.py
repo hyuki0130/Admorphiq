@@ -114,7 +114,9 @@ class UnifiedAgent:
         for t in self.tools.values():
             t.reset()
         self._queue: list[Step] = []
-        self._transitions: list[tuple[np.ndarray, int, np.ndarray]] = []
+        # (prev_frame, Step, next_frame) — the full Step (action id + optional
+        # click xy) is carried so click coordinates reach the code sandbox.
+        self._transitions: list[tuple[np.ndarray, Step, np.ndarray]] = []
         # Recent raw frames = the evidence detect() needs to see localized
         # movement etc. (architect r53: passing frames=[] blinded detect and
         # made confident-primary ownership permanently inert).
@@ -311,14 +313,14 @@ class UnifiedAgent:
         valid = [_NAME[i] for i in simple_ids if i in _NAME] + (["MOUSE"] if action6 else [])
         # Give the coding LLM the recent transitions it has actually observed.
         hist = [
-            {"action": _NAME.get(a, f"ACTION{a}"), "changed": bool((p != n).any())}
+            {"action": _NAME.get(a[0], f"ACTION{a[0]}"), "changed": bool((p != n).any())}
             for p, a, n in self._transitions[-10:]
         ]
         # Graph-informed dynamics: per-action effect statistics from the agent's
         # own transition log — code written blind to dynamics measured 0.
         per: dict[Any, list[int]] = {}
         for p, a, n in self._transitions[-200:]:
-            per.setdefault(a, []).append(int((p != n).sum()))
+            per.setdefault(a[0], []).append(int((p != n).sum()))
         dynamics = "\n".join(
             f"- {_NAME.get(a, f'ACTION{a}')}: {len(v)} tries, "
             f"{sum(1 for x in v if x)}/{len(v)} changed, median {int(np.median(v))} cells"
@@ -346,7 +348,7 @@ class UnifiedAgent:
             # by HARNESS_KERNEL_API; the transition kernels need real before/after
             # grids, not just the {action,changed} hist).
             trans = [
-                (_NAME.get(a, f"ACTION{a}"), p, n)
+                (_NAME.get(a[0], f"ACTION{a[0]}"), a[1], p, n)
                 for p, a, n in self._transitions[-12:]
             ]
             result = run_code(text, frame, hist, valid, transitions=trans)
@@ -440,7 +442,7 @@ class UnifiedAgent:
         if self._prev_frame is not None and self._prev_step is not None \
                 and self._prev_frame.shape == frame.shape:
             changed = bool((self._prev_frame != frame).any())
-            self._transitions.append((self._prev_frame, self._prev_step[0], frame))
+            self._transitions.append((self._prev_frame, self._prev_step, frame))
             self._transitions = self._transitions[-256:]
             self._recent_frames.append(frame)
             self._recent_frames = self._recent_frames[-8:]
