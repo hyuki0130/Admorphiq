@@ -250,3 +250,97 @@ def test_module_is_importable_without_a_live_arcade_env():
     # sanity: the cores this probe drives are the exact ones solver_core execs
     assert toggle_core.__name__ == "toggle_core"
     assert paint_core.__name__ == "paint_core"
+
+
+# ── regression pins for the three MEASURED v1/v2 Kaggle failure shapes ───────
+# The original MockLLM smoke returned perfectly-formed code and masked all
+# three; each pin below replays the exact reply shape gemma4 actually produced.
+
+
+def test_single_function_patch_calling_card_helpers_executes(bridge_on):
+    """Purpose: pin the v2 paint failure — a patch that returns ONLY the core
+    function and calls card helpers (`_infer_fill_color`, `paint_plan`) that
+    exist nowhere in its own code must execute via the `_card_prelude`.
+
+    Expected feedback: pass ⇒ the sandbox provisions the card's real helpers
+    (patch styles 'single function' are viable); fail ⇒ prelude wiring broke
+    and every single-function patch will NameError again (v2 regression)."""
+    patch = (
+        "def paint_core(current_frame, transitions, act, trace=None):\n"
+        "    frame = np.asarray(current_frame)\n"
+        "    _infer_fill_color(transitions)\n"
+        "    clicks = paint_plan(frame, trace=trace)\n"
+        "    for (x, y) in clicks[:2]:\n"
+        "        act('CLICK', x, y)\n"
+    )
+    frame = np.zeros((8, 8), dtype=np.int16)
+    frame[2:5, 2:5] = 3
+    res = ppl.run_patched_step(patch, "paint_core", frame, [],
+                               prelude=ppl._card_prelude("paint", "paint_core"))
+    assert res.error == ""
+    assert res.actions
+
+
+def test_patched_constant_is_seen_by_prelude_helpers(bridge_on):
+    """Purpose: pin the v2 toggle patch STYLE — a patch that overrides a card
+    CONSTANT (`_MAX_STENCIL = 1024`) after the prelude must have that value
+    honoured by prelude-defined helpers (call-time global lookup).
+
+    Expected feedback: pass ⇒ constant-only patches (gemma4's actual vc33 fix)
+    take effect; fail ⇒ prelude/patch ordering broke and constant patches are
+    silently inert — worse than crashing, they'd measure as PARENT_HOLDS."""
+    patch = (
+        "_MAX_STENCIL = 1024\n"
+        "def toggle_core(current_frame, transitions, act, trace=None):\n"
+        "    s = _stencils_from_transitions(transitions)\n"
+        "    # a 20-cell flip is ONLY a stencil under the patched cap\n"
+        "    act('CLICK', len(s), 0)\n"
+    )
+    before = np.zeros((8, 8), dtype=np.int16)
+    after = before.copy()
+    after[0:4, 0:5] = 1  # 20 cells flipped — over the original 12-cap
+    trans = [{"action": "CLICK", "xy": [3, 3], "before": before.tolist(),
+              "after": after.tolist()}]
+    res = ppl.run_patched_step(patch, "toggle_core", before, trans,
+                               prelude=ppl._card_prelude("toggle", "toggle_core"))
+    assert res.error == ""
+    # stencil learned under the patched cap ⇒ click at x=1 (len(s)==1)
+    assert res.actions == [("ACTION6", (1, 0))]
+
+
+def test_missing_future_import_patch_still_executes(bridge_on):
+    """Purpose: pin the v1 failure — a patch that keeps the card's annotated
+    signature but omits `from __future__ import annotations` must not NameError
+    on `Any`/`Callable` at def time (the driver prepends the future import).
+
+    Expected feedback: pass ⇒ annotation-carrying patches execute; fail ⇒ the
+    v1 PATCH_INVALID(execute)-on-everything regression is back."""
+    patch = (
+        "def toggle_core(\n"
+        "    current_frame: Any,\n"
+        "    transitions: list[dict[str, Any]],\n"
+        "    act: Callable[..., None],\n"
+        "    trace: list[str] | None = None,\n"
+        ") -> None:\n"
+        "    act('CLICK', 3, 3)\n"
+    )
+    res = ppl.run_patched_step(patch, "toggle_core",
+                               np.zeros((8, 8), dtype=np.int16), [],
+                               prelude=ppl._card_prelude("toggle", "toggle_core"))
+    assert res.error == ""
+    assert res.actions == [("ACTION6", (3, 3))]
+
+
+def test_truncated_reply_fails_parse_not_execute():
+    """Purpose: pin the v2 toggle TRANSPORT failure — a reply cut mid-function
+    (opening fence never closed, as produced by num_predict=1024 truncation)
+    must be rejected at the PARSE stage with a clear message, never reach the
+    sandbox.
+
+    Expected feedback: pass ⇒ truncation is attributed to the harness transport
+    stage (fixable by output budget), not misattributed to the model's code;
+    fail ⇒ the validator's fence contract changed."""
+    truncated = "```python\ndef toggle_core(current_frame, transitions, act):\n    s = _sten"
+    code, err = ppl.validate_patch(truncated, "toggle_core")
+    assert code is None
+    assert "fenced" in err
