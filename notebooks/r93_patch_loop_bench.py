@@ -31,7 +31,16 @@ BOOT_TIMEOUT_S = 2400
 MAX_MODEL_LEN = 131072
 _MAX_MODEL_LEN_CEIL = 200000
 BUDGET = int(os.environ.get("R93_BUDGET", "2000"))
-CASES = [("toggle", "vc33"), ("paint", "cd82")]
+# BREADTH set (user correction: 2 games is not a sample — a model verdict needs
+# family × game diversity). Every ACTION6-responsive game from the public 25 runs
+# under BOTH cardable click families (toggle: GF(2)/stencil class; paint:
+# flood-fill class) — the wrong-family arm is itself informative (does the model
+# recognise a template that does not fit and adapt it?). Wall-clock guard: each
+# case is parent(2000) + 1 patch ask + patch(2000); ~10-15 min/case on the RTX.
+_BREADTH_GAMES = [
+    "vc33", "cd82", "ft09", "sc25", "lf52", "lp85", "s5i5", "su15", "sb26", "r11l",
+]
+CASES = [(tool, g) for g in _BREADTH_GAMES for tool in ("toggle", "paint")]
 
 
 # %%
@@ -214,10 +223,14 @@ def main() -> None:
     for tool, game in CASES:
         out = os.path.join(KAGGLE_WORKING, f"r93_{tool}_{game}.json")
         print(f"\n=== R93 CASE {tool} x {game} @ {BUDGET} ===", flush=True)
-        rc = subprocess.call(
-            [sys.executable, "-u", probe, "--tool", tool, "--game", game,
-             "--budget", str(BUDGET), "--out", out],
-            env=env)
+        try:
+            rc = subprocess.call(
+                [sys.executable, "-u", probe, "--tool", tool, "--game", game,
+                 "--budget", str(BUDGET), "--out", out],
+                env=env, timeout=1500)  # one stuck case must not eat the kernel
+        except subprocess.TimeoutExpired:
+            rc = -9
+            print(f"[case] {tool} x {game} TIMEOUT (1500s)", flush=True)
         print(f"[case] {tool} x {game} rc={rc}", flush=True)
         if os.path.exists(out):
             with open(out) as f:
