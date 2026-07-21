@@ -53,7 +53,7 @@ from admorphiq.kernels.shapes import (
     dihedral_transforms,
 )
 
-__all__ = ["KERNEL_API", "KERNEL_CARDS", "DEFERRED"]
+__all__ = ["KERNEL_API", "KERNEL_CARDS", "FEW_SHOT", "DEFERRED"]
 
 # Hard bounds enforced in code (Codex change #3): the combinatorial kernels that
 # can exceed the exec timeout / exhaust memory on a fragmented 64x64 frame.
@@ -160,4 +160,29 @@ SHAPES (mask = 2D truthy grid of one object)
 - K.crop_to_content(mask) -> {"mask","bbox"} tight-cropped.
 - K.best_transform_match(source_mask, target_mask, crop=True) -> best {"name","iou",...}.
 - K.assign_pairs(score_matrix) -> [(i,j)...] max-score matching (smaller dim <=12).
+"""
+
+# Model-AGNOSTIC worked example: the cards alone did not get the model to call
+# the kernels (measured: kernel_replies=0). This shows the K. API end-to-end on a
+# generic navigate-to-target goal. No model-specific tokens — teaches the API, not
+# a phrasing. Adapt the roles/goal to what YOU see; do not copy verbatim.
+FEW_SHOT = """\
+EXAMPLE — a solver block that USES the kernels (adapt to what you see, don't copy):
+```python
+# Goal (inferred): move the mobile object onto the lone target cell.
+regs = K.find_regions(current_frame, background=0)          # objects on the board
+if len(regs) >= 2:
+    player = min(regs, key=lambda r: r["size"])             # smallest = the mover
+    target = max(regs, key=lambda r: r["size"])             # example role guess
+    h, w = len(current_frame), len(current_frame[0])
+    wall = 5                                                # a colour you judge impassable
+    passable = [[current_frame[r][c] != wall for c in range(w)] for r in range(h)]
+    pr, pc = int(player["centroid"][0]), int(player["centroid"][1])
+    gr, gc = int(target["centroid"][0]), int(target["centroid"][1])
+    path = K.grid_shortest_path(passable, (pr, pc), (gr, gc))
+    if path:
+        labels = {(-1, 0): "UP", (1, 0): "DOWN", (0, -1): "LEFT", (0, 1): "RIGHT"}
+        for m in K.path_to_moves(path, labels)[:6]:
+            act(m)
+```
 """

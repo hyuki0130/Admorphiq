@@ -45,9 +45,9 @@ def _kernel_namespace() -> types.SimpleNamespace:
 def _system_content() -> str:
     """System prompt; appends the kernel toolbox card when the bridge is on."""
     if _kernel_api_enabled():
-        from admorphiq.tools.kernel_api import KERNEL_CARDS
+        from admorphiq.tools.kernel_api import FEW_SHOT, KERNEL_CARDS
 
-        return _SYSTEM + "\n\n" + KERNEL_CARDS
+        return _SYSTEM + "\n\n" + KERNEL_CARDS + "\n\n" + FEW_SHOT
     return _SYSTEM
 
 

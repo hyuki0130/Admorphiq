@@ -122,7 +122,10 @@ def test_prompt_gate_on_appends_cards(monkeypatch) -> None:
     content = _system_content()
     assert content.startswith(_SYSTEM)
     assert "KERNEL TOOLBOX" in content
-    assert content.endswith(KERNEL_CARDS)
+    assert KERNEL_CARDS in content
+    # the model did not call kernels from the cards alone (measured); a worked
+    # K.-using example is appended to drive usage.
+    assert "EXAMPLE" in content and "K.grid_shortest_path" in content
 
 
 def test_deferred_and_exposed_are_disjoint_and_documented() -> None:
