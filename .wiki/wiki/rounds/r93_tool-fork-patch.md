@@ -127,6 +127,19 @@ time, while every failure was OURS**:
 - Both fixes reproduced+verified locally against the exact v2 failure shapes (deb6882).
   v3 launched 00:38 KST. Artifacts: `scripts/rounds/R93/*_v2.json`.
 
+## Sandbox-driver control (2026-07-22 00:54 KST, ceph-build) — patch path is FAIR
+
+Drove the VERBATIM (unpatched) toggle core through the run_code sandbox — exactly the
+patch-arm path, prelude included — on vc33 @2000: **level=2 by step ~1500** (run
+timeout-killed at 1200s before the summary line; level reached is the substance) =
+parity with the tool-path parent (2 levels). The earlier 0-level control was a
+ceph-only sync gap (`kernel_api.py` missing → every refill ImportError → the driver's
+(32,32) fallback clicked 193×; Kaggle unaffected, its dataset carries full source).
+Consequences: (a) v3's patch-arm numbers carry NO driver handicap — the comparison is
+clean; (b) the R94 upper-bound check's harness half is PROVEN (a verbatim working core
+drives to tool-parity through the sandbox); what R94 must measure is only whether the
+LLM can return/retain such a core intact.
+
 ## Next
 
 1. ~~`scripts/probe_patch_loop.py`~~ DONE (fa171ce) + Kaggle wrapper (b6dad26).
