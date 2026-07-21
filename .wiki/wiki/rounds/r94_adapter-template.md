@@ -79,8 +79,28 @@ Codex's layering was right.
 The D3-fail fix: press-until-certify (per-button evidence accumulation across ALL its
 presses, series learning, certify gate with the adapter's adaptive press cap, re-press
 least-pressed uncertified control) extracted INTO the core; adapter delegates to the same
-functions. **Parity v2: 8/8 @0.6992 exact** — extraction preserved behaviour. Card now
-47.5KB. Upper-bound gate v2 (certified card via sandbox) running.
+functions. **Parity v2: 8/8 @0.6992 exact** — extraction preserved behaviour. Card now 47.5KB.
+
+**Upper-bound gate v2 FAILED (03:53)**: verbatim certified card via the sandbox on lp85
+@2000 = 0 levels / 13 states / **noop 0.97** (exec clean — the code runs, its clicks land
+nowhere). Worse exploration than v1 (50 states): the certify loop re-presses what it
+believes are controls, but they are no-ops. Since the SAME functions clear 8/8 inside the
+adapter, the defect is at the I/O seam — and the direct-call trace diagnostic (core
+invoked OUTSIDE the sandbox on the same dict input; same result → NOT sandbox mechanics)
+pinned it structurally:
+
+1. **Button detection drifts on an animating game** — the tracked "control" key slides
+   (0,32)→(0,34)→(0,36)→(0,39)→(0,42) across refills: a MOVING marker is re-detected as a
+   button each frame, and the certify loop chases it with no-op clicks (noop 0.97).
+2. **`learned 0 effect-map(s)` permanently** — lp85's conquest learner is TIME-SERIES
+   based (frames sampled DURING press runs, `_extract_frames_at`); the sandbox contract
+   provides per-action before/after pairs, which animation contaminates → nothing learns.
+
+**Conclusion: interface-capability mismatch, not extraction quality.** lp85 (an animating,
+time-series-dependent conquest) was the wrong SOURCE pick for the per-action
+before/after sandbox contract. Decision (re-pair to a static-frame family — candidate
+sb26 8/8 faithful-sim → sk48 holdout — vs enriching the sandbox with frame series) sent
+to the Codex gate.
 
 ## In flight
 
