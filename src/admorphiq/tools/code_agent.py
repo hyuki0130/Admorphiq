@@ -71,6 +71,8 @@ def run_code(
     history: list[dict[str, Any]],
     valid_actions: list[str],
     timeout: float = 5.0,
+    *,
+    transitions: list[tuple[str, np.ndarray, np.ndarray]] | None = None,
 ) -> CodeResult:
     """Execute a model-written code block against the game state, return actions.
 
@@ -107,10 +109,18 @@ def run_code(
         "valid_actions": list(valid_actions),
         "act": act,
     }
-    # r59 kernel vocabulary (agent25 bridge), gated by HARNESS_KERNEL_API so the
-    # DEFAULT sandbox namespace is byte-identical (no `K`) until measured on GPU.
+    # r59 kernel vocabulary + observed transitions (agent25 bridge), gated by
+    # HARNESS_KERNEL_API so the DEFAULT sandbox namespace is byte-identical (no
+    # `K`/`transitions`/`previous_frame`) until measured on GPU. Serialization
+    # (numpy -> list-of-lists) happens ONLY inside this branch (Codex change).
     if _kernel_api_enabled():
         ns["K"] = _kernel_namespace()
+        ser = [
+            {"action": a, "before": np.asarray(p).tolist(), "after": np.asarray(n).tolist()}
+            for a, p, n in (transitions or [])
+        ]
+        ns["transitions"] = ser
+        ns["previous_frame"] = ser[-1]["before"] if ser else None
     code = extract_code(code_text)
     try:
         compiled = compile(code, "<code_agent>", "exec")

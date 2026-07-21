@@ -9,13 +9,13 @@ the bridge that lets it CALL them as ``K.<name>(...)``.
 
 Scope (Codex design review 2026-07-21, APPROVE-WITH-CHANGES):
 
-* Only kernels that are PURE and fit "operate on a grid / list of regions /
-  masks the model already has from ``current_frame``" are exposed. Kernels that
-  need previous frames or observed transition triples (motion/permute/
-  reachable_frontier/configuration_path) are DEFERRED — the sandbox does not
-  yet hand the model that data (see ``DEFERRED`` below). Grammar/GF(2)/callback
-  kernels are left to mechanic-specific dev-time adapters, not the general
-  runtime menu.
+* Only kernels that are PURE and fit "operate on a grid / regions / masks the
+  model has" are exposed. Phase-2 (2026-07-21) added the transition kernels
+  (motion/permute) now that ``run_code`` also exposes ``transitions`` (observed
+  before/after frame pairs) + ``previous_frame``. Still DEFERRED (see below):
+  callback/successors kernels (reachable_frontier/configuration_path/
+  plan_token_assignment) and grammar/GF(2) kernels — awkward as data-in, left to
+  mechanic-specific dev-time adapters.
 * Combinatorial kernels are BOUNDED here in code (not by prompt guidance): a
   call that would blow the exec budget raises ``ValueError``, which ``run_code``
   catches and degrades to an empty queue — never a hang.
@@ -32,6 +32,7 @@ guard-rail against accidental imports, not a security boundary.
 
 from __future__ import annotations
 
+from collections import Counter
 from typing import Any, Callable
 
 from admorphiq.kernels.geometry import (
@@ -39,8 +40,20 @@ from admorphiq.kernels.geometry import (
     elongated_axis,
     point_toward,
 )
+from admorphiq.kernels.motion import (
+    changed_region_attribution,
+    frame_diff,
+    motion_vectors,
+    separate_by_motion,
+    track_objects,
+)
 from admorphiq.kernels.parse import color_mode
 from admorphiq.kernels.paths import grid_shortest_path, path_to_moves
+from admorphiq.kernels.permute import (
+    complete_cycle,
+    is_single_cycle,
+    learn_cyclic_successor,
+)
 from admorphiq.kernels.regions import (
     find_regions,
     multiset_signature,
@@ -88,6 +101,39 @@ def _assign_pairs(score_matrix: Any) -> Any:
     return assign_pairs(rows)
 
 
+def _track_objects(regions_before: Any, regions_after: Any, max_shift: Any = None) -> Any:
+    rb, ra = list(regions_before), list(regions_after)
+    if len(rb) > _MAX_REGIONS or len(ra) > _MAX_REGIONS:
+        raise ValueError(f"track_objects region count > {_MAX_REGIONS}; filter first")
+    # track_objects matches per-colour via the raw (exponential) assign_pairs; bound
+    # every shared colour's smaller side to keep it cheap (Codex change).
+    cb, ca = Counter(r["color"] for r in rb), Counter(r["color"] for r in ra)
+    for col in set(cb) & set(ca):
+        if min(cb[col], ca[col]) > _MAX_ASSIGN_SLOTS:
+            raise ValueError(
+                f"colour {col}: {min(cb[col], ca[col])} matchable regions > "
+                f"{_MAX_ASSIGN_SLOTS} (exponential); filter regions first")
+    return track_objects(rb, ra, max_shift=max_shift)
+
+
+def _learn_cyclic_successor(before_regions: Any, after_regions: Any,
+                            changed_cells: Any, candidate_cells: Any = None) -> Any:
+    br, ar = list(before_regions), list(after_regions)
+    cc = list(changed_cells)
+    cand = None if candidate_cells is None else list(candidate_cells)
+    if len(br) > _MAX_REGIONS or len(ar) > _MAX_REGIONS:
+        raise ValueError(f"learn_cyclic_successor region count > {_MAX_REGIONS}")
+    if len(cc) > 4096 or (cand is not None and len(cand) > _MAX_REGIONS):
+        raise ValueError("learn_cyclic_successor changed_cells>4096 or candidates>96")
+    return learn_cyclic_successor(br, ar, cc, candidate_cells=cand)
+
+
+def _complete_cycle(succ: Any) -> Any:
+    if len(dict(succ)) > 256:
+        raise ValueError("complete_cycle map > 256 entries")
+    return complete_cycle(succ)
+
+
 # The runtime menu: stable name -> pure, bounded, current_frame-composable kernel.
 KERNEL_API: dict[str, Callable[..., Any]] = {
     # perception
@@ -107,18 +153,22 @@ KERNEL_API: dict[str, Callable[..., Any]] = {
     "crop_to_content": crop_to_content,
     "best_transform_match": best_transform_match,
     "assign_pairs": _assign_pairs,
+    # transition kernels (Phase-2): usable now that the sandbox exposes
+    # `transitions` (observed before/after frame pairs) + `previous_frame`.
+    "frame_diff": frame_diff,
+    "separate_by_motion": separate_by_motion,
+    "track_objects": _track_objects,
+    "motion_vectors": motion_vectors,
+    "changed_region_attribution": changed_region_attribution,
+    "learn_cyclic_successor": _learn_cyclic_successor,
+    "complete_cycle": _complete_cycle,
+    "is_single_cycle": is_single_cycle,
 }
 
 # Kernels intentionally NOT exposed to the general runtime menu, with the reason.
 # Wiring any of these needs either sandbox enrichment (previous_frame + observed
 # transition triples) or a mechanic-specific adapter — tracked for a Phase-2 pass.
 DEFERRED: dict[str, str] = {
-    "frame_diff": "needs previous_frame (sandbox exposes only current_frame)",
-    "separate_by_motion": "needs before/after frame pair",
-    "track_objects": "needs before/after regions",
-    "learn_cyclic_successor": "needs observed transition triples",
-    "complete_cycle": "only useful with a learned successor map",
-    "is_single_cycle": "only useful with a learned successor map",
     "reachable_frontier": "needs observed (state,action)->state transitions",
     "configuration_path": "needs goal_test + successors callbacks (model programs a search)",
     "plan_token_assignment": "needs learned permutation operators + budget",
@@ -160,6 +210,22 @@ SHAPES (mask = 2D truthy grid of one object)
 - K.crop_to_content(mask) -> {"mask","bbox"} tight-cropped.
 - K.best_transform_match(source_mask, target_mask, crop=True) -> best {"name","iou",...}.
 - K.assign_pairs(score_matrix) -> [(i,j)...] max-score matching (smaller dim <=12).
+
+TRANSITIONS — you also have your OWN observed action->effect data:
+- transitions: recent [{"action":str, "before":grid, "after":grid}] you actually took.
+- previous_frame: the `before` grid of the most recent transition (or None).
+  Use these to LEARN dynamics, then plan. Build regions with K.find_regions on a
+  before/after frame, then feed the transition kernels below.
+- K.frame_diff(before, after) -> {"cells"(frozenset (r,c)),"bbox","count"} what changed.
+- K.separate_by_motion(before, after, background=INT) -> the one object that moved
+    ({"shift"(dr,dc),"cells",...}); background is REQUIRED (a colour), else nothing moves.
+- K.track_objects(regions_before, regions_after, max_shift=None) -> {"matches":[...]}
+    match same objects across a transition (regions from K.find_regions on each frame).
+- K.motion_vectors(matches) -> {"per_object":[(dr,dc)...],"dominant":(dr,dc)|None}.
+- K.changed_region_attribution(frame_diff_cells, regions) -> [region idx...] most-changed.
+- K.learn_cyclic_successor(before_regions, after_regions, changed_cells, candidate_cells=None)
+    -> {cell: next_cell} the rotation an action applied (for ring/permutation games).
+- K.is_single_cycle(succ) -> bool ; K.complete_cycle(succ) -> close a partial map.
 """
 
 # Model-AGNOSTIC worked example: the cards alone did not get the model to call

@@ -106,6 +106,56 @@ def test_bridge_off_no_kernel_namespace() -> None:
     assert res.actions == []
 
 
+def _transitions() -> list:
+    before = np.zeros((6, 6), dtype=int)
+    before[1, 1] = 3
+    after = np.zeros((6, 6), dtype=int)
+    after[1, 2] = 3  # the 3 moved one cell right
+    return [("RIGHT", before, after)]
+
+
+def test_transitions_exposed_when_bridge_on(bridge_on) -> None:
+    """Purpose: Phase-2 hands the sandbox its observed before/after frames.
+    Expected: `transitions` + `previous_frame` are present and a transition kernel
+    (K.frame_diff) composes over them without error."""
+    code = (
+        "t = transitions[-1]\n"
+        "d = K.frame_diff(t['before'], t['after'])\n"
+        "print('changed', d['count'])\n"
+        "print('prev_ok', previous_frame == t['before'])\n"
+        "act('UP')\n"
+    )
+    res = run_code(code, _grid(), [], ["ACTION1"], transitions=_transitions())
+    assert res.error == "", res.error
+    assert "changed 2" in res.printed  # the 3 left (1,1) and arrived (1,2)
+    assert "prev_ok True" in res.printed
+    assert res.actions and res.actions[0][0] == "ACTION1"
+
+
+def test_transitions_absent_when_bridge_off() -> None:
+    """Purpose: default (flag off) sandbox is byte-identical — no transitions var.
+    Expected: referencing `transitions` raises NameError (caught), empty queue."""
+    res = run_code("act('UP') if transitions else act('DOWN')", _grid(), [],
+                   ["ACTION1", "ACTION2"], transitions=_transitions())
+    assert res.error != ""
+    assert res.actions == []
+
+
+def test_track_objects_bound_is_enforced(bridge_on) -> None:
+    """Purpose: the exponential per-colour matcher is bounded in code, not prompt.
+    Expected: >12 same-colour regions on both sides raises (caught), empty queue."""
+    code = (
+        "rb = [{'color': 1, 'cells': frozenset([(0, i)]), 'bbox': (0, i, 0, i),"
+        "      'centroid': (0.0, float(i)), 'size': 1} for i in range(20)]\n"
+        "ra = [dict(r) for r in rb]\n"
+        "K.track_objects(rb, ra)\n"
+        "act('UP')\n"
+    )
+    res = run_code(code, _grid(), [], ["ACTION1"], transitions=_transitions())
+    assert res.error != ""
+    assert res.actions == []
+
+
 def test_prompt_gate_default_off_is_byte_identical() -> None:
     """Purpose: the bridge is opt-in — default (flag unset) prompt is unchanged.
     Expected: _system_content() == _SYSTEM and the built prompt carries no cards."""

@@ -342,7 +342,14 @@ class UnifiedAgent:
                     frame, prev_code, effect, valid, dynamics=dynamics))
             else:
                 text = self.llm(build_code_prompt(frame, hist, valid, dynamics=dynamics))
-            result = run_code(text, frame, hist, valid)
+            # Observed transition frames for the kernel bridge (gated in run_code
+            # by HARNESS_KERNEL_API; the transition kernels need real before/after
+            # grids, not just the {action,changed} hist).
+            trans = [
+                (_NAME.get(a, f"ACTION{a}"), p, n)
+                for p, a, n in self._transitions[-12:]
+            ]
+            result = run_code(text, frame, hist, valid, transitions=trans)
             if result.actions:
                 self._last_code = (result.code, self._last_levels, len(self._transitions))
             return result.actions
