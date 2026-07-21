@@ -142,7 +142,36 @@ measured configs:
   If even bare tools get 0 in the offline Arcade @300a, the smoke's budget/game choice is
   the confound. Either way, resolve THAT before more agent25 LLM/kernel investment.
 
-## Next (needs GPU)
+## Deep-debug + Codex verdict (2026-07-21) — context/output RULED OUT; wall is planning quality
+
+Transcript-capturing re-run (output cap 4096, context 131072). Files
+`r92_agent25_gemma4_debug.json` + `r92_agent25_gemma4_transcripts.json`.
+- **Context ruled out**: prompts ~few-K tokens ≪ 131072. **Output ruled out**: max model
+  output 1376-2374 CHARS ≪ the 4096-token cap (~12000 chars) — never approached.
+- **The real wall (from the actual code the model wrote)**: gemma4 produces PLAUSIBLE but
+  GUESS/EXPLORATORY code, not goal-directed plans. Verbatim: *"Let's assume the red block
+  is the player… try to move it RIGHT to see if it moves"* → `for _ in range(6): act('RIGHT')`.
+  It calls K.find_regions (perception) but does NOT use the transitions to learn dynamics
+  then plan. Matches R53 "orchestrating tools plateaus." Also: the first output per game is
+  a tool-selection JSON (`{"mode":"tool","tool":"llm_goal"}`), so the code path is reached
+  late/rarely (Phase-2 ON had only 2 kernel calls).
+- **gpt-oss-120b can't run offline on Kaggle**: `openai_harmony.HarmonyError: failed to
+  download or load vocab file` — the harmony format fetches a vocab over the network, which
+  Kaggle's disabled internet blocks. Dead unless the harmony vocab is pre-bundled.
+
+**Codex verdict**: diagnosis directionally sound (context/output convincingly out; model
+does weak causal identification + guessing). One caveat: "kernel availability isn't
+LIMITING" is not fully established — the code path ran late/rarely, so this tested "kernels
+under the current policy," not clean runtime composition. Recommendation: **shelve agent25
+as a primary performance direction, keep it as infra; the proven lever is dev-time kernel
+composition (32.96%).** Fund exactly ONE scoped falsification experiment, not more
+prompt/model tuning: a **mandatory early plan–probe–verify scaffold** (infer entities+
+dynamics from transitions → one discriminating probe → predict → compare → update → then a
+bounded kernel program), bypassing the tool-selection JSON gate, run early. If that raises
+disciplined kernel use but still 0 clears → shelve the runtime-composition thesis with
+confidence. Bigger budget / force-code-first-alone / different-model are NOT the lever.
+
+## Next
 
 0. DONE — few-shot added (kernel_replies qwen 0→1) and the qwen-vs-gemma4 comparison run:
    gemma4 uptakes the kernels heavily (23 K.-replies), so model choice, not prompt tweaking,
