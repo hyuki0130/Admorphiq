@@ -204,6 +204,7 @@ why matched-replay gating (keep-parent-on-loss) must stay in any deployed loop.
 
 ## Related
 
+- [[r94_adapter-template]] — the successor: conquered adapters as patch templates (user escalation)
 - [[r92_agent25-kernel-bridge]] (the falsified from-scratch axis; v6 interface fix)
 - [[r56_generic-kernels]] · [[r53_unified-harness]]
 - `memory/project_r56_r58_state.md` (R92 verdict block)
