@@ -74,6 +74,35 @@ def _mini_portal_board_4slots() -> np.ndarray:
     return g
 
 
+def _mini_portal_board_6slots() -> np.ndarray:
+    """A pristine single-frame portal-sort board with SIX empty slots — a
+    13-step plan (12 clicks + verify), deep enough that after the sandbox's
+    ``queue[:8]`` cap lands mid-plan (4 of 6 targets placed), the board still
+    has EMPTY slots left AND UNUSED pool colours remaining -- the exact shape
+    that reproduces R94 D3-4: on the smaller 4-slot board (see
+    :func:`_mini_portal_board_4slots`) the pool happened to be FULLY exhausted
+    the instant the queue cap landed, so a fresh re-parse of the mid-plan board
+    correctly failed (proving D3-2's continuation fix); on THIS deeper board a
+    fresh re-parse of the mid-plan board instead SUCCEEDS with a different,
+    WRONG plan (measured: it reuses already-exhausted pool cells and cycles
+    the board back to the same state forever) -- unless the in-flight
+    continuation is checked BEFORE any fresh re-parse is trusted."""
+    g = np.zeros((32, 32), dtype=np.int64)
+    r0, c0, r1, c1 = 12, 6, 20, 30
+    g[r0, c0 : c1 + 1] = 7
+    g[r1, c0 : c1 + 1] = 7
+    g[r0 : r1 + 1, c0] = 7
+    g[r0 : r1 + 1, c1] = 7
+    for c in (9, 13, 17, 21, 25, 29):
+        g[16, c] = 3  # empty slot markers
+    for c, color in zip((8, 12, 16, 20, 24, 28), (4, 5, 4, 5, 4, 5)):
+        g[4, c] = color  # target band, left-to-right
+    for color, pts in {4: [(28, 7), (28, 15), (28, 23)], 5: [(28, 11), (28, 19), (28, 27)]}.items():
+        for r, c in pts:
+            g[r, c] = color  # pool swatches
+    return g
+
+
 @dataclass
 class _Obs:
     """A minimal observation the sb26 adapter's harness contract reads."""
@@ -309,6 +338,133 @@ def test_simdfs_core_continues_inflight_plan_across_refills():
     simdfs_core(mutated, transitions, act2, trace2)
     assert rec2 == [("SPACE", None, None)], rec2
     assert not any("idle-settle" in line for line in trace2), trace2
+
+
+def test_simdfs_core_continues_original_plan_not_a_spurious_fresh_reparse():
+    """Purpose: R94 D3-4 regression test. On a DEEPER board (6 slots -> 13-step
+    plan: 12 clicks + verify), after the sandbox's ``queue[:8]`` cap lands
+    mid-plan, 4 of 6 targets are placed -- UNLIKE the 4-slot D3-2 board, the
+    pool is NOT yet exhausted and 2 slots are still genuinely empty. A fresh
+    re-parse of THIS mid-plan board does NOT fail (proven below): it invents a
+    DIFFERENT, WRONG plan that reuses already-exhausted pool cells -- the exact
+    mechanism behind the reported "2-click re-plan cycle, zero progress,
+    forever" production bug. The fix must check the DETERMINISTIC in-flight
+    continuation (reconstructed from the level-start board) BEFORE ever
+    trusting a fresh re-parse of the current (possibly mid-plan) board, so
+    invocation 2 emits the ORIGINAL plan's remaining steps 9-13, not the
+    spurious fresh mid-state plan.
+
+    Expected feedback: pass ⇒ a deep multi-chunk plan resumes via the correct
+    ORIGINAL continuation even though a fresh re-parse of the mid-plan board
+    would also (wrongly) succeed; fail ⇒ the core prefers an unsound fresh
+    re-parse over a sound continuation and can loop forever without ever
+    completing the level (the reported production bug)."""
+    board = _mini_portal_board_6slots()
+    grid = tuple(tuple(int(v) for v in row) for row in board)
+    plan = simdfs_plan(grid)
+    assert plan is not None and len(plan) == 13, plan  # 6 click pairs + verify
+    assert plan[-1] == ("simple", 5)
+    click_steps = [step for step in plan if step[0] == "click"]
+    assert len(click_steps) == 12
+    # Determinism: re-deriving the plan from the SAME pristine board must be
+    # byte-identical every call -- the continuation fix's core assumption.
+    assert simdfs_plan(grid) == plan
+
+    # Refill 1: the full 13-step plan is queued; the sandbox caps to 8 actions
+    # (all clicks -- 4 of 6 targets placed), mirrored directly here.
+    rec1, act1 = _collect_act()
+    trace1: list[str] = []
+    simdfs_core(board, [], act1, trace1)
+    executed = rec1[:8]
+    assert len(executed) == 8 and all(name == "CLICK" for name, _x, _y in executed)
+    assert any(line.startswith("fresh plan=13 steps") for line in trace1), trace1
+
+    # Build the resulting mid-plan board (4 of 6 slots filled, 2 pool colours
+    # of each still unconsumed) and the observed transitions.
+    mutated = board.copy()
+    transitions: list[dict[str, Any]] = []
+    for i in range(0, 8, 2):
+        _k1, prow, pcol = click_steps[i]
+        _k2, srow, scol = click_steps[i + 1]
+        color = int(board[prow, pcol])
+        mutated[prow, pcol] = 0
+        mutated[srow, scol] = color
+    for i, (_kind, row, col) in enumerate(click_steps[:8]):
+        transitions.append({
+            "action": "CLICK", "xy": [col, row],
+            "before": board if i == 0 else mutated, "after": mutated,
+        })
+
+    # Prove this really IS the D3-4 scenario: UNLIKE the 4-slot board, a fresh
+    # re-parse of the mid-plan board SUCCEEDS with a DIFFERENT, WRONG plan
+    # (reusing exhausted pool cells) -- so a naive fresh-parse-first core would
+    # take this bait instead of continuing the real plan.
+    mutated_grid = tuple(tuple(int(v) for v in row) for row in mutated)
+    spurious_plan = simdfs_plan(mutated_grid)
+    assert spurious_plan is not None
+    assert spurious_plan != plan[8:]
+
+    assert _plan_progress(plan, transitions) == 8
+
+    # Refill 2 must emit the ORIGINAL plan's remaining steps 9-13 (4 clicks +
+    # verify), via the in-flight continuation -- NOT the spurious fresh plan.
+    rec2, act2 = _collect_act()
+    trace2: list[str] = []
+    simdfs_core(mutated, transitions, act2, trace2)
+    expected_remaining = plan[8:]
+    expected_actions: list[tuple[str, Any, Any]] = []
+    for step in expected_remaining:
+        if step[0] == "click":
+            _kind, row, col = step
+            expected_actions.append(("CLICK", col, row))
+        else:
+            expected_actions.append(("SPACE", None, None))
+    assert rec2 == expected_actions, rec2
+    assert any(line.startswith("in-flight plan=13 steps, 8 already executed") for line in trace2), trace2
+    assert not any(line.startswith("fresh plan=") for line in trace2), trace2
+
+
+def test_simdfs_core_stall_guard_on_repeated_no_progress_fresh_plan():
+    """Purpose: R94 D3-4 stall-guard unit test. The in-flight continuation
+    (Priority 1) only fires when a plan is deterministically reconstructible
+    from the level-start board; when it genuinely is NOT (a real divergence
+    the reconstruction cannot explain), the core falls back to a fresh parse
+    of the current board (Priority 2) -- but if that fresh plan is EXACTLY the
+    same steps that were just observed to execute with ZERO net board change,
+    re-queuing it would repeat that cycle forever. The guard must recognise
+    this and queue NOTHING rather than loop.
+
+    Expected feedback: pass ⇒ a repeating no-progress fresh plan is
+    recognised and suppressed; fail ⇒ the fallback tier can spin forever on a
+    plan that provably never advances the board."""
+    unparseable = np.zeros((32, 32), dtype=np.int64)
+    settled = _mini_portal_board()
+    grid = tuple(tuple(int(v) for v in row) for row in settled)
+    fresh_plan = simdfs_plan(grid)
+    assert fresh_plan is not None
+
+    # transitions[0] is a REAL click (not the idle-settle (0,0) sentinel) whose
+    # "before" is genuinely unparseable -- Priority 1's continuation attempt
+    # bails immediately (no plan derivable from that pristine snapshot), so the
+    # core falls through to Priority 2 without ever anchoring to a stale plan.
+    transitions: list[dict[str, Any]] = [
+        {"action": "CLICK", "xy": [5, 5], "before": unparseable, "after": unparseable}
+    ]
+    # The last len(fresh_plan) transitions are EXACTLY fresh_plan's own steps,
+    # with the board unchanged throughout (before == after == settled) --
+    # "we already tried this and made zero progress".
+    for step in fresh_plan:
+        if step[0] == "click":
+            _kind, row, col = step
+            transitions.append({"action": "CLICK", "xy": [col, row], "before": settled, "after": settled})
+        else:
+            transitions.append({"action": "SPACE", "xy": None, "before": settled, "after": settled})
+
+    rec, act = _collect_act()
+    trace: list[str] = []
+    simdfs_core(settled, transitions, act, trace)
+    assert rec == [], rec
+    assert any("stall" in line for line in trace), trace
 
 
 def test_sb26_adapter_delegates_to_simdfs_plan(monkeypatch):

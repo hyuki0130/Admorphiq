@@ -144,6 +144,7 @@ from admorphiq.kernels.simdfs import (  # noqa: F401
     _read_targets_and_pool,
     _recover_fused_frames,
     _simulate_portal_dfs,
+    _transitions_match_plan,
     simdfs_core,
     simdfs_plan,
 )
@@ -491,15 +492,15 @@ _CARD_FNS: dict[str, list[Callable[..., Any] | str]] = {
         _simulate_portal_dfs, _read_target_sequence, _read_targets_and_pool,
         _plan_sb26_multi_portal, _assign_colors, _placement_consistent,
         _build_multi_portal_plan, simdfs_plan,
-        # R94 D3-2 fix: in-flight plan reconstruction from the growing
-        # transitions list (pristine-board re-derivation + progress matching),
-        # so the stateless core drains a >8-step plan across sandbox refills
-        # instead of stalling once the board is no longer pristine.
-        _plan_step_key, _plan_progress,
-        # R94 D3-3 fix: fresh-board-first retry (never anchors to a stale
-        # transient snapshot) + idle-settle-aware pristine lookup, so a
-        # still-settling level-entry board recovers instead of stalling forever.
-        _first_real_click_index, _emit_plan, simdfs_core,
+        # R94 D3-2/D3-3/D3-4: in-flight plan reconstruction from the level-start
+        # board (pristine-board re-derivation + progress matching, idle-settle-
+        # aware pristine lookup, and a stall guard on the fresh-parse fallback)
+        # so the stateless core drains a >8-step plan across sandbox refills and
+        # recovers a still-settling level-entry board -- without ever trusting a
+        # spurious fresh re-parse of a partially-filled mid-plan board over a
+        # clean, deterministic continuation.
+        _plan_step_key, _plan_progress, _first_real_click_index, _emit_plan,
+        _transitions_match_plan, simdfs_core,
     ],
 }
 
