@@ -35,8 +35,10 @@ VLLM_PORT = 8199
 # served-model-name is derived from the mounted model dir (qwen / gemma4 / ...),
 # so ONE notebook serves whichever model the kernel attaches.
 VLLM_MODEL_NAME = os.environ.get("VLLM_MODEL_NAME", "served")
-MAX_MODEL_LEN = 32768
-BOOT_TIMEOUT_S = 1500.0
+# Generous context; our prompts are only a few K tokens so this is not the binding
+# limit, but raised to rule context out (gemma4 supports 256K, qwen 131072).
+MAX_MODEL_LEN = int(os.environ.get("MAX_MODEL_LEN", "131072"))
+BOOT_TIMEOUT_S = 1800.0
 
 
 # %%
@@ -75,7 +77,14 @@ def _find_model_dir() -> tuple[str, str]:
         raise RuntimeError(f"ambiguous model dirs: {hits}")
     d = hits[0]
     low = d.lower()
-    tag = "gemma4" if "gemma" in low else "qwen" if "qwen" in low else "served"
+    if "gemma" in low:
+        tag = "gemma4"
+    elif "qwen" in low:
+        tag = "qwen"
+    elif "gpt-oss" in low or "gptoss" in low or "gpt_oss" in low:
+        tag = "gptoss"
+    else:
+        tag = "served"
     return d, tag
 
 
@@ -199,11 +208,17 @@ class _LLMTelemetry:
         self.py_replies = 0
         self.total_latency = 0.0
         self.errors = 0
+        self.max_out_chars = 0
+        # Full raw transcripts (prompt tail + the model's actual output) so we can
+        # SEE the reasoning: is it producing code, using K., hitting the output cap?
+        self.transcripts: list[dict] = []
 
     def __call__(self, messages: list[dict[str, str]]) -> str:
         self.calls += 1
         sys_content = messages[0].get("content", "") if messages else ""
-        if "KERNEL TOOLBOX" in sys_content:
+        user_content = messages[-1].get("content", "") if messages else ""
+        is_code_prompt = "KERNEL TOOLBOX" in sys_content
+        if is_code_prompt:
             self.code_prompts += 1
         t0 = time.monotonic()
         try:
@@ -217,13 +232,23 @@ class _LLMTelemetry:
             self.py_replies += 1
         if "K." in out:
             self.k_replies += 1
+        self.max_out_chars = max(self.max_out_chars, len(out))
+        self.transcripts.append({
+            "call": self.calls,
+            "code_prompt": is_code_prompt,
+            "user_tail": user_content[-600:],   # goal/summary the model saw
+            "output": out,                       # the model's FULL reply
+            "out_chars": len(out),
+            "used_K": "K." in out,
+            "has_python": "```python" in out,
+        })
         return out
 
     def summary(self) -> dict:
         return {
             "calls": self.calls, "code_prompts": self.code_prompts,
             "python_replies": self.py_replies, "kernel_replies": self.k_replies,
-            "errors": self.errors,
+            "errors": self.errors, "max_out_chars": self.max_out_chars,
             "avg_latency_s": round(self.total_latency / max(self.calls, 1), 2),
         }
 
@@ -245,8 +270,10 @@ def _run_arm(arcade, game_id: str, bridge_on: bool) -> dict:
 
     os.environ["HARNESS_KERNEL_API"] = "1" if bridge_on else "0"
 
-    tele = _LLMTelemetry(openai_compat_llm(num_predict=1024))
-    draw = openai_compat_llm(num_predict=400)
+    # Output raised to 4096 so a full reason+code block is never truncated (the
+    # transcript's out_chars vs this cap tells us if the model wanted more room).
+    tele = _LLMTelemetry(openai_compat_llm(num_predict=4096))
+    draw = openai_compat_llm(num_predict=1024)
 
     def factory():
         return UnifiedAgent(default_tools(), tele, draw_llm=draw,
@@ -257,6 +284,7 @@ def _run_arm(arcade, game_id: str, bridge_on: bool) -> dict:
                    max_actions=MAX_ACTIONS, adapter_factory=factory)
     res["arm"] = "on" if bridge_on else "off"
     res["telemetry"] = tele.summary()
+    res["transcripts"] = tele.transcripts
     return res
 
 
@@ -316,6 +344,15 @@ def main() -> None:
                               ("game_id", "arm", "levels_completed", "win_levels",
                                "game_score", "telemetry", "error")}), flush=True)
             results.append(res)
+
+    # Full transcripts (prompt tail + model output) go to their own file so the
+    # summary stays readable; this is the deep-debug artifact.
+    transcripts = {
+        f"{r.get('game_id')}:{r.get('arm')}": r.pop("transcripts", [])
+        for r in results
+    }
+    with open(os.path.join(KAGGLE_WORKING, "agent25_transcripts.json"), "w") as f:
+        json.dump({"model": served, "transcripts": transcripts}, f, indent=2)
 
     out = {
         "games": BENCH_GAMES, "max_actions": MAX_ACTIONS, "model": served,
