@@ -1,0 +1,23 @@
+{
+  "tool": "toggle",
+  "game": "vc33",
+  "budget": 2000,
+  "parent": {
+    "levels": 2,
+    "actions": 2000,
+    "distinct_states": 834,
+    "distinct_transitions": 1509,
+    "noop_rate": 0.11465295629820052
+  },
+  "patch": {
+    "levels": 0,
+    "actions": 0,
+    "distinct_states": 0,
+    "distinct_transitions": 0,
+    "noop_rate": 0.0,
+    "failure_stage": "parse",
+    "patched_code": "```python\nfrom __future__ import annotations\n\n# \u2500\u2500 SANDBOX CONTRACT \u2014 you may PATCH the core function below \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n# It runs in a sandbox with ONLY: np (numpy), Python builtins, and the\n# helper fns whose source is shown here. NO imports (they are blocked).\n\n_MAX_STENCIL = 1024  # Increased to handle large-scale toggles (rows/cols/etc)\n_MIN_STENCILS = 4\n\ndef color_histogram(frame: np.ndarray, ncolors: int = 16) -> np.ndarray:\n    \"\"\"Count of each colour index 0..ncolors-1 in the grid.\"\"\"\n    flat = np.asarray(frame).ravel()\n    return np.bincount(flat[(flat >= 0) & (flat < ncolors)], minlength=ncolors)\n\n\ndef _binarize(frame: np.ndarray) -> tuple[np.ndarray, int, int]:\n    \"\"\"Reduce the board to a 0/1 grid: the most common colour is OFF (0), the\n    rest ON (1). Returns (bits, off_color, on_color).\"\"\"\n    hist = color_histogram(frame)\n    off = int(hist.argmax()) if hist.any() else 0\n    on_candidates = [c for c in range(len(hist)) if hist[c] > 0 and c != off]\n    on = on_candidates[0] if on_candidates else off\n    bits = (frame != off).astype(np.uint8)\n    return bits, off, on\n\n\ndef _gf2_solve(a: np.ndarray, b: np.ndarray) -> np.ndarray | None:\n    \"\"\"Solve A\u00b7x = b over GF(2) by Gaussian elimination.\"\"\"\n    m = np.concatenate([a.copy() % 2, (b.copy() % 2).reshape(-1, 1)], axis=1).astype(np.uint8)\n    rows, cols = m.shape\n    nvars = cols - 1\n    pivot_col_of_row: list[int] = []\n    r = 0\n    for c in range(nvars):\n        piv = None\n        for rr in range(r, rows):\n            if m[rr, c]:\n                piv = rr\n                break\n        if piv is None:\n            continue\n        m[[r, piv]] = m[[piv, r]]\n        for rr in range(rows):\n            if rr != r and m[rr, c]:\n                m[rr] ^= m[r]\n        pivot_col_of_row.append(c)\n        r += 1\n        if r == rows:\n            break\n    for rr in range(rows):\n        if not m[rr, :nvars].any() and m[rr, nvars]:\n            return None\n    x = np.zeros(nvars, dtype=np.uint8)\n    for i, c in enumerate(pivot_col_of_row):\n        x[c] = m[i, nvars]\n    return x\n\n\ndef _diff_cells(before: Any, after: Any) -> list[tuple[int, int]]:\n    \"\"\"The (row, col) cells that differ between two same-shape grids.\"\"\"\n    a = np.asarray(before)\n    b = np.asarray(after)\n    if a.shape != b.shape:\n        return []\n    ys, xs = np.where(a != b)\n    return [(int(y), int(x)) for y, x in zip(ys, xs)]\n\n\ndef _stencils_from_transitions(\n    transitions: list[dict[str, Any]],\n) -> dict[tuple[int, int], set[tuple[int, int]]]:\n    \"\"\"Rebuild each click's toggle stencil from observed click transitions.\"\"\"\n    stencils: dict[tuple[int, int], set[tuple[int, int]]] = {}\n    for t in transitions:\n        xy = t.get(\"xy\")\n        if xy is None:\n            continue\n        cells = _diff_cells(t[\"before\"], t[\"after\"])\n        if 1 <= len(cells) <= _MAX_STENCIL:\n            stencils[(int(xy[0]), int(xy[1]))] = set(cells)\n    return stencils\n\n\ndef _component_centroids(frame: np.ndarray) -> list[tuple[int, int]]:\n    \"\"\"Rounded (x, y)"
+  },
+  "verdict": "PATCH_INVALID",
+  "llm_latency_s": 101.63063072199998
+}

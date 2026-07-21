@@ -179,14 +179,38 @@ def ask_patch(
 
 # ── step 4 primitive: the driver call through the real sandbox ─────────────
 
+def _card_prelude(tool_name: str, core_fn: str) -> str:
+    """The card's REAL helper sources + constants, EXCLUDING the core fn itself.
+
+    v2 measured failure: the patch ask says "output the FULL PATCHED version of
+    the core function", so the model reasonably returns ONLY that function — but
+    its body calls card helpers (`_infer_fill_color`, `_solve_board`, …) that the
+    card only SHOWED and the sandbox never provided → NameError at execute.
+    Prepending the helpers (patch defs come AFTER, so a full-card style patch
+    shadows them) makes both reply styles executable."""
+    import inspect
+
+    from admorphiq.tools import solver_core as sc
+
+    consts = "\n".join(
+        f"{name} = {getattr(sc, name)!r}" for name in sc._CARD_CONSTS[tool_name]
+    )
+    helpers = "\n\n".join(
+        inspect.getsource(fn) for fn in sc._CARD_FNS[tool_name]
+        if fn.__name__ != core_fn
+    )
+    return consts + "\n\n" + helpers
+
+
 def run_patched_step(
     patched_code: str, core_fn: str, frame: np.ndarray,
     level_transitions: list[dict[str, Any]],
+    prelude: str = "",
 ) -> Any:
-    """Run ``{patched_code}\\n\\n{core_fn}(current_frame, transitions, act)`` in
-    the ``code_agent`` sandbox, with the accumulated per-level transitions (with
-    xy) serialized in. Requires ``HARNESS_KERNEL_API=1`` (transitions/K are
-    otherwise absent from the sandbox namespace). Returns the ``CodeResult``."""
+    """Run ``{prelude}\\n{patched_code}\\n{core_fn}(current_frame, transitions,
+    act)`` in the ``code_agent`` sandbox, with the accumulated per-level
+    transitions (with xy) serialized in. Requires ``HARNESS_KERNEL_API=1``
+    (transitions/K are otherwise absent). Returns the ``CodeResult``."""
     from admorphiq.tools.code_agent import run_code
 
     # The source card opens with `from __future__ import annotations`; models
@@ -194,7 +218,8 @@ def run_patched_step(
     # it the REAL signature's annotations (`Any`, `Callable`) evaluate at def
     # time and NameError. Prepend unconditionally (harmless if repeated) — the
     # measured v1 run failed at execute on BOTH cases for exactly this.
-    driver = ("from __future__ import annotations\n\n" + patched_code
+    driver = ("from __future__ import annotations\n\n" + prelude
+              + "\n\n" + patched_code
               + f"\n\n{core_fn}(current_frame, transitions, act)\n")
     trans = [
         (t["action"], t["xy"], t["before"], t["after"]) for t in level_transitions
@@ -379,6 +404,7 @@ def _run_parent(
 
 def _run_patch(
     patched_code: str, core_fn: str, env: Any, budget: int,
+    prelude: str = "",
 ) -> tuple[dict[str, Any], bool]:
     """Drive the PATCHED core (through ``run_code``) for the SAME budget,
     with the per-level transitions accumulated (reset on level-up, like the
@@ -389,7 +415,8 @@ def _run_patch(
 
     def refill(obs: Any, frame: np.ndarray) -> list[tuple[int, Any]]:
         stats["invocations"] += 1
-        res = run_patched_step(patched_code, core_fn, frame, level_transitions)
+        res = run_patched_step(patched_code, core_fn, frame, level_transitions,
+                               prelude=prelude)
         if res.error:
             stats["errors"] += 1
             stats["last_error"] = res.error  # keep the TEXT — v1 discarded it,
@@ -476,7 +503,10 @@ def main() -> None:
     )
 
     print("[live] PATCH ASK: calling LLM", flush=True)
-    llm = openai_compat_llm()
+    # 8192: the full toggle card is ~6.6KB (~1.7K tokens) and a full-card-style
+    # patch must fit — the default 1024 TRUNCATED gemma4's v2 reply mid-function
+    # (fence never closed -> parse failure).
+    llm = openai_compat_llm(num_predict=8192)
     t0 = time.perf_counter()
     ask = ask_patch(llm, a.tool, core_fn, card, trace_tail_text, parent_summary_text)
     llm_latency_s = time.perf_counter() - t0
@@ -493,7 +523,9 @@ def main() -> None:
     else:
         print("[live] PATCH RUN starting", flush=True)
         patch_env = arcade.make(match.game_id)
-        patch_metrics, execute_failed = _run_patch(ask["code"], core_fn, patch_env, a.budget)
+        patch_metrics, execute_failed = _run_patch(
+            ask["code"], core_fn, patch_env, a.budget,
+            prelude=_card_prelude(a.tool, core_fn))
         print(f"[live] PATCH RUN done: {patch_metrics}", flush=True)
         failure_stage = "execute" if execute_failed else None
         patch_out = dict(patch_metrics)
