@@ -87,12 +87,41 @@ known-weak code-agent path, AND only the perception/geometry kernels are exposed
 high-value transition kernels that cleared lp85/r11l/m0r0 are DEFERRED). So 0 clears is
 uninformative about the ceiling; the ACTIONABLE signal is `K.`-usage = 0.
 
+## Qwen vs gemma4 comparison (2026-07-21) — MODEL is the kernel-uptake variable
+
+Same notebook (model-agnostic, auto-detected served name), same 4 games, same matched
+OFF/ON arms, same model-agnostic few-shot. Only the model differs. Results:
+
+| model | ON code_prompts | ON kernel_replies (`K.` used) | clears |
+|---|---|---|---|
+| Qwen3.6-27B-fp8 + few-shot (v4) | 15 | **1** | 0 |
+| gemma4-31b-it (bf16) | 40 | **23** | 0 |
+
+- **gemma4 engages the bridge ~23× more than qwen.** Given the SAME cards + example, gemma4
+  called `K.` on most turns (m0r0 10/10, cd82 10/10, ls20 3/10; vc33 0/10) and wrote a python
+  block every turn (pyR=10 in BOTH arms); qwen mostly returned no python at all. The user's
+  caution was right — tuning the bridge to qwen's (non-)uptake would have been misleading.
+- **vLLM 0.19.1 serves gemma4-31b-it fine** (`served-name=gemma4`, 13 calls/game, 15-30s
+  latency) — the arch-support risk is resolved; gemma4 is a viable Kaggle runtime model.
+- **Still 0 clears for BOTH.** So the agent25 gap is no longer "does the model use the
+  kernels" (a capable model does) — it is "the composed solutions don't yet SOLVE." The
+  most likely cause is the exposed set: only PERCEPTION/GEOMETRY kernels are live; the
+  high-value transition/permute/config-path kernels that actually cleared lp85/r11l/m0r0 are
+  DEFERRED (Phase-2), and the code sandbox still only sees current_frame + shallow history.
+
+Files: `r92_agent25_bench_v4_fewshot.json` (qwen), `r92_agent25_bench_gemma4.json`.
+
 ## Next (needs GPU)
 
-0. **Drive `K.` usage** (the immediate lever the smoke exposed): the cards alone don't get
-   the model to call kernels. Add a worked few-shot example of a `K.`-using solution to the
-   code prompt (behind the flag), and/or a stronger directive. Re-run the matched smoke and
-   check `kernel_replies` climbs before spending on a full 25.
+0. DONE — few-shot added (kernel_replies qwen 0→1) and the qwen-vs-gemma4 comparison run:
+   gemma4 uptakes the kernels heavily (23 K.-replies), so model choice, not prompt tweaking,
+   is the uptake lever. gemma4-31b-it is the runtime model to carry forward.
+1. **Phase-2 sandbox enrichment is now the critical path** (was already the deferred item;
+   the comparison confirms it): expose the transition-dependent kernels (frame_diff,
+   track_objects, learn_cyclic_successor, reachable_frontier, configuration_path) by passing
+   the code sandbox `previous_frame` + a bounded (state,action)->state transition record +
+   a capped successors harness. That gives gemma4 the kernels that actually clear, not just
+   perception. Re-run the gemma4 matched smoke and look for the first clears.
 
 1. Turn `HARNESS_KERNEL_API=1` and measure agent25 with the bridge on a GPU host (NHN 2×V100
    or Kaggle) — does the kernel vocabulary lift the code-agent above the ~18/25 plateau?
