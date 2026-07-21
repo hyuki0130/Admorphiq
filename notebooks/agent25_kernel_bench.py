@@ -39,6 +39,9 @@ VLLM_MODEL_NAME = os.environ.get("VLLM_MODEL_NAME", "served")
 # limit, but raised to rule context out (gemma4 supports 256K, qwen 131072).
 MAX_MODEL_LEN = int(os.environ.get("MAX_MODEL_LEN", "131072"))
 BOOT_TIMEOUT_S = 1800.0
+# Native tool-calling redesign: staged select_strategy -> write_solver_code via
+# real function schemas (default ON here — the whole point of this bench now).
+TOOLCALL = os.environ.get("HARNESS_TOOLCALL", "1").lower() in ("1", "true", "yes", "on")
 
 
 # %%
@@ -147,6 +150,12 @@ def boot_vllm_server(model_dir: str, served_name: str) -> subprocess.Popen:
         "--gpu-memory-utilization", "0.92",
         "--port", str(VLLM_PORT),
     ]
+    # Native tool-calling needs the server to PARSE tool_calls out of the model's
+    # format (else /chat/completions returns only content). Parser is per-family.
+    if TOOLCALL:
+        parser = {"gemma4": "gemma4", "gptoss": "openai", "qwen": "hermes"}.get(served_name)
+        if parser:
+            cmd += ["--enable-auto-tool-choice", "--tool-call-parser", parser]
     print(f"[vllm] launching: {' '.join(cmd)}", flush=True)
     log = open(os.path.join(KAGGLE_WORKING, "vllm_server.log"), "w")  # noqa: SIM115
     return subprocess.Popen(cmd, env=env, stdout=log, stderr=subprocess.STDOUT)
@@ -277,6 +286,33 @@ class _LLMTelemetry:
         }
 
 
+class _ChatTelemetry:
+    """Wrap the tool-calling chat client to record every request's outcome: which
+    function the model called, its arguments, and any free content — so we SEE the
+    staged routing + code the model produced."""
+
+    def __init__(self, inner):
+        self.inner = inner
+        self.calls = 0
+        self.transcripts: list[dict] = []
+
+    def __call__(self, messages, tools=None, tool_choice=None) -> dict:
+        self.calls += 1
+        want = None
+        if isinstance(tool_choice, dict):
+            want = tool_choice.get("function", {}).get("name")
+        msg = self.inner(messages, tools=tools, tool_choice=tool_choice)
+        tcs = msg.get("tool_calls") or []
+        self.transcripts.append({
+            "call": self.calls, "requested_fn": want,
+            "tool_calls": [{"name": tc.get("function", {}).get("name"),
+                            "args": (tc.get("function", {}).get("arguments") or "")[:2000]}
+                           for tc in tcs],
+            "content": (msg.get("content") or "")[:800],
+        })
+        return msg
+
+
 def _baseline_for(arcade, game_id: str) -> list[int] | None:
     for info in (getattr(arcade, "available_environments", None) or arcade.get_environments()):
         if info.game_id == game_id:
@@ -299,16 +335,37 @@ def _run_arm(arcade, game_id: str, bridge_on: bool) -> dict:
     tele = _LLMTelemetry(openai_compat_llm(num_predict=4096))
     draw = openai_compat_llm(num_predict=1024)
 
-    def factory():
-        return UnifiedAgent(default_tools(), tele, draw_llm=draw,
-                            giveup=8000, stall=80, ctx_budget=6000)
+    built = []
+    if TOOLCALL:
+        from admorphiq.harness.registry import openai_tool_client
+        from admorphiq.harness.toolcall_agent import ToolCallAgent
+        chat = _ChatTelemetry(openai_tool_client(num_predict=4096))
+
+        def factory():
+            ag = ToolCallAgent(default_tools(), tele, chat, draw_llm=draw,
+                               giveup=8000, stall=80, ctx_budget=6000)
+            built.append(ag)
+            return ag
+    else:
+        chat = None
+
+        def factory():
+            return UnifiedAgent(default_tools(), tele, draw_llm=draw,
+                                giveup=8000, stall=80, ctx_budget=6000)
 
     base = _baseline_for(arcade, game_id)
     res = run_game(arcade, game_id, base, agent_name="unified",
                    max_actions=MAX_ACTIONS, adapter_factory=factory)
     res["arm"] = "on" if bridge_on else "off"
-    res["telemetry"] = tele.summary()
-    res["transcripts"] = tele.transcripts
+    tsum = tele.summary()
+    if TOOLCALL and built:
+        ag = built[-1]
+        tsum.update(route_calls=ag.route_calls, route_valid=ag.route_valid,
+                    code_calls=ag.code_calls, chat_calls=chat.calls)
+        res["transcripts"] = chat.transcripts
+    else:
+        res["transcripts"] = tele.transcripts
+    res["telemetry"] = tsum
     return res
 
 
@@ -385,14 +442,15 @@ def main() -> None:
     with open(os.path.join(KAGGLE_WORKING, "agent25_bench.json"), "w") as f:
         json.dump(out, f, indent=2)
 
-    on_code_prompts = sum(
-        r.get("telemetry", {}).get("code_prompts", 0)
+    ckey = "code_calls" if TOOLCALL else "code_prompts"
+    on_code = sum(
+        r.get("telemetry", {}).get(ckey, 0)
         for r in results if r.get("arm") == "on")
-    print(f"\n[bridge] ON-arm total code prompts: {on_code_prompts}")
-    if on_code_prompts == 0:
+    print(f"\n[bridge] ON-arm total {ckey}: {on_code}")
+    if on_code == 0:
         raise RuntimeError(
-            "BRIDGE INERT: the ON arm never issued a code prompt — the kernel "
-            "vocabulary was never exercised. Check HARNESS_CODE_ESC / stall.")
+            f"BRIDGE INERT: the ON arm never reached the code path ({ckey}=0) — the "
+            "kernel vocabulary was never exercised. Check routing / HARNESS_CODE_ESC.")
 
     if server is not None:
         server.terminate()

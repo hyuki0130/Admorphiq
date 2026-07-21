@@ -103,3 +103,51 @@ def openai_compat_llm(
             return json.loads(r.read())["choices"][0]["message"]["content"]
 
     return _call
+
+
+def openai_tool_client(
+    model: str | None = None,
+    base_url: str | None = None,
+    *,
+    num_predict: int = 2048,
+    timeout: float = 300.0,
+    enable_thinking: bool | None = None,
+):
+    """Return a ``chat(messages, tools=None, tool_choice=None) -> dict`` callable
+    against the vLLM OpenAI server, returning the FULL assistant message
+    (``content`` + ``tool_calls``) — the native function-calling contract.
+
+    The prior string-only ``openai_compat_llm`` discarded ``tool_calls`` and forced
+    the agent to regex-parse free text out of a monolithic prompt. This client does
+    real tool-calling: pass ``tools`` (JSON function schemas with rich parameter
+    descriptions) and ``tool_choice`` (``"auto"``, ``"required"``, or a named
+    ``{"type":"function","function":{"name":...}}``); vLLM constrains decoding for
+    named/required calls. ``enable_thinking`` is sent only when explicitly set (do
+    NOT blanket-disable across models — that was a Qwen-specific hack)."""
+    model = model or os.environ.get("HARNESS_LLM_MODEL", "")
+    base_url = (base_url or os.environ.get("HARNESS_LLM_BASE_URL", "")).rstrip("/")
+    if not base_url or not model:
+        raise RuntimeError(
+            "openai_tool_client needs HARNESS_LLM_BASE_URL and HARNESS_LLM_MODEL "
+            f"(base_url={base_url!r}, model={model!r})"
+        )
+
+    def _chat(messages, tools=None, tool_choice=None) -> dict:
+        body: dict = {
+            "model": model, "stream": False, "messages": messages,
+            "temperature": 0.0, "max_tokens": num_predict,
+        }
+        if tools is not None:
+            body["tools"] = tools
+            body["tool_choice"] = tool_choice or "auto"
+        if enable_thinking is not None:
+            body["chat_template_kwargs"] = {"enable_thinking": enable_thinking}
+        req = urllib.request.Request(
+            f"{base_url}/chat/completions", data=json.dumps(body).encode(),
+            headers={"Content-Type": "application/json"}, method="POST",
+        )
+        with urllib.request.urlopen(req, timeout=timeout) as r:
+            msg = json.loads(r.read())["choices"][0]["message"]
+        return {"content": msg.get("content") or "", "tool_calls": msg.get("tool_calls") or []}
+
+    return _chat
