@@ -2,7 +2,7 @@
 round: r92
 axis: agent25 (LLM orchestration) — runtime kernel bridge
 keywords: [agent25, code-agent, kernel-api, sandbox, HARNESS_KERNEL_API, gpu-prep, tool-vocabulary, codex-review]
-verdict: PREP LANDED (gated OFF) — the runtime code-agent can now CALL the r59 kernels; behaviour byte-identical until measured on GPU
+verdict: SHELVED as performance direction (kept as infra) — native tool-calling raised routing to 100% valid but gemma4/qwen still guess-code (0 K.* / 0 transitions used) → 0 clears; wall is goal-inference, not interface. Last lever = gpt-oss-120b (offline-blocked)
 commit: f14f323
 ---
 
@@ -170,6 +170,52 @@ dynamics from transitions → one discriminating probe → predict → compare �
 bounded kernel program), bypassing the tool-selection JSON gate, run early. If that raises
 disciplined kernel use but still 0 clears → shelve the runtime-composition thesis with
 confidence. Bigger budget / force-code-first-alone / different-model are NOT the lever.
+
+## Native tool-calling redesign (2026-07-21, v6) — interface FIXED, outcome UNCHANGED
+
+The prior runs used a monolithic system prompt + regex-parsed free text to route + write code.
+The user's engineering critique was correct: that thin interface (no function schemas, no
+per-parameter docs, one blob) under-served the model and likely drove the low uptake. R92's
+`src/admorphiq/harness/toolcall_agent.py` rebuilds it as REAL vLLM function-calling: staged
+`select_strategy` (enum of routable strategies, each carrying a rich when-to-pick description
++ minimal signature context) → `write_solver_code(code)` (typed arg, full kernel cards +
+observed transitions in the system prompt). Booted at max-model-len 200000 with
+`--enable-auto-tool-choice --tool-call-parser gemma4`; preflight OK. Result JSONs
+`r92_agent25_bench_gemma4.json` (bench) + `agent25_transcripts.json` (verbatim tool_calls/code).
+
+| game | arm | route_calls | route_valid | code_calls | clears |
+|---|---|---|---|---|---|
+| m0r0 | off/on | 5 | **5 (100%)** | 30 | 0 |
+| vc33 | off/on | 3 | **3 (100%)** | 0 | 0 |
+| cd82 | off/on | 3 | **3 (100%)** | 10 | 0 |
+| ls20 | off/on | 14 | **14 (100%)** | 120 | 0 |
+
+- **The interface fix fully succeeded.** `route_valid == route_calls` (100%) on every game —
+  native function-calling emits a valid `select_strategy` tool_call every time; the regex-parse
+  misfires are gone. Routing is also DIVERSE now (llm_goal → paint → world_model → kernel_code),
+  not anchored. The code path is reached (code_calls up to 120). The engineering the user
+  demanded is done and measured-working.
+- **Still 0 clears, both arms, all 4 games.** OFF≡ON — the kernel bridge changes nothing.
+- **Root cause, from the verbatim `write_solver_code` outputs**: gemma4 writes GUESS code, not
+  learned plans. Verbatim (m0r0): *"I don't have a clear cursor, I'll try to use SPACE or
+  directional keys to see if they shift the objects … act('RIGHT'); act('DOWN'); act('SPACE')"*.
+  It describes what it SEES in comments, then falls back to blind directional probes that don't
+  change state ("action no new state ×11"), repeated across all 30/120 blocks.
+- **Decisive kernel-usage count**: even in the ON arm (bridge exposed), across **120 ls20 code
+  blocks and 10 cd82 blocks, the model referenced `K.*` ZERO times and `transitions` ZERO
+  times.** The learning primitives sit unused in the namespace; gemma4 does not reach for them.
+- **This IS the falsification experiment Codex asked for** (native staged routing, rich schemas,
+  bypass the free-text parse). It raised routing VALIDITY to 100% but did NOT raise disciplined
+  kernel use, and clears stayed 0 → **per Codex's own criterion, the runtime-composition thesis
+  is shelved with confidence for the gemma4/qwen tier.** Note the clean dual-scoreboard contrast:
+  m0r0 is a script25 CONQUEST (1.0, offline reconstruction) — the kernels CAN solve it; the LLM
+  cannot compose them to. Interface was never the wall; goal-inference / dynamics-learning is.
+- **The one open model lever the user named**: gpt-oss-120b (larger reasoner). Blocked offline by
+  the harmony vocab network-fetch; needs a pre-bundled tiktoken encoding dataset
+  (o200k_base+cl100k_base + `TIKTOKEN_ENCODINGS_BASE` + `HF_HUB_OFFLINE`/`TRANSFORMERS_OFFLINE` +
+  a preflight `load_harmony_encoding`). This is now WELL-MOTIVATED (not blind): the wall is
+  reasoning capability, so a stronger reasoner is the correct next probe — but it is the LAST
+  cheap agent25 lever; if a 120B reasoner also guess-codes, agent25-as-performance is closed.
 
 ## Next
 
