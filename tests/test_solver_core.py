@@ -18,6 +18,7 @@ import pytest
 from admorphiq.tools.code_agent import run_code
 from admorphiq.tools.paint_flood import PaintFloodTool
 from admorphiq.tools.solver_core import (
+    arrangement_core,
     format_core_trace,
     paint_core,
     source_card,
@@ -233,8 +234,84 @@ def test_source_card_is_the_real_source():
     assert "from __future__ import annotations" in card
     paint_card = source_card("paint")
     assert inspect.getsource(paint_core) in paint_card
+    arr_card = source_card("arrangement")
+    assert inspect.getsource(arrangement_core) in arr_card
+    # the distilled engine's two load-bearing primitives + a composed kernel
+    assert "def arrangement_learn_button" in arr_card
+    assert "def arrangement_plan" in arr_card
+    assert "def plan_token_assignment" in arr_card
     with pytest.raises(KeyError):
         source_card("nonexistent")
+
+
+def _arrangement_evidence():
+    """A minimal ring-permutation board: two rotation buttons (colours 8/14), a
+    4-cell colour ring, one solid marker (colour 5) and its hollow 4-corner target
+    (colour 5). The single transition presses button A (click x=2,y=2) and rotates
+    the ring one step (each ring cell's colour advances). Returns
+    (current_frame, dict-transitions, tuple-transitions)."""
+    def board(tiles):
+        g = np.zeros((24, 24), dtype=np.int64)
+        g[0, :] = 1  # chrome bar -> the 2nd-most-common colour (dropped as background)
+        g[2:4, 2:4] = 8  # button A (rotation control)
+        g[2:4, 20:22] = 14  # button B (a second, still-unpressed control)
+        for (r, c), col in tiles.items():
+            g[r, c] = col  # single-pixel ring tiles, distinct colours
+        g[16:18, 8:10] = 5  # solid moving marker (colour 5)
+        for (r, c) in ((16, 16), (16, 20), (20, 16), (20, 20)):
+            g[r, c] = 5  # hollow 4-corner target frame (colour 5)
+        return g
+
+    before = board({(8, 8): 3, (8, 12): 4, (12, 12): 6, (12, 8): 7})
+    after = board({(8, 8): 7, (8, 12): 3, (12, 12): 4, (12, 8): 6})  # rotated +1
+    dict_trans = [{"action": "CLICK", "xy": [2, 2], "before": before, "after": after}]
+    tuple_trans = [("CLICK", [2, 2], before, after)]
+    return after, dict_trans, tuple_trans
+
+
+def test_arrangement_core_learns_and_queues():
+    """Purpose: the distilled ring-permutation engine, run directly, LEARNS a
+    rotation control's per-click effect from an observed transition and QUEUES a
+    sensible press sequence toward the target — the (a) learn + (b) plan halves
+    the lp85 conquest delegates to.
+
+    Expected feedback: pass ⇒ the core recovers the pressed control's ring and
+    queues clicks; fail ⇒ the engine no longer learns effects / plans from raw
+    frame + transition evidence."""
+    current, dict_trans, _ = _arrangement_evidence()
+    trace: list[str] = []
+    plan, act = _collect_act()
+    arrangement_core(current, dict_trans, act, trace)
+
+    assert any("learned 1 effect-map" in line for line in trace), trace
+    assert plan, "the core must queue at least one click"
+    # every queued click targets a real button cell (x=col, y=row on the board).
+    assert all(0 <= x < 24 and 0 <= y < 24 for _a, (x, y) in plan)
+
+
+def test_arrangement_card_runs_in_sandbox(bridge_on):
+    """Purpose: the assembled ``source_card('arrangement')`` — the stdlib-only
+    kernel primitives + the distilled engine — is self-contained and executes
+    inside ``run_code`` on a synthetic ring board, queuing the SAME clicks the
+    direct core does. Proves the card the model patches IS runnable, real source.
+
+    Expected feedback: pass ⇒ the arrangement card runs offline and drives the
+    ring solver; fail ⇒ the LLM would be handed un-runnable code (import/NameError
+    from an un-bundled kernel dependency)."""
+    current, dict_trans, tuple_trans = _arrangement_evidence()
+
+    direct_plan, act = _collect_act()
+    arrangement_core(current, dict_trans, act)
+
+    card = source_card("arrangement")
+    driver = card + "\n\narrangement_core(current_frame, transitions, act)\n"
+    res = run_code(driver, current, [], ["MOUSE"], transitions=tuple_trans)
+
+    assert res.error == "", res.error
+    assert res.actions, "the sandbox card must queue clicks"
+    # card path == direct path (one implementation, no drift). ``_collect_act``
+    # records (6, xy); the sandbox records ("ACTION6", xy) — same clicks.
+    assert res.actions == [("ACTION6", xy) for _code, xy in direct_plan]
 
 
 def test_format_core_trace_reports_decisions():

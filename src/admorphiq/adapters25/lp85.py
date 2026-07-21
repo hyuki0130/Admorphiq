@@ -146,7 +146,31 @@ from admorphiq.kernels import (
     learn_cyclic_successor,
     learn_point_operators,
     learn_successor_from_series,
-    plan_token_assignment,
+)
+
+# R94: the load-bearing ring-permutation solving ENGINE was distilled into the
+# constrained-1D-arrangement FAMILY CORE (``admorphiq.kernels.arrangement``) so the
+# SAME code drives both this live adapter and the offline model's patchable card
+# (``tools.solver_core.source_card("arrangement")``). This adapter STRUCTURALLY
+# DELEGATES its learning (``_learn_button`` -> :func:`arrangement_learn_button`) and
+# every plan build (``_build_plan`` / ``_mp_build_plan`` / ``_cb_build_plan`` ->
+# :func:`arrangement_plan`) to it — extraction, not rewrite, so behaviour is
+# byte-equivalent. The frame-segmentation helpers + ring-puzzle priors those
+# primitives need live in the core too (imported back here; the multi-press /
+# coupled certification driving below stays adapter-local engine wiring).
+from admorphiq.kernels.arrangement import (
+    _BUTTON_COLORS,
+    _DEST_CLUSTER_SPAN,
+    _PLANNER_BUDGET,
+    _SOLID_MIN_SIZE,
+    _cint,
+    _detect_buttons,
+    _detect_dests,
+    _detect_marker_colors,
+    _detect_movers,
+    _planner_background,
+    arrangement_learn_button,
+    arrangement_plan,
 )
 
 GAME_ID = "lp85"
@@ -163,13 +187,13 @@ _GIVEUP_DEFAULT = 4000
 # board cells. Buttons render in two colours by rotation direction; the MOVING
 # token that rides the rings and the FIXED destination marker both render in one
 # shared colour but differ in shape (a solid block vs a hollow 4-corner frame).
-_BUTTON_COLORS = frozenset({8, 14})  # rotation controls (two directions)
-# Marker colour classes are DISCOVERED per level (a colour appearing as both a
-# solid moving token and hollow corner-frame targets), not fixed — L2 has one
+# The ring-puzzle priors (_BUTTON_COLORS / _SOLID_MIN_SIZE / _DEST_CLUSTER_SPAN /
+# _PLANNER_BUDGET) + the frame-segmentation helpers that read them were distilled
+# into admorphiq.kernels.arrangement (imported above) so the offline model's card
+# and this adapter share ONE implementation; they are re-exported here unchanged.
+# Marker colour classes are still DISCOVERED per level (a colour appearing as both
+# a solid moving token and hollow corner-frame targets), not fixed — L2 has one
 # class, L3 has two (goal + goal-o) that must all be placed to win.
-_SOLID_MIN_SIZE = 3  # a marker region this size or larger is a solid moving token
-_DEST_CLUSTER_SPAN = 6  # corner pixels within this L∞ span form one target frame
-_PLANNER_BUDGET = 40  # max rotation-sequence length the BFS may return
 # ── multi-press ring learner (L4+ signature: many controls over few rings) ──
 # Single-press ordering under-determines a ring whose tokens reuse colours (LP85
 # L4: 6 colours over 20 cells → a 2-press σ² signature collides, no self-consistent
@@ -327,33 +351,6 @@ def _round_robin_queue(candidates: list[Cell], region_of: dict[Cell, Bbox]) -> d
     return queue
 
 
-def _cint(region: dict[str, Any]) -> Cell:
-    r, c = region["centroid"]
-    return (round(r), round(c))
-
-
-def _planner_background(grid: tuple[tuple[int, ...], ...]) -> frozenset[int]:
-    """The two most-common colours — the board backdrop + its panel/chrome fill.
-    Both must be excluded: with only the top colour excluded, the second backdrop
-    survives as regions that the generic marker-colour discovery can mistake for
-    a token class. Marker tokens and ring tiles are small and far rarer than
-    either backdrop, so dropping the top two never removes a real token colour."""
-    counts: dict[int, int] = {}
-    for row in grid:
-        for v in row:
-            counts[v] = counts.get(v, 0) + 1
-    top = sorted(counts, key=lambda c: (-counts[c], c))[:2]
-    return frozenset(top)
-
-
-def _detect_buttons(regions: list[dict[str, Any]]) -> list[Cell]:
-    """Rotation-control click cells: every region whose colour is a declared
-    button colour, sorted for determinism. Inert picks (a control whose centroid
-    lands off the playable viewport) simply learn an empty rotation and are
-    dropped before planning."""
-    return sorted(_cint(r) for r in regions if int(r["color"]) in _BUTTON_COLORS)
-
-
 def _scale_unit(regions: list[dict[str, Any]], bg: frozenset[int]) -> int:
     """The board's TILE UNIT — the modal size of a small non-background region.
 
@@ -376,158 +373,6 @@ def _scale_unit(regions: list[dict[str, Any]], bg: frozenset[int]) -> int:
     for s in small:
         counts[s] = counts.get(s, 0) + 1
     return max(counts, key=lambda s: (counts[s], -s))
-
-
-def _detect_marker_colors(
-    regions: list[dict[str, Any]],
-    solid_min: int = _SOLID_MIN_SIZE,
-    span: int = _DEST_CLUSTER_SPAN,
-) -> frozenset[int]:
-    """The colour classes that behave as (moving solid token, fixed hollow
-    target) pairs: a colour that appears BOTH as a solid block AND as a hollow
-    4-corner target frame (a ≥3-dot cluster). A level may have several such
-    classes (LP85 L3 has two — goal/target and goal-o/target-o — that must all
-    be placed to win), so detection is not tied to a single hard-coded colour.
-    Requiring a real corner *frame* (not just any stray small region) is what
-    stops ordinary coloured ring tiles from being mistaken for markers.
-
-    ``solid_min`` / ``span`` scale with the board (see :func:`_scale_unit`); at
-    their defaults they reproduce the original fixed L1–L4 thresholds."""
-    solids = {
-        int(r["color"])
-        for r in regions
-        if int(r["color"]) not in _BUTTON_COLORS and int(r["size"]) >= solid_min
-    }
-    return frozenset(c for c in solids if _detect_dests(regions, frozenset({c}), solid_min, span))
-
-
-def _detect_movers(
-    regions: list[dict[str, Any]], colors: frozenset[int], solid_min: int = _SOLID_MIN_SIZE
-) -> list[tuple[int, Cell]]:
-    """Moving goal tokens = SOLID regions of a marker colour, tagged with their
-    colour class (so a token is only ever matched to a same-class target). A
-    target's corner blocks are smaller than ``solid_min`` (they are single sprite
-    pixels, the goal token is a full 2×2 block), so they are excluded here."""
-    return sorted(
-        (int(r["color"]), _cint(r))
-        for r in regions
-        if int(r["color"]) in colors and int(r["size"]) >= solid_min
-    )
-
-
-def _extract_frames_at(
-    pts: list[Cell], ptset: set[Cell], side: int, need: int
-) -> tuple[list[Cell], set[Cell]]:
-    """Greedily claim disjoint axis-aligned squares of a fixed ``side`` from the
-    top-left. Each square is a candidate hollow frame ``{(r,c),(r,c+s),(r+s,c),
-    (r+s,c+s)}``; it is accepted when at least ``need`` of its 4 corners are
-    present and unused (the top-left corner always required, so the global-minimum
-    unused dot — necessarily some real frame's top-left — anchors the claim).
-    Returns the accepted frame centres and the set of corners consumed."""
-    used: set[Cell] = set()
-    centres: list[Cell] = []
-    for (r, c) in pts:
-        if (r, c) in used:
-            continue
-        square = [(r, c), (r, c + side), (r + side, c), (r + side, c + side)]
-        present = [p for p in square if p in ptset and p not in used]
-        if len(present) >= need and (r, c) in present:
-            used.update(present)
-            rr = round(sum(p[0] for p in square) / 4)
-            cc = round(sum(p[1] for p in square) / 4)
-            centres.append((rr, cc))
-    return centres, used
-
-
-def _cluster_frame_centres(corners: list[Cell], span: int = _DEST_CLUSTER_SPAN) -> list[Cell]:
-    """Group the loose corner dots of one colour into hollow target frames and
-    return each frame's centre.
-
-    A hollow 4-corner target renders 4 corner dots at the corners of a square whose
-    side is the sprite footprint. Single-linkage clustering (the earlier span-group
-    rule) MERGES adjacent frames when the inter-frame gap is no larger than the
-    intra-frame corner span — measured on LP85 L6, where 3 targets sit corner-pitch
-    apart (both gaps = 3), collapsing all 12 corners into ONE dest and stalling the
-    planner. Instead DERIVE the square side from the corner geometry (a gap that
-    appears as both a horizontal and a vertical frame edge) and extract DISJOINT
-    squares greedily from the top-left, so each corner belongs to exactly one frame.
-
-    ``span`` scales with the board (see :func:`_scale_unit`); it only bounds the
-    largest plausible frame side here (a coarse render draws wider frames), so
-    distant lone frames are never joined into one oversized square.
-
-    A well-separated frame (LP85 L2/L3/L5) has exactly one same-row and one
-    same-col edge, so it extracts as a single square unchanged; an occluded frame
-    (3 corners) is recovered by the leftover pass. Preserves the prior ≥3-corner
-    occlusion tolerance while separating tightly-packed frames."""
-    pts = sorted(set(corners))
-    if len(pts) < 3:
-        return []
-    ptset = set(pts)
-    rows: dict[int, list[int]] = {}
-    cols: dict[int, list[int]] = {}
-    for (r, c) in pts:
-        rows.setdefault(r, []).append(c)
-        cols.setdefault(c, []).append(r)
-    side_cap = max(6, 2 * span)
-    hgaps = {abs(a - b) for cs in rows.values() for a in cs for b in cs if a < b}
-    vgaps = {abs(a - b) for rs in cols.values() for a in rs for b in rs if a < b}
-    cands = sorted(s for s in (hgaps & vgaps) if 1 <= s <= side_cap)
-    if not cands:
-        cands = sorted(s for s in (hgaps | vgaps) if 1 <= s <= side_cap)
-    best: list[Cell] = []
-    best_cover = -1
-    for side in cands:
-        # strict 4-corner squares first, then recover occluded (3-corner) frames
-        # from the leftovers so a lone missing corner still yields its centre.
-        f4, u4 = _extract_frames_at(pts, ptset, side, 4)
-        leftover = [p for p in pts if p not in u4]
-        f3, u3 = _extract_frames_at(leftover, ptset - u4, side, 3)
-        centres = sorted(f4 + f3)
-        cover = len(u4) + len(u3)
-        if cover > best_cover or (cover == best_cover and len(centres) < len(best)):
-            best_cover = cover
-            best = centres
-    return best
-
-
-def _detect_dests(
-    regions: list[dict[str, Any]],
-    colors: frozenset[int],
-    solid_min: int = _SOLID_MIN_SIZE,
-    span: int = _DEST_CLUSTER_SPAN,
-) -> list[tuple[int, Cell]]:
-    """Fixed destinations = the centres of the hollow 4-corner target frames,
-    tagged with their colour class. The sub-``solid_min`` marker-colour regions
-    are the corner dots (single sprite pixels); cluster them per colour and take
-    each cluster's centre."""
-    dests: list[tuple[int, Cell]] = []
-    for color in colors:
-        corners = [
-            _cint(r)
-            for r in regions
-            if int(r["color"]) == color and int(r["size"]) < solid_min
-        ]
-        dests.extend((color, centre) for centre in _cluster_frame_centres(corners, span))
-    return sorted(dests)
-
-
-def _token_regions(
-    regions: list[dict[str, Any]], tile_max: int = 6
-) -> list[dict[str, Any]]:
-    """The small non-button regions that ride the rings (coloured tiles + goal
-    tokens). The successor learner further restricts to the ones that actually
-    moved, so including static corner dots here is harmless. ``tile_max`` scales
-    with the board so larger-render ring tiles (LP85 L5 ~16px) are not dropped."""
-    return [
-        r
-        for r in regions
-        if int(r["color"]) not in _BUTTON_COLORS and int(r["size"]) <= tile_max
-    ]
-
-
-def _snap(cell: Cell, lattice: list[Cell]) -> Cell:
-    return min(lattice, key=lambda q: (q[0] - cell[0]) ** 2 + (q[1] - cell[1]) ** 2)
 
 
 _CB_WILD = -99  # sentinel: a colour sample hidden by a goal token (unusable)
@@ -1039,35 +884,15 @@ class Adapter(GameAdapter):
         """BFS a forward-only rotation sequence over the multi-press-learned rings
         that lands every moving token on its same-class destination. Forward-only
         (no inverse ops) keeps execution to pressing the learned representative
-        buttons — n-1 forward presses reach what one inverse press would."""
-        ops = {k: v for k, v in self._mp_ops.items() if len(v) >= 2}
-        if not ops:
-            return False
-        lattice: list[Cell] = []
-        seen: set[Cell] = set()
-        for mp in ops.values():
-            for cell in (*mp.keys(), *mp.values()):
-                if cell not in seen:
-                    seen.add(cell)
-                    lattice.append(cell)
+        buttons — n-1 forward presses reach what one inverse press would.
+
+        Delegates the lattice-snap + BFS token assignment to the family core's
+        :func:`arrangement_plan` (byte-equivalent extraction of the shared body)."""
         regions = find_regions(grid, background=self._bg)
         movers = _detect_movers(regions, self._marker_colors, self._solid_min)
         dests = _detect_dests(regions, self._marker_colors, self._solid_min, self._span)
-        if not movers or len(movers) != len(dests):
-            return False
-        tokens = [_snap(cell, lattice) for _color, cell in movers]
-        token_labels = [color for color, _cell in movers]
-        goals = [_snap(cell, lattice) for _color, cell in dests]
-        dest_labels = [color for color, _cell in dests]
-        plan = plan_token_assignment(
-            ops,
-            tokens,
-            goals,
-            labels=token_labels,
-            goal_labels=dest_labels,
-            budget=_PLANNER_BUDGET,
-        )
-        if not plan:
+        plan = arrangement_plan(self._mp_ops, movers, dests, budget=_PLANNER_BUDGET)
+        if plan is None:
             return False
         self._plan = deque(plan)
         return True
@@ -1076,35 +901,16 @@ class Adapter(GameAdapter):
         """Joint-route all goal tokens onto their same-class targets by BFS over the
         coupled buttons' learned permutations. The plan is a list of BUTTON CELLS
         (each op name IS the button to press). Fails closed (→ sweep) on no maps, a
-        mover/dest mismatch, or an unreachable assignment."""
-        ops = {cell: mp for cell, mp in self._cb_maps.items() if len(mp) >= 2}
-        if not ops:
-            return False
-        lattice: list[Cell] = []
-        seen: set[Cell] = set()
-        for mp in ops.values():
-            for cell in (*mp.keys(), *mp.values()):
-                if cell not in seen:
-                    seen.add(cell)
-                    lattice.append(cell)
+        mover/dest mismatch, or an unreachable assignment.
+
+        Delegates the lattice-snap + BFS token assignment to the family core's
+        :func:`arrangement_plan`; the coupled maps are already keyed by their button
+        cell, so the returned op-name sequence IS the button-press plan."""
         regions = find_regions(grid, background=self._bg)
         movers = _detect_movers(regions, self._marker_colors, self._solid_min)
         dests = _detect_dests(regions, self._marker_colors, self._solid_min, self._span)
-        if not movers or len(movers) != len(dests):
-            return False
-        tokens = [_snap(cell, lattice) for _color, cell in movers]
-        token_labels = [color for color, _cell in movers]
-        goals = [_snap(cell, lattice) for _color, cell in dests]
-        goal_labels = [color for color, _cell in dests]
-        plan = plan_token_assignment(
-            ops,
-            tokens,
-            goals,
-            labels=token_labels,
-            goal_labels=goal_labels,
-            budget=_CB_PLAN_BUDGET,
-        )
-        if not plan:
+        plan = arrangement_plan(self._cb_maps, movers, dests, budget=_CB_PLAN_BUDGET)
+        if plan is None:
             return False
         self._plan = deque(plan)
         return True
@@ -1188,17 +994,15 @@ class Adapter(GameAdapter):
 
     def _learn_button(self, idx: int, grid: tuple[tuple[int, ...], ...]) -> None:
         """Learn button ``idx``'s rotation from the frame pair spanning its
-        press, and self-test it against the observed goal displacement."""
+        press, and self-test it against the observed goal displacement.
+
+        The effect learning (segment ring tiles, diff, recover the cyclic
+        successor map) is delegated to the family core's
+        :func:`arrangement_learn_button` — its extracted, byte-equivalent body.
+        The self-test-and-DROP below is adapter POLICY, not the learner, so it
+        stays here."""
         assert self._pre_frame is not None
-        before = _token_regions(find_regions(self._pre_frame, background=self._bg))
-        after = _token_regions(find_regions(grid, background=self._bg))
-        diff = frame_diff(self._pre_frame, grid)
-        # Pass every token centroid so a ring cell that stayed the same colour
-        # (invisible in the diff) is recovered geometrically rather than dropped.
-        candidates = [_cint(r) for r in before]
-        succ = complete_cycle(
-            learn_cyclic_successor(before, after, diff["cells"], candidate_cells=candidates)
-        )
+        succ = arrangement_learn_button(self._pre_frame, grid, self._bg)
         if len(succ) < 2:
             return  # inert control (off-viewport / non-rotating) — skip it
         post_goals = set(self._mover_cells(grid))
@@ -1217,32 +1021,13 @@ class Adapter(GameAdapter):
         self._ops[f"b{idx}"] = succ
 
     def _build_plan(self, grid: tuple[tuple[int, ...], ...]) -> bool:
-        ops = {k: v for k, v in self._ops.items() if len(v) >= 2}
-        if not ops:
-            return False
-        lattice: list[Cell] = []
-        seen: set[Cell] = set()
-        for mp in ops.values():
-            for cell in (*mp.keys(), *mp.values()):
-                if cell not in seen:
-                    seen.add(cell)
-                    lattice.append(cell)
+        """Plan the single-press ring solve by delegating to the family core's
+        :func:`arrangement_plan` (byte-equivalent extraction of this method's own
+        former body). ``self._dests`` is the level's fixed target set detected in
+        ``_detect``; the movers are re-read from the live frame."""
         movers = _detect_movers(find_regions(grid, background=self._bg), self._marker_colors)
-        if not movers or len(movers) != len(self._dests):
-            return False
-        tokens = [_snap(cell, lattice) for _color, cell in movers]
-        token_labels = [color for color, _cell in movers]
-        dests = [_snap(cell, lattice) for _color, cell in self._dests]
-        dest_labels = [color for color, _cell in self._dests]
-        plan = plan_token_assignment(
-            ops,
-            tokens,
-            dests,
-            labels=token_labels,
-            goal_labels=dest_labels,
-            budget=_PLANNER_BUDGET,
-        )
-        if not plan:
+        plan = arrangement_plan(self._ops, movers, self._dests, budget=_PLANNER_BUDGET)
+        if plan is None:
             return False
         self._plan = deque(plan)
         return True

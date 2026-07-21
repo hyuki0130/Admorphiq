@@ -270,7 +270,12 @@ def _safe_import(name: str, *args: Any, **kwargs: Any) -> Any:
 
 _SAFE_BUILTIN_NAMES = (
     "abs bool dict enumerate filter float int len list map max min range "
-    "reversed round set sorted sum tuple zip any all isinstance print"
+    "reversed round set sorted sum tuple zip any all isinstance print "
+    # frozenset + repr: pure, side-effect-free builtins the stdlib-only kernels
+    # bundled into a solver card use (e.g. find_regions/frame_diff build frozensets,
+    # plan_token_assignment sorts by repr for a canonical key). As safe as the set/
+    # tuple already whitelisted; without them an arrangement card raises NameError.
+    "frozenset repr"
 ).split()
 
 

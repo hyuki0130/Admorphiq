@@ -16,7 +16,6 @@ from types import SimpleNamespace
 from admorphiq.adapters25.lp85 import (
     Adapter,
     _candidates_with_region,
-    _cluster_frame_centres,
     _detect_coupled_buttons,
     _detect_dests,
     _detect_marker_colors,
@@ -29,6 +28,11 @@ from admorphiq.adapters25.lp85 import (
     _scale_unit,
 )
 from admorphiq.kernels import find_regions
+
+# R94: the ring-solver detection/planning helpers were distilled into the
+# arrangement family core; _cluster_frame_centres now lives there (the adapter
+# reaches it only via _detect_dests, so it is no longer re-exported by lp85).
+from admorphiq.kernels.arrangement import _cluster_frame_centres
 
 
 def _blank_grid(size: int, bg: int) -> list[list[int]]:
@@ -645,3 +649,68 @@ def test_repair_open_chain_closes_a_fragmented_ring_into_a_single_cycle():
     for _ in range(len(ring)):
         order.append(out[order[-1]])
     assert order[-1] == ring[0] and len(set(order[:-1])) == len(ring)
+
+
+# ── R94 structural-delegation contract (the adapter's solving decisions run the
+# distilled family core, not a private copy) ──────────────────────────────────
+
+
+def test_build_plan_delegates_to_arrangement_core_plan(monkeypatch):
+    """Purpose: prove the adapter's single-press planning path STRUCTURALLY
+    delegates to the exported family core :func:`arrangement_plan` rather than a
+    drifting inline copy — the R94 Codex requirement (parity alone is
+    insufficient; the adapter must invoke the exact core).
+
+    Expected feedback: pass ⇒ ``_build_plan`` calls the core; fail ⇒ the adapter
+    re-implements planning locally and a card patch would no longer change it."""
+    import admorphiq.adapters25.lp85 as lp85
+
+    calls: list[tuple] = []
+
+    def spy(ops, movers, dests, *, budget):
+        calls.append((ops, movers, dests, budget))
+        return None  # force the fall-through so no plan is set
+
+    monkeypatch.setattr(lp85, "arrangement_plan", spy)
+
+    adapter = Adapter()
+    adapter._bg = frozenset({0})
+    adapter._marker_colors = frozenset({5})
+    adapter._ops = {"b0": {(1, 1): (1, 2), (1, 2): (1, 1)}}
+    adapter._dests = [(5, (4, 4))]
+    grid = tuple(tuple(row) for row in _blank_grid(8, bg=0))
+
+    result = adapter._build_plan(grid)
+    assert result is False  # spy returned None -> no plan
+    assert calls, "expected _build_plan to call arrangement_plan"
+    assert calls[0][0] is adapter._ops and calls[0][3] > 0
+
+
+def test_learn_button_delegates_to_arrangement_core_learner(monkeypatch):
+    """Purpose: prove the adapter's per-press effect LEARNING delegates to the
+    exported :func:`arrangement_learn_button` (the other half of the distilled
+    engine), not an inline duplicate.
+
+    Expected feedback: pass ⇒ ``_learn_button`` calls the core learner; fail ⇒ the
+    adapter learns rings with its own copied code, defeating the single-source
+    guarantee the card relies on."""
+    import admorphiq.adapters25.lp85 as lp85
+
+    calls: list[tuple] = []
+
+    def spy(before_frame, after_frame, background):
+        calls.append((before_frame, after_frame, background))
+        return {}  # <2 -> the adapter treats it as an inert control and skips it
+
+    monkeypatch.setattr(lp85, "arrangement_learn_button", spy)
+
+    adapter = Adapter()
+    adapter._bg = frozenset({0})
+    grid = tuple(tuple(row) for row in _blank_grid(8, bg=0))
+    adapter._pre_frame = grid
+    adapter._pre_goals = []
+    adapter._buttons = [(2, 2)]
+
+    adapter._learn_button(0, grid)
+    assert calls, "expected _learn_button to call arrangement_learn_button"
+    assert adapter._ops == {}  # empty map -> control skipped, nothing recorded

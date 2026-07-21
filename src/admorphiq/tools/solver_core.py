@@ -30,6 +30,50 @@ from typing import Any, Callable
 
 import numpy as np
 
+# R94 arrangement (ring-permutation) family core. The REAL solving engine lives in
+# admorphiq.kernels.arrangement (so the quarantined lp85 adapter can import it —
+# see that module's docstring); source_card bundles its source + the stdlib-only
+# kernel primitives it composes so the "arrangement" card is self-contained.
+from admorphiq.kernels._common import normalize_frame
+
+# Card constants — resolved by NAME inside ``source_card`` via ``globals()`` and
+# emitted verbatim into the card, so ruff cannot see the (dynamic) use.
+from admorphiq.kernels.arrangement import (  # noqa: F401
+    _BUTTON_COLORS,
+    _DEST_CLUSTER_SPAN,
+    _PLANNER_BUDGET,
+    _SOLID_MIN_SIZE,
+    _cint,
+    _cluster_frame_centres,
+    _detect_buttons,
+    _detect_dests,
+    _detect_marker_colors,
+    _detect_movers,
+    _extract_frames_at,
+    _planner_background,
+    _snap,
+    _token_regions,
+    arrangement_core,
+    arrangement_learn_button,
+    arrangement_plan,
+)
+from admorphiq.kernels.motion import frame_diff
+from admorphiq.kernels.permute import (
+    _augment_ring_cells,
+    _close_cycle,
+    _cyclic_order,
+    _dist2,
+    complete_cycle,
+    learn_cyclic_successor,
+    plan_token_assignment,
+)
+from admorphiq.kernels.regions import (
+    _gap_offsets,
+    _neighbor_offsets,
+    _normalize_background,
+    find_regions,
+)
+
 # Reused verbatim from toggle.py so there is ONE implementation; source_card
 # bundles their text (via inspect) so the sandbox block is self-contained.
 from admorphiq.tools.base import color_histogram
@@ -39,6 +83,7 @@ __all__ = [
     "toggle_core",
     "paint_core",
     "paint_plan",
+    "arrangement_core",
     "source_card",
     "format_core_trace",
 ]
@@ -316,8 +361,12 @@ _CARD_HEADER = (
 )
 
 # Functions bundled into each card, in dependency order (a fn only references
-# names defined above it). These are the REAL functions the tool executes.
-_CARD_FNS: dict[str, list[Callable[..., Any]]] = {
+# names defined above it). These are the REAL functions the tool executes. A
+# plain ``str`` entry is emitted verbatim (used for a cross-module alias line that
+# must sit BETWEEN two bundled functions — e.g. the arrangement card aliases the
+# kernels' ``normalize_frame`` back to the ``_normalize_frame`` name its callers
+# use, and that alias can only be written after ``normalize_frame`` is defined).
+_CARD_FNS: dict[str, list[Callable[..., Any] | str]] = {
     "toggle": [
         color_histogram, _binarize, _gf2_solve,
         _diff_cells, _stencils_from_transitions, _component_centroids, _next_probe,
@@ -326,6 +375,28 @@ _CARD_FNS: dict[str, list[Callable[..., Any]]] = {
     "paint": [
         _bg_regions, paint_plan, _infer_fill_color, paint_core,
     ],
+    "arrangement": [
+        # stdlib-only kernel primitives the engine composes (dependency order)
+        normalize_frame,
+        "_normalize_frame = normalize_frame",  # callers reference the aliased name
+        _normalize_background, _neighbor_offsets, _gap_offsets, find_regions,
+        frame_diff,
+        _dist2, _cyclic_order, _close_cycle, _augment_ring_cells,
+        learn_cyclic_successor, complete_cycle, plan_token_assignment,
+        # lp85 arrangement-family helpers + the distilled engine
+        _cint, _snap, _token_regions, _planner_background,
+        _extract_frames_at, _cluster_frame_centres, _detect_dests,
+        _detect_buttons, _detect_movers, _detect_marker_colors,
+        arrangement_learn_button, arrangement_plan, arrangement_core,
+    ],
+}
+
+# Extra import lines a card needs at runtime (whitelisted stdlib only). inspect
+# grabs function BODIES, not their module's import header, so any name a bundled
+# function calls that is not a builtin, an injected ``np``, or another bundled
+# function must be imported here (the arrangement engine's BFS uses ``deque``).
+_CARD_IMPORTS: dict[str, tuple[str, ...]] = {
+    "arrangement": ("from collections import deque",),
 }
 
 # Module constants each card's functions reference (as default args / in bodies).
@@ -333,6 +404,24 @@ _CARD_FNS: dict[str, list[Callable[..., Any]]] = {
 _CARD_CONSTS: dict[str, tuple[str, ...]] = {
     "toggle": ("_MAX_STENCIL", "_MIN_STENCILS"),
     "paint": ("_BACKGROUND",),
+    "arrangement": (
+        "_BUTTON_COLORS", "_SOLID_MIN_SIZE", "_DEST_CLUSTER_SPAN", "_PLANNER_BUDGET",
+    ),
+}
+
+# Comment block emitted ABOVE a card's constants (name=value emission drops the
+# source module's surrounding comments, so load-bearing guidance must be added
+# back explicitly). The arrangement block is the R94 user directive: templates
+# carry the SOURCE game's measured priors, and a patcher on a different game
+# must re-derive them rather than trust them.
+_CARD_CONST_HEADERS: dict[str, str] = {
+    "arrangement": (
+        "# ── GAME-SPECIFIC PRIORS — RE-DERIVE from your observations ──────────\n"
+        "# These values encode the SOURCE game's measured semantics (which colours\n"
+        "# are the rotation controls, minimum solid-token size, target-frame corner\n"
+        "# span, planner depth). On a DIFFERENT game of this family, derive each\n"
+        "# one from YOUR observed transitions before trusting any plan."
+    ),
 }
 
 
@@ -349,9 +438,14 @@ def source_card(tool_name: str) -> str:
     """
     if tool_name not in _CARD_FNS:
         raise KeyError(f"no solver card for tool {tool_name!r}")
+    imports = _CARD_IMPORTS.get(tool_name, ())
     consts = "\n".join(f"{n} = {globals()[n]}" for n in _CARD_CONSTS[tool_name])
-    parts = ["from __future__ import annotations", _CARD_HEADER, consts]
-    parts.extend(inspect.getsource(fn) for fn in _CARD_FNS[tool_name])
+    header = _CARD_CONST_HEADERS.get(tool_name)
+    if header:
+        consts = header + "\n" + consts
+    parts = ["from __future__ import annotations", *imports, _CARD_HEADER, consts]
+    for item in _CARD_FNS[tool_name]:
+        parts.append(item if isinstance(item, str) else inspect.getsource(item))
     return "\n\n".join(parts)
 
 
