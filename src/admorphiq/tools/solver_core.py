@@ -134,8 +134,10 @@ from admorphiq.kernels.simdfs import (  # noqa: F401
     _most_common_color,
     _perimeter,
     _placement_consistent,
+    _plan_progress,
     _plan_sb26_multi_portal,
     _plan_sb26_pool_portal,
+    _plan_step_key,
     _read_target_sequence,
     _read_targets_and_pool,
     _recover_fused_frames,
@@ -486,7 +488,12 @@ _CARD_FNS: dict[str, list[Callable[..., Any] | str]] = {
         _detect_pool_portal, _plan_sb26_pool_portal, _build_pool_portal_plan,
         _simulate_portal_dfs, _read_target_sequence, _read_targets_and_pool,
         _plan_sb26_multi_portal, _assign_colors, _placement_consistent,
-        _build_multi_portal_plan, simdfs_plan, simdfs_core,
+        _build_multi_portal_plan, simdfs_plan,
+        # R94 D3-2 fix: in-flight plan reconstruction from the growing
+        # transitions list (pristine-board re-derivation + progress matching),
+        # so the stateless core drains a >8-step plan across sandbox refills
+        # instead of stalling once the board is no longer pristine.
+        _plan_step_key, _plan_progress, simdfs_core,
     ],
 }
 

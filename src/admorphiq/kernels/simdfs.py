@@ -1010,38 +1010,108 @@ def simdfs_plan(grid: Grid) -> list[PlanStep] | None:
     return plan
 
 
+def _plan_step_key(step: PlanStep) -> tuple[str | None, tuple[int, int] | None]:
+    """The ``(action_name, xy)`` a plan step corresponds to, in the SAME shape a
+    transition dict's ``{"action", "xy"}`` uses (``xy = [x, y] = [col, row]``,
+    matching ``act``'s x=col, y=row convention) -- the comparison key
+    :func:`_plan_progress` matches against the observed transition history."""
+    if step[0] == "click":
+        _kind, row, col = step
+        return "CLICK", (int(col), int(row))
+    return _SIMPLE_ACTION_NAMES.get(step[1]), None
+
+
+def _plan_progress(plan: list[PlanStep], transitions: list[dict[str, Any]]) -> int:
+    """How many of ``plan``'s steps, from the start, the observed ``transitions``
+    already executed, in order.
+
+    :func:`simdfs_core` is invoked FRESH each sandbox refill with only
+    ``(current_frame, transitions, act)`` -- no state persists between calls --
+    so "is a plan already in flight, and how far along" can only be
+    reconstructed by replaying the DETERMINISTIC plan (derived from the level's
+    pristine board -- see :func:`simdfs_core`) against the transitions
+    accumulated so far. This mirrors the live adapter's own policy:
+    :func:`simdfs_plan` runs ONCE per level (cached in the adapter's own
+    ``self._plan``), then is drained one step per env call, never re-derived
+    mid-plan -- a stateless core reconstructs that same cache from the growing
+    transition history instead of holding it directly. Stops (returns the
+    matched-so-far count) at the first transition that disagrees with the
+    plan's next step -- a genuine divergence the caller does not attempt to
+    recover from (the adapter itself has no mid-plan recovery either, beyond
+    its own harness-level stall-abandon, which stays adapter-local).
+    """
+    done = 0
+    for step, t in zip(plan, transitions):
+        name, xy = _plan_step_key(step)
+        t_xy = tuple(int(v) for v in t["xy"]) if t.get("xy") is not None else None
+        if t.get("action") != name or t_xy != xy:
+            break
+        done += 1
+    return done
+
+
 def simdfs_core(
     current_frame: Any,
     transitions: list[dict[str, Any]],
     act: Callable[..., None],
     trace: list[str] | None = None,
 ) -> None:
-    """Sandbox-runnable portal-sort engine: parse the settled ``current_frame``,
-    build the faithful offline portal-DFS simulator, solve the placement, and
-    QUEUE the pick-then-place click plan.
+    """Sandbox-runnable portal-sort engine: derive the plan from the level's
+    PRISTINE board, reconstruct how much of it is already in flight from the
+    observed transitions, and QUEUE only the REMAINING steps.
 
     Carries the sb26 conquest's load-bearing SIMULATOR + DFS + placement solver
-    (:func:`simdfs_plan`) PLUS its plan-or-settle orchestration: because a
-    portal-sort board is deterministic and static between actions, the whole plan
-    is derivable from ONE settled frame (``transitions`` are accepted for the
-    sandbox contract but not needed by this static-board planner). When the board
-    is a level-entry transient the plan comes back ``None``; the core then QUEUES
-    a single harmless idle corner click so the board settles and the next refill
-    (on the settled frame) re-plans — the same bounded retry the live adapter runs
-    across env steps. Instrumented ``trace`` lines (plan length or the settle
-    decision) give a patcher localization evidence.
+    (:func:`simdfs_plan`) PLUS its plan-or-settle orchestration -- but critically
+    NOT by re-parsing ``current_frame`` fresh every call (R94 D3-2 fix): the
+    adapter's own faithful policy computes the plan ONCE per level, from the
+    PRISTINE level-entry board, and drains it open-loop across many env steps
+    WITHOUT ever re-parsing a partially-filled board (:func:`simdfs_plan`'s slot/
+    pool detection assumes empty slot markers and an unconsumed pool -- a board
+    mid-plan does not have that shape and is not reliably re-parseable; a naive
+    re-parse-every-refill core stalls forever the moment the sandbox's per-refill
+    action cap truncates a >8-step plan mid-flight, since the NEXT refill's
+    current frame is already partially sorted). Since this core is invoked fresh
+    each refill with no persistent state, it reconstructs that "plan once, drain
+    incrementally" policy from the growing ``transitions`` list instead:
+    ``transitions[0]["before"]`` is the level's pristine board (transitions
+    accumulate per level, cleared on level-up -- the established convention every
+    solver-core caller in this codebase uses), so the plan is re-derived from
+    THAT rather than from the possibly-mid-plan ``current_frame``, and only the
+    plan's un-executed tail (:func:`_plan_progress`) is queued. This also fixes
+    R94 D3-1 (the sandbox's ``queue[:8]`` cap silently dropping the plan's final
+    verify step): the tail naturally starts wherever the cap left off, so the
+    verify step is queued on whichever later refill reaches it, instead of being
+    permanently lost.
+
+    When NO plan is derivable at all from the pristine board (a genuine
+    transient / unsupported layout, matching the adapter's own level-entry
+    settle-wait), queues one harmless idle corner click so the board settles and
+    the next refill retries -- the adapter's own documented "never perturbs a
+    slot or pool piece" corner-click policy (its ``_next_action`` fallback).
+    Instrumented ``trace`` lines (remaining-plan length, or the settle decision)
+    give a patcher localization evidence.
     """
     grid = _normalize_frame(current_frame)
-    plan = simdfs_plan(grid)
+    pristine = _normalize_frame(transitions[0]["before"]) if transitions else grid
+    plan = simdfs_plan(pristine)
     if not plan:
         if trace is not None:
             trace.append("no plan (transient/unsupported board) -> idle-settle, retry next refill")
         act("CLICK", 0, 0)
         return
+    done = _plan_progress(plan, transitions)
+    remaining = plan[done:]
+    if not remaining:
+        if trace is not None:
+            trace.append(f"plan={len(plan)} steps already fully observed -> nothing to queue")
+        return
     if trace is not None:
-        clicks = sum(1 for step in plan if step[0] == "click")
-        trace.append(f"plan={len(plan)} steps ({clicks} clicks) -> queue")
-    for step in plan:
+        clicks = sum(1 for step in remaining if step[0] == "click")
+        trace.append(
+            f"plan={len(plan)} steps, {done} already executed -> queue {len(remaining)} "
+            f"remaining ({clicks} clicks)"
+        )
+    for step in remaining:
         if step[0] == "click":
             _kind, row, col = step
             act("CLICK", int(col), int(row))

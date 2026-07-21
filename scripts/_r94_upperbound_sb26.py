@@ -85,8 +85,14 @@ def main() -> None:
         return [ppl._to_step(name, xy) for name, xy in res.actions]
 
     def on_transition(prev: np.ndarray, step: Any, frame: np.ndarray, changed: bool) -> None:
+        from admorphiq.kernels.simdfs import _SIMPLE_ACTION_NAMES
+
         aid, xy = step
-        name = "CLICK" if aid == 6 else f"ACTION{aid}"
+        # The same UP/DOWN/.../SPACE naming _plan_progress matches plan steps
+        # against (established convention shared with probe_patch_loop.py's own
+        # _NAME map) -- a divergent naming scheme here would silently defeat the
+        # core's in-flight-plan reconstruction during a real preflight run.
+        name = "CLICK" if aid == 6 else _SIMPLE_ACTION_NAMES.get(aid, f"ACTION{aid}")
         level_transitions.append({
             "action": name,
             "xy": [int(xy[0]), int(xy[1])] if xy is not None else None,

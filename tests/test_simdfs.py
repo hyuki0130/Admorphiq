@@ -20,7 +20,7 @@ import numpy as np
 import pytest
 
 from admorphiq.adapters25 import sb26
-from admorphiq.kernels.simdfs import simdfs_core, simdfs_plan
+from admorphiq.kernels.simdfs import _plan_progress, simdfs_core, simdfs_plan
 from admorphiq.tools.code_agent import run_code
 from admorphiq.tools.solver_core import source_card
 
@@ -47,6 +47,30 @@ def _mini_portal_board() -> np.ndarray:
     g[4, 18] = 5
     g[28, 11] = 4  # pool swatches
     g[28, 18] = 5
+    return g
+
+
+def _mini_portal_board_4slots() -> np.ndarray:
+    """A pristine single-frame portal-sort board with FOUR empty slots — a
+    9-step plan (4 pick+place click pairs + the verify action), big enough
+    that the sandbox's ``run_code`` action cap (``queue[:8]``) truncates it
+    mid-flight after exactly the 8 clicks, reproducing the real R94 D3
+    scenario a live sandbox refill hit. Structure mirrors
+    :func:`_mini_portal_board`, widened to four slots/targets/pool pairs
+    (colours 4 and 5 alternating, two pool swatches of each)."""
+    g = np.zeros((32, 32), dtype=np.int64)
+    r0, c0, r1, c1 = 12, 8, 20, 26
+    g[r0, c0 : c1 + 1] = 7
+    g[r1, c0 : c1 + 1] = 7
+    g[r0 : r1 + 1, c0] = 7
+    g[r0 : r1 + 1, c1] = 7
+    for c in (11, 15, 19, 23):
+        g[16, c] = 3  # empty slot markers
+    for c, color in zip((10, 14, 18, 22), (4, 5, 4, 5)):
+        g[4, c] = color  # target band, left-to-right
+    for color, pts in {4: [(28, 9), (28, 17)], 5: [(28, 13), (28, 21)]}.items():
+        for r, c in pts:
+            g[r, c] = color  # pool swatches
     return g
 
 
@@ -171,6 +195,75 @@ def test_simdfs_core_idle_settle_on_unplannable_board():
     simdfs_core(blank, [], act, trace)
     assert rec == [("CLICK", 0, 0)], rec
     assert any("idle-settle" in line for line in trace), trace
+
+
+def test_simdfs_core_continues_inflight_plan_across_refills():
+    """Purpose: R94 D3-2 regression test. A >8-step plan (4 slots -> 8 clicks + 1
+    verify = 9 steps) gets truncated by the sandbox's own ``run_code`` action cap
+    (``queue[:8]``) after its 8 clicks; the NEXT refill's ``current_frame`` is
+    then a PARTIALLY-SORTED board (every slot filled, its pool swatches
+    consumed) that :func:`simdfs_plan` genuinely cannot re-derive a plan from
+    (proven below) — the exact permanent-idle failure mode a naive
+    re-parse-every-refill core hits. The fix must instead reconstruct the
+    in-flight plan from ``transitions`` (pristine-board re-derivation +
+    progress matching) and queue only the un-executed tail (the verify action),
+    NOT idle-settle.
+
+    Expected feedback: pass ⇒ a plan spanning more than one sandbox refill
+    resumes and completes correctly; fail ⇒ the core stalls forever the moment
+    a plan exceeds the sandbox's per-refill action cap (the reported production
+    bug — L1 never cleared)."""
+    board = _mini_portal_board_4slots()
+    grid = tuple(tuple(int(v) for v in row) for row in board)
+    plan = simdfs_plan(grid)
+    assert plan is not None and len(plan) == 9, plan  # 4 click pairs + verify
+    assert plan[-1] == ("simple", 5)
+    click_steps = [step for step in plan if step[0] == "click"]
+    assert len(click_steps) == 8
+
+    # Refill 1: the core queues the full 9-step plan; ``run_code``'s sandbox caps
+    # the returned actions to 8 (``CodeResult(actions=queue[:8], ...)``), so only
+    # the 8 clicks actually execute this refill (this mirrors that cap directly,
+    # not through ``run_code``, to isolate the core's own in-flight logic).
+    rec1, act1 = _collect_act()
+    simdfs_core(board, [], act1)
+    executed = rec1[:8]
+    assert len(executed) == 8 and all(name == "CLICK" for name, _x, _y in executed)
+    for (_kind, row, col), (_name, x, y) in zip(click_steps, executed):
+        assert (x, y) == (col, row)
+
+    # Build the resulting PARTIALLY-SORTED board (every slot filled, its pool
+    # swatch consumed) and the observed transitions the sandbox driver would
+    # have recorded (``xy = [x, y] = [col, row]``, matching the established
+    # serialization convention).
+    mutated = board.copy()
+    transitions: list[dict[str, Any]] = []
+    for i in range(0, 8, 2):
+        _k1, prow, pcol = click_steps[i]
+        _k2, srow, scol = click_steps[i + 1]
+        color = int(board[prow, pcol])
+        mutated[prow, pcol] = 0
+        mutated[srow, scol] = color
+    for i, (_kind, row, col) in enumerate(click_steps):
+        transitions.append({
+            "action": "CLICK", "xy": [col, row],
+            "before": board if i == 0 else mutated, "after": mutated,
+        })
+
+    # Prove this really IS the regression scenario: re-parsing the mutated,
+    # mid-plan board directly finds NO plan at all (the pool is exhausted, the
+    # slots no longer look like empty markers) -- without the fix this is
+    # exactly what sends the core into idle-settle forever.
+    mutated_grid = tuple(tuple(int(v) for v in row) for row in mutated)
+    assert simdfs_plan(mutated_grid) is None
+
+    assert _plan_progress(plan, transitions) == 8
+
+    rec2, act2 = _collect_act()
+    trace2: list[str] = []
+    simdfs_core(mutated, transitions, act2, trace2)
+    assert rec2 == [("SPACE", None, None)], rec2
+    assert not any("idle-settle" in line for line in trace2), trace2
 
 
 def test_sb26_adapter_delegates_to_simdfs_plan(monkeypatch):
