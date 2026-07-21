@@ -1,0 +1,24 @@
+{
+  "tool": "paint",
+  "game": "cd82",
+  "budget": 2000,
+  "parent": {
+    "levels": 0,
+    "actions": 2000,
+    "distinct_states": 64,
+    "distinct_transitions": 64,
+    "noop_rate": 0.36359000509943906
+  },
+  "patch": {
+    "levels": 0,
+    "actions": 2000,
+    "distinct_states": 64,
+    "distinct_transitions": 128,
+    "noop_rate": 0.36359000509943906,
+    "execute_error": null,
+    "failure_stage": null,
+    "patched_code": "def paint_core(\n    current_frame: Any,\n    transitions: list[dict[str, Any]],\n    act: Callable[..., None],\n    trace: list[str] | None = None,\n) -> None:\n    \"\"\"Paint/flood core: infer the fill colour from observed click transitions;\n    once confirmed, queue clicks filling the largest remaining background regions;\n    before it is confirmed, queue one probe click to elicit the mechanic.\n    If probing the same region repeatedly fails, we attempt to probe different regions.\"\"\"\n    frame = np.asarray(current_frame)\n    fill = _infer_fill_color(transitions)\n    \n    if fill < 0:\n        # Check if we have been probing the same spot without success\n        # to avoid the infinite loop seen in the logs.\n        last_clicks = [t.get(\"xy\") for t in transitions if t.get(\"action\") == \"CLICK\"][-5:]\n        \n        if trace is not None:\n            trace.append(\"fill mechanic unconfirmed -> probe 1 region\")\n        \n        # To break the loop, if the last few clicks were identical and failed,\n        # we can't just rely on paint_plan's deterministic largest region.\n        # However, since we must stay within the provided helper constraints,\n        # we will try to paint the plan, but if we are stuck, we'll shift the \n        # target slightly or try the second largest region.\n        \n        # Get all potential regions\n        comps = _bg_regions(frame)\n        comps.sort(key=lambda comp: (-len(comp), comp[0]))\n        \n        if not comps:\n            return\n\n        # If the largest region has been clicked recently without success, try the next one\n        target_comp = comps[0]\n        if len(last_clicks) > 0:\n            last_x, last_y = last_clicks[-1] if last_clicks[-1] else (-1, -1)\n            # Calculate center of largest region\n            ys = [p[0] for p in target_comp]\n            xs = [p[1] for p in target_comp]\n            cy, cx = int(round(sum(ys)/len(ys))), int(round(sum(xs)/len(xs)))\n            if int(frame[cy, cx]) != 0: # snap\n                cy, cx = target_comp[len(target_comp)//2]\n            \n            if cx == last_x and cy == last_y and len(comps) > 1:\n                target_comp = comps[1] # Try second largest to break deadlock\n\n        # Manual click for the selected component\n        ys = [p[0] for p in target_comp]\n        xs = [p[1] for p in target_comp]\n        cy, cx = int(round(sum(ys)/len(ys))), int(round(sum(xs)/len(xs)))\n        if int(frame[cy, cx]) != 0:\n            cy, cx = target_comp[len(target_comp)//2]\n        \n        act(\"CLICK\", cx, cy)\n    else:\n        if trace is not None:\n            trace.append(f\"fill_color={fill} -> fill regions\")\n        clicks = paint_plan(frame, trace=trace)\n        for (x, y) in clicks:\n            act(\"CLICK\", x, y)"
+  },
+  "verdict": "PATCH_WINS",
+  "llm_latency_s": 53.71957241100017
+}

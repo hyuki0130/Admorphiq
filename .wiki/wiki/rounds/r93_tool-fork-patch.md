@@ -2,7 +2,7 @@
 round: r93
 axis: agent25 (LLM orchestration) — tool-fork-and-patch falsification
 keywords: [agent25, solver-core, source-card, patch-loop, tool-fork, hypothesis-dsl, no-repeat-rule, gpt-oss-offline, codex-review, stall-matrix]
-verdict: THESIS SURVIVES — v3 paint×cd82 = PATCH_WINS (first positive agent25 outcome ever; patch doubled transition diversity 128 vs 64 on the pre-registered lexicographic metric); toggle×vc33 blocked by the 6th harness edge (patch's own future import mid-file), fixed + re-running
+verdict: COMPLETE — THESIS SURVIVES 1-of-2. paint×cd82 PATCH_WINS, REPLICATED v3+v4 (transition diversity 128 vs 64); toggle×vc33 PARENT_HOLDS on a clean run (the _MAX_STENCIL patch executed fully and lost 0lv/127st vs 2lv/834st — a genuine model-attributed loss, levels dominate). First positive agent25 outcome ever; conversion levers → R94
 commit: ea3bf21
 ---
 
@@ -165,6 +165,23 @@ LLM can return/retain such a core intact.
   patch never ran. 6th harness edge; driver now strips the patch's future-import line
   (its copy is already first), regression-pinned (17th test). Re-run pending.
 - Artifacts: `scripts/rounds/R93/*_v3.json`.
+
+## v4 completeness run (2026-07-22 01:49 KST) — ROUND CLOSED
+
+| case | parent | patch | verdict |
+|---|---|---|---|
+| paint×cd82 | 0lv/64st/64tr | 0lv/64st/**128tr** | **PATCH_WINS — REPLICATED** (identical to v3; deterministic) |
+| toggle×vc33 | **2lv**/834st/1509tr | 0lv/127st/182tr (executed cleanly, no failure stage) | **PARENT_HOLDS** |
+
+The toggle result is the first GENUINE model-attributed loss: the `_MAX_STENCIL 12→1024`
+patch finally executed end-to-end and lost — its huge learned "stencils" (row/column-scale
+diffs are movement/animation, not toggle stencils) fed GF(2) a misleading system, while
+the parent's centroid probing stumbles into 2 levels. The lexicographic metric ranked it
+correctly (levels dominate). Final R93 scoreboard: **1 win (replicated ×2), 1 clean loss**
+→ thesis holds per the pre-registered ≥1-of-2 criterion, with an honest picture of the
+capability's limits: the model repairs code well when its causal diagnosis is RIGHT
+(paint), and a plausible-but-wrong diagnosis (toggle) produces a worse solver — exactly
+why matched-replay gating (keep-parent-on-loss) must stay in any deployed loop.
 
 ## Next
 
