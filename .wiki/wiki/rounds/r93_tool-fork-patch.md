@@ -106,6 +106,27 @@ agent25 signal ever measured:
 - v2 re-pushed (dataset v5) 2026-07-22 00:03 KST — the first run where the verdict is
   actually about the MODEL. Artifacts: `scripts/rounds/R93/` + kernel outputs.
 
+## v2 run (2026-07-22 00:23 KST) — parent parity FIXED; model diagnoses RIGHT again; 2 new harness defects
+
+Verdicts still PATCH_INVALID×2, but the pattern is now unmistakable — **in FOUR
+model outputs across v1+v2, the patch content was evidence-grounded and correct every
+time, while every failure was OURS**:
+
+- Parent parity confirmed fixed: vc33 parent 2 levels / 834 states (65f8a61 works).
+- **toggle×vc33 (parse)**: gemma4 returned the FULL card patched with
+  `_MAX_STENCIL = 12 → 1024` + comment *"Increased to handle large-scale toggles
+  (rows/cols/etc)"* — the CORRECT causal diagnosis (vc33 clicks flip row/column-scale
+  cell sets, so the 12-cell cap meant NO stencil was ever learned). The reply was
+  truncated mid-function by `openai_compat_llm`'s default num_predict=1024 → fence
+  never closed → parse fail. Fix: num_predict=8192.
+- **paint×cd82 (execute)**: model returned ONLY the patched core fn (as the prompt
+  instructs) which calls card helpers (`_infer_fill_color`, `paint_plan`) — the card
+  SHOWED them but the sandbox never PROVIDED them → NameError. Fix: `_card_prelude`
+  (real helper sources + consts prepended; patch defs shadow; call-time global lookup
+  means a patched CONSTANT is honoured by prelude helpers — exactly the toggle case).
+- Both fixes reproduced+verified locally against the exact v2 failure shapes (deb6882).
+  v3 launched 00:38 KST. Artifacts: `scripts/rounds/R93/*_v2.json`.
+
 ## Next
 
 1. ~~`scripts/probe_patch_loop.py`~~ DONE (fa171ce) + Kaggle wrapper (b6dad26).
