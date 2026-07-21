@@ -98,9 +98,19 @@ pinned it structurally:
 
 **Conclusion: interface-capability mismatch, not extraction quality.** lp85 (an animating,
 time-series-dependent conquest) was the wrong SOURCE pick for the per-action
-before/after sandbox contract. Decision (re-pair to a static-frame family — candidate
-sb26 8/8 faithful-sim → sk48 holdout — vs enriching the sandbox with frame series) sent
-to the Codex gate.
+before/after sandbox contract.
+
+**Codex re-pair verdict (FROZEN 2026-07-22 04:00, before any further outcomes):**
+- **Pair = sb26 (source, 8/8 @0.846 portal-sort, faithful-simulator+DFS engine) →
+  sk48 (holdout, same faithful-sim family, currently 3/8 — real headroom).**
+- lp85 recorded as **PAIR-INELIGIBLE** (not an extraction failure): its decisive
+  information lives in intra-action time series; adapter parity tested a strictly
+  stronger interface. **Eligibility rule (frozen): the source conquest must be
+  expressible through action-boundary observations.**
+- Sandbox contract UNTOUCHED (enriching it mid-experiment would confound template
+  quality with contract change); frame-series support = separate follow-up experiment.
+- Differentiation is cleaner than lp85's: generic tools have NO simulator+DFS machinery.
+- Source self-reproduction preflight (sandbox path) required before the holdout gate.
 
 ## In flight
 
