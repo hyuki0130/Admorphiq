@@ -108,17 +108,41 @@ def install_wheels_offline() -> None:
         print("[install] no vLLM wheels found; assuming preinstalled")
 
 
+def _model_max_len(model_dir: str) -> int:
+    """The model's OWN trained context (config.json max_position_embeddings),
+    clamped to a memory-safe ceiling. Env MAX_MODEL_LEN overrides. This uses each
+    model at its true max (gemma4 256K, qwen 131072) to rule context out, while
+    _MAX_MODEL_LEN_CEIL guards KV-cache OOM on the 96GB card."""
+    _MAX_MODEL_LEN_CEIL = 262144
+    if os.environ.get("MAX_MODEL_LEN"):
+        return int(os.environ["MAX_MODEL_LEN"])
+    try:
+        with open(os.path.join(model_dir, "config.json")) as f:
+            cfg = json.load(f)
+        for k in ("max_position_embeddings", "max_seq_len", "n_positions"):
+            if isinstance(cfg.get(k), int):
+                return min(cfg[k], _MAX_MODEL_LEN_CEIL)
+        tc = cfg.get("text_config", {})
+        if isinstance(tc.get("max_position_embeddings"), int):
+            return min(tc["max_position_embeddings"], _MAX_MODEL_LEN_CEIL)
+    except Exception as exc:  # noqa: BLE001
+        print(f"[vllm] config max-len read failed ({exc}); default {MAX_MODEL_LEN}")
+    return MAX_MODEL_LEN
+
+
 def boot_vllm_server(model_dir: str, served_name: str) -> subprocess.Popen:
     """vLLM OpenAI api_server with the R55 measured-good offline config."""
     env = os.environ.copy()
     env["VLLM_ATTENTION_BACKEND"] = "TRITON_ATTN"
     env["VLLM_USE_FLASHINFER_SAMPLER"] = "0"
     env["VLLM_WORKER_MULTIPROC_METHOD"] = "spawn"
+    max_len = _model_max_len(model_dir)
+    print(f"[vllm] max-model-len={max_len} (model's own max, ceil-clamped)", flush=True)
     cmd = [
         sys.executable, "-m", "vllm.entrypoints.openai.api_server",
         "--model", model_dir,
         "--served-model-name", served_name,
-        "--max-model-len", str(MAX_MODEL_LEN),
+        "--max-model-len", str(max_len),
         "--enforce-eager",
         "--gpu-memory-utilization", "0.92",
         "--port", str(VLLM_PORT),
