@@ -65,7 +65,29 @@ from admorphiq.kernels.arrangement import (  # noqa: F401
     arrangement_plan,
     arrangement_scale_unit,
 )
+
+# R94 simdfs (portal-graph faithful-simulator + DFS) family core. The REAL
+# solving engine lives in admorphiq.kernels.simdfs (so the quarantined sb26
+# adapter can import it — see that module's docstring); source_card bundles its
+# source + the stdlib-only geometry/regions kernels it composes so the "simdfs"
+# card is self-contained.
+from admorphiq.kernels.geometry import (  # noqa: F401
+    _CARDINAL,
+    _MAX_CONNECTOR_THICKNESS,
+    _flood_fill,
+    _group_appendages,
+    _normalize_cells,
+    _rect_border,
+    _resolve_background,
+    _span_mode,
+    _touches_4,
+    closed_frames,
+    connectors,
+    recover_occluded_frame,
+    split_fused_frame,
+)
 from admorphiq.kernels.motion import frame_diff
+from admorphiq.kernels.parse import cluster_widths
 from admorphiq.kernels.permute import (
     _augment_ring_cells,
     _close_cycle,
@@ -82,6 +104,47 @@ from admorphiq.kernels.regions import (
     _neighbor_offsets,
     _normalize_background,
     find_regions,
+    group_by_axis,
+    size_clusters,
+)
+from admorphiq.kernels.simdfs import (  # noqa: F401
+    _BAND_TOLERANCE,
+    _HUD_SPAN_FRACTION,
+    _HUD_THICKNESS_FRACTION,
+    _MAX_CANDIDATE_FRACTION,
+    _MAX_POOL_PORTALS,
+    _SIMPLE_ACTION_NAMES,
+    _TARGET_ROW_GAP,
+    _VERIFY_ACTION,
+    _assign_colors,
+    _build_multi_portal_plan,
+    _build_pool_portal_plan,
+    _candidates,
+    _detect_pool_portal,
+    _detect_pool_portals,
+    _detect_portals,
+    _dfs_traversal,
+    _filter_interactive_frames,
+    _frame_content,
+    _frame_pseudo_region,
+    _frame_slot_layout,
+    _frame_slots,
+    _insert_idx,
+    _is_hud_band,
+    _most_common_color,
+    _perimeter,
+    _placement_consistent,
+    _plan_sb26_multi_portal,
+    _plan_sb26_pool_portal,
+    _read_target_sequence,
+    _read_targets_and_pool,
+    _recover_fused_frames,
+    _simulate_portal_dfs,
+    simdfs_core,
+    simdfs_plan,
+)
+from admorphiq.kernels.simdfs import (
+    _dist2 as _simdfs_dist2,  # noqa: F401
 )
 
 # Reused verbatim from toggle.py so there is ONE implementation; source_card
@@ -94,6 +157,7 @@ __all__ = [
     "paint_core",
     "paint_plan",
     "arrangement_core",
+    "simdfs_core",
     "source_card",
     "format_core_trace",
 ]
@@ -404,6 +468,26 @@ _CARD_FNS: dict[str, list[Callable[..., Any] | str]] = {
         _press_runs, _selftest_map, _certify_button, _certify_ops,
         arrangement_plan, arrangement_core,
     ],
+    "simdfs": [
+        # stdlib-only kernel primitives the engine composes (dependency order)
+        normalize_frame,
+        "_normalize_frame = normalize_frame",  # callers reference the aliased name
+        _normalize_background, _neighbor_offsets, _gap_offsets, find_regions,
+        group_by_axis, cluster_widths, size_clusters,
+        # geometry: frame / portal / occlusion detection helpers + public fns
+        _normalize_cells, _resolve_background, _flood_fill, _rect_border,
+        _touches_4, _span_mode, _group_appendages,
+        closed_frames, split_fused_frame, recover_occluded_frame, connectors,
+        # sb26 portal-sort role assignment + the distilled simulator/DFS engine
+        _most_common_color, _is_hud_band, _candidates, _frame_pseudo_region,
+        _frame_content, _frame_slots, _simdfs_dist2, _insert_idx, _detect_portals,
+        _dfs_traversal, _filter_interactive_frames, _perimeter,
+        _recover_fused_frames, _frame_slot_layout, _detect_pool_portals,
+        _detect_pool_portal, _plan_sb26_pool_portal, _build_pool_portal_plan,
+        _simulate_portal_dfs, _read_target_sequence, _read_targets_and_pool,
+        _plan_sb26_multi_portal, _assign_colors, _placement_consistent,
+        _build_multi_portal_plan, simdfs_plan, simdfs_core,
+    ],
 }
 
 # Extra import lines a card needs at runtime (whitelisted stdlib only). inspect
@@ -412,6 +496,11 @@ _CARD_FNS: dict[str, list[Callable[..., Any] | str]] = {
 # function must be imported here (the arrangement engine's BFS uses ``deque``).
 _CARD_IMPORTS: dict[str, tuple[str, ...]] = {
     "arrangement": ("from collections import deque",),
+    "simdfs": (
+        "from collections import Counter",
+        "from collections.abc import Mapping",
+        "from itertools import permutations",
+    ),
 }
 
 # Module constants each card's functions reference (as default args / in bodies).
@@ -422,6 +511,14 @@ _CARD_CONSTS: dict[str, tuple[str, ...]] = {
     "arrangement": (
         "_BUTTON_COLORS", "_SOLID_MIN_SIZE", "_DEST_CLUSTER_SPAN", "_PLANNER_BUDGET",
         "_CERTIFY_MAX_PRESSES",
+    ),
+    "simdfs": (
+        # geometry helper constants
+        "_CARDINAL", "_MAX_CONNECTOR_THICKNESS",
+        # sb26 portal-sort priors
+        "_VERIFY_ACTION", "_MAX_CANDIDATE_FRACTION", "_HUD_SPAN_FRACTION",
+        "_HUD_THICKNESS_FRACTION", "_BAND_TOLERANCE", "_TARGET_ROW_GAP",
+        "_MAX_POOL_PORTALS", "_SIMPLE_ACTION_NAMES",
     ),
 }
 
@@ -437,6 +534,14 @@ _CARD_CONST_HEADERS: dict[str, str] = {
         "# are the rotation controls, minimum solid-token size, target-frame corner\n"
         "# span, planner depth). On a DIFFERENT game of this family, derive each\n"
         "# one from YOUR observed transitions before trusting any plan."
+    ),
+    "simdfs": (
+        "# ── GAME-SPECIFIC PRIORS — RE-DERIVE from your observations ──────────\n"
+        "# _CARDINAL / _MAX_CONNECTOR_THICKNESS are generic geometry constants; the\n"
+        "# rest encode the SOURCE game's measured portal-sort semantics (which simple\n"
+        "# action confirms a placement, the chrome/HUD band fractions, the display-row\n"
+        "# gap, the pool-portal enumeration cap). On a DIFFERENT portal/assignment\n"
+        "# game, derive each from YOUR observed board before trusting any plan."
     ),
 }
 
