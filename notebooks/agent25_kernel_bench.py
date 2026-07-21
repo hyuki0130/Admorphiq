@@ -294,8 +294,9 @@ class _ChatTelemetry:
     function the model called, its arguments, and any free content — so we SEE the
     staged routing + code the model produced."""
 
-    def __init__(self, inner):
+    def __init__(self, inner, label: str = ""):
         self.inner = inner
+        self.label = label  # "gid:arm" prefix for the live progress line
         self.calls = 0
         self.transcripts: list[dict] = []
 
@@ -304,7 +305,9 @@ class _ChatTelemetry:
         want = None
         if isinstance(tool_choice, dict):
             want = tool_choice.get("function", {}).get("name")
+        t0 = time.monotonic()
         msg = self.inner(messages, tools=tools, tool_choice=tool_choice)
+        dt = time.monotonic() - t0
         tcs = msg.get("tool_calls") or []
         self.transcripts.append({
             "call": self.calls, "requested_fn": want,
@@ -313,6 +316,12 @@ class _ChatTelemetry:
                            for tc in tcs],
             "content": (msg.get("content") or "")[:800],
         })
+        # LIVE progress line, one per LLM call (the natural cadence) — the Kaggle
+        # interactive log otherwise goes silent for a whole game (~minutes).
+        gist = ((tcs[0].get("function", {}).get("arguments") or "") if tcs else "")
+        gist = gist[:110].replace("\n", " ")
+        print(f"[live] {self.label} call={self.calls} fn={want} {dt:.0f}s :: {gist}",
+              flush=True)
         return msg
 
 
@@ -342,7 +351,8 @@ def _run_arm(arcade, game_id: str, bridge_on: bool) -> dict:
     if TOOLCALL:
         from admorphiq.harness.registry import openai_tool_client
         from admorphiq.harness.toolcall_agent import ToolCallAgent
-        chat = _ChatTelemetry(openai_tool_client(num_predict=4096))
+        chat = _ChatTelemetry(openai_tool_client(num_predict=4096),
+                              label=f"{game_id}:{'on' if bridge_on else 'off'}")
 
         def factory():
             ag = ToolCallAgent(default_tools(), tele, chat, draw_llm=draw,
@@ -373,12 +383,37 @@ def _run_arm(arcade, game_id: str, bridge_on: bool) -> dict:
 
 
 # %%
+def _gptoss_offline_env() -> None:
+    """gpt-oss offline fix (VERIFIED locally 2026-07-21 with network blocked):
+    openai_harmony loads its tiktoken vocab (o200k_base/cl100k_base) from
+    TIKTOKEN_ENCODINGS_BASE (plain filenames, sha256-checked) instead of fetching
+    https://openaipublic.blob.core.windows.net/encodings/ — which Kaggle's
+    disabled internet blocks (the R92 HarmonyError). Files ship in the
+    jaehyukhyun/tiktoken-encodings-offline dataset; resolve by walk."""
+    for root, _dirs, files in os.walk("/kaggle/input"):
+        if "o200k_base.tiktoken" in files:
+            os.environ["TIKTOKEN_ENCODINGS_BASE"] = root
+            break
+    else:
+        raise RuntimeError("o200k_base.tiktoken not found under /kaggle/input — "
+                           "attach the tiktoken-encodings-offline dataset")
+    os.environ["HF_HUB_OFFLINE"] = "1"
+    os.environ["TRANSFORMERS_OFFLINE"] = "1"
+    from openai_harmony import HarmonyEncodingName, load_harmony_encoding
+    enc = load_harmony_encoding(HarmonyEncodingName.HARMONY_GPT_OSS)
+    ok = enc.encode("preflight", allowed_special="all")
+    print(f"[preflight] harmony offline vocab OK from "
+          f"{os.environ['TIKTOKEN_ENCODINGS_BASE']} tokens={ok[:3]}", flush=True)
+
+
 def main() -> None:
     served = VLLM_MODEL_NAME
     if ON_KAGGLE:
         install_wheels_offline()
         model_dir, served = _find_model_dir()
         print(f"[model] {model_dir} served-name={served}")
+        if served == "gptoss":
+            _gptoss_offline_env()  # must run BEFORE vLLM boots (env is inherited)
         server = boot_vllm_server(model_dir, served)
         wait_for_server(VLLM_PORT, BOOT_TIMEOUT_S)
     else:

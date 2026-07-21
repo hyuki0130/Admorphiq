@@ -210,12 +210,16 @@ observed transitions in the system prompt). Booted at max-model-len 200000 with
   is shelved with confidence for the gemma4/qwen tier.** Note the clean dual-scoreboard contrast:
   m0r0 is a script25 CONQUEST (1.0, offline reconstruction) — the kernels CAN solve it; the LLM
   cannot compose them to. Interface was never the wall; goal-inference / dynamics-learning is.
-- **The one open model lever the user named**: gpt-oss-120b (larger reasoner). Blocked offline by
-  the harmony vocab network-fetch; needs a pre-bundled tiktoken encoding dataset
-  (o200k_base+cl100k_base + `TIKTOKEN_ENCODINGS_BASE` + `HF_HUB_OFFLINE`/`TRANSFORMERS_OFFLINE` +
-  a preflight `load_harmony_encoding`). This is now WELL-MOTIVATED (not blind): the wall is
-  reasoning capability, so a stronger reasoner is the correct next probe — but it is the LAST
-  cheap agent25 lever; if a 120B reasoner also guess-codes, agent25-as-performance is closed.
+- **The one open model lever the user named**: gpt-oss-120b (larger reasoner). Offline blocker
+  SOLVED and VERIFIED (2026-07-21, local network-blocked preflight): `openai_harmony` loads its
+  vocab from **`TIKTOKEN_ENCODINGS_BASE`** (plain filenames `o200k_base.tiktoken` +
+  `cl100k_base.tiktoken`, sha256s `446a9538…`/`223921b7…` — both env-var and hashes read out of
+  the shipped `openai_harmony.abi3.so` strings, mechanism in `src/tiktoken_ext/public_encodings.rs`).
+  Files staged as Kaggle dataset **`jaehyukhyun/tiktoken-encodings-offline`**; the bench notebook
+  sets the env + runs a `load_harmony_encoding(HARMONY_GPT_OSS)` preflight before vLLM boots when
+  served-name=gptoss. A stronger reasoner is the correct next probe for the reasoning wall — but
+  it is the LAST cheap agent25 lever; if a 120B reasoner also guess-codes on the R93-min scaffold,
+  agent25-as-performance is closed.
 
 ## Next
 
