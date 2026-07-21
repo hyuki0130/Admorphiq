@@ -111,6 +111,37 @@ OFF/ON arms, same model-agnostic few-shot. Only the model differs. Results:
 
 Files: `r92_agent25_bench_v4_fewshot.json` (qwen), `r92_agent25_bench_gemma4.json`.
 
+## Phase-2 result (2026-07-21) — transition kernels did NOT unlock clears
+
+gemma4-31b-it re-run with Phase-2 (sandbox exposes `transitions`/`previous_frame` +
+8 transition kernels). Result JSON `r92_agent25_bench_gemma4_phase2.json`. The three
+measured configs:
+
+| config | exposed kernels | ON kernel_replies | clears |
+|---|---|---|---|
+| qwen + few-shot | perception/geometry | 1 | 0 |
+| gemma4 v1 | perception/geometry | 23 | 0 |
+| gemma4 v2 (Phase-2) | + transition kernels | 2 | 0 |
+
+- **Still 0 clears**, and adding the transition kernels + `transitions` data REDUCED
+  gemma4's kernel engagement (23 → 2 K.-replies) — prompt bloat (the big TRANSITIONS
+  card + few-shot) diluted focus rather than helping. Errors = 0; the model just wrote
+  fewer K.-using blocks. OFF arms byte-identical to v1 (deterministic, temp 0).
+- **Viability read (the question this round was set up to answer):** the agent25
+  code-agent path — LLM writes python composing kernels, stall-triggered escalation,
+  300-action budget, ≤10 code blocks — does NOT produce clears at smoke scale across
+  qwen + two gemma4 kernel-sets. This is consistent with the R53 finding that
+  "orchestrating pre-built tools plateaus"; piling on kernels is NOT the lever, and
+  more kernels can hurt (engagement drop). The 32.96% script25 card is kernels composed
+  BY US at dev-time; the LLM composing them at runtime remains the unsolved gap and this
+  experiment shows exposing more kernels does not close it.
+- **Cheapest next diagnostic (NOT another kernel pile-on):** does the unified harness
+  clear the games its OWN graph tool clears in script25 (m0r0/vc33/ls20)? If the harness
+  gets 0 where the bare tool clears, the bottleneck is harness orchestration/budget
+  (tools starved by the LLM routing), not the kernel bridge — a different, cheaper fix.
+  If even bare tools get 0 in the offline Arcade @300a, the smoke's budget/game choice is
+  the confound. Either way, resolve THAT before more agent25 LLM/kernel investment.
+
 ## Next (needs GPU)
 
 0. DONE — few-shot added (kernel_replies qwen 0→1) and the qwen-vs-gemma4 comparison run:
