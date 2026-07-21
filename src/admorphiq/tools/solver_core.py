@@ -40,9 +40,13 @@ from admorphiq.kernels._common import normalize_frame
 # emitted verbatim into the card, so ruff cannot see the (dynamic) use.
 from admorphiq.kernels.arrangement import (  # noqa: F401
     _BUTTON_COLORS,
+    _CERTIFY_MAX_PRESSES,
     _DEST_CLUSTER_SPAN,
     _PLANNER_BUDGET,
     _SOLID_MIN_SIZE,
+    _arr_scale,
+    _certify_button,
+    _certify_ops,
     _cint,
     _cluster_frame_centres,
     _detect_buttons,
@@ -51,11 +55,15 @@ from admorphiq.kernels.arrangement import (  # noqa: F401
     _detect_movers,
     _extract_frames_at,
     _planner_background,
+    _press_runs,
+    _selftest_map,
     _snap,
     _token_regions,
     arrangement_core,
     arrangement_learn_button,
+    arrangement_learn_series,
     arrangement_plan,
+    arrangement_scale_unit,
 )
 from admorphiq.kernels.motion import frame_diff
 from admorphiq.kernels.permute import (
@@ -64,7 +72,9 @@ from admorphiq.kernels.permute import (
     _cyclic_order,
     _dist2,
     complete_cycle,
+    is_single_cycle,
     learn_cyclic_successor,
+    learn_successor_from_series,
     plan_token_assignment,
 )
 from admorphiq.kernels.regions import (
@@ -382,12 +392,17 @@ _CARD_FNS: dict[str, list[Callable[..., Any] | str]] = {
         _normalize_background, _neighbor_offsets, _gap_offsets, find_regions,
         frame_diff,
         _dist2, _cyclic_order, _close_cycle, _augment_ring_cells,
-        learn_cyclic_successor, complete_cycle, plan_token_assignment,
+        learn_cyclic_successor, complete_cycle, is_single_cycle,
+        learn_successor_from_series, plan_token_assignment,
         # lp85 arrangement-family helpers + the distilled engine
         _cint, _snap, _token_regions, _planner_background,
         _extract_frames_at, _cluster_frame_centres, _detect_dests,
         _detect_buttons, _detect_movers, _detect_marker_colors,
-        arrangement_learn_button, arrangement_plan, arrangement_core,
+        arrangement_learn_button,
+        # press-until-certify orchestration (adaptive-K, distilled from the adapter)
+        arrangement_scale_unit, _arr_scale, arrangement_learn_series,
+        _press_runs, _selftest_map, _certify_button, _certify_ops,
+        arrangement_plan, arrangement_core,
     ],
 }
 
@@ -406,6 +421,7 @@ _CARD_CONSTS: dict[str, tuple[str, ...]] = {
     "paint": ("_BACKGROUND",),
     "arrangement": (
         "_BUTTON_COLORS", "_SOLID_MIN_SIZE", "_DEST_CLUSTER_SPAN", "_PLANNER_BUDGET",
+        "_CERTIFY_MAX_PRESSES",
     ),
 }
 

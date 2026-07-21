@@ -145,7 +145,6 @@ from admorphiq.kernels import (
     is_single_cycle,
     learn_cyclic_successor,
     learn_point_operators,
-    learn_successor_from_series,
 )
 
 # R94: the load-bearing ring-permutation solving ENGINE was distilled into the
@@ -170,7 +169,9 @@ from admorphiq.kernels.arrangement import (
     _detect_movers,
     _planner_background,
     arrangement_learn_button,
+    arrangement_learn_series,
     arrangement_plan,
+    arrangement_scale_unit,
 )
 
 GAME_ID = "lp85"
@@ -361,18 +362,12 @@ def _scale_unit(regions: list[dict[str, Any]], bg: frozenset[int]) -> int:
     therefore scale with the board, not use a fixed pixel count. The modal small
     region is the 2×2 tile/goal block, so its size is the unit the rest derive
     from. Returns 4 (the L1–L4 unit) when nothing small is present, so those
-    levels reproduce the original fixed thresholds exactly."""
-    small = [
-        int(r["size"])
-        for r in regions
-        if int(r["color"]) not in bg and 1 <= int(r["size"]) <= 32
-    ]
-    if not small:
-        return 4
-    counts: dict[int, int] = {}
-    for s in small:
-        counts[s] = counts.get(s, 0) + 1
-    return max(counts, key=lambda s: (counts[s], -s))
+    levels reproduce the original fixed thresholds exactly.
+
+    R94: the modal-unit computation was distilled into the arrangement family core
+    (:func:`arrangement_scale_unit`) so the offline model's card and this adapter
+    share ONE implementation; this now delegates to it (byte-equivalent)."""
+    return arrangement_scale_unit(regions, bg)
 
 
 _CB_WILD = -99  # sentinel: a colour sample hidden by a goal token (unusable)
@@ -870,15 +865,13 @@ class Adapter(GameAdapter):
         """Recover the current ring's successor map from every ring cell's colour
         time-series across the accumulated press frames. Cells are the small tile
         centroids from the first frame; a cell whose colour never changed is static
-        (off-ring) and excluded before matching."""
-        regions0 = find_regions(frames[0], background=self._bg)
-        cells = [_cint(r) for r in regions0 if int(r["size"]) <= self._tile_max]
-        series: dict[Cell, tuple[int, ...]] = {}
-        for (rr, cc) in cells:
-            s = tuple(int(frames[t][rr][cc]) for t in range(len(frames)))
-            if len(set(s)) > 1:
-                series[(rr, cc)] = s
-        return learn_successor_from_series(series)
+        (off-ring) and excluded before matching.
+
+        R94: this time-series learning IS the load-bearing press-until-certify
+        primitive, so it was distilled into the arrangement family core
+        (:func:`arrangement_learn_series`) — the core's own certification uses the
+        exact same code. This delegates to it (byte-equivalent extraction)."""
+        return arrangement_learn_series(frames, self._bg, self._tile_max)
 
     def _mp_build_plan(self, grid: tuple[tuple[int, ...], ...]) -> bool:
         """BFS a forward-only rotation sequence over the multi-press-learned rings

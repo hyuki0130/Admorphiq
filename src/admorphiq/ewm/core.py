@@ -275,7 +275,10 @@ _SAFE_BUILTIN_NAMES = (
     # bundled into a solver card use (e.g. find_regions/frame_diff build frozensets,
     # plan_token_assignment sorts by repr for a canonical key). As safe as the set/
     # tuple already whitelisted; without them an arrangement card raises NameError.
-    "frozenset repr"
+    # iter + next: the arrangement card's is_single_cycle (bundled for the R94
+    # press-until-certify certify gate) walks the cycle with next(iter(succ)); both
+    # are pure iterator builtins, as safe as the map/zip/enumerate already listed.
+    "frozenset repr iter next"
 ).split()
 
 

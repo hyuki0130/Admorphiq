@@ -314,6 +314,93 @@ def test_arrangement_card_runs_in_sandbox(bridge_on):
     assert res.actions == [("ACTION6", xy) for _code, xy in direct_plan]
 
 
+def _multipress_ring_evidence():
+    """A 7-cell rotation ring with a RUN of three same-colour tiles, so ONE press
+    under-determines it: the run's interior tiles stay same-colour (invisible in the
+    diff) for two presses and only the THIRD press moves every ring cell at least
+    once. A static rotation button (colour 8), a static solid mover (colour 9) and
+    its hollow 4-corner target (colour 9) make a plannable board once the ring is
+    learned. Returns ``(frame_fn, button_xy)`` where ``frame_fn(t)`` is the board
+    after ``t`` presses and ``button_xy`` is the click ``(x=col, y=row)``."""
+    import math
+
+    n = 7
+    base = [2, 2, 2, 3, 5, 6, 7]  # three adjacent colour-2 tiles → a length-3 run
+    btn = (2, 2)  # (row, col) of the colour-8 rotation control
+    mover_tl = (24, 10)  # solid 2x2 colour-9 mover (static, off-ring)
+    target_c = (24, 20)  # hollow 4-corner colour-9 target centre
+    cx, cy, rad = 13, 10, 6.0
+    ring = [
+        (
+            int(round(cy + rad * math.sin(2 * math.pi * k / n))),
+            int(round(cx + rad * math.cos(2 * math.pi * k / n))),
+        )
+        for k in range(n)
+    ]
+
+    def frame(t):
+        g = np.zeros((32, 32), dtype=np.int64)
+        g[0, :] = 1  # chrome bar -> the 2nd-most-common colour (dropped as background)
+        for dr in (0, 1):
+            for dc in (0, 1):
+                g[btn[0] + dr, btn[1] + dc] = 8  # button (rotation control)
+        for j, (r, c) in enumerate(ring):
+            g[r, c] = base[(j - t) % n]  # occupants rotate one cell per press
+        r, c = mover_tl
+        for dr in (0, 1):
+            for dc in (0, 1):
+                g[r + dr, c + dc] = 9  # solid moving marker
+        r, c = target_c
+        for (dr, dc) in ((-2, -2), (-2, 2), (2, -2), (2, 2)):
+            g[r + dr, c + dc] = 9  # hollow 4-corner target frame
+        return g
+
+    return frame, (btn[1], btn[0])
+
+
+def test_arrangement_core_presses_the_same_button_until_certified_then_plans():
+    """Purpose: the distilled PRESS-UNTIL-CERTIFY orchestration — the load-bearing
+    adaptive-K policy the lp85 conquest needs and the bare single-press slice lacked.
+    On a colour-duplicated ring that ONE press cannot fingerprint, the core must
+    RE-press the SAME control across successive re-invocations (each on the growing
+    transitions list) until its ring certifies, and only THEN queue a solving plan.
+
+    Expected feedback: pass ⇒ the core accumulates evidence and presses-until-certify
+    (3 presses here) before planning — the D3 upper-bound behaviour a token-slice core
+    failed; fail ⇒ the core either certifies a partially-learned ring early (would
+    plan on a wrong map) or never certifies (would never plan)."""
+    frame, btn_xy = _multipress_ring_evidence()
+    transitions: list[dict] = []
+    presses = 0
+    current = frame(0)
+
+    # The ring needs three presses to reveal its full cycle. On each of the first
+    # three invocations the control is uncertified, so the core queues exactly ONE
+    # re-press of the SAME button and does NOT plan.
+    for _ in range(3):
+        plan, act = _collect_act()
+        trace: list[str] = []
+        arrangement_core(current, transitions, act, trace)
+        assert plan == [(6, btn_xy)], (presses, plan, trace)
+        assert not any(line.startswith("plan=") for line in trace), trace
+        after = frame(presses + 1)
+        transitions.append(
+            {"action": "CLICK", "xy": [btn_xy[0], btn_xy[1]],
+             "before": frame(presses), "after": after}
+        )
+        presses += 1
+        current = after
+
+    # After the third press every ring cell has been observed to move: the sole
+    # control certifies and the core queues a real rotation plan (not another probe).
+    plan, act = _collect_act()
+    trace = []
+    arrangement_core(current, transitions, act, trace)
+    assert any("certified 1/1" in line for line in trace), trace
+    assert any(line.startswith("plan=") for line in trace), trace
+    assert len(plan) > 1 and all(a == 6 for a, _ in plan), plan
+
+
 def test_format_core_trace_reports_decisions():
     """Purpose: a core appends one-line localization decisions to a trace list, and
     ``format_core_trace`` renders them for prompt injection (patcher context).
