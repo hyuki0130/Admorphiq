@@ -116,8 +116,19 @@ before/after sandbox contract.
 
 Eligibility pre-check passed (portal-sort static between actions). Engine extracted to
 `kernels/simdfs.py` (frame→board parse → faithful simulator → DFS → click plan), adapter
-delegates, card 71.5KB. **Parity: 8/8 @0.846 in 170 actions — exact.** Sandbox
-self-reproduction gate (the one lp85 failed twice) in flight.
+delegates, card 71.5KB. **Parity: 8/8 @0.846 in 170 actions — exact.**
+
+**Self-reproduction gate v1 FAILED — diagnosed in one trace pass (04:23).** Direct-call
+trace: refill 1 works end-to-end (*"plan=9 steps (8 clicks)"*) but only 8 clicks execute
+and L1 does not clear (**defect 1: a non-click 9th step is dropped** at the plan→act
+seam); thereafter the core re-parses the PARTIALLY-SORTED mid-game board every refill and
+rejects it forever (*"no plan (transient/unsupported board) → idle-settle"* ×5000)
+(**defect 2: the adapter parses the pristine entry board once and runs open-loop; the
+stateless core must reconstruct plan-in-flight from the transitions instead of
+re-planning mid-flight**). Both are distillation-completeness defects (adapter-local
+orchestration again — the D3 gate keeps catching exactly what it exists to catch), NOT
+interface ineligibility: the game is static/action-boundary expressible. Fix round
+running on the same executor.
 
 ## In flight
 
