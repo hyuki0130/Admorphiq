@@ -114,9 +114,12 @@ def install_wheels_offline() -> None:
 def _model_max_len(model_dir: str) -> int:
     """The model's OWN trained context (config.json max_position_embeddings),
     clamped to a memory-safe ceiling. Env MAX_MODEL_LEN overrides. This uses each
-    model at its true max (gemma4 256K, qwen 131072) to rule context out, while
-    _MAX_MODEL_LEN_CEIL guards KV-cache OOM on the 96GB card."""
-    _MAX_MODEL_LEN_CEIL = 262144
+    model at its true max (qwen 131072) to rule context out, while
+    _MAX_MODEL_LEN_CEIL guards KV-cache OOM on the 96GB card. MEASURED 2026-07-21:
+    gemma4-31b at 262144 needs 27.04 GiB KV > 24.36 GiB available (EngineCore OOM);
+    vLLM's own feasible estimate was 226976, so the ceiling is 200000 (fits with
+    margin, and prompts are ~few-K tokens so context is not the bottleneck anyway)."""
+    _MAX_MODEL_LEN_CEIL = 200000
     if os.environ.get("MAX_MODEL_LEN"):
         return int(os.environ["MAX_MODEL_LEN"])
     try:
