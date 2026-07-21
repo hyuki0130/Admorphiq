@@ -78,6 +78,34 @@ Verified locally with network blocked: `TIKTOKEN_ENCODINGS_BASE` → plain-named
 bench notebook wired + preflight (commit fa66d9f). Per Codex: gpt-oss runs ONLY as the
 2-case matched A/B against gemma4 — not a broad deployment.
 
+## v1 Kaggle run (2026-07-21 23:44 KST) — harness defects found, patches were GOOD
+
+Kernel `admorphiq-r93-patchloop-gemma4` v1 (RTX PRO 6000, gemma4-31b-it): both cases
+returned **PATCH_INVALID(execute)** — but per-stage telemetry shows these were OUR
+defects, not model verdicts, and the model's patch CONTENT is the first positive
+agent25 signal ever measured:
+
+- **The patches were evidence-grounded and correct in form.** paint×cd82 (2.5KB):
+  diagnosed the REAL stall from the instrumented trace (*"the stall seen in logs where
+  the same coordinate is clicked repeatedly"* — parent noop_rate 0.36) and made the
+  targeted fix (probe the next-largest region to break the deadlock), composing our
+  helpers (`_infer_fill_color`/`_bg_regions`/`paint_plan`) correctly. toggle×vc33:
+  conservative structure-preserving patch whose `_next_probe(frame, set(stencils))`
+  call is semantically exact. **Contrast with R92**: the same model that guess-coded
+  `act('RIGHT')` from a blank page debugs OUR code with evidence. The user's
+  tool-fork thesis has first-order support.
+- **Harness defect 1 (execute failures)**: models omit the card's leading
+  `from __future__ import annotations`, so the REAL signature's `Any`/`Callable`
+  annotations NameError at def time. Fixed c048bfa (prepend in run_patched_step;
+  reproduced + verified locally); execute error TEXT now preserved in the JSON.
+- **Harness defect 2 (parent parity)**: Kaggle parent toggle×vc33 was 0 levels vs 2 on
+  ceph-build — the solver_core refactor had replaced ToggleTool's component-CENTROID
+  probe order with a full foreground-pixel scan (drift the synthetic parity test
+  missed; Codex's exact warning). Fixed 65f8a61 (`_component_centroids`, self-contained
+  + card-bundled); engine parity gate back to 2 levels @2000.
+- v2 re-pushed (dataset v5) 2026-07-22 00:03 KST — the first run where the verdict is
+  actually about the MODEL. Artifacts: `scripts/rounds/R93/` + kernel outputs.
+
 ## Next
 
 1. `scripts/probe_patch_loop.py` (in build): parent run → patch ask (source_card +

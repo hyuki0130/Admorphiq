@@ -1,0 +1,56 @@
+{
+  "model": "gemma4",
+  "budget": 2000,
+  "verdicts": {
+    "toggle:vc33": "PATCH_INVALID",
+    "paint:cd82": "PATCH_INVALID"
+  },
+  "results": [
+    {
+      "tool": "toggle",
+      "game": "vc33",
+      "budget": 2000,
+      "parent": {
+        "levels": 0,
+        "actions": 2000,
+        "distinct_states": 50,
+        "distinct_transitions": 1910,
+        "noop_rate": 0.0
+      },
+      "patch": {
+        "levels": 0,
+        "actions": 2000,
+        "distinct_states": 50,
+        "distinct_transitions": 49,
+        "noop_rate": 0.0,
+        "failure_stage": "execute",
+        "patched_code": "def toggle_core(\n    current_frame: Any,\n    transitions: list[dict[str, Any]],\n    act: Callable[..., None],\n    trace: list[str] | None = None,\n) -> None:\n    \"\"\"Lights-out core: rebuild click stencils from the observed transitions,\n    GF(2)-solve for a uniform board and queue the plan; if there are not yet\n    enough stencils or the system is inconsistent, queue the next systematic probe click.\"\"\"\n    frame = np.asarray(current_frame)\n    stencils = _stencils_from_transitions(transitions)\n    \n    # Attempt to solve if we have a baseline of stencils\n    if len(stencils) >= _MIN_STENCILS:\n        plan = _solve_board(frame, stencils, trace)\n        if plan:\n            if trace is not None:\n                trace.append(f\"plan={len(plan)} clicks\")\n            for (x, y) in plan:\n                act(\"CLICK\", x, y)\n            return\n\n    # If we reach here, we either don't have enough stencils or the \n    # current set of stencils cannot solve the board (inconsistent).\n    probe = _next_probe(frame, set(stencils))\n    if probe is not None:\n        if trace is not None:\n            reason = \"insufficient\" if len(stencils) < _MIN_STENCILS else \"inconsistent\"\n            trace.append(\n                f\"stencils={len(stencils)} ({reason}) -> \"\n                f\"probe ({probe[0]},{probe[1]})\"\n            )\n        act(\"CLICK\", probe[0], probe[1])"
+      },
+      "verdict": "PATCH_INVALID",
+      "llm_latency_s": 70.87257191800018
+    },
+    {
+      "tool": "paint",
+      "game": "cd82",
+      "budget": 2000,
+      "parent": {
+        "levels": 0,
+        "actions": 2000,
+        "distinct_states": 64,
+        "distinct_transitions": 64,
+        "noop_rate": 0.36359000509943906
+      },
+      "patch": {
+        "levels": 0,
+        "actions": 2000,
+        "distinct_states": 64,
+        "distinct_transitions": 64,
+        "noop_rate": 0.36359000509943906,
+        "failure_stage": "execute",
+        "patched_code": "def paint_core(\n    current_frame: Any,\n    transitions: list[dict[str, Any]],\n    act: Callable[..., None],\n    trace: list[str] | None = None,\n) -> None:\n    \"\"\"Paint/flood core: infer the fill colour from observed click transitions;\n    once confirmed, queue clicks filling the largest remaining background regions;\n    before it is confirmed, queue one probe click to elicit the mechanic.\n    If probing the same region repeatedly fails, we attempt to probe different regions.\"\"\"\n    frame = np.asarray(current_frame)\n    fill = _infer_fill_color(transitions)\n    \n    if fill < 0:\n        # To prevent the stall seen in logs where the same coordinate is clicked repeatedly\n        # without triggering the fill mechanic, we check the recent history.\n        last_clicks = [t.get(\"xy\") for t in transitions if t.get(\"action\") == \"CLICK\" and t.get(\"xy\") is not None]\n        \n        if trace is not None:\n            trace.append(\"fill mechanic unconfirmed -> probe 1 region\")\n        \n        # Get all background regions\n        comps = _bg_regions(frame)\n        comps.sort(key=lambda comp: (-len(comp), comp[0]))\n        \n        if not comps:\n            return\n\n        # If the largest region was just clicked and failed to confirm the mechanic,\n        # try the next largest region to break the deadlock.\n        target_idx = 0\n        if last_clicks:\n            last_x, last_y = last_clicks[-1]\n            # Calculate the point paint_plan would pick for the largest region\n            comp0 = comps[0]\n            ys0 = [p[0] for p in comp0]\n            xs0 = [p[1] for p in comp0]\n            cy0, cx0 = int(round(sum(ys0)/len(ys0))), int(round(sum(xs0)/len(xs0)))\n            if int(frame[cy0, cx0]) != 0:\n                cy0, cx0 = comp0[len(comp0)//2]\n            \n            if cx0 == last_x and cy0 == last_y and len(comps) > 1:\n                target_idx = 1\n\n        # Execute a single probe click on the selected region\n        target_comp = comps[target_idx]\n        ys = [p[0] for p in target_comp]\n        xs = [p[1] for p in target_comp]\n        cy = int(round(sum(ys) / len(ys)))\n        cx = int(round(sum(xs) / len(xs)))\n        if int(frame[cy, cx]) != 0:\n            cy, cx = target_comp[len(target_comp) // 2]\n        \n        act(\"CLICK\", cx, cy)\n    else:\n        if trace is not None:\n            trace.append(f\"fill_color={fill} -> fill regions\")\n        clicks = paint_plan(frame, trace=trace)\n        for (x, y) in clicks:\n            act(\"CLICK\", x, y)"
+      },
+      "verdict": "PATCH_INVALID",
+      "llm_latency_s": 84.2827383050003
+    }
+  ]
+}

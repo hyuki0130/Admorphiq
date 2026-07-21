@@ -1,0 +1,23 @@
+{
+  "tool": "toggle",
+  "game": "vc33",
+  "budget": 2000,
+  "parent": {
+    "levels": 0,
+    "actions": 2000,
+    "distinct_states": 50,
+    "distinct_transitions": 1910,
+    "noop_rate": 0.0
+  },
+  "patch": {
+    "levels": 0,
+    "actions": 2000,
+    "distinct_states": 50,
+    "distinct_transitions": 49,
+    "noop_rate": 0.0,
+    "failure_stage": "execute",
+    "patched_code": "def toggle_core(\n    current_frame: Any,\n    transitions: list[dict[str, Any]],\n    act: Callable[..., None],\n    trace: list[str] | None = None,\n) -> None:\n    \"\"\"Lights-out core: rebuild click stencils from the observed transitions,\n    GF(2)-solve for a uniform board and queue the plan; if there are not yet\n    enough stencils or the system is inconsistent, queue the next systematic probe click.\"\"\"\n    frame = np.asarray(current_frame)\n    stencils = _stencils_from_transitions(transitions)\n    \n    # Attempt to solve if we have a baseline of stencils\n    if len(stencils) >= _MIN_STENCILS:\n        plan = _solve_board(frame, stencils, trace)\n        if plan:\n            if trace is not None:\n                trace.append(f\"plan={len(plan)} clicks\")\n            for (x, y) in plan:\n                act(\"CLICK\", x, y)\n            return\n\n    # If we reach here, we either don't have enough stencils or the \n    # current set of stencils cannot solve the board (inconsistent).\n    probe = _next_probe(frame, set(stencils))\n    if probe is not None:\n        if trace is not None:\n            reason = \"insufficient\" if len(stencils) < _MIN_STENCILS else \"inconsistent\"\n            trace.append(\n                f\"stencils={len(stencils)} ({reason}) -> \"\n                f\"probe ({probe[0]},{probe[1]})\"\n            )\n        act(\"CLICK\", probe[0], probe[1])"
+  },
+  "verdict": "PATCH_INVALID",
+  "llm_latency_s": 70.87257191800018
+}
