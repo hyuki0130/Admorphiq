@@ -512,8 +512,10 @@ def main() -> None:
     print("[live] PATCH ASK: calling LLM", flush=True)
     # 8192: the full toggle card is ~6.6KB (~1.7K tokens) and a full-card-style
     # patch must fit — the default 1024 TRUNCATED gemma4's v2 reply mid-function
-    # (fence never closed -> parse failure).
-    llm = openai_compat_llm(num_predict=8192)
+    # (fence never closed -> parse failure). Reasoning models (gpt-oss high
+    # effort) spend max_tokens on the reasoning channel too — override via env.
+    llm = openai_compat_llm(
+        num_predict=int(os.environ.get("HARNESS_PATCH_NUM_PREDICT", "8192")))
     t0 = time.perf_counter()
     ask = ask_patch(llm, a.tool, core_fn, card, trace_tail_text, parent_summary_text)
     llm_latency_s = time.perf_counter() - t0

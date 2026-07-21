@@ -95,6 +95,14 @@ def openai_compat_llm(
             "temperature": 0.0, "max_tokens": num_predict,
             "chat_template_kwargs": {"enable_thinking": False},
         }
+        # Reasoning-model support (gpt-oss/harmony): the first A/B ran gpt-oss
+        # with NO reasoning effort set (and thinking DISABLED above) — testing a
+        # reasoning model with its reasoning channel off, a measured process
+        # error. Env-gated so gemma4/qwen requests stay byte-identical unset.
+        effort = os.environ.get("HARNESS_REASONING_EFFORT")
+        if effort:
+            body["reasoning_effort"] = effort
+            del body["chat_template_kwargs"]
         req = urllib.request.Request(
             f"{base_url}/chat/completions", data=json.dumps(body).encode(),
             headers={"Content-Type": "application/json"}, method="POST",

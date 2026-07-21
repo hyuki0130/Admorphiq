@@ -202,6 +202,13 @@ def main() -> None:
         "PYTHONPATH": pkg_dir + os.pathsep + env.get("PYTHONPATH", ""),
         "PYTHONUNBUFFERED": "1",
     })
+    if served == "gptoss":
+        # gpt-oss is a REASONING model: the first A/B ran it with the reasoning
+        # channel off (process error — one config is not a lever verdict). High
+        # effort + a bigger completion budget (reasoning tokens count against
+        # max_tokens in vLLM/harmony).
+        env["HARNESS_REASONING_EFFORT"] = "high"
+        env["HARNESS_PATCH_NUM_PREDICT"] = "20000"
 
     results = []
     for tool, game in CASES:
