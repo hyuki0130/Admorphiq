@@ -62,7 +62,37 @@ is the gap between 32.96% expressiveness and agent25 competence.
 blocked, guards degrade safely, prompt gate default-off byte-identical / on-appends-cards,
 exposed∩deferred = ∅). 258 green in the code_agent/harness/ewm/kernel subset; ruff clean.
 
+## Kaggle agent25 smoke — FIRST END-TO-END RUN (2026-07-21, kernel v3 COMPLETE)
+
+Pipeline PROVEN on the real eval hardware. Kernel `admorphiq-agent25-kernel-bench` v3
+(RTX PRO 6000, offline; qwen3-6-27b-fp8 via vLLM api_server; result
+`r92_agent25_bench_v3.json`). 4 games × matched OFF/ON arms, 300 actions, both
+HARNESS_CODE_ESC=1.
+
+- **Infra all green**: vLLM served qwen (`/v1/models 200`), LLM calls landed (latency
+  20–34s), code escalation fired, the kernel-bridge preflight (`K.find_regions`) passed,
+  RHAE scoring + telemetry worked. The "BRIDGE INERT" guard did NOT trip — the ON arm
+  sent the KERNEL TOOLBOX card on vc33 (5 code prompts) and ls20 (10).
+- **Result: 0 clears in BOTH arms** (m0r0/vc33/cd82/ls20, all 0.0). Load-bearing finding:
+  **the model was handed the kernel vocabulary but produced ZERO `K.`-using replies**
+  (`kernel_replies=0` on every arm). Exposing the toolbox in the prompt did not, by itself,
+  get qwen3.6-27b to call the kernels.
+- Two boot gotchas fixed en route (both now standard): kernel-metadata needs
+  `"machine_shape": "NvidiaRtxPro6000"` (interactive push otherwise gets a P100, compute
+  6.0, which can't run fp8 — `Minimum capability: 75`); and the dataset mount path for
+  `scripts/score_efficiency.py` varies, so resolve it by walk, not a hardcoded path.
+
+Read correctly: this is a smoke on qwen (NOT the measured-best gemma4), a small budget, the
+known-weak code-agent path, AND only the perception/geometry kernels are exposed (the
+high-value transition kernels that cleared lp85/r11l/m0r0 are DEFERRED). So 0 clears is
+uninformative about the ceiling; the ACTIONABLE signal is `K.`-usage = 0.
+
 ## Next (needs GPU)
+
+0. **Drive `K.` usage** (the immediate lever the smoke exposed): the cards alone don't get
+   the model to call kernels. Add a worked few-shot example of a `K.`-using solution to the
+   code prompt (behind the flag), and/or a stronger directive. Re-run the matched smoke and
+   check `kernel_replies` climbs before spending on a full 25.
 
 1. Turn `HARNESS_KERNEL_API=1` and measure agent25 with the bridge on a GPU host (NHN 2×V100
    or Kaggle) — does the kernel vocabulary lift the code-agent above the ~18/25 plateau?

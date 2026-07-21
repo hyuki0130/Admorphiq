@@ -1,0 +1,172 @@
+{
+  "games": [
+    "ls20",
+    "vc33",
+    "m0r0",
+    "cd82"
+  ],
+  "max_actions": 300,
+  "model": "qwen",
+  "results": [
+    {
+      "game_id": "m0r0-492f87ba",
+      "win_levels": 6,
+      "levels_completed": 0,
+      "elapsed_s": 68.72,
+      "total_actions": 300,
+      "per_level": [],
+      "game_score": 0.0,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "arm": "off",
+      "telemetry": {
+        "calls": 2,
+        "code_prompts": 0,
+        "python_replies": 0,
+        "kernel_replies": 0,
+        "errors": 0,
+        "avg_latency_s": 34.13
+      }
+    },
+    {
+      "game_id": "m0r0-492f87ba",
+      "win_levels": 6,
+      "levels_completed": 0,
+      "elapsed_s": 6.68,
+      "total_actions": 300,
+      "per_level": [],
+      "game_score": 0.0,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "arm": "on",
+      "telemetry": {
+        "calls": 2,
+        "code_prompts": 0,
+        "python_replies": 0,
+        "kernel_replies": 0,
+        "errors": 0,
+        "avg_latency_s": 3.14
+      }
+    },
+    {
+      "game_id": "vc33-5430563c",
+      "win_levels": 7,
+      "levels_completed": 0,
+      "elapsed_s": 140.19,
+      "total_actions": 300,
+      "per_level": [],
+      "game_score": 0.0,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "arm": "off",
+      "telemetry": {
+        "calls": 6,
+        "code_prompts": 0,
+        "python_replies": 4,
+        "kernel_replies": 0,
+        "errors": 0,
+        "avg_latency_s": 23.17
+      }
+    },
+    {
+      "game_id": "vc33-5430563c",
+      "win_levels": 7,
+      "levels_completed": 0,
+      "elapsed_s": 148.56,
+      "total_actions": 300,
+      "per_level": [],
+      "game_score": 0.0,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "arm": "on",
+      "telemetry": {
+        "calls": 6,
+        "code_prompts": 5,
+        "python_replies": 1,
+        "kernel_replies": 0,
+        "errors": 0,
+        "avg_latency_s": 24.57
+      }
+    },
+    {
+      "game_id": "cd82-fb555c5d",
+      "win_levels": 6,
+      "levels_completed": 0,
+      "elapsed_s": 6.28,
+      "total_actions": 300,
+      "per_level": [],
+      "game_score": 0.0,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "arm": "off",
+      "telemetry": {
+        "calls": 2,
+        "code_prompts": 0,
+        "python_replies": 0,
+        "kernel_replies": 0,
+        "errors": 0,
+        "avg_latency_s": 2.96
+      }
+    },
+    {
+      "game_id": "cd82-fb555c5d",
+      "win_levels": 6,
+      "levels_completed": 0,
+      "elapsed_s": 6.26,
+      "total_actions": 300,
+      "per_level": [],
+      "game_score": 0.0,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "arm": "on",
+      "telemetry": {
+        "calls": 2,
+        "code_prompts": 0,
+        "python_replies": 0,
+        "kernel_replies": 0,
+        "errors": 0,
+        "avg_latency_s": 2.95
+      }
+    },
+    {
+      "game_id": "ls20-9607627b",
+      "win_levels": 7,
+      "levels_completed": 0,
+      "elapsed_s": 318.14,
+      "total_actions": 300,
+      "per_level": [],
+      "game_score": 0.0,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "arm": "off",
+      "telemetry": {
+        "calls": 12,
+        "code_prompts": 0,
+        "python_replies": 0,
+        "kernel_replies": 0,
+        "errors": 0,
+        "avg_latency_s": 26.36
+      }
+    },
+    {
+      "game_id": "ls20-9607627b",
+      "win_levels": 7,
+      "levels_completed": 0,
+      "elapsed_s": 263.32,
+      "total_actions": 300,
+      "per_level": [],
+      "game_score": 0.0,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "arm": "on",
+      "telemetry": {
+        "calls": 12,
+        "code_prompts": 10,
+        "python_replies": 5,
+        "kernel_replies": 0,
+        "errors": 0,
+        "avg_latency_s": 21.79
+      }
+    }
+  ]
+}
