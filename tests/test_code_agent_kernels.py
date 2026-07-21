@@ -14,6 +14,7 @@ the deployed prompt.
 from __future__ import annotations
 
 import numpy as np
+import pytest
 
 from admorphiq.tools import code_agent
 from admorphiq.tools.code_agent import (
@@ -25,6 +26,12 @@ from admorphiq.tools.code_agent import (
 from admorphiq.tools.kernel_api import DEFERRED, KERNEL_API, KERNEL_CARDS
 
 
+@pytest.fixture
+def bridge_on(monkeypatch):
+    """Enable the kernel bridge (K injected + cards in the prompt)."""
+    monkeypatch.setenv("HARNESS_KERNEL_API", "1")
+
+
 def _grid() -> np.ndarray:
     g = np.zeros((8, 8), dtype=int)
     g[2:5, 2:5] = 3  # one 3x3 foreground region
@@ -32,7 +39,7 @@ def _grid() -> np.ndarray:
     return g
 
 
-def test_kernel_find_regions_callable_in_sandbox() -> None:
+def test_kernel_find_regions_callable_in_sandbox(bridge_on) -> None:
     """Purpose: K.find_regions runs in the sandbox and the block can act on it.
     Expected: no error, and the region-count-driven click is queued."""
     code = (
@@ -48,7 +55,7 @@ def test_kernel_find_regions_callable_in_sandbox() -> None:
     assert res.actions and res.actions[0][0] == "ACTION6"
 
 
-def test_kernel_grid_shortest_path_in_sandbox() -> None:
+def test_kernel_grid_shortest_path_in_sandbox(bridge_on) -> None:
     """Purpose: a pathing kernel composes in-sandbox and drives moves.
     Expected: K.grid_shortest_path returns a path, path_to_moves maps it, block
     queues the first move without error."""
@@ -77,7 +84,7 @@ def test_import_still_blocked_with_bridge() -> None:
     assert res.actions == []
 
 
-def test_bounded_kernel_raises_are_caught() -> None:
+def test_bounded_kernel_raises_are_caught(bridge_on) -> None:
     """Purpose: a combinatorial-guard breach degrades safely, never hangs.
     Expected: an over-limit assign_pairs raises inside the block; run_code
     catches it and returns an empty queue with an error string."""
@@ -89,6 +96,14 @@ def test_bounded_kernel_raises_are_caught() -> None:
     res = run_code(code, _grid(), [], ["ACTION1"])
     assert res.error != ""  # the ValueError guard fired
     assert res.actions == []  # act('UP') never reached
+
+
+def test_bridge_off_no_kernel_namespace() -> None:
+    """Purpose: default (flag unset) sandbox is byte-identical — `K` is absent.
+    Expected: a block referencing K raises NameError (caught), empty queue."""
+    res = run_code("K.find_regions(current_frame)\nact('UP')", _grid(), [], ["ACTION1"])
+    assert res.error != ""
+    assert res.actions == []
 
 
 def test_prompt_gate_default_off_is_byte_identical() -> None:

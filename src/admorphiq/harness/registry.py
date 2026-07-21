@@ -58,3 +58,48 @@ def ollama_llm(
             return json.loads(r.read())["message"]["content"]
 
     return _call
+
+
+def openai_compat_llm(
+    model: str | None = None,
+    base_url: str | None = None,
+    *,
+    num_predict: int = 1024,
+    timeout: float = 300.0,
+):
+    """Return an ``llm(messages) -> str`` callable against a vLLM OpenAI server.
+
+    This is the Kaggle backend: Kaggle has no ollama daemon, but R55 proved a
+    ``vllm.entrypoints.openai.api_server`` subprocess serving ``/chat/completions``.
+    Endpoint + served model come from ``HARNESS_LLM_BASE_URL`` / ``HARNESS_LLM_MODEL``
+    (the served-model-NAME the server was booted with, e.g. ``qwen`` — NOT the
+    weights dir). Missing either is a hard error: a silent fallback would make
+    UnifiedAgent quietly degrade to tools and read as a misleadingly green run.
+
+    ``num_predict`` maps to ``max_tokens``. ``num_ctx`` is NOT a per-request knob
+    on vLLM (the server fixes it via ``--max-model-len``), so it is intentionally
+    absent here. Qwen thinking is disabled per request (it otherwise spends the
+    whole token budget on reasoning — measured in R55).
+    """
+    model = model or os.environ.get("HARNESS_LLM_MODEL", "")
+    base_url = (base_url or os.environ.get("HARNESS_LLM_BASE_URL", "")).rstrip("/")
+    if not base_url or not model:
+        raise RuntimeError(
+            "openai_compat_llm needs HARNESS_LLM_BASE_URL and HARNESS_LLM_MODEL "
+            f"(base_url={base_url!r}, model={model!r})"
+        )
+
+    def _call(messages: list[dict[str, str]]) -> str:
+        body = {
+            "model": model, "stream": False, "messages": messages,
+            "temperature": 0.0, "max_tokens": num_predict,
+            "chat_template_kwargs": {"enable_thinking": False},
+        }
+        req = urllib.request.Request(
+            f"{base_url}/chat/completions", data=json.dumps(body).encode(),
+            headers={"Content-Type": "application/json"}, method="POST",
+        )
+        with urllib.request.urlopen(req, timeout=timeout) as r:
+            return json.loads(r.read())["choices"][0]["message"]["content"]
+
+    return _call

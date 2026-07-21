@@ -87,7 +87,24 @@ def _make_agent(name: str, game_id: str | None = None):
         import os
 
         from admorphiq.harness.loop import UnifiedAgent
-        from admorphiq.harness.registry import default_tools, ollama_llm
+        from admorphiq.harness.registry import (
+            default_tools,
+            ollama_llm,
+            openai_compat_llm,
+        )
+
+        # Backend switch: Kaggle has no ollama daemon, so an OpenAI-compat vLLM
+        # endpoint is used when HARNESS_LLM_BACKEND=openai (or a base URL is set).
+        # Unset => ollama (the Mac/local default, byte-identical to before).
+        _use_openai = (
+            os.environ.get("HARNESS_LLM_BACKEND", "").lower() == "openai"
+            or bool(os.environ.get("HARNESS_LLM_BASE_URL"))
+        )
+
+        def _llm(num_predict: int = 1024, num_ctx: int = 16384):
+            if _use_openai:
+                return openai_compat_llm(num_predict=num_predict)
+            return ollama_llm(num_ctx=num_ctx, num_predict=num_predict)
 
         # The self-improving harness: one offline model orchestrates the six
         # generic tools + the code path, re-deciding on stall. HARNESS_CTX sets
@@ -102,10 +119,10 @@ def _make_agent(name: str, game_id: str | None = None):
         stall = int(os.environ.get("HARNESS_STALL", "80"))
         return UnifiedAgent(
             default_tools(),
-            ollama_llm(),
+            _llm(),
             # Target draws use the probe-validated LLM params (the draw is
             # measured-sensitive to them; see rounds/r53).
-            draw_llm=ollama_llm(num_ctx=8192, num_predict=400),
+            draw_llm=_llm(num_ctx=8192, num_predict=400),
             giveup=giveup,
             stall=stall,
             ctx_budget=ctx,

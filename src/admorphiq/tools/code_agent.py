@@ -106,11 +106,11 @@ def run_code(
         "history": list(history),
         "valid_actions": list(valid_actions),
         "act": act,
-        # r59 kernel vocabulary (agent25 bridge). Inert unless the prompt tells
-        # the model it exists (gated by HARNESS_KERNEL_API in the prompt builder),
-        # so injecting it here leaves default behaviour byte-identical.
-        "K": _kernel_namespace(),
     }
+    # r59 kernel vocabulary (agent25 bridge), gated by HARNESS_KERNEL_API so the
+    # DEFAULT sandbox namespace is byte-identical (no `K`) until measured on GPU.
+    if _kernel_api_enabled():
+        ns["K"] = _kernel_namespace()
     code = extract_code(code_text)
     try:
         compiled = compile(code, "<code_agent>", "exec")
