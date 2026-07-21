@@ -142,6 +142,23 @@ Adapter parity held 8/8 @0.846 EXACT at every rung (v1/v2/v3 — delegation neve
 The direct-call multi-level clear proves the extracted ENGINE is complete; the residual
 work is purely the stateless-continuation semantics under the sandbox contract.
 
+## D5 PRE-REGISTRATION (frozen 2026-07-22 05:53, before any gate-v4/holdout result)
+
+- **Target**: sk48 (holdout; its adapter/card/constants/wiki/traces excluded from BOTH arms).
+- **Arm A**: simdfs card (sb26 conquest template) — FAMILY-MATCHED (sk48 is a
+  faithful-sim game; sk48's own partial adapter is sim+A*).
+- **Arm B**: toggle card (the R93-proven generic-core template) — deliberately
+  FAMILY-MISMATCHED for sk48. There is no matched generic card for the sim family;
+  this asymmetry (family-specific reusable algorithmic structure vs generic machinery)
+  IS the experiment's variable, per Codex ("sb26 contributes faithful-simulator + DFS
+  machinery that the generic tools explicitly lack").
+- Patcher: gemma4-31b-it, temp 0, num_predict 8192, one server session, identical budgets
+  both arms. Oracle routing (no automatic retrieval in this run).
+- Protocol: select-on-adaptation-replay, score once on a fresh instance; level clears
+  dominate; exploration metrics tie-break only; PATCH_INVALID reported separately.
+- Honest scope: one pair, one patcher — outcome feeds the R94 verdict as ONE experiment,
+  not a general law.
+
 ## In flight
 
 - **D3 upper-bound gate**: verbatim arrangement card driven through the run_code sandbox
