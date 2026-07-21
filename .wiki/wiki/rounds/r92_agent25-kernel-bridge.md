@@ -239,5 +239,7 @@ observed transitions in the system prompt). Booted at max-model-len 200000 with
 
 ## Related
 
+- [[r93_tool-fork-patch]] — the successor axis: the user's tool-fork-and-patch counter-design
+  (repair OUR executable code with feedback) after this round falsified from-scratch authoring
 - [[r56_generic-kernels]] (the kernel library) · [[r53_unified-harness]] (the code-agent core)
 - `docs/r56_codex_toolbase_verdict_20260715.md` (script25/agent25 dual scoreboard)
