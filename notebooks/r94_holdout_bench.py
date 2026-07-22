@@ -223,10 +223,10 @@ def main() -> None:
             rc = subprocess.call(
                 [sys.executable, "-u", probe, "--arm", arm, "--game", game,
                  "--budget", str(BUDGET), "--out", out],
-                env=env, timeout=BOOT_TIMEOUT_S)  # one stuck arm must not eat the kernel
+                env=env, timeout=3600)  # LLM ask may take up to 900s (v2); arm cap 1h
         except subprocess.TimeoutExpired:
             rc = -9
-            print(f"[case] {arm} x {game} TIMEOUT ({BOOT_TIMEOUT_S}s)", flush=True)
+            print(f"[case] {arm} x {game} TIMEOUT (3600s)", flush=True)
         print(f"[case] {arm} x {game} rc={rc}", flush=True)
         if os.path.exists(out):
             with open(out) as f:

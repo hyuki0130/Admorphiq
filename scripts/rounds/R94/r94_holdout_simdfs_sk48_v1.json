@@ -1,0 +1,26 @@
+{
+  "arm": "simdfs",
+  "game": "sk48",
+  "budget": 2000,
+  "template_baseline": {
+    "levels": 0,
+    "actions": 2000,
+    "distinct_states": 1,
+    "distinct_transitions": 1,
+    "noop_rate": 1.0
+  },
+  "adaptation": {
+    "failure_stage": "generation",
+    "adapted_code": "",
+    "llm_latency_s": 300.1
+  },
+  "adaptation_replay": null,
+  "selected": "template",
+  "fresh_score": {
+    "levels": 0,
+    "actions": 2000,
+    "distinct_states": 1,
+    "distinct_transitions": 1,
+    "noop_rate": 1.0
+  }
+}

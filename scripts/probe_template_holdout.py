@@ -272,8 +272,13 @@ def main() -> None:
     print("[live] ADAPTATION ASK: calling LLM", flush=True)
     trace_tail_text = format_core_trace(template_trace[-30:])
     baseline_summary_text = _baseline_summary_text(template_metrics, template_trans)
+    # timeout 900: the D5 v1 simdfs arm's adaptation FAILED at generation at
+    # exactly 300.1s — the client's default 300s timeout, not model inability.
+    # A 75KB family card legitimately takes longer than a 6.6KB one; the client
+    # timeout must not silently decide the family-vs-generic comparison.
     llm = openai_compat_llm(
-        num_predict=int(os.environ.get("HARNESS_PATCH_NUM_PREDICT", "8192")))
+        num_predict=int(os.environ.get("HARNESS_PATCH_NUM_PREDICT", "8192")),
+        timeout=float(os.environ.get("HARNESS_PATCH_TIMEOUT", "900")))
     t0 = time.perf_counter()
     ask = ask_adaptation(llm, a.arm, core_fn, card, trace_tail_text, baseline_summary_text)
     llm_latency_s = time.perf_counter() - t0
