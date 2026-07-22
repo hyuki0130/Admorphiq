@@ -475,9 +475,16 @@ class GroundingService:
                 continue
             rb = self._move_regions_of(before, colour)
             ra = self._move_regions_of(after, colour)
-            if not (1 <= len(rb) <= 3):
+            # A controllable actor PERSISTS across the transition: it is a compact
+            # minority colour present as 1-3 regions in BOTH frames (it moves, it does
+            # not vanish or appear). A colour whose regions vanish (e.g. a level-
+            # transition trail or a HUD flip — measured: the idx1 first probe offered a
+            # colour with 2 regions before and 0 after, which the old moved/-count
+            # heuristic mis-locked as the actor, poisoning every delta) is a transient,
+            # not an actor.
+            if not (1 <= len(rb) <= 3 and 1 <= len(ra) <= 3):
                 continue
-            if any(size > self._MOVE_MAX_ACTOR_FRACTION * area for _c, size, _b in rb):
+            if any(size > self._MOVE_MAX_ACTOR_FRACTION * area for _c, size, _b in (*rb, *ra)):
                 continue
             cb = sorted((round(c[0]), round(c[1])) for c, _s, _b in rb)
             ca = sorted((round(c[0]), round(c[1])) for c, _s, _b in ra)

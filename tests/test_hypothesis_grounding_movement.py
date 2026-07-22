@@ -42,6 +42,37 @@ def _frame(actors, walls=(), actor_colour=_ACTOR):
     return tuple(tuple(row) for row in g)
 
 
+def _frame_with_transient(actors, transient_cells, transient_colour):
+    """A movement frame plus a transient blob of ``transient_colour`` — a colour that
+    is present in one frame and gone in the next (a level-transition trail / HUD flip),
+    the kind of noise that must NOT be mistaken for a controllable actor."""
+    g = [list(row) for row in _frame(actors)]
+    for (r, c) in transient_cells:
+        for dr in range(_SCALE):
+            for dc in range(_SCALE):
+                g[r * _SCALE + dr][c * _SCALE + dc] = transient_colour
+    return tuple(tuple(row) for row in g)
+
+
+def test_actor_colour_detection_ignores_a_vanishing_transient():
+    """Purpose: actor-colour detection picks the colour that PERSISTS across the
+    transition (present + moving in both frames), never a transient whose regions
+    vanish — even when the transient is the smaller footprint the moved/-count
+    heuristic would otherwise prefer.
+
+    Expected feedback: pass proves the idx1 mis-lock is fixed — on a level-transition
+    frame where the real actors briefly show as one blob and a background-ish colour
+    shows two vanishing regions, the persistent actor colour is chosen. Fail means a
+    transient can poison the whole delta table (all edges unacquirable)."""
+    gs = GroundingService()
+    # before: two colour-9 actors (persist + move) + a single small colour-5 transient;
+    # after: the actors moved and the transient is GONE.
+    before = _frame_with_transient([(3, 2), (3, 5)], [(7, 7)], 5)
+    after = _frame([(3, 1), (3, 6)])
+    gs.feed_transition(before, 3, (0, 0), after)
+    assert gs._move_actor_colour == 9  # the persistent mover, not the vanishing colour 5
+
+
 def test_two_actors_and_per_actor_deltas_are_acquired_min_probe():
     """Purpose: from directional probes the service identifies the two controlled
     actors and acquires per-(actor, action) deltas only after >= 2 consistent
