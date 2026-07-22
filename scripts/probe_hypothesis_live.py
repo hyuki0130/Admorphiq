@@ -258,6 +258,28 @@ def run_once(game: str, run_index: int) -> dict[str, Any]:
 
     # c + d. SOLVE — step the plan; on a recoverable failure after a reveal /
     # level-up (a new board with its own cycle), re-discover + recompile and go on.
+    return execute_instance(
+        env, gs, game, instance, target_levels, level_budget, record, run_index, rediscover
+    )
+
+
+def execute_instance(
+    env: "LiveEnv",
+    gs: GroundingService,
+    game: str,
+    instance: Any,
+    target_levels: int,
+    level_budget: int,
+    record: dict[str, Any],
+    run_index: int,
+    rediscover: Callable[[], bool],
+) -> dict[str, Any]:
+    """Compile ``instance`` and live-execute it to an outcome (mutating + returning
+    ``record``). The SINGLE execution path shared by the oracle gate (run_once) and
+    the canned-instance MODEL gate (probe_hypothesis_model): the same step loop,
+    the same sc25 cast-handover scoring, the same re-discovery-on-recoverable-failure
+    recompile. ``rediscover`` (re)acquires the current board's grounding when a
+    reveal/level-up produces a new board."""
     plan = compile_hypothesis(instance, gs)
     start_levels = env.levels()
     level_actions = 0
