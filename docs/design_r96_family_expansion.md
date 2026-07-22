@@ -1,6 +1,69 @@
-# R96 design — hypothesis-DSL family expansion: the MOVEMENT family
+# R96 design — hypothesis-DSL family expansion: ControlledGridDynamics
 
-Status: DRAFT v0 (pre-Codex). Successor to R95 (`design_hypothesis_dsl_r95.md`,
+Status: v1 (Codex CONDITIONAL GO after narrowing, 2026-07-23 04:24 — log
+`codex_r96_design_review.log`. BINDING corrections below; the v0 draft is
+kept underneath for provenance).
+
+## Codex v1 corrections (binding)
+
+1. **Family/oracle mismatch was the dominant defect (65% of risk as drawn)**:
+   the v0 draft conflated the WIN-PREDICATE family (T1 reach) with a
+   TRANSITION family (single-avatar grid steps) — and neither oracle fits
+   single-avatar GridStep: m0r0 is COUPLED two-actor motion ending in an
+   actor–actor MERGE; dc22 is a click-mutated passability PRODUCT GRAPH.
+   Family renamed **ControlledGridDynamics**, v0 variant =
+   **CoupledActorMerge**. R57's "12+ T1 games" is a goal-detector count, NOT
+   GridStep expressibility — never read it as coverage.
+2. **Contract floor = m0r0 idx0+idx1 ONLY.** idx0 proves coupled motion +
+   exact merge; idx1 proves full-map grounding, intentional divergence, and
+   independent collision/desync (rejects naive greedy convergence). dc22
+   drops to v1 as a labelled near-OOD/schema-expansion control (expected
+   UNSUPPORTED/UNKNOWN pre-execution — it is a SECOND transition family:
+   mutable passability + interleaved click operators; clicks-then-walk was
+   falsified). tu93 stays the far-OOD control. Budget note: reconcile
+   "≤27 actions" — the documented dc22 plan is 20 actions vs 78 historical
+   live discovery+execution; the frozen contract must state whether
+   discovery probes count and cite the qualifying run.
+3. **Schema v1** (replaces the v0 sketch):
+   - `objective: ActorRelation { actors: [role_a, role_b], relation:
+     same_cell | adjacent | overlap }` — m0r0 oracle = same_cell (exact
+     merge, NOT adjacency).
+   - `transition_model: CoupledGridStep { actors, per_action_deltas
+     (PER-ACTOR, harness_measured — symmetric/antisymmetric), collision_policy:
+     independent_stay, occupancy: StaticOccupancy (TYPED — StaticOccupancy |
+     ObservedEdgeGraph | StateDependentOccupancy, with confidence +
+     observation context + layout epoch; a bare blocked-cell set is unsafe),
+     terminal_cells: hazard_soft_reset }`.
+   - No-displacement probes are "no observed displacement" evidence, NOT
+     automatically blocked cells (no-op attribution: wall / dropped input /
+     settle / terminal-reset / inert must stay distinct).
+   - `EmpiricalMoveMatrix` is VERIFY-ONLY: it may check transitions but
+     compiles to UNSUPPORTED (a fixed matrix cannot represent
+     collision-dependent desync; never silently BFS).
+4. **Frozen m0r0 mutant set (6)**, each with an expected-verdict entry
+   (honest UNKNOWN where traces lack discriminating evidence): adjacent-not-
+   same_cell · static-goal/partner-initial-cell-not-relation · single-actor ·
+   same-delta-both-actors · all-or-nothing-blocking · hazard-as-wall.
+5. **Per-actor prose evidence** (R95 lesson applied to relational motion):
+   e.g. "On three settled action-1 probes, actor A moved one cell left twice
+   while actor B moved one cell right twice; on the third probe A stayed and
+   B moved."
+6. **Risk register additions** (10 items — multi-actor identity through
+   crossing/merge, probe destructiveness incl. hazard resets, map
+   completeness vs online learning (m0r0 was solved by FULL frame parsing
+   after reactive passability failed), context-dependent passability, no-op
+   attribution, terminal-evidence thinness (merge-vs-adjacent needs
+   near-terminal negatives), verifier/compiler mismatch, split budget caps,
+   stale T1 coverage accounting). **Residual risk after narrowing: ~55%
+   grounding/state reconstruction** (full occupancy parsing + stable
+   two-actor tracking through blocking/crossing/adjacency/merge), 20%
+   verifier discriminability, 15% model selection, 10% compiler/live loop.
+7. Inexpressible-in-v0 bank (recorded, no scope creep): m0r0 L3
+   selection-mode arrows, L5 momentary pressure gates, L6 joint
+   (actor0, actor1, block) planning; dc22 L1 sprite collision + walk-on
+   triggers + click-opened barriers.
+
+## v0 draft (superseded by v1 above — kept for provenance) Successor to R95 (`design_hypothesis_dsl_r95.md`,
 round CLOSED with the contract complete on the cell-state family). R96 applies
 the PROVEN R95 pipeline — family schema → grounding service → verifier →
 compiler → live oracle gate → model substages — to the SECOND family, chosen
