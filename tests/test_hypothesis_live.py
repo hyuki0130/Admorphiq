@@ -31,6 +31,7 @@ joint_reset_hazards = _MOD.joint_reset_hazards
 walls_to_unlearn = _MOD.walls_to_unlearn
 block_learn_decision = _MOD.block_learn_decision
 blocked_now_update = _MOD.blocked_now_update
+flip_flop_cells = _MOD.flip_flop_cells
 
 
 def _lattice(overrides=None):
@@ -299,6 +300,25 @@ def test_blocked_now_update_adds_blocks_and_clears_on_occupancy():
     # observation trumps inference: an actor now standing ON (3,9) clears it (passable)
     bn = blocked_now_update(bn, ((5, 9), (5, 5)), [(3, 9), (5, 5)])
     assert (3, 9) not in bn
+
+
+def test_flip_flop_cells_detects_a_recently_cleared_bounce_only():
+    """Purpose: flip_flop_cells flags a just-blocked cell ONLY when it was CLEARED from the
+    route-around set within the last `window` recompiles (a periodic-obstacle bounce), and
+    ignores a first-time block or a stale clear.
+
+    Expected feedback: pass proves the commit-and-wait trigger fires on a genuine
+    chase (the (6,9)/(6,10) bounce) but not on ordinary blocks — so a static wall is still
+    routed around and only a periodic obstacle is waited on. Fail means either the chase is
+    missed (endless flip-flop) or every block is mistaken for a chase (never routes around)."""
+    # (6,9) was cleared at recompile 10; a fresh block of it at recompile 11 is a bounce
+    assert flip_flop_cells({(6, 9)}, {(6, 9): 10}, 11) == {(6, 9)}
+    # a first-time block (never cleared) is NOT a flip-flop
+    assert flip_flop_cells({(6, 9)}, {}, 11) == set()
+    # a STALE clear (outside the window) is NOT a flip-flop
+    assert flip_flop_cells({(6, 9)}, {(6, 9): 3}, 11) == set()
+    # only the bounced cell of a mixed block set is flagged
+    assert flip_flop_cells({(6, 9), (2, 2)}, {(6, 9): 10}, 11) == {(6, 9)}
 
 
 def test_block_learn_decision_retries_once_before_learning_a_wall():

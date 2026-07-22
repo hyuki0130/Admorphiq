@@ -216,6 +216,20 @@ def blocked_now_update(
     return (blocked_now | blocked) - occupied
 
 
+def flip_flop_cells(
+    blocked: set[tuple[int, int]],
+    cleared_at: dict[tuple[int, int], int],
+    recompiles: int,
+    window: int = 2,
+) -> set[tuple[int, int]]:
+    """Just-blocked cells that were CLEARED from the route-around set within the last
+    ``window`` recompiles — a bounce indicating a PERIODIC obstacle being CHASED (the
+    patroller oscillates between a cell pair; greedy branch-switching follows it forever).
+    Committing to WAIT on these (re-attempt in place, sampling a later phase) beats
+    endlessly flipping the map between the bounce pair."""
+    return {c for c in blocked if 0 <= recompiles - cleared_at.get(c, -1 - window) <= window}
+
+
 def _move_observed(gs: GroundingService) -> Optional[list[tuple[int, int]]]:
     """The current observed actor cells (sorted), or None — the confirmation view the
     step-level instrumentation logs against the plan's predicted successor."""
@@ -737,6 +751,7 @@ def run_movement_level(env: "LiveEnv", record: dict[str, Any], run_index: int) -
     churn_cells: set[tuple[int, int]] = set()  # toggled cells (learned-then-invalidated) — NEVER learn
     wait_count: dict[tuple[int, int], int] = {}  # per-cell consecutive waits on a transient obstacle
     blocked_now: set[tuple[int, int]] = set()  # cells currently blocking (route around; cleared when passable)
+    cleared_at: dict[tuple[int, int], int] = {}  # recompile index a cell last cleared (flip-flop detection)
     prev_obs = _move_observed(gs)
     for _ in range(_M0R0_LEVEL_BUDGET + 10):
         frame = env.frame()
@@ -789,10 +804,26 @@ def run_movement_level(env: "LiveEnv", record: dict[str, Any], run_index: int) -
                 # BLOCKED-NOW is the primary transient sensor: a cell an actor was just blocked
                 # from is routed around THIS recompile (temporary, never permanent); it clears
                 # the moment an actor is observed ON it / passes it (observation trumps inference).
+                blocked = (set(predicted) - occupied) if predicted else set()
+                for cell in blocked_now & occupied:
+                    cleared_at[cell] = recompiles  # record the clear (flip-flop history)
                 blocked_now = blocked_now_update(blocked_now, predicted, obs_now)
+                chasing = {
+                    c for c in flip_flop_cells(blocked, cleared_at, recompiles) if wait_count.get(c, 0) < _WAIT_K
+                }
+                waived: set[tuple[int, int]] = set()
                 if settle_allowance > 0 and obs_now is not None and obs_now == prev_obs:
                     settle_allowance -= 1
                     cause = f"settle from {obs_now}"
+                elif chasing and recompiles < max_recompiles:
+                    # FLIP-FLOP: a periodic obstacle bounces across a cell pair; committing to WAIT
+                    # on the chased cells (re-attempt in place, sampling a later phase) beats
+                    # endlessly flipping the map between the bounce pair.
+                    for c in chasing:
+                        wait_count[c] = wait_count.get(c, 0) + 1
+                    waived = chasing
+                    k = max(wait_count[c] for c in chasing)
+                    cause = f"wait (flip-flop at {sorted(chasing)}) {k}/{_WAIT_K}"
                 elif recompiles < max_recompiles:
                     hazards = joint_reset_hazards(predicted, prev_obs, obs_now) - learned_hazards
                     if hazards and len(learned_hazards) + len(hazards) <= max_learned:
@@ -826,7 +857,9 @@ def run_movement_level(env: "LiveEnv", record: dict[str, Any], run_index: int) -
                     cause = f"invalidate-only walls={sorted(freed)} unwalled={sorted(new_unwalled)}"
                 if cause is not None and recompiles < max_recompiles:
                     recompiles += 1
-                    walls = learned_walls | blocked_now | snapshot
+                    # `waived` cells (a flip-flop bounce being waited on) are NOT walled — the
+                    # plan re-attempts them in place rather than routing around.
+                    walls = learned_walls | (blocked_now - waived) | snapshot
                     plan = compile_movement_hypothesis(
                         instance, gs, extra_walls=walls, extra_hazards=learned_hazards, unwalled=unwalled,
                     )
