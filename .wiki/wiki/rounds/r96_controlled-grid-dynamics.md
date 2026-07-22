@@ -43,10 +43,22 @@ model selection 15% / compiler-live 10%.
   hazard_soft_reset), verify-only EmpiricalMoveMatrix; m0r0 oracle instance
   carries the decoded mirror-delta scheme; 6 frozen mutants with an honest
   4-CONTRADICTED / 2-UNKNOWN expected-verdict table.
-- (iii) two-actor grounding: in build (tracking through crossing/adjacency/
-  MERGE as an event, per-actor delta acquisition with collision isolation,
-  full-frame static occupancy parse, 4-way no-op attribution, hazard
-  soft-reset evidence). (iv)–(viii) mirror R95.
+- **(iii) two-actor grounding BUILT — the 55%-risk gate PASSES GREEN**
+  (9e54634): on the real m0r0 trace the service finds both actors, acquires
+  all 8 per-actor delta edges reproducing the decoded mirror structure
+  (one symmetric-row pair + one antisymmetric-column pair), detects the
+  MERGE as a named event, attributes no-ops 4 ways
+  {collision_stay:30, blocked:24, settle:24}, parses 89 static walls at high
+  confidence, and reports hazard cells honestly as 0 (gold enters none).
+  Two hardening findings: action-number↔axis mapping is HASH-VARIABLE
+  (structure invariant → verifier judges structure, per the
+  api_hash_rotation doctrine), and replayed gold traces are per-transition
+  DISCONTINUOUS (epoch churn) → actor identification made frame-based,
+  robust to both replay and continuous live play. Process note: a
+  delegation race created a transient duplicate implementation, caught and
+  reconciled to a single clean one before commit.
+- (iv) movement verifier: in build (structure-based delta judgement; the
+  frozen 6-mutant matrix is the acceptance gate). (v)–(viii) mirror R95.
 
 ## Related
 
