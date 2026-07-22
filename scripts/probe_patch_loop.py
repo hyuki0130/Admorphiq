@@ -195,9 +195,13 @@ def _card_prelude(tool_name: str, core_fn: str) -> str:
     consts = "\n".join(
         f"{name} = {getattr(sc, name)!r}" for name in sc._CARD_CONSTS[tool_name]
     )
+    # _CARD_FNS entries may be raw source STRINGS (the simdfs registry uses
+    # them) — a string can't be the core fn; include it verbatim. The D5 v2
+    # simdfs arm crashed on `fn.__name__` here (AttributeError on str).
     helpers = "\n\n".join(
-        inspect.getsource(fn) for fn in sc._CARD_FNS[tool_name]
-        if fn.__name__ != core_fn
+        item if isinstance(item, str) else inspect.getsource(item)
+        for item in sc._CARD_FNS[tool_name]
+        if isinstance(item, str) or item.__name__ != core_fn
     )
     return consts + "\n\n" + helpers
 

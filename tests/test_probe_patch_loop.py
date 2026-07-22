@@ -366,3 +366,23 @@ def test_full_card_patch_with_own_future_import_executes(bridge_on):
                                prelude=ppl._card_prelude("toggle", "toggle_core"))
     assert res.error == ""
     assert res.actions == [("ACTION6", (5, 5))]
+
+
+def test_card_prelude_tolerates_string_registry_entries():
+    """Purpose: pin the D5 v2 simdfs-arm crash — _CARD_FNS registries may hold
+    raw source STRINGS alongside callables; _card_prelude must include them
+    verbatim instead of calling __name__ on them (AttributeError on str).
+
+    Expected feedback: pass ⇒ every registered card's prelude assembles and
+    parses; fail ⇒ any string-bearing registry (simdfs) crashes the patch path
+    again at adaptation time."""
+    import ast
+
+    from admorphiq.tools import solver_core as sc
+
+    for tool in sc._CARD_FNS:
+        core_fn = {"toggle": "toggle_core", "paint": "paint_core",
+                   "arrangement": "arrangement_core", "simdfs": "simdfs_core"}[tool]
+        prelude = ppl._card_prelude(tool, core_fn)
+        ast.parse(prelude)
+        assert f"def {core_fn}(" not in prelude
