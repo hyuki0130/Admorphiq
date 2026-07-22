@@ -1,0 +1,192 @@
+{
+  "model": "gemma4",
+  "runs": 3,
+  "mode": "fill",
+  "model_verdict": {
+    "ft09": "ERROR",
+    "sc25": "PASS"
+  },
+  "per_run": {
+    "ft09": [],
+    "sc25": [
+      {
+        "choice": null,
+        "mapped_instance": null,
+        "is_oracle": null,
+        "variant_choice": {
+          "objective_kind": "pattern_reference",
+          "transition_kind": "binary_flip"
+        },
+        "slot_values": {
+          "preview_interpretation": "absolute_exact",
+          "phase_guards": [
+            [],
+            [
+              "stable_for_reads"
+            ]
+          ]
+        },
+        "assembly_valid": true,
+        "retries": 0,
+        "verifier_verdict": "PASS",
+        "executed": true,
+        "plan_outcome": "CAST_HANDOVER",
+        "levels_cleared": 0,
+        "cast_and_handover": true,
+        "outcome": "PASS"
+      },
+      {
+        "choice": null,
+        "mapped_instance": null,
+        "is_oracle": null,
+        "variant_choice": {
+          "objective_kind": "pattern_reference",
+          "transition_kind": "binary_flip"
+        },
+        "slot_values": {
+          "preview_interpretation": "absolute_exact",
+          "phase_guards": [
+            [],
+            [
+              "stable_for_reads"
+            ]
+          ]
+        },
+        "assembly_valid": true,
+        "retries": 0,
+        "verifier_verdict": "PASS",
+        "executed": true,
+        "plan_outcome": "CAST_HANDOVER",
+        "levels_cleared": 0,
+        "cast_and_handover": true,
+        "outcome": "PASS"
+      },
+      {
+        "choice": null,
+        "mapped_instance": null,
+        "is_oracle": null,
+        "variant_choice": {
+          "objective_kind": "pattern_reference",
+          "transition_kind": "binary_flip"
+        },
+        "slot_values": {
+          "preview_interpretation": "absolute_exact",
+          "phase_guards": [
+            [],
+            [
+              "stable_for_reads"
+            ]
+          ]
+        },
+        "assembly_valid": true,
+        "retries": 0,
+        "verifier_verdict": "PASS",
+        "executed": true,
+        "plan_outcome": "CAST_HANDOVER",
+        "levels_cleared": 0,
+        "cast_and_handover": true,
+        "outcome": "PASS"
+      }
+    ]
+  },
+  "results": [
+    {
+      "game": "ft09",
+      "error": "probe rc=1, no output"
+    },
+    {
+      "game": "sc25",
+      "mode": "fill",
+      "runs": [
+        {
+          "run": 0,
+          "mode": "fill",
+          "variant_choice": {
+            "objective_kind": "pattern_reference",
+            "transition_kind": "binary_flip"
+          },
+          "slot_values": {
+            "preview_interpretation": "absolute_exact",
+            "phase_guards": [
+              [],
+              [
+                "stable_for_reads"
+              ]
+            ]
+          },
+          "assembly_valid": true,
+          "retries": 0,
+          "verifier_verdict": "PASS",
+          "executed": true,
+          "levels_cleared": 0,
+          "cast_and_handover": true,
+          "actions_per_level": [],
+          "discovery_actions": 4,
+          "cycle_acquired": false,
+          "plan_outcome": "CAST_HANDOVER",
+          "rebind_events": 0,
+          "outcome": "PASS"
+        },
+        {
+          "run": 1,
+          "mode": "fill",
+          "variant_choice": {
+            "objective_kind": "pattern_reference",
+            "transition_kind": "binary_flip"
+          },
+          "slot_values": {
+            "preview_interpretation": "absolute_exact",
+            "phase_guards": [
+              [],
+              [
+                "stable_for_reads"
+              ]
+            ]
+          },
+          "assembly_valid": true,
+          "retries": 0,
+          "verifier_verdict": "PASS",
+          "executed": true,
+          "levels_cleared": 0,
+          "cast_and_handover": true,
+          "actions_per_level": [],
+          "discovery_actions": 4,
+          "cycle_acquired": false,
+          "plan_outcome": "CAST_HANDOVER",
+          "rebind_events": 0,
+          "outcome": "PASS"
+        },
+        {
+          "run": 2,
+          "mode": "fill",
+          "variant_choice": {
+            "objective_kind": "pattern_reference",
+            "transition_kind": "binary_flip"
+          },
+          "slot_values": {
+            "preview_interpretation": "absolute_exact",
+            "phase_guards": [
+              [],
+              [
+                "stable_for_reads"
+              ]
+            ]
+          },
+          "assembly_valid": true,
+          "retries": 0,
+          "verifier_verdict": "PASS",
+          "executed": true,
+          "levels_cleared": 0,
+          "cast_and_handover": true,
+          "actions_per_level": [],
+          "discovery_actions": 4,
+          "cycle_acquired": false,
+          "plan_outcome": "CAST_HANDOVER",
+          "rebind_events": 0,
+          "outcome": "PASS"
+        }
+      ],
+      "model_verdict": "PASS"
+    }
+  ]
+}
