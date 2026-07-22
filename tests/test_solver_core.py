@@ -21,6 +21,7 @@ from admorphiq.tools.solver_core import (
     arrangement_core,
     format_core_trace,
     paint_core,
+    simdfs_skel_core,
     source_card,
     toggle_core,
 )
@@ -399,6 +400,69 @@ def test_arrangement_core_presses_the_same_button_until_certified_then_plans():
     assert any("certified 1/1" in line for line in trace), trace
     assert any(line.startswith("plan=") for line in trace), trace
     assert len(plan) > 1 and all(a == 6 for a, _ in plan), plan
+
+
+def test_simdfs_skel_card_size_is_compact():
+    """Purpose: the D5-SKEL prereg's HARD CONSTRAINT — the assembled
+    ``source_card('simdfs_skel')`` is a COMPACT family template (5000-10500 chars),
+    size-comparable to the toggle control, so the D5-SKEL arm de-confounds template
+    SIZE from FAMILY knowledge. Also asserts the card ast-parses.
+
+    Expected feedback: pass ⇒ the skeleton stays a compact card the size experiment
+    needs; fail ⇒ it drifted toward the 75KB engine (or shrank below the family-idea
+    floor), re-confounding size with family and invalidating the D5-SKEL comparison."""
+    import ast
+
+    card = source_card("simdfs_skel")
+    assert 5000 <= len(card) <= 10500, len(card)
+    ast.parse(card)  # must be valid, sandbox-runnable source
+
+
+def _skel_smoke_board():
+    """A synthetic mini board: two small movable pieces (colours 2 and 3) and one
+    larger fixed structure (a 3x3 colour-5 block = the target). Returns the board
+    plus a single ``to_location`` click-move transition (a colour-2 piece moves
+    toward the click at (2,2), foreground count preserved) as dict/tuple forms."""
+    board = np.zeros((8, 8), dtype=np.int64)
+    board[1, 1] = 2  # movable piece A (size 1)
+    board[1, 3] = 3  # movable piece B (size 1)
+    board[5:8, 5:8] = 5  # fixed structure / target (size 9 -> centroid (6, 6))
+
+    before = np.zeros((8, 8), dtype=np.int64)
+    before[1, 1] = 2
+    after = np.zeros((8, 8), dtype=np.int64)
+    after[2, 2] = 2  # the piece moved toward the click at (x=2, y=2)
+    dict_trans = [{"action": "CLICK", "xy": [2, 2], "before": before, "after": after}]
+    tuple_trans = [("CLICK", [2, 2], before, after)]
+    return board, dict_trans, tuple_trans
+
+
+def test_simdfs_skel_card_smoke_runs_in_sandbox(bridge_on):
+    """Purpose: the D5-SKEL SMOKE GATE (prereg — replaces conquest-parity for the
+    skeleton). The assembled ``source_card('simdfs_skel')`` runs inside ``run_code``
+    on a synthetic 2-piece board whose one transition shows a click-move, and queues
+    at least one non-(0,0) CLICK — proving the compact family card is real,
+    self-contained, sandbox-executable source that learns and acts.
+
+    Expected feedback: pass ⇒ the skeleton is a valid, runnable family arm for the
+    holdout bench; fail ⇒ it is un-runnable (import/NameError) or learned nothing and
+    emitted no action, so the arm cannot be measured."""
+    board, dict_trans, tuple_trans = _skel_smoke_board()
+
+    # direct path: the core learns 'to_location' and plans a click at the target.
+    direct_plan, act = _collect_act()
+    trace: list[str] = []
+    simdfs_skel_core(board, dict_trans, act, trace)
+    assert any("to_location" in line for line in trace), trace
+    assert any(xy != (0, 0) for _c, xy in direct_plan), direct_plan
+
+    # card-through-sandbox path: same, self-contained, offline.
+    card = source_card("simdfs_skel")
+    driver = card + "\n\nsimdfs_skel_core(current_frame, transitions, act)\n"
+    res = run_code(driver, board, [], ["MOUSE"], transitions=tuple_trans)
+    assert res.error == "", res.error
+    assert res.actions, "the skeleton card must queue at least one action"
+    assert any(xy != (0, 0) for _name, xy in res.actions), res.actions
 
 
 def test_format_core_trace_reports_decisions():

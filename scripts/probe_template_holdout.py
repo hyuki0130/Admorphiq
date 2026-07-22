@@ -50,10 +50,14 @@ sys.path.insert(0, str(REPO / "scripts"))
 import numpy as np  # noqa: E402
 import probe_patch_loop as ppl  # noqa: E402  shared driver + serialization + verdict
 
-# Arm -> the core function name inside its card. simdfs/toggle both have an
+# Arm -> the core function name inside its card. simdfs/simdfs_skel/toggle each have an
 # executable, sandbox-runnable solver core (source_card). Kept local (not added
 # to ppl._CORE_FN) so probe_patch_loop's own --tool choices stay tool-backed.
-_ARM_CORE_FN = {"simdfs": "simdfs_core", "toggle": "toggle_core"}
+_ARM_CORE_FN = {
+    "simdfs": "simdfs_core",
+    "simdfs_skel": "simdfs_skel_core",
+    "toggle": "toggle_core",
+}
 
 __all__ = [
     "template_driver",

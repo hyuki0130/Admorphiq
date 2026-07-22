@@ -382,7 +382,8 @@ def test_card_prelude_tolerates_string_registry_entries():
 
     for tool in sc._CARD_FNS:
         core_fn = {"toggle": "toggle_core", "paint": "paint_core",
-                   "arrangement": "arrangement_core", "simdfs": "simdfs_core"}[tool]
+                   "arrangement": "arrangement_core", "simdfs": "simdfs_core",
+                   "simdfs_skel": "simdfs_skel_core"}[tool]
         prelude = ppl._card_prelude(tool, core_fn)
         ast.parse(prelude)
         assert f"def {core_fn}(" not in prelude

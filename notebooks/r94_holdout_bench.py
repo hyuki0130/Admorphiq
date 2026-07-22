@@ -5,9 +5,10 @@
 # editable TEMPLATE and, on a HELD-OUT game, measure whether the model can ADAPT
 # it. Two pre-registered arms (frozen in .wiki/wiki/rounds/r94_adapter-template.md,
 # "D5 PRE-REGISTRATION"), both on sk48:
-#   simdfs x sk48  (FAMILY-MATCHED — sb26 conquest template, faithful-sim + DFS)
-#   toggle x sk48  (FAMILY-MISMATCHED — the R93-proven generic-core template)
-# The family-specific-vs-generic asymmetry IS the experiment's variable.
+#   simdfs_skel x sk48  (FAMILY-MATCHED — COMPACT faithful-sim skeleton, D5-SKEL)
+#   toggle x sk48       (FAMILY-MISMATCHED — the R93-proven generic-core template)
+# At COMPARABLE template size (both ~6-8KB), the family-mechanics-vs-generic
+# asymmetry IS the experiment's variable (D5-SKEL de-confounds size from family).
 #
 # Flow per arm (scripts/probe_template_holdout.py): template baseline (verbatim
 # card through the sandbox) -> ONE adaptation ask (card + core trace + baseline
@@ -37,7 +38,7 @@ MAX_MODEL_LEN = 131072
 _MAX_MODEL_LEN_CEIL = 200000
 BUDGET = int(os.environ.get("R94_BUDGET", "2000"))
 # The two pre-registered arms, both on the sk48 holdout (frozen D5 protocol).
-CASES = [("simdfs", "sk48"), ("toggle", "sk48")]
+CASES = [("simdfs_skel", "sk48"), ("toggle", "sk48")]
 
 
 # %%

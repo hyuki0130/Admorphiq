@@ -152,6 +152,22 @@ from admorphiq.kernels.simdfs import (
     _dist2 as _simdfs_dist2,  # noqa: F401
 )
 
+# R94 D5-SKEL: the COMPACT simdfs FAMILY SKELETON (fresh + minimal — the mechanics
+# IDEA only, NOT the 75KB engine). source_card bundles its self-contained helpers so
+# the "simdfs_skel" card is the size-controlled family arm (target 5-10KB).
+from admorphiq.kernels.simdfs_skel import (  # noqa: F401
+    _SKEL_BRANCH,
+    _SKEL_MOVABLE_MAX_SIZE,
+    _SKEL_NEAR,
+    _SKEL_SEARCH_DEPTH,
+    _skel_background,
+    _skel_classify,
+    _skel_flood_regions,
+    _skel_learn_move,
+    _skel_plan_to_location,
+    simdfs_skel_core,
+)
+
 # Reused verbatim from toggle.py so there is ONE implementation; source_card
 # bundles their text (via inspect) so the sandbox block is self-contained.
 from admorphiq.tools.base import color_histogram
@@ -163,6 +179,7 @@ __all__ = [
     "paint_plan",
     "arrangement_core",
     "simdfs_core",
+    "simdfs_skel_core",
     "source_card",
     "format_core_trace",
 ]
@@ -502,6 +519,11 @@ _CARD_FNS: dict[str, list[Callable[..., Any] | str]] = {
         _plan_step_key, _plan_progress, _first_real_click_index, _emit_plan,
         _transitions_match_plan, simdfs_core,
     ],
+    "simdfs_skel": [
+        # fresh, minimal, self-contained (np + builtins only), dependency order
+        _skel_background, _skel_flood_regions, _skel_classify, _skel_learn_move,
+        _skel_plan_to_location, simdfs_skel_core,
+    ],
 }
 
 # Extra import lines a card needs at runtime (whitelisted stdlib only). inspect
@@ -534,6 +556,9 @@ _CARD_CONSTS: dict[str, tuple[str, ...]] = {
         "_HUD_THICKNESS_FRACTION", "_BAND_TOLERANCE", "_TARGET_ROW_GAP",
         "_MAX_POOL_PORTALS", "_SIMPLE_ACTION_NAMES",
     ),
+    "simdfs_skel": (
+        "_SKEL_MOVABLE_MAX_SIZE", "_SKEL_SEARCH_DEPTH", "_SKEL_BRANCH", "_SKEL_NEAR",
+    ),
 }
 
 # Comment block emitted ABOVE a card's constants (name=value emission drops the
@@ -556,6 +581,13 @@ _CARD_CONST_HEADERS: dict[str, str] = {
         "# action confirms a placement, the chrome/HUD band fractions, the display-row\n"
         "# gap, the pool-portal enumeration cap). On a DIFFERENT portal/assignment\n"
         "# game, derive each from YOUR observed board before trusting any plan."
+    ),
+    "simdfs_skel": (
+        "# ── GAME-SPECIFIC PRIORS — RE-DERIVE from your observations ──────────\n"
+        "# _SKEL_MOVABLE_MAX_SIZE splits movable pieces from fixed structure; the\n"
+        "# search depth/branch/near thresholds encode the SOURCE game's scale. On a\n"
+        "# DIFFERENT board of this family, derive the movable-vs-fixed size split and\n"
+        "# the move-model thresholds from YOUR observed regions before planning."
     ),
 }
 

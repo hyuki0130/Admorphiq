@@ -204,4 +204,4 @@ def test_module_is_importable_without_a_live_arcade_env():
     assert callable(reloaded.template_driver)
     assert callable(reloaded.ask_adaptation)
     assert callable(reloaded.decide_selection)
-    assert set(reloaded._ARM_CORE_FN) == {"simdfs", "toggle"}
+    assert set(reloaded._ARM_CORE_FN) == {"simdfs", "simdfs_skel", "toggle"}
