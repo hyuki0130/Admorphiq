@@ -247,6 +247,42 @@ def flip_flop_cells(
     return {c for c in blocked if 0 <= recompiles - cleared_at.get(c, -1 - window) <= window}
 
 
+def background_colour(frame: Any) -> int:
+    """The floor colour of a frame — the modal pixel value (majority = background).
+    Frame-diff cells whose CURRENT colour equals this are a just-VACATED footprint;
+    a non-background changed cell is a mover's CURRENT footprint."""
+    arr = np.asarray(frame)
+    return int(np.bincount(arr.ravel()).argmax())
+
+
+def frame_diff_cells(
+    prev_frame: Any,
+    cur_frame: Any,
+    scale: int,
+    exclude: set[tuple[int, int]],
+) -> dict[tuple[int, int], int]:
+    """MODEL-FREE per-cell frame diff: every ``scale``x``scale`` grid cell whose pixel
+    content changed between the two frames and is NOT in ``exclude`` (the actor
+    footprints across the transition), mapped to its CURRENT-frame centre colour. A
+    moving obstacle appears here as its (entered plus vacated) footprint each step —
+    colour-independent, so it sees a patroller the compact-mobile-colour heuristic
+    misses. Empty when only the actors moved."""
+    prev = np.asarray(prev_frame)
+    cur = np.asarray(cur_frame)
+    h, w = cur.shape
+    changed = prev != cur
+    out: dict[tuple[int, int], int] = {}
+    for r in range(h // scale):
+        for c in range(w // scale):
+            if (r, c) in exclude:
+                continue
+            if changed[r * scale:(r + 1) * scale, c * scale:(c + 1) * scale].any():
+                cr = min(h - 1, r * scale + scale // 2)
+                cc = min(w - 1, c * scale + scale // 2)
+                out[(r, c)] = int(cur[cr, cc])
+    return out
+
+
 def _move_observed(gs: GroundingService) -> Optional[list[tuple[int, int]]]:
     """The current observed actor cells (sorted), or None — the confirmation view the
     step-level instrumentation logs against the plan's predicted successor."""
@@ -770,6 +806,7 @@ def run_movement_level(env: "LiveEnv", record: dict[str, Any], run_index: int) -
     blocked_at: dict[tuple[int, int], int] = {}  # cell -> recompile it last blocked (route around; TTL-decayed)
     cleared_at: dict[tuple[int, int], int] = {}  # recompile index a cell last cleared (flip-flop detection)
     prev_obs = _move_observed(gs)
+    prev_frame_grid: Optional[Any] = None  # the frame before the last engine step (frame-diff sensor)
     for _ in range(_M0R0_LEVEL_BUDGET + 10):
         frame = env.frame()
         if frame is None:
@@ -783,6 +820,36 @@ def run_movement_level(env: "LiveEnv", record: dict[str, Any], run_index: int) -
         record["states_searched"] = max(record["states_searched"], sol.states_searched)
         cursor = plan._cursor
         predicted = plan._traj[cursor] if 0 <= cursor < len(plan._traj) else None
+        # FRAME-DIFF TRANSIENT PERCEPTION (colour-independent, replaces the compact-
+        # mobile-colour heuristic): the cells that changed since the last engine step,
+        # minus BOTH actor footprints, are the mover's (entered + vacated) trail; the
+        # non-background ones are its CURRENT position. Empty on a no-engine-step
+        # recompile (the frame is unchanged), so `frame_transient` carries the freshest
+        # engine step's evidence into the divergence handling below.
+        scale = gs._move_scale or 1
+        actor_colour = gs._move_actor_colour
+        frame_transient: set[tuple[int, int]] = set()
+        if prev_frame_grid is not None:
+            cur_actors = set(_move_observed(gs) or [])
+            diff = frame_diff_cells(
+                prev_frame_grid, frame, scale, exclude=cur_actors | set(prev_obs or [])
+            )
+            if diff:
+                bg = background_colour(frame)
+                # A mover's CURRENT footprint is a changed cell whose colour is neither the
+                # floor (a just-vacated trail) NOR the actor's own colour (an actor block
+                # straddling a cell boundary leaks its colour into the neighbour cell — a
+                # false mover the centroid-cell exclusion alone misses).
+                frame_transient = {
+                    cell for cell, col in diff.items() if col != bg and col != actor_colour
+                }
+                print(
+                    f"[live] run{run_index} m0r0 framediff step {level_actions}: "
+                    f"changed-nonactor {sorted(diff.items())}, "
+                    f"transient(mover) {sorted(frame_transient)}",
+                    flush=True,
+                )
+        prev_frame_grid = frame
         if isinstance(result, Terminal):
             if result.status is PlanStatus.DONE:
                 if env.levels() > start_levels or env.state() == "WIN":
@@ -793,17 +860,19 @@ def run_movement_level(env: "LiveEnv", record: dict[str, Any], run_index: int) -
                 obs_now = _move_observed(gs)
                 occupied = set(obs_now or [])
                 cause: Optional[str] = None
-                snapshot = transient_snapshot(gs)  # current patroller cells (never learned)
-                # OBSERVATION TRUMPS INFERENCE (learned + grounded walls). An invalidated
-                # cell TOGGLED, so it joins the NEVER-LEARN churn set (a patroller sat there).
-                freed = walls_to_unlearn(learned_walls, obs_now)
+                snapshot = frame_transient  # current mover cells from the frame diff (never learned)
+                # OBSERVATION TRUMPS INFERENCE (learned + grounded walls). A learned wall an
+                # actor now stands on, OR one the frame diff shows MOVING (a patroller the
+                # static learner mis-learned), cannot be a static wall — it is invalidated and
+                # joins the NEVER-LEARN churn set. This continuously un-poisons learned_walls.
+                freed = walls_to_unlearn(learned_walls, obs_now) | (learned_walls & frame_transient)
                 if freed:
                     learned_walls -= freed
                     churn_cells |= freed
                     for cell in freed:
                         block_count.pop(cell, None)
                     print(
-                        f"[live] run{run_index} m0r0 unlearned wall(s) {sorted(freed)} (occupied) "
+                        f"[live] run{run_index} m0r0 unlearned wall(s) {sorted(freed)} (occupied/moving) "
                         f"at step {level_actions}",
                         flush=True,
                     )

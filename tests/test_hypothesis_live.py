@@ -33,6 +33,8 @@ block_learn_decision = _MOD.block_learn_decision
 refresh_blocks = _MOD.refresh_blocks
 decay_blocks = _MOD.decay_blocks
 flip_flop_cells = _MOD.flip_flop_cells
+frame_diff_cells = _MOD.frame_diff_cells
+background_colour = _MOD.background_colour
 
 
 def _lattice(overrides=None):
@@ -390,3 +392,46 @@ def test_unconfirmed_directions_lists_the_missing_actor_edges():
     discover_deltas(gs, sim.frame(), sim.probe, budget=30, directions=(2, 3, 4))
     missing = unconfirmed_directions(gs)
     assert missing == {("actor_a", 1), ("actor_b", 1)}  # only the un-swept direction remains
+
+
+def _block_grid(size, scale, blocks):
+    """A ``size``x``size`` (cells) frame of ``scale``x``scale`` pixel blocks, background
+    0, with ``blocks`` = {(cell_r, cell_c): colour} painted onto their pixel footprints."""
+    g = [[0] * (size * scale) for _ in range(size * scale)]
+    for (cr, cc), colour in blocks.items():
+        for r in range(cr * scale, cr * scale + scale):
+            for c in range(cc * scale, cc * scale + scale):
+                g[r][c] = colour
+    return g
+
+
+def test_frame_diff_cells_sees_a_mover_the_colour_heuristic_misses():
+    """Purpose: frame_diff_cells reports every non-actor cell whose pixels changed between
+    two frames (mapped to its current-frame colour), excluding the actor footprints —
+    the model-free transient sensor. A patroller that moved appears as its vacated
+    (now-background) and entered (its colour) cells, independent of any colour heuristic.
+
+    Expected feedback: pass proves the driver can perceive a mover directly from the
+    pixel diff (the escalation from the compact-mobile-colour miss). Fail means the diff
+    either leaks the actor's own move or drops the patroller's trail."""
+    prev = _block_grid(3, 2, {(0, 0): 5, (2, 2): 7})  # actor@(0,0), patroller@(2,2)
+    cur = _block_grid(3, 2, {(0, 1): 5, (2, 1): 7})   # actor->(0,1), patroller->(2,1)
+    diff = frame_diff_cells(prev, cur, scale=2, exclude={(0, 0), (0, 1)})
+    # the actor's vacated/entered cells are excluded; only the patroller's trail remains
+    assert diff == {(2, 2): 0, (2, 1): 7}
+    # the non-background entry is the patroller's CURRENT footprint
+    bg = background_colour(cur)
+    assert {cell for cell, col in diff.items() if col != bg} == {(2, 1)}
+    # a frame where ONLY the actor moved yields no non-actor change
+    assert frame_diff_cells(prev, _block_grid(3, 2, {(0, 1): 5, (2, 2): 7}), 2, {(0, 0), (0, 1)}) == {}
+
+
+def test_background_colour_is_the_modal_pixel():
+    """Purpose: background_colour returns the majority pixel value (the floor), so the
+    driver can split a frame-diff cell into a just-vacated footprint (== background) vs a
+    mover's current footprint (!= background).
+
+    Expected feedback: pass proves the floor is identified without any colour constant.
+    Fail means vacated cells would be mistaken for movers (over-walling)."""
+    assert background_colour(_block_grid(3, 2, {(1, 1): 9})) == 0  # one painted cell, rest floor
+    assert background_colour([[4, 4, 4], [4, 2, 4]]) == 4
