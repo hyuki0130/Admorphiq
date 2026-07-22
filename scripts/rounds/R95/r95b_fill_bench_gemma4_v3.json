@@ -1,0 +1,418 @@
+{
+  "model": "gemma4",
+  "runs": 3,
+  "mode": "fill",
+  "model_verdict": {
+    "ft09": "FAIL",
+    "sc25": "FAIL"
+  },
+  "per_run": {
+    "ft09": [
+      {
+        "choice": null,
+        "mapped_instance": null,
+        "is_oracle": null,
+        "variant_choice": {
+          "objective_kind": "glyph_relational",
+          "transition_kind": "ordered_cycle"
+        },
+        "slot_values": {
+          "coverage_quantifier": "all_covering",
+          "ink_operator_map": {
+            "0": "equal",
+            "2": "differ"
+          },
+          "phase_guards": [
+            [],
+            [
+              "level_advanced"
+            ]
+          ]
+        },
+        "assembly_valid": true,
+        "retries": 0,
+        "verifier_verdict": "PASS",
+        "executed": true,
+        "plan_outcome": "DIVERGED",
+        "levels_cleared": 1,
+        "cast_and_handover": false,
+        "outcome": "FAIL"
+      },
+      {
+        "choice": null,
+        "mapped_instance": null,
+        "is_oracle": null,
+        "variant_choice": {
+          "objective_kind": "glyph_relational",
+          "transition_kind": "ordered_cycle"
+        },
+        "slot_values": {
+          "coverage_quantifier": "all_covering",
+          "ink_operator_map": {
+            "0": "equal",
+            "2": "differ"
+          },
+          "phase_guards": [
+            [],
+            [
+              "level_advanced"
+            ]
+          ]
+        },
+        "assembly_valid": true,
+        "retries": 0,
+        "verifier_verdict": "PASS",
+        "executed": true,
+        "plan_outcome": "DIVERGED",
+        "levels_cleared": 1,
+        "cast_and_handover": false,
+        "outcome": "FAIL"
+      },
+      {
+        "choice": null,
+        "mapped_instance": null,
+        "is_oracle": null,
+        "variant_choice": {
+          "objective_kind": "glyph_relational",
+          "transition_kind": "ordered_cycle"
+        },
+        "slot_values": {
+          "coverage_quantifier": "all_covering",
+          "ink_operator_map": {
+            "0": "equal",
+            "2": "differ"
+          },
+          "phase_guards": [
+            [],
+            [
+              "level_advanced"
+            ]
+          ]
+        },
+        "assembly_valid": true,
+        "retries": 0,
+        "verifier_verdict": "PASS",
+        "executed": true,
+        "plan_outcome": "DIVERGED",
+        "levels_cleared": 1,
+        "cast_and_handover": false,
+        "outcome": "FAIL"
+      }
+    ],
+    "sc25": [
+      {
+        "choice": null,
+        "mapped_instance": null,
+        "is_oracle": null,
+        "variant_choice": {
+          "objective_kind": "pattern_reference",
+          "transition_kind": "empirical_effect_matrix"
+        },
+        "slot_values": {
+          "preview_interpretation": "absolute_exact",
+          "phase_guards": [
+            [],
+            [
+              "stable_for_reads"
+            ]
+          ]
+        },
+        "assembly_valid": true,
+        "retries": 0,
+        "verifier_verdict": "PASS",
+        "executed": false,
+        "plan_outcome": "UNSUPPORTED_COMBINATION",
+        "levels_cleared": 0,
+        "cast_and_handover": false,
+        "outcome": "FAIL"
+      },
+      {
+        "choice": null,
+        "mapped_instance": null,
+        "is_oracle": null,
+        "variant_choice": {
+          "objective_kind": "pattern_reference",
+          "transition_kind": "empirical_effect_matrix"
+        },
+        "slot_values": {
+          "preview_interpretation": "absolute_exact",
+          "phase_guards": [
+            [],
+            [
+              "stable_for_reads"
+            ]
+          ]
+        },
+        "assembly_valid": true,
+        "retries": 0,
+        "verifier_verdict": "PASS",
+        "executed": false,
+        "plan_outcome": "UNSUPPORTED_COMBINATION",
+        "levels_cleared": 0,
+        "cast_and_handover": false,
+        "outcome": "FAIL"
+      },
+      {
+        "choice": null,
+        "mapped_instance": null,
+        "is_oracle": null,
+        "variant_choice": {
+          "objective_kind": "pattern_reference",
+          "transition_kind": "empirical_effect_matrix"
+        },
+        "slot_values": {
+          "preview_interpretation": "absolute_exact",
+          "phase_guards": [
+            [],
+            [
+              "stable_for_reads"
+            ]
+          ]
+        },
+        "assembly_valid": true,
+        "retries": 0,
+        "verifier_verdict": "PASS",
+        "executed": false,
+        "plan_outcome": "UNSUPPORTED_COMBINATION",
+        "levels_cleared": 0,
+        "cast_and_handover": false,
+        "outcome": "FAIL"
+      }
+    ]
+  },
+  "results": [
+    {
+      "game": "ft09",
+      "mode": "fill",
+      "runs": [
+        {
+          "run": 0,
+          "mode": "fill",
+          "variant_choice": {
+            "objective_kind": "glyph_relational",
+            "transition_kind": "ordered_cycle"
+          },
+          "slot_values": {
+            "coverage_quantifier": "all_covering",
+            "ink_operator_map": {
+              "0": "equal",
+              "2": "differ"
+            },
+            "phase_guards": [
+              [],
+              [
+                "level_advanced"
+              ]
+            ]
+          },
+          "assembly_valid": true,
+          "retries": 0,
+          "colour_variety": [
+            2,
+            5
+          ],
+          "verifier_verdict": "PASS",
+          "executed": true,
+          "levels_cleared": 1,
+          "cast_and_handover": false,
+          "actions_per_level": [
+            4
+          ],
+          "discovery_actions": 31,
+          "cycle_acquired": true,
+          "plan_outcome": "DIVERGED",
+          "rebind_events": 0,
+          "outcome": "FAIL",
+          "model_transition": "binary_flip"
+        },
+        {
+          "run": 1,
+          "mode": "fill",
+          "variant_choice": {
+            "objective_kind": "glyph_relational",
+            "transition_kind": "ordered_cycle"
+          },
+          "slot_values": {
+            "coverage_quantifier": "all_covering",
+            "ink_operator_map": {
+              "0": "equal",
+              "2": "differ"
+            },
+            "phase_guards": [
+              [],
+              [
+                "level_advanced"
+              ]
+            ]
+          },
+          "assembly_valid": true,
+          "retries": 0,
+          "colour_variety": [
+            2,
+            5
+          ],
+          "verifier_verdict": "PASS",
+          "executed": true,
+          "levels_cleared": 1,
+          "cast_and_handover": false,
+          "actions_per_level": [
+            4
+          ],
+          "discovery_actions": 31,
+          "cycle_acquired": true,
+          "plan_outcome": "DIVERGED",
+          "rebind_events": 0,
+          "outcome": "FAIL",
+          "model_transition": "binary_flip"
+        },
+        {
+          "run": 2,
+          "mode": "fill",
+          "variant_choice": {
+            "objective_kind": "glyph_relational",
+            "transition_kind": "ordered_cycle"
+          },
+          "slot_values": {
+            "coverage_quantifier": "all_covering",
+            "ink_operator_map": {
+              "0": "equal",
+              "2": "differ"
+            },
+            "phase_guards": [
+              [],
+              [
+                "level_advanced"
+              ]
+            ]
+          },
+          "assembly_valid": true,
+          "retries": 0,
+          "colour_variety": [
+            2,
+            5
+          ],
+          "verifier_verdict": "PASS",
+          "executed": true,
+          "levels_cleared": 1,
+          "cast_and_handover": false,
+          "actions_per_level": [
+            4
+          ],
+          "discovery_actions": 31,
+          "cycle_acquired": true,
+          "plan_outcome": "DIVERGED",
+          "rebind_events": 0,
+          "outcome": "FAIL",
+          "model_transition": "binary_flip"
+        }
+      ],
+      "model_verdict": "FAIL"
+    },
+    {
+      "game": "sc25",
+      "mode": "fill",
+      "runs": [
+        {
+          "run": 0,
+          "mode": "fill",
+          "variant_choice": {
+            "objective_kind": "pattern_reference",
+            "transition_kind": "empirical_effect_matrix"
+          },
+          "slot_values": {
+            "preview_interpretation": "absolute_exact",
+            "phase_guards": [
+              [],
+              [
+                "stable_for_reads"
+              ]
+            ]
+          },
+          "assembly_valid": true,
+          "retries": 0,
+          "colour_variety": [
+            2,
+            5
+          ],
+          "verifier_verdict": "PASS",
+          "executed": false,
+          "levels_cleared": 0,
+          "cast_and_handover": false,
+          "actions_per_level": [],
+          "discovery_actions": 6,
+          "cycle_acquired": false,
+          "plan_outcome": "UNSUPPORTED_COMBINATION",
+          "rebind_events": 0,
+          "outcome": "FAIL"
+        },
+        {
+          "run": 1,
+          "mode": "fill",
+          "variant_choice": {
+            "objective_kind": "pattern_reference",
+            "transition_kind": "empirical_effect_matrix"
+          },
+          "slot_values": {
+            "preview_interpretation": "absolute_exact",
+            "phase_guards": [
+              [],
+              [
+                "stable_for_reads"
+              ]
+            ]
+          },
+          "assembly_valid": true,
+          "retries": 0,
+          "colour_variety": [
+            2,
+            5
+          ],
+          "verifier_verdict": "PASS",
+          "executed": false,
+          "levels_cleared": 0,
+          "cast_and_handover": false,
+          "actions_per_level": [],
+          "discovery_actions": 6,
+          "cycle_acquired": false,
+          "plan_outcome": "UNSUPPORTED_COMBINATION",
+          "rebind_events": 0,
+          "outcome": "FAIL"
+        },
+        {
+          "run": 2,
+          "mode": "fill",
+          "variant_choice": {
+            "objective_kind": "pattern_reference",
+            "transition_kind": "empirical_effect_matrix"
+          },
+          "slot_values": {
+            "preview_interpretation": "absolute_exact",
+            "phase_guards": [
+              [],
+              [
+                "stable_for_reads"
+              ]
+            ]
+          },
+          "assembly_valid": true,
+          "retries": 0,
+          "colour_variety": [
+            2,
+            5
+          ],
+          "verifier_verdict": "PASS",
+          "executed": false,
+          "levels_cleared": 0,
+          "cast_and_handover": false,
+          "actions_per_level": [],
+          "discovery_actions": 6,
+          "cycle_acquired": false,
+          "plan_outcome": "UNSUPPORTED_COMBINATION",
+          "rebind_events": 0,
+          "outcome": "FAIL"
+        }
+      ],
+      "model_verdict": "FAIL"
+    }
+  ]
+}
