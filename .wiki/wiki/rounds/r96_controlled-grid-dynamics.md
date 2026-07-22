@@ -165,6 +165,26 @@ model selection 15% / compiler-live 10%.
     build) = compiler successor semantics**: merge ONLY on simultaneous
     same-empty-cell entry; walk-onto/swap engine-blocked; adjacent-gap
     parity forces a desync detour the BFS finds naturally.
+  - Defect 8 (v8, 17a8898): compiler merge semantics — the engine merges
+    ONLY by simultaneous same-empty-cell entry (idx0 evidence);
+    walk-onto-stationary-partner and swap are engine-blocked (v7 endgame
+    evidence). Successor tightened; adjacent-gap parity now forces a
+    desync detour; idx0 pin 15 = gold holds (states 598→272).
+  - Defect 9 (v9, f20cae6): the patroller sat on (3,7) at parse time and
+    was BAKED INTO the static occupancy — the BFS routed its desync
+    through the fictional wall → mirror-locked period-2 oscillation with
+    no learning trigger. Observation-trumps-inference extended to
+    GROUNDED walls (`unwalled` override; walls = (grounded − unwalled) ∪
+    extra_walls). v9 measured: unwalling works, execution reaches step
+    89; terminal pattern = **patroller CHURN at (3,9)** (learn → unlearn
+    → re-learn period-6; static learning cannot converge on a toggled
+    cell).
+  - Defect 10 (in build): the pre-declared transient-region fallback —
+    PERCEIVE-AND-AVOID: live transient-obstacle snapshot cells unioned
+    into every compile (never learned/persisted), churn cells never-learn,
+    bounded WAIT (K=6) when the next step is blocked by a visible
+    transient. Time-expanded planning deferred unless perceive+wait
+    measured-fails.
   (vii)–(viii) pending.
 
 ## Related
