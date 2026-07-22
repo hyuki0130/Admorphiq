@@ -3,7 +3,7 @@ type: reasoning
 round: R96
 axis: agent25 — hypothesis-DSL family expansion (ControlledGridDynamics / CoupledActorMerge)
 keywords: [agent25, hypothesis-dsl, family-expansion, movement, coupled-actors, m0r0, actor-relation, coupled-grid-step, typed-occupancy, mirror-deltas, merge-tracking, prereg]
-verdict: IN PROGRESS — design v1 (Codex NO-GO→CONDITIONAL GO: the v0 draft conflated the win-predicate family with the transition family; narrowed to CoupledActorMerge, contract = m0r0 idx0+idx1 only, dc22 demoted to near-OOD control as a SECOND transition family); contract FROZEN (727b34b); step ii schema BUILT (b191834: ActorRelation + CoupledGridStep with decoded mirror deltas, typed occupancy, verify-only move matrix, 6 frozen mutants 4-CONTRADICTED/2-UNKNOWN); step iii two-actor grounding (the ~55%-risk component) in build
+verdict: ORACLE PARTIAL / GROUNDING PIVOT (Codex-consulted 2026-07-23 08:56); MODEL CRITERION OPEN — idx0 CLEARED LIVE 3/3 @15a = gold, stable through all 15 gates, oracle-proven for model evaluation; idx1 PARKED at a grounding-class wall (an INVISIBLE floor-coloured dynamic obstacle whose policy has no stable period ≤12 — banked with control, merge, static-wall, and hazard mechanics decoded; hidden-obstacle dynamics unresolved). The pre-declared falsification clause triggered correctly: this is the 55% grounding outcome, NOT a schema/model failure (schema/verifier/compiler plan idx1 perfectly given correct walls). Model substages proceed on idx0 only (idx1 out-of-scope-parked, no end-to-end claim, no schema changes motivated). 15-defect instrumented ladder banked as GENERALISATION ASSETS (per-level re-grounding, confirmed-subset planning, persistence gate, settle absorption, wall learning + retry + observation-trumps-inference invalidation over learned AND grounded walls, online hazard learning, meet-in-the-middle merge semantics, block-evidence transient sensor + TTL, flip-flop commit-and-wait, frame-diff transient perception, time-expanded joint BFS with frame-diff + behavioural orbit sources)
 commit: [141fc8c, 727b34b, b191834]
 date: 2026-07-23
 ---
@@ -216,14 +216,32 @@ model selection 15% / compiler-live 10%.
     to frame-diff** (vacated and entered cells are identical); offline
     period analysis of the full 53-sample transient sequence fits NO
     period at pmax 12/24. The obstacle is BEHAVIOURALLY-SENSED ONLY.
-  - Defect 15 (in build): behavioural-orbit pivot — the blocked_at event
-    stream IS the patroller's position record (blocked entry = positive
-    sample at tick t; successful entry = negative). Sparse
-    phase-consistency fitting (P consistent iff no cell has both sample
-    signs at one phase; honest ORBIT_UNSTABLE), positive-only phase map
-    with optimistic unsampled pairs, reactive layer as the safety net,
-    feeding the SAME time-expanded BFS.
-  (vii)–(viii) pending.
+  - Defect 15 (v15, b9011cc): behavioural-orbit pivot — the blocked_at
+    event stream IS the obstacle's position record (blocked = positive
+    sample, successful entry = negative). Sparse phase-consistency
+    fitting, witnessed-positive phase map, frame-diff→behavioural→None
+    precedence, feeding the same time-expanded BFS. **v15 measured
+    (a03ec7a): the orbit ENGAGES 12×/run (not a sparsity park) but the
+    fitted period climbs 2→10 monotonically toward the pmax=12 ceiling
+    without stabilizing — NO stable period ≤12.** The invisible obstacle
+    is long-period, multiple out-of-phase movers, or position-dependent
+    (mirror-pair simultaneous blocks observed). idx1 ends at the honest
+    UNSATISFIABLE (5061 timed states), 3/3 deterministic.
+- **(vi-b) VERDICT (Codex-consulted): ORACLE PARTIAL / GROUNDING PIVOT.**
+  idx0 = FULL PASS (criterion level, oracle-proven). idx1 = PARKED at the
+  pre-declared grounding-class wall; the contract's falsification clause
+  triggered correctly. Model substages proceed on idx0 only. One bounded
+  position-dependence discriminator pre-registered as a final diagnostic
+  (counterfactual: same tick/different actor configs vs same config/
+  different ticks; park regardless if not sharply discriminating). The
+  cross-gate block-event comparison (v11/v13/v15) is necessary-but-
+  insufficient: dynamic events shift 1-4 ticks with trajectory changes,
+  but blocks are only observed on attempts — the counterfactual probe is
+  the discriminating instrument.
+- **(vii) model stage: IN PROGRESS on idx0** (canned-instance selection
+  over the m0r0 oracle + 6 frozen mutants from live grounding evidence,
+  then variant-first slot filling; both models per the frozen contract).
+  (viii) pending.
 
 ## Related
 
