@@ -187,6 +187,15 @@ not the template or the plumbing.
   the full engine card) — a real R94 design input independent of the v2 outcome.
 - Artifacts: `scripts/rounds/R94/r94_holdout_*_v1.json`.
 
+## D5 v2 (2026-07-22 10:33) — toggle arm replicates exactly; simdfs arm hit a 3rd harness bug
+
+toggle arm: identical to v1 (adapted 71st/309tr, deterministic ×2). simdfs arm: crashed
+BEFORE its adaptation ask — `_card_prelude` called `fn.__name__` on the simdfs
+registry's raw-source STRING entries (AttributeError ~20min in). Fixed b7b703f
+(string-tolerant prelude; regression test pins prelude assembly for every registered
+card). **The 900s-timeout question is still unmeasured** — v3 (pushed 10:36) is the run
+that finally answers whether the family card adapts and beats the mismatch arm.
+
 ## In flight
 
 - **D3 upper-bound gate**: verbatim arrangement card driven through the run_code sandbox
