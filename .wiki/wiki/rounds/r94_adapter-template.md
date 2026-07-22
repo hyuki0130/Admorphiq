@@ -2,7 +2,7 @@
 round: r94
 axis: agent25 — adapter-template patching (characteristics→solution game cards)
 keywords: [agent25, adapter-template, game-cards, arrangement-core, lp85, s5i5, paired-holdout, upper-bound-gate, structural-delegation, oracle-routing, gptoss-ab]
-verdict: ALL GATES PASSED — sb26 simdfs card reproduces the FULL conquest through the LLM patch sandbox (8/8 in 131 actions, vs adapter 170; v4 cap-proof continuation); adapter parity 8/8 @0.846 exact throughout; lp85 = pair-ineligible (time-series). D5 paired holdout (sk48, pre-registered arms) is the live experiment
+verdict: COMPLETE — gates all passed (upper-bound proof: simdfs card reproduces sb26 8/8 in 131a via the patch sandbox), but the D5 paired holdout REFUTES the full-engine-template thesis on this pair: the 75KB family card, even successfully adapted (626s < 900s budget), yields a near-inert solver on sk48 (3st/7tr, noop 1.0) while the 6.6KB mismatch card adapts into a real explorer (71st/309tr ×3 deterministic). PRIMARY design law: template SIZE/specificity dominates family match — family templates must be distilled SMALL (the user's compact 특징→해결법 game-card direction, not full engines)
 commit: 07c81eb
 ---
 
@@ -195,6 +195,29 @@ registry's raw-source STRING entries (AttributeError ~20min in). Fixed b7b703f
 (string-tolerant prelude; regression test pins prelude assembly for every registered
 card). **The 900s-timeout question is still unmeasured** — v3 (pushed 10:36) is the run
 that finally answers whether the family card adapts and beats the mismatch arm.
+
+## D5 v3 FINAL (2026-07-22 11:57) — clean measurement; full-engine template REFUTED on this pair
+
+| arm | adaptation | adapted performance (fresh score) | verdict |
+|---|---|---|---|
+| A simdfs (family-match, 75KB) | **SUCCEEDED, 626s** (< 900s — the v1 timeout diagnosis was right) | **3 states / 7 transitions / noop 1.0 — near-inert** | loses |
+| B toggle (mismatch, 6.6KB) | 115s | 71 states / 309 transitions (×3 deterministic) | **WINS** |
+
+- Both arms executed end-to-end with zero harness failures — the first clean D5
+  measurement (after 2 harness-defect rounds: client timeout, prelude string entries).
+- **Outcome (b) of the pre-registered scenarios: adapts + loses.** The 75KB of
+  sb26-specific machinery, even when the model successfully edits it, produces
+  near-inert behaviour on sk48 (its clicks land nowhere); the small generic card is
+  vastly more adaptable. Family MATCH did not overcome template BULK/SPECIFICITY.
+- **PRIMARY design law (supported by both the timeout episode and this clean result):
+  template size/specificity dominates family match — family templates must be
+  distilled SMALL** (a compact family skeleton: the mechanics idea + minimal scaffolding,
+  not the full engine). This vindicates the user's 특징→해결법 game-CARD framing over
+  full-adapter provision.
+- Caveats per prereg: one pair, one patcher, single trajectory — one experiment, not a
+  law. The natural next test: a ~5-10KB distilled simdfs SKELETON vs the same toggle
+  control on sk48.
+- Artifacts: `scripts/rounds/R94/r94_holdout_*_v3.json`.
 
 ## In flight
 
