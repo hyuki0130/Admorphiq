@@ -100,6 +100,38 @@ exhaustive replay-ranking on THESE sets — where the negatives are this
 strong and the evidence this clean — the hypothesis-selection thesis is dead
 at this model scale, cheaply.
 
+### R95a part-2 PRE-REGISTRATION (LLM selection stage — frozen 2026-07-22 before any model run)
+
+What the model sees (per game, ONE completion, guided-json):
+- The five template DESCRIPTIONS in neutral language, shuffled order, neutral
+  ids (T1..T5) — no names, no oracle hints, no historical labels.
+- An observation summary computed from TRAIN transitions ONLY: per-action-type
+  counts, per-click changed-cell-count histogram, 3 example click transitions
+  (xy, before-cell colours, changed cells), the win-moment full-block diff
+  summary per R57, and the parse skeleton (ring/lattice cell count). No
+  held-out data, no scores, no per-template accuracy.
+- Ask: "which template best explains these observations?" → `{"choice":
+  "T1".."T5", "confidence": "low|medium|high", "evidence": "<=2 sentences"}`.
+
+Scoring (per game × model):
+- **PASS** = choice lands in the oracle EQUIVALENCE CLASS (oracle + templates
+  tied with it under exhaustive ranking, as reported by part-1's
+  `tied_with_oracle`). Picking a strictly-dominated negative = FAIL.
+- Report alongside: the exhaustive-ranking winner (the no-LLM control). The
+  LLM adds value at this layer ONLY if it PASSES where ranking is available
+  anyway — i.e. the interesting comparisons are (i) PASS-rate vs random
+  (1/5-ish baseline adjusted for class size), (ii) whether model evidence
+  cites the actual discriminating observation (dynamics multi-cell vs single-
+  cell for ft09 N1; win-state mismatch for N3/N4).
+- Models: gemma4-31b-q8 AND gpt-oss-120b (reasoning high, 20K budget), same
+  asks, paired per game. 3 repetitions each (sampling variance check). No
+  one-shot verdicts.
+- sc25 caveat slot: its equivalence class and specificity limits are recorded
+  from part-1's measured output before the run; if sc25's class covers 3 of 5
+  templates, sc25 is reported as a WEAK case (random PASS ≈ 0.6) and cannot
+  carry the verdict alone — ft09 (class of 2, random ≈ 0.4) is the primary
+  case pending trace-diagnosis follow-ups.
+
 ## R95b — family compiler (ONLY if R95a shows model selection skill)
 
 - **Tagged family schemas** (finding 1): `toggle` schema = board cells,
