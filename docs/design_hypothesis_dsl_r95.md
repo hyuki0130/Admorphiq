@@ -179,6 +179,15 @@ Private games with unseen SURFACE mechanics are covered three ways, in order:
   `reset` (harness-detected engine boundaries).
 - Binding format: per-role object-ID pick lists vs free (x,y) anchors —
   pick lists are closed-choice but may not contain the right candidate.
+  MEASURED INPUT (2026-07-22, `find_regions` over first/mid/last frames of all
+  25 gold traces): per-frame region counts median 28, p90 71, max 224 (bp35
+  191–224, tn36 88–186). → a flat all-regions pick list is infeasible for the
+  heavy tail; the viable shape is ROLE-CONDITIONED SHORTLISTS — the harness
+  pre-ranks candidates per role from role-relevant evidence (mobility for
+  player_avatar, click-responsiveness for controls, size/static for canvas)
+  and the model picks from top-K (~8) with a mandatory `none_of_these` escape
+  that routes to probe_more. This keeps binding closed-choice at 8B scale
+  while the escape prevents forced wrong bindings.
 
 ## Retained from v1
 
