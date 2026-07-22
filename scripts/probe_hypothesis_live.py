@@ -191,6 +191,15 @@ def _hazard_cell_count(gs: GroundingService) -> int:
     return 0 if h is UNKNOWN else len(h.value)
 
 
+def _move_observed(gs: GroundingService) -> Optional[list[tuple[int, int]]]:
+    """The current observed actor cells (sorted), or None — the confirmation view the
+    step-level instrumentation logs against the plan's predicted successor."""
+    actors = gs.movement_actors()
+    if actors is UNKNOWN:
+        return None
+    return sorted((int(r), int(c)) for _aid, (r, c) in actors.value)
+
+
 def _target_levels(game: str) -> int:
     """The frozen-contract level target a run must reach to count as CLEARED."""
     if game == "sc25":
@@ -552,8 +561,9 @@ def run_movement_level(env: "LiveEnv", record: dict[str, Any], run_index: int) -
     instance = schema_movement.m0r0_oracle_instance()
     probe_budget = max(0, _DISCOVERY_BUDGET - used)
     reprobes = 0
+    learned_walls: set[tuple[int, int]] = set()  # cells learned to block during execution
     while True:
-        plan = compile_movement_hypothesis(instance, gs)
+        plan = compile_movement_hypothesis(instance, gs, extra_walls=learned_walls)
         sol = plan.solve()
         record["states_searched"] = max(record["states_searched"], sol.states_searched)
         if sol.status in (PlanStatus.SOLVABLE, PlanStatus.DONE):
@@ -582,6 +592,9 @@ def run_movement_level(env: "LiveEnv", record: dict[str, Any], run_index: int) -
     # d. Step the SOLVABLE plan until THIS level clears.
     start_levels = env.levels()
     level_actions = 0
+    settle_allowance = 1  # the first action after a level transition is absorbed (measured)
+    max_learned_walls = 12  # online-occupancy learning cap (bounds the recompile loop)
+    prev_obs = _move_observed(gs)
     for _ in range(_M0R0_LEVEL_BUDGET + 10):
         frame = env.frame()
         if frame is None:
@@ -593,14 +606,62 @@ def run_movement_level(env: "LiveEnv", record: dict[str, Any], run_index: int) -
         result = plan.step(frame)
         sol = plan.solve()
         record["states_searched"] = max(record["states_searched"], sol.states_searched)
+        cursor = plan._cursor
+        predicted = plan._traj[cursor] if 0 <= cursor < len(plan._traj) else None
         if isinstance(result, Terminal):
             if result.status is PlanStatus.DONE:
                 if env.levels() > start_levels or env.state() == "WIN":
                     record["actions_per_level"].append(level_actions)
                     return "CLEARED", len(gs.rebind_events)
                 return "DIVERGED", len(gs.rebind_events)
+            if result.status is PlanStatus.DIVERGED:
+                obs_now = _move_observed(gs)
+                if settle_allowance > 0 and obs_now is not None and obs_now == prev_obs:
+                    # A fully no-op action (NEITHER actor moved) is the post-transition
+                    # settling frame absorbing the input, not a model/board disagreement
+                    # (measured: idx1's first action moves nothing regardless of
+                    # direction). Consume the settling ONCE and recompile from the
+                    # unchanged current positions — the next action lands on a live board.
+                    settle_allowance -= 1
+                    print(
+                        f"[live] run{run_index} m0r0: absorbed settling action at step "
+                        f"{level_actions}; recompiling from {obs_now}",
+                        flush=True,
+                    )
+                    plan = compile_movement_hypothesis(instance, gs, extra_walls=learned_walls)
+                    continue
+                # ONLINE OCCUPANCY LEARNING: a PARTIAL block — an actor was stopped
+                # short of a cell the plan expected it to occupy (independent_stay), so
+                # that cell is a wall the parse missed. The cells the plan predicted
+                # occupied but none reached (predicted - observed) are learned walls;
+                # recompile from the current positions to route around them.
+                predicted_cells = set(predicted) if predicted else set()
+                new_walls = predicted_cells - set(obs_now or [])
+                if new_walls and len(learned_walls) + len(new_walls) <= max_learned_walls:
+                    learned_walls |= new_walls
+                    print(
+                        f"[live] run{run_index} m0r0: learned wall(s) {sorted(new_walls)} from a "
+                        f"partial block at step {level_actions}; recompiling ({len(learned_walls)} total)",
+                        flush=True,
+                    )
+                    plan = compile_movement_hypothesis(instance, gs, extra_walls=learned_walls)
+                    continue
+                colour = gs._move_actor_colour
+                regions = gs._move_regions_of(frame, colour) if colour is not None else []
+                print(
+                    f"[live] run{run_index} m0r0 DIVERGED at step {level_actions} (cursor {cursor}): "
+                    f"predicted {predicted}, observed {obs_now}; raw actor regions "
+                    f"{[(round(c[0]), round(c[1])) for c, _s, _b in regions]}",
+                    flush=True,
+                )
             return result.status.value, len(gs.rebind_events)
         if isinstance(result, Move):
+            print(
+                f"[live] run{run_index} m0r0 step {level_actions}: action {result.action}, "
+                f"predicted-next {predicted}, observed-now {_move_observed(gs)}",
+                flush=True,
+            )
+            prev_obs = _move_observed(gs)  # actors BEFORE this action (for the absorption test)
             env.simple_action(result.action)
             level_actions += 1
             if env.levels() > start_levels:

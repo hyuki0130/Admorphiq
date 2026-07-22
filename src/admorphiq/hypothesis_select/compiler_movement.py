@@ -98,9 +98,15 @@ class CoupledGridStepPlan:
     """ActorRelation x CoupledGridStep: joint two-actor BFS over the live occupancy
     toward the relation predicate, with per-move confirmation."""
 
-    def __init__(self, objective: ActorRelation, grounding: GroundingService) -> None:
+    def __init__(
+        self, objective: ActorRelation, grounding: GroundingService, extra_walls: Optional[set[Cell]] = None
+    ) -> None:
         self._relation = objective.relation
         self._g = grounding
+        # Cells learned to block at EXECUTION time (a partial block revealed an actor
+        # could not reach a cell the parse thought was floor) — an online occupancy
+        # augmentation the driver feeds back so the recompiled plan routes around it.
+        self._extra_walls = set(extra_walls) if extra_walls else set()
         self._solution: Optional[MovementSolution] = None
         self._traj: tuple[JointState, ...] = ()  # planned states: _traj[k] = state after k actions
         self._cursor = 0  # index of the next action to emit / the move awaiting confirmation
@@ -128,7 +134,7 @@ class CoupledGridStepPlan:
                 joint[action] = (da, db)
         if not joint:
             return None
-        walls = {(int(r), int(c)) for r, c in occ_g.value.blocked_cells}
+        walls = {(int(r), int(c)) for r, c in occ_g.value.blocked_cells} | self._extra_walls
         hazards_g = self._g.movement_hazard_cells()
         hazards = set() if hazards_g is UNKNOWN else {(int(r), int(c)) for r, c in hazards_g.value}
         start = (pos["actor_a"], pos["actor_b"])
@@ -259,15 +265,18 @@ class UnsupportedMovementPlan:
 MovementPlan = Union[CoupledGridStepPlan, UnsupportedMovementPlan]
 
 
-def compile_movement_hypothesis(instance: MovementHypothesis, grounding: GroundingService) -> MovementPlan:
+def compile_movement_hypothesis(
+    instance: MovementHypothesis, grounding: GroundingService, extra_walls: Optional[set[Cell]] = None
+) -> MovementPlan:
     """Compile a movement hypothesis into a plan, dispatching ONLY on the schema's
     objective + transition-model tags (never a game id). ``EmpiricalMoveMatrix`` maps
     to the typed ``UNSUPPORTED`` plan; an unknown objective/transition COMBINATION
-    raises (distinct from a known-but-non-executable tag)."""
+    raises (distinct from a known-but-non-executable tag). ``extra_walls`` are cells
+    learned to block at execution time (online occupancy augmentation)."""
     objective, transition = instance.objective, instance.transition_model
     if isinstance(objective, ActorRelation):
         if isinstance(transition, CoupledGridStep):
-            return CoupledGridStepPlan(objective, grounding)
+            return CoupledGridStepPlan(objective, grounding, extra_walls=extra_walls)
         if isinstance(transition, EmpiricalMoveMatrix):
             return UnsupportedMovementPlan()
     raise ValueError(
