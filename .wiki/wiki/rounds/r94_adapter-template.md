@@ -2,7 +2,7 @@
 round: r94
 axis: agent25 — adapter-template patching (characteristics→solution game cards)
 keywords: [agent25, adapter-template, game-cards, arrangement-core, lp85, s5i5, paired-holdout, upper-bound-gate, structural-delegation, oracle-routing, gptoss-ab]
-verdict: COMPLETE — gates all passed (upper-bound proof: simdfs card reproduces sb26 8/8 in 131a via the patch sandbox), but the D5 paired holdout REFUTES the full-engine-template thesis on this pair: the 75KB family card, even successfully adapted (626s < 900s budget), yields a near-inert solver on sk48 (3st/7tr, noop 1.0) while the 6.6KB mismatch card adapts into a real explorer (71st/309tr ×3 deterministic). PRIMARY design law: template SIZE/specificity dominates family match — family templates must be distilled SMALL (the user's compact 특징→해결법 game-card direction, not full engines)
+verdict: CLOSED — gates all passed (upper-bound proof: simdfs card reproduces sb26 8/8 in 131a via the patch sandbox), but BOTH template-transfer arms are refuted on the sk48 holdout. D5 v3: the 75KB family card adapts (626s) into near-inertness (3st/7tr). D5-SKEL (size-controlled): the 8.2KB family SKELETON also adapts cleanly (208.7s, 2 attempts, 0 exec errors) yet stays near-inert (3st/55tr, noop 0.999) while the 6.6KB generic card replicates 71st/309tr a FOURTH deterministic time. FINAL law: on an out-of-family game neither engine size nor compact family mechanics transfers — the generic probe-first template wins; family knowledge helps only when the family actually matches (and sk48 was independently flagged schema-inexpressible by the R95 Codex review). Road forward = generic card + R95 hypothesis-DSL discriminative selection
 commit: 07c81eb
 ---
 
@@ -233,6 +233,42 @@ follow-up de-confounds:
   selection/scoring. Claim under test: **at comparable template size, does family
   mechanics knowledge beat mismatched machinery?** Win condition per the same
   lexicographic rule; B's benchmark to beat = 71st/309tr.
+
+## D5-SKEL FINAL (2026-07-22 13:51 collection) — family skeleton ALSO loses; round CLOSED
+
+Kernel `admorphiq-r94-holdout-gemma4` v4 (launched 12:15, COMPLETE ~13:45; artifacts
+`scripts/rounds/R94/r94_holdout_bench_skel.json` + per-arm JSONs). Both arms adapted
+successfully — this is a clean capability measurement, not a harness failure:
+
+| arm | card | adapt | replay = fresh (deterministic) | noop |
+|---|---|---|---|---|
+| A′ simdfs_skel (family skeleton) | 8.2KB | 208.7s, attempts=2, 0 exec errors | 0 levels, **3st/55tr** | **0.999** |
+| B toggle (generic control) | 6.6KB | 114.6s, attempts=1 | 0 levels, **71st/309tr** | 0.684 |
+
+Frozen-prereg verdict (levels tie 0-0 → exploration tie-break): **arm B — the
+family skeleton LOSES the size-controlled comparison.** gemma4's adaptation was
+real (raised `_SKEL_MOVABLE_MAX_SIZE` to 25, restructured move-learning with a
+click-on-piece heuristic) and executed cleanly, but the skeleton's family
+assumptions (piece/slot parse → click-to-move → DFS assignment) never engage
+sk48's directional-snake mechanics: 1998 of 2000 actions were no-ops.
+
+**Combined D5 + D5-SKEL law (final)**: on an out-of-family holdout, NEITHER the
+full family engine (75KB) NOR its compact skeleton (8.2KB) transfers — the
+generic probe-first template wins at every size. The earlier "size dominates"
+read was incomplete: size explained the 75KB card's failure mode (inert
+machinery), but the skeleton shows family MECHANICS content itself is dead
+weight when the family does not match. Caveats per the R95 Codex review: sk48
+exploration deltas are CONTROL evidence (0 levels everywhere), and sk48 was
+independently flagged schema/family-inexpressible — so this refutes "hand any
+family card to the model and it adapts across families", NOT "family cards
+never help in-family" (untested here; in-family reproduction DID pass via the
+sb26 upper-bound gate).
+
+**Road forward** (already designed + Codex-consulted while this ran):
+`docs/design_hypothesis_dsl_r95.md` v2.6 — generic card stays the template
+baseline; the model's game-understanding channel moves to the hypothesis DSL
+(R95a discriminative selection on ft09+sc25, oracle-first, both models), with
+the 5-tier fallback ladder (self-extension → fork-and-patch → generic floor).
 
 ## In flight
 

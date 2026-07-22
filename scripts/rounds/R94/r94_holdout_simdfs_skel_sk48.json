@@ -1,0 +1,34 @@
+{
+  "arm": "simdfs_skel",
+  "game": "sk48",
+  "budget": 2000,
+  "template_baseline": {
+    "levels": 0,
+    "actions": 2000,
+    "distinct_states": 3,
+    "distinct_transitions": 35,
+    "noop_rate": 0.9989994997498749
+  },
+  "adaptation": {
+    "failure_stage": null,
+    "adapted_code": "from __future__ import annotations\nimport numpy as np\n\n# \u2500\u2500 ADAPTED GAME-SPECIFIC PRIORS \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n# Increased movable size to capture larger blocks/pieces.\n_SKEL_MOVABLE_MAX_SIZE = 25 \n_SKEL_SEARCH_DEPTH = 8\n_SKEL_BRANCH = 4\n_SKEL_NEAR = 8.0\n\ndef _skel_background(frame: np.ndarray) -> int:\n    f = np.asarray(frame)\n    if f.size == 0:\n        return 0\n    vals, counts = np.unique(f, return_counts=True)\n    return int(vals[int(counts.argmax())])\n\ndef _skel_flood_regions(frame: np.ndarray, bg: int) -> list:\n    f = np.asarray(frame)\n    h, w = f.shape\n    seen = [[False] * w for _ in range(h)]\n    regions = []\n    for y in range(h):\n        for x in range(w):\n            if seen[y][x]:\n                continue\n            seen[y][x] = True\n            color = int(f[y, x])\n            if color == bg:\n                continue\n            cells = [(y, x)]\n            stack = [(y, x)]\n            while stack:\n                cy, cx = stack.pop()\n                for ny, nx in ((cy - 1, cx), (cy + 1, cx), (cy, cx - 1), (cy, cx + 1)):\n                    if 0 <= ny < h and 0 <= nx < w and not seen[ny][nx] \\\n                            and int(f[ny, nx]) == color:\n                        seen[ny][nx] = True\n                        cells.append((ny, nx))\n                        stack.append((ny, nx))\n            mx = sum(c[1] for c in cells) / len(cells)\n            my = sum(c[0] for c in cells) / len(cells)\n            regions.append({\n                \"color\": color, \"cells\": cells, \"size\": len(cells),\n                \"cx\": int(round(mx)), \"cy\": int(round(my)),\n            })\n    return regions\n\ndef _skel_classify(regions, trace=None):\n    movable = [r for r in regions if r[\"size\"] <= _SKEL_MOVABLE_MAX_SIZE]\n    fixed = [r for r in regions if r[\"size\"] > _SKEL_MOVABLE_MAX_SIZE]\n    if trace is not None:\n        trace.append(f\"parse regions={len(regions)} movable={len(movable)} fixed={len(fixed)}\")\n    return movable, fixed\n\ndef _skel_learn_move(transitions, bg, trace=None):\n    to_loc = 0\n    click_piece = 0\n    for t in transitions:\n        xy = t.get(\"xy\")\n        if xy is None: continue\n        before = np.asarray(t[\"before\"])\n        after = np.asarray(t[\"after\"])\n        if before.shape != after.shape: continue\n        \n        diff = np.where(before != after)\n        if len(diff[0]) == 0: continue\n        \n        # Check if the click was on a piece that then moved\n        before_color = before[int(xy[1]), int(xy[0])]\n        if before_color != bg:\n            click_piece += 1\n        \n        # Check if the piece moved toward the click\n        d = abs(float(diff[1].mean()) - xy[0]) + abs(float(diff[0].mean()) - xy[1])\n        if d <= _SKEL_NEAR:\n            to_loc += 1\n            \n    mode = \"to_location\" if to_loc > click_piece else (\"click_piece\" if click_piece > 0 else \"none\")\n    if trace is not None:\n        trace.append(f\"move-model to_loc={to_loc} click_piece={click_piece} -> {mode}\")\n    return mode\n\ndef _skel_plan_to_location(movers, targets, trace=None):\n    tgt = [(t[\"cx\"], t[\"cy\"]) for t in targets]\n    best = {\"key\": None, \"assign\": []}\n    limit = min(len(movers), _SKEL_SEARCH_DEPTH)\n\n    def leaf(cost, assign):\n        key = (-len(assign), cost)\n        if best[\"key\"] is None or key < best[\"key\"]:\n            best[\"key\"] = key\n            best[\"assign\"] = list(assign)\n\n    def dfs(i, used, cost, assign):\n        if i >= limit:\n            leaf(cost, assign)\n            return\n        mx, my = movers[i][\"cx\"], movers[i][\"cy\"]\n        order = sorted(range(len(tgt)), key=lambda j: abs(tgt[j][0] - mx) + abs(tgt[j][1] - my))\n        placed = False\n        for j in order[:_SKEL_BRANCH]:\n            if j in used: continue\n            placed = True\n            used.add(j)\n            assign.append(tgt[j])\n            dfs(i + 1, used, cost + abs(tgt[j][0] - mx) + abs(tgt[j][1] - my), assign)\n            assign.pop()\n            used.discard(j)\n        if not placed:\n            dfs(i + 1, used, cost, assign)\n\n    dfs(0, set(), 0.0, [])\n    return best[\"assign\"]\n\ndef simdfs_skel_core(current_frame, transitions, act, trace=None):\n    frame = np.asarray(current_frame)\n    bg = _skel_background(frame)\n    regions = _skel_flood_regions(frame, bg)\n    movers, fixed = _skel_classify(regions, trace)\n    mode = _skel_learn_move(transitions, bg, trace)\n\n    if mode == \"to_location\" and movers and fixed:\n        plan = _skel_plan_to_location(movers, fixed, trace)\n        for (x, y) in plan:\n            act(\"CLICK\", int(x), int(y))\n        if plan: return\n\n    if mode == \"click_piece\" and movers:\n        clicked = {(int(t[\"xy\"][0]), int(t[\"xy\"][1])) for t in transitions if t.get(\"xy\")}\n        for r in movers:\n            if (r[\"cx\"], r[\"cy\"]) not in clicked:\n                act(\"CLICK\", int(r[\"cx\"]), int(r[\"cy\"]))\n                return\n        act(\"CLICK\", int(movers[0][\"cx\"]), int(movers[0][\"cy\"]))\n        return\n\n    clicked = {(int(t[\"xy\"][0]), int(t[\"xy\"][1])) for t in transitions if t.get(\"xy\")}\n    for r in movers:\n        if (r[\"cx\"], r[\"cy\"]) not in clicked:\n            if trace is not None: trace.append(f\"probe piece ({r['cx']},{r['cy']})\")\n            act(\"CLICK\", int(r[\"cx\"]), int(r[\"cy\"]))\n            return\n    \n    if fixed:\n        for r in fixed:\n            if (r[\"cx\"], r[\"cy\"]) not in clicked:\n                act(\"CLICK\", int(r[\"cx\"]), int(r[\"cy\"]))\n                return",
+    "llm_latency_s": 208.75
+  },
+  "adaptation_replay": {
+    "levels": 0,
+    "actions": 2000,
+    "distinct_states": 3,
+    "distinct_transitions": 55,
+    "noop_rate": 0.9989994997498749,
+    "execute_error": null
+  },
+  "selected": "adapted",
+  "fresh_score": {
+    "levels": 0,
+    "actions": 2000,
+    "distinct_states": 3,
+    "distinct_transitions": 55,
+    "noop_rate": 0.9989994997498749,
+    "execute_error": null
+  }
+}
