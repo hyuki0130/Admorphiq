@@ -90,12 +90,29 @@ model selection 15% / compiler-live 10%.
      offline), but stepped execution DIVERGED 3/3 with no step detail →
      step-level observability added (the R95 v7 lesson re-applied), and the
      instrumented run pinpointed it: **idx1's FIRST plan action produces
-     zero displacement** — idx0 executes all 15 steps in perfect lockstep,
-     then on idx1 action 2 from ((2,5),(2,8)) leaves both actors exactly in
-     place and the stepper declares DIVERGED at step 1. Candidates: settle
-     absorption of the first post-discovery plan action vs a
-     board-state-dependent mapping deviation; fix in build. (vii)–(viii)
-     pending.
+     zero displacement**. Fixed (01a4fa0): settle absorption — tolerate ONE
+     fully no-op action at execution start (idx1's first GOLD action also
+     moves nothing), consume + recompile. Validated live.
+  5. Past absorption, idx1 diverged at step 5: actor_b blocked into (3,11)
+     (independent_stay) — the occupancy parse MISSED that wall. Fixed
+     (01a4fa0): **online occupancy learning** — unreached predicted cells
+     (predicted − observed) are learned walls fed back via
+     `compile_movement_hypothesis(extra_walls=…)`, bounded cap, recompile
+     and route around. Live: learned 10 real walls one-by-one, routed
+     step 5→15, ended at the honest UNSATISFIABLE surface.
+- **(vi-b) occupancy-perception round (IN BUILD)** — the deeper root, and
+  the contract's PRE-DECLARED 55% outcome (falsification clause → pivot to
+  grounding work, not schema/model changes): `movement_occupancy`
+  SYSTEMATICALLY under-detects idx1's edge walls (45 parsed, ≥10 missing,
+  clustered rows 5-7 / cols 9-11 — likely background-coloured boundary
+  cells the center-pixel parse reads as floor; idx0 parses 89 walls and is
+  unaffected, 3/3 @15a throughout). NOT a CoupledGridStep expressibility
+  gap — the schema plans idx1 perfectly given correct walls. Bounded
+  assignment: one diagnostic (pixel evidence at the 10 learned-wall cells)
+  → one generic fix (full-cell sampling / boundary-aware / reachability-
+  consistent, per evidence) + idx0 89-wall regression pin → v5 re-gate.
+  The learned-wall channel stays as the residual-error meter. (vii)–(viii)
+  pending.
 
 ## Related
 
