@@ -194,10 +194,21 @@ mode 2→1, ft09 byte-identical), and closure is demonstrated on gemma4.
   wholesale redraws misattributed as same-cell transitions (first click of
   each episode, intra_wholesale=True) — documented cycle intact, wholesale-
   skip guard added + pinned.
-- (v) compiler: in build (oracle-plan fixture reproduction = its gate; typed
-  failure surfaces DIVERGED / GROUNDING_INCOMPLETE / UNSATISFIABLE; cycle-
-  discovery phase with bidirectional probes covers the gold-trace
-  one-directionality finding). (vi)–(viii) pending.
+- **(v) compiler BUILT** (25a129a): tag-only dispatch (grep-guarded — zero
+  game ids / adapter imports), GlyphConstraintPlan (cycle-distance clicks
+  with per-click confirmation) + PatternXorPlan (base-XOR-preview flip set,
+  guard-gated cast), typed failure surfaces DIVERGED / GROUNDING_INCOMPLETE
+  / UNSATISFIABLE. **Offline gate PASSED with the headline number of the
+  round: the ft09 L0 oracle plan clicks EXACTLY 4 cells — the human
+  baseline — reaching 32/32 constraints satisfied.** The hypothesis→
+  grounding→compile path is human-efficient by construction on the fixture.
+  sc25 flip set matches the XOR diff exactly (synthetic fixture; gold has no
+  unsolved pattern-phase sequence — the known trace degeneracy).
+- (vi) live oracle-gate DRIVER: in build (agent builds the script; the gate
+  itself runs as a background shell per measurement discipline —
+  fresh-reset ×3, grounding warm-up → bidirectional cycle discovery ≤30
+  actions → oracle plan; ft09 idx0+idx1 in sequence, sc25 cast+handover).
+  (vii)–(viii) pending.
 
 ## Related
 
