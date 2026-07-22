@@ -179,12 +179,32 @@ model selection 15% / compiler-live 10%.
     89; terminal pattern = **patroller CHURN at (3,9)** (learn → unlearn
     → re-learn period-6; static learning cannot converge on a toggled
     cell).
-  - Defect 10 (in build): the pre-declared transient-region fallback —
-    PERCEIVE-AND-AVOID: live transient-obstacle snapshot cells unioned
-    into every compile (never learned/persisted), churn cells never-learn,
-    bounded WAIT (K=6) when the next step is blocked by a visible
-    transient. Time-expanded planning deferred unless perceive+wait
-    measured-fails.
+  - Defect 10 (v10, 1af3f75): perceive-and-avoid — compact-mobile-COLOUR
+    perception + snapshot walls + never-learn churn set + wait. v10
+    measured: the colour heuristic does NOT see the patroller (0 wait
+    lines — it shares the wall colour), and the never-learn set turned
+    (3,9) into an unwallable fictional floor (24 consecutive
+    planned-through blocks).
+  - Defect 11 (v11, 00f580c): blocked_now — BLOCK EVIDENCE as the
+    transient sensor (just-blocked cells are per-compile snapshot walls;
+    cleared on occupancy/passage). v11: works, but exposes the FLIP-FLOP
+    CHASE — the route-around set alternates (6,9)/(6,10) every step; b
+    chases a period-2 patroller across a corridor fork forever.
+  - Defect 12 (v12, 7fc92ed): flip-flop COMMIT-AND-WAIT (waive the bounce
+    pair, re-attempt in place — implicit phase sampling, K=6). v12: chase
+    loops GONE; failure mode flips DIVERGED → honest UNSATISFIABLE — the
+    transient set now ACCUMULATES (observation-only clearing self-seals:
+    forbidden cells can never be re-observed).
+  - Defect 13 (v13, 45c76ce): TTL decay (blocked_at, T=4 recompiles) +
+    unsat-flush-retry — transient evidence has a lifetime. v13: decay
+    works, but the STATIC learner is now the poisoned layer — learned-wall
+    cap 12 fills with patroller positions that survive retry-once
+    (slow/multiple patrollers). **Reactive ceiling reached.**
+  - Defect 14 (in build): frame-diff transient perception diagnostic
+    (the mover must appear in consecutive-frame diffs) → no-transient-
+    visible static-learning gate; orbit inference + time-expanded BFS
+    (pos_a, pos_b, t mod P) as the evidence-justified escalation if
+    reactive threading still fails.
   (vii)–(viii) pending.
 
 ## Related
