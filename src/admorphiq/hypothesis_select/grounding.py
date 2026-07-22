@@ -44,6 +44,12 @@ from admorphiq.hypothesis_select.parse import (
     _read_glyph_compass,
     _sc25_lattice,
 )
+from admorphiq.hypothesis_select.templates import (
+    _sc25_cell_colour,
+    _sc25_on_set,
+    _sc25_preview_mark_colour,
+    _sc25_read_target,
+)
 
 Grid = tuple[tuple[int, ...], ...]
 Cell = tuple[int, int]  # (row, col)
@@ -102,7 +108,8 @@ class _GlyphRecord:
 class _Structure:
     cells: dict[Cell, dict[str, Any]] = field(default_factory=dict)  # anchor -> {centroid,bbox,region}
     glyphs: dict[Cell, dict[str, Any]] = field(default_factory=dict)  # anchor -> {marker,centroid}
-    incidence: dict[Cell, set[Cell]] = field(default_factory=dict)  # cell anchor -> glyph anchors
+    # cell anchor -> list of (glyph anchor, ink shown at this cell, glyph marker)
+    incidence: dict[Cell, list[tuple[Cell, int, int]]] = field(default_factory=dict)
 
 
 _MIN_CYCLE_CONFIRMATIONS = 2  # the min-probe rule: >= 2 independent edge observations
@@ -134,14 +141,19 @@ def _parse_structure(grid: Grid) -> _Structure:
         for ring in sorted(rings, key=lambda r: (r["glyph_bbox"][0], r["glyph_bbox"][1])):
             gbb = ring["glyph_bbox"]
             g_anchor = (gbb[0], gbb[1])
+            compass = _read_glyph_compass(grid, gbb)
+            marker = compass["C"]
             struct.glyphs[g_anchor] = {
-                "marker": _read_glyph_compass(grid, gbb)["C"],
+                "marker": marker,
                 "centroid": ((gbb[0] + gbb[2]) / 2, (gbb[1] + gbb[3]) / 2),
             }
-            for cell in ring["ring_cells"].values():
+            for name, cell in ring["ring_cells"].items():
                 anchor = (cell["bbox"][0], cell["bbox"][1])
                 struct.cells[anchor] = {"centroid": cell["centroid"], "bbox": cell["bbox"]}
-                struct.incidence.setdefault(anchor, set()).add(g_anchor)
+                # Record the ink the glyph shows at this cell's compass position,
+                # so the verifier can apply a HYPOTHESIS's ink->operator map to it
+                # (the harness supplies the raw ink; the model owns the mapping).
+                struct.incidence.setdefault(anchor, []).append((g_anchor, compass[name], marker))
         return struct
 
     lattice = _sc25_lattice(grid)
@@ -163,10 +175,12 @@ class GroundingService:
         self._prev_grid: Optional[Grid] = None
         self._cells: dict[str, _CellRecord] = {}
         self._glyphs: dict[str, _GlyphRecord] = {}
-        self._incidence: dict[str, tuple[str, ...]] = {}
+        # cell_id -> tuple of (glyph_id, ink, marker, glyph_centroid)
+        self._incidence: dict[str, tuple[tuple[str, int, int, tuple[float, float]], ...]] = {}
         self._bound: set[str] = set()
         self._rebinds: list[RebindEvent] = []
         self._cycle_obs: dict[tuple[int, int], int] = defaultdict(int)
+        self._footprint_obs: dict[int, int] = defaultdict(int)  # click footprint -> count
 
     # ── frame stream ─────────────────────────────────────────────────────
 
@@ -211,7 +225,12 @@ class GroundingService:
             for a in glyph_anchors
         }
         self._incidence = {
-            anchor_to_id[a]: tuple(sorted(glyph_to_id[g] for g in struct.incidence.get(a, ())))
+            anchor_to_id[a]: tuple(
+                (glyph_to_id[g], ink, marker, struct.glyphs[g]["centroid"])
+                for (g, ink, marker) in sorted(
+                    struct.incidence.get(a, []), key=lambda t: glyph_to_id[t[0]]
+                )
+            )
             for a in cell_anchors
         }
         self._bound = set(self._cells)
@@ -281,11 +300,24 @@ class GroundingService:
         for an ACTION6 click that hits a cell, record the observed colour edge for
         the ordered-cycle acquisition."""
         self.feed(before)
-        if action == 6:
+        before_grid = _to_grid(before)
+        after_grid = _to_grid(after)
+        # A wholesale board replacement (a decoy->reveal trigger or a level
+        # boundary) is NOT a same-cell colour transition: the "cell" at the click
+        # xy is a DIFFERENT physical cell before vs after, so recording its colour
+        # change as a cycle edge is a mis-attribution (measured: every spurious
+        # ft09 L3 12->8 edge is exactly such a wholesale trigger click). Only a
+        # non-wholesale click advances a cell along its own cycle.
+        if action == 6 and not _is_wholesale_change(before_grid, after_grid):
+            footprint = sum(
+                1
+                for cid in self._bound
+                if _cell_class(before_grid, self._cells[cid].bbox)
+                != _cell_class(after_grid, self._cells[cid].bbox)
+            )
+            self._footprint_obs[footprint] += 1
             cell = self._cell_at_xy(xy)
             if cell is not None:
-                before_grid = _to_grid(before)
-                after_grid = _to_grid(after)
                 cb = _cell_class(before_grid, cell.bbox)
                 ca = _cell_class(after_grid, cell.bbox)
                 if cb != ca:
@@ -355,11 +387,66 @@ class GroundingService:
         return Grounded(listing, "high")
 
     def incidence(self, cell_id: str) -> Any:
-        """The covering-glyph IDs for ``cell_id``: ``Grounded(tuple[glyph_id], "high")``
-        or ``UNKNOWN`` for an unknown/stale cell."""
+        """The covering-glyph evidence for ``cell_id``:
+        ``Grounded(tuple[(glyph_id, ink, marker, glyph_centroid)], "high")`` — the
+        raw ink each covering glyph shows at this cell (the harness supplies the
+        ink; a hypothesis owns the ink->operator mapping). ``UNKNOWN`` for an
+        unknown/stale cell."""
         if not self._id_current(cell_id) or cell_id not in self._incidence:
             return UNKNOWN
         return Grounded(self._incidence[cell_id], "high")
+
+    def cell_colour(self, cell_id: str) -> Any:
+        """The bound cell's current colour, or ``UNKNOWN`` if stale/unbound."""
+        if not self._id_current(cell_id) or cell_id not in self._cells or cell_id not in self._bound:
+            return UNKNOWN
+        return Grounded(self._cells[cell_id].colour, self._cells[cell_id].confidence)
+
+    def observed_footprints(self) -> Any:
+        """The distribution of click FOOTPRINTS observed so far (how many cells a
+        click changed) as ``Grounded(dict[int, count], conf)``, or ``UNKNOWN`` with
+        no observations. Confidence is ``low`` until >= 2 clicks are seen (the
+        min-probe rule) — a transition-model footprint claim must not be judged on
+        one click."""
+        if not self._footprint_obs:
+            return UNKNOWN
+        total = sum(self._footprint_obs.values())
+        return Grounded(dict(self._footprint_obs), "high" if total >= _MIN_CYCLE_CONFIRMATIONS else "low")
+
+    def pattern_evidence(self) -> Any:
+        """For a lattice/preview board (the pattern-reference family member), the
+        current-frame match facts a hypothesis's preview interpretation is judged
+        against: ``Grounded({"matches_xor", "matches_absolute", "cells_matching",
+        "total"}, "high")`` — or ``UNKNOWN`` when there is no lattice/readable
+        preview (e.g. a glyph board or an unsettled frame)."""
+        grid = self._prev_grid
+        if grid is None:
+            return UNKNOWN
+        lattice = _sc25_lattice(grid)
+        if lattice is None:
+            return UNKNOWN
+        target = _sc25_read_target(grid, lattice)
+        if target is None:
+            return UNKNOWN
+        on_set = _sc25_on_set(grid, lattice)
+        mark = _sc25_preview_mark_colour(grid, lattice)
+        absolute_on = (
+            frozenset(
+                k for k, region in lattice["index"].items() if _sc25_cell_colour(grid, region) == mark
+            )
+            if mark is not None
+            else frozenset()
+        )
+        cells_matching = sum(1 for k in lattice["index"] if (k in on_set) == (k in target))
+        return Grounded(
+            {
+                "matches_xor": on_set == target,
+                "matches_absolute": absolute_on == target,
+                "cells_matching": cells_matching,
+                "total": len(lattice["index"]),
+            },
+            "high",
+        )
 
     def resolve_click(self, cell_id: str) -> Any:
         """The cell's CURRENT ``(x, y)`` click coordinate as ``Grounded((x, y), conf)``,

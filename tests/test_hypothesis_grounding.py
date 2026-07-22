@@ -194,3 +194,20 @@ def test_real_trace_sc25_lattice_cells_and_no_glyphs():
     cells = gs.cells()
     assert isinstance(cells, Grounded) and len(cells.value) == 9
     assert gs.glyphs() is UNKNOWN
+
+
+def test_wholesale_transition_not_recorded_as_cycle_edge():
+    """Purpose: a click whose transition is a WHOLESALE board replacement (a
+    decoy->reveal trigger or level boundary) must NOT contribute a cycle edge —
+    the clicked cell before vs after is a different physical cell, so its colour
+    change is not a same-cell cycle step.
+
+    Expected feedback: pass proves the ordered-cycle acquisition ignores
+    board-replacement clicks (the measured ft09 L3 12->8 artifact). Fail means
+    reveal/level frames poison the cycle with cross-board edges."""
+    before = _lattice((4, 8, 12), (6, 10, 14))          # decoy board
+    after = _lattice((4, 8, 12), (0, 3, 6), overrides={(4, 0): 7})  # moved board = wholesale
+    gs = GroundingService()
+    gs.feed_transition(before, 6, (6, 4), after)
+    assert dict(gs._cycle_obs) == {}          # no edge from a wholesale click
+    assert gs.get_ordered_cycle() is UNKNOWN
