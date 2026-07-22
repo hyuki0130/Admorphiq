@@ -225,25 +225,38 @@ def run_once(game: str, run_index: int) -> dict[str, Any]:
         print(f"[live] run{run_index} {game}: warm-up failed to bind cells", flush=True)
         return record
 
+    def probe(x: int, y: int) -> Optional[Grid]:
+        env.click(x, y)
+        return env.frame()
+
+    def rediscover() -> bool:
+        """(Re)acquire the current board's cycle (ft09 only). Returns True when the
+        cycle is closed (or not needed for sc25). The grounding reset its
+        cycle-edge evidence on the reveal/level-up rebind, so this acquires the NEW
+        board's own alphabet cleanly."""
+        if game != "ft09":
+            return True
+        if gs.get_ordered_cycle() is not UNKNOWN:
+            return True
+        closed, used = discover_cycle(gs, probe)
+        record["discovery_actions"] += used
+        record["cycle_acquired"] = record["cycle_acquired"] or closed
+        return closed
+
     # b. DISCOVERY (ft09 only — sc25's binary flip needs no cycle).
-    if game == "ft09":
-        def probe(x: int, y: int) -> Optional[Grid]:
-            env.click(x, y)
-            return env.frame()
+    if not rediscover():
+        record["plan_outcome"] = "GROUNDING_INCOMPLETE"
+        print(f"[live] run{run_index} {game}: initial cycle did not close", flush=True)
+        return record
 
-        closed, disc_actions = discover_cycle(gs, probe)
-        record["discovery_actions"] = disc_actions
-        record["cycle_acquired"] = closed
-        print(f"[live] run{run_index} ft09: discovery {disc_actions} actions, cycle_closed={closed}", flush=True)
-        if not closed:
-            record["plan_outcome"] = "GROUNDING_INCOMPLETE"
-            return record
-
-    # c + d. SOLVE — compile once, step the plan; continue across the target levels.
+    # c + d. SOLVE — step the plan; on a recoverable failure after a reveal /
+    # level-up (a new board with its own cycle), re-discover + recompile and go on.
     plan = compile_hypothesis(instance, gs)
     start_levels = env.levels()
     level_actions = 0
-    total_budget = level_budget * target_levels + 10
+    rediscoveries = 0
+    max_rediscover = target_levels + 2
+    total_budget = level_budget * target_levels + _DISCOVERY_BUDGET * max_rediscover + 10
     for _ in range(total_budget):
         frame = env.frame()
         if frame is None:
@@ -255,18 +268,24 @@ def run_once(game: str, run_index: int) -> dict[str, Any]:
         result = plan.step(frame)
         if isinstance(result, Terminal):
             if result.status is PlanStatus.DONE:
-                # DONE = the hypothesis believes the objective is satisfied. If the
-                # required levels actually cleared (or the env is WIN) that is a
-                # genuine CLEARED; otherwise the plan exhausted its plan without
-                # the game agreeing — the oracle's objective under-models THIS
-                # board (e.g. a decoy->reveal level the schema doesn't encode), an
-                # honest DIVERGENCE, not a clear.
-                if record["levels_cleared"] >= target_levels or env.state() == "WIN":
-                    record["plan_outcome"] = "CLEARED"
-                else:
-                    record["plan_outcome"] = "DIVERGED"
-            else:
-                record["plan_outcome"] = result.status.value
+                # DONE = the hypothesis believes the objective satisfied. Genuine
+                # CLEARED iff the required levels cleared / WIN; otherwise the plan
+                # finished without the game agreeing = an honest DIVERGENCE.
+                record["plan_outcome"] = (
+                    "CLEARED"
+                    if record["levels_cleared"] >= target_levels or env.state() == "WIN"
+                    else "DIVERGED"
+                )
+                break
+            if (
+                result.status in (PlanStatus.GROUNDING_INCOMPLETE, PlanStatus.UNSATISFIABLE)
+                and rediscoveries < max_rediscover
+                and rediscover()
+            ):
+                rediscoveries += 1
+                plan = compile_hypothesis(instance, gs)  # solve the revealed board
+                continue
+            record["plan_outcome"] = result.status.value
             break
         if isinstance(result, Click):
             env.click(result.x, result.y)
@@ -286,7 +305,6 @@ def run_once(game: str, run_index: int) -> dict[str, Any]:
 
     record["rebind_events"] = len(gs.rebind_events)
     if record["plan_outcome"] == "CLEARED" and record["levels_cleared"] < target_levels:
-        # WIN fired without the level counter reaching the target — record honestly.
         record["levels_cleared"] = max(record["levels_cleared"], env.levels() - start_levels)
     return record
 

@@ -22,7 +22,7 @@ from admorphiq.hypothesis_select.compiler import (
 )
 from admorphiq.hypothesis_select.grounding import UNKNOWN, Grounded, GroundingService
 from admorphiq.hypothesis_select.parse import _sc25_lattice
-from admorphiq.hypothesis_select.templates import _sc25_on_set, _sc25_read_target
+from admorphiq.hypothesis_select.templates import _sc25_read_target
 
 _COMPILER_SRC = Path(__file__).resolve().parents[1] / "src" / "admorphiq" / "hypothesis_select" / "compiler.py"
 
@@ -40,18 +40,15 @@ def _repaint(grid, bbox, colour):
     return tuple(tuple(r) for r in g)
 
 
-def _sc25_fixture():
-    """An UNSOLVED 3x3 lattice (all cells colour 2) with a preview target at
-    positions (0,0) and (2,2) — so the plan must flip exactly those two cells."""
-    g = [[0] * 20 for _ in range(20)]
-    for r0 in (4, 8, 12):
-        for c0 in (9, 12, 15):
-            for dr in (0, 1):
-                for dc in (0, 1):
-                    g[r0 + dr][c0 + dc] = 2
-    g[4][2] = 9
-    g[13][5] = 9
-    return tuple(tuple(row) for row in g)
+def _sc25_start_frame():
+    """A REAL sc25 level-0 start board (from the trace), whose interactive lattice
+    is a 2-colour grid with a preview target beside it. Deliberately a board where
+    the current non-majority cells COINCIDE with the preview target — the live case
+    that made a current-majority ON-set spuriously report 'already solved'. The
+    base-XOR-preview diff (against the captured parity-0 base) must still be
+    non-empty here."""
+    d = np.load("data/traces/sc25.npz")
+    return _to_grid(d["frames"][0])
 
 
 def _ft09_grounding_with_cycle():
@@ -125,29 +122,33 @@ def test_ft09_oracle_plan_reproduces_a_satisfying_end_state():
 
 def test_sc25_oracle_plan_emits_the_base_xor_preview_diff_set():
     """Purpose: the sc25 oracle compiles to an XOR-diff plan whose emitted click
-    set equals the base-XOR-preview diff set computed independently.
+    set equals the base-XOR-preview diff set — computed against the captured
+    parity-0 BASE, not the current frame's majority colour.
 
     Expected feedback: pass proves the compiled pattern plan clicks exactly the
-    cells needed to reach the cast state. Fail means the plan's flip set diverges
-    from the target diff."""
-    frame = _sc25_fixture()
+    cells needed to reach the cast state, AND that a start board whose non-majority
+    cells coincide with the preview does NOT spuriously report 'already solved'
+    (empty diff) — the live DIVERGED-at-start defect. Fail means the base snapshot
+    regressed to a current-majority read."""
+    frame = _sc25_start_frame()
     gs = GroundingService()
-    gs.feed(frame)
+    gs.feed(frame)  # capture the parity-0 base
+    gs.feed(frame)  # a second equal read locks the preview target
     plan = compile_hypothesis(s.sc25_oracle_instance(), gs)
     assert isinstance(plan, PatternXorPlan)
     solution = plan.solve()
     assert solution.status is PlanStatus.SOLVABLE
+    assert solution.flip_clicks  # NON-empty: not spuriously 'already solved'
 
-    # Ground truth diff set (on_set XOR target), independently, as (x, y) coords.
+    # Ground truth: at the start (current == base), the flip set is exactly the
+    # preview-target cells (base XOR preview flips precisely those), as (x, y).
     lattice = _sc25_lattice(frame)
-    on_set = _sc25_on_set(frame, lattice)
     target = _sc25_read_target(frame, lattice)
     expected = set()
-    for key in on_set ^ target:
+    for key in target:
         rr, rc = lattice["index"][key]["centroid"]
         expected.add((int(round(rc)), int(round(rr))))
     assert set(solution.flip_clicks) == expected
-    assert len(expected) == 2  # the two mismatched cells
 
 
 def test_grounding_incomplete_on_withheld_cycle_evidence():
@@ -220,3 +221,61 @@ def test_unsatisfiable_when_no_cycle_colour_satisfies_the_constraints():
     objective = s.ft09_oracle_instance().objective  # all_covering, ink 0=equal
     plan = GlyphConstraintPlan(objective, _StubGrounding())
     assert plan.solve().status is PlanStatus.UNSATISFIABLE
+
+
+def _ft09_decoy_grounding():
+    """Grounding on the real L3 DECOY board (fr[105], all rings satisfied) with a
+    closed {8,12} cycle injected (the decoy's own colours), plus the wholesale
+    REVEALED board (nf[105]) — the exact decoy->reveal transition diagnosed for
+    the L3 12->8 anomaly."""
+    d = np.load("data/traces/ft09.npz")
+    decoy, revealed = _to_grid(d["frames"][105]), _to_grid(d["next_frames"][105])
+    gs = GroundingService()
+    gs.feed(decoy)
+    bbox = gs._cells[gs.cells().value[0][0]].bbox
+    a8, a12 = _repaint(decoy, bbox, 8), _repaint(decoy, bbox, 12)
+    xy = (bbox[1], bbox[0])
+    for _ in range(2):
+        gs.feed_transition(a8, 6, xy, a12)
+        gs.feed_transition(a12, 6, xy, a8)
+    gs.feed(decoy)
+    return gs, decoy, revealed
+
+
+def test_glyph_plan_decoy_triggers_then_reveal_needs_rediscovery():
+    """Purpose: on a DECOY board (all rings satisfied) the reveal-phase-enabled
+    plan emits a TRIGGER click rather than a premature DONE; feeding the resulting
+    WHOLESALE-revealed board resets the per-board cycle, so the plan reports
+    GROUNDING_INCOMPLETE (the driver then re-discovers) — it does NOT falsely
+    declare the level solved.
+
+    Expected feedback: pass proves the decoy->reveal phase mechanic (schema
+    LayoutReplaced guard -> compiler trigger-then-resolve) works on the real L3
+    decoy transition. Fail means the plan either never triggers or falsely DONEs a
+    decoy."""
+    gs, decoy, revealed = _ft09_decoy_grounding()
+    assert gs.get_ordered_cycle() is not UNKNOWN  # cycle primed
+    plan = compile_hypothesis(s.ft09_oracle_instance(), gs)
+    first = plan.step(decoy)
+    assert isinstance(first, Click)  # a trigger click, not a premature Terminal(DONE)
+    after_reveal = plan.step(revealed)
+    assert isinstance(after_reveal, Terminal)
+    assert after_reveal.status is PlanStatus.GROUNDING_INCOMPLETE  # reveal -> cycle reset -> re-discover
+
+
+def test_glyph_plan_trigger_revealing_nothing_is_honest_done():
+    """Purpose: if the decoy-trigger click causes NO wholesale change (the board
+    is genuinely solved, no hidden reveal), the plan returns DONE — it does not
+    loop clicking.
+
+    Expected feedback: pass proves the honest-DIVERGED path is preserved: a
+    plan-DONE that clears nothing is the driver's DIVERGED signal, and the plan
+    itself terminates rather than thrashing. Fail means a solved-but-not-won board
+    would loop or misreport."""
+    gs, decoy, _revealed = _ft09_decoy_grounding()
+    plan = compile_hypothesis(s.ft09_oracle_instance(), gs)
+    first = plan.step(decoy)
+    assert isinstance(first, Click)  # the trigger
+    # Feed the SAME board again (no wholesale change) -> the trigger revealed nothing.
+    outcome = plan.step(decoy)
+    assert isinstance(outcome, Terminal) and outcome.status is PlanStatus.DONE

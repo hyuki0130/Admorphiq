@@ -181,6 +181,15 @@ class GroundingService:
         self._rebinds: list[RebindEvent] = []
         self._cycle_obs: dict[tuple[int, int], int] = defaultdict(int)
         self._footprint_obs: dict[int, int] = defaultdict(int)  # click footprint -> count
+        # sc25 pattern base-snapshot state (per level): the parity-0 cell colours
+        # captured on the first SETTLED lattice frame, the two toggle colours, and
+        # the preview target locked after two equal reads. The flip set is
+        # base-XOR-preview against THIS base — NOT the current frame's majority
+        # (which spuriously matches a start pattern; measured live).
+        self._sc25_base: Optional[dict[Cell, int]] = None
+        self._sc25_two: Optional[tuple[int, int]] = None
+        self._sc25_target: Optional[frozenset[Cell]] = None
+        self._sc25_target_prev: Optional[frozenset[Cell]] = None
 
     # ── frame stream ─────────────────────────────────────────────────────
 
@@ -195,11 +204,45 @@ class GroundingService:
             rebind = self._open_epoch(grid, reason="layout_replaced")
         else:
             self._rebind_same_epoch(grid)
+        self._update_sc25_pattern_state(grid)
         self._prev_grid = grid
         return rebind
 
+    def _update_sc25_pattern_state(self, grid: Grid) -> None:
+        """Capture the sc25 parity-0 BASE on the first settled lattice frame (cells
+        showing at most two colours, no transient cursor), and lock the preview
+        target after two consecutive equal reads (the level-entry frame shows the
+        PREVIOUS level's preview until the first action redraws it). A no-op on a
+        glyph board (no lattice)."""
+        lattice = _sc25_lattice(grid)
+        if lattice is None:
+            return
+        index = lattice["index"]
+        if self._sc25_base is None:
+            colours = [_sc25_cell_colour(grid, region) for region in index.values()]
+            distinct = sorted(set(colours))
+            if len(distinct) <= 2:
+                self._sc25_two = (distinct[0], distinct[-1])
+                self._sc25_base = {k: _sc25_cell_colour(grid, region) for k, region in index.items()}
+        target = _sc25_read_target(grid, lattice)
+        if self._sc25_target is None and target is not None and target == self._sc25_target_prev:
+            self._sc25_target = target
+        self._sc25_target_prev = target
+
     def _open_epoch(self, grid: Grid, reason: str = "initial") -> Optional[RebindEvent]:
         self._epoch += 1
+        # A wholesale layout replacement is a NEW board (a new level, or a decoy's
+        # revealed puzzle) — its colour cycle is its own, so the acquired
+        # cycle-edge evidence is reset per epoch (mixing two levels' alphabets
+        # would make get_ordered_cycle ambiguous -> UNKNOWN). Footprints are
+        # level-invariant (single-cell everywhere) and are NOT reset.
+        self._cycle_obs.clear()
+        # The sc25 base snapshot is per-level: a new board has its own parity-0
+        # base + target, re-captured on its first settled frame.
+        self._sc25_base = None
+        self._sc25_two = None
+        self._sc25_target = None
+        self._sc25_target_prev = None
         struct = _parse_structure(grid)
         cell_anchors = sorted(struct.cells)
         anchor_to_id = {a: f"e{self._epoch}:c{k}" for k, a in enumerate(cell_anchors)}
@@ -449,24 +492,29 @@ class GroundingService:
         )
 
     def pattern_diff(self) -> Any:
-        """The lattice cells a pattern-reference plan must FLIP to reach the
-        base-XOR-preview target — the symmetric difference of the current ON-set
-        and the preview target — as ``Grounded(frozenset[(x, y)], "high")`` click
-        coordinates. ``UNKNOWN`` when there is no lattice/readable preview."""
+        """The lattice cells a pattern-reference plan must FLIP to reach the cast
+        (grid == base XOR preview) — as ``Grounded(frozenset[(x, y)], "high")`` click
+        coordinates; an EMPTY set means the grid already matches (cast fired). Uses
+        the captured parity-0 BASE (per level), so an already-matching-looking start
+        pattern is not mistaken for solved. ``UNKNOWN`` until the base + a stable
+        preview target are captured (or on a glyph board)."""
         grid = self._prev_grid
-        if grid is None:
+        if grid is None or self._sc25_base is None or self._sc25_two is None or self._sc25_target is None:
             return UNKNOWN
         lattice = _sc25_lattice(grid)
         if lattice is None:
             return UNKNOWN
-        target = _sc25_read_target(grid, lattice)
-        if target is None:
-            return UNKNOWN
-        on_set = _sc25_on_set(grid, lattice)
+        flip = {self._sc25_two[0]: self._sc25_two[1], self._sc25_two[1]: self._sc25_two[0]}
         coords: list[tuple[int, int]] = []
-        for key in sorted(on_set ^ target):
-            region = lattice["index"].get(key)
-            if region is not None:
+        for key, region in lattice["index"].items():
+            base_colour = self._sc25_base.get(key)
+            if base_colour is None:
+                continue
+            want = base_colour if key not in self._sc25_target else flip.get(base_colour, base_colour)
+            current = _sc25_cell_colour(grid, region)
+            # A cell showing a transient cursor colour (not one of the two toggle
+            # colours) is mid-animation — skip it, it is re-read next frame.
+            if current in self._sc25_two and current != want:
                 rr, rc = region["centroid"]
                 coords.append((int(round(rc)), int(round(rr))))
         return Grounded(frozenset(coords), "high")

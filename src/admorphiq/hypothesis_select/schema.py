@@ -331,7 +331,14 @@ def ft09_oracle_instance() -> CellStateHypothesis:
     2=differ / 3=no-cell, the adapter's decoded alphabet) with a single clicked
     cell advancing one step through the board's measured colour cycle. The cycle
     is harness_measured at runtime; the fixture uses the adapter's decoded
-    3-value cycle (9, 8, 12) (``adapters25/ft09.py``). Single implicit phase."""
+    3-value cycle (9, 8, 12) (``adapters25/ft09.py``).
+
+    Two phases: the constraint-solve phase, then a REVEAL phase guarded by a
+    ``LayoutReplaced`` (wholesale-change) exit — some levels are decoy boards
+    whose rings already satisfy, and a trigger click wholesale-replaces the
+    layout with the real puzzle (measured: the L3 decoy episodes). The compiler
+    reads the reveal phase's guard to enable a trigger-then-resolve step when it
+    believes the board solved but no level-up has occurred."""
     return CellStateHypothesis(
         objective=GlyphRelational(
             coverage_quantifier="all_covering",
@@ -339,7 +346,10 @@ def ft09_oracle_instance() -> CellStateHypothesis:
             no_cell_ink=3,
         ),
         transition_model=OrderedCycle(order=(9, 8, 12)),
-        phases=(Phase(guard=(), objective=None),),
+        phases=(
+            Phase(guard=(), objective=None),
+            Phase(guard=(LayoutReplaced(),), objective=None),
+        ),
     )
 
 

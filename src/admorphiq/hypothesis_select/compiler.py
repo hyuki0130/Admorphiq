@@ -43,6 +43,7 @@ from admorphiq.hypothesis_select.schema import (
     BinaryFlip,
     CellStateHypothesis,
     GlyphRelational,
+    LayoutReplaced,
     OrderedCycle,
     PatternReference,
 )
@@ -119,11 +120,16 @@ class GlyphConstraintPlan:
     """GlyphRelational x OrderedCycle: drive each covered cell to a satisfying
     colour along the acquired cycle."""
 
-    def __init__(self, objective: GlyphRelational, grounding: GroundingService) -> None:
+    def __init__(
+        self, objective: GlyphRelational, grounding: GroundingService, reveal_enabled: bool = False
+    ) -> None:
         self._quantifier = objective.coverage_quantifier
         self._ink_map = dict(objective.ink_operator_map)
         self._g = grounding
+        self._reveal_enabled = reveal_enabled  # a LayoutReplaced-guarded reveal phase exists
         self._pending: Optional[tuple[str, int]] = None  # (cell_id, expected colour)
+        self._trigger_pending = False  # a decoy-trigger click awaiting a wholesale reveal
+        self._triggered_epochs: set[int] = set()  # epochs already probed with a trigger
 
     def _relevant_constraints(self, cell_centroid: tuple[float, float], covering: list[tuple]) -> list[tuple]:
         if self._quantifier == "nearest_only" and covering:
@@ -159,14 +165,24 @@ class GlyphConstraintPlan:
 
     def step(self, frame: Any) -> StepResult:
         """Feed ``frame``, confirm the previous click's expected advance (DIVERGED
-        on mismatch), then emit the next needed click or a terminal status."""
-        self._g.feed(frame)
+        on mismatch), then emit the next needed click / a decoy-reveal trigger / a
+        terminal status."""
+        rebind = self._g.feed(frame)
         if self._pending is not None:
             cell_id, expected = self._pending
             self._pending = None
             observed = self._g.cell_colour(cell_id)
             if observed is UNKNOWN or observed.value != expected:
                 return Terminal(PlanStatus.DIVERGED)
+        if self._trigger_pending:
+            self._trigger_pending = False
+            if rebind is None:
+                # the trigger revealed nothing: the board is solved per the
+                # hypothesis but the game has not advanced -> the driver decides
+                # CLEARED vs DIVERGED. Otherwise a wholesale reveal happened and we
+                # fall through to solve the revealed board.
+                return Terminal(PlanStatus.DONE)
+
         solution = self.solve()
         if solution.status in (PlanStatus.GROUNDING_INCOMPLETE, PlanStatus.UNSATISFIABLE):
             return Terminal(solution.status)
@@ -182,7 +198,30 @@ class GlyphConstraintPlan:
             self._pending = (cell_id, expected)
             x, y = coord.value
             return Click(x, y)
+
+        # Every covered cell is satisfied. If a decoy->reveal phase exists and this
+        # board has not yet been trigger-probed, emit a trigger click and await a
+        # wholesale reveal (rebind); otherwise the plan is DONE per the hypothesis.
+        if self._reveal_enabled and self._g.epoch not in self._triggered_epochs:
+            trigger = self._trigger_target()
+            if trigger is not None:
+                self._triggered_epochs.add(self._g.epoch)
+                self._trigger_pending = True
+                return Click(trigger[0], trigger[1])
         return Terminal(PlanStatus.DONE)
+
+    def _trigger_target(self) -> Optional[tuple[int, int]]:
+        """A ring cell to click as a decoy-reveal probe (the first covered cell
+        that resolves to a live coordinate)."""
+        cells = self._g.cells()
+        if cells is UNKNOWN:
+            return None
+        for cell_id, _centroid in cells.value:
+            covering = self._g.incidence(cell_id)
+            coord = self._g.resolve_click(cell_id)
+            if covering is not UNKNOWN and covering.value and coord is not UNKNOWN:
+                return coord.value
+        return None
 
 
 class PatternXorPlan:
@@ -205,12 +244,12 @@ class PatternXorPlan:
         return PatternSolution(status, flips)
 
     def step(self, frame: Any) -> StepResult:
-        """Feed ``frame`` and emit the next flip click, or DONE once the cast fires
-        (the grid matches the preview target — the pattern-phase guard)."""
+        """Feed ``frame`` and emit the next flip click, or DONE once the cast fires.
+        The cast = the grid reaching base-XOR-preview, detected by an EMPTY flip
+        set from the base-aware ``pattern_diff`` — NOT the current-frame majority
+        read, which coincides with the preview on some start boards and DONEs
+        spuriously (measured live)."""
         self._g.feed(frame)
-        evidence = self._g.pattern_evidence()
-        if evidence is not UNKNOWN and evidence.value["matches_xor"]:
-            return Terminal(PlanStatus.DONE)  # cast: guard roles_state_equal(grid, preview)
         solution = self.solve()
         if solution.status is PlanStatus.GROUNDING_INCOMPLETE:
             return Terminal(PlanStatus.GROUNDING_INCOMPLETE)
@@ -229,7 +268,11 @@ def compile_hypothesis(instance: CellStateHypothesis, grounding: GroundingServic
     the schema's objective + transition-model tags (never a game id)."""
     objective, transition = instance.objective, instance.transition_model
     if isinstance(objective, GlyphRelational) and isinstance(transition, OrderedCycle):
-        return GlyphConstraintPlan(objective, grounding)
+        reveal = any(
+            any(isinstance(clause, LayoutReplaced) for clause in phase.guard)
+            for phase in instance.phases
+        )
+        return GlyphConstraintPlan(objective, grounding, reveal_enabled=reveal)
     if isinstance(objective, PatternReference) and isinstance(transition, BinaryFlip):
         return PatternXorPlan(objective, grounding)
     raise ValueError(
