@@ -153,6 +153,25 @@ def test_model_verdict_needs_two_of_three():
     assert _MOD.model_verdict([]) == "FAIL"
 
 
+def test_echoing_llm_is_transparent_and_logs_ask_and_reply(capsys):
+    """Purpose: the v7 observability wrapper returns the wrapped model's reply
+    UNCHANGED (zero behaviour change) while logging every ask message and the raw
+    reply under [live-ask]/[live-reply] prefixes.
+
+    Expected feedback: pass proves the kernel-log instrumentation cannot perturb the
+    byte-identical pick it is meant to explain. Fail means the wrapper altered the
+    reply or failed to log the prompt/reply."""
+    def fake(_messages):
+        return '{"choice": "I3"}\nwith reasoning'
+
+    wrapped = _MOD.echoing_llm(fake)
+    reply = wrapped([{"role": "system", "content": "SYS"}, {"role": "user", "content": "line1\nline2"}])
+    assert reply == '{"choice": "I3"}\nwith reasoning'  # returned UNCHANGED
+    out = capsys.readouterr().out
+    assert "[live-ask] SYS" in out and "[live-ask] line1" in out and "[live-ask] line2" in out
+    assert '[live-reply] {"choice": "I3"}' in out and "[live-reply] with reasoning" in out
+
+
 def instances_from(game):
     return _MOD.instances_for_game(game)
 

@@ -863,6 +863,28 @@ def _oracle_variant(game: str) -> tuple[str, str]:
     return inst.objective.KIND, inst.transition_model.KIND
 
 
+def echoing_llm(
+    llm: Callable[[list[dict[str, str]]], str],
+) -> Callable[[list[dict[str, str]]], str]:
+    """A TRANSPARENT wrapper that echoes each assembled ask (every message) and the
+    raw reply to stdout — ``[live-ask]`` / ``[live-reply]`` prefixed lines, flushed,
+    before parsing — then returns the model's reply UNCHANGED. Our own kernel log
+    for diagnosing the live prompt + pick (both modes, both asks, retries); never
+    shown to the model, so no leak concern. Zero behaviour change."""
+    def wrapped(messages: list[dict[str, str]]) -> str:
+        for message in messages:
+            print(f"[live-ask] --- {message['role']} ---", flush=True)
+            for line in message["content"].splitlines():
+                print(f"[live-ask] {line}", flush=True)
+        reply = llm(messages)
+        print("[live-reply] --- model reply ---", flush=True)
+        for line in reply.splitlines():
+            print(f"[live-reply] {line}", flush=True)
+        return reply
+
+    return wrapped
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--game", required=True, choices=["ft09", "sc25"])
@@ -903,10 +925,10 @@ def main() -> None:
 
     from admorphiq.harness.registry import openai_compat_llm
 
-    llm = openai_compat_llm(
+    llm = echoing_llm(openai_compat_llm(
         num_predict=int(os.environ.get("HARNESS_PATCH_NUM_PREDICT", "2048")),
         timeout=float(os.environ.get("HARNESS_PATCH_TIMEOUT", "900")),
-    )
+    ))
     run = run_fill_once if args.mode == "fill" else run_model_once
     runs = [run(args.game, i, llm) for i in range(args.runs)]
     report = {"game": args.game, "mode": args.mode, "runs": runs, "model_verdict": model_verdict(runs)}
