@@ -122,6 +122,11 @@ def _shuffle_ids(game: str, names: list[str]) -> dict[str, str]:
 # ── live observation summary (structural; from the run's grounding) ───────────
 
 
+def _count(n: int, word: str) -> str:
+    """``'1 cell'`` / ``'5 cells'`` — pluralize ``word`` by count (English)."""
+    return f"{n} {word}" if n == 1 else f"{n} {word}s"
+
+
 def live_observation_summary(gs: GroundingService, game: str) -> str:
     """A NEUTRAL structural summary of the LIVE grounding evidence gathered this
     run — the number of interactive cells and marker symbols, the click-footprint
@@ -153,12 +158,17 @@ def live_observation_summary(gs: GroundingService, game: str) -> str:
 
     footprints = gs.observed_footprints()
     if footprints is not UNKNOWN:
-        hist = ", ".join(
-            f"{size}cell(s)->{count}click(s)" for size, count in sorted(footprints.value.items())
-        )
-        lines.append(f"- When a click changed the board, how many cells changed (histogram): {hist}")
+        # Unambiguous PROSE, not an "N->M" histogram notation: gemma4 misparsed the
+        # notation (swapping cell-count and click-count) and misread a single-cell
+        # effect as multi-cell. One clause per size, ordered by frequency.
+        parts = [
+            f"{_count(count, 'click')} changed exactly {_count(size, 'cell')}"
+            + (" each" if count > 1 else "")
+            for size, count in sorted(footprints.value.items(), key=lambda kv: (-kv[1], kv[0]))
+        ]
+        lines.append("- Click effect sizes: " + "; ".join(parts))
     else:
-        lines.append("- Click-footprint histogram: none observed")
+        lines.append("- Click effect sizes: none observed")
 
     evidence = gs.pattern_evidence()
     if evidence is not UNKNOWN:

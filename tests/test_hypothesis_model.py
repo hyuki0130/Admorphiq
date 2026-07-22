@@ -306,6 +306,20 @@ def test_unsupported_variant_combination_is_typed_not_a_crash():
     assert _MOD.compilable(unsupported, gs) is False
 
 
+def test_footprint_evidence_uses_unambiguous_prose_not_arrow_notation():
+    """Purpose: the click-footprint evidence is stated as unambiguous prose
+    ("<M> clicks changed exactly <N> cell(s)"), NOT the "Ncell(s)->Mclick(s)"
+    notation gemma4 misparsed (swapping cell-count and click-count, reading a
+    single-cell effect as multi-cell — the v7-diagnosed sc25 effect_matrix cause).
+
+    Expected feedback: pass proves the swappable notation is gone from both games.
+    Fail means it regressed and would re-break the transition read."""
+    for game in ("ft09", "sc25"):
+        summary = _MOD.live_observation_summary(_MOD._replay_grounding(game), game)
+        assert "changed exactly 1 cell each" in summary  # the clear single-cell reading
+        assert "->" not in summary and "cell(s)" not in summary  # no swappable notation
+
+
 def test_observation_summary_omits_the_click_style_and_colour_count_lines():
     """Purpose: the observation summary carries NO click-style / distinct-colours
     line — MEASURED (fill v1/v3/v4) to corrupt the model's transition pick in every
