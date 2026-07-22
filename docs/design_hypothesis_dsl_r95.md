@@ -164,6 +164,45 @@ Scoring (per game × model):
   replication).
 - sk48 runs only as the labelled OOD/exploration control arm.
 
+### R95b BUILD PLAN v0 (drafted 2026-07-22 after the R95a paired confirmation;
+### pending Codex consult before any build)
+
+Scope: ONE family — the CELL-STATE family R95a validated (ft09 + sc25 pattern
+phase). Components, in build order, each with its own gate:
+
+1. **Cell-state family schema** (tagged, per v2.2 §1): board cells (with
+   measured colour-cycle length), controls (stateful buttons), constraint
+   sources (marker/preview: read as glyph-relational OR as pattern-reference —
+   the schema's key discriminated union), target rule (all-constraints /
+   exact-pattern-xor), phase guards (from the typed clause bank). The R95a
+   template set becomes INSTANCES of this schema — selection now fills slots
+   instead of picking a whole canned template.
+2. **Observation package v2**: the R95a summary + #125 chrome masking +
+   role-conditioned candidate shortlists (measured top-K≈8) + settled-frame
+   windows. This is the harness-owned binding layer (Codex finding 6).
+3. **Verifier**: PASS/CONTRADICTED/UNKNOWN per dynamics claim with
+   minimum-probe counts + held-out testing (v2 correction §2); win-rule
+   verified against gold level-up events where available, else UNKNOWN.
+4. **Compiler**: schema instance → executable core in the SAME sandbox
+   contract as R93/R94 cards (current_frame/transitions/act). ft09 compiles to
+   the constraint-solve plan (colour-cycle click counts per cell); sc25
+   compiles to XOR-diff clicks + guard-gated navigate handover.
+5. **Oracle gate** (v2 correction §3, run BEFORE any model selection): the
+   hand-authored oracle schema instance must (i) pass the verifier on clean
+   evidence, (ii) reject seeded wrong instances, (iii) its compiled core must
+   reproduce a declared floor LIVE — ft09 ≥ the adapter's 6/6 path on at
+   least L1-L2 within budget; sc25 ≥ pattern-phase cast on L0. Only then the
+   model's selected/filled schema runs.
+6. **Model stage**: guided-json slot filling over the family schema (the R95a
+   ask generalized from 5 canned choices to schema slots), both models, reps,
+   dual verdicts (hypothesis accuracy vs oracle; control = level clears).
+
+Success criterion (pre-declared): the model-filled schema, compiled and run
+live, clears ≥1 ft09 level end-to-end without the adapter — the first
+agent25 LEVEL CLEAR through the hypothesis channel. Failure telemetry keeps
+the schema/binding/verifier/compiler/model attribution separable (the whole
+point of the ladder).
+
 ## Enum vocabulary v0 — domain-mined question banks (v2.1, 2026-07-22)
 
 Directive: enum choices must be MINED from the 25 public games' decoded
