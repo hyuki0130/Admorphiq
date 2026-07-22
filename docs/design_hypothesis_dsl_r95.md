@@ -209,6 +209,38 @@ Codex corrections applied on top of v0 (v0 kept below for provenance):
    Codex risk estimate: ~60% of residual risk is ft09 grounding/parameter
    acquisition, ~25% coherent slot filling, <15% mechanic selection.
 
+### R95b EVALUATION CONTRACT (step i — FROZEN 2026-07-22 16:44, before any
+### schema/compiler code)
+
+- **Games & levels**: ft09 levels idx0 and idx1 (the oracle floor pair; the
+  model criterion level = idx0, which must be oracle-proven first). sc25
+  level idx0 pattern phase (cast + guard handover only; navigation excluded).
+- **Fresh-reset procedure**: every run starts from a new env instance +
+  RESET; no state reuse across runs; no replayed coordinates — every click
+  is resolved through the grounding service at action time.
+- **Budgets**: ft09 ≤150 actions/level (matches `_LEVEL_ACTION_BUDGET`);
+  sc25 pattern phase ≤60 actions. Wall-clock per run ≤20 min incl. LLM calls.
+- **Repetitions & aggregation**: oracle gates = 3/3 required. Model stage =
+  3 fresh runs per model per substage; per-model success = ≥2/3 clears from
+  a verifier-PASS schema; overall CONFIRMED = both models, PARTIAL = one.
+- **Substage order**: (vii) canned-instance selection (5 serialized
+  instances: oracle + 4 mutants from the expected-verdict table) → only on
+  substage success (viii) variant-first slot filling (objective variant
+  choice, then that variant's `model_selected` slots + singular-role
+  shortlist bindings).
+- **Prohibited leakage**: the model never sees — adapter code, wiki pages,
+  game ids, template/mutant provenance labels, verifier internals, gold
+  action sequences, or any held-out split. Prompt content = grounding-service
+  output + neutral serialized instances only (R95a leak-guard test pattern
+  extended to the new prompts).
+- **Non-counting clears**: UNKNOWN-verdict schemas never execute; a clear
+  obtained after ANY manual repair or oracle assistance is recorded but does
+  not count toward the criterion.
+- **Falsification**: if the ORACLE gate itself cannot pass (grounding cannot
+  acquire the ordered cycle / full glyph coverage within budget), that is the
+  60%-risk outcome — recorded as a GROUNDING failure, and the round pivots
+  to grounding work, not schema/model changes.
+
 ### R95b BUILD PLAN v0 (superseded by v1 above — kept for provenance)
 
 Scope: ONE family — the CELL-STATE family R95a validated (ft09 + sc25 pattern
