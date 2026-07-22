@@ -1678,11 +1678,15 @@ ft09/sc25; ft09 = primary case (equivalence {glyph_constraints, nearest_glyph_on
 data-indistinguishability), sc25 = weak case (zero clean win-axis negatives). Part-2 MEASURED
 (2026-07-22): thesis CONFIRMED paired — both models pick the exact ft09 oracle 3/3 with true
 discriminating evidence; sc25 chrome defect fixed (#125) → gemma4 recovers 3/3, gpt-oss residual
-(evidence thinness). **R95b LIVE MILESTONE: the compiled ORACLE hypothesis (schema→grounding→
-compiler, zero adapter code) clears ft09 idx0 live 3/3 at EXACTLY 4 actions = the human
-baseline, deterministic (65b7a2e)** — first live clears through the hypothesis channel; idx1
-decoy-reveal + sc25 live-read walls in repair; remaining substages = canned-instance selection
-+ slot filling (both models, Kaggle).
+(evidence thinness). **R95b COMPLETE THROUGH STEP vii — MODEL STAGE CONFIRMED PAIRED
+(2026-07-22 20:11, e1289c7): the FIRST FULLY AUTONOMOUS agent25 clears.** Both oracle gates
+passed 3/3 (ft09 idx0+idx1 at 4+8 actions = human baseline; sc25 cast+handover), then the
+MODEL replaced the oracle: gemma4 6/6 PERFECT (exact-oracle selection from live grounding
+evidence every run); gpt-oss ft09 2/3 (its wrong stencil pick was CAUGHT LIVE by the verifier
+— zero actions wasted) + sc25 3/3 (execution-equivalent mutant on the uniform base). Zero
+adapter code, zero game ids in the runtime path. Artifacts scripts/rounds/R95/. Remaining:
+step viii variant-first slot filling (in build), then FAMILY EXPANSION per the 15-game
+inexpressible backlog — the private-110 coverage lever.
 
 **[SUPERSEDED by the R56 depth phase above — kept for history]**
 **R53 SINGLE-ARTIFACT (2026-07-13): `--agent chained` @8000 = 15/25 cleared, 1.076% MEASURED**
