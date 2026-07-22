@@ -248,6 +248,45 @@ state-dependent / relational / concurrent / simulated dynamics.
   that routes to probe_more. This keeps binding closed-choice at 8B scale
   while the escape prevents forced wrong bindings.
 
+## Fallback ladder — when composition cannot express the game (v2.3)
+
+Directive (user, 2026-07-22): priority #1 is maximally generic primitives, but
+the schema WILL meet inexpressible games (Codex constructed one from public
+primitives alone). The response is a runtime ESCALATION LADDER over channels
+whose capabilities are already measured, ordered by cost and safety:
+
+| tier | channel | measured basis | when entered |
+|---|---|---|---|
+| 0 | DSL hypothesis (this design) | R95a/b to measure | default |
+| 1 | active identification probes (#122) | design pending | verifier UNKNOWN persists / `unknown` selected / `none_of_these` binding |
+| 2 | **tool fork-and-patch** (R93 loop): model copies the nearest tool/card, makes a TARGETED edit, matched replay, keep-parent-on-loss | R93: paint×cd82 PATCH_WINS ×2; mechanism 11/20 breadth cases; safe by verdict rule | tier-1 probes did not resolve to any expressible hypothesis, but a NEAR-FAMILY tool exists |
+| 3 | bounded free-code micro-programs (REPL) | R92: 0 clears from scratch — weakest channel, LAST resort, small scope only (a predicate or operator, never a whole solver) | no near-family tool; only a small missing piece blocks an otherwise-passing hypothesis |
+| floor | generic exploration (graph frontier agent) | deployed card baseline | all tiers exhausted or budget cap |
+
+Design rules for the ladder:
+
+1. **Monotone safety**: every tier inherits R93's keep-parent-on-loss —
+   escalation may only replace the incumbent behaviour after beating it on a
+   matched replay. The floor (generic exploration) is always retained, so the
+   ladder can never score below the deployed card.
+2. **Escalation triggers are telemetry, not vibes**: repeated verifier
+   CONTRADICTED on all candidate hypotheses, `unknown` cluster growth,
+   zero-progress stall counters — the same signals that name v1 schema gaps.
+   Every escalation event is logged with its trigger so dev-time rounds see
+   exactly WHERE the schema was too narrow (the gap list IS the expansion
+   backlog).
+3. **Budget caps per tier**: tiers 2–3 are expensive (LLM latency); each gets
+   a per-game action/wall-clock allowance so one inexpressible game cannot
+   starve the other 109 in the 9h Kaggle budget.
+4. **Tier 3 scope guard**: free code may only author a SMALL missing piece
+   wired into an otherwise-verified hypothesis (a guard predicate, an effect
+   operator) — R92 measured whole-solver authoring at 0; that scope stays
+   banned.
+5. **Dev-time counterpart**: priority #1 remains widening the primitive set
+   (the 15-game inexpressible backlog from the v2.2 consult) so the ladder is
+   entered less often; runtime escalation telemetry decides WHICH family gets
+   built next.
+
 ## Retained from v1
 
 - Closed-choice (multiple-choice) slots via guided-json; no free-text escape hatch
