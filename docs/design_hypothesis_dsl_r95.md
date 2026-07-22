@@ -287,6 +287,36 @@ Design rules for the ladder:
    entered less often; runtime escalation telemetry decides WHICH family gets
    built next.
 
+## Active identification (#122) — tier-1 probe design (v2.4)
+
+What `probe_more` / verifier `UNKNOWN` actually triggers (Codex R93 lever #2,
+now tier 1 of the fallback ladder). Two rules, both harness-computed —
+the model never picks probe coordinates freely:
+
+1. **No-repeat-no-op**: an (action, state-context) pair observed inert is
+   never re-issued in that context; the probe budget is spent on UNTRIED
+   pairs first. Context = the harness state key (frame hash tier), so an
+   action inert in one phase may still be probed after a guard fires —
+   which is exactly how `effect_shift` phase evidence is obtained.
+2. **Disagreement probes**: while ≥2 candidate hypotheses survive the
+   verifier, rank each executable action by how many surviving candidates
+   its predicted outcomes SPLIT (maximum expected elimination). Execute the
+   top splitter, feed the observed transition back to the verifier, repeat.
+   A probe that all candidates predict identically is worthless and never
+   chosen; a probe where candidates disagree is worth one bit or more.
+
+Termination: single surviving candidate (→ execute its plan) · probe budget
+exhausted (→ escalate to tier 2) · all candidates CONTRADICTED (→ log schema
+gap, escalate). The probe count per game is a pre-registered constant, not
+model-controlled, so runaway probing cannot eat the action budget the RHAE
+metric squares.
+
+R95a interaction: the discriminative pre-test scores SELECTION on recorded
+transitions only (no live probes); disagreement-probe VALUE can still be
+computed offline there — "had the agent been allowed one probe, which action
+would have split the candidates, and do the recorded transitions contain it?"
+— giving #122 its first measurement for free.
+
 ## Retained from v1
 
 - Closed-choice (multiple-choice) slots via guided-json; no free-text escape hatch
