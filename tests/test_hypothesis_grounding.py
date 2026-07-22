@@ -57,6 +57,37 @@ def test_ids_stable_across_recolour():
         assert gs.resolve_click(cid) == grounded  # same coordinate after recolour
 
 
+def test_pattern_cast_commit_is_excluded_from_footprint_stats():
+    """Purpose: the lattice auto-cast COMMIT (a phase event: multiple SELECTED cells
+    — showing a pending selection colour outside the two base colours — recolour at
+    once) is EXCLUDED from the click-footprint distribution, exactly as a wholesale
+    change is; while a legitimate single-cell select IS counted.
+
+    Expected feedback: pass proves a mid-discovery auto-cast cannot contaminate the
+    footprint histogram with a spurious multi-cell entry (the sc25 effect_matrix
+    mispick cause). Fail means a phase event pollutes the per-click transition
+    statistics the verifier and the ASK read."""
+    rows, cols = (4, 8, 12), (6, 10, 14)
+    base = _lattice(rows, cols)  # all cells colour 2 -> the two base colours captured
+    gs = GroundingService()
+    gs.feed(base)
+
+    # a legitimate single-cell SELECT (base -> a selection colour 14) IS a per-click
+    # effect and IS counted (footprint 1).
+    select_after = _lattice(rows, cols, overrides={(4, 6): 14})
+    gs.feed_transition(base, 6, (7, 5), select_after)
+
+    # the auto-cast COMMIT: two SELECTED cells (14) recolour at once -> a phase event.
+    commit_before = _lattice(rows, cols, overrides={(4, 6): 14, (8, 10): 14})
+    commit_after = _lattice(rows, cols)  # both revert to base -> before-colour 14 outside base
+    gs.feed_transition(commit_before, 6, (7, 5), commit_after)
+
+    footprints = gs.observed_footprints()
+    counts = {} if footprints is UNKNOWN else footprints.value
+    assert counts.get(1, 0) >= 1  # the single-cell select was counted
+    assert 2 not in counts  # the 2-cell commit (a phase event) was NOT counted
+
+
 def test_rebind_epoch_invalidates_stale_ids():
     """Purpose: a wholesale layout replacement emits a RebindEvent under a NEW
     epoch, and every pre-rebind ID becomes UNKNOWN (a stale ID can never alias a

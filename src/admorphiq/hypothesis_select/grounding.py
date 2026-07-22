@@ -367,7 +367,11 @@ class GroundingService:
         # change as a cycle edge is a mis-attribution (measured: every spurious
         # ft09 L3 12->8 edge is exactly such a wholesale trigger click). Only a
         # non-wholesale click advances a cell along its own cycle.
-        if action == 6 and not _is_wholesale_change(before_grid, after_grid):
+        if (
+            action == 6
+            and not _is_wholesale_change(before_grid, after_grid)
+            and not self._is_pattern_commit(before_grid, after_grid)
+        ):
             footprint = sum(
                 1
                 for cid in self._bound
@@ -382,6 +386,30 @@ class GroundingService:
                 if cb != ca:
                     self._cycle_obs[(cb, ca)] += 1
         self.feed(after)
+
+    def _is_pattern_commit(self, before_grid: Grid, after_grid: Grid) -> bool:
+        """A lattice cast-COMMIT — a PHASE EVENT, not a per-click transition. The
+        auto-cast fires when the pattern completes and simultaneously recolours
+        MULTIPLE selected cells; those cells were showing a pending SELECTION colour
+        (outside the two base toggle colours) before the transition. Excluded from
+        footprint/cycle statistics exactly as a wholesale change is (a phase event
+        contaminating per-click stats). A single-cell select/deselect and a genuine
+        multi-cell STENCIL (whose cells were base colours, no pending selection)
+        are NOT excluded — so the effect_matrix footprint claim can still be judged."""
+        if self._sc25_two is None:
+            return False
+        lattice = _sc25_lattice(before_grid)
+        if lattice is None:
+            return False
+        changed = 0
+        committing = False
+        for region in lattice["index"].values():
+            before_colour = _sc25_cell_colour(before_grid, region)
+            if before_colour != _sc25_cell_colour(after_grid, region):
+                changed += 1
+                if before_colour not in self._sc25_two:
+                    committing = True
+        return changed >= 2 and committing
 
     def _cell_at_xy(self, xy: tuple[int, int]) -> Optional[_CellRecord]:
         """The bound cell a click at ``xy = (x, y)`` lands on — by bbox

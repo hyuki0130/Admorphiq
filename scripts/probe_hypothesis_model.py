@@ -325,17 +325,20 @@ def _gather_evidence(env: "live.LiveEnv", gs: GroundingService, game: str, recor
 
 
 def measure_colour_variety(
-    env: "live.LiveEnv", gs: GroundingService, game: str, record: dict[str, Any], clicks: int = 5
+    env: "live.LiveEnv", gs: GroundingService, game: str,
+    record: dict[str, Any], clicks: int = 5, max_distinct_cells: int = 2,
 ) -> Optional[tuple[int, int]]:
-    """Repeatedly click ONE responsive cell and count the distinct colours it takes
-    — the ordered-cycle (3+) vs binary-flip (2) discriminator, and footprint
-    evidence. Responsiveness-adaptive: skips inert cells (each probe still records a
-    footprint). Returns ``(distinct_colours, clicks)`` or ``None`` when no cell is
-    responsive."""
+    """Click ONE responsive cell repeatedly for footprint evidence (its distinct
+    colours are returned for the audit record only). Two source-side safeguards:
+    only ``max_distinct_cells`` DISTINCT cells are ever clicked (a pattern cast
+    needs more selected cells than that, so discovery cannot complete the pattern +
+    trigger the multi-cell auto-cast that would contaminate the footprint stats and
+    consume the un-solved board), and inert cells are skipped. Returns
+    ``(distinct_colours, clicks)`` or ``None`` when no cell is responsive."""
     cells = gs.cells()
     if cells is UNKNOWN:
         return None
-    for cid, (ry, rx) in cells.value:
+    for cid, (ry, rx) in cells.value[:max_distinct_cells]:
         x, y = int(round(rx)), int(round(ry))
         c0 = gs.cell_colour(cid)
         before = env.frame()
