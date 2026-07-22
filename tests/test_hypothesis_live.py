@@ -29,6 +29,7 @@ clean_block_wall = _MOD.clean_block_wall
 noop_block_walls = _MOD.noop_block_walls
 joint_reset_hazards = _MOD.joint_reset_hazards
 walls_to_unlearn = _MOD.walls_to_unlearn
+block_learn_decision = _MOD.block_learn_decision
 
 
 def _lattice(overrides=None):
@@ -277,6 +278,27 @@ def test_walls_to_unlearn_invalidates_a_learned_wall_an_actor_occupies():
     assert walls_to_unlearn({(3, 11), (6, 9), (7, 2)}, [(6, 4), (6, 9)]) == {(6, 9)}
     assert walls_to_unlearn({(3, 11)}, [(6, 4), (6, 9)]) == set()  # nothing occupied is a wall
     assert walls_to_unlearn({(6, 9)}, None) == set()  # no observation
+
+
+def test_block_learn_decision_retries_once_before_learning_a_wall():
+    """Purpose: a candidate cell is RETRIED on its first block (transient-obstacle
+    tolerance) and only LEARNED once it has blocked more than the retry count; an
+    already-learned cell is ignored.
+
+    Expected feedback: pass proves a MOVING obstacle (e.g. the (6,9) patroller) is not
+    frozen into the wall set on a single block — the retry gives it a step to clear. Fail
+    means transient blocks pollute the static wall model (learn->unlearn churn / false
+    walls)."""
+    block_count = {}
+    # first block of (6,8): retry, not learned
+    to_learn, to_retry = block_learn_decision({(6, 8)}, set(), block_count)
+    assert to_learn == set() and to_retry == {(6, 8)} and block_count[(6, 8)] == 1
+    # second block of the SAME cell: now learned
+    to_learn, to_retry = block_learn_decision({(6, 8)}, set(), block_count)
+    assert to_learn == {(6, 8)} and to_retry == set()
+    # a cell already in learned_walls is skipped entirely
+    to_learn, to_retry = block_learn_decision({(7, 2)}, {(7, 2)}, block_count)
+    assert to_learn == set() and to_retry == set()
 
 
 def test_joint_reset_hazards_detects_the_teleport_and_names_the_targets():

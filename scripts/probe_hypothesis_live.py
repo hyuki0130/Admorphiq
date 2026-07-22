@@ -254,6 +254,27 @@ def walls_to_unlearn(
     return learned_walls & set(obs_now or [])
 
 
+def block_learn_decision(
+    candidates: set[tuple[int, int]],
+    learned_walls: set[tuple[int, int]],
+    block_count: dict[tuple[int, int], int],
+    retries: int = 1,
+) -> tuple[set[tuple[int, int]], set[tuple[int, int]]]:
+    """TRANSIENT-BLOCK TOLERANCE: a candidate wall cell is LEARNED only after it has
+    blocked more than ``retries`` times; its first block(s) trigger a RETRY instead (the
+    same action is re-emitted after a recompile, giving a MOVING obstacle a step to clear
+    — if it does, the retry passes and nothing false is learned). Increments
+    ``block_count`` per fresh candidate. Returns ``(to_learn, to_retry)`` cells."""
+    to_learn: set[tuple[int, int]] = set()
+    to_retry: set[tuple[int, int]] = set()
+    for cell in candidates:
+        if cell in learned_walls:
+            continue
+        block_count[cell] = block_count.get(cell, 0) + 1
+        (to_learn if block_count[cell] > retries else to_retry).add(cell)
+    return to_learn, to_retry
+
+
 def joint_reset_hazards(
     predicted: Optional[tuple[tuple[int, int], tuple[int, int]]],
     prev_obs: Optional[list[tuple[int, int]]],
@@ -683,8 +704,9 @@ def run_movement_level(env: "LiveEnv", record: dict[str, Any], run_index: int) -
     level_actions = 0
     settle_allowance = 1  # the first action after a level transition is absorbed (measured)
     max_learned = 12  # online-learning cap (walls and hazards each)
-    max_recompiles = 30  # total recompiles/level before the honest surface (cause-logged)
+    max_recompiles = 40  # total recompiles/level before the honest surface (cause-logged)
     recompiles = 0
+    block_count: dict[tuple[int, int], int] = {}  # per-cell block tally for retry-before-learn
     prev_obs = _move_observed(gs)
     for _ in range(_M0R0_LEVEL_BUDGET + 10):
         frame = env.frame()
@@ -714,6 +736,8 @@ def run_movement_level(env: "LiveEnv", record: dict[str, Any], run_index: int) -
                 freed = walls_to_unlearn(learned_walls, obs_now)
                 if freed:
                     learned_walls -= freed
+                    for cell in freed:
+                        block_count.pop(cell, None)  # a re-block later must retry then re-learn
                     print(
                         f"[live] run{run_index} m0r0 unlearned wall(s) {sorted(freed)} (occupied) "
                         f"at step {level_actions}",
@@ -731,21 +755,23 @@ def run_movement_level(env: "LiveEnv", record: dict[str, Any], run_index: int) -
                         learned_hazards |= hazards
                         record["hazard_resets"] += 1
                         cause = f"learned-hazard {sorted(hazards)} ({len(learned_hazards)} total)"
-                    elif obs_now is not None and obs_now == prev_obs:
-                        # TOTAL NO-OP (settle spent): learn every unreached, non-occupied
-                        # predicted target — planned-stay (1) and double-block (2) uniformly.
-                        noop = noop_block_walls(predicted, prev_obs, obs_now) - learned_walls
-                        if noop and len(learned_walls) + len(noop) <= max_learned:
-                            learned_walls |= noop
-                            cause = f"no-op-block {sorted(noop)} ({len(learned_walls)} total)"
-                        else:
-                            cause = f"ambiguous predicted {predicted} observed {obs_now}"
                     else:
-                        # (learned-wall) one actor moved as predicted, the other was blocked
-                        wall = clean_block_wall(predicted, prev_obs, obs_now)
-                        if wall is not None and wall not in learned_walls and len(learned_walls) < max_learned:
-                            learned_walls.add(wall)
-                            cause = f"learned-wall {wall} ({len(learned_walls)} total)"
+                        # WALL candidates: a total no-op yields the planned-stay/double-block
+                        # cells; else a single clean block. Each is RETRIED once (transient-
+                        # obstacle tolerance) and learned only if it re-blocks.
+                        if obs_now is not None and obs_now == prev_obs:
+                            candidates = noop_block_walls(predicted, prev_obs, obs_now)
+                        else:
+                            clean = clean_block_wall(predicted, prev_obs, obs_now)
+                            candidates = {clean} if clean is not None else set()
+                        to_learn, to_retry = block_learn_decision(candidates, learned_walls, block_count)
+                        if to_learn and len(learned_walls) + len(to_learn) <= max_learned:
+                            learned_walls |= to_learn
+                            for cell in to_learn:
+                                block_count.pop(cell, None)
+                            cause = f"learned-wall {sorted(to_learn)} ({len(learned_walls)} total)"
+                        elif to_retry:
+                            cause = f"retry-block {sorted(to_retry)}"
                         else:
                             cause = f"ambiguous predicted {predicted} observed {obs_now}"
                 if cause is None and freed:
