@@ -292,9 +292,18 @@ whose capabilities are already measured, ordered by cost and safety:
 |---|---|---|---|
 | 0 | DSL hypothesis (this design) | R95a/b to measure | default |
 | 1 | active identification probes (#122) | design pending | verifier UNKNOWN persists / `unknown` selected / `none_of_these` binding |
-| 2 | **tool fork-and-patch** (R93 loop): model copies the nearest tool/card, makes a TARGETED edit, matched replay, keep-parent-on-loss | R93: paint×cd82 PATCH_WINS ×2; mechanism 11/20 breadth cases; safe by verdict rule | tier-1 probes did not resolve to any expressible hypothesis, but a NEAR-FAMILY tool exists |
-| 3 | bounded free-code micro-programs (REPL) | R92: 0 clears from scratch — weakest channel, LAST resort, small scope only (a predicate or operator, never a whole solver) | no near-family tool; only a small missing piece blocks an otherwise-passing hypothesis |
+| 2 | **DSL self-extension** (v2.6, user directive 2026-07-22): the model proposes ONE new enum value (effect class, guard clause, or role selector) PLUS its small executable definition with a FIXED contract (e.g. `predict(frame, action, xy) -> effect`), which enters the SAME transition-consistency verifier — accepted only if it predicts held-out transitions; then the normal compiler uses the extended vocabulary. Every accepted extension is logged as a named schema-gap candidate for dev-time promotion into the permanent banks. | **EWM R48–R52**: gemma4 measurably synthesizes small transition-predicting functions selected by train fit (honest 0.133 exact-frame) — the SAME task shape | probes narrowed the mechanic but no existing enum value predicts the observed transitions |
+| 3 | **tool fork-and-patch** (R93 loop, now the FINAL LLM tier per the same directive): model copies the nearest tool/card, makes a TARGETED edit, matched replay, keep-parent-on-loss | R93: paint×cd82 PATCH_WINS ×2; mechanism 11/20 breadth cases; safe by verdict rule | self-extension failed verification, but a NEAR-FAMILY tool exists |
 | floor | generic exploration (graph frontier agent) | deployed card baseline | all tiers exhausted or budget cap |
+
+Tier-2 rationale: it subsumes the old "bounded free-code micro-programs" tier
+in a STRICTLY safer shape — the authored code is a typed slot implementation
+under a fixed contract, verified against transitions BEFORE any use, version-
+managed, and reusable by the compiler for the rest of the game. Whole-solver
+authoring stays banned (R92 measured 0). Follow-up measurement is planned as
+its own round AFTER R95a/b (task #124): seed test = remove one known vocab
+entry (e.g. sc25's binary flip), give the model the gap, measure whether it
+re-derives the entry + working definition from transitions alone.
 
 Design rules for the ladder:
 
@@ -311,11 +320,17 @@ Design rules for the ladder:
 3. **Budget caps per tier**: tiers 2–3 are expensive (LLM latency); each gets
    a per-game action/wall-clock allowance so one inexpressible game cannot
    starve the other 109 in the 9h Kaggle budget.
-4. **Tier 3 scope guard**: free code may only author a SMALL missing piece
-   wired into an otherwise-verified hypothesis (a guard predicate, an effect
-   operator) — R92 measured whole-solver authoring at 0; that scope stays
-   banned.
-5. **Dev-time counterpart**: priority #1 remains widening the primitive set
+4. **Authoring scope guard**: model-authored code (tier 2 definitions, tier 3
+   patches) may only be a SMALL piece wired into an otherwise-verified frame
+   (a guard predicate, an effect operator, a targeted tool edit) — R92
+   measured whole-solver authoring at 0; that scope stays banned.
+5. **Two-model comparison (user directive 2026-07-22)**: every ladder-tier
+   measurement (R95a selection, tier-2 self-extension, tier-3 patching) runs
+   BOTH gemma4-31b-q8 AND gpt-oss-120b, each at its own measured-best config
+   (gpt-oss: reasoning_effort=high + 20K completion budget), under the frozen
+   R93 pre-registered paired-scoring protocol (f53a82e) — no one-shot model
+   verdicts (tuning-ladder rule, `memory/feedback_codex_review_gate`).
+6. **Dev-time counterpart**: priority #1 remains widening the primitive set
    (the 15-game inexpressible backlog from the v2.2 consult) so the ladder is
    entered less often; runtime escalation telemetry decides WHICH family gets
    built next.
