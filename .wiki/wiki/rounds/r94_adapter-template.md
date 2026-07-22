@@ -270,23 +270,18 @@ baseline; the model's game-understanding channel moves to the hypothesis DSL
 (R95a discriminative selection on ft09+sc25, oracle-first, both models), with
 the 5-tier fallback ladder (self-extension → fork-and-patch → generic floor).
 
-## In flight
+## Continuation (round CLOSED — successor round owns these)
 
-- **D3 upper-bound gate**: verbatim arrangement card driven through the run_code sandbox
-  (exact patch-arm path) on lp85 @2000 — conquest must reproduce through the pipeline an
-  LLM patch would use.
-- **gpt-oss-120b A/B** (`admorphiq-r93-patchloop-gptoss` v1): the R93 2-case bench on the
-  120B reasoner, offline harmony vocab verified. Key read: does it avoid gemma4's WRONG
-  toggle diagnosis (row/column diffs mistaken for stencils)? If yes, reasoning capability
-  is the patch-quality bottleneck and the bigger model earns a place as the patcher.
+The historical "in flight" items resolved before close: the D3/upper-bound gate
+passed via the sb26 simdfs card (gate ladder above); the gpt-oss-120b A/B ran as
+the R93 breadth bench (see [[r93_tool-fork-patch]] — 9/15 at reasoning-HIGH, no
+nomination under the paired protocol). The s5i5 arrangement-pair holdout was
+superseded by the D5/D5-SKEL sk48 measurements recorded above.
 
-## Next
-
-1. D3 result → if the conquest reproduces, build the D2 minimal arrangement card
-   (characteristics/signature + solution method) with s5i5 artifacts held out.
-2. D5 paired holdout: s5i5 ×2 arms (arrangement-template vs generic-core template), oracle
-   routing, identical budgets; level clears decide.
-3. gpt-oss verdict → patcher-model choice for the paired experiment.
+Successor: the R95 hypothesis-DSL round (`docs/design_hypothesis_dsl_r95.md`,
+designed + twice Codex-consulted while D5-SKEL ran) — R95a discriminative
+selection on ft09+sc25 with oracle + historically-falsified hard negatives,
+5-tier fallback ladder, two-model comparison rule.
 
 ## Related
 

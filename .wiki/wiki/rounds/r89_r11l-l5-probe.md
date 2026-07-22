@@ -8,6 +8,10 @@ commit: (this docs round)
 
 # R89 — r11l L5 probe (task #115): next-level mechanic class + feasibility
 
+> Bounded source-authoritative probe of r11l level 5: identifies a NEW hybrid
+> mechanic (drag-assembly + whkxtx collect-and-colour-set-match), classifies it
+> multi-session (not bounded), no build — floor 4/6 untouched.
+
 Bounded investigation of the next uncleared r11l level after [[r87_r11l-l3-colour-blind-trial]]
 (4/6 @ 0.2594). Source-authoritative, no build.
 

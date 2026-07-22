@@ -8,6 +8,11 @@ commit: d901501, 6e7da27, cfe8fdd, 061c82d
 
 # R91 — r11l L5 collect-and-colour-set-match build
 
+> Multi-session L5 build, passes 1–3: mechanic decoded (teleport-absorption),
+> perception-wall retracted, collect-match controller shipped gated and
+> floor-safe (4/6 byte-identical); L5 not yet cleared — continuation = 2-leg
+> coordinated A* + wall pad.
+
 Multi-session build granted in [[r89_r11l-l5-probe]] / the R90 L5 BUILD HANDOFF.
 Floor SACRED: r11l 4/6 @ 0.2594 on env `r11l-495a7899`.
 
