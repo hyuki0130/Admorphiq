@@ -186,8 +186,18 @@ mode 2→1, ft09 byte-identical), and closure is demonstrated on gemma4.
   play never shows the closing edges → live gate needs bidirectional
   probes), and L3 shows a 12→8 edge CONTRADICTING the documented [9,8,12]
   cycle — under investigation before the verifier freezes expectations.
-- (iv) verifier: in build (mutant expected-verdict table = its acceptance
-  test). (v)–(viii) pending.
+- **(iv) verifier BUILT** (05b5b0c): PASS/CONTRADICTED/UNKNOWN over grounded
+  evidence (footprint transition axis — level-invariant; held-out-episode
+  objective axis; honest relaxation-UNKNOWN); **mutant verdict matrix
+  reproduced EXACTLY 8/8** vs the frozen step-ii table, no forcing. The L3
+  cycle anomaly RESOLVED as cause (a): all six 12→8 edges were decoy→reveal
+  wholesale redraws misattributed as same-cell transitions (first click of
+  each episode, intra_wholesale=True) — documented cycle intact, wholesale-
+  skip guard added + pinned.
+- (v) compiler: in build (oracle-plan fixture reproduction = its gate; typed
+  failure surfaces DIVERGED / GROUNDING_INCOMPLETE / UNSATISFIABLE; cycle-
+  discovery phase with bidirectional probes covers the gold-trace
+  one-directionality finding). (vi)–(viii) pending.
 
 ## Related
 
