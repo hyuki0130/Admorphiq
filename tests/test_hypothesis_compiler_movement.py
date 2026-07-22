@@ -232,6 +232,61 @@ def test_plan_over_confirmed_subset_reaches_goal_without_the_unconfirmed_edge():
     assert plan._traj[-1][0] == plan._traj[-1][1]  # exact merge
 
 
+_FULL_MIRROR_DELTAS = {
+    ("actor_a", 1): (-1, 0), ("actor_a", 2): (1, 0), ("actor_a", 3): (0, -1), ("actor_a", 4): (0, 1),
+    ("actor_b", 1): (-1, 0), ("actor_b", 2): (1, 0), ("actor_b", 3): (0, 1), ("actor_b", 4): (0, -1),
+}
+
+
+def _arena(rows, cols):
+    """A blocking border box of ``rows x cols`` cells (interior is floor)."""
+    return (
+        [(0, c) for c in range(cols)] + [(rows - 1, c) for c in range(cols)]
+        + [(r, 0) for r in range(rows)] + [(r, cols - 1) for r in range(rows)]
+    )
+
+
+def test_merge_is_meet_in_the_middle_not_walk_onto():
+    """Purpose: the joint BFS merges the actors ONLY by both entering the SAME empty
+    cell simultaneously (meet-in-the-middle) — the plan's final state coincides on a
+    cell that was NEITHER actor's pre-merge position.
+
+    Expected feedback: pass proves the successor models the engine's merge rule (walking
+    onto the partner's occupied cell is refused; the only coincidence is a simultaneous
+    entry into an empty cell). Fail means the plan walks an actor onto a stationary
+    partner — the v7 endgame stall."""
+    gs = _StubMoveGrounding(_FULL_MIRROR_DELTAS, [("actor_a", (2, 4)), ("actor_b", (2, 6))], walls=_arena(6, 10))
+    plan = compile_movement_hypothesis(M.m0r0_oracle_instance(), gs)
+    sol = plan.solve()
+    assert sol.status is PlanStatus.SOLVABLE
+    end, pre = plan._traj[-1], plan._traj[-2]
+    assert end[0] == end[1]  # merged onto one cell
+    assert end[0] not in (pre[0], pre[1])  # BOTH actors entered an empty cell (not a walk-onto)
+
+
+def test_adjacent_start_merges_only_via_a_desync_detour():
+    """Purpose: from an ADJACENT (gap-1) same-axis start, a same-axis merge is
+    parity-impossible with mirror deltas, so an OPEN arena is UNSATISFIABLE; a
+    desync-enabling wall (blocking one actor on a symmetric move to change parity) makes
+    it SOLVABLE, ending in a simultaneous meet-in-the-middle entry.
+
+    Expected feedback: pass proves the successor forces the idx0-style desync route
+    (never a walk-onto/swap) and honestly reports parity-impossible merges as
+    UNSATISFIABLE. Fail means the BFS fabricated an illegal adjacent merge."""
+    actors = [("actor_a", (3, 4)), ("actor_b", (3, 5))]
+    open_sol = compile_movement_hypothesis(
+        M.m0r0_oracle_instance(), _StubMoveGrounding(_FULL_MIRROR_DELTAS, actors, walls=_arena(7, 10))
+    ).solve()
+    assert open_sol.status is PlanStatus.UNSATISFIABLE  # gap-1 same-axis: parity-impossible without a desync
+
+    gs = _StubMoveGrounding(_FULL_MIRROR_DELTAS, actors, walls=_arena(7, 10) + [(2, 4)])
+    plan = compile_movement_hypothesis(M.m0r0_oracle_instance(), gs)
+    sol = plan.solve()
+    assert sol.status is PlanStatus.SOLVABLE  # the wall enables a parity-changing detour
+    end, pre = plan._traj[-1], plan._traj[-2]
+    assert end[0] == end[1] and end[0] not in (pre[0], pre[1])  # final step: simultaneous same-empty-cell entry
+
+
 def test_extra_hazards_are_routed_around_like_walls():
     """Purpose: a cell learned to HAZARD (soft-reset on entry) at execution time is
     routed around — the joint BFS prunes any action that would drive an actor into it,

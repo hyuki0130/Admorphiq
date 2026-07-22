@@ -169,10 +169,22 @@ class CoupledGridStepPlan:
         self, state: JointState, joint_delta: tuple[Cell, Cell],
         walls: set[Cell], hazards: set[Cell], bounds: Bounds,
     ) -> Optional[JointState]:
-        na = self._step_actor(state[0], joint_delta[0], walls, hazards, bounds)
-        nb = self._step_actor(state[1], joint_delta[1], walls, hazards, bounds)
-        if na is None or nb is None:
+        pa, pb = state
+        ta = self._step_actor(pa, joint_delta[0], walls, hazards, bounds)
+        tb = self._step_actor(pb, joint_delta[1], walls, hazards, bounds)
+        if ta is None or tb is None:
             return None  # an actor would enter a hazard -> prune (do not rely on the reset)
+        # MERGE is the ONLY actor-actor coincidence the engine performs: both actors
+        # enter the SAME cell that is NEITHER pre-move position — a simultaneous
+        # meet-in-the-middle (idx0-evidenced). Walking ONTO the partner's occupied cell
+        # and swapping are refused by the engine, so an actor's move is BLOCKED
+        # (independent_stay) when its target is the partner's PRE-move cell. This
+        # conservatively also blocks chase-into-a-just-vacated cell (safety over
+        # permissiveness; if the engine allows chase, the BFS simply routes another way).
+        if ta == tb and ta != pa and ta != pb:
+            return (ta, tb)
+        na = pa if ta == pb else ta
+        nb = pb if tb == pa else tb
         return (na, nb)
 
     def solve(self) -> MovementSolution:
