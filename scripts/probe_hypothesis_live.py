@@ -283,6 +283,51 @@ def frame_diff_cells(
     return out
 
 
+def fit_orbit_period(
+    obs: list[frozenset[tuple[int, int]]],
+    pmin: int = 2,
+    pmax: int = 12,
+    min_similarity: float = 0.5,
+    min_cycles: int = 2,
+) -> Optional[int]:
+    """Fit the smallest deterministic period P in [pmin, pmax] for which the observed
+    transient CELL-SET sequence auto-correlates: the mean Jaccard overlap between
+    ``obs[t]`` and ``obs[t+P]`` (over pairs with at least one non-empty side) is
+    >= ``min_similarity``, with >= ``min_cycles`` full periods of data and >= 2
+    recurring (non-zero-overlap) pairs. ``None`` when no P fits — an APERIODIC mover
+    (a monotonic HUD counter that never returns) matches nothing, the honest
+    ORBIT_UNSTABLE surface that keeps the reactive planner."""
+    sets = [set(c) for c in obs]
+    n = len(sets)
+    for period in range(pmin, pmax + 1):
+        if n < period * min_cycles:
+            break
+        sims: list[float] = []
+        for t in range(n - period):
+            a, b = sets[t], sets[t + period]
+            if not a and not b:
+                continue
+            union = len(a | b)
+            sims.append(len(a & b) / union if union else 1.0)
+        recurring = sum(1 for s in sims if s > 0.0)
+        if len(sims) >= 2 and recurring >= 2 and sum(sims) / len(sims) >= min_similarity:
+            return period
+    return None
+
+
+def orbit_phase_table(
+    obs: list[frozenset[tuple[int, int]]], period: int
+) -> list[frozenset[tuple[int, int]]]:
+    """The predicted patroller cells at each phase 0..period-1: the UNION of every
+    observation whose tick index is congruent to that phase (the engine is
+    deterministic, so a phase's cells are consistent; the union tolerates an
+    occasional missed frame-diff observation)."""
+    table: list[set[tuple[int, int]]] = [set() for _ in range(period)]
+    for t, cells in enumerate(obs):
+        table[t % period] |= set(cells)
+    return [frozenset(s) for s in table]
+
+
 def _move_observed(gs: GroundingService) -> Optional[list[tuple[int, int]]]:
     """The current observed actor cells (sorted), or None — the confirmation view the
     step-level instrumentation logs against the plan's predicted successor."""
@@ -807,6 +852,7 @@ def run_movement_level(env: "LiveEnv", record: dict[str, Any], run_index: int) -
     cleared_at: dict[tuple[int, int], int] = {}  # recompile index a cell last cleared (flip-flop detection)
     prev_obs = _move_observed(gs)
     prev_frame_grid: Optional[Any] = None  # the frame before the last engine step (frame-diff sensor)
+    orbit_obs: list[frozenset[tuple[int, int]]] = []  # mover cells per engine tick (period fit)
     for _ in range(_M0R0_LEVEL_BUDGET + 10):
         frame = env.frame()
         if frame is None:
@@ -850,6 +896,14 @@ def run_movement_level(env: "LiveEnv", record: dict[str, Any], run_index: int) -
                     flush=True,
                 )
         prev_frame_grid = frame
+        # ORBIT CLOCK: record the mover cells at each engine tick for period fitting —
+        # ONLY on the FIRST visit to a tick (the real post-move frame). A no-engine-step
+        # recompile re-observes the SAME (unchanged) frame with an empty diff, which must
+        # NOT overwrite the tick's real observation (that emptied the whole sequence).
+        if len(orbit_obs) <= level_actions:
+            while len(orbit_obs) < level_actions:
+                orbit_obs.append(frozenset())
+            orbit_obs.append(frozenset(frame_transient))
         if isinstance(result, Terminal):
             if result.status is PlanStatus.DONE:
                 if env.levels() > start_levels or env.state() == "WIN":
@@ -951,11 +1005,25 @@ def run_movement_level(env: "LiveEnv", record: dict[str, Any], run_index: int) -
                     cause = f"invalidate-only walls={sorted(freed)} unwalled={sorted(new_unwalled)}"
                 if cause is not None and recompiles < max_recompiles:
                     recompiles += 1
+                    # ORBIT PLANNING (defect 14/(B)): once a deterministic patroller's
+                    # period P fits the accumulated frame-diff transients, plan over
+                    # (pos_a, pos_b, t mod P) so the merge is timed THROUGH the orbit
+                    # rather than reactively chased. No fit (aperiodic / < 2 cycles) =>
+                    # orbit_phases None => the reactive planner below (unchanged). idx0
+                    # never reaches this block (no divergence), so its 15-gold is intact.
+                    orbit_period = fit_orbit_period(orbit_obs)
+                    orbit_phases = (
+                        orbit_phase_table(orbit_obs, orbit_period) if orbit_period else None
+                    )
+                    orbit_start = level_actions % orbit_period if orbit_period else 0
+                    if orbit_period:
+                        cause = f"{cause} + orbit P={orbit_period}@phase{orbit_start}"
                     # `waived` cells (a flip-flop bounce being waited on) are NOT walled — the
                     # plan re-attempts them in place rather than routing around.
                     walls = learned_walls | (blocked_now - waived) | snapshot
                     plan = compile_movement_hypothesis(
                         instance, gs, extra_walls=walls, extra_hazards=learned_hazards, unwalled=unwalled,
+                        orbit_phases=orbit_phases, orbit_start_phase=orbit_start,
                     )
                     # UNSAT-FLUSH: stale accumulated blocks can over-wall the map into a false
                     # UNSATISFIABLE. Keep only blocks refreshed within the last recompile (the
@@ -970,6 +1038,7 @@ def run_movement_level(env: "LiveEnv", record: dict[str, Any], run_index: int) -
                             cause = f"{cause} + unsat-flush retry (dropped {sorted(flushed)})"
                             plan = compile_movement_hypothesis(
                                 instance, gs, extra_walls=walls, extra_hazards=learned_hazards, unwalled=unwalled,
+                                orbit_phases=orbit_phases, orbit_start_phase=orbit_start,
                             )
                     # WAIT: if routing around STILL has no solution, the block is a churn/transient
                     # obstacle on the ONLY path — re-attempt (wait) up to K, rather than surfacing
@@ -986,6 +1055,7 @@ def run_movement_level(env: "LiveEnv", record: dict[str, Any], run_index: int) -
                             plan = compile_movement_hypothesis(
                                 instance, gs, extra_walls=walls - waitable,
                                 extra_hazards=learned_hazards, unwalled=unwalled,
+                                orbit_phases=orbit_phases, orbit_start_phase=orbit_start,
                             )
                     print(f"[live] run{run_index} m0r0 recompile ({cause}) at step {level_actions}", flush=True)
                     continue

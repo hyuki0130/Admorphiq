@@ -406,3 +406,73 @@ def test_no_merge_path_is_unsatisfiable_with_searched_count():
     sol = plan.solve()
     assert sol.status is PlanStatus.UNSATISFIABLE
     assert sol.states_searched > 0
+
+
+def test_orbit_none_is_byte_identical_to_the_untimed_planner():
+    """Purpose: with no orbit (or a single-phase table), solve() takes the untimed path
+    unchanged — the P=1 degeneracy the (B) design requires so idx0 (no transients) keeps
+    its exact 15-gold plan.
+
+    Expected feedback: pass proves adding the orbit parameter never perturbs the
+    orbit-free case (same action sequence). Fail means the time dimension leaked into the
+    static-board plan — an idx0 regression."""
+    gs = _StubMoveGrounding(_FULL_MIRROR_DELTAS, [("actor_a", (2, 3)), ("actor_b", (2, 7))], walls=_arena(6, 10))
+    base = compile_movement_hypothesis(M.m0r0_oracle_instance(), gs).solve()
+    # a single-phase (P=1) table degenerates to the untimed planner (guarded at len >= 2)
+    degen = compile_movement_hypothesis(
+        M.m0r0_oracle_instance(), gs, orbit_phases=[frozenset()], orbit_start_phase=0
+    ).solve()
+    assert base.status is PlanStatus.SOLVABLE
+    assert degen.actions == base.actions
+    assert len(base.actions) == 2  # the direct 2-step meet-in-the-middle at (2,5)
+
+
+def test_orbit_blocks_the_merge_cell_at_its_phase_forcing_a_timed_detour():
+    """Purpose: the time-expanded BFS plans over (pos_a, pos_b, t mod P); a patroller
+    predicted on the merge cell at the actors' arrival phase blocks it, so the plan waits
+    a full period and merges when the cell is free — a strictly longer, phase-correct plan.
+
+    Expected feedback: pass proves the orbit model actually re-routes/waits through a
+    deterministic obstacle (the whole point of (B)) while still reaching the exact merge.
+    Fail means the orbit is ignored (same length as untimed) or the merge is lost."""
+    gs = _StubMoveGrounding(_FULL_MIRROR_DELTAS, [("actor_a", (2, 3)), ("actor_b", (2, 7))], walls=_arena(6, 10))
+    # phase 2 puts the patroller on the merge cell (2,5); the naive 2-step merge lands
+    # there at phase 2, so it must wait one period and merge at phase 0.
+    phases = [frozenset(), frozenset(), frozenset({(2, 5)})]
+    plan = compile_movement_hypothesis(
+        M.m0r0_oracle_instance(), gs, orbit_phases=phases, orbit_start_phase=0
+    )
+    sol = plan.solve()
+    assert sol.status is PlanStatus.SOLVABLE
+    assert len(sol.actions) == 3  # one longer than the untimed 2-step merge (the orbit detour)
+    merge_cell = plan._traj[-1]
+    assert merge_cell[0] == merge_cell[1]  # still an exact merge
+    # the only 2-step merge cell (2,5) is blocked at the arrival phase, so the timed plan
+    # either merges elsewhere (a row detour) or waits a period — never the blocked t=2 arrival
+    assert not (len(sol.actions) == 2 and merge_cell[0] == (2, 5))
+
+
+def test_timed_successor_blocks_a_target_and_prunes_a_collision():
+    """Purpose: the phase-aware successor (a) treats a next-phase patroller cell as a wall
+    for a target (the actor STAYS instead of entering), and (b) prunes the whole action
+    when an actor would END on a next-phase patroller cell (a collision — route/wait).
+
+    Expected feedback: pass proves the two orbit-interaction rules the (B) spec names.
+    Fail means the actor walks into the patroller (b) or ignores a timed block (a)."""
+    gs = _StubMoveGrounding(_FULL_MIRROR_DELTAS, [("actor_a", (2, 4)), ("actor_b", (2, 7))], walls=_arena(6, 10))
+    bounds = (0, 5, 0, 9)
+    # (a) actor_a's target (2,5) is a patroller cell at next phase -> a stays at (2,4)
+    plan = compile_movement_hypothesis(
+        M.m0r0_oracle_instance(), gs, orbit_phases=[frozenset(), frozenset({(2, 5)})], orbit_start_phase=0
+    )
+    bbp = [set(_arena(6, 10)) | ph for ph in plan._orbit_phases]
+    nxt = plan._timed_successor(((2, 4), (2, 7), 0), ((0, 1), (0, -1)), bbp, set(), bounds)
+    assert nxt == ((2, 4), (2, 6), 1)  # a blocked -> stays (2,4); b moves left to (2,6)
+    # (b) actor_a can only stay on (2,4) (its left target (2,3) is a wall) and (2,4) is the
+    # patroller's next-phase cell -> the whole action is pruned (collision avoidance)
+    plan2 = compile_movement_hypothesis(
+        M.m0r0_oracle_instance(), gs, orbit_phases=[frozenset(), frozenset({(2, 4)})], orbit_start_phase=0
+    )
+    bbp2 = [(set(_arena(6, 10)) | {(2, 3)}) | ph for ph in plan2._orbit_phases]
+    nxt2 = plan2._timed_successor(((2, 4), (2, 7), 0), ((0, -1), (0, -1)), bbp2, set(), bounds)
+    assert nxt2 is None  # actor_a would remain on the patroller's next-phase cell -> prune

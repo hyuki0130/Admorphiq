@@ -35,6 +35,8 @@ decay_blocks = _MOD.decay_blocks
 flip_flop_cells = _MOD.flip_flop_cells
 frame_diff_cells = _MOD.frame_diff_cells
 background_colour = _MOD.background_colour
+fit_orbit_period = _MOD.fit_orbit_period
+orbit_phase_table = _MOD.orbit_phase_table
 
 
 def _lattice(overrides=None):
@@ -435,3 +437,41 @@ def test_background_colour_is_the_modal_pixel():
     Fail means vacated cells would be mistaken for movers (over-walling)."""
     assert background_colour(_block_grid(3, 2, {(1, 1): 9})) == 0  # one painted cell, rest floor
     assert background_colour([[4, 4, 4], [4, 2, 4]]) == 4
+
+
+def test_fit_orbit_period_finds_a_clean_mirror_pair_period():
+    """Purpose: fit_orbit_period recovers the period of a deterministic mirror-pair
+    patroller from its transient cell-set sequence (the m0r0 diagnostic showed
+    (5,3)/(5,9) recurring every ~4 steps), the orbit clock the time-expanded BFS needs.
+
+    Expected feedback: pass proves the period is fit from set-sequence autocorrelation.
+    Fail means a clean deterministic orbit cannot be clocked -> no timed planning."""
+    cycle = [
+        frozenset({(5, 3), (5, 9)}), frozenset({(5, 4), (5, 8)}),
+        frozenset({(6, 4), (6, 8)}), frozenset({(6, 3), (6, 9)}),
+    ]
+    assert fit_orbit_period(cycle * 3) == 4  # three full cycles -> P=4
+    # a smaller period must NOT be reported (phase-2 sets are disjoint from phase-0)
+    assert fit_orbit_period(cycle * 3) != 2
+
+
+def test_fit_orbit_period_rejects_an_aperiodic_marcher():
+    """Purpose: an APERIODIC mover (a monotonic HUD counter that marches one way and
+    never returns) matches no period, so fit returns None — the honest ORBIT_UNSTABLE
+    surface that keeps the reactive planner instead of a fictional orbit.
+
+    Expected feedback: pass proves a non-repeating signal is not force-fit to a period.
+    Fail means the HUD's drift would poison the orbit model with wrong phase cells."""
+    marcher = [frozenset({(0, 11 - t)}) for t in range(13)]  # never repeats
+    assert fit_orbit_period(marcher) is None
+    assert fit_orbit_period([frozenset() for _ in range(13)]) is None  # no mover at all (idx0)
+
+
+def test_orbit_phase_table_unions_observations_by_phase():
+    """Purpose: orbit_phase_table maps each phase to the union of the mover cells seen at
+    tick indices congruent to it — the per-phase blocked cells the timed BFS consults.
+
+    Expected feedback: pass proves the phase table is built consistently (deterministic
+    engine). Fail means the timed planner would block the wrong cells at each phase."""
+    obs = [frozenset({(5, 3)}), frozenset({(5, 4)}), frozenset({(5, 3)}), frozenset({(5, 4)})]
+    assert orbit_phase_table(obs, 2) == [frozenset({(5, 3)}), frozenset({(5, 4)})]

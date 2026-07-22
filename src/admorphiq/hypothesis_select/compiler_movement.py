@@ -105,6 +105,8 @@ class CoupledGridStepPlan:
         extra_walls: Optional[set[Cell]] = None,
         extra_hazards: Optional[set[Cell]] = None,
         unwalled: Optional[set[Cell]] = None,
+        orbit_phases: Optional[list[frozenset[Cell]]] = None,
+        orbit_start_phase: int = 0,
     ) -> None:
         self._relation = objective.relation
         self._g = grounding
@@ -119,6 +121,15 @@ class CoupledGridStepPlan:
         # observation trumps inference (a dynamic obstacle sat there at parse time). These
         # are SUBTRACTED from the grounded blocked set (a false-wall override).
         self._unwalled = set(unwalled) if unwalled else set()
+        # ORBIT MODEL (time-expanded planning, R96 defect 14/(B)): when a deterministic
+        # patroller's period P has been fitted from live frame-diff transients,
+        # ``orbit_phases[p]`` are the cells it occupies at phase ``p`` (p in 0..P-1) and
+        # ``orbit_start_phase`` is the phase at the plan's start state. The joint search
+        # then plans over ``(pos_a, pos_b, t mod P)``, blocking a target the patroller
+        # will occupy at t+1. ``None`` (or a single-phase table) => the current untimed
+        # planner byte-for-byte (idx0 has no transients -> no orbit -> the 15-gold path).
+        self._orbit_phases = list(orbit_phases) if orbit_phases else None
+        self._orbit_start_phase = orbit_start_phase
         self._solution: Optional[MovementSolution] = None
         self._traj: tuple[JointState, ...] = ()  # planned states: _traj[k] = state after k actions
         self._cursor = 0  # index of the next action to emit / the move awaiting confirmation
@@ -201,6 +212,8 @@ class CoupledGridStepPlan:
         satisfying state reachable from the start."""
         if self._solution is not None:
             return self._solution
+        if self._orbit_phases is not None and len(self._orbit_phases) >= 2:
+            return self._solve_timed()
         world = self._read_world()
         if world is None:
             return MovementSolution(PlanStatus.GROUNDING_INCOMPLETE, (), 0)
@@ -242,6 +255,88 @@ class CoupledGridStepPlan:
         states.reverse()
         self._solution = MovementSolution(PlanStatus.SOLVABLE, tuple(actions), len(seen))
         self._traj = tuple(states)
+        return self._solution
+
+    # ── time-expanded arm (orbit-aware; a deterministic patroller's phase clock) ──
+
+    def _timed_successor(
+        self, state: tuple[Cell, Cell, int], joint_delta: tuple[Cell, Cell],
+        blocked_by_phase: list[set[Cell]], hazards: set[Cell], bounds: Bounds,
+    ) -> Optional[tuple[Cell, Cell, int]]:
+        """One joint transition on the phase clock: the same coupled step (per-actor
+        ``independent_stay``, meet-in-the-middle merge) but the patroller's PREDICTED
+        cells at the NEXT phase are walls for this move's targets, and an actor that
+        would END on a next-phase patroller cell is a collision (prune the action —
+        route/wait around it). Advances the phase by one."""
+        pa, pb, phase = state
+        period = len(blocked_by_phase)
+        next_phase = (phase + 1) % period
+        blocked = blocked_by_phase[next_phase]
+        orbit_next = self._orbit_phases[next_phase]  # type: ignore[index]
+        ta = self._step_actor(pa, joint_delta[0], blocked, hazards, bounds)
+        tb = self._step_actor(pb, joint_delta[1], blocked, hazards, bounds)
+        if ta is None or tb is None:
+            return None
+        if ta == tb and ta != pa and ta != pb:
+            na, nb = ta, tb
+        else:
+            na = pa if ta == pb else ta
+            nb = pb if tb == pa else tb
+        if na in orbit_next or nb in orbit_next:
+            return None  # an actor would share the patroller's next cell -> collision
+        return (na, nb, next_phase)
+
+    def _solve_timed(self) -> MovementSolution:
+        """Joint BFS over ``(pos_a, pos_b, t mod P)`` toward the relation predicate,
+        the patroller's fitted orbit blocking targets at each phase. Same typed
+        surfaces as the untimed :meth:`solve`; the trajectory is stored phase-stripped
+        so the per-move confirmation compares observed actor cells only."""
+        world = self._read_world()
+        if world is None:
+            return MovementSolution(PlanStatus.GROUNDING_INCOMPLETE, (), 0)
+        start2, joint, walls, hazards, bounds = world
+        if _relation_satisfied(start2[0], start2[1], self._relation):
+            self._solution = MovementSolution(PlanStatus.DONE, (), 1)
+            self._traj = (start2,)
+            return self._solution
+        phases = self._orbit_phases
+        assert phases is not None
+        period = len(phases)
+        blocked_by_phase = [walls | ph for ph in phases]
+        start = (start2[0], start2[1], self._orbit_start_phase % period)
+        parent: dict[tuple[Cell, Cell, int], tuple[tuple[Cell, Cell, int], int]] = {}
+        seen = {start}
+        frontier: deque[tuple[Cell, Cell, int]] = deque([start])
+        goal: Optional[tuple[Cell, Cell, int]] = None
+        while frontier:
+            state = frontier.popleft()
+            for action, jd in joint.items():
+                nxt = self._timed_successor(state, jd, blocked_by_phase, hazards, bounds)
+                if nxt is None or nxt in seen:
+                    continue
+                seen.add(nxt)
+                parent[nxt] = (state, action)
+                if _relation_satisfied(nxt[0], nxt[1], self._relation):
+                    goal = nxt
+                    frontier.clear()
+                    break
+                frontier.append(nxt)
+        if goal is None:
+            self._solution = MovementSolution(PlanStatus.UNSATISFIABLE, (), len(seen))
+            self._traj = (start2,)
+            return self._solution
+        actions: list[int] = []
+        states: list[tuple[Cell, Cell, int]] = [goal]
+        node = goal
+        while node != start:
+            prev, action = parent[node]
+            actions.append(action)
+            states.append(prev)
+            node = prev
+        actions.reverse()
+        states.reverse()
+        self._solution = MovementSolution(PlanStatus.SOLVABLE, tuple(actions), len(seen))
+        self._traj = tuple((s[0], s[1]) for s in states)  # phase-stripped for confirmation
         return self._solution
 
     def step(self, frame: Any) -> MoveStepResult:
@@ -297,6 +392,8 @@ def compile_movement_hypothesis(
     extra_walls: Optional[set[Cell]] = None,
     extra_hazards: Optional[set[Cell]] = None,
     unwalled: Optional[set[Cell]] = None,
+    orbit_phases: Optional[list[frozenset[Cell]]] = None,
+    orbit_start_phase: int = 0,
 ) -> MovementPlan:
     """Compile a movement hypothesis into a plan, dispatching ONLY on the schema's
     objective + transition-model tags (never a game id). ``EmpiricalMoveMatrix`` maps
@@ -309,7 +406,8 @@ def compile_movement_hypothesis(
     if isinstance(objective, ActorRelation):
         if isinstance(transition, CoupledGridStep):
             return CoupledGridStepPlan(
-                objective, grounding, extra_walls=extra_walls, extra_hazards=extra_hazards, unwalled=unwalled
+                objective, grounding, extra_walls=extra_walls, extra_hazards=extra_hazards,
+                unwalled=unwalled, orbit_phases=orbit_phases, orbit_start_phase=orbit_start_phase,
             )
         if isinstance(transition, EmpiricalMoveMatrix):
             return UnsupportedMovementPlan()
