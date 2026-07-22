@@ -30,7 +30,8 @@ noop_block_walls = _MOD.noop_block_walls
 joint_reset_hazards = _MOD.joint_reset_hazards
 walls_to_unlearn = _MOD.walls_to_unlearn
 block_learn_decision = _MOD.block_learn_decision
-blocked_now_update = _MOD.blocked_now_update
+refresh_blocks = _MOD.refresh_blocks
+decay_blocks = _MOD.decay_blocks
 flip_flop_cells = _MOD.flip_flop_cells
 
 
@@ -282,24 +283,40 @@ def test_walls_to_unlearn_invalidates_a_learned_wall_an_actor_occupies():
     assert walls_to_unlearn({(6, 9)}, None) == set()  # no observation
 
 
-def test_blocked_now_update_adds_blocks_and_clears_on_occupancy():
-    """Purpose: blocked_now ADDS a just-blocked target (route around it now) and DROPS any
-    cell an actor currently occupies (observation trumps inference) — the primary
-    transient sensor that avoids the churn-set trap (a persistently-blocked cell is routed
-    around WHILE blocking, never made permanent fiction).
+def test_refresh_blocks_stamps_adds_and_clears_on_occupancy():
+    """Purpose: refresh_blocks STAMPS a just-blocked target with the current recompile (route
+    around it now), REFRESHES on re-block, and DROPS any cell an actor currently occupies
+    (observation trumps inference) — the timestamped primary transient sensor.
 
-    Expected feedback: pass proves block→route-around and observe-on→clear both work, so a
-    patroller cell is temporarily walled without being learned or unwallably fictionalised.
-    Fail means either the block is ignored (the v10 hammer) or stays walled after clearing."""
-    # a fresh block of (3,9): actor_b was blocked entering it (predicted b at (3,9), reached (3,10))
-    bn = blocked_now_update(set(), ((3, 3), (3, 9)), [(3, 3), (3, 10)])
-    assert bn == {(3, 9)}
-    # it persists while it keeps blocking, and a second block accumulates
-    bn = blocked_now_update(bn, ((4, 2), (4, 8)), [(4, 3), (4, 8)])
-    assert bn == {(3, 9), (4, 2)}
+    Expected feedback: pass proves block→route-around, re-block→refresh, and observe-on→clear
+    all work, so a patroller cell is temporarily walled without being learned or unwallably
+    fictionalised. Fail means the block is ignored (v10 hammer) or stays walled after clearing."""
+    # a fresh block of (3,9) at recompile 5: actor_b was blocked entering it (reached (3,10))
+    ba = refresh_blocks({}, ((3, 3), (3, 9)), [(3, 3), (3, 10)], 5)
+    assert ba == {(3, 9): 5}
+    # a re-block of (3,9) at recompile 6 (actor_a reached (3,3), actor_b blocked) refreshes it
+    ba = refresh_blocks(ba, ((3, 3), (3, 9)), [(3, 3), (3, 10)], 6)
+    assert ba == {(3, 9): 6}  # refreshed to 6
     # observation trumps inference: an actor now standing ON (3,9) clears it (passable)
-    bn = blocked_now_update(bn, ((5, 9), (5, 5)), [(3, 9), (5, 5)])
-    assert (3, 9) not in bn
+    ba = refresh_blocks(ba, ((5, 9), (5, 5)), [(3, 9), (5, 5)], 7)
+    assert (3, 9) not in ba
+
+
+def test_decay_blocks_expires_stale_entries_only():
+    """Purpose: decay_blocks EXPIRES block entries not re-confirmed within the TTL and KEEPS
+    fresh ones — a one-off patroller position an actor can never observe-clear must not
+    accumulate into permanent fiction (the self-sealing trap).
+
+    Expected feedback: pass proves stale transient evidence decays to its epistemic weight
+    (a block is evidence about NOW). Fail means accumulated one-offs wall the map into a
+    false UNSATISFIABLE."""
+    # ttl default 4: at recompile 10, a block from 5 (age 5 > 4) expires; one from 7 (age 3) stays
+    kept, expired = decay_blocks({(1, 7): 5, (2, 9): 7}, 10, ttl=4)
+    assert kept == {(2, 9): 7}
+    assert expired == {(1, 7)}
+    # nothing expires when all within ttl
+    kept, expired = decay_blocks({(3, 3): 9}, 10, ttl=4)
+    assert kept == {(3, 3): 9} and expired == set()
 
 
 def test_flip_flop_cells_detects_a_recently_cleared_bounce_only():
