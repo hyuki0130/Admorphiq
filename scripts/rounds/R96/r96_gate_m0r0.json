@@ -1,0 +1,48 @@
+{
+  "game": "m0r0",
+  "runs": [
+    {
+      "run": 0,
+      "levels_cleared": 1,
+      "actions_per_level": [
+        15
+      ],
+      "discovery_actions": 9,
+      "plan_outcome": "DIVERGED",
+      "states_searched": 1181,
+      "merge_event": false,
+      "hazard_resets": 0,
+      "rebind_events": 22,
+      "edges_confirmed": true
+    },
+    {
+      "run": 1,
+      "levels_cleared": 1,
+      "actions_per_level": [
+        15
+      ],
+      "discovery_actions": 9,
+      "plan_outcome": "DIVERGED",
+      "states_searched": 1181,
+      "merge_event": false,
+      "hazard_resets": 0,
+      "rebind_events": 22,
+      "edges_confirmed": true
+    },
+    {
+      "run": 2,
+      "levels_cleared": 1,
+      "actions_per_level": [
+        15
+      ],
+      "discovery_actions": 9,
+      "plan_outcome": "DIVERGED",
+      "states_searched": 1181,
+      "merge_event": false,
+      "hazard_resets": 0,
+      "rebind_events": 22,
+      "edges_confirmed": true
+    }
+  ],
+  "gate_verdict": "FAIL"
+}
