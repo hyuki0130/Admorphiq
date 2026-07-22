@@ -249,6 +249,33 @@ def test_confirmed_subset_with_no_convergence_is_unsatisfiable():
     assert sol.states_searched > 0
 
 
+def test_extra_walls_are_respected_and_routed_around():
+    """Purpose: a cell learned to block at execution time (``extra_walls``) is treated
+    as impassable — the joint BFS routes around it and no planned state places an actor
+    on it, while the same board without the learned wall merges directly through it.
+
+    Expected feedback: pass proves the online-occupancy augmentation feeds back into
+    planning (the partial-block recovery): a wall the parse missed can be added and the
+    recompiled plan avoids it. Fail means learned walls are ignored."""
+    deltas = {
+        ("actor_a", 1): (-1, 0), ("actor_a", 2): (1, 0), ("actor_a", 3): (0, -1), ("actor_a", 4): (0, 1),
+        ("actor_b", 1): (-1, 0), ("actor_b", 2): (1, 0), ("actor_b", 3): (0, 1), ("actor_b", 4): (0, -1),
+    }
+    box = (
+        [(0, c) for c in range(10)] + [(5, c) for c in range(10)]
+        + [(r, 0) for r in range(6)] + [(r, 9) for r in range(6)]
+    )  # a 6x10 arena so the actors have room to route around an interior wall
+    gs = _StubMoveGrounding(deltas, [("actor_a", (2, 3)), ("actor_b", (2, 7))], walls=box)
+
+    direct = compile_movement_hypothesis(M.m0r0_oracle_instance(), gs).solve()
+    assert direct.status is PlanStatus.SOLVABLE  # converges to a merge in row 2
+
+    plan = compile_movement_hypothesis(M.m0r0_oracle_instance(), gs, extra_walls={(2, 5)})
+    sol = plan.solve()
+    assert sol.status is PlanStatus.SOLVABLE  # still solvable via a different row
+    assert all((2, 5) not in state for state in plan._traj)  # never routes an actor onto the learned wall
+
+
 def test_no_action_confirmed_for_both_actors_is_grounding_incomplete():
     """Purpose: when no single action has a confirmed edge for BOTH actors, the joint
     alphabet is empty and the plan is GROUNDING_INCOMPLETE (nothing to search).

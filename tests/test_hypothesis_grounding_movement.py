@@ -178,6 +178,28 @@ def test_collision_stay_feeds_collision_evidence_not_the_delta_table():
         assert deltas.value.get(("actor_a", 4)) != (0, 0)
 
 
+def test_collision_stay_records_the_blocked_target_as_a_wall_seed():
+    """Purpose: when an actor with a KNOWN delta is collision-blocked (stays while its
+    partner moves), the cell it could not enter is recorded as a blocked-target wall
+    seed — free high-confidence occupancy evidence, and not the partner's cell.
+
+    Expected feedback: pass proves discovery yields wall seeds that pre-populate the
+    compiler's occupancy (cutting execution-time learning). Fail means the seed channel
+    is empty and every missed wall must be learned one-by-one at execution."""
+    gs = GroundingService()
+    # acquire action-4 deltas (a: +col, b: -col) from two clean non-colliding probes
+    for _ in range(2):
+        gs.feed_transition(_frame([(3, 1), (3, 6)]), 4, (0, 0), _frame([(3, 2), (3, 5)]))
+    assert gs.movement_blocked_targets() is UNKNOWN  # nothing blocked yet
+    # now actor_a is wall-blocked entering (3,3) while actor_b moves freely (3,5)->(3,4)
+    walls = [(3, 3)]
+    gs.feed_transition(_frame([(3, 2), (3, 5)], walls), 4, (0, 0), _frame([(3, 2), (3, 4)], walls))
+    seeded = gs.movement_blocked_targets()
+    assert seeded is not UNKNOWN
+    assert (3, 3) in seeded.value  # the unreached target is a wall seed
+    assert (3, 4) not in seeded.value  # the partner's cell is NOT recorded (actor-block, not wall)
+
+
 def test_static_occupancy_parses_walls_and_excludes_actors():
     """Purpose: the static occupancy parse returns a StaticOccupancy whose blocked
     cells are the wall cells and exclude the actor cells + background.
@@ -238,6 +260,26 @@ def _to_grid(frame):
     if arr.ndim == 3:
         arr = arr[-1]
     return tuple(tuple(int(v) for v in row) for row in arr)
+
+
+def test_idx0_static_occupancy_wall_count_is_pinned_at_89():
+    """Purpose: the m0r0 idx0 static-occupancy parse yields exactly 89 walls — the
+    regression pin protecting idx0 (which clears 3/3 @15a) against occupancy-parse
+    changes made for idx1.
+
+    Expected feedback: pass proves an occupancy-perception change did not disturb idx0's
+    parse (the reason full-cell sampling was rejected: it inflated this to 118 and broke
+    idx0). Fail means idx0's occupancy regressed and its clear is at risk."""
+    d = np.load("data/traces/m0r0.npz")
+    fr, act, gold, lvl = d["frames"], d["actions"], d["is_gold"], d["level_index"]
+    gs = GroundingService()
+    for i in range(len(act)):
+        if gold[i] and lvl[i] == 0 and 1 <= act[i] <= 4:
+            nxt = fr[i + 1] if i + 1 < len(fr) else fr[i]
+            gs.feed_transition(_to_grid(fr[i]), int(act[i]), (0, 0), _to_grid(nxt))
+    i0 = next(i for i in range(len(act)) if lvl[i] == 0)
+    gs.feed(_to_grid(fr[i0]))
+    assert len(gs.movement_occupancy().value.blocked_cells) == 89
 
 
 def test_real_m0r0_trace_yields_the_decoded_ground_truth():

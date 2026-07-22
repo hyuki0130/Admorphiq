@@ -212,6 +212,10 @@ class GroundingService:
         self._move_noop: dict[str, int] = defaultdict(int)  # attribution category -> count
         self._move_hazard_cells: set[Cell] = set()
         self._move_merge: Optional[tuple[str, str]] = None  # (actor_a, actor_b) once they coalesce
+        # Cells an actor was blocked from ENTERING (collision-stay with a known delta,
+        # the target not occupied by its partner) — free high-confidence wall evidence
+        # that seeds the compiler's occupancy before execution (per-board).
+        self._move_blocked_targets: set[Cell] = set()
 
     # ── frame stream ─────────────────────────────────────────────────────
 
@@ -278,9 +282,11 @@ class GroundingService:
         self._sc25_cast_seen = False
         # Movement tracking is per-board (a new layout respawns the actors); the
         # acquired deltas / merge / no-op / hazard / collision EVIDENCE is a game
-        # constant and accumulates across levels, so only positions reset.
+        # constant and accumulates across levels, so only positions reset. Blocked-
+        # target walls ARE per-board (a new layout has its own walls), so they reset.
         self._move_pos = None
         self._move_start = None
+        self._move_blocked_targets = set()
         struct = _parse_structure(grid)
         cell_anchors = sorted(struct.cells)
         anchor_to_id = {a: f"e{self._epoch}:c{k}" for k, a in enumerate(cell_anchors)}
@@ -595,11 +601,32 @@ class GroundingService:
                     self._move_delta_obs[(aid, action)][deltas[aid]] += 1
                 else:
                     self._move_noop["collision_stay"] += 1
+                    self._move_record_blocked_target(aid, action, assign_a)
         else:
             for aid in self._move_ids:
                 self._move_attribute_noop(aid, action, assign_b[aid], before, after)
 
         self._move_pos = dict(assign_a)
+
+    def _move_record_blocked_target(
+        self, aid: str, action: int, positions: dict[str, tuple[float, float]]
+    ) -> None:
+        """A collision-stayed actor's UNREACHED target is a wall: the cell it would
+        have entered under its ACQUIRED delta, unless its partner occupies that cell
+        (an actor-actor block, not a wall). Seeds the compiler's occupancy."""
+        delta = self._move_acquired_delta(aid, action)
+        if delta is None or delta == (0, 0):
+            return
+        scale = self._move_scale or 1
+        cur = (round(positions[aid][0] / scale), round(positions[aid][1] / scale))
+        target = (cur[0] + delta[0], cur[1] + delta[1])
+        partner_cells = {
+            (round(positions[o][0] / scale), round(positions[o][1] / scale))
+            for o in self._move_ids
+            if o != aid
+        }
+        if target not in partner_cells:
+            self._move_blocked_targets.add(target)
 
     def _move_is_soft_reset(self, assign_a: dict[str, tuple[float, float]]) -> bool:
         """Both actors are back at (near) their spawn positions after having left —
@@ -741,6 +768,14 @@ class GroundingService:
         ``Grounded(frozenset[(row, col)])`` (feeds terminal_cells evidence; may be
         empty when the observed path enters no hazard)."""
         return Grounded(frozenset(self._move_hazard_cells), "high")
+
+    def movement_blocked_targets(self) -> Any:
+        """Cells an actor was collision-blocked from ENTERING (known delta, not the
+        partner's cell) — free high-confidence wall evidence to SEED the compiler's
+        occupancy before execution; ``UNKNOWN`` when none observed."""
+        if not self._move_blocked_targets:
+            return UNKNOWN
+        return Grounded(frozenset(self._move_blocked_targets), "high")
 
     def _cell_at_xy(self, xy: tuple[int, int]) -> Optional[_CellRecord]:
         """The bound cell a click at ``xy = (x, y)`` lands on — by bbox

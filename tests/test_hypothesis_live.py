@@ -25,6 +25,7 @@ gate_verdict = _MOD.gate_verdict
 discover_deltas = _MOD.discover_deltas
 movement_edges_confirmed = _MOD.movement_edges_confirmed
 unconfirmed_directions = _MOD.unconfirmed_directions
+clean_block_wall = _MOD.clean_block_wall
 
 
 def _lattice(overrides=None):
@@ -222,6 +223,27 @@ def test_movement_gate_scores_idx0_plus_idx1_clears():
     diverged = passed[:2] + [{"plan_outcome": "DIVERGED", "levels_cleared": 1}]
     assert gate_verdict(diverged, "m0r0") == "FAIL"
     assert gate_verdict([], "m0r0") == "FAIL"
+
+
+def test_clean_block_wall_learns_only_on_a_single_clean_block():
+    """Purpose: clean_block_wall returns a wall ONLY for a clean independent_stay block
+    (one actor stayed, its partner reached its predicted cell) and returns None for
+    ambiguous divergences — the fix for the false-positive learned walls.
+
+    Expected feedback: pass proves the reliable-learning rule learns the genuine wall
+    (actor_b blocked into its target while actor_a advanced) and refuses to invent a
+    wall when both actors are off-prediction, when a predicted merge didn't happen, or
+    when nothing moved (the settle case). Fail means the noisy predicted-minus-observed
+    behaviour that over-constrained the board into UNSATISFIABLE has returned."""
+    # clean block: actor_a advanced (3,3)->(3,2) as predicted; actor_b stayed at (3,10),
+    # blocked from its predicted (3,11) -> that cell is the wall.
+    assert clean_block_wall(((3, 2), (3, 11)), [(3, 3), (3, 10)], [(3, 2), (3, 10)]) == (3, 11)
+    # ambiguous: neither predicted cell reached -> learn nothing
+    assert clean_block_wall(((3, 2), (3, 11)), [(3, 3), (3, 10)], [(4, 4), (5, 5)]) is None
+    # predicted merge that didn't happen -> ambiguous
+    assert clean_block_wall(((2, 6), (2, 6)), [(2, 5), (2, 7)], [(2, 5), (2, 7)]) is None
+    # total no-op (both stayed = the settle case) -> not a clean single block
+    assert clean_block_wall(((3, 5), (3, 8)), [(2, 5), (2, 8)], [(2, 5), (2, 8)]) is None
 
 
 def test_unconfirmed_directions_lists_the_missing_actor_edges():
