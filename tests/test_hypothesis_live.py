@@ -22,6 +22,8 @@ _SPEC.loader.exec_module(_MOD)
 
 discover_cycle = _MOD.discover_cycle
 gate_verdict = _MOD.gate_verdict
+discover_deltas = _MOD.discover_deltas
+movement_edges_confirmed = _MOD.movement_edges_confirmed
 
 
 def _lattice(overrides=None):
@@ -122,3 +124,100 @@ def test_sc25_gate_scores_the_cast_handover_not_levels():
     # A level-clear-shaped record without the cast flag must NOT pass sc25.
     level_shaped = [{"plan_outcome": "CLEARED", "levels_cleared": 1} for _ in range(3)]
     assert gate_verdict(level_shaped, "sc25") == "FAIL"
+
+
+# ── movement-family (m0r0) discovery helpers ─────────────────────────────────
+_MV_SCALE = 4
+_MV_BG = 0
+_MV_ACTOR = 9
+# a consistent mirror scheme: rows symmetric (1 up / 2 down both), columns
+# antisymmetric (3 diverges, 4 converges) — the m0r0 decoded structure
+_MV_DELTAS = {1: ((-1, 0), (-1, 0)), 2: ((1, 0), (1, 0)), 3: ((0, -1), (0, 1)), 4: ((0, 1), (0, -1))}
+
+
+def _mv_frame(a, b):
+    """A 48x48 grid (each cell a 4x4 block) with two colour-9 actor cells at ``a``
+    and ``b`` on an empty background."""
+    g = [[_MV_BG] * 48 for _ in range(48)]
+    for (r, c) in (a, b):
+        for dr in range(_MV_SCALE):
+            for dc in range(_MV_SCALE):
+                g[r * _MV_SCALE + dr][c * _MV_SCALE + dc] = _MV_ACTOR
+    return tuple(tuple(row) for row in g)
+
+
+class _MoveSim:
+    """An offline two-actor movement simulator applying the mirror deltas — the
+    directional-probe analogue of the cycle flip simulator above. Actors start far
+    apart with room to sweep without colliding, so every edge is cleanly observable."""
+
+    def __init__(self, a=(5, 3), b=(5, 8)):
+        self.a, self.b = a, b
+
+    def frame(self):
+        return _mv_frame(self.a, self.b)
+
+    def probe(self, action):
+        da, db = _MV_DELTAS[action]
+        self.a = (self.a[0] + da[0], self.a[1] + da[1])
+        self.b = (self.b[0] + db[0], self.b[1] + db[1])
+        return self.frame()
+
+
+def test_discover_deltas_confirms_all_eight_edges_via_directional_sweep():
+    """Purpose: the directional-probe sweep acquires every (actor, direction) delta
+    edge under the min-probe rule, reproducing the mirror structure (columns
+    antisymmetric), within budget and with no spurious hazards.
+
+    Expected feedback: pass proves the movement driver builds the complete transition
+    table the compiler needs from live probes. Fail means discovery leaves edges open
+    and every m0r0 run would report GROUNDING_INCOMPLETE."""
+    sim = _MoveSim()
+    gs = GroundingService()
+    assert movement_edges_confirmed(gs) is False  # nothing observed yet
+    closed, used, hazards = discover_deltas(gs, sim.frame(), sim.probe, budget=30)
+    assert closed is True
+    assert 0 < used <= 30
+    assert hazards == 0
+    d = gs.movement_deltas()
+    assert d is not UNKNOWN
+    need = {(aid, a) for aid in ("actor_a", "actor_b") for a in (1, 2, 3, 4)}
+    assert set(d.value.keys()) == need
+    assert d.value[("actor_a", 3)][1] == -d.value[("actor_b", 3)][1]  # columns antisymmetric
+
+
+def test_discover_deltas_gives_up_within_budget_on_an_inert_board():
+    """Purpose: when probes never move the actors (an inert board), discovery stops
+    at the budget and reports not-confirmed — never loops forever.
+
+    Expected feedback: pass proves the honest GROUNDING_INCOMPLETE path is
+    budget-bounded for movement as for the cycle. Fail means an unresponsive board
+    would hang the gate."""
+    gs = GroundingService()
+    start = _mv_frame((5, 3), (5, 8))
+
+    def inert(_action):
+        return start  # nothing ever changes
+
+    closed, used, hazards = discover_deltas(gs, start, inert, budget=12)
+    assert closed is False
+    assert used <= 12
+    assert hazards == 0
+
+
+def test_movement_gate_scores_idx0_plus_idx1_clears():
+    """Purpose: the m0r0 gate PASSes only when every run cleared idx0+idx1 with a
+    CLEARED outcome.
+
+    Expected feedback: pass proves the 3/3 two-level rule is enforced — a run that
+    reached only idx0, or one that DIVERGED, fails the gate. Fail means the movement
+    verdict would over-report."""
+    passed = [{"plan_outcome": "CLEARED", "levels_cleared": 2} for _ in range(3)]
+    assert gate_verdict(passed, "m0r0") == "PASS"
+
+    one_short = passed[:2] + [{"plan_outcome": "CLEARED", "levels_cleared": 1}]
+    assert gate_verdict(one_short, "m0r0") == "FAIL"  # reached only idx0
+
+    diverged = passed[:2] + [{"plan_outcome": "DIVERGED", "levels_cleared": 1}]
+    assert gate_verdict(diverged, "m0r0") == "FAIL"
+    assert gate_verdict([], "m0r0") == "FAIL"

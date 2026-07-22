@@ -39,12 +39,16 @@ sys.path.insert(0, str(REPO / "src"))
 
 import numpy as np  # noqa: E402
 
-from admorphiq.hypothesis_select import schema  # noqa: E402
+from admorphiq.hypothesis_select import schema, schema_movement  # noqa: E402
 from admorphiq.hypothesis_select.compiler import (  # noqa: E402
     Click,
     PlanStatus,
     Terminal,
     compile_hypothesis,
+)
+from admorphiq.hypothesis_select.compiler_movement import (  # noqa: E402
+    Move,
+    compile_movement_hypothesis,
 )
 from admorphiq.hypothesis_select.grounding import UNKNOWN, GroundingService  # noqa: E402
 
@@ -57,6 +61,11 @@ _FT09_LEVEL_BUDGET = 150
 _SC25_PHASE_BUDGET = 60
 _FT09_TARGET_LEVELS = 2  # idx0 + idx1 in sequence
 _SC25_TARGET_LEVELS = 1  # the pattern-phase cast
+
+_M0R0_DIRECTIONS = (1, 2, 3, 4)  # the directional simple actions swept in discovery
+_M0R0_LEVEL_BUDGET = 150  # solve <= 150 actions/level (frozen contract)
+_M0R0_TARGET_LEVELS = 2  # idx0 + idx1 in sequence
+_MOVEMENT_ACTORS = ("actor_a", "actor_b")
 
 
 # ── pure helpers (unit-tested; no env) ──────────────────────────────────────
@@ -105,6 +114,82 @@ def discover_cycle(
     return gs.get_ordered_cycle() is not UNKNOWN, actions
 
 
+def movement_edges_confirmed(gs: GroundingService, directions: tuple[int, ...] = _M0R0_DIRECTIONS) -> bool:
+    """Whether every ``(actor, direction)`` per-actor delta edge is min-probe
+    acquired — the movement analogue of the closed cycle. Two actors x the swept
+    directions must all appear in the grounded delta table."""
+    d = gs.movement_deltas()
+    if d is UNKNOWN:
+        return False
+    have = set(d.value.keys())
+    need = {(aid, a) for aid in _MOVEMENT_ACTORS for a in directions}
+    return need <= have
+
+
+def discover_deltas(
+    gs: GroundingService,
+    initial: Grid,
+    probe: Callable[[int], Optional[Grid]],
+    budget: int = _DISCOVERY_BUDGET,
+    directions: tuple[int, ...] = _M0R0_DIRECTIONS,
+) -> tuple[bool, int, int]:
+    """Sweep the directional simple actions, feeding each observed transition to the
+    grounding, until every ``(actor, direction)`` delta edge is min-probe-confirmed
+    or the budget is spent. ``probe(action) -> next grid`` applies one simple action
+    and returns the resulting frame (``None`` if the env ended). Returns ``(all edges
+    confirmed, actions used, hazard soft-resets observed)``.
+
+    A collision-blocked or hazard-reset probe records NO delta edge (the grounding's
+    collision-safe/hazard-safe accounting), so a sweep may leave edges open — the
+    loop repeats sweeps until the table completes, stopping early after two sweeps
+    that add no new edge (the graph is as complete as this board's reachability
+    allows). Hazard soft-resets DURING discovery are counted (they are real actions
+    and consume the budget), per the frozen contract."""
+    before = initial
+    used = 0
+    hazard_resets = 0
+    stale_sweeps = 0
+    while used < budget and not movement_edges_confirmed(gs, directions):
+        edges_before = _delta_edge_count(gs)
+        for action in directions:
+            if used >= budget or movement_edges_confirmed(gs, directions):
+                break
+            haz0 = _hazard_cell_count(gs)
+            after = probe(action)
+            used += 1
+            if after is None:
+                return movement_edges_confirmed(gs, directions), used, hazard_resets
+            gs.feed_transition(before, action, (0, 0), after)
+            hazard_resets += max(0, _hazard_cell_count(gs) - haz0)
+            before = after
+        if _delta_edge_count(gs) == edges_before:
+            stale_sweeps += 1
+            if stale_sweeps >= 2:
+                break
+        else:
+            stale_sweeps = 0
+    return movement_edges_confirmed(gs, directions), used, hazard_resets
+
+
+def _delta_edge_count(gs: GroundingService) -> int:
+    d = gs.movement_deltas()
+    return 0 if d is UNKNOWN else len(d.value)
+
+
+def _hazard_cell_count(gs: GroundingService) -> int:
+    h = gs.movement_hazard_cells()
+    return 0 if h is UNKNOWN else len(h.value)
+
+
+def _target_levels(game: str) -> int:
+    """The frozen-contract level target a run must reach to count as CLEARED."""
+    if game == "sc25":
+        return _SC25_TARGET_LEVELS
+    if game == "m0r0":
+        return _M0R0_TARGET_LEVELS
+    return _FT09_TARGET_LEVELS
+
+
 def gate_verdict(runs: list[dict[str, Any]], game: str) -> str:
     """PASS iff every run met the game's FROZEN-contract success criterion, else
     FAIL. ft09 = the required levels cleared (idx0+idx1). sc25 = the pattern-phase
@@ -114,8 +199,9 @@ def gate_verdict(runs: list[dict[str, Any]], game: str) -> str:
         return "FAIL"
     if game == "sc25":
         return "PASS" if all(r.get("cast_and_handover") for r in runs) else "FAIL"
+    target = _target_levels(game)
     ok = all(
-        r.get("plan_outcome") == "CLEARED" and r.get("levels_cleared", 0) >= _FT09_TARGET_LEVELS
+        r.get("plan_outcome") == "CLEARED" and r.get("levels_cleared", 0) >= target
         for r in runs
     )
     return "PASS" if ok else "FAIL"
@@ -152,6 +238,14 @@ class LiveEnv:
             if action.is_complex()
             else self._env.step(action)
         )
+
+    def simple_action(self, action_id: int) -> None:
+        """Apply a simple (non-coordinate) action ACTION1-4 — the directional moves
+        the movement family probes and executes."""
+        from admorphiq.types import ActionType, GameAction
+
+        action = self._convert(GameAction.simple(ActionType(int(action_id))))
+        self._obs = self._env.step(action)
 
     def frame(self) -> Optional[Grid]:
         from admorphiq.tools.base import frame_2d, has_frame
@@ -200,6 +294,8 @@ def _find_game(game_query: str) -> tuple[Any, Any]:
 
 def run_once(game: str, run_index: int) -> dict[str, Any]:
     """One fresh-reset gate run. Returns the per-run JSON record."""
+    if game == "m0r0":
+        return run_movement_once(game, run_index)
     env = LiveEnv(game)
     env.reset()
     gs = GroundingService()
@@ -360,9 +456,168 @@ def execute_instance(
     return record
 
 
+def run_movement_once(game: str, run_index: int) -> dict[str, Any]:
+    """One fresh-reset movement gate run (m0r0): warm-up -> directional-probe
+    discovery -> compile the coupled-actor oracle -> stepped execution to the exact
+    merge, idx0 then idx1 in sequence. Returns the per-run JSON record."""
+    env = LiveEnv(game)
+    env.reset()
+    gs = GroundingService()
+    record: dict[str, Any] = {
+        "run": run_index,
+        "levels_cleared": 0,
+        "actions_per_level": [],
+        "discovery_actions": 0,
+        "plan_outcome": "BUDGET",
+        "states_searched": 0,
+        "merge_event": False,
+        "hazard_resets": 0,
+        "rebind_events": 0,
+        "edges_confirmed": False,
+    }
+
+    # a. WARM-UP — a valid, playing frame the two-actor parse can bind against once
+    #    the actor colour + scale are mobility-confirmed in discovery.
+    frame: Optional[Grid] = None
+    for _ in range(_WARMUP_BUDGET):
+        frame = env.frame()
+        if frame is None or env.state() in ("GAME_OVER", "NOT_PLAYED"):
+            env.reset()
+            continue
+        break
+    if frame is None:
+        record["plan_outcome"] = "GROUNDING_INCOMPLETE"
+        print(f"[live] run{run_index} {game}: warm-up found no playing frame", flush=True)
+        return record
+
+    def probe(action_id: int) -> Optional[Grid]:
+        env.simple_action(action_id)
+        return env.frame()
+
+    def two_actors_bound() -> bool:
+        actors = gs.movement_actors()
+        return actors is not UNKNOWN and len({aid for aid, _p in actors.value}) >= 2
+
+    def reground() -> bool:
+        """(Re)bind two-actor grounding on the CURRENT board. The mirror deltas are a
+        game constant that accumulates across levels, so idx1 usually needs only the
+        new frame fed (positions rebind frame-based). But right after a merge the env
+        may still show the merged single-actor win frame before the next board's two
+        actors respawn — so if fewer than two actors are visible, ADVANCE the env one
+        directional step at a time (observing each transition) until both reappear or
+        the discovery budget is spent. Returns True once both actors are bound and the
+        delta table is complete."""
+        for _ in range(_DISCOVERY_BUDGET):
+            cur = env.frame()
+            if cur is not None:
+                gs.feed(cur)
+            if two_actors_bound() and movement_edges_confirmed(gs):
+                return True
+            before = env.frame()
+            after = probe(_M0R0_DIRECTIONS[0])  # advance-and-observe past the win frame
+            record["discovery_actions"] += 1
+            if after is None:
+                return False
+            if before is not None:
+                gs.feed_transition(before, _M0R0_DIRECTIONS[0], (0, 0), after)
+                record["edges_confirmed"] = record["edges_confirmed"] or movement_edges_confirmed(gs)
+        return two_actors_bound() and movement_edges_confirmed(gs)
+
+    # b. DISCOVERY — sweep ACTION1-4 until all 8 (actor, direction) edges confirm.
+    closed, used, hz = discover_deltas(gs, frame, probe)
+    record["discovery_actions"] = used
+    record["hazard_resets"] += hz
+    record["edges_confirmed"] = closed
+    cur = env.frame()
+    if cur is not None:
+        gs.feed(cur)  # bind the current board's actors + occupancy for the compile
+    if not closed or gs.movement_actors() is UNKNOWN:
+        record["plan_outcome"] = "GROUNDING_INCOMPLETE"
+        record["rebind_events"] = len(gs.rebind_events)
+        print(f"[live] run{run_index} {game}: delta table did not complete", flush=True)
+        return record
+
+    # c + d. SOLVE + step; on level-up rebind the new board and recompile.
+    return execute_movement_instance(env, gs, record, run_index, reground)
+
+
+def execute_movement_instance(
+    env: "LiveEnv",
+    gs: GroundingService,
+    record: dict[str, Any],
+    run_index: int,
+    reground: Callable[[], bool],
+) -> dict[str, Any]:
+    """Step the compiled coupled-actor plan against the live env with per-move
+    confirmation, clearing idx0 then idx1. On a level-up the board is a new layout
+    epoch (positions + occupancy rebind), so the plan is recompiled for it; a
+    recoverable GROUNDING_INCOMPLETE / UNSATISFIABLE triggers a re-ground + recompile."""
+    instance = schema_movement.m0r0_oracle_instance()
+    plan = compile_movement_hypothesis(instance, gs)
+    start_levels = env.levels()
+    level_actions = 0
+    regroundings = 0
+    max_reground = _M0R0_TARGET_LEVELS + 2
+    total_budget = _M0R0_LEVEL_BUDGET * _M0R0_TARGET_LEVELS + _DISCOVERY_BUDGET * max_reground + 10
+    for _ in range(total_budget):
+        frame = env.frame()
+        if frame is None:
+            env.reset()
+            continue
+        if env.state() == "WIN":
+            record["plan_outcome"] = "CLEARED"
+            break
+        result = plan.step(frame)
+        sol = plan.solve()
+        record["states_searched"] = max(record["states_searched"], sol.states_searched)
+        if isinstance(result, Terminal):
+            if result.status is PlanStatus.DONE:
+                record["plan_outcome"] = (
+                    "CLEARED"
+                    if record["levels_cleared"] >= _M0R0_TARGET_LEVELS or env.state() == "WIN"
+                    else "DIVERGED"
+                )
+                break
+            if (
+                result.status in (PlanStatus.GROUNDING_INCOMPLETE, PlanStatus.UNSATISFIABLE)
+                and regroundings < max_reground
+                and reground()
+            ):
+                regroundings += 1
+                plan = compile_movement_hypothesis(instance, gs)
+                continue
+            record["plan_outcome"] = result.status.value
+            break
+        if isinstance(result, Move):
+            env.simple_action(result.action)
+            level_actions += 1
+            now = env.levels()
+            if now > start_levels + record["levels_cleared"]:
+                record["actions_per_level"].append(level_actions)
+                record["levels_cleared"] = now - start_levels
+                record["merge_event"] = record["merge_event"] or gs.movement_merge_event() is not UNKNOWN
+                level_actions = 0
+                print(f"[live] run{run_index} m0r0: level {record['levels_cleared']} cleared", flush=True)
+                if record["levels_cleared"] >= _M0R0_TARGET_LEVELS:
+                    record["plan_outcome"] = "CLEARED"
+                    break
+                reground()  # the new board: rebind positions + occupancy
+                plan = compile_movement_hypothesis(instance, gs)  # fresh solution
+                continue
+            if level_actions > _M0R0_LEVEL_BUDGET:
+                record["plan_outcome"] = "BUDGET"
+                break
+
+    record["merge_event"] = record["merge_event"] or gs.movement_merge_event() is not UNKNOWN
+    record["rebind_events"] = len(gs.rebind_events)
+    if record["plan_outcome"] == "CLEARED" and record["levels_cleared"] < _M0R0_TARGET_LEVELS:
+        record["levels_cleared"] = max(record["levels_cleared"], env.levels() - start_levels)
+    return record
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--game", required=True, choices=["ft09", "sc25"])
+    parser.add_argument("--game", required=True, choices=["ft09", "sc25", "m0r0"])
     parser.add_argument("--runs", type=int, default=3)
     parser.add_argument("--out", required=True)
     args = parser.parse_args()
