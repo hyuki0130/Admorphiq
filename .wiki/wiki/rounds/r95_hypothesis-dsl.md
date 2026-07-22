@@ -150,8 +150,23 @@ contradicts T5" — the masked histogram is what flipped it), confidence
 medium (honest — sc25 evidence is thinner). ft09 replicated 3/3 exact-oracle,
 byte-identical observations. The full loop — cross-model failure observed →
 mechanism predicted → harness fixed generically → picks recover — is the
-first CLOSED defect chain through the hypothesis channel. gpt-oss v2 twin
-launched for the paired closure.
+first CLOSED defect chain through the hypothesis channel.
+
+**gpt-oss v2 (paired closure, collected 17:14;
+`r95a_select_bench_gptoss_v2_masked.json`)**: ft09 3/3 exact-oracle
+replicated. sc25 STILL 0/3 — but the failure MODE changed, which is itself
+evidence the masking worked: rep0 anchored on the honest 13-cell
+level-transition example (T5); reps 1/2 read the dynamics CORRECTLY
+(single-cell) but misinterpreted the completion evidence as absolute-preview
+(T2). **First model difference in R95**: with corrected observations gemma4
+recovers fully, gpt-oss scatters across strictly-dominated negatives on
+sc25's thin evidence (9 clicks, 4 win events, one outlier example). Per the
+tuning-ladder rule this is one bench config, NOT a nomination — recorded as
+a paired divergence. Root cause of the residual failure = sc25 evidence
+THINNESS (the prereg's known weak-case limitation), for which the honest
+lever remains richer trace recapture, not scoring or prompt changes.
+#125 itself is COMPLETE: the chrome defect is fixed, validated (histogram
+mode 2→1, ft09 byte-identical), and closure is demonstrated on gemma4.
 
 ## R95b build progress (Codex CONDITIONAL GO plan v1; live log)
 
