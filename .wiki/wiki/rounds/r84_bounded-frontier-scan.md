@@ -8,6 +8,10 @@ commit: (this docs round)
 
 # R84 — bounded-opportunity queue scan (task #108, 2026-07-19)
 
+> Full queue scan of remaining bounded opportunities after the [[r59_depth-wave]] depth wave:
+> bounded frontier essentially EXHAUSTED — one marginal open-bounded item
+> (r11l L1), everything else settled-blocked or multi-session.
+
 Triggered because two consecutive assignments (tu93 R82, ka59 R83) turned out
 already-settled — the queue picture was stale. Surveyed every non-conquered,
 non-hard-parked game's NEXT-level wall from its game page's latest bank and

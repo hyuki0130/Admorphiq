@@ -8,6 +8,10 @@ commit: (this docs round)
 
 # R86 — r11l L3 colour-blind detection: leg-grouping solved, target assignment is the wall
 
+> r11l L3 decode round: colour-blind LEG-grouping solved and de-risked;
+> target-ring assignment stays ambiguous under colour sharing -> banked as
+> a multi-session wall, no code change, floor 3/6 untouched.
+
 Granted as the L3 build follow-on to [[r85_r11l-strike-aware-assembly]] (r11l 3/6
 @ 0.2551). Goal: get `_analyze_creatures` to detect L3's 3 creatures (it returns
 None — bodies are multi-colour with shared colours, [[../games/R11L]] Notes R85b)

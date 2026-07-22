@@ -8,6 +8,10 @@ commit: (this round)
 
 # R85 — r11l strike-aware drag-assembly planner (task #109, 2026-07-19)
 
+> r11l 1/6 -> 3/6 @ 0.2551 (deterministic x2) via the strike-aware
+> drag-assembly planner; the R60c wall-edge/camera-transform bank is
+> FALSIFIED (camera is identity); L0 byte-identical.
+
 Assigned as the last marginal OPEN-BOUNDED opportunity from the R84 frontier
 scan ([[r84_bounded-frontier-scan]]): r11l L1, target 2/6 (~0.14). Delivered
 **3/6 @ 0.2551** — a 5.4× game-score jump, well past target — by correcting a

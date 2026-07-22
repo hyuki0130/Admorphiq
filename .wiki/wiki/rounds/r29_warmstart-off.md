@@ -24,7 +24,7 @@ games @3000 3-seed:
 ### Why this is the number that matters
 - The 9 test games ARE the public games BC-v6 was trained on → warm-start ON is the MAXIMALLY
   FAVORABLE case (the prior already knows these games).
-- Eval = 110 PRIVATE games where BC has 0% transfer (measured, [[project-bc-transfer-ceiling]]).
+- Eval = 110 PRIVATE games where BC has 0% transfer (measured, memory `project_bc_transfer_ceiling`).
 - So the true private-leaderboard number of the current card is close to the OFF value (~0.0014),
   NOT 0.0134. ~90% of our measured score is public-gold BC inflation that will NOT transfer.
 - The entire R5-R28 micro-tuning sprint was largely optimizing a warm-start-inflated public proxy.
