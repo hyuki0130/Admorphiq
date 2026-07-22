@@ -278,7 +278,7 @@ the R93 breadth bench (see [[r93_tool-fork-patch]] — 9/15 at reasoning-HIGH, n
 nomination under the paired protocol). The s5i5 arrangement-pair holdout was
 superseded by the D5/D5-SKEL sk48 measurements recorded above.
 
-Successor: the R95 hypothesis-DSL round (`docs/design_hypothesis_dsl_r95.md`,
+Successor: [[r95_hypothesis-dsl]] (`docs/design_hypothesis_dsl_r95.md`,
 designed + twice Codex-consulted while D5-SKEL ran) — R95a discriminative
 selection on ft09+sc25 with oracle + historically-falsified hard negatives,
 5-tier fallback ladder, two-model comparison rule.
