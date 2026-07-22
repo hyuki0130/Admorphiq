@@ -1684,8 +1684,7 @@ passed 3/3 (ft09 idx0+idx1 at 4+8 actions = human baseline; sc25 cast+handover),
 MODEL replaced the oracle: gemma4 6/6 PERFECT (exact-oracle selection from live grounding
 evidence every run); gpt-oss ft09 2/3 (its wrong stencil pick was CAUGHT LIVE by the verifier
 — zero actions wasted) + sc25 3/3 (execution-equivalent mutant on the uniform base). Zero
-adapter code, zero game ids in the runtime path. Artifacts scripts/rounds/R95/. Remaining:
-step viii variant-first slot filling (in build), then FAMILY EXPANSION per the 15-game
+adapter code, zero game ids in the runtime path. Artifacts scripts/rounds/R95/. **R95 ROUND CLOSED (2026-07-23): the contract is COMPLETE — gemma4 passes BOTH substages (select 6/6 + fill 6/6 after an 8-iteration defect ladder whose final root cause, captured from the model's own reply, was histogram-notation misparse → prose fix; lesson prompt_notation_misparse_20260723).** Next: FAMILY EXPANSION per the 15-game
 inexpressible backlog — the private-110 coverage lever.
 
 **[SUPERSEDED by the R56 depth phase above — kept for history]**

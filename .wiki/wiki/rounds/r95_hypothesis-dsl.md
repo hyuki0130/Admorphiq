@@ -3,7 +3,7 @@ type: reasoning
 round: R95
 axis: agent25 — typed hypothesis DSL (discriminative selection first)
 keywords: [agent25, hypothesis-dsl, discriminative-selection, enum-vocabulary, family-sub-banks, equivalence-class, ft09, sc25, oracle-first, fallback-ladder, self-extension, two-model, prereg]
-verdict: MILESTONE — FIRST FULLY AUTONOMOUS agent25 CLEARS through the hypothesis channel (gemma4, 2026-07-22 19:28). The model-stage finale scored 6/6 across both games — the model picked the EXACT ORACLE from live grounding evidence in every fresh run, the verifier PASSed it, and the compiled plan cleared ft09 idx0+idx1 at 4+8 actions (human baseline) and reached sc25 cast+handover, 3/3 each — exceeding the frozen ≥2/3 contract bar with zero adapter code and zero game ids anywhere in the runtime path. Earlier in the round: R95a paired selection confirmation (both models 3/3 exact-oracle on ft09; sc25 chrome defect #125 found via cross-model failure, fixed, gemma4 recovered 3/3), and the full oracle pipeline (schema→grounding→verify→compile→live) proven at both family variants. gptoss twin in flight; step (viii) slot filling remains
+verdict: ROUND CLOSED, CONTRACT COMPLETE (2026-07-23 04:17) — the R95b evaluation contract is fulfilled end to end for gemma4 in BOTH model substages. SELECT mode: CONFIRMED paired (gemma4 6/6 exact-oracle; gpt-oss ft09 2/3 with the verifier catching its wrong stencil pick live + sc25 3/3). FILL mode (generation, no candidates shown): ft09 3/3 across FOUR consecutive rounds (model-generated oracle-identical semantics clears idx0+idx1 at human-baseline efficiency) AND sc25 3/3 after an eight-iteration defect ladder whose final root cause — captured verbatim from the model's own reply via the v7 observability wrapper — was the harness's histogram NOTATION being misparsed (key/value swap), fixed by prose rendering (lesson: prompt_notation_misparse_20260723). MILESTONE within the round: the first fully autonomous agent25 clears (2026-07-22 19:28). The model-stage finale scored 6/6 across both games — the model picked the EXACT ORACLE from live grounding evidence in every fresh run, the verifier PASSed it, and the compiled plan cleared ft09 idx0+idx1 at 4+8 actions (human baseline) and reached sc25 cast+handover, 3/3 each — exceeding the frozen ≥2/3 contract bar with zero adapter code and zero game ids anywhere in the runtime path. Earlier in the round: R95a paired selection confirmation (both models 3/3 exact-oracle on ft09; sc25 chrome defect #125 found via cross-model failure, fixed, gemma4 recovered 3/3), and the full oracle pipeline (schema→grounding→verify→compile→live) proven at both family variants. gptoss twin in flight; step (viii) slot filling remains
 commit: [aa8bdfa, d511ed6, 40ee7fd, 7e456dd, 405e754, 82199cf]
 date: 2026-07-22
 ---
@@ -288,6 +288,27 @@ mode 2→1, ft09 byte-identical), and closure is demonstrated on gemma4.
   {ordered_cycle ↔ binary_flip} pair, BOUNDED so effect_matrix picks stand
   and fail typed (the verifier/compile-guard safety layer is preserved).
   Fill v2 kernel in flight.
+
+## Fill-mode finale (v3–v8 defect ladder → CONTRACT COMPLETE, 2026-07-23 04:17)
+
+The generation substage closed after an eight-iteration ladder in which every
+iteration attributed and removed a DISTINCT defect (never a re-roll):
+crash-on-unsupported-combination → cycle-evidence gap (proposed discriminator
+MEASURED-INVERTED by the build agent pre-ship) → evidence-line wording ×2 →
+line removal → cast-commit contamination theory (self-falsified live) →
+**v7 observability (echoing_llm) captured the true root cause verbatim from
+the model's own reply: the `Ncell(s)->Mclick(s)` histogram notation was
+misparsed with key/value swapped** → v8 prose rendering fixed it
+([[../lessons/prompt_notation_misparse_20260723]]).
+
+**Final fill result (v8, `r95b_fill_bench_gemma4_v8.json`)**: ft09 3/3
+(FOURTH consecutive round — model-generated oracle-identical semantics,
+idx0+idx1 at human baseline) AND sc25 3/3 (pattern_reference + binary_flip →
+cast+handover every run). Both ≥2/3 → the frozen evaluation contract is
+fulfilled for gemma4 in BOTH substages (select 6/6 + fill 6/6). Honest note:
+sc25's preview_interpretation lands on absolute_exact, execution-equivalent
+to xor_exact on idx0's uniform base — the known thin-evidence signature,
+unresolvable without richer traces.
 
 ## Related
 

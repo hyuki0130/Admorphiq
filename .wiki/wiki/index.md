@@ -8,7 +8,7 @@ seeds `llm_context/decision_tree.md` first, then walks `[[backlinks]]`.
 Use this index when authoring or auditing: skim the catalog, pick a
 category, drill into specific pages.
 
-**Total pages**: 170.
+**Total pages**: 171.
 
 ## Games (25)
 
@@ -91,7 +91,7 @@ category, drill into specific pages.
 - [[concepts/sprite_cluster.md]] — A connected component of same-color pixels in the frame. The universal primitive for detecting entities without reading game internals.
 - [[concepts/version_hash.md]] — A game's identifier in the ARC Prize API has the form `<title>-<hash>` (e.g. `tn36-ab4f63cc`). The hash is a version fingerprint: games with the same title but different hashes share gameplay rules but differ in internal implementation details that solvers may or may not observe.
 
-## Lessons (engineering wisdom from past incidents) (35)
+## Lessons (engineering wisdom from past incidents) (36)
 
 - [[lessons/top_solutions_survey_20260708.md]] — Survey of what is actually open-sourced for ARC-AGI-3 (M1 winners = local-LLM agents), resolution of the leaderboard score-scale confusion (top ~1.56 = 1.56%, not 156%; the 12.58% anchor was the 2025 preview), and the top-3 generic levers to adopt next.
 - [[lessons/online_rl_sprint_round_log.md]] — **🔎 To FIND past work by topic, start at the retrieval map [[../rounds/index]]**
@@ -115,6 +115,7 @@ category, drill into specific pages.
 - [[lessons/merge_drag_stall_causes_game_over_20260713.md]] — Live-traced SU15 L3 (post L1+L2 clear) on `merge_drag.py` /
 - [[lessons/prefix_aware_navigation_20260423.md]] — `_plan_navigation` must resume BFS from the current level start using the cumulative prefix and chain `solve_all_levels` internally; R20 accidentally dropped multi-level chaining (AR25/M0R0 regressed 2→1), and R22 restored it with prefix awareness so one plan call clears multiple levels in sequence.
 - [[lessons/probe_validity_20260715.md]] — Three separate R56 adapters were misled by probes that LOOKED conclusive
+- [[lessons/prompt_notation_misparse_20260723.md]] — gemma4-31b deterministically misread the histogram notation
 - [[lessons/scale_relative_thresholds_20260719.md]] — An absolute pixel constant (`size >= 3`, `size <= 6`, `span <= 6`, a coordinate) is a
 - [[lessons/schema_enforcement_round1_20260421.md]] — Measurement log for the R7 round-1 bench. The operational rules it
 - [[lessons/seed_reorder_regression_20260625.md]] — Reordering `derive_seed_pages` to place env-specific seeds (game_type /
