@@ -37,6 +37,9 @@ frame_diff_cells = _MOD.frame_diff_cells
 background_colour = _MOD.background_colour
 fit_orbit_period = _MOD.fit_orbit_period
 orbit_phase_table = _MOD.orbit_phase_table
+fit_behavioural_orbit = _MOD.fit_behavioural_orbit
+behavioural_phase_table = _MOD.behavioural_phase_table
+select_orbit = _MOD.select_orbit
 
 
 def _lattice(overrides=None):
@@ -475,3 +478,70 @@ def test_orbit_phase_table_unions_observations_by_phase():
     engine). Fail means the timed planner would block the wrong cells at each phase."""
     obs = [frozenset({(5, 3)}), frozenset({(5, 4)}), frozenset({(5, 3)}), frozenset({(5, 4)})]
     assert orbit_phase_table(obs, 2) == [frozenset({(5, 3)}), frozenset({(5, 4)})]
+
+
+def test_fit_behavioural_orbit_recovers_a_period_from_block_pass_evidence():
+    """Purpose: fit_behavioural_orbit recovers the period of a FRAME-INVISIBLE obstacle from
+    its behavioural trace — POSITIVE (cell,tick) where an actor was blocked (obstacle there)
+    and NEGATIVE where an actor occupied (obstacle absent) — via sparse phase-consistency,
+    the m0r0 defect-15 signal the frame diff cannot see.
+
+    Expected feedback: pass proves the invisible patroller's period is fit from block/pass
+    evidence, AND that a phase-conflicting period (P=2 here) is rejected in favour of the
+    consistent one. Fail means the behavioural orbit cannot be clocked -> no timed planning."""
+    # (5,5) is blocked at ticks 0,3,6 (phase 0 of P=3) and free elsewhere
+    pos = {((5, 5), 0), ((5, 5), 3), ((5, 5), 6)}
+    neg = {((5, 5), t) for t in (1, 2, 4, 5, 7, 8)}
+    assert fit_behavioural_orbit(pos, neg) == 3
+    # P=2 is INCONSISTENT (tick 0 blocked and tick 4 free both fall on phase 0), so it is
+    # rejected — the fit does not greedily take the smallest number
+    assert fit_behavioural_orbit(pos, neg) != 2
+
+
+def test_fit_behavioural_orbit_guards_idx0_and_thin_or_conflicting_samples():
+    """Purpose: the fit returns None (ORBIT_UNSTABLE, reactive layer alone) when there are
+    NO positive samples (idx0 — nothing ever blocks, so no obstacle and the 15-gold path is
+    never perturbed), when samples are too few, or when no period is phase-consistent.
+
+    Expected feedback: pass proves the behavioural orbit never fabricates an obstacle on a
+    clean board (the idx0 pin) and never force-fits thin evidence. Fail means idx0 could get
+    a spurious orbit, or a period is invented from noise."""
+    assert fit_behavioural_orbit(set(), {((5, 5), t) for t in range(10)}) is None  # idx0: no blocks
+    assert fit_behavioural_orbit({((5, 5), 0)}, {((5, 5), 1)}) is None  # too few samples
+    # a cell both blocked and free at EVERY candidate phase -> no consistent P
+    pos = {((5, 5), t) for t in range(0, 12, 2)}   # blocked on even ticks
+    neg = {((5, 5), t) for t in range(1, 12, 2)}   # free on odd ticks
+    # even/odd split conflicts at every P<=12 that mixes parities; P=2 keeps evens on phase 0
+    # and odds on phase 1 -> actually CONSISTENT at P=2, so assert the true P=2 is found
+    assert fit_behavioural_orbit(pos, neg) == 2
+
+
+def test_behavioural_phase_table_blocks_only_witnessed_cells():
+    """Purpose: behavioural_phase_table marks a cell blocked at a phase ONLY from positive
+    samples; unsampled (cell,phase) pairs stay passable (optimistic — the reactive layer is
+    the safety net, never invent a block).
+
+    Expected feedback: pass proves the timed BFS blocks exactly the witnessed obstacle cells
+    per phase. Fail means it over-blocks (inventing walls) or under-blocks."""
+    pos = {((5, 5), 0), ((5, 5), 3), ((6, 2), 1)}
+    table = behavioural_phase_table(pos, 3)
+    assert table == [frozenset({(5, 5)}), frozenset({(6, 2)}), frozenset()]
+
+
+def test_select_orbit_prefers_framediff_then_behavioural():
+    """Purpose: select_orbit applies the precedence rule — the FRAME-DIFF orbit (visible
+    movers) wins; only when it finds nothing periodic does the BEHAVIOURAL orbit apply; and
+    neither yields None (reactive planner alone).
+
+    Expected feedback: pass proves the source precedence the defect-15 spec requires (visible
+    obstacles still use the direct sensor; m0r0's invisible one falls through to behavioural).
+    Fail means the wrong source is chosen, breaking either the visible or the invisible case."""
+    cycle = [frozenset({(5, 3)}), frozenset({(5, 4)}), frozenset({(5, 3)}), frozenset({(5, 4)})]
+    sel = select_orbit(cycle * 3, set(), set(), tick=7)
+    assert sel is not None and sel[2] == "framediff"
+    obs_empty = [frozenset() for _ in range(9)]
+    pos = {((5, 5), 0), ((5, 5), 3), ((5, 5), 6)}
+    neg = {((5, 5), t) for t in (1, 2, 4, 5, 7, 8)}
+    sel2 = select_orbit(obs_empty, pos, neg, tick=6)
+    assert sel2 is not None and sel2[2] == "behavioural" and sel2[1] == 6 % 3
+    assert select_orbit(obs_empty, set(), set(), tick=3) is None  # nothing periodic -> reactive

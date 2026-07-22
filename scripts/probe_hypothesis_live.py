@@ -315,6 +315,70 @@ def fit_orbit_period(
     return None
 
 
+def fit_behavioural_orbit(
+    pos: set[tuple[tuple[int, int], int]],
+    neg: set[tuple[tuple[int, int], int]],
+    pmin: int = 2,
+    pmax: int = 12,
+    min_samples: int = 6,
+) -> Optional[int]:
+    """Fit a period P for an obstacle INVISIBLE to frame diffs (floor-coloured), from its
+    BEHAVIOURAL trace: ``pos`` = (cell, tick) where an actor was BLOCKED (obstacle AT the
+    cell that tick) and ``neg`` = (cell, tick) an actor OCCUPIED (obstacle NOT there). A
+    candidate P is CONSISTENT iff no cell has both a positive and a negative sample at the
+    same phase ``tick mod P`` (the deterministic obstacle cannot be both there and absent
+    at one phase). Returns the smallest consistent P with >= ``min_samples`` samples spread
+    over >= 2P ticks; ``None`` (ORBIT_UNSTABLE) with no positives, too-few/too-thin samples,
+    or no consistent P — the reactive layer then carries on alone."""
+    if not pos or len(pos) + len(neg) < min_samples:
+        return None
+    ticks = [t for _c, t in pos] + [t for _c, t in neg]
+    span = max(ticks) - min(ticks) + 1
+    for period in range(pmin, pmax + 1):
+        if span < 2 * period:
+            continue
+        pos_ph: dict[tuple[int, int], set[int]] = {}
+        neg_ph: dict[tuple[int, int], set[int]] = {}
+        for cell, t in pos:
+            pos_ph.setdefault(cell, set()).add(t % period)
+        for cell, t in neg:
+            neg_ph.setdefault(cell, set()).add(t % period)
+        if all(not (phases & neg_ph.get(cell, set())) for cell, phases in pos_ph.items()):
+            return period
+    return None
+
+
+def behavioural_phase_table(
+    pos: set[tuple[tuple[int, int], int]], period: int
+) -> list[frozenset[tuple[int, int]]]:
+    """The blocked cells at each phase 0..P-1 from POSITIVE (blocked) samples only —
+    an UNSAMPLED (cell, phase) pair stays optimistically passable (the reactive layer is
+    the safety net; never invent a block the trace did not witness)."""
+    table: list[set[tuple[int, int]]] = [set() for _ in range(period)]
+    for cell, t in pos:
+        table[t % period].add(cell)
+    return [frozenset(s) for s in table]
+
+
+def select_orbit(
+    orbit_obs: list[frozenset[tuple[int, int]]],
+    behav_pos: set[tuple[tuple[int, int], int]],
+    behav_neg: set[tuple[tuple[int, int], int]],
+    tick: int,
+) -> Optional[tuple[list[frozenset[tuple[int, int]]], int, str]]:
+    """Pick the orbit model for the time-expanded BFS, in PRECEDENCE order: the
+    FRAME-DIFF orbit (visible movers) first; only when it finds nothing periodic does
+    the BEHAVIOURAL orbit (block/pass evidence for a frame-invisible obstacle) apply.
+    Returns ``(phases, start_phase, source)`` or ``None`` (the reactive planner alone)."""
+    period = fit_orbit_period(orbit_obs)
+    if period:
+        return orbit_phase_table(orbit_obs, period), tick % period, "framediff"
+    period = fit_behavioural_orbit(behav_pos, behav_neg)
+    if period:
+        return behavioural_phase_table(behav_pos, period), tick % period, "behavioural"
+    return None
+
+
 def orbit_phase_table(
     obs: list[frozenset[tuple[int, int]]], period: int
 ) -> list[frozenset[tuple[int, int]]]:
@@ -853,6 +917,12 @@ def run_movement_level(env: "LiveEnv", record: dict[str, Any], run_index: int) -
     prev_obs = _move_observed(gs)
     prev_frame_grid: Optional[Any] = None  # the frame before the last engine step (frame-diff sensor)
     orbit_obs: list[frozenset[tuple[int, int]]] = []  # mover cells per engine tick (period fit)
+    # BEHAVIOURAL orbit samples (defect 15): the trace of an obstacle INVISIBLE to frame
+    # diffs. behav_pos = (cell, tick) an actor was BLOCKED from (obstacle there); behav_neg
+    # = (cell, tick) an actor OCCUPIED (obstacle absent). Fed to fit_behavioural_orbit when
+    # the frame-diff orbit finds nothing periodic. Per-board (fresh each level).
+    behav_pos: set[tuple[tuple[int, int], int]] = set()
+    behav_neg: set[tuple[tuple[int, int], int]] = set()
     for _ in range(_M0R0_LEVEL_BUDGET + 10):
         frame = env.frame()
         if frame is None:
@@ -904,6 +974,10 @@ def run_movement_level(env: "LiveEnv", record: dict[str, Any], run_index: int) -
             while len(orbit_obs) < level_actions:
                 orbit_obs.append(frozenset())
             orbit_obs.append(frozenset(frame_transient))
+            # NEGATIVE behavioural samples: every cell an actor occupies this tick is
+            # obstacle-FREE (the invisible patroller is not there) — first-visit only.
+            for cell in _move_observed(gs) or []:
+                behav_neg.add((cell, level_actions))
         if isinstance(result, Terminal):
             if result.status is PlanStatus.DONE:
                 if env.levels() > start_levels or env.state() == "WIN":
@@ -946,6 +1020,10 @@ def run_movement_level(env: "LiveEnv", record: dict[str, Any], run_index: int) -
                 # the moment an actor is observed ON it (observation) and EXPIRES via TTL if never
                 # re-confirmed (a one-off patroller position an actor can never observe-clear).
                 blocked = (set(predicted) - occupied) if predicted else set()
+                # POSITIVE behavioural samples: a cell an actor was just blocked from is the
+                # invisible obstacle's position at this tick (the frame-diff never sees it).
+                for cell in blocked:
+                    behav_pos.add((cell, level_actions))
                 for cell in set(blocked_at) & occupied:
                     cleared_at[cell] = recompiles  # record the clear (flip-flop history)
                 blocked_at = refresh_blocks(blocked_at, predicted, obs_now, recompiles)
@@ -1011,13 +1089,15 @@ def run_movement_level(env: "LiveEnv", record: dict[str, Any], run_index: int) -
                     # rather than reactively chased. No fit (aperiodic / < 2 cycles) =>
                     # orbit_phases None => the reactive planner below (unchanged). idx0
                     # never reaches this block (no divergence), so its 15-gold is intact.
-                    orbit_period = fit_orbit_period(orbit_obs)
-                    orbit_phases = (
-                        orbit_phase_table(orbit_obs, orbit_period) if orbit_period else None
-                    )
-                    orbit_start = level_actions % orbit_period if orbit_period else 0
-                    if orbit_period:
-                        cause = f"{cause} + orbit P={orbit_period}@phase{orbit_start}"
+                    # PRECEDENCE: the frame-diff orbit (visible movers) first; only when it
+                    # finds nothing periodic does the BEHAVIOURAL orbit (an obstacle invisible
+                    # to frame diffs, sensed via block/pass evidence) take over — m0r0's case.
+                    selected = select_orbit(orbit_obs, behav_pos, behav_neg, level_actions)
+                    if selected is not None:
+                        orbit_phases, orbit_start, orbit_src = selected
+                        cause = f"{cause} + orbit[{orbit_src}] P={len(orbit_phases)}@phase{orbit_start}"
+                    else:
+                        orbit_phases, orbit_start = None, 0
                     # `waived` cells (a flip-flop bounce being waited on) are NOT walled — the
                     # plan re-attempts them in place rather than routing around.
                     walls = learned_walls | (blocked_now - waived) | snapshot
