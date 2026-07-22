@@ -448,6 +448,29 @@ class GroundingService:
             "high",
         )
 
+    def pattern_diff(self) -> Any:
+        """The lattice cells a pattern-reference plan must FLIP to reach the
+        base-XOR-preview target — the symmetric difference of the current ON-set
+        and the preview target — as ``Grounded(frozenset[(x, y)], "high")`` click
+        coordinates. ``UNKNOWN`` when there is no lattice/readable preview."""
+        grid = self._prev_grid
+        if grid is None:
+            return UNKNOWN
+        lattice = _sc25_lattice(grid)
+        if lattice is None:
+            return UNKNOWN
+        target = _sc25_read_target(grid, lattice)
+        if target is None:
+            return UNKNOWN
+        on_set = _sc25_on_set(grid, lattice)
+        coords: list[tuple[int, int]] = []
+        for key in sorted(on_set ^ target):
+            region = lattice["index"].get(key)
+            if region is not None:
+                rr, rc = region["centroid"]
+                coords.append((int(round(rc)), int(round(rr))))
+        return Grounded(frozenset(coords), "high")
+
     def resolve_click(self, cell_id: str) -> Any:
         """The cell's CURRENT ``(x, y)`` click coordinate as ``Grounded((x, y), conf)``,
         or ``UNKNOWN`` if the ID is from a stale epoch, unknown, or not bound in the
