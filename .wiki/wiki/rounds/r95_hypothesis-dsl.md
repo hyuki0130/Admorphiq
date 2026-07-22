@@ -204,11 +204,19 @@ mode 2→1, ft09 byte-identical), and closure is demonstrated on gemma4.
   grounding→compile path is human-efficient by construction on the fixture.
   sc25 flip set matches the XOR diff exactly (synthetic fixture; gold has no
   unsolved pattern-phase sequence — the known trace degeneracy).
-- (vi) live oracle-gate DRIVER: in build (agent builds the script; the gate
-  itself runs as a background shell per measurement discipline —
-  fresh-reset ×3, grounding warm-up → bidirectional cycle discovery ≤30
-  actions → oracle plan; ft09 idx0+idx1 in sequence, sc25 cast+handover).
-  (vii)–(viii) pending.
+- **(vi) live oracle gate — FIRST LIVE CLEARS through the hypothesis channel**
+  (driver d8f3421; measurement `scripts/rounds/R95/r95b_gate_ft09.json`,
+  2026-07-22 17:52): **ft09 idx0 CLEARED 3/3 fresh-reset runs at EXACTLY 4
+  actions each — the human baseline — fully deterministic** (discovery 15
+  actions closes the cycle gold could not, every run; responsiveness-adaptive
+  bidirectional probing after a blind fixed-cell probe measured inert on
+  already-satisfied cells). Gate verdict as specified (idx0+idx1) = FAIL:
+  idx1 is a decoy→reveal board the single-phase oracle instance
+  under-models — plan-DONE without a clear is recorded DIVERGED (honest),
+  3/3 consistent. sc25 live pattern read DIVERGED at start (smoke). Both
+  walls assigned: principled phase/guard extension for the reveal trigger +
+  live pattern-read diagnosis. Re-gate after fixes.
+- (vii)–(viii) pending (model substages, Kaggle).
 
 ## Related
 

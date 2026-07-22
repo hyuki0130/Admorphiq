@@ -1,0 +1,39 @@
+{
+  "game": "ft09",
+  "runs": [
+    {
+      "run": 0,
+      "levels_cleared": 1,
+      "actions_per_level": [
+        4
+      ],
+      "discovery_actions": 15,
+      "plan_outcome": "DIVERGED",
+      "rebind_events": 0,
+      "cycle_acquired": true
+    },
+    {
+      "run": 1,
+      "levels_cleared": 1,
+      "actions_per_level": [
+        4
+      ],
+      "discovery_actions": 15,
+      "plan_outcome": "DIVERGED",
+      "rebind_events": 0,
+      "cycle_acquired": true
+    },
+    {
+      "run": 2,
+      "levels_cleared": 1,
+      "actions_per_level": [
+        4
+      ],
+      "discovery_actions": 15,
+      "plan_outcome": "DIVERGED",
+      "rebind_events": 0,
+      "cycle_acquired": true
+    }
+  ],
+  "gate_verdict": "FAIL"
+}
