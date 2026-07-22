@@ -1,0 +1,208 @@
+{
+  "model": "gptoss",
+  "runs": 3,
+  "model_verdict": {
+    "ft09": "PASS",
+    "sc25": "PASS"
+  },
+  "per_run": {
+    "ft09": [
+      {
+        "choice": "I1",
+        "mapped_instance": "ft09_stencil_transition",
+        "is_oracle": false,
+        "verifier_verdict": "CONTRADICTED",
+        "executed": false,
+        "plan_outcome": "NOT_EXECUTED",
+        "levels_cleared": 0,
+        "cast_and_handover": false,
+        "outcome": "FAIL"
+      },
+      {
+        "choice": "I3",
+        "mapped_instance": "ft09_oracle",
+        "is_oracle": true,
+        "verifier_verdict": "PASS",
+        "executed": true,
+        "plan_outcome": "CLEARED",
+        "levels_cleared": 2,
+        "cast_and_handover": false,
+        "outcome": "PASS"
+      },
+      {
+        "choice": "I3",
+        "mapped_instance": "ft09_oracle",
+        "is_oracle": true,
+        "verifier_verdict": "PASS",
+        "executed": true,
+        "plan_outcome": "CLEARED",
+        "levels_cleared": 2,
+        "cast_and_handover": false,
+        "outcome": "PASS"
+      }
+    ],
+    "sc25": [
+      {
+        "choice": "I2",
+        "mapped_instance": "sc25_absolute_preview_interpretation",
+        "is_oracle": false,
+        "verifier_verdict": "PASS",
+        "executed": true,
+        "plan_outcome": "CAST_HANDOVER",
+        "levels_cleared": 0,
+        "cast_and_handover": true,
+        "outcome": "PASS"
+      },
+      {
+        "choice": "I2",
+        "mapped_instance": "sc25_absolute_preview_interpretation",
+        "is_oracle": false,
+        "verifier_verdict": "PASS",
+        "executed": true,
+        "plan_outcome": "CAST_HANDOVER",
+        "levels_cleared": 0,
+        "cast_and_handover": true,
+        "outcome": "PASS"
+      },
+      {
+        "choice": "I2",
+        "mapped_instance": "sc25_absolute_preview_interpretation",
+        "is_oracle": false,
+        "verifier_verdict": "PASS",
+        "executed": true,
+        "plan_outcome": "CAST_HANDOVER",
+        "levels_cleared": 0,
+        "cast_and_handover": true,
+        "outcome": "PASS"
+      }
+    ]
+  },
+  "results": [
+    {
+      "game": "ft09",
+      "runs": [
+        {
+          "run": 0,
+          "choice": "I1",
+          "mapped_instance": "ft09_stencil_transition",
+          "is_oracle": false,
+          "confidence": "high",
+          "evidence": "Clicks altered at most one cell (0 or 1) and produced a 2\u2011colour toggle, which aligns with a flexible empirical effect matrix rather than a fixed 3\u2011step ordered cycle, and the objective\u2019s all_covering with 0\u2192equal and 2\u2192differ matches the 32 cell\u2011to\u2011marker coverings observed.",
+          "verifier_verdict": "CONTRADICTED",
+          "executed": false,
+          "levels_cleared": 0,
+          "cast_and_handover": false,
+          "actions_per_level": [],
+          "discovery_actions": 15,
+          "cycle_acquired": true,
+          "plan_outcome": "NOT_EXECUTED",
+          "rebind_events": 0,
+          "outcome": "FAIL"
+        },
+        {
+          "run": 1,
+          "choice": "I3",
+          "mapped_instance": "ft09_oracle",
+          "is_oracle": true,
+          "confidence": "high",
+          "evidence": "The click behavior shows an ordered colour cycle, matching the ordered_cycle model in I3, and the all_covering quantifier fits the 32 cell\u2011to\u2011marker coverings while the 0\u2011equal/2\u2011differ ink map aligns with the relational objective.",
+          "verifier_verdict": "PASS",
+          "executed": true,
+          "levels_cleared": 2,
+          "cast_and_handover": false,
+          "actions_per_level": [
+            4,
+            8
+          ],
+          "discovery_actions": 19,
+          "cycle_acquired": true,
+          "plan_outcome": "CLEARED",
+          "rebind_events": 1,
+          "outcome": "PASS"
+        },
+        {
+          "run": 2,
+          "choice": "I3",
+          "mapped_instance": "ft09_oracle",
+          "is_oracle": true,
+          "confidence": "high",
+          "evidence": "The click behavior shows an ordered colour cycle, matching the ordered_cycle model in I3, and the all_covering quantifier fits the 32 cell\u2011to\u2011marker coverings while the 0\u2011equal/2\u2011differ ink map aligns with the relational objective.",
+          "verifier_verdict": "PASS",
+          "executed": true,
+          "levels_cleared": 2,
+          "cast_and_handover": false,
+          "actions_per_level": [
+            4,
+            8
+          ],
+          "discovery_actions": 19,
+          "cycle_acquired": true,
+          "plan_outcome": "CLEARED",
+          "rebind_events": 1,
+          "outcome": "PASS"
+        }
+      ],
+      "model_verdict": "PASS"
+    },
+    {
+      "game": "sc25",
+      "runs": [
+        {
+          "run": 0,
+          "choice": "I2",
+          "mapped_instance": "sc25_absolute_preview_interpretation",
+          "is_oracle": false,
+          "confidence": "high",
+          "evidence": "Clicks affect only a single cell (binary_flip) and a displayed two\u2011colour target pattern must be reproduced exactly, which aligns with the absolute_exact objective.",
+          "verifier_verdict": "PASS",
+          "executed": true,
+          "levels_cleared": 0,
+          "cast_and_handover": true,
+          "actions_per_level": [],
+          "discovery_actions": 4,
+          "cycle_acquired": false,
+          "plan_outcome": "CAST_HANDOVER",
+          "rebind_events": 0,
+          "outcome": "PASS"
+        },
+        {
+          "run": 1,
+          "choice": "I2",
+          "mapped_instance": "sc25_absolute_preview_interpretation",
+          "is_oracle": false,
+          "confidence": "high",
+          "evidence": "Each click flips at most one cell (binary_flip) matching the observed 0/1\u2011cell change histogram, and the separate two\u2011colour target pattern indicates an exact match objective (absolute_exact).",
+          "verifier_verdict": "PASS",
+          "executed": true,
+          "levels_cleared": 0,
+          "cast_and_handover": true,
+          "actions_per_level": [],
+          "discovery_actions": 4,
+          "cycle_acquired": false,
+          "plan_outcome": "CAST_HANDOVER",
+          "rebind_events": 0,
+          "outcome": "PASS"
+        },
+        {
+          "run": 2,
+          "choice": "I2",
+          "mapped_instance": "sc25_absolute_preview_interpretation",
+          "is_oracle": false,
+          "confidence": "high",
+          "evidence": "Each click flips at most one cell (binary_flip) matching the observed 0/1\u2011cell change histogram, and the separate two\u2011colour target pattern indicates an exact match objective (absolute_exact).",
+          "verifier_verdict": "PASS",
+          "executed": true,
+          "levels_cleared": 0,
+          "cast_and_handover": true,
+          "actions_per_level": [],
+          "discovery_actions": 4,
+          "cycle_acquired": false,
+          "plan_outcome": "CAST_HANDOVER",
+          "rebind_events": 0,
+          "outcome": "PASS"
+        }
+      ],
+      "model_verdict": "PASS"
+    }
+  ]
+}

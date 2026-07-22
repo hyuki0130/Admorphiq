@@ -254,7 +254,24 @@ mode 2→1, ft09 byte-identical), and closure is demonstrated on gemma4.
   model-chosen hypothesis → verifier → compiler → live clear at
   human-baseline efficiency, zero adapter code.** gptoss twin launched
   (`admorphiq-r95b-model-gptoss` v1) for the paired record.
-- (viii) slot filling: pending (after vii's paired record).
+- **(vii) PAIRED RECORD — CONFIRMED** (gptoss collected 20:11;
+  `r95b_model_bench_gptoss.json`): gpt-oss PASSES both games per the frozen
+  ≥2/3 rule — ft09 2/3 (runs 1–2 exact-oracle → 2 levels each), sc25 3/3
+  cast+handover. Two textured findings inside the pass:
+  1. **The verifier gate saved a wrong pick, live**: gpt-oss run 0 chose the
+     STENCIL mutant → verifier CONTRADICTED → never executed (zero actions
+     wasted) → the run failed SAFELY. First live demonstration of the safety
+     layer doing its job inside the model loop.
+  2. **sc25 picked the absolute-preview MUTANT ×3 yet passed**: on idx0 the
+     base is uniform, so absolute and XOR interpretations produce the SAME
+     flip set — execution-equivalent on this level (the R95a thin-evidence
+     signature again, now at the execution layer). gemma4 picked the true
+     oracle 6/6; gpt-oss's sc25 selection weakness persists — second soft
+     divergence, still not a nomination (tuning-ladder rule).
+  **Overall verdict per the frozen contract: CONFIRMED — both models pass
+  both games.** The hypothesis channel is end-to-end real on the cell-state
+  family.
+- (viii) slot filling: pending — the next build.
 
 ## Related
 
