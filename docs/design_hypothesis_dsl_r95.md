@@ -37,8 +37,9 @@ but the falsification path is restructured to be cheaper and attributable.
 
 The cheapest experiment that tests the thesis:
 
-1. For ONE family with decoded ground truth (toggle family: vc33 + ft09 —
-   vc33's mechanic is representable; ft09 doubles as the hard in-family case),
+1. For ONE family with decoded ground truth (v2.2 correction: the
+   **cell-state family = ft09 + sc25's pattern phase** — vc33 was dropped as
+   not a clean toggle-family member; see Codex resolutions §7 below),
    hand-author a FINITE candidate set of hypothesis templates per game:
    the known-correct template + 3–5 hard negatives (plausible mechanics the
    family admits but the game refutes: wrong stencil, wrong target rule,
@@ -157,7 +158,65 @@ Private games with unseen SURFACE mechanics are covered three ways, in order:
    a forced wrong fit. A recurring `unknown` cluster in telemetry = a named
    schema gap for v1, logged not improvised.
 
-### Open design questions (for Codex consult, this round)
+### Codex vocab consult resolutions (v2.2, 2026-07-22 — supersedes the open
+### questions below; full log in session scratchpad `codex_r95_vocab_review.log`)
+
+Verdict: **NO-GO for vocabulary v0 as a complete 25-game vocabulary or as
+proof of Q5 expressivity; conditional GO for R95a narrowed to ONE coherent
+family.** Central distinction: `unknown/probe_more` is safe ABSTENTION, not
+EXPRESSIBILITY; measured parameters generalize geometry but not
+state-dependent / relational / concurrent / simulated dynamics.
+
+1. **Q1/Q2 incompleteness is broad**: a 15-game table of decoded-but-
+   inexpressible mechanics (ar25 coupled reflected motion, bp35
+   destroy+gravity-settle, g50t plate→gate circuits, lf52 jump-capture, ls20
+   entry-conditioned mutation, r11l drag+centroid-follow, re86
+   recolour-on-contact, sb26 place/swap+DFS traversal, sk48 side-push
+   grow/retract, sp80 simulate_flow, su15 radial-pull/merge/downgrade, tn36
+   execute_program, tu93 corridor-follow, vc33 counter/connector, wa30
+   autonomous co-agent). Also: FT09's goal is glyph-derived
+   equality/difference constraints, NOT plain `toggle_parity`; R57's shallow
+   labels for r11l/sk48 are superseded by the decoded wiki mechanics. This
+   table = the v1 expansion backlog, per-family, added only when that family
+   is built.
+2. **Bank sizing**: family-scoped tagged sub-banks, but NO irreversible
+   single classifier — select top-2 candidate families + unknown, present the
+   UNION of their sub-banks + a small common bank (movement, selection, undo,
+   inert, unknown); below a confidence floor route to probe_more. (17–18
+   labels is a semantic-confusion problem, not a context-length problem.)
+3. **T1 sub-form**: a separate closed question `reach_mode = click_locus |
+   move_actor | move_non_actor | unknown` — hiding it in the planner would
+   convert model classification errors into apparent planner failures.
+4. **Phase guards**: shallow CONJUNCTION of typed clauses, no free-form
+   logic: `stable_for_reads(n)`, `role_present/absent`, `role_count_delta`,
+   `role_signature_changed`, `roles_state_equal(lhs, rhs, mask?)`,
+   `selection_attached`, `affordance_markers_present`, `layout_replaced`,
+   `level_advanced`, `unknown_guard`. Mined mappings: sc25 pattern-phase exit
+   = `stable_for_reads(2) ∧ roles_state_equal(toggle_grid, preview)`; cd82
+   terminal = `level_advanced`; lf52 jump exit = `role_count_delta(peg, -1)`.
+   No game-named guards.
+5. **Binding**: object-ID pick lists PRIMARY, plus harness-generated typed
+   anchor IDs (`grid_cell_id`, `slot_id`, `region_anchor_id`+`anchor_kind`)
+   for empty cells/slots; raw (x,y) is NEVER model-generated (camera/
+   animation/click-transform attribution trap); `unknown_binding` escape →
+   re-segmentation. Consistent with the measured top-K shortlist conclusion.
+6. **Q5 claim corrected**: composition covers many surface recombinations and
+   SAFELY DETECTS gaps — it does NOT make unseen mechanics expressible.
+   Constructed counterexample: a plate-CONDITIONED ring button (hold plate →
+   button rotates ring A, else ring B) uses only seen primitives yet needs a
+   mode-conditional operator + revisitable alternation, which an ordered
+   phase list cannot encode. v1 candidates if telemetry demands: conditional
+   operators + a phase GRAPH (loops/branches) instead of a list.
+7. **R95a family corrected**: one-family subsets ONLY (full banks would test
+   family classification + long-list handling simultaneously and destroy
+   attribution). Replace the vc33+ft09 pair with **FT09 + SC25's pattern
+   phase** (cell-state family: cells, previews/constraint glyphs, colour
+   cycles, coupled toggles, exact-constraint match, board reveal, inert,
+   unknown). vc33 is NOT a clean toggle-family member (counter/decoy L0,
+   connector-alignment L1) — deferred to a later control-alignment family
+   test.
+
+### Open design questions (RESOLVED above — kept for provenance)
 
 - Bank sizing: 17 entity roles / 18 effects is near the 8B-context comfort
   limit — group into family-scoped sub-banks (only show toggle-family roles
