@@ -219,6 +219,21 @@ that finally answers whether the family card adapts and beats the mismatch arm.
   control on sk48.
 - Artifacts: `scripts/rounds/R94/r94_holdout_*_v3.json`.
 
+## D5-SKEL PRE-REGISTRATION (frozen 2026-07-22 12:03, before any skeleton result)
+
+D5 confounded SIZE with FAMILY (75KB family vs 6.6KB generic). The size-controlled
+follow-up de-confounds:
+- **Arm A′**: `simdfs_skel` — a COMPACT family skeleton card (target 5-10KB): the
+  mechanics IDEA (minimal piece/slot parse → tiny move simulator → DFS toward a
+  sorted/goal state) with minimal scaffolding. NOT required to reproduce sb26's
+  conquest (it is deliberately minimal); required only to be sandbox-executable and
+  produce SOME actions on a synthetic board (smoke gate).
+- **Arm B**: toggle card (6.6KB, unchanged control — same as D5).
+- Same everything else: sk48 target (holdout rules), gemma4 patcher, budgets, frozen
+  selection/scoring. Claim under test: **at comparable template size, does family
+  mechanics knowledge beat mismatched machinery?** Win condition per the same
+  lexicographic rule; B's benchmark to beat = 71st/309tr.
+
 ## In flight
 
 - **D3 upper-bound gate**: verbatim arrangement card driven through the run_code sandbox
