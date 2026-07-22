@@ -73,9 +73,29 @@ model selection 15% / compiler-live 10%.
   **m0r0 idx0 CLEARED LIVE 3/3 at exactly 15 actions each (= gold,
   deterministic)** — discovery 9 actions acquires all 8 delta edges, joint
   BFS, stepped per-move confirmation, merge, clear. idx1: binds + compiles
-  (SOLVABLE in isolation, 1181 states) but DIVERGED at execution 3/3 —
-  per-board fidelity follow-up in progress (per-board re-grounding is the
-  doctrine; rebind_events 22/run is a lead). (vii)–(viii) pending.
+  (SOLVABLE in isolation, 1181 states) but DIVERGED at execution — a
+  four-defect ladder, each removed with instrumented evidence:
+  1. v2 (fc9140b): settling absorption + stale idx0 grounding → per-level
+     FRESH re-grounding (the per-board doctrine), moved DIVERGED →
+     GROUNDING_INCOMPLETE.
+  2. v3 (648124f): the all-8-edges requirement lived only in the driver →
+     plan over the CONFIRMED edge subset (the missing (actor_b, up) edge is
+     provably unnecessary offline).
+  3. v3→v4 (0582f12): ALL 8 edges missing + rebind 21/run — my
+     rebind-detector hypothesis was FALSIFIED by instrumentation; real cause
+     = actor-colour misdetection of a vanishing colour-0 transient →
+     PERSISTENCE gate (controllable colour must show 1-3 compact regions in
+     both before AND after frames).
+  4. v4 (6790b30): edges confirmed, plan compiles SOLVABLE (1181 states =
+     offline), but stepped execution DIVERGED 3/3 with no step detail →
+     step-level observability added (the R95 v7 lesson re-applied), and the
+     instrumented run pinpointed it: **idx1's FIRST plan action produces
+     zero displacement** — idx0 executes all 15 steps in perfect lockstep,
+     then on idx1 action 2 from ((2,5),(2,8)) leaves both actors exactly in
+     place and the stepper declares DIVERGED at step 1. Candidates: settle
+     absorption of the first post-discovery plan action vs a
+     board-state-dependent mapping deviation; fix in build. (vii)–(viii)
+     pending.
 
 ## Related
 
