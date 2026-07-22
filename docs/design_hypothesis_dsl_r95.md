@@ -126,11 +126,21 @@ Scoring (per game × model):
 - Models: gemma4-31b-q8 AND gpt-oss-120b (reasoning high, 20K budget), same
   asks, paired per game. 3 repetitions each (sampling variance check). No
   one-shot verdicts.
-- sc25 caveat slot: its equivalence class and specificity limits are recorded
-  from part-1's measured output before the run; if sc25's class covers 3 of 5
-  templates, sc25 is reported as a WEAK case (random PASS ≈ 0.6) and cannot
-  carry the verdict alone — ft09 (class of 2, random ≈ 0.4) is the primary
-  case pending trace-diagnosis follow-ups.
+- MEASURED equivalence classes (part-1 final, commit 405e754 — slots filled,
+  prereg now fully frozen):
+  - ft09 class = {glyph_constraints, nearest_glyph_only} — GENUINE data-
+    indistinguishability (1436-frame divergence scan, 0 divergences; the
+    discriminating "nearest-satisfied-but-not-all" near-miss never occurs in
+    gold). Random PASS = 2/5 = 0.4. **ft09 is the primary case.**
+  - sc25 class = {binary_flip_xor, colour_cycle, near_match_threshold} —
+    trace supplies ZERO clean win-axis negatives (all 14 gold clicks are cast
+    states; the old fp=0.60 was correct positives mislabeled as negatives),
+    and near_match is provably indistinguishable (0 frames at 7–8/9 match;
+    distribution {5:16, 6:10, 9:464}). Random PASS = 3/5 = 0.6 → sc25 is a
+    WEAK case and cannot carry the verdict alone.
+  - Follow-up lever if ft09 alone proves insufficient: recapture richer
+    traces (pre-match sc25 pattern-phase frames; ft09 near-miss states) —
+    a data-collection round, not a scoring change.
 
 ## R95b — family compiler (ONLY if R95a shows model selection skill)
 
