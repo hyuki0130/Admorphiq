@@ -225,22 +225,33 @@ def clean_block_wall(
     return None
 
 
-def double_block_walls(
+def noop_block_walls(
     predicted: Optional[tuple[tuple[int, int], tuple[int, int]]],
     prev_obs: Optional[list[tuple[int, int]]],
     obs_now: Optional[list[tuple[int, int]]],
 ) -> set[tuple[int, int]]:
-    """The walls revealed by a DOUBLE independent_stay block: BOTH actors stayed at
-    their pre-move cells (``obs_now == prev_obs``) and neither reached its predicted
-    target. Both unreached targets are walls (each excluded if an actor currently
-    occupies it — an actor-block, not a wall). Two simultaneous independent blocks are
+    """The walls revealed by a TOTAL NO-OP frame (``obs_now == prev_obs`` — no actor
+    moved, settle already spent): every predicted target NOT currently actor-occupied
+    is a wall. This handles a PLANNED-STAY + partner-block (one predicted target is the
+    stayer's own cell = reached, one is blocked → 1 wall) AND a double independent_stay
+    block (both blocked → 2 walls) uniformly. Two simultaneous independent blocks are
     consistent with independent_stay (NOT the all-or-nothing mutant). Empty otherwise."""
     if predicted is None or obs_now is None or prev_obs is None:
         return set()
     if set(obs_now) != set(prev_obs):
-        return set()  # not a both-stayed frame
+        return set()  # not a total no-op frame
     now_set = set(obs_now)
     return {cell for cell in predicted if cell not in now_set}
+
+
+def walls_to_unlearn(
+    learned_walls: set[tuple[int, int]], obs_now: Optional[list[tuple[int, int]]]
+) -> set[tuple[int, int]]:
+    """OBSERVATION TRUMPS INFERENCE: any cell currently occupied by an actor cannot be a
+    wall (the actor is standing on it) — return the learned walls to invalidate. A
+    clean-block attribution can be a false positive (a stay misattributed to a target
+    the actor later enters from another direction); the live observation overrides it."""
+    return learned_walls & set(obs_now or [])
 
 
 def joint_reset_hazards(
@@ -697,33 +708,49 @@ def run_movement_level(env: "LiveEnv", record: dict[str, Any], run_index: int) -
             if result.status is PlanStatus.DIVERGED:
                 obs_now = _move_observed(gs)
                 cause: Optional[str] = None
-                # (settle) a fully no-op FIRST action = the post-transition settling
-                # frame absorbing the input. Consume it ONCE; the next action is live.
+                # OBSERVATION TRUMPS INFERENCE: an actor standing on a learned wall proves
+                # that cell is passable (a clean-block attribution can be a false positive),
+                # so invalidate it before recompiling — the plan stops mispredicting it.
+                freed = walls_to_unlearn(learned_walls, obs_now)
+                if freed:
+                    learned_walls -= freed
+                    print(
+                        f"[live] run{run_index} m0r0 unlearned wall(s) {sorted(freed)} (occupied) "
+                        f"at step {level_actions}",
+                        flush=True,
+                    )
+                # (settle) a fully no-op FIRST action = the post-transition settling frame
+                # absorbing the input. Consume it ONCE; the next action is live.
                 if settle_allowance > 0 and obs_now is not None and obs_now == prev_obs:
                     settle_allowance -= 1
                     cause = f"settle from {obs_now}"
                 elif recompiles < max_recompiles:
-                    # (learned-hazard) a JOINT soft-reset teleport: the cells the plan
-                    # tried to enter are hazards the grounding never saw (gold avoided them).
                     hazards = joint_reset_hazards(predicted, prev_obs, obs_now) - learned_hazards
-                    wall = clean_block_wall(predicted, prev_obs, obs_now)
-                    dbl = double_block_walls(predicted, prev_obs, obs_now) - learned_walls
                     if hazards and len(learned_hazards) + len(hazards) <= max_learned:
+                        # a JOINT soft-reset teleport: the entered cells are unseen hazards
                         learned_hazards |= hazards
                         record["hazard_resets"] += 1
                         cause = f"learned-hazard {sorted(hazards)} ({len(learned_hazards)} total)"
-                    elif wall is not None and wall not in learned_walls and len(learned_walls) < max_learned:
-                        # a CLEAN single independent_stay block reveals ONE wall
-                        learned_walls.add(wall)
-                        cause = f"learned-wall {wall} ({len(learned_walls)} total)"
-                    elif dbl and len(learned_walls) + len(dbl) <= max_learned:
-                        # BOTH actors stayed, both targets unreached — learn both walls
-                        learned_walls |= dbl
-                        cause = f"double-block {sorted(dbl)} ({len(learned_walls)} total)"
+                    elif obs_now is not None and obs_now == prev_obs:
+                        # TOTAL NO-OP (settle spent): learn every unreached, non-occupied
+                        # predicted target — planned-stay (1) and double-block (2) uniformly.
+                        noop = noop_block_walls(predicted, prev_obs, obs_now) - learned_walls
+                        if noop and len(learned_walls) + len(noop) <= max_learned:
+                            learned_walls |= noop
+                            cause = f"no-op-block {sorted(noop)} ({len(learned_walls)} total)"
+                        else:
+                            cause = f"ambiguous predicted {predicted} observed {obs_now}"
                     else:
-                        # ambiguous: learn nothing; recompile from current positions
-                        cause = f"ambiguous predicted {predicted} observed {obs_now}"
-                if cause is not None:
+                        # (learned-wall) one actor moved as predicted, the other was blocked
+                        wall = clean_block_wall(predicted, prev_obs, obs_now)
+                        if wall is not None and wall not in learned_walls and len(learned_walls) < max_learned:
+                            learned_walls.add(wall)
+                            cause = f"learned-wall {wall} ({len(learned_walls)} total)"
+                        else:
+                            cause = f"ambiguous predicted {predicted} observed {obs_now}"
+                if cause is None and freed:
+                    cause = f"unlearn-only {sorted(freed)}"  # invalidation alone changed the map
+                if cause is not None and recompiles < max_recompiles:
                     recompiles += 1
                     print(f"[live] run{run_index} m0r0 recompile ({cause}) at step {level_actions}", flush=True)
                     plan = compile_movement_hypothesis(

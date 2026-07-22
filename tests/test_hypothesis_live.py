@@ -26,8 +26,9 @@ discover_deltas = _MOD.discover_deltas
 movement_edges_confirmed = _MOD.movement_edges_confirmed
 unconfirmed_directions = _MOD.unconfirmed_directions
 clean_block_wall = _MOD.clean_block_wall
-double_block_walls = _MOD.double_block_walls
+noop_block_walls = _MOD.noop_block_walls
 joint_reset_hazards = _MOD.joint_reset_hazards
+walls_to_unlearn = _MOD.walls_to_unlearn
 
 
 def _lattice(overrides=None):
@@ -248,20 +249,34 @@ def test_clean_block_wall_learns_only_on_a_single_clean_block():
     assert clean_block_wall(((3, 5), (3, 8)), [(2, 5), (2, 8)], [(2, 5), (2, 8)]) is None
 
 
-def test_double_block_walls_learns_both_targets_when_both_actors_stay():
-    """Purpose: when BOTH actors stayed (obs == prev) and neither reached its predicted
-    target, double_block_walls learns BOTH unreached targets (two simultaneous
-    independent_stay blocks), excluding any cell an actor currently occupies.
+def test_noop_block_walls_learns_planned_stay_and_double_block_uniformly():
+    """Purpose: on a TOTAL NO-OP frame (obs == prev), noop_block_walls learns every
+    unreached predicted target that is not actor-occupied — 1 wall for a planned-stay +
+    partner-block, 2 walls for a double independent_stay block, uniformly.
 
-    Expected feedback: pass proves the period-N recompile loop (both blocked, nothing
-    learned) is broken by learning both walls at once. Fail means a double block learns
-    nothing and the plan loops until the recompile cap."""
-    # both actors stayed at (6,2)/(6,10); predicted (7,2)/(7,10) both unreached -> walls
-    assert double_block_walls(((7, 2), (7, 10)), [(6, 2), (6, 10)], [(6, 2), (6, 10)]) == {(7, 2), (7, 10)}
-    # one actor moved -> not a double block (handled by clean_block_wall)
-    assert double_block_walls(((7, 2), (7, 10)), [(6, 2), (6, 10)], [(6, 2), (7, 10)]) == set()
-    # a predicted target occupied by an actor is NOT a wall (actor-block)
-    assert double_block_walls(((6, 2), (7, 10)), [(6, 2), (6, 10)], [(6, 2), (6, 10)]) == {(7, 10)}
+    Expected feedback: pass proves the period-N recompile loop (both actors stationary,
+    nothing learned) is broken whether one or both actors are blocked. Fail means a
+    planned-stay case (which double-block-only missed) learns nothing and loops."""
+    # double block: both stayed at (6,2)/(6,10); predicted (7,2)/(7,10) both unreached
+    assert noop_block_walls(((7, 2), (7, 10)), [(6, 2), (6, 10)], [(6, 2), (6, 10)]) == {(7, 2), (7, 10)}
+    # planned-stay: actor_a's predicted target IS its current cell (6,4); actor_b blocked
+    # entering (6,8) -> only (6,8) is a wall (the crack the v6 loop fell into)
+    assert noop_block_walls(((6, 4), (6, 8)), [(6, 4), (6, 9)], [(6, 4), (6, 9)]) == {(6, 8)}
+    # one actor actually moved -> not a total no-op (clean_block_wall's job)
+    assert noop_block_walls(((7, 2), (7, 10)), [(6, 2), (6, 10)], [(6, 2), (7, 10)]) == set()
+
+
+def test_walls_to_unlearn_invalidates_a_learned_wall_an_actor_occupies():
+    """Purpose: walls_to_unlearn returns any learned wall an actor is currently standing
+    on — observation trumps inference, so a false-positive wall (a stay misattributed to
+    a cell the actor later enters) is invalidated.
+
+    Expected feedback: pass proves the (6,9)-contradiction loop is broken: once actor_b
+    is observed on the wrongly-learned (6,9), it is removed so the plan can route through
+    it. Fail means a false wall persists and the plan mispredicts forever."""
+    assert walls_to_unlearn({(3, 11), (6, 9), (7, 2)}, [(6, 4), (6, 9)]) == {(6, 9)}
+    assert walls_to_unlearn({(3, 11)}, [(6, 4), (6, 9)]) == set()  # nothing occupied is a wall
+    assert walls_to_unlearn({(6, 9)}, None) == set()  # no observation
 
 
 def test_joint_reset_hazards_detects_the_teleport_and_names_the_targets():
