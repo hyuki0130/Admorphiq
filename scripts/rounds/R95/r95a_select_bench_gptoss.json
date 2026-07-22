@@ -1,0 +1,321 @@
+{
+  "model": "gptoss",
+  "reps": 3,
+  "pass_rate": {
+    "ft09": 1.0,
+    "sc25": 0.0
+  },
+  "equivalence_class": {
+    "ft09": [
+      "glyph_constraints",
+      "nearest_glyph_only"
+    ],
+    "sc25": [
+      "binary_flip_xor",
+      "colour_cycle",
+      "near_match_threshold"
+    ]
+  },
+  "exhaustive_winner_control": {
+    "ft09": "glyph_constraints",
+    "sc25": "binary_flip_xor"
+  },
+  "ask_results": {
+    "ft09": [
+      {
+        "rep": 0,
+        "choice": "T4",
+        "mapped_template_name": "glyph_constraints",
+        "in_equivalence_class": "PASS",
+        "confidence": "high",
+        "evidence": "The histogram shows 215 of 250 clicks changed only one cell, matching T4\u2019s single\u2011cell click, and the detected 4 marker\u2011and\u2011ring groups imply relational equal/different constraints, which T4 uniquely specifies for board completion.",
+        "attempts": 1,
+        "error": null
+      },
+      {
+        "rep": 1,
+        "choice": "T4",
+        "mapped_template_name": "glyph_constraints",
+        "in_equivalence_class": "PASS",
+        "confidence": "high",
+        "evidence": "The histogram shows 215 clicks changed only one cell (matching T4\u2019s single\u2011cell click) and the occasional multi\u2011cell changes (8,\u202f9,\u202f26,\u202f36,\u202f49,\u202f63,\u202f113 cells) line up with the 4 repeating marker\u2011and\u2011ring groups, which T4\u2019s relational equal/different constraints predict.",
+        "attempts": 1,
+        "error": null
+      },
+      {
+        "rep": 2,
+        "choice": "T4",
+        "mapped_template_name": "glyph_constraints",
+        "in_equivalence_class": "PASS",
+        "confidence": "high",
+        "evidence": "The histogram shows 215 of 359 clicks altering exactly one cell, and the detected structure of 4 repeating marker\u2011and\u2011ring groups fits T4\u2019s single\u2011cell click with relational colour requirements from nearby markers.",
+        "attempts": 1,
+        "error": null
+      }
+    ],
+    "sc25": [
+      {
+        "rep": 0,
+        "choice": "T5",
+        "mapped_template_name": "neighbour_stencil",
+        "in_equivalence_class": "FAIL",
+        "confidence": "high",
+        "evidence": "The click histogram shows most clicks changing 2 cells and occasional clicks changing many cells (up to 14), which fits a rule where a click flips the clicked cell together with adjacent cells, and the single large pixel change (409) at completion indicates the board is considered complete only when the pattern exactly matches the displayed target pattern.",
+        "attempts": 1,
+        "error": null
+      },
+      {
+        "rep": 1,
+        "choice": "T5",
+        "mapped_template_name": "neighbour_stencil",
+        "in_equivalence_class": "FAIL",
+        "confidence": "high",
+        "evidence": "The histogram records clicks that changed 2,\u202f4,\u202f5, and\u202f14 cells, which aligns with a rule where a click flips the clicked cell together with at least one adjacent cell, and the four observed completion events correspond to the board exactly matching the displayed target pattern.",
+        "attempts": 1,
+        "error": null
+      },
+      {
+        "rep": 2,
+        "choice": "T5",
+        "mapped_template_name": "neighbour_stencil",
+        "in_equivalence_class": "FAIL",
+        "confidence": "high",
+        "evidence": "The histogram records clicks that changed 2,\u202f4,\u202f5, and\u202f14 cells, which aligns with a rule where a click flips the clicked cell together with at least one adjacent cell, and the four observed completion events correspond to the board exactly matching the displayed target pattern.",
+        "attempts": 1,
+        "error": null
+      }
+    ]
+  },
+  "results": [
+    {
+      "game": "ft09",
+      "n_transitions": 718,
+      "n_train": 359,
+      "n_heldout": 359,
+      "n_win_events": 42,
+      "n_specificity_frames": 20,
+      "specificity_source": "gold",
+      "templates": {
+        "glyph_constraints": {
+          "dynamics_train": 0.7708333333333334,
+          "dynamics_heldout": 0.8222996515679443,
+          "n_click_claims": 575,
+          "win_true_positive_rate": 1.0,
+          "win_false_positive_rate": 0.0
+        },
+        "gf2_stencil": {
+          "dynamics_train": 0.020833333333333332,
+          "dynamics_heldout": 0.020905923344947737,
+          "n_click_claims": 575,
+          "win_true_positive_rate": 1.0,
+          "win_false_positive_rate": 0.0
+        },
+        "nearest_glyph_only": {
+          "dynamics_train": 0.7708333333333334,
+          "dynamics_heldout": 0.8222996515679443,
+          "n_click_claims": 575,
+          "win_true_positive_rate": 1.0,
+          "win_false_positive_rate": 0.0
+        },
+        "uniform_colour": {
+          "dynamics_train": 0.7708333333333334,
+          "dynamics_heldout": 0.8222996515679443,
+          "n_click_claims": 575,
+          "win_true_positive_rate": 0.0,
+          "win_false_positive_rate": 0.0
+        },
+        "all_ink_equal": {
+          "dynamics_train": 0.7708333333333334,
+          "dynamics_heldout": 0.8222996515679443,
+          "n_click_claims": 575,
+          "win_true_positive_rate": 0.0,
+          "win_false_positive_rate": 0.0
+        }
+      },
+      "ranking_train": [
+        "glyph_constraints",
+        "nearest_glyph_only",
+        "all_ink_equal",
+        "uniform_colour",
+        "gf2_stencil"
+      ],
+      "ranking_heldout": [
+        "glyph_constraints",
+        "nearest_glyph_only",
+        "all_ink_equal",
+        "uniform_colour",
+        "gf2_stencil"
+      ],
+      "oracle_name": "glyph_constraints",
+      "exhaustive_train_winner": "glyph_constraints",
+      "exhaustive_heldout_winner": "glyph_constraints",
+      "tied_with_oracle": [
+        "nearest_glyph_only"
+      ],
+      "oracle_wins_train": true,
+      "oracle_wins_heldout": true,
+      "ask_reps": 3,
+      "shuffle_mapping": {
+        "T1": "gf2_stencil",
+        "T2": "uniform_colour",
+        "T3": "nearest_glyph_only",
+        "T4": "glyph_constraints",
+        "T5": "all_ink_equal"
+      },
+      "equivalence_class": [
+        "glyph_constraints",
+        "nearest_glyph_only"
+      ],
+      "exhaustive_winner_control": "glyph_constraints",
+      "ask_results": [
+        {
+          "rep": 0,
+          "choice": "T4",
+          "mapped_template_name": "glyph_constraints",
+          "in_equivalence_class": "PASS",
+          "confidence": "high",
+          "evidence": "The histogram shows 215 of 250 clicks changed only one cell, matching T4\u2019s single\u2011cell click, and the detected 4 marker\u2011and\u2011ring groups imply relational equal/different constraints, which T4 uniquely specifies for board completion.",
+          "attempts": 1,
+          "error": null
+        },
+        {
+          "rep": 1,
+          "choice": "T4",
+          "mapped_template_name": "glyph_constraints",
+          "in_equivalence_class": "PASS",
+          "confidence": "high",
+          "evidence": "The histogram shows 215 clicks changed only one cell (matching T4\u2019s single\u2011cell click) and the occasional multi\u2011cell changes (8,\u202f9,\u202f26,\u202f36,\u202f49,\u202f63,\u202f113 cells) line up with the 4 repeating marker\u2011and\u2011ring groups, which T4\u2019s relational equal/different constraints predict.",
+          "attempts": 1,
+          "error": null
+        },
+        {
+          "rep": 2,
+          "choice": "T4",
+          "mapped_template_name": "glyph_constraints",
+          "in_equivalence_class": "PASS",
+          "confidence": "high",
+          "evidence": "The histogram shows 215 of 359 clicks altering exactly one cell, and the detected structure of 4 repeating marker\u2011and\u2011ring groups fits T4\u2019s single\u2011cell click with relational colour requirements from nearby markers.",
+          "attempts": 1,
+          "error": null
+        }
+      ],
+      "pass_rate": 1.0
+    },
+    {
+      "game": "sc25",
+      "n_transitions": 249,
+      "n_train": 125,
+      "n_heldout": 124,
+      "n_win_events": 4,
+      "n_specificity_frames": 0,
+      "specificity_source": "none_clean_negatives",
+      "templates": {
+        "binary_flip_xor": {
+          "dynamics_train": 0.5714285714285714,
+          "dynamics_heldout": 0.5714285714285714,
+          "n_click_claims": 14,
+          "win_true_positive_rate": 1.0,
+          "win_false_positive_rate": null
+        },
+        "colour_cycle": {
+          "dynamics_train": 0.5714285714285714,
+          "dynamics_heldout": 0.5714285714285714,
+          "n_click_claims": 14,
+          "win_true_positive_rate": 1.0,
+          "win_false_positive_rate": null
+        },
+        "near_match_threshold": {
+          "dynamics_train": 0.5714285714285714,
+          "dynamics_heldout": 0.5714285714285714,
+          "n_click_claims": 14,
+          "win_true_positive_rate": 1.0,
+          "win_false_positive_rate": null
+        },
+        "neighbour_stencil": {
+          "dynamics_train": 0.0,
+          "dynamics_heldout": 0.0,
+          "n_click_claims": 14,
+          "win_true_positive_rate": 1.0,
+          "win_false_positive_rate": null
+        },
+        "absolute_preview": {
+          "dynamics_train": 0.5714285714285714,
+          "dynamics_heldout": 0.5714285714285714,
+          "n_click_claims": 14,
+          "win_true_positive_rate": 0.0,
+          "win_false_positive_rate": null
+        }
+      },
+      "ranking_train": [
+        "binary_flip_xor",
+        "colour_cycle",
+        "near_match_threshold",
+        "absolute_preview",
+        "neighbour_stencil"
+      ],
+      "ranking_heldout": [
+        "binary_flip_xor",
+        "colour_cycle",
+        "near_match_threshold",
+        "absolute_preview",
+        "neighbour_stencil"
+      ],
+      "oracle_name": "binary_flip_xor",
+      "exhaustive_train_winner": "binary_flip_xor",
+      "exhaustive_heldout_winner": "binary_flip_xor",
+      "tied_with_oracle": [
+        "colour_cycle",
+        "near_match_threshold"
+      ],
+      "oracle_wins_train": true,
+      "oracle_wins_heldout": true,
+      "ask_reps": 3,
+      "shuffle_mapping": {
+        "T1": "colour_cycle",
+        "T2": "absolute_preview",
+        "T3": "near_match_threshold",
+        "T4": "binary_flip_xor",
+        "T5": "neighbour_stencil"
+      },
+      "equivalence_class": [
+        "binary_flip_xor",
+        "colour_cycle",
+        "near_match_threshold"
+      ],
+      "exhaustive_winner_control": "binary_flip_xor",
+      "ask_results": [
+        {
+          "rep": 0,
+          "choice": "T5",
+          "mapped_template_name": "neighbour_stencil",
+          "in_equivalence_class": "FAIL",
+          "confidence": "high",
+          "evidence": "The click histogram shows most clicks changing 2 cells and occasional clicks changing many cells (up to 14), which fits a rule where a click flips the clicked cell together with adjacent cells, and the single large pixel change (409) at completion indicates the board is considered complete only when the pattern exactly matches the displayed target pattern.",
+          "attempts": 1,
+          "error": null
+        },
+        {
+          "rep": 1,
+          "choice": "T5",
+          "mapped_template_name": "neighbour_stencil",
+          "in_equivalence_class": "FAIL",
+          "confidence": "high",
+          "evidence": "The histogram records clicks that changed 2,\u202f4,\u202f5, and\u202f14 cells, which aligns with a rule where a click flips the clicked cell together with at least one adjacent cell, and the four observed completion events correspond to the board exactly matching the displayed target pattern.",
+          "attempts": 1,
+          "error": null
+        },
+        {
+          "rep": 2,
+          "choice": "T5",
+          "mapped_template_name": "neighbour_stencil",
+          "in_equivalence_class": "FAIL",
+          "confidence": "high",
+          "evidence": "The histogram records clicks that changed 2,\u202f4,\u202f5, and\u202f14 cells, which aligns with a rule where a click flips the clicked cell together with at least one adjacent cell, and the four observed completion events correspond to the board exactly matching the displayed target pattern.",
+          "attempts": 1,
+          "error": null
+        }
+      ],
+      "pass_rate": 0.0
+    }
+  ]
+}

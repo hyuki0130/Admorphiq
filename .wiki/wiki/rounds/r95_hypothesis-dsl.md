@@ -3,7 +3,7 @@ type: reasoning
 round: R95
 axis: agent25 — typed hypothesis DSL (discriminative selection first)
 keywords: [agent25, hypothesis-dsl, discriminative-selection, enum-vocabulary, family-sub-banks, equivalence-class, ft09, sc25, oracle-first, fallback-ladder, self-extension, two-model, prereg]
-verdict: IN PROGRESS — design v2.6 frozen (twice Codex-consulted); R95a part-1 MEASURED (405e754): exhaustive ranking finds the oracle on both games; ft09 equivalence {glyph_constraints, nearest_glyph_only} is GENUINE data-indistinguishability (1436-frame divergence scan, 0 divergences); sc25 is a WEAK case (zero clean win-axis negatives — all 14 gold clicks are cast states; old fp=0.60 was mislabeled correct positives). Part-2 LLM ask (gemma4 + gpt-oss, x3 reps, equivalence-class PASS rule) in build
+verdict: R95a COMPLETE, thesis CONFIRMED PAIRED — BOTH gemma4-31b AND gpt-oss-120b pass the ft09 PRIMARY case 3/3 picking the EXACT ORACLE (not merely the tied class) with high confidence and evidence citing the true discriminators (215/359 single-cell clicks refuting the stencil; marker-ring relational completion); BOTH fail sc25 identically on the SAME cursor artifact (multi-cell histogram from the click cursor's second changed region) — a PRE-PREDICTED observation-layer defect, so sc25's 0/3 is attributable to the harness binding layer, not model reasoning, and cursor/HUD masking becomes the first binding-backlog item. No model-capability difference on this bench. R95b family-compiler gate OPENS per prereg
 commit: [aa8bdfa, d511ed6, 40ee7fd, 7e456dd, 405e754, 82199cf]
 date: 2026-07-22
 ---
@@ -106,12 +106,31 @@ Evidence audit (the load-bearing part):
   entry in the binding-layer backlog: mask transient cursor regions before
   building click histograms.
 
-**Interim read (gemma4)**: the hypothesis-selection thesis is SUPPORTED on
-the primary case — the model beat the 0.4 baseline 3/3 picking the exact
-oracle with correct evidence. The weak case failed for a harness reason that
-was predicted, is attributable, and is fixable at the observation layer.
-gpt-oss-120b twin launched (kernel `admorphiq-r95a-select-gptoss` v1) — the
-paired two-model verdict lands when it completes.
+**gpt-oss-120b (kernel `admorphiq-r95a-select-gptoss` v1, reasoning=high;
+artifacts `scripts/rounds/R95/r95a_select_bench_gptoss.json`)**: IDENTICAL
+outcome — ft09 3/3 PASS picking the exact oracle T4 (attempts=1, confidence
+high, same true-discriminator evidence, one rep even correctly attributing
+the multi-cell tail to level redraws); sc25 3/3 FAIL on the same T5
+neighbour_stencil with the same cursor-artifact reasoning.
+
+**PAIRED VERDICT (final, per the frozen prereg)**:
+
+1. **Thesis CONFIRMED on the primary case, across models**: both models beat
+   the 0.4 baseline 3/3 with the strict oracle and correct evidence. This is
+   the first measured demonstration that the offline models can SELECT the
+   correct mechanic hypothesis from strong falsified distractors when the
+   observation package is honest — the capability R92's free-form authoring
+   failure obscured.
+2. **sc25 = observation-layer defect CONFIRMED across models**: two different
+   model families reasoning correctly from the same corrupted histogram is
+   exactly what "the harness, not the model" looks like. First binding-layer
+   backlog item: mask transient cursor regions before building click
+   histograms (Codex finding-6 made concrete).
+3. **No model-capability difference on this bench** — consistent with the R93
+   breadth NO-NOMINATION; the patcher-model choice remains open and
+   non-load-bearing.
+4. **R95b family-compiler gate OPENS** per prereg (model showed selection
+   skill on the representable case).
 
 ## Related
 
