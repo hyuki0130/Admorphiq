@@ -119,8 +119,9 @@ cell set deterministic in the click location").
 (sk48 selection, cd82 palette) · `grow_retract` (sk48 snake) ·
 `toggle_stencil` (ft09/vc33: click flips measured cell set) · `paint_apply`
 (cd82 operators) · `colour_cycle` (ft09 multi-state cells) · `spawn_launch`
-(sc25 cast, cn04) · `teleport_portal` (sb26) · `record_replay_ghost` (lf52
-ACTION5) · `undo` (ACTION7) · `phase_advance` (confirm/submit; cd82/sc25 —
+(sc25 cast, cn04) · `teleport_portal` (sb26) · `record_replay_ghost` (g50t
+ACTION5; corrected 2026-07-22 — lf52 is peg-solitaire select+land clicks) ·
+`undo` (ACTION7) · `phase_advance` (confirm/submit; cd82/sc25 —
 own diff near zero, full-block diff carries the effect, per R57) · `inert` ·
 `unknown_probe_more`
 
@@ -163,8 +164,19 @@ Private games with unseen SURFACE mechanics are covered three ways, in order:
   when the family classifier says toggle) or keep flat?
 - Q3 sub-form resolution for T1 (click vs move) — separate question or
   planner-side branch?
-- Guard vocabulary for phases (what observable predicates may gate a phase
-  transition) — needs the same mining pass over sc25/cd82/lf52 traces.
+- Guard vocabulary for phases — MINED DRAFT (2026-07-22, from sc25/cd82/g50t
+  pages; to be merged with the Codex proposal):
+  `pattern_match_complete` (editable region-set exactly equals a
+  reference/preview → sc25 auto-cast; exact match, near-match redraws are the
+  measured false-positive hazard) · `selection_indicator_change` (highlight
+  marker appears/moves → cd82 swatch, sk48 selection) · `effect_shift` (the
+  SAME action's measured effect class changes → sc25 pre-cast clicks toggle /
+  post-cast moves move; detected by probe re-verification, this is the
+  strongest phase evidence) · `role_instance_appear_or_disappear` (tracked
+  role spawns/vanishes → g50t ghost spawn on ACTION5, lf52 piece consumed) ·
+  `barrier_state_colour` (a gate region flips between two colours → g50t
+  barrier open/closed is directly frame-observable) · `level_transition` /
+  `reset` (harness-detected engine boundaries).
 - Binding format: per-role object-ID pick lists vs free (x,y) anchors —
   pick lists are closed-choice but may not contain the right candidate.
 
