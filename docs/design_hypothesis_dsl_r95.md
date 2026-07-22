@@ -60,6 +60,13 @@ Deliverable: `scripts/probe_hypothesis_select.py` + per-case telemetry
 baseline). No live execution, no compiler, no sandbox — offline over recorded
 transitions from the existing R93/R94 traces.
 
+Data feasibility VERIFIED (2026-07-22): `data/traces/{ft09,sc25}.npz` both
+carry `actions + coords_x/coords_y + frames/next_frames + level_index +
+is_gold + episode_id` — everything a held-out transition split needs. ft09:
+718 transitions across all 6 levels (436 gold); sc25: 249 across levels 0–2
+(53 gold; pattern-phase clicks present in L0's 51 rows). sc25 depth caveat:
+only the 3 adapter-cleared levels are captured.
+
 ### R95a candidate template sets (v2.5 — drafted from decoded ground truth)
 
 Design principle: hard negatives are HISTORICAL wrong hypotheses that were
