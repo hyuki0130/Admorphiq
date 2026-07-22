@@ -1662,6 +1662,22 @@ KERNEL EXPRESSIVENESS (can a from-scratch generic composition EXPRESS the clear)
 reported as agent capability; promotion to the deployable card is via **agent25** — the offline
 model orchestrating the kernels UNAIDED. Round index: `.wiki/wiki/rounds/index.md` (r56 entry).
 
+**AGENT25 ARC (R92–R95, updated 2026-07-22) — the runtime-LLM axis; consult
+`rounds/r95_hypothesis-dsl.md` + `docs/design_hypothesis_dsl_r95.md` before touching it.**
+Measured ladder of what the offline model CAN do: R92 from-scratch authoring = 0 (shelved,
+routing itself FIXED at 100% via native tool-calling); R93 fork-and-patch of OUR small cards =
+works sometimes (paint×cd82 PATCH_WINS ×2; mechanism 11/20 breadth; keep-parent-on-loss is the
+safety rule); R94 CLOSED — conquered-adapter templates do NOT transfer out-of-family at ANY size
+(75KB engine AND 8.2KB skeleton both near-inert on sk48 vs generic card's 71st/309tr ×4
+deterministic). Current road = **R95 typed hypothesis DSL**: closed-choice (multiple-choice) hypothesis
+selection over a domain-mined enum vocabulary, transition-consistency verifier, oracle-first
+attribution, 5-tier fallback ladder (probes → DSL self-extension [EWM-measured basis] →
+fork-and-patch FINAL tier → generic floor), two-model rule (gemma4-31b + gpt-oss-120b paired, no
+one-shot verdicts). R95a part-1 measured (405e754): exhaustive ranking finds the oracle on
+ft09/sc25; ft09 = primary case (equivalence {glyph_constraints, nearest_glyph_only} is genuine
+data-indistinguishability), sc25 = weak case (zero clean win-axis negatives). Part-2 = the LLM
+selection bench (Kaggle kernels admorphiq-r95a-select-{gemma4,gptoss}).
+
 **[SUPERSEDED by the R56 depth phase above — kept for history]**
 **R53 SINGLE-ARTIFACT (2026-07-13): `--agent chained` @8000 = 15/25 cleared, 1.076% MEASURED**
 (ChainedAgent = WMA probe first → unified handover; + runner-level 30k retry adds ka59 → 16;
