@@ -28,6 +28,26 @@ _split_by_level = _MOD._split_by_level
 _tie_group = _MOD._tie_group
 _oracle_strictly_wins = _MOD._oracle_strictly_wins
 _is_cast_state = _MOD._is_cast_state
+build_ask_prompt = _MOD.build_ask_prompt
+ask_once = _MOD.ask_once
+_score_choice = _MOD._score_choice
+_parse_choice = _MOD._parse_choice
+_NEUTRAL_DESCRIPTIONS = _MOD._NEUTRAL_DESCRIPTIONS
+
+
+def _tiny_transitions(game: str) -> list:
+    """A handful of ACTION6 transitions on a small grid — enough for
+    build_ask_prompt to assemble (perception on the frames returns empty
+    structure, which is fine; the leak/determinism guards are about the prompt
+    text, not the observation numbers)."""
+    before = tuple(tuple(0 for _ in range(12)) for _ in range(12))
+    after = tuple(
+        tuple(5 if (r, c) == (3, 3) else 0 for c in range(12)) for r in range(12)
+    )
+    return [
+        Transition(i, 6, (3, 3), i % 2, i % 2 == 0, before, after, i % 2)
+        for i in range(6)
+    ]
 
 
 def _by_name(templates):
@@ -246,3 +266,118 @@ def test_templates_for_game_rejects_unknown():
         pass
     else:  # pragma: no cover - the call above must raise
         raise AssertionError("templates_for_game must reject an unknown game")
+
+
+def test_ask_prompt_deterministic_shuffle_across_calls():
+    """Purpose: the T1..T5 assignment is a pure deterministic function of the
+    game string (hashlib-keyed, no RNG), so the same game always yields the same
+    shuffle and the same assembled prompt.
+
+    Expected feedback: pass proves the LLM ask is reproducible run-to-run (a
+    prereg requirement — a reshuffling prompt would make PASS rates
+    incomparable). Fail means the ask ordering drifts between calls."""
+    for game in ("ft09", "sc25"):
+        transitions = _tiny_transitions(game)
+        msgs_a, map_a, _obs_a = build_ask_prompt(game, transitions)
+        msgs_b, map_b, _obs_b = build_ask_prompt(game, transitions)
+        assert map_a == map_b
+        assert sorted(map_a) == ["T1", "T2", "T3", "T4", "T5"]
+        assert msgs_a == msgs_b
+
+
+def test_ask_prompt_contains_no_names_oracle_or_gameid_leak():
+    """Purpose: the ask prompt must expose only neutral descriptions + neutral
+    ids — never an internal template name, the word "oracle", a game id, or any
+    held-out metric label.
+
+    Expected feedback: pass proves the model cannot shortcut on a leaked label
+    and the ask measures genuine mechanic reasoning. Fail means the prompt leaks
+    an answer key and the part-2 verdict would be contaminated."""
+    forbidden = [
+        "oracle", "ft09", "sc25", "heldout", "held-out", "dynamics_",
+        "win_true_positive", "tied_with_oracle",
+        "glyph_constraints", "gf2_stencil", "nearest_glyph_only", "uniform_colour",
+        "all_ink_equal", "binary_flip_xor", "colour_cycle", "near_match_threshold",
+        "neighbour_stencil", "absolute_preview",
+    ]
+    for game in ("ft09", "sc25"):
+        msgs, _mapping, _obs = build_ask_prompt(game, _tiny_transitions(game))
+        text = (msgs[0]["content"] + "\n" + msgs[1]["content"]).lower()
+        leaked = [tok for tok in forbidden if tok.lower() in text]
+        assert leaked == [], f"{game} prompt leaked {leaked}"
+
+
+def test_score_choice_pass_only_inside_equivalence_class():
+    """Purpose: a rep PASSes only when the mapped template is in the oracle
+    equivalence class (oracle + ties); a strictly-dominated negative or an
+    unmappable/null choice FAILs.
+
+    Expected feedback: pass proves the part-2 scoring honours part-1's measured
+    equivalence classes and does not credit a wrong pick. Fail means PASS rates
+    would over- or under-count the model."""
+    mapping = {"T1": "gf2_stencil", "T2": "glyph_constraints", "T3": "nearest_glyph_only"}
+    eq = {"glyph_constraints", "nearest_glyph_only"}  # oracle + its tie
+    assert _score_choice("T2", mapping, eq) == ("glyph_constraints", True)
+    assert _score_choice("T3", mapping, eq) == ("nearest_glyph_only", True)
+    assert _score_choice("T1", mapping, eq) == ("gf2_stencil", False)  # dominated negative
+    assert _score_choice(None, mapping, eq) == (None, False)  # hard failure
+    assert _score_choice("T9", mapping, eq) == (None, False)  # unmappable id
+
+
+def test_parse_choice_extracts_json_and_validates_enum():
+    """Purpose: _parse_choice extracts the ask JSON even amid surrounding prose,
+    validates the choice against the allowed ids, and normalises confidence.
+
+    Expected feedback: pass proves the guided-json parse is robust to a chatty
+    model and rejects an out-of-set choice. Fail means malformed or invalid
+    completions would be scored as if valid."""
+    valid = {"T1", "T2", "T3", "T4", "T5"}
+    ok, err = _parse_choice('here you go {"choice": "T3", "confidence": "high", "evidence": "x"}', valid)
+    assert err == "" and ok["choice"] == "T3" and ok["confidence"] == "high"
+    bad, err2 = _parse_choice('{"choice": "T9", "confidence": "high", "evidence": "x"}', valid)
+    assert bad is None and "T9" in err2
+    none, err3 = _parse_choice("no json here", valid)
+    assert none is None and err3
+    # confidence outside the closed set falls back to "low", not an error.
+    norm, err4 = _parse_choice('{"choice": "T1", "confidence": "certain", "evidence": ""}', valid)
+    assert err4 == "" and norm["confidence"] == "low"
+
+
+def test_ask_once_retries_once_on_invalid_then_parses():
+    """Purpose: ask_once validates the completion and retries exactly once with
+    error feedback; a second valid reply is accepted (attempts=2), and a valid
+    first reply needs no retry (attempts=1).
+
+    Expected feedback: pass proves the ask has the same validate-and-retry
+    robustness as the R94 holdout runner without any network. Fail means a
+    single malformed reply would be recorded as a hard failure (understating the
+    model) or an infinite retry loop."""
+    valid = {"T1", "T2", "T3", "T4", "T5"}
+    messages = [{"role": "user", "content": "pick one"}]
+
+    calls = {"n": 0}
+
+    def flaky(_msgs):
+        calls["n"] += 1
+        return "I think..." if calls["n"] == 1 else '{"choice": "T2", "confidence": "medium", "evidence": "ok"}'
+
+    res = ask_once(flaky, messages, valid)
+    assert res["choice"] == "T2" and res["attempts"] == 2 and res["error"] is None
+
+    def clean(_msgs):
+        return '{"choice": "T1", "confidence": "low", "evidence": "y"}'
+
+    res2 = ask_once(clean, messages, valid)
+    assert res2["choice"] == "T1" and res2["attempts"] == 1
+
+
+def test_neutral_descriptions_cover_every_template_exactly():
+    """Purpose: every template of both games has exactly one neutral description
+    and no extras — the shuffle maps all five ids to real descriptions.
+
+    Expected feedback: pass proves build_ask_prompt cannot KeyError on a missing
+    description or silently drop a candidate. Fail means the candidate set shown
+    to the model diverges from the scored template set."""
+    for game in ("ft09", "sc25"):
+        names = {t.name for t in templates_for_game(game)[0]}
+        assert set(_NEUTRAL_DESCRIPTIONS[game]) == names

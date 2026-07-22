@@ -28,22 +28,27 @@ Usage::
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
+import os
+import re
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Callable, Optional
 
 import numpy as np
 
+from admorphiq.adapters25.base import most_common_color
 from admorphiq.hypothesis_select import (
     HypothesisTemplate,
     state_signature_for,
     templates_for_game,
 )
+from admorphiq.kernels import find_regions
 
 Grid = tuple[tuple[int, ...], ...]
 Cell = tuple[int, int]
 
-_TRACE_DIR = Path("data/traces")
+_TRACE_DIR = Path(os.environ.get("R95A_TRACES_DIR", "data/traces"))
 _N_SPECIFICITY_FRAMES = 20
 
 # Where the cast/win STATE is observed within a level's gold block. ft09's win
@@ -454,15 +459,403 @@ def evaluate(game: str) -> dict[str, Any]:
     }
 
 
+# ── PART 2: LLM selection ask (guided-json, no held-out data, no names) ───────
+
+# Fresh NEUTRAL one-paragraph descriptions per template — no template names, no
+# "oracle"/historical labels, no game ids. Keyed by the internal template name
+# (used only to map back after the model answers by neutral id). These are the
+# ONLY template information the model sees; the leak-guard test asserts none of
+# the internal names / "oracle" / game ids appear in the assembled prompt.
+_NEUTRAL_DESCRIPTIONS: dict[str, dict[str, str]] = {
+    "ft09": {
+        "glyph_constraints": (
+            "Clicking a cell changes only that one cell, advancing its colour by one "
+            "step through a short repeating cycle. The board is complete when every "
+            "cell simultaneously satisfies a set of relational colour requirements set "
+            "by nearby marker symbols: each requirement says a cell must either equal "
+            "or differ from a specific marker's colour, a cell can be governed by "
+            "several markers at once, and all of its requirements must hold together."
+        ),
+        "gf2_stencil": (
+            "Clicking a cell changes that cell together with its four immediate "
+            "up/down/left/right neighbours, which flip as a single plus-shaped group. "
+            "The board is complete when every cell simultaneously satisfies the "
+            "relational colour requirements set by nearby marker symbols."
+        ),
+        "nearest_glyph_only": (
+            "Clicking a cell changes only that one cell, advancing its colour one step. "
+            "The board is complete when every cell satisfies the colour requirement of "
+            "only its single closest marker symbol; requirements from any farther marker "
+            "are ignored."
+        ),
+        "uniform_colour": (
+            "Clicking a cell changes only that one cell, advancing its colour one step. "
+            "The board is complete when every interactive cell shows one and the same "
+            "colour."
+        ),
+        "all_ink_equal": (
+            "Clicking a cell changes only that one cell, advancing its colour one step. "
+            "The board is complete when every cell equals the colour of each nearby "
+            "marker symbol that governs it — every requirement is an equality, there are "
+            "no 'must differ' requirements."
+        ),
+    },
+    "sc25": {
+        "binary_flip_xor": (
+            "Clicking a grid cell flips only that one cell between its two possible "
+            "colours. The configuration is complete when the grid's pattern of flipped "
+            "cells EXACTLY matches a separately displayed target pattern."
+        ),
+        "colour_cycle": (
+            "Clicking a grid cell advances only that cell, and cells can take three or "
+            "more different colours in a repeating cycle. The configuration is complete "
+            "when the grid shows more than two distinct colours at once."
+        ),
+        "near_match_threshold": (
+            "Clicking a grid cell flips only that one cell. The configuration is complete "
+            "when the grid's pattern matches the displayed target pattern in most cells; "
+            "a few mismatched cells are still acceptable."
+        ),
+        "neighbour_stencil": (
+            "Clicking a grid cell flips that cell together with at least one adjacent "
+            "grid cell. The configuration is complete when the grid's pattern EXACTLY "
+            "matches the displayed target pattern."
+        ),
+        "absolute_preview": (
+            "Clicking a grid cell flips only that one cell. The configuration is complete "
+            "when the grid cells directly show the same colours as the displayed target "
+            "markers themselves."
+        ),
+    },
+}
+
+_CONFIDENCE_VALUES = ("low", "medium", "high")
+
+
+def _shuffle_order(game: str, names: list[str]) -> list[str]:
+    """A DETERMINISTIC permutation of ``names`` keyed on the game string via
+    hashlib (no `random` module) — so the same game always yields the same
+    T1..T5 assignment, but the order carries no oracle-first bias."""
+    def key(name: str) -> int:
+        digest = hashlib.sha256(f"{game}:{name}".encode()).digest()
+        return int.from_bytes(digest[:8], "big")
+
+    return sorted(names, key=key)
+
+
+def _parse_skeleton(game: str, frame: Grid) -> str:
+    """A one-line structural summary of a representative (TRAIN) frame — the
+    ring count (ft09) or lattice cell count (sc25). Pure perception, no template
+    identity."""
+    if game == "ft09":
+        from admorphiq.adapters25.ft09 import _discover_rings
+
+        return f"{len(_discover_rings(frame))} repeating marker-and-ring group(s) detected"
+    if game == "sc25":
+        from admorphiq.hypothesis_select.templates import _sc25_lattice
+
+        lattice = _sc25_lattice(frame)
+        n = len(lattice["index"]) if lattice else 0
+        return f"an interactive lattice of {n} equal-size cells detected"
+    return "no structural summary available"
+
+
+def _changed_unit_count(game: str, t: Transition) -> int:
+    """The number of distinct INTERACTIVE CELLS (small non-chrome regions on the
+    before-frame) whose pixels changed under this click — the logical-cell count
+    the templates speak in, NOT a raw pixel count. A single button/lattice cell
+    is one region of many pixels; reporting pixels would read as a multi-cell
+    change and bias the model toward the neighbourhood-stencil hypothesis."""
+    changed = _observed_changes(t, game)
+    if not changed:
+        return 0
+    before = t.before
+    total = len(before) * len(before[0]) if before else 1
+    max_size = max(1, int(0.15 * total))
+    bg = most_common_color(before)
+    count = 0
+    for r in find_regions(before, background=bg):
+        if r["size"] <= max_size and (set(r["cells"]) & changed):
+            count += 1
+    return count
+
+
+def _observation_summary(game: str, train: list[Transition]) -> str:
+    """A neutral observation block computed from TRAIN transitions ONLY: action
+    usage, the per-click changed-CELL-count histogram (logical interactive cells,
+    not pixels), three example clicks, the completion-moment full-frame pixel
+    change magnitude (per R57), and the parse skeleton. No held-out data, no
+    template scores."""
+    action_names = {1: "ACTION1", 2: "ACTION2", 3: "ACTION3", 4: "ACTION4", 6: "CLICK(ACTION6)", 7: "ACTION7"}
+    counts: dict[str, int] = {}
+    for t in train:
+        label = action_names.get(t.action, f"ACTION{t.action}")
+        counts[label] = counts.get(label, 0) + 1
+    usage = ", ".join(f"{k}={v}" for k, v in sorted(counts.items()))
+
+    hist: dict[int, int] = {}
+    examples: list[str] = []
+    for t in train:
+        if t.action != 6:
+            continue
+        if not _observed_changes(t, game):
+            continue
+        units = _changed_unit_count(game, t)
+        hist[units] = hist.get(units, 0) + 1
+        if len(examples) < 3:
+            x, y = t.xy
+            before_near = _near_colours(t.before, x, y)
+            examples.append(
+                f"  click at (x={x}, y={y}); colours in the 3x3 area around the click "
+                f"before it: {before_near}; number of interactive cells that changed: {units}"
+            )
+    hist_text = (
+        ", ".join(f"{k}cell(s)->{v}click(s)" for k, v in sorted(hist.items())) or "none observed"
+    )
+
+    completion = _completion_summary(train)
+
+    skeleton = _parse_skeleton(game, train[0].before) if train else ""
+
+    lines = [
+        "OBSERVATIONS (computed from one half of the recorded play — the other half is withheld):",
+        f"- Action usage: {usage or 'none'}",
+        "- When a click changed the board, how many distinct interactive cells changed "
+        f"(histogram): {hist_text}",
+        "- Example click transitions:",
+        *examples,
+        f"- Board-completion moments: {completion}",
+        f"- Structure: {skeleton}",
+    ]
+    return "\n".join(lines)
+
+
+def _near_colours(frame: Grid, x: int, y: int) -> list[list[int]]:
+    """The 3x3 block of colours centred on ``(row=y, col=x)`` (clamped), as a
+    small nested list for the prompt."""
+    h = len(frame)
+    w = len(frame[0]) if frame else 0
+    block: list[list[int]] = []
+    for r in range(y - 1, y + 2):
+        row: list[int] = []
+        for c in range(x - 1, x + 2):
+            row.append(frame[r][c] if 0 <= r < h and 0 <= c < w else -1)
+        block.append(row)
+    return block
+
+
+def _completion_summary(train: list[Transition]) -> str:
+    """The full-frame change magnitude at completion (level-up) transitions
+    within TRAIN, per R57's 'the full-block diff carries the effect' note. Falls
+    back to the largest full-frame change observed when no completion transition
+    is in this subset."""
+    ups: list[int] = []
+    prev = train[0].levels_after if train else 0
+    for pos, t in enumerate(train):
+        if pos > 0 and t.levels_after > prev:
+            ups.append(int(np.count_nonzero(np.asarray(t.before) != np.asarray(t.after))))
+        prev = t.levels_after
+    if ups:
+        return (
+            f"{len(ups)} completion transition(s) observed; total pixels that changed on the "
+            f"full frame at each completion: {ups}"
+        )
+    if not train:
+        return "none observed"
+    largest = max(
+        int(np.count_nonzero(np.asarray(t.before) != np.asarray(t.after))) for t in train
+    )
+    return f"no completion transition in this subset; the largest single full-frame change was {largest} pixels"
+
+
+def build_ask_prompt(
+    game: str, transitions: list[Transition]
+) -> tuple[list[dict[str, str]], dict[str, str], str]:
+    """Assemble the selection ask: five NEUTRAL template descriptions under
+    deterministically-shuffled ids T1..T5, plus the TRAIN-only observation
+    summary. Returns ``(messages, id->template_name mapping, observation_text)``.
+    Contains no template names, no 'oracle', no game id, and no held-out data."""
+    templates, _oracle = templates_for_game(game)
+    names = [t.name for t in templates]
+    order = _shuffle_order(game, names)
+    mapping = {f"T{i + 1}": name for i, name in enumerate(order)}
+    descriptions = _NEUTRAL_DESCRIPTIONS[game]
+
+    train, _heldout = _split_by_level(transitions)
+    observation = _observation_summary(game, train)
+
+    template_block = "\n\n".join(
+        f"{tid}: {descriptions[mapping[tid]]}" for tid in sorted(mapping)
+    )
+    system = (
+        "You are analysing a small interactive grid puzzle from recorded play. "
+        "You are given several candidate rules that each claim to explain how the "
+        "puzzle works and when it is complete, plus observations from actual play. "
+        "Choose the ONE candidate rule that best explains the observations."
+    )
+    user = (
+        "CANDIDATE RULES:\n\n"
+        f"{template_block}\n\n"
+        f"{observation}\n\n"
+        "Which single candidate rule best explains these observations? Weigh BOTH "
+        "how each click changes the board AND what the completion condition appears "
+        "to be. Respond with ONLY a JSON object, no other text:\n"
+        '{"choice": "T1"|"T2"|"T3"|"T4"|"T5", "confidence": "low"|"medium"|"high", '
+        '"evidence": "<=2 sentences citing the specific observation that decided it"}'
+    )
+    messages = [{"role": "system", "content": system}, {"role": "user", "content": user}]
+    return messages, mapping, observation
+
+
+def _parse_choice(text: str, valid_ids: set[str]) -> tuple[Optional[dict[str, Any]], str]:
+    """Extract and validate the ask JSON from the model's text. Returns
+    ``(parsed_or_None, error)``. Tolerant of surrounding prose: takes the last
+    balanced ``{...}`` object. Validates choice in ``valid_ids``, confidence in
+    the closed set, and a string evidence field."""
+    matches = re.findall(r"\{[^{}]*\}", text, re.DOTALL)
+    if not matches:
+        return None, "no JSON object found in the response"
+    obj: Optional[dict[str, Any]] = None
+    for candidate in reversed(matches):
+        try:
+            parsed = json.loads(candidate)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(parsed, dict) and "choice" in parsed:
+            obj = parsed
+            break
+    if obj is None:
+        return None, "no JSON object with a 'choice' field parsed"
+    choice = obj.get("choice")
+    if choice not in valid_ids:
+        return None, f"choice {choice!r} is not one of {sorted(valid_ids)}"
+    confidence = obj.get("confidence", "low")
+    if confidence not in _CONFIDENCE_VALUES:
+        confidence = "low"
+    evidence = obj.get("evidence", "")
+    if not isinstance(evidence, str):
+        evidence = str(evidence)
+    return {"choice": choice, "confidence": confidence, "evidence": evidence[:500]}, ""
+
+
+def ask_once(
+    llm: Callable[[list[dict[str, str]]], str],
+    messages: list[dict[str, str]],
+    valid_ids: set[str],
+) -> dict[str, Any]:
+    """One selection ask + validate, with ONE error-feedback retry (mirroring
+    ``probe_template_holdout.ask_adaptation``'s validate-and-retry shape).
+    Returns ``{choice, confidence, evidence, attempts, error}`` — choice is
+    ``None`` on a hard failure."""
+    convo = list(messages)
+    try:
+        text = llm(convo)
+    except Exception as exc:  # noqa: BLE001 - offline-safe, record and stop
+        return {"choice": None, "confidence": None, "evidence": "", "attempts": 1, "error": str(exc)}
+    parsed, err = _parse_choice(text, valid_ids)
+    if parsed is not None:
+        return {**parsed, "attempts": 1, "error": None}
+
+    convo.append({"role": "assistant", "content": text})
+    convo.append({"role": "user", "content": (
+        f"Your response was not valid ({err}). Respond with ONLY the JSON object: "
+        '{"choice": one of T1..T5, "confidence": low|medium|high, "evidence": "<=2 sentences"}.'
+    )})
+    try:
+        text2 = llm(convo)
+    except Exception as exc:  # noqa: BLE001
+        return {"choice": None, "confidence": None, "evidence": "", "attempts": 2, "error": str(exc)}
+    parsed2, err2 = _parse_choice(text2, valid_ids)
+    if parsed2 is not None:
+        return {**parsed2, "attempts": 2, "error": None}
+    return {"choice": None, "confidence": None, "evidence": "", "attempts": 2, "error": err2}
+
+
+def _score_choice(
+    choice: Optional[str], mapping: dict[str, str], equivalence_class: set[str]
+) -> tuple[Optional[str], bool]:
+    """Map a neutral id back to its template name and score it: PASS iff the
+    mapped template is in the oracle equivalence class (oracle + ties). An
+    unmappable / null choice is a FAIL."""
+    mapped = mapping.get(choice) if choice is not None else None
+    return mapped, mapped in equivalence_class
+
+
+def run_ask(game: str, reps: int, llm: Callable[[list[dict[str, str]]], str]) -> dict[str, Any]:
+    """Run the LLM selection ask ``reps`` times on ``game`` and score each pick
+    against part-1's oracle equivalence class. PASS = the mapped template is in
+    ``tied_with_oracle ∪ {oracle}``; a strictly-dominated negative is FAIL."""
+    report = evaluate(game)
+    equivalence_class = sorted(set(report["tied_with_oracle"]) | {report["oracle_name"]})
+    eq_set = set(equivalence_class)
+
+    transitions = _load_transitions(game)
+    messages, mapping, _obs = build_ask_prompt(game, transitions)
+    valid_ids = set(mapping)
+
+    ask_results: list[dict[str, Any]] = []
+    passes = 0
+    for rep in range(reps):
+        res = ask_once(llm, messages, valid_ids)
+        mapped, is_pass = _score_choice(res["choice"], mapping, eq_set)
+        passes += int(is_pass)
+        ask_results.append({
+            "rep": rep,
+            "choice": res["choice"],
+            "mapped_template_name": mapped,
+            "in_equivalence_class": "PASS" if is_pass else "FAIL",
+            "confidence": res["confidence"],
+            "evidence": res["evidence"],
+            "attempts": res["attempts"],
+            "error": res["error"],
+        })
+
+    report["ask_reps"] = reps
+    report["shuffle_mapping"] = mapping
+    report["equivalence_class"] = equivalence_class
+    report["exhaustive_winner_control"] = report["exhaustive_train_winner"]
+    report["ask_results"] = ask_results
+    report["pass_rate"] = passes / reps if reps else 0.0
+    return report
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--game", required=True, choices=["ft09", "sc25"])
-    parser.add_argument("--out", required=True, help="output JSON path")
+    parser.add_argument("--out", help="output JSON path")
+    parser.add_argument("--ask", action="store_true", help="run the LLM selection ask")
+    parser.add_argument("--reps", type=int, default=3, help="LLM ask repetitions per game")
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="assemble and print the ask prompt + shuffle mapping without any LLM call",
+    )
     args = parser.parse_args()
 
-    report = evaluate(args.game)
-    Path(args.out).write_text(json.dumps(report, indent=2), encoding="utf-8")
-    print(json.dumps(report, indent=2))
+    if args.dry_run:
+        transitions = _load_transitions(args.game)
+        messages, mapping, _obs = build_ask_prompt(args.game, transitions)
+        print("=== SHUFFLE MAPPING (neutral id -> internal template name) ===")
+        print(json.dumps(mapping, indent=2))
+        print("\n=== SYSTEM ===\n" + messages[0]["content"])
+        print("\n=== USER ===\n" + messages[1]["content"])
+        return
+
+    if args.ask:
+        from admorphiq.harness.registry import openai_compat_llm
+
+        llm = openai_compat_llm(
+            num_predict=int(os.environ.get("HARNESS_PATCH_NUM_PREDICT", "2048")),
+            timeout=float(os.environ.get("HARNESS_PATCH_TIMEOUT", "900")),
+        )
+        report = run_ask(args.game, args.reps, llm)
+    else:
+        report = evaluate(args.game)
+
+    text = json.dumps(report, indent=2)
+    if args.out:
+        Path(args.out).write_text(text, encoding="utf-8")
+    print(text)
 
 
 if __name__ == "__main__":
