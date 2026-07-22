@@ -31,7 +31,7 @@ Scope: grounding ONLY — no verifier, no compiler, no LLM.
 
 from __future__ import annotations
 
-from collections import defaultdict
+from collections import Counter, defaultdict
 from dataclasses import dataclass, field
 from typing import Any, Optional
 
@@ -44,12 +44,14 @@ from admorphiq.hypothesis_select.parse import (
     _read_glyph_compass,
     _sc25_lattice,
 )
+from admorphiq.hypothesis_select.schema_movement import StaticOccupancy
 from admorphiq.hypothesis_select.templates import (
     _sc25_cell_colour,
     _sc25_on_set,
     _sc25_preview_mark_colour,
     _sc25_read_target,
 )
+from admorphiq.kernels import find_regions
 
 Grid = tuple[tuple[int, ...], ...]
 Cell = tuple[int, int]  # (row, col)
@@ -195,6 +197,21 @@ class GroundingService:
         # base colours). This is the "the grid committed" evidence distinguishing
         # a genuine cast from an already-empty diff at the start.
         self._sc25_cast_seen: bool = False
+        # ── R96 movement family state (activates only on a two-actor board) ──
+        self._move_actor_colour: Optional[int] = None  # mobility-confirmed actor colour
+        self._move_scale: Optional[int] = None  # pixels per cell (actor block side)
+        self._move_ids: tuple[str, ...] = ("actor_a", "actor_b")
+        self._move_pos: Optional[dict[str, tuple[float, float]]] = None  # id -> centroid (px)
+        self._move_size: Optional[int] = None  # a single actor's region footprint (px)
+        self._move_start: Optional[dict[str, tuple[float, float]]] = None  # spawn positions (soft-reset ref)
+        # (actor_id, action) -> Counter of (dr, dc) cell deltas, non-collision only
+        self._move_delta_obs: dict[tuple[str, int], dict[tuple[int, int], int]] = defaultdict(
+            lambda: defaultdict(int)
+        )
+        self._move_collision_obs: int = 0  # "one moved while one stayed" observations
+        self._move_noop: dict[str, int] = defaultdict(int)  # attribution category -> count
+        self._move_hazard_cells: set[Cell] = set()
+        self._move_merge: Optional[tuple[str, str]] = None  # (actor_a, actor_b) once they coalesce
 
     # ── frame stream ─────────────────────────────────────────────────────
 
@@ -259,6 +276,11 @@ class GroundingService:
         self._sc25_target = None
         self._sc25_target_prev = None
         self._sc25_cast_seen = False
+        # Movement tracking is per-board (a new layout respawns the actors); the
+        # acquired deltas / merge / no-op / hazard / collision EVIDENCE is a game
+        # constant and accumulates across levels, so only positions reset.
+        self._move_pos = None
+        self._move_start = None
         struct = _parse_structure(grid)
         cell_anchors = sorted(struct.cells)
         anchor_to_id = {a: f"e{self._epoch}:c{k}" for k, a in enumerate(cell_anchors)}
@@ -385,6 +407,8 @@ class GroundingService:
                 ca = _cell_class(after_grid, cell.bbox)
                 if cb != ca:
                     self._cycle_obs[(cb, ca)] += 1
+        if action in (1, 2, 3, 4):
+            self._movement_observe(before_grid, action, after_grid)
         self.feed(after)
 
     def _is_pattern_commit(self, before_grid: Grid, after_grid: Grid) -> bool:
@@ -410,6 +434,306 @@ class GroundingService:
                 if before_colour not in self._sc25_two:
                     committing = True
         return changed >= 2 and committing
+
+    # ── R96 movement family: two-actor tracking / deltas / occupancy ──────
+    #
+    # Activates only on a two-actor board (family auto-detection): the actor
+    # colour is a compact MOBILE minority colour, confirmed by displacement under
+    # a directional action. On a glyph/lattice board no actor colour is confirmed
+    # and every movement query returns UNKNOWN, so the R95 paths are untouched.
+
+    _MOVE_MAX_ACTOR_FRACTION = 0.05  # an actor region is small vs the whole frame
+
+    def _move_bg(self, grid: Grid) -> int:
+        return Counter(v for row in grid for v in row).most_common(1)[0][0]
+
+    def _move_regions_of(
+        self, grid: Grid, colour: int
+    ) -> list[tuple[tuple[float, float], int, tuple[int, int, int, int]]]:
+        """The ``colour`` regions as ``(centroid, size, bbox)``, ordered left-to-right
+        (by column, then row) — the stable slot order for initial ID assignment."""
+        bg = self._move_bg(grid)
+        out = []
+        for r in find_regions(grid, background=bg):
+            cy, cx = next(iter(r["cells"]))
+            if grid[cy][cx] == colour:
+                out.append((r["centroid"], r["size"], tuple(r["bbox"])))
+        return sorted(out, key=lambda t: (round(t[0][1]), round(t[0][0])))
+
+    def _move_detect_actor_colour(self, before: Grid, after: Grid) -> Optional[int]:
+        """Confirm the actor colour by MOBILITY: the minority colour whose 1-2
+        compact regions displaced between ``before`` and ``after``. Sticky once
+        set. Returns ``None`` until a confident mobile minority colour is seen."""
+        if self._move_actor_colour is not None:
+            return self._move_actor_colour
+        bg = self._move_bg(before)
+        area = len(before) * len(before[0])
+        counts = Counter(v for row in before for v in row)
+        best: Optional[tuple[tuple[int, int], int, list]] = None
+        for colour, cnt in counts.items():
+            if colour == bg:
+                continue
+            rb = self._move_regions_of(before, colour)
+            ra = self._move_regions_of(after, colour)
+            if not (1 <= len(rb) <= 3):
+                continue
+            if any(size > self._MOVE_MAX_ACTOR_FRACTION * area for _c, size, _b in rb):
+                continue
+            cb = sorted((round(c[0]), round(c[1])) for c, _s, _b in rb)
+            ca = sorted((round(c[0]), round(c[1])) for c, _s, _b in ra)
+            moved = cb != ca
+            score = (int(moved), -cnt)  # prefer a colour that MOVED, then the smallest footprint
+            if best is None or score > best[0]:
+                best = (score, colour, rb)
+        if best is None or best[0][0] == 0:
+            return None  # no confidently-mobile minority colour this transition
+        _score, colour, rb = best
+        self._move_actor_colour = colour
+        _c, size, bbox = rb[0]
+        self._move_scale = max(1, bbox[2] - bbox[0] + 1)
+        self._move_size = size
+        return colour
+
+    def _move_match(
+        self, tracked: dict[str, tuple[float, float]], regions: list, action: Optional[int]
+    ) -> Optional[dict[str, tuple[float, float]]]:
+        """Assign the two tracked actor IDs to two regions. Prefer a
+        DELTA-PREDICTED match (crossing-robust: predict each actor's next position
+        from its acquired per-(actor, action) delta), else nearest-centroid. Returns
+        ``None`` on genuine 2-vs-2 ambiguity (never a silent guess)."""
+        if len(regions) != 2:
+            return None
+        cents = [r[0] for r in regions]
+        ids = list(tracked)
+        scale = self._move_scale or 1
+        predicted = {}
+        for aid in ids:
+            edge = self._move_acquired_delta(aid, action) if action is not None else None
+            base = tracked[aid]
+            predicted[aid] = (base[0] + edge[0] * scale, base[1] + edge[1] * scale) if edge else base
+
+        def cost(order: tuple[int, int]) -> float:
+            return sum(
+                abs(predicted[ids[k]][0] - cents[order[k]][0]) + abs(predicted[ids[k]][1] - cents[order[k]][1])
+                for k in (0, 1)
+            )
+
+        straight, swapped = cost((0, 1)), cost((1, 0))
+        if abs(straight - swapped) < 1e-6:
+            return None  # symmetric ambiguity — UNKNOWN, do not guess
+        order = (0, 1) if straight < swapped else (1, 0)
+        return {ids[0]: cents[order[0]], ids[1]: cents[order[1]]}
+
+    def _move_acquired_delta(self, aid: str, action: Optional[int]) -> Optional[tuple[int, int]]:
+        obs = self._move_delta_obs.get((aid, action)) if action is not None else None
+        if not obs:
+            return None
+        delta, count = max(obs.items(), key=lambda kv: kv[1])
+        return delta if count >= _MIN_CYCLE_CONFIRMATIONS else None
+
+    def _movement_observe(self, before: Grid, action: int, after: Grid) -> None:
+        colour = self._move_detect_actor_colour(before, after)
+        if colour is None:
+            return
+        scale = self._move_scale or 1
+        rb = self._move_regions_of(before, colour)
+        ra = self._move_regions_of(after, colour)
+
+        # MERGE (terminal) vs ADJACENCY: the actor pixels collapse to ONE region.
+        if len(ra) == 1 and self._move_pos is not None and self._move_size:
+            size = ra[0][1]
+            if size <= 1.5 * self._move_size:  # ~1x actor => coincident cells => MERGE
+                self._move_merge = (self._move_ids[0], self._move_ids[1])
+                self._move_pos = {aid: ra[0][0] for aid in self._move_ids}
+                return
+            return  # ~2x actor => adjacency (two touching actors as one blob) — not a delta event
+
+        if self._move_pos is None:
+            if len(rb) != 2:
+                return  # need a clean two-actor start to seed IDs
+            self._move_pos = {self._move_ids[0]: rb[0][0], self._move_ids[1]: rb[1][0]}
+            self._move_start = dict(self._move_pos)
+
+        assign_b = self._move_match(self._move_pos, rb, None) if len(rb) == 2 else None
+        if assign_b is None:
+            return
+        assign_a = self._move_match(assign_b, ra, action)
+        if assign_a is None:
+            return
+
+        deltas = {
+            aid: (
+                round((assign_a[aid][0] - assign_b[aid][0]) / scale),
+                round((assign_a[aid][1] - assign_b[aid][1]) / scale),
+            )
+            for aid in self._move_ids
+        }
+        moved = {aid: deltas[aid] != (0, 0) for aid in self._move_ids}
+
+        if all(moved.values()) and self._move_is_soft_reset(assign_a):
+            # a hazard SOFT-RESET: both actors jumped back to spawn — record the
+            # hazard cell (the target the mover was entering), NOT a delta.
+            for aid in self._move_ids:
+                tr, tc = assign_b[aid][0] + deltas[aid][0] * scale, assign_b[aid][1] + deltas[aid][1] * scale
+                self._move_hazard_cells.add((round(tr / scale), round(tc / scale)))
+        elif all(moved.values()):
+            for aid in self._move_ids:
+                self._move_delta_obs[(aid, action)][deltas[aid]] += 1
+        elif any(moved.values()):
+            # COLLISION-STAY: one blocked, one moved — the mover's delta is valid,
+            # the stayer's no-op feeds collision evidence (NOT the delta table).
+            self._move_collision_obs += 1
+            for aid in self._move_ids:
+                if moved[aid]:
+                    self._move_delta_obs[(aid, action)][deltas[aid]] += 1
+                else:
+                    self._move_noop["collision_stay"] += 1
+        else:
+            for aid in self._move_ids:
+                self._move_attribute_noop(aid, action, assign_b[aid], before, after)
+
+        self._move_pos = dict(assign_a)
+
+    def _move_is_soft_reset(self, assign_a: dict[str, tuple[float, float]]) -> bool:
+        """Both actors are back at (near) their spawn positions after having left —
+        a hazard soft-reset, not ordinary motion."""
+        if self._move_start is None:
+            return False
+        scale = self._move_scale or 1
+        at_start = all(
+            abs(assign_a[aid][0] - self._move_start[aid][0]) <= scale / 2
+            and abs(assign_a[aid][1] - self._move_start[aid][1]) <= scale / 2
+            for aid in self._move_ids
+        )
+        left_start = self._move_pos is not None and any(
+            abs(self._move_pos[aid][0] - self._move_start[aid][0]) > scale
+            or abs(self._move_pos[aid][1] - self._move_start[aid][1]) > scale
+            for aid in self._move_ids
+        )
+        return at_start and left_start
+
+    def _move_attribute_noop(
+        self, aid: str, action: int, pos: tuple[float, float], before: Grid, after: Grid
+    ) -> None:
+        """Classify a no-displacement transition — blocked_by_wall / collision_stay
+        (handled by the caller) / settle_or_terminal / unattributed — recorded
+        distinctly, NEVER auto-added as a blocked cell (no-op attribution risk)."""
+        if before == after:
+            self._move_noop["settle_or_terminal"] += 1
+            return
+        edge = self._move_acquired_delta(aid, action)
+        if edge is not None:
+            scale = self._move_scale or 1
+            tr = round((pos[0] + edge[0] * scale) / scale)
+            tc = round((pos[1] + edge[1] * scale) / scale)
+            occ = self.movement_occupancy()
+            if occ is not UNKNOWN and (tr, tc) in set(occ.value.blocked_cells):
+                self._move_noop["blocked_by_wall"] += 1
+                return
+        self._move_noop["unattributed"] += 1
+
+    def movement_actors(self) -> Any:
+        """The actors on the CURRENT frame as ``Grounded([(actor_id, (row, col)
+        cell), ...])`` — parsed from the frame (robust to a discontinuous /
+        replayed transition stream where cross-transition tracking cannot persist),
+        or ``UNKNOWN`` on a non-movement board. A merged frame reports the single
+        coincident cell; ``movement_merge_event`` names the merge."""
+        grid = self._prev_grid
+        if grid is None or self._move_actor_colour is None or self._move_scale is None:
+            return UNKNOWN
+        scale = self._move_scale
+        units = self._move_actor_units(grid)
+        if not units:
+            return UNKNOWN
+        listing = [
+            (self._move_ids[i] if i < len(self._move_ids) else f"actor_{i}",
+             (round(u[0] / scale), round(u[1] / scale)))
+            for i, u in enumerate(units)
+        ]
+        return Grounded(sorted(listing), "high")
+
+    def _move_actor_units(self, grid: Grid) -> list[tuple[float, float]]:
+        """The actor UNITS on ``grid``: one centroid per actor-sized block. Two
+        regions -> two units; one ~2x region (two adjacent actors as one connected
+        component) -> split along its longer axis into two; one ~1x region (a
+        merge) -> one unit."""
+        colour, size = self._move_actor_colour, self._move_size or 1
+        regions = [r for r in find_regions(grid, background=self._move_bg(grid)) if r["color"] == colour]
+        units: list[tuple[float, float]] = []
+        for cent, rsize, bbox in ((r["centroid"], r["size"], r["bbox"]) for r in regions):
+            k = max(1, int(round(rsize / size)))
+            if k <= 1:
+                units.append(cent)
+                continue
+            cells = [c for r in regions if r["centroid"] == cent for c in r["cells"]]
+            axis = 0 if (bbox[2] - bbox[0]) >= (bbox[3] - bbox[1]) else 1
+            ordered = sorted(cells, key=lambda rc: rc[axis])
+            chunk = max(1, len(ordered) // k)
+            for i in range(k):
+                grp = ordered[i * chunk:] if i == k - 1 else ordered[i * chunk:(i + 1) * chunk]
+                if grp:
+                    units.append((sum(p[0] for p in grp) / len(grp), sum(p[1] for p in grp) / len(grp)))
+        return units
+
+    def movement_deltas(self) -> Any:
+        """The acquired per-``(actor_id, action)`` cell deltas (modal, >= 2
+        confirmations — the min-probe rule) as ``Grounded({(actor_id, action):
+        (dr, dc)})``, or ``UNKNOWN`` until at least one edge is confirmed."""
+        acquired = {}
+        for (aid, action), obs in self._move_delta_obs.items():
+            delta, count = max(obs.items(), key=lambda kv: kv[1])
+            if count >= _MIN_CYCLE_CONFIRMATIONS:
+                acquired[(aid, action)] = delta
+        if not acquired:
+            return UNKNOWN
+        return Grounded(acquired, "high")
+
+    def movement_occupancy(self) -> Any:
+        """The static occupancy of the current frame as ``Grounded(StaticOccupancy)``
+        — walls = non-floor, non-actor, non-hazard cells; floor = background — or
+        ``UNKNOWN`` before the actor colour + scale are known."""
+        grid = self._prev_grid
+        if grid is None or self._move_actor_colour is None or self._move_scale is None:
+            return UNKNOWN
+        bg = self._move_bg(grid)
+        scale = self._move_scale
+        h, w = len(grid), len(grid[0])
+        blocked = []
+        for r in range(h // scale):
+            for c in range(w // scale):
+                colour = grid[min(h - 1, r * scale + scale // 2)][min(w - 1, c * scale + scale // 2)]
+                if colour in (bg, self._move_actor_colour) or (r, c) in self._move_hazard_cells:
+                    continue
+                blocked.append((r, c))
+        occ = StaticOccupancy(
+            blocked_cells=tuple(blocked),
+            confidence="high",
+            observation_context="full-frame static parse: floor=background colour, walls=non-floor non-actor colours",
+            layout_epoch=self._epoch,
+        )
+        return Grounded(occ, "high")
+
+    def movement_merge_event(self) -> Any:
+        """The terminal MERGE ``Grounded((actor_a, actor_b))`` once the two actors
+        coalesced onto one cell, else ``UNKNOWN`` (identity is NOT reported as
+        lost — the coalescence is a named merged() event)."""
+        return Grounded(self._move_merge, "high") if self._move_merge is not None else UNKNOWN
+
+    def movement_noop_attribution(self) -> Any:
+        """The no-op attribution counts by category
+        ``Grounded({"blocked_by_wall"|"collision_stay"|"settle_or_terminal"|"unattributed": n})``."""
+        return Grounded(dict(self._move_noop), "high")
+
+    def movement_collision_evidence(self) -> Any:
+        """The count of 'one actor moved while the other stayed' observations — the
+        independent-stay (vs all-or-nothing) collision-policy evidence."""
+        return Grounded(self._move_collision_obs, "high")
+
+    def movement_hazard_cells(self) -> Any:
+        """The cells where a hazard soft-reset was triggered
+        ``Grounded(frozenset[(row, col)])`` (feeds terminal_cells evidence; may be
+        empty when the observed path enters no hazard)."""
+        return Grounded(frozenset(self._move_hazard_cells), "high")
 
     def _cell_at_xy(self, xy: tuple[int, int]) -> Optional[_CellRecord]:
         """The bound cell a click at ``xy = (x, y)`` lands on — by bbox
