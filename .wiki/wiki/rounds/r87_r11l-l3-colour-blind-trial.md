@@ -8,6 +8,10 @@ commit: (this round)
 
 # R87 — r11l L3 cleared: colour-blind detection + nested discriminator + trial
 
+> The r11l L3 conquest round: colour-blind connectivity detection + nested
+> colour-set target discriminator + speculative-target trial net take r11l
+> 3/6 → 4/6 @ 0.2594 (deterministic ×2), floor byte-identical.
+
 The L3 conquest round on top of [[r85_r11l-strike-aware-assembly]] (r11l 3/6) and
 the [[r86_r11l-l3-connectivity-detection]] bank. **r11l 3/6 → 4/6 @ 0.2594,
 deterministic ×2** (@600 and @3000 identical; loader `r11l/495a7899`). Floor

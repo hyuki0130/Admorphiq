@@ -200,7 +200,7 @@ category, drill into specific pages.
 - [[rounds/r84_bounded-frontier-scan.md]] — (no description)
 - [[rounds/r85_r11l-strike-aware-assembly.md]] — (no description)
 - [[rounds/r86_r11l-l3-connectivity-detection.md]] — (no description)
-- [[rounds/r87_r11l-l3-colour-blind-trial.md]] — (no description)
+- [[rounds/r87_r11l-l3-colour-blind-trial.md]] — The r11l L3 conquest round: colour-blind connectivity detection + nested
 - [[rounds/r89_r11l-l5-probe.md]] — Bounded source-authoritative probe of r11l level 5: identifies a NEW hybrid
 - [[rounds/r91_r11l-l5-collect-match.md]] — Multi-session L5 build, passes 1–3: mechanic decoded (teleport-absorption),
 - [[rounds/r92_agent25-kernel-bridge.md]] — The runtime code-agent LLM could not call the r59 kernel library that produced the
