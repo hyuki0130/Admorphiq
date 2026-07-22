@@ -1,0 +1,36 @@
+{
+  "game": "sc25",
+  "runs": [
+    {
+      "run": 0,
+      "levels_cleared": 0,
+      "actions_per_level": [],
+      "discovery_actions": 0,
+      "plan_outcome": "CAST_HANDOVER",
+      "rebind_events": 0,
+      "cycle_acquired": false,
+      "cast_and_handover": true
+    },
+    {
+      "run": 1,
+      "levels_cleared": 0,
+      "actions_per_level": [],
+      "discovery_actions": 0,
+      "plan_outcome": "CAST_HANDOVER",
+      "rebind_events": 0,
+      "cycle_acquired": false,
+      "cast_and_handover": true
+    },
+    {
+      "run": 2,
+      "levels_cleared": 0,
+      "actions_per_level": [],
+      "discovery_actions": 0,
+      "plan_outcome": "CAST_HANDOVER",
+      "rebind_events": 0,
+      "cycle_acquired": false,
+      "cast_and_handover": true
+    }
+  ],
+  "gate_verdict": "PASS"
+}

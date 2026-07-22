@@ -226,7 +226,15 @@ mode 2→1, ft09 byte-identical), and closure is demonstrated on gemma4.
   post-cast EXIT-NAV phase is outside the frozen contract (navigation
   excluded) — banked as follow-up; the driver's sc25 criterion is being
   aligned to the contract (cast + guard handover), then sc25 re-gates.
-- (vii)–(viii) pending (model substages, Kaggle).
+- **(vi) COMPLETE — BOTH oracle gates PASS** (sc25 criterion aligned to the
+  frozen contract c6f82ed; measurement `r95b_gate_sc25_v2.json`, 18:27):
+  sc25 3/3 CAST_HANDOVER (genuine flip clicks + cast colour observed +
+  StableForReads∧RolesStateEqual on the committed grid; levels honestly 0 —
+  navigation is contract-excluded; post-cast exit-nav banked as follow-up).
+  Combined with ft09's 3/3 idx0+idx1, the ENTIRE oracle pipeline — schema →
+  grounding → verify → compile → live — is proven on both family variants.
+- (vii)–(viii) pending (model substages, Kaggle): the same pipeline with the
+  MODEL's selected/filled instance replacing the oracle.
 
 ## Related
 
