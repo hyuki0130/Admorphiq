@@ -232,6 +232,30 @@ def test_plan_over_confirmed_subset_reaches_goal_without_the_unconfirmed_edge():
     assert plan._traj[-1][0] == plan._traj[-1][1]  # exact merge
 
 
+def test_extra_hazards_are_routed_around_like_walls():
+    """Purpose: a cell learned to HAZARD (soft-reset on entry) at execution time is
+    routed around — the joint BFS prunes any action that would drive an actor into it,
+    and no planned state places an actor on it.
+
+    Expected feedback: pass proves the online-hazard channel (the twin of extra_walls)
+    feeds back into planning: a hazard the grounding never saw (gold avoided it) can be
+    added and the recompiled plan avoids it. Fail means learned hazards are ignored and
+    the plan re-enters the reset cell."""
+    deltas = {
+        ("actor_a", 1): (-1, 0), ("actor_a", 2): (1, 0), ("actor_a", 3): (0, -1), ("actor_a", 4): (0, 1),
+        ("actor_b", 1): (-1, 0), ("actor_b", 2): (1, 0), ("actor_b", 3): (0, 1), ("actor_b", 4): (0, -1),
+    }
+    box = (
+        [(0, c) for c in range(10)] + [(5, c) for c in range(10)]
+        + [(r, 0) for r in range(6)] + [(r, 9) for r in range(6)]
+    )
+    gs = _StubMoveGrounding(deltas, [("actor_a", (2, 3)), ("actor_b", (2, 7))], walls=box)
+    plan = compile_movement_hypothesis(M.m0r0_oracle_instance(), gs, extra_hazards={(2, 5)})
+    sol = plan.solve()
+    assert sol.status is PlanStatus.SOLVABLE  # still merges, via a different row
+    assert all((2, 5) not in state for state in plan._traj)  # never routes an actor onto the hazard
+
+
 def test_confirmed_subset_with_no_convergence_is_unsatisfiable():
     """Purpose: when the confirmed alphabet cannot bring the actors together (only a
     shared vertical move, columns fixed), the joint BFS exhausts and reports

@@ -225,6 +225,48 @@ def clean_block_wall(
     return None
 
 
+def double_block_walls(
+    predicted: Optional[tuple[tuple[int, int], tuple[int, int]]],
+    prev_obs: Optional[list[tuple[int, int]]],
+    obs_now: Optional[list[tuple[int, int]]],
+) -> set[tuple[int, int]]:
+    """The walls revealed by a DOUBLE independent_stay block: BOTH actors stayed at
+    their pre-move cells (``obs_now == prev_obs``) and neither reached its predicted
+    target. Both unreached targets are walls (each excluded if an actor currently
+    occupies it — an actor-block, not a wall). Two simultaneous independent blocks are
+    consistent with independent_stay (NOT the all-or-nothing mutant). Empty otherwise."""
+    if predicted is None or obs_now is None or prev_obs is None:
+        return set()
+    if set(obs_now) != set(prev_obs):
+        return set()  # not a both-stayed frame
+    now_set = set(obs_now)
+    return {cell for cell in predicted if cell not in now_set}
+
+
+def joint_reset_hazards(
+    predicted: Optional[tuple[tuple[int, int], tuple[int, int]]],
+    prev_obs: Optional[list[tuple[int, int]]],
+    obs_now: Optional[list[tuple[int, int]]],
+) -> set[tuple[int, int]]:
+    """The hazards revealed by a JOINT SOFT-RESET: both actors teleported to a home far
+    from BOTH their previous positions AND their predicted targets (L1 > 1 from every
+    such cell) — a reset triggered by entering a hazard, not ordinary motion. The cells
+    the plan tried to ENTER (the predicted targets) are the hazards. Empty otherwise."""
+    if predicted is None or obs_now is None or prev_obs is None:
+        return set()
+    prev_set, now_set = set(prev_obs), set(obs_now)
+    if now_set == prev_set:
+        return set()  # nobody moved — not a reset
+    reference = prev_set | set(predicted)
+
+    def far(cell: tuple[int, int]) -> bool:
+        return all(abs(cell[0] - r[0]) + abs(cell[1] - r[1]) > 1 for r in reference)
+
+    if all(far(c) for c in now_set):
+        return set(predicted)
+    return set()
+
+
 def _target_levels(game: str) -> int:
     """The frozen-contract level target a run must reach to count as CLEARED."""
     if game == "sc25":
@@ -590,13 +632,16 @@ def run_movement_level(env: "LiveEnv", record: dict[str, Any], run_index: int) -
     # wall evidence) so the plan routes around known walls before execution begins.
     seeded = gs.movement_blocked_targets()
     learned_walls: set[tuple[int, int]] = set() if seeded is UNKNOWN else set(seeded.value)
+    learned_hazards: set[tuple[int, int]] = set()
     if learned_walls:
         print(
             f"[live] run{run_index} m0r0: seeded {len(learned_walls)} wall(s) from discovery blocks",
             flush=True,
         )
     while True:
-        plan = compile_movement_hypothesis(instance, gs, extra_walls=learned_walls)
+        plan = compile_movement_hypothesis(
+            instance, gs, extra_walls=learned_walls, extra_hazards=learned_hazards
+        )
         sol = plan.solve()
         record["states_searched"] = max(record["states_searched"], sol.states_searched)
         if sol.status in (PlanStatus.SOLVABLE, PlanStatus.DONE):
@@ -626,8 +671,8 @@ def run_movement_level(env: "LiveEnv", record: dict[str, Any], run_index: int) -
     start_levels = env.levels()
     level_actions = 0
     settle_allowance = 1  # the first action after a level transition is absorbed (measured)
-    max_learned_walls = 12  # online-occupancy learning cap
-    max_recompiles = 20  # total recompiles/level (settle | learned-wall | ambiguous) before the honest surface
+    max_learned = 12  # online-learning cap (walls and hazards each)
+    max_recompiles = 30  # total recompiles/level before the honest surface (cause-logged)
     recompiles = 0
     prev_obs = _move_observed(gs)
     for _ in range(_M0R0_LEVEL_BUDGET + 10):
@@ -651,41 +696,39 @@ def run_movement_level(env: "LiveEnv", record: dict[str, Any], run_index: int) -
                 return "DIVERGED", len(gs.rebind_events)
             if result.status is PlanStatus.DIVERGED:
                 obs_now = _move_observed(gs)
-                # (settle) a fully no-op action = the post-transition settling frame
-                # absorbing the input (measured: idx1's first action moves nothing
-                # regardless of direction). Consume it ONCE; the next action is live.
+                cause: Optional[str] = None
+                # (settle) a fully no-op FIRST action = the post-transition settling
+                # frame absorbing the input. Consume it ONCE; the next action is live.
                 if settle_allowance > 0 and obs_now is not None and obs_now == prev_obs:
                     settle_allowance -= 1
-                    recompiles += 1
-                    print(
-                        f"[live] run{run_index} m0r0 recompile (settle) at step {level_actions} from {obs_now}",
-                        flush=True,
-                    )
-                    plan = compile_movement_hypothesis(instance, gs, extra_walls=learned_walls)
-                    continue
-                if recompiles < max_recompiles:
-                    # (learned-wall) a CLEAN independent_stay block — exactly one actor
-                    # stayed while its partner moved as predicted — reveals ONE wall the
-                    # parse missed. An AMBIGUOUS divergence (both actors off-prediction)
-                    # learns NOTHING, only recompiling from the current positions.
+                    cause = f"settle from {obs_now}"
+                elif recompiles < max_recompiles:
+                    # (learned-hazard) a JOINT soft-reset teleport: the cells the plan
+                    # tried to enter are hazards the grounding never saw (gold avoided them).
+                    hazards = joint_reset_hazards(predicted, prev_obs, obs_now) - learned_hazards
                     wall = clean_block_wall(predicted, prev_obs, obs_now)
-                    if wall is not None and wall not in learned_walls and len(learned_walls) < max_learned_walls:
+                    dbl = double_block_walls(predicted, prev_obs, obs_now) - learned_walls
+                    if hazards and len(learned_hazards) + len(hazards) <= max_learned:
+                        learned_hazards |= hazards
+                        record["hazard_resets"] += 1
+                        cause = f"learned-hazard {sorted(hazards)} ({len(learned_hazards)} total)"
+                    elif wall is not None and wall not in learned_walls and len(learned_walls) < max_learned:
+                        # a CLEAN single independent_stay block reveals ONE wall
                         learned_walls.add(wall)
-                        recompiles += 1
-                        print(
-                            f"[live] run{run_index} m0r0 recompile (learned-wall {wall}) at step "
-                            f"{level_actions} ({len(learned_walls)} total)",
-                            flush=True,
-                        )
-                        plan = compile_movement_hypothesis(instance, gs, extra_walls=learned_walls)
-                        continue
+                        cause = f"learned-wall {wall} ({len(learned_walls)} total)"
+                    elif dbl and len(learned_walls) + len(dbl) <= max_learned:
+                        # BOTH actors stayed, both targets unreached — learn both walls
+                        learned_walls |= dbl
+                        cause = f"double-block {sorted(dbl)} ({len(learned_walls)} total)"
+                    else:
+                        # ambiguous: learn nothing; recompile from current positions
+                        cause = f"ambiguous predicted {predicted} observed {obs_now}"
+                if cause is not None:
                     recompiles += 1
-                    print(
-                        f"[live] run{run_index} m0r0 recompile (ambiguous) at step {level_actions}: "
-                        f"predicted {predicted}, observed {obs_now}",
-                        flush=True,
+                    print(f"[live] run{run_index} m0r0 recompile ({cause}) at step {level_actions}", flush=True)
+                    plan = compile_movement_hypothesis(
+                        instance, gs, extra_walls=learned_walls, extra_hazards=learned_hazards
                     )
-                    plan = compile_movement_hypothesis(instance, gs, extra_walls=learned_walls)
                     continue
                 colour = gs._move_actor_colour
                 regions = gs._move_regions_of(frame, colour) if colour is not None else []

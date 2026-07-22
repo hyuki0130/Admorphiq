@@ -26,6 +26,8 @@ discover_deltas = _MOD.discover_deltas
 movement_edges_confirmed = _MOD.movement_edges_confirmed
 unconfirmed_directions = _MOD.unconfirmed_directions
 clean_block_wall = _MOD.clean_block_wall
+double_block_walls = _MOD.double_block_walls
+joint_reset_hazards = _MOD.joint_reset_hazards
 
 
 def _lattice(overrides=None):
@@ -244,6 +246,38 @@ def test_clean_block_wall_learns_only_on_a_single_clean_block():
     assert clean_block_wall(((2, 6), (2, 6)), [(2, 5), (2, 7)], [(2, 5), (2, 7)]) is None
     # total no-op (both stayed = the settle case) -> not a clean single block
     assert clean_block_wall(((3, 5), (3, 8)), [(2, 5), (2, 8)], [(2, 5), (2, 8)]) is None
+
+
+def test_double_block_walls_learns_both_targets_when_both_actors_stay():
+    """Purpose: when BOTH actors stayed (obs == prev) and neither reached its predicted
+    target, double_block_walls learns BOTH unreached targets (two simultaneous
+    independent_stay blocks), excluding any cell an actor currently occupies.
+
+    Expected feedback: pass proves the period-N recompile loop (both blocked, nothing
+    learned) is broken by learning both walls at once. Fail means a double block learns
+    nothing and the plan loops until the recompile cap."""
+    # both actors stayed at (6,2)/(6,10); predicted (7,2)/(7,10) both unreached -> walls
+    assert double_block_walls(((7, 2), (7, 10)), [(6, 2), (6, 10)], [(6, 2), (6, 10)]) == {(7, 2), (7, 10)}
+    # one actor moved -> not a double block (handled by clean_block_wall)
+    assert double_block_walls(((7, 2), (7, 10)), [(6, 2), (6, 10)], [(6, 2), (7, 10)]) == set()
+    # a predicted target occupied by an actor is NOT a wall (actor-block)
+    assert double_block_walls(((6, 2), (7, 10)), [(6, 2), (6, 10)], [(6, 2), (6, 10)]) == {(7, 10)}
+
+
+def test_joint_reset_hazards_detects_the_teleport_and_names_the_targets():
+    """Purpose: a JOINT soft-reset (both actors teleport to a home far from their
+    previous positions AND their predicted targets) is detected, and the cells the plan
+    tried to ENTER (the predicted targets) are returned as hazards.
+
+    Expected feedback: pass proves the hazard the grounding never saw (gold avoided it)
+    is learned online and routed around on recompile. Fail means the reset is treated as
+    a wall (wrong) or as ordinary motion (loops)."""
+    # predicted a downward move to (9,2)/(9,10); observed a teleport to home (3,5)/(3,8)
+    assert joint_reset_hazards(((9, 2), (9, 10)), [(8, 2), (8, 10)], [(3, 5), (3, 8)]) == {(9, 2), (9, 10)}
+    # ordinary one-cell motion toward the predicted cells -> NOT a reset
+    assert joint_reset_hazards(((9, 2), (9, 10)), [(8, 2), (8, 10)], [(9, 2), (9, 10)]) == set()
+    # nobody moved -> not a reset
+    assert joint_reset_hazards(((9, 2), (9, 10)), [(8, 2), (8, 10)], [(8, 2), (8, 10)]) == set()
 
 
 def test_unconfirmed_directions_lists_the_missing_actor_edges():
