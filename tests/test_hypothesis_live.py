@@ -87,8 +87,7 @@ def test_discover_cycle_gives_up_within_budget_when_it_cannot_close():
 
 
 def test_gate_verdict_pass_only_on_all_runs_clearing_the_target():
-    """Purpose: the gate PASSes only when every run cleared the game's required
-    levels (ft09 idx0+idx1; sc25 the cast).
+    """Purpose: the ft09 gate PASSes only when every run cleared idx0+idx1.
 
     Expected feedback: pass proves the 3/3 gate rule is enforced and a single
     non-clear (or a GROUNDING_INCOMPLETE) fails the gate. Fail means the verdict
@@ -101,7 +100,25 @@ def test_gate_verdict_pass_only_on_all_runs_clearing_the_target():
 
     incomplete = ft09_pass[:2] + [{"plan_outcome": "GROUNDING_INCOMPLETE", "levels_cleared": 0}]
     assert gate_verdict(incomplete, "ft09") == "FAIL"
-
-    sc25_pass = [{"plan_outcome": "CLEARED", "levels_cleared": 1} for _ in range(3)]
-    assert gate_verdict(sc25_pass, "sc25") == "PASS"
     assert gate_verdict([], "ft09") == "FAIL"  # no runs
+
+
+def test_sc25_gate_scores_the_cast_handover_not_levels():
+    """Purpose: per the FROZEN contract (sc25 idx0 pattern phase, navigation
+    excluded), the sc25 gate scores ``cast_and_handover`` — NOT levels_cleared,
+    which is honestly 0 for a genuine cast (the level does not clear without the
+    out-of-scope exit navigation).
+
+    Expected feedback: pass proves a 3/3 genuine-cast run PASSes with levels 0,
+    while a plan-DONE that never cast (cast_and_handover False) FAILs even though
+    it 'finished'. Fail means the gate reverted to a level-clear criterion the
+    contract forbids for sc25."""
+    cast_runs = [{"plan_outcome": "CAST_HANDOVER", "levels_cleared": 0, "cast_and_handover": True} for _ in range(3)]
+    assert gate_verdict(cast_runs, "sc25") == "PASS"  # levels 0 is correct + expected
+
+    no_cast = cast_runs[:2] + [{"plan_outcome": "DIVERGED", "levels_cleared": 0, "cast_and_handover": False}]
+    assert gate_verdict(no_cast, "sc25") == "FAIL"  # a plan-DONE with no cast fails
+
+    # A level-clear-shaped record without the cast flag must NOT pass sc25.
+    level_shaped = [{"plan_outcome": "CLEARED", "levels_cleared": 1} for _ in range(3)]
+    assert gate_verdict(level_shaped, "sc25") == "FAIL"

@@ -106,12 +106,18 @@ def discover_cycle(
 
 
 def gate_verdict(runs: list[dict[str, Any]], game: str) -> str:
-    """PASS iff every run cleared the game's required levels (ft09 idx0+idx1;
-    sc25 the pattern-phase cast), else FAIL."""
+    """PASS iff every run met the game's FROZEN-contract success criterion, else
+    FAIL. ft09 = the required levels cleared (idx0+idx1). sc25 = the pattern-phase
+    cast handover (contract: cast + guard, navigation excluded), scored on
+    ``cast_and_handover`` NOT levels — a genuine sc25 run has levels_cleared 0."""
     if not runs:
         return "FAIL"
-    target = _FT09_TARGET_LEVELS if game == "ft09" else _SC25_TARGET_LEVELS
-    ok = all(r.get("plan_outcome") == "CLEARED" and r.get("levels_cleared", 0) >= target for r in runs)
+    if game == "sc25":
+        return "PASS" if all(r.get("cast_and_handover") for r in runs) else "FAIL"
+    ok = all(
+        r.get("plan_outcome") == "CLEARED" and r.get("levels_cleared", 0) >= _FT09_TARGET_LEVELS
+        for r in runs
+    )
     return "PASS" if ok else "FAIL"
 
 
@@ -209,6 +215,7 @@ def run_once(game: str, run_index: int) -> dict[str, Any]:
         "plan_outcome": "BUDGET",
         "rebind_events": 0,
         "cycle_acquired": False,
+        "cast_and_handover": False,
     }
 
     # a. WARM-UP — feed frames until the family parse binds.
@@ -254,6 +261,7 @@ def run_once(game: str, run_index: int) -> dict[str, Any]:
     plan = compile_hypothesis(instance, gs)
     start_levels = env.levels()
     level_actions = 0
+    flips = 0  # genuine flip clicks the plan emitted (sc25 cast evidence)
     rediscoveries = 0
     max_rediscover = target_levels + 2
     total_budget = level_budget * target_levels + _DISCOVERY_BUDGET * max_rediscover + 10
@@ -268,9 +276,29 @@ def run_once(game: str, run_index: int) -> dict[str, Any]:
         result = plan.step(frame)
         if isinstance(result, Terminal):
             if result.status is PlanStatus.DONE:
-                # DONE = the hypothesis believes the objective satisfied. Genuine
-                # CLEARED iff the required levels cleared / WIN; otherwise the plan
-                # finished without the game agreeing = an honest DIVERGENCE.
+                if game == "sc25":
+                    # The FROZEN contract scores sc25 idx0 at the pattern phase only
+                    # (cast + guard handover; navigation excluded), so success is the
+                    # Phase-1 guard StableForReads(2) ^ RolesStateEqual(toggle_grid,
+                    # preview) after a GENUINE cast — NOT a level clear (levels stays
+                    # 0, which is correct). RolesStateEqual = an empty base-XOR diff;
+                    # StableForReads(2) = it holds on a 2nd read of the settled grid;
+                    # a genuine cast = >=1 real flip AND an observed cast colour.
+                    stable = False
+                    confirm = env.frame()
+                    if confirm is not None:
+                        gs.feed(confirm)
+                        again = gs.pattern_diff()
+                        stable = again is not UNKNOWN and not again.value
+                    record["cast_and_handover"] = bool(
+                        flips >= 1 and gs.cast_colour_seen() and stable
+                    )
+                    record["plan_outcome"] = (
+                        "CAST_HANDOVER" if record["cast_and_handover"] else "DIVERGED"
+                    )
+                    break
+                # ft09: DONE is a genuine clear iff the required levels cleared / WIN;
+                # otherwise the plan finished without the game agreeing = a DIVERGENCE.
                 record["plan_outcome"] = (
                     "CLEARED"
                     if record["levels_cleared"] >= target_levels or env.state() == "WIN"
@@ -290,6 +318,7 @@ def run_once(game: str, run_index: int) -> dict[str, Any]:
         if isinstance(result, Click):
             env.click(result.x, result.y)
             level_actions += 1
+            flips += 1
             now = env.levels()
             if now > start_levels + record["levels_cleared"]:
                 record["actions_per_level"].append(level_actions)

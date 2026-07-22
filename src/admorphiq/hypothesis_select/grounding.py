@@ -190,6 +190,11 @@ class GroundingService:
         self._sc25_two: Optional[tuple[int, int]] = None
         self._sc25_target: Optional[frozenset[Cell]] = None
         self._sc25_target_prev: Optional[frozenset[Cell]] = None
+        # A lattice cell ever shows a colour OUTSIDE the two base colours = a
+        # selection/cast colour produced by clicking (pristine boards are pure
+        # base colours). This is the "the grid committed" evidence distinguishing
+        # a genuine cast from an already-empty diff at the start.
+        self._sc25_cast_seen: bool = False
 
     # ── frame stream ─────────────────────────────────────────────────────
 
@@ -228,6 +233,16 @@ class GroundingService:
         if self._sc25_target is None and target is not None and target == self._sc25_target_prev:
             self._sc25_target = target
         self._sc25_target_prev = target
+        if self._sc25_two is not None and any(
+            _sc25_cell_colour(grid, region) not in self._sc25_two for region in index.values()
+        ):
+            self._sc25_cast_seen = True
+
+    def cast_colour_seen(self) -> bool:
+        """True once a lattice cell has shown a selection/cast colour (outside the
+        two base colours) — the observable 'the grid commits' signal for the sc25
+        cast handover. False on a pristine board or a glyph game."""
+        return self._sc25_cast_seen
 
     def _open_epoch(self, grid: Grid, reason: str = "initial") -> Optional[RebindEvent]:
         self._epoch += 1
@@ -243,6 +258,7 @@ class GroundingService:
         self._sc25_two = None
         self._sc25_target = None
         self._sc25_target_prev = None
+        self._sc25_cast_seen = False
         struct = _parse_structure(grid)
         cell_anchors = sorted(struct.cells)
         anchor_to_id = {a: f"e{self._epoch}:c{k}" for k, a in enumerate(cell_anchors)}
