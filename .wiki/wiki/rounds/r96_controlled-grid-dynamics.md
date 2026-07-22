@@ -129,6 +129,20 @@ model selection 15% / compiler-live 10%.
   wall); both-actors-off-prediction learns nothing (ambiguous); seed
   extra_walls from discovery's blocked_by_wall attributions; bounded
   recompiles with cause logging (settle | learned-wall | ambiguous).
+  **v5 gate (8fa8db6): FAIL 3/3 deterministic — but the clean-block rule
+  WORKS** ((3,11) learned once, zero false positives, no spurious
+  UNSATISFIABLE), and the cause log exposed defect 6, which is NOT walls:
+  - **Double-block loop**: both actors blocked simultaneously (row-7
+    targets) → ambiguous learns nothing → identical recompile → a
+    deterministic period-10 loop to the recompile cap.
+  - **Unlearned hazard soft-reset**: predicted ((9,2),(9,10)) → observed
+    [(3,5),(3,8)] — a JOINT teleport home. The schema models
+    hazard_soft_reset, but gold never entered a hazard on idx0 so the
+    grounded hazard set is honestly empty; the plan cannot avoid what it
+    does not know (and the hazard_resets counter missed these — spawn
+    tolerance). Fix in build: double-block learns BOTH targets as walls;
+    online HAZARD learning (joint-teleport detection → entered cells are
+    hazards → extra_hazards twin of extra_walls → recompile post-reset).
   (vii)–(viii) pending.
 
 ## Related
