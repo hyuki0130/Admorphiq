@@ -1,0 +1,211 @@
+{
+  "model": "gemma4",
+  "runs": 3,
+  "model_verdict": {
+    "ft09": "PASS",
+    "sc25": "PASS"
+  },
+  "per_run": {
+    "ft09": [
+      {
+        "choice": "I3",
+        "mapped_instance": "ft09_oracle",
+        "is_oracle": true,
+        "verifier_verdict": "PASS",
+        "executed": true,
+        "plan_outcome": "CLEARED",
+        "levels_cleared": 2,
+        "cast_and_handover": false,
+        "outcome": "PASS"
+      },
+      {
+        "choice": "I3",
+        "mapped_instance": "ft09_oracle",
+        "is_oracle": true,
+        "verifier_verdict": "PASS",
+        "executed": true,
+        "plan_outcome": "CLEARED",
+        "levels_cleared": 2,
+        "cast_and_handover": false,
+        "outcome": "PASS"
+      },
+      {
+        "choice": "I3",
+        "mapped_instance": "ft09_oracle",
+        "is_oracle": true,
+        "verifier_verdict": "PASS",
+        "executed": true,
+        "plan_outcome": "CLEARED",
+        "levels_cleared": 2,
+        "cast_and_handover": false,
+        "outcome": "PASS"
+      }
+    ],
+    "sc25": [
+      {
+        "choice": "I1",
+        "mapped_instance": "sc25_oracle",
+        "is_oracle": true,
+        "verifier_verdict": "PASS",
+        "executed": true,
+        "plan_outcome": "CAST_HANDOVER",
+        "levels_cleared": 0,
+        "cast_and_handover": true,
+        "outcome": "PASS"
+      },
+      {
+        "choice": "I1",
+        "mapped_instance": "sc25_oracle",
+        "is_oracle": true,
+        "verifier_verdict": "PASS",
+        "executed": true,
+        "plan_outcome": "CAST_HANDOVER",
+        "levels_cleared": 0,
+        "cast_and_handover": true,
+        "outcome": "PASS"
+      },
+      {
+        "choice": "I1",
+        "mapped_instance": "sc25_oracle",
+        "is_oracle": true,
+        "verifier_verdict": "PASS",
+        "executed": true,
+        "plan_outcome": "CAST_HANDOVER",
+        "levels_cleared": 0,
+        "cast_and_handover": true,
+        "outcome": "PASS"
+      }
+    ]
+  },
+  "results": [
+    {
+      "game": "ft09",
+      "runs": [
+        {
+          "run": 0,
+          "choice": "I3",
+          "mapped_instance": "ft09_oracle",
+          "is_oracle": true,
+          "confidence": "medium",
+          "evidence": "The observations show a cycle of length 2 (though the candidate lists 3, it's the closest match among the cycle models) and a total of 32 cell-to-marker coverings, which aligns with the 'all_covering' quantifier in I3.",
+          "verifier_verdict": "PASS",
+          "executed": true,
+          "levels_cleared": 2,
+          "cast_and_handover": false,
+          "actions_per_level": [
+            4,
+            8
+          ],
+          "discovery_actions": 19,
+          "cycle_acquired": true,
+          "plan_outcome": "CLEARED",
+          "rebind_events": 1,
+          "outcome": "PASS"
+        },
+        {
+          "run": 1,
+          "choice": "I3",
+          "mapped_instance": "ft09_oracle",
+          "is_oracle": true,
+          "confidence": "medium",
+          "evidence": "The observations show a cycle of length 2 (though the candidate lists 3, it's the closest match among the cycle models) and a total of 32 cell-to-marker coverings, which aligns with the 'all_covering' quantifier in I3.",
+          "verifier_verdict": "PASS",
+          "executed": true,
+          "levels_cleared": 2,
+          "cast_and_handover": false,
+          "actions_per_level": [
+            4,
+            8
+          ],
+          "discovery_actions": 19,
+          "cycle_acquired": true,
+          "plan_outcome": "CLEARED",
+          "rebind_events": 1,
+          "outcome": "PASS"
+        },
+        {
+          "run": 2,
+          "choice": "I3",
+          "mapped_instance": "ft09_oracle",
+          "is_oracle": true,
+          "confidence": "medium",
+          "evidence": "The observations show a cycle of length 2 (though the candidate lists 3, it's the closest match among the cycle models) and a total of 32 cell-to-marker coverings, which aligns with the 'all_covering' quantifier in I3.",
+          "verifier_verdict": "PASS",
+          "executed": true,
+          "levels_cleared": 2,
+          "cast_and_handover": false,
+          "actions_per_level": [
+            4,
+            8
+          ],
+          "discovery_actions": 19,
+          "cycle_acquired": true,
+          "plan_outcome": "CLEARED",
+          "rebind_events": 1,
+          "outcome": "PASS"
+        }
+      ],
+      "model_verdict": "PASS"
+    },
+    {
+      "game": "sc25",
+      "runs": [
+        {
+          "run": 0,
+          "choice": "I1",
+          "mapped_instance": "sc25_oracle",
+          "is_oracle": true,
+          "confidence": "high",
+          "evidence": "The transition_model 'binary_flip' matches the observation that clicks change 1 cell (the clicked cell itself), whereas 'empirical_effect_matrix' with footprint 2 (I4) would change multiple cells. I1's 'xor_exact' is the standard interpretation for this puzzle type compared to 'absolute_exact' or 'xor_near'.",
+          "verifier_verdict": "PASS",
+          "executed": true,
+          "levels_cleared": 0,
+          "cast_and_handover": true,
+          "actions_per_level": [],
+          "discovery_actions": 4,
+          "cycle_acquired": false,
+          "plan_outcome": "CAST_HANDOVER",
+          "rebind_events": 0,
+          "outcome": "PASS"
+        },
+        {
+          "run": 1,
+          "choice": "I1",
+          "mapped_instance": "sc25_oracle",
+          "is_oracle": true,
+          "confidence": "high",
+          "evidence": "The transition_model 'binary_flip' matches the observation that clicks change 1 cell (the clicked cell itself), whereas 'empirical_effect_matrix' with footprint 2 (I4) would change multiple cells. I1's 'xor_exact' is the standard interpretation for this puzzle type compared to 'absolute_exact' or 'xor_near'.",
+          "verifier_verdict": "PASS",
+          "executed": true,
+          "levels_cleared": 0,
+          "cast_and_handover": true,
+          "actions_per_level": [],
+          "discovery_actions": 4,
+          "cycle_acquired": false,
+          "plan_outcome": "CAST_HANDOVER",
+          "rebind_events": 0,
+          "outcome": "PASS"
+        },
+        {
+          "run": 2,
+          "choice": "I1",
+          "mapped_instance": "sc25_oracle",
+          "is_oracle": true,
+          "confidence": "high",
+          "evidence": "The transition_model 'binary_flip' matches the observation that clicks change 1 cell (the clicked cell itself), whereas 'empirical_effect_matrix' with footprint 2 (I4) would change multiple cells. I1's 'xor_exact' is the standard interpretation for this puzzle type compared to 'absolute_exact' or 'xor_near'.",
+          "verifier_verdict": "PASS",
+          "executed": true,
+          "levels_cleared": 0,
+          "cast_and_handover": true,
+          "actions_per_level": [],
+          "discovery_actions": 4,
+          "cycle_acquired": false,
+          "plan_outcome": "CAST_HANDOVER",
+          "rebind_events": 0,
+          "outcome": "PASS"
+        }
+      ],
+      "model_verdict": "PASS"
+    }
+  ]
+}

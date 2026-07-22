@@ -3,7 +3,7 @@ type: reasoning
 round: R95
 axis: agent25 — typed hypothesis DSL (discriminative selection first)
 keywords: [agent25, hypothesis-dsl, discriminative-selection, enum-vocabulary, family-sub-banks, equivalence-class, ft09, sc25, oracle-first, fallback-ladder, self-extension, two-model, prereg]
-verdict: R95a COMPLETE, thesis CONFIRMED PAIRED — BOTH gemma4-31b AND gpt-oss-120b pass the ft09 PRIMARY case 3/3 picking the EXACT ORACLE (not merely the tied class) with high confidence and evidence citing the true discriminators (215/359 single-cell clicks refuting the stencil; marker-ring relational completion); BOTH fail sc25 identically on the SAME cursor artifact (multi-cell histogram from the click cursor's second changed region) — a PRE-PREDICTED observation-layer defect, so sc25's 0/3 is attributable to the harness binding layer, not model reasoning, and cursor/HUD masking becomes the first binding-backlog item. No model-capability difference on this bench. R95b family-compiler gate OPENS per prereg
+verdict: MILESTONE — FIRST FULLY AUTONOMOUS agent25 CLEARS through the hypothesis channel (gemma4, 2026-07-22 19:28). The model-stage finale scored 6/6 across both games — the model picked the EXACT ORACLE from live grounding evidence in every fresh run, the verifier PASSed it, and the compiled plan cleared ft09 idx0+idx1 at 4+8 actions (human baseline) and reached sc25 cast+handover, 3/3 each — exceeding the frozen ≥2/3 contract bar with zero adapter code and zero game ids anywhere in the runtime path. Earlier in the round: R95a paired selection confirmation (both models 3/3 exact-oracle on ft09; sc25 chrome defect #125 found via cross-model failure, fixed, gemma4 recovered 3/3), and the full oracle pipeline (schema→grounding→verify→compile→live) proven at both family variants. gptoss twin in flight; step (viii) slot filling remains
 commit: [aa8bdfa, d511ed6, 40ee7fd, 7e456dd, 405e754, 82199cf]
 date: 2026-07-22
 ---
@@ -244,7 +244,17 @@ mode 2→1, ft09 byte-identical), and closure is demonstrated on gemma4.
   (ft09 idx0+idx1 clear; sc25 cast_and_handover). A pass = the first fully
   autonomous agent25 clears through the hypothesis channel. gptoss twin
   after gemma4.
-- (viii) slot filling: pending (after vii).
+- **(vii) MODEL STAGE: 6/6 PASS — THE MILESTONE** (gemma4, collected 19:28;
+  `scripts/rounds/R95/r95b_model_bench_gemma4.json`): in EVERY fresh run the
+  model selected the exact oracle instance from the run's own live grounding
+  evidence (ft09: I3 ×3, refuting the stencil mutant via the measured
+  1-cell footprint; sc25: I1 ×3), the verifier PASSed it, and the compiled
+  plan cleared ft09 idx0+idx1 at 4+8 actions and reached sc25 cast+handover
+  — 3/3 each vs the ≥2/3 bar. **The first fully autonomous agent25 clears:
+  model-chosen hypothesis → verifier → compiler → live clear at
+  human-baseline efficiency, zero adapter code.** gptoss twin launched
+  (`admorphiq-r95b-model-gptoss` v1) for the paired record.
+- (viii) slot filling: pending (after vii's paired record).
 
 ## Related
 
