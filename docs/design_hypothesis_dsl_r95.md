@@ -60,6 +60,39 @@ Deliverable: `scripts/probe_hypothesis_select.py` + per-case telemetry
 baseline). No live execution, no compiler, no sandbox — offline over recorded
 transitions from the existing R93/R94 traces.
 
+### R95a candidate template sets (v2.5 — drafted from decoded ground truth)
+
+Design principle: hard negatives are HISTORICAL wrong hypotheses that were
+measured-falsified wherever possible — the strongest available distractors,
+because they fooled real solvers for months.
+
+**ft09** (ground truth: `games/FT09.md` constraint rule, gold-verified 6/6):
+
+| # | template | status |
+|---|---|---|
+| O | glyph-constraint satisfaction: every covered cell must equal (ink-0) / differ (ink-2) from EACH covering glyph's center colour, ALL simultaneously; click walks the measured colour cycle one step | ORACLE (byte-verified vs gold) |
+| N1 | GF(2) neighbourhood-toggle stencil, solve linearly | hard negative — the historical `lights_out` hypothesis, falsified after years |
+| N2 | nearest-glyph-only constraint scoping | hard negative — the measured "coverage-scoping near-miss" |
+| N3 | uniform-colour goal (all cells one colour) | naive negative |
+| N4 | match-displayed-preview template (sc25-style) | cross-family negative |
+
+**sc25 pattern phase** (ground truth: `games/SC25.md` mechanics):
+
+| # | template | status |
+|---|---|---|
+| O | binary cell flip; goal = grid EXACTLY equals `base XOR preview`; first action eaten by settle redraw | ORACLE (live-verified) |
+| N1 | cells walk a colour cycle (ft09-style multi-state) | cross-family negative |
+| N2 | near-match threshold goal (≥k cells matching suffices) | hard negative — the game HIGHLIGHTS near-matches; this defeated the earlier blind-search adapter |
+| N3 | click flips the cell AND its neighbours (stencil) | plausible negative |
+| N4 | preview read as ABSOLUTE colours (no base-parity XOR) | hard negative — the real subtle bug the R56 adapter had to solve |
+
+Discrimination is HELD-OUT-transition prediction: e.g. ft09 N1 predicts a
+click changes MULTIPLE cells (observed: one cell steps its cycle); sc25 N4
+mispredicts every level whose base parity is nonzero. If gemma4 cannot beat
+exhaustive replay-ranking on THESE sets — where the negatives are this
+strong and the evidence this clean — the hypothesis-selection thesis is dead
+at this model scale, cheaply.
+
 ## R95b — family compiler (ONLY if R95a shows model selection skill)
 
 - **Tagged family schemas** (finding 1): `toggle` schema = board cells,
