@@ -153,6 +153,27 @@ mechanism predicted → harness fixed generically → picks recover — is the
 first CLOSED defect chain through the hypothesis channel. gpt-oss v2 twin
 launched for the paired closure.
 
+## R95b build progress (Codex CONDITIONAL GO plan v1; live log)
+
+- **(i) evaluation contract FROZEN** (34553c5): ft09 idx0/idx1 + sc25 idx0
+  cast; fresh-reset + grounded clicks only; ≥2/3-runs success rule; leakage
+  prohibitions; grounding-failure falsification clause.
+- **(ii) schema BUILT** (3c1b142): tagged objective union (cross-products
+  unrepresentable by type), OrderedCycle transition model, 11-clause guard
+  vocabulary, ownership table (`model_selected` = exactly 4 semantic slots),
+  ft09/sc25 oracle instances, 6-mutant expected-verdict table shipped as data.
+- **(iii) grounding service BUILT** (925d26f): colour-independent stable IDs
+  (epoch-namespaced), materialized cells/glyphs/incidence, action-time click
+  resolution, rebind events, honest-UNKNOWN + min-probe cycle acquisition.
+  Family parse LIFTED out of the quarantined adapters (1685-frame byte
+  parity) — the hypothesis channel now has zero adapter dependency. Two
+  honest findings: gold traces cannot complete the ft09 cycle (minimal-click
+  play never shows the closing edges → live gate needs bidirectional
+  probes), and L3 shows a 12→8 edge CONTRADICTING the documented [9,8,12]
+  cycle — under investigation before the verifier freezes expectations.
+- (iv) verifier: in build (mutant expected-verdict table = its acceptance
+  test). (v)–(viii) pending.
+
 ## Related
 
 - [[r94_adapter-template]] — the refuted family-template road this replaces.
