@@ -57,8 +57,25 @@ model selection 15% / compiler-live 10%.
   robust to both replay and continuous live play. Process note: a
   delegation race created a transient duplicate implementation, caught and
   reconciled to a single clean one before commit.
-- (iv) movement verifier: in build (structure-based delta judgement; the
-  frozen 6-mutant matrix is the acceptance gate). (v)–(viii) mirror R95.
+- **(iv) movement verifier BUILT** (bfd6848): structure-based delta
+  judgement (hash-variable action numbering never pinned), collision policy
+  vs desync evidence, honest hazard-UNKNOWN at zero observations;
+  **acceptance matrix matches the frozen table EXACTLY** (oracle PASS + 4
+  CONTRADICTED + 2 honest UNKNOWN), no forcing.
+- **(v) movement compiler BUILT** (eb4d3cf): CoupledGridStepPlan joint
+  two-actor BFS (independent_stay, hazard avoidance), grounding-sourced
+  executable deltas (the hash-robust design — the instance supplies only
+  model_selected semantics), typed surfaces incl.
+  UNSATISFIABLE-with-state-count and UNSUPPORTED(EmpiricalMoveMatrix).
+  **Fixture: plan length 15 = EXACTLY the m0r0 gold count** (598 joint
+  states, exact same_cell merge end state).
+- **(vi) live driver BUILT + gate measured** (87aed80, b46ed61):
+  **m0r0 idx0 CLEARED LIVE 3/3 at exactly 15 actions each (= gold,
+  deterministic)** — discovery 9 actions acquires all 8 delta edges, joint
+  BFS, stepped per-move confirmation, merge, clear. idx1: binds + compiles
+  (SOLVABLE in isolation, 1181 states) but DIVERGED at execution 3/3 —
+  per-board fidelity follow-up in progress (per-board re-grounding is the
+  doctrine; rebind_events 22/run is a lead). (vii)–(viii) pending.
 
 ## Related
 
