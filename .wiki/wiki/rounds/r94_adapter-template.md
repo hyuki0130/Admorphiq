@@ -169,6 +169,24 @@ not the template or the plumbing.
 - Honest scope: one pair, one patcher — outcome feeds the R94 verdict as ONE experiment,
   not a general law.
 
+## D5 holdout v1 (2026-07-22 09:17) — mismatch arm wins on tie-break; family arm KILLED BY CLIENT TIMEOUT
+
+| arm | template baseline (sk48) | adaptation | fresh score |
+|---|---|---|---|
+| A simdfs (family-match, 75KB card) | inert (0lv/1st, noop 1.0) | **FAILED at generation — 300.1s = the client's default timeout** | inert (template selected) |
+| B toggle (mismatch, 6.6KB card) | inert (0lv/1st) | OK, 114.6s | **0lv / 71st / 309tr** (adapted selected) |
+
+- Surface verdict (frozen prereg, tie-break): **arm B**. Real finding: **TEMPLATE SIZE
+  gates adaptability through the time budget** — the family card never received its
+  patch (harness config artifact: openai_compat_llm's default timeout=300s), so this
+  run does NOT measure family-template value. Per tune-before-discard: v2 with
+  HARNESS_PATCH_TIMEOUT=900 (e2c75a9) is the honest re-run.
+- Positive sub-finding: the patch loop turned an INERT mismatched template into a live
+  explorer on an unseen-family game (1→71 states) — mechanism generality again.
+- Deployment note either way: family cards must be SMALLER (a distilled family card ≪
+  the full engine card) — a real R94 design input independent of the v2 outcome.
+- Artifacts: `scripts/rounds/R94/r94_holdout_*_v1.json`.
+
 ## In flight
 
 - **D3 upper-bound gate**: verbatim arrangement card driven through the run_code sandbox
