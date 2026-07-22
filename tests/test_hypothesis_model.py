@@ -266,3 +266,95 @@ def test_fill_instance_two_stage_with_one_retry():
     assert record["variant_choice"] == {"objective_kind": "pattern_reference", "transition_kind": "binary_flip"}
     assert record["assembly_valid"] is True and record["retries"] == 1
     assert record["slot_values"]["preview_interpretation"] == "xor_exact"
+
+
+def test_unsupported_variant_combination_is_typed_not_a_crash():
+    """Purpose: a model-assembled variant the compiler cannot plan (glyph objective
+    + binary-flip transition) is detected by ``compilable`` as False, so the gate
+    records UNSUPPORTED_COMBINATION instead of crashing; a supported combo is True.
+
+    Expected feedback: pass proves the harness-crash defect (rc=1 killing the whole
+    case) is closed as a typed per-run failure. Fail means an unsupported pick would
+    still raise out of execute_instance."""
+    gs = _MOD._replay_grounding("ft09")
+    harness = _MOD.harness_measured_values(gs, "ft09")
+    harness["order"] = [9, 8, 12]
+    slots = {"coverage_quantifier": "all_covering", "ink_operator_map": {0: "equal", 2: "differ"},
+             "phase_guards": [[], ["layout_replaced"]]}
+    supported = _MOD.assemble_instance("glyph_relational", "ordered_cycle", slots, harness, [0, 2])
+    unsupported = _MOD.assemble_instance("glyph_relational", "binary_flip", slots, harness, [0, 2])
+    assert _MOD.compilable(supported, gs) is True
+    assert _MOD.compilable(unsupported, gs) is False
+
+
+def test_observation_summary_reports_the_click_style_discriminator():
+    """Purpose: the observation summary carries the honest, correctly-oriented
+    click-style line — selection-then-commit (lattice/pattern family) vs a direct
+    colour change (glyph family) — with no leak. (A distinct-colours-per-cell count
+    is deliberately NOT reported: measured to be an inverted signal.)
+
+    Expected feedback: pass proves ASK 1 has a measured observable that separates
+    the two mechanics. Fail means the misleading colour-count line regressed in, or
+    the click-style line is missing."""
+    sc25 = _MOD.live_observation_summary(_MOD._replay_grounding("sc25"), "sc25")
+    assert "temporary selection colour" in sc25
+    ft09 = _MOD.live_observation_summary(_MOD._replay_grounding("ft09"), "ft09")
+    assert "directly to another colour" in ft09
+    assert "distinct colour" not in ft09  # the inverted count must NOT be reported
+    for token in ("ft09", "sc25", "oracle"):
+        assert token not in (sc25 + ft09).lower()
+
+
+def test_fill_auto_pairs_the_compilable_transition_to_the_objective():
+    """Purpose: a model that picks the observable objective but an incompatible
+    transition (glyph_relational + binary_flip) has the transition AUTO-PAIRED to
+    the compilable one (ordered_cycle), with the model's original pick recorded —
+    the ft09 fill fix, since cycle-vs-flip is not cheaply observable.
+
+    Expected feedback: pass proves ft09 fill no longer fails on an unobservable
+    transition mismatch. Fail means the auto-pairing is not applied and the run
+    would hit UNSUPPORTED_COMBINATION."""
+    gs = _MOD._replay_grounding("ft09")
+    guards = '[], ["layout_replaced"]'
+    inkmap = '"0": "equal", "2": "differ"'
+    scripted = iter([
+        '{"objective_kind": "glyph_relational", "transition_kind": "binary_flip", "confidence": "high"}',
+        f'{{"coverage_quantifier": "all_covering", "ink_operator_map": {{{inkmap}}}, "phase_guards": [{guards}]}}',
+    ])
+
+    def llm(_messages):
+        return next(scripted)
+
+    record = {"colour_variety": None}
+    # Auto-pairing happens right after the variant ask (before assembly), so the
+    # recorded variant reflects the compilable transition even though this replay
+    # grounding has no acquired cycle for the ordered_cycle to assemble against.
+    _MOD.fill_instance(gs, "ft09", llm, record)
+    assert record["variant_choice"]["transition_kind"] == "ordered_cycle"  # auto-paired
+    assert record.get("model_transition") == "binary_flip"  # original model pick recorded
+
+
+def test_effect_matrix_pick_is_not_auto_paired_and_reaches_the_gate():
+    """Purpose: an empirical_effect_matrix transition is an OBSERVABLE multi-cell
+    claim — the boundary says it must STAND as chosen (not paired away to the
+    objective's compatible transition) so it flows to the verifier's footprint gate.
+
+    Expected feedback: pass proves the auto-pairing is confined to the unobservable
+    {ordered_cycle, binary_flip} pair and the discriminative footprint claim / live
+    catch is preserved. Fail means effect_matrix was silently erased — weakening the
+    safety layer the experiment relies on."""
+    gs = _MOD._replay_grounding("ft09")
+    guards = '[], ["layout_replaced"]'
+    inkmap = '"0": "equal", "2": "differ"'
+    scripted = iter([
+        '{"objective_kind": "glyph_relational", "transition_kind": "empirical_effect_matrix", "confidence": "high"}',
+        f'{{"coverage_quantifier": "all_covering", "ink_operator_map": {{{inkmap}}}, "phase_guards": [{guards}]}}',
+    ])
+
+    def llm(_messages):
+        return next(scripted)
+
+    record = {"colour_variety": None}
+    _MOD.fill_instance(gs, "ft09", llm, record)
+    assert record["variant_choice"]["transition_kind"] == "empirical_effect_matrix"  # STANDS
+    assert "model_transition" not in record  # not a correction — the pick was honoured

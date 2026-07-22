@@ -38,6 +38,7 @@ from pathlib import Path
 from typing import Any, Callable, Optional
 
 from admorphiq.hypothesis_select import schema
+from admorphiq.hypothesis_select.compiler import compile_hypothesis
 from admorphiq.hypothesis_select.grounding import UNKNOWN, GroundingService
 from admorphiq.hypothesis_select.verifier import Evidence, verify_with_evidence
 
@@ -56,6 +57,17 @@ _COVERAGE_QUANTIFIERS = ("all_covering", "nearest_only")
 _PREVIEW_INTERPRETATIONS = ("xor_exact", "xor_near", "absolute_exact", "absolute_near")
 _INK_OPERATORS = ("equal", "differ", "none")
 _GUARD_KINDS = ("stable_for_reads", "roles_state_equal", "layout_replaced", "level_advanced")
+# The compiler supports exactly one transition per objective (glyph -> ordered
+# cycle, pattern -> binary flip); and the cycle-vs-flip distinction is NOT cheaply
+# observable (MEASURED: ft09 cells toggle 2 colours, the cycle is latent). So the
+# harness pairs the compilable transition to the model's (observable) objective —
+# an uncompilable model transition is auto-corrected, recorded for audit.
+_COMPATIBLE_TRANSITION = {"glyph_relational": "ordered_cycle", "pattern_reference": "binary_flip"}
+# Auto-pairing is confined to THIS pair only — the two members are behaviourally
+# indistinguishable from cheap probing. empirical_effect_matrix is EXCLUDED: it is
+# an OBSERVABLE multi-cell claim that must stand as chosen and reach the verifier
+# (the footprint gate, the proven live catch), never be paired away.
+_UNOBSERVABLE_TRANSITIONS = frozenset({"ordered_cycle", "binary_flip"})
 # The harness fills each guard's PARAMS (reads count, role names) — numbers/roles
 # the harness measured; the model only chooses WHICH guard kinds gate each phase.
 _GUARD_JSON: dict[str, dict[str, Any]] = {
@@ -110,16 +122,29 @@ def _shuffle_ids(game: str, names: list[str]) -> dict[str, str]:
 # ── live observation summary (structural; from the run's grounding) ───────────
 
 
-def live_observation_summary(gs: GroundingService, game: str) -> str:
+def live_observation_summary(
+    gs: GroundingService, game: str, colour_variety: Optional[tuple[int, int]] = None
+) -> str:
     """A NEUTRAL structural summary of the LIVE grounding evidence gathered this
     run — the number of interactive cells and marker symbols, the click-footprint
-    histogram, and the acquired colour cycle (glyph family) or flip/pattern facts
-    (lattice family). No game id, no template identity, no oracle hint."""
+    histogram, the DISTINCT COLOURS one cell takes under repeated clicks (the
+    ordered-cycle-vs-binary-flip discriminator), and the pattern facts (lattice
+    family). No game id, no template identity, no oracle hint. ``colour_variety``
+    is the measured ``(distinct_colours, clicks)``; when absent it falls back to the
+    acquired cycle length."""
     lines = ["OBSERVATIONS (measured from this run's own probing):"]
 
     cells = gs.cells()
     n_cells = len(cells.value) if cells is not UNKNOWN else 0
     lines.append(f"- Interactive cells detected: {n_cells}")
+
+    # NOTE: a distinct-colours-per-cell count is NOT reported — MEASURED to be an
+    # inverted/unreliable ordered-cycle-vs-binary-flip signal (ft09 cells observably
+    # toggle between 2 colours; the third cycle colour is latent, while a lattice
+    # cell's transient selection colour inflates its count to 3). ``colour_variety``
+    # is measured for the audit record only. The honest observable click-style line
+    # (selection-then-commit vs direct change) is emitted below.
+    _ = colour_variety
 
     glyphs = gs.glyphs()
     if glyphs is not UNKNOWN:
@@ -142,10 +167,6 @@ def live_observation_summary(gs: GroundingService, game: str) -> str:
     else:
         lines.append("- Click-footprint histogram: none observed")
 
-    cycle = gs.get_ordered_cycle()
-    if cycle is not UNKNOWN:
-        lines.append(f"- An ordered colour cycle of length {len(cycle.value)} was acquired from clicks")
-
     evidence = gs.pattern_evidence()
     if evidence is not UNKNOWN:
         # Structure only — NOT the majority-based cells_matching count, which reads
@@ -156,7 +177,11 @@ def live_observation_summary(gs: GroundingService, game: str) -> str:
             f"{evidence.value['total']} cells; the cells take two colours"
         )
     if gs.cast_colour_seen():
-        lines.append("- Clicking a cell paints it a distinct selection colour before it commits")
+        lines.append(
+            "- Clicking a cell first paints it a distinct temporary selection colour, which then commits"
+        )
+    else:
+        lines.append("- Clicking a cell changed it directly to another colour, with no separate selection step")
 
     return "\n".join(lines)
 
@@ -165,7 +190,7 @@ def live_observation_summary(gs: GroundingService, game: str) -> str:
 
 
 def build_ask_prompt(
-    game: str, gs: GroundingService
+    game: str, gs: GroundingService, colour_variety: Optional[tuple[int, int]] = None
 ) -> tuple[list[dict[str, str]], dict[str, str], str]:
     """Assemble the model selection ask from the LIVE grounding ``gs``: the
     candidate instances serialized via ``schema.to_neutral_json`` under a
@@ -176,7 +201,7 @@ def build_ask_prompt(
     by_name = dict(named)
     mapping = _shuffle_ids(game, [n for n, _inst in named])
 
-    observation = live_observation_summary(gs, game)
+    observation = live_observation_summary(gs, game, colour_variety)
     candidate_block = "\n\n".join(
         f"{cid}:\n{json.dumps(schema.to_neutral_json(by_name[mapping[cid]]), indent=2)}"
         for cid in sorted(mapping)
@@ -279,34 +304,85 @@ def gate_selected_instance(
     return verdict.verdict.value, verdict.verdict is schema.Verdict.PASS
 
 
+def compilable(instance: schema.CellStateHypothesis, gs: GroundingService) -> bool:
+    """Whether ``instance``'s (objective, transition) variant combination has a
+    compiled plan. A model-assembled hypothesis can pair an objective with a
+    transition the compiler does not support (e.g. a glyph objective with a
+    binary-flip transition) — that is a typed per-run failure, not a crash."""
+    try:
+        compile_hypothesis(instance, gs)
+    except ValueError:
+        return False
+    return True
+
+
 # ── live run (env-driven; exercised only under the real gate) ─────────────────
 
 
 def _gather_evidence(env: "live.LiveEnv", gs: GroundingService, game: str, record: dict[str, Any]) -> None:
-    """Probe the board to accumulate footprint (+ cycle / flip) evidence into
-    ``gs`` — the ft09 cycle discovery, or a bounded lattice flip-probe for the
+    """Probe the board to accumulate footprint + colour-variety evidence into
+    ``gs`` — the ft09 cycle discovery, or a repeated-click colour probe for the
     pattern family — so the observation summary and the verifier's transition
-    claim have measured evidence."""
+    claim have measured evidence. Sets ``record['colour_variety']`` = the distinct
+    colours ONE cell takes under repeated clicks (the cycle-vs-flip discriminator)."""
     def probe(x: int, y: int) -> Optional[Grid]:
         env.click(x, y)
         return env.frame()
 
     if game == "ft09":
+        # Acquire the colour cycle the COMPILER needs for execution (the tested path).
         closed, used = live.discover_cycle(gs, probe)
         record["discovery_actions"] += used
         record["cycle_acquired"] = closed
-        return
-    # Lattice family: click a few distinct responsive cells once each to record
-    # the single-cell footprint + the selection/cast colour.
+    # The colour-variety count for the ask is measured DIRECTLY by repeated clicks
+    # (both games) — get_ordered_cycle can close a PARTIAL cycle and under-report
+    # the distinct-colour count (measured: ft09 acquired length 2, not 3), which
+    # would falsely signal a binary flip.
+    record["colour_variety"] = measure_colour_variety(env, gs, game, record)
+
+
+def measure_colour_variety(
+    env: "live.LiveEnv", gs: GroundingService, game: str, record: dict[str, Any], clicks: int = 5
+) -> Optional[tuple[int, int]]:
+    """Repeatedly click ONE responsive cell and count the distinct colours it takes
+    — the ordered-cycle (3+) vs binary-flip (2) discriminator, and footprint
+    evidence. Responsiveness-adaptive: skips inert cells (each probe still records a
+    footprint). Returns ``(distinct_colours, clicks)`` or ``None`` when no cell is
+    responsive."""
     cells = gs.cells()
     if cells is UNKNOWN:
-        return
-    for _cid, (ry, rx) in cells.value[:_SC25_PROBE_CELLS]:
+        return None
+    for cid, (ry, rx) in cells.value:
+        x, y = int(round(rx)), int(round(ry))
+        c0 = gs.cell_colour(cid)
         before = env.frame()
-        after = probe(int(round(rx)), int(round(ry)))
-        record["discovery_actions"] += 1
-        if before is not None and after is not None:
-            gs.feed_transition(before, 6, (int(round(rx)), int(round(ry))), after)
+        after = probe_and_feed(env, gs, x, y, record)
+        c1 = gs.cell_colour(cid)
+        if c0 is UNKNOWN or c1 is UNKNOWN or c1.value == c0.value or before is None or after is None:
+            continue  # inert cell (one footprint recorded); try the next
+        seen = {c0.value, c1.value}
+        for _ in range(clicks - 1):
+            probe_and_feed(env, gs, x, y, record)
+            cc = gs.cell_colour(cid)
+            if cc is not UNKNOWN:
+                seen.add(cc.value)
+        return (len(seen), clicks)
+    return None
+
+
+def probe_and_feed(
+    env: "live.LiveEnv", gs: GroundingService, x: int, y: int, record: dict[str, Any]
+) -> Optional[Grid]:
+    """Click ``(x, y)``, feed the transition to ``gs`` (footprint evidence), and
+    return the after-frame."""
+    before = env.frame()
+    env.click(x, y)
+    after = env.frame()
+    record["discovery_actions"] += 1
+    if before is not None and after is not None:
+        gs.feed_transition(before, 6, (x, y), after)
+        gs.feed(after)  # also run the frame-state detectors (e.g. the selection-colour signal)
+    return after
 
 
 def _warm_up(env: "live.LiveEnv", gs: GroundingService) -> bool:
@@ -338,6 +414,7 @@ def run_model_once(
         "is_oracle": False,
         "confidence": None,
         "evidence": "",
+        "colour_variety": None,
         "verifier_verdict": None,
         "executed": False,
         "levels_cleared": 0,
@@ -358,7 +435,7 @@ def run_model_once(
         return record
     _gather_evidence(env, gs, game, record)
 
-    messages, mapping, _obs = build_ask_prompt(game, gs)
+    messages, mapping, _obs = build_ask_prompt(game, gs, record["colour_variety"])
     ask = ask_once(llm, messages, set(mapping))
     mapped = mapping.get(ask["choice"]) if ask["choice"] is not None else None
     record.update(
@@ -394,6 +471,11 @@ def _gate_and_execute(
     record["verifier_verdict"] = verdict_name
     if not executable:
         return  # UNKNOWN / CONTRADICTED never executes (contract)
+    if not compilable(instance, gs):
+        # The model paired an objective with a transition the compiler cannot plan
+        # (e.g. glyph_relational x binary_flip) — a typed failure, never a crash.
+        record["plan_outcome"] = "UNSUPPORTED_COMBINATION"
+        return  # executed stays False, outcome stays FAIL
 
     # The reset clears the probe-modified board; the footprint evidence in gs
     # persists (it is level-invariant).
@@ -508,10 +590,12 @@ def _last_object_with(text: str, key: str) -> Optional[dict[str, Any]]:
     return None
 
 
-def build_variant_ask(gs: GroundingService, game: str) -> list[dict[str, str]]:
+def build_variant_ask(
+    gs: GroundingService, game: str, colour_variety: Optional[tuple[int, int]] = None
+) -> list[dict[str, str]]:
     """ASK 1 — the VARIANT: from the live observation summary (no serialized
     instances — this is generation), choose the objective + transition category."""
-    observation = live_observation_summary(gs, game)
+    observation = live_observation_summary(gs, game, colour_variety)
     system = (
         "You are analysing a small interactive grid puzzle from live probing. Identify "
         "its mechanics by choosing the category of its completion rule and its click effect."
@@ -551,7 +635,10 @@ def parse_variant(text: str) -> tuple[Optional[dict[str, str]], str]:
             "evidence": str(obj.get("evidence", ""))[:500]}, ""
 
 
-def build_slot_ask(gs: GroundingService, game: str, objective_kind: str) -> list[dict[str, str]]:
+def build_slot_ask(
+    gs: GroundingService, game: str, objective_kind: str,
+    colour_variety: Optional[tuple[int, int]] = None,
+) -> list[dict[str, str]]:
     """ASK 2 — the model_selected SLOTS for the chosen objective variant only. The
     harness-measured values (cycle, structure, timing) are NOT asked for."""
     n_phases = len(_oracle_instance(game).phases)
@@ -594,7 +681,7 @@ def build_slot_ask(gs: GroundingService, game: str, objective_kind: str) -> list
         "You are specifying the rule of a small interactive grid puzzle. Fill ONLY the requested "
         "slots from their allowed values; do not restate measured values."
     )
-    user = f"{live_observation_summary(gs, game)}\n\n{body}"
+    user = f"{live_observation_summary(gs, game, colour_variety)}\n\n{body}"
     return [{"role": "system", "content": system}, {"role": "user", "content": user}]
 
 
@@ -678,20 +765,31 @@ def fill_instance(
     ONE assembly-error retry on ASK 2. Mutates ``record`` with the variant choice,
     slot values, assembly validity, and retry count. Returns the assembled instance
     or ``None`` on an unrecoverable failure (which the run records as NOT executed)."""
+    variety = record.get("colour_variety")
     try:
-        variant, verr = parse_variant(llm(build_variant_ask(gs, game)))
+        variant, verr = parse_variant(llm(build_variant_ask(gs, game, variety)))
     except Exception as exc:  # noqa: BLE001 - offline-safe
         record["plan_outcome"] = f"variant_ask_error: {exc}"
         return None
     if variant is None:
         record["plan_outcome"] = f"variant_invalid: {verr}"
         return None
-    objective_kind, transition_kind = variant["objective_kind"], variant["transition_kind"]
+    objective_kind, model_transition = variant["objective_kind"], variant["transition_kind"]
+    # Auto-pair ONLY within the unobservable {ordered_cycle, binary_flip} pair — the
+    # compiler supports one of them per objective and they are indistinguishable
+    # from cheap probing. An empirical_effect_matrix pick is an OBSERVABLE multi-cell
+    # claim: it STANDS as chosen and flows to the verifier's footprint gate.
+    if model_transition in _UNOBSERVABLE_TRANSITIONS:
+        transition_kind = _COMPATIBLE_TRANSITION.get(objective_kind, model_transition)
+    else:
+        transition_kind = model_transition
     record["variant_choice"] = {"objective_kind": objective_kind, "transition_kind": transition_kind}
+    if model_transition != transition_kind:
+        record["model_transition"] = model_transition  # what the model picked, before auto-pairing
 
     inks = observed_inks(gs)
     harness = harness_measured_values(gs, game)
-    convo = build_slot_ask(gs, game, objective_kind)
+    convo = build_slot_ask(gs, game, objective_kind, variety)
     error = ""
     for attempt in range(2):  # initial + ONE retry
         if attempt == 1:
@@ -750,6 +848,7 @@ def run_fill_once(
         "slot_values": None,
         "assembly_valid": False,
         "retries": 0,
+        "colour_variety": None,
         "verifier_verdict": None,
         "executed": False,
         "levels_cleared": 0,
@@ -784,6 +883,19 @@ def _oracle_variant(game: str) -> tuple[str, str]:
     return inst.objective.KIND, inst.transition_model.KIND
 
 
+def _representative_variety(game: str) -> Optional[tuple[int, int]]:
+    """The colour variety a live run would MEASURE, derived from the oracle's
+    transition model — for the dry-run only (no env to probe). ordered_cycle -> its
+    length; binary_flip -> 2."""
+    tm = _oracle_instance(game).transition_model
+    if isinstance(tm, schema.OrderedCycle):
+        n = len(tm.order) or 3
+        return (n, n)
+    if isinstance(tm, schema.BinaryFlip):
+        return (2, 5)
+    return None
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--game", required=True, choices=["ft09", "sc25"])
@@ -804,10 +916,11 @@ def main() -> None:
 
     if args.dry_run:
         gs = _replay_grounding(args.game)
+        variety = _representative_variety(args.game)  # a live run measures this; here derived for review
         if args.mode == "fill":
-            variant = build_variant_ask(gs, args.game)
+            variant = build_variant_ask(gs, args.game, variety)
             objective_kind, _tk = _oracle_variant(args.game)
-            slots = build_slot_ask(gs, args.game, objective_kind)
+            slots = build_slot_ask(gs, args.game, objective_kind, variety)
             print("=== FILL DRY-RUN (harness-measured values ARE shown; no game id / oracle hint) ===")
             print("\n--- ASK 1 (VARIANT) SYSTEM ---\n" + variant[0]["content"])
             print("\n--- ASK 1 (VARIANT) USER ---\n" + variant[1]["content"])
@@ -815,7 +928,7 @@ def main() -> None:
             print("\n--- ASK 2 (SLOTS) SYSTEM ---\n" + slots[0]["content"])
             print("\n--- ASK 2 (SLOTS) USER ---\n" + slots[1]["content"])
             return
-        messages, mapping, _obs = build_ask_prompt(args.game, gs)
+        messages, mapping, _obs = build_ask_prompt(args.game, gs, variety)
         print("=== ID MAPPING (neutral id -> internal instance name; NOT shown to the model) ===")
         print(json.dumps(mapping, indent=2))
         print("\n=== SYSTEM ===\n" + messages[0]["content"])
@@ -857,14 +970,19 @@ def _replay_grounding(game: str) -> GroundingService:
     gs.feed(grid(data["frames"][0]))
     fed = 0
     for i in range(len(data["actions"])):
-        if bool(data["is_gold"][i]) and int(data["actions"][i]) == 6 and fed < 12:
+        # Level 0 only: cross-level frames are wholesale changes that rebind and
+        # reset the per-board frame-state detectors (e.g. the selection-colour
+        # signal), so the dry-run grounding stays on one board like a live run's.
+        gold6 = bool(data["is_gold"][i]) and int(data["actions"][i]) == 6
+        if gold6 and int(data["level_index"][i]) == 0 and fed < 12:
+            after = grid(data["next_frames"][i])
             gs.feed_transition(
                 grid(data["frames"][i]), 6,
                 (int(data["coords_x"][i]), int(data["coords_y"][i])),
-                grid(data["next_frames"][i]),
+                after,
             )
+            gs.feed(after)  # mirror the live probe: run the frame-state detectors too
             fed += 1
-    gs.feed(grid(data["frames"][0]))
     return gs
 
 
