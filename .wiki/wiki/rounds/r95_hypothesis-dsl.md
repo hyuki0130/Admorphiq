@@ -216,6 +216,16 @@ mode 2→1, ft09 byte-identical), and closure is demonstrated on gemma4.
   3/3 consistent. sc25 live pattern read DIVERGED at start (smoke). Both
   walls assigned: principled phase/guard extension for the reveal trigger +
   live pattern-read diagnosis. Re-gate after fixes.
+- **(vi) RE-GATE, ft09: PASS 3/3** (fixes 8f637de; measurement
+  `r95b_gate_ft09_v2.json`, 18:21): idx0+idx1 cleared in EVERY fresh-reset
+  run at 4+8 actions, discovery 19, one rebind (the decoy→reveal transition)
+  per run — fully deterministic. The reveal wall was closed the PRINCIPLED
+  way (schema reveal phase + trigger-then-resolve + per-board cycle reset),
+  and the sc25 start-divergence was diagnosed to the BASE SNAPSHOT (majority
+  read spuriously matching the start board) and fixed. sc25's deeper
+  post-cast EXIT-NAV phase is outside the frozen contract (navigation
+  excluded) — banked as follow-up; the driver's sc25 criterion is being
+  aligned to the contract (cast + guard handover), then sc25 re-gates.
 - (vii)–(viii) pending (model substages, Kaggle).
 
 ## Related

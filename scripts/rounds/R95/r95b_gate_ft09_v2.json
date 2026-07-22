@@ -1,0 +1,42 @@
+{
+  "game": "ft09",
+  "runs": [
+    {
+      "run": 0,
+      "levels_cleared": 2,
+      "actions_per_level": [
+        4,
+        8
+      ],
+      "discovery_actions": 19,
+      "plan_outcome": "CLEARED",
+      "rebind_events": 1,
+      "cycle_acquired": true
+    },
+    {
+      "run": 1,
+      "levels_cleared": 2,
+      "actions_per_level": [
+        4,
+        8
+      ],
+      "discovery_actions": 19,
+      "plan_outcome": "CLEARED",
+      "rebind_events": 1,
+      "cycle_acquired": true
+    },
+    {
+      "run": 2,
+      "levels_cleared": 2,
+      "actions_per_level": [
+        4,
+        8
+      ],
+      "discovery_actions": 19,
+      "plan_outcome": "CLEARED",
+      "rebind_events": 1,
+      "cycle_acquired": true
+    }
+  ],
+  "gate_verdict": "PASS"
+}
