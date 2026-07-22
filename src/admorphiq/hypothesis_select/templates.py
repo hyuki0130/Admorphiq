@@ -32,12 +32,14 @@ from dataclasses import dataclass
 from typing import Any, Callable, Optional
 
 from admorphiq.adapters25.base import most_common_color
-from admorphiq.adapters25.ft09 import (
+from admorphiq.hypothesis_select.parse import (
     _cell_class,
     _collect_constraints,
     _discover_rings,
     _read_glyph_compass,
     _satisfies,
+    _sc25_lattice,
+    _sc25_regions,
 )
 from admorphiq.kernels import find_regions, template_occupancy
 
@@ -269,54 +271,9 @@ def ft09_templates() -> list[HypothesisTemplate]:
     ]
 
 
-# ── sc25 shared perception ──────────────────────────────────────────────────
+# ── sc25 shared perception (lattice parse lives in parse.py; imported above) ──
 
-_SC25_MAX_CELL_AREA_FRACTION = 0.02
-_SC25_MIN_LATTICE_CELLS = 9
-_SC25_MAX_LATTICE_CELLS = 25
 _SC25_PREVIEW_ROW_MARGIN = 6
-
-
-def _sc25_regions(grid: Grid) -> list[dict[str, Any]]:
-    if not grid:
-        return []
-    bg = most_common_color(grid)
-    return find_regions(grid, background=bg)
-
-
-def _sc25_lattice(grid: Grid) -> Optional[dict[str, Any]]:
-    """Parse the 3x3 (>= 3x3) toggle lattice: >= 9 equal-size small regions
-    whose centroids span >= 3 rows and >= 3 columns. Returns a dict with the
-    cell regions, the ``(row_index, col_index) -> region`` map, the cell size,
-    and the grid's row/col counts — or ``None`` when no lattice is present."""
-    if not grid:
-        return None
-    height, width = len(grid), len(grid[0])
-    max_area = _SC25_MAX_CELL_AREA_FRACTION * height * width
-    by_size: dict[int, list[dict[str, Any]]] = defaultdict(list)
-    for r in _sc25_regions(grid):
-        if r["size"] <= max_area:
-            by_size[r["size"]].append(r)
-    for size, members in sorted(by_size.items()):
-        if not _SC25_MIN_LATTICE_CELLS <= len(members) <= _SC25_MAX_LATTICE_CELLS:
-            continue
-        row_centres = sorted({round(m["centroid"][0]) for m in members})
-        col_centres = sorted({round(m["centroid"][1]) for m in members})
-        if len(row_centres) < 3 or len(col_centres) < 3:
-            continue
-        index: dict[Cell, dict[str, Any]] = {}
-        for m in members:
-            ri = row_centres.index(round(m["centroid"][0]))
-            ci = col_centres.index(round(m["centroid"][1]))
-            index[(ri, ci)] = m
-        return {
-            "members": members,
-            "index": index,
-            "size": size,
-            "rows": len(row_centres),
-            "cols": len(col_centres),
-        }
-    return None
 
 
 def _sc25_cell_colour(grid: Grid, region: dict[str, Any]) -> int:
