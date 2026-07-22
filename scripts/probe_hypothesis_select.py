@@ -177,11 +177,18 @@ def _prediction_matches(pred: set[Cell], observed: set[Cell]) -> bool:
 
 
 def _dynamics_accuracy(
-    template: HypothesisTemplate, transitions: list[Transition], game: str
+    template: HypothesisTemplate,
+    transitions: list[Transition],
+    game: str,
+    mask: Optional[Mask] = None,
 ) -> tuple[Optional[float], int]:
     """Fraction of ACTION6 transitions whose predicted change-set matches the
     observed one, over transitions where the template makes a claim. Returns
-    ``(accuracy_or_None, n_claims)`` — None when the template claims nothing."""
+    ``(accuracy_or_None, n_claims)`` — None when the template claims nothing.
+    When a ``mask`` is supplied, masked chrome pixels are removed from the
+    observed set (used for the separately-reported ``dynamics_heldout_masked``);
+    with ``mask=None`` the behaviour is byte-identical to the frozen part-1
+    scoring."""
     claims = 0
     hits = 0
     for t in transitions:
@@ -192,6 +199,8 @@ def _dynamics_accuracy(
             continue
         claims += 1
         observed = _observed_changes(t, game)
+        if mask is not None:
+            observed = observed - _masked_cells(game, t, mask)
         pred_non_hud = {
             c for c in pred if _non_hud(c, game, len(t.before), len(t.before[0]))
         }
@@ -403,6 +412,11 @@ def evaluate(game: str) -> dict[str, Any]:
     win_flat = _flatten_win_frames(win_by_level)
     non_win_frames, spec_source = _specificity_frames(transitions, win_grids, game)
 
+    # Transient-chrome mask (task #125), derived from TRAIN. Used ONLY for the
+    # separately-reported dynamics_heldout_masked — the frozen dynamics_train /
+    # dynamics_heldout and the ranking keys stay unmasked (part-1 numbers frozen).
+    mask = _compute_transient_mask(game, train)
+
     per_template: dict[str, dict[str, Any]] = {}
     keys_train: dict[str, tuple] = {}
     keys_heldout: dict[str, tuple] = {}
@@ -412,6 +426,7 @@ def evaluate(game: str) -> dict[str, Any]:
     for template in templates:
         dyn_train, _n_claims_train = _dynamics_accuracy(template, train, game)
         dyn_heldout, _n_claims_heldout = _dynamics_accuracy(template, heldout, game)
+        dyn_heldout_masked, _n = _dynamics_accuracy(template, heldout, game, mask)
         _all, n_claims_all = _dynamics_accuracy(template, transitions, game)
         tpr_all, fpr, win_train, win_heldout = _win_metrics(
             template, win_by_level, non_win_frames
@@ -419,6 +434,7 @@ def evaluate(game: str) -> dict[str, Any]:
         per_template[template.name] = {
             "dynamics_train": dyn_train,
             "dynamics_heldout": dyn_heldout,
+            "dynamics_heldout_masked": dyn_heldout_masked,
             "n_click_claims": n_claims_all,
             "win_true_positive_rate": tpr_all,
             "win_false_positive_rate": fpr,
@@ -447,6 +463,10 @@ def evaluate(game: str) -> dict[str, Any]:
         "n_win_events": sum(len(v) for v in win_by_level.values()),
         "n_specificity_frames": len(non_win_frames),
         "specificity_source": spec_source,
+        "transient_mask": {
+            "hud_edges": sorted(mask["edges"]),
+            "cursor_colours": sorted(mask["cursor_colours"]),
+        },
         "templates": per_template,
         "ranking_train": [name for *_score, name in ranking_train],
         "ranking_heldout": [name for *_score, name in ranking_heldout],
@@ -560,24 +580,187 @@ def _parse_skeleton(game: str, frame: Grid) -> str:
     return "no structural summary available"
 
 
-def _changed_unit_count(game: str, t: Transition) -> int:
-    """The number of distinct INTERACTIVE CELLS (small non-chrome regions on the
-    before-frame) whose pixels changed under this click — the logical-cell count
-    the templates speak in, NOT a raw pixel count. A single button/lattice cell
-    is one region of many pixels; reporting pixels would read as a multi-cell
-    change and bias the model toward the neighbourhood-stencil hypothesis."""
+# ── transient chrome masking (task #125 — binding layer #1) ──────────────────
+#
+# The observation package must count INTERACTIVE game cells, not click-driven
+# chrome. Two generic, trace-derived signatures are masked before the histogram:
+#
+#  (1) HUD edge bar — a vertical UI strip against a left/right frame edge that
+#      redraws on (nearly) every click regardless of WHERE the click lands (e.g.
+#      a click-budget fill bar). Detected as "a changed region touching this edge
+#      appears in >= _HUD_EDGE_FRACTION of clicks"; then every changed region
+#      touching that edge is masked. Measured: sc25 right-edge touch = 0.86 (the
+#      budget bar, cols 62-63, leaking past the col-63 HUD mask) vs ft09 = 0.06,
+#      so the threshold fixes sc25 and leaves ft09 byte-identical.
+#  (2) Relocating cursor — a small changed region at/near the click xy that
+#      MOVES to the next click's xy while its previous location REVERTS. Detected
+#      from consecutive same-level click transitions; with < 2 consecutive clicks
+#      in a level no relocation can be confirmed, so nothing is masked (honest
+#      default). (Neither public trace exhibits one — the sc25 click-markers
+#      persist as toggle state — so this is a generic guard, inert here.)
+_HUD_EDGE_FRACTION = 0.8
+_CURSOR_RADIUS = 4  # cells; "near the click" for cursor attribution
+# A genuine cursor move is LOCALIZED (remove the old overlay + repaint at the new
+# xy + maybe one toggle). A decoy->reveal / level-transition redraw touches many
+# regions and would otherwise coincidentally satisfy the strict cursor test on
+# random colour matches, so both clicks of a candidate pair must be this local.
+_CURSOR_MAX_REGIONS = 4
+# A real cursor relocates on (nearly) EVERY click, so its colour is confirmed by
+# a large fraction of consecutive localized pairs. Requiring a fraction — not a
+# single pair — rejects the occasional coincidental colour match a 2-value toggle
+# cycle produces (measured: ft09 yields lone spurious hits that never approach
+# this share), the same fractional-evidence logic the HUD edge rule uses.
+_CURSOR_CONFIRM_FRACTION = 0.5
+
+Mask = dict[str, Any]
+
+
+def _changed_regions(game: str, t: Transition) -> list[dict[str, Any]]:
+    """The small non-chrome regions on the before-frame whose pixels changed
+    under this click — the candidate interactive cells."""
     changed = _observed_changes(t, game)
     if not changed:
-        return 0
+        return []
     before = t.before
     total = len(before) * len(before[0]) if before else 1
     max_size = max(1, int(0.15 * total))
     bg = most_common_color(before)
-    count = 0
-    for r in find_regions(before, background=bg):
-        if r["size"] <= max_size and (set(r["cells"]) & changed):
-            count += 1
-    return count
+    return [
+        r
+        for r in find_regions(before, background=bg)
+        if r["size"] <= max_size and (set(r["cells"]) & changed)
+    ]
+
+
+def _touches_edges(regions: list[dict[str, Any]], width: int) -> tuple[bool, bool]:
+    """Whether any region touches the left (col<=1) / right (col>=width-2) edge."""
+    left = any(r["bbox"][1] <= 1 for r in regions)
+    right = any(r["bbox"][3] >= width - 2 for r in regions)
+    return left, right
+
+
+def _detect_cursor_colours(game: str, transitions: list[Transition]) -> set[int]:
+    """Colours behaving as a relocating cursor: an overlay of ONE colour that a
+    click paints at its xy, which the NEXT same-level click removes (that cell
+    reverts to its pre-click underlying colour) while repainting the SAME colour
+    at the new click's xy. All four conditions are required, so a persistent
+    toggle (a cell that stays changed — ft09/sc25) and a colour cycle (a cell
+    that changes to a DIFFERENT colour) both fail to register. Per-level
+    consecutive clicks only; a level with < 2 consecutive clicks confirms nothing
+    (the honest no-mask default)."""
+    by_level: dict[int, list[Transition]] = {}
+    for t in transitions:
+        if t.action == 6 and _observed_changes(t, game):
+            by_level.setdefault(t.level, []).append(t)
+    confirmations: dict[int, int] = {}
+    localized_pairs = 0
+    for clicks in by_level.values():
+        for a, b in zip(clicks, clicks[1:]):
+            regions_a = _changed_regions(game, a)
+            regions_b = _changed_regions(game, b)
+            if len(regions_a) > _CURSOR_MAX_REGIONS or len(regions_b) > _CURSOR_MAX_REGIONS:
+                continue  # a wholesale redraw, not a localized cursor move
+            localized_pairs += 1
+            ax, ay = a.xy
+            cand = _nearest_region(regions_a, ay, ax)
+            if cand is None:
+                continue
+            cr, cc = round(cand["centroid"][0]), round(cand["centroid"][1])
+            overlay = int(a.after[cr][cc])
+            underlying = int(a.before[cr][cc])
+            if overlay == underlying:
+                continue  # the click did not paint a distinct overlay here
+            if (cr, cc) not in _observed_changes(b, game):
+                continue  # the previous location was not touched by the next click
+            if int(b.after[cr][cc]) != underlying:
+                continue  # it did not revert to its pre-click underlying colour
+            bx, by = b.xy
+            new_region = _nearest_region(regions_b, by, bx)
+            if new_region is None:
+                continue
+            nr, nc = round(new_region["centroid"][0]), round(new_region["centroid"][1])
+            if int(b.after[nr][nc]) != overlay:
+                continue  # the overlay did not reappear (same colour) at the new xy
+            confirmations[overlay] = confirmations.get(overlay, 0) + 1
+    if localized_pairs < 2:
+        return set()  # too few consecutive clicks to confirm relocation (honest default)
+    return {
+        colour
+        for colour, count in confirmations.items()
+        if count / localized_pairs >= _CURSOR_CONFIRM_FRACTION
+    }
+
+
+def _nearest_region(
+    regions: list[dict[str, Any]], row: int, col: int
+) -> Optional[dict[str, Any]]:
+    """The region whose centroid is nearest (<= _CURSOR_RADIUS) to (row, col)."""
+    best: Optional[tuple[float, dict[str, Any]]] = None
+    for r in regions:
+        rr, rc = r["centroid"]
+        dist = abs(rr - row) + abs(rc - col)
+        if dist <= 2 * _CURSOR_RADIUS and (best is None or dist < best[0]):
+            best = (dist, r)
+    return best[1] if best else None
+
+
+def _compute_transient_mask(game: str, transitions: list[Transition]) -> Mask:
+    """Derive the transient-chrome mask (HUD edges + cursor colours) from
+    ``transitions`` (TRAIN). Pure detection — no game-specific colours/positions."""
+    width = len(transitions[0].before[0]) if transitions and transitions[0].before else 0
+    clicks = [t for t in transitions if t.action == 6 and _observed_changes(t, game)]
+    edges: set[str] = set()
+    if clicks:
+        left = right = 0
+        for t in clicks:
+            tl, tr = _touches_edges(_changed_regions(game, t), width)
+            left += int(tl)
+            right += int(tr)
+        if left / len(clicks) >= _HUD_EDGE_FRACTION:
+            edges.add("left")
+        if right / len(clicks) >= _HUD_EDGE_FRACTION:
+            edges.add("right")
+    return {"edges": edges, "width": width, "cursor_colours": _detect_cursor_colours(game, transitions)}
+
+
+def _is_transient_region(region: dict[str, Any], t: Transition, mask: Mask) -> bool:
+    """Whether ``region`` is masked chrome under ``mask``: a HUD edge bar, or a
+    relocating cursor sitting at this click's xy."""
+    _r0, c0, _r1, c1 = region["bbox"]
+    if "left" in mask["edges"] and c0 <= 1:
+        return True
+    if "right" in mask["edges"] and c1 >= mask["width"] - 2:
+        return True
+    if mask["cursor_colours"]:
+        rr, cc = round(region["centroid"][0]), round(region["centroid"][1])
+        x, y = t.xy
+        near = abs(rr - y) <= _CURSOR_RADIUS and abs(cc - x) <= _CURSOR_RADIUS
+        if near and int(t.after[rr][cc]) in mask["cursor_colours"]:
+            return True
+    return False
+
+
+def _masked_cells(game: str, t: Transition, mask: Mask) -> set[Cell]:
+    """The pixel cells belonging to masked chrome regions in this transition."""
+    cells: set[Cell] = set()
+    for r in _changed_regions(game, t):
+        if _is_transient_region(r, t, mask):
+            cells |= set(r["cells"])
+    return cells
+
+
+def _changed_unit_count(game: str, t: Transition, mask: Optional[Mask] = None) -> int:
+    """The number of distinct INTERACTIVE CELLS (small non-chrome regions on the
+    before-frame) whose pixels changed under this click — the logical-cell count
+    the templates speak in, NOT a raw pixel count. A single button/lattice cell
+    is one region of many pixels; reporting pixels would read as a multi-cell
+    change and bias the model toward the neighbourhood-stencil hypothesis. When a
+    ``mask`` is supplied, masked chrome regions (HUD bar / cursor) are excluded."""
+    return sum(
+        1
+        for r in _changed_regions(game, t)
+        if mask is None or not _is_transient_region(r, t, mask)
+    )
 
 
 def _observation_summary(game: str, train: list[Transition]) -> str:
@@ -593,6 +776,7 @@ def _observation_summary(game: str, train: list[Transition]) -> str:
         counts[label] = counts.get(label, 0) + 1
     usage = ", ".join(f"{k}={v}" for k, v in sorted(counts.items()))
 
+    mask = _compute_transient_mask(game, train)
     hist: dict[int, int] = {}
     examples: list[str] = []
     for t in train:
@@ -600,7 +784,7 @@ def _observation_summary(game: str, train: list[Transition]) -> str:
             continue
         if not _observed_changes(t, game):
             continue
-        units = _changed_unit_count(game, t)
+        units = _changed_unit_count(game, t, mask)
         hist[units] = hist.get(units, 0) + 1
         if len(examples) < 3:
             x, y = t.xy

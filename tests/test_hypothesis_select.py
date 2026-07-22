@@ -33,6 +33,10 @@ ask_once = _MOD.ask_once
 _score_choice = _MOD._score_choice
 _parse_choice = _MOD._parse_choice
 _NEUTRAL_DESCRIPTIONS = _MOD._NEUTRAL_DESCRIPTIONS
+_compute_transient_mask = _MOD._compute_transient_mask
+_detect_cursor_colours = _MOD._detect_cursor_colours
+_changed_unit_count = _MOD._changed_unit_count
+_load_transitions = _MOD._load_transitions
 
 
 def _tiny_transitions(game: str) -> list:
@@ -381,3 +385,107 @@ def test_neutral_descriptions_cover_every_template_exactly():
     for game in ("ft09", "sc25"):
         names = {t.name for t in templates_for_game(game)[0]}
         assert set(_NEUTRAL_DESCRIPTIONS[game]) == names
+
+
+def _grid(rows, cols, cells):
+    """A rows x cols grid on background 0 with ``cells`` = {(r,c): colour}."""
+    g = [[0] * cols for _ in range(rows)]
+    for (r, c), v in cells.items():
+        g[r][c] = v
+    return tuple(tuple(row) for row in g)
+
+
+def _block(r0, c0, colour):
+    return {(r0 + dr, c0 + dc): colour for dr in range(2) for dc in range(2)}
+
+
+def test_hud_edge_bar_masked_but_interior_cells_kept():
+    """Purpose: a vertical UI strip that redraws on (nearly) every click against a
+    frame edge is detected as a HUD bar and excluded from the changed-cell count,
+    while an interior toggle cell is kept; a game with no such per-click edge bar
+    gets an empty mask.
+
+    Expected feedback: pass proves the sc25 budget-bar artifact (right-edge region
+    changing every click, cols 62-63 leaking past the col-63 mask) is masked so
+    the histogram counts only real cells, and that a game without an edge bar is
+    untouched (ft09 byte-identity mechanism). Fail means chrome inflates the
+    logical-cell count and biases the model toward the stencil hypothesis."""
+    width = 12
+    # Each click: an interior cell (cols 4-5) toggles AND a right-edge bar (col 10-11)
+    # redraws. sc25's HUD mask keeps col 10 (only col 0 / col W-1 dropped), so the
+    # bar surfaces as a right-edge changed region on every click.
+    with_bar = []
+    for i in range(5):
+        before = _grid(12, width, {**_block(4, 4, 3), **_block(2, 10, 5)})
+        after = _grid(12, width, {**_block(4, 4, 7), **_block(2, 10, 6 + (i % 2))})
+        with_bar.append(Transition(i, 6, (4, 4), 0, True, before, after, 0))
+    mask = _compute_transient_mask("sc25", with_bar)
+    assert mask["edges"] == {"right"}
+    # The bar region is masked out; only the interior toggle cell is counted.
+    assert _changed_unit_count("sc25", with_bar[0], mask) == 1
+    assert _changed_unit_count("sc25", with_bar[0], None) == 2  # unmasked sees both
+
+    # No per-click edge bar -> empty edge mask (interior-only changes).
+    interior_only = [
+        Transition(i, 6, (4, 4), 0, True,
+                   _grid(12, width, _block(4, 4, 3)),
+                   _grid(12, width, _block(4, 4, 7)), 0)
+        for i in range(5)
+    ]
+    assert _compute_transient_mask("sc25", interior_only)["edges"] == set()
+
+
+def test_cursor_relocation_detected_and_too_few_clicks_default():
+    """Purpose: a one-colour overlay that a click paints at its xy and the NEXT
+    click removes (reverting the old location to its underlying colour) while
+    repainting the same colour at the new xy is detected as a cursor across >= 2
+    localized pairs; with fewer than 2 consecutive clicks nothing is masked.
+
+    Expected feedback: pass proves the relocation rule fires on a genuine moving
+    cursor (colour 9 here) yet honours the honest no-mask default when the trace
+    is too short to confirm relocation. Fail means the generic cursor guard is
+    either dead or fires on insufficient evidence."""
+    # Three cells (2x2), all underlying colour 2; the colour-9 cursor moves
+    # cell0 -> cell1 -> cell2, the previous cell reverting to 2 each step.
+    base = {**_block(2, 2, 2), **_block(2, 6, 2), **_block(2, 10, 2)}
+    s0 = _grid(16, 16, base)
+    s1 = _grid(16, 16, {**base, **_block(2, 2, 9)})
+    s2 = _grid(16, 16, {**base, **_block(2, 6, 9)})
+    s3 = _grid(16, 16, {**base, **_block(2, 10, 9)})
+    t0 = Transition(0, 6, (3, 3), 0, True, s0, s1, 0)   # paint cursor at cell0
+    t1 = Transition(1, 6, (7, 3), 0, True, s1, s2, 0)   # move to cell1, cell0 reverts
+    t2 = Transition(2, 6, (11, 3), 0, True, s2, s3, 0)  # move to cell2, cell1 reverts
+
+    assert _detect_cursor_colours("ft09", [t0, t1, t2]) == {9}
+    # Only one pair (< 2 localized pairs) -> honest no-mask default.
+    assert _detect_cursor_colours("ft09", [t0, t1]) == set()
+    assert _detect_cursor_colours("ft09", [t0]) == set()
+
+
+def test_ft09_histogram_byte_identical_sc25_mode_becomes_one():
+    """Purpose: on the real traces, masking leaves the ft09 changed-cell histogram
+    BYTE-IDENTICAL (its mask is empty) while the sc25 histogram mode collapses to
+    1 cell (the budget bar is masked).
+
+    Expected feedback: pass proves the frozen part-1 ft09 numbers cannot move and
+    the sc25 observation defect (mode 2 -> 1) is fixed. Fail means either ft09
+    regressed or sc25 was not corrected. (Loads the two recorded traces — the
+    only integration guard in this file, by necessity.)"""
+    def histogram(game, use_mask):
+        train, _held = _split_by_level(_load_transitions(game))
+        mask = _compute_transient_mask(game, train) if use_mask else None
+        hist = {}
+        for t in train:
+            if t.action == 6 and _MOD._observed_changes(t, game):
+                n = _changed_unit_count(game, t, mask)
+                hist[n] = hist.get(n, 0) + 1
+        return hist
+
+    ft09_masked = histogram("ft09", True)
+    ft09_plain = histogram("ft09", False)
+    assert ft09_masked == ft09_plain  # ft09 mask is empty -> byte-identical
+    assert _compute_transient_mask("ft09", _split_by_level(_load_transitions("ft09"))[0])["edges"] == set()
+
+    sc25_masked = histogram("sc25", True)
+    mode = max(sc25_masked, key=sc25_masked.get)
+    assert mode == 1  # the budget bar no longer inflates the mode to 2
