@@ -143,6 +143,28 @@ model selection 15% / compiler-live 10%.
     tolerance). Fix in build: double-block learns BOTH targets as walls;
     online HAZARD learning (joint-teleport detection → entered cells are
     hazards → extra_hazards twin of extra_walls → recompile post-reset).
+  **Defect ladder continued (v6→v7, each 3/3-deterministic and
+  instrumented)**:
+  - Defect 6 (v6, bfeb358): double-block learning (both targets at once,
+    breaking the v5 period-10 loop) + online HAZARD learning
+    (joint-teleport detection → entered cells become `extra_hazards`,
+    the twin of `extra_walls`; hazard_resets counted from teleports).
+  - Defect 7 (v7, 2f14bc8): (6,9) proved a TRANSIENT/dynamic obstacle —
+    blocked entry from (6,10)/action-4, PASSABLE from (6,8)/action-3 two
+    steps later (idx1 has a patroller; same entity class as the
+    persistence-gate colour-0 transient). Fixes: observation-trumps-
+    inference wall invalidation (actor observed ON a learned wall →
+    unlearn) + generalized total-no-op learning (planned-stay crack) +
+    retry-before-learn transient tolerance (5ff9f70).
+  - **v7 measured: the ENTIRE learning chain executes** (unlearn fired,
+    no-op-blocks learned, hazard (8,5)/(8,7) learned + counted) and idx1
+    reaches the ENDGAME — then stalls at the merge: from adjacent
+    a=(2,6), b=(2,7) the plan predicts walk-onto-partner ((2,7),(2,7));
+    the engine refuses. idx0's real merge was MEET-IN-THE-MIDDLE (both
+    actors entering the same EMPTY cell simultaneously). **Defect 8 (in
+    build) = compiler successor semantics**: merge ONLY on simultaneous
+    same-empty-cell entry; walk-onto/swap engine-blocked; adjacent-gap
+    parity forces a desync detour the BFS finds naturally.
   (vii)–(viii) pending.
 
 ## Related
