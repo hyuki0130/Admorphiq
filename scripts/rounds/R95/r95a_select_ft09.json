@@ -1,0 +1,114 @@
+{
+  "game": "ft09",
+  "n_transitions": 718,
+  "n_train": 359,
+  "n_heldout": 359,
+  "n_win_events": 42,
+  "n_specificity_frames": 20,
+  "specificity_source": "gold",
+  "templates": {
+    "glyph_constraints": {
+      "dynamics_train": 0.7708333333333334,
+      "dynamics_heldout": 0.8222996515679443,
+      "n_click_claims": 575,
+      "win_true_positive_rate": 1.0,
+      "win_false_positive_rate": 0.0
+    },
+    "gf2_stencil": {
+      "dynamics_train": 0.020833333333333332,
+      "dynamics_heldout": 0.020905923344947737,
+      "n_click_claims": 575,
+      "win_true_positive_rate": 1.0,
+      "win_false_positive_rate": 0.0
+    },
+    "nearest_glyph_only": {
+      "dynamics_train": 0.7708333333333334,
+      "dynamics_heldout": 0.8222996515679443,
+      "n_click_claims": 575,
+      "win_true_positive_rate": 1.0,
+      "win_false_positive_rate": 0.0
+    },
+    "uniform_colour": {
+      "dynamics_train": 0.7708333333333334,
+      "dynamics_heldout": 0.8222996515679443,
+      "n_click_claims": 575,
+      "win_true_positive_rate": 0.0,
+      "win_false_positive_rate": 0.0
+    },
+    "all_ink_equal": {
+      "dynamics_train": 0.7708333333333334,
+      "dynamics_heldout": 0.8222996515679443,
+      "n_click_claims": 575,
+      "win_true_positive_rate": 0.0,
+      "win_false_positive_rate": 0.0
+    }
+  },
+  "ranking_train": [
+    "glyph_constraints",
+    "nearest_glyph_only",
+    "all_ink_equal",
+    "uniform_colour",
+    "gf2_stencil"
+  ],
+  "ranking_heldout": [
+    "glyph_constraints",
+    "nearest_glyph_only",
+    "all_ink_equal",
+    "uniform_colour",
+    "gf2_stencil"
+  ],
+  "oracle_name": "glyph_constraints",
+  "exhaustive_train_winner": "glyph_constraints",
+  "exhaustive_heldout_winner": "glyph_constraints",
+  "tied_with_oracle": [
+    "nearest_glyph_only"
+  ],
+  "oracle_wins_train": true,
+  "oracle_wins_heldout": true,
+  "ask_reps": 3,
+  "shuffle_mapping": {
+    "T1": "gf2_stencil",
+    "T2": "uniform_colour",
+    "T3": "nearest_glyph_only",
+    "T4": "glyph_constraints",
+    "T5": "all_ink_equal"
+  },
+  "equivalence_class": [
+    "glyph_constraints",
+    "nearest_glyph_only"
+  ],
+  "exhaustive_winner_control": "glyph_constraints",
+  "ask_results": [
+    {
+      "rep": 0,
+      "choice": "T4",
+      "mapped_template_name": "glyph_constraints",
+      "in_equivalence_class": "PASS",
+      "confidence": "high",
+      "evidence": "The histogram shows that the vast majority of clicks (215/359) change exactly 1 cell, which contradicts T1's plus-shaped group. The presence of 'repeating marker-and-ring groups' and the complexity of the board-completion moments support the relational requirements of T4 over the simpler T2, T3, or T5.",
+      "attempts": 1,
+      "error": null
+    },
+    {
+      "rep": 1,
+      "choice": "T4",
+      "mapped_template_name": "glyph_constraints",
+      "in_equivalence_class": "PASS",
+      "confidence": "high",
+      "evidence": "The histogram shows that the vast majority of clicks (215/359) change exactly 1 cell, which contradicts T1's plus-shaped group rule. The presence of 'repeating marker-and-ring groups' and the complexity of the board-completion moments support the relational requirements described in T4.",
+      "attempts": 1,
+      "error": null
+    },
+    {
+      "rep": 2,
+      "choice": "T4",
+      "mapped_template_name": "glyph_constraints",
+      "in_equivalence_class": "PASS",
+      "confidence": "high",
+      "evidence": "The histogram shows that the vast majority of clicks (215/359) change exactly 1 cell, which contradicts T1's plus-shaped group rule. The presence of 'repeating marker-and-ring groups' and the complexity of the board-completion moments support the relational requirements described in T4.",
+      "attempts": 1,
+      "error": null
+    }
+  ],
+  "pass_rate": 1.0
+}

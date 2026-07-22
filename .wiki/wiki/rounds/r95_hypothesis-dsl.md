@@ -71,13 +71,47 @@ Two honest data findings (both verified by dedicated scans, not assumed):
    {5:16, 6:10, 9:464}). Follow-up lever = richer trace recapture, not a
    scoring change.
 
-## Part 2 (in build) — frozen prereg
+## Part 2 — frozen prereg + gemma4 result (2026-07-22 15:31 collection)
 
 Neutral shuffled template descriptions (T1..T5, no names), TRAIN-only
 observation summary, guided-json choice + confidence + evidence, 3 reps per
 game per model, PASS = choice lands in the measured equivalence class,
 compared against the no-LLM exhaustive-ranking control. gemma4 + gpt-oss-120b
-paired. Kaggle notebook `notebooks/r95a_select_bench.py`.
+paired. Kaggle notebook `notebooks/r95a_select_bench.py` (part-2 build
+4bf3b6a; one build-time fix mattered: the observation histogram initially
+counted PIXELS — one ft09 button = 36 px — which would have biased toward the
+stencil negative; fixed to LOGICAL cells before any model run).
+
+**gemma4-31b-it (kernel `admorphiq-r95a-select-gemma4` v1; artifacts
+`scripts/rounds/R95/r95a_select_bench_gemma4.json`):**
+
+| game | pass rate | picks | random baseline |
+|---|---|---|---|
+| ft09 (PRIMARY) | **3/3 PASS** | T4 = the ORACLE itself ×3, confidence high | 0.4 |
+| sc25 (weak) | 0/3 FAIL | T5 = neighbour_stencil ×3, confidence high | 0.6 |
+
+Evidence audit (the load-bearing part):
+
+- **ft09**: every rep cites the true discriminating observations — "215/359
+  clicks change exactly 1 cell, contradicting the plus-shaped group" +
+  the marker-ring structure supporting relational completion over the
+  simpler goals. This is genuine discrimination, not a length/position
+  artifact: the model picked the strict oracle, not merely the tied class.
+- **sc25**: the model's inference is CORRECT GIVEN ITS OBSERVATIONS — the
+  histogram genuinely shows multi-cell changes (2/4/5/14), because the click
+  CURSOR appears as a second changed region. The build agent PREDICTED this
+  exact failure pre-run and did not special-case it. So the sc25 FAIL is an
+  OBSERVATION-LAYER defect (cursor/HUD masking — precisely the Codex
+  finding-6 binding-layer gap), not a model reasoning failure. First concrete
+  entry in the binding-layer backlog: mask transient cursor regions before
+  building click histograms.
+
+**Interim read (gemma4)**: the hypothesis-selection thesis is SUPPORTED on
+the primary case — the model beat the 0.4 baseline 3/3 picking the exact
+oracle with correct evidence. The weak case failed for a harness reason that
+was predicted, is attributable, and is fixable at the observation layer.
+gpt-oss-120b twin launched (kernel `admorphiq-r95a-select-gptoss` v1) — the
+paired two-model verdict lands when it completes.
 
 ## Related
 
