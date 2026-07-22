@@ -1675,8 +1675,14 @@ attribution, 5-tier fallback ladder (probes → DSL self-extension [EWM-measured
 fork-and-patch FINAL tier → generic floor), two-model rule (gemma4-31b + gpt-oss-120b paired, no
 one-shot verdicts). R95a part-1 measured (405e754): exhaustive ranking finds the oracle on
 ft09/sc25; ft09 = primary case (equivalence {glyph_constraints, nearest_glyph_only} is genuine
-data-indistinguishability), sc25 = weak case (zero clean win-axis negatives). Part-2 = the LLM
-selection bench (Kaggle kernels admorphiq-r95a-select-{gemma4,gptoss}).
+data-indistinguishability), sc25 = weak case (zero clean win-axis negatives). Part-2 MEASURED
+(2026-07-22): thesis CONFIRMED paired — both models pick the exact ft09 oracle 3/3 with true
+discriminating evidence; sc25 chrome defect fixed (#125) → gemma4 recovers 3/3, gpt-oss residual
+(evidence thinness). **R95b LIVE MILESTONE: the compiled ORACLE hypothesis (schema→grounding→
+compiler, zero adapter code) clears ft09 idx0 live 3/3 at EXACTLY 4 actions = the human
+baseline, deterministic (65b7a2e)** — first live clears through the hypothesis channel; idx1
+decoy-reveal + sc25 live-read walls in repair; remaining substages = canned-instance selection
++ slot filling (both models, Kaggle).
 
 **[SUPERSEDED by the R56 depth phase above — kept for history]**
 **R53 SINGLE-ARTIFACT (2026-07-13): `--agent chained` @8000 = 15/25 cleared, 1.076% MEASURED**
