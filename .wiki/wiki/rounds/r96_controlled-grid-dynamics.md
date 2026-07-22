@@ -200,11 +200,29 @@ model selection 15% / compiler-live 10%.
     works, but the STATIC learner is now the poisoned layer — learned-wall
     cap 12 fills with patroller positions that survive retry-once
     (slow/multiple patrollers). **Reactive ceiling reached.**
-  - Defect 14 (in build): frame-diff transient perception diagnostic
-    (the mover must appear in consecutive-frame diffs) → no-transient-
-    visible static-learning gate; orbit inference + time-expanded BFS
-    (pos_a, pos_b, t mod P) as the evidence-justified escalation if
-    reactive threading still fails.
+  - Defect 14 (v14, 5008cb1): frame-diff transient perception — the
+    live-per-step diff replaces the discovery-frozen colour heuristic;
+    static learner gated on no-mover-visible; learned walls un-poisoned
+    continuously. v14: learner de-poisoned but still UNSAT 3/3 →
+    (B) approved.
+  - **(B) BUILT + premise CORRECTED to (C)** (d4f22fc): time-expanded
+    joint BFS over (pos_a, pos_b, t mod P) with orbit phases (P=1
+    degeneracy = untimed path, idx0 byte-identical) + Jaccard
+    set-sequence period fitting — a GENERIC capability for
+    visibly-periodic movers. But the "colour-10 mirror pair" was a
+    MISIDENTIFICATION: excluded colours {bg=5, actor=10} are exactly the
+    two filters — the pair was the ACTORS. The real m0r0 patroller is
+    **FLOOR-COLOURED (colour 5 on colour-5 floor) — genuinely invisible
+    to frame-diff** (vacated and entered cells are identical); offline
+    period analysis of the full 53-sample transient sequence fits NO
+    period at pmax 12/24. The obstacle is BEHAVIOURALLY-SENSED ONLY.
+  - Defect 15 (in build): behavioural-orbit pivot — the blocked_at event
+    stream IS the patroller's position record (blocked entry = positive
+    sample at tick t; successful entry = negative). Sparse
+    phase-consistency fitting (P consistent iff no cell has both sample
+    signs at one phase; honest ORBIT_UNSTABLE), positive-only phase map
+    with optimistic unsampled pairs, reactive layer as the safety net,
+    feeding the SAME time-expanded BFS.
   (vii)–(viii) pending.
 
 ## Related
