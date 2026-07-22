@@ -457,12 +457,17 @@ def execute_instance(
 
 
 def run_movement_once(game: str, run_index: int) -> dict[str, Any]:
-    """One fresh-reset movement gate run (m0r0): warm-up -> directional-probe
-    discovery -> compile the coupled-actor oracle -> stepped execution to the exact
-    merge, idx0 then idx1 in sequence. Returns the per-run JSON record."""
+    """One fresh-reset movement gate run (m0r0): for EACH level board a FRESH
+    grounding + full directional RE-DISCOVERY -> compile the coupled-actor oracle ->
+    stepped execution to the exact merge. Per-board re-grounding is the doctrine (as
+    ft09 re-acquires its cycle per board): measured 2026-07-23, m0r0's model must NOT
+    carry idx0 into idx1 — idx0's gold path never exercises one direction (so that
+    edge is unconfirmed), and the first action right after a level transition is
+    ABSORBED by a settling frame (the idx1 gold's first action moves nothing). A fresh
+    per-board sweep confirms THIS board's own edges and spends the settling frame
+    before the plan executes. Returns the per-run JSON record."""
     env = LiveEnv(game)
     env.reset()
-    gs = GroundingService()
     record: dict[str, Any] = {
         "run": run_index,
         "levels_cleared": 0,
@@ -475,9 +480,34 @@ def run_movement_once(game: str, run_index: int) -> dict[str, Any]:
         "rebind_events": 0,
         "edges_confirmed": False,
     }
+    for _level_ordinal in range(_M0R0_TARGET_LEVELS):
+        outcome, rebinds = run_movement_level(env, record, run_index)
+        record["rebind_events"] += rebinds
+        if outcome != "CLEARED":
+            record["plan_outcome"] = outcome
+            return record
+        record["levels_cleared"] += 1
+        record["merge_event"] = True  # the m0r0 level-complete condition IS the actor merge
+        print(f"[live] run{run_index} m0r0: level {record['levels_cleared']} cleared", flush=True)
+        if record["levels_cleared"] >= _M0R0_TARGET_LEVELS:
+            record["plan_outcome"] = "CLEARED"
+            break
+    return record
 
-    # a. WARM-UP — a valid, playing frame the two-actor parse can bind against once
-    #    the actor colour + scale are mobility-confirmed in discovery.
+
+def run_movement_level(env: "LiveEnv", record: dict[str, Any], run_index: int) -> tuple[str, int]:
+    """Clear ONE level board with a FRESH grounding: warm-up -> directional-probe
+    RE-DISCOVERY on this board (which also spends the absorbed post-transition
+    settling action) -> compile -> stepped per-move confirmation until this level
+    clears. Returns ``(outcome, rebind_events)`` with outcome CLEARED / DIVERGED /
+    GROUNDING_INCOMPLETE / BUDGET."""
+    gs = GroundingService()
+
+    def probe(action_id: int) -> Optional[Grid]:
+        env.simple_action(action_id)
+        return env.frame()
+
+    # a. WARM-UP — a valid playing frame to seed discovery.
     frame: Optional[Grid] = None
     for _ in range(_WARMUP_BUDGET):
         frame = env.frame()
@@ -486,133 +516,54 @@ def run_movement_once(game: str, run_index: int) -> dict[str, Any]:
             continue
         break
     if frame is None:
-        record["plan_outcome"] = "GROUNDING_INCOMPLETE"
-        print(f"[live] run{run_index} {game}: warm-up found no playing frame", flush=True)
-        return record
+        return "GROUNDING_INCOMPLETE", len(gs.rebind_events)
 
-    def probe(action_id: int) -> Optional[Grid]:
-        env.simple_action(action_id)
-        return env.frame()
-
-    def two_actors_bound() -> bool:
-        actors = gs.movement_actors()
-        return actors is not UNKNOWN and len({aid for aid, _p in actors.value}) >= 2
-
-    def reground() -> bool:
-        """(Re)bind two-actor grounding on the CURRENT board. The mirror deltas are a
-        game constant that accumulates across levels, so idx1 usually needs only the
-        new frame fed (positions rebind frame-based). But right after a merge the env
-        may still show the merged single-actor win frame before the next board's two
-        actors respawn — so if fewer than two actors are visible, ADVANCE the env one
-        directional step at a time (observing each transition) until both reappear or
-        the discovery budget is spent. Returns True once both actors are bound and the
-        delta table is complete."""
-        for _ in range(_DISCOVERY_BUDGET):
-            cur = env.frame()
-            if cur is not None:
-                gs.feed(cur)
-            if two_actors_bound() and movement_edges_confirmed(gs):
-                return True
-            before = env.frame()
-            after = probe(_M0R0_DIRECTIONS[0])  # advance-and-observe past the win frame
-            record["discovery_actions"] += 1
-            if after is None:
-                return False
-            if before is not None:
-                gs.feed_transition(before, _M0R0_DIRECTIONS[0], (0, 0), after)
-                record["edges_confirmed"] = record["edges_confirmed"] or movement_edges_confirmed(gs)
-        return two_actors_bound() and movement_edges_confirmed(gs)
-
-    # b. DISCOVERY — sweep ACTION1-4 until all 8 (actor, direction) edges confirm.
+    # b. RE-DISCOVERY — sweep ACTION1-4 on THIS board until all 8 edges confirm. The
+    #    first post-transition action is absorbed by the settling frame and records no
+    #    edge, so the sweep repeats until the settled board responds.
     closed, used, hz = discover_deltas(gs, frame, probe)
-    record["discovery_actions"] = used
+    record["discovery_actions"] += used
     record["hazard_resets"] += hz
-    record["edges_confirmed"] = closed
+    record["edges_confirmed"] = record["edges_confirmed"] or closed
     cur = env.frame()
     if cur is not None:
-        gs.feed(cur)  # bind the current board's actors + occupancy for the compile
+        gs.feed(cur)  # bind this board's actors + occupancy for the compile
     if not closed or gs.movement_actors() is UNKNOWN:
-        record["plan_outcome"] = "GROUNDING_INCOMPLETE"
-        record["rebind_events"] = len(gs.rebind_events)
-        print(f"[live] run{run_index} {game}: delta table did not complete", flush=True)
-        return record
+        print(f"[live] run{run_index} m0r0: delta table did not complete on this board", flush=True)
+        return "GROUNDING_INCOMPLETE", len(gs.rebind_events)
 
-    # c + d. SOLVE + step; on level-up rebind the new board and recompile.
-    return execute_movement_instance(env, gs, record, run_index, reground)
-
-
-def execute_movement_instance(
-    env: "LiveEnv",
-    gs: GroundingService,
-    record: dict[str, Any],
-    run_index: int,
-    reground: Callable[[], bool],
-) -> dict[str, Any]:
-    """Step the compiled coupled-actor plan against the live env with per-move
-    confirmation, clearing idx0 then idx1. On a level-up the board is a new layout
-    epoch (positions + occupancy rebind), so the plan is recompiled for it; a
-    recoverable GROUNDING_INCOMPLETE / UNSATISFIABLE triggers a re-ground + recompile."""
+    # c. SOLVE + step until THIS level clears.
     instance = schema_movement.m0r0_oracle_instance()
     plan = compile_movement_hypothesis(instance, gs)
     start_levels = env.levels()
     level_actions = 0
-    regroundings = 0
-    max_reground = _M0R0_TARGET_LEVELS + 2
-    total_budget = _M0R0_LEVEL_BUDGET * _M0R0_TARGET_LEVELS + _DISCOVERY_BUDGET * max_reground + 10
-    for _ in range(total_budget):
+    for _ in range(_M0R0_LEVEL_BUDGET + 10):
         frame = env.frame()
         if frame is None:
             env.reset()
             continue
-        if env.state() == "WIN":
-            record["plan_outcome"] = "CLEARED"
-            break
+        if env.levels() > start_levels or env.state() == "WIN":
+            record["actions_per_level"].append(level_actions)
+            return "CLEARED", len(gs.rebind_events)
         result = plan.step(frame)
         sol = plan.solve()
         record["states_searched"] = max(record["states_searched"], sol.states_searched)
         if isinstance(result, Terminal):
             if result.status is PlanStatus.DONE:
-                record["plan_outcome"] = (
-                    "CLEARED"
-                    if record["levels_cleared"] >= _M0R0_TARGET_LEVELS or env.state() == "WIN"
-                    else "DIVERGED"
-                )
-                break
-            if (
-                result.status in (PlanStatus.GROUNDING_INCOMPLETE, PlanStatus.UNSATISFIABLE)
-                and regroundings < max_reground
-                and reground()
-            ):
-                regroundings += 1
-                plan = compile_movement_hypothesis(instance, gs)
-                continue
-            record["plan_outcome"] = result.status.value
-            break
+                if env.levels() > start_levels or env.state() == "WIN":
+                    record["actions_per_level"].append(level_actions)
+                    return "CLEARED", len(gs.rebind_events)
+                return "DIVERGED", len(gs.rebind_events)
+            return result.status.value, len(gs.rebind_events)
         if isinstance(result, Move):
             env.simple_action(result.action)
             level_actions += 1
-            now = env.levels()
-            if now > start_levels + record["levels_cleared"]:
+            if env.levels() > start_levels:
                 record["actions_per_level"].append(level_actions)
-                record["levels_cleared"] = now - start_levels
-                record["merge_event"] = record["merge_event"] or gs.movement_merge_event() is not UNKNOWN
-                level_actions = 0
-                print(f"[live] run{run_index} m0r0: level {record['levels_cleared']} cleared", flush=True)
-                if record["levels_cleared"] >= _M0R0_TARGET_LEVELS:
-                    record["plan_outcome"] = "CLEARED"
-                    break
-                reground()  # the new board: rebind positions + occupancy
-                plan = compile_movement_hypothesis(instance, gs)  # fresh solution
-                continue
+                return "CLEARED", len(gs.rebind_events)
             if level_actions > _M0R0_LEVEL_BUDGET:
-                record["plan_outcome"] = "BUDGET"
-                break
-
-    record["merge_event"] = record["merge_event"] or gs.movement_merge_event() is not UNKNOWN
-    record["rebind_events"] = len(gs.rebind_events)
-    if record["plan_outcome"] == "CLEARED" and record["levels_cleared"] < _M0R0_TARGET_LEVELS:
-        record["levels_cleared"] = max(record["levels_cleared"], env.levels() - start_levels)
-    return record
+                return "BUDGET", len(gs.rebind_events)
+    return "BUDGET", len(gs.rebind_events)
 
 
 def main() -> None:
