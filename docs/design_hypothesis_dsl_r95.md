@@ -81,6 +81,93 @@ transitions from the existing R93/R94 traces.
   replication).
 - sk48 runs only as the labelled OOD/exploration control arm.
 
+## Enum vocabulary v0 — domain-mined question banks (v2.1, 2026-07-22)
+
+Directive: enum choices must be MINED from the 25 public games' decoded
+mechanics (not invented), and unseen private mechanics must remain
+expressible by COMPOSITION rather than by enum membership. Sources: R57
+win-condition typology (`rounds/r57_win-condition-typology.md`, T1–T8),
+`explanation/goal_ledger.py` (6 of 8 types already executable), the 25
+`games/*.md` mechanic summaries, and the kernel library inventory.
+
+### Q1 — entity roles (what is on screen?)
+
+Mined roles, each with ≥1 source game and a harness-side binding procedure
+(the model BINDS observed object IDs to roles; the harness supplies candidate
+IDs per finding 6):
+
+`player_avatar` (ar25/m0r0/dc22/tu93/bp35) · `cursor_selector` (sk48 select,
+s5i5) · `movable_piece` (s5i5 rigid sprites, ar25 glyphs) · `pushable_block`
+(ka59, ls20 push-carry) · `carryable_item` (wa30) · `enemy_patrol` (lf52
+deterministic wall-follower, su15) · `goal_marker` (T1 games) · `canvas`
+(cd82) · `reference_preview` (cd82 reference, sc25 preview) · `palette_control`
+(cd82) · `toggle_cell` (ft09, vc33) · `control_button` (ft09 control-toggles,
+lp85 ring buttons) · `portal` (sb26) · `mirror_axis` (ar25 bar) ·
+`hud_counter` (excluded from state by masking) · `wall_static` · `unknown`
+
+### Q2 — action effects (what does each action do?)
+
+Mined effect classes. CRITICAL design rule (from Codex finding 1): the enum
+names the CLASS; the parameters are MEASURED empirically by the harness, never
+enumerated (e.g. `toggle_stencil` does not enumerate stencil shapes — the
+effect matrix is learned from probes, the enum only claims "clicking flips a
+cell set deterministic in the click location").
+
+`move_step` (grid step; ar25/m0r0/dc22/tu93) · `move_until_blocked` (slide) ·
+`rotate_piece` (tr87, s5i5) · `ring_rotate` (lp85 button → ring cycle) ·
+`push_contact` (ka59 momentum-push) · `pick_or_drop` (wa30) · `select_cycle`
+(sk48 selection, cd82 palette) · `grow_retract` (sk48 snake) ·
+`toggle_stencil` (ft09/vc33: click flips measured cell set) · `paint_apply`
+(cd82 operators) · `colour_cycle` (ft09 multi-state cells) · `spawn_launch`
+(sc25 cast, cn04) · `teleport_portal` (sb26) · `record_replay_ghost` (lf52
+ACTION5) · `undo` (ACTION7) · `phase_advance` (confirm/submit; cd82/sc25 —
+own diff near zero, full-block diff carries the effect, per R57) · `inert` ·
+`unknown_probe_more`
+
+### Q3 — goals (win predicate) = R57 T1–T8, verbatim
+
+`reach_coincidence` (T1, 12+ games; sub-form question: click-target vs
+movement, per R57 caveat 4) · `elimination` (T2) · `multiset_assignment`
+(T3) · `delivery` (T4 = T1+T2 composition) · `paint_match` (T5, full-block
+diff) · `toggle_parity` (T6) · `repeat_threshold` (T7, needs ≥3-repeat
+trend) · `rewrite_derivation` (T8, honestly: zero frame-only evidence path
+yet — selecting it routes to probe_more, not to a compiled plan) · `unknown`
+
+### Q4 — plans (how to solve, given Q1–Q3)
+
+Each value maps 1:1 to an existing verified kernel/planner: `shortest_path`
+(paths.py) · `gf2_solve` (gf2.py) · `assignment_match` (multisets/arrangement)
+· `sim_search` (faithful-sim family, simdfs) · `delivery_compose`
+(delivery planner) · `repeat_until` (T7) · `paint_plan` (solver_core) ·
+`probe_more` (active identification, #122)
+
+### Q5 — composition (the unseen-mechanics mechanism)
+
+Private games with unseen SURFACE mechanics are covered three ways, in order:
+1. **Phase composition**: a hypothesis is an ORDERED LIST of (guard, Q1–Q4
+   block) phases with observable entry/exit guards (sc25 = preview-match →
+   auto-cast → navigate). Novel games are usually novel COMPOSITIONS of seen
+   primitives — this is the main generality lever.
+2. **Measured parameters**: effect classes carry no fixed geometry; stencils,
+   step sizes, ring memberships, push rules are all learned from the game's
+   own transitions. An unseen stencil shape is NOT an unseen enum value.
+3. **Honest escape**: every bank ends in `unknown`/`probe_more`, which routes
+   to active-identification probes (#122) and verifier verdict UNKNOWN — never
+   a forced wrong fit. A recurring `unknown` cluster in telemetry = a named
+   schema gap for v1, logged not improvised.
+
+### Open design questions (for Codex consult, this round)
+
+- Bank sizing: 17 entity roles / 18 effects is near the 8B-context comfort
+  limit — group into family-scoped sub-banks (only show toggle-family roles
+  when the family classifier says toggle) or keep flat?
+- Q3 sub-form resolution for T1 (click vs move) — separate question or
+  planner-side branch?
+- Guard vocabulary for phases (what observable predicates may gate a phase
+  transition) — needs the same mining pass over sc25/cd82/lf52 traces.
+- Binding format: per-role object-ID pick lists vs free (x,y) anchors —
+  pick lists are closed-choice but may not contain the right candidate.
+
 ## Retained from v1
 
 - Closed-choice (multiple-choice) slots via guided-json; no free-text escape hatch
