@@ -239,6 +239,52 @@ def test_hazard_soft_reset_records_cells_and_skips_the_delta_table():
     assert n_after == n_before  # the reset added no delta edge
 
 
+def _frame_with_obstacle(actors, obstacle_cell, obstacle_colour=3):
+    """A movement frame plus a single compact non-actor obstacle of ``obstacle_colour``
+    at ``obstacle_cell`` — a patrolling entity that moves between frames."""
+    g = [list(row) for row in _frame(actors)]
+    r, c = obstacle_cell
+    for dr in range(_SCALE):
+        for dc in range(_SCALE):
+            g[r * _SCALE + dr][c * _SCALE + dc] = obstacle_colour
+    return tuple(tuple(row) for row in g)
+
+
+def test_movement_transient_obstacles_tracks_a_mobile_compact_colour_only():
+    """Purpose: a COMPACT non-actor colour whose cells move between frames is reported as
+    a transient obstacle at its CURRENT position, while a large static wall colour is
+    never flagged (the compact cap) and the actor colour is excluded.
+
+    Expected feedback: pass proves the perceive-and-avoid capability isolates a
+    patrolling obstacle from static walls — the model-class boundary (static vs dynamic).
+    Fail means either the patroller is missed or a wall structure is mis-flagged as
+    transient (which would erase the whole occupancy)."""
+    gs = GroundingService()
+    # transition 1: actors move, obstacle STATIC -> the actor colour (9) is fixed cleanly
+    gs.feed_transition(_frame_with_obstacle([(3, 2), (3, 5)], (5, 5)), 3, (0, 0),
+                       _frame_with_obstacle([(3, 1), (3, 6)], (5, 5)))
+    # transition 2: the colour-3 obstacle now MOVES (5,5)->(5,6) -> flagged transient
+    gs.feed_transition(_frame_with_obstacle([(3, 1), (3, 6)], (5, 5)), 4, (0, 0),
+                       _frame_with_obstacle([(3, 2), (3, 5)], (5, 6)))
+    t = gs.movement_transient_obstacles()
+    assert t is not UNKNOWN
+    assert (5, 6) in t.value  # the obstacle's CURRENT (last-fed) cell
+    assert not (set(_STRUCT) & t.value)  # the large static wall colour is NOT flagged
+
+
+def test_static_compact_obstacle_is_not_flagged_transient():
+    """Purpose: a compact non-actor colour that does NOT move between frames is not a
+    transient obstacle (motion is required, not mere presence).
+
+    Expected feedback: pass proves a stationary decoration/marker is not mistaken for a
+    patroller. Fail means static compact features churn the snapshot needlessly."""
+    gs = GroundingService()
+    gs.feed_transition(_frame_with_obstacle([(3, 2), (3, 5)], (5, 5)), 3, (0, 0),
+                       _frame_with_obstacle([(3, 1), (3, 6)], (5, 5)))  # obstacle stays at (5,5)
+    t = gs.movement_transient_obstacles()
+    assert t is not UNKNOWN and (5, 5) not in t.value
+
+
 def test_movement_capabilities_are_inert_on_a_cell_state_board():
     """Purpose: on a glyph/lattice cell-state board no actor colour is confirmed, so
     every movement query is UNKNOWN — family auto-detection leaves the R95 paths

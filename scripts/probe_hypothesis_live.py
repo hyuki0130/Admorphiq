@@ -191,6 +191,16 @@ def _hazard_cell_count(gs: GroundingService) -> int:
     return 0 if h is UNKNOWN else len(h.value)
 
 
+_WAIT_K = 6  # max consecutive waits on a transient obstacle (the patroller's period clears it)
+
+
+def transient_snapshot(gs: GroundingService) -> set[tuple[int, int]]:
+    """The CURRENT cells occupied by a patrolling/transient obstacle — a per-frame
+    SNAPSHOT the plan routes around (never learned as a static wall)."""
+    t = gs.movement_transient_obstacles()
+    return set() if t is UNKNOWN else {(int(r), int(c)) for r, c in t.value}
+
+
 def _move_observed(gs: GroundingService) -> Optional[list[tuple[int, int]]]:
     """The current observed actor cells (sorted), or None — the confirmation view the
     step-level instrumentation logs against the plan's predicted successor."""
@@ -673,7 +683,8 @@ def run_movement_level(env: "LiveEnv", record: dict[str, Any], run_index: int) -
         )
     while True:
         plan = compile_movement_hypothesis(
-            instance, gs, extra_walls=learned_walls, extra_hazards=learned_hazards, unwalled=unwalled
+            instance, gs, extra_walls=learned_walls | transient_snapshot(gs),
+            extra_hazards=learned_hazards, unwalled=unwalled,
         )
         sol = plan.solve()
         record["states_searched"] = max(record["states_searched"], sol.states_searched)
@@ -708,6 +719,8 @@ def run_movement_level(env: "LiveEnv", record: dict[str, Any], run_index: int) -
     max_recompiles = 40  # total recompiles/level before the honest surface (cause-logged)
     recompiles = 0
     block_count: dict[tuple[int, int], int] = {}  # per-cell block tally for retry-before-learn
+    churn_cells: set[tuple[int, int]] = set()  # toggled cells (learned-then-invalidated) — NEVER learn
+    wait_count: dict[tuple[int, int], int] = {}  # per-cell consecutive waits on a transient obstacle
     prev_obs = _move_observed(gs)
     for _ in range(_M0R0_LEVEL_BUDGET + 10):
         frame = env.frame()
@@ -731,15 +744,16 @@ def run_movement_level(env: "LiveEnv", record: dict[str, Any], run_index: int) -
             if result.status is PlanStatus.DIVERGED:
                 obs_now = _move_observed(gs)
                 cause: Optional[str] = None
-                # OBSERVATION TRUMPS INFERENCE: an actor standing on a wall proves that
-                # cell is passable, so invalidate it before recompiling. This applies to
-                # LEARNED walls (a clean-block false positive) AND to GROUNDED walls (the
-                # static parse can bake in a DYNAMIC obstacle that sat there at parse time).
+                snapshot = transient_snapshot(gs)  # current patroller cells (never learned)
+                waived: set[tuple[int, int]] = set()  # transient cells to RE-ATTEMPT this recompile
+                # OBSERVATION TRUMPS INFERENCE (learned + grounded walls). An invalidated
+                # cell TOGGLED, so it joins the NEVER-LEARN churn set (a patroller sat there).
                 freed = walls_to_unlearn(learned_walls, obs_now)
                 if freed:
                     learned_walls -= freed
+                    churn_cells |= freed
                     for cell in freed:
-                        block_count.pop(cell, None)  # a re-block later must retry then re-learn
+                        block_count.pop(cell, None)
                     print(
                         f"[live] run{run_index} m0r0 unlearned wall(s) {sorted(freed)} (occupied) "
                         f"at step {level_actions}",
@@ -750,32 +764,42 @@ def run_movement_level(env: "LiveEnv", record: dict[str, Any], run_index: int) -
                 new_unwalled = (grounded & set(obs_now or [])) - unwalled
                 if new_unwalled:
                     unwalled |= new_unwalled
+                    churn_cells |= new_unwalled
                     print(
                         f"[live] run{run_index} m0r0 unwalled grounded wall(s) {sorted(new_unwalled)} "
                         f"(occupied) at step {level_actions}",
                         flush=True,
                     )
-                # (settle) a fully no-op FIRST action = the post-transition settling frame
-                # absorbing the input. Consume it ONCE; the next action is live.
+                blocked = (set(predicted) - set(obs_now or [])) if predicted else set()
                 if settle_allowance > 0 and obs_now is not None and obs_now == prev_obs:
                     settle_allowance -= 1
                     cause = f"settle from {obs_now}"
                 elif recompiles < max_recompiles:
+                    # (WAIT) a blocked target is a currently-visible transient obstacle:
+                    # re-emit the same action (wait in place) up to K, letting the patroller
+                    # clear — its cell is NOT walled this recompile (re-attempt), never learned.
+                    waitable = {c for c in (blocked & snapshot) if wait_count.get(c, 0) < _WAIT_K}
                     hazards = joint_reset_hazards(predicted, prev_obs, obs_now) - learned_hazards
-                    if hazards and len(learned_hazards) + len(hazards) <= max_learned:
+                    if waitable:
+                        for c in waitable:
+                            wait_count[c] = wait_count.get(c, 0) + 1
+                        waived = waitable
+                        k = max(wait_count[c] for c in waitable)
+                        cause = f"wait (transient at {sorted(waitable)}) {k}/{_WAIT_K}"
+                    elif hazards and len(learned_hazards) + len(hazards) <= max_learned:
                         # a JOINT soft-reset teleport: the entered cells are unseen hazards
                         learned_hazards |= hazards
                         record["hazard_resets"] += 1
                         cause = f"learned-hazard {sorted(hazards)} ({len(learned_hazards)} total)"
                     else:
-                        # WALL candidates: a total no-op yields the planned-stay/double-block
-                        # cells; else a single clean block. Each is RETRIED once (transient-
-                        # obstacle tolerance) and learned only if it re-blocks.
+                        # WALL candidates (total no-op -> planned-stay/double; else clean block),
+                        # RETRIED once before learning. NEVER learn a churn or transient cell.
                         if obs_now is not None and obs_now == prev_obs:
                             candidates = noop_block_walls(predicted, prev_obs, obs_now)
                         else:
                             clean = clean_block_wall(predicted, prev_obs, obs_now)
                             candidates = {clean} if clean is not None else set()
+                        candidates -= churn_cells | snapshot
                         to_learn, to_retry = block_learn_decision(candidates, learned_walls, block_count)
                         if to_learn and len(learned_walls) + len(to_learn) <= max_learned:
                             learned_walls |= to_learn
@@ -792,7 +816,8 @@ def run_movement_level(env: "LiveEnv", record: dict[str, Any], run_index: int) -
                     recompiles += 1
                     print(f"[live] run{run_index} m0r0 recompile ({cause}) at step {level_actions}", flush=True)
                     plan = compile_movement_hypothesis(
-                        instance, gs, extra_walls=learned_walls, extra_hazards=learned_hazards, unwalled=unwalled
+                        instance, gs, extra_walls=learned_walls | (snapshot - waived),
+                        extra_hazards=learned_hazards, unwalled=unwalled,
                     )
                     continue
                 colour = gs._move_actor_colour

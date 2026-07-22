@@ -216,6 +216,10 @@ class GroundingService:
         # the target not occupied by its partner) — free high-confidence wall evidence
         # that seeds the compiler's occupancy before execution (per-board).
         self._move_blocked_targets: set[Cell] = set()
+        # Compact non-actor colours whose regions were seen to MOVE — a patrolling /
+        # transient obstacle (a dynamic entity the STATIC parse cannot model). Kept
+        # compact-capped so a large static wall colour is never flagged (per-board).
+        self._move_transient_colours: set[int] = set()
 
     # ── frame stream ─────────────────────────────────────────────────────
 
@@ -287,6 +291,7 @@ class GroundingService:
         self._move_pos = None
         self._move_start = None
         self._move_blocked_targets = set()
+        self._move_transient_colours = set()
         struct = _parse_structure(grid)
         cell_anchors = sorted(struct.cells)
         anchor_to_id = {a: f"e{self._epoch}:c{k}" for k, a in enumerate(cell_anchors)}
@@ -415,6 +420,7 @@ class GroundingService:
                     self._cycle_obs[(cb, ca)] += 1
         if action in (1, 2, 3, 4):
             self._movement_observe(before_grid, action, after_grid)
+            self._move_note_transient_colours(before_grid, after_grid)
         self.feed(after)
 
     def _is_pattern_commit(self, before_grid: Grid, after_grid: Grid) -> bool:
@@ -776,6 +782,44 @@ class GroundingService:
         if not self._move_blocked_targets:
             return UNKNOWN
         return Grounded(frozenset(self._move_blocked_targets), "high")
+
+    _MOVE_MAX_TRANSIENT_CELLS = 4  # a patroller is a compact entity, never a wall structure
+
+    def _move_colour_cells(self, grid: Grid, colour: int) -> frozenset[Cell]:
+        scale = self._move_scale or 1
+        return frozenset(
+            (round(c[0] / scale), round(c[1] / scale)) for c, _s, _b in self._move_regions_of(grid, colour)
+        )
+
+    def _move_note_transient_colours(self, before: Grid, after: Grid) -> None:
+        """Flag compact non-actor colours whose region cells MOVED between frames — a
+        patrolling / transient obstacle (a dynamic entity the static parse cannot model).
+        Compact-capped so a large static wall colour is never flagged."""
+        if self._move_actor_colour is None or self._move_scale is None:
+            return
+        bg = self._move_bg(before)
+        for colour in {v for row in before for v in row}:
+            if colour in (bg, self._move_actor_colour):
+                continue
+            cb = self._move_colour_cells(before, colour)
+            if not (1 <= len(cb) <= self._MOVE_MAX_TRANSIENT_CELLS):
+                continue  # not compact -> a wall structure, not a patroller
+            if cb != self._move_colour_cells(after, colour):
+                self._move_transient_colours.add(colour)
+
+    def movement_transient_obstacles(self) -> Any:
+        """The CURRENT cells occupied by compact non-actor MOBILE regions (a patrolling
+        obstacle) — a per-frame SNAPSHOT (never learned as a static wall), honest empty
+        set when none visible; ``UNKNOWN`` before the actor colour + scale are known."""
+        grid = self._prev_grid
+        if grid is None or self._move_actor_colour is None or self._move_scale is None:
+            return UNKNOWN
+        cells: set[Cell] = set()
+        for colour in self._move_transient_colours:
+            cc = self._move_colour_cells(grid, colour)
+            if len(cc) <= self._MOVE_MAX_TRANSIENT_CELLS:  # still compact (not grown into a wall)
+                cells |= cc
+        return Grounded(frozenset(cells), "high")
 
     def _cell_at_xy(self, xy: tuple[int, int]) -> Optional[_CellRecord]:
         """The bound cell a click at ``xy = (x, y)`` lands on — by bbox
