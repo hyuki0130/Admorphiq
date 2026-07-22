@@ -30,6 +30,7 @@ noop_block_walls = _MOD.noop_block_walls
 joint_reset_hazards = _MOD.joint_reset_hazards
 walls_to_unlearn = _MOD.walls_to_unlearn
 block_learn_decision = _MOD.block_learn_decision
+blocked_now_update = _MOD.blocked_now_update
 
 
 def _lattice(overrides=None):
@@ -278,6 +279,26 @@ def test_walls_to_unlearn_invalidates_a_learned_wall_an_actor_occupies():
     assert walls_to_unlearn({(3, 11), (6, 9), (7, 2)}, [(6, 4), (6, 9)]) == {(6, 9)}
     assert walls_to_unlearn({(3, 11)}, [(6, 4), (6, 9)]) == set()  # nothing occupied is a wall
     assert walls_to_unlearn({(6, 9)}, None) == set()  # no observation
+
+
+def test_blocked_now_update_adds_blocks_and_clears_on_occupancy():
+    """Purpose: blocked_now ADDS a just-blocked target (route around it now) and DROPS any
+    cell an actor currently occupies (observation trumps inference) — the primary
+    transient sensor that avoids the churn-set trap (a persistently-blocked cell is routed
+    around WHILE blocking, never made permanent fiction).
+
+    Expected feedback: pass proves block→route-around and observe-on→clear both work, so a
+    patroller cell is temporarily walled without being learned or unwallably fictionalised.
+    Fail means either the block is ignored (the v10 hammer) or stays walled after clearing."""
+    # a fresh block of (3,9): actor_b was blocked entering it (predicted b at (3,9), reached (3,10))
+    bn = blocked_now_update(set(), ((3, 3), (3, 9)), [(3, 3), (3, 10)])
+    assert bn == {(3, 9)}
+    # it persists while it keeps blocking, and a second block accumulates
+    bn = blocked_now_update(bn, ((4, 2), (4, 8)), [(4, 3), (4, 8)])
+    assert bn == {(3, 9), (4, 2)}
+    # observation trumps inference: an actor now standing ON (3,9) clears it (passable)
+    bn = blocked_now_update(bn, ((5, 9), (5, 5)), [(3, 9), (5, 5)])
+    assert (3, 9) not in bn
 
 
 def test_block_learn_decision_retries_once_before_learning_a_wall():

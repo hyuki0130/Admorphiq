@@ -201,6 +201,21 @@ def transient_snapshot(gs: GroundingService) -> set[tuple[int, int]]:
     return set() if t is UNKNOWN else {(int(r), int(c)) for r, c in t.value}
 
 
+def blocked_now_update(
+    blocked_now: set[tuple[int, int]],
+    predicted: Optional[tuple[tuple[int, int], tuple[int, int]]],
+    obs_now: Optional[list[tuple[int, int]]],
+) -> set[tuple[int, int]]:
+    """Refresh the BLOCKED-NOW route-around set (the primary transient sensor, no colour
+    perception needed): ADD the cells an actor was just blocked from (predicted −
+    observed) and DROP any cell now occupied/passable (observation trumps inference — a
+    cell an actor stands on cannot be a wall). Never persisted, so a churn cell is routed
+    around WHILE blocking and re-tried the moment it clears."""
+    occupied = set(obs_now or [])
+    blocked = (set(predicted) - occupied) if predicted else set()
+    return (blocked_now | blocked) - occupied
+
+
 def _move_observed(gs: GroundingService) -> Optional[list[tuple[int, int]]]:
     """The current observed actor cells (sorted), or None — the confirmation view the
     step-level instrumentation logs against the plan's predicted successor."""
@@ -721,6 +736,7 @@ def run_movement_level(env: "LiveEnv", record: dict[str, Any], run_index: int) -
     block_count: dict[tuple[int, int], int] = {}  # per-cell block tally for retry-before-learn
     churn_cells: set[tuple[int, int]] = set()  # toggled cells (learned-then-invalidated) — NEVER learn
     wait_count: dict[tuple[int, int], int] = {}  # per-cell consecutive waits on a transient obstacle
+    blocked_now: set[tuple[int, int]] = set()  # cells currently blocking (route around; cleared when passable)
     prev_obs = _move_observed(gs)
     for _ in range(_M0R0_LEVEL_BUDGET + 10):
         frame = env.frame()
@@ -743,9 +759,9 @@ def run_movement_level(env: "LiveEnv", record: dict[str, Any], run_index: int) -
                 return "DIVERGED", len(gs.rebind_events)
             if result.status is PlanStatus.DIVERGED:
                 obs_now = _move_observed(gs)
+                occupied = set(obs_now or [])
                 cause: Optional[str] = None
                 snapshot = transient_snapshot(gs)  # current patroller cells (never learned)
-                waived: set[tuple[int, int]] = set()  # transient cells to RE-ATTEMPT this recompile
                 # OBSERVATION TRUMPS INFERENCE (learned + grounded walls). An invalidated
                 # cell TOGGLED, so it joins the NEVER-LEARN churn set (a patroller sat there).
                 freed = walls_to_unlearn(learned_walls, obs_now)
@@ -761,7 +777,7 @@ def run_movement_level(env: "LiveEnv", record: dict[str, Any], run_index: int) -
                     )
                 occ = gs.movement_occupancy()
                 grounded = set() if occ is UNKNOWN else {(int(r), int(c)) for r, c in occ.value.blocked_cells}
-                new_unwalled = (grounded & set(obs_now or [])) - unwalled
+                new_unwalled = (grounded & occupied) - unwalled
                 if new_unwalled:
                     unwalled |= new_unwalled
                     churn_cells |= new_unwalled
@@ -770,30 +786,24 @@ def run_movement_level(env: "LiveEnv", record: dict[str, Any], run_index: int) -
                         f"(occupied) at step {level_actions}",
                         flush=True,
                     )
-                blocked = (set(predicted) - set(obs_now or [])) if predicted else set()
+                # BLOCKED-NOW is the primary transient sensor: a cell an actor was just blocked
+                # from is routed around THIS recompile (temporary, never permanent); it clears
+                # the moment an actor is observed ON it / passes it (observation trumps inference).
+                blocked_now = blocked_now_update(blocked_now, predicted, obs_now)
                 if settle_allowance > 0 and obs_now is not None and obs_now == prev_obs:
                     settle_allowance -= 1
                     cause = f"settle from {obs_now}"
                 elif recompiles < max_recompiles:
-                    # (WAIT) a blocked target is a currently-visible transient obstacle:
-                    # re-emit the same action (wait in place) up to K, letting the patroller
-                    # clear — its cell is NOT walled this recompile (re-attempt), never learned.
-                    waitable = {c for c in (blocked & snapshot) if wait_count.get(c, 0) < _WAIT_K}
                     hazards = joint_reset_hazards(predicted, prev_obs, obs_now) - learned_hazards
-                    if waitable:
-                        for c in waitable:
-                            wait_count[c] = wait_count.get(c, 0) + 1
-                        waived = waitable
-                        k = max(wait_count[c] for c in waitable)
-                        cause = f"wait (transient at {sorted(waitable)}) {k}/{_WAIT_K}"
-                    elif hazards and len(learned_hazards) + len(hazards) <= max_learned:
+                    if hazards and len(learned_hazards) + len(hazards) <= max_learned:
                         # a JOINT soft-reset teleport: the entered cells are unseen hazards
                         learned_hazards |= hazards
                         record["hazard_resets"] += 1
                         cause = f"learned-hazard {sorted(hazards)} ({len(learned_hazards)} total)"
                     else:
-                        # WALL candidates (total no-op -> planned-stay/double; else clean block),
-                        # RETRIED once before learning. NEVER learn a churn or transient cell.
+                        # STATIC-WALL candidates (total no-op -> planned-stay/double; else clean
+                        # block), RETRIED once. NEVER learn a churn/transient cell — blocked_now
+                        # handles those temporarily; only a persistent NON-churn block is learned.
                         if obs_now is not None and obs_now == prev_obs:
                             candidates = noop_block_walls(predicted, prev_obs, obs_now)
                         else:
@@ -809,16 +819,34 @@ def run_movement_level(env: "LiveEnv", record: dict[str, Any], run_index: int) -
                         elif to_retry:
                             cause = f"retry-block {sorted(to_retry)}"
                         else:
-                            cause = f"ambiguous predicted {predicted} observed {obs_now}"
+                            cause = f"route-around {sorted(blocked_now)}" if blocked_now else (
+                                f"ambiguous predicted {predicted} observed {obs_now}"
+                            )
                 if cause is None and (freed or new_unwalled):
                     cause = f"invalidate-only walls={sorted(freed)} unwalled={sorted(new_unwalled)}"
                 if cause is not None and recompiles < max_recompiles:
                     recompiles += 1
-                    print(f"[live] run{run_index} m0r0 recompile ({cause}) at step {level_actions}", flush=True)
+                    walls = learned_walls | blocked_now | snapshot
                     plan = compile_movement_hypothesis(
-                        instance, gs, extra_walls=learned_walls | (snapshot - waived),
-                        extra_hazards=learned_hazards, unwalled=unwalled,
+                        instance, gs, extra_walls=walls, extra_hazards=learned_hazards, unwalled=unwalled,
                     )
+                    # WAIT: if routing AROUND the current blocks has no solution, the block is a
+                    # churn/transient obstacle on the only path — re-attempt (wait) up to K,
+                    # letting it clear, rather than declaring UNSATISFIABLE prematurely.
+                    if plan.solve().status is PlanStatus.UNSATISFIABLE:
+                        waitable = {
+                            c for c in (blocked_now & (churn_cells | snapshot)) if wait_count.get(c, 0) < _WAIT_K
+                        }
+                        if waitable:
+                            for c in waitable:
+                                wait_count[c] = wait_count.get(c, 0) + 1
+                            k = max(wait_count[c] for c in waitable)
+                            cause = f"{cause} + wait (blocked {sorted(waitable)}) {k}/{_WAIT_K}"
+                            plan = compile_movement_hypothesis(
+                                instance, gs, extra_walls=walls - waitable,
+                                extra_hazards=learned_hazards, unwalled=unwalled,
+                            )
+                    print(f"[live] run{run_index} m0r0 recompile ({cause}) at step {level_actions}", flush=True)
                     continue
                 colour = gs._move_actor_colour
                 regions = gs._move_regions_of(frame, colour) if colour is not None else []
@@ -836,6 +864,7 @@ def run_movement_level(env: "LiveEnv", record: dict[str, Any], run_index: int) -
                 flush=True,
             )
             prev_obs = _move_observed(gs)  # actors BEFORE this action (for the absorption test)
+            blocked_now -= set(prev_obs or [])  # a cell an actor now occupies is passable — clear it
             env.simple_action(result.action)
             level_actions += 1
             if env.levels() > start_levels:
