@@ -111,8 +111,25 @@ model selection 15% / compiler-live 10%.
   assignment: one diagnostic (pixel evidence at the 10 learned-wall cells)
   → one generic fix (full-cell sampling / boundary-aware / reachability-
   consistent, per evidence) + idx0 89-wall regression pin → v5 re-gate.
-  The learned-wall channel stays as the residual-error meter. (vii)–(viii)
-  pending.
+  The learned-wall channel stays as the residual-error meter.
+  **Diagnosis (pixel dump, 06:36) REFUTED the background-boundary
+  hypothesis**: the missed walls are MINORITY-OBSTACLE cells (center=floor
+  colour 5 but 3-10/25 obstacle pixels of colours 15/8/6) — and 3 of the 10
+  "learned walls" ((6,9),(5,10),(6,10)) are pure {5:25} background, i.e.
+  FALSE POSITIVES of the set-based predicted−observed learning (these
+  over-constrained the plan into UNSATISFIABLE). Full-cell sampling was
+  measured offline and REJECTED: idx0's floor cells carry colour-6
+  anti-alias bleed in the SAME pixel range (2-5) as idx1's real obstacles
+  (min 3) — no threshold separates them; any threshold catching idx1's
+  obstacles marks idx0 89→94-118 walls and makes BOTH boards UNSATISFIABLE.
+  The colour parse stays untouched. **Approved fix = make the ONLINE
+  learning reliable** (driver, not movement_occupancy): learn a wall only
+  from a CLEAN independent_stay block (exactly one actor stayed while its
+  partner moved as predicted → the stayed actor's predicted target is the
+  wall); both-actors-off-prediction learns nothing (ambiguous); seed
+  extra_walls from discovery's blocked_by_wall attributions; bounded
+  recompiles with cause logging (settle | learned-wall | ambiguous).
+  (vii)–(viii) pending.
 
 ## Related
 
