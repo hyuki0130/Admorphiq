@@ -132,6 +132,27 @@ neighbour_stencil with the same cursor-artifact reasoning.
 4. **R95b family-compiler gate OPENS** per prereg (model showed selection
    skill on the representable case).
 
+## #125 masked rerun (gemma4 v2, collected 2026-07-22 16:54) — defect chain CLOSED
+
+The #125 fix (commit b3bdcf5; diagnosis CORRECTED during build: the real sc25
+artifact is the right-edge click-budget BAR leaking past the col-63 HUD mask
+— edge-touch fraction 0.86 vs ft09 0.06 — NOT a relocating cursor; both a
+generic HUD-edge rule and a generic relocating-cursor guard were implemented,
+the latter inert on both traces and synthetic-proven) changed ONLY the
+observation layer: sc25 histogram mode 2→1 cell, ft09 byte-identical,
+part-1 frozen numbers untouched (dynamics_heldout_masked == dynamics_heldout
+— the pixel-Jaccard axis had tolerated the 2-pixel bar all along; only the
+integer histogram the LLM reads was corrupted).
+
+Rerun (`r95a_select_bench_gemma4_v2_masked.json`): **sc25 0/3 → 3/3 PASS,
+picking the exact oracle** (evidence: "4 of 7 clicks changed only 1 cell,
+contradicts T5" — the masked histogram is what flipped it), confidence
+medium (honest — sc25 evidence is thinner). ft09 replicated 3/3 exact-oracle,
+byte-identical observations. The full loop — cross-model failure observed →
+mechanism predicted → harness fixed generically → picks recover — is the
+first CLOSED defect chain through the hypothesis channel. gpt-oss v2 twin
+launched for the paired closure.
+
 ## Related
 
 - [[r94_adapter-template]] — the refuted family-template road this replaces.
