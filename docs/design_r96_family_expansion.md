@@ -63,6 +63,31 @@ kept underneath for provenance).
    (actor0, actor1, block) planning; dc22 L1 sprite collision + walk-on
    triggers + click-opened barriers.
 
+## R96 EVALUATION CONTRACT (step i — FROZEN 2026-07-23 04:26)
+
+- **Game & levels**: m0r0 idx0 and idx1 (the model criterion level = idx0,
+  oracle-proven first; idx1 in sequence within the same run).
+- **Fresh-reset procedure**: new env + RESET per run; every action resolved
+  through the grounding service at action time; no replayed sequences.
+- **Budgets (split caps, per the risk register)**: discovery probes ≤30
+  actions/run; solve ≤150 actions/level; hazard soft-resets consume the
+  level budget (they are real actions); wall-clock ≤20 min/run incl. LLM.
+  Discovery actions COUNT toward the run's action total but are reported
+  separately.
+- **Repetitions & aggregation**: oracle gate 3/3; model substages 3 runs per
+  model per substage, success = ≥2/3; CONFIRMED = both models.
+- **Substage order**: canned-instance selection (oracle + the 6 frozen
+  mutants, serialized neutral) → variant-first slot filling.
+- **Controls**: dc22 idx0 = near-OOD (expected UNSUPPORTED/UNKNOWN
+  pre-execution); tu93 = far-OOD. Neither gates.
+- **Prohibited leakage**: as R95 (no adapter code, wiki, game ids, provenance
+  labels, gold sequences); prose-only evidence (R95 notation lesson).
+- **Non-counting**: UNKNOWN never executes; manual/oracle-assisted clears
+  recorded but not counted.
+- **Falsification**: oracle gate failing on grounding (two-actor tracking /
+  occupancy parsing) = the pre-declared 55% outcome → round pivots to
+  grounding work, not schema/model changes.
+
 ## v0 draft (superseded by v1 above — kept for provenance) Successor to R95 (`design_hypothesis_dsl_r95.md`,
 round CLOSED with the contract complete on the cell-state family). R96 applies
 the PROVEN R95 pipeline — family schema → grounding service → verifier →
