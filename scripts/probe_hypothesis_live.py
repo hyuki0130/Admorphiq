@@ -665,6 +665,7 @@ def run_movement_level(env: "LiveEnv", record: dict[str, Any], run_index: int) -
     seeded = gs.movement_blocked_targets()
     learned_walls: set[tuple[int, int]] = set() if seeded is UNKNOWN else set(seeded.value)
     learned_hazards: set[tuple[int, int]] = set()
+    unwalled: set[tuple[int, int]] = set()  # grounded walls an actor was seen on (false-wall override)
     if learned_walls:
         print(
             f"[live] run{run_index} m0r0: seeded {len(learned_walls)} wall(s) from discovery blocks",
@@ -672,7 +673,7 @@ def run_movement_level(env: "LiveEnv", record: dict[str, Any], run_index: int) -
         )
     while True:
         plan = compile_movement_hypothesis(
-            instance, gs, extra_walls=learned_walls, extra_hazards=learned_hazards
+            instance, gs, extra_walls=learned_walls, extra_hazards=learned_hazards, unwalled=unwalled
         )
         sol = plan.solve()
         record["states_searched"] = max(record["states_searched"], sol.states_searched)
@@ -730,9 +731,10 @@ def run_movement_level(env: "LiveEnv", record: dict[str, Any], run_index: int) -
             if result.status is PlanStatus.DIVERGED:
                 obs_now = _move_observed(gs)
                 cause: Optional[str] = None
-                # OBSERVATION TRUMPS INFERENCE: an actor standing on a learned wall proves
-                # that cell is passable (a clean-block attribution can be a false positive),
-                # so invalidate it before recompiling — the plan stops mispredicting it.
+                # OBSERVATION TRUMPS INFERENCE: an actor standing on a wall proves that
+                # cell is passable, so invalidate it before recompiling. This applies to
+                # LEARNED walls (a clean-block false positive) AND to GROUNDED walls (the
+                # static parse can bake in a DYNAMIC obstacle that sat there at parse time).
                 freed = walls_to_unlearn(learned_walls, obs_now)
                 if freed:
                     learned_walls -= freed
@@ -741,6 +743,16 @@ def run_movement_level(env: "LiveEnv", record: dict[str, Any], run_index: int) -
                     print(
                         f"[live] run{run_index} m0r0 unlearned wall(s) {sorted(freed)} (occupied) "
                         f"at step {level_actions}",
+                        flush=True,
+                    )
+                occ = gs.movement_occupancy()
+                grounded = set() if occ is UNKNOWN else {(int(r), int(c)) for r, c in occ.value.blocked_cells}
+                new_unwalled = (grounded & set(obs_now or [])) - unwalled
+                if new_unwalled:
+                    unwalled |= new_unwalled
+                    print(
+                        f"[live] run{run_index} m0r0 unwalled grounded wall(s) {sorted(new_unwalled)} "
+                        f"(occupied) at step {level_actions}",
                         flush=True,
                     )
                 # (settle) a fully no-op FIRST action = the post-transition settling frame
@@ -774,13 +786,13 @@ def run_movement_level(env: "LiveEnv", record: dict[str, Any], run_index: int) -
                             cause = f"retry-block {sorted(to_retry)}"
                         else:
                             cause = f"ambiguous predicted {predicted} observed {obs_now}"
-                if cause is None and freed:
-                    cause = f"unlearn-only {sorted(freed)}"  # invalidation alone changed the map
+                if cause is None and (freed or new_unwalled):
+                    cause = f"invalidate-only walls={sorted(freed)} unwalled={sorted(new_unwalled)}"
                 if cause is not None and recompiles < max_recompiles:
                     recompiles += 1
                     print(f"[live] run{run_index} m0r0 recompile ({cause}) at step {level_actions}", flush=True)
                     plan = compile_movement_hypothesis(
-                        instance, gs, extra_walls=learned_walls, extra_hazards=learned_hazards
+                        instance, gs, extra_walls=learned_walls, extra_hazards=learned_hazards, unwalled=unwalled
                     )
                     continue
                 colour = gs._move_actor_colour

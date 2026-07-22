@@ -287,6 +287,29 @@ def test_adjacent_start_merges_only_via_a_desync_detour():
     assert end[0] == end[1] and end[0] not in (pre[0], pre[1])  # final step: simultaneous same-empty-cell entry
 
 
+def test_unwalled_overrides_a_grounded_wall_an_actor_occupies():
+    """Purpose: a GROUNDED (statically-parsed) wall passed in ``unwalled`` is treated as
+    floor — the plan may route through / merge on it — while without the override the
+    same grounded wall is respected and never entered.
+
+    Expected feedback: pass proves observation-trumps-inference reaches the static parse:
+    a dynamic obstacle baked into the occupancy at parse time can be invalidated once an
+    actor is seen standing on it (the v8 fictional-wall endgame). Fail means a false
+    grounded wall permanently blocks the plan."""
+    arena = _arena(6, 10)
+    actors = [("actor_a", (2, 4)), ("actor_b", (2, 6))]
+    gs = _StubMoveGrounding(_FULL_MIRROR_DELTAS, actors, walls=arena + [(2, 5)])
+    # grounded wall on the meet-in-the-middle cell (2,5): respected -> never routed onto
+    plan_wo = compile_movement_hypothesis(M.m0r0_oracle_instance(), gs)
+    assert plan_wo.solve().status is PlanStatus.SOLVABLE  # merges elsewhere (another row)
+    assert all((2, 5) not in state for state in plan_wo._traj)
+    # unwalling (2,5) treats it as floor -> a one-action meet-in-the-middle merge there
+    plan = compile_movement_hypothesis(M.m0r0_oracle_instance(), gs, unwalled={(2, 5)})
+    sol = plan.solve()
+    assert sol.status is PlanStatus.SOLVABLE
+    assert len(sol.actions) == 1 and plan._traj[-1] == ((2, 5), (2, 5))
+
+
 def test_extra_hazards_are_routed_around_like_walls():
     """Purpose: a cell learned to HAZARD (soft-reset on entry) at execution time is
     routed around — the joint BFS prunes any action that would drive an actor into it,
