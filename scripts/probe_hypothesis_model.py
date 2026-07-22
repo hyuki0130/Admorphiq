@@ -49,6 +49,22 @@ Grid = tuple[tuple[int, ...], ...]
 _CONFIDENCE_VALUES = ("low", "medium", "high")
 _SC25_PROBE_CELLS = 4  # flip probes to gather footprint evidence for the lattice family
 
+# fill-mode closed vocabularies (the model's structural + semantic choices)
+_OBJECTIVE_KINDS = ("glyph_relational", "pattern_reference")
+_TRANSITION_KINDS = ("ordered_cycle", "binary_flip", "empirical_effect_matrix")
+_COVERAGE_QUANTIFIERS = ("all_covering", "nearest_only")
+_PREVIEW_INTERPRETATIONS = ("xor_exact", "xor_near", "absolute_exact", "absolute_near")
+_INK_OPERATORS = ("equal", "differ", "none")
+_GUARD_KINDS = ("stable_for_reads", "roles_state_equal", "layout_replaced", "level_advanced")
+# The harness fills each guard's PARAMS (reads count, role names) — numbers/roles
+# the harness measured; the model only chooses WHICH guard kinds gate each phase.
+_GUARD_JSON: dict[str, dict[str, Any]] = {
+    "stable_for_reads": {"kind": "stable_for_reads", "reads": 2},
+    "roles_state_equal": {"kind": "roles_state_equal", "lhs": "toggle_grid", "rhs": "preview", "mask": None},
+    "layout_replaced": {"kind": "layout_replaced"},
+    "level_advanced": {"kind": "level_advanced"},
+}
+
 
 # ── canonical instances (the oracle + the same-game mutants, as DATA) ─────────
 
@@ -357,19 +373,35 @@ def run_model_once(
         return record
 
     instance = by_name[mapped]
+    _gate_and_execute(env, gs, game, instance, target_levels, level_budget, record, run_index)
+    return record
+
+
+def _gate_and_execute(
+    env: "live.LiveEnv",
+    gs: GroundingService,
+    game: str,
+    instance: schema.CellStateHypothesis,
+    target_levels: int,
+    level_budget: int,
+    record: dict[str, Any],
+    run_index: int,
+) -> None:
+    """Verifier-gate ``instance`` on the live evidence, then (PASS only) execute it
+    on a fresh board via the SAME path as the oracle gate. Shared by select mode
+    and fill mode. Mutates ``record`` with the verdict, executed flag, and outcome."""
     verdict_name, executable = gate_selected_instance(instance, gs, game)
     record["verifier_verdict"] = verdict_name
     if not executable:
-        return record  # UNKNOWN / CONTRADICTED never executes (contract)
+        return  # UNKNOWN / CONTRADICTED never executes (contract)
 
-    # Execute the PASSing pick on a fresh board, via the SAME path as the oracle
-    # gate. The reset clears the probe-modified board; the footprint evidence in
-    # gs persists (it is level-invariant).
+    # The reset clears the probe-modified board; the footprint evidence in gs
+    # persists (it is level-invariant).
     record["executed"] = True
     env.reset()
     if not _warm_up(env, gs):
         record["plan_outcome"] = "GROUNDING_INCOMPLETE"
-        return record
+        return
 
     def probe(x: int, y: int) -> Optional[Grid]:
         env.click(x, y)
@@ -387,7 +419,7 @@ def run_model_once(
 
     if not rediscover():
         record["plan_outcome"] = "GROUNDING_INCOMPLETE"
-        return record
+        return
 
     live.execute_instance(
         env, gs, game, instance, target_levels, level_budget, record, run_index, rediscover
@@ -398,7 +430,6 @@ def run_model_once(
         else record["cast_and_handover"]
     )
     record["outcome"] = "PASS" if success else "FAIL"
-    return record
 
 
 def model_verdict(runs: list[dict[str, Any]]) -> str:
@@ -408,20 +439,382 @@ def model_verdict(runs: list[dict[str, Any]]) -> str:
     return "PASS" if sum(1 for r in runs if r.get("outcome") == "PASS") >= 2 else "FAIL"
 
 
+# ── fill mode: variant-first slot filling (generation, not selection) ─────────
+
+
+def observed_inks(gs: GroundingService) -> list[int]:
+    """The marker-ink colours seen across the grounded cells' incidence — the
+    closed set the model assigns operators to (glyph family; empty for a lattice
+    board)."""
+    inks: set[int] = set()
+    cells = gs.cells()
+    if cells is not UNKNOWN:
+        for cid, _centroid in cells.value:
+            cov = gs.incidence(cid)
+            if cov is not UNKNOWN:
+                for _gid, ink, _marker, _gc in cov.value:
+                    inks.add(int(ink))
+    return sorted(inks)
+
+
+def harness_measured_values(gs: GroundingService, game: str) -> dict[str, Any]:
+    """The harness_measured field values the model must NOT author (per
+    schema.OWNERSHIP): the live-acquired colour cycle order, the modal click
+    footprint, the base-snapshot timing + two-read policy, and the no-cell ink
+    sentinel. Everything measured, nothing invented."""
+    inks = observed_inks(gs)
+    cycle = gs.get_ordered_cycle()
+    footprints = gs.observed_footprints()
+    modal = 1
+    if footprints is not UNKNOWN:
+        effective = {k: v for k, v in footprints.value.items() if k >= 1}
+        modal = max(effective, key=lambda k: effective[k]) if effective else 1
+    return {
+        "no_cell_ink": (max(inks) + 1) if inks else 0,  # a sentinel distinct from observed inks (unused by execution)
+        "order": list(cycle.value) if cycle is not UNKNOWN else [],
+        "asserted_footprint": modal,
+        "base_snapshot_timing": "after_first_settled_action",
+        "two_read_stability": True,
+        "n_phases": len(_oracle_instance(game).phases),
+    }
+
+
+def _balanced_objects(text: str) -> list[str]:
+    """Every top-level ``{...}`` balanced-brace substring in ``text`` (tolerant of
+    nesting, unlike a flat regex — the slot JSON nests ink_operator_map)."""
+    out: list[str] = []
+    depth = 0
+    start = -1
+    for i, ch in enumerate(text):
+        if ch == "{":
+            if depth == 0:
+                start = i
+            depth += 1
+        elif ch == "}" and depth > 0:
+            depth -= 1
+            if depth == 0 and start >= 0:
+                out.append(text[start:i + 1])
+    return out
+
+
+def _last_object_with(text: str, key: str) -> Optional[dict[str, Any]]:
+    for candidate in reversed(_balanced_objects(text)):
+        try:
+            parsed = json.loads(candidate)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(parsed, dict) and key in parsed:
+            return parsed
+    return None
+
+
+def build_variant_ask(gs: GroundingService, game: str) -> list[dict[str, str]]:
+    """ASK 1 — the VARIANT: from the live observation summary (no serialized
+    instances — this is generation), choose the objective + transition category."""
+    observation = live_observation_summary(gs, game)
+    system = (
+        "You are analysing a small interactive grid puzzle from live probing. Identify "
+        "its mechanics by choosing the category of its completion rule and its click effect."
+    )
+    user = (
+        f"{observation}\n\n"
+        "Choose the two categories that best match:\n"
+        "- objective_kind: 'glyph_relational' (the board is complete when each cell satisfies "
+        "relational colour requirements set by nearby marker symbols) OR 'pattern_reference' "
+        "(complete when the grid matches a separately displayed target pattern).\n"
+        "- transition_kind: 'ordered_cycle' (a click advances one cell one step through a "
+        "repeating cycle of 3+ colours) OR 'binary_flip' (a click toggles one cell between two "
+        "colours) OR 'empirical_effect_matrix' (a click changes a fixed-size neighbourhood of "
+        "several cells).\n"
+        "Respond with ONLY a JSON object, no other text:\n"
+        '{"objective_kind": "glyph_relational"|"pattern_reference", "transition_kind": '
+        '"ordered_cycle"|"binary_flip"|"empirical_effect_matrix", "confidence": "low"|"medium"|"high", '
+        '"evidence": "<=2 sentences citing the observation that decided it"}'
+    )
+    return [{"role": "system", "content": system}, {"role": "user", "content": user}]
+
+
+def parse_variant(text: str) -> tuple[Optional[dict[str, str]], str]:
+    """Validate ASK 1: objective_kind + transition_kind in their closed vocabularies."""
+    obj = _last_object_with(text, "objective_kind")
+    if obj is None:
+        return None, "no JSON object with an 'objective_kind' field parsed"
+    ok, tk = obj.get("objective_kind"), obj.get("transition_kind")
+    if ok not in _OBJECTIVE_KINDS:
+        return None, f"objective_kind {ok!r} is not one of {list(_OBJECTIVE_KINDS)}"
+    if tk not in _TRANSITION_KINDS:
+        return None, f"transition_kind {tk!r} is not one of {list(_TRANSITION_KINDS)}"
+    confidence = obj.get("confidence", "low")
+    if confidence not in _CONFIDENCE_VALUES:
+        confidence = "low"
+    return {"objective_kind": ok, "transition_kind": tk, "confidence": confidence,
+            "evidence": str(obj.get("evidence", ""))[:500]}, ""
+
+
+def build_slot_ask(gs: GroundingService, game: str, objective_kind: str) -> list[dict[str, str]]:
+    """ASK 2 — the model_selected SLOTS for the chosen objective variant only. The
+    harness-measured values (cycle, structure, timing) are NOT asked for."""
+    n_phases = len(_oracle_instance(game).phases)
+    guards = " | ".join(_GUARD_KINDS)
+    phase_note = (
+        f"- phase_guards: a list of exactly {n_phases} entries (one per phase, in order); each entry is "
+        f"a list of guard names that gate entering that phase, from {{{guards}}}. Use [] for a phase with "
+        "no guard (the first phase is always active)."
+    )
+    if objective_kind == "glyph_relational":
+        inks = observed_inks(gs)
+        ink_fields = ", ".join(f'"{i}": "equal"|"differ"|"none"' for i in inks)
+        body = (
+            "You choose ONLY these fields (the harness has measured the cells, the marker structure, "
+            "and the colour cycle a click advances through):\n"
+            "- coverage_quantifier: 'all_covering' (a cell must satisfy EVERY marker covering it) or "
+            "'nearest_only' (only its single nearest marker).\n"
+            f"- ink_operator_map: for each observed marker-ink colour {inks}, how the covered cell must "
+            "relate to that marker: 'equal', 'differ', or 'none' (no constraint).\n"
+            f"{phase_note}\n\n"
+            "Respond with ONLY a JSON object:\n"
+            f'{{"coverage_quantifier": "all_covering"|"nearest_only", "ink_operator_map": {{{ink_fields}}}, '
+            f'"phase_guards": [{", ".join(["[...]"] * n_phases)}], "confidence": "low"|"medium"|"high", '
+            '"evidence": "<=2 sentences"}'
+        )
+    else:
+        body = (
+            "You choose ONLY these fields (the harness has measured the cells and the base-snapshot "
+            "timing):\n"
+            "- preview_interpretation: how the displayed target maps onto the grid: 'xor_exact' (grid = "
+            "base XOR target, exact), 'xor_near' (XOR, a few mismatches allowed), 'absolute_exact' (grid "
+            "cells directly equal the target colours), 'absolute_near' (absolute, a few mismatches).\n"
+            f"{phase_note}\n\n"
+            "Respond with ONLY a JSON object:\n"
+            '{"preview_interpretation": "xor_exact"|"xor_near"|"absolute_exact"|"absolute_near", '
+            f'"phase_guards": [{", ".join(["[...]"] * n_phases)}], "confidence": "low"|"medium"|"high", '
+            '"evidence": "<=2 sentences"}'
+        )
+    system = (
+        "You are specifying the rule of a small interactive grid puzzle. Fill ONLY the requested "
+        "slots from their allowed values; do not restate measured values."
+    )
+    user = f"{live_observation_summary(gs, game)}\n\n{body}"
+    return [{"role": "system", "content": system}, {"role": "user", "content": user}]
+
+
+def parse_slots(
+    text: str, objective_kind: str, inks: list[int], n_phases: int
+) -> tuple[Optional[dict[str, Any]], str]:
+    """Validate ASK 2 against the closed vocabularies + the observed-ink list + the
+    phase count. Returns ``(slots_or_None, error)``; the error string is the
+    field-naming feedback for the ONE retry."""
+    anchor = "coverage_quantifier" if objective_kind == "glyph_relational" else "preview_interpretation"
+    obj = _last_object_with(text, anchor)
+    if obj is None:
+        return None, f"no JSON object with a '{anchor}' field parsed"
+    guards = obj.get("phase_guards")
+    if not isinstance(guards, list) or len(guards) != n_phases:
+        return None, f"phase_guards must be a list of exactly {n_phases} guard-name lists"
+    for i, entry in enumerate(guards):
+        if not isinstance(entry, list) or any(g not in _GUARD_KINDS for g in entry):
+            return None, f"phase_guards[{i}] must be a list of names from {list(_GUARD_KINDS)}"
+    if objective_kind == "glyph_relational":
+        cq = obj.get("coverage_quantifier")
+        if cq not in _COVERAGE_QUANTIFIERS:
+            return None, f"coverage_quantifier {cq!r} is not one of {list(_COVERAGE_QUANTIFIERS)}"
+        raw = obj.get("ink_operator_map")
+        if not isinstance(raw, dict):
+            return None, "ink_operator_map must be an object mapping each observed ink to an operator"
+        ink_map: dict[int, str] = {}
+        for ink in inks:
+            op = raw.get(str(ink), raw.get(ink))
+            if op not in _INK_OPERATORS:
+                return None, f"ink_operator_map[{ink}] {op!r} is not one of {list(_INK_OPERATORS)}"
+            ink_map[ink] = op
+        return {"coverage_quantifier": cq, "ink_operator_map": ink_map, "phase_guards": guards}, ""
+    pi = obj.get("preview_interpretation")
+    if pi not in _PREVIEW_INTERPRETATIONS:
+        return None, f"preview_interpretation {pi!r} is not one of {list(_PREVIEW_INTERPRETATIONS)}"
+    return {"preview_interpretation": pi, "phase_guards": guards}, ""
+
+
+def assemble_instance(
+    objective_kind: str,
+    transition_kind: str,
+    slots: dict[str, Any],
+    harness: dict[str, Any],
+    inks: list[int],
+) -> schema.CellStateHypothesis:
+    """Build the full CellStateHypothesis from (model variant + model slots +
+    harness_measured values) via schema.from_json — so a malformed assembly raises
+    a field-naming ValueError (the retry's error-feedback channel)."""
+    if objective_kind == "glyph_relational":
+        objective = {
+            "kind": "glyph_relational",
+            "coverage_quantifier": slots["coverage_quantifier"],
+            "ink_operator_map": [[ink, slots["ink_operator_map"][ink]] for ink in inks],
+            "no_cell_ink": harness["no_cell_ink"],
+        }
+    else:
+        objective = {
+            "kind": "pattern_reference",
+            "preview_interpretation": slots["preview_interpretation"],
+            "base_snapshot_timing": harness["base_snapshot_timing"],
+            "two_read_stability": harness["two_read_stability"],
+        }
+    if transition_kind == "ordered_cycle":
+        transition = {"kind": "ordered_cycle", "order": list(harness["order"])}
+    elif transition_kind == "binary_flip":
+        transition = {"kind": "binary_flip"}
+    else:
+        transition = {"kind": "empirical_effect_matrix", "asserted_footprint": harness["asserted_footprint"]}
+    phases = [
+        {"guard": [_GUARD_JSON[k] for k in kinds], "objective": None}
+        for kinds in slots["phase_guards"]
+    ]
+    return schema.from_json({"objective": objective, "transition_model": transition, "phases": phases})
+
+
+def fill_instance(
+    gs: GroundingService, game: str, llm: Callable[[list[dict[str, str]]], str], record: dict[str, Any]
+) -> Optional[schema.CellStateHypothesis]:
+    """The two-stage fill: ASK 1 (variant) then ASK 2 (that variant's slots), with
+    ONE assembly-error retry on ASK 2. Mutates ``record`` with the variant choice,
+    slot values, assembly validity, and retry count. Returns the assembled instance
+    or ``None`` on an unrecoverable failure (which the run records as NOT executed)."""
+    try:
+        variant, verr = parse_variant(llm(build_variant_ask(gs, game)))
+    except Exception as exc:  # noqa: BLE001 - offline-safe
+        record["plan_outcome"] = f"variant_ask_error: {exc}"
+        return None
+    if variant is None:
+        record["plan_outcome"] = f"variant_invalid: {verr}"
+        return None
+    objective_kind, transition_kind = variant["objective_kind"], variant["transition_kind"]
+    record["variant_choice"] = {"objective_kind": objective_kind, "transition_kind": transition_kind}
+
+    inks = observed_inks(gs)
+    harness = harness_measured_values(gs, game)
+    convo = build_slot_ask(gs, game, objective_kind)
+    error = ""
+    for attempt in range(2):  # initial + ONE retry
+        if attempt == 1:
+            convo = convo + [
+                {"role": "assistant", "content": "(previous attempt)"},
+                {"role": "user", "content": (
+                    f"Your previous slot answer was invalid: {error}. Respond again with ONLY the JSON "
+                    "object, using only the allowed values."
+                )},
+            ]
+        try:
+            text = llm(convo)
+        except Exception as exc:  # noqa: BLE001
+            record["plan_outcome"] = f"slot_ask_error: {exc}"
+            record["retries"] = attempt
+            return None
+        slots, serr = parse_slots(text, objective_kind, inks, harness["n_phases"])
+        if slots is not None:
+            try:
+                instance = assemble_instance(objective_kind, transition_kind, slots, harness, inks)
+            except ValueError as exc:
+                error = str(exc)  # from_json field-naming error
+            else:
+                record["slot_values"] = _slot_record(slots)
+                record["assembly_valid"] = True
+                record["retries"] = attempt
+                return instance
+        else:
+            error = serr
+    record["retries"] = 1
+    record["plan_outcome"] = f"assembly_invalid: {error}"
+    return None
+
+
+def _slot_record(slots: dict[str, Any]) -> dict[str, Any]:
+    """A JSON-safe copy of the filled slots (int ink keys -> strings) for the audit
+    record."""
+    out = dict(slots)
+    if "ink_operator_map" in out:
+        out["ink_operator_map"] = {str(k): v for k, v in out["ink_operator_map"].items()}
+    return out
+
+
+def run_fill_once(
+    game: str, run_index: int, llm: Callable[[list[dict[str, str]]], str]
+) -> dict[str, Any]:
+    """One fresh-reset FILL-gate run: warm-up -> gather evidence -> variant ask ->
+    slot ask (+1 retry) -> assemble -> verifier gate -> (PASS only) execute."""
+    target_levels = live._FT09_TARGET_LEVELS if game == "ft09" else live._SC25_TARGET_LEVELS
+    level_budget = live._FT09_LEVEL_BUDGET if game == "ft09" else live._SC25_PHASE_BUDGET
+
+    record: dict[str, Any] = {
+        "run": run_index,
+        "mode": "fill",
+        "variant_choice": None,
+        "slot_values": None,
+        "assembly_valid": False,
+        "retries": 0,
+        "verifier_verdict": None,
+        "executed": False,
+        "levels_cleared": 0,
+        "cast_and_handover": False,
+        "actions_per_level": [],
+        "discovery_actions": 0,
+        "cycle_acquired": False,
+        "plan_outcome": "NOT_EXECUTED",
+        "rebind_events": 0,
+        "outcome": "FAIL",
+    }
+
+    env = live.LiveEnv(game)
+    env.reset()
+    gs = GroundingService()
+    if not _warm_up(env, gs):
+        record["plan_outcome"] = "GROUNDING_INCOMPLETE"
+        return record
+    _gather_evidence(env, gs, game, record)
+
+    instance = fill_instance(gs, game, llm, record)
+    if instance is None:
+        return record  # variant/slot/assembly failure -> not executed
+    _gate_and_execute(env, gs, game, instance, target_levels, level_budget, record, run_index)
+    return record
+
+
+def _oracle_variant(game: str) -> tuple[str, str]:
+    """The oracle's (objective_kind, transition_kind) — used by the fill dry-run to
+    pick which slot ask to render without an LLM."""
+    inst = _oracle_instance(game)
+    return inst.objective.KIND, inst.transition_model.KIND
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--game", required=True, choices=["ft09", "sc25"])
     parser.add_argument("--runs", type=int, default=3)
     parser.add_argument("--out", help="output JSON path")
     parser.add_argument(
+        "--mode",
+        choices=["select", "fill"],
+        default="select",
+        help="select = pick among serialized instances (step vii); fill = variant-first slot generation (step viii)",
+    )
+    parser.add_argument(
         "--dry-run",
         action="store_true",
-        help="assemble + print the ask from a REPLAYED trace-fed grounding (no LLM, no env)",
+        help="assemble + print the ask(s) from a REPLAYED trace-fed grounding (no LLM, no env)",
     )
     args = parser.parse_args()
 
     if args.dry_run:
         gs = _replay_grounding(args.game)
+        if args.mode == "fill":
+            variant = build_variant_ask(gs, args.game)
+            objective_kind, _tk = _oracle_variant(args.game)
+            slots = build_slot_ask(gs, args.game, objective_kind)
+            print("=== FILL DRY-RUN (harness-measured values ARE shown; no game id / oracle hint) ===")
+            print("\n--- ASK 1 (VARIANT) SYSTEM ---\n" + variant[0]["content"])
+            print("\n--- ASK 1 (VARIANT) USER ---\n" + variant[1]["content"])
+            print(f"\n(the slot ask below is rendered for objective_kind={objective_kind!r})")
+            print("\n--- ASK 2 (SLOTS) SYSTEM ---\n" + slots[0]["content"])
+            print("\n--- ASK 2 (SLOTS) USER ---\n" + slots[1]["content"])
+            return
         messages, mapping, _obs = build_ask_prompt(args.game, gs)
         print("=== ID MAPPING (neutral id -> internal instance name; NOT shown to the model) ===")
         print(json.dumps(mapping, indent=2))
@@ -435,8 +828,9 @@ def main() -> None:
         num_predict=int(os.environ.get("HARNESS_PATCH_NUM_PREDICT", "2048")),
         timeout=float(os.environ.get("HARNESS_PATCH_TIMEOUT", "900")),
     )
-    runs = [run_model_once(args.game, i, llm) for i in range(args.runs)]
-    report = {"game": args.game, "runs": runs, "model_verdict": model_verdict(runs)}
+    run = run_fill_once if args.mode == "fill" else run_model_once
+    runs = [run(args.game, i, llm) for i in range(args.runs)]
+    report = {"game": args.game, "mode": args.mode, "runs": runs, "model_verdict": model_verdict(runs)}
     text = json.dumps(report, indent=2)
     if args.out:
         Path(args.out).write_text(text, encoding="utf-8")

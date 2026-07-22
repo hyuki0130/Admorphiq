@@ -155,3 +155,114 @@ def test_model_verdict_needs_two_of_three():
 
 def instances_from(game):
     return _MOD.instances_for_game(game)
+
+
+# ── step (viii) fill-mode tests ───────────────────────────────────────────────
+
+
+def test_balanced_objects_extracts_nested_slot_json():
+    """Purpose: the balanced-brace extractor recovers a nested slot object (the flat
+    regex used in select mode cannot, because ink_operator_map nests).
+
+    Expected feedback: pass proves the slot parser can read the model's answer even
+    with a nested map. Fail means a valid fill answer would be dropped as unparsable."""
+    text = 'prose {"coverage_quantifier": "all_covering", "ink_operator_map": {"0": "equal"}} tail'
+    objs = _MOD._balanced_objects(text)
+    assert objs and json.loads(objs[-1])["ink_operator_map"] == {"0": "equal"}
+
+
+def test_parse_variant_validates_both_kinds():
+    """Purpose: ASK 1 accepts a valid (objective_kind, transition_kind) and rejects
+    an out-of-vocabulary kind.
+
+    Expected feedback: pass proves the variant stage is enum-bound. Fail means the
+    model could name a nonexistent variant that has no slot ask."""
+    ok, err = _MOD.parse_variant('{"objective_kind": "glyph_relational", "transition_kind": "ordered_cycle"}')
+    assert err == "" and ok["objective_kind"] == "glyph_relational"
+    bad, err = _MOD.parse_variant('{"objective_kind": "spline", "transition_kind": "ordered_cycle"}')
+    assert bad is None and "objective_kind" in err
+
+
+def test_parse_slots_glyph_enforces_inks_quantifier_and_phase_count():
+    """Purpose: ASK 2 (glyph) requires a valid coverage_quantifier, an operator for
+    every observed ink, and exactly n_phases guard lists over the closed guard set.
+
+    Expected feedback: pass proves the slot answer is fully validated before
+    assembly (the retry's trigger). Fail means a malformed slot set could reach
+    from_json or execution."""
+    def slot(cq="all_covering", inkmap='"0": "equal", "2": "differ"', guards='[], ["layout_replaced"]'):
+        return f'{{"coverage_quantifier": "{cq}", "ink_operator_map": {{{inkmap}}}, "phase_guards": [{guards}]}}'
+
+    slots, err = _MOD.parse_slots(slot(), "glyph_relational", [0, 2], 2)
+    assert err == "" and slots["ink_operator_map"] == {0: "equal", 2: "differ"}
+    _bad, err = _MOD.parse_slots(slot(inkmap='"0": "equal"'), "glyph_relational", [0, 2], 2)
+    assert "ink_operator_map[2]" in err  # missing an observed ink
+    _bad, err = _MOD.parse_slots(slot(), "glyph_relational", [0, 2], 3)
+    assert "phase_guards" in err  # wrong phase count
+    _bad, err = _MOD.parse_slots(slot(guards='[], ["teleport"]'), "glyph_relational", [0, 2], 2)
+    assert "phase_guards[1]" in err  # unknown guard kind
+
+
+def test_assemble_from_slots_round_trips_to_a_verifier_passing_instance():
+    """Purpose: the harness assembles (variant + model slots + harness values) into a
+    CellStateHypothesis that the verifier PASSes on live single-cell footprints, and
+    ft09's decoy-reveal guard survives assembly.
+
+    Expected feedback: pass proves fill mode reconstructs a sound, executable
+    hypothesis from the model's structural choices. Fail means the assembly path
+    drops the guard (ft09 idx1 would never reveal) or produces a rejected instance."""
+    gs = _MOD._replay_grounding("ft09")
+    harness = _MOD.harness_measured_values(gs, "ft09")
+    harness["order"] = [9, 8, 12]  # the live cycle (replay has none)
+    slots = {"coverage_quantifier": "all_covering", "ink_operator_map": {0: "equal", 2: "differ"},
+             "phase_guards": [[], ["layout_replaced"]]}
+    inst = _MOD.assemble_instance("glyph_relational", "ordered_cycle", slots, harness, [0, 2])
+    neutral = schema.to_neutral_json(inst)
+    assert [g["kind"] for g in neutral["phases"][1]["guard"]] == ["layout_replaced"]
+    verdict, executable = _MOD.gate_selected_instance(inst, gs, "ft09")
+    assert verdict == "PASS" and executable is True
+
+
+def test_fill_ask_prompts_have_no_provenance_leak():
+    """Purpose: BOTH fill asks (variant + slots) expose no game id / oracle / mutant
+    label; the harness-measured values shown are allowed (they are the model's
+    ground truth by design).
+
+    Expected feedback: pass proves the generation channel cannot be steered by a
+    leaked label. Fail means a provenance token reached a fill prompt."""
+    for game in ("ft09", "sc25"):
+        gs = _MOD._replay_grounding(game)
+        variant = _MOD.build_variant_ask(gs, game)
+        objective_kind = _MOD._oracle_variant(game)[0]
+        slots = _MOD.build_slot_ask(gs, game, objective_kind)
+        blob = " ".join(mm["content"] for mm in (*variant, *slots)).lower()
+        for token in ("ft09", "sc25", "oracle", "mutant"):
+            assert token not in blob, f"{game}: leaked {token!r}"
+
+
+def test_fill_instance_two_stage_with_one_retry():
+    """Purpose: the two-stage fill drives ASK 1 then ASK 2, and a first invalid slot
+    answer triggers exactly ONE retry that then succeeds — recording the variant,
+    the slots, assembly_valid, and retries=1.
+
+    Expected feedback: pass proves the error-feedback retry channel works end-to-end
+    without an env/LLM. Fail means the retry is not wired or the record is wrong."""
+    # sc25 (pattern_reference + binary_flip) needs no live cycle to assemble, so the
+    # retry flow can be exercised from a replayed grounding.
+    gs = _MOD._replay_grounding("sc25")
+    guards = '[], ["stable_for_reads", "roles_state_equal"]'
+    scripted = iter([
+        '{"objective_kind": "pattern_reference", "transition_kind": "binary_flip", "confidence": "high"}',
+        f'{{"preview_interpretation": "NOPE", "phase_guards": [{guards}]}}',  # invalid -> triggers retry
+        f'{{"preview_interpretation": "xor_exact", "phase_guards": [{guards}]}}',
+    ])
+
+    def llm(_messages):
+        return next(scripted)
+
+    record = {}
+    inst = _MOD.fill_instance(gs, "sc25", llm, record)
+    assert inst is not None
+    assert record["variant_choice"] == {"objective_kind": "pattern_reference", "transition_kind": "binary_flip"}
+    assert record["assembly_valid"] is True and record["retries"] == 1
+    assert record["slot_values"]["preview_interpretation"] == "xor_exact"

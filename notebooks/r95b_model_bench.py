@@ -32,6 +32,9 @@ BOOT_TIMEOUT_S = 2400
 MAX_MODEL_LEN = 131072
 _MAX_MODEL_LEN_CEIL = 200000
 RUNS = int(os.environ.get("R95B_RUNS", "3"))
+# select (step vii, pick a serialized instance) or fill (step viii, variant-first
+# slot generation). Both drive the same verifier gate + live execution.
+MODE = os.environ.get("R95B_MODE", "select")
 # The two frozen R95b games. ft09 = level-clear success; sc25 = cast-handover.
 CASES = [("ft09",), ("sc25",)]
 
@@ -216,11 +219,12 @@ def main() -> None:
 
     results = []
     for (game,) in CASES:
-        out = os.path.join(KAGGLE_WORKING, f"r95b_model_{game}.json")
-        print(f"\n=== R95b MODEL {game} x{RUNS} ({served}) ===", flush=True)
+        out = os.path.join(KAGGLE_WORKING, f"r95b_model_{MODE}_{game}.json")
+        print(f"\n=== R95b MODEL {game} x{RUNS} mode={MODE} ({served}) ===", flush=True)
         try:
             rc = subprocess.call(
-                [sys.executable, "-u", probe, "--game", game, "--runs", str(RUNS), "--out", out],
+                [sys.executable, "-u", probe, "--game", game, "--mode", MODE,
+                 "--runs", str(RUNS), "--out", out],
                 env=env, timeout=7200)  # a run drives the live env AND asks the model
         except subprocess.TimeoutExpired:
             rc = -9
@@ -233,14 +237,21 @@ def main() -> None:
             results.append({"game": game, "error": f"probe rc={rc}, no output"})
 
     summary = {
-        "model": served, "runs": RUNS,
+        "model": served, "runs": RUNS, "mode": MODE,
         "model_verdict": {r.get("game"): r.get("model_verdict", "ERROR") for r in results},
         "per_run": {
             r.get("game"): [
                 {
+                    # select-mode fields
                     "choice": run.get("choice"),
                     "mapped_instance": run.get("mapped_instance"),
                     "is_oracle": run.get("is_oracle"),
+                    # fill-mode fields
+                    "variant_choice": run.get("variant_choice"),
+                    "slot_values": run.get("slot_values"),
+                    "assembly_valid": run.get("assembly_valid"),
+                    "retries": run.get("retries"),
+                    # shared
                     "verifier_verdict": run.get("verifier_verdict"),
                     "executed": run.get("executed"),
                     "plan_outcome": run.get("plan_outcome"),
@@ -254,10 +265,10 @@ def main() -> None:
         },
         "results": results,
     }
-    with open(os.path.join(KAGGLE_WORKING, "r95b_model_bench.json"), "w") as f:
+    with open(os.path.join(KAGGLE_WORKING, f"r95b_model_bench_{MODE}.json"), "w") as f:
         json.dump(summary, f, indent=2)
     print("\n=== R95b MODEL SUMMARY ===", flush=True)
-    print(json.dumps({"model": served, "model_verdict": summary["model_verdict"]}, indent=1), flush=True)
+    print(json.dumps({"model": served, "mode": MODE, "model_verdict": summary["model_verdict"]}, indent=1), flush=True)
 
     if server is not None:
         server.terminate()
