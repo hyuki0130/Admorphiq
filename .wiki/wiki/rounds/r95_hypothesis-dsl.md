@@ -271,7 +271,23 @@ mode 2→1, ft09 byte-identical), and closure is demonstrated on gemma4.
   **Overall verdict per the frozen contract: CONFIRMED — both models pass
   both games.** The hypothesis channel is end-to-end real on the cell-state
   family.
-- (viii) slot filling: pending — the next build.
+- **(viii) slot filling — BUILT + v1 measured + fixes in v2** (ef5b33e →
+  735d76a): two-stage generation (ASK1 variant, ASK2 that variant's
+  model_selected slots only; harness fills every measured field per
+  OWNERSHIP; from_json error-feedback retry). **Fill v1 (gemma4): sc25 3/3
+  PASS — the model GENERATED the hypothesis (no candidates shown) and cast
+  every run.** ft09 v1 = ERROR exposing two harness defects, both fixed:
+  (1) an unsupported variant combination crashed instead of a typed
+  UNSUPPORTED_COMBINATION failure; (2) ASK1 lacked cycle-vs-flip evidence —
+  and the FIRST proposed discriminator ("repeated clicks show 3 colours ⇒
+  cycle") was MEASURED-INVERTED by the build agent before shipping (ft09's
+  third cycle colour is latent → observably a 2-state toggle; sc25 shows 3
+  colours via the transient selection colour) → replaced with the
+  correctly-oriented click-style evidence (selection-step vs
+  direct-change) + auto-pairing of the genuinely unobservable
+  {ordered_cycle ↔ binary_flip} pair, BOUNDED so effect_matrix picks stand
+  and fail typed (the verifier/compile-guard safety layer is preserved).
+  Fill v2 kernel in flight.
 
 ## Related
 
