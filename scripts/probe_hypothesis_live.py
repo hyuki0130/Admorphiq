@@ -126,6 +126,16 @@ def movement_edges_confirmed(gs: GroundingService, directions: tuple[int, ...] =
     return need <= have
 
 
+def unconfirmed_directions(
+    gs: GroundingService, directions: tuple[int, ...] = _M0R0_DIRECTIONS
+) -> set[tuple[str, int]]:
+    """The ``(actor, direction)`` edges NOT yet min-probe acquired — the re-probe
+    targets when a plan over the confirmed subset does not reach the goal."""
+    d = gs.movement_deltas()
+    have = set() if d is UNKNOWN else set(d.value.keys())
+    return {(aid, a) for aid in _MOVEMENT_ACTORS for a in directions} - have
+
+
 def discover_deltas(
     gs: GroundingService,
     initial: Grid,
@@ -518,9 +528,11 @@ def run_movement_level(env: "LiveEnv", record: dict[str, Any], run_index: int) -
     if frame is None:
         return "GROUNDING_INCOMPLETE", len(gs.rebind_events)
 
-    # b. RE-DISCOVERY — sweep ACTION1-4 on THIS board until all 8 edges confirm. The
-    #    first post-transition action is absorbed by the settling frame and records no
-    #    edge, so the sweep repeats until the settled board responds.
+    # b. RE-DISCOVERY — sweep ACTION1-4 on THIS board. The first post-transition
+    #    action is absorbed by the settling frame and records no edge, so the sweep
+    #    repeats until the settled board responds. Full-alphabet knowledge is NOT
+    #    required: m0r0's gold clears idx0 without ever using one direction, and idx1's
+    #    geometry leaves one (actor, up) edge unconfirmable from the start positions.
     closed, used, hz = discover_deltas(gs, frame, probe)
     record["discovery_actions"] += used
     record["hazard_resets"] += hz
@@ -528,13 +540,46 @@ def run_movement_level(env: "LiveEnv", record: dict[str, Any], run_index: int) -
     cur = env.frame()
     if cur is not None:
         gs.feed(cur)  # bind this board's actors + occupancy for the compile
-    if not closed or gs.movement_actors() is UNKNOWN:
-        print(f"[live] run{run_index} m0r0: delta table did not complete on this board", flush=True)
+    if gs.movement_actors() is UNKNOWN:
+        print(f"[live] run{run_index} m0r0: no two-actor bind on this board", flush=True)
         return "GROUNDING_INCOMPLETE", len(gs.rebind_events)
 
-    # c. SOLVE + step until THIS level clears.
+    # c. Compile over the CONFIRMED edge subset (the compiler's action alphabet is the
+    #    actions confirmed for BOTH actors). Only if no plan to the goal exists in that
+    #    alphabet do we RE-PROBE the unconfirmed directions from the actors' CURRENT
+    #    (moved) positions — bounded by the remaining discovery budget — before falling
+    #    to the honest GROUNDING_INCOMPLETE / UNSATISFIABLE surface.
     instance = schema_movement.m0r0_oracle_instance()
-    plan = compile_movement_hypothesis(instance, gs)
+    probe_budget = max(0, _DISCOVERY_BUDGET - used)
+    reprobes = 0
+    while True:
+        plan = compile_movement_hypothesis(instance, gs)
+        sol = plan.solve()
+        record["states_searched"] = max(record["states_searched"], sol.states_searched)
+        if sol.status in (PlanStatus.SOLVABLE, PlanStatus.DONE):
+            break
+        missing = unconfirmed_directions(gs)
+        if not missing or probe_budget <= 0 or reprobes >= 2:
+            print(
+                f"[live] run{run_index} m0r0: no plan over confirmed alphabet "
+                f"({sol.status.value}); missing edges {sorted(missing)}, "
+                f"states searched {sol.states_searched}",
+                flush=True,
+            )
+            return sol.status.value, len(gs.rebind_events)
+        base = env.frame()
+        if base is None:
+            return sol.status.value, len(gs.rebind_events)
+        _closed2, used2, hz2 = discover_deltas(gs, base, probe, budget=probe_budget)
+        record["discovery_actions"] += used2
+        record["hazard_resets"] += hz2
+        probe_budget -= used2
+        reprobes += 1
+        cur = env.frame()
+        if cur is not None:
+            gs.feed(cur)
+
+    # d. Step the SOLVABLE plan until THIS level clears.
     start_levels = env.levels()
     level_actions = 0
     for _ in range(_M0R0_LEVEL_BUDGET + 10):

@@ -24,6 +24,7 @@ discover_cycle = _MOD.discover_cycle
 gate_verdict = _MOD.gate_verdict
 discover_deltas = _MOD.discover_deltas
 movement_edges_confirmed = _MOD.movement_edges_confirmed
+unconfirmed_directions = _MOD.unconfirmed_directions
 
 
 def _lattice(overrides=None):
@@ -221,3 +222,20 @@ def test_movement_gate_scores_idx0_plus_idx1_clears():
     diverged = passed[:2] + [{"plan_outcome": "DIVERGED", "levels_cleared": 1}]
     assert gate_verdict(diverged, "m0r0") == "FAIL"
     assert gate_verdict([], "m0r0") == "FAIL"
+
+
+def test_unconfirmed_directions_lists_the_missing_actor_edges():
+    """Purpose: after a partial sweep, unconfirmed_directions reports exactly the
+    (actor, direction) edges not yet acquired — the re-probe targets when a plan over
+    the confirmed subset does not reach the goal.
+
+    Expected feedback: pass proves the driver can name which edges are missing (so a
+    partial table is planned over, not rejected). Fail means the driver cannot tell a
+    confirmed subset from a complete one."""
+    gs = GroundingService()
+    assert unconfirmed_directions(gs) == {(aid, a) for aid in ("actor_a", "actor_b") for a in (1, 2, 3, 4)}
+    # confirm the down/column edges for both actors, leaving both actors' up (1) open
+    sim = _MoveSim()
+    discover_deltas(gs, sim.frame(), sim.probe, budget=30, directions=(2, 3, 4))
+    missing = unconfirmed_directions(gs)
+    assert missing == {("actor_a", 1), ("actor_b", 1)}  # only the un-swept direction remains

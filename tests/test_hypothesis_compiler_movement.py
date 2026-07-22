@@ -20,7 +20,8 @@ from admorphiq.hypothesis_select.compiler_movement import (
     UnsupportedMovementPlan,
     compile_movement_hypothesis,
 )
-from admorphiq.hypothesis_select.grounding import UNKNOWN, GroundingService
+from admorphiq.hypothesis_select.grounding import UNKNOWN, Grounded, GroundingService
+from admorphiq.hypothesis_select.schema_movement import StaticOccupancy
 
 _SRC = Path(__file__).resolve().parents[1] / "src" / "admorphiq" / "hypothesis_select" / "compiler_movement.py"
 
@@ -185,6 +186,79 @@ def test_empirical_move_matrix_compiles_to_unsupported():
     assert plan.solve().status is PlanStatus.UNSUPPORTED
     assert isinstance(plan.step(_frame([(5, 3), (5, 5)])), Terminal)
     assert plan.step(_frame([(5, 3), (5, 5)])).status is PlanStatus.UNSUPPORTED
+
+
+class _StubMoveGrounding:
+    """A movement-grounding stand-in returning a CONTROLLED partial delta table +
+    fixed actors/occupancy — so the compiler's confirmed-subset alphabet logic is
+    unit-tested without driving probes."""
+
+    def __init__(self, deltas, actors, walls=(), hazards=()):
+        self._deltas, self._actors, self._walls, self._hazards = deltas, actors, walls, hazards
+
+    def movement_deltas(self):
+        return Grounded(dict(self._deltas), "high") if self._deltas else UNKNOWN
+
+    def movement_actors(self):
+        return Grounded(list(self._actors), "high") if self._actors else UNKNOWN
+
+    def movement_occupancy(self):
+        return Grounded(StaticOccupancy(tuple(self._walls), "high", "stub", 0), "high")
+
+    def movement_hazard_cells(self):
+        return Grounded(frozenset(self._hazards), "high")
+
+
+def test_plan_over_confirmed_subset_reaches_goal_without_the_unconfirmed_edge():
+    """Purpose: with one (actor, direction) edge unconfirmed, the joint BFS plans over
+    the CONFIRMED action alphabet (actions confirmed for BOTH actors) and still reaches
+    the merge — full-alphabet knowledge is not required.
+
+    Expected feedback: pass proves the compiler does not demand all 8 edges (the idx1
+    defect): the merge is reached via the confirmed subset and the plan never emits the
+    action whose edge is unconfirmed for one actor. Fail means an unconfirmed edge
+    wrongly blocks an achievable plan."""
+    # actor_b's action-1 (up) edge is UNCONFIRMED; convergence uses action 4 (a right,
+    # b left), confirmed for both — so the pair (2,3)/(2,7) merges without action 1.
+    deltas = {
+        ("actor_a", 1): (-1, 0), ("actor_a", 2): (1, 0), ("actor_a", 3): (0, -1), ("actor_a", 4): (0, 1),
+        ("actor_b", 2): (1, 0), ("actor_b", 3): (0, 1), ("actor_b", 4): (0, -1),
+    }
+    gs = _StubMoveGrounding(deltas, [("actor_a", (2, 3)), ("actor_b", (2, 7))])
+    plan = compile_movement_hypothesis(M.m0r0_oracle_instance(), gs)
+    sol = plan.solve()
+    assert sol.status is PlanStatus.SOLVABLE
+    assert 1 not in sol.actions  # action 1 is not in the confirmed alphabet (actor_b lacks it)
+    assert plan._traj[-1][0] == plan._traj[-1][1]  # exact merge
+
+
+def test_confirmed_subset_with_no_convergence_is_unsatisfiable():
+    """Purpose: when the confirmed alphabet cannot bring the actors together (only a
+    shared vertical move, columns fixed), the joint BFS exhausts and reports
+    UNSATISFIABLE with the expanded-state count — not a false plan.
+
+    Expected feedback: pass proves GROUNDING_INCOMPLETE/UNSATISFIABLE fire only on a
+    genuinely-unreachable goal (the driver may then re-probe). Fail means an
+    unmergeable confirmed subset is mislabelled."""
+    # only action 2 (down, identical for both) is confirmed: columns never change, so a
+    # column-separated pair can never coincide.
+    deltas = {("actor_a", 2): (1, 0), ("actor_b", 2): (1, 0)}
+    gs = _StubMoveGrounding(deltas, [("actor_a", (2, 3)), ("actor_b", (2, 7))])
+    sol = compile_movement_hypothesis(M.m0r0_oracle_instance(), gs).solve()
+    assert sol.status is PlanStatus.UNSATISFIABLE
+    assert sol.states_searched > 0
+
+
+def test_no_action_confirmed_for_both_actors_is_grounding_incomplete():
+    """Purpose: when no single action has a confirmed edge for BOTH actors, the joint
+    alphabet is empty and the plan is GROUNDING_INCOMPLETE (nothing to search).
+
+    Expected feedback: pass proves an empty confirmed alphabet is the incomplete-
+    grounding surface, distinct from an exhausted search (UNSATISFIABLE). Fail means the
+    compiler searches an empty alphabet or mislabels it."""
+    deltas = {("actor_a", 2): (1, 0), ("actor_b", 3): (0, 1)}  # no shared action
+    gs = _StubMoveGrounding(deltas, [("actor_a", (2, 3)), ("actor_b", (2, 7))])
+    assert compile_movement_hypothesis(M.m0r0_oracle_instance(), gs).solve().status is PlanStatus.GROUNDING_INCOMPLETE
 
 
 def test_no_merge_path_is_unsatisfiable_with_searched_count():
