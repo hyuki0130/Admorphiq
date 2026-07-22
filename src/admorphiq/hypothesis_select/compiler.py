@@ -56,6 +56,7 @@ class PlanStatus(str, Enum):
     DIVERGED = "DIVERGED"
     GROUNDING_INCOMPLETE = "GROUNDING_INCOMPLETE"
     UNSATISFIABLE = "UNSATISFIABLE"
+    UNSUPPORTED = "UNSUPPORTED"  # a KNOWN transition tag the compiler will not execute
 
 
 @dataclass(frozen=True)
