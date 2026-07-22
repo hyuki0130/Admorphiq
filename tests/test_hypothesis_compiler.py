@@ -263,6 +263,28 @@ def test_glyph_plan_decoy_triggers_then_reveal_needs_rediscovery():
     assert after_reveal.status is PlanStatus.GROUNDING_INCOMPLETE  # reveal -> cycle reset -> re-discover
 
 
+def test_glyph_reveal_trigger_is_guard_name_agnostic():
+    """Purpose: the decoy->reveal TRIGGER fires on the STRUCTURAL presence of a
+    second phase, NOT on which guard label the model chose for it — an instance
+    whose phase-2 guard is level_advanced (instead of the oracle's layout_replaced)
+    still emits the trigger click.
+
+    Expected feedback: pass proves the ft09 idx1 fill divergence (correct semantics
+    but a 'wrong' guard slot) is closed: the reveal guard is advisory, the observable
+    trigger condition drives it. Fail means the reveal is coupled to a guard string
+    the model cannot reliably guess pre-solve."""
+    gs, decoy, _revealed = _ft09_decoy_grounding()
+    base = s.ft09_oracle_instance()
+    variant = s.CellStateHypothesis(
+        objective=base.objective,
+        transition_model=base.transition_model,
+        phases=(base.phases[0], s.Phase(guard=(s.LevelAdvanced(),), objective=None)),
+    )
+    plan = compile_hypothesis(variant, gs)
+    first = plan.step(decoy)
+    assert isinstance(first, Click)  # trigger fires regardless of the guard label
+
+
 def test_glyph_plan_trigger_revealing_nothing_is_honest_done():
     """Purpose: if the decoy-trigger click causes NO wholesale change (the board
     is genuinely solved, no hidden reveal), the plan returns DONE — it does not

@@ -177,11 +177,16 @@ def live_observation_summary(
             f"{evidence.value['total']} cells; the cells take two colours"
         )
     if gs.cast_colour_seen():
+        # Single-cell scope is explicit: the selection colour lands on THE CLICKED
+        # cell only (measured: the select-colour transition changes exactly 1 lattice
+        # cell), so this is not misread as a multi-cell neighbourhood effect.
         lines.append(
-            "- Clicking a cell first paints it a distinct temporary selection colour, which then commits"
+            "- Clicking a cell paints THAT ONE CELL a temporary selection colour; a later click commits it"
         )
     else:
-        lines.append("- Clicking a cell changed it directly to another colour, with no separate selection step")
+        lines.append(
+            "- Clicking a cell changed THAT ONE CELL directly to another colour, with no separate selection step"
+        )
 
     return "\n".join(lines)
 

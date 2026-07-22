@@ -43,7 +43,6 @@ from admorphiq.hypothesis_select.schema import (
     BinaryFlip,
     CellStateHypothesis,
     GlyphRelational,
-    LayoutReplaced,
     OrderedCycle,
     PatternReference,
 )
@@ -126,7 +125,7 @@ class GlyphConstraintPlan:
         self._quantifier = objective.coverage_quantifier
         self._ink_map = dict(objective.ink_operator_map)
         self._g = grounding
-        self._reveal_enabled = reveal_enabled  # a LayoutReplaced-guarded reveal phase exists
+        self._reveal_enabled = reveal_enabled  # a second (reveal) phase exists — guard label agnostic
         self._pending: Optional[tuple[str, int]] = None  # (cell_id, expected colour)
         self._trigger_pending = False  # a decoy-trigger click awaiting a wholesale reveal
         self._triggered_epochs: set[int] = set()  # epochs already probed with a trigger
@@ -268,10 +267,13 @@ def compile_hypothesis(instance: CellStateHypothesis, grounding: GroundingServic
     the schema's objective + transition-model tags (never a game id)."""
     objective, transition = instance.objective, instance.transition_model
     if isinstance(objective, GlyphRelational) and isinstance(transition, OrderedCycle):
-        reveal = any(
-            any(isinstance(clause, LayoutReplaced) for clause in phase.guard)
-            for phase in instance.phases
-        )
+        # The reveal is enabled by the STRUCTURAL presence of a second phase, NOT by
+        # which guard label the model chose for it. The reveal guard is epistemically
+        # undeterminable pre-solve (a reasonable model picks level_advanced as
+        # readily as layout_replaced), so the guard is advisory; the actual trigger
+        # condition (all constraints satisfied yet no level-up) is observed at
+        # runtime and is guard-name-agnostic.
+        reveal = len(instance.phases) >= 2
         return GlyphConstraintPlan(objective, grounding, reveal_enabled=reveal)
     if isinstance(objective, PatternReference) and isinstance(transition, BinaryFlip):
         return PatternXorPlan(objective, grounding)
