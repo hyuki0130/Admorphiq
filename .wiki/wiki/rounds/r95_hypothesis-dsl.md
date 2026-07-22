@@ -312,6 +312,8 @@ unresolvable without richer traces.
 
 ## Related
 
+- [[r96_controlled-grid-dynamics]] — the successor round (second family).
+
 - [[r94_adapter-template]] — the refuted family-template road this replaces.
 - [[r93_tool-fork-patch]] — the patching tier the ladder retains (final LLM tier).
 - [[r57_win-condition-typology]] — Q3 goal bank source (T1–T8).

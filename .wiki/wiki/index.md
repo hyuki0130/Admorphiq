@@ -8,7 +8,7 @@ seeds `llm_context/decision_tree.md` first, then walks `[[backlinks]]`.
 Use this index when authoring or auditing: skim the catalog, pick a
 category, drill into specific pages.
 
-**Total pages**: 171.
+**Total pages**: 172.
 
 ## Games (25)
 
@@ -150,7 +150,7 @@ category, drill into specific pages.
 
 - [[llm_context/decision_tree.md]] — Compact dispatch read first by Qwen — default primary adaptive_bfs_solver, peer-swap only on Observable-Signature match, 3-deep fallback_stack by game shape, re-ask on primary failure via each plan's Falsification Signature + Next-Best.
 
-## Top-level dispatch (architecture, selector, log, schema) (58)
+## Top-level dispatch (architecture, selector, log, schema) (59)
 
 - [[rounds/r05_planning-override.md]] — Goal-directed planning that overrode novelty exploration regressed 4 stable games (AR25/FT09/LP85/M0R0) — first proof that overriding novelty breaks the learner.
 - [[rounds/r06_depth-boost.md]] — Depth-boost / keep-learning-after-levelup regressed LP85's depth — perturbing exploration regresses.
@@ -209,6 +209,7 @@ category, drill into specific pages.
 - [[rounds/r93_tool-fork-patch.md]] — R92 closed "the LLM authors solvers from scratch" (guess-code, 0 clears despite a
 - [[rounds/r94_adapter-template.md]] — R93 proved the model can repair OUR code when given the source + failure evidence
 - [[rounds/r95_hypothesis-dsl.md]] — After R92 (from-scratch authoring: 0), R93 (small-card patching: works
+- [[rounds/r96_controlled-grid-dynamics.md]] — The proven R95 pipeline (family schema → grounding → verifier → compiler →
 - [[selector.md]] — Feature-driven dispatch rules the Hypothesis Engine LLM uses to pick
 
 ## Raw sources
