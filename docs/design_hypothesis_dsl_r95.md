@@ -164,8 +164,52 @@ Scoring (per game × model):
   replication).
 - sk48 runs only as the labelled OOD/exploration control arm.
 
-### R95b BUILD PLAN v0 (drafted 2026-07-22 after the R95a paired confirmation;
-### pending Codex consult before any build)
+### R95b BUILD PLAN v1 (Codex CONDITIONAL GO, 2026-07-22 16:42 — v0 corrected;
+### log `codex_r95b_plan_review.log`. BINDING for the build.)
+
+Codex corrections applied on top of v0 (v0 kept below for provenance):
+
+1. **Revised order with per-layer oracle outputs** (v0's single late oracle
+   gate cannot localize failures): (i) FREEZE the evaluation contract first
+   (exact levels, fresh-reset procedure, budgets, repetitions, aggregation,
+   prohibited leakage); (ii) schema + canonical oracle instances + invalid
+   instances + mutant fixtures; (iii) Observation v2 as a runtime GROUNDING
+   SERVICE (stable IDs across recolouring, click resolution at action time,
+   rebind on layout replacement, confidence, UNKNOWN on identity loss) —
+   validated against labeled fixtures; (iv) verifier with an explicit
+   expected-verdict matrix (data-indistinguishable mutants stay UNKNOWN, not
+   required-rejected); (v) compiler offline on grounded fixtures (dispatch on
+   schema tags ONLY, never game id, no adapter imports); (vi) live oracle
+   gate through the exact production pipeline; (vii) CANNED serialized
+   schema-instance selection (intermediate model substage); (viii) free slot
+   filling, verifier-gated.
+2. **One family, one envelope, tagged objective union**:
+   `objective: GlyphRelational{...} | PatternReference{...}` — source and
+   target coupled inside the union so invalid cross-products (glyph source +
+   XOR target) are unrepresentable; `transition_model` separately tagged
+   (ordered cycle | binary flip | empirical effect-matrix). ft09 needs the
+   ORDERED colour transition function (not just cycle length), overlapping
+   incidence, no-cell semantics, control-button behaviour; sc25 needs base-
+   snapshot timing, XOR-vs-absolute, two-read stability, settle behaviour.
+3. **Field ownership tags on every schema field**: `harness_measured` |
+   `model_selected` | `compiler_derived`. The model selects SEMANTICS
+   (coverage quantifier, ink/operator mapping, preview interpretation,
+   guards); the harness materializes repeated structures (cell enumerations,
+   incidence graphs) — top-K shortlists are for SINGULAR roles only.
+4. **Floor gates**: ft09 oracle clears the first two evaluation levels in
+   sequence, 3/3 fresh-reset runs, freshly grounded (no replayed
+   coordinates); sc25 oracle reaches a genuine L0 cast + guard handover 3/3.
+   ft09 6/6 is a family-coverage RELEASE gate, not the entry gate.
+5. **Verifier splits by episode/level** (not adjacent even/odd); minimum
+   probes per claim.
+6. **Success criterion with repetition rule**: per-model success = a
+   verifier-PASS model schema clears the fixed ft09 level in ≥2/3 fresh
+   runs; overall CONFIRMED = both models, PARTIAL = one. Clears from
+   UNKNOWN/manually-repaired/oracle-assisted schemas do NOT count.
+   Codex risk estimate: ~60% of residual risk is ft09 grounding/parameter
+   acquisition, ~25% coherent slot filling, <15% mechanic selection.
+
+### R95b BUILD PLAN v0 (superseded by v1 above — kept for provenance)
 
 Scope: ONE family — the CELL-STATE family R95a validated (ft09 + sc25 pattern
 phase). Components, in build order, each with its own gate:
