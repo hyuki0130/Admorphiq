@@ -233,8 +233,18 @@ mode 2→1, ft09 byte-identical), and closure is demonstrated on gemma4.
   navigation is contract-excluded; post-cast exit-nav banked as follow-up).
   Combined with ft09's 3/3 idx0+idx1, the ENTIRE oracle pipeline — schema →
   grounding → verify → compile → live — is proven on both family variants.
-- (vii)–(viii) pending (model substages, Kaggle): the same pipeline with the
-  MODEL's selected/filled instance replacing the oracle.
+- **(vii) canned-instance model stage BUILT + LAUNCHED** (9dd2eb9; kernel
+  `admorphiq-r95b-model-gemma4` v1, 18:43): per fresh run — warm-up →
+  discovery → selection ask over 4 serialized neutral instances (oracle + 3
+  same-game mutants, deterministic shuffle, leak-guarded; observation
+  context = the run's OWN live grounding evidence) → verifier gate
+  (CONTRADICTED never executes; objective mutants pass pre-solve — no win
+  evidence — and are arbitrated by execution) → compile → live execute via
+  the SAME execute_instance path the oracle gate used. Success = ≥2/3 runs
+  (ft09 idx0+idx1 clear; sc25 cast_and_handover). A pass = the first fully
+  autonomous agent25 clears through the hypothesis channel. gptoss twin
+  after gemma4.
+- (viii) slot filling: pending (after vii).
 
 ## Related
 
