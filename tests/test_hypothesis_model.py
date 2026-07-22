@@ -287,22 +287,22 @@ def test_unsupported_variant_combination_is_typed_not_a_crash():
     assert _MOD.compilable(unsupported, gs) is False
 
 
-def test_observation_summary_reports_the_click_style_discriminator():
-    """Purpose: the observation summary carries the honest, correctly-oriented
-    click-style line — selection-then-commit (lattice/pattern family) vs a direct
-    colour change (glyph family) — with no leak. (A distinct-colours-per-cell count
-    is deliberately NOT reported: measured to be an inverted signal.)
+def test_observation_summary_omits_the_click_style_and_colour_count_lines():
+    """Purpose: the observation summary carries NO click-style / distinct-colours
+    line — MEASURED (fill v1/v3/v4) to corrupt the model's transition pick in every
+    wording, and redundant with the harness transition auto-pairing.
 
-    Expected feedback: pass proves ASK 1 has a measured observable that separates
-    the two mechanics. Fail means the misleading colour-count line regressed in, or
-    the click-style line is missing."""
-    sc25 = _MOD.live_observation_summary(_MOD._replay_grounding("sc25"), "sc25")
-    assert "temporary selection colour" in sc25
-    ft09 = _MOD.live_observation_summary(_MOD._replay_grounding("ft09"), "ft09")
-    assert "directly to another colour" in ft09
-    assert "distinct colour" not in ft09  # the inverted count must NOT be reported
-    for token in ("ft09", "sc25", "oracle"):
-        assert token not in (sc25 + ft09).lower()
+    Expected feedback: pass proves the measured-harmful evidence line is gone from
+    both games while the structural facts (cells / footprints / markers / pattern)
+    remain. Fail means the line regressed back in and would re-break sc25."""
+    for game in ("ft09", "sc25"):
+        summary = _MOD.live_observation_summary(_MOD._replay_grounding(game), game).lower()
+        assert "distinct colour" not in summary
+        assert "selection colour" not in summary
+        assert "no separate selection step" not in summary
+        assert "interactive cells detected" in summary  # the structural facts stay
+        for token in ("ft09", "sc25", "oracle"):
+            assert token not in summary
 
 
 def test_fill_auto_pairs_the_compilable_transition_to_the_objective():

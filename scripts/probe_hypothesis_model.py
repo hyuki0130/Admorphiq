@@ -122,29 +122,22 @@ def _shuffle_ids(game: str, names: list[str]) -> dict[str, str]:
 # ── live observation summary (structural; from the run's grounding) ───────────
 
 
-def live_observation_summary(
-    gs: GroundingService, game: str, colour_variety: Optional[tuple[int, int]] = None
-) -> str:
+def live_observation_summary(gs: GroundingService, game: str) -> str:
     """A NEUTRAL structural summary of the LIVE grounding evidence gathered this
     run — the number of interactive cells and marker symbols, the click-footprint
-    histogram, the DISTINCT COLOURS one cell takes under repeated clicks (the
-    ordered-cycle-vs-binary-flip discriminator), and the pattern facts (lattice
-    family). No game id, no template identity, no oracle hint. ``colour_variety``
-    is the measured ``(distinct_colours, clicks)``; when absent it falls back to the
-    acquired cycle length."""
+    histogram, and the pattern facts (lattice family). No game id, no template
+    identity, no oracle hint.
+
+    A click-style / distinct-colours line is DELIBERATELY NOT reported: MEASURED
+    (fill v1/v3/v4) to corrupt the model's transition pick in every wording, and
+    redundant — the ordered-cycle-vs-binary-flip choice is not cheaply observable
+    and is handled by the harness auto-pairing the compilable transition to the
+    (observable) objective, while the objective picks never needed it."""
     lines = ["OBSERVATIONS (measured from this run's own probing):"]
 
     cells = gs.cells()
     n_cells = len(cells.value) if cells is not UNKNOWN else 0
     lines.append(f"- Interactive cells detected: {n_cells}")
-
-    # NOTE: a distinct-colours-per-cell count is NOT reported — MEASURED to be an
-    # inverted/unreliable ordered-cycle-vs-binary-flip signal (ft09 cells observably
-    # toggle between 2 colours; the third cycle colour is latent, while a lattice
-    # cell's transient selection colour inflates its count to 3). ``colour_variety``
-    # is measured for the audit record only. The honest observable click-style line
-    # (selection-then-commit vs direct change) is emitted below.
-    _ = colour_variety
 
     glyphs = gs.glyphs()
     if glyphs is not UNKNOWN:
@@ -176,17 +169,6 @@ def live_observation_summary(
             f"- A separate target pattern is displayed beside the grid, over the same "
             f"{evidence.value['total']} cells; the cells take two colours"
         )
-    if gs.cast_colour_seen():
-        # Single-cell scope is explicit: the selection colour lands on THE CLICKED
-        # cell only (measured: the select-colour transition changes exactly 1 lattice
-        # cell), so this is not misread as a multi-cell neighbourhood effect.
-        lines.append(
-            "- Clicking a cell paints THAT ONE CELL a temporary selection colour; a later click commits it"
-        )
-    else:
-        lines.append(
-            "- Clicking a cell changed THAT ONE CELL directly to another colour, with no separate selection step"
-        )
 
     return "\n".join(lines)
 
@@ -195,7 +177,7 @@ def live_observation_summary(
 
 
 def build_ask_prompt(
-    game: str, gs: GroundingService, colour_variety: Optional[tuple[int, int]] = None
+    game: str, gs: GroundingService
 ) -> tuple[list[dict[str, str]], dict[str, str], str]:
     """Assemble the model selection ask from the LIVE grounding ``gs``: the
     candidate instances serialized via ``schema.to_neutral_json`` under a
@@ -206,7 +188,7 @@ def build_ask_prompt(
     by_name = dict(named)
     mapping = _shuffle_ids(game, [n for n, _inst in named])
 
-    observation = live_observation_summary(gs, game, colour_variety)
+    observation = live_observation_summary(gs, game)
     candidate_block = "\n\n".join(
         f"{cid}:\n{json.dumps(schema.to_neutral_json(by_name[mapping[cid]]), indent=2)}"
         for cid in sorted(mapping)
@@ -325,11 +307,11 @@ def compilable(instance: schema.CellStateHypothesis, gs: GroundingService) -> bo
 
 
 def _gather_evidence(env: "live.LiveEnv", gs: GroundingService, game: str, record: dict[str, Any]) -> None:
-    """Probe the board to accumulate footprint + colour-variety evidence into
-    ``gs`` — the ft09 cycle discovery, or a repeated-click colour probe for the
-    pattern family — so the observation summary and the verifier's transition
-    claim have measured evidence. Sets ``record['colour_variety']`` = the distinct
-    colours ONE cell takes under repeated clicks (the cycle-vs-flip discriminator)."""
+    """Probe the board to accumulate the click-FOOTPRINT evidence the verifier's
+    transition claim needs — the ft09 cycle discovery (which also acquires the
+    cycle the compiler needs), plus a repeated-click probe for the pattern family.
+    ``record['colour_variety']`` is recorded for AUDIT only (the distinct colours
+    one cell takes); it is not shown to the model — see live_observation_summary."""
     def probe(x: int, y: int) -> Optional[Grid]:
         env.click(x, y)
         return env.frame()
@@ -339,10 +321,6 @@ def _gather_evidence(env: "live.LiveEnv", gs: GroundingService, game: str, recor
         closed, used = live.discover_cycle(gs, probe)
         record["discovery_actions"] += used
         record["cycle_acquired"] = closed
-    # The colour-variety count for the ask is measured DIRECTLY by repeated clicks
-    # (both games) — get_ordered_cycle can close a PARTIAL cycle and under-report
-    # the distinct-colour count (measured: ft09 acquired length 2, not 3), which
-    # would falsely signal a binary flip.
     record["colour_variety"] = measure_colour_variety(env, gs, game, record)
 
 
@@ -440,7 +418,7 @@ def run_model_once(
         return record
     _gather_evidence(env, gs, game, record)
 
-    messages, mapping, _obs = build_ask_prompt(game, gs, record["colour_variety"])
+    messages, mapping, _obs = build_ask_prompt(game, gs)
     ask = ask_once(llm, messages, set(mapping))
     mapped = mapping.get(ask["choice"]) if ask["choice"] is not None else None
     record.update(
@@ -595,12 +573,10 @@ def _last_object_with(text: str, key: str) -> Optional[dict[str, Any]]:
     return None
 
 
-def build_variant_ask(
-    gs: GroundingService, game: str, colour_variety: Optional[tuple[int, int]] = None
-) -> list[dict[str, str]]:
+def build_variant_ask(gs: GroundingService, game: str) -> list[dict[str, str]]:
     """ASK 1 — the VARIANT: from the live observation summary (no serialized
     instances — this is generation), choose the objective + transition category."""
-    observation = live_observation_summary(gs, game, colour_variety)
+    observation = live_observation_summary(gs, game)
     system = (
         "You are analysing a small interactive grid puzzle from live probing. Identify "
         "its mechanics by choosing the category of its completion rule and its click effect."
@@ -640,10 +616,7 @@ def parse_variant(text: str) -> tuple[Optional[dict[str, str]], str]:
             "evidence": str(obj.get("evidence", ""))[:500]}, ""
 
 
-def build_slot_ask(
-    gs: GroundingService, game: str, objective_kind: str,
-    colour_variety: Optional[tuple[int, int]] = None,
-) -> list[dict[str, str]]:
+def build_slot_ask(gs: GroundingService, game: str, objective_kind: str) -> list[dict[str, str]]:
     """ASK 2 — the model_selected SLOTS for the chosen objective variant only. The
     harness-measured values (cycle, structure, timing) are NOT asked for."""
     n_phases = len(_oracle_instance(game).phases)
@@ -686,7 +659,7 @@ def build_slot_ask(
         "You are specifying the rule of a small interactive grid puzzle. Fill ONLY the requested "
         "slots from their allowed values; do not restate measured values."
     )
-    user = f"{live_observation_summary(gs, game, colour_variety)}\n\n{body}"
+    user = f"{live_observation_summary(gs, game)}\n\n{body}"
     return [{"role": "system", "content": system}, {"role": "user", "content": user}]
 
 
@@ -770,9 +743,8 @@ def fill_instance(
     ONE assembly-error retry on ASK 2. Mutates ``record`` with the variant choice,
     slot values, assembly validity, and retry count. Returns the assembled instance
     or ``None`` on an unrecoverable failure (which the run records as NOT executed)."""
-    variety = record.get("colour_variety")
     try:
-        variant, verr = parse_variant(llm(build_variant_ask(gs, game, variety)))
+        variant, verr = parse_variant(llm(build_variant_ask(gs, game)))
     except Exception as exc:  # noqa: BLE001 - offline-safe
         record["plan_outcome"] = f"variant_ask_error: {exc}"
         return None
@@ -794,7 +766,7 @@ def fill_instance(
 
     inks = observed_inks(gs)
     harness = harness_measured_values(gs, game)
-    convo = build_slot_ask(gs, game, objective_kind, variety)
+    convo = build_slot_ask(gs, game, objective_kind)
     error = ""
     for attempt in range(2):  # initial + ONE retry
         if attempt == 1:
@@ -888,19 +860,6 @@ def _oracle_variant(game: str) -> tuple[str, str]:
     return inst.objective.KIND, inst.transition_model.KIND
 
 
-def _representative_variety(game: str) -> Optional[tuple[int, int]]:
-    """The colour variety a live run would MEASURE, derived from the oracle's
-    transition model — for the dry-run only (no env to probe). ordered_cycle -> its
-    length; binary_flip -> 2."""
-    tm = _oracle_instance(game).transition_model
-    if isinstance(tm, schema.OrderedCycle):
-        n = len(tm.order) or 3
-        return (n, n)
-    if isinstance(tm, schema.BinaryFlip):
-        return (2, 5)
-    return None
-
-
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--game", required=True, choices=["ft09", "sc25"])
@@ -921,11 +880,10 @@ def main() -> None:
 
     if args.dry_run:
         gs = _replay_grounding(args.game)
-        variety = _representative_variety(args.game)  # a live run measures this; here derived for review
         if args.mode == "fill":
-            variant = build_variant_ask(gs, args.game, variety)
+            variant = build_variant_ask(gs, args.game)
             objective_kind, _tk = _oracle_variant(args.game)
-            slots = build_slot_ask(gs, args.game, objective_kind, variety)
+            slots = build_slot_ask(gs, args.game, objective_kind)
             print("=== FILL DRY-RUN (harness-measured values ARE shown; no game id / oracle hint) ===")
             print("\n--- ASK 1 (VARIANT) SYSTEM ---\n" + variant[0]["content"])
             print("\n--- ASK 1 (VARIANT) USER ---\n" + variant[1]["content"])
@@ -933,7 +891,7 @@ def main() -> None:
             print("\n--- ASK 2 (SLOTS) SYSTEM ---\n" + slots[0]["content"])
             print("\n--- ASK 2 (SLOTS) USER ---\n" + slots[1]["content"])
             return
-        messages, mapping, _obs = build_ask_prompt(args.game, gs, variety)
+        messages, mapping, _obs = build_ask_prompt(args.game, gs)
         print("=== ID MAPPING (neutral id -> internal instance name; NOT shown to the model) ===")
         print(json.dumps(mapping, indent=2))
         print("\n=== SYSTEM ===\n" + messages[0]["content"])
