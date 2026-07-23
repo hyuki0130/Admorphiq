@@ -275,7 +275,8 @@ class AuthoredCellUpdatePlan:
     for audit."""
 
     def __init__(
-        self, objective: GlyphRelational, grounding: GroundingService, authored: "AuthoredUpdate"
+        self, objective: GlyphRelational, grounding: GroundingService, authored: "AuthoredUpdate",
+        reveal_enabled: bool = False,
     ) -> None:
         self._quantifier = objective.coverage_quantifier
         self._ink_map = dict(objective.ink_operator_map)
@@ -285,6 +286,13 @@ class AuthoredCellUpdatePlan:
         self.authored_name = authored.name
         self._pending: Optional[tuple[str, int]] = None  # (cell_id, expected colour)
         self._clicks_done: dict[str, int] = {}  # per-cell click ordinal (the update's click_index)
+        # The reveal/decoy phase is shared objective machinery (NOT the authored
+        # transition): a second phase means some boards look glyph-satisfied yet
+        # need a trigger click to reveal the real puzzle. Enabled off the instance's
+        # phase structure, guard-name-agnostic (as GlyphConstraintPlan).
+        self._reveal_enabled = reveal_enabled
+        self._trigger_pending = False
+        self._triggered_epochs: set[int] = set()
 
     @property
     def authored_invocations(self) -> int:
@@ -293,8 +301,16 @@ class AuthoredCellUpdatePlan:
         return self._authored.invocations
 
     def _palette(self) -> Optional[list[int]]:
-        """The colour palette the authored rule operates over: the sorted distinct
-        current cell colours. ``None`` when no cell colour is grounded."""
+        """The ORDERED colour palette the authored rule steps through. The cycle ORDER
+        is harness_measured (the schema owns that): prefer the grounding's acquired
+        ordered cycle so the authored successor advances along the true alphabet, not a
+        sorted set contaminated by a stray/HUD colour (which breaks a 2-cycle
+        successor). Falls back to the sorted distinct current cell colours when no cycle
+        is acquired (a 2-colour board where the order is immaterial). ``None`` when no
+        cell colour is grounded."""
+        cycle = self._g.get_ordered_cycle()
+        if cycle is not UNKNOWN and len(cycle.value) >= 2:
+            return list(cycle.value)
         cells = self._g.cells()
         if cells is UNKNOWN:
             return None
@@ -353,13 +369,19 @@ class AuthoredCellUpdatePlan:
         """Feed ``frame``, confirm the previous click's AUTHORED-predicted advance
         (DIVERGED on mismatch), then emit the next needed click or a terminal
         status."""
-        self._g.feed(frame)
+        rebind = self._g.feed(frame)
         if self._pending is not None:
             cell_id, expected = self._pending
             self._pending = None
             observed = self._g.cell_colour(cell_id)
             if observed is UNKNOWN or observed.value != expected:
                 return Terminal(PlanStatus.DIVERGED)
+        if self._trigger_pending:
+            self._trigger_pending = False
+            if rebind is None:
+                # the trigger revealed nothing: solved per the hypothesis but the
+                # game has not advanced -> the driver decides CLEARED vs DIVERGED.
+                return Terminal(PlanStatus.DONE)
         solution = self.solve()
         if solution.status in (PlanStatus.GROUNDING_INCOMPLETE, PlanStatus.UNSATISFIABLE):
             return Terminal(solution.status)
@@ -377,7 +399,29 @@ class AuthoredCellUpdatePlan:
             self._clicks_done[cell_id] = ordinal + 1
             x, y = coord.value
             return Click(x, y)
+        # Every covered cell is satisfied. A decoy->reveal phase (>= 2 phases) means
+        # a satisfied-looking board may still need a trigger click to reveal the real
+        # puzzle; emit one per board and await a wholesale reveal (rebind).
+        if self._reveal_enabled and self._g.epoch not in self._triggered_epochs:
+            trigger = self._trigger_target()
+            if trigger is not None:
+                self._triggered_epochs.add(self._g.epoch)
+                self._trigger_pending = True
+                return Click(trigger[0], trigger[1])
         return Terminal(PlanStatus.DONE)
+
+    def _trigger_target(self) -> Optional[tuple[int, int]]:
+        """A covered cell to click as a decoy-reveal probe (the first that resolves
+        to a live coordinate)."""
+        cells = self._g.cells()
+        if cells is UNKNOWN:
+            return None
+        for cell_id, _centroid in cells.value:
+            covering = self._g.incidence(cell_id)
+            coord = self._g.resolve_click(cell_id)
+            if covering is not UNKNOWN and covering.value and coord is not UNKNOWN:
+                return coord.value
+        return None
 
 
 ExecutablePlan = Union[GlyphConstraintPlan, PatternXorPlan, AuthoredCellUpdatePlan]
@@ -392,7 +436,8 @@ def compile_hypothesis(instance: CellStateHypothesis, grounding: GroundingServic
     objective, transition = instance.objective, instance.transition_model
     if isinstance(objective, GlyphRelational) and isinstance(transition, AuthoredCellTransition):
         authored = AuthoredUpdate(transition.source, transition.name)
-        return AuthoredCellUpdatePlan(objective, grounding, authored)
+        reveal = len(instance.phases) >= 2  # decoy/reveal phase — shared objective logic
+        return AuthoredCellUpdatePlan(objective, grounding, authored, reveal_enabled=reveal)
     if isinstance(objective, GlyphRelational) and isinstance(transition, OrderedCycle):
         # The reveal is enabled by the STRUCTURAL presence of a second phase, NOT by
         # which guard label the model chose for it. The reveal guard is epistemically
