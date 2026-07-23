@@ -1201,6 +1201,20 @@ def movement_facts_from_grounding(gs: GroundingService) -> dict[str, Any]:
     }
 
 
+def _movement_merge_seen(gs: GroundingService) -> bool:
+    """Whether the two actors were observed to COINCIDE (a merge): the grounding's named
+    merge event, OR the current actor parse collapsed to a SINGLE coalesced cell — the
+    same_cell terminal the oracle solve drives to. The solve feeds frames via ``feed()``,
+    which (unlike ``feed_transition``) does NOT run the merge detector, so the named event
+    never fires during the solve; the coalesced-cell observation is the reliable merge
+    signal for the gathered evidence (R96 (vii) kernel-2 fix — a real merge that
+    ``merge_observed`` missed CONTRADICTED the correct same_cell objective)."""
+    if gs.movement_merge_event() is not UNKNOWN:
+        return True
+    actors = gs.movement_actors()
+    return actors is not UNKNOWN and len(actors.value) == 1
+
+
 def _movement_evidence_from_grounding(gs: GroundingService) -> MovementEvidence:
     """Build the verifier's :class:`MovementEvidence` straight from a LIVE grounding
     (the same fields ``verifier_movement.build_movement_evidence`` reads off a trace-fed
@@ -1213,7 +1227,7 @@ def _movement_evidence_from_grounding(gs: GroundingService) -> MovementEvidence:
     return MovementEvidence(
         deltas=deltas,
         collision_obs=0 if collision is UNKNOWN else int(collision.value),
-        merge_observed=gs.movement_merge_event() is not UNKNOWN,
+        merge_observed=_movement_merge_seen(gs),
         partner_moves=any(d != (0, 0) for d in deltas.values()),
         hazard_cells=frozenset() if hazards is UNKNOWN else frozenset(hazards.value),
     )
@@ -1265,7 +1279,7 @@ def _gather_movement_evidence(
         frame = env.frame()
         if frame is None:
             break
-        if env.state() == "WIN" or gs.movement_merge_event() is not UNKNOWN:
+        if env.state() == "WIN" or _movement_merge_seen(gs):
             break
         result = plan.step(frame)
         if isinstance(result, MovementMove):
@@ -1273,7 +1287,7 @@ def _gather_movement_evidence(
             record["discovery_actions"] += 1
             continue
         break  # Terminal (DONE / diverged / grounding-incomplete) — stop gathering
-    record["merge_event"] = gs.movement_merge_event() is not UNKNOWN
+    record["merge_event"] = _movement_merge_seen(gs)
     return gs
 
 

@@ -510,6 +510,71 @@ def test_fill_movement_instance_assembles_a_compilable_hypothesis():
     assert _MOD.fill_movement_instance("adjacent", "A", [["level_advanced"]]).objective.relation == "adjacent"
 
 
+def test_movement_fill_verifies_pass_on_merge_evidence_and_contradicts_without():
+    """Purpose: a correctly-filled m0r0 instance (same_cell + role_a + level_advanced guard)
+    must verify PASS against evidence that OBSERVED the merge, and still CONTRADICT when no
+    merge was observed. Pins the R96 (vii) kernel-2 harness defect: the evidence-gathering
+    solve merged the actors but ``merge_observed`` was False (plan stepping feeds via
+    ``feed()``, which skips the merge detector), so a CORRECT same_cell fill was CONTRADICTED.
+
+    Expected feedback: pass proves the fill->verify path accepts a correct fill once the merge
+    is observed (both role-bindings, symmetric-equivalent) AND still rejects an unmerged
+    same_cell claim — the fix supplies the missing observation without weakening the verifier.
+    Fail = the merge-evidence gap regressed (correct fill CONTRADICTED) or the same_cell
+    terminal check was over-loosened (unmerged PASS)."""
+    from dataclasses import replace
+
+    from admorphiq.hypothesis_select.verifier_movement import (
+        MovementEvidence,
+        verify_with_evidence,
+    )
+
+    mirror = {
+        ("actor_a", 1): (-1, 0), ("actor_b", 1): (-1, 0), ("actor_a", 2): (1, 0),
+        ("actor_b", 2): (1, 0), ("actor_a", 3): (0, -1), ("actor_b", 3): (0, 1),
+        ("actor_a", 4): (0, 1), ("actor_b", 4): (0, -1),
+    }
+    ev = MovementEvidence(
+        deltas=mirror, collision_obs=0, merge_observed=True, partner_moves=True,
+        hazard_cells=frozenset(),
+    )
+    inst = _MOD.fill_movement_instance("same_cell", "A", [["level_advanced"]])
+    v = verify_with_evidence(inst, ev)
+    assert v.verdict.name == "PASS" and v.objective.name == "PASS" and v.transition.name == "PASS"
+    # role_a='B' is symmetric-equivalent under same_cell — also PASSes
+    inst_b = _MOD.fill_movement_instance("same_cell", "B", [["level_advanced"]])
+    assert verify_with_evidence(inst_b, ev).verdict.name == "PASS"
+    # NO merge observed -> the same_cell terminal is CONTRADICTED (evidence required, not loosened)
+    assert verify_with_evidence(inst, replace(ev, merge_observed=False)).objective.name == "CONTRADICTED"
+
+
+def test_movement_merge_seen_detects_named_event_or_coalesced_actors():
+    """Purpose: _movement_merge_seen reports a merge from EITHER the grounding's named merge
+    event OR the actor parse collapsing to a single coalesced cell — the coalesced-cell signal
+    is what the oracle-solve evidence-gathering relies on (its feed()-based stepping never fires
+    the named event). Pins the observation the kernel-2 fix added.
+
+    Expected feedback: pass proves both merge signals are recognised and two distinct actor
+    cells are NOT read as a merge. Fail = the fix mis-detects (false merge on two actors, or
+    misses a genuine coalescence)."""
+    from admorphiq.hypothesis_select.grounding import UNKNOWN, Grounded
+
+    class _StubGs:
+        def __init__(self, merge, n_cells):
+            self._merge, self._n = merge, n_cells
+
+        def movement_merge_event(self):
+            return Grounded(("actor_a", "actor_b"), "high") if self._merge else UNKNOWN
+
+        def movement_actors(self):
+            cells = [("actor_a", (2, 6)), ("actor_b", (5, 5))][: self._n]
+            return Grounded(cells, "high")
+
+    assert _MOD._movement_merge_seen(_StubGs(merge=True, n_cells=2)) is True   # named event
+    assert _MOD._movement_merge_seen(_StubGs(merge=False, n_cells=1)) is True  # coalesced to one cell
+    assert _MOD._movement_merge_seen(_StubGs(merge=False, n_cells=2)) is False  # two distinct actors
+
+
 def test_movement_verdict_counts_the_hazard_as_wall_equivalence_pick():
     """Purpose: the SELECT scoring credits BOTH oracle-equivalence-class members — the
     exact oracle AND the execution-equivalent hazard_as_wall (correction A) — toward the
