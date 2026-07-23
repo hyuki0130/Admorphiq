@@ -1,0 +1,12 @@
+{
+  "model": "gemma4",
+  "version": 2,
+  "seed_pass": true,
+  "hole_recall": "3/3",
+  "no_hole_specificity": "3/3",
+  "controls": {
+    "evidence_blind": "abstain",
+    "insufficient": "abstain"
+  },
+  "note": "R97b syntax-contract fix (df6a443) flipped v1's 0/3 (semantically-correct rules rejected on un-communicated '.get' ban) to a PERFECT 3/3 \u2014 extend cyclic_three_state, all definitions pass TRAIN+held-out."
+}

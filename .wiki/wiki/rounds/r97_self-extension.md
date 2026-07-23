@@ -3,7 +3,7 @@ type: reasoning
 round: R97
 axis: agent25 — tier-2 DSL self-extension (model authors a missing enum + working definition)
 keywords: [agent25, hypothesis-dsl, self-extension, tier-2, authored-cell-update, exact-transition-verifier, ast-sandbox, certify-hole, ft09, seed-pass, two-model, prereg]
-verdict: IN PROGRESS — prerequisites BUILT (2b517ce), evaluation contract FROZEN (4eb845e, amended 42bc851), pre-model oracle-certification gate PASS; next = paired Kaggle model bench (gemma4 + gpt-oss)
+verdict: ROUND COMPLETE — CONFIRMED SEED-PASS BOTH MODELS (2026-07-23 11:54): gptoss hole 2/3 + no-hole 3/3; gemma4 (R97b v2) hole 3/3 + no-hole 3/3; all controls abstain (no leakage, calibrated). Both models DETECT the vocabulary hole and AUTHOR verified working rules — tier-2 DSL self-extension is measured-real at seed scope (cap honoured: ONE cyclic-successor capability, not general tier-2)
 commit: [fb78a64, 2b517ce, 4eb845e, 42bc851]
 date: 2026-07-23
 ---
@@ -71,7 +71,21 @@ fit, held-out exactness, extensional equivalence, compiler parity, live).
   so far: BOTH models detect the hole and author semantically-correct
   rules; the residual gap is syntax-surface communication, not
   capability.
-- verdict frontmatter updates on R97b completion.
+- **R97b v2 (df6a443 syntax-contract fix): gemma4 = SEED-PASS PERFECT —
+  hole recall 3/3 (extend cyclic_three_state, every authored definition
+  passes TRAIN + held-out), no-hole 3/3, controls abstain. The
+  un-communicated-constraint fix flipped 0/3 → 3/3, confirming v1's
+  attribution exactly.**
+- **ROUND COMPLETE: CONFIRMED SEED-PASS BOTH MODELS.** The tier-2 thesis
+  is measured-real at seed scope: both offline models recognize a
+  vocabulary hole from prose transition evidence alone, refuse to force
+  an offered rule, author a working definition under the fixed contract,
+  and pass exact held-out verification — with clean no-hole specificity
+  and leakage/calibration controls. The residual lesson mirrors R95b's
+  notation misparse: every constraint the harness enforces must be
+  STATED in the model-facing contract (un-communicated constraints
+  masquerade as capability failures). Next: family expansion #3 per the
+  15-game inexpressible backlog.
 
 ## Related
 
