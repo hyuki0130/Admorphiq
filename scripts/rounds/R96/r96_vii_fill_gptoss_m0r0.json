@@ -1,0 +1,121 @@
+{
+  "game": "m0r0",
+  "mode": "fill",
+  "runs": [
+    {
+      "run": 0,
+      "mode": "fill",
+      "choice": null,
+      "mapped_instance": null,
+      "is_oracle": false,
+      "confidence": null,
+      "evidence": "",
+      "variant_choice": {
+        "relation": "same_cell",
+        "role_a": "A"
+      },
+      "slot_values": {
+        "phase_guards": [
+          [
+            "level_advanced"
+          ]
+        ]
+      },
+      "assembly_valid": true,
+      "retries": 0,
+      "verifier_verdict": "PASS",
+      "select_credited": false,
+      "select_note": null,
+      "executed": true,
+      "levels_cleared": 1,
+      "merge_event": true,
+      "actions_per_level": [
+        15
+      ],
+      "discovery_actions": 23,
+      "hazard_resets": 0,
+      "edges_confirmed": true,
+      "plan_outcome": "UNSATISFIABLE",
+      "rebind_events": 21,
+      "outcome": "PASS",
+      "role_binding_note": "role-binding symmetric under same_cell, equivalence noted"
+    },
+    {
+      "run": 1,
+      "mode": "fill",
+      "choice": null,
+      "mapped_instance": null,
+      "is_oracle": false,
+      "confidence": null,
+      "evidence": "",
+      "variant_choice": {
+        "relation": "same_cell",
+        "role_a": "A"
+      },
+      "slot_values": {
+        "phase_guards": [
+          [
+            "level_advanced"
+          ]
+        ]
+      },
+      "assembly_valid": true,
+      "retries": 0,
+      "verifier_verdict": "PASS",
+      "select_credited": false,
+      "select_note": null,
+      "executed": true,
+      "levels_cleared": 1,
+      "merge_event": true,
+      "actions_per_level": [
+        15
+      ],
+      "discovery_actions": 23,
+      "hazard_resets": 0,
+      "edges_confirmed": true,
+      "plan_outcome": "UNSATISFIABLE",
+      "rebind_events": 21,
+      "outcome": "PASS",
+      "role_binding_note": "role-binding symmetric under same_cell, equivalence noted"
+    },
+    {
+      "run": 2,
+      "mode": "fill",
+      "choice": null,
+      "mapped_instance": null,
+      "is_oracle": false,
+      "confidence": null,
+      "evidence": "",
+      "variant_choice": {
+        "relation": "same_cell",
+        "role_a": "A"
+      },
+      "slot_values": {
+        "phase_guards": [
+          [
+            "roles_state_equal"
+          ]
+        ]
+      },
+      "assembly_valid": true,
+      "retries": 0,
+      "verifier_verdict": "PASS",
+      "select_credited": false,
+      "select_note": null,
+      "executed": true,
+      "levels_cleared": 1,
+      "merge_event": true,
+      "actions_per_level": [
+        15
+      ],
+      "discovery_actions": 23,
+      "hazard_resets": 0,
+      "edges_confirmed": true,
+      "plan_outcome": "UNSATISFIABLE",
+      "rebind_events": 21,
+      "outcome": "PASS",
+      "role_binding_note": "role-binding symmetric under same_cell, equivalence noted"
+    }
+  ],
+  "model_verdict": "PASS"
+}
