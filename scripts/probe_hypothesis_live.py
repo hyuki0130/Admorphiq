@@ -30,6 +30,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from pathlib import Path
 from typing import Any, Callable, Optional
@@ -775,7 +776,9 @@ def execute_instance(
     return record
 
 
-def run_movement_once(game: str, run_index: int) -> dict[str, Any]:
+def run_movement_once(
+    game: str, run_index: int, instance: Optional["schema_movement.MovementHypothesis"] = None
+) -> dict[str, Any]:
     """One fresh-reset movement gate run (m0r0): for EACH level board a FRESH
     grounding + full directional RE-DISCOVERY -> compile the coupled-actor oracle ->
     stepped execution to the exact merge. Per-board re-grounding is the doctrine (as
@@ -800,7 +803,7 @@ def run_movement_once(game: str, run_index: int) -> dict[str, Any]:
         "edges_confirmed": False,
     }
     for _level_ordinal in range(_M0R0_TARGET_LEVELS):
-        outcome, rebinds = run_movement_level(env, record, run_index)
+        outcome, rebinds = run_movement_level(env, record, run_index, instance=instance)
         record["rebind_events"] += rebinds
         if outcome != "CLEARED":
             record["plan_outcome"] = outcome
@@ -814,7 +817,10 @@ def run_movement_once(game: str, run_index: int) -> dict[str, Any]:
     return record
 
 
-def run_movement_level(env: "LiveEnv", record: dict[str, Any], run_index: int) -> tuple[str, int]:
+def run_movement_level(
+    env: "LiveEnv", record: dict[str, Any], run_index: int,
+    instance: Optional["schema_movement.MovementHypothesis"] = None,
+) -> tuple[str, int]:
     """Clear ONE level board with a FRESH grounding: warm-up -> directional-probe
     RE-DISCOVERY on this board (which also spends the absorbed post-transition
     settling action) -> compile -> stepped per-move confirmation until this level
@@ -858,7 +864,8 @@ def run_movement_level(env: "LiveEnv", record: dict[str, Any], run_index: int) -
     #    alphabet do we RE-PROBE the unconfirmed directions from the actors' CURRENT
     #    (moved) positions — bounded by the remaining discovery budget — before falling
     #    to the honest GROUNDING_INCOMPLETE / UNSATISFIABLE surface.
-    instance = schema_movement.m0r0_oracle_instance()
+    if instance is None:
+        instance = schema_movement.m0r0_oracle_instance()
     probe_budget = max(0, _DISCOVERY_BUDGET - used)
     reprobes = 0
     # SEED occupancy from discovery's collision-blocked targets (free, high-confidence
@@ -923,6 +930,28 @@ def run_movement_level(env: "LiveEnv", record: dict[str, Any], run_index: int) -
     # the frame-diff orbit finds nothing periodic. Per-board (fresh each level).
     behav_pos: set[tuple[tuple[int, int], int]] = set()
     behav_neg: set[tuple[tuple[int, int], int]] = set()
+    # DIAGNOSTIC (position-dependence discriminator, default OFF): on idx1+ (start_levels>0),
+    # emit K NET-ZERO detour actions ([3,4] pairs return the mirror actors toward spawn) to
+    # advance the tick clock by K without changing the spawn configuration. Comparing the
+    # invisible obstacle's block events vs the K=0 baseline then reveals whether they track
+    # absolute TICKS (time-driven) or actor CONFIGURATIONS (position-driven). K=0 => no-op =>
+    # byte-identical to the normal driver (idx0 pins untouched).
+    prepad_k = int(os.environ.get("M0R0_PREPAD_K", "0"))
+    if start_levels > 0 and prepad_k > 0:
+        detour = ([3, 4] * ((prepad_k + 1) // 2))[:prepad_k]
+        for a in detour:
+            env.simple_action(a)
+            level_actions += 1
+            f = env.frame()
+            if f is not None:
+                gs.feed(f)
+            print(
+                f"[live] run{run_index} m0r0 PREPAD action {a} tick {level_actions} "
+                f"obs {_move_observed(gs)}",
+                flush=True,
+            )
+        prev_obs = _move_observed(gs)
+        prev_frame_grid = env.frame()
     for _ in range(_M0R0_LEVEL_BUDGET + 10):
         frame = env.frame()
         if frame is None:
