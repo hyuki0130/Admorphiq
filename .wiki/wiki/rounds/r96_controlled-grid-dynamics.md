@@ -273,8 +273,21 @@ model selection 15% / compiler-live 10%.
   ft09-ENV-SPECIFIC on Kaggle (adaptive probes hitting non-toggling cells
   in that env's layout — m0r0 and sc25 PASSED on the same dataset).
   Banked as an env-sensitive R95-lane follow-up (env snapshot parity +
-  env-robust probe selection), non-blocking for R96. Chain: fill-gemma4 →
-  gptoss select → gptoss fill.
+  env-robust probe selection), non-blocking for R96.
+  **Kernels 2-3 (66b66e4, 43e0726): two NEW harness defects, both caught
+  by the verifier with zero executed actions.** Kernel 2 (gemma4 FILL):
+  the model filled CORRECTLY (same_cell + role_a=A symmetric-equivalent +
+  level_advanced guard, assembly_valid) yet the movement verifier
+  CONTRADICTED 3/3 — a fill→verify path defect (assembly's
+  harness-field injection vs verifier expectations; diagnosis in flight).
+  Kernel 3 (gptoss SELECT): FAIL 3/3 picking same_delta_both_actors, but
+  the live evidence was SELF-CONTRADICTORY — "1 small mobile region were
+  tracked (call them region A and region B)" (that run's grounding counted
+  one mobile region while naming two roles); with a 1-region premise the
+  I4 pick is a reasonable read of degraded evidence. Both defects are
+  evidence/assembly plumbing, not model capability; fixes batched →
+  re-runs fill-gemma4-v2 + select-gptoss-v2, then kernel 4 (gptoss fill).
+  Riders on both kernels: sc25 PASS; ft09 the known env-sensitive rider.
   (viii) pending.
 
 ## Related
