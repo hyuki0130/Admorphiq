@@ -283,6 +283,8 @@ model selection 15% / compiler-live 10%.
   lesson distilled from the 15-defect ladder (observation lifetimes,
   invalidation hierarchy, behavioural sensing of invisible movers).
 - [[r95_hypothesis-dsl]] — the closed round whose pipeline this reuses.
+- [[r97_self-extension]] — the parallel tier-2 authoring round; its
+  Kaggle bench shares this round's model-stage pattern.
 - [[r57_win-condition-typology]] — the T1 goal-detector count this round is
   careful NOT to read as transition coverage.
 - [[../lessons/prompt_notation_misparse_20260723]] — prose evidence doctrine.
