@@ -254,6 +254,19 @@ model selection 15% / compiler-live 10%.
 - **(vii) model stage: IN PROGRESS on idx0** (canned-instance selection
   over the m0r0 oracle + 6 frozen mutants from live grounding evidence,
   then variant-first slot filling; both models per the frozen contract).
+  Build: 6168252 (SELECT with {oracle, hazard_as_wall} equivalence-class
+  scoring; FILL schema-faithful over all three frozen model-selected slots
+  — relation + actor role-binding with symmetric-equivalence under
+  same_cell + phase guards; the fork's silent narrowing of the frozen
+  surface was caught and corrected).
+  **Kernel 1/4 gemma4 SELECT (f001b2c): m0r0 = PASS 3/3 EXACT-ORACLE** —
+  gemma4 picked I7 (the shuffled oracle) every run from the live
+  structural prose evidence; the equivalence class was not even needed.
+  Riders: sc25 PASS; ft09 FAIL 3/3 — a no-op-dominated evidence
+  regression ("13 clicks changed exactly 0 cells"), the verifier
+  CONTRADICTED the wrong empirical_effect_matrix pick every run with zero
+  executed actions (the discriminative-selection safety layer at work);
+  diagnosis in flight. Chain: fill-gemma4 → gptoss select → gptoss fill.
   (viii) pending.
 
 ## Related
