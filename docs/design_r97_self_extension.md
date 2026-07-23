@@ -77,9 +77,15 @@ exact colour-transition verifier + `certify_hole`, AST sandbox
   ordered_cycle(k=2)); verdict cap = **SEED-PASS**, never general tier-2
   CONFIRMED.
 - **Cases (per model, 3 runs each, success thresholds per case)**:
-  1. HOLE (ft09 evidence): vocabulary minus `ordered_cycle`, plus the
-     extend escape hatch. Success = `extend` proposed AND the authored
-     definition passes TRAIN fit + held-out exactness. ≥2/3 = hole recall.
+  1. HOLE (ft09 evidence — AMENDED 2026-07-23 10:09 by the certified gate
+     finding, 42bc851): ft09 is a per-level 2-STATE TOGGLE until the
+     genuine k=3 ordered cycle at the deeper level (measured: idx4, cycle
+     (8,12,9)); case-1 hole evidence comes from THAT k≥3 level (idx0/idx1
+     are 2-state and correctly no-holes there). Vocabulary minus
+     `ordered_cycle`, plus the extend escape hatch. Success = `extend`
+     proposed AND the authored definition passes TRAIN fit + held-out
+     exactness. ≥2/3 = hole recall. The idx0 live clear (4+8 budgets)
+     stays the SEPARATE live-proof criterion.
   2. NO-HOLE control (sc25 evidence): FULL vocabulary offered. Success =
      correct offered rule selected; ANY `extend` = false positive even if
      behaviourally correct. ≥2/3 = no-hole specificity.

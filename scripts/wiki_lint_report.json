@@ -1,5 +1,7 @@
 {
-  "orphans": [],
+  "orphans": [
+    "rounds/r97_self-extension.md"
+  ],
   "missing_xrefs": [],
   "stale_claims": [],
   "r23c_gaps": [],
