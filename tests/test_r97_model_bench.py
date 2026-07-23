@@ -134,8 +134,14 @@ def test_score_run_hole_and_no_hole():
     assert hole_select["success"] is False
     nh_select = bench._score_run("no_hole", {"action": "select", "candidate": "binary_flip"}, ev, False)
     assert nh_select["success"] is True and nh_select["false_positive"] is False
+    # ordered_cycle IS binary_flip at k=2, so it is ALSO a correct no-hole pick (the pin).
+    nh_cycle = bench._score_run("no_hole", {"action": "select", "candidate": "ordered_cycle"}, ev, False)
+    assert nh_cycle["success"] is True and nh_cycle["false_positive"] is False
     nh_extend = bench._score_run("no_hole", {"action": "extend", "name": "c", "source": _ORACLE_SRC}, ev, False)
-    assert nh_extend["false_positive"] is True
+    assert nh_extend["success"] is False and nh_extend["false_positive"] is True
+    # abstain on a NO-HOLE board is a MISS (the evidence IS sufficient), not a false positive.
+    nh_abstain = bench._score_run("no_hole", {"action": "abstain", "reason": "x"}, ev, False)
+    assert nh_abstain["success"] is False and nh_abstain["false_positive"] is False
 
 
 def test_run_case_verdict_thresholds():
