@@ -298,8 +298,14 @@ model selection 15% / compiler-live 10%.
   while the prose names two roles. Fixes: `_movement_merge_seen` (named
   event OR coalesced single cell) + n_actors = bound actor ROLES from the
   delta table (tracks roles THROUGH the merge). Verifier not weakened.
-  Re-run chain v2 (fill-gemma4-v2 ∥ select-gptoss-v2 → fill-gptoss) in
-  flight on the refreshed dataset.
+  **v2 re-runs (6e14294): BOTH PASS — the fixes validated live.**
+  gemma4 FILL m0r0 = PASS 3/3 (verifier PASS → executed → idx0 cleared
+  @15a every run) → the gemma4 side of (vii) is COMPLETE (select + fill).
+  gptoss SELECT m0r0 = PASS 3/3 (picked hazard_as_wall every run — the
+  pre-declared criterion-level equivalence-class member, audited
+  exact-oracle-or-execution-equivalent; the region-count fix removed the
+  degraded evidence). Remaining substage: gptoss FILL (fresh-slug kernel
+  to bypass a Kaggle limbo record on the original slug).
   (viii) pending.
 
 ## Related
