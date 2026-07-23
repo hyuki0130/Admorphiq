@@ -3,7 +3,7 @@ type: reasoning
 round: R96
 axis: agent25 — hypothesis-DSL family expansion (ControlledGridDynamics / CoupledActorMerge)
 keywords: [agent25, hypothesis-dsl, family-expansion, movement, coupled-actors, m0r0, actor-relation, coupled-grid-step, typed-occupancy, mirror-deltas, merge-tracking, prereg]
-verdict: ORACLE PARTIAL / GROUNDING PIVOT (Codex-consulted 2026-07-23 08:56); MODEL CRITERION OPEN — idx0 CLEARED LIVE 3/3 @15a = gold, stable through all 15 gates, oracle-proven for model evaluation; idx1 PARKED at a grounding-class wall (an INVISIBLE floor-coloured dynamic obstacle whose policy has no stable period ≤12 — banked with control, merge, static-wall, and hazard mechanics decoded; hidden-obstacle dynamics unresolved). The pre-declared falsification clause triggered correctly: this is the 55% grounding outcome, NOT a schema/model failure (schema/verifier/compiler plan idx1 perfectly given correct walls). Model substages proceed on idx0 only (idx1 out-of-scope-parked, no end-to-end claim, no schema changes motivated). 15-defect instrumented ladder banked as GENERALISATION ASSETS (per-level re-grounding, confirmed-subset planning, persistence gate, settle absorption, wall learning + retry + observation-trumps-inference invalidation over learned AND grounded walls, online hazard learning, meet-in-the-middle merge semantics, block-evidence transient sensor + TTL, flip-flop commit-and-wait, frame-diff transient perception, time-expanded joint BFS with frame-diff + behavioural orbit sources)
+verdict: ROUND COMPLETE — ORACLE PARTIAL / GROUNDING PIVOT + MODEL STAGE CONFIRMED (2026-07-23 11:19): all four (vii)/(viii) substages PASS 3/3 on the idx0 criterion (gemma4 select exact-oracle + gemma4 fill idx0@15a + gptoss select equivalence-class + gptoss fill idx0@15a) — idx0 CLEARED LIVE 3/3 @15a = gold, stable through all 15 gates, oracle-proven for model evaluation; idx1 PARKED at a grounding-class wall (an INVISIBLE floor-coloured dynamic obstacle whose policy has no stable period ≤12 — banked with control, merge, static-wall, and hazard mechanics decoded; hidden-obstacle dynamics unresolved). The pre-declared falsification clause triggered correctly: this is the 55% grounding outcome, NOT a schema/model failure (schema/verifier/compiler plan idx1 perfectly given correct walls). Model substages proceed on idx0 only (idx1 out-of-scope-parked, no end-to-end claim, no schema changes motivated). 15-defect instrumented ladder banked as GENERALISATION ASSETS (per-level re-grounding, confirmed-subset planning, persistence gate, settle absorption, wall learning + retry + observation-trumps-inference invalidation over learned AND grounded walls, online hazard learning, meet-in-the-middle merge semantics, block-evidence transient sensor + TTL, flip-flop commit-and-wait, frame-diff transient perception, time-expanded joint BFS with frame-diff + behavioural orbit sources)
 commit: [141fc8c, 727b34b, b191834]
 date: 2026-07-23
 ---
@@ -304,9 +304,26 @@ model selection 15% / compiler-live 10%.
   gptoss SELECT m0r0 = PASS 3/3 (picked hazard_as_wall every run — the
   pre-declared criterion-level equivalence-class member, audited
   exact-oracle-or-execution-equivalent; the region-count fix removed the
-  degraded evidence). Remaining substage: gptoss FILL (fresh-slug kernel
-  to bypass a Kaggle limbo record on the original slug).
-  (viii) pending.
+  degraded evidence). Final substage — gptoss FILL under the fresh slug
+  admorphiq-r96-vii-fillgptoss (the original slug was a Kaggle limbo
+  record, 404 regardless of free slots; identical metadata under a new
+  slug created v1 first try): **m0r0 PASS 3/3** (verifier PASS →
+  executed → idx0 cleared @15a every run; 8b68aab).
+- **(vii)+(viii) MODEL STAGE = CONFIRMED, ROUND COMPLETE (2026-07-23
+  11:19).** All four substages PASS 3/3 on the idx0 criterion: gemma4
+  SELECT (exact-oracle I7 every run) + gemma4 FILL (idx0 @15a) + gptoss
+  SELECT (hazard_as_wall = the pre-declared equivalence-class member) +
+  gptoss FILL (idx0 @15a). The second family's full pipeline — schema →
+  grounding → verifier → compiler → live oracle gate → model select+fill
+  — is measured end-to-end on both models, matching the R95 cell-state
+  precedent. The kernel campaigns also hardened the harness: two
+  shared-root evidence/assembly defects (post-merge coalesced-state
+  misreads) found and fixed, and the verifier blocked every
+  wrong-execution attempt (3 distinct wrong picks) with zero wasted
+  actions. Riders: sc25 PASS on all four kernels; ft09 = the known
+  env-sensitive R95-lane follow-up. idx1 stays parked per the ORACLE
+  PARTIAL verdict (position-driven invisible guard; StateDependentOccupancy
+  banked as the future model class).
 
 ## Related
 
