@@ -288,6 +288,18 @@ model selection 15% / compiler-live 10%.
   evidence/assembly plumbing, not model capability; fixes batched →
   re-runs fill-gemma4-v2 + select-gptoss-v2, then kernel 4 (gptoss fill).
   Riders on both kernels: sc25 PASS; ft09 the known env-sensitive rider.
+  **Both defects DIAGNOSED to ONE root and fixed (4cc38eb + ad77e52)**:
+  the evidence-gathering oracle solve MERGES the actors, and two
+  downstream reads mishandled the coalesced post-merge state — (1)
+  `plan.step` feeds grounding via `feed()`, which never runs the merge
+  detector (only `feed_transition` does) → merge_observed False →
+  same_cell CONTRADICTED for oracle and fill alike; (2)
+  `movement_actors()` reads ONE coalesced cell post-merge → n_actors=1
+  while the prose names two roles. Fixes: `_movement_merge_seen` (named
+  event OR coalesced single cell) + n_actors = bound actor ROLES from the
+  delta table (tracks roles THROUGH the merge). Verifier not weakened.
+  Re-run chain v2 (fill-gemma4-v2 ∥ select-gptoss-v2 → fill-gptoss) in
+  flight on the refreshed dataset.
   (viii) pending.
 
 ## Related
