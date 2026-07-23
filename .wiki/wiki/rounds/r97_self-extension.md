@@ -54,7 +54,24 @@ fit, held-out exactness, extensional equivalence, compiler parity, live).
   held-out). Harness fixes confined to AuthoredCellUpdatePlan:
   guard-name-agnostic reveal-trigger (decoy levels) + ordered-palette from
   the grounding's acquired cycle.
-- Paired Kaggle model bench (gemma4-31b-q8 + gpt-oss-120b): pending.
+- **Paired Kaggle bench MEASURED (02a8761, ba91afa)**:
+  **gptoss = SEED-PASS** — hole recall 2/3 (`extend` chosen all 3 runs;
+  two authored `cyclic_palette` definitions pass TRAIN + held-out),
+  no-hole specificity 3/3 (select binary_flip, zero false positives),
+  evidence-blind = abstain (NO leakage), insufficient = abstain
+  (calibrated). **gemma4 = NOT SEED-PASS (hole recall 0/3) — attribution
+  = un-communicated-constraint HARNESS defect**: detection was PERFECT
+  (`extend` 3/3, controls clean) and the authored rule was SEMANTICALLY
+  EXACT-ORACLE (`{8:12, 12:9, 9:8}` + `.get`), rejected ONLY by the AST
+  sandbox's attribute-access ban — a restriction the contract prompt
+  never stated. Per the frozen attribution matrix, prompt iteration = a
+  NEW sub-round: **R97b in flight** (state the allowed-syntax list in
+  the definition contract, identical across all four cases; re-run
+  gemma4 only — the gptoss verdict stands). The tier-2 thesis takeaway
+  so far: BOTH models detect the hole and author semantically-correct
+  rules; the residual gap is syntax-surface communication, not
+  capability.
+- verdict frontmatter updates on R97b completion.
 
 ## Related
 
