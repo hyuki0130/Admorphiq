@@ -265,8 +265,16 @@ model selection 15% / compiler-live 10%.
   Riders: sc25 PASS; ft09 FAIL 3/3 — a no-op-dominated evidence
   regression ("13 clicks changed exactly 0 cells"), the verifier
   CONTRADICTED the wrong empirical_effect_matrix pick every run with zero
-  executed actions (the discriminative-selection safety layer at work);
-  diagnosis in flight. Chain: fill-gemma4 → gptoss select → gptoss fill.
+  executed actions (the discriminative-selection safety layer at work).
+  **ft09 diagnosis (offline, complete): NOT a code regression** — the
+  cell-state evidence path is byte-identical since v8 (every diff is a
+  movement ADDITION) and the local dry-run renders the clean v8-shape
+  evidence (12/12 one-cell toggles, zero no-ops); the degradation is
+  ft09-ENV-SPECIFIC on Kaggle (adaptive probes hitting non-toggling cells
+  in that env's layout — m0r0 and sc25 PASSED on the same dataset).
+  Banked as an env-sensitive R95-lane follow-up (env snapshot parity +
+  env-robust probe selection), non-blocking for R96. Chain: fill-gemma4 →
+  gptoss select → gptoss fill.
   (viii) pending.
 
 ## Related
