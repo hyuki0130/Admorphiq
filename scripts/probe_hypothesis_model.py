@@ -1185,8 +1185,18 @@ def movement_facts_from_grounding(gs: GroundingService) -> dict[str, Any]:
     deltas_g = gs.movement_deltas()
     deltas = {} if deltas_g is UNKNOWN else dict(deltas_g.value)
     sig = _coupling_signature(deltas)
+    # n_actors = the number of bound actor ROLES (the distinct actors in the acquired delta
+    # table), NOT the current observed-region count: the evidence-gathering solve drives the
+    # two actors to MERGE, so movement_actors() reads ONE coalesced cell afterward, and
+    # reporting "1 region" while the prose names two regions is a self-contradiction that
+    # degrades the model's read (R96 (vii) kernel-3 defect). The roles are stable through the
+    # merge; the delta table always carries both.
+    roles = {aid for aid, _action in deltas}
     actors_g = gs.movement_actors()
-    n_actors = len({aid for aid, _cell in actors_g.value}) if actors_g is not UNKNOWN else 2
+    n_actors = (
+        len(roles) if roles
+        else (len({aid for aid, _cell in actors_g.value}) if actors_g is not UNKNOWN else 2)
+    )
     collision = gs.movement_collision_evidence()
     occ = gs.movement_occupancy()
     hazards = gs.movement_hazard_cells()
@@ -1194,7 +1204,7 @@ def movement_facts_from_grounding(gs: GroundingService) -> dict[str, Any]:
         "n_actors": n_actors or 2,
         "symmetric_row_pair": bool(sig["symmetric"]),
         "antisymmetric_column_pair": bool(sig["antisym_col"]),
-        "merge_observed": gs.movement_merge_event() is not UNKNOWN,
+        "merge_observed": _movement_merge_seen(gs),
         "independent_desync": (0 if collision is UNKNOWN else int(collision.value)) > 0,
         "n_walls": 0 if occ is UNKNOWN else len(occ.value.blocked_cells),
         "n_hazards": 0 if hazards is UNKNOWN else len(hazards.value),

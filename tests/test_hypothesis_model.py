@@ -575,6 +575,51 @@ def test_movement_merge_seen_detects_named_event_or_coalesced_actors():
     assert _MOD._movement_merge_seen(_StubGs(merge=False, n_cells=2)) is False  # two distinct actors
 
 
+def test_movement_facts_report_bound_role_count_not_coalesced_regions():
+    """Purpose: movement_facts_from_grounding reports the number of bound actor ROLES (the
+    distinct actors in the acquired delta table = 2), NOT the current observed-region count —
+    so after the evidence-gathering solve MERGES the actors (movement_actors then reads ONE
+    coalesced cell) the prose still says "2 small mobile regions" and never emits the
+    self-contradiction "1 small mobile region ... region A and region B" (the R96 (vii)
+    kernel-3 defect that made gptoss read degraded evidence and pick a wrong instance).
+
+    Expected feedback: pass proves the region count tracks the two roles through the merge, so
+    the prose never names two regions while counting one. Fail = the coalesced-region count
+    leaks into the summary the model reads."""
+    from admorphiq.hypothesis_select.grounding import UNKNOWN, Grounded
+
+    mirror = {
+        ("actor_a", 1): (-1, 0), ("actor_b", 1): (-1, 0), ("actor_a", 2): (1, 0),
+        ("actor_b", 2): (1, 0), ("actor_a", 3): (0, -1), ("actor_b", 3): (0, 1),
+        ("actor_a", 4): (0, 1), ("actor_b", 4): (0, -1),
+    }
+
+    class _StubGs:
+        def movement_deltas(self):
+            return Grounded(dict(mirror), "high")
+
+        def movement_actors(self):
+            return Grounded([("actor_a", (2, 6))], "high")  # coalesced to ONE cell after the merge
+
+        def movement_collision_evidence(self):
+            return Grounded(1, "high")
+
+        def movement_occupancy(self):
+            return UNKNOWN
+
+        def movement_hazard_cells(self):
+            return UNKNOWN
+
+        def movement_merge_event(self):
+            return UNKNOWN
+
+    facts = _MOD.movement_facts_from_grounding(_StubGs())
+    assert facts["n_actors"] == 2  # the two bound roles, not the single coalesced region
+    prose = _MOD.movement_observation_summary(facts)
+    assert "2 small mobile regions were tracked (call them region A and region B)" in prose
+    assert "1 small mobile region" not in prose  # never the count-vs-naming contradiction
+
+
 def test_movement_verdict_counts_the_hazard_as_wall_equivalence_pick():
     """Purpose: the SELECT scoring credits BOTH oracle-equivalence-class members — the
     exact oracle AND the execution-equivalent hazard_as_wall (correction A) — toward the
