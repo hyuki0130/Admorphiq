@@ -238,6 +238,19 @@ model selection 15% / compiler-live 10%.
   insufficient: dynamic events shift 1-4 ticks with trajectory changes,
   but blocks are only observed on attempts — the counterfactual probe is
   the discriminating instrument.
+  **Discriminator RESULT (3397ec3, DECISIVE): POSITION-DRIVEN.** A K=6
+  net-zero detour prepad (tick clock +6, actor-config sequence fixed)
+  shifts ALL 61/61 idx1 block events by exactly +6 (raw absolute-tick
+  intersection 1/61) — the obstacle is a guard/chaser, a function of the
+  actor joint configuration, NOT time-periodic. This explains both prior
+  negatives (frame-diff: floor-coloured invisible; behavioural time-orbit:
+  no temporal period exists — the v15 monotonic P-climb was the honest
+  surface of a model-class mismatch). **Banked for the future idx1
+  build**: model class = StateDependentOccupancy (already a typed
+  schema_movement arm) — learn the (actor joint config → obstacle cell)
+  map online, plan in the joint (actor_a, actor_b, obstacle) state. The
+  M0R0_PREPAD_K gated diagnostic (default OFF, byte-identical) is kept as
+  the reusable discriminator.
 - **(vii) model stage: IN PROGRESS on idx0** (canned-instance selection
   over the m0r0 oracle + 6 frozen mutants from live grounding evidence,
   then variant-first slot filling; both models per the frozen contract).
