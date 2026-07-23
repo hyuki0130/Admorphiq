@@ -38,6 +38,7 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Optional, Union
 
+from admorphiq.hypothesis_select.authored import AuthoredCellTransition, AuthoredUpdate
 from admorphiq.hypothesis_select.grounding import UNKNOWN, GroundingService
 from admorphiq.hypothesis_select.schema import (
     BinaryFlip,
@@ -260,13 +261,138 @@ class PatternXorPlan:
         return Click(x, y)
 
 
-ExecutablePlan = Union[GlyphConstraintPlan, PatternXorPlan]
+class AuthoredCellUpdatePlan:
+    """GlyphRelational x AuthoredCellTransition (R97 tier-2): drive each covered
+    cell to a satisfying colour, computing the successor colour from a MODEL-AUTHORED
+    ``update(colour, click_index, palette)`` instead of a canned ordered cycle.
+
+    Codex trap 1 (causal use): the authored function is invoked for BOTH planning
+    (``solve`` simulates repeated presses to count clicks to a satisfying colour)
+    AND action-time confirmation (each emitted click's expected next colour is the
+    authored prediction; a mismatch is DIVERGED). Substituting a wrong authored
+    function therefore changes the plan or breaks parity — the authored code is on
+    the causal path, never bypassed. The source hash + invocation count are logged
+    for audit."""
+
+    def __init__(
+        self, objective: GlyphRelational, grounding: GroundingService, authored: "AuthoredUpdate"
+    ) -> None:
+        self._quantifier = objective.coverage_quantifier
+        self._ink_map = dict(objective.ink_operator_map)
+        self._g = grounding
+        self._authored = authored
+        self.authored_source_hash = authored.source_hash
+        self.authored_name = authored.name
+        self._pending: Optional[tuple[str, int]] = None  # (cell_id, expected colour)
+        self._clicks_done: dict[str, int] = {}  # per-cell click ordinal (the update's click_index)
+
+    @property
+    def authored_invocations(self) -> int:
+        """How many times the authored ``update`` has been invoked through this plan
+        (planning + confirmation) — the causal-use audit counter."""
+        return self._authored.invocations
+
+    def _palette(self) -> Optional[list[int]]:
+        """The colour palette the authored rule operates over: the sorted distinct
+        current cell colours. ``None`` when no cell colour is grounded."""
+        cells = self._g.cells()
+        if cells is UNKNOWN:
+            return None
+        colours = set()
+        for cell_id, _centroid in cells.value:
+            colour = self._g.cell_colour(cell_id)
+            if colour is not UNKNOWN:
+                colours.add(colour.value)
+        return sorted(colours) if colours else None
+
+    def _relevant_constraints(self, cell_centroid: tuple[float, float], covering: list[tuple]) -> list[tuple]:
+        if self._quantifier == "nearest_only" and covering:
+            nearest = min(covering, key=lambda e: abs(e[3][0] - cell_centroid[0]) + abs(e[3][1] - cell_centroid[1]))
+            return [nearest]
+        return covering
+
+    def solve(self) -> GlyphSolution:
+        """Per-cell (target colour, click count) by simulating the AUTHORED update
+        forward from each cell's current colour until a satisfying colour is reached
+        (bounded by the palette size — a rule that never reaches a satisfying colour
+        yields UNSATISFIABLE). GROUNDING_INCOMPLETE when cells / palette are not yet
+        grounded."""
+        palette = self._palette()
+        if palette is None:
+            return GlyphSolution(PlanStatus.GROUNDING_INCOMPLETE, {})
+        cells = self._g.cells()
+        if cells is UNKNOWN:
+            return GlyphSolution(PlanStatus.GROUNDING_INCOMPLETE, {})
+        per_cell: dict[str, tuple[int, int]] = {}
+        for cell_id, centroid in cells.value:
+            covering = self._g.incidence(cell_id)
+            colour = self._g.cell_colour(cell_id)
+            if covering is UNKNOWN or colour is UNKNOWN or not covering.value:
+                continue
+            constraints = self._relevant_constraints(centroid, list(covering.value))
+            target = self._simulate_to_satisfying(colour.value, constraints, palette)
+            if target is None:
+                return GlyphSolution(PlanStatus.UNSATISFIABLE, {})
+            per_cell[cell_id] = target
+        return GlyphSolution(PlanStatus.SOLVABLE, per_cell)
+
+    def _simulate_to_satisfying(
+        self, start: int, constraints: list[tuple], palette: list[int]
+    ) -> Optional[tuple[int, int]]:
+        """Press the authored rule forward from ``start``, returning ``(target
+        colour, clicks)`` at the first satisfying colour, or ``None`` if none is
+        reached within ``len(palette)`` presses (a bounded, non-looping search)."""
+        colour = start
+        for clicks in range(len(palette) + 1):
+            if _satisfies(colour, constraints, self._ink_map):
+                return colour, clicks
+            colour = self._authored.predict(colour, clicks, palette)
+        return None
+
+    def step(self, frame: Any) -> StepResult:
+        """Feed ``frame``, confirm the previous click's AUTHORED-predicted advance
+        (DIVERGED on mismatch), then emit the next needed click or a terminal
+        status."""
+        self._g.feed(frame)
+        if self._pending is not None:
+            cell_id, expected = self._pending
+            self._pending = None
+            observed = self._g.cell_colour(cell_id)
+            if observed is UNKNOWN or observed.value != expected:
+                return Terminal(PlanStatus.DIVERGED)
+        solution = self.solve()
+        if solution.status in (PlanStatus.GROUNDING_INCOMPLETE, PlanStatus.UNSATISFIABLE):
+            return Terminal(solution.status)
+        palette = self._palette()
+        for cell_id, (_target, clicks) in solution.per_cell.items():
+            if clicks <= 0:
+                continue
+            coord = self._g.resolve_click(cell_id)
+            if coord is UNKNOWN:
+                return Terminal(PlanStatus.GROUNDING_INCOMPLETE)
+            current = self._g.cell_colour(cell_id).value
+            ordinal = self._clicks_done.get(cell_id, 0)
+            expected = self._authored.predict(current, ordinal, palette)
+            self._pending = (cell_id, expected)
+            self._clicks_done[cell_id] = ordinal + 1
+            x, y = coord.value
+            return Click(x, y)
+        return Terminal(PlanStatus.DONE)
+
+
+ExecutablePlan = Union[GlyphConstraintPlan, PatternXorPlan, AuthoredCellUpdatePlan]
 
 
 def compile_hypothesis(instance: CellStateHypothesis, grounding: GroundingService) -> ExecutablePlan:
     """Compile a verified hypothesis into an executable plan, dispatching ONLY on
-    the schema's objective + transition-model tags (never a game id)."""
+    the schema's objective + transition-model tags (never a game id). A
+    GlyphRelational objective carrying an ``AuthoredCellTransition`` (R97 tier-2)
+    compiles to the authored-update plan; the source is validated + probed by
+    ``AuthoredUpdate`` here, so an unverified rule never reaches execution."""
     objective, transition = instance.objective, instance.transition_model
+    if isinstance(objective, GlyphRelational) and isinstance(transition, AuthoredCellTransition):
+        authored = AuthoredUpdate(transition.source, transition.name)
+        return AuthoredCellUpdatePlan(objective, grounding, authored)
     if isinstance(objective, GlyphRelational) and isinstance(transition, OrderedCycle):
         # The reveal is enabled by the STRUCTURAL presence of a second phase, NOT by
         # which guard label the model chose for it. The reveal guard is epistemically
@@ -293,6 +419,7 @@ __all__ = [
     "PatternSolution",
     "GlyphConstraintPlan",
     "PatternXorPlan",
+    "AuthoredCellUpdatePlan",
     "ExecutablePlan",
     "compile_hypothesis",
 ]
