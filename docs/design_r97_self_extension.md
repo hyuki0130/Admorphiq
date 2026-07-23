@@ -67,6 +67,60 @@ Corrections (all binding):
 Full review: scratchpad `codex_r97_design_review.log` (session-lived; the
 corrections above are the durable record).
 
+## R97 EVALUATION CONTRACT (FROZEN 2026-07-23 09:26)
+
+Instantiates the 10 binding corrections. Prerequisites BUILT (2b517ce):
+exact colour-transition verifier + `certify_hole`, AST sandbox
+(`authored.py`), AuthoredCellUpdate causal-use compiler node.
+
+- **Capability under test**: ONE cyclic-successor operator (binary_flip IS
+  ordered_cycle(k=2)); verdict cap = **SEED-PASS**, never general tier-2
+  CONFIRMED.
+- **Cases (per model, 3 runs each, success thresholds per case)**:
+  1. HOLE (ft09 evidence): vocabulary minus `ordered_cycle`, plus the
+     extend escape hatch. Success = `extend` proposed AND the authored
+     definition passes TRAIN fit + held-out exactness. ≥2/3 = hole recall.
+  2. NO-HOLE control (sc25 evidence): FULL vocabulary offered. Success =
+     correct offered rule selected; ANY `extend` = false positive even if
+     behaviourally correct. ≥2/3 = no-hole specificity.
+  3. EVIDENCE-BLIND control (1 run/model): transition lines withheld.
+     Successful reconstruction = LEAKAGE (invalidates case 1).
+  4. INSUFFICIENT-EVIDENCE control (1 run/model): thinned evidence
+     (single transition). Expected `abstain`; invention = calibration
+     failure (recorded, does not gate).
+- **Pre-model oracle certification (gate on the harness, not the model)**:
+  `certify_hole` must show every offered candidate CONTRADICTED + the
+  ablated oracle PASS on case-1 evidence; the hand-authored oracle
+  definition must traverse sandbox → verifier → compiler → LIVE ft09 clear
+  (4+8-action budgets, the R95b criterion); the 6 definition mutants
+  (identity, reverse order, constant, missing wrap, colour hard-coding,
+  k=2-only) must each fail held-out or parity. Any miss = fix the harness
+  BEFORE model runs.
+- **Output union (exclusive)**: `select(candidate_id)` |
+  `extend(name, source)` | `abstain(insufficient_evidence)`. Mixed
+  responses INVALID (one retry with the format error, as R95b).
+- **Authoring scope**: one `update(colour, click_index, palette) -> int`
+  through the AST sandbox; whole-solver authoring stays banned.
+- **Scoring, detection separate from authoring**: hole recall / no-hole
+  specificity / abstention accuracy // code validity / TRAIN fit /
+  held-out exactness / extensional equivalence vs the ablated oracle /
+  compiler parity (causal use) / live ft09 result. OVERALL SEED-PASS per
+  model = hole recall ≥2/3 AND no-hole specificity ≥2/3; CONFIRMED
+  SEED-PASS = both models (gemma4-31b-q8 + gpt-oss-120b at measured-best
+  configs).
+- **Leakage prohibitions**: as R95 (no game ids, adapter code, wiki,
+  provenance labels; no hint of the missing rule's shape); prose-only
+  evidence as exact colour-transition tuples ("colour X became Y after a
+  click on that cell"); echoing_llm ask/reply from run 1.
+- **Venue**: Kaggle kernels `admorphiq-r97-ext-{gemma4,gptoss}` per the
+  R95b pattern; dataset-race 90s+ wait.
+- **Falsification attribution (frozen matrix)**: blind-control success =
+  leakage → prompt/evidence redesign, new sub-round; no-hole pass + hole
+  fail = escape-hatch calibration; valid proposals failing held-out =
+  synthesis capability (tier-2 leans on fork-and-patch); offline pass +
+  live fail = compiler/grounding integration. Prompt iteration after
+  frozen runs = a new sub-round, never a silent retry.
+
 ## Question under test (v0 draft below — superseded where corrections apply)
 
 When the canned enum vocabulary has a HOLE (no offered `update_rule` value
