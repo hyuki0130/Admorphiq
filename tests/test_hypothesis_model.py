@@ -391,3 +391,154 @@ def test_effect_matrix_pick_is_not_auto_paired_and_reaches_the_gate():
     _MOD.fill_instance(gs, "ft09", llm, record)
     assert record["variant_choice"]["transition_kind"] == "empirical_effect_matrix"  # STANDS
     assert "model_transition" not in record  # not a correction — the pick was honoured
+
+
+def test_movement_instances_are_oracle_plus_six_frozen_mutants():
+    """Purpose: the m0r0 movement candidate set is the oracle plus exactly the 6 frozen
+    MUTANTS_MOVEMENT, with the oracle internal name, and NO auto-pairing (all 7 stand as
+    distinct candidates for the verifier to gate).
+
+    Expected feedback: pass proves the movement SELECT provisions the same-family
+    candidates only. Fail means a mutant is missing / duplicated or the oracle is absent."""
+    named, oracle_name = _MOD.movement_instances()
+    names = [n for n, _inst in named]
+    assert oracle_name == "m0r0_oracle"
+    assert oracle_name in names
+    assert len(named) == 7  # oracle + 6 frozen movement mutants
+    assert len(set(names)) == 7  # no duplicates
+
+
+def test_movement_observation_is_hash_robust_structural_prose():
+    """Purpose: the movement observation cites STRUCTURE (symmetric-row / antisymmetric-
+    column / merge / independent desync), never an action number as semantics — the R96
+    (iii) hash-variable-action finding applied to the evidence.
+
+    Expected feedback: pass proves the prose is hash-robust (no 'action N'/'press N'
+    numbering the live hash could rotate). Fail means a hash-specific token leaked into
+    the model-facing evidence."""
+    text = _MOD.movement_observation_summary(_MOD.CANNED_M0R0_FACTS).lower()
+    assert "symmetric" in text and "antisymmetric" in text and "merge" in text
+    assert "independently" in text
+    for token in ("action 1", "action 2", "press 1", "press 2", "action6", "action1"):
+        assert token not in text
+
+
+def test_movement_ask_prompt_is_leak_clean_and_serializes_all_candidates():
+    """Purpose: the movement SELECT ask serializes every candidate under the I1..IN
+    shuffle with NO oracle/mutant/game-id leakage in the model-facing text, and the
+    id->name mapping is complete.
+
+    Expected feedback: pass proves the model-facing prompt is neutral and complete (the
+    Kaggle-safety invariant). Fail means a name/label/game-id leaked or a candidate was
+    dropped."""
+    messages, mapping, _obs = _MOD.build_movement_ask_prompt(_MOD.CANNED_M0R0_FACTS)
+    assert set(mapping) == {f"I{i + 1}" for i in range(7)}
+    blob = (messages[0]["content"] + messages[1]["content"]).lower()
+    for banned in ("oracle", "mutant", "m0r0"):
+        assert banned not in blob
+
+
+def test_movement_fill_asks_exactly_the_three_frozen_model_slots():
+    """Purpose: the movement FILL asks request EXACTLY the frozen MOVEMENT_MODEL_SELECTED_
+    SEMANTICS — the actor ROLE-BINDING (role_a), the completion RELATION, and the phase
+    GUARDS — and NEVER a harness-measured field (collision_policy, terminal_cells,
+    per_action_deltas, occupancy). Both asks are leak-clean (no game id / oracle / mutant).
+
+    Expected feedback: pass proves FILL asks the full-and-only frozen model-selected surface
+    (actors IS a model slot, not harness). Fail means a harness-measured slot leaked into a
+    model ask, or a frozen model slot (the role-binding) was wrongly dropped."""
+    variant = _MOD.build_movement_variant_ask(_MOD.CANNED_M0R0_FACTS)
+    slots = _MOD.build_movement_slot_ask(_MOD.CANNED_M0R0_FACTS, "same_cell")
+    blob = " ".join(m["content"] for m in variant + slots).lower()
+    for banned in ("collision_policy", "terminal_cells", "per_action_deltas", "occupancy",
+                   "oracle", "mutant", "m0r0"):
+        assert banned not in blob
+    v_user = variant[1]["content"].lower()
+    assert "relation" in v_user and "role_a" in v_user  # both objective model slots asked
+    assert "phase_guards" in slots[1]["content"].lower()  # the guard model slot asked
+
+
+def test_parse_movement_variant_and_slots_validate_closed_vocabularies():
+    """Purpose: the FILL parsers accept the model's model_selected values only from their
+    closed vocabularies — relation in {same_cell, adjacent, overlap}, phase_guards a list
+    of exactly n_phases guard-name lists from the known guard set — and reject the rest.
+
+    Expected feedback: pass proves a hallucinated relation / guard name / wrong phase count
+    is caught before assembly. Fail means an out-of-vocabulary value would reach the schema."""
+    good_v, err_v = _MOD.parse_movement_variant(
+        '{"relation": "same_cell", "role_a": "A", "confidence": "high"}')
+    assert err_v == "" and good_v["relation"] == "same_cell" and good_v["role_a"] == "A"
+    bad_v, err_bad = _MOD.parse_movement_variant('{"relation": "teleport", "role_a": "A"}')
+    assert bad_v is None and "teleport" in err_bad
+    # the role-binding is also a closed vocabulary — a bad role_a is rejected
+    bad_role, err_role = _MOD.parse_movement_variant('{"relation": "same_cell", "role_a": "Q"}')
+    assert bad_role is None and "role_a" in err_role
+    good_s, err_s = _MOD.parse_movement_slots('{"phase_guards": [["level_advanced"]]}', 1)
+    assert err_s == "" and good_s["phase_guards"] == [["level_advanced"]]
+    bad_s, _ = _MOD.parse_movement_slots('{"phase_guards": [["not_a_guard"]]}', 1)
+    assert bad_s is None
+    wrong_count, _ = _MOD.parse_movement_slots('{"phase_guards": [[], []]}', 1)
+    assert wrong_count is None
+
+
+def test_fill_movement_instance_assembles_a_compilable_hypothesis():
+    """Purpose: fill_movement_instance builds a MovementHypothesis from the model's
+    (relation + phase guards) plus the HARNESS-measured transition, and the result both
+    round-trips through the schema and DISPATCHES to a movement plan (compilable) —
+    proving the fill output is executable, not just well-typed.
+
+    Expected feedback: pass proves the assembled fill instance is compilable end to end.
+    Fail means the fill assembly produced a non-compilable objective/transition pairing."""
+    from admorphiq.hypothesis_select import schema_movement
+    from admorphiq.hypothesis_select.compiler_movement import (
+        CoupledGridStepPlan,
+        compile_movement_hypothesis,
+    )
+    from admorphiq.hypothesis_select.grounding import GroundingService
+
+    inst = _MOD.fill_movement_instance("same_cell", "A", [["level_advanced"]])
+    assert isinstance(inst, schema_movement.MovementHypothesis)
+    assert inst.objective.relation == "same_cell"
+    assert inst.objective.actors == ("actor_a", "actor_b")  # role_a='A' keeps grounding order
+    assert inst.phases[0].guard[0].KIND == "level_advanced"
+    plan = compile_movement_hypothesis(inst, GroundingService())
+    assert isinstance(plan, CoupledGridStepPlan)  # dispatched, did not raise
+    # role_a='B' SWAPS the role-binding (a frozen model slot, not harness-fixed)
+    assert _MOD.fill_movement_instance("same_cell", "B", [["level_advanced"]]).objective.actors == (
+        "actor_b", "actor_a")
+    # a WRONG relation still assembles (it flows to the verifier / execution to be caught)
+    assert _MOD.fill_movement_instance("adjacent", "A", [["level_advanced"]]).objective.relation == "adjacent"
+
+
+def test_movement_verdict_counts_the_hazard_as_wall_equivalence_pick():
+    """Purpose: the SELECT scoring credits BOTH oracle-equivalence-class members — the
+    exact oracle AND the execution-equivalent hazard_as_wall (correction A) — toward the
+    >=2/3 gate, with the equivalence noted in the audit; a non-equivalent mutant does not
+    count, and the pick is never dropped/auto-paired.
+
+    Expected feedback: pass proves a hazard_as_wall pick counts (idx0 execution-equivalence)
+    while a real mutant does not. Fail means the equivalence-class gate mis-scored a pick."""
+    assert _MOD._MOVEMENT_ORACLE_EQUIV == {"m0r0_oracle", "m0r0_hazard_as_wall"}
+    ok_o, note_o = _MOD.movement_select_credit("m0r0_oracle")
+    ok_h, note_h = _MOD.movement_select_credit("m0r0_hazard_as_wall")
+    ok_m, _ = _MOD.movement_select_credit("m0r0_all_or_nothing_blocking")
+    assert ok_o and ok_h and not ok_m
+    assert "equivalence noted" in note_h and note_o == "exact-oracle"
+    runs = [
+        {"mapped_instance": "m0r0_oracle"},
+        {"mapped_instance": "m0r0_hazard_as_wall"},
+        {"mapped_instance": "m0r0_adjacent_relation"},
+    ]
+    assert _MOD.movement_model_verdict(runs) == "PASS"  # 2 of 3 are equivalence-class
+    assert _MOD.movement_model_verdict(runs[2:]) == "FAIL"  # only the non-equivalent mutant
+
+
+def test_movement_select_credit_rejects_non_equivalent_and_missing_picks():
+    """Purpose: movement_select_credit counts ONLY the equivalence class (oracle,
+    hazard_as_wall); a genuine distractor mutant and a None (no-choice) never count —
+    the companion of the equivalence-class verdict test above.
+
+    Expected feedback: pass proves non-equivalent and missing picks are honest misses. Fail
+    means the gate would over-credit a distractor or a failed ask."""
+    for miss in ("m0r0_adjacent_relation", "m0r0_single_actor_motion", None):
+        assert _MOD.movement_select_credit(miss)[0] is False

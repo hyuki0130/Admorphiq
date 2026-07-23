@@ -37,10 +37,23 @@ import sys
 from pathlib import Path
 from typing import Any, Callable, Optional
 
-from admorphiq.hypothesis_select import schema
+from admorphiq.hypothesis_select import schema, schema_movement
 from admorphiq.hypothesis_select.compiler import compile_hypothesis
+from admorphiq.hypothesis_select.compiler_movement import (
+    Move as MovementMove,
+)
+from admorphiq.hypothesis_select.compiler_movement import (
+    compile_movement_hypothesis,
+)
 from admorphiq.hypothesis_select.grounding import UNKNOWN, GroundingService
 from admorphiq.hypothesis_select.verifier import Evidence, verify_with_evidence
+from admorphiq.hypothesis_select.verifier_movement import (
+    MovementEvidence,
+    _coupling_signature,
+)
+from admorphiq.hypothesis_select.verifier_movement import (
+    verify_with_evidence as verify_movement_with_evidence,
+)
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import probe_hypothesis_live as live  # noqa: E402  (sibling script, loaded by path)
@@ -895,9 +908,562 @@ def echoing_llm(
     return wrapped
 
 
+# ── movement family (m0r0): SELECT mode ──────────────────────────────────────
+#
+# The cell-state SELECT path above is specialised to the glyph/lattice grounding.
+# The movement family reuses the SAME neutral-serialization + deterministic-shuffle
+# + guided-json ask shape, but over MovementHypothesis candidates and a HASH-ROBUST
+# STRUCTURAL prose observation (never action numbers as semantics — the action<->axis
+# mapping is hash-variable, so the evidence describes the symmetric-row /
+# antisymmetric-column STRUCTURE the grounding measured, per the R96 (iii) finding).
+
+_MOVEMENT_GAMES = frozenset({"m0r0"})
+
+
+def movement_instances() -> tuple[list[tuple[str, "schema_movement.MovementHypothesis"]], str]:
+    """The movement candidate set: the m0r0 oracle plus the 6 frozen movement
+    mutants (``schema_movement.MUTANTS_MOVEMENT``), each with an INTERNAL name used
+    ONLY to map the model's answer back for the audit (never shown to the model).
+    Returns ``(named_instances, oracle_internal_name)``. There is NO auto-pairing for
+    the movement family (unlike the cell-state ordered_cycle/binary_flip pair): a wrong
+    transition/relation pick must flow to the verifier and be caught."""
+    oracle_name = "m0r0_oracle"
+    named: list[tuple[str, "schema_movement.MovementHypothesis"]] = [
+        (oracle_name, schema_movement.m0r0_oracle_instance())
+    ]
+    for mutant in schema_movement.MUTANTS_MOVEMENT:
+        named.append((mutant.name, mutant.instance))
+    return named, oracle_name
+
+
+# Canned m0r0 idx0 structural facts (the decoded, oracle-verified grounding of the
+# criterion level) for the offline dry-run render. At real run time these come from
+# the live movement grounding via :func:`movement_facts_from_grounding`; the prose is
+# identical in shape so the dry-run faithfully previews the live ask.
+CANNED_M0R0_FACTS: dict[str, Any] = {
+    "n_actors": 2,
+    "symmetric_row_pair": True,       # two presses move both regions the same way vertically
+    "antisymmetric_column_pair": True,  # two presses move them oppositely horizontally
+    "merge_observed": True,           # on the converging press the two regions coincided
+    "independent_desync": True,       # a blocked region while its partner still moved
+    "n_walls": 89,
+    "n_hazards": 0,
+}
+
+
+def movement_observation_summary(facts: dict[str, Any]) -> str:
+    """A NEUTRAL, HASH-ROBUST structural summary of the movement grounding: the two
+    mobile regions, the symmetric-row / antisymmetric-column response STRUCTURE, the
+    merge event, the independent-stay desync, and the static-wall / hazard counts.
+    Never cites an action number (the action<->axis numbering is hash-variable)."""
+    lines = ["OBSERVATIONS (measured from this run's own probing):"]
+    n = facts.get("n_actors", 2)
+    lines.append(f"- {_count(n, 'small mobile region')} were tracked (call them region A and region B).")
+    if facts.get("symmetric_row_pair"):
+        lines.append(
+            "- Under one pair of directional presses, BOTH regions moved together in the SAME "
+            "vertical direction (a symmetric, row-aligned response)."
+        )
+    if facts.get("antisymmetric_column_pair"):
+        lines.append(
+            "- Under another pair of presses, the two regions moved in OPPOSITE horizontal "
+            "directions — converging on one press and diverging on the other (an antisymmetric, "
+            "column-aligned response)."
+        )
+    if facts.get("merge_observed"):
+        lines.append(
+            "- On the converging press the two regions met and coincided on a SINGLE cell "
+            "(a merge event)."
+        )
+    if facts.get("independent_desync"):
+        lines.append(
+            "- When one region was blocked, the other still moved on the same press (the two are "
+            "stepped INDEPENDENTLY, not all-or-nothing)."
+        )
+    # No static-wall COUNT is reported: it is non-discriminating (identical across all
+    # candidates) and a bare count contradicts the candidates' serialized occupancy —
+    # an ambiguity the prompt_notation lesson forbids. The hazard line IS kept: it is
+    # honest observed evidence (we never curate honest evidence away to steer a pick).
+    lines.append(
+        f"- {_count(facts.get('n_hazards', 0), 'cell')} triggered a reset-on-entry hazard "
+        "(no region entered a hazard on any observed path)."
+    )
+    return "\n".join(lines)
+
+
+def build_movement_ask_prompt(
+    facts: dict[str, Any],
+) -> tuple[list[dict[str, str]], dict[str, str], str]:
+    """Assemble the movement SELECT ask: the candidate instances serialized via
+    ``schema_movement.to_neutral_json`` under the deterministic ``I1..IN`` shuffle +
+    the structural observation. Returns ``(messages, id->internal_name, observation)``.
+    Contains no instance names, no 'oracle'/'mutant', and no game id."""
+    named, _oracle = movement_instances()
+    by_name = dict(named)
+    mapping = _shuffle_ids("m0r0", [n for n, _inst in named])
+
+    observation = movement_observation_summary(facts)
+    candidate_block = "\n\n".join(
+        f"{cid}:\n{json.dumps(schema_movement.to_neutral_json(by_name[mapping[cid]]), indent=2)}"
+        for cid in sorted(mapping)
+    )
+    ids = "|".join(f'"{cid}"' for cid in sorted(mapping))
+    system = (
+        "You are analysing a small grid puzzle with two movable regions, observed from live "
+        "probing. You are given several candidate rule specifications (as structured JSON) that "
+        "each claim how the regions move under directional presses and what spatial arrangement "
+        "completes the board, plus observations from actual probing. Choose the ONE candidate "
+        "whose specification best matches the observations."
+    )
+    user = (
+        "CANDIDATE RULE SPECIFICATIONS:\n\n"
+        f"{candidate_block}\n\n"
+        f"{observation}\n\n"
+        "Which single candidate specification best matches these observations? Weigh BOTH how the "
+        "regions move under presses (the transition_model) AND the completion arrangement (the "
+        "objective's relation). Respond with ONLY a JSON object, no other text:\n"
+        f'{{"choice": {ids}, "confidence": "low"|"medium"|"high", '
+        '"evidence": "<=2 sentences citing the observation that decided it"}'
+    )
+    messages = [{"role": "system", "content": system}, {"role": "user", "content": user}]
+    return messages, mapping, observation
+
+
+# {oracle, hazard_as_wall} are a CRITERION-LEVEL EQUIVALENCE CLASS: on idx0 no path
+# enters a hazard, so terminal_cells=hazard_soft_reset vs blocking_wall compile to the
+# IDENTICAL plan (the frozen mutant table pre-declared hazard_as_wall honest-UNKNOWN).
+# A model pick of EITHER counts toward the >=2/3 select gate — no auto-pairing (the pick
+# still flows to the verifier), the equivalence is only a SCORING note in the audit.
+_MOVEMENT_ORACLE_EQUIV = frozenset({"m0r0_oracle", "m0r0_hazard_as_wall"})
+
+# The model_selected FILL surface for movement is the FROZEN
+# schema_movement.MOVEMENT_MODEL_SELECTED_SEMANTICS only: the completion RELATION and
+# the phase guards. collision_policy + terminal_cells (hazard handling) are
+# HARNESS_MEASURED and are NEVER asked (field ownership — never widen a frozen schema).
+_MOVEMENT_RELATIONS = ("same_cell", "adjacent", "overlap")
+
+
+def movement_select_credit(mapped_name: Optional[str]) -> tuple[bool, str]:
+    """Score a movement SELECT pick against the criterion-level equivalence class:
+    returns ``(counts_toward_gate, audit_note)``. The oracle and its execution-equivalent
+    (hazard_as_wall on idx0) both count; every other mutant does not."""
+    if mapped_name == "m0r0_oracle":
+        return True, "exact-oracle"
+    if mapped_name in _MOVEMENT_ORACLE_EQUIV:
+        return True, "exact-oracle-or-execution-equivalent, equivalence noted"
+    return False, "non-equivalent-mutant"
+
+
+_MOVEMENT_ROLE_A = ("A", "B")  # which harness-shortlisted region plays role_a
+
+
+def build_movement_variant_ask(facts: dict[str, Any]) -> list[dict[str, str]]:
+    """FILL ASK 1 (variant) — the two model_selected OBJECTIVE slots: the completion
+    RELATION and the ACTOR ROLE-BINDING (which of the two shortlisted regions, named A and
+    B in the observation, plays role_a). GENERATION (no candidates shown). Leak-clean,
+    hash-robust prose; NO harness_measured field (deltas / occupancy / collision / hazard)
+    is asked."""
+    observation = movement_observation_summary(facts)
+    system = (
+        "You are analysing a small grid puzzle with two movable regions, observed from "
+        "live probing. Identify the ARRANGEMENT of the two regions that completes the board "
+        "and which region fills the first role."
+    )
+    user = (
+        f"{observation}\n\n"
+        "Choose the completion arrangement of the two regions:\n"
+        "- 'same_cell': the board completes when the two regions occupy the SAME single cell "
+        "(they merge onto one cell).\n"
+        "- 'adjacent': completes when the two regions are in neighbouring cells (side by side), "
+        "NOT on the same cell.\n"
+        "- 'overlap': completes when the two regions overlap on shared cells without necessarily "
+        "coinciding exactly.\n"
+        "Also bind the roles: choose which region (A or B) is 'role_a' in the completion "
+        "relation (the other region is 'role_b').\n"
+        "Respond with ONLY a JSON object, no other text:\n"
+        '{"relation": "same_cell"|"adjacent"|"overlap", "role_a": "A"|"B", '
+        '"confidence": "low"|"medium"|"high", '
+        '"evidence": "<=2 sentences citing the observation that decided it"}'
+    )
+    return [{"role": "system", "content": system}, {"role": "user", "content": user}]
+
+
+def parse_movement_variant(text: str) -> tuple[Optional[dict[str, str]], str]:
+    """Validate FILL ASK 1: ``relation`` in the closed relation vocabulary and ``role_a``
+    the closed 2-option actor role-binding (which region is role_a)."""
+    obj = _last_object_with(text, "relation")
+    if obj is None:
+        return None, "no JSON object with a 'relation' field parsed"
+    relation = obj.get("relation")
+    if relation not in _MOVEMENT_RELATIONS:
+        return None, f"relation {relation!r} is not one of {list(_MOVEMENT_RELATIONS)}"
+    role_a = obj.get("role_a")
+    if role_a not in _MOVEMENT_ROLE_A:
+        return None, f"role_a {role_a!r} is not one of {list(_MOVEMENT_ROLE_A)}"
+    confidence = obj.get("confidence", "low")
+    if confidence not in _CONFIDENCE_VALUES:
+        confidence = "low"
+    return {"relation": relation, "role_a": role_a, "confidence": confidence,
+            "evidence": str(obj.get("evidence", ""))[:500]}, ""
+
+
+def build_movement_slot_ask(facts: dict[str, Any], relation: str) -> list[dict[str, str]]:
+    """FILL ASK 2 (slots) — the model_selected Phase.guards only. Per-actor deltas,
+    occupancy, collision_policy, and hazard handling are HARNESS_MEASURED and are NOT
+    asked (field ownership)."""
+    n_phases = max(1, len(schema_movement.m0r0_oracle_instance().phases))
+    guards = " | ".join(_GUARD_KINDS)
+    system = (
+        "You have identified the completion arrangement of a two-region grid puzzle. Now "
+        "specify which observable conditions gate advancing through the puzzle's phase(s)."
+    )
+    user = (
+        f"The completion arrangement is '{relation}'.\n\n"
+        f"- phase_guards: a list of exactly {n_phases} entr"
+        + ("y" if n_phases == 1 else "ies")
+        + " (one per phase, in order); each entry is a list of guard names that must hold to "
+        f"ENTER that phase, drawn from {{{guards}}}. Use [] for a phase with no guard. For a "
+        "single-phase board, 'level_advanced' marks that the phase completes when the level "
+        "index increases.\n"
+        "Respond with ONLY a JSON object, no other text:\n"
+        '{"phase_guards": [["level_advanced"]], "confidence": "low"|"medium"|"high", '
+        '"evidence": "<=2 sentences"}'
+    )
+    return [{"role": "system", "content": system}, {"role": "user", "content": user}]
+
+
+def parse_movement_slots(text: str, n_phases: int) -> tuple[Optional[dict[str, Any]], str]:
+    """Validate FILL ASK 2: ``phase_guards`` is a list of ``n_phases`` guard-name lists,
+    each name in the closed guard vocabulary."""
+    obj = _last_object_with(text, "phase_guards")
+    if obj is None:
+        return None, "no JSON object with a 'phase_guards' field parsed"
+    pg = obj.get("phase_guards")
+    if not isinstance(pg, list) or len(pg) != n_phases:
+        return None, f"phase_guards must be a list of {n_phases} entries"
+    for entry in pg:
+        if not isinstance(entry, list) or any(g not in _GUARD_KINDS for g in entry):
+            return None, "each phase_guards entry must be a list of known guard names"
+    return {"phase_guards": pg, "confidence": obj.get("confidence", "low"),
+            "evidence": str(obj.get("evidence", ""))[:500]}, ""
+
+
+def fill_movement_instance(
+    relation: str, role_a: str, phase_guards: list[list[str]]
+) -> "schema_movement.MovementHypothesis":
+    """Assemble a MovementHypothesis from ALL THREE model_selected slots — the completion
+    ``relation``, the actor ROLE-BINDING (``role_a`` = which shortlisted region, "A" or
+    "B", plays role_a), and the phase ``guards`` — plus the HARNESS_MEASURED transition
+    (per-actor deltas / occupancy / collision policy / hazard handling, from the decoded
+    grounding — here the oracle instance's transition for the offline render). Compilable
+    via compile_movement_hypothesis; built through ``schema_movement.from_json`` so the
+    guard/transition shapes are single-sourced with the cell-state fill."""
+    base_json = schema_movement.to_neutral_json(schema_movement.m0r0_oracle_instance())
+    # the two shortlisted regions are named "actor_a"/"actor_b" by grounding slot order;
+    # role_a="A" binds region A (actor_a) to the first role, "B" swaps the pair.
+    region_a, region_b = base_json["objective"]["actors"]
+    actors = [region_a, region_b] if role_a == "A" else [region_b, region_a]
+    objective = {**base_json["objective"], "actors": actors, "relation": relation}
+    phases = [
+        {"guard": [_GUARD_JSON[k] for k in kinds], "objective": None}
+        for kinds in phase_guards
+    ] or base_json["phases"]
+    return schema_movement.from_json(
+        {"objective": objective, "transition_model": base_json["transition_model"], "phases": phases}
+    )
+
+
+# ── movement live run (env-driven; SELECT + FILL gates) ──────────────────────
+
+
+def movement_facts_from_grounding(gs: GroundingService) -> dict[str, Any]:
+    """Derive the STRUCTURAL, HASH-ROBUST facts dict (the movement_observation_summary
+    input) from a live movement grounding: the coupling STRUCTURE (symmetric-row /
+    antisymmetric-column, via the shared verifier signature), the merge event, the
+    independent-stay desync, the wall/hazard counts. Never an action number — only the
+    structure, so the summary is identical in shape to CANNED_M0R0_FACTS."""
+    deltas_g = gs.movement_deltas()
+    deltas = {} if deltas_g is UNKNOWN else dict(deltas_g.value)
+    sig = _coupling_signature(deltas)
+    actors_g = gs.movement_actors()
+    n_actors = len({aid for aid, _cell in actors_g.value}) if actors_g is not UNKNOWN else 2
+    collision = gs.movement_collision_evidence()
+    occ = gs.movement_occupancy()
+    hazards = gs.movement_hazard_cells()
+    return {
+        "n_actors": n_actors or 2,
+        "symmetric_row_pair": bool(sig["symmetric"]),
+        "antisymmetric_column_pair": bool(sig["antisym_col"]),
+        "merge_observed": gs.movement_merge_event() is not UNKNOWN,
+        "independent_desync": (0 if collision is UNKNOWN else int(collision.value)) > 0,
+        "n_walls": 0 if occ is UNKNOWN else len(occ.value.blocked_cells),
+        "n_hazards": 0 if hazards is UNKNOWN else len(hazards.value),
+    }
+
+
+def _movement_evidence_from_grounding(gs: GroundingService) -> MovementEvidence:
+    """Build the verifier's :class:`MovementEvidence` straight from a LIVE grounding
+    (the same fields ``verifier_movement.build_movement_evidence`` reads off a trace-fed
+    grounding): acquired deltas, the collision-stay count, whether a merge terminal was
+    observed, whether the partner moves, and the hazard cells. Not model-facing."""
+    deltas_g = gs.movement_deltas()
+    deltas = {} if deltas_g is UNKNOWN else dict(deltas_g.value)
+    collision = gs.movement_collision_evidence()
+    hazards = gs.movement_hazard_cells()
+    return MovementEvidence(
+        deltas=deltas,
+        collision_obs=0 if collision is UNKNOWN else int(collision.value),
+        merge_observed=gs.movement_merge_event() is not UNKNOWN,
+        partner_moves=any(d != (0, 0) for d in deltas.values()),
+        hazard_cells=frozenset() if hazards is UNKNOWN else frozenset(hazards.value),
+    )
+
+
+def _gather_movement_evidence(
+    env: "live.LiveEnv", record: dict[str, Any], run_index: int
+) -> GroundingService:
+    """Live probing that grounds THIS board's dynamics for the model ask + the verifier
+    gate: fresh grounding, warm-up, directional discovery (deltas / collision / hazards),
+    then a minimal oracle-plan solve of the criterion board (NO online-learning loop —
+    idx0 is divergence-free, measured) so a REAL merge terminal is observed and the
+    same_cell objective is verifiable. The grounding is INTERNAL (never shown to the
+    model). Mutates ``record`` with the discovery/merge counters; returns the grounding."""
+    gs = GroundingService()
+
+    def probe(action_id: int) -> Optional[Grid]:
+        env.simple_action(action_id)
+        return env.frame()
+
+    frame: Optional[Grid] = None
+    for _ in range(live._WARMUP_BUDGET):
+        frame = env.frame()
+        if frame is None or env.state() in ("GAME_OVER", "NOT_PLAYED"):
+            env.reset()
+            continue
+        break
+    if frame is None:
+        record["plan_outcome"] = "GROUNDING_INCOMPLETE"
+        return gs
+    closed, used, hz = live.discover_deltas(gs, frame, probe)
+    record["discovery_actions"] += used
+    record["hazard_resets"] += hz
+    record["edges_confirmed"] = closed
+    cur = env.frame()
+    if cur is not None:
+        gs.feed(cur)
+    if gs.movement_actors() is UNKNOWN or gs.movement_deltas() is UNKNOWN:
+        return gs
+    # Minimal divergence-free oracle solve to OBSERVE the merge (idx0 never diverges, so
+    # no online-learning loop is needed here — the full learning loop is live.execute path).
+    instance = schema_movement.m0r0_oracle_instance()
+    seeded = gs.movement_blocked_targets()
+    walls: set[tuple[int, int]] = set() if seeded is UNKNOWN else set(seeded.value)
+    plan = compile_movement_hypothesis(
+        instance, gs, extra_walls=walls | live.transient_snapshot(gs)
+    )
+    for _ in range(live._M0R0_LEVEL_BUDGET + 10):
+        frame = env.frame()
+        if frame is None:
+            break
+        if env.state() == "WIN" or gs.movement_merge_event() is not UNKNOWN:
+            break
+        result = plan.step(frame)
+        if isinstance(result, MovementMove):
+            env.simple_action(result.action)
+            record["discovery_actions"] += 1
+            continue
+        break  # Terminal (DONE / diverged / grounding-incomplete) — stop gathering
+    record["merge_event"] = gs.movement_merge_event() is not UNKNOWN
+    return gs
+
+
+def _new_movement_record(run_index: int, mode: str) -> dict[str, Any]:
+    return {
+        "run": run_index,
+        "mode": mode,
+        "choice": None,
+        "mapped_instance": None,
+        "is_oracle": False,
+        "confidence": None,
+        "evidence": "",
+        "variant_choice": None,
+        "slot_values": None,
+        "assembly_valid": False,
+        "retries": 0,
+        "verifier_verdict": None,
+        "select_credited": False,
+        "select_note": None,
+        "executed": False,
+        "levels_cleared": 0,
+        "merge_event": False,
+        "actions_per_level": [],
+        "discovery_actions": 0,
+        "hazard_resets": 0,
+        "edges_confirmed": False,
+        "plan_outcome": "NOT_EXECUTED",
+        "rebind_events": 0,
+        "outcome": "FAIL",
+    }
+
+
+def _execute_movement_instance(
+    game: str, run_index: int, instance: "schema_movement.MovementHypothesis",
+    record: dict[str, Any], min_levels: int,
+) -> None:
+    """PASS-only execution: clear the live board with the (selected/filled) instance via
+    the SAME per-board re-grounding path as the oracle gate (``live.run_movement_once``).
+    Records levels_cleared / plan_outcome; sets outcome PASS iff >= ``min_levels`` cleared."""
+    exec_rec = live.run_movement_once(game, run_index, instance=instance)
+    record["executed"] = True
+    record["levels_cleared"] = exec_rec.get("levels_cleared", 0)
+    record["merge_event"] = record["merge_event"] or bool(exec_rec.get("merge_event"))
+    record["plan_outcome"] = exec_rec.get("plan_outcome", "NOT_EXECUTED")
+    record["actions_per_level"] = exec_rec.get("actions_per_level", [])
+    record["rebind_events"] = exec_rec.get("rebind_events", 0)
+    if record["levels_cleared"] >= min_levels:
+        record["outcome"] = "PASS"
+
+
+def run_movement_model_once(
+    game: str, run_index: int, llm: Callable[[list[dict[str, str]]], str]
+) -> dict[str, Any]:
+    """One fresh-reset movement SELECT run (mirrors ``run_model_once``): warm-up ->
+    gather evidence (live) -> ASK (serialized candidates + structural observation) ->
+    verifier gate -> (PASS only) live-execute. Scoring is the CRITERION-LEVEL EQUIVALENCE
+    CLASS (correction A): a pick of the oracle OR its execution-equivalent hazard_as_wall
+    counts toward the >=2/3 select gate — but the pick STILL flows to the verifier (the
+    honest UNKNOWN of hazard_as_wall is recorded, not paired away)."""
+    record = _new_movement_record(run_index, "select")
+    env = live.LiveEnv(game)
+    env.reset()
+    gs = _gather_movement_evidence(env, record, run_index)
+    if gs.movement_deltas() is UNKNOWN:
+        record["plan_outcome"] = "GROUNDING_INCOMPLETE"
+        return record
+
+    facts = movement_facts_from_grounding(gs)
+    messages, mapping, _obs = build_movement_ask_prompt(facts)
+    ask = ask_once(llm, messages, set(mapping))
+    mapped = mapping.get(ask["choice"]) if ask["choice"] is not None else None
+    credited, note = movement_select_credit(mapped)
+    record.update(
+        choice=ask["choice"], mapped_instance=mapped, is_oracle=mapped == "m0r0_oracle",
+        confidence=ask["confidence"], evidence=ask["evidence"],
+        select_credited=credited, select_note=note,
+    )
+    if mapped is None:
+        record["verifier_verdict"] = "NO_CHOICE"
+        return record
+
+    by_name = dict(movement_instances()[0])
+    instance = by_name[mapped]
+    verdict = verify_movement_with_evidence(instance, _movement_evidence_from_grounding(gs))
+    record["verifier_verdict"] = verdict.verdict.value
+    # PASS-only execution (the pick's live demonstration). hazard_as_wall is honest UNKNOWN
+    # -> not executed, yet still credited toward the gate by the equivalence class.
+    if verdict.verdict is schema.Verdict.PASS:
+        _execute_movement_instance(game, run_index, instance, record, live._M0R0_TARGET_LEVELS)
+    # The SELECT gate is the PICK's equivalence-class membership (correction A), NOT the
+    # execution outcome — the oracle's live clear is already proven by the R96 oracle gate.
+    record["outcome"] = "PASS" if credited else "FAIL"
+    return record
+
+
+def run_movement_fill_once(
+    game: str, run_index: int, llm: Callable[[list[dict[str, str]]], str]
+) -> dict[str, Any]:
+    """One fresh-reset movement FILL run (variant-first generation): warm-up -> gather
+    evidence -> ASK 1 (relation) -> ASK 2 (phase guards, +1 retry) -> assemble a
+    MovementHypothesis (model relation + guards + HARNESS-measured transition) -> verifier
+    gate -> PASS-only compile + idx0 live clear. The model fills ONLY the frozen
+    MOVEMENT_MODEL_SELECTED_SEMANTICS (relation + guards); collision_policy / deltas /
+    occupancy / terminal_cells are harness-measured and never asked."""
+    record = _new_movement_record(run_index, "fill")
+    env = live.LiveEnv(game)
+    env.reset()
+    gs = _gather_movement_evidence(env, record, run_index)
+    if gs.movement_deltas() is UNKNOWN:
+        record["plan_outcome"] = "GROUNDING_INCOMPLETE"
+        return record
+
+    facts = movement_facts_from_grounding(gs)
+    n_phases = max(1, len(schema_movement.m0r0_oracle_instance().phases))
+    # ASK 1 — the completion RELATION (the model_selected objective slot).
+    try:
+        variant, verr = parse_movement_variant(llm(build_movement_variant_ask(facts)))
+    except Exception as exc:  # noqa: BLE001 - offline-safe
+        record["plan_outcome"] = f"variant_ask_error: {exc}"
+        return record
+    if variant is None:
+        record["plan_outcome"] = f"variant_invalid: {verr}"
+        return record
+    relation = variant["relation"]
+    role_a = variant["role_a"]
+    record["variant_choice"] = {"relation": relation, "role_a": role_a}
+    # The actor role-binding is SYMMETRIC-EQUIVALENT under same_cell (a==b is order-blind),
+    # so either binding clears idx0; the ask still EXISTS (it can matter under adjacent/
+    # overlap) — the equivalence lives in scoring, recorded as an audit note.
+    if relation == "same_cell":
+        record["role_binding_note"] = "role-binding symmetric under same_cell, equivalence noted"
+
+    # ASK 2 — the phase guards, with ONE assembly/parse-error retry.
+    convo = build_movement_slot_ask(facts, relation)
+    error = ""
+    instance: Optional[schema_movement.MovementHypothesis] = None
+    for attempt in range(2):
+        if attempt == 1:
+            convo = convo + [
+                {"role": "assistant", "content": "(previous attempt)"},
+                {"role": "user", "content": (
+                    f"Your previous answer was invalid: {error}. Respond again with ONLY the JSON "
+                    "object, using only the allowed guard names and exactly the required count."
+                )},
+            ]
+        try:
+            slots, serr = parse_movement_slots(llm(convo), n_phases)
+        except Exception as exc:  # noqa: BLE001
+            record["plan_outcome"] = f"slot_ask_error: {exc}"
+            record["retries"] = attempt
+            return record
+        if slots is None:
+            error = serr
+            continue
+        try:
+            instance = fill_movement_instance(relation, role_a, slots["phase_guards"])
+        except ValueError as exc:
+            error = str(exc)  # from_json field-naming error -> the retry channel
+            continue
+        record["slot_values"] = {"phase_guards": slots["phase_guards"]}
+        record["assembly_valid"] = True
+        record["retries"] = attempt
+        break
+    if instance is None:
+        record["retries"] = 1
+        record["plan_outcome"] = f"assembly_invalid: {error}"
+        return record
+
+    verdict = verify_movement_with_evidence(instance, _movement_evidence_from_grounding(gs))
+    record["verifier_verdict"] = verdict.verdict.value
+    if verdict.verdict is not schema.Verdict.PASS:
+        return record  # UNKNOWN / CONTRADICTED never executes (contract)
+    # idx0 live clear (the FILL success criterion) via the same per-board re-grounding path.
+    _execute_movement_instance(game, run_index, instance, record, 1)
+    return record
+
+
+def movement_model_verdict(runs: list[dict[str, Any]]) -> str:
+    """Movement SELECT verdict (correction A): PASS iff >= 2 of the runs picked an
+    oracle-EQUIVALENT candidate — the exact oracle OR the execution-equivalent
+    hazard_as_wall — the criterion-level equivalence class, not the raw verifier PASS."""
+    if not runs:
+        return "FAIL"
+    credited = sum(1 for r in runs if r.get("mapped_instance") in _MOVEMENT_ORACLE_EQUIV)
+    return "PASS" if credited >= 2 else "FAIL"
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--game", required=True, choices=["ft09", "sc25"])
+    parser.add_argument("--game", required=True, choices=["ft09", "sc25", "m0r0"])
     parser.add_argument("--runs", type=int, default=3)
     parser.add_argument("--out", help="output JSON path")
     parser.add_argument(
@@ -912,6 +1478,30 @@ def main() -> None:
         help="assemble + print the ask(s) from a REPLAYED trace-fed grounding (no LLM, no env)",
     )
     args = parser.parse_args()
+
+    if args.dry_run and args.game in _MOVEMENT_GAMES:
+        if args.mode == "fill":
+            variant = build_movement_variant_ask(CANNED_M0R0_FACTS)
+            n_phases = max(1, len(schema_movement.m0r0_oracle_instance().phases))
+            slots = build_movement_slot_ask(CANNED_M0R0_FACTS, "same_cell")
+            print("=== FILL DRY-RUN (movement; harness-measured deltas/occupancy/collision/hazard "
+                  "are NEVER asked; no game id / oracle hint) ===")
+            print("\n--- ASK 1 (VARIANT = relation) SYSTEM ---\n" + variant[0]["content"])
+            print("\n--- ASK 1 (VARIANT = relation) USER ---\n" + variant[1]["content"])
+            print("\n(the slot ask below is rendered for relation='same_cell')")
+            print("\n--- ASK 2 (SLOTS = phase guards) SYSTEM ---\n" + slots[0]["content"])
+            print("\n--- ASK 2 (SLOTS = phase guards) USER ---\n" + slots[1]["content"])
+            print(f"\n(model fills all three frozen model-selected slots: the actor role-binding "
+                  f"(role_a) + the relation (ASK 1) and {n_phases} phase-guard list(s) (ASK 2); "
+                  "per-actor deltas / occupancy / collision_policy / terminal_cells are "
+                  "harness-measured and never asked)")
+            return
+        messages, mapping, _obs = build_movement_ask_prompt(CANNED_M0R0_FACTS)
+        print("=== ID MAPPING (neutral id -> internal instance name; NOT shown to the model) ===")
+        print(json.dumps(mapping, indent=2))
+        print("\n=== SYSTEM ===\n" + messages[0]["content"])
+        print("\n=== USER ===\n" + messages[1]["content"])
+        return
 
     if args.dry_run:
         gs = _replay_grounding(args.game)
@@ -939,9 +1529,18 @@ def main() -> None:
         num_predict=int(os.environ.get("HARNESS_PATCH_NUM_PREDICT", "2048")),
         timeout=float(os.environ.get("HARNESS_PATCH_TIMEOUT", "900")),
     ))
-    run = run_fill_once if args.mode == "fill" else run_model_once
+    if args.game in _MOVEMENT_GAMES:
+        run = run_movement_fill_once if args.mode == "fill" else run_movement_model_once
+    else:
+        run = run_fill_once if args.mode == "fill" else run_model_once
     runs = [run(args.game, i, llm) for i in range(args.runs)]
-    report = {"game": args.game, "mode": args.mode, "runs": runs, "model_verdict": model_verdict(runs)}
+    # Movement SELECT scores the equivalence class (correction A); movement FILL and the
+    # cell-state modes score the execution outcome (record["outcome"]).
+    if args.game in _MOVEMENT_GAMES and args.mode == "select":
+        verdict = movement_model_verdict(runs)
+    else:
+        verdict = model_verdict(runs)
+    report = {"game": args.game, "mode": args.mode, "runs": runs, "model_verdict": verdict}
     text = json.dumps(report, indent=2)
     if args.out:
         Path(args.out).write_text(text, encoding="utf-8")

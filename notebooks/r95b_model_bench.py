@@ -35,8 +35,10 @@ RUNS = int(os.environ.get("R95B_RUNS", "3"))
 # select (step vii, pick a serialized instance) or fill (step viii, variant-first
 # slot generation). Both drive the same verifier gate + live execution.
 MODE = os.environ.get("R95B_MODE", "select")
-# The two frozen R95b games. ft09 = level-clear success; sc25 = cast-handover.
-CASES = [("ft09",), ("sc25",)]
+# The R95b model-stage games. ft09 = level-clear; sc25 = cast-handover; m0r0 =
+# the R96 movement family (idx0 criterion: select scores the oracle-equivalence
+# class, fill = relation+guards -> verifier + idx0 live clear).
+CASES = [("ft09",), ("sc25",), ("m0r0",)]
 
 
 # %%
