@@ -245,6 +245,9 @@ model selection 15% / compiler-live 10%.
 
 ## Related
 
+- [[../lessons/dynamic_obstacle_execution_20260723]] — the cross-game
+  lesson distilled from the 15-defect ladder (observation lifetimes,
+  invalidation hierarchy, behavioural sensing of invisible movers).
 - [[r95_hypothesis-dsl]] — the closed round whose pipeline this reuses.
 - [[r57_win-condition-typology]] — the T1 goal-detector count this round is
   careful NOT to read as transition coverage.
