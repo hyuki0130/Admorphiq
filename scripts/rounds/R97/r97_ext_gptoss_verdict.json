@@ -1,0 +1,18 @@
+{
+  "model": "gptoss",
+  "seed_pass": true,
+  "hole_recall": "2/3",
+  "no_hole_specificity": "3/3",
+  "controls": {
+    "evidence_blind": "abstain (no leakage)",
+    "insufficient": "abstain (calibrated)"
+  },
+  "hole_runs": [
+    "extend three_cycle FAIL-verification",
+    "extend cyclic_palette PASS",
+    "extend cyclic_palette PASS"
+  ],
+  "no_hole_runs": [
+    "select binary_flip x3, zero false positives"
+  ]
+}
