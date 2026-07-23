@@ -1,0 +1,112 @@
+
+==============================================================================
+=== CASE: hole  (offered vocab: ['binary_flip', 'empirical_effect_matrix'], runs: 3) ===
+==============================================================================
+
+--- SYSTEM ---
+You are analysing how clicks change a small interactive grid puzzle, from observed transitions. You are given a fixed menu of candidate rule TYPES and the exact colour changes clicks produced. Decide which single rule type explains the observations — or, if none of the offered types can, author a new rule under a fixed contract, or abstain if the evidence is insufficient.
+
+--- USER ---
+OFFERED RULE TYPES:
+- binary_flip: Clicking a cell flips it between its two colours (a two-state toggle).
+- empirical_effect_matrix: Clicking recolours a fixed, measured SET of cells around the click (a stencil footprint), leaving the rest unchanged.
+
+OBSERVED TRANSITIONS (each line: a clicked cell's colour before and after):
+- colour 8 became colour 12 after a click on that cell.
+- colour 9 became colour 8 after a click on that cell.
+- colour 12 became colour 9 after a click on that cell.
+
+If you extend, author ONE pure Python function with EXACTLY this signature:
+    def update(colour, click_index, palette):
+        ...
+        return <next colour, an int in palette>
+Rules: no imports, no I/O, no global state, at most 20 lines. `colour` is the clicked cell's CURRENT colour; `click_index` is how many times this cell has already been clicked; `palette` is the ordered list of colours in play. Return the cell's next colour (an int already in `palette`). It runs in a sandbox and is checked against held-out transitions — it must predict them exactly.
+
+Respond with ONLY ONE JSON object, no other text, in EXACTLY one of these three shapes (do NOT mix them):
+  {"action": "select", "candidate": "<one offered rule name>"}
+  {"action": "extend", "name": "<short new rule name>", "source": "def update(colour, click_index, palette): ..."}
+  {"action": "abstain", "reason": "insufficient_evidence"}
+Choose `select` if one offered rule matches the transitions; `extend` if NONE of the offered rules can express them and you can author a rule that does; `abstain` if the evidence is insufficient to decide.
+
+==============================================================================
+=== CASE: no_hole  (offered vocab: ['binary_flip', 'empirical_effect_matrix', 'ordered_cycle'], runs: 3) ===
+==============================================================================
+
+--- SYSTEM ---
+You are analysing how clicks change a small interactive grid puzzle, from observed transitions. You are given a fixed menu of candidate rule TYPES and the exact colour changes clicks produced. Decide which single rule type explains the observations — or, if none of the offered types can, author a new rule under a fixed contract, or abstain if the evidence is insufficient.
+
+--- USER ---
+OFFERED RULE TYPES:
+- binary_flip: Clicking a cell flips it between its two colours (a two-state toggle).
+- empirical_effect_matrix: Clicking recolours a fixed, measured SET of cells around the click (a stencil footprint), leaving the rest unchanged.
+- ordered_cycle: Clicking a cell advances it one step through a fixed ordered colour sequence, wrapping from the last colour back to the first.
+
+OBSERVED TRANSITIONS (each line: a clicked cell's colour before and after):
+- colour 8 became colour 9 after a click on that cell.
+- colour 9 became colour 8 after a click on that cell.
+
+If you extend, author ONE pure Python function with EXACTLY this signature:
+    def update(colour, click_index, palette):
+        ...
+        return <next colour, an int in palette>
+Rules: no imports, no I/O, no global state, at most 20 lines. `colour` is the clicked cell's CURRENT colour; `click_index` is how many times this cell has already been clicked; `palette` is the ordered list of colours in play. Return the cell's next colour (an int already in `palette`). It runs in a sandbox and is checked against held-out transitions — it must predict them exactly.
+
+Respond with ONLY ONE JSON object, no other text, in EXACTLY one of these three shapes (do NOT mix them):
+  {"action": "select", "candidate": "<one offered rule name>"}
+  {"action": "extend", "name": "<short new rule name>", "source": "def update(colour, click_index, palette): ..."}
+  {"action": "abstain", "reason": "insufficient_evidence"}
+Choose `select` if one offered rule matches the transitions; `extend` if NONE of the offered rules can express them and you can author a rule that does; `abstain` if the evidence is insufficient to decide.
+
+==============================================================================
+=== CASE: evidence_blind  (offered vocab: ['binary_flip', 'empirical_effect_matrix'], runs: 1) ===
+==============================================================================
+
+--- SYSTEM ---
+You are analysing how clicks change a small interactive grid puzzle, from observed transitions. You are given a fixed menu of candidate rule TYPES and the exact colour changes clicks produced. Decide which single rule type explains the observations — or, if none of the offered types can, author a new rule under a fixed contract, or abstain if the evidence is insufficient.
+
+--- USER ---
+OFFERED RULE TYPES:
+- binary_flip: Clicking a cell flips it between its two colours (a two-state toggle).
+- empirical_effect_matrix: Clicking recolours a fixed, measured SET of cells around the click (a stencil footprint), leaving the rest unchanged.
+
+OBSERVED TRANSITIONS (each line: a clicked cell's colour before and after):
+(no transition observations are available for this board.)
+
+If you extend, author ONE pure Python function with EXACTLY this signature:
+    def update(colour, click_index, palette):
+        ...
+        return <next colour, an int in palette>
+Rules: no imports, no I/O, no global state, at most 20 lines. `colour` is the clicked cell's CURRENT colour; `click_index` is how many times this cell has already been clicked; `palette` is the ordered list of colours in play. Return the cell's next colour (an int already in `palette`). It runs in a sandbox and is checked against held-out transitions — it must predict them exactly.
+
+Respond with ONLY ONE JSON object, no other text, in EXACTLY one of these three shapes (do NOT mix them):
+  {"action": "select", "candidate": "<one offered rule name>"}
+  {"action": "extend", "name": "<short new rule name>", "source": "def update(colour, click_index, palette): ..."}
+  {"action": "abstain", "reason": "insufficient_evidence"}
+Choose `select` if one offered rule matches the transitions; `extend` if NONE of the offered rules can express them and you can author a rule that does; `abstain` if the evidence is insufficient to decide.
+
+==============================================================================
+=== CASE: insufficient  (offered vocab: ['binary_flip', 'empirical_effect_matrix'], runs: 1) ===
+==============================================================================
+
+--- SYSTEM ---
+You are analysing how clicks change a small interactive grid puzzle, from observed transitions. You are given a fixed menu of candidate rule TYPES and the exact colour changes clicks produced. Decide which single rule type explains the observations — or, if none of the offered types can, author a new rule under a fixed contract, or abstain if the evidence is insufficient.
+
+--- USER ---
+OFFERED RULE TYPES:
+- binary_flip: Clicking a cell flips it between its two colours (a two-state toggle).
+- empirical_effect_matrix: Clicking recolours a fixed, measured SET of cells around the click (a stencil footprint), leaving the rest unchanged.
+
+OBSERVED TRANSITIONS (each line: a clicked cell's colour before and after):
+- colour 8 became colour 12 after a click on that cell.
+
+If you extend, author ONE pure Python function with EXACTLY this signature:
+    def update(colour, click_index, palette):
+        ...
+        return <next colour, an int in palette>
+Rules: no imports, no I/O, no global state, at most 20 lines. `colour` is the clicked cell's CURRENT colour; `click_index` is how many times this cell has already been clicked; `palette` is the ordered list of colours in play. Return the cell's next colour (an int already in `palette`). It runs in a sandbox and is checked against held-out transitions — it must predict them exactly.
+
+Respond with ONLY ONE JSON object, no other text, in EXACTLY one of these three shapes (do NOT mix them):
+  {"action": "select", "candidate": "<one offered rule name>"}
+  {"action": "extend", "name": "<short new rule name>", "source": "def update(colour, click_index, palette): ..."}
+  {"action": "abstain", "reason": "insufficient_evidence"}
+Choose `select` if one offered rule matches the transitions; `extend` if NONE of the offered rules can express them and you can author a rule that does; `abstain` if the evidence is insufficient to decide.
