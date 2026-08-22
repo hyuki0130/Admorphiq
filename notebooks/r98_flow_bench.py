@@ -44,7 +44,11 @@ KAGGLE_WORKING = "/kaggle/working" if ON_KAGGLE else "."
 VLLM_PORT = 8199
 BOOT_TIMEOUT_S = 2400
 MAX_MODEL_LEN = 131072
-_MAX_MODEL_LEN_CEIL = 200000
+# The bench's largest ask is ~5k tokens and its largest completion budget is 20k,
+# so this ceiling cannot influence any measurement. It exists so a model with a
+# 262k native context does not reserve a KV cache it will never touch and OOM the
+# card before serving a single request.
+_MAX_MODEL_LEN_CEIL = 65536
 RUNS = int(os.environ.get("R98_RUNS", "3"))
 
 # %%
