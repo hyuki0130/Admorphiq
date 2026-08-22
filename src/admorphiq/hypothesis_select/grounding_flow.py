@@ -192,7 +192,15 @@ class FlowGrounding:
     # ── ingest ───────────────────────────────────────────────────────────
 
     def observe(self, action: int, xy: Optional[tuple[int, int]], layers: Any) -> None:
-        """Ingest one executed action and the observation it produced."""
+        """Ingest one executed action and the observation it produced.
+
+        Action id 0 marks a SEED frame — the board as it stands before this
+        grounding has acted. Its picture is recorded but nothing is attributed to
+        it, because the frame it carries was produced by something else. Without
+        that rule a level entered on the back of a multi-layer commit would credit
+        the seed with being the commit action, and every plan afterwards would
+        emit an action id that does not exist.
+        """
         stack = [_as_grid(layer) for layer in layers]
         if not stack:
             return
@@ -204,7 +212,8 @@ class FlowGrounding:
         after = _cellify(stack[-1], self._scale)
         before = self._prev_cells
 
-        committed = len(stack) > 1
+        seed = action == 0
+        committed = len(stack) > 1 and not seed
         if committed:
             self._commit_obs[action] += 1
             anim = self._read_animation(stack)
@@ -216,7 +225,7 @@ class FlowGrounding:
         # settle-and-restore as a failed move and pollute the no-op tally. The
         # tracked piece keeps its pre-commit position, which is exactly the
         # position that persists across a failed attempt.
-        if before is not None and not committed:
+        if before is not None and not committed and not seed:
             self._classify(before, action, xy, after)
         self._prev_cells = after
 
