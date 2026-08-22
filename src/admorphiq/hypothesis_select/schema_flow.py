@@ -258,6 +258,9 @@ class PlaceThenPropagate:
     budget: Budget = field(metadata=_own(Ownership.HARNESS_MEASURED))
     failure_semantics: FailureSemantics = field(metadata=_own(Ownership.HARNESS_MEASURED))
     responses: ResponseTable = field(metadata=_own(Ownership.MODEL_SELECTED))
+    unestablished_premises: tuple[str, ...] = field(
+        default=(), metadata=_own(Ownership.HARNESS_MEASURED)
+    )
     observation_channel: str = field(
         default="animation_layers", metadata=_own(Ownership.HARNESS_MEASURED)
     )
@@ -424,6 +427,7 @@ def _transition_to_json(tm: FlowTransition) -> dict[str, Any]:
             "selection": tm.failure_semantics.selection,
         },
         "responses": _responses_to_json(tm.responses),
+        "unestablished_premises": list(tm.unestablished_premises),
         "observation_channel": tm.observation_channel,
         "epoch": tm.epoch,
     }
@@ -534,6 +538,7 @@ def _transition_from_json(data: dict[str, Any], path: str) -> FlowTransition:
         responses=_responses_from_json(
             _require(data, "responses", f"{path}.responses"), f"{path}.responses"
         ),
+        unestablished_premises=tuple(str(x) for x in data.get("unestablished_premises", ())),
         observation_channel=data.get("observation_channel", "animation_layers"),
         epoch=data.get("epoch", "settle_to_fixpoint_then_verdict"),
     )
@@ -604,6 +609,12 @@ def sp80_oracle_instance() -> FlowHypothesis:
                 sink=SinkResponse(predicate="same_sink_flanks", miss="spread_like_piece"),
                 hazard="terminate_fatal",
             ),
+            # MEASURED indistinguishable at the criterion level: with a single
+            # piece that the engine pre-selects, a click produces no frame change,
+            # so select_then_translate and direct_translate are behaviourally
+            # identical. The harness supplies the true mechanism but it is NOT
+            # established by observation and must never be scored as measured.
+            unestablished_premises=("control_mode",),
         ),
         phases=(Phase(guard=(LevelAdvanced(),)),),
     )

@@ -1,0 +1,16 @@
+R98 grounding certification — 2026-08-22 18:42:27 KST
+repo HEAD: 202497d
+env: sp80-589a99af (OFFLINE arcade)
+
+  scale                PASS  4 (high)
+  commit_action        PASS  5 (low)
+  control_mode         PASS  direct_translate (low); indistinguishable at this level: True
+  piece_deltas         PASS  [(1, (-1, 0)), (2, (1, 0)), (3, (0, -1)), (4, (0, 1))]
+  piece footprint      PASS  ((4, 5), (4, 6), (4, 7), (4, 8), (4, 9))
+  emitters             PASS  ((1, 9),) (high)
+  initial_direction    PASS  (1, 0) (high)
+  sink shortlist       PASS  ['sink_0', 'sink_1']
+  trajectory vs prediction PASS  20 recovered vs 20 predicted steps
+  blocked contrast     PASS  1 contrast(s), 0 unattributed no-op(s)
+
+[grounding] PASS — the harness earns every measured slot from observation alone at the criterion level

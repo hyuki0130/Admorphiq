@@ -1,0 +1,526 @@
+"""R98 STEP (iii): flow-family grounding — the harness-owned binding layer.
+
+The FlowDeflectionDynamics family needs different evidence from the cell-state
+and movement families: an ANIMATION. A single commit exposes the whole spill as a
+stack of frame layers, so the harness must read a trajectory out of a layer stack
+rather than a single before/after pair.
+
+Everything here is earned from observation. There are NO colour constants and no
+game identifiers: the flow colour is the one whose footprint grows monotonically
+across an animation, the movable piece is the region that recolours on a click and
+then TRANSLATES coherently under a press, the commit action is whichever action
+returns more than one layer, and the emitters are the cells where flow first
+appears. Anything not established returns ``UNKNOWN``.
+
+Two measured traps from R92 are designed against:
+
+* **Never identify a piece by connected components of its idle appearance.** A
+  restore can leave two pieces touching, and 4-connectivity then merges them into
+  one phantom region — which is exactly how a prior build came to plan moves for a
+  blob the engine could not move. The piece is tracked by its SELECTED appearance,
+  which stays separable even when pieces touch.
+* **Failure to move is weak evidence.** A constraint is only recorded from a
+  CONTRAST: the same action displaced the piece elsewhere and did not displace it
+  here. A bare no-op is recorded as an unattributed no-op (the R96 asymmetric
+  mobility rule).
+
+Scope: grounding only — no verifier, no compiler, no LLM.
+"""
+
+from __future__ import annotations
+
+from collections import Counter, defaultdict
+from dataclasses import dataclass, field
+from typing import Any, Optional
+
+Cell = tuple[int, int]
+Grid = list[list[int]]
+
+MIN_CONFIRMATIONS = 2  # the min-probe rule, shared with the other families
+
+
+class _Unknown:
+    """Explicit 'insufficient evidence'. A distinct sentinel so it can never be
+    confused with a real value such as an empty tuple."""
+
+    __slots__ = ()
+
+    def __repr__(self) -> str:  # pragma: no cover - trivial
+        return "UNKNOWN"
+
+
+UNKNOWN = _Unknown()
+
+
+@dataclass(frozen=True)
+class Grounded:
+    """A resolved value with the harness's confidence (``"high"`` | ``"low"``)."""
+
+    value: Any
+    confidence: str
+
+
+def _as_grid(layer: Any) -> Grid:
+    return [[int(v) for v in row] for row in layer]
+
+
+def _infer_scale(grid: Grid) -> Optional[int]:
+    """The pixel side of one board cell, read off the frame itself: the largest
+    block size whose blocks are uniform. Frame-only and probe-free.
+
+    A status bar drawn over the outermost pixel row or two is a rendering overlay
+    rather than board structure, so uniformity is tested with a margin of 0, then
+    1, then 2 pixels excluded from every edge. The margin is deliberately TINY: an
+    earlier version exempted whole border BLOCKS and happily accepted a scale
+    twice too large, because real board content near an edge was excused as
+    overlay.
+
+    A featureless frame is uniform at every scale, so a candidate must also
+    resolve at least two distinct cell values; otherwise this reports nothing and
+    the caller re-infers on a later, more informative frame.
+    """
+    n = len(grid)
+    if n == 0 or len(grid[0]) != n:
+        return None
+    for s in range(n // 4, 0, -1):
+        if n % s:
+            continue
+        span = n // s
+        for margin in (0, 1, 2):
+            if margin * 2 >= n:
+                break
+            uniform = True
+            for by in range(span):
+                for bx in range(span):
+                    seen = {
+                        grid[y][x]
+                        for y in range(by * s, by * s + s)
+                        for x in range(bx * s, bx * s + s)
+                        if margin <= y < n - margin and margin <= x < n - margin
+                    }
+                    if len(seen) > 1:
+                        uniform = False
+                        break
+                if not uniform:
+                    break
+            if uniform:
+                break
+        if not uniform:
+            continue
+        sampled = {
+            grid[r * s + s // 2][c * s + s // 2] for r in range(span) for c in range(span)
+        }
+        if len(sampled) >= 2:
+            return s
+    return None
+
+
+def _cellify(grid: Grid, scale: int) -> dict[Cell, int]:
+    n = len(grid) // scale
+    return {
+        (r, c): grid[r * scale + scale // 2][c * scale + scale // 2]
+        for r in range(n)
+        for c in range(n)
+    }
+
+
+def _regions(cells: dict[Cell, int], colour: int) -> list[frozenset[Cell]]:
+    """4-connected components of one appearance. Safe HERE because callers only
+    segment the SELECTED appearance (unique by construction) or a colour already
+    known to be a single entity."""
+    todo = {c for c, v in cells.items() if v == colour}
+    out: list[frozenset[Cell]] = []
+    while todo:
+        seed = todo.pop()
+        comp = {seed}
+        stack = [seed]
+        while stack:
+            r, c = stack.pop()
+            for n in ((r - 1, c), (r + 1, c), (r, c - 1), (r, c + 1)):
+                if n in todo:
+                    todo.remove(n)
+                    comp.add(n)
+                    stack.append(n)
+        out.append(frozenset(comp))
+    return sorted(out, key=min)
+
+
+def _translation(before: frozenset[Cell], after: frozenset[Cell]) -> Optional[Cell]:
+    """The rigid offset taking ``before`` to ``after``, or None if the shape did
+    not survive as a rigid translation (a shape change is not a move)."""
+    if not before or len(before) != len(after):
+        return None
+    dr = min(r for r, _ in after) - min(r for r, _ in before)
+    dc = min(c for _, c in after) - min(c for _, c in before)
+    if {(r + dr, c + dc) for (r, c) in before} != set(after):
+        return None
+    return (dr, dc)
+
+
+@dataclass
+class _Animation:
+    """One commit's exposed spill: the flow colour, the per-layer frontier of new
+    flow cells, and the regions that changed appearance while it ran."""
+
+    flow_colour: int
+    frontier: tuple[tuple[Cell, ...], ...]
+    changed_regions: tuple[frozenset[Cell], ...] = field(default_factory=tuple)
+
+
+class FlowGrounding:
+    """Flow-family grounding over an observation stream that carries LAYERS.
+
+    Drive it with :meth:`observe`, one call per executed action, passing the
+    action id, the click coordinate (or ``None``) and the observation's layer
+    stack. Query the harness_measured slots afterwards; each returns
+    :class:`Grounded` or ``UNKNOWN``.
+    """
+
+    def __init__(self) -> None:
+        self._scale: Optional[int] = None
+        self._prev_cells: Optional[dict[Cell, int]] = None
+        self._selected_colour: Optional[int] = None
+        self._moving_colour: Optional[int] = None
+        self._piece: Optional[frozenset[Cell]] = None
+        self._delta_obs: dict[int, Counter] = defaultdict(Counter)
+        self._commit_obs: Counter = Counter()
+        self._animations: list[_Animation] = []
+        self._selection_obs: int = 0
+        self._blocked: list[tuple[int, frozenset[Cell]]] = []
+        self._unattributed_noops: int = 0
+
+    # ── ingest ───────────────────────────────────────────────────────────
+
+    def observe(self, action: int, xy: Optional[tuple[int, int]], layers: Any) -> None:
+        """Ingest one executed action and the observation it produced."""
+        stack = [_as_grid(layer) for layer in layers]
+        if not stack:
+            return
+        if self._scale is None:
+            self._scale = _infer_scale(stack[0])
+        if self._scale is None:
+            return
+
+        after = _cellify(stack[-1], self._scale)
+        before = self._prev_cells
+
+        committed = len(stack) > 1
+        if committed:
+            self._commit_obs[action] += 1
+            anim = self._read_animation(stack)
+            if anim is not None:
+                self._animations.append(anim)
+
+        # An action that exposed a scripted consequence is a COMMIT, not a
+        # placement action: classifying its before/after pair would read the
+        # settle-and-restore as a failed move and pollute the no-op tally. The
+        # tracked piece keeps its pre-commit position, which is exactly the
+        # position that persists across a failed attempt.
+        if before is not None and not committed:
+            self._classify(before, action, xy, after)
+        self._prev_cells = after
+
+    def _read_animation(self, stack: list[Grid]) -> Optional[_Animation]:
+        """Read one exposed spill out of a layer stack.
+
+        The flow is the colour whose footprint grows INCREMENTALLY, one small step
+        at a time, over the longest run of layers. Two traps this handles:
+
+        * the run ENDS when the footprint stops being a superset of itself — a
+          spill's trail only ever grows, so the first non-superset layer is a
+          different board (the restore, or the next level) and must not be read;
+        * a target that lights up when satisfied also "grows", but in one or two
+          jumps rather than across many layers, so the number of GROWTH STEPS —
+          not the final size — is what separates flow from a status change.
+        """
+        assert self._scale is not None
+        per_layer = [_cellify(g, self._scale) for g in stack]
+        colours = {v for cells in per_layer for v in cells.values()}
+
+        best: Optional[tuple[tuple[int, int], int, list[set[Cell]]]] = None
+        for colour in colours:
+            sets = [{c for c, v in cells.items() if v == colour} for cells in per_layer]
+            run: list[set[Cell]] = []
+            for s in sets:
+                if not s and not run:
+                    continue
+                if run and not (run[-1] <= s):
+                    break
+                run.append(s)
+            if len(run) < 3:
+                continue
+            steps = sum(1 for a, b in zip(run, run[1:]) if len(b) > len(a))
+            if steps < 3 or len(run[-1]) <= len(run[0]):
+                continue
+            key = (steps, len(run[-1]))
+            if best is None or key > best[0]:
+                best = (key, colour, run)
+        if best is None:
+            return None
+
+        _, colour, run = best
+        frontier: list[tuple[Cell, ...]] = []
+        seen: set[Cell] = set()
+        for s in run:
+            frontier.append(tuple(sorted(s - seen)))
+            seen |= s
+
+        # Regions whose appearance changed WHILE the spill ran, excluding the flow
+        # itself: the satisfied-target signal and the model's sink shortlist.
+        #
+        # The change must be STABLE at the end of the run. A failure animation
+        # makes status bands and unmet targets OSCILLATE, and an oscillating band
+        # pinned to a board edge touches the cells below the real targets — so
+        # without this rule the targets and the band merge under 4-connectivity
+        # into one phantom region. That is the same merge trap that once had a
+        # planner moving a blob the engine could not move, in a new guise.
+        end = len(run) - 1
+        tail = per_layer[max(0, end - 2) : end + 1]
+        first, last = per_layer[0], per_layer[end]
+        changed = {
+            c
+            for c in first
+            if first[c] != last.get(c)
+            and last.get(c) != colour
+            and first[c] != colour
+            and len({t.get(c) for t in tail}) == 1
+        }
+        groups: list[frozenset[Cell]] = []
+        todo = set(changed)
+        while todo:
+            seed = todo.pop()
+            comp = {seed}
+            pending = [seed]
+            while pending:
+                r, c = pending.pop()
+                for n in ((r - 1, c), (r + 1, c), (r, c - 1), (r, c + 1)):
+                    if n in todo:
+                        todo.remove(n)
+                        comp.add(n)
+                        pending.append(n)
+            groups.append(frozenset(comp))
+        return _Animation(colour, tuple(frontier), tuple(sorted(groups, key=min)))
+
+    def _classify(
+        self,
+        before: dict[Cell, int],
+        action: int,
+        xy: Optional[tuple[int, int]],
+        after: dict[Cell, int],
+    ) -> None:
+        """Attribute one transition: a rigid translation, a selection recolour, or
+        a no-op. Movement is checked FIRST and does not depend on selection having
+        been observed — coherent observed movement is the strong positive, and on
+        a board whose piece starts pre-selected there is no selection event to see.
+        """
+        changed = {c for c in before if before[c] != after.get(c)}
+        if not changed:
+            if self._piece is not None and action in self._delta_obs:
+                self._blocked.append((action, self._piece))
+            else:
+                self._unattributed_noops += 1
+            return
+
+        # a TRANSLATION: one colour's single region moved rigidly, and the change
+        # set is EXACTLY the symmetric difference of its before/after footprints
+        # (anything else changed too => not a clean move, do not attribute)
+        for colour in {before[c] for c in changed} | {after[c] for c in changed if c in after}:
+            b = _regions(before, colour)
+            a = _regions(after, colour)
+            if len(b) != 1 or len(a) != 1:
+                continue
+            delta = _translation(b[0], a[0])
+            if delta is None or delta == (0, 0):
+                continue
+            if changed != set(b[0]) ^ set(a[0]):
+                continue
+            self._delta_obs[action][delta] += 1
+            self._moving_colour = colour
+            self._piece = a[0]
+            return
+
+        # a SELECTION recolours a region IN PLACE: same footprint, new appearance.
+        # Only a click can do this, so it is attributed only on a click action.
+        if xy is None:
+            self._unattributed_noops += 1
+            return
+        for colour in {after[c] for c in changed if c in after}:
+            region = _regions(after, colour)
+            for r in region:
+                if r <= changed and all(before[c] != colour for c in r):
+                    prior = {before[c] for c in r}
+                    if len(prior) == 1 and _regions(before, prior.pop()) and r == r:
+                        self._selected_colour = colour
+                        self._piece = r
+                        self._selection_obs += 1
+                        return
+        self._unattributed_noops += 1
+
+    # ── queries ──────────────────────────────────────────────────────────
+
+    def detected(self) -> bool:
+        """True once an action has been seen to expose a multi-layer consequence —
+        the family's observable tell. Every query below is UNKNOWN until then, so
+        a non-flow board never activates these paths."""
+        return bool(self._commit_obs)
+
+    def scale(self) -> Any:
+        if self._scale is None:
+            return UNKNOWN
+        return Grounded(self._scale, "high")
+
+    def commit_action(self) -> Any:
+        if not self._commit_obs:
+            return UNKNOWN
+        action, count = self._commit_obs.most_common(1)[0]
+        return Grounded(action, "high" if count >= MIN_CONFIRMATIONS else "low")
+
+    def control_mode(self) -> Any:
+        """``select_then_translate`` requires BOTH a selection recolour and a
+        translation of that selected region.
+
+        On a board with a SINGLE piece that the engine pre-selects, the two modes
+        are behaviourally identical and no click produces a frame change, so the
+        distinction is genuinely unobservable. The harness says so — a low-
+        confidence ``direct_translate`` — rather than inventing the mechanism it
+        cannot see. :meth:`control_mode_indistinguishable` reports that state
+        explicitly so the contract can treat it as an equivalence class instead of
+        an error."""
+        if not self.detected():
+            return UNKNOWN
+        if self._selection_obs and self._delta_obs:
+            return Grounded("select_then_translate", "high")
+        if self._delta_obs:
+            return Grounded("direct_translate", "low")
+        return UNKNOWN
+
+    def control_mode_indistinguishable(self) -> bool:
+        """True when movement was observed but no selection event could exist —
+        a single tracked piece and zero selection recolours."""
+        return bool(self._delta_obs) and not self._selection_obs
+
+    def tracked_region(self) -> Any:
+        """The region confirmed to translate rigidly under a press.
+
+        Deliberately NOT gated on family detection: "some region moves coherently
+        when I press a direction" is a family-agnostic fact, and a driver needs it
+        BEFORE it has seen any scripted consequence in order to aim its first
+        commit. The family-specific claims below stay gated."""
+        if self._piece is None or not self._delta_obs:
+            return UNKNOWN
+        return Grounded(tuple(sorted(self._piece)), "high")
+
+    def pieces(self) -> Any:
+        if not self.detected() or self._piece is None:
+            return UNKNOWN
+        return Grounded((("piece_0", tuple(sorted(self._piece))),), "high")
+
+    def piece_deltas(self) -> Any:
+        """Per-action ``(dr, dc)``, each reported only once confirmed. Absorbs any
+        board rotation without ever naming rotation."""
+        if not self.detected() or not self._delta_obs:
+            return UNKNOWN
+        out: list[tuple[int, int, int]] = []
+        low = False
+        for action, counter in sorted(self._delta_obs.items()):
+            (delta, count), = counter.most_common(1)
+            low |= count < MIN_CONFIRMATIONS
+            out.append((action, delta[0], delta[1]))
+        return Grounded(tuple(out), "low" if low else "high")
+
+    def emitters(self) -> Any:
+        """Where flow first appears in an exposed animation."""
+        if not self._animations:
+            return UNKNOWN
+        first = self._animations[0].frontier
+        origin = next((f for f in first if f), None)
+        if not origin:
+            return UNKNOWN
+        return Grounded(tuple(origin), "high")
+
+    def flow_origin_hint(self) -> Any:
+        """A PRE-COMMIT, low-confidence guess at where flow will come from: the
+        topmost compact region that is neither the tracked piece nor the dominant
+        background. It exists because the first sacrificial commit is more
+        informative when it is aimed, and it is explicitly LOW confidence — the
+        high-confidence answer is :meth:`emitters`, which only an animation can
+        give. A driver may aim with the hint and must confirm with the emitter."""
+        if self._prev_cells is None:
+            return UNKNOWN
+        cells = self._prev_cells
+        background = Counter(cells.values()).most_common(1)[0][0]
+        piece = self._piece or frozenset()
+        candidates = [
+            (r, c)
+            for (r, c), v in cells.items()
+            if v != background and (r, c) not in piece
+        ]
+        if not candidates:
+            return UNKNOWN
+        top = min(r for r, _ in candidates)
+        row = sorted(c for r, c in candidates if r == top)
+        # a wide band across the top is a status strip, not a source
+        if len(row) > max(2, len(cells) ** 0.5 // 2):
+            return UNKNOWN
+        return Grounded(tuple((top, c) for c in row), "low")
+
+    def initial_direction(self) -> Any:
+        if not self._animations:
+            return UNKNOWN
+        frontier = [f for f in self._animations[0].frontier if f]
+        if len(frontier) < 2 or len(frontier[0]) != 1 or len(frontier[1]) != 1:
+            return UNKNOWN
+        (r0, c0), (r1, c1) = frontier[0][0], frontier[1][0]
+        return Grounded((r1 - r0, c1 - c0), "high")
+
+    def trajectory(self) -> Any:
+        """The per-layer frontier of the most recent animation — the verifier's
+        input, and the only place a predicted trajectory can be checked against."""
+        if not self._animations:
+            return UNKNOWN
+        return Grounded(self._animations[-1].frontier, "high")
+
+    def sink_candidates(self) -> Any:
+        """Regions that changed appearance while an animation ran, excluding the
+        flow itself: the shortlist the model binds sink roles from. A shortlist,
+        never a decision — which of these IS a sink is the model's choice."""
+        if not self._animations:
+            return UNKNOWN
+        groups: list[frozenset[Cell]] = []
+        for anim in self._animations:
+            for g in anim.changed_regions:
+                if g not in groups:
+                    groups.append(g)
+        if not groups:
+            return UNKNOWN
+        return Grounded(
+            tuple((f"sink_{i}", tuple(sorted(g))) for i, g in enumerate(sorted(groups, key=min))),
+            "high",
+        )
+
+    def placement_evidence(self) -> Any:
+        """Blocked placements, admitted ONLY from a contrast: the same action was
+        confirmed to displace the piece elsewhere and produced no displacement
+        here. Bare no-ops are reported separately and never become constraints."""
+        if not self.detected():
+            return UNKNOWN
+        established = tuple(
+            (action, tuple(sorted(cells)))
+            for action, cells in self._blocked
+            if action in self._delta_obs
+        )
+        return Grounded(
+            {
+                "blocked_contrasts": established,
+                "unattributed_noops": self._unattributed_noops,
+            },
+            "high" if established else "low",
+        )
+
+
+__all__ = [
+    "UNKNOWN",
+    "Grounded",
+    "FlowGrounding",
+    "MIN_CONFIRMATIONS",
+]
