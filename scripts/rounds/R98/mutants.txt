@@ -1,0 +1,15 @@
+R98 mutant certification — 2026-08-22 18:13:37 KST
+repo HEAD: 216a9a9
+
+mutant                          axis        expected      measured    result
+  piece_absorbs                  transition  CONTRADICTED  CONTRADICTED PASS
+  piece_turns_outward            transition  CONTRADICTED  CONTRADICTED PASS
+  piece_edge_teleport            transition  CONTRADICTED  CONTRADICTED PASS
+  sink_satisfied_on_contact      transition  CONTRADICTED  CONTRADICTED PASS
+  sink_stops_flow                transition  CONTRADICTED  CONTRADICTED PASS
+  hazard_ignored                 objective   CONTRADICTED  CONTRADICTED PASS
+  any_sink_suffices              objective   UNKNOWN       UNKNOWN     PASS
+  flow_overwrites_own_trail      transition  UNKNOWN       UNKNOWN     PASS
+  boundary_reflects              transition  UNKNOWN       UNKNOWN     PASS
+
+[mutant certification] PASS — the frozen verdict table matches the measured mechanics
