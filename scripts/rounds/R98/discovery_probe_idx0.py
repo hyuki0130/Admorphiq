@@ -33,6 +33,7 @@ Dev-time only: a certification probe, not part of any runtime agent path.
 
 from __future__ import annotations
 
+import os
 import sys
 from pathlib import Path
 
@@ -64,7 +65,10 @@ def _piece(obs) -> set[tuple[int, int]]:
 
 class Run:
     def __init__(self) -> None:
-        arcade = Arcade(operation_mode=OperationMode.OFFLINE)
+        arcade = Arcade(
+            operation_mode=OperationMode.OFFLINE,
+            environments_dir=os.environ.get("ARC_ENVIRONMENTS_DIR") or None,
+        )
         gid = next(e.game_id for e in arcade.get_environments()
                    if e.game_id.startswith("sp80"))
         self.env = arcade.make(gid)

@@ -186,7 +186,27 @@ def _gptoss_offline_env() -> None:
           f"tokens={enc.encode('preflight', allowed_special='all')[:3]}", flush=True)
 
 
+def preflight_env_dir() -> str:
+    """Locate the game environments and PROVE the criterion game is there.
+
+    Run before the model server boots. A previous run reached a healthy vLLM and
+    only then discovered the arcade had no games, burning the GPU for nothing —
+    the check that would have caught it costs a directory listing.
+    """
+    envs_dir = _find_dir("environment_files") if ON_KAGGLE else "environment_files"
+    target = os.path.join(envs_dir, "sp80")
+    if not os.path.isdir(target):
+        listing = sorted(os.listdir(envs_dir))[:12] if os.path.isdir(envs_dir) else "<missing>"
+        raise SystemExit(
+            f"[preflight] no sp80 environment under {envs_dir!r} (contains: {listing}). "
+            "The bench drives the live env, so there is nothing to measure without it."
+        )
+    print(f"[preflight] environments at {envs_dir} (sp80 present)", flush=True)
+    return envs_dir
+
+
 def main() -> None:
+    envs_dir = preflight_env_dir()
     if ON_KAGGLE:
         install_wheels_offline()
         model_dir, served = _find_model_dir()
@@ -202,11 +222,9 @@ def main() -> None:
     if ON_KAGGLE:
         probe = _find_file("probe_r98_model_bench.py")
         pkg_dir = os.path.dirname(_find_dir("admorphiq"))
-        envs_dir = _find_dir("environment_files")
     else:
         probe = "scripts/probe_r98_model_bench.py"
         pkg_dir = "src"
-        envs_dir = "environment_files"
 
     env = os.environ.copy()
     env.update({

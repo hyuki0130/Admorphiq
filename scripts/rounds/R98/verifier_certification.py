@@ -17,6 +17,7 @@ hypothesis from executing, so a verifier that mislabels a mutant would let one r
 
 from __future__ import annotations
 
+import os
 import sys
 from pathlib import Path
 
@@ -42,7 +43,10 @@ ACTIONS = {
 
 
 def run_discovery() -> tuple[FlowGrounding, bool]:
-    arcade = Arcade(operation_mode=OperationMode.OFFLINE)
+    arcade = Arcade(
+        operation_mode=OperationMode.OFFLINE,
+        environments_dir=os.environ.get("ARC_ENVIRONMENTS_DIR") or None,
+    )
     gid = next(e.game_id for e in arcade.get_environments() if e.game_id.startswith("sp80"))
     env = arcade.make(gid)
     obs = env.step(GameAction.RESET)

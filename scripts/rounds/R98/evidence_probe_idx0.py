@@ -30,6 +30,7 @@ Dev-time only — a certification probe, not part of any runtime agent path.
 
 from __future__ import annotations
 
+import os
 import sys
 from pathlib import Path
 
@@ -56,7 +57,10 @@ GRID = 16        # cells per side on this board
 
 
 def _fresh():
-    arcade = Arcade(operation_mode=OperationMode.OFFLINE)
+    arcade = Arcade(
+        operation_mode=OperationMode.OFFLINE,
+        environments_dir=os.environ.get("ARC_ENVIRONMENTS_DIR") or None,
+    )
     gid = next(e.game_id for e in arcade.get_environments() if e.game_id.startswith("sp80"))
     env = arcade.make(gid)
     return env, env.step(GameAction.RESET)

@@ -24,6 +24,7 @@ model will be scored against.
 
 from __future__ import annotations
 
+import os
 import sys
 from pathlib import Path
 
@@ -59,7 +60,10 @@ def _table_from_schema(inst: F.FlowHypothesis) -> ResponseTable:
 
 
 def main() -> int:
-    arcade = Arcade(operation_mode=OperationMode.OFFLINE)
+    arcade = Arcade(
+        operation_mode=OperationMode.OFFLINE,
+        environments_dir=os.environ.get("ARC_ENVIRONMENTS_DIR") or None,
+    )
     gid = next(e.game_id for e in arcade.get_environments() if e.game_id.startswith("sp80"))
     env = arcade.make(gid)
     entry = read_board(env.step(GameAction.RESET).frame[0])

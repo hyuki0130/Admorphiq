@@ -370,8 +370,26 @@ def equivalent_to_truth(instance: F.FlowHypothesis) -> bool:
 # ── the live run ────────────────────────────────────────────────────────────
 
 
-def _run_discovery():
+def _open_arcade():
+    """Open the offline arcade, honouring ``ARC_ENVIRONMENTS_DIR``.
+
+    The repo convention: the WRAPPER exports the directory and the SCRIPT passes
+    it to the constructor. arc_agi's own fallback variable is spelled differently,
+    so relying on the environment alone silently yields an arcade with no games —
+    which is exactly how a GPU run once reached a healthy model server and then
+    failed on the first line that needed a board.
+    """
     from arc_agi import Arcade, OperationMode
+
+    envs_dir = os.environ.get("ARC_ENVIRONMENTS_DIR")
+    return (
+        Arcade(operation_mode=OperationMode.OFFLINE, environments_dir=envs_dir)
+        if envs_dir
+        else Arcade(operation_mode=OperationMode.OFFLINE)
+    )
+
+
+def _run_discovery():
     from arcengine import GameAction
 
     actions = {
@@ -381,8 +399,16 @@ def _run_discovery():
         4: GameAction.ACTION4,
         5: GameAction.ACTION5,
     }
-    arcade = Arcade(operation_mode=OperationMode.OFFLINE)
-    gid = next(e.game_id for e in arcade.get_environments() if e.game_id.startswith("sp80"))
+    arcade = _open_arcade()
+    envs = list(arcade.get_environments())
+    gid = next((e.game_id for e in envs if e.game_id.startswith("sp80")), None)
+    if gid is None:
+        raise SystemExit(
+            "the arcade exposes no sp80 environment "
+            f"({len(envs)} environment(s) visible; ARC_ENVIRONMENTS_DIR="
+            f"{os.environ.get('ARC_ENVIRONMENTS_DIR')!r}). Point it at the directory "
+            "that holds the per-game environment folders."
+        )
     env = arcade.make(gid)
     state = {"obs": env.step(GameAction.RESET), "actions": 0, "commits": 0}
     g = FlowGrounding()

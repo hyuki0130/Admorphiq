@@ -23,6 +23,7 @@ must not be labelled near-OOD.
 
 from __future__ import annotations
 
+import os
 import sys
 from pathlib import Path
 
@@ -68,7 +69,10 @@ def probe(arcade, game_id: str) -> dict:
 
 
 def main() -> int:
-    arcade = Arcade(operation_mode=OperationMode.OFFLINE)
+    arcade = Arcade(
+        operation_mode=OperationMode.OFFLINE,
+        environments_dir=os.environ.get("ARC_ENVIRONMENTS_DIR") or None,
+    )
     envs = {e.game_id.split("-")[0]: e.game_id for e in arcade.get_environments()}
 
     rows = []
