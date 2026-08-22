@@ -207,6 +207,62 @@ Self-test: truthful select and fill both clear; wrong picks are blocked by the
 verifier at **zero executed actions**; an equivalence-class answer scores correct;
 the leak guard is clean.
 
+## MODEL STAGE — first measurement (2026-08-23)
+
+Three models, run as Kaggle kernels on the live env (`notebooks/r98_flow_bench.py`).
+Artifacts: `scripts/rounds/R98/model/`.
+
+### SELECT — two of three models reach oracle-gate performance
+
+| model | select | detail |
+|---|---|---|
+| gemma4-31b-it | **3/3 PASS** | picked the EXACT truth every run → verifier PASS → plan SOLVABLE → 2 executed actions → cleared, 10 actions / 2 commits |
+| **qwen3.8-27b** | **3/3 PASS** | identical, deterministically |
+| gpt-oss-120b | 0/3 | picked wrong candidates; verifier CONTRADICTED, **zero actions executed** |
+
+qwen3.8-27b was released 2026-08-14 (dense 27.8B, Apache 2.0, hybrid Gated
+DeltaNet — vLLM 0.17+ implements those layers). It matched gemma4 exactly on its
+first outing, which makes it a live candidate for the deploy model rather than a
+curiosity.
+
+The safety property held everywhere: every wrong hypothesis was blocked before a
+single action was spent.
+
+### FILL — 0/3 everywhere, and the reason is the prompt
+
+Aggregated over 9 runs × 3 models:
+
+| slot | truth | answers |
+|---|---|---|
+| `piece_response_direction` | `preserved` | **`outward_turned` 9/9** |
+| `sink_response_predicate` | `same_sink_flanks` | **`contact` 9/9** |
+| `hazard_response` | `terminate_fatal` | **`terminate_local` 9/9** |
+| `piece_response_propagation` | `cellwise_iterative` | correct 8/9 |
+| `sink_response_miss` | `spread_like_piece` | correct 7/9 |
+| `piece_response_spawn` | equivalence class | correct 9/9 |
+
+Three independent models, nine runs, unanimous on the same three wrong values —
+while getting the other three right. That is a prompt defect, not a model verdict,
+and the same defect explains gpt-oss's select failures (it picked exactly the
+hazard-ignoring and outward-turning candidates). Full analysis:
+[[../lessons/unanimous_wrong_answers_are_a_prompt_defect_20260823]].
+
+The three defects, all in the ask:
+
+1. the evidence described the split cells as having "moved outward", which is the
+   animation's APPEARANCE and the opposite of the mechanism — flow cells persist,
+   so a cell appearing further out is a NEW cell;
+2. the closed choices were bare identifiers with no gloss, so `same_sink_flanks`
+   had to be guessed rather than read;
+3. hazard was split across a flow-level response and an objective-level policy
+   whose required agreement was never stated.
+
+All three are fixed and the re-measurement is running. Two operational traps were
+also fixed on the way: the R98 driver did not honour `ARC_ENVIRONMENTS_DIR` (a GPU
+session reached a healthy model server and then found an arcade with no games), and
+a kernel pushed too soon after a dataset version pins the PREVIOUS version — the
+dataset must be verified by FILE SIZE, not by its "ready" status.
+
 ## Next — the paired runs, ready to launch
 
 `notebooks/r98_flow_bench.py` is the Kaggle kernel, built on the R95b boot path
