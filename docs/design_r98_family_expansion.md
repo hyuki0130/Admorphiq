@@ -1,8 +1,10 @@
 # R98 design — hypothesis-DSL family expansion #3: FlowDeflectionDynamics (PIVOTED)
 
-Status: v1 (Codex CONDITIONAL GO 2026-07-23 12:25 — the v0 PushDynamics
-draft is PIVOTED per the review; v0 kept below for provenance; full review
-scratchpad/codex_r98_design_review.log).
+Status: **v1.2 (AUTHORITATIVE)** — schema drafted, oracle certified LIVE, Codex
+schema consult landed CONDITIONAL GO and its six corrections are bound. The
+contract is NOT yet frozen; four items remain (see "Remaining before the freeze").
+Earlier drafts are kept below for provenance: v1 (family pivot, Codex CONDITIONAL
+GO 2026-07-23) and v0 (PushDynamics, superseded by that pivot).
 
 ## Codex v1 binding corrections (2026-07-23)
 
@@ -55,7 +57,7 @@ discriminability, 10% model, 5% live/settling.
 
 NEXT STEP (done 2026-08-22): the v1.1 schema draft is the section below.
 
-## v1.1 SCHEMA DRAFT — FlowDeflectionDynamics (2026-08-22, pre-Codex-consult)
+## v1.1 SCHEMA DRAFT — FlowDeflectionDynamics (2026-08-22, SUPERSEDED by v1.2 below; kept for provenance)
 
 Drafted per the v1 NEXT STEP. Ground truth below was re-derived **at dev time
 from the engine source** (`environment_files/sp80/589a99af/sp80.py`, loader hash
@@ -346,11 +348,184 @@ and multi-piece are representable and explicitly OUT of the criterion.
   and are OUT of the criterion; recording them here keeps the expansion path open
   without widening the contract.
 
-NEXT STEP (updated): one Codex consult on THIS schema section only — the open
-questions are (a) the near-OOD choice, (b) whether the engine-bounded budget split
-is right, (c) whether O2's pre-declared UNKNOWN is acceptable at the criterion
-level or forces a different oracle level. Then freeze the contract and start
-`schema_flow.py`.
+NEXT STEP (done 2026-08-22): the consult landed CONDITIONAL GO; its corrections
+are bound in the v1.2 section below, which supersedes this draft.
+
+## v1.2 — Codex-bound schema revision (2026-08-22, AUTHORITATIVE)
+
+Codex schema consult verdict: **CONDITIONAL GO** — "the idx0 core is faithful,
+but the present contract would permit both false passes and false fails"
+(`scratchpad/codex_r98_schema_review.log`). Six binding corrections, all bound
+below. Two of the review's open questions were then CLOSED by measurement rather
+than by argument (`scripts/rounds/R98/evidence_probe_idx0.py` → `evidence.txt`).
+
+### New measurements that settle open questions (2026-08-22 17:39 KST)
+
+An exhaustive sweep of every reachable placement of the single piece (12
+horizontal positions plus row variants), each committed and read to its settle
+verdict, env `sp80-589a99af`:
+
+| placement | sinks filled | deepest flow row | advanced |
+|---|---|---|---|
+| −3 … +1 | 0 | 14 | no |
+| **+2** | **2 (all)** | **14** | **no** |
+| **+3** | **2 (all)** | **13** | **yes** |
+| **+4** | **2 (all)** | **14** | **no** |
+| +5 … +8 | 0 | 14 | no |
+| (+2,+2) (+2,+5) | 2 (all) | 14 | no |
+| (+3,+2) (+3,+5) | 2 (all) | 13 | yes |
+
+1. **O2 (hazard fatal) is now CERTIFIED, not a pre-declared UNKNOWN.** Placement
+   +2 fills EVERY sink and still fails; +3 fills the same sinks and advances. The
+   pair differs only in whether the flow reached row 14, so the failure is
+   attributable to hazard contact alone. This answers the review's D(c): idx0 DOES
+   support a fatal-hazard claim, and `hazard_policy` may be gated after all.
+2. **O1 (all-vs-any) is UNKNOWN with a PROOF OF ABSENCE.** No reachable placement
+   fills a strict subset of the sinks — the sweep is exhaustive, so no probe can
+   rescue this mutant at idx0. The v1.1 justification ("the failure flash names the
+   unsatisfied sinks") was WRONG, exactly as the review said: the pristine spill
+   covers zero sinks, so both flash and `any` predicts failure too.
+3. **T3 (contact vs mouth) is CERTIFIED.** In the +2 trace, at layer 12 the flow
+   occupied `(12,10)` with the sink cell `(13,10)` directly ahead; it did NOT
+   satisfy the sink there but spread to `(12,9)` and `(12,11)`, and the sink only
+   became satisfied once the flow reached its mouth column. Contact is not
+   satisfaction — measured, not asserted.
+4. **Row-independence is measured, not assumed**: the same horizontal placement at
+   three different rows produces an identical outcome, so the emergent columns are
+   a function of the piece's columns alone.
+5. A trap worth recording: water NEVER OCCUPIES the hazard row — a droplet dies on
+   contact — so "flow reached the bottom row" is always false and is a broken
+   detector. The correct signal is the row ABOVE it. A colour-based failure-flash
+   detector is also unusable because the HUD paints the same colour every frame.
+
+### Bound correction 1 — type-shape fixes (review A)
+
+- **Step allowance is now typed**, not folded into `attempt_cap`:
+  `budget = { step_allowance, consuming_actions, exhaustion ∈ terminal_loss |
+  no_op }`. Which actions consume it is part of the type.
+- **`failure_semantics` states every reset**: `{ attempt_cap, layout ∈ persists |
+  resets, flow ∈ resets | persists, sink_satisfaction ∈ resets | persists,
+  selection ∈ resets_to_default | persists }`. Without the flow and satisfaction
+  fields, a cumulative-progress-across-commits model stays representable and
+  therefore unfalsified.
+- **`on_sink` is a pair, not a single enum**: `{ satisfy_predicate ∈
+  same_sink_flanks | contact, miss_behavior ∈ spread_like_piece | stop | absorb }`.
+  v1.1 left the miss behaviour untyped.
+- **`on_piece` decomposes into three sub-slots** so that accidental fits become
+  distinct choices: `{ spawn ∈ empty_flanks_only | both_flanks | none, direction ∈
+  preserved | outward_turned, propagation ∈ cellwise_iterative | edge_teleport }`.
+  Under v1.1's single `split_perpendicular` token, an edge-teleport model and an
+  outward-turn model both fit the observed trace by accident.
+- **Placement gains static semantics**: `blocked_by ∈ { board_bounds,
+  static_entities, sink_halo(margin), row_bound }` as an explicit set. "Everything
+  else blocks" was prose, not type.
+- **Piece responses are keyed by piece CLASS.** The review is right that a single
+  global `on_piece` cannot represent a level mixing straight and angled pieces, and
+  that v1.1's claim "deeper angled levels stay expressible" was FALSE. Corrected:
+  v0 is scoped strictly to the straight-piece variant, and the response table is
+  keyed by an observed piece class so the mixed case is a future EXTENSION, not a
+  present capability. The false expressibility claim is withdrawn.
+
+### Bound correction 2 — ownership (review B)
+
+Causal rules move out of `harness_measured`:
+
+- `on_hazard`, `on_own_flow`, `on_boundary` are **model_selected but NON-GATING at
+  idx0 unless certified**. `on_hazard` IS now certified (measurement 1 above) and
+  may be gated; `on_own_flow` and `on_boundary` have no discriminating evidence at
+  idx0 and are therefore forced to UNKNOWN — never a closed choice from absent
+  evidence.
+- `placement_constraints`, `control_mode` and the reset fields are declared
+  **measured premises**: the harness may supply them, but they are explicitly
+  EXCLUDED from model credit, and each one that cannot be established from the
+  contract's discovery trace (mutual permeability, the row bound, the attempt cap)
+  is marked as an unestablished premise rather than a measurement.
+- `completion` is ungrounded at idx0 by measurement 2 and is therefore NOT gated.
+
+### Bound correction 3 — mutant table v2
+
+*Certified against observed transitions*
+
+| # | mutant | verdict | evidence |
+|---|---|---|---|
+| T1 | piece absorbs | CONTRADICTED | frontier emits `(3,8)+(3,10)`; absorb predicts none |
+| T2 | piece turns 90° | CONTRADICTED | the frontier is a symmetric pair that resumes the original direction |
+| T3 | sink satisfied on contact | CONTRADICTED | `(12,10)` faces sink cell `(13,10)`, spreads instead of satisfying |
+| T6 | split with outward-turned directions | CONTRADICTED | both branches keep descending after clearing the piece |
+| T7 | edge teleport (re-emit at the piece edges) | CONTRADICTED | the frontier walks one cell per tick along the piece row |
+| O2 | hazard ignored | CONTRADICTED | the +2 / +3 pair differs only in hazard contact |
+
+*Honest UNKNOWN — no discriminating opportunity at idx0*
+
+| # | mutant | why |
+|---|---|---|
+| O1 | any sink suffices | no reachable placement fills a strict subset (proof of absence) |
+| T8 | mouth predicate correct but stop/absorb on non-mouth contact | the observed non-mouth contact spreads, which T8 also permits at the level of what is visible |
+| T9 | halo margin 0 or 2 | the contract's discovery trace does not exercise the halo boundary at two widths |
+| T10 | sink satisfaction persists across failed commits | requires two commits with a partial cover, which measurement 2 proves unreachable |
+| T11 | overwrite / re-entry on existing flow | no observed event distinguishes wait-merge from overwrite |
+| T12 | boundary reflect | the flow never exits sideways at idx0 |
+
+*Demoted*
+
+| # | mutant | status |
+|---|---|---|
+| T4 | placement unconstrained | SMOKE CONTROL ONLY — trivially killed, and it does not distinguish the sink halo from board bounds, static collision, or a wrong halo width |
+| T5 | layout resets on failure | kept, but scoped strictly to LAYOUT persistence; it says nothing about flow or satisfaction resets |
+
+`AnySinkCovered` is never counted as killed merely because its compiler path is
+UNSUPPORTED (review C, final line).
+
+### Bound correction 4 — model-facing prose must expose every enforced rule
+
+The twice-measured lesson, now applied preemptively. The model-facing contract
+must state, in prose: same-sink flanking as the satisfaction condition; spreading
+as the non-mouth response; direction preservation under splitting; the behaviour
+on already-occupied flow; every reset that a failed commit performs; and the
+action-budget accounting (which actions consume the allowance and what happens at
+exhaustion). Anything the verifier enforces but the contract does not state is a
+harness defect that manufactures a false negative.
+
+### Bound correction 5 — every gated enum must change a prediction
+
+Before the contract freezes, each gated slot must be shown to change either the
+verifier's predicted trajectory or the compiler's plan on at least one reachable
+idx0 placement. A slot that changes neither is decoration: the simulator's
+hardcoded semantics would carry the run and produce a FALSE PASS. Slots that fail
+this test are demoted to UNKNOWN/non-gating rather than being kept for
+completeness.
+
+### Bound correction 6 — budgets frozen against the PERSISTED layout
+
+The engine-bounded approach stands, but the 12/18 split does not. Replace with:
+
+- one **pre-certified** discovery action sequence, including the contact probe,
+  with its exact action count;
+- the shortest solve **from the layout that persists after that probe** — not from
+  the entry layout, because a failed commit does not restore piece positions;
+- a single exact cumulative cap counting selection, translation and commit actions
+  alike, rather than an approximate total with an arbitrary sub-split.
+
+The oracle measurement bounds this comfortably: the clear itself is 4 actions
+against a human baseline of 39, so the level still scores at the per-level cap
+even after a full discovery budget.
+
+### Bound correction 7 — near-OOD must be certified, not asserted
+
+re86 remains provisional. The control only counts as near-OOD if it FIRST survives
+the same grounding and typing path as `PlaceThenPropagate` and only THEN fails on a
+mechanics-specific transition mismatch. A control rejected immediately on palette
+or entity shape is not near-OOD and must be replaced. This certification is a
+prerequisite of the freeze, not a post-hoc label. Far-OOD stays tu93.
+
+### Remaining before the freeze
+
+1. Pre-certify the discovery action sequence end to end (bound correction 6) and
+   record its exact action count.
+2. Run the gated-enum prediction test (bound correction 5) and demote whatever
+   fails it.
+3. Certify or replace the near-OOD control (bound correction 7).
+4. Then freeze the contract and implement `schema_flow.py`.
 
 ## v0 draft (SUPERSEDED by the pivot — kept for provenance)
 

@@ -1,0 +1,46 @@
+R98 discovery-evidence certification — 2026-08-22 17:39:12 KST
+repo HEAD: f6f9dd8
+env: sp80-589a99af (OFFLINE arcade)
+
+placement table (dx, dy → outcome):
+  (-3,+0): sinks_filled=0 cols=[] deepest_row=14 hazard=True advanced=False
+  (-2,+0): sinks_filled=0 cols=[] deepest_row=14 hazard=True advanced=False
+  (-1,+0): sinks_filled=0 cols=[] deepest_row=14 hazard=True advanced=False
+  (+0,+0): sinks_filled=0 cols=[] deepest_row=14 hazard=True advanced=False
+  (+1,+0): sinks_filled=0 cols=[] deepest_row=14 hazard=True advanced=False
+  (+2,+0): sinks_filled=2 cols=[4, 5, 6, 10, 11, 12] deepest_row=14 hazard=True advanced=False
+  (+3,+0): sinks_filled=2 cols=[4, 5, 6, 10, 11, 12] deepest_row=13 hazard=False advanced=True
+  (+4,+0): sinks_filled=2 cols=[4, 5, 6, 10, 11, 12] deepest_row=14 hazard=True advanced=False
+  (+5,+0): sinks_filled=0 cols=[] deepest_row=14 hazard=True advanced=False
+  (+6,+0): sinks_filled=0 cols=[] deepest_row=14 hazard=True advanced=False
+  (+7,+0): sinks_filled=0 cols=[] deepest_row=14 hazard=True advanced=False
+  (+8,+0): sinks_filled=0 cols=[] deepest_row=14 hazard=True advanced=False
+  (+2,+2): sinks_filled=2 cols=[4, 5, 6, 10, 11, 12] deepest_row=14 hazard=True advanced=False
+  (+3,+2): sinks_filled=2 cols=[4, 5, 6, 10, 11, 12] deepest_row=13 hazard=False advanced=True
+  (+2,+5): sinks_filled=2 cols=[4, 5, 6, 10, 11, 12] deepest_row=14 hazard=True advanced=False
+  (+3,+5): sinks_filled=2 cols=[4, 5, 6, 10, 11, 12] deepest_row=13 hazard=False advanced=True
+
+[O1 all-vs-any] UNKNOWN-AT-THIS-LEVEL — no reachable placement fills a strict subset of the sinks (exhaustive over all placements above), so no probe can rescue this mutant here
+[O2 hazard fatal] CERTIFIED — (+2,+0) fills every sink (2) and FAILS, with the flow reaching row 14; (+3,+0) fills the same 2 sinks, stops at row 13, and ADVANCES. Coverage is identical across the pair, so the failure is attributable to the hazard contact alone.
+[T3 contact-vs-mouth] CERTIFIED via (+2,+0) — at layer 12 the flow occupied (12, 10) with the sink cell (13, 10) directly ahead; it did NOT satisfy the sink there but spread to [(12, 9), (12, 11)], and the sink only became satisfied once the flow reached its mouth column. Contact alone is therefore not satisfaction.
+    frontier of (+2,+0):
+      layer  0: [(1, 9)]
+      layer  1: [(2, 9)]
+      layer  2: [(3, 9)]
+      layer  3: [(3, 8), (3, 10)]
+      layer  4: [(3, 7), (4, 10)]
+      layer  5: [(3, 6), (5, 10)]
+      layer  6: [(3, 5), (6, 10)]
+      layer  7: [(3, 4), (7, 10)]
+      layer  8: [(4, 4), (8, 10)]
+      layer  9: [(5, 4), (9, 10)]
+      layer 10: [(6, 4), (10, 10)]
+      layer 11: [(7, 4), (11, 10)]
+      layer 12: [(8, 4), (12, 10)]
+      layer 13: [(9, 4), (12, 9), (12, 11)]
+      layer 14: [(10, 4), (13, 9), (13, 11)]
+      layer 15: [(11, 4), (14, 9)]
+      layer 16: [(12, 4)]
+      layer 17: [(12, 3), (12, 5)]
+      layer 18: [(13, 3), (13, 5)]
+      layer 19: [(14, 3)]
