@@ -1,0 +1,19 @@
+R98 verifier_certification — 2026-08-22 22:23:10 KST
+repo HEAD: 7c602a4
+env: sp80-589a99af (OFFLINE arcade)
+
+evidence: 20 trajectory steps, 2 sinks, level advanced: False
+
+  oracle                         expected PASS          got PASS          PASS
+       completion predicate agrees with the observed outcome
+  piece_absorbs                  expected CONTRADICTED  got CONTRADICTED  PASS
+  piece_turns_outward            expected CONTRADICTED  got CONTRADICTED  PASS
+  piece_edge_teleport            expected CONTRADICTED  got CONTRADICTED  PASS
+  sink_satisfied_on_contact      expected CONTRADICTED  got CONTRADICTED  PASS
+  sink_stops_flow                expected CONTRADICTED  got CONTRADICTED  PASS
+  hazard_ignored                 expected CONTRADICTED  got CONTRADICTED  PASS
+  any_sink_suffices              expected UNKNOWN       got UNKNOWN       PASS
+  flow_overwrites_own_trail      expected UNKNOWN       got UNKNOWN       PASS
+  boundary_reflects              expected UNKNOWN       got UNKNOWN       PASS
+
+[verifier] PASS — the verifier reproduces the frozen table on live grounded evidence

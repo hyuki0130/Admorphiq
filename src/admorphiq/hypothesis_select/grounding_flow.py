@@ -480,6 +480,62 @@ class FlowGrounding:
             return UNKNOWN
         return Grounded(self._animations[-1].frontier, "high")
 
+    def barriers(self) -> Any:
+        """Cells the flow reached and could NOT pass, excluding sinks and pieces.
+
+        Evidence-bounded on purpose: this reports only barriers an observed spill
+        actually ran into, never a guess at the rest of the board. A cell counts
+        when the flow occupied the cell before it along the flow direction and the
+        cell itself never became flow, while being neither a target nor a piece."""
+        if not self._animations or self._prev_cells is None:
+            return UNKNOWN
+        direction = self.initial_direction()
+        if direction is UNKNOWN:
+            return UNKNOWN
+        dr, dc = direction.value
+        anim = self._animations[-1]
+        trail = {c for layer in anim.frontier for c in layer}
+        sinks = {c for g in anim.changed_regions for c in g}
+        piece = self._piece or frozenset()
+        size = int(round(len(self._prev_cells) ** 0.5))
+
+        out: set[Cell] = set()
+        for (r, c) in trail:
+            ahead = (r + dr, c + dc)
+            if not (0 <= ahead[0] < size and 0 <= ahead[1] < size):
+                continue
+            if ahead in trail or ahead in sinks or ahead in piece:
+                continue
+            out.add(ahead)
+        if not out:
+            return UNKNOWN
+        return Grounded(tuple(sorted(out)), "high")
+
+    def board(self) -> Any:
+        """Assemble the measured entity geometry into the propagator's board — the
+        input the verifier judges a response table against. Every field is a
+        grounded measurement; nothing here is read from an appearance constant."""
+        pieces = self.pieces()
+        sinks = self.sink_candidates()
+        emitters = self.emitters()
+        barriers = self.barriers()
+        if UNKNOWN in (pieces, sinks, emitters, barriers) or self._prev_cells is None:
+            return UNKNOWN
+        from admorphiq.hypothesis_select.propagate_flow import Board
+
+        size = int(round(len(self._prev_cells) ** 0.5))
+        return Grounded(
+            Board(
+                piece_cells=frozenset(pieces.value[0][1]),
+                sinks=tuple(frozenset(cells) for _, cells in sinks.value),
+                hazard_cells=frozenset(barriers.value),
+                emitter_cells=frozenset(),
+                standing_flow=frozenset(emitters.value),
+                size=size,
+            ),
+            "high",
+        )
+
     def sink_candidates(self) -> Any:
         """Regions that changed appearance while an animation ran, excluding the
         flow itself: the shortlist the model binds sink roles from. A shortlist,
