@@ -3,7 +3,7 @@ type: reasoning
 round: R98
 axis: agent25 — hypothesis-DSL family expansion #3 (two-phase place-then-propagate flow)
 keywords: [agent25, hypothesis-dsl, family-expansion, flow-deflection, place-then-propagate, sp80, response-table, reference-propagator, gated-enum, inert-slot, equivalence-class, near-ood, oracle-certification, two-model]
-verdict: IN PROGRESS — contract FROZEN 2026-08-22 after the Codex schema consult (CONDITIONAL GO, six corrections bound and discharged BY MEASUREMENT); oracle certified LIVE (sp80 idx0 clears in 4 actions); reference propagator reproduces the engine cell-exactly; schema_flow.py landed with all 9 mutants certified. Grounding / verifier / compiler / oracle gate / model stage still to run
+verdict: IN PROGRESS — **LIVE ORACLE GATE 3/3 PASS end to end** (2026-08-22): discovery → grounding → verify → compile → execute clears sp80 idx0 in 10 actions / 2 commits against a frozen cap of 20 / 3. Contract FROZEN after the Codex schema consult (CONDITIONAL GO, six corrections bound and discharged BY MEASUREMENT); grounding earns 10/10 measured slots from observation alone; the verifier reproduces the frozen mutant table on live evidence; the model-stage driver self-tests 6/6 on deterministic stubs. Only the paired GPU model runs remain
 commit: [f6f9dd8, 748bc04, ad759da, 216a9a9, e9fced6]
 date: 2026-08-22
 ---
@@ -132,11 +132,87 @@ the propagator (`mutant_certification.py`): the 6 CONTRADICTED diverge somewhere
 and the 3 UNKNOWNs diverge nowhere — the check that stops the table from
 overstating the verifier's power. 9 new tests; suite 1677 passed, 1 skipped.
 
+## The harness, built and certified
+
+**Grounding** (`grounding_flow.py`) — the pre-declared 40%-risk component, **10/10
+slots PASS live**. Everything is earned: the flow is whichever colour grows
+incrementally across a layer run, the piece is whichever region translates rigidly
+under a press, the commit action is whichever action returns more than one layer.
+The strongest check available passed — the RECOVERED trajectory equals the
+propagator's PREDICTION for the committed placement, 20 steps, exactly.
+
+Four defects were found by measurement, each a real trap:
+
+1. an edge-pinned HUD is ONE PIXEL ROW over the cell grid; it defeated scale
+   inference and reduced every downstream slot to UNKNOWN. The first fix — exempt
+   whole border BLOCKS — was worse: it accepted a scale twice too large by excusing
+   real board content as overlay. The rule is a 1–2 pixel margin.
+2. a featureless frame is uniform at EVERY scale, so inferring from one silently
+   overestimates. A candidate must now resolve at least two distinct cell values.
+3. the growth run must stop at a board reset, and flow must be separated from a
+   target that lights up when satisfied by GROWTH STEPS, not final size.
+4. a failure animation makes status bands oscillate, and an edge-pinned band
+   touches the cells below the real targets — merging them under 4-connectivity into
+   one phantom region. The **R92 merge trap in a new guise**; only a change that is
+   STABLE at the end of the run counts.
+
+Measured and recorded as an UNESTABLISHED PREMISE: at idx0 `control_mode` is
+**unobservable**. The single piece starts pre-selected, so a click produces no
+frame change and the two control modes are behaviourally identical. The harness
+passes by saying so at low confidence, and the premise is excluded from model
+credit.
+
+**Propagator** (`propagate_flow.py`) — the response table run AS the simulator,
+moved out of the certification script into `src` so there is exactly one
+implementation. Pure: boards arrive as measured cell sets, never read from colours.
+
+**Verifier** (`verifier_flow.py`) — an EXACT replay, not a feature comparison.
+Live certification reproduces the frozen mutant table with no disagreement: oracle
+PASS, 6 CONTRADICTED, 3 UNKNOWN. Three honesty rules: non-gating slots are
+neutralised; a POSITIVE claim in a slot measured inert returns UNKNOWN rather than
+PASS, because a matching replay proves nothing about it; a verify-only transition
+is reported but never passes.
+
+**Compiler** (`compiler_flow.py`) — placement search under the hypothesis's OWN
+table. That is the design claim paying off: a wrong table yields a confidently
+wrong plan the live spill falsifies, where a fixed simulator would make every
+candidate plan identically and void the selection stage.
+
+## LIVE ORACLE GATE — 3/3 PASS
+
+```
+run 1: verdict=PASS plan=SOLVABLE offset=(0,1) actions=10 (discovery 8 + plan 2) commits=2 cleared=True
+run 2: identical
+run 3: identical
+```
+
+Inside the frozen cap of 20 actions / 3 commits, with the same plan every run.
+
+## Model stage — driver built, self-test 6/6
+
+`scripts/probe_r98_model_bench.py`: `--mode select` picks among neutrally
+serialized candidates; `--mode fill` generates the objective variant then the
+gated slots. `own_flow` and `boundary` are NEVER ASKED — both measured inert, and
+forcing a choice from absent evidence manufactures a false result. Evidence is
+PROSE rendered from the measured trajectory; the full enforced rule set is stated
+verbatim to the model; scoring accepts the equivalence class.
+
+One harness defect the self-test caught: candidates deviating only in an inert
+slot serialize IDENTICALLY to the truth once neutralised, so offering all nine
+mutants would have asked the model to choose between three indistinguishable
+options — a random failure baked into the stage. They are excluded from the select
+list and keep their real job in the mutant table.
+
+Self-test: truthful select and fill both clear; wrong picks are blocked by the
+verifier at **zero executed actions**; an equivalence-class answer scores correct;
+the leak guard is clean.
+
 ## Next
 
-Grounding (piece identity by SELECTED appearance — never connected components of
-the idle colour, the R92 merge bug), the trajectory verifier, the compiler's
-placement search, the live oracle gate 3/3, then the paired model substages.
+The paired model runs on gemma4-31b-q8 and gpt-oss-120b (select + fill, 3 runs
+each, ≥2/3 per model, CONFIRMED = both). They need an OpenAI-compatible endpoint
+(`HARNESS_LLM_BASE_URL` / `HARNESS_LLM_MODEL`); the dev Mac cannot host either
+model.
 
 ## Related
 
