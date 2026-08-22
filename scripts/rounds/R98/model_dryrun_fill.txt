@@ -1,0 +1,89 @@
+R98 model-stage dry run (fill) — 2026-08-22 23:57:32 KST
+
+=== ASK 2 (SLOTS) ===
+How this world works, stated in full so nothing enforced is left unsaid:
+
+- There are two phases. In the first you arrange a movable piece; one particular
+  action commits the arrangement and starts the second phase, which runs by
+  itself to a standstill and then decides the level.
+- Flow starts at fixed source cells and moves one cell per tick in a fixed
+  direction.
+- When flow meets a cell it already occupies, the front continues and no cell is
+  entered twice.
+- When flow meets a piece, what happens is one of the choices you are asked
+  about. If it splits, the new cells appear beside the flow's CURRENT cell,
+  keeping the original direction of travel.
+- A target is satisfied only under the condition you are asked about; when it is
+  not satisfied, what the flow does instead is also one of your choices.
+- Reaching a barrier ends that stream, and whether that also fails the attempt is
+  part of the objective you choose.
+- A failed attempt clears the flow and the target marks and re-selects the piece,
+  but the piece KEEPS the position you moved it to.
+- Every action spends from a limited allowance, and only a limited number of
+  commits are permitted; exhausting either loses the level.
+
+What was observed:
+- Pressing a direction moved every cell of one wide region together by one cell, and 4 different directions each moved it.
+- The same press that moved the region elsewhere produced no movement at one position, so something blocks it there.
+- One action returned a stack of pictures showing a consequence that ran by itself; every other action returned a single picture.
+- In that stack a single cell appeared near the top and descended one row per picture for 3 pictures.
+- When the descending cell reached the row just above the wide region, two new cells appeared in the same row, one on each side of it, and both continued downward afterwards.
+- Those two cells then moved outward one cell per picture until each passed the end of the wide region, after which each descended again.
+- One stream arrived directly above a cup-shaped region and did not change it; instead two cells appeared to its left and right, and the region changed only later, once a cell had entered the gap in its top edge.
+- 2 cup-shaped regions ended in a distinct appearance, and the level did not advance.
+- At least one stream reached the row just above the bottom edge and stopped there without changing anything.
+
+Decide how the flow behaves. Keys and their allowed values:
+  "piece_response_spawn": one of ['empty_flanks_only', 'both_flanks', 'none']
+  "piece_response_direction": one of ['preserved', 'outward_turned']
+  "piece_response_propagation": one of ['cellwise_iterative', 'edge_teleport']
+  "sink_response_predicate": one of ['same_sink_flanks', 'contact']
+  "sink_response_miss": one of ['spread_like_piece', 'stop', 'absorb']
+  "hazard_response": one of ['terminate_fatal', 'terminate_local', 'pass_through']
+
+Answer with the JSON object only.
+
+=== SYSTEM ===
+Answer with a single JSON object and nothing else. Use exactly the keys asked for, and for each key choose exactly one of the listed values.
+
+=== USER ===
+How this world works, stated in full so nothing enforced is left unsaid:
+
+- There are two phases. In the first you arrange a movable piece; one particular
+  action commits the arrangement and starts the second phase, which runs by
+  itself to a standstill and then decides the level.
+- Flow starts at fixed source cells and moves one cell per tick in a fixed
+  direction.
+- When flow meets a cell it already occupies, the front continues and no cell is
+  entered twice.
+- When flow meets a piece, what happens is one of the choices you are asked
+  about. If it splits, the new cells appear beside the flow's CURRENT cell,
+  keeping the original direction of travel.
+- A target is satisfied only under the condition you are asked about; when it is
+  not satisfied, what the flow does instead is also one of your choices.
+- Reaching a barrier ends that stream, and whether that also fails the attempt is
+  part of the objective you choose.
+- A failed attempt clears the flow and the target marks and re-selects the piece,
+  but the piece KEEPS the position you moved it to.
+- Every action spends from a limited allowance, and only a limited number of
+  commits are permitted; exhausting either loses the level.
+
+What was observed:
+- Pressing a direction moved every cell of one wide region together by one cell, and 4 different directions each moved it.
+- The same press that moved the region elsewhere produced no movement at one position, so something blocks it there.
+- One action returned a stack of pictures showing a consequence that ran by itself; every other action returned a single picture.
+- In that stack a single cell appeared near the top and descended one row per picture for 3 pictures.
+- When the descending cell reached the row just above the wide region, two new cells appeared in the same row, one on each side of it, and both continued downward afterwards.
+- Those two cells then moved outward one cell per picture until each passed the end of the wide region, after which each descended again.
+- One stream arrived directly above a cup-shaped region and did not change it; instead two cells appeared to its left and right, and the region changed only later, once a cell had entered the gap in its top edge.
+- 2 cup-shaped regions ended in a distinct appearance, and the level did not advance.
+- At least one stream reached the row just above the bottom edge and stopped there without changing anything.
+
+Decide what the level requires. Keys and their allowed values:
+  "objective": one of ['cover_all_sinks', 'any_sink_covered']
+  "completion": one of ['all', 'count']
+  "hazard_policy": one of ['fatal_on_contact', 'neutral']
+
+If you choose "count" for completion, add "completion_count" as a whole number. Answer with the JSON object only.
+
+[leak guard] clean

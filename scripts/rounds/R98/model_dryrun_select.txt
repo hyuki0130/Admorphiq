@@ -1,0 +1,1158 @@
+R98 model-stage dry run (select) — 2026-08-22 23:57:31 KST
+
+=== ID MAPPING (never shown to the model) ===
+{
+  "I1": "hazard_ignored",
+  "I2": "piece_edge_teleport",
+  "I3": "__truth__",
+  "I4": "sink_stops_flow",
+  "I5": "piece_turns_outward",
+  "I6": "sink_satisfied_on_contact",
+  "I7": "piece_absorbs",
+  "I8": "any_sink_suffices"
+}
+=== SYSTEM ===
+You are given a description of how an interactive world works, a list of what was actually observed in it, and several candidate models of that world. Exactly one candidate is consistent with every observation.
+
+Answer with a single line of the form ANSWER: <id>. Do not explain.
+
+=== USER ===
+How this world works, stated in full so nothing enforced is left unsaid:
+
+- There are two phases. In the first you arrange a movable piece; one particular
+  action commits the arrangement and starts the second phase, which runs by
+  itself to a standstill and then decides the level.
+- Flow starts at fixed source cells and moves one cell per tick in a fixed
+  direction.
+- When flow meets a cell it already occupies, the front continues and no cell is
+  entered twice.
+- When flow meets a piece, what happens is one of the choices you are asked
+  about. If it splits, the new cells appear beside the flow's CURRENT cell,
+  keeping the original direction of travel.
+- A target is satisfied only under the condition you are asked about; when it is
+  not satisfied, what the flow does instead is also one of your choices.
+- Reaching a barrier ends that stream, and whether that also fails the attempt is
+  part of the objective you choose.
+- A failed attempt clears the flow and the target marks and re-selects the piece,
+  but the piece KEEPS the position you moved it to.
+- Every action spends from a limited allowance, and only a limited number of
+  commits are permitted; exhausting either loses the level.
+
+What was observed:
+- Pressing a direction moved every cell of one wide region together by one cell, and 4 different directions each moved it.
+- The same press that moved the region elsewhere produced no movement at one position, so something blocks it there.
+- One action returned a stack of pictures showing a consequence that ran by itself; every other action returned a single picture.
+- In that stack a single cell appeared near the top and descended one row per picture for 3 pictures.
+- When the descending cell reached the row just above the wide region, two new cells appeared in the same row, one on each side of it, and both continued downward afterwards.
+- Those two cells then moved outward one cell per picture until each passed the end of the wide region, after which each descended again.
+- One stream arrived directly above a cup-shaped region and did not change it; instead two cells appeared to its left and right, and the region changed only later, once a cell had entered the gap in its top edge.
+- 2 cup-shaped regions ended in a distinct appearance, and the level did not advance.
+- At least one stream reached the row just above the bottom edge and stopped there without changing anything.
+
+Candidate models:
+
+I1:
+{
+ "objective": {
+  "completion": "all",
+  "hazard_policy": "neutral",
+  "kind": "cover_all_sinks",
+  "sink_roles": [
+   "sink_0",
+   "sink_1"
+  ]
+ },
+ "phases": [
+  {
+   "guard": [
+    {
+     "kind": "level_advanced"
+    }
+   ],
+   "objective": null
+  }
+ ],
+ "transition_model": {
+  "budget": {
+   "consuming_actions": [
+    "select",
+    "translate",
+    "commit"
+   ],
+   "exhaustion": "terminal_loss",
+   "step_allowance": 30
+  },
+  "commit_action": 5,
+  "control_mode": "select_then_translate",
+  "emitters": [
+   [
+    0,
+    9
+   ]
+  ],
+  "epoch": "settle_to_fixpoint_then_verdict",
+  "failure_semantics": {
+   "attempt_cap": 4,
+   "flow": "resets",
+   "layout": "persists",
+   "selection": "resets_to_default",
+   "sink_satisfaction": "resets"
+  },
+  "initial_direction": [
+   1,
+   0
+  ],
+  "kind": "place_then_propagate",
+  "observation_channel": "animation_layers",
+  "piece_deltas": [
+   [
+    1,
+    -1,
+    0
+   ],
+   [
+    2,
+    1,
+    0
+   ],
+   [
+    3,
+    0,
+    -1
+   ],
+   [
+    4,
+    0,
+    1
+   ]
+  ],
+  "piece_footprints": [
+   {
+    "cells": [
+     [
+      4,
+      3
+     ],
+     [
+      4,
+      4
+     ],
+     [
+      4,
+      5
+     ],
+     [
+      4,
+      6
+     ],
+     [
+      4,
+      7
+     ]
+    ],
+    "piece": "piece_0"
+   }
+  ],
+  "placement_constraints": {
+   "blocked_by": [
+    "board_bounds",
+    "sink_halo",
+    "row_bound"
+   ],
+   "established": [
+    "row_bound"
+   ],
+   "pieces_mutually_permeable": true,
+   "row_bound": 3,
+   "sink_keepout_margin": 1
+  },
+  "responses": {
+   "boundary": "unknown",
+   "hazard": "terminate_fatal",
+   "own_flow": "unknown",
+   "piece_by_class": [
+    {
+     "direction": "preserved",
+     "piece_class": "straight",
+     "propagation": "cellwise_iterative",
+     "spawn": "empty_flanks_only"
+    }
+   ],
+   "sink": {
+    "miss": "spread_like_piece",
+    "predicate": "same_sink_flanks"
+   }
+  },
+  "unestablished_premises": [
+   "control_mode"
+  ]
+ }
+}
+
+I2:
+{
+ "objective": {
+  "completion": "all",
+  "hazard_policy": "fatal_on_contact",
+  "kind": "cover_all_sinks",
+  "sink_roles": [
+   "sink_0",
+   "sink_1"
+  ]
+ },
+ "phases": [
+  {
+   "guard": [
+    {
+     "kind": "level_advanced"
+    }
+   ],
+   "objective": null
+  }
+ ],
+ "transition_model": {
+  "budget": {
+   "consuming_actions": [
+    "select",
+    "translate",
+    "commit"
+   ],
+   "exhaustion": "terminal_loss",
+   "step_allowance": 30
+  },
+  "commit_action": 5,
+  "control_mode": "select_then_translate",
+  "emitters": [
+   [
+    0,
+    9
+   ]
+  ],
+  "epoch": "settle_to_fixpoint_then_verdict",
+  "failure_semantics": {
+   "attempt_cap": 4,
+   "flow": "resets",
+   "layout": "persists",
+   "selection": "resets_to_default",
+   "sink_satisfaction": "resets"
+  },
+  "initial_direction": [
+   1,
+   0
+  ],
+  "kind": "place_then_propagate",
+  "observation_channel": "animation_layers",
+  "piece_deltas": [
+   [
+    1,
+    -1,
+    0
+   ],
+   [
+    2,
+    1,
+    0
+   ],
+   [
+    3,
+    0,
+    -1
+   ],
+   [
+    4,
+    0,
+    1
+   ]
+  ],
+  "piece_footprints": [
+   {
+    "cells": [
+     [
+      4,
+      3
+     ],
+     [
+      4,
+      4
+     ],
+     [
+      4,
+      5
+     ],
+     [
+      4,
+      6
+     ],
+     [
+      4,
+      7
+     ]
+    ],
+    "piece": "piece_0"
+   }
+  ],
+  "placement_constraints": {
+   "blocked_by": [
+    "board_bounds",
+    "sink_halo",
+    "row_bound"
+   ],
+   "established": [
+    "row_bound"
+   ],
+   "pieces_mutually_permeable": true,
+   "row_bound": 3,
+   "sink_keepout_margin": 1
+  },
+  "responses": {
+   "boundary": "unknown",
+   "hazard": "terminate_fatal",
+   "own_flow": "unknown",
+   "piece_by_class": [
+    {
+     "direction": "preserved",
+     "piece_class": "straight",
+     "propagation": "edge_teleport",
+     "spawn": "empty_flanks_only"
+    }
+   ],
+   "sink": {
+    "miss": "spread_like_piece",
+    "predicate": "same_sink_flanks"
+   }
+  },
+  "unestablished_premises": [
+   "control_mode"
+  ]
+ }
+}
+
+I3:
+{
+ "objective": {
+  "completion": "all",
+  "hazard_policy": "fatal_on_contact",
+  "kind": "cover_all_sinks",
+  "sink_roles": [
+   "sink_0",
+   "sink_1"
+  ]
+ },
+ "phases": [
+  {
+   "guard": [
+    {
+     "kind": "level_advanced"
+    }
+   ],
+   "objective": null
+  }
+ ],
+ "transition_model": {
+  "budget": {
+   "consuming_actions": [
+    "select",
+    "translate",
+    "commit"
+   ],
+   "exhaustion": "terminal_loss",
+   "step_allowance": 30
+  },
+  "commit_action": 5,
+  "control_mode": "select_then_translate",
+  "emitters": [
+   [
+    0,
+    9
+   ]
+  ],
+  "epoch": "settle_to_fixpoint_then_verdict",
+  "failure_semantics": {
+   "attempt_cap": 4,
+   "flow": "resets",
+   "layout": "persists",
+   "selection": "resets_to_default",
+   "sink_satisfaction": "resets"
+  },
+  "initial_direction": [
+   1,
+   0
+  ],
+  "kind": "place_then_propagate",
+  "observation_channel": "animation_layers",
+  "piece_deltas": [
+   [
+    1,
+    -1,
+    0
+   ],
+   [
+    2,
+    1,
+    0
+   ],
+   [
+    3,
+    0,
+    -1
+   ],
+   [
+    4,
+    0,
+    1
+   ]
+  ],
+  "piece_footprints": [
+   {
+    "cells": [
+     [
+      4,
+      3
+     ],
+     [
+      4,
+      4
+     ],
+     [
+      4,
+      5
+     ],
+     [
+      4,
+      6
+     ],
+     [
+      4,
+      7
+     ]
+    ],
+    "piece": "piece_0"
+   }
+  ],
+  "placement_constraints": {
+   "blocked_by": [
+    "board_bounds",
+    "sink_halo",
+    "row_bound"
+   ],
+   "established": [
+    "row_bound"
+   ],
+   "pieces_mutually_permeable": true,
+   "row_bound": 3,
+   "sink_keepout_margin": 1
+  },
+  "responses": {
+   "boundary": "unknown",
+   "hazard": "terminate_fatal",
+   "own_flow": "unknown",
+   "piece_by_class": [
+    {
+     "direction": "preserved",
+     "piece_class": "straight",
+     "propagation": "cellwise_iterative",
+     "spawn": "empty_flanks_only"
+    }
+   ],
+   "sink": {
+    "miss": "spread_like_piece",
+    "predicate": "same_sink_flanks"
+   }
+  },
+  "unestablished_premises": [
+   "control_mode"
+  ]
+ }
+}
+
+I4:
+{
+ "objective": {
+  "completion": "all",
+  "hazard_policy": "fatal_on_contact",
+  "kind": "cover_all_sinks",
+  "sink_roles": [
+   "sink_0",
+   "sink_1"
+  ]
+ },
+ "phases": [
+  {
+   "guard": [
+    {
+     "kind": "level_advanced"
+    }
+   ],
+   "objective": null
+  }
+ ],
+ "transition_model": {
+  "budget": {
+   "consuming_actions": [
+    "select",
+    "translate",
+    "commit"
+   ],
+   "exhaustion": "terminal_loss",
+   "step_allowance": 30
+  },
+  "commit_action": 5,
+  "control_mode": "select_then_translate",
+  "emitters": [
+   [
+    0,
+    9
+   ]
+  ],
+  "epoch": "settle_to_fixpoint_then_verdict",
+  "failure_semantics": {
+   "attempt_cap": 4,
+   "flow": "resets",
+   "layout": "persists",
+   "selection": "resets_to_default",
+   "sink_satisfaction": "resets"
+  },
+  "initial_direction": [
+   1,
+   0
+  ],
+  "kind": "place_then_propagate",
+  "observation_channel": "animation_layers",
+  "piece_deltas": [
+   [
+    1,
+    -1,
+    0
+   ],
+   [
+    2,
+    1,
+    0
+   ],
+   [
+    3,
+    0,
+    -1
+   ],
+   [
+    4,
+    0,
+    1
+   ]
+  ],
+  "piece_footprints": [
+   {
+    "cells": [
+     [
+      4,
+      3
+     ],
+     [
+      4,
+      4
+     ],
+     [
+      4,
+      5
+     ],
+     [
+      4,
+      6
+     ],
+     [
+      4,
+      7
+     ]
+    ],
+    "piece": "piece_0"
+   }
+  ],
+  "placement_constraints": {
+   "blocked_by": [
+    "board_bounds",
+    "sink_halo",
+    "row_bound"
+   ],
+   "established": [
+    "row_bound"
+   ],
+   "pieces_mutually_permeable": true,
+   "row_bound": 3,
+   "sink_keepout_margin": 1
+  },
+  "responses": {
+   "boundary": "unknown",
+   "hazard": "terminate_fatal",
+   "own_flow": "unknown",
+   "piece_by_class": [
+    {
+     "direction": "preserved",
+     "piece_class": "straight",
+     "propagation": "cellwise_iterative",
+     "spawn": "empty_flanks_only"
+    }
+   ],
+   "sink": {
+    "miss": "stop",
+    "predicate": "same_sink_flanks"
+   }
+  },
+  "unestablished_premises": [
+   "control_mode"
+  ]
+ }
+}
+
+I5:
+{
+ "objective": {
+  "completion": "all",
+  "hazard_policy": "fatal_on_contact",
+  "kind": "cover_all_sinks",
+  "sink_roles": [
+   "sink_0",
+   "sink_1"
+  ]
+ },
+ "phases": [
+  {
+   "guard": [
+    {
+     "kind": "level_advanced"
+    }
+   ],
+   "objective": null
+  }
+ ],
+ "transition_model": {
+  "budget": {
+   "consuming_actions": [
+    "select",
+    "translate",
+    "commit"
+   ],
+   "exhaustion": "terminal_loss",
+   "step_allowance": 30
+  },
+  "commit_action": 5,
+  "control_mode": "select_then_translate",
+  "emitters": [
+   [
+    0,
+    9
+   ]
+  ],
+  "epoch": "settle_to_fixpoint_then_verdict",
+  "failure_semantics": {
+   "attempt_cap": 4,
+   "flow": "resets",
+   "layout": "persists",
+   "selection": "resets_to_default",
+   "sink_satisfaction": "resets"
+  },
+  "initial_direction": [
+   1,
+   0
+  ],
+  "kind": "place_then_propagate",
+  "observation_channel": "animation_layers",
+  "piece_deltas": [
+   [
+    1,
+    -1,
+    0
+   ],
+   [
+    2,
+    1,
+    0
+   ],
+   [
+    3,
+    0,
+    -1
+   ],
+   [
+    4,
+    0,
+    1
+   ]
+  ],
+  "piece_footprints": [
+   {
+    "cells": [
+     [
+      4,
+      3
+     ],
+     [
+      4,
+      4
+     ],
+     [
+      4,
+      5
+     ],
+     [
+      4,
+      6
+     ],
+     [
+      4,
+      7
+     ]
+    ],
+    "piece": "piece_0"
+   }
+  ],
+  "placement_constraints": {
+   "blocked_by": [
+    "board_bounds",
+    "sink_halo",
+    "row_bound"
+   ],
+   "established": [
+    "row_bound"
+   ],
+   "pieces_mutually_permeable": true,
+   "row_bound": 3,
+   "sink_keepout_margin": 1
+  },
+  "responses": {
+   "boundary": "unknown",
+   "hazard": "terminate_fatal",
+   "own_flow": "unknown",
+   "piece_by_class": [
+    {
+     "direction": "outward_turned",
+     "piece_class": "straight",
+     "propagation": "cellwise_iterative",
+     "spawn": "empty_flanks_only"
+    }
+   ],
+   "sink": {
+    "miss": "spread_like_piece",
+    "predicate": "same_sink_flanks"
+   }
+  },
+  "unestablished_premises": [
+   "control_mode"
+  ]
+ }
+}
+
+I6:
+{
+ "objective": {
+  "completion": "all",
+  "hazard_policy": "fatal_on_contact",
+  "kind": "cover_all_sinks",
+  "sink_roles": [
+   "sink_0",
+   "sink_1"
+  ]
+ },
+ "phases": [
+  {
+   "guard": [
+    {
+     "kind": "level_advanced"
+    }
+   ],
+   "objective": null
+  }
+ ],
+ "transition_model": {
+  "budget": {
+   "consuming_actions": [
+    "select",
+    "translate",
+    "commit"
+   ],
+   "exhaustion": "terminal_loss",
+   "step_allowance": 30
+  },
+  "commit_action": 5,
+  "control_mode": "select_then_translate",
+  "emitters": [
+   [
+    0,
+    9
+   ]
+  ],
+  "epoch": "settle_to_fixpoint_then_verdict",
+  "failure_semantics": {
+   "attempt_cap": 4,
+   "flow": "resets",
+   "layout": "persists",
+   "selection": "resets_to_default",
+   "sink_satisfaction": "resets"
+  },
+  "initial_direction": [
+   1,
+   0
+  ],
+  "kind": "place_then_propagate",
+  "observation_channel": "animation_layers",
+  "piece_deltas": [
+   [
+    1,
+    -1,
+    0
+   ],
+   [
+    2,
+    1,
+    0
+   ],
+   [
+    3,
+    0,
+    -1
+   ],
+   [
+    4,
+    0,
+    1
+   ]
+  ],
+  "piece_footprints": [
+   {
+    "cells": [
+     [
+      4,
+      3
+     ],
+     [
+      4,
+      4
+     ],
+     [
+      4,
+      5
+     ],
+     [
+      4,
+      6
+     ],
+     [
+      4,
+      7
+     ]
+    ],
+    "piece": "piece_0"
+   }
+  ],
+  "placement_constraints": {
+   "blocked_by": [
+    "board_bounds",
+    "sink_halo",
+    "row_bound"
+   ],
+   "established": [
+    "row_bound"
+   ],
+   "pieces_mutually_permeable": true,
+   "row_bound": 3,
+   "sink_keepout_margin": 1
+  },
+  "responses": {
+   "boundary": "unknown",
+   "hazard": "terminate_fatal",
+   "own_flow": "unknown",
+   "piece_by_class": [
+    {
+     "direction": "preserved",
+     "piece_class": "straight",
+     "propagation": "cellwise_iterative",
+     "spawn": "empty_flanks_only"
+    }
+   ],
+   "sink": {
+    "miss": "spread_like_piece",
+    "predicate": "contact"
+   }
+  },
+  "unestablished_premises": [
+   "control_mode"
+  ]
+ }
+}
+
+I7:
+{
+ "objective": {
+  "completion": "all",
+  "hazard_policy": "fatal_on_contact",
+  "kind": "cover_all_sinks",
+  "sink_roles": [
+   "sink_0",
+   "sink_1"
+  ]
+ },
+ "phases": [
+  {
+   "guard": [
+    {
+     "kind": "level_advanced"
+    }
+   ],
+   "objective": null
+  }
+ ],
+ "transition_model": {
+  "budget": {
+   "consuming_actions": [
+    "select",
+    "translate",
+    "commit"
+   ],
+   "exhaustion": "terminal_loss",
+   "step_allowance": 30
+  },
+  "commit_action": 5,
+  "control_mode": "select_then_translate",
+  "emitters": [
+   [
+    0,
+    9
+   ]
+  ],
+  "epoch": "settle_to_fixpoint_then_verdict",
+  "failure_semantics": {
+   "attempt_cap": 4,
+   "flow": "resets",
+   "layout": "persists",
+   "selection": "resets_to_default",
+   "sink_satisfaction": "resets"
+  },
+  "initial_direction": [
+   1,
+   0
+  ],
+  "kind": "place_then_propagate",
+  "observation_channel": "animation_layers",
+  "piece_deltas": [
+   [
+    1,
+    -1,
+    0
+   ],
+   [
+    2,
+    1,
+    0
+   ],
+   [
+    3,
+    0,
+    -1
+   ],
+   [
+    4,
+    0,
+    1
+   ]
+  ],
+  "piece_footprints": [
+   {
+    "cells": [
+     [
+      4,
+      3
+     ],
+     [
+      4,
+      4
+     ],
+     [
+      4,
+      5
+     ],
+     [
+      4,
+      6
+     ],
+     [
+      4,
+      7
+     ]
+    ],
+    "piece": "piece_0"
+   }
+  ],
+  "placement_constraints": {
+   "blocked_by": [
+    "board_bounds",
+    "sink_halo",
+    "row_bound"
+   ],
+   "established": [
+    "row_bound"
+   ],
+   "pieces_mutually_permeable": true,
+   "row_bound": 3,
+   "sink_keepout_margin": 1
+  },
+  "responses": {
+   "boundary": "unknown",
+   "hazard": "terminate_fatal",
+   "own_flow": "unknown",
+   "piece_by_class": [
+    {
+     "direction": "preserved",
+     "piece_class": "straight",
+     "propagation": "cellwise_iterative",
+     "spawn": "none"
+    }
+   ],
+   "sink": {
+    "miss": "spread_like_piece",
+    "predicate": "same_sink_flanks"
+   }
+  },
+  "unestablished_premises": [
+   "control_mode"
+  ]
+ }
+}
+
+I8:
+{
+ "objective": {
+  "kind": "any_sink_covered",
+  "sink_roles": [
+   "sink_0",
+   "sink_1"
+  ]
+ },
+ "phases": [
+  {
+   "guard": [
+    {
+     "kind": "level_advanced"
+    }
+   ],
+   "objective": null
+  }
+ ],
+ "transition_model": {
+  "budget": {
+   "consuming_actions": [
+    "select",
+    "translate",
+    "commit"
+   ],
+   "exhaustion": "terminal_loss",
+   "step_allowance": 30
+  },
+  "commit_action": 5,
+  "control_mode": "select_then_translate",
+  "emitters": [
+   [
+    0,
+    9
+   ]
+  ],
+  "epoch": "settle_to_fixpoint_then_verdict",
+  "failure_semantics": {
+   "attempt_cap": 4,
+   "flow": "resets",
+   "layout": "persists",
+   "selection": "resets_to_default",
+   "sink_satisfaction": "resets"
+  },
+  "initial_direction": [
+   1,
+   0
+  ],
+  "kind": "place_then_propagate",
+  "observation_channel": "animation_layers",
+  "piece_deltas": [
+   [
+    1,
+    -1,
+    0
+   ],
+   [
+    2,
+    1,
+    0
+   ],
+   [
+    3,
+    0,
+    -1
+   ],
+   [
+    4,
+    0,
+    1
+   ]
+  ],
+  "piece_footprints": [
+   {
+    "cells": [
+     [
+      4,
+      3
+     ],
+     [
+      4,
+      4
+     ],
+     [
+      4,
+      5
+     ],
+     [
+      4,
+      6
+     ],
+     [
+      4,
+      7
+     ]
+    ],
+    "piece": "piece_0"
+   }
+  ],
+  "placement_constraints": {
+   "blocked_by": [
+    "board_bounds",
+    "sink_halo",
+    "row_bound"
+   ],
+   "established": [
+    "row_bound"
+   ],
+   "pieces_mutually_permeable": true,
+   "row_bound": 3,
+   "sink_keepout_margin": 1
+  },
+  "responses": {
+   "boundary": "unknown",
+   "hazard": "terminate_fatal",
+   "own_flow": "unknown",
+   "piece_by_class": [
+    {
+     "direction": "preserved",
+     "piece_class": "straight",
+     "propagation": "cellwise_iterative",
+     "spawn": "empty_flanks_only"
+    }
+   ],
+   "sink": {
+    "miss": "spread_like_piece",
+    "predicate": "same_sink_flanks"
+   }
+  },
+  "unestablished_premises": [
+   "control_mode"
+  ]
+ }
+}
+
+Which candidate is consistent with every observation?
+
+[leak guard] clean

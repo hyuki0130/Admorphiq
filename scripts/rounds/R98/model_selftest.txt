@@ -1,0 +1,13 @@
+R98 model-stage harness self-test — 2026-08-22 23:57:31 KST
+repo HEAD: d2e12b1
+
+harness self-test (deterministic stubs, no server)
+
+  select  truthful  -> outcome=cleared executed=2 PASS
+  select  wrong     -> outcome=blocked_by_verifier executed=0 PASS
+  fill    truthful  -> outcome=cleared executed=2 PASS
+  fill    wrong     -> outcome=blocked_by_verifier executed=0 PASS
+  fill    equivalent -> equivalent_to_truth=True outcome=cleared PASS
+  leak guard -> clean PASS
+
+[self-test] PASS — the harness rewards a correct hypothesis, blocks a wrong one at zero cost, and accepts an equivalence-class answer
