@@ -207,12 +207,23 @@ Self-test: truthful select and fill both clear; wrong picks are blocked by the
 verifier at **zero executed actions**; an equivalence-class answer scores correct;
 the leak guard is clean.
 
-## Next
+## Next — the paired runs, ready to launch
 
-The paired model runs on gemma4-31b-q8 and gpt-oss-120b (select + fill, 3 runs
-each, ≥2/3 per model, CONFIRMED = both). They need an OpenAI-compatible endpoint
-(`HARNESS_LLM_BASE_URL` / `HARNESS_LLM_MODEL`); the dev Mac cannot host either
-model.
+`notebooks/r98_flow_bench.py` is the Kaggle kernel, built on the R95b boot path
+verbatim (vLLM api_server on the mounted model, `ARC_ENVIRONMENTS_DIR` pointing at
+the competition `environment_files` so the run drives the LIVE env). It runs BOTH
+modes in one kernel and writes `r98_flow_bench_<model>.json`.
+
+Two-model rule: run the kernel TWICE, once per mounted model
+(`admorphiq-r98-flow-gemma4` and `admorphiq-r98-flow-gptoss`). No one-shot
+verdicts.
+
+Ship in the working tree: `scripts/probe_r98_model_bench.py` and the `admorphiq`
+package. Per-model success is ≥2 of 3 runs per mode; CONFIRMED = both models.
+
+Locally the same driver runs against any OpenAI-compatible endpoint via
+`HARNESS_LLM_BASE_URL` / `HARNESS_LLM_MODEL`; the dev Mac cannot host either model,
+which is why the measurement is a GPU kernel.
 
 ## Related
 
