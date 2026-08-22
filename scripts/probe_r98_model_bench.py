@@ -70,6 +70,49 @@ GATED_SLOTS: dict[str, tuple[str, ...]] = {
     "sink_response_miss": ("spread_like_piece", "stop", "absorb"),
     "hazard_response": ("terminate_fatal", "terminate_local", "pass_through"),
 }
+
+# Every closed choice is glossed. The value names are internal identifiers, and a
+# model cannot be expected to map "same_sink_flanks" onto "entered the notch in
+# the target's top edge" by guessing.
+SLOT_GLOSS: dict[str, dict[str, str]] = {
+    "piece_response_spawn": {
+        "empty_flanks_only": "new cells are created only in the side cells that are still empty",
+        "both_flanks": "both side cells are used, whether or not they are already filled",
+        "none": "nothing is created; the flow simply ends at the piece",
+    },
+    "piece_response_direction": {
+        "preserved": "each newly created cell travels in the SAME direction the flow "
+                     "was already travelling",
+        "outward_turned": "each newly created cell turns and travels SIDEWAYS, away "
+                          "from the point of impact",
+    },
+    "piece_response_propagation": {
+        "cellwise_iterative": "the split happens one cell at a time, repeating on "
+                              "each following tick",
+        "edge_teleport": "the flow reappears immediately at the far ends of the "
+                         "piece, skipping the cells in between",
+    },
+    "sink_response_predicate": {
+        "same_sink_flanks": "the target is satisfied only when the flow occupies the "
+                            "notch in its top edge — the cell whose left and right "
+                            "neighbours both belong to that same target",
+        "contact": "the target is satisfied as soon as the flow is directly next to "
+                   "any part of it",
+    },
+    "sink_response_miss": {
+        "spread_like_piece": "the flow goes around the target, exactly as it would "
+                             "go around a piece",
+        "stop": "the flow ends there",
+        "absorb": "the flow is swallowed and nothing continues",
+    },
+    "hazard_response": {
+        "terminate_fatal": "the stream ends AND the whole attempt fails, even if "
+                           "every target was satisfied",
+        "terminate_local": "the stream ends, but the attempt can still succeed",
+        "pass_through": "the flow continues straight through the barrier",
+    },
+}
+
 OBJECTIVE_VARIANTS = ("cover_all_sinks", "any_sink_covered")
 COMPLETIONS = ("all", "count")
 HAZARD_POLICIES = ("fatal_on_contact", "neutral")
@@ -82,17 +125,25 @@ CONTRACT_PROSE = """How this world works, stated in full so nothing enforced is 
 - There are two phases. In the first you arrange a movable piece; one particular
   action commits the arrangement and starts the second phase, which runs by
   itself to a standstill and then decides the level.
-- Flow starts at fixed source cells and moves one cell per tick in a fixed
+- Flow starts at fixed source cells and travels one cell per tick in a fixed
   direction.
-- When flow meets a cell it already occupies, the front continues and no cell is
-  entered twice.
+- FLOW CELLS PERSIST. A cell that has been reached stays filled for the rest of
+  the phase, and is never entered again. So when a filled cell appears next to an
+  older one, that is a NEW cell being created there — it is not the older cell
+  having moved sideways. Read every description of the animation that way.
+- When flow meets a cell it already fills, the front continues past it.
 - When flow meets a piece, what happens is one of the choices you are asked
-  about. If it splits, the new cells appear beside the flow's CURRENT cell,
-  keeping the original direction of travel.
-- A target is satisfied only under the condition you are asked about; when it is
-  not satisfied, what the flow does instead is also one of your choices.
-- Reaching a barrier ends that stream, and whether that also fails the attempt is
-  part of the objective you choose.
+  about. If it splits, the new cells are created in the cells either side of the
+  flow's CURRENT cell, and each of them travels in the ORIGINAL direction. A
+  splitting flow can therefore look as though it is spreading sideways along the
+  piece, because the split repeats: each newly created cell also has the piece
+  directly ahead of it, so it splits again, one cell further out, on the next
+  tick. Sideways APPEARANCE is not sideways TRAVEL.
+- A target is satisfied only under the condition you are asked about; when that
+  condition is not met, what the flow does instead is also one of your choices.
+- Reaching a barrier ends that stream. Whether it ALSO fails the whole attempt is
+  a separate choice you are asked about, and the two choices must agree: if a
+  barrier can fail an attempt, say so in BOTH answers.
 - A failed attempt clears the flow and the target marks and re-selects the piece,
   but the piece KEEPS the position you moved it to.
 - Every action spends from a limited allowance, and only a limited number of
@@ -149,8 +200,11 @@ def _prose_evidence(evidence: FlowEvidence, grounding: FlowGrounding) -> list[st
     outward = [f for f in traj if len(f) == 2 and f[0][0] == f[1][0]]
     if len(outward) >= 2:
         lines.append(
-            "Those two cells then moved outward one cell per picture until each passed the "
-            "end of the wide region, after which each descended again."
+            "On each following picture two more filled cells appeared on that same row, "
+            "one further out on each side, until the outermost ones were past the ends of "
+            "the wide region; from there the newly filled cells appeared one row lower at "
+            "a time. Remember that filled cells persist, so these are new cells being "
+            "created, not the earlier ones travelling sideways."
         )
 
     sink_cells = {c for s in board.sinks for c in s}
@@ -158,25 +212,39 @@ def _prose_evidence(evidence: FlowEvidence, grounding: FlowGrounding) -> list[st
         for (r, c) in traj[i]:
             if (r + 1, c) in sink_cells and {(r, c - 1), (r, c + 1)} <= set(traj[i + 1]):
                 lines.append(
-                    "One stream arrived directly above a cup-shaped region and did not change "
-                    "it; instead two cells appeared to its left and right, and the region "
-                    "changed only later, once a cell had entered the gap in its top edge."
+                    "One stream came to rest directly above a cup-shaped region while being "
+                    "in contact with it, and the region did NOT change appearance at that "
+                    "moment; instead new cells appeared to its left and right. That region "
+                    "only changed appearance later, on the picture after a filled cell "
+                    "occupied the notch in its top edge — the cell whose left and right "
+                    "neighbours both belong to that same region."
                 )
                 break
         else:
             continue
         break
 
-    lines.append(
-        f"{evidence.n_sinks} cup-shaped regions ended in a distinct appearance"
-        + (", and the level did not advance." if not evidence.advanced
-           else ", and the level advanced.")
-    )
-    if board.hazard_cells:
+    all_covered = evidence.n_sinks > 0
+    if board.hazard_cells and all_covered and not evidence.advanced:
+        # the discriminating pair: full coverage AND a failed attempt, with the only
+        # other event being the barrier contact
         lines.append(
-            "At least one stream reached the row just above the bottom edge and stopped "
-            "there without changing anything."
+            f"All {evidence.n_sinks} of the cup-shaped regions ended in the distinct "
+            "appearance that marks a satisfied target, and the level still did NOT "
+            "advance. The only other thing that happened in the whole animation is that "
+            "a stream reached the row just above the bottom edge and stopped there."
         )
+    else:
+        lines.append(
+            f"{evidence.n_sinks} cup-shaped regions ended in a distinct appearance"
+            + (", and the level did not advance." if not evidence.advanced
+               else ", and the level advanced.")
+        )
+        if board.hazard_cells:
+            lines.append(
+                "At least one stream reached the row just above the bottom edge and "
+                "stopped there without changing anything."
+            )
     return lines
 
 
@@ -240,11 +308,22 @@ def build_variant_ask(
         + "\n\nWhat was observed:\n"
         + "\n".join(f"- {line}" for line in _prose_evidence(evidence, grounding))
         + "\n\nDecide what the level requires. Keys and their allowed values:\n"
-        + f'  "objective": one of {list(OBJECTIVE_VARIANTS)}\n'
-        + f'  "completion": one of {list(COMPLETIONS)}\n'
-        + f'  "hazard_policy": one of {list(HAZARD_POLICIES)}\n'
+        + '  "objective":\n'
+          "      cover_all_sinks — the level is won by satisfying targets\n"
+          "      any_sink_covered — one satisfied target is enough\n"
+          '  "completion":\n'
+          "      all — every target must be satisfied\n"
+          "      count — a specific number of them must be\n"
+          '  "hazard_policy":\n'
+          "      fatal_on_contact — touching a barrier fails the attempt even when "
+          "every target was satisfied\n"
+          "      neutral — touching a barrier does not by itself fail the attempt\n"
         + '\nIf you choose "count" for completion, add "completion_count" as a whole '
-          "number. Answer with the JSON object only."
+          "number.\n"
+          "Your hazard_policy must agree with the hazard_response you give in the "
+          "other question: fatal_on_contact goes with terminate_fatal, and neutral "
+          "goes with terminate_local.\n"
+          "Answer with the JSON object only."
     )
     return [{"role": "system", "content": system}, {"role": "user", "content": user}]
 
@@ -256,7 +335,11 @@ def build_slot_ask(
         "Answer with a single JSON object and nothing else. Use exactly the keys "
         "asked for, and for each key choose exactly one of the listed values."
     )
-    listing = "\n".join(f'  "{k}": one of {list(v)}' for k, v in GATED_SLOTS.items())
+    listing = "\n".join(
+        f'  "{k}":\n'
+        + "\n".join(f"      {value} — {SLOT_GLOSS[k][value]}" for value in values)
+        for k, values in GATED_SLOTS.items()
+    )
     user = (
         CONTRACT_PROSE
         + "\n\nWhat was observed:\n"

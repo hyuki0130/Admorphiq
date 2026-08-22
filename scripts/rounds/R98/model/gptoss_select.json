@@ -1,0 +1,40 @@
+{
+  "mode": "select",
+  "model": "gptoss",
+  "runs": [
+    {
+      "run": 0,
+      "mode": "select",
+      "pick": "I1",
+      "candidates": 8,
+      "picked_truth": false,
+      "verdict": "CONTRADICTED",
+      "verdict_reason": "predicts the attempt wins (2/2 filled, hazard contact True) but the level did not advance",
+      "executed_actions": 0,
+      "outcome": "blocked_by_verifier"
+    },
+    {
+      "run": 1,
+      "mode": "select",
+      "pick": "I5",
+      "candidates": 8,
+      "picked_truth": false,
+      "verdict": "CONTRADICTED",
+      "verdict_reason": "predicted step 4 [(3, 7), (3, 11)] but the flow was observed at [(3, 7), (4, 10)]",
+      "executed_actions": 0,
+      "outcome": "blocked_by_verifier"
+    },
+    {
+      "run": 2,
+      "mode": "select",
+      "pick": "I5",
+      "candidates": 8,
+      "picked_truth": false,
+      "verdict": "CONTRADICTED",
+      "verdict_reason": "predicted step 4 [(3, 7), (3, 11)] but the flow was observed at [(3, 7), (4, 10)]",
+      "executed_actions": 0,
+      "outcome": "blocked_by_verifier"
+    }
+  ],
+  "verdict": "0/3 FAIL"
+}

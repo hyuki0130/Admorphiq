@@ -1,0 +1,73 @@
+{
+  "mode": "fill",
+  "model": "gptoss",
+  "runs": [
+    {
+      "run": 0,
+      "mode": "fill",
+      "variant": {
+        "objective": "cover_all_sinks",
+        "completion": "all",
+        "hazard_policy": "fatal_on_contact"
+      },
+      "slots": {
+        "piece_response_spawn": "both_flanks",
+        "piece_response_direction": "outward_turned",
+        "piece_response_propagation": "edge_teleport",
+        "sink_response_predicate": "contact",
+        "sink_response_miss": "spread_like_piece",
+        "hazard_response": "terminate_local"
+      },
+      "equivalent_to_truth": false,
+      "verdict": "CONTRADICTED",
+      "verdict_reason": "predicted step 3 [(3, 4), (3, 10)] but the flow was observed at [(3, 8), (3, 10)]",
+      "executed_actions": 0,
+      "outcome": "blocked_by_verifier"
+    },
+    {
+      "run": 1,
+      "mode": "fill",
+      "variant": {
+        "objective": "cover_all_sinks",
+        "completion": "all",
+        "hazard_policy": "fatal_on_contact"
+      },
+      "slots": {
+        "piece_response_spawn": "both_flanks",
+        "piece_response_direction": "outward_turned",
+        "piece_response_propagation": "cellwise_iterative",
+        "sink_response_predicate": "contact",
+        "sink_response_miss": "stop",
+        "hazard_response": "terminate_local"
+      },
+      "equivalent_to_truth": false,
+      "verdict": "CONTRADICTED",
+      "verdict_reason": "predicted step 4 [(3, 7), (3, 11)] but the flow was observed at [(3, 7), (4, 10)]",
+      "executed_actions": 0,
+      "outcome": "blocked_by_verifier"
+    },
+    {
+      "run": 2,
+      "mode": "fill",
+      "variant": {
+        "objective": "cover_all_sinks",
+        "completion": "all",
+        "hazard_policy": "fatal_on_contact"
+      },
+      "slots": {
+        "piece_response_spawn": "both_flanks",
+        "piece_response_direction": "outward_turned",
+        "piece_response_propagation": "cellwise_iterative",
+        "sink_response_predicate": "contact",
+        "sink_response_miss": "stop",
+        "hazard_response": "terminate_local"
+      },
+      "equivalent_to_truth": false,
+      "verdict": "CONTRADICTED",
+      "verdict_reason": "predicted step 4 [(3, 7), (3, 11)] but the flow was observed at [(3, 7), (4, 10)]",
+      "executed_actions": 0,
+      "outcome": "blocked_by_verifier"
+    }
+  ],
+  "verdict": "0/3 FAIL"
+}
