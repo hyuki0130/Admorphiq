@@ -1,0 +1,17 @@
+R98 near-OOD structural screen — 2026-08-22 18:08:37 KST
+repo HEAD: ad759da
+
+reference (the oracle family) max single-action layer burst: 22
+
+candidate            max burst   per-action bursts
+  sp80-589a99af          22      ACTION1:1 ACTION2:1 ACTION3:1 ACTION4:1 ACTION5:22 ACTION6:1 ACTION7:1
+  tu93-0768757b           8      ACTION1:1 ACTION2:8 ACTION3:1 ACTION4:8 ACTION5:1 ACTION6:1 ACTION7:1
+  sk48-d8078629           2      ACTION1:2 ACTION2:2 ACTION3:2 ACTION4:2 ACTION5:1 ACTION6:1 ACTION7:1
+  re86-8af5384d           1      ACTION1:1 ACTION2:1 ACTION3:1 ACTION4:1 ACTION5:1 ACTION6:1 ACTION7:1
+  ls20-9607627b           1      ACTION1:1 ACTION2:1 ACTION3:1 ACTION4:1 ACTION5:1 ACTION6:1 ACTION7:1
+  wa30-ee6fef47           1      ACTION1:1 ACTION2:1 ACTION3:1 ACTION4:1 ACTION5:1 ACTION6:1 ACTION7:1
+  tn36-ef4dde99           1      ACTION1:1 ACTION2:1 ACTION3:1 ACTION4:1 ACTION5:1 ACTION6:1 ACTION7:1
+  cn04-2fe56bfb           1      ACTION1:1 ACTION2:1 ACTION3:1 ACTION4:1 ACTION5:1 ACTION6:1 ACTION7:1
+
+[near-OOD screen] SURVIVES: tu93-0768757b (burst 8)
+  These produce a scripted multi-tick consequence from one action, so an agent could plausibly reach for this family and be wrong on the mechanics — the near-OOD property. Full certification still requires the grounding service.

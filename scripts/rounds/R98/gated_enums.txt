@@ -1,0 +1,37 @@
+R98 gated-enum prediction test — 2026-08-22 18:07:36 KST
+repo HEAD: ad759da
+env: sp80-589a99af (OFFLINE arcade)
+
+board: piece [(4, 3), (4, 4), (4, 5), (4, 6), (4, 7)]
+       sinks [[(13, 4), (13, 6), (14, 4), (14, 5), (14, 6)], [(13, 10), (13, 12), (14, 10), (14, 11), (14, 12)]]
+       emitter [(0, 9)] standing flow [(1, 9)]
+       hazard cells 16 on row [15]
+
+--- faithfulness: oracle table vs the live engine ---
+  dx=-3  live(advanced=False, sinks=0)  predicted(wins=False, sinks=0)  ok 
+  dx=-2  live(advanced=False, sinks=0)  predicted(wins=False, sinks=0)  ok 
+  dx=-1  live(advanced=False, sinks=0)  predicted(wins=False, sinks=0)  ok 
+  dx=+0  live(advanced=False, sinks=0)  predicted(wins=False, sinks=0)  ok 
+  dx=+1  live(advanced=False, sinks=0)  predicted(wins=False, sinks=0)  ok 
+  dx=+2  live(advanced=False, sinks=2)  predicted(wins=False, sinks=2)  ok 
+  dx=+3  live(advanced=True, sinks=2)  predicted(wins=True, sinks=2)  ok 
+  dx=+4  live(advanced=False, sinks=2)  predicted(wins=False, sinks=2)  ok 
+  dx=+5  live(advanced=False, sinks=0)  predicted(wins=False, sinks=0)  ok 
+  dx=+6  live(advanced=False, sinks=0)  predicted(wins=False, sinks=0)  ok 
+  dx=+7  live(advanced=False, sinks=0)  predicted(wins=False, sinks=0)  ok 
+  dx=+8  live(advanced=False, sinks=0)  predicted(wins=False, sinks=0)  ok 
+  dx=+2 trajectory: EXACT (20 live steps vs 20 predicted)
+  dx=+3 trajectory: EXACT (17 live steps vs 17 predicted)
+
+--- discriminability: does each gated slot change a prediction? ---
+  piece_spawn        DISCRIMINATING  [both_flanks: 0/12 trajectories, 0/12 outcomes, none: 5/12 trajectories, 3/12 outcomes]
+  piece_direction    DISCRIMINATING  [outward_turned: 5/12 trajectories, 3/12 outcomes]
+  piece_propagation  TRAJECTORY-ONLY [edge_teleport: 5/12 trajectories, 0/12 outcomes]
+  sink_predicate     DISCRIMINATING  [contact: 2/12 trajectories, 2/12 outcomes]
+  sink_miss          DISCRIMINATING  [stop: 2/12 trajectories, 2/12 outcomes, absorb: 2/12 trajectories, 2/12 outcomes]
+  hazard             DISCRIMINATING  [terminate_local: 0/12 trajectories, 2/12 outcomes, pass_through: 11/12 trajectories, 2/12 outcomes]
+  own_flow           INERT           [overwrite: 0/12 trajectories, 0/12 outcomes, terminate: 0/12 trajectories, 0/12 outcomes]
+  boundary           INERT           [reflect: 0/12 trajectories, 0/12 outcomes]
+
+[faithfulness] PASS
+[gated slots]  6/8 carry a prediction; demote to non-gating: ['own_flow', 'boundary']

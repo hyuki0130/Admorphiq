@@ -1,8 +1,8 @@
 # R98 design — hypothesis-DSL family expansion #3: FlowDeflectionDynamics (PIVOTED)
 
-Status: **v1.2 (AUTHORITATIVE)** — schema drafted, oracle certified LIVE, Codex
-schema consult landed CONDITIONAL GO and its six corrections are bound. The
-contract is NOT yet frozen; four items remain (see "Remaining before the freeze").
+Status: **v1.2 (AUTHORITATIVE) — CONTRACT FROZEN 2026-08-22.** Schema drafted,
+oracle certified LIVE, Codex schema consult landed CONDITIONAL GO with all six
+corrections bound and discharged by measurement. Implementation is next.
 Earlier drafts are kept below for provenance: v1 (family pivot, Codex CONDITIONAL
 GO 2026-07-23) and v0 (PushDynamics, superseded by that pivot).
 
@@ -550,14 +550,122 @@ mechanics-specific transition mismatch. A control rejected immediately on palett
 or entity shape is not near-OOD and must be replaced. This certification is a
 prerequisite of the freeze, not a post-hoc label. Far-OOD stays tu93.
 
+### Bound correction 5, DISCHARGED — faithfulness proven, two slots demoted (2026-08-22 18:06 KST)
+
+`scripts/rounds/R98/reference_propagator.py` implements the response table AS the
+simulator; `gated_enum_test.py` → `gated_enums.txt` runs it against the live
+engine.
+
+**Faithfulness: PASS.** The oracle response table reproduces the engine's
+outcome on ALL 12 reachable placements, and reproduces the CELL-EXACT trajectory
+on both probe placements (`+2`: 20 steps, `+3`: 17 steps, no divergence). The
+decoded model is therefore not an interpretation — it is the engine's behaviour,
+and this propagator is the verifier's core.
+
+**Discriminability**, measured by flipping one slot at a time and counting the
+placements where the prediction changes:
+
+| slot | verdict | effect |
+|---|---|---|
+| `piece_spawn` | DISCRIMINATING | `none` changes 5 trajectories / 3 outcomes |
+| `piece_direction` | DISCRIMINATING | `outward_turned` changes 5 / 3 |
+| `piece_propagation` | **TRAJECTORY-ONLY** | `edge_teleport` changes 5 trajectories, 0 outcomes |
+| `sink_predicate` | DISCRIMINATING | `contact` changes 2 / 2 |
+| `sink_miss` | DISCRIMINATING | `stop` and `absorb` each change 2 / 2 |
+| `hazard` | DISCRIMINATING | `terminate_local` 0 / 2, `pass_through` 11 / 2 |
+| `own_flow` | **INERT** | both alternatives change nothing, anywhere |
+| `boundary` | **INERT** | `reflect` changes nothing, anywhere |
+
+Consequences, all binding:
+
+1. **`own_flow` and `boundary` are demoted to non-gating UNKNOWN.** Independent
+   confirmation of the review's correction 2 — it predicted exactly these two
+   from the absence of evidence, and the measurement agrees.
+2. **`piece_propagation` is gated at the VERIFIER only, never at the compiler.**
+   It changes what the trajectory looks like but never who wins, so scoring it
+   through outcomes would be scoring noise.
+3. **`piece_spawn: both_flanks` is data-indistinguishable from the oracle** at
+   idx0 (0 trajectory and 0 outcome differences) because the flanks are always
+   empty when a split occurs. A model choosing it must be scored CORRECT, as an
+   equivalence class — the R95a ft09 precedent, where
+   `{glyph_constraints, nearest_glyph_only}` was genuine data-indistinguishability
+   rather than a wrong answer. The scoring key records the class, not one member.
+
+### Bound correction 7, DISCHARGED — the controls swap, by measurement (2026-08-22 18:08 KST)
+
+`scripts/rounds/R98/near_ood_screen.py` → `near_ood.txt`. The family's observable
+tell is that ONE action triggers a scripted consequence the engine exposes as many
+frame layers at once. Measured across candidates (every simple action twice, plus
+a click grid):
+
+| game | max single-action layer burst |
+|---|---|
+| sp80 (oracle) | **22** (on the commit action) |
+| **tu93** | **8** (on two movement actions) |
+| sk48 | 2 |
+| re86, ls20, wa30, tn36, cn04 | 1 |
+
+- **re86 is REJECTED as near-OOD.** Every action returns a single frame, so no
+  agent would reach for a place-then-propagate model there; it is unrelated, not
+  confusable. The review's suspicion that neither proposed candidate was certified
+  was correct.
+- **tu93 becomes the NEAR-OOD control.** One action produces an 8-layer scripted
+  consequence — the family's exact tell — while the mechanics are actor
+  corridor-motion with no source, no placement phase and no coverage objective. An
+  agent could plausibly select this family from the observable signature and be
+  wrong on the mechanics, which is the definition of near-OOD.
+- **re86 becomes the FAR-OOD control** (cn04 recorded as the alternate).
+
+So the two controls SWAP relative to v1.1, and both roles are now measured rather
+than asserted. Full certification still runs through the grounding service when it
+exists; this screen is the precondition, and it is now a discriminating one.
+
+## R98 EVALUATION CONTRACT — FROZEN 2026-08-22 18:10 KST
+
+- **Family**: FlowDeflectionDynamics, variant v0 `PlaceThenPropagate`, straight
+  splitter pieces only. Mixed straight/angled boards are OUT (the response table is
+  keyed by piece class so they remain a future extension, not a present claim).
+- **Oracle & criterion level**: sp80 **idx0 only**. idx1 may be run as a
+  NON-GATING observation. Fresh env + RESET per run; every action resolved through
+  the grounding service at action time; no replayed sequences.
+- **Budget**: ONE cumulative cap of **20 actions**, counting selection,
+  translation and commit alike, and at most **3 commits**. The certified path is 9
+  actions. The solve is planned from the layout that PERSISTS after the probe.
+- **Thresholds**: oracle gate 3/3. Model substages 3 runs per model per substage,
+  success ≥2/3. CONFIRMED = both models (gemma4-31b-q8 and gpt-oss-120b).
+- **Substage order**: canned-instance selection (oracle + the frozen mutant table,
+  serialized neutral) → variant-first slot filling.
+- **Gated slots**: `piece_spawn`, `piece_direction`, `sink_predicate`, `sink_miss`,
+  `hazard` at the outcome level; `piece_propagation` at the verifier level only;
+  `own_flow` and `boundary` NON-GATING UNKNOWN. `piece_spawn: both_flanks` scores
+  as an equivalence-class member of the oracle answer.
+- **Controls**: near-OOD **tu93** (expected UNSUPPORTED/UNKNOWN pre-execution),
+  far-OOD **re86**. Neither gates.
+- **Prohibited leakage**: as R95/R96/R97 — no adapter code, wiki, game ids,
+  provenance labels or gold sequences reach the model; evidence is PROSE only.
+- **Model-facing contract must state**: same-sink flanking as the satisfaction
+  condition, spreading as the non-mouth response, direction preservation under
+  splitting, the behaviour on already-occupied flow, every reset a failed commit
+  performs, and the action-budget accounting. Anything the verifier enforces but
+  the contract omits is a harness defect that manufactures a false negative — the
+  lesson measured twice, applied preemptively.
+- **Non-counting**: UNKNOWN never executes; manual or oracle-assisted clears are
+  recorded but not counted.
+- **Falsification**: oracle-gate failure on GROUNDING (piece footprint/identity,
+  emitter or sink-mouth geometry, animation-layer decoding) is the pre-declared
+  40% outcome and pivots the round to grounding work — not to schema or model
+  changes.
+
 ### Remaining before the freeze
 
-1. ~~Pre-certify the discovery action sequence end to end~~ — **DONE**
-   (9 actions certified; cap frozen at 20 / 3 commits).
-2. Run the gated-enum prediction test (bound correction 5) and demote whatever
-   fails it.
-3. Certify or replace the near-OOD control (bound correction 7).
-4. Then freeze the contract and implement `schema_flow.py`.
+All four are DONE and the contract above is FROZEN:
+
+1. ~~Pre-certify the discovery action sequence~~ — 9 actions; cap 20 / 3 commits.
+2. ~~Gated-enum prediction test~~ — faithfulness PASS; `own_flow` and `boundary`
+   demoted; `piece_propagation` verifier-only; `both_flanks` an equivalence class.
+3. ~~Certify or replace the near-OOD control~~ — controls swapped by measurement:
+   near-OOD tu93, far-OOD re86.
+4. Implement `schema_flow.py` against the frozen contract — IN PROGRESS.
 
 ## v0 draft (SUPERSEDED by the pivot — kept for provenance)
 
