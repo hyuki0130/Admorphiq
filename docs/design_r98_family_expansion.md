@@ -510,6 +510,38 @@ The oracle measurement bounds this comfortably: the clear itself is 4 actions
 against a human baseline of 39, so the level still scores at the per-level cap
 even after a full discovery budget.
 
+### Bound correction 6, DISCHARGED — the discovery sequence is certified (2026-08-22 17:44 KST)
+
+`scripts/rounds/R98/discovery_probe_idx0.py` → `discovery.txt`. Every step follows
+a rule derivable from observables, so this is a certified sequence rather than a
+hand-picked one:
+
+| phase | rule | actions | what it establishes |
+|---|---|---|---|
+| select | click the candidate movable region's own centroid | 1 | the region takes a distinct selected appearance and nothing else changes |
+| displacement contrast | press one direction, then keep pressing to the bound | 3 | a press displaces the whole footprint; a later press at the bound does not — the CONTRAST that licenses a constraint claim |
+| align over emitter | translate until the region's column span covers the emitter column | 2 | the only placement class that makes the flow interact with the region at all |
+| sacrificial commit | commit once | **1** | 28 layers of trajectory, plus T3 contact-vs-mouth, plus the O2 pair, plus layout persistence |
+| solve | replan from the PERSISTED layout, commit | 2 | the level advances |
+
+- **discovery = 7 actions, solve = 2, cumulative = 9**, against an engine
+  allowance of 30 change-phase actions and 4 commits (2 used).
+- **A commit costs ONE action, not two.** The settle, the failure flash and the
+  restore all run inside a single action's internal ticks. This corrects the
+  wiki's "~2 actions" estimate for a sacrificial spill.
+- The alignment rule lands exactly on the placement that carries the richest
+  evidence (the `+2` case that certifies T3 and O2). The evidence set is not
+  something the contract has to hope for — it falls out of the one probe an agent
+  would run anyway.
+- RHAE headroom: 9 actions against a human baseline of 39 leaves the level at the
+  per-level cap with room to spare.
+
+**Frozen budget clause (replaces the v1.1 12/18 split)**: ONE cumulative cap of
+**20 actions**, counting selection, translation and commit actions alike, and at
+most **3 commits**. That is 2.2× the certified path, stays inside the engine's own
+bounds, and still scores at the per-level cap. The solve is planned from the
+layout that PERSISTS after the probe, never from the entry layout.
+
 ### Bound correction 7 — near-OOD must be certified, not asserted
 
 re86 remains provisional. The control only counts as near-OOD if it FIRST survives
@@ -520,8 +552,8 @@ prerequisite of the freeze, not a post-hoc label. Far-OOD stays tu93.
 
 ### Remaining before the freeze
 
-1. Pre-certify the discovery action sequence end to end (bound correction 6) and
-   record its exact action count.
+1. ~~Pre-certify the discovery action sequence end to end~~ — **DONE**
+   (9 actions certified; cap frozen at 20 / 3 commits).
 2. Run the gated-enum prediction test (bound correction 5) and demote whatever
    fails it.
 3. Certify or replace the near-OOD control (bound correction 7).

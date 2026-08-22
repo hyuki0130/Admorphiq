@@ -1,0 +1,17 @@
+R98 discovery-sequence certification — 2026-08-22 17:44:19 KST
+repo HEAD: 0052f45
+env: sp80-589a99af (OFFLINE arcade)
+
+entry: movable region occupies rows [4] columns [3, 4, 5, 6, 7]
+
+  select                        1 action(s)   selected appearance present: True
+  displacement contrast         3 action(s)   first press moved: True; a later press at the bound was blocked: True
+  align over emitter            2 action(s)   emitter column 9; region span now 5..9
+  sacrificial commit            1 action(s)   28 layers exposed; layout persisted across the failed attempt: True
+  solve from persisted layout   2 action(s)   level advanced: True
+
+  discovery total: 7 actions
+  solve total:     2 actions
+  cumulative:      9 actions (engine allowance at this level is 30 change-phase actions, 4 commits)
+
+[discovery sequence] PASS — the sequence clears the level within the engine budget
