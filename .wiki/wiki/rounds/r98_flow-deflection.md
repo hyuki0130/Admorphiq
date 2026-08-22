@@ -3,7 +3,7 @@ type: reasoning
 round: R98
 axis: agent25 — hypothesis-DSL family expansion #3 (two-phase place-then-propagate flow)
 keywords: [agent25, hypothesis-dsl, family-expansion, flow-deflection, place-then-propagate, sp80, response-table, reference-propagator, gated-enum, inert-slot, equivalence-class, near-ood, oracle-certification, two-model]
-verdict: IN PROGRESS — **LIVE ORACLE GATE 3/3 PASS end to end** (2026-08-22): discovery → grounding → verify → compile → execute clears sp80 idx0 in 10 actions / 2 commits against a frozen cap of 20 / 3. Contract FROZEN after the Codex schema consult (CONDITIONAL GO, six corrections bound and discharged BY MEASUREMENT); grounding earns 10/10 measured slots from observation alone; the verifier reproduces the frozen mutant table on live evidence; the model-stage driver self-tests 6/6 on deterministic stubs. Only the paired GPU model runs remain
+verdict: **MODEL STAGE MEASURED (2026-08-23) — SELECT CONFIRMED ON BOTH CONTRACT MODELS (gemma4 3/3, gpt-oss 3/3, and qwen3.8-27b 3/3), each picking the EXACT truth every run and clearing the level at oracle-gate efficiency; FILL passed outright by gpt-oss-120b 3/3 with a perfect 7-of-7 hypothesis, gemma4 missing exactly one slot.** Live oracle gate 3/3 end to end (2026-08-22): discovery → grounding → verify → compile → execute clears sp80 idx0 in 10 actions / 2 commits against a frozen cap of 20 / 3. Contract FROZEN after the Codex schema consult (CONDITIONAL GO, six corrections bound and discharged BY MEASUREMENT); grounding earns 10/10 measured slots from observation alone; the verifier reproduces the frozen mutant table on live evidence; the model-stage driver self-tests 6/6 on deterministic stubs. Only the paired GPU model runs remain
 commit: [f6f9dd8, 748bc04, ad759da, 216a9a9, e9fced6]
 date: 2026-08-22
 ---
@@ -207,79 +207,80 @@ Self-test: truthful select and fill both clear; wrong picks are blocked by the
 verifier at **zero executed actions**; an equivalence-class answer scores correct;
 the leak guard is clean.
 
-## MODEL STAGE — first measurement (2026-08-23)
+## MODEL STAGE — MEASURED (2026-08-23)
 
-Three models, run as Kaggle kernels on the live env (`notebooks/r98_flow_bench.py`).
-Artifacts: `scripts/rounds/R98/model/`.
+Three models as Kaggle kernels against the live env. Two prompt versions were run;
+the first exposed a defect, the second is the result.
 
-### SELECT — two of three models reach oracle-gate performance
+### Final result (corrected ask) — artifacts `scripts/rounds/R98/model_v2/`
 
-| model | select | detail |
-|---|---|---|
-| gemma4-31b-it | **3/3 PASS** | picked the EXACT truth every run → verifier PASS → plan SOLVABLE → 2 executed actions → cleared, 10 actions / 2 commits |
-| **qwen3.8-27b** | **3/3 PASS** | identical, deterministically |
-| gpt-oss-120b | 0/3 | picked wrong candidates; verifier CONTRADICTED, **zero actions executed** |
+| model | select | fill | per-slot correct (of 3 runs) |
+|---|---|---|---|
+| gemma4-31b-it | **3/3 PASS** | 0/3 | 6 of 7 perfect; ONLY `hazard_response` wrong |
+| qwen3.8-27b | **3/3 PASS** | 0/3 | 5 of 7; both hazard slots wrong |
+| gpt-oss-120b | **3/3 PASS** | **3/3 PASS** | **7 of 7 perfect** |
 
-qwen3.8-27b was released 2026-08-14 (dense 27.8B, Apache 2.0, hybrid Gated
-DeltaNet — vLLM 0.17+ implements those layers). It matched gemma4 exactly on its
-first outing, which makes it a live candidate for the deploy model rather than a
-curiosity.
+Against the frozen contract (per-model ≥2/3, CONFIRMED = both contract models):
 
-The safety property held everywhere: every wrong hypothesis was blocked before a
-single action was spent.
+- **SELECT: CONFIRMED on both models.** Every model picked the EXACT truth on every
+  run, then verifier PASS → plan SOLVABLE → 2 executed actions → level cleared, at
+  10 actions and 2 commits against the 20/3 cap. That is oracle-gate performance
+  reached by the model rather than by a hand-authored hypothesis.
+- **FILL: gpt-oss-120b passes outright, 3/3, with a perfect hypothesis.** Not
+  confirmed paired: gemma4 misses exactly one slot.
 
-### FILL — 0/3 everywhere, and the reason is the prompt
+### What the first prompt version taught
 
-Aggregated over 9 runs × 3 models:
-
-| slot | truth | answers |
-|---|---|---|
-| `piece_response_direction` | `preserved` | **`outward_turned` 9/9** |
-| `sink_response_predicate` | `same_sink_flanks` | **`contact` 9/9** |
-| `hazard_response` | `terminate_fatal` | **`terminate_local` 9/9** |
-| `piece_response_propagation` | `cellwise_iterative` | correct 8/9 |
-| `sink_response_miss` | `spread_like_piece` | correct 7/9 |
-| `piece_response_spawn` | equivalence class | correct 9/9 |
-
-Three independent models, nine runs, unanimous on the same three wrong values —
-while getting the other three right. That is a prompt defect, not a model verdict,
-and the same defect explains gpt-oss's select failures (it picked exactly the
-hazard-ignoring and outward-turning candidates). Full analysis:
+The first run had gemma4 3/3 and qwen 3/3 on select but gptoss 0/3, and 0/3 fill
+everywhere. Aggregating the answers exposed the cause: three independent models were
+unanimous on the same three wrong values across nine runs, while getting the other
+three right. That is a prompt defect, not a model verdict — the full argument is in
 [[../lessons/unanimous_wrong_answers_are_a_prompt_defect_20260823]].
 
-The three defects, all in the ask:
+Three fixes: state that flow cells PERSIST and warn that a repeating split only
+LOOKS like sideways travel; gloss every closed-choice value (no model can map
+`same_sink_flanks` onto "occupied the notch in the target's top edge" by guessing);
+and say that the two hazard answers must agree.
 
-1. the evidence described the split cells as having "moved outward", which is the
-   animation's APPEARANCE and the opposite of the mechanism — flow cells persist,
-   so a cell appearing further out is a NEW cell;
-2. the closed choices were bare identifiers with no gloss, so `same_sink_flanks`
-   had to be guessed rather than read;
-3. hazard was split across a flow-level response and an objective-level policy
-   whose required agreement was never stated.
+The effect was large and one-directional. gpt-oss went **0/3 → 3/3 on select and
+0/3 → 3/3 on fill**; gemma4 and qwen went from three wrong slots to one and two.
 
-All three are fixed and the re-measurement is running. Two operational traps were
-also fixed on the way: the R98 driver did not honour `ARC_ENVIRONMENTS_DIR` (a GPU
-session reached a healthy model server and then found an arcade with no games), and
-a kernel pushed too soon after a dataset version pins the PREVIOUS version — the
-dataset must be verified by FILE SIZE, not by its "ready" status.
+### The one honest residue: hazard is encoded twice
 
-## Next — the paired runs, ready to launch
+gemma4's failure is a single slot, and it is self-contradictory in a telling way: it
+answered `hazard_policy: fatal_on_contact` (correct — barrier contact fails the
+attempt) while answering `hazard_response: terminate_local`, whose gloss says the
+attempt can still succeed. Both halves of its reasoning are right about the world;
+our encoding splits fatality across two slots and lets an incoherent pair through.
 
-`notebooks/r98_flow_bench.py` is the Kaggle kernel, built on the R95b boot path
-verbatim (vLLM api_server on the mounted model, `ARC_ENVIRONMENTS_DIR` pointing at
-the competition `environment_files` so the run drives the LIVE env). It runs BOTH
-modes in one kernel and writes `r98_flow_bench_<model>.json`.
+**This is recorded, not patched.** gpt-oss resolves the same encoding from the same
+evidence 3/3, so the encoding is learnable and re-cutting it now would be tuning the
+representation until the weaker models pass — metric gaming, not measurement. The
+proposed orthogonalisation (`hazard_response` = `ends | passes_through` about the
+STREAM only, fatality owned solely by `hazard_policy`) is a schema change to be
+measured on its own, against all three models, as its own experiment.
 
-Two-model rule: run the kernel TWICE, once per mounted model
-(`admorphiq-r98-flow-gemma4` and `admorphiq-r98-flow-gptoss`). No one-shot
-verdicts.
+### Operational traps fixed along the way
 
-Ship in the working tree: `scripts/probe_r98_model_bench.py` and the `admorphiq`
-package. Per-model success is ≥2 of 3 runs per mode; CONFIRMED = both models.
+- the R98 driver did not honour `ARC_ENVIRONMENTS_DIR`, so a GPU session booted a
+  healthy model server and only then found an arcade with zero games. Every entry
+  point now honours it, and the notebook preflights the directory BEFORE the server
+  boots.
+- a kernel pushed too soon after a dataset version pins the PREVIOUS version, and
+  `datasets status` reports "ready" at the dataset level, not the version level. The
+  dataset must be verified by FILE SIZE before the kernel is pushed.
 
-Locally the same driver runs against any OpenAI-compatible endpoint via
-`HARNESS_LLM_BASE_URL` / `HARNESS_LLM_MODEL`; the dev Mac cannot host either model,
-which is why the measurement is a GPU kernel.
+## Next
+
+1. **Fill is not confirmed paired.** gemma4 misses one slot, and the cause is our
+   encoding rather than its reasoning. Measure the hazard orthogonalisation as its
+   own experiment against all three models — never as a patch to move a verdict.
+2. **Multi-piece placement**, the burden the idx1 observation named: idx1 carries
+   three pieces and three targets, so a single-piece placement satisfies nothing and
+   the sink shortlist comes back empty. That, plus a shortlist that can name targets
+   from static structure and not only from satisfaction, is the next expansion.
+3. qwen3.8-27b matched the contract models on select at first outing and is a live
+   deploy candidate rather than a curiosity — worth carrying into the next family.
 
 ## Related
 
