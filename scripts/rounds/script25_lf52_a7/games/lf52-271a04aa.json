@@ -1,0 +1,13 @@
+{
+  "game_id": "lf52-271a04aa",
+  "win_levels": 10,
+  "levels_completed": 0,
+  "elapsed_s": 3.71,
+  "total_actions": 1000,
+  "per_level": [],
+  "game_score": 0.0,
+  "has_baseline": true,
+  "llm_hypothesis": null,
+  "title": "LF52",
+  "adapter": "lf52"
+}

@@ -1,0 +1,38 @@
+{
+  "game_id": "r11l-495a7899",
+  "win_levels": 6,
+  "levels_completed": 4,
+  "elapsed_s": 5.04,
+  "total_actions": 600,
+  "per_level": [
+    {
+      "level": 1,
+      "agent_actions": 7,
+      "human_actions": 22,
+      "score": 1.0
+    },
+    {
+      "level": 2,
+      "agent_actions": 36,
+      "human_actions": 33,
+      "score": 0.840278
+    },
+    {
+      "level": 3,
+      "agent_actions": 54,
+      "human_actions": 51,
+      "score": 0.891975
+    },
+    {
+      "level": 4,
+      "agent_actions": 172,
+      "human_actions": 26,
+      "score": 0.02285
+    }
+  ],
+  "game_score": 0.259423,
+  "has_baseline": true,
+  "llm_hypothesis": null,
+  "title": "R11L",
+  "adapter": "r11l"
+}

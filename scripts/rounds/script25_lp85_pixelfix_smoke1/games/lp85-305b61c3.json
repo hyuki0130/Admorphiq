@@ -1,0 +1,20 @@
+{
+  "game_id": "lp85-305b61c3",
+  "win_levels": 8,
+  "levels_completed": 1,
+  "elapsed_s": 0.33,
+  "total_actions": 500,
+  "per_level": [
+    {
+      "level": 1,
+      "agent_actions": 69,
+      "human_actions": 17,
+      "score": 0.060702
+    }
+  ],
+  "game_score": 0.001686,
+  "has_baseline": true,
+  "llm_hypothesis": null,
+  "title": "LP85",
+  "adapter": "lp85"
+}

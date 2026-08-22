@@ -1,0 +1,20 @@
+{
+  "game_id": "cn04-2fe56bfb",
+  "win_levels": 6,
+  "levels_completed": 1,
+  "elapsed_s": 1.41,
+  "total_actions": 1000,
+  "per_level": [
+    {
+      "level": 1,
+      "agent_actions": 36,
+      "human_actions": 29,
+      "score": 0.64892
+    }
+  ],
+  "game_score": 0.030901,
+  "has_baseline": true,
+  "llm_hypothesis": null,
+  "title": "CN04",
+  "adapter": "cn04"
+}

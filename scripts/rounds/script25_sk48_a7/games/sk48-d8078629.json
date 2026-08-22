@@ -1,0 +1,13 @@
+{
+  "game_id": "sk48-d8078629",
+  "win_levels": 8,
+  "levels_completed": 0,
+  "elapsed_s": 1.96,
+  "total_actions": 1000,
+  "per_level": [],
+  "game_score": 0.0,
+  "has_baseline": true,
+  "llm_hypothesis": null,
+  "title": "SK48",
+  "adapter": "sk48"
+}

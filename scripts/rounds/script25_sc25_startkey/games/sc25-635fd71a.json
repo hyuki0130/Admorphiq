@@ -1,0 +1,13 @@
+{
+  "game_id": "sc25-635fd71a",
+  "win_levels": 6,
+  "levels_completed": 0,
+  "elapsed_s": 5.77,
+  "total_actions": 3000,
+  "per_level": [],
+  "game_score": 0.0,
+  "has_baseline": true,
+  "llm_hypothesis": null,
+  "title": "SC25",
+  "adapter": "sc25"
+}

@@ -1,0 +1,73 @@
+{
+  "game": "sc25",
+  "mode": "select",
+  "runs": [
+    {
+      "run": 0,
+      "choice": "I1",
+      "mapped_instance": "sc25_oracle",
+      "is_oracle": true,
+      "confidence": "high",
+      "evidence": "The observation that clicks changed exactly 1 cell each matches the 'binary_flip' transition model (I1, I2, I3) and contradicts the 'empirical_effect_matrix' with footprint 2 (I4). The 'xor_exact' interpretation in I1 is the standard for these types of pattern-matching puzzles where the goal is to match a target pattern.",
+      "colour_variety": [
+        2,
+        5
+      ],
+      "verifier_verdict": "PASS",
+      "executed": true,
+      "levels_cleared": 0,
+      "cast_and_handover": true,
+      "actions_per_level": [],
+      "discovery_actions": 6,
+      "cycle_acquired": false,
+      "plan_outcome": "CAST_HANDOVER",
+      "rebind_events": 0,
+      "outcome": "PASS"
+    },
+    {
+      "run": 1,
+      "choice": "I1",
+      "mapped_instance": "sc25_oracle",
+      "is_oracle": true,
+      "confidence": "high",
+      "evidence": "The observation that clicks changed exactly 1 cell each matches the 'binary_flip' transition model (I1, I2, I3) and contradicts the 'empirical_effect_matrix' with footprint 2 (I4). The 'xor_exact' interpretation in I1 is the standard for these types of pattern-matching puzzles where the goal is to match a target pattern.",
+      "colour_variety": [
+        2,
+        5
+      ],
+      "verifier_verdict": "PASS",
+      "executed": true,
+      "levels_cleared": 0,
+      "cast_and_handover": true,
+      "actions_per_level": [],
+      "discovery_actions": 6,
+      "cycle_acquired": false,
+      "plan_outcome": "CAST_HANDOVER",
+      "rebind_events": 0,
+      "outcome": "PASS"
+    },
+    {
+      "run": 2,
+      "choice": "I1",
+      "mapped_instance": "sc25_oracle",
+      "is_oracle": true,
+      "confidence": "high",
+      "evidence": "The observation that clicks changed exactly 1 cell each matches the 'binary_flip' transition model (I1, I2, I3) and contradicts the 'empirical_effect_matrix' with footprint 2 (I4). The 'xor_exact' interpretation in I1 is the standard for these types of pattern-matching puzzles where the goal is to match a target pattern.",
+      "colour_variety": [
+        2,
+        5
+      ],
+      "verifier_verdict": "PASS",
+      "executed": true,
+      "levels_cleared": 0,
+      "cast_and_handover": true,
+      "actions_per_level": [],
+      "discovery_actions": 6,
+      "cycle_acquired": false,
+      "plan_outcome": "CAST_HANDOVER",
+      "rebind_events": 0,
+      "outcome": "PASS"
+    }
+  ],
+  "model_verdict": "PASS"
+}

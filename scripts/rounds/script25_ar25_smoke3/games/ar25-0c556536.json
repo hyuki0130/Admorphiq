@@ -1,0 +1,20 @@
+{
+  "game_id": "ar25-0c556536",
+  "win_levels": 8,
+  "levels_completed": 1,
+  "elapsed_s": 7.37,
+  "total_actions": 3000,
+  "per_level": [
+    {
+      "level": 1,
+      "agent_actions": 835,
+      "human_actions": 32,
+      "score": 0.001469
+    }
+  ],
+  "game_score": 4.1e-05,
+  "has_baseline": true,
+  "llm_hypothesis": null,
+  "title": "AR25",
+  "adapter": "ar25"
+}

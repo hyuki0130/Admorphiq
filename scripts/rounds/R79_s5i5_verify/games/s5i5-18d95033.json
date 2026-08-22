@@ -1,0 +1,20 @@
+{
+  "game_id": "s5i5-18d95033",
+  "win_levels": 8,
+  "levels_completed": 1,
+  "elapsed_s": 0.43,
+  "total_actions": 300,
+  "per_level": [
+    {
+      "level": 1,
+      "agent_actions": 19,
+      "human_actions": 20,
+      "score": 1.0
+    }
+  ],
+  "game_score": 0.027778,
+  "has_baseline": true,
+  "llm_hypothesis": null,
+  "title": "S5I5",
+  "adapter": "s5i5"
+}

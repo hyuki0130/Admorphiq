@@ -1,0 +1,44 @@
+{
+  "game_id": "sb26-7fbdac44",
+  "win_levels": 8,
+  "levels_completed": 5,
+  "elapsed_s": 0.6,
+  "total_actions": 800,
+  "per_level": [
+    {
+      "level": 1,
+      "agent_actions": 13,
+      "human_actions": 18,
+      "score": 1.0
+    },
+    {
+      "level": 2,
+      "agent_actions": 21,
+      "human_actions": 28,
+      "score": 1.0
+    },
+    {
+      "level": 3,
+      "agent_actions": 21,
+      "human_actions": 18,
+      "score": 0.734694
+    },
+    {
+      "level": 4,
+      "agent_actions": 21,
+      "human_actions": 19,
+      "score": 0.818594
+    },
+    {
+      "level": 5,
+      "agent_actions": 23,
+      "human_actions": 31,
+      "score": 1.0
+    }
+  ],
+  "game_score": 0.374402,
+  "has_baseline": true,
+  "llm_hypothesis": null,
+  "title": "SB26",
+  "adapter": "sb26"
+}

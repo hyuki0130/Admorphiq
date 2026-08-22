@@ -1,0 +1,13 @@
+{
+  "game_id": "wa30-ee6fef47",
+  "win_levels": 9,
+  "levels_completed": 0,
+  "elapsed_s": 1.48,
+  "total_actions": 1000,
+  "per_level": [],
+  "game_score": 0.0,
+  "has_baseline": true,
+  "llm_hypothesis": null,
+  "title": "WA30",
+  "adapter": "wa30"
+}

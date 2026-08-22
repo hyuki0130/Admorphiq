@@ -1,0 +1,26 @@
+{
+  "game_id": "tu93-0768757b",
+  "win_levels": 9,
+  "levels_completed": 2,
+  "elapsed_s": 9.62,
+  "total_actions": 3000,
+  "per_level": [
+    {
+      "level": 1,
+      "agent_actions": 249,
+      "human_actions": 19,
+      "score": 0.005822
+    },
+    {
+      "level": 2,
+      "agent_actions": 65,
+      "human_actions": 16,
+      "score": 0.060592
+    }
+  ],
+  "game_score": 0.002822,
+  "has_baseline": true,
+  "llm_hypothesis": null,
+  "title": "TU93",
+  "adapter": "tu93"
+}
