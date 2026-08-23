@@ -103,12 +103,14 @@ def play_level(w: Walker) -> tuple[bool, str]:
     for a in (1, 1, 2, 3, 4):
         w.act(a, g)
 
+    # Probe until the idle appearance is known, then keep probing the remaining
+    # candidates: selecting a piece is what separates it from a neighbour it touches,
+    # and a planner that can only move a merged pair cannot solve a board that needs
+    # them placed independently.
     probes = 0
     candidates = g.selection_candidates()
     if candidates is not UNKNOWN:
-        for cell in candidates.value[:4]:
-            if g.idle_appearance_known():
-                break
+        for cell in candidates.value[:6]:
             w.click(cell, g)
             probes += 1
 

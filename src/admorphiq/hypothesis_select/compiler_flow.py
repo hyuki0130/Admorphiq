@@ -49,7 +49,9 @@ from admorphiq.hypothesis_select.propagate_flow import (
 )
 
 MAX_OFFSET = 24     # placement search bound; a board is far smaller than this
-MAX_CANDIDATES = 4000  # cost-ordered layouts examined before giving up
+MAX_CANDIDATES = 4000     # cost-ordered layouts examined before giving up
+PROMISING_PER_PIECE = 12  # per-piece shortlist size for the decomposed second pass
+MAX_COMBINATIONS = 20000  # layouts examined in that second pass
 
 
 @dataclass(frozen=True)
@@ -199,6 +201,41 @@ def _joint_layouts(
     return out
 
 
+def _score(board: Board, table: ResponseTable) -> tuple[int, bool]:
+    """How good a layout looks: targets satisfied, and whether it stays clear of the
+    barriers. Used to rank placements, never to decide the objective."""
+    prediction = predict(board, table)
+    return len(prediction.satisfied), not prediction.fatal
+
+
+def _promising_offsets(
+    board: Board,
+    index: int,
+    options: list[tuple[Cell, tuple[int, ...]]],
+    table: ResponseTable,
+    baseline: tuple[int, bool],
+) -> list[int]:
+    """Option indices for one piece that IMPROVE the board on their own.
+
+    A decomposition heuristic, and honestly a lossy one: a layout where two pieces
+    only help jointly, neither improving anything alone, is invisible to it. It
+    exists because the cost-ordered scan is exhaustive but shallow — it reaches only
+    layouts a few presses from the start — while a channeling solution can need
+    several pieces moved far. Ranking by what each piece can achieve alone is the
+    cheapest way to find the placements worth combining.
+    """
+    scored: list[tuple[tuple[int, bool], int, int]] = []
+    for pick, (offset, path) in enumerate(options):
+        if offset == (0, 0):
+            continue
+        value = _score(board.moved(offset[0], offset[1], index), table)
+        if value <= baseline:
+            continue
+        scored.append((value, len(path), pick))
+    scored.sort(key=lambda e: (-e[0][0], not e[0][1], e[1]))
+    return [pick for _, _, pick in scored[:PROMISING_PER_PIECE]]
+
+
 def _anchor(piece: frozenset[Cell]) -> Cell:
     rows = sorted({r for r, _ in piece})
     cols = sorted({c for _, c in piece})
@@ -252,27 +289,72 @@ def compile_flow_hypothesis(
         if not wins:
             continue
 
-        steps: list[FlowStep] = []
-        for i, pick in enumerate(picks):
-            path = options[i][pick][1]
-            if not path:
+        return _plan_from(board, options, picks, offsets, satisfied, commit)
+
+    # Second pass: the cheap neighbourhood held nothing, so combine the placements
+    # each piece can reach that improve the board on its OWN. Explicitly a
+    # heuristic — see _promising_offsets — so its failure is reported as such.
+    baseline = _score(board, table)
+    shortlists: list[list[int]] = []
+    for i in range(len(board.pieces)):
+        identity = next((k for k, (o, _) in enumerate(options[i]) if o == (0, 0)), None)
+        picks = _promising_offsets(board, i, options[i], table, baseline)
+        if identity is not None:
+            picks = [identity] + picks
+        shortlists.append(picks or ([identity] if identity is not None else []))
+
+    combinations = 1
+    for picks in shortlists:
+        combinations *= max(1, len(picks))
+    if selectable and combinations <= MAX_COMBINATIONS:
+        for picks in _product(shortlists):
+            examined += 1
+            offsets = tuple(options[i][pick][0] for i, pick in enumerate(picks))
+            candidate = board.with_offsets(offsets)
+            wins, satisfied = _wins(candidate, table, instance.objective)
+            if not wins:
                 continue
-            if len(board.pieces) > 1:
-                steps.append(Select(_anchor(board.pieces[i])))
-            steps.extend(path)
-        steps.append(commit)
-        return FlowPlan(
-            PlanStatus.SOLVABLE,
-            steps=tuple(steps),
-            offsets=offsets,
-            predicted_satisfied=satisfied,
-            reason=f"placement {offsets} is predicted to satisfy {satisfied} target(s)",
-        )
+            return _plan_from(board, options, picks, offsets, satisfied, commit)
 
     return FlowPlan(
         PlanStatus.UNSATISFIABLE,
-        reason=f"no layout among the {examined} cheapest satisfies the objective under the "
-               f"claimed table",
+        reason=f"no layout satisfies the objective under the claimed table: "
+               f"{examined} examined across the cheapest neighbourhood and the "
+               f"per-piece shortlists",
+    )
+
+
+def _product(shortlists: list[list[int]]):
+    """Every combination across the per-piece shortlists, cheapest-looking first."""
+    if not shortlists:
+        return
+    stack: list[tuple[int, ...]] = [()]
+    while stack:
+        picks = stack.pop()
+        depth = len(picks)
+        if depth == len(shortlists):
+            yield picks
+            continue
+        for choice in reversed(shortlists[depth]):
+            stack.append(picks + (choice,))
+
+
+def _plan_from(board, options, picks, offsets, satisfied, commit) -> FlowPlan:
+    steps: list[FlowStep] = []
+    for i, pick in enumerate(picks):
+        path = options[i][pick][1]
+        if not path:
+            continue
+        if len(board.pieces) > 1:
+            steps.append(Select(_anchor(board.pieces[i])))
+        steps.extend(path)
+    steps.append(commit)
+    return FlowPlan(
+        PlanStatus.SOLVABLE,
+        steps=tuple(steps),
+        offsets=offsets,
+        predicted_satisfied=satisfied,
+        reason=f"placement {offsets} is predicted to satisfy {satisfied} target(s)",
     )
 
 

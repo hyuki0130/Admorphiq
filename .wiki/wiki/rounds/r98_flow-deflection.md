@@ -311,12 +311,41 @@ defects were found by chasing that divergence, both worth keeping:
    EVERYTHING. Spreading into a cell a piece or target already occupies invents flow
    the engine never creates, and the error compounds from that tick on.
 
-**Where it stops now**: the compiler, not the model. No layout among the 4000
-cheapest satisfies the objective on idx2. That matches what R92 measured
-independently — a straight piece SPLITS a stream rather than turning it, so steering
-a middle source into a target while walling off the edge branches is a structured
-CHANNELING problem, and a 60k random search over that level found zero winning
-layouts. The wall is search, and it is now cleanly separated from faithfulness.
+**Where it stops now**: the compiler, not the model — and the wall is quantified.
+
+Two search strategies now run: an exhaustive cost-ordered scan of the cheapest
+neighbourhood, then a decomposed pass that combines the placements each piece can
+reach that improve the board ON ITS OWN (explicitly a heuristic — a layout where two
+pieces only help jointly is invisible to it). Together they examined **19,379
+layouts** on idx2 without a winner.
+
+The per-piece measurement says why, and it is not what one would guess:
+
+```
+baseline                          1 of 3 targets, hazard touched
+piece 0   182 placements,   6 improve alone,  best alone = 2 targets, hazard touched
+piece 1   168 placements, 117 improve alone,  best alone = 2 targets, hazard touched
+piece 2   120 placements,  53 improve alone,  best alone = 3 targets, hazard touched
+```
+
+**Coverage is not the constraint — one piece alone can satisfy all three targets.**
+What no layout achieves is doing so while keeping every stream off the barrier. That
+is exactly the structured CHANNELING R92 named from the other direction: a straight
+piece SPLITS a stream rather than turning it, so a placement that routes one source
+into a target simultaneously sends its other branch toward the floor, and the other
+pieces have to be positioned to catch it.
+
+So the next design is goal-directed rather than broader: rank placements by whether
+they BLOCK a barrier-bound branch, not by how many targets they satisfy. Ranking by
+targets is what both current passes do, and the measurement above shows that signal
+saturates long before the objective does.
+
+One more grounding fix landed here, and it is the R92 merge trap for the third time:
+two touching pieces share a single region while idle, so a planner could only move
+the merged pair. Pieces CONFIRMED by having worn the selected appearance are now
+reported individually, and probing every candidate rather than stopping at the first
+selection event is what separates them — visible as the search space growing from
+5,183 to 19,379 layouts once the pieces came apart.
 
 ## Next
 

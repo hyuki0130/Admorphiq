@@ -153,6 +153,25 @@ def _normalised(region: frozenset[Cell]) -> frozenset[Cell]:
     return frozenset((r - r0, c - c0) for (r, c) in region)
 
 
+def _split(cells: frozenset[Cell]) -> list[frozenset[Cell]]:
+    """4-connected components of an arbitrary cell set."""
+    todo = set(cells)
+    out: list[frozenset[Cell]] = []
+    while todo:
+        seed = todo.pop()
+        comp = {seed}
+        stack = [seed]
+        while stack:
+            r, c = stack.pop()
+            for n in ((r - 1, c), (r + 1, c), (r, c - 1), (r, c + 1)):
+                if n in todo:
+                    todo.remove(n)
+                    comp.add(n)
+                    stack.append(n)
+        out.append(frozenset(comp))
+    return sorted(out, key=min)
+
+
 def _translation(before: frozenset[Cell], after: frozenset[Cell]) -> Optional[Cell]:
     """The rigid offset taking ``before`` to ``after``, or None if the shape did
     not survive as a rigid translation (a shape change is not a move)."""
@@ -196,6 +215,12 @@ class FlowGrounding:
         # from the idle appearance the whole inventory follows without probing
         # each candidate in turn.
         self._idle_colour: Optional[int] = None
+        # Every region ever seen wearing the SELECTED appearance. Two touching
+        # pieces share one idle-coloured region under 4-connectivity, and a planner
+        # that can only move the merged blob cannot solve a board that needs them
+        # placed independently. Selection is the disambiguator: the selected piece
+        # is always segmented on its own.
+        self._confirmed: list[frozenset[Cell]] = []
         self._delta_obs: dict[int, Counter] = defaultdict(Counter)
         self._commit_obs: Counter = Counter()
         self._animations: list[_Animation] = []
@@ -387,6 +412,13 @@ class FlowGrounding:
             self._delta_obs[action][delta] += 1
             self._moving_colour = colour
             self._piece = a[0]
+            self._confirmed = [
+                frozenset((r + delta[0], c + delta[1]) for (r, c) in piece)
+                if piece == b[0] else piece
+                for piece in self._confirmed
+            ]
+            if a[0] not in self._confirmed:
+                self._confirmed.append(a[0])
             return True
         return False
 
@@ -414,6 +446,8 @@ class FlowGrounding:
                         self._idle_colour = dropped.pop()
                 self._selected_colour = colour
                 self._piece = r
+                if r not in self._confirmed:
+                    self._confirmed.append(r)
                 self._selection_obs += 1
                 return True
         return False
@@ -473,24 +507,35 @@ class FlowGrounding:
         return Grounded(tuple(sorted(self._piece)), "high")
 
     def pieces(self) -> Any:
-        """Every movable piece on the board.
+        """Every movable piece on the board, read off the CURRENT board.
 
-        Read off the CURRENT board rather than from a remembered region, because a
-        failed attempt re-selects a piece of the engine's choosing — so which one
-        wears the selected appearance is not something the harness may assume. With
-        one piece this is just the tracked region; once a selection event has
-        revealed the IDLE appearance, it is every region wearing either appearance.
-        Two touching pieces still segment correctly, because the selected one is
-        always separated by its own appearance."""
+        Pieces CONFIRMED by having worn the selected appearance are reported
+        individually — that is what separates two touching pieces, which share a
+        single region under 4-connectivity while idle. Whatever idle area remains
+        uncovered by a confirmed piece is reported as its own region, so a board
+        works before every piece has been probed; it is just coarser there.
+
+        Reading the current board matters because a failed attempt re-selects a
+        piece of the engine's choosing, so which one wears the selected appearance
+        is not something the harness may assume."""
         if not self.detected() or self._piece is None or self._prev_cells is None:
             return UNKNOWN
+        cells = self._prev_cells
         found: list[frozenset[Cell]] = []
+        for region in self._confirmed:
+            if region and region not in found and all(c in cells for c in region):
+                found.append(region)
+        covered = set().union(*found) if found else set()
         for colour in (self._selected_colour, self._idle_colour, self._moving_colour):
             if colour is None:
                 continue
-            for region in _regions(self._prev_cells, colour):
-                if region not in found:
-                    found.append(region)
+            for region in _regions(cells, colour):
+                remainder = frozenset(region - covered)
+                if not remainder:
+                    continue
+                for part in _split(remainder):
+                    if part not in found:
+                        found.append(part)
         if not found:
             found = [frozenset(self._piece)]
         ordered = sorted(found, key=min)
