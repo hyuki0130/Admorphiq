@@ -1144,14 +1144,55 @@ did not clear. What is measured is that the role is grounded where it should be,
 where it should be, and that its presence moved the remaining disagreement into a
 different, sharper place.
 
+## An emergence is an observation, and observations do not travel between layouts (2026-08-24)
+
+The previous section guessed that the wrong member of a hidden-source pair was being
+injected. That guess was wrong, and the truth is simpler and worse.
+
+`emergences()` reports OBSERVED entries — the cell and tick at which flow appeared —
+which is what makes a replay checkable. But the observation is made under the layout the
+probing spill ran on, and the plan then MOVES the pieces. Replaying those entries onto
+the committed layout is what produced both halves of the disagreement:
+
+```
+observed first layers on the committed spill  [(9,5), (9,6)] then [(9,4), (9,7)]
+emergences the model injected                 (3,3) (3,8) (7,9)
+```
+
+The committed spill enters at **row 9**, spreading symmetrically outward on one row —
+the signature of a source under a piece. The model was injecting row-3 entries seen when
+the pieces stood somewhere else. So an emergence is now dropped when the piece layout it
+was observed under is not the layout being predicted.
+
+Effect: idx0–idx2 are unchanged and still clear. idx3 no longer plans at all —
+`UNSATISFIABLE`, because without those entries the model does not know where the flow
+comes in for a layout it has not yet seen. That is a worse walk and a better model: it
+now fails where its knowledge actually ends instead of predicting confidently from
+observations that no longer apply.
+
+The next step is visible in the same measurements. Probing idx3 and moving a piece three
+cells with the flow committed either side:
+
+```
+entry after the probe layout      [(8,4)]
+entry after moving one piece      [(8,4)]
+```
+
+The entry does not move with the piece: **the source sits at a fixed board cell**, and
+the row-9 entry on the committed layout is what that same source looks like when
+something is standing on it. `standing_flow` already grounds (8,4). Modelling "a source
+at a fixed cell, emerging past whatever covers it" would let the model predict the entry
+for a layout it has never observed — which is exactly what planning requires.
+
 ## Next
 
 1. **Fill is not confirmed paired.** gemma4 misses one slot, and the cause is our
    encoding rather than its reasoning. Measure the hazard orthogonalisation as its
    own experiment against all three models — never as a patch to move a verdict.
-2. **Which member of a hidden-source pair emerges?** idx3's engine runs a stream down
-   column 4 that the model never predicts, while the model runs one down column 2 that
-   the engine never shows; the sources are grounded as pairs and one member is injected.
+2. **Model the source, not the sighting.** A source sits at a fixed board cell and the
+   flow emerges past whatever covers it. Grounding that would let the model predict the
+   entry for a layout it has never observed, which is what planning needs — and would
+   unblock idx3, which now honestly reports that it cannot plan.
 3. **Multi-piece placement**, the burden the idx1 observation named: idx1 carries
    three pieces and three targets, so a single-piece placement satisfies nothing and
    the sink shortlist comes back empty. That, plus a shortlist that can name targets

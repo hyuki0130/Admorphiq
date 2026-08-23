@@ -1100,6 +1100,15 @@ class FlowGrounding:
             seen |= set(layer)
         if not out:
             return UNKNOWN
+        if anim.piece_cells and anim.piece_cells != frozenset(self._all_piece_cells()):
+            # An emergence is an OBSERVATION under one layout. A concealed source sits
+            # at a fixed cell and the flow appears around whatever covers it, so once
+            # the pieces have moved the same source enters somewhere else — measured on
+            # idx3, where the committed spill entered at row 9 while the emergences
+            # injected from the probe layout sat at row 3. Replaying them onto a
+            # different layout predicts flow the engine never produces AND misses the
+            # flow it does.
+            return UNKNOWN
         return Grounded(tuple(out), "high")
 
     def barriers(self) -> Any:

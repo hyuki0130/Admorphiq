@@ -393,8 +393,26 @@ def _attribute_pre(g: FlowGrounding, forecast) -> None:
             print(f"    [attribute] first divergence at step {i}: "
                   f"invented {sorted(a - b)} missed {sorted(b - a)}", flush=True)
             _trail_surplus(forecast, observed.value)
+            _entry_report(g, observed.value)
             return
     print("    [attribute] the trails agree cell for cell", flush=True)
+
+
+def _entry_report(g: FlowGrounding, observed) -> None:
+    """Where the committed spill ENTERED the board, against the emergences the model
+    injected — which were observed under a different layout."""
+    layers = [layer for layer in observed if layer]
+    board = g.board()
+    print(f"    [entry] observed first layers {[sorted(x) for x in layers[:2]]}", flush=True)
+    if board is not UNKNOWN:
+        print(f"    [entry] injected emergences {sorted(board.value.emergences)} "
+              f"standing {sorted(board.value.standing_flow)}", flush=True)
+    cells = g._prev_cells
+    if cells is not None:
+        size = int(round(len(cells) ** 0.5))
+        for r in range(2, 6):
+            print("      r%-2d " % r + " ".join(f"{cells[(r, c)]:2d}" for c in range(size)),
+                  flush=True)
 
 
 def _trail_surplus(forecast, observed) -> None:
