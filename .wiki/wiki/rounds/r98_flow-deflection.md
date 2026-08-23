@@ -695,6 +695,36 @@ The remaining stall on idx3 is finer: with the right piece selected, some presse
 still do not reduce the distance to the intended layout, so a move is being refused
 for a reason the placement constraints do not yet capture.
 
+## Read the invariant, do not remember it (2026-08-24)
+
+The selected/idle inversion came back. The previous fix disambiguated the two
+appearances at the moment of a selection TRANSITION and then trusted that belief —
+and a failed attempt re-selects a piece of the engine's choosing, so any belief
+carried across that moment can silently invert again.
+
+The rule that does not rot is the invariant itself: the engine selects exactly ONE
+piece at a time, so among the two piece appearances the one worn by a single region
+is the selected one. `piece_appearances()` now derives that from the CURRENT board on
+every call, falling back to the remembered pair only when the board genuinely cannot
+decide — a single piece, or no piece selected at that instant.
+
+Alongside it, the driver gained a recovery instead of a verdict: **a press that
+leaves the board unchanged re-selects the intended piece and retries once.** The
+likeliest cause of a stalled press is that something re-selected a different piece,
+and one retry costs an action while abandoning the level costs the level. One retry
+only — a second identical refusal means the move is genuinely refused, and replanning
+on the real board beats pressing harder.
+
+Together these moved idx3 from "compiler UNSATISFIABLE on a degraded replan" to
+executing its plan to completion:
+
+```
+idx0: CLEARED — 19 actions
+idx1: CLEARED — 26 actions
+idx2: CLEARED — 51 actions
+idx3: executes the full plan; does not clear
+```
+
 ## Next
 
 1. **Fill is not confirmed paired.** gemma4 misses one slot, and the cause is our

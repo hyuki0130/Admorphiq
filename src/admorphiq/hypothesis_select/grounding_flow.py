@@ -510,6 +510,33 @@ class FlowGrounding:
         a non-flow board never activates these paths."""
         return bool(self._commit_obs)
 
+    def piece_appearances(self) -> tuple[Optional[int], Optional[int]]:
+        """(selected, idle) as read off the CURRENT board.
+
+        The engine selects exactly ONE piece at a time, so among the two piece
+        appearances the one worn by a single region is the selected one. That is a
+        standing invariant, not something to be inferred once from a transition and
+        then trusted: a failed attempt re-selects a piece of the engine's choosing,
+        and any belief carried across that moment can silently invert. Deriving it
+        from the board each time removes the whole class.
+
+        Falls back to the remembered values when the board cannot decide — a single
+        piece, or both appearances forming one region."""
+        stored = (self._selected_colour, self._idle_colour)
+        if self._prev_cells is None or None in stored:
+            return stored
+        counts = {
+            colour: len(_regions(self._prev_cells, colour))
+            for colour in stored
+            if colour is not None
+        }
+        singles = [c for c, n in counts.items() if n == 1]
+        if len(singles) != 1:
+            return stored
+        selected = singles[0]
+        idle = next(c for c in stored if c != selected)
+        return selected, idle
+
     def board_view(self) -> Any:
         """The current board as a cell->appearance map, exactly as grounding sees it.
 
@@ -589,7 +616,8 @@ class FlowGrounding:
         cells = self._prev_cells
         found: list[frozenset[Cell]] = []
         available = list(self._confirmed_shapes)
-        for colour in (self._selected_colour, self._idle_colour, self._moving_colour):
+        selected, idle = self.piece_appearances()
+        for colour in (selected, idle, self._moving_colour):
             if colour is None:
                 continue
             for region in _regions(cells, colour):

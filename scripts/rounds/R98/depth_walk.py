@@ -195,11 +195,22 @@ def play_level(w: Walker) -> tuple[bool, str]:
 
 
 def _execute(w: Walker, g: FlowGrounding, plan, entered: int, spent: int, probes: int):
-    """Run a plan, confirming every move. Returns (cleared, note, diverged)."""
+    """Run a plan, confirming every move. Returns (cleared, note, diverged).
+
+    A press that leaves the board unchanged is not automatically a dead end: the
+    likeliest cause is that something re-selected a different piece — a failed
+    attempt does exactly that — so the intended piece is RE-SELECTED and the press
+    retried once before the plan is abandoned. One retry, because a second identical
+    failure means the move is genuinely refused and replanning on the real board is
+    the better answer than pressing harder.
+    """
     expected = _footprints(g)
+    holding: Select | None = None
     for index, step in enumerate(plan.steps):
         if w.actions - spent >= ACTION_BUDGET or not w.alive:
             return False, f"out of budget at step {index}", False
+        if isinstance(step, Select):
+            holding = step
         w.run(step, g)
         if w.level > entered:
             return True, f"cleared in {w.actions - spent} actions ({probes} selection probes)", False
@@ -212,7 +223,15 @@ def _execute(w: Walker, g: FlowGrounding, plan, entered: int, spent: int, probes
             continue
         actual = _footprints(g)
         if actual == expected:
-            return False, f"move {index} ({step}) did not land: the board is unchanged", True
+            if holding is None:
+                return False, f"move {index} ({step}) did not land: the board is unchanged", True
+            w.run(holding, g)
+            w.run(step, g)
+            actual = _footprints(g)
+            if actual == expected:
+                return False, (
+                    f"move {index} ({step}) refused twice, even after re-selecting"
+                ), True
         if not _explained_by_one_move(expected, actual, delta):
             return False, (
                 f"move {index} ({step}) is not explained by moving one piece by "
