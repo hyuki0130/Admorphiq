@@ -1917,15 +1917,53 @@ idx2: CLEARED — 55 actions
 idx3: a second press along the flow's axis consumes the piece
 ```
 
+## The move budget is per PIECE, per LEVEL — and idx0 has none (2026-08-24)
+
+Last tick's rule was stated too broadly. Running the same probe across every level, along
+each level's own flow axis, corrects it:
+
+```
+idx0  one piece, driven along the flow   steps 0-4: 1 -> 1 pieces      NO loss
+idx1  the piece will not move at all (blocked)                          no loss
+idx2  moves one step, then blocked                                      no loss
+idx3  step 0 moves · step 1 LOSES the piece                             reproduced
+```
+
+On idx0 a piece travels five steps along the flow axis untouched. So "a piece survives one
+press along the flow's axis" is not a family rule — it is true of idx3 and false of idx0,
+and the constraint the compiler must respect is a per-level quantity, which is exactly why
+it was not adopted.
+
+Two refinements the cross-level run also settles:
+
+* **It is a budget, not a consecutive-press effect.** Flow, then cross, then flow still
+  loses the piece: the cross press moves it happily and does not restore anything.
+* **It is spent by a MOVE, not by a press.** idx3's probe phase presses along the flow
+  axis several times and costs nothing, because those presses are blocked where the pieces
+  start — which is why the walk still sees five pieces at plan time while this probe loses
+  one immediately after deliberately moving it.
+
+That last point is useful: the harness can learn the budget for free, by watching whether
+the inventory shrinks after a move it already makes, rather than spending a piece to find
+out. Wiring that is the next step; the mechanic is recorded and the constraint still waits
+for it.
+
+```
+idx0: CLEARED — 23 actions
+idx1: CLEARED — 30 actions
+idx2: CLEARED — 55 actions
+idx3: a second MOVE along the flow axis consumes the piece — on this level only
+```
+
 ## Next
 
 1. **Fill is not confirmed paired.** gemma4 misses one slot, and the cause is our
    encoding rather than its reasoning. Measure the hazard orthogonalisation as its
    own experiment against all three models — never as a patch to move a verdict.
-2. **Measure the vertical-move budget on every level, then enforce it.** On idx3 a piece
-   survives one press along the flow's axis and is consumed by the second; a row-axis
-   limit costs idx2 its clear, so the rule needs the flow's axis and a per-level number
-   before the compiler can use it.
+2. **Learn the move budget for free.** It is per piece, per level (idx3 has one, idx0
+   none) and spent by a MOVE rather than a press, so the harness can detect it by
+   watching whether the inventory shrinks after a move it already makes — no piece
+   spent to find out. Then the compiler can respect it.
 3. **Measure the bounded-roof variant on fixed evidence** — 1 invented cell against the
    adopted rule's 2, deliberately not adopted in the same change.
 3. **Multi-piece placement**, the burden the idx1 observation named: idx1 carries

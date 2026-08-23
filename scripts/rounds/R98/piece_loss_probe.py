@@ -26,7 +26,6 @@ _spec.loader.exec_module(dw)
 
 from admorphiq.hypothesis_select.grounding_flow import UNKNOWN, FlowGrounding  # noqa: E402
 
-LEVEL = 3
 STEPS = 10
 
 
@@ -38,8 +37,9 @@ def _inventory(g: FlowGrounding):
 
 
 def main() -> int:
+    level = int(sys.argv[3]) if len(sys.argv) > 3 else 3
     w = dw.Walker()
-    for _ in range(LEVEL):
+    for _ in range(level):
         dw.play_level(w)
 
     g = FlowGrounding()
@@ -59,14 +59,15 @@ def main() -> int:
     w.act(5, g)
 
     start = _inventory(g)
-    print(f"idx{LEVEL}: inventory at the start {start}")
+    print(f"idx{level}: inventory at the start {start}")
     if not start:
         print("  no inventory")
         return 0
 
     deltas = dw.deltas_of(g)
-    want = (1, 0)
-    if len(sys.argv) > 2:
+    flow = g.initial_direction()
+    want = flow.value if flow is not UNKNOWN else (1, 0)
+    if len(sys.argv) > 2 and sys.argv[2] != "flow":
         want = {"down": (1, 0), "up": (-1, 0), "left": (0, -1), "right": (0, 1)}[sys.argv[2]]
     down = next((a for a, (dr, dc) in sorted(deltas.items()) if (dr, dc) == want), None)
     if down is None:
