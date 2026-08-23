@@ -642,6 +642,34 @@ One measurement from the same session is worth keeping: the plan's INTENDED layo
 idx3 genuinely wins under the verified model — 3 of 3 targets, zero barrier contacts.
 The layout is right; what is missing is arriving at it.
 
+## The harness had SELECTED and IDLE the wrong way round (2026-08-24)
+
+Chasing "the plan's moves do not arrive", the trace said the selection never changed
+after the first click — every later `Select` appeared to do nothing. Reading the raw
+board instead of the harness's belief said the opposite: **every click changed six to
+eight cells.** The engine was responding perfectly. The trace was reading the wrong
+colour, because grounding had the two appearances INVERTED — it believed the
+appearance worn by fourteen cells was "selected" and the one worn by four was "idle".
+
+The cause is that a selection transition shows TWO regions changing at once: the
+clicked piece taking the selected appearance, and the previously selected one
+dropping to the idle appearance. Both satisfy a test that merely asks "did a region
+change colour in place", so the attribution could pick either — and on a board where
+it picked the wrong one, the harness's entire notion of selection inverted. Every
+later click then read as a no-op, and the walk concluded its moves were not landing
+when they were.
+
+The discriminator needed no new observation: the engine selects exactly ONE piece at
+a time, so the appearance worn by a single region is the selected one and the
+appearance shared by the rest is idle. Measured after the fix, on every level where
+both appearances exist, the selected colour is worn by fewer cells than the idle one
+— which is what "one piece is selected" means.
+
+This is the third defect in this round whose signature was the harness confidently
+describing something other than what was on screen, after the stale-layer diagnostic
+and the footprint-identity false alarm. All three were found the same way: read the
+raw frame and compare it against what the harness believes.
+
 ## Next
 
 1. **Fill is not confirmed paired.** gemma4 misses one slot, and the cause is our

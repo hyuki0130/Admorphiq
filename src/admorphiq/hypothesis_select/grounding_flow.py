@@ -458,34 +458,49 @@ class FlowGrounding:
     def _absorb_selection(
         self, before: dict[Cell, int], changed: set[Cell], after: dict[Cell, int]
     ) -> bool:
-        """A region took on a new appearance IN PLACE. The region that LEFT the
-        selected appearance in the same transition is the previously selected
-        piece, and the appearance it dropped to is the IDLE one shared by every
-        piece — one event, the whole inventory."""
+        """A region took on a new appearance IN PLACE.
+
+        A selection transition shows TWO regions changing at once — the clicked
+        piece taking the selected appearance and the previously selected one
+        dropping to the idle appearance — and both look identical to a test that
+        merely asks "did a region change colour in place". Picking the wrong one
+        inverts the harness's whole notion of selection, which then reads every
+        later click as having done nothing.
+
+        The engine selects exactly ONE piece at a time, so the appearance worn by a
+        single region is the selected one and the appearance shared by the rest is
+        idle. That is the discriminator used here."""
+        candidates: list[tuple[int, frozenset[Cell]]] = []
         for colour in {after[c] for c in changed if c in after}:
             for r in _regions(after, colour):
                 if not (r <= changed) or any(before[c] == colour for c in r):
                     continue
                 if len({before[c] for c in r}) != 1:
                     continue
-                if self._selected_colour is not None:
-                    released = {
-                        c for c in changed
-                        if before[c] == self._selected_colour
-                        and after.get(c) != self._selected_colour
-                    }
-                    dropped = {after[c] for c in released if c in after}
-                    if len(dropped) == 1:
-                        self._idle_colour = dropped.pop()
-                self._selected_colour = colour
-                self._piece = r
-                # A MULTISET: each selection confirms one more instance of that
-                # shape. Multiplicity is what stops a genuine wide piece from being
-                # explained away as several narrow ones that happen to add up.
-                self._confirmed_shapes.append(_normalised(r))
-                self._selection_obs += 1
-                return True
-        return False
+                candidates.append((colour, r))
+        if not candidates:
+            return False
+
+        selected = [
+            (colour, r) for colour, r in candidates if len(_regions(after, colour)) == 1
+        ]
+        colour, region = (selected or candidates)[0]
+        others = {c for c, _ in candidates if c != colour}
+        if others:
+            self._idle_colour = others.pop()
+        elif self._selected_colour is not None:
+            released = {
+                c for c in changed
+                if before[c] == self._selected_colour and after.get(c) != self._selected_colour
+            }
+            dropped = {after[c] for c in released if c in after}
+            if len(dropped) == 1:
+                self._idle_colour = dropped.pop()
+        self._selected_colour = colour
+        self._piece = region
+        self._confirmed_shapes.append(_normalised(region))
+        self._selection_obs += 1
+        return True
 
     # ── queries ──────────────────────────────────────────────────────────
 
