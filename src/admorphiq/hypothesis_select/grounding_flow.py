@@ -1175,9 +1175,51 @@ class FlowGrounding:
                 direction=direction.value,
                 emergences=() if emergences is UNKNOWN else emergences.value,
                 absorber_cells=self.absorbers(),
+                falling_sources=(() if self.falling_sources() is UNKNOWN
+                                 else self.falling_sources().value),
             ),
             "high",
         )
+
+    def falling_sources(self) -> Any:
+        """Falling streams as (lane, tick): the column a source pours down and the
+        step at which it starts, counted on the PROGRESS axis the replay uses.
+
+        The lane is the invariant (see :meth:`falling_columns`); the tick is needed
+        because these streams are SEQUENCED — idx3's second and third start six steps
+        into a spill whose first stream is still falling."""
+        columns = self.falling_columns()
+        if columns is UNKNOWN:
+            return UNKNOWN
+        direction = self.initial_direction()
+        dr, dc = direction.value
+        anim = self._animations[-1]
+        blocking = set(anim.piece_cells) | self._all_piece_cells()
+        wanted = set(columns.value)
+        seen: set[Cell] = set()
+        out: list[tuple[int, int]] = []
+        found: set[int] = set()
+        tick = -1
+        for layer in anim.frontier:
+            if not layer:
+                continue
+            tick += 1
+            for (r, c) in layer:
+                lane = c if dr else r
+                if lane not in wanted or lane in found:
+                    continue
+                behind = (r - dr, c - dc)
+                flanks = ((r - dc, c - dr), (r + dc, c + dr))
+                if behind in seen or any(f in seen for f in flanks):
+                    continue
+                if (r + dr, c + dc) not in blocking:
+                    continue
+                out.append((lane, tick))
+                found.add(lane)
+            seen |= set(layer)
+        if not out:
+            return UNKNOWN
+        return Grounded(tuple(sorted(out)), "high")
 
     def falling_columns(self) -> Any:
         """Columns a source pours down from off the board's top.

@@ -1348,14 +1348,50 @@ squared-efficiency metric. They buy idx3 the ability to plan at all, which is th
 trade while the model is still being built; a cheaper probe that only retries the
 directions a plan actually needs is a later refinement.
 
+## The lane, wired into the model (2026-08-24)
+
+With the down direction finally measured, `falling_columns()` grounds at plan time on
+idx3 — `(5, 6)` — and the sequencing comes with it: `falling_sources()` reports
+`((5, 3), (6, 3))`, both lanes starting three steps into the spill. The board now
+carries them, and the propagator injects each stream at **the cell just short of the
+first thing in its lane**, scanning from the edge it falls from.
+
+That is the whole point of a lane over an emergence. An emergence says "flow appeared
+HERE"; move a piece and the statement is false. A lane says "flow pours down THIS
+column", and where it comes to rest is computed from the layout being predicted — so a
+layout the agent has never seen is predictable, which is what planning needs. The test
+pins exactly that: the same lane over a piece at row 3 lands at row 2, and over a piece
+at row 5 lands at row 4.
+
+Wiring it exposed a latent hole in the propagator. A stream arriving while nothing else
+is running was **dropped entirely**: the loop breaks on an empty active set before the
+newly-arrived cells are turned into a layer. On every live board another stream was
+always mid-fall when these appear, so the bug was invisible until an isolated one was
+predicted. An arriving stream now starts running on its own.
+
+All four certifications hold with the changed propagation — oracle 3/3, grounding,
+verifier and the frozen mutant table — and the walk is unchanged on the first three
+levels:
+
+```
+idx0: CLEARED — 23 actions
+idx1: CLEARED — 30 actions
+idx2: CLEARED — 55 actions
+idx3: plans WITH the second stream now; a planned press is refused by another piece
+```
+
+idx3's failure has moved back to the ordering pass, which is the honest place for it:
+the model now knows about the stream it was missing, and what stops the plan is a piece
+standing where another piece has to pass.
+
 ## Next
 
 1. **Fill is not confirmed paired.** gemma4 misses one slot, and the cause is our
    encoding rather than its reasoning. Measure the hazard orthogonalisation as its
    own experiment against all three models — never as a patch to move a verdict.
-2. **Feed the falling columns to the propagator.** The discovery slide is wired and
-   gated; the board still carries no falling source, so the model plans without the
-   second stream. Wiring it changes every prediction and needs its own measurement.
+2. **The ordering pass admits layouts the engine refuses.** idx3 plans with the second
+   stream now and stops on a press blocked by another piece, so occupancy at execution
+   still differs from what the ordering assumed.
 3. **Multi-piece placement**, the burden the idx1 observation named: idx1 carries
    three pieces and three targets, so a single-piece placement satisfies nothing and
    the sink shortlist comes back empty. That, plus a shortlist that can name targets

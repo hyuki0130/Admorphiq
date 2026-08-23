@@ -275,3 +275,31 @@ def test_an_absorber_swallows_the_stream_without_satisfying_or_killing():
     reached = {c for layer in stopped.frontier for c in layer}
     assert not any(r >= 5 for r, _ in reached), \
         f"flow continued past the absorber: {sorted(c for c in reached if c[0] >= 5)}"
+
+
+def test_a_falling_source_lands_on_whatever_is_topmost_in_its_lane():
+    """Purpose: an emergence records where a stream was SEEN to appear, so it is tied
+    to the layout it was seen under and cannot be replayed once a plan moves the
+    pieces. A LANE can: the stream lands on whatever is topmost in it, which is
+    computable for a layout never observed. Measured on idx3 — sliding the covering
+    piece one row moved the sighting one row with it while the lane stayed put.
+
+    The tick is on the replay's own axis, where index 0 is the seed frontier — the
+    same convention emergences already use.
+
+    Expected feedback: pass proves the injected stream appears just short of the first
+    thing in its lane, and moves when that obstacle moves. Fail means the model can
+    only predict layouts it has already watched."""
+    from dataclasses import replace as _replace
+
+    lane = 4
+    high = _replace(_board(frozenset({(3, 3), (3, 4), (3, 5)})),
+                    standing_flow=frozenset(), falling_sources=((lane, 2),))
+    low = _replace(high, pieces=(frozenset({(5, 3), (5, 4), (5, 5)}),))
+
+    def _first(board):
+        cells = [c for layer in predict(board, ORACLE).frontier for c in layer]
+        return [c for c in cells if c[1] == lane][:1]
+
+    assert _first(high) == [(2, lane)], f"expected a landing above row 3: {_first(high)}"
+    assert _first(low) == [(4, lane)], f"the landing did not follow the piece: {_first(low)}"

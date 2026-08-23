@@ -68,6 +68,13 @@ class Board:
     # entirely is what made the forecast claim a downstream target the engine never
     # filled: our flow ran straight through what the engine's flow ended at.
     absorber_cells: frozenset[Cell] = frozenset()
+    # Streams that pour down a fixed LANE from off the board, as (lane, tick). Unlike
+    # an emergence — which records where a stream was SEEN to appear and is therefore
+    # tied to the layout it was seen under — a lane is derivable for a layout never
+    # observed: the stream lands on whatever is topmost in it. Measured on idx3, where
+    # sliding the covering piece one row moved the sighting one row with it while the
+    # lane stayed put.
+    falling_sources: tuple[tuple[int, int], ...] = ()
 
     @property
     def piece_cells(self) -> frozenset[Cell]:
@@ -149,6 +156,25 @@ def predict(board: Board, table: ResponseTable, max_ticks: int = 80) -> Predicti
     for cell, tick in board.emergences:
         pending.setdefault(tick, []).append(cell)
 
+    blockers = (board.piece_cells | {c for s in board.sinks for c in s}
+                | board.hazard_cells | board.absorber_cells)
+    for lane, tick in board.falling_sources:
+        # Where the stream comes to rest: the cell just short of the first thing it
+        # meets, scanning the lane from the edge it falls from.
+        landing = None
+        for step in range(board.size):
+            r = step if heading[0] > 0 else board.size - 1 - step
+            c = step if heading[1] > 0 else board.size - 1 - step
+            cell = (r, lane) if heading[0] else (lane, c)
+            ahead = (cell[0] + heading[0], cell[1] + heading[1])
+            if cell in blockers:
+                break
+            landing = cell
+            if ahead in blockers or not _in_bounds(ahead, board.size):
+                break
+        if landing is not None:
+            pending.setdefault(tick, []).append(landing)
+
     for tick in range(max_ticks):
         # An emergence is recorded against the FRONTIER INDEX it was observed at,
         # and frontier[0] is the seed rather than a step, so the index to match is
@@ -163,6 +189,14 @@ def predict(board: Board, table: ResponseTable, max_ticks: int = 80) -> Predicti
                 occupied.add(cell)
                 emerged.append(cell)
         if not active:
+            if emerged:
+                # A stream that arrives while nothing else is running still runs. This
+                # only ever showed up in isolation: on the live boards another stream
+                # was always mid-fall when these appear, so the cell was quietly
+                # dropped and the whole second stream with it.
+                frontier.append(sorted(emerged))
+                active = [(c, heading) for c in emerged]
+                continue
             if not any(t > len(frontier) for t in pending):
                 break
             frontier.append([])
