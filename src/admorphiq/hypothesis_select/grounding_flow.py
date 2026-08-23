@@ -597,9 +597,24 @@ class FlowGrounding:
         Deliberately NOT gated on family detection: "some region moves coherently
         when I press a direction" is a family-agnostic fact, and a driver needs it
         BEFORE it has seen any scripted consequence in order to aim its first
-        commit. The family-specific claims below stay gated."""
+        commit. The family-specific claims below stay gated.
+
+        Read off the CURRENT board wherever the board can answer. The remembered set
+        is maintained by matching translations, and a translation that was refused —
+        or a piece that came to rest against a neighbour and is now drawn as one
+        region — leaves it describing a piece that is no longer there. Measured on
+        idx3: six cells wore the selected appearance while this returned ONE, and the
+        driver pressed on that answer. The engine selects exactly one piece at a time,
+        so the region wearing the selected appearance IS the tracked piece; the
+        remembered set is the fallback for when the board cannot say."""
         if self._piece is None or not self._delta_obs:
             return UNKNOWN
+        if self._prev_cells is not None:
+            selected, _idle = self.piece_appearances()
+            if selected is not None:
+                worn = _regions(self._prev_cells, selected)
+                if len(worn) == 1:
+                    return Grounded(tuple(sorted(worn[0])), "high")
         return Grounded(tuple(sorted(self._piece)), "high")
 
     def pieces(self) -> Any:

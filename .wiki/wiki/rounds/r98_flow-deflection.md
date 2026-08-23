@@ -994,15 +994,65 @@ assumed. The likeliest reason is on record from earlier in this round — pieces
 to rest touching are read as ONE region, so the piece the plan names and the piece the
 click selects need not be the same. That is the next thread.
 
+## Read the tracked piece off the board (2026-08-24)
+
+The previous section left idx3 with a planned press refused at a cell another piece
+held, even though the plan's move order was built to avoid exactly that. Dumping the
+board at the moment of the refusal explains it, and the defect is the same one this
+round has now named three times.
+
+```
+[identity] plan named (7,2) 5 cells, selected (7,5) 1 cells
+  r7  12 12 12  9  9  9  9  9  9 12 12 12 12 12 12
+```
+
+Six cells wear the selected appearance. `tracked_region()` reported **one**. It was
+returning a remembered set maintained by matching translations, and a translation that
+was refused — or a piece that has come to rest against a neighbour and is drawn as one
+region from then on — leaves that memory describing a piece that is no longer there.
+The driver then pressed on that answer, and the ordering pass had reasoned about a
+board that did not exist.
+
+The invariant is available on every frame: the engine selects exactly one piece at a
+time, so **the region wearing the selected appearance IS the tracked piece.** The query
+now reads it, and falls back to the remembered set only when the board genuinely cannot
+say. The pin fails on the old behaviour.
+
+That is the third instance, so it is worth stating as a rule rather than a fix: *if a
+fact is visible on the current frame, read it there.* Remembering it is a cache, and
+every cache in this harness has so far gone stale at exactly the moment it mattered —
+the selected/idle appearances, the barrier map, and now the tracked piece.
+
+**Second change: UNKNOWN is not a refutation.** With the tracked region correct, idx3
+reached the verifier and stopped on an UNKNOWN whose stated cause is a board the
+harness knows is incomplete — two flow sources hidden under pieces, so the replay is
+missing flow the engine has. That says the EVIDENCE is short, not the hypothesis. The
+walk now stops on CONTRADICTED and proceeds on UNKNOWN with the reason printed, which
+keeps the verifier's real power while not throwing away a level over evidence it
+already knows it lacks.
+
+```
+idx0: CLEARED — 19 actions
+idx1: CLEARED — 26 actions
+idx2: CLEARED — 51 actions
+idx3: planned press 3 does not land; would enter (10,5) — piece[] target[] hazard[]
+      off-board[]: NOTHING occupies it
+```
+
+idx3's blocker has changed character. The engine now refuses a press into a cell that
+is empty by every measured category, so what stops it is a constraint the board model
+does not carry — not occupancy, which is the thing the previous section added. Two
+sources are known to be hidden under pieces on this level; whether a piece standing on
+one can be moved at all is the first thing to test.
+
 ## Next
 
 1. **Fill is not confirmed paired.** gemma4 misses one slot, and the cause is our
    encoding rather than its reasoning. Measure the hazard orthogonalisation as its
    own experiment against all three models — never as a patch to move a verdict.
-2. **Piece identity under merging.** idx3's ordering pass admits a layout whose press
-   is still refused, so occupancy at execution differs from the ordering's assumption —
-   and touching pieces are read as one region, so the piece the plan names and the one
-   the click selects need not be the same.
+2. **What refuses a press into an empty cell?** idx3 is refused at a cell holding no
+   piece, target or hazard. Two sources are hidden under pieces on that level; whether
+   a piece standing on one can be moved at all is the first thing to test.
 3. **Multi-piece placement**, the burden the idx1 observation named: idx1 carries
    three pieces and three targets, so a single-piece placement satisfies nothing and
    the sink shortlist comes back empty. That, plus a shortlist that can name targets

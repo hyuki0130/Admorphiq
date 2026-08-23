@@ -174,8 +174,16 @@ def play_level(w: Walker) -> tuple[bool, str]:
 
     hypothesis = F.sp80_oracle_instance()
     verdict = verify_flow_instance(hypothesis, g, w.level > entered)
+    if verdict.verdict.value == "CONTRADICTED":
+        return False, f"verifier CONTRADICTED: {verdict.reason}"
     if verdict.verdict.value != "PASS":
-        return False, f"verifier {verdict.verdict.value}: {verdict.reason}"
+        # UNKNOWN is "cannot judge", not "wrong". The measured cause here is a source
+        # hidden under a piece, so the replay is missing flow the engine has — that
+        # says the EVIDENCE is short, not that the hypothesis is. A walk that stops on
+        # it throws away a level over a board it can still plan on; a walk that stops
+        # on CONTRADICTED keeps the verifier's real power.
+        print(f"    [verifier] {verdict.verdict.value} — proceeding: {verdict.reason}",
+              flush=True)
 
     # Plan, execute with per-move confirmation, and REPLAN when a move does not land.
     # The board disagreeing with the plan is information, not a dead end: the engine
@@ -280,6 +288,8 @@ def _execute(w: Walker, g: FlowGrounding, plan, entered: int, spent: int, probes
                 # rest of it: every later press assumes this piece moved. Replanning
                 # from the board as it IS beats pressing harder — the refusal is
                 # information the compiler did not have.
+                if os.environ.get("R98_DUMP_BOARD") == "1":
+                    _identity_report(g, plan, held, frozenset(before.value))
                 return False, (f"planned press {step} did not land; "
                                f"{_what_blocks(g, frozenset(before.value), deltas_of(g)[step])}"), True
 
@@ -450,6 +460,32 @@ def _region_fates(g: FlowGrounding) -> None:
                 print(f"    [fate] {sorted(part)[0]} {len(part)} cells "
                       f"{len(g._mouths(part))} notch(es): entered={bool(part & trail)} "
                       f"recoloured={bool(part & changed)}", flush=True)
+
+
+def _identity_report(g: FlowGrounding, plan, held, selected: frozenset) -> None:
+    """Whether the piece the plan named is the piece the click selected.
+
+    Touching pieces are read as ONE region, so a plan built on the entry inventory can
+    address a piece the board no longer reports separately."""
+    inventory = g.pieces()
+    planned = plan.planned_board.pieces if plan.planned_board else ()
+    print(f"    [identity] plan named {sorted(held.footprint)[0] if held else None} "
+          f"({len(held.footprint) if held else 0} cells), "
+          f"selected {sorted(selected)[0]} ({len(selected)} cells)", flush=True)
+    print(f"    [identity] plan's pieces {[(sorted(p)[0], len(p)) for p in planned]}",
+          flush=True)
+    if inventory is not UNKNOWN:
+        print(f"    [identity] board's pieces now "
+              f"{[(sorted(c)[0], len(c)) for _, c in inventory.value]}", flush=True)
+    cells = g._prev_cells
+    if cells is not None:
+        rows = sorted({r for r, _ in selected} | ({r for r, _ in held.footprint} if held else set()))
+        size = int(round(len(cells) ** 0.5))
+        sel, idle = g.piece_appearances()
+        print(f"    [identity] selected appearance {sel}, idle {idle}", flush=True)
+        for r in range(max(0, min(rows) - 1), min(size, max(rows) + 2)):
+            print("      r%-2d " % r + " ".join(f"{cells[(r, c)]:2d}" for c in range(size)),
+                  flush=True)
 
 
 def _what_blocks(g: FlowGrounding, piece: frozenset, delta) -> str:

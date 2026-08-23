@@ -240,3 +240,30 @@ def test_a_target_of_a_DIFFERENT_SIZE_is_still_named():
         f"the notched target of a different shape was not named: {sinks.value}"
     assert not any((3, 1) in group for group in groups), \
         f"a solid block wearing the target colour was named: {sinks.value}"
+
+
+def test_the_tracked_piece_is_READ_from_the_board_not_remembered():
+    """Purpose: the tracked region was maintained by matching translations, and a
+    piece that comes to rest against a neighbour is drawn as ONE region from then on —
+    so the remembered set describes a piece that is no longer there. Measured on idx3:
+    six cells wore the selected appearance while this query returned ONE, and the
+    driver pressed on that answer.
+
+    Expected feedback: pass proves the query reports what currently wears the selected
+    appearance. Fail means a driver can aim at a piece the board no longer has."""
+    a = {(3, 2): 7, (3, 3): 7}
+    b = {(3, 5): 8, (3, 6): 8}
+    g = FlowGrounding()
+    g.observe(0, None, [_frame({**a, **b})])
+    g.observe(6, (3, 2), [_frame({(3, 2): 9, (3, 3): 9, **b})])   # select the left one
+    g.observe(4, None, [_frame({(3, 3): 9, (3, 4): 9, **b})])     # and move it right
+
+    # now it comes to rest against its neighbour: one run wears the selected
+    # appearance
+    merged = {(3, c): 9 for c in range(4, 7)}
+    g.observe(4, None, [_frame(merged)])
+
+    tracked = g.tracked_region()
+    assert tracked is not UNKNOWN
+    assert set(tracked.value) == set(merged), \
+        f"the tracked piece was remembered, not read: {tracked.value}"
