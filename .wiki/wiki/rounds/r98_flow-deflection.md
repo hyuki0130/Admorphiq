@@ -560,6 +560,34 @@ and it is the next thread: either the table is being applied to a different piec
 than the one selected, or the level's control mapping is not what the opening probes
 measured.
 
+## An unmeasured direction is not neutral (2026-08-24)
+
+The delta table on idx3 was missing one of the four directions, and pressing it
+plainly moved a piece. Two causes, and only one of them was a defect.
+
+**Not a defect:** the opening probe tried that direction while the piece sat against
+a bound, so it genuinely did not move, and the harness correctly recorded a blocked
+contrast rather than a delta. The walk now RETRIES any direction that came back
+unmeasured, from wherever the piece has since moved to. An unmeasured direction is
+not neutral — it removes every placement that needs it from the planner's reach.
+
+**A defect:** a piece coming to rest against a neighbour MERGES with it under
+4-connectivity, so the "single region translated" test that attributes a move sees
+the region count change and silently records nothing. Attribution now falls back to
+reading the CHANGE SET itself — cells that stopped wearing an appearance and cells
+that started wearing it, equal in number and related by one translation, is a move
+however the regions merged.
+
+The same merge blindness was in the move CONFIRMATION added last tick, which
+compared footprint against footprint. It now asks the question that survives a
+merge: does translating exactly one piece by the measured delta reproduce the board
+now on screen?
+
+idx3's stop is correspondingly sharper — a move merged two pieces and the inventory
+cannot split them back apart, so it reports "6 footprints before, 5 after" instead
+of silently continuing. All three cleared levels still clear, at a few more actions
+each for the retried probes.
+
 ## Next
 
 1. **Fill is not confirmed paired.** gemma4 misses one slot, and the cause is our

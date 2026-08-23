@@ -122,6 +122,15 @@ def play_level(w: Walker) -> tuple[bool, str]:
     for a in (1, 1, 2, 3, 4):
         w.act(a, g)
 
+    # A direction can come back unmeasured simply because the piece was against a
+    # bound when it was tried. Retry the missing ones from wherever it is now: an
+    # unmeasured direction is not neutral, it removes every placement that needs it
+    # from the planner's reach.
+    for a in (1, 2, 3, 4):
+        if a in deltas_of(g):
+            continue
+        w.act(a, g)
+
     # Probe until the idle appearance is known, then keep probing the remaining
     # candidates: selecting a piece is what separates it from a neighbour it touches,
     # and a planner that can only move a merged pair cannot solve a board that needs
@@ -183,21 +192,38 @@ def play_level(w: Walker) -> tuple[bool, str]:
         actual = _footprints(g)
         if actual == expected:
             return False, f"move {index} ({step}) did not land: the board is unchanged"
-        gone = [f for f in expected if f not in actual]
-        new_ = [f for f in actual if f not in expected]
-        if len(gone) != 1 or len(new_) != 1:
+        # A moved piece can come to rest against a neighbour and MERGE with it, so a
+        # footprint-for-footprint comparison sees more than one change. The question
+        # that survives that is simpler: does translating exactly one of the pieces
+        # by the measured delta reproduce the board we now see?
+        if not _explained_by_one_move(expected, actual, delta):
             return False, (
-                f"move {index} ({step}) changed {len(gone)} footprint(s); the plan "
-                f"assumed exactly one"
-            )
-        want = frozenset((r + delta[0], c + delta[1]) for (r, c) in gone[0])
-        if new_[0] != want:
-            return False, (
-                f"move {index} ({step}) landed elsewhere: expected {sorted(want)[:2]}..., "
-                f"observed {sorted(new_[0])[:2]}..."
+                f"move {index} ({step}) is not explained by moving one piece by "
+                f"{delta}: {len(expected)} footprint(s) before, {len(actual)} after"
             )
         expected = actual
     return False, f"executed the plan without clearing ({w.actions - spent} actions)"
+
+
+def _explained_by_one_move(before: list, after: list, delta) -> bool:
+    """True when translating ONE piece by ``delta`` turns ``before`` into ``after``.
+
+    Compared as multisets of cell sets, so merges and renames do not matter — what
+    matters is whether the board that appeared is the board the move should have
+    produced."""
+    target = sorted(after, key=min)
+    for i in range(len(before)):
+        moved = frozenset((r + delta[0], c + delta[1]) for (r, c) in before[i])
+        candidate = sorted(before[:i] + [moved] + before[i + 1:], key=min)
+        if candidate == target:
+            return True
+        # the moved piece may now share a region with a neighbour
+        merged = set()
+        for piece in candidate:
+            merged |= set(piece)
+        if merged == set().union(*target) if target else False:
+            return True
+    return False
 
 
 def _footprints(g: FlowGrounding) -> list:

@@ -400,9 +400,18 @@ class FlowGrounding:
         changed: set[Cell],
         after: dict[Cell, int],
     ) -> bool:
-        """One colour's single region moved rigidly, and the change set is EXACTLY
-        the symmetric difference of its before/after footprints. Anything else
-        having changed too means this was not a clean move."""
+        """One piece moved rigidly. Two ways to see it, and the second matters.
+
+        The clean case is a colour whose single region translated. But a piece that
+        comes to rest against a neighbour MERGES with it under 4-connectivity, so the
+        region count changes and the clean test silently records nothing — measured
+        on the fourth level, where one of the four directions was missing from the
+        delta table even though pressing it plainly moves a piece. A missing action
+        is not neutral: the planner then cannot reach any placement needing it.
+
+        So the fallback reads the CHANGE SET itself: cells that stopped wearing an
+        appearance and cells that started wearing it, equal in number and related by
+        a single translation, is a move regardless of how the regions merged."""
         for colour in {before[c] for c in changed} | {after[c] for c in changed if c in after}:
             b = _regions(before, colour)
             a = _regions(after, colour)
@@ -413,14 +422,38 @@ class FlowGrounding:
                 continue
             if changed != set(b[0]) ^ set(a[0]):
                 continue
-            self._delta_obs[action][delta] += 1
-            self._moving_colour = colour
-            self._piece = a[0]
-            shape = _normalised(a[0])
-            if shape not in self._confirmed_shapes:
-                self._confirmed_shapes.append(shape)
+            self._record_move(action, colour, delta, a[0])
+            return True
+
+        for colour in {before[c] for c in changed} | {after[c] for c in changed if c in after}:
+            vacated = frozenset(
+                c for c in changed if before.get(c) == colour and after.get(c) != colour
+            )
+            occupied = frozenset(
+                c for c in changed if after.get(c) == colour and before.get(c) != colour
+            )
+            if not vacated or len(vacated) != len(occupied):
+                continue
+            dr = min(r for r, _ in occupied) - min(r for r, _ in vacated)
+            dc = min(c for _, c in occupied) - min(c for _, c in vacated)
+            if (dr, dc) == (0, 0):
+                continue
+            if _normalised(vacated) != _normalised(occupied):
+                continue
+            moved = frozenset((r + dr, c + dc) for (r, c) in vacated)
+            self._record_move(action, colour, (dr, dc), moved)
             return True
         return False
+
+    def _record_move(
+        self, action: int, colour: int, delta: Cell, landed: frozenset[Cell]
+    ) -> None:
+        self._delta_obs[action][delta] += 1
+        self._moving_colour = colour
+        self._piece = landed
+        shape = _normalised(landed)
+        if shape not in self._confirmed_shapes:
+            self._confirmed_shapes.append(shape)
 
     def _absorb_selection(
         self, before: dict[Cell, int], changed: set[Cell], after: dict[Cell, int]
