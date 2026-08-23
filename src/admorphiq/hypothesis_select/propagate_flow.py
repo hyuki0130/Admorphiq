@@ -159,18 +159,13 @@ def predict(board: Board, table: ResponseTable, max_ticks: int = 80) -> Predicti
 
     blockers = (board.piece_cells | {c for s in board.sinks for c in s}
                 | board.hazard_cells | board.absorber_cells)
-    for lane, tick, line in board.falling_sources:
+    for lane, tick, _line in board.falling_sources:
         # Where the stream comes to rest: the cell just short of the first thing it
         # meets, scanning the lane from the edge it falls from.
         landing = None
         for step in range(board.size):
             r = step if heading[0] > 0 else board.size - 1 - step
             c = step if heading[1] > 0 else board.size - 1 - step
-            # The source's own line is recorded (see grounding) but NOT yet enforced.
-            # Clamping the landing to it is only half the mechanic: when a piece stands
-            # ON the source the engine emits beside that piece, and a model that merely
-            # refuses to emit above it produces no second stream at all — measured, that
-            # leaves idx3 with no satisfiable layout where it previously had one.
             cell = (r, lane) if heading[0] else (lane, c)
             ahead = (cell[0] + heading[0], cell[1] + heading[1])
             if cell in blockers:

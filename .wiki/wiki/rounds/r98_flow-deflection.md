@@ -1723,14 +1723,46 @@ Two lessons this round keeps re-learning in new clothes: **verify a fix is in ef
 (three silent no-match edits so far), and now **verify a test still exists** — a suite
 that gets greener by losing coverage looks exactly like a suite that is passing.
 
+## "Emit beside the cover" is right about one cell and wrong about the board (2026-08-24)
+
+The companion rule was implemented — a covered source emits at the nearer free end of the
+run that covers it, on its own row — and measured against both captured boards.
+
+```
+board a (sources free)     invented 2  missed  0    unchanged: the rule is inert here
+board b (sources covered)  invented 5  missed 25    was: invented 24, missed 0
+```
+
+It gets the cell right: board b's stream really does appear at `(3,3)`, the closer end of
+the run covering lanes 5 and 6, and the model now puts it there instead of a row above the
+board's own pieces. But total error goes UP, because the model now produces one stream
+where the engine has more. Reading board b's spill from the start shows why:
+
+```
+ 0: (12,3)   1: (12,4)   2: (13,4)   3: (14,4)
+ 4: (3,3)    5: (4,3)  …  11: (10,3)  12: (10,4)
+13: (7,11) (7,12) (10,2) (10,5)
+```
+
+The `(3,3)` stream runs down column 3 to the piece at row 11 and spreads — and at step 13
+a THIRD stream begins at `(7,11)` and `(7,12)`, which neither of the two grounded lanes
+explains. So the board carries more sources than the harness has found, and modelling the
+two it knows more faithfully makes the model produce LESS than the engine rather than the
+same.
+
+Reverted. Both boards return to their previous numbers, all four levels are unchanged, and
+what the tick establishes is the shape of the remaining gap: it is not a propagation rule
+any more, it is missing entities. The next question is what emits at `(7,11)`/`(7,12)` at
+step 13, and whether it is a source that only some layouts expose.
+
 ## Next
 
 1. **Fill is not confirmed paired.** gemma4 misses one slot, and the cause is our
    encoding rather than its reasoning. Measure the hazard orthogonalisation as its
    own experiment against all three models — never as a patch to move a verdict.
-2. **Emit beside the cover.** A source with a piece standing on it emits at that piece's
-   flank, on the source's own row. With that in place the source-row clamp can be turned
-   on; alone it costs idx3 its plan.
+2. **What emits at (7,11)/(7,12) at step 13?** Board b carries a third stream neither
+   grounded lane explains, so the gap is missing ENTITIES, not a propagation rule — and
+   "emit beside the cover" cannot be adopted until they are found.
 3. **Measure the bounded-roof variant on fixed evidence** — 1 invented cell against the
    adopted rule's 2, deliberately not adopted in the same change.
 3. **Multi-piece placement**, the burden the idx1 observation named: idx1 carries
