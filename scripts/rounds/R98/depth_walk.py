@@ -161,13 +161,56 @@ def play_level(w: Walker) -> tuple[bool, str]:
     if plan.status is not PlanStatus.SOLVABLE:
         return False, f"compiler {plan.status.value}: {plan.reason}"
 
-    for step in plan.steps:
+    # Every emitted move is CONFIRMED against the next frame. A plan that keeps
+    # going after a move failed to land builds a layout nobody planned, and the
+    # spill that follows tells you nothing about the hypothesis — the R96 rule,
+    # applied here because idx3 was silently ending up cells away from its plan.
+    # Compared as an unordered MULTISET of footprints, never by name: pieces are
+    # reported in board order, so moving one renames several and an identity-based
+    # check reports phantom movement.
+    expected = _footprints(g)
+    for index, step in enumerate(plan.steps):
         if w.actions - spent >= ACTION_BUDGET or not w.alive:
             break
         w.run(step, g)
         if w.level > entered:
             return True, f"cleared in {w.actions - spent} actions ({probes} selection probes)"
+        if isinstance(step, Select) or index == len(plan.steps) - 1:
+            continue
+        delta = deltas_of(g).get(step)
+        if delta is None:
+            continue
+        actual = _footprints(g)
+        if actual == expected:
+            return False, f"move {index} ({step}) did not land: the board is unchanged"
+        gone = [f for f in expected if f not in actual]
+        new_ = [f for f in actual if f not in expected]
+        if len(gone) != 1 or len(new_) != 1:
+            return False, (
+                f"move {index} ({step}) changed {len(gone)} footprint(s); the plan "
+                f"assumed exactly one"
+            )
+        want = frozenset((r + delta[0], c + delta[1]) for (r, c) in gone[0])
+        if new_[0] != want:
+            return False, (
+                f"move {index} ({step}) landed elsewhere: expected {sorted(want)[:2]}..., "
+                f"observed {sorted(new_[0])[:2]}..."
+            )
+        expected = actual
     return False, f"executed the plan without clearing ({w.actions - spent} actions)"
+
+
+def _footprints(g: FlowGrounding) -> list:
+    """Every piece as a bare footprint, order and naming discarded."""
+    inventory = g.pieces()
+    if inventory is UNKNOWN:
+        return []
+    return sorted((frozenset(cells) for _, cells in inventory.value), key=min)
+
+
+def deltas_of(g: FlowGrounding) -> dict:
+    table = g.piece_deltas()
+    return {} if table is UNKNOWN else {a: (dr, dc) for a, dr, dc in table.value}
 
 
 def _count(q) -> str:

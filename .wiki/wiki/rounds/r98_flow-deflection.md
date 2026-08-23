@@ -533,6 +533,33 @@ idx3 still does not clear. What it now reports is a plan whose predicted coverag
 measured against the right number of targets, which is the precondition for the
 objective question being asked correctly at all.
 
+## Every emitted move is CONFIRMED (2026-08-24)
+
+idx3 kept ending up cells away from its plan, so the walk now checks each move
+against the next frame instead of assuming it landed — the R96 rule, arrived at here
+by the same route: a plan that keeps going after a move failed builds a layout nobody
+planned, and the spill that follows says nothing about the hypothesis.
+
+The check compares an unordered MULTISET of footprints, never names. Pieces are
+reported in board order, so moving one renames several, and the first
+identity-based version of this check reported phantom movement on a level that
+actually clears — a false alarm that would have sent the next tick chasing nothing.
+
+What it found on idx3 is precise and was invisible before: pressing the action whose
+measured delta is one column RIGHT moved a piece one column LEFT.
+
+```
+idx0: CLEARED — 15 actions
+idx1: CLEARED — 22 actions
+idx2: CLEARED — 47 actions
+idx3: move 2 landed elsewhere — expected (7,4),(7,5)…, observed (7,3),(7,4)…
+```
+
+That is a contradiction between the measured delta table and what the board does,
+and it is the next thread: either the table is being applied to a different piece
+than the one selected, or the level's control mapping is not what the opening probes
+measured.
+
 ## Next
 
 1. **Fill is not confirmed paired.** gemma4 misses one slot, and the cause is our

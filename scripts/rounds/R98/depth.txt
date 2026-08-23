@@ -1,11 +1,11 @@
-R98 depth — 2026-08-24 01:36:10 KST
-repo HEAD: b0c15a1
+R98 depth — 2026-08-24 01:45:52 KST
+repo HEAD: 08a5fad
 
 budget 250 actions/level, up to 6 levels
 
   idx0: CLEARED — cleared in 15 actions (4 selection probes)
   idx1: CLEARED — cleared in 22 actions (6 selection probes)
   idx2: CLEARED — cleared in 47 actions (6 selection probes)
-  idx3: stopped — executed the plan without clearing (26 actions)
+  idx3: stopped — move 2 (4) landed elsewhere: expected [(7, 4), (7, 5)]..., observed [(7, 3), (7, 4)]...
 
-[depth walk] NON-GATING — one hypothesis carried 3 level(s); 110 actions total
+[depth walk] NON-GATING — one hypothesis carried 3 level(s); 101 actions total
