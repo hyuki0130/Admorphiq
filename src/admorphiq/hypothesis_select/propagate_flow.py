@@ -144,6 +144,7 @@ def predict(board: Board, table: ResponseTable, max_ticks: int = 80) -> Predicti
             active.append((below, heading))
 
     satisfied: set[int] = set()
+    spread_born: set[Cell] = set()
     fatal = False
     barrier_hits = 0
     frontier: list[list[Cell]] = [sorted(occupied)]
@@ -247,9 +248,16 @@ def predict(board: Board, table: ResponseTable, max_ticks: int = 80) -> Predicti
                 if hit:
                     satisfied.add(sink_idx)
                     continue
-                if table.sink_miss == "spread_like_piece":
+                if table.sink_miss == "spread_like_piece" and (r, c) not in spread_born:
+                    # A droplet that was itself produced by a miss does not spread
+                    # again. Measured on FIXED evidence — the same committed board and
+                    # the spill it produced — where the chain walked our stream right
+                    # along two targets' roofs and into a third's mouth, claiming a
+                    # target the engine left empty. Without the chain the model stops
+                    # where the engine stops and claims what the engine claims.
                     for f in flanks:
                         spawn(f, (dr, dc))
+                        spread_born.add(f)
                 # stop / absorb: the droplet dies here
                 continue
 

@@ -383,6 +383,8 @@ def _execute(w: Walker, g: FlowGrounding, plan, entered: int, spent: int, probes
                 return False, (f"planned press {step} did not land; "
                                f"{_what_blocks(g, frozenset(before.value), deltas_of(g)[step])}"), True
 
+    if os.environ.get("R98_CAPTURE") and forecast is not None:
+        _capture(pre.value, g.trajectory())
     if os.environ.get("R98_DUMP_BOARD") == "1" and forecast is not None:  # noqa: SIM102
         _attribute_pre(g, forecast, forecast_sinks)
         want = frozenset(c for piece in plan.intended for c in piece)
@@ -442,6 +444,36 @@ def _top_up(w: Walker, g: FlowGrounding, step: Select | None, entered: int, spen
             return False, (f"press {action} refused while topping up to target; "
                            f"{_what_blocks(g, current, deltas.get(action))}")
     return False, "ran out of attempts topping a piece up to its place"
+
+
+def _capture(board, observed) -> None:
+    """Freeze the board AS COMMITTED and the spill it produced.
+
+    Rule changes alter what the compiler chooses, so re-running the whole walk compares
+    a new rule on a new layout and says nothing about the rule — measured twice, where a
+    restriction that should have removed four cells produced a different plan and
+    twenty-four. A rule is judged against FIXED evidence or not at all."""
+    import json
+
+    if board is None or observed is UNKNOWN:
+        return
+    payload = {
+        "pieces": [sorted(p) for p in board.pieces],
+        "sinks": [sorted(s) for s in board.sinks],
+        "hazard_cells": sorted(board.hazard_cells),
+        "emitter_cells": sorted(board.emitter_cells),
+        "standing_flow": sorted(board.standing_flow),
+        "absorber_cells": sorted(board.absorber_cells),
+        "emergences": [[list(c), t] for c, t in board.emergences],
+        "falling_sources": [list(x) for x in board.falling_sources],
+        "direction": list(board.direction),
+        "size": board.size,
+        "observed": [sorted(layer) for layer in observed.value if layer],
+    }
+    path = os.environ["R98_CAPTURE"]
+    with open(path, "w") as f:
+        json.dump(payload, f)
+    print(f"    [capture] wrote {path}", flush=True)
 
 
 def _attribute_pre(g: FlowGrounding, forecast, sinks=()) -> None:

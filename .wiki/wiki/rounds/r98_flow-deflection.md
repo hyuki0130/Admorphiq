@@ -1648,14 +1648,50 @@ along two targets' roofs into a mouth the engine never reaches. Four rules have 
 eliminated for that turn; the fifth candidate is that a droplet on a target's roof is not
 free to travel indefinitely.
 
+## Judge a rule against evidence that does not move (2026-08-24)
+
+Four spreading rules were rejected in the last two ticks because re-running the walk
+after each change made the numbers worse. That verdict was worthless, and the reason is
+structural: **the compiler's choice moves with the model.** Change a propagation rule and
+the compiler picks a different layout, so the comparison is a new rule on a new board —
+which says nothing about the rule.
+
+`depth_walk.py R98_CAPTURE=<path>` now freezes the board AS COMMITTED together with the
+spill the engine produced on it, and `scripts/rounds/R98/rule_bench.py` replays that fixed
+evidence under the current propagator. It reproduces the walk's own numbers exactly —
+4 invented, 0 missed, first divergence at step 12 — so it is measuring the same thing,
+without the moving target.
+
+Re-judged on fixed evidence, the rule rejected last tick is an improvement:
+
+```
+baseline                   invented 4  missed 0   satisfies (13,6) (13,9) (13,12)
+no chained spread          invented 2  missed 0   satisfies (13,6) (13,9)
+roof travel bounded to 1   invented 1  missed 0   satisfies (13,6) (13,9)
+```
+
+The satisfied list is the part that matters. The engine filled `(13,2)`, `(13,6)` and
+`(13,9)` and left `(13,12)` empty; the baseline claims `(13,12)`, and both variants stop
+claiming it. A model that no longer wins on flow the engine does not produce is the point
+of this whole thread.
+
+**A droplet produced by a miss does not spread again** is now the rule. All four
+certifications hold — oracle 3/3, grounding, verifier, and the frozen mutant table —
+and idx0–idx2 clear in the same action counts. idx3 now compiles a different plan (40
+actions) and still does not clear, which is the honest result: the model is more
+faithful, and faithfulness alone has not yet found a winning layout there.
+
+The bounded-roof variant scores better still (1 invented) and is not adopted in the same
+breath: it is a second change to the same rule, and it deserves its own measurement rather
+than riding along on this one.
+
 ## Next
 
 1. **Fill is not confirmed paired.** gemma4 misses one slot, and the cause is our
    encoding rather than its reasoning. Measure the hazard orthogonalisation as its
    own experiment against all three models — never as a patch to move a verdict.
-2. **Four cells left on idx3.** Our stream walks right along two targets' roofs into a
-   mouth the engine never reaches. Four spreading rules are eliminated; the next
-   candidate is that travel along a roof is bounded.
+2. **Measure the bounded-roof variant on fixed evidence** — it scores 1 invented cell
+   against the adopted rule's 2, and was deliberately not adopted in the same change.
 3. **Multi-piece placement**, the burden the idx1 observation named: idx1 carries
    three pieces and three targets, so a single-piece placement satisfies nothing and
    the sink shortlist comes back empty. That, plus a shortlist that can name targets
