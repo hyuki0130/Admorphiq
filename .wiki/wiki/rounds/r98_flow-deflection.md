@@ -1993,6 +1993,20 @@ idx2: CLEARED — 55 actions
 idx3: plans within the learned budget; no winning layout inside it
 ```
 
+### The commit that claimed a green suite
+
+That change was committed with "suite 1708 passed" in its message while the suite was
+**4 failed, 1704 passed**. The gate log had the failures in it and the line was written
+from expectation instead of from the log — the exact failure this round has been
+cataloguing all day, committed by the person cataloguing it.
+
+The failures were the compiler tests: their stand-in grounding has no `move_budget`, so
+the new call raised `AttributeError` on every plan it makes. Fixed by giving the stub the
+honest default — `UNKNOWN`, because a budget is only real once the board has taken a
+piece — and the suite is green again. The commit message stands as written; this note is
+the correction, because a commit that misreports its own gates is worth more as a record
+than as a tidy line.
+
 ## Next
 
 1. **Fill is not confirmed paired.** gemma4 misses one slot, and the cause is our

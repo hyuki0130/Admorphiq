@@ -59,6 +59,11 @@ class _Grounding:
     def idle_appearance_known(self):
         return True
 
+    def move_budget(self):
+        """UNKNOWN unless a test says otherwise: a budget is only real once the board
+        has taken a piece, and levels that never take one must plan unconstrained."""
+        return UNKNOWN
+
 
 def test_a_winning_placement_compiles_to_the_shortest_sequence_ending_in_a_commit():
     """Purpose: the compiler must find a placement its claimed table predicts will
