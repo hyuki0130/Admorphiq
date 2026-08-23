@@ -670,6 +670,31 @@ describing something other than what was on screen, after the stale-layer diagno
 and the footprint-identity false alarm. All three were found the same way: read the
 raw frame and compare it against what the harness believes.
 
+## A fix that was never actually in effect (2026-08-24)
+
+`Select` was given a FOOTPRINT so the driver could locate the intended piece on the
+current board rather than trusting a plan-time anchor. Tracing it afterwards showed
+every footprint arriving EMPTY: the compiler builds its plans through one shared
+helper, and only the inline construction that helper had replaced was updated. The
+anchor re-derivation was running on nothing, so the fix had no effect at all while
+appearing to be in place.
+
+Worth naming as its own failure mode. A change that is written, reviewed and
+committed can still not be running, and nothing about the test suite or the level
+outcome said so — the only thing that surfaced it was printing what the plan actually
+contained. Verify the fix is IN EFFECT, not merely present.
+
+With footprints populated, every Select now hits its intended piece:
+
+```
+step 3  Select (8,11)  -> selected (8,11)  HIT
+step 7  Select (10,9)  -> selected (10,9)  HIT
+```
+
+The remaining stall on idx3 is finer: with the right piece selected, some presses
+still do not reduce the distance to the intended layout, so a move is being refused
+for a reason the placement constraints do not yet capture.
+
 ## Next
 
 1. **Fill is not confirmed paired.** gemma4 misses one slot, and the cause is our

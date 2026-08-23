@@ -479,7 +479,7 @@ def _plan_from(board, options, picks, offsets, satisfied, commit) -> FlowPlan:
         if not path:
             continue
         if len(board.pieces) > 1:
-            steps.append(Select(_anchor(board.pieces[i])))
+            steps.append(Select(_anchor(board.pieces[i]), board.pieces[i]))
         steps.extend(path)
     steps.append(commit)
     return FlowPlan(
