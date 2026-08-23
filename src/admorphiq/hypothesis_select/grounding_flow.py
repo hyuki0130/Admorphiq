@@ -1179,6 +1179,45 @@ class FlowGrounding:
             "high",
         )
 
+    def falling_columns(self) -> Any:
+        """Columns a source pours down from off the board's top.
+
+        Measured on idx3 across four layouts: a second stream starts partway through
+        the spill, and where it becomes visible tracks whatever is beneath it — piece
+        at row 4 gives entries at (3,5) and (3,6), piece at row 5 gives (4,5) and
+        (4,6), always the cell directly ABOVE the obstacle and always in the same two
+        columns. Moving that piece out of those columns removes the stream from those
+        rows entirely.
+
+        So the invariant is the COLUMN, not the cell: what the harness had been
+        recording as an emergence was the point where a falling stream came to rest on
+        something. A column is reported when a cell appears in it with no flow behind
+        or beside it AND the cell directly ahead is occupied — the signature of a
+        stream landing. That is derivable for a layout never observed, which is what
+        planning needs and what an emergence could never give."""
+        if not self._animations:
+            return UNKNOWN
+        direction = self.initial_direction()
+        if direction is UNKNOWN:
+            return UNKNOWN
+        dr, dc = direction.value
+        anim = self._animations[-1]
+        blocking = set(anim.piece_cells) | self._all_piece_cells()
+        seen: set[Cell] = set()
+        out: set[int] = set()
+        for layer in anim.frontier:
+            for (r, c) in layer:
+                behind = (r - dr, c - dc)
+                flanks = ((r - dc, c - dr), (r + dc, c + dr))
+                landed = (r + dr, c + dc) in blocking
+                if behind in seen or any(f in seen for f in flanks) or not landed:
+                    continue
+                out.add(c if dr else r)
+            seen |= set(layer)
+        if not out:
+            return UNKNOWN
+        return Grounded(tuple(sorted(out)), "high")
+
     def absorbers(self) -> frozenset[Cell]:
         """Regions that swallow the flow without the objective counting them.
 

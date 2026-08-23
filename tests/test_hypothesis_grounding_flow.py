@@ -267,3 +267,41 @@ def test_the_tracked_piece_is_READ_from_the_board_not_remembered():
     assert tracked is not UNKNOWN
     assert set(tracked.value) == set(merged), \
         f"the tracked piece was remembered, not read: {tracked.value}"
+
+
+def test_a_falling_source_is_grounded_by_its_COLUMN_where_it_lands():
+    """Purpose: what the harness recorded as an "emergence" is where a falling stream
+    came to rest on something, so it moves when the pieces move and cannot be replayed
+    onto a layout the plan has changed. Measured on idx3: a piece at row 4 gives entries
+    at (3,5) and (3,6), the same piece at row 5 gives (4,5) and (4,6) — always the cell
+    directly above the obstacle, always the same two columns.
+
+    The COLUMN is the invariant, and it is derivable for a layout never observed, which
+    is what planning needs.
+
+    Expected feedback: pass proves a landing stream grounds its column. Fail means the
+    model can only replay entries it has already seen, and a plan that moves a piece
+    predicts flow in the wrong place."""
+    idle = {(5, c): 7 for c in range(2, 5)}
+    g = FlowGrounding()
+    g.observe(0, None, [_frame(idle)])
+    g.observe(6, (5, 2), [_frame({(5, c): 9 for c in range(2, 5)})])   # select it
+    g.observe(4, None, [_frame({(5, c): 9 for c in range(3, 6)})])     # and move it right
+
+    piece = {(5, c): 9 for c in range(3, 6)}
+    layers = []
+    flow = {}
+    for k in range(1, 6):
+        if k <= 3:
+            flow[(k, 0)] = 6          # a plain stream, so the direction is measurable
+        if k == 4:
+            flow[(4, 4)] = 6          # lands on the piece: nothing behind it
+        if k == 5:
+            flow[(4, 3)] = 6          # and runs along the top
+            flow[(4, 5)] = 6
+        layers.append(_frame({**piece, **flow}))
+    g.observe(5, None, layers)
+
+    columns = g.falling_columns()
+    assert columns is not UNKNOWN, "a landing stream must ground its column"
+    assert columns.value == (4,), f"grounded the wrong column: {columns.value}"

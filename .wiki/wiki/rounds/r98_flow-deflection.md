@@ -1273,15 +1273,49 @@ Two corrections it forces on this round's own record:
   when the layout changes was right; the replacement is not a better sighting but the
   source-plus-surface model above.
 
+## The column is the invariant, and discovering it costs one slide (2026-08-24)
+
+Dropping the covering piece one row at a time turns the second source's behaviour into
+a rule, confirmed at two heights:
+
+```
+piece at row 4   →  flow appears at (3,5) (3,6)
+piece at row 5   →  flow appears at (4,5) (4,6)
+```
+
+Always the cell directly ABOVE the obstacle, always the same two columns. So the source
+pours down columns 5 and 6 and becomes visible where it lands. The COLUMN is what stays
+true across layouts, and unlike an emergence it is derivable for a layout the agent has
+never seen: given any placement, the stream lands on whatever is topmost in that column.
+
+`falling_columns()` grounds it from the landing signature — a cell that appears with no
+flow behind or beside it while the cell directly ahead is occupied. Measured live, it
+returns `(5, 6)` on idx3 and repeats that answer after a further slide.
+
+There is a catch worth stating, because it changes what the agent has to DO. In the
+level's own starting layout the query is `UNKNOWN` — on every level:
+
+```
+idx0 UNKNOWN   idx1 UNKNOWN   idx2 UNKNOWN   idx3 UNKNOWN
+idx3 after sliding the covering piece one row down  →  (5, 6)
+```
+
+The reason is that a stream falling onto a piece that is directly beneath it never
+travels: it spills off the ends immediately, and fall-off looks nothing like landing.
+The column only becomes observable once the cover moves. That makes this a fact the
+agent has to go and GET — one selection and one press, then a commit — rather than one
+it can read off the opening frame. Discovery here is an action, not an observation, and
+the probe phase is where it belongs.
+
 ## Next
 
 1. **Fill is not confirmed paired.** gemma4 misses one slot, and the cause is our
    encoding rather than its reasoning. Measure the hazard orthogonalisation as its
    own experiment against all three models — never as a patch to move a verdict.
-2. **Ground the second source and the surface it lands on.** It emits downward in fixed
-   COLUMNS, runs along whatever piece is beneath it and falls off both ends; the entries
-   the harness records are those fall-off points. Grounding the source rather than the
-   fall-off is what makes an unobserved layout predictable, and would unblock idx3.
+2. **Slide a cover during the probe phase, then feed the columns to the propagator.**
+   `falling_columns()` grounds (5,6) on idx3 but only AFTER the covering piece moves —
+   in the opening layout it is UNKNOWN on every level. So the probe phase needs the
+   slide, and the board needs to carry falling columns instead of replayed emergences.
 3. **Multi-piece placement**, the burden the idx1 observation named: idx1 carries
    three pieces and three targets, so a single-piece placement satisfies nothing and
    the sink shortlist comes back empty. That, plus a shortlist that can name targets
