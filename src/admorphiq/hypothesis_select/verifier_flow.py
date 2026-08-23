@@ -140,28 +140,49 @@ def _verify_transition(
         return Verdict.UNKNOWN, "no grounded board or trajectory to replay against"
 
     predicted = _replay(ev.board, table)
+
+    # Compare the TRAIL, not the per-step frontier. Flow cells persist, so the trail
+    # after k steps is the physical claim; which of two cells a splitting stream
+    # renders first is engine phase, not mechanics — measured on the fourth level,
+    # where a stream spreading around a piece produces its two flanking cells one
+    # step apart while the model produces them together. A frontier comparison calls
+    # that a contradiction; a trail comparison does not, and it stays just as sharp
+    # against a wrong model, which produces cells the engine NEVER produces.
+    observed_trail: set[tuple[int, int]] = set()
+    for layer in ev.trajectory:
+        observed_trail |= set(layer)
+    predicted_trail: set[tuple[int, int]] = set()
+    for layer in predicted:
+        predicted_trail |= set(layer)
+    invented = predicted_trail - observed_trail
+    missed = observed_trail - predicted_trail
+    if invented or missed:
+        detail = (
+            f"predicted {len(invented)} cell(s) the flow never reached"
+            if invented
+            else f"misses {len(missed)} cell(s) the flow reached"
+        )
+        sample = sorted(invented or missed)[:3]
+        if ev.incomplete_board:
+            return (
+                Verdict.UNKNOWN,
+                f"the replay {detail} (e.g. {sample}), but the board is incomplete: "
+                f"{ev.incomplete_board}",
+            )
+        return (
+            Verdict.CONTRADICTED,
+            f"the replay {detail}, for example {sample}",
+        )
+
     n = min(len(predicted), len(ev.trajectory))
     for i in range(n):
         if predicted[i] != ev.trajectory[i]:
-            if ev.incomplete_board:
-                # The board is KNOWN to be missing a source, so flow appears that no
-                # correct hypothesis could predict from this model. Charging that to
-                # the hypothesis would fail a right answer for a grounding gap.
-                return (
-                    Verdict.UNKNOWN,
-                    f"replay diverges at step {i}, but the board is incomplete: "
-                    f"{ev.incomplete_board}",
-                )
-            return (
-                Verdict.CONTRADICTED,
-                f"predicted step {i} {list(predicted[i])} but the flow was observed at "
-                f"{list(ev.trajectory[i])}",
-            )
-    if abs(len(predicted) - len(ev.trajectory)) > 1:
-        return (
-            Verdict.CONTRADICTED,
-            f"predicted {len(predicted)} steps but {len(ev.trajectory)} were observed",
-        )
+            # Same cells, different order of appearance: engine render phase. The
+            # trail already agreed, so there is nothing here to contradict.
+            break
+    # Step COUNT is phase as well: the engine renders pauses the propagator does not
+    # take, so two runs that reach exactly the same cells can differ in length. The
+    # trail comparison above already pinned the physics.
 
     # A POSITIVE claim in a slot the evidence cannot separate is unverifiable. The
     # replay agreeing proves nothing about it, so reporting PASS would overstate

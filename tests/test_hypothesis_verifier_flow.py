@@ -102,19 +102,47 @@ def test_the_oracle_table_passes_its_own_evidence():
         assert verdict.objective is Verdict.PASS
 
 
-def test_a_mispredicting_table_is_contradicted_with_the_offending_step():
-    """Purpose: a table that predicts a different trajectory must die, and the
-    reason must name the step where the prediction and the observation part.
+def test_a_mispredicting_table_is_contradicted_and_names_the_offending_cells():
+    """Purpose: a table that predicts a different FLOW must die, and the reason must
+    name cells — either ones the flow never reached, or ones it reached and the
+    prediction missed.
 
-    Expected feedback: pass proves wrong hypotheses are blocked BEFORE any action
-    is executed, and that the failure is attributable. Fail means a wrong model
-    would be allowed to spend the budget."""
+    The comparison is on the TRAIL rather than the per-step frontier: flow cells
+    persist, so the trail is the physical claim, while which of two cells a
+    splitting stream renders first is engine phase. A frontier comparison calls that
+    phase difference a contradiction; the trail does not, and stays just as sharp
+    against a wrong model — which produces cells the engine never produces.
+
+    Expected feedback: pass proves wrong hypotheses are blocked BEFORE any action is
+    executed, with cell-level attribution. Fail means either a wrong model survives
+    or a right one is failed for render phase."""
     for changed in ({"spawn": "none"}, {"direction": "outward_turned"},
                     {"propagation": "edge_teleport"}, {"sink_predicate": "contact"}):
         verdict = verify_with_evidence(_with(**changed), _evidence(_board()))
         assert verdict.verdict is Verdict.CONTRADICTED, changed
         assert verdict.transition is Verdict.CONTRADICTED, changed
-        assert "predicted" in verdict.reason
+        assert "cell(s)" in verdict.reason
+
+
+def test_render_phase_alone_is_not_a_contradiction():
+    """Purpose: two runs that reach exactly the same cells, differing only in the
+    order the cells appear, describe the same world. The verdict must not be
+    CONTRADICTED.
+
+    Expected feedback: pass proves the verifier judges mechanics, not animation
+    timing. Fail means a correct hypothesis dies on any board whose engine renders a
+    split one step apart — measured on the fourth level, where it does."""
+    board = _board()
+    evidence = _evidence(board)
+    shuffled = FlowEvidence(
+        board=evidence.board,
+        # same cells, redistributed across steps
+        trajectory=tuple((c,) for layer in evidence.trajectory for c in layer),
+        advanced=evidence.advanced,
+        n_sinks=evidence.n_sinks,
+    )
+    verdict = verify_with_evidence(F.sp80_oracle_instance(), shuffled)
+    assert verdict.verdict is not Verdict.CONTRADICTED
 
 
 def test_a_claim_in_a_slot_the_evidence_cannot_separate_is_unknown_not_pass():

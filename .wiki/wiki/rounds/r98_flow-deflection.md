@@ -454,10 +454,24 @@ Getting it to line up took three corrections, each measured:
   one. Letting it travel immediately runs the whole stream one step ahead of the
   observation from then on.
 
-Divergence moved from step 4 to step 8, with steps 0-7 matching cell for cell. What
-remains is finer: at step 8 the prediction emits a left-branch cell the engine emits
-at step 9, and misses one the engine produces — a split-ordering difference rather
-than a missing entity.
+Divergence moved from step 4 to step 8, with steps 0-7 matching cell for cell.
+
+**Then the comparison itself turned out to be the wrong test.** What remained at step
+8 was ordering: the engine spreads a split one cell per step — `(6,4)`, then
+`(6,2)+(6,5)`, then `(6,1)`, then `(6,6)` — while the model produces both flanks
+together. Flow cells PERSIST, so the physical claim is the TRAIL, and which of two
+cells a splitting stream renders first is engine phase, not mechanics. Step COUNT is
+phase for the same reason: the engine renders pauses the propagator does not take.
+
+The verifier now compares trails and attributes at cell level: cells the replay
+predicts that the flow never reached, or cells the flow reached that the replay
+missed. The obvious worry is that this weakens the test — measured, it does not. On
+idx0 the frozen mutant table reproduces EXACTLY as before (oracle PASS, 6
+CONTRADICTED, 3 UNKNOWN), because a wrong model does not merely reorder cells, it
+produces cells the engine never produces.
+
+idx3's remaining gap is now **two cells** — `(6,5)` and `(6,6)`, which the flow reached
+and the replay does not — with everything else in agreement.
 
 ## Next
 
