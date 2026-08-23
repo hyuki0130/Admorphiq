@@ -495,6 +495,44 @@ idx2: CLEARED — 47 actions
 idx3: plans and executes; does not clear
 ```
 
+## Targets are individuated by their MOUTH (2026-08-24)
+
+idx3's plan was satisfying its objective and leaving the level unfinished, because
+grounding had found ONE target where the board carries several. Two causes, both the
+merge problem in a new dress:
+
+- targets standing side by side merge into a single region under 4-connectivity,
+  exactly as touching pieces do. A single merged target makes "satisfy every target"
+  mean "satisfy the one blob", which a plan can do while the level stays open;
+- the shape-repeat inference, which names targets the probing spill never reached,
+  compared whole regions — so a row of identical targets matched nothing at all.
+
+The family's own satisfaction rule individuates them, so no new assumption was
+needed: a target is satisfied when the flow occupies the NOTCH in its edge — the cell
+whose two flanking neighbours belong to that same target. Each notch is therefore one
+target, region cells are attributed to the nearest one, and a region with fewer than
+two notches is returned unchanged. Candidate regions are split this way BEFORE their
+shapes are compared.
+
+Measured on idx3: the shortlist went from **1 target to 3**, each a complete cup.
+idx0 is unaffected — its two targets stand apart with one notch each, so nothing
+splits — and the oracle gate stays 3/3.
+
+Also fixed here, from the same investigation: **a piece can carry a cell of another
+appearance**. A source embedded in a bar renders in its own colour, so segmenting by
+appearance splits the bar and leaves the odd cell belonging to nothing — and a cell
+in no entity is a FREE cell, so the flow walked through the middle of a bar the
+engine treats as one obstruction. Pieces parted by a single non-background cell are
+now bridged, absorbing it; never across empty space, because that is exactly what
+parts two genuinely separate pieces. Bridging alone did not fix it, which exposed the
+sharper defect: the barrier inference derived its own piece-cell set by appearance
+instead of reading the inventory, so the embedded source was a piece to one part of
+the harness and a barrier to another — and the propagator checks barriers FIRST.
+
+idx3 still does not clear. What it now reports is a plan whose predicted coverage is
+measured against the right number of targets, which is the precondition for the
+objective question being asked correctly at all.
+
 ## Next
 
 1. **Fill is not confirmed paired.** gemma4 misses one slot, and the cause is our

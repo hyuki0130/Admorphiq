@@ -784,10 +784,15 @@ class FlowGrounding:
         out: list[frozenset[Cell]] = []
         for colour, shape in signatures:
             for region in _regions(cells, colour):
-                if region & pieces or any(region & k for k in known):
-                    continue
-                if _normalised(region) == shape:
-                    out.append(region)
+                # Targets standing side by side merge into one region, so a region
+                # is split by its MOUTHS before its shape is compared — otherwise a
+                # row of identical targets matches nothing, and the ones the probe
+                # never reached stay invisible.
+                for part in self._by_mouth(region):
+                    if part & pieces or any(part & k for k in known):
+                        continue
+                    if _normalised(part) == shape:
+                        out.append(part)
         return sorted(out, key=min)
 
     def _obstruction_regions(self) -> list[frozenset[Cell]]:
@@ -1051,10 +1056,45 @@ class FlowGrounding:
                 groups.append(g)
         if not groups:
             return UNKNOWN
+        split: list[frozenset[Cell]] = []
+        for group in groups:
+            split.extend(self._by_mouth(group))
         return Grounded(
-            tuple((f"sink_{i}", tuple(sorted(g))) for i, g in enumerate(sorted(groups, key=min))),
+            tuple((f"sink_{i}", tuple(sorted(g))) for i, g in enumerate(sorted(split, key=min))),
             "high",
         )
+
+    def _by_mouth(self, region: frozenset[Cell]) -> list[frozenset[Cell]]:
+        """Split a run of adjacent targets into one target per MOUTH.
+
+        Targets standing side by side merge into a single region under
+        4-connectivity, exactly as touching pieces do — and a single merged target
+        makes "satisfy every target" mean "satisfy the one blob", which a plan can
+        do while the level stays unfinished.
+
+        The family's own satisfaction rule individuates them: a target is satisfied
+        when the flow occupies the notch in its edge, the cell whose two flanking
+        neighbours belong to that same target. Each such notch is therefore one
+        target, and the region's cells are attributed to the nearest one. A region
+        with no notch, or with one, is returned unchanged."""
+        if self._prev_cells is None or len(region) < 2:
+            return [region]
+        rows = {r for r, _ in region}
+        mouths = [
+            (r, c)
+            for r in rows
+            for c in range(
+                min(x for y, x in region if y == r), max(x for y, x in region if y == r) + 1
+            )
+            if (r, c) not in region and (r, c - 1) in region and (r, c + 1) in region
+        ]
+        if len(mouths) < 2:
+            return [region]
+        buckets: dict[Cell, set[Cell]] = {m: set() for m in mouths}
+        for cell in region:
+            nearest = min(mouths, key=lambda m: (abs(m[1] - cell[1]), abs(m[0] - cell[0])))
+            buckets[nearest].add(cell)
+        return [frozenset(v) for v in buckets.values() if v]
 
     def placement_evidence(self) -> Any:
         """Blocked placements, admitted ONLY from a contrast: the same action was
