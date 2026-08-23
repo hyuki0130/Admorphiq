@@ -99,6 +99,9 @@ class FlowPlan:
     # The layout the plan is FOR: a driver that only holds a list of presses cannot
     # tell whether it arrived at the placement whose spill it is counting on.
     intended: tuple[frozenset[Cell], ...] = ()
+    # The board the forecast was taken ON, so a caller can tell whether the board it
+    # ends up committing is the one the plan was ever about.
+    planned_board: Optional[Board] = None
     predicted_satisfied: int = 0
     reason: str = ""
 
@@ -507,6 +510,7 @@ def _plan_from(board, options, picks, offsets, satisfied, commit) -> FlowPlan:
         steps=tuple(steps),
         offsets=offsets,
         intended=intended,
+        planned_board=board.with_offsets(offsets),
         predicted_satisfied=satisfied,
         reason=f"placement {offsets} is predicted to satisfy {satisfied} target(s)",
     )

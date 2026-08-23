@@ -889,14 +889,74 @@ trusting a sweep that returns all zeros or all ones, print one element of each s
 check they are the same kind of thing. A uniform answer is a defect signature, not a
 finding.
 
+## The forecast was about a board we never built (2026-08-24)
+
+The previous section left idx3 with every notched target predicted satisfied and no
+clear, and named the mouthless block as the suspect. Three measurements later the
+suspect is cleared and the real defect is mine.
+
+**First: the block IS satisfiable, and the model agrees with the engine about it.**
+Reading each target-coloured region's fate after the spill — did the flow enter it, did
+it change appearance — gives the engine's own satisfied signal:
+
+```
+(13,2)  4 cells  0 notches   entered=False  recoloured=TRUE
+(13,6)  5 cells  1 notch     entered=False  recoloured=TRUE
+(13,9)  5 cells  1 notch     entered=False  recoloured=False
+(13,12) 5 cells  1 notch     entered=False  recoloured=False
+```
+
+Two targets satisfied — and the forecast taken on the board as committed says exactly
+`satisfied {0, 1}`, which is those same two. So the response table is not wrong here.
+(It also means my previous section's "every notched target satisfied and still no clear"
+was a claim about a PREDICTION, not about the engine. Corrected: one notched target and
+the block were satisfied.)
+
+**Second: the forecast was never about the board that got committed.** Comparing the
+board the compiler predicted on against the board at the moment of the commit:
+
+```
+pieces: planned {(7,4)…(7,8)} 5 cells   actual {(7,3)…(7,8)} 6 cells   ← merged with a neighbour
+        planned {(10,4),(10,5),(10,6)}  actual {(10,6),(10,7),(10,8)}  ← two cells right
+```
+
+A piece sits two cells from where the plan put it, and another has come to rest against
+its neighbour and is read as one six-cell region. The plan's forecast is a statement
+about a specific layout; commit a different one and nothing has been tested.
+
+**Third: my own arrival check could not see it.** It asked whether the intended cells
+were a SUBSET of the occupied cells, and a subset test passes while one piece stands in
+another's intended place and a merge supplies the rest. It is now exact set equality,
+and the drift is reported with both directions (intended-but-empty, occupied-but-
+unplanned). A subset test for "did we arrive" is a measurement that cannot fail.
+
+With the exact check in place idx3 reports what is actually blocking it — **a press the
+engine refuses while topping a piece up to its planned place.** The compiler's reachable
+placements are computed from the measured deltas without regard for the other pieces, and
+idx3 is the first level crowded enough (five pieces) for their paths to cross. Making
+placement reachability respect occupancy is the next step.
+
+One rejected idea, measured rather than argued: vetoing the commit when the pre-commit
+forecast does not win. It looks obviously right and it breaks idx2, whose shortlist is
+polluted to **fifteen** targets at that moment by the spill's own flow — and which clears
+anyway. The forecast is trustworthy about which targets a layout satisfies; it is not
+trustworthy as a veto, because the target list it scores against can be junk.
+
+```
+idx0: CLEARED — 19 actions   forecast 2 of 2, wins
+idx1: CLEARED — 26 actions   forecast 3 of 3, wins
+idx2: CLEARED — 51 actions   forecast 2 of 15, does not win (shortlist polluted)
+idx3: the engine refuses a press the plan needs
+```
+
 ## Next
 
 1. **Fill is not confirmed paired.** gemma4 misses one slot, and the cause is our
    encoding rather than its reasoning. Measure the hazard orthogonalisation as its
    own experiment against all three models — never as a patch to move a verdict.
-2. **Is the mouthless block a second kind of target?** idx3 satisfies all three notched
-   targets and does not clear, and it is the only level of the four carrying such a
-   block. Testing that claim is the next step on depth.
+2. **Placement reachability must respect the other pieces.** idx3's plan needs a press
+   the engine refuses; the compiler computes reachable placements from the measured
+   deltas alone, and idx3 is the first level crowded enough for piece paths to cross.
 3. **Multi-piece placement**, the burden the idx1 observation named: idx1 carries
    three pieces and three targets, so a single-piece placement satisfies nothing and
    the sink shortlist comes back empty. That, plus a shortlist that can name targets

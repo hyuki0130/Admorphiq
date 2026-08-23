@@ -228,6 +228,7 @@ def _execute(w: Walker, g: FlowGrounding, plan, entered: int, spent: int, probes
     arrives.
     """
     held: Select | None = None
+    forecast = None
     for index, step in enumerate(plan.steps):
         if w.actions - spent >= ACTION_BUDGET or not w.alive:
             return False, f"out of budget at step {index}", False
@@ -241,6 +242,26 @@ def _execute(w: Walker, g: FlowGrounding, plan, entered: int, spent: int, probes
                 return False, note, True
             held = step
         if index == len(plan.steps) - 1:
+            # The board can change WHILE a plan executes — moving a piece uncovers
+            # what it was standing on — so the forecast is taken again here, on the
+            # board as it will actually be committed.
+            pre = g.board()
+            forecast = predict(pre.value, ORACLE) if pre is not UNKNOWN else None
+            want = frozenset(c for piece in plan.intended for c in piece)
+            have = _all_pieces(g)
+            if want and want != have:
+                # EXACTLY the intended layout, not merely a superset of it. A subset
+                # test passes while a piece sits two cells off and another has merged
+                # with its neighbour — measured on idx3, where "short by 0 cells" was
+                # reported for a layout with a piece in the wrong place. A forecast is
+                # about a board; committing a different one tests nothing.
+                return False, (f"the layout drifted: {len(want - have)} intended "
+                               f"cell(s) unoccupied, {len(have - want)} unplanned"), True
+            if forecast is not None and os.environ.get("R98_DUMP_BOARD") == "1":
+                print(f"    [forecast] as committed: {len(forecast.satisfied)} of "
+                      f"{len(pre.value.sinks)} target(s), wins={forecast.wins}",
+                      flush=True)
+                _board_diff(plan.planned_board, pre.value)
             # the commit: the LAST piece has no successor to top it up, and a layout
             # that is one press short spills as a layout nobody chose
             arrived, note = _top_up(w, g, held, entered, spent)
@@ -252,12 +273,13 @@ def _execute(w: Walker, g: FlowGrounding, plan, entered: int, spent: int, probes
         if w.level > entered:
             return True, f"cleared in {w.actions - spent} actions ({probes} selection probes)", False
 
-    if os.environ.get("R98_DUMP_BOARD") == "1":
+    if os.environ.get("R98_DUMP_BOARD") == "1" and forecast is not None:  # noqa: SIM102
+        _attribute_pre(g, forecast)
         want = frozenset(c for piece in plan.intended for c in piece)
         have = _all_pieces(g)
         print(f"    [layout] short by {len(want - have)} cell(s); missing "
               f"{sorted(want - have)}", flush=True)
-        _attribute(g, plan)
+        _region_fates(g)
         late = g.sink_candidates()
         print(f"    [targets] after the commit: "
               f"{[(sorted(c)[0], len(c)) for _, c in late.value]}", flush=True)
@@ -311,6 +333,31 @@ def _top_up(w: Walker, g: FlowGrounding, step: Select | None, entered: int, spen
     return False, "ran out of attempts topping a piece up to its place"
 
 
+def _attribute_pre(g: FlowGrounding, forecast) -> None:
+    """The prediction taken on the board AS COMMITTED against the spill that ran.
+
+    Predicting on the post-commit board and comparing it to that same spill compares
+    a forecast for one board with a run on another — a mistake this round already
+    made once. The forecast here is taken in the action before the commit."""
+    observed = g.trajectory()
+    if observed is UNKNOWN:
+        print("    [attribute] no observed spill", flush=True)
+        return
+    pred = [frozenset(layer) for layer in forecast.frontier if layer]
+    obs = [frozenset(layer) for layer in observed.value if layer]
+    print(f"    [attribute] predicted {len(pred)} step(s)/{sum(len(x) for x in pred)} cells "
+          f"vs observed {len(obs)}/{sum(len(x) for x in obs)}; "
+          f"forecast satisfied {sorted(forecast.satisfied)}", flush=True)
+    for i in range(max(len(pred), len(obs))):
+        a = pred[i] if i < len(pred) else frozenset()
+        b = obs[i] if i < len(obs) else frozenset()
+        if a != b:
+            print(f"    [attribute] first divergence at step {i}: "
+                  f"invented {sorted(a - b)} missed {sorted(b - a)}", flush=True)
+            return
+    print("    [attribute] the trails agree cell for cell", flush=True)
+
+
 def _attribute(g: FlowGrounding, plan) -> None:
     """Name where the claimed table and the engine part company on the layout the
     plan actually built: the predicted trail against the observed one, cell by cell."""
@@ -352,6 +399,46 @@ def _tally_target_colour(g: FlowGrounding) -> None:
                 rows.append((sorted(part)[0], len(part), len(g._mouths(part))))
     print(f"    [colour {sorted(colours)}] regions (anchor, cells, notches): {rows}",
           flush=True)
+
+
+def _board_diff(planned, actual) -> None:
+    """Where the board the compiler predicted on differs from the board about to be
+    committed. A plan is a forecast ABOUT a board; if that board is not the one that
+    arrives, the forecast was never tested."""
+    if planned is None:
+        return
+    for field in ("pieces", "sinks", "hazard_cells", "emitter_cells", "standing_flow",
+                  "emergences", "direction", "size"):
+        want, have = getattr(planned, field), getattr(actual, field)
+        if want != have:
+            if isinstance(want, (tuple, list, frozenset, set)) and isinstance(have, type(want)):
+                print(f"    [board] {field}: planned {len(want)} vs actual {len(have)}; "
+                      f"only-planned {sorted(set(want) - set(have))[:3]} "
+                      f"only-actual {sorted(set(have) - set(want))[:3]}", flush=True)
+            else:
+                print(f"    [board] {field}: planned {want} vs actual {have}", flush=True)
+
+
+def _region_fates(g: FlowGrounding) -> None:
+    """For every region wearing the target appearance: its notch count, whether the
+    spill ENTERED it, and whether it changed appearance while the spill ran.
+
+    A change of appearance is this family's satisfied-target signal, so a region that
+    changes is a target of SOME kind even when it has no notch to be flanked at."""
+    sinks = g.sink_candidates()
+    if sinks is UNKNOWN or g._prev_cells is None or not g._animations:
+        return
+    cells = g._prev_cells
+    colours = {cells[c] for _, grp in sinks.value for c in grp if c in cells}
+    anim = g._animations[-1]
+    trail = {c for layer in anim.frontier for c in layer}
+    changed = {c for grp in anim.changed_regions for c in grp}
+    for colour in sorted(colours):
+        for region in _regions(cells, colour):
+            for part in g._by_mouth(region):
+                print(f"    [fate] {sorted(part)[0]} {len(part)} cells "
+                      f"{len(g._mouths(part))} notch(es): entered={bool(part & trail)} "
+                      f"recoloured={bool(part & changed)}", flush=True)
 
 
 def _all_pieces(g: FlowGrounding) -> frozenset:
