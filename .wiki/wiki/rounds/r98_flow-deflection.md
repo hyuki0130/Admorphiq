@@ -1839,14 +1839,54 @@ direct assertion that no band cell is ever named. Changing a test to match a con
 is legitimate; what is not is changing one to match an outcome, and the distinction is
 whether the claim survives the rewrite. This one does.
 
+## A press can CONSUME the piece it moves (2026-08-24)
+
+idx3's remaining blocker is a press that fails to land twice — the retry that reliably
+rescues a dropped press does nothing here. The board says why: the piece is not there any
+more.
+
+```
+[identity] plan named (11,1) 5 cells, selected (11,1) 2 cells
+plan's pieces   (3,4)4 (3,8)4 (8,11)3 (10,8)3 (12,0)5
+board's pieces  (3,4)4 (3,8)4 (8,11)3 (10,8)3            ← four, not five
+```
+
+The full board confirms it: three regions, fourteen cells, where the level began with five
+pieces and nineteen. And the counts taken either side of the press pin the moment —
+**pieces 4 vs planned 5 immediately after a press that was 5 before it.** The press did not
+fail; it consumed the piece it was moving.
+
+This is the second sighting. Earlier in the round a row-3 piece "shrank from four cells to
+three and then disappeared, and the game ended", recorded as observed-once-not-reproduced.
+It is reproduced now, in a different place and by a different route, so piece loss is real
+and the model has no rule for it.
+
+What is NOT yet measured is the cause. The press was a downward move into `(12,1)` and
+`(12,2)`, both plain background, with the target row two rows below — so "moved onto a
+target" does not explain it, and neither does contact with flow, which the trail does not
+show there. That is the next question, and it is worth answering: a plan that unknowingly
+destroys its own piece cannot be repaired by better placement.
+
+The driver now checks the inventory against what the plan counts on and replans when it
+finds fewer, and the failure note carries both numbers. Noticing a piece is gone costs one
+action; pressing on at a ghost costs the level.
+
+```
+idx0: CLEARED — 23 actions
+idx1: CLEARED — 30 actions
+idx2: CLEARED — 55 actions
+idx3: a press consumes the piece it moves; three plans exhausted
+```
+
 ## Next
 
 1. **Fill is not confirmed paired.** gemma4 misses one slot, and the cause is our
    encoding rather than its reasoning. Measure the hazard orthogonalisation as its
    own experiment against all three models — never as a patch to move a verdict.
-2. **idx3's planned press fails to land twice.** With the shortlist repaired the compiler
-   plans again; execution is the blocker once more, and the press is refused into cells
-   nothing occupies.
+2. **What consumes a piece?** Measured twice now: a press destroys the piece it moves.
+   The cells entered are plain background, the target row is two rows away and no flow is
+   there, so the cause is unmodelled — and a plan that destroys its own piece cannot be
+   repaired by better placement.
 3. **Measure the bounded-roof variant on fixed evidence** — 1 invented cell against the
    adopted rule's 2, deliberately not adopted in the same change.
 3. **Multi-piece placement**, the burden the idx1 observation named: idx1 carries

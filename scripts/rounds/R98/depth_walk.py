@@ -361,6 +361,16 @@ def _execute(w: Walker, g: FlowGrounding, plan, entered: int, spent: int, probes
                 return True, f"cleared in {w.actions - spent} actions ({probes} probes)", False
             if not arrived:
                 return False, note, True
+        inventory = g.pieces()
+        planned = len(plan.planned_board.pieces) if plan.planned_board else 0
+        if inventory is not UNKNOWN and planned and len(inventory.value) < planned:
+            # A piece the plan counts on is no longer on the board. Measured on idx3:
+            # five pieces of nineteen cells became three of fourteen mid-plan, and the
+            # driver went on pressing at one that was not there. What removes a piece is
+            # not yet modelled; noticing it and planning again from what IS there costs
+            # one action instead of the rest of the level.
+            return False, (f"a piece is gone: {len(inventory.value)} on the board where "
+                           f"the plan counts {planned}"), True
         before = g.tracked_region()
         w.run(step, g)
         if w.level > entered:
@@ -395,7 +405,11 @@ def _execute(w: Walker, g: FlowGrounding, plan, entered: int, spent: int, probes
                     # dumped run drifted where the same run without the dump executed
                     # its plan.
                     _refusal_probe(w, g, frozenset(before.value), step)
-                return False, (f"planned press {step} did not land; "
+                inv = g.pieces()
+                counts = ("?" if inv is UNKNOWN else len(inv.value),
+                          len(plan.planned_board.pieces) if plan.planned_board else "?")
+                return False, (f"planned press {step} did not land; pieces {counts[0]} vs "
+                               f"planned {counts[1]}; "
                                f"{_what_blocks(g, frozenset(before.value), deltas_of(g)[step])}"), True
 
     if os.environ.get("R98_CAPTURE") and forecast is not None:
@@ -703,12 +717,11 @@ def _identity_report(g: FlowGrounding, plan, held, selected: frozenset) -> None:
               f"{[(sorted(c)[0], len(c)) for _, c in inventory.value]}", flush=True)
     cells = g._prev_cells
     if cells is not None:
-        rows = sorted({r for r, _ in selected} | ({r for r, _ in held.footprint} if held else set()))
         size = int(round(len(cells) ** 0.5))
         sel, idle = g.piece_appearances()
         print(f"    [identity] selected {sel}, idle {idle}, moving {g._moving_colour}, "
               f"flow {[a.flow_colour for a in g._animations[-2:]]}", flush=True)
-        for r in range(max(0, min(rows) - 1), min(size, max(rows) + 2)):
+        for r in range(size):
             print("      r%-2d " % r + " ".join(f"{cells[(r, c)]:2d}" for c in range(size)),
                   flush=True)
 
