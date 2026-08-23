@@ -1518,13 +1518,48 @@ All four certifications hold, including the frozen mutant table — the deflecti
 board-level behaviour, not a slot in the response table, so it does not disturb what the
 model stage measures.
 
+## A one-step shift, and a rule that looked right and was not (2026-08-24)
+
+The remaining idx3 error is entirely surplus and it starts late — every extra cell is
+produced at step 18 or after:
+
+```
+(12,5) 18  (12,12) 18  (12,13) 19  (13,5) 19  (13,13) 20  (14,5) 20  (15,0) 20  (15,5) 21
+```
+
+Laid side by side, the tails are the same trail one step apart:
+
+```
+predicted 17: (12,0) (12,6) (12,11)      observed 18: (12,0) (12,6) (12,11)
+predicted 18: (12,5) (12,10) (12,12) (13,0)   observed 19: (12,10) (13,0)
+```
+
+And the shift has a visible origin at step 12, where a droplet stopped at a piece
+produces its LEFT flank while the engine produces left at 12 and right at 13:
+
+```
+step 12: predicted (9,7) (9,9) (10,3)  |  observed (9,7) (10,3)
+step 13: predicted (9,10) (10,2) …     |  observed (9,9) (10,4) (10,7)
+```
+
+The obvious rule — a split emits one side this step and the other next — was implemented
+and **measured false**. It costs idx2 its clear outright and produces surplus in BOTH
+directions there (34 observed cells missing, 18 invented), where before it had neither.
+So whatever staggers idx3's split is not a general property of splitting, and the rule is
+rejected rather than tuned until one level agrees.
+
+Reverted; idx0–idx3 are back to their previous behaviour. What this tick adds is the
+measurement that localises the disagreement — surplus cells with the step that produced
+them, and a tail-by-tail comparison — and one hypothesis struck off with evidence.
+
 ## Next
 
 1. **Fill is not confirmed paired.** gemma4 misses one slot, and the cause is our
    encoding rather than its reasoning. Measure the hazard orthogonalisation as its
    own experiment against all three models — never as a patch to move a verdict.
-2. **The model over-produces after step 12 on idx3.** Eight predicted cells the engine
-   never makes, and nothing missing — the remaining error is entirely surplus.
+2. **idx3 runs one step ahead of the engine from step 17.** The tails are the same trail
+   offset by one; the per-split stagger that would explain it is measured false (it
+   breaks idx2), so the cause is elsewhere — most likely in how pauses are compacted.
 3. **Multi-piece placement**, the burden the idx1 observation named: idx1 carries
    three pieces and three targets, so a single-piece placement satisfies nothing and
    the sink shortlist comes back empty. That, plus a shortlist that can name targets

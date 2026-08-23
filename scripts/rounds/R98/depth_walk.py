@@ -463,6 +463,10 @@ def _attribute_pre(g: FlowGrounding, forecast) -> None:
         if a != b:
             print(f"    [attribute] first divergence at step {i}: "
                   f"invented {sorted(a - b)} missed {sorted(b - a)}", flush=True)
+            for k in range(max(0, i - 1), min(max(len(pred), len(obs)), i + 4)):
+                a = sorted(pred[k]) if k < len(pred) else []
+                b = sorted(obs[k]) if k < len(obs) else []
+                print(f"      step {k:2d}: predicted {a} | observed {b}", flush=True)
             _trail_surplus(forecast, observed.value)
             _entry_report(g, observed.value)
             return
@@ -492,8 +496,19 @@ def _trail_surplus(forecast, observed) -> None:
     """Cells the forecast produces that the spill never shows, and the reverse."""
     pred = {c for layer in forecast.frontier for c in layer}
     obs = {c for layer in observed for c in layer}
-    print(f"    [surplus] predicted-only {sorted(pred - obs)}", flush=True)
+    where = {}
+    for i, layer in enumerate([x for x in forecast.frontier if x]):
+        for c in layer:
+            where.setdefault(c, i)
+    print(f"    [surplus] predicted-only "
+          f"{sorted((c, where.get(c)) for c in pred - obs)}", flush=True)
     print(f"    [surplus] observed-only  {sorted(obs - pred)}", flush=True)
+    plist = [sorted(x) for x in forecast.frontier if x]
+    olist = [sorted(x) for x in observed if x]
+    for k in range(max(0, min(len(plist), len(olist)) - 4), max(len(plist), len(olist))):
+        a = plist[k] if k < len(plist) else []
+        b = olist[k] if k < len(olist) else []
+        print(f"      tail {k:2d}: predicted {a} | observed {b}", flush=True)
 
 
 def _attribute(g: FlowGrounding, plan) -> None:
