@@ -771,12 +771,69 @@ layout against the predicted trail and name the slot that disagrees.
 Gates unchanged: oracle gate 3/3 (10 actions), grounding certification PASS, verifier
 and mutant certifications reproduce the frozen table.
 
+## The plan was right; the target list was short (2026-08-24)
+
+With placement and execution ruled out, the attribution on idx3 pointed at the
+transition model. It was not the model.
+
+Replaying the achieved layout printed one line that settled it: **`satisfied 2 of 4`**
+— on a board the compiler had planned against with **three** targets. A fourth target
+existed and became nameable only after the commit, when the spill ran into it. The
+objective is *cover every target*; compiled against a short list it means *cover the
+ones I happened to see*, and no execution however exact can win it.
+
+The fourth target sat at `(13,2)` and had **four** cells, where the three named ones
+had five. That is why every existing source missed it:
+
+- it was never satisfied, so the satisfied-region source could not see it;
+- the probing spill never ran into it, so the obstruction source could not either;
+- and shape congruence — the source written precisely for untouched targets — requires
+  an EXACT copy of a confirmed one, which a differently-sized target is not.
+
+What it did share was its **appearance**: all three named targets and the missing one
+wore the same colour. So the shortlist gained a fourth source: when every named target
+agrees on one appearance, that appearance identifies targets, and the rest of the board
+is read for it. Unanimity is the guard — appearance is weaker evidence than shape, and
+one disagreeing group means the appearance is not the discriminator on that board. The
+flow's own colour is never a target; movable pieces are excluded as everywhere else.
+
+Measured effect: idx3 now plans against **four** targets, the true count, and idx0–idx2
+are untouched and still clear. The new failure is honest and further along —
+
+```
+idx0: CLEARED — 19 actions
+idx1: CLEARED — 26 actions
+idx2: CLEARED — 51 actions
+idx3: plans against all four targets; no layout found (61061 examined)
+```
+
+— and it is a SEARCH problem, not a modelling one: idx3's five pieces occupy nineteen
+cells and its four targets span nineteen, so the board wants something close to an
+exact packing, which cost-ordered scan plus sampling is the wrong instrument for.
+
+The obvious replacement — assign each target the piece that satisfies it — was
+measured before being built, and does not exist on this board. Sweeping every offset
+of every piece with the other four left where they are, **no single-piece placement
+satisfies ANY of the four targets** (0 of ~5,000 placements per target). Satisfaction
+on idx3 is inherently JOINT: the flow has to be routed by several pieces in sequence
+before it reaches a mouth flanked. So a per-target assignment search would enumerate
+an empty set, and the next search has to reason about a target's whole approach path
+rather than about one piece at a time. Measured on idx3 only — the control on idx0
+could not be run because its board does not ground without the lane-alignment step.
+
+One correction to the previous section's reading: the trail divergence printed there
+(`invented (8,4)`, `missed (9,5),(9,6)`) was computed on the POST-commit board against
+the observed spill, so it compares a prediction for one board with a run on another. It
+is not evidence about the response table, and is not carried forward as such.
+
 ## Next
 
 1. **Fill is not confirmed paired.** gemma4 misses one slot, and the cause is our
    encoding rather than its reasoning. Measure the hazard orthogonalisation as its
    own experiment against all three models — never as a patch to move a verdict.
-2. **Multi-piece placement**, the burden the idx1 observation named: idx1 carries
+2. **A search that assigns, not samples.** idx3 needs close to an exact packing and
+   the current compiler samples placements; this is now the measured blocker on depth.
+3. **Multi-piece placement**, the burden the idx1 observation named: idx1 carries
    three pieces and three targets, so a single-piece placement satisfies nothing and
    the sink shortlist comes back empty. That, plus a shortlist that can name targets
    from static structure and not only from satisfaction, is the next expansion.

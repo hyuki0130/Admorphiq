@@ -878,6 +878,40 @@ class FlowGrounding:
                         out.append(part)
         return sorted(out, key=min)
 
+    def _appearance_regions(self, known: list[frozenset[Cell]]) -> list[frozenset[Cell]]:
+        """Regions wearing the appearance every named target already agrees on.
+
+        Shape congruence names a target the flow never touched only when it is an
+        exact copy of a confirmed one — and a board can hold a target of a different
+        size. Measured on the fourth sp80 level: three targets of five cells were
+        named, a fourth of FOUR cells was not, so the plan was compiled for three
+        targets on a board that needed four and could not win however precisely it
+        was executed.
+
+        What the fourth still shared was its APPEARANCE. So when every named target
+        wears one and the same colour, that colour identifies targets, and the rest
+        of the board is read for it. Unanimity is the guard: appearance is weaker
+        evidence than shape, and a single disagreeing group means the appearance is
+        not the discriminator here. The flow's own colour is never a target, and
+        movable pieces are excluded as everywhere else."""
+        if not known or self._prev_cells is None:
+            return []
+        cells = self._prev_cells
+        colours = {cells[c] for region in known for c in region if c in cells}
+        if len(colours) != 1:
+            return []
+        colour = colours.pop()
+        if colour in {anim.flow_colour for anim in self._animations}:
+            return []
+        pieces = self._all_piece_cells()
+        out: list[frozenset[Cell]] = []
+        for region in _regions(cells, colour):
+            for part in self._by_mouth(region):
+                if part & pieces or any(part & k for k in known):
+                    continue
+                out.append(part)
+        return sorted(out, key=min)
+
     def _obstruction_regions(self) -> list[frozenset[Cell]]:
         """Regions that obstructed the flow, minus the movable pieces.
 
@@ -1119,6 +1153,8 @@ class FlowGrounding:
 
         * regions that took on a STABLE new appearance while a spill ran — the
           satisfied-target signal;
+        * regions that repeat a named target's shape, or — when every named target
+          agrees on one appearance — simply wear it;
         * regions the flow was OBSTRUCTED by. Wherever the flow spread sideways,
           something blocked the cell ahead; excluding the known movable pieces,
           what remains is a target. This is what lets a board be grounded when the
@@ -1135,6 +1171,9 @@ class FlowGrounding:
             if not any(g & known for known in groups):
                 groups.append(g)
         for g in self._matching_shape_regions(groups):
+            if not any(g & known for known in groups):
+                groups.append(g)
+        for g in self._appearance_regions(groups):
             if not any(g & known for known in groups):
                 groups.append(g)
         if not groups:

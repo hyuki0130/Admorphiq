@@ -36,6 +36,7 @@ from admorphiq.hypothesis_select.compiler_flow import (  # noqa: E402
     compile_flow_hypothesis,
 )
 from admorphiq.hypothesis_select.grounding_flow import UNKNOWN, FlowGrounding  # noqa: E402
+from admorphiq.hypothesis_select.propagate_flow import ORACLE, predict
 from admorphiq.hypothesis_select.verifier_flow import verify_flow_instance  # noqa: E402
 
 ACTIONS = {
@@ -184,6 +185,12 @@ def play_level(w: Walker) -> tuple[bool, str]:
     while attempts < REPLAN_LIMIT:
         attempts += 1
         plan = compile_flow_hypothesis(hypothesis, g)
+        if os.environ.get("R98_DUMP_BOARD") == "1":
+            known = g.sink_candidates()
+            print(f"    [plan] targets known at plan time: "
+                  f"{0 if known is UNKNOWN else len(known.value)} "
+                  f"{[] if known is UNKNOWN else [sorted(c)[0] for _, c in known.value]}",
+                  flush=True)
         if plan.status is not PlanStatus.SOLVABLE:
             if os.environ.get("R98_DUMP_BOARD") == "1":
                 b = g.board().value
@@ -247,6 +254,10 @@ def _execute(w: Walker, g: FlowGrounding, plan, entered: int, spent: int, probes
         have = _all_pieces(g)
         print(f"    [layout] short by {len(want - have)} cell(s); missing "
               f"{sorted(want - have)}", flush=True)
+        _attribute(g, plan)
+        late = g.sink_candidates()
+        print(f"    [targets] after the commit: "
+              f"{[(sorted(c)[0], len(c)) for _, c in late.value]}", flush=True)
     return False, f"executed the plan without clearing ({w.actions - spent} actions)", False
 
 
@@ -295,6 +306,32 @@ def _top_up(w: Walker, g: FlowGrounding, step: Select | None, entered: int, spen
         if held is not UNKNOWN and frozenset(held.value) == current:
             return False, f"press {action} refused while topping up to target"
     return False, "ran out of attempts topping a piece up to its place"
+
+
+def _attribute(g: FlowGrounding, plan) -> None:
+    """Name where the claimed table and the engine part company on the layout the
+    plan actually built: the predicted trail against the observed one, cell by cell."""
+    board = g.board()
+    observed = g.trajectory()
+    if board is UNKNOWN or observed is UNKNOWN:
+        print("    [attribute] no board or no observed spill to compare", flush=True)
+        return
+    predicted = predict(board.value, ORACLE)
+    pred = [frozenset(layer) for layer in predicted.frontier if layer]
+    obs = [frozenset(layer) for layer in observed.value if layer]
+    print(f"    [attribute] predicted {len(pred)} step(s) / {sum(len(x) for x in pred)} cells, "
+          f"observed {len(obs)} / {sum(len(x) for x in obs)}; "
+          f"satisfied {len(predicted.satisfied)} of {len(board.value.sinks)}", flush=True)
+    for i in range(max(len(pred), len(obs))):
+        a = pred[i] if i < len(pred) else frozenset()
+        b = obs[i] if i < len(obs) else frozenset()
+        if a != b:
+            print(f"    [attribute] first divergence at step {i}: "
+                  f"invented {sorted(a - b)} missed {sorted(b - a)}", flush=True)
+            break
+    else:
+        print("    [attribute] trails agree — the disagreement is in what COUNTS "
+              "as satisfying a target, not in where the flow went", flush=True)
 
 
 def _all_pieces(g: FlowGrounding) -> frozenset:

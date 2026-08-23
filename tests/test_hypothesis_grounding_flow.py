@@ -195,3 +195,35 @@ def test_family_specific_queries_stay_unknown_until_a_scripted_consequence():
         assert query() is UNKNOWN, query.__name__
     # the family-agnostic fact is still available
     assert g.tracked_region() is not UNKNOWN
+
+
+def test_a_target_of_a_DIFFERENT_SIZE_is_still_named():
+    """Purpose: shape congruence names an untouched target only when it is an exact
+    copy of a confirmed one. Measured on the fourth sp80 level: three targets of
+    five cells were named and a fourth of FOUR cells was not, so the plan was
+    compiled for three targets on a board that needed four — unwinnable however
+    precisely it was executed. What the fourth still shared was its APPEARANCE.
+
+    Expected feedback: pass proves a differently-sized region wearing the agreed
+    target appearance is named. Fail means "satisfy every target" silently means
+    "satisfy the ones that happen to match a shape I have already seen"."""
+    odd = {(6, c): 4 for c in range(0, 2)}           # two cells: no shape match
+    blocker = {(6, c): 4 for c in range(3, 6)}       # three cells: stops the flow
+    layers = []
+    flow = {}
+    for k in range(1, 7):
+        if k <= 5:
+            flow[(k, 4)] = 6
+        if k == 6:  # the cell ahead is blocked, so it splits to either side
+            flow[(5, 3)] = 6
+            flow[(5, 5)] = 6
+        layers.append(_frame({**odd, **blocker, **flow}))
+
+    g = FlowGrounding()
+    g.observe(0, None, [_frame({**odd, **blocker})])
+    g.observe(5, None, layers)
+
+    sinks = g.sink_candidates()
+    assert sinks is not UNKNOWN
+    named = {cells[0] for _, cells in sinks.value}
+    assert (6, 0) in named, f"the two-cell target was not named: {sinks.value}"
