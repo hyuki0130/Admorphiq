@@ -811,28 +811,92 @@ idx3: plans against all four targets; no layout found (61061 examined)
 cells and its four targets span nineteen, so the board wants something close to an
 exact packing, which cost-ordered scan plus sampling is the wrong instrument for.
 
-The obvious replacement — assign each target the piece that satisfies it — was
-measured before being built, and does not exist on this board. Sweeping every offset
-of every piece with the other four left where they are, **no single-piece placement
-satisfies ANY of the four targets** (0 of ~5,000 placements per target). Satisfaction
-on idx3 is inherently JOINT: the flow has to be routed by several pieces in sequence
-before it reaches a mouth flanked. So a per-target assignment search would enumerate
-an empty set, and the next search has to reason about a target's whole approach path
-rather than about one piece at a time. Measured on idx3 only — the control on idx0
-could not be run because its board does not ground without the lane-alignment step.
+~~The obvious replacement — assign each target the piece that satisfies it — does not
+exist on this board: no single-piece placement satisfies ANY of the four targets.~~
+**RETRACTED — that was my own measurement artifact.** `predict().satisfied` holds
+target INDICES; the probe asked whether the target's cell-set was a member and so
+answered False for every placement. Corrected sweep, same board, one piece moved at a
+time over ~1,800 offsets: the entry layout already satisfies **2** targets, 66
+placements reach **3**, and 30 of those are inside the compiler's legal option set.
+The gradient the beam needs was there all along. Recorded as its own failure mode
+below.
 
 One correction to the previous section's reading: the trail divergence printed there
 (`invented (8,4)`, `missed (9,5),(9,6)`) was computed on the POST-commit board against
 the observed spill, so it compares a prediction for one board with a run on another. It
 is not evidence about the response table, and is not carried forward as such.
 
+## A wall wearing the target colour (2026-08-24)
+
+The appearance source from the previous section named a fourth target on idx3 and the
+compiler then reported no layout. Both were right, and the target was not a target.
+
+Reading the board where the targets live makes it plain. Three of the four regions are
+five-cell U's — two walls, a floor, and a **notch** between the walls. The fourth is a
+solid two-by-two block of the same colour with **no notch at all**:
+
+```
+r13: · · 11 11 ·  ·  11 ·  11 11 ·  11 11 ·  11
+r14: · · 11 11 ·  ·  11 11 11 11 11 11 11 11 11
+       └block┘     └──U──┘  └──U──┘  └──U──┘
+```
+
+This family's satisfaction runs THROUGH a notch — the flow has to occupy the cell whose
+two flanking neighbours belong to the same target — so a region without one can never be
+satisfied however the pieces are placed. Measured: across ~1,800 single-piece layouts the
+three notched targets are satisfied 1723, 1700 and 117 times respectively, and the block
+**zero** times. Naming it made the objective unreachable, which is exactly what the
+compiler reported.
+
+So the weak source is gated on the evidence its own claim needs: **appearance names only
+NOTCHED regions.** The stronger sources are untouched — a region the flow was obstructed
+by has direct evidence behind it, and this block genuinely does obstruct the flow, which
+is why it still enters the shortlist after the commit. idx3 is back to planning against
+its three real targets, and idx0–idx2 are unchanged.
+
+What the gate also surfaced is a level-over-level contrast worth stating, because it is
+the first structural difference between the levels that clear and the one that does not:
+
+```
+idx0  regions of the target colour: (13,4) 5 cells 1 notch · (13,10) 5 cells 1 notch
+idx1  (1,3) 5/1 · (1,7) 5/1 · (1,11) 5/1
+idx2  (1,1) 5/1 · (1,6) 5/1 · (1,12) 5/1
+idx3  (13,2) 4 cells 0 notches · (13,6) 5/1 · (13,9) 5/1 · (13,12) 5/1
+```
+
+Every level that clears carries notched targets and nothing else. idx3 is the first to
+carry a mouthless block in the target's own colour, and it is the first that does not
+clear even with every notched target satisfied. That is a correlation across four levels,
+not a proof — but the alternative explanation, that the response table is simply wrong
+about notched targets, is contradicted by idx0–idx2 clearing under that same table. The
+hypothesis to test next is that the block is a target of a SECOND KIND, satisfied by
+something other than a flanked notch.
+
+## `satisfied` holds indices, and I compared it to cells (2026-08-24)
+
+The retracted claim above deserves its own entry, because the shape of the mistake is
+one this round has now made three times: **a probe that reads the right field the wrong
+way answers confidently and wrongly.** `Prediction.satisfied` is a set of target
+INDICES; the probe asked `sink in prediction.satisfied` with `sink` a frozenset of
+cells, which is False for every placement ever tried. That produced "no single-piece
+placement satisfies any target", a statement that survived into a round page and a
+commit message before the next measurement contradicted it.
+
+The earlier two were the same shape: comparing frontier INDICES when the quantity of
+interest was the trail, and reading `frame[0]` at a level boundary when the first
+layers still show the previous board. The countermeasure that works is cheap — before
+trusting a sweep that returns all zeros or all ones, print one element of each side and
+check they are the same kind of thing. A uniform answer is a defect signature, not a
+finding.
+
 ## Next
 
 1. **Fill is not confirmed paired.** gemma4 misses one slot, and the cause is our
    encoding rather than its reasoning. Measure the hazard orthogonalisation as its
    own experiment against all three models — never as a patch to move a verdict.
-2. **A search that assigns, not samples.** idx3 needs close to an exact packing and
-   the current compiler samples placements; this is now the measured blocker on depth.
+2. **Is the mouthless block a second kind of target?** idx3 satisfies all three notched
+   targets and does not clear, and it is the only level of the four carrying such a
+   block. Testing that claim is the next step on depth.
 3. **Multi-piece placement**, the burden the idx1 observation named: idx1 carries
    three pieces and three targets, so a single-piece placement satisfies nothing and
    the sink shortlist comes back empty. That, plus a shortlist that can name targets

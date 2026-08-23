@@ -35,7 +35,7 @@ from admorphiq.hypothesis_select.compiler_flow import (  # noqa: E402
     Select,
     compile_flow_hypothesis,
 )
-from admorphiq.hypothesis_select.grounding_flow import UNKNOWN, FlowGrounding  # noqa: E402
+from admorphiq.hypothesis_select.grounding_flow import UNKNOWN, FlowGrounding, _regions  # noqa: E402
 from admorphiq.hypothesis_select.propagate_flow import ORACLE, predict
 from admorphiq.hypothesis_select.verifier_flow import verify_flow_instance  # noqa: E402
 
@@ -168,6 +168,9 @@ def play_level(w: Walker) -> tuple[bool, str]:
     if g.board() is UNKNOWN:
         return False, f"grounding incomplete (pieces={_count(g.pieces())}, " \
                       f"targets={_count(g.sink_candidates())})"
+
+    if os.environ.get("R98_DUMP_BOARD") == "1":
+        _tally_target_colour(g)
 
     hypothesis = F.sp80_oracle_instance()
     verdict = verify_flow_instance(hypothesis, g, w.level > entered)
@@ -332,6 +335,23 @@ def _attribute(g: FlowGrounding, plan) -> None:
     else:
         print("    [attribute] trails agree — the disagreement is in what COUNTS "
               "as satisfying a target, not in where the flow went", flush=True)
+
+
+def _tally_target_colour(g: FlowGrounding) -> None:
+    """Every region wearing the target appearance, with its notch count — the count
+    is what separates a target from a wall of the same colour."""
+    sinks = g.sink_candidates()
+    if sinks is UNKNOWN:
+        return
+    cells = g._prev_cells
+    colours = {cells[c] for _, grp in sinks.value for c in grp if c in cells}
+    rows = []
+    for colour in sorted(colours):
+        for region in _regions(cells, colour):
+            for part in g._by_mouth(region):
+                rows.append((sorted(part)[0], len(part), len(g._mouths(part))))
+    print(f"    [colour {sorted(colours)}] regions (anchor, cells, notches): {rows}",
+          flush=True)
 
 
 def _all_pieces(g: FlowGrounding) -> frozenset:

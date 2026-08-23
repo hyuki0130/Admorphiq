@@ -909,6 +909,16 @@ class FlowGrounding:
             for part in self._by_mouth(region):
                 if part & pieces or any(part & k for k in known):
                     continue
+                if not self._mouths(part):
+                    # Appearance alone is not enough to call something a target: this
+                    # family's satisfaction runs through a NOTCH, so a region without
+                    # one cannot be satisfied however the pieces are placed. Measured
+                    # on the fourth sp80 level, where a solid two-by-two block wearing
+                    # the target colour was named and made the objective unreachable —
+                    # the compiler then reported no layout, correctly, for a target
+                    # that was never one. The stronger sources keep their say: a
+                    # region the flow was OBSTRUCTED by has direct evidence behind it.
+                    continue
                 out.append(part)
         return sorted(out, key=min)
 
@@ -1201,15 +1211,7 @@ class FlowGrounding:
         with no notch, or with one, is returned unchanged."""
         if self._prev_cells is None or len(region) < 2:
             return [region]
-        rows = {r for r, _ in region}
-        mouths = [
-            (r, c)
-            for r in rows
-            for c in range(
-                min(x for y, x in region if y == r), max(x for y, x in region if y == r) + 1
-            )
-            if (r, c) not in region and (r, c - 1) in region and (r, c + 1) in region
-        ]
+        mouths = self._mouths(region)
         if len(mouths) < 2:
             return [region]
         buckets: dict[Cell, set[Cell]] = {m: set() for m in mouths}
@@ -1217,6 +1219,19 @@ class FlowGrounding:
             nearest = min(mouths, key=lambda m: (abs(m[1] - cell[1]), abs(m[0] - cell[0])))
             buckets[nearest].add(cell)
         return [frozenset(v) for v in buckets.values() if v]
+
+    def _mouths(self, region: frozenset[Cell]) -> list[Cell]:
+        """The region's notches: cells it does NOT contain whose two flanking
+        neighbours it does. This family's satisfaction runs through one, so a region
+        without any cannot be a target of this kind."""
+        return [
+            (r, c)
+            for r in {row for row, _ in region}
+            for c in range(
+                min(x for y, x in region if y == r), max(x for y, x in region if y == r) + 1
+            )
+            if (r, c) not in region and (r, c - 1) in region and (r, c + 1) in region
+        ]
 
     def placement_evidence(self) -> Any:
         """Blocked placements, admitted ONLY from a contrast: the same action was
