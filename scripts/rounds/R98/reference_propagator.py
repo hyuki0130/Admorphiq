@@ -70,7 +70,7 @@ def read_board(frame_layer) -> Board:
     piece = by_colour.get(PIECE_SELECTED, set()) | by_colour.get(PIECE_IDLE, set())
     sink_cells = by_colour.get(SINK, set()) | by_colour.get(SINK_SATISFIED, set())
     return Board(
-        piece_cells=frozenset(piece),
+        pieces=(frozenset(piece),) if piece else (),
         sinks=tuple(_components(sink_cells)),
         hazard_cells=frozenset(by_colour.get(HAZARD, set())),
         emitter_cells=frozenset(by_colour.get(EMITTER, set())),

@@ -44,12 +44,27 @@ ORACLE = ResponseTable()
 class Board:
     """One layout, as explicit cell sets. Every field is grounding output."""
 
-    piece_cells: frozenset[Cell]
+    pieces: tuple[frozenset[Cell], ...]
     sinks: tuple[frozenset[Cell], ...]
     hazard_cells: frozenset[Cell]
     emitter_cells: frozenset[Cell]
     standing_flow: frozenset[Cell]
     size: int
+    # Measured, never assumed. A board may run its flow in any direction — the
+    # criterion level happens to run it downward and the next one runs it upward,
+    # so a hardcoded default silently mispredicts every step on half of them.
+    direction: Cell = (1, 0)
+
+    @property
+    def piece_cells(self) -> frozenset[Cell]:
+        """Every cell occupied by any piece — what the flow actually collides with."""
+        return frozenset().union(*self.pieces) if self.pieces else frozenset()
+
+    def piece_at(self, cell: Cell) -> int | None:
+        for i, piece in enumerate(self.pieces):
+            if cell in piece:
+                return i
+        return None
 
     def sink_of(self, cell: Cell) -> int | None:
         for i, s in enumerate(self.sinks):
@@ -57,10 +72,24 @@ class Board:
                 return i
         return None
 
-    def moved(self, dr: int, dc: int) -> "Board":
+    def moved(self, dr: int, dc: int, index: int = 0) -> "Board":
+        """The board with ONE piece translated. ``index`` selects it; the default
+        keeps the single-piece call sites unchanged."""
+        if not self.pieces:
+            return self
+        shifted = frozenset((r + dr, c + dc) for (r, c) in self.pieces[index])
+        return replace(
+            self, pieces=self.pieces[:index] + (shifted,) + self.pieces[index + 1:]
+        )
+
+    def with_offsets(self, offsets: tuple[Cell, ...]) -> "Board":
+        """The board with every piece translated by its own offset."""
         return replace(
             self,
-            piece_cells=frozenset((r + dr, c + dc) for (r, c) in self.piece_cells),
+            pieces=tuple(
+                frozenset((r + dr, c + dc) for (r, c) in piece)
+                for piece, (dr, dc) in zip(self.pieces, offsets)
+            ),
         )
 
 
@@ -79,19 +108,22 @@ def _in_bounds(cell: Cell, size: int) -> bool:
 
 def predict(board: Board, table: ResponseTable, max_ticks: int = 80) -> Prediction:
     """Run the spill to a fixpoint under ``table`` and return the trajectory."""
-    down = (1, 0)
+    heading = board.direction
     occupied: set[Cell] = set(board.standing_flow)
-    active: list[tuple[Cell, tuple[int, int]]] = [(c, down) for c in board.standing_flow]
+    active: list[tuple[Cell, tuple[int, int]]] = [(c, heading) for c in board.standing_flow]
     for (r, c) in sorted(board.emitter_cells):
-        below = (r + 1, c)
+        below = (r + heading[0], c + heading[1])
         if _in_bounds(below, board.size) and below not in occupied:
             occupied.add(below)
-            active.append((below, down))
+            active.append((below, heading))
 
     satisfied: set[int] = set()
     fatal = False
     frontier: list[list[Cell]] = [sorted(occupied)]
-    piece_cols = sorted({c for (_, c) in board.piece_cells}) or [0]
+    def _piece_span(cell: Cell) -> list[int]:
+        index = board.piece_at(cell)
+        piece = board.pieces[index] if index is not None else board.piece_cells
+        return sorted({c for (_, c) in piece}) or [0]
 
     for _ in range(max_ticks):
         if not active:
@@ -138,7 +170,8 @@ def predict(board: Board, table: ResponseTable, max_ticks: int = 80) -> Predicti
                 if table.piece_spawn == "none":
                     continue
                 if table.piece_propagation == "edge_teleport":
-                    targets = ((r, piece_cols[0] - 1), (r, piece_cols[-1] + 1))
+                    span = _piece_span(ahead)
+                    targets = ((r, span[0] - 1), (r, span[-1] + 1))
                 else:
                     targets = flanks
                 for i, f in enumerate(targets):

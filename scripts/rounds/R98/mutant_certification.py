@@ -41,6 +41,22 @@ from admorphiq.hypothesis_select.schema import Verdict  # noqa: E402
 PLACEMENTS = range(-3, 9)
 
 
+def _open_arcade():
+    """Open the offline arcade, honouring ``ARC_ENVIRONMENTS_DIR``.
+
+    The kwarg is passed ONLY when the variable is set: arc_agi treats an explicit
+    ``environments_dir=None`` as "different from the default" and stops scanning
+    altogether, so the tidy-looking ``or None`` form silently yields an arcade with
+    zero environments.
+    """
+    envs_dir = os.environ.get("ARC_ENVIRONMENTS_DIR")
+    return (
+        Arcade(operation_mode=OperationMode.OFFLINE, environments_dir=envs_dir)
+        if envs_dir
+        else Arcade(operation_mode=OperationMode.OFFLINE)
+    )
+
+
 def _table_from_schema(inst: F.FlowHypothesis) -> ResponseTable:
     """Project a schema instance onto the propagator's response table."""
     tm = inst.transition_model
@@ -60,10 +76,7 @@ def _table_from_schema(inst: F.FlowHypothesis) -> ResponseTable:
 
 
 def main() -> int:
-    arcade = Arcade(
-        operation_mode=OperationMode.OFFLINE,
-        environments_dir=os.environ.get("ARC_ENVIRONMENTS_DIR") or None,
-    )
+    arcade = _open_arcade()
     gid = next(e.game_id for e in arcade.get_environments() if e.game_id.startswith("sp80"))
     env = arcade.make(gid)
     entry = read_board(env.step(GameAction.RESET).frame[0])

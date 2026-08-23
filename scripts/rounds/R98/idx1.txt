@@ -1,15 +1,16 @@
-R98 idx1 non-gating observation — 2026-08-23 00:11:13 KST
-repo HEAD: ed622c8
-env: sp80-589a99af (OFFLINE arcade)
+R98 idx1 non-gating observation (multi-piece, direction-general) — 2026-08-23 22:33:51 KST
+repo HEAD: 843b2f1
 
 [setup] idx1 entered after clearing idx0
 
   per-action deltas        ok   [(1, (-1, 0)), (2, (1, 0)), (3, (0, -1)), (4, (0, 1))]
-  piece tracking           ok   5 cells
-  sink shortlist           STOP UNKNOWN
-  board assembly           STOP UNKNOWN
-  verifier (UNKNOWN)       STOP no grounded board or trajectory to replay against
-  compiler (GROUNDING_INCOMPLETE) STOP the board, the delta table or the commit action is not grounded
-  execution                STOP 6 actions, 1 commits, cleared=False
+  piece inventory          ok   3 piece(s), sizes [3, 3, 5]
+  idle appearance learned  ok   2 selection probe(s)
+  flow direction learned   ok   (-1, 0), aimed=True
+  target shortlist         STOP 2 region(s)
+  board assembly           ok   2 sinks, 11 piece cells
+  verifier (PASS)          ok   completion predicate agrees with the observed outcome
+  compiler (UNSATISFIABLE) STOP no reachable placement satisfies the objective under the claimed table
+  execution                STOP 10 actions, 2 commits, cleared=False
 
-[idx1 observation] NON-GATING — the pipeline stops at: sink shortlist
+[idx1 observation] NON-GATING — the pipeline stops at: target shortlist

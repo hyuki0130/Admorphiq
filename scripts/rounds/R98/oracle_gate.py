@@ -52,12 +52,25 @@ ACTION_CAP = 20
 COMMIT_CAP = 3
 
 
+def _open_arcade():
+    """Open the offline arcade, honouring ``ARC_ENVIRONMENTS_DIR``.
+
+    The kwarg is passed ONLY when the variable is set: arc_agi treats an explicit
+    ``environments_dir=None`` as "different from the default" and stops scanning
+    altogether, so the tidy-looking ``or None`` form silently yields an arcade with
+    zero environments.
+    """
+    envs_dir = os.environ.get("ARC_ENVIRONMENTS_DIR")
+    return (
+        Arcade(operation_mode=OperationMode.OFFLINE, environments_dir=envs_dir)
+        if envs_dir
+        else Arcade(operation_mode=OperationMode.OFFLINE)
+    )
+
+
 class Run:
     def __init__(self) -> None:
-        arcade = Arcade(
-            operation_mode=OperationMode.OFFLINE,
-            environments_dir=os.environ.get("ARC_ENVIRONMENTS_DIR") or None,
-        )
+        arcade = _open_arcade()
         gid = next(e.game_id for e in arcade.get_environments()
                    if e.game_id.startswith("sp80"))
         self.env = arcade.make(gid)

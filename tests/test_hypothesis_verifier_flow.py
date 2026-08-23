@@ -38,7 +38,7 @@ BARRIER = frozenset({(9, c) for c in range(SIZE)})
 
 def _board(piece: frozenset = PIECE) -> Board:
     return Board(
-        piece_cells=piece,
+        pieces=(piece,),
         sinks=(SINK_A, SINK_B),
         hazard_cells=BARRIER,
         emitter_cells=frozenset(),

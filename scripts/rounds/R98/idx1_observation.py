@@ -44,11 +44,24 @@ ACTIONS = {
 }
 
 
-def main() -> int:
-    arcade = Arcade(
-        operation_mode=OperationMode.OFFLINE,
-        environments_dir=os.environ.get("ARC_ENVIRONMENTS_DIR") or None,
+def _open_arcade():
+    """Open the offline arcade, honouring ``ARC_ENVIRONMENTS_DIR``.
+
+    The kwarg is passed ONLY when the variable is set: arc_agi treats an explicit
+    ``environments_dir=None`` as "different from the default" and stops scanning
+    altogether, so the tidy-looking ``or None`` form silently yields an arcade with
+    zero environments.
+    """
+    envs_dir = os.environ.get("ARC_ENVIRONMENTS_DIR")
+    return (
+        Arcade(operation_mode=OperationMode.OFFLINE, environments_dir=envs_dir)
+        if envs_dir
+        else Arcade(operation_mode=OperationMode.OFFLINE)
     )
+
+
+def main() -> int:
+    arcade = _open_arcade()
     gid = next(e.game_id for e in arcade.get_environments() if e.game_id.startswith("sp80"))
     env = arcade.make(gid)
     obs = env.step(GameAction.RESET)
@@ -95,16 +108,55 @@ def main() -> int:
             commits += 1
         g.observe(a, None, obs.frame)
 
+    def act6(col: int, row: int):
+        """Click the centre of a cell, in cell coordinates."""
+        nonlocal obs, actions
+        scale = g.scale()
+        px = 4 if scale is UNKNOWN else scale.value
+        obs = env.step(GameAction.ACTION6,
+                       data={"x": col * px + px // 2, "y": row * px + px // 2})
+        actions += 1
+        g.observe(6, (col * px + px // 2, row * px + px // 2), obs.frame)
+
     for a in (1, 1, 2, 3, 4):
         act(a)
-    hint = g.flow_origin_hint()
-    if hint is not UNKNOWN and g.tracked_region() is not UNKNOWN:
-        target = max(c for _, c in hint.value)
-        guard = 0
-        while max(c for _, c in g.tracked_region().value) < target and guard < 16:
-            act(4)
-            guard += 1
+
+    # look for further movable pieces: click candidate regions until a selection
+    # event fires, which reveals the idle appearance and with it the inventory
+    probes = 0
+    candidates = g.selection_candidates()
+    if candidates is not UNKNOWN:
+        for (cr, cc) in candidates.value[:4]:
+            if g.idle_appearance_known():
+                break
+            act6(cc, cr)
+            probes += 1
+
+    # An unfamiliar board may run its flow in any direction, so the pre-commit
+    # origin hint (which assumes the source is at the top) cannot be relied on.
+    # Spend the FIRST commit unaimed: it reveals the flow's colour, its emitters
+    # and its direction. Only then is aiming possible.
     act(5)
+    aimed = False
+    emitters = g.emitters()
+    direction = g.initial_direction()
+    if emitters is not UNKNOWN and direction is not UNKNOWN:
+        dr, dc = direction.value
+        lane = emitters.value[0][1] if dr != 0 else emitters.value[0][0]
+        tracked = g.tracked_region()
+        if tracked is not UNKNOWN:
+            span = [c for _, c in tracked.value] if dr != 0 else [r for r, _ in tracked.value]
+            step = 4 if lane > max(span) else 3
+            guard = 0
+            while guard < 16:
+                cur = g.tracked_region().value
+                have = [c for _, c in cur] if dr != 0 else [r for r, _ in cur]
+                if min(have) <= lane <= max(have):
+                    aimed = True
+                    break
+                act(step)
+                guard += 1
+        act(5)
 
     stages: list[tuple[str, bool, str]] = []
 
@@ -114,11 +166,18 @@ def main() -> int:
                    if deltas is not UNKNOWN else "UNKNOWN"))
 
     pieces = g.pieces()
-    stages.append(("piece tracking", pieces is not UNKNOWN,
-                   f"{len(pieces.value[0][1])} cells" if pieces is not UNKNOWN else "UNKNOWN"))
+    stages.append(("piece inventory", pieces is not UNKNOWN and len(pieces.value) > 1,
+                   f"{len(pieces.value)} piece(s), sizes "
+                   f"{[len(cells) for _, cells in pieces.value]}"
+                   if pieces is not UNKNOWN else "UNKNOWN"))
+    stages.append(("idle appearance learned", g.idle_appearance_known(),
+                   f"{probes} selection probe(s)"))
+    stages.append(("flow direction learned", g.initial_direction() is not UNKNOWN,
+                   f"{g.initial_direction().value if g.initial_direction() is not UNKNOWN else '-'}"
+                   f", aimed={aimed}"))
 
     sinks = g.sink_candidates()
-    stages.append(("sink shortlist", sinks is not UNKNOWN,
+    stages.append(("target shortlist", sinks is not UNKNOWN and len(sinks.value) >= 3,
                    f"{len(sinks.value)} region(s)" if sinks is not UNKNOWN else "UNKNOWN"))
 
     board = g.board()
