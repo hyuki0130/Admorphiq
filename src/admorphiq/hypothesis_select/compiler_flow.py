@@ -62,10 +62,16 @@ SAMPLE_SEED = 98          # fixed, so a compiled plan is reproducible
 
 @dataclass(frozen=True)
 class Select:
-    """Click a piece to make it the one the directional actions move. Carried in
-    CELL coordinates; the driver resolves the pixel anchor."""
+    """Click a piece to make it the one the directional actions move.
+
+    Carries the piece's FOOTPRINT as well as a click cell, because pieces pass
+    through each other: by the time this step runs, another piece may be sitting on
+    the anchor, and the click would select the wrong one. A driver should locate the
+    footprint on the CURRENT board and click a cell that belongs to it alone,
+    falling back to the stored cell only when it cannot."""
 
     cell: Cell
+    footprint: frozenset[Cell] = frozenset()
 
 
 FlowStep = Union[int, Select]

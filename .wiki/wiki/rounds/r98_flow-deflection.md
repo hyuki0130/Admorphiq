@@ -616,6 +616,32 @@ So idx3's chain is now fully attributed: the plan is fine, the execution diverge
 the divergence degrades the board that the next plan is built on. The wall is the
 move that does not land, and everything downstream of it is a consequence.
 
+## Two silent-wrongness fixes in the execution path (2026-08-24)
+
+**The move confirmation was raising false alarms.** It compared footprint against
+footprint, and two pieces coming to rest against each other merge into one region
+while a piece closing over an embedded cell absorbs it — both change the footprint
+list without changing where the pieces are. The check called that a failed move, the
+walk replanned on a board it wrongly believed was broken, and the replan was built on
+a WORSE reading than the plan it replaced. Confirmation now compares cells occupied:
+the expected cells must be present, and extra cells are tolerated because a bridged
+region legitimately reports cells no footprint contained before.
+
+**A select could click the wrong piece.** Pieces pass through each other, so an
+anchor chosen when the plan was made can be covered by a different piece by the time
+the click runs — and after that, every directional press in the plan moves the wrong
+thing. `Select` now carries the piece's FOOTPRINT, and the driver locates it on the
+CURRENT board and clicks a cell only that piece occupies.
+
+Both are silent-wrongness classes rather than crashes: nothing errored, the numbers
+just quietly described a different board than the one on screen. Neither changed
+idx3's outcome on the run measured, which is worth stating plainly — they remove ways
+to be wrong, and that is worth doing whether or not a level falls out of it.
+
+One measurement from the same session is worth keeping: the plan's INTENDED layout on
+idx3 genuinely wins under the verified model — 3 of 3 targets, zero barrier contacts.
+The layout is right; what is missing is arriving at it.
+
 ## Next
 
 1. **Fill is not confirmed paired.** gemma4 misses one slot, and the cause is our

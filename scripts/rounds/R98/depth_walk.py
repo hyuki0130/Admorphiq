@@ -96,7 +96,10 @@ class Walker:
         g.observe(6, xy, self.obs.frame)
 
     def run(self, step, g: FlowGrounding) -> None:
-        self.click(step.cell, g) if isinstance(step, Select) else self.act(step, g)
+        if not isinstance(step, Select):
+            self.act(step, g)
+            return
+        self.click(_unambiguous_anchor(step, g), g)
 
 
 def describe_board(g: FlowGrounding) -> str:
@@ -220,24 +223,48 @@ def _execute(w: Walker, g: FlowGrounding, plan, entered: int, spent: int, probes
 
 
 def _explained_by_one_move(before: list, after: list, delta) -> bool:
-    """True when translating ONE piece by ``delta`` turns ``before`` into ``after``.
+    """True when translating ONE piece by ``delta`` accounts for the board now shown.
 
-    Compared as multisets of cell sets, so merges and renames do not matter — what
-    matters is whether the board that appeared is the board the move should have
-    produced."""
-    target = sorted(after, key=min)
+    Compared by CELLS OCCUPIED, not by footprint identity. Two pieces that come to
+    rest against each other merge into one region, and a piece that closes over an
+    embedded cell absorbs it — both change the footprint list without changing where
+    the pieces are. An identity comparison calls that a failed move, the walk
+    replans on a board it wrongly believes is broken, and the replan is built on a
+    worse reading than the plan it replaced.
+
+    The expected cells must be PRESENT; extra cells are tolerated, because a bridged
+    region legitimately reports cells that no piece footprint contained before.
+    """
+    occupied_after = set().union(*after) if after else set()
     for i in range(len(before)):
-        moved = frozenset((r + delta[0], c + delta[1]) for (r, c) in before[i])
-        candidate = sorted(before[:i] + [moved] + before[i + 1:], key=min)
-        if candidate == target:
-            return True
-        # the moved piece may now share a region with a neighbour
-        merged = set()
-        for piece in candidate:
-            merged |= set(piece)
-        if merged == set().union(*target) if target else False:
+        moved = {(r + delta[0], c + delta[1]) for (r, c) in before[i]}
+        expected = moved.union(*(before[:i] + before[i + 1:])) if len(before) > 1 else moved
+        if expected <= occupied_after:
             return True
     return False
+
+
+def _unambiguous_anchor(step: Select, g: FlowGrounding) -> tuple:
+    """A cell that belongs to the intended piece and to nothing else, right now.
+
+    Pieces pass through each other, so an anchor chosen when the plan was made can
+    be covered by a different piece by the time the click happens — and the click
+    then selects the wrong piece, after which every directional press in the plan
+    moves the wrong thing. Locating the footprint on the CURRENT board and picking
+    a cell only it occupies is what keeps the plan pointed at what it meant."""
+    inventory = g.pieces()
+    if inventory is UNKNOWN or not step.footprint:
+        return step.cell
+    others: set = set()
+    mine: set = set()
+    for _, cells in inventory.value:
+        cells = set(cells)
+        if cells & step.footprint:
+            mine |= cells
+        else:
+            others |= cells
+    exclusive = sorted((mine or set(step.footprint)) - others)
+    return exclusive[len(exclusive) // 2] if exclusive else step.cell
 
 
 def _footprints(g: FlowGrounding) -> list:
