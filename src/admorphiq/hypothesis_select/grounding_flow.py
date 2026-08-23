@@ -1224,8 +1224,16 @@ class FlowGrounding:
         return Grounded(tuple(sorted(out)), "high")
 
     def falling_sources(self) -> Any:
-        """Falling streams as (lane, tick): the column a source pours down and the
-        step at which it starts, counted on the PROGRESS axis the replay uses.
+        """Falling streams as (lane, tick, line): the column a source pours down, the
+        step at which it starts on the PROGRESS axis the replay uses, and the ROW the
+        stream was seen to start on.
+
+        The row matters because the source is a fixed CELL, not an opening at the top of
+        the board. Measured on two captured boards of the same level: with the covering
+        piece one row lower the stream appears at (3,5) and (3,6) — the source cells
+        themselves — and with a piece standing ON them it appears at (3,3), beside the
+        piece, and never above it. A model that drops the stream from the board's edge
+        puts flow a row higher than the engine ever does.
 
         The lane is the invariant (see :meth:`falling_columns`); the tick is needed
         because these streams are SEQUENCED — idx3's second and third start six steps
@@ -1256,7 +1264,7 @@ class FlowGrounding:
                     continue
                 if (r + dr, c + dc) not in blocking:
                     continue
-                out.append((lane, tick))
+                out.append((lane, tick, r if dr else c))
                 found.add(lane)
             seen |= set(layer)
         if not out:

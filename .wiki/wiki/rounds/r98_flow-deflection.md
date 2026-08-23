@@ -1685,13 +1685,54 @@ The bounded-roof variant scores better still (1 invented) and is not adopted in 
 breath: it is a second change to the same rule, and it deserves its own measurement rather
 than riding along on this one.
 
+## The source is a CELL, and a covered source emits sideways (2026-08-24)
+
+Capturing a second board and benching both settled what the falling stream really is.
+The two boards differ only in where the covering piece stands:
+
+```
+a  pieces on row 4   observed  step 3: (3,5) (3,6)   then (3,4) (3,7), (3,3) (3,8), (4,3) (4,8)
+b  pieces on row 3   observed  step 4: (3,3)          then (4,3) — and nothing else up there
+```
+
+On (a) the stream appears AT `(3,5)` and `(3,6)`. On (b), with a piece standing on those
+very cells, it appears at `(3,3)` — beside the piece, on the same row — and never above
+it. So the source is a fixed CELL at row 3 in lanes 5 and 6, not an opening at the top of
+the board: a covered source emits beside its cover rather than on top of it.
+
+Our model drops the stream from the board's edge and lands it on the first obstacle,
+which on (b) puts flow at `(2,5)` and `(2,6)` — a row the engine never uses — and that
+single error accounts for the bulk of (b)'s 24 invented cells.
+
+Grounding now records the source's row alongside its lane. The propagator does **not**
+enforce it yet, and that is deliberate: clamping the landing to the source's row is only
+half the mechanic, and the half without its partner is worse than neither. Measured —
+with the clamp alone the second stream simply never appears when a piece covers the
+source, and idx3 goes from executing a plan to `UNSATISFIABLE`. The companion rule, emit
+beside the cover, is the next change and gets its own measurement.
+
+### A pin was lost and is restored
+
+Rewriting the end of `test_hypothesis_verifier_flow.py` for the absorber test silently
+deleted the falling-source pin — the file went from eleven tests to ten while the suite
+stayed green, because a deleted test cannot fail. It is restored, with its claim narrowed
+to what it actually measures: the landing rule, not the source row, which nothing yet
+enforces.
+
+Two lessons this round keeps re-learning in new clothes: **verify a fix is in effect**
+(three silent no-match edits so far), and now **verify a test still exists** — a suite
+that gets greener by losing coverage looks exactly like a suite that is passing.
+
 ## Next
 
 1. **Fill is not confirmed paired.** gemma4 misses one slot, and the cause is our
    encoding rather than its reasoning. Measure the hazard orthogonalisation as its
    own experiment against all three models — never as a patch to move a verdict.
-2. **Measure the bounded-roof variant on fixed evidence** — it scores 1 invented cell
-   against the adopted rule's 2, and was deliberately not adopted in the same change.
+2. **Emit beside the cover.** A source with a piece standing on it emits at that piece's
+   flank, on the source's own row. With that in place the source-row clamp can be turned
+   on; alone it costs idx3 its plan.
+3. **Measure the bounded-roof variant on fixed evidence** — 1 invented cell against the
+   adopted rule's 2, deliberately not adopted in the same change.
 3. **Multi-piece placement**, the burden the idx1 observation named: idx1 carries
    three pieces and three targets, so a single-piece placement satisfies nothing and
    the sink shortlist comes back empty. That, plus a shortlist that can name targets

@@ -304,3 +304,33 @@ def test_a_satisfied_target_takes_no_more_flow():
     assert (6, 1) in reached, "the second stream should reach the target's wall"
     assert (6, 0) not in reached, \
         f"the second stream spread over a target that was already filled: {sorted(reached)}"
+
+
+def test_a_falling_source_is_a_CELL_and_the_stream_starts_there():
+    """Purpose: an emergence records where a stream was seen and cannot be replayed once
+    a plan moves the pieces; a LANE can be, because the stream lands on whatever is
+    topmost in it. But the source is a fixed CELL, not an opening in the board's edge.
+    Measured on two captured boards of the same level: with the covering piece one row
+    lower the stream appears at (3,5) and (3,6) — the source cells themselves — and with
+    a piece standing ON them it appears beside the piece and never above it.
+
+    (This pin was lost once by an edit that rewrote the end of this file, and is restored
+    here. It pins the LANDING rule; the source's own row is recorded by grounding but not
+    yet enforced by the propagator, so nothing here asserts it.)
+
+    Expected feedback: pass proves the stream comes to rest just short of the first thing
+    in its lane, and that the landing follows that obstacle when it moves. Fail means the
+    model can only predict layouts it has already watched."""
+    from dataclasses import replace as _replace
+
+    lane, line = 4, 2
+    free = _replace(_board(frozenset({(6, 3), (6, 4), (6, 5)})),
+                    standing_flow=frozenset(), falling_sources=((lane, 2, line),))
+    lower = _replace(free, pieces=(frozenset({(4, 3), (4, 4), (4, 5)}),))
+
+    def _first(board):
+        cells = [c for layer in predict(board, ORACLE).frontier for c in layer]
+        return [c for c in cells if c[1] == lane][:1]
+
+    assert _first(free) == [(5, lane)], f"expected a landing above row 6: {_first(free)}"
+    assert _first(lower) == [(3, lane)], f"the landing ignored the piece: {_first(lower)}"
