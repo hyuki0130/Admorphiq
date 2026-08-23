@@ -1184,15 +1184,58 @@ something is standing on it. `standing_flow` already grounds (8,4). Modelling "a
 at a fixed cell, emerging past whatever covers it" would let the model predict the entry
 for a layout it has never observed — which is exactly what planning requires.
 
+## The entry is fixed; the "hidden sources" are not (2026-08-24)
+
+`scripts/rounds/R98/source_probe.py` commits the spill under a series of layouts on the
+same level and records where the flow first appears. On idx3, across five layouts that
+move a piece left, left again, right and up:
+
+```
+after (no move)  entry [(8,4)]   pieces (3,4)4 (4,9)4 (7,2)5 (8,11)3 (10,9)3
+after (3,)       entry [(8,4)]   pieces (3,3)4 …
+after (3,3)      entry [(8,4)]   pieces (3,2)4 …
+after (4,)       entry [(8,4)]   pieces (3,3)3 …
+after (1,)       entry [(8,4)]   pieces — the row-3 piece is gone — then GAME OVER
+```
+
+The entry does not move with the pieces. That is the fixed-source claim, measured five
+times, and it is what `standing_flow` already grounds.
+
+The same run falsifies something else, though: `hidden_sources()` reports positions that
+**move with the piece** — `((3,3),(3,4))`, then `((3,7),(3,6))`, then `((6,5),(6,6))`.
+A fixed source would be revealed at the same cells whichever way the piece slides. So
+that query is reporting the sighting relative to the current cover, not the source, and
+it cannot be used as-is to predict an entry for an unobserved layout. Naming it
+"hidden_sources" oversold what it measures.
+
+Two more observations, recorded at the strength they were measured:
+
+* The row-3 piece **shrank from four cells to three and then disappeared, and the game
+  ended.** Our own measure says the flow never touched it. Re-probing row 3 directly
+  across two commits did NOT reproduce the shrink — the piece stayed four cells while
+  moving right — so this is an observation made once and not yet reproduced, not a
+  mechanic. It matters because losing a piece ended the run.
+* A commit **re-selects a piece**: row 3 reads `8 8 8 8` before the commit and `9 9 9 9`
+  after it, i.e. the idle piece is wearing the selected appearance afterwards. This is
+  consistent with the re-selection already noted in this round and is why beliefs about
+  which piece is selected must be read from the board rather than carried across a
+  commit.
+
+The thread continues at the same place: to plan on a layout it has not seen, the model
+needs the SOURCE, and what the harness currently has is a sighting. The next step is to
+find what stays invariant across these layouts — the entry cell did, so the question is
+whether the row-3 entries are a second source whose cover moves, or the same source seen
+past a different obstruction.
+
 ## Next
 
 1. **Fill is not confirmed paired.** gemma4 misses one slot, and the cause is our
    encoding rather than its reasoning. Measure the hazard orthogonalisation as its
    own experiment against all three models — never as a patch to move a verdict.
-2. **Model the source, not the sighting.** A source sits at a fixed board cell and the
-   flow emerges past whatever covers it. Grounding that would let the model predict the
-   entry for a layout it has never observed, which is what planning needs — and would
-   unblock idx3, which now honestly reports that it cannot plan.
+2. **Model the source, not the sighting.** The entry cell is measured fixed across five
+   layouts, but `hidden_sources()` reports positions that move with the piece — a
+   sighting, not a source. Finding what stays invariant is what would let the model
+   predict an entry for a layout it has never observed, and unblock idx3.
 3. **Multi-piece placement**, the burden the idx1 observation named: idx1 carries
    three pieces and three targets, so a single-piece placement satisfies nothing and
    the sink shortlist comes back empty. That, plus a shortlist that can name targets
