@@ -186,3 +186,37 @@ def test_neutralised_strips_positive_claims_from_non_gating_slots():
     table = stripped.transition_model.responses
     assert table.own_flow == F.UNKNOWN and table.boundary == F.UNKNOWN
     assert neutralised(F.sp80_oracle_instance()) == F.sp80_oracle_instance()
+
+
+def test_a_known_board_gap_is_not_charged_to_the_hypothesis():
+    """Purpose: when grounding KNOWS the board is missing something — a source
+    hidden under a piece, whose flow no model built from this board could predict —
+    a replay mismatch is evidence about the BOARD, not about the hypothesis. The
+    verdict must be UNKNOWN, never CONTRADICTED.
+
+    Expected feedback: pass proves a correct hypothesis cannot be failed for a
+    grounding gap the harness already detected. Fail means the model stage would
+    score a right answer as wrong on any level with a concealed source."""
+    board = _board()
+    evidence = _evidence(board)
+    # a trajectory carrying flow the board cannot produce, exactly as a concealed
+    # source does
+    contaminated = FlowEvidence(
+        board=evidence.board,
+        trajectory=evidence.trajectory[:2] + (((0, 0),),) + evidence.trajectory[2:],
+        advanced=evidence.advanced,
+        n_sinks=evidence.n_sinks,
+        incomplete_board="1 source(s) hidden under a piece, not in the board model",
+    )
+    verdict = verify_with_evidence(F.sp80_oracle_instance(), contaminated)
+    assert verdict.verdict is Verdict.UNKNOWN
+    assert "incomplete" in verdict.reason
+
+    # without the flag, the same mismatch IS charged to the hypothesis
+    plain = FlowEvidence(
+        board=contaminated.board,
+        trajectory=contaminated.trajectory,
+        advanced=contaminated.advanced,
+        n_sinks=contaminated.n_sinks,
+    )
+    assert verify_with_evidence(F.sp80_oracle_instance(), plain).verdict is Verdict.CONTRADICTED

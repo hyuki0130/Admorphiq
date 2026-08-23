@@ -53,23 +53,37 @@ class FlowInstanceVerdict:
 class FlowEvidence:
     """Everything a flow trace yields once, reusable across candidate instances:
     the measured board, the recovered trajectory, and whether the committed
-    attempt advanced the level."""
+    attempt advanced the level.
+
+    ``incomplete_board`` records that grounding KNOWS the board is missing
+    something — a source hidden under a piece, whose flow the propagator cannot
+    reproduce because its origin is not in the model. A replay mismatch under that
+    condition is evidence about the BOARD, not about the hypothesis, and must not
+    be charged to the hypothesis."""
 
     board: Optional[Board]
     trajectory: tuple[tuple[tuple[int, int], ...], ...]
     advanced: bool
     n_sinks: int
+    incomplete_board: str = ""
 
 
 def build_flow_evidence(grounding: FlowGrounding, advanced: bool) -> FlowEvidence:
     """Collect the grounded evidence a verdict is judged against."""
     board = grounding.board()
     trajectory = grounding.trajectory()
+    hidden = grounding.hidden_sources()
+    incomplete = (
+        ""
+        if hidden is UNKNOWN
+        else f"{len(hidden.value)} source(s) hidden under a piece, not in the board model"
+    )
     return FlowEvidence(
         board=None if board is UNKNOWN else board.value,
         trajectory=() if trajectory is UNKNOWN else tuple(f for f in trajectory.value if f),
         advanced=advanced,
         n_sinks=0 if board is UNKNOWN else len(board.value.sinks),
+        incomplete_board=incomplete,
     )
 
 
@@ -117,6 +131,15 @@ def _verify_transition(
     n = min(len(predicted), len(ev.trajectory))
     for i in range(n):
         if predicted[i] != ev.trajectory[i]:
+            if ev.incomplete_board:
+                # The board is KNOWN to be missing a source, so flow appears that no
+                # correct hypothesis could predict from this model. Charging that to
+                # the hypothesis would fail a right answer for a grounding gap.
+                return (
+                    Verdict.UNKNOWN,
+                    f"replay diverges at step {i}, but the board is incomplete: "
+                    f"{ev.incomplete_board}",
+                )
             return (
                 Verdict.CONTRADICTED,
                 f"predicted step {i} {list(predicted[i])} but the flow was observed at "

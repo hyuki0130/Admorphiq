@@ -413,9 +413,29 @@ it emerged around, which is where the source must be. On idx3 it returns exactly
 `((3,3) around (3,4))` and `((3,8) around (3,7))`; on idx0, idx1 and idx2 it returns
 nothing, so the signal does not fire where there is nothing to find.
 
+Detection landed first because it is what makes the claim checkable. It also fixed
+an honesty defect immediately, before any modelling:
+
+**A known board gap must not be charged to the hypothesis.** The verifier was
+returning CONTRADICTED on idx3 — failing a hypothesis that is, as far as anything
+here can tell, correct — because flow appeared that no model built from this board
+could predict. Grounding already KNEW the board was incomplete. The verdict is now
+UNKNOWN with the reason naming the gap:
+
+```
+idx3: verifier UNKNOWN — replay diverges at step 4, but the board is incomplete:
+      3 source(s) hidden under a piece, not in the board model
+```
+
+This matters beyond the depth walk. The model stage scores a hypothesis by the
+verifier's verdict, so on any level with a concealed source the old behaviour would
+have marked a right answer wrong — a false negative attributable entirely to the
+harness. On idx0, where no source is hidden, the frozen mutant table still
+reproduces exactly, so the change removes a false failure without softening a real
+one.
+
 The modelling step — seeding a hidden source so the propagator reproduces the
-emergence with the right timing — is the next piece of work. Detection landed first
-because it is what makes the claim checkable.
+emergence with the right timing — remains the next piece of work.
 
 ## Next
 
