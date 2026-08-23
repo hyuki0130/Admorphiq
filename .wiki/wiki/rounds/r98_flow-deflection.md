@@ -1431,14 +1431,59 @@ observed-only   (11,3) (12,3) (12,4) (13,4) (14,4)
 We route a stream toward column 12–13 and the engine routes it down column 3–4. One
 stream, one wrong turn, and it is the same target — (13,12) — that goes unfilled.
 
+## The source travels with the piece that carries it (2026-08-24)
+
+idx3's first divergence was at **step 0**: our model started the spill at (8,4) while
+the engine started it at (11,3). The board at that moment explains both:
+
+```
+r10  12  8  8  4  8  8 12 12  8  8  8 12 …
+```
+
+`(10,3)` is a cell of a piece rendered in its own colour, and the flow starts in the
+cell just past it. Earlier in the round the entry looked FIXED — (8,4) across five
+probe layouts — but those probes never moved the piece that carries it; when a plan
+finally did, the entry moved with it. So this round's "the entry is a fixed board cell"
+is corrected: **the source is embedded in a piece and travels with it.**
+
+`embedded_sources()` names those cells — cells inside a piece that do not wear that
+piece's appearance, the same ones `_bridge` absorbs so the flow cannot walk through a
+bar. The board seeds from them instead of from an observed flow cell, and the observed
+cell is used only when no embedded source is known. The result is measurable:
+
+```
+before  first divergence at step 0: invented (8,4)  missed (11,3)
+after   first divergence at step 1: invented (3,5) (3,6)  missed (12,4)
+
+predicted-only  9 cells → 8      observed-only  5 cells → 3
+```
+
+The first stream now starts where the engine starts it, and what is left is the timing
+of the falling lanes.
+
+### Two corrections to the previous section
+
+**The bridging-in-count change never applied, and when applied it hurts.** The previous
+commit said the appearance count bridges single foreign cells before counting. The edit
+silently did not match, so only the phantom-piece drop was in effect — and that is the
+one that produced the measured improvement. Applying the count change for real makes
+idx3 WORSE: the inventory drops to four pieces from five and the layout drifts by eleven
+cells. It is rejected by measurement, not carried as an unverified claim. (A guard for
+the case where both appearances are the same colour is kept — that one crashed.)
+
+**The diagnostics were invasive.** `_refusal_probe` PRESSES ACTIONS, so a run under
+`R98_DUMP_BOARD=1` drifted where the same run without the dump executed its plan. An
+observational dump that changes the thing it observes is worse than no dump. The probe
+now lives behind its own `R98_PROBE=1`.
+
 ## Next
 
 1. **Fill is not confirmed paired.** gemma4 misses one slot, and the cause is our
    encoding rather than its reasoning. Measure the hazard orthogonalisation as its
    own experiment against all three models — never as a patch to move a verdict.
-2. **One stream takes a wrong turn on idx3.** We route it toward column 12-13 where the
-   engine sends it down column 3-4, and (13,12) is the target left unfilled. Nine
-   predicted cells and five observed ones separate the two trails.
+2. **The falling lanes are injected at the wrong time.** idx3's first divergence is now
+   at step 1, where the model puts the lane cells down while the engine is still
+   running the first stream.
 3. **Multi-piece placement**, the burden the idx1 observation named: idx1 carries
    three pieces and three targets, so a single-piece placement satisfies nothing and
    the sink shortlist comes back empty. That, plus a shortlist that can name targets

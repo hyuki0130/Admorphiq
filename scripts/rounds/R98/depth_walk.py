@@ -372,6 +372,11 @@ def _execute(w: Walker, g: FlowGrounding, plan, entered: int, spent: int, probes
                 # information the compiler did not have.
                 if os.environ.get("R98_DUMP_BOARD") == "1":
                     _identity_report(g, plan, held, frozenset(before.value))
+                if os.environ.get("R98_PROBE") == "1":
+                    # PRESSES ACTIONS: it perturbs the run it is diagnosing, so it is
+                    # not part of the observational dump. Measured the hard way — a
+                    # dumped run drifted where the same run without the dump executed
+                    # its plan.
                     _refusal_probe(w, g, frozenset(before.value), step)
                 return False, (f"planned press {step} did not land; "
                                f"{_what_blocks(g, frozenset(before.value), deltas_of(g)[step])}"), True
@@ -476,7 +481,7 @@ def _entry_report(g: FlowGrounding, observed) -> None:
     cells = g._prev_cells
     if cells is not None:
         size = int(round(len(cells) ** 0.5))
-        for r in range(2, 6):
+        for r in range(size):
             print("      r%-2d " % r + " ".join(f"{cells[(r, c)]:2d}" for c in range(size)),
                   flush=True)
 

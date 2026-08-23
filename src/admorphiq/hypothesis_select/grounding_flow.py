@@ -532,6 +532,8 @@ class FlowGrounding:
         stored = (self._selected_colour, self._idle_colour)
         if self._prev_cells is None or None in stored:
             return stored
+        if stored[0] == stored[1]:
+            return stored
         counts = {
             colour: len(_regions(self._prev_cells, colour))
             for colour in stored
@@ -1175,8 +1177,14 @@ class FlowGrounding:
                 pieces=tuple(frozenset(cells) for _, cells in pieces.value),
                 sinks=tuple(frozenset(cells) for _, cells in sinks.value),
                 hazard_cells=frozenset(barriers.value),
-                emitter_cells=frozenset(),
-                standing_flow=frozenset(emitters.value),
+                emitter_cells=(frozenset() if self.embedded_sources() is UNKNOWN
+                               else frozenset(self.embedded_sources().value)),
+                # An observed flow cell belongs to the layout it was seen under: once a
+                # plan moves the piece that CARRIES the source, seeding the old cell
+                # starts the whole spill in the wrong place. Seed from the source when
+                # one is known, and fall back to the sighting when none is.
+                standing_flow=(frozenset(emitters.value)
+                               if self.embedded_sources() is UNKNOWN else frozenset()),
                 size=size,
                 direction=direction.value,
                 emergences=() if emergences is UNKNOWN else emergences.value,
@@ -1186,6 +1194,34 @@ class FlowGrounding:
             ),
             "high",
         )
+
+    def embedded_sources(self) -> Any:
+        """Sources carried INSIDE a piece: cells within a piece that do not wear that
+        piece's appearance.
+
+        Measured on idx3. The first stream was thought to start at a fixed board cell
+        because five probe layouts left one piece where it was — (8,4) every time. Once
+        a plan actually moved that piece the spill began at (11,3), and (10,3) is a
+        cell of the moved piece rendered in its own colour. The source travels WITH the
+        piece, and the flow starts in the cell just past it.
+
+        This is the same cell :meth:`_bridge` absorbs so the flow cannot walk through
+        the middle of a bar. Naming it here is what lets the model put the stream in
+        the right place for a layout it has never seen."""
+        inventory = self.pieces()
+        if inventory is UNKNOWN or self._prev_cells is None:
+            return UNKNOWN
+        cells = self._prev_cells
+        out: list[Cell] = []
+        for _, piece in inventory.value:
+            worn = Counter(cells[c] for c in piece if c in cells)
+            if len(worn) < 2:
+                continue
+            majority = worn.most_common(1)[0][0]
+            out.extend(c for c in piece if c in cells and cells[c] != majority)
+        if not out:
+            return UNKNOWN
+        return Grounded(tuple(sorted(out)), "high")
 
     def falling_sources(self) -> Any:
         """Falling streams as (lane, tick): the column a source pours down and the
