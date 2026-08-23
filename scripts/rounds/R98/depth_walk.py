@@ -232,7 +232,18 @@ def play_level(w: Walker) -> tuple[bool, str]:
                       f"emergences={sorted(b.emergences)} dir={b.direction} "
                       f"standing={len(b.standing_flow)}", flush=True)
             return False, f"compiler {plan.status.value}: {plan.reason}"
+        knew = g.falling_sources()
+        knew = () if knew is UNKNOWN else knew.value
         cleared, note, diverged = _execute(w, g, plan, entered, spent, probes)
+        learned = g.falling_sources()
+        learned = () if learned is UNKNOWN else learned.value
+        if not cleared and not diverged and set(learned) - set(knew):
+            # The commit taught the model something it did not have when it planned —
+            # a spill exposes lanes that only fire on that layout. Planning again with
+            # them is not a retry of the same plan, it is the first plan the model is
+            # equipped to make.
+            note = f"{note}; learned {sorted(set(learned) - set(knew))}"
+            diverged = True
         if cleared:
             return True, note
         if not diverged:
@@ -392,6 +403,7 @@ def _execute(w: Walker, g: FlowGrounding, plan, entered: int, spent: int, probes
         print(f"    [layout] short by {len(want - have)} cell(s); missing "
               f"{sorted(want - have)}", flush=True)
         _region_fates(g)
+        print(f"    [lanes] after the commit: {g.falling_sources()}", flush=True)
         late = g.sink_candidates()
         print(f"    [targets] after the commit: "
               f"{[(sorted(c)[0], len(c)) for _, c in late.value]}", flush=True)

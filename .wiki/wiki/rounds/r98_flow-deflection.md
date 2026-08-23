@@ -1755,14 +1755,59 @@ what the tick establishes is the shape of the remaining gap: it is not a propaga
 any more, it is missing entities. The next question is what emits at `(7,11)`/`(7,12)` at
 step 13, and whether it is a source that only some layouts expose.
 
+## A lane is standing knowledge, and the harness was throwing it away (2026-08-24)
+
+The third stream is found. `(7,11)` and `(7,12)` sit directly above the piece at
+`(8,11)` — the landing signature again — and re-grounding after the commit says so
+outright:
+
+```
+[lanes] after the commit: ((11, 13, 7), (12, 13, 7))
+```
+
+Lanes 11 and 12, starting at step 13. But that reading REPLACED lanes 5 and 6 rather than
+adding to them, because the query read only the last animation. A lane is a standing
+property of the board — the same source pours down it whatever the pieces do — so a lane
+learned from one spill is still true at the next. Grounding now accumulates across every
+spill and reports all four:
+
+```
+((5, 3, 3), (6, 3, 3), (11, 13, 7), (12, 13, 7))
+```
+
+Two things fall out of it.
+
+**`falling_columns` and `falling_sources` disagreed.** They answered from separate scans,
+one accumulating and one not, so a lane learned earlier was reported by one and forgotten
+by the other. The columns query is now derived from the sources query — one scan, one
+answer.
+
+**The walk did not act on what a commit taught it.** A plan that executed in full and did
+not clear returned without replanning, so knowledge gained by the commit was never used.
+It now replans when the source set has grown, which is not a retry of the same plan but
+the first plan the model is equipped to make.
+
+On idx3 that produces an honest and unwelcome answer: with all four lanes, the compiler
+reports **no satisfiable layout from the position the first commit left it in.** The extra
+lanes are provably not the cause — on fixed evidence, two lanes and four lanes score
+identically (24 invented, 0 missed, same targets satisfied) — so this is a verdict about
+the position, not a fidelity regression. The first commit spent the level.
+
+```
+idx0: CLEARED — 23 actions
+idx1: CLEARED — 30 actions
+idx2: CLEARED — 55 actions
+idx3: plans with four lanes; no winning layout remains after the first commit
+```
+
 ## Next
 
 1. **Fill is not confirmed paired.** gemma4 misses one slot, and the cause is our
    encoding rather than its reasoning. Measure the hazard orthogonalisation as its
    own experiment against all three models — never as a patch to move a verdict.
-2. **What emits at (7,11)/(7,12) at step 13?** Board b carries a third stream neither
-   grounded lane explains, so the gap is missing ENTITIES, not a propagation rule — and
-   "emit beside the cover" cannot be adopted until they are found.
+2. **idx3's first commit spends the level.** With all four lanes the compiler finds no
+   winning layout from the position that commit leaves. The lever is choosing a first
+   layout that keeps one — or discovering the lanes before committing at all.
 3. **Measure the bounded-roof variant on fixed evidence** — 1 invented cell against the
    adopted rule's 2, deliberately not adopted in the same change.
 3. **Multi-piece placement**, the burden the idx1 observation named: idx1 carries

@@ -1238,77 +1238,53 @@ class FlowGrounding:
         The lane is the invariant (see :meth:`falling_columns`); the tick is needed
         because these streams are SEQUENCED — idx3's second and third start six steps
         into a spill whose first stream is still falling."""
-        columns = self.falling_columns()
-        if columns is UNKNOWN:
-            return UNKNOWN
-        direction = self.initial_direction()
-        dr, dc = direction.value
-        anim = self._animations[-1]
-        blocking = set(anim.piece_cells) | self._all_piece_cells()
-        wanted = set(columns.value)
-        seen: set[Cell] = set()
-        out: list[tuple[int, int]] = []
-        found: set[int] = set()
-        tick = -1
-        for layer in anim.frontier:
-            if not layer:
-                continue
-            tick += 1
-            for (r, c) in layer:
-                lane = c if dr else r
-                if lane not in wanted or lane in found:
-                    continue
-                behind = (r - dr, c - dc)
-                flanks = ((r - dc, c - dr), (r + dc, c + dr))
-                if behind in seen or any(f in seen for f in flanks):
-                    continue
-                if (r + dr, c + dc) not in blocking:
-                    continue
-                out.append((lane, tick, r if dr else c))
-                found.add(lane)
-            seen |= set(layer)
-        if not out:
-            return UNKNOWN
-        return Grounded(tuple(sorted(out)), "high")
-
-    def falling_columns(self) -> Any:
-        """Columns a source pours down from off the board's top.
-
-        Measured on idx3 across four layouts: a second stream starts partway through
-        the spill, and where it becomes visible tracks whatever is beneath it — piece
-        at row 4 gives entries at (3,5) and (3,6), piece at row 5 gives (4,5) and
-        (4,6), always the cell directly ABOVE the obstacle and always in the same two
-        columns. Moving that piece out of those columns removes the stream from those
-        rows entirely.
-
-        So the invariant is the COLUMN, not the cell: what the harness had been
-        recording as an emergence was the point where a falling stream came to rest on
-        something. A column is reported when a cell appears in it with no flow behind
-        or beside it AND the cell directly ahead is occupied — the signature of a
-        stream landing. That is derivable for a layout never observed, which is what
-        planning needs and what an emergence could never give."""
         if not self._animations:
             return UNKNOWN
         direction = self.initial_direction()
         if direction is UNKNOWN:
             return UNKNOWN
         dr, dc = direction.value
-        anim = self._animations[-1]
-        blocking = set(anim.piece_cells) | self._all_piece_cells()
-        seen: set[Cell] = set()
-        out: set[int] = set()
-        for layer in anim.frontier:
-            for (r, c) in layer:
-                behind = (r - dr, c - dc)
-                flanks = ((r - dc, c - dr), (r + dc, c + dr))
-                landed = (r + dr, c + dc) in blocking
-                if behind in seen or any(f in seen for f in flanks) or not landed:
+        # ACROSS every spill, not just the last one. A lane is a standing property of
+        # the board — the same source pours down it whatever the pieces do — so a lane
+        # learned from one spill is still true at the next. Measured on idx3: the probe
+        # spill reveals lanes 5 and 6, and the committed spill reveals 11 and 12 while
+        # the earlier pair lands on nothing visible; reading only the last animation
+        # throws away half the board's sources every time.
+        out: dict[int, tuple[int, int]] = {}
+        for anim in self._animations:
+            blocking = set(anim.piece_cells) | self._all_piece_cells()
+            seen: set[Cell] = set()
+            tick = -1
+            for layer in anim.frontier:
+                if not layer:
                     continue
-                out.add(c if dr else r)
-            seen |= set(layer)
+                tick += 1
+                for (r, c) in layer:
+                    lane = c if dr else r
+                    behind = (r - dr, c - dc)
+                    flanks = ((r - dc, c - dr), (r + dc, c + dr))
+                    if behind in seen or any(f in seen for f in flanks):
+                        continue
+                    if (r + dr, c + dc) not in blocking:
+                        continue
+                    out[lane] = (tick, r if dr else c)
+                seen |= set(layer)
         if not out:
             return UNKNOWN
-        return Grounded(tuple(sorted(out)), "high")
+        return Grounded(
+            tuple((lane, tick, line) for lane, (tick, line) in sorted(out.items())), "high"
+        )
+
+    def falling_columns(self) -> Any:
+        """The lanes a source pours down — :meth:`falling_sources` without the timing.
+
+        Derived rather than computed separately: the two answered from different scans
+        and disagreed, one accumulating across spills and one reading only the last, so
+        a lane learned earlier was reported by one and forgotten by the other."""
+        sources = self.falling_sources()
+        if sources is UNKNOWN:
+            return UNKNOWN
+        return Grounded(tuple(sorted({lane for lane, _tick, _line in sources.value})), "high")
 
     def absorbers(self) -> frozenset[Cell]:
         """Regions that swallow the flow without the objective counting them.

@@ -338,3 +338,47 @@ def test_a_cell_in_the_MOVING_appearance_does_not_become_a_phantom_piece():
         f"a region contained in another was reported as its own piece: {inventory.value}"
     assert not any(len(cells) == 1 and (5, 3) in cells for _, cells in inventory.value), \
         f"the foreign cell became a phantom piece: {inventory.value}"
+
+
+def test_lanes_accumulate_across_spills():
+    """Purpose: a lane is a standing property of the board — the same source pours down
+    it whatever the pieces do — so a lane learned from one spill is still true at the
+    next. Measured on idx3: the probe spill reveals lanes 5 and 6 and the committed spill
+    reveals 11 and 12, and reading only the last animation threw away half the board's
+    sources every time.
+
+    Expected feedback: pass proves a lane seen in an earlier spill survives a later one.
+    Fail means the model plans with whatever subset the most recent commit happened to
+    expose."""
+    left = {(4, c): 7 for c in range(1, 4)}
+    right = {(4, c): 7 for c in range(6, 8)}
+    g = FlowGrounding()
+    g.observe(0, None, [_frame({**left, **right})])
+    g.observe(6, (4, 1), [_frame({**{c: 9 for c in left}, **right})])
+    g.observe(4, None, [_frame({**{(r, c + 1): 9 for (r, c) in left}, **right})])
+
+    board = {**{(r, c + 1): 9 for (r, c) in left}, **right}
+
+    def _spill(landing, beside):
+        """A plain descending stream (so the direction is measurable) plus a landing."""
+        run = {}
+        frames = []
+        for k in range(1, 4):
+            run[(k, 0)] = 6
+            frames.append(_frame({**board, **run}))
+        run[landing] = 6
+        frames.append(_frame({**board, **run}))
+        run[beside] = 6
+        frames.append(_frame({**board, **run}))
+        return frames
+
+    # first spill: a stream lands on the left piece, in lane 2
+    g.observe(5, None, _spill((3, 2), (3, 1)))
+    first = g.falling_columns()
+    assert first is not UNKNOWN and 2 in first.value, f"lane 2 not found: {first}"
+
+    # second spill: a stream lands in lane 3 — and lane 2 must survive it
+    g.observe(5, None, _spill((3, 3), (3, 4)))
+    both = g.falling_columns()
+    assert both is not UNKNOWN
+    assert {2, 3} <= set(both.value), f"a lane was forgotten between spills: {both.value}"
