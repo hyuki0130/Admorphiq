@@ -138,6 +138,12 @@ def play_level(w: Walker) -> tuple[bool, str]:
         if a in deltas_of(g):
             continue
         w.act(a, g)
+        if a not in deltas_of(g):
+            # The engine drops a press now and then — measured three times out of three
+            # elsewhere in this round. An unmeasured direction is not neutral: it
+            # removes every placement that needs it from the planner's reach, and it
+            # cost idx3 the discovery slide, which had no action to move along the flow.
+            w.act(a, g)
 
     # Probe until the idle appearance is known, then keep probing the remaining
     # candidates: selecting a piece is what separates it from a neighbour it touches,
@@ -198,11 +204,26 @@ def play_level(w: Walker) -> tuple[bool, str]:
         plan = compile_flow_hypothesis(hypothesis, g)
         if os.environ.get("R98_DUMP_BOARD") == "1":
             known = g.sink_candidates()
-            print(f"    [plan] absorbers: {sorted(g.absorbers())}", flush=True)
+            print(f"    [plan] absorbers: {sorted(g.absorbers())} | falling columns "
+                  f"{g.falling_columns()}", flush=True)
             print(f"    [plan] targets known at plan time: "
                   f"{0 if known is UNKNOWN else len(known.value)} "
                   f"{[] if known is UNKNOWN else [sorted(c)[0] for _, c in known.value]}",
                   flush=True)
+        if plan.status is not PlanStatus.SOLVABLE and g.falling_columns() is UNKNOWN:
+            # A falling source reveals its COLUMN only when it has room to fall: a
+            # stream landing on the piece directly beneath it spills off the ends at
+            # once, and fall-off looks nothing like landing. So slide the cover, run
+            # the spill, put it back and run it again — discovery is an ACTION here.
+            #
+            # Only when the model is already stuck, because the slide is not free:
+            # doing it unconditionally cost idx0 its clear and left idx2 with a piece
+            # that had no reachable placement.
+            _slide_a_cover(w, g)
+            if os.environ.get("R98_DUMP_BOARD") == "1":
+                print(f"    [discover] slid a cover; falling columns now "
+                      f"{g.falling_columns()}", flush=True)
+            plan = compile_flow_hypothesis(hypothesis, g)
         if plan.status is not PlanStatus.SOLVABLE:
             if os.environ.get("R98_DUMP_BOARD") == "1":
                 b = g.board().value
@@ -219,6 +240,51 @@ def play_level(w: Walker) -> tuple[bool, str]:
         if w.actions - spent >= ACTION_BUDGET or not w.alive:
             return False, f"{note}; out of budget"
     return False, f"{note}; gave up after {attempts} plans"
+
+
+def _slide_a_cover(w: Walker, g: FlowGrounding) -> None:
+    """Move the piece a stream is spilling over, then commit again."""
+    direction = g.initial_direction()
+    trail = g.trajectory()
+    pieces = g.pieces()
+    if UNKNOWN in (direction, trail, pieces):
+        return
+    dr, dc = direction.value
+    entries = {c for layer in trail.value[:1] for c in layer}
+    for layer in trail.value:
+        for (r, c) in layer:
+            if (r - dr, c - dc) not in {x for lay in trail.value for x in lay}:
+                entries.add((r, c))
+    covers = [
+        cells for _, cells in pieces.value
+        if any((r + dr * k, c + dc * k) in entries or (r - dr * k, c - dc * k) in entries
+               for (r, c) in cells for k in (0, 1))
+        or any(abs(r - er) + abs(c - ec) == 1 for (r, c) in cells for (er, ec) in entries)
+    ]
+    if not covers:
+        return
+    target = min(covers, key=lambda cells: min(cells))
+    step = next((a for a, (ar, ac) in sorted(deltas_of(g).items())
+                 if (ar, ac) == (dr, dc)), None)
+    if step is None:
+        if os.environ.get("R98_DUMP_BOARD") == "1":
+            print(f"    [discover] no measured action moves along {dr, dc}; "
+                  f"measured {sorted(deltas_of(g).items())}", flush=True)
+        return
+    back = next((a for a, (ar, ac) in sorted(deltas_of(g).items())
+                 if (ar, ac) == (-dr, -dc)), None)
+    w.click(sorted(target)[len(target) // 2], g)
+    w.act(step, g)
+    w.act(5, g)
+    if back is not None:
+        # put it back: discovery must not cost the layout. Measured on idx2, where
+        # leaving the cover where the probe put it left a piece with no reachable
+        # placement and the level went from cleared to unplannable.
+        w.click(sorted(target)[len(target) // 2], g)
+        w.act(back, g)
+        # and run the spill once more, so the evidence the verifier judges belongs to
+        # the layout that is actually on the board
+        w.act(5, g)
 
 
 def _execute(w: Walker, g: FlowGrounding, plan, entered: int, spent: int, probes: int):

@@ -1307,15 +1307,55 @@ agent has to go and GET — one selection and one press, then a commit — rathe
 it can read off the opening frame. Discovery here is an action, not an observation, and
 the probe phase is where it belongs.
 
+## An unmeasured direction is not neutral (2026-08-24)
+
+Wiring the discovery slide into the walk took three attempts, and each failure was
+worth more than the feature.
+
+**Unconditional discovery costs more than it earns.** Sliding a cover during every
+probe phase cost idx0 its clear outright and left idx2 with a piece that had no
+reachable placement. Putting the cover back fixed the layout but not the evidence — the
+verifier then CONTRADICTED on idx0, because the spill it was judging belonged to the
+slid layout, not the restored one. Committing once more after the restore fixed that,
+and idx0 still failed to clear: three extra actions in the wrong place are enough to
+change a level's outcome. So the slide runs **only when the compiler is already stuck
+and the columns are still unknown**, and idx0–idx2 return to exactly their previous
+action counts.
+
+**And then it did not fire.** The slide needs an action that moves a piece ALONG the
+flow, and on idx3 the measured delta table held only up, left and right:
+
+```
+[discover] no measured action moves along (1, 0); measured [(1,(-1,0)), (3,(0,-1)), (4,(0,1))]
+```
+
+Down exists — the manual probe used it — but the probe phase pressed it once, the press
+was dropped, and the direction was recorded as unmeasurable. This round already measured
+that the engine drops presses (three times out of three on a repeat), so the delta probe
+now retries an unmeasured direction once. That single retry is what an unmeasured
+direction is worth: it removes every placement needing that direction from the planner's
+reach, and here it also cost the agent the discovery it was trying to run.
+
+```
+idx0: CLEARED — 23 actions (was 19)
+idx1: CLEARED — 30 actions (was 26)
+idx2: CLEARED — 55 actions (was 51)
+idx3: plans and executes its plan again — no longer UNSATISFIABLE
+```
+
+The four extra actions per level are the retries, and they are a real cost under a
+squared-efficiency metric. They buy idx3 the ability to plan at all, which is the right
+trade while the model is still being built; a cheaper probe that only retries the
+directions a plan actually needs is a later refinement.
+
 ## Next
 
 1. **Fill is not confirmed paired.** gemma4 misses one slot, and the cause is our
    encoding rather than its reasoning. Measure the hazard orthogonalisation as its
    own experiment against all three models — never as a patch to move a verdict.
-2. **Slide a cover during the probe phase, then feed the columns to the propagator.**
-   `falling_columns()` grounds (5,6) on idx3 but only AFTER the covering piece moves —
-   in the opening layout it is UNKNOWN on every level. So the probe phase needs the
-   slide, and the board needs to carry falling columns instead of replayed emergences.
+2. **Feed the falling columns to the propagator.** The discovery slide is wired and
+   gated; the board still carries no falling source, so the model plans without the
+   second stream. Wiring it changes every prediction and needs its own measurement.
 3. **Multi-piece placement**, the burden the idx1 observation named: idx1 carries
    three pieces and three targets, so a single-piece placement satisfies nothing and
    the sink shortlist comes back empty. That, plus a shortlist that can name targets
