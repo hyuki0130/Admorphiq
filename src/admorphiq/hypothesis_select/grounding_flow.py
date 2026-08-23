@@ -220,7 +220,11 @@ class FlowGrounding:
         # that can only move the merged blob cannot solve a board that needs them
         # placed independently. Selection is the disambiguator: the selected piece
         # is always segmented on its own.
-        self._confirmed: list[frozenset[Cell]] = []
+        # Confirmed pieces are remembered by SHAPE, not by position. A region
+        # recorded where it happened to sit goes stale the moment the piece moves,
+        # and subtracting a stale region from the current board leaves fragments
+        # that look like extra pieces. A shape stays true wherever the piece goes.
+        self._confirmed_shapes: list[frozenset[Cell]] = []
         self._delta_obs: dict[int, Counter] = defaultdict(Counter)
         self._commit_obs: Counter = Counter()
         self._animations: list[_Animation] = []
@@ -412,13 +416,9 @@ class FlowGrounding:
             self._delta_obs[action][delta] += 1
             self._moving_colour = colour
             self._piece = a[0]
-            self._confirmed = [
-                frozenset((r + delta[0], c + delta[1]) for (r, c) in piece)
-                if piece == b[0] else piece
-                for piece in self._confirmed
-            ]
-            if a[0] not in self._confirmed:
-                self._confirmed.append(a[0])
+            shape = _normalised(a[0])
+            if shape not in self._confirmed_shapes:
+                self._confirmed_shapes.append(shape)
             return True
         return False
 
@@ -446,8 +446,10 @@ class FlowGrounding:
                         self._idle_colour = dropped.pop()
                 self._selected_colour = colour
                 self._piece = r
-                if r not in self._confirmed:
-                    self._confirmed.append(r)
+                # A MULTISET: each selection confirms one more instance of that
+                # shape. Multiplicity is what stops a genuine wide piece from being
+                # explained away as several narrow ones that happen to add up.
+                self._confirmed_shapes.append(_normalised(r))
                 self._selection_obs += 1
                 return True
         return False
@@ -509,11 +511,15 @@ class FlowGrounding:
     def pieces(self) -> Any:
         """Every movable piece on the board, read off the CURRENT board.
 
-        Pieces CONFIRMED by having worn the selected appearance are reported
-        individually — that is what separates two touching pieces, which share a
-        single region under 4-connectivity while idle. Whatever idle area remains
-        uncovered by a confirmed piece is reported as its own region, so a board
-        works before every piece has been probed; it is just coarser there.
+        Two touching pieces share a single region under 4-connectivity while idle,
+        and a planner that can only move the merged pair cannot solve a board that
+        needs them placed independently. Selection is the disambiguator — the
+        selected piece is always segmented on its own — and what selection teaches
+        is a SHAPE, which stays true wherever that piece later moves.
+
+        A region is therefore split by tiling it with confirmed shapes when it is
+        larger than any of them. A region that matches nothing known is reported
+        whole: coarser, but never invented.
 
         Reading the current board matters because a failed attempt re-selects a
         piece of the engine's choosing, so which one wears the selected appearance
@@ -522,18 +528,13 @@ class FlowGrounding:
             return UNKNOWN
         cells = self._prev_cells
         found: list[frozenset[Cell]] = []
-        for region in self._confirmed:
-            if region and region not in found and all(c in cells for c in region):
-                found.append(region)
-        covered = set().union(*found) if found else set()
+        available = list(self._confirmed_shapes)
         for colour in (self._selected_colour, self._idle_colour, self._moving_colour):
             if colour is None:
                 continue
             for region in _regions(cells, colour):
-                remainder = frozenset(region - covered)
-                if not remainder:
-                    continue
-                for part in _split(remainder):
+                parts, available = self._tile(region, available)
+                for part in parts:
                     if part not in found:
                         found.append(part)
         if not found:
@@ -542,6 +543,50 @@ class FlowGrounding:
         return Grounded(
             tuple((f"piece_{i}", tuple(sorted(r))) for i, r in enumerate(ordered)), "high"
         )
+
+    def _tile(
+        self, region: frozenset[Cell], available: list[frozenset[Cell]]
+    ) -> tuple[list[frozenset[Cell]], list[frozenset[Cell]]]:
+        """Split a region into confirmed shapes, consuming from a MULTISET.
+
+        Each selection confirms one instance of a shape, and an instance may be
+        spent once. Without that, a genuine six-wide piece is happily explained as
+        two three-wide ones because the arithmetic works — inventing pieces the
+        board does not have, which is worse than reporting a merged pair whole.
+
+        Only an EXACT cover counts. A leftover means the shapes on hand do not
+        explain this region, so it is returned whole: coarser, but never invented."""
+        shape = _normalised(region)
+        for i, known in enumerate(available):
+            if known == shape:
+                return [region], available[:i] + available[i + 1:]
+        if not available:
+            return [region], available
+
+        remaining = set(region)
+        pool = sorted(available, key=len, reverse=True)
+        parts: list[frozenset[Cell]] = []
+        used: list[int] = []
+        progress = True
+        while remaining and progress:
+            progress = False
+            for idx, candidate in enumerate(pool):
+                if idx in used or len(candidate) > len(remaining):
+                    continue
+                anchor = min(remaining)
+                dr = anchor[0] - min(r for r, _ in candidate)
+                dc = anchor[1] - min(c for _, c in candidate)
+                placed = frozenset((r + dr, c + dc) for (r, c) in candidate)
+                if placed <= remaining:
+                    parts.append(placed)
+                    remaining -= placed
+                    used.append(idx)
+                    progress = True
+                    break
+        if parts and not remaining:
+            left = [s for i, s in enumerate(pool) if i not in used]
+            return parts, left
+        return [region], available
 
     def idle_appearance_known(self) -> bool:
         """Whether a selection event has revealed how an unselected piece looks. Until

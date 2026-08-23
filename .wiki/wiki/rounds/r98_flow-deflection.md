@@ -351,6 +351,19 @@ was ignoring them. Filtering on overlap alone lets the search commit to layouts 
 engine will not build: the moves are simply dropped, the piece ends up elsewhere, and
 the spill that follows is the one nobody planned.
 
+**Piece identity is remembered by SHAPE, in a multiset.** Recording a confirmed
+piece by POSITION goes stale the moment it moves, and subtracting a stale region
+from the current board leaves fragments that look like extra pieces — measured on
+the four-source level, where a four-piece board was reported as six.
+
+Remembering shapes instead fixes the drift but introduces a worse failure if the
+shapes are treated as a set: a genuine six-wide piece is happily explained as two
+three-wide ones, because the arithmetic works. That is inventing pieces the board
+does not have, which is worse than reporting a merged pair whole. Each selection
+therefore confirms one INSTANCE of a shape, an instance is spent once, and only an
+exact cover counts — otherwise the region is reported whole. Coarser, never
+invented.
+
 An honest note on cost: idx2's plan spends 47 actions, so it would score poorly on
 the efficiency metric. Whether the pipeline can solve a board and whether it solves it
 efficiently are separate questions, and this walk answers only the first.
