@@ -61,6 +61,13 @@ class Board:
     # inference. Modelling the observation keeps the replay checkable; claiming the
     # mechanism would not.
     emergences: tuple[tuple[Cell, int], ...] = ()
+    # Regions that swallow the flow without the objective counting them. On idx3 a
+    # solid block wearing the target colour absorbs a stream and is satisfied by the
+    # engine, while no rule in any candidate table ever satisfies it — so it cannot be
+    # a sink here, and it is not a hazard either (contact is not fatal). Leaving it out
+    # entirely is what made the forecast claim a downstream target the engine never
+    # filled: our flow ran straight through what the engine's flow ended at.
+    absorber_cells: frozenset[Cell] = frozenset()
 
     @property
     def piece_cells(self) -> frozenset[Cell]:
@@ -163,7 +170,8 @@ def predict(board: Board, table: ResponseTable, max_ticks: int = 80) -> Predicti
         nxt: list[tuple[Cell, tuple[int, int]]] = []
         born: list[Cell] = list(emerged)
 
-        blocked = board.piece_cells | {c for s in board.sinks for c in s} | board.hazard_cells
+        blocked = (board.piece_cells | {c for s in board.sinks for c in s}
+                   | board.hazard_cells | board.absorber_cells)
 
         def spawn(cell: Cell, direction: tuple[int, int]) -> None:
             # "Empty" means empty of EVERYTHING, not just of flow. Spreading into a
@@ -190,6 +198,9 @@ def predict(board: Board, table: ResponseTable, max_ticks: int = 80) -> Predicti
                 elif table.boundary == "reflect":
                     spawn((r - dr, c - dc), (-dr, -dc))
                 continue
+
+            if ahead in board.absorber_cells:
+                continue  # swallowed: no satisfaction, no hazard, no onward flow
 
             sink_idx = board.sink_of(ahead)
             if sink_idx is not None:

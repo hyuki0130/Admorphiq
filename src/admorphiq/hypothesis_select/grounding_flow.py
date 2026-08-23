@@ -1165,9 +1165,43 @@ class FlowGrounding:
                 size=size,
                 direction=direction.value,
                 emergences=() if emergences is UNKNOWN else emergences.value,
+                absorber_cells=self.absorbers(),
             ),
             "high",
         )
+
+    def absorbers(self) -> frozenset[Cell]:
+        """Regions that swallow the flow without the objective counting them.
+
+        Measured on idx3: a solid block wearing the target appearance is satisfied by
+        the ENGINE — it recolours when the spill reaches it — while no candidate table
+        has a rule that ever satisfies a region with no notch to be flanked at. So it
+        cannot be offered as a target, and it is not a hazard either: contact is not
+        fatal. Left out of the board entirely, our flow ran straight through what the
+        engine's flow ended at, and the forecast claimed a downstream target the engine
+        never filled.
+
+        Named exactly like the weak target source, minus the notch: a region wearing
+        the appearance every named target agrees on. Boards without such a region —
+        every earlier level — get an empty set and are unaffected."""
+        sinks = self.sink_candidates()
+        if sinks is UNKNOWN or self._prev_cells is None:
+            return frozenset()
+        cells = self._prev_cells
+        colours = {cells[c] for _, group in sinks.value for c in group if c in cells}
+        if len(colours) != 1:
+            return frozenset()
+        colour = colours.pop()
+        named = [frozenset(group) for _, group in sinks.value]
+        pieces = self._all_piece_cells()
+        out: set[Cell] = set()
+        for region in _regions(cells, colour):
+            for part in self._by_mouth(region):
+                if part & pieces or any(part & known for known in named):
+                    continue
+                if not self._mouths(part):
+                    out |= part
+        return frozenset(out)
 
     def sink_candidates(self) -> Any:
         """The shortlist the model binds target roles from. A shortlist, never a

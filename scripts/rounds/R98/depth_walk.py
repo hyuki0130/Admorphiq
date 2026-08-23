@@ -198,6 +198,7 @@ def play_level(w: Walker) -> tuple[bool, str]:
         plan = compile_flow_hypothesis(hypothesis, g)
         if os.environ.get("R98_DUMP_BOARD") == "1":
             known = g.sink_candidates()
+            print(f"    [plan] absorbers: {sorted(g.absorbers())}", flush=True)
             print(f"    [plan] targets known at plan time: "
                   f"{0 if known is UNKNOWN else len(known.value)} "
                   f"{[] if known is UNKNOWN else [sorted(c)[0] for _, c in known.value]}",
@@ -391,8 +392,17 @@ def _attribute_pre(g: FlowGrounding, forecast) -> None:
         if a != b:
             print(f"    [attribute] first divergence at step {i}: "
                   f"invented {sorted(a - b)} missed {sorted(b - a)}", flush=True)
+            _trail_surplus(forecast, observed.value)
             return
     print("    [attribute] the trails agree cell for cell", flush=True)
+
+
+def _trail_surplus(forecast, observed) -> None:
+    """Cells the forecast produces that the spill never shows, and the reverse."""
+    pred = {c for layer in forecast.frontier for c in layer}
+    obs = {c for layer in observed for c in layer}
+    print(f"    [surplus] predicted-only {sorted(pred - obs)}", flush=True)
+    print(f"    [surplus] observed-only  {sorted(obs - pred)}", flush=True)
 
 
 def _attribute(g: FlowGrounding, plan) -> None:

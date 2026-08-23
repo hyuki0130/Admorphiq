@@ -1106,15 +1106,52 @@ idx2: CLEARED — 51 actions
 idx3: plan executed in full, layout exact, 3 of the engine's 4 targets satisfied
 ```
 
+## The obstacle role, split from the target role (2026-08-24)
+
+The block that the engine satisfies and no table can is now carried on the board in its
+own role. `Board.absorber_cells` swallows a stream that reaches it: no satisfaction, no
+hazard contact, no onward flow. Grounding names them exactly like the weak target source
+minus the notch — a region wearing the appearance every named target agrees on, with no
+notch to be flanked at — so idx3 grounds the 2×2 block and **every earlier level grounds
+an empty set** and is untouched.
+
+```
+idx0  absorbers []
+idx1  absorbers []
+idx2  absorbers []
+idx3  absorbers [(13,2), (13,3), (14,2), (14,3)]
+```
+
+It did not change idx3's outcome, which is itself the finding: with the absorber in
+place the forecast still says 3 of 3 and the engine still leaves (13,12) unfilled. So
+the stream our model sends past the block was never the one the engine sends to (13,12),
+and the divergence is elsewhere. Comparing the two trails cell for cell says where:
+
+```
+predicted-only  (6,2) (7,2) (8,2) (9,2) (10,2) (11,2) (12,2) · (12,12) (12,13) (13,13) · (6,9) (8,4)
+observed-only   (12,4) (13,4) (14,4)
+```
+
+We run a whole stream down **column 2** that the engine never produces, and the engine
+runs one down **column 4** that we never predict. The two hidden sources are grounded as
+the PAIRS `((3,3),(3,4))` and `((3,8),(3,7))` — a source and the cell beside it — and the
+emergence injected into the board is one member of each pair. The engine's flow appearing
+in column 4 rather than column 2 or 3 says the injected member is likely the wrong one.
+Testing that is cheap and is the next step.
+
+Note what this does NOT say: the absorber is not vindicated by idx3 clearing, because it
+did not clear. What is measured is that the role is grounded where it should be, absent
+where it should be, and that its presence moved the remaining disagreement into a
+different, sharper place.
+
 ## Next
 
 1. **Fill is not confirmed paired.** gemma4 misses one slot, and the cause is our
    encoding rather than its reasoning. Measure the hazard orthogonalisation as its
    own experiment against all three models — never as a patch to move a verdict.
-2. **Separate the obstacle role from the target role.** idx3's mouthless block absorbs
-   flow in the engine and is satisfied by it, while our model carries no rule that ever
-   satisfies it. The propagator needs it as an absorber even though the objective
-   cannot count it.
+2. **Which member of a hidden-source pair emerges?** idx3's engine runs a stream down
+   column 4 that the model never predicts, while the model runs one down column 2 that
+   the engine never shows; the sources are grounded as pairs and one member is injected.
 3. **Multi-piece placement**, the burden the idx1 observation named: idx1 carries
    three pieces and three targets, so a single-piece placement satisfies nothing and
    the sink shortlist comes back empty. That, plus a shortlist that can name targets

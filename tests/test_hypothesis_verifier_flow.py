@@ -248,3 +248,30 @@ def test_a_known_board_gap_is_not_charged_to_the_hypothesis():
         n_sinks=contaminated.n_sinks,
     )
     assert verify_with_evidence(F.sp80_oracle_instance(), plain).verdict is Verdict.CONTRADICTED
+
+
+def test_an_absorber_swallows_the_stream_without_satisfying_or_killing():
+    """Purpose: idx3 carries a solid block wearing the target colour that the ENGINE
+    satisfies — it recolours when the spill reaches it — while no candidate table has
+    a rule that ever satisfies a region with no notch to be flanked at. It cannot be a
+    sink, and it is not a hazard: contact is not fatal. Left out of the board, our flow
+    ran straight through what the engine's flow ended at.
+
+    Expected feedback: pass proves an absorber ends the stream that reaches it, counts
+    for nothing, and does not kill the attempt. Fail means a board with one of these
+    predicts flow downstream of it that the engine never produces."""
+    from dataclasses import replace as _replace
+
+    plain = _board(WIN_PIECE)
+    baseline = predict(plain, ORACLE)
+    assert baseline.satisfied, "the control layout should satisfy something"
+
+    # put an absorber directly under the stream, above the sinks
+    blocked = _replace(plain, absorber_cells=frozenset({(5, c) for c in range(SIZE)}))
+    stopped = predict(blocked, ORACLE)
+
+    assert not stopped.satisfied, "an absorber must not satisfy anything"
+    assert not stopped.fatal, "an absorber is not a hazard"
+    reached = {c for layer in stopped.frontier for c in layer}
+    assert not any(r >= 5 for r, _ in reached), \
+        f"flow continued past the absorber: {sorted(c for c in reached if c[0] >= 5)}"
