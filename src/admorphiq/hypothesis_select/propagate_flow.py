@@ -237,6 +237,13 @@ def predict(board: Board, table: ResponseTable, max_ticks: int = 80) -> Predicti
             if sink_idx is not None:
                 same = all(board.sink_of(f) == sink_idx for f in flanks)
                 hit = same if table.sink_predicate == "same_sink_flanks" else True
+                if sink_idx in satisfied:
+                    # A target already filled does not take more flow. Measured on
+                    # idx3: a droplet entered the notch of (13,6) at step 17 and
+                    # satisfied it, and the stream arriving on that same target at
+                    # step 18 simply ends — where our replay spread it along the top
+                    # and carried it into a neighbour's mouth.
+                    continue
                 if hit:
                     satisfied.add(sink_idx)
                     continue

@@ -1608,14 +1608,54 @@ branch, and it is not the geometry the model currently carries.
 Everything is reverted; the four levels are unchanged. The tick's product is three
 eliminations, which is what the ⛔ list is for.
 
+## A filled target takes no more flow (2026-08-24)
+
+A fourth spreading rule went the way of the first three — "slide toward the notch of the
+target you hit" is contradicted on idx0 within one level, six cells missed. But reading
+the observation that killed it turned up the rule that works, and it is not about
+spreading at all.
+
+The engine's own sequence on idx3:
+
+```
+obs 17: (11,0) (11,6) (11,11) (13,7)     ← (13,7) is the NOTCH of target (13,6)
+obs 18: (12,0) (12,6) (12,11)            ← a stream arrives on (13,6)'s wall …
+obs 19: (12,10) (13,0)                   ← … and simply ends
+```
+
+The target was filled at step 17 by a droplet entering its notch. The stream that
+arrives on it at step 18 does not spread, does not deflect, does not continue — it ends.
+**A target that is already satisfied takes no more flow.**
+
+That single rule accounts for most of what was left:
+
+```
+before   predicted 22 steps / 56 cells   surplus 8 cells
+after    predicted 21 steps / 52 cells   surplus 4 cells   (observed: 21 / 48)
+```
+
+The step counts now match exactly, the whole invented column-5 stream is gone, and the
+four cells left are `(12,12) (12,13) (13,13)` — the walk into `(13,12)`'s mouth — plus
+`(15,0)`.
+
+All four certifications hold, including the frozen mutant table: the rule is a property
+of the board's state during a spill, not a slot in the response table, so what the model
+stage measures is untouched. idx0–idx2 clear in the same action counts as before.
+
+The remaining four cells are the same disagreement as before, now isolated: our stream
+reaches `(12,11)`, the engine's turns left and fills `(13,9)`, and ours also goes right
+along two targets' roofs into a mouth the engine never reaches. Four rules have now been
+eliminated for that turn; the fifth candidate is that a droplet on a target's roof is not
+free to travel indefinitely.
+
 ## Next
 
 1. **Fill is not confirmed paired.** gemma4 misses one slot, and the cause is our
    encoding rather than its reasoning. Measure the hazard orthogonalisation as its
    own experiment against all three models — never as a patch to move a verdict.
-2. **Why does the engine's row-12 stream stop at column 11?** Still open, and now with
-   three eliminations behind it: no side-condition on spreading and no one-sided sink
-   miss explains it (the last is contradicted on idx0 outright).
+2. **Four cells left on idx3.** Our stream walks right along two targets' roofs into a
+   mouth the engine never reaches. Four spreading rules are eliminated; the next
+   candidate is that travel along a roof is bounded.
 3. **Multi-piece placement**, the burden the idx1 observation named: idx1 carries
    three pieces and three targets, so a single-piece placement satisfies nothing and
    the sink shortlist comes back empty. That, plus a shortlist that can name targets

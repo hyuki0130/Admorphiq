@@ -275,3 +275,32 @@ def test_an_absorber_DEFLECTS_the_stream_toward_the_side_that_can_continue():
         f"the stream stopped at the block instead of stepping aside: {sorted(reached)}"
     assert (4, 1) not in reached, \
         "the stream deflected onto a side whose own way ahead is blocked"
+
+
+def test_a_satisfied_target_takes_no_more_flow():
+    """Purpose: measured on idx3 — a droplet entered the notch of (13,6) at step 17 and
+    satisfied it, and the stream arriving on that same target at step 18 simply ended.
+    Our replay instead spread it along the target's top and carried it into a
+    neighbour's mouth, claiming a target the engine left empty.
+
+    A first stream drops into the notch and fills the target; a second arrives on the
+    target's wall several steps later.
+
+    Expected feedback: pass proves a filled target stops what reaches it afterwards.
+    Fail means the replay keeps routing flow through targets that are already done, and
+    a plan can win on paper by filling one twice."""
+    from dataclasses import replace as _replace
+
+    board = _replace(
+        _board(WIN_PIECE),
+        pieces=(frozenset({(0, 0)}),),          # out of the way
+        standing_flow=frozenset({(1, 2)}),      # falls into the notch at (7,2)
+        emergences=(((5, 1), 8),),              # arrives on the wall at (7,1) later
+    )
+    prediction = predict(board, ORACLE)
+
+    assert 0 in prediction.satisfied, "the first stream should fill the target"
+    reached = {c for layer in prediction.frontier for c in layer}
+    assert (6, 1) in reached, "the second stream should reach the target's wall"
+    assert (6, 0) not in reached, \
+        f"the second stream spread over a target that was already filled: {sorted(reached)}"
