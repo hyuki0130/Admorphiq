@@ -1878,15 +1878,54 @@ idx2: CLEARED — 55 actions
 idx3: a press consumes the piece it moves; three plans exhausted
 ```
 
+## A piece survives ONE press along the flow's axis (2026-08-24)
+
+`scripts/rounds/R98/piece_loss_probe.py` drives one piece in one direction, step by step,
+printing the inventory each time. On idx3 the answer is unambiguous and reproducible:
+
+```
+piece (10,9)  DOWN   step 0: 5 -> 5 pieces      step 1: 5 -> 4    LOST
+piece (10,9)  UP     step 0: 5 -> 5 pieces      step 1: 5 -> 4    LOST
+piece (4,4)   DOWN   step 0: 5 -> 5 pieces      step 1: 5 -> 4    LOST
+piece (4,9)   DOWN   step 0: 5 -> 5 pieces      step 1: 5 -> 4    LOST
+piece (10,9)  LEFT   steps 0-3: 5 -> 5 pieces   (no loss)
+piece (10,9)  RIGHT  steps 0-3: 5 -> 5 pieces   (no loss)
+```
+
+Four pieces, both vertical directions: the FIRST press moves the piece and the SECOND
+destroys it. Across the axis, four presses in a row do nothing of the sort. So this is not
+a hazard or a collision — **a piece may be moved once along the flow's axis, and a second
+press consumes it.** (One piece was lost on its first press in the probe, which fits: the
+delta-measuring phase had already spent its move.)
+
+That explains the failures of the last two ticks directly. A plan that places a piece two
+rows away is not slow — it is a plan that destroys the piece it is moving, and everything
+downstream (the "refused" press, the ghost the driver kept pressing at, the shrinking
+inventory) follows from that one unmodelled rule.
+
+Enforcing it in the compiler is NOT adopted here, and the reason is a measurement: limiting
+travel along the ROW axis costs idx2 its clear (55 actions to a clear, then no clear at
+all). The budget was measured on idx3 alone, and the axis it applies to is the flow's, not
+the board's — idx1 runs its flow upward. Applying a level-specific number as a global rule
+is exactly the mistake the rule bench exists to prevent, so the mechanic is recorded and
+the constraint waits for a measurement that covers every level.
+
+```
+idx0: CLEARED — 23 actions
+idx1: CLEARED — 30 actions
+idx2: CLEARED — 55 actions
+idx3: a second press along the flow's axis consumes the piece
+```
+
 ## Next
 
 1. **Fill is not confirmed paired.** gemma4 misses one slot, and the cause is our
    encoding rather than its reasoning. Measure the hazard orthogonalisation as its
    own experiment against all three models — never as a patch to move a verdict.
-2. **What consumes a piece?** Measured twice now: a press destroys the piece it moves.
-   The cells entered are plain background, the target row is two rows away and no flow is
-   there, so the cause is unmodelled — and a plan that destroys its own piece cannot be
-   repaired by better placement.
+2. **Measure the vertical-move budget on every level, then enforce it.** On idx3 a piece
+   survives one press along the flow's axis and is consumed by the second; a row-axis
+   limit costs idx2 its clear, so the rule needs the flow's axis and a per-level number
+   before the compiler can use it.
 3. **Measure the bounded-roof variant on fixed evidence** — 1 invented cell against the
    adopted rule's 2, deliberately not adopted in the same change.
 3. **Multi-piece placement**, the burden the idx1 observation named: idx1 carries
