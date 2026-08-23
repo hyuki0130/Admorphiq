@@ -650,6 +650,12 @@ class FlowGrounding:
         if not found:
             found = [frozenset(self._piece)]
         found = self._bridge(found, cells)
+        # A cell wearing the MOVING appearance can sit inside a piece that is standing
+        # still — measured on idx3, where one cell of a five-cell bar rendered in that
+        # colour and the bar was reported as a five-cell piece PLUS a phantom one-cell
+        # piece at the same place. A region already contained in another is not a
+        # second piece.
+        found = [r for r in found if not any(r < other for other in found)]
         ordered = sorted(found, key=min)
         return Grounded(
             tuple((f"piece_{i}", tuple(sorted(r))) for i, r in enumerate(ordered)), "high"

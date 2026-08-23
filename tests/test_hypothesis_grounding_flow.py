@@ -305,3 +305,36 @@ def test_a_falling_source_is_grounded_by_its_COLUMN_where_it_lands():
     columns = g.falling_columns()
     assert columns is not UNKNOWN, "a landing stream must ground its column"
     assert columns.value == (4,), f"grounded the wrong column: {columns.value}"
+
+
+def test_a_cell_in_the_MOVING_appearance_does_not_become_a_phantom_piece():
+    """Purpose: measured on idx3 — one cell of a stationary five-cell bar rendered in
+    the appearance the harness had learned for a piece in motion. Plain segmentation
+    then reported the bar as a five-cell piece PLUS a one-cell piece at the same place,
+    and, because that cell split the bar's own colour into two regions, the harness
+    also read the selected and idle appearances the wrong way round.
+
+    Expected feedback: pass proves a region already contained in another is not
+    reported as a second piece, and that the appearance count bridges such a cell.
+    Fail means the planner addresses a piece that is not there and can invert which
+    piece it believes is selected."""
+    bar = {(5, 1): 9, (5, 2): 9, (5, 4): 9, (5, 5): 9}
+    odd = {(5, 3): 4}                      # the moving appearance, mid-bar
+    other = {(4, 7): 8}
+    board = {**bar, **odd, **other}
+    selected = {c: 8 for c in bar}
+
+    g = FlowGrounding()
+    g.observe(0, None, [_frame(board)])
+    g.observe(6, (5, 1), [_frame({**selected, **odd, **other})])   # select the bar
+    g.observe(4, None, [_frame({**{(r, c + 1): 8 for (r, c) in bar}, **odd, **other})])
+    g.observe(5, None, [_frame(board), _frame({**board, (1, 0): 6}),
+                        _frame({**board, (1, 0): 6, (2, 0): 6})])
+
+    inventory = g.pieces()
+    assert inventory is not UNKNOWN
+    reported = [set(cells) for _, cells in inventory.value]
+    assert not any(a < b for a in reported for b in reported if a is not b), \
+        f"a region contained in another was reported as its own piece: {inventory.value}"
+    assert not any(len(cells) == 1 and (5, 3) in cells for _, cells in inventory.value), \
+        f"the foreign cell became a phantom piece: {inventory.value}"

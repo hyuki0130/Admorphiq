@@ -634,7 +634,8 @@ def _identity_report(g: FlowGrounding, plan, held, selected: frozenset) -> None:
         rows = sorted({r for r, _ in selected} | ({r for r, _ in held.footprint} if held else set()))
         size = int(round(len(cells) ** 0.5))
         sel, idle = g.piece_appearances()
-        print(f"    [identity] selected appearance {sel}, idle {idle}", flush=True)
+        print(f"    [identity] selected {sel}, idle {idle}, moving {g._moving_colour}, "
+              f"flow {[a.flow_colour for a in g._animations[-2:]]}", flush=True)
         for r in range(max(0, min(rows) - 1), min(size, max(rows) + 2)):
             print("      r%-2d " % r + " ".join(f"{cells[(r, c)]:2d}" for c in range(size)),
                   flush=True)

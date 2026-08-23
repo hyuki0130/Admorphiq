@@ -1384,14 +1384,61 @@ idx3's failure has moved back to the ordering pass, which is the honest place fo
 the model now knows about the stream it was missing, and what stops the plan is a piece
 standing where another piece has to pass.
 
+## A phantom piece, and the inversion it caused (2026-08-24)
+
+idx3's plan kept being refused at a cell the ordering pass believed was free. The
+board at that moment says why:
+
+```
+r9  12 12  9  9  4  9  9 12 …
+[identity] plan named (7,2) 5 cells, selected (8,4) 1 cells
+[identity] plan's pieces  (4,4)4 (4,9)4 (9,1)5 (8,11)3 (10,8)3
+[identity] board's pieces (4,4)4 (4,9)4 (8,11)3 (9,2)5 (9,4)1 (10,9)3
+```
+
+One cell of a stationary five-cell bar renders in colour 4 — the appearance the harness
+had learned for a piece IN MOTION. `_bridge` correctly absorbed it and reported the bar
+whole, and then the moving-appearance pass reported that same cell AGAIN as a one-cell
+piece inside it. Six pieces where the plan had five, and the extra one sitting exactly
+where a press had to pass.
+
+It cost a second thing as well. Splitting the bar's own colour into two regions broke
+the "worn by exactly one region" test that decides which appearance is selected, so the
+harness read **selected 8, idle 9** where the board had it the other way round — the
+same inversion this round has now chased three times, arriving by a new route.
+
+Both are one fix each, and both are about not letting segmentation invent entities:
+
+* a region already contained in another is not a second piece;
+* the appearance count bridges single foreign cells before counting, so a piece
+  carrying one is still one region.
+
+```
+idx0: CLEARED — 23 actions
+idx1: CLEARED — 30 actions
+idx2: CLEARED — 55 actions
+idx3: executes its plan in full; the board now reports the same five pieces the plan does
+```
+
+The remaining disagreement on idx3 is smaller than it has ever been — nine predicted
+cells the engine never produces, five it produces that we do not:
+
+```
+predicted-only  (8,4) (12,5) (13,5) (14,5) (15,5) (15,0) (12,12) (12,13) (13,13)
+observed-only   (11,3) (12,3) (12,4) (13,4) (14,4)
+```
+
+We route a stream toward column 12–13 and the engine routes it down column 3–4. One
+stream, one wrong turn, and it is the same target — (13,12) — that goes unfilled.
+
 ## Next
 
 1. **Fill is not confirmed paired.** gemma4 misses one slot, and the cause is our
    encoding rather than its reasoning. Measure the hazard orthogonalisation as its
    own experiment against all three models — never as a patch to move a verdict.
-2. **The ordering pass admits layouts the engine refuses.** idx3 plans with the second
-   stream now and stops on a press blocked by another piece, so occupancy at execution
-   still differs from what the ordering assumed.
+2. **One stream takes a wrong turn on idx3.** We route it toward column 12-13 where the
+   engine sends it down column 3-4, and (13,12) is the target left unfilled. Nine
+   predicted cells and five observed ones separate the two trails.
 3. **Multi-piece placement**, the burden the idx1 observation named: idx1 carries
    three pieces and three targets, so a single-piece placement satisfies nothing and
    the sink shortlist comes back empty. That, plus a shortlist that can name targets
