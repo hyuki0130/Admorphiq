@@ -1581,14 +1581,41 @@ sink list, while the forecast had been computed on the pre-commit board with a d
 list — which printed `(13,2) (13,6) (13,6)`, a duplicate that is not a possible answer.
 Indices are only meaningful next to the list they were produced against.
 
+## Three rules for the row-12 stop, all falsified (2026-08-24)
+
+The engine's stream reaches `(12,11)`, turns LEFT to `(12,10)` and drops into the mouth
+at `(13,10)`, satisfying `(13,9)`. It never goes right. Ours goes both ways and walks
+three cells along the top of the targets into the mouth of `(13,12)` — the one target we
+claim and the engine does not. Three rules that would explain the stop were implemented
+and measured; all three are wrong.
+
+**1. Spread only toward a side whose way ahead is free** (the condition that fixed the
+block). Surplus grew from 8 cells to 23 and the compiler chose a different layout
+altogether — further from the engine, not closer.
+
+**2. Spread only toward a side not walled by a target.** Byte-identical outcome to (1):
+same 23-cell surplus, same changed plan. The narrower reading buys nothing.
+
+**3. A sink miss spreads ONE way, as the engine appeared to do here.** Contradicted on
+idx0 within a single level — the verifier reports four cells the replay misses, so the
+engine demonstrably spreads BOTH ways there.
+
+(3) is the useful one: it rules out a whole family of explanations. The stop at `(12,11)`
+is not a property of sink-miss spreading, because the same spreading demonstrably goes
+both ways on another level. Something about that position on idx3 stops the right-hand
+branch, and it is not the geometry the model currently carries.
+
+Everything is reverted; the four levels are unchanged. The tick's product is three
+eliminations, which is what the ⛔ list is for.
+
 ## Next
 
 1. **Fill is not confirmed paired.** gemma4 misses one slot, and the cause is our
    encoding rather than its reasoning. Measure the hazard orthogonalisation as its
    own experiment against all three models — never as a patch to move a verdict.
-2. **Why does the engine's row-12 stream stop at column 11?** Our stream carries on to
-   (12,12), (12,13) and into the mouth of (13,12), which is the whole of our
-   disagreement about which targets get satisfied on idx3.
+2. **Why does the engine's row-12 stream stop at column 11?** Still open, and now with
+   three eliminations behind it: no side-condition on spreading and no one-sided sink
+   miss explains it (the last is contradicted on idx0 outright).
 3. **Multi-piece placement**, the burden the idx1 observation named: idx1 carries
    three pieces and three targets, so a single-piece placement satisfies nothing and
    the sink shortlist comes back empty. That, plus a shortlist that can name targets
