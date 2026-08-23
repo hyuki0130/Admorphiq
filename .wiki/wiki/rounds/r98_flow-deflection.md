@@ -270,6 +270,41 @@ measured on its own, against all three models, as its own experiment.
   `datasets status` reports "ready" at the dataset level, not the version level. The
   dataset must be verified by FILE SIZE before the kernel is pushed.
 
+## DEPTH WALK — one hypothesis carries two levels (2026-08-23, non-gating)
+
+`scripts/rounds/R98/depth_walk.py` → `depth.txt`. Consecutive levels, same
+hypothesis, same harness, each level entered fresh (a level boundary replaces the
+layout, so grounding is rebuilt, pieces re-inventoried and the flow's direction
+re-learned). Nothing carries across but the hypothesis.
+
+```
+idx0: CLEARED — 15 actions (4 selection probes)
+idx1: CLEARED — 18 actions (2 selection probes)
+idx2: stopped — verifier CONTRADICTED at step 7
+```
+
+idx1 is not a re-run of idx0: three pieces instead of one, three targets instead of
+two, and the flow runs UPWARD. It clears with no level-specific code, which is the
+first real evidence that the schema describes a FAMILY rather than a level.
+
+What each wall taught, in order:
+
+1. the propagator's heading was a hardcoded "down" — idx1 runs up, so the constant
+   mispredicted every step there;
+2. `Board` held ONE piece, so the flow split around pieces the model did not have;
+3. the target shortlist only named targets the probing spill happened to REACH, so
+   "satisfy every target" quietly meant "satisfy the ones I saw" — fixed by naming
+   regions congruent to a confirmed target;
+4. direction inference required one cell per frontier, which is false on any
+   multi-source board — idx2 has three sources and reported UNKNOWN until the rule
+   became "the unit step that maps the first frontier onto the second".
+
+**Where it stops now**: idx2 grounds completely (4 pieces, 3 targets, 3 emitters)
+and the replay tracks the engine for six steps before diverging — the observed
+frontier carries a flanking pair the prediction lacks, so something obstructs the
+flow that the board does not model. That is the next thread, and it is a precise
+one rather than a vague "deeper levels are harder".
+
 ## Next
 
 1. **Fill is not confirmed paired.** gemma4 misses one slot, and the cause is our

@@ -553,13 +553,28 @@ class FlowGrounding:
         return Grounded(tuple((top, c) for c in row), "low")
 
     def initial_direction(self) -> Any:
+        """The direction flow travels, read off the first two frontiers.
+
+        Derived as the unit step that maps the first frontier onto the second, so a
+        board with SEVERAL sources works exactly like one with a single source:
+        three parallel streams advance by the same offset, and requiring one cell
+        per frontier would report UNKNOWN on every multi-source board."""
         if not self._animations:
             return UNKNOWN
         frontier = [f for f in self._animations[0].frontier if f]
-        if len(frontier) < 2 or len(frontier[0]) != 1 or len(frontier[1]) != 1:
+        if len(frontier) < 2:
             return UNKNOWN
-        (r0, c0), (r1, c1) = frontier[0][0], frontier[1][0]
-        return Grounded((r1 - r0, c1 - c0), "high")
+        first, second = set(frontier[0]), set(frontier[1])
+        best: Optional[tuple[int, Cell]] = None
+        for step in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            explained = sum(
+                1 for (r, c) in second if (r - step[0], c - step[1]) in first
+            )
+            if explained and (best is None or explained > best[0]):
+                best = (explained, step)
+        if best is None or best[0] < len(second):
+            return UNKNOWN
+        return Grounded(best[1], "high")
 
     def trajectory(self) -> Any:
         """The per-layer frontier of the most recent animation — the verifier's
