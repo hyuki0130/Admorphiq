@@ -190,8 +190,17 @@ def _piece_options(
 ) -> list[tuple[Cell, tuple[int, ...]]]:
     """Every placement this piece can reach, as (offset, action path), cheapest
     first. A placement is admissible only if the piece stays on the board, respects
-    the measured row bound, and keeps clear of the targets' keep-out area — the
-    constraints the harness measured."""
+    the measured row bound, keeps clear of the targets' keep-out area, and can be
+    REACHED without driving through another piece — the constraints the harness
+    measured.
+
+    The occupancy check is conservative: the other pieces are treated as standing
+    where they stand now, though a plan may move one out of the way first. It can
+    therefore hide a placement that would in fact be reachable, and it cannot admit
+    one that is not. That trade is deliberate — measured on idx3, where the engine
+    refused a press that would have driven a piece into a cell another piece held,
+    and the plan had no way to know because reachability was computed from the
+    measured deltas alone."""
     piece = board.pieces[index]
     out: list[tuple[int, Cell, tuple[int, ...]]] = []
     for dr in range(-MAX_OFFSET, MAX_OFFSET + 1):
@@ -209,6 +218,53 @@ def _piece_options(
             out.append((len(path), (dr, dc), path))
     out.sort()
     return [(offset, path) for _, offset, path in out]
+
+
+def _order_moves(board, options, picks, offsets, deltas) -> Optional[list[int]]:
+    """An order in which every move can be driven without entering an occupied cell,
+    or None if no such order exists.
+
+    Greedy and sufficient: at each step take any piece whose path is clear against
+    where the pieces stand NOW — those already moved at their new places, the rest
+    where they started. A piece that has nowhere to go yet may be freed by a later
+    move, so the scan repeats until nothing more can move."""
+    placed = {i: board.pieces[i] for i in range(len(board.pieces))}
+    todo = [i for i in range(len(board.pieces)) if options[i][picks[i]][1]]
+    order: list[int] = []
+    while todo:
+        for i in list(todo):
+            occupied = frozenset(c for k, cells in placed.items() if k != i for c in cells)
+            if not _path_clear(board.pieces[i], options[i][picks[i]][1], deltas, occupied):
+                continue
+            placed[i] = frozenset(
+                (r + offsets[i][0], c + offsets[i][1]) for (r, c) in board.pieces[i]
+            )
+            order.append(i)
+            todo.remove(i)
+            break
+        else:
+            return None
+    return order + [i for i in range(len(board.pieces)) if i not in order]
+
+
+def _path_clear(
+    piece: frozenset[Cell],
+    path: tuple[int, ...],
+    deltas: dict[int, tuple[int, int]],
+    occupied: frozenset[Cell],
+) -> bool:
+    """Whether the piece can be driven along this path without entering a cell another
+    piece holds. Each press is a rigid step, so the check is per step, not just at the
+    destination: a placement can be clear where it ends and blocked on the way."""
+    if not occupied:
+        return True
+    current = piece
+    for action in path:
+        dr, dc = deltas[action]
+        current = frozenset((r + dr, c + dc) for (r, c) in current)
+        if current & occupied:
+            return False
+    return True
 
 
 def _joint_layouts(
@@ -345,7 +401,9 @@ def compile_flow_hypothesis(
         if not wins:
             continue
 
-        return _plan_from(board, options, picks, offsets, satisfied, commit)
+        plan = _plan_from(board, options, picks, offsets, satisfied, commit, deltas)
+        if plan is not None:
+            return plan
 
     # Second pass: the cheap neighbourhood held nothing, so combine the placements
     # each piece can reach that improve the board on its OWN. Explicitly a
@@ -379,7 +437,9 @@ def compile_flow_hypothesis(
             wins, satisfied = _wins(candidate, table, instance.objective)
             if not wins:
                 continue
-            return _plan_from(board, options, picks, offsets, satisfied, commit)
+            plan = _plan_from(board, options, picks, offsets, satisfied, commit, deltas)
+            if plan is not None:
+                return plan
 
         # Third pass: a BEAM. The static shortlists are computed against the entry
         # layout, so a piece whose only job is to catch a branch that ANOTHER piece's
@@ -392,7 +452,9 @@ def compile_flow_hypothesis(
         )
         examined += evaluated
         if picks is not None:
-            return _plan_from(board, options, picks, offsets, satisfied, commit)
+            plan = _plan_from(board, options, picks, offsets, satisfied, commit, deltas)
+            if plan is not None:
+                return plan
 
         # Final pass: SEEDED RANDOM layouts. Inelegant, and measured to work where
         # the structured passes cannot. On the three-source level a winning layout
@@ -409,7 +471,9 @@ def compile_flow_hypothesis(
             candidate = board.with_offsets(offsets)
             wins, satisfied = _wins(candidate, table, instance.objective)
             if wins:
-                return _plan_from(board, options, picks, offsets, satisfied, commit)
+                plan = _plan_from(board, options, picks, offsets, satisfied, commit, deltas)
+                if plan is not None:
+                    return plan
 
     return FlowPlan(
         PlanStatus.UNSATISFIABLE,
@@ -482,13 +546,26 @@ def _product(shortlists: list[list[int]]):
             stack.append(picks + (choice,))
 
 
-def _plan_from(board, options, picks, offsets, satisfied, commit) -> FlowPlan:
+def _plan_from(board, options, picks, offsets, satisfied, commit, deltas) -> Optional[FlowPlan]:
+    """Turn a chosen layout into steps, or return None if no ORDER of the moves can
+    realise it.
+
+    Which pieces are in the way depends on which have already moved, so the order is
+    part of the plan and not an afterthought. Measured on idx3: the engine refused a
+    press that would have driven a piece into a cell another piece held. Filtering
+    those placements out per-piece against the entry layout is too strong — it broke
+    idx2, where a blocker moves out of the way first — so the constraint is applied
+    where it actually lives, at the moment each move is made."""
+    order = _order_moves(board, options, picks, offsets, deltas)
+    if order is None:
+        return None
     steps: list[FlowStep] = []
     intended = tuple(
         frozenset((r + offsets[i][0], c + offsets[i][1]) for (r, c) in piece)
         for i, piece in enumerate(board.pieces)
     )
-    for i, pick in enumerate(picks):
+    for i in order:
+        pick = picks[i]
         path = options[i][pick][1]
         if not path:
             continue

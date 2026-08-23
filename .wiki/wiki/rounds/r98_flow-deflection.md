@@ -949,14 +949,60 @@ idx2: CLEARED — 51 actions   forecast 2 of 15, does not win (shortlist pollute
 idx3: the engine refuses a press the plan needs
 ```
 
+## Pieces block each other, and the order is part of the plan (2026-08-24)
+
+idx3's refused press was traced to the cell it was refused at. The report names the
+occupant:
+
+```
+press 3 refused; would enter [(7,5)]: piece[(7,5)] target[] hazard[] off-board[]
+```
+
+Another piece was standing there. The compiler computes reachable placements from the
+measured deltas and the board's static constraints — bounds, row bound, target keep-out
+— and says nothing about the other pieces. idx3 is the first level crowded enough
+(five pieces) for their paths to cross.
+
+The obvious fix is wrong, and measurably so. Filtering each piece's placements against
+where the other pieces stand at entry **broke idx2** (51 actions to clear → no clear):
+on that board a blocker moves out of the way first, so a placement that is unreachable
+at entry is perfectly reachable by the time the piece is asked to move.
+
+Which is the real shape of it: **whether a path is clear depends on which pieces have
+already moved, so the ORDER is part of the plan.** `_order_moves` now takes a chosen
+layout and finds an order in which each move can actually be driven — greedily, taking
+any piece whose path is clear against where the pieces stand at that moment, repeating
+until nothing more can move. A layout no order can realise is not a plan: the compiler
+returns nothing for it and keeps searching, rather than emitting steps that cannot run.
+
+Alongside it the driver stopped taking its own plan on faith. **Every planned press is
+now checked for landing**, and a press that does not move its piece ends the attempt
+with the blocking cell named, because every later press in the path assumes this one
+happened. Replanning from the board as it IS beats pressing harder — the refusal is
+information the compiler did not have.
+
+```
+idx0: CLEARED — 19 actions
+idx1: CLEARED — 26 actions
+idx2: CLEARED — 51 actions
+idx3: planned press 3 does not land; would enter (3,2), held by another piece
+```
+
+idx3 is still blocked, and now precisely: the ordering pass admitted a layout whose
+press is still refused, so occupancy at execution time differs from what the ordering
+assumed. The likeliest reason is on record from earlier in this round — pieces that come
+to rest touching are read as ONE region, so the piece the plan names and the piece the
+click selects need not be the same. That is the next thread.
+
 ## Next
 
 1. **Fill is not confirmed paired.** gemma4 misses one slot, and the cause is our
    encoding rather than its reasoning. Measure the hazard orthogonalisation as its
    own experiment against all three models — never as a patch to move a verdict.
-2. **Placement reachability must respect the other pieces.** idx3's plan needs a press
-   the engine refuses; the compiler computes reachable placements from the measured
-   deltas alone, and idx3 is the first level crowded enough for piece paths to cross.
+2. **Piece identity under merging.** idx3's ordering pass admits a layout whose press
+   is still refused, so occupancy at execution differs from the ordering's assumption —
+   and touching pieces are read as one region, so the piece the plan names and the one
+   the click selects need not be the same.
 3. **Multi-piece placement**, the burden the idx1 observation named: idx1 carries
    three pieces and three targets, so a single-piece placement satisfies nothing and
    the sink shortlist comes back empty. That, plus a shortlist that can name targets

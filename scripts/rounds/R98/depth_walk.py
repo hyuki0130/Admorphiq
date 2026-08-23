@@ -269,9 +269,19 @@ def _execute(w: Walker, g: FlowGrounding, plan, entered: int, spent: int, probes
                 return True, f"cleared in {w.actions - spent} actions ({probes} probes)", False
             if not arrived:
                 return False, note, True
+        before = g.tracked_region()
         w.run(step, g)
         if w.level > entered:
             return True, f"cleared in {w.actions - spent} actions ({probes} selection probes)", False
+        if isinstance(step, int) and step in deltas_of(g) and before is not UNKNOWN:
+            after = g.tracked_region()
+            if after is not UNKNOWN and frozenset(after.value) == frozenset(before.value):
+                # A press in the plan's own path that does not land invalidates the
+                # rest of it: every later press assumes this piece moved. Replanning
+                # from the board as it IS beats pressing harder — the refusal is
+                # information the compiler did not have.
+                return False, (f"planned press {step} did not land; "
+                               f"{_what_blocks(g, frozenset(before.value), deltas_of(g)[step])}"), True
 
     if os.environ.get("R98_DUMP_BOARD") == "1" and forecast is not None:  # noqa: SIM102
         _attribute_pre(g, forecast)
@@ -329,7 +339,8 @@ def _top_up(w: Walker, g: FlowGrounding, step: Select | None, entered: int, spen
             return True, ""
         held = g.tracked_region()
         if held is not UNKNOWN and frozenset(held.value) == current:
-            return False, f"press {action} refused while topping up to target"
+            return False, (f"press {action} refused while topping up to target; "
+                           f"{_what_blocks(g, current, deltas.get(action))}")
     return False, "ran out of attempts topping a piece up to its place"
 
 
@@ -439,6 +450,27 @@ def _region_fates(g: FlowGrounding) -> None:
                 print(f"    [fate] {sorted(part)[0]} {len(part)} cells "
                       f"{len(g._mouths(part))} notch(es): entered={bool(part & trail)} "
                       f"recoloured={bool(part & changed)}", flush=True)
+
+
+def _what_blocks(g: FlowGrounding, piece: frozenset, delta) -> str:
+    """What occupies the cells a refused press would have moved this piece into.
+
+    A refusal is evidence about the board, and the useful part of it is WHICH cells
+    said no — the compiler computes reachable placements from the measured deltas
+    alone, so anything found here is a constraint it does not yet model."""
+    if delta is None:
+        return "no measured delta for that action"
+    ahead = {(r + delta[0], c + delta[1]) for (r, c) in piece} - piece
+    board = g.board()
+    if board is UNKNOWN:
+        return f"would enter {sorted(ahead)}; the board is not grounded"
+    b = board.value
+    others = frozenset(c for p in b.pieces for c in p) - piece
+    targets = frozenset(c for s in b.sinks for c in s)
+    off = {c for c in ahead if not (0 <= c[0] < b.size and 0 <= c[1] < b.size)}
+    return (f"would enter {sorted(ahead)}: "
+            f"piece{sorted(ahead & others)} target{sorted(ahead & targets)} "
+            f"hazard{sorted(ahead & b.hazard_cells)} off-board{sorted(off)}")
 
 
 def _all_pieces(g: FlowGrounding) -> frozenset:

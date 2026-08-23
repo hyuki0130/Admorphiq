@@ -147,3 +147,38 @@ def test_an_unreachable_offset_is_not_planned():
     vertical_only = ((1, -1, 0), (2, 1, 0))
     plan = compile_flow_hypothesis(F.sp80_oracle_instance(), _Grounding(deltas=vertical_only))
     assert plan.status is PlanStatus.UNSATISFIABLE
+
+
+def test_the_move_order_is_part_of_the_plan():
+    """Purpose: which pieces are in the way depends on which have already moved, so a
+    plan is not just a set of placements but an ORDER for reaching them. Measured on
+    idx3: the engine refused a press that would have driven a piece into a cell
+    another piece held, and the plan had no way to know.
+
+    Two pieces sit in one row, and the left one's placement is only reachable through
+    the cell the right one currently occupies — so the right one has to move first.
+
+    Expected feedback: pass proves the compiler emits the moves in an order each can
+    actually be driven in. Fail means a plan can be unrealisable while looking
+    perfectly good on paper, and the level is lost to a refused press."""
+    left = frozenset({(3, 1), (3, 2)})
+    right = frozenset({(3, 3), (3, 4)})
+    board = replace(_DEFAULT_BOARD, pieces=(left, right))
+
+    plan = compile_flow_hypothesis(F.sp80_oracle_instance(), _Grounding(board=board))
+    assert plan.status is PlanStatus.SOLVABLE
+
+    # replay: every press must move its piece into free cells only
+    deltas = {a: (dr, dc) for a, dr, dc in DELTAS}
+    where = {left: set(left), right: set(right)}
+    held = None
+    for step in plan.steps[:-1]:
+        if not isinstance(step, int):
+            held = next(k for k in where if step.cell in where[k] or step.footprint == k)
+            continue
+        assert held is not None
+        moved = {(r + deltas[step][0], c + deltas[step][1]) for (r, c) in where[held]}
+        others = {c for k, cells in where.items() if k is not held for c in cells}
+        assert not (moved & others), \
+            f"press {step} drives {sorted(where[held])} into {sorted(moved & others)}"
+        where[held] = moved
