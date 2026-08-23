@@ -50,7 +50,9 @@ from admorphiq.hypothesis_select.propagate_flow import (
 )
 
 MAX_OFFSET = 24     # placement search bound; a board is far smaller than this
-MAX_CANDIDATES = 4000     # cost-ordered layouts examined before giving up
+MAX_CANDIDATES = 4000
+# How much longer to look for a cleaner winner after the first one is found.
+WINNER_GRACE = 400     # cost-ordered layouts examined before giving up
 PROMISING_PER_PIECE = 12  # per-piece shortlist size for the decomposed second pass
 MAX_COMBINATIONS = 20000  # layouts examined in that second pass
 BEAM_WIDTH = 8            # partial layouts carried between beam rounds
@@ -412,8 +414,20 @@ def compile_flow_hypothesis(
 
     selectable = grounding.idle_appearance_known() or len(board.pieces) == 1
     examined = 0
+    # Winners are not equal. A layout that wins with streams still ending on a barrier is
+    # a layout whose win rests on the parts of the model least likely to be right, and on
+    # idx3 a descent over the same options finds one with NO barrier contact at all. So
+    # the first winner is kept and the scan continues a little, taking the best by
+    # barrier contact — without reordering the options, because reordering changes what
+    # the capped search reaches and cost idx2 its clear when it was tried.
+    best: tuple | None = None
+    grace = 0
     for _cost, picks in _joint_layouts(options, MAX_CANDIDATES):
         examined += 1
+        if best is not None:
+            grace += 1
+            if grace > WINNER_GRACE:
+                break
         offsets = tuple(options[i][pick][0] for i, pick in enumerate(picks))
         if not selectable and any(o != (0, 0) for i, o in enumerate(offsets) if i > 0):
             continue  # cannot select another piece yet, so cannot move it
@@ -421,10 +435,15 @@ def compile_flow_hypothesis(
         wins, satisfied = _wins(candidate, table, instance.objective)
         if not wins:
             continue
-
-        plan = _plan_from(board, options, picks, offsets, satisfied, commit, deltas)
-        if plan is not None:
-            return plan
+        hits = predict(candidate, table).barrier_hits
+        if best is None or hits < best[0]:
+            plan = _plan_from(board, options, picks, offsets, satisfied, commit, deltas)
+            if plan is not None:
+                best = (hits, plan)
+                if hits == 0:
+                    return plan
+    if best is not None:
+        return best[1]
 
     # Second pass: the cheap neighbourhood held nothing, so combine the placements
     # each piece can reach that improve the board on its OWN. Explicitly a

@@ -206,6 +206,9 @@ def play_level(w: Walker) -> tuple[bool, str]:
             known = g.sink_candidates()
             print(f"    [plan] absorbers: {sorted(g.absorbers())} | falling columns "
                   f"{g.falling_columns()}", flush=True)
+            if plan.status is PlanStatus.SOLVABLE and plan.planned_board is not None:
+                print(f"    [plan] chosen layout barrier hits "
+                      f"{predict(plan.planned_board, ORACLE).barrier_hits}", flush=True)
             print(f"    [plan] targets known at plan time: "
                   f"{0 if known is UNKNOWN else len(known.value)} "
                   f"{[] if known is UNKNOWN else [sorted(c)[0] for _, c in known.value]}",

@@ -2044,14 +2044,52 @@ the gate log before writing the commit line rather than after — which is the w
 correction from the previous tick, applied. A stand-in for a growing interface is a
 maintenance cost the interface has to pay each time it grows.
 
+## A winner exists within the budget — the search was taking the first one (2026-08-24)
+
+The question the last three ticks circled was never asked directly: **is idx3 winnable at
+all within one move per piece?** Coordinate descent over exactly the options the budget
+allows, from the entry board, answers it:
+
+```
+targets 3 | options per piece within one flow move: 39 39 36 42 42
+best within one flow move per piece: (3, 0) of 3 targets
+```
+
+Three of three satisfied, **zero barrier contacts**. The level is winnable from where it
+starts, inside the constraint the board itself imposes. So the problem was never that the
+budget makes idx3 impossible.
+
+Winners are not equal, though, and the compiler was returning the first one it met. A
+layout that wins with streams still ending on a barrier wins by the parts of the model
+least likely to be right; a layout that wins with none has nothing riding on them. The
+compiler now keeps the first winner and scans a little further — `WINNER_GRACE` candidates
+— taking the best by barrier contact, and returns immediately on a clean one. The option
+lists are NOT reordered, because reordering changes what the capped search reaches and
+that is precisely what cost idx2 its clear when it was tried last tick.
+
+Measured: every layout the walk now chooses has **zero barrier contacts**, on all four
+levels, and idx0–idx2 clear in the same action counts as before.
+
+```
+idx0: CLEARED — 23 actions   chosen layout: 0 barrier contacts
+idx1: CLEARED — 30 actions   chosen layout: 0 barrier contacts
+idx2: CLEARED — 55 actions   chosen layout: 0 barrier contacts
+idx3: first plan clean and executed; the engine still disagrees about (13,12)
+```
+
+idx3's first plan is now the kind of plan the model is most entitled to believe, and the
+engine still does not clear on it. That narrows what is left to the response table on that
+one target — which is where the round's remaining four invented cells have been pointing
+all along.
+
 ## Next
 
 1. **Fill is not confirmed paired.** gemma4 misses one slot, and the cause is our
    encoding rather than its reasoning. Measure the hazard orthogonalisation as its
    own experiment against all three models — never as a patch to move a verdict.
-2. **The first plan decides idx3, and it is made in ignorance of the budget.** Cheap
-   discovery costs a piece; a free ordering preference costs idx2 its clear. What is
-   needed is a first plan that is good under BOTH assumptions — budget or none.
+2. **idx3's first plan is clean and still does not clear.** A winner with zero barrier
+   contacts exists within the budget and the compiler now picks one; the engine still
+   leaves (13,12) empty, so what remains is the response table on that target.
 3. **Measure the bounded-roof variant on fixed evidence** — 1 invented cell against the
    adopted rule's 2, deliberately not adopted in the same change.
 3. **Multi-piece placement**, the burden the idx1 observation named: idx1 carries
