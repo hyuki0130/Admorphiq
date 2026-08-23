@@ -2162,13 +2162,54 @@ idx2: CLEARED — 55 actions
 idx3: executes in 58 actions and learns three more lanes
 ```
 
+## The frame is not board (2026-08-24)
+
+Nine invented cells were left on the covered board, and eight of them sat on the last row
+or the last column. Those two lines are filled with a single colour that is not the
+background — a frame drawn around the play area — and across all three captured boards the
+engine's flow enters them **zero times**:
+
+```
+a: observed cells on the last row/column: []
+c: observed cells on the last row/column: []
+d: observed cells on the last row/column: []
+```
+
+They are not hazards either: nothing dies at them, and calling them hazards would make
+every stream that reaches the bottom fatal. They are simply not board. Grounding now
+reports a `playable_size()` that trims the outermost line when the last row AND the last
+column are each uniform in the same non-background colour — an edge that merely happens to
+be empty is not a frame — and the propagator's own boundary rule handles the rest.
+
+Measured on identical evidence, changing nothing but the board's extent:
+
+```
+size 16   invented 9  missed 0   satisfies (13,6) (13,9) (13,12)
+size 15   invented 3  missed 0   satisfies (13,6) (13,9) (13,12)
+```
+
+No piece and no target lies outside the trimmed board, so nothing real is cut away. idx0–
+idx2 clear in the same action counts and all four certifications hold.
+
+The synthetic for this pin needed interior content before it would work: a board that is
+uniform apart from its frame resolves at the wrong cell scale, and the trim then reported
+3 of a 4-cell grid. That is the scale trap from the start of this round arriving in a test
+rather than in the harness.
+
+```
+idx0: CLEARED — 23 actions
+idx1: CLEARED — 30 actions
+idx2: CLEARED — 55 actions
+idx3: three invented cells left on the covered board
+```
+
 ## Next
 
 1. **Fill is not confirmed paired.** gemma4 misses one slot, and the cause is our
    encoding rather than its reasoning. Measure the hazard orthogonalisation as its
    own experiment against all three models — never as a patch to move a verdict.
-2. **Nine invented cells left on the covered board**, all at the board's far edge and
-   bottom row — the streams that run past everything. That is the next place to look.
+2. **Three invented cells left on the covered board.** The frame accounted for eight of
+   the nine; what remains is a stream running to the bottom in one lane.
 3. **Measure the bounded-roof variant on fixed evidence** — 1 invented cell against the
    adopted rule's 2, deliberately not adopted in the same change.
 3. **Multi-piece placement**, the burden the idx1 observation named: idx1 carries

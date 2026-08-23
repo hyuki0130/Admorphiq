@@ -493,3 +493,27 @@ def test_a_piece_that_has_already_moved_has_less_budget_left():
     spent = g.moves_spent()
     assert dict(spent.value) == {((3, 3), (3, 4)): 1}, \
         f"a move across the flow changed the tally: {spent}"
+
+
+def test_a_framed_board_is_smaller_than_its_frame():
+    """Purpose: measured across three captured boards of one level — the engine's flow
+    never enters the last row or the last column, both filled with a single non-background
+    colour. Treating them as board let the model run streams into the frame; nine of its
+    invented cells on the covered board sat there. They are not hazards either, since
+    nothing dies at them.
+
+    Expected feedback: pass proves a uniformly framed edge is trimmed from the playable
+    board, and that an edge which merely happens to be empty is not. Fail means the model
+    predicts flow in cells the engine cannot use."""
+    # scattered interior content, so the cell scale resolves at the intended size
+    framed = {(1, 1): 5, (2, 4): 7, (4, 2): 5, (5, 5): 7}
+    framed.update({(N - 1, c): 3 for c in range(N)})
+    framed.update({(r, N - 1): 3 for r in range(N)})
+    g = FlowGrounding()
+    g.observe(0, None, [_frame(framed)])
+    assert g.playable_size() == N - 1, f"the frame was not trimmed: {g.playable_size()}"
+
+    plain = FlowGrounding()
+    plain.observe(0, None, [_frame({(1, 1): 5, (2, 4): 7, (4, 2): 5, (5, 5): 7})])
+    assert plain.playable_size() == N, \
+        f"an unframed board was trimmed anyway: {plain.playable_size()}"

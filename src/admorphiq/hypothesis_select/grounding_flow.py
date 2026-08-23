@@ -1236,7 +1236,7 @@ class FlowGrounding:
             return UNKNOWN
         from admorphiq.hypothesis_select.propagate_flow import Board
 
-        size = int(round(len(self._prev_cells) ** 0.5))
+        size = self.playable_size() or int(round(len(self._prev_cells) ** 0.5))
         return Grounded(
             Board(
                 pieces=tuple(frozenset(cells) for _, cells in pieces.value),
@@ -1350,6 +1350,32 @@ class FlowGrounding:
         if sources is UNKNOWN:
             return UNKNOWN
         return Grounded(tuple(sorted({lane for lane, _tick, _line in sources.value})), "high")
+
+    def playable_size(self) -> Optional[int]:
+        """How far the board actually extends, when a frame is drawn around it.
+
+        Measured across three captured boards of one level: the engine's flow never
+        enters the last row or the last column, both of which are filled with a single
+        colour that is not the background. Treating them as board let the model run
+        streams into a frame — nine of its invented cells on the covered board sit
+        there. They are not hazards either: nothing dies at them, so they are simply
+        not board, and the propagator's boundary rule handles the rest.
+
+        Only the outermost line is trimmed, and only when it is uniform in a
+        non-background colour on BOTH the last row and the last column: a board whose
+        edge merely happens to be empty is not framed."""
+        cells = self._prev_cells
+        if cells is None:
+            return None
+        size = int(round(len(cells) ** 0.5))
+        if size < 3:
+            return size
+        background = Counter(cells.values()).most_common(1)[0][0]
+        last_row = {cells[(size - 1, c)] for c in range(size)}
+        last_col = {cells[(r, size - 1)] for r in range(size)}
+        if len(last_row) == 1 and last_row == last_col and background not in last_row:
+            return size - 1
+        return size
 
     def absorbers(self) -> frozenset[Cell]:
         """Regions that swallow the flow without the objective counting them.
