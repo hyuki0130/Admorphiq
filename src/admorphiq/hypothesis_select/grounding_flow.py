@@ -145,6 +145,14 @@ def _regions(cells: dict[Cell, int], colour: int) -> list[frozenset[Cell]]:
     return sorted(out, key=min)
 
 
+def _normalised(region: frozenset[Cell]) -> frozenset[Cell]:
+    """A region's shape with its position removed, so two instances of the same
+    shape compare equal wherever they sit."""
+    r0 = min(r for r, _ in region)
+    c0 = min(c for _, c in region)
+    return frozenset((r - r0, c - c0) for (r, c) in region)
+
+
 def _translation(before: frozenset[Cell], after: frozenset[Cell]) -> Optional[Cell]:
     """The rigid offset taking ``before`` to ``after``, or None if the shape did
     not survive as a rigid translation (a shape change is not a move)."""
@@ -560,6 +568,41 @@ class FlowGrounding:
             return UNKNOWN
         return Grounded(self._animations[-1].frontier, "high")
 
+    def _matching_shape_regions(
+        self, known: list[frozenset[Cell]]
+    ) -> list[frozenset[Cell]]:
+        """Regions that repeat a known target's exact shape and appearance.
+
+        A probing spill reaches some targets and misses others, and a target the
+        flow never touched still has to be planned for — otherwise "satisfy every
+        target" silently means "satisfy the ones I happened to see". Targets on a
+        board are near-always instances of one shape, so a region congruent (by
+        translation) to a confirmed one, in the same appearance, is named as well.
+        Shape identity is the evidence; no appearance constant is assumed."""
+        if not known or self._prev_cells is None:
+            return []
+        cells = self._prev_cells
+        pieces = set(self._piece or ())
+        if self._idle_colour is not None:
+            for region in _regions(cells, self._idle_colour):
+                pieces |= set(region)
+
+        signatures: set[tuple[int, frozenset[Cell]]] = set()
+        for region in known:
+            colours = {cells[c] for c in region if c in cells}
+            if len(colours) != 1:
+                continue
+            signatures.add((colours.pop(), _normalised(region)))
+
+        out: list[frozenset[Cell]] = []
+        for colour, shape in signatures:
+            for region in _regions(cells, colour):
+                if region & pieces or any(region & k for k in known):
+                    continue
+                if _normalised(region) == shape:
+                    out.append(region)
+        return sorted(out, key=min)
+
     def _obstruction_regions(self) -> list[frozenset[Cell]]:
         """Regions that obstructed the flow, minus the movable pieces.
 
@@ -717,6 +760,9 @@ class FlowGrounding:
                 if g not in groups:
                     groups.append(g)
         for g in self._obstruction_regions():
+            if not any(g & known for known in groups):
+                groups.append(g)
+        for g in self._matching_shape_regions(groups):
             if not any(g & known for known in groups):
                 groups.append(g)
         if not groups:

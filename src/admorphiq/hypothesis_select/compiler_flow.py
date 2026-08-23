@@ -33,32 +33,58 @@ model-selected semantics; grounding supplies the live world.
 
 from __future__ import annotations
 
+import heapq
 from dataclasses import dataclass
-from typing import Optional
+from typing import Optional, Union
 
 from admorphiq.hypothesis_select import schema_flow as F
 from admorphiq.hypothesis_select.compiler import PlanStatus
 from admorphiq.hypothesis_select.grounding_flow import UNKNOWN, FlowGrounding
-from admorphiq.hypothesis_select.propagate_flow import ORACLE, Board, ResponseTable, predict
+from admorphiq.hypothesis_select.propagate_flow import (
+    ORACLE,
+    Board,
+    Cell,
+    ResponseTable,
+    predict,
+)
 
-MAX_OFFSET = 24  # placement search bound; a board is far smaller than this
+MAX_OFFSET = 24     # placement search bound; a board is far smaller than this
+MAX_CANDIDATES = 4000  # cost-ordered layouts examined before giving up
+
+
+@dataclass(frozen=True)
+class Select:
+    """Click a piece to make it the one the directional actions move. Carried in
+    CELL coordinates; the driver resolves the pixel anchor."""
+
+    cell: Cell
+
+
+FlowStep = Union[int, Select]
 
 
 @dataclass(frozen=True)
 class FlowPlan:
-    """A placement plan: the action ids to press, then the commit action.
+    """A placement plan: the steps to execute, ending with the commit action.
 
-    ``status`` is SOLVABLE with a sequence, or a typed failure surface. ``offset``
-    records the chosen placement relative to the piece's current position, and
-    ``predicted_satisfied`` how many sinks the claimed table expects to fill —
+    A step is either a simple action id or a :class:`Select` click, because a board
+    with several movable pieces needs the right one selected before its directional
+    actions land. ``status`` is SOLVABLE with a sequence, or a typed failure
+    surface. ``offsets`` records the chosen placement per piece and
+    ``predicted_satisfied`` how many targets the claimed table expects to fill —
     the attribution hooks the live gate reads when a plan is wrong.
     """
 
     status: PlanStatus
-    actions: tuple[int, ...] = ()
-    offset: tuple[int, int] = (0, 0)
+    steps: tuple[FlowStep, ...] = ()
+    offsets: tuple[Cell, ...] = ()
     predicted_satisfied: int = 0
     reason: str = ""
+
+    @property
+    def offset(self) -> Cell:
+        """The first piece's offset — the single-piece view of ``offsets``."""
+        return self.offsets[0] if self.offsets else (0, 0)
 
 
 def _table_of(instance: F.FlowHypothesis) -> Optional[ResponseTable]:
@@ -114,6 +140,71 @@ def _path_to(offset: tuple[int, int], deltas: dict[int, tuple[int, int]]) -> Opt
     return tuple(seq)
 
 
+def _piece_options(
+    board: Board,
+    index: int,
+    deltas: dict[int, tuple[int, int]],
+    sink_cells: set[Cell],
+) -> list[tuple[Cell, tuple[int, ...]]]:
+    """Every placement this piece can reach, as (offset, action path), cheapest
+    first. A placement is admissible only if the piece stays on the board and out
+    of the targets — the constraints the harness measured."""
+    piece = board.pieces[index]
+    out: list[tuple[int, Cell, tuple[int, ...]]] = []
+    for dr in range(-MAX_OFFSET, MAX_OFFSET + 1):
+        for dc in range(-MAX_OFFSET, MAX_OFFSET + 1):
+            moved = {(r + dr, c + dc) for (r, c) in piece}
+            if any(not (0 <= r < board.size and 0 <= c < board.size) for (r, c) in moved):
+                continue
+            if moved & sink_cells:
+                continue
+            path = _path_to((dr, dc), deltas)
+            if path is None:
+                continue
+            out.append((len(path), (dr, dc), path))
+    out.sort()
+    return [(offset, path) for _, offset, path in out]
+
+
+def _joint_layouts(
+    options: list[list[tuple[Cell, tuple[int, ...]]]],
+    limit: int,
+) -> list[tuple[int, tuple[int, ...]]]:
+    """Index combinations across pieces, in increasing total action cost.
+
+    A product over pieces is far too large to enumerate, but the cheapest layouts
+    are the ones worth trying first and a winning layout is usually a small number
+    of presses away. This walks the frontier with a heap, so the search stops as
+    soon as a layout wins instead of after examining everything."""
+    if not options:
+        return []
+    start = tuple(0 for _ in options)
+    seen = {start}
+    heap = [(sum(len(options[i][0][1]) for i in range(len(options))), start)]
+    out: list[tuple[int, tuple[int, ...]]] = []
+    while heap and len(out) < limit:
+        cost, picks = heapq.heappop(heap)
+        out.append((cost, picks))
+        for i, choice in enumerate(picks):
+            if choice + 1 >= len(options[i]):
+                continue
+            nxt = picks[:i] + (choice + 1,) + picks[i + 1:]
+            if nxt in seen:
+                continue
+            seen.add(nxt)
+            heapq.heappush(
+                heap,
+                (sum(len(options[j][nxt[j]][1]) for j in range(len(options))), nxt),
+            )
+    return out
+
+
+def _anchor(piece: frozenset[Cell]) -> Cell:
+    rows = sorted({r for r, _ in piece})
+    cols = sorted({c for _, c in piece})
+    return (rows[len(rows) // 2], cols[len(cols) // 2])
+
+
 def compile_flow_hypothesis(
     instance: F.FlowHypothesis, grounding: FlowGrounding
 ) -> FlowPlan:
@@ -140,38 +231,50 @@ def compile_flow_hypothesis(
     board = board_q.value
     deltas = {action: (dr, dc) for action, dr, dc in deltas_q.value}
     commit = commit_q.value
+    if not board.pieces:
+        return FlowPlan(PlanStatus.GROUNDING_INCOMPLETE, reason="no movable piece is grounded")
 
-    best: Optional[FlowPlan] = None
-    for dr in range(-MAX_OFFSET, MAX_OFFSET + 1):
-        for dc in range(-MAX_OFFSET, MAX_OFFSET + 1):
-            moved = board.moved(dr, dc)
-            if any(not (0 <= r < board.size and 0 <= c < board.size)
-                   for (r, c) in moved.piece_cells):
-                continue
-            if moved.piece_cells & {c for s in board.sinks for c in s}:
-                continue
-            wins, satisfied = _wins(moved, table, instance.objective)
-            if not wins:
-                continue
-            path = _path_to((dr, dc), deltas)
-            if path is None:
-                continue
-            candidate = FlowPlan(
-                PlanStatus.SOLVABLE,
-                actions=path + (commit,),
-                offset=(dr, dc),
-                predicted_satisfied=satisfied,
-                reason=f"placement {(dr, dc)} is predicted to satisfy {satisfied} sink(s)",
-            )
-            if best is None or len(candidate.actions) < len(best.actions):
-                best = candidate
+    sink_cells = {c for s in board.sinks for c in s}
+    options = [_piece_options(board, i, deltas, sink_cells) for i in range(len(board.pieces))]
+    if any(not o for o in options):
+        return FlowPlan(PlanStatus.UNSATISFIABLE,
+                        reason="a piece has no reachable placement under the measured deltas")
 
-    if best is not None:
-        return best
+    selectable = grounding.idle_appearance_known() or len(board.pieces) == 1
+    examined = 0
+    for _cost, picks in _joint_layouts(options, MAX_CANDIDATES):
+        examined += 1
+        offsets = tuple(options[i][pick][0] for i, pick in enumerate(picks))
+        if not selectable and any(o != (0, 0) for i, o in enumerate(offsets) if i > 0):
+            continue  # cannot select another piece yet, so cannot move it
+        candidate = board.with_offsets(offsets)
+        wins, satisfied = _wins(candidate, table, instance.objective)
+        if not wins:
+            continue
+
+        steps: list[FlowStep] = []
+        for i, pick in enumerate(picks):
+            path = options[i][pick][1]
+            if not path:
+                continue
+            if len(board.pieces) > 1:
+                steps.append(Select(_anchor(board.pieces[i])))
+            steps.extend(path)
+        steps.append(commit)
+        return FlowPlan(
+            PlanStatus.SOLVABLE,
+            steps=tuple(steps),
+            offsets=offsets,
+            predicted_satisfied=satisfied,
+            reason=f"placement {offsets} is predicted to satisfy {satisfied} target(s)",
+        )
+
     return FlowPlan(
         PlanStatus.UNSATISFIABLE,
-        reason="no reachable placement satisfies the objective under the claimed table",
+        reason=f"no layout among the {examined} cheapest satisfies the objective under the "
+               f"claimed table",
     )
 
 
-__all__ = ["FlowPlan", "compile_flow_hypothesis", "MAX_OFFSET"]
+__all__ = ["FlowPlan", "FlowStep", "Select", "compile_flow_hypothesis",
+           "MAX_OFFSET", "MAX_CANDIDATES"]

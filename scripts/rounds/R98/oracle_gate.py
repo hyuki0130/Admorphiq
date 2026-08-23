@@ -33,7 +33,10 @@ from arcengine import GameAction  # noqa: E402
 
 from admorphiq.hypothesis_select import schema_flow as F  # noqa: E402
 from admorphiq.hypothesis_select.compiler import PlanStatus  # noqa: E402
-from admorphiq.hypothesis_select.compiler_flow import compile_flow_hypothesis  # noqa: E402
+from admorphiq.hypothesis_select.compiler_flow import (  # noqa: E402
+    Select,
+    compile_flow_hypothesis,
+)
 from admorphiq.hypothesis_select.grounding_flow import UNKNOWN, FlowGrounding  # noqa: E402
 from admorphiq.hypothesis_select.schema import Verdict  # noqa: E402
 from admorphiq.hypothesis_select.verifier_flow import (  # noqa: E402
@@ -87,6 +90,19 @@ class Run:
             self.commits += 1
         self.g.observe(a, None, self.obs.frame)
 
+    def run_step(self, step) -> None:
+        """A plan step is a simple action id, or a Select click on a piece."""
+        if not isinstance(step, Select):
+            self.act(step)
+            return
+        scale = self.g.scale()
+        px = 4 if scale is UNKNOWN else scale.value
+        row, col = step.cell
+        xy = (col * px + px // 2, row * px + px // 2)
+        self.obs = self.env.step(GameAction.ACTION6, data={"x": xy[0], "y": xy[1]})
+        self.actions += 1
+        self.g.observe(6, xy, self.obs.frame)
+
     @property
     def cleared(self) -> bool:
         return self.obs.levels_completed >= 1
@@ -114,10 +130,10 @@ def one_run(index: int) -> bool:
     plan = compile_flow_hypothesis(oracle, r.g)
     executed = 0
     if plan.status is PlanStatus.SOLVABLE:
-        for a in plan.actions:
+        for step in plan.steps:
             if r.actions >= ACTION_CAP or r.commits >= COMMIT_CAP:
                 break
-            r.act(a)
+            r.run_step(step)
             executed += 1
             if r.cleared:
                 break

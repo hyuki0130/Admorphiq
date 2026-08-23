@@ -31,7 +31,10 @@ from arcengine import GameAction  # noqa: E402
 
 from admorphiq.hypothesis_select import schema_flow as F  # noqa: E402
 from admorphiq.hypothesis_select.compiler import PlanStatus  # noqa: E402
-from admorphiq.hypothesis_select.compiler_flow import compile_flow_hypothesis  # noqa: E402
+from admorphiq.hypothesis_select.compiler_flow import (  # noqa: E402
+    Select,
+    compile_flow_hypothesis,
+)
 from admorphiq.hypothesis_select.grounding_flow import UNKNOWN, FlowGrounding  # noqa: E402
 from admorphiq.hypothesis_select.verifier_flow import verify_flow_instance  # noqa: E402
 
@@ -85,7 +88,7 @@ def main() -> int:
             act0(4)
     act0(5)
     plan0 = compile_flow_hypothesis(F.sp80_oracle_instance(), g0)
-    for a in plan0.actions:
+    for a in plan0.steps:
         act0(a)
         if obs.levels_completed >= 1:
             break
@@ -195,8 +198,11 @@ def main() -> int:
 
     cleared = False
     if plan.status is PlanStatus.SOLVABLE:
-        for a in plan.actions:
-            act(a)
+        for step in plan.steps:
+            if isinstance(step, Select):
+                act6(step.cell[1], step.cell[0])
+            else:
+                act(step)
             if obs.levels_completed >= 2:
                 cleared = True
                 break

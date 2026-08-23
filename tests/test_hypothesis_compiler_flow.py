@@ -56,6 +56,9 @@ class _Grounding:
     def commit_action(self):
         return UNKNOWN if self._commit is None else Grounded(self._commit, "high")
 
+    def idle_appearance_known(self):
+        return True
+
 
 def test_a_winning_placement_compiles_to_the_shortest_sequence_ending_in_a_commit():
     """Purpose: the compiler must find a placement its claimed table predicts will
@@ -66,9 +69,9 @@ def test_a_winning_placement_compiles_to_the_shortest_sequence_ending_in_a_commi
     gate could never clear the level even with a correct hypothesis."""
     plan = compile_flow_hypothesis(F.sp80_oracle_instance(), _Grounding())
     assert plan.status is PlanStatus.SOLVABLE
-    assert plan.actions[-1] == 5
+    assert plan.steps[-1] == 5
     assert plan.offset == (0, 1)
-    assert plan.actions == (4, 5)
+    assert plan.steps == (4, 5)
     assert plan.predicted_satisfied == 2
 
 

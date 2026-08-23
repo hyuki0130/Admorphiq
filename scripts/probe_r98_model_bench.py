@@ -45,7 +45,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from admorphiq.hypothesis_select import schema_flow as F  # noqa: E402
 from admorphiq.hypothesis_select.compiler import PlanStatus  # noqa: E402
-from admorphiq.hypothesis_select.compiler_flow import compile_flow_hypothesis  # noqa: E402
+from admorphiq.hypothesis_select.compiler_flow import (  # noqa: E402
+    Select,
+    compile_flow_hypothesis,
+)
 from admorphiq.hypothesis_select.grounding_flow import UNKNOWN, FlowGrounding  # noqa: E402
 from admorphiq.hypothesis_select.schema import Verdict  # noqa: E402
 from admorphiq.hypothesis_select.verifier_flow import (  # noqa: E402
@@ -504,6 +507,21 @@ def _run_discovery():
             state["commits"] += 1
         g.observe(a, None, state["obs"].frame)
 
+    def run_step(step) -> None:
+        """A plan step is a simple action id, or a Select click on a piece."""
+        if not isinstance(step, Select):
+            act(step)
+            return
+        scale = g.scale()
+        px = 4 if scale is UNKNOWN else scale.value
+        row, col = step.cell
+        xy = (col * px + px // 2, row * px + px // 2)
+        state["obs"] = env.step(GameAction.ACTION6, data={"x": xy[0], "y": xy[1]})
+        state["actions"] += 1
+        g.observe(6, xy, state["obs"].frame)
+
+    state["run_step"] = run_step
+
     for a in (1, 1, 2, 3, 4):
         act(a)
     hint = g.flow_origin_hint()
@@ -527,13 +545,13 @@ def _gate_and_execute(instance, g, state, act, record: dict[str, Any]) -> None:
 
     plan = compile_flow_hypothesis(instance, g)
     record["plan_status"] = plan.status.value
-    record["plan_offset"] = list(plan.offset)
+    record["plan_offsets"] = [list(o) for o in plan.offsets]
     executed = 0
     if plan.status is PlanStatus.SOLVABLE:
-        for a in plan.actions:
+        for step in plan.steps:
             if state["actions"] >= ACTION_CAP or state["commits"] >= COMMIT_CAP:
                 break
-            act(a)
+            state["run_step"](step)
             executed += 1
             if state["obs"].levels_completed >= 1:
                 break
