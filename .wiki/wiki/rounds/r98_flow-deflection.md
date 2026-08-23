@@ -2082,14 +2082,46 @@ engine still does not clear on it. That narrows what is left to the response tab
 one target — which is where the round's remaining four invented cells have been pointing
 all along.
 
+## The covered-source rule, retried with everything we now know (2026-08-24)
+
+When "emit beside the cover" was first measured it lost, and the diagnosis at the time was
+that the model then produced ONE stream where the engine had more — a third stream that no
+grounded lane explained. That third stream is grounded now (lanes 11 and 12, accumulated
+across spills), so the rule deserved a second measurement rather than an assumption.
+
+It still loses, and the numbers say precisely how:
+
+```
+board a  (sources free)     invented  2  missed  0    unchanged — the rule is inert here
+board d  (sources covered)  invented  5  missed 18    was: invented 23, missed 0
+```
+
+Twenty-three invented cells become five, and zero missed become eighteen. **Total error is
+unchanged**, and the satisfied set gets worse — from `(13,6) (13,9) (13,12)` down to
+`(13,6)` alone, where the engine fills three. Trading a wrong stream for a missing one is
+not progress, and the extra lanes did not change that.
+
+So the covered-source emission is now measured twice, with and without the lanes that were
+supposed to explain the first failure. It is not adopted. What the two measurements
+together say is that the model's error on a covered board is not localised to where the
+stream STARTS: putting the start in the right place leaves the rest of the spill wrong in
+the opposite direction.
+
+```
+idx0: CLEARED — 23 actions
+idx1: CLEARED — 30 actions
+idx2: CLEARED — 55 actions
+idx3: unchanged; the covered-source board remains the model's worst
+```
+
 ## Next
 
 1. **Fill is not confirmed paired.** gemma4 misses one slot, and the cause is our
    encoding rather than its reasoning. Measure the hazard orthogonalisation as its
    own experiment against all three models — never as a patch to move a verdict.
-2. **idx3's first plan is clean and still does not clear.** A winner with zero barrier
-   contacts exists within the budget and the compiler now picks one; the engine still
-   leaves (13,12) empty, so what remains is the response table on that target.
+2. **The covered-source board is the model's worst, and moving the stream's START does
+   not fix it** (measured twice). The error is spread through the spill, not localised
+   at its beginning — which is where the next probe should look.
 3. **Measure the bounded-roof variant on fixed evidence** — 1 invented cell against the
    adopted rule's 2, deliberately not adopted in the same change.
 3. **Multi-piece placement**, the burden the idx1 observation named: idx1 carries
