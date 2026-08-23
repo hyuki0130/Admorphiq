@@ -1045,14 +1045,76 @@ does not carry — not occupancy, which is the thing the previous section added.
 sources are known to be hidden under pieces on this level; whether a piece standing on
 one can be moved at all is the first thing to test.
 
+## The press was not refused — it was dropped (2026-08-24)
+
+idx3's blocker looked like an unmodelled obstacle: a press refused at a cell holding
+no piece, no target, no hazard, no flow, on the board, and painted plain background.
+Probing the refused state settles it, and the answer is not geometry at all.
+
+First, the refusal is POSITIONAL, not about the piece: press up, then the same press
+left lands. Then the sharper test — repeat the refused press **immediately**, with
+nothing in between:
+
+```
+press 3 repeated immediately: LANDS
+press 3 repeated immediately: LANDS
+press 3 repeated immediately: LANDS
+```
+
+Three times out of three. The engine occasionally drops a press. It is not an
+observation running a frame behind either: the board still showed the piece on its old
+cells, so the move had genuinely not happened and repeating it cannot double it.
+
+So a planned press that does not land is retried once, and the retry is checked to have
+moved the piece by exactly one delta. With that, **idx3 executes its plan to completion
+for the first time** — the exact-layout gate passes, so the board committed IS the board
+the forecast was about.
+
+## The unmodelled target absorbs the flow (2026-08-24)
+
+And now the level's real structure is visible. On the committed layout:
+
+```
+forecast: 3 of 3 target(s), wins=True        ← our three notched targets
+engine:   (13,2)  recoloured   ← the mouthless block: SATISFIED
+          (13,6)  recoloured
+          (13,9)  recoloured
+          (13,12) not recoloured
+```
+
+The engine satisfied **three of four** — including the solid block this round earlier
+excluded from the shortlist for having no notch. Our board does not carry the block at
+all, so our propagation runs flow straight past it; the engine's flow is absorbed there,
+and the target downstream never gets its share. That is why the forecast says 3 of 3 and
+the level does not clear.
+
+This closes the "second kind of target" question from two sections ago with evidence
+rather than correlation: the block IS satisfiable, the engine satisfies it, and our
+response table has no rule that ever does. Excluding it from the shortlist was right for
+the compiler — a target the model cannot satisfy makes every layout lose — and wrong for
+the propagator, which needs it as a flow-absorbing entity whether or not the objective
+counts it.
+
+That split is the next step: a region can be an OBSTACLE the flow must be routed around
+and a TARGET the objective counts, and idx3 is the first board where those two roles
+come apart.
+
+```
+idx0: CLEARED — 19 actions
+idx1: CLEARED — 26 actions
+idx2: CLEARED — 51 actions
+idx3: plan executed in full, layout exact, 3 of the engine's 4 targets satisfied
+```
+
 ## Next
 
 1. **Fill is not confirmed paired.** gemma4 misses one slot, and the cause is our
    encoding rather than its reasoning. Measure the hazard orthogonalisation as its
    own experiment against all three models — never as a patch to move a verdict.
-2. **What refuses a press into an empty cell?** idx3 is refused at a cell holding no
-   piece, target or hazard. Two sources are hidden under pieces on that level; whether
-   a piece standing on one can be moved at all is the first thing to test.
+2. **Separate the obstacle role from the target role.** idx3's mouthless block absorbs
+   flow in the engine and is satisfied by it, while our model carries no rule that ever
+   satisfies it. The propagator needs it as an absorber even though the objective
+   cannot count it.
 3. **Multi-piece placement**, the burden the idx1 observation named: idx1 carries
    three pieces and three targets, so a single-piece placement satisfies nothing and
    the sink shortlist comes back empty. That, plus a shortlist that can name targets

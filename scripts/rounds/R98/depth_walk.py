@@ -284,12 +284,28 @@ def _execute(w: Walker, g: FlowGrounding, plan, entered: int, spent: int, probes
         if isinstance(step, int) and step in deltas_of(g) and before is not UNKNOWN:
             after = g.tracked_region()
             if after is not UNKNOWN and frozenset(after.value) == frozenset(before.value):
+                # A press that lands nowhere is usually DROPPED, not refused: measured
+                # three times out of three on idx3, the same press repeated at once
+                # moved the piece, from a position where nothing occupied the cell
+                # ahead. The board still showed the piece unmoved, so this is a lost
+                # press and not an observation running a frame behind — repeating it
+                # cannot double the move.
+                w.act(step, g)
+                after = g.tracked_region()
+                expected = frozenset(
+                    (r + deltas_of(g)[step][0], c + deltas_of(g)[step][1])
+                    for (r, c) in before.value
+                )
+                if after is not UNKNOWN and frozenset(after.value) == expected:
+                    continue
+            if after is not UNKNOWN and frozenset(after.value) == frozenset(before.value):
                 # A press in the plan's own path that does not land invalidates the
                 # rest of it: every later press assumes this piece moved. Replanning
                 # from the board as it IS beats pressing harder — the refusal is
                 # information the compiler did not have.
                 if os.environ.get("R98_DUMP_BOARD") == "1":
                     _identity_report(g, plan, held, frozenset(before.value))
+                    _refusal_probe(w, g, frozenset(before.value), step)
                 return False, (f"planned press {step} did not land; "
                                f"{_what_blocks(g, frozenset(before.value), deltas_of(g)[step])}"), True
 
@@ -462,6 +478,48 @@ def _region_fates(g: FlowGrounding) -> None:
                       f"recoloured={bool(part & changed)}", flush=True)
 
 
+def _refusal_probe(w: Walker, g: FlowGrounding, piece: frozenset, refused: int) -> None:
+    """Try every measured direction from the refused state and report which ones the
+    engine honours. A press refused at a cell nothing occupies is a constraint the
+    board model does not carry; which directions survive says what kind."""
+    deltas = deltas_of(g)
+    sources = g.hidden_sources()
+    print(f"    [refusal] piece {sorted(piece)}; hidden sources "
+          f"{'UNKNOWN' if sources is UNKNOWN else sorted(sources.value)}", flush=True)
+    cells = g._prev_cells
+    if cells is not None:
+        size = int(round(len(cells) ** 0.5))
+        print("    [refusal] board:", flush=True)
+        for r in range(size):
+            print("      r%-2d " % r + " ".join(f"{cells[(r, c)]:2d}" for c in range(size)),
+                  flush=True)
+    # first: the SAME press again, immediately. A refusal that clears on a repeat is
+    # not geometry at all.
+    w.act(refused, g)
+    now = g.tracked_region()
+    print(f"    [refusal] press {refused} repeated immediately: "
+          f"{'LANDS' if now is not UNKNOWN and frozenset(now.value) != piece else 'refused again'}",
+          flush=True)
+    if now is not UNKNOWN and frozenset(now.value) != piece:
+        return
+    for action in (1, 2, 3, 4):
+        w.act(action, g)
+        now = g.tracked_region()
+        moved = now is not UNKNOWN and frozenset(now.value) != piece
+        print(f"    [refusal] action {action} delta {deltas.get(action)}: "
+              f"{'MOVED to ' + str(sorted(now.value)[0]) if moved else 'refused'}", flush=True)
+        if moved:
+            # the same press again from one cell over: if it lands now, what refused
+            # it was the POSITION, not the piece
+            w.act(refused, g)
+            after = g.tracked_region()
+            again = after is not UNKNOWN and frozenset(after.value) != frozenset(now.value)
+            print(f"    [refusal] press {refused} retried one cell over: "
+                  f"{'LANDS — the refusal was positional' if again else 'refused again'}",
+                  flush=True)
+            return
+
+
 def _identity_report(g: FlowGrounding, plan, held, selected: frozenset) -> None:
     """Whether the piece the plan named is the piece the click selected.
 
@@ -504,9 +562,12 @@ def _what_blocks(g: FlowGrounding, piece: frozenset, delta) -> str:
     others = frozenset(c for p in b.pieces for c in p) - piece
     targets = frozenset(c for s in b.sinks for c in s)
     off = {c for c in ahead if not (0 <= c[0] < b.size and 0 <= c[1] < b.size)}
+    colours = ({c: g._prev_cells[c] for c in sorted(ahead) if c in g._prev_cells}
+               if g._prev_cells else {})
     return (f"would enter {sorted(ahead)}: "
             f"piece{sorted(ahead & others)} target{sorted(ahead & targets)} "
-            f"hazard{sorted(ahead & b.hazard_cells)} off-board{sorted(off)}")
+            f"hazard{sorted(ahead & b.hazard_cells)} flow{sorted(ahead & b.standing_flow)} "
+            f"off-board{sorted(off)} colours{colours}")
 
 
 def _all_pieces(g: FlowGrounding) -> frozenset:
