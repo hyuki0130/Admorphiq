@@ -67,6 +67,13 @@ def main() -> int:
             break
     else:
         print("  the trails agree cell for cell")
+    if len(sys.argv) > 2 and sys.argv[2] == "--layers":
+        for i in range(max(len(predicted), len(observed))):
+            a = sorted(predicted[i]) if i < len(predicted) else []
+            b = sorted(observed[i]) if i < len(observed) else []
+            mark = "  " if a == b else "!!"
+            print(f"  {mark} {i:2d}: predicted {a}")
+            print(f"        observed  {b}")
     return 0
 
 

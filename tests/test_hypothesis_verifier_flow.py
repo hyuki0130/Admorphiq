@@ -334,3 +334,29 @@ def test_a_falling_source_is_a_CELL_and_the_stream_starts_there():
 
     assert _first(free) == [(5, lane)], f"expected a landing above row 6: {_first(free)}"
     assert _first(lower) == [(3, lane)], f"the landing ignored the piece: {_first(lower)}"
+
+
+def test_a_covered_source_emits_beside_its_cover_and_LATE():
+    """Purpose: measured on the covered board — the engine's stream appears at (3,3) on
+    step 5, where the source's own lane starts at tick 3 and the nearer free end is two
+    cells away. Dropping the stream from the board's edge instead walks it along a row
+    the engine never uses; emitting beside WITHOUT the travel delay was measured to trade
+    invented cells for missing ones at no net gain. Both halves together take the covered
+    board from 23 invented cells to 9, with nothing missed.
+
+    Expected feedback: pass proves a covered source emits at the nearer free end of its
+    cover, delayed by the distance travelled to get there. Fail means a board whose
+    sources are covered is predicted on a row the engine never touches."""
+    from dataclasses import replace as _replace
+
+    lane, line = 4, 3
+    cover = frozenset({(line, c) for c in range(3, 7)})       # stands ON the source
+    board = _replace(_board(cover), standing_flow=frozenset(),
+                     falling_sources=((lane, 1, line),))
+    frontier = [sorted(layer) for layer in predict(board, ORACLE).frontier]
+
+    started = next((i for i, layer in enumerate(frontier) if layer), None)
+    assert started is not None, "the covered source emitted nothing"
+    first = frontier[started]
+    assert first == [(line, 2)], f"expected the nearer free end: {first}"
+    assert started == 1 + 2, f"expected the tick plus the travel: {started}"

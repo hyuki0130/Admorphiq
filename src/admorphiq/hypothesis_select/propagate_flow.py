@@ -127,6 +127,29 @@ class Prediction:
     barrier_hits: int = 0
 
 
+def _lands_at(board: Board, source: Cell, heading: tuple[int, int], blockers):
+    """Where a stream released at ``source`` comes to rest: the cell just short of the
+    first thing in its lane, at or beyond the source itself."""
+    cell = source
+    while True:
+        ahead = (cell[0] + heading[0], cell[1] + heading[1])
+        if ahead in blockers or not _in_bounds(ahead, board.size):
+            return cell
+        cell = ahead
+
+
+def _beside(board: Board, source: Cell, heading: tuple[int, int], blockers):
+    """The nearer free cell either side of a covered source, along its own line."""
+    across = (heading[1], heading[0])
+    for distance in range(1, board.size):
+        for sign in (-1, 1):
+            cell = (source[0] + across[0] * distance * sign,
+                    source[1] + across[1] * distance * sign)
+            if _in_bounds(cell, board.size) and cell not in blockers:
+                return cell
+    return None
+
+
 def _in_bounds(cell: Cell, size: int) -> bool:
     r, c = cell
     return 0 <= r < size and 0 <= c < size
@@ -159,20 +182,22 @@ def predict(board: Board, table: ResponseTable, max_ticks: int = 80) -> Predicti
 
     blockers = (board.piece_cells | {c for s in board.sinks for c in s}
                 | board.hazard_cells | board.absorber_cells)
-    for lane, tick, _line in board.falling_sources:
-        # Where the stream comes to rest: the cell just short of the first thing it
-        # meets, scanning the lane from the edge it falls from.
-        landing = None
-        for step in range(board.size):
-            r = step if heading[0] > 0 else board.size - 1 - step
-            c = step if heading[1] > 0 else board.size - 1 - step
-            cell = (r, lane) if heading[0] else (lane, c)
-            ahead = (cell[0] + heading[0], cell[1] + heading[1])
-            if cell in blockers:
-                break
-            landing = cell
-            if ahead in blockers or not _in_bounds(ahead, board.size):
-                break
+    for lane, tick, line in board.falling_sources:
+        source = (line, lane) if heading[0] else (lane, line)
+        if source in blockers:
+            # A COVERED source emits BESIDE its cover, on its own line, at the nearer
+            # free end — and LATE by the distance it travels to get there. Measured on
+            # the covered board: the engine's stream appears at (3,3) on step 5 where
+            # the lane's own tick is 3 and the free end is two cells from lane 5.
+            # Emitting beside without the delay was measured to trade invented cells for
+            # missing ones at no net gain; the delay is the half that was absent.
+            beside = _beside(board, source, heading, blockers)
+            if beside is None:
+                continue
+            landing = beside
+            tick += abs(beside[0] - source[0]) + abs(beside[1] - source[1])
+        else:
+            landing = _lands_at(board, source, heading, blockers)
         if landing is not None:
             pending.setdefault(tick, []).append(landing)
 

@@ -2114,14 +2114,61 @@ idx2: CLEARED — 55 actions
 idx3: unchanged; the covered-source board remains the model's worst
 ```
 
+## Beside the cover, and LATE — the half that was missing (2026-08-24)
+
+The layer-by-layer comparison on the covered board shows exactly what the model was doing
+wrong, and it was not where the stream starts:
+
+```
+ !! 3: predicted (2,5) (2,6) (13,4)   observed (13,4)
+ !! 4: predicted (2,4) (2,7) (14,4)   observed (14,4)
+ !! 5: predicted (2,3) (2,8)          observed (3,3)
+ !! 6: predicted (2,9) (3,3)          observed (4,3)
+```
+
+Ours drops the stream from the board's edge onto row 2, walks it along that row and falls
+off the left end at `(3,3)` **on step 6**. The engine simply has `(3,3)` **on step 5** and
+nothing on row 2 at all. The cell was right in the earlier attempt; the TIMING was not, and
+the row-2 walk was pure invention.
+
+The rule that survives measurement is both halves together: a covered source emits at the
+nearer free end of the run covering it, **delayed by the distance travelled to get there**
+— lane 5's own tick is 3, the free end is two cells away, and the engine emits on step 5.
+
+On identical evidence, with the same lane set:
+
+```
+baseline (edge drop)   invented 23  missed 0   satisfies (13,6) (13,9) (13,12)
+beside + delay         invented  9  missed 0   satisfies (13,6) (13,9) (13,12)
+```
+
+**A correction to the previous two ticks.** Both earlier measurements of "emit beside the
+cover" reported `missed 18` and were read as the rule failing. That number came from the
+EVIDENCE, not the rule: the board was captured at the first plan, when only two lanes were
+grounded, so the whole region fed by lanes 11 and 12 was missing from the model no matter
+what the emission rule did. Filling in the lane set the harness had already learned turns
+the same comparison into a clean win. A fixed-evidence bench is only as honest as the
+evidence, and a board captured before the harness finished learning is a board the model
+cannot be judged on.
+
+idx3 now plans and executes again rather than reporting `UNSATISFIABLE`, and learns further
+lanes while doing it. idx0–idx2 clear in the same action counts; all four certifications
+hold.
+
+```
+idx0: CLEARED — 23 actions
+idx1: CLEARED — 30 actions
+idx2: CLEARED — 55 actions
+idx3: executes in 58 actions and learns three more lanes
+```
+
 ## Next
 
 1. **Fill is not confirmed paired.** gemma4 misses one slot, and the cause is our
    encoding rather than its reasoning. Measure the hazard orthogonalisation as its
    own experiment against all three models — never as a patch to move a verdict.
-2. **The covered-source board is the model's worst, and moving the stream's START does
-   not fix it** (measured twice). The error is spread through the spill, not localised
-   at its beginning — which is where the next probe should look.
+2. **Nine invented cells left on the covered board**, all at the board's far edge and
+   bottom row — the streams that run past everything. That is the next place to look.
 3. **Measure the bounded-roof variant on fixed evidence** — 1 invented cell against the
    adopted rule's 2, deliberately not adopted in the same change.
 3. **Multi-piece placement**, the burden the idx1 observation named: idx1 carries
