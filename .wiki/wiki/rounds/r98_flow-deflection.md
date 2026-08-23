@@ -1227,15 +1227,61 @@ find what stays invariant across these layouts — the entry cell did, so the qu
 whether the row-3 entries are a second source whose cover moves, or the same source seen
 past a different obstruction.
 
+## There is a second source, and it emits from above onto whatever is under it (2026-08-24)
+
+The "hidden sources" question is settled, and the answer is that there were never any
+hidden sources — there is a second SOURCE, and what the harness had been recording was
+its interaction with a piece.
+
+The whole spill, layer by layer, on the entry layout:
+
+```
+ 0: (8,4)          ← the standing source, running down column 4
+ 2: (9,4)   3: (10,4)   4: (11,4)
+ 6: (3,3) (3,8) (12,4)  ← two streams BEGIN at row 3, while the first is still falling
+ 7: (4,3) (4,8) (13,4)
+ 8: (5,3) (5,8) (14,4)
+```
+
+Two streams start at row 3 at tick 6 — sequenced after the first, not with it. Their
+cells sat at the flanks of the row-3 piece, which is what made them look like sources
+concealed beneath it. Moving that piece two rows DOWN settles it: with the piece at
+(5,4)–(5,7) the spill contains **no row-3 flow at all**, and instead:
+
+```
+ 5: (4,5) (4,6)    ← directly ABOVE the piece, at its middle
+ 6: (4,4) (4,7)    ← spreading outward along the piece's top
+ 7: (4,3) (4,8)    ← and off both ends, from where they fall
+```
+
+So the second source emits downward into columns 5 and 6, lands on whatever is beneath
+it, runs along that surface to its ends, and falls off both sides. The entries we
+recorded were the fall-off points, which is why they tracked the piece and why replaying
+them onto a moved layout produced flow in the wrong columns.
+
+This is the invariant the model was missing. The source is fixed — in its COLUMNS, not
+in the cell where flow becomes visible — and the visible entry is derivable for any
+layout from the piece the stream lands on. That is what makes an unobserved layout
+predictable, and it is the next thing to ground.
+
+Two corrections it forces on this round's own record:
+
+* `hidden_sources()` is not merely a "sighting" (the previous section's word) — it is a
+  fall-off point, and the concealment it names does not exist. The query is misnamed
+  and the concept behind it should go.
+* The `emergences` the propagator injects are the same fall-off points. Dropping them
+  when the layout changes was right; the replacement is not a better sighting but the
+  source-plus-surface model above.
+
 ## Next
 
 1. **Fill is not confirmed paired.** gemma4 misses one slot, and the cause is our
    encoding rather than its reasoning. Measure the hazard orthogonalisation as its
    own experiment against all three models — never as a patch to move a verdict.
-2. **Model the source, not the sighting.** The entry cell is measured fixed across five
-   layouts, but `hidden_sources()` reports positions that move with the piece — a
-   sighting, not a source. Finding what stays invariant is what would let the model
-   predict an entry for a layout it has never observed, and unblock idx3.
+2. **Ground the second source and the surface it lands on.** It emits downward in fixed
+   COLUMNS, runs along whatever piece is beneath it and falls off both ends; the entries
+   the harness records are those fall-off points. Grounding the source rather than the
+   fall-off is what makes an unobserved layout predictable, and would unblock idx3.
 3. **Multi-piece placement**, the burden the idx1 observation named: idx1 carries
    three pieces and three targets, so a single-piece placement satisfies nothing and
    the sink shortlist comes back empty. That, plus a shortlist that can name targets

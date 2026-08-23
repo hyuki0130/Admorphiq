@@ -30,6 +30,27 @@ LEVEL = 3
 NUDGES = ((), (3,), (3, 3), (4,), (1,), (1, 1))
 
 
+def _orphans(g: FlowGrounding) -> list[tuple[int, int]]:
+    """Every cell the flow appears at with no flow behind or beside it — the whole
+    trail, not just its first layer. These are the entries a replay has to reproduce."""
+    trail = g.trajectory()
+    direction = g.initial_direction()
+    if trail is UNKNOWN or direction is UNKNOWN:
+        return []
+    dr, dc = direction.value
+    seen: set[tuple[int, int]] = set()
+    out: list[tuple[int, int]] = []
+    for layer in trail.value:
+        for (r, c) in layer:
+            behind = (r - dr, c - dc)
+            flanks = ((r - dc, c - dr), (r + dc, c + dr))
+            if behind in seen or any(f in seen for f in flanks):
+                continue
+            out.append((r, c))
+        seen |= set(layer)
+    return sorted(out)
+
+
 def _entries(g: FlowGrounding) -> list[tuple[int, int]]:
     trail = g.trajectory()
     if trail is UNKNOWN:
@@ -64,7 +85,7 @@ def main() -> int:
                     if pieces is not UNKNOWN else frozenset())
         entry = _entries(g)
         print(f"  after {nudge or '(no move)'}: entry {entry} | "
-              f"entry cells covered: {[c for c in entry if c in occupied]}")
+              f"all orphan entries {_orphans(g)}")
         print(f"    pieces {[(sorted(c)[0], len(c)) for _, c in pieces.value]}"
               if pieces is not UNKNOWN else "    pieces UNKNOWN")
         hidden = g.hidden_sources()
