@@ -1,5 +1,5 @@
-R98 depth — 2026-08-24 00:38:43 KST
-repo HEAD: e20fa6e
+R98 depth — 2026-08-24 00:48:50 KST
+repo HEAD: a639da4
 
 budget 250 actions/level, up to 6 levels
 

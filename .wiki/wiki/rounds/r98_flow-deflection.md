@@ -390,6 +390,33 @@ that; the walls there are the objective's shape and the search, not the model.
 so a diagnostic reads the same frame the harness does. The cheapest guard against a
 whole tick spent explaining a measurement that was never real.
 
+## A source can hide UNDER a piece (2026-08-24, measured)
+
+idx3's divergence turned out to be a mechanic, not a defect. At step 4 the engine
+produced two cells the prediction lacked, at `(3,3)` and `(3,8)` — exactly the cells
+flanking a piece that spans columns 4-7 on row 3. Nothing fed them: the frame before
+the commit shows no flow and no source anywhere in rows 0-3, and the animation shows
+no cell above them at any tick.
+
+The engine's own rules leave one possibility, and the level layout confirms it. A
+piece keeps any source pixels it covers — the level setup recolours a piece's cells
+EXCEPT the source-coloured ones — so a source can sit underneath a movable piece,
+drawn over and invisible. Its flow is invisible too, until it walks out past the
+piece: seeded under the piece, split at each tick, and finally emerging on both
+flanks several ticks later. The same level shows the visible version of this at
+`(7,4)`, a source pixel sitting inside a row of pieces.
+
+`FlowGrounding.hidden_sources()` detects them as ORPHAN emergences — a new cell whose
+predecessor along the flow direction was never part of the trail, and which is not
+one of the run's own first cells. It reports the cell together with the obstruction
+it emerged around, which is where the source must be. On idx3 it returns exactly
+`((3,3) around (3,4))` and `((3,8) around (3,7))`; on idx0, idx1 and idx2 it returns
+nothing, so the signal does not fire where there is nothing to find.
+
+The modelling step — seeding a hidden source so the propagator reproduces the
+emergence with the right timing — is the next piece of work. Detection landed first
+because it is what makes the claim checkable.
+
 ## Next
 
 1. **Fill is not confirmed paired.** gemma4 misses one slot, and the cause is our

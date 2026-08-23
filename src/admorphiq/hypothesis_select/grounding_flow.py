@@ -803,6 +803,56 @@ class FlowGrounding:
         scored.sort()
         return Grounded(tuple(anchor for _, anchor in scored), "high")
 
+    def hidden_sources(self) -> Any:
+        """Places where flow appeared with nothing feeding it.
+
+        A source can sit UNDERNEATH a movable piece: the piece is drawn over it, so
+        the frame shows no source there and the flow it produces stays invisible
+        until it emerges past the piece. Measured on the fourth level, where a pair
+        of cells appeared either side of a piece six ticks into the animation with
+        no flow above them and no source in sight.
+
+        Detected as an ORPHAN emergence: a new cell whose predecessor along the flow
+        direction was never part of the trail. Reported with the obstruction it
+        emerged around, which is where the source must be."""
+        if not self._animations:
+            return UNKNOWN
+        direction = self.initial_direction()
+        if direction is UNKNOWN:
+            return UNKNOWN
+        dr, dc = direction.value
+        anim = self._animations[-1]
+        pieces = self._all_piece_cells()
+
+        seen: set[Cell] = set()
+        orphans: list[tuple[Cell, Optional[Cell]]] = []
+        for layer in anim.frontier:
+            for cell in layer:
+                r, c = cell
+                behind = (r - dr, c - dc)
+                flanks = ((r - dc, c - dr), (r + dc, c + dr))
+                if behind in seen:
+                    continue
+                if any(f in seen for f in flanks):
+                    continue
+                if cell in self._first_flow(anim):
+                    continue
+                host = next((f for f in flanks if f in pieces), None)
+                if host is None and behind in pieces:
+                    host = behind
+                orphans.append((cell, host))
+            seen |= set(layer)
+        if not orphans:
+            return UNKNOWN
+        return Grounded(tuple(orphans), "high")
+
+    @staticmethod
+    def _first_flow(anim: "_Animation") -> set[Cell]:
+        for layer in anim.frontier:
+            if layer:
+                return set(layer)
+        return set()
+
     def barriers(self) -> Any:
         """Cells the flow reached and could NOT pass, excluding sinks and pieces.
 

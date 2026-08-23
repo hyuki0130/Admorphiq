@@ -1,5 +1,5 @@
-R98 verifier — 2026-08-24 00:38:48 KST
-repo HEAD: e20fa6e
+R98 verifier — 2026-08-24 00:48:55 KST
+repo HEAD: a639da4
 
 evidence: 20 trajectory steps, 2 sinks, level advanced: False
 
