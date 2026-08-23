@@ -368,6 +368,28 @@ An honest note on cost: idx2's plan spends 47 actions, so it would score poorly 
 the efficiency metric. Whether the pipeline can solve a board and whether it solves it
 efficiently are separate questions, and this walk answers only the first.
 
+## A correction: the "idx3 misread" was a diagnostic artifact (2026-08-24)
+
+The previous tick named the next thread as "grounding reads the wrong growth run on
+idx3 — direction comes back downward where the emitters sit at the bottom". That was
+wrong, and the way it was wrong is worth keeping.
+
+A level boundary arrives as a MULTI-LAYER observation: idx3 was entered on a 25-layer
+frame whose first layers still show idx2's board. Grounding reads the LAST layer and
+was correct all along; the diagnostic reached for layer zero and confidently described
+the previous level — reporting flow-coloured cells along the bottom row that belonged
+to idx2, and concluding the direction and emitter set were misread.
+
+Read correctly, idx3 is genuinely different rather than misgrounded: an emitter at
+`(7,4)` sits INSIDE a row of pieces and the flow runs DOWNWARD from it, the targets
+occupy a wide irregular band across rows 13-14, and the hazard is an L — the bottom
+row plus a VERTICAL wall down column 15. Nothing in the family schema forbids any of
+that; the walls there are the objective's shape and the search, not the model.
+
+`FlowGrounding.board_view()` now exposes the board grounding is actually looking at,
+so a diagnostic reads the same frame the harness does. The cheapest guard against a
+whole tick spent explaining a measurement that was never real.
+
 ## Next
 
 1. **Fill is not confirmed paired.** gemma4 misses one slot, and the cause is our

@@ -462,6 +462,18 @@ class FlowGrounding:
         a non-flow board never activates these paths."""
         return bool(self._commit_obs)
 
+    def board_view(self) -> Any:
+        """The current board as a cell->appearance map, exactly as grounding sees it.
+
+        Exposed so a diagnostic reads the SAME frame grounding does. A level
+        boundary arrives as a multi-layer observation whose first layers still show
+        the PREVIOUS board, and reading layer zero produces a confident description
+        of the wrong level — which is how a measurement once reported a flow
+        direction and an emitter set that were simply the last level's."""
+        if self._prev_cells is None:
+            return UNKNOWN
+        return Grounded(dict(self._prev_cells), "high")
+
     def scale(self) -> Any:
         if self._scale is None:
             return UNKNOWN

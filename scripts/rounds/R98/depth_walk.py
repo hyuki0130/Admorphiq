@@ -97,6 +97,21 @@ class Walker:
         self.click(step.cell, g) if isinstance(step, Select) else self.act(step, g)
 
 
+def describe_board(g: FlowGrounding) -> str:
+    """A one-line summary of the board grounding is actually looking at.
+
+    Reads through grounding rather than off a raw frame: a level boundary arrives
+    as a multi-layer observation whose first layers still show the PREVIOUS board,
+    so a diagnostic that reaches for layer zero describes the wrong level with
+    complete confidence."""
+    view = g.board_view()
+    if view is UNKNOWN:
+        return "no board yet"
+    cells = view.value
+    size = int(round(len(cells) ** 0.5))
+    return f"{size}x{size}, {len(set(cells.values()))} distinct appearances"
+
+
 def play_level(w: Walker) -> tuple[bool, str]:
     """Ground, verify, plan and execute one level. Returns (cleared, stage note)."""
     entered = w.level
