@@ -30,7 +30,7 @@ Scope: grounding only — no verifier, no compiler, no LLM.
 from __future__ import annotations
 
 from collections import Counter, defaultdict
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Any, Optional
 
 Cell = tuple[int, int]
@@ -192,6 +192,11 @@ class _Animation:
     flow_colour: int
     frontier: tuple[tuple[Cell, ...], ...]
     changed_regions: tuple[frozenset[Cell], ...] = field(default_factory=tuple)
+    # Where the movable pieces stood WHEN THIS SPILL RAN. A piece is not a barrier,
+    # and whether a cell held one is a fact about that moment, not about now: a
+    # piece that has since been moved away leaves the cell it used to stop the flow
+    # at looking like a wall for the rest of the level.
+    piece_cells: frozenset[Cell] = frozenset()
 
 
 class FlowGrounding:
@@ -261,7 +266,9 @@ class FlowGrounding:
             self._commit_obs[action] += 1
             anim = self._read_animation(stack)
             if anim is not None:
-                self._animations.append(anim)
+                self._animations.append(
+                    replace(anim, piece_cells=frozenset(self._all_piece_cells()))
+                )
 
         # An action that exposed a scripted consequence is a COMMIT, not a
         # placement action: classifying its before/after pair would read the
@@ -1059,7 +1066,7 @@ class FlowGrounding:
         # is not a barrier, and mistaking one for a barrier is worse than missing a
         # barrier: the propagator checks barriers first, so the flow is predicted to
         # die where the engine splits it around the piece.
-        pieces = self._all_piece_cells()
+        pieces = self._all_piece_cells() | set(anim.piece_cells)
         size = int(round(len(self._prev_cells) ** 0.5))
 
         out: set[Cell] = set()

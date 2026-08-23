@@ -725,6 +725,52 @@ idx2: CLEARED — 51 actions
 idx3: executes the full plan; does not clear
 ```
 
+## A plan is a layout, not a list of presses (2026-08-24)
+
+Three defects on idx3, each hiding the next.
+
+**1. The driver replayed presses and never checked it arrived.** The plan ran to
+completion three cells short of the layout it had chosen, and the model was right
+about what followed: replaying the achieved layout through the verified table
+predicts 2 of 3 targets and 2 barrier contacts — exactly a failure. So `Select` now
+carries the cells its piece must END UP on, `FlowPlan` carries the whole intended
+layout, and the driver tops a piece up when its planned run leaves it short —
+including the LAST piece, which has no successor to trigger the top-up and was the
+one left short here. Which piece is being topped up is read off the board (the
+single region wearing the selected appearance) rather than matched by cell count: a
+piece resting against a neighbour is segmented differently from the one the plan
+named, and identity-by-size loses it exactly when the top-up is needed.
+
+**2. A moved piece left a false wall behind.** `barriers()` excluded cells occupied
+by pieces NOW, but the trail it reasons over was recorded when the pieces stood
+somewhere else. A piece that stopped the flow and was then moved away left the cell
+it used to occupy classified as a permanent hazard — which is how idx3 came back
+`UNSATISFIABLE` from the walk while compiling fine from a scripted entry on the same
+level. Each animation now records where the pieces stood WHEN THAT SPILL RAN, and a
+cell counts as a piece if it held one in either reading. Whether a cell was a wall is
+a fact about that moment, not about now.
+
+**3. What is left is the model, and it is the finding the family was built to
+produce.** With both fixed, idx3 reaches its intended layout EXACTLY — short by zero
+cells — and still does not clear:
+
+```
+idx0: CLEARED — 19 actions
+idx1: CLEARED — 26 actions
+idx2: CLEARED — 51 actions
+idx3: intended layout achieved exactly; does not clear
+```
+
+The compiler predicted 3 of 3 targets for that layout; the engine disagrees. This is
+the designed attribution path — for this family the transition model IS the simulator,
+so a wrong response table yields a plan the live spill falsifies — and it is now
+isolated to the table, with placement and execution ruled out by measurement rather
+than argument. The next step is cell-level: replay the observed spill on that exact
+layout against the predicted trail and name the slot that disagrees.
+
+Gates unchanged: oracle gate 3/3 (10 actions), grounding certification PASS, verifier
+and mutant certifications reproduce the frozen table.
+
 ## Next
 
 1. **Fill is not confirmed paired.** gemma4 misses one slot, and the cause is our

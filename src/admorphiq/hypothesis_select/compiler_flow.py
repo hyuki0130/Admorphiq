@@ -72,6 +72,10 @@ class Select:
 
     cell: Cell
     footprint: frozenset[Cell] = frozenset()
+    # Where this piece is meant to END UP. A plan that is only a list of presses
+    # cannot tell whether it arrived; carrying the goal lets a driver press until
+    # the piece is there and stop when it is.
+    target: frozenset[Cell] = frozenset()
 
 
 FlowStep = Union[int, Select]
@@ -92,6 +96,9 @@ class FlowPlan:
     status: PlanStatus
     steps: tuple[FlowStep, ...] = ()
     offsets: tuple[Cell, ...] = ()
+    # The layout the plan is FOR: a driver that only holds a list of presses cannot
+    # tell whether it arrived at the placement whose spill it is counting on.
+    intended: tuple[frozenset[Cell], ...] = ()
     predicted_satisfied: int = 0
     reason: str = ""
 
@@ -474,18 +481,32 @@ def _product(shortlists: list[list[int]]):
 
 def _plan_from(board, options, picks, offsets, satisfied, commit) -> FlowPlan:
     steps: list[FlowStep] = []
+    intended = tuple(
+        frozenset((r + offsets[i][0], c + offsets[i][1]) for (r, c) in piece)
+        for i, piece in enumerate(board.pieces)
+    )
     for i, pick in enumerate(picks):
         path = options[i][pick][1]
         if not path:
             continue
         if len(board.pieces) > 1:
-            steps.append(Select(_anchor(board.pieces[i]), board.pieces[i]))
+            steps.append(
+                    Select(
+                        _anchor(board.pieces[i]),
+                        board.pieces[i],
+                        frozenset(
+                            (r + offsets[i][0], c + offsets[i][1])
+                            for (r, c) in board.pieces[i]
+                        ),
+                    )
+                )
         steps.extend(path)
     steps.append(commit)
     return FlowPlan(
         PlanStatus.SOLVABLE,
         steps=tuple(steps),
         offsets=offsets,
+        intended=intended,
         predicted_satisfied=satisfied,
         reason=f"placement {offsets} is predicted to satisfy {satisfied} target(s)",
     )

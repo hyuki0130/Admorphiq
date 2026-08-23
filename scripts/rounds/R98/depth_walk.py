@@ -53,6 +53,8 @@ MAX_LEVELS = 6
 ACTION_BUDGET = 250
 # How many times a level may be re-planned after a move fails to land.
 REPLAN_LIMIT = 3
+# Presses allowed while driving one piece to its planned place.
+MOVE_ATTEMPTS = 12
 
 
 def _open_arcade():
@@ -183,6 +185,12 @@ def play_level(w: Walker) -> tuple[bool, str]:
         attempts += 1
         plan = compile_flow_hypothesis(hypothesis, g)
         if plan.status is not PlanStatus.SOLVABLE:
+            if os.environ.get("R98_DUMP_BOARD") == "1":
+                b = g.board().value
+                print(f"    [board] pieces={[(sorted(x)[0], len(x)) for x in b.pieces]} "
+                      f"sinks={len(b.sinks)} hazards={sorted(b.hazard_cells)} "
+                      f"emergences={sorted(b.emergences)} dir={b.direction} "
+                      f"standing={len(b.standing_flow)}", flush=True)
             return False, f"compiler {plan.status.value}: {plan.reason}"
         cleared, note, diverged = _execute(w, g, plan, entered, spent, probes)
         if cleared:
@@ -195,50 +203,105 @@ def play_level(w: Walker) -> tuple[bool, str]:
 
 
 def _execute(w: Walker, g: FlowGrounding, plan, entered: int, spent: int, probes: int):
-    """Run a plan, confirming every move. Returns (cleared, note, diverged).
+    """Realise a plan's LAYOUT, not its list of presses. Returns (cleared, note,
+    diverged).
 
-    A press that leaves the board unchanged is not automatically a dead end: the
-    likeliest cause is that something re-selected a different piece — a failed
-    attempt does exactly that — so the intended piece is RE-SELECTED and the press
-    retried once before the plan is abandoned. One retry, because a second identical
-    failure means the move is genuinely refused and replanning on the real board is
-    the better answer than pressing harder.
+    A plan is a set of intended piece positions; the presses are one route to them.
+    Executing the list literally means a single refused press leaves a piece one
+    cell short with no way to notice, and the spill that follows is the one for a
+    layout nobody chose — measured on the fourth level, where the plan ran to
+    completion three cells away from what it intended and the model correctly
+    predicted the failure that followed.
+
+    So each Select states where its piece must END UP, and the driver presses toward
+    that goal, re-reading the board between presses and stopping the moment it
+    arrives.
     """
-    expected = _footprints(g)
-    holding: Select | None = None
+    held: Select | None = None
     for index, step in enumerate(plan.steps):
         if w.actions - spent >= ACTION_BUDGET or not w.alive:
             return False, f"out of budget at step {index}", False
         if isinstance(step, Select):
-            holding = step
+            # the piece just finished has to be WHERE IT WAS SENT before the next
+            # one starts, or the layout that spills is not the one that was chosen
+            arrived, note = _top_up(w, g, held, entered, spent)
+            if w.level > entered:
+                return True, f"cleared in {w.actions - spent} actions ({probes} selection probes)", False
+            if not arrived:
+                return False, note, True
+            held = step
+        if index == len(plan.steps) - 1:
+            # the commit: the LAST piece has no successor to top it up, and a layout
+            # that is one press short spills as a layout nobody chose
+            arrived, note = _top_up(w, g, held, entered, spent)
+            if w.level > entered:
+                return True, f"cleared in {w.actions - spent} actions ({probes} probes)", False
+            if not arrived:
+                return False, note, True
         w.run(step, g)
         if w.level > entered:
             return True, f"cleared in {w.actions - spent} actions ({probes} selection probes)", False
-        if isinstance(step, Select) or index == len(plan.steps) - 1:
-            expected = _footprints(g)
-            continue
-        delta = deltas_of(g).get(step)
-        if delta is None:
-            expected = _footprints(g)
-            continue
-        actual = _footprints(g)
-        if actual == expected:
-            if holding is None:
-                return False, f"move {index} ({step}) did not land: the board is unchanged", True
-            w.run(holding, g)
-            w.run(step, g)
-            actual = _footprints(g)
-            if actual == expected:
-                return False, (
-                    f"move {index} ({step}) refused twice, even after re-selecting"
-                ), True
-        if not _explained_by_one_move(expected, actual, delta):
-            return False, (
-                f"move {index} ({step}) is not explained by moving one piece by "
-                f"{delta}: {len(expected)} footprint(s) before, {len(actual)} after"
-            ), True
-        expected = actual
+
+    if os.environ.get("R98_DUMP_BOARD") == "1":
+        want = frozenset(c for piece in plan.intended for c in piece)
+        have = _all_pieces(g)
+        print(f"    [layout] short by {len(want - have)} cell(s); missing "
+              f"{sorted(want - have)}", flush=True)
     return False, f"executed the plan without clearing ({w.actions - spent} actions)", False
+
+
+def _top_up(w: Walker, g: FlowGrounding, step: Select | None, entered: int, spent: int):
+    """Press a piece the rest of the way if its planned run left it short.
+
+    The plan's presses are the intended route; this only closes a gap the route did
+    not, which is what a refused press leaves behind — measured on the fourth level,
+    where the plan ran to completion three cells short of the layout it had chosen
+    and the model correctly predicted the failure that followed.
+
+    Which piece is being pressed is read off the board rather than matched by size:
+    a piece that has come to rest against a neighbour is segmented differently from
+    the one the plan named, and identity by cell count loses it exactly when the
+    top-up is needed.
+    """
+    if step is None or not step.target:
+        return True, ""
+    if step.target <= _all_pieces(g):
+        return True, ""
+    deltas = deltas_of(g)
+    w.run(step, g)  # re-select: the selection may have moved on
+    for _ in range(MOVE_ATTEMPTS):
+        if step.target <= _all_pieces(g):
+            return True, ""
+        held = g.tracked_region()
+        if held is UNKNOWN:
+            return False, "the selected piece cannot be read off the board"
+        current = frozenset(held.value)
+        if w.actions - spent >= ACTION_BUDGET or not w.alive:
+            return False, "out of budget while topping a piece up to its place"
+        dr = min(r for r, _ in step.target) - min(r for r, _ in current)
+        dc = min(c for _, c in step.target) - min(c for _, c in current)
+        action = next(
+            (a for a, (ar, ac) in sorted(deltas.items())
+             if (ar and dr and (ar > 0) == (dr > 0) and not ac)
+             or (ac and dc and (ac > 0) == (dc > 0) and not ar)),
+            None,
+        )
+        if action is None:
+            return False, f"no measured action closes the gap {dr, dc}"
+        w.act(action, g)
+        if w.level > entered:
+            return True, ""
+        held = g.tracked_region()
+        if held is not UNKNOWN and frozenset(held.value) == current:
+            return False, f"press {action} refused while topping up to target"
+    return False, "ran out of attempts topping a piece up to its place"
+
+
+def _all_pieces(g: FlowGrounding) -> frozenset:
+    inventory = g.pieces()
+    if inventory is UNKNOWN:
+        return frozenset()
+    return frozenset(c for _, cells in inventory.value for c in cells)
 
 
 def _explained_by_one_move(before: list, after: list, delta) -> bool:
