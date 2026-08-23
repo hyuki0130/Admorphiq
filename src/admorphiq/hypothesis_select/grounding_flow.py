@@ -853,6 +853,47 @@ class FlowGrounding:
                 return set(layer)
         return set()
 
+    def emergences(self) -> Any:
+        """Where and WHEN flow entered the board from somewhere unmodelled.
+
+        :meth:`hidden_sources` names the obstruction a concealed source must sit
+        behind; this reports the observation itself — the cell and the tick at
+        which flow appeared there — which is what a replay needs in order to
+        reproduce the trajectory. Modelling the observation rather than the
+        concealment keeps the prediction checkable: the frames show where and when,
+        while the mechanism behind the piece is inference."""
+        if not self._animations:
+            return UNKNOWN
+        direction = self.initial_direction()
+        if direction is UNKNOWN:
+            return UNKNOWN
+        dr, dc = direction.value
+        anim = self._animations[-1]
+        first = self._first_flow(anim)
+
+        # Ticks are counted on the PROGRESS axis — empty frontiers skipped — because
+        # that is the axis the replay comparison uses. The engine renders pauses that
+        # the propagator does not take, so a raw tick index would place the emergence
+        # several steps late.
+        seen: set[Cell] = set()
+        out: list[tuple[Cell, int]] = []
+        tick = -1
+        for layer in anim.frontier:
+            if not layer:
+                continue
+            tick += 1
+            for cell in layer:
+                r, c = cell
+                behind = (r - dr, c - dc)
+                flanks = ((r - dc, c - dr), (r + dc, c + dr))
+                if cell in first or behind in seen or any(f in seen for f in flanks):
+                    continue
+                out.append((cell, tick))
+            seen |= set(layer)
+        if not out:
+            return UNKNOWN
+        return Grounded(tuple(out), "high")
+
     def barriers(self) -> Any:
         """Cells the flow reached and could NOT pass, excluding sinks and pieces.
 
@@ -900,6 +941,7 @@ class FlowGrounding:
         emitters = self.emitters()
         barriers = self.barriers()
         direction = self.initial_direction()
+        emergences = self.emergences()
         if UNKNOWN in (pieces, sinks, emitters, barriers, direction) or self._prev_cells is None:
             return UNKNOWN
         from admorphiq.hypothesis_select.propagate_flow import Board
@@ -914,6 +956,7 @@ class FlowGrounding:
                 standing_flow=frozenset(emitters.value),
                 size=size,
                 direction=direction.value,
+                emergences=() if emergences is UNKNOWN else emergences.value,
             ),
             "high",
         )

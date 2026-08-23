@@ -68,6 +68,18 @@ class FlowEvidence:
     incomplete_board: str = ""
 
 
+def _trim(frontiers) -> tuple[tuple[tuple[int, int], ...], ...]:
+    """Drop every empty frontier, on BOTH sides of the comparison.
+
+    The engine's animation contains ticks where nothing new appears — a front
+    waiting behind itself renders as a pause — while the propagator advances on
+    every tick it takes. Raw tick indices therefore do not correspond, and
+    comparing on them makes a correct prediction look wrong by exactly the number
+    of pauses. Progress steps do correspond, so that is the axis both sides use,
+    and anything measured in ticks (an emergence, say) must be expressed on it."""
+    return tuple(tuple(f) for f in frontiers if f)
+
+
 def build_flow_evidence(grounding: FlowGrounding, advanced: bool) -> FlowEvidence:
     """Collect the grounded evidence a verdict is judged against."""
     board = grounding.board()
@@ -80,7 +92,7 @@ def build_flow_evidence(grounding: FlowGrounding, advanced: bool) -> FlowEvidenc
     )
     return FlowEvidence(
         board=None if board is UNKNOWN else board.value,
-        trajectory=() if trajectory is UNKNOWN else tuple(f for f in trajectory.value if f),
+        trajectory=() if trajectory is UNKNOWN else _trim(trajectory.value),
         advanced=advanced,
         n_sinks=0 if board is UNKNOWN else len(board.value.sinks),
         incomplete_board=incomplete,
@@ -112,7 +124,7 @@ def _table_of(instance: F.FlowHypothesis) -> Optional[ResponseTable]:
 
 def _replay(board: Board, table: ResponseTable) -> tuple[tuple[tuple[int, int], ...], ...]:
     prediction = predict(board, table)
-    return tuple(tuple(f) for f in prediction.frontier if f)
+    return _trim(prediction.frontier)
 
 
 def _verify_transition(

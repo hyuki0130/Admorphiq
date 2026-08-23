@@ -434,8 +434,30 @@ harness. On idx0, where no source is hidden, the frozen mutant table still
 reproduces exactly, so the change removes a false failure without softening a real
 one.
 
-The modelling step — seeding a hidden source so the propagator reproduces the
-emergence with the right timing — remains the next piece of work.
+**Modelling landed too, and the replay now tracks idx3 through seven steps.** The
+board carries `emergences` — each a `(cell, step)` pair as OBSERVED. That models the
+observation rather than the concealment on purpose: the frames show where and when
+flow appeared, while what sits behind the piece is inference, and a model built on
+the observation stays checkable.
+
+Getting it to line up took three corrections, each measured:
+
+- **The comparison axis.** The engine renders PAUSES — ticks where nothing new
+  appears, because a front is waiting behind itself — while the propagator advances
+  on every tick it takes. Raw tick indices therefore do not correspond. Progress
+  steps do, so both sides drop empty frontiers and anything measured in ticks is
+  expressed on that axis.
+- **The seed layer.** `frontier[0]` is the starting flow, not a step, so an
+  emergence recorded at observed index 4 belongs to the frontier about to be
+  produced — not to loop counter 4, which runs one behind.
+- **Travel timing.** An emerged cell APPEARS at its step and travels from the NEXT
+  one. Letting it travel immediately runs the whole stream one step ahead of the
+  observation from then on.
+
+Divergence moved from step 4 to step 8, with steps 0-7 matching cell for cell. What
+remains is finer: at step 8 the prediction emits a left-branch cell the engine emits
+at step 9, and misses one the engine produces — a split-ordering difference rather
+than a missing entity.
 
 ## Next
 

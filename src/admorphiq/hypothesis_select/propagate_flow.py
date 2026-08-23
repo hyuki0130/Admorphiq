@@ -54,6 +54,13 @@ class Board:
     # criterion level happens to run it downward and the next one runs it upward,
     # so a hardcoded default silently mispredicts every step on half of them.
     direction: Cell = (1, 0)
+    # Flow that enters the board from somewhere the model cannot see: a source
+    # concealed beneath a piece. Each entry is (cell, tick) as OBSERVED — this
+    # models the emergence, not the concealment, because what the frames show is
+    # where and when flow appeared, while the mechanism behind the piece is
+    # inference. Modelling the observation keeps the replay checkable; claiming the
+    # mechanism would not.
+    emergences: tuple[tuple[Cell, int], ...] = ()
 
     @property
     def piece_cells(self) -> frozenset[Cell]:
@@ -131,11 +138,30 @@ def predict(board: Board, table: ResponseTable, max_ticks: int = 80) -> Predicti
         piece = board.pieces[index] if index is not None else board.piece_cells
         return sorted({c for (_, c) in piece}) or [0]
 
-    for _ in range(max_ticks):
+    pending: dict[int, list[Cell]] = {}
+    for cell, tick in board.emergences:
+        pending.setdefault(tick, []).append(cell)
+
+    for tick in range(max_ticks):
+        # An emergence is recorded against the FRONTIER INDEX it was observed at,
+        # and frontier[0] is the seed rather than a step, so the index to match is
+        # the one about to be produced — not the loop counter, which runs one
+        # behind it.
+        # An emerged cell APPEARS this step and travels from the next one, exactly
+        # as the engine shows it. Making it travel in the same step runs the whole
+        # stream one step ahead of the observation from then on.
+        emerged: list[Cell] = []
+        for cell in pending.get(len(frontier), ()):
+            if cell not in occupied:
+                occupied.add(cell)
+                emerged.append(cell)
         if not active:
-            break
+            if not any(t > len(frontier) for t in pending):
+                break
+            frontier.append([])
+            continue
         nxt: list[tuple[Cell, tuple[int, int]]] = []
-        born: list[Cell] = []
+        born: list[Cell] = list(emerged)
 
         blocked = board.piece_cells | {c for s in board.sinks for c in s} | board.hazard_cells
 
@@ -208,6 +234,8 @@ def predict(board: Board, table: ResponseTable, max_ticks: int = 80) -> Predicti
 
             spawn(ahead, (dr, dc))
 
+        for cell in emerged:
+            nxt.append((cell, heading))
         frontier.append(sorted(born))
         # a droplet re-activated on an occupied cell must not loop forever
         seen: set[tuple[Cell, tuple[int, int]]] = set()
