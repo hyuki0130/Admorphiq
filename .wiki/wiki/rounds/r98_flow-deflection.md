@@ -280,7 +280,7 @@ re-learned). Nothing carries across but the hypothesis.
 ```
 idx0: CLEARED — 15 actions (4 selection probes)
 idx1: CLEARED — 18 actions (2 selection probes)
-idx2: stopped — verifier CONTRADICTED at step 7
+idx2: grounds and VERIFIES; stops at the compiler
 ```
 
 idx1 is not a re-run of idx0: three pieces instead of one, three targets instead of
@@ -299,11 +299,24 @@ What each wall taught, in order:
    multi-source board — idx2 has three sources and reported UNKNOWN until the rule
    became "the unit step that maps the first frontier onto the second".
 
-**Where it stops now**: idx2 grounds completely (4 pieces, 3 targets, 3 emitters)
-and the replay tracks the engine for six steps before diverging — the observed
-frontier carries a flanking pair the prediction lacks, so something obstructs the
-flow that the board does not model. That is the next thread, and it is a precise
-one rather than a vague "deeper levels are harder".
+**idx2 now VERIFIES too** — the replay matches the engine's trajectory on a board
+with four pieces, three targets and three simultaneous sources. Two faithfulness
+defects were found by chasing that divergence, both worth keeping:
+
+5. barrier inference excluded only the TRACKED piece, so the other pieces were
+   classified as barriers. The propagator checks barriers before pieces, so the flow
+   was predicted to DIE exactly where the engine splits it. Mistaking a piece for a
+   barrier is worse than missing a barrier;
+6. spawning treated "empty" as "empty of flow", when the engine requires empty of
+   EVERYTHING. Spreading into a cell a piece or target already occupies invents flow
+   the engine never creates, and the error compounds from that tick on.
+
+**Where it stops now**: the compiler, not the model. No layout among the 4000
+cheapest satisfies the objective on idx2. That matches what R92 measured
+independently — a straight piece SPLITS a stream rather than turning it, so steering
+a middle source into a target while walling off the edge branches is a structured
+CHANNELING problem, and a 60k random search over that level found zero winning
+layouts. The wall is search, and it is now cleanly separated from faithfulness.
 
 ## Next
 

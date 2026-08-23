@@ -583,6 +583,18 @@ class FlowGrounding:
             return UNKNOWN
         return Grounded(self._animations[-1].frontier, "high")
 
+    def _all_piece_cells(self) -> set[Cell]:
+        """Every cell occupied by any movable piece, on the current board."""
+        cells: set[Cell] = set(self._piece or ())
+        if self._prev_cells is None:
+            return cells
+        for colour in (self._selected_colour, self._idle_colour, self._moving_colour):
+            if colour is None:
+                continue
+            for region in _regions(self._prev_cells, colour):
+                cells |= set(region)
+        return cells
+
     def _matching_shape_regions(
         self, known: list[frozenset[Cell]]
     ) -> list[frozenset[Cell]]:
@@ -597,10 +609,7 @@ class FlowGrounding:
         if not known or self._prev_cells is None:
             return []
         cells = self._prev_cells
-        pieces = set(self._piece or ())
-        if self._idle_colour is not None:
-            for region in _regions(cells, self._idle_colour):
-                pieces |= set(region)
+        pieces = self._all_piece_cells()
 
         signatures: set[tuple[int, frozenset[Cell]]] = set()
         for region in known:
@@ -632,10 +641,7 @@ class FlowGrounding:
             return []
         dr, dc = direction.value
         anim = self._animations[-1]
-        pieces = set(self._piece or ())
-        if self._idle_colour is not None:
-            for region in _regions(self._prev_cells, self._idle_colour):
-                pieces |= set(region)
+        pieces = self._all_piece_cells()
 
         blockers: set[Cell] = set()
         for i in range(len(anim.frontier) - 1):
@@ -711,7 +717,14 @@ class FlowGrounding:
         anim = self._animations[-1]
         trail = {c for layer in anim.frontier for c in layer}
         sinks = {c for g in anim.changed_regions for c in g}
-        piece = self._piece or frozenset()
+        targets = self.sink_candidates()
+        if targets is not UNKNOWN:
+            sinks |= {c for _, cells in targets.value for c in cells}
+        # EVERY piece, not just the tracked one. A movable piece that stops the flow
+        # is not a barrier, and mistaking one for a barrier is worse than missing a
+        # barrier: the propagator checks barriers first, so the flow is predicted to
+        # die where the engine splits it around the piece.
+        pieces = self._all_piece_cells()
         size = int(round(len(self._prev_cells) ** 0.5))
 
         out: set[Cell] = set()
@@ -719,7 +732,7 @@ class FlowGrounding:
             ahead = (r + dr, c + dc)
             if not (0 <= ahead[0] < size and 0 <= ahead[1] < size):
                 continue
-            if ahead in trail or ahead in sinks or ahead in piece:
+            if ahead in trail or ahead in sinks or ahead in pieces:
                 continue
             out.add(ahead)
         if not out:

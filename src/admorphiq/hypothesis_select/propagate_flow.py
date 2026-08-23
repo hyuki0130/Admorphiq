@@ -131,8 +131,13 @@ def predict(board: Board, table: ResponseTable, max_ticks: int = 80) -> Predicti
         nxt: list[tuple[Cell, tuple[int, int]]] = []
         born: list[Cell] = []
 
+        blocked = board.piece_cells | {c for s in board.sinks for c in s} | board.hazard_cells
+
         def spawn(cell: Cell, direction: tuple[int, int]) -> None:
-            if not _in_bounds(cell, board.size) or cell in occupied:
+            # "Empty" means empty of EVERYTHING, not just of flow. Spreading into a
+            # cell that a piece or a target already occupies invents flow the engine
+            # never creates, and the error compounds from that tick onward.
+            if not _in_bounds(cell, board.size) or cell in occupied or cell in blocked:
                 return
             occupied.add(cell)
             born.append(cell)

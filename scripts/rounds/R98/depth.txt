@@ -1,11 +1,10 @@
-R98 depth walk — 2026-08-23 23:49:29 KST
-repo HEAD: 8d289f7
-env: sp80-589a99af (OFFLINE arcade)
+R98 depth — 2026-08-23 23:55:48 KST
+repo HEAD: 31e37c9
 
 budget 60 actions/level, up to 6 levels
 
   idx0: CLEARED — cleared in 15 actions (4 selection probes)
   idx1: CLEARED — cleared in 18 actions (2 selection probes)
-  idx2: stopped — verifier CONTRADICTED: predicted step 7 [(7, 9), (8, 0), (10, 4)] but the flow was observed at [(7, 9), (8, 0), (8, 13), (8, 15), (10, 4)]
+  idx2: stopped — compiler UNSATISFIABLE: no layout among the 4000 cheapest satisfies the objective under the claimed table
 
 [depth walk] NON-GATING — one hypothesis carried 2 level(s); 50 actions total
