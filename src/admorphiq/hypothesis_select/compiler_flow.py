@@ -396,11 +396,16 @@ def compile_flow_hypothesis(
     row_bound = getattr(constraints, "row_bound", None) or 0
     sink_cells = _forbidden_cells(board, margin)
     budget = grounding.move_budget()
-    along = None if budget is UNKNOWN else (board.direction, budget.value)
-    options = [
-        _piece_options(board, i, deltas, sink_cells, row_bound, along)
-        for i in range(len(board.pieces))
-    ]
+    spent = grounding.moves_spent()
+    spent_by = {} if spent is UNKNOWN else {frozenset(c): n for c, n in spent.value}
+    options = []
+    for i in range(len(board.pieces)):
+        # each piece plans within what IT has left, not within the level's total
+        along = None
+        if budget is not UNKNOWN:
+            left = budget.value - spent_by.get(board.pieces[i], 0)
+            along = (board.direction, max(0, left))
+        options.append(_piece_options(board, i, deltas, sink_cells, row_bound, along))
     if any(not o for o in options):
         return FlowPlan(PlanStatus.UNSATISFIABLE,
                         reason="a piece has no reachable placement under the measured deltas")

@@ -558,6 +558,21 @@ class FlowGrounding:
             if self._move_budget is None or survived < self._move_budget:
                 self._move_budget = survived
 
+    def moves_spent(self) -> Any:
+        """How many moves along the flow each piece on the board has already made.
+
+        The budget is per piece and partly SPENT: it is learned only when a piece is
+        lost, and by then the survivors have moved too. A planner that gives every piece
+        the full budget will plan a move that a piece has no room left for — measured on
+        idx3, where the replan after the first loss still had every piece moved once."""
+        if not self._flow_moves:
+            return UNKNOWN
+        return Grounded(
+            tuple((tuple(sorted(cells)), moves) for cells, moves in
+                  sorted(self._flow_moves.items(), key=lambda kv: min(kv[0]))),
+            "high",
+        )
+
     def move_budget(self) -> Any:
         """How many moves along the flow a piece survives, once the board has shown it.
 

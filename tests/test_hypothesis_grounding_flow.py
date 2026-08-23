@@ -458,3 +458,38 @@ def test_the_move_budget_is_learned_from_a_loss_and_not_guessed():
     budget = g.move_budget()
     assert budget is not UNKNOWN, "the loss taught nothing"
     assert budget.value == 1, f"the budget should be what the piece survived: {budget}"
+
+
+def test_a_piece_that_has_already_moved_has_less_budget_left():
+    """Purpose: the budget is per piece and partly SPENT by the time it is known — it is
+    learned only when a piece is lost, and by then the survivors have moved too. A planner
+    that gives every piece the full budget plans a move a piece has no room left for,
+    which is what the replan after idx3's first loss did.
+
+    Expected feedback: pass proves the harness reports what each piece has spent, so the
+    compiler can plan within what is LEFT. Fail means the remaining budget is invisible
+    and every plan after the first is written against a number that no longer applies."""
+    bar = {(2, 2): 7, (2, 3): 7}
+    g = FlowGrounding()
+    g.observe(0, None, [_frame(bar)])
+    g.observe(6, (2, 2), [_frame({(2, 2): 9, (2, 3): 9})])
+
+    piece = {(2, 2): 9, (2, 3): 9}
+    run = {}
+    frames = [_frame(piece)]
+    for r in range(1, 6):
+        run[(r, 6)] = 6
+        frames.append(_frame({**piece, **run}))
+    g.observe(5, None, frames)
+
+    assert g.moves_spent() is UNKNOWN, "nothing is spent before anything moves"
+
+    g.observe(2, None, [_frame({(3, 2): 9, (3, 3): 9, **run})])   # one move along the flow
+    spent = g.moves_spent()
+    assert spent is not UNKNOWN
+    assert dict(spent.value) == {((3, 2), (3, 3)): 1}, f"the move was not counted: {spent}"
+
+    g.observe(4, None, [_frame({(3, 3): 9, (3, 4): 9, **run})])   # ACROSS the flow: free
+    spent = g.moves_spent()
+    assert dict(spent.value) == {((3, 3), (3, 4)): 1}, \
+        f"a move across the flow changed the tally: {spent}"

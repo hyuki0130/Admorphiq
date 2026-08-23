@@ -2007,15 +2007,51 @@ piece — and the suite is green again. The commit message stands as written; th
 the correction, because a commit that misreports its own gates is worth more as a record
 than as a tidy line.
 
+## Each piece plans within what IT has left (2026-08-24)
+
+The budget is per piece and partly SPENT by the time it is known. It is learned only when
+a piece is lost, and by then every survivor has moved too — so the replan after idx3's
+first loss was still handing each piece the level's full allowance. `moves_spent()` now
+reports what each piece on the board has used, and the compiler plans each one within
+`budget − spent`.
+
+idx0–idx2 are untouched (no loss, no budget, nothing to subtract) and clear in the same
+action counts. idx3 stays `UNSATISFIABLE`, more tightly than before, which is the honest
+consequence: the pieces that moved have nothing left, so the level was decided by the
+FIRST plan — the one made while the budget was still unknown.
+
+That is the shape of the remaining problem, and it is not a modelling gap any more. The
+agent cannot know the budget before spending a piece, and the plan it makes in ignorance
+is the plan that spends it.
+
+**A heuristic that looked free and was not.** Preferring placements that use fewer moves
+along the flow — an ordering change, not a constraint, and available without knowing any
+budget — costs **idx2 its clear**: reordering changes which layouts the capped search
+reaches, and idx2's winner falls outside the cap once the order changes. Reverted. Any
+"free" preference that reorders the search is a change to what the search finds, and has
+to be measured like one.
+
+```
+idx0: CLEARED — 23 actions
+idx1: CLEARED — 30 actions
+idx2: CLEARED — 55 actions
+idx3: each piece plans within its remainder; the first plan already spent them
+```
+
+The same stub broke the same way twice: adding `moves_spent()` to the grounding surface
+left the compiler tests' stand-in without it, four tests red. Caught this time by reading
+the gate log before writing the commit line rather than after — which is the whole of the
+correction from the previous tick, applied. A stand-in for a growing interface is a
+maintenance cost the interface has to pay each time it grows.
+
 ## Next
 
 1. **Fill is not confirmed paired.** gemma4 misses one slot, and the cause is our
    encoding rather than its reasoning. Measure the hazard orthogonalisation as its
    own experiment against all three models — never as a patch to move a verdict.
-2. **idx3 has no winning layout within its move budget.** Either a placement it needs is
-   more than one move away — in which case the level wants pieces moved before the
-   budget is spent, i.e. a different first plan — or something else in the model is
-   still wrong.
+2. **The first plan decides idx3, and it is made in ignorance of the budget.** Cheap
+   discovery costs a piece; a free ordering preference costs idx2 its clear. What is
+   needed is a first plan that is good under BOTH assumptions — budget or none.
 3. **Measure the bounded-roof variant on fixed evidence** — 1 invented cell against the
    adopted rule's 2, deliberately not adopted in the same change.
 3. **Multi-piece placement**, the burden the idx1 observation named: idx1 carries
