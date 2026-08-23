@@ -37,6 +37,9 @@ from admorphiq.hypothesis_select.propagate_flow import ORACLE, predict  # noqa: 
 from admorphiq.hypothesis_select.verifier_flow import build_flow_evidence  # noqa: E402
 
 SAMPLES = int(os.environ.get("R98_FEASIBILITY_SAMPLES", "40000"))
+# Which level to measure: the number of levels to clear first. The three-source
+# level is reached after two clears; deeper boards need more.
+LEVELS_FIRST = int(os.environ.get("R98_FEASIBILITY_LEVEL", "2"))
 SEED = 98
 
 
@@ -52,8 +55,11 @@ def _walker_module():
 def main() -> int:
     dw = _walker_module()
     w = dw.Walker()
-    for _ in range(2):
-        dw.play_level(w)
+    for _ in range(LEVELS_FIRST):
+        cleared, note = dw.play_level(w)
+        if not cleared:
+            print(f"[feasibility] could not reach the target level: {note}")
+            return 1
 
     g = FlowGrounding()
     g.observe(0, None, w.obs.frame)

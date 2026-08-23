@@ -1,11 +1,11 @@
-R98 depth — 2026-08-24 01:56:31 KST
-repo HEAD: c35ba11
+R98 depth — 2026-08-24 02:07:32 KST
+repo HEAD: 269ea1f
 
 budget 250 actions/level, up to 6 levels
 
   idx0: CLEARED — cleared in 19 actions (4 selection probes)
   idx1: CLEARED — cleared in 26 actions (6 selection probes)
   idx2: CLEARED — cleared in 51 actions (6 selection probes)
-  idx3: stopped — move 2 (4) is not explained by moving one piece by (0, 1): 6 footprint(s) before, 5 after
+  idx3: stopped — compiler UNSATISFIABLE: no layout satisfies the objective under the claimed table: 50210 examined across the cheapest neighbourhood and the per-piece shortlists
 
 [depth walk] NON-GATING — one hypothesis carried 3 level(s); 117 actions total

@@ -588,6 +588,34 @@ cannot split them back apart, so it reports "6 footprints before, 5 after" inste
 of silently continuing. All three cleared levels still clear, at a few more actions
 each for the retried probes.
 
+## Replanning, and what the search measurements actually said (2026-08-24)
+
+**The walk now REPLANS when a move fails to land** instead of abandoning the level.
+The board disagreeing with the plan is information: the engine refuses placements for
+reasons the measured constraints do not always capture, and a piece coming to rest
+against a neighbour changes what the inventory can tell apart. Re-reading the board
+and planning again from what is there is what an agent has to do anyway.
+
+Two measurements corrected assumptions worth recording, because both were the
+opposite of the natural guess:
+
+**The placement constraints are not excluding the answer — they concentrate it.**
+When the compiler reported no layout on idx3, the obvious suspicion was that the
+keep-out margin and row bound had filtered the solution away. Sampling both option
+sets says otherwise: constrained placements win 198 times in 40,000 draws against 114
+for unconstrained, on roughly half as many options per piece. Constraining the search
+made it denser in winners, not poorer.
+
+**And the compiler was never the blocker.** Called directly on idx3's board it
+returns a SOLVABLE plan in 0.3 seconds, predicted to satisfy all three targets. The
+UNSATISFIABLE report came from a REPLAN — after moves had failed to land and the
+board had degraded, with pieces merged and the inventory coarser than when the first
+plan was made.
+
+So idx3's chain is now fully attributed: the plan is fine, the execution diverges, and
+the divergence degrades the board that the next plan is built on. The wall is the
+move that does not land, and everything downstream of it is a consequence.
+
 ## Next
 
 1. **Fill is not confirmed paired.** gemma4 misses one slot, and the cause is our

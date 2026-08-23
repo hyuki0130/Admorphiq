@@ -51,6 +51,8 @@ MAX_LEVELS = 6
 # would score badly on the efficiency metric — that is a separate question from
 # whether the pipeline can solve the board at all.
 ACTION_BUDGET = 250
+# How many times a level may be re-planned after a move fails to land.
+REPLAN_LIMIT = 3
 
 
 def _open_arcade():
@@ -166,43 +168,55 @@ def play_level(w: Walker) -> tuple[bool, str]:
     if verdict.verdict.value != "PASS":
         return False, f"verifier {verdict.verdict.value}: {verdict.reason}"
 
-    plan = compile_flow_hypothesis(hypothesis, g)
-    if plan.status is not PlanStatus.SOLVABLE:
-        return False, f"compiler {plan.status.value}: {plan.reason}"
+    # Plan, execute with per-move confirmation, and REPLAN when a move does not land.
+    # The board disagreeing with the plan is information, not a dead end: the engine
+    # refuses placements for reasons the measured constraints do not always capture,
+    # and a piece coming to rest against a neighbour changes what the inventory can
+    # tell apart. Re-reading the board and planning again from what is actually there
+    # is what an agent has to do anyway.
+    attempts = 0
+    note = "no plan"
+    while attempts < REPLAN_LIMIT:
+        attempts += 1
+        plan = compile_flow_hypothesis(hypothesis, g)
+        if plan.status is not PlanStatus.SOLVABLE:
+            return False, f"compiler {plan.status.value}: {plan.reason}"
+        cleared, note, diverged = _execute(w, g, plan, entered, spent, probes)
+        if cleared:
+            return True, note
+        if not diverged:
+            return False, note
+        if w.actions - spent >= ACTION_BUDGET or not w.alive:
+            return False, f"{note}; out of budget"
+    return False, f"{note}; gave up after {attempts} plans"
 
-    # Every emitted move is CONFIRMED against the next frame. A plan that keeps
-    # going after a move failed to land builds a layout nobody planned, and the
-    # spill that follows tells you nothing about the hypothesis — the R96 rule,
-    # applied here because idx3 was silently ending up cells away from its plan.
-    # Compared as an unordered MULTISET of footprints, never by name: pieces are
-    # reported in board order, so moving one renames several and an identity-based
-    # check reports phantom movement.
+
+def _execute(w: Walker, g: FlowGrounding, plan, entered: int, spent: int, probes: int):
+    """Run a plan, confirming every move. Returns (cleared, note, diverged)."""
     expected = _footprints(g)
     for index, step in enumerate(plan.steps):
         if w.actions - spent >= ACTION_BUDGET or not w.alive:
-            break
+            return False, f"out of budget at step {index}", False
         w.run(step, g)
         if w.level > entered:
-            return True, f"cleared in {w.actions - spent} actions ({probes} selection probes)"
+            return True, f"cleared in {w.actions - spent} actions ({probes} selection probes)", False
         if isinstance(step, Select) or index == len(plan.steps) - 1:
+            expected = _footprints(g)
             continue
         delta = deltas_of(g).get(step)
         if delta is None:
+            expected = _footprints(g)
             continue
         actual = _footprints(g)
         if actual == expected:
-            return False, f"move {index} ({step}) did not land: the board is unchanged"
-        # A moved piece can come to rest against a neighbour and MERGE with it, so a
-        # footprint-for-footprint comparison sees more than one change. The question
-        # that survives that is simpler: does translating exactly one of the pieces
-        # by the measured delta reproduce the board we now see?
+            return False, f"move {index} ({step}) did not land: the board is unchanged", True
         if not _explained_by_one_move(expected, actual, delta):
             return False, (
                 f"move {index} ({step}) is not explained by moving one piece by "
                 f"{delta}: {len(expected)} footprint(s) before, {len(actual)} after"
-            )
+            ), True
         expected = actual
-    return False, f"executed the plan without clearing ({w.actions - spent} actions)"
+    return False, f"executed the plan without clearing ({w.actions - spent} actions)", False
 
 
 def _explained_by_one_move(before: list, after: list, delta) -> bool:

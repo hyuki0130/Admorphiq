@@ -1,5 +1,5 @@
-R98 feasibility — 2026-08-24 00:19:01 KST
-repo HEAD: c64ca4e
+R98 feasibility — 2026-08-24 02:07:41 KST
+repo HEAD: 269ea1f
 
 pieces=4 targets=3 placements per piece=[182, 168, 154, 154]
 sampling 40000 random layouts (seed 98)
