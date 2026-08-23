@@ -99,6 +99,11 @@ class Prediction:
     satisfied: set[int]
     fatal: bool
     wins: bool
+    # How many streams ended on a barrier. ``fatal`` is the objective's question and
+    # is boolean; this is the GRADED version, and a search needs it: on a board where
+    # no single placement reaches zero contacts, a boolean gives every candidate the
+    # same score and the ranking carries no information at all.
+    barrier_hits: int = 0
 
 
 def _in_bounds(cell: Cell, size: int) -> bool:
@@ -119,6 +124,7 @@ def predict(board: Board, table: ResponseTable, max_ticks: int = 80) -> Predicti
 
     satisfied: set[int] = set()
     fatal = False
+    barrier_hits = 0
     frontier: list[list[Cell]] = [sorted(occupied)]
     def _piece_span(cell: Cell) -> list[int]:
         index = board.piece_at(cell)
@@ -149,6 +155,7 @@ def predict(board: Board, table: ResponseTable, max_ticks: int = 80) -> Predicti
 
             if not _in_bounds(ahead, board.size) or ahead in board.hazard_cells:
                 if ahead in board.hazard_cells:
+                    barrier_hits += 1
                     if table.hazard == "terminate_fatal":
                         fatal = True
                     elif table.hazard == "pass_through":
@@ -207,4 +214,10 @@ def predict(board: Board, table: ResponseTable, max_ticks: int = 80) -> Predicti
         active = [s for s in nxt if not (s in seen or seen.add(s))]
 
     wins = len(satisfied) == len(board.sinks) and not fatal
-    return Prediction(frontier=frontier, satisfied=satisfied, fatal=fatal, wins=wins)
+    return Prediction(
+        frontier=frontier,
+        satisfied=satisfied,
+        fatal=fatal,
+        wins=wins,
+        barrier_hits=barrier_hits,
+    )

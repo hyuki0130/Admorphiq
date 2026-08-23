@@ -46,7 +46,11 @@ ACTIONS = {
     5: GameAction.ACTION5,
 }
 MAX_LEVELS = 6
-ACTION_BUDGET = 60  # per level, generous: this walk measures reach, not efficiency
+# Per level, deliberately generous: this walk measures REACH, not efficiency. A
+# layout that needs four pieces moved ten cells each costs dozens of actions and
+# would score badly on the efficiency metric — that is a separate question from
+# whether the pipeline can solve the board at all.
+ACTION_BUDGET = 250
 
 
 def _open_arcade():

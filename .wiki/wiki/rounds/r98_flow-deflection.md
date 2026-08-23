@@ -311,41 +311,49 @@ defects were found by chasing that divergence, both worth keeping:
    EVERYTHING. Spreading into a cell a piece or target already occupies invents flow
    the engine never creates, and the error compounds from that tick on.
 
-**Where it stops now**: the compiler, not the model — and the wall is quantified.
-
-Two search strategies now run: an exhaustive cost-ordered scan of the cheapest
-neighbourhood, then a decomposed pass that combines the placements each piece can
-reach that improve the board ON ITS OWN (explicitly a heuristic — a layout where two
-pieces only help jointly is invisible to it). Together they examined **19,379
-layouts** on idx2 without a winner.
-
-The per-piece measurement says why, and it is not what one would guess:
+**idx2 now CLEARS too.** One hypothesis carries three levels:
 
 ```
-baseline                          1 of 3 targets, hazard touched
-piece 0   182 placements,   6 improve alone,  best alone = 2 targets, hazard touched
-piece 1   168 placements, 117 improve alone,  best alone = 2 targets, hazard touched
-piece 2   120 placements,  53 improve alone,  best alone = 3 targets, hazard touched
+idx0: CLEARED — 15 actions
+idx1: CLEARED — 22 actions
+idx2: CLEARED — 47 actions
+idx3: stopped — verifier CONTRADICTED at step 4
 ```
 
-**Coverage is not the constraint — one piece alone can satisfy all three targets.**
-What no layout achieves is doing so while keeping every stream off the barrier. That
-is exactly the structured CHANNELING R92 named from the other direction: a straight
-piece SPLITS a stream rather than turning it, so a placement that routes one source
-into a target simultaneously sends its other branch toward the floor, and the other
-pieces have to be positioned to catch it.
+Getting there took a search ladder and, at the end, one measurement that redirected
+the whole effort.
 
-So the next design is goal-directed rather than broader: rank placements by whether
-they BLOCK a barrier-bound branch, not by how many targets they satisfy. Ranking by
-targets is what both current passes do, and the measurement above shows that signal
-saturates long before the objective does.
+**The search ladder.** Four passes, each covering what the previous one cannot: an
+exhaustive scan of the cheapest neighbourhood; a decomposed product over the
+placements each piece improves ON ITS OWN; a beam that re-ranks every piece against
+the layout chosen so far; and finally seeded random sampling. The ranking signal also
+had to change — `fatal` is boolean, and on this level EVERY single-piece placement
+still touches a barrier, so a boolean gave every candidate the same score and the
+ranking carried no information. Counting barrier contacts separates them.
 
-One more grounding fix landed here, and it is the R92 merge trap for the third time:
-two touching pieces share a single region while idle, so a planner could only move
-the merged pair. Pieces CONFIRMED by having worn the selected appearance are now
-reported individually, and probing every candidate rather than stopping at the first
-selection event is what separates them — visible as the search space growing from
-5,183 to 19,379 layouts once the pieces came apart.
+**The measurement that redirected it.** After three structured passes had examined
+~35,000 layouts without a winner, the honest question was whether the thing being
+searched for was there at all. `feasibility_probe.py` sampled 40,000 random layouts:
+**5 winners**, roughly one in eight thousand, at offsets moving all four pieces six
+to ten cells each — far outside the cheap neighbourhood, invisible to shortlists that
+rank by solo improvement, and past the plateau a hill-climb settles on. So the answer
+was neither "search harder in the same way" nor "the model is wrong": it was that
+random sampling covers exactly the region the structured passes cannot, at a measured
+hit rate that makes it affordable.
+
+**The defect the first successful plan exposed.** The compiler found a layout, the
+driver executed all 43 steps, and the level did not clear — because the layout was
+never built. Two pieces ended up cells away from their planned positions. The
+placement filter forbade only overlap with a target, while the engine refuses any
+placement within the measured KEEP-OUT MARGIN of one, and also enforces a row bound.
+Both were sitting in the schema's `placement_constraints`, measured, and the compiler
+was ignoring them. Filtering on overlap alone lets the search commit to layouts the
+engine will not build: the moves are simply dropped, the piece ends up elsewhere, and
+the spill that follows is the one nobody planned.
+
+An honest note on cost: idx2's plan spends 47 actions, so it would score poorly on
+the efficiency metric. Whether the pipeline can solve a board and whether it solves it
+efficiently are separate questions, and this walk answers only the first.
 
 ## Next
 

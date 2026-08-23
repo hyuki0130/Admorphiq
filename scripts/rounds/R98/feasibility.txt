@@ -1,0 +1,24 @@
+R98 feasibility — 2026-08-24 00:19:01 KST
+repo HEAD: c64ca4e
+
+pieces=4 targets=3 placements per piece=[182, 168, 154, 154]
+sampling 40000 random layouts (seed 98)
+
+(targets satisfied, barrier contacts) -> count, most common first:
+  (2, 2): 10861
+  (1, 2): 7433
+  (2, 3): 5130
+  (1, 1): 4555
+  (2, 1): 3007
+  (3, 2): 2644
+  (1, 3): 2319
+  (3, 3): 1246
+  (0, 1): 826
+  (0, 2): 676
+  (1, 0): 347
+  (3, 1): 312
+
+best sampled: 3 target(s), 0 barrier contact(s) at offsets ((-2, 6), (4, -10), (1, 2), (-4, 9))
+layouts reaching full coverage with ZERO barrier contacts: 5
+
+[feasibility] a winner EXISTS — the wall is search

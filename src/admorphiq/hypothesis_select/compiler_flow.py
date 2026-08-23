@@ -34,6 +34,7 @@ model-selected semantics; grounding supplies the live world.
 from __future__ import annotations
 
 import heapq
+import random
 from dataclasses import dataclass
 from typing import Optional, Union
 
@@ -52,6 +53,11 @@ MAX_OFFSET = 24     # placement search bound; a board is far smaller than this
 MAX_CANDIDATES = 4000     # cost-ordered layouts examined before giving up
 PROMISING_PER_PIECE = 12  # per-piece shortlist size for the decomposed second pass
 MAX_COMBINATIONS = 20000  # layouts examined in that second pass
+BEAM_WIDTH = 8            # partial layouts carried between beam rounds
+BEAM_ROUNDS = 4           # how many pieces a beam layout may move
+BEAM_BUDGET = 30000       # layouts evaluated by the beam
+SAMPLE_BUDGET = 40000     # seeded random layouts evaluated as the final fallback
+SAMPLE_SEED = 98          # fixed, so a compiled plan is reproducible
 
 
 @dataclass(frozen=True)
@@ -142,15 +148,34 @@ def _path_to(offset: tuple[int, int], deltas: dict[int, tuple[int, int]]) -> Opt
     return tuple(seq)
 
 
+def _forbidden_cells(board: Board, margin: int) -> set[Cell]:
+    """Target cells expanded by the measured keep-out margin.
+
+    The engine refuses a placement that comes within the margin of a target, not
+    merely one that overlaps it. Filtering on overlap alone lets the search commit
+    to layouts the engine will not build: the moves are simply dropped, the piece
+    ends up somewhere else, and the spill that follows is the one nobody planned."""
+    out: set[Cell] = set()
+    for sink in board.sinks:
+        rows = [r for r, _ in sink]
+        cols = [c for _, c in sink]
+        for r in range(min(rows) - margin, max(rows) + margin + 1):
+            for c in range(min(cols) - margin, max(cols) + margin + 1):
+                out.add((r, c))
+    return out
+
+
 def _piece_options(
     board: Board,
     index: int,
     deltas: dict[int, tuple[int, int]],
     sink_cells: set[Cell],
+    row_bound: int = 0,
 ) -> list[tuple[Cell, tuple[int, ...]]]:
     """Every placement this piece can reach, as (offset, action path), cheapest
-    first. A placement is admissible only if the piece stays on the board and out
-    of the targets — the constraints the harness measured."""
+    first. A placement is admissible only if the piece stays on the board, respects
+    the measured row bound, and keeps clear of the targets' keep-out area — the
+    constraints the harness measured."""
     piece = board.pieces[index]
     out: list[tuple[int, Cell, tuple[int, ...]]] = []
     for dr in range(-MAX_OFFSET, MAX_OFFSET + 1):
@@ -159,6 +184,8 @@ def _piece_options(
             if any(not (0 <= r < board.size and 0 <= c < board.size) for (r, c) in moved):
                 continue
             if moved & sink_cells:
+                continue
+            if any(r < row_bound for (r, _) in moved):
                 continue
             path = _path_to((dr, dc), deltas)
             if path is None:
@@ -201,11 +228,18 @@ def _joint_layouts(
     return out
 
 
-def _score(board: Board, table: ResponseTable) -> tuple[int, bool]:
-    """How good a layout looks: targets satisfied, and whether it stays clear of the
-    barriers. Used to rank placements, never to decide the objective."""
+def _score(board: Board, table: ResponseTable) -> tuple[int, int]:
+    """How good a layout looks: targets satisfied, and how FEW streams end on a
+    barrier (negated so that larger is better). Used to rank placements, never to
+    decide the objective.
+
+    The barrier term is graded rather than boolean on purpose. Measured on the
+    three-source level: every single-piece placement still touches a barrier, so a
+    boolean gives them all the same score and the ranking carries no information —
+    while the counts do separate them, and a placement that removes one contact is
+    the half of a channeling solution that the other pieces complete."""
     prediction = predict(board, table)
-    return len(prediction.satisfied), not prediction.fatal
+    return len(prediction.satisfied), -prediction.barrier_hits
 
 
 def _promising_offsets(
@@ -224,7 +258,7 @@ def _promising_offsets(
     several pieces moved far. Ranking by what each piece can achieve alone is the
     cheapest way to find the placements worth combining.
     """
-    scored: list[tuple[tuple[int, bool], int, int]] = []
+    scored: list[tuple[tuple[int, int], int, int]] = []
     for pick, (offset, path) in enumerate(options):
         if offset == (0, 0):
             continue
@@ -232,7 +266,7 @@ def _promising_offsets(
         if value <= baseline:
             continue
         scored.append((value, len(path), pick))
-    scored.sort(key=lambda e: (-e[0][0], not e[0][1], e[1]))
+    scored.sort(key=lambda e: (-e[0][0], -e[0][1], e[1]))
     return [pick for _, _, pick in scored[:PROMISING_PER_PIECE]]
 
 
@@ -271,8 +305,14 @@ def compile_flow_hypothesis(
     if not board.pieces:
         return FlowPlan(PlanStatus.GROUNDING_INCOMPLETE, reason="no movable piece is grounded")
 
-    sink_cells = {c for s in board.sinks for c in s}
-    options = [_piece_options(board, i, deltas, sink_cells) for i in range(len(board.pieces))]
+    constraints = getattr(tm, "placement_constraints", None)
+    margin = getattr(constraints, "sink_keepout_margin", 0) or 0
+    row_bound = getattr(constraints, "row_bound", None) or 0
+    sink_cells = _forbidden_cells(board, margin)
+    options = [
+        _piece_options(board, i, deltas, sink_cells, row_bound)
+        for i in range(len(board.pieces))
+    ]
     if any(not o for o in options):
         return FlowPlan(PlanStatus.UNSATISFIABLE,
                         reason="a piece has no reachable placement under the measured deltas")
@@ -295,6 +335,10 @@ def compile_flow_hypothesis(
     # each piece can reach that improve the board on its OWN. Explicitly a
     # heuristic — see _promising_offsets — so its failure is reported as such.
     baseline = _score(board, table)
+    # A placement counts as promising if it improves EITHER component: more targets,
+    # or fewer barrier contacts. Requiring both is what made the first pass blind to
+    # the pieces whose only job is to catch a branch.
+
     shortlists: list[list[int]] = []
     for i in range(len(board.pieces)):
         identity = next((k for k, (o, _) in enumerate(options[i]) if o == (0, 0)), None)
@@ -303,11 +347,16 @@ def compile_flow_hypothesis(
             picks = [identity] + picks
         shortlists.append(picks or ([identity] if identity is not None else []))
 
-    combinations = 1
-    for picks in shortlists:
-        combinations *= max(1, len(picks))
-    if selectable and combinations <= MAX_COMBINATIONS:
+    # The product is walked LAZILY up to the cap rather than skipped when it looks
+    # too big: with four pieces the count exceeds any sane bound, and abandoning the
+    # pass on that basis examines nothing at all — which is strictly worse than
+    # examining the first MAX_COMBINATIONS of it.
+    if selectable:
+        seen = 0
         for picks in _product(shortlists):
+            seen += 1
+            if seen > MAX_COMBINATIONS:
+                break
             examined += 1
             offsets = tuple(options[i][pick][0] for i, pick in enumerate(picks))
             candidate = board.with_offsets(offsets)
@@ -316,12 +365,90 @@ def compile_flow_hypothesis(
                 continue
             return _plan_from(board, options, picks, offsets, satisfied, commit)
 
+        # Third pass: a BEAM. The static shortlists are computed against the entry
+        # layout, so a piece whose only job is to catch a branch that ANOTHER piece's
+        # placement creates never looks promising and is never offered — measured on
+        # the three-source level, where the best static combination satisfies every
+        # target but still leaves two streams on a barrier. Re-ranking each piece
+        # against the layout chosen SO FAR is what makes those placements visible.
+        picks, offsets, satisfied, evaluated = _beam_search(
+            board, options, table, instance.objective
+        )
+        examined += evaluated
+        if picks is not None:
+            return _plan_from(board, options, picks, offsets, satisfied, commit)
+
+        # Final pass: SEEDED RANDOM layouts. Inelegant, and measured to work where
+        # the structured passes cannot. On the three-source level a winning layout
+        # moves all four pieces by six to ten cells each — far outside the cheap
+        # neighbourhood, invisible to shortlists that rank by solo improvement, and
+        # past the plateau a hill-climb settles on. Sampling finds one roughly once
+        # in eight thousand draws, so a budget of this size finds several. The seed
+        # is fixed so a compiled plan stays reproducible.
+        rng = random.Random(SAMPLE_SEED)
+        for _ in range(SAMPLE_BUDGET):
+            examined += 1
+            picks = tuple(rng.randrange(len(options[i])) for i in range(len(options)))
+            offsets = tuple(options[i][pick][0] for i, pick in enumerate(picks))
+            candidate = board.with_offsets(offsets)
+            wins, satisfied = _wins(candidate, table, instance.objective)
+            if wins:
+                return _plan_from(board, options, picks, offsets, satisfied, commit)
+
     return FlowPlan(
         PlanStatus.UNSATISFIABLE,
         reason=f"no layout satisfies the objective under the claimed table: "
                f"{examined} examined across the cheapest neighbourhood and the "
                f"per-piece shortlists",
     )
+
+
+def _beam_search(board: Board, options, table: ResponseTable, objective):
+    """Hill-climb the layout, re-ranking every piece against the layout chosen so far.
+
+    Returns ``(picks, offsets, satisfied, evaluated)`` with ``picks`` None if nothing
+    won. Each round tries moving ONE more piece from each surviving layout, keeps the
+    best few by score, and stops as soon as a layout satisfies the objective. It is
+    a heuristic — a hill-climb can sit on a plateau that only a coordinated pair of
+    moves leaves — but unlike the static product it can find a placement whose value
+    exists only in the presence of another."""
+    identity = tuple(
+        next((k for k, (o, _) in enumerate(options[i]) if o == (0, 0)), 0)
+        for i in range(len(board.pieces))
+    )
+    beam: list[tuple[tuple[int, int], tuple[int, ...]]] = [
+        (_score(board, table), identity)
+    ]
+    evaluated = 0
+    seen: set[tuple[int, ...]] = {identity}
+
+    for _round in range(BEAM_ROUNDS):
+        nxt: list[tuple[tuple[int, int], tuple[int, ...]]] = []
+        for _value, picks in beam:
+            base_offsets = tuple(options[i][pick][0] for i, pick in enumerate(picks))
+            current = board.with_offsets(base_offsets)
+            for i in range(len(board.pieces)):
+                for pick, (offset, _path) in enumerate(options[i]):
+                    if pick == picks[i]:
+                        continue
+                    trial = picks[:i] + (pick,) + picks[i + 1:]
+                    if trial in seen:
+                        continue
+                    seen.add(trial)
+                    evaluated += 1
+                    if evaluated > BEAM_BUDGET:
+                        return None, (), 0, evaluated
+                    offsets = base_offsets[:i] + (offset,) + base_offsets[i + 1:]
+                    candidate = current.with_offsets(offsets)
+                    wins, satisfied = _wins(candidate, table, objective)
+                    if wins:
+                        return trial, offsets, satisfied, evaluated
+                    nxt.append((_score(candidate, table), trial))
+        if not nxt:
+            break
+        nxt.sort(key=lambda e: (-e[0][0], -e[0][1]))
+        beam = nxt[:BEAM_WIDTH]
+    return None, (), 0, evaluated
 
 
 def _product(shortlists: list[list[int]]):

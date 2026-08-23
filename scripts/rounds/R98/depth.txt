@@ -1,10 +1,11 @@
-R98 depth — 2026-08-24 00:06:31 KST
-repo HEAD: 50a3ab0
+R98 depth — 2026-08-24 00:18:57 KST
+repo HEAD: c64ca4e
 
-budget 60 actions/level, up to 6 levels
+budget 250 actions/level, up to 6 levels
 
   idx0: CLEARED — cleared in 15 actions (4 selection probes)
   idx1: CLEARED — cleared in 22 actions (6 selection probes)
-  idx2: stopped — compiler UNSATISFIABLE: no layout satisfies the objective under the claimed table: 19379 examined across the cheapest neighbourhood and the per-piece shortlists
+  idx2: CLEARED — cleared in 47 actions (6 selection probes)
+  idx3: stopped — verifier CONTRADICTED: predicted step 4 [(12, 4)] but the flow was observed at [(3, 7)]
 
-[depth walk] NON-GATING — one hypothesis carried 2 level(s); 58 actions total
+[depth walk] NON-GATING — one hypothesis carried 3 level(s); 98 actions total
