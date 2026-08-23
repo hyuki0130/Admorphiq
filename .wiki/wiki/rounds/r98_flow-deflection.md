@@ -470,8 +470,30 @@ idx0 the frozen mutant table reproduces EXACTLY as before (oracle PASS, 6
 CONTRADICTED, 3 UNKNOWN), because a wrong model does not merely reorder cells, it
 produces cells the engine never produces.
 
-idx3's remaining gap is now **two cells** — `(6,5)` and `(6,6)`, which the flow reached
-and the replay does not — with everything else in agreement.
+Those last cells had a single cause, and it was a classification conflict rather
+than a missing rule. **A piece can carry a cell of another appearance**: a source
+embedded in a bar renders in its own colour, so segmenting by appearance splits the
+bar in two and leaves the odd cell belonging to nothing. A cell in no entity is a
+FREE cell, and the flow walked straight through the middle of a bar the engine
+treats as one obstruction. Pieces parted by a SINGLE non-background cell are now
+bridged, absorbing it — one cell only, and never across empty space, because two
+genuinely separate pieces are parted by exactly that.
+
+Bridging alone did not fix it, which exposed the sharper defect underneath: the
+barrier inference derived its own piece-cell set by appearance instead of using the
+inventory. The embedded source was therefore a piece to one part of the harness and
+a barrier to another — and the propagator checks barriers FIRST, so the flow died
+exactly where the engine splits it. Both now read one inventory.
+
+**idx3 now passes the verifier AND the compiler**, and executes a plan. It does not
+yet clear, so the remaining question there is the objective rather than the model:
+
+```
+idx0: CLEARED — 15 actions
+idx1: CLEARED — 22 actions
+idx2: CLEARED — 47 actions
+idx3: plans and executes; does not clear
+```
 
 ## Next
 

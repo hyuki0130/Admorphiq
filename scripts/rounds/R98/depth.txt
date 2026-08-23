@@ -1,11 +1,11 @@
-R98 depth — 2026-08-24 01:16:30 KST
-repo HEAD: 6257cce
+R98 depth — 2026-08-24 01:27:45 KST
+repo HEAD: 3063f44
 
 budget 250 actions/level, up to 6 levels
 
   idx0: CLEARED — cleared in 15 actions (4 selection probes)
   idx1: CLEARED — cleared in 22 actions (6 selection probes)
   idx2: CLEARED — cleared in 47 actions (6 selection probes)
-  idx3: stopped — verifier UNKNOWN: the replay misses 2 cell(s) the flow reached (e.g. [(6, 5), (6, 6)]), but the board is incomplete: 3 source(s) hidden under a piece, not in the board model
+  idx3: stopped — executed the plan without clearing (32 actions)
 
-[depth walk] NON-GATING — one hypothesis carried 3 level(s); 98 actions total
+[depth walk] NON-GATING — one hypothesis carried 3 level(s); 116 actions total

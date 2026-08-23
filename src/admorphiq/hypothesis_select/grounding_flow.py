@@ -551,10 +551,61 @@ class FlowGrounding:
                         found.append(part)
         if not found:
             found = [frozenset(self._piece)]
+        found = self._bridge(found, cells)
         ordered = sorted(found, key=min)
         return Grounded(
             tuple((f"piece_{i}", tuple(sorted(r))) for i, r in enumerate(ordered)), "high"
         )
+
+    def _bridge(
+        self, regions: list[frozenset[Cell]], cells: dict[Cell, int]
+    ) -> list[frozenset[Cell]]:
+        """Join pieces parted by a single foreign cell, absorbing that cell.
+
+        A piece can carry a cell of another appearance — a source embedded in the
+        bar renders in its own colour — and segmenting by appearance then splits the
+        bar into two regions with the odd cell belonging to nothing. A cell in no
+        entity is a FREE cell, so the flow walks straight through the middle of a bar
+        the engine treats as one obstruction.
+
+        Only a ONE-cell gap is bridged, and only when that cell is not background:
+        two genuinely separate pieces are parted by empty space, which stays empty.
+        """
+        if not regions:
+            return regions
+        background = Counter(cells.values()).most_common(1)[0][0]
+        merged = [set(r) for r in regions]
+        changed = True
+        while changed:
+            changed = False
+            for i in range(len(merged)):
+                for j in range(i + 1, len(merged)):
+                    gap = self._single_gap(merged[i], merged[j])
+                    if gap is None or cells.get(gap, background) == background:
+                        continue
+                    merged[i] |= merged[j] | {gap}
+                    merged.pop(j)
+                    changed = True
+                    break
+                if changed:
+                    break
+        return [frozenset(r) for r in merged]
+
+    @staticmethod
+    def _single_gap(a: set[Cell], b: set[Cell]) -> Optional[Cell]:
+        """The one cell separating two regions on a shared row, if that is all that
+        separates them."""
+        rows_a = {r for r, _ in a}
+        if rows_a != {r for r, _ in b} or len(rows_a) != 1:
+            return None
+        row = next(iter(rows_a))
+        cols_a = sorted(c for _, c in a)
+        cols_b = sorted(c for _, c in b)
+        if cols_a[-1] + 2 == cols_b[0]:
+            return (row, cols_a[-1] + 1)
+        if cols_b[-1] + 2 == cols_a[0]:
+            return (row, cols_b[-1] + 1)
+        return None
 
     def _tile(
         self, region: frozenset[Cell], available: list[frozenset[Cell]]
@@ -686,7 +737,17 @@ class FlowGrounding:
         return Grounded(self._animations[-1].frontier, "high")
 
     def _all_piece_cells(self) -> set[Cell]:
-        """Every cell occupied by any movable piece, on the current board."""
+        """Every cell occupied by any movable piece — the SAME inventory
+        :meth:`pieces` reports.
+
+        Deriving it separately is how a cell ends up in two classes at once: an
+        embedded source was absorbed into its bar by the inventory while a
+        by-appearance recomputation still left it out, so it stayed classified as a
+        barrier. The propagator checks barriers before pieces, and the flow died
+        exactly where the engine splits it."""
+        inventory = self.pieces()
+        if inventory is not UNKNOWN:
+            return {cell for _, cells in inventory.value for cell in cells}
         cells: set[Cell] = set(self._piece or ())
         if self._prev_cells is None:
             return cells
