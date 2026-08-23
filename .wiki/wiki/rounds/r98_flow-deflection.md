@@ -1476,14 +1476,55 @@ the case where both appearances are the same colour is kept — that one crashed
 observational dump that changes the thing it observes is worse than no dump. The probe
 now lives behind its own `R98_PROBE=1`.
 
+## The block deflects; it does not swallow (2026-08-24)
+
+The lane timing was not the problem — the observed spill puts the lane cells at index 3
+and the board injects them at tick 3. The problem was that OUR first stream was shorter
+than the engine's, so the compacted comparison shifted everything after it. The engine's
+opening steps say why:
+
+```
+obs 0: (12,3)   obs 1: (12,4)   obs 2: (13,4)   obs 3: (3,5) (3,6) (14,4)
+```
+
+Step 1 is SIDEWAYS. `(13,3)` is the solid block, and the stream steps around it and
+carries on down — while the block itself is satisfied. So this round's "absorber"
+reading was wrong in its most important part: the block does not swallow the stream, it
+**deflects** it exactly as a piece does.
+
+Modelling it that way emptied the observed-only surplus outright — every cell the engine
+produces, the model now produces. But deflecting to BOTH flanks invented a stream down
+the far side, because that side is blocked by the block's own second column. Adding the
+one condition the geometry demands — deflect only to a side whose own way ahead is not
+blocked — moved the first divergence from step 1 to **step 12**:
+
+```
+before   first divergence step 1   predicted-only 12   observed-only 5
+after    first divergence step 12  predicted-only  8   observed-only 0
+```
+
+`observed-only` empty is the meaningful half: the model no longer misses anything the
+engine does. What is left is over-production — eight cells the model makes that the
+engine does not, all of them downstream of step 12.
+
+```
+idx0: CLEARED — 23 actions
+idx1: CLEARED — 30 actions
+idx2: CLEARED — 55 actions
+idx3: executes in full; trail matches the engine for twelve steps
+```
+
+All four certifications hold, including the frozen mutant table — the deflection is
+board-level behaviour, not a slot in the response table, so it does not disturb what the
+model stage measures.
+
 ## Next
 
 1. **Fill is not confirmed paired.** gemma4 misses one slot, and the cause is our
    encoding rather than its reasoning. Measure the hazard orthogonalisation as its
    own experiment against all three models — never as a patch to move a verdict.
-2. **The falling lanes are injected at the wrong time.** idx3's first divergence is now
-   at step 1, where the model puts the lane cells down while the engine is still
-   running the first stream.
+2. **The model over-produces after step 12 on idx3.** Eight predicted cells the engine
+   never makes, and nothing missing — the remaining error is entirely surplus.
 3. **Multi-piece placement**, the burden the idx1 observation named: idx1 carries
    three pieces and three targets, so a single-piece placement satisfies nothing and
    the sink shortlist comes back empty. That, plus a shortlist that can name targets

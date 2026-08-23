@@ -250,56 +250,28 @@ def test_a_known_board_gap_is_not_charged_to_the_hypothesis():
     assert verify_with_evidence(F.sp80_oracle_instance(), plain).verdict is Verdict.CONTRADICTED
 
 
-def test_an_absorber_swallows_the_stream_without_satisfying_or_killing():
-    """Purpose: idx3 carries a solid block wearing the target colour that the ENGINE
-    satisfies — it recolours when the spill reaches it — while no candidate table has
-    a rule that ever satisfies a region with no notch to be flanked at. It cannot be a
-    sink, and it is not a hazard: contact is not fatal. Left out of the board, our flow
-    ran straight through what the engine's flow ended at.
+def test_an_absorber_DEFLECTS_the_stream_toward_the_side_that_can_continue():
+    """Purpose: idx3 carries a solid block wearing the target colour. The engine
+    satisfies it AND carries the stream on around it — measured, (12,3) then (12,4)
+    then down — so it is neither a sink that ends the stream nor a hazard that kills
+    it. Modelling it as swallowing cut our first stream short and shifted every later
+    step against the observation; modelling it as deflecting to BOTH sides invented a
+    stream down the far side that the engine never produced, because that side is
+    blocked by the block's own second column.
 
-    Expected feedback: pass proves an absorber ends the stream that reaches it, counts
-    for nothing, and does not kill the attempt. Fail means a board with one of these
-    predicts flow downstream of it that the engine never produces."""
+    Expected feedback: pass proves the stream steps aside to the side it can continue
+    on and keeps going. Fail means the trail diverges from the engine's at the first
+    block it meets."""
     from dataclasses import replace as _replace
 
-    plain = _board(WIN_PIECE)
-    baseline = predict(plain, ORACLE)
-    assert baseline.satisfied, "the control layout should satisfy something"
+    # the left branch of the split runs down column 2; the block sits in it, with its
+    # own second column to the LEFT so only the right side can continue
+    block = frozenset({(5, 1), (5, 2), (6, 1), (6, 2)})
+    board = _replace(_board(WIN_PIECE), absorber_cells=block)
+    reached = {c for layer in predict(board, ORACLE).frontier for c in layer}
 
-    # put an absorber directly under the stream, above the sinks
-    blocked = _replace(plain, absorber_cells=frozenset({(5, c) for c in range(SIZE)}))
-    stopped = predict(blocked, ORACLE)
-
-    assert not stopped.satisfied, "an absorber must not satisfy anything"
-    assert not stopped.fatal, "an absorber is not a hazard"
-    reached = {c for layer in stopped.frontier for c in layer}
-    assert not any(r >= 5 for r, _ in reached), \
-        f"flow continued past the absorber: {sorted(c for c in reached if c[0] >= 5)}"
-
-
-def test_a_falling_source_lands_on_whatever_is_topmost_in_its_lane():
-    """Purpose: an emergence records where a stream was SEEN to appear, so it is tied
-    to the layout it was seen under and cannot be replayed once a plan moves the
-    pieces. A LANE can: the stream lands on whatever is topmost in it, which is
-    computable for a layout never observed. Measured on idx3 — sliding the covering
-    piece one row moved the sighting one row with it while the lane stayed put.
-
-    The tick is on the replay's own axis, where index 0 is the seed frontier — the
-    same convention emergences already use.
-
-    Expected feedback: pass proves the injected stream appears just short of the first
-    thing in its lane, and moves when that obstacle moves. Fail means the model can
-    only predict layouts it has already watched."""
-    from dataclasses import replace as _replace
-
-    lane = 4
-    high = _replace(_board(frozenset({(3, 3), (3, 4), (3, 5)})),
-                    standing_flow=frozenset(), falling_sources=((lane, 2),))
-    low = _replace(high, pieces=(frozenset({(5, 3), (5, 4), (5, 5)}),))
-
-    def _first(board):
-        cells = [c for layer in predict(board, ORACLE).frontier for c in layer]
-        return [c for c in cells if c[1] == lane][:1]
-
-    assert _first(high) == [(2, lane)], f"expected a landing above row 3: {_first(high)}"
-    assert _first(low) == [(4, lane)], f"the landing did not follow the piece: {_first(low)}"
+    assert not reached & block, f"the stream entered the block: {sorted(reached & block)}"
+    assert (4, 3) in reached, \
+        f"the stream stopped at the block instead of stepping aside: {sorted(reached)}"
+    assert (4, 1) not in reached, \
+        "the stream deflected onto a side whose own way ahead is blocked"

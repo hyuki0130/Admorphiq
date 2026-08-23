@@ -233,9 +233,6 @@ def predict(board: Board, table: ResponseTable, max_ticks: int = 80) -> Predicti
                     spawn((r - dr, c - dc), (-dr, -dc))
                 continue
 
-            if ahead in board.absorber_cells:
-                continue  # swallowed: no satisfaction, no hazard, no onward flow
-
             sink_idx = board.sink_of(ahead)
             if sink_idx is not None:
                 same = all(board.sink_of(f) == sink_idx for f in flanks)
@@ -247,6 +244,20 @@ def predict(board: Board, table: ResponseTable, max_ticks: int = 80) -> Predicti
                     for f in flanks:
                         spawn(f, (dr, dc))
                 # stop / absorb: the droplet dies here
+                continue
+
+            if ahead in board.absorber_cells:
+                # NOT swallowed. Measured on idx3: the engine's stream reaches the
+                # solid block, steps sideways and carries on — (12,3) then (12,4) then
+                # down — while the block itself is satisfied. So it deflects the flow
+                # exactly as a piece does; modelling it as a sink that ends the stream
+                # cut our first stream short and shifted every later step against the
+                # observation.
+                for f in flanks:
+                    onward = (f[0] + dr, f[1] + dc)
+                    if onward in board.absorber_cells:
+                        continue  # that side is blocked too; the engine takes the other
+                    spawn(f, (dr, dc))
                 continue
 
             if ahead in board.piece_cells:

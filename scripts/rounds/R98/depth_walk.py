@@ -475,6 +475,8 @@ def _entry_report(g: FlowGrounding, observed) -> None:
     layers = [layer for layer in observed if layer]
     board = g.board()
     print(f"    [entry] observed first layers {[sorted(x) for x in layers[:2]]}", flush=True)
+    for i, layer in enumerate(layers[:12]):
+        print(f"      obs {i:2d}: {sorted(layer)}", flush=True)
     if board is not UNKNOWN:
         print(f"    [entry] injected emergences {sorted(board.value.emergences)} "
               f"standing {sorted(board.value.standing_flow)}", flush=True)
