@@ -304,6 +304,7 @@ def _execute(w: Walker, g: FlowGrounding, plan, entered: int, spent: int, probes
     """
     held: Select | None = None
     forecast = None
+    forecast_sinks: tuple = ()
     for index, step in enumerate(plan.steps):
         if w.actions - spent >= ACTION_BUDGET or not w.alive:
             return False, f"out of budget at step {index}", False
@@ -322,6 +323,7 @@ def _execute(w: Walker, g: FlowGrounding, plan, entered: int, spent: int, probes
             # board as it will actually be committed.
             pre = g.board()
             forecast = predict(pre.value, ORACLE) if pre is not UNKNOWN else None
+            forecast_sinks = pre.value.sinks if pre is not UNKNOWN else ()
             want = frozenset(c for piece in plan.intended for c in piece)
             have = _all_pieces(g)
             if want and want != have:
@@ -382,7 +384,7 @@ def _execute(w: Walker, g: FlowGrounding, plan, entered: int, spent: int, probes
                                f"{_what_blocks(g, frozenset(before.value), deltas_of(g)[step])}"), True
 
     if os.environ.get("R98_DUMP_BOARD") == "1" and forecast is not None:  # noqa: SIM102
-        _attribute_pre(g, forecast)
+        _attribute_pre(g, forecast, forecast_sinks)
         want = frozenset(c for piece in plan.intended for c in piece)
         have = _all_pieces(g)
         print(f"    [layout] short by {len(want - have)} cell(s); missing "
@@ -442,7 +444,7 @@ def _top_up(w: Walker, g: FlowGrounding, step: Select | None, entered: int, spen
     return False, "ran out of attempts topping a piece up to its place"
 
 
-def _attribute_pre(g: FlowGrounding, forecast) -> None:
+def _attribute_pre(g: FlowGrounding, forecast, sinks=()) -> None:
     """The prediction taken on the board AS COMMITTED against the spill that ran.
 
     Predicting on the post-commit board and comparing it to that same spill compares
@@ -454,9 +456,10 @@ def _attribute_pre(g: FlowGrounding, forecast) -> None:
         return
     pred = [frozenset(layer) for layer in forecast.frontier if layer]
     obs = [frozenset(layer) for layer in observed.value if layer]
+    named = [sorted(s)[0] for s in sinks]
     print(f"    [attribute] predicted {len(pred)} step(s)/{sum(len(x) for x in pred)} cells "
-          f"vs observed {len(obs)}/{sum(len(x) for x in obs)}; "
-          f"forecast satisfied {sorted(forecast.satisfied)}", flush=True)
+          f"vs observed {len(obs)}/{sum(len(x) for x in obs)}; forecast satisfies "
+          f"{[named[i] for i in sorted(forecast.satisfied) if i < len(named)]}", flush=True)
     for i in range(max(len(pred), len(obs))):
         a = pred[i] if i < len(pred) else frozenset()
         b = obs[i] if i < len(obs) else frozenset()

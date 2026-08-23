@@ -1552,14 +1552,43 @@ Reverted; idx0–idx3 are back to their previous behaviour. What this tick adds 
 measurement that localises the disagreement — surplus cells with the step that produced
 them, and a tail-by-tail comparison — and one hypothesis struck off with evidence.
 
+## The win rests on flow the engine never makes (2026-08-24)
+
+Naming the targets rather than counting them settles what idx3's surplus actually costs:
+
+```
+forecast satisfies   (13,6)  (13,9)  (13,12)
+engine satisfied     (13,2)  (13,6)  (13,9)      — (13,12) not recoloured
+```
+
+Two agree. The one we claim and the engine does not is exactly the target our surplus
+flow reaches: the extra cells are `(12,12) (12,13) (13,13)`, a stream running right along
+row 12 and dropping into the mouth of `(13,12)`. The engine's stream reaches `(12,11)`
+and goes no further.
+
+So the remaining error is not a tail artifact and not a timing offset — **the model wins
+on paper because it produces flow the engine does not.** That is a sharper problem than
+"eight surplus cells", and it is the one worth solving: a plan compiled on this model
+will keep choosing layouts whose win depends on a stream that will not exist.
+
+The duration hypothesis is ruled out on the way: idx0's spill is 14 steps long across
+three consecutive commits, so the engine has no fixed 21-step budget that would explain
+the truncation. The engine's row-12 stream stops because of something local at column 11,
+not because the spill ran out.
+
+Also fixed here: the attribution named satisfied targets by indexing the CURRENT board's
+sink list, while the forecast had been computed on the pre-commit board with a different
+list — which printed `(13,2) (13,6) (13,6)`, a duplicate that is not a possible answer.
+Indices are only meaningful next to the list they were produced against.
+
 ## Next
 
 1. **Fill is not confirmed paired.** gemma4 misses one slot, and the cause is our
    encoding rather than its reasoning. Measure the hazard orthogonalisation as its
    own experiment against all three models — never as a patch to move a verdict.
-2. **idx3 runs one step ahead of the engine from step 17.** The tails are the same trail
-   offset by one; the per-split stagger that would explain it is measured false (it
-   breaks idx2), so the cause is elsewhere — most likely in how pauses are compacted.
+2. **Why does the engine's row-12 stream stop at column 11?** Our stream carries on to
+   (12,12), (12,13) and into the mouth of (13,12), which is the whole of our
+   disagreement about which targets get satisfied on idx3.
 3. **Multi-piece placement**, the burden the idx1 observation named: idx1 carries
    three pieces and three targets, so a single-piece placement satisfies nothing and
    the sink shortlist comes back empty. That, plus a shortlist that can name targets
