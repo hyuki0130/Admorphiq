@@ -231,6 +231,10 @@ def play_level(w: Walker) -> tuple[bool, str]:
                       f"sinks={len(b.sinks)} hazards={sorted(b.hazard_cells)} "
                       f"emergences={sorted(b.emergences)} dir={b.direction} "
                       f"standing={len(b.standing_flow)}", flush=True)
+            if os.environ.get("R98_CAPTURE_STUCK"):
+                pre = g.board()
+                if pre is not UNKNOWN:
+                    _capture(pre.value, g.trajectory(), os.environ["R98_CAPTURE_STUCK"])
             return False, f"compiler {plan.status.value}: {plan.reason}"
         knew = g.falling_sources()
         knew = () if knew is UNKNOWN else knew.value
@@ -395,7 +399,7 @@ def _execute(w: Walker, g: FlowGrounding, plan, entered: int, spent: int, probes
                                f"{_what_blocks(g, frozenset(before.value), deltas_of(g)[step])}"), True
 
     if os.environ.get("R98_CAPTURE") and forecast is not None:
-        _capture(pre.value, g.trajectory())
+        _capture(pre.value, g.trajectory(), os.environ["R98_CAPTURE"])
     if os.environ.get("R98_DUMP_BOARD") == "1" and forecast is not None:  # noqa: SIM102
         _attribute_pre(g, forecast, forecast_sinks)
         want = frozenset(c for piece in plan.intended for c in piece)
@@ -458,7 +462,7 @@ def _top_up(w: Walker, g: FlowGrounding, step: Select | None, entered: int, spen
     return False, "ran out of attempts topping a piece up to its place"
 
 
-def _capture(board, observed) -> None:
+def _capture(board, observed, path: str) -> None:
     """Freeze the board AS COMMITTED and the spill it produced.
 
     Rule changes alter what the compiler chooses, so re-running the whole walk compares
@@ -482,7 +486,6 @@ def _capture(board, observed) -> None:
         "size": board.size,
         "observed": [sorted(layer) for layer in observed.value if layer],
     }
-    path = os.environ["R98_CAPTURE"]
     with open(path, "w") as f:
         json.dump(payload, f)
     print(f"    [capture] wrote {path}", flush=True)

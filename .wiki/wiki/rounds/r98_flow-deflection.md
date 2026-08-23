@@ -1800,14 +1800,53 @@ idx2: CLEARED — 55 actions
 idx3: plans with four lanes; no winning layout remains after the first commit
 ```
 
+## The shortlist was making the objective impossible (2026-08-24)
+
+`UNSATISFIABLE` after idx3's first commit turned out not to be about the position at all.
+Coordinate descent over the FULL legal option set on that board plateaus at 3 satisfied —
+of **five** targets. Listing them says why:
+
+```
+(13,2)   4 cells  notches []          ← a solid block; no rule can ever satisfy it
+(13,6)   5 cells  notches [(13,7)]
+(13,6)   5 cells  notches [(13,7)]    ← the same target, listed twice
+(13,9)   5 cells  notches [(13,10)]
+(13,12)  5 cells  notches [(13,13)]
+```
+
+Two defects, both in the shortlist rather than the board. A region with no notch cannot be
+satisfied by any candidate table, so requiring it makes "cover every target" unreachable by
+construction — and the compiler had been reporting exactly that, correctly, about an
+objective the harness had made impossible. And a region named by two sources at once was
+listed twice, so the objective counted one target as two.
+
+Both are fixed where they belong. The notch rule now applies to EVERY source, not just the
+weak appearance one — a notchless region is an obstacle and goes to the absorbers — and the
+shortlist drops duplicates. On idx3 the compiler plans again instead of declaring the level
+lost, and idx0–idx2 clear in the same action counts.
+
+```
+idx0: CLEARED — 23 actions
+idx1: CLEARED — 30 actions
+idx2: CLEARED — 55 actions
+idx3: plans again; a planned press fails to land twice
+```
+
+One existing pin had to change with the contract: the oscillating-band test used 1-cell
+targets, which have no notch and are therefore no longer shortlisted. Its real claim — the
+band must never merge with the targets — is intact, restated with notched targets and a
+direct assertion that no band cell is ever named. Changing a test to match a contract change
+is legitimate; what is not is changing one to match an outcome, and the distinction is
+whether the claim survives the rewrite. This one does.
+
 ## Next
 
 1. **Fill is not confirmed paired.** gemma4 misses one slot, and the cause is our
    encoding rather than its reasoning. Measure the hazard orthogonalisation as its
    own experiment against all three models — never as a patch to move a verdict.
-2. **idx3's first commit spends the level.** With all four lanes the compiler finds no
-   winning layout from the position that commit leaves. The lever is choosing a first
-   layout that keeps one — or discovering the lanes before committing at all.
+2. **idx3's planned press fails to land twice.** With the shortlist repaired the compiler
+   plans again; execution is the blocker once more, and the press is refused into cells
+   nothing occupies.
 3. **Measure the bounded-roof variant on fixed evidence** — 1 invented cell against the
    adopted rule's 2, deliberately not adopted in the same change.
 3. **Multi-piece placement**, the burden the idx1 observation named: idx1 carries

@@ -157,25 +157,31 @@ def test_sink_shortlist_excludes_an_oscillating_edge_band():
     stability rule the targets and the band merge under 4-connectivity into one
     phantom region. Only a change that is STABLE at the end of the run counts.
 
-    Expected feedback: pass proves the shortlist names the targets separately.
-    Fail reproduces the merge trap that once had a planner moving a blob the engine
-    could not move."""
+    The targets here are NOTCHED, as this family's targets are — a shortlist entry has
+    to be satisfiable to be a target at all (see the shortlist invariants test).
+
+    Expected feedback: pass proves the shortlist names the targets separately and never
+    the band. Fail reproduces the merge trap that once had a planner moving a blob the
+    engine could not move."""
+    left = {(6, 0): 2, (6, 2): 2, (5, 0): 2, (5, 1): 2, (5, 2): 2}    # notch at (6, 1)
+    right = {(6, 4): 2, (6, 6): 2, (5, 4): 2, (5, 5): 2, (5, 6): 2}   # notch at (6, 5)
     layers = []
     flow = {}
     for k in range(1, 6):
-        flow[(k, 1)] = 6
+        flow[(k, 3)] = 6
         band = {(7, c): (9 if k % 2 else 3) for c in range(N)}  # oscillates
-        settled = {(6, 1): 5, (6, 5): 5} if k >= 3 else {(6, 1): 2, (6, 5): 2}
+        settled = ({c: 5 for c in {**left, **right}} if k >= 3 else {**left, **right})
         layers.append(_frame({**flow, **band, **settled}))
 
     g = FlowGrounding()
-    g.observe(0, None, [_frame({(6, 1): 2, (6, 5): 2, **{(7, c): 3 for c in range(N)}})])
+    g.observe(0, None, [_frame({**left, **right, **{(7, c): 3 for c in range(N)}})])
     g.observe(5, None, layers)
 
     sinks = g.sink_candidates()
     assert sinks is not UNKNOWN
-    assert [name for name, _ in sinks.value] == ["sink_0", "sink_1"]
-    assert all(len(cells) == 1 for _, cells in sinks.value)
+    named = {c for _, cells in sinks.value for c in cells}
+    assert not any(r == 7 for r, _ in named), f"the band was named as a target: {sinks.value}"
+    assert len(sinks.value) == 2, f"the targets did not stay separate: {sinks.value}"
 
 
 def test_family_specific_queries_stay_unknown_until_a_scripted_consequence():
@@ -382,3 +388,40 @@ def test_lanes_accumulate_across_spills():
     both = g.falling_columns()
     assert both is not UNKNOWN
     assert {2, 3} <= set(both.value), f"a lane was forgotten between spills: {both.value}"
+
+
+def test_the_shortlist_holds_no_duplicate_and_no_notchless_target():
+    """Purpose: measured on idx3 after its first commit — the shortlist had grown to five
+    entries, one of them a solid block with no notch and another a straight duplicate of
+    a target already listed. "Cover every target" was then unreachable by construction,
+    and the compiler kept reporting exactly that.
+
+    Expected feedback: pass proves a region is listed once and only when it has a notch
+    to be satisfied at. Fail means the objective can be made impossible by the shortlist
+    rather than by the board."""
+    notched = {(6, 0): 4, (6, 2): 4, (7, 0): 4, (7, 1): 4, (7, 2): 4}   # notch at (6, 1)
+    blocker = {(6, c): 4 for c in range(4, 7)}
+    wall = {(3, 1): 4, (3, 2): 4, (4, 1): 4, (4, 2): 4}                  # no notch
+    static = {**notched, **blocker, **wall}
+
+    layers = []
+    flow = {}
+    for k in range(1, 7):
+        if k <= 5:
+            flow[(k, 5)] = 6
+        if k == 6:
+            flow[(5, 4)] = 6
+            flow[(5, 6)] = 6
+        layers.append(_frame({**static, **flow}))
+
+    g = FlowGrounding()
+    g.observe(0, None, [_frame(static)])
+    g.observe(5, None, layers)
+
+    sinks = g.sink_candidates()
+    assert sinks is not UNKNOWN
+    groups = [frozenset(cells) for _, cells in sinks.value]
+    assert len(groups) == len(set(groups)), f"a target is listed twice: {sinks.value}"
+    for group in groups:
+        assert g._mouths(group), f"a target with no notch was listed: {sorted(group)}"
+    assert set(wall) <= g.absorbers(), "the notchless block was not carried as an absorber"

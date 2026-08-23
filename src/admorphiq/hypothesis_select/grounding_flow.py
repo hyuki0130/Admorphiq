@@ -1308,12 +1308,11 @@ class FlowGrounding:
         if len(colours) != 1:
             return frozenset()
         colour = colours.pop()
-        named = [frozenset(group) for _, group in sinks.value]
         pieces = self._all_piece_cells()
         out: set[Cell] = set()
         for region in _regions(cells, colour):
             for part in self._by_mouth(region):
-                if part & pieces or any(part & known for known in named):
+                if part & pieces:
                     continue
                 if not self._mouths(part):
                     out |= part
@@ -1355,7 +1354,21 @@ class FlowGrounding:
             return UNKNOWN
         split: list[frozenset[Cell]] = []
         for group in groups:
-            split.extend(self._by_mouth(group))
+            for part in self._by_mouth(group):
+                # A region with no notch is an OBSTACLE, not a target of this family,
+                # whichever source named it — the same rule the appearance source
+                # already applied, now applied to all of them. Measured on idx3: a
+                # solid block named by obstruction sat in the shortlist, and since no
+                # rule can ever satisfy it "cover every target" was unreachable by
+                # construction, which is what the compiler kept reporting.
+                if not self._mouths(part):
+                    continue
+                # …and the same region can be named by two sources at once. A duplicate
+                # makes the objective count one target twice.
+                if part not in split:
+                    split.append(part)
+        if not split:
+            return UNKNOWN
         return Grounded(
             tuple((f"sink_{i}", tuple(sorted(g))) for i, g in enumerate(sorted(split, key=min))),
             "high",
