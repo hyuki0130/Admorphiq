@@ -425,3 +425,36 @@ def test_the_shortlist_holds_no_duplicate_and_no_notchless_target():
     for group in groups:
         assert g._mouths(group), f"a target with no notch was listed: {sorted(group)}"
     assert set(wall) <= g.absorbers(), "the notchless block was not carried as an absorber"
+
+
+def test_the_move_budget_is_learned_from_a_loss_and_not_guessed():
+    """Purpose: some levels spend a piece on its second move along the flow — measured on
+    idx3, where a piece moves once and the next move takes it off the board, while on idx0
+    one travels five steps untouched. A planner that does not know this writes plans that
+    destroy their own pieces; a planner that GUESSES a limit loses the levels that have
+    none, which is exactly what happened when a row-axis limit was applied globally.
+
+    Expected feedback: pass proves the budget stays UNKNOWN until the board has actually
+    taken a piece, and is then the number of moves that piece survived. Fail means the
+    harness either plans self-destructive moves or invents a constraint no level stated."""
+    bar = {(2, 2): 7, (2, 3): 7}
+    g = FlowGrounding()
+    g.observe(0, None, [_frame(bar)])
+    g.observe(6, (2, 2), [_frame({(2, 2): 9, (2, 3): 9})])           # select it
+    piece = {(2, 2): 9, (2, 3): 9}
+    run = {}
+    frames = [_frame(piece)]
+    for r in range(1, 6):                                            # a spill long enough
+        run[(r, 6)] = 6                                              # to fix the direction
+        frames.append(_frame({**piece, **run}))
+    g.observe(5, None, frames)
+    assert g.initial_direction() is not UNKNOWN, "the direction must be measurable"
+    assert g.move_budget() is UNKNOWN, "a budget was claimed before any piece was lost"
+
+    g.observe(2, None, [_frame({(3, 2): 9, (3, 3): 9})])             # one move along it
+    assert g.move_budget() is UNKNOWN, "a surviving move must not look like a loss"
+
+    g.observe(2, None, [_frame({})])                                 # and the piece goes
+    budget = g.move_budget()
+    assert budget is not UNKNOWN, "the loss taught nothing"
+    assert budget.value == 1, f"the budget should be what the piece survived: {budget}"

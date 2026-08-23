@@ -140,10 +140,18 @@ def _wins(board: Board, table: ResponseTable, objective: F.CoverAllSinks) -> tup
     return (satisfied >= required and not (fatal_blocks and prediction.fatal)), satisfied
 
 
-def _path_to(offset: tuple[int, int], deltas: dict[int, tuple[int, int]]) -> Optional[tuple[int, ...]]:
+def _path_to(offset: tuple[int, int], deltas: dict[int, tuple[int, int]],
+             along: Optional[tuple[tuple[int, int], int]] = None) -> Optional[tuple[int, ...]]:
     """The shortest action sequence realising a translation offset, using only the
     measured deltas. Returns None when no combination of measured actions reaches
-    it — an honest failure rather than an invented press."""
+    it — an honest failure rather than an invented press.
+
+    ``along`` is (flow direction, budget) when the board has SHOWN what a piece
+    survives. Some levels spend a piece on its second move along the flow: measured on
+    idx3, where a piece moves once and the next move takes it off the board, while on
+    idx0 one travels five steps untouched. So a path needing more moves than the budget
+    is not a slow route, it is a plan that destroys the piece it moves — and the budget
+    is only applied once a loss has actually shown it, never guessed."""
     want_r, want_c = offset
     if (want_r, want_c) == (0, 0):
         return ()
@@ -160,7 +168,12 @@ def _path_to(offset: tuple[int, int], deltas: dict[int, tuple[int, int]]) -> Opt
                 break
         if step is None or abs(want) % step[1]:
             return None
-        seq.extend([step[0]] * (abs(want) // step[1]))
+        count = abs(want) // step[1]
+        if along is not None:
+            (fr, fc), budget = along
+            if (fr, fc)[axis] and count > budget:
+                return None
+        seq.extend([step[0]] * count)
     return tuple(seq)
 
 
@@ -187,6 +200,7 @@ def _piece_options(
     deltas: dict[int, tuple[int, int]],
     sink_cells: set[Cell],
     row_bound: int = 0,
+    along: Optional[tuple[tuple[int, int], int]] = None,
 ) -> list[tuple[Cell, tuple[int, ...]]]:
     """Every placement this piece can reach, as (offset, action path), cheapest
     first. A placement is admissible only if the piece stays on the board, respects
@@ -212,7 +226,7 @@ def _piece_options(
                 continue
             if any(r < row_bound for (r, _) in moved):
                 continue
-            path = _path_to((dr, dc), deltas)
+            path = _path_to((dr, dc), deltas, along)
             if path is None:
                 continue
             out.append((len(path), (dr, dc), path))
@@ -381,8 +395,10 @@ def compile_flow_hypothesis(
     margin = getattr(constraints, "sink_keepout_margin", 0) or 0
     row_bound = getattr(constraints, "row_bound", None) or 0
     sink_cells = _forbidden_cells(board, margin)
+    budget = grounding.move_budget()
+    along = None if budget is UNKNOWN else (board.direction, budget.value)
     options = [
-        _piece_options(board, i, deltas, sink_cells, row_bound)
+        _piece_options(board, i, deltas, sink_cells, row_bound, along)
         for i in range(len(board.pieces))
     ]
     if any(not o for o in options):

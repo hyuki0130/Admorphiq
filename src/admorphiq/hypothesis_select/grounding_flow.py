@@ -236,6 +236,10 @@ class FlowGrounding:
         self._selection_obs: int = 0
         self._blocked: list[tuple[int, frozenset[Cell]]] = []
         self._unattributed_noops: int = 0
+        # How many moves ALONG the flow each piece has made, and the largest number any
+        # piece was seen to survive before the board took it away.
+        self._flow_moves: dict[frozenset[Cell], int] = {}
+        self._move_budget: Optional[int] = None
 
     # ── ingest ───────────────────────────────────────────────────────────
 
@@ -278,6 +282,7 @@ class FlowGrounding:
         if before is not None and not committed and not seed:
             self._classify(before, action, xy, after)
         self._prev_cells = after
+        self._note_losses()
 
     def _read_animation(self, stack: list[Grid]) -> Optional[_Animation]:
         """Read one exposed spill out of a layer stack.
@@ -457,6 +462,16 @@ class FlowGrounding:
     ) -> None:
         self._delta_obs[action][delta] += 1
         self._moving_colour = colour
+        # Moves ALONG the flow are counted per piece, because some levels spend a piece
+        # on the second one. Counted per MOVE, never per press: a press the board
+        # refuses costs nothing, which is why a probe phase can press along the flow
+        # repeatedly at no cost where the pieces start blocked.
+        direction = self.initial_direction()
+        if direction is not UNKNOWN and delta[0] * direction.value[0] + \
+                delta[1] * direction.value[1] != 0:
+            self._flow_moves[landed] = self._flow_moves.pop(self._piece, 0) + 1
+        elif self._piece is not None and self._piece in self._flow_moves:
+            self._flow_moves[landed] = self._flow_moves.pop(self._piece)
         self._piece = landed
         shape = _normalised(landed)
         if shape not in self._confirmed_shapes:
@@ -516,6 +531,41 @@ class FlowGrounding:
         the family's observable tell. Every query below is UNKNOWN until then, so
         a non-flow board never activates these paths."""
         return bool(self._commit_obs)
+
+    def _note_losses(self) -> None:
+        """A piece that had moved along the flow and is no longer on the board was spent
+        by that move. What it survived is the level's budget.
+
+        Measured: idx3 takes a piece on its SECOND move along the flow while idx0 lets
+        one travel five steps untouched, so this is a per-level quantity — and it can be
+        learned for free from a move the agent was making anyway, rather than by
+        deliberately spending a piece to find out."""
+        if not self._flow_moves or self._prev_cells is None:
+            return
+        # Read the board, not the inventory: the remembered piece survives its own
+        # disappearance, so asking the inventory whether a piece is still there answers
+        # with the memory of it.
+        worn = {c for c in (self._selected_colour, self._idle_colour, self._moving_colour)
+                if c is not None}
+        alive = {cell for cell, colour in self._prev_cells.items() if colour in worn}
+        for cells, moves in list(self._flow_moves.items()):
+            if cells & alive:
+                continue
+            del self._flow_moves[cells]
+            # the counter holds SUCCESSFUL moves, and the move that spends a piece
+            # never lands — so what it holds is exactly what the piece survived
+            survived = moves
+            if self._move_budget is None or survived < self._move_budget:
+                self._move_budget = survived
+
+    def move_budget(self) -> Any:
+        """How many moves along the flow a piece survives, once the board has shown it.
+
+        UNKNOWN until a piece is actually lost — an unspent budget is unmeasured, and
+        guessing one costs the levels that have none."""
+        if self._move_budget is None:
+            return UNKNOWN
+        return Grounded(self._move_budget, "high")
 
     def piece_appearances(self) -> tuple[Optional[int], Optional[int]]:
         """(selected, idle) as read off the CURRENT board.

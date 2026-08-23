@@ -1955,15 +1955,53 @@ idx2: CLEARED — 55 actions
 idx3: a second MOVE along the flow axis consumes the piece — on this level only
 ```
 
+## The budget is learned from a loss, never guessed (2026-08-24)
+
+The mechanic is now in the model, on the terms the cross-level measurement demanded.
+
+Grounding counts each piece's moves ALONG the flow — per move, never per press, because a
+press the board refuses costs nothing — and when a piece that had moved is no longer on the
+board, what it survived becomes `move_budget()`. Until a piece is actually lost the query
+is `UNKNOWN`, and the compiler applies nothing: guessing a limit is what cost idx2 its clear
+two ticks ago, and no level is required to have one.
+
+Live, it learns exactly what the probe measured:
+
+```
+after move 0: 5 pieces   budget UNKNOWN
+after move 1: 4 pieces   budget 1
+```
+
+`_path_to` now refuses a path needing more moves along the flow than the budget allows. On
+idx0-idx2 nothing changes — no piece is ever lost there, so no budget exists and the
+planner is untouched, and all three clear in the same action counts. On idx3 the compiler
+reports **no satisfiable layout within the budget**, which is a truthful answer: a plan
+that needs two moves along the flow is not slow, it is a plan that destroys the piece it
+moves, and the compiler no longer writes one.
+
+Two implementation traps worth the note. The counter must be read as SURVIVED moves — the
+move that spends a piece never lands, so it is never counted, and an off-by-one made the
+first measurement report a budget of zero. And the loss must be read from the BOARD: asking
+the inventory whether a piece is still there answers with the memory of it, because the
+remembered piece survives its own disappearance. That is the fourth time this round that a
+remembered value outlived the thing it described.
+
+```
+idx0: CLEARED — 23 actions
+idx1: CLEARED — 30 actions
+idx2: CLEARED — 55 actions
+idx3: plans within the learned budget; no winning layout inside it
+```
+
 ## Next
 
 1. **Fill is not confirmed paired.** gemma4 misses one slot, and the cause is our
    encoding rather than its reasoning. Measure the hazard orthogonalisation as its
    own experiment against all three models — never as a patch to move a verdict.
-2. **Learn the move budget for free.** It is per piece, per level (idx3 has one, idx0
-   none) and spent by a MOVE rather than a press, so the harness can detect it by
-   watching whether the inventory shrinks after a move it already makes — no piece
-   spent to find out. Then the compiler can respect it.
+2. **idx3 has no winning layout within its move budget.** Either a placement it needs is
+   more than one move away — in which case the level wants pieces moved before the
+   budget is spent, i.e. a different first plan — or something else in the model is
+   still wrong.
 3. **Measure the bounded-roof variant on fixed evidence** — 1 invented cell against the
    adopted rule's 2, deliberately not adopted in the same change.
 3. **Multi-piece placement**, the burden the idx1 observation named: idx1 carries
