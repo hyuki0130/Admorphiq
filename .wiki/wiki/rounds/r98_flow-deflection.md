@@ -6415,6 +6415,28 @@ Cost: a few hundred bytes per run, on a record that already keeps 1200 character
 for unparsable cases. There is no reason to make it conditional.
 
 
+## Three repetitions cannot carry a verdict — raised to nine (2026-08-25)
+
+gpt-oss returned 3/3 and then 0/3 on the same prompt for the same mode. Those two results are not
+in conflict: three draws from one underlying rate produce both outcomes easily, and neither run
+was wrong about what it saw. What is wrong is treating either as the model's score.
+
+`R98_RUNS` default raised 3 -> 9 and all three kernels re-pushed. Nine separates a model that
+answers correctly most of the time from one that does so occasionally, which is the distinction
+every verdict in this round's model stage has been making implicitly on three samples. The cost is
+minutes on a machine that spends longer than that loading the weights.
+
+⚠️ This does not retroactively invalidate the SELECT verdicts, which were 3/3 for all three models
+across independent runs — repeated perfection on small samples is weak evidence of a high rate,
+but it is evidence in the right direction, and select reproduced on re-runs. It does put the FILL
+verdicts on notice: "gpt-oss passes fill and the others do not" now rests on a sample that has
+been observed to swing completely.
+
+Sequencing kept to the rule this round has broken twice: dataset pushed first, its file listing
+polled until the new size appeared (41823 bytes, the fingerprint build), and only then the
+kernels. Both contract-pair models are running; qwen3.8 waits on the two-session GPU cap.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -6514,6 +6536,10 @@ for unparsable cases. There is no reason to make it conditional.
     compiler's UNSATISFIABLE is the truth about the board rather than a search failure.
     Either the propagator floors flow the engine does not, or the level wants more than
     one placement.
+82. **Three repetitions cannot carry a verdict — `R98_RUNS` raised 3 -> 9.** gpt-oss gave 3/3
+    then 0/3 on the same prompt; three draws from one rate produce both. SELECT survives (3/3
+    for all three models on independent runs), FILL is on notice — "only gpt-oss passes" rests
+    on a sample observed to swing completely. Dataset-then-kernels sequencing kept.
 81. **The record now carries the BOARD the verdict was taken on.** `_board_fingerprint()` on
     every run: size, direction, piece sizes, sink anchors, hazard cells, absorbers, sources.
     Verified populated (idx0's own hazards), and the self-test requires it on every case —

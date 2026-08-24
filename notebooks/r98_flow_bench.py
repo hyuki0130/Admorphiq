@@ -49,7 +49,12 @@ MAX_MODEL_LEN = 131072
 # 262k native context does not reserve a KV cache it will never touch and OOM the
 # card before serving a single request.
 _MAX_MODEL_LEN_CEIL = 65536
-RUNS = int(os.environ.get("R98_RUNS", "3"))
+# Three repetitions is too thin to call a verdict on. gpt-oss returned 3/3 and then
+# 0/3 on the SAME prompt for the default fill, which three runs can produce from one
+# underlying rate without either number being wrong. Nine separates a model that
+# answers correctly most of the time from one that does so occasionally; it costs
+# minutes on a machine that spends longer than that loading the weights.
+RUNS = int(os.environ.get("R98_RUNS", "9"))
 
 # %%
 def _find_dir(name: str, root: str = "/kaggle/input", max_depth: int = 6) -> str:
