@@ -6207,6 +6207,37 @@ with 15 cells on the contract board, i.e. refuted, and it is refuted for a reaso
 it fires at every collision while the observation only ever shows this at one.
 
 
+## The rule is not refuted — its EXPRESSION is (2026-08-25)
+
+Diffing idx0 under the variant instead of reading its total says exactly what broke:
+
+```
+baseline: invented [] missed []
+variant : invented [] missed [(3,4) (4,4) (5,4) ... (12,3) (12,4) (12,5) (13,3) (13,5) (14,3)]
+```
+
+All fifteen descend from one cell that was never born, `(3,4)` — the step off the piece's end
+that idx0's left walk takes. Tracing it back: the walk reaches `(3,6)`, whose flanks are `(3,5)`
+and `(3,7)`. Measured outward, `(3,5)`'s supported run is 1 and `(3,7)`'s is 2, so the variant
+declares `(3,5)` the loser and spends it — and a spent droplet `continue`s out of the collision
+branch, so `(3,4)` is never spawned and the entire descent below it disappears.
+
+**The rule was re-decided at every collision.** A walk that is winning at the landing becomes a
+loser three cells later simply because the surface it has already crossed is behind it. What the
+observation shows is a side that walks *from the landing*, not a side that re-earns the right to
+walk at each step, so the decision has to be made once and inherited.
+
+That is a real fix and it is not a textual one: the droplet is `(cell, direction, walked)` and
+inheriting the decision means carrying a fourth field through every spawn. **Not done here** —
+this is the non-gating bench axis, the contract level is unaffected, and restructuring the
+propagator's droplet on a diagnostic errand is how a round acquires a change nobody measured.
+Recorded as the next concrete step on this axis, with the diagnosis attached so it does not have
+to be found twice.
+
+What the numbers mean in the meantime: 196 and 144 are scores for a rule that cuts its own
+winning walk, not for the rule the observation describes. They are not evidence against it.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -6306,6 +6337,12 @@ it fires at every collision while the observation only ever shows this at one.
     compiler's UNSATISFIABLE is the truth about the board rather than a search failure.
     Either the propagator floors flow the engine does not, or the level wants more than
     one placement.
+76. **The one-side-walks rule is NOT refuted — its expression was.** idx0's 15 lost cells all
+    descend from `(3,4)`, never born because the variant re-decides at EVERY collision and
+    the winning walk becomes a "loser" once the surface it has crossed is behind it. The
+    decision must be made at the landing and INHERITED, which needs a fourth field on the
+    droplet — deliberately NOT done on a non-gating errand. 196/144 score a rule that cuts
+    its own walk; they are not evidence against the observed one.
 75. **CORRECTION to #74 — five of six events need NO rule.** The probe followed straight
     lateral runs, so "stopped after one cell" and "fell after one cell" read alike. Asking
     for a descendant separates them: idx0's right side FALLS all the way to (12,10) and
