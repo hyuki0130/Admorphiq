@@ -2326,13 +2326,57 @@ idx2: CLEARED — 55 actions
 idx3: executes in 54 actions; the spill now opens where the engine opens it
 ```
 
+## Each stream leaves its perch at the NEARER end (2026-08-24)
+
+With the opening now correct, the mid-spill disagreement on idx3 is one invented stream.
+The layer comparison isolates it:
+
+```
+    2: predicted (3,8) (4,4)      observed (3,8) (4,4)
+ !! 3: predicted (3,9) (5,4)      observed (5,4)
+ !! 4: predicted (4,9) (6,4)      observed (6,4)
+```
+
+Both agree through `(3,8)`. Then ours steps to `(3,9)`, falls off the piece's right end and
+runs a whole stream down the right of the board — `(4,9) (5,9) (5,8) (5,10) (5,7) (5,11)
+(5,12) (6,12) (7,12)` — none of which the engine produces. Nothing occupies `(3,9)` or
+`(4,9)`; the engine's right-going spread simply stops at the piece's edge while its
+left-going one drops and carries on.
+
+Two boards of the same level fix the rule between them:
+
+```
+board a   piece spans 4..7, sources at 5 and 6   BOTH ends drop
+board g   piece spans 5..8, sources at 5 and 6   only the LEFT drops
+```
+
+On (a) source 5's nearer end is the left and source 6's is the right, so each takes its own
+and both sides fall. On (g) both sources are nearer the left, and only the left falls. So
+**a stream resting on a piece leaves it at the nearer end of that piece** — the same
+"nearer end" the covered-source emission already uses, now recognised as the general shape.
+
+**The implementation that follows from it is not the obvious one.** Replacing the landing
+cell with the fall-off cell scores WORSE: it loses the cells along the piece's top, which
+the engine does produce — board a goes from nothing missed to missing `(3,4) (3,5) (3,6)
+(3,7)`. The stream spreads along the top AND leaves at one end; the rule belongs on the
+spreading side, not on the injection. Reverted, with the rule recorded and the wrong place
+to put it recorded too.
+
+```
+idx0: CLEARED — 23 actions
+idx1: CLEARED — 30 actions
+idx2: CLEARED — 55 actions
+idx3: one invented stream, off the far end of a piece the engine never leaves that way
+```
+
 ## Next
 
 1. **Fill is not confirmed paired.** gemma4 misses one slot, and the cause is our
    encoding rather than its reasoning. Measure the hazard orthogonalisation as its
    own experiment against all three models — never as a patch to move a verdict.
-2. **Fourteen invented cells from step 3 onward on idx3**, and three missed. The opening
-   agrees now; the disagreement is in the middle of the spill.
+2. **Put "leaves at the nearer end" on the SPREADING side.** The rule is measured on two
+   boards; implementing it at the injection loses the cells along the piece's top, which
+   the engine does produce.
 3. **Measure the bounded-roof variant on fixed evidence** — 1 invented cell against the
    adopted rule's 2, deliberately not adopted in the same change.
 3. **Multi-piece placement**, the burden the idx1 observation named: idx1 carries
