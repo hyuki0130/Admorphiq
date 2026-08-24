@@ -4614,6 +4614,46 @@ a life in hand, the attempt failing, and no observable reason. What can still be
 flash budget itself — fail a level deliberately several times and watch the flash stop.
 
 
+## The engine paints its unsatisfied targets, and the block is one of them (2026-08-24)
+
+The flash-budget reading was refuted first: failing idx0 four times in a row flashes identically
+every time and then ends the game.
+
+```
+commit 0..3: NOT_FINISHED  22 layers  flash at layers 14, 16, 18, 20
+commit 4:    GAME_OVER
+```
+
+So a silent failure is not a spent budget — and four failures end the game, confirming the life
+count a third time.
+
+Which sent the hunt to the OTHER half of the failure animation. The engine flashes two things: the
+failure sprites it touched, and **the targets that were NOT satisfied**, painted in colour 0.
+Looking for colour 0:
+
+```
+spill 28 (idx1)  layer 21: 5 cells   (1,7) (1,8) (1,9) (2,7) (2,9)
+spill 29 (idx2)  layer 22: 10 cells  two target shapes
+spill 33 (idx3)  layer 26: 14 cells  (13,2) (13,3) (14,2) (14,3)   <- THE BLOCK
+                                     (13,9) (13,11) (14,9..11)     <- target 1
+                                     (13,12) (13,14) (14,12)       <- target 2
+spill 38 (idx3)  no colour-0 cell anywhere
+```
+
+**The block is one of the engine's targets.** Not inferred from its appearance, not argued from
+the schema — the engine itself paints it as an unsatisfied target when the attempt fails. Every
+earlier attempt to settle this failed because it looked at the board's colours instead of at the
+failure animation, which is the only place the engine says what it was counting.
+
+And the second line matters as much: on the spill where all nineteen cells are satisfied, **no
+target is painted 0 at all**. So the engine agrees that everything it wants was satisfied — and
+the attempt still failed, which by its own condition leaves only the flag, while nothing flashed
+to say a failure sprite was touched.
+
+Two measured facts that cannot both be complete. The next probe is the failure sprite itself:
+find what it looks like on a board where it IS touched, then look for that entity on idx3.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -4696,6 +4736,11 @@ flash budget itself — fail a level deliberately several times and watch the fl
     commits. One life recovered by not re-committing when the aiming moved nothing;
     three more are spent because every level builds a FRESH grounding and re-learns the
     flow's direction and colour, which cannot change within a game.
+31. **THE BLOCK IS ONE OF THE ENGINE'S TARGETS — observed.** A failing attempt paints its
+    UNSATISFIED targets in colour 0, and idx3's paints the block among them. On the spill
+    where all nineteen are satisfied nothing is painted 0, so the engine agrees everything
+    it wants was satisfied — and the attempt still failed. Flash budget refuted: idx0
+    flashes identically on all four failures, then GAME_OVER.
 30. **A failing attempt leaves NOTHING marked** — five cells differ across a whole failing
     spill: the piece re-selecting, and one flow cell clearing. The flash is transient, and
     the source flashes only while a per-level counter is under six, so idx3's later
