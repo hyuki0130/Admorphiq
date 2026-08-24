@@ -4049,6 +4049,43 @@ resets between commits would make a two-commit plan unable to finish what a one-
 starts — except that the LAST spill alone enters all three, which argues against it.
 
 
+## The engine recoloured all three, and idx3 still did not clear (2026-08-24)
+
+`changed_regions` is the engine's own satisfaction signal — regions that take on a stable new
+appearance while a spill runs — so it says what the ENGINE counted, not what the model claims.
+Read across the whole walk:
+
+```
+idx0   28 layers -> 2 changed [(13,4), (13,10)]  sizes [5, 5]     both targets
+idx1   28 layers -> 2 changed [(1,3), (1,11)]    sizes [5, 5]
+idx2   25 layers -> 2 changed [(1,6), (1,12)]    sizes [5, 5]
+idx3   33 layers -> 1 changed [(13,6)]           size  [5]        one target
+idx3   38 layers -> 1 changed [(13,6)]           size  [15]       <-
+```
+
+Fifteen cells starting at (13,6), and the three targets hold exactly fifteen:
+
+```
+(13,6) (13,8) (13,9) (13,11) (13,12) (13,14)
+(14,6) (14,7) (14,8) (14,9) (14,10) (14,11) (14,12) (14,13) (14,14)
+```
+
+They recolour to the same appearance and become ONE connected region, which is why the count
+reads 1 and the size reads 15 rather than three regions of five. **So the engine satisfied all
+three targets on the final spill, and `levels_completed` stayed at 3.**
+
+That is the strongest fact this thread has produced, and it puts the fourth region back as the
+leading answer — on evidence rather than by elimination. The block was NOT among the changed
+regions, so the engine did not count it, and the level did not advance while it stood
+unsatisfied.
+
+What the earlier block test actually refuted is narrower than it looked: **roof contact does not
+satisfy the block**, and our propagator can only ever deliver roof contact, because it deflects
+flow around an absorber and never enters one. The claim "the fourth region is no longer the
+leading answer" was too broad and is withdrawn — the region is exactly the leading answer; what
+is unknown is how the engine wants it filled.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -4093,9 +4130,11 @@ starts — except that the LAST spill alone enters all three, which argues again
     plan aimed at all four regions executed, the flow reached the block's ROOF at (12,2),
     the block did not recolour and the level did not advance. So why DOES idx3 stop? That
     is the open question now, and the fourth region is no longer the leading answer.
-17. **Engine-confirmed**: `levels_completed = 3` across both of idx3's commits, and the
-    last spill alone enters all three mouths. "Enter every mouth" is what clears idx0 and
-    is NOT what idx3 wants.
+17. **Engine-confirmed, and sharper**: on idx3's final spill the engine RECOLOURED all
+    fifteen target cells — its own satisfaction signal — and `levels_completed` stayed 3.
+    The fourth region is the leading answer again, on evidence. What is unknown is HOW it
+    wants to be filled: roof contact is refuted, and our propagator can deliver nothing
+    else, since it deflects around an absorber and never enters one.
 13. ~~idx3 executes its plan and does not clear.~~ **A SCHEMA GAP — the PREDICATE IS GLOBAL
     and this board needs two.** `contact` exists and would satisfy the notchless region
     (14033 winning layouts), but it is CONTRADICTED for the family, so it cannot be taken.
