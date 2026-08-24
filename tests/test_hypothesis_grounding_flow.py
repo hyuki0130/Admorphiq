@@ -595,3 +595,28 @@ def test_a_pair_over_a_piece_edge_is_one_source_not_half_of_one():
     assert sources is not UNKNOWN
     lanes = sorted(lane for lane, _tick, line in sources.value if line == 5)
     assert lanes == [2, 3], f"the straddling pair was not grounded whole: {sources.value}"
+
+
+def test_an_orphan_with_no_piece_to_hide_under_is_not_a_hidden_source():
+    """Purpose: `hidden_sources` reports flow that appeared with nothing feeding it, and the
+    verifier turns that into "hidden under a piece" and downgrades its verdict to UNKNOWN.
+    Measured on the live walk, it was reporting the two ORDINARY lane sources at the top of
+    the board, with no piece anywhere near them — so a real one-cell mismatch was being
+    excused by a reason the evidence did not support.
+
+    Expected feedback: pass proves an orphan that cannot name a piece is not reported. Fail
+    means the harness can excuse any mismatch it likes by pointing at its own sources."""
+    layers = []
+    flow = {}
+    for k in range(1, 5):
+        flow[(k, 2)] = 6                 # a plain stream, so the direction is measurable
+        if k == 3:
+            flow[(1, 5)] = 6             # flow appearing with nothing above it, no piece
+        layers.append(_frame(flow.copy()))
+
+    g = FlowGrounding()
+    g.observe(0, None, [_frame({})])
+    g.observe(5, None, layers)
+
+    assert g.hidden_sources() is UNKNOWN, \
+        f"a hostless orphan was reported as hidden: {g.hidden_sources()}"

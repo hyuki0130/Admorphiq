@@ -1138,6 +1138,15 @@ class FlowGrounding:
                 host = next((f for f in flanks if f in pieces), None)
                 if host is None and behind in pieces:
                     host = behind
+                if host is None:
+                    # No piece to hide under, so nothing here is hidden. Measured on the
+                    # live walk: this reported ((3,5), None) and ((3,6), None) — the two
+                    # ORDINARY lane sources at the top of the board, already grounded as
+                    # (5,3,3) and (6,3,3). The verifier then excused a real mismatch as
+                    # "2 source(s) hidden under a piece" and downgraded its own verdict
+                    # to UNKNOWN. A harness that excuses itself on evidence it does not
+                    # have is worse than one that fails.
+                    continue
                 orphans.append((cell, host))
             seen |= set(layer)
         if not orphans:

@@ -3236,6 +3236,48 @@ Action counts are unchanged at 23 / 30 / 55, so nothing bought depth at the cost
 efficiency.
 
 
+## The harness was excusing itself with evidence it did not have (2026-08-24)
+
+idx2's verifier had stopped failing and started reporting "2 source(s) hidden under a piece,
+not in the board model" — which read like the harness naming its own gap, and the last entry
+recorded it as the next lever. Two attempts to feed those sources into the board were
+BYTE-IDENTICAL on the walk. A mechanism inert twice is worth instrumenting rather than
+guessing, so `embedded_sources` was made to print what it was actually handed:
+
+```
+[dbg] inventory=5 prev_cells=True hidden=(((3, 5), None), ((3, 6), None))
+```
+
+**Both hosts are None, and the two cells are (3,5) and (3,6)** — the ordinary lane sources at
+the top of the board, already grounded as `(5,3,3)` and `(6,3,3)`. Nothing was hidden and no
+piece was involved. `hidden_sources` reports an orphan whether or not it can name a piece for
+it to hide under, and `build_flow_evidence` then phrased every orphan as "hidden under a
+piece" and set `incomplete_board`, which **downgrades the verifier's verdict to UNKNOWN**.
+
+So a real mismatch was being excused by a reason the evidence did not support. Requiring a
+host — a source hidden under a piece must name the piece — changes the walk:
+
+```
+before   idx2 [verifier] UNKNOWN — ... 2 source(s) hidden under a piece
+         idx3 stopped — compiler UNSATISFIABLE: 40084 layouts examined
+         139 actions
+
+after    idx2 (no verifier line: clean)
+         idx3 stopped — verifier CONTRADICTED: the replay predicted 1 cell(s) the flow
+              never reached, for example [(12, 9)]
+         129 actions
+```
+
+The excuse was masking a **one-cell** disagreement, and the compiler's "no layout satisfies
+the objective" was downstream of a board carrying two sources that do not exist. idx0–idx2
+still clear at 23 / 30 / 55.
+
+A harness that excuses itself on evidence it does not have is worse than one that fails:
+the failure is information and the excuse is not. This is the second time in the round that
+a green-looking message was hiding a real disagreement — the first was a diagnostic bench
+that could not see the contract level.
+
+
 ## Next
 
 1. **Fill is not confirmed paired.** gemma4 misses one slot, and the cause is our
@@ -3258,11 +3300,12 @@ efficiency.
    cell for cell, and that capture is now the first board in the sweep.
 4. ~~Report b, c and d apart from the rest.~~ **DONE** — `rule_bench.py --all` now reports
    as-known 211 and physics 139. Judge propagation rules on the physics column.
-5. **Sources FULLY hidden under a piece.** idx2's verifier names two of them; the
-   pair-rescue only reaches sources with one half in the open. A wholly covered source is
-   visible only through its flow, so the grounding has to infer it from where flow appears
-   with nothing behind it. This is the next lever, and it is now named by the harness
-   itself rather than guessed.
+5. ~~Sources FULLY hidden under a piece.~~ **There were none** — the message named the two
+   ordinary lane sources with no piece anywhere near them, and it was suppressing a real
+   verdict. Fixed by requiring a host. What it was hiding is the actual next item:
+9. **idx3 disagrees by ONE cell, `(12,9)`.** The verifier now says so plainly instead of
+   excusing itself. One cell is a tractable target and it is the whole remaining gap on
+   the walk.
 8. **Close the 72-cell gap at the walk, not the propagator.** It is the cost of planning
    a commit before its spill exists, so the lever is the grounding CADENCE — re-ground on
    each spill before the next plan — and it should be measured on the live walk.
