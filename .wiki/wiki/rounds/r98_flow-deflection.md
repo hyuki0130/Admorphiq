@@ -5764,6 +5764,36 @@ gpt-oss is still running on the raised budget — that run answers whether its s
 budget, which is the other half of this tick's question.
 
 
+## The OOD controls decline for a reason, and it is the same reason (2026-08-25)
+
+The certification said both controls "decline" and left it there, which cannot be told from a
+harness that declines everything — the positive control proves the opposite only at the
+whole-board level. It now names the slots:
+
+```
+sp80 (positive)  OK — board with 2 target(s), 1 piece(s); verifier PASS
+tu93 (near)      DECLINES — no board; unread: pieces, sink_candidates, barriers,
+                            initial_direction, emitters, trajectory
+re86 (far)       DECLINES — no board; unread: same six
+```
+
+**Both controls fail on all six slots**, identically. So the near/far distinction the pre-screen
+drew — tu93's 8-layer burst against re86's 1 — does not survive into the grounding: at this stage
+they are equally unreadable, and the harness declines them for the same reason rather than for
+reasons proportionate to how confusable they are.
+
+That is a finding about the CONTROL rather than about the harness. tu93 was chosen as near-OOD
+because an agent could plausibly reach for this family on seeing it, and the point of a near
+control is to be refuted LATE — after the model has committed — rather than rejected on sight.
+This one is rejected on sight, so it tests the same thing the far control tests.
+
+Nothing is broken and nothing needs fixing: the verdict stands, and both kinds of declining are
+legitimate. What the round now has is the honest scope — **the OOD controls exercise the
+grounding, and the verifier has never been asked to refuse anything.** A control that reached it
+would need a game whose entities the grounding CAN read while its mechanics differ, and no such
+game has been found among the twenty-five.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -5863,6 +5893,11 @@ budget, which is the other half of this tick's question.
     compiler's UNSATISFIABLE is the truth about the board rather than a search failure.
     Either the propagator floors flow the engine does not, or the level wants more than
     one placement.
+63. **The OOD controls decline on ALL SIX slots, identically** — the near/far distinction
+    the pre-screen drew does not survive into the grounding, so both controls test the
+    same thing and the VERIFIER has never been asked to refuse anything. A control that
+    reached it would need a game the grounding CAN read whose mechanics differ, and none
+    exists among the twenty-five.
 62. **gemma4 REPRODUCES exactly** on an independent re-run — select 3/3, fill 0/3 and
     fill_fused 0/3, with `terminate_local` in the same slot both times. So its miss is not
     sampling noise, the fused negative is measured twice, and the explicit-evidence
