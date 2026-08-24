@@ -5184,6 +5184,36 @@ verified to fire only when it was not asked, split path verified unchanged, and 
 now covered by the self-test that runs on every gate. What remains is GPU time.
 
 
+## How wide is the sub-cell blind spot? Two games of twenty-five (2026-08-25)
+
+If a cell's colour comes from one pixel, anything thinner than a cell can hide. Comparing a
+centre-sampled reading of each game's first frame against one that looks at every pixel of every
+cell:
+
+```
+scale 1   ar25 bp35 cd82 cn04 dc22 g50t ka59 lf52 lp85 ls20 m0r0 r11l re86
+          s5i5 sb26 sc25 sk48 su15 tn36 tr87 tu93 wa30      missed: none
+scale 2   ft09                                              missed: none
+scale 2   vc33                                              missed: [7]
+scale 4   sp80                                              missed: [14]
+```
+
+**Twenty-two of twenty-five games read at scale one** — one pixel per cell — so nothing can hide
+from the sampler by construction. The blind spot is only possible on the three games whose cells
+are larger than a pixel, and it is real on two of them.
+
+sp80's missing colour is 14, the failure flash this thread spent the evening chasing. **vc33's
+missing colour 7 is new** and was not being looked for: something in that game's first frame is
+present in the pixels and absent from every cell the harness resolves.
+
+That is the honest size of the defect: not a systemic blindness, but a narrow one that happens to
+sit on exactly the entity that decides whether a run succeeds. It also explains why the rest of
+the project never tripped over it — at scale one the question cannot arise.
+
+vc33 is recorded as an open item rather than chased now. What it is, and whether it matters to
+that game's long-standing wall at one level, is a measurement of its own.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -5271,6 +5301,11 @@ now covered by the self-test that runs on every gate. What remains is GPU time.
     ka59 (45), m0r0 (11), tu93 (39) on their FIRST level, plus sp80 on its fourth. The
     property is per LEVEL, so that is a floor. The fix belongs in `_infer_scale`, the
     entrance to every frame reading in the project, not in anything R98-specific.
+47. **The sub-cell blind spot is TWO games of twenty-five.** 22 of 25 read at scale one —
+    a pixel per cell — so nothing can hide from the sampler there. Of the three with
+    larger cells, sp80 misses colour 14 (the failure flash) and **vc33 misses colour 7,
+    which is new and was not being looked for**; ft09 misses nothing. Narrow, but it sits
+    on exactly the entity that decides a run. vc33 logged as its own measurement.
 46. **BLIND SPOT CLOSED — centre sampling misses the last pixel row.** `_cellify` reads
     `grid[r*scale + scale//2]`, so cell row 15 samples pixel row 62, and the failure flash
     is 29 pixels on row 63 alone. The cell reads colour 1 for the whole spill because the
