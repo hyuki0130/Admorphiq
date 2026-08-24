@@ -1,0 +1,74 @@
+{
+  "mode": "fill",
+  "hazard": "fused",
+  "model": "qwen",
+  "runs": [
+    {
+      "run": 0,
+      "mode": "fill",
+      "hazard": "fused",
+      "variant": {
+        "objective": "cover_all_sinks",
+        "completion": "all"
+      },
+      "slots": {
+        "piece_response_spawn": "empty_flanks_only",
+        "piece_response_direction": "preserved",
+        "piece_response_propagation": "cellwise_iterative",
+        "sink_response_predicate": "same_sink_flanks",
+        "sink_response_miss": "spread_like_piece",
+        "hazard_response": "terminate_local"
+      },
+      "equivalent_to_truth": false,
+      "verdict": "CONTRADICTED",
+      "verdict_reason": "predicts the attempt wins (2/2 filled, hazard contact False) but the level did not advance",
+      "executed_actions": 0,
+      "outcome": "blocked_by_verifier"
+    },
+    {
+      "run": 1,
+      "mode": "fill",
+      "hazard": "fused",
+      "variant": {
+        "objective": "cover_all_sinks",
+        "completion": "all"
+      },
+      "slots": {
+        "piece_response_spawn": "empty_flanks_only",
+        "piece_response_direction": "preserved",
+        "piece_response_propagation": "cellwise_iterative",
+        "sink_response_predicate": "same_sink_flanks",
+        "sink_response_miss": "spread_like_piece",
+        "hazard_response": "terminate_local"
+      },
+      "equivalent_to_truth": false,
+      "verdict": "CONTRADICTED",
+      "verdict_reason": "predicts the attempt wins (2/2 filled, hazard contact False) but the level did not advance",
+      "executed_actions": 0,
+      "outcome": "blocked_by_verifier"
+    },
+    {
+      "run": 2,
+      "mode": "fill",
+      "hazard": "fused",
+      "variant": {
+        "objective": "cover_all_sinks",
+        "completion": "all"
+      },
+      "slots": {
+        "piece_response_spawn": "empty_flanks_only",
+        "piece_response_direction": "preserved",
+        "piece_response_propagation": "cellwise_iterative",
+        "sink_response_predicate": "same_sink_flanks",
+        "sink_response_miss": "spread_like_piece",
+        "hazard_response": "terminate_local"
+      },
+      "equivalent_to_truth": false,
+      "verdict": "CONTRADICTED",
+      "verdict_reason": "predicts the attempt wins (2/2 filled, hazard contact False) but the level did not advance",
+      "executed_actions": 0,
+      "outcome": "blocked_by_verifier"
+    }
+  ],
+  "verdict": "0/3 FAIL"
+}

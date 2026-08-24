@@ -5794,6 +5794,42 @@ would need a game whose entities the grounding CAN read while its mechanics diff
 game has been found among the twenty-five.
 
 
+## gpt-oss passes all three modes; the select failure was the budget (2026-08-25)
+
+Re-run at 40000 completion tokens, with raw replies recorded:
+
+```
+gpt-oss   select 3/3 PASS    fill 3/3 PASS    fill_fused 3/3 PASS
+qwen3.8   select 3/3 PASS    fill 0/3 FAIL    fill_fused 0/3 FAIL
+gemma4    select 3/3 PASS    fill 0/3 FAIL    fill_fused 0/3 FAIL
+```
+
+gpt-oss's select runs:
+
+```
+run 0  pick I3  truth  cleared
+run 1  pick I3  truth  cleared
+run 2  pick I3  truth  cleared
+```
+
+**The 1/3 was the completion budget.** Every run now reaches an answer, and every answer is the
+truth — the same pick the one parsed reply made last time. Raising the budget rather than
+retrying was the right call for the reason it was made: a run cut off before answering measured
+the budget, and the model had nothing wrong with it.
+
+So the model stage now reads, across three models and three modes with every verdict measured at
+least twice:
+
+* **select — CONFIRMED on all three.** gpt-oss's earlier 1/3 is retired as an artefact.
+* **fill — gpt-oss 3/3, gemma4 and qwen3.8 0/3**, each reproduced, all on the single
+  `hazard_response` slot whose evidence leaves the cause implicit.
+* **fill_fused — identical to fill for every model**, which is the fused experiment's answer
+  standing after a second independent measurement.
+
+The contract's pairing requirement is still unmet on fill, and the reason is now measured rather
+than suspected: one slot, one thinly-worded clause, one model of three that infers past it.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -5893,6 +5929,10 @@ game has been found among the twenty-five.
     compiler's UNSATISFIABLE is the truth about the board rather than a search failure.
     Either the propagator floors flow the engine does not, or the level wants more than
     one placement.
+64. **gpt-oss passes ALL THREE modes at the raised budget** — select 3/3 (every run picks
+    the truth and clears), fill 3/3, fill_fused 3/3. The earlier select 1/3 was the
+    completion budget, retired as an artefact. qwen3.8 and gemma4 both reproduce select
+    3/3 and fill 0/3 under both encodings. Every verdict now measured at least twice.
 63. **The OOD controls decline on ALL SIX slots, identically** — the near/far distinction
     the pre-screen drew does not survive into the grounding, so both controls test the
     same thing and the VERIFIER has never been asked to refuse anything. A control that

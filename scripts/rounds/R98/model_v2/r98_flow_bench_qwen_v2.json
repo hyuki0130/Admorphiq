@@ -1,0 +1,421 @@
+{
+  "model": "qwen",
+  "runs": 3,
+  "verdict": {
+    "select": "3/3 PASS",
+    "fill": "0/3 FAIL",
+    "fill_fused": "0/3 FAIL"
+  },
+  "per_run": {
+    "select": [
+      {
+        "pick": "I3",
+        "picked_truth": true,
+        "variant": null,
+        "slots": null,
+        "equivalent_to_truth": null,
+        "verdict": "PASS",
+        "plan_status": "SOLVABLE",
+        "executed_actions": 2,
+        "total_actions": 10,
+        "commits": 2,
+        "outcome": "cleared"
+      },
+      {
+        "pick": "I3",
+        "picked_truth": true,
+        "variant": null,
+        "slots": null,
+        "equivalent_to_truth": null,
+        "verdict": "PASS",
+        "plan_status": "SOLVABLE",
+        "executed_actions": 2,
+        "total_actions": 10,
+        "commits": 2,
+        "outcome": "cleared"
+      },
+      {
+        "pick": "I3",
+        "picked_truth": true,
+        "variant": null,
+        "slots": null,
+        "equivalent_to_truth": null,
+        "verdict": "PASS",
+        "plan_status": "SOLVABLE",
+        "executed_actions": 2,
+        "total_actions": 10,
+        "commits": 2,
+        "outcome": "cleared"
+      }
+    ],
+    "fill": [
+      {
+        "pick": null,
+        "picked_truth": null,
+        "variant": {
+          "objective": "cover_all_sinks",
+          "completion": "all",
+          "hazard_policy": "neutral"
+        },
+        "slots": {
+          "piece_response_spawn": "empty_flanks_only",
+          "piece_response_direction": "preserved",
+          "piece_response_propagation": "cellwise_iterative",
+          "sink_response_predicate": "same_sink_flanks",
+          "sink_response_miss": "spread_like_piece",
+          "hazard_response": "terminate_local"
+        },
+        "equivalent_to_truth": false,
+        "verdict": "CONTRADICTED",
+        "plan_status": null,
+        "executed_actions": 0,
+        "total_actions": null,
+        "commits": null,
+        "outcome": "blocked_by_verifier"
+      },
+      {
+        "pick": null,
+        "picked_truth": null,
+        "variant": {
+          "objective": "cover_all_sinks",
+          "completion": "all",
+          "hazard_policy": "neutral"
+        },
+        "slots": {
+          "piece_response_spawn": "empty_flanks_only",
+          "piece_response_direction": "preserved",
+          "piece_response_propagation": "cellwise_iterative",
+          "sink_response_predicate": "same_sink_flanks",
+          "sink_response_miss": "spread_like_piece",
+          "hazard_response": "terminate_local"
+        },
+        "equivalent_to_truth": false,
+        "verdict": "CONTRADICTED",
+        "plan_status": null,
+        "executed_actions": 0,
+        "total_actions": null,
+        "commits": null,
+        "outcome": "blocked_by_verifier"
+      },
+      {
+        "pick": null,
+        "picked_truth": null,
+        "variant": {
+          "objective": "cover_all_sinks",
+          "completion": "all",
+          "hazard_policy": "neutral"
+        },
+        "slots": {
+          "piece_response_spawn": "empty_flanks_only",
+          "piece_response_direction": "preserved",
+          "piece_response_propagation": "cellwise_iterative",
+          "sink_response_predicate": "same_sink_flanks",
+          "sink_response_miss": "spread_like_piece",
+          "hazard_response": "terminate_local"
+        },
+        "equivalent_to_truth": false,
+        "verdict": "CONTRADICTED",
+        "plan_status": null,
+        "executed_actions": 0,
+        "total_actions": null,
+        "commits": null,
+        "outcome": "blocked_by_verifier"
+      }
+    ],
+    "fill_fused": [
+      {
+        "pick": null,
+        "picked_truth": null,
+        "variant": {
+          "objective": "cover_all_sinks",
+          "completion": "all"
+        },
+        "slots": {
+          "piece_response_spawn": "empty_flanks_only",
+          "piece_response_direction": "preserved",
+          "piece_response_propagation": "cellwise_iterative",
+          "sink_response_predicate": "same_sink_flanks",
+          "sink_response_miss": "spread_like_piece",
+          "hazard_response": "terminate_local"
+        },
+        "equivalent_to_truth": false,
+        "verdict": "CONTRADICTED",
+        "plan_status": null,
+        "executed_actions": 0,
+        "total_actions": null,
+        "commits": null,
+        "outcome": "blocked_by_verifier"
+      },
+      {
+        "pick": null,
+        "picked_truth": null,
+        "variant": {
+          "objective": "cover_all_sinks",
+          "completion": "all"
+        },
+        "slots": {
+          "piece_response_spawn": "empty_flanks_only",
+          "piece_response_direction": "preserved",
+          "piece_response_propagation": "cellwise_iterative",
+          "sink_response_predicate": "same_sink_flanks",
+          "sink_response_miss": "spread_like_piece",
+          "hazard_response": "terminate_local"
+        },
+        "equivalent_to_truth": false,
+        "verdict": "CONTRADICTED",
+        "plan_status": null,
+        "executed_actions": 0,
+        "total_actions": null,
+        "commits": null,
+        "outcome": "blocked_by_verifier"
+      },
+      {
+        "pick": null,
+        "picked_truth": null,
+        "variant": {
+          "objective": "cover_all_sinks",
+          "completion": "all"
+        },
+        "slots": {
+          "piece_response_spawn": "empty_flanks_only",
+          "piece_response_direction": "preserved",
+          "piece_response_propagation": "cellwise_iterative",
+          "sink_response_predicate": "same_sink_flanks",
+          "sink_response_miss": "spread_like_piece",
+          "hazard_response": "terminate_local"
+        },
+        "equivalent_to_truth": false,
+        "verdict": "CONTRADICTED",
+        "plan_status": null,
+        "executed_actions": 0,
+        "total_actions": null,
+        "commits": null,
+        "outcome": "blocked_by_verifier"
+      }
+    ]
+  },
+  "results": {
+    "select": {
+      "mode": "select",
+      "hazard": "split",
+      "model": "qwen",
+      "runs": [
+        {
+          "run": 0,
+          "mode": "select",
+          "pick": "I3",
+          "candidates": 8,
+          "picked_truth": true,
+          "verdict": "PASS",
+          "verdict_reason": "completion predicate agrees with the observed outcome",
+          "plan_status": "SOLVABLE",
+          "plan_offsets": [
+            [
+              0,
+              1
+            ]
+          ],
+          "executed_actions": 2,
+          "cleared": true,
+          "total_actions": 10,
+          "commits": 2,
+          "outcome": "cleared"
+        },
+        {
+          "run": 1,
+          "mode": "select",
+          "pick": "I3",
+          "candidates": 8,
+          "picked_truth": true,
+          "verdict": "PASS",
+          "verdict_reason": "completion predicate agrees with the observed outcome",
+          "plan_status": "SOLVABLE",
+          "plan_offsets": [
+            [
+              0,
+              1
+            ]
+          ],
+          "executed_actions": 2,
+          "cleared": true,
+          "total_actions": 10,
+          "commits": 2,
+          "outcome": "cleared"
+        },
+        {
+          "run": 2,
+          "mode": "select",
+          "pick": "I3",
+          "candidates": 8,
+          "picked_truth": true,
+          "verdict": "PASS",
+          "verdict_reason": "completion predicate agrees with the observed outcome",
+          "plan_status": "SOLVABLE",
+          "plan_offsets": [
+            [
+              0,
+              1
+            ]
+          ],
+          "executed_actions": 2,
+          "cleared": true,
+          "total_actions": 10,
+          "commits": 2,
+          "outcome": "cleared"
+        }
+      ],
+      "verdict": "3/3 PASS"
+    },
+    "fill": {
+      "mode": "fill",
+      "hazard": "split",
+      "model": "qwen",
+      "runs": [
+        {
+          "run": 0,
+          "mode": "fill",
+          "hazard": "split",
+          "variant": {
+            "objective": "cover_all_sinks",
+            "completion": "all",
+            "hazard_policy": "neutral"
+          },
+          "slots": {
+            "piece_response_spawn": "empty_flanks_only",
+            "piece_response_direction": "preserved",
+            "piece_response_propagation": "cellwise_iterative",
+            "sink_response_predicate": "same_sink_flanks",
+            "sink_response_miss": "spread_like_piece",
+            "hazard_response": "terminate_local"
+          },
+          "equivalent_to_truth": false,
+          "verdict": "CONTRADICTED",
+          "verdict_reason": "predicts the attempt wins (2/2 filled, hazard contact False) but the level did not advance",
+          "executed_actions": 0,
+          "outcome": "blocked_by_verifier"
+        },
+        {
+          "run": 1,
+          "mode": "fill",
+          "hazard": "split",
+          "variant": {
+            "objective": "cover_all_sinks",
+            "completion": "all",
+            "hazard_policy": "neutral"
+          },
+          "slots": {
+            "piece_response_spawn": "empty_flanks_only",
+            "piece_response_direction": "preserved",
+            "piece_response_propagation": "cellwise_iterative",
+            "sink_response_predicate": "same_sink_flanks",
+            "sink_response_miss": "spread_like_piece",
+            "hazard_response": "terminate_local"
+          },
+          "equivalent_to_truth": false,
+          "verdict": "CONTRADICTED",
+          "verdict_reason": "predicts the attempt wins (2/2 filled, hazard contact False) but the level did not advance",
+          "executed_actions": 0,
+          "outcome": "blocked_by_verifier"
+        },
+        {
+          "run": 2,
+          "mode": "fill",
+          "hazard": "split",
+          "variant": {
+            "objective": "cover_all_sinks",
+            "completion": "all",
+            "hazard_policy": "neutral"
+          },
+          "slots": {
+            "piece_response_spawn": "empty_flanks_only",
+            "piece_response_direction": "preserved",
+            "piece_response_propagation": "cellwise_iterative",
+            "sink_response_predicate": "same_sink_flanks",
+            "sink_response_miss": "spread_like_piece",
+            "hazard_response": "terminate_local"
+          },
+          "equivalent_to_truth": false,
+          "verdict": "CONTRADICTED",
+          "verdict_reason": "predicts the attempt wins (2/2 filled, hazard contact False) but the level did not advance",
+          "executed_actions": 0,
+          "outcome": "blocked_by_verifier"
+        }
+      ],
+      "verdict": "0/3 FAIL"
+    },
+    "fill_fused": {
+      "mode": "fill",
+      "hazard": "fused",
+      "model": "qwen",
+      "runs": [
+        {
+          "run": 0,
+          "mode": "fill",
+          "hazard": "fused",
+          "variant": {
+            "objective": "cover_all_sinks",
+            "completion": "all"
+          },
+          "slots": {
+            "piece_response_spawn": "empty_flanks_only",
+            "piece_response_direction": "preserved",
+            "piece_response_propagation": "cellwise_iterative",
+            "sink_response_predicate": "same_sink_flanks",
+            "sink_response_miss": "spread_like_piece",
+            "hazard_response": "terminate_local"
+          },
+          "equivalent_to_truth": false,
+          "verdict": "CONTRADICTED",
+          "verdict_reason": "predicts the attempt wins (2/2 filled, hazard contact False) but the level did not advance",
+          "executed_actions": 0,
+          "outcome": "blocked_by_verifier"
+        },
+        {
+          "run": 1,
+          "mode": "fill",
+          "hazard": "fused",
+          "variant": {
+            "objective": "cover_all_sinks",
+            "completion": "all"
+          },
+          "slots": {
+            "piece_response_spawn": "empty_flanks_only",
+            "piece_response_direction": "preserved",
+            "piece_response_propagation": "cellwise_iterative",
+            "sink_response_predicate": "same_sink_flanks",
+            "sink_response_miss": "spread_like_piece",
+            "hazard_response": "terminate_local"
+          },
+          "equivalent_to_truth": false,
+          "verdict": "CONTRADICTED",
+          "verdict_reason": "predicts the attempt wins (2/2 filled, hazard contact False) but the level did not advance",
+          "executed_actions": 0,
+          "outcome": "blocked_by_verifier"
+        },
+        {
+          "run": 2,
+          "mode": "fill",
+          "hazard": "fused",
+          "variant": {
+            "objective": "cover_all_sinks",
+            "completion": "all"
+          },
+          "slots": {
+            "piece_response_spawn": "empty_flanks_only",
+            "piece_response_direction": "preserved",
+            "piece_response_propagation": "cellwise_iterative",
+            "sink_response_predicate": "same_sink_flanks",
+            "sink_response_miss": "spread_like_piece",
+            "hazard_response": "terminate_local"
+          },
+          "equivalent_to_truth": false,
+          "verdict": "CONTRADICTED",
+          "verdict_reason": "predicts the attempt wins (2/2 filled, hazard contact False) but the level did not advance",
+          "executed_actions": 0,
+          "outcome": "blocked_by_verifier"
+        }
+      ],
+      "verdict": "0/3 FAIL"
+    }
+  }
+}
