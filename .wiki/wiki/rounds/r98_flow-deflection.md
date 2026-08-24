@@ -6652,6 +6652,46 @@ their error must not be read as a propagation score until the false target and t
 are separated.
 
 
+## The cross-level boards are INVALID, and the fix they justified is reverted (2026-08-25)
+
+Two questions were open: whether the cross-level boards were stale or mis-segmented, and whether
+the tick-0 seeding they motivated was right. One measurement answers both.
+
+**Does the engine's flow pass through cells the captured board calls a piece?**
+
+| corpus | boards | pieces per board | pieces the flow passes through |
+|---|---|---|---|
+| contract idx0 | 1 | 1 | **0** |
+| idx3 family | 17 | 5 | **0** |
+| **cross-level** | 3 | 1, 3, 4 | **1, 2, 3** |
+
+Twenty-one valid boards, zero pass-throughs. Three cross-level boards, almost all of them. The
+capture for a clearing level is taken before the final plan step executes, so the layout recorded
+is not the layout that spilled — **stale, decisively, and not mis-segmentation.** The colour check
+that pointed at "only the selected piece moves" was refuted on the way: cross_idx1 and cross_idx2
+have the flow passing through colour-8 pieces too, not just the colour-9 one.
+
+They are now excluded from the sweep, with the reason in the code, and the files stay in the round
+so the next attempt starts from the known state.
+
+**And excluding them refuted the fix they had motivated.** With only valid boards, the tick-0
+seeding scores 121 against the baseline's 93 — four boards (`g`, `h`, `i`, `j`, each with a tick-0
+lane and no standing flow) go from 5 to 12. Reverted; the bench is back at 197/93 and every gate
+holds.
+
+⚠️ Worth stating without softening: I adopted that change one tick ago, with all five gates green,
+on the strength of three boards that turn out not to describe their own spills. The gates could
+not see it because the contract board carries its source in `standing_flow` and never exercises
+the path. What caught it was excluding the invalid evidence and re-reading the number — **the
+same measurement I would have had to make anyway to trust the boards.** The lesson is ordering:
+validate the corpus BEFORE fitting to it, because a fix justified by bad boards passes every gate
+that bad boards do not touch.
+
+The underlying observation survives unchanged and unfixed: a board whose only source is a tick-0
+lane predicts nothing. Whether that is a defect or a mis-reading of what the grounding's tick
+means is now genuinely open, since the boards that made it look like a defect are gone.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -6751,6 +6791,14 @@ are separated.
     compiler's UNSATISFIABLE is the truth about the board rather than a search failure.
     Either the propagator floors flow the engine does not, or the level wants more than
     one placement.
+89. ⛔ **The cross-level boards are INVALID and the tick-0 fix is REVERTED.** The engine's
+    flow passes through 0 of 5 pieces on all 17 idx3 boards and the contract board, and
+    through 1/1, 2/3, 3/4 on the cross boards: their capture is taken before the final plan
+    step, so the layout recorded is not the one that spilled. Excluded from the sweep — and
+    excluding them refuted the tick-0 seeding they had motivated (121 vs 93; `g h i j` 5->12
+    each). Reverted, back to 197/93, all gates hold. ⚠️ That change passed five green gates
+    one tick ago on boards that do not describe their own spills. Validate the corpus BEFORE
+    fitting to it.
 88. ⚠️ **CORRECTION to #87: the cross-level residual is GROUNDING, not propagation.**
     cross_idx2 loses the lane-1 stream at `(13,1)`, which belongs to a SEVENTEEN-cell "sink"
     spanning six rows — the level's real targets are five-cell cups. That is the open

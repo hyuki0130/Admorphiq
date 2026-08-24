@@ -203,8 +203,14 @@ def _captures() -> list[Path]:
     # the game. idx1 and idx2 are levels the walk CLEARS, and they live with the round
     # rather than in the scratchpad because evidence that does not survive the session
     # cannot be re-measured against.
+    # ⛔ evidence/cross_idx*.json are EXCLUDED and must stay excluded until the capture
+    # site is corrected. They pair a board with a spill that ran on a different layout:
+    # measured, the engine's flow passes through 1 of 1, 2 of 3 and 3 of 4 of their pieces,
+    # while across the contract board and all seventeen idx3 boards it passes through ZERO
+    # of five. The clearing-level capture is taken before the final plan step executes, so
+    # the layout that spilled is not the layout recorded. The files stay in the round so
+    # the next attempt starts from the known state instead of rediscovering it.
     return (sorted(here.glob("idx0.json"))
-            + sorted(here.glob("cross_*.json"))
             + sorted(Path("scratchpad").glob("r98_idx3_*.json")))
 
 
