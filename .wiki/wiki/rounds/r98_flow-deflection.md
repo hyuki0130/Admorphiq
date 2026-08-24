@@ -2875,14 +2875,43 @@ idx2: CLEARED — 55 actions
 idx3: eight cells; the missing stream is producible, the surplus is a reach that does not bind
 ```
 
+## An arriving source was rendered once and then frozen (2026-08-24)
+
+Timing the pair produced the flow but over-ran it, and the surplus was a spread going two
+cells past the adopted reach. That reach is not another rule to tune — it is the propagator's
+own, so the question was mechanical: how does an injected cell become a moving droplet?
+
+It does not. `active` is rebuilt from `nxt` each step, and an emerged cell was only ever put
+into `born` (what gets drawn). The one place it reached `active` was the `if not active:`
+branch — nothing else flowing. So a source that arrives while another stream is still falling
+is drawn on its own cell and then never moves again, and the cells attributed to it downstream
+came from whatever else happened to pass by.
+
+Putting emerged cells into `nxt` — appear this step, travel from the next, `walked = 0` when
+the cell is a landing — is what the surrounding code already says it does. Scored over every
+captured board, replaying fixed evidence:
+
+```
+a 2->2   b 30->30  c 30->30  d 23->23  e  9->9   f 22->19  g 14->14  h 14->14
+i 17->8  j 17->8   k  8->8   l 14->12  m 17->8   n  8->8   o  8->8   stuck 10->10
+                                                                    sum 243 -> 211
+```
+
+Six boards improve, none gets worse, and the three that fall 17 -> 8 land exactly on the error
+of the board this thread has been measuring. The fix is upstream of every rule tried against
+these boards for the last several ticks: those rules were being scored against a propagator
+that dropped its second source.
+
+
 ## Next
 
 1. **Fill is not confirmed paired.** gemma4 misses one slot, and the cause is our
    encoding rather than its reasoning. Measure the hazard orthogonalisation as its
    own experiment against all three models — never as a patch to move a verdict.
-2. **Why does the walk reach not bind an injected source?** Injecting the pair at its
-   observed tick removes every missed cell; the surplus is a spread running two cells too
-   far, which is exactly what the adopted reach should already stop.
+2. ~~Why does the walk reach not bind an injected source?~~ **ANSWERED, and it was not the
+   reach.** An arriving source never entered the next active set at all unless nothing else
+   was flowing. Fixed; 243 -> 211 over the captured boards. Re-measure the rules rejected
+   against the old propagator before believing those verdicts.
 3. **Measure the bounded-roof variant on fixed evidence** — 1 invented cell against the
    adopted rule's 2, deliberately not adopted in the same change.
 3. **Multi-piece placement**, the burden the idx1 observation named: idx1 carries

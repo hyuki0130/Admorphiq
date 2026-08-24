@@ -250,6 +250,10 @@ def predict(board: Board, table: ResponseTable, max_ticks: int = 80) -> Predicti
             continue
         nxt: list[tuple[Cell, tuple[int, int], int]] = []
         born: list[Cell] = list(emerged)
+        # An emerged cell appears this step and TRAVELS from the next one — which means
+        # it has to be in the next active set. It only ever reached one when nothing else
+        # was flowing, so a source arriving mid-spill was rendered once and then frozen.
+        nxt.extend((cell, heading, 0 if cell in landings else -1) for cell in emerged)
 
         blocked = (board.piece_cells | {c for s in board.sinks for c in s}
                    | board.hazard_cells | board.absorber_cells)
