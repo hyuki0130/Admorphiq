@@ -4379,6 +4379,44 @@ fails the attempt afterwards. That is a family-level finding about the objective
 unlike the notchless-region question it is not about one odd board.
 
 
+## The edge-row flash is FAILURE, not a transition (2026-08-24)
+
+The last entry owed an observation: keep pressing after a failed commit and watch for the
+flash. Done, by committing repeatedly from a fresh game rather than driving the walk:
+
+```
+[14] s0 act=5 layer=14/22  n=16  edge_row=True  (15,0)..(15,15)
+[14] s1 act=5 layer=14/22  n=16  edge_row=True
+[14] s2 act=5 layer=14/22  n=16  edge_row=True
+[14] s3 act=5 layer=14/22  n=16  edge_row=True
+levels now: 0   state: GameState.GAME_OVER
+```
+
+**Every one of those commits FAILED** — `levels_completed` never left 0 — and every one flashed
+the bottom edge row in colour 14, inside the failing spill at layer 14 of 22. So the previous
+entry's reading is corrected: the edge-row 14 is not a level-transition effect that happens to
+appear on levels which clear, it is **the failure flash itself**, and it appears on the commit
+that fails.
+
+Two more facts fall out of the same run:
+
+* **four failed commits end the game** — `GAME_OVER` after the fourth, with every subsequent
+  action returning zero frame layers. The game gives four lives, which is the budget any plan
+  is spending against.
+* the flash sits at a fixed depth in the spill (layer 14 of 22 every time), so it is part of the
+  scripted consequence rather than a reaction at the moment of contact.
+
+Which sharpens the failure entity from the source into something with an observable location:
+the row that flashes is the board's bottom edge. The leading reading is that **flow reaching
+the floor invalidates the attempt** — which the schema cannot express at all, since `boundary`
+describes what the flow DOES at an edge and never that arriving there fails the attempt.
+
+That reading is not yet confirmed: idx3's spills show no colour-14 cell anywhere, and the source
+flashes 14 and 1 on alternating steps, so an even step would flash in the frame's own colour and
+be invisible to this probe. The next measurement is to look for the alternation rather than for
+14 alone.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -4447,8 +4485,11 @@ unlike the notchless-region question it is not about one odd board.
     source, dev-time only, never for the runtime path). The flag is set when flow reaches
     a tagged sprite that recolours to 14 — a FAILURE ENTITY the schema cannot express,
     since `hazard_policy`/`hazard_response` only describe what flow does on meeting a
-    barrier, not one that passes it and invalidates the attempt. **Owed: observational
-    confirmation** — keep pressing after idx3's failed commit and watch for the flash.
+    barrier, not one that passes it and invalidates the attempt. **Observation IN**: a
+    failed commit flashes the board's BOTTOM EDGE ROW in colour 14, inside the failing
+    spill; four failures end the game. Leading reading: flow reaching the floor
+    invalidates the attempt. Not yet confirmed on idx3 — the flash alternates 14/1 and an
+    even step is invisible against the frame's own colour.
 21. **idx3 is NOT won by covering its regions.** All nineteen target-coloured cells go
     11 -> 13, the engine's own "done" appearance, in one spill; nine captures with
     different piece positions show nothing hidden; `levels_completed` holds at 3 and there
