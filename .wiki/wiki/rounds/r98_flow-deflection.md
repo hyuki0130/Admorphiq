@@ -5271,6 +5271,40 @@ question never arises because a cell is a pixel; on vc33 the answer happens to b
 sp80 it is the thing that decides the run.
 
 
+## Telling decoration from event, without knowing the game (2026-08-25)
+
+If an edge band can carry meaning, the harness needs a way to tell which ones do. "It changes" is
+the obvious rule and it is wrong. Counting how many DISTINCT states each outer pixel row takes
+over fourteen actions:
+
+```
+sp80   top 14 states   bottom  2 states
+vc33   top  1 state    bottom  1 state
+ft09   top  1 state    bottom 14 states
+```
+
+`sp80`'s top changes on essentially every action — that is a counter, not an entity — and `ft09`
+has the same thing at the bottom. `vc33` never changes at either edge: static decoration. And
+`sp80`'s bottom takes exactly **two** states: the baseline, and the failure flash.
+
+So the discriminator is not change but **how much** change:
+
+```
+one state     static decoration — a border or a fixed strip
+many states   a counter or clock, changing with every action
+few states    an EVENT — it means something, and it is rare
+```
+
+Three games, three different answers, and the one whose band decides the run is the only one with
+a low-but-nonzero count. That is an observational rule: it needs no knowledge of the game, only a
+handful of actions and a count of distinct rows.
+
+Worth stating as a limit too — three games is three games. The rule is proposed on the only three
+games where the question can arise at all (the rest read at scale one, where a cell IS a pixel),
+so it is exhaustive over the cases that exist rather than a sample, but it has never been tested
+against a fourth kind of edge band because none exists here.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -5359,6 +5393,12 @@ sp80 it is the thing that decides the run.
     ka59 (45), m0r0 (11), tu93 (39) on their FIRST level, plus sp80 on its fourth. The
     property is per LEVEL, so that is a floor. The fix belongs in `_infer_scale`, the
     entrance to every frame reading in the project, not in anything R98-specific.
+49. **Decoration vs event, told observationally**: not whether an edge band changes but
+    how MANY distinct states it takes over a handful of actions — one state is static
+    decoration, many is a counter, FEW is an event. sp80 top 14 / bottom 2, vc33 1 / 1,
+    ft09 1 / 14; the band that decides the run is the only low-but-nonzero count. Needs no
+    knowledge of the game, and it is exhaustive over the three games where the question
+    can arise at all.
 48. **vc33's hidden colour 7 is a STATUS STRIP** — a solid one-pixel band on pixel row 0,
     unchanged across actions, with the centre sample reading row 1 beneath it. Same shape
     as sp80's flash, opposite edge, but standing rather than eventful, and `_infer_scale`
