@@ -155,16 +155,31 @@ def _in_bounds(cell: Cell, size: int) -> bool:
     return 0 <= r < size and 0 <= c < size
 
 
+WALK_REACH = 2
+"""How far a stream walks along a piece it landed on, each way, before it is spent."""
+
+
 def predict(board: Board, table: ResponseTable, max_ticks: int = 80) -> Prediction:
     """Run the spill to a fixpoint under ``table`` and return the trajectory."""
     heading = board.direction
     occupied: set[Cell] = set(board.standing_flow)
-    active: list[tuple[Cell, tuple[int, int]]] = [(c, heading) for c in board.standing_flow]
+    # A droplet is (cell, direction, walked): how many cells it has travelled ALONG a
+    # piece it came to rest on. Measured across eight captured boards of one level, a
+    # stream walks at most WALK_REACH cells each way from where it landed, and falls off
+    # wherever that walk takes it past the piece's end — which is why one board sees both
+    # overhangs drop and another sees only the near one, on the same shape of piece.
+    # ``walked`` is -1 for a droplet with no walk budget and 0.. for one that landed
+    # from a falling source. The reach binds only the second kind: measured, capping
+    # every piece encounter at WALK_REACH cuts long walks the engine plainly performs
+    # deeper in the board, while the landing row obeys it on all eight captured boards.
+    active: list[tuple[Cell, tuple[int, int], int]] = [
+        (c, heading, -1) for c in board.standing_flow
+    ]
     for (r, c) in sorted(board.emitter_cells):
         below = (r + heading[0], c + heading[1])
         if _in_bounds(below, board.size) and below not in occupied:
             occupied.add(below)
-            active.append((below, heading))
+            active.append((below, heading, -1))
 
     satisfied: set[int] = set()
     spread_born: set[Cell] = set()
@@ -180,6 +195,7 @@ def predict(board: Board, table: ResponseTable, max_ticks: int = 80) -> Predicti
     for cell, tick in board.emergences:
         pending.setdefault(tick, []).append(cell)
 
+    landings: set[Cell] = set()
     blockers = (board.piece_cells | {c for s in board.sinks for c in s}
                 | board.hazard_cells | board.absorber_cells)
     for lane, tick, line in board.falling_sources:
@@ -200,6 +216,7 @@ def predict(board: Board, table: ResponseTable, max_ticks: int = 80) -> Predicti
             landing = _lands_at(board, source, heading, blockers)
         if landing is not None:
             pending.setdefault(tick, []).append(landing)
+            landings.add(landing)
 
     for tick in range(max_ticks):
         # An emergence is recorded against the FRONTIER INDEX it was observed at,
@@ -221,19 +238,19 @@ def predict(board: Board, table: ResponseTable, max_ticks: int = 80) -> Predicti
                 # was always mid-fall when these appear, so the cell was quietly
                 # dropped and the whole second stream with it.
                 frontier.append(sorted(emerged))
-                active = [(c, heading) for c in emerged]
+                active = [(c, heading, 0 if c in landings else -1) for c in emerged]
                 continue
             if not any(t > len(frontier) for t in pending):
                 break
             frontier.append([])
             continue
-        nxt: list[tuple[Cell, tuple[int, int]]] = []
+        nxt: list[tuple[Cell, tuple[int, int], int]] = []
         born: list[Cell] = list(emerged)
 
         blocked = (board.piece_cells | {c for s in board.sinks for c in s}
                    | board.hazard_cells | board.absorber_cells)
 
-        def spawn(cell: Cell, direction: tuple[int, int]) -> None:
+        def spawn(cell: Cell, direction: tuple[int, int], walked: int = -1) -> None:
             # "Empty" means empty of EVERYTHING, not just of flow. Spreading into a
             # cell that a piece or a target already occupies invents flow the engine
             # never creates, and the error compounds from that tick onward.
@@ -241,9 +258,9 @@ def predict(board: Board, table: ResponseTable, max_ticks: int = 80) -> Predicti
                 return
             occupied.add(cell)
             born.append(cell)
-            nxt.append((cell, direction))
+            nxt.append((cell, direction, walked))
 
-        for (r, c), (dr, dc) in active:
+        for (r, c), (dr, dc), walked in active:
             ahead = (r + dr, c + dc)
             flanks = ((r - dc, c - dr), (r + dc, c + dr))
 
@@ -313,25 +330,28 @@ def predict(board: Board, table: ResponseTable, max_ticks: int = 80) -> Predicti
                         direction = (0, -1) if i == 0 else (0, 1)
                     else:
                         direction = (dr, dc)
+                    if 0 <= walked >= WALK_REACH:
+                        continue  # the walk along this piece is spent
+                    onward = walked + 1 if walked >= 0 else -1
                     if table.piece_spawn == "both_flanks" and f in occupied:
                         # re-activate rather than skip
-                        nxt.append((f, direction))
+                        nxt.append((f, direction, onward))
                     else:
-                        spawn(f, direction)
+                        spawn(f, direction, onward)
                 continue
 
             if ahead in occupied:
                 if table.own_flow == "advance_front":
-                    nxt.append((ahead, (dr, dc)))
+                    nxt.append((ahead, (dr, dc), walked))
                 elif table.own_flow == "overwrite":
-                    nxt.append((ahead, (dr, dc)))
+                    nxt.append((ahead, (dr, dc), walked))
                 # terminate: the droplet dies
                 continue
 
             spawn(ahead, (dr, dc))
 
         for cell in emerged:
-            nxt.append((cell, heading))
+            nxt.append((cell, heading, -1))
         frontier.append(sorted(born))
         # a droplet re-activated on an occupied cell must not loop forever
         seen: set[tuple[Cell, tuple[int, int]]] = set()

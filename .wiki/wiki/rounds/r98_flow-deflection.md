@@ -2439,14 +2439,53 @@ idx2: CLEARED — 55 actions
 idx3: unchanged
 ```
 
+## A landing stream walks two cells, and no further (2026-08-24)
+
+Tabulating every captured board of the level — where the stream lands, which piece it
+rests on, and which overhangs actually fall — turns the puzzle into a number:
+
+```
+board   landing row   piece span   cells walked on that row   overhang   fell
+a       3             (4, 12)      3 4 5 6 7 8                3          3
+f, g    3             (5,  8)      4 5 6 7 8                  4          4
+b..e    7             (11, 13)     10 11 12 13 14             10, 14     10, 14
+```
+
+Every one of them is the same rule: **a stream that comes to rest on a piece walks at most
+two cells each way from where it landed**, and falls off wherever that walk carries it past
+the piece's end. On board a the landings sit two cells from the left end and the left
+overhang drops while the right end is never reached; on g both landings are nearer the left
+and the right end is out of reach; on b–e the piece is narrow enough that both ends are.
+
+The reach binds only streams that LANDED from a falling source, and that distinction is
+measured, not assumed: capping every piece encounter at two cuts long walks the engine
+plainly performs deeper in the board, costing every board cells it had matched.
+
+Across all eight boards, with and without:
+
+```
+a  2 -> 2      b  30 -> 30    c  30 -> 30    d  23 -> 23
+e  9 -> 9      f  22 -> 22    g  17 -> 14    stuck 10 -> 10
+```
+
+Seven identical, one better, none worse — which is the bar a rule has to clear here. The
+pin fails without the reach, walking the full width of the piece.
+
+```
+idx0: CLEARED — 23 actions
+idx1: CLEARED — 30 actions
+idx2: CLEARED — 55 actions
+idx3: executes in 54 actions; the invented far-end stream is gone
+```
+
 ## Next
 
 1. **Fill is not confirmed paired.** gemma4 misses one slot, and the cause is our
    encoding rather than its reasoning. Measure the hazard orthogonalisation as its
    own experiment against all three models — never as a patch to move a verdict.
-2. **What distinguishes the landing row?** The nearer-end fall-off is real there and
-   false as a general property of piece encounters — measured twice, per-cell and
-   per-droplet, both costing board a cells it had matched.
+2. **What is left on the covered board** is five invented cells and nine missed, after
+   the landing reach removed the far-end stream. The next probe is the missed ones —
+   flow the engine makes that the model does not.
 3. **Measure the bounded-roof variant on fixed evidence** — 1 invented cell against the
    adopted rule's 2, deliberately not adopted in the same change.
 3. **Multi-piece placement**, the burden the idx1 observation named: idx1 carries

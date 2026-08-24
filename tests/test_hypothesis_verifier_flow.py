@@ -360,3 +360,30 @@ def test_a_covered_source_emits_beside_its_cover_and_LATE():
     first = frontier[started]
     assert first == [(line, 2)], f"expected the nearer free end: {first}"
     assert started == 1 + 2, f"expected the tick plus the travel: {started}"
+
+
+def test_a_landing_stream_walks_only_so_far_along_its_piece():
+    """Purpose: tabulating eight captured boards of one level shows a stream that comes to
+    rest on a piece walks at most two cells each way from where it landed, and falls off
+    wherever that walk takes it past the piece's end. That is why one board sees both
+    overhangs drop and another, on the same shape of piece, sees only the near one — the
+    landings sit differently along it.
+
+    The reach binds ONLY streams that landed from a falling source: capping every piece
+    encounter cuts long walks the engine plainly performs deeper in the board.
+
+    Expected feedback: pass proves the walk stops at the reach and that a droplet with no
+    walk budget is untouched. Fail means the model invents a stream off the far end of a
+    piece the engine never leaves that way."""
+    from dataclasses import replace as _replace
+
+    lane, line = 4, 2
+    piece = frozenset({(6, c) for c in range(1, 9)})       # wide enough to out-run
+    board = _replace(_board(piece), standing_flow=frozenset(),
+                     falling_sources=((lane, 1, line),))
+    reached = {c for layer in predict(board, ORACLE).frontier for c in layer}
+
+    walked = sorted(c[1] for c in reached if c[0] == 5)
+    assert walked, "the stream never landed"
+    assert min(walked) >= lane - 2 and max(walked) <= lane + 2, \
+        f"the walk ran past its reach: {walked}"
