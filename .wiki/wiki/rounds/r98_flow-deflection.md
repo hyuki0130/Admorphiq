@@ -6105,6 +6105,34 @@ spread is asymmetric at all, with the knowledge that whatever the answer is, it 
 five cells per board.
 
 
+## One-sided spawning is refuted, and the sweep now carries its own tripwire (2026-08-25)
+
+The lateral residual has exactly one source left: `spawn()` already refuses a cell the droplet
+has occupied, so a walking stream cannot double back, and the only place width is created is the
+blocked-droplet branch spawning on BOTH flanks. Three ways of picking a side instead, scored on
+the physics column by `scripts/rounds/R98/spread_sweep.py`:
+
+```
+baseline (both flanks)                           physics   93   idx0 0
+only the flank that is SUPPORTED (cannot fall)   physics  543   idx0 30  <- BREAKS THE CONTRACT BOARD
+only the flank that can FALL                     physics  444   idx0 19  <- BREAKS THE CONTRACT BOARD
+not onto a flank standing over a piece           physics  444   idx0 19  <- BREAKS THE CONTRACT BOARD
+```
+
+All three are four to six times worse AND break the contract board. **The engine really does
+spawn both ways**; the asymmetry it shows is not produced by choosing a side at the moment of
+collision. So the lateral halo comes from something after the spawn — how far each side then
+travels, or which of them survives — and the branch that creates the width is correct as written.
+
+The sweep is worth keeping for the way it is built as much as for the answer. It loads the
+propagator's source and rewrites one branch in memory, so a candidate is never committed to be
+measured, and **idx0 is scored separately and printed beside every total**. Earlier in this round
+a rule was adopted for halving the sweep and took the live gate to 0/3, because the contract
+board was not in the sweep at all; here the same class of mistake is visible in the same line as
+the number that would have tempted it. A diagnostic that can only report improvement is a
+diagnostic that will eventually recommend a regression.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -6204,6 +6232,11 @@ five cells per board.
     compiler's UNSATISFIABLE is the truth about the board rather than a search failure.
     Either the propagator floors flow the engine does not, or the level wants more than
     one placement.
+73. ⛔ **One-sided spawning is REFUTED — three variants, 4-6x worse, all breaking idx0.**
+    `spawn()` already refuses an occupied cell, so both-flank spawning is the only source of
+    width, and choosing a side at collision is not what the engine does. The halo comes from
+    what happens AFTER the spawn. `spread_sweep.py` scores variants without committing them
+    and prints idx0 beside every total — the tripwire the earlier 0/3 adoption lacked.
 72. **The remaining 93 cells are a LATERAL HALO.** `--where`: 92 of 93 are empty cells, 89
     sit within 3 of an observed cell (so no invented streams), and lateral surplus beats
     longitudinal 57 to 9. The run LENGTH is right; the spread is too wide. Uniform at ~5
