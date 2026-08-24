@@ -4011,6 +4011,44 @@ right one: the evidence was consistent with it and would have looked identical i
 needed something else. It now looks like something else.
 
 
+## What the engine itself says about idx3 (2026-08-24)
+
+With the fourth region no longer the leading answer, the question became "does the engine even
+think idx3 is unfinished?" — a walk that mis-reads its own progress would look exactly like a
+level that will not clear. Wrapping the engine's `step` rather than the walk (a probe patched
+into `depth_walk` never fires: `runpy` re-executes the file and defines a fresh class, so the
+patch lands on a different object than the one running):
+
+```
+[state] n=120..128  levels=3  NOT_FINISHED  layers=1
+[state] n=129,130   levels=3  NOT_FINISHED  layers=33   <- a commit
+[state] n=131..138  levels=3  NOT_FINISHED  layers=1
+[state] n=139,140   levels=3  NOT_FINISHED  layers=38   <- a second commit
+```
+
+The engine holds `levels_completed = 3` across both commits. idx3 genuinely does not advance,
+so nothing is being mis-read, and the walk spends TWO commits there rather than one.
+
+Re-captured fresh, the last spill still enters every mouth:
+
+```
+layers 27
+target 0 mouth (13,7)  entered True
+target 1 mouth (13,10) entered True
+target 2 mouth (13,13) entered True
+```
+
+So the measured fact, now twice: **on idx3 every mouth is entered in a single spill and the
+level does not advance, while on idx0 entering both mouths clears it.** The two boards are
+structurally alike where it matters — same five-cell targets, same central mouth, same
+satisfaction geometry when a droplet steps from the mouth onto the target's body.
+
+Whatever idx3 wants, it is not "enter every mouth". The fourth region is one candidate with a
+refuted first test; the two commits are a second thread worth pulling, since a level that
+resets between commits would make a two-commit plan unable to finish what a one-commit plan
+starts — except that the LAST spill alone enters all three, which argues against it.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -4055,6 +4093,9 @@ needed something else. It now looks like something else.
     plan aimed at all four regions executed, the flow reached the block's ROOF at (12,2),
     the block did not recolour and the level did not advance. So why DOES idx3 stop? That
     is the open question now, and the fourth region is no longer the leading answer.
+17. **Engine-confirmed**: `levels_completed = 3` across both of idx3's commits, and the
+    last spill alone enters all three mouths. "Enter every mouth" is what clears idx0 and
+    is NOT what idx3 wants.
 13. ~~idx3 executes its plan and does not clear.~~ **A SCHEMA GAP — the PREDICATE IS GLOBAL
     and this board needs two.** `contact` exists and would satisfy the notchless region
     (14033 winning layouts), but it is CONTRADICTED for the family, so it cannot be taken.
