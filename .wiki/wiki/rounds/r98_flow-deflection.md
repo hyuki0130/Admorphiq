@@ -7339,6 +7339,37 @@ reading can say whether the guard is doing anything.** Emptiness at the guard pr
 could not be working *there*; it took the consumer's table to show it was working anyway.
 
 
+## The four-lives ceiling does not bind — 9 non-advancing commits and the game is alive (2026-08-25)
+
+The round has reasoned about depth on a premise recorded much earlier: a run has four failed
+commits for the whole GAME, the walk spends one per level, and therefore the discovery bill IS the
+depth ceiling. Counting what the walk actually spends:
+
+```
+[aiming] idx0 commits so far 1     idx1: 4     idx2: 7     idx3: 10
+[commits] 12 ACTION5 presses, 9 of which did NOT advance a level; alive=True
+[one more commit] state=GameState.NOT_FINISHED alive=True
+```
+
+**Three commits per level — sacrificial, aimed re-commit, and the plan's own — twelve in all, nine
+of which advance nothing, and the game is still alive.** The recorded test for the ceiling was
+"pressing once more after the walk stops returns GAME_OVER immediately"; run again now, it returns
+`NOT_FINISHED`.
+
+So two things separate that were being treated as one. **A non-advancing ACTION5 is not the same
+event as a spent life**, and counting the former is not a way to measure the latter. The walk
+issues nine and is nowhere near the end.
+
+⛔ The "one life per level, four lives, six levels" argument therefore does not establish the depth
+ceiling in the current state, and every conclusion that leaned on it needs re-reading. That
+includes the framing that discovery cost and depth are the same bill — they may still be related,
+but not by this arithmetic.
+
+What is NOT claimed: that the game has more than four lives, or that the earlier observation was
+wrong when it was made. It was measured in a state several fixes ago, and what changed since is
+unmeasured. The honest position is that the premise does not hold now and the reason is open.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -7438,6 +7469,14 @@ could not be working *there*; it took the consumer's table to show it was workin
     compiler's UNSATISFIABLE is the truth about the board rather than a search failure.
     Either the propagator floors flow the engine does not, or the level wants more than
     one placement.
+108. ⛔ **The four-lives ceiling does NOT bind — 9 non-advancing commits and the game is
+     alive.** The walk issues 3 commits a level (sacrificial, aimed re-commit, the plan's) =
+     12 in all, 9 advancing nothing, and `alive=True`. The recorded ceiling test — one more
+     press returns GAME_OVER — now returns `NOT_FINISHED`. So a non-advancing ACTION5 is NOT
+     the same event as a spent life, and counting the former does not measure the latter.
+     Every conclusion leaning on "one life per level, four lives, six levels" needs
+     re-reading, including "the discovery bill IS the depth ceiling". Not claimed: that the
+     game has more than four lives, or that the old observation was wrong when made.
 107. ⚠️ **CORRECTION to #106: the retry DID buy something — relocating it costs 1 action, not
      32.** Read where its CONSUMERS read the table (plan time, after the commit): with the
      retries idx3 has all four directions, without them it has THREE. The presses bought a

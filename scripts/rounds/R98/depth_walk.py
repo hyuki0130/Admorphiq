@@ -77,6 +77,9 @@ class Walker:
         self.env = arcade.make(gid)
         self.obs = self.env.step(GameAction.RESET)
         self.actions = 0
+        self.commits = 0
+        self.failed_commits = 0
+        self._level_before = 0
 
     @property
     def level(self) -> int:
@@ -87,8 +90,17 @@ class Walker:
         return self.obs.state is not GameState.GAME_OVER
 
     def act(self, a: int, g: FlowGrounding) -> None:
+        self._level_before = self.obs.levels_completed
         self.obs = self.env.step(ACTIONS[a])
         self.actions += 1
+        if a == 5:
+            if self.obs.levels_completed == self._level_before:
+                self.failed_commits += 1
+            # A commit that does not advance the level is a FAILED commit, and a run has
+            # four of those for the whole GAME. The walk issues a sacrificial one and often
+            # an aimed second before the plan's own, so what it actually spends is the
+            # question the depth ceiling turns on.
+            self.commits += 1
         g.observe(a, None, self.obs.frame)
 
     def click(self, cell, g: FlowGrounding) -> None:
@@ -199,6 +211,8 @@ def play_level(w: Walker) -> tuple[bool, str]:
         # a board that did not change is how idx3 came to be reached with no lives left —
         # its plan was executed on a game that was already over, which is what every
         # explanation this round built for that level was actually explaining.
+        print(f"    [aiming] idx{entered} moved={moved} presses={guard} "
+              f"commits so far {w.commits}", flush=True)
         if moved:
             w.act(5, g)
 
@@ -999,6 +1013,16 @@ def main() -> int:
         cleared += 1
         if w.level == entered:
             break
+    print(f"[commits] {w.commits} ACTION5 presses, {w.failed_commits} of which did NOT "
+          f"advance a level; alive={w.alive}")
+    # Reproduce the recorded observation that one more press returns GAME_OVER. It was
+    # measured in a different state, and a non-advancing commit is not obviously the same
+    # thing as a spent life.
+    if w.alive:
+        g = FlowGrounding()
+        g.observe(0, None, w.obs.frame)
+        w.act(5, g)
+        print(f"[one more commit] state={w.obs.state} alive={w.alive}")
     print(f"\n[depth walk] NON-GATING — one hypothesis carried {cleared} level(s); "
           f"{w.actions} actions total")
     return 0
