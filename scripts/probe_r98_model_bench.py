@@ -300,8 +300,15 @@ def build_select_ask(
 
 
 def build_variant_ask(
-    evidence: FlowEvidence, grounding: FlowGrounding
+    evidence: FlowEvidence, grounding: FlowGrounding, fused_hazard: bool = False
 ) -> list[dict[str, str]]:
+    """The objective ask. ``fused_hazard`` is the SEPARATE EXPERIMENT the round owes, not
+    a fix: our encoding asks whether a barrier is fatal TWICE — as `hazard_policy` here
+    and as `hazard_response` in the slot ask — and gemma4 answered the pair
+    self-contradictorily while gpt-oss resolved the same encoding 3/3. Asking once
+    measures whether the split is what it stumbles on. It is off by default because the
+    contract is frozen on the split form, and because re-cutting the representation until
+    a weaker model passes is tuning, not measurement."""
     system = (
         "Answer with a single JSON object and nothing else. Use exactly the keys "
         "asked for, and for each key choose exactly one of the listed values."
@@ -317,16 +324,19 @@ def build_variant_ask(
           '  "completion":\n'
           "      all — every target must be satisfied\n"
           "      count — a specific number of them must be\n"
-          '  "hazard_policy":\n'
-          "      fatal_on_contact — touching a barrier fails the attempt even when "
-          "every target was satisfied\n"
-          "      neutral — touching a barrier does not by itself fail the attempt\n"
+        + ("" if fused_hazard else
+           '  "hazard_policy":\n'
+           "      fatal_on_contact — touching a barrier fails the attempt even when "
+           "every target was satisfied\n"
+           "      neutral — touching a barrier does not by itself fail the attempt\n")
         + '\nIf you choose "count" for completion, add "completion_count" as a whole '
           "number.\n"
-          "Your hazard_policy must agree with the hazard_response you give in the "
-          "other question: fatal_on_contact goes with terminate_fatal, and neutral "
-          "goes with terminate_local.\n"
-          "Answer with the JSON object only."
+        + ("Whether touching a barrier fails the attempt is asked ONCE, in the other "
+           "question.\n" if fused_hazard else
+           "Your hazard_policy must agree with the hazard_response you give in the "
+           "other question: fatal_on_contact goes with terminate_fatal, and neutral "
+           "goes with terminate_local.\n")
+        + "Answer with the JSON object only."
     )
     return [{"role": "system", "content": system}, {"role": "user", "content": user}]
 
@@ -378,9 +388,13 @@ def parse_json_object(text: str) -> Optional[dict[str, Any]]:
     return value if isinstance(value, dict) else None
 
 
-def instance_from_answers(variant: dict[str, Any], slots: dict[str, Any]) -> Optional[F.FlowHypothesis]:
+def instance_from_answers(variant: dict[str, Any], slots: dict[str, Any],
+                          fused_hazard: bool = False) -> Optional[F.FlowHypothesis]:
     """Assemble a hypothesis from the model's two answers, or None if a value is
-    outside its closed vocabulary."""
+    outside its closed vocabulary.
+
+    With ``fused_hazard`` the objective ask never carried `hazard_policy`, so it is read
+    off the slot answer instead — the two were required to agree anyway."""
     for key, allowed in GATED_SLOTS.items():
         if slots.get(key) not in allowed:
             return None
@@ -393,13 +407,18 @@ def instance_from_answers(variant: dict[str, Any], slots: dict[str, Any]) -> Opt
     else:
         if variant.get("completion") not in COMPLETIONS:
             return None
-        if variant.get("hazard_policy") not in HAZARD_POLICIES:
+        policy = variant.get("hazard_policy")
+        if policy is None and fused_hazard:
+            # asked once: the response IS the policy
+            policy = ("fatal_on_contact" if slots.get("hazard_response") == "terminate_fatal"
+                      else "neutral")
+        if policy not in HAZARD_POLICIES:
             return None
         count = variant.get("completion_count")
         objective = F.CoverAllSinks(
             sink_roles=roles,
             completion=variant["completion"],
-            hazard_policy=variant["hazard_policy"],
+            hazard_policy=policy,
             completion_count=int(count) if variant["completion"] == "count" and count else None,
         )
 
@@ -584,18 +603,19 @@ def run_select_once(index: int, llm: Callable[[list[dict[str, str]]], str]) -> d
     return record
 
 
-def run_fill_once(index: int, llm: Callable[[list[dict[str, str]]], str]) -> dict[str, Any]:
+def run_fill_once(index: int, llm: Callable[[list[dict[str, str]]], str],
+                  fused_hazard: bool = False) -> dict[str, Any]:
     g, state, act = _run_discovery()
     evidence = build_flow_evidence(g, state["obs"].levels_completed >= 1)
-    variant = parse_json_object(llm(build_variant_ask(evidence, g)))
+    variant = parse_json_object(llm(build_variant_ask(evidence, g, fused_hazard)))
     slots = parse_json_object(llm(build_slot_ask(evidence, g)))
-    record: dict[str, Any] = {"run": index, "mode": "fill",
-                              "variant": variant, "slots": slots}
+    record: dict[str, Any] = {"run": index, "mode": "fill", "hazard": "fused" if fused_hazard
+                              else "split", "variant": variant, "slots": slots}
     if variant is None or slots is None:
         record["outcome"] = "unparsable"
         record["executed_actions"] = 0
         return record
-    instance = instance_from_answers(variant, slots)
+    instance = instance_from_answers(variant, slots, fused_hazard)
     if instance is None:
         record["outcome"] = "out_of_vocabulary"
         record["executed_actions"] = 0
@@ -755,6 +775,9 @@ def main() -> int:
     parser.add_argument("--out")
     parser.add_argument("--dry-run", action="store_true",
                         help="print the assembled asks (no LLM server needed)")
+    parser.add_argument("--hazard", choices=["split", "fused"], default="split",
+                        help="ask whether a barrier is fatal twice (the frozen contract) "
+                             "or once (the separate experiment the round owes)")
     parser.add_argument("--self-test", action="store_true",
                         help="drive the harness with deterministic stubs")
     args = parser.parse_args()
@@ -770,7 +793,7 @@ def main() -> int:
             print("=== ID MAPPING (never shown to the model) ===")
             print(json.dumps(mapping, indent=2))
         else:
-            messages = build_variant_ask(evidence, g)
+            messages = build_variant_ask(evidence, g, args.hazard == "fused")
             print("=== ASK 2 (SLOTS) ===\n"
                   + build_slot_ask(evidence, g)[1]["content"] + "\n")
         print("=== SYSTEM ===\n" + messages[0]["content"])
@@ -785,10 +808,13 @@ def main() -> int:
         num_predict=int(os.environ.get("HARNESS_PATCH_NUM_PREDICT", "2048")),
         timeout=float(os.environ.get("HARNESS_PATCH_TIMEOUT", "900")),
     )
-    run = run_select_once if args.mode == "select" else run_fill_once
-    runs = [run(i, llm) for i in range(args.runs)]
+    fused = args.hazard == "fused"
+    runs = ([run_select_once(i, llm) for i in range(args.runs)]
+            if args.mode == "select"
+            else [run_fill_once(i, llm, fused) for i in range(args.runs)])
     report = {
         "mode": args.mode,
+        "hazard": args.hazard,
         "model": os.environ.get("HARNESS_LLM_MODEL", ""),
         "runs": runs,
         "verdict": verdict_of(runs),

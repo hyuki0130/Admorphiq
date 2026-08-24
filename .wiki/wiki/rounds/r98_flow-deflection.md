@@ -3859,15 +3859,54 @@ tu93 survived the pre-screen on its 8-layer burst, so such a control may yet exi
 this one.
 
 
+## The fill experiment the round owes is now runnable (2026-08-24)
+
+FILL is the one contract stage not confirmed paired: gpt-oss passes 3/3 with a perfect
+seven-of-seven hypothesis, gemma4 misses exactly one slot and does so self-contradictorily —
+correct hazard POLICY next to an incompatible hazard RESPONSE. The round recorded that as a
+finding about our ENCODING and refused to patch it, because gpt-oss resolves the same encoding
+and re-cutting a representation until a weaker model passes is tuning, not measurement.
+
+What the encoding does is ask the same question twice:
+
+```
+ASK 1 (objective)   "hazard_policy":   fatal_on_contact | neutral
+ASK 2 (slots)       "hazard_response": terminate_fatal | terminate_local | pass_through
+                    ...and the prompt REQUIRES the two to agree.
+```
+
+`--hazard fused` asks it once: the objective ask drops `hazard_policy` and says so, and the
+policy is read off the slot answer instead. Split remains the default, because the contract is
+frozen on it and this is a separate experiment rather than a replacement.
+
+Verified locally before any GPU time is spent:
+
+```
+keys=[completion, objective]                 fused=False -> None        (correctly rejected)
+keys=[completion, objective]                 fused=True  -> instance, policy fatal_on_contact
+keys=[completion, hazard_policy, objective]  fused=False -> instance, policy neutral
+keys=[completion, hazard_policy, objective]  fused=True  -> instance, policy neutral
+```
+
+so the derivation fires only when the question was not asked, a volunteered policy is still
+honoured, and the split path is unchanged. The fused ask's dry run carries `hazard_response`
+and no `hazard_policy`, leak guard clean; the harness self-test still passes on the default.
+
+What it will measure, when it runs: whether gemma4's miss is the SPLIT or the reasoning. If
+fused takes gemma4 to 3/3 while gpt-oss stays 3/3, the encoding is the cause and the finding
+is about our schema. If gemma4 still misses, the split was never the problem and the finding is
+about the model. Either answer is worth having; neither is available from arguing.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
    and passes, tu93 and re86 decline, all on the same discovery. Both controls decline at
    perception, so the verifier is not exercised by them; a near control that assembles a
    board and is then refuted would test more.
-2. **Fill is not confirmed paired.** gemma4 misses one slot, and the cause is our
-   encoding rather than its reasoning. Measure the hazard orthogonalisation as its
-   own experiment against all three models — never as a patch to move a verdict.
+2. **Fill is not confirmed paired.** The experiment is BUILT and self-verified
+   (`--hazard fused`, split still the default); what remains is GPU time to run it
+   paired against gemma4, gpt-oss and qwen3.8. Never as a patch to move a verdict.
 2. ~~Why does the walk reach not bind an injected source?~~ **ANSWERED — it WAS the reach.**
    A landing cell entered the frontier with an unlimited walk; giving it `walked = 0` is
    worth 32 cells (243 -> 211). The intermediate claim that the cell never entered the
