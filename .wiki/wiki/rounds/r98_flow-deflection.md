@@ -5371,6 +5371,37 @@ exists.** A kernel pushed immediately after it will silently attach the old data
 surfaces minutes later as a missing file rather than as anything about the dataset.
 
 
+## Marking the floor fatal: right in spirit, wrong row (2026-08-25)
+
+With the failure entity identified as a band on the board's last row, the obvious move is to give
+the model what the engine has — treat that row as fatal, so the compiler stops choosing layouts
+whose flow arrives there. Tried:
+
+```
+oracle gate      3/3 PASS            unchanged
+bench            idx0 0/0, 209/108   unchanged, board for board
+walk idx0-idx2   23 / 30 / 55        unchanged
+walk idx3        verifier CONTRADICTED — the replay misses (14,1) and (14,4)
+```
+
+idx3 gets WORSE: it now stops at the verifier instead of reaching the compiler, because the flow
+demonstrably reaches row 14 and the change forbids it.
+
+The reason is a coordinate the round has already measured and I did not carry: **on idx3
+`playable_size()` returns 15**, so "the last playable row" is 14 — and row 14 is ordinary board
+the flow crosses. The engine's fatal band is the row BELOW that, the one `playable_size()` trims
+as frame.
+
+So the rule is not "the last playable row is fatal". It is "**the trimmed band is fatal**", which
+is uncomfortable precisely because the same trim exists to keep a status strip out of the board —
+and this round already measured a case (vc33) where the trimmed band really is decoration.
+
+Reverted; walk back to 138 actions with idx3 executing its plan. What the attempt establishes is
+narrower than a fix and worth having: the fatal band is NOT the last playable row on idx3, the
+distinction between it and a decorative strip is exactly the edge-band probe's EVENT-versus-
+decoration verdict, and any future attempt has to consult that verdict rather than assume a row.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -5460,6 +5491,11 @@ surfaces minutes later as a missing file rather than as anything about the datas
     ka59 (45), m0r0 (11), tu93 (39) on their FIRST level, plus sp80 on its fourth. The
     property is per LEVEL, so that is a floor. The fix belongs in `_infer_scale`, the
     entrance to every frame reading in the project, not in anything R98-specific.
+51. ⛔ **"The last playable row is fatal" is WRONG and was reverted.** Gate, bench and
+    idx0-idx2 all held, but idx3 regressed to a verifier CONTRADICTION — the flow
+    demonstrably crosses row 14, which is its last playable row. The fatal band is the row
+    `playable_size()` TRIMS, and telling that band from a decorative strip is exactly what
+    the edge-band probe's EVENT verdict is for. Consult it; do not assume a row.
 50. **The edge-band rule is now a TOOL** — `scripts/rounds/R98/edge_band_probe.py` — and
     it finds exactly one EVENT row across the three games where the question can arise:
     sp80's failure band. ⚠️ Sequencing rule learned the hard way: `kaggle datasets
