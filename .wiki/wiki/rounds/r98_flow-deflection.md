@@ -4989,6 +4989,45 @@ same failure this round has now made several times — and the check that caught
 possible one: look at the cell the claim names.
 
 
+## The sprite-to-board mapping, measured — and it is not the same on every level (2026-08-24)
+
+Pinning the mapping on a level where the entity does flash, by reading the engine's target
+sprites and the board's target cells in the same breath:
+
+```
+idx0 targets (sprite):  (13,4) (13,10)   shape (2,3)
+idx0 target cells:      rows 13-14, cols 4-6 and 10-12
+flash at layer 14:      row 15, all sixteen columns
+```
+
+**On idx0 sprite coordinates ARE board coordinates.** The sprite at (13,4) with shape (2,3)
+occupies exactly rows 13-14 and columns 4-6. So the failure entity there — the touched sprite at
+(15,0) — is board row 15, the bottom row, and the flash confirms it cell for cell.
+
+That settles the small levels: **flow reaching the floor fails the run**, measured end to end,
+with no inference in the chain.
+
+idx3 does not share the mapping:
+
+```
+idx3 targets (sprite):  (17,2) (17,8) (17,12) (17,16)
+idx3 target cells:      rows 13-14
+```
+
+An offset of four rows. Its touched sprite sits at sprite row 19, which under that offset is
+render row 15 — the bottom row again — and that row shows colour 1 unchanged through the entire
+spill.
+
+So idx3's level is taller than the window the frames show, and its failure entity sits at the
+window's edge or beyond it. That is a measured coordinate fact, and it explains why the entity
+leaves no mark there while flashing plainly on idx0: **on idx3 we are not being shown it.**
+
+What this costs the model is concrete. `playable_size()` decides the board's extent from the
+frame alone, and on a level whose frame is a window that decision is about the window, not the
+board. Every entity outside it is invisible by construction — including the one that fails the
+run.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -5071,6 +5110,12 @@ possible one: look at the cell the claim names.
     commits. One life recovered by not re-committing when the aiming moved nothing;
     three more are spent because every level builds a FRESH grounding and re-learns the
     flow's direction and colour, which cannot change within a game.
+42. **The sprite-to-board mapping is IDENTITY on idx0 and offset by FOUR ROWS on idx3.**
+    Measured by reading target sprites and target cells together. So idx0's failure entity
+    is board row 15, the bottom row, confirmed cell for cell by the flash — flow reaching
+    the floor fails the run. idx3's level is TALLER than the frame window, its entity sits
+    at or beyond the window's edge, and that is why it leaves no mark there. Anything
+    outside the window is invisible by construction, including the thing that fails the run.
 41. **Correction to #40**: the entity's BOARD position was inferred from sprite
     coordinates, and the cell it named never changes colour on idx3. The touched sprite is
     (1,32) — one row by thirty-two columns, wider than the render — so it is not in the
