@@ -6348,6 +6348,44 @@ ruled out. That is a better place to stop than a rule, because the last two rule
 were both fitted to evidence that had not been checked for bias first.
 
 
+## gpt-oss's fill is UNSTABLE on the split encoding — and the split is implicated after all (2026-08-25)
+
+The confirming run came back and it does not confirm:
+
+| mode | earlier run | this run |
+|---|---|---|
+| select | 3/3 | **2/3** |
+| fill (default, split) | 3/3 | **0/3** |
+| fill_fused | 3/3 | **3/3** |
+| fill_explicit | — | **3/3** |
+
+The same model, the same prompt, the same three repetitions: **the default fill went from 3/3 to
+0/3.** The fused encoding is 3/3 in both runs and the explicit variant is 3/3, so the instability
+is specific to the encoding that splits fatality across two slots.
+
+What the failing runs actually got wrong is the informative part. Runs 1 and 2 answered **all six
+response slots exactly as the oracle** — `empty_flanks_only`, `preserved`, `cellwise_iterative`,
+`same_sink_flanks`, `spread_like_piece`, `terminate_fatal` — and failed on the OBJECTIVE:
+`completion: count/1` and `hazard_policy: neutral`. That answer is **self-contradictory**: it
+declares hazards neutral in one slot and fatal in another, in the same reply.
+
+Which is the same failure the round already recorded for gemma4, in mirror image — gemma4 gave the
+correct hazard POLICY with an incompatible hazard RESPONSE, gpt-oss gives the correct RESPONSE with
+an incompatible POLICY. Two models, opposite halves, one encoding. ⚠️ The earlier conclusion that
+"the fused experiment is answered — the split was not the cause, and the schema is exonerated on
+this point" was measured **on gemma4 alone**, where fused and split give byte-identical answers.
+gpt-oss's data says the opposite for gpt-oss: fused is stable at 3/3 across two runs while split
+swings 3/3 to 0/3. The exoneration holds only for the model it was measured on.
+
+⚠️ **I nearly recorded a harness defect here.** The six matching slots looked like the exact
+oracle being blocked by its own verifier, which would have been serious, and the local self-test
+does clear that same answer (`fill truthful -> cleared`). The variant field is what settled it:
+the instance was not the truth, the verifier was right, and `equivalent_to_truth: false` was
+right. The record keeps the variant, so the check was possible — but it keeps nothing about the
+board, so a genuine grounding-dependent contradiction would NOT be separable from a model error
+by looking at the artefact. That is a real gap in what the record carries.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -6447,6 +6485,14 @@ were both fitted to evidence that had not been checked for bias first.
     compiler's UNSATISFIABLE is the truth about the board rather than a search failure.
     Either the propagator floors flow the engine does not, or the level wants more than
     one placement.
+80. ⚠️ **gpt-oss's default fill is UNSTABLE: 3/3 then 0/3 on the same prompt.** Fused is 3/3
+    in BOTH runs and explicit 3/3, so the instability belongs to the split encoding. The two
+    failing runs answered all SIX response slots exactly as the oracle and failed on the
+    OBJECTIVE, self-contradictorily (`hazard_policy: neutral` beside `hazard_response:
+    terminate_fatal`) — gemma4's recorded failure in mirror image. The earlier "the schema is
+    exonerated on this point" was measured on gemma4 ALONE and does not extend to gpt-oss.
+    Nearly filed as a harness defect; the variant field settled it, but the record keeps
+    nothing about the BOARD, so a grounding-dependent contradiction would not be separable.
 79. **The walk has exactly ONE ambiguous decision, and four properties are eliminated.**
     `--decision`: while the next cell is ALSO supported the walk continues 64/64 — an
     invariant the propagator already reproduces. Every disagreement is the final step off
