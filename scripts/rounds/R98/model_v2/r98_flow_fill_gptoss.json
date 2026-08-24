@@ -1,0 +1,107 @@
+{
+  "mode": "fill",
+  "hazard": "split",
+  "model": "gptoss",
+  "runs": [
+    {
+      "run": 0,
+      "mode": "fill",
+      "hazard": "split",
+      "variant": {
+        "objective": "cover_all_sinks",
+        "completion": "all",
+        "hazard_policy": "fatal_on_contact"
+      },
+      "slots": {
+        "piece_response_spawn": "both_flanks",
+        "piece_response_direction": "preserved",
+        "piece_response_propagation": "cellwise_iterative",
+        "sink_response_predicate": "same_sink_flanks",
+        "sink_response_miss": "spread_like_piece",
+        "hazard_response": "terminate_fatal"
+      },
+      "equivalent_to_truth": true,
+      "verdict": "PASS",
+      "verdict_reason": "completion predicate agrees with the observed outcome",
+      "plan_status": "SOLVABLE",
+      "plan_offsets": [
+        [
+          0,
+          1
+        ]
+      ],
+      "executed_actions": 2,
+      "cleared": true,
+      "total_actions": 10,
+      "commits": 2,
+      "outcome": "cleared"
+    },
+    {
+      "run": 1,
+      "mode": "fill",
+      "hazard": "split",
+      "variant": {
+        "objective": "cover_all_sinks",
+        "completion": "all",
+        "hazard_policy": "fatal_on_contact"
+      },
+      "slots": {
+        "piece_response_spawn": "both_flanks",
+        "piece_response_direction": "preserved",
+        "piece_response_propagation": "cellwise_iterative",
+        "sink_response_predicate": "same_sink_flanks",
+        "sink_response_miss": "spread_like_piece",
+        "hazard_response": "terminate_fatal"
+      },
+      "equivalent_to_truth": true,
+      "verdict": "PASS",
+      "verdict_reason": "completion predicate agrees with the observed outcome",
+      "plan_status": "SOLVABLE",
+      "plan_offsets": [
+        [
+          0,
+          1
+        ]
+      ],
+      "executed_actions": 2,
+      "cleared": true,
+      "total_actions": 10,
+      "commits": 2,
+      "outcome": "cleared"
+    },
+    {
+      "run": 2,
+      "mode": "fill",
+      "hazard": "split",
+      "variant": {
+        "objective": "cover_all_sinks",
+        "completion": "all",
+        "hazard_policy": "fatal_on_contact"
+      },
+      "slots": {
+        "piece_response_spawn": "both_flanks",
+        "piece_response_direction": "preserved",
+        "piece_response_propagation": "cellwise_iterative",
+        "sink_response_predicate": "same_sink_flanks",
+        "sink_response_miss": "spread_like_piece",
+        "hazard_response": "terminate_fatal"
+      },
+      "equivalent_to_truth": true,
+      "verdict": "PASS",
+      "verdict_reason": "completion predicate agrees with the observed outcome",
+      "plan_status": "SOLVABLE",
+      "plan_offsets": [
+        [
+          0,
+          1
+        ]
+      ],
+      "executed_actions": 2,
+      "cleared": true,
+      "total_actions": 10,
+      "commits": 2,
+      "outcome": "cleared"
+    }
+  ],
+  "verdict": "3/3 PASS"
+}

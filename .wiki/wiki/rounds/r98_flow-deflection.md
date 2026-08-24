@@ -5600,6 +5600,42 @@ so it belongs in its own measurement with all three models rather than appended 
 verdicts were taken under the present wording.
 
 
+## gpt-oss closes the fill experiment, and takes two of my conclusions with it (2026-08-25)
+
+```
+                gemma4      qwen3.8     gpt-oss
+select          3/3 PASS    3/3 PASS    1/3 FAIL
+fill (split)    0/3 FAIL    0/3 FAIL    3/3 PASS
+fill (fused)    0/3 FAIL    0/3 FAIL    3/3 PASS
+```
+
+**gpt-oss answers `hazard_response: terminate_fatal` and clears, under both encodings.** So the
+evidence is sufficient: one model extracts the fatal contact from the same clause the other two
+read as a harmless stop. The last entry's conclusion — that the description is at fault and "the
+models are reading it correctly" — is **withdrawn**. The clause is thin, not wrong, and thinness
+that one model of three penetrates is a different finding from a misdescription.
+
+A second correction from the same file. gpt-oss's passing answer gives `piece_response_spawn:
+both_flanks` — the value I called a MISS for gemma4 two entries ago. It passes the verifier, so
+it is an **equivalence-class answer**, not an error. gemma4 therefore misses **one** slot after
+all, exactly as the frozen record said, and my "two slots" correction was itself the mistake.
+
+And gpt-oss's select is not a reasoning regression:
+
+```
+run 0  pick I3, truth, cleared, 2 actions
+run 1  unparsable
+run 2  unparsable
+```
+
+Two replies the harness could not parse. The pick it did make was the truth. So the 1/3 is a
+HARNESS outcome, and the frozen 3/3 remains the measurement of what that model can do on select.
+
+Where the contract stands: **FILL is still not confirmed paired** — gpt-oss 3/3, gemma4 0/3 — but
+the reason is now known and it is neither the encoding nor the evidence's adequacy. It is that
+one slot's support in the evidence is thin enough that two models of three miss it.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -5699,7 +5735,12 @@ verdicts were taken under the present wording.
     compiler's UNSATISFIABLE is the truth about the board rather than a search failure.
     Either the propagator floors flow the engine does not, or the level wants more than
     one placement.
-57. **WHY both models say `terminate_local`**: the evidence line that should carry the
+58. **gpt-oss: fill 3/3 in BOTH encodings** — it answers `terminate_fatal` and clears, so
+    the evidence IS sufficient and #57's "the description is at fault" is WITHDRAWN. Its
+    passing answer uses `both_flanks`, so that value is an EQUIVALENCE-CLASS answer and
+    gemma4 misses ONE slot after all — my "two slots" correction was the error. Its select
+    1/3 is two UNPARSABLE replies, not wrong picks; the frozen 3/3 stands.
+57. ~~WHY both models say `terminate_local`~~: the evidence line that should carry the
     fatal contact says a stream "reached the row just above the bottom edge and stopped
     there" — it describes the mechanism as its opposite, a harmless stop. Read that way
     `terminate_local` is the answer the evidence supports, and the models are reading it
