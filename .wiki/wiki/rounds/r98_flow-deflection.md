@@ -4584,6 +4584,36 @@ moment it is touched, since flow overwrites appearance, or it may sit under a pi
 level's source does. Both are checkable, and neither is checked yet.
 
 
+## Nothing is left marked, and the flash has a budget (2026-08-24)
+
+Comparing the board before and after a failing 38-layer spill on idx3 — the whole board, not a
+chosen region:
+
+```
+cells differing first -> last = 5
+   (4,4) (4,5) (4,6) (4,7):  8 -> 9      the piece becomes SELECTED again
+   (8,5):                    6 -> 12     one flow cell clears to background
+```
+
+That is all. **No entity is left marked** by a failing attempt: the flash is transient and gone
+by the last layer, and there is a standing flow cell at the start of the spill — the embedded
+source's own droplet, one cell below the emitter — which clears at the end.
+
+So "find the entity that flashed" cannot work by looking at the end state, and the mid-spill
+hunt already found nothing on idx3 while finding row 0 plainly on idx1 and idx2. The reading
+that fits, from the source: the failure branch flashes only while a counter is under six, and
+each failure on a level advances it. idx3 takes several commits — a sacrificial one plus the
+plan attempts — so by the later ones the flash budget is spent and the failure is SILENT.
+
+That is source-derived and owed a measurement, and it is the first explanation offered here that
+also explains why idx0's failures flashed and idx3's did not, rather than needing a separate
+story for each.
+
+It leaves the contradiction from the last entry standing and sharpened: nineteen cells satisfied,
+a life in hand, the attempt failing, and no observable reason. What can still be measured is the
+flash budget itself — fail a level deliberately several times and watch the flash stop.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -4666,6 +4696,11 @@ level's source does. Both are checkable, and neither is checked yet.
     commits. One life recovered by not re-committing when the aiming moved nothing;
     three more are spent because every level builds a FRESH grounding and re-learns the
     flow's direction and colour, which cannot change within a game.
+30. **A failing attempt leaves NOTHING marked** — five cells differ across a whole failing
+    spill: the piece re-selecting, and one flow cell clearing. The flash is transient, and
+    the source flashes only while a per-level counter is under six, so idx3's later
+    commits fail SILENTLY. Owed: fail a level deliberately several times and watch the
+    flash stop.
 29. ~~idx3 gives no verdict.~~ **It fails.** Moves after the run return one layer, so the
     board was already restored to its arrange phase — the attempt resolved as a failure.
     With all nineteen satisfied, the engine's condition means the FLAG is set, yet nothing
