@@ -6238,6 +6238,41 @@ What the numbers mean in the meantime: 196 and 144 are scores for a rule that cu
 winning walk, not for the rule the observation describes. They are not evidence against it.
 
 
+## The inherited walking side, implemented and REFUTED (2026-08-25)
+
+The previous entry left this as the concrete next step with its diagnosis attached: decide the
+walking side once at the landing and carry it, since re-deciding per collision cuts the winning
+walk short. Implemented properly — the droplet gains a fourth field holding the outward lateral
+step it is following, `SPENT` for the flank that does not walk, `None` for one that is merely
+falling — and measured:
+
+| board | before | after |
+|---|---|---|
+| idx0 (contract) | 0 | **0** |
+| b, c, d, e | 9, 9, 9, 9 | **6, 6, 6, 6** |
+| f | 13 | **11** |
+| **a** | 1 | **40** |
+| **p** | 0 | **35** |
+| sum (physics) | **93** | **150** |
+
+Five boards improve and two collapse, and the two that collapse lose whole streams: `a` and `p`
+are missing every cell of two vertical falls, columns 3 and 8, from row 3 downward. The cause is
+the half of the rule that says a droplet already walking continues on its own side and does not
+re-open the other — on those boards the engine plainly does produce the far side, and it becomes
+a stream that runs the height of the board.
+
+So the sixteen observed events did not cover this case, and the rule generalised past its
+evidence. **Reverted**; the bench is back at 197/93 with oracle 3/3, grounding, verifier and
+mutant certification all PASS.
+
+Worth stating plainly because the previous entry made the opposite prediction: the diagnosis
+there was right about WHY the earlier variant broke idx0, and wrong to conclude that fixing that
+would make the rule work. The per-collision expression was one defect; generalising "one side
+walks" from sixteen events on a family of near-identical boards was another, and only the second
+one shows up when the first is repaired. A rule that improves five boards and destroys two is not
+a rule that needs tuning — it is a rule whose evidence never contained the boards it breaks.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -6337,7 +6372,13 @@ winning walk, not for the rule the observation describes. They are not evidence 
     compiler's UNSATISFIABLE is the truth about the board rather than a search failure.
     Either the propagator floors flow the engine does not, or the level wants more than
     one placement.
-76. **The one-side-walks rule is NOT refuted — its expression was.** idx0's 15 lost cells all
+77. ⛔ **The inherited walking side is IMPLEMENTED and REFUTED.** Fourth droplet field
+    carrying the decision from the landing: idx0 stays 0 and b/c/d/e/f improve (9->6, 13->11),
+    but `a` 1->40 and `p` 0->35 lose whole vertical streams — the engine DOES re-open the
+    far side, which the 16 events never showed. Physics 93 -> 150. Reverted; bench back at
+    197/93, all four gates PASS. The per-collision expression was one defect; generalising
+    from 16 events on near-identical boards was another.
+76. ~~The one-side-walks rule is NOT refuted — its expression was.~~ Half right: see #77. idx0's 15 lost cells all
     descend from `(3,4)`, never born because the variant re-decides at EVERY collision and
     the winning walk becomes a "loser" once the surface it has crossed is behind it. The
     decision must be made at the landing and INHERITED, which needs a fourth field on the
