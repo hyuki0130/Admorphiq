@@ -3136,6 +3136,33 @@ allows either. The reach that scores best on the captured boards does not descri
 level's walk at all, and idx0 is the level the contract is built on.
 
 
+## The bench now contains the level the contract is built on (2026-08-24)
+
+Question 7 answered first, and it was not a contradiction: idx0's stream walks seven cells
+along the piece's top because the reach binds only LANDING droplets. Its single source
+(`falling_sources = [[9, 0, 1]]`, one lane, one row) is a free fall, and a free fall walks
+unbounded. Captured and replayed, the model reproduces idx0's whole spill **cell for cell —
+zero invented, zero missed**.
+
+That capture is now the first board in `rule_bench --all`, and it is the point of the tick.
+Last tick a rule halved the sweep (112 -> 44, every board improving) and took the live gate
+to 0/3. The sweep could not see it **because idx0 was not in the sweep.** With idx0 present
+the same rule announces itself immediately:
+
+```
+board     as-known  physics
+idx0             6        6  <- CONTRACT, must stay 0
+```
+
+Six — exactly the "the replay misses 6 cell(s) the flow reached" the verifier reported. The
+diagnostic and the gate now say the same thing at the same moment, instead of the diagnostic
+saying one thing for a whole tick.
+
+The capture lives at `scripts/rounds/R98/evidence/idx0.json`, WITH the round rather than in
+the scratchpad, because the scratchpad is git-ignored and a contract board that does not
+survive the session guards nothing.
+
+
 ## Next
 
 1. **Fill is not confirmed paired.** gemma4 misses one slot, and the cause is our
@@ -3152,9 +3179,9 @@ level's walk at all, and idx0 is the level the contract is built on.
    the same five-cell shape with a central mouth, both droplets arrive one row above with
    the mouth to their right, and idx0 spreads both ways while board o spreads one. Stated
    from two dumped trails; this is the live form of the footprint disagreement.
-7. **idx0's walk is SEVEN cells long** — (3,9) to (3,4) along the piece's top. The reach of
-   2 that scores best on the captured boards does not describe the contract level's walk.
-   Re-examine the reach against idx0 rather than against the captures.
+7. ~~idx0's walk is SEVEN cells long.~~ **Not a contradiction** — the reach binds only
+   LANDING droplets, and idx0's single source is a free fall. The model reproduces idx0
+   cell for cell, and that capture is now the first board in the sweep.
 4. ~~Report b, c and d apart from the rest.~~ **DONE** — `rule_bench.py --all` now reports
    as-known 211 and physics 139. Judge propagation rules on the physics column.
 5. **Close the 72-cell gap at the walk, not the propagator.** It is the cost of planning

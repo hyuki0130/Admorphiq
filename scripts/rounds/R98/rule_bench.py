@@ -95,7 +95,15 @@ def _error(board: Board, payload: dict) -> int:
 
 
 def _sweep() -> int:
-    captures = sorted(Path("scratchpad").glob("r98_idx3_*.json"))
+    # idx0 FIRST, and it is the one that matters: it is the level the contract, the oracle
+    # gate and the mutant table are all built on, and the model reproduces its spill cell
+    # for cell. A rule was once adopted for halving the rest of this sweep and took the
+    # live gate to 0/3 — the sweep could not see it, because idx0 was not in it.
+    # idx0's capture lives WITH the round, not in the scratchpad, because the scratchpad
+    # is ignored and a contract board that does not survive the session guards nothing.
+    here = Path(__file__).resolve().parent / "evidence"
+    captures = (sorted(here.glob("idx0*.json"))
+                + sorted(Path("scratchpad").glob("r98_idx3_*.json")))
     if not captures:
         print("no captures under scratchpad/r98_idx3_*.json")
         return 1
@@ -119,7 +127,8 @@ def _sweep() -> int:
         b = _error(union, payload)
         known += a
         physics += b
-        print(f"{path.stem.split('_')[-1]:8s} {a:9d} {b:8d}")
+        mark = "  <- CONTRACT, must stay 0" if "idx0" in path.stem and (a or b) else ""
+        print(f"{path.stem.split('_')[-1]:8s} {a:9d} {b:8d}{mark}")
     print(f"{'sum':8s} {known:9d} {physics:8d}")
     return 0
 
