@@ -144,6 +144,55 @@ def decision_table() -> int:
     return 0
 
 
+def events() -> int:
+    """DISTINCT step-off events, as opposed to instances of them.
+
+    Purpose: the captures are sibling boards of one level, so the same physical event
+    reappears on each. Counting instances makes the evidence look an order of magnitude
+    richer than it is, and two rules in a row were fitted to that inflated count.
+
+    Expected feedback: an event is (cell, walk direction); the board count beside it is
+    how many captures show it. A handful of events spread across many boards means the
+    question cannot be settled from these captures, whatever the instance count says."""
+    found: dict[tuple, set] = {}
+    for path in _captures():
+        with open(path) as f:
+            payload = json.load(f)
+        board = _union_board(_board(payload), payload)
+        dr, dc = board.direction
+        layers = [{tuple(c) for c in layer} for layer in payload["observed"]]
+        seen = set()
+        for i in range(1, len(layers)):
+            for cell in layers[i - 1]:
+                for step in ((-dc, -dr), (dc, dr)):
+                    first = (cell[0] + step[0], cell[1] + step[1])
+                    if first not in layers[i]:
+                        continue
+                    run = _walk(layers[i:], first, step, board)
+                    if not run or (path.stem, run[-1], step) in seen:
+                        continue
+                    seen.add((path.stem, run[-1], step))
+                    for j, c in enumerate(run):
+                        under = (c[0] + dr, c[1] + dc)
+                        nxt = (c[0] + step[0], c[1] + step[1])
+                        if _what(board, under) == "empty" or _what(board, nxt) != "empty":
+                            continue
+                        if _what(board, (nxt[0] + dr, nxt[1] + dc)) != "empty":
+                            continue
+                        took = "STEPPED" if j + 1 < len(run) else "stopped"
+                        found.setdefault((took, c, step), set()).add(path.stem)
+    print(f"{'outcome':8s} {'at cell':10s} {'walking':10s} {'boards':>7s}  levels")
+    for key in sorted(found, key=lambda k: (k[0], -len(found[k]))):
+        boards = found[key]
+        levels = sorted({"idx0" if "idx0" in b else "idx3" for b in boards})
+        print(f"{key[0]:8s} {str(key[1]):10s} {str(key[2]):10s} "
+              f"{len(boards):>7d}  {','.join(levels)}")
+    stepped = sum(1 for k in found if k[0] == "STEPPED")
+    stopped = sum(1 for k in found if k[0] == "stopped")
+    print(f"\nDISTINCT events: {stepped} stepped, {stopped} stopped")
+    return 0
+
+
 def main() -> int:
     print(f"{'board':6s} {'landing':9s} {'left':29s} {'right':29s}")
     print("  (a side with 0 steps did not appear on the layer after the landing)")
@@ -175,6 +224,8 @@ def main() -> int:
 
 
 if __name__ == "__main__":
+    if len(sys.argv) > 1 and sys.argv[1] == "--events":
+        raise SystemExit(events())
     if len(sys.argv) > 1 and sys.argv[1] == "--decision":
         raise SystemExit(decision_table())
     raise SystemExit(main())

@@ -6437,6 +6437,44 @@ polled until the new size appeared (41823 bytes, the fingerprint build), and onl
 kernels. Both contract-pair models are running; qwen3.8 waits on the two-session GPU cap.
 
 
+## The 67 instances are 14 events, and every counter-example is on the unreadable level (2026-08-25)
+
+The step-off decision looked like 67 measured instances split 37/30. `walk_probe.py --events`
+groups them by (cell, walk direction), because the captures are sibling boards of one level and
+the same physical event reappears on each:
+
+```
+STEPPED  (7, 13)  (0, 1)   15 boards   idx3
+STEPPED  (3, 5)   (0,-1)    1 board    idx0
+...
+stopped  (3, 8)   (0, 1)   10 boards   idx3
+stopped  (7, 5)   (0, 1)   10 boards   idx3
+stopped  (9, 3)   (0,-1)   10 boards   idx3
+
+DISTINCT events: 11 stepped, 3 stopped
+```
+
+**Sixty-seven instances are fourteen events.** The 30 "stopped" observations are three events seen
+ten times each, and the 37 "stepped" are eleven events, one of them counted fifteen times. Every
+property tested against this split was being tested against fourteen data points while the table
+reported sixty-seven, which is precisely how two rules in a row came to be fitted and refuted.
+
+And the three stopped events are **all on idx3** — the one level whose board the harness provably
+cannot read completely, since its frame is a fixed sixteen-cell window onto a twenty-cell level.
+idx0, the only capture whose board is complete, contributes step-offs and not a single stop.
+
+So the honest position on this axis: the current captures cannot settle the step-off rule. Not
+because the rule is subtle, but because every counter-example to "always step off" comes from the
+level where four rows and four columns of the board are missing from the model, and a walk that
+appears to stop is exactly what an unmodelled obstacle would look like. ⛔ No further rule should
+be fitted to these captures. What would move it is captures from idx1 and idx2 — boards the
+harness reads completely and which the walk now clears — and that is a capture run, not a rule.
+
+The instance-versus-event distinction is the transferable part. A sweep over sibling boards
+reports confidence proportional to how many siblings were captured, which has nothing to do with
+how much was observed.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -6536,6 +6574,13 @@ kernels. Both contract-pair models are running; qwen3.8 waits on the two-session
     compiler's UNSATISFIABLE is the truth about the board rather than a search failure.
     Either the propagator floors flow the engine does not, or the level wants more than
     one placement.
+83. ⛔ **The 67 step-off instances are 14 EVENTS, and all 3 counter-examples are on idx3.**
+    `--events` groups by (cell, direction): 30 "stopped" is three events seen ten times, 37
+    "stepped" is eleven events. Every property was tested against 14 points while the table
+    said 67 — how two rules got fitted and refuted. All three stops are on idx3, the level
+    whose board is provably incomplete (16-cell window on a 20-cell level); idx0, the only
+    complete board, has step-offs and no stops. ⛔ Fit no further rule to these captures;
+    what is needed is captures from idx1/idx2, which the walk now clears.
 82. **Three repetitions cannot carry a verdict — `R98_RUNS` raised 3 -> 9.** gpt-oss gave 3/3
     then 0/3 on the same prompt; three draws from one rate produce both. SELECT survives (3/3
     for all three models on independent runs), FILL is on notice — "only gpt-oss passes" rests
