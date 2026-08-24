@@ -7167,6 +7167,36 @@ the capture format that keeps appearances. That is worth leaving visible, becaus
 how a corpus quietly stops covering the board it is built on.
 
 
+## The vanished hazards are not a regression — and the old corpus recorded them out of bounds (2026-08-25)
+
+Last tick flagged that idx3's captured board now records no hazard cells, leaving `_frame_band()`
+inert there. Checked across the corpus rather than assumed:
+
+```
+CURRENT                                     OLD (pre-fix, excluded)
+  idx0         size 16  hazards [15,3] [15,9]      r98_idx3_a  size 16  hazards [15,1] [15,4]
+  walk_idx0_1  size 16  hazards [15,3] [15,9]      r98_idx3_b  size 16  hazards [15,1] [15,4]
+  walk_idx1_1  size 16  hazards [0,6] [0,10]       r98_idx3_o  size 15  hazards [15,0] [15,4]
+  walk_idx2_1  size 16  hazards [0,0] [0,9] [0,15] r98_idx3_p  size 15  hazards [15,1] [15,4]
+  walk_idx3_x  size 15  hazards []
+```
+
+**Hazard detection is intact.** Three levels of four still record them, and they sit on the edge
+the flow runs INTO — row 15 for idx0's downward flow, row 0 for idx1's and idx2's upward flow,
+which is a coherence check the numbers pass without being asked to.
+
+idx3 records none because its board is **fifteen cells and row 15 does not exist in it**. There is
+nothing for `_frame_band()` to be inert about; the frame row has been trimmed out of the board
+rather than left in it unmarked. So the flag resolves as a non-issue, and checking cost one query.
+
+⚠️ The same query indicts the old corpus once more. `r98_idx3_o` and `r98_idx3_p` are **size 15
+with hazards recorded at row 15** — outside their own board's bounds, where no cell can be. Those
+boards were already excluded for pairing a layout with someone else's spill; this is a second,
+independent way they do not describe themselves. The round has now found three separate defects in
+that corpus and adopted-then-reverted two rules fitted to it, which is a reasonable price for
+learning to validate a corpus before trusting it, and an unreasonable one to pay twice.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -7266,6 +7296,13 @@ how a corpus quietly stops covering the board it is built on.
     compiler's UNSATISFIABLE is the truth about the board rather than a search failure.
     Either the propagator floors flow the engine does not, or the level wants more than
     one placement.
+103. **The vanished hazards are NOT a regression.** Detection is intact — idx0 `[15,3] [15,9]`,
+     idx1 `[0,6] [0,10]`, idx2 `[0,0] [0,9] [0,15]` — and each sits on the edge the flow runs
+     INTO (row 15 for downward flow, row 0 for upward), a coherence check passed unasked.
+     idx3 records none because its board is FIFTEEN cells and row 15 does not exist in it. ⚠️
+     The same query indicts the old corpus again: `o` and `p` are size 15 with hazards at row
+     15, outside their own bounds — a second independent way those boards do not describe
+     themselves.
 102. **The notchless target is idx3's, NOT the family's.** `--targets` reports every unnamed
      target-coloured region per board: idx0, idx1 and idx2 have NONE; idx3 has the 4-cell,
      0-notch block on all four captures. So the notch-based satisfaction predicate is
