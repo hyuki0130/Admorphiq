@@ -3898,6 +3898,40 @@ is about our schema. If gemma4 still misses, the split was never the problem and
 about the model. Either answer is worth having; neither is available from arguing.
 
 
+## Checking the parked diagnosis: the flow ran PAST the fourth region (2026-08-24)
+
+idx3 is parked on a schema gap — the objective is four regions and the vocabulary names
+three. That diagnosis deserved a check rather than a shrug, so the executed plan's own trail
+was read:
+
+```
+block cells in the trail:  []                          (13,2) (13,3) (14,2) (14,3)
+cells beside the block  :  (12,1) (13,1) (14,1)
+```
+
+The left branch runs down column ONE, past the block at columns two and three, and never
+touches it. The block still wears colour 11 — the same appearance as every target — at the
+end of the attempt. So the level failing is CONSISTENT with the fourth region being unfilled,
+which is what the parked diagnosis says.
+
+Consistent is not the same as confirmed, and the difference is worth naming: this evidence
+would look identical if the level needed something else entirely that the plan also missed.
+
+Free enumeration says the experiment exists: on the captured board, 14033 layouts fill all
+three targets, avoid the hazard, and put flow within reach of the block. So the decisive test
+is available and costs actions rather than cleverness:
+
+1. carry the walk to idx3 as it already does,
+2. execute a layout that fills the three AND sends a stream down column 2 or 3 — into the
+   block rather than past it at column 1,
+3. read `levels_completed`.
+
+Advancing proves the fourth region was the requirement and that CONTACT satisfies it, which
+is what `absorbers()` already claims from the recolouring. Not advancing refutes the parked
+diagnosis outright, and that is the more valuable outcome of the two, because the round has
+been treating a schema gap as the reason idx3 stops.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -3938,7 +3972,11 @@ about the model. Either answer is worth having; neither is available from arguin
 12. ~~idx3 is still UNSATISFIABLE, now on 4 of 5 pieces.~~ **Three false hazards** —
     background cells and frame cells — made every reachable layout fatal. idx3 now plans
     and executes on all five pieces.
-13. ~~idx3 executes its plan and does not clear.~~ **A SCHEMA GAP** — the level's objective
+16. **Run the decisive test on the parked diagnosis** — a layout that fills the three AND
+    sends a stream INTO the fourth region, then read `levels_completed`. 14033 such
+    layouts exist on the captured board. Not advancing would refute the schema-gap
+    diagnosis, which is the more valuable outcome.
+13. ~~idx3 executes its plan and does not clear.~~ **A SCHEMA GAP (consistent, not confirmed)** — the level's objective
     is four regions and the schema can name three; the fourth is a notchless block that
     the engine satisfies but no rule in the vocabulary can express. Recorded as a family
     finding, NOT patched mid-round.
