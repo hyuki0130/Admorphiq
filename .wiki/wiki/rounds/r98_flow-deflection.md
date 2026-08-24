@@ -4126,6 +4126,39 @@ possibilities are now:
   and the fourth-region reading has been an attractive story fitted to a single board.
 
 
+## The block CAN be filled, and the embedded source is what fills it (2026-08-24)
+
+The last entry left two live possibilities and a named instrument. The experiment: make the
+block the SOLE target under `contact`, so the compiler has to find a layout that actually
+delivers flow to it rather than one that satisfies three other things and grazes it.
+
+```
+[block-only] plan SOLVABLE offsets=((0,0), (0,0), (0,1), (0,0), (0,0))
+[changed]    32 layers -> [(13,2), (13,6)] sizes=[4, 5]
+idx3: stopped — executed the plan without clearing (24 actions)
+```
+
+**The 4-cell region at (13,2) is the block, and the engine recoloured it.** So:
+
+* `absorbers()`'s claim is no longer unobserved — the block IS satisfied by the engine, and
+  this session has now seen it;
+* the piece the plan moved is **piece 2, the one carrying the embedded source at (7,4)** — the
+  only piece on the board whose motion moves a stream, exactly the instrument the last entry
+  named;
+* the level still did not clear, because this layout fills the block and only ONE of the three
+  targets.
+
+So idx3 wants four regions, each of which is now known to be individually fillable, and no
+layout tried so far fills all four at once.
+
+One thing this exposes about the model rather than the game: under `contact` the propagator
+believes roof contact satisfies the block, so when all four were offered as targets it chose a
+layout that merely grazed it — and the engine counted three. With the block alone to satisfy,
+the same compiler had to work for it and found a layout that really delivers. **The model's
+`contact` is more permissive than whatever the engine actually requires**, which is why the
+four-target test looked like a refutation and was not.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -4178,9 +4211,13 @@ possibilities are now:
 18. **idx3 carries an EMBEDDED SOURCE at (7,4)**, inside the only piece whose motion moves
     a stream, and the block is within its reach. That is the instrument the next
     experiment should use.
-19. **The block has never been observed to recolour** — zero occurrences across every
-    spill of every level this session, including the test that put flow on its roof. The
-    claim it rests on is not supported by anything measured here.
+19. ~~The block has never been observed to recolour.~~ **It has now** — with the block as
+    the SOLE target the engine recoloured it, and the plan that did it moved the piece
+    carrying the embedded source. All four regions are individually fillable; no layout
+    yet fills all four at once, and that is the open problem.
+20. **The model's `contact` is looser than the engine's requirement** — under it the
+    propagator thinks roof contact satisfies the block, which is why the four-target test
+    chose a layout that only grazed it.
 13. ~~idx3 executes its plan and does not clear.~~ **A SCHEMA GAP — the PREDICATE IS GLOBAL
     and this board needs two.** `contact` exists and would satisfy the notchless region
     (14033 winning layouts), but it is CONTRADICTED for the family, so it cannot be taken.
