@@ -5860,6 +5860,33 @@ Only the middle outcome leaves the contract where it is. The first would close f
 would be an argument for leaving evidence alone.
 
 
+## The same sequencing trap, taken a second time (2026-08-25)
+
+Both kernels came back with every mode ERROR:
+
+```
+verdicts: {'select': 'ERROR', 'fill': 'ERROR', 'fill_fused': 'ERROR', 'fill_explicit': 'ERROR'}
+[mode] select rc=2 · fill rc=2 · fill_fused rc=2 · fill_explicit rc=2
+```
+
+`rc=2` is argparse refusing an unknown flag. The kernels ran the OLD probe — the one without
+`--evidence` — because they were pushed before the dataset carrying the new one existed. **This
+round wrote that exact rule down two hours ago** (`kaggle datasets version` returns before the
+version exists) and I walked into it again, this time by pushing the kernel first and the dataset
+not at all.
+
+Fixed by doing it in the order the rule states: push the dataset, wait until the file listing
+shows the new size (40375 bytes, the `--evidence` build), then push the kernels. Both are
+re-running.
+
+Worth recording as more than an apology: **the failure mode is silent at push time and loud four
+minutes later, in a place that looks nothing like packaging.** `rc=2` from a probe reads as a
+harness bug until you notice the flag it rejected is one you added after the dataset was last
+uploaded. The cheap defence is the one this round already found — check the dataset's file
+listing, not the upload's success line — and it now needs applying before the KERNEL push as well
+as after the dataset one.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -5959,6 +5986,10 @@ would be an argument for leaving evidence alone.
     compiler's UNSATISFIABLE is the truth about the board rather than a search failure.
     Either the propagator floors flow the engine does not, or the level wants more than
     one placement.
+66. ⚠️ **The same sequencing trap, taken a second time.** Both kernels returned every mode
+    ERROR with `rc=2` — argparse refusing `--evidence`, because they ran the OLD probe from
+    a dataset that had not been updated. The rule was written down two hours earlier. Fix:
+    push the dataset, WAIT for its file listing to show the new size, then push kernels.
 65. **The explicit-contact experiment is RUNNING** as a fourth mode beside the three
     frozen ones (gpt-oss v9, gemma4 v8; qwen3.8 when a slot frees). Readings fixed in
     advance: all three pass -> the clause withheld a fact and fill closes; only gpt-oss
