@@ -4312,6 +4312,34 @@ but it no longer has a rejection story attached to it. This is the sixth explana
 has taken away.
 
 
+## Reconfirmed, and one candidate eliminated (2026-08-24)
+
+After several readings that turned out to be wrong, the load-bearing fact was re-measured with
+the simplest possible instrument — count cells at the satisfied appearance, no region logic:
+
+```
+[block-test] plan SOLVABLE, predicted_satisfied 4
+[drain] spill#12 38 layers | L34 flow=64 sat=19 tgt=0 | L35 sat=19 | L36 sat=19 | L37 sat=0
+[drain] spill#13 38 layers | identical
+idx3: stopped — executed the plan without clearing (33 actions)
+```
+
+Nineteen — every target-coloured cell the board has — at the satisfied appearance for three
+consecutive layers, reproduced across two spills in one run. The fact stands on two independent
+probes now: one counting whole regions, one counting bare cells.
+
+And a candidate is gone. If idx3 were the FINAL level, completing it might set a win state
+rather than incrementing `levels_completed`, which would explain a clear that does not look like
+one. It is not the final level:
+
+```
+sp80's `levels` list: 6 entries
+```
+
+idx3 is the fourth of six. The walk clears three of them, and the game has two more beyond the
+one that is stuck.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -4373,6 +4401,9 @@ has taken away.
 22. ~~idx3's attempt is REJECTED, not left incomplete.~~ **Withdrawn** — idx0's CLEARING
     spill reverts its targets to 11 on the final layer too. The revert is how every spill
     ends. The unanswered question is still the one from #21.
+23. **sp80 has SIX levels**; idx3 is the fourth. "The last level signals completion
+    differently" is eliminated, and the depth ceiling for this family is 6 — the walk
+    carries one hypothesis through 3 of them.
 21. **idx3 is NOT won by covering its regions.** All nineteen target-coloured cells go
     11 -> 13, the engine's own "done" appearance, in one spill; nine captures with
     different piece positions show nothing hidden; `levels_completed` holds at 3 and there
