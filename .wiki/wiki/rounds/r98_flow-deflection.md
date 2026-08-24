@@ -5305,6 +5305,33 @@ so it is exhaustive over the cases that exist rather than a sample, but it has n
 against a fourth kind of edge band because none exists here.
 
 
+## The fill measurement is running on Kaggle (2026-08-25)
+
+Pushed and running. What went up:
+
+```
+dataset  jaehyukhyun/admorphiq-src        new version — the package and the probe as they
+                                          stand after this session's grounding fixes
+kernels  admorphiq-r98-flow-gemma4        version 5, RUNNING
+         admorphiq-r98-flow-gptoss        version 5, RUNNING
+         admorphiq-r98-flow-qwen38        BLOCKED — "Maximum batch GPU session count of 2"
+```
+
+Each kernel now runs three modes rather than two: `select` and `fill` on the frozen split
+encoding, unchanged, plus `fill_fused`. So one run yields the contract's verdict and the
+experiment beside it, and the two cannot be confused because they land under separate keys and
+separate filenames.
+
+The pair the contract names is gemma4 and gpt-oss, and those are the two that are running.
+qwen3.8 goes up when a slot frees — it is the extra model that matched the contract pair on
+select at first outing, not a required leg.
+
+One packaging trap paid for itself: `kaggle datasets version` **silently skips directories**
+unless `--dir-mode` is given. The first upload pushed only the probe script and reported success,
+which would have booted a kernel with no `admorphiq` package to import. Verified by listing the
+dataset's files rather than trusting the "Upload successful" line.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -5314,8 +5341,9 @@ against a fourth kind of edge band because none exists here.
 2. **Fill is not confirmed paired.** The experiment is built AND covered by the harness
    self-test (`fill fused -> cleared PASS`), so its wiring is verified without a GPU;
    split remains the default, and the KAGGLE kernel now runs it as a third mode
-   (`fill_fused`) beside the two frozen ones. What remains is GPU time. Never as a patch
-   to move a verdict.
+   (`fill_fused`) beside the two frozen ones. **RUNNING on Kaggle since 2026-08-25 00:47**
+   — gemma4 and gpt-oss (the contract pair) at version 5; qwen3.8 waits on a GPU slot.
+   Never as a patch to move a verdict.
 2. ~~Why does the walk reach not bind an injected source?~~ **ANSWERED — it WAS the reach.**
    A landing cell entered the frontier with an unlimited walk; giving it `walked = 0` is
    worth 32 cells (243 -> 211). The intermediate claim that the cell never entered the
