@@ -78,6 +78,72 @@ def _fate(layers: list[set], run: list, board) -> str:
     return "STOPPED on support" if _supported(board, run[-1]) else "stopped"
 
 
+def _what(board, cell) -> str:
+    """What occupies a cell, by kind — the vocabulary the decision table is cut on."""
+    if not (0 <= cell[0] < board.size and 0 <= cell[1] < board.size):
+        return "off-board"
+    if board.sink_of(cell) is not None:
+        return "target"
+    if cell in board.absorber_cells:
+        return "absorber"
+    if cell in board.piece_cells:
+        return "piece"
+    if cell in board.hazard_cells:
+        return "hazard"
+    return "empty"
+
+
+def decision_table() -> int:
+    """Every point where a walking droplet could take one more lateral step, and
+    whether it did — cut by what it is standing on and what the next cell stands on.
+
+    Purpose: the terminal-cell view says where walks END, which conflates a walk that
+    could not continue with one that chose not to. This looks at the CHOICE instead,
+    so a property that decides it would show as a clean split.
+
+    Expected feedback: a row that is all STEPPED or all stopped is a rule. A row with
+    both is a decision the property does not explain, and the property is eliminated.
+    """
+    counts: dict[tuple, int] = {}
+    distance: dict[tuple, int] = {}
+    for path in _captures():
+        with open(path) as f:
+            payload = json.load(f)
+        board = _union_board(_board(payload), payload)
+        dr, dc = board.direction
+        layers = [{tuple(c) for c in layer} for layer in payload["observed"]]
+        seen = set()
+        for i in range(1, len(layers)):
+            for cell in layers[i - 1]:
+                for step in ((-dc, -dr), (dc, dr)):
+                    first = (cell[0] + step[0], cell[1] + step[1])
+                    if first not in layers[i]:
+                        continue
+                    run = _walk(layers[i:], first, step, board)
+                    if not run or (path.stem, run[-1], step) in seen:
+                        continue
+                    seen.add((path.stem, run[-1], step))
+                    for j, c in enumerate(run):
+                        under = _what(board, (c[0] + dr, c[1] + dc))
+                        nxt = (c[0] + step[0], c[1] + step[1])
+                        if under == "empty" or _what(board, nxt) != "empty":
+                            continue
+                        under_next = _what(board, (nxt[0] + dr, nxt[1] + dc))
+                        took = "STEPPED" if j + 1 < len(run) else "stopped"
+                        key = (f"on {under}", f"next over {under_next}", took)
+                        counts[key] = counts.get(key, 0) + 1
+                        if under_next == "empty":
+                            d = (f"had walked {j}", took)
+                            distance[d] = distance.get(d, 0) + 1
+    print(f"{'standing on':14s} {'the next cell stands over':26s} {'':8s} {'n':>4}")
+    for key in sorted(counts):
+        print(f"{key[0]:14s} {key[1]:26s} {key[2]:8s} {counts[key]:>4}")
+    print("\nthe step OFF the end, by how far the walk had already gone")
+    for key in sorted(distance):
+        print(f"  {key[0]:16s} {key[1]:8s} {distance[key]:>4}")
+    return 0
+
+
 def main() -> int:
     print(f"{'board':6s} {'landing':9s} {'left':29s} {'right':29s}")
     print("  (a side with 0 steps did not appear on the layer after the landing)")
@@ -109,4 +175,6 @@ def main() -> int:
 
 
 if __name__ == "__main__":
+    if len(sys.argv) > 1 and sys.argv[1] == "--decision":
+        raise SystemExit(decision_table())
     raise SystemExit(main())

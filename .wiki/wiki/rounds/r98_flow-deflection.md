@@ -6309,6 +6309,45 @@ the coincidence, and every rule fitted to it inherits that bias silently. The re
 never the mistake; accepting a sixteen-row table as the evidence was.
 
 
+## The walk's ONE ambiguous decision, and three properties eliminated (2026-08-25)
+
+With 258 rows of evidence instead of 16, the question "why do some walks stop on support" can be
+cut properly. `walk_probe.py --decision` looks at every point where a walking droplet COULD take
+one more lateral step and records whether it did — the choice, not the terminal cell, which is
+what conflates "could not continue" with "chose not to":
+
+```
+standing on    the next cell stands over              n
+on piece       next over piece            STEPPED    64
+on piece       next over empty            STEPPED    37
+on piece       next over empty            stopped    30
+```
+
+**While the next cell is also supported the walk ALWAYS continues — 64 of 64, no exceptions.**
+That is a genuine invariant, and the propagator already reproduces it. Every disagreement in the
+sweep therefore comes down to ONE binary decision: whether to take the final step off the end of
+the surface. Sixty-seven instances, split 37 to 30.
+
+Three properties were tested against that split and all three are eliminated:
+
+| property | verdict |
+|---|---|
+| what the next cell is (free / blocked / off-board) | STOP 30 vs fell 124 both mostly "free" — no split |
+| whether flow ever reaches the next cell | STOP 30/30 and fell 122/124 both "stays empty" — no split |
+| what the droplet stands on (piece / target / absorber) | every step-off case is `on piece` — constant, so it cannot discriminate |
+| how far the walk had already gone | 0 cells: 26 stepped / 10 stopped; 1 cell: 9 / 20 — a tendency, not a rule |
+
+The distance column is worth a caution rather than a conclusion. It leans the right way for a
+reach-like rule and is nowhere near clean, and a global reach was already swept over six values
+with the adopted 2 beating all of them. ⛔ This is not a licence to sweep it again; what it says
+is that if a reach governs anything it governs *this one decision* and not the walk as a whole,
+which is a different rule and would need its own evidence.
+
+So the axis is now narrow and well-posed: one decision, 67 measured instances, four properties
+ruled out. That is a better place to stop than a rule, because the last two rules on this axis
+were both fitted to evidence that had not been checked for bias first.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -6408,6 +6447,12 @@ never the mistake; accepting a sixteen-row table as the evidence was.
     compiler's UNSATISFIABLE is the truth about the board rather than a search failure.
     Either the propagator floors flow the engine does not, or the level wants more than
     one placement.
+79. **The walk has exactly ONE ambiguous decision, and four properties are eliminated.**
+    `--decision`: while the next cell is ALSO supported the walk continues 64/64 — an
+    invariant the propagator already reproduces. Every disagreement is the final step off
+    the end: 67 instances, 37 stepped / 30 stopped. Ruled out: what the next cell is,
+    whether flow ever reaches it, what the droplet stands on (constant), and distance
+    walked (0: 26/10, 1: 9/20 — a lean, not a rule). ⛔ Not a licence to re-sweep the reach.
 78. ⛔⛔ **#74 and #76 RETRACTED — the evidence base was the defect.** The probe called it a
     spread only when BOTH flanks landed on the same layer; relaxing that takes the table from
     16 rows to 258 and shows BOTH sides walking (`a (10,3)` 3/3, `b (10,3)` 3/4). The
