@@ -4912,6 +4912,44 @@ did — and it means no plan of ours can clear idx3 by satisfying more, because 
 everything is already what happens.
 
 
+## Resolved: idx3 fails on an entity inside the band we discard (2026-08-24)
+
+Reading the condition exactly as the DECISION sees it, rather than after the step returns:
+
+```
+[decide-in] targets=4  satisfied=4  missing=[]  flag=True  flash=6
+```
+
+**The flag is TRUE at the decision.** Every earlier reading of it as False was taken after the
+step, once the engine had reset. So idx3 fails on the flag, with all four targets satisfied —
+which is what the engine's condition says should happen, and what none of the board readings
+could see.
+
+Locating the entity that sets it, at the moment it is set:
+
+```
+3-target levels:  touched=1 at (15, 0)  tags=['waoewejnqzc']
+idx3 (4 targets): touched=1 at (19, 0)  tags=['waoewejnqzc']
+```
+
+**One sprite, at the board's bottom-left cell.** Its y sits two below the targets' — 15 against
+13 on the small levels, 19 against 17 on idx3 — which in board coordinates is the last row, and
+its x is column zero.
+
+That is inside `playable_size()`'s trim. The harness removes the last row and column as "a frame
+drawn around the board", and this round additionally fixed `barriers()` to ignore anything there.
+Both were measured and both are right about what flow DOES at that band. Neither could know that
+one cell of it **fails the run on contact**.
+
+The earlier frame probe missed it for a reason worth keeping: it looked for flow colour at row
+15, and a `waoewejnqzc` cell recolours to 14 the moment it is touched — so the very event being
+hunted erases the evidence the hunt was looking for.
+
+So the idx3 thread resolves. Not a missing target, not a schema gap in the objective, not a
+never-settling spill, not a spent life: **a failure entity living in the band the model discards,
+which the flow reaches and which no plan of ours can avoid because the model cannot see it.**
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -4994,6 +5032,13 @@ everything is already what happens.
     commits. One life recovered by not re-committing when the aiming moved nothing;
     three more are spent because every level builds a FRESH grounding and re-learns the
     flow's direction and colour, which cannot change within a game.
+40. **RESOLVED — idx3 fails on the FLAG, set by one sprite at the board's bottom-left
+    cell**, tagged the same as the 3-target levels' entity at (15,0). At the decision the
+    flag reads TRUE with all four targets satisfied; every earlier False was read after
+    the step, once the engine had reset. That cell lives inside `playable_size()`'s trim
+    — the band the harness discards as a frame — so no plan of ours can avoid it. The
+    frame probe missed it because a touched cell recolours to 14, erasing the flow colour
+    the probe was hunting.
 39. **At idx3's settle the advance condition is FULLY MET** — targets=4, satisfied=4,
     all_in=True, same_objects=True, flag False — and the engine resets instead of
     advancing. On clearing levels the completion follows the settle immediately in the
