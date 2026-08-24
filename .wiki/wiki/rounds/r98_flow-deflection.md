@@ -3709,6 +3709,44 @@ by the walk and the certifications until a fixture exists that produces a regist
 animation.
 
 
+## Why the owed pins keep failing: what makes a spill REGISTER (2026-08-24)
+
+Three rules are owed a unit pin and every fixture written for them was silently ignored —
+`_animations` stayed empty, so `barriers()`, `_obstruction_regions()` and everything else
+answered UNKNOWN and the tests asserted on nothing. The requirement was read out of
+`_read_animation` rather than guessed:
+
+```
+a colour is READ AS FLOW when
+  * its footprint is a superset chain over at least 3 consecutive layers, and
+  * it GROWS on at least 3 of them, and
+  * the last layer is larger than the first
+```
+
+Every earlier fixture added three flow cells, which is two growth steps. That is the whole
+reason they were inert — one step short of being looked at.
+
+A fixture built to the requirement DOES register:
+
+```
+wall at rows 6-7 with notches, a stream down column 4 that splits on it
+frontier [(1,4)] [(2,4)] [(3,4)] [(4,4)] [(5,4)] [(5,3),(5,5)] [(5,2),(5,6)]
+animations 1   direction (1,0)   obstruction [(6,4)]
+```
+
+The split has to arrive in ONE frame, too: the blocker test wants both perpendicular
+neighbours present in the next layer, and a fixture that renders them on separate frames
+reports no obstruction at all.
+
+Not yet solved: the variant needed to exercise the wall-dragging rule — the same board with
+the notch under the split filled in, so the blocker is part of the wall — does NOT register
+(`animations 0`), and the reason is not yet known. The flow colour's growth is identical in
+both, so it is something about the other colour's footprint.
+
+Recorded rather than left in a scratch file, because it is the difference between the next
+attempt starting here and starting where the last three did.
+
+
 ## Next
 
 1. **Fill is not confirmed paired.** gemma4 misses one slot, and the cause is our
@@ -3749,8 +3787,10 @@ animation.
     is four regions and the schema can name three; the fourth is a notchless block that
     the engine satisfies but no rule in the vocabulary can express. Recorded as a family
     finding, NOT patched mid-round.
-14. **Owed: a unit pin for the two barrier rules.** Three fixtures failed to produce a
-    registered animation; nothing was committed rather than a test that passes vacuously.
+14. **Owed: unit pins for the two barrier rules and the obstruction rule.** The reason
+    every fixture was inert is now known — a spill registers only with 3+ growth steps —
+    and a registering fixture exists. The variant that exercises the wall-dragging rule
+    still does not register; that is where the next attempt starts.
 15. ~~idx2 names TEN targets after ONE move action.~~ **4 now** — the blocker was dragging
     its whole wall in. Original note: Seven are scenery (sizes 14-39 vs a
     confirmed target of 5), none overlaps a piece. Harmless here because the plan does not
