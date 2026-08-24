@@ -203,15 +203,16 @@ def _captures() -> list[Path]:
     # the game. idx1 and idx2 are levels the walk CLEARS, and they live with the round
     # rather than in the scratchpad because evidence that does not survive the session
     # cannot be re-measured against.
-    # ⛔ evidence/cross_idx*.json are EXCLUDED and must stay excluded until the capture
-    # site is corrected. They pair a board with a spill that ran on a different layout:
-    # measured, the engine's flow passes through 1 of 1, 2 of 3 and 3 of 4 of their pieces,
-    # while across the contract board and all seventeen idx3 boards it passes through ZERO
-    # of five. The clearing-level capture is taken before the final plan step executes, so
-    # the layout that spilled is not the layout recorded. The files stay in the round so
-    # the next attempt starts from the known state instead of rediscovering it.
+    # The corpus is the walk's own captures, board paired with the trajectory THAT board's
+    # action produced. The previous corpus was frozen by a capture site that read the board
+    # before the final plan step and the spill after it; on clearing levels the engine's flow
+    # ran through 1 of 1, 2 of 3 and 3 of 4 of the recorded pieces, where a board that
+    # describes its own spill has zero. These pass that test on every board, and they are the
+    # first corpus with evidence from levels the walk CLEARS rather than only from the one it
+    # loses. idx0 stays first: it is the board the contract, the gate and the mutant table are
+    # built on.
     return (sorted(here.glob("idx0.json"))
-            + sorted(Path("scratchpad").glob("r98_idx3_*.json")))
+            + sorted(here.glob("walk_*.json")))
 
 
 def _union_board(board: Board, payload: dict) -> Board:
@@ -254,7 +255,10 @@ def _sweep() -> int:
         # also idx0 in part, and marking them would put the contract's name on boards the
         # gate has never been run against.
         mark = "  <- CONTRACT, must stay 0" if path.stem == "idx0" and (a or b) else ""
-        print(f"{path.stem.split('_')[-1]:8s} {a:9d} {b:8d}{mark}")
+        # the LEVEL, not the last underscore-separated token: `walk_idx2_1` is idx2, and
+        # naming it "1" hides which level a row is reporting.
+        name = next((s for s in path.stem.split("_") if s.startswith("idx")), path.stem)
+        print(f"{name:8s} {a:9d} {b:8d}{mark}")
     print(f"{'sum':8s} {known:9d} {physics:8d}")
     return 0
 

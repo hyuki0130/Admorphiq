@@ -382,6 +382,7 @@ def _execute(w: Walker, g: FlowGrounding, plan, entered: int, spent: int, probes
     arrives.
     """
     held: Select | None = None
+    pending_capture = None
     forecast = None
     forecast_sinks: tuple = ()
     for index, step in enumerate(plan.steps):
@@ -410,21 +411,15 @@ def _execute(w: Walker, g: FlowGrounding, plan, entered: int, spent: int, probes
                 _board_diff(plan.planned_board, pre.value)
             # the commit: the LAST piece has no successor to top it up, and a layout
             # that is one press short spills as a layout nobody chose
-            before_top_up = w.actions
             arrived, note = _top_up(w, g, held, entered, spent)
-            # ONLY when the top-up pressed nothing. `pre` is read before the top-up and
-            # the trajectory after it, so a capture taken across a press pairs a board
-            # one move stale with the spill of a board that moved — measured: the replay
-            # matches the engine for five steps and then diverges by exactly one column,
-            # which is what a one-cell piece offset looks like.
-            if (os.environ.get("R98_CAPTURE") and forecast is not None
-                    and w.actions == before_top_up):
-                # BEFORE the clear check. The capture used to sit past this return, so it
-                # fired only when a level FAILED — which is why every board in the sweep
-                # came from idx3 and the step-off question had counter-examples from one
-                # level and nowhere else. A spill that clears is evidence too.
-                _capture(pre.value, g.trajectory(), os.environ["R98_CAPTURE"],
-                         g._prev_cells, entered)
+            # The board AS IT WILL BE ACTED ON. Pairing it with the trajectory that the
+            # action produces is the whole contract of a capture, and the first version
+            # of this broke it twice over: it read `pre`, taken before the top-up AND
+            # before the final step, against a spill that ran after both. Measured, that
+            # board had the engine's flow passing through 1 of 1, 2 of 3 and 3 of 4 of
+            # its own pieces, where every valid board in the corpus has zero.
+            pending_capture = (g.board() if os.environ.get("R98_CAPTURE")
+                               and forecast is not None else None)
             if w.level > entered:
                 return True, f"cleared in {w.actions - spent} actions ({probes} probes)", False
             if not arrived:
@@ -441,6 +436,15 @@ def _execute(w: Walker, g: FlowGrounding, plan, entered: int, spent: int, probes
                            f"the plan counts {planned}"), True
         before = g.tracked_region()
         w.run(step, g)
+        if pending_capture is not None and pending_capture is not UNKNOWN:
+            # AFTER the action and BEFORE the clear check: the trajectory the action
+            # produced, against the board it was taken on. Capturing past the return is
+            # why every board in the corpus used to come from a level that had just
+            # FAILED, and pairing it with an earlier board is why the ones that did not
+            # were unusable.
+            _capture(pending_capture.value, g.trajectory(), os.environ["R98_CAPTURE"],
+                     g._prev_cells, entered)
+            pending_capture = None
         if w.level > entered:
             return True, f"cleared in {w.actions - spent} actions ({probes} selection probes)", False
         if isinstance(step, int) and step in deltas_of(g) and before is not UNKNOWN:

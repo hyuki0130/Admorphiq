@@ -6692,6 +6692,49 @@ lane predicts nothing. Whether that is a defect or a mis-reading of what the gro
 means is now genuinely open, since the boards that made it look like a defect are gone.
 
 
+## The capture is fixed, and the propagator reproduces idx0 and idx1 CELL FOR CELL (2026-08-25)
+
+The capture's contract is to pair a board with the trajectory THAT board's action produced. It was
+breaking that twice over — reading `pre`, taken before the top-up AND before the final plan step,
+against a spill that ran after both. Fixed by holding the board read after the top-up and taking
+the trajectory after the action.
+
+The validity test that condemned the old boards now passes on every one:
+
+| board | pieces | flow passes through |
+|---|---|---|
+| walk_idx0 / idx1 / idx2 | 1, 3, 4 | **0, 0, 0** |
+| walk_idx3 ×4 | 5 | **0** |
+
+And on captures that describe their own spills, the tick-0 seeding is not merely defensible — it is
+**exact**:
+
+```
+board     as-known  physics
+idx0             0        0     <- the contract board
+idx0             0        0     <- the walk's own idx0 capture
+idx1             0        0
+idx2            24       24
+idx3             3        3     (x4)
+sum             36       36
+```
+
+**Two levels reproduced cell for cell, and the whole corpus falls to 36.** The old corpus scored
+93 on seventeen boards that all came from one level, and only from runs of that level which had
+just failed.
+
+⚠️ This reverses the refutation from one tick ago on its own terms. The tick-0 seeding scored 121
+against 93 there and was reverted as refuted — measured on boards frozen by the broken site.
+Re-measured on boards that pass the pass-through test, the same change makes idx0 and idx1 exact.
+**Both measurements were honest; one of them was taken on evidence that did not describe what it
+claimed to.** The revert was still the right call at the time: the corpus was the only thing
+available and the change lost on it. What made the difference was fixing the instrument rather
+than arguing about the number.
+
+idx2's 24 is now the largest single item in the corpus and the first genuinely open propagation
+question with valid evidence behind it.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -6791,6 +6834,13 @@ means is now genuinely open, since the boards that made it look like a defect ar
     compiler's UNSATISFIABLE is the truth about the board rather than a search failure.
     Either the propagator floors flow the engine does not, or the level wants more than
     one placement.
+90. **THE CAPTURE IS FIXED, AND THE PROPAGATOR REPRODUCES idx0 AND idx1 CELL FOR CELL.**
+    The board is now read after the top-up and the trajectory after the action, so a capture
+    describes its own spill: pass-through is 0 on every board. On that corpus the tick-0
+    seeding is EXACT — idx0 0, idx1 0, idx2 24, idx3 3 each, **sum 36** against the old
+    corpus's 93 on seventeen boards from one level. ⚠️ This reverses #89's refutation on its
+    own terms: both measurements were honest and one was taken on evidence that did not
+    describe what it claimed. Fixing the instrument settled it, not arguing about the number.
 89. ⛔ **The cross-level boards are INVALID and the tick-0 fix is REVERTED.** The engine's
     flow passes through 0 of 5 pieces on all 17 idx3 boards and the contract board, and
     through 1/1, 2/3, 3/4 on the cross boards: their capture is taken before the final plan
