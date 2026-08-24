@@ -2592,13 +2592,54 @@ idx2: CLEARED — 55 actions
 idx3: the covered board is down to eight cells of disagreement
 ```
 
+## The last eight cells, placed — and one more rule struck off (2026-08-24)
+
+The covered board's remaining disagreement is small enough to read cell by cell:
+
+```
+ !!  7: predicted (7,2) (7,6)            observed (6,7) (7,2)
+ !!  8: predicted (6,7) (7,1) (8,6)      observed (7,1) (7,7)
+ !! 10: predicted (8,7) (10,6)           observed (9,5) (9,6)
+ !! 11: predicted (9,7) (11,6)           observed (9,4) (9,7) (10,6) …
+```
+
+Two facts, both narrow:
+
+* **The lane-7 stream runs one step late.** The engine opens it at step 7 and the model at
+  step 8; from there the two descend column 7 in lockstep, one apart.
+* **Our row-7 walk goes RIGHT and the engine's goes LEFT.** At `(7,5)` — the right end of
+  the piece below — we step to `(7,6)` and fall, giving `(8,6)` and the column-6 stream.
+  The engine never has `(7,6)`: its walk runs left to `(7,0)` and stops, and its column-6
+  flow arrives later, from a row-9 spread we do not produce (`(9,3) (9,4) (9,5)`).
+
+The obvious reading — that a walker never falls off the end it reaches — is **measured and
+false**, comprehensively:
+
+```
+a 2->38   b 30->33   c 30->33   d 23->28   e 9->23   f 22->36
+g 14->37  h 14->37   i 17->30   j 17->30   k 8->29   stuck 10->29
+sum 196 -> 383
+```
+
+Falling off the end is not the exception, it is the rule; board k's row-7 branch is the
+exception, and what makes it one is still unnamed. Four rules have now been struck off
+around this same behaviour (side-conditions on spreading, one-sided sink miss, notch-seeking,
+walkers-never-fall), which is worth as much as the list of what does work.
+
+```
+idx0: CLEARED — 23 actions
+idx1: CLEARED — 30 actions
+idx2: CLEARED — 55 actions
+idx3: eight cells, both causes located, neither yet explained
+```
+
 ## Next
 
 1. **Fill is not confirmed paired.** gemma4 misses one slot, and the cause is our
    encoding rather than its reasoning. Measure the hazard orthogonalisation as its
    own experiment against all three models — never as a patch to move a verdict.
-2. **Eight cells of disagreement remain on the covered board**: five invented around one
-   column and three missed on one row. Both are small enough to name individually now.
+2. **Why does the engine's row-7 walk go left and not right?** Both directions are open
+   and the model takes both; the engine takes one. Four candidate rules are struck off.
 3. **Measure the bounded-roof variant on fixed evidence** — 1 invented cell against the
    adopted rule's 2, deliberately not adopted in the same change.
 3. **Multi-piece placement**, the burden the idx1 observation named: idx1 carries
