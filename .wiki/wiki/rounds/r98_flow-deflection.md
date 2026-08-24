@@ -6614,6 +6614,44 @@ none. That is the honest direction: 227 of the old total was "predicted nothing"
 were error, on the only boards in the corpus taken from levels the walk CLEARS.
 
 
+## Correction: the cross-level residual is GROUNDING, not propagation (2026-08-25)
+
+The previous entry closed with "the divergence is real propagation error on levels never measured
+before". Tracing cross_idx2's 48 missed cells says otherwise, and the claim is withdrawn.
+
+The model loses the lane-1 stream on its very first step, at `(13,1)`. That cell belongs to this:
+
+```
+sink 0:  5 cells  rows [1,2]              cols [1,2,3]
+sink 1:  5 cells  rows [1,2]              cols [6,7,8]
+sink 2:  5 cells  rows [1,2]              cols [12,13,14]
+sink 3: 17 cells  rows [9,10,11,12,13,14] cols [0,1,2]
+```
+
+**Sink 3 is seventeen cells over six rows.** The level's real targets are five-cell cups two rows
+tall; the grounding has admitted a piece of scenery three times their size as a target, and our
+stream is swallowed by it where the engine's flows straight through. That is the round's own open
+item — scenery admitted as a target, whose discriminator is SHAPE and where a size threshold was
+already measured inert and reverted. It accounts for 15 of the 48.
+
+The other 33 sit in columns 8, 9, 14 and 15, where the captured board places pieces the engine's
+flow passes through: `piece 3` spans `(12,10)`–`(12,15)` while the observed spill occupies
+`(12,14)`. Either the board is stale for the final plan step — which `w.run(step, g)` executes
+AFTER the capture is taken — or the piece is mis-segmented. **Not yet distinguished**, and worth
+saying that plainly rather than picking one.
+
+⚠️ It also corrects my earlier refutation. I tested the stale-board reading against `_top_up`,
+found it pressed nothing, and concluded the board was not stale. `_top_up` is not the only mover:
+the final plan step runs after the capture. The test was sound and its conclusion was drawn wider
+than the test.
+
+What this means for the widened bench: the three cross-level boards currently measure the
+GROUNDING's fidelity, not the propagator's. They are worth keeping — they are the only boards from
+levels the walk clears, and they surfaced a real seeding defect within an hour of being added — but
+their error must not be read as a propagation score until the false target and the piece question
+are separated.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -6713,6 +6751,13 @@ were error, on the only boards in the corpus taken from levels the walk CLEARS.
     compiler's UNSATISFIABLE is the truth about the board rather than a search failure.
     Either the propagator floors flow the engine does not, or the level wants more than
     one placement.
+88. ⚠️ **CORRECTION to #87: the cross-level residual is GROUNDING, not propagation.**
+    cross_idx2 loses the lane-1 stream at `(13,1)`, which belongs to a SEVENTEEN-cell "sink"
+    spanning six rows — the level's real targets are five-cell cups. That is the open
+    scenery-as-target item and accounts for 15 of 48 missed. The other 33 are in columns
+    where the board places pieces the engine's flow passes through: stale board (the final
+    plan step runs AFTER the capture) or mis-segmentation, NOT yet distinguished. My earlier
+    refutation tested `_top_up` only and was drawn wider than the test.
 87. **A tick-0 lane was never seeded — three levels predicted NOTHING.** Widening the bench
     past idx3 for the first time exposed it: cross_idx0/1/2 scored 36/34/64 with ZERO
     invented, i.e. an empty trajectory, because `pending` is read at `len(frontier)` >= 1
