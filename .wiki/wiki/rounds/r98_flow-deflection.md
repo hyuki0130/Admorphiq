@@ -4518,6 +4518,41 @@ property of one level, not of the family, which is exactly the kind of thing tha
 general saving until it is measured on a second board.
 
 
+## With a life in hand and all nineteen satisfied, idx3 shows no verdict at all (2026-08-24)
+
+Recovering one life changed what can be asked. Re-run with the block variant:
+
+```
+[drain] spill#11 38 layers | L34 sat=19 | L35 sat=19 | L36 sat=19 | L37 sat=0
+=== after the run ===
+press 0: levels=3  state=NOT_FINISHED  layers=38     <- a life was still there
+press 1: levels=3  state=GAME_OVER
+```
+
+So the commit that satisfied all nineteen cells was made on a **living** game, and the level
+still did not advance. The "it was already over" explanation no longer covers it.
+
+Which puts the flag back in play — advancement is all targets satisfied AND a flag clear, and
+the flag is set by flow reaching a tagged sprite that flashes. So the flash was hunted for
+anywhere off the frame:
+
+```
+spill 28 layers (idx1)  row 0 flashes 14 at layers 16..26      a FAILURE
+spill 29 layers (idx2)  row 0 flashes 14 at layers 14..27      a FAILURE
+spill 33 layers (idx3)  nothing flashes off-frame
+spill 38 layers (idx3)  nothing flashes off-frame
+```
+
+**idx3 shows neither verdict.** No failure flash, no next-level board. The engine's decision
+code runs only once the flow has finished — a later action than the one that starts the spill —
+and the walk stops before pressing it. Pressing once more re-runs a 38-layer spill rather than
+resolving, so the resolving action is not the commit action either.
+
+That is the state: with lives, with everything satisfied, idx3 is neither passed nor failed
+within anything observed so far. The next probe is to find the action that makes the engine
+render its verdict, rather than to explain a verdict that has not been given.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -4600,6 +4635,11 @@ general saving until it is measured on a second board.
     commits. One life recovered by not re-committing when the aiming moved nothing;
     three more are spent because every level builds a FRESH grounding and re-learns the
     flow's direction and colour, which cannot change within a game.
+28. **idx3 gives NO verdict.** With a life in hand and all nineteen cells satisfied, its
+    spills show no failure flash and no next-level board, while idx1/idx2 failures flash
+    row 0 plainly. The engine decides only once the flow has finished, on a later action
+    than the commit, and pressing the commit again just re-runs the spill. Find the action
+    that makes it render a verdict.
 27. ⛔ **Do not aim before the sacrificial commit.** It recovers three lives and breaks
     idx3 outright — the piece sits under the source, the spill never shows a clean fall,
     `initial_direction` comes back UNKNOWN and the board will not assemble. The gate gets
