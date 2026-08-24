@@ -3633,6 +3633,45 @@ were background and frame. Four of those five were things the harness was tellin
 wrongly, not things the engine was doing strangely.
 
 
+## The ten targets are scenery, and they arrive on a single move (2026-08-24)
+
+Chasing the transient count on idx2, non-invasively:
+
+```
+[tgt] 464: 3  after observe(5, 29)   a commit, 29 layers
+[tgt] 464: 10 after observe(4, 1)    a MOVE, one frame
+```
+
+It is not a spill and not a level boundary — one plain move action, one frame, and the
+shortlist goes from three to ten. What the ten are:
+
+```
+sink_0 size 18   sink_2 size 39   sink_4 size 31   sink_6 size 17   sink_7 size 14
+sink_1 size  5   sink_3 size  5   sink_5 size  5   sink_8 size 2    sink_9 size 2
+every one of them overlaps ZERO piece cells;  sel=9 idle=8, 21 piece cells
+```
+
+The three real targets are the size-5 entries; the rest is board scenery, and none of it is a
+piece, so the appearance collapse fixed earlier this round is not the cause. Sizes of 39 and
+31 next to a confirmed target of 5 are not near-misses — the shortlist is naming structure.
+
+It does no harm HERE: idx2 clears at 55 actions either way, because the plan does not depend
+on the count. That is precisely why it is worth recording rather than shrugging at — the same
+read on a level whose plan does depend on "cover every target" would make the objective
+unreachable by construction, which is exactly the failure mode idx3 spent three ticks in.
+
+Measured and REVERTED: excluding candidates that reach outside the playable board. It is the
+same rule `barriers()` already applies and it is INERT here — idx2's board is size 16, so the
+two row-15 entries are inside it. An inert guard is a speculative safety net, so it went back
+out rather than staying in as decoration.
+
+The remaining discriminator is SHAPE — a confirmed target is five cells with a notch, and a
+39-cell region is not a bigger one of those. The shortlist admits obstruction-named regions
+of any shape ON PURPOSE, so that a target the probing spill never satisfied can still be
+named, and narrowing that needs its own measurement rather than a size threshold picked to
+fit this board.
+
+
 ## Next
 
 1. **Fill is not confirmed paired.** gemma4 misses one slot, and the cause is our
@@ -3675,9 +3714,13 @@ wrongly, not things the engine was doing strangely.
     finding, NOT patched mid-round.
 14. **Owed: a unit pin for the two barrier rules.** Three fixtures failed to produce a
     registered animation; nothing was committed rather than a test that passes vacuously.
-15. **idx2 transiently names TEN targets** on a three-target board. Harmless here because
-    the plan does not depend on the count, which is exactly why it would not be harmless
-    somewhere else.
+15. **idx2 names TEN targets after ONE move action.** Seven are scenery (sizes 14-39 vs a
+    confirmed target of 5), none overlaps a piece. Harmless here because the plan does not
+    depend on the count; on a level where it did, "cover every target" would be
+    unreachable by construction — the failure mode idx3 spent three ticks in. The frame
+    filter was measured INERT and reverted; the open discriminator is SHAPE, and narrowing
+    the obstruction source needs its own measurement, not a size threshold fitted to this
+    board.
 8. **Close the 72-cell gap at the walk, not the propagator.** It is the cost of planning
    a commit before its spill exists, so the lever is the grounding CADENCE — re-ground on
    each spill before the next plan — and it should be measured on the live walk.
