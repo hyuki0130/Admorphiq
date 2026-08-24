@@ -39,19 +39,69 @@ BASE = """                for i, f in enumerate(targets):
                     if 0 <= walked >= WALK_REACH:
                         continue  # the walk along this piece is spent
 """
-GUARD = BASE + """                    if _VARIANT(board, f, (dr, dc), wall):
+GUARD = BASE + """                    if _VARIANT(board, f, targets, (dr, dc), wall):
+                        continue
+"""
+# A rule may also SPEND the losing side rather than suppress it: the engine still
+# renders a cell there, it just never walks on from it. `walked = WALK_REACH` is
+# exactly "this droplet's walk is over" in the propagator's own terms.
+SPEND = BASE + """                    if _VARIANT(board, f, targets, (dr, dc), wall):
+                        spawn(f, direction, WALK_REACH)
                         continue
 """
 
+def _support_run(board, cell, step, d, wall) -> int:
+    """How many consecutive cells from ``cell`` outward along ``step`` are SUPPORTED —
+    the length of the surface a droplet could slide along on that side.
+
+    Out of bounds counts as supported, exactly as walk_probe.py counts it, because a
+    droplet at the board's edge is not standing over free space."""
+    n = 0
+    probe = cell
+    while n < board.size:
+        if _free(board, (probe[0] + d[0], probe[1] + d[1]), wall):
+            break
+        n += 1
+        probe = (probe[0] + step[0], probe[1] + step[1])
+    return n
+
+
+# Suppressing variants: the flank gets no cell at all.
 VARIANTS = {
     "baseline (both flanks)": None,
     "only the flank that is SUPPORTED (cannot fall)":
-        lambda board, f, d, wall: _free(board, (f[0] + d[0], f[1] + d[1]), wall),
+        lambda board, f, targets, d, wall: _free(board, (f[0] + d[0], f[1] + d[1]), wall),
     "only the flank that can FALL":
-        lambda board, f, d, wall: not _free(board, (f[0] + d[0], f[1] + d[1]), wall),
+        lambda board, f, targets, d, wall: not _free(board, (f[0] + d[0], f[1] + d[1]), wall),
     "not onto a flank standing over a piece":
-        lambda board, f, d, wall: (f[0] + d[0], f[1] + d[1]) in board.piece_cells,
+        lambda board, f, targets, d, wall: (f[0] + d[0], f[1] + d[1]) in board.piece_cells,
 }
+
+# Spending variants: the flank still gets its cell, but cannot walk on from it.
+# Measured by walk_probe.py across all sixteen observed spread events: ONE side walks
+# and the other stops after a single cell, and the side that walks is the one with the
+# longer run of SUPPORTED cells.
+SPEND_VARIANTS = {
+    "only the longer SUPPORTED run walks":
+        lambda board, f, targets, d, wall: _loses(board, f, targets, d, wall),
+}
+
+
+def _loses(board, f, targets, d, wall) -> bool:
+    """Is this flank the side with the SHORTER supported run?
+
+    The flanks are built as (cell - lateral, cell + lateral) with lateral = (dc, dr),
+    so index 0 walks outward by -lateral and index 1 by +lateral. Deriving the side
+    from the cell's own coordinates instead is what made the first version of this
+    score a rule nobody had measured."""
+    if len(targets) != 2 or f not in targets:
+        return False
+    lateral = (d[1], d[0])
+    i = targets.index(f)
+    out = [(-lateral[0], -lateral[1]), lateral]
+    mine = _support_run(board, f, out[i], d, wall)
+    other = _support_run(board, targets[1 - i], out[1 - i], d, wall)
+    return mine < other
 
 
 def _free(board, cell, wall):
@@ -63,8 +113,8 @@ def _free(board, cell, wall):
             and board.sink_of(cell) is None)
 
 
-def _module(rule):
-    src = SRC if rule is None else SRC.replace(BASE, GUARD)
+def _module(rule, shape=None):
+    src = SRC if rule is None else SRC.replace(BASE, shape or GUARD)
     mod = types.ModuleType("pf_variant")
     # dataclasses resolves annotations through sys.modules, so the module has to be
     # registered before the class bodies run
@@ -92,5 +142,9 @@ def score(mod):
 
 for name, rule in VARIANTS.items():
     total, idx0 = score(_module(rule))
+    flag = "  <- BREAKS THE CONTRACT BOARD" if idx0 else ""
+    print(f"{name:48s} physics {total:4d}   idx0 {idx0}{flag}")
+for name, rule in SPEND_VARIANTS.items():
+    total, idx0 = score(_module(rule, SPEND))
     flag = "  <- BREAKS THE CONTRACT BOARD" if idx0 else ""
     print(f"{name:48s} physics {total:4d}   idx0 {idx0}{flag}")

@@ -6133,6 +6133,45 @@ the number that would have tempted it. A diagnostic that can only report improve
 diagnostic that will eventually recommend a regression.
 
 
+## What the engine actually does with a blocked droplet — one side walks (2026-08-25)
+
+The halo had to come from what happens after the spawn, so `scripts/rounds/R98/walk_probe.py`
+reads the extents out of the OBSERVED trajectories rather than arguing from one hand-read board.
+Every spread event in the sweep, with `#` marking a walked cell that was standing on something:
+
+```
+board  landing    left                right
+idx0   (3, 9)     5 step(s) ####.      1 step(s) .
+idx0   (12, 10)   1 step(s) .          1 step(s) .
+idx0   (12, 4)    1 step(s) .          1 step(s) .
+b      (9, 10)    3 step(s) ##.        1 step(s) .
+f..o   (7, 4)     4 step(s) ####       1 step(s) #        (eleven boards, identical)
+stuck  (9, 10)    3 step(s) ##.        1 step(s) .
+```
+
+**Sixteen events, one shape: ONE side walks and the other stops after a single cell.** The
+walking side runs while it is supported and takes exactly one step off the end (`####.`, `##.`)
+unless the board's edge stops it first (`####`). The other side gets its cell and nothing more —
+including in the eleven-board family where that single cell is SUPPORTED and would keep walking
+under any rule that only looks at support.
+
+Which side walks? In all sixteen it is the one with the longer supported run, and in all sixteen
+it is also the lower-column side, because on these boards the two always coincide. The captures
+cannot separate those two readings, and saying so is the honest position.
+
+Scored as a rule — the losing flank still gets its cell but cannot walk on from it — it is
+**refuted**: physics 196 against the baseline's 93, and 15 cells of error on the contract board.
+The observation is solid and the simplest rule expressing it is not what the engine does; it
+over-applies at collisions that are not this kind of event.
+
+⚠️ The first implementation scored 332 and would have been reported as the same refutation. It
+derived which flank it was looking at from the cell's own coordinates — a parity expression that
+is simply wrong — so it was scoring a rule nobody had measured. Deriving the side from the index
+the propagator itself builds the flanks with took it to 196. **A variant that scores badly still
+has to be the variant you meant**, or the sweep manufactures refutations as readily as it
+manufactures improvements.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -6232,6 +6271,13 @@ diagnostic that will eventually recommend a regression.
     compiler's UNSATISFIABLE is the truth about the board rather than a search failure.
     Either the propagator floors flow the engine does not, or the level wants more than
     one placement.
+74. **ONE SIDE WALKS — measured across all 16 observed spread events.** The walking side
+    runs while supported and takes exactly one step off the end (or stops at the board
+    edge); the other side gets its cell and nothing more, even when that cell is supported.
+    Which side: the longer supported run in all 16, and also the lower-column side in all
+    16 — the captures cannot separate the two. As a rule it is REFUTED (physics 196, idx0
+    15). ⚠️ Its first implementation derived the flank from a bogus parity expression and
+    scored 332 — a refutation of a rule nobody had measured. `walk_probe.py`.
 73. ⛔ **One-sided spawning is REFUTED — three variants, 4-6x worse, all breaking idx0.**
     `spawn()` already refuses an occupied cell, so both-flank spawning is the only source of
     width, and choosing a side at collision is not what the engine does. The halo comes from
