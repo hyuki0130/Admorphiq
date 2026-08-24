@@ -5995,6 +5995,51 @@ The docstring's 211/139 was stale and is corrected to the measured 209/108; the 
 since closed the difference. Judge the next propagation rule on the bottom rows.
 
 
+## The frame band is a WALL — adopted, and it is not the rule that was reverted (2026-08-25)
+
+The row attribution pointed at the trail's far end, so the next question was where exactly the
+surplus enters. Measured across all eighteen captures:
+
+| | |
+|---|---|
+| engine cells in the hazard row | **0, on every capture** |
+| model's deepest row vs the engine's | one row deeper on **13 of 18** |
+| hazard cells grounding admits in that row | **two** |
+
+So the engine treats the whole bottom line as impassable while grounding marks only the two
+cells it has evidence for, and our replay leaks into the columns nobody marked. Adopted:
+`_frame_band()` returns the whole edge line when a board's hazards all sit on one, and the
+propagator treats it exactly as it treats the board's edge.
+
+**This is not #52 in another coat.** That change made the band FATAL and was reverted because the
+engine's flow never contacts it, so the model began predicting a failure that never happens; #56
+then found the mechanism — bounds and hazards share one branch, so marking the row hazardous
+turned every ordinary boundary death into a fatality. The band as a WALL routes to the boundary
+branch instead: a droplet that would enter it simply ends, the attempt is unaffected, and the
+hazard slot keeps its meaning at the two marked cells. A pin holds that distinction by failing
+if the band is ever folded back into `hazard_cells`.
+
+Measured after adoption, everything at once:
+
+| | before | after |
+|---|---|---|
+| bench as-known / physics | 209 / 108 | **197 / 93** |
+| idx0 contract board | 0 | **0** |
+| oracle gate | 3/3 | **3/3** |
+| grounding / verifier / mutants | PASS | **PASS** |
+| depth walk | 3 levels, 138 actions | **3 levels, 138 actions** |
+
+The physics column falls by exactly the fifteen cells the row-15 attribution predicted, which is
+the check that the rule removed what it was aimed at rather than something else of the same size.
+
+Three pins, each checked against its own subject by deleting that subject and re-running — and
+one of them taught something. `test_the_frame_band_is_a_wall_and_not_a_hazard` stays GREEN when
+`_frame_band` is deleted entirely, because at the outer edge a wall death and a boundary death
+are the same event. Its subject is the band's PLACEMENT, not its existence, and it goes red
+exactly when the band is folded into the hazards. The docstring now says so instead of claiming
+a coverage it does not have.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -6094,6 +6139,13 @@ since closed the difference. Judge the next propagation rule on the bottom rows.
     compiler's UNSATISFIABLE is the truth about the board rather than a search failure.
     Either the propagator floors flow the engine does not, or the level wants more than
     one placement.
+70. **The frame band is a WALL — adopted.** The engine puts ZERO cells in the hazard row on
+    all 18 captures while grounding marks only two of them, and our replay ran one row
+    deeper on 13. Treating the whole edge line as the board's edge takes physics 108 -> 93,
+    exactly the fifteen cells the row attribution predicted, with idx0 at 0, oracle 3/3,
+    grounding/verifier/mutants PASS and the walk unchanged at 3 levels / 138 actions. NOT
+    #52 in another coat: a wall ends a droplet where a hazard ends the attempt, and a pin
+    goes red if the band is ever folded back into `hazard_cells`.
 69. **The bench residual is ALL SURPLUS and NONE of it is the window.** `--rows` attributes
     the physics column by board row: 0 of 108 against the truncated edge, 108 invented and
     ZERO missed, 77 of them in rows 12-15. So the model's trail is a strict superset of the

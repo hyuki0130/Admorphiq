@@ -159,9 +159,38 @@ WALK_REACH = 2
 """How far a stream walks along a piece it landed on, each way, before it is spent."""
 
 
+def _frame_band(board: Board) -> frozenset[Cell]:
+    """The whole edge line a board's hazards sit on, when they all sit on one.
+
+    Grounding admits a hazard only where it has evidence, and on this family the
+    evidence is sparse: two cells of a bottom frame. The rest of that line is the
+    same frame, and flow does not enter it — measured across eighteen captures, the
+    engine puts ZERO cells in the hazard row while our replay leaks into the columns
+    that were never marked.
+
+    The band is returned as a WALL rather than added to the hazards, because the two
+    are not the same thing: reaching a hazard can end the attempt, while reaching a
+    frame just ends the droplet. Marking the band hazardous is the change this round
+    already made and reverted, and it turned every ordinary boundary death fatal."""
+    cells = board.hazard_cells
+    if not cells:
+        return frozenset()
+    rows = {r for r, _ in cells}
+    cols = {c for _, c in cells}
+    edge = (0, board.size - 1)
+    if len(rows) == 1 and next(iter(rows)) in edge:
+        row = next(iter(rows))
+        return frozenset((row, c) for c in range(board.size)) - cells
+    if len(cols) == 1 and next(iter(cols)) in edge:
+        col = next(iter(cols))
+        return frozenset((r, col) for r in range(board.size)) - cells
+    return frozenset()
+
+
 def predict(board: Board, table: ResponseTable, max_ticks: int = 80) -> Prediction:
     """Run the spill to a fixpoint under ``table`` and return the trajectory."""
     heading = board.direction
+    wall = _frame_band(board)
     occupied: set[Cell] = set(board.standing_flow)
     # A droplet is (cell, direction, walked): how many cells it has travelled ALONG a
     # piece it came to rest on. Measured across eight captured boards of one level, a
@@ -271,7 +300,8 @@ def predict(board: Board, table: ResponseTable, max_ticks: int = 80) -> Predicti
             ahead = (r + dr, c + dc)
             flanks = ((r - dc, c - dr), (r + dc, c + dr))
 
-            if not _in_bounds(ahead, board.size) or ahead in board.hazard_cells:
+            if (not _in_bounds(ahead, board.size) or ahead in board.hazard_cells
+                    or ahead in wall):
                 if ahead in board.hazard_cells:
                     barrier_hits += 1
                     if table.hazard == "terminate_fatal":
