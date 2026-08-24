@@ -4719,6 +4719,39 @@ the two failure causes the engine has is present, which is now a statement about
 rather than about idx3.
 
 
+## The failing spill contains no failure colours at all (2026-08-24)
+
+Every colour present in idx3's 38-layer plan spill, and which layers each appears on:
+
+```
+1  frame             all 38 layers
+4  embedded source   all 38
+6  flow              37 layers
+8  piece (idle)      all 38
+9  piece (selected)  layer 37 only
+11 target            30 layers
+12 background        all 38
+13 SATISFIED         layers 23..36
+```
+
+**Colour 14 never appears. Colour 0 never appears.** Those are the two the engine paints when an
+attempt fails — the touched failure sprite, and the targets left unsatisfied. Neither is in the
+spill, on any layer.
+
+So the failure animation does not run. And yet, measured earlier in the same run: the board is
+restored to its arrange phase afterwards, and `levels_completed` stays at 3.
+
+That is the sharpest form the idx3 question has taken. The engine has exactly two ways to refuse
+an attempt and it is using neither, while also not accepting it. Everything visible says the
+attempt should have been accepted: all nineteen target cells reach 13 and hold for fourteen
+layers, no target is painted 0, no frame cell carries flow, and a life is in hand.
+
+Recorded as measured rather than explained. Seven readings of this level have now been refuted,
+and the one thing every refutation has had in common is that it was built on what the board
+looked like rather than on what the engine did — so the next step is not another reading of the
+board.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -4801,6 +4834,10 @@ rather than about idx3.
     commits. One life recovered by not re-committing when the aiming moved nothing;
     three more are spent because every level builds a FRESH grounding and re-learns the
     flow's direction and colour, which cannot change within a game.
+34. **The failing spill contains NO failure colours** — no 14, no 0, on any of its 38
+    layers. The engine has two ways to refuse an attempt and uses neither, while also not
+    accepting it: nineteen cells at 13 held for fourteen layers, nothing painted 0, no
+    frame contact, a life in hand, and the board restored afterwards.
 33. **Our own discovery runs the flow into the frame** on three levels of four — the
     unaimed sacrificial commit. idx1 and idx2 clear anyway, so the flag RESETS per
     attempt: frame contact costs that commit and nothing more. idx3's plan spills touch
