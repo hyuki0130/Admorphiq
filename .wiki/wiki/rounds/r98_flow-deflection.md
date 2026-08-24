@@ -5925,6 +5925,40 @@ depth ceiling it imposes — one life per level, four lives, six levels — is R
 artefact of how the walk is written. ⛔ Do not "save" it by carrying the direction.
 
 
+## The window is FIXED — idx3's missing rows are unreadable by construction (2026-08-25)
+
+The leading explanation for idx3's UNSATISFIABLE is that its level is twenty cells tall shown
+through a sixteen-cell frame. That was read from the game source and never tested through the
+official interface. The observable form of the question is: **when a piece moves, does content
+that is not the piece TRANSLATE?** A fixed window leaves every static pixel where it was; a
+scrolling one shifts the whole render. `scripts/rounds/R98/window_probe.py` measures the best
+whole-frame translation between consecutive frames, with idx0 — a board known to fit — as its
+control:
+
+```
+idx0 press 3: best shift (0,0) explains 0.992; unshifted agreement 0.992
+idx0 press 1: best shift (0,0) explains 0.960; unshifted agreement 0.960
+idx3 press 3: best shift (0,0) explains 0.995; unshifted agreement 0.995
+idx3 press 1: best shift (0,0) explains 0.978; unshifted agreement 0.978
+```
+
+**Offset (0,0) on every press of both levels, with the best shift's agreement equal to the
+unshifted one** — the search had sixteen other offsets available and none of them explained the
+frame better. The window does not scroll.
+
+Put beside the four-row sprite-to-board offset measured earlier (#42), the picture closes: idx3's
+frame shows board rows 4-19 of a twenty-row level and rows 0-3 are outside anything the harness
+can read, permanently. The consequence for #53 is that its enumeration was right for the wrong
+reason — 15840 layouts came back fatal not because the propagator floors flow the engine keeps
+up, but because **the compiler was planning on a truncated board**. UNSATISFIABLE is the correct
+answer to the board it was given, and the board it was given is missing a fifth of itself.
+
+So the depth walk's ceiling of three levels is a PERCEPTION ceiling, not a planning one, and no
+amount of propagation or schema work reaches idx3. What would is a reading that can assemble a
+board larger than its frame — which is the same defect as #43/#44/#45 and belongs to the round
+those items already assign it to, not to this one.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -6024,6 +6058,12 @@ artefact of how the walk is written. ⛔ Do not "save" it by carrying the direct
     compiler's UNSATISFIABLE is the truth about the board rather than a search failure.
     Either the propagator floors flow the engine does not, or the level wants more than
     one placement.
+68. **The window is FIXED — measured, with idx0 as control.** Best whole-frame shift is
+    (0,0) on every press of both levels and equals the unshifted agreement, so the render
+    never scrolls. With #42's four-row offset this means idx3 shows board rows 4-19 of a
+    twenty-row level and rows 0-3 are unreadable. #53's all-fatal enumeration was right for
+    the wrong reason: the compiler was planning on a TRUNCATED board. The walk's ceiling of
+    three levels is a PERCEPTION ceiling; propagation and schema work cannot reach idx3.
 67. ⛔ **The direction is NOT invariant — carrying it forward is REFUTED.** It flips twice
     across four levels ((1,0), (-1,0), (-1,0), (1,0)) while the flow COLOUR is 6 on every
     one. Two geometric substitutes get the three edge-sourced levels and fail idx3, whose
