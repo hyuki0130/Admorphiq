@@ -2283,13 +2283,56 @@ idx2: CLEARED — 55 actions
 idx3: plan executed in 54 actions; learns five more lanes; does not clear
 ```
 
+## The last stale sighting (2026-08-24)
+
+With execution healthy, the first divergence on the committed board was at **step 0**:
+
+```
+predicted [(8,4)]   observed [(3,5), (3,6)]
+```
+
+We open the spill at `(8,4)` and the engine opens it at its two lane cells. Reading the
+captured board says why:
+
+```
+emitters: []            standing: [(8,4)]
+```
+
+No embedded source was found on this layout — the piece carrying it has changed shape and
+position — so the board fell back to an observed flow cell, and that cell belongs to a
+spill watched on a different layout. It is the same mistake as replaying an emergence, in
+the one slot that had not yet been guarded.
+
+`standing_flow` now falls back to a sighting only while the pieces still stand where that
+sighting was made. Measured on the same level, re-captured:
+
+```
+before   predicted 23 steps / 69 cells   invented 20+   first divergence step 0
+after    predicted 20 steps / 58 cells   invented 14    first divergence step 3
+```
+
+Three cells go from matching to missed in the trade, and fourteen invented remain, but the
+opening now agrees with the engine and the disagreement has moved three steps later into
+the spill.
+
+That is every observation-shaped slot on the board accounted for: emergences, the lane
+ticks, the tracked piece, the selected appearance, the barrier map, and now the standing
+flow. Each one was a value the harness remembered past the moment it described.
+
+```
+idx0: CLEARED — 23 actions
+idx1: CLEARED — 30 actions
+idx2: CLEARED — 55 actions
+idx3: executes in 54 actions; the spill now opens where the engine opens it
+```
+
 ## Next
 
 1. **Fill is not confirmed paired.** gemma4 misses one slot, and the cause is our
    encoding rather than its reasoning. Measure the hazard orthogonalisation as its
    own experiment against all three models — never as a patch to move a verdict.
-2. **idx3 executes in full and does not clear.** Execution is healthy now; what is left
-   is whether a plan the model believes is a plan the engine agrees with.
+2. **Fourteen invented cells from step 3 onward on idx3**, and three missed. The opening
+   agrees now; the disagreement is in the middle of the spill.
 3. **Measure the bounded-roof variant on fixed evidence** — 1 invented cell against the
    adopted rule's 2, deliberately not adopted in the same change.
 3. **Multi-piece placement**, the burden the idx1 observation named: idx1 carries

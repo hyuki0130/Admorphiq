@@ -1263,9 +1263,16 @@ class FlowGrounding:
                 # An observed flow cell belongs to the layout it was seen under: once a
                 # plan moves the piece that CARRIES the source, seeding the old cell
                 # starts the whole spill in the wrong place. Seed from the source when
-                # one is known, and fall back to the sighting when none is.
+                # one is known; fall back to the sighting only while the pieces still
+                # stand where that sighting was made. Measured on idx3: with the carrier
+                # moved and no embedded source left to find, the stale cell put our
+                # step 0 in a column the engine had already left behind.
                 standing_flow=(frozenset(emitters.value)
-                               if self.embedded_sources() is UNKNOWN else frozenset()),
+                               if self.embedded_sources() is UNKNOWN
+                               and self._animations
+                               and self._animations[-1].piece_cells
+                               == frozenset(self._all_piece_cells())
+                               else frozenset()),
                 size=size,
                 direction=direction.value,
                 emergences=() if emergences is UNKNOWN else emergences.value,
