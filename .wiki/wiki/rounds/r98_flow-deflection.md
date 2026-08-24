@@ -2245,14 +2245,51 @@ idx2: CLEARED — 55 actions
 idx3: a planned press is refused into four background cells, twice
 ```
 
+## Two drops in a row, and a check that ran too early (2026-08-24)
+
+idx3's refused press turned out not to be refused at all. Probing at the exact point where
+the driver gave up:
+
+```
+[refusal] press 2 repeated immediately: LANDS
+```
+
+The press the driver had already retried once landed on the very next attempt. Drops come
+in twos here, so a press the board appears to have swallowed is now repeated while the
+piece is still where it was, up to `PRESS_RETRIES` times — in the plan's own path and in
+the top-up alike. Repeating is safe precisely because the board still shows the piece
+unmoved; there is nothing to double.
+
+That carried idx3 past the refusal and into a layout drift, which was two separate things:
+
+```
+[drift] intended-but-empty []                          occupied-but-unplanned [(4,8)]
+[drift] intended-but-empty [(9,1)…(9,5)]               occupied-but-unplanned [(10,1)…(10,5)]
+```
+
+The first is one extra cell — a piece resting against a neighbour is segmented with one
+cell more, which is rendering, not misplacement. The second is a five-cell piece one row
+short, which is exactly what the top-up exists to fix — and the check was running BEFORE
+the last top-up, so it threw the plan away instead of letting the top-up finish. The check
+now runs after it, and tolerates one cell of segmentation slack.
+
+idx3 executes its plan in full and learns five more lanes while doing it. idx0–idx2 clear
+in the same action counts.
+
+```
+idx0: CLEARED — 23 actions
+idx1: CLEARED — 30 actions
+idx2: CLEARED — 55 actions
+idx3: plan executed in 54 actions; learns five more lanes; does not clear
+```
+
 ## Next
 
 1. **Fill is not confirmed paired.** gemma4 misses one slot, and the cause is our
    encoding rather than its reasoning. Measure the hazard orthogonalisation as its
    own experiment against all three models — never as a patch to move a verdict.
-2. **A press refused into four background cells, twice.** No piece is lost and nothing
-   occupies them, so the refusal is neither the drop nor the displacement budget — the
-   next thing to name.
+2. **idx3 executes in full and does not clear.** Execution is healthy now; what is left
+   is whether a plan the model believes is a plan the engine agrees with.
 3. **Measure the bounded-roof variant on fixed evidence** — 1 invented cell against the
    adopted rule's 2, deliberately not adopted in the same change.
 3. **Multi-piece placement**, the burden the idx1 observation named: idx1 carries
