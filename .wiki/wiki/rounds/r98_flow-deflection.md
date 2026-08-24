@@ -3586,6 +3586,53 @@ rule that does not reference flanks at all, and adding one now — mid-round, to
 it. Recorded for the round's schema findings alongside the hazard-policy/hazard-response split.
 
 
+## Does the family need a notchless rule? Measured: one level in four (2026-08-24)
+
+Before extending the vocabulary for idx3, the obvious question is whether the family asks for
+it. Counted across every level the walk reaches, by wrapping `board()` rather than editing:
+
+```
+idx0   targets 2   notchless blocks 0
+idx1   targets 3   notchless blocks 0
+idx2   targets 3   notchless blocks 0
+idx3   targets 3   notchless blocks 4 cells — (13,2) (13,3) (14,2) (14,3)
+```
+
+**One level in four.** That is a case, not a family requirement, and it is exactly the
+situation the round's own precedent covers: measure whether the family needs a rule before
+cutting the schema to fit a level. n=1 does not earn a new satisfaction predicate. Recorded
+and left alone; if a later level of this family shows the same region, the count becomes 2
+and the question reopens on evidence rather than on convenience.
+
+A second thing fell out of the same probe, unlooked for:
+
+```
+[abs] grounding 736: targets=3  ...
+[abs] grounding 736: targets=10 ...
+```
+
+**idx2's target count transiently reads 10** before settling. It clears anyway — the plan does
+not need a clean shortlist to work here — but a grounding that briefly names ten targets on a
+three-target board is naming something that is not a target, and on a level where the plan did
+depend on the count it would not be harmless.
+
+## Where the depth thread stands
+
+The walk carries ONE hypothesis through three levels and stops on a vocabulary limit, not on a
+defect:
+
+```
+idx0 CLEARED 23 actions · idx1 CLEARED 30 · idx2 CLEARED 55 · idx3 blocked by the schema
+oracle 3/3 · grounding PASS · verifier PASS · mutants PASS · bench idx0 0/0, 209 / 108
+```
+
+Everything between the round's start and here was found by measurement rather than argued:
+the reach binding only landing droplets, the straddling source grounded whole, the miss that
+will not step onto a neighbour's roof, the collapsed piece appearances, and three hazards that
+were background and frame. Four of those five were things the harness was telling itself
+wrongly, not things the engine was doing strangely.
+
+
 ## Next
 
 1. **Fill is not confirmed paired.** gemma4 misses one slot, and the cause is our
@@ -3628,6 +3675,9 @@ it. Recorded for the round's schema findings alongside the hazard-policy/hazard-
     finding, NOT patched mid-round.
 14. **Owed: a unit pin for the two barrier rules.** Three fixtures failed to produce a
     registered animation; nothing was committed rather than a test that passes vacuously.
+15. **idx2 transiently names TEN targets** on a three-target board. Harmless here because
+    the plan does not depend on the count, which is exactly why it would not be harmless
+    somewhere else.
 8. **Close the 72-cell gap at the walk, not the propagator.** It is the cost of planning
    a commit before its spill exists, so the lever is the grounding CADENCE — re-ground on
    each spill before the next plan — and it should be measured on the live walk.
