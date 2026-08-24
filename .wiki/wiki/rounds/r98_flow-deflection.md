@@ -5528,6 +5528,48 @@ what we observe" where the agreement was coincidental. The check that caught bot
 ask whether the engine does the thing the model now predicts.
 
 
+## qwen3.8 agrees with gemma4, and on exactly one slot (2026-08-25)
+
+```
+select       3/3 PASS
+fill         0/3 FAIL   hazard_response: terminate_local
+fill_fused   0/3 FAIL   hazard_response: terminate_local   — identical
+```
+
+qwen3.8 gets **five of six slots right** and misses only `hazard_response`, answering
+`terminate_local` where the truth is `terminate_fatal` — under both encodings, byte for byte.
+gemma4 misses that same slot plus `piece_response_spawn`.
+
+So two independent models, asked in two different ways, converge on the same wrong value for the
+same slot. That is the shape of a **prompt or evidence defect, not a model verdict** — the
+lesson this round already wrote down after three models answered three values identically
+(`unanimous_wrong_answers_are_a_prompt_defect_20260823`).
+
+And it says what the fused experiment could not: the split was never the problem, so the question
+moves to what the evidence actually shows about a barrier. If the discovery a model sees never
+contains a fatal contact, `terminate_local` is the answer the evidence supports and the models are
+reading it correctly.
+
+## Correction: our propagation does NOT run flow off the bottom
+
+The last entry said the enumeration's all-fatal result showed our flow going a row deeper than
+the engine's. Measured, the deepest flow row is **14 on every spill, engine side**, and idx3's
+playable size is 15 — so the engine stops at the last playable row, which is exactly where the
+propagator's bounds check stops too.
+
+The all-fatal result had a simpler cause. The propagator tests bounds and hazards on one branch:
+
+```python
+if not _in_bounds(ahead, board.size) or ahead in board.hazard_cells:
+    if ahead in board.hazard_cells:
+        fatal = True
+```
+
+Adding the out-of-bounds row to `hazard_cells` turned **every normal boundary death into a
+fatality**. Nothing was flowing deeper; the check was being asked a different question. The
+revert was right and its stated reason was not.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -5627,6 +5669,13 @@ ask whether the engine does the thing the model now predicts.
     compiler's UNSATISFIABLE is the truth about the board rather than a search failure.
     Either the propagator floors flow the engine does not, or the level wants more than
     one placement.
+55. **qwen3.8: select 3/3, fill 0/3 under BOTH encodings, missing only
+    `hazard_response: terminate_local`.** Two models converge on the same wrong value for
+    the same slot — the shape of a prompt/evidence defect, not a model verdict.
+56. **Correction to #54's reason**: our propagation does NOT run flow deeper than the
+    engine's — deepest flow row is 14 on both sides. The all-fatal enumeration came from
+    bounds and hazards sharing one branch, so marking the out-of-bounds row turned every
+    normal boundary death into a fatality. The revert was right; its reason was not.
 54. ⛔ **The fatal-band adoption is REVERTED — false premise.** The engine's flow never
     reaches that band on idx3 (every spill: touched at []), so the failure the model
     started predicting is a contact the engine does not make. What the change surfaced is
