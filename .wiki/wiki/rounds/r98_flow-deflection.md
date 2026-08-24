@@ -6988,6 +6988,50 @@ The residual is confirmed as untouched by the reach. Whatever stops the engine a
 not a walk budget of any size.
 
 
+## Only ONE genuine step-off refusal exists — and it is the model's only error (2026-08-25)
+
+The probe follows a run through CONSECUTIVE layers, so a walk that pauses and resumes reads as two
+runs and the join reads as a stop. Checking each reported stop against the whole observation:
+
+```
+walk_idx2_1  (13,10) -> (13, 9)   YES observed — not a stop
+walk_idx3_x  (9, 8)  -> (9, 7)    YES observed at layer 18 — not a stop
+walk_idx3_x  (4,11)  -> (4,12)    never observed — GENUINE
+```
+
+**Five of the nine "stopped" instances were the probe's own artefact.** The remaining four are the
+same event on four identical captures, so the corpus contains exactly **one** distinct step-off
+refusal — and it is precisely the three cells the model gets wrong.
+
+With the check built in, the table settles:
+
+```
+on piece   next over piece   STEPPED   33     <- invariant, unchanged
+on piece   next over empty   STEPPED   32
+on piece   next over empty   stopped    4     <- all one event
+
+DISTINCT events: 17 stepped, 1 stopped
+```
+
+And the distance column, which two ticks ago separated `walked 0` from `walked 1` perfectly, now
+splits 4 against 4 at `walked 1` and separates nothing. **That apparent pattern was made entirely
+of mislabelled stops.**
+
+So there is no step-off rule to find here. Seventeen events say the engine always steps off, which
+is what the model already does; one event says otherwise, and one event cannot support a rule. The
+residual is a single anomaly needing its own evidence, not a missing mechanism.
+
+⚠️ Third correction to my own count on this axis: 30 stops, then 9, now 4 — and every reduction
+came from asking the observation a sharper question rather than from changing the model. The stop
+count has never once survived being checked.
+
+⚠️ Process note, second time this round: the gate chain and this entry were written in one command
+that hit the 2-minute timeout mid-`pytest`. The commit did not happen and the page edit did not
+either, while the oracle and bench lines had already printed PASS. **Checking the artefact rather
+than the exit code is what caught it** — the same lesson this round recorded once already, and the
+same fix: run the suite on its own.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -7087,6 +7131,13 @@ not a walk budget of any size.
     compiler's UNSATISFIABLE is the truth about the board rather than a search failure.
     Either the propagator floors flow the engine does not, or the level wants more than
     one placement.
+98. **Only ONE genuine step-off refusal EXISTS, and it is the model's only error.** A run is
+    followed through CONSECUTIVE layers, so a walk that pauses and resumes read as a stop:
+    `(9,7)` is observed at layer 18 and `(13,9)` too. Five of nine "stops" were artefacts;
+    the remaining four are ONE event, `(4,11)`, which is exactly the model's 3 wrong cells.
+    Table: 17 distinct stepped events against 1 stopped, and the distance column that
+    separated 0 from 1 now splits 4/4 — that pattern was made of mislabelled stops. There is
+    NO step-off rule to find here. ⚠️ Third correction to this count: 30 -> 9 -> 4.
 97. **The walk reach is "AT LEAST 2", not 2.** Every droplet near the residual carries
     `walked = -1` (unbounded — the reach binds only landing droplets), so the reach stops
     nothing there. Swept on the valid corpus: reach 1 -> **132**, reach 2/3/99 -> **12**,

@@ -78,6 +78,16 @@ def _fate(layers: list[set], run: list, board) -> str:
     return "STOPPED on support" if _supported(board, run[-1]) else "stopped"
 
 
+def _continued(layers: list[set], cell) -> bool:
+    """Did the flow reach this cell ANYWHERE in the observation?
+
+    A run is followed through CONSECUTIVE layers, so a walk that pauses and resumes reads
+    as two runs and the join reads as a stop. Measured on the corpus: of nine "stopped"
+    instances five have their next cell observed at a later layer, including `(9,7)` at
+    layer 18 — the engine stepped off there and the probe said it had not."""
+    return any(cell in layer for layer in layers)
+
+
 def _what(board, cell) -> str:
     """What occupies a cell, by kind — the vocabulary the decision table is cut on."""
     if not (0 <= cell[0] < board.size and 0 <= cell[1] < board.size):
@@ -129,7 +139,8 @@ def decision_table() -> int:
                         if under == "empty" or _what(board, nxt) != "empty":
                             continue
                         under_next = _what(board, (nxt[0] + dr, nxt[1] + dc))
-                        took = "STEPPED" if j + 1 < len(run) else "stopped"
+                        stepped = j + 1 < len(run) or _continued(layers, nxt)
+                        took = "STEPPED" if stepped else "stopped"
                         key = (f"on {under}", f"next over {under_next}", took)
                         counts[key] = counts.get(key, 0) + 1
                         if under_next == "empty":
@@ -179,7 +190,8 @@ def events() -> int:
                             continue
                         if _what(board, (nxt[0] + dr, nxt[1] + dc)) != "empty":
                             continue
-                        took = "STEPPED" if j + 1 < len(run) else "stopped"
+                        stepped = j + 1 < len(run) or _continued(layers, nxt)
+                        took = "STEPPED" if stepped else "stopped"
                         found.setdefault((took, c, step), set()).add(path.stem)
     print(f"{'outcome':8s} {'at cell':10s} {'walking':10s} {'boards':>7s}  levels")
     for key in sorted(found, key=lambda k: (k[0], -len(found[k]))):
