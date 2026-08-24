@@ -6512,6 +6512,41 @@ failures produces a corpus of failures and reports it as a corpus. Every conclus
 those seventeen boards inherited "idx3, and only when it lost", and none of them said so.
 
 
+## gemma4 at nine runs: deterministic in BOTH directions (2026-08-25)
+
+The repetition count was raised because three draws cannot separate a rate from an accident.
+gemma4's nine-run result separates it completely:
+
+| mode | result | distinct answers | distinct boards |
+|---|---|---|---|
+| select | **9/9 PASS** | — | — |
+| fill (split) | **0/9** | **1** | **1** |
+| fill_fused | **0/9** | **1** | **1** |
+| fill_explicit | **0/9** | **1** | **1** |
+
+**Twenty-seven runs, one answer.** Across three encodings and nine repetitions each, gemma4
+returns byte-identical slots every time: `hazard_response: terminate_local`, `spawn: both_flanks`.
+There is no sampling illusion in either direction — select is a genuinely high rate and fill a
+genuinely zero one.
+
+The board fingerprint added last tick earned its place on its first outing: **one distinct board
+across all twenty-seven runs.** The grounding is deterministic here, so the failure is entirely
+the model's and cannot be a board it was judged against unfairly. That question would otherwise
+still be open, and answering it took no extra run.
+
+The failure's shape is now unambiguous. gemma4's OBJECTIVE is correct — `completion: all` and
+`hazard_policy: fatal_on_contact` — while its RESPONSE says `terminate_local`. It declares in one
+slot that contact is fatal and in another that a droplet merely dies there, deterministically, 27
+times out of 27. This is the encoding-split failure the round has been circling, and gemma4 shows
+it is **not** the split's fault: the FUSED encoding, which asks once, produces the same answer
+0/9. Whatever makes gemma4 answer `terminate_local` survives being asked in one question instead
+of two, and survives being told the contact explicitly.
+
+So for gemma4 the fill verdict is settled and the three encodings are exonerated. What remains
+open is gpt-oss, whose split swung 3/3 to 0/3 on three runs and whose nine-run pass is still on
+the GPU.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -6611,6 +6646,13 @@ those seventeen boards inherited "idx3, and only when it lost", and none of them
     compiler's UNSATISFIABLE is the truth about the board rather than a search failure.
     Either the propagator floors flow the engine does not, or the level wants more than
     one placement.
+85. **gemma4 at nine runs is DETERMINISTIC both ways: select 9/9, fill 0/9 in all three
+    encodings.** Twenty-seven runs, ONE byte-identical answer (`terminate_local`,
+    `both_flanks`), and — via the new fingerprint — ONE distinct board, so the grounding is
+    deterministic and the failure is wholly the model's. Its objective is CORRECT
+    (`fatal_on_contact`) beside a `terminate_local` response: self-contradictory, 27/27.
+    Fused (asked once) and explicit (contact named) both give the same answer, so for gemma4
+    the encoding is exonerated. gpt-oss's nine-run pass is still on the GPU.
 84. **The capture only ever fired on FAILURE — fixed, and the stops are REAL.** `R98_CAPTURE`
     was one overwritten path AND sat past the clear-check return, so only failing levels were
     ever frozen; that is why all seventeen boards were idx3. Now a prefix, captured before the
