@@ -5239,6 +5239,38 @@ drives the live env, and the whole path is covered by the harness self-test so n
 spent on unverified wiring.
 
 
+## vc33's hidden colour is the same shape of thing (2026-08-25)
+
+The survey turned up a second game whose pixels carry a colour no cell reports. Measured:
+
+```
+vc33  scale 2, 32 cells
+   cells containing colour 7: 32 — all of row 0, each 2 of its 4 pixels
+   pixel row 0: distinct [7], 64 of 64          <- a solid one-pixel band
+   pixel row 1: distinct [0, 3]                 <- the centre sample for cell row 0
+   after an action, pixel row 0 is still [7]
+```
+
+**A one-pixel band along the top edge, and the sampler reads the row beneath it.** Structurally
+identical to sp80's failure flash on the bottom pixel row — same cause, opposite edge, and this
+one persists across actions rather than appearing during a spill.
+
+That it persists is what makes it different in kind: a standing band that never changes is a
+status strip, not an event. `_infer_scale`'s docstring already names this — "a status bar drawn
+over the outermost pixel row or two is a rendering overlay rather than board structure" — and it
+excludes such rows from scale inference on purpose.
+
+So vc33's hidden colour is explained and is not a defect: the harness knows about edge strips and
+deliberately looks past them. sp80's is the one that matters, because there the band is not a
+strip — it changes, and the change is the verdict.
+
+Which sharpens the finding from the survey. The blind spot is not "two games have hidden colours".
+It is: **the centre sampler cannot distinguish a decorative edge strip from an edge entity that
+carries meaning**, and it resolves both to the row beneath. On twenty-two of twenty-five games the
+question never arises because a cell is a pixel; on vc33 the answer happens to be harmless; on
+sp80 it is the thing that decides the run.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -5327,6 +5359,12 @@ spent on unverified wiring.
     ka59 (45), m0r0 (11), tu93 (39) on their FIRST level, plus sp80 on its fourth. The
     property is per LEVEL, so that is a floor. The fix belongs in `_infer_scale`, the
     entrance to every frame reading in the project, not in anything R98-specific.
+48. **vc33's hidden colour 7 is a STATUS STRIP** — a solid one-pixel band on pixel row 0,
+    unchanged across actions, with the centre sample reading row 1 beneath it. Same shape
+    as sp80's flash, opposite edge, but standing rather than eventful, and `_infer_scale`
+    already excludes such rows on purpose. So the finding sharpens: the sampler cannot
+    tell a decorative edge strip from an edge entity that carries meaning, and resolves
+    both to the row beneath.
 47. **The sub-cell blind spot is TWO games of twenty-five.** 22 of 25 read at scale one —
     a pixel per cell — so nothing can hide from the sampler there. Of the three with
     larger cells, sp80 misses colour 14 (the failure flash) and **vc33 misses colour 7,
