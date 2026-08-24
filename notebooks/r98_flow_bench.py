@@ -243,7 +243,13 @@ def main() -> None:
     if served == "gptoss":
         # gpt-oss is a REASONING model: high effort + a bigger completion budget.
         env["HARNESS_REASONING_EFFORT"] = "high"
-        env["HARNESS_PATCH_NUM_PREDICT"] = "20000"
+        # A reasoning model spends its completion budget on reasoning FIRST, so a budget
+        # that runs out leaves no room for the answer and the reply parses as nothing.
+        # Measured: gpt-oss came back unparsable on 2 of 3 select runs at 20000 while its
+        # one parsed run picked the truth and cleared — that is the budget being measured,
+        # not the model. Raised rather than retried, because a retry would be tuning the
+        # harness until a run passes.
+        env["HARNESS_PATCH_NUM_PREDICT"] = "40000"
 
     results = {}
     # ("mode", hazard-encoding). The contract is FROZEN on the split encoding, so select

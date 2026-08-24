@@ -5667,6 +5667,41 @@ The verdicts themselves stay as measured: select confirmed on gemma4 and qwen3.8
 both encodings, on one thinly-supported slot.
 
 
+## Fixing the unparsable: keep the reply, then pay for the answer (2026-08-25)
+
+gpt-oss's select came back 1/3 with two runs recorded as `unparsable`, and the record held
+nothing but that word:
+
+```
+keys: ['candidates', 'executed_actions', 'mode', 'outcome', 'pick', 'picked_truth', 'run']
+```
+
+**The thing that could not be parsed was thrown away.** So an unparsable run cannot be told from
+a refusal, a truncation, or an answer in the wrong shape — every future one is the same wall.
+Fixed first: `raw_reply` and `reply_chars` on the select path, `raw_variant_reply` and
+`raw_slot_reply` on fill.
+
+Then the likely cause, reasoned from what the parser accepts. `parse_select` already falls back
+to ANY `I<digit>` token anywhere in the text, so an unparsable reply contained no answer token at
+all — not a malformed one, none. For a reasoning model that spends its completion budget on
+reasoning before answering, that is what running out looks like.
+
+So the budget was raised, 20000 to 40000, rather than retrying:
+
+```
+a retry would be tuning the harness until a run passes
+a budget that cuts off the answer measures the BUDGET, not the model
+```
+
+The evidence for the reading is the run itself: the one reply that did parse picked the truth and
+cleared in two actions. A model that reasons correctly and is cut off mid-answer scores 1/3; the
+same model with room to finish should score what its reasoning earns.
+
+Re-running gpt-oss first, at the user's priority, with gemma4 queued behind it. If the next run
+still shows unparsable replies, the raw text is now recorded and the reading can be checked
+instead of inferred.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -5766,6 +5801,11 @@ both encodings, on one thinly-supported slot.
     compiler's UNSATISFIABLE is the truth about the board rather than a search failure.
     Either the propagator floors flow the engine does not, or the level wants more than
     one placement.
+60. **The unparsable runs discarded the unparsable thing.** Fixed: raw replies are now
+    recorded on both paths. Likely cause, from what the parser accepts — `parse_select`
+    takes ANY `I<digit>` token, so those replies contained no answer token at all, which
+    is what a reasoning model running out of completion budget looks like. Budget raised
+    20000 -> 40000 rather than retried; a retry would be tuning until a run passes.
 59. **The ledger, 27 runs across three models**: NO wrong hypothesis ever executed a live
     action — all twelve failures are blocked-by-verifier or unparsable, zero actions each
     — and every passing run cleared in exactly two actions, the oracle path's own cost.

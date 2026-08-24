@@ -593,6 +593,11 @@ def run_select_once(index: int, llm: Callable[[list[dict[str, str]]], str]) -> d
     if pick is None:
         record["outcome"] = "unparsable"
         record["executed_actions"] = 0
+        # Keep what could not be parsed. gpt-oss came back unparsable twice on select and
+        # the record held nothing but the word "unparsable", so the failure could not be
+        # told from a refusal, a truncation, or an answer in the wrong shape.
+        record["raw_reply"] = (reply or "")[-1200:]
+        record["reply_chars"] = len(reply or "")
         return record
     name = mapping[pick]
     instance = (
@@ -607,13 +612,17 @@ def run_fill_once(index: int, llm: Callable[[list[dict[str, str]]], str],
                   fused_hazard: bool = False) -> dict[str, Any]:
     g, state, act = _run_discovery()
     evidence = build_flow_evidence(g, state["obs"].levels_completed >= 1)
-    variant = parse_json_object(llm(build_variant_ask(evidence, g, fused_hazard)))
-    slots = parse_json_object(llm(build_slot_ask(evidence, g)))
+    variant_reply = llm(build_variant_ask(evidence, g, fused_hazard))
+    slot_reply = llm(build_slot_ask(evidence, g))
+    variant = parse_json_object(variant_reply)
+    slots = parse_json_object(slot_reply)
     record: dict[str, Any] = {"run": index, "mode": "fill", "hazard": "fused" if fused_hazard
                               else "split", "variant": variant, "slots": slots}
     if variant is None or slots is None:
         record["outcome"] = "unparsable"
         record["executed_actions"] = 0
+        record["raw_variant_reply"] = (variant_reply or "")[-1200:]
+        record["raw_slot_reply"] = (slot_reply or "")[-1200:]
         return record
     instance = instance_from_answers(variant, slots, fused_hazard)
     if instance is None:
