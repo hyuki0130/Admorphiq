@@ -4086,6 +4086,46 @@ leading answer" was too broad and is withdrawn — the region is exactly the lea
 is unknown is how the engine wants it filled.
 
 
+## idx3 carries an embedded source, and the block has never been seen to recolour (2026-08-24)
+
+Two facts about idx3 that had not been stated, both read off the board's own appearances.
+
+**A single cell wears a colour nothing else on the board wears.**
+
+```
+colour histogram   12: 187 (background)   1: 31   11: 19   8: 14   9: 4   4: 1
+colour 4           [(7, 4)]   — inside piece 2, which spans (7,2)..(7,6)
+```
+
+That is the embedded-source signature this round already named: a cell inside a piece that
+does not wear the piece's appearance, so the source travels when the piece does. The board
+holds it (`emitter_cells = [(7,4)]`) and the propagator seeds from it — a droplet starts at the
+cell below, at tick zero. **Piece 2 is the only piece on this board whose motion moves a
+source**, and the block sits at columns 2 and 3, within its reach.
+
+**The block has never once been observed to recolour.** `absorbers()` justifies its whole
+existence on the claim that a solid block wearing the target appearance "is satisfied by the
+ENGINE — it recolours when the spill reaches it". Across every spill of every level in this
+session, the engine's own satisfaction signal never names it:
+
+```
+changed regions naming (13,2): 0 occurrences, across all spills of all four levels
+```
+
+Including the block test, where flow reached (12,2), the cell directly on its roof.
+
+That does not refute the claim — it was measured somewhere, and roof contact may simply not be
+the contact that does it — but it does mean the claim is currently carrying the round's
+interpretation of idx3 without a single observation in this session behind it. The two live
+possibilities are now:
+
+* the block is a fourth requirement that wants filling in a way no layout has yet produced —
+  and the embedded source is the obvious instrument, since it is the only stream that can be
+  aimed by moving a piece; or
+* the block is exactly what `absorbers()` says it is, idx3 stops for another reason entirely,
+  and the fourth-region reading has been an attractive story fitted to a single board.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -4135,6 +4175,12 @@ is unknown is how the engine wants it filled.
     The fourth region is the leading answer again, on evidence. What is unknown is HOW it
     wants to be filled: roof contact is refuted, and our propagator can deliver nothing
     else, since it deflects around an absorber and never enters one.
+18. **idx3 carries an EMBEDDED SOURCE at (7,4)**, inside the only piece whose motion moves
+    a stream, and the block is within its reach. That is the instrument the next
+    experiment should use.
+19. **The block has never been observed to recolour** — zero occurrences across every
+    spill of every level this session, including the test that put flow on its roof. The
+    claim it rests on is not supported by anything measured here.
 13. ~~idx3 executes its plan and does not clear.~~ **A SCHEMA GAP — the PREDICATE IS GLOBAL
     and this board needs two.** `contact` exists and would satisfy the notchless region
     (14033 winning layouts), but it is CONTRADICTED for the family, so it cannot be taken.
