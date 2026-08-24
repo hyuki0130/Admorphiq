@@ -5091,6 +5091,34 @@ this thread bought is not a level — it is a defect in the perception layer, fo
 level that refused eight explanations in a row.
 
 
+## Not a scale error — a cropped window and a one-pixel entity (2026-08-25)
+
+The previous entry called idx3 a 20-cell board read at the wrong scale. The pixels say otherwise:
+
+```
+row 60   runs (4, 4, 28, 4, 16, 4, 4)          every run a multiple of four
+col 0    runs (4, 28, 4, 27, 1)                4-aligned, with ONE pixel left over
+row 63   runs (0, 35), (14, 29)                colour 14 — the failure flash — at the last pixel row
+```
+
+Content is four-pixel aligned throughout, so **scale 4 is correct**. A 20-cell level at scale 4
+would be 80 pixels; the frame is 64. So the frame is not a rescaling of the board — it is a
+**window onto sixteen of its twenty cells**, and the offset of four that kept appearing is the
+window's position: sprite row 17 shows at window row 13, sprite 19 at window 15.
+
+Which relocates the failure entity into view after all. It sits at window row 15 — and the raw
+pixels show colour 14 on **row 63 only**, the very last pixel row. Cell row 15 spans pixels 60-63,
+so a flash one pixel tall is averaged away by cellification: the cell reads colour 1 for the whole
+spill, exactly as measured, while the pixels underneath carry the mark.
+
+So the defect is not the scale reader. It is that **an entity thinner than one cell is invisible
+to a cell-based reading**, and this one is the entity that fails the run.
+
+The previous entry is corrected: `_infer_scale` returns the right answer here, and the
+first-level survey it prompted still stands on its own terms — six games whose grid does not
+divide the frame are six games where the frame cannot be showing the whole board.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -5177,7 +5205,13 @@ level that refused eight explanations in a row.
     ka59 (45), m0r0 (11), tu93 (39) on their FIRST level, plus sp80 on its fourth. The
     property is per LEVEL, so that is a floor. The fix belongs in `_infer_scale`, the
     entrance to every frame reading in the project, not in anything R98-specific.
-43. **ROOT CAUSE — idx3 is a 20x20 level read as 16x16.** Every level renders into a
+45. **Correction to #43: NOT a scale error.** Pixel runs are four-aligned throughout, so
+    scale 4 is right; the frame is a WINDOW onto sixteen of the level's twenty cells, and
+    the "offset of four" is the window's position. The failure entity sits at window row
+    15 and flashes on pixel row 63 ONLY — one pixel tall, averaged away by cellification.
+    An entity thinner than a cell is invisible to a cell-based reading, and this is the
+    one that fails the run.
+43. ~~ROOT CAUSE~~ **PARTLY — idx3 is a 20x20 level shown through a 16-cell window.** Every level renders into a
     64x64 frame; levels 0-2 have `grid_size` (16,16) so scale 4 is right, and idx3 has
     (20,20) whose true scale is 3.2. `_infer_scale` returns integers, so a 20-cell board
     at 64px cannot be read at all. The "row offset of four", the invisible failure entity
