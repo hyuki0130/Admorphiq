@@ -713,3 +713,28 @@ def test_an_observed_spill_that_hits_nothing_reports_no_barriers_not_UNKNOWN():
     bars = g.barriers()
     assert bars is not UNKNOWN, "an observed spill reported no answer at all"
     assert bars.value == (), f"this spill hits nothing it cannot pass: {bars.value}"
+
+
+def test_a_background_cell_past_a_spills_end_is_not_a_barrier():
+    """Purpose: a barrier is read as "flow reached the cell before it and that cell never
+    became flow", which a cell of EMPTY BOARD past a stream's end satisfies without blocking
+    anything — the spill simply ended there. Measured on idx3: four background cells at row
+    12 were grounded as hazards, and with a hazard fatal every one of the 22464 reachable
+    layouts failed, so the compiler reported — truthfully, for that board — that no layout
+    satisfies the objective. Excluding the animation's final front instead was measured and
+    REJECTED, because idx0's real hazard at (15,3) sits exactly there.
+
+    Expected feedback: pass proves a barrier has to look like something. Fail means a level
+    can be declared unwinnable by cells that are not there."""
+    wall, layers = _wall_and_spill()
+    # (6,6) is a notch in the wall — empty board, one step past where the flow stops at (5,6)
+    assert (6, 6) not in wall, "the fixture no longer has a gap past the spill's end"
+
+    g = FlowGrounding()
+    g.observe(0, None, [_frame(wall)])
+    g.observe(5, None, layers)
+
+    bars = g.barriers()
+    assert bars is not UNKNOWN, "the spill was not read at all"
+    assert (6, 6) not in bars.value, \
+        f"empty board past the spill's end was called a barrier: {bars.value}"

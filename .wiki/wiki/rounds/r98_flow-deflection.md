@@ -3786,6 +3786,41 @@ barriers      with the fix ()    without it UNKNOWN — an empty set is an answe
 ```
 
 
+## The last owed pin, and what the fixture turned out to already cover (2026-08-24)
+
+The background-cell barrier rule was the one pin still outstanding, and `_wall_and_spill()`
+already exercises it — the notch at (6,6) is empty board one step past where the flow stops
+at (5,6), which is exactly the shape of the idx3 mis-read. Measured both ways before writing
+anything:
+
+```
+with the rule      barriers []
+without it         barriers [(6, 6)]
+```
+
+So a test was owed but a fixture was not. It is now a dedicated test rather than left as a
+side effect of the empty-set one, because a reader who breaks the background rule should be
+told which rule they broke — without it, two tests go red and neither names the cause.
+
+**Every rule this round adopted now has a pin that was checked against its own subject**:
+
+```
+a landing starts a bounded walk                     (walk + certifications)
+a straddling pair grounds whole                     test_a_pair_over_a_piece_edge...
+a miss does not step onto a neighbour's roof        test_a_miss_does_not_spread_onto...
+a selection in the idle colour exchanges the roles  test_selection_that_takes_the_idle...
+an obstruction names the part that blocked          test_an_obstruction_names_the_part...
+an empty barrier set is an answer                   test_an_observed_spill_that_hits...
+a background cell is not a barrier                  test_a_background_cell_past_a_spills_end...
+a hostless orphan is not a hidden source            test_an_orphan_with_no_piece_to_hide...
+```
+
+Three of those were written twice: the first version passed without the code it named, and
+was only caught by deleting the code and re-running. That check is now the habit rather than
+the exception, and it is the reason the three-tick fixture detour was worth taking rather
+than shipping green tests that assert on nothing.
+
+
 ## Next
 
 1. **Fill is not confirmed paired.** gemma4 misses one slot, and the cause is our
@@ -3826,10 +3861,9 @@ barriers      with the fix ()    without it UNKNOWN — an empty set is an answe
     is four regions and the schema can name three; the fourth is a notchless block that
     the engine satisfies but no rule in the vocabulary can express. Recorded as a family
     finding, NOT patched mid-round.
-14. ~~Owed: unit pins.~~ **PAID for the obstruction rule and the empty-barrier rule**, each
-    checked by removing the code it names. The third obstacle was the SCALE, and the
-    three requirements are written into a `_wall_and_spill()` helper. Still owed: the
-    background-cell barrier rule, which this fixture does not exercise.
+14. ~~Owed: unit pins.~~ **ALL PAID.** Every rule adopted this round has a pin that was
+    checked against its own subject by deleting that code and re-running. The three
+    fixture requirements live in `_wall_and_spill()`.
 15. ~~idx2 names TEN targets after ONE move action.~~ **4 now** — the blocker was dragging
     its whole wall in. Original note: Seven are scenery (sizes 14-39 vs a
     confirmed target of 5), none overlaps a piece. Harmless here because the plan does not
