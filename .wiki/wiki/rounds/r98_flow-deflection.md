@@ -2957,6 +2957,49 @@ the blocker and resumes below it. One mechanism, present everywhere, and the nex
 measure.
 
 
+## A third of the bench's error was never propagation (2026-08-24)
+
+Splitting the residual by board showed the misses tracking how many sources the grounding
+held, not how hard the board is — b, c and d carry 2 grounded sources while their missed
+cells sit in lanes 7..14. Re-running the grounding's own scan over each capture's spill
+says why, and it is not the exclusion rule:
+
+```
+frozen falling: [(5,3,3), (6,3,3), (7,11,6), (12,15,7)]
+rescan kept   : [(5,0,3), (6,0,3), (7,7,6), (6,10,9), (12,11,7)]
+```
+
+The scan admits `(6,10,9)` — the source at (9,6) — and the capture does not. **The frozen
+sources predate the spill being scored.** At runtime that is exactly right: you cannot
+plan a commit using the spill that commit has not produced yet. But it means the bench was
+charging propagation rules for evidence that did not exist at prediction time.
+
+So `rule_bench.py --all` now reports two totals:
+
+```
+board     as-known  physics        as-known  what the agent predicts with; dominated by
+b               30       10                  evidence TIMING, not by the rules
+d               23        9        physics   the same boards with the sources the scan
+f               19       13                  admits from the spill itself, unioned onto
+g,h             14        8                  what was already known
+sum            211      139
+```
+
+No board is worse under the union and six are much better. **Judge a propagation rule on
+the physics column.** The 72-cell gap is the cost of predicting before observing, and it
+belongs to the walk's grounding cadence, not to the propagator.
+
+Also measured and NOT adopted: injecting every co-occurring missed pair as a source at its
+observed tick takes 211 to 159. That reads the answer, so it is a diagnostic only — but it
+confirms by construction that b/c/d's error is missing sources rather than wrong physics.
+
+Board o's geometry, for the record: the pieces are horizontal bars, flow walks the top of
+one and falls off its edge, and `(7,11,6)` grounds as a real source at (6,7) — so the
+column-7 descent is a source, not a walk product. The uniform invented tail `(12,5) (13,5)
+(14,5)` remains, and is now measurable against a number that isn't drowning in evidence
+timing.
+
+
 ## Next
 
 1. **Fill is not confirmed paired.** gemma4 misses one slot, and the cause is our
@@ -2970,9 +3013,11 @@ measure.
    engine's column-5 stream stops at row 9 under the piece at (10,5) and spreads along
    row 9; we pass the blocker and resume below it. The invented `(12,5) (13,5) (14,5)` is
    on every captured board — one mechanism, uniform, and the next thing to fix.
-4. **Report b, c and d apart from the rest** — 83 of the 211 is flow from lanes the
-   grounding never saw, so any physics rule scored against that sum is charged for
-   evidence it never had.
+4. ~~Report b, c and d apart from the rest.~~ **DONE** — `rule_bench.py --all` now reports
+   as-known 211 and physics 139. Judge propagation rules on the physics column.
+5. **Close the 72-cell gap at the walk, not the propagator.** It is the cost of planning
+   a commit before its spill exists, so the lever is the grounding CADENCE — re-ground on
+   each spill before the next plan — and it should be measured on the live walk.
 3. **Measure the bounded-roof variant on fixed evidence** — 1 invented cell against the
    adopted rule's 2, deliberately not adopted in the same change.
 3. **Multi-piece placement**, the burden the idx1 observation named: idx1 carries

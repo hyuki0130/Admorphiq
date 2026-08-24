@@ -9,6 +9,20 @@ A rule has to be judged against a board and a spill that do not move.
 spill the engine produced on it. This replays that board under the current propagator and
 reports the two numbers that matter: cells the model invents, and cells it misses.
 
+`--all` sweeps every capture and reports TWO totals, because they answer different
+questions and only one of them judges a propagation rule:
+
+  as-known   the sources the grounding held when the board was committed. This is what
+             the agent actually predicts with, and it is dominated by evidence TIMING:
+             three captures were taken before enough spills had accumulated, and their
+             missed cells sit in lanes the model was never told about. 83 of the 211.
+  physics    the same boards with the sources the grounding admits from the spill
+             itself, unioned onto what it already knew. Given the sources, does the
+             propagator reproduce the trail? Judge a rule on THIS one.
+
+Measured 2026-08-24: 211 as-known, 139 physics — so a third of the error the bench used
+to charge propagation rules for was never propagation at all.
+
 NON-GATING diagnostic.
 """
 
@@ -16,6 +30,7 @@ from __future__ import annotations
 
 import json
 import sys
+from dataclasses import replace
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
@@ -39,7 +54,70 @@ def _board(payload: dict) -> Board:
     )
 
 
+def _own_spill_sources(payload: dict) -> dict[tuple[int, int], int]:
+    """Sources the grounding admits from THIS spill, by its own rule.
+
+    A deliberate copy of the scan in `grounding_flow.falling_sources`, kept here rather
+    than imported because the captures freeze the grounding's OUTPUT, not the animations
+    it read — so a capture cannot be re-grounded, only re-scanned."""
+    pieces = {tuple(c) for p in payload["pieces"] for c in p}
+    dr, dc = payload["direction"]
+    seen: set[tuple[int, int]] = set()
+    tick = -1
+    out: dict[tuple[int, int], int] = {}
+    for layer in ([tuple(c) for c in raw] for raw in payload["observed"]):
+        if not layer:
+            continue
+        tick += 1
+        for (r, c) in layer:
+            behind = (r - dr, c - dc)
+            flanks = ((r - dc, c - dr), (r + dc, c + dr))
+            if behind in seen or any(f in seen for f in flanks) or behind in pieces:
+                continue
+            out[(c if dr else r, r if dr else c)] = tick
+        seen |= set(layer)
+    return out
+
+
+def _error(board: Board, payload: dict) -> int:
+    pred = {c for layer in predict(board, ORACLE).frontier for c in layer}
+    obs = {tuple(c) for layer in payload["observed"] for c in layer}
+    return len(pred - obs) + len(obs - pred)
+
+
+def _sweep() -> int:
+    captures = sorted(Path("scratchpad").glob("r98_idx3_*.json"))
+    if not captures:
+        print("no captures under scratchpad/r98_idx3_*.json")
+        return 1
+    known = physics = 0
+    print(f"{'board':8s} {'as-known':>9s} {'physics':>8s}")
+    for path in captures:
+        with open(path) as f:
+            payload = json.load(f)
+        board = _board(payload)
+        a = _error(board, payload)
+        own = _own_spill_sources(payload)
+        # the scan counts ticks from the spill's own first layer; the frozen sources
+        # count from the replay's. Line them up on the earliest source they share.
+        offset = (min(t for _, t, _ in board.falling_sources) - min(own.values())
+                  if board.falling_sources and own else 0)
+        merged = {(lane, line): t for lane, t, line in board.falling_sources}
+        for key, t in own.items():
+            merged.setdefault(key, t + offset)
+        union = replace(board, falling_sources=tuple(
+            (lane, t, line) for (lane, line), t in sorted(merged.items())))
+        b = _error(union, payload)
+        known += a
+        physics += b
+        print(f"{path.stem.split('_')[-1]:8s} {a:9d} {b:8d}")
+    print(f"{'sum':8s} {known:9d} {physics:8d}")
+    return 0
+
+
 def main() -> int:
+    if len(sys.argv) > 1 and sys.argv[1] == "--all":
+        return _sweep()
     path = sys.argv[1] if len(sys.argv) > 1 else "scratchpad/r98_idx3.json"
     with open(path) as f:
         payload = json.load(f)
