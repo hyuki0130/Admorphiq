@@ -3095,6 +3095,47 @@ back:
   One of them, in its first version, passed without it.
 
 
+## Correction, and the contradiction stated properly (2026-08-24)
+
+The previous entry said target 0 on board o "owns (13,6) (14,6) (14,7)". **Wrong** — that
+was read off a probe that printed only the cells I asked it about, and I reported the answer
+to my question as the shape of the target. Grounded, board o's targets are well-formed and
+identical in shape to idx0's:
+
+```
+board o    13 ......0.01.12.2      sink 0 = (13,6)(13,8)(14,6)(14,7)(14,8)  lanes 6,7,8
+           14 ......000111222      sink 1 = ...(13,9)(13,11)...             lanes 9,10,11
+
+idx0       13 ....A.A...B.B...     sink 0 = (13,4)(13,6)(14,4)(14,5)(14,6)  lanes 4,5,6
+           14 ....AAA...BBB...     sink 1 = (13,10)(13,12)(14,10..12)       lanes 10,11,12
+```
+
+Both are the same five-cell shape with a MOUTH in the middle of the top row — (13,5) on
+idx0, (13,7) on board o. So the footprint rule was not tested against a mis-grouped target,
+and the disagreement it exposed is real:
+
+```
+idx0     droplet at (12,4), mouth to its right at (13,5)
+         t17 [(12,3), (12,5)]     spreads BOTH ways; (12,3) is off the footprint
+         t18 [(13,3), (13,5)]     the right half enters the mouth and satisfies
+         t19 [(14,3)]             the left half runs down and stops
+
+board o  droplet at (12,6), mouth to its right at (13,7)
+         t15 [(12,7)]             spreads ONE way only
+         t16 [(13,7)]             into the mouth
+```
+
+Same shape, same relative mouth, opposite behaviour. Both spread toward the mouth; idx0
+ALSO spreads away from it and board o does not. That is the whole of the disagreement, and
+it is now stated in terms that can be tested rather than as "the rule halves the bench".
+
+The idx0 board is worth recording on its own: 16 wide, one piece of five cells at row 4,
+two targets, hazards at (15,3) and (15,9) only. Two streams, one down lane 9 and one down
+lane 4 after walking the piece's top from (3,9) to (3,4) — SEVEN cells, which no reach of 2
+allows either. The reach that scores best on the captured boards does not describe this
+level's walk at all, and idx0 is the level the contract is built on.
+
+
 ## Next
 
 1. **Fill is not confirmed paired.** gemma4 misses one slot, and the cause is our
@@ -3107,10 +3148,13 @@ back:
 3. **The blocked-row spread is ASYMMETRIC and nothing yet explains it** — 1 step one way,
    4 the other, on the same board. Six rules measured, all worse than the adopted reach 2.
    The remaining error is now entirely over-production.
-6. **Why does idx0 need the unrestricted miss-spread?** The footprint rule halves the
-   captured bench and takes the oracle gate to 0/3. Understanding that disagreement is
-   worth more than either number: it says the captures reward suppressing cells that a
-   different error produces.
+6. **Why does idx0 spread AWAY from the mouth when board o does not?** Both targets are
+   the same five-cell shape with a central mouth, both droplets arrive one row above with
+   the mouth to their right, and idx0 spreads both ways while board o spreads one. Stated
+   from two dumped trails; this is the live form of the footprint disagreement.
+7. **idx0's walk is SEVEN cells long** — (3,9) to (3,4) along the piece's top. The reach of
+   2 that scores best on the captured boards does not describe the contract level's walk.
+   Re-examine the reach against idx0 rather than against the captures.
 4. ~~Report b, c and d apart from the rest.~~ **DONE** — `rule_bench.py --all` now reports
    as-known 211 and physics 139. Judge propagation rules on the physics column.
 5. **Close the 72-cell gap at the walk, not the propagator.** It is the cost of planning
