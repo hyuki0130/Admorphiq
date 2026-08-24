@@ -2633,13 +2633,58 @@ idx2: CLEARED — 55 actions
 idx3: eight cells, both causes located, neither yet explained
 ```
 
+## The source that rides inside a piece, and why shape is not enough (2026-08-24)
+
+Reading the covered board's whole spill places the last missing stream exactly:
+
+```
+ 9: (7,0) (8,7)
+10: (9,5) (9,6)        <- appear together, with nothing above either of them
+11: (9,4) (9,7) (10,6)
+12: (9,3) (10,7) (11,6)
+```
+
+`(9,5)` and `(9,6)` have the row-8 bar directly above them and no flow anywhere adjacent.
+They are a source PAIR emitting from inside that bar — the same "embedded source" this round
+measured travelling with its carrier, in a place the colour-based detector cannot see it
+because the bar is drawn uniformly.
+
+The lane rule excludes exactly these entries (an entry whose cell behind was a piece), which
+stops the false fixed-lane injection and throws the real flow away with it. So the trail's
+own evidence was recorded instead — the carrier's SHAPE plus the offset of the source within
+it — and replayed onto whichever piece wears that shape.
+
+**Measured on the same board, that is worse, not better:**
+
+```
+with carried sources    invented 11  missed 3   (total 14)
+without                 invented  5  missed 3   (total  8)
+```
+
+The emitters it produces are `(4,8)` and `(6,11)` — cells inside two OTHER pieces that
+happen to share the shape. A shape is not an identity: this level has several pieces of the
+same footprint, and attaching a learned source to all of them pours flow from three places
+where the engine pours from one.
+
+Reverted. What stands is the localisation — the last missing stream is a source riding
+inside the row-8 bar — and the constraint on any fix: the carrier has to be identified as a
+PIECE, not as a shape, which the harness cannot currently do across a move.
+
+```
+idx0: CLEARED — 23 actions
+idx1: CLEARED — 30 actions
+idx2: CLEARED — 55 actions
+idx3: eight cells; the missing stream's source is named, its carrier is not
+```
+
 ## Next
 
 1. **Fill is not confirmed paired.** gemma4 misses one slot, and the cause is our
    encoding rather than its reasoning. Measure the hazard orthogonalisation as its
    own experiment against all three models — never as a patch to move a verdict.
-2. **Why does the engine's row-7 walk go left and not right?** Both directions are open
-   and the model takes both; the engine takes one. Four candidate rules are struck off.
+2. **Identify a piece across a move, not by its shape.** The last missing stream comes
+   from a source riding inside the row-8 bar; relocating it by shape attaches it to every
+   piece with the same footprint and doubles the error.
 3. **Measure the bounded-roof variant on fixed evidence** — 1 invented cell against the
    adopted rule's 2, deliberately not adopted in the same change.
 3. **Multi-piece placement**, the burden the idx1 observation named: idx1 carries
