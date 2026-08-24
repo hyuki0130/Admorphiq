@@ -2677,14 +2677,46 @@ idx2: CLEARED — 55 actions
 idx3: eight cells; the missing stream's source is named, its carrier is not
 ```
 
+## Carrying the source by identity does not help either (2026-08-24)
+
+The last tick's objection to shape-matching was that a shape is not an identity, and the
+harness does have one: its move records follow a specific piece across its own moves. So the
+carried source was re-recorded against the carrier's CELLS and migrated with it — the same
+mechanism that follows a piece's displacement budget.
+
+Measured on the same board, that is worse too:
+
+```
+with the carried source   invented 14  missed 3   (total 17)
+without                   invented  5  missed 3   (total  8)
+```
+
+The single emitter it learns is `(6,11)`, inside the row-6 piece — not the row-8 bar the
+missing stream actually comes from — and injecting it adds nine cells the engine never
+produces. So identity was not the obstacle: the entries excluded as "behind is a piece" are
+not, as a class, sources that emit on every spill, and re-injecting them under the current
+emission model costs more than the stream they were meant to recover.
+
+Two attempts now, by shape and by identity, both measured worse and both reverted. The
+missing `(9,5) (9,6)` pair stays unexplained, and the useful residue is a boundary: whatever
+emits it does not emit every time, so a rule that pours from it on every commit is wrong
+before it starts.
+
+```
+idx0: CLEARED — 23 actions
+idx1: CLEARED — 30 actions
+idx2: CLEARED — 55 actions
+idx3: eight cells, unchanged
+```
+
 ## Next
 
 1. **Fill is not confirmed paired.** gemma4 misses one slot, and the cause is our
    encoding rather than its reasoning. Measure the hazard orthogonalisation as its
    own experiment against all three models — never as a patch to move a verdict.
-2. **Identify a piece across a move, not by its shape.** The last missing stream comes
-   from a source riding inside the row-8 bar; relocating it by shape attaches it to every
-   piece with the same footprint and doubles the error.
+2. **Whatever emits (9,5) (9,6) does not emit every time.** Two ways of carrying a source
+   with its piece — by shape and by identity — both make the board worse, so the rule to
+   look for is conditional, not a per-commit pour.
 3. **Measure the bounded-roof variant on fixed evidence** — 1 invented cell against the
    adopted rule's 2, deliberately not adopted in the same change.
 3. **Multi-piece placement**, the burden the idx1 observation named: idx1 carries
