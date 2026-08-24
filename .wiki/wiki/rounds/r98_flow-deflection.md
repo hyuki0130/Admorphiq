@@ -3409,6 +3409,49 @@ execution problem, and a much better one to have.
 is not a diagnostic. The lazy inventory is the defect; the read is only what exposed it.
 
 
+## The diagnostic was not reading the program, it was rewriting it (2026-08-24)
+
+The previous entry withdrew a conclusion on the strength of this: one `g.pieces()` call after
+verification took idx3 from UNSATISFIABLE-on-one-piece to SOLVABLE-on-five, twice out of
+twice. **That withdrawal was wrong, and so was its evidence.**
+
+A bare `g.pieces()` at the same point, with no print and nothing else, does not change the
+outcome — 2 runs of 2, against a paired control of 2 that also does not. So the read is not
+what did it. Isolating the other half of the instrumentation printed its own context:
+
+```
+    while attempts < REPLAN_LIMIT:
+        attempts += 1
+        plan = compile_flow_hypothesis(hypothesis, g)
+    if os.environ.get("R98_PROBE_B") == "1":     <- FOUR spaces, in an EIGHT-space body
+        g.pieces()
+```
+
+The inserted block was dedented relative to the loop it was inserted into, which **ended the
+`while` body**. Everything after it left the loop. The program that produced "SOLVABLE with
+five pieces" was not the walk with a probe in it; it was a different program.
+
+So: the walk is deterministic. Eleven runs, every one of them:
+
+```
+idx0 CLEARED 23a · idx1 CLEARED 30a · idx2 CLEARED 55a
+idx3 UNSATISFIABLE, [board held 1 piece(s)]
+```
+
+The conclusion of two entries ago — the compiler answering honestly about a one-piece board,
+with sources at lanes 5-6 and the reach binding from the source putting targets 1 and 2 out
+of range — **stands, and the withdrawal is itself withdrawn.**
+
+The lesson is not "be careful with probes". It is that a probe inserted by string
+manipulation can change the program's STRUCTURE while looking like an addition, and nothing
+in the output says so. Both instrumented runs agreed with each other, twice, which is exactly
+what a real effect looks like. What caught it was isolating one half of the change and
+printing the surrounding lines — reading the code as it ended up, not as it was meant.
+
+⛔ When a diagnostic changes a result, suspect the diagnostic first, and print its context
+before believing it.
+
+
 ## Next
 
 1. **Fill is not confirmed paired.** gemma4 misses one slot, and the cause is our
@@ -3439,11 +3482,10 @@ is not a diagnostic. The lazy inventory is the defect; the read is only what exp
 10. ~~idx3's compiler: no layout satisfies three targets.~~ **It was right** — the board it
     planned on held ONE of the level's five pieces, and with sources at lanes 5-6 and the
     reach binding from the source the flow cannot pass lane 8. The real question is:
-11. **The inventory answers differently depending on when it is first asked.** One
-    `g.pieces()` call after verification takes idx3 from UNSATISFIABLE-on-1-piece to
-    SOLVABLE-on-5, reproducibly (2/2 vs 6/7). Fix the laziness in `pieces()`; do NOT leave
-    the probe in. With five pieces the wall becomes "planned press 2 did not land",
-    which is execution, not reach.
+11. ~~The inventory answers differently depending on when it is first asked.~~ **No — the
+    probe had broken the loop it was inserted into.** The walk is deterministic across
+    eleven runs. The real question is unchanged: why does the grounding hold ONE piece on
+    idx3 when the level presents five, and is that the level or the reader?
 8. **Close the 72-cell gap at the walk, not the propagator.** It is the cost of planning
    a commit before its spill exists, so the lever is the grounding CADENCE — re-ground on
    each spill before the next plan — and it should be measured on the live walk.
