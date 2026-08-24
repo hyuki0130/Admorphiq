@@ -4198,6 +4198,53 @@ but it is also what a region merely covered by flow would do. On idx0 the two re
 and the level clears; idx3 is the board that separates them.
 
 
+## idx3 is not won by covering its regions (2026-08-24)
+
+Three measurements close this, and together they are airtight.
+
+**What "satisfied" looks like.** Every region the engine satisfies goes from the target
+appearance to one specific other appearance, on every level:
+
+```
+idx0/1/2  region size 5  was 11  became 13     (and 12 in passing, at the level change)
+```
+
+Colour 13 is the engine saying "this one is done".
+
+**There is nothing hidden.** Across nine captures whose pieces stand in materially different
+places — (7,2) vs (7,3) vs (8,0), (10,3) vs (10,8) vs (10,9) — the set of target-coloured cells
+is IDENTICAL:
+
+```
+19 cells in every capture, union 19, cells missing from any one capture: none
+```
+
+So idx3 has exactly nineteen target-coloured cells: three five-cell targets and the four-cell
+block. No target sits hidden under a piece.
+
+**All nineteen get satisfied, in one spill, and the level does not advance.**
+
+```
+[block-test] plan SOLVABLE, predicted_satisfied 4
+[hue] region at (13, 2) size=4  was 11 became [13]
+[hue] region at (13, 6) size=15 was 11 became [13]
+idx3: stopped — executed the plan without clearing
+```
+
+Reproduced twice in one run. `levels_completed` holds at 3, and `hazard_cells` is empty.
+
+**So idx3's win condition is not "satisfy every target-coloured region".** That is a finding
+about the family's OBJECTIVE vocabulary, and a sharper one than the schema-gap story it
+replaces: the gap is not a missing predicate for one odd region, it is that `CoverAllSinks` —
+in any of its encodings — does not describe what this level wants. Covering everything the
+board offers is measurably not enough.
+
+What idx3 wants instead is unknown, and the honest position is that it is unknown. The round
+has now spent several ticks generating attractive explanations for this level and refuting each
+one with a better measurement; the pattern worth carrying forward is that every refutation came
+from finding the signal the engine actually emits, not from arguing about the board.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -4256,10 +4303,11 @@ and the level clears; idx3 is the board that separates them.
     yet fills all four at once, and that is the open problem.
 20. ~~The model's `contact` is looser than the engine's requirement.~~ **Withdrawn** — that
     rested on the same invalid reading. The four-target plan DID recolour the block.
-21. **All four regions recolour and idx3 still does not advance** (reproduced twice), with
-    no hazard on the board. The open question is now about the SIGNAL: `changed_regions`
-    is what a satisfied target does AND what a region merely covered by flow does. idx0 is
-    where the two coincide; idx3 is where they separate.
+21. **idx3 is NOT won by covering its regions.** All nineteen target-coloured cells go
+    11 -> 13, the engine's own "done" appearance, in one spill; nine captures with
+    different piece positions show nothing hidden; `levels_completed` holds at 3 and there
+    is no hazard. `CoverAllSinks` in any encoding does not describe this level's win
+    condition. What does is UNKNOWN, and saying so is the honest position.
 13. ~~idx3 executes its plan and does not clear.~~ **A SCHEMA GAP — the PREDICATE IS GLOBAL
     and this board needs two.** `contact` exists and would satisfy the notchless region
     (14033 winning layouts), but it is CONTRADICTED for the family, so it cannot be taken.
