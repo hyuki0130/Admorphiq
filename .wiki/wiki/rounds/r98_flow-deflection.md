@@ -6547,6 +6547,39 @@ open is gpt-oss, whose split swung 3/3 to 0/3 on three runs and whose nine-run p
 the GPU.
 
 
+## The fill stage is a ONE-SLOT exam, and the slot is hazard fatality (2026-08-25)
+
+qwen3.8's nine-run pass mirrors gemma4's structure exactly — select 9/9, fill 0/9 in all three
+encodings, one distinct answer per encoding, one distinct board — and comparing the two answers
+against the oracle slot by slot collapses the whole stage to a single question:
+
+| model | slots differing from the oracle | its stated hazard POLICY | coherent? |
+|---|---|---|---|
+| qwen3.8 | **`hazard_response` only** | `neutral` | **yes** |
+| gemma4 | `piece_response_spawn` (equivalence-class) + `hazard_response` | `fatal_on_contact` | no |
+| gpt-oss (3 runs) | objective, in the failing runs | `neutral` beside a fatal response | no |
+
+**qwen3.8 gets five of six slots exactly right — including the exact oracle `empty_flanks_only`,
+which gemma4 does not — and fails on `hazard_response` alone.** gemma4's second difference is
+`both_flanks`, already established as an equivalence-class answer, so it is not really a second
+error. Every model that fails this stage fails on one slot: whether contact with a barrier ends
+the attempt or only the droplet.
+
+And qwen settles a story the round had been telling itself. gemma4's failure looked like an
+artefact of splitting fatality across two slots, because it answers `fatal_on_contact` in the
+policy and `terminate_local` in the response — an incoherence the encoding could plausibly cause.
+**qwen answers both slots coherently — `neutral` policy, `terminate_local` response — and is
+still wrong.** It is not confused by being asked twice; it simply believes hazards are not fatal.
+So incoherence is a symptom in gemma4, not the cause in general, and the encoding cannot be what
+the fill stage is measuring.
+
+What the fill stage actually measures, then, is whether a model can read fatality out of the
+evidence. Two of three models cannot, deterministically, under three wordings. That is a finding
+about the EVIDENCE or about the models, and the round already has the observation that separates
+those: the evidence line reports the contact's position and stop and leaves the cause implicit,
+and naming it explicitly moved nothing (0/9 for both). ⛔ Do not re-cut the wording a fourth time.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -6646,6 +6679,12 @@ the GPU.
     compiler's UNSATISFIABLE is the truth about the board rather than a search failure.
     Either the propagator floors flow the engine does not, or the level wants more than
     one placement.
+86. **The fill stage is a ONE-SLOT exam and the slot is hazard fatality.** qwen3.8 at nine
+    runs mirrors gemma4 (select 9/9, fill 0/9 x3, one answer, one board) and gets FIVE of six
+    slots exactly right — including the exact oracle `empty_flanks_only` — failing on
+    `hazard_response` alone. gemma4's extra difference is the equivalence-class `both_flanks`.
+    Decisively, **qwen is COHERENT** (`neutral` policy beside `terminate_local`) and still
+    wrong, so the split-encoding incoherence is gemma4's symptom, not the general cause.
 85. **gemma4 at nine runs is DETERMINISTIC both ways: select 9/9, fill 0/9 in all three
     encodings.** Twenty-seven runs, ONE byte-identical answer (`terminate_local`,
     `both_flanks`), and — via the new fingerprint — ONE distinct board, so the grounding is
