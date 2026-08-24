@@ -20,8 +20,14 @@ questions and only one of them judges a propagation rule:
              itself, unioned onto what it already knew. Given the sources, does the
              propagator reproduce the trail? Judge a rule on THIS one.
 
-Measured 2026-08-24: 211 as-known, 139 physics — so a third of the error the bench used
-to charge propagation rules for was never propagation at all.
+`--rows` breaks the physics column down by board row, which is how the residual gets
+attributed to a mechanism rather than a total.
+
+Measured 2026-08-25: 209 as-known, 108 physics — half the error the bench used to charge
+propagation rules for was never propagation at all. (An earlier reading of 211/139 is
+superseded by the rules adopted since.) The 108 is ENTIRELY invented cells, zero missed,
+so the model's trail is a strict superset of the engine's on every capture: it never
+fails to reach something the engine reaches, it only adds.
 
 NON-GATING diagnostic.
 """
@@ -94,6 +100,65 @@ def _error(board: Board, payload: dict) -> int:
     return len(pred - obs) + len(obs - pred)
 
 
+def _rows() -> int:
+    """The physics column broken down by board row.
+
+    Purpose: a total cannot say WHERE a propagation rule is wrong. idx3's frame is a
+    window onto a taller level, so an error clustered against the window's truncated
+    edge would be a perception artefact rather than a propagation one; an error spread
+    across the trail would be the propagator. This decides between them.
+
+    Expected feedback: rows 0-3 are the truncated edge. Cells there mean the residual
+    is the window; cells elsewhere mean it is the propagation."""
+    invented: dict[int, int] = {}
+    missed: dict[int, int] = {}
+    for path in _captures():
+        with open(path) as f:
+            payload = json.load(f)
+        board = _union_board(_board(payload), payload)
+        pred = {c for layer in predict(board, ORACLE).frontier for c in layer}
+        obs = {tuple(c) for layer in payload["observed"] for c in layer}
+        for r, _ in pred - obs:
+            invented[r] = invented.get(r, 0) + 1
+        for r, _ in obs - pred:
+            missed[r] = missed.get(r, 0) + 1
+    print(f"{'row':>4} {'invented':>9} {'missed':>7}")
+    for r in sorted(set(invented) | set(missed)):
+        print(f"{r:>4} {invented.get(r, 0):>9} {missed.get(r, 0):>7}")
+    total = sum(invented.values()) + sum(missed.values())
+    edge = sum(invented.get(r, 0) + missed.get(r, 0) for r in range(4))
+    print(f"{'sum':>4} {sum(invented.values()):>9} {sum(missed.values()):>7}")
+    print(f"the window's truncated edge (rows 0-3): {edge} of {total}")
+    return 0
+
+
+def _captures() -> list[Path]:
+    """idx0 FIRST, and it is the one that matters: it is the level the contract, the
+    oracle gate and the mutant table are all built on, and the model reproduces its
+    spill cell for cell. A rule was once adopted for halving the rest of this sweep and
+    took the live gate to 0/3 — the sweep could not see it, because idx0 was not in it.
+    idx0's capture lives WITH the round, not in the scratchpad, because the scratchpad
+    is ignored and a contract board that does not survive the session guards nothing."""
+    here = Path(__file__).resolve().parent / "evidence"
+    return (sorted(here.glob("idx0*.json"))
+            + sorted(Path("scratchpad").glob("r98_idx3_*.json")))
+
+
+def _union_board(board: Board, payload: dict) -> Board:
+    """The board with the sources the spill itself admits unioned onto what the
+    grounding already knew — the physics column's input."""
+    own = _own_spill_sources(payload)
+    # the scan counts ticks from the spill's own first layer; the frozen sources
+    # count from the replay's. Line them up on the earliest source they share.
+    offset = (min(t for _, t, _ in board.falling_sources) - min(own.values())
+              if board.falling_sources and own else 0)
+    merged = {(lane, line): t for lane, t, line in board.falling_sources}
+    for key, t in own.items():
+        merged.setdefault(key, t + offset)
+    return replace(board, falling_sources=tuple(
+        (lane, t, line) for (lane, line), t in sorted(merged.items())))
+
+
 def _sweep() -> int:
     # idx0 FIRST, and it is the one that matters: it is the level the contract, the oracle
     # gate and the mutant table are all built on, and the model reproduces its spill cell
@@ -101,9 +166,7 @@ def _sweep() -> int:
     # live gate to 0/3 — the sweep could not see it, because idx0 was not in it.
     # idx0's capture lives WITH the round, not in the scratchpad, because the scratchpad
     # is ignored and a contract board that does not survive the session guards nothing.
-    here = Path(__file__).resolve().parent / "evidence"
-    captures = (sorted(here.glob("idx0*.json"))
-                + sorted(Path("scratchpad").glob("r98_idx3_*.json")))
+    captures = _captures()
     if not captures:
         print("no captures under scratchpad/r98_idx3_*.json")
         return 1
@@ -114,17 +177,7 @@ def _sweep() -> int:
             payload = json.load(f)
         board = _board(payload)
         a = _error(board, payload)
-        own = _own_spill_sources(payload)
-        # the scan counts ticks from the spill's own first layer; the frozen sources
-        # count from the replay's. Line them up on the earliest source they share.
-        offset = (min(t for _, t, _ in board.falling_sources) - min(own.values())
-                  if board.falling_sources and own else 0)
-        merged = {(lane, line): t for lane, t, line in board.falling_sources}
-        for key, t in own.items():
-            merged.setdefault(key, t + offset)
-        union = replace(board, falling_sources=tuple(
-            (lane, t, line) for (lane, line), t in sorted(merged.items())))
-        b = _error(union, payload)
+        b = _error(_union_board(board, payload), payload)
         known += a
         physics += b
         mark = "  <- CONTRACT, must stay 0" if "idx0" in path.stem and (a or b) else ""
@@ -134,6 +187,8 @@ def _sweep() -> int:
 
 
 def main() -> int:
+    if len(sys.argv) > 1 and sys.argv[1] == "--rows":
+        return _rows()
     if len(sys.argv) > 1 and sys.argv[1] == "--all":
         return _sweep()
     path = sys.argv[1] if len(sys.argv) > 1 else "scratchpad/r98_idx3.json"

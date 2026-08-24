@@ -5959,6 +5959,42 @@ board larger than its frame — which is the same defect as #43/#44/#45 and belo
 those items already assign it to, not to this one.
 
 
+## The residual is all SURPLUS, and none of it is the window (2026-08-25)
+
+The window finding raised a question about the bench itself: sixteen of its seventeen captures
+are idx3 boards, and idx3 is now known to be truncated, so how much of the physics column is the
+missing rows rather than propagation? `rule_bench.py --rows` answers it by attributing the
+residual to board rows instead of a total:
+
+```
+ row  invented  missed
+   5         6       0
+   7        10       0
+   8        11       0
+  12        22       0
+  13        20       0
+  14        20       0
+  15        15       0
+ sum       108       0
+the window's truncated edge (rows 0-3): 0 of 108
+```
+
+**Nothing at all sits against the truncated edge.** The window explains none of the residual, so
+the bench keeps its standing as a propagation diagnostic and every rule judged on it was judged
+on the right thing.
+
+Two properties fall out that a total was hiding. First, **the error is entirely INVENTED — 108
+surplus cells, zero missed, on every capture.** The model's trail is a strict superset of the
+engine's: it never fails to reach a cell the engine reaches, it only adds. For a planner that is
+the benign direction to be wrong in for reachability and the dangerous one for satisfaction — a
+forecast can claim a target the flow never wets, never the reverse. Second, **77 of the 108 sit
+in rows 12-15**, the trail's far end, which is independent confirmation of the surplus-at-the-
+bottom reading that #54 arrived at and whose first fix was reverted for a wrong reason.
+
+The docstring's 211/139 was stale and is corrected to the measured 209/108; the rules adopted
+since closed the difference. Judge the next propagation rule on the bottom rows.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -6058,6 +6094,11 @@ those items already assign it to, not to this one.
     compiler's UNSATISFIABLE is the truth about the board rather than a search failure.
     Either the propagator floors flow the engine does not, or the level wants more than
     one placement.
+69. **The bench residual is ALL SURPLUS and NONE of it is the window.** `--rows` attributes
+    the physics column by board row: 0 of 108 against the truncated edge, 108 invented and
+    ZERO missed, 77 of them in rows 12-15. So the model's trail is a strict superset of the
+    engine's — it can claim a target the flow never wets, never miss one it does — and the
+    bench remains a valid propagation diagnostic. Stale 211/139 corrected to 209/108.
 68. **The window is FIXED — measured, with idx0 as control.** Best whole-frame shift is
     (0,0) on every press of both levels and equals the unshifted agreement, so the render
     never scrolls. With #42's four-row offset this means idx3 shows board rows 4-19 of a
