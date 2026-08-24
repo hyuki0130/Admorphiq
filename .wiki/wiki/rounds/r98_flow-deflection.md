@@ -5636,6 +5636,37 @@ the reason is now known and it is neither the encoding nor the evidence's adequa
 one slot's support in the evidence is thin enough that two models of three miss it.
 
 
+## The model-stage ledger, all three models, all three modes (2026-08-25)
+
+```
+model    mode        verdict   cleared  blocked  unparsable  live actions
+gemma4   select      3/3 PASS      3       0         0            6
+gemma4   fill        0/3 FAIL      0       3         0            0
+gemma4   fill_fused  0/3 FAIL      0       3         0            0
+qwen3.8  select      3/3 PASS      3       0         0            6
+qwen3.8  fill        0/3 FAIL      0       3         0            0
+qwen3.8  fill_fused  0/3 FAIL      0       3         0            0
+gpt-oss  select      1/3 FAIL      1       0         2            2
+gpt-oss  fill        3/3 PASS      3       0         0            6
+gpt-oss  fill_fused  3/3 PASS      3       0         0            6
+```
+
+Two things this table says that no single run does.
+
+**No wrong hypothesis ever executed a live action.** Twelve failing runs, every one of them
+either blocked by the verifier or unparsable, and the action column reads zero for all of them.
+That is the contract's central promise — a wrong answer costs nothing on the board — held across
+twenty-seven runs and three models without exception.
+
+**Every passing run cleared in exactly two actions.** Six live actions per three runs, in every
+PASS row, which is the oracle path's own cost. A model that gets the hypothesis right pays what
+the hand-written oracle pays, and nothing extra for having been a model.
+
+The verdicts themselves stay as measured: select confirmed on gemma4 and qwen3.8 with gpt-oss's
+1/3 explained as two unparsable replies rather than wrong picks; fill passing only on gpt-oss, in
+both encodings, on one thinly-supported slot.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -5735,6 +5766,9 @@ one slot's support in the evidence is thin enough that two models of three miss 
     compiler's UNSATISFIABLE is the truth about the board rather than a search failure.
     Either the propagator floors flow the engine does not, or the level wants more than
     one placement.
+59. **The ledger, 27 runs across three models**: NO wrong hypothesis ever executed a live
+    action — all twelve failures are blocked-by-verifier or unparsable, zero actions each
+    — and every passing run cleared in exactly two actions, the oracle path's own cost.
 58. **gpt-oss: fill 3/3 in BOTH encodings** — it answers `terminate_fatal` and clears, so
     the evidence IS sufficient and #57's "the description is at fault" is WITHDRAWN. Its
     passing answer uses `both_flanks`, so that value is an EQUIVALENCE-CLASS answer and
