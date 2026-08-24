@@ -4811,6 +4811,37 @@ flow that never finishes.
 That last step is a hypothesis, not a measurement. What is measured is that idx3 is never judged.
 
 
+## The silent failure is a spent flash counter — and the earlier refutation was wrong (2026-08-24)
+
+Reading the engine's own spill state through idx3:
+
+```
+n=125..128  phase=change  settled=False  active=0  flashstep=0
+n=129       layers=33     ...                      flashstep=6     <- after the first plan commit
+n=130..137  layers=1      ...                      flashstep=6
+n=138,139   layers=38     ...                      flashstep=6
+```
+
+`flashstep` is the counter the failure branch tests: below six it plays the flash, at six it
+takes the other path — restore the board, lose a life if none are left, and complete the action
+**silently**. On idx3 it reaches six and never resets.
+
+So idx3's later commits DO fail, and they fail without a mark. **The flash-budget reading is
+reinstated** — it was refuted two entries ago by failing idx0 four times and seeing an identical
+flash each time, which was the wrong control: on idx0 the counter resets between attempts, so
+that experiment could never have shown a spent one.
+
+That correction matters more than the fact, because the refutation was itself measured and still
+wrong. What made it wrong was choosing a control on the level where the mechanism does not bite.
+
+It also narrows idx3 to one place. The silent path is inside `if flag or not all_satisfied`, and
+the flag is measured False at every commit — so the engine is finding **not all targets
+satisfied**, while the frames show all nineteen target cells at the satisfied appearance for
+fourteen layers. Those two cannot both describe the same thing, which means colour 13 on the
+board and membership of the engine's satisfied set are NOT the same fact. That is the next
+measurement, and it is a small one: read the satisfied set during the spill rather than after.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -4893,6 +4924,12 @@ That last step is a hypothesis, not a measurement. What is measured is that idx3
     commits. One life recovered by not re-committing when the aiming moved nothing;
     three more are spent because every level builds a FRESH grounding and re-learns the
     flow's direction and colour, which cannot change within a game.
+37. **The silent failure is a SPENT FLASH COUNTER.** `flashstep` reaches 6 on idx3 and
+    never resets; at six the failure branch restores the board without any flash. The
+    earlier refutation of this was measured on idx0, where the counter DOES reset — the
+    wrong control. Since the flag is False at every commit, the engine is finding NOT ALL
+    TARGETS SATISFIED while the frames show all nineteen at the satisfied appearance:
+    colour 13 and the engine's satisfied set are not the same fact.
 36. **idx3 IS NEVER JUDGED — its spill never settles.** The engine's spill-phase decision
     fires three times in a whole run, once per cleared level; idx3 reaches none. That is
     why no failure colour appears, nothing is painted 0, the flag stays False and
