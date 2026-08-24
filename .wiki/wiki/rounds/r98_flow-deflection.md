@@ -7065,6 +7065,43 @@ gpt-oss alone, and its two competitors fail deterministically on one slot** — 
 a barrier ends the attempt or only the droplet.
 
 
+## idx3's failure has MOVED from the compiler to the objective (2026-08-25)
+
+The walk's idx3 line reads "executed the plan without clearing" where it used to read "compiler
+UNSATISFIABLE: no layout satisfies the objective". The grounding fixes changed the failure mode,
+so the old diagnosis has to be re-taken rather than carried forward.
+
+With the board dumped at the commit, twice in the same run:
+
+```
+[forecast] as committed: 3 of 3 target(s), wins=True
+[attribute] predicted 24 step(s)/66 cells vs observed 27/63
+[attribute] first divergence at step 4: invented [(12, 4)] missed []
+[targets] after the commit: [((13, 6), 5), ((13, 9), 5), ((13, 12), 5)]
+```
+
+**The model satisfies every target it can see, predicts a win, reproduces the trail to within the
+three cells already accounted for — and the engine does not advance.** idx3 now names three
+five-cell targets, the false seventeen-cell one having gone with the background-blocker fix.
+
+One candidate is eliminated on the spot. The round's leading explanation has been that a failing
+attempt is invalidated by flow reaching a bottom-edge entity, but this spill's deepest row is 14
+on a board of 15 and it touches no failure band at all — **there is no contact to invalidate it.**
+
+So the gap is in the OBJECTIVE: the engine wants something our three-target model does not name.
+That is consistent with the round's dev-time reading that idx3's level has a fourth region, and
+with the measured fixed sixteen-cell window onto a twenty-cell level; this measurement does not
+separate those and does not need to yet. What it does establish is that idx3 is no longer a
+planning failure — the planner now produces a layout it believes wins, and the disagreement is
+about what winning means.
+
+⚠️ Side-effect worth watching rather than claiming benign: the captured idx3 board now records
+**no hazard cells at all**, where it used to record two in the frame row. `_frame_band()` keys off
+hazard cells, so the frame-band wall is inert on this board. The corpus is unaffected — the
+model's only over-production there is the step-off — but a rule that has quietly stopped applying
+is exactly the kind of thing that looks fine until a board needs it.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -7164,6 +7201,14 @@ a barrier ends the attempt or only the droplet.
     compiler's UNSATISFIABLE is the truth about the board rather than a search failure.
     Either the propagator floors flow the engine does not, or the level wants more than
     one placement.
+100. **idx3's failure has MOVED from the compiler to the OBJECTIVE.** The walk now reads
+     "executed the plan without clearing" where it read "compiler UNSATISFIABLE". At the
+     commit, twice: forecast **3 of 3 targets, wins=True**, trail 66 predicted vs 63 observed
+     with the known `(12,4)` as the first divergence — and no advance. One candidate is
+     eliminated: the spill's deepest row is 14 on a board of 15 and it touches NO failure
+     band, so the "flow reaches the bottom entity" reading is not operative here. The gap is
+     in what winning MEANS. ⚠️ Side-effect: idx3 now records no hazard cells, so
+     `_frame_band()` is inert on that board.
 99. **THE MODEL STAGE AT NINE RUNS, ALL THREE MODELS.** select: gemma4 9/9, qwen 9/9, gptoss
     8/9. fill / fused / explicit: gemma4 0/9, qwen 0/9, **gptoss 9/9 / 9/9 / 8/9**. On the
     decisive slot every model is DETERMINISTIC and they disagree — gptoss `terminate_fatal`
