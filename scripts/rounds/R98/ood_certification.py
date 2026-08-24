@@ -101,9 +101,16 @@ def main() -> int:
                   f"{len(board.value.pieces)} piece(s)" if readable else "no board")
         positive = kind == "positive"
         if not readable:
+            # WHICH slot is missing, not just that one is. A control that declines blankly
+            # cannot be told from a harness that declines everything, and the positive
+            # control only proves that at the whole-board level.
+            slots = {name: getattr(g, name)() for name in
+                     ("pieces", "sink_candidates", "barriers", "initial_direction",
+                      "emitters", "trajectory")}
+            missing = [name for name, value in slots.items() if value is UNKNOWN]
             print(f"  {prefix} ({kind}): "
-                  f"{'FAILS' if positive else 'DECLINES'} — the grounding cannot assemble "
-                  f"a board")
+                  f"{'FAILS' if positive else 'DECLINES'} — no board; "
+                  f"unread: {', '.join(missing) if missing else 'nothing (board() itself)'}")
             failures += 1 if positive else 0
             continue
         verdict = verify_flow_instance(F.sp80_oracle_instance(), g, False)
