@@ -203,6 +203,12 @@ def play_level(w: Walker) -> tuple[bool, str]:
             w.act(5, g)
 
     _invariants_report(g, entered)
+    # Where the level's actions go. The certified oracle path clears idx0 in 10 (8 discovery
+    # + 2 plan) and the walk takes 23, and the scoring metric is the SQUARE of the action
+    # ratio, so the difference is not bookkeeping. Printed per level because the discovery
+    # half is what a deeper level would have to re-pay.
+    print(f"    [cost] idx{entered} discovery so far {w.actions - spent} action(s) "
+          f"({probes} selection probes)", flush=True)
 
     if g.board() is UNKNOWN:
         return False, f"grounding incomplete (pieces={_count(g.pieces())}, " \

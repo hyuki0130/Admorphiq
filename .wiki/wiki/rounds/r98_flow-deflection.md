@@ -7197,6 +7197,37 @@ that corpus and adopted-then-reverted two rules fitted to it, which is a reasona
 learning to validate a corpus before trusting it, and an unreasonable one to pay twice.
 
 
+## Two thirds of the walk is DISCOVERY (2026-08-25)
+
+The certified oracle path clears idx0 in 10 actions — 8 discovery, 2 plan — and the walk takes 23.
+The scoring metric is the square of the action ratio, so that difference is not bookkeeping.
+Broken down per level:
+
+| level | discovery | plan | total |
+|---|---|---|---|
+| idx0 | **21** | 2 | 23 |
+| idx1 | 22 | 8 | 30 |
+| idx2 | 29 | 26 | 55 |
+| idx3 | 20 | 10 | 30 |
+| **all** | **92** | 46 | 138 |
+
+**Discovery is 92 of 138 actions, and it is re-paid in full on every level** — twenty to twenty-nine
+each, on a game whose levels share their flow colour, their piece appearances and their controls.
+On idx0 the plan itself is two actions; everything else is finding out what to plan.
+
+⚠️ The 21-against-8 gap is real but not all of it is waste, and saying otherwise would be the
+easy misreading. The oracle path is *given* the hypothesis, so it never probes to find which cell
+selects a piece; the walk spends four to six actions per level on exactly that. What the comparison
+establishes is the SIZE of the discovery bill, not that it is all avoidable.
+
+It also joins two threads the round has been treating separately. The walk spends one sacrificial
+commit per level and a run has four failed commits for the whole GAME, so the discovery bill and
+the depth ceiling are the same bill. And the direction — the thing that commit buys — was measured
+NOT invariant across levels, so it genuinely has to be re-bought. What has never been measured is
+whether the SELECTION probes are re-buying something that does not change, and that is the next
+question on this axis rather than another rule.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -7296,6 +7327,14 @@ learning to validate a corpus before trusting it, and an unreasonable one to pay
     compiler's UNSATISFIABLE is the truth about the board rather than a search failure.
     Either the propagator floors flow the engine does not, or the level wants more than
     one placement.
+104. **Two thirds of the walk is DISCOVERY.** Per level: idx0 21 discovery / 2 plan, idx1
+     22/8, idx2 29/26, idx3 20/10 — **92 of 138 actions**, re-paid in full every level. The
+     certified oracle path does idx0's discovery in 8. ⚠️ Not all of the 21-vs-8 gap is
+     waste: the oracle path is GIVEN the hypothesis and never probes to find which cell
+     selects a piece, which is 4-6 actions per level for the walk. It joins two threads —
+     one sacrificial commit per level against four lives per GAME means the discovery bill
+     IS the depth ceiling. Direction is measured non-invariant so it must be re-bought; the
+     open question is whether the SELECTION probes re-buy something that does not change.
 103. **The vanished hazards are NOT a regression.** Detection is intact — idx0 `[15,3] [15,9]`,
      idx1 `[0,6] [0,10]`, idx2 `[0,0] [0,9] [0,15]` — and each sits on the edge the flow runs
      INTO (row 15 for downward flow, row 0 for upward), a coherence check passed unasked.
