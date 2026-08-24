@@ -6807,6 +6807,41 @@ not adopted. A threshold that separates this corpus's four regions is a threshol
 regions, and the round already measured and reverted one of those.
 
 
+## The false target comes from OBSTRUCTION, which proposes 187 cells (2026-08-25)
+
+The last entry asked which of `sink_candidates()`'s four sources names the oversized region. The
+capture now records all four beside the board it was taken on, and idx2 answers plainly:
+
+```
+sinks in the board:  [5, 5, 5, 17]
+  changed_appearance   [5, 5, 5]
+  obstruction          [187]
+  matching_shape       []
+  wearing_appearance   []
+```
+
+**The three real targets come from changed-appearance. The false one is a fragment of a single
+187-cell obstruction region** — two thirds of the whole board — chopped up by the mouth split until
+one piece happened to keep a notch.
+
+That reframes the fix completely. The obstruction source is documented as "wherever the flow spread
+sideways, something blocked the cell ahead; excluding the known movable pieces, what remains is a
+target", and on this level what remains is nearly everything. It is not proposing targets, it is
+proposing the complement of the flow. ⛔ Neither notch rules nor size thresholds address that,
+which is why both measured inert.
+
+Getting here needed two instruments and one of them was wrong first. A live probe at grounding time
+reports **no source above five cells** through the direction probes, the sacrificial commit and the
+selection probes — the obstruction region needs accumulated spills, and by then the driver is deep
+in its plan. And the probe's own shortlist line printed `[2, 2, 2]` because each entry is a
+`(name, cells)` PAIR and `len()` of a pair is 2 regardless of the region: a nineteen-cell region
+read as two cells. Fixed, with the trap named in the code.
+
+Recording the sources beside the board is the durable half. A capture that keeps only the final
+sinks cannot say where a wrong one came from, and this question had already cost two reverted
+rules.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -6906,6 +6941,14 @@ regions, and the round already measured and reverted one of those.
     compiler's UNSATISFIABLE is the truth about the board rather than a search failure.
     Either the propagator floors flow the engine does not, or the level wants more than
     one placement.
+93. **THE FALSE TARGET COMES FROM `obstruction`, WHICH PROPOSES 187 CELLS.** Captures now
+    record all four shortlist sources beside the board: idx2's real targets are
+    changed_appearance `[5,5,5]` and the 17-cell false one is a fragment of a SINGLE
+    187-cell obstruction region — two thirds of the board — split by mouths until a piece
+    kept a notch. The source is proposing the complement of the flow, not targets, which is
+    why notch rules and size thresholds both measured inert. Two probe traps recorded: no
+    source exceeds 5 cells at grounding time (obstruction needs accumulated spills), and the
+    shortlist's entries are `(name, cells)` PAIRS so `len()` reports 2 for every region.
 92. ⛔ **Two notch discriminators measured, neither is the lever.** "A notch may not be a
     SOURCE cell" (the false target's only gap is the lane-1 source) works on its own terms
     but the region keeps a second notch at `(15,1)` and GROWS 17 -> 19; adding "nor in the

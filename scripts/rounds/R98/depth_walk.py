@@ -228,7 +228,7 @@ def play_level(w: Walker) -> tuple[bool, str]:
         # plans differently and the board is gone.
         if os.environ.get("R98_CAPTURE"):
             _capture(g.board().value, g.trajectory(), os.environ["R98_CAPTURE"],
-                     g._prev_cells, entered)
+                     g._prev_cells, entered, _sink_sources(g))
         return False, f"verifier CONTRADICTED: {verdict.reason}"
     if verdict.verdict.value != "PASS":
         # UNKNOWN is "cannot judge", not "wrong". The measured cause here is a source
@@ -443,7 +443,7 @@ def _execute(w: Walker, g: FlowGrounding, plan, entered: int, spent: int, probes
             # FAILED, and pairing it with an earlier board is why the ones that did not
             # were unusable.
             _capture(pending_capture.value, g.trajectory(), os.environ["R98_CAPTURE"],
-                     g._prev_cells, entered)
+                     g._prev_cells, entered, _sink_sources(g))
             pending_capture = None
         if w.level > entered:
             return True, f"cleared in {w.actions - spent} actions ({probes} selection probes)", False
@@ -568,7 +568,29 @@ def _top_up(w: Walker, g: FlowGrounding, step: Select | None, entered: int, spen
 _CAPTURE_SEQ: dict[int, int] = {}
 
 
-def _capture(board, observed, prefix: str, cells=None, level: int = -1) -> None:
+def _sink_sources(g: FlowGrounding) -> dict:
+    """The region sizes each shortlist source proposes, recorded WITH the capture.
+
+    `sink_candidates()` draws from four independent sources and filters afterwards, so a
+    board carrying a wrong target cannot say which source named it. Probing them at
+    grounding time does not answer it either: measured on idx2, no source proposes
+    anything larger than five cells through the direction probes, the sacrificial commit
+    and the selection probes, while the board captured at the commit carries a nineteen-
+    cell one. Recording them beside the board is the only way to ask at the right moment."""
+    changed: list = []
+    for anim in g._animations:
+        for region in anim.changed_regions:
+            if region not in changed:
+                changed.append(region)
+    return {
+        "changed_appearance": sorted(len(r) for r in changed),
+        "obstruction": sorted(len(r) for r in g._obstruction_regions()),
+        "matching_shape": sorted(len(r) for r in g._matching_shape_regions(changed)),
+        "wearing_appearance": sorted(len(r) for r in g._appearance_regions(changed)),
+    }
+
+
+def _capture(board, observed, prefix: str, cells=None, level: int = -1, sources=None) -> None:
     """Freeze the board AS COMMITTED and the spill it produced.
 
     Rule changes alter what the compiler chooses, so re-running the whole walk compares
@@ -602,6 +624,10 @@ def _capture(board, observed, prefix: str, cells=None, level: int = -1) -> None:
         "observed": [sorted(layer) for layer in observed.value if layer],
         # the board's APPEARANCES, so a bench can ask why an entity was or was not seen
         "colours": ({f"{r},{c}": v for (r, c), v in cells.items()} if cells else {}),
+        # WHICH shortlist source proposed each target-sized region. A capture that records
+        # only the final sinks cannot say where a wrong one came from, and idx2's whole
+        # replay error is one region no probe could attribute at grounding time.
+        "sink_sources": sources or {},
     }
     with open(path, "w") as f:
         json.dump(payload, f)
