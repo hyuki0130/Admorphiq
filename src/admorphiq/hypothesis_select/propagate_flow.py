@@ -251,6 +251,18 @@ def predict(board: Board, table: ResponseTable, max_ticks: int = 80) -> Predicti
             pending.setdefault(tick, []).append(landing)
             landings.add(landing)
 
+    # A source recorded at tick 0 IS the seed. `pending` is read as `pending[len(frontier)]`
+    # and the frontier already holds its seed layer when the loop begins, so tick 0 was
+    # never looked up: a board whose ONLY source is a tick-0 lane predicted NOTHING at all.
+    # The contract board hides this because that same source is also in `standing_flow`; the
+    # cross-level captures have a lane and no standing flow, and predicted zero cells — every
+    # observed cell scored as missing, on three boards, from a board the model could read.
+    for cell in pending.pop(0, ()):
+        if cell not in occupied:
+            occupied.add(cell)
+            active.append((cell, heading, 0 if cell in landings else -1))
+    frontier[0] = sorted(occupied)
+
     for tick in range(max_ticks):
         # An emergence is recorded against the FRONTIER INDEX it was observed at,
         # and frontier[0] is the seed rather than a step, so the index to match is

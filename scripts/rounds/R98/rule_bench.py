@@ -197,7 +197,14 @@ def _captures() -> list[Path]:
     idx0's capture lives WITH the round, not in the scratchpad, because the scratchpad
     is ignored and a contract board that does not survive the session guards nothing."""
     here = Path(__file__).resolve().parent / "evidence"
-    return (sorted(here.glob("idx0*.json"))
+    # idx0 first, then the CROSS-LEVEL boards, then the idx3 family. Until the capture
+    # hook was fixed every board here came from idx3 and only from a level that had just
+    # failed, so a rule could be judged on one level's geometry and reported as judged on
+    # the game. idx1 and idx2 are levels the walk CLEARS, and they live with the round
+    # rather than in the scratchpad because evidence that does not survive the session
+    # cannot be re-measured against.
+    return (sorted(here.glob("idx0.json"))
+            + sorted(here.glob("cross_*.json"))
             + sorted(Path("scratchpad").glob("r98_idx3_*.json")))
 
 
@@ -237,7 +244,10 @@ def _sweep() -> int:
         b = _error(_union_board(board, payload), payload)
         known += a
         physics += b
-        mark = "  <- CONTRACT, must stay 0" if "idx0" in path.stem and (a or b) else ""
+        # ONLY evidence/idx0.json is the contract board. The cross-level captures are
+        # also idx0 in part, and marking them would put the contract's name on boards the
+        # gate has never been run against.
+        mark = "  <- CONTRACT, must stay 0" if path.stem == "idx0" and (a or b) else ""
         print(f"{path.stem.split('_')[-1]:8s} {a:9d} {b:8d}{mark}")
     print(f"{'sum':8s} {known:9d} {physics:8d}")
     return 0

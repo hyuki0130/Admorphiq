@@ -6580,6 +6580,40 @@ those: the evidence line reports the contact's position and stop and leaves the 
 and naming it explicitly moved nothing (0/9 for both). ⛔ Do not re-cut the wording a fourth time.
 
 
+## A tick-0 lane was never seeded — three levels predicted NOTHING (2026-08-25)
+
+With captures from every level available, the bench was widened past idx3 for the first time. The
+three cross-level boards came back at 36, 34 and 64 error — worse than any idx3 board — and the
+reason is not propagation:
+
+```
+cross_idx0: standing=[] falling=[[9, 0, 1]]   invented=0 missed=36
+cross_idx1: standing=[] falling=[[10, 0, 14]] invented=0 missed=34
+cross_idx2: standing=[] falling=[[1,0,14], [9,0,14], [14,0,14]] invented=0 missed=64
+```
+
+**Zero invented, everything missed: the model predicted nothing at all.** `pending` is read as
+`pending[len(frontier)]` and the frontier already holds its seed layer when the loop begins, so a
+source recorded at tick 0 was never looked up. A board whose only source is a tick-0 lane produced
+an empty trajectory. **The contract board hides this** — its source appears in `standing_flow` as
+well, so idx0 has always been driven by the seed rather than by the lane.
+
+Fixed by seeding tick-0 pending into the frontier, which is what the loop's own convention already
+says: a cell recorded at frontier index 0 IS the seed. Every gate holds — oracle 3/3, grounding,
+verifier, mutant certification, 1724 tests — and the contract board stays at 0.
+
+One hypothesis was tested and refuted on the way. `pre` is read before `_top_up` and the trajectory
+after it, so a capture spanning a top-up press would pair a board one move stale with the spill of
+a board that moved — and the seeded replay does track the observation for five steps and then
+diverge by exactly one column, which is what that looks like. A guard that skips the capture when
+the top-up pressed changed nothing: on these levels it pressed nothing. **The stale-board reading
+is refuted; the divergence is real propagation error on levels never measured before.**
+
+The bench total rises because the model now makes predictions that can be wrong instead of making
+none. That is the honest direction: 227 of the old total was "predicted nothing" scoring as if it
+were error, on the only boards in the corpus taken from levels the walk CLEARS.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -6679,6 +6713,13 @@ and naming it explicitly moved nothing (0/9 for both). ⛔ Do not re-cut the wor
     compiler's UNSATISFIABLE is the truth about the board rather than a search failure.
     Either the propagator floors flow the engine does not, or the level wants more than
     one placement.
+87. **A tick-0 lane was never seeded — three levels predicted NOTHING.** Widening the bench
+    past idx3 for the first time exposed it: cross_idx0/1/2 scored 36/34/64 with ZERO
+    invented, i.e. an empty trajectory, because `pending` is read at `len(frontier)` >= 1
+    and a tick-0 source is never looked up. The contract board hid it by also carrying that
+    source in `standing_flow`. Fixed; all five gates hold and idx0 stays 0. The stale-board
+    reading (`pre` taken across a `_top_up` press) was tested and REFUTED — the top-up
+    pressed nothing on these levels.
 86. **The fill stage is a ONE-SLOT exam and the slot is hazard fatality.** qwen3.8 at nine
     runs mirrors gemma4 (select 9/9, fill 0/9 x3, one answer, one board) and gets FIVE of six
     slots exactly right — including the exact oracle `empty_flanks_only` — failing on

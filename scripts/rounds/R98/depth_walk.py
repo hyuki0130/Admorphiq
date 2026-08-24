@@ -410,8 +410,15 @@ def _execute(w: Walker, g: FlowGrounding, plan, entered: int, spent: int, probes
                 _board_diff(plan.planned_board, pre.value)
             # the commit: the LAST piece has no successor to top it up, and a layout
             # that is one press short spills as a layout nobody chose
+            before_top_up = w.actions
             arrived, note = _top_up(w, g, held, entered, spent)
-            if os.environ.get("R98_CAPTURE") and forecast is not None:
+            # ONLY when the top-up pressed nothing. `pre` is read before the top-up and
+            # the trajectory after it, so a capture taken across a press pairs a board
+            # one move stale with the spill of a board that moved — measured: the replay
+            # matches the engine for five steps and then diverges by exactly one column,
+            # which is what a one-cell piece offset looks like.
+            if (os.environ.get("R98_CAPTURE") and forecast is not None
+                    and w.actions == before_top_up):
                 # BEFORE the clear check. The capture used to sit past this return, so it
                 # fired only when a level FAILED — which is why every board in the sweep
                 # came from idx3 and the step-off question had counter-examples from one
