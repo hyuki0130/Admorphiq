@@ -5119,6 +5119,41 @@ first-level survey it prompted still stands on its own terms — six games whose
 divide the frame are six games where the frame cannot be showing the whole board.
 
 
+## The blind spot, closed: centre sampling misses the last pixel row (2026-08-25)
+
+`_cellify` takes one pixel per cell — the centre:
+
+```python
+(r, c): grid[r * scale + scale // 2][c * scale + scale // 2]
+```
+
+At scale four, cell row 15 samples pixel row 62. And the flash lives one row below it:
+
+```
+pixel row 60   distinct [4, 12]    n14 = 0
+pixel row 61   distinct [4, 12]    n14 = 0
+pixel row 62   distinct [4, 12]    n14 = 0     <- the centre sample
+pixel row 63   distinct [0, 14]    n14 = 29    <- the failure flash
+```
+
+**Twenty-nine pixels of the failure mark sit on the one row the reader never looks at.** That is
+the whole blind spot, measured end to end: the entity is one pixel tall, it occupies the last
+pixel row of its cell, and centre sampling resolves that cell to the colour of the three rows
+above it.
+
+So every claim in this thread that "the cell shows colour 1 throughout" was true and also
+uninformative — the cell was never carrying the answer, the pixel row below the sample was.
+
+This is where the idx3 investigation lands. Not a family vocabulary gap, not a scale error, not a
+window position: **a sub-cell entity and a one-pixel sampler that cannot see it.** Everything else
+this thread produced — the walk reach, the straddling source, the neighbour's roof, the appearance
+collapse, the false hazards, the four-lives budget — was found on the way and stands on its own.
+
+⛔ Not fixed here on purpose. `_cellify` is the entrance to every frame reading in the project;
+changing what a cell's colour MEANS would move every measurement in every round at once, and it
+needs its own round with its own controls rather than a patch at the end of this thread.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -5205,6 +5240,12 @@ divide the frame are six games where the frame cannot be showing the whole board
     ka59 (45), m0r0 (11), tu93 (39) on their FIRST level, plus sp80 on its fourth. The
     property is per LEVEL, so that is a floor. The fix belongs in `_infer_scale`, the
     entrance to every frame reading in the project, not in anything R98-specific.
+46. **BLIND SPOT CLOSED — centre sampling misses the last pixel row.** `_cellify` reads
+    `grid[r*scale + scale//2]`, so cell row 15 samples pixel row 62, and the failure flash
+    is 29 pixels on row 63 alone. The cell reads colour 1 for the whole spill because the
+    reader never looks where the mark is. ⛔ Not patched here: `_cellify` is the entrance
+    to every frame reading in the project and changing what a cell's colour MEANS needs
+    its own round with its own controls.
 45. **Correction to #43: NOT a scale error.** Pixel runs are four-aligned throughout, so
     scale 4 is right; the frame is a WINDOW onto sixteen of the level's twenty cells, and
     the "offset of four" is the window's position. The failure entity sits at window row
