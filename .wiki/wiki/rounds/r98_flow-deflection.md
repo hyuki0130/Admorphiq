@@ -5431,6 +5431,30 @@ EVENT verdict rather than this assumption. The probe exists for exactly that, an
 its own change.
 
 
+## Under the claimed table, no placement wins idx3 (2026-08-25)
+
+With the trimmed band marked fatal, the compiler reports idx3 unsatisfiable. Enumerating every
+reachable layout rather than trusting that report — four pieces, shifts -8..+8:
+
+```
+by (targets satisfied, fatal)
+   (0, True)  3715      (1, True) 11235      (2, True)  866      (3, True) 24
+WINS: 0
+```
+
+**Fifteen thousand eight hundred and forty valid layouts, every one of them fatal.** Twenty-four
+of them fill all three named targets and touch the band anyway. So the compiler's verdict is not
+a search failure — it is the truth about this board under the claimed table.
+
+Which frames what is left honestly. Either the propagator sends flow to the floor where the
+engine does not, or the level wants something a single placement cannot do. The round has already
+measured the second possibility's cost: a run has four failed commits for the whole game, and
+idx3's every live attempt failed on the flag with all its targets satisfied.
+
+What this closes is the question of whether the compiler was simply not looking hard enough. It
+was: exhaustive over the piece shifts, and there is nothing there.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -5520,6 +5544,11 @@ its own change.
     ka59 (45), m0r0 (11), tu93 (39) on their FIRST level, plus sp80 on its fourth. The
     property is per LEVEL, so that is a floor. The fix belongs in `_infer_scale`, the
     entrance to every frame reading in the project, not in anything R98-specific.
+53. **Under the claimed table, NO placement wins idx3** — 15840 valid layouts enumerated,
+    every one fatal, including the 24 that fill all three named targets. So the
+    compiler's UNSATISFIABLE is the truth about the board rather than a search failure.
+    Either the propagator floors flow the engine does not, or the level wants more than
+    one placement.
 52. **The TRIMMED band is fatal — adopted.** Every gate holds, bench and idx0-idx2
     unchanged, and idx3 turns from "compiles, executes, fails silently" into "no layout
     satisfies the objective" — the model finally agreeing with every measurement of that
