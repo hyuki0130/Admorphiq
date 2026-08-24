@@ -4654,6 +4654,42 @@ Two measured facts that cannot both be complete. The next probe is the failure s
 find what it looks like on a board where it IS touched, then look for that entity on idx3.
 
 
+## The failure entity is the FRAME BAND (2026-08-24)
+
+What flashes on a failure, and what was it before?
+
+```
+idx0, first commit, layer 14: 16 cells at colour 14
+   rows [15]   cols 0..15
+   what they were before the spill: [1]
+```
+
+The whole bottom row, wearing colour 1 — **the frame**. So the entity whose contact fails the
+attempt is the band this harness deliberately excludes from the board: `playable_size()` trims
+the last row and column as "a frame drawn around the board", and `barriers()` was fixed this
+round to ignore anything in it because a hazard recorded outside the board still fires.
+
+Both of those were right about what the flow DOES there and wrong about what it MEANS. Flow
+reaching the frame does not die and does not deflect — it **fails the run**.
+
+Checking which spills touch it:
+
+```
+spill 28 (idx1)  []
+spill 29 (idx2)  flow at (1,15) (2,15) ... (8,15)     the right-hand column
+spill 33 (idx3)  []
+spill 38 (idx3)  []
+```
+
+idx2's failing spill runs eight cells down the frame's right column, which is exactly the shape
+of a run that fails on contact. idx3's spills never touch it at all — and idx3 still fails, with
+every target satisfied on the 38-layer one and nothing painted 0.
+
+So the frame band is a real failure entity, measured, and it is not what stops idx3. Two things
+follow. The model owes an entity it currently calls "not board" — and idx3 owes a third
+explanation, since neither its targets nor the frame accounts for it.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -4736,6 +4772,12 @@ find what it looks like on a board where it IS touched, then look for that entit
     commits. One life recovered by not re-committing when the aiming moved nothing;
     three more are spent because every level builds a FRESH grounding and re-learns the
     flow's direction and colour, which cannot change within a game.
+32. **The failure entity is the FRAME BAND** — the flash is the bottom row, colour 1 before
+    the spill. Flow reaching the frame FAILS THE RUN; it does not die and does not deflect.
+    `playable_size()` trims that band as decoration and `barriers()` was fixed to ignore
+    it, both right about what flow does there and wrong about what it means. idx2's
+    failing spill runs eight cells down the frame's right column; idx3's never touch it,
+    so the frame does not explain idx3.
 31. **THE BLOCK IS ONE OF THE ENGINE'S TARGETS — observed.** A failing attempt paints its
     UNSATISFIED targets in colour 0, and idx3's paints the block among them. On the spill
     where all nineteen are satisfied nothing is painted 0, so the engine agrees everything
