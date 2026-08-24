@@ -5028,6 +5028,39 @@ board. Every entity outside it is invisible by construction — including the on
 run.
 
 
+## Root cause: idx3 is a 20x20 level read as 16x16 (2026-08-25)
+
+The "offset of four rows" was not an offset. Reading each level's own grid size beside the frame
+it renders into:
+
+```
+level 0   raw frame (64,64)   grid (16,16)   inferred scale 4     correct
+level 1   raw frame (64,64)   grid (16,16)   inferred scale 4     correct
+level 2   raw frame (64,64)   grid (16,16)   inferred scale 4     correct
+level 3   raw frame (64,64)   grid (20,20)   inferred scale 4     WRONG — the true scale is 3.2
+```
+
+**idx3 is a twenty-cell board rendered into the same sixty-four pixel frame**, so one cell is
+3.2 pixels — and `_infer_scale` returns integers. A 20-cell board at 64px cannot be read by an
+integer-scale reader at all; the blocks are not uniform, so the largest uniform block size it can
+find is four, and the whole level is read as sixteen cells.
+
+Everything this thread has been chasing follows from that one fact:
+
+* the targets' "row offset of four" — 17 x 3.2 / 4 = 13.6, read as row 13;
+* the failure entity at row 19 being invisible — it is outside the sixteen cells we resolve;
+* the frame band we trim as decoration — rows 16 to 19 are real board;
+* the grounding's fragility on idx3 throughout, and the piece appearances collapsing there.
+
+So idx3 was never a modelling gap in the family's vocabulary. **It is a perception failure**, and
+the harness's own `_infer_scale` docstring already warns about its sibling — accepting a scale
+twice too large by excusing real content as overlay. This is the same class: an integer reader on
+a non-integer board.
+
+That is the largest single finding of this thread, and it is measured rather than reasoned: the
+engine's `grid_size` says twenty, the frame says sixty-four pixels, and 64/20 is not an integer.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -5110,6 +5143,13 @@ run.
     commits. One life recovered by not re-committing when the aiming moved nothing;
     three more are spent because every level builds a FRESH grounding and re-learns the
     flow's direction and colour, which cannot change within a game.
+43. **ROOT CAUSE — idx3 is a 20x20 level read as 16x16.** Every level renders into a
+    64x64 frame; levels 0-2 have `grid_size` (16,16) so scale 4 is right, and idx3 has
+    (20,20) whose true scale is 3.2. `_infer_scale` returns integers, so a 20-cell board
+    at 64px cannot be read at all. The "row offset of four", the invisible failure entity
+    at row 19, the frame band trimmed as decoration, and the grounding's fragility on idx3
+    all follow from this one fact. idx3 was never a vocabulary gap — it is a PERCEPTION
+    failure.
 42. **The sprite-to-board mapping is IDENTITY on idx0 and offset by FOUR ROWS on idx3.**
     Measured by reading target sprites and target cells together. So idx0's failure entity
     is board row 15, the bottom row, confirmed cell for cell by the flash — flow reaching
