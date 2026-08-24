@@ -7032,6 +7032,39 @@ than the exit code is what caught it** — the same lesson this round recorded o
 same fix: run the suite on its own.
 
 
+## The model stage at NINE runs, all three models (2026-08-25)
+
+gpt-oss's nine-run pass completes the stage. Every verdict in this round's model stage now rests
+on nine repetitions instead of three:
+
+| mode | gemma4 | qwen3.8 | gpt-oss |
+|---|---|---|---|
+| select | **9/9** | **9/9** | 8/9 |
+| fill (split) | 0/9 | 0/9 | **9/9** |
+| fill_fused | 0/9 | 0/9 | **9/9** |
+| fill_explicit | 0/9 | 0/9 | 8/9 |
+
+**On the decisive slot, every model is deterministic and they disagree.** gpt-oss answers
+`hazard_response: terminate_fatal` in 27 of 27 fill runs across three encodings; gemma4 and
+qwen3.8 answer `terminate_local` in 27 of 27 each. One distinct answer per model per encoding, one
+distinct board everywhere — the grounding is identical, so the split is entirely the models'.
+
+gpt-oss's two 8/9s are not wrong answers. Both are the verifier returning **UNKNOWN** with
+`no partial cover observed: any and all predict the same outcome` — the evidence cannot separate
+those objectives, so the harness declines rather than certifying, at zero executed actions. That
+is the equivalence-class behaviour this family already has precedent for, working as intended.
+
+⚠️ **The "split encoding destabilises gpt-oss" reading is REFUTED.** It came from 3/3 followed by
+0/3 on the same prompt, and at nine runs the split scores 9/9 — the same as fused. The earlier 0/3
+failed on the OBJECTIVE, not the hazard slot, and that failure mode did not recur once in nine.
+Three runs produced a swing that nine runs show no trace of, which is exactly what raising the
+count was for.
+
+So the stage's standing result: **SELECT is confirmed on all three models. FILL is confirmed on
+gpt-oss alone, and its two competitors fail deterministically on one slot** — whether contact with
+a barrier ends the attempt or only the droplet.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -7131,6 +7164,13 @@ same fix: run the suite on its own.
     compiler's UNSATISFIABLE is the truth about the board rather than a search failure.
     Either the propagator floors flow the engine does not, or the level wants more than
     one placement.
+99. **THE MODEL STAGE AT NINE RUNS, ALL THREE MODELS.** select: gemma4 9/9, qwen 9/9, gptoss
+    8/9. fill / fused / explicit: gemma4 0/9, qwen 0/9, **gptoss 9/9 / 9/9 / 8/9**. On the
+    decisive slot every model is DETERMINISTIC and they disagree — gptoss `terminate_fatal`
+    27/27, gemma4 and qwen `terminate_local` 27/27 each, one board throughout. gptoss's two
+    8/9s are verifier UNKNOWNs on a data-indistinguishable objective axis, not wrong answers.
+    ⚠️ The "split encoding destabilises gptoss" reading is REFUTED: 3/3-then-0/3 became 9/9,
+    and the earlier failure was on the OBJECTIVE, never recurring in nine.
 98. **Only ONE genuine step-off refusal EXISTS, and it is the model's only error.** A run is
     followed through CONSECUTIVE layers, so a walk that pauses and resumes read as a stop:
     `(9,7)` is observed at layer 18 and `(13,9)` too. Five of nine "stops" were artefacts;
