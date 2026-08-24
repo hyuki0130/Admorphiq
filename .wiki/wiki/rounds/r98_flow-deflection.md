@@ -2369,14 +2369,47 @@ idx2: CLEARED — 55 actions
 idx3: one invented stream, off the far end of a piece the engine never leaves that way
 ```
 
+## The rule needs per-droplet state, and a cell set is not that (2026-08-24)
+
+"Leaves at the nearer end" was implemented where the previous tick said it belonged — on
+the spreading side, marking the droplets that walk toward a piece's FAR end so they lay
+their cells but never fall off. Measured on both boards:
+
+```
+board g   invented 14 -> 6     (the invented right-side stream is gone)
+board a   invented  2 -> 1  but missed 0 -> 7
+```
+
+g improves and a breaks, and the reason is the mark itself. The flag lives on CELLS, and
+two streams share cells: source 5's walk right marks `(3,6)` as far-side — and `(3,6)` is
+where source 6 LANDS. Source 6 inherits a restriction that belongs to another stream, its
+whole right-hand branch dies, and board a loses seven cells it had matched.
+
+Exempting landing cells recovers part of it (`a` 8 cells of error instead of 15) but not
+all: the flag still leaks wherever two walks cross, and a is a level the walk CLEARS, so a
+regression there is not a trade worth making.
+
+Reverted. What the two attempts establish together is the shape of the fix: **the
+restriction belongs to a droplet, not to a cell.** The propagator carries active droplets
+as `(cell, direction)` pairs, and this rule needs a third component — where the walk began
+— which is a change to the propagator's own representation rather than another condition
+bolted onto the spread. That is the next step, and it is worth doing properly.
+
+```
+idx0: CLEARED — 23 actions
+idx1: CLEARED — 30 actions
+idx2: CLEARED — 55 actions
+idx3: unchanged; the invented far-end stream is understood but not yet removable
+```
+
 ## Next
 
 1. **Fill is not confirmed paired.** gemma4 misses one slot, and the cause is our
    encoding rather than its reasoning. Measure the hazard orthogonalisation as its
    own experiment against all three models — never as a patch to move a verdict.
-2. **Put "leaves at the nearer end" on the SPREADING side.** The rule is measured on two
-   boards; implementing it at the injection loses the cells along the piece's top, which
-   the engine does produce.
+2. **Give the propagator per-droplet state.** "Leaves at the nearer end" needs to travel
+   with a droplet, not with a cell: as a cell flag it leaks between streams that share a
+   cell and costs board a seven matched cells.
 3. **Measure the bounded-roof variant on fixed evidence** — 1 invented cell against the
    adopted rule's 2, deliberately not adopted in the same change.
 3. **Multi-piece placement**, the burden the idx1 observation named: idx1 carries
