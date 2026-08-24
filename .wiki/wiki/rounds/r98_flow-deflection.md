@@ -6172,6 +6172,41 @@ has to be the variant you meant**, or the sweep manufactures refutations as read
 manufactures improvements.
 
 
+## Correction: five of six events need no rule at all — the anomaly is ONE event (2026-08-25)
+
+The claim above — "one side walks and the other stops after a single cell" — was an artefact of
+how the probe measured. It followed a straight lateral run, so a side that took one cell and then
+FELL read identically to a side that stopped there, and those are different mechanisms. Asking
+the observation whether the last cell has a descendant along the flow separates them:
+
+```
+board  landing    left                          right
+idx0   (3, 9)     5 ####.   fell                1 .   fell
+idx0   (12, 10)   1 .       fell                1 .   fell
+b      (9, 10)    3 ##.     fell                1 .   fell
+f..o   (7, 4)     4 ####    STOPPED on support  1 #   STOPPED on support
+stuck  (9, 10)    3 ##.     fell                1 .   fell
+```
+
+idx0's right side does not stop at `(3,10)` — it falls the whole way to `(12,10)` and spreads
+again there. **Five of the six events are gravity and nothing else**: a droplet slides while it
+is standing on something and falls the moment it is not. No rule is needed to produce any of them
+and the propagator already gets them right.
+
+The anomaly is the `f`–`o` family, one event replicated across eleven boards: both sides stop on
+SUPPORTED cells. The left one is at the board's edge with a piece beneath it — nowhere to walk,
+nothing to fall into — so stopping is forced. The right one at `(7,5)` is the real puzzle: it sits
+on the piece's last cell, could step to `(7,6)` and fall from there, and the engine simply ends
+it. That single droplet is the entire lateral halo; our model takes the step and pays for it on
+eleven boards at five cells each.
+
+So the open question is much narrower than "why is the spread asymmetric": it is **why a droplet
+at the far end of a piece does not step off, when the same board's other side steps off happily
+in idx0**. The rule scored so far — the shorter supported run does not walk — is at 144 physics
+with 15 cells on the contract board, i.e. refuted, and it is refuted for a reason worth keeping:
+it fires at every collision while the observation only ever shows this at one.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -6271,7 +6306,14 @@ manufactures improvements.
     compiler's UNSATISFIABLE is the truth about the board rather than a search failure.
     Either the propagator floors flow the engine does not, or the level wants more than
     one placement.
-74. **ONE SIDE WALKS — measured across all 16 observed spread events.** The walking side
+75. **CORRECTION to #74 — five of six events need NO rule.** The probe followed straight
+    lateral runs, so "stopped after one cell" and "fell after one cell" read alike. Asking
+    for a descendant separates them: idx0's right side FALLS all the way to (12,10) and
+    spreads again. Five events are gravity — slide while supported, fall when not — and the
+    propagator already gets them right. The anomaly is ONE event on the f-o family: a
+    droplet on the piece's LAST cell that could step off and fall, and the engine ends it.
+    That single droplet is the whole lateral halo.
+74. ~~ONE SIDE WALKS — measured across all 16 observed spread events.~~ The walking side
     runs while supported and takes exactly one step off the end (or stops at the board
     edge); the other side gets its cell and nothing more, even when that cell is supported.
     Which side: the longer supported run in all 16, and also the lower-column side in all

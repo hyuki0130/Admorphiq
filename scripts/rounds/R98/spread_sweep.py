@@ -49,6 +49,10 @@ SPEND = BASE + """                    if _VARIANT(board, f, targets, (dr, dc), w
                         spawn(f, direction, WALK_REACH)
                         continue
 """
+FIRST = BASE + """                    if _VARIANT(board, f, targets, (dr, dc), wall, walked):
+                        spawn(f, direction, WALK_REACH)
+                        continue
+"""
 
 def _support_run(board, cell, step, d, wall) -> int:
     """How many consecutive cells from ``cell`` outward along ``step`` are SUPPORTED —
@@ -84,6 +88,13 @@ VARIANTS = {
 SPEND_VARIANTS = {
     "only the longer SUPPORTED run walks":
         lambda board, f, targets, d, wall: _loses(board, f, targets, d, wall),
+    # walk_probe only ever saw this at a FALLING droplet's first collision, so the
+    # unrestricted rule above is firing at collisions it was never measured on. The
+    # propagator marks a droplet that has not yet walked with walked == -1, and the
+    # patch site can read it.
+    "...but only at a falling droplet's FIRST collision":
+        lambda board, f, targets, d, wall, walked=None: (
+            walked == -1 and _loses(board, f, targets, d, wall)),
 }
 
 
@@ -145,6 +156,7 @@ for name, rule in VARIANTS.items():
     flag = "  <- BREAKS THE CONTRACT BOARD" if idx0 else ""
     print(f"{name:48s} physics {total:4d}   idx0 {idx0}{flag}")
 for name, rule in SPEND_VARIANTS.items():
-    total, idx0 = score(_module(rule, SPEND))
+    shape = FIRST if "FIRST" in name else SPEND
+    total, idx0 = score(_module(rule, shape))
     flag = "  <- BREAKS THE CONTRACT BOARD" if idx0 else ""
     print(f"{name:48s} physics {total:4d}   idx0 {idx0}{flag}")

@@ -12,12 +12,16 @@ either side of the previous cell, it follows each side as far as the observation
 carries it and reports the extent together with what the walked cells were standing
 on, which is the property the candidate rules turn on.
 
+A straight lateral run is only half the story: a side that shows ONE cell may have
+fallen from it rather than stopped there, and those are different mechanisms. So each
+side is also reported as `fell` or `STOPPED`, by asking whether its last cell has a
+descendant along the flow anywhere later in the observation.
+
 Expected feedback
 -----------------
-A table of (left extent, right extent) with the support pattern of each. If extents
-track support — a walk continuing while blocked and ending where it is not — the
-rule is readable off the table. If two events with identical support disagree, the
-rule is not about support and the table says so before any code is written.
+A table of (extent, support pattern, fate) per side. A side that walks while supported
+and falls the moment it is not needs no rule beyond gravity. A side that STOPS on a
+SUPPORTED cell is the anomaly, and it is the only thing a new rule has to explain.
 """
 
 from __future__ import annotations
@@ -52,8 +56,23 @@ def _walk(layers: list[set], start, step, board) -> list:
     return out
 
 
+def _fate(layers: list[set], run: list, board) -> str:
+    """Did the side FALL from its last cell, or stop there?
+
+    A single-cell side reads the same either way in a lateral run, and the two are
+    different mechanisms: falling needs no rule beyond gravity, stopping does."""
+    if not run:
+        return "-"
+    dr, dc = board.direction
+    below = (run[-1][0] + dr, run[-1][1] + dc)
+    fell = any(below in layer for layer in layers)
+    if fell:
+        return "fell"
+    return "STOPPED on support" if _supported(board, run[-1]) else "stopped"
+
+
 def main() -> int:
-    print(f"{'board':6s} {'landing':9s} {'left':26s} {'right':26s}")
+    print(f"{'board':6s} {'landing':9s} {'left':29s} {'right':29s}")
     for path in _captures():
         with open(path) as f:
             payload = json.load(f)
@@ -71,7 +90,8 @@ def main() -> int:
                 ls = "".join("#" if _supported(board, c) else "." for c in lw)
                 rs = "".join("#" if _supported(board, c) else "." for c in rw)
                 print(f"{path.stem.split('_')[-1]:6s} {str(cell):9s} "
-                      f"{len(lw)} step(s) {ls:15s} {len(rw)} step(s) {rs:15s}")
+                      f"{len(lw)} {ls:7s} {_fate(layers[i:], lw, board):19s} "
+                      f"{len(rw)} {rs:7s} {_fate(layers[i:], rw, board)}")
     return 0
 
 
