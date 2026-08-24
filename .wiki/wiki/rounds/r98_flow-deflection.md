@@ -3034,6 +3034,67 @@ pins nothing. Driving the same fallback the class itself uses makes it fail with
 rescue and pass with it.
 
 
+## Five walk rules killed, and one that halves the bench still fails the gate (2026-08-24)
+
+With the pair grounded whole, the misses on nine boards go to ZERO — everything left is
+over-production. Board o invents exactly `(7,6) (8,6) (12,5) (13,5) (14,5)`, and the same
+five appear on every board of that family.
+
+The engine's spread along a blocked row is ASYMMETRIC, measured cell by cell:
+
+```
+row 3 from (3,5) LEFT : (3,4) is OFF the piece, appears, and falls to (4,4)   1 step
+row 3 from (3,6) RIGHT: (3,7) (3,8) on the piece, stops                       2 steps
+row 7 from (7,4) LEFT : (7,3) (7,2) (7,1) (7,0) on the piece to the edge      4 steps
+row 7 from (7,4) RIGHT: (7,5) on the piece, stops                             1 step
+```
+
+Five rules were scored against this on the physics column, and the reach that is already
+adopted beats all of them:
+
+```
+reach 2 (current)                    112
+reach 1                              253
+reach 2, may not leave the piece     478
+free walk, may not leave the piece   478
+free walk                            258
+"only a falling droplet may leave"   462
+```
+
+`(3,4)` is off the piece's end and the engine renders it, so "never step off" is refuted by
+observation as well as by score. The asymmetry is real and none of these explains it.
+
+### The one that halved the bench — and was reverted
+
+Tracking `(12,5)` found something better. Target 0 owns `(13,6) (14,6) (14,7)`. The droplet
+that misses at `(12,6)` goes RIGHT to `(12,7)` and down to `(13,7)` — directly over `(14,7)`,
+the same target's own cell. It is looking for a way IN. Left leads nowhere and the engine
+never goes there, while our replay ran a column to the board's floor.
+
+Restricting the miss-spread to the target's own lanes scored:
+
+```
+physics   112 -> 44      every board improves or holds; b,c,d 10,10,9 -> 1,1,1
+as-known  211 -> 157
+```
+
+**And the live oracle gate went 0/3, reproducibly, verdict CONTRADICTED on all three runs.**
+Reverted. idx0's engine DOES spread off a target's footprint, so the rule is wrong and the
+captured boards reward it for suppressing invented cells that some OTHER error produces.
+
+**This is the lesson of the round so far, and it is now measured rather than argued: the
+captured bench is a DIAGNOSTIC, not a gate.** A rule can halve it and still contradict the
+level the contract is built on. Nothing gets adopted on the bench alone.
+
+Two test findings came out of the attempt and are worth keeping even though the rule went
+back:
+- the shared verifier fixture reached its barrier by spreading off a missed target and
+  wandering down a column belonging to nothing — behaviour the engine may not have. A
+  fixture can depend on a bug.
+- both new tests were checked against their own subject by removing the code they name.
+  One of them, in its first version, passed without it.
+
+
 ## Next
 
 1. **Fill is not confirmed paired.** gemma4 misses one slot, and the cause is our
@@ -3043,10 +3104,13 @@ rescue and pass with it.
    A landing cell entered the frontier with an unlimited walk; giving it `walked = 0` is
    worth 32 cells (243 -> 211). The intermediate claim that the cell never entered the
    frontier at all was wrong and is corrected in the body.
-3. ~~A stream blocked by a piece spreads on the row above it.~~ **It already does** — the
-   row-9 spread was a source the grounding had cut in half, now fixed (physics 139 -> 112).
-   What remains uniform is the invented tail `(12,5) (13,5) (14,5)`, on every board, and
-   with the misses down to 5 per board it is most of what is left.
+3. **The blocked-row spread is ASYMMETRIC and nothing yet explains it** — 1 step one way,
+   4 the other, on the same board. Six rules measured, all worse than the adopted reach 2.
+   The remaining error is now entirely over-production.
+6. **Why does idx0 need the unrestricted miss-spread?** The footprint rule halves the
+   captured bench and takes the oracle gate to 0/3. Understanding that disagreement is
+   worth more than either number: it says the captures reward suppressing cells that a
+   different error produces.
 4. ~~Report b, c and d apart from the rest.~~ **DONE** — `rule_bench.py --all` now reports
    as-known 211 and physics 139. Judge propagation rules on the physics column.
 5. **Close the 72-cell gap at the walk, not the propagator.** It is the cost of planning
