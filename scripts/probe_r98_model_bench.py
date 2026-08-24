@@ -574,11 +574,36 @@ def _run_discovery():
     return g, state, act
 
 
+def _board_fingerprint(g) -> dict[str, Any]:
+    """What the grounding was looking at when the verdict was taken.
+
+    A CONTRADICTED verdict has two possible authors: the model named the wrong world,
+    or the grounding built the wrong board and the verifier judged a correct answer
+    against it. Measured 2026-08-25, gpt-oss returned all six response slots exactly
+    right and was still contradicted; the variant field is what proved the model was
+    at fault, and nothing in the record could have told the other story apart from it.
+    This is small, so it can ride on every run."""
+    board = g.board()
+    if board is UNKNOWN:
+        return {"board": "UNKNOWN"}
+    b = board.value
+    return {
+        "size": b.size,
+        "direction": list(b.direction),
+        "pieces": [len(p) for p in b.pieces],
+        "sinks": [sorted(s)[0] for s in b.sinks],
+        "hazards": sorted(b.hazard_cells),
+        "absorbers": len(b.absorber_cells),
+        "falling_sources": [list(s) for s in b.falling_sources],
+    }
+
+
 def _gate_and_execute(instance, g, state, act, record: dict[str, Any]) -> None:
     evidence = build_flow_evidence(g, state["obs"].levels_completed >= 1)
     verdict = verify_with_evidence(instance, evidence)
     record["verdict"] = verdict.verdict.value
     record["verdict_reason"] = verdict.reason
+    record["board"] = _board_fingerprint(g)
     if verdict.verdict is not Verdict.PASS:
         record["executed_actions"] = 0
         record["outcome"] = "blocked_by_verifier"
@@ -773,6 +798,11 @@ def self_test() -> int:
         good = run.get("outcome") == expect
         if expect == "blocked_by_verifier":
             good = good and run.get("executed_actions") == 0
+        # Every record must carry the board the verdict was taken on, populated. A
+        # CONTRADICTED verdict has two possible authors and the artefact has to be able
+        # to tell them apart; an empty or missing fingerprint silently gives that up.
+        board = run.get("board") or {}
+        good = good and bool(board.get("size")) and bool(board.get("hazards"))
         ok &= good
         print(f"  {mode:<7} {'truthful' if expect == 'cleared' else 'wrong':<9} "
               f"-> outcome={run.get('outcome')} executed={run.get('executed_actions')} "

@@ -6386,6 +6386,35 @@ board, so a genuine grounding-dependent contradiction would NOT be separable fro
 by looking at the artefact. That is a real gap in what the record carries.
 
 
+## The record now carries the board the verdict was taken on (2026-08-25)
+
+The near-miss above exposed a real gap: a CONTRADICTED verdict has two possible authors — the
+model named the wrong world, or the grounding built the wrong board and the verifier judged a
+correct answer against it — and the artefact could not tell them apart. It happened to be
+separable this time only because the variant field was recorded and disagreed; had the model got
+the objective right too, the six matching slots would have left nothing to check.
+
+`_board_fingerprint()` now rides on every run record: size, direction, piece sizes, sink anchors,
+hazard cells, absorber count, falling sources. Verified populated rather than assumed —
+
+```
+outcome: cleared
+board  : {"size": 16, "direction": [1, 0], "pieces": [5], "sinks": [[13, 4], [13, 10]],
+          "hazards": [[15, 3], [15, 9]], "absorbers": 0, "falling_sources": [[9, 0, 1]]}
+```
+
+— and those hazard cells are idx0's, matching the committed contract capture, so the fingerprint
+is reading the board rather than emitting a shape.
+
+The self-test now REQUIRES it on every case, and that requirement was checked against its own
+subject: blanking the fingerprint turns the first three cases red. Without that check the field
+could quietly become `{}` in a refactor and the record would look complete while carrying
+nothing, which is the failure mode this round has already hit twice with vacuous tests.
+
+Cost: a few hundred bytes per run, on a record that already keeps 1200 characters of raw reply
+for unparsable cases. There is no reason to make it conditional.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -6485,6 +6514,11 @@ by looking at the artefact. That is a real gap in what the record carries.
     compiler's UNSATISFIABLE is the truth about the board rather than a search failure.
     Either the propagator floors flow the engine does not, or the level wants more than
     one placement.
+81. **The record now carries the BOARD the verdict was taken on.** `_board_fingerprint()` on
+    every run: size, direction, piece sizes, sink anchors, hazard cells, absorbers, sources.
+    Verified populated (idx0's own hazards), and the self-test requires it on every case —
+    blanking it turns three cases red. Closes the gap #80 exposed: a CONTRADICTED verdict
+    can now be attributed to the model or to the grounding from the artefact alone.
 80. ⚠️ **gpt-oss's default fill is UNSTABLE: 3/3 then 0/3 on the same prompt.** Fused is 3/3
     in BOTH runs and explicit 3/3, so the instability belongs to the split encoding. The two
     failing runs answered all SIX response slots exactly as the oracle and failed on the
