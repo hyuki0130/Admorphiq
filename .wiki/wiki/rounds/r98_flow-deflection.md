@@ -3546,6 +3546,46 @@ that exercises nothing — the last two ticks each caught a pin that passed with
 The rules are currently held by the walk and the four certifications.
 
 
+## idx3's wall is a SCHEMA GAP, not a defect (2026-08-24)
+
+idx3 now plans and executes; the level does not advance. The forecast and the outcome were
+compared cell by cell:
+
+```
+model      satisfied [0, 1, 2]   fatal False   wins True
+engine     all three mouths ENTERED — (13,7), (13,10), (13,13) all in the trail,
+           the last observed layer is exactly [(13,10), (13,13)]
+level      does not advance
+```
+
+The trail has no missed cells, so this is not the propagator getting the spill wrong. It is
+the OBJECTIVE. idx0 clears with exactly the same signature — mouths entered, target bodies
+never becoming flow — so nothing about how the three targets were filled is different.
+
+What is different is a fourth region:
+
+```
+(13,2) (13,3) (14,2) (14,3)   a 2x2 block, colour 11
+targets 0,1,2                 five cells each, colour 11 — the SAME appearance
+```
+
+`absorbers()` already carries the measurement in its own docstring: a solid block wearing the
+target appearance **is satisfied by the engine** — it recolours when the spill reaches it —
+"while no candidate table has a rule that ever satisfies a region with no notch to be flanked
+at. So it cannot be offered as a target." It was classified as an absorber because the schema
+has nowhere else to put it.
+
+So idx3's objective is four regions and the schema can express three. The plan fills the three
+it can name, the engine agrees it filled them, and the level correctly does not advance. The
+compiler, the verifier and the propagator are all telling the truth; the vocabulary is short.
+
+This is a FAMILY finding, not a bug to patch: the gated-enum work fixed `sink_predicate` on
+`same_sink_flanks`, which is a rule about a notch. A notchless target needs a satisfaction
+rule that does not reference flanks at all, and adding one now — mid-round, to move one level
+— would be extending the schema to fit a case rather than measuring whether the family needs
+it. Recorded for the round's schema findings alongside the hazard-policy/hazard-response split.
+
+
 ## Next
 
 1. **Fill is not confirmed paired.** gemma4 misses one slot, and the cause is our
@@ -3582,8 +3622,10 @@ The rules are currently held by the walk and the four certifications.
 12. ~~idx3 is still UNSATISFIABLE, now on 4 of 5 pieces.~~ **Three false hazards** —
     background cells and frame cells — made every reachable layout fatal. idx3 now plans
     and executes on all five pieces.
-13. **idx3 executes its plan and does not clear (31 actions).** The next wall, and the
-    first one on this level that is about the PLAN rather than about what the board is.
+13. ~~idx3 executes its plan and does not clear.~~ **A SCHEMA GAP** — the level's objective
+    is four regions and the schema can name three; the fourth is a notchless block that
+    the engine satisfies but no rule in the vocabulary can express. Recorded as a family
+    finding, NOT patched mid-round.
 14. **Owed: a unit pin for the two barrier rules.** Three fixtures failed to produce a
     registered animation; nothing was committed rather than a test that passes vacuously.
 8. **Close the 72-cell gap at the walk, not the propagator.** It is the cost of planning
