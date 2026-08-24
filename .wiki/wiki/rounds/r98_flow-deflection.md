@@ -2783,14 +2783,60 @@ idx2: CLEARED — 55 actions
 idx3: eight cells; the embedded-source model is confirmed, its detection is the gap
 ```
 
+## The carrier renders uniformly, and two sources shared a column (2026-08-24)
+
+The appearance question has a flat answer. Capturing the board's colours alongside its
+geometry — the capture now carries them — and reading each piece's interior on the covered
+board:
+
+```
+piece (4,5)  4 cells: colours 9 9 9 9
+piece (6,8)  4 cells: colours 8 8 8 8
+piece (8,0)  6 cells: colours 8 8 8 8 8 8
+piece (8,11) 3 cells: colours 8 8 8
+piece (10,3) 3 cells: colours 8 8 8
+```
+
+Every piece is uniform. There is no odd cell to find, so appearance-based detection cannot
+work there **by measurement, not by weakness** — the source's only trace is the flow it makes.
+
+Classifying every sourceless entry on that board then turns up something better:
+
+```
+entry step  0  (3,5)   free behind
+entry step  0  (3,6)   free behind
+entry step  7  (6,7)   free behind
+entry step 10  (9,5)   PIECE behind
+entry step 10  (9,6)   free behind
+entry step 11  (7,11)  PIECE behind
+entry step 11  (7,12)  free behind
+```
+
+Each pair straddles a piece's edge: one member has the piece behind it and the other does
+not. So `(9,6)` was grounded as a lane in column 6 — and the lane list was keyed by COLUMN,
+where a source at row 3 already sat. One silently replaced the other and the model poured
+from whichever was seen last.
+
+Keyed by (column, row) instead, both are held: the covered board now grounds `(6,0,3)` and
+`(6,10,9)` together. Every previously captured board keeps its score and the two fresh
+captures sit at **8 cells**, the best measured for that board. The pin fails when the key is
+collapsed back to the column.
+
+```
+idx0: CLEARED — 23 actions
+idx1: CLEARED — 30 actions
+idx2: CLEARED — 55 actions
+idx3: two stacked sources in one column are both kept
+```
+
 ## Next
 
 1. **Fill is not confirmed paired.** gemma4 misses one slot, and the cause is our
    encoding rather than its reasoning. Measure the hazard orthogonalisation as its
    own experiment against all three models — never as a patch to move a verdict.
-2. **Why is the carrier's odd cell invisible on the covered board?** The embedded-source
-   model is confirmed by a one-variable probe; on that board the query returns nothing, so
-   the gap is detection — a question about appearances, not mechanics.
+2. **Each sourceless entry comes in a PAIR straddling a piece's edge.** One member has the
+   piece behind it, the other does not, and the two are currently handled by different
+   mechanisms. Treating the pair as one thing is the next step.
 3. **Measure the bounded-roof variant on fixed evidence** — 1 invented cell against the
    adopted rule's 2, deliberately not adopted in the same change.
 3. **Multi-piece placement**, the burden the idx1 observation named: idx1 carries

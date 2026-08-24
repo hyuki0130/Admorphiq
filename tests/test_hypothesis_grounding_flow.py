@@ -530,3 +530,35 @@ def test_a_framed_board_is_smaller_than_its_frame():
     plain.observe(0, None, [_frame({(1, 1): 5, (2, 4): 7, (4, 2): 5, (5, 5): 7})])
     assert plain.playable_size() == N, \
         f"an unframed board was trimmed anyway: {plain.playable_size()}"
+
+
+def test_two_sources_in_one_column_are_both_kept():
+    """Purpose: measured on the covered board — the level has a source at (3,6) and another
+    at (9,6), the same column at different rows. The lane list was keyed by column, so one
+    silently replaced the other and the model poured from whichever was seen last.
+
+    Expected feedback: pass proves both are held. Fail means a board with stacked sources is
+    predicted with half of them."""
+    piece_hi = {(4, c): 7 for c in range(5, 8)}
+    piece_lo = {(6, c): 7 for c in range(5, 8)}
+    static = {**piece_hi, **piece_lo}
+
+    layers = []
+    flow = {}
+    for k in range(1, 7):
+        if k <= 3:
+            flow[(k, 0)] = 6            # a plain stream, so the direction is measurable
+        if k == 4:
+            flow[(3, 6)] = 6            # a source above the upper piece
+        if k == 5:
+            flow[(5, 6)] = 6            # and another above the lower one
+        layers.append(_frame({**static, **flow}))
+
+    g = FlowGrounding()
+    g.observe(0, None, [_frame(static)])
+    g.observe(5, None, layers)
+
+    sources = g.falling_sources()
+    assert sources is not UNKNOWN
+    lines = sorted(line for lane, _tick, line in sources.value if lane == 6)
+    assert lines == [3, 5], f"the two sources in column 6 were not both kept: {sources.value}"

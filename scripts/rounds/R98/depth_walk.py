@@ -239,7 +239,8 @@ def play_level(w: Walker) -> tuple[bool, str]:
             if os.environ.get("R98_CAPTURE_STUCK"):
                 pre = g.board()
                 if pre is not UNKNOWN:
-                    _capture(pre.value, g.trajectory(), os.environ["R98_CAPTURE_STUCK"])
+                    _capture(pre.value, g.trajectory(), os.environ["R98_CAPTURE_STUCK"],
+                             g._prev_cells)
             return False, f"compiler {plan.status.value}: {plan.reason}"
         knew = g.falling_sources()
         knew = () if knew is UNKNOWN else knew.value
@@ -420,7 +421,7 @@ def _execute(w: Walker, g: FlowGrounding, plan, entered: int, spent: int, probes
                                f"{_what_blocks(g, frozenset(before.value), deltas_of(g)[step])}"), True
 
     if os.environ.get("R98_CAPTURE") and forecast is not None:
-        _capture(pre.value, g.trajectory(), os.environ["R98_CAPTURE"])
+        _capture(pre.value, g.trajectory(), os.environ["R98_CAPTURE"], g._prev_cells)
     if os.environ.get("R98_DUMP_BOARD") == "1" and forecast is not None:  # noqa: SIM102
         _attribute_pre(g, forecast, forecast_sinks)
         want = frozenset(c for piece in plan.intended for c in piece)
@@ -487,7 +488,7 @@ def _top_up(w: Walker, g: FlowGrounding, step: Select | None, entered: int, spen
     return False, "ran out of attempts topping a piece up to its place"
 
 
-def _capture(board, observed, path: str) -> None:
+def _capture(board, observed, path: str, cells=None) -> None:
     """Freeze the board AS COMMITTED and the spill it produced.
 
     Rule changes alter what the compiler chooses, so re-running the whole walk compares
@@ -510,6 +511,8 @@ def _capture(board, observed, path: str) -> None:
         "direction": list(board.direction),
         "size": board.size,
         "observed": [sorted(layer) for layer in observed.value if layer],
+        # the board's APPEARANCES, so a bench can ask why an entity was or was not seen
+        "colours": ({f"{r},{c}": v for (r, c), v in cells.items()} if cells else {}),
     }
     with open(path, "w") as f:
         json.dump(payload, f)

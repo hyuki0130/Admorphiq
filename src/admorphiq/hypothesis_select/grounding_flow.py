@@ -1339,7 +1339,10 @@ class FlowGrounding:
         # spill reveals lanes 5 and 6, and the committed spill reveals 11 and 12 while
         # the earlier pair lands on nothing visible; reading only the last animation
         # throws away half the board's sources every time.
-        out: dict[int, tuple[int, int]] = {}
+        # keyed by (lane, line), not by lane: this level has two sources in one column
+        # at different rows — measured on the covered board, (3,6) and (9,6) — and a
+        # dict keyed by column silently keeps one of them.
+        out: dict[tuple[int, int], int] = {}
         tally: dict[int, int] = {}
         for anim in self._animations:
             seen: set[Cell] = set()
@@ -1365,14 +1368,14 @@ class FlowGrounding:
                     # on the covered board.
                     if (r - dr, c - dc) in anim.piece_cells:
                         continue
-                    out[lane] = (tick, r if dr else c)
+                    out[(lane, r if dr else c)] = tick
                     tally[lane] = tally.get(lane, 0) + 1
                 seen |= set(layer)
         if not out:
             return UNKNOWN
         self._lane_tally = tally
         return Grounded(
-            tuple((lane, tick, line) for lane, (tick, line) in sorted(out.items())), "high"
+            tuple((lane, tick, line) for (lane, line), tick in sorted(out.items())), "high"
         )
 
     def falling_columns(self) -> Any:
