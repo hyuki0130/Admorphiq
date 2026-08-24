@@ -37,6 +37,7 @@ from __future__ import annotations
 
 import json
 import sys
+from collections import Counter
 from dataclasses import replace
 from pathlib import Path
 
@@ -99,6 +100,61 @@ def _error(board: Board, payload: dict) -> int:
     pred = {c for layer in predict(board, ORACLE).frontier for c in layer}
     obs = {tuple(c) for layer in payload["observed"] for c in layer}
     return len(pred - obs) + len(obs - pred)
+
+
+def _targets() -> int:
+    """Regions wearing the TARGET colour that the grounding did not name, and whether
+    each has a notch.
+
+    Purpose: this family's satisfaction predicate is "flow occupies the notch in the
+    target's top edge", so a target-coloured region with NO notch cannot be satisfied by
+    any rule in the vocabulary. idx3 stops with all three named targets filled and the
+    level refusing to advance, and this is what it is missing. Whether that is a
+    family-wide gap or one level's mechanic decides whether the next expansion has to
+    widen the predicate.
+
+    Expected feedback: a board with no unnamed target-coloured region is fully expressed
+    by the current vocabulary. One with a notchless region is a level the schema cannot
+    describe, however good the propagator is.
+    """
+    for path in _captures():
+        with open(path) as f:
+            payload = json.load(f)
+        cells = {tuple(int(x) for x in k.split(",")): v
+                 for k, v in (payload.get("colours") or {}).items()}
+        named = {tuple(c) for s in payload["sinks"] for c in s}
+        if not cells or not named:
+            print(f"{path.stem:14s} (no colours recorded)")
+            continue
+        colour = Counter(cells.get(c) for c in named).most_common(1)[0][0]
+        seen: set = set()
+        unnamed = []
+        for cell, value in cells.items():
+            if value != colour or cell in seen:
+                continue
+            stack, region = [cell], set()
+            while stack:
+                here = stack.pop()
+                if here in seen or cells.get(here) != colour:
+                    continue
+                seen.add(here)
+                region.add(here)
+                stack += [(here[0] + 1, here[1]), (here[0] - 1, here[1]),
+                          (here[0], here[1] + 1), (here[0], here[1] - 1)]
+            if region & named:
+                continue
+            rows: dict = {}
+            for r, c in region:
+                rows.setdefault(r, []).append(c)
+            notches = [
+                (r, c) for r in rows
+                for c in range(min(rows[r]), max(rows[r]) + 1)
+                if (r, c) not in region and (r, c - 1) in region and (r, c + 1) in region
+            ]
+            unnamed.append(f"{len(region)} cells, {len(notches)} notch(es)")
+        print(f"{path.stem:14s} named {sorted(len(s) for s in payload['sinks'])}"
+              f"   unnamed: {'; '.join(unnamed) or '(none)'}")
+    return 0
 
 
 def _where() -> int:
@@ -264,6 +320,8 @@ def _sweep() -> int:
 
 
 def main() -> int:
+    if len(sys.argv) > 1 and sys.argv[1] == "--targets":
+        return _targets()
     if len(sys.argv) > 1 and sys.argv[1] == "--where":
         return _where()
     if len(sys.argv) > 1 and sys.argv[1] == "--rows":

@@ -7140,6 +7140,33 @@ admit this block would re-open the failure it was adopted to close. This is a fa
 the next expansion's vocabulary, not a fix for this round.
 
 
+## The notchless target is idx3's, not the family's (2026-08-25)
+
+A family finding needs its scope measured, so `rule_bench.py --targets` now reports, per board,
+every region wearing the target colour that the grounding did NOT name, and whether it has a notch:
+
+```
+walk_idx0_1    named [5, 5]      unnamed: (none)
+walk_idx1_1    named [5, 5, 5]   unnamed: (none)
+walk_idx2_1    named [5, 5, 5]   unnamed: (none)
+walk_idx3_x    named [5, 5, 5]   unnamed: 4 cells, 0 notch(es)     (all four captures)
+```
+
+**Three levels of four are fully expressed by the current vocabulary.** The notchless target
+appears only on idx3, and on every capture of it. So the schema's satisfaction predicate — flow
+occupies the notch in the target's top edge — is sufficient for idx0, idx1 and idx2 and fails at
+exactly one level.
+
+That is the scoping the finding needed. It is a level's mechanic rather than a family-wide gap,
+which changes what the next expansion owes: not a wider predicate for FlowDeflection in general,
+but a decision about whether a family is allowed to contain a level its vocabulary cannot express.
+⛔ Still not patched here — the notch rule closes a real failure and the schema is frozen.
+
+The contract board reports "(no colours recorded)" honestly rather than being skipped: it predates
+the capture format that keeps appearances. That is worth leaving visible, because a silent skip is
+how a corpus quietly stops covering the board it is built on.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -7239,6 +7266,12 @@ the next expansion's vocabulary, not a fix for this round.
     compiler's UNSATISFIABLE is the truth about the board rather than a search failure.
     Either the propagator floors flow the engine does not, or the level wants more than
     one placement.
+102. **The notchless target is idx3's, NOT the family's.** `--targets` reports every unnamed
+     target-coloured region per board: idx0, idx1 and idx2 have NONE; idx3 has the 4-cell,
+     0-notch block on all four captures. So the notch-based satisfaction predicate is
+     sufficient for three levels of four and fails at exactly one — a level's mechanic, not a
+     family-wide gap. What the next expansion owes is therefore a decision about whether a
+     family may contain a level its vocabulary cannot express, not a wider predicate.
 101. **idx3's FOURTH target is INSIDE the window, and it has NO NOTCH.** Regions wearing the
      target colour: 4 cells at rows 13-14 cols 2-3 (NOT named) beside the 15 cells of the three
      named cups. ⛔ So the truncated-board reading does NOT explain the objective gap — the
