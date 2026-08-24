@@ -4457,6 +4457,37 @@ The next measurement is the honest version of the idx3 question: reach idx3 with
 see whether the plan that satisfies all nineteen cells clears it.
 
 
+## A commit is not free, and the walk was spending one on nothing (2026-08-24)
+
+With the four-lives-per-game constraint in hand, the walk's own spending was read. Each level's
+discovery makes TWO commits: one unaimed, to reveal the flow's colour, source and direction, and
+one after aiming the piece at the source's lane. The second one fires unconditionally — even
+when the aiming loop breaks immediately because the lane is already covered and nothing moved.
+
+That is a life spent to re-observe a board that did not change. Gating it on whether the aiming
+actually moved something:
+
+```
+before   press 0 after the walk: GAME_OVER
+after    press 0 after the walk: NOT_FINISHED, a 38-layer spill
+         press 1:                GAME_OVER
+```
+
+One life recovered, and idx0-idx2 still clear at the same depth (138 actions vs 139). The walk
+still reaches idx3 with nothing to spare, so this does not answer the idx3 question — but it is
+the first repair to the thing that made the question unanswerable.
+
+Worth naming as a rule the round had not been applying: **a commit is not free.** Everything
+about the harness's discovery has been costed in ACTIONS, which are plentiful, and never in
+FAILED COMMITS, of which a whole game gets four. Discovery that spends one per level has spent
+most of the game before any plan runs.
+
+Also measured while looking: each level builds a FRESH `FlowGrounding`, so every level re-learns
+the flow's direction and colour from its own sacrificial commit — constants that cannot change
+between levels of one game. That is three more commits spent re-learning what level 0 already
+knew, and it is the next thing to cut.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -4535,6 +4566,10 @@ see whether the plan that satisfies all nineteen cells clears it.
     whole game, not per level, and the walk spends them probing (one sacrificial commit
     per level on a six-level game). Every idx3 explanation this round built was about a
     level that was not going to be judged. Next: reach idx3 with lives left.
+26. **A COMMIT IS NOT FREE.** Discovery was costed in actions and never in failed
+    commits. One life recovered by not re-committing when the aiming moved nothing;
+    three more are spent because every level builds a FRESH grounding and re-learns the
+    flow's direction and colour, which cannot change within a game.
 21. **idx3 is NOT won by covering its regions.** (Measured, but on a game already over.) All nineteen target-coloured cells go
     11 -> 13, the engine's own "done" appearance, in one spill; nine captures with
     different piece positions show nothing hidden; `levels_completed` holds at 3 and there

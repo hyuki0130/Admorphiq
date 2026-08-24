@@ -164,14 +164,22 @@ def play_level(w: Walker) -> tuple[bool, str]:
         dr, _dc = direction.value
         lane = emitters.value[0][1] if dr != 0 else emitters.value[0][0]
         guard = 0
+        moved = False
         while guard < 16 and g.tracked_region() is not UNKNOWN:
             cur = g.tracked_region().value
             have = [c for _, c in cur] if dr != 0 else [r for r, _ in cur]
             if min(have) <= lane <= max(have):
                 break
             w.act(4 if lane > max(have) else 3, g)
+            moved = True
             guard += 1
-        w.act(5, g)
+        # Only re-commit if the aiming actually moved something. A commit is not free:
+        # a run has FOUR failed commits for the WHOLE GAME, and spending one to re-observe
+        # a board that did not change is how idx3 came to be reached with no lives left —
+        # its plan was executed on a game that was already over, which is what every
+        # explanation this round built for that level was actually explaining.
+        if moved:
+            w.act(5, g)
 
     if g.board() is UNKNOWN:
         return False, f"grounding incomplete (pieces={_count(g.pieces())}, " \
