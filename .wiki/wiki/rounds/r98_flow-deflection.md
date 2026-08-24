@@ -4950,6 +4950,45 @@ never-settling spill, not a spent life: **a failure entity living in the band th
 which the flow reaches and which no plan of ours can avoid because the model cannot see it.**
 
 
+## Correction: the failure entity's board position was inferred, not measured (2026-08-24)
+
+The last entry placed the failure entity at "the board's bottom-left cell" by mapping sprite
+coordinates onto board cells. That mapping was not measured, and the board says otherwise:
+
+```
+idx3, cell (15,0) across the whole 38-layer spill:
+   [1, 1, 1, 1, ... 1]     colour 1 throughout, never 14, never flow
+frame-band cells that CHANGE on idx3's spills:  {}
+```
+
+If the entity were that cell, being touched would recolour it to 14 — the engine does exactly
+that — and nothing changes there at all.
+
+What IS measured, from the sprite geometry:
+
+```
+targets        shape (2,3)   3-target level at y=13, x = 1, 7, 12
+                             idx3          at y=17, x = 2, 8, 12, 16
+touched sprite shape (1,32)  3-target level at (15, 0)
+                             idx3          at (19, 0)
+```
+
+Targets are two rows by three columns and their x's match the board columns we see, so sprite
+coordinates are close to board cells for them, with a row offset of four on idx3 (y=17 renders at
+row 13). The touched sprite is **one row tall and thirty-two columns wide** — wider than the
+sixteen-cell render — so it does not live in the same coordinate space as the targets, and
+nothing about its board position follows from its sprite position.
+
+So the resolution stands only in its measured half: **idx3 fails on the flag, with all four
+targets satisfied, and the flag is set by contact with one sprite that is a full-width single-row
+bar.** Where that bar is on the board, and why touching it leaves no visible mark on idx3 when
+the same tag flashes plainly on the smaller levels, are both open.
+
+Recorded rather than smoothed over. The claim was one inference past the evidence, which is the
+same failure this round has now made several times — and the check that caught it was the cheapest
+possible one: look at the cell the claim names.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -5032,8 +5071,13 @@ which the flow reaches and which no plan of ours can avoid because the model can
     commits. One life recovered by not re-committing when the aiming moved nothing;
     three more are spent because every level builds a FRESH grounding and re-learns the
     flow's direction and colour, which cannot change within a game.
-40. **RESOLVED — idx3 fails on the FLAG, set by one sprite at the board's bottom-left
-    cell**, tagged the same as the 3-target levels' entity at (15,0). At the decision the
+41. **Correction to #40**: the entity's BOARD position was inferred from sprite
+    coordinates, and the cell it named never changes colour on idx3. The touched sprite is
+    (1,32) — one row by thirty-two columns, wider than the render — so it is not in the
+    targets' coordinate space. Measured half stands: idx3 fails on the flag with all four
+    targets satisfied. Where the bar is, and why it leaves no mark on idx3, are open.
+40. ~~RESOLVED~~ **PARTLY — idx3 fails on the FLAG, set by one sprite** ~~at the board's
+    bottom-left cell~~, tagged the same as the 3-target levels' entity at (15,0). At the decision the
     flag reads TRUE with all four targets satisfied; every earlier False was read after
     the step, once the engine had reset. That cell lives inside `playable_size()`'s trim
     — the band the harness discards as a frame — so no plan of ours can avoid it. The
