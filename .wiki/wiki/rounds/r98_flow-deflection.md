@@ -6883,6 +6883,30 @@ it removes and untested about what it might also remove. A board that needs the 
 would show it, and there is none to hand.
 
 
+## The caveat is now a pin — and its first version was vacuous (2026-08-25)
+
+The background-blocker rule took idx2 to zero and left a stated risk: the obstruction source now
+proposes nothing anywhere in the corpus, so "rejects empty" and "rejects everything" look the same
+from the numbers. That is exactly what a pin is for, and the corpus cannot supply one because
+every board in it has changed-appearance targets.
+
+The sibling pin already holds the other half — a COLOURED blocker still names a 7-cell obstruction
+— so the new one only has to hold that a BACKGROUND-coloured blocker does not. Same board, same
+spill, same flanking-pair evidence; only the blocker's appearance differs.
+
+⚠️ **The first version passed with the rule DELETED.** Painting the wall background also erased
+the odd interior marker the fixture uses to resolve the scale, so `_infer_scale` read nothing,
+the spill was never parsed, and `_obstruction_regions()` returned `[]` for a reason unrelated to
+the rule. Keeping the marker coloured and painting only the blocking row fixes it: the pin now
+goes red the moment the two-line check is removed, which is the only evidence that it tests its
+own subject.
+
+That is the third vacuous test this round has caught by deleting the code a test names and
+re-running. It is cheap, it takes one command, and it has never once been wasted.
+
+Gates: oracle 3/3, grounding PASS, corpus 12, 1725 tests.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -6982,6 +7006,13 @@ would show it, and there is none to hand.
     compiler's UNSATISFIABLE is the truth about the board rather than a search failure.
     Either the propagator floors flow the engine does not, or the level wants more than
     one placement.
+95. **The caveat is now a PIN, and its first version was VACUOUS.** #94's untested risk —
+    "rejects empty" versus "rejects everything" — is pinned: a background-coloured blocker
+    names no obstruction while the sibling pin holds that a coloured one still names a
+    7-cell region. ⚠️ The first version passed with the rule DELETED, because painting the
+    wall background also erased the marker the fixture needs to resolve the scale, so
+    nothing was read at all. Keeping the marker fixes it; the pin now goes red exactly when
+    the rule is removed. Third vacuous test caught this round by the same one-command check.
 94. **A BACKGROUND CELL BLOCKED NOTHING — idx2 GOES TO ZERO.** The false target's colour is
     12, the BACKGROUND, whose connected component is 187 cells: obstruction seeded on empty
     cells and the mouth split carved a "target" out of empty space. Skipping

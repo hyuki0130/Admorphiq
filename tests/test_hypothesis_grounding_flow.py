@@ -697,6 +697,53 @@ def test_an_obstruction_names_the_part_that_blocked_not_the_wall_it_touches():
     assert (6, 4) in regions[0], "the part that actually blocked the flow was dropped"
 
 
+def test_a_background_coloured_blocker_is_not_an_obstruction():
+    """Purpose: pins the discriminator that took idx2's replay error to zero, and the risk
+    that came with it. A cell wearing the BACKGROUND is empty, so a flanking pair beside it
+    does not mean that cell obstructed anything — and seeding on one drags in the whole
+    background component. Measured on idx2: the seed cells were background-coloured,
+    `_regions` returned the 187-cell background as ONE region, and the mouth split carved a
+    seventeen-cell "target" out of empty space that swallowed a stream and was 100% of that
+    level's replay error.
+
+    The other half matters as much. The rule must not silence the source: a COLOURED blocker
+    is still an obstruction, which the sibling test above holds at size 7. Together they pin
+    "rejects empty, keeps solid" rather than "rejects everything", which the corpus alone
+    cannot show because every board in it has changed-appearance targets.
+
+    Expected feedback: fail means either a background cell is naming targets again, or the
+    source has gone silent and boards whose probing spill satisfies nothing lose their only
+    way to name one."""
+    wall, _ = _wall_and_spill()
+    assert set(wall.values()) != {BG}, "the fixture's wall is already background"
+
+    # The SAME board and the SAME spill with the wall painted the background colour: the
+    # flow still splits in the same place, so the flanking-pair evidence is identical and
+    # only the blocker's appearance differs. Rebuilt rather than reused, because splicing
+    # the coloured board's later frames onto a blank first one changes the board mid-spill.
+    empty = {cell: BG for cell in wall}
+    # …except the odd interior marker the fixture uses to resolve the scale. Painting it
+    # background too makes the board featureless, `_infer_scale` reads nothing, and the
+    # source returns [] for a reason that has nothing to do with the rule under test —
+    # measured: the first version of this test passed with the rule DELETED.
+    empty[(3, 6)] = 5
+    steps = [[(1, 4)], [(2, 4)], [(3, 4)], [(4, 4)], [(5, 4)],
+             [(5, 3), (5, 5)], [(5, 2), (5, 6)]]
+    layers = [_frame(empty)]
+    flow: dict = {}
+    for group in steps:
+        for cell in group:
+            flow[cell] = 6
+        layers.append(_frame({**empty, **flow}))
+
+    g = FlowGrounding()
+    g.observe(0, None, [_frame(empty)])
+    g.observe(5, None, layers)
+    named = [r for r in g._obstruction_regions()
+             if any(empty.get(c) == BG for c in r)]
+    assert not named, f"a background cell was taken as an obstruction: {named}"
+
+
 def test_an_observed_spill_that_hits_nothing_reports_no_barriers_not_UNKNOWN():
     """Purpose: `barriers()` used to return UNKNOWN when it found none, and `board()` refuses
     to assemble without an answer — so the walk reported "grounding incomplete" on a board it
