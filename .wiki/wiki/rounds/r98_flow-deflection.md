@@ -5887,6 +5887,44 @@ listing, not the upload's success line — and it now needs applying before the 
 as after the dataset one.
 
 
+## The direction is NOT invariant — the life-saving lever is refuted (2026-08-25)
+
+Every level spends a sacrificial commit to read the flow's direction, a run has four failed
+commits for the whole GAME, and that is why idx3 was reached with the game already over. The
+proposed fix was to carry the direction forward on the grounds that it "cannot change within a
+game". Measured, one line per level, by a report that changes nothing the walk does:
+
+```
+[invariant] idx0 direction=(1, 0)  flow_colours=[6] emitters=((1, 9),)
+[invariant] idx1 direction=(-1, 0) flow_colours=[6] emitters=((14, 10),)
+[invariant] idx2 direction=(-1, 0) flow_colours=[6] emitters=((14, 1), (14, 9), (14, 14))
+[invariant] idx3 direction=(1, 0)  flow_colours=[6] emitters=((8, 4),)
+```
+
+**The direction flips twice across four levels.** Carrying it forward would have aimed idx1 and
+idx3 backwards. The claim was half right and the wrong half was the load-bearing one: the flow
+COLOUR is invariant — 6 on every level — and colour is not what the commit is spent on.
+
+Two cheaper substitutes were then tested against the same four measurements, and both fail on the
+same level:
+
+| rule | idx0 | idx1 | idx2 | idx3 |
+|---|---|---|---|---|
+| away from the nearest horizontal edge | ✅ | ✅ | ✅ | ❌ |
+| top half down, bottom half up | ✅ | ✅ | ✅ | ❌ |
+
+Both get the three edge-sourced levels right and idx3 wrong, and idx3 is the level the whole
+lever exists to reach. One caveat keeps this from being a clean refutation of the geometry
+itself: idx3's emitter row is a WINDOW row, not a board row (its level is 20 cells shown through
+16), so the rule was fed a coordinate that does not mean what it means on the other three. The
+rule is refuted **as stated and as feedable**; whether some rule over true board coordinates
+survives is a question the window defect has to be fixed before anyone can ask.
+
+What stands: the sacrificial commit buys evidence the grounding has no other route to, and the
+depth ceiling it imposes — one life per level, four lives, six levels — is REAL rather than an
+artefact of how the walk is written. ⛔ Do not "save" it by carrying the direction.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -5986,6 +6024,11 @@ as after the dataset one.
     compiler's UNSATISFIABLE is the truth about the board rather than a search failure.
     Either the propagator floors flow the engine does not, or the level wants more than
     one placement.
+67. ⛔ **The direction is NOT invariant — carrying it forward is REFUTED.** It flips twice
+    across four levels ((1,0), (-1,0), (-1,0), (1,0)) while the flow COLOUR is 6 on every
+    one. Two geometric substitutes get the three edge-sourced levels and fail idx3, whose
+    emitter row is a window row rather than a board row. The one-life-per-level depth
+    ceiling is real, not an artefact of the walk.
 66. ⚠️ **The same sequencing trap, taken a second time.** Both kernels returned every mode
     ERROR with `rc=2` — argparse refusing `--evidence`, because they ran the OLD probe from
     a dataset that had not been updated. The rule was written down two hours earlier. Fix:

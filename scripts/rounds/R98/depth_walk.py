@@ -122,6 +122,24 @@ def describe_board(g: FlowGrounding) -> str:
     return f"{size}x{size}, {len(set(cells.values()))} distinct appearances"
 
 
+def _invariants_report(g: FlowGrounding, level: int) -> None:
+    """Print the facts a level re-learns that a GAME cannot change, one line per level.
+
+    Purpose: the walk spends a sacrificial commit per level to read the flow's
+    direction, and a run has four failed commits for the whole GAME — which is how
+    idx3 came to be reached with no lives left. Carrying the direction forward is
+    only sound if it is genuinely invariant, and this line is the measurement that
+    decides that. Observation only: nothing here changes what the walk does."""
+    direction = g.initial_direction()
+    colours = sorted({a.flow_colour for a in g._animations})
+    emitters = g.emitters()
+    print(f"    [invariant] idx{level} direction="
+          f"{direction.value if direction is not UNKNOWN else 'UNKNOWN'} "
+          f"flow_colours={colours} "
+          f"emitters={emitters.value if emitters is not UNKNOWN else 'UNKNOWN'}",
+          flush=True)
+
+
 def play_level(w: Walker) -> tuple[bool, str]:
     """Ground, verify, plan and execute one level. Returns (cleared, stage note)."""
     entered = w.level
@@ -183,6 +201,8 @@ def play_level(w: Walker) -> tuple[bool, str]:
         # explanation this round built for that level was actually explaining.
         if moved:
             w.act(5, g)
+
+    _invariants_report(g, entered)
 
     if g.board() is UNKNOWN:
         return False, f"grounding incomplete (pieces={_count(g.pieces())}, " \
