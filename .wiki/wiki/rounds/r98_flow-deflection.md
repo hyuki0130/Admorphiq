@@ -2744,14 +2744,53 @@ does not emit on every spill, and whatever stops the engine's row-7 walk going r
 no trace in any board field the harness reads. Both are conditional behaviours, and the
 round's instrument — a spill per commit — samples one condition at a time.
 
+## One variable at a time, and the embedded source holds up (2026-08-24)
+
+`scripts/rounds/R98/condition_probe.py` changes a single thing between two spills — one
+piece, one cell — so a difference in the trail belongs to that cell and not to whatever else
+two captured boards failed to share. Moving one piece one cell right on idx3:
+
+```
+baseline           piece (7,2) 5 cells    walk on row 6: 1..8   fall-offs row 7: 1, 7, 8
+                   downstream streams in columns 1, 4, 7, 8
+moved right        piece (7,3) 5 cells    walk on row 6: 2..8   fall-offs row 7: 2, 8
+                   downstream streams in columns 2, 5, 8
+```
+
+Every fall-off column shifts exactly with the piece, and so does the middle stream — 4 → 5.
+That stream is the embedded source riding inside the piece, and the first layers say it
+plainly: the spill opens at `(8,4)` in the baseline and `(8,5)` after the move, one cell
+below the piece each time.
+
+**And the model gets both right:**
+
+```
+baseline      emitters ((7,4),)   ->  spill opens (8,4)   observed (8,4)
+moved right   emitters ((7,5),)   ->  spill opens (8,5)   observed (8,5)
+```
+
+So the embedded-source model — a source carried inside a piece, emitting just past it, moving
+when the piece moves — is confirmed by a probe that varies one thing. That matters for what
+is left: on the covered board the same query returns NOTHING, and this measurement says the
+gap there is a DETECTION failure, not a modelling one. The carrier's odd cell is visible on
+this layout and invisible on that one, and finding out why is a question about appearances
+rather than about mechanics.
+
+```
+idx0: CLEARED — 23 actions
+idx1: CLEARED — 30 actions
+idx2: CLEARED — 55 actions
+idx3: eight cells; the embedded-source model is confirmed, its detection is the gap
+```
+
 ## Next
 
 1. **Fill is not confirmed paired.** gemma4 misses one slot, and the cause is our
    encoding rather than its reasoning. Measure the hazard orthogonalisation as its
    own experiment against all three models — never as a patch to move a verdict.
-2. **The remaining two causes are conditional and the instrument samples one condition
-   per commit.** Six rules struck off; progress here needs a probe that varies one
-   condition at a time rather than another candidate rule.
+2. **Why is the carrier's odd cell invisible on the covered board?** The embedded-source
+   model is confirmed by a one-variable probe; on that board the query returns nothing, so
+   the gap is detection — a question about appearances, not mechanics.
 3. **Measure the bounded-roof variant on fixed evidence** — 1 invented cell against the
    adopted rule's 2, deliberately not adopted in the same change.
 3. **Multi-piece placement**, the burden the idx1 observation named: idx1 carries
