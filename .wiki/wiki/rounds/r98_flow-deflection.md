@@ -5494,6 +5494,40 @@ wrong hypothesis. gpt-oss is still running and is the leg that decides whether F
 paired.
 
 
+## The fatal-band adoption rested on a false premise — reverted (2026-08-25)
+
+Marking the trimmed band fatal was adopted because it made the model "predict the failure it
+always saw". Measuring whether the ENGINE's flow ever reaches that band says it does not:
+
+```
+idx3, every spill:   band row 15 touched at []
+```
+
+Never. Not once, across the discovery spill and both plan spills. So the failure the model was
+now predicting is a contact **the engine does not make**, and the adoption was reasoning from a
+premise that had not been checked — the entity is at that band, but the flow never arrives there.
+
+What the change actually surfaced is a different defect, and a real one: **our propagation runs
+flow off the bottom of the board where the engine keeps it on.** Before the change, row 15 was
+out of bounds and those droplets died silently; marking it fatal only made the consequence
+visible. All 15840 layouts came out fatal because all of them flood a row the engine never wets.
+
+Reverted. The walk is back to 138 actions with idx3 executing its plan, the gate holds at 3/3,
+and the round keeps the finding rather than the fix:
+
+* the failure entity IS at the trimmed band (measured from the engine's own flash);
+* the engine's flow never reaches it on idx3 (measured from the frames);
+* our propagation does (measured by the enumeration).
+
+Those three are consistent only if something stops the engine's flow before the floor that our
+model does not have. That is the next thing to look for, and it is a propagation question rather
+than an entity one.
+
+Also recorded: this is the second adoption this session justified by "the model now agrees with
+what we observe" where the agreement was coincidental. The check that caught both was the same —
+ask whether the engine does the thing the model now predicts.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -5593,7 +5627,13 @@ paired.
     compiler's UNSATISFIABLE is the truth about the board rather than a search failure.
     Either the propagator floors flow the engine does not, or the level wants more than
     one placement.
-52. **The TRIMMED band is fatal — adopted.** Every gate holds, bench and idx0-idx2
+54. ⛔ **The fatal-band adoption is REVERTED — false premise.** The engine's flow never
+    reaches that band on idx3 (every spill: touched at []), so the failure the model
+    started predicting is a contact the engine does not make. What the change surfaced is
+    real and different: OUR PROPAGATION runs flow off the bottom where the engine keeps it
+    on — all 15840 layouts flood a row the engine never wets. Next question is
+    propagation, not entities.
+52. ~~The TRIMMED band is fatal — adopted.~~ Every gate holds, bench and idx0-idx2
     unchanged, and idx3 turns from "compiles, executes, fails silently" into "no layout
     satisfies the objective" — the model finally agreeing with every measurement of that
     level. It also stops the walk spending a life on a doomed commit. Scope: measured on
