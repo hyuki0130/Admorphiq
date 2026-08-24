@@ -6735,6 +6735,45 @@ idx2's 24 is now the largest single item in the corpus and the first genuinely o
 question with valid evidence behind it.
 
 
+## The propagator is EXACT on three levels — idx2's whole residual is one false target (2026-08-25)
+
+With a corpus that describes its own spills, idx2's 24 cells can finally be traced. They are not
+scattered: **zero invented, and all 24 missed belong to ONE stream**, the lane-1 stream, which the
+model loses on its very first step from `(14,1)` to `(13,1)`.
+
+That cell belongs to this:
+
+```
+sink 0:  5 cells  rows [1,2]               cols [1,2,3]
+sink 1:  5 cells  rows [1,2]               cols [6,7,8]
+sink 2:  5 cells  rows [1,2]               cols [12,13,14]
+sink 3: 17 cells  rows [9,10,11,12,13,14]  cols [0,1,2]
+```
+
+Dropping the seventeen-cell region and re-running:
+
+| board | invented | missed |
+|---|---|---|
+| as grounded | 0 | **24** |
+| without the 17-cell region | 0 | **0** |
+
+**The entire residual is that one region.** So the propagator reproduces idx0, idx1 AND idx2 cell
+for cell — three consecutive levels, two of them measured for the first time this session — and
+every cell of disagreement left in the corpus is the grounding calling a piece of scenery a target.
+
+⛔ The experiment above used `len(s) <= 8` and that is NOT the fix. A size threshold on target
+regions was already measured inert and reverted earlier in this round; the discriminator is SHAPE
+and it is still open. Two candidates were checked here and both FAIL to separate: the cups and the
+block both have a notch cell whose lateral neighbours belong to the region, and both are nearly
+solid within their bounding box (5/6 against 17/18). What does differ is extent along the flow
+axis — two rows against six — and that is a size threshold wearing a different name, so it is not
+adopted either.
+
+What has changed is that the open question now has a price on it: **24 cells, which is 100% of the
+remaining error on the only corpus that describes its own spills.** Before this it was a
+qualitative complaint about scenery.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -6834,6 +6873,14 @@ question with valid evidence behind it.
     compiler's UNSATISFIABLE is the truth about the board rather than a search failure.
     Either the propagator floors flow the engine does not, or the level wants more than
     one placement.
+91. **THE PROPAGATOR IS EXACT ON THREE LEVELS.** idx2's 24 cells are ZERO invented and all
+    24 missed from ONE stream, lost at its first step into `(13,1)` — a cell inside a
+    SEVENTEEN-cell "sink" spanning six rows, where the level's real targets are five-cell
+    cups. Drop that region and idx2 goes 24 -> **0**. So idx0, idx1 and idx2 all reproduce
+    cell for cell and every remaining cell of error in the corpus is scenery-as-target. ⛔ The
+    experiment used a size threshold and that is NOT the fix (already measured inert); notch
+    and bounding-box fill both FAIL to separate cup from block. The open question now has a
+    price: 24 cells, 100% of the residual.
 90. **THE CAPTURE IS FIXED, AND THE PROPAGATOR REPRODUCES idx0 AND idx1 CELL FOR CELL.**
     The board is now read after the top-up and the trajectory after the action, so a capture
     describes its own spill: pass-through is 0 on every board. On that corpus the tick-0
