@@ -1060,9 +1060,20 @@ class FlowGrounding:
                 if {(r - dc, c - dr), (r + dc, c + dr)} <= nxt:
                     blockers.add((r + dr, c + dc))
 
+        # A blocker has to LOOK like something. A cell wearing the BACKGROUND is empty,
+        # so whatever the flanking pair means there, it is not that this cell obstructed
+        # anything — and taking it as a seed drags in the whole background component.
+        # Measured on idx2: the seed cells were background-coloured, `_regions` returned
+        # the 187-cell background as one region, and the mouth split carved a seventeen-
+        # cell "target" out of empty space that swallowed a stream and was 100% of that
+        # level's replay error. The same rule was already adopted in `barriers()` for the
+        # same reason; this is the other place that reads a blocker's appearance.
+        background = Counter(self._prev_cells.values()).most_common(1)[0][0]
         by_colour: dict[int, set[Cell]] = {}
         for cell in blockers:
             if cell in pieces or cell not in self._prev_cells:
+                continue
+            if self._prev_cells[cell] == background:
                 continue
             by_colour.setdefault(self._prev_cells[cell], set()).add(cell)
 

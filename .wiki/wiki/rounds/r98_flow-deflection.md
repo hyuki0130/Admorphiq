@@ -6842,6 +6842,47 @@ sinks cannot say where a wrong one came from, and this question had already cost
 rules.
 
 
+## A background cell blocked nothing — idx2 goes to ZERO (2026-08-25)
+
+The obstruction source proposes a 187-cell region on idx2. Reading what that region IS settles it:
+
+```
+false target: colours {12: 15, 11: 2}   touches the border: True
+real target 0: colours {12: 5}          touches the border: False
+the false target's colour is 12; its connected component spans 187 cells
+```
+
+**Colour 12 is the BACKGROUND**, and its connected component is two thirds of the board. The
+obstruction source seeded on background-coloured cells, `_regions` handed back the entire
+background as one region, and the mouth split carved a seventeen-cell "target" out of empty space.
+
+A blocker has to look like something. A cell wearing the background is empty, so whatever a
+flanking pair means there, it is not that this cell obstructed anything. That rule was already
+adopted in `barriers()` earlier in this round for exactly this reason; `_obstruction_regions()` is
+the other place that reads a blocker's appearance and it did not have it.
+
+Measured after adding it, on captures taken with it in force:
+
+| board | before | after |
+|---|---|---|
+| idx0 | 0 / 0 | 0 / 0 |
+| idx1 | 0 / 0 | 0 / 0 |
+| **idx2** | 0 invented / **24 missed** | **0 / 0** |
+| idx3 ×4 | 3 / 0 | 3 / 0 |
+| **corpus** | **36** | **12** |
+
+**The propagator now reproduces idx0, idx1 and idx2 exactly, and nothing in the corpus is missing
+— only twelve invented cells remain, all on idx3.** Oracle 3/3, grounding, verifier, mutant
+certification and 1724 tests all hold.
+
+⚠️ One honest caveat, stated because it is a real risk and not visible in the numbers: the
+obstruction source now proposes **nothing at all** on every board in the corpus. Its purpose is to
+name a target on a board where the probing spill happens to satisfy none, and this corpus cannot
+exercise that — every board here has changed-appearance targets. So the rule is right about what
+it removes and untested about what it might also remove. A board that needs the obstruction source
+would show it, and there is none to hand.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -6941,6 +6982,13 @@ rules.
     compiler's UNSATISFIABLE is the truth about the board rather than a search failure.
     Either the propagator floors flow the engine does not, or the level wants more than
     one placement.
+94. **A BACKGROUND CELL BLOCKED NOTHING — idx2 GOES TO ZERO.** The false target's colour is
+    12, the BACKGROUND, whose connected component is 187 cells: obstruction seeded on empty
+    cells and the mouth split carved a "target" out of empty space. Skipping
+    background-coloured blockers — the rule `barriers()` already carries — takes idx2 from
+    24 missed to **0** and the corpus from 36 to **12**, with idx0/idx1/idx2 all exact and
+    nothing missing anywhere. All five gates hold. ⚠️ Caveat: obstruction now proposes
+    NOTHING on every board here, and this corpus cannot exercise the case it exists for.
 93. **THE FALSE TARGET COMES FROM `obstruction`, WHICH PROPOSES 187 CELLS.** Captures now
     record all four shortlist sources beside the board: idx2's real targets are
     changed_appearance `[5,5,5]` and the 17-cell false one is a fragment of a SINGLE
