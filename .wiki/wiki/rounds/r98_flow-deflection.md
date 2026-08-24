@@ -4690,6 +4690,35 @@ follow. The model owes an entity it currently calls "not board" — and idx3 owe
 explanation, since neither its targets nor the frame accounts for it.
 
 
+## Our own discovery runs the flow into the failure entity (2026-08-24)
+
+Measuring frame contact on EVERY spill, not just the big ones:
+
+```
+spill 22 (idx0 discovery)   []
+spill 24 (idx1 discovery)   (1,15) ... (10,15)     ten cells down the frame's right column
+spill 29 (idx2)             (1,15) ... (8,15)      eight
+spill 25 (idx3 discovery)   (13,15)                one
+spill 33 (idx3 plan)        []
+spill 38 (idx3 plan)        []
+```
+
+**The unaimed sacrificial commit runs flow into the frame on three levels out of four.** That is
+the entity whose contact fails an attempt, so the harness's own discovery is not merely spending
+a life by failing to satisfy targets — it is spending it by hitting the one thing that fails a
+run outright.
+
+idx1 and idx2 clear anyway, which settles a question the last entry left open: **the flag resets
+per attempt.** Frame contact costs that commit and nothing more. A run's four lives are the
+budget it eats into, which is the same conclusion reached from the other direction earlier, now
+with the mechanism attached.
+
+And it sharpens what is left of idx3. Its plan spills touch nothing — no frame, no unsatisfied
+target painted 0, every one of the nineteen cells satisfied — and they still fail. Neither of
+the two failure causes the engine has is present, which is now a statement about the two causes
+rather than about idx3.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -4772,6 +4801,10 @@ explanation, since neither its targets nor the frame accounts for it.
     commits. One life recovered by not re-committing when the aiming moved nothing;
     three more are spent because every level builds a FRESH grounding and re-learns the
     flow's direction and colour, which cannot change within a game.
+33. **Our own discovery runs the flow into the frame** on three levels of four — the
+    unaimed sacrificial commit. idx1 and idx2 clear anyway, so the flag RESETS per
+    attempt: frame contact costs that commit and nothing more. idx3's plan spills touch
+    neither failure cause and still fail.
 32. **The failure entity is the FRAME BAND** — the flash is the bottom row, colour 1 before
     the spill. Flow reaching the frame FAILS THE RUN; it does not die and does not deflect.
     `playable_size()` trims that band as decoration and `barriers()` was fixed to ignore
