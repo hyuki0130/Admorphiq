@@ -3747,6 +3747,45 @@ Recorded rather than left in a scratch file, because it is the difference betwee
 attempt starting here and starting where the last three did.
 
 
+## The owed pins are paid, and the third obstacle was the SCALE (2026-08-24)
+
+The last entry left one thing unexplained: a fixture identical in its flow growth registered
+in one variant and not in another. It was neither the flow nor the wall — it was the scale.
+
+```
+notches (1,4,6)   scale 2   colour 6: run 7, steps 6   -> animation READ
+notches (1,6)     scale 4   colour 6: run 2, steps 0   -> nothing
+```
+
+`_infer_scale` takes the LARGEST block size whose blocks are uniform, so a board whose content
+happens to align to 4 is read at 4 and every cell after that is nonsense. Its own docstring
+warns about the sibling of this — a margin that excuses real content near an edge — and that
+is exactly what defeated the first fix: a marker at (0,1) or (1,1) does NOT resolve the scale,
+because the margin excuses it. An interior, odd-aligned cell does.
+
+```
+marker  none  (0,1)  (1,1)  (3,5)  (5,1)
+scale      4      4      4      2      2
+```
+
+So a synthetic board needs THREE things before the grounding will look at it, and each one
+was found by a fixture failing silently rather than by reading the code first:
+
+1. the flow grows over ≥3 layers and on ≥3 of them,
+2. the split arrives within ONE frame,
+3. the first frame resolves the scale, with an interior marker rather than an edge one.
+
+All three are now written into a `_wall_and_spill()` helper beside the tests that use it, so
+the next fixture starts from a board that registers.
+
+**Both owed pins are paid**, and each was checked by removing the code it names:
+
+```
+obstruction   with the fix [7]   without it [14]   — the blocker dragging its whole wall
+barriers      with the fix ()    without it UNKNOWN — an empty set is an answer
+```
+
+
 ## Next
 
 1. **Fill is not confirmed paired.** gemma4 misses one slot, and the cause is our
@@ -3787,10 +3826,10 @@ attempt starting here and starting where the last three did.
     is four regions and the schema can name three; the fourth is a notchless block that
     the engine satisfies but no rule in the vocabulary can express. Recorded as a family
     finding, NOT patched mid-round.
-14. **Owed: unit pins for the two barrier rules and the obstruction rule.** The reason
-    every fixture was inert is now known — a spill registers only with 3+ growth steps —
-    and a registering fixture exists. The variant that exercises the wall-dragging rule
-    still does not register; that is where the next attempt starts.
+14. ~~Owed: unit pins.~~ **PAID for the obstruction rule and the empty-barrier rule**, each
+    checked by removing the code it names. The third obstacle was the SCALE, and the
+    three requirements are written into a `_wall_and_spill()` helper. Still owed: the
+    background-cell barrier rule, which this fixture does not exercise.
 15. ~~idx2 names TEN targets after ONE move action.~~ **4 now** — the blocker was dragging
     its whole wall in. Original note: Seven are scenery (sizes 14-39 vs a
     confirmed target of 5), none overlaps a piece. Harmless here because the plan does not

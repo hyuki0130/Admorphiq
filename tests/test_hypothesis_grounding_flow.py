@@ -643,3 +643,73 @@ def test_selection_that_takes_the_idle_colour_exchanges_the_roles():
     g.observe(6, (4, 12), [_frame({a: 9, b: 8})])  # a takes 9, the colour recorded as idle
     second = g.piece_appearances()
     assert second[0] != second[1], f"the two appearances collapsed to one: {second}"
+
+
+def _wall_and_spill() -> tuple[dict, list]:
+    """A board whose spill the grounding will actually READ, and the three things that
+    took three ticks to discover about making one.
+
+    1. A colour is read as flow only if it grows over at least three layers AND grows on at
+       least three of them. Fixtures that added three cells were two growth steps short and
+       were silently ignored, so every assertion written on them passed on nothing.
+    2. The flow has to SPLIT within a single frame. The blocker test wants both perpendicular
+       neighbours present in the next layer; rendered on separate frames it finds nothing.
+    3. The first frame must resolve the scale. `_infer_scale` takes the LARGEST uniform block
+       size, so a board whose content happens to align to 4 is read at 4 and everything after
+       is nonsense — and a marker on the outer rows does not help, because the margin excuses
+       it exactly as that function's docstring warns. (3,6) is interior and odd, so it does.
+    """
+    wall = {(6, c): 7 for c in range(0, 8) if c not in (1, 6)}
+    wall.update({(7, c): 7 for c in range(0, 8)})
+    wall[(3, 6)] = 5
+    steps = [[(1, 4)], [(2, 4)], [(3, 4)], [(4, 4)], [(5, 4)],
+             [(5, 3), (5, 5)], [(5, 2), (5, 6)]]
+    layers = [_frame(wall)]
+    flow: dict = {}
+    for group in steps:
+        for cell in group:
+            flow[cell] = 6
+        layers.append(_frame({**wall, **flow}))
+    return wall, layers
+
+
+def test_an_obstruction_names_the_part_that_blocked_not_the_wall_it_touches():
+    """Purpose: the obstruction source seeds from cells that stopped the flow and then takes
+    the whole connected region of that colour. A board's walls are one colour and all
+    connected, so measured on idx2 it named a single 198-cell region on a 16x16 board — 77%
+    of it — which the mouth split carved into seven "targets" of 14 to 39 cells beside the
+    three real ones of five. Only parts containing a cell that ACTUALLY obstructed the flow
+    are the obstruction.
+
+    Expected feedback: pass proves a blocker does not drag its whole wall into the shortlist.
+    Fail means a level whose plan depends on covering every target has an objective that is
+    unreachable by construction — the failure idx3 spent three ticks inside."""
+    wall, layers = _wall_and_spill()
+
+    g = FlowGrounding()
+    g.observe(0, None, [_frame(wall)])
+    g.observe(5, None, layers)
+
+    regions = g._obstruction_regions()
+    assert regions, "the spill was not read at all — check the scale and the growth steps"
+    sizes = sorted(len(r) for r in regions)
+    assert sizes == [7], f"the blocker dragged its wall in: {sizes}"
+    assert (6, 4) in regions[0], "the part that actually blocked the flow was dropped"
+
+
+def test_an_observed_spill_that_hits_nothing_reports_no_barriers_not_UNKNOWN():
+    """Purpose: `barriers()` used to return UNKNOWN when it found none, and `board()` refuses
+    to assemble without an answer — so the walk reported "grounding incomplete" on a board it
+    had measured completely. Measured on idx3 the moment the last false hazard was removed.
+
+    Expected feedback: pass proves an empty set is an ANSWER. Fail means removing a wrong
+    barrier costs the whole board."""
+    wall, layers = _wall_and_spill()
+
+    g = FlowGrounding()
+    g.observe(0, None, [_frame(wall)])
+    g.observe(5, None, layers)
+
+    bars = g.barriers()
+    assert bars is not UNKNOWN, "an observed spill reported no answer at all"
+    assert bars.value == (), f"this spill hits nothing it cannot pass: {bars.value}"
