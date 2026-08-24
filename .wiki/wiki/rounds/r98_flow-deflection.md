@@ -5736,6 +5736,34 @@ has to decide whether contact ends a stream or an attempt.
 Measured paired against all three, or not at all.
 
 
+## gemma4 reproduces exactly, on an independent run (2026-08-25)
+
+The re-run with the raised completion budget and raw-reply recording:
+
+```
+              first run    re-run
+select        3/3 PASS     3/3 PASS
+fill          0/3 FAIL     0/3 FAIL     hazard_response: terminate_local, both times
+fill_fused    0/3 FAIL     0/3 FAIL     terminate_local, both times
+```
+
+**Identical across two independent runs**, down to the value in the slot. So gemma4's miss is not
+sampling noise and not a bad draw — it is what that model does with this evidence, reproducibly,
+under both encodings.
+
+That matters for how the fill verdict is read. A 0/3 could always have been three unlucky
+samples; two 0/3 runs with the same wrong value in the same slot cannot be. The frozen record's
+"gemma4 misses one slot" is now measured twice, and the fused experiment's negative result is
+measured twice with it.
+
+It also means the `--evidence explicit` variant has a clean baseline to be judged against: if
+naming the contact moves gemma4, it moves something reproducible rather than something that was
+going to wobble anyway.
+
+gpt-oss is still running on the raised budget — that run answers whether its select 1/3 was the
+budget, which is the other half of this tick's question.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -5835,6 +5863,10 @@ Measured paired against all three, or not at all.
     compiler's UNSATISFIABLE is the truth about the board rather than a search failure.
     Either the propagator floors flow the engine does not, or the level wants more than
     one placement.
+62. **gemma4 REPRODUCES exactly** on an independent re-run — select 3/3, fill 0/3 and
+    fill_fused 0/3, with `terminate_local` in the same slot both times. So its miss is not
+    sampling noise, the fused negative is measured twice, and the explicit-evidence
+    variant now has a stable baseline to be judged against.
 61. **`--evidence explicit` built, not applied.** The default line reports the position
     and the stop and leaves the CAUSE implicit; the generator already knows a barrier was
     contacted (that is why the line fires at all). The variant names the contact without
