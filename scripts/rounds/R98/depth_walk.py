@@ -230,6 +230,14 @@ def play_level(w: Walker) -> tuple[bool, str]:
             # Only when the model is already stuck, because the slide is not free:
             # doing it unconditionally cost idx0 its clear and left idx2 with a piece
             # that had no reachable placement.
+            if os.environ.get("R98_CAPTURE_STUCK"):
+                # BEFORE the slide as well: the slide presses actions and moves a piece,
+                # so a board captured only after it cannot say whether an inventory the
+                # compiler planned on was already short or was shortened here.
+                pre_slide = g.board()
+                if pre_slide is not UNKNOWN:
+                    _capture(pre_slide.value, g.trajectory(),
+                             os.environ["R98_CAPTURE_STUCK"] + ".preslide", g._prev_cells)
             _slide_a_cover(w, g)
             if os.environ.get("R98_DUMP_BOARD") == "1":
                 print(f"    [discover] slid a cover; falling columns now "
@@ -247,7 +255,10 @@ def play_level(w: Walker) -> tuple[bool, str]:
                 if pre is not UNKNOWN:
                     _capture(pre.value, g.trajectory(), os.environ["R98_CAPTURE_STUCK"],
                              g._prev_cells)
-            return False, f"compiler {plan.status.value}: {plan.reason}"
+            pieces = g.pieces()
+            held = "unknown" if pieces is UNKNOWN else str(len(pieces.value))
+            return False, (f"compiler {plan.status.value}: {plan.reason} "
+                           f"[board held {held} piece(s)]")
         knew = g.falling_sources()
         knew = () if knew is UNKNOWN else knew.value
         cleared, note, diverged = _execute(w, g, plan, entered, spent, probes)

@@ -3323,6 +3323,55 @@ roof; idx0's targets stand alone, so its away side is open and the flow takes it
 two appearances.
 
 
+## The compiler was telling the truth about a board missing four fifths of its pieces (2026-08-24)
+
+idx3's next wall said "no layout satisfies the objective ... 40084 examined". Freezing that
+board (`R98_CAPTURE_STUCK`) and enumerating every placement of every piece:
+
+```
+single-piece placements by targets satisfied:  {0 targets: 2, 1 target: 10}
+target 0 reachable by shifts [-4,-3,-2,-1,0,3,4,5,6,7]
+targets never reachable: [1, 2]
+```
+
+**The board holds ONE piece.** The same level, captured at the verifier a run earlier, holds
+five:
+
+```
+p        pieces=5   (4,4..7) (4,9..12) (7,2..6) (8,11..13) (10,9..11)
+stuck    pieces=1   (4,4..7)
+```
+
+Sources are at lanes 5 and 6, and both are landings, so the reach of 2 binds their walk from
+the source cell — the flow cannot pass lane 8. Targets 1 and 2 sit at lanes 9-11 and 12-14.
+With that single bar they are unreachable, and the compiler saying so is correct rather than
+broken. It is answering honestly about a board that is missing four fifths of itself.
+
+That the reach binds from the source is why idx0 differs: idx0's source is far above its
+piece, and a droplet that merely FALLS resets to unbounded, so it walks seven cells. On idx3
+the source sits directly over the bar and the reach applies immediately — which is exactly
+what the engine does there, stopping the right walk at (3,8) on the observed boards. The
+model is right; the board is short.
+
+The walk now reports the count with the verdict — `[board held 1 piece(s)]` — because
+"unsatisfiable" and "unsatisfiable on a board with one piece" are different statements and
+only one of them is actionable. Capturing before the cover-slide as well was added at the
+same time and did NOT fire, which is itself the answer: the inventory was already short
+before any slide, so the slide is not what lost them.
+
+The sweep now carries the new captures, so its TOTAL is not comparable with the last tick's
+— only per-board is:
+
+```
+idx0 0 · p 0        p is the board the neighbour rule closed, and it closed completely
+s3 25 · stuck2 25   the 1-piece boards: they measure the INVENTORY gap, not the propagator
+sum 267 / 158       over 20 boards, against 209 / 108 over 17
+```
+
+A bench whose membership changes needs its membership stated with its total, the same way a
+score needs its budget and its env.
+
+
 ## Next
 
 1. **Fill is not confirmed paired.** gemma4 misses one slot, and the cause is our
@@ -3350,8 +3399,12 @@ two appearances.
    verdict. Fixed by requiring a host. What it was hiding is the actual next item:
 9. ~~idx3 disagrees by ONE cell, `(12,9)`.~~ **CLOSED** — a miss does not spread onto a
    neighbouring target's roof. idx3's verifier passes; the next wall is the compiler.
-10. **idx3's compiler: no layout satisfies three targets** (40084 examined). The verifier
-    is now satisfied with the model, so this is about reach and placement, not physics.
+10. ~~idx3's compiler: no layout satisfies three targets.~~ **It was right** — the board it
+    planned on held ONE of the level's five pieces, and with sources at lanes 5-6 and the
+    reach binding from the source the flow cannot pass lane 8. The real question is:
+11. **Where do idx3's other four pieces go?** Captured at the verifier a run earlier the
+    board holds five; captured at the compiler it holds one, and the pre-slide capture
+    never fired, so the slide is not what lost them.
 8. **Close the 72-cell gap at the walk, not the propagator.** It is the cost of planning
    a commit before its spill exists, so the lever is the grounding CADENCE — re-ground on
    each spill before the next plan — and it should be measured on the live walk.
