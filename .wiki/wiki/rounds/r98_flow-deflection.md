@@ -2402,14 +2402,51 @@ idx2: CLEARED — 55 actions
 idx3: unchanged; the invented far-end stream is understood but not yet removable
 ```
 
+## Per-droplet state, and the rule still does not hold (2026-08-24)
+
+The propagator's droplets now carried a third component — `(cell, direction, may_drop)` —
+so "leaves at the nearer end" could travel with a droplet instead of with a cell. The
+representation change alone is inert: identical numbers on both boards, which is the right
+sanity check before hanging a rule on it.
+
+With the rule hung on it, the result is the same as the cell-flag version:
+
+```
+board a   invented 2, missed 0   ->   invented 1, missed 7
+board g   invented 14            ->   invented 6
+```
+
+So the leak was never the problem. Board a's losses are not the row-3 fall-offs the rule
+was derived from — they are mid-board cells, `(11,6) (12,6) (12,10) (12,11) (13,10)
+(10,11) (11,11)` — which means the rule is killing a branch the engine keeps, somewhere
+the two-board evidence never looked.
+
+**The rule is not adoptable.** It was read off the landing row of two boards and it
+describes that row well; applied to every piece a stream meets, it is an
+over-generalisation, and a is a level the walk clears. Both the rule and the representation
+are reverted — an inert third component with no rule using it is scaffolding, and this
+round does not keep scaffolding.
+
+What survives is the negative result, which is worth as much as the rule would have been:
+the nearer-end behaviour is real on the landing row and false as a general property of
+piece encounters. Whatever governs the far-end fall-off distinguishes the landing row from
+the rest, and no measurement so far says what.
+
+```
+idx0: CLEARED — 23 actions
+idx1: CLEARED — 30 actions
+idx2: CLEARED — 55 actions
+idx3: unchanged
+```
+
 ## Next
 
 1. **Fill is not confirmed paired.** gemma4 misses one slot, and the cause is our
    encoding rather than its reasoning. Measure the hazard orthogonalisation as its
    own experiment against all three models — never as a patch to move a verdict.
-2. **Give the propagator per-droplet state.** "Leaves at the nearer end" needs to travel
-   with a droplet, not with a cell: as a cell flag it leaks between streams that share a
-   cell and costs board a seven matched cells.
+2. **What distinguishes the landing row?** The nearer-end fall-off is real there and
+   false as a general property of piece encounters — measured twice, per-cell and
+   per-droplet, both costing board a cells it had matched.
 3. **Measure the bounded-roof variant on fixed evidence** — 1 invented cell against the
    adopted rule's 2, deliberately not adopted in the same change.
 3. **Multi-piece placement**, the burden the idx1 observation named: idx1 carries
