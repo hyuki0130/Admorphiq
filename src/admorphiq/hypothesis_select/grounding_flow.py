@@ -1340,7 +1340,6 @@ class FlowGrounding:
         # throws away half the board's sources every time.
         out: dict[int, tuple[int, int]] = {}
         for anim in self._animations:
-            blocking = set(anim.piece_cells) | self._all_piece_cells()
             seen: set[Cell] = set()
             tick = -1
             for layer in anim.frontier:
@@ -1353,8 +1352,11 @@ class FlowGrounding:
                     flanks = ((r - dc, c - dr), (r + dc, c + dr))
                     if behind in seen or any(f in seen for f in flanks):
                         continue
-                    if (r + dr, c + dc) not in blocking:
-                        continue
+                    # No landing requirement. A source that starts in mid-air — the
+                    # engine has one at (6,7) on the covered board, with the cell below
+                    # it free — is invisible to a landing signature, while a fall-off
+                    # point is already excluded by the flank test above: it always has
+                    # flow beside it.
                     out[lane] = (tick, r if dr else c)
                 seen |= set(layer)
         if not out:

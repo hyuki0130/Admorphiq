@@ -2478,14 +2478,57 @@ idx2: CLEARED — 55 actions
 idx3: executes in 54 actions; the invented far-end stream is gone
 ```
 
+## A source that starts in mid-air (2026-08-24)
+
+With the far-end stream gone, what is left on the covered board is mostly MISSED — flow the
+engine makes that the model does not. It is a single stream, and the layers place it:
+
+```
+   6: predicted (7,3) (7,5)     observed (7,3) (7,5)
+!! 7: predicted (7,2) (7,6)     observed (6,7) (7,2)
+!! 8: predicted (7,1) (8,6)     observed (7,1) (7,7)
+```
+
+Ours carries on rightward along row 7; the engine's appears at `(6,7)` — a row ABOVE — and
+descends column 7 from there. Nothing precedes it: it is a source, and no grounded lane
+explains it.
+
+The reason grounding could not see it is the landing signature. A lane was only recognised
+where the flow came to REST on something, and `(6,7)` has a free cell below it — the stream
+starts in mid-air and falls straight away. The landing requirement was there to keep
+fall-off points out of the lane list, and it turns out to be redundant: a fall-off always
+has flow BESIDE it, which the flank test already excludes. Removing it, grounding learns
+`lane 7 at row 6` on the covered board, exactly the stream that was missing.
+
+Measured by hand on the same board before changing anything:
+
+```
+as grounded                  invented 5  missed  9  (total 14)
+plus lane 7 at row 6         invented 2  missed 10  (total 12)
+```
+
+idx0–idx2 clear in the same action counts and all four certifications hold.
+
+```
+idx0: CLEARED — 23 actions
+idx1: CLEARED — 30 actions
+idx2: CLEARED — 55 actions
+idx3: learns lane 7 at row 6 — the stream the landing signature could not see
+```
+
+One pin had to widen with the contract: a synthetic asserted the lane list was exactly
+`(4,)`, and the plain descending stream it uses to fix the flow direction is now grounded
+as a source too — correctly, since it appears with nothing behind or beside it. The
+assertion checks the landing column is present and states why column 0 belongs there.
+
 ## Next
 
 1. **Fill is not confirmed paired.** gemma4 misses one slot, and the cause is our
    encoding rather than its reasoning. Measure the hazard orthogonalisation as its
    own experiment against all three models — never as a patch to move a verdict.
-2. **What is left on the covered board** is five invented cells and nine missed, after
-   the landing reach removed the far-end stream. The next probe is the missed ones —
-   flow the engine makes that the model does not.
+2. **Re-measure the covered board** now that mid-air sources are grounded; the hand
+   measurement says total error 14 -> 12, and the walk should show it on a fresh
+   capture.
 3. **Measure the bounded-roof variant on fixed evidence** — 1 invented cell against the
    adopted rule's 2, deliberately not adopted in the same change.
 3. **Multi-piece placement**, the burden the idx1 observation named: idx1 carries

@@ -310,7 +310,12 @@ def test_a_falling_source_is_grounded_by_its_COLUMN_where_it_lands():
 
     columns = g.falling_columns()
     assert columns is not UNKNOWN, "a landing stream must ground its column"
-    assert columns.value == (4,), f"grounded the wrong column: {columns.value}"
+    assert 4 in columns.value, f"the landing column was not grounded: {columns.value}"
+    # column 0 is grounded too, and correctly: the plain stream that fixes the direction
+    # is itself a source. A lane is recognised wherever flow appears with nothing behind
+    # or beside it, landing or not — a source can start in mid-air, and the engine has
+    # one on the covered board.
+    assert 0 in columns.value, f"the plain stream is a source too: {columns.value}"
 
 
 def test_a_cell_in_the_MOVING_appearance_does_not_become_a_phantom_piece():
