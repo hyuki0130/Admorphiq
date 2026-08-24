@@ -2709,14 +2709,49 @@ idx2: CLEARED — 55 actions
 idx3: eight cells, unchanged
 ```
 
+## The reach starts where the source rests, measured three ways (2026-08-24)
+
+A third placement for the walk budget: start it at the first piece a droplet RESTS on,
+whatever brought it there — narrower than propagating it down the fall, broader than binding
+it to injected landings only.
+
+```
+a  2->14   b 30->35   c 30->35   d 23->30   e  9->16   f 22->21   g 14->16
+h 14->16   i 17->10   j 17->10   k  8->10   l 14->19   m 17->18   stuck 10->19
+sum 227 -> 269
+```
+
+Two boards improve (i and j, 17 → 10) and nine get worse; the sum is clearly worse. So the
+reach belongs where it is: to a source that comes to rest DIRECTLY on a piece, and to
+nothing descended from one. Three placements measured, one adopted, and the two rejected
+are on the record because the adopted one looks arbitrary without them.
+
+### Where the round's propagation model stands
+
+The covered board — the hardest of the fourteen captured — is at **8 cells of disagreement
+out of 47 observed**, five invented and three missed, with the opening, the sequencing and
+every source but one reproduced exactly. Six candidate rules have been struck off around the
+remaining two causes:
+
+* side-conditions on spreading (twice: free-side, target-walled)
+* a one-sided sink miss (contradicted on idx0 outright)
+* notch-seeking on a miss
+* walkers never falling off the end (196 → 383, comprehensively false)
+* carrying a source with its piece, by shape and by identity (8 → 14, 8 → 17)
+
+What is left needs evidence the harness cannot currently get: whatever emits `(9,5) (9,6)`
+does not emit on every spill, and whatever stops the engine's row-7 walk going right leaves
+no trace in any board field the harness reads. Both are conditional behaviours, and the
+round's instrument — a spill per commit — samples one condition at a time.
+
 ## Next
 
 1. **Fill is not confirmed paired.** gemma4 misses one slot, and the cause is our
    encoding rather than its reasoning. Measure the hazard orthogonalisation as its
    own experiment against all three models — never as a patch to move a verdict.
-2. **Whatever emits (9,5) (9,6) does not emit every time.** Two ways of carrying a source
-   with its piece — by shape and by identity — both make the board worse, so the rule to
-   look for is conditional, not a per-commit pour.
+2. **The remaining two causes are conditional and the instrument samples one condition
+   per commit.** Six rules struck off; progress here needs a probe that varies one
+   condition at a time rather than another candidate rule.
 3. **Measure the bounded-roof variant on fixed evidence** — 1 invented cell against the
    adopted rule's 2, deliberately not adopted in the same change.
 3. **Multi-piece placement**, the burden the idx1 observation named: idx1 carries
