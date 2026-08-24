@@ -5570,6 +5570,36 @@ fatality**. Nothing was flowing deeper; the check was being asked a different qu
 revert was right and its stated reason was not.
 
 
+## Why both models say `terminate_local`: the evidence calls a fatal contact a stop (2026-08-25)
+
+Two models converging on one wrong slot is a prompt or evidence defect, so the evidence was read
+as a model receives it. The relevant line, verbatim:
+
+> All 2 of the cup-shaped regions ended in the distinct appearance that marks a satisfied target,
+> and the level still did NOT advance. The only other thing that happened in the whole animation
+> is that a stream **reached the row just above the bottom edge and stopped there**.
+
+The fatal case IS in the evidence — every target satisfied and no advance — and the sentence that
+should carry the cause **describes it as a harmless stop**. Nothing in that phrasing says a
+barrier was contacted; a stream ending where it runs out of room is the most ordinary event a
+falling flow has.
+
+Read that way, `terminate_local` is what the evidence supports: the stream ended locally, and
+whatever failed the attempt is unaccounted for. **The models are reading it correctly.** gemma4
+and qwen3.8 arrive at the same value under two different encodings because the encoding was never
+the issue — the description was.
+
+This is the round's own lesson landing a second time: unanimous wrong answers are a prompt
+defect. The first instance (three models, three values, nine runs) was fixed by stating a
+persistence rule and glossing the closed choices; this one is narrower and sharper — a single
+clause that names the mechanism as its opposite.
+
+Not patched here, on purpose. Rewriting that clause is a CORRECTNESS fix rather than tuning — the
+evidence currently misdescribes what the frames show — but it changes what every model is asked,
+so it belongs in its own measurement with all three models rather than appended to a round whose
+verdicts were taken under the present wording.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -5669,6 +5699,12 @@ revert was right and its stated reason was not.
     compiler's UNSATISFIABLE is the truth about the board rather than a search failure.
     Either the propagator floors flow the engine does not, or the level wants more than
     one placement.
+57. **WHY both models say `terminate_local`**: the evidence line that should carry the
+    fatal contact says a stream "reached the row just above the bottom edge and stopped
+    there" — it describes the mechanism as its opposite, a harmless stop. Read that way
+    `terminate_local` is the answer the evidence supports, and the models are reading it
+    correctly. Rewriting the clause is a CORRECTNESS fix, not tuning, but it changes what
+    every model is asked and belongs in its own paired measurement.
 55. **qwen3.8: select 3/3, fill 0/3 under BOTH encodings, missing only
     `hazard_response: terminate_local`.** Two models converge on the same wrong value for
     the same slot — the shape of a prompt/evidence defect, not a model verdict.
