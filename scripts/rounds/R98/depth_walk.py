@@ -209,6 +209,13 @@ def play_level(w: Walker) -> tuple[bool, str]:
     # half is what a deeper level would have to re-pay.
     print(f"    [cost] idx{entered} discovery so far {w.actions - spent} action(s) "
           f"({probes} selection probes)", flush=True)
+    # What those probes BOUGHT. The selection appearances are a property of the game's
+    # sprites, not of a layout, so if they read the same on every level the walk is paying
+    # four to six actions a level for a fact it already had.
+    sel, idle = g.piece_appearances()
+    print(f"    [bought] idx{entered} selected={sel} idle={idle} "
+          f"commit_action={g.commit_action().value if g.commit_action() is not UNKNOWN else '?'}",
+          flush=True)
 
     if g.board() is UNKNOWN:
         return False, f"grounding incomplete (pieces={_count(g.pieces())}, " \

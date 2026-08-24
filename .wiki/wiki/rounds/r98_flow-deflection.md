@@ -7228,6 +7228,37 @@ whether the SELECTION probes are re-buying something that does not change, and t
 question on this axis rather than another rule.
 
 
+## The selection probes DO re-buy an invariant — and it is probably worth nothing (2026-08-25)
+
+The open question was whether the walk's four-to-six selection probes per level re-establish
+something that does not change. Recording what they buy:
+
+```
+[bought] idx0 selected=None idle=None commit_action=5
+[bought] idx1 selected=9    idle=8    commit_action=5
+[bought] idx2 selected=9    idle=8    commit_action=5
+[bought] idx3 selected=9    idle=8    commit_action=5
+```
+
+**Identical on every level that can observe them.** The selected and idle appearances are a
+property of the game's sprites, not of a layout, and the commit action is 5 throughout. idx0 reads
+`None` for the pair because its single piece starts pre-selected — the same reason `control_mode`
+was recorded as an unestablished premise at that level.
+
+So the answer is yes, and the honest follow-through is that it probably buys nothing to fix.
+**The probes are not appearance-learning routines**; their stated job is segmentation — selecting a
+piece is what separates it from a neighbour it is touching, and a planner that can only move a
+merged pair cannot solve a board that needs them placed independently. That job IS per-level,
+because the pieces and their contacts differ every time. The appearance falls out of the probe as a
+by-product.
+
+⛔ So this is not a saving of eighteen actions waiting to be collected. Carrying the appearances
+forward would let the walk *skip* probes only if segmentation were already settled, and it is not.
+What the measurement does establish is which half of the discovery bill is genuinely per-level:
+direction is (measured non-invariant), segmentation is (pieces move), appearances and the commit
+action are not — and the last two are the only parts a cross-level memory could ever remove.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -7327,6 +7358,14 @@ question on this axis rather than another rule.
     compiler's UNSATISFIABLE is the truth about the board rather than a search failure.
     Either the propagator floors flow the engine does not, or the level wants more than
     one placement.
+105. **The selection probes DO re-buy an invariant — worth probably nothing.** What they buy
+     is identical on every level that can observe it: `selected=9 idle=8 commit_action=5`
+     (idx0 reads None because its piece starts pre-selected). But the probes are not
+     appearance-learning routines — their job is SEGMENTATION, separating a piece from the
+     neighbour it touches, which is genuinely per-level. ⛔ No eighteen actions waiting to be
+     collected. What is established is which half of the discovery bill is per-level:
+     direction yes (measured non-invariant), segmentation yes, appearances and commit action
+     NO — and only those last two could ever be removed by a cross-level memory.
 104. **Two thirds of the walk is DISCOVERY.** Per level: idx0 21 discovery / 2 plan, idx1
      22/8, idx2 29/26, idx3 20/10 — **92 of 138 actions**, re-paid in full every level. The
      certified oracle path does idx0's discovery in 8. ⚠️ Not all of the 21-vs-8 gap is
