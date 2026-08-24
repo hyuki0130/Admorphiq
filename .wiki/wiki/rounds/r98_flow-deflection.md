@@ -3199,6 +3199,43 @@ flank (12,5) is free space, so contiguity does not cover that case either.
 the 2 that the contract, the oracle gate and the mutant table are all built on.
 
 
+## The walk re-run: the obstacle now names itself (2026-08-24)
+
+Several ticks of grounding work had not been measured on the LIVE walk, only on captures.
+Run end to end:
+
+```
+idx0: CLEARED — 23 actions (4 selection probes)
+idx1: CLEARED — 30 actions (6 selection probes)
+idx2: CLEARED — 55 actions (6 selection probes)
+  [verifier] UNKNOWN — proceeding: the replay predicted 1 cell the flow never reached
+             (e.g. (12,9)), but the board is INCOMPLETE:
+             2 source(s) hidden under a piece, not in the board model
+idx3: stopped — compiler UNSATISFIABLE: no layout satisfies the objective under the
+      claimed table: 40084 examined across the cheapest neighbourhood and the per-piece
+      shortlists
+[depth walk] one hypothesis carried 3 levels; 139 actions total
+```
+
+Two things moved, and neither is a score:
+
+**idx2's verifier stopped saying "CONTRADICTED" and started naming the cause.** It now
+reports one surplus cell AND the reason the board cannot account for it — two sources still
+hidden under pieces. The pair-rescue fixed the case where one half of a straddling source
+was admitted and the other dropped; this is the harder case where the whole source is
+covered and nothing of it is visible except its flow. The verifier degrading to UNKNOWN
+with a named gap, rather than failing with a mismatch, is the harness working as designed.
+
+**idx3 moved from mis-predicting to honestly unsatisfiable.** It used to execute a plan
+whose trail disagreed with the engine; now the compiler examines 40084 layouts and reports
+that none satisfies three targets. That is not progress in levels and it is not a
+regression — it is the model no longer claiming a plan it cannot justify, which is the
+behaviour the contract asks for.
+
+Action counts are unchanged at 23 / 30 / 55, so nothing bought depth at the cost of
+efficiency.
+
+
 ## Next
 
 1. **Fill is not confirmed paired.** gemma4 misses one slot, and the cause is our
@@ -3221,7 +3258,12 @@ the 2 that the contract, the oracle gate and the mutant table are all built on.
    cell for cell, and that capture is now the first board in the sweep.
 4. ~~Report b, c and d apart from the rest.~~ **DONE** — `rule_bench.py --all` now reports
    as-known 211 and physics 139. Judge propagation rules on the physics column.
-5. **Close the 72-cell gap at the walk, not the propagator.** It is the cost of planning
+5. **Sources FULLY hidden under a piece.** idx2's verifier names two of them; the
+   pair-rescue only reaches sources with one half in the open. A wholly covered source is
+   visible only through its flow, so the grounding has to infer it from where flow appears
+   with nothing behind it. This is the next lever, and it is now named by the harness
+   itself rather than guessed.
+8. **Close the 72-cell gap at the walk, not the propagator.** It is the cost of planning
    a commit before its spill exists, so the lever is the grounding CADENCE — re-ground on
    each spill before the next plan — and it should be measured on the live walk.
 3. **Measure the bounded-roof variant on fixed evidence** — 1 invented cell against the
