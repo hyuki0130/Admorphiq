@@ -2521,14 +2521,52 @@ One pin had to widen with the contract: a synthetic asserted the lane list was e
 as a source too — correctly, since it appears with nothing behind or beside it. The
 assertion checks the landing column is present and states why column 0 belongs there.
 
+## An embedded source is not a lane (2026-08-24)
+
+Dropping the landing requirement found the mid-air source and admitted two false lanes with
+it. On a fresh capture the model opened at `(8,6)` where the engine opens at its lane cells,
+and the arithmetic is unambiguous:
+
+```
+all 7 grounded lanes    invented 14  missed  3   (total 17)
+without lanes 3 and 4   invented  2  missed 10   (total 12)
+```
+
+Lanes 3 and 4 are not lanes. Lane 4's entry sits at `(8,4)` with the cell BEHIND it a piece
+— it is the output of a source EMBEDDED in that piece, the same thing this round measured
+travelling with its carrier. Grounded as a lane it keeps pouring into a column the piece has
+since left.
+
+Repetition does not separate them: on the probe layout lanes 4, 5 and 6 each appear in all
+three spills. What separates them is what lies behind the entry, so an entry whose
+predecessor cell was a piece at that moment is no longer taken as a lane.
+
+Measured on the covered board, captured fresh:
+
+```
+before  invented 14, missed  3   (total 17)
+after   invented  2, missed 10   (total 12)
+```
+
+The ten missed are the lane-7 stream, which this run learns only after the plan is made —
+the same "the commit teaches what the plan needed" shape as the lanes before it. idx0–idx2
+clear in the same action counts.
+
+```
+idx0: CLEARED — 23 actions
+idx1: CLEARED — 30 actions
+idx2: CLEARED — 55 actions
+idx3: total error 17 -> 12 on the covered board
+```
+
 ## Next
 
 1. **Fill is not confirmed paired.** gemma4 misses one slot, and the cause is our
    encoding rather than its reasoning. Measure the hazard orthogonalisation as its
    own experiment against all three models — never as a patch to move a verdict.
-2. **Re-measure the covered board** now that mid-air sources are grounded; the hand
-   measurement says total error 14 -> 12, and the walk should show it on a fresh
-   capture.
+2. **The lane the plan needed is learned after it is made.** Ten of the twelve remaining
+   cells on the covered board are the lane-7 stream, grounded only once the commit has
+   run — the same shape as every lane before it.
 3. **Measure the bounded-roof variant on fixed evidence** — 1 invented cell against the
    adopted rule's 2, deliberately not adopted in the same change.
 3. **Multi-piece placement**, the burden the idx1 observation named: idx1 carries

@@ -247,6 +247,7 @@ class FlowGrounding:
         # piece was seen to survive before the board took it away.
         self._flow_moves: dict[frozenset[Cell], int] = {}
         self._flow_origin: dict[frozenset[Cell], Optional[int]] = {}
+        self._lane_tally: dict[int, int] = {}
         self._move_budget: Optional[int] = None
 
     # ── ingest ───────────────────────────────────────────────────────────
@@ -1339,6 +1340,7 @@ class FlowGrounding:
         # the earlier pair lands on nothing visible; reading only the last animation
         # throws away half the board's sources every time.
         out: dict[int, tuple[int, int]] = {}
+        tally: dict[int, int] = {}
         for anim in self._animations:
             seen: set[Cell] = set()
             tick = -1
@@ -1352,15 +1354,23 @@ class FlowGrounding:
                     flanks = ((r - dc, c - dr), (r + dc, c + dr))
                     if behind in seen or any(f in seen for f in flanks):
                         continue
-                    # No landing requirement. A source that starts in mid-air — the
-                    # engine has one at (6,7) on the covered board, with the cell below
-                    # it free — is invisible to a landing signature, while a fall-off
-                    # point is already excluded by the flank test above: it always has
-                    # flow beside it.
+                    # No landing requirement: a source can start in mid-air, and a
+                    # fall-off point is already excluded by the flank test above, since
+                    # it always has flow beside it.
+                    #
+                    # But an entry whose cell BEHIND it was a piece is not a lane at all
+                    # — it is the output of a source EMBEDDED in that piece, and it
+                    # travels when the piece does. Grounded as a lane it keeps pouring
+                    # into a column the piece has left, which measured five wrong cells
+                    # on the covered board.
+                    if (r - dr, c - dc) in anim.piece_cells:
+                        continue
                     out[lane] = (tick, r if dr else c)
+                    tally[lane] = tally.get(lane, 0) + 1
                 seen |= set(layer)
         if not out:
             return UNKNOWN
+        self._lane_tally = tally
         return Grounded(
             tuple((lane, tick, line) for lane, (tick, line) in sorted(out.items())), "high"
         )
