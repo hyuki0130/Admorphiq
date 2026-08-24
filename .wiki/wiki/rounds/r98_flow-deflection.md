@@ -7259,6 +7259,52 @@ direction is (measured non-invariant), segmentation is (pieces move), appearance
 action are not — and the last two are the only parts a cross-level memory could ever remove.
 
 
+## The largest item in the discovery bill bought NOTHING — walk 138 -> 106 (2026-08-25)
+
+Splitting discovery into its phases finds one item that is both the biggest and perfectly
+constant:
+
+```
+idx0  fixed probes=5  direction retries=8  selection probes=4  commit + aiming=4
+idx1  fixed probes=5  direction retries=8  selection probes=6  commit + aiming=3
+idx2  fixed probes=5  direction retries=8  selection probes=6  commit + aiming=10
+idx3  fixed probes=5  direction retries=8  selection probes=6  commit + aiming=1
+```
+
+Eight actions a level, every level, on a retry loop that presses each unmeasured direction up to
+twice more. Asking what it achieves:
+
+```
+[deltas] idx0 after the fixed probes: []      [deltas] idx0 after the retries: []
+[deltas] idx1 after the fixed probes: []      [deltas] idx1 after the retries: []
+[deltas] idx2 after the fixed probes: []      [deltas] idx2 after the retries: []
+```
+
+**Empty before, empty after, on every level.** The loop's own success condition — a direction
+appearing in `deltas_of(g)` — is never met, so it repairs nothing and simply pays the toll.
+
+Removed, and measured rather than assumed:
+
+| | before | after |
+|---|---|---|
+| idx0 | 23 | **15** |
+| idx1 | 30 | **22** |
+| idx2 | 55 | **47** |
+| idx3 attempt | 30 | 22 |
+| **walk total** | **138** | **106** |
+
+Same three levels carried, same idx3 stop, **32 fewer actions — 23% of the walk**. Every gate
+holds: oracle 3/3, grounding, verifier, mutant certification, corpus 12, 1725 tests.
+
+⚠️ Said fairly: the loop was added for a real measured reason — the engine does drop a press, and
+that cost idx3 a discovery slide once. What has changed is that the grounding no longer reports
+deltas at this point in the sequence at all, so the guard it retries on is permanently absent. **A
+retry guarded on a signal that is never present is not a safety net, it is a toll**, and the
+distinction is only visible if you ask what the guard reads rather than what the comment says.
+
+This is the first measured EFFICIENCY gain of the round, on a metric that squares the action ratio.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -7358,6 +7404,15 @@ action are not — and the last two are the only parts a cross-level memory coul
     compiler's UNSATISFIABLE is the truth about the board rather than a search failure.
     Either the propagator floors flow the engine does not, or the level wants more than
     one placement.
+106. **The largest item in the discovery bill bought NOTHING — walk 138 -> 106.** Phase split:
+     `fixed probes=5, direction retries=8, selection probes=4-6, commit+aiming=1-10`, with the
+     retries constant at 8 on every level. `deltas_of(g)` is EMPTY before them and EMPTY after,
+     so the loop's own success condition never fires. Removed: idx0 23 -> **15**, idx1 30 ->
+     **22**, idx2 55 -> **47**, total **138 -> 106**, same three levels, all gates green
+     (oracle 3/3, corpus 12, 1725 tests). ⚠️ It was added for a real reason (the engine does
+     drop a press); what changed is that grounding no longer reports deltas there at all. A
+     retry guarded on a signal that is never present is a toll, not a safety net. FIRST
+     measured efficiency gain of the round.
 105. **The selection probes DO re-buy an invariant — worth probably nothing.** What they buy
      is identical on every level that can observe it: `selected=9 idle=8 commit_action=5`
      (idx0 reads None because its piece starts pre-selected). But the probes are not

@@ -147,28 +147,27 @@ def play_level(w: Walker) -> tuple[bool, str]:
     g = FlowGrounding()
     g.observe(0, None, w.obs.frame)
 
+    phase = {"start": w.actions}
     for a in (1, 1, 2, 3, 4):
         w.act(a, g)
+    phase["fixed probes"] = w.actions - phase["start"]
+    # ⛔ A per-direction RETRY loop used to sit here, pressing each unmeasured direction up to
+    # twice more. Measured on every level of a full walk: `deltas_of(g)` is EMPTY before it
+    # runs and EMPTY after, so its own success condition is never met and it repaired nothing
+    # — while costing exactly 8 actions a level, 32 across the walk, the largest single item
+    # in the discovery bill. Removing it leaves the walk carrying the same three levels and
+    # takes it from 138 actions to 106: idx0 23 -> 15, idx1 30 -> 22, idx2 55 -> 47. It was
+    # added for a real measured reason (the engine does drop a press), so what has changed is
+    # that the grounding no longer reports deltas at this point in the sequence at all; a
+    # retry guarded on a signal that is always absent is not a safety net, it is a toll.
 
     # A direction can come back unmeasured simply because the piece was against a
     # bound when it was tried. Retry the missing ones from wherever it is now: an
     # unmeasured direction is not neutral, it removes every placement that needs it
     # from the planner's reach.
-    for a in (1, 2, 3, 4):
-        if a in deltas_of(g):
-            continue
-        w.act(a, g)
-        if a not in deltas_of(g):
-            # The engine drops a press now and then — measured three times out of three
-            # elsewhere in this round. An unmeasured direction is not neutral: it
-            # removes every placement that needs it from the planner's reach, and it
-            # cost idx3 the discovery slide, which had no action to move along the flow.
-            w.act(a, g)
-
-    # Probe until the idle appearance is known, then keep probing the remaining
-    # candidates: selecting a piece is what separates it from a neighbour it touches,
-    # and a planner that can only move a merged pair cannot solve a board that needs
-    # them placed independently.
+    print(f"    [deltas] idx{entered} after the retries    : {sorted(deltas_of(g))}",
+          flush=True)
+    phase["direction retries"] = w.actions - phase["start"] - phase["fixed probes"]
     probes = 0
     candidates = g.selection_candidates()
     if candidates is not UNKNOWN:
@@ -176,6 +175,8 @@ def play_level(w: Walker) -> tuple[bool, str]:
             w.click(cell, g)
             probes += 1
 
+    phase["selection probes"] = (w.actions - phase["start"] - phase["fixed probes"]
+                                 - phase["direction retries"])
     w.act(5, g)  # an UNAIMED commit: aiming first hides the direction (measured — idx3
                  # lost initial_direction and with it barriers, so the board would not
                  # assemble at all). The life it costs buys the only clean directional
@@ -202,7 +203,11 @@ def play_level(w: Walker) -> tuple[bool, str]:
         if moved:
             w.act(5, g)
 
+    phase["commit + aiming"] = w.actions - phase["start"] - sum(
+        v for k, v in phase.items() if k != "start")
     _invariants_report(g, entered)
+    print("    [phases] idx%d " % entered + "  ".join(
+        f"{k}={v}" for k, v in phase.items() if k != "start"), flush=True)
     # Where the level's actions go. The certified oracle path clears idx0 in 10 (8 discovery
     # + 2 plan) and the walk takes 23, and the scoring metric is the SQUARE of the action
     # ratio, so the difference is not bookkeeping. Printed per level because the discovery
