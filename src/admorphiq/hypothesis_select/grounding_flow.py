@@ -1069,8 +1069,17 @@ class FlowGrounding:
         out: list[frozenset[Cell]] = []
         for colour, seeds in by_colour.items():
             for region in _regions(self._prev_cells, colour):
-                if region & seeds and not (region & pieces):
-                    out.append(region)
+                if not (region & seeds) or (region & pieces):
+                    continue
+                # The region is everything of that colour CONNECTED to the blocker, and
+                # a board's walls are all one colour and all connected. Measured on idx2:
+                # this named a single 198-cell region on a 16x16 board — 77% of it — which
+                # the mouth split then carved into seven "targets" of 14 to 39 cells
+                # beside the three real ones of five. So keep only the parts that contain
+                # a cell that ACTUALLY obstructed the flow; the rest is the wall the
+                # blocker happens to touch. No size rule: the evidence is the seed.
+                parts = self._by_mouth(region) or [region]
+                out.extend(part for part in parts if part & seeds)
         return sorted(out, key=min)
 
     def selection_candidates(self) -> Any:

@@ -3672,6 +3672,43 @@ named, and narrowing that needs its own measurement rather than a size threshold
 fit this board.
 
 
+## The blocker was dragging its whole wall in (2026-08-24)
+
+Which of the shortlist's four sources names the scenery? Wrapped and counted at the moment
+idx2 reads ten:
+
+```
+changed      3 region(s)  sizes [5, 5, 5]      <- the real targets
+obstruction  1 region      size [198]           <- 77% of a 16x16 board
+shape        1 region      size [5]
+appearance   0
+```
+
+One region of 198 cells, which the mouth split then carves into the seven scenery entries.
+`_obstruction_regions` seeds from cells that actually stopped the flow and then takes the
+**whole connected region of that colour** — and a board's walls are one colour and all
+connected, so one blocker touching a wall names the wall.
+
+The fix needs no size rule, because the evidence is already in hand: keep only the parts that
+contain a cell that ACTUALLY obstructed the flow. The rest is the wall the blocker happens to
+touch.
+
+```
+idx2 transient shortlist   10 targets [18, 5, 39, 5, 31, 5, 17, 14, 2, 2]
+                        ->  4 targets [5, 5, 5, 17]
+```
+
+The three real targets and one 17-cell region that genuinely blocked the flow — which is the
+shortlist doing its job, since it is a shortlist and not a decision. idx0-idx2 clear at the
+same 23 / 30 / 55, idx3 unchanged, all four certifications PASS, bench unchanged at 209 / 108.
+
+**Owed, again**: a unit pin. A test was written for this and DELETED before committing — it
+asserted on a locally-built set and never called `_obstruction_regions`, which is the same
+vacuous shape this round has now caught three times. The barrier rules and this one are held
+by the walk and the certifications until a fixture exists that produces a registered
+animation.
+
+
 ## Next
 
 1. **Fill is not confirmed paired.** gemma4 misses one slot, and the cause is our
@@ -3714,7 +3751,8 @@ fit this board.
     finding, NOT patched mid-round.
 14. **Owed: a unit pin for the two barrier rules.** Three fixtures failed to produce a
     registered animation; nothing was committed rather than a test that passes vacuously.
-15. **idx2 names TEN targets after ONE move action.** Seven are scenery (sizes 14-39 vs a
+15. ~~idx2 names TEN targets after ONE move action.~~ **4 now** — the blocker was dragging
+    its whole wall in. Original note: Seven are scenery (sizes 14-39 vs a
     confirmed target of 5), none overlaps a piece. Harmless here because the plan does not
     depend on the count; on a level where it did, "cover every target" would be
     unreachable by construction — the failure mode idx3 spent three ticks in. The frame
