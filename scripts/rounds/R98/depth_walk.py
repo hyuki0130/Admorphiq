@@ -219,7 +219,8 @@ def play_level(w: Walker) -> tuple[bool, str]:
         at_verify = g.board()
         if at_verify is not UNKNOWN:
             _capture(at_verify.value, g.trajectory(),
-                     os.environ["R98_CAPTURE_STUCK"] + ".verify", g._prev_cells)
+                     os.environ["R98_CAPTURE_STUCK"] + ".verify", g._prev_cells,
+                     entered)
     verdict = verify_flow_instance(hypothesis, g, w.level > entered)
     if verdict.verdict.value == "CONTRADICTED":
         # Freeze the board that produced the contradiction. Without this the walk reports
@@ -227,7 +228,7 @@ def play_level(w: Walker) -> tuple[bool, str]:
         # plans differently and the board is gone.
         if os.environ.get("R98_CAPTURE"):
             _capture(g.board().value, g.trajectory(), os.environ["R98_CAPTURE"],
-                     g._prev_cells)
+                     g._prev_cells, entered)
         return False, f"verifier CONTRADICTED: {verdict.reason}"
     if verdict.verdict.value != "PASS":
         # UNKNOWN is "cannot judge", not "wrong". The measured cause here is a source
@@ -276,7 +277,8 @@ def play_level(w: Walker) -> tuple[bool, str]:
                 pre_slide = g.board()
                 if pre_slide is not UNKNOWN:
                     _capture(pre_slide.value, g.trajectory(),
-                             os.environ["R98_CAPTURE_STUCK"] + ".preslide", g._prev_cells)
+                             os.environ["R98_CAPTURE_STUCK"] + ".preslide",
+                             g._prev_cells, entered)
             _slide_a_cover(w, g)
             if os.environ.get("R98_DUMP_BOARD") == "1":
                 print(f"    [discover] slid a cover; falling columns now "
@@ -293,7 +295,7 @@ def play_level(w: Walker) -> tuple[bool, str]:
                 pre = g.board()
                 if pre is not UNKNOWN:
                     _capture(pre.value, g.trajectory(), os.environ["R98_CAPTURE_STUCK"],
-                             g._prev_cells)
+                             g._prev_cells, entered)
             pieces = g.pieces()
             held = "unknown" if pieces is UNKNOWN else str(len(pieces.value))
             return False, (f"compiler {plan.status.value}: {plan.reason} "
@@ -409,6 +411,13 @@ def _execute(w: Walker, g: FlowGrounding, plan, entered: int, spent: int, probes
             # the commit: the LAST piece has no successor to top it up, and a layout
             # that is one press short spills as a layout nobody chose
             arrived, note = _top_up(w, g, held, entered, spent)
+            if os.environ.get("R98_CAPTURE") and forecast is not None:
+                # BEFORE the clear check. The capture used to sit past this return, so it
+                # fired only when a level FAILED — which is why every board in the sweep
+                # came from idx3 and the step-off question had counter-examples from one
+                # level and nowhere else. A spill that clears is evidence too.
+                _capture(pre.value, g.trajectory(), os.environ["R98_CAPTURE"],
+                         g._prev_cells, entered)
             if w.level > entered:
                 return True, f"cleared in {w.actions - spent} actions ({probes} probes)", False
             if not arrived:
@@ -477,7 +486,8 @@ def _execute(w: Walker, g: FlowGrounding, plan, entered: int, spent: int, probes
                                f"{_what_blocks(g, frozenset(before.value), deltas_of(g)[step])}"), True
 
     if os.environ.get("R98_CAPTURE") and forecast is not None:
-        _capture(pre.value, g.trajectory(), os.environ["R98_CAPTURE"], g._prev_cells)
+        _capture(pre.value, g.trajectory(), os.environ["R98_CAPTURE"], g._prev_cells,
+                 entered)
     if os.environ.get("R98_DUMP_BOARD") == "1" and forecast is not None:  # noqa: SIM102
         _attribute_pre(g, forecast, forecast_sinks)
         want = frozenset(c for piece in plan.intended for c in piece)
@@ -544,17 +554,29 @@ def _top_up(w: Walker, g: FlowGrounding, step: Select | None, entered: int, spen
     return False, "ran out of attempts topping a piece up to its place"
 
 
-def _capture(board, observed, path: str, cells=None) -> None:
+_CAPTURE_SEQ: dict[int, int] = {}
+
+
+def _capture(board, observed, prefix: str, cells=None, level: int = -1) -> None:
     """Freeze the board AS COMMITTED and the spill it produced.
 
     Rule changes alter what the compiler chooses, so re-running the whole walk compares
     a new rule on a new layout and says nothing about the rule — measured twice, where a
     restriction that should have removed four cells produced a different plan and
-    twenty-four. A rule is judged against FIXED evidence or not at all."""
+    twenty-four. A rule is judged against FIXED evidence or not at all.
+
+    ``R98_CAPTURE`` is a PREFIX, not a path: every commit of every level writes its own
+    ``{prefix}_idx{level}_{n}.json``. It used to be one path, overwritten at each commit
+    of each level, so a walk that cleared four levels left evidence from the last one
+    only — which is why every capture in the sweep came from idx3, the single level whose
+    board the harness cannot read completely, and why the step-off question could not be
+    settled from them."""
     import json
 
     if board is None or observed is UNKNOWN:
         return
+    _CAPTURE_SEQ[level] = _CAPTURE_SEQ.get(level, 0) + 1
+    path = f"{prefix}_idx{level}_{_CAPTURE_SEQ[level]}.json"
     payload = {
         "pieces": [sorted(p) for p in board.pieces],
         "sinks": [sorted(s) for s in board.sinks],

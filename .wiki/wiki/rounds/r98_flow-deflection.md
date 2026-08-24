@@ -6475,6 +6475,43 @@ reports confidence proportional to how many siblings were captured, which has no
 how much was observed.
 
 
+## The capture only ever fired on FAILURE — fixed, and the stops are real (2026-08-25)
+
+The last entry said the step-off question needed captures from idx1 and idx2 rather than another
+rule. Trying to take them exposed why there had never been any: `R98_CAPTURE` was a single path,
+overwritten at every commit of every level, AND the one call site sat past the early return that
+fires when a level clears. **Captures were only ever written when a level FAILED**, and only the
+last such level survived — which is the whole reason every board in the sweep came from idx3.
+
+Both fixed: the variable is now a PREFIX and every commit writes `{prefix}_idx{level}_{n}.json`,
+and the capture is taken before the clear check. One walk now yields evidence from every level it
+plays:
+
+```
+[capture] wrote scratchpad/r98caps/w_idx0_1.json      idx0: CLEARED
+[capture] wrote scratchpad/r98caps/w_idx1_1.json      idx1: CLEARED
+[capture] wrote scratchpad/r98caps/w_idx2_1.json      idx2: CLEARED
+[capture] wrote scratchpad/r98caps/w_idx3_1..4.json   idx3: stopped
+```
+
+And the new evidence answers the suspicion the last entry raised. Step-off events, by level:
+
+| | events |
+|---|---|
+| STEPPED | idx0 `(4,6)`, idx1 `(9,7)`, idx2 `(10,2)`, idx3 ×4 |
+| **stopped** | **idx0 `(4,10)`**, **idx1 `(9,11)`**, idx3 `(4,11)`, idx3 `(9,8)` |
+
+**idx0 and idx1 both stop.** Those are boards the harness reads completely, so the supported stop
+is a real engine behaviour and NOT an artefact of idx3's missing rows and columns. ⛔ The
+suspicion recorded last tick — that a stop might just be an unmodelled obstacle on the truncated
+level — is retired by measurement, and the axis is open again with events from three levels
+instead of one.
+
+The bug is worth naming for what it is rather than as a fix: a diagnostic that records only
+failures produces a corpus of failures and reports it as a corpus. Every conclusion drawn from
+those seventeen boards inherited "idx3, and only when it lost", and none of them said so.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -6574,6 +6611,13 @@ how much was observed.
     compiler's UNSATISFIABLE is the truth about the board rather than a search failure.
     Either the propagator floors flow the engine does not, or the level wants more than
     one placement.
+84. **The capture only ever fired on FAILURE — fixed, and the stops are REAL.** `R98_CAPTURE`
+    was one overwritten path AND sat past the clear-check return, so only failing levels were
+    ever frozen; that is why all seventeen boards were idx3. Now a prefix, captured before the
+    check: one walk yields idx0/idx1/idx2/idx3. New evidence retires #83's suspicion —
+    **idx0 `(4,10)` and idx1 `(9,11)` both STOP**, on boards the harness reads completely, so
+    the supported stop is engine behaviour and not truncation. A diagnostic that records only
+    failures produces a corpus of failures and reports it as a corpus.
 83. ⛔ **The 67 step-off instances are 14 EVENTS, and all 3 counter-examples are on idx3.**
     `--events` groups by (cell, direction): 30 "stopped" is three events seen ten times, 37
     "stepped" is eleven events. Every property was tested against 14 points while the table
