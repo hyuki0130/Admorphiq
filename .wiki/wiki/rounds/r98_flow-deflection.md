@@ -4878,6 +4878,40 @@ between those facts and the engine's advance condition is WHEN the set is read r
 reset, and that is a question about ordering rather than about the board.
 
 
+## At idx3's settle the advance condition is fully met — and the engine resets instead (2026-08-24)
+
+Evaluating the engine's own advance condition at the moment the spill settles, rather than after
+the step returns:
+
+```
+idx0   targets=3 satisfied=3 all_in=True  same_objects=True     -> advances
+idx1   targets=3 satisfied=3 all_in=True  same_objects=True     -> advances
+idx3   targets=4 satisfied=4 all_in=True  same_objects=True     -> does NOT advance   (twice)
+```
+
+`same_objects=True` rules out the obvious suspect — the satisfied set holding stale sprites while
+the target list returns fresh ones. They are the same objects. Every target is in the set. The
+flag is False. **Every term of the engine's advance condition is satisfied at idx3's settle.**
+
+And the ordering shows what happens instead:
+
+```
+RESET (was size 0)
+SETTLED, satisfied size 4
+RESET (was size 4)                                  <- the set is cleared
+COMPLETE phase=change settled=False satisfied=0
+```
+
+On the levels that clear, the completion comes straight after the settle, in the SPILL phase,
+with the set intact. On idx3 a reset lands between the two, and the completion that follows is in
+the arrange phase with nothing satisfied and the settle flag already cleared.
+
+So the level is not failing a condition. **The condition is met and the state is torn down before
+anything reads it.** That is a statement about when the engine evaluates, not about what the plan
+did — and it means no plan of ours can clear idx3 by satisfying more, because satisfying
+everything is already what happens.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -4960,6 +4994,12 @@ reset, and that is a question about ordering rather than about the board.
     commits. One life recovered by not re-committing when the aiming moved nothing;
     three more are spent because every level builds a FRESH grounding and re-learns the
     flow's direction and colour, which cannot change within a game.
+39. **At idx3's settle the advance condition is FULLY MET** — targets=4, satisfied=4,
+    all_in=True, same_objects=True, flag False — and the engine resets instead of
+    advancing. On clearing levels the completion follows the settle immediately in the
+    SPILL phase with the set intact; on idx3 a RESET lands between them and the completion
+    arrives in the arrange phase with nothing satisfied. The condition is met and the
+    state is torn down before anything reads it.
 38. **What the engine counts, measured at the ADD.** Painting 13 and joining the satisfied
     set are the same event. Plain walk on idx3 satisfies x=8,12,16 and NEVER x=2, the
     block — 3 of 4, which is why it fails. ~~"The spill never settles"~~ is WRONG: the
