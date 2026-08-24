@@ -17,11 +17,18 @@ fallen from it rather than stopped there, and those are different mechanisms. So
 side is also reported as `fell` or `STOPPED`, by asking whether its last cell has a
 descendant along the flow anywhere later in the observation.
 
+Reading the table
+-----------------
+A walk is re-detected from each of its own cells, so one four-cell walk shows up as
+four rows of decreasing length. That is deliberate — it costs nothing and it makes a
+walk that behaves differently partway visible — but it means the ROW COUNT is not an
+event count.
+
 Expected feedback
 -----------------
 A table of (extent, support pattern, fate) per side. A side that walks while supported
 and falls the moment it is not needs no rule beyond gravity. A side that STOPS on a
-SUPPORTED cell is the anomaly, and it is the only thing a new rule has to explain.
+SUPPORTED cell is what a new rule has to explain.
 """
 
 from __future__ import annotations
@@ -73,6 +80,7 @@ def _fate(layers: list[set], run: list, board) -> str:
 
 def main() -> int:
     print(f"{'board':6s} {'landing':9s} {'left':29s} {'right':29s}")
+    print("  (a side with 0 steps did not appear on the layer after the landing)")
     for path in _captures():
         with open(path) as f:
             payload = json.load(f)
@@ -83,8 +91,13 @@ def main() -> int:
             for cell in layers[i - 1]:
                 left = (cell[0] - dc, cell[1] - dr)
                 right = (cell[0] + dc, cell[1] + dr)
-                if left not in layers[i] or right not in layers[i]:
+                if left not in layers[i] and right not in layers[i]:
                     continue
+                # BOTH-flank detection was too narrow: it missed every event whose two
+                # sides do not appear on the same layer, and those were exactly the
+                # boards that refuted the inherited-walk rule. One flank is enough to
+                # call it a spread; the other side is then reported as it is, empty
+                # included.
                 lw = _walk(layers[i:], left, (-dc, -dr), board)
                 rw = _walk(layers[i:], right, (dc, dr), board)
                 ls = "".join("#" if _supported(board, c) else "." for c in lw)

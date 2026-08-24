@@ -6273,6 +6273,42 @@ one shows up when the first is repaired. A rule that improves five boards and de
 a rule that needs tuning — it is a rule whose evidence never contained the boards it breaks.
 
 
+## The evidence base was the defect: both sides walk (2026-08-25)
+
+The refutation above said the sixteen events "did not cover this case". They did not cover much:
+the probe called something a spread event only when BOTH flanks appeared on the layer after the
+landing, and a great many spreads put their two sides down on different layers. Relaxing that to
+either flank takes the table from **16 rows to 258**, and the picture inverts:
+
+```
+a      (10, 3)   3 ##.  fell    3 ##.  fell     <- BOTH sides walk
+b      (10, 3)   3 ##.  fell    4 ##.. fell     <- both, unequal lengths
+idx0   (3, 9)    5 ####. fell   1 .    fell
+```
+
+**"One side walks" was an artefact of the detection rule.** A spread whose two sides start on
+different layers was invisible, and those are exactly the boards — `a` and `p` — where the
+inherited-walk rule deleted whole streams. The refutation and its cause are now the same fact:
+the rule was fitted to a sample that had been filtered, by construction, to the events that
+looked asymmetric.
+
+⛔ #74 and #76 are RETRACTED, not merely superseded. Neither the "one side walks" reading nor
+the "decide once at the landing" repair describes the engine.
+
+What survives, and is now much better attested: 80 of the 258 sides end **STOPPED on support** —
+a walk that neither steps off nor falls. On the `f`–`o` family this is the normal case rather
+than a single anomaly (`(3,6)` right stops after two supported cells, `(9,5)` left after two),
+while on idx0, `a` and `b` walks almost always end with one unsupported step and a fall. So the
+open question is no longer about sides at all: it is **why walks terminate on support on some
+boards and step off on others**, with 80 measured instances to test any answer against instead of
+one.
+
+The lesson is about the instrument rather than the engine. A probe that defines an event by a
+coincidence — two things appearing on the same layer — does not sample the phenomenon, it samples
+the coincidence, and every rule fitted to it inherits that bias silently. The refuted rule was
+never the mistake; accepting a sixteen-row table as the evidence was.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -6372,6 +6408,13 @@ a rule that needs tuning — it is a rule whose evidence never contained the boa
     compiler's UNSATISFIABLE is the truth about the board rather than a search failure.
     Either the propagator floors flow the engine does not, or the level wants more than
     one placement.
+78. ⛔⛔ **#74 and #76 RETRACTED — the evidence base was the defect.** The probe called it a
+    spread only when BOTH flanks landed on the same layer; relaxing that takes the table from
+    16 rows to 258 and shows BOTH sides walking (`a (10,3)` 3/3, `b (10,3)` 3/4). The
+    filtered sample was exactly the asymmetric-looking events, which is why the rule fitted
+    to it deleted whole streams on `a` and `p`. What survives, better attested: 80 of 258
+    sides end STOPPED on support. The open question is why walks terminate on support on some
+    boards and step off on others.
 77. ⛔ **The inherited walking side is IMPLEMENTED and REFUTED.** Fourth droplet field
     carrying the decision from the landing: idx0 stays 0 and b/c/d/e/f improve (9->6, 13->11),
     but `a` 1->40 and `p` 0->35 lose whole vertical streams — the engine DOES re-open the
