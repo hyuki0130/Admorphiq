@@ -4780,6 +4780,37 @@ contradiction, but it is the first sign that what we call a target and what the 
 may not be the same partition of those nineteen cells.
 
 
+## idx3 is never judged: its spill never settles (2026-08-24)
+
+Hooking the engine's own completion call and filtering for the SPILL phase — the only place the
+level decision is made — gives three lines for a whole run:
+
+```
+targets=2  satisfied_of_them=2  flag=False  phase=spill  settled=True     idx0
+targets=3  satisfied_of_them=3  flag=False  phase=spill  settled=True     idx1
+targets=3  satisfied_of_them=3  flag=False  phase=spill  settled=True     idx2
+```
+
+Three decisions, three cleared levels. **idx3 never reaches one.** Every other completion call in
+the run is in the arrange phase with `settled=False`.
+
+So the engine never evaluates idx3. `settled` becomes true only once the flow has finished, and
+on idx3 it does not — which is why the failing spill carries no failure colour, why nothing is
+painted 0, why the flag stays False, and why nineteen satisfied cells change nothing. The level
+is not refused. **It is never asked.**
+
+That is the third explanation, and unlike the six before it, it comes from the engine's own state
+rather than from the board's appearance — which is exactly what the last entries kept concluding
+was needed.
+
+What keeps the flow alive is the obvious suspect and is already named: idx3 is the only level
+with an EMBEDDED SOURCE, at (7,4), inside the one piece whose motion moves a stream, and its
+spills begin with a standing flow cell one below the emitter. A source that keeps emitting is a
+flow that never finishes.
+
+That last step is a hypothesis, not a measurement. What is measured is that idx3 is never judged.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -4862,6 +4893,12 @@ may not be the same partition of those nineteen cells.
     commits. One life recovered by not re-committing when the aiming moved nothing;
     three more are spent because every level builds a FRESH grounding and re-learns the
     flow's direction and colour, which cannot change within a game.
+36. **idx3 IS NEVER JUDGED — its spill never settles.** The engine's spill-phase decision
+    fires three times in a whole run, once per cleared level; idx3 reaches none. That is
+    why no failure colour appears, nothing is painted 0, the flag stays False and
+    nineteen satisfied cells change nothing: the level is not refused, it is never asked.
+    Suspect (hypothesis, not measured): the EMBEDDED SOURCE at (7,4) keeps emitting, so
+    the flow never finishes.
 35. **The engine's own list has FOUR targets and the flag is FALSE** at every idx3 commit
     — the block confirmed a target from two directions. The satisfied count reads 0 only
     because the read is after the step, when the engine has already reset. Their sprite
