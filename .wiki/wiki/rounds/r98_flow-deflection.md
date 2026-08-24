@@ -3971,6 +3971,46 @@ The docstring is corrected in place rather than rewritten around, so the measure
 produced the original claim stays next to the measurement that narrowed it.
 
 
+## The decisive test ran, and it does NOT confirm the parked diagnosis (2026-08-24)
+
+The recipe from the last entry was executable after all, without editing anything: wrap the
+compiler so that ONLY a board carrying the notchless block is planned for with that block as a
+fourth target under `contact`. Every other level plans exactly as it does today.
+
+```
+[block-test] planning idx3 with 4 targets under contact
+[block-test] plan status SOLVABLE, predicted_satisfied 4
+idx0 CLEARED 23a · idx1 CLEARED 30a · idx2 CLEARED 55a
+idx3: stopped — executed the plan without clearing (33 actions)
+```
+
+A plan aimed at all four regions executed, and the level still did not advance. Before reading
+that as a refutation, the engine's own trail was checked — a model that claims four satisfied
+proves nothing if the flow never got there:
+
+```
+block cells reached by the flow: []
+cells beside it:                 (12,1) (12,2) (13,1) (14,1)
+block appearance after:          {(13,2): 11, (13,3): 11, (14,2): 11, (14,3): 11}
+```
+
+The flow reached **(12,2), directly on the block's roof**, and the block did not recolour. So
+the test did deliver flow to the region, and:
+
+* the level did not advance, and
+* `absorbers()`'s claim that the block "recolours when the spill reaches it" does not hold for
+  contact on the roof — the only contact this layout produces.
+
+**What is shown**: roof contact neither recolours the block nor clears the level. **What is
+not**: whether entry from the side, or into a cell of the block itself, would. Our model
+deflects flow around an absorber and never enters it, so no layout it plans can test that.
+
+The parked diagnosis — "idx3 stops because the fourth region cannot be named" — is therefore
+NOT confirmed, and the more careful sentence from two entries ago turns out to have been the
+right one: the evidence was consistent with it and would have looked identical if the level
+needed something else. It now looks like something else.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -4011,10 +4051,10 @@ produced the original claim stays next to the measurement that narrowed it.
 12. ~~idx3 is still UNSATISFIABLE, now on 4 of 5 pieces.~~ **Three false hazards** —
     background cells and frame cells — made every reachable layout fatal. idx3 now plans
     and executes on all five pieces.
-16. **Run the decisive test on the parked diagnosis** — a layout that fills the three AND
-    sends a stream INTO the fourth region, then read `levels_completed`. 14033 such
-    layouts exist on the captured board. Not advancing would refute the schema-gap
-    diagnosis, which is the more valuable outcome.
+16. ~~Run the decisive test on the parked diagnosis.~~ **RUN — it does not confirm it.** A
+    plan aimed at all four regions executed, the flow reached the block's ROOF at (12,2),
+    the block did not recolour and the level did not advance. So why DOES idx3 stop? That
+    is the open question now, and the fourth region is no longer the leading answer.
 13. ~~idx3 executes its plan and does not clear.~~ **A SCHEMA GAP — the PREDICATE IS GLOBAL
     and this board needs two.** `contact` exists and would satisfy the notchless region
     (14033 winning layouts), but it is CONTRADICTED for the family, so it cannot be taken.
