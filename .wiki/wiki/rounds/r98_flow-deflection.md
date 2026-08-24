@@ -3821,9 +3821,51 @@ the exception, and it is the reason the three-tick fixture detour was worth taki
 than shipping green tests that assert on nothing.
 
 
+## The OOD controls are certified, and the positive control earned its place (2026-08-24)
+
+`near_ood_screen.py` ranked the candidates by the family's observable tell and recorded that
+the full certification "needs the grounding service, which does not exist yet". It exists
+now, so the real control ran: point the flow harness at games that are NOT this family and
+see what it says.
+
+The first version reported exactly what was hoped for — both controls declining — and it was
+**worthless**. Adding sp80 as a positive control said why in one line:
+
+```
+sp80 (positive): FAILS — the grounding cannot assemble a board
+tu93 (near):     DECLINES — the grounding cannot assemble a board
+re86 (far):      DECLINES — the grounding cannot assemble a board
+```
+
+The harness was declining because the discovery was six actions and had skipped the alignment
+before the commit, not because the games differ. "Declines on everything" passes a control
+that only asks for declining, and proves nothing at all.
+
+With the gate's real discovery — the four probes, the origin-hint alignment, then the
+sacrificial commit — the same three games separate:
+
+```
+sp80 (positive): OK       — board with 2 target(s), 1 piece(s); verifier PASS
+tu93 (near):     DECLINES — the grounding cannot assemble a board
+re86 (far):      DECLINES — the grounding cannot assemble a board
+[ood certification] PASS — the harness reads its own family and declines the others
+```
+
+One honest limit, stated rather than glossed: both controls decline at PERCEPTION, so the
+verifier is never reached on them. That is a real form of declining and it is what the
+contract asks for, but it means these controls exercise the grounding and not the mechanics —
+a near control that assembled a board and was then refuted by the verifier would test more.
+tu93 survived the pre-screen on its 8-layer burst, so such a control may yet exist; it is not
+this one.
+
+
 ## Next
 
-1. **Fill is not confirmed paired.** gemma4 misses one slot, and the cause is our
+1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
+   and passes, tu93 and re86 decline, all on the same discovery. Both controls decline at
+   perception, so the verifier is not exercised by them; a near control that assembles a
+   board and is then refuted would test more.
+2. **Fill is not confirmed paired.** gemma4 misses one slot, and the cause is our
    encoding rather than its reasoning. Measure the hazard orthogonalisation as its
    own experiment against all three models — never as a patch to move a verdict.
 2. ~~Why does the walk reach not bind an injected source?~~ **ANSWERED — it WAS the reach.**
