@@ -5154,15 +5154,46 @@ changing what a cell's colour MEANS would move every measurement in every round 
 needs its own round with its own controls rather than a patch at the end of this thread.
 
 
+## The fill experiment is now verified without a GPU (2026-08-25)
+
+The fused-hazard variant was built and its wiring checked by hand, but the harness self-test only
+ever ran the SPLIT default — so the experiment the round owes would have first been exercised on
+a GPU with nothing having tested it. Added as a self-test case, driven by a stub that answers the
+way the fused ask asks: no `hazard_policy`, because the fused objective ask never offers one.
+
+```
+fill  fused  -> hazard=fused  outcome=cleared  PASS
+```
+
+Two defects in the stub had to be fixed before it meant anything, and both are worth keeping:
+
+* the first version round-tripped BOTH answers through JSON, mangling the slot answer into an
+  `out_of_vocabulary` rejection. It now touches only the reply that actually carries the key.
+* the second version built a fresh `_truthful_stub("fill")` on every call. That stub is
+  **stateful** — it answers the variant ask and then the slot ask, in order — so rebuilding it per
+  call replayed the first answer twice, and the run recorded the objective answer in the slots
+  field. One stub, created once.
+
+The second is the more interesting failure: the probe looked correct, ran without error, and
+produced a confident wrong result, which is the same shape as the instrumentation defects this
+round has already caught twice. What exposed it was printing the recorded answers rather than the
+verdict.
+
+So the FILL experiment is ready end to end: fused ask verified to omit the policy, derivation
+verified to fire only when it was not asked, split path verified unchanged, and the whole thing
+now covered by the self-test that runs on every gate. What remains is GPU time.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
    and passes, tu93 and re86 decline, all on the same discovery. Both controls decline at
    perception, so the verifier is not exercised by them; a near control that assembles a
    board and is then refuted would test more.
-2. **Fill is not confirmed paired.** The experiment is BUILT and self-verified
-   (`--hazard fused`, split still the default); what remains is GPU time to run it
-   paired against gemma4, gpt-oss and qwen3.8. Never as a patch to move a verdict.
+2. **Fill is not confirmed paired.** The experiment is built AND covered by the harness
+   self-test (`fill fused -> cleared PASS`), so its wiring is verified without a GPU;
+   split remains the default. What remains is GPU time to run it paired against gemma4,
+   gpt-oss and qwen3.8. Never as a patch to move a verdict.
 2. ~~Why does the walk reach not bind an injected source?~~ **ANSWERED — it WAS the reach.**
    A landing cell entered the frontier with an unlimited walk; giving it `walked = 0` is
    worth 32 cells (243 -> 211). The intermediate claim that the cell never entered the

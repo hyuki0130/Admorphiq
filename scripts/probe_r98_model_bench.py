@@ -747,6 +747,27 @@ def self_test() -> int:
               f"-> outcome={run.get('outcome')} executed={run.get('executed_actions')} "
               f"{'PASS' if good else 'FAIL'}")
 
+    # The FUSED variant, driven by a stub that answers as the fused ask asks: no
+    # hazard_policy, because the fused objective ask never offers one. Without this the
+    # self-test only ever exercises the split default, and the experiment the round owes
+    # would first be run on a GPU with nothing having checked its wiring.
+    _inner = _truthful_stub("fill")     # ONE stub: it answers the two asks in order,
+                                       # so rebuilding it per call replays the first
+
+    def _fused_stub(messages: list[dict[str, str]]) -> str:
+        reply = _inner(messages)
+        answer = parse_json_object(reply)
+        if not isinstance(answer, dict) or "hazard_policy" not in answer:
+            return reply          # the slot ask: pass it through untouched
+        answer.pop("hazard_policy")
+        return json.dumps(answer)
+
+    fused = run_fill_once(0, _fused_stub, fused_hazard=True)
+    good = (fused.get("outcome") == "cleared" and fused.get("hazard") == "fused")
+    ok &= good
+    print(f"  fill    fused     -> hazard={fused.get('hazard')} "
+          f"outcome={fused.get('outcome')} {'PASS' if good else 'FAIL'}")
+
     equiv = run_fill_once(0, _equivalent_stub())
     good = equiv.get("equivalent_to_truth") is True and equiv.get("outcome") == "cleared"
     ok &= good
