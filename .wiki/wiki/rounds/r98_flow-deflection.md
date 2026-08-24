@@ -4245,6 +4245,43 @@ one with a better measurement; the pattern worth carrying forward is that every 
 from finding the signal the engine actually emits, not from arguing about the board.
 
 
+## Everything is full, held for eight layers, and then the board is put back (2026-08-24)
+
+If satisfaction is transient, perhaps idx3 wants all four regions full at the SAME MOMENT.
+Tracked per layer, with a region counted full only when every one of its cells reads 13:
+
+```
+layer 23-26   ['block']
+layer 27-28   ['block', 't0']
+layer 29-36   ['block', 't0', 't1', 't2']     <- all four, eight consecutive layers
+layer 37      block [11,11,11,11]  t0 [11...]  t1 [11...]  t2 [11...]
+```
+
+So simultaneity is achieved and held, and the level still does not advance. That hypothesis is
+refuted like the others — but the last line is new and it changes the shape of the question.
+
+**On the final layer the whole board reverts to 11.** Not one region draining, not a partial
+decay: every target-coloured cell goes back to how it started. Compare idx0, where a clearing
+spill's regions end up at 12 — the background of the NEXT level's board.
+
+```
+idx0 (clears)      regions become [12, 13]   ends on a different board
+idx3 (does not)    regions become [13]       ends on the SAME board, restored
+```
+
+So idx3's attempt is not being left incomplete — it is being **REJECTED and put back**. The
+engine filled everything the board has, held it for eight layers, and then undid the attempt.
+
+That reframes the question from "what else must be filled" to "what makes this attempt
+invalid". Nothing about coverage can answer it: coverage was complete and held. The remaining
+candidates are properties of the ATTEMPT rather than of the regions — where a piece ended up,
+what the flow touched on the way, or the state the commit was made in — and none of them is
+measured yet.
+
+Recorded as the state of the thread rather than as another explanation. This level has now
+refuted five in a row, each one plausible until the engine's own signal was read.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -4303,6 +4340,12 @@ from finding the signal the engine actually emits, not from arguing about the bo
     yet fills all four at once, and that is the open problem.
 20. ~~The model's `contact` is looser than the engine's requirement.~~ **Withdrawn** — that
     rested on the same invalid reading. The four-target plan DID recolour the block.
+22. **idx3's attempt is REJECTED, not left incomplete** — all four regions are full and
+    held for eight consecutive layers, then on the FINAL layer the whole board reverts to
+    11. A clearing spill on idx0 ends on the next level's board instead. So the question
+    is "what makes this attempt invalid", not "what else must be filled"; the candidates
+    are properties of the attempt — where a piece ended, what the flow touched, the state
+    at commit — and none is measured yet.
 21. **idx3 is NOT won by covering its regions.** All nineteen target-coloured cells go
     11 -> 13, the engine's own "done" appearance, in one spill; nine captures with
     different piece positions show nothing hidden; `levels_completed` holds at 3 and there
