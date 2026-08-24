@@ -332,8 +332,11 @@ def test_a_falling_source_is_a_CELL_and_the_stream_starts_there():
         cells = [c for layer in predict(board, ORACLE).frontier for c in layer]
         return [c for c in cells if c[1] == lane][:1]
 
-    assert _first(free) == [(5, lane)], f"expected a landing above row 6: {_first(free)}"
-    assert _first(lower) == [(3, lane)], f"the landing ignored the piece: {_first(lower)}"
+    # the stream starts at its SOURCE and falls from there, whatever it lands on
+    assert _first(free) == [(line, lane)], f"expected the source cell: {_first(free)}"
+    assert _first(lower) == [(line, lane)], f"expected the source cell: {_first(lower)}"
+    reached = {c for layer in predict(free, ORACLE).frontier for c in layer}
+    assert (5, lane) in reached, f"the stream did not reach the piece below: {sorted(reached)}"
 
 
 def test_a_covered_source_emits_beside_its_cover_and_LATE():
@@ -377,13 +380,36 @@ def test_a_landing_stream_walks_only_so_far_along_its_piece():
     piece the engine never leaves that way."""
     from dataclasses import replace as _replace
 
-    lane, line = 4, 2
+    # the source rests DIRECTLY on the piece: the reach binds a stream at its own
+    # resting place, and measured, carrying it down a long fall makes several boards
+    # worse rather than better
+    lane, line = 4, 5
     piece = frozenset({(6, c) for c in range(1, 9)})       # wide enough to out-run
     board = _replace(_board(piece), standing_flow=frozenset(),
                      falling_sources=((lane, 1, line),))
     reached = {c for layer in predict(board, ORACLE).frontier for c in layer}
 
-    walked = sorted(c[1] for c in reached if c[0] == 5)
+    walked = sorted(c[1] for c in reached if c[0] == line)
     assert walked, "the stream never landed"
     assert min(walked) >= lane - 2 and max(walked) <= lane + 2, \
         f"the walk ran past its reach: {walked}"
+
+
+def test_an_uncovered_source_starts_at_its_own_cell():
+    """Purpose: an uncovered source starts AT its cell and falls from there — the engine
+    renders every step of that descent. The model injected at the cell the stream comes to
+    REST on instead, skipping the whole fall: measured on the covered board, the lane-7
+    stream was in the model and ten of its cells were still missing.
+
+    Expected feedback: pass proves the stream appears at the source and descends. Fail
+    means a source with room to fall contributes only its final cell."""
+    from dataclasses import replace as _replace
+
+    lane, line = 4, 1
+    board = _replace(_board(frozenset({(8, 3), (8, 4), (8, 5)})),
+                     standing_flow=frozenset(), falling_sources=((lane, 1, line),))
+    reached = {c for layer in predict(board, ORACLE).frontier for c in layer}
+
+    column = sorted(r for r, c in reached if c == lane)
+    assert line in column, f"the stream did not start at its source: {column}"
+    assert len(column) > 1, f"the stream did not fall from it: {column}"

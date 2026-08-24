@@ -2559,14 +2559,46 @@ idx2: CLEARED — 55 actions
 idx3: total error 17 -> 12 on the covered board
 ```
 
+## A source starts where it is, not where it stops (2026-08-24)
+
+Ten of the twelve cells left on the covered board were a stream the model already knew
+about. Tracing the engine's own trail near that column:
+
+```
+ 7: (6,7)    8: (7,7)    9: (8,7)   11: (9,7)   13: (11,7)   16: (13,7)
+```
+
+`(6,7)` is the lane-7 source and the engine renders every step of its descent. The model
+injected it at the cell the stream comes to REST on — the landing computation written when
+sources were thought to pour in from off the board — so the whole fall was skipped and only
+its final cell contributed. An uncovered source now starts at its own cell and falls from
+there.
+
+```
+board k   total error 12 -> 8      every other board unchanged
+```
+
+Two pins moved with the contract, and one of them taught something. The reach — how far a
+landing stream walks along its piece — was attached to the injected droplet, so with the
+injection moved to the source the reach no longer bound anything. Carrying it down the fall
+looks like the obvious repair and is **measured worse**: b and c go 30 → 35, g and h 14 →
+18, k 8 → 10. So the reach belongs to a source that comes to rest DIRECTLY on a piece, not
+to everything descended from one, and the pin now says so.
+
+```
+idx0: CLEARED — 23 actions
+idx1: CLEARED — 30 actions
+idx2: CLEARED — 55 actions
+idx3: the covered board is down to eight cells of disagreement
+```
+
 ## Next
 
 1. **Fill is not confirmed paired.** gemma4 misses one slot, and the cause is our
    encoding rather than its reasoning. Measure the hazard orthogonalisation as its
    own experiment against all three models — never as a patch to move a verdict.
-2. **The lane the plan needed is learned after it is made.** Ten of the twelve remaining
-   cells on the covered board are the lane-7 stream, grounded only once the commit has
-   run — the same shape as every lane before it.
+2. **Eight cells of disagreement remain on the covered board**: five invented around one
+   column and three missed on one row. Both are small enough to name individually now.
 3. **Measure the bounded-roof variant on fixed evidence** — 1 invented cell against the
    adopted rule's 2, deliberately not adopted in the same change.
 3. **Multi-piece placement**, the burden the idx1 observation named: idx1 carries

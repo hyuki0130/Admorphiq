@@ -213,7 +213,11 @@ def predict(board: Board, table: ResponseTable, max_ticks: int = 80) -> Predicti
             landing = beside
             tick += abs(beside[0] - source[0]) + abs(beside[1] - source[1])
         else:
-            landing = _lands_at(board, source, heading, blockers)
+            # An uncovered source starts AT its own cell and falls from there — the
+            # engine renders every step of that descent. Injecting at the cell it comes
+            # to rest on instead skipped the whole fall: measured on the covered board,
+            # the lane-7 stream was in the model and ten of its cells were still missing.
+            landing = source
         if landing is not None:
             pending.setdefault(tick, []).append(landing)
             landings.add(landing)
