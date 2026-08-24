@@ -6774,6 +6774,39 @@ remaining error on the only corpus that describes its own spills.** Before this 
 qualitative complaint about scenery.
 
 
+## Two notch discriminators, both measured, neither is the lever (2026-08-25)
+
+The false target's only gap is `(14,1)` — which is the lane-1 SOURCE. That suggests a
+discriminator by provenance rather than by size: a cell a stream pours FROM cannot be a notch a
+stream arrives INTO. Implemented in `_mouths` and measured on a fresh walk:
+
+| rule | the oversized region | idx2 missed |
+|---|---|---|
+| baseline | 17 cells | 24 |
+| notch may not be a source cell | **19 cells** | **24** |
+| …and may not lie in the trimmed frame | **19 cells** | **24** |
+
+**Neither removes it.** The first rule works on its own terms — `(14,1)` stops being a mouth — but
+the region simply keeps a second notch at `(15,1)`, in the frame row, and grows from 17 cells to
+19 because it is no longer split at the first one. Excluding frame-row notches as well leaves it
+at 19 and the error at 24.
+
+So the region is not surviving because of its notch, and the notch filter is not where it enters
+the shortlist. ⛔ Both rules reverted: one is worse than inert (it enlarges the region) and the
+other is inert, and this round keeps neither.
+
+What this buys is a narrowed next step rather than a fix. `sink_candidates()` admits regions from
+four independent sources — regions that changed appearance during a spill, regions matching a
+named target's shape, regions wearing a named target's appearance, and regions the flow was
+OBSTRUCTED by. The notch filter runs *after* all four. **Which of the four names this region is
+now the question**, and it is answerable by instrumenting the shortlist on a live grounding rather
+than by another rule.
+
+Worth noting against the temptation: `len(s) <= 8` removes it and takes idx2 to zero. It is still
+not adopted. A threshold that separates this corpus's four regions is a threshold fitted to four
+regions, and the round already measured and reverted one of those.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -6873,6 +6906,13 @@ qualitative complaint about scenery.
     compiler's UNSATISFIABLE is the truth about the board rather than a search failure.
     Either the propagator floors flow the engine does not, or the level wants more than
     one placement.
+92. ⛔ **Two notch discriminators measured, neither is the lever.** "A notch may not be a
+    SOURCE cell" (the false target's only gap is the lane-1 source) works on its own terms
+    but the region keeps a second notch at `(15,1)` and GROWS 17 -> 19; adding "nor in the
+    trimmed frame" leaves 19 and idx2 still at 24. Both reverted — one worse than inert, one
+    inert. The region does not survive on its notch, so the filter is not where it enters.
+    Next: WHICH of `sink_candidates()`'s four sources names it, instrumented on a live
+    grounding. (`len(s) <= 8` still removes it and is still not adopted.)
 91. **THE PROPAGATOR IS EXACT ON THREE LEVELS.** idx2's 24 cells are ZERO invented and all
     24 missed from ONE stream, lost at its first step into `(13,1)` — a cell inside a
     SEVENTEEN-cell "sink" spanning six rows, where the level's real targets are five-cell
