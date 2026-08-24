@@ -6070,6 +6070,41 @@ question.
 measured, all inert, and a fourth would be tuning the representation until the answer arrives.
 
 
+## What the remaining 93 cells ARE: a lateral halo, not a longer run (2026-08-25)
+
+With the frame band closed, the residual was re-attributed — first by row, then by mechanism
+(`rule_bench.py --where`):
+
+| what the surplus cell is | | how far from the real trail | | which way it lies |
+|---|---|---|---|---|
+| empty cell | 92 | d=1 | 54 | across the flow **57** |
+| piece cell | 1 | d=2 | 19 | diagonal 27 |
+| | | d=3 | 16 | along the flow **9** |
+| | | d≥4 | 4 | |
+
+Three things follow, and none of them was visible in the total.
+
+**The model does not invent streams.** 89 of 93 surplus cells sit within three of an observed
+one and only four are further, so there is no phantom source anywhere in the sweep — everything
+extra is attached to a trail the engine really ran.
+
+**It spreads too WIDE, not too far.** Purely lateral surplus outnumbers longitudinal six to one
+(57 against 9). Together with row 15 having vanished, this says the run LENGTH is now right and
+what remains is sideways over-production, which accuses the spread rules — `piece_spawn`,
+`sink_miss`, the walk reach — and exonerates the tick count.
+
+**It is uniform.** Thirteen of the fifteen non-zero captures contribute five or six cells each,
+with only `f` (13) and `l` (9) above that. A residual that constant is one repeating rule applied
+slightly too generously, not an accumulation of board-specific accidents.
+
+That lands the attribution chain squarely on the open asymmetric-spread question (#3), which has
+been stuck as a qualitative puzzle — "1 step one way, 4 the other" — and now has a shape: the
+error is lateral, uniform, and hugs the trail. ⛔ It does NOT license another reach sweep; six
+values were measured and all were worse than the adopted 2. What it licenses is asking why the
+spread is asymmetric at all, with the knowledge that whatever the answer is, it is worth about
+five cells per board.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -6169,6 +6204,11 @@ measured, all inert, and a fourth would be tuning the representation until the a
     compiler's UNSATISFIABLE is the truth about the board rather than a search failure.
     Either the propagator floors flow the engine does not, or the level wants more than
     one placement.
+72. **The remaining 93 cells are a LATERAL HALO.** `--where`: 92 of 93 are empty cells, 89
+    sit within 3 of an observed cell (so no invented streams), and lateral surplus beats
+    longitudinal 57 to 9. The run LENGTH is right; the spread is too wide. Uniform at ~5
+    cells per capture — one rule slightly too generous, not board-specific accidents. Lands
+    on the asymmetric-spread question (#3); ⛔ still not a licence for another reach sweep.
 71. **The explicit-contact experiment is ANSWERED — the wording was never the obstacle.**
     gemma4 and qwen3.8 both answer `terminate_local` in ALL THREE encodings, byte-identical
     across eighteen runs, blocked at zero actions every time. The frozen verdict stands. A

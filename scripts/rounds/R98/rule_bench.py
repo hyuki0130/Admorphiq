@@ -20,8 +20,9 @@ questions and only one of them judges a propagation rule:
              itself, unioned onto what it already knew. Given the sources, does the
              propagator reproduce the trail? Judge a rule on THIS one.
 
-`--rows` breaks the physics column down by board row, which is how the residual gets
-attributed to a mechanism rather than a total.
+`--rows` breaks the physics column down by board row and `--where` by what the surplus
+cell is, how far it sits from the real trail and which way it lies from it. Between them
+the residual gets attributed to a mechanism rather than left as a total.
 
 Measured 2026-08-25: 209 as-known, 108 physics — half the error the bench used to charge
 propagation rules for was never propagation at all. (An earlier reading of 211/139 is
@@ -98,6 +99,62 @@ def _error(board: Board, payload: dict) -> int:
     pred = {c for layer in predict(board, ORACLE).frontier for c in layer}
     obs = {tuple(c) for layer in payload["observed"] for c in layer}
     return len(pred - obs) + len(obs - pred)
+
+
+def _where() -> int:
+    """What the surplus IS: the cell it occupies, how far it sits from the real trail,
+    and whether it lies along the flow or across it.
+
+    Purpose: a row breakdown says where the residual is on the board; this says which
+    MECHANISM could produce it. Over-running a stream and over-spreading one are
+    different rules with different fixes, and a total cannot tell them apart.
+
+    Expected feedback: surplus hugging the trail across the flow accuses the spread
+    rules; surplus along the flow accuses the run length; surplus far from any
+    observed cell accuses an invented source."""
+    kind: dict[str, int] = {}
+    dist: dict[int, int] = {}
+    axis: dict[str, int] = {}
+    for path in _captures():
+        with open(path) as f:
+            payload = json.load(f)
+        board = _union_board(_board(payload), payload)
+        pred = {c for layer in predict(board, ORACLE).frontier for c in layer}
+        obs = {tuple(c) for layer in payload["observed"] for c in layer}
+        dr, dc = board.direction
+        for cell in pred - obs:
+            if board.sink_of(cell) is not None:
+                name = "sink cell"
+            elif cell in board.absorber_cells:
+                name = "absorber cell"
+            elif board.piece_at(cell) is not None:
+                name = "piece cell"
+            elif cell in board.hazard_cells:
+                name = "hazard cell"
+            else:
+                name = "empty cell"
+            kind[name] = kind.get(name, 0) + 1
+            if not obs:
+                continue
+            near = min(obs, key=lambda o: abs(cell[0] - o[0]) + abs(cell[1] - o[1]))
+            d = abs(cell[0] - near[0]) + abs(cell[1] - near[1])
+            dist[d] = dist.get(d, 0) + 1
+            along = abs((cell[0] - near[0]) * dr + (cell[1] - near[1]) * dc)
+            across = abs((cell[0] - near[0]) * dc + (cell[1] - near[1]) * dr)
+            where = ("across the flow" if across and not along else
+                     "along the flow" if along and not across else
+                     "diagonal" if along and across else "on it")
+            axis[where] = axis.get(where, 0) + 1
+    print("what the surplus cell is")
+    for name, n in sorted(kind.items(), key=lambda kv: -kv[1]):
+        print(f"  {name:16s} {n:4d}")
+    print("manhattan distance to the nearest observed cell")
+    for d in sorted(dist):
+        print(f"  d={d:<3d}{'':11s} {dist[d]:4d}")
+    print("which way it lies from that cell")
+    for where, n in sorted(axis.items(), key=lambda kv: -kv[1]):
+        print(f"  {where:16s} {n:4d}")
+    return 0
 
 
 def _rows() -> int:
@@ -187,6 +244,8 @@ def _sweep() -> int:
 
 
 def main() -> int:
+    if len(sys.argv) > 1 and sys.argv[1] == "--where":
+        return _where()
     if len(sys.argv) > 1 and sys.argv[1] == "--rows":
         return _rows()
     if len(sys.argv) > 1 and sys.argv[1] == "--all":
