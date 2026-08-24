@@ -4282,6 +4282,36 @@ Recorded as the state of the thread rather than as another explanation. This lev
 refuted five in a row, each one plausible until the engine's own signal was read.
 
 
+## Correction: the final-layer revert happens on CLEARING spills too (2026-08-24)
+
+The last entry read idx3's final layer — every target-coloured cell back to 11 — as the engine
+REJECTING the attempt and putting the board back. That reading is wrong, and the same probe run
+across every level says so:
+
+```
+spill#2  28 layers  L24-26 flow=36 sat=10 tgt=0   L27 flow=1  sat=0 tgt=10   <- idx0, CLEARS
+spill#12 38 layers  L34-36 flow=63 sat=15 tgt=0   L37 flow=0  sat=0 tgt=19   <- idx3
+```
+
+`sat` counts cells at the satisfied appearance, `tgt` cells still at the target appearance.
+idx0's clearing spill ends exactly the same way: satisfaction gone, every target cell back to
+11, flow drained. **The revert is how every spill ends, not a verdict on it.** "The attempt is
+rejected and put back" is withdrawn.
+
+Two things from the same run are worth keeping, since they are the first numbers that separate
+the levels rather than describing them:
+
+* On the plain walk idx3 reaches `sat=15` — its three targets — and the block's four cells are
+  never satisfied; at L35-36 they read neither 11 nor 13 but are covered by FLOW.
+* Every level's spill ends with the flow drained to 0-3 cells, so "the flow must finish" is not
+  a candidate: it finishes everywhere.
+
+The question from two entries ago stands unchanged and unanswered — in the four-target run all
+nineteen cells DO reach the satisfied appearance simultaneously and the level does not advance —
+but it no longer has a rejection story attached to it. This is the sixth explanation this level
+has taken away.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -4340,12 +4370,9 @@ refuted five in a row, each one plausible until the engine's own signal was read
     yet fills all four at once, and that is the open problem.
 20. ~~The model's `contact` is looser than the engine's requirement.~~ **Withdrawn** — that
     rested on the same invalid reading. The four-target plan DID recolour the block.
-22. **idx3's attempt is REJECTED, not left incomplete** — all four regions are full and
-    held for eight consecutive layers, then on the FINAL layer the whole board reverts to
-    11. A clearing spill on idx0 ends on the next level's board instead. So the question
-    is "what makes this attempt invalid", not "what else must be filled"; the candidates
-    are properties of the attempt — where a piece ended, what the flow touched, the state
-    at commit — and none is measured yet.
+22. ~~idx3's attempt is REJECTED, not left incomplete.~~ **Withdrawn** — idx0's CLEARING
+    spill reverts its targets to 11 on the final layer too. The revert is how every spill
+    ends. The unanswered question is still the one from #21.
 21. **idx3 is NOT won by covering its regions.** All nineteen target-coloured cells go
     11 -> 13, the engine's own "done" appearance, in one spill; nine captures with
     different piece positions show nothing hidden; `levels_completed` holds at 3 and there
