@@ -181,6 +181,14 @@ def play_level(w: Walker) -> tuple[bool, str]:
         _tally_target_colour(g)
 
     hypothesis = F.sp80_oracle_instance()
+    if os.environ.get("R98_CAPTURE_STUCK"):
+        # The board AS VERIFIED, so a later capture can be compared against it WITHIN one
+        # run. Comparing across runs is how "the inventory shrank" got asserted from two
+        # boards that never coexisted.
+        at_verify = g.board()
+        if at_verify is not UNKNOWN:
+            _capture(at_verify.value, g.trajectory(),
+                     os.environ["R98_CAPTURE_STUCK"] + ".verify", g._prev_cells)
     verdict = verify_flow_instance(hypothesis, g, w.level > entered)
     if verdict.verdict.value == "CONTRADICTED":
         # Freeze the board that produced the contradiction. Without this the walk reports

@@ -3372,6 +3372,43 @@ A bench whose membership changes needs its membership stated with its total, the
 score needs its budget and its env.
 
 
+## Correction, and a defect: asking for the inventory changes what the walk does (2026-08-24)
+
+The last entry said the compiler "was planning on 1 of the level's 5 pieces", from two boards
+captured in DIFFERENT runs. Comparing across runs is not comparing. Repeated within one run
+and then across runs:
+
+```
+uninstrumented, 6 runs of 7   idx3 UNSATISFIABLE, [board held 1 piece(s)]
+                1 run  of 7   idx3 planned and failed on a press
+with one g.pieces() call
+  placed right after verify   idx3 SOLVABLE with 5 pieces, 2 runs of 2
+```
+
+The difference is a single **read**. Nothing else changed: no extra action, no different plan
+input, one call asking the grounding how many pieces it holds. With it, idx3's compiler gets
+a five-piece board and produces a SOLVABLE plan; without it, a one-piece board and
+"no layout satisfies the objective".
+
+A bare `g.board()` placed EARLIER, before verification, does not do this (2 runs of 2), so it
+is not "any read" — it is `pieces()` asked at that point. The inventory is computed lazily
+and does not answer the same way depending on when it is first asked, and the walk's plan
+quality rides on that.
+
+So the previous entry's conclusion is **withdrawn**: the compiler is not "answering honestly
+about a board missing four fifths of itself" as a property of the level. It is answering
+about a board whose contents depend on observation order. The enumeration in that entry —
+one bar, sources at lanes 5-6, reach binding from the source, targets 1 and 2 out of
+reach — remains correct FOR A ONE-PIECE BOARD, which is not the board the level presents.
+
+What this buys, measured: with the five pieces present, idx3 IS satisfiable. The wall moves
+from "no layout exists" to "planned press 2 did not land; pieces 4 vs planned 5" — an
+execution problem, and a much better one to have.
+
+⛔ Do not fix this by leaving a probe call in the walk. A diagnostic that changes the result
+is not a diagnostic. The lazy inventory is the defect; the read is only what exposed it.
+
+
 ## Next
 
 1. **Fill is not confirmed paired.** gemma4 misses one slot, and the cause is our
@@ -3402,9 +3439,11 @@ score needs its budget and its env.
 10. ~~idx3's compiler: no layout satisfies three targets.~~ **It was right** — the board it
     planned on held ONE of the level's five pieces, and with sources at lanes 5-6 and the
     reach binding from the source the flow cannot pass lane 8. The real question is:
-11. **Where do idx3's other four pieces go?** Captured at the verifier a run earlier the
-    board holds five; captured at the compiler it holds one, and the pre-slide capture
-    never fired, so the slide is not what lost them.
+11. **The inventory answers differently depending on when it is first asked.** One
+    `g.pieces()` call after verification takes idx3 from UNSATISFIABLE-on-1-piece to
+    SOLVABLE-on-5, reproducibly (2/2 vs 6/7). Fix the laziness in `pieces()`; do NOT leave
+    the probe in. With five pieces the wall becomes "planned press 2 did not land",
+    which is execution, not reach.
 8. **Close the 72-cell gap at the walk, not the propagator.** It is the cost of planning
    a commit before its spill exists, so the lever is the grounding CADENCE — re-ground on
    each spill before the next plan — and it should be measured on the live walk.
