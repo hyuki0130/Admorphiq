@@ -3163,6 +3163,42 @@ the scratchpad, because the scratchpad is git-ignored and a contract board that 
 survive the session guards nothing.
 
 
+## The miss-spread is mouth-ward, and idx0 is the exception (2026-08-24)
+
+Rather than argue about two events, every miss event on every capture was counted — a
+droplet one step from a target cell, and whether each flank appears in the next two layers:
+
+```
+idx0     (12, 4)   sink 0  lanes 4,5,6    mouth 5    left YES   right YES
+idx0     (12,10)   sink 1  lanes 10,11,12 mouth 11   left YES   right YES
+
+idx3 ×15 (12, 6)   sink 0  lanes 6,7,8    mouth 7    left no    right YES
+idx3 ×15 (12,11)   sink 1  lanes 9,10,11  mouth 10   left YES   right no
+idx3 ×15 (12,14)   sink 2  lanes 12,13,14 mouth 13   left YES   right no
+idx3 ×15 (13, 7)   on the mouth lane itself           neither
+idx3 ×15 (13,10)   on the mouth lane itself           neither
+```
+
+Every one of the sixty-odd idx3 events spreads **toward the mouth and only toward it**, and
+the direction flips with the mouth's side — right for a mouth at 7, left for a mouth at 10
+or 13. A droplet already on the mouth lane spreads neither way. There is no counter-example.
+idx0 spreads BOTH ways at both of its events.
+
+This is what the footprint rule was groping at: the mouth is inside the footprint, so
+restricting to lanes happened to allow the mouth-ward flank and forbid the other on idx3 —
+and on idx0 it forbade a flank the engine renders. "Toward the mouth" is the same
+observation stated properly, and it makes idx0 a clean exception rather than a muddle.
+
+The exception is not explained. Both droplets are free falls arriving one row above the
+target's top; the away-side cell is free space in both; the targets are the same five-cell
+shape. The one structural difference measured so far is that idx0's two targets stand alone
+with empty board between them while idx3's three are contiguous — but board o's away-side
+flank (12,5) is free space, so contiguity does not cover that case either.
+
+⛔ Do not "fix" this by making the spread mouth-ward. It is right on 60 events and wrong on
+the 2 that the contract, the oracle gate and the mutant table are all built on.
+
+
 ## Next
 
 1. **Fill is not confirmed paired.** gemma4 misses one slot, and the cause is our
@@ -3175,10 +3211,11 @@ survive the session guards nothing.
 3. **The blocked-row spread is ASYMMETRIC and nothing yet explains it** — 1 step one way,
    4 the other, on the same board. Six rules measured, all worse than the adopted reach 2.
    The remaining error is now entirely over-production.
-6. **Why does idx0 spread AWAY from the mouth when board o does not?** Both targets are
-   the same five-cell shape with a central mouth, both droplets arrive one row above with
-   the mouth to their right, and idx0 spreads both ways while board o spreads one. Stated
-   from two dumped trails; this is the live form of the footprint disagreement.
+6. **Why does idx0 spread AWAY from the mouth when NO idx3 event does?** Counted across
+   every capture: 60+ idx3 events spread mouth-ward only, with the direction flipping with
+   the mouth's side and no counter-example; idx0 spreads both ways at both events. The
+   rule is sharp and idx0 is a clean exception. ⛔ Do not adopt mouth-ward — it is wrong
+   on exactly the level the contract is built on.
 7. ~~idx0's walk is SEVEN cells long.~~ **Not a contradiction** — the reach binds only
    LANDING droplets, and idx0's single source is a free fall. The model reproduces idx0
    cell for cell, and that capture is now the first board in the sweep.
