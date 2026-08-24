@@ -4340,6 +4340,45 @@ idx3 is the fourth of six. The walk clears three of them, and the game has two m
 one that is stuck.
 
 
+## Read at last: advancement needs a FLAG to be clear, not just the targets (2026-08-24)
+
+Six explanations had been refuted by measurement and the observations were unambiguous, so the
+game source was read — dev-time only, the way this round already read it to count levels.
+**Nothing here may enter the runtime path**; it is recorded to explain a measurement, and
+anything built on it needs its own observational confirmation first.
+
+The level advances on exactly one condition:
+
+```python
+zmkiirynyo = all(r in <satisfied> for r in <targets>)
+if self.<flag> or not zmkiirynyo:
+    ...failure animation, then lose() when lives run out
+else:
+    complete_action(); next_level()
+```
+
+So advancement is **every target satisfied AND a flag clear**. That is why nineteen satisfied
+cells held for three layers does not clear idx3: the flag is set. Every explanation this round
+tried was about the targets, and the targets were never the problem.
+
+The flag is set in one place — when the flow reaches a sprite carrying a particular tag, which
+then recolours to 14 and joins the flashing set. So the family has a **failure entity** that is
+neither a target nor a barrier as the schema models them: contact with it does not stop the
+flow, it invalidates the attempt.
+
+Observational confirmation is OWED and is not yet in hand. Scanning every layer of every action
+for that appearance finds only whole edge rows — (15,0)..(15,15) and (0,0)..(0,15) — on the
+levels that CLEAR, which is the frame's transition flash, not a sprite. idx3 shows no such cell
+at all. The likely reason is that the failure animation plays out over the actions AFTER the
+commit and the walk stops before pressing again; the test is to keep pressing and watch. Until
+that is measured, the source explains the observation but has not been confirmed by one.
+
+**What this changes for the schema**: `hazard_policy` and `hazard_response` both describe what
+flow does when it MEETS a barrier. Neither can express an entity that lets the flow through and
+fails the attempt afterwards. That is a family-level finding about the objective vocabulary, and
+unlike the notchless-region question it is not about one odd board.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -4404,6 +4443,12 @@ one that is stuck.
 23. **sp80 has SIX levels**; idx3 is the fourth. "The last level signals completion
     differently" is eliminated, and the depth ceiling for this family is 6 — the walk
     carries one hypothesis through 3 of them.
+24. **Advancement needs every target satisfied AND A FLAG CLEAR** (read from the game
+    source, dev-time only, never for the runtime path). The flag is set when flow reaches
+    a tagged sprite that recolours to 14 — a FAILURE ENTITY the schema cannot express,
+    since `hazard_policy`/`hazard_response` only describe what flow does on meeting a
+    barrier, not one that passes it and invalidates the attempt. **Owed: observational
+    confirmation** — keep pressing after idx3's failed commit and watch for the flash.
 21. **idx3 is NOT won by covering its regions.** All nineteen target-coloured cells go
     11 -> 13, the engine's own "done" appearance, in one spill; nine captures with
     different piece positions show nothing hidden; `levels_completed` holds at 3 and there
