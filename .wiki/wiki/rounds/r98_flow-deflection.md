@@ -6040,6 +6040,36 @@ exactly when the band is folded into the hazards. The docstring now says so inst
 a coverage it does not have.
 
 
+## The explicit-contact experiment: the wording was never the obstacle (2026-08-25)
+
+The fourth mode named the barrier contact instead of leaving the cause implicit. Read against
+criteria fixed before the run: all three models passing would mean the clause had withheld a
+fact; only gpt-oss passing would mean the wording was never the obstacle.
+
+gemma4 and qwen3.8 both answer **`hazard_response: terminate_local` in every encoding**, blocked
+by the verifier at zero executed actions each time:
+
+| model | select | fill | fill_fused | fill_explicit |
+|---|---|---|---|---|
+| gemma4 | 3/3 | 0/3 | 0/3 | **0/3** |
+| qwen3.8 | 3/3 | 0/3 | 0/3 | **0/3** |
+
+Eighteen runs — two models, three encodings, three repetitions — and the six answered slots are
+**byte-identical across all of them**. Neither the split-versus-fused encoding nor the explicit
+contact sentence moves anything. The frozen verdict stands: these two models read this evidence
+to `terminate_local`, and that is a reading, not a defect in how the question is put.
+
+Which retires a live suspicion rather than confirming a guess. R98 has already seen three models
+unanimous on three wrong values turn out to be a PROMPT defect, so "two models agree, therefore
+the prompt is at fault" was a reasonable thing to fear here; the difference is that fixing the
+prompt there took gpt-oss from 0/3 to 3/3, and here gpt-oss already answers correctly under the
+original wording. A defect that only one of three models can see through is not a defect in the
+question.
+
+⛔ Do not re-cut the encoding again to make a weaker model pass. Three cuts have now been
+measured, all inert, and a fourth would be tuning the representation until the answer arrives.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -6139,6 +6169,11 @@ a coverage it does not have.
     compiler's UNSATISFIABLE is the truth about the board rather than a search failure.
     Either the propagator floors flow the engine does not, or the level wants more than
     one placement.
+71. **The explicit-contact experiment is ANSWERED — the wording was never the obstacle.**
+    gemma4 and qwen3.8 both answer `terminate_local` in ALL THREE encodings, byte-identical
+    across eighteen runs, blocked at zero actions every time. The frozen verdict stands. A
+    defect only one of three models can see through is not a defect in the question. ⛔ No
+    fourth cut of the encoding.
 70. **The frame band is a WALL — adopted.** The engine puts ZERO cells in the hazard row on
     all 18 captures while grounding marks only two of them, and our replay ran one row
     deeper on 13. Treating the whole edge line as the board's edge takes physics 108 -> 93,
