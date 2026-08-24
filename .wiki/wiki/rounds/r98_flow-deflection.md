@@ -7102,6 +7102,44 @@ model's only over-production there is the step-off — but a rule that has quiet
 is exactly the kind of thing that looks fine until a board needs it.
 
 
+## idx3's fourth target is INSIDE the window, and it has no notch (2026-08-25)
+
+The objective gap left open one tick ago had two candidates: a fourth region outside the
+sixteen-cell window, or one inside it that the grounding cannot name. The observation settles it
+without ambiguity. Regions wearing the target colour on idx3's captured board:
+
+```
+  4 cells  rows 13-14  cols 2-3    <- NOT NAMED
+ 15 cells  rows 13-14  cols 6-14   <- NAMED (the three cups)
+```
+
+**The fourth region is fully inside the window.** ⛔ The truncated-board reading, which this
+session established for idx3's geometry and which explained its old compiler failure, does NOT
+explain the objective gap. Those are two different problems and only one of them is perception.
+
+Why it goes unnamed is exact:
+
+```
+the unnamed region: [(13,2), (13,3), (14,2), (14,3)]   its notches: []
+mouths of the NAMED targets: [(13,7), (13,10), (13,13)]
+```
+
+A solid 2×2 block wearing the target colour, with **zero** notches, against three cups with one
+each. It is filtered by the round's own rule — "a region with no notch is an OBSTACLE, not a
+target of this family" — which was adopted for a measured reason: a solid block named by
+obstruction made "cover every target" unreachable by construction, which is what the compiler kept
+reporting.
+
+So the round's family finding from much earlier is **confirmed under the current grounding, with
+coordinates**: the level's objective is four regions, the schema can name three, and the fourth is
+a notchless block the engine satisfies while no rule in the vocabulary can express satisfying it —
+the satisfaction predicate is "flow occupies the notch", and this region has none.
+
+⛔ Not patched. The schema is frozen and the notch rule earns its keep elsewhere; loosening it to
+admit this block would re-open the failure it was adopted to close. This is a family finding for
+the next expansion's vocabulary, not a fix for this round.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -7201,6 +7239,14 @@ is exactly the kind of thing that looks fine until a board needs it.
     compiler's UNSATISFIABLE is the truth about the board rather than a search failure.
     Either the propagator floors flow the engine does not, or the level wants more than
     one placement.
+101. **idx3's FOURTH target is INSIDE the window, and it has NO NOTCH.** Regions wearing the
+     target colour: 4 cells at rows 13-14 cols 2-3 (NOT named) beside the 15 cells of the three
+     named cups. ⛔ So the truncated-board reading does NOT explain the objective gap — the
+     fourth region is fully visible. It is a solid 2x2 with ZERO notches against three cups
+     with one each (`(13,7)`, `(13,10)`, `(13,13)`), filtered by "a region with no notch is an
+     OBSTACLE". The old family finding is CONFIRMED under the current grounding with
+     coordinates: the objective is four regions, the schema names three, and satisfaction is
+     "flow occupies the notch" which this one has not. ⛔ Not patched — schema frozen.
 100. **idx3's failure has MOVED from the compiler to the OBJECTIVE.** The walk now reads
      "executed the plan without clearing" where it read "compiler UNSATISFIABLE". At the
      commit, twice: forecast **3 of 3 targets, wins=True**, trail 66 predicted vs 63 observed
