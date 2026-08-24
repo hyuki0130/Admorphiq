@@ -1307,7 +1307,11 @@ class FlowGrounding:
             Board(
                 pieces=tuple(frozenset(cells) for _, cells in pieces.value),
                 sinks=tuple(frozenset(cells) for _, cells in sinks.value),
-                hazard_cells=frozenset(barriers.value),
+                # The TRIMMED band is fatal, not the last playable row. Measured on sp80:
+                # the entity whose contact fails a run is a one-pixel band below the
+                # playable area, and marking the last PLAYABLE row instead forbade cells
+                # (14,1) and (14,4) that the flow demonstrably crosses.
+                hazard_cells=frozenset(barriers.value) | {(size, c) for c in range(size)},
                 emitter_cells=(frozenset() if self.embedded_sources() is UNKNOWN
                                else frozenset(self.embedded_sources().value)),
                 # An observed flow cell belongs to the layout it was seen under: once a

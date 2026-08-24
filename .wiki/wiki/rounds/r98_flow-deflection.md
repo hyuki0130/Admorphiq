@@ -5402,6 +5402,35 @@ distinction between it and a decorative strip is exactly the edge-band probe's E
 decoration verdict, and any future attempt has to consult that verdict rather than assume a row.
 
 
+## The trimmed band IS fatal — the model now predicts the failure it always saw (2026-08-25)
+
+The last attempt marked the wrong row. Marking the one `playable_size()` trims — the band below
+the playable area, where the failure entity actually lives:
+
+```
+oracle 3/3 · grounding PASS · verifier PASS · mutants PASS · ood PASS · suite 1721
+bench      idx0 0/0, 209/108   unchanged board for board
+walk       idx0 23 · idx1 30 · idx2 55   unchanged
+idx3       compiler UNSATISFIABLE — 44704 layouts examined, board held 4 pieces
+```
+
+Every gate holds and idx3 changes character: it used to compile a plan, execute it, and fail
+silently; it now reports that no layout satisfies the objective. **That is the model agreeing
+with what every measurement of that level has shown** — each attempt failing on the flag, with
+all four targets satisfied and nothing else to blame. A model that predicts the failure is worth
+more than one that plans into it.
+
+It also stops the walk spending a life on a doomed commit, which matters because a run has four
+for the whole game.
+
+Scope, stated rather than assumed: this is measured on sp80. The round has already found a
+trimmed band that is pure decoration — vc33's status strip — so "the trimmed band is fatal" is
+not a family law. It happens not to touch vc33 because that strip is at the TOP and this marks
+the row below the board, but the next game with a bottom strip will need the edge-band probe's
+EVENT verdict rather than this assumption. The probe exists for exactly that, and wiring it in is
+its own change.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -5491,6 +5520,12 @@ decoration verdict, and any future attempt has to consult that verdict rather th
     ka59 (45), m0r0 (11), tu93 (39) on their FIRST level, plus sp80 on its fourth. The
     property is per LEVEL, so that is a floor. The fix belongs in `_infer_scale`, the
     entrance to every frame reading in the project, not in anything R98-specific.
+52. **The TRIMMED band is fatal — adopted.** Every gate holds, bench and idx0-idx2
+    unchanged, and idx3 turns from "compiles, executes, fails silently" into "no layout
+    satisfies the objective" — the model finally agreeing with every measurement of that
+    level. It also stops the walk spending a life on a doomed commit. Scope: measured on
+    sp80; a bottom strip on another game needs the edge-band probe's verdict, not this
+    assumption.
 51. ⛔ **"The last playable row is fatal" is WRONG and was reverted.** Gate, bench and
     idx0-idx2 all held, but idx3 regressed to a verifier CONTRADICTION — the flow
     demonstrably crosses row 14, which is its last playable row. The fatal band is the row
