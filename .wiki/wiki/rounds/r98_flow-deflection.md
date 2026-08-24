@@ -3452,6 +3452,48 @@ printing the surrounding lines — reading the code as it ended up, not as it wa
 before believing it.
 
 
+## One frame was erasing what a piece looks like (2026-08-24)
+
+Why does idx3's board hold ONE piece when the level presents five? Observed WITHOUT editing
+the walk this time — the class was wrapped from a separate driver, so nothing about the
+program's structure could change:
+
+```
+[inv] idx3: None -> 5 -> 4 -> 5 -> 4 -> 1
+      at the collapse:  shapes=8  sel=9  idle=9  moving=4  regions={9: 1, 4: 0}
+```
+
+**Selected and idle are BOTH 9.** `pieces()` scans the board once per appearance, so with one
+distinct colour it scans once, finds one region, and reports one piece. Everything downstream
+follows honestly from that: the compiler examines forty thousand layouts of a one-piece board
+and says none satisfies three targets.
+
+The cause is in the selection reader. `_selected_colour` is assigned unconditionally while
+`_idle_colour` is only updated when the observation happens to name another colour, so a
+selection observed in the colour already recorded as IDLE leaves both equal.
+
+Exactly one piece is selected at a time, so the two appearances are distinct by construction.
+If what now wears the selected appearance is the colour we had down as idle, the roles
+EXCHANGED and what we had down as selected is what the rest now wear:
+
+```
+board held 1 piece(s),  40084 layouts   ->   board held 4 piece(s),  46664 layouts
+```
+
+idx3 is still UNSATISFIABLE, but on a board with four of its five pieces rather than one.
+idx0-idx2 unchanged at 23 / 30 / 55, all four certifications PASS, and the bench is unchanged
+board for board.
+
+The four captures taken while the appearances were collapsed were REMOVED from the sweep. A
+board whose piece inventory is known to be wrong measures the reader, not the propagator, and
+each was carrying 25 cells of error that no propagation rule could ever answer for. The sweep
+is back to 209 / 108 over seventeen boards.
+
+Method note, after the previous tick: this measurement wrapped `FlowGrounding.observe` from a
+separate script instead of inserting lines into the walk. Nothing was edited, so nothing could
+be mis-indented, and the observation cost nothing but a wrapper.
+
+
 ## Next
 
 1. **Fill is not confirmed paired.** gemma4 misses one slot, and the cause is our
@@ -3482,10 +3524,11 @@ before believing it.
 10. ~~idx3's compiler: no layout satisfies three targets.~~ **It was right** — the board it
     planned on held ONE of the level's five pieces, and with sources at lanes 5-6 and the
     reach binding from the source the flow cannot pass lane 8. The real question is:
-11. ~~The inventory answers differently depending on when it is first asked.~~ **No — the
-    probe had broken the loop it was inserted into.** The walk is deterministic across
-    eleven runs. The real question is unchanged: why does the grounding hold ONE piece on
-    idx3 when the level presents five, and is that the level or the reader?
+11. ~~Why does the grounding hold ONE piece on idx3?~~ **It was the reader** — selected and
+    idle had collapsed to the same colour, so `pieces()` scanned one appearance and found
+    one region. Fixed by exchanging the roles; idx3 now plans on 4 pieces.
+12. **idx3 is still UNSATISFIABLE, now on 4 of 5 pieces.** The fifth is the next question,
+    and after that whether four suffice.
 8. **Close the 72-cell gap at the walk, not the propagator.** It is the cost of planning
    a commit before its spill exists, so the lever is the grounding CADENCE — re-ground on
    each spill before the next plan — and it should be measured on the live walk.

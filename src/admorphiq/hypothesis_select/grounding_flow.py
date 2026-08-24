@@ -534,6 +534,16 @@ class FlowGrounding:
             dropped = {after[c] for c in released if c in after}
             if len(dropped) == 1:
                 self._idle_colour = dropped.pop()
+        if colour == self._idle_colour:
+            # The two roles EXCHANGED. Exactly one piece is selected, so if what now
+            # wears the selected appearance is the colour we had recorded as idle, the
+            # colour we had recorded as selected is what the rest now wear. Leaving both
+            # equal collapses the whole inventory: measured on idx3 by wrapping observe,
+            # the count runs 5 -> 4 -> 5 -> 4 -> 1, and at the collapse selected and idle
+            # are BOTH 9, so only one colour is scanned and one region is found. The
+            # compiler then reports, correctly for a one-piece board, that no layout
+            # satisfies the objective.
+            self._idle_colour = self._selected_colour
         self._selected_colour = colour
         self._piece = region
         self._confirmed_shapes.append(_normalised(region))

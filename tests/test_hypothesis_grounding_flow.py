@@ -620,3 +620,26 @@ def test_an_orphan_with_no_piece_to_hide_under_is_not_a_hidden_source():
 
     assert g.hidden_sources() is UNKNOWN, \
         f"a hostless orphan was reported as hidden: {g.hidden_sources()}"
+
+
+def test_selection_that_takes_the_idle_colour_exchanges_the_roles():
+    """Purpose: exactly one piece is selected, so the two piece appearances are distinct. If
+    a selection is observed in the colour previously recorded as IDLE, the roles exchanged —
+    what was selected is now what the rest wear. Recording both as the same colour collapses
+    the inventory: measured on idx3, the piece count runs 5 -> 4 -> 5 -> 4 -> 1, and at the
+    collapse selected and idle are both 9, so only one colour is scanned, one region is found,
+    and the compiler then reports — correctly for a one-piece board — that no layout satisfies
+    the objective.
+
+    Expected feedback: pass proves the two appearances stay distinct across an exchange. Fail
+    means one frame can erase the harness's whole notion of what a piece looks like."""
+    g = FlowGrounding()
+    a, b = (4, 1), (4, 3)                  # two separate one-cell pieces
+    g.observe(0, None, [_frame({a: 8, b: 9})])
+    g.observe(6, (4, 4), [_frame({a: 8, b: 8})])   # b becomes 8: 8 is selected, 9 idle
+    first = g.piece_appearances()
+    assert first[0] is not None and first[0] != first[1], f"appearances not established: {first}"
+
+    g.observe(6, (4, 12), [_frame({a: 9, b: 8})])  # a takes 9, the colour recorded as idle
+    second = g.piece_appearances()
+    assert second[0] != second[1], f"the two appearances collapsed to one: {second}"
