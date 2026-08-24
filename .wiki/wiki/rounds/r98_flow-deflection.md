@@ -4488,6 +4488,36 @@ between levels of one game. That is three more commits spent re-learning what le
 knew, and it is the next thing to cut.
 
 
+## Why the unaimed commit has to stay (2026-08-24)
+
+The obvious next saving was to aim BEFORE committing, the way the oracle gate does — it clears
+idx0 on a single sacrificial commit while the walk spends two. Tried, and it recovers lives:
+
+```
+before   press 0 after the walk: NOT_FINISHED, press 1: GAME_OVER
+after    press 0,1,2: NOT_FINISHED, press 3: GAME_OVER      three lives left
+```
+
+And it breaks idx3:
+
+```
+idx3: stopped — grounding incomplete (pieces=5, targets=3)
+[slot] board UNKNOWN; missing=['barriers', 'initial_direction']
+```
+
+Aiming first puts the piece under the source, so the flow meets it immediately and spreads —
+and the spill never shows a clean fall. `initial_direction` comes back UNKNOWN, `barriers`
+early-returns without a direction, and the board will not assemble at all.
+
+So the unaimed commit is not waste: **it buys the only clean directional evidence there is**,
+and a life is what it costs. Reverted, with the reason written where the commit is made rather
+than in a round page nobody will read at the moment they are tempted to remove it again.
+
+The gate gets away with aiming first because idx0's geometry still shows the fall. That is a
+property of one level, not of the family, which is exactly the kind of thing that looks like a
+general saving until it is measured on a second board.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -4570,6 +4600,10 @@ knew, and it is the next thing to cut.
     commits. One life recovered by not re-committing when the aiming moved nothing;
     three more are spent because every level builds a FRESH grounding and re-learns the
     flow's direction and colour, which cannot change within a game.
+27. ⛔ **Do not aim before the sacrificial commit.** It recovers three lives and breaks
+    idx3 outright — the piece sits under the source, the spill never shows a clean fall,
+    `initial_direction` comes back UNKNOWN and the board will not assemble. The gate gets
+    away with it on idx0's geometry alone.
 21. **idx3 is NOT won by covering its regions.** (Measured, but on a game already over.) All nineteen target-coloured cells go
     11 -> 13, the engine's own "done" appearance, in one spill; nine captures with
     different piece positions show nothing hidden; `levels_completed` holds at 3 and there

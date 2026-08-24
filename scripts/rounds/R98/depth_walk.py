@@ -158,7 +158,10 @@ def play_level(w: Walker) -> tuple[bool, str]:
             w.click(cell, g)
             probes += 1
 
-    w.act(5, g)  # an unaimed commit reveals the flow's colour, source and direction
+    w.act(5, g)  # an UNAIMED commit: aiming first hides the direction (measured — idx3
+                 # lost initial_direction and with it barriers, so the board would not
+                 # assemble at all). The life it costs buys the only clean directional
+                 # evidence there is.
     emitters, direction = g.emitters(), g.initial_direction()
     if emitters is not UNKNOWN and direction is not UNKNOWN:
         dr, _dc = direction.value
