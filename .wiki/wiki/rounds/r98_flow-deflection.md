@@ -5455,13 +5455,57 @@ What this closes is the question of whether the compiler was simply not looking 
 was: exhaustive over the piece shifts, and there is nothing there.
 
 
+## The fused experiment answered: the split was NOT what gemma4 stumbles on (2026-08-25)
+
+gemma4's kernel completed. Three modes in one run:
+
+```
+select       3/3 PASS
+fill         0/3 FAIL   blocked_by_verifier, CONTRADICTED, 0 actions executed
+fill_fused   0/3 FAIL   blocked_by_verifier, CONTRADICTED, 0 actions executed
+```
+
+And the answers are IDENTICAL between the two encodings:
+
+```
+                            truth                gemma4 (both split and fused)
+piece_response_spawn        empty_flanks_only    both_flanks          MISS
+piece_response_direction    preserved            preserved            ok
+piece_response_propagation  cellwise_iterative   cellwise_iterative   ok
+sink_response_predicate     same_sink_flanks     same_sink_flanks     ok
+sink_response_miss          spread_like_piece    spread_like_piece    ok
+hazard_response             terminate_fatal      terminate_local      MISS
+```
+
+**Asking the hazard once instead of twice changes nothing.** gemma4 answers `terminate_local`
+either way, so the encoding is exonerated: the split was not the thing it stumbles on. That is
+the clean negative the experiment existed to produce, and it is worth as much as the other
+answer would have been — the round can stop suspecting its own schema on this point.
+
+Two corrections to the frozen record, both from this measurement rather than from argument:
+
+* the record says gemma4 misses **one** slot; it misses **two** — `spawn` as well as `hazard`.
+  Whether that is drift in the model, in our prompt, or in this session's grounding changes is
+  not established here.
+* `select` reproduces at 3/3, so whatever moved did not move the select stage.
+
+The verifier did its job on every run: CONTRADICTED, zero actions executed, no live cost for a
+wrong hypothesis. gpt-oss is still running and is the leg that decides whether FILL is confirmed
+paired.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
    and passes, tu93 and re86 decline, all on the same discovery. Both controls decline at
    perception, so the verifier is not exercised by them; a near control that assembles a
    board and is then refuted would test more.
-2. **Fill is not confirmed paired.** The experiment is built AND covered by the harness
+2. **Fill: the FUSED experiment is ANSWERED — the split was not the cause.** gemma4 gives
+   byte-identical slot answers under both encodings (`hazard_response: terminate_local`),
+   so asking once changes nothing and the schema is exonerated on this point. It misses
+   TWO slots, not one (`spawn` and `hazard`), correcting the frozen record; `select`
+   reproduces 3/3. gpt-oss still running — it decides whether FILL is confirmed paired.
+3. ~~Fill is not confirmed paired.~~ The experiment is built AND covered by the harness
    self-test (`fill fused -> cleared PASS`), so its wiring is verified without a GPU;
    split remains the default, and the KAGGLE kernel now runs it as a third mode
    (`fill_fused`) beside the two frozen ones. **RUNNING on Kaggle since 2026-08-25 00:47**
