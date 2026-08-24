@@ -4842,6 +4842,42 @@ board and membership of the engine's satisfied set are NOT the same fact. That i
 measurement, and it is a small one: read the satisfied set during the spill rather than after.
 
 
+## What the engine actually counts, and two of my readings corrected (2026-08-24)
+
+The satisfaction rule, from the source, is exactly `same_sink_flanks` — and painting colour 13
+and joining the satisfied set are **the same event**:
+
+```python
+if <target tag> in sprite.tags:
+    if left is sprite and right is sprite:      # both flanks the SAME sprite
+        sprite.pixels = 13
+        self.<satisfied>.add(sprite)
+```
+
+So reading the set after a step could never work: the failure path restores the board before
+completing the action, and the restore clears the set. Counting the ADDS instead, with positions:
+
+```
+plain walk, idx3     #1 (17,8)  #2 (17,12)  #3 (17,16)          size 3 of 4
+block-targeting run  #1 (17,2)  #2 (17,8)   #3 (17,12)  #4 (17,16)  size 4 of 4
+```
+
+idx3's four targets sit at x = 2, 8, 12, 16. **The plain walk never satisfies x = 2 — the block**
+— which is why it fails, and it is the first fully mechanical account of that failure.
+
+Two of my own readings are corrected by the same probe:
+
+* **"idx3's spill never settles" is WRONG.** The settle flag fires seven times in a run, twice on
+  idx3, with the droplet count running down to zero each time. The spill settles.
+* **"all nineteen cells satisfied" was measured on the block-targeting run only.** On the plain
+  walk fifteen cells reach 13, not nineteen, exactly matching three targets of four.
+
+Which leaves the sharp residue: in the block-targeting run all four ARE added, the set reaches
+four, the flag is False, the spill settles — and the level does not advance. The only gap left
+between those facts and the engine's advance condition is WHEN the set is read relative to the
+reset, and that is a question about ordering rather than about the board.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -4924,6 +4960,12 @@ measurement, and it is a small one: read the satisfied set during the spill rath
     commits. One life recovered by not re-committing when the aiming moved nothing;
     three more are spent because every level builds a FRESH grounding and re-learns the
     flow's direction and colour, which cannot change within a game.
+38. **What the engine counts, measured at the ADD.** Painting 13 and joining the satisfied
+    set are the same event. Plain walk on idx3 satisfies x=8,12,16 and NEVER x=2, the
+    block — 3 of 4, which is why it fails. ~~"The spill never settles"~~ is WRONG: the
+    settle flag fires twice on idx3 with droplets running to zero. In the block-targeting
+    run all four ARE added, set reaches 4, flag False, spill settles — and still no
+    advance. Remaining gap: WHEN the set is read relative to its reset.
 37. **The silent failure is a SPENT FLASH COUNTER.** `flashstep` reaches 6 on idx3 and
     never resets; at six the failure branch restores the board without any flash. The
     earlier refutation of this was measured on idx0, where the counter DOES reset — the
