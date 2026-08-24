@@ -253,7 +253,6 @@ def predict(board: Board, table: ResponseTable, max_ticks: int = 80) -> Predicti
         # An emerged cell appears this step and TRAVELS from the next one — which means
         # it has to be in the next active set. It only ever reached one when nothing else
         # was flowing, so a source arriving mid-spill was rendered once and then frozen.
-        nxt.extend((cell, heading, 0 if cell in landings else -1) for cell in emerged)
 
         blocked = (board.piece_cells | {c for s in board.sinks for c in s}
                    | board.hazard_cells | board.absorber_cells)
@@ -359,7 +358,10 @@ def predict(board: Board, table: ResponseTable, max_ticks: int = 80) -> Predicti
             spawn(ahead, (dr, dc))
 
         for cell in emerged:
-            nxt.append((cell, heading, -1))
+            # A landing cell starts a BOUNDED walk. Leaving it unlimited was worth 32
+            # cells of error across the captured boards: the arriving stream walked as
+            # far as the board allowed instead of the two cells the engine gives it.
+            nxt.append((cell, heading, 0 if cell in landings else -1))
         frontier.append(sorted(born))
         # a droplet re-activated on an occupied cell must not loop forever
         seen: set[tuple[Cell, tuple[int, int]]] = set()

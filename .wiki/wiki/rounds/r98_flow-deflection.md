@@ -2903,15 +2903,76 @@ these boards for the last several ticks: those rules were being scored against a
 that dropped its second source.
 
 
+## Correction: the mechanism was the reach, not a frozen source (2026-08-24)
+
+The previous entry claimed an arriving source "was rendered once and then frozen" — that an
+emerged cell never entered the next active set. **That is false, and the commit that carried
+it is wrong on its cause.** A loop at the bottom of the step already appended every emerged
+cell to `nxt`; it predates the change. Reading the top of the step and stopping there is what
+produced the story.
+
+What the change actually did was append a SECOND copy carrying `walked = 0`, which then won
+the race for the cells ahead because it was processed first. The improvement was real; the
+account of it was not, and the form was order-dependent by accident.
+
+Rewriting it as the one thing it turns out to be — a landing cell starts a BOUNDED walk
+instead of an unlimited one — scores identically, which is what makes the mechanism rather
+than the duplicate the cause:
+
+```
+before the change      243
+duplicate entry        211
+one explicit entry     211
+```
+
+So the adopted rule is: an emerged cell that is a landing enters the frontier with `walked = 0`.
+Unlimited was worth 32 cells across the boards — the arriving stream walked as far as the board
+allowed instead of the two cells the engine gives it.
+
+Recorded because this is the second time in this round a green measurement carried a wrong
+explanation. The number was reproducible; the sentence next to it was not measured. **Where a
+fix touches one end of a loop, read the other end before naming the cause.**
+
+## Two thirds of the residual is evidence poverty, not model error (2026-08-24)
+
+Splitting the remaining error by board shows the misses track how many sources the grounding
+found, not how hard the board is:
+
+```
+board  invented  missed   grounded sources
+b             5      25   2   missed cells sit in lanes 7..14; grounding knows lanes 5,6
+c             5      25   2
+d             5      18   2   missed cells sit in lanes 10..14; grounding knows lanes 5,6
+i,j,k,m,n,o   5       3   4..7
+```
+
+b, c and d are captures taken before enough spills accumulated, and 83 of the 211 total is
+flow from lanes the model was never told about. Scoring a physics rule against that sum charges
+it for evidence it never had. The bench should report those boards apart from the rest.
+
+What IS uniform is the invented set: `(12,5) (13,5) (14,5)` appears on every board. On board o
+the engine's column-5 stream shows at rows 3, 7 and 9 and stops — row 10 holds a piece — and
+spreads along row 9 instead, which is exactly the `(9,3) (9,4) (9,5)` we miss. Our model passes
+the blocker and resumes below it. One mechanism, present everywhere, and the next thing to
+measure.
+
+
 ## Next
 
 1. **Fill is not confirmed paired.** gemma4 misses one slot, and the cause is our
    encoding rather than its reasoning. Measure the hazard orthogonalisation as its
    own experiment against all three models — never as a patch to move a verdict.
-2. ~~Why does the walk reach not bind an injected source?~~ **ANSWERED, and it was not the
-   reach.** An arriving source never entered the next active set at all unless nothing else
-   was flowing. Fixed; 243 -> 211 over the captured boards. Re-measure the rules rejected
-   against the old propagator before believing those verdicts.
+2. ~~Why does the walk reach not bind an injected source?~~ **ANSWERED — it WAS the reach.**
+   A landing cell entered the frontier with an unlimited walk; giving it `walked = 0` is
+   worth 32 cells (243 -> 211). The intermediate claim that the cell never entered the
+   frontier at all was wrong and is corrected in the body.
+3. **A stream blocked by a piece spreads on the row above it.** Measured on board o: the
+   engine's column-5 stream stops at row 9 under the piece at (10,5) and spreads along
+   row 9; we pass the blocker and resume below it. The invented `(12,5) (13,5) (14,5)` is
+   on every captured board — one mechanism, uniform, and the next thing to fix.
+4. **Report b, c and d apart from the rest** — 83 of the 211 is flow from lanes the
+   grounding never saw, so any physics rule scored against that sum is charged for
+   evidence it never had.
 3. **Measure the bounded-roof variant on fixed evidence** — 1 invented cell against the
    adopted rule's 2, deliberately not adopted in the same change.
 3. **Multi-piece placement**, the burden the idx1 observation named: idx1 carries
