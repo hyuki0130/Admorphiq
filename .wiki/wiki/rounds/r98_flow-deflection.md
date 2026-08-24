@@ -3494,6 +3494,58 @@ separate script instead of inserting lines into the walk. Nothing was edited, so
 be mis-indented, and the observation cost nothing but a wrapper.
 
 
+## Three false hazards were declaring the level unwinnable (2026-08-24)
+
+With four of the five pieces back, idx3 was still UNSATISFIABLE — so the layouts were
+enumerated directly rather than argued about. Every reachable multi-piece layout, shifts
+-10..+10 on four pieces:
+
+```
+by (targets satisfied, fatal):  {(0, True): 10041, (1, True): 10379, (2, True): 1910, (3, True): 134}
+WINS: 0
+```
+
+**Every one of the 22464 valid layouts is fatal**, including the 134 that fill all three
+targets. (The first pass counted only `satisfied` and nearly reported 134 solutions; `wins`
+is `satisfied AND not fatal`, and it is zero.) So the compiler was right for the third time
+in this thread — about a board that could not be won.
+
+The hazards were the reason, and they were not hazards:
+
+```
+hazards: (12,2) (12,3) (12,5) (12,6)   colour 12 — which is the BACKGROUND, 192 cells of it
+         (15,1) (15,4)                 row 15 on a size-15 board — the FRAME
+```
+
+`barriers()` reads "flow reached the cell before it and that cell never became flow". Both of
+these satisfy that and neither blocks anything: a background cell past a stream's end means
+the spill ENDED there, and a frame cell is not board at all. The frame case bites twice over,
+because the propagator checks the hazard set on the same branch as the boundary, so a hazard
+recorded outside the board still fires.
+
+One fix was tried first and REJECTED by measurement: excluding cells ahead of the animation's
+final front. idx0's real hazard at (15,3) sits exactly there, and idx0 went to CONTRADICTED.
+The distinction is not position in the animation — it is that **a barrier has to look like
+something and stand on the board**.
+
+A third change followed from the second: with the last false hazard gone, `barriers()` found
+none and returned UNKNOWN, and `board()` refuses to assemble without it — so the walk reported
+"grounding incomplete" on a board it had measured completely. An empty set is an answer.
+
+```
+before   idx3 UNSATISFIABLE, 46664 layouts examined, board held 1 piece
+after    idx3 executed the plan without clearing (31 actions), board holds 5
+```
+
+idx0-idx2 unchanged at 23 / 30 / 55; oracle 3/3, grounding PASS, verifier PASS, mutants PASS,
+bench unchanged at 209 / 108.
+
+**Owed**: a unit pin for the two barrier rules. Three fixtures were written and none produced
+an animation the grounding would register, so no test was committed rather than a green one
+that exercises nothing — the last two ticks each caught a pin that passed without its subject.
+The rules are currently held by the walk and the four certifications.
+
+
 ## Next
 
 1. **Fill is not confirmed paired.** gemma4 misses one slot, and the cause is our
@@ -3527,8 +3579,13 @@ be mis-indented, and the observation cost nothing but a wrapper.
 11. ~~Why does the grounding hold ONE piece on idx3?~~ **It was the reader** — selected and
     idle had collapsed to the same colour, so `pieces()` scanned one appearance and found
     one region. Fixed by exchanging the roles; idx3 now plans on 4 pieces.
-12. **idx3 is still UNSATISFIABLE, now on 4 of 5 pieces.** The fifth is the next question,
-    and after that whether four suffice.
+12. ~~idx3 is still UNSATISFIABLE, now on 4 of 5 pieces.~~ **Three false hazards** —
+    background cells and frame cells — made every reachable layout fatal. idx3 now plans
+    and executes on all five pieces.
+13. **idx3 executes its plan and does not clear (31 actions).** The next wall, and the
+    first one on this level that is about the PLAN rather than about what the board is.
+14. **Owed: a unit pin for the two barrier rules.** Three fixtures failed to produce a
+    registered animation; nothing was committed rather than a test that passes vacuously.
 8. **Close the 72-cell gap at the walk, not the propagator.** It is the cost of planning
    a commit before its spill exists, so the lever is the grounding CADENCE — re-ground on
    each spill before the next plan — and it should be measured on the live walk.

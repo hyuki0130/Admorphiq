@@ -1244,7 +1244,23 @@ class FlowGrounding:
         # barrier: the propagator checks barriers first, so the flow is predicted to
         # die where the engine splits it around the piece.
         pieces = self._all_piece_cells() | set(anim.piece_cells)
-        size = int(round(len(self._prev_cells) ** 0.5))
+        # The PLAYABLE size. A frame is drawn around the board and the flow never enters
+        # it, so a cell in the frame is not a barrier — and a hazard recorded there still
+        # fires, because the propagator checks the hazard set on the same branch as the
+        # boundary. Measured on idx3: with the background cells already excluded the only
+        # hazards left were (15,1) and (15,4) on a size-15 board, i.e. the frame, and
+        # every one of the reachable layouts was still fatal.
+        size = self.playable_size() or int(round(len(self._prev_cells) ** 0.5))
+
+        # A barrier has to LOOK like something. A cell wearing the background is empty
+        # board, and the flow stopping before it says the SPILL ended, not that the cell
+        # blocked anything. Measured on idx3: four background cells at row 12, each one
+        # step past a stream's final cell, were grounded as hazards, and with a hazard
+        # fatal EVERY one of the 22464 reachable layouts failed — the compiler's "no
+        # layout satisfies the objective" was true about that board. Excluding the final
+        # front instead was measured and REJECTED: idx0's real hazard at (15,3) sits
+        # exactly there, and idx0 regressed to CONTRADICTED.
+        background = Counter(self._prev_cells.values()).most_common(1)[0][0]
 
         out: set[Cell] = set()
         for (r, c) in trail:
@@ -1253,9 +1269,14 @@ class FlowGrounding:
                 continue
             if ahead in trail or ahead in sinks or ahead in pieces:
                 continue
+            if self._prev_cells.get(ahead) == background:
+                continue
             out.add(ahead)
-        if not out:
-            return UNKNOWN
+        # An empty set is an ANSWER here, not an absence of one: a spill ran and hit
+        # nothing it could not pass. Reporting UNKNOWN instead makes `board()` refuse to
+        # assemble, and the walk reports "grounding incomplete" on a board it has in fact
+        # measured completely — which is what happened on idx3 the moment the last false
+        # hazard was removed.
         return Grounded(tuple(sorted(out)), "high")
 
     def board(self) -> Any:
