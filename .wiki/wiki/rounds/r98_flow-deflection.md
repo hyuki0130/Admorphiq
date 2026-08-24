@@ -6951,6 +6951,43 @@ those two is not reaching this one, and the next question is what distinguishes 
 rule governs step-offs in general.
 
 
+## The walk reach is "at least 2", not 2 (2026-08-25)
+
+Why does the model stop where the engine stops at `(9,8)` and `(13,10)` but not at `(4,11)`?
+Instrumenting the propagator's own spawns answers it, and not in the expected way:
+
+```
+(4, 11) walked=-1     (4, 12) walked=-1
+(9, 7)  walked=-1     (9, 8)  walked=-1
+(13,10) walked=-1     WALK_REACH = 2
+```
+
+**Every droplet involved carries `walked = -1`** — the unbounded state. The reach binds only
+droplets that landed from a falling source, and none of these did, so `WALK_REACH` is not what
+stops the model anywhere near the residual.
+
+That invites the obvious check, on the corpus that describes its own spills:
+
+| WALK_REACH | corpus error |
+|---|---|
+| 1 | **132** |
+| 2 | **12** |
+| 3 | 12 |
+| 99 | 12 |
+
+**Two, three and unbounded are indistinguishable.** The reach has exactly one measured job here:
+not to be 1. Its adopted value was chosen on the old corpus, where capping at 2 was worth 32 cells
+against larger values — and that corpus is the one whose boards did not describe their own spills.
+
+So the value stands, its justification does not. `WALK_REACH = 2` is now supported as "at least
+2", and the round should stop citing 2 as a measured optimum. ⛔ Equally, this is not a reason to
+raise it: 2 is the smallest value that costs nothing, and a larger one would be an unmeasured
+change dressed as a simplification.
+
+The residual is confirmed as untouched by the reach. Whatever stops the engine at `(4,11)`, it is
+not a walk budget of any size.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -7050,6 +7087,12 @@ rule governs step-offs in general.
     compiler's UNSATISFIABLE is the truth about the board rather than a search failure.
     Either the propagator floors flow the engine does not, or the level wants more than
     one placement.
+97. **The walk reach is "AT LEAST 2", not 2.** Every droplet near the residual carries
+    `walked = -1` (unbounded — the reach binds only landing droplets), so the reach stops
+    nothing there. Swept on the valid corpus: reach 1 -> **132**, reach 2/3/99 -> **12**,
+    indistinguishable. Its one measured job is not to be 1. The "capping at 2 is worth 32
+    cells" result came from the old corpus whose boards did not describe their own spills.
+    The value stands; the justification is weaker. ⛔ Not a reason to raise it either.
 96. **The WHOLE corpus residual is ONE step-off decision.** idx3's 12 cells are `(4,12)`,
     `(5,12)`, `(6,12)` on four identical captures: a stream walks a piece spanning cols 9-11
     and the engine STOPS at the last supported cell `(4,11)` while the model steps off. The
