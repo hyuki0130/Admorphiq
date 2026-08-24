@@ -5061,6 +5061,36 @@ That is the largest single finding of this thread, and it is measured rather tha
 engine's `grid_size` says twenty, the frame says sixty-four pixels, and 64/20 is not an integer.
 
 
+## How wide is the scale defect? Six of twenty-five, and that is a floor (2026-08-25)
+
+The idx3 root cause is a perception failure, not a family one, so the obvious question is how
+much of the card it touches. Every game's FIRST level, grid size against the 64-pixel frame:
+
+```
+NON-INTEGER SCALE   ar25 (21,21)   cn04 (20,20)   ka59 (45,45)
+                    m0r0 (11,11)   tu93 (39,39)
+ok                  bp35 8 · lf52 8 · sp80 16 · ft09 32 · vc33 32 · lp85 (32,19)
+                    cd82 g50t ls20 r11l re86 s5i5 sb26 sc25 sk48 su15 tn36 tr87 wa30 dc22 — 64
+```
+
+**Five games fail on their first level alone.** sp80 passes here — its first level is sixteen —
+and fails on its fourth, which is the whole point: **the property is per LEVEL, not per game**, so
+a first-level survey is a floor and not a count. Any game whose later levels change grid can join
+the list, exactly as sp80 does.
+
+Two things worth stating carefully, because they are correlation and not demonstrated cause:
+
+* four of the five — ar25, cn04, ka59, tu93 — are backlog games with long-standing walls, and the
+  fifth, m0r0, is one of the six fully conquered. So this does not simply predict failure.
+* it does mean that on those games every coordinate the harness computes is derived from a cell
+  grid the engine does not use.
+
+That answers the question the round should have asked earlier: the fix belongs in `_infer_scale`,
+which is the entrance to every frame reading in the project, not in anything R98-specific. What
+this thread bought is not a level — it is a defect in the perception layer, found by measuring a
+level that refused eight explanations in a row.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -5143,6 +5173,10 @@ engine's `grid_size` says twenty, the frame says sixty-four pixels, and 64/20 is
     commits. One life recovered by not re-committing when the aiming moved nothing;
     three more are spent because every level builds a FRESH grounding and re-learns the
     flow's direction and colour, which cannot change within a game.
+44. **The scale defect touches at least SIX of twenty-five games** — ar25 (21), cn04 (20),
+    ka59 (45), m0r0 (11), tu93 (39) on their FIRST level, plus sp80 on its fourth. The
+    property is per LEVEL, so that is a floor. The fix belongs in `_infer_scale`, the
+    entrance to every frame reading in the project, not in anything R98-specific.
 43. **ROOT CAUSE — idx3 is a 20x20 level read as 16x16.** Every level renders into a
     64x64 frame; levels 0-2 have `grid_size` (16,16) so scale 4 is right, and idx3 has
     (20,20) whose true scale is 3.2. `_infer_scale` returns integers, so a 20-cell board
