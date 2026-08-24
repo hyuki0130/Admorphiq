@@ -4752,6 +4752,34 @@ looked like rather than on what the engine did — so the next step is not anoth
 board.
 
 
+## The engine's own list: FOUR targets (2026-08-24)
+
+The last entry said the next step was not another reading of the board, so the engine's own
+objects were read — dev-time only, the same standing as reading the level count and the
+completion condition.
+
+```
+[engine] n=129 targets=4 at [(17,2), (17,16), (17,8), (17,12)]  satisfied=0  flag=False
+[engine] n=138 targets=4 at the same four                        satisfied=0  flag=False
+[engine] n=139 targets=4 at the same four                        satisfied=0  flag=False
+```
+
+**Four targets, and the flag is False.** So the block being a target is now confirmed twice over
+and from two directions: the failure animation paints it as unsatisfied, and the engine's target
+list has four entries. And the flag — the other of the engine's two refusals — is clear at every
+one of idx3's commits.
+
+The satisfied count reads 0 because the read happens after the step returns, by which time the
+engine has already reset for the next attempt; it is not evidence that nothing was satisfied.
+Getting the count AT the decision needs a hook inside the step, which is the next instrument.
+
+One discrepancy worth carrying: the four targets sit at x = 2, 8, 12, 16 — evenly spaced by four
+— while our grounding places them at columns 2, 6, 9 and 12, which is not evenly spaced. The
+units are not the same (these are sprite coordinates, y = 17 for all four), so this is not yet a
+contradiction, but it is the first sign that what we call a target and what the engine calls one
+may not be the same partition of those nineteen cells.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -4834,6 +4862,11 @@ board.
     commits. One life recovered by not re-committing when the aiming moved nothing;
     three more are spent because every level builds a FRESH grounding and re-learns the
     flow's direction and colour, which cannot change within a game.
+35. **The engine's own list has FOUR targets and the flag is FALSE** at every idx3 commit
+    — the block confirmed a target from two directions. The satisfied count reads 0 only
+    because the read is after the step, when the engine has already reset. Their sprite
+    x's are evenly spaced (2, 8, 12, 16) while our grounding's columns are not (2, 6, 9,
+    12): possibly a different PARTITION of the same nineteen cells.
 34. **The failing spill contains NO failure colours** — no 14, no 0, on any of its 38
     layers. The engine has two ways to refuse an attempt and uses neither, while also not
     accepting it: nineteen cells at 13 held for fourteen layers, nothing painted 0, no
