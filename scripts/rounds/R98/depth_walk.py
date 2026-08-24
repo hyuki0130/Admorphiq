@@ -165,8 +165,7 @@ def play_level(w: Walker) -> tuple[bool, str]:
     # bound when it was tried. Retry the missing ones from wherever it is now: an
     # unmeasured direction is not neutral, it removes every placement that needs it
     # from the planner's reach.
-    print(f"    [deltas] idx{entered} after the retries    : {sorted(deltas_of(g))}",
-          flush=True)
+
     phase["direction retries"] = w.actions - phase["start"] - phase["fixed probes"]
     probes = 0
     candidates = g.selection_candidates()
@@ -205,6 +204,24 @@ def play_level(w: Walker) -> tuple[bool, str]:
 
     phase["commit + aiming"] = w.actions - phase["start"] - sum(
         v for k, v in phase.items() if k != "start")
+    # Read AFTER the sacrificial commit and the aiming, which is where every later consumer
+    # of the table sits: `_top_up` picks its press from it, and the plan driver checks a
+    # refused press against it. Empty here would mean those paths are dead too.
+    # The retry belongs HERE, not before the commit. Measured: `deltas_of(g)` is empty at the
+    # old site, so the loop pressed all four directions twice for nothing visible; by this
+    # point the table is filled by the probes and the commit, and only a genuinely missing
+    # direction is retried. idx3 is the level that needs it — without any retry it plans with
+    # three directions instead of four.
+    for a in (1, 2, 3, 4):
+        if a in deltas_of(g):
+            continue
+        w.act(a, g)
+        if a not in deltas_of(g):
+            # The engine drops a press now and then, measured three times out of three
+            # elsewhere in this round. An unmeasured direction is not neutral: it removes
+            # every placement that needs it from the planner's reach.
+            w.act(a, g)
+    print(f"    [deltas] idx{entered} at plan time: {sorted(deltas_of(g).items())}", flush=True)
     _invariants_report(g, entered)
     print("    [phases] idx%d " % entered + "  ".join(
         f"{k}={v}" for k, v in phase.items() if k != "start"), flush=True)

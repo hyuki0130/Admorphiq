@@ -7305,6 +7305,40 @@ distinction is only visible if you ask what the guard reads rather than what the
 This is the first measured EFFICIENCY gain of the round, on a metric that squares the action ratio.
 
 
+## Correction: the retry DID buy something — relocating it costs 1 action, not 32 (2026-08-25)
+
+The previous entry removed the direction-retry loop on the strength of `deltas_of(g)` being empty
+before and after it, and concluded it "repairs nothing and simply pays the toll". Checking the
+table where its CONSUMERS read it — at plan time, after the sacrificial commit — says otherwise:
+
+```
+with the retries      idx3 at plan time: [1:(-1,0)  2:(1,0)  3:(0,-1)  4:(0,1)]
+without them          idx3 at plan time: [1:(-1,0)           3:(0,-1)  4:(0,1)]
+```
+
+**idx3 loses direction 2 without the retries.** The presses did buy something; they just bought it
+too late to be visible at their own measurement point, which is exactly what made the loop look
+inert. My "it repairs nothing" was measured at the wrong place and is withdrawn.
+
+The fix is not to restore it but to MOVE it. The table is empty before the commit and filled after,
+so a retry placed afterwards only presses a direction that is genuinely missing:
+
+| | actions | idx3 directions |
+|---|---|---|
+| original (retry before the commit) | 138 | 4 |
+| removed entirely | 106 | **3** |
+| **retry after the commit** | **107** | **4** |
+
+**Same information as the original for 31 fewer actions**, because the loop now costs one press on
+the one level that needs it instead of eight presses on every level. Oracle 3/3, grounding,
+verifier, mutant certification, corpus 12, walk carrying the same three levels.
+
+The lesson is narrower than "measure before removing" — I did measure. It is: **a guard reads a
+signal at ITS site, but the value it protects is consumed somewhere else, and only the consumer's
+reading can say whether the guard is doing anything.** Emptiness at the guard proved the loop
+could not be working *there*; it took the consumer's table to show it was working anyway.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -7404,7 +7438,16 @@ This is the first measured EFFICIENCY gain of the round, on a metric that square
     compiler's UNSATISFIABLE is the truth about the board rather than a search failure.
     Either the propagator floors flow the engine does not, or the level wants more than
     one placement.
-106. **The largest item in the discovery bill bought NOTHING — walk 138 -> 106.** Phase split:
+107. ⚠️ **CORRECTION to #106: the retry DID buy something — relocating it costs 1 action, not
+     32.** Read where its CONSUMERS read the table (plan time, after the commit): with the
+     retries idx3 has all four directions, without them it has THREE. The presses bought a
+     direction too late to show at their own site. Fix is to MOVE not remove: retry after the
+     commit, when only a genuinely missing direction is pressed. **138 -> 107 with all four
+     directions everywhere** (removal alone was 106 with idx3 down to three). Lesson: a guard
+     reads a signal at ITS site while the value it protects is consumed elsewhere, and only
+     the consumer's reading can say whether the guard does anything.
+106. ~~The largest item in the discovery bill bought NOTHING — walk 138 -> 106.~~ Half right:
+     the phase split and the emptiness are correct, the conclusion is corrected by #107. Phase split:
      `fixed probes=5, direction retries=8, selection probes=4-6, commit+aiming=1-10`, with the
      retries constant at 8 on every level. `deltas_of(g)` is EMPTY before them and EMPTY after,
      so the loop's own success condition never fires. Removed: idx0 23 -> **15**, idx1 30 ->
