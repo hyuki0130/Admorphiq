@@ -1483,10 +1483,15 @@ class FlowGrounding:
         """Regions that swallow the flow without the objective counting them.
 
         Measured on idx3: a solid block wearing the target appearance is satisfied by
-        the ENGINE — it recolours when the spill reaches it — while no candidate table
-        has a rule that ever satisfies a region with no notch to be flanked at. So it
-        cannot be offered as a target, and it is not a hazard either: contact is not
-        fatal. Left out of the board entirely, our flow ran straight through what the
+        the ENGINE — it recolours when the spill reaches it — while no table the family
+        can claim satisfies a region with no notch to be flanked at. The vocabulary does
+        contain such a rule, `contact`, and with the block promoted to a fourth target
+        under it 14033 layouts win; but the predicate is GLOBAL, and `contact` is
+        CONTRADICTED on idx0 in the frozen mutant table. So the obstacle is not a missing
+        rule — it is that one board here needs two different predicates and the schema
+        applies one. Offering the block as a target under the family's own table would
+        make "cover every target" unreachable by construction, and it is not a hazard
+        either: contact is not fatal. Left out of the board entirely, our flow ran straight through what the
         engine's flow ended at, and the forecast claimed a downstream target the engine
         never filled.
 

@@ -3932,6 +3932,45 @@ diagnosis outright, and that is the more valuable outcome of the two, because th
 been treating a schema gap as the reason idx3 stops.
 
 
+## The schema gap is real, but it was stated wrong (2026-08-24)
+
+The parked diagnosis rested on a claim in `absorbers()`: "no candidate table has a rule that
+ever satisfies a region with no notch to be flanked at". That is **false**, and the vocabulary
+says so — `sink_response_predicate` offers `contact`, and in the propagator `contact` skips the
+flank test entirely:
+
+```python
+hit = same if table.sink_predicate == "same_sink_flanks" else True
+```
+
+Promote the notchless block to a fourth target and claim `contact`, and the level is solvable:
+
+```
+block as a 4th target, predicate=contact  ->  14033 winning layouts
+```
+
+So the rule exists. What does not exist is applying it to ONE target. The predicate is global,
+and `contact` is not free to take:
+
+```
+sink_satisfied_on_contact   transition  CONTRADICTED   (frozen table, re-verified live)
+```
+
+It is measurably wrong for the family. idx3 therefore needs `same_sink_flanks` for its three
+notched targets and `contact` for the fourth, on the same board, and the schema applies one
+predicate to all of them.
+
+**That is the finding, and it is a better one than the version it replaces.** "No rule can
+satisfy a notchless region" invites adding a rule that is already there. "The predicate is
+global and this board needs two" names a structural property of the encoding, and it is the
+kind of thing the family expansion exists to discover. It also keeps the n=1 parking honest:
+per-target predicates are a real schema change, and one level is still not evidence that the
+family wants one.
+
+The docstring is corrected in place rather than rewritten around, so the measurement that
+produced the original claim stays next to the measurement that narrowed it.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -3976,7 +4015,10 @@ been treating a schema gap as the reason idx3 stops.
     sends a stream INTO the fourth region, then read `levels_completed`. 14033 such
     layouts exist on the captured board. Not advancing would refute the schema-gap
     diagnosis, which is the more valuable outcome.
-13. ~~idx3 executes its plan and does not clear.~~ **A SCHEMA GAP (consistent, not confirmed)** — the level's objective
+13. ~~idx3 executes its plan and does not clear.~~ **A SCHEMA GAP — the PREDICATE IS GLOBAL
+    and this board needs two.** `contact` exists and would satisfy the notchless region
+    (14033 winning layouts), but it is CONTRADICTED for the family, so it cannot be taken.
+    Original, weaker statement:** — the level's objective
     is four regions and the schema can name three; the fourth is a notchless block that
     the engine satisfies but no rule in the vocabulary can express. Recorded as a family
     finding, NOT patched mid-round.
