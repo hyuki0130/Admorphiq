@@ -5214,6 +5214,31 @@ vc33 is recorded as an open item rather than chased now. What it is, and whether
 that game's long-standing wall at one level, is a measurement of its own.
 
 
+## The fused experiment is wired into the Kaggle kernel (2026-08-25)
+
+GPU work goes to Kaggle, so the fill experiment needed to be runnable there rather than only from
+a local flag. The bench notebook ran two modes; it now runs three:
+
+```python
+for mode, hazard in (("select", "split"), ("fill", "split"), ("fill", "fused")):
+```
+
+`select` and `fill` are untouched — the contract is frozen on the split encoding and their
+outputs keep the same filenames, so the existing measurements stay comparable. The third writes
+`r98_flow_fill_fused_<model>.json` and lands in the same summary under its own key, so a run
+produces the frozen verdict and the experiment side by side without either standing in for the
+other.
+
+What it will answer, per model and paired as the contract requires: whether gemma4's single
+missed slot is our ENCODING — the same question asked twice, once as `hazard_policy` and once as
+`hazard_response` — or its reasoning. gpt-oss resolving the split 3/3 is what makes the question
+worth asking rather than a reason to re-cut the schema.
+
+Ready to run: the CLI is present with credentials, the kernel boots vLLM on a mounted model and
+drives the live env, and the whole path is covered by the harness self-test so no GPU minute is
+spent on unverified wiring.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -5222,8 +5247,9 @@ that game's long-standing wall at one level, is a measurement of its own.
    board and is then refuted would test more.
 2. **Fill is not confirmed paired.** The experiment is built AND covered by the harness
    self-test (`fill fused -> cleared PASS`), so its wiring is verified without a GPU;
-   split remains the default. What remains is GPU time to run it paired against gemma4,
-   gpt-oss and qwen3.8. Never as a patch to move a verdict.
+   split remains the default, and the KAGGLE kernel now runs it as a third mode
+   (`fill_fused`) beside the two frozen ones. What remains is GPU time. Never as a patch
+   to move a verdict.
 2. ~~Why does the walk reach not bind an injected source?~~ **ANSWERED — it WAS the reach.**
    A landing cell entered the frontier with an unlimited walk; giving it `walked = 0` is
    worth 32 cells (243 -> 211). The intermediate claim that the cell never entered the

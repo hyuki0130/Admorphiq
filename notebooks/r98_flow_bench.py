@@ -246,23 +246,29 @@ def main() -> None:
         env["HARNESS_PATCH_NUM_PREDICT"] = "20000"
 
     results = {}
-    for mode in ("select", "fill"):
-        out = os.path.join(KAGGLE_WORKING, f"r98_flow_{mode}_{served}.json")
-        print(f"\n=== R98 FLOW {mode} x{RUNS} ({served}) ===", flush=True)
+    # ("mode", hazard-encoding). The contract is FROZEN on the split encoding, so select
+    # and fill run exactly as before. `fill_fused` is the SEPARATE experiment the round
+    # owes: our encoding asks whether a barrier is fatal twice, gemma4 answered the pair
+    # self-contradictorily and gpt-oss resolved it 3/3, and asking once measures whether
+    # the split is what it stumbles on. It never replaces the frozen verdict.
+    for mode, hazard in (("select", "split"), ("fill", "split"), ("fill", "fused")):
+        label = mode if hazard == "split" else f"{mode}_{hazard}"
+        out = os.path.join(KAGGLE_WORKING, f"r98_flow_{label}_{served}.json")
+        print(f"\n=== R98 FLOW {label} x{RUNS} ({served}) ===", flush=True)
         try:
             rc = subprocess.call(
-                [sys.executable, "-u", probe, "--mode", mode,
+                [sys.executable, "-u", probe, "--mode", mode, "--hazard", hazard,
                  "--runs", str(RUNS), "--out", out],
                 env=env, timeout=7200)  # a run drives the live env AND asks the model
         except subprocess.TimeoutExpired:
             rc = -9
-            print(f"[mode] {mode} TIMEOUT (7200s)", flush=True)
-        print(f"[mode] {mode} rc={rc}", flush=True)
+            print(f"[mode] {label} TIMEOUT (7200s)", flush=True)
+        print(f"[mode] {label} rc={rc}", flush=True)
         if os.path.exists(out):
             with open(out) as f:
-                results[mode] = json.load(f)
+                results[label] = json.load(f)
         else:
-            results[mode] = {"mode": mode, "error": f"probe rc={rc}, no output"}
+            results[label] = {"mode": label, "error": f"probe rc={rc}, no output"}
 
     summary = {
         "model": served,
