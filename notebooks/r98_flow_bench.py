@@ -257,14 +257,25 @@ def main() -> None:
     # owes: our encoding asks whether a barrier is fatal twice, gemma4 answered the pair
     # self-contradictorily and gpt-oss resolved it 3/3, and asking once measures whether
     # the split is what it stumbles on. It never replaces the frozen verdict.
-    for mode, hazard in (("select", "split"), ("fill", "split"), ("fill", "fused")):
+    # ("mode", hazard-encoding, evidence-wording). The first three are the frozen
+    # measurements and keep their filenames. The fourth is the explicit-contact
+    # experiment: the default wording reports the barrier contact's POSITION and STOP and
+    # leaves the cause implicit, and gpt-oss infers past it 3/3 while gemma4 and qwen3.8
+    # do not, each reproduced twice. Naming the contact adds a fact the grounding already
+    # has; it says nothing about whether contact ends a stream or an attempt.
+    for mode, hazard, evidence in (("select", "split", "default"),
+                                   ("fill", "split", "default"),
+                                   ("fill", "fused", "default"),
+                                   ("fill", "split", "explicit")):
         label = mode if hazard == "split" else f"{mode}_{hazard}"
+        if evidence != "default":
+            label = f"{label}_{evidence}"
         out = os.path.join(KAGGLE_WORKING, f"r98_flow_{label}_{served}.json")
         print(f"\n=== R98 FLOW {label} x{RUNS} ({served}) ===", flush=True)
         try:
             rc = subprocess.call(
                 [sys.executable, "-u", probe, "--mode", mode, "--hazard", hazard,
-                 "--runs", str(RUNS), "--out", out],
+                 "--evidence", evidence, "--runs", str(RUNS), "--out", out],
                 env=env, timeout=7200)  # a run drives the live env AND asks the model
         except subprocess.TimeoutExpired:
             rc = -9

@@ -5830,6 +5830,36 @@ The contract's pairing requirement is still unmet on fill, and the reason is now
 than suspected: one slot, one thinly-worded clause, one model of three that infers past it.
 
 
+## The explicit-contact experiment is running (2026-08-25)
+
+The kernel now runs four modes. The first three are the frozen measurements and keep their
+filenames; the fourth is the experiment:
+
+```python
+("select", "split", "default")     the contract's select
+("fill",   "split", "default")     the contract's fill
+("fill",   "fused", "default")     the hazard asked once — answered, negative, twice
+("fill",   "split", "explicit")    the contact named
+```
+
+It runs on gpt-oss and gemma4 now, qwen3.8 when a slot frees. What it decides is the last open
+question in the fill stage: gpt-oss infers past the implicit clause 3/3 and the other two do not,
+each reproduced twice, so the wording is the only untested variable left.
+
+The reading is prepared in advance, because a result that can be read either way after the fact
+is not a measurement:
+
+* **all three pass** — the clause was withholding a fact the harness had, and naming it is a
+  correctness fix that the frozen wording was costing two models;
+* **gpt-oss passes and the others still do not** — the wording was never the obstacle, the slot
+  needs reasoning the other two do not do here, and the frozen verdict stands as the family's
+  honest answer;
+* **anything gets worse** — the explicit sentence introduced a distraction, and it goes back out.
+
+Only the middle outcome leaves the contract where it is. The first would close fill; the third
+would be an argument for leaving evidence alone.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -5929,6 +5959,11 @@ than suspected: one slot, one thinly-worded clause, one model of three that infe
     compiler's UNSATISFIABLE is the truth about the board rather than a search failure.
     Either the propagator floors flow the engine does not, or the level wants more than
     one placement.
+65. **The explicit-contact experiment is RUNNING** as a fourth mode beside the three
+    frozen ones (gpt-oss v9, gemma4 v8; qwen3.8 when a slot frees). Readings fixed in
+    advance: all three pass -> the clause withheld a fact and fill closes; only gpt-oss
+    passes -> wording was never the obstacle and the frozen verdict stands; anything worse
+    -> the sentence distracts and goes back out.
 64. **gpt-oss passes ALL THREE modes at the raised budget** — select 3/3 (every run picks
     the truth and clears), fill 3/3, fill_fused 3/3. The earlier select 1/3 was the
     completion budget, retired as an artefact. qwen3.8 and gemma4 both reproduce select
