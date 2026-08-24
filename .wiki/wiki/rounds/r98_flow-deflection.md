@@ -6907,6 +6907,50 @@ re-running. It is cheap, it takes one command, and it has never once been wasted
 Gates: oracle 3/3, grounding PASS, corpus 12, 1725 tests.
 
 
+## The whole corpus residual is ONE step-off decision (2026-08-25)
+
+With grounding fixed, idx3's twelve cells are three cells repeated across four identical captures:
+`(4,12)`, `(5,12)`, `(6,12)`. Their cause is one disagreement:
+
+```
+  (4, 9)  empty   below (5, 9)  is piece
+  (4, 10) empty   below (5, 10) is piece
+  (4, 11) empty   below (5, 11) is piece
+  (4, 12) empty   below (5, 12) is EMPTY
+```
+
+A stream walks the top of a piece spanning columns 9–11 and, at `(4,11)` — **the last supported
+cell** — the engine stops. Our model steps off to `(4,12)` and falls two more. That is the entire
+remaining error in the corpus.
+
+The decision table, re-run on boards that describe their own spills:
+
+```
+on piece   next over piece   STEPPED   33      <- invariant holds, 33/33
+on piece   next over empty   STEPPED   27
+on piece   next over empty   stopped    9
+
+the step OFF the end, by how far the walk had already gone
+  walked 0   STEPPED 17    stopped 0
+  walked 1   STEPPED  0    stopped 8
+  walked 2   STEPPED  8    stopped 0
+  walked 3   STEPPED  2    stopped 1
+```
+
+The invariant survives the corpus change: while the next cell is also supported the walk always
+continues. The step-off splits 27/9 over 15 stepped and 3 stopped distinct events.
+
+The distance column separates 0 from 1 perfectly — 17 step-offs at zero, 8 stops at one, no
+exceptions — and then breaks at two, where all eight step off again. ⛔ Not a reach and not fitted:
+a rule that reads "even walks off, odd stops" has one counter-example at three, and this round has
+already twice adopted a rule that fitted every point it was shown.
+
+The sharper fact is smaller than the table. Of the three stopped events, the model already gets
+**two right** — `(9,8)` and `(13,10)` — and only `(4,11)` wrong. So whatever stops the model at
+those two is not reaching this one, and the next question is what distinguishes them, not what
+rule governs step-offs in general.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -7006,6 +7050,14 @@ Gates: oracle 3/3, grounding PASS, corpus 12, 1725 tests.
     compiler's UNSATISFIABLE is the truth about the board rather than a search failure.
     Either the propagator floors flow the engine does not, or the level wants more than
     one placement.
+96. **The WHOLE corpus residual is ONE step-off decision.** idx3's 12 cells are `(4,12)`,
+    `(5,12)`, `(6,12)` on four identical captures: a stream walks a piece spanning cols 9-11
+    and the engine STOPS at the last supported cell `(4,11)` while the model steps off. The
+    decision table on valid boards: the "next cell also supported -> always continues"
+    invariant holds 33/33; step-off splits 27/9. Distance separates 0 (17 step-offs) from 1
+    (8 stops) perfectly and breaks at 2. ⛔ Not fitted. Sharper: of three stopped events the
+    model already gets TWO right — only `(4,11)` is wrong, so the question is what
+    distinguishes them.
 95. **The caveat is now a PIN, and its first version was VACUOUS.** #94's untested risk —
     "rejects empty" versus "rejects everything" — is pinned: a background-coloured blocker
     names no obstruction while the sibling pin holds that a coloured one still names a
