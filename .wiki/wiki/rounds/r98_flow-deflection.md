@@ -5332,6 +5332,45 @@ which would have booted a kernel with no `admorphiq` package to import. Verified
 dataset's files rather than trusting the "Upload successful" line.
 
 
+## The edge-band rule, as a tool rather than a sentence (2026-08-25)
+
+The discriminator was a paragraph in this page; it is now
+`scripts/rounds/R98/edge_band_probe.py`, and it finds what it claims to:
+
+```
+sp80  scale 4  top: 14 state(s) -> counter     bottom: 2 state(s) -> EVENT
+vc33  scale 2  top:  1 state    -> decoration  bottom: 1 state    -> decoration
+ft09  scale 2  top:  1 state    -> decoration  bottom: 14 state(s) -> counter
+
+[edge band] 1 row(s) carry an EVENT the cell grid throws away
+```
+
+**Exactly one row across the three games**, and it is sp80's failure band — the thing that
+decides whether a run succeeds and that no cell-based reading can see. The probe needs no
+knowledge of any game: fourteen actions, a commit every third so a spill actually runs, and a
+count of how many distinct states each outer pixel row takes.
+
+The counter threshold is written as `states >= max(3, actions // 2)` rather than a bare number,
+because "changes on nearly every action" is what a counter IS and the action count is what makes
+that measurable; the floor of three keeps a short probe from calling everything a counter.
+
+## The Kaggle run needed a second push
+
+`gptoss` came back ERROR on its first attempt:
+
+```
+RuntimeError: probe_r98_model_bench.py not found under /kaggle/input
+```
+
+The kernels were pushed while the dataset version was still being created, so they attached the
+previous one. The dataset now lists the probe at 38047 bytes and both kernels are RUNNING again
+(gptoss at version 6).
+
+Worth keeping as a sequencing rule: **`kaggle datasets version` returns before the version
+exists.** A kernel pushed immediately after it will silently attach the old data, and the failure
+surfaces minutes later as a missing file rather than as anything about the dataset.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -5421,6 +5460,11 @@ dataset's files rather than trusting the "Upload successful" line.
     ka59 (45), m0r0 (11), tu93 (39) on their FIRST level, plus sp80 on its fourth. The
     property is per LEVEL, so that is a floor. The fix belongs in `_infer_scale`, the
     entrance to every frame reading in the project, not in anything R98-specific.
+50. **The edge-band rule is now a TOOL** — `scripts/rounds/R98/edge_band_probe.py` — and
+    it finds exactly one EVENT row across the three games where the question can arise:
+    sp80's failure band. ⚠️ Sequencing rule learned the hard way: `kaggle datasets
+    version` RETURNS BEFORE THE VERSION EXISTS, so a kernel pushed straight after attaches
+    the old data and fails minutes later as a missing file.
 49. **Decoration vs event, told observationally**: not whether an edge band changes but
     how MANY distinct states it takes over a handful of actions — one state is static
     decoration, many is a counter, FEW is an event. sp80 top 14 / bottom 2, vc33 1 / 1,
