@@ -2203,13 +2203,56 @@ idx2: CLEARED — 55 actions
 idx3: three invented cells left on the covered board
 ```
 
+## What a level spends is DISPLACEMENT, not moves (2026-08-24)
+
+The move budget was recorded as a count, and the count is wrong. Driving one piece three
+different ways from the same start:
+
+```
+up, down, up   survives all three moves
+up, up         taken on the second
+down, down     taken on the second
+```
+
+A piece may sit **one cell off the line it started on**. Going out spends the allowance
+and coming back restores it — three moves cost nothing if they end where two of them
+cancel. Counting moves called the surviving sequence a double spend and would have
+forbidden a plan the board allows.
+
+Grounding now tracks each piece's displacement from its own starting line rather than its
+number of moves, and `moves_spent()` reports that:
+
+```
+after (-1,0): displacement 1
+after ( 1,0): displacement 0
+after (-1,0): displacement 1
+```
+
+One trap inside the fix, worth its own line: the origin has to belong to the piece that
+MOVED. Taking it from whichever piece happened to be tracked before measured a
+displacement of seven where the truth was one — the same class of error as every other
+remembered value this round, in a new place.
+
+The compiler's constraint is unchanged in form and now correct in meaning: a straight path
+of N steps along the flow displaces by N, so `budget − spent` is an allowance in cells.
+idx0–idx2 clear in the same action counts, all four certifications hold, and idx3 still
+stops on a press the engine refuses into empty cells.
+
+```
+idx0: CLEARED — 23 actions
+idx1: CLEARED — 30 actions
+idx2: CLEARED — 55 actions
+idx3: a planned press is refused into four background cells, twice
+```
+
 ## Next
 
 1. **Fill is not confirmed paired.** gemma4 misses one slot, and the cause is our
    encoding rather than its reasoning. Measure the hazard orthogonalisation as its
    own experiment against all three models — never as a patch to move a verdict.
-2. **Three invented cells left on the covered board.** The frame accounted for eight of
-   the nine; what remains is a stream running to the bottom in one lane.
+2. **A press refused into four background cells, twice.** No piece is lost and nothing
+   occupies them, so the refusal is neither the drop nor the displacement budget — the
+   next thing to name.
 3. **Measure the bounded-roof variant on fixed evidence** — 1 invented cell against the
    adopted rule's 2, deliberately not adopted in the same change.
 3. **Multi-piece placement**, the burden the idx1 observation named: idx1 carries

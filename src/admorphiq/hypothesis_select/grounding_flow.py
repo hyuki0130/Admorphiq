@@ -172,6 +172,13 @@ def _split(cells: frozenset[Cell]) -> list[frozenset[Cell]]:
     return sorted(out, key=min)
 
 
+def _line(cells: frozenset[Cell], direction: Any) -> int:
+    """Where a piece sits along the flow: the row for a vertical flow, the column for a
+    horizontal one. What a level spends is measured on this axis."""
+    dr, _dc = direction.value if direction is not UNKNOWN else (1, 0)
+    return min(r for r, _ in cells) if dr else min(c for _, c in cells)
+
+
 def _translation(before: frozenset[Cell], after: frozenset[Cell]) -> Optional[Cell]:
     """The rigid offset taking ``before`` to ``after``, or None if the shape did
     not survive as a rigid translation (a shape change is not a move)."""
@@ -239,6 +246,7 @@ class FlowGrounding:
         # How many moves ALONG the flow each piece has made, and the largest number any
         # piece was seen to survive before the board took it away.
         self._flow_moves: dict[frozenset[Cell], int] = {}
+        self._flow_origin: dict[frozenset[Cell], Optional[int]] = {}
         self._move_budget: Optional[int] = None
 
     # ── ingest ───────────────────────────────────────────────────────────
@@ -462,16 +470,23 @@ class FlowGrounding:
     ) -> None:
         self._delta_obs[action][delta] += 1
         self._moving_colour = colour
-        # Moves ALONG the flow are counted per piece, because some levels spend a piece
-        # on the second one. Counted per MOVE, never per press: a press the board
-        # refuses costs nothing, which is why a probe phase can press along the flow
-        # repeatedly at no cost where the pieces start blocked.
+        # What a level spends is DISPLACEMENT along the flow, not moves: measured on
+        # idx3, a piece pressed up then down then up again survives three moves, while
+        # up-up and down-down each take it on the second. So the piece may sit one cell
+        # off the line it started on, and going back restores what going out spent.
         direction = self.initial_direction()
-        if direction is not UNKNOWN and delta[0] * direction.value[0] + \
-                delta[1] * direction.value[1] != 0:
-            self._flow_moves[landed] = self._flow_moves.pop(self._piece, 0) + 1
-        elif self._piece is not None and self._piece in self._flow_moves:
-            self._flow_moves[landed] = self._flow_moves.pop(self._piece)
+        # The origin belongs to the piece that MOVED, so when it is not already known
+        # it is taken from this piece's own position one step back — never from
+        # whichever piece happened to be tracked before, which is a different piece and
+        # measured a displacement of seven where the truth was one.
+        before_cells = frozenset((r - delta[0], c - delta[1]) for (r, c) in landed)
+        origin = self._flow_origin.pop(before_cells, None)
+        if origin is None:
+            origin = _line(before_cells, direction)
+        self._flow_origin[landed] = origin
+        if origin is not None and direction is not UNKNOWN:
+            self._flow_moves[landed] = abs(_line(landed, direction) - origin)
+            self._flow_moves.pop(self._piece, None)
         self._piece = landed
         shape = _normalised(landed)
         if shape not in self._confirmed_shapes:
@@ -552,8 +567,9 @@ class FlowGrounding:
             if cells & alive:
                 continue
             del self._flow_moves[cells]
-            # the counter holds SUCCESSFUL moves, and the move that spends a piece
-            # never lands — so what it holds is exactly what the piece survived
+            self._flow_origin.pop(cells, None)
+            # the tally holds the DISPLACEMENT the piece reached, and the move that
+            # spends it never lands — so what it holds is what the piece survived
             survived = moves
             if self._move_budget is None or survived < self._move_budget:
                 self._move_budget = survived

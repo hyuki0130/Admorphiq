@@ -484,15 +484,23 @@ def test_a_piece_that_has_already_moved_has_less_budget_left():
 
     assert g.moves_spent() is UNKNOWN, "nothing is spent before anything moves"
 
-    g.observe(2, None, [_frame({(3, 2): 9, (3, 3): 9, **run})])   # one move along the flow
+    g.observe(2, None, [_frame({(3, 2): 9, (3, 3): 9, **run})])   # one step along the flow
     spent = g.moves_spent()
     assert spent is not UNKNOWN
-    assert dict(spent.value) == {((3, 2), (3, 3)): 1}, f"the move was not counted: {spent}"
+    assert dict(spent.value) == {((3, 2), (3, 3)): 1}, f"the step was not counted: {spent}"
 
     g.observe(4, None, [_frame({(3, 3): 9, (3, 4): 9, **run})])   # ACROSS the flow: free
     spent = g.moves_spent()
     assert dict(spent.value) == {((3, 3), (3, 4)): 1}, \
         f"a move across the flow changed the tally: {spent}"
+
+    # and coming BACK restores it: what a level spends is displacement, not moves —
+    # measured on idx3, where up-down-up survives three moves while up-up takes the
+    # piece on the second
+    g.observe(1, None, [_frame({(2, 3): 9, (2, 4): 9, **run})])
+    spent = g.moves_spent()
+    assert dict(spent.value) == {((2, 3), (2, 4)): 0}, \
+        f"returning to the starting line did not restore the allowance: {spent}"
 
 
 def test_a_framed_board_is_smaller_than_its_frame():
