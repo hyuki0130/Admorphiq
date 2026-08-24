@@ -183,6 +183,12 @@ def play_level(w: Walker) -> tuple[bool, str]:
     hypothesis = F.sp80_oracle_instance()
     verdict = verify_flow_instance(hypothesis, g, w.level > entered)
     if verdict.verdict.value == "CONTRADICTED":
+        # Freeze the board that produced the contradiction. Without this the walk reports
+        # a disagreement and then throws away the only evidence of it — the next run
+        # plans differently and the board is gone.
+        if os.environ.get("R98_CAPTURE"):
+            _capture(g.board().value, g.trajectory(), os.environ["R98_CAPTURE"],
+                     g._prev_cells)
         return False, f"verifier CONTRADICTED: {verdict.reason}"
     if verdict.verdict.value != "PASS":
         # UNKNOWN is "cannot judge", not "wrong". The measured cause here is a source

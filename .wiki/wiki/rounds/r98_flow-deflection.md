@@ -3198,6 +3198,11 @@ flank (12,5) is free space, so contiguity does not cover that case either.
 ⛔ Do not "fix" this by making the spread mouth-ward. It is right on 60 events and wrong on
 the 2 that the contract, the oracle gate and the mutant table are all built on.
 
+**RESOLVED (2026-08-24)**: mouth-ward was right about what it saw and wrong about why. On
+the idx3 boards the away side is ANOTHER TARGET'S ROOF; idx0's targets stand alone, so its
+away side is open and the flow takes it. Forbidding only the step onto a neighbour scores
+209/108 with idx0 untouched at 0.
+
 
 ## The walk re-run: the obstacle now names itself (2026-08-24)
 
@@ -3278,6 +3283,46 @@ a green-looking message was hiding a real disagreement — the first was a diagn
 that could not see the contract level.
 
 
+## The walk's whole remaining disagreement was one cell, and it is closed (2026-08-24)
+
+With the false "hidden source" excuse gone, idx3 stopped on an honest verdict: one surplus
+cell, `(12,9)`. To study it the walk now freezes the board WHEN THE VERIFIER CONTRADICTS —
+without that it reports a disagreement and then throws away the only evidence of it, since
+the next run plans differently and the board is gone.
+
+Replayed, the cell sets agree except for that one (47 predicted vs 46 observed), and the
+rest of the divergence is TIMING: our first stream runs a step ahead of the engine's from
+step 4 on. `_trim` already drops pauses on both sides, so the verdict was charged the cell
+and nothing else.
+
+```
+  15: predicted [(9,7), (11,1), (12,7), (12,9)]
+      observed  [(8,7), (9,1)]                     ... (12,7) arrives at 17, (12,9) never
+```
+
+The droplet at `(12,8)` misses target 0 (lanes 6,7,8, mouth at 7). It spreads to `(12,7)`,
+toward its own target's mouth, and **not** to `(12,9)` — which stands over target 1.
+
+That is NOT the mouth-ward rule that took the gate to 0/3. On idx0 the away-side flank is
+free space and the engine DOES go there; here the away-side flank is a neighbour's roof.
+Forbidding only the step onto another target keeps idx0 exactly as it was:
+
+```
+                        as-known   physics   idx0
+before                       211       112      0
+not onto another target      209       108      0
+```
+
+And on the live walk, idx3's verifier no longer contradicts — it passes and the walk
+proceeds to planning, where the next wall is the compiler reporting that no layout satisfies
+three targets. idx0-idx2 still clear at 23 / 30 / 55.
+
+Worth naming: the mouth-ward observation was RIGHT about what it saw and wrong about why.
+Every idx3 miss spreads mouth-ward because on those boards the away side is another target's
+roof; idx0's targets stand alone, so its away side is open and the flow takes it. One rule,
+two appearances.
+
+
 ## Next
 
 1. **Fill is not confirmed paired.** gemma4 misses one slot, and the cause is our
@@ -3303,9 +3348,10 @@ that could not see the contract level.
 5. ~~Sources FULLY hidden under a piece.~~ **There were none** — the message named the two
    ordinary lane sources with no piece anywhere near them, and it was suppressing a real
    verdict. Fixed by requiring a host. What it was hiding is the actual next item:
-9. **idx3 disagrees by ONE cell, `(12,9)`.** The verifier now says so plainly instead of
-   excusing itself. One cell is a tractable target and it is the whole remaining gap on
-   the walk.
+9. ~~idx3 disagrees by ONE cell, `(12,9)`.~~ **CLOSED** — a miss does not spread onto a
+   neighbouring target's roof. idx3's verifier passes; the next wall is the compiler.
+10. **idx3's compiler: no layout satisfies three targets** (40084 examined). The verifier
+    is now satisfied with the model, so this is about reach and placement, not physics.
 8. **Close the 72-cell gap at the walk, not the propagator.** It is the cost of planning
    a commit before its spill exists, so the lever is the grounding CADENCE — re-ground on
    each spill before the next plan — and it should be measured on the live walk.

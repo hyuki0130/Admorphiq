@@ -413,3 +413,36 @@ def test_an_uncovered_source_starts_at_its_own_cell():
     column = sorted(r for r, c in reached if c == lane)
     assert line in column, f"the stream did not start at its source: {column}"
     assert len(column) > 1, f"the stream did not fall from it: {column}"
+
+
+def test_a_miss_does_not_spread_onto_a_NEIGHBOURING_targets_roof():
+    """Purpose: a droplet that misses a target spreads sideways, but measured on the board
+    the walk stopped at, it will not step onto a cell standing over a DIFFERENT target. The
+    miss at (13,8) went to (12,7), toward its own target's mouth, and not to (12,9), which
+    stands over the next target along. That single cell was the walk's whole remaining
+    disagreement with the engine.
+
+    Expected feedback: pass proves the spread stops at a neighbour's roof. Fail means the
+    model pours flow across targets it was never routed to, and idx3's verifier contradicts
+    on one cell. Note this is NOT "spread only toward the mouth": on idx0 the away-side
+    flank is free space and the engine does go there, which is why the away flank is
+    forbidden only when it belongs to another target."""
+    mine = frozenset({(4, 1), (4, 3), (5, 1), (5, 2), (5, 3)})
+    theirs = frozenset({(4, 4), (4, 6), (5, 4), (5, 5), (5, 6)})
+    board = Board(
+        pieces=(),
+        sinks=(mine, theirs),
+        hazard_cells=frozenset(),
+        emitter_cells=frozenset(),
+        standing_flow=frozenset({(0, 3)}),
+        absorber_cells=frozenset(),
+        emergences=(),
+        falling_sources=(),
+        direction=(1, 0),
+        size=8,
+    )
+    cells = {c for layer in predict(board, ORACLE).frontier for c in layer}
+
+    assert (3, 2) in cells, "the miss did not spread toward its own target's mouth"
+    assert (3, 4) not in cells, \
+        f"the miss spread onto the neighbouring target's roof: {sorted(cells)}"

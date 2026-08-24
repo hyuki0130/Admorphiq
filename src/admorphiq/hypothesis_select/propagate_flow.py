@@ -305,6 +305,16 @@ def predict(board: Board, table: ResponseTable, max_ticks: int = 80) -> Predicti
                     # target the engine left empty. Without the chain the model stops
                     # where the engine stops and claims what the engine claims.
                     for f in flanks:
+                        # ...but not onto another target's roof. Measured on the board the
+                        # walk stopped at: the droplet missing (13,8) spreads to (12,7),
+                        # toward its own target's mouth, and NOT to (12,9), which stands
+                        # over a different target. It was the walk's whole remaining
+                        # disagreement — one cell. On idx0 the away flank is free space
+                        # and the engine does go there, so this is not the mouth-ward rule
+                        # that broke the gate: it forbids only the step onto a neighbour.
+                        other = board.sink_of((f[0] + dr, f[1] + dc))
+                        if other is not None and other != sink_idx:
+                            continue
                         spawn(f, (dr, dc))
                         spread_born.add(f)
                 # stop / absorb: the droplet dies here
