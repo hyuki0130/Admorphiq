@@ -4417,6 +4417,46 @@ be invisible to this probe. The next measurement is to look for the alternation 
 14 alone.
 
 
+## idx3 was never being judged — the game was already over (2026-08-24)
+
+Looking for the failure flash by watching the bottom row CHANGE rather than by hunting colour
+14 (the source alternates 14 and 1, and 1 is the frame's own colour, so half the flashes are
+invisible to a 14-only probe):
+
+```
+spill 22 layers: bottom row -> [14] at layers 14, 16, 18, 20     FAILURE
+spill 28 layers: bottom row -> [14] at layers 16..22             FAILURE
+spill 20 layers: bottom row -> [4, 12] at the last layer         the NEXT level's board
+spill 22 layers: bottom row -> [4, 12] at the last layer
+spill 25 layers: bottom row -> [1]  at the last layer
+idx3's 33- and 38-layer spills: the bottom row never changes at all
+```
+
+So idx3's spills show neither the failure flash nor a next-level board. Which prompted the
+obvious thing nobody had done: **press once more after the walk stops.**
+
+```
+=== after the walk ===
+press 0: levels=3  state=GameState.GAME_OVER  layers=1
+press 1: levels=0  state=GameState.GAME_OVER  layers=0
+```
+
+**The game was already over.** The walk spends the four lives on its way down — the two failure
+flashes above are on idx0 — and by idx3 there is nothing left to spend. Every explanation this
+round built for idx3 was an explanation of a level that was never going to be judged.
+
+That is the seventh thing this level has taken away, and the first one that was our own doing
+rather than a gap in the model. The measurable consequence is a REAL constraint the round had
+not been counting:
+
+**A run has four failed commits for the whole game, not per level.** Probing spends them. The
+walk's discovery deliberately spends one sacrificial commit per level, which on a six-level game
+is most of the budget before anything is planned.
+
+The next measurement is the honest version of the idx3 question: reach idx3 with lives left, and
+see whether the plan that satisfies all nineteen cells clears it.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -4490,7 +4530,12 @@ be invisible to this probe. The next measurement is to look for the alternation 
     spill; four failures end the game. Leading reading: flow reaching the floor
     invalidates the attempt. Not yet confirmed on idx3 — the flash alternates 14/1 and an
     even step is invisible against the frame's own colour.
-21. **idx3 is NOT won by covering its regions.** All nineteen target-coloured cells go
+25. **idx3 was never being judged — the game was already OVER.** Pressing once more after
+    the walk stops returns `GAME_OVER` immediately. A run has FOUR failed commits for the
+    whole game, not per level, and the walk spends them probing (one sacrificial commit
+    per level on a six-level game). Every idx3 explanation this round built was about a
+    level that was not going to be judged. Next: reach idx3 with lives left.
+21. **idx3 is NOT won by covering its regions.** (Measured, but on a game already over.) All nineteen target-coloured cells go
     11 -> 13, the engine's own "done" appearance, in one spill; nine captures with
     different piece positions show nothing hidden; `levels_completed` holds at 3 and there
     is no hazard. `CoverAllSinks` in any encoding does not describe this level's win
