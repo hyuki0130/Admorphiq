@@ -2829,14 +2829,60 @@ idx2: CLEARED — 55 actions
 idx3: two stacked sources in one column are both kept
 ```
 
+## Timing the pair fixes what is missing and over-produces instead (2026-08-24)
+
+The pairs straddling a piece's edge are the same mechanic as the confirmed embedded source —
+a carrier that renders uniformly, so only its flow betrays it. The earlier attempts injected
+it at tick 0; an embedded source has a TICK, like a lane. Injecting the pair at the step the
+engine shows it:
+
+```
+baseline                        invented  5  missed 3   (total  8)
+emitting at tick 0              invented 21  missed 0   (total 21)
+the pair at its observed tick   invented 12  missed 0   (total 12)
+as a source rather than an
+emergence (so the reach binds)  invented 12  missed 0   (total 12)
+```
+
+Timing removes **every missed cell** — the stream is real and the model can produce it — and
+adds seven of its own:
+
+```
+(7,6) (8,6)                              the old row-7 right-walk
+(9,2) (10,2) (11,2) (12,1) (12,2)
+(13,1) (14,1)                            a column-2 descent the engine never makes
+(12,5) (13,5) (14,5)
+```
+
+Net worse, so not adopted. But the shape of the surplus is informative: the engine's row-9
+spread runs `(9,3) (9,4) (9,5) (9,6) (9,7)` — exactly two cells each way from the injection —
+and ours continues to `(9,2)` and descends. Two cells each way is the walk reach already
+measured and adopted, and injecting the pair as a source rather than an emergence does not
+make it bind, which means the reach is not reaching the injected droplet by the path it
+travels.
+
+That is a mechanism question inside the propagator rather than another candidate rule, and it
+is the first time this thread has produced one.
+
+A second measurement from the same probe, worth its line: moving the piece at `(8,11)` one
+cell right changes the trail **not at all** — every row identical. Not every piece
+participates, and knowing which do not is how the one-variable probe earns its actions.
+
+```
+idx0: CLEARED — 23 actions
+idx1: CLEARED — 30 actions
+idx2: CLEARED — 55 actions
+idx3: eight cells; the missing stream is producible, the surplus is a reach that does not bind
+```
+
 ## Next
 
 1. **Fill is not confirmed paired.** gemma4 misses one slot, and the cause is our
    encoding rather than its reasoning. Measure the hazard orthogonalisation as its
    own experiment against all three models — never as a patch to move a verdict.
-2. **Each sourceless entry comes in a PAIR straddling a piece's edge.** One member has the
-   piece behind it, the other does not, and the two are currently handled by different
-   mechanisms. Treating the pair as one thing is the next step.
+2. **Why does the walk reach not bind an injected source?** Injecting the pair at its
+   observed tick removes every missed cell; the surplus is a spread running two cells too
+   far, which is exactly what the adopted reach should already stop.
 3. **Measure the bounded-roof variant on fixed evidence** — 1 invented cell against the
    adopted rule's 2, deliberately not adopted in the same change.
 3. **Multi-piece placement**, the burden the idx1 observation named: idx1 carries
