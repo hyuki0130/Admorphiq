@@ -4159,6 +4159,45 @@ the same compiler had to work for it and found a layout that really delivers. **
 four-target test looked like a refutation and was not.
 
 
+## Correction: the final frame is not a satisfaction signal, and all four regions recolour (2026-08-24)
+
+Two entries ago the four-target test was read as "the block did not recolour", from the board's
+appearance AFTER the spill. That reading is **invalid**, and the captures say so themselves:
+
+```
+r98last  block [11,11,11,11]  target0 [11,11,11,11,11]
+```
+
+`r98last` is the run where the engine demonstrably satisfied all three targets — the 15-cell
+changed region. They read colour 11 afterwards anyway. **Satisfaction recolouring is transient**:
+it happens during the animation and is gone by the last frame, which is exactly why
+`changed_regions` exists and why reading the final board says nothing.
+
+Re-run with the right signal, the four-target test says the opposite of what was recorded:
+
+```
+[block-test] plan SOLVABLE, predicted_satisfied 4
+[changed] 38 layers -> [(13,2), (13,6)] sizes=[4, 15]
+idx3: stopped — executed the plan without clearing (33 actions)
+```
+
+Four cells at (13,2) — the block — AND fifteen at (13,6) — all three targets. **Every region on
+the board recoloured, and the level did not advance.** Reproduced twice in the same run.
+
+So the fourth-region diagnosis is refuted after all, this time on the signal that can carry the
+claim. And no hazard explains it either:
+
+```
+hazard_cells []      colour 1 is the FRAME — row 15 and column 15, 31 cells of it
+```
+
+idx3 recolours everything the board has and stays at `levels_completed = 3`. What that leaves
+is a question about the SIGNAL rather than the board: `changed_regions` is defined as "regions
+that took on a stable new appearance while a spill ran", which is what a satisfied target does —
+but it is also what a region merely covered by flow would do. On idx0 the two readings coincide
+and the level clears; idx3 is the board that separates them.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -4215,9 +4254,12 @@ four-target test looked like a refutation and was not.
     the SOLE target the engine recoloured it, and the plan that did it moved the piece
     carrying the embedded source. All four regions are individually fillable; no layout
     yet fills all four at once, and that is the open problem.
-20. **The model's `contact` is looser than the engine's requirement** — under it the
-    propagator thinks roof contact satisfies the block, which is why the four-target test
-    chose a layout that only grazed it.
+20. ~~The model's `contact` is looser than the engine's requirement.~~ **Withdrawn** — that
+    rested on the same invalid reading. The four-target plan DID recolour the block.
+21. **All four regions recolour and idx3 still does not advance** (reproduced twice), with
+    no hazard on the board. The open question is now about the SIGNAL: `changed_regions`
+    is what a satisfied target does AND what a region merely covered by flow does. idx0 is
+    where the two coincide; idx3 is where they separate.
 13. ~~idx3 executes its plan and does not clear.~~ **A SCHEMA GAP — the PREDICATE IS GLOBAL
     and this board needs two.** `contact` exists and would satisfy the notchless region
     (14033 winning layouts), but it is CONTRADICTED for the family, so it cannot be taken.
