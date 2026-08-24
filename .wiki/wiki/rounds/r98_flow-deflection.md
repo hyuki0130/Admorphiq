@@ -5702,6 +5702,40 @@ still shows unparsable replies, the raw text is now recorded and the reading can
 instead of inferred.
 
 
+## Naming the contact: built as a variant, not applied (2026-08-25)
+
+Why is one slot thin? The evidence generator KNOWS about the barrier contact — the discriminating
+line only fires when `board.hazard_cells` is non-empty, which is to say when the grounding
+observed a stream running into one. What the sentence reports is the POSITION and the STOP:
+
+> a stream reached the row just above the bottom edge and stopped there.
+
+Both halves are true and the CAUSE is left implicit: a reader has to infer that "the row just
+above the bottom edge" means the stream was against the edge, and that being against it is why it
+stopped. gpt-oss makes that inference and answers `terminate_fatal` 3/3; gemma4 and qwen3.8 read
+the same sentence as an ordinary stop and answer `terminate_local`.
+
+So `--evidence explicit` now exists beside the default:
+
+```
+default    ...a stream reached the row just above the bottom edge and stopped there.
+explicit   ...a stream came into contact with the board's bottom edge — it reached the row
+           directly above it and stopped there against it.
+```
+
+The default is untouched and every frozen verdict stays comparable; the variant is opt-in exactly
+as `--hazard fused` is.
+
+Whether to RUN it is a real question rather than a formality. Naming a contact the grounding
+already measured is a correctness improvement — the frames show it and the sentence withholds it.
+But it would move two models from FAIL toward PASS, which is what tuning looks like from the
+outside. The distinction that makes it legitimate: the explicit wording adds a fact the harness
+has, not a hint about which answer to give, and it says nothing about fatality — a model still
+has to decide whether contact ends a stream or an attempt.
+
+Measured paired against all three, or not at all.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -5801,6 +5835,12 @@ instead of inferred.
     compiler's UNSATISFIABLE is the truth about the board rather than a search failure.
     Either the propagator floors flow the engine does not, or the level wants more than
     one placement.
+61. **`--evidence explicit` built, not applied.** The default line reports the position
+    and the stop and leaves the CAUSE implicit; the generator already knows a barrier was
+    contacted (that is why the line fires at all). The variant names the contact without
+    hinting at fatality — a model still decides whether it ends a stream or an attempt.
+    Default untouched, frozen verdicts comparable. Run it paired against all three or not
+    at all.
 60. **The unparsable runs discarded the unparsable thing.** Fixed: raw replies are now
     recorded on both paths. Likely cause, from what the parser accepts — `parse_select`
     takes ANY `I<digit>` token, so those replies contained no answer token at all, which

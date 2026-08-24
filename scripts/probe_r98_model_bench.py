@@ -120,6 +120,11 @@ OBJECTIVE_VARIANTS = ("cover_all_sinks", "any_sink_covered")
 COMPLETIONS = ("all", "count")
 HAZARD_POLICIES = ("fatal_on_contact", "neutral")
 
+# How the barrier contact is worded in the observed evidence. "default" leaves the cause
+# implicit, which is what every frozen verdict was measured under; "explicit" names the
+# contact. Set by --evidence; never changed to move a verdict.
+EVIDENCE_STYLE = "default"
+
 
 # ── the rules the harness enforces, stated to the model in words ────────────
 
@@ -231,12 +236,29 @@ def _prose_evidence(evidence: FlowEvidence, grounding: FlowGrounding) -> list[st
     if board.hazard_cells and all_covered and not evidence.advanced:
         # the discriminating pair: full coverage AND a failed attempt, with the only
         # other event being the barrier contact
-        lines.append(
-            f"All {evidence.n_sinks} of the cup-shaped regions ended in the distinct "
-            "appearance that marks a satisfied target, and the level still did NOT "
-            "advance. The only other thing that happened in the whole animation is that "
-            "a stream reached the row just above the bottom edge and stopped there."
-        )
+        # The default wording states the POSITION and the STOP and leaves the cause
+        # implicit: a reader has to infer that "the row just above the bottom edge" means
+        # the stream was in contact with the edge. Measured — gpt-oss makes that inference
+        # and answers terminate_fatal 3/3, while gemma4 and qwen3.8 read the same sentence
+        # as a harmless stop and answer terminate_local. `explicit` names the contact the
+        # grounding already knows about (it is why hazard_cells is non-empty), and is a
+        # SEPARATE experiment: the frozen verdicts were taken under the default.
+        if EVIDENCE_STYLE == "explicit":
+            lines.append(
+                f"All {evidence.n_sinks} of the cup-shaped regions ended in the distinct "
+                "appearance that marks a satisfied target, and the level still did NOT "
+                "advance. The only other thing that happened in the whole animation is "
+                "that a stream came into contact with the board's bottom edge — it "
+                "reached the row directly above it and stopped there against it."
+            )
+        else:
+            lines.append(
+                f"All {evidence.n_sinks} of the cup-shaped regions ended in the distinct "
+                "appearance that marks a satisfied target, and the level still did NOT "
+                "advance. The only other thing that happened in the whole animation is "
+                "that a stream reached the row just above the bottom edge and stopped "
+                "there."
+            )
     else:
         lines.append(
             f"{evidence.n_sinks} cup-shaped regions ended in a distinct appearance"
@@ -805,12 +827,18 @@ def main() -> int:
     parser.add_argument("--out")
     parser.add_argument("--dry-run", action="store_true",
                         help="print the assembled asks (no LLM server needed)")
+    parser.add_argument("--evidence", choices=["default", "explicit"], default="default",
+                        help="how the barrier contact is worded: leave the cause implicit "
+                             "(the frozen wording) or name the contact")
     parser.add_argument("--hazard", choices=["split", "fused"], default="split",
                         help="ask whether a barrier is fatal twice (the frozen contract) "
                              "or once (the separate experiment the round owes)")
     parser.add_argument("--self-test", action="store_true",
                         help="drive the harness with deterministic stubs")
     args = parser.parse_args()
+
+    global EVIDENCE_STYLE
+    EVIDENCE_STYLE = args.evidence
 
     if args.self_test:
         return self_test()
