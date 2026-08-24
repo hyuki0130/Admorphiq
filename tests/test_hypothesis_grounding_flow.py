@@ -562,3 +562,36 @@ def test_two_sources_in_one_column_are_both_kept():
     assert sources is not UNKNOWN
     lines = sorted(line for lane, _tick, line in sources.value if lane == 6)
     assert lines == [3, 5], f"the two sources in column 6 were not both kept: {sources.value}"
+
+
+def test_a_pair_over_a_piece_edge_is_one_source_not_half_of_one():
+    """Purpose: an entry whose behind-cell is a piece is dropped as the output of a source
+    embedded in that piece. Measured on the covered board, that rule cuts a real source in
+    half: (9,5) sits over the piece and is dropped while (9,6) beside it is admitted, and
+    the dropped half is the one whose flow the engine walks along row 9. The exclusion is
+    kept for an entry that stands ALONE and lifted for one that appears beside an admitted
+    lane in the same layer.
+
+    Expected feedback: pass proves both halves of a straddling pair are grounded. Fail means
+    the model pours from one half of a source and misses everything the other half feeds."""
+    piece = {(4, c): 7 for c in range(0, 3)}
+
+    layers = []
+    flow = {}
+    for k in range(1, 6):
+        if k <= 3:
+            flow[(k, 7)] = 6            # a plain stream, so the direction is measurable
+        if k == 4:
+            flow[(5, 2)] = 6            # over the piece's last column — behind it IS piece
+            flow[(5, 3)] = 6            # and beside it, clear of the piece
+        layers.append(_frame({**piece, **flow}))
+
+    g = FlowGrounding()
+    g.observe(0, None, [_frame(piece)])
+    g._piece = frozenset(piece)      # the bar, without having watched it move
+    g.observe(5, None, layers)
+
+    sources = g.falling_sources()
+    assert sources is not UNKNOWN
+    lanes = sorted(lane for lane, _tick, line in sources.value if line == 5)
+    assert lanes == [2, 3], f"the straddling pair was not grounded whole: {sources.value}"

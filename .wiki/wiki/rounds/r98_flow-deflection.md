@@ -3000,6 +3000,40 @@ column-7 descent is a source, not a walk product. The uniform invented tail `(12
 timing.
 
 
+## Half a source is worse than none (2026-08-24)
+
+With the physics column to judge on, board o's remaining misses are `(9,3) (9,4) (9,5)` —
+and they are not a physics gap at all. `(9,5)` sits over the piece at row 10, so its flow
+is blocked below and walks left, exactly two cells, which is the reach already adopted.
+Give the model that source and it reproduces the row.
+
+It never gets it. The grounding drops an entry whose behind-cell is a piece, as the output
+of a source EMBEDDED in that piece — a rule measured earlier and worth five wrong cells on
+the covered board. Here it cuts one source in half: `(9,5)` is dropped for the piece behind
+it while `(9,6)` beside it, in the same layer, is admitted. The half it keeps pours down;
+the half it drops is the one whose flow the engine walks along row 9.
+
+So the exclusion is kept for an entry that stands ALONE and lifted for one that appears
+beside an admitted lane in its own layer — two cells arriving together, one over a piece,
+are two halves of one source.
+
+```
+physics    139 -> 112     nine boards improve (g,h,i,j,k,m,n,o 8->5, l 12->9), none worse
+```
+
+The as-known column does not move, and should not: the captures freeze the grounding's
+OUTPUT, so a replay cannot be re-grounded. The rule reaches the live walk, not the replay.
+`rule_bench`'s scan is a deliberate copy of the grounding's, and had to be changed with it
+— the first run after the fix still reported 139 because only one of the two had moved.
+
+Pinned by `test_a_pair_over_a_piece_edge_is_one_source_not_half_of_one`, and the pin was
+CHECKED: the first version of it passed without the rescue, because the synthetic board's
+bar never entered the piece inventory — `pieces()` only reports one after it has watched a
+piece move — so the branch was never executed. A test that passes without the code it names
+pins nothing. Driving the same fallback the class itself uses makes it fail without the
+rescue and pass with it.
+
+
 ## Next
 
 1. **Fill is not confirmed paired.** gemma4 misses one slot, and the cause is our
@@ -3009,10 +3043,10 @@ timing.
    A landing cell entered the frontier with an unlimited walk; giving it `walked = 0` is
    worth 32 cells (243 -> 211). The intermediate claim that the cell never entered the
    frontier at all was wrong and is corrected in the body.
-3. **A stream blocked by a piece spreads on the row above it.** Measured on board o: the
-   engine's column-5 stream stops at row 9 under the piece at (10,5) and spreads along
-   row 9; we pass the blocker and resume below it. The invented `(12,5) (13,5) (14,5)` is
-   on every captured board — one mechanism, uniform, and the next thing to fix.
+3. ~~A stream blocked by a piece spreads on the row above it.~~ **It already does** — the
+   row-9 spread was a source the grounding had cut in half, now fixed (physics 139 -> 112).
+   What remains uniform is the invented tail `(12,5) (13,5) (14,5)`, on every board, and
+   with the misses down to 5 per board it is most of what is left.
 4. ~~Report b, c and d apart from the rest.~~ **DONE** — `rule_bench.py --all` now reports
    as-known 211 and physics 139. Judge propagation rules on the physics column.
 5. **Close the 72-cell gap at the walk, not the propagator.** It is the cost of planning

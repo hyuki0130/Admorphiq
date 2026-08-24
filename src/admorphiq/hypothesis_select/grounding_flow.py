@@ -1351,6 +1351,8 @@ class FlowGrounding:
                 if not layer:
                     continue
                 tick += 1
+                kept_here: set[Cell] = set()
+                deferred: list[Cell] = []
                 for (r, c) in layer:
                     lane = c if dr else r
                     behind = (r - dr, c - dc)
@@ -1367,9 +1369,22 @@ class FlowGrounding:
                     # into a column the piece has left, which measured five wrong cells
                     # on the covered board.
                     if (r - dr, c - dc) in anim.piece_cells:
+                        deferred.append((r, c))
                         continue
                     out[(lane, r if dr else c)] = tick
                     tally[lane] = tally.get(lane, 0) + 1
+                    kept_here.add((r, c))
+                # ... unless it stands beside one that IS a lane, in the same layer. Two
+                # cells appearing together, one of them over a piece, are the two halves
+                # of ONE source: measured on the covered board, (9,5) is dropped for the
+                # piece behind it while (9,6) beside it is admitted, and the half that
+                # was dropped is the half whose flow the engine walks along row 9. Nine
+                # of the sixteen captured boards improve and none gets worse.
+                for (r, c) in deferred:
+                    if any(f in kept_here for f in ((r - dc, c - dr), (r + dc, c + dr))):
+                        lane = c if dr else r
+                        out[(lane, r if dr else c)] = tick
+                        tally[lane] = tally.get(lane, 0) + 1
                 seen |= set(layer)
         if not out:
             return UNKNOWN

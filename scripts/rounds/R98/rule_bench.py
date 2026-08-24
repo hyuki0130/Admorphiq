@@ -69,12 +69,21 @@ def _own_spill_sources(payload: dict) -> dict[tuple[int, int], int]:
         if not layer:
             continue
         tick += 1
+        kept_here: set[tuple[int, int]] = set()
+        deferred: list[tuple[int, int]] = []
         for (r, c) in layer:
             behind = (r - dr, c - dc)
             flanks = ((r - dc, c - dr), (r + dc, c + dr))
-            if behind in seen or any(f in seen for f in flanks) or behind in pieces:
+            if behind in seen or any(f in seen for f in flanks):
+                continue
+            if behind in pieces:
+                deferred.append((r, c))
                 continue
             out[(c if dr else r, r if dr else c)] = tick
+            kept_here.add((r, c))
+        for (r, c) in deferred:
+            if any(f in kept_here for f in ((r - dc, c - dr), (r + dc, c + dr))):
+                out[(c if dr else r, r if dr else c)] = tick
         seen |= set(layer)
     return out
 
