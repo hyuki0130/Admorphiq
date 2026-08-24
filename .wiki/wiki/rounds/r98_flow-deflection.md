@@ -4553,6 +4553,37 @@ within anything observed so far. The next probe is to find the action that makes
 render its verdict, rather than to explain a verdict that has not been given.
 
 
+## The verdict WAS given: idx3's commits fail (2026-08-24)
+
+The last entry said idx3 shows neither verdict. Pressing every action after the run settles it:
+
+```
+action 1: levels=3  NOT_FINISHED  layers=1     a move
+action 2: levels=3  NOT_FINISHED  layers=1
+action 3: levels=3  NOT_FINISHED  layers=1
+action 4: levels=3  NOT_FINISHED  layers=1
+action 5: levels=3  NOT_FINISHED  layers=38    the spill runs again
+```
+
+Moves return a single layer, which means the board is back in its ARRANGE phase — the spill had
+already resolved and the board had already been restored. **The verdict was given and it was a
+failure.** "idx3 gives no verdict" is corrected; what idx3 gives no sign of is the FLASH.
+
+So the position is now exact, and it is a contradiction that belongs to the model rather than to
+the measurement:
+
+* all nineteen target-coloured cells reach the satisfied appearance and hold for three layers;
+* the game has a life left, so the attempt is judged;
+* the attempt FAILS, which by the engine's own condition means the flag is set;
+* the flag is set by flow reaching a tagged sprite that flashes — and on idx3 nothing flashes
+  anywhere off the frame, while idx1 and idx2 failures flash row 0 plainly.
+
+Every one of those is measured. The one that must give way is the assumption that the flashing
+sprite is visible as a flash on every board: on idx3 the entity may be covered by flow at the
+moment it is touched, since flow overwrites appearance, or it may sit under a piece the way that
+level's source does. Both are checkable, and neither is checked yet.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -4635,7 +4666,13 @@ render its verdict, rather than to explain a verdict that has not been given.
     commits. One life recovered by not re-committing when the aiming moved nothing;
     three more are spent because every level builds a FRESH grounding and re-learns the
     flow's direction and colour, which cannot change within a game.
-28. **idx3 gives NO verdict.** With a life in hand and all nineteen cells satisfied, its
+29. ~~idx3 gives no verdict.~~ **It fails.** Moves after the run return one layer, so the
+    board was already restored to its arrange phase — the attempt resolved as a failure.
+    With all nineteen satisfied, the engine's condition means the FLAG is set, yet nothing
+    flashes off-frame on idx3 while idx1/idx2 failures flash row 0. The assumption that
+    must give is "the flashing entity is always visible": on idx3 it may be covered by
+    flow, or sitting under a piece the way that level's source does.
+28. ~~idx3 gives NO verdict.~~ With a life in hand and all nineteen cells satisfied, its
     spills show no failure flash and no next-level board, while idx1/idx2 failures flash
     row 0 plainly. The engine decides only once the flow has finished, on a later action
     than the commit, and pressing the commit again just re-runs the spill. Find the action
