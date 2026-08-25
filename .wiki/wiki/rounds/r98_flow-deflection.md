@@ -8232,6 +8232,34 @@ is still wrong against the certified table. The checker is for catching a fabric
 for settling the round.
 
 
+## The checker is pinned against both of its own failures (2026-08-25)
+
+Logic that was wrong twice in one afternoon, in opposite directions, is logic that will drift back.
+`tests/test_r98_explanation_check.py` holds it at both ends:
+
+- **naming what was absent is not a false claim** — gemma4's counterfactual must come back clean;
+- **a negative claim is still a claim** — *"the targets were not satisfied"* must flag;
+- a fabricated barrier contact must flag;
+- a plain, accurate observation must pass.
+
+Each pin was checked against the failure it exists for, by re-introducing that failure:
+
+```
+counterfactual guard removed   -> only test_naming_what_was_absent_is_not_a_false_claim fails
+"no"/"not" back in the guard   -> only test_a_negative_claim_is_still_a_claim fails
+```
+
+**One regression, one red test, each time** — which is what makes them pins rather than a suite
+that goes red as a block and tells you nothing about which end broke.
+
+Suite 1735, oracle 3/3.
+
+That is the last piece of the diagnosis chain: the ask is a continuation, its wiring is pinned, its
+output is checked against the frozen capture, and the checker is pinned against both ways it has
+already been wrong. Whatever gpt-oss says when its kernel lands, the reading of it is now
+mechanical rather than a matter of how convincing it sounds.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -8342,6 +8370,14 @@ for settling the round.
     compiler's UNSATISFIABLE is the truth about the board rather than a search failure.
     Either the propagator floors flow the engine does not, or the level wants more than
     one placement.
+141. **The checker is PINNED against both of its own failures.** Four pins: gemma4's
+     counterfactual comes back clean, *"the targets were not satisfied"* flags, a fabricated
+     barrier contact flags, a plain observation passes. Each checked by re-introducing its
+     failure — removing the counterfactual guard reddens exactly one test, putting "no"/"not"
+     back reddens exactly the other. **One regression, one red test**, which is what makes
+     them pins rather than a block that tells you nothing. Suite 1735. The diagnosis chain is
+     now complete end to end: continuation ask, pinned wiring, capture-checked output, checker
+     pinned both ways.
 140. **The explanation CHECKER, and the two ways it was wrong first.**
      `explanation_check.py` tests a stated reason against the frozen capture instead of
      against how convincing it sounds. It flagged gemma4 on its FIRST run — *"if the animation
