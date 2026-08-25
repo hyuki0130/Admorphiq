@@ -42,9 +42,12 @@ echo "waiting for the dataset version to be served…"
 # real: the listing only carries them once the new version is actually served.
 served=""
 for _ in $(seq 1 90); do
-  stamp=$(uv run kaggle datasets download jaehyukhyun/admorphiq-src -f COMMIT.txt \
-          -p "$STAGE/check" --force --quiet 2>/dev/null \
-          && cat "$STAGE/check/COMMIT.txt" 2>/dev/null | tr -d '[:space:]')
+  # BOTH streams to /dev/null: `--quiet` still prints "Dataset URL:" and "License(s):" on
+  # STDOUT, so a version that redirected only stderr captured those lines into $stamp and the
+  # comparison could never match — the loop would spin its full 30 minutes and then fail.
+  uv run kaggle datasets download jaehyukhyun/admorphiq-src -f COMMIT.txt \
+      -p "$STAGE/check" --force --quiet >/dev/null 2>&1 || true
+  stamp=$(tr -d '[:space:]' < "$STAGE/check/COMMIT.txt" 2>/dev/null || true)
   if [ "$stamp" = "$COMMIT" ]; then served=yes; break; fi
   sleep 20
 done
