@@ -7726,6 +7726,25 @@ Recorded as the entry cost for the next expansion, which is what a family-expans
 successor.
 
 
+## The family scope reaches the index, where a successor will look for it (2026-08-25)
+
+The scoping measurements — ten games carry the tell, zero of five candidates read, sc25's specific
+bill — are what a fourth family expansion consults before it picks a target game, and they were
+sitting only in a round page that now runs to a hundred and ninety entries.
+
+`rounds/index.md` now carries all three, with the caution attached to each: the candidate pool
+(and that burst does **not** predict readability), the zero-of-five reach result, the entry cost
+diagnosed on sc25, the two probe scripts by name, and the note that this round's near-OOD control
+was chosen from too small a list and was deliberately **not** swapped.
+
+That is the fifth summary this session has had to catch up to its own evidence, and by now the
+pattern has a shape worth stating rather than repeating: **every measurement lands in exactly one
+place by default — the round page — and every other place that claims to summarise it is a
+separate copy with its own decay.** The index, CLAUDE.md, the Next list and the frontmatter each
+had to be paid for individually, and the only reason it stayed cheap is that each was caught
+within a tick or two of the measurement it lagged.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -7836,6 +7855,13 @@ successor.
     compiler's UNSATISFIABLE is the truth about the board rather than a search failure.
     Either the propagator floors flow the engine does not, or the level wants more than
     one placement.
+122. **The family scope reaches the INDEX**, where a fourth expansion looks before picking a
+     target game: the ten-game candidate pool, the warning that burst does NOT predict
+     readability, the 0-of-5 reach result, sc25's diagnosed entry cost, both probe scripts by
+     name, and the note that this round's near-OOD control was picked from too small a list
+     and deliberately not swapped. Fifth summary this session to catch up to its own
+     evidence — every measurement lands in ONE place by default and every summary is a
+     separate copy with its own decay.
 121. **What a SECOND MEMBER would cost, measured on the nearest miss.** sc25 vs sp80: scale
      1 / playable **64** against 4 / 16; **5** non-empty frontiers of 21 against 20 of 27;
      **no** changed regions against two; **128** emitters against 1. So the three failing
