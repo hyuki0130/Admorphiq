@@ -140,6 +140,21 @@ def _make_agent(name: str, game_id: str | None = None):
         from admorphiq.world_model_agent import WorldModelAgent
 
         return ChainedAgent(WorldModelAgent(), _make_agent("unified", game_id))
+    if name == "kaggle_detect":
+        # The SHIPPED artifact exactly as notebooks/kaggle_submission.py builds it — a dead
+        # LLM callable and the deployed GF_GIVEUP default. `--agent detect` builds its
+        # unified member through _make_agent("unified"), which wires a live LLM backend, so
+        # the two are NOT the same configuration and the card must be measured as shipped.
+        from admorphiq.kaggle_detect_agent import build_detect
+
+        return build_detect()
+    if name == "detect":
+        # The shippable form of the adapter depth: mechanic detection from the frame,
+        # falling back to the current card when nothing fires. See
+        # admorphiq.detect_dispatch_agent for why ambiguity falls back rather than guesses.
+        from admorphiq.detect_dispatch_agent import DetectDispatchAgent
+
+        return DetectDispatchAgent(_make_agent("chained", game_id))
     if name == "online_rl":
         import os
 
