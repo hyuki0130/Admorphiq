@@ -165,6 +165,7 @@ from typing import Any
 from admorphiq.adapters25.base import (
     GameAction,
     GameAdapter,
+    available_action_ids,
     canonical_layer,
     click_action,
     has_frame,
@@ -598,6 +599,26 @@ class Adapter(GameAdapter):
     (fallback), composed entirely from admorphiq.kernels."""
 
     GAME_ID = GAME_ID
+
+    @classmethod
+    def _detect_mechanic(cls, latest_frame: Any) -> bool:
+        """A ring-toggle board: at least one 8-cell ring with a LEGIBLE centre glyph.
+
+        Two conditions, both required by the mechanic rather than by any one board.
+
+        1. **Click-only.** A toggle-parity puzzle is played entirely by clicking cells;
+           it offers no simple actions at all. MEASURED across the 25 public games:
+           ring discovery alone false-positives on 9 of 24, and requiring an empty
+           simple-action set removes 5 of them (dc22, lf52, sb26, su15, tr87) because
+           every one of those is a movement game whose grid merely looks ring-like.
+        2. **Ring discovery finds a ring.** `_discover_rings` works from the grid alone —
+           it infers button size and pitch from the frame and rejects illegible ink via
+           `_classify_glyph`.
+        """
+        simple_ids, has_click = available_action_ids(latest_frame)
+        if simple_ids or not has_click:
+            return False
+        return bool(_discover_rings(canonical_layer(latest_frame)))
 
     def __init__(self, giveup: int = _GIVEUP_DEFAULT) -> None:
         # Unmeasured going in (FT09 is click-only, no movement/hazard

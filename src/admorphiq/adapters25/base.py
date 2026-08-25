@@ -55,6 +55,38 @@ class GameAdapter(ABC):
     #: discovery contract) and mirrored here for the class's own use.
     GAME_ID: str = ""
 
+    @classmethod
+    def detect(cls, latest_frame: Any) -> bool:
+        """Does THIS adapter's mechanic appear in the frame? Never overridden.
+
+        Detection runs an adapter's own discovery code against boards it was never
+        written for, and that code is entitled to assume its mechanic — MEASURED on the
+        first port: ft09's ring discovery raises ``IndexError`` reading a glyph compass
+        on a foreign board, because no ring is there to read. An exception means "not my
+        mechanic", so the guard belongs here, once, rather than as boilerplate in every
+        adapter.
+        """
+        if not has_frame(latest_frame):
+            return False
+        try:
+            return bool(cls._detect_mechanic(latest_frame))
+        except Exception:  # noqa: BLE001 — a foreign board is a NO, never a crash
+            return False
+
+    @classmethod
+    def _detect_mechanic(cls, latest_frame: Any) -> bool:
+        """The mechanic's OBSERVABLE signature. Override this, not :meth:`detect`.
+
+        The default is ``False``, so an adapter that has not been ported never fires
+        under detection dispatch and costs nothing. Write it the way
+        `ring_paint.detect_paint_layout` reads a canvas/target/swatch geometry — with no
+        game identity anywhere — never by recognising one board's constants.
+
+        ⛔ `GAME_ID` selection stays for script25's own ceiling measurement. Detection is
+        what a submission may use, because the 110 private games carry no id we know.
+        """
+        return False
+
     @abstractmethod
     def is_done(self, frames: list[Any], latest_frame: Any) -> bool: ...
 
