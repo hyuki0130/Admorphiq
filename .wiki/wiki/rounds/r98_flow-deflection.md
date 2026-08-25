@@ -8202,6 +8202,36 @@ basis chosen to fit it, and this round has spent the day learning that the order
 what makes a check a check.
 
 
+## The explanation checker, and the two ways it was wrong first (2026-08-25)
+
+Checking a stated reason by reading it is how the round would end up believing whichever
+explanation sounded best. `scripts/rounds/R98/explanation_check.py` does it against the frozen
+capture instead, flagging the three claims that capture contradicts.
+
+It was wrong twice before it was right, both times caught by running it on text whose verdict was
+already known:
+
+**1. It flagged gemma4 on its first run.** gemma4 says *"If the animation had ended with a failure
+screen ... I would have chosen `terminate_fatal`"* — naming what was ABSENT, which is the opposite
+of asserting it. A counterfactual is not a claim, and a checker that matches words instead of
+claims convicts the model for describing what it did not see. Fixed by testing sentence by sentence
+and skipping conditional framing.
+
+**2. The fix then swallowed a real violation.** The counterfactual guard listed "no" and "not"
+among its markers, so *"the targets were not satisfied"* — a genuine, checkable claim about the
+animation — was excused as hypothetical. **Negation is not counterfactual framing.** Only `if`,
+`had`, `would`, `were to` and `unless` belong there.
+
+Verified in both directions on five cases: gemma4's actual reply and a pure observation report come
+back clean, and all three fabricated violations flag. Neither direction alone would have been
+enough — a checker that flags nothing and one that flags everything both pass a one-sided test.
+
+⛔ And what it reports is deliberately narrow: *"consistent with the capture — which says the
+REASON is not false, not that the ANSWER is right"*. gemma4's reason is consistent and its answer
+is still wrong against the certified table. The checker is for catching a fabricated citation, not
+for settling the round.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -8312,6 +8342,14 @@ what makes a check a check.
     compiler's UNSATISFIABLE is the truth about the board rather than a search failure.
     Either the propagator floors flow the engine does not, or the level wants more than
     one placement.
+140. **The explanation CHECKER, and the two ways it was wrong first.**
+     `explanation_check.py` tests a stated reason against the frozen capture instead of
+     against how convincing it sounds. It flagged gemma4 on its FIRST run — *"if the animation
+     had ended with a failure screen"* names what was ABSENT, and a counterfactual is not a
+     claim. The fix then swallowed a real violation, because the guard listed "no" and "not"
+     as counterfactual markers: **negation is not counterfactual framing**. Verified BOTH ways
+     on five cases. ⛔ It reports only that a reason is not false — gemma4's is consistent and
+     its answer is still wrong.
 139. **The basis for CHECKING whichever explanation arrives, extracted first.** From the
      frozen capture: 20 layers, 37 flow cells, hazards at `(15,3)` `(15,9)`, **no flow cell in
      the hazard row at all**, deepest row 14 of 16, last layer a single `(14,3)`. So the
