@@ -261,3 +261,38 @@ def test_the_deployed_cap_actually_fires():
     assert agent.is_done([], Frame()) is False, "the cap must not fire before the budget"
     agent.action_counter = cap
     assert agent.is_done([], Frame()) is True, "the cap must fire at the budget"
+
+
+def test_the_deployed_budget_fits_the_competition_time_limit():
+    """Purpose: pin that the per-game budget, times the hidden game count, fits in 9 hours.
+
+    MAX_ACTIONS bounds ONE game. What the competition bounds is the WHOLE run, and nothing
+    connected the two until a submission had been pending for eight hours. The arithmetic,
+    from this repo's own measurements:
+
+        rate            51 actions/sec   (148,018 actions in 48.4 minutes over 25 games)
+        hidden games   110               (project_kaggle_eval_and_metric)
+        limit            9 hours
+
+        100,000/game -> 11,000,000 actions -> 59.9 hours   the SUBMITTED card
+          4,000/game ->    440,000 actions ->  2.4 hours   the current card
+
+    Expected feedback: a pass means a card cannot be shipped with a budget whose worst case
+    exceeds the limit. A failure means the run can be killed by the clock, which scores zero on
+    everything regardless of how good the agent is — the one failure mode that no local score
+    and no amount of card measurement can reveal.
+    """
+    from admorphiq.kaggle_detect_agent import KaggleDetectAgent
+
+    actions_per_second = 51      # measured, 25-game server run
+    hidden_games = 110           # the evaluation set
+    limit_hours = 9
+
+    worst_case_hours = (
+        KaggleDetectAgent.MAX_ACTIONS * hidden_games / actions_per_second / 3600
+    )
+    assert worst_case_hours < limit_hours, (
+        f"per-game budget {KaggleDetectAgent.MAX_ACTIONS:,} projects to "
+        f"{worst_case_hours:.1f}h over {hidden_games} games at {actions_per_second} actions/sec, "
+        f"past the {limit_hours}h limit"
+    )
