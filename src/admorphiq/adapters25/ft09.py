@@ -344,6 +344,11 @@ def _classify_glyph(glyph: dict[str, int]) -> tuple[str, int | None]:
     return ("illegible", None)
 
 
+#: Members of a COMPLETE ring: a 3x3 layout minus its own centre. Detection
+#: requires one of these; solving also accepts edge-truncated rings.
+_COMPLETE_RING = 8
+
+
 def _discover_rings(grid: Grid) -> list[dict[str, Any]]:
     """Discover toggle rings and their center glyph gaps, ACCEPTING rings
     truncated by the frame edge. Pure frame observation: button size is the
@@ -611,14 +616,20 @@ class Adapter(GameAdapter):
            ring discovery alone false-positives on 9 of 24, and requiring an empty
            simple-action set removes 5 of them (dc22, lf52, sb26, su15, tr87) because
            every one of those is a movement game whose grid merely looks ring-like.
-        2. **Ring discovery finds a ring.** `_discover_rings` works from the grid alone —
-           it infers button size and pitch from the frame and rejects illegible ink via
-           `_classify_glyph`.
+        2. **At least one COMPLETE ring.** A ring is a 3x3 layout minus its own centre,
+           so a complete one has exactly 8 members — that is the mechanic's definition,
+           not a constant off any board. MEASURED on the four click-only false positives
+           that survived condition 1: none of them produces a single complete ring, only
+           fragments (ft09 4 rings all of size 8; lp85 sizes {3,4,5}, s5i5 {3}, r11l
+           {3,4}, tn36 {3,4}). Truncated rings still count toward SOLVING — the adapter
+           accepts them — but detection may be conservative, because a miss costs nothing
+           while a false positive spends a private game's whole action budget.
         """
         simple_ids, has_click = available_action_ids(latest_frame)
         if simple_ids or not has_click:
             return False
-        return bool(_discover_rings(canonical_layer(latest_frame)))
+        rings = _discover_rings(canonical_layer(latest_frame))
+        return any(len(ring["ring_cells"]) == _COMPLETE_RING for ring in rings)
 
     def __init__(self, giveup: int = _GIVEUP_DEFAULT) -> None:
         # Unmeasured going in (FT09 is click-only, no movement/hazard
