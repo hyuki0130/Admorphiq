@@ -7976,6 +7976,29 @@ forbade prose, then the diagnostic prompt withheld the evidence. Both were caugh
 output rather than the intent, which is the only method that has worked all session.
 
 
+## The explanation ask is pinned, without a GPU (2026-08-25)
+
+Two properties of the diagnostic ask cost a verdict if wrong, and neither is visible from the
+reply: it must arrive as a **continuation** carrying the evidence and the model's own answer, and
+it must **not exist at all** when the flag is off. The first version failed the first of those and
+returned a confabulation about "a critical system failure" — text that reads fine and measures
+nothing.
+
+Both are now checked in the harness self-test, on stubs, with no server:
+
+```
+fill    explain   -> 4 message(s), roles=['assistant', 'user'], evidence carried=True PASS
+fill    explain-off -> key absent=True PASS
+```
+
+Nine cases now, all passing. And the check bites: reverting the ask to the cold system+user pair
+turns it red and says why — `2 message(s), roles=['system', 'user']`.
+
+The scored prompts remain byte-identical with the flag on and off, verified again after the change.
+So the diagnostic is now the only thing this session added that could have silently gone wrong
+twice and now cannot go wrong the same way a third time.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -8086,6 +8109,12 @@ output rather than the intent, which is the only method that has worked all sess
     compiler's UNSATISFIABLE is the truth about the board rather than a search failure.
     Either the propagator floors flow the engine does not, or the level wants more than
     one placement.
+132. **The explanation ask is PINNED, without a GPU.** Its two failure modes both cost a
+     verdict and neither shows in the reply: it must be a CONTINUATION carrying the evidence
+     and the model's own answer, and it must not exist when the flag is off. Both now checked
+     on stubs — `4 message(s), roles=['assistant','user'], evidence carried=True` and `key
+     absent=True` — self-test 9 cases. Reverting to the cold ask turns it red and says why
+     (`2 message(s), roles=['system','user']`). Scored prompts still byte-identical.
 131. **The lesson page now carries SIX failures, not four.** The two prompt-side ones join it:
      a scored prompt that FORBIDS the thing being diagnosed (JSON-only leaves nothing to read)
      and a diagnostic prompt that WITHHOLDS the evidence (asked cold, a model confabulates).

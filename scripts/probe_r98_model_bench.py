@@ -871,6 +871,34 @@ def self_test() -> int:
     print(f"  fill    equivalent -> equivalent_to_truth={equiv.get('equivalent_to_truth')} "
           f"outcome={equiv.get('outcome')} {'PASS' if good else 'FAIL'}")
 
+    # The explanation ask, checked WITHOUT a GPU. Two properties matter and neither is
+    # visible from the reply alone: it must arrive as a CONTINUATION carrying the evidence and
+    # the model's own answer, and it must not exist at all when the flag is off. Both cost a
+    # verdict if wrong — the first version asked cold and got a confabulation about "a
+    # critical system failure", describing nothing that happened.
+    seen: list = []
+
+    def _recording_stub(messages):
+        seen.append(messages)
+        return _truthful_stub("fill")(messages) if len(seen) <= 2 else "because."
+
+    os.environ["R98_EXPLAIN"] = "1"
+    explained = run_fill_once(0, _recording_stub)
+    os.environ.pop("R98_EXPLAIN")
+    follow = seen[-1] if len(seen) >= 3 else []
+    roles = [m["role"] for m in follow]
+    carries_evidence = any("animation" in m["content"] for m in follow)
+    good = (explained.get("explanation") == "because."
+            and "assistant" in roles and carries_evidence)
+    ok &= good
+    print(f"  fill    explain   -> {len(follow)} message(s), roles={roles[-2:]}, "
+          f"evidence carried={carries_evidence} {'PASS' if good else 'FAIL'}")
+
+    quiet = run_fill_once(0, _truthful_stub("fill"))
+    good = "explanation" not in quiet
+    ok &= good
+    print(f"  fill    explain-off -> key absent={good} {'PASS' if good else 'FAIL'}")
+
     g, state, _ = _run_discovery()
     evidence = build_flow_evidence(g, False)
     leaks = (leak_report(build_select_ask(evidence, g)[0])
