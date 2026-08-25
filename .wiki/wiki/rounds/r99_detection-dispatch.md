@@ -186,3 +186,44 @@ stops at nine ports. Further depth should come from raising the CEILING (deeper 
 adapters) or from transfer work on the private set, not from squeezing the last 0.05 out of
 dispatch.
 
+
+## Transfer evidence, without submitting (2026-08-26)
+
+A detector measured at 0/24 false positives fires on exactly one public board, which leaves the
+question a submission actually turns on: **does it fire on a board it was never written against?**
+
+`environment_files_archive/` holds an OLDER VERSION HASH for fifteen games — the same mechanic with
+different internals, which this project already recorded as a proxy for the private set's
+obfuscation (the 2026-04-21 rotation took every sprite-tag-reading brittle solver to zero).
+Swapping the archived version in and asking each detector:
+
+```
+m0r0  archived dadda488   fires: True
+r11l  archived aa269680   fires: True
+re86  archived 4e57566e   fires: True
+sk48  archived 41055498   fires: True
+su15  archived 4c352900   fires: True
+
+5/5
+```
+
+⚠️ **Verified by the LOADER LINE, not by the reported game_id.** The arcade reports the CURRENT id
+(`m0r0-492f87ba`) even while serving the archived tree, so the id proves nothing; what proves it is
+
+```
+Successfully loaded game class M0r0 from environment_files/m0r0/dadda488/m0r0.py
+```
+
+which is why this project made a loader-line audit mandatory. The first reading of this probe was
+about to be reported as 5/5 on the strength of the id alone.
+
+**What it establishes:** the detectors read the MECHANIC, not this board. That is the strongest
+evidence obtainable without spending a submission that the ports can earn on the hidden set — and
+it is exactly the test the old brittle solvers failed.
+
+**What it does not establish:** that the private 110 contain these mechanics at all. If none does,
+the card falls back everywhere and scores what the chained card scores. The ports cannot lose
+anything there; they simply may not gain.
+
+Probe: `scripts/detector_transfer.py`.
+
