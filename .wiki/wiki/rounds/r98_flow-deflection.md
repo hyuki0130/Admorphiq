@@ -8169,6 +8169,39 @@ only reason this instrument is worth running at all.
 gpt-oss kernel pushed after the dataset was confirmed live at 45911 bytes.
 
 
+## The basis for checking whichever explanation arrives (2026-08-25)
+
+The pre-fixed reading says gpt-oss's explanation might cite the animation and be **wrong** about
+it, and that outcome must not be read as either of the other two. So the facts to check it against
+are extracted now, from the frozen contract capture, before the result exists:
+
+```
+layers: 20        flow cells: 37        targets: (13,4) x5, (13,10) x5
+hazard cells: (15,3) (15,9)
+flow cells in the hazard row: NONE
+deepest flow row: 14 of a 16-cell board
+last layer: [(14, 3)]
+```
+
+**The flow never occupies a hazard cell.** It stops at row 14 with the hazards on row 15, so the
+"barrier contact" the evidence describes is a stream coming to rest *against* the barrier, not
+entering it. That is exactly what gemma4 reported — *"a stream reaching the bottom edge and
+stopping"* — so its reading of the animation is confirmed against the capture, not merely
+plausible.
+
+This gives three checkable failure modes for any explanation:
+
+- claiming the flow **entered** a hazard or was destroyed by it — false on this spill;
+- claiming a failure marking, reset or screen **appeared** — false; the round measured no failure
+  colour on any of 38 layers of a failing spill, and this capture's last layer is one ordinary
+  flow cell;
+- claiming targets were **not** satisfied — false; both cups reach the satisfied appearance.
+
+⛔ Extracted before the result on purpose. A basis assembled after reading an explanation is a
+basis chosen to fit it, and this round has spent the day learning that the order of operations is
+what makes a check a check.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -8279,6 +8312,14 @@ gpt-oss kernel pushed after the dataset was confirmed live at 45911 bytes.
     compiler's UNSATISFIABLE is the truth about the board rather than a search failure.
     Either the propagator floors flow the engine does not, or the level wants more than
     one placement.
+139. **The basis for CHECKING whichever explanation arrives, extracted first.** From the
+     frozen capture: 20 layers, 37 flow cells, hazards at `(15,3)` `(15,9)`, **no flow cell in
+     the hazard row at all**, deepest row 14 of 16, last layer a single `(14,3)`. So the
+     "barrier contact" is a stream resting AGAINST the barrier, not entering it — which
+     confirms gemma4's reading against the capture rather than leaving it plausible. Three
+     checkable falsehoods for any explanation: that the flow entered a hazard, that a failure
+     marking appeared, that the targets were unsatisfied. ⛔ Extracted before the result: a
+     basis assembled afterwards is one chosen to fit.
 138. **The decisive question is RUNNING, with its reading fixed in advance.** gpt-oss now gets
      the explanation ask. If its reason cites something in the animation that discriminates,
      the fill stage measures READING and the frozen verdict means what it says. If it rests on
