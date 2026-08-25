@@ -825,6 +825,39 @@ Where the remaining room is, stated plainly:
 **Fifteen games together produce 0.15.** Raising the card means raising those, and today's
 measurements found most of them parked, walled by proof, or multi-session in scale.
 
+## The submitted kernel may not fit in 9 hours — and the budget change is why the next one will
+
+At 8h30m pending, against a 3h33m projection, the arithmetic is worth doing rather than waiting.
+The submitted kernel is commit `20aa652`, which predates the budget change: it runs with
+**MAX_ACTIONS = 100,000**.
+
+```
+observed rate: 51 actions/sec (148,018 actions in 48.4 minutes over 25 games)
+
+  8,000 actions/game -> 110 games    880,000 actions =  4.8 hours
+ 20,000 actions/game ->            2,200,000 actions = 12.0 hours   ⛔ over the limit
+100,000 actions/game ->           11,000,000 actions = 59.9 hours   ⛔ over the limit
+```
+
+Eight and a half hours in means the run has already averaged past ~15,000 actions per game, and
+that trajectory reaches the 9-hour ceiling.
+
+⚠️ **Not a declaration of failure.** If the hidden games end naturally as the public 25 mostly do,
+it can still finish; Kaggle holding PENDING means it is running, not that it has died.
+
+What this does establish is that the budget change was not the optimisation it looked like. It was
+written up as "identical score, sixteen times faster" — the honest reading now is that **the
+submitted card may not fit the competition's own time limit, and the next one fits with room
+to spare**:
+
+```
+next card (MAX_ACTIONS = 4,000) -> 110 x 4,000 = 440,000 actions = 2.4 hours
+```
+
+⛔ A measurement taken for one reason turning out to matter for a different and larger one is not
+luck to be enjoyed — it means the original risk assessment (recorded as "the 9-hour limit stops
+being a risk") was about the WRONG card. The card in flight never had that protection.
+
 What makes this axis worth the measurement at all: a game the fallback ALREADY clears, at 500x a
 human's cost, needs no new mechanic and claims no new game — so it carries none of the
 cd82-hijack risk that stopped the port campaign.
