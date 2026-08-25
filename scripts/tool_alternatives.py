@@ -44,8 +44,14 @@ def run(game: str, tool_name: str, cap: int) -> None:
         if env is None or env.observation_space is None:
             return
         obs = env.observation_space
+        baseline = list(env_info.baseline_actions or [])
         agent = UnifiedAgent(tools, _no_llm, giveup=cap, stall=80, ctx_budget=6000)
         actions, best = 0, 0
+        # Levels are not RHAE. Record WHEN each level lands so the comparison can be made in
+        # score, where a squared efficiency ratio decides whether two slow levels beat one fast
+        # one — the exact question a level count cannot answer.
+        per_level: list[int] = []
+        since = 0
         while actions < cap:
             if agent.is_done([], obs):
                 break
@@ -58,11 +64,23 @@ def run(game: str, tool_name: str, cap: int) -> None:
             if nxt is None:
                 break
             obs = nxt
-            best = max(best, obs.levels_completed)
+            since += 1
+            while obs.levels_completed > best:
+                best += 1
+                per_level.append(since)
+                since = 0
             if obs.state == GameState.GAME_OVER:
                 obs = env.step(GameAction.RESET)
                 actions += 1
-        print(f"{game}/{tool_name}: levels={best} actions={actions}")
+        scores = [
+            min(baseline[i] / a, 1.0) ** 2 if i < len(baseline) and a > 0 else 0.0
+            for i, a in enumerate(per_level)
+        ]
+        weights = list(range(1, len(baseline) + 1)) or [1]
+        earned = sum(w * s for w, s in zip(weights, scores))
+        game_score = earned / sum(weights)
+        print(f"{game}/{tool_name}: levels={best} actions={actions} per_level={per_level} "
+              f"score={game_score:.4f}")
         return
     print(f"{game}/{tool_name}: no such environment")
 

@@ -739,8 +739,33 @@ right tool, is FALSE on vc33: the missing re-decision costs a level there.
 * ⛔ **no score was measured.** Levels are not RHAE: `toggle`'s two levels could have cost more
   actions than `graph`'s one, and this run did not record when they landed.
 
+### In SCORE, which is the only unit that counts
+
+Levels are not RHAE, so the comparison was redone with per-level action counts:
+
+```
+vc33/graph    1 level   L1 at 2,335 actions              score 0.0000
+vc33/toggle   2 levels  L1 at 113, L2 at 143 actions     score 0.0013
+```
+
+`toggle` does not merely reach one more level — it reaches the first **twenty times faster**.
+
+⚠️ **And 0.0013 is still essentially zero.** A human clears vc33 L1 in SEVEN actions, so even
+113 scores `(7/113)² ≈ 0.004`. The harness is measurably picking the worse tool, and picking the
+better one does not make this game worth anything.
+
+So all three findings stand together, and the last one deflates the first two:
+
+| established | |
+|---|---|
+| the harness picks an inferior tool on vc33 | ✓ measured |
+| re-decision is structurally impossible, at any threshold | ✓ measured |
+| **fixing it would raise the card** | ⛔ **no — 0.0000 to 0.0013** |
+
 What it does establish: "the alternatives are never tried" is not harmless in general, because at
-least once an untried alternative was better.
+least once an untried alternative was better — twenty times better on time-to-first-level. What it
+does NOT establish is that this is worth fixing for the public 25. On the hidden 110 it could
+matter if toggle-shaped games are common there, and ⛔ nothing here says whether they are.
 
 What makes this axis worth the measurement at all: a game the fallback ALREADY clears, at 500x a
 human's cost, needs no new mechanic and claims no new game — so it carries none of the
