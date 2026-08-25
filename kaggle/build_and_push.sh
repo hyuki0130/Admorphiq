@@ -19,18 +19,23 @@ trap 'rm -rf "$STAGE"' EXIT
 
 # 1. The source dataset. Ship exactly what the agent imports, and stamp the commit INSIDE it
 #    so a future session can map any dataset version back to a tree.
-# The notebook WALKS /kaggle/input for a directory NAMED admorphiq that holds __init__.py, so
-# the package must arrive as a real directory. ⛔ NOT `--dir-mode zip`: that uploads each
-# directory AS a zip, so `admorphiq/` became `src.zip`, the walk found nothing, and the kernel
-# died on `ModuleNotFoundError: No module named 'admorphiq'` — measured on version 1 of this
-# script. `--dir-mode tar` and the default both preserve the tree; the default is used here.
-cp -R src/admorphiq "$STAGE/"
+# The notebook WALKS /kaggle/input for a directory NAMED admorphiq holding __init__.py, so the
+# package must arrive as a real directory — and `--dir-mode zip` is how that happens.
+#
+# ⛔ The DEFAULT is `skip`, which IGNORES directories entirely: a version pushed without the flag
+# uploaded COMMIT.txt and nothing else, and the kernel died on `ModuleNotFoundError: No module
+# named 'admorphiq'` with an EMPTY dataset. `zip` uploads each directory as an archive that
+# Kaggle then extracts, stripping the top level — which is why the package is staged one level
+# down, under src/, and arrives as `admorphiq/`. The notebook's own path list records this:
+# "/kaggle/input/admorphiq-src"  # CLI dataset (zip strips src/)
+mkdir -p "$STAGE/src"
+cp -R src/admorphiq "$STAGE/src/"
 find "$STAGE" -name '__pycache__' -type d -exec rm -rf {} + 2>/dev/null || true
 echo "$COMMIT" > "$STAGE/COMMIT.txt"
 cat > "$STAGE/dataset-metadata.json" <<JSON
 {"title": "admorphiq-src", "id": "jaehyukhyun/admorphiq-src", "licenses": [{"name": "CC0-1.0"}]}
 JSON
-uv run kaggle datasets version -p "$STAGE" -d -m "admorphiq src @ $COMMIT"
+uv run kaggle datasets version -p "$STAGE" -d --dir-mode zip -m "admorphiq src @ $COMMIT"
 
 # 2. WAIT for the version to exist. `datasets version` returns BEFORE the new files are
 #    served, and pushing a kernel against the old ones silently runs stale code — measured
