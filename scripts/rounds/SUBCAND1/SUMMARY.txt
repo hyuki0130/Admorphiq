@@ -1,0 +1,5 @@
+[generated 2026-08-25 16:34:29 KST] SUBMISSION CANDIDATE — full-25, chained agent (the agent the notebook actually ships) LIVE 4/25
+mean game_score = 0.2574 | total levels = 8 | games clearing = 2/25
+(참조: from-scratch online-RL 0.0014, random 0.0000, verified top 0.1258)
+  * CD82: score=0.9463 lvl=6 act=[6, 10, 24, 21, 24, 23]
+  * AR25: score=0.0833 lvl=2 act=[31, 46]

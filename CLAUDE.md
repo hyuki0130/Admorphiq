@@ -1514,6 +1514,38 @@ page, (b) re-benching, (c) showing in a trace that Qwen still cannot
 learn the rule from the wiki alone. Only then discuss a Python
 exception — and it will require updating architecture.md first.
 
+## CURRENT TARGET + MEASUREMENT METHOD (2026-08-25 — user directive, overrides stale anchors)
+
+**Leaderboard re-checked 2026-08-25** (`kaggle competitions leaderboard arc-prize-2026-arc-agi-3 -s`):
+top = **5.99** (cstl), 2nd 4.58 (Tufa Labs), 3rd 3.36, 12th 2.66. **Ours = 0.20**, unmoved since
+2026-07-13. ⛔ The "top band 1.38–1.61" recorded in July is **STALE by ~4x** — the field rose in six
+weeks. Re-check the board before quoting it; never cite a six-week-old anchor.
+
+**Goal (user, 2026-08-25): clear ALL games and chase the top band WITHIN AUGUST.** First realistic
+milestone = 2.66 (12th); target = 5.99.
+
+**Measurement runs ALL 25 GAMES IN PARALLEL on `ceph-build` (64 cores), never serially on the Mac.**
+The Mac is edit/lint/pytest only. Sync first — ceph-build's `~/admorphiq` is a tarball extract, is
+BEHIND the repo, and is not a git repo:
+
+```
+tar czf /tmp/admorphiq_sync.tgz --exclude=.venv --exclude=.git --exclude='__pycache__' \
+    src scripts tests notebooks pyproject.toml uv.lock environment_files
+scp -i ~/VM/keys/nfw-dev.pem /tmp/admorphiq_sync.tgz ubuntu@ceph-build:~/
+ssh -i ~/VM/keys/nfw-dev.pem ubuntu@ceph-build \
+   'export PATH=$HOME/.local/bin:$PATH; cd ~/admorphiq && tar xzf ~/admorphiq_sync.tgz && uv sync -q'
+```
+
+⚠️ `uv` lives at `~/.local/bin` and is NOT on the default ssh PATH. `._*` files there are macOS tar
+artefacts, and any file-list diff between the machines needs `LC_ALL=C sort` or it is nonsense.
+
+**The submission path is `notebooks/kaggle_submission.py` → `KaggleChainedAgent` →
+`WorldModelAgent` + `UnifiedAgent`** — the cd82 `ring_paint`, sb26 `portal_sort` and su15 solvers
+that produced the 0.20 card live in `world_model_agent.py`, NOT in `adapters25`. Measure a candidate
+with `--agent chained`. ⛔ A submission is not made until its BUILD is committed (kernel source,
+`kernel-metadata.json`, push command, dataset-version → commit mapping) — the 0.20 card's build
+procedure was never recorded and had to be recovered from the r53 round page.
+
 ## Measurement Discipline (dev-time rounds — enforced 2026-07-01)
 
 **Timestamp every output — including chat replies to the user.** EVERY reply you
