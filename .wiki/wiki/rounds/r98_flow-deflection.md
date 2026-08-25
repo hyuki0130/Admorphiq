@@ -7624,6 +7624,38 @@ Next list, frontmatter. The pattern is consistent enough to name: **appended evi
 summaries are not, and every one of them is a separate copy that has to be paid for.**
 
 
+## The family's tell is in TEN of twenty-five games, two of them harder than sp80 (2026-08-25)
+
+The round calls sp80 a FAMILY but has only ever measured one member, and the near-OOD screen only
+ever looked at eight hand-picked candidates. Widened to every game in the set:
+
+```
+sb26   42   ACTION5:42        lf52   27   ACTION5:27       sp80   22   ACTION5:22
+sc25   22   ACTION1/6:22      cd82   15   ACTION5:15       g50t    9   ACTION2/5:9
+tu93    8   ACTION2/4:8       bp35    5                    ft09    5   ACTION6:5
+su15    5   ACTION6:5         r11l    3        ...and 15 games at 1
+```
+
+**Ten of twenty-five produce a scripted multi-tick consequence from a single action**, and three of
+them match or exceed sp80's burst of 22. sb26 and lf52 burst on ACTION5, the same commit-shaped
+action sp80 uses.
+
+Two things follow, and the second is a correction.
+
+**The family is plausibly larger than its one measured member.** A high burst is not membership —
+it says an agent could reach for a place-then-propagate model here, not that the model would be
+right — but it is the observable precondition, and it exists on nine games besides sp80. That is
+the candidate pool a fourth family expansion would draw from, and it did not exist as a measurement
+before.
+
+⚠️ **The round's near-OOD control was chosen from too small a list.** tu93 was picked as the
+nearest confusable game at burst 8, when sb26 (42) and lf52 (27) are far nearer on the same
+measure and were never considered. The control still does its job — it declines, and the family
+boundary holds — but "nearest" was asserted over eight games and is measured over twenty-five to be
+wrong. ⛔ Not swapped here: the OOD certification is part of the frozen contract, and re-picking a
+control after the fact is how a control stops being one.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -7734,6 +7766,14 @@ summaries are not, and every one of them is a separate copy that has to be paid 
     compiler's UNSATISFIABLE is the truth about the board rather than a search failure.
     Either the propagator floors flow the engine does not, or the level wants more than
     one placement.
+119. **The family's tell is in TEN of twenty-five games, two HARDER than sp80.** Widening the
+     near-OOD screen from eight hand-picked candidates to every game: sb26 42, lf52 27, sp80
+     22, sc25 22, cd82 15, g50t 9, tu93 8, bp35/ft09/su15 5, r11l 3, and fifteen at 1. sb26
+     and lf52 burst on ACTION5, sp80's own commit-shaped action. So the family plausibly has
+     nine other candidate members — the pool a fourth expansion would draw from. ⚠️ And the
+     round's near-OOD control was picked from too small a list: tu93 at burst 8 was called
+     "nearest" when sb26 and lf52 are far nearer. ⛔ Not swapped — the OOD certification is
+     part of the frozen contract, and re-picking a control after the fact unmakes it.
 118. **The line a future session reads FIRST was still on three runs.** The page's own
      frontmatter `verdict:` described the 3-run stage and ended "Only the paired GPU model
      runs remain" — done hours earlier — with `date: 2026-08-22`. Rewritten to the nine-run

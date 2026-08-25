@@ -32,7 +32,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
 from arc_agi import Arcade, OperationMode  # noqa: E402
 from arcengine import GameAction  # noqa: E402
 
-CANDIDATES = ["sp80", "re86", "sk48", "ls20", "wa30", "tn36", "cn04", "tu93"]
+# Eight hand-picked candidates answered the OOD question — is THIS game confusable with
+# the oracle's family — but not the scoping one: how many games could an agent plausibly
+# reach for a place-then-propagate model on? That needs every game, so the default is now
+# the whole environment set and the hand-picked list is the ordering seed.
+SEEDED = ["sp80", "re86", "sk48", "ls20", "wa30", "tn36", "cn04", "tu93"]
 SIMPLE = [GameAction.ACTION1, GameAction.ACTION2, GameAction.ACTION3,
           GameAction.ACTION4, GameAction.ACTION5, GameAction.ACTION7]
 
@@ -88,8 +92,9 @@ def main() -> int:
     arcade = _open_arcade()
     envs = {e.game_id.split("-")[0]: e.game_id for e in arcade.get_environments()}
 
+    names = SEEDED + sorted(n for n in envs if n not in SEEDED)
     rows = []
-    for name in CANDIDATES:
+    for name in names:
         gid = envs.get(name)
         if gid is None:
             rows.append({"game_id": name, "bursts": {}, "max": 0, "missing": True})
