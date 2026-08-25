@@ -793,6 +793,38 @@ So all three harness findings are real and all three are worth nothing on this c
 weight and these defects start to cost. ⛔ The submission is the only thing that can say, and it
 has not returned.
 
+## What the shipped card is actually made of (2026-08-26)
+
+Splitting the 0.2772 by which layer earned it:
+
+```
+PORTS (detection)   9 games   5.8330   84%
+   m0r0 1.0000 · ls20 1.0000 · ft09 1.0000 · sb26 0.8460 · re86 0.7273
+   su15 0.4368 · tr87 0.2857 · sk48 0.2778 · r11l 0.2594
+
+PROBE               9 games   1.0972   16%
+   cd82 0.9463 · ar25 0.0833 · s5i5 0.0278 · wa30 0.0222 · tn36 0.0152 · lp85 0.0022
+
+HARNESS             7 games   0.0000    0%
+
+total 6.9302 / 25 = 0.2772
+```
+
+The day inverted the card. This morning the probe earned everything (1.4153); now the ports earn
+**84%**, and the probe's own share FELL to 1.0972 because the ports took several of its games and
+played them better — su15 0.0935 → 0.4368, re86 0.0833 → 0.7273.
+
+Where the remaining room is, stated plainly:
+
+| segment | value | headroom |
+|---|---|---|
+| the nine ports | 5.8330 | at their ceiling — none |
+| cd82, on the probe | 0.9463 | ceiling 0.98 — nearly none |
+| **the other fifteen games** | **0.1509** | ⚠️ everything that is left |
+
+**Fifteen games together produce 0.15.** Raising the card means raising those, and today's
+measurements found most of them parked, walled by proof, or multi-session in scale.
+
 What makes this axis worth the measurement at all: a game the fallback ALREADY clears, at 500x a
 human's cost, needs no new mechanic and claims no new game — so it carries none of the
 cd82-hijack risk that stopped the port campaign.
