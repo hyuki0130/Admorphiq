@@ -8374,6 +8374,29 @@ anywhere; its live gates reproduce wherever the competition assets are, which is
 competition rather than a gap in the round.
 
 
+## The citation scheme holds — checked, then pinned (2026-08-25)
+
+The round cites its own findings by number, and so does `rounds/index.md`. After two hundred
+appends that scheme had never been checked, and a reused number sends a reader to the wrong
+finding without ever looking wrong.
+
+Measured: **no duplicates among entry numbers 7 and above.** Every citation this session made —
+`#54`, `#83`, `#89`, `#96`, `#121` — resolves to exactly one entry. Numbers 1 to 6 do recur, up to
+ten times for `3`, but they belong to narrative sub-lists inside sections (*"3. the piece response
+is a direction-preserving perpendicular split"*), not to entries, because markdown restarts each
+list block.
+
+Pinned, and the pin caught itself first. Its parser accepted "a line starting with a digit that has
+a dot nearby", swallowed lines like `0/9 FAIL`, and died on them — **the same class of error this
+round has spent the day catching, this time in the check rather than in the thing checked.** An
+anchored `^\d{1,3}\. ` fixes it.
+
+Then verified against a real collision: renumbering entry 145 to 89 makes it fail with
+`cited more than once: [89]`, naming the number that would have misdirected a reader.
+
+Six guards hold, oracle 3/3.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -8484,6 +8507,12 @@ competition rather than a gap in the round.
     compiler's UNSATISFIABLE is the truth about the board rather than a search failure.
     Either the propagator floors flow the engine does not, or the level wants more than
     one placement.
+146. **The citation scheme HOLDS — checked, then pinned.** No duplicates among entry numbers
+     7 and above, so every `#54` / `#83` / `#121` in this round and in the index resolves.
+     Numbers 1-6 recur (up to 10x) but belong to narrative sub-lists, since markdown restarts
+     each block. ⚠️ The pin caught itself first: its parser took "a digit with a dot nearby",
+     swallowed `0/9 FAIL` and died — the day's error class, this time in the check. Anchored
+     `^\d{1,3}\. ` fixes it; renumbering 145 to 89 then fails with `cited more than once: [89]`.
 145. **Where the environments come from, written where the skip message sends you.** The skip
      says "set `ARC_ENVIRONMENTS_DIR`" and nothing said where the files are. Established:
      neither `arc_agi` nor `arcengine` ships them (both package dirs checked), and they are

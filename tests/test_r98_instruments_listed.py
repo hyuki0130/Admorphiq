@@ -1,4 +1,4 @@
-"""Pin: every R98 script is named in the round page's Instruments table.
+"""Pins for the R98 round page's integrity: its instrument index and its entry numbering.
 
 Purpose
 -------
@@ -15,6 +15,7 @@ question it answers, not what it does — a reader arrives with a question, not 
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 _ROOT = Path(__file__).resolve().parents[1]
@@ -28,3 +29,25 @@ def test_every_r98_script_is_named_on_the_round_page() -> None:
     page = _PAGE.read_text()
     missing = sorted(p.name for p in _SCRIPTS.glob("*.py") if p.name not in page)
     assert not missing, f"scripts absent from the round page: {missing}"
+
+
+def test_entry_numbers_above_six_are_unique() -> None:
+    """Purpose: the round page cites its own findings by number — "#54", "#89", "#121" — and
+    `rounds/index.md` does too, so a reused number silently sends a reader to the wrong
+    finding. Numbers 1-6 recur legitimately: markdown restarts each list block, and the low
+    ones belong to narrative sub-lists rather than to entries. Everything above that is an
+    entry reference and has to resolve.
+
+    Expected feedback: a failure names the number cited twice, which is the reference that
+    would have taken a reader somewhere other than where the citation meant."""
+    # An anchored list-item prefix, not "starts with a digit and has a dot nearby". The first
+    # version of this parser swallowed lines like "0/9 FAIL" and died on them — the same class
+    # of error this round has been catching all day, in the check rather than in the thing
+    # checked.
+    numbers = [
+        int(match.group(1))
+        for match in re.finditer(r"^(\d{1,3})\. ", _PAGE.read_text(), re.MULTILINE)
+    ]
+    entries = [n for n in numbers if n >= 7]
+    duplicates = sorted({n for n in entries if entries.count(n) > 1})
+    assert not duplicates, f"entry numbers cited more than once: {duplicates}"
