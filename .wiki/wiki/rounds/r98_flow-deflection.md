@@ -8321,6 +8321,38 @@ the contract and cost minutes each; folding them in would make the fast check sl
 and the checks most worth having are the ones cheap enough to run without deciding to.
 
 
+## The round reproduces from a clean clone — and the runner was lying about one guard (2026-08-25)
+
+Whether this session's numbers survive being checked out elsewhere had never been tested. A fresh
+`git clone` of the repository:
+
+```
+evidence files present: 8
+sum             12       12
+levels   idx0x2  idx1x1  idx2x1  idx3x4
+```
+
+**The corpus and its verdict reproduce exactly**, so the round's central replay number is a
+property of the repository rather than of this working tree.
+
+The guard runner did not fare as well, and the failure was mine. It advertised all six checks as
+needing "no live engine", and on the clone the sixth failed:
+
+> *the arcade exposes no sp80 environment (0 environment(s) visible; ARC_ENVIRONMENTS_DIR=None)*
+
+**The harness self-test's stubs replace the MODEL, not the game.** It still drives the real arcade,
+so it cannot run where the environment files are absent — and they are not in the repository. Five
+of six are repository-only; the sixth never was.
+
+Fixed by reporting it as **SKIP with the reason and the variable to set**, not FAIL: a guard runner
+that goes red on a clean checkout teaches people to ignore it. The summary counts skips separately
+— *"five guards hold; the harness self-test was SKIPPED"* — because **skipped is not passed**, and
+a runner that blurs them is the same green stamp by a different route.
+
+Verified both ways: six OK where the environments exist, five plus an explained skip where they do
+not.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -8431,6 +8463,14 @@ and the checks most worth having are the ones cheap enough to run without decidi
     compiler's UNSATISFIABLE is the truth about the board rather than a search failure.
     Either the propagator floors flow the engine does not, or the level wants more than
     one placement.
+144. **The round REPRODUCES from a clean clone — and the runner was lying about one guard.**
+     A fresh clone gives 8 evidence files and the same `sum 12 12` with the same level
+     coverage, so the replay number belongs to the repository. But the runner advertised all
+     six checks as engine-free and the sixth failed there: **the harness self-test's stubs
+     replace the MODEL, not the game**, so it drives the real arcade and the environment files
+     are not in the repo. Now reported as SKIP with the reason and the variable to set, counted
+     separately — *"five guards hold; the harness self-test was SKIPPED"* — because skipped is
+     not passed. Verified both ways.
 143. **Six guards, ONE command.** `selfcheck.sh` runs the corpus validity+coverage sweep, the
      three pin files and the harness self-test — all six OK. Verified both ways rather than by
      its green run: an unlisted script makes it print `instruments listing FAIL`, name the
