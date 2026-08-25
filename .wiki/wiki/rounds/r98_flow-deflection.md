@@ -8292,6 +8292,35 @@ gap **recurred before it was closed** — which is the argument for mechanising 
 than resolving to keep it.
 
 
+## Six guards, one command (2026-08-25)
+
+The session added six cheap self-checks and never made them reachable together. **A guard nobody
+runs is a guard that stops holding without saying so** — and this round has already had a table go
+stale within the hour of being written, which is what happens to a convention that depends on
+somebody remembering it.
+
+`scripts/rounds/R98/selfcheck.sh` runs all six:
+
+```
+corpus validity + coverage         OK
+corpus guard pins                  OK
+probe logic pins                   OK
+explanation checker pins           OK
+instruments listing                OK
+harness self-test                  OK
+[R98 selfcheck] all six guards hold
+```
+
+Verified in both directions rather than by its green run: dropping an unlisted script in makes it
+print `instruments listing FAIL`, **name the failing test**, and **exit 1**; removing it returns
+`exit 0`. A runner that cannot fail is a green stamp, and one that fails without saying which guard
+broke sends the reader back to running them one at a time.
+
+⛔ The live gates — oracle, grounding, verifier, mutants — stay OUT of it on purpose. They decide
+the contract and cost minutes each; folding them in would make the fast check slow enough to skip,
+and the checks most worth having are the ones cheap enough to run without deciding to.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -8402,6 +8431,12 @@ than resolving to keep it.
     compiler's UNSATISFIABLE is the truth about the board rather than a search failure.
     Either the propagator floors flow the engine does not, or the level wants more than
     one placement.
+143. **Six guards, ONE command.** `selfcheck.sh` runs the corpus validity+coverage sweep, the
+     three pin files and the harness self-test — all six OK. Verified both ways rather than by
+     its green run: an unlisted script makes it print `instruments listing FAIL`, name the
+     failing test, and **exit 1**; removing it returns exit 0. ⛔ The live gates stay OUT on
+     purpose — they cost minutes each and folding them in would make the fast check slow
+     enough to skip. A guard nobody runs stops holding without saying so.
 142. **The instruments table went stale WITHIN THE HOUR — so it is pinned.**
      `explanation_check.py`, built two ticks after the table was added, was already missing
      from it. A table is current only until the next thing is built. A test now walks
@@ -9182,6 +9217,7 @@ documentation.
 | `family_reach_probe.py` | does the grounding assemble a board on any game but sp80? | no |
 | `edge_band_probe.py` | is an outer pixel row decoration, a counter, or an event? | no |
 | `explanation_check.py` | is a model's stated reason TRUE of the animation it saw? | no |
+| `selfcheck.sh` | do all six cheap guards still hold? (seconds; no engine, no GPU) | no |
 | `ood_certification.py` | does the harness read its own family and decline the others? | no |
 | `gated_enum_test.py` | is the model faithful on every reachable placement, and does each slot discriminate? | no |
 | `feasibility_probe.py` | does a winning layout exist at all under the verified model? | no |
