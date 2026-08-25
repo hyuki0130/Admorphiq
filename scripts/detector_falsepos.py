@@ -27,31 +27,39 @@ def main() -> int:
     adapters = discover_adapters()
     arcade = Arcade(operation_mode=OperationMode.OFFLINE)
 
-    first_frames: dict[str, object] = {}
+    # Each game is asked its question IMMEDIATELY after boot. Booting all 25 first and
+    # reading them afterwards gave a WRONG answer — ls20's detector read as not firing on
+    # its own game while `_parse` on a freshly booted ls20 frame plainly succeeded. The
+    # observation object does not survive later `make()` calls, so the earlier version was
+    # measuring stale frames for every game but the last.
+    tested = [n for n in under_test if adapters.get(n) is not None]
+    for missing in [n for n in under_test if adapters.get(n) is None]:
+        print(f"{missing}: NO SUCH ADAPTER")
+
+    hits: dict[str, list[str]] = {n: [] for n in tested}
+    games: list[str] = []
     for env_info in arcade.get_environments():
-        title = (env_info.title or env_info.game_id).lower()
-        key = title.split("-")[0][:4]
-        if key in first_frames:
+        key = (env_info.title or env_info.game_id).lower().split("-")[0][:4]
+        if key in games:
             continue
         env = arcade.make(env_info.game_id)
         if env is None or env.observation_space is None:
             continue
-        first_frames[key] = env.observation_space
+        games.append(key)
+        frame = env.observation_space
+        for name in tested:
+            if adapters[name].detect(frame):
+                hits[name].append(key)
 
-    print(f"booted {len(first_frames)} games: {' '.join(sorted(first_frames))}\n")
+    print(f"booted {len(games)} games: {' '.join(sorted(games))}\n")
 
-    failed = 0
-    for name in under_test:
-        cls = adapters.get(name)
-        if cls is None:
-            print(f"{name}: NO SUCH ADAPTER")
-            failed += 1
-            continue
-        fires = sorted(g for g, frame in first_frames.items() if cls.detect(frame))
+    failed = len(under_test) - len(tested)
+    for name in tested:
+        fires = sorted(hits[name])
         own = "yes" if name in fires else "NO"
         others = [g for g in fires if g != name]
         print(f"{name}: fires on own game = {own} | false positives = "
-              f"{len(others)}/{len(first_frames) - 1} {others}")
+              f"{len(others)}/{len(games) - 1} {others}")
         if own == "NO" or others:
             failed += 1
 

@@ -1333,6 +1333,24 @@ class Adapter(GameAdapter):
 
     GAME_ID = GAME_ID
 
+    @classmethod
+    def _detect_mechanic(cls, latest_frame: Any) -> bool:
+        """A token-matching maze: movement-only controls AND a parseable single-goal level.
+
+        1. **Movement only.** The mechanic offers ACTION1-4 and nothing else — no click,
+           no interact, no undo. MEASURED across the 25 public games, that alone narrows
+           to three candidates (ls20, tr87, tu93).
+        2. **The level parses.** `_parse` reconstructs avatar, goal, carried token and
+           goal preview from a settled frame and returns None on any of its named
+           gate-outs (no avatar / no goal / undecodable token or preview / more than one
+           goal), so "does this board read as a token-matching maze" is exactly the
+           question detection needs to ask.
+        """
+        simple_ids, has_click = available_action_ids(latest_frame)
+        if has_click or sorted(simple_ids) != [1, 2, 3, 4]:
+            return False
+        return _parse(canonical_layer(latest_frame)) is not None
+
     def __init__(self, giveup: int = _GIVEUP_DEFAULT) -> None:
         self.restart_on_game_over = True
         self._giveup = giveup
