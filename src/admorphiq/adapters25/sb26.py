@@ -245,6 +245,28 @@ class Adapter(GameAdapter):
 
     GAME_ID = GAME_ID
 
+    @classmethod
+    def _detect_mechanic(cls, latest_frame: Any) -> bool:
+        """A portal-graph sort board: the pick-place-undo control scheme AND a parse.
+
+        1. **No avatar, pick and place with an undo.** This puzzle has nothing to walk —
+           you take an item from the pool, place it in a slot, and can cancel — so it
+           offers clicks plus ACTION5 and ACTION7 and no movement at all.
+        2. **The board parses.** `simdfs_plan` reads the target sequence band, the
+           bordered frames with their border-colour identity, the slots and the pipes
+           that link frames, and returns None when the board is not one of these.
+
+        ⛔ Condition 2 alone is NOT enough, and that is measured rather than assumed: on
+        its own the parse accepts `s5i5` and `sc25` too, and a full-25 run with only it
+        took s5i5 from 0.0278 to 0.0000 while gaining sb26. A detector built on "my solver
+        did not refuse" inherits the solver's permissiveness — which a solver may have and
+        a detector may not.
+        """
+        simple_ids, has_click = available_action_ids(latest_frame)
+        if not has_click or sorted(simple_ids) != [5, 7]:
+            return False
+        return bool(simdfs_plan(canonical_layer(latest_frame)))
+
     def __init__(self, giveup: int = _GIVEUP_DEFAULT) -> None:
         self.restart_on_game_over = True
 
