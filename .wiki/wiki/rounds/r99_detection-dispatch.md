@@ -3,7 +3,7 @@ type: reasoning
 round: R99
 axis: submission card — port the quarantined adapters from game_id selection to FRAME DETECTION
 keywords: [detection-dispatch, adapters25, port, false-positive-gate, probe-detection, control-scheme, card, submission, ceiling, transfer, first-frame-limit]
-verdict: **CARD 0.0566 -> 0.2771 (4.9x), zero regressions, nine adapters ported.** Every port lands EXACTLY on its ceiling (lossless), and the shipped configuration scores what the benched one does (0 differences across every game both runs finished). The gate that makes a port shippable is a MEASURED 0/24 false-positive rate across the public games; it blocked two attempts and predicted a specific production regression that the run then produced. Ports write as the mechanic's CONTROL SCHEME plus the entities it cannot do without, requiring BOTH members of a pair. Probe detection (one shared action) opens m0r0, the single largest gap. PARKED with the limit named: lp85's mechanic appears at LEVEL 2 and dispatch decides at L0.
+verdict: **CARD 0.0566 -> 0.2772 (4.9x), CONFIRMED on all 25 games in the SHIPPED configuration, zero regressions, nine adapters ported.** Every port lands EXACTLY on its ceiling (lossless), and the shipped configuration scores what the benched one does (0 differences across every game both runs finished). The gate that makes a port shippable is a MEASURED 0/24 false-positive rate across the public games; it blocked two attempts and predicted a specific production regression that the run then produced. Ports write as the mechanic's CONTROL SCHEME plus the entities it cannot do without, requiring BOTH members of a pair. Probe detection (one shared action) opens m0r0, the single largest gap. PARKED with the limit named: lp85's mechanic appears at LEVEL 2 and dispatch decides at L0.
 commit: [b3c92a8, e6e4ae5, 4d26d25, 7d2b57c, 755dfad, 1d1c00e, 9fdd6bd, fecdf4f, 2b51a9b, 08050a4, 9e4cac6, c67db8e, c0b58c3, 1b94260, e0534c3, f5eb06d]
 date: 2026-08-25
 ---
@@ -121,9 +121,15 @@ finished.
 
 ```
 card                0.0566
-detection dispatch  0.2771      4.9x, zero regressions, 84% of the way to the ceiling
+detection dispatch  0.2772      4.9x, zero regressions, 84% of the way to the ceiling
 adapter ceiling     0.3296
 ```
+
+**Final, in the SHIPPED configuration, all 25 games**: `--agent kaggle_detect` reads **0.2772**, and
+`scripts/benched_vs_shipped.py` compares **25 of 25 games with 0 differences**. The dead LLM callable
+costs nothing — the signature-routing path reaches the same result as a live backend, consistent
+with the v1 notebook's own record that the LLM contributed +0.004%p there. This is the number that
+may be quoted for a submission.
 
 Every port lands EXACTLY on its ceiling, which is what says the move was lossless: the adapter
 selected by frame evidence scores what it scored when selected by `game_id`.
