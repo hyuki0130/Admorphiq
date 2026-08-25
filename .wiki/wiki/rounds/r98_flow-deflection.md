@@ -7780,6 +7780,35 @@ called the difference the second game's property. Two games are a comparison; se
 distribution, and the distribution put the anomaly on the side I had been treating as normal.
 
 
+## The central claim survives everything this session changed (2026-08-25)
+
+The round's thesis — for a two-phase place-then-propagate board the transition model IS the
+simulator — was certified before this session touched the propagator (the frame-band wall) and the
+grounding (background blockers). A claim certified against an older build is a claim about that
+build, so it was re-run:
+
+```
+dx=+2 trajectory: EXACT (20 live steps vs 20 predicted)
+dx=+3 trajectory: EXACT (17 live steps vs 17 predicted)
+[faithfulness] PASS
+[gated slots]  6/8 carry a prediction; demote to non-gating: ['own_flow', 'boundary']
+```
+
+**Every reachable placement's outcome still matches, both probe trajectories are still exact, and
+the gated-slot table is byte-for-byte the frozen one** — `piece_spawn`, `piece_direction`,
+`sink_predicate`, `sink_miss` and `hazard` discriminating, `piece_propagation` trajectory-only,
+`own_flow` and `boundary` inert.
+
+That is the result: nothing to change, verified rather than assumed. It also says something about
+what this session actually did — the frame-band wall and the background-blocker fix moved the
+replay corpus from 93 cells of error to 12 without disturbing a single certified prediction, which
+is what a fix to the INSTRUMENT looks like from the model's side.
+
+⛔ Worth stating because the opposite is easy to assume: this does not re-certify the round. The
+contract's paired fill substage is still not met, and a faithful propagator does not make a model
+that reads hazard fatality correctly.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -7890,6 +7919,13 @@ distribution, and the distribution put the anomaly on the side I had been treati
     compiler's UNSATISFIABLE is the truth about the board rather than a search failure.
     Either the propagator floors flow the engine does not, or the level wants more than
     one placement.
+124. **The CENTRAL CLAIM survives everything this session changed.** Re-run after the
+     frame-band wall and the background-blocker fix: `[faithfulness] PASS`, both probe
+     trajectories EXACT (20/20 and 17/17 steps), every reachable placement's outcome matching,
+     and the gated-slot table byte-for-byte the frozen one (6/8 discriminating, `own_flow` and
+     `boundary` inert). The corpus went 93 -> 12 without disturbing one certified prediction —
+     what a fix to the INSTRUMENT looks like from the model's side. ⛔ It does NOT re-certify
+     the round: the paired fill substage is still unmet.
 123. ⚠️ **CORRECTION to #121: sp80 is the ODD ONE OUT, not sc25.** Surveyed across every
      candidate: sp80 alone reads at scale 4 / 16 cells; sc25, sb26, lf52, cd82, g50t and tu93
      ALL read at scale 1 / 64. So "sc25 is sixteen times bigger" compared against an outlier
