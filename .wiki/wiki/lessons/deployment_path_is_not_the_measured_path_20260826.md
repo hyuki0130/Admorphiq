@@ -61,6 +61,13 @@ faster" — AFTER the submission was sent. ⛔ So the card in flight never had t
 the risk assessment written at the time ("the 9-hour limit stops being a risk") was about a card
 that had not been submitted.
 
+⚠️ **The 9-hour figure is itself now IN DOUBT.** Submission `55774529` — a CPU kernel
+(`enable_gpu: false`) — passed nine hours still PENDING. CLAUDE.md records *"≤ 9 hours (CPU or
+GPU notebook)"* from the 2026-06-25 overview, so either that does not apply to CPU kernels, or
+the scoring re-run is bounded differently, or a failure had not yet surfaced in the status. ⛔ No
+way to measure which from here: Kaggle withholds logs during a run and the rules page is not
+reachable offline. The guard's SHAPE holds either way; the CONSTANT is unverified and marked so.
+
 This one is worse than the other five. They break the run in ways that show up as an error; this
 one lets a perfectly good agent be killed by the clock, scoring **zero on everything**, while
 every card measurement in the repository still reads 0.2772.

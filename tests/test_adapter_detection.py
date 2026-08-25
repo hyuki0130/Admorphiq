@@ -286,6 +286,13 @@ def test_the_deployed_budget_fits_the_competition_time_limit():
 
     actions_per_second = 51      # measured, 25-game server run
     hidden_games = 110           # the evaluation set
+    # ⚠️ 9 hours is what CLAUDE.md records from the 2026-06-25 overview, and it is IN DOUBT for
+    # this kernel: submission 55774529 (a CPU kernel, enable_gpu false) passed nine hours still
+    # PENDING. Either the figure does not apply to CPU notebooks, or the scoring re-run is
+    # bounded differently, or the status lagged a failure. The guard's SHAPE — multiply the
+    # per-game cap by the evaluation set at the measured rate, compare to the platform's limit —
+    # holds regardless; only this constant is unverified, and it is deliberately the
+    # conservative reading.
     limit_hours = 9
 
     worst_case_hours = (
