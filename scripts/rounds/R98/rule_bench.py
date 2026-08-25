@@ -343,6 +343,20 @@ def _sweep() -> int:
         name = next((s for s in path.stem.split("_") if s.startswith("idx")), path.stem)
         print(f"{name:8s} {a:9d} {b:8d}{mark}")
     print(f"{'sum':8s} {known:9d} {physics:8d}")
+    # Corpus-level bias is invisible per board. The third instrument failure this round paid
+    # for was a capture hook that only ever fired when a level FAILED, so seventeen boards all
+    # came from one level and every conclusion silently inherited "idx3, and only when it
+    # lost". No per-board check can see that, so the coverage is printed on every sweep
+    # instead: a single-level corpus is legitimate for a level-specific question and fatal
+    # only when nobody notices it is one.
+    coverage: dict[str, int] = {}
+    for path in captures:
+        level = next((s for s in path.stem.split("_") if s.startswith("idx")), path.stem)
+        coverage[level] = coverage.get(level, 0) + 1
+    spread = "  ".join(f"{k}x{v}" for k, v in sorted(coverage.items()))
+    print(f"{'levels':8s} {spread}"
+          + ("   ⚠️ SINGLE-LEVEL corpus — a rule judged here is judged on one level"
+             if len(coverage) == 1 else ""))
     if invalid:
         print("\n⛔ INVALID BOARDS — these do not describe their own spills, and any rule "
               "judged on them is judged on nothing:")

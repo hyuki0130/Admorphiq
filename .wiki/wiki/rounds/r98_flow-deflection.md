@@ -7511,6 +7511,35 @@ five gates once, because the contract board never exercises the path it broke �
 round page would not have stopped it happening again.
 
 
+## The third defect is corpus-shaped, so the guard reports coverage (2026-08-25)
+
+The validity guard checks boards, and this round found three instrument defects — but the third is
+not a property of any board. The capture hook only ever fired when a level FAILED, so seventeen
+boards all came from idx3 and every conclusion silently inherited "one level, and only when it
+lost". No per-board check can see that.
+
+So `--all` now prints the corpus's level coverage on every sweep:
+
+```
+levels   idx0x2  idx1x1  idx2x1  idx3x4
+```
+
+and says so plainly when there is only one:
+
+```
+levels   idx3x3   ⚠️ SINGLE-LEVEL corpus — a rule judged here is judged on one level
+```
+
+⚠️ It warns rather than failing, deliberately. A single-level corpus is perfectly legitimate for a
+level-specific question — the failure was never that the old corpus had one level, it was that
+**nobody could tell**. Making it fail would punish a valid use; making it visible removes the only
+thing that made it dangerous.
+
+Verified both ways: the real corpus prints four levels and no warning, and a sweep restricted to
+three idx3 boards prints the warning. Together with the two per-board checks, all three of this
+round's instrument defects now announce themselves rather than waiting to be rediscovered.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -7621,6 +7650,13 @@ round page would not have stopped it happening again.
     compiler's UNSATISFIABLE is the truth about the board rather than a search failure.
     Either the propagator floors flow the engine does not, or the level wants more than
     one placement.
+115. **The third defect is corpus-shaped, so the guard reports COVERAGE.** "Captures only ever
+     fired on failure" is a property of the corpus, not of any board, so no per-board check can
+     see it. `--all` now prints `levels idx0x2 idx1x1 idx2x1 idx3x4` on every sweep and warns
+     ⚠️ SINGLE-LEVEL when there is only one. It warns rather than failing on purpose: a
+     one-level corpus is legitimate for a level-specific question, and the failure was never
+     that the old corpus had one level but that nobody could tell. All three of this round's
+     instrument defects now announce themselves.
 114. **The corpus check is MECHANICAL now, not a note.** `--all` validates every board it
      sweeps: flow may not occupy a cell the board calls a piece, and a hazard may not lie
      outside the board's own bounds. Verified both ways — the real corpus exits 0, re-adding
