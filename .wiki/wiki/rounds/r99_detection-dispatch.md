@@ -213,9 +213,31 @@ So runtime scales with how many games the card CANNOT solve — and on 110 unsee
 fraction is higher than on the 25 we tuned against. At 10,000 actions each the projection
 approaches the **9-hour limit**.
 
-⛔ Giving up early on a game the card cannot solve costs NOTHING in score — it is already zero
-there — while buying back hours. That is a real constraint for the next card, recorded here
-rather than discovered by a timeout.
+I suggested giving up early on games the card cannot solve, on the grounds that it costs nothing
+— they score zero anyway — while buying back hours. ⛔ **The data refutes that.** Where levels
+were actually cleared, by cumulative actions:
+
+```
+cn04  L1 cleared at 56,048 actions        vc33  L1 3,656, L2 at 7,418
+sp80  L1 cleared at  2,342 actions        tu93  L1   696
+```
+
+```
+give up at   500 actions -> 6 levels lost (cn04 re86 sp80 tu93 vc33)
+give up at 1,000 actions -> 4 levels lost
+give up at 4,000 actions -> 2 levels lost (cn04 vc33)
+```
+
+**cn04's first level lands at 56,048 actions.** Every threshold I would have proposed kills it,
+and "it is already zero there" was simply false — those levels are not zero.
+
+⚠️ And the deeper objection stands: a level cleared late may be late because the GAME is that
+hard, not because the agent is flailing. Nothing in our data separates slow progress from a
+genuine wall, and no give-up rule can be honest until something does. Plausible signals exist
+(frontier exhaustion, state-hash stagnation) but ⛔ none has been measured to discriminate.
+
+So the runtime cost is recorded as a real constraint, and the obvious remedy is recorded as
+**unjustified**: it would trade measured levels for hours, on a rule we cannot yet write.
 
 
 ## How the submission will be read — fixed BEFORE the score arrives (2026-08-26)
