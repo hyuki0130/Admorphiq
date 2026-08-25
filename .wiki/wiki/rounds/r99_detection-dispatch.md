@@ -599,6 +599,28 @@ thing that does not transfer to unseen games.
 ⚠️ Measured on vc33 alone. But the direction is against the hypothesis, and a hypothesis that
 needs the next game to rescue it is not one to build on.
 
+### ⛔ That closure was PREMATURE — sk48 is the opposite regime
+
+```
+vc33   first clicks 1,406/1,406 changed (100%)   re-clicks 2,179/2,179 (100%)
+sk48   first clicks    31/488   changed (  6%)   re-clicks   155/715   ( 22%)
+```
+
+**94% of sk48's clicks do nothing at all.** The two games are not variations on one behaviour;
+they are different regimes:
+
+* **vc33** — every click lands, so there is no waste to remove and the gap really is knowing
+  which cell to press. My reading holds HERE.
+* **sk48** — the overwhelming majority of clicks are inert, so removable waste genuinely exists,
+  and "do not re-press a cell already shown to do nothing" needs **no mechanic knowledge at all**.
+
+I closed this axis one tick earlier on vc33 alone, writing that a hypothesis needing the next game
+to rescue it is not worth building on. ⛔ The sentence was right and I applied it in one direction
+only: the refutation was equally single-game, and I hardened it into a conclusion anyway.
+
+⚠️ Two games disagreeing means two games are not enough to say which regime is typical. The axis
+is **reopened and unresolved**, not closed.
+
 What makes this axis worth the measurement at all: a game the fallback ALREADY clears, at 500x a
 human's cost, needs no new mechanic and claims no new game — so it carries none of the
 cd82-hijack risk that stopped the port campaign.
