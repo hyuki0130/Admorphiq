@@ -119,6 +119,24 @@ could not be quoted for a submission without checking. `--agent kaggle_detect` b
 artifact exactly, and per game the two agree: **0 differences** across every game both runs
 finished.
 
+⛔ **That check MISSED one axis, and the miss is instructive.** The deployed wrapper sets
+`os.environ.setdefault("GF_GIVEUP", "8000")`, which RESPECTS a value already in the environment —
+and the measurement runner exports `GF_GIVEUP=100000`. So both the benched and the shipped runs
+inherited 100,000, and comparing them could never have revealed it: **a comparison is only as good
+as the axis it varies.** The tell was in the Kaggle server run all along — cn04 clearing L1 at
+56,048 actions locally while the server gave it 9,358 and zero levels.
+
+Re-measured with the environment variable UNSET, i.e. the true deployed 8,000 (`TRUESHIP`):
+
+```
+25 games, mean 0.2772 — IDENTICAL. One game differs at all:
+cn04   giveup 100k: 0.0000 / 1 level      giveup 8k: 0.0000 / 0 levels
+```
+
+The level is lost and the SCORE is not, because RHAE squares efficiency: a level cleared in 56,048
+actions rounds to zero anyway. **0.2772 stands as the shipped number** — but it stands by
+measurement, not because the check that was supposed to establish it did its job.
+
 ```
 card                0.0566
 detection dispatch  0.2772      4.9x, zero regressions, 84% of the way to the ceiling
