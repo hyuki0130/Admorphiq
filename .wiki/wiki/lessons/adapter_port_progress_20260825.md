@@ -85,3 +85,55 @@ were quarantined in the first place.
 What the episode is worth: the 0/24 rule stopped being a precaution and became a measurement. It
 predicted a specific regression on a specific game, and the run produced exactly that.
 
+
+## Eight static ports, measured full-25 (2026-08-25)
+
+```
+card                       0.0566
+detection dispatch         0.2372      4.2x, zero regressions
+adapter ceiling            0.3296
+```
+
+Every port lands EXACTLY on its ceiling, which is the property that says the port is lossless — the
+adapter selected by frame evidence scores what it scored when selected by `game_id`:
+
+```
+ft09  0.0291 -> 1.0000     ls20  0.0327 -> 1.0000     sb26  0.0796 -> 0.8460
+re86  0.0833 -> 0.7273     su15  0.0935 -> 0.4368     tr87  0.0000 -> 0.2857
+sk48  0.0000 -> 0.2778     r11l  0.0000 -> 0.2594
+```
+
+### What made the last five need no narrowing pass
+
+**The mechanic's control scheme, plus the entities it cannot do without.** Where the controls are
+unique (su15: clicks with an undo and nothing else) the entities are a formality; where they are
+shared (r11l with four other click-only games) the entities decide. What does the work is requiring
+BOTH members of a pair — snakes on both sides of sk48's divider, legs AND a nest for r11l — because
+one without the other is a board that merely looks similar.
+
+⛔ The failure mode to avoid is the one sb26 walked into: asking the SOLVER whether it copes. Its
+parser accepted s5i5 and sc25, and a full-25 run with only that condition took s5i5 from 0.0278 to
+0.0000. A detector built on "my solver did not refuse" inherits the solver's permissiveness, which
+a solver may have and a detector may not.
+
+### Probe detection, and the three defects that hid it
+
+m0r0 needs a probe: its player colour is whatever MOVED, so a static stand-in resolves a "maze" on
+18 of 25 games. One probe takes that to 2 candidates and the mechanic's own mirror pair takes it to
+1 — but ⚠️ only on the axis being mirrored. A VERTICAL probe leaves m0r0 and ka59 identical (both
+(-5,0) / (-3,0)); the horizontal one separates them ((0,-5) with (0,+5) against (0,-3) alone).
+
+Getting there cost three defects, all in wiring rather than in an adapter or the engine:
+
+1. **arming and reading the probe were one state.** The runner calls `is_done` and `choose_action`
+   with the SAME frame in one iteration, so reading on arm compared a frame with itself and fell
+   back everywhere.
+2. **`cls._detect_mechanic is not GameAdapter._detect_mechanic`** is always true — a classmethod is
+   a fresh bound object per access — so all 25 adapters counted as ported and the dispatcher spent
+   a probe on every board it did not statically recognise.
+3. **a diagnostic driver stepped ACTION6 without its `data`**, and the engine's `KeyError('x')`
+   read as an adapter defect for two ticks.
+
+With the driver corrected, the question that motivated the contract answers cleanly: **the probe
+costs nothing.** m0r0 solves 6/6 in 199 actions fresh and 198 after a probe.
+
