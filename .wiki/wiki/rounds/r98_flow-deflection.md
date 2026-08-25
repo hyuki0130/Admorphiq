@@ -7920,6 +7920,33 @@ and it should, since nothing it is scored on has moved — the explanation is pu
 Dataset confirmed live at 44043 bytes before the kernel went up. gemma4 running.
 
 
+## Two instruments existed only in the shell history (2026-08-25)
+
+The round has twenty-four scripts and no list of them. Checking which the page even mentions:
+
+```
+rule_bench          10 entries        window_probe         1
+walk_probe           4                shortlist_probe      0
+spread_sweep         2                family_reach_probe   0
+```
+
+**Two of the tools this session built are named nowhere on the page.** They were written, run, and
+their findings recorded — the shortlist attribution that identified `obstruction` as the false
+target's source, and the reach probe that established the harness reads one game — while the
+scripts that produced those findings existed only in a shell command. A finding whose instrument
+cannot be found again is a finding that has to be re-derived to be re-checked.
+
+An `## Instruments` table now lists all sixteen working scripts with the question each answers and
+whether it gates, and accounts for the eight single-question probes from the round's opening as
+provenance rather than re-use. Verified by iterating the directory and grepping each filename:
+**all twenty-four are accounted for**, which caught two that were listed without their `.py` and
+would have failed exactly that search.
+
+The table deliberately says what each script ANSWERS rather than what it does — a reader arrives
+with a question, not with a filename, and every script already carries its own Purpose docstring
+for the rest.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -8030,6 +8057,14 @@ Dataset confirmed live at 44043 bytes before the kernel went up. gemma4 running.
     compiler's UNSATISFIABLE is the truth about the board rather than a search failure.
     Either the propagator floors flow the engine does not, or the level wants more than
     one placement.
+129. **Two instruments existed only in the shell history.** The round has 24 scripts and had
+     no list; `shortlist_probe` and `family_reach_probe` — which identified `obstruction` as
+     the false target's source and established that the harness reads one game — were named
+     NOWHERE on the page. An `## Instruments` table now lists every working script by the
+     question it answers and whether it gates, with the eight opening probes accounted for as
+     provenance. Verified by iterating the directory: all 24 present, which caught two listed
+     without their `.py`. A finding whose instrument cannot be found is one that must be
+     re-derived to be re-checked.
 128. **The UNSCORED ask, built so it cannot move a verdict.** A third ask after `slots` is
      parsed: explain the `hazard_response` already given — what led to it, what would have
      changed it. It runs after both scored asks, its reply is stored and read by no scorer,
@@ -8684,6 +8719,38 @@ Dataset confirmed live at 44043 bytes before the kernel went up. gemma4 running.
    from static structure and not only from satisfaction, is the next expansion.
 3. qwen3.8-27b matched the contract models on select at first outing and is a live
    deploy candidate rather than a curiosity — worth carrying into the next family.
+
+## Instruments
+
+Everything in `scripts/rounds/R98/`. The gates run live and decide; the rest measure and
+never gate. Each carries its own Purpose docstring, so this table is the index, not the
+documentation.
+
+| script | what it answers | gates? |
+|---|---|---|
+| `oracle_gate.py` | does the certified oracle clear idx0 inside the frozen cap, three times? | **YES** |
+| `grounding_certification.py` | does the harness earn every measured slot from observation alone? | **YES** |
+| `verifier_certification.py` | does the verifier reproduce the frozen mutant table on live evidence? | **YES** |
+| `mutant_certification.py` | does the frozen verdict table match the measured mechanics? | **YES** |
+| `rule_bench.py` | replay error per board — `--all`, `--rows`, `--where`, `--targets`; validates the corpus and reports its level coverage on every sweep | no |
+| `depth_walk.py` | how far does ONE hypothesis carry, and what does each level cost? Judges its own depth against a baseline | no |
+| `spread_sweep.py` | scores candidate propagation rules without committing them, printing idx0 beside every total | no |
+| `walk_probe.py` | what the ENGINE does with a blocked droplet — `--decision`, `--events` | no |
+| `window_probe.py` | does the frame scroll, or is the board bigger than what is shown? | no |
+| `shortlist_probe.py` | which of `sink_candidates()`'s four sources names a given region? | no |
+| `near_ood_screen.py` | which of the 25 games carry the family's structural tell? | no |
+| `family_reach_probe.py` | does the grounding assemble a board on any game but sp80? | no |
+| `edge_band_probe.py` | is an outer pixel row decoration, a counter, or an event? | no |
+| `ood_certification.py` | does the harness read its own family and decline the others? | no |
+| `gated_enum_test.py` | is the model faithful on every reachable placement, and does each slot discriminate? | no |
+| `feasibility_probe.py` | does a winning layout exist at all under the verified model? | no |
+| `reference_propagator.py` | the colour-reading fixture the certifications replay through; imports the one propagator so there is a single implementation | no |
+
+Eight more are single-question probes from the round's opening — `discovery_probe_idx0.py`,
+`evidence_probe_idx0.py`, `oracle_probe_idx0.py`, `condition_probe.py`, `source_probe.py`,
+`piece_loss_probe.py`, `idx1_observation.py`. Their questions are answered in the entries above and
+they are kept for provenance rather than re-use; a reader chasing one of those findings will
+want the script that produced it.
 
 ## Related
 
