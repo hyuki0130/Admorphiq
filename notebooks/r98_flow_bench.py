@@ -281,6 +281,10 @@ def main() -> None:
         # the model never considered the inference or considered and rejected it. Diagnosis
         # only — the scoring path is untouched and the probe defaults this OFF.
         env["R98_KEEP_REPLIES"] = "1" if mode == "fill" else "0"
+        # The unscored third ask. The kept replies turned out to be bare JSON — the scored
+        # prompts forbid prose — so the diagnosis needs its own question, asked after the
+        # answer exists and read by nobody who scores.
+        env["R98_EXPLAIN"] = "1" if mode == "fill" else "0"
         print(f"\n=== R98 FLOW {label} x{RUNS} ({served}) ===", flush=True)
         try:
             rc = subprocess.call(

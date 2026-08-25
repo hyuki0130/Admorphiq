@@ -7897,6 +7897,29 @@ different question that scores nothing.
 first attempt measured the wrong surface.
 
 
+## The unscored ask, built so it cannot move a verdict (2026-08-25)
+
+The kept replies were bare JSON because both scored prompts demand *"a single JSON object and
+nothing else"*. The fix the last entry named is now built: a **third ask**, sent after `slots` is
+parsed, asking the model to explain the `hazard_response` it has already given — what in the
+animation led to it, and what would have changed it.
+
+Built to be unable to affect anything it is not meant to:
+
+- it runs **after** both scored asks and after parsing, so the answer already exists;
+- its reply is **stored and nothing else** — no parser, no scorer, no verdict path reads it;
+- it is off by default, like the raw-reply keeping, and the harness self-test still passes 7/7;
+- and the property that matters is **verified, not asserted**: the scored prompts are
+  **byte-identical at 9906 bytes with the flag on and off**.
+
+That last check is the whole reason this is not the fourth re-cut the round prohibits. The
+prohibition is against tuning the question until a weaker model passes; here the scored question is
+provably unchanged and the new one scores nothing. If gemma4 still answers `terminate_local` 9/9 —
+and it should, since nothing it is scored on has moved — the explanation is pure diagnosis.
+
+Dataset confirmed live at 44043 bytes before the kernel went up. gemma4 running.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -8007,6 +8030,13 @@ first attempt measured the wrong surface.
     compiler's UNSATISFIABLE is the truth about the board rather than a search failure.
     Either the propagator floors flow the engine does not, or the level wants more than
     one placement.
+128. **The UNSCORED ask, built so it cannot move a verdict.** A third ask after `slots` is
+     parsed: explain the `hazard_response` already given — what led to it, what would have
+     changed it. It runs after both scored asks, its reply is stored and read by no scorer,
+     it is off by default, self-test still 7/7, and the property that matters is VERIFIED:
+     the scored prompts are **byte-identical at 9906 bytes with the flag on and off**. That
+     is why this is not the prohibited fourth re-cut — the scored question is provably
+     unchanged and the new one scores nothing. gemma4 running.
 127. ⚠️ **The fill diagnosis cannot work as designed — the ask FORBIDS reasoning.** The raw
      replies arrived: 286 characters, the bare answer object, byte-identical across all nine
      runs. The ask says "Answer with the JSON object only" and "a single JSON object and

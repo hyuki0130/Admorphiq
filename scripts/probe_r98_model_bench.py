@@ -665,6 +665,27 @@ def run_fill_once(index: int, llm: Callable[[list[dict[str, str]]], str],
     slots = parse_json_object(slot_reply)
     record: dict[str, Any] = {"run": index, "mode": "fill", "hazard": "fused" if fused_hazard
                               else "split", "variant": variant, "slots": slots}
+    if os.environ.get("R98_EXPLAIN") == "1":
+        # A THIRD ask, after both scored ones and never read by the scorer. The two scored
+        # prompts demand "a single JSON object and nothing else", which is what makes the
+        # answer parseable and also what leaves nothing to diagnose: gemma4's reply is 286
+        # characters of bare JSON, identical across nine runs. This asks the model to explain
+        # the answer it has already given, so the question "did it consider the fatality
+        # inference or reject it" has a surface to be read from.
+        #
+        # It cannot move a verdict: it runs after `slots` is parsed, its reply is stored and
+        # nothing else, and the scored asks are byte-identical with it on or off. That is the
+        # distinction the round's prohibition draws — do not tune the question until a weaker
+        # model passes; asking a different question that scores nothing is not that.
+        why = llm([
+            {"role": "system", "content": "You explain a choice you already made. Be brief."},
+            {"role": "user", "content":
+             "You answered `hazard_response` with "
+             f"{(slots or {}).get('hazard_response', '(unparsed)')!r}. In two or three "
+             "sentences: what in the described animation led you to it, and what would have "
+             "made you answer differently? Do not restate the answer."},
+        ])
+        record["explanation"] = (why or "")[-2000:]
     if os.environ.get("R98_KEEP_REPLIES") == "1":
         # DIAGNOSIS, not scoring. The fill stage is a one-slot exam and two models fail it
         # deterministically on hazard fatality, but a slot value cannot say whether the model
