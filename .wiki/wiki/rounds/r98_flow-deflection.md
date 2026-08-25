@@ -7425,6 +7425,34 @@ than what the phase does. The other three answer that question with something re
 the walk sits at 107 actions and not lower.
 
 
+## The instrumentation was changing the number it sat beside (2026-08-25)
+
+This session added nine diagnostic prints to the walk, and by the end one of them was doing real
+damage: the game-over probe **presses ACTION5**, so every run carried an extra action and the walk
+reported 108 where the harness costs 107. A measurement that alters the quantity it reports is
+worse than no measurement, and it had already been quoted once.
+
+Pruned, on the round's own rule that a probe built to answer one question goes when the question is
+answered:
+
+| probe | its question | verdict |
+|---|---|---|
+| `[one more commit]` | is the game over at idx3? | answered — **and it cost an action** |
+| `[after fixed probes]` | what do the five probes buy? | answered — tracked region + candidates |
+| `[deltas] at plan time` | is the table filled by then? | answered — yes, and it relocated the retry |
+| `[bought]` | are the appearances invariant? | answered — yes, and worth nothing |
+
+Kept: `[phases]`, `[cost]`, `[aiming]` and `[invariant]`, which report per-level facts that change
+with the code and are how the next efficiency question will be asked. The aiming line loses its
+one-off commit counter and keeps the press count the phase table is built from.
+
+Walk back to **107 actions**, three levels, oracle 3/3, grounding PASS, corpus 12.
+
+The general form is worth keeping: **a probe that acts on the system is not a probe, it is a
+change.** The other eight only read, so they could stay or go on grounds of noise alone; this one
+had to go on grounds of correctness.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -7535,6 +7563,13 @@ the walk sits at 107 actions and not lower.
     compiler's UNSATISFIABLE is the truth about the board rather than a search failure.
     Either the propagator floors flow the engine does not, or the level wants more than
     one placement.
+111. ⚠️ **The instrumentation was changing the number it sat beside.** The game-over probe
+     PRESSES ACTION5, so every run carried an extra action and the walk reported 108 where the
+     harness costs 107 — and that figure had already been quoted. Pruned along with three
+     other one-off probes whose questions are answered (`after fixed probes`, `deltas at plan
+     time`, `bought`); kept `[phases]`, `[cost]`, `[aiming]`, `[invariant]`, which read only.
+     Back to **107**, gates green. A probe that ACTS on the system is not a probe, it is a
+     change.
 110. **The discovery bill is now FULLY attributed.** The last unexamined phase, the five fixed
      probes, earns its keep: deltas are empty but `tracked=yes` and the candidate list is
      populated (4/7/12/8 cells) — exactly what the selection probes consume next. Final

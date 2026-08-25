@@ -163,11 +163,6 @@ def play_level(w: Walker) -> tuple[bool, str]:
     for a in (1, 1, 2, 3, 4):
         w.act(a, g)
     phase["fixed probes"] = w.actions - phase["start"]
-    sel0 = g.selection_candidates()
-    print(f"    [after fixed probes] idx{entered} deltas={sorted(deltas_of(g))} "
-          f"pieces={_count(g.pieces())} "
-          f"tracked={'yes' if g.tracked_region() is not UNKNOWN else 'no'} "
-          f"candidates={'?' if sel0 is UNKNOWN else len(sel0.value)}", flush=True)
     # ⛔ A per-direction RETRY loop used to sit here, pressing each unmeasured direction up to
     # twice more. Measured on every level of a full walk: `deltas_of(g)` is EMPTY before it
     # runs and EMPTY after, so its own success condition is never met and it repaired nothing
@@ -216,8 +211,7 @@ def play_level(w: Walker) -> tuple[bool, str]:
         # a board that did not change is how idx3 came to be reached with no lives left —
         # its plan was executed on a game that was already over, which is what every
         # explanation this round built for that level was actually explaining.
-        print(f"    [aiming] idx{entered} moved={moved} presses={guard} "
-              f"commits so far {w.commits}", flush=True)
+        print(f"    [aiming] idx{entered} moved={moved} presses={guard}", flush=True)
         if moved:
             w.act(5, g)
 
@@ -240,7 +234,6 @@ def play_level(w: Walker) -> tuple[bool, str]:
             # elsewhere in this round. An unmeasured direction is not neutral: it removes
             # every placement that needs it from the planner's reach.
             w.act(a, g)
-    print(f"    [deltas] idx{entered} at plan time: {sorted(deltas_of(g).items())}", flush=True)
     _invariants_report(g, entered)
     print("    [phases] idx%d " % entered + "  ".join(
         f"{k}={v}" for k, v in phase.items() if k != "start"), flush=True)
@@ -250,13 +243,6 @@ def play_level(w: Walker) -> tuple[bool, str]:
     # half is what a deeper level would have to re-pay.
     print(f"    [cost] idx{entered} discovery so far {w.actions - spent} action(s) "
           f"({probes} selection probes)", flush=True)
-    # What those probes BOUGHT. The selection appearances are a property of the game's
-    # sprites, not of a layout, so if they read the same on every level the walk is paying
-    # four to six actions a level for a fact it already had.
-    sel, idle = g.piece_appearances()
-    print(f"    [bought] idx{entered} selected={sel} idle={idle} "
-          f"commit_action={g.commit_action().value if g.commit_action() is not UNKNOWN else '?'}",
-          flush=True)
 
     if g.board() is UNKNOWN:
         return False, f"grounding incomplete (pieces={_count(g.pieces())}, " \
@@ -1020,14 +1006,6 @@ def main() -> int:
             break
     print(f"[commits] {w.commits} ACTION5 presses, {w.failed_commits} of which did NOT "
           f"advance a level; alive={w.alive}")
-    # Reproduce the recorded observation that one more press returns GAME_OVER. It was
-    # measured in a different state, and a non-advancing commit is not obviously the same
-    # thing as a spent life.
-    if w.alive:
-        g = FlowGrounding()
-        g.observe(0, None, w.obs.frame)
-        w.act(5, g)
-        print(f"[one more commit] state={w.obs.state} alive={w.alive}")
     print(f"\n[depth walk] NON-GATING — one hypothesis carried {cleared} level(s); "
           f"{w.actions} actions total")
     return 0
