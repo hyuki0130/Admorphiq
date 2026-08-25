@@ -254,8 +254,35 @@ hard, not because the agent is flailing. Nothing in our data separates slow prog
 genuine wall, and no give-up rule can be honest until something does. Plausible signals exist
 (frontier exhaustion, state-hash stagnation) but ⛔ none has been measured to discriminate.
 
-So the runtime cost is recorded as a real constraint, and the obvious remedy is recorded as
-**unjustified**: it would trade measured levels for hours, on a rule we cannot yet write.
+### Asked properly: does an action cap cost SCORE, not levels?
+
+Levels are the wrong unit — RHAE squares efficiency, so a level cleared slowly is worth almost
+nothing. Per level actually cleared, by cumulative actions and the score it carries:
+
+```
+   370  re86 L5  1.0000        696  tu93 L1  0.0007
+   377  ls20 L7  1.0000      2,342  sp80 L1  0.0003
+   438  re86 L6  1.0000      3,656  vc33 L1  0.0000
+   588  re86 L7  1.0000      7,418  vc33 L2  0.0000
+```
+
+```
+cap at   500 actions -> loses 1.0010 of 57.4812   ⛔ kills re86 L7, a FULL-score level
+cap at 1,000 actions -> loses 0.0003
+cap at 4,000 actions -> loses 0.0000
+```
+
+So both halves were half right. ⛔ The thresholds I would have reached for (500 and below) do
+destroy real score. But **1,000 actions costs 0.0003 while cutting per-game runtime eightfold**,
+because clearing late and scoring are nearly incompatible under a squared metric: everything
+cleared past ~700 actions is already worth ~0.
+
+⚠️ Measured on the PUBLIC 25 only. A hidden game that clears at full score around 1,500 actions
+would be a real loss, and nothing here rules that out — so a cap should sit well above the
+observed cliff (2,000-4,000), which still saves half to three quarters of the runtime.
+
+The runtime constraint and its remedy are both recorded, with the cliff located rather than
+guessed.
 
 
 ## How the submission will be read — fixed BEFORE the score arrives (2026-08-26)
