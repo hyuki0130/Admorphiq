@@ -7481,6 +7481,36 @@ that was, the retry loop, is gone.
 Suite after the prune: 1725 passed. Walk 107, oracle 3/3, corpus 12.
 
 
+## The corpus check is now mechanical, not a note (2026-08-25)
+
+The lesson page says "validate the corpus before fitting to it". A lesson only holds if it is
+enforced, so `rule_bench.py --all` now runs the check itself on every sweep and refuses to let an
+invalid board pass quietly:
+
+```
+⛔ INVALID BOARDS — these do not describe their own spills, and any rule judged on them
+   is judged on nothing:
+   r98_idx3_o: 2 hazard cell(s) outside the board's own bounds
+   r98_idx3_p: 2 hazard cell(s) outside the board's own bounds
+```
+
+Two properties, both derived from failures this round paid for:
+
+- **Flow may not occupy a cell the board calls a piece.** Valid boards score zero; the captures
+  taken before the final plan step ran the engine's flow through 1 of 1, 2 of 3 and 3 of 4 of
+  their own pieces.
+- **A hazard may not lie outside the board's own bounds.** Two old size-15 boards recorded hazards
+  at row 15, where no cell can exist.
+
+Verified both ways rather than assumed: the current corpus passes with **exit 0**, and re-adding
+the two known-bad boards produces the message above and **exit 1**, so a script or a future sweep
+cannot ignore it either.
+
+That is the difference between the lesson and the guard. A rule fitted to those boards passed all
+five gates once, because the contract board never exercises the path it broke — and prose in a
+round page would not have stopped it happening again.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -7591,6 +7621,11 @@ Suite after the prune: 1725 passed. Walk 107, oracle 3/3, corpus 12.
     compiler's UNSATISFIABLE is the truth about the board rather than a search failure.
     Either the propagator floors flow the engine does not, or the level wants more than
     one placement.
+114. **The corpus check is MECHANICAL now, not a note.** `--all` validates every board it
+     sweeps: flow may not occupy a cell the board calls a piece, and a hazard may not lie
+     outside the board's own bounds. Verified both ways — the real corpus exits 0, re-adding
+     the two known-bad boards prints the refusal and exits **1**. A rule fitted to those
+     boards passed all five gates once; prose in a round page would not have stopped that.
 113. **The session's instrument failures are written up as a LESSON page** —
      [[../lessons/instrument_validity_20260825]]. Four rules were adopted and reverted here,
      none because the rule was wrong to try and all because the thing measuring it did not

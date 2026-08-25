@@ -286,6 +286,29 @@ def _union_board(board: Board, payload: dict) -> Board:
         (lane, t, line) for (lane, line), t in sorted(merged.items())))
 
 
+def _invalid(payload: dict, board: Board) -> str:
+    """Why this capture does not describe its own spill, or "" if it does.
+
+    A board is paired with the trajectory ITS action produced, so the engine's flow can
+    never occupy a cell the board calls a piece. Measured across the corpus: valid boards
+    have ZERO such cells, while captures taken before the final plan step had the flow
+    running through 1 of 1, 2 of 3 and 3 of 4 of their own pieces. Two rules were fitted
+    to those boards and reverted, one of them after passing all five gates — the contract
+    board never exercises the path they broke.
+
+    Checked here, on every sweep, because the lesson only holds if it is mechanical:
+    [[../lessons/instrument_validity_20260825]]."""
+    observed = {tuple(c) for layer in payload["observed"] for c in layer}
+    through = sum(1 for piece in board.pieces if observed & piece)
+    if through:
+        return f"flow passes through {through} of {len(board.pieces)} recorded piece(s)"
+    outside = [c for c in board.hazard_cells
+               if not (0 <= c[0] < board.size and 0 <= c[1] < board.size)]
+    if outside:
+        return f"{len(outside)} hazard cell(s) outside the board's own bounds"
+    return ""
+
+
 def _sweep() -> int:
     # idx0 FIRST, and it is the one that matters: it is the level the contract, the oracle
     # gate and the mutant table are all built on, and the model reproduces its spill cell
@@ -298,6 +321,7 @@ def _sweep() -> int:
         print("no captures under scratchpad/r98_idx3_*.json")
         return 1
     known = physics = 0
+    invalid: list[str] = []
     print(f"{'board':8s} {'as-known':>9s} {'physics':>8s}")
     for path in captures:
         with open(path) as f:
@@ -305,6 +329,9 @@ def _sweep() -> int:
         board = _board(payload)
         a = _error(board, payload)
         b = _error(_union_board(board, payload), payload)
+        bad = _invalid(payload, board)
+        if bad:
+            invalid.append(f"{path.stem}: {bad}")
         known += a
         physics += b
         # ONLY evidence/idx0.json is the contract board. The cross-level captures are
@@ -316,6 +343,12 @@ def _sweep() -> int:
         name = next((s for s in path.stem.split("_") if s.startswith("idx")), path.stem)
         print(f"{name:8s} {a:9d} {b:8d}{mark}")
     print(f"{'sum':8s} {known:9d} {physics:8d}")
+    if invalid:
+        print("\n⛔ INVALID BOARDS — these do not describe their own spills, and any rule "
+              "judged on them is judged on nothing:")
+        for line in invalid:
+            print(f"   {line}")
+        return 1
     return 0
 
 
