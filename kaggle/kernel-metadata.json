@@ -1,0 +1,15 @@
+{
+  "id": "jaehyukhyun/admorphiq-submission",
+  "title": "Admorphiq submission",
+  "code_file": "kaggle_submission.py",
+  "language": "python",
+  "kernel_type": "script",
+  "is_private": true,
+  "enable_gpu": false,
+  "enable_tpu": false,
+  "enable_internet": false,
+  "dataset_sources": ["jaehyukhyun/admorphiq-src"],
+  "competition_sources": ["arc-prize-2026-arc-agi-3"],
+  "kernel_sources": [],
+  "model_sources": []
+}

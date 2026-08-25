@@ -4,8 +4,9 @@
 # Always-ready, valid submission notebook. It:
 #  1. Installs the arc wheels offline (from the Kaggle Data tab).
 #  2. Puts the official `agents` package on `sys.path`.
-#  3. Registers our `KaggleChainedAgent` — LLM-free chained agent (WMA probe
-#     -> unified graph stack), measured 1.072% on the 25-game dev proxy.
+#  3. Registers our `KaggleDetectAgent` — detection dispatch over the LLM-free
+#     chained card, measured 0.2771 on the 25-game dev proxy (the chained card
+#     alone measures 0.0566 on the same run; adapter ceiling 0.3296).
 #     It loads NO weights: it learns each game's dynamics at test time, so the
 #     submission needs only the `src` dataset (no weights upload).
 #  4. Boots an OFFLINE `Arcade` over the bundled environment files and drives
@@ -143,7 +144,7 @@ _ensure_admorphiq_importable()
 # transfer-honest by construction (measured: 9-subset 0.0055 vs online-RL from-scratch
 # 0.0014; breaks L2 given budget — see .wiki/wiki/rounds/r36_graph-frontier-bfs.md).
 # The online-RL card (KaggleOnlineRLAgent) remains available as an alternative.
-from admorphiq.kaggle_chained_agent import KaggleChainedAgent  # noqa: E402
+from admorphiq.kaggle_detect_agent import KaggleDetectAgent  # noqa: E402
 
 try:
     # On Kaggle the full package is present and provides the shared registry.
@@ -154,12 +155,16 @@ except ImportError:
     AVAILABLE_AGENTS = {}
 
 AGENT_KEY = "admorphiq"
-# Deployed artifact (rounds/r53 2026-07-13): the LLM-free CHAINED agent —
-# WorldModelAgent probe (efficient arrangement-class clears) -> unified graph
-# stack. Measured full-25: 14 cleared / 1.072% (vs graph-frontier-only ~0.1%
-# on the same squared-efficiency metric). numpy-only: no weights, no LLM.
-AVAILABLE_AGENTS[AGENT_KEY] = KaggleChainedAgent
-print(f"Registered agent '{AGENT_KEY}' -> {KaggleChainedAgent.__name__}")
+# Deployed artifact (2026-08-25): DETECTION DISPATCH over the chained card. Nine mechanic
+# solvers that were reachable only through game_id selection are now reached by FRAME
+# EVIDENCE, so they can run on games whose id we have never seen. Measured full-25 on
+# ceph-build, both cards the same day: chained 0.0566 -> detection 0.2771 (ceiling 0.3296),
+# every port landing exactly on its ceiling and NO game regressing — when no detector
+# fires, the chained card plays exactly as it did before. Each detector passed a measured
+# 0/24 false positives across the public games before it was allowed in. numpy-only: no
+# weights, no LLM.
+AVAILABLE_AGENTS[AGENT_KEY] = KaggleDetectAgent
+print(f"Registered agent '{AGENT_KEY}' -> {KaggleDetectAgent.__name__}")
 
 
 # %%
