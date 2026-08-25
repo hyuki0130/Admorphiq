@@ -8447,6 +8447,43 @@ enough checks. The reason the round is not poorer for them is that each cost one
 find, and the measurement was always the same one: run it on something whose answer you know.
 
 
+## Why the guards stay developer-invoked, with the assumption checked (2026-08-25)
+
+A guard nobody runs stops holding, and this repository has no CI — so the question is whether the
+six belong in the project's Stop hook, which already blocks a response when the Wiki-First Routing
+contract goes red.
+
+The obvious objection is speed, and it is **wrong**:
+
+```
+test_r98_corpus_guard          0.61 s
+test_r98_probe_logic           0.42 s
+test_r98_explanation_check     0.39 s
+test_r98_instruments_listed    0.36 s
+rule_bench --all               0.14 s      <- assumed slow; it replays 8 boards in 0.14 s
+                               ------
+                               1.92 s
+```
+
+Under two seconds for all five repository-only guards. The hook's own comment says *"full-suite
+enforcement belongs in CI, not in every Stop-hook invocation"*, and on time budget these would
+qualify comfortably.
+
+⛔ They stay out anyway, for **scope and lifetime**. That hook defends one project-wide invariant.
+Putting a round's guards in it makes every response in this repository — forever, including long
+after R98 closes — contingent on the state of one round's corpus and one round's instruments
+table. A round that ends should not be able to block work on the next one.
+
+The honest consequence: `selfcheck.sh` is developer-invoked, and **that is a real limitation rather
+than a solved problem.** The guards protect against silent drift only for someone who runs them.
+What makes it tolerable is that four of the six are ordinary pytest files inside the suite, so
+`uv run pytest` catches them anyway; only the corpus sweep and the harness self-test need the
+runner.
+
+Recording the timing matters as much as the decision — the next session can re-open this on scope
+if it wants, but it should not re-open it on speed.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -8557,6 +8594,13 @@ find, and the measurement was always the same one: run it on something whose ans
     compiler's UNSATISFIABLE is the truth about the board rather than a search failure.
     Either the propagator floors flow the engine does not, or the level wants more than
     one placement.
+149. **Why the guards stay developer-invoked, with the assumption CHECKED.** The obvious
+     objection to putting them in the project's Stop hook is speed, and it is wrong: all five
+     repository-only guards total **1.92 s**, and the corpus sweep I assumed was slow replays
+     eight boards in **0.14 s**. ⛔ They stay out for SCOPE and LIFETIME — that hook defends
+     one project-wide invariant, and a round's guards there would make every response in the
+     repo contingent on one round's corpus forever. Real limitation, not a solved problem;
+     mitigated because four of the six are ordinary pytest files the suite already runs.
 148. **The lesson page reaches NINE failures — three of them in the CHECKERS.** The
      explanation checker convicted gemma4 on its first run; its fix then excused a genuine
      claim; the numbering pin's parser died on `0/9 FAIL`. **Every checker this session built
