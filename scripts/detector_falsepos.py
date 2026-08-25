@@ -18,8 +18,13 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
 from arc_agi import Arcade, OperationMode  # noqa: E402
+from arcengine import GameAction  # noqa: E402
 
 from admorphiq.adapters25 import discover_adapters  # noqa: E402
+from admorphiq.adapters25.base import GameAdapter, available_action_ids  # noqa: E402
+
+_PROBE_ACTION_ID = 3
+_PROBE_ACTION = GameAction.ACTION3
 
 
 def main() -> int:
@@ -49,6 +54,23 @@ def main() -> int:
         frame = env.observation_space
         for name in tested:
             if adapters[name].detect(frame):
+                hits[name].append(key)
+
+        # PROBE detectors get one shared transition, which is the whole point of the
+        # contract: the cost is one action however many adapters read it. The probe is
+        # horizontal because a VERTICAL one does not separate m0r0 from ka59 — measured,
+        # both move their pieces the same way under ACTION1.
+        probed = [n for n in tested
+                  if adapters[n]._detect_mechanic_probed is not
+                  GameAdapter._detect_mechanic_probed]
+        if not probed:
+            continue
+        simple_ids, _has_click = available_action_ids(frame)
+        if _PROBE_ACTION_ID not in simple_ids:
+            continue
+        after = env.step(_PROBE_ACTION)
+        for name in probed:
+            if adapters[name].detect_probed(frame, after) and key not in hits[name]:
                 hits[name].append(key)
 
     print(f"booted {len(games)} games: {' '.join(sorted(games))}\n")

@@ -429,10 +429,85 @@ def _parse_maze(grid: tuple[tuple[int, ...], ...], player_color: int) -> _Maze |
     return _Maze(gh, gw, scale, off_y, off_x, walls, hazards, players, movable, plates, gate_walls)
 
 
+_PROBE_MAX_SHIFT = 12  # a probe moves a piece a cell or two; anything further is a redraw
+
+
+def _probe_displacements(
+    before: tuple[tuple[int, ...], ...], after: tuple[tuple[int, ...], ...]
+) -> list[tuple[int, tuple[int, int]]]:
+    """Per-region ``(colour, (dr, dc))`` for every region that MOVED under one probe.
+
+    Each moved region is matched to the nearest same-colour region in ``before``, so a
+    board with several pieces of one colour still yields per-piece displacements.
+    """
+    bg = most_common_color(after)
+    previous: dict[int, list[Cell]] = {}
+    for region in find_regions(before, background=None):
+        if region["color"] == bg:
+            continue
+        previous.setdefault(region["color"], []).append(
+            (region["bbox"][0], region["bbox"][1])
+        )
+    out: list[tuple[int, tuple[int, int]]] = []
+    for region in find_regions(after, background=None):
+        colour = region["color"]
+        if colour == bg or colour not in previous:
+            continue
+        here = (region["bbox"][0], region["bbox"][1])
+        if here in previous[colour]:
+            continue
+        nearest = min(
+            previous[colour], key=lambda p: abs(p[0] - here[0]) + abs(p[1] - here[1])
+        )
+        delta = (here[0] - nearest[0], here[1] - nearest[1])
+        if delta != (0, 0) and max(abs(delta[0]), abs(delta[1])) < _PROBE_MAX_SHIFT:
+            out.append((colour, delta))
+    return out
+
+
+def _probe_player_colour(
+    before: tuple[tuple[int, ...], ...], after: tuple[tuple[int, ...], ...]
+) -> int | None:
+    """The colour that MOVED under the probe, preferring the one with fewest regions.
+
+    Same rule the adapter grounds with; fewest-regions breaks ties toward the pieces the
+    player controls rather than a busy decorative colour that happened to shift.
+    """
+    counts: dict[int, int] = {}
+    for region in find_regions(before, background=None):
+        counts[region["color"]] = counts.get(region["color"], 0) + 1
+    moved = {colour for colour, _delta in _probe_displacements(before, after)}
+    return min(moved, key=lambda c: counts.get(c, 0)) if moved else None
+
+
 class Adapter(GameAdapter):
     """Offline-reconstruction merge-maze solver composed from admorphiq.kernels."""
 
     GAME_ID = GAME_ID
+
+    @classmethod
+    def _detect_mechanic_probed(cls, before: Any, after: Any) -> bool:
+        """Mirror players in a maze — a still frame cannot show this, one probe can.
+
+        1. **The probe names the player colour.** Whatever region moved under it is the
+           player; that is exactly how this adapter grounds the board, and it is why a
+           static form fails — MEASURED, a colour-searching stand-in resolves a "maze" on
+           18 of the 25 public games because nothing tells it which colour to search for.
+        2. **The maze parses with that colour.** `_parse_maze` returns None unless two
+           players are resolvable in it. After the probe this leaves 2 candidates.
+        3. **A MIRROR PAIR moved.** Two regions displaced by exactly opposite vectors —
+           the mechanic's whole premise. Measured on a horizontal probe: m0r0 shows
+           (0,-5) and (0,+5) together, ka59 shows only (0,-3). ⚠️ A VERTICAL probe does
+           not separate them: on ACTION1 both games move their pieces the same way, so
+           the mirror axis has to be the one probed.
+        """
+        grid_before, grid_after = canonical_layer(before), canonical_layer(after)
+        moved = _probe_displacements(grid_before, grid_after)
+        vectors = {d for _colour, d in moved}
+        if not any((-dr, -dc) in vectors for dr, dc in vectors):
+            return False
+        colour = _probe_player_colour(grid_before, grid_after)
+        return colour is not None and _parse_maze(grid_after, colour) is not None
 
     def __init__(self, giveup: int = _GIVEUP_DEFAULT) -> None:
         self.restart_on_game_over = True

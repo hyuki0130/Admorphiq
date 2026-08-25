@@ -74,6 +74,37 @@ class GameAdapter(ABC):
             return False
 
     @classmethod
+    def detect_probed(cls, before: Any, after: Any) -> bool:
+        """Does this adapter's mechanic appear across ONE probe transition? Never overridden.
+
+        Some mechanics are simply not visible in a still frame. MEASURED: m0r0's grounding
+        reads the player colour from what MOVED, and a static colour-searching stand-in
+        resolves a "maze" on 18 of the 25 public games; one probe takes that to 2, and
+        adding the mechanic's own mirror pair takes it to 1. The dispatcher issues a
+        SINGLE shared probe and offers the pair to every probe detector, so the cost is
+        one action no matter how many adapters are ported this way.
+
+        Same guard as :meth:`detect`, for the same measured reason.
+        """
+        if not (has_frame(before) and has_frame(after)):
+            return False
+        try:
+            return bool(cls._detect_mechanic_probed(before, after))
+        except Exception:  # noqa: BLE001 — a foreign board is a NO, never a crash
+            return False
+
+    @classmethod
+    def _detect_mechanic_probed(cls, before: Any, after: Any) -> bool:
+        """The mechanic's signature ACROSS a probe. Override this, not :meth:`detect_probed`.
+
+        Default ``False``: an adapter that reads statically, or not at all, never asks for
+        the probe. Override it only when a still frame genuinely cannot show the mechanic —
+        paying an action to recognise a board is only worth it when the recognition is
+        otherwise impossible.
+        """
+        return False
+
+    @classmethod
     def _detect_mechanic(cls, latest_frame: Any) -> bool:
         """The mechanic's OBSERVABLE signature. Override this, not :meth:`detect`.
 
