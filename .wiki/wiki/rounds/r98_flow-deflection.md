@@ -7833,6 +7833,37 @@ Dataset pushed and confirmed live at 42574 bytes before the kernel went up, per 
 rule this round broke twice. gemma4 is running.
 
 
+## The walk now judges itself (2026-08-25)
+
+The walk is the only thing that measures DEPTH, and nothing else would notice if it lost a level:
+every certification gate runs on idx0. It needs a live engine so it cannot be a unit test, but it
+was also printing a number to be eyeballed, which is the weakest form a check can take.
+
+It now compares against what it last carried:
+
+```
+[depth walk] levels 3/3 OK; actions 107 (+0 vs the 107-action baseline)
+```
+
+and refuses on a lost level:
+
+```
+[depth walk] ⛔ REGRESSION — carried 3 level(s) where the recorded baseline is 4     exit 1
+```
+
+**Levels gate, actions do not.** That split is measured rather than cautious: the engine drops a
+press now and then — three times out of three when this round looked — so an action count moves
+without anything being wrong, while a lost level is always a loss. The drift is reported beside the
+baseline so a real cost increase is still visible.
+
+Verified by raising the baseline to 4 and re-running: exit 1 with the refusal line, restored
+afterwards.
+
+That is the fourth thing this session turned from an eyeballed number into a self-checking one —
+the corpus validity, the corpus coverage, the guard's pins, and now the walk's depth. Each was
+something a future change could have broken silently, and each cost one measurement to close.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -7943,6 +7974,12 @@ rule this round broke twice. gemma4 is running.
     compiler's UNSATISFIABLE is the truth about the board rather than a search failure.
     Either the propagator floors flow the engine does not, or the level wants more than
     one placement.
+126. **The walk now JUDGES ITSELF.** It is the only measure of DEPTH and every gate runs on
+     idx0, so a lost level would have gone unnoticed. It now prints `levels 3/3 OK; actions
+     107 (+0 vs baseline)` and exits 1 on `⛔ REGRESSION`. **Levels gate, actions do not** —
+     measured: the engine drops a press now and then, so a count moves without anything being
+     wrong, while a lost level is always a loss. Verified by raising the baseline to 4 (exit
+     1, refusal line, restored). Fourth eyeballed number this session turned self-checking.
 125. **Asking WHY the fill stage fails, not just that it does.** A slot value cannot say
      whether a model never CONSIDERED the fatality inference or considered and rejected it,
      and the two call for opposite responses. `R98_KEEP_REPLIES=1` keeps the raw slot reply on

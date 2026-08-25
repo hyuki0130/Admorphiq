@@ -47,6 +47,11 @@ ACTIONS = {
     5: GameAction.ACTION5,
 }
 MAX_LEVELS = 6
+# What the walk carried when it was last measured, so a lost level announces itself rather
+# than waiting to be noticed. Levels are the claim; actions are reported and never gate,
+# because a dropped press moves them without anything being wrong.
+BASELINE_LEVELS = 3
+BASELINE_ACTIONS = 107
 # Per level, deliberately generous: this walk measures REACH, not efficiency. A
 # layout that needs four pieces moved ten cells each costs dozens of actions and
 # would score badly on the efficiency metric — that is a separate question from
@@ -1008,6 +1013,20 @@ def main() -> int:
           f"advance a level; alive={w.alive}")
     print(f"\n[depth walk] NON-GATING — one hypothesis carried {cleared} level(s); "
           f"{w.actions} actions total")
+    # The walk is the only thing that measures DEPTH, and nothing else notices if it loses a
+    # level: the certification gates all run on idx0. It needs a live engine so it cannot be a
+    # unit test, but it can judge itself instead of printing a number to be eyeballed.
+    #
+    # Levels are the stable quantity and a drop is a regression. Actions are NOT: the engine
+    # drops a press now and then — measured three times out of three in this round — so they
+    # are reported against the baseline and never fail the run.
+    if cleared < BASELINE_LEVELS:
+        print(f"[depth walk] ⛔ REGRESSION — carried {cleared} level(s) where the recorded "
+              f"baseline is {BASELINE_LEVELS}")
+        return 1
+    drift = w.actions - BASELINE_ACTIONS
+    print(f"[depth walk] levels {cleared}/{BASELINE_LEVELS} OK; actions {w.actions} "
+          f"({drift:+d} vs the {BASELINE_ACTIONS}-action baseline)")
     return 0
 
 
