@@ -603,6 +603,28 @@ class Adapter(GameAdapter):
 
     GAME_ID = GAME_ID
 
+    @classmethod
+    def _detect_mechanic(cls, latest_frame: Any) -> bool:
+        """A delivery / colour-assignment board: cycle-select controls AND target gates.
+
+        1. **Move-and-cycle, no pointer.** ACTION1-4 move the SELECTED piece and ACTION5
+           cycles which piece is selected; there is no click at all. That control set is
+           shared with two other public games, so it narrows without deciding.
+        2. **A selection marker is on the board.** Cycling a selection is only meaningful
+           if the board shows which piece is selected — this mechanic marks the selected
+           movable's centre in the selection colour.
+        3. **Target gates exist.** `_target_boxes` finds colour-bordered gates: a pixel
+           flanked by the border colour on a PAIR of opposite sides. A delivery puzzle
+           without somewhere to deliver is not this mechanic.
+        """
+        simple_ids, has_click = available_action_ids(latest_frame)
+        if has_click or sorted(simple_ids) != [1, 2, 3, 4, 5]:
+            return False
+        grid = canonical_layer(latest_frame)
+        if not any(_SELECTION_COLOR in row for row in grid):
+            return False
+        return bool(_target_boxes(grid))
+
     def __init__(self, giveup: int = _GIVEUP_DEFAULT) -> None:
         self.restart_on_game_over = True
 
