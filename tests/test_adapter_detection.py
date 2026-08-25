@@ -194,3 +194,30 @@ def test_shipped_measurement_refuses_a_silent_env_override():
     )
     combined = result.stdout + result.stderr
     assert "GF_GIVEUP" in combined and "DEPLOYED" in combined, combined[-400:]
+
+
+def test_max_actions_is_a_per_game_budget_not_a_run_total():
+    """Purpose: pin that the deployed MAX_ACTIONS bounds ONE game, not the whole run.
+
+    The wrapper stops on `self.action_counter >= MAX_ACTIONS`, and the budget was just cut from
+    100,000 to 4,000. If that counter accumulated across games, 4,000 would end the entire
+    submission after the first game or two — and local scoring would never show it, because
+    scripts/score_efficiency.py drives the agent through its own loop and never touches the
+    wrapper's counter.
+
+    Expected feedback: a pass means the notebook builds a fresh agent per game and the counter
+    starts at zero each time, so the cap is per-game. A failure means the submission would
+    silently score near zero on everything after the first game.
+    """
+    from pathlib import Path
+
+    notebook = Path("notebooks/kaggle_submission.py").read_text()
+    loop = notebook[notebook.index("for game_id in"):]
+    construct = loop.index("AVAILABLE_AGENTS[AGENT_KEY](")
+    run = loop.index("agent.main()")
+    assert construct < run, "the agent must be constructed INSIDE the per-game loop"
+
+    base = Path("ARC-AGI-3-Agents/agents/agent.py").read_text()
+    assert "action_counter: int = 0" in base, (
+        "action_counter must be an instance field initialised per agent"
+    )
