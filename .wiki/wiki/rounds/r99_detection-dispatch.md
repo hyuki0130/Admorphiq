@@ -187,6 +187,37 @@ adapters) or from transfer work on the private set, not from squeezing the last 
 dispatch.
 
 
+## Why the submission takes hours, and the budget risk it exposes (2026-08-26)
+
+Submitting a code competition re-runs the notebook server-side over the HIDDEN games, and our
+card is slow where it fails. Measured from the 25-game server run:
+
+```
+25 games      48.4 minutes, 148,018 actions, 5,920 per game
+110 games     ~651,000 actions, ~213 minutes projected
+```
+
+The submission had been pending 3h37m when this was worked out, against a 3h33m projection —
+i.e. right on time, not stuck.
+
+⚠️ **The shape of the cost is the finding.** Games we SOLVE are cheap; games we fail burn the
+whole budget:
+
+```
+ft09    88 actions (solved)      cn04   9,358 actions (0 levels)
+sb26   170 actions (solved)      sp80  10,165 actions (1 level)
+m0r0   199 actions (solved)      vc33   9,631 actions (1 level)
+```
+
+So runtime scales with how many games the card CANNOT solve — and on 110 unseen games that
+fraction is higher than on the 25 we tuned against. At 10,000 actions each the projection
+approaches the **9-hour limit**.
+
+⛔ Giving up early on a game the card cannot solve costs NOTHING in score — it is already zero
+there — while buying back hours. That is a real constraint for the next card, recorded here
+rather than discovered by a timeout.
+
+
 ## How the submission will be read — fixed BEFORE the score arrives (2026-08-26)
 
 Submission `55774529` is pending. The reading is fixed now, the way R98 fixed its model-stage
