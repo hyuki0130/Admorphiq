@@ -8026,6 +8026,33 @@ would test the mock. Their protection is that each prints what it measured, and 
 twice caught a probe by reading its output rather than by testing it.
 
 
+## Two consecutive walks agree to the action (2026-08-25)
+
+The walk's baseline is 107 actions and its self-check deliberately does not gate on that, because
+the engine drops a press now and then — measured three times out of three earlier in this round.
+Whether the number is stable in practice had never been checked. Two full walks, back to back:
+
+```
+run 1   idx0 15   idx1 22   idx2 47   idx3 23   ->  107
+run 2   idx0 15   idx1 22   idx2 47   idx3 23   ->  107
+```
+
+**Identical on every level.** So the baseline is a real number rather than a lucky one, and the
+per-level costs quoted through this session are reproducible rather than a single sample.
+
+Two readings, and only one of them is measured. The measured one: the dropped-press behaviour did
+not appear in either run. The unmeasured one, offered as a connection and not a conclusion: the
+place a dropped press used to matter most was the direction-retry loop, which fired eight presses
+a level and has been relocated to fire only when a direction is genuinely missing — one press, on
+one level. A smaller surface for the same flakiness would explain the agreement, but two runs
+cannot establish that and this round has spent the day being caught by exactly that kind of
+plausible step.
+
+⛔ The not-gating decision stands. Two runs are not determinism, the engine's behaviour has not
+changed, and gating a quantity that is allowed to move buys nothing that the level count does not
+already buy.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -8136,6 +8163,13 @@ twice caught a probe by reading its output rather than by testing it.
     compiler's UNSATISFIABLE is the truth about the board rather than a search failure.
     Either the propagator floors flow the engine does not, or the level wants more than
     one placement.
+134. **Two consecutive walks agree to the ACTION** — 15 / 22 / 47 / 23 = 107 on both, every
+     level identical. So the baseline is a real number and this session's per-level costs are
+     reproducible, not a single sample. The dropped-press behaviour did not appear in either
+     run; whether that is because the retry loop's eight presses a level became one is a
+     PLAUSIBLE connection, not a measured one. ⛔ Not-gating on actions stands: two runs are
+     not determinism, and gating a quantity allowed to move buys nothing the level count does
+     not already buy.
 133. **Two probe functions with a HISTORY are now pinned.** `walk_probe._continued` (took the
      stop count 9 -> 4) and the spread sweep's side derivation (the parity bug that scored a
      rule nobody implemented, 332 -> 196). Three pins, each checked by neutering its subject:
