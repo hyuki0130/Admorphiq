@@ -187,6 +187,30 @@ adapters) or from transfer work on the private set, not from squeezing the last 
 dispatch.
 
 
+## How the submission will be read — fixed BEFORE the score arrives (2026-08-26)
+
+Submission `55774529` is pending. The reading is fixed now, the way R98 fixed its model-stage
+criteria before the runs, so the number cannot be rationalised after the fact.
+
+The only prior datapoint on this competition's proxy-to-hidden transfer is **3.4%** (v3: local
+5.83 → hidden 0.20). Our card is **0.2772** on a DIFFERENT and much stricter local scale, so
+scaling that ratio is meaningless. What IS comparable is the previous card's hidden score:
+
+| outcome | reading |
+|---|---|
+| **> 0.20** | the ports earn on the hidden set. The mechanic detectors fire on private games, which is what the 5/5 archive-version transfer predicted. |
+| **≈ 0.20** | the ports never fire there — the private 110 hold none of these nine mechanics. ⛔ NOT a failure of the port: dispatch falls back, so the card cannot lose. It means the mechanic families are public-only. |
+| **< 0.20** | ⛔ a detector fires on a private game and does WORSE than the fallback would have. That is the one outcome the 0/24 gate and the transfer scoring were built to prevent, and it would mean specificity measured on 24 public boards does not generalise. |
+
+⚠️ **The middle outcome is the most likely and the least informative**, and it must not be read
+as the ports being worthless: they cost nothing when they do not fire, and they demonstrably
+work on boards nobody chose for them (m0r0 clears 6/6 of a version hash it never saw). It would
+say the mechanic families are narrow, not that mechanic detection is wrong.
+
+Whatever lands, ⛔ the local numbers do not move: card 0.2772, ceiling 0.3296, nine ports at
+0/24, five transfer-verified. Those were measured and are not up for revision by a hidden score.
+
+
 ## Instruments
 
 Every finding above was produced by a script in the repository, because a finding whose
