@@ -227,3 +227,29 @@ anything there; they simply may not gain.
 
 Probe: `scripts/detector_transfer.py`.
 
+
+## The card ran on Kaggle, and the transfer showed up there too (2026-08-26)
+
+Kernel v3 COMPLETED server-side over all 25 games and wrote `submission.json`. **18 of 25 clear at
+least one level**, and every port carries its depth:
+
+```
+ft09    88 actions  WIN  6 levels        m0r0   199 actions  WIN  6 levels
+sb26   170 actions  WIN  8 levels        cd82   109 actions  WIN  6 levels
+ls20   377 actions  WIN  7 levels        re86  4009 actions       7 levels
+su15  4120 actions       6 levels        tr87   503 actions       3 levels
+sk48  4023 actions       4 levels        r11l  4064 actions       4 levels
+```
+
+⚠️ **Kaggle serves DIFFERENT hashes than our local tree** — `ls20-9607627b`, `tr87-cd924810`,
+`wa30-ee6fef47`, `lf52-271a04aa` — and `su15-1944f8ab` is the hash our own tree files as the
+ARCHIVED one. The ports work there anyway: ls20 WINs all 7 levels in 377 actions and tr87 reaches 3.
+
+So the transfer measured locally an hour earlier **reproduced on Kaggle's own boards**, unprompted.
+That is a stronger statement than the archive probe alone: these are boards nobody chose for the
+test.
+
+Three defects had to be cleared to get a run at all, all in the build script and all found by
+pushing the KERNEL ONLY, without consuming a submission slot —
+[[../lessons/submission_build_defects_20260826]].
+
