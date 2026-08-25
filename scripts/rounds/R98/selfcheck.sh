@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # R98 self-checks — everything that guards a measurement, in one command.
 #
-# Nine checks now, added across two sessions, each verified alone and none of them reachable
+# Ten checks now, added across two sessions, each verified alone and none of them reachable
 # together. A guard nobody runs is a guard that stops holding without saying so, and the
 # round has already had a table go stale within the hour of being written.
 #
@@ -9,7 +9,7 @@
 # (oracle, grounding, verifier, mutants) stay separate on purpose — they decide the contract
 # and cost minutes each, and mixing them here would make the fast check slow enough to skip.
 #
-# EIGHT of the nine need nothing but the repository. The harness self-test is the exception and
+# NINE of the ten need nothing but the repository. The harness self-test is the exception and
 # the first version of this file wrongly advertised it as engine-free: its stubs replace the
 # MODEL, not the game, so it still drives the real arcade and cannot run where the environment
 # files are absent. Measured on a fresh clone, where it failed with "the arcade exposes no sp80
@@ -42,11 +42,12 @@ step "harness self-test"           uv run python scripts/probe_r98_model_bench.p
 step "detection contract pins"     uv run pytest tests/test_adapter_detection.py -q
 step "adapter quarantine lint"     uv run python scripts/adapters25_lint.py
 step "summaries match their data"  uv run python scripts/summary_agrees.py
+step "R99 instruments listed"      uv run pytest tests/test_r99_instruments_listed.py -q
 
 if [ "$fail" -eq 0 ] && [ "$skipped" -eq 1 ]; then
   echo "[R98 selfcheck] five guards hold; the harness self-test was SKIPPED (no game environments)"
 elif [ "$fail" -eq 0 ]; then
-  echo "[R98 selfcheck] all nine guards hold"
+  echo "[R98 selfcheck] all ten guards hold"
 else
   echo "[R98 selfcheck] ⛔ a guard is not holding — see above"
 fi

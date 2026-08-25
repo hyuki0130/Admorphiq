@@ -187,6 +187,30 @@ adapters) or from transfer work on the private set, not from squeezing the last 
 dispatch.
 
 
+## Instruments
+
+Every finding above was produced by a script in the repository, because a finding whose
+instrument cannot be found has to be RE-DERIVED to be re-checked — the lesson R98 paid for.
+
+| script | what it answers |
+|---|---|
+| `scripts/detector_falsepos.py` | does this detector fire on its own game and NOTHING else? (the 0/24 ship gate) |
+| `scripts/detector_transfer.py` | does it fire on a version hash it was never written against? |
+| `scripts/detector_transfer_score.py` | and does the adapter SOLVE that version, or fire and fail? |
+| `scripts/detect_compare.py` | card vs dispatch vs ceiling, per game, refusing to read an unfinished run as zeros |
+| `scripts/benched_vs_shipped.py` | does `--agent kaggle_detect` score what `--agent detect` scores? |
+| `scripts/gap_table.py` | the card-vs-ceiling gap that ordered the whole port backlog |
+| `scripts/summary_agrees.py` | does a round's SUMMARY.txt agree with its own games/*.json? |
+| `scripts/round_lookup.py` | every round-log mention of a game in DATE order, so the LATEST is unmistakable |
+| `kaggle/build_and_push.sh` | the submission build — kernel source, metadata, dataset, commit stamp |
+| `scripts/rounds/R98/selfcheck.sh` | the nine cheap guards, in one command |
+
+Measurement artefacts, so the numbers reproduce without ssh access to the measurement box:
+`scripts/rounds/SUBCAND1/games` (the card), `scripts/rounds/CEILING1/*/SUMMARY.txt` (the
+adapter ceiling), `scripts/rounds/DETECT9/games` and `scripts/rounds/SHIPPED1/games` (dispatch,
+benched and as shipped), plus `KAGGLE_SERVER_RUN.txt` from the server-side run.
+
+
 ## Transfer evidence, without submitting (2026-08-26)
 
 A detector measured at 0/24 false positives fires on exactly one public board, which leaves the
