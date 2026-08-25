@@ -7453,6 +7453,34 @@ change.** The other eight only read, so they could stay or go on grounds of nois
 had to go on grounds of correctness.
 
 
+## The walk-versus-oracle gap, accounted to the action (2026-08-25)
+
+Two ticks ago the 21-against-8 discovery gap could only be bounded — "not all of it is waste". With
+the retry relocated and the phases attributed, it divides exactly. Reading the gate's own discovery
+sequence beside the walk's phase table for the same level:
+
+| | fixed probes | aiming | sacrificial commit | selection probes | re-commit | discovery | plan | total |
+|---|---|---|---|---|---|---|---|---|
+| oracle gate, idx0 | 5 | 2 | 1 | — | — | **8** | 2 | **10** |
+| walk, idx0 | 5 | 2 | 1 | 4 | 1 | **13** | 2 | **15** |
+
+**The whole difference is five actions: four selection probes and one re-commit.** Nothing else
+differs — the gate runs the same five fixed probes, the same aiming loop and the same single
+sacrificial commit.
+
+And both of those five are things the gate does not need rather than things the walk wastes. The
+gate is *given* the hypothesis, so it never has to separate a piece from the neighbour it touches;
+the walk does, and pays four probes for it. The gate's aiming ends its discovery, while the walk
+re-commits afterwards to read the result.
+
+So the axis closes with the gap explained rather than removed. The walk is at 15 actions on idx0
+against a certified 10, and every one of the five is buying something the certified path was handed
+for free. ⛔ There is no remaining "obviously wasted" action in the walk's discovery — the one
+that was, the retry loop, is gone.
+
+Suite after the prune: 1725 passed. Walk 107, oracle 3/3, corpus 12.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -7563,6 +7591,12 @@ had to go on grounds of correctness.
     compiler's UNSATISFIABLE is the truth about the board rather than a search failure.
     Either the propagator floors flow the engine does not, or the level wants more than
     one placement.
+112. **The walk-versus-oracle gap, accounted to the action.** idx0: the gate spends 5 fixed
+     probes + 2 aiming + 1 sacrificial commit = **8** discovery; the walk spends the same 8
+     PLUS 4 selection probes and 1 re-commit = **13**. The entire difference is those five,
+     and both are things the gate does not need rather than things the walk wastes — it is
+     GIVEN the hypothesis, so it never separates a piece from its touching neighbour. ⛔ No
+     remaining obviously-wasted action in discovery; the one that was is gone.
 111. ⚠️ **The instrumentation was changing the number it sat beside.** The game-over probe
      PRESSES ACTION5, so every run carried an extra action and the walk reported 108 where the
      harness costs 107 — and that figure had already been quoted. Pruned along with three
