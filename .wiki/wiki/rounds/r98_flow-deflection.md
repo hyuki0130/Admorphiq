@@ -7540,6 +7540,30 @@ three idx3 boards prints the warning. Together with the two per-board checks, al
 round's instrument defects now announce themselves rather than waiting to be rediscovered.
 
 
+## The guard is pinned, and the pins were checked against their subject (2026-08-25)
+
+A guard that has quietly stopped biting is the same failure again with an extra step, and this
+round has caught three vacuous tests already. `tests/test_r98_corpus_guard.py` pins
+`rule_bench._invalid()` on synthetic boards, so it holds without the corpus:
+
+- a board whose spill stays clear of its pieces is **accepted** — the guard must not reject valid
+  boards, or it gets switched off, which is how a check dies;
+- flow occupying a recorded piece is **rejected** with `passes through 1 of 1`;
+- a hazard outside the board's own bounds is **rejected**.
+
+Checked against their subject rather than assumed: making `_invalid()` return `""` unconditionally
+turns exactly the second and third red and leaves the first green — which is right, since the
+first one's job is to confirm the guard stays quiet on good input.
+
+Suite 1728 passed, oracle 3/3.
+
+That completes the loop this session has been running on itself: the measurement failures became a
+lesson page, the lesson became a mechanical check, the check became a pin, and the pin was proved
+to bite. ⛔ The one thing NOT done is making the guard fail the certification gates — it belongs on
+the bench, which is non-gating by design, and a diagnostic that can block a contract is a different
+decision than the one taken here.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -7650,6 +7674,13 @@ round's instrument defects now announce themselves rather than waiting to be red
     compiler's UNSATISFIABLE is the truth about the board rather than a search failure.
     Either the propagator floors flow the engine does not, or the level wants more than
     one placement.
+116. **The guard is PINNED and the pins bite.** `tests/test_r98_corpus_guard.py` holds
+     `_invalid()` on synthetic boards: valid accepted, flow-through-a-piece rejected, hazard
+     out of bounds rejected. Neutering `_invalid()` turns exactly the last two red and leaves
+     the first green, which is correct — its job is to confirm the guard stays quiet on good
+     input. Suite 1728. That closes the loop: failures -> lesson page -> mechanical check ->
+     pin -> pin proved to bite. ⛔ NOT done: making the guard gate the contract; the bench is
+     non-gating by design.
 115. **The third defect is corpus-shaped, so the guard reports COVERAGE.** "Captures only ever
      fired on failure" is a property of the corpus, not of any board, so no per-board check can
      see it. `--all` now prints `levels idx0x2 idx1x1 idx2x1 idx3x4` on every sweep and warns
