@@ -690,6 +690,32 @@ novelty means the orchestrator never reconsiders its first pick. `graph` runs al
 boards, and 1,500 actions is a short window. What is measured is only that the alternatives are
 never tried.
 
+### Tested: it is the SIGNAL, not the threshold
+
+Running the same four games at the deployed stall of 80 and at the harness default of 12:
+
+```
+              stall=80              stall=12
+lf52     cleared at   376       cleared at   376
+r11l     cleared at   972       cleared at   972
+sp80     cleared at 2,341       cleared at 2,341
+vc33     pick=graph once        pick=graph once
+```
+
+⛔ **Identical, action for action, and still zero re-decisions.** Lowering the threshold nearly
+sevenfold changes nothing, because the stall never fires at ANY threshold — novelty never runs
+out. The harness's own note, *"finding novelty never stalls"*, means *"never stalls at all"* in
+this regime.
+
+So stall-based re-decision is **structurally unreachable** on 100%-change games, and no parameter
+reaches it. That is a stronger statement than the observation it replaces, and it was cheap to
+get: one comparison against the value the harness itself defaults to.
+
+⚠️ It still does not say the design is wrong. `graph` may be the best tool on these boards, and
+nothing measured here compares it to the alternatives. What is established: the re-decision
+mechanism cannot engage on these games, and the reason is the SIGNAL's nature rather than a
+tunable.
+
 What makes this axis worth the measurement at all: a game the fallback ALREADY clears, at 500x a
 human's cost, needs no new mechanic and claims no new game — so it carries none of the
 cd82-hijack risk that stopped the port campaign.
