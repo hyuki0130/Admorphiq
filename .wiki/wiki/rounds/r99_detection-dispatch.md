@@ -273,3 +273,34 @@ Three defects had to be cleared to get a run at all, all in the build script and
 pushing the KERNEL ONLY, without consuming a submission slot —
 [[../lessons/submission_build_defects_20260826]].
 
+
+## Where the next gain is, read off the Kaggle run (2026-08-26)
+
+The server run's action counts split the card into three tiers, and RHAE squares efficiency, so the
+tiers are worth wildly different amounts:
+
+```
+game    levels  actions  act/level
+ft09         6       88       15     ported and EFFICIENT — the tier the metric pays for
+cd82         6      109       18
+sb26         8      170       21
+m0r0         6      199       33
+ls20         7      377       54
+tr87         3      503      168
+──────────────────────────────────
+re86         7     4009      573     ported and SLOW — depth won, score mostly lost to the square
+su15         6     4120      687
+sk48         4     4023     1006
+r11l         4     4064     1016
+──────────────────────────────────
+ar25 lp85 s5i5 wa30 tn36 lf52 vc33 sp80    4,000-10,000 act/level, effectively zero
+```
+
+**Tier 2 is the risk-free lever.** re86 clears SEVEN levels and scores 0.2273; su15 clears six and
+scores 0.4368. They already belong to us — improving their efficiency claims no new game, so ⛔ none
+of the cd82-hijack risk that stopped the port campaign applies. The square means a 4x action
+reduction is worth ~16x on those levels.
+
+This replaces the stopped campaign as the next axis: **not more ports, but fewer actions on the
+ports we already have.**
+
