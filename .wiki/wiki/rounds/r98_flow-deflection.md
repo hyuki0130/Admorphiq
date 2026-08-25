@@ -7745,6 +7745,41 @@ had to be paid for individually, and the only reason it stayed cheap is that eac
 within a tick or two of the measurement it lagged.
 
 
+## Correction: sp80 is the odd one out, not sc25 (2026-08-25)
+
+Last entry diagnosed sc25's failure as "the board is sixteen times bigger" and framed that as
+sc25's property. Surveying every candidate at once says the opposite:
+
+```
+game     scale  playable  emitters  frontiers  changed
+sp80         4        16         1         20        2
+sc25         1        64       128          5        0
+sb26         1        64         ?          0        0
+lf52         1        64         ?          0        0
+cd82         1        64         ?          0        0
+g50t         1        64         ?          0        0
+tu93         1        64         ?          0        0
+```
+
+**Every candidate reads at scale 1 as a 64-cell board. sp80 is the only one that does not.** The
+harness's readings are tuned to the single game in the set whose render happens to be coarse, and
+"sc25 is sixteen times bigger" was a comparison against an outlier dressed as a baseline.
+
+The second column is worse than the first. **Five of seven produce ZERO non-empty frontiers** —
+the spill extractor finds nothing at all, not merely too little — and sc25's five is the only
+non-zero besides sp80's twenty. So the missing capability is not threshold tuning that happens to
+be calibrated for sixteen cells; on five games there is no spill signal to threshold.
+
+That changes what the next expansion should budget for. Last entry's bill was "scale-independence
+plus a spill extractor that survives four times the width". The measured bill is **a spill
+extractor that works at scale 1 at all**, which is where six of the seven candidates live, and
+scale-independence follows from it rather than the other way round.
+
+⚠️ Worth naming as a pattern rather than an incident: I diagnosed one game against one other and
+called the difference the second game's property. Two games are a comparison; seven are a
+distribution, and the distribution put the anomaly on the side I had been treating as normal.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -7855,6 +7890,14 @@ within a tick or two of the measurement it lagged.
     compiler's UNSATISFIABLE is the truth about the board rather than a search failure.
     Either the propagator floors flow the engine does not, or the level wants more than
     one placement.
+123. ⚠️ **CORRECTION to #121: sp80 is the ODD ONE OUT, not sc25.** Surveyed across every
+     candidate: sp80 alone reads at scale 4 / 16 cells; sc25, sb26, lf52, cd82, g50t and tu93
+     ALL read at scale 1 / 64. So "sc25 is sixteen times bigger" compared against an outlier
+     dressed as a baseline. Worse, **five of seven produce ZERO non-empty frontiers** — no
+     spill signal to threshold at all. The measured bill for a second member is therefore a
+     spill extractor that works at scale 1, with scale-independence following from it. Two
+     games are a comparison; seven are a distribution, and it put the anomaly on the side I
+     had been treating as normal.
 122. **The family scope reaches the INDEX**, where a fourth expansion looks before picking a
      target game: the ten-game candidate pool, the warning that burst does NOT predict
      readability, the 0-of-5 reach result, sc25's diagnosed entry cost, both probe scripts by
