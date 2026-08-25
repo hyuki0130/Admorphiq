@@ -562,7 +562,29 @@ Two different problems, and they are not equally general:
   — it is search behaviour**, and "do not spend 500x a human" is a GENERAL property in a way that
   "understand this puzzle" is not.
 
-⚠️ Stated as a hypothesis, not a finding: nothing here yet shows those expensive clears are
-reducible. What it does show is where to look — a game the fallback ALREADY clears, at 500x cost,
-is a measurable target that needs no new mechanic and claims no new game.
+### Measured: the cost is REPETITION, not a big search space
+
+I guessed vc33's 3,656 actions were a 64x64 grid sweep (4,096 cells). ⛔ Wrong:
+
+```
+vc33   3,585 clicks, 1,406 DISTINCT cells (34% of the grid), one cell clicked 186 times
+sk48   1,239 clicks,   505 DISTINCT cells (12%), one cell 65 times, plus 2,800 moves
+```
+
+Neither sweeps. Both hammer the same cells dozens to hundreds of times. vc33 also logs
+`[harness] target draw failed: LLM-free deployment` — goal inference is unavailable in the shipped
+configuration, and repetition fills the gap.
+
+⚠️ **This does NOT establish that the repetition is waste.** A re-click is legitimate when the
+board's state changed under it — toggle and cycle mechanics are exactly that — and vc33 DID clear
+on the 3,656th action, so nothing here says it could have cleared sooner. The measurement
+identifies the SHAPE of the cost and no more.
+
+⛔ So no claim that reducing repetition speeds anything up. The next measurement is the one that
+would settle it: does re-clicking a cell CHANGE the frame? If it does, the repetition is the
+mechanic; if it does not, it is the agent retrying a move it has already learned nothing from.
+
+What makes this axis worth the measurement at all: a game the fallback ALREADY clears, at 500x a
+human's cost, needs no new mechanic and claims no new game — so it carries none of the
+cd82-hijack risk that stopped the port campaign.
 
