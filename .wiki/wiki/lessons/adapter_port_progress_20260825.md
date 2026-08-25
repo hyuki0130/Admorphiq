@@ -57,3 +57,31 @@ ask whether the solver copes, it asks whether the mechanic's defining structure 
   tr87 0.2857, sk48 0.2778, r11l 0.2594.
 
 Related: [[adapter_port_is_a_dispatch_change_20260825]], [[instrument_validity_20260825]].
+
+## The gate proved itself in production (2026-08-25, measured)
+
+The sb26 detector I refused to commit at 2/24 false positives went to the measurement box anyway —
+the sync tarball carries the working tree, not the index — so the full-25 run measured exactly what
+shipping it would have cost:
+
+```
+sb26   0.0796  ->  0.8460     the gain the port was chasing
+s5i5   0.0278  ->  0.0000     ⛔ the false positive, in production
+lf52   0.0001  ->  0.0001     the capability-flag fix, confirmed
+```
+
+`sc25`, the other false positive, scored 0.0000 already, so it hid.
+
+**The trade-off, stated rather than asserted away.** On the public 25 the unsafe detector is
+strongly net-positive: +0.7664 on sb26 against −0.0278 on s5i5, and the mean reads 0.1637 instead
+of 0.1341. Shipping it would raise the proxy today.
+
+⛔ It stays out, and the reason is the only one that matters here: **the public 25 are a proxy for
+110 games we cannot see.** A detector that misfires on 2 of 24 known boards misfires on the unknown
+ones too, and there the cost is invisible — no s5i5 line appears to warn us. The gate is not
+protecting the proxy score; it is protecting the transfer, which is the entire reason the adapters
+were quarantined in the first place.
+
+What the episode is worth: the 0/24 rule stopped being a precaution and became a measurement. It
+predicted a specific regression on a specific game, and the run produced exactly that.
+
