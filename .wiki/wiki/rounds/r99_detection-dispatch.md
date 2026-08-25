@@ -767,6 +767,32 @@ least once an untried alternative was better — twenty times better on time-to-
 does NOT establish is that this is worth fixing for the public 25. On the hidden 110 it could
 matter if toggle-shaped games are common there, and ⛔ nothing here says whether they are.
 
+### Why none of it moves the card: the harness only ever gets the zero-score games
+
+The chain hands over only when its `WorldModelAgent` probe gives up, and the probe gives up on
+exactly the games nobody scores:
+
+```
+harness (graph) received  9 games — total score  0.0000
+probe handled            16 games — total score  1.4153
+```
+
+Every point on the card comes from the probe. `cd82` 0.9463, `su15` 0.0935, `ar25` and `re86`
+0.0833, `sb26` 0.0796 — all probe. The nine the harness receives (sp80, m0r0, vc33, dc22, sc25,
+sk48, cn04, bp35, g50t) score **zero, all of them**.
+
+So all three harness findings are real and all three are worth nothing on this card:
+
+| finding | true? | card impact |
+|---|---|---|
+| `deadsig` inert on 5 of 8 | ✓ | 0 |
+| re-decision impossible at any threshold | ✓ | 0 |
+| `toggle` 20x faster than `graph` on vc33 | ✓ | 0.0000 → 0.0013 |
+
+⚠️ The hidden 110 could differ: if the probe gives up more often there, the harness carries more
+weight and these defects start to cost. ⛔ The submission is the only thing that can say, and it
+has not returned.
+
 What makes this axis worth the measurement at all: a game the fallback ALREADY clears, at 500x a
 human's cost, needs no new mechanic and claims no new game — so it carries none of the
 cd82-hijack risk that stopped the port campaign.
