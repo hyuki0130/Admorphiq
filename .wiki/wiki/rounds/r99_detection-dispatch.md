@@ -666,6 +666,30 @@ separate a useful move from a useless one.
 next step was stated and then measured false. What is established is narrow and checkable: one of
 the six tools cannot fire on five of eight measured games.
 
+### The same property also prevents the harness from ever SWITCHING tools
+
+Counting the harness's own `pick=` log across fifteen games:
+
+```
+vc33 cn04 sp80 sc25 bp35 dc22 m0r0 sk48 g50t   ->  pick=graph, ONCE each
+(six others logged no pick at all — the chain's WorldModelAgent probe handled them)
+```
+
+Every game picks `graph` once and never re-decides. `world_model`, `dealias`, `paint`, `toggle`,
+`llm_goal` and `deadsig` are never selected.
+
+The mechanism is in the harness's own comment — *"finding novelty never stalls"* — combined with
+the deployed stall threshold of **80** against the harness default of 12. Re-deciding requires a
+STALL, and a stall requires the agent to stop finding novelty. ⛔ In the 100% regime every single
+click produces a new frame, so novelty never runs out and **the stall never fires**.
+
+So one property does both: no inert actions means `deadsig` has nothing to prune, and unending
+novelty means the orchestrator never reconsiders its first pick. `graph` runs alone to the end.
+
+⚠️ Whether that is a DEFECT is not established — `graph` may well be the right tool on those
+boards, and 1,500 actions is a short window. What is measured is only that the alternatives are
+never tried.
+
 What makes this axis worth the measurement at all: a game the fallback ALREADY clears, at 500x a
 human's cost, needs no new mechanic and claims no new game — so it carries none of the
 cd82-hijack risk that stopped the port campaign.
