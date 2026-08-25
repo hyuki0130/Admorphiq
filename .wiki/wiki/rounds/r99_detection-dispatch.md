@@ -261,13 +261,27 @@ su15  4120 actions       6 levels        tr87   503 actions       3 levels
 sk48  4023 actions       4 levels        r11l  4064 actions       4 levels
 ```
 
-⚠️ **Kaggle serves DIFFERENT hashes than our local tree** — `ls20-9607627b`, `tr87-cd924810`,
-`wa30-ee6fef47`, `lf52-271a04aa` — and `su15-1944f8ab` is the hash our own tree files as the
-ARCHIVED one. The ports work there anyway: ls20 WINs all 7 levels in 377 actions and tr87 reaches 3.
+⛔ **A claim I made here was WRONG and is corrected.** I read Kaggle's hashes as differing from ours
+— `ls20-9607627b`, `tr87-cd924810`, `su15-1944f8ab` — and called that unprompted transfer. Checking
+hash by hash against the local tree, **they are the same hashes**; I was comparing against the
+ARCHIVE column of an earlier table. Only ONE port genuinely ran on a different board:
 
-So the transfer measured locally an hour earlier **reproduced on Kaggle's own boards**, unprompted.
-That is a stronger statement than the archive probe alone: these are boards nobody chose for the
-test.
+```
+port  local      kaggle     archive    transfer evidence
+sk48  41055498 ≠ d8078629   41055498   archive-scored AND a different Kaggle hash
+m0r0  492f87ba = 492f87ba   dadda488   archive-scored
+re86  8af5384d = 8af5384d   4e57566e   archive-scored
+su15  1944f8ab = 1944f8ab   4c352900   archive-scored
+r11l  495a7899 = 495a7899   aa269680   archive-scored
+ft09  0d8bbf25 = 0d8bbf25   -          ⚠️ none — no other version exists to test on
+ls20  9607627b = 9607627b   -          ⚠️ none
+sb26  7fbdac44 = 7fbdac44   -          ⚠️ none
+tr87  cd924810 = cd924810   -          ⚠️ none
+```
+
+**Five of the nine ports are transfer-verified.** The other four are not failures — there is no
+second version of those games to test against, so the question is unanswerable locally rather than
+answered badly. sk48 is the one port that ran on a board nobody chose for the test, and it worked.
 
 Three defects had to be cleared to get a run at all, all in the build script and all found by
 pushing the KERNEL ONLY, without consuming a submission slot —
