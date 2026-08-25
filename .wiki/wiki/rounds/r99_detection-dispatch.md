@@ -580,9 +580,24 @@ board's state changed under it — toggle and cycle mechanics are exactly that �
 on the 3,656th action, so nothing here says it could have cleared sooner. The measurement
 identifies the SHAPE of the cost and no more.
 
-⛔ So no claim that reducing repetition speeds anything up. The next measurement is the one that
-would settle it: does re-clicking a cell CHANGE the frame? If it does, the repetition is the
-mechanic; if it does not, it is the agent retrying a move it has already learned nothing from.
+### The settling measurement: EVERY click changes the frame
+
+```
+vc33   FIRST click on a cell   changed 1,406 / 1,406  (100%)
+vc33   RE-click on same cell   changed 2,179 / 2,179  (100%)
+```
+
+⛔ **Not one inert click.** Re-clicking always does something, which is the signature of a toggle
+or cycle mechanic — the agent is not retrying moves it has learned nothing from.
+
+So this axis CLOSES, and it closes against the reading I gave it one tick earlier. I wrote that
+efficiency was "search behaviour, not mechanic ignorance" and therefore a GENERAL property that
+transfers. The measurement says the opposite: the human spends 7 actions not by clicking LESS but
+by clicking RIGHTLY, and knowing which cell to click is mechanic understanding — precisely the
+thing that does not transfer to unseen games.
+
+⚠️ Measured on vc33 alone. But the direction is against the hypothesis, and a hypothesis that
+needs the next game to rescue it is not one to build on.
 
 What makes this axis worth the measurement at all: a game the fallback ALREADY clears, at 500x a
 human's cost, needs no new mechanic and claims no new game — so it carries none of the
