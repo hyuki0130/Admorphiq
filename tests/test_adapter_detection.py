@@ -166,3 +166,31 @@ def test_probe_is_armed_and_read_in_separate_steps():
     assert agent._probe_sent is False, "arming must not count as spending"
     agent.choose_action([], frame)                    # spends it
     assert agent._probe_sent is True
+
+
+def test_shipped_measurement_refuses_a_silent_env_override():
+    """Purpose: pin that measuring "as shipped" REFUSES when the environment overrides a
+    deployed default.
+
+    The wrapper uses os.environ.setdefault, which respects an existing value, so a runner
+    exporting GF_GIVEUP=100000 measured a 100,000-action budget and called it the shipped
+    card. The benched-vs-shipped comparison could not catch it: both sides inherited the same
+    export, and a comparison is only as good as the axis it varies. The tell sat in the Kaggle
+    server run for hours — cn04 clearing L1 at 56,048 actions locally against 9,358 and zero
+    levels on the server.
+
+    Expected feedback: a pass means a shipped-configuration measurement cannot be silently
+    retuned by the environment. A failure means that class of number can reappear, and it
+    reappears looking correct.
+    """
+    import subprocess
+    import sys
+
+    env = {"PATH": "/usr/bin:/bin", "GF_GIVEUP": "100000", "HOME": "/tmp"}
+    result = subprocess.run(
+        [sys.executable, "scripts/score_efficiency.py", "--agent", "kaggle_detect",
+         "--titles", "ft09", "--max-actions", "1", "--out", "/tmp/_pin.json"],
+        capture_output=True, text=True, env=env,
+    )
+    combined = result.stdout + result.stderr
+    assert "GF_GIVEUP" in combined and "DEPLOYED" in combined, combined[-400:]

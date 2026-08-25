@@ -145,6 +145,21 @@ def _make_agent(name: str, game_id: str | None = None):
         # LLM callable and the deployed GF_GIVEUP default. `--agent detect` builds its
         # unified member through _make_agent("unified"), which wires a live LLM backend, so
         # the two are NOT the same configuration and the card must be measured as shipped.
+        import os
+
+        # ⛔ REFUSE to measure "as shipped" while the environment overrides a deployed default.
+        # The wrapper uses os.environ.setdefault, which RESPECTS an existing value, so a runner
+        # exporting GF_GIVEUP=100000 silently measured a 100,000-action budget and called it the
+        # shipped card. It went unnoticed because the benched-vs-shipped comparison inherited the
+        # SAME export on both sides — a comparison is only as good as the axis it varies.
+        overridden = [k for k in ("GF_GIVEUP", "HARNESS_STALL", "HARNESS_CTX")
+                      if os.environ.get(k)]
+        if overridden:
+            raise SystemExit(
+                f"--agent kaggle_detect measures the DEPLOYED configuration, but "
+                f"{', '.join(overridden)} is set in the environment and would override it. "
+                f"Unset it, or use --agent detect to measure a tuned configuration."
+            )
         from admorphiq.kaggle_detect_agent import build_detect
 
         return build_detect()
