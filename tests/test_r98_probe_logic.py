@@ -119,3 +119,29 @@ def test_targets_report_separates_modelled_absorbers_from_gaps():
     for line in out.splitlines():
         if line.startswith(("walk_idx0", "walk_idx1", "walk_idx2")):
             assert "unnamed: (none)" in line, line
+
+
+def test_summary_agreement_skips_rounds_that_make_no_claim():
+    """Purpose: pin that the summary checker only judges FULL-25 aggregator summaries.
+
+    Its first run reported 351 rounds as STALE. Every one was a single-game or per-adapter
+    run whose summary has no "n/25" and no "mean game_score" — no claim to contradict. A
+    checker that cries wolf on 351 directories is as useless as one that misses a real
+    staleness, and this is the second time in one session that a checker was wrong on its
+    own first run.
+
+    Expected feedback: a pass means summaries in other formats are skipped rather than
+    flagged. A failure means the false-alarm behaviour is back and the tool's output cannot
+    be read.
+    """
+    import subprocess
+    import sys
+
+    out = subprocess.run(
+        [sys.executable, "scripts/summary_agrees.py"],
+        capture_output=True, text=True,
+    ).stdout
+    assert "None/25" not in out, "a summary with no full-25 claim must be skipped, not judged"
+    for line in out.splitlines():
+        if "AGREES" in line or "STALE" in line:
+            assert "/25" in line, line
