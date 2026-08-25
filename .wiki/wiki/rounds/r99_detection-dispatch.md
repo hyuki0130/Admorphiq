@@ -535,3 +535,34 @@ MULTI-SESSION      dc22 wa30 ar25 vc33 bp35 sp80 · r11l L5
 The depth axis closes honestly here. What remains is multi-session in scale, which is a different
 kind of commitment from a tick.
 
+
+## What actually runs on the hidden set (2026-08-26)
+
+When no detector fires the FALLBACK plays, and on 110 unseen games that will be most of them. So
+the fallback is, in effect, the hidden card. Its solo numbers (`SUBCAND1`, 18/25 clearing, mean
+0.0566), split by how it clears:
+
+```
+CHEAP first levels (agent actions vs human)
+  cd82   6/55     sb26   9/18     su15  12/22     s5i5  19/20
+  ls20  23/22     re86  24/26     wa30  30/71     ar25  31/32
+
+EXPENSIVE first levels — cleared, but worth ~0 under a squared metric
+  lf52   376/32   tu93   695/19   r11l   972/22   sp80  2,341/39
+  vc33 3,656/7    m0r0 5,269/30   sk48 25,274/61
+```
+
+Two different problems, and they are not equally general:
+
+* **Depth** — the fallback mostly stops at L1-L2, and RHAE weights by level index, so shallow
+  clears are worth little. But getting deeper needs per-game mechanic understanding, which is
+  exactly what does NOT transfer to games we have never seen.
+* **Efficiency** — half the clears cost ten to five hundred times a human's actions. vc33 spends
+  3,656 where a human spends 7; sk48 spends 25,274 against 61. ⚠️ **That is not mechanic ignorance
+  — it is search behaviour**, and "do not spend 500x a human" is a GENERAL property in a way that
+  "understand this puzzle" is not.
+
+⚠️ Stated as a hypothesis, not a finding: nothing here yet shows those expensive clears are
+reducible. What it does show is where to look — a game the fallback ALREADY clears, at 500x cost,
+is a measurable target that needs no new mechanic and claims no new game.
+
