@@ -324,3 +324,35 @@ already human-or-better, so squeezing actions there buys nothing.
 **The next axis is depth on ports we already own** — the levels those adapters cannot clear — which
 still carries no cd82-hijack risk, because it claims no new game.
 
+
+## The depth axis, looked up rather than guessed (2026-08-26)
+
+Having stopped the port campaign, the natural next axis is depth on ports we already own. Three
+ticks went into picking it from ACTION COUNTS before consulting the round log, which had the answer
+the whole time — and R84's scan states it in one line: *bounded frontier otherwise EXHAUSTED,
+remaining lift = multi-session builds.*
+
+Current frontier, measured (`SHIPPED1`) and then explained from the record:
+
+```
+CONQUERED (6)      ft09 1.0 · m0r0 1.0 · ls20 1.0 · cd82 0.98 · sb26 0.846 · lp85 0.6992
+⛔ WALLED           sk48  L4 single-control-unsolvable, 94,921-state reachability exhausted
+                   re86  L8 provably unwinnable as modelled
+                   su15  idx6 — oracle VALIDATED, but four frame-only perception routes
+                         measured-falsified: the merge click is 1px-unplaceable in the
+                         integer 64x64 observation space (sub-pixel-perception wall)
+                   g50t  L2 ghost-reachability; tr87, sc25 settled
+MULTI-SESSION      dc22 wa30 ar25 vc33 bp35 sp80 · r11l L5
+```
+
+⚠️ **Two lookup mistakes worth recording**, because both cost a tick:
+
+1. I ranked candidates by *locked level-index weight* — sk48 72%, tr87 71% — without checking WHY
+   they were locked. Both are ⛔ settled with proofs, not open work.
+2. I quoted su15 as reopenable on a *"lag-compensating predictor"*. That line is from **r59s10**;
+   **R75** supersedes it with the sub-pixel wall. The round log carries SEVERAL entries per game at
+   different dates, so finding one is not finding the current one — **search for the LATEST**.
+
+The depth axis closes honestly here. What remains is multi-session in scale, which is a different
+kind of commitment from a tick.
+
