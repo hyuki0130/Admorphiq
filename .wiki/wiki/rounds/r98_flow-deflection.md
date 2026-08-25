@@ -7656,6 +7656,41 @@ wrong. ⛔ Not swapped here: the OOD certification is part of the frozen contrac
 control after the fact is how a control stops being one.
 
 
+## The harness reads its own game and no other (2026-08-25)
+
+The widened screen found the family's structural tell on ten games. That is the precondition for
+reaching for this model, not membership, and the question it leaves decides whether "family" is a
+real word here: given the same discovery the oracle gate spends, does the grounding assemble a
+board on any of them? Asked of the five candidates that match or follow sp80's burst:
+
+```
+sb26   DECLINES — unread: pieces, sink_candidates, barriers, initial_direction, emitters, trajectory
+lf52   DECLINES — unread: all six
+cd82   DECLINES — all six
+g50t   DECLINES — all six
+sc25   DECLINES — unread: sink_candidates, barriers, initial_direction     <- reads 3 of 6
+```
+
+**Zero of five.** The harness reads sp80 and no other game, and that is the honest scope of family
+expansion #3: one measured member, one readable game.
+
+Two things sharpen from it.
+
+**Structural burst does not predict readability.** sb26 and lf52 burst harder than sp80 — 42 and
+27 against 22 — and read nothing at all, while sc25, which merely ties, gets three of six slots
+including pieces, emitters and the trajectory. Whatever the grounding needs is not what the screen
+measures, so the ten-game pool is a list of games to TRY, not a list of near-members.
+
+**sc25 is the nearest miss and it is a specific one.** It reads the movable side of the board and
+fails on the target side: `sink_candidates`, `barriers`, `initial_direction`. That is a much more
+actionable statement than "declines", and it is the first evidence about what a second member
+would cost.
+
+⛔ Not pursued here. Making the grounding read a second game is a family-expansion task with its
+own contract, and doing it inside a round whose schema is frozen would produce an unmeasured
+harness rather than a second member.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -7766,6 +7801,13 @@ control after the fact is how a control stops being one.
     compiler's UNSATISFIABLE is the truth about the board rather than a search failure.
     Either the propagator floors flow the engine does not, or the level wants more than
     one placement.
+120. **The harness READS ITS OWN GAME AND NO OTHER — 0 of 5 candidates assemble a board.**
+     Given the gate's own discovery: sb26, lf52, cd82, g50t fail all six slots; **sc25 reads
+     three of six** (pieces, emitters, trajectory) and fails on `sink_candidates`, `barriers`,
+     `initial_direction`. So **structural burst does not predict readability** — sb26 and lf52
+     burst harder than sp80 and read nothing, while sc25 merely ties and gets halfway. The
+     ten-game pool is a list of games to TRY, not near-members, and sc25 is the nearest miss
+     with a specific failure: it reads the movable side and not the target side.
 119. **The family's tell is in TEN of twenty-five games, two HARDER than sp80.** Widening the
      near-OOD screen from eight hand-picked candidates to every game: sb26 42, lf52 27, sp80
      22, sc25 22, cd82 15, g50t 9, tu93 8, bp35/ft09/su15 5, r11l 3, and fifteen at 1. sb26
