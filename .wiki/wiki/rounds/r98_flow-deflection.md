@@ -7691,6 +7691,41 @@ own contract, and doing it inside a round whose schema is frozen would produce a
 harness rather than a second member.
 
 
+## What a second member would cost, measured on the nearest miss (2026-08-25)
+
+sc25 reads three of six slots and fails on `sink_candidates`, `barriers` and
+`initial_direction`. Diagnosing rather than guessing, beside the game the harness does read:
+
+| | sp80 | sc25 |
+|---|---|---|
+| scale / playable size | 4 / **16** | 1 / **64** |
+| animation layers | 27 | 21 |
+| non-empty frontiers | **20** | **5** |
+| regions that changed appearance | [5, 5] | **[]** |
+| pieces | 1 | 7 |
+| emitters | 1 | **128** |
+
+Three concrete costs, none of them "the grounding is wrong":
+
+- **The board is sixteen times bigger.** sp80 reads at scale 4 as a 16-cell board; sc25 reads at
+  scale 1 as a 64-cell one. Every threshold in the grounding that was tuned against sixteen cells
+  meets four times the width.
+- **The emitter reading degenerates**: 128 candidates against sp80's 1. On a 64-wide board the
+  top-row source detection returns a row, not a source.
+- **The spill barely registers**: five non-empty frontiers out of twenty-one layers, and **no
+  region changes appearance at all**, where sp80 has twenty of twenty-seven and two changed
+  regions. `sink_candidates` needs a changed region or an obstruction and has neither;
+  `initial_direction` needs two frontiers that map onto each other and has five sparse ones.
+
+So the cost of a second member is not a new schema — it is scale-independence in the readings, and
+a spill extractor that survives a board four times as wide. That is a specific, measurable bill
+where an hour ago there was "reads 3 of 6".
+
+⛔ Still not pursued: this round's schema is frozen and its harness is certified against one game.
+Recorded as the entry cost for the next expansion, which is what a family-expansion round owes its
+successor.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -7801,6 +7836,13 @@ harness rather than a second member.
     compiler's UNSATISFIABLE is the truth about the board rather than a search failure.
     Either the propagator floors flow the engine does not, or the level wants more than
     one placement.
+121. **What a SECOND MEMBER would cost, measured on the nearest miss.** sc25 vs sp80: scale
+     1 / playable **64** against 4 / 16; **5** non-empty frontiers of 21 against 20 of 27;
+     **no** changed regions against two; **128** emitters against 1. So the three failing
+     slots follow from a board sixteen times bigger — the top-row source reading returns a
+     ROW, and `sink_candidates` has neither a changed region nor an obstruction while
+     `initial_direction` has five sparse frontiers to map. The bill is scale-independence in
+     the readings plus a spill extractor that survives four times the width, not a new schema.
 120. **The harness READS ITS OWN GAME AND NO OTHER — 0 of 5 candidates assemble a board.**
      Given the gate's own discovery: sb26, lf52, cd82, g50t fail all six slots; **sc25 reads
      three of six** (pieces, emitters, trajectory) and fails on `sink_candidates`, `barriers`,
