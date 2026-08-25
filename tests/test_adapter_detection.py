@@ -132,3 +132,37 @@ def test_ported_sets_are_identified_by_function_not_bound_method():
     assert set(agent._ported) & set(agent._probed) == set(), (
         "an adapter should read statically OR ask for the probe, not both"
     )
+
+
+def test_probe_is_armed_and_read_in_separate_steps():
+    """Purpose: pin that the probe is READ only after it has actually been SPENT.
+
+    The runner calls is_done and choose_action with the SAME frame in one iteration. A
+    version that read the probe as soon as it was armed compared a frame with itself, saw
+    no displacement, and fell back on every board — measured, dispatched_to stayed
+    "fallback" for a whole m0r0 run that should have scored 1.0000.
+
+    Expected feedback: a pass means arming and reading are separate states, so a probe
+    detector sees a genuine transition. A failure means the probe is being read against
+    its own before-frame and every probe port is silently dead.
+    """
+    from admorphiq.detect_dispatch_agent import DetectDispatchAgent
+
+    class Fallback:
+        def is_done(self, frames: list[Any], latest_frame: Any) -> bool:
+            return False
+
+        def choose_action(self, frames: list[Any], latest_frame: Any) -> Any:
+            return None
+
+    class Frame:
+        state = None
+        frame = [[[0, 0], [0, 0]]]
+        available_actions = [1, 2, 3, 4]
+
+    agent = DetectDispatchAgent(Fallback())
+    frame = Frame()
+    assert agent.is_done([], frame) is False          # arms the probe
+    assert agent._probe_sent is False, "arming must not count as spending"
+    agent.choose_action([], frame)                    # spends it
+    assert agent._probe_sent is True

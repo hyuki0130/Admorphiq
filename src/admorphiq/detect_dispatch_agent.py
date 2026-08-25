@@ -43,6 +43,7 @@ class DetectDispatchAgent:
         self._fallback = fallback
         self._chosen: Any | None = None
         self._probe_before: Any | None = None
+        self._probe_sent = False
         # A classmethod accessed on a class yields a NEW bound object each time, so
         # `cls._detect_mechanic is not GameAdapter._detect_mechanic` is ALWAYS true and
         # marked all 25 adapters as ported. Compare the underlying functions.
@@ -88,8 +89,13 @@ class DetectDispatchAgent:
         if self._chosen is not None or not has_frame(latest_frame):
             return self._chosen or self._fallback
 
-        if self._probe_before is not None:
-            # The probe has been spent; read it and decide, whatever it says.
+        if self._probe_sent:
+            # The probe has been SPENT, so this frame is genuinely after it. Arming and
+            # reading must be separate states: the runner calls is_done and choose_action
+            # with the SAME frame in one iteration, so a version that read the probe as
+            # soon as it was armed compared a frame with itself, saw no displacement, and
+            # fell back on every board — measured, dispatched_to stayed "fallback" for the
+            # whole run.
             fired = [n for n, cls in self._probed.items()
                      if cls.detect_probed(self._probe_before, latest_frame)]
             self._chosen = self._probed[fired[0]]() if len(fired) == 1 else self._fallback
@@ -135,5 +141,6 @@ class DetectDispatchAgent:
     def choose_action(self, frames: list[Any], latest_frame: Any) -> Any:
         agent = self._decide(latest_frame)
         if agent is None:
+            self._probe_sent = True
             return _PROBE_ACTION
         return agent.choose_action(frames, latest_frame)
