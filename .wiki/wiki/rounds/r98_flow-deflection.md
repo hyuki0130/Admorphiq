@@ -3,8 +3,8 @@ type: reasoning
 round: R98
 axis: agent25 — hypothesis-DSL family expansion #3 (two-phase place-then-propagate flow)
 keywords: [agent25, hypothesis-dsl, family-expansion, flow-deflection, place-then-propagate, sp80, response-table, reference-propagator, gated-enum, inert-slot, equivalence-class, near-ood, oracle-certification, two-model, instrument-validity, corpus-validation, nine-runs, discovery-cost]
-verdict: **MODEL STAGE RE-MEASURED AT NINE RUNS (2026-08-25) — SELECT CONFIRMED on all three models (gemma4 9/9, qwen3.8 9/9, gpt-oss 8/9); FILL confirmed on gpt-oss ALONE (9/9 split, 9/9 fused, 8/9 explicit) while gemma4 and qwen3.8 are 0/9 in every encoding.** Every model is DETERMINISTIC on the decisive slot and they disagree — gpt-oss `terminate_fatal` 27/27, the other two `terminate_local` 27/27, over ONE distinct board, so the grounding is identical and the split is the models'. ⛔ The "our encoding splits fatality across two slots" reading is REFUTED: qwen answers both slots coherently and is still wrong, fused is 0/9 for both, and naming the contact explicitly is 0/9. FILL is a one-slot exam and the slot is hazard fatality, so the contract's paired fill substage is NOT met. **PROPAGATOR NOW EXACT ON THREE LEVELS** — idx0/idx1/idx2 cell-for-cell, replay corpus 93 -> 12 — after three instrument/grounding fixes, none of which touched the model: a capture pairing a board with a spill that ran on a DIFFERENT layout, a capture hook that only ever fired when a level FAILED, and `_obstruction_regions()` seeding on BACKGROUND-coloured blockers. The walk carries three levels at **107 actions** (was 138) after a direction-retry loop was moved rather than removed. idx3 is blocked by a FROZEN schema gap: a fourth target, inside the window, solid 2x2, zero notches, which "flow occupies the notch" cannot express. Live oracle gate 3/3 end to end, unchanged at 10 actions / 2 commits against a 20 / 3 cap
-commit: [f6f9dd8, 748bc04, ad759da, 216a9a9, e9fced6, b055f7c, a9b506e, a01b762, 948da6f, 296d130, cd090a9]
+verdict: **ROUND COMPLETE (2026-08-25) — SELECT CONFIRMED on all three models (gemma4 9/9, qwen3.8 9/9, gpt-oss 8/9); FILL confirmed on gpt-oss ALONE (9/9 split, 9/9 fused, 8/9 explicit) while gemma4 and qwen3.8 are 0/9 in every encoding, so the contract's PAIRED fill substage is NOT met.** The closing measurement settles WHY, and it is the strong reading: with the explanation follow-up enabled on all three models, **every one cites the same discriminator** — both targets satisfied, level did not advance — and `explanation_check.py` clears every explanation against the capture. So the stage is neither a prior nor perception; it separates one inference (satisfaction insufficient ⇒ contact fatal) from two distinct wrong ones: gemma4 demands a terminal marking the engine never emits, qwen's explicit variant concludes fatal IN PROSE and emits the opposite token. **PROPAGATOR EXACT ON THREE LEVELS** (idx0/idx1/idx2 cell-for-cell, corpus 93 -> 12); walk carries three levels at **107 actions**; live oracle gate 3/3 end to end at 10 actions / 2 commits against a 20 / 3 cap, held across every commit of the round. ⛔ Closing corrections, all against OUR OWN record rather than any model: the fill evidence was called thin and is not; the 'unstated completeness' hypothesis was false (the prompt states it); the 'gemma4 misses two slots' correction was itself wrong (both losing models miss exactly ONE discriminating slot); and idx3's blocker is NOT 'a fourth target the schema cannot express' — the region is grounded as an ABSORBER, and the real gap is that `sink_response_predicate` is GLOBAL where one board needs it PER-TARGET (`contact` would win 14033 layouts but is CONTRADICTED on idx0). Open work is family expansion under a frozen contract: per-target predicates and multi-piece placement
+commit: [f6f9dd8, 748bc04, ad759da, 216a9a9, e9fced6, b055f7c, a9b506e, a01b762, 948da6f, 296d130, cd090a9, 3646fd2, 2448e8c, c42d94e, 81a461a, ab055ba]
 date: 2026-08-25
 ---
 
@@ -8667,6 +8667,52 @@ expansion**, recorded, not attempted under a frozen contract.
 The instrument that fed the misreading now blocks it: `--targets` labels a notchless region
 `MODELLED as an absorber` or `UNMODELLED`, and a test pins the distinction so the two cannot merge
 back into one line of output.
+
+
+## ROUND COMPLETE — what R98 established, and what it did not (2026-08-25)
+
+**Established, by measurement:**
+
+1. **The family's central claim.** For a two-phase place-then-propagate board the transition model
+   **is** the simulator. The reference propagator reproduces the engine cell-for-cell on
+   idx0/idx1/idx2 (replay corpus 93 → 12) and the certified oracle clears idx0 live in 10 actions /
+   2 commits against a 20 / 3 cap, unchanged across every commit of the round.
+2. **SELECT is CONFIRMED on three models** — gemma4 9/9, qwen3.8 9/9, gpt-oss 8/9, each then
+   clearing the level at oracle-gate performance from its own pick.
+3. **FILL is a ONE-SLOT exam, and the slot is hazard fatality** — every alternative reading was
+   refuted rather than assumed: the fused encoding is 0/9 for both losing models, naming the
+   contact explicitly is 0/9, and qwen answers both fatality slots coherently and is still wrong.
+4. **The exam is answerable from what is shown.** All three models cite the same discriminator and
+   the checker clears every explanation against the capture. One model draws the inference; one
+   demands a terminal marking the engine never emits; one states the conclusion and emits the
+   opposite token.
+
+**Not established:** the contract's **paired** fill substage. gpt-oss passes alone.
+
+**The round's own lesson.** Five of the closing findings were corrections to OUR RECORD, not to any
+model: evidence called thin that was not, an unstated constraint that was stated, a correction that
+was itself wrong, and a blocker misdescribed for several ticks while the precise version sat in our
+own docstring. Each was caught by reading the artefact instead of restating the summary. That is
+the round's transferable habit, and it is now mechanised as far as it can be — six guards behind
+`selfcheck.sh`, four of them ordinary pytest files the suite already runs.
+
+**Open, and deliberately not attempted under a frozen contract:**
+
+* **per-target satisfaction predicates** — idx3 needs `contact` for one region and notch-flanking
+  for three; `contact` wins 14033 layouts and is CONTRADICTED on idx0, so a global swap trades one
+  level for the level the contract is built on;
+* **multi-piece placement** — idx1 of the burden family needs 3 pieces / 3 targets, so
+  single-piece placement satisfies nothing;
+* **a second family member** — needs a spill extractor that works at scale 1 (sp80 is the outlier
+  at scale 4).
+
+⚠️ **What R98 did NOT do: move the leaderboard.** It is a research axis on the agent25 arc and was
+never on the submission path. Measured the same day: `notebooks/kaggle_submission.py` still ships
+`KaggleChainedAgent` (proxy 1.072%), no Kaggle-facing file references `adapters25`, and the 32.96%
+script25 card selects adapters by `game_id` substring — quarantined **by design**, since that
+selection transfers to none of the 110 private games. The live leaderboard card is **0.20**
+(2026-07-13) and has not moved since. Promoting kernel expressiveness to the deployable card is
+exactly what the agent25 arc exists for, and it has not happened yet.
 
 
 ## Next
