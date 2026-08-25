@@ -7947,6 +7947,35 @@ with a question, not with a filename, and every script already carries its own P
 for the rest.
 
 
+## The explanation asked cold, and got a confabulation (2026-08-25)
+
+The unscored ask ran and returned this, from the model that answers `terminate_local` nine times
+out of nine:
+
+> *"The animation showed a critical system failure that could not be contained, necessitating an
+> immediate shutdown to prevent escalation. Had the failure been isolated or a viable recovery
+> sequence been visible, I would have chosen a containment or repair response."*
+
+No droplets, no targets, no barrier, no level. It is incident-management language, and
+`terminate_local` reads perfectly well in that domain as "shut down locally" — which is a tempting
+explanation for the whole fill failure.
+
+⚠️ **It is not evidence for that, because the fault is mine.** The ask was a fresh
+system-plus-user pair with **no evidence in it**: I asked the model to explain a choice whose basis
+it could not see. Asked cold about its own answer, a model confabulates, and what came back
+describes nothing that happened. Reading it as "gemma4 interprets `hazard_response` in a safety
+domain" would be exactly the kind of claim this session has spent the day catching.
+
+Fixed by making the follow-up a **continuation** rather than a fresh exchange: the same scored
+messages, then the model's own reply, then the question. Now it is explaining something it can
+still see. Verified again that the scored asks stay byte-identical and the self-test passes; the
+dataset went up at 44547 bytes and was confirmed before the kernel.
+
+That is **two instrument failures in a row on the same diagnosis** — first the scored prompt
+forbade prose, then the diagnostic prompt withheld the evidence. Both were caught by reading the
+output rather than the intent, which is the only method that has worked all session.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -8057,6 +8086,15 @@ for the rest.
     compiler's UNSATISFIABLE is the truth about the board rather than a search failure.
     Either the propagator floors flow the engine does not, or the level wants more than
     one placement.
+130. ⚠️ **The explanation asked COLD, and got a confabulation.** gemma4 explained
+     `terminate_local` as *"a critical system failure that could not be contained,
+     necessitating an immediate shutdown"* — no droplets, no targets, no barrier. Tempting as
+     "it reads `hazard_response` in a safety domain", but **the fault is mine**: the ask was a
+     fresh system+user pair with NO evidence, so the model was explaining a choice it could
+     not see the basis for. Fixed to a CONTINUATION — scored messages, its own reply, then the
+     question. Scored asks still byte-identical, self-test passes. **Two instrument failures
+     in a row on one diagnosis**: the scored prompt forbade prose, then the diagnostic prompt
+     withheld the evidence.
 129. **Two instruments existed only in the shell history.** The round has 24 scripts and had
      no list; `shortlist_probe` and `family_reach_probe` — which identified `obstruction` as
      the false target's source and established that the harness reads one game — were named

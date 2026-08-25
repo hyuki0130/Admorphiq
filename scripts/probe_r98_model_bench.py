@@ -677,13 +677,19 @@ def run_fill_once(index: int, llm: Callable[[list[dict[str, str]]], str],
         # nothing else, and the scored asks are byte-identical with it on or off. That is the
         # distinction the round's prohibition draws — do not tune the question until a weaker
         # model passes; asking a different question that scores nothing is not that.
-        why = llm([
-            {"role": "system", "content": "You explain a choice you already made. Be brief."},
+        # A CONTINUATION of the scored exchange, not a fresh one. The first version sent a
+        # bare system+user pair with no evidence, and gemma4 answered in incident-management
+        # language about "a critical system failure that could not be contained" — no
+        # droplets, no targets, no barrier. Asked cold about a choice whose basis it cannot
+        # see, a model confabulates, and the reply says nothing about the scored reasoning.
+        # Replaying the same messages plus its own answer is what makes the follow-up an
+        # explanation rather than a fresh invention.
+        why = llm(build_slot_ask(evidence, g) + [
+            {"role": "assistant", "content": slot_reply or ""},
             {"role": "user", "content":
-             "You answered `hazard_response` with "
-             f"{(slots or {}).get('hazard_response', '(unparsed)')!r}. In two or three "
-             "sentences: what in the described animation led you to it, and what would have "
-             "made you answer differently? Do not restate the answer."},
+             "In two or three sentences: what in the animation above led you to that "
+             "`hazard_response`, and what would have made you answer differently? Do not "
+             "restate the answer."},
         ])
         record["explanation"] = (why or "")[-2000:]
     if os.environ.get("R98_KEEP_REPLIES") == "1":
