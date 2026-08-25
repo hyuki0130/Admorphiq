@@ -8082,6 +8082,33 @@ also explains why the other families' gates were never at risk: the round has be
 sibling, not a parent.
 
 
+## The containment is executed, not just imported (2026-08-25)
+
+The previous entry established that every `src/` file this session touched carries the `_flow`
+suffix and that nothing outside the flow family imports the flow grounding. Both are file-level
+facts, and a file-level fact is not a run.
+
+R97's live oracle gate — a different family, tier-2 self-extension, its own contract — run now:
+
+```
+[gate] mutant constant:        fails=True  caught_by=held_out_exactness
+[gate] mutant missing_wrap:    fails=True  caught_by=held_out_exactness
+[gate] mutant colour_hardcode: fails=True  caught_by=extensional_equivalence
+[gate] mutant k2_only:         fails=True  caught_by=held_out_exactness
+[gate] === GATE PASS === hole=True authored=True mutants=True
+```
+
+**Another family's certification still passes end to end**, including all four of its mutants being
+caught by the mechanism that is supposed to catch them. Together with the 1731-test suite and R98's
+own five gates, the containment now rests on something executed rather than on a naming convention.
+
+⚠️ Worth being exact about the scope: this checks R97, which is the tier-2 extension round built on
+the shared modules. R95 and R96 have no runnable gate script of their own in the tree — their
+protection is the unit suite, which passes. So "no cross-family exposure" is executed for one
+neighbouring family and inferred for the other two, and that distinction is the honest shape of the
+claim.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -8192,6 +8219,12 @@ sibling, not a parent.
     compiler's UNSATISFIABLE is the truth about the board rather than a search failure.
     Either the propagator floors flow the engine does not, or the level wants more than
     one placement.
+136. **The containment is EXECUTED, not just imported.** R97's live oracle gate — a different
+     family, its own contract — passes now: `hole=True authored=True mutants=True`, all four
+     mutants caught by the mechanism meant to catch them. So the containment rests on a run
+     rather than on a naming convention. ⚠️ Scope stated exactly: R95 and R96 have no runnable
+     gate script in the tree, so their protection is the 1731-test suite. Executed for one
+     neighbouring family, inferred for the other two.
 135. **The session's code changes are CONTAINED to the flow family.** `grounding_flow` is
      imported only by `compiler_flow`, `verifier_flow`, the R98 probe and its own tests; and
      every `src/` file this session touched, listed from git rather than memory, carries the
