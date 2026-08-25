@@ -221,3 +221,43 @@ def test_max_actions_is_a_per_game_budget_not_a_run_total():
     assert "action_counter: int = 0" in base, (
         "action_counter must be an instance field initialised per agent"
     )
+
+
+def test_the_deployed_cap_actually_fires():
+    """Purpose: execute the deployed MAX_ACTIONS path, which no local card measurement touches.
+
+    There are TWO capping mechanisms and only one of them ships. The local measurement caps via
+    `score_efficiency.py --max-actions`, which ends the runner's loop; the submission caps via
+    `KaggleDetectAgent.is_done` returning True at MAX_ACTIONS. `--agent kaggle_detect` builds
+    `build_detect()`, which returns the DISPATCHER — the wrapper carrying MAX_ACTIONS is never
+    constructed locally, so cutting the budget from 100,000 to 4,000 was verified against a
+    mechanism that does not ship.
+
+    Expected feedback: a pass means the deployed cap stops a game at its budget and not before.
+    A failure means the submission either never stops (9-hour risk returns) or stops early
+    (score lost), and neither would show up in any local score.
+    """
+    from admorphiq.kaggle_detect_agent import KaggleDetectAgent
+
+    class Frame:
+        state = None
+        frame = [[[0, 0], [0, 0]]]
+        available_actions = [1, 2, 3, 4]
+
+    class Stub:
+        def is_done(self, frames: list[Any], latest_frame: Any) -> bool:
+            return False
+
+        def choose_action(self, frames: list[Any], latest_frame: Any) -> Any:
+            return None
+
+    agent = KaggleDetectAgent.__new__(KaggleDetectAgent)  # the official __init__ needs an env
+    agent._agent = Stub()
+
+    cap = KaggleDetectAgent.MAX_ACTIONS
+    agent.action_counter = 0
+    assert agent.is_done([], Frame()) is False
+    agent.action_counter = cap - 1
+    assert agent.is_done([], Frame()) is False, "the cap must not fire before the budget"
+    agent.action_counter = cap
+    assert agent.is_done([], Frame()) is True, "the cap must fire at the budget"
