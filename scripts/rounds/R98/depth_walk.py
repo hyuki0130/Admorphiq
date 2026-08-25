@@ -163,6 +163,11 @@ def play_level(w: Walker) -> tuple[bool, str]:
     for a in (1, 1, 2, 3, 4):
         w.act(a, g)
     phase["fixed probes"] = w.actions - phase["start"]
+    sel0 = g.selection_candidates()
+    print(f"    [after fixed probes] idx{entered} deltas={sorted(deltas_of(g))} "
+          f"pieces={_count(g.pieces())} "
+          f"tracked={'yes' if g.tracked_region() is not UNKNOWN else 'no'} "
+          f"candidates={'?' if sel0 is UNKNOWN else len(sel0.value)}", flush=True)
     # ⛔ A per-direction RETRY loop used to sit here, pressing each unmeasured direction up to
     # twice more. Measured on every level of a full walk: `deltas_of(g)` is EMPTY before it
     # runs and EMPTY after, so its own success condition is never met and it repaired nothing

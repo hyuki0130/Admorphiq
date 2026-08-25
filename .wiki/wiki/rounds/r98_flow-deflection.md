@@ -7393,6 +7393,38 @@ scrupulously appended to and still misdirect, because new entries go at the top 
 instructions live at the bottom.**
 
 
+## The discovery bill is now fully attributed (2026-08-25)
+
+The last unexamined phase was the five fixed probes. Asked the same way as the retry loop — what do
+its consumers see afterwards:
+
+```
+[after fixed probes] idx0 deltas=[] pieces=? tracked=yes candidates=4
+[after fixed probes] idx1 deltas=[] pieces=? tracked=yes candidates=7
+[after fixed probes] idx2 deltas=[] pieces=? tracked=yes candidates=12
+[after fixed probes] idx3 deltas=[] pieces=? tracked=yes candidates=8
+```
+
+**They earn their keep.** The deltas are empty — the same emptiness that made the retry loop look
+busy — but a tracked region exists and the selection-candidate list is populated, four to twelve
+cells, which is precisely what the selection probes consume next. The piece inventory is still
+UNKNOWN, as expected before selection separates pieces that touch.
+
+So no change is warranted here, and that is the result rather than a failure to find one. With it
+the whole discovery bill is attributed:
+
+| phase | cost | what it buys | verdict |
+|---|---|---|---|
+| fixed probes | 5 | tracked region + candidate list | **justified** |
+| direction retries | 8 -> **1** | the missing direction, at plan time | **relocated** |
+| selection probes | 4–6 | segmentation of touching pieces | **justified** |
+| commit + aiming | 1–10 | direction, then the lane alignment | accounted exactly |
+
+One item of four was removable, and it was found by asking what each phase's CONSUMER sees rather
+than what the phase does. The other three answer that question with something real, which is why
+the walk sits at 107 actions and not lower.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -7503,6 +7535,12 @@ instructions live at the bottom.**
     compiler's UNSATISFIABLE is the truth about the board rather than a search failure.
     Either the propagator floors flow the engine does not, or the level wants more than
     one placement.
+110. **The discovery bill is now FULLY attributed.** The last unexamined phase, the five fixed
+     probes, earns its keep: deltas are empty but `tracked=yes` and the candidate list is
+     populated (4/7/12/8 cells) — exactly what the selection probes consume next. Final
+     attribution: fixed probes 5 (justified), direction retries 8 -> 1 (relocated), selection
+     probes 4-6 (justified), commit+aiming 1-10 (accounted exactly). One item of four was
+     removable, found by asking what each phase's CONSUMER sees rather than what it does.
 109. **Four Next items were answered and still read as open** — idx3 never being judged, "a
      commit is not free", the flag reading, and idx3 not being won by covering its regions.
      All four closed with this session's evidence. A page can be scrupulously appended to and
