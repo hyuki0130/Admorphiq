@@ -217,6 +217,26 @@ Successfully loaded game class M0r0 from environment_files/m0r0/dadda488/m0r0.py
 which is why this project made a loader-line audit mandatory. The first reading of this probe was
 about to be reported as 5/5 on the strength of the id alone.
 
+### And they SOLVE those versions, not merely detect them
+
+Firing is necessary but not the point — a detector that fires and then FAILS is worse than one that
+never fires, because it takes the game away from the fallback that would otherwise have played it.
+Scoring BOTH agents on each archived version (`scripts/detector_transfer_score.py`):
+
+```
+game   fallback              dispatch
+m0r0   0.0000 (0 levels)     1.0000 (6 levels)
+r11l   0.0000 (1 level)      0.2551 (3 levels)
+re86   0.0833 (2 levels)     0.2273 (4 levels)
+sk48   0.0000 (0 levels)     0.2778 (4 levels)
+su15   0.0935 (3 levels)     0.4368 (6 levels)
+
+mean   0.0374            ->  0.4394        11.7x on boards nobody tuned on
+```
+
+⛔ Not one HARMFUL case: the failure mode the probe exists to catch — fire, then fail — did not
+occur on any of the five. m0r0 clears all six levels of a board it has never seen.
+
 **What it establishes:** the detectors read the MECHANIC, not this board. That is the strongest
 evidence obtainable without spending a submission that the ports can earn on the hidden set — and
 it is exactly the test the old brittle solvers failed.
