@@ -137,3 +137,39 @@ Getting there cost three defects, all in wiring rather than in an adapter or the
 With the driver corrected, the question that motivated the contract answers cleanly: **the probe
 costs nothing.** m0r0 solves 6/6 in 199 actions fresh and 198 after a probe.
 
+
+## Why lp85 cannot be ported: the mechanic is not on the first frame (2026-08-25)
+
+lp85 is the largest remaining gap (0.6992 ceiling against 0.0022 on the card) and it resists both
+detection forms. The reason is structural, and it took two wrong diagnoses to reach.
+
+**Static: no threshold exists.** The adapter's own rotation-button finder returns 3 on lp85, 12 on
+ft09 and 2 on s5i5 — lp85 sits BETWEEN its rivals, so any cut-off is a constant fitted to this
+board rather than a property of the mechanic.
+
+**Probe: there is nothing to probe.** A click probe on the first detected "button" changes ZERO
+cells. The adapter's docstring says why:
+
+> L0/L1 are cleared by the rare-colour sweep. **L2** is the ring-permutation board — "2 targets +
+> 2 goals + 3 rings".
+
+⛔ **The ring mechanic appears at LEVEL 2.** The first frame is a rare-colour click board with no
+rotation buttons at all, so the 3 "buttons" are HUD artefacts at the frame edge (the first is at
+column 0) and clicking one does nothing. No number of probes helps: the structure is not there yet.
+
+### The limit this names
+
+**First-frame dispatch cannot see a mechanic that only appears at a deeper level.** lp85's
+discriminating structure lives at L2; the dispatcher decides at L0; and what L0 *does* show —
+"click the rare thing" — is too generic for any detector to claim without hijacking its four
+click-only rivals.
+
+This also explains why the probe worked for m0r0 and not here, which is worth stating because the
+two look similar from a distance: **m0r0's probe needs no aim.** A direction key acts on the whole
+board, so one press reveals the mirror pair. A click probe must choose WHERE to press, and choosing
+correctly requires already knowing the mechanic — the circularity is real and specific, not a
+figure of speech.
+
+⛔ lp85 is PARKED honestly, with its mechanics decoded and banked. Forcing a threshold would repeat
+exactly the failure sb26 walked into when its parser-only detector cost s5i5 its score.
+
