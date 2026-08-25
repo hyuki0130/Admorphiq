@@ -1553,6 +1553,14 @@ identical. The probe costs nothing (6/6 in 199 actions fresh, 198 after).
 L0 — first-frame dispatch cannot see a mechanic that only appears deeper. Its L0 face ("click the
 rare thing") is too generic to claim without hijacking four click-only rivals.
 
+⚠️ **Measure the card AS SHIPPED (`--agent kaggle_detect`), not as benched (`--agent detect`).**
+They are different configurations: the bench builds its unified member with a LIVE LLM backend and
+the runner's `GF_GIVEUP`, while the notebook uses a dead LLM callable (so the harness routes by
+frame signature) and the deployed default. The shipped wrapper also needs the official framework
+directory `ARC-AGI-3-Agents/` on the box — MEASURED, a sync that carried only `src scripts tests
+notebooks kaggle` produced `No module named 'agents'` and **0.0000 on all 25 games**, which reads
+exactly like a broken card and is not one. Include it when syncing.
+
 **Measurement runs ALL 25 GAMES IN PARALLEL on `ceph-build` (64 cores), never serially on the Mac.**
 The Mac is edit/lint/pytest only. Sync first — ceph-build's `~/admorphiq` is a tarball extract, is
 BEHIND the repo, and is not a git repo:
