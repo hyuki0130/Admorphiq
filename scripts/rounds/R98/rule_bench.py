@@ -114,8 +114,16 @@ def _targets() -> int:
     widen the predicate.
 
     Expected feedback: a board with no unnamed target-coloured region is fully expressed
-    by the current vocabulary. One with a notchless region is a level the schema cannot
-    describe, however good the propagator is.
+    by the current vocabulary. One with a notchless region needs a second look, and the
+    report now takes it: a region the grounding already named as an ABSORBER is MODELLED,
+    just not as a target, so it is not an expressiveness gap.
+
+    Measured 2026-08-25: idx3's four notchless cells are EXACTLY `absorber_cells` in all
+    four captures. The round's shorthand — "a fourth target the schema cannot express" —
+    flattened what `grounding_flow.absorbers` already records: the engine DOES satisfy that
+    block, `contact` would win 14033 layouts, and `contact` is CONTRADICTED on idx0. The
+    gap is not a missing rule. It is that `sink_response_predicate` is GLOBAL where this
+    one board needs it PER-TARGET.
     """
     for path in _captures():
         with open(path) as f:
@@ -151,7 +159,14 @@ def _targets() -> int:
                 for c in range(min(rows[r]), max(rows[r]) + 1)
                 if (r, c) not in region and (r, c - 1) in region and (r, c + 1) in region
             ]
-            unnamed.append(f"{len(region)} cells, {len(notches)} notch(es)")
+            absorbers = {tuple(c) for c in payload.get("absorber_cells") or ()}
+            if region <= absorbers and absorbers:
+                role = " — MODELLED as an absorber, not an expressiveness gap"
+            elif region & absorbers:
+                role = " — partly absorber, partly unmodelled"
+            else:
+                role = " — UNMODELLED"
+            unnamed.append(f"{len(region)} cells, {len(notches)} notch(es){role}")
         print(f"{path.stem:14s} named {sorted(len(s) for s in payload['sinks'])}"
               f"   unnamed: {'; '.join(unnamed) or '(none)'}")
     return 0

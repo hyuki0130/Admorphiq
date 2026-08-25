@@ -87,3 +87,35 @@ def test_the_walking_side_comes_from_the_flank_index_not_the_coordinates() -> No
     assert spread_sweep._support_run(board, flanks[0], (0, -1), (1, 0), wall) == 0
     assert spread_sweep._support_run(board, flanks[1], (0, 1), (1, 0), wall) == 0
     assert spread_sweep._support_run(board, (4, 4), (0, -1), (1, 0), wall) == 1
+
+
+def test_targets_report_separates_modelled_absorbers_from_gaps():
+    """Purpose: pin that `--targets` distinguishes a notchless target-coloured region the
+    grounding ALREADY named as an absorber from one nothing models. The round spent a
+    stretch calling idx3 "a fourth target the schema cannot express" when the board models
+    the region — the flattening that this label exists to prevent.
+
+    Expected feedback: a pass means the report cannot silently read as an expressiveness
+    gap on a board that models the region. A failure means the two cases have merged
+    again and the idx3 blocker will be misdescribed the same way.
+    """
+    import json
+    import subprocess
+    import sys
+    from pathlib import Path
+
+    out = subprocess.run(
+        [sys.executable, "scripts/rounds/R98/rule_bench.py", "--targets"],
+        capture_output=True, text=True, check=True,
+    ).stdout
+
+    payload = json.loads(Path("scripts/rounds/R98/evidence/walk_idx3_1.json").read_text())
+    assert payload["absorber_cells"], "the idx3 capture must still carry absorbers"
+
+    idx3 = [line for line in out.splitlines() if line.startswith("walk_idx3")]
+    assert idx3, "the idx3 captures must still be reported"
+    for line in idx3:
+        assert "MODELLED as an absorber" in line, line
+    for line in out.splitlines():
+        if line.startswith(("walk_idx0", "walk_idx1", "walk_idx2")):
+            assert "unnamed: (none)" in line, line

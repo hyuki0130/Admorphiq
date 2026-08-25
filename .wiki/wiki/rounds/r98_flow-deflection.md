@@ -8627,6 +8627,48 @@ across all nine runs of every variant, while gpt-oss produces three distinct wor
 them and one under the third. Same decoding settings.
 
 
+## The idx3 blocker, described correctly at last (2026-08-25)
+
+For several ticks this round's summary — and every restatement I wrote from it — called idx3's
+wall *"a notchless solid 2×2 wearing the target colour, which 'flow occupies the notch' cannot
+express"*. Measured against the captures, that is wrong in the part that matters:
+
+```
+walk_idx3_1..4   unnamed target-coloured : [(13,2), (13,3), (14,2), (14,3)]
+                 absorber_cells          : [(13,2), (13,3), (14,2), (14,3)]   same? True
+```
+
+The region is not unexpressed. It is grounded, in every capture, as an **absorber** — a role the
+schema already has, meaning "swallows the flow without the objective counting it".
+
+And the precise account was sitting in `grounding_flow.absorbers`' own docstring the whole time:
+
+* the engine **does** satisfy that block — it recolours when the spill reaches it;
+* the vocabulary **does** contain a rule that fits it, `contact`, and promoting the block to a
+  fourth target under `contact` makes **14033 layouts win**;
+* but `contact` is **CONTRADICTED on idx0** in the frozen mutant table;
+* leaving the region out of the board entirely was tried, and our flow then ran straight through
+  what the engine's flow ended at.
+
+So idx3 does not need a rule the family lacks. It needs **two different satisfaction predicates on
+one board**, and `FlowHypothesis` carries exactly one, globally. That is the same shape as this
+round's hazard-fatality finding: not a missing concept, a concept applied at the wrong scope.
+
+**Why the misdescription is the story.** "The vocabulary lacks a rule" reads as a dead end and
+parks the level. "The predicate is global where the board needs it per-target" is a named schema
+finding with a measured number attached, in the same class as the findings this round already
+banks. The two framings point at different next rounds, and the round page carried the one that
+stops work.
+
+⛔ Not fixed by widening the predicate now: `contact` is contradicted on the very level the
+contract is built on, so a global swap trades idx3 for idx0. Per-target predicates are a **family
+expansion**, recorded, not attempted under a frozen contract.
+
+The instrument that fed the misreading now blocks it: `--targets` labels a notchless region
+`MODELLED as an absorber` or `UNMODELLED`, and a test pins the distinction so the two cannot merge
+back into one line of output.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -8747,6 +8789,17 @@ them and one under the third. Same decoding settings.
     compiler's UNSATISFIABLE is the truth about the board rather than a search failure.
     Either the propagator floors flow the engine does not, or the level wants more than
     one placement.
+154. **idx3's blocker was being MISDESCRIBED, by me, for several ticks — and the precise
+     version was already in our code.** The four "unnamed target-coloured, 0 notch" cells
+     are **EXACTLY `absorber_cells`** in all four captures, so the board **models** that
+     region; the shorthand "a fourth target the schema cannot express" is wrong.
+     `grounding_flow.absorbers` records the real finding: the engine DOES satisfy that
+     block (it recolours when the spill reaches it), **`contact` would win 14033 layouts**,
+     and `contact` is CONTRADICTED on idx0 in the frozen mutant table. ⛔ So the gap is not
+     a missing rule. It is that **`sink_response_predicate` is GLOBAL where this one board
+     needs it PER-TARGET** — the same shape as the hazard-fatality finding, and a schema
+     finding rather than a dead end. `--targets` now labels MODELLED-as-absorber apart
+     from UNMODELLED, pinned by a test.
 153. **THE PENDING DECISIVE MEASUREMENT IS IN: gpt-oss EARNED it — the fill stage measures
      READING, not a prior.** All 27 runs PASS with `terminate_fatal`, and every explanation
      names the same joint observation: both targets satisfied, the level did not advance,
