@@ -631,6 +631,24 @@ class Adapter(GameAdapter):
 
     GAME_ID = GAME_ID
 
+    @classmethod
+    def _detect_mechanic(cls, latest_frame: Any) -> bool:
+        """A vacuum-merge delivery board: undo-only controls AND both entity kinds present.
+
+        1. **Vacuum controls.** The mechanic is played by clicking a point to pull nearby
+           items toward it, with an undo and nothing else — no movement, no confirm. That
+           control set (ACTION7 plus clicks) is unique among the 25 public games.
+        2. **Fruits AND goals on the board.** `_classify` separates goal disks (non-solid,
+           holey — density below 1.0) from solid value-coloured fruit blocks. A delivery
+           puzzle needs both; a board with only one of them is not this mechanic, whatever
+           its controls look like.
+        """
+        simple_ids, has_click = available_action_ids(latest_frame)
+        if not has_click or sorted(simple_ids) != [7]:
+            return False
+        goals, fruits, _enemies = _classify(canonical_layer(latest_frame))
+        return bool(goals) and bool(fruits)
+
     def __init__(self, giveup: int = _GIVEUP_DEFAULT) -> None:
         self.restart_on_game_over = True
         self._giveup = giveup
