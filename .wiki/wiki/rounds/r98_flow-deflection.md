@@ -7591,6 +7591,13 @@ Suite after the prune: 1725 passed. Walk 107, oracle 3/3, corpus 12.
     compiler's UNSATISFIABLE is the truth about the board rather than a search failure.
     Either the propagator floors flow the engine does not, or the level wants more than
     one placement.
+113. **The session's instrument failures are written up as a LESSON page** —
+     [[../lessons/instrument_validity_20260825]]. Four rules were adopted and reverted here,
+     none because the rule was wrong to try and all because the thing measuring it did not
+     describe what it claimed: a corpus that did not describe its own spills, a capture that
+     only recorded failures, a probe whose event definition was a coincidence, and a probe
+     that PRESSED an action. Fixing the instruments rather than the model took the corpus
+     93 -> 12 and made the propagator exact on three levels.
 112. **The walk-versus-oracle gap, accounted to the action.** idx0: the gate spends 5 fixed
      probes + 2 aiming + 1 sacrificial commit = **8** discovery; the walk spends the same 8
      PLUS 4 selection probes and 1 re-commit = **13**. The entire difference is those five,
@@ -8145,3 +8152,5 @@ Suite after the prune: 1725 passed. Walk 107, oracle 3/3, corpus 12.
   model-facing contract" lesson, applied preemptively here.
 - [[r92_sp80-l2-premise-correction]] — the sp80 decode and the perception traps.
 - [[../lessons/faithful_offline_simulator_20260715]] — learn an operator, then plan.
+- [[../lessons/instrument_validity_20260825]] — validate the instrument before the
+  hypothesis; the four measurement failures this round paid for.
