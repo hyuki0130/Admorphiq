@@ -7370,6 +7370,29 @@ wrong when it was made. It was measured in a state several fixes ago, and what c
 unmeasured. The honest position is that the premise does not hold now and the reason is open.
 
 
+## Four Next items were answered and still read as open (2026-08-25)
+
+The Next list is what a future session acts on, and four of its entries had been overtaken by this
+session's measurements while still reading as live questions. Closed with their evidence:
+
+- **"idx3 was never being judged — the game was already OVER"** → it is now reached with lives in
+  hand and it IS judged: 12 commits, 9 advancing nothing, `NOT_FINISHED` with a press to spare, the
+  plan executed, `wins=True` forecast, engine refuses.
+- **"A COMMIT IS NOT FREE"** → the arithmetic does not bind. A non-advancing ACTION5 is not a spent
+  life; nine leave the game alive.
+- **"Advancement needs every target satisfied AND A FLAG CLEAR"**, whose leading reading was flow
+  reaching the floor → not operative on idx3: deepest row 14 on a board of 15, no failure band
+  touched at all.
+- **"idx3 is NOT won by covering its regions (measured on a game already over)"** → re-measured on a
+  game that is not over, with the fourth region now identified as a notchless 2x2.
+
+None of these is new measurement; all four are this session's results reaching the one list that
+tells the next reader what to do. Two ticks ago the same staleness was found in `rounds/index.md`
+and CLAUDE.md, and the round page's own Next list turns out to have had it too — **a page can be
+scrupulously appended to and still misdirect, because new entries go at the top while the
+instructions live at the bottom.**
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -7442,7 +7465,11 @@ unmeasured. The honest position is that the premise does not hold now and the re
 23. **sp80 has SIX levels**; idx3 is the fourth. "The last level signals completion
     differently" is eliminated, and the depth ceiling for this family is 6 — the walk
     carries one hypothesis through 3 of them.
-24. **Advancement needs every target satisfied AND A FLAG CLEAR** (read from the game
+24. ~~Advancement needs every target satisfied AND A FLAG CLEAR~~ **— the flag reading is NOT
+    operative on idx3 (2026-08-25).** Its spill's deepest row is 14 on a board of 15 and it
+    touches no failure band at all, so there is no contact to invalidate the attempt. What
+    idx3 is missing is a FOURTH target, inside the window, solid 2x2, zero notches. Original
+    note:** (read from the game
     source, dev-time only, never for the runtime path). The flag is set when flow reaches
     a tagged sprite that recolours to 14 — a FAILURE ENTITY the schema cannot express,
     since `hazard_policy`/`hazard_response` only describe what flow does on meeting a
@@ -7451,12 +7478,19 @@ unmeasured. The honest position is that the premise does not hold now and the re
     spill; four failures end the game. Leading reading: flow reaching the floor
     invalidates the attempt. Not yet confirmed on idx3 — the flash alternates 14/1 and an
     even step is invisible against the frame's own colour.
-25. **idx3 was never being judged — the game was already OVER.** Pressing once more after
+25. ~~idx3 was never being judged — the game was already OVER.~~ **RESOLVED 2026-08-25 — it
+    is reached with lives in hand and it IS judged.** The walk now issues 12 commits, 9 of
+    which advance nothing, and the game is `NOT_FINISHED` with one more press to spare. idx3
+    executes its plan, the model forecasts 3 of 3 targets and `wins=True`, and the engine
+    refuses. Original note:** Pressing once more after
     the walk stops returns `GAME_OVER` immediately. A run has FOUR failed commits for the
     whole game, not per level, and the walk spends them probing (one sacrificial commit
     per level on a six-level game). Every idx3 explanation this round built was about a
     level that was not going to be judged. Next: reach idx3 with lives left.
-26. **A COMMIT IS NOT FREE.** Discovery was costed in actions and never in failed
+26. ~~A COMMIT IS NOT FREE.~~ **The arithmetic does NOT bind (2026-08-25).** A non-advancing
+    ACTION5 is not the same event as a spent life: nine of them leave the game alive. Costing
+    discovery in "lives" is not a measurement, and conclusions drawn from it need re-reading.
+    Original note:** Discovery was costed in actions and never in failed
     commits. One life recovered by not re-committing when the aiming moved nothing;
     three more are spent because every level builds a FRESH grounding and re-learns the
     flow's direction and colour, which cannot change within a game.
@@ -7469,6 +7503,10 @@ unmeasured. The honest position is that the premise does not hold now and the re
     compiler's UNSATISFIABLE is the truth about the board rather than a search failure.
     Either the propagator floors flow the engine does not, or the level wants more than
     one placement.
+109. **Four Next items were answered and still read as open** — idx3 never being judged, "a
+     commit is not free", the flag reading, and idx3 not being won by covering its regions.
+     All four closed with this session's evidence. A page can be scrupulously appended to and
+     still misdirect: new entries go at the top while the instructions live at the bottom.
 108. ⛔ **The four-lives ceiling does NOT bind — 9 non-advancing commits and the game is
      alive.** The walk issues 3 commits a level (sacrificial, aimed re-commit, the plan's) =
      12 in all, 9 advancing nothing, and `alive=True`. The recorded ceiling test — one more
@@ -7953,7 +7991,10 @@ unmeasured. The honest position is that the premise does not hold now and the re
     idx3 outright — the piece sits under the source, the spill never shows a clean fall,
     `initial_direction` comes back UNKNOWN and the board will not assemble. The gate gets
     away with it on idx0's geometry alone.
-21. **idx3 is NOT won by covering its regions.** (Measured, but on a game already over.) All nineteen target-coloured cells go
+21. **idx3 is NOT won by covering its NAMED regions** — re-measured 2026-08-25 on a game that
+    is NOT over, and now with the fourth region identified: a notchless 2x2 at rows 13-14,
+    cols 2-3 that the notch-based predicate cannot express. (Originally measured on a game
+    already over.) All nineteen target-coloured cells go
     11 -> 13, the engine's own "done" appearance, in one spill; nine captures with
     different piece positions show nothing hidden; `levels_completed` holds at 3 and there
     is no hazard. `CoverAllSinks` in any encoding does not describe this level's win
