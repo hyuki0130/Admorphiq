@@ -1,0 +1,575 @@
+{
+  "mode": "fill",
+  "hazard": "split",
+  "model": "qwen",
+  "runs": [
+    {
+      "run": 0,
+      "mode": "fill",
+      "hazard": "split",
+      "variant": {
+        "objective": "cover_all_sinks",
+        "completion": "all",
+        "hazard_policy": "neutral"
+      },
+      "slots": {
+        "piece_response_spawn": "empty_flanks_only",
+        "piece_response_direction": "preserved",
+        "piece_response_propagation": "cellwise_iterative",
+        "sink_response_predicate": "same_sink_flanks",
+        "sink_response_miss": "spread_like_piece",
+        "hazard_response": "terminate_local"
+      },
+      "explanation": "The animation showed a stream stopping at the bottom edge while the level failed to advance despite both targets being satisfied, indicating the barrier ended the stream without immediately failing the attempt. I would have answered `terminate_fatal` if the level had failed immediately upon the stream hitting the barrier, or `pass_through` if the flow had continued through the bottom edge.",
+      "raw_slot_reply": "{\n  \"piece_response_spawn\": \"empty_flanks_only\",\n  \"piece_response_direction\": \"preserved\",\n  \"piece_response_propagation\": \"cellwise_iterative\",\n  \"sink_response_predicate\": \"same_sink_flanks\",\n  \"sink_response_miss\": \"spread_like_piece\",\n  \"hazard_response\": \"terminate_local\"\n}",
+      "equivalent_to_truth": false,
+      "verdict": "CONTRADICTED",
+      "verdict_reason": "predicts the attempt wins (2/2 filled, hazard contact False) but the level did not advance",
+      "board": {
+        "size": 16,
+        "direction": [
+          1,
+          0
+        ],
+        "pieces": [
+          5
+        ],
+        "sinks": [
+          [
+            13,
+            4
+          ],
+          [
+            13,
+            10
+          ]
+        ],
+        "hazards": [
+          [
+            15,
+            3
+          ],
+          [
+            15,
+            9
+          ]
+        ],
+        "absorbers": 0,
+        "falling_sources": [
+          [
+            9,
+            0,
+            1
+          ]
+        ]
+      },
+      "executed_actions": 0,
+      "outcome": "blocked_by_verifier"
+    },
+    {
+      "run": 1,
+      "mode": "fill",
+      "hazard": "split",
+      "variant": {
+        "objective": "cover_all_sinks",
+        "completion": "all",
+        "hazard_policy": "neutral"
+      },
+      "slots": {
+        "piece_response_spawn": "empty_flanks_only",
+        "piece_response_direction": "preserved",
+        "piece_response_propagation": "cellwise_iterative",
+        "sink_response_predicate": "same_sink_flanks",
+        "sink_response_miss": "spread_like_piece",
+        "hazard_response": "terminate_local"
+      },
+      "explanation": "The animation showed a stream stopping at the bottom edge while the level failed to advance despite both targets being satisfied, indicating the barrier ended the stream without immediately failing the attempt. I would have answered `terminate_fatal` if the level had failed immediately upon the stream hitting the barrier, or `pass_through` if the flow had continued through the bottom edge.",
+      "raw_slot_reply": "{\n  \"piece_response_spawn\": \"empty_flanks_only\",\n  \"piece_response_direction\": \"preserved\",\n  \"piece_response_propagation\": \"cellwise_iterative\",\n  \"sink_response_predicate\": \"same_sink_flanks\",\n  \"sink_response_miss\": \"spread_like_piece\",\n  \"hazard_response\": \"terminate_local\"\n}",
+      "equivalent_to_truth": false,
+      "verdict": "CONTRADICTED",
+      "verdict_reason": "predicts the attempt wins (2/2 filled, hazard contact False) but the level did not advance",
+      "board": {
+        "size": 16,
+        "direction": [
+          1,
+          0
+        ],
+        "pieces": [
+          5
+        ],
+        "sinks": [
+          [
+            13,
+            4
+          ],
+          [
+            13,
+            10
+          ]
+        ],
+        "hazards": [
+          [
+            15,
+            3
+          ],
+          [
+            15,
+            9
+          ]
+        ],
+        "absorbers": 0,
+        "falling_sources": [
+          [
+            9,
+            0,
+            1
+          ]
+        ]
+      },
+      "executed_actions": 0,
+      "outcome": "blocked_by_verifier"
+    },
+    {
+      "run": 2,
+      "mode": "fill",
+      "hazard": "split",
+      "variant": {
+        "objective": "cover_all_sinks",
+        "completion": "all",
+        "hazard_policy": "neutral"
+      },
+      "slots": {
+        "piece_response_spawn": "empty_flanks_only",
+        "piece_response_direction": "preserved",
+        "piece_response_propagation": "cellwise_iterative",
+        "sink_response_predicate": "same_sink_flanks",
+        "sink_response_miss": "spread_like_piece",
+        "hazard_response": "terminate_local"
+      },
+      "explanation": "The animation showed a stream stopping at the bottom edge while the level failed to advance despite both targets being satisfied, indicating the barrier ended the stream without immediately failing the attempt. I would have answered `terminate_fatal` if the level had failed immediately upon the stream hitting the barrier, or `pass_through` if the flow had continued through the bottom edge.",
+      "raw_slot_reply": "{\n  \"piece_response_spawn\": \"empty_flanks_only\",\n  \"piece_response_direction\": \"preserved\",\n  \"piece_response_propagation\": \"cellwise_iterative\",\n  \"sink_response_predicate\": \"same_sink_flanks\",\n  \"sink_response_miss\": \"spread_like_piece\",\n  \"hazard_response\": \"terminate_local\"\n}",
+      "equivalent_to_truth": false,
+      "verdict": "CONTRADICTED",
+      "verdict_reason": "predicts the attempt wins (2/2 filled, hazard contact False) but the level did not advance",
+      "board": {
+        "size": 16,
+        "direction": [
+          1,
+          0
+        ],
+        "pieces": [
+          5
+        ],
+        "sinks": [
+          [
+            13,
+            4
+          ],
+          [
+            13,
+            10
+          ]
+        ],
+        "hazards": [
+          [
+            15,
+            3
+          ],
+          [
+            15,
+            9
+          ]
+        ],
+        "absorbers": 0,
+        "falling_sources": [
+          [
+            9,
+            0,
+            1
+          ]
+        ]
+      },
+      "executed_actions": 0,
+      "outcome": "blocked_by_verifier"
+    },
+    {
+      "run": 3,
+      "mode": "fill",
+      "hazard": "split",
+      "variant": {
+        "objective": "cover_all_sinks",
+        "completion": "all",
+        "hazard_policy": "neutral"
+      },
+      "slots": {
+        "piece_response_spawn": "empty_flanks_only",
+        "piece_response_direction": "preserved",
+        "piece_response_propagation": "cellwise_iterative",
+        "sink_response_predicate": "same_sink_flanks",
+        "sink_response_miss": "spread_like_piece",
+        "hazard_response": "terminate_local"
+      },
+      "explanation": "The animation showed a stream stopping at the bottom edge while the level failed to advance despite both targets being satisfied, indicating the barrier ended the stream without immediately failing the attempt. I would have answered `terminate_fatal` if the level had failed immediately upon the stream hitting the barrier, or `pass_through` if the flow had continued through the bottom edge.",
+      "raw_slot_reply": "{\n  \"piece_response_spawn\": \"empty_flanks_only\",\n  \"piece_response_direction\": \"preserved\",\n  \"piece_response_propagation\": \"cellwise_iterative\",\n  \"sink_response_predicate\": \"same_sink_flanks\",\n  \"sink_response_miss\": \"spread_like_piece\",\n  \"hazard_response\": \"terminate_local\"\n}",
+      "equivalent_to_truth": false,
+      "verdict": "CONTRADICTED",
+      "verdict_reason": "predicts the attempt wins (2/2 filled, hazard contact False) but the level did not advance",
+      "board": {
+        "size": 16,
+        "direction": [
+          1,
+          0
+        ],
+        "pieces": [
+          5
+        ],
+        "sinks": [
+          [
+            13,
+            4
+          ],
+          [
+            13,
+            10
+          ]
+        ],
+        "hazards": [
+          [
+            15,
+            3
+          ],
+          [
+            15,
+            9
+          ]
+        ],
+        "absorbers": 0,
+        "falling_sources": [
+          [
+            9,
+            0,
+            1
+          ]
+        ]
+      },
+      "executed_actions": 0,
+      "outcome": "blocked_by_verifier"
+    },
+    {
+      "run": 4,
+      "mode": "fill",
+      "hazard": "split",
+      "variant": {
+        "objective": "cover_all_sinks",
+        "completion": "all",
+        "hazard_policy": "neutral"
+      },
+      "slots": {
+        "piece_response_spawn": "empty_flanks_only",
+        "piece_response_direction": "preserved",
+        "piece_response_propagation": "cellwise_iterative",
+        "sink_response_predicate": "same_sink_flanks",
+        "sink_response_miss": "spread_like_piece",
+        "hazard_response": "terminate_local"
+      },
+      "explanation": "The animation showed a stream stopping at the bottom edge while the level failed to advance despite both targets being satisfied, indicating the barrier ended the stream without immediately failing the attempt. I would have answered `terminate_fatal` if the level had failed immediately upon the stream hitting the barrier, or `pass_through` if the flow had continued through the bottom edge.",
+      "raw_slot_reply": "{\n  \"piece_response_spawn\": \"empty_flanks_only\",\n  \"piece_response_direction\": \"preserved\",\n  \"piece_response_propagation\": \"cellwise_iterative\",\n  \"sink_response_predicate\": \"same_sink_flanks\",\n  \"sink_response_miss\": \"spread_like_piece\",\n  \"hazard_response\": \"terminate_local\"\n}",
+      "equivalent_to_truth": false,
+      "verdict": "CONTRADICTED",
+      "verdict_reason": "predicts the attempt wins (2/2 filled, hazard contact False) but the level did not advance",
+      "board": {
+        "size": 16,
+        "direction": [
+          1,
+          0
+        ],
+        "pieces": [
+          5
+        ],
+        "sinks": [
+          [
+            13,
+            4
+          ],
+          [
+            13,
+            10
+          ]
+        ],
+        "hazards": [
+          [
+            15,
+            3
+          ],
+          [
+            15,
+            9
+          ]
+        ],
+        "absorbers": 0,
+        "falling_sources": [
+          [
+            9,
+            0,
+            1
+          ]
+        ]
+      },
+      "executed_actions": 0,
+      "outcome": "blocked_by_verifier"
+    },
+    {
+      "run": 5,
+      "mode": "fill",
+      "hazard": "split",
+      "variant": {
+        "objective": "cover_all_sinks",
+        "completion": "all",
+        "hazard_policy": "neutral"
+      },
+      "slots": {
+        "piece_response_spawn": "empty_flanks_only",
+        "piece_response_direction": "preserved",
+        "piece_response_propagation": "cellwise_iterative",
+        "sink_response_predicate": "same_sink_flanks",
+        "sink_response_miss": "spread_like_piece",
+        "hazard_response": "terminate_local"
+      },
+      "explanation": "The animation showed a stream stopping at the bottom edge while the level failed to advance despite both targets being satisfied, indicating the barrier ended the stream without immediately failing the attempt. I would have answered `terminate_fatal` if the level had failed immediately upon the stream hitting the barrier, or `pass_through` if the flow had continued through the bottom edge.",
+      "raw_slot_reply": "{\n  \"piece_response_spawn\": \"empty_flanks_only\",\n  \"piece_response_direction\": \"preserved\",\n  \"piece_response_propagation\": \"cellwise_iterative\",\n  \"sink_response_predicate\": \"same_sink_flanks\",\n  \"sink_response_miss\": \"spread_like_piece\",\n  \"hazard_response\": \"terminate_local\"\n}",
+      "equivalent_to_truth": false,
+      "verdict": "CONTRADICTED",
+      "verdict_reason": "predicts the attempt wins (2/2 filled, hazard contact False) but the level did not advance",
+      "board": {
+        "size": 16,
+        "direction": [
+          1,
+          0
+        ],
+        "pieces": [
+          5
+        ],
+        "sinks": [
+          [
+            13,
+            4
+          ],
+          [
+            13,
+            10
+          ]
+        ],
+        "hazards": [
+          [
+            15,
+            3
+          ],
+          [
+            15,
+            9
+          ]
+        ],
+        "absorbers": 0,
+        "falling_sources": [
+          [
+            9,
+            0,
+            1
+          ]
+        ]
+      },
+      "executed_actions": 0,
+      "outcome": "blocked_by_verifier"
+    },
+    {
+      "run": 6,
+      "mode": "fill",
+      "hazard": "split",
+      "variant": {
+        "objective": "cover_all_sinks",
+        "completion": "all",
+        "hazard_policy": "neutral"
+      },
+      "slots": {
+        "piece_response_spawn": "empty_flanks_only",
+        "piece_response_direction": "preserved",
+        "piece_response_propagation": "cellwise_iterative",
+        "sink_response_predicate": "same_sink_flanks",
+        "sink_response_miss": "spread_like_piece",
+        "hazard_response": "terminate_local"
+      },
+      "explanation": "The animation showed a stream stopping at the bottom edge while the level failed to advance despite both targets being satisfied, indicating the barrier ended the stream without immediately failing the attempt. I would have answered `terminate_fatal` if the level had failed immediately upon the stream hitting the barrier, or `pass_through` if the flow had continued through the bottom edge.",
+      "raw_slot_reply": "{\n  \"piece_response_spawn\": \"empty_flanks_only\",\n  \"piece_response_direction\": \"preserved\",\n  \"piece_response_propagation\": \"cellwise_iterative\",\n  \"sink_response_predicate\": \"same_sink_flanks\",\n  \"sink_response_miss\": \"spread_like_piece\",\n  \"hazard_response\": \"terminate_local\"\n}",
+      "equivalent_to_truth": false,
+      "verdict": "CONTRADICTED",
+      "verdict_reason": "predicts the attempt wins (2/2 filled, hazard contact False) but the level did not advance",
+      "board": {
+        "size": 16,
+        "direction": [
+          1,
+          0
+        ],
+        "pieces": [
+          5
+        ],
+        "sinks": [
+          [
+            13,
+            4
+          ],
+          [
+            13,
+            10
+          ]
+        ],
+        "hazards": [
+          [
+            15,
+            3
+          ],
+          [
+            15,
+            9
+          ]
+        ],
+        "absorbers": 0,
+        "falling_sources": [
+          [
+            9,
+            0,
+            1
+          ]
+        ]
+      },
+      "executed_actions": 0,
+      "outcome": "blocked_by_verifier"
+    },
+    {
+      "run": 7,
+      "mode": "fill",
+      "hazard": "split",
+      "variant": {
+        "objective": "cover_all_sinks",
+        "completion": "all",
+        "hazard_policy": "neutral"
+      },
+      "slots": {
+        "piece_response_spawn": "empty_flanks_only",
+        "piece_response_direction": "preserved",
+        "piece_response_propagation": "cellwise_iterative",
+        "sink_response_predicate": "same_sink_flanks",
+        "sink_response_miss": "spread_like_piece",
+        "hazard_response": "terminate_local"
+      },
+      "explanation": "The animation showed a stream stopping at the bottom edge while the level failed to advance despite both targets being satisfied, indicating the barrier ended the stream without immediately failing the attempt. I would have answered `terminate_fatal` if the level had failed immediately upon the stream hitting the barrier, or `pass_through` if the flow had continued through the bottom edge.",
+      "raw_slot_reply": "{\n  \"piece_response_spawn\": \"empty_flanks_only\",\n  \"piece_response_direction\": \"preserved\",\n  \"piece_response_propagation\": \"cellwise_iterative\",\n  \"sink_response_predicate\": \"same_sink_flanks\",\n  \"sink_response_miss\": \"spread_like_piece\",\n  \"hazard_response\": \"terminate_local\"\n}",
+      "equivalent_to_truth": false,
+      "verdict": "CONTRADICTED",
+      "verdict_reason": "predicts the attempt wins (2/2 filled, hazard contact False) but the level did not advance",
+      "board": {
+        "size": 16,
+        "direction": [
+          1,
+          0
+        ],
+        "pieces": [
+          5
+        ],
+        "sinks": [
+          [
+            13,
+            4
+          ],
+          [
+            13,
+            10
+          ]
+        ],
+        "hazards": [
+          [
+            15,
+            3
+          ],
+          [
+            15,
+            9
+          ]
+        ],
+        "absorbers": 0,
+        "falling_sources": [
+          [
+            9,
+            0,
+            1
+          ]
+        ]
+      },
+      "executed_actions": 0,
+      "outcome": "blocked_by_verifier"
+    },
+    {
+      "run": 8,
+      "mode": "fill",
+      "hazard": "split",
+      "variant": {
+        "objective": "cover_all_sinks",
+        "completion": "all",
+        "hazard_policy": "neutral"
+      },
+      "slots": {
+        "piece_response_spawn": "empty_flanks_only",
+        "piece_response_direction": "preserved",
+        "piece_response_propagation": "cellwise_iterative",
+        "sink_response_predicate": "same_sink_flanks",
+        "sink_response_miss": "spread_like_piece",
+        "hazard_response": "terminate_local"
+      },
+      "explanation": "The animation showed a stream stopping at the bottom edge while the level failed to advance despite both targets being satisfied, indicating the barrier ended the stream without immediately failing the attempt. I would have answered `terminate_fatal` if the level had failed immediately upon the stream hitting the barrier, or `pass_through` if the flow had continued through the bottom edge.",
+      "raw_slot_reply": "{\n  \"piece_response_spawn\": \"empty_flanks_only\",\n  \"piece_response_direction\": \"preserved\",\n  \"piece_response_propagation\": \"cellwise_iterative\",\n  \"sink_response_predicate\": \"same_sink_flanks\",\n  \"sink_response_miss\": \"spread_like_piece\",\n  \"hazard_response\": \"terminate_local\"\n}",
+      "equivalent_to_truth": false,
+      "verdict": "CONTRADICTED",
+      "verdict_reason": "predicts the attempt wins (2/2 filled, hazard contact False) but the level did not advance",
+      "board": {
+        "size": 16,
+        "direction": [
+          1,
+          0
+        ],
+        "pieces": [
+          5
+        ],
+        "sinks": [
+          [
+            13,
+            4
+          ],
+          [
+            13,
+            10
+          ]
+        ],
+        "hazards": [
+          [
+            15,
+            3
+          ],
+          [
+            15,
+            9
+          ]
+        ],
+        "absorbers": 0,
+        "falling_sources": [
+          [
+            9,
+            0,
+            1
+          ]
+        ]
+      },
+      "executed_actions": 0,
+      "outcome": "blocked_by_verifier"
+    }
+  ],
+  "verdict": "0/9 FAIL"
+}

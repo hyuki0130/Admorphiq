@@ -8484,6 +8484,58 @@ Recording the timing matters as much as the decision — the next session can re
 if it wants, but it should not re-open it on speed.
 
 
+## The explanation that argues against its own answer (2026-08-25)
+
+The fill stage is a **two-way split on ONE slot**, and it is completely deterministic — three
+models, four prompt variants, every run:
+
+```
+gpt-oss-120b    hazard_response = terminate_fatal   (truth)   PASS
+gemma4-31b      hazard_response = terminate_local             CONTRADICTED
+qwen3.8-27b     hazard_response = terminate_local             CONTRADICTED
+```
+
+The unscored follow-up now recovers WHY, and the answer is not what the round assumed. Every
+qwen variant names the same thing it saw:
+
+> "The animation showed a stream stopping at the bottom edge while the level failed to advance
+> despite both targets being satisfied…"
+
+`explanation_check.py` clears all three against the capture. And the observation is not merely
+un-contradicted — it is the one our own verifier prints when it rejects the hypothesis:
+
+```
+predicts the attempt wins (2/2 filled, hazard contact False) but the level did not advance
+```
+
+Both sinks filled, and the level did not advance. That is the whole discriminator: satisfaction
+alone is not sufficient, so something else ended the attempt, so barrier contact is fatal.
+
+**The correction.** This round had recorded that the animation carries "no failure signal", and
+used it to call `terminate_local` a defensible read of thin evidence. That was wrong, and it was
+wrong in a specific way: it conflated **no failure MARKING** (true — the capture's last layer is
+one ordinary flow cell) with **no discriminating SIGNAL** (false — the absence of advance is the
+signal). The evidence was never thin. It was in the harness's own printout.
+
+The sharpest single measurement is the `explicit` variant, 9/9 identical:
+
+> "…indicating the barrier caused **a fatal failure of the entire attempt**. I would have
+> answered `terminate_local` if the level had advanced…"
+
+That prose argues for the truth, and the slot it was asked to justify says `terminate_local`.
+⚠️ The follow-up is a CONTINUATION carrying the model's own prior reply, so this is a post-hoc
+rationalisation contradicting the answer it rationalises — a statement about the model's OUTPUT,
+never a claim that it "knew" and mis-typed. What it does establish is that the failure is not at
+the perception end: the discriminating event is legible to a model that then answers past it.
+
+**Frozen verdicts do not move.** select stays CONFIRMED on three models; fill stays passed by
+gpt-oss alone. The recorded schema finding — fatality split across `hazard_policy` and
+`hazard_response` — survives and sharpens: qwen is internally CONSISTENT (`neutral` policy with
+`terminate_local`), gemma4 is not (correct policy, incompatible response). **The two losing
+models fail differently**, which is one more reason not to re-cut the encoding until a weaker
+model passes.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -8594,6 +8646,17 @@ if it wants, but it should not re-open it on speed.
     compiler's UNSATISFIABLE is the truth about the board rather than a search failure.
     Either the propagator floors flow the engine does not, or the level wants more than
     one placement.
+150. **qwen3.8 EXPLANATION-ENABLED: the fill evidence is NOT thin, and the round's own
+     reading of it was wrong.** select 9/9 PASS; fill 0/9 CONTRADICTED across all three
+     prompt variants, 27 runs, ONE distinct slot set, **zero actions executed** (the
+     verifier blocked every wrong pick, as designed). All three variants cite the SAME
+     observation — *"the level failed to advance despite both targets being satisfied"* —
+     and `explanation_check.py` finds it consistent with the capture. That observation is
+     **engine-verified**: the harness's own verdict line reads *"predicts the attempt wins
+     (2/2 filled, hazard contact False) but the level did not advance"*. ⛔ So the earlier
+     framing — "no failure signal, so the losing answer is defensible" — **conflated no
+     failure MARKING with no discriminating SIGNAL**. The discriminator is the absence of
+     advance despite satisfaction, and it was printed by our own harness all along.
 149. **Why the guards stay developer-invoked, with the assumption CHECKED.** The obvious
      objection to putting them in the project's Stop hook is speed, and it is wrong: all five
      repository-only guards total **1.92 s**, and the corpus sweep I assumed was slow replays
