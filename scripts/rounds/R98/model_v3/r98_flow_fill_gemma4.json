@@ -1,0 +1,575 @@
+{
+  "mode": "fill",
+  "hazard": "split",
+  "model": "gemma4",
+  "runs": [
+    {
+      "run": 0,
+      "mode": "fill",
+      "hazard": "split",
+      "variant": {
+        "objective": "cover_all_sinks",
+        "completion": "all",
+        "hazard_policy": "fatal_on_contact"
+      },
+      "slots": {
+        "piece_response_spawn": "both_flanks",
+        "piece_response_direction": "preserved",
+        "piece_response_propagation": "cellwise_iterative",
+        "sink_response_predicate": "same_sink_flanks",
+        "sink_response_miss": "spread_like_piece",
+        "hazard_response": "terminate_local"
+      },
+      "explanation": "The animation showed a stream reaching the bottom edge and stopping, yet the level did not advance despite all targets being satisfied, implying the attempt was still active rather than failed. If the animation had ended immediately with a failure screen or a reset of the flow and targets upon that stream's termination, I would have chosen `terminate_fatal`.",
+      "raw_slot_reply": "```json\n{\n  \"piece_response_spawn\": \"both_flanks\",\n  \"piece_response_direction\": \"preserved\",\n  \"piece_response_propagation\": \"cellwise_iterative\",\n  \"sink_response_predicate\": \"same_sink_flanks\",\n  \"sink_response_miss\": \"spread_like_piece\",\n  \"hazard_response\": \"terminate_local\"\n}\n```",
+      "equivalent_to_truth": false,
+      "verdict": "CONTRADICTED",
+      "verdict_reason": "predicts the attempt wins (2/2 filled, hazard contact False) but the level did not advance",
+      "board": {
+        "size": 16,
+        "direction": [
+          1,
+          0
+        ],
+        "pieces": [
+          5
+        ],
+        "sinks": [
+          [
+            13,
+            4
+          ],
+          [
+            13,
+            10
+          ]
+        ],
+        "hazards": [
+          [
+            15,
+            3
+          ],
+          [
+            15,
+            9
+          ]
+        ],
+        "absorbers": 0,
+        "falling_sources": [
+          [
+            9,
+            0,
+            1
+          ]
+        ]
+      },
+      "executed_actions": 0,
+      "outcome": "blocked_by_verifier"
+    },
+    {
+      "run": 1,
+      "mode": "fill",
+      "hazard": "split",
+      "variant": {
+        "objective": "cover_all_sinks",
+        "completion": "all",
+        "hazard_policy": "fatal_on_contact"
+      },
+      "slots": {
+        "piece_response_spawn": "both_flanks",
+        "piece_response_direction": "preserved",
+        "piece_response_propagation": "cellwise_iterative",
+        "sink_response_predicate": "same_sink_flanks",
+        "sink_response_miss": "spread_like_piece",
+        "hazard_response": "terminate_local"
+      },
+      "explanation": "The animation showed a stream reaching the bottom edge and stopping, yet the level did not advance despite all targets being satisfied, implying the attempt was still active rather than failed. If the animation had ended immediately with a failure screen or a reset of the flow and targets upon that stream's termination, I would have chosen `terminate_fatal`.",
+      "raw_slot_reply": "```json\n{\n  \"piece_response_spawn\": \"both_flanks\",\n  \"piece_response_direction\": \"preserved\",\n  \"piece_response_propagation\": \"cellwise_iterative\",\n  \"sink_response_predicate\": \"same_sink_flanks\",\n  \"sink_response_miss\": \"spread_like_piece\",\n  \"hazard_response\": \"terminate_local\"\n}\n```",
+      "equivalent_to_truth": false,
+      "verdict": "CONTRADICTED",
+      "verdict_reason": "predicts the attempt wins (2/2 filled, hazard contact False) but the level did not advance",
+      "board": {
+        "size": 16,
+        "direction": [
+          1,
+          0
+        ],
+        "pieces": [
+          5
+        ],
+        "sinks": [
+          [
+            13,
+            4
+          ],
+          [
+            13,
+            10
+          ]
+        ],
+        "hazards": [
+          [
+            15,
+            3
+          ],
+          [
+            15,
+            9
+          ]
+        ],
+        "absorbers": 0,
+        "falling_sources": [
+          [
+            9,
+            0,
+            1
+          ]
+        ]
+      },
+      "executed_actions": 0,
+      "outcome": "blocked_by_verifier"
+    },
+    {
+      "run": 2,
+      "mode": "fill",
+      "hazard": "split",
+      "variant": {
+        "objective": "cover_all_sinks",
+        "completion": "all",
+        "hazard_policy": "fatal_on_contact"
+      },
+      "slots": {
+        "piece_response_spawn": "both_flanks",
+        "piece_response_direction": "preserved",
+        "piece_response_propagation": "cellwise_iterative",
+        "sink_response_predicate": "same_sink_flanks",
+        "sink_response_miss": "spread_like_piece",
+        "hazard_response": "terminate_local"
+      },
+      "explanation": "The animation showed a stream reaching the bottom edge and stopping, yet the level did not advance despite all targets being satisfied, implying the attempt was still active rather than failed. If the animation had ended immediately with a failure screen or a reset of the flow and targets upon that stream's termination, I would have chosen `terminate_fatal`.",
+      "raw_slot_reply": "```json\n{\n  \"piece_response_spawn\": \"both_flanks\",\n  \"piece_response_direction\": \"preserved\",\n  \"piece_response_propagation\": \"cellwise_iterative\",\n  \"sink_response_predicate\": \"same_sink_flanks\",\n  \"sink_response_miss\": \"spread_like_piece\",\n  \"hazard_response\": \"terminate_local\"\n}\n```",
+      "equivalent_to_truth": false,
+      "verdict": "CONTRADICTED",
+      "verdict_reason": "predicts the attempt wins (2/2 filled, hazard contact False) but the level did not advance",
+      "board": {
+        "size": 16,
+        "direction": [
+          1,
+          0
+        ],
+        "pieces": [
+          5
+        ],
+        "sinks": [
+          [
+            13,
+            4
+          ],
+          [
+            13,
+            10
+          ]
+        ],
+        "hazards": [
+          [
+            15,
+            3
+          ],
+          [
+            15,
+            9
+          ]
+        ],
+        "absorbers": 0,
+        "falling_sources": [
+          [
+            9,
+            0,
+            1
+          ]
+        ]
+      },
+      "executed_actions": 0,
+      "outcome": "blocked_by_verifier"
+    },
+    {
+      "run": 3,
+      "mode": "fill",
+      "hazard": "split",
+      "variant": {
+        "objective": "cover_all_sinks",
+        "completion": "all",
+        "hazard_policy": "fatal_on_contact"
+      },
+      "slots": {
+        "piece_response_spawn": "both_flanks",
+        "piece_response_direction": "preserved",
+        "piece_response_propagation": "cellwise_iterative",
+        "sink_response_predicate": "same_sink_flanks",
+        "sink_response_miss": "spread_like_piece",
+        "hazard_response": "terminate_local"
+      },
+      "explanation": "The animation showed a stream reaching the bottom edge and stopping, yet the level did not advance despite all targets being satisfied, implying the attempt was still active rather than failed. If the animation had ended immediately with a failure screen or a reset of the flow and targets upon that stream's termination, I would have chosen `terminate_fatal`.",
+      "raw_slot_reply": "```json\n{\n  \"piece_response_spawn\": \"both_flanks\",\n  \"piece_response_direction\": \"preserved\",\n  \"piece_response_propagation\": \"cellwise_iterative\",\n  \"sink_response_predicate\": \"same_sink_flanks\",\n  \"sink_response_miss\": \"spread_like_piece\",\n  \"hazard_response\": \"terminate_local\"\n}\n```",
+      "equivalent_to_truth": false,
+      "verdict": "CONTRADICTED",
+      "verdict_reason": "predicts the attempt wins (2/2 filled, hazard contact False) but the level did not advance",
+      "board": {
+        "size": 16,
+        "direction": [
+          1,
+          0
+        ],
+        "pieces": [
+          5
+        ],
+        "sinks": [
+          [
+            13,
+            4
+          ],
+          [
+            13,
+            10
+          ]
+        ],
+        "hazards": [
+          [
+            15,
+            3
+          ],
+          [
+            15,
+            9
+          ]
+        ],
+        "absorbers": 0,
+        "falling_sources": [
+          [
+            9,
+            0,
+            1
+          ]
+        ]
+      },
+      "executed_actions": 0,
+      "outcome": "blocked_by_verifier"
+    },
+    {
+      "run": 4,
+      "mode": "fill",
+      "hazard": "split",
+      "variant": {
+        "objective": "cover_all_sinks",
+        "completion": "all",
+        "hazard_policy": "fatal_on_contact"
+      },
+      "slots": {
+        "piece_response_spawn": "both_flanks",
+        "piece_response_direction": "preserved",
+        "piece_response_propagation": "cellwise_iterative",
+        "sink_response_predicate": "same_sink_flanks",
+        "sink_response_miss": "spread_like_piece",
+        "hazard_response": "terminate_local"
+      },
+      "explanation": "The animation showed a stream reaching the bottom edge and stopping, yet the level did not advance despite all targets being satisfied, implying the attempt was still active rather than failed. If the animation had ended immediately with a failure screen or a reset of the flow and targets upon that stream's termination, I would have chosen `terminate_fatal`.",
+      "raw_slot_reply": "```json\n{\n  \"piece_response_spawn\": \"both_flanks\",\n  \"piece_response_direction\": \"preserved\",\n  \"piece_response_propagation\": \"cellwise_iterative\",\n  \"sink_response_predicate\": \"same_sink_flanks\",\n  \"sink_response_miss\": \"spread_like_piece\",\n  \"hazard_response\": \"terminate_local\"\n}\n```",
+      "equivalent_to_truth": false,
+      "verdict": "CONTRADICTED",
+      "verdict_reason": "predicts the attempt wins (2/2 filled, hazard contact False) but the level did not advance",
+      "board": {
+        "size": 16,
+        "direction": [
+          1,
+          0
+        ],
+        "pieces": [
+          5
+        ],
+        "sinks": [
+          [
+            13,
+            4
+          ],
+          [
+            13,
+            10
+          ]
+        ],
+        "hazards": [
+          [
+            15,
+            3
+          ],
+          [
+            15,
+            9
+          ]
+        ],
+        "absorbers": 0,
+        "falling_sources": [
+          [
+            9,
+            0,
+            1
+          ]
+        ]
+      },
+      "executed_actions": 0,
+      "outcome": "blocked_by_verifier"
+    },
+    {
+      "run": 5,
+      "mode": "fill",
+      "hazard": "split",
+      "variant": {
+        "objective": "cover_all_sinks",
+        "completion": "all",
+        "hazard_policy": "fatal_on_contact"
+      },
+      "slots": {
+        "piece_response_spawn": "both_flanks",
+        "piece_response_direction": "preserved",
+        "piece_response_propagation": "cellwise_iterative",
+        "sink_response_predicate": "same_sink_flanks",
+        "sink_response_miss": "spread_like_piece",
+        "hazard_response": "terminate_local"
+      },
+      "explanation": "The animation showed a stream reaching the bottom edge and stopping, yet the level did not advance despite all targets being satisfied, implying the attempt was still active rather than failed. If the animation had ended immediately with a failure screen or a reset of the flow and targets upon that stream's termination, I would have chosen `terminate_fatal`.",
+      "raw_slot_reply": "```json\n{\n  \"piece_response_spawn\": \"both_flanks\",\n  \"piece_response_direction\": \"preserved\",\n  \"piece_response_propagation\": \"cellwise_iterative\",\n  \"sink_response_predicate\": \"same_sink_flanks\",\n  \"sink_response_miss\": \"spread_like_piece\",\n  \"hazard_response\": \"terminate_local\"\n}\n```",
+      "equivalent_to_truth": false,
+      "verdict": "CONTRADICTED",
+      "verdict_reason": "predicts the attempt wins (2/2 filled, hazard contact False) but the level did not advance",
+      "board": {
+        "size": 16,
+        "direction": [
+          1,
+          0
+        ],
+        "pieces": [
+          5
+        ],
+        "sinks": [
+          [
+            13,
+            4
+          ],
+          [
+            13,
+            10
+          ]
+        ],
+        "hazards": [
+          [
+            15,
+            3
+          ],
+          [
+            15,
+            9
+          ]
+        ],
+        "absorbers": 0,
+        "falling_sources": [
+          [
+            9,
+            0,
+            1
+          ]
+        ]
+      },
+      "executed_actions": 0,
+      "outcome": "blocked_by_verifier"
+    },
+    {
+      "run": 6,
+      "mode": "fill",
+      "hazard": "split",
+      "variant": {
+        "objective": "cover_all_sinks",
+        "completion": "all",
+        "hazard_policy": "fatal_on_contact"
+      },
+      "slots": {
+        "piece_response_spawn": "both_flanks",
+        "piece_response_direction": "preserved",
+        "piece_response_propagation": "cellwise_iterative",
+        "sink_response_predicate": "same_sink_flanks",
+        "sink_response_miss": "spread_like_piece",
+        "hazard_response": "terminate_local"
+      },
+      "explanation": "The animation showed a stream reaching the bottom edge and stopping, yet the level did not advance despite all targets being satisfied, implying the attempt was still active rather than failed. If the animation had ended immediately with a failure screen or a reset of the flow and targets upon that stream's termination, I would have chosen `terminate_fatal`.",
+      "raw_slot_reply": "```json\n{\n  \"piece_response_spawn\": \"both_flanks\",\n  \"piece_response_direction\": \"preserved\",\n  \"piece_response_propagation\": \"cellwise_iterative\",\n  \"sink_response_predicate\": \"same_sink_flanks\",\n  \"sink_response_miss\": \"spread_like_piece\",\n  \"hazard_response\": \"terminate_local\"\n}\n```",
+      "equivalent_to_truth": false,
+      "verdict": "CONTRADICTED",
+      "verdict_reason": "predicts the attempt wins (2/2 filled, hazard contact False) but the level did not advance",
+      "board": {
+        "size": 16,
+        "direction": [
+          1,
+          0
+        ],
+        "pieces": [
+          5
+        ],
+        "sinks": [
+          [
+            13,
+            4
+          ],
+          [
+            13,
+            10
+          ]
+        ],
+        "hazards": [
+          [
+            15,
+            3
+          ],
+          [
+            15,
+            9
+          ]
+        ],
+        "absorbers": 0,
+        "falling_sources": [
+          [
+            9,
+            0,
+            1
+          ]
+        ]
+      },
+      "executed_actions": 0,
+      "outcome": "blocked_by_verifier"
+    },
+    {
+      "run": 7,
+      "mode": "fill",
+      "hazard": "split",
+      "variant": {
+        "objective": "cover_all_sinks",
+        "completion": "all",
+        "hazard_policy": "fatal_on_contact"
+      },
+      "slots": {
+        "piece_response_spawn": "both_flanks",
+        "piece_response_direction": "preserved",
+        "piece_response_propagation": "cellwise_iterative",
+        "sink_response_predicate": "same_sink_flanks",
+        "sink_response_miss": "spread_like_piece",
+        "hazard_response": "terminate_local"
+      },
+      "explanation": "The animation showed a stream reaching the bottom edge and stopping, yet the level did not advance despite all targets being satisfied, implying the attempt was still active rather than failed. If the animation had ended immediately with a failure screen or a reset of the flow and targets upon that stream's termination, I would have chosen `terminate_fatal`.",
+      "raw_slot_reply": "```json\n{\n  \"piece_response_spawn\": \"both_flanks\",\n  \"piece_response_direction\": \"preserved\",\n  \"piece_response_propagation\": \"cellwise_iterative\",\n  \"sink_response_predicate\": \"same_sink_flanks\",\n  \"sink_response_miss\": \"spread_like_piece\",\n  \"hazard_response\": \"terminate_local\"\n}\n```",
+      "equivalent_to_truth": false,
+      "verdict": "CONTRADICTED",
+      "verdict_reason": "predicts the attempt wins (2/2 filled, hazard contact False) but the level did not advance",
+      "board": {
+        "size": 16,
+        "direction": [
+          1,
+          0
+        ],
+        "pieces": [
+          5
+        ],
+        "sinks": [
+          [
+            13,
+            4
+          ],
+          [
+            13,
+            10
+          ]
+        ],
+        "hazards": [
+          [
+            15,
+            3
+          ],
+          [
+            15,
+            9
+          ]
+        ],
+        "absorbers": 0,
+        "falling_sources": [
+          [
+            9,
+            0,
+            1
+          ]
+        ]
+      },
+      "executed_actions": 0,
+      "outcome": "blocked_by_verifier"
+    },
+    {
+      "run": 8,
+      "mode": "fill",
+      "hazard": "split",
+      "variant": {
+        "objective": "cover_all_sinks",
+        "completion": "all",
+        "hazard_policy": "fatal_on_contact"
+      },
+      "slots": {
+        "piece_response_spawn": "both_flanks",
+        "piece_response_direction": "preserved",
+        "piece_response_propagation": "cellwise_iterative",
+        "sink_response_predicate": "same_sink_flanks",
+        "sink_response_miss": "spread_like_piece",
+        "hazard_response": "terminate_local"
+      },
+      "explanation": "The animation showed a stream reaching the bottom edge and stopping, yet the level did not advance despite all targets being satisfied, implying the attempt was still active rather than failed. If the animation had ended immediately with a failure screen or a reset of the flow and targets upon that stream's termination, I would have chosen `terminate_fatal`.",
+      "raw_slot_reply": "```json\n{\n  \"piece_response_spawn\": \"both_flanks\",\n  \"piece_response_direction\": \"preserved\",\n  \"piece_response_propagation\": \"cellwise_iterative\",\n  \"sink_response_predicate\": \"same_sink_flanks\",\n  \"sink_response_miss\": \"spread_like_piece\",\n  \"hazard_response\": \"terminate_local\"\n}\n```",
+      "equivalent_to_truth": false,
+      "verdict": "CONTRADICTED",
+      "verdict_reason": "predicts the attempt wins (2/2 filled, hazard contact False) but the level did not advance",
+      "board": {
+        "size": 16,
+        "direction": [
+          1,
+          0
+        ],
+        "pieces": [
+          5
+        ],
+        "sinks": [
+          [
+            13,
+            4
+          ],
+          [
+            13,
+            10
+          ]
+        ],
+        "hazards": [
+          [
+            15,
+            3
+          ],
+          [
+            15,
+            9
+          ]
+        ],
+        "absorbers": 0,
+        "falling_sources": [
+          [
+            9,
+            0,
+            1
+          ]
+        ]
+      },
+      "executed_actions": 0,
+      "outcome": "blocked_by_verifier"
+    }
+  ],
+  "verdict": "0/9 FAIL"
+}

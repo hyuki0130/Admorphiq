@@ -8536,6 +8536,53 @@ models fail differently**, which is one more reason not to re-cut the encoding u
 model passes.
 
 
+## Two losing models, two different failures (2026-08-25)
+
+gemma4's explanation-enabled run completed too, and it is deterministic in the same way — one
+distinct explanation per variant across nine runs. Both losing models quote the same sentence
+we give them. They reject it differently.
+
+**gemma4 wants a terminal marking.**
+
+> "…the level did not advance despite all targets being satisfied, **implying the attempt was
+> still active rather than failed**. If the animation had ended immediately with a failure
+> screen or a reset of the flow and targets…, I would have chosen `terminate_fatal`."
+
+It reads "did not advance" as *still running*. Its counterfactual names precisely what this
+capture provably lacks: the round measured that a failing spill carries **no failure colour on
+any of its layers**. So gemma4's stated criterion asks for a signal the engine never emits.
+
+**qwen answers past its own reasoning** — the explicit variant's prose concludes the barrier
+"caused a fatal failure of the entire attempt" while the slot says `terminate_local` (entry 150).
+
+Same evidence, same citation, two unrelated failure modes. That is worth more than the shared
+score: **the fill stage does not separate one kind of model from another, it separates one
+correct inference from two distinct wrong ones.**
+
+### A hypothesis of mine, refuted by reading the prompt
+
+gemma4's "still active" reading suggested an evidence defect: perhaps we never tell the model the
+animation is FINISHED, in which case "no advance yet" is a fair reading and the fix would be to
+state completeness — the R97 lesson, *every enforced constraint must be stated in the
+model-facing contract*, applied again.
+
+⛔ **False.** The evidence line already says both halves:
+
+> "All N of the cup-shaped regions ended in the distinct appearance that marks a satisfied
+> target, **and the level still did NOT advance**. **The only other thing that happened in the
+> whole animation** is that a stream reached the row just above the bottom edge and stopped
+> there."
+
+Completeness is asserted ("the whole animation"), and the non-advance is stated outright. There is
+no unstated constraint here to fix. The ambiguity gemma4 leans on is not in our contract — it is in
+its reading of it.
+
+Worth saying plainly because the opposite conclusion was one edit away: had I patched the prompt to
+"clarify" completeness, the change would have looked justified by an R97 precedent, produced no
+effect, and left a spurious fix in a frozen contract. **Reading the artefact cost less than the
+experiment would have.**
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -8646,6 +8693,16 @@ model passes.
     compiler's UNSATISFIABLE is the truth about the board rather than a search failure.
     Either the propagator floors flow the engine does not, or the level wants more than
     one placement.
+151. **gemma4's explanation, and a hypothesis of mine REFUTED by reading the prompt.** Both
+     losing models cite the SAME discriminating sentence and reject it for **different**
+     reasons: gemma4 demands a positive terminal marking — *"if the animation had ended
+     with a failure screen or a reset … I would have chosen `terminate_fatal`"* — and reads
+     no-advance as *"the attempt was still active rather than failed"*; qwen's explicit
+     variant reaches **fatal** in prose and answers past it. gemma4 asks for a signal **the
+     engine does not emit** (measured: a failing spill carries no failure colour). ⛔ My
+     hypothesis that the evidence leaves the animation's COMPLETENESS unstated is **false** —
+     the line already reads *"the only other thing that happened in the whole animation"* and
+     states the non-advance outright. Checker: both explanations consistent with the capture.
 150. **qwen3.8 EXPLANATION-ENABLED: the fill evidence is NOT thin, and the round's own
      reading of it was wrong.** select 9/9 PASS; fill 0/9 CONTRADICTED across all three
      prompt variants, 27 runs, ONE distinct slot set, **zero actions executed** (the
