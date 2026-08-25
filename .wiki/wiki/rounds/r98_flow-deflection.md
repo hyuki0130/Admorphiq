@@ -8423,6 +8423,30 @@ and a half hours on the other, which is why gemma4 results have arrived four tim
 gpt-oss's twice.
 
 
+## The lesson page reaches nine failures — three of them in the checkers (2026-08-25)
+
+The lesson stopped at six: four in the data-collecting instruments, two in the prompts. Since then
+three more have happened, all in code written specifically to stop this class of thing:
+
+- the explanation checker convicted gemma4 on its **first run** for a sentence naming what was
+  absent;
+- the fix then excused a genuine claim, because the counterfactual guard listed "no" and "not";
+- the entry-numbering pin's parser swallowed `0/9 FAIL` and died on it.
+
+**Every checker this session built was wrong on its first run.** Not one of them would have been
+caught by the check passing — each was caught by running it on text whose verdict was already
+known, in both directions, before running it on the input that mattered.
+
+So the page now carries nine, and one more rule: **a checker is an instrument, and the last one
+anybody validates.** The index entry is updated to match, because that is where a future session
+meets this before it meets the round.
+
+⚠️ Worth stating plainly rather than filed as a tally: three failures in the safeguards, in one
+afternoon, is not a story about carelessness — it is what the base rate looks like when you write
+enough checks. The reason the round is not poorer for them is that each cost one measurement to
+find, and the measurement was always the same one: run it on something whose answer you know.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -8533,6 +8557,13 @@ gpt-oss's twice.
     compiler's UNSATISFIABLE is the truth about the board rather than a search failure.
     Either the propagator floors flow the engine does not, or the level wants more than
     one placement.
+148. **The lesson page reaches NINE failures — three of them in the CHECKERS.** The
+     explanation checker convicted gemma4 on its first run; its fix then excused a genuine
+     claim; the numbering pin's parser died on `0/9 FAIL`. **Every checker this session built
+     was wrong on its first run**, and none would have been caught by the check passing — each
+     was caught by running it on text whose verdict was already known, in BOTH directions. New
+     rule on the page: a checker is an instrument, and the last one anybody validates. Index
+     updated to match.
 147. **gpt-oss is not stuck, it is 9.5x SLOWER — measured from the logs.** Previous nine-run
      kernels: gpt-oss **9426 s (2.6 h)**, gemma4 996 s (17 min) — 262 s vs 28 s per run. So
      eighty minutes is half-way through its normal range. ⛔ A gpt-oss kernel is not late until

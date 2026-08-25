@@ -7,13 +7,13 @@ keywords: [instrument-validity, corpus-validation, probe-bias, guard-vs-consumer
 
 # Validate the instrument before the hypothesis
 
-> Six measurement failures in one session, none of them in the thing being measured.
-> Four sat in the data-collecting instruments and two in the prompts that asked a
-> model to explain itself. Every one was caught by reading the OUTPUT rather than the
-> intent — a probe's own docstring is what it meant to do, and the reply is what it
-> did.
+> Nine measurement failures in one session, none of them in the thing being measured.
+> Four sat in the data-collecting instruments, two in the prompts that asked a model
+> to explain itself, and three in the CHECKERS built to catch the first six. Every one
+> was caught by reading the OUTPUT rather than the intent — a probe's own docstring is
+> what it meant to do, and the reply is what it did.
 
-## The six failures, and what each cost
+## The nine failures, and what each cost
 
 **1. A corpus that did not describe its own spills.** R98's seventeen frozen boards
 paired a layout with a spill that ran on a *different* layout: the capture read the board
@@ -51,6 +51,22 @@ critical system failure that could not be contained", describing nothing that ha
 cold about its own answer, a model confabulates; the follow-up has to REPLAY the scored exchange
 and the model's own reply, or it is a new question wearing an explanation's clothes.
 
+**7-9. The checkers built to catch the others.** Three, in one afternoon, all in code written
+specifically to stop this happening:
+
+* the explanation checker convicted a model on its FIRST run for a sentence naming what was
+  ABSENT — *"if the animation had ended with a failure screen"* — because it matched words
+  instead of claims;
+* the fix then excused a genuine claim, *"the targets were not satisfied"*, because the
+  counterfactual guard listed "no" and "not" among its markers. **Negation is not
+  counterfactual framing**;
+* the entry-numbering pin's parser took "a line starting with a digit that has a dot nearby",
+  swallowed `0/9 FAIL`, and died on it.
+
+None of these would have been caught by the check passing. Each was caught by running it on
+text whose verdict was already known, in BOTH directions — a checker that flags nothing and one
+that flags everything each pass a one-sided test.
+
 ## What to do instead
 
 - **Validate the corpus before fitting to it.** A fix justified by bad boards passes every
@@ -72,6 +88,9 @@ and the model's own reply, or it is a new question wearing an explanation's clot
   or withhold what the answer depends on (no evidence), and both produce confident text that
   measures nothing. When diagnosing a model's choice, continue the exchange rather than opening
   a new one, and verify the scored prompts are byte-identical with the diagnostic on and off.
+- **A checker is an instrument, and the last one anybody validates.** Run it on input whose
+  verdict you already know, in both directions, before running it on the input you care about.
+  Every checker this session built was wrong on its first run and right after one measurement.
 - **Delete a probe when its question is answered.** Four of this session's nine diagnostics
   were retired the moment they had answered; keeping them hides the signal from the ones
   that still change with the code.
