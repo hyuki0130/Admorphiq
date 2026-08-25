@@ -404,6 +404,27 @@ class Adapter(GameAdapter):
 
     GAME_ID = GAME_ID
 
+    @classmethod
+    def _detect_mechanic(cls, latest_frame: Any) -> bool:
+        """A rewrite-grammar board: movement-only controls AND the band layout.
+
+        1. **Movement only.** The player dials a target row with ACTION1-4; there is no
+           pointer and no confirm. Shared with two other public games, so it narrows
+           without deciding.
+        2. **The rule-table layout is there.** `classify_bands` requires THREE rule bands
+           (a column-projection with exactly four runs whose middle gap is the largest),
+           a static source bar and an editable target bar, and returns None otherwise.
+           A rewrite grammar with no rule table is not this mechanic.
+        """
+        simple_ids, has_click = available_action_ids(latest_frame)
+        if has_click or sorted(simple_ids) != [1, 2, 3, 4]:
+            return False
+        grid = _grid_from_latest(latest_frame)
+        if not grid:
+            return False
+        bg = discover_background(grid)
+        return classify_bands(grid, discover_bands(grid, bg), bg) is not None
+
     def __init__(self, giveup: int = _GIVEUP_DEFAULT) -> None:
         self.restart_on_game_over = True
 

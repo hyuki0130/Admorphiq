@@ -917,6 +917,29 @@ class Adapter(GameAdapter):
 
     GAME_ID = GAME_ID
 
+    @classmethod
+    def _detect_mechanic(cls, latest_frame: Any) -> bool:
+        """A snake shape-matching board: an arena, and snakes on BOTH sides of the divider.
+
+        1. **Move with an undo, and a pointer.** ACTION1-4 steer, ACTION7 undoes, and
+           clicks exist. Shared with one other public game, so it narrows without deciding.
+        2. **The arena parses.** `_parse_arena` finds the floor component the controllable
+           snakes move on, and returns None when there is none.
+        3. **A controllable snake AND its partner template.** The mechanic pairs each
+           snake above the divider with a partner below it whose body IS the shape to
+           match; a board with snakes on only one side has nothing to match against.
+        """
+        simple_ids, has_click = available_action_ids(latest_frame)
+        if not has_click or sorted(simple_ids) != [1, 2, 3, 4, 7]:
+            return False
+        grid = canonical_layer(latest_frame)
+        if _parse_arena(grid) is None:
+            return False
+        heads = _parse_heads(grid)
+        return any(y < _DIVIDER for _x, y, _c in heads) and any(
+            y >= _DIVIDER for _x, y, _c in heads
+        )
+
     def __init__(self, giveup: int = _GIVEUP_DEFAULT) -> None:
         self.restart_on_game_over = True
         self._giveup = giveup

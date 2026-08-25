@@ -120,6 +120,7 @@ from typing import Any
 from admorphiq.adapters25.base import (
     GameAction,
     GameAdapter,
+    available_action_ids,
     canonical_layer,
     click_action,
     has_frame,
@@ -559,6 +560,26 @@ class Adapter(GameAdapter):
     Composed from admorphiq.kernels."""
 
     GAME_ID = GAME_ID
+
+    @classmethod
+    def _detect_mechanic(cls, latest_frame: Any) -> bool:
+        """A drag-assembly board: clicks only, and creatures WITH legs and target nests.
+
+        1. **Click only.** The single action is ACTION6 — select a leg, then place it.
+           Shared with several public games, so it narrows without deciding.
+        2. **Creatures resolve, each with legs and a nest.** `_analyze_creatures` reads
+           bodies, legs and target rings out of the frame and returns None when the board
+           holds no such structure. A creature with no legs cannot be assembled and a
+           creature with no nest has nowhere to arrive, so both are required rather than
+           either — that is what makes this an assembly puzzle instead of a click game.
+        """
+        simple_ids, has_click = available_action_ids(latest_frame)
+        if not has_click or simple_ids:
+            return False
+        grid = canonical_layer(latest_frame)
+        bg = most_common_color(grid)
+        creatures = _analyze_creatures(grid, bg, _hazard_cells(grid, bg))
+        return bool(creatures) and all(legs for legs, _target in creatures)
 
     def __init__(self, giveup: int = _GIVEUP_DEFAULT) -> None:
         # A 5th bad placement or an exhausted budget ends the attempt in
