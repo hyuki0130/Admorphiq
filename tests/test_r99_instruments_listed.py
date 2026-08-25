@@ -53,3 +53,27 @@ def test_the_measurement_artefacts_are_committed():
                       "scripts/rounds/SHIPPED1/games"):
         path = Path(directory)
         assert path.is_dir() and any(path.iterdir()), f"{directory} is empty or missing"
+
+
+def test_every_lesson_this_round_wrote_is_reachable_from_the_page():
+    """Purpose: pin that a lesson written during R99 can be FOUND from R99.
+
+    The project's retrieval path is rounds/index.md -> the round page -> its backlinks. A
+    lesson with no backlink is unreachable by that path however well written — and the most
+    general lesson of this round (the deployment path is not the measured path) was missing
+    from the page for exactly as long as nobody looked.
+
+    Expected feedback: a pass means every lesson dated to this round is linked. A failure
+    names the orphan — add the backlink, do not delete the test.
+    """
+    from pathlib import Path
+
+    page = Path(".wiki/wiki/rounds/r99_detection-dispatch.md").read_text()
+    lessons = Path(".wiki/wiki/lessons")
+    written_this_round = sorted(
+        p.stem for p in lessons.glob("*.md")
+        if p.stem.endswith(("_20260825", "_20260826"))
+    )
+    assert written_this_round, "the round wrote lessons; the glob must find them"
+    orphans = [name for name in written_this_round if f"[[../lessons/{name}]]" not in page]
+    assert not orphans, f"lessons with no backlink from the round page: {orphans}"

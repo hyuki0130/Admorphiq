@@ -166,7 +166,10 @@ served. `--submit` is a flag, never the default.
 
 Related: [[../lessons/adapter_port_is_a_dispatch_change_20260825]],
 [[../lessons/adapter_port_progress_20260825]],
-[[../lessons/submission_not_reproducible_20260825]], [[r98_flow-deflection]].
+[[../lessons/submission_not_reproducible_20260825]],
+[[../lessons/submission_build_defects_20260826]],
+[[../lessons/deployment_path_is_not_the_measured_path_20260826]],
+[[../lessons/instrument_validity_20260825]], [[r98_flow-deflection]].
 
 ## Why the campaign stops at nine (2026-08-26, measured)
 
