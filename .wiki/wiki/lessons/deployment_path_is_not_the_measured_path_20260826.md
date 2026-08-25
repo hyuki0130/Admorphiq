@@ -45,6 +45,26 @@ while the submission caps inside `KaggleDetectAgent.is_done`. `--agent kaggle_de
 constructed locally. The budget change was verified against a mechanism that does not ship, until
 the deployed path was executed directly (False at 3,999, True at 4,000).
 
+## 6. Nothing bounded the WHOLE RUN, only each game
+
+`MAX_ACTIONS` limits one game. The competition limits the entire submission to **9 hours**, and
+no code or check connected the two. The submitted card carries `MAX_ACTIONS = 100,000`:
+
+```
+rate measured on our own server run:  51 actions/sec
+110 hidden games x 100,000 actions =  11,000,000 -> 59.9 hours
+110 hidden games x   4,000 actions =     440,000 ->  2.4 hours
+```
+
+The budget was cut to 4,000 for a different reason entirely — "identical score, sixteen times
+faster" — AFTER the submission was sent. ⛔ So the card in flight never had that protection, and
+the risk assessment written at the time ("the 9-hour limit stops being a risk") was about a card
+that had not been submitted.
+
+This one is worse than the other five. They break the run in ways that show up as an error; this
+one lets a perfectly good agent be killed by the clock, scoring **zero on everything**, while
+every card measurement in the repository still reads 0.2772.
+
 ## What they have in common
 
 Each is a place where **the measured configuration and the shipped one diverge**, and each was
@@ -62,6 +82,10 @@ place.
    local run constructs, it is unverified no matter how many games were scored.
 4. **When a deployment reads 0.0000 everywhere, suspect the environment before the card.** Two of
    the five presented that way, and neither was a scoring problem.
+5. **Bound what the PLATFORM bounds.** A per-game cap is not a run-time budget. Multiply it by the
+   evaluation set size at the measured action rate and check it against the platform's own limit —
+   `tests/test_adapter_detection.py` now does, and it rejects the budget that was actually
+   submitted.
 
 Related: [[submission_build_defects_20260826]], [[instrument_validity_20260825]],
 [[submission_not_reproducible_20260825]], [[../rounds/r99_detection-dispatch]].
