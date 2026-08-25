@@ -7564,6 +7564,42 @@ the bench, which is non-gating by design, and a diagnostic that can block a cont
 decision than the one taken here.
 
 
+## The last flagged risk is answered — by a pin, not by the OOD controls (2026-08-25)
+
+The background-blocker fix left one risk on the record: obstruction now proposes nothing on any
+board in the corpus, so "rejects empty" and "rejects everything" are indistinguishable from the
+numbers, and the source exists precisely for boards where the probing spill satisfies nothing.
+
+The obvious place to look was the OOD certification, and it does still pass —
+
+```
+sp80 (positive): OK — board with 2 target(s), 1 piece(s); verifier PASS
+tu93 (near):  DECLINES — no board; unread: pieces, sink_candidates, barriers, ...
+re86 (far):   DECLINES — no board; unread: pieces, sink_candidates, barriers, ...
+```
+
+— so the grounding change did not move the family boundary. ⚠️ But it does **not** test the risk:
+both controls decline at PERCEPTION, before obstruction is ever consulted. Saying the check covered
+it would be the easy misreading.
+
+What does cover it is a pin that was already running. Its fixture is a wall and a spill with no
+targets at all, and on it:
+
+```
+regions that CHANGED appearance during the spill: []
+obstruction proposes: [7]
+shortlist: [7, 7]
+```
+
+**Nothing is satisfied — `changed_regions` is empty — and obstruction still names a region and
+still reaches the shortlist.** That is exactly the case the source exists for, so the
+background-blocker rule rejects empty cells without silencing the source, and it is verified on
+every suite run rather than by inspection.
+
+With that the session's grounding change has no open risk left, and the answer came from a test
+rather than from the control that looked like it should provide it.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -7674,6 +7710,13 @@ decision than the one taken here.
     compiler's UNSATISFIABLE is the truth about the board rather than a search failure.
     Either the propagator floors flow the engine does not, or the level wants more than
     one placement.
+117. **The last flagged risk is ANSWERED — by a pin, not by the OOD controls.** OOD still
+     passes (sp80 reads, tu93/re86 decline), so the family boundary is unmoved — ⚠️ but both
+     controls decline at PERCEPTION and never reach obstruction, so they do not test it. The
+     cover is a pin already running: on a wall-and-spill fixture with NO targets,
+     `changed_regions` is empty and obstruction still proposes `[7]` and still reaches the
+     shortlist. The rule rejects empty cells without silencing the source, verified every
+     suite run. No open risk left from the grounding change.
 116. **The guard is PINNED and the pins bite.** `tests/test_r98_corpus_guard.py` holds
      `_invalid()` on synthetic boards: valid accepted, flow-through-a-piece rejected, hazard
      out of bounds rejected. Neutering `_invalid()` turns exactly the last two red and leaves
