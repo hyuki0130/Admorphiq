@@ -7864,6 +7864,39 @@ the corpus validity, the corpus coverage, the guard's pins, and now the walk's d
 something a future change could have broken silently, and each cost one measurement to close.
 
 
+## The diagnosis cannot work as designed — the ask forbids reasoning (2026-08-25)
+
+Keeping the raw slot replies was meant to separate "never considered the fatality inference" from
+"considered and rejected it". The replies arrived and answer neither:
+
+```
+=== gemma4 raw slot reply (run 0) ===
+```json
+{ "piece_response_spawn": "both_flanks", ..., "hazard_response": "terminate_local" }
+```
+286 characters.  Distinct replies across the nine runs: 1.
+```
+
+**There is no reasoning surface to read.** The reply is the answer object and nothing else,
+byte-identical nine times over, and the reason is in the ask itself — it says *"Answer with the
+JSON object only"*, and *"a single JSON object and nothing else"*, three times across the two
+prompts. The format that makes the answer parseable is the same format that forecloses the
+question I was asking.
+
+⚠️ So the instrument is inconclusive **by construction**, and that is the finding rather than a
+step toward one. The verdicts reproduced exactly alongside it — select 9/9, fill 0/9 in all three
+encodings — so the run confirmed the frozen record and cost nothing else.
+
+What would actually answer it is a SEPARATE diagnostic ask, put after the scored one and never
+read by the scorer: let the model answer as it does now, then ask it to explain that answer. That
+leaves the frozen path untouched, which the ⛔ on re-cutting the wording is there to protect — the
+prohibition is against tuning the question until a weaker model passes, not against asking a
+different question that scores nothing.
+
+⛔ Not built here. It is a prompt addition and a GPU run, and this tick's honest output is that the
+first attempt measured the wrong surface.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -7974,6 +8007,13 @@ something a future change could have broken silently, and each cost one measurem
     compiler's UNSATISFIABLE is the truth about the board rather than a search failure.
     Either the propagator floors flow the engine does not, or the level wants more than
     one placement.
+127. ⚠️ **The fill diagnosis cannot work as designed — the ask FORBIDS reasoning.** The raw
+     replies arrived: 286 characters, the bare answer object, byte-identical across all nine
+     runs. The ask says "Answer with the JSON object only" and "a single JSON object and
+     nothing else", three times over two prompts — the format that makes the answer parseable
+     forecloses the question. Inconclusive BY CONSTRUCTION. Verdicts reproduced exactly
+     alongside (select 9/9, fill 0/9 x3). What would answer it is a SEPARATE unscored ask
+     after the scored one; ⛔ not built here.
 126. **The walk now JUDGES ITSELF.** It is the only measure of DEPTH and every gate runs on
      idx0, so a lost level would have gone unnoticed. It now prints `levels 3/3 OK; actions
      107 (+0 vs baseline)` and exits 1 on `⛔ REGRESSION`. **Levels gate, actions do not** —
