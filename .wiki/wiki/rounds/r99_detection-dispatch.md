@@ -648,6 +648,24 @@ Worth keeping visible: this axis was closed on one game, reopened by its counter
 closed again by the distribution. The first closure reached the right answer for a reason that
 was not yet good enough — which is not the same as being right.
 
+### A consequence: one harness tool is INERT on five of the eight
+
+`DeadSignatureTool` exists for exactly this metric — its docstring opens *"the squared-efficiency
+(RHAE) metric punishes wasted actions harshly"* — and it works by marking an action class dead
+once it has been tried six times at a state signature and **never once changed the frame**.
+
+⛔ In the 100% regime there is nothing to mark. On tn36, lf52, r11l, sp80 and vc33 no click is
+ever inert, so the tool prunes NOTHING on precisely the games whose efficiency is worst. r11l
+spends 957 effective clicks on a level a human clears in 22.
+
+The reading is not that the tool is buggy — it does what it says. It is that **frame-change
+carries no information in this regime**: when everything changes the frame, "it changed" cannot
+separate a useful move from a useless one.
+
+⚠️ ⛔ That is NOT a claim that some other signal would do better. Three times today a plausible
+next step was stated and then measured false. What is established is narrow and checkable: one of
+the six tools cannot fire on five of eight measured games.
+
 What makes this axis worth the measurement at all: a game the fallback ALREADY clears, at 500x a
 human's cost, needs no new mechanic and claims no new game — so it carries none of the
 cd82-hijack risk that stopped the port campaign.
