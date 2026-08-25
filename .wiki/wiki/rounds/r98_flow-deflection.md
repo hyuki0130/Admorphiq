@@ -8053,6 +8053,35 @@ changed, and gating a quantity that is allowed to move buys nothing that the lev
 already buy.
 
 
+## The session's code changes are contained to the flow family (2026-08-25)
+
+This session changed `_obstruction_regions()` and the propagator, both under `src/` — shared
+territory in a repository that holds three hypothesis families. Whether R95 and R96 inherit any of
+it was never checked, and "my change is in a `_flow` file" is a claim about a filename, not about
+what imports it.
+
+Both halves measured. What imports the flow grounding:
+
+```
+compiler_flow.py   verifier_flow.py   probe_r98_model_bench.py   its own two test files
+```
+
+— flow-family code and nothing else. And every `src/` file this session touched, listed from git
+rather than from memory:
+
+```
+compiler_flow.py   grounding_flow.py   propagate_flow.py   schema_flow.py   verifier_flow.py
+```
+
+**All five carry the `_flow` suffix.** The shared `grounding.py`, `schema.py`, `verifier.py` and
+`compiler.py` — which R95 (cell-state) and R96 (movement) build on, movement having no grounding
+module of its own — are untouched.
+
+So there is no cross-family exposure from this session, and it is measured rather than assumed. It
+also explains why the other families' gates were never at risk: the round has been editing a
+sibling, not a parent.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -8163,6 +8192,12 @@ already buy.
     compiler's UNSATISFIABLE is the truth about the board rather than a search failure.
     Either the propagator floors flow the engine does not, or the level wants more than
     one placement.
+135. **The session's code changes are CONTAINED to the flow family.** `grounding_flow` is
+     imported only by `compiler_flow`, `verifier_flow`, the R98 probe and its own tests; and
+     every `src/` file this session touched, listed from git rather than memory, carries the
+     `_flow` suffix. The shared `grounding.py` / `schema.py` / `verifier.py` / `compiler.py`
+     that R95 and R96 build on are untouched — movement has no grounding module of its own, so
+     that mattered. No cross-family exposure, measured rather than assumed.
 134. **Two consecutive walks agree to the ACTION** — 15 / 22 / 47 / 23 = 107 on both, every
      level identical. So the baseline is a real number and this session's per-level costs are
      reproducible, not a single sample. The dropped-press behaviour did not appear in either
