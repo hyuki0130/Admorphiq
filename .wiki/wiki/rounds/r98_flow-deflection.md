@@ -7999,6 +7999,33 @@ So the diagnostic is now the only thing this session added that could have silen
 twice and now cannot go wrong the same way a third time.
 
 
+## Two probe functions with a history are now pinned (2026-08-25)
+
+Only one round script had any test coverage. Most cannot have it — they need a live engine —
+but two carry pure functions whose silent breakage has **already** produced a wrong finding in
+this round, and those are worth the pins:
+
+- **`walk_probe._continued`** is what took the step-off stop count from nine to four. A run is
+  followed through consecutive layers, so a walk that pauses and resumes reads as two runs and the
+  join reads as a stop; five of nine "stops" were exactly that.
+- **the spread sweep's side derivation** once read which flank it was looking at from a parity
+  expression on the cell's own coordinates. It scored 332 and would have been filed as a
+  refutation of a rule nobody had implemented; taking the side from the index the propagator builds
+  the flanks with gave 196.
+
+Three pins, checked against their subjects by neutering each function: `_continued` returning
+False and the support run returning 0 turn exactly the two matching tests red and leave the third
+green, which is right — its subject is `_supported`, and out-of-bounds counting as supported is
+what every `####.` string in the round's tables is made of.
+
+Suite 1731. Oracle 3/3.
+
+⛔ The other four probes stay untested on purpose: `window_probe`, `family_reach_probe`,
+`near_ood_screen` and `shortlist_probe` all need the live engine, and a pin that mocks the engine
+would test the mock. Their protection is that each prints what it measured, and this round has
+twice caught a probe by reading its output rather than by testing it.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -8109,6 +8136,12 @@ twice and now cannot go wrong the same way a third time.
     compiler's UNSATISFIABLE is the truth about the board rather than a search failure.
     Either the propagator floors flow the engine does not, or the level wants more than
     one placement.
+133. **Two probe functions with a HISTORY are now pinned.** `walk_probe._continued` (took the
+     stop count 9 -> 4) and the spread sweep's side derivation (the parity bug that scored a
+     rule nobody implemented, 332 -> 196). Three pins, each checked by neutering its subject:
+     two go red, the third stays green because its subject is `_supported`. Suite 1731. ⛔ The
+     four engine-dependent probes stay untested on purpose — a pin that mocks the engine tests
+     the mock, and this round has twice caught a probe by reading its output instead.
 132. **The explanation ask is PINNED, without a GPU.** Its two failure modes both cost a
      verdict and neither shows in the reply: it must be a CONTINUATION carrying the evidence
      and the model's own answer, and it must not exist when the flag is off. Both now checked
