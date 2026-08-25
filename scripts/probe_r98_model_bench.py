@@ -665,6 +665,15 @@ def run_fill_once(index: int, llm: Callable[[list[dict[str, str]]], str],
     slots = parse_json_object(slot_reply)
     record: dict[str, Any] = {"run": index, "mode": "fill", "hazard": "fused" if fused_hazard
                               else "split", "variant": variant, "slots": slots}
+    if os.environ.get("R98_KEEP_REPLIES") == "1":
+        # DIAGNOSIS, not scoring. The fill stage is a one-slot exam and two models fail it
+        # deterministically on hazard fatality, but a slot value cannot say whether the model
+        # never considered the inference or considered and rejected it. The evidence contains
+        # a complete syllogism — every target satisfied, the level did not advance, the only
+        # other event was the barrier contact — so what the reply SAYS about that contact is
+        # the difference between a reasoning limit and an evidence one. Off by default: the
+        # frozen verdicts were measured without it and the replies are large.
+        record["raw_slot_reply"] = (slot_reply or "")[-4000:]
     if variant is None or slots is None:
         record["outcome"] = "unparsable"
         record["executed_actions"] = 0

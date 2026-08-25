@@ -276,6 +276,11 @@ def main() -> None:
         if evidence != "default":
             label = f"{label}_{evidence}"
         out = os.path.join(KAGGLE_WORKING, f"r98_flow_{label}_{served}.json")
+        # Keep the raw slot replies on the fill modes. The stage is a one-slot exam that two
+        # models fail deterministically on hazard fatality, and a slot value cannot say whether
+        # the model never considered the inference or considered and rejected it. Diagnosis
+        # only — the scoring path is untouched and the probe defaults this OFF.
+        env["R98_KEEP_REPLIES"] = "1" if mode == "fill" else "0"
         print(f"\n=== R98 FLOW {label} x{RUNS} ({served}) ===", flush=True)
         try:
             rc = subprocess.call(

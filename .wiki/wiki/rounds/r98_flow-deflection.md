@@ -7809,6 +7809,30 @@ contract's paired fill substage is still not met, and a faithful propagator does
 that reads hazard fatality correctly.
 
 
+## Asking WHY the fill stage fails, not just that it does (2026-08-25)
+
+The fill stage is a one-slot exam and two of three models fail it deterministically on hazard
+fatality — 27 runs each, one byte-identical answer, three encodings. What no slot value can say is
+whether the model **never considered** the inference or **considered and rejected** it, and the two
+call for opposite responses.
+
+The evidence contains a complete syllogism: every target satisfied, the level did not advance, and
+the only other event in the whole animation was the barrier contact. Whether a reply engages with
+that third clause is the difference between a reasoning limit and an evidence one.
+
+Raw replies are recorded only on the unparsable path, so `R98_KEEP_REPLIES=1` now keeps the slot
+reply on the fill modes. **Diagnosis, not scoring**: it is off by default, the frozen verdicts were
+measured without it, the scoring path is untouched, and the harness self-test still passes 7/7 with
+it off. The kernel sets it for the fill modes only; select is left exactly as measured.
+
+⛔ This is explicitly not another re-cut of the wording. Three cuts have been measured — split,
+fused, explicit-contact — all inert, and the round has an ⛔ against a fourth. Reading what the
+model already says costs nothing and forecloses nothing.
+
+Dataset pushed and confirmed live at 42574 bytes before the kernel went up, per the sequencing
+rule this round broke twice. gemma4 is running.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -7919,6 +7943,12 @@ that reads hazard fatality correctly.
     compiler's UNSATISFIABLE is the truth about the board rather than a search failure.
     Either the propagator floors flow the engine does not, or the level wants more than
     one placement.
+125. **Asking WHY the fill stage fails, not just that it does.** A slot value cannot say
+     whether a model never CONSIDERED the fatality inference or considered and rejected it,
+     and the two call for opposite responses. `R98_KEEP_REPLIES=1` keeps the raw slot reply on
+     the fill modes — diagnosis only: off by default, frozen verdicts measured without it,
+     scoring path untouched, self-test still 7/7. ⛔ NOT a fourth re-cut of the wording; three
+     are measured inert. gemma4 running on Kaggle, dataset confirmed live before the push.
 124. **The CENTRAL CLAIM survives everything this session changed.** Re-run after the
      frame-band wall and the background-blocker fix: `[faithfulness] PASS`, both probe
      trajectories EXACT (20/20 and 17/17 steps), every reachable placement's outcome matching,
