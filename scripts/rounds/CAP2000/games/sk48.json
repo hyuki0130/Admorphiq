@@ -1,0 +1,47 @@
+{
+  "agent": "kaggle_detect",
+  "n_games_run": 1,
+  "n_games_scored": 1,
+  "n_excluded": 0,
+  "total_score": 0.277778,
+  "total_score_pct": 27.778,
+  "games": [
+    {
+      "game_id": "sk48-d8078629",
+      "win_levels": 8,
+      "levels_completed": 4,
+      "elapsed_s": 46.35,
+      "total_actions": 2000,
+      "per_level": [
+        {
+          "level": 1,
+          "agent_actions": 14,
+          "human_actions": 61,
+          "score": 1.0
+        },
+        {
+          "level": 2,
+          "agent_actions": 31,
+          "human_actions": 177,
+          "score": 1.0
+        },
+        {
+          "level": 3,
+          "agent_actions": 36,
+          "human_actions": 101,
+          "score": 1.0
+        },
+        {
+          "level": 4,
+          "agent_actions": 30,
+          "human_actions": 103,
+          "score": 1.0
+        }
+      ],
+      "game_score": 0.277778,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "title": "SK48"
+    }
+  ]
+}

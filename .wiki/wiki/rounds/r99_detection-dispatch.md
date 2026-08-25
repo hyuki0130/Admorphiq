@@ -281,8 +281,24 @@ cleared past ~700 actions is already worth ~0.
 would be a real loss, and nothing here rules that out — so a cap should sit well above the
 observed cliff (2,000-4,000), which still saves half to three quarters of the runtime.
 
-The runtime constraint and its remedy are both recorded, with the cliff located rather than
-guessed.
+### The cap, MEASURED rather than proposed
+
+```
+no cap (100,000)     25 games, 48.4 minutes, mean 0.2772
+cap at 2,000         25 games,  3.0 minutes, mean 0.2772
+```
+
+**Identical score to four decimals, sixteen times faster.** Projected over 110 hidden games that
+is ~213 minutes against ~13 — the 9-hour limit stops being a risk at all.
+
+This also checked the cliff analysis itself, which was NOT guaranteed: the cliff was computed
+over CUMULATIVE actions across a game's levels, while an action cap binds the game's WHOLE
+budget. Those are different quantities and could have disagreed. Measured, they do not.
+
+⚠️ Still measured on the public 25 only. A hidden game clearing at full score near 2,000 actions
+would be a real loss, so 4,000 remains the safer setting — and at 4,000 the projection is ~26
+minutes, which is still nowhere near the limit. The choice is between two safe numbers, not
+between speed and score.
 
 
 ## How the submission will be read — fixed BEFORE the score arrives (2026-08-26)
