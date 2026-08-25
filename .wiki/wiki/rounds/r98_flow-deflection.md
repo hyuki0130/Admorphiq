@@ -8353,6 +8353,27 @@ Verified both ways: six OK where the environments exist, five plus an explained 
 not.
 
 
+## Where the environments come from, written where the skip message sends you (2026-08-25)
+
+The clean-clone check ends with *"needs the game environments; set `ARC_ENVIRONMENTS_DIR`"*, and
+nothing in the round said where those come from. Two mentions existed — one describing a past
+incident where a GPU session booted a healthy server and found zero games, and my own skip line —
+and neither answers the question the skip raises.
+
+Established rather than assumed: **neither `arc_agi` nor `arcengine` ships them** (checked both
+package directories), and `docs/PRE_SUBMISSION_CHECKLIST.md` says why they are absent — *"these are
+competition game assets, NOT ours. Keep them out of the public repo"* — and where they come from on
+Kaggle: attached as a competition input on the Data tab.
+
+So the answer is now beside the `Instruments` table, which is where a reader lands after the runner
+tells them a guard was skipped: five guards need only the repository, the sixth and all four live
+gates need the arcade, and the arcade needs assets that are correctly not in the repository.
+
+That closes the reproduction question this session opened. The round's replay corpus reproduces
+anywhere; its live gates reproduce wherever the competition assets are, which is a property of the
+competition rather than a gap in the round.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -8463,6 +8484,13 @@ not.
     compiler's UNSATISFIABLE is the truth about the board rather than a search failure.
     Either the propagator floors flow the engine does not, or the level wants more than
     one placement.
+145. **Where the environments come from, written where the skip message sends you.** The skip
+     says "set `ARC_ENVIRONMENTS_DIR`" and nothing said where the files are. Established:
+     neither `arc_agi` nor `arcengine` ships them (both package dirs checked), and they are
+     **competition game assets, deliberately git-ignored** — on Kaggle a competition input on
+     the Data tab. Now recorded beside the Instruments table, where the runner sends a reader.
+     The replay corpus reproduces anywhere; the live gates reproduce wherever the competition
+     assets are, which is the competition's shape and not a gap in the round.
 144. **The round REPRODUCES from a clean clone — and the runner was lying about one guard.**
      A fresh clone gives 8 evidence files and the same `sum 12 12` with the same level
      coverage, so the replay number belongs to the repository. But the runner advertised all
@@ -9257,7 +9285,16 @@ documentation.
 | `family_reach_probe.py` | does the grounding assemble a board on any game but sp80? | no |
 | `edge_band_probe.py` | is an outer pixel row decoration, a counter, or an event? | no |
 | `explanation_check.py` | is a model's stated reason TRUE of the animation it saw? | no |
-| `selfcheck.sh` | do all six cheap guards still hold? (seconds; no engine, no GPU) | no |
+| `selfcheck.sh` | do the cheap guards still hold? (seconds; five need only the repo) | no |
+
+**What a fresh checkout can and cannot run.** The five repository-only guards run anywhere. The
+harness self-test and all four live gates drive the real arcade, which needs `environment_files/`
+— **competition game assets, deliberately git-ignored** (`docs/PRE_SUBMISSION_CHECKLIST.md`: *"these
+are competition game assets, NOT ours. Keep them out of the public repo"*). Neither `arc_agi` nor
+`arcengine` ships them, checked; on Kaggle they arrive as a competition input on the Data tab.
+Point `ARC_ENVIRONMENTS_DIR` at the directory holding the per-game folders, or the arcade reports
+zero environments — which is what a GPU session hit once, booting a healthy server and finding no
+games.
 | `ood_certification.py` | does the harness read its own family and decline the others? | no |
 | `gated_enum_test.py` | is the model faithful on every reachable placement, and does each slot discriminate? | no |
 | `feasibility_probe.py` | does a winning layout exist at all under the verified model? | no |
