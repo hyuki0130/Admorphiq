@@ -1,60 +1,65 @@
 ---
 type: lesson
-keywords: [submission, kaggle, reproducibility, leaderboard, card, adapters25, chained-agent, provenance]
+keywords: [submission, kaggle, reproducibility, leaderboard, card, provenance, absence-of-evidence, wrong-artefact]
 date: 2026-08-25
-verdict: The 0.20 leaderboard card CANNOT be rebuilt from this repository. Nothing on the submission path can reach the adapter work.
+verdict: CORRECTED — the 0.20 card IS reproducible from the repo. What is missing is the BUILD PROCEDURE (kernel-metadata, push command, dataset-version → commit mapping), not the source. The first version of this page claimed the opposite because it searched for the wrong artefact.
 ---
 
-# The best card we have is not in the repository (2026-08-25)
+# I searched for the wrong artefact and concluded absence (2026-08-25)
 
-## The finding
+## The claim I made, and why it was wrong
 
-Two submissions exist on the competition leaderboard:
+I asserted that the current leaderboard card — v3, `54664749`, **0.20**, 2026-07-14 — could not be
+rebuilt from this repository. The reasoning was:
+
+> the submission path is `kaggle_submission.py` → `KaggleChainedAgent` →
+> `ChainedAgent`/`UnifiedAgent`/`WorldModelAgent`, and **nothing in that chain imports
+> `adapters25`**, so the solvers the submission describes cannot be reached.
+
+The grep was correct. The **inference was not.** The submission's solvers were never in
+`adapters25`; they live on the submission path itself:
 
 ```
-54664749  2026-07-14  "Admorphiq v3: cd82 6/6 + sb26 portal-DFS + su15 reset-retry; proxy 5.83"  →  0.20
-54637991  2026-07-13  "Admorphiq v1: LLM-free chained agent; proxy 1.072"                        →  0.14
+src/admorphiq/world_model_agent.py:96   from .ring_paint import ARROW_COORDS, detect_paint_layout, nav_path
+src/admorphiq/world_model_agent.py:112  from .sort_match import detect_portal_sort, plan_match_placement
+src/admorphiq/world_model_agent.py:209  _PHASE_PAINT = "ring_paint"
+src/admorphiq/world_model_agent.py:208  _PHASE_PORTAL_SORT = "portal_sort"
 ```
 
-`notebooks/kaggle_submission.py` builds **v1**. Its last commit is `03aacfc`, it registers
-`KaggleChainedAgent`, and its own header still says *"measured 1.072% on the 25-game dev proxy"*.
+and `WorldModelAgent` is exactly what `KaggleChainedAgent` probes with first. The submission
+description — *"cd82 ring-paint solver + sb26 portal-DFS + su15 reset-retry"* — names those three
+by their module names. I searched for the quarantined adapter library, found nothing, and read that
+as the solvers being absent, when they were sitting in the file I had already identified as on the
+path.
 
-**There is no v3 anywhere in the repository.** Searched and found nothing:
+**What actually found it:** the round log. `git log --all --grep="5\.83"` returns `3d0fa81`,
+*"v10 kaggle-validated proxy 5.8307"*, and `.wiki/wiki/rounds/r53_unified-harness.md:3806` records
+the build outright — **"Kernel v10 (dataset v6: ring_paint cd82 solver + sb26 portal-DFS + su15
+reset-retry)"**. The project's own discipline — *if it is not in your context, LOOK IT UP in the
+round pages* — had the answer, and I ran five negative searches before consulting it.
 
-* no commit to `notebooks/kaggle_submission.py` after `03aacfc`;
-* no `kernel-metadata.json` ever added, on any branch (`git log --all --diff-filter=A`);
-* no script that pushes a kernel or a submission (`kernels push` / `competitions submit` appear
-  nowhere under `scripts/`);
-* no branch carrying one — `main`, `r27-transfer-pivot`, `r50-depth-class`,
-  `backup-before-author-rewrite` all lack it;
-* the Kaggle account lists 14 kernels and none is a submission kernel.
+## What IS missing, stated precisely
 
-## Why it cannot be reconstructed by inference either
+The **source** is present and the card is rebuildable. The **build procedure** is not recorded:
 
-The submission path is `kaggle_submission.py` → `KaggleChainedAgent` →
-`ChainedAgent` / `UnifiedAgent` / `WorldModelAgent`. **Nothing in that chain can reach
-`adapters25`.** The only importers anywhere are `hypothesis_select/{templates,parse}.py` — the R95+
-DSL, which is not on the submission path — and dev-only `scripts/_*.py` probes.
+* no `kernel-metadata.json` was ever committed, on any branch;
+* no script performs `kernels push` / `competitions submit`;
+* the mapping from Kaggle **dataset version** (`admorphiq-src` v6) to the **commit** it was built
+  from is written nowhere, so "v10 = dataset v6" cannot be resolved to a tree;
+* the proxy `5.8307` has no run directory under `scripts/rounds/` on either machine — it is recorded
+  only as prose in the r53 page.
 
-So the v3 kernel that scored 0.20 either was edited directly in Kaggle's web UI or was built from
-a tree that was never committed. Its "proxy 5.83" is likewise unreproducible: no run directory in
-`scripts/rounds/` carries that number.
+So rebuilding is a reconstruction from prose, not a re-run. That is a real cost, and much smaller
+than the one I claimed.
 
-## What this costs
+## The rules
 
-* **The baseline to beat exists only as a Kaggle artefact.** Any new candidate is being compared
-  against a number we cannot rebuild, inspect, or diff.
-* **The 3.4% transfer ratio** (proxy 5.83 → hidden 0.20) — the project's only measurement of how
-  public-proxy depth converts to leaderboard score — is anchored to that unreproducible artefact.
-* Two months of adapter work (R56–R84, script25 32.96%) sits behind a deliberate quarantine, and
-  the one submission that *did* ship solvers is the one we cannot examine.
+1. ⛔ **Absence of a grep is not absence of the thing.** Before concluding something is missing,
+   name what artefact you searched for and ask whether the thing could exist under another name.
+   Here the same capability had two homes and I only knew one.
+2. **Consult the round log BEFORE the filesystem.** One `grep` of `.wiki/wiki/rounds/` answered in
+   one step what five filesystem searches got wrong.
+3. **Commit the build with the score.** Kernel source, `kernel-metadata.json`, the push command,
+   and the dataset-version → commit mapping belong in the commit that claims a leaderboard number.
 
-## The rule
-
-⛔ **A submission is not made until its build is committed.** The kernel source, its
-`kernel-metadata.json`, and the exact command that pushed it belong in the repository in the same
-commit that claims the score. A leaderboard number whose build is not in git is a number the
-project cannot act on — it can only be admired.
-
-Related: [[false_claim_verification_20260715]] (a number is a triple: value, budget, env — extend
-it to *and a build you can re-run*), [[instrument_validity_20260825]].
+Related: [[false_claim_verification_20260715]], [[instrument_validity_20260825]].
