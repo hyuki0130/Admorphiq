@@ -8142,6 +8142,33 @@ one model. Whether gemma4 is being properly cautious or gpt-oss is being right f
 not have to earn is a separate measurement, and the explanation ask is now the instrument for it.
 
 
+## The decisive question, with its reading fixed in advance (2026-08-25)
+
+gemma4 rejects fatality for a reason that is factually correct about the animation it was shown:
+there is no failure signal in it, and this round measured that there is none to find. gpt-oss
+answers `terminate_fatal` from the same single animation, twenty-seven times out of twenty-seven.
+So one of two things is true, and they have opposite consequences for the round's verdict:
+
+- **gpt-oss earned it** — its explanation will cite something in the animation that discriminates,
+  something gemma4 read past. Then the fill stage is measuring reading, the frozen verdict means
+  what it says, and gemma4's caution is a miss.
+- **gpt-oss did not** — its explanation will rest on a general expectation about hazards rather
+  than on the described spill. Then the stage separates two models on a PRIOR, and a stage that
+  rewards the model with the luckier prior is not measuring the thing it was built to measure.
+
+Fixed before the result, as this round did for the explicit-contact experiment: **whichever way it
+falls, the frozen verdicts do not move.** They were measured on the scored path, the scored prompts
+are byte-identical with the explanation on and off, and nothing here re-scores anything. What
+changes is what the round is entitled to CLAIM the fill stage measures.
+
+⚠️ And a third outcome is possible and must not be read as either: gpt-oss may cite the animation
+and be wrong about what it says. The explanation is checkable — this round has the frozen spill and
+its 38 layers — so a claim about the evidence can be verified rather than believed, which is the
+only reason this instrument is worth running at all.
+
+gpt-oss kernel pushed after the dataset was confirmed live at 45911 bytes.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -8252,6 +8279,13 @@ not have to earn is a separate measurement, and the explanation ask is now the i
     compiler's UNSATISFIABLE is the truth about the board rather than a search failure.
     Either the propagator floors flow the engine does not, or the level wants more than
     one placement.
+138. **The decisive question is RUNNING, with its reading fixed in advance.** gpt-oss now gets
+     the explanation ask. If its reason cites something in the animation that discriminates,
+     the fill stage measures READING and the frozen verdict means what it says. If it rests on
+     a general expectation about hazards, the stage separates two models on a PRIOR. A third
+     outcome — it cites the animation and is WRONG about it — must not be read as either, and
+     is checkable against the frozen 38-layer spill. ⛔ Either way the frozen verdicts do not
+     move: scored prompts are byte-identical with the explanation on and off.
 137. **gemma4 CONSIDERED the fatality inference and REJECTED it for a checkable reason.** With
      the follow-up continuing the scored exchange, identically on all nine runs: the stream
      stops at the bottom edge and the level does not advance, *"implying the attempt was still
