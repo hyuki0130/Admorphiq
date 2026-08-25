@@ -32,12 +32,22 @@ uv run kaggle datasets version -p "$STAGE" -d --dir-mode zip -m "admorphiq src @
 #    served, and pushing a kernel against the old ones silently runs stale code — measured
 #    twice in the R98 campaign. Poll the FILE LISTING by size, never `datasets status`.
 echo "waiting for the dataset version to be served…"
-for _ in $(seq 1 60); do
-  if uv run kaggle datasets files jaehyukhyun/admorphiq-src 2>/dev/null | grep -q 'admorphiq'; then
-    break
-  fi
+# Poll for THIS commit's stamp, not for any file. The first version of this loop matched the
+# literal string "admorphiq" in the listing, which every previous version also contains — so it
+# passed instantly and guarded nothing. Comparing COMMIT.txt's own bytes is what makes the wait
+# real: the listing only carries them once the new version is actually served.
+served=""
+for _ in $(seq 1 90); do
+  stamp=$(uv run kaggle datasets download jaehyukhyun/admorphiq-src -f src/COMMIT.txt \
+          -p "$STAGE/check" --force --quiet 2>/dev/null \
+          && cat "$STAGE/check/COMMIT.txt" 2>/dev/null | tr -d '[:space:]')
+  if [ "$stamp" = "$COMMIT" ]; then served=yes; break; fi
   sleep 20
 done
+if [ -z "$served" ]; then
+  echo "ERROR: the dataset never served commit $COMMIT — refusing to push a kernel against stale code." >&2
+  exit 1
+fi
 
 # 3. The kernel itself.
 cp notebooks/kaggle_submission.py kaggle/kaggle_submission.py
