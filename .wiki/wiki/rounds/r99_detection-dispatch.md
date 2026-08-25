@@ -621,6 +621,33 @@ only: the refutation was equally single-game, and I hardened it into a conclusio
 ⚠️ Two games disagreeing means two games are not enough to say which regime is typical. The axis
 is **reopened and unresolved**, not closed.
 
+### Widened to eight games: the 100% regime is TYPICAL, sk48 is the outlier
+
+```
+change rate 100% — no removable waste
+  tn36    44/44 ·   5/5        lf52    57/57 ·  89/89
+  r11l   581/581 · 376/376     sp80    99/99 · 896/896
+  vc33  1066/1066 · 1876/1876
+low — waste genuinely exists
+  m0r0   251/604 (42%) · 250/600 (42%)
+  sk48    21/444 ( 5%) · 119/484 (25%)
+no clicks at all
+  tu93   cleared on movement alone
+```
+
+**Five of eight land every click.** So the axis closes after all — but on a measured
+DISTRIBUTION rather than on one game, and the closure is the same one I reached prematurely and
+then withdrew: for most games the gap is knowing WHICH cell to press, which is mechanic
+understanding and does not transfer.
+
+sk48 (5%) and m0r0 (42%) are real exceptions where waste exists. ⛔ But both are already PORTED,
+so their adapters handle them, and a fix aimed at two games is not the general lever the axis was
+being examined for.
+
+Worth keeping visible: this axis was closed on one game, reopened by its counter-example, and
+closed again by the distribution. The first closure reached the right answer for a reason that
+was not yet good enough — which is not the same as being right.
+
 What makes this axis worth the measurement at all: a game the fallback ALREADY clears, at 500x a
 human's cost, needs no new mechanic and claims no new game — so it carries none of the
 cd82-hijack risk that stopped the port campaign.
