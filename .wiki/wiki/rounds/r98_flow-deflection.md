@@ -8260,6 +8260,38 @@ already been wrong. Whatever gpt-oss says when its kernel lands, the reading of 
 mechanical rather than a matter of how convincing it sounds.
 
 
+## The instruments table went stale within the hour — so it is pinned now (2026-08-25)
+
+An hour ago two probes were found to exist only in a shell command, and a table was added so a
+reader could get from a question to the script that answers it. Checking it against the directory
+now:
+
+```
+not in the table: explanation_check.py
+```
+
+**The tool built two ticks later was already missing.** Not from carelessness in any particular
+tick — a table is current only until the next thing is built, and this round has built twenty-five
+scripts.
+
+So the table is now held by a test that walks `scripts/rounds/R98/` and asserts every `.py` is
+named on the page. Checked against its subject: dropping a throwaway script into the directory
+turns it red and **names the file** —
+
+```
+AssertionError: scripts absent from the round page: ['_pin_probe_tmp.py']
+```
+
+— so the failure tells the next person exactly what to add rather than that something is wrong
+somewhere.
+
+Suite 1736, oracle 3/3.
+
+This is the sixth eyeballed thing this session turned self-checking, and the first one where the
+gap **recurred before it was closed** — which is the argument for mechanising a convention rather
+than resolving to keep it.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -8370,6 +8402,14 @@ mechanical rather than a matter of how convincing it sounds.
     compiler's UNSATISFIABLE is the truth about the board rather than a search failure.
     Either the propagator floors flow the engine does not, or the level wants more than
     one placement.
+142. **The instruments table went stale WITHIN THE HOUR — so it is pinned.**
+     `explanation_check.py`, built two ticks after the table was added, was already missing
+     from it. A table is current only until the next thing is built. A test now walks
+     `scripts/rounds/R98/` and asserts every `.py` is named on the page; dropping a throwaway
+     script in turns it red and NAMES the file, so the failure says what to add. Suite 1736.
+     Sixth eyeballed thing turned self-checking this session, and the first whose gap RECURRED
+     before it was closed — the argument for mechanising a convention rather than resolving
+     to keep it.
 141. **The checker is PINNED against both of its own failures.** Four pins: gemma4's
      counterfactual comes back clean, *"the targets were not satisfied"* flags, a fabricated
      barrier contact flags, a plain observation passes. Each checked by re-introducing its
@@ -9141,6 +9181,7 @@ documentation.
 | `near_ood_screen.py` | which of the 25 games carry the family's structural tell? | no |
 | `family_reach_probe.py` | does the grounding assemble a board on any game but sp80? | no |
 | `edge_band_probe.py` | is an outer pixel row decoration, a counter, or an event? | no |
+| `explanation_check.py` | is a model's stated reason TRUE of the animation it saw? | no |
 | `ood_certification.py` | does the harness read its own family and decline the others? | no |
 | `gated_enum_test.py` | is the model faithful on every reachable placement, and does each slot discriminate? | no |
 | `feasibility_probe.py` | does a winning layout exist at all under the verified model? | no |
