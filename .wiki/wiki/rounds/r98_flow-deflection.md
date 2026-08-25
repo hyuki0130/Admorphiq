@@ -8397,6 +8397,32 @@ Then verified against a real collision: renumbering entry 145 to 89 makes it fai
 Six guards hold, oracle 3/3.
 
 
+## gpt-oss is not stuck, it is 9.5x slower — measured (2026-08-25)
+
+The gpt-oss kernel has been running eighty minutes and the temptation is to decide whether that is
+normal by feel. The previous nine-run kernels answer it from their own logs:
+
+| model | wall clock | per run (4 modes × 9) |
+|---|---|---|
+| gpt-oss-120b | **9426 s (2.6 h)** | 262 s |
+| gemma4-31b | 996 s (17 min) | 28 s |
+| | **ratio 9.5×** | |
+
+**Eighty minutes is half-way through its normal range, not a stall.** A 120B reasoning model
+emitting long chains costs what it costs, and the figure is now written down instead of being
+re-guessed each time a kernel sits in RUNNING.
+
+The operational consequence matters more than the number. gpt-oss runs cost about **two and a half
+GPU-hours each**, so re-pushing one out of impatience throws away that much and pushes the result
+further out, not closer. ⛔ A gpt-oss kernel is not late until roughly three hours have passed, and
+the queue it sits in is shared with everything else this session has pushed.
+
+Also worth noting for what it says about the round's two-model rule: the pairing is not two
+equivalent runs. Confirming a verdict on both models costs seventeen minutes on one side and two
+and a half hours on the other, which is why gemma4 results have arrived four times today and
+gpt-oss's twice.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -8507,6 +8533,12 @@ Six guards hold, oracle 3/3.
     compiler's UNSATISFIABLE is the truth about the board rather than a search failure.
     Either the propagator floors flow the engine does not, or the level wants more than
     one placement.
+147. **gpt-oss is not stuck, it is 9.5x SLOWER — measured from the logs.** Previous nine-run
+     kernels: gpt-oss **9426 s (2.6 h)**, gemma4 996 s (17 min) — 262 s vs 28 s per run. So
+     eighty minutes is half-way through its normal range. ⛔ A gpt-oss kernel is not late until
+     roughly three hours, and re-pushing out of impatience throws away 2.5 GPU-hours and moves
+     the result further out. It also means the two-model rule is not two equivalent runs:
+     confirming a verdict costs 17 minutes on one side and 2.5 hours on the other.
 146. **The citation scheme HOLDS — checked, then pinned.** No duplicates among entry numbers
      7 and above, so every `#54` / `#83` / `#121` in this round and in the index resolves.
      Numbers 1-6 recur (up to 10x) but belong to narrative sub-lists, since markdown restarts
