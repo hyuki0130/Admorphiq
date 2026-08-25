@@ -1,0 +1,665 @@
+{
+  "mode": "fill",
+  "hazard": "split",
+  "model": "gptoss",
+  "runs": [
+    {
+      "run": 0,
+      "mode": "fill",
+      "hazard": "split",
+      "variant": {
+        "objective": "cover_all_sinks",
+        "completion": "all",
+        "hazard_policy": "fatal_on_contact"
+      },
+      "slots": {
+        "piece_response_spawn": "both_flanks",
+        "piece_response_direction": "preserved",
+        "piece_response_propagation": "cellwise_iterative",
+        "sink_response_predicate": "same_sink_flanks",
+        "sink_response_miss": "spread_like_piece",
+        "hazard_response": "terminate_fatal"
+      },
+      "explanation": "The animation showed that even after both cup\u2011shaped targets were satisfied, the level did not advance, implying the barrier caused the entire attempt to fail. If the level had progressed after the barrier was hit\u2014or if the barrier only stopped the stream without aborting the attempt\u2014I would have chosen a non\u2011fatal response.",
+      "raw_slot_reply": "{\n  \"piece_response_spawn\": \"both_flanks\",\n  \"piece_response_direction\": \"preserved\",\n  \"piece_response_propagation\": \"cellwise_iterative\",\n  \"sink_response_predicate\": \"same_sink_flanks\",\n  \"sink_response_miss\": \"spread_like_piece\",\n  \"hazard_response\": \"terminate_fatal\"\n}",
+      "equivalent_to_truth": true,
+      "verdict": "PASS",
+      "verdict_reason": "completion predicate agrees with the observed outcome",
+      "board": {
+        "size": 16,
+        "direction": [
+          1,
+          0
+        ],
+        "pieces": [
+          5
+        ],
+        "sinks": [
+          [
+            13,
+            4
+          ],
+          [
+            13,
+            10
+          ]
+        ],
+        "hazards": [
+          [
+            15,
+            3
+          ],
+          [
+            15,
+            9
+          ]
+        ],
+        "absorbers": 0,
+        "falling_sources": [
+          [
+            9,
+            0,
+            1
+          ]
+        ]
+      },
+      "plan_status": "SOLVABLE",
+      "plan_offsets": [
+        [
+          0,
+          1
+        ]
+      ],
+      "executed_actions": 2,
+      "cleared": true,
+      "total_actions": 10,
+      "commits": 2,
+      "outcome": "cleared"
+    },
+    {
+      "run": 1,
+      "mode": "fill",
+      "hazard": "split",
+      "variant": {
+        "objective": "cover_all_sinks",
+        "completion": "all",
+        "hazard_policy": "fatal_on_contact"
+      },
+      "slots": {
+        "piece_response_spawn": "empty_flanks_only",
+        "piece_response_direction": "preserved",
+        "piece_response_propagation": "cellwise_iterative",
+        "sink_response_predicate": "same_sink_flanks",
+        "sink_response_miss": "spread_like_piece",
+        "hazard_response": "terminate_fatal"
+      },
+      "explanation": "The animation showed that even after both cup\u2011shaped targets were satisfied, the level still did not advance and the only remaining event was a stream stopping at a row just above the bottom edge, indicating a barrier that caused the whole attempt to fail. This forced the hazard response to be \u201cterminate_fatal\u201d. If the level had progressed after the targets were satisfied, or if the barrier had merely stopped the stream without aborting the attempt, I would have chosen \u201cterminate_local\u201d or \u201cpass_through\u201d instead.",
+      "raw_slot_reply": "{\n  \"piece_response_spawn\": \"empty_flanks_only\",\n  \"piece_response_direction\": \"preserved\",\n  \"piece_response_propagation\": \"cellwise_iterative\",\n  \"sink_response_predicate\": \"same_sink_flanks\",\n  \"sink_response_miss\": \"spread_like_piece\",\n  \"hazard_response\": \"terminate_fatal\"\n}",
+      "equivalent_to_truth": true,
+      "verdict": "PASS",
+      "verdict_reason": "completion predicate agrees with the observed outcome",
+      "board": {
+        "size": 16,
+        "direction": [
+          1,
+          0
+        ],
+        "pieces": [
+          5
+        ],
+        "sinks": [
+          [
+            13,
+            4
+          ],
+          [
+            13,
+            10
+          ]
+        ],
+        "hazards": [
+          [
+            15,
+            3
+          ],
+          [
+            15,
+            9
+          ]
+        ],
+        "absorbers": 0,
+        "falling_sources": [
+          [
+            9,
+            0,
+            1
+          ]
+        ]
+      },
+      "plan_status": "SOLVABLE",
+      "plan_offsets": [
+        [
+          0,
+          1
+        ]
+      ],
+      "executed_actions": 2,
+      "cleared": true,
+      "total_actions": 10,
+      "commits": 2,
+      "outcome": "cleared"
+    },
+    {
+      "run": 2,
+      "mode": "fill",
+      "hazard": "split",
+      "variant": {
+        "objective": "cover_all_sinks",
+        "completion": "all",
+        "hazard_policy": "fatal_on_contact"
+      },
+      "slots": {
+        "piece_response_spawn": "empty_flanks_only",
+        "piece_response_direction": "preserved",
+        "piece_response_propagation": "cellwise_iterative",
+        "sink_response_predicate": "same_sink_flanks",
+        "sink_response_miss": "spread_like_piece",
+        "hazard_response": "terminate_fatal"
+      },
+      "explanation": "The stream that stopped at the row just above the bottom edge coincided with the level remaining unadvanced despite both cup\u2011shaped targets being satisfied, indicating that hitting that barrier both ends the flow and causes the whole attempt to fail. If the barrier had let the flow pass or the level had progressed after the hit, I would have chosen a non\u2011fatal or pass\u2011through response instead.",
+      "raw_slot_reply": "{\n  \"piece_response_spawn\": \"empty_flanks_only\",\n  \"piece_response_direction\": \"preserved\",\n  \"piece_response_propagation\": \"cellwise_iterative\",\n  \"sink_response_predicate\": \"same_sink_flanks\",\n  \"sink_response_miss\": \"spread_like_piece\",\n  \"hazard_response\": \"terminate_fatal\"\n}",
+      "equivalent_to_truth": true,
+      "verdict": "PASS",
+      "verdict_reason": "completion predicate agrees with the observed outcome",
+      "board": {
+        "size": 16,
+        "direction": [
+          1,
+          0
+        ],
+        "pieces": [
+          5
+        ],
+        "sinks": [
+          [
+            13,
+            4
+          ],
+          [
+            13,
+            10
+          ]
+        ],
+        "hazards": [
+          [
+            15,
+            3
+          ],
+          [
+            15,
+            9
+          ]
+        ],
+        "absorbers": 0,
+        "falling_sources": [
+          [
+            9,
+            0,
+            1
+          ]
+        ]
+      },
+      "plan_status": "SOLVABLE",
+      "plan_offsets": [
+        [
+          0,
+          1
+        ]
+      ],
+      "executed_actions": 2,
+      "cleared": true,
+      "total_actions": 10,
+      "commits": 2,
+      "outcome": "cleared"
+    },
+    {
+      "run": 3,
+      "mode": "fill",
+      "hazard": "split",
+      "variant": {
+        "objective": "cover_all_sinks",
+        "completion": "all",
+        "hazard_policy": "fatal_on_contact"
+      },
+      "slots": {
+        "piece_response_spawn": "empty_flanks_only",
+        "piece_response_direction": "preserved",
+        "piece_response_propagation": "cellwise_iterative",
+        "sink_response_predicate": "same_sink_flanks",
+        "sink_response_miss": "spread_like_piece",
+        "hazard_response": "terminate_fatal"
+      },
+      "explanation": "The stream that stopped at the row just above the bottom edge coincided with the level remaining unadvanced despite both cup\u2011shaped targets being satisfied, indicating that hitting that barrier both ends the flow and causes the whole attempt to fail. If the barrier had let the flow pass or the level had progressed after the hit, I would have chosen a non\u2011fatal or pass\u2011through response instead.",
+      "raw_slot_reply": "{\n  \"piece_response_spawn\": \"empty_flanks_only\",\n  \"piece_response_direction\": \"preserved\",\n  \"piece_response_propagation\": \"cellwise_iterative\",\n  \"sink_response_predicate\": \"same_sink_flanks\",\n  \"sink_response_miss\": \"spread_like_piece\",\n  \"hazard_response\": \"terminate_fatal\"\n}",
+      "equivalent_to_truth": true,
+      "verdict": "PASS",
+      "verdict_reason": "completion predicate agrees with the observed outcome",
+      "board": {
+        "size": 16,
+        "direction": [
+          1,
+          0
+        ],
+        "pieces": [
+          5
+        ],
+        "sinks": [
+          [
+            13,
+            4
+          ],
+          [
+            13,
+            10
+          ]
+        ],
+        "hazards": [
+          [
+            15,
+            3
+          ],
+          [
+            15,
+            9
+          ]
+        ],
+        "absorbers": 0,
+        "falling_sources": [
+          [
+            9,
+            0,
+            1
+          ]
+        ]
+      },
+      "plan_status": "SOLVABLE",
+      "plan_offsets": [
+        [
+          0,
+          1
+        ]
+      ],
+      "executed_actions": 2,
+      "cleared": true,
+      "total_actions": 10,
+      "commits": 2,
+      "outcome": "cleared"
+    },
+    {
+      "run": 4,
+      "mode": "fill",
+      "hazard": "split",
+      "variant": {
+        "objective": "cover_all_sinks",
+        "completion": "all",
+        "hazard_policy": "fatal_on_contact"
+      },
+      "slots": {
+        "piece_response_spawn": "empty_flanks_only",
+        "piece_response_direction": "preserved",
+        "piece_response_propagation": "cellwise_iterative",
+        "sink_response_predicate": "same_sink_flanks",
+        "sink_response_miss": "spread_like_piece",
+        "hazard_response": "terminate_fatal"
+      },
+      "explanation": "The stream that stopped at the row just above the bottom edge coincided with the level remaining unadvanced despite both cup\u2011shaped targets being satisfied, indicating that hitting that barrier both ends the flow and causes the whole attempt to fail. If the barrier had let the flow pass or the level had progressed after the hit, I would have chosen a non\u2011fatal or pass\u2011through response instead.",
+      "raw_slot_reply": "{\n  \"piece_response_spawn\": \"empty_flanks_only\",\n  \"piece_response_direction\": \"preserved\",\n  \"piece_response_propagation\": \"cellwise_iterative\",\n  \"sink_response_predicate\": \"same_sink_flanks\",\n  \"sink_response_miss\": \"spread_like_piece\",\n  \"hazard_response\": \"terminate_fatal\"\n}",
+      "equivalent_to_truth": true,
+      "verdict": "PASS",
+      "verdict_reason": "completion predicate agrees with the observed outcome",
+      "board": {
+        "size": 16,
+        "direction": [
+          1,
+          0
+        ],
+        "pieces": [
+          5
+        ],
+        "sinks": [
+          [
+            13,
+            4
+          ],
+          [
+            13,
+            10
+          ]
+        ],
+        "hazards": [
+          [
+            15,
+            3
+          ],
+          [
+            15,
+            9
+          ]
+        ],
+        "absorbers": 0,
+        "falling_sources": [
+          [
+            9,
+            0,
+            1
+          ]
+        ]
+      },
+      "plan_status": "SOLVABLE",
+      "plan_offsets": [
+        [
+          0,
+          1
+        ]
+      ],
+      "executed_actions": 2,
+      "cleared": true,
+      "total_actions": 10,
+      "commits": 2,
+      "outcome": "cleared"
+    },
+    {
+      "run": 5,
+      "mode": "fill",
+      "hazard": "split",
+      "variant": {
+        "objective": "cover_all_sinks",
+        "completion": "all",
+        "hazard_policy": "fatal_on_contact"
+      },
+      "slots": {
+        "piece_response_spawn": "empty_flanks_only",
+        "piece_response_direction": "preserved",
+        "piece_response_propagation": "cellwise_iterative",
+        "sink_response_predicate": "same_sink_flanks",
+        "sink_response_miss": "spread_like_piece",
+        "hazard_response": "terminate_fatal"
+      },
+      "explanation": "The stream that stopped at the row just above the bottom edge coincided with the level remaining unadvanced despite both cup\u2011shaped targets being satisfied, indicating that hitting that barrier both ends the flow and causes the whole attempt to fail. If the barrier had let the flow pass or the level had progressed after the hit, I would have chosen a non\u2011fatal or pass\u2011through response instead.",
+      "raw_slot_reply": "{\n  \"piece_response_spawn\": \"empty_flanks_only\",\n  \"piece_response_direction\": \"preserved\",\n  \"piece_response_propagation\": \"cellwise_iterative\",\n  \"sink_response_predicate\": \"same_sink_flanks\",\n  \"sink_response_miss\": \"spread_like_piece\",\n  \"hazard_response\": \"terminate_fatal\"\n}",
+      "equivalent_to_truth": true,
+      "verdict": "PASS",
+      "verdict_reason": "completion predicate agrees with the observed outcome",
+      "board": {
+        "size": 16,
+        "direction": [
+          1,
+          0
+        ],
+        "pieces": [
+          5
+        ],
+        "sinks": [
+          [
+            13,
+            4
+          ],
+          [
+            13,
+            10
+          ]
+        ],
+        "hazards": [
+          [
+            15,
+            3
+          ],
+          [
+            15,
+            9
+          ]
+        ],
+        "absorbers": 0,
+        "falling_sources": [
+          [
+            9,
+            0,
+            1
+          ]
+        ]
+      },
+      "plan_status": "SOLVABLE",
+      "plan_offsets": [
+        [
+          0,
+          1
+        ]
+      ],
+      "executed_actions": 2,
+      "cleared": true,
+      "total_actions": 10,
+      "commits": 2,
+      "outcome": "cleared"
+    },
+    {
+      "run": 6,
+      "mode": "fill",
+      "hazard": "split",
+      "variant": {
+        "objective": "cover_all_sinks",
+        "completion": "all",
+        "hazard_policy": "fatal_on_contact"
+      },
+      "slots": {
+        "piece_response_spawn": "empty_flanks_only",
+        "piece_response_direction": "preserved",
+        "piece_response_propagation": "cellwise_iterative",
+        "sink_response_predicate": "same_sink_flanks",
+        "sink_response_miss": "spread_like_piece",
+        "hazard_response": "terminate_fatal"
+      },
+      "explanation": "The stream that stopped at the row just above the bottom edge coincided with the level remaining unadvanced despite both cup\u2011shaped targets being satisfied, indicating that hitting that barrier both ends the flow and causes the whole attempt to fail. If the barrier had let the flow pass or the level had progressed after the hit, I would have chosen a non\u2011fatal or pass\u2011through response instead.",
+      "raw_slot_reply": "{\n  \"piece_response_spawn\": \"empty_flanks_only\",\n  \"piece_response_direction\": \"preserved\",\n  \"piece_response_propagation\": \"cellwise_iterative\",\n  \"sink_response_predicate\": \"same_sink_flanks\",\n  \"sink_response_miss\": \"spread_like_piece\",\n  \"hazard_response\": \"terminate_fatal\"\n}",
+      "equivalent_to_truth": true,
+      "verdict": "PASS",
+      "verdict_reason": "completion predicate agrees with the observed outcome",
+      "board": {
+        "size": 16,
+        "direction": [
+          1,
+          0
+        ],
+        "pieces": [
+          5
+        ],
+        "sinks": [
+          [
+            13,
+            4
+          ],
+          [
+            13,
+            10
+          ]
+        ],
+        "hazards": [
+          [
+            15,
+            3
+          ],
+          [
+            15,
+            9
+          ]
+        ],
+        "absorbers": 0,
+        "falling_sources": [
+          [
+            9,
+            0,
+            1
+          ]
+        ]
+      },
+      "plan_status": "SOLVABLE",
+      "plan_offsets": [
+        [
+          0,
+          1
+        ]
+      ],
+      "executed_actions": 2,
+      "cleared": true,
+      "total_actions": 10,
+      "commits": 2,
+      "outcome": "cleared"
+    },
+    {
+      "run": 7,
+      "mode": "fill",
+      "hazard": "split",
+      "variant": {
+        "objective": "cover_all_sinks",
+        "completion": "all",
+        "hazard_policy": "fatal_on_contact"
+      },
+      "slots": {
+        "piece_response_spawn": "empty_flanks_only",
+        "piece_response_direction": "preserved",
+        "piece_response_propagation": "cellwise_iterative",
+        "sink_response_predicate": "same_sink_flanks",
+        "sink_response_miss": "spread_like_piece",
+        "hazard_response": "terminate_fatal"
+      },
+      "explanation": "The stream that stopped at the row just above the bottom edge coincided with the level remaining unadvanced despite both cup\u2011shaped targets being satisfied, indicating that hitting that barrier both ends the flow and causes the whole attempt to fail. If the barrier had let the flow pass or the level had progressed after the hit, I would have chosen a non\u2011fatal or pass\u2011through response instead.",
+      "raw_slot_reply": "{\n  \"piece_response_spawn\": \"empty_flanks_only\",\n  \"piece_response_direction\": \"preserved\",\n  \"piece_response_propagation\": \"cellwise_iterative\",\n  \"sink_response_predicate\": \"same_sink_flanks\",\n  \"sink_response_miss\": \"spread_like_piece\",\n  \"hazard_response\": \"terminate_fatal\"\n}",
+      "equivalent_to_truth": true,
+      "verdict": "PASS",
+      "verdict_reason": "completion predicate agrees with the observed outcome",
+      "board": {
+        "size": 16,
+        "direction": [
+          1,
+          0
+        ],
+        "pieces": [
+          5
+        ],
+        "sinks": [
+          [
+            13,
+            4
+          ],
+          [
+            13,
+            10
+          ]
+        ],
+        "hazards": [
+          [
+            15,
+            3
+          ],
+          [
+            15,
+            9
+          ]
+        ],
+        "absorbers": 0,
+        "falling_sources": [
+          [
+            9,
+            0,
+            1
+          ]
+        ]
+      },
+      "plan_status": "SOLVABLE",
+      "plan_offsets": [
+        [
+          0,
+          1
+        ]
+      ],
+      "executed_actions": 2,
+      "cleared": true,
+      "total_actions": 10,
+      "commits": 2,
+      "outcome": "cleared"
+    },
+    {
+      "run": 8,
+      "mode": "fill",
+      "hazard": "split",
+      "variant": {
+        "objective": "cover_all_sinks",
+        "completion": "all",
+        "hazard_policy": "fatal_on_contact"
+      },
+      "slots": {
+        "piece_response_spawn": "empty_flanks_only",
+        "piece_response_direction": "preserved",
+        "piece_response_propagation": "cellwise_iterative",
+        "sink_response_predicate": "same_sink_flanks",
+        "sink_response_miss": "spread_like_piece",
+        "hazard_response": "terminate_fatal"
+      },
+      "explanation": "The stream that stopped at the row just above the bottom edge coincided with the level remaining unadvanced despite both cup\u2011shaped targets being satisfied, indicating that hitting that barrier both ends the flow and causes the whole attempt to fail. If the barrier had let the flow pass or the level had progressed after the hit, I would have chosen a non\u2011fatal or pass\u2011through response instead.",
+      "raw_slot_reply": "{\n  \"piece_response_spawn\": \"empty_flanks_only\",\n  \"piece_response_direction\": \"preserved\",\n  \"piece_response_propagation\": \"cellwise_iterative\",\n  \"sink_response_predicate\": \"same_sink_flanks\",\n  \"sink_response_miss\": \"spread_like_piece\",\n  \"hazard_response\": \"terminate_fatal\"\n}",
+      "equivalent_to_truth": true,
+      "verdict": "PASS",
+      "verdict_reason": "completion predicate agrees with the observed outcome",
+      "board": {
+        "size": 16,
+        "direction": [
+          1,
+          0
+        ],
+        "pieces": [
+          5
+        ],
+        "sinks": [
+          [
+            13,
+            4
+          ],
+          [
+            13,
+            10
+          ]
+        ],
+        "hazards": [
+          [
+            15,
+            3
+          ],
+          [
+            15,
+            9
+          ]
+        ],
+        "absorbers": 0,
+        "falling_sources": [
+          [
+            9,
+            0,
+            1
+          ]
+        ]
+      },
+      "plan_status": "SOLVABLE",
+      "plan_offsets": [
+        [
+          0,
+          1
+        ]
+      ],
+      "executed_actions": 2,
+      "cleared": true,
+      "total_actions": 10,
+      "commits": 2,
+      "outcome": "cleared"
+    }
+  ],
+  "verdict": "9/9 PASS"
+}

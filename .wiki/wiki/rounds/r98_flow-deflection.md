@@ -8583,6 +8583,50 @@ effect, and left a spurious fix in a frozen contract. **Reading the artefact cos
 experiment would have.**
 
 
+## The fill stage measures reading — the criteria were fixed before the result (2026-08-25)
+
+Entry 138 fixed three readings before the gpt-oss explanation existed. It landed on the first.
+
+Twenty-seven runs, three prompt variants, every one PASS with `terminate_fatal`, and every
+explanation built from the same three facts:
+
+> "…even after both cup-shaped targets were satisfied, the level still did not advance **and the
+> only remaining event was a stream stopping at a row just above the bottom edge**, indicating a
+> barrier that caused the whole attempt to fail."
+
+with the counterfactual naming what would have overturned it:
+
+> "If the level had progressed after the targets were satisfied, or if the barrier had merely
+> stopped the stream without aborting the attempt, I would have chosen `terminate_local` or
+> `pass_through`."
+
+`explanation_check.py`: six distinct explanations, **zero contradictions**.
+
+**What this settles.** Put the three models side by side and the premises are identical — all
+three quote "targets satisfied, level did not advance" back to us, and the checker clears every
+one of them against the capture:
+
+| model | cites the discriminator | inference | answer |
+|---|---|---|---|
+| gpt-oss-120b | yes | satisfaction insufficient ⇒ contact is fatal | `terminate_fatal` ✓ |
+| gemma4-31b | yes | no failure screen or reset ⇒ *"still active rather than failed"* | `terminate_local` |
+| qwen3.8-27b | yes | explicit variant: *"caused a fatal failure of the entire attempt"* | `terminate_local` |
+
+So the stage is **not** separating models on a prior about hazards, and **not** on perception —
+the discriminating event is legible to all three. It separates them on one inference: *satisfaction
+alone was not sufficient, so something else ended the attempt.* One model makes it; one demands a
+terminal marking the engine never emits; one states the conclusion in prose and emits the opposite
+token.
+
+**Frozen verdicts do not move** — fill stays passed by gpt-oss alone, select stays CONFIRMED. What
+moves is what the round may CLAIM about the stage, and it can now say the strong thing with
+evidence behind it: this exam is answerable from what is shown.
+
+One measured curiosity, recorded without interpretation: the two losing models are byte-identical
+across all nine runs of every variant, while gpt-oss produces three distinct wordings under two of
+them and one under the third. Same decoding settings.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -8703,6 +8747,15 @@ experiment would have.**
     compiler's UNSATISFIABLE is the truth about the board rather than a search failure.
     Either the propagator floors flow the engine does not, or the level wants more than
     one placement.
+153. **THE PENDING DECISIVE MEASUREMENT IS IN: gpt-oss EARNED it — the fill stage measures
+     READING, not a prior.** All 27 runs PASS with `terminate_fatal`, and every explanation
+     names the same joint observation: both targets satisfied, the level did not advance,
+     *"the only remaining event"* being the stream stopping just above the bottom edge —
+     therefore contact ends the whole attempt. The counterfactuals are exact: *"if the level
+     had progressed after the hit, I would have chosen a non-fatal response."* Checker: 6
+     distinct explanations, **0 contradictions**. Against the criteria frozen in entry 138
+     this is outcome ONE. ⛔ All three models are given — and cite — the SAME premises; only
+     gpt-oss draws the inference. The stage is not a prior and not perception.
 152. **A correction that was itself wrong: both losing models miss exactly ONE
      discriminating slot.** The `Next` list recorded that gemma4 "misses TWO slots, not one
      (`spawn` and `hazard`), correcting the frozen record". At nine runs per model per
