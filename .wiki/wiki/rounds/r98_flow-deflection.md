@@ -8109,6 +8109,39 @@ neighbouring family and inferred for the other two, and that distinction is the 
 claim.
 
 
+## gemma4 CONSIDERED the fatality inference and rejected it for a checkable reason (2026-08-25)
+
+With the follow-up fixed to continue the scored exchange, the same model that answers
+`terminate_local` twenty-seven times out of twenty-seven says why — identically on all nine runs:
+
+> *"The animation showed a stream reaching the bottom edge and stopping, yet the level did not
+> advance despite all targets being satisfied, **implying the attempt was still active rather than
+> failed**. If the animation had ended immediately with a failure screen or a reset of the flow and
+> targets upon that stream's termination, I would have chosen `terminate_fatal`."*
+
+**It engages with the exact syllogism** — targets satisfied, no advance, the contact — and rejects
+the fatal reading for a stated reason: the animation shows **no failure signal**. It then names
+precisely what would have changed its answer: an immediate end, a failure screen, or a reset of
+flow and targets on contact.
+
+And the reason is **factually correct about the evidence**. This round measured it directly: a
+failing spill "contains NO failure colours — no 14, no 0, on any of its 38 layers. The engine has
+two ways to refuse an attempt and uses neither", and "a failing attempt leaves NOTHING marked".
+gemma4 is reading the animation accurately; what it declines to do is infer fatality from an
+absence.
+
+That is not a reasoning failure, and calling it one — which the frozen verdict's bare `0/9`
+invites — would have been wrong. The sharper question it exposes: **hazard fatality was CERTIFIED
+from a contrast** (+2 fills every sink and fails, +3 fills the same and advances, differing only in
+hazard contact) **while the model is shown ONE placement.** The discriminator that certified the
+fact is not in the evidence the model is asked to name it from.
+
+⚠️ What this does NOT establish: that the evidence is insufficient. gpt-oss answers
+`terminate_fatal` 27/27 from the same single animation, so the inference is available to at least
+one model. Whether gemma4 is being properly cautious or gpt-oss is being right for a reason it did
+not have to earn is a separate measurement, and the explanation ask is now the instrument for it.
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -8219,6 +8252,16 @@ claim.
     compiler's UNSATISFIABLE is the truth about the board rather than a search failure.
     Either the propagator floors flow the engine does not, or the level wants more than
     one placement.
+137. **gemma4 CONSIDERED the fatality inference and REJECTED it for a checkable reason.** With
+     the follow-up continuing the scored exchange, identically on all nine runs: the stream
+     stops at the bottom edge and the level does not advance, *"implying the attempt was still
+     active rather than failed"*, and it names what would have changed its answer — a failure
+     screen or a reset of flow and targets on contact. **The reason is factually correct**:
+     this round measured that a failing spill contains no failure colours on any of 38 layers
+     and leaves nothing marked. So it is not a reasoning failure. The sharper question:
+     fatality was CERTIFIED from a two-placement CONTRAST while the model is shown ONE. ⚠️ Not
+     established: that the evidence is insufficient — gpt-oss answers correctly 27/27 from the
+     same animation.
 136. **The containment is EXECUTED, not just imported.** R97's live oracle gate — a different
      family, its own contract — passes now: `hole=True authored=True mutants=True`, all four
      mutants caught by the mechanism meant to catch them. So the containment rests on a run
