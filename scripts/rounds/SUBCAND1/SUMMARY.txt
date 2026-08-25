@@ -1,5 +1,22 @@
-[generated 2026-08-25 16:34:29 KST] SUBMISSION CANDIDATE — full-25, chained agent (the agent the notebook actually ships) LIVE 4/25
-mean game_score = 0.2574 | total levels = 8 | games clearing = 2/25
-(참조: from-scratch online-RL 0.0014, random 0.0000, verified top 0.1258)
+[regenerated 2026-08-26 03:05:08 KST from the COMPLETE games/*.json] SUBMISSION CANDIDATE full-25 --agent chained @100k (ceph-build) — 25/25
+mean game_score = 0.0566 | total levels = 29 | games clearing = 18/25
+(the file shipped by the live aggregator read 21/25 / 0.0650 — it was never re-run after the
+ run finished, so it understated coverage and overstated the mean. Regenerated from the data.)
   * CD82: score=0.9463 lvl=6 act=[6, 10, 24, 21, 24, 23]
+  * SU15: score=0.0935 lvl=3 act=[12, 21, 41]
   * AR25: score=0.0833 lvl=2 act=[31, 46]
+  * RE86: score=0.0833 lvl=2 act=[24, 40]
+  * SB26: score=0.0796 lvl=2 act=[9, 29]
+  * LS20: score=0.0327 lvl=1 act=[23]
+  * FT09: score=0.0291 lvl=1 act=[55]
+  * S5I5: score=0.0278 lvl=1 act=[19]
+  * WA30: score=0.0222 lvl=1 act=[30]
+  * TN36: score=0.0152 lvl=1 act=[49]
+  * LP85: score=0.0022 lvl=1 act=[61]
+  * LF52: score=0.0001 lvl=1 act=[376]
+  * R11L: score=0.0000 lvl=1 act=[972]
+  * TU93: score=0.0000 lvl=1 act=[695]
+  * SP80: score=0.0000 lvl=1 act=[2341]
+  * M0R0: score=0.0000 lvl=1 act=[5269]
+  * VC33: score=0.0000 lvl=2 act=[3656, 3762]
+  * SK48: score=0.0000 lvl=1 act=[25274]

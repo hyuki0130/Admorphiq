@@ -61,3 +61,4 @@ scratchpad/
 
 # Archived stale env dirs — derived from the ignored environment_files/ tree
 environment_files_archive/
+kaggle/kaggle_submission.py
