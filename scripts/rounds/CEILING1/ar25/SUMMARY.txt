@@ -1,0 +1,6 @@
+script25 SUMMARY (LIVE — regenerated after every game)
+kernel-expressiveness scoreboard — NEVER reported as agent capability (see docs/r56_codex_toolbase_verdict_20260715.md)
+games run: 1   scored: 1   total_score: 0.0833 (8.33%)
+
+game_id               adapter   levels    actions   game_score  status
+ar25-0c556536         ar25      2/8       4028      0.0833      ok

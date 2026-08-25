@@ -38,6 +38,13 @@ def load(directory: str) -> dict[str, tuple[float, int]]:
 def load_ceiling() -> dict[str, tuple[float, int]]:
     """Per-game (score, levels) off each script25 adapter run's SUMMARY.txt."""
     out: dict[str, tuple[float, int]] = {}
+    if not os.path.isdir(CEIL):
+        # Say so. A missing results directory used to raise FileNotFoundError from inside a
+        # listdir, which under a redirected stderr looked like the comparison printing
+        # nothing at all — an empty answer reads as "no differences".
+        print(f"⛔ no ceiling results at {CEIL} — run script25 per game, or copy the "
+              f"measurement box's scripts/rounds/CEILING1/*/SUMMARY.txt here.")
+        return out
     for name in sorted(os.listdir(CEIL)):
         path = os.path.join(CEIL, name, "SUMMARY.txt")
         if not os.path.isfile(path):
@@ -53,6 +60,12 @@ def load_ceiling() -> dict[str, tuple[float, int]]:
 def main() -> int:
     detect_dir = sys.argv[1] if len(sys.argv) > 1 else "scripts/rounds/DETECT1/games"
     card, detect, ceiling = load(CARD), load(detect_dir), load_ceiling()
+    if not card:
+        print(f"⛔ no card results at {CARD} — nothing to compare against.")
+        return 1
+    if not detect:
+        print(f"⛔ no detect results at {detect_dir} — pass the run directory as argv[1].")
+        return 1
     keys = sorted(set(card) | set(detect))
     missing = sorted(set(card) - set(detect))
 
