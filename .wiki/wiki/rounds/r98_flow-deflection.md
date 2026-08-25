@@ -8591,15 +8591,25 @@ experiment would have.**
    board and is then refuted would test more.
 2. **Fill: the FUSED experiment is ANSWERED — the split was not the cause.** gemma4 gives
    byte-identical slot answers under both encodings (`hazard_response: terminate_local`),
-   so asking once changes nothing and the schema is exonerated on this point. It misses
-   TWO slots, not one (`spawn` and `hazard`), correcting the frozen record; `select`
-   reproduces 3/3. gpt-oss still running — it decides whether FILL is confirmed paired.
-3. ~~Fill is not confirmed paired.~~ The experiment is built AND covered by the harness
-   self-test (`fill fused -> cleared PASS`), so its wiring is verified without a GPU;
-   split remains the default, and the KAGGLE kernel now runs it as a third mode
-   (`fill_fused`) beside the two frozen ones. **RUNNING on Kaggle since 2026-08-25 00:47**
-   — gemma4 and gpt-oss (the contract pair) at version 5; qwen3.8 waits on a GPU slot.
-   Never as a patch to move a verdict.
+   so asking once changes nothing and the schema is exonerated on this point. ⛔ The
+   follow-on claim that gemma4 "misses TWO slots, not one (`spawn` and `hazard`)" is
+   **REFUTED at nine runs** — see item 3.
+3. **How many slots each losing model misses — MEASURED, and the earlier correction was
+   itself wrong.** Nine runs per model per variant, against the truth read off a gpt-oss
+   PASS run:
+
+   ```
+   gemma4   fill / fused / explicit   wrong = {hazard_response}                    9/9 each
+   qwen3.8  fill / fused / explicit   wrong = {hazard_response, piece_spawn}       9/9 each
+   ```
+
+   The extra slot is **gemma4's on paper only** — it is qwen that differs on `spawn`, and
+   that difference is **not a miss**: `schema_flow.EQUIVALENCE_CLASSES` declares
+   `PieceResponse.spawn ∈ {empty_flanks_only, both_flanks}` data-indistinguishable at the
+   criterion level (the R95a precedent), and the verifier's rejection names only the
+   hazard. `gated_enums.txt` marks the axis DISCRIMINATING for the THIRD member (`none`:
+   5/12 trajectories), not between these two. **So both losing models miss exactly ONE
+   discriminating slot, and the frozen record's original "one slot" reading stands.**
 2. ~~Why does the walk reach not bind an injected source?~~ **ANSWERED — it WAS the reach.**
    A landing cell entered the frontier with an unlimited walk; giving it `walked = 0` is
    worth 32 cells (243 -> 211). The intermediate claim that the cell never entered the
@@ -8693,6 +8703,16 @@ experiment would have.**
     compiler's UNSATISFIABLE is the truth about the board rather than a search failure.
     Either the propagator floors flow the engine does not, or the level wants more than
     one placement.
+152. **A correction that was itself wrong: both losing models miss exactly ONE
+     discriminating slot.** The `Next` list recorded that gemma4 "misses TWO slots, not one
+     (`spawn` and `hazard`), correcting the frozen record". At nine runs per model per
+     variant that is wrong twice over: **gemma4 misses only `hazard_response`** (9/9, all
+     three variants), and it is **qwen** that also differs on `spawn` — which is **not a
+     miss**, because `schema_flow.EQUIVALENCE_CLASSES` declares
+     `{empty_flanks_only, both_flanks}` data-indistinguishable at the criterion level and
+     the verifier's rejection names only the hazard. `gated_enums.txt` marks the spawn axis
+     DISCRIMINATING for its THIRD member (`none`), not between those two. ⛔ The original
+     "one slot" record stands; the correction is withdrawn.
 151. **gemma4's explanation, and a hypothesis of mine REFUTED by reading the prompt.** Both
      losing models cite the SAME discriminating sentence and reject it for **different**
      reasons: gemma4 demands a positive terminal marking — *"if the animation had ended
