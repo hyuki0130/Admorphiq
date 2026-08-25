@@ -19,14 +19,18 @@ trap 'rm -rf "$STAGE"' EXIT
 
 # 1. The source dataset. Ship exactly what the agent imports, and stamp the commit INSIDE it
 #    so a future session can map any dataset version back to a tree.
-mkdir -p "$STAGE/src"
-cp -R src/admorphiq "$STAGE/src/"
+# The notebook WALKS /kaggle/input for a directory NAMED admorphiq that holds __init__.py, so
+# the package must arrive as a real directory. ⛔ NOT `--dir-mode zip`: that uploads each
+# directory AS a zip, so `admorphiq/` became `src.zip`, the walk found nothing, and the kernel
+# died on `ModuleNotFoundError: No module named 'admorphiq'` — measured on version 1 of this
+# script. `--dir-mode tar` and the default both preserve the tree; the default is used here.
+cp -R src/admorphiq "$STAGE/"
 find "$STAGE" -name '__pycache__' -type d -exec rm -rf {} + 2>/dev/null || true
-echo "$COMMIT" > "$STAGE/src/COMMIT.txt"
+echo "$COMMIT" > "$STAGE/COMMIT.txt"
 cat > "$STAGE/dataset-metadata.json" <<JSON
 {"title": "admorphiq-src", "id": "jaehyukhyun/admorphiq-src", "licenses": [{"name": "CC0-1.0"}]}
 JSON
-uv run kaggle datasets version -p "$STAGE" -d --dir-mode zip -m "admorphiq src @ $COMMIT"
+uv run kaggle datasets version -p "$STAGE" -d -m "admorphiq src @ $COMMIT"
 
 # 2. WAIT for the version to exist. `datasets version` returns BEFORE the new files are
 #    served, and pushing a kernel against the old ones silently runs stale code — measured
@@ -38,7 +42,7 @@ echo "waiting for the dataset version to be served…"
 # real: the listing only carries them once the new version is actually served.
 served=""
 for _ in $(seq 1 90); do
-  stamp=$(uv run kaggle datasets download jaehyukhyun/admorphiq-src -f src/COMMIT.txt \
+  stamp=$(uv run kaggle datasets download jaehyukhyun/admorphiq-src -f COMMIT.txt \
           -p "$STAGE/check" --force --quiet 2>/dev/null \
           && cat "$STAGE/check/COMMIT.txt" 2>/dev/null | tr -d '[:space:]')
   if [ "$stamp" = "$COMMIT" ]; then served=yes; break; fi
