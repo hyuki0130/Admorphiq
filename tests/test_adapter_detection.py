@@ -101,3 +101,34 @@ def test_dispatch_forwards_harness_capability_flags():
     agent = DetectDispatchAgent(Fallback())
     assert getattr(agent, "restart_on_game_over", False) is True
     assert agent.dispatched_to == "fallback"
+
+
+def test_ported_sets_are_identified_by_function_not_bound_method():
+    """Purpose: pin that "is this adapter ported?" compares the underlying FUNCTIONS.
+
+    A classmethod accessed on a class yields a NEW bound object every access, so
+    `cls._detect_mechanic is not GameAdapter._detect_mechanic` is always true. That
+    marked all 25 adapters as ported: the dispatcher then spent a probe action on every
+    board it did not statically recognise, and the false-positive gate ran every adapter
+    as probe-capable — so the measurement was not checking the contract it claimed to.
+
+    Expected feedback: a pass means only genuinely ported adapters are dispatched to or
+    probed for. A failure means the identity test has regressed to the bound form and the
+    probe is being spent on games nothing can claim.
+    """
+    from admorphiq.detect_dispatch_agent import DetectDispatchAgent
+
+    class Fallback:
+        def is_done(self, frames: list[Any], latest_frame: Any) -> bool:
+            return False
+
+        def choose_action(self, frames: list[Any], latest_frame: Any) -> Any:
+            return None
+
+    agent = DetectDispatchAgent(Fallback())
+    everything = set(discover_adapters())
+    assert set(agent._ported) < everything, "not every adapter is statically ported"
+    assert set(agent._probed) < everything, "not every adapter is probe-ported"
+    assert set(agent._ported) & set(agent._probed) == set(), (
+        "an adapter should read statically OR ask for the probe, not both"
+    )

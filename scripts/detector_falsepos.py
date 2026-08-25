@@ -60,9 +60,11 @@ def main() -> int:
         # contract: the cost is one action however many adapters read it. The probe is
         # horizontal because a VERTICAL one does not separate m0r0 from ka59 — measured,
         # both move their pieces the same way under ACTION1.
+        # __func__: a classmethod on a class is a fresh bound object every access, so an
+        # identity test on the bound form calls every adapter probe-capable.
         probed = [n for n in tested
-                  if adapters[n]._detect_mechanic_probed is not
-                  GameAdapter._detect_mechanic_probed]
+                  if adapters[n]._detect_mechanic_probed.__func__
+                  is not GameAdapter._detect_mechanic_probed.__func__]
         if not probed:
             continue
         simple_ids, _has_click = available_action_ids(frame)
