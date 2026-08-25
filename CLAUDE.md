@@ -1524,6 +1524,35 @@ weeks. Re-check the board before quoting it; never cite a six-week-old anchor.
 **Goal (user, 2026-08-25): clear ALL games and chase the top band WITHIN AUGUST.** First realistic
 milestone = 2.66 (12th); target = 5.99.
 
+**DETECTION DISPATCH — the card's depth is unlocked by frame evidence, not `game_id` (2026-08-25).**
+`src/admorphiq/detect_dispatch_agent.py` asks every PORTED adapter, on the first frame, whether its
+mechanic is present; exactly one answer dispatches, anything else falls back to the current card, so
+a port cannot regress a game it does not claim. Measured full-25 on ceph-build:
+
+```
+card (--agent chained)   0.0566        ported: ft09 ls20 m0r0 r11l re86 sb26 sk48 su15 tr87
+detection (--agent detect) 0.2756      every port lands EXACTLY on its ceiling (lossless)
+adapter ceiling          0.3296
+```
+
+⛔ **A detector ships only at 0/24 false positives** across the public games
+(`scripts/detector_falsepos.py`). The gate is a measurement, not a precaution: an sb26 detector at
+2/24 predicted an s5i5 regression and a full-25 run produced exactly it (0.0278 -> 0.0000).
+
+**How to write one** — the mechanic's CONTROL SCHEME plus the entities it cannot do without,
+requiring BOTH members of a pair (snakes on both sides of sk48's divider; legs AND a nest for r11l).
+⛔ Never ask the SOLVER whether it copes: sb26's parser accepted s5i5 and sc25 because a detector
+built on "my solver did not refuse" inherits the solver's permissiveness.
+
+**Probe detection** (`detect_probed(before, after)`): one shared action, offered to every probe
+detector, for mechanics a still frame cannot show. m0r0 static = 18/25 candidates, one probe = 2,
+plus its mirror pair = 1. ⚠️ Probe the axis being mirrored — a vertical probe leaves m0r0 and ka59
+identical. The probe costs nothing (6/6 in 199 actions fresh, 198 after).
+
+⛔ **PARKED, with the limit named**: lp85's ring mechanic appears at LEVEL 2, and dispatch decides at
+L0 — first-frame dispatch cannot see a mechanic that only appears deeper. Its L0 face ("click the
+rare thing") is too generic to claim without hijacking four click-only rivals.
+
 **Measurement runs ALL 25 GAMES IN PARALLEL on `ceph-build` (64 cores), never serially on the Mac.**
 The Mac is edit/lint/pytest only. Sync first — ceph-build's `~/admorphiq` is a tarball extract, is
 BEHIND the repo, and is not a git repo:
