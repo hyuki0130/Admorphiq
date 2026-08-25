@@ -2,10 +2,10 @@
 type: reasoning
 round: R98
 axis: agent25 — hypothesis-DSL family expansion #3 (two-phase place-then-propagate flow)
-keywords: [agent25, hypothesis-dsl, family-expansion, flow-deflection, place-then-propagate, sp80, response-table, reference-propagator, gated-enum, inert-slot, equivalence-class, near-ood, oracle-certification, two-model]
-verdict: **MODEL STAGE MEASURED (2026-08-23) — SELECT CONFIRMED ON BOTH CONTRACT MODELS (gemma4 3/3, gpt-oss 3/3, and qwen3.8-27b 3/3), each picking the EXACT truth every run and clearing the level at oracle-gate efficiency; FILL passed outright by gpt-oss-120b 3/3 with a perfect 7-of-7 hypothesis, gemma4 missing exactly one slot.** Live oracle gate 3/3 end to end (2026-08-22): discovery → grounding → verify → compile → execute clears sp80 idx0 in 10 actions / 2 commits against a frozen cap of 20 / 3. Contract FROZEN after the Codex schema consult (CONDITIONAL GO, six corrections bound and discharged BY MEASUREMENT); grounding earns 10/10 measured slots from observation alone; the verifier reproduces the frozen mutant table on live evidence; the model-stage driver self-tests 6/6 on deterministic stubs. Only the paired GPU model runs remain
-commit: [f6f9dd8, 748bc04, ad759da, 216a9a9, e9fced6]
-date: 2026-08-22
+keywords: [agent25, hypothesis-dsl, family-expansion, flow-deflection, place-then-propagate, sp80, response-table, reference-propagator, gated-enum, inert-slot, equivalence-class, near-ood, oracle-certification, two-model, instrument-validity, corpus-validation, nine-runs, discovery-cost]
+verdict: **MODEL STAGE RE-MEASURED AT NINE RUNS (2026-08-25) — SELECT CONFIRMED on all three models (gemma4 9/9, qwen3.8 9/9, gpt-oss 8/9); FILL confirmed on gpt-oss ALONE (9/9 split, 9/9 fused, 8/9 explicit) while gemma4 and qwen3.8 are 0/9 in every encoding.** Every model is DETERMINISTIC on the decisive slot and they disagree — gpt-oss `terminate_fatal` 27/27, the other two `terminate_local` 27/27, over ONE distinct board, so the grounding is identical and the split is the models'. ⛔ The "our encoding splits fatality across two slots" reading is REFUTED: qwen answers both slots coherently and is still wrong, fused is 0/9 for both, and naming the contact explicitly is 0/9. FILL is a one-slot exam and the slot is hazard fatality, so the contract's paired fill substage is NOT met. **PROPAGATOR NOW EXACT ON THREE LEVELS** — idx0/idx1/idx2 cell-for-cell, replay corpus 93 -> 12 — after three instrument/grounding fixes, none of which touched the model: a capture pairing a board with a spill that ran on a DIFFERENT layout, a capture hook that only ever fired when a level FAILED, and `_obstruction_regions()` seeding on BACKGROUND-coloured blockers. The walk carries three levels at **107 actions** (was 138) after a direction-retry loop was moved rather than removed. idx3 is blocked by a FROZEN schema gap: a fourth target, inside the window, solid 2x2, zero notches, which "flow occupies the notch" cannot express. Live oracle gate 3/3 end to end, unchanged at 10 actions / 2 commits against a 20 / 3 cap
+commit: [f6f9dd8, 748bc04, ad759da, 216a9a9, e9fced6, b055f7c, a9b506e, a01b762, 948da6f, 296d130, cd090a9]
+date: 2026-08-25
 ---
 
 # R98 — FlowDeflectionDynamics (family expansion #3)
@@ -7600,6 +7600,30 @@ With that the session's grounding change has no open risk left, and the answer c
 rather than from the control that looked like it should provide it.
 
 
+## The line a future session reads FIRST was still on three runs (2026-08-25)
+
+Three documents were refreshed this session — the rounds index, CLAUDE.md and the page's own Next
+list — and the round page's **frontmatter** was still stale, which is the worst of the four because
+it is what a reader sees before anything else. Its `verdict:` line described the 3-run model stage
+and ended with *"Only the paired GPU model runs remain"*, which had been done for hours, and its
+`date:` said 2026-08-22.
+
+Rewritten to what is measured: nine-run select and fill for all three models, the deterministic
+one-slot disagreement, the refutation of the encoding reading, the propagator being exact on three
+levels after three instrument fixes, the walk at 107 actions, and idx3 blocked by a frozen schema
+gap. Every added commit hash was verified with `git cat-file -t` before it went in, per the
+round-log discipline.
+
+⚠️ Also recorded there, because a verdict line should not flatter: **the contract's paired fill
+substage is NOT met.** gemma4 is 0/9 in every encoding, so "≥2/3 on both models" fails on fill
+however well gpt-oss does. The round's select half is confirmed; its fill half is not, and the
+frontmatter now says so in the same breath as the successes.
+
+That is four places in one session where the summary lagged the measurements — index, CLAUDE.md,
+Next list, frontmatter. The pattern is consistent enough to name: **appended evidence is free,
+summaries are not, and every one of them is a separate copy that has to be paid for.**
+
+
 ## Next
 
 1. **OOD controls: CERTIFIED** (`scripts/rounds/R98/ood_certification.py`) — sp80 reads
@@ -7710,6 +7734,13 @@ rather than from the control that looked like it should provide it.
     compiler's UNSATISFIABLE is the truth about the board rather than a search failure.
     Either the propagator floors flow the engine does not, or the level wants more than
     one placement.
+118. **The line a future session reads FIRST was still on three runs.** The page's own
+     frontmatter `verdict:` described the 3-run stage and ended "Only the paired GPU model
+     runs remain" — done hours earlier — with `date: 2026-08-22`. Rewritten to the nine-run
+     result, the instrument fixes, the 107-action walk and idx3's frozen schema gap; every
+     added commit hash verified with `git cat-file -t` first. ⚠️ It now also states plainly
+     that the contract's PAIRED FILL substage is NOT met (gemma4 0/9 in every encoding).
+     Fourth stale summary this session — appended evidence is free, summaries are not.
 117. **The last flagged risk is ANSWERED — by a pin, not by the OOD controls.** OOD still
      passes (sp80 reads, tu93/re86 decline), so the family boundary is unmoved — ⚠️ but both
      controls decline at PERCEPTION and never reach obstruction, so they do not test it. The
