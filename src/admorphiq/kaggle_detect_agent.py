@@ -45,7 +45,20 @@ def build_detect() -> DetectDispatchAgent:
 class KaggleDetectAgent(Agent):  # type: ignore[misc,valid-type]
     """Official ``agents.agent.Agent`` deploying detection dispatch over the chained card."""
 
-    MAX_ACTIONS = int(os.environ.get("KAGGLE_DETECT_MAX_ACTIONS", "100000"))
+    #: Per-game action budget. MEASURED, not chosen for comfort — capping costs no score and
+    #: buys the run back from the 9-hour limit:
+    #:
+    #:     no cap (100,000)   25 games, 48.4 min, mean 0.2772
+    #:     cap  4,000         25 games,  3.3 min, mean 0.2772
+    #:     cap  2,000         25 games,  3.0 min, mean 0.2772
+    #:
+    #: Identical score to four decimals, because RHAE squares efficiency and everything cleared
+    #: past ~700 actions is already worth ~0 (the one full-score level near the edge is re86 L7
+    #: at 588 cumulative actions, so ⛔ a cap at 500 would destroy 1.0 of real score).
+    #: 4,000 over 2,000 because it costs 16 SECONDS — runtime tracks actions actually spent, not
+    #: the cap — and leaves room for a hidden game that clears at full score past 2,000, which the
+    #: public 25 cannot rule out.
+    MAX_ACTIONS = int(os.environ.get("KAGGLE_DETECT_MAX_ACTIONS", "4000"))
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
