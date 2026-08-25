@@ -71,3 +71,33 @@ def test_every_adapter_still_imports_and_exposes_detect():
     for name, cls in adapters.items():
         assert hasattr(cls, "detect"), f"{name} has no detect()"
         assert hasattr(cls, "_detect_mechanic"), f"{name} has no _detect_mechanic()"
+
+
+def test_dispatch_forwards_harness_capability_flags():
+    """Purpose: pin that the wrapper exposes the flags the RUNNER reads off the agent
+    object, not just the two contract methods.
+
+    This is measured, not hypothetical. `restart_on_game_over` decides whether a
+    GAME_OVER revives the attempt or ends the run, and the runner reads it with
+    getattr(agent, ...). Without forwarding, lf52 lost a real level: the card scored
+    0.000132 with 1 level on two runs while dispatch scored 0.0000 with 0 levels on two
+    runs, deterministically, on a game where no detector even fires.
+
+    Expected feedback: a pass means wrapping the card in dispatch cannot silently change
+    how the harness drives it. A failure means capability flags are being dropped again
+    and games with GAME_OVER dynamics will quietly lose levels.
+    """
+    from admorphiq.detect_dispatch_agent import DetectDispatchAgent
+
+    class Fallback:
+        restart_on_game_over = True
+
+        def is_done(self, frames: list[Any], latest_frame: Any) -> bool:
+            return False
+
+        def choose_action(self, frames: list[Any], latest_frame: Any) -> Any:
+            return None
+
+    agent = DetectDispatchAgent(Fallback())
+    assert getattr(agent, "restart_on_game_over", False) is True
+    assert agent.dispatched_to == "fallback"
