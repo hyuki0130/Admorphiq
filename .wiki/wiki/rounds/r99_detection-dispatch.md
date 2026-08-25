@@ -149,3 +149,40 @@ served. `--submit` is a flag, never the default.
 Related: [[../lessons/adapter_port_is_a_dispatch_change_20260825]],
 [[../lessons/adapter_port_progress_20260825]],
 [[../lessons/submission_not_reproducible_20260825]], [[r98_flow-deflection]].
+
+## Why the campaign stops at nine (2026-08-26, measured)
+
+The obvious next move is to keep porting: the ceiling is 0.3296 and the card is 0.2772, so 0.0524
+is still on the table. ⛔ **The arithmetic says stop.**
+
+```
+game     gain/25    at risk if hijacked
+lp85      0.0279          0.0001      (already PARKED — mechanic appears at L2)
+sp80      0.0057          0.0000
+g50t      0.0043          0.0000
+tn36      0.0037          0.0006
+…twelve more, each below 0.002…
+cd82      0.0013          0.0379      <-- the card's single largest asset
+
+every remaining port, summed        +0.0524
+losing cd82 to one wrong detector   -0.0379
+```
+
+**One mistake costs what the entire remaining campaign gains.** With lp85 parked, the largest
+available port is sp80 at **+0.0057**, while cd82 alone carries **0.0379** of the mean.
+
+The risk is not hypothetical in either direction:
+
+* sp80, cn04, m0r0 and cd82 all share the action signature `[1,2,3,4,5]` plus clicks, so a detector
+  written for one of them starts out unable to exclude the others;
+* this round already watched it happen — sb26's parser-only detector took s5i5 from 0.0278 to
+  0.0000 in a full-25 run;
+* and cd82's 0.9463 does not come from an adapter at all. It comes from `ring_paint` inside
+  `world_model_agent`, which is on the FALLBACK path — so a detector that fires on cd82 does not
+  merely mis-solve it, it takes the game away from the solver that already conquers it.
+
+⛔ **From here the downside of a wrong detector exceeds the upside of a right one.** The campaign
+stops at nine ports. Further depth should come from raising the CEILING (deeper levels in the
+adapters) or from transfer work on the private set, not from squeezing the last 0.05 out of
+dispatch.
+
