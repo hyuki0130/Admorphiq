@@ -296,11 +296,31 @@ r11l         4     4064     1016
 ar25 lp85 s5i5 wa30 tn36 lf52 vc33 sp80    4,000-10,000 act/level, effectively zero
 ```
 
-**Tier 2 is the risk-free lever.** re86 clears SEVEN levels and scores 0.2273; su15 clears six and
-scores 0.4368. They already belong to us — improving their efficiency claims no new game, so ⛔ none
-of the cd82-hijack risk that stopped the port campaign applies. The square means a 4x action
-reduction is worth ~16x on those levels.
+⛔ **That reading was WRONG, and the per-level scores refute it.** "573 actions/level" is the run's
+TOTAL actions divided by levels cleared — it counts the budget burned on levels never cleared, not
+the actions spent clearing. Per level:
 
-This replaces the stopped campaign as the next axis: **not more ports, but fewer actions on the
-ports we already have.**
+```
+re86  L1 25/26=1.0   L3 53/86=1.0   L4 56/108=1.0   L5 97/189=1.0   L6 68/139=1.0   L7 150/424=1.0
+su15  L1 L2 L4 L5 L6 all 1.0        sk48  L1-L4 all 1.0  (14/61, 31/177, 36/101, 30/103)
+r11l  L1 1.0   L2 0.8403   L3 0.8920
+```
+
+Nearly every clear is **at or above the human baseline already**. The adapters are not slow; they
+clear fast and then spend the remaining budget on a level they cannot clear at all.
+
+**So the bottleneck is DEPTH, not efficiency**, and RHAE's level-index weighting says the same thing:
+
+| game | score | why it is below its ceiling |
+|---|---|---|
+| sk48 | 0.2778 | 4 of 8 levels — depth |
+| r11l | 0.2594 | 4 of 6; L4 costs 172 actions against a human 26 (0.0228) — depth plus one level |
+| su15 | 0.4368 | 6 of 9 — depth; only L3 is below 1.0 |
+| re86 | 0.7273 | 7 of 8; only L2 is below 1.0 (139 against 42) |
+
+The efficiency headroom is **three levels in total** (re86 L2, r11l L4, su15 L3). Everything else is
+already human-or-better, so squeezing actions there buys nothing.
+
+**The next axis is depth on ports we already own** — the levels those adapters cannot clear — which
+still carries no cd82-hijack risk, because it claims no new game.
 
