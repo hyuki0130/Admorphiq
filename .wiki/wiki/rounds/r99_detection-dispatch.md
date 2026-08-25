@@ -716,6 +716,32 @@ nothing measured here compares it to the alternatives. What is established: the 
 mechanism cannot engage on these games, and the reason is the SIGNAL's nature rather than a
 tunable.
 
+### Compared: on vc33 another tool BEATS the one always picked
+
+Forcing each tool to run alone, same 3,000-action budget (`scripts/tool_alternatives.py`):
+
+```
+vc33   toggle 2 levels   graph 1   paint 0   world_model 0   dealias 0
+r11l   graph  1 level    everything else 0
+sp80   nothing clears in 3,000
+```
+
+⛔ **`toggle` reaches two levels on vc33 where `graph` reaches one** — and the harness picks
+`graph` every time and cannot re-decide. So the possibility I left open, that graph is simply the
+right tool, is FALSE on vc33: the missing re-decision costs a level there.
+
+⚠️ Stated precisely, because one counter-example is not a pattern:
+
+* it appears on **one of three** games — `graph` is genuinely best on r11l, and on sp80 nothing
+  clears at all;
+* the window matters — vc33 normally clears L1 at 3,656 actions, so graph's single level sits
+  right at the edge of a 3,000-action budget;
+* ⛔ **no score was measured.** Levels are not RHAE: `toggle`'s two levels could have cost more
+  actions than `graph`'s one, and this run did not record when they landed.
+
+What it does establish: "the alternatives are never tried" is not harmless in general, because at
+least once an untried alternative was better.
+
 What makes this axis worth the measurement at all: a game the fallback ALREADY clears, at 500x a
 human's cost, needs no new mechanic and claims no new game — so it carries none of the
 cd82-hijack risk that stopped the port campaign.
