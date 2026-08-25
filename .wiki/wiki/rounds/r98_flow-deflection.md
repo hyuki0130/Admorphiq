@@ -8086,6 +8086,12 @@ output rather than the intent, which is the only method that has worked all sess
     compiler's UNSATISFIABLE is the truth about the board rather than a search failure.
     Either the propagator floors flow the engine does not, or the level wants more than
     one placement.
+131. **The lesson page now carries SIX failures, not four.** The two prompt-side ones join it:
+     a scored prompt that FORBIDS the thing being diagnosed (JSON-only leaves nothing to read)
+     and a diagnostic prompt that WITHHOLDS the evidence (asked cold, a model confabulates).
+     Both are instrument failures of the same kind — a prompt is an instrument — and the rule
+     added with them is: continue the exchange rather than opening a new one, and verify the
+     scored prompts are byte-identical with the diagnostic on and off. Index updated.
 130. ⚠️ **The explanation asked COLD, and got a confabulation.** gemma4 explained
      `terminate_local` as *"a critical system failure that could not be contained,
      necessitating an immediate shutdown"* — no droplets, no targets, no barrier. Tempting as

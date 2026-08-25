@@ -7,12 +7,13 @@ keywords: [instrument-validity, corpus-validation, probe-bias, guard-vs-consumer
 
 # Validate the instrument before the hypothesis
 
-> Four rules were adopted and reverted in one session, none because the rule was
-> wrong to try and all because the thing measuring it was not describing what it
-> claimed to. Every one was caught by asking the instrument a question rather than
-> asking it for a number.
+> Six measurement failures in one session, none of them in the thing being measured.
+> Four sat in the data-collecting instruments and two in the prompts that asked a
+> model to explain itself. Every one was caught by reading the OUTPUT rather than the
+> intent — a probe's own docstring is what it meant to do, and the reply is what it
+> did.
 
-## The four failures, and what each cost
+## The six failures, and what each cost
 
 **1. A corpus that did not describe its own spills.** R98's seventeen frozen boards
 paired a layout with a spill that ran on a *different* layout: the capture read the board
@@ -36,6 +37,20 @@ CONSECUTIVE layers, so a walk that paused and resumed read as a stop: five of ni
 every run carried an extra action and the harness reported 108 where it costs 107 — a
 figure already quoted before anyone noticed.
 
+**5. A scored prompt that forbids the thing being diagnosed.** Raw replies were kept in order
+to tell "never considered the inference" from "considered and rejected it". The replies came
+back as 286 characters of bare JSON, byte-identical across nine runs, because both scored asks
+say *"a single JSON object and nothing else"* three times over. The format that makes an answer
+parseable is the format that leaves nothing to diagnose, and the probe was inconclusive by
+construction.
+
+**6. A diagnostic prompt that withholds the evidence.** The fix — a separate unscored ask — was
+built as a fresh system+user pair with no evidence in it, so the model was asked to explain a
+choice whose basis it could not see. It answered in incident-management language about "a
+critical system failure that could not be contained", describing nothing that happened. Asked
+cold about its own answer, a model confabulates; the follow-up has to REPLAY the scored exchange
+and the model's own reply, or it is a new question wearing an explanation's clothes.
+
 ## What to do instead
 
 - **Validate the corpus before fitting to it.** A fix justified by bad boards passes every
@@ -53,6 +68,10 @@ figure already quoted before anyone noticed.
   for 1 action instead of 32.
 - **A probe that acts is a change.** Reading is free; pressing is not. Any diagnostic that
   issues an action belongs behind a flag or nowhere.
+- **A diagnostic prompt is an instrument too.** It can forbid the answer it wants (JSON-only)
+  or withhold what the answer depends on (no evidence), and both produce confident text that
+  measures nothing. When diagnosing a model's choice, continue the exchange rather than opening
+  a new one, and verify the scored prompts are byte-identical with the diagnostic on and off.
 - **Delete a probe when its question is answered.** Four of this session's nine diagnostics
   were retired the moment they had answered; keeping them hides the signal from the ones
   that still change with the code.
