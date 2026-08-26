@@ -131,8 +131,19 @@ stage one's work list.
 a copy: the moment it carries rules of its own there are two sources and they drift. If a rule needs
 changing, change it HERE and both the cron agent and the session pick it up.
 
-A tick firing means work had already stopped. **The cron is a watchdog, not a work queue** — finish a
-step and start the next one without waiting for it.
+⛔ **THE CRON IS A WATCHDOG. IT DOES NOT HAND OUT WORK.** A tick firing is a FAULT REPORT: it means
+work had already stopped when it should not have. The correct number of ticks in a productive session
+is ZERO.
+
+**Never end a turn by announcing the next step.** If the next step is known, DO IT — in the same turn,
+without pausing, without asking, without waiting for a tick. "Next I will measure X" is only ever
+written after X has been measured and something else is next. Chain steps until the work genuinely
+blocks on a decision only the user can make, or on a long-running job whose result nothing can proceed
+without.
+
+This was violated on nearly every turn of 2026-08-26 despite the rule being in this file: a step would
+finish, the finding would be written up, and the turn would end on "next I will…" — which is exactly
+the stop the watchdog exists to catch.
 
 **On every tick, in order:**
 
