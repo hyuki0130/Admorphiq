@@ -1,5 +1,12 @@
 # CLAUDE.md — Admorphiq
 
+> ⛔ **READ [`OPERATING_RULES.md`](OPERATING_RULES.md) FIRST.** Six rules that have each been broken
+> more than once after being stated — ceph-build at 60-core parallelism, pulling work back off the
+> boxes, memory not carrying continuity, reading `rounds/index.md` before choosing a direction, which
+> of the three environments does what, and submissions being the user's call. They are in a separate
+> file because a rule that lives in a chat message dies at the next context compaction.
+
+
 ## Project Overview
 
 **Admorphiq** (Adaptive Morphing Intelligence) is an AI agent for the [ARC Prize 2026 — ARC-AGI-3](https://www.kaggle.com/competitions/arc-prize-2026-arc-agi-3) competition.
