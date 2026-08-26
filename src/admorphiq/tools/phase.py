@@ -21,7 +21,9 @@ about to enter, and rejected if that cell stops being solid.
 ⛔ Frame-only. The avatar and its marker are the two rarest colours, kept only when both are
 single congruent squares, and which of the two is the avatar is settled by WHICH ONE MOVED, not
 by position. The lattice step, the sense of each action, the buttons and each group's phase
-images are all MEASURED by probing. The tool bids 0.0 until those probes have produced a route.
+images are all MEASURED by probing. The tool bids on the SIGNATURE, which was measured unique
+across the sample set, and latches to 0.0 the moment the mechanic turns out not to be there —
+pricing itself on a route it has not been given a turn to find is how it loses the board.
 
 ⛔ A button is probed only when the route needs one. Probing every button first spends an action
 per button on a budget worth about two human actions per move, and most levels need one flip.
@@ -417,6 +419,26 @@ class PhaseGridTool:
     # --- the harness contract ----------------------------------------------
 
     def detect(self, frames: list[Any], obs: Any) -> float:
+        """Confidence this board is the phase mechanic, and that this tool can still act on it.
+
+        ⛔ The signature is a CLAIM, not a guess, so it is bid like one. Every clause below has
+        to hold at once: the four senses and a click are offered, the frame splits into a board
+        and a panel of different grounds, and the board carries exactly two congruent single
+        squares among its rarest colours. Measured over 200 frames of live play on each of the
+        25 sample games, with a fresh tool asked on every frame so no accumulated state could
+        hide an answer: that conjunction fires on ONE board and returns 0.0 on the other 24,
+        first frame and deep frames alike.
+
+        ⛔ An earlier version bid 0.35 before it had a route, which cost the tool the game
+        outright: the plan only exists after the probes, the probes only run if the tool gets a
+        turn, and the turn goes to whoever bids highest on the FIRST frame. A tool that must
+        act to learn cannot price itself on what it has already learned.
+
+        ⛔ The withdrawal is what makes the high bid safe. The moment the premise fails — no
+        square moves under any action, the pieces stop being readable, or no route survives
+        three re-plans — the tool latches dead and bids 0.0 for the rest of the game, handing
+        the board back rather than owning something it cannot finish.
+        """
         if self._dead or not has_frame(obs):
             return 0.0
         simple, click = availability(obs)
@@ -424,7 +446,7 @@ class PhaseGridTool:
             return 0.0
         if self._read(frame_2d(obs)) is None:
             return 0.0
-        return 0.9 if self._plan else 0.35
+        return 0.95 if self._plan else 0.85
 
     def propose(self, frames: list[Any], obs: Any) -> list[Step]:
         if self._dead or not has_frame(obs):
@@ -500,6 +522,12 @@ class PhaseGridTool:
             self._dead = True
             return []
         if start == goal:
+            # The premise says this clears the level. If the frame still says otherwise, the
+            # pieces were misread — count it against the stall budget rather than owning the
+            # board while proposing nothing.
+            self._stalls += 1
+            if self._stalls > 2:
+                self._dead = True
             return []
         if start not in self._visited:
             self._visited.add(start)
