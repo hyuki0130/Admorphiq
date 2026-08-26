@@ -1422,3 +1422,39 @@ but it is one real observation where the earlier decision could have been wrong 
 `environment_files/re86/8af5384d` regardless, which is the trap CLAUDE.md already names. Version
 swaps must move the directory, and must restore it from a shell `trap` so a timeout cannot leave the
 repository holding an archived board.
+
+## The dispatch campaign is essentially DONE — the adapter ceiling is now the binding constraint
+
+Card 0.3162 with thirteen ports. If EVERY remaining game were ported, and each landed exactly on
+its ceiling as all thirteen have, the card would be **0.3296**. The whole remaining campaign is
+therefore worth **+0.0134**, against the **+0.2596** already taken.
+
+```
+game     card   ceiling     gap   card gain
+g50t   0.0000    0.1071  0.1071      0.0043   PARKED (mechanism is a motion)
+wa30   0.0222    0.0667  0.0445      0.0018   PARKED (evidence belongs to re86)
+vc33   0.0000    0.0357  0.0357      0.0014   see below
+cd82   0.9463    0.9800  0.0337      0.0013
+cn04   0.0000    0.0309  0.0309      0.0012
+dc22   0.0000    0.0272  0.0272      0.0011
+ka59   0.0000    0.0205  0.0205      0.0008
+lf52   0.0001    0.0182  0.0181      0.0007
+bp35   0.0000    0.0145  0.0145      0.0006
+tu93   0.0000    0.0028  0.0028      0.0001
+                                     ------
+                                     0.0134   of which 0.0075 is already parked
+```
+
+**vc33 is not worth attempting, and the reason is on this page already.** Its mechanic, as its own
+adapter records it, is the *rare-colour click family* — "click the rare thing". That is precisely
+what lp85's L0 face was judged on: *too generic to claim without hijacking four click-only rivals*.
+vc33 shares the click-only scheme with five games, FOUR of them now ported (ft09, lp85, r11l,
+tn36). Risking four live ports for **+0.0014** of card is not a trade worth making, and the board's
+one distinctive fact — two identical colour-9 regions, one live — is a property of that BOARD, not
+of a mechanic. Writing a detector on it would be reading the board, which is the thing this whole
+campaign is built to avoid.
+
+⛔ **So further card gain has to come from raising ADAPTER CEILINGS, not from dispatch.** Twelve of
+the twenty-five games have a ceiling under 0.15, and seven of those are ceilinged at a single level.
+That is depth work — the multi-session builds already spec'd — and it is a different kind of effort
+from the last two days'. The dispatch lever gave 5.6x and is now down to its last one-twentieth.
