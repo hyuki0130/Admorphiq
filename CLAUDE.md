@@ -1,5 +1,32 @@
 # CLAUDE.md — Admorphiq
 
+> ## ⛔ THE LLM WIKI IS THE SINGLE SOURCE OF TRUTH — GO THROUGH IT, ALWAYS
+>
+> `.wiki/wiki/` is not documentation of the work; it **is** the work's memory, and it is the only copy
+> that survives a context compaction, a new session, or a change of machine. **Everything else is a
+> pointer to it** — this file, `OPERATING_RULES.md`, the cron prompt, and the machine-local memory
+> directory (which does not travel and is mirrored into `.wiki/wiki/memory/` for that reason).
+>
+> **Before choosing a direction**: `tail -40 .wiki/wiki/rounds/index.md` → the newest round is the
+> current axis → read that round page's open work → **measure that the item is still open** before
+> working it.
+>
+> **Start here**: [`.wiki/wiki/top_policy.md`](.wiki/wiki/top_policy.md) (the two stages and who does
+> what) → [`.wiki/wiki/tool_set_spec.md`](.wiki/wiki/tool_set_spec.md) (the four tools, build order,
+> test method) → [`.wiki/wiki/model_guidance_spec.md`](.wiki/wiki/model_guidance_spec.md) (how a model
+> is guided to a tool within its context).
+>
+> **After any measurement**: write the finding AND the measurement that produced it into the round
+> page, and pull the artefacts back off the boxes (`scripts/ceph_pull.sh`, `scripts/memory_mirror.sh`).
+> ⛔ **A measurement that lives only in a session transcript, a `/tmp` file, or an instance does not
+> exist** — this was paid for four times on 2026-08-26, including a fourth-family candidate pool that
+> had to be recovered by grepping a JSONL.
+>
+> ⛔ **Never act from memory of the plan.** Twice in one day the plan was in this repository, unread,
+> while the session worked a different axis. The wiki is cheap to read and the alternative has cost
+> whole days.
+
+
 > ## ⛔ TOP POLICY — the two stages, and who does what (2026-08-26, user-set)
 >
 > **Full text: [`OPERATING_RULES.md`](OPERATING_RULES.md) rule 0. This block is the pointer that
