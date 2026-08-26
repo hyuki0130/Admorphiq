@@ -1893,3 +1893,50 @@ runs water through all three targets without filling any. The kernel's `simulate
 ⚠️ The staleness fault is worth keeping in mind beyond this measurement: **a spy variable that
 outlives the thing it describes reports the previous subject with full confidence.** It produced the
 most striking number in the whole run (`{12: 1760}`) and that number was pure contamination.
+
+## Colour 12 is an END-STATE marking, and execution does not drift
+
+Two more measurements close out the alternatives.
+
+**When and where colour 12 appears.** On both winning commits it occupies exactly ONE layer — the
+LAST one (layer 19 of 20; layer 21 of 22) — covering 48-80 of a target's 80 cells:
+
+```
+WON level 1  target 0  layer 19: 80 cells of 12    target 1  layer 19: 64 cells
+WON level 2  targets   layer 21: 48 cells each
+```
+
+So 12 is not a per-tick event but the **end-of-animation marking of a satisfied target**. That makes
+it a ground-truth readout rather than a mechanism — and a useful one: the final layer of any commit
+says exactly which targets ended up satisfied, which is information the adapter currently throws
+away (it concedes to graph and learns nothing from the failure).
+
+**Execution does not drift.** Comparing the placement the planner planned against the board at the
+commit:
+
+```
+WON  level 2, step 25    planned 176 cells   actual 176   overlap 176   exact
+lost level 3, step 138   planned 336 cells   actual 336   overlap 336   exact
+     pieces on targets: planned 0, actual 0, on both
+```
+
+⚠️ The first run of this comparison reported "actual 80" against "planned 336" and looked like
+massive drift. It counted only `_movable_color` (9) while the pieces are colours 8 AND 9 — a
+multi-colour plan measured against a single-colour board. Counting every colour in `_piece_colors`
+gives exact agreement. (The step-127 row reads 0 because `_piece_colors` was still empty at that
+moment; it is not usable.)
+
+**Where that leaves the fault, with six alternatives eliminated by measurement:**
+
+| candidate | verdict |
+| --- | --- |
+| hazard contact ends the attempt | ⛔ refuted — coverage was not full when tested |
+| missing static obstacles | ⛔ same prediction with and without them |
+| target miscounting | ⛔ the multi path's 3 targets are evidence-based |
+| stale/wrong fall direction | ⛔ level 2 WINS with the same `(-1, 0)` |
+| propagation sends water elsewhere | ⛔ engine wets a SUPERSET of the prediction |
+| execution drifts from the plan | ⛔ exact, 336 of 336 |
+
+What remains is the satisfaction model itself: the engine runs water through all three targets
+(colour 13 in every one) and marks none of them filled (no colour 12), while `simulate_flow` scores
+all three satisfied on its interior-hit rule.
