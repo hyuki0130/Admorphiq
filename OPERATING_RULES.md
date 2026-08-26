@@ -74,6 +74,18 @@ must be measured AS SHIPPED (`--agent kaggle_detect`, not `--agent detect`) befo
 submission whose build is not committed is not reproducible — kernel source, `kernel-metadata.json`,
 the push command and the dataset-version-to-commit mapping all go in with it.
 
+⛔ **READ THE GAME'S SOURCE FIRST. It is in `environment_files/` and rule 0 already said so.**
+Added 2026-08-27 after a session spent probing sample games as black boxes: twenty measurements on
+ONE game, ten of them correcting an earlier reading, while `g50t`'s entire control scheme, its
+loss condition and the reason its probes contradicted each other sat in forty lines of its own
+`step()`. `uv run python scripts/read_sample_games.py [game...]` prints the action dispatch, the
+win predicate and the lose predicate for any of the 25 in seconds. Findings live in
+`.wiki/wiki/sample_games_mechanics.md`.
+
+The line: this is DEV-TIME understanding of WHICH MECHANIC to implement. The tools stay
+frame-only — a tool that reads internals is an adapter, and the eval is 110 games whose source we
+will never see.
+
 ## 0. What the project is actually building — read before choosing any axis
 
 ⛔ Recorded here because it was lost twice on 2026-08-26 and both times the plan was sitting in the

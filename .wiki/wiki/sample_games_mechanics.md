@@ -1,0 +1,75 @@
+---
+type: reference
+topic: sample-games
+date: 2026-08-27
+keywords: [sample-games, mechanics, stage-1, action-budget, source-read, generic-tools]
+---
+
+# What each sample game actually IS, read from its own source
+
+> ⛔ **The method correction that produced this page.** `OPERATING_RULES.md` rule 0 says stage one
+> is "**read each sample game** ... and write the code". The sources are in `environment_files/`,
+> obfuscated in their identifier names and perfectly readable in their structure. A whole session
+> was instead spent probing games as black boxes — twenty measurements on ONE game, ten of them
+> correcting an earlier reading. **One read of `g50t`'s `step()` answered in seconds what eight
+> live probes could not.** Regenerate with `uv run python scripts/read_sample_games.py [game...]`.
+>
+> ⛔ **The line this does not cross.** What is read here is DEV-TIME understanding of *which
+> mechanic a generic tool must handle*. The tools stay frame-only. A tool that reads game
+> internals is an adapter; adapters are quarantined precisely because they cannot transfer; the
+> eval is 110 games whose source we will never see.
+
+## The fact that changes how every tool must be written
+
+**Several games LOSE when an action budget runs out**, and the budget is drawn on screen:
+
+| game | evidence | budget |
+|---|---|---|
+| cd82 | `if self._action_count >= self.iewrsdwok: self.lose()` | per level, drawn by `pioabixlyc(remaining)` |
+| cn04 | `if self._action_count >= self.ojcsxidcz: self.lose()` | `level.get_data("MaxSteps") or 150` |
+| vc33 | `elif not self.heczcoeosi.current_steps: self.lose()` | per level, the shrinking bar on row 0 |
+| wa30 | `current_steps` | per level |
+| g50t | a timer sprite moves one cell every SECOND action; lost when it leaves the screen | ~2x screen width |
+| lf52 | loses at 64 / 64*5 / 64*10 frames depending on level index | per level |
+
+So **exploration is not free on these boards; it is the loss condition**. A generic searcher that
+opens hundreds of states before acting has already lost cd82 and cn04 — which is exactly what the
+stall diagnostic measured (states in the hundreds, levels zero). ⛔ This also NARROWS an earlier
+claim on the r101 round page that "probing is free on all 25": twelve probes are free, a thousand
+are not.
+
+## Per game
+
+| game | drives | what it is |
+|---|---|---|
+| **ar25** | 1-4 move, 5, **7 = UNDO** | move a SELECTED sprite; tags restrict some pieces to one axis; ACTION7 pops a state stack |
+| **bp35** | 1-4 via a `match` in a helper | frame-driven platformer; win/lose read off a simulation object after its animation drains |
+| **cd82** | 1-4 pick, 5 commit, 6 click | pick a basket / paint target, commit; **action budget** |
+| **cn04** | 6 select+place, 5 rotate 90° | click a sprite to select; click it again where it aligns to PLACE it; ACTION5 rotates; **MaxSteps** |
+| **dc22** | mostly internal | multi-phase; has an `UndoState`; a 14-tick animation gate decides win/lose |
+| **ft09** | 6 only | **two clickable classes**: tag `Hkx` toggles its 3x3 NEIGHBOURHOOD, tag `NTi` toggles ONLY ITSELF (mask `[[0,0,0],[0,1,0],[0,0,0]]`); tag `bsT` is the spec/stencil |
+| **g50t** | 1=up 2=down 3=left 4=right, 5 special | reach the goal before a timer sprite scrolls off; **an action arriving mid-animation is SWALLOWED** (`if avatar.animating: avatar.step()` — the dispatch is skipped) |
+| **ka59** | internal | momentum/launch with explosions and colliders; enemies step after the player settles |
+| **lf52** | internal | simulation like bp35; loses on a frame count that scales with level index |
+| **lp85** | 6 only | buttons tagged `button_<ring>_<L\|R>` ROTATE a ring; win = every `bghvgbtwcb` has a `goal` at (x+1, y+1) |
+| **ls20** | 1-4 | queued animations must drain before the next action registers |
+| **m0r0 / r11l / s5i5 / su15 / sk48 / tn36 / sb26 / sp80 / tr87 / tu93 / re86 / dc22 / wa30** | see the table `scripts/read_sample_games.py` prints | regenerate; each is one command |
+
+## What this says about the tools
+
+1. **A tool must know the budget.** It is on screen in at least four games (a counter, a shrinking
+   bar, a scrolling sprite). Reading it turns "explore then act" into "act within N".
+2. **A tool must handle SWALLOWED actions.** At least two games (g50t, ls20) ignore an action while
+   an animation drains. A searcher that records "this action did nothing" during an animation
+   learns a false transition — and this is precisely what produced the contradictory action->
+   direction readings that could not be resolved by probing.
+3. **Selection is a first-class mechanic.** ar25, cn04 and cd82 all have a SELECTED object that
+   actions apply to. None of the six current tools models one.
+4. **Undo exists** (ar25 ACTION7, dc22's `UndoState`), and a searcher that knows about undo can
+   explore a punishing board safely.
+
+## Related
+
+- [[rounds/r101_tool-development]] — the round this came out of, including the generic-tools card.
+- [[lessons/instrument_validity_20260825]] — the discipline this is an instance of: validate the
+  instrument before the hypothesis, and prefer the source of truth over a proxy for it.
