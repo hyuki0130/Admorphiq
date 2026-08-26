@@ -1611,3 +1611,52 @@ first where the misread was of CODE rather than of a number. The rule that has b
 since the morning — *print the raw value before a difference becomes a claim* — applies verbatim to
 source: **print the enclosing definition before attributing a line to a method.** One `awk` over
 thirty lines exposed it, after the conclusion had already been written up and reported.
+
+
+## What the kernel flow model does not know: HAZARDS (2026-08-26)
+
+Comparing the two flow models by what each can even represent:
+
+```
+src/admorphiq/kernels/motion.py               "hazard"  0 mentions
+src/admorphiq/hypothesis_select/propagate_flow.py       16
+src/admorphiq/adapters25/sp80.py                         2
+```
+
+`simulate_flow`'s docstring states its whole physics: fluid advances one cell in `fall_dir`; when
+the cell ahead is blocked it spreads to both perpendicular cells and continues; a target is
+satisfied on an interior hit. There is no third outcome — nothing in that model can END an attempt.
+
+R98's `ResponseTable` opens exactly that axis (`hazard: terminate_fatal | terminate_local |
+pass_through`), and R98 **CERTIFIED hazard-fatality on this very game**: two placements fill every
+sink, one advances and one fails, differing only in hazard contact.
+
+The adapter knows hazards exist and only ever mentions them to keep from masking one as HUD —
+*"the counter band shares its colour with the in-play hazard, so only the EDGE-pinned test
+distinguishes the HUD band from a hazard inside the play area"* (sp80.py:112-115). So it PERCEIVES
+hazards and cannot PLAN around them, because the simulator it plans with has no notion of one.
+
+**Measured on level 3**, wrapping the planners through a live run:
+
+```
+level 1 cleared at step   9   (1 planner call)
+level 2 cleared at step  25   (3 planner calls)
+level 3 conceded at step 139  (7 planner calls total)
+    plan_flow_coverage        -> None          (no single-piece covering placement)
+    plan_flow_coverage_multi  -> [(1,1),(1,1),(1,3)]   executed, committed, no advance
+    plan_flow_coverage_multi  -> [(1,1),(1,3),(1,3)]   executed, committed, no advance
+```
+
+So the multi-piece planner twice found a placement it believed covering, ran it, committed, and the
+engine refused to advance. That is the shape hazard-fatality predicts.
+
+⚠️ **Supported, NOT established.** A mis-simulated flow that simply fails to cover would look the
+same from here, because `plan_flow_coverage_multi` returns a move list and not the coverage it
+predicted. The measurement that would settle it is a comparison of the PREDICTED satisfied set
+against the spill the engine actually ran — the commit exposes the whole trajectory as frame layers,
+so it is available. Named as the next step rather than assumed.
+
+**If it holds, the cheap fix is not to relocate 3,738 lines.** It is to give the kernel simulator
+the one outcome it lacks: hazard cells that end an attempt, and a `plan_flow_coverage` that rejects
+placements whose flow contacts one. That is a bounded change to a kernel the adapter already
+imports, and it keeps one flow model rather than landing a second.
