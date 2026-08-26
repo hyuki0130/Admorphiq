@@ -1660,3 +1660,48 @@ so it is available. Named as the next step rather than assumed.
 the one outcome it lacks: hazard cells that end an attempt, and a `plan_flow_coverage` that rejects
 placements whose flow contacts one. That is a bounded change to a kernel the adapter already
 imports, and it keeps one flow model rather than landing a second.
+
+## The settling measurement ran, and it REFUTES the hazard hypothesis
+
+The previous entry proposed hazard-fatality as sp80 level 3's failure, labelled it *supported, NOT
+established*, and named the measurement that would settle it: the predicted satisfied set against
+the spill the engine actually ran. That measurement is now done, by capturing the adapter's own
+target regions and the commit's animation layers:
+
+```
+COMMIT at step 138: 27 layers, flow colour 6, 6 targets, 976 wetted cells, fall (-1, 0)
+   target 0  size 80   wetted  0   interior hit: no
+   target 1  size 80   wetted  0   interior hit: no
+   target 2  size 80   wetted  0   interior hit: no
+   target 3  size 64   wetted  0   interior hit: no
+   target 4  size 80   wetted 64   interior hit: YES
+   target 5  size 96   wetted  0   interior hit: no
+level 3 conceded at step 139
+```
+
+**One target of six, and five with ZERO wetted cells.** Hazard-fatality predicts full coverage that
+still fails; this is nothing like it. The planner believed the placement covering and the real flow
+reached one target — a propagation-fidelity failure, not a missing terminal condition. ⛔ The hazard
+reading is withdrawn for this level. (It remains what R98 certified about the FAMILY; it is simply
+not what breaks here.)
+
+A second candidate was raised and refuted in the same pass. The learned fall direction on level 3 is
+`(-1, 0)` — upward — and the adapter's own code warns that entering a deeper level while the previous
+level's winning spill is still animating fits the wrong direction. But per level:
+
+```
+level 1   fall (1, 0)    16 source cells
+level 2   fall (-1, 0)   16 source cells   <- CLEARS with the upward direction
+level 3   fall (-1, 0)   48 source cells
+```
+
+Level 2 wins with `(-1, 0)`, so upward is not itself the error.
+
+What the same numbers DO show is that level 3 is a different size of problem: **48 source cells
+against 16, and six targets.** Three times the source, and the multi-piece planner returned exactly
+three moves. Whatever the propagation error is, it appears where one spill has to serve six targets
+rather than one or two.
+
+⚠️ Root cause NOT yet named, and deliberately not guessed at. What is established: the failure is in
+how the flow propagates, the board is 3x the source of the levels that work, and neither hazards nor
+a stale fall direction explains it.
