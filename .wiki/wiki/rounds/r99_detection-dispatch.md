@@ -2551,3 +2551,43 @@ itself be worth knowing before any effort goes into a general fix.
 still patched for `NOGIVEUP` (24 of 25 done). The sweep uses `build_chained()` and would not have
 touched the patched constants — but running a fresh measurement on a knowingly contaminated tree is
 how the contamination stops being tracked.
+
+## What level 2 adds: MORE NOUNS, not new verbs
+
+The sweep over the eleven level-2 wallers finished. Nine reached level 2 (m0r0 and tu93 need 5,269
+and 695 actions for level 1 and ran past the probe's step cap — a limit of the probe, not a finding):
+
+```
+game    regions L1->L2    colours L1->L2    scale    controls
+ft09       64 -> 28          6 -> 4         2 -> 2     same
+lf52       58 -> 58          5 -> 7         1 -> 1     same
+lp85       37 -> 74         10 -> 10        1 -> 1     same
+ls20       18 -> 23          8 -> 8         1 -> 1     same
+r11l       37 -> 63          6 -> 8         1 -> 1     same
+s5i5       27 -> 40          6 -> 9         1 -> 1     same
+sp80        7 -> 11          6 -> 8         4 -> 4     same
+tn36       47 -> 84          5 -> 7         1 -> 1     same
+wa30       11 -> 17          6 -> 7         1 -> 1     same
+
+more regions at level 2:  7 of 9
+more colours at level 2:  6 of 9
+action set changed:       0 of 9
+render scale changed:     0 of 9
+```
+
+**The controls and the rendering are stable; the board gains entities.** Level 2 does not teach a new
+verb or change how the board is drawn — it puts more things on it, usually including a kind that was
+not there before (lf52 5→7 colours, r11l 6→8, s5i5 6→9, sp80 6→8, tn36 5→7).
+
+⚠️ **ft09 is a clean exception** — 64 regions down to 28, 6 colours down to 4 — so this is a tendency,
+not a law, and any fix built on it has to not assume it.
+
+That reframes the wall usefully. It is not a control-discovery problem: the agent already knows the
+verbs at level 1 and they do not change. It is that the same verbs over MORE entities produce a state
+space the agent cannot plan through — which is consistent with everything measured today, because
+more search does not help (`NOGIVEUP`, 0 of 23) and the agent is already near-human where it succeeds.
+
+⚠️ Recorded as a characterisation, not a cause. "More entities defeat the planner" is the natural
+reading and it is not yet tested; the test is whether the wall level's state space is actually larger
+in a way the planner's representation blows up on, which needs the planner instrumented rather than
+the board described.
