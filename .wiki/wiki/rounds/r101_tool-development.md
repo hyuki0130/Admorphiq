@@ -995,3 +995,48 @@ level 2, and (b) is the harness stopping it before the tool does.
 corrected by opening the per-item breakdown — the first was reading a 5.6x card gain as progress
 when the hidden score had not moved. **Before a number becomes a direction, look at the breakdown
 that would refute it.**
+
+
+## Where the day ended: 0.5241 on the generic tools alone
+
+```
+                       morning    now
+generic tools only      0.0200    0.5241      26x
+games clearing a level     9/25     25/25
+conquered outright            0        10
+cumulative regressions        —         0
+deployed card (13 adapters)          0.3162   <- the generic path is now 1.66x past it
+```
+
+Conquered: **ar25 · sb26 · tr87 · cd82 · cn04 · r11l · tu93 · vc33 · tn36** (+ ft09 partial).
+
+**Why the comparison with the card matters.** The card's 0.3162 comes from thirteen hand-written
+per-game adapters, and the transfer failure is already measured: the card rose 5.6x while the
+hidden score went 0.20 -> 0.18, because a private game carrying none of those thirteen mechanics
+gets the generic fallback. The 0.5241 is that fallback. It transfers by construction — each tool
+RECOVERS a rule from frames rather than recognising a game.
+
+**tn36 is the sharpest single result.** It ENDS after about three wrong submissions, so brute force
+is impossible in principle; `progbits` clears every level in 111 actions, which means the five bits
+are being DERIVED from the board.
+
+## The shape of what is left
+
+Every remaining game has the same profile — fast on level 1, stopped by depth:
+
+| game | score | levels | L1 actions | human |
+|---|---|---|---|---|
+| s5i5 | 0.028 | 1 | 13 | 20 |
+| lf52 | 0.055 | 2 | 8 | 32 |
+| g50t | 0.107 | 2 | 52 | 78 |
+| bp35 | 0.133 | 3 | 15 | 21 |
+| m0r0 | 0.143 | 2 | 19 | 30 |
+| sk48 | 0.167 | 3 | 14 | **61** |
+| sc25 | 0.244 | 3 | 18 | 36 |
+| re86 | 0.269 | 4 | 25 | 26 |
+
+⛔ **And every number on this page is the LLM-FREE fallback.** The deployed path asks a model to
+name a tool, and exercising it for the first time today found that the model's menu AND its ranking
+were both hardcoded to eight literal names — the tools built today were unnameable. Both are fixed;
+the LLM path's 25-game score is still UNMEASURED and needs a GPU. See
+[[../lessons/harness_owns_the_routing_20260827]].
