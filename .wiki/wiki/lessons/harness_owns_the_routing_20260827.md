@@ -76,6 +76,36 @@ full 25, generic tools alone, frozen snapshot, registry unchanged
 no game regressed
 ```
 
+## The three ways a probe and the harness disagree
+
+By the end of the round all three had been measured, and they need different fixes:
+
+| # | symptom | cause | who can see it |
+|---|---|---|---|
+| 1 | the tool never acts | it bids too LOW on its own board (0.35 lost every comparison) | the integrator, from a full-25 run |
+| 2 | it clears level 1 and then stops | the harness took the board on the level-up | the integrator, by tracing which tool acted |
+| 3 | **it holds every step and still clears less** | **the harness's execution contract differs from the probe's** | only a trace of the real loop |
+
+Type 3 measured on m0r0: the tool's own probe cleared **4 levels in 148 actions**; the harness gave
+it **all 500 steps** and it cleared **2**. Not a routing loss — it owned every turn and did worse
+with three times the actions.
+
+Where that difference lives, in the order worth checking:
+
+* **`reset()` on level-up.** The harness resets every registered tool at a level transition. A tool
+  that learned its controls on level 1 loses them and re-probes from scratch on every level — which
+  costs actions AND depth at once, exactly the pair of symptoms seen.
+* **What `observe()` receives.** The harness feeds transitions only to the tool that chose the
+  action, and it feeds a BOARD-level changed flag with edge chrome excluded — not a raw frame diff.
+  A tool that learns from something the harness never hands it plans on a different model.
+* **One step per turn.** `propose` is re-entered after every action, so a plan that assumes it runs
+  uninterrupted can be undone by replanning.
+
+⛔ **A tool must be built against the HARNESS's contract, not its probe's.** The probe is a
+convenience for its author; the harness is what is scored. An author looking only at their own
+probe cannot see type 3 at all, so the integrator has to trace the real loop for every tool whose
+probe and harness numbers disagree.
+
 ## Prevention
 
 - When a tool's standalone probe and its harness score disagree, suspect the ROUTING first. A
