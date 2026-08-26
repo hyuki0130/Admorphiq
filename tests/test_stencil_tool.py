@@ -174,3 +174,37 @@ def test_a_real_response_survives_the_counter_filter() -> None:
     hud = _hud_cells(raw, probes=6, size=64)
     assert (63, 63) in hud
     assert (30, 30) not in hud
+
+
+def test_shared_grammar_peels_a_container() -> None:
+    """Purpose: pin the shared segmentation layer directly, not through a tool.
+
+    Passing means a frame whose tiles are enclosed by a border comes back as separate tiles
+    flagged as framed. Failing means every tool built on it sees one blob — and the reason this
+    layer exists is that each tool used to answer this question for itself, with a heuristic
+    tuned on one board.
+    """
+    from admorphiq.tools.segment import square_regions
+
+    regions = square_regions(_scene())
+    assert len(regions) == 18
+    assert sum(1 for r in regions.values() if r["framed"]) == 9
+
+
+def test_shared_grammar_ignores_edge_chrome_in_board_changed() -> None:
+    """Purpose: pin that an edge-pinned counter is not a board change.
+
+    Passing means a frame differing only in its outer band reads as unchanged. Failing means an
+    inert-action detector counts every action as effective — measured on a board that is 94%
+    inert and reported zero inert action classes.
+    """
+    import numpy as np
+
+    from admorphiq.tools.segment import board_changed
+
+    a = np.zeros((64, 64), dtype=int)
+    b = a.copy()
+    b[0, 10] = 7
+    assert board_changed(a, b) is False
+    b[30, 30] = 7
+    assert board_changed(a, b) is True

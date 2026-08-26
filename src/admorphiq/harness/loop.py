@@ -71,22 +71,7 @@ _DECIDE_SYS = (
 )
 
 
-def _board_changed(prev: np.ndarray, cur: np.ndarray, margin_div: int = 16) -> bool:
-    """Did the BOARD change, ignoring an edge-pinned counter or timer?
-
-    A frequency test cannot see these: a bar that shrinks or a counter that marches touches each
-    cell once, so no cell reaches a "changes under most actions" threshold. Position is what
-    identifies them — they sit pinned to the frame edge — so only changes strictly inside the
-    outer band count. The band is deliberately tiny (`size // 16`), the same reasoning the flow
-    grounding records after an earlier version there excused real board content as overlay.
-    """
-    diff = prev != cur
-    if not diff.any():
-        return False
-    h, w = diff.shape
-    margin = max(1, min(h, w) // margin_div)
-    inner = diff[margin:h - margin, margin:w - margin]
-    return bool(inner.any())
+from admorphiq.tools.segment import board_changed as _segment_board_changed  # noqa: E402
 
 
 class UnifiedAgent:
@@ -490,7 +475,7 @@ class UnifiedAgent:
             # 2026-08-27: one such tool had accumulated ZERO counters after 400 steps because it
             # is never the active tool, and nothing in the repository called its pruning API
             # either. The rule above is right for stateful tools and wrong for these.
-            board_changed = _board_changed(self._prev_frame, frame)
+            board_changed = _segment_board_changed(self._prev_frame, frame)
             for name, tool in self.tools.items():
                 if name in fed or not getattr(tool, "augmenter", False):
                     continue

@@ -33,6 +33,9 @@ from typing import Any
 import numpy as np
 
 from admorphiq.tools.base import Step, frame_2d, has_frame, levels_completed
+from admorphiq.tools.segment import (
+    square_regions,
+)
 
 __all__ = ["StencilTool", "tiles", "all_tiles", "read_code", "plan"]
 
@@ -40,81 +43,14 @@ Grid = Any
 Cell = tuple[int, int]
 
 
-def _components(g: Grid, blocked: set[int]) -> list[list[Cell]]:
-    n = len(g)
-    seen = [[False] * n for _ in range(n)]
-    out: list[list[Cell]] = []
-    for y in range(n):
-        for x in range(n):
-            if int(g[y][x]) in blocked or seen[y][x]:
-                continue
-            stack = [(y, x)]
-            seen[y][x] = True
-            cells: list[Cell] = []
-            while stack:
-                cy, cx = stack.pop()
-                cells.append((cy, cx))
-                for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1)):
-                    ny, nx = cy + dy, cx + dx
-                    if 0 <= ny < n and 0 <= nx < n and not seen[ny][nx] and int(g[ny][nx]) not in blocked:
-                        seen[ny][nx] = True
-                        stack.append((ny, nx))
-            out.append(cells)
-    return out
-
-
-def _peel(g: Grid, comps: list[list[Cell]], blocked: set[int]) -> list[tuple[list[Cell], bool]]:
-    """A component far larger than its siblings is a CONTAINER; drop its colour and re-split.
-
-    The flag says whether a piece came out of a container, and that is not bookkeeping: a game
-    that frames one panel is saying which panel is live, and on ft09 a click on a dead panel is
-    an out-of-board click, which resets the level.
-    """
-    if len(comps) < 2:
-        return [(c, False) for c in comps]
-    sizes = sorted(len(c) for c in comps)
-    typical = sizes[len(sizes) // 2]
-    out: list[tuple[list[Cell], bool]] = []
-    for c in comps:
-        if len(c) <= 4 * typical:
-            out.append((c, False))
-            continue
-        wall = Counter(int(g[y][x]) for y, x in c).most_common(1)[0][0]
-        inner = {(y, x) for y, x in c}
-        masked = [
-            [int(g[y][x]) if (y, x) in inner and int(g[y][x]) != wall else -1 for x in range(len(g))]
-            for y in range(len(g))
-        ]
-        sub = _components(masked, blocked | {-1, wall})
-        out.extend([(s, True) for s in sub] if sub else [(c, False)])
-    return out
-
-
-def _square_blocks(g: Grid) -> dict[Cell, dict[str, Any]]:
-    bg = Counter(int(v) for row in g for v in row).most_common(1)[0][0]
-    found: dict[Cell, dict[str, Any]] = {}
-    for c, framed in _peel(g, _components(g, {bg}), {bg}):
-        y0 = min(q[0] for q in c)
-        x0 = min(q[1] for q in c)
-        h = max(q[0] for q in c) - y0 + 1
-        w = max(q[1] for q in c) - x0 + 1
-        if h != w or h < 4 or len(c) != h * w:
-            continue
-        found[(y0, x0)] = {"size": h, "colours": {int(g[y][x]) for y, x in c}, "framed": framed}
-    if not found:
-        return {}
-    side = Counter(t["size"] for t in found.values()).most_common(1)[0][0]
-    return {o: t for o, t in found.items() if t["size"] == side}
-
-
 def all_tiles(g: Grid) -> dict[Cell, dict[str, Any]]:
     """Every equal tile on screen — the worked examples live in the panels that are not live."""
-    return _square_blocks(g)
+    return square_regions(g)
 
 
 def tiles(g: Grid) -> dict[Cell, dict[str, Any]]:
     """Only the tiles of the LIVE board, when the game frames one."""
-    kept = _square_blocks(g)
+    kept = square_regions(g)
     live = {o: t for o, t in kept.items() if t["framed"]}
     return live or kept
 

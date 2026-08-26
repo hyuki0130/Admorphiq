@@ -23,30 +23,11 @@ from typing import Any
 import numpy as np
 
 from admorphiq.tools.base import Step, frame_2d, has_frame
+from admorphiq.tools.segment import candidate_pitches, modal_pitch, uniform_blocks
 
 __all__ = ["TrackAlignTool", "tiles_of", "loop_order"]
 
 Cell = tuple[int, int]
-
-
-def _uniform_blocks(g: Any, side: int) -> dict[Cell, int]:
-    """Top-left corners of every `side`x`side` block that is one flat colour."""
-    n = len(g)
-    bg = Counter(int(v) for row in g for v in row).most_common(2)
-    ignore = {c for c, _ in bg}
-    found: dict[Cell, int] = {}
-    for y in range(n - side + 1):
-        for x in range(n - side + 1):
-            first = int(g[y][x])
-            if first in ignore:
-                continue
-            if all(int(g[y + i][x + j]) == first for i in range(side) for j in range(side)):
-                found[(y, x)] = first
-    corners: dict[Cell, int] = {}
-    for (y, x) in sorted(found):
-        if not any((y - dy, x - dx) in found for dy in range(side) for dx in range(side) if dy or dx):
-            corners[(y, x)] = found[(y, x)]
-    return corners
 
 
 def loops(origins: list[Cell], pitch: int) -> list[list[Cell]]:
@@ -114,11 +95,8 @@ def loop_order(origins: list[Cell], pitch: int) -> list[Cell] | None:
 
 
 def _pitch(origins: list[Cell], side: int) -> int:
-    gaps: list[int] = []
-    for axis in (0, 1):
-        vals = sorted({o[axis] for o in origins})
-        gaps += [b - a for a, b in zip(vals, vals[1:]) if b - a >= side]
-    return Counter(gaps).most_common(1)[0][0] if gaps else 0
+    """The lattice step, from the shared grammar."""
+    return modal_pitch(origins, side)
 
 
 def tiles_of(g: Any) -> tuple[dict[Cell, int], int]:
@@ -131,7 +109,7 @@ def tiles_of(g: Any) -> tuple[dict[Cell, int], int]:
     """
     best: tuple[int, dict[Cell, int], int] = (0, {}, 0)
     for side in (6, 5, 4, 3, 2):
-        blocks = _uniform_blocks(g, side)
+        blocks = uniform_blocks(g, side)
         if len(blocks) < 6:
             continue
         for pitch in _candidate_pitches(list(blocks), side):
@@ -143,28 +121,17 @@ def tiles_of(g: Any) -> tuple[dict[Cell, int], int]:
 
 
 def _candidate_pitches(origins: list[Cell], side: int) -> list[int]:
-    """Every gap the tiles actually exhibit, commonest first.
+    """Observed spacings AND their multiples.
 
-    ⛔ Not just the modal gap. Measured: a board with three concentric rings has its tiles at one
-    spacing along each ring and a different one between rings, and taking the single commonest
-    gap found no loop at all where the right gap finds two.
+    ⛔ Multiples matter: on a board whose rings sit one tile apart, adjacency at the base gap
+    links the rings to each other, every interior tile then has more than two neighbours, and the
+    degree peel deletes the whole track.
     """
-    gaps: Counter[int] = Counter()
-    for axis in (0, 1):
-        vals = sorted({o[axis] for o in origins})
-        for a, b in zip(vals, vals[1:]):
-            if b - a >= side:
-                gaps[b - a] += 1
-    base = [g for g, _ in gaps.most_common(4)]
-    # ⛔ Multiples too. Measured on a three-ring board whose rings sit one tile apart: adjacency
-    # at the base gap links the rings to each other, every interior tile then has more than two
-    # neighbours and the peel deletes the whole track. The ring's own spacing is a MULTIPLE of
-    # the gap between rings, so the multiples have to be candidates.
     out: list[int] = []
-    for g in base:
+    for gap in candidate_pitches(origins, side, limit=4):
         for k in (1, 2, 3):
-            if g * k not in out:
-                out.append(g * k)
+            if gap * k not in out:
+                out.append(gap * k)
     return out
 
 
