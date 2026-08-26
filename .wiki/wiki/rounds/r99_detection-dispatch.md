@@ -358,6 +358,32 @@ truncated run, and this comparison cannot tell them apart.
 controlled result. Checking `git log` on the fallback path took one command; asserting the
 comparison would have cost the round its main conclusion.
 
+### WHY the fallback changed: research and deployment share the harness
+
+The five commits are all agent25 RESEARCH — measuring whether an offline model can pick tools and
+write solver code:
+
+```
+f238417  R92   agent25 Kaggle bench — vLLM backend + matched OFF/ON kernel-bridge arms
+683a210  R92   expose observed transitions + transition kernels to the code sandbox
+d5466e6  R92   native tool-calling agent25 — select_strategy -> write_solver_code
+ea3bf21  R93   executable solver cores (toggle/paint) + click-xy transition FIX
+d94de32  R93   gpt-oss A/B re-test with the reasoning channel ON
+```
+
+⛔ **None of them was aimed at the card, and every one of them shipped in it.** The harness the
+research extends is the chain's SECOND MEMBER, so `UnifiedAgent` changes ride into the deployed
+fallback with no measurement of what they do there. `ea3bf21` in particular carries a *click-xy
+transition fix*, which touches how actions are played.
+
+That is the structural finding, and it is larger than this round: **the research axis and the
+deployment axis share code, and nothing measures what a research change does to the card.** The
+card drifted between v3 and now WITHOUT INTENT, which is exactly why 0.20 → 0.18 cannot be read.
+
+⚠️ Not a claim that the harness changes CAUSED the drop — that is one of the three confounded
+explanations and remains unseparated. The claim is that they were never measured against the card
+at all, so their contribution is unknown in both direction and size.
+
 ## How the submission will be read — fixed BEFORE the score arrives (2026-08-26)
 
 Submission `55774529` is pending. The reading is fixed now, the way R98 fixed its model-stage
