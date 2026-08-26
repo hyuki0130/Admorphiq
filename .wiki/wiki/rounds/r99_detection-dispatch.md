@@ -409,6 +409,31 @@ receives the seven games that score zero, and code changes inside a zero stay ze
 the harness carries games it never carries here. But nothing in this data lets the harness explain
 the −0.02.
 
+### Evidence for the truncation explanation: our card spends 61% MORE actions
+
+Both runs at the same 100,000 budget, so the totals are comparable:
+
+```
+                chained (the v3 lineage)    detect (ours)
+total                     42,943                69,250     +61%
+
+cn04                           0    ->         56,048      +56,048
+re86                          64    ->            588
+ls20                          23    ->            377
+```
+
+⚠️ **cn04 is not a ported game**, so the extra is not the adapters playing longer. It is one of
+the seven the harness receives, and under dispatch the run reaches it having already spent the
+shared probe — enough to send the harness down a different path.
+
+If the card spends 61% more actions on the public 25, it plausibly spends more on the hidden 110
+too, and finishes FEWER games inside the same wall clock. That is the truncation explanation, and
+this is the first evidence for it.
+
+⛔ Held loosely: **one game is 95% of the increase.** Whether hidden games behave like cn04 is
+unknown, and a single outlier is a thin basis for a 61% claim. The submission now running at
+budget 4,000 tests it directly — truncation cannot happen there.
+
 ## How the submission will be read — fixed BEFORE the score arrives (2026-08-26)
 
 Submission `55774529` is pending. The reading is fixed now, the way R98 fixed its model-stage
