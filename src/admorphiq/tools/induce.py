@@ -55,7 +55,7 @@ def discover_lattice(
     ``live`` is empty when the budget runs out with no response, which is itself informative — a
     board with no responding cell is not this class.
     """
-    live: dict[Cell, list[Cell]] = {}
+    raw: dict[Cell, list[Cell]] = {}
     probes = 0
     stride = coarse
     while stride >= 1 and probes < budget:
@@ -67,11 +67,64 @@ def discover_lattice(
                 probes += 1
                 delta = changed_cells(before, after)
                 if delta:
-                    live[(y, x)] = delta
-        if live:
+                    raw[(y, x)] = delta
+        if raw:
             break
         stride //= 2
-    return {"live": live, "stride": _infer_pitch(sorted(live)), "probes": probes}
+
+    hud = _hud_cells(raw, probes, size)
+    live = {
+        cell: [c for c in delta if c not in hud]
+        for cell, delta in raw.items()
+    }
+    live = {cell: delta for cell, delta in live.items() if delta}
+    return {
+        "live": live,
+        "stride": _infer_pitch(sorted(live)),
+        "probes": probes,
+        "hud_cells": len(hud),
+    }
+
+
+def _hud_cells(raw: dict[Cell, list[Cell]], probes: int, size: int = 64) -> set[Cell]:
+    """Cells a probe changes because a COUNTER advanced, not because the board responded.
+
+    ⛔ Two shapes, and the obvious filter only catches one. A cell changing under nearly every
+    probe is a timer — that test is here and it is worth keeping. But MEASURED on cd82: 40 of its
+    64 probes each changed exactly ONE cell, and all forty were DIFFERENT cells, marching right to
+    left along row 63. A progress bar filling one step per action never repeats a cell, so a
+    frequency test scores it 0 and it survives as forty "responders". cd82's real response count
+    is TWO (footprints 94 and 95), not forty-two.
+
+    So the second test is positional: single-cell changes confined to an edge-pinned band, in
+    aggregate across probes, are the counter. `size // 16` keeps the band to the outermost few
+    rows or columns — the same "edge-pinned, deliberately TINY" reasoning sp80's own HUD test
+    records, after an earlier version there excused real board content as overlay.
+
+    The filter never empties a board: `ka59` answers with a single cell and nothing else, and that
+    is a genuine one-cell rule.
+    """
+    if probes < 5 or not raw:
+        return set()
+    counts: dict[Cell, int] = {}
+    for delta in raw.values():
+        for c in set(delta):
+            counts[c] = counts.get(c, 0) + 1
+    hud = {c for c, n in counts.items() if n >= 0.8 * len(raw)}
+
+    margin = max(1, size // 16)
+    edge_singletons = {
+        delta[0]
+        for delta in raw.values()
+        if len(delta) == 1
+        and (delta[0][0] < margin or delta[0][0] >= size - margin
+             or delta[0][1] < margin or delta[0][1] >= size - margin)
+    }
+    if len(edge_singletons) >= 3:
+        hud |= edge_singletons
+
+    survivors = {cell for cell, d in raw.items() if any(c not in hud for c in d)}
+    return hud if survivors else set()
 
 
 def _infer_pitch(cells: list[Cell]) -> int | None:

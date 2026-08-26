@@ -218,3 +218,52 @@ operators — that is the next change, and it must be measured rather than assum
 finding about them, not a tool failure: their click does something other than act on a lattice —
 selection-then-commit, most likely. They are not class D on this evidence, whatever the grouping said,
 and the classification owes them a re-read.
+
+## The HUD filter, and why the obvious version could not work
+
+The recurring `1` in the footprint lists was hypothesised to be a HUD counter. A frequency filter —
+cells changing under 80% of probes — found **zero** on cd82, ft09 and ka59, so the hypothesis looked
+wrong. Measuring what those single-cell changes actually are:
+
+```
+cd82: 40 probes changed exactly ONE cell, 2 changed many
+  (4,4)  -> (63,63)     (4,20) -> (63,62)     (4,28) -> (63,61)     (12,4) -> (63,58)
+  distinct cells among the forty: 40
+```
+
+**It is a progress bar filling one step per action**, marching right to left along row 63. It never
+repeats a cell, so a frequency test scores it zero and it survives as forty "responders". The filter
+had to be POSITIONAL: single-cell changes confined to an edge-pinned band, in aggregate.
+
+⛔ The margin is `size // 16` — deliberately tiny, for the reason sp80's own HUD test records after an
+earlier version there excused real board content as overlay. And the filter never empties a board,
+because `ka59` answers with one cell and nothing else and that is a genuine one-cell rule.
+
+**Re-measured on all 25, the picture changes substantially:**
+
+```
+game   responders before -> after   footprint            hud removed
+cd82        42 -> 2                 [94, 95]                  40
+dc22        33 -> 2                 [49, 129]                 31
+cn04        29 -> 4                 [135, 136]                25
+bp35        64 -> 8                 [17, 26, 27, 47]          56
+lf52        64 -> 9                 [9, 21, 25, 57]           55
+tn36        61 -> 5                 [4, 70]                   56
+lp85         2 -> 2                 [293] -> [5]             288
+vc33        50 -> 14                [2]  now UNIFORM          36
+s5i5        50 -> 16                [2, 11]                   34
+r11l        60 -> 50                [2, 53, 62, 66]           10
+ft09         8 -> 8                 [38] uniform               0   untouched
+ka59        41 -> 41                [1]  uniform               0   real rule preserved
+m0r0        27 -> 27                [2]  uniform               0
+```
+
+**Most "responders" were the counter.** cd82's real response count is 2 of 64, dc22's is 2, cn04's is
+4 — the tool had been reporting a progress bar as forty discoveries. And `lp85`'s footprint was 293
+cells of which **288 were HUD**; its real effect is five.
+
+**Uniform operators are now four** — ft09 [38], ka59 [1], m0r0 [2], and vc33 [2], which only became
+uniform once its 36 HUD cells were removed.
+
+⚠️ `ar25` and `sk48` still answer nothing in 150 probes. That stands as a finding about those two
+games rather than about the filter.

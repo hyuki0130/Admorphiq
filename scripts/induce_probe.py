@@ -51,7 +51,7 @@ def main() -> int:
     sig = footprint_signature(out["live"])
     print(f"{game:6s} probes={out['probes']:3d} responders={sig['responders']:3d} "
           f"pitch={out['stride']} uniform={sig['uniform']} "
-          f"footprints={sig['footprint_sizes'][:4]}")
+          f"footprints={sig['footprint_sizes'][:4]} hud={out.get('hud_cells', 0)}")
     return 0
 
 
