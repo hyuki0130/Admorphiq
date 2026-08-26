@@ -170,6 +170,12 @@ before the full-25 run revealed the change was a net loss.
    game and steals another's turn is a loss. A tool is kept only when no game regressed.
 5. **RECORD** the outcome in the round page and pull every artefact back off the box (rule 2).
 
+⛔ **While agents are running, NEVER `git add -A`.** Commit explicit paths only. Measured
+2026-08-27: a docs commit about one game swept in 393 lines of an agent's in-progress tool and its
+driver, under a message that mentions neither. The agents are writing into the same working tree,
+so a blanket add is a commit of other people's half-finished work — and if one of them is mid-edit,
+of broken code under a green-looking message.
+
 **Why integration stays central**: selectivity is a property of the TOOL SET, not of any one tool.
 No agent can see the cost its `detect` imposes on the other twenty-four games, so no agent may
 decide whether its own work is kept.
