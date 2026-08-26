@@ -198,8 +198,17 @@ class UnifiedAgent:
 
     def _signature_default(self, sig: Signature) -> str:
         """Highest-detect tool for the signature that has NOT failed this level.
-        Falls back to the global best only if every tool has been retired."""
-        best, best_name = -1.0, None
+
+        ⛔ A bid of 0.0 must NOT win. This started at -1.0, so `0.0 > best` was true and a board
+        that NO tool claimed went to whichever tool happened to be FIRST in registration order —
+        which meant every tool added silently re-assigned games none of them bid on. Found by the
+        author of a tool that measured 0 bids across 9,600 frames of foreign games and still saw
+        one of them change hands when it was registered.
+
+        With nobody claiming the board, the general searcher is the deliberate default; falling
+        back to "first in the dict" is not a decision, it is an accident of ordering.
+        """
+        best, best_name = 0.0, None
         for name, t in self.tools.items():
             if name in self._failed:
                 continue
@@ -211,7 +220,10 @@ class UnifiedAgent:
                 best, best_name = c, name
         if best_name is not None:
             return best_name
-        return next(iter(self.tools))  # all retired — reuse the first as last resort
+        for fallback in ("graph", "world_model"):
+            if fallback in self.tools and fallback not in self._failed:
+                return fallback
+        return next(iter(self.tools))  # everything retired — reuse the first as last resort
 
     # -- refill ---------------------------------------------------------------
 
