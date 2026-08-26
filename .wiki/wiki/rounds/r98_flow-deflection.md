@@ -9849,3 +9849,33 @@ answer, not a general one.
 captures, where idx0's grounded target cells carry the BACKGROUND colour (`{12: 5}` against background
 12) and a background-excluding shape test cannot see them. Same script, same corpus of `sinks`, right
 colours — 12/20 becomes 20/20.
+
+## ⛔ Correction: the shortlist fallback covered the wrong branch, and a fully static board is impossible
+
+Two corrections to the entry above, both found by reading the code after writing the claim.
+
+**1. `sink_candidates()` returns UNKNOWN in THREE places, and the fallback covered one.** The other
+two sit AFTER the spill-fed sources have run: `if not groups` and `if not split`. That is the idx1
+case this page records as *"the sink shortlist comes back empty"* — a spill DID run, satisfied no
+target and was obstructed by nothing recognisable, so `self._animations` is non-empty and the
+no-animation branch is never reached. The commit claiming the change addressed that burden was wrong
+about its own mechanism. All three paths now fall back to shape, and the four gates re-run clean:
+oracle 3/3, grounding PASS, mutant table PASS, walk 3/3 at 107 actions +0.
+
+**2. A fully pre-spill board is not achievable, and should not be.** `board()` needs five grounded
+inputs, and reading each one's guard:
+
+```
+sinks              needs animations  -> now falls back to shape
+emitters           needs animations
+barriers           needs animations
+initial_direction  needs animations
+emergences         needs animations
+pieces             does NOT
+```
+
+Four of the five are properties OF THE FLOW — a direction and an emitter set cannot be known without
+watching something flow. So the family's discovery necessarily includes one sacrificial spill, which
+this page already prices at **1 action** (*"ONE commit exposes the whole spill as 20 frame layers"*).
+The static shortlist does not remove that spill; it makes the shortlist survive a spill that
+**teaches nothing about targets**, which is the case that actually blocked idx1.

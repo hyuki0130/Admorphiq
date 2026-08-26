@@ -1523,7 +1523,11 @@ class FlowGrounding:
             if not any(g & known for known in groups):
                 groups.append(g)
         if not groups:
-            return UNKNOWN
+            # A spill RAN and named nothing — it satisfied no target and was obstructed by
+            # nothing recognisable. That is the idx1 case the round page records as "the
+            # sink shortlist comes back empty", and it is NOT the no-animation case, so the
+            # pre-spill fallback above never reaches it. Shape can still answer here.
+            return self._static_sink_candidates()
         split: list[frozenset[Cell]] = []
         for group in groups:
             for part in self._by_mouth(group):
@@ -1540,7 +1544,7 @@ class FlowGrounding:
                 if part not in split:
                     split.append(part)
         if not split:
-            return UNKNOWN
+            return self._static_sink_candidates()
         return Grounded(
             tuple((f"sink_{i}", tuple(sorted(g))) for i, g in enumerate(sorted(split, key=min))),
             "high",
