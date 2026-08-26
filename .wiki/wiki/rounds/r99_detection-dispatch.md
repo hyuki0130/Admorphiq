@@ -2492,3 +2492,33 @@ Two things follow:
 So the general-agent question is sharp: **what is different about the level where each game walls?**
 Not "how do we search deeper" — the search is not the bottleneck, and 8,000 actions of it prove that
 sixteen times over.
+
+## Where the wall stands: the generic agent handles a game's FIRST PRESENTATION and fails its FIRST VARIATION
+
+```
+walls at level 1:   8 games   bp35 cn04 dc22 g50t ka59 sc25 sk48 tr87
+walls at level 2:  11 games   ft09 lf52 lp85 ls20 m0r0 r11l s5i5 sp80 tn36 tu93 wa30   <- the mode
+walls at level 3:   4 games   ar25 re86 sb26 vc33
+walls at level 4:   1 game    su15
+never walls:        1 game    cd82
+```
+
+**Nineteen of twenty-five wall at level 1 or 2.** The agent gets past the introductory level on 17
+games and past the SECOND on only 6. That is a sharper statement than "it is shallow": it handles a
+game's first presentation — usually the simplest instance, often a tutorial — and fails as soon as
+the game varies it.
+
+That fits everything else measured today. `NOGIVEUP` says patience buys nothing; the per-level
+breakdown says the agent clears what it can at human speed and then burns 8,000 actions; and cd82,
+the one game with no wall, is the one whose mechanic the generic agent can express — so it takes all
+six levels in 108 actions with no special code.
+
+**The concrete target this names**: the eleven games walling at level 2. Each currently scores
+`1/(1+2+...+n)` of its ceiling — ls20 0.0327, wa30 0.0222, s5i5 0.0278 — and reaching level 2 roughly
+triples each. The card gain is small; the point is that it is GENERIC, so unlike a fourteenth adapter
+it would apply to whatever the private 110 present.
+
+⚠️ Not yet measured, and the next question rather than a claim: **what is it about level 2 that the
+agent cannot express?** Eleven games is a big enough sample to look for one shared answer rather than
+eleven separate ones — and if there is no shared answer, that is itself worth knowing before any
+effort is spent.
