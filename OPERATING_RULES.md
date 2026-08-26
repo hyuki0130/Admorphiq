@@ -10,8 +10,15 @@ The box has 64. Saturating them locks out SSH; leave 4 for the shell. **The cap 
 approach cautiously — it is a ceiling to work up against.** An idle measurement box is wasted time,
 and this has been said on 2026-08-26 morning, again that afternoon, and again that evening.
 
-Clamped in `scripts/rounds/R99CARD/run.sh` and every runner copied from it. For ad-hoc sweeps use
-`xargs -P 55`. Verify with `uptime` after launch: load in the 40s is right, and SSH must still answer.
+⛔ **THE CAP IS LOAD AVERAGE, NOT JOB COUNT — and I got this wrong within an hour of writing it.**
+`xargs -P 55` bounds concurrent JOBS. Each job here is `uv run python ...`, which is a wrapper plus a
+python process, so 55 slots produced 80 python processes and a load average of **60.97 — over the
+cap**. The rule as first written said "use `xargs -P 55`", which is exactly what overshot.
+
+Clamped in `scripts/rounds/R99CARD/run.sh` and every runner copied from it. For ad-hoc sweeps start at
+**`-P 30`** and MEASURE: `uptime` a minute after launch, then again — the 1-minute average lags, so a
+reading of 40 while jobs are still starting means it is heading past 60. Raise only if the settled
+load sits well under 60. SSH answering is necessary but not sufficient: it answered fine at 60.97.
 
 ⛔ Never run a full-25 serially on the Mac. It choked the machine and killed a runner at 17 of 25.
 
