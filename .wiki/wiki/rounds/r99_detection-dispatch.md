@@ -2130,3 +2130,29 @@ Three things follow, all of them useful:
 
 ⚠️ This is what the parallel box is for: 25 games, one wall-clock, a clean negative that would have
 taken hours serially and was worth having before another day was spent on budget-shaped ideas.
+
+## Three axes in parallel, and the one question DEPTH30 could not answer
+
+The 30,000-action run showed no game gains a level — but it could not show whether MORE actions
+would help, because every game stops at its own `_GIVEUP_DEFAULT` long before the ceiling. That
+distinction was only ever tested on one game (re86, which did not improve at 30,000 with its give-up
+raised). Running on ceph-build with the 60-core cap, three axes now run at once:
+
+| round | agent | budget | question |
+| --- | --- | --- | --- |
+| `DEPTH30` | `kaggle_detect` | 30,000 | is depth budget-reachable? — **done, no** |
+| `GENERIC30` | `chained` | 30,000 | how far does the path that runs on UNMATCHED games get? |
+| `NOGIVEUP` | `kaggle_detect` | 100,000 | is the give-up premature, or is capability the wall? |
+
+`NOGIVEUP` raises every adapter's `_GIVEUP_DEFAULT` (23 of the 25 sit at 4,000; one at 500, one at
+200) to 100,000. If a game clears deeper with the same code and no other change, its give-up was
+premature and the fix is cheap. If none does, capability is the wall everywhere and the give-ups are
+honest — which is the more likely answer given re86's single-game result, and worth having across
+all 25 rather than extrapolated from one.
+
+⚠️ **The measurement box's source tree is PATCHED while this runs**, which is exactly the kind of
+state that silently poisons a later round — the env-metadata incident on this same machine cost a
+whole card's worth of confusion. Two guards: the run touches `~/GIVEUP_PATCH_ACTIVE` before patching
+and removes it after restoring, and the restore (`tar xzf ~/admorphiq_sync.tgz src`) is chained
+INSIDE the same command as the run, so a normal exit always restores. ⛔ Before trusting any future
+measurement on this box, check that marker file is absent.
