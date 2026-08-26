@@ -178,3 +178,43 @@ Steps 1 and 2 cost ~60 actions and replace an unbounded guess with a solvable sy
 the one free parameter and must be derived, not fixed: 8 worked here because ft09's lattice happens to
 sit on it, and a tool that hardcodes 8 is tuned to ft09. The generic form is to probe coarse, and
 refine the stride where a change is found — which is the next thing to build and measure.
+
+## `discover_lattice` measured on all 25, in parallel
+
+`src/admorphiq/tools/induce.py` + `scripts/induce_probe.py`, 150-probe budget, run at once on
+ceph-build (`scripts/rounds/INDUCE/probe.log`). The stride is derived, never fixed: the sweep starts
+coarse, halves if nothing responds, and the reported PITCH comes from the responders' own coordinates
+rather than from the sweep.
+
+```
+uniform operator — the rule is directly solvable
+  ft09   8 responders   pitch 8    footprint [38]     <- the GF(2) system, in 64 probes
+  lp85   2              pitch 56   [293]
+  ka59  41              pitch 8    [1]
+  m0r0  27              pitch 8    [2]
+
+mixed footprints
+  cd82 [1, 94, 95]   cn04 [1, 135, 136]   dc22 [1, 49, 129]   tn36 [1, 4, 70]
+  sb26 [20, 40]      sc25 [9, 13]         su15 [33, 66, 77, 79]   r11l [1, 2, 53, 62]
+  bp35 [1, 17, 26, 27]   lf52 [1, 9, 21, 25]   s5i5 [1, 2, 11]   vc33 [1, 2]   sp80 [2, 3]
+
+no click action — a different class entirely
+  g50t ls20 re86 tr87 tu93 wa30
+
+NO RESPONSE in 150 probes, despite having a click
+  ar25   sk48
+```
+
+**The headline**: on ft09 the harness spends 1,610 transitions to open 24 states at 99% inert. The
+same board's complete rule — which 8 cells respond and what each flips — is recovered in **64 probes**.
+
+⚠️ **The `1` in so many footprint lists is almost certainly a HUD counter**, not a rule response. sp80
+cost a measurement earlier for exactly this: *"an edge-pinned 1-pixel HUD defeating scale inference"*.
+Filtering single-cell changes that recur on every probe should collapse several of these to uniform
+operators — that is the next change, and it must be measured rather than assumed, because a genuine
+1-cell rule exists too (`ka59` reports `[1]` alone).
+
+⛔ **`ar25` and `sk48` respond to nothing in 150 probes while offering a click.** That is a real
+finding about them, not a tool failure: their click does something other than act on a lattice —
+selection-then-commit, most likely. They are not class D on this evidence, whatever the grouping said,
+and the classification owes them a re-read.
