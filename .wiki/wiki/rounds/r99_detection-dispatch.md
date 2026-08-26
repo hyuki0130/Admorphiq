@@ -1940,3 +1940,35 @@ moment; it is not usable.)
 What remains is the satisfaction model itself: the engine runs water through all three targets
 (colour 13 in every one) and marks none of them filled (no colour 12), while `simulate_flow` scores
 all three satisfied on its interior-hit rule.
+
+## The distinction is RETENTION, not transit — measured on the final layer
+
+Reading only the LAST layer of each commit, per target:
+
+```
+WON  level 1   {12: 80}              {12: 64, 6: 16}
+WON  level 2   {12: 48, 11: 32}   x3
+lost level 3   {11: 80}           x3   (step 127)
+lost level 3   {11: 80}           x3   (step 138)
+```
+
+**Every target of a winning commit ends holding colour 12; every target of a losing commit ends
+100% its own base colour 11.** After a losing spill the targets look exactly as they did before it
+— the water drains away and leaves nothing. After a winning one, part of each target stays filled.
+
+Note the proportion: on level 2's win only **48 of 80** cells are 12 and the other 32 remain 11, in
+all three targets alike. So 12 marks the retained portion of a target, not the whole region — the
+32 unchanged cells read as the rim or wall around a basin.
+
+Put beside the earlier histograms this settles what the two models disagree about. Water passes
+THROUGH level 3's targets in quantity — colour 13 for 720, 960 and 560 cell-layers, MORE than either
+winning commit — and none of it stays. `simulate_flow` marks a target satisfied the moment fluid
+enters an interior cell, so transit and retention are the same event to it. To the engine they are
+different events, and only the second one counts.
+
+⚠️ **Measured**: 12 on the final layer of every winning target, base colour on every losing one, and
+transit occurring in both. **Inferred, not yet measured**: that retention depends on the basin being
+closed against the flow direction, so that rising water (`fall = (-1, 0)`) is held rather than
+passing over. The test is to compare the target shapes' openings relative to the fall direction
+between the levels that win and the level that does not — a shape measurement on boards whose
+outcome is already known, which is the same control that produced everything above.
