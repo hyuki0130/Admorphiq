@@ -45,7 +45,9 @@ def notch_regions(colours: dict[str, int], size: int) -> list[frozenset[tuple[in
                 r, c = stack.pop()
                 for n in ((r - 1, c), (r + 1, c), (r, c - 1), (r, c + 1)):
                     if n in todo:
-                        todo.remove(n); comp.add(n); stack.append(n)
+                        todo.remove(n)
+                        comp.add(n)
+                        stack.append(n)
             held = comp
             notched = any(
                 (r, c) not in held and (r, c - 1) in held and (r, c + 1) in held
@@ -72,7 +74,8 @@ def main() -> int:
         print(f"{os.path.basename(path):20s} grounded {len(grounded)}  static {len(static)}  "
               f"grounded-covered-by-static {covered}/{len(grounded)}")
     if rows:
-        g = sum(r[1] for r in rows); c = sum(r[3] for r in rows)
+        g = sum(r[1] for r in rows)
+        c = sum(r[3] for r in rows)
         print(f"\nover {len(rows)} captured boards: {c}/{g} grounded targets are named statically")
     return 0
 
