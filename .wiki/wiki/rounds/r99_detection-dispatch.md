@@ -1366,3 +1366,31 @@ written against.
 
 ⚠️ lp85 has no archived hash, so its transfer is **not measured**. That is a gap in the evidence,
 not a negative result, and it is recorded as such rather than assumed from the other two.
+
+## Every port that HAS an archived version gains on it — 7/7 (2026-08-26)
+
+The same measurement run across all eleven static ports. Seven have an archived version hash; all
+seven gain, none loses:
+
+```
+m0r0   fallback 0.0000 (0 lvl)  ->  dispatch 1.0000 (6 lvl)
+su15   fallback 0.0935 (3 lvl)  ->  dispatch 0.4368 (6 lvl)
+sk48   fallback 0.0000 (0 lvl)  ->  dispatch 0.2778 (4 lvl)
+r11l   fallback 0.0000 (1 lvl)  ->  dispatch 0.2551 (3 lvl)
+re86   fallback 0.0833 (2 lvl)  ->  dispatch 0.2273 (4 lvl)
+sp80   fallback 0.0000 (1 lvl)  ->  dispatch 0.1429 (2 lvl)
+tn36   fallback 0.0152 (1 lvl)  ->  dispatch 0.1071 (2 lvl)
+
+mean over 7 archived versions: 0.0274 -> 0.3496   (12.8x)
+```
+
+Every one of these boards is a re-render the detector was never written against, so this is the
+closest measurable proxy for the hidden 110 that the repository can produce.
+
+⚠️ **Read the differences, not just the direction.** re86 scores **0.2273** here against 0.7273 on
+the current hash — the detector transfers and the SOLVER partly does not, which is a real limit and
+is invisible if only the arrow is reported. r11l (0.2551 vs 0.2594) and m0r0 (1.0000 vs 1.0000) come
+through nearly or exactly intact.
+
+⚠️ **Four ports have no archived version and are therefore UNMEASURED on transfer** — recorded as a
+gap in the evidence, not inferred from the seven that were.
