@@ -1537,7 +1537,38 @@ after touching `harness/`, `chained_agent.py`, `world_model_agent.py` or anythin
 submission. A research change that moves the card is not forbidden — it just may not move it
 silently.
 
-**DETECTION DISPATCH — the card's depth is unlocked by frame evidence, not `game_id` (2026-08-25).**
+⛔ **UNRESOLVED DOCTRINE CONFLICT — read before extending the dispatch axis (raised 2026-08-26 by
+the user, verified against the record, NOT resolved).**
+
+Two things in this repository contradict each other and both are still in force:
+
+```
+adapters25/__init__.py   "MODEL-NEVER-VISIBLE ... the runtime LLM/harness agent must never
+                          import this package"
+CLAUDE.md, R56 doctrine   "Dual-scoreboard doctrine (NON-NEGOTIABLE): the script25 number is
+                          KERNEL EXPRESSIVENESS ... promotion to the deployable card is via
+                          agent25 — the offline model orchestrating the kernels UNAIDED"
+```
+
+What detection dispatch actually does: hand-written per-game adapters, selected by hand-written
+detectors, shipped in the submission notebook. **No LLM anywhere in that path.** So the deployable
+card is now built from the quarantined scoreboard, promoted by Claude Code rather than by the
+offline model — which is the one route the doctrine names, and `git log -S "Dual-scoreboard"` shows
+the doctrine was never amended.
+
+⚠️ Provenance, so nobody re-litigates it wrongly: dispatch began **2026-08-25**
+(`e1e35b0`, and the R99 round page is dated that day). The 2026-08-26 session extended it by four
+ports and a bail **without ever raising the conflict** — including in the same session that measured
+the card rising 5.6x while the hidden score did not move, which is the conflict's own symptom:
+public-game-specific code cannot transfer to 110 private games. The transfer evidence collected for
+the ports (7/7 archived hashes) is the SAME game re-rendered, not a different game.
+
+**Both axes are live and the choice is the user's**: keep the dispatch axis (recovers ~0.02 of hidden
+at best, off-doctrine, weak private-transfer evidence) or return to agent25 (the doctrine's only
+promotion route, reached R98, and has still never touched the leaderboard). Nothing here should be
+extended until that is answered.
+
+**DETECTION DISPATCH — the card's depth is unlocked by frame evidence, not `game_id` (2026-08-25).****DETECTION DISPATCH — the card's depth is unlocked by frame evidence, not `game_id` (2026-08-25).**
 `src/admorphiq/detect_dispatch_agent.py` asks every PORTED adapter, on the first frame, whether its
 mechanic is present; exactly one answer dispatches, anything else falls back to the current card, so
 a port cannot regress a game it does not claim. Measured full-25 on ceph-build:
