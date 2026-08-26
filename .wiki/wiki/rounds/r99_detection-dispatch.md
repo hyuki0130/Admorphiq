@@ -2015,3 +2015,47 @@ issue.
 measurement is not disproved — it is untested, and it has to go back on the list rather than stay
 crossed off. Twice now this round a conclusion has been carried forward from a reading that was
 later shown wrong, and only the second one was caught by re-deriving it.
+
+## Hazard contact tested directly: none on this board, and the instrument was validated first
+
+The adapter records how a hazard is told apart: *"the counter band shares its colour with the
+in-play hazard, so only the EDGE-pinned test distinguishes the HUD band from a hazard inside the
+play area"* (sp80.py:112-115). So a hazard is a region wearing a HUD band's colour while sitting
+inside the play area. Applying that to all four commits:
+
+```
+band colours [0, 1, 14]   hazard cells inside play 0   spill 624 cells    CONTACT 0   (WON  L1)
+band colours [0, 1, 14]   hazard cells inside play 0   spill 800 cells    CONTACT 0   (WON  L2)
+band colours [1, 14]      hazard cells inside play 0   spill 1024 cells   CONTACT 0   (lost L3)
+band colours [0, 1, 14]   hazard cells inside play 0   spill 1216 cells   CONTACT 0   (lost L3)
+```
+
+**The instrument was checked before the result was read** — the failure mode being that an in-play
+hazard shaped like a strip would itself be classified as a band and vanish from the comparison.
+Listing every region of those colours with its bbox:
+
+```
+c14 (0,0,0,44)   c0 (0,45,0,63)   c1 (60,0,63,63)
+c1  (0,0,3,63)   c0 (63,0,63,20)  c14 (63,21,63,63)
+```
+
+Every one is genuinely at an edge — row 0, rows 0-3, rows 60-63, row 63. So the count of zero means
+there are no such regions, not that the test hid them.
+
+⛔ **Hazard contact is therefore not what fails level 3 either** — at least not a hazard of the kind
+the adapter itself knows how to name. Seven candidates are now eliminated by measurement, and what
+is established is this:
+
+| established | |
+| --- | --- |
+| every cell of all three targets is wetted on the failing commit | 80/80 x3 |
+| nothing is retained | final layer 100% base colour |
+| targets are walled against the flow exactly as on winning levels | 12 walled / 0 open |
+| the plan is executed exactly as planned | 336 of 336 |
+| no in-play hazard exists on these boards | 0 cells, instrument validated |
+
+**Next test, named rather than guessed**: the failing commits wet far MORE of the board than the
+winning ones (1024 and 1216 cells against 624 and 800). If retention requires a target to be the
+TERMINUS of the flow rather than a way-station, that surplus is the signature — water continuing
+past the targets instead of stopping in them. Measurable as whether the spill extends beyond the
+targets in the fall direction on level 3 and not on levels 1-2, on boards whose outcome is known.
