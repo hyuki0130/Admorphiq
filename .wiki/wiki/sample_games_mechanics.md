@@ -50,6 +50,13 @@ It also explains why the metric is what it is: RHAE scores `(human/agent)²`, an
 roughly the human envelope. A generic agent that treats the board as something to explore first
 and solve second is not slightly inefficient — it is **disqualified before it starts**.
 
+**What "lose" costs, exactly** (`arcengine/base_game.py:301`): `lose()` sets
+`GameState.GAME_OVER`. A following `RESET` with a non-zero action count is a **LEVEL** reset, not
+a full one, so the levels already cleared survive — but every action spent is still counted, and
+RHAE prices a level at `(human/agent)²`. So over-exploring does not merely fail a level; it
+converts an eventual clear into a score of approximately zero. tu93's level 4 allows 20 actions;
+a run that takes 2,000 and then clears it scores `(20/2000)² = 0.0001`.
+
 ⛔ Consequence for stage one: a tool needs to READ the budget off the frame (it is drawn — a
 counter, a shrinking bar, a scrolling sprite) and plan inside it. "Explore, then act" has to
 become "act within N", and no amount of tool-by-tool strengthening changes that.
