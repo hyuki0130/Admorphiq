@@ -9977,3 +9977,34 @@ it is testable.
 predicate**, so something on that board is unmodelled — the per-target hypothesis is refuted as the
 explanation, not the error. That residual is the open item now, and it is the same board the depth
 walk stops on and the first level to carry an emitter.
+
+## idx3's residual is THREE cells, identical on all four boards, and all INVENTED
+
+```
+walk_idx3_1..4   invented = [(4,12), (5,12), (6,12)]   missed = []
+```
+
+Identical across every capture, so it is one repeatable behaviour rather than noise. **Nothing is
+missed** — the rest of the trajectory matches the engine cell for cell; the model only adds.
+
+What sits there, read off the grounded board (direction `(1, 0)`, downward):
+
+```
+(2..7, 12)   EMPTY          (8, 12) piece3
+(5, 11)      piece1         <- adjacent to the middle invented cell
+falling_sources  row 5 cols 3-3, row 6 cols 3-3     (column 3, not 12)
+emitter          (8, 4)
+absorbers        (13,2) (13,3) (14,2) (14,3)
+```
+
+The invented run is a vertical line in an EMPTY column, nine columns from the nearest source and far
+from the emitter, with `piece1` touching its middle cell. So our flow reaches column 12 by spreading
+sideways off `piece1` and then falling, and the engine's does not.
+
+⚠️ **That is where the evidence stops.** "Spreads off piece1" is the shape the cell positions suggest;
+it is not measured. The measurement that settles it is which STEP each of the three appears on in our
+replay and what the frontier looked like the step before — the propagator records that per layer, so
+it is a read rather than a new run.
+
+⛔ Recorded before inferring further, because the last two explanations built for this level (hazard
+contact, then per-target predicates) were both refuted, and both were built on less than this.
