@@ -467,3 +467,32 @@ Three fixes, each measured, two of which were wrong first:
 
 **Result: 4 levels in 60 actions, and level 5 now stops the tool instead of emptying it.** The
 tool ends a game holding what it won. Level 5's actual mechanic is open.
+
+
+## What probing COSTS, and what drives each game (2026-08-27)
+
+`scripts/probe_safety_census.py`, 17 actions per game — twelve clicks on a derived grid, then
+each of the five simple actions.
+
+**Probing is free on all 25.** Zero levels lost, zero games ended, everywhere. ⛔ That NARROWS
+the earlier reading: ft09 and tn36 punish a wrong **commit** (a tile click that contradicts the
+stencil; a submit press), not looking. "Explore first" is affordable; "act on a guess" is not.
+
+**What the engine declares legal** (`available_actions`, the authoritative answer):
+
+| driver | games |
+|---|---|
+| click-only `[6]`-ish | ft09, lp85, r11l, s5i5, su15, tn36, vc33 |
+| move-only | g50t, ls20, re86, tr87, tu93, wa30 |
+| click + move | ar25, bp35, cd82, cn04, dc22, ka59, lf52, m0r0, sb26, sc25, sk48, sp80 |
+
+⛔ **A visible change is not evidence that an action was accepted**, and the first version of this
+census reported exactly that error: it scored all five simple actions as working on ft09, which
+declares `[6]` alone — an illegal action draws a REFUSAL SCREEN, and the refusal is a change.
+The column stays in the output next to `avail` so the discrepancy is visible rather than
+smoothed away.
+
+**Also measured, and also a fact about the instrument**: the HUD detector found nothing on any
+game, because ft09's counter MARCHES — a different pixel each action — so no single cell reaches
+the 80% threshold. The band filter that `tools/induce.py` already carries is what is needed here;
+until then `resp` is inflated wherever a game has a moving counter.
