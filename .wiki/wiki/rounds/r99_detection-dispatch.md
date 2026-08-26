@@ -2322,3 +2322,23 @@ Changed across all 23 compared: **0**.
 applied. What stops these adapters is what they can do, and no amount of patience changes it. Only
 `sc25` and `sk48` remain unfinished, and both are already covered by the same conclusion on their
 DEPTH30 runs.
+
+## Both thresholds verified, not argued
+
+```
+no bail      card 0.3162
+bail 1,000   card 0.3162    0 of 25 games differ
+bail 2,000   card 0.3162    0 of 25 games differ
+```
+
+The 2,000 threshold was raised on sc25's evidence and its no-op claim was then ARGUED — no public
+game clears its first level between 461 and 2,000, so it cannot fire. That argument is now a
+measurement. Both full-25 runs cost minutes and the alternative was carrying an unmeasured claim in a
+shipped path, one entry after correcting exactly that mistake.
+
+**Where the card stands**: 0.3162 on the public 25, thirteen ports, with a wrong dispatch now costing
+at most half a game's budget instead of all of it. That protection is invisible on every board we can
+measure and exists only for the 110 we cannot — which is the only place the last submission lost
+anything.
+
+⛔ Submitting is the user's decision, and today's daily slot is already spent on `55784359`.
