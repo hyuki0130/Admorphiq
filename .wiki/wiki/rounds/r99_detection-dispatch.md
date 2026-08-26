@@ -1271,3 +1271,31 @@ everywhere but lp85 — but the machine was, and a killed run could not resume. 
 with `xargs -P` and skipping games that already have a result, so a kill resumes instead of
 restarting. ⛔ A guard that fails OPEN reports success while protecting nothing; this one had to be
 run on the platform that ships the old shell to show it.
+
+## g50t — a discriminating feature found and REFUSED (2026-08-26)
+
+g50t is the next-largest gap (0.1071). Its control scheme narrows to three (`simple == {1,2,3,4,5}`,
+no click: g50t, wa30, re86), and re86 is already ported, so only a 3-way split is needed.
+
+A feature that makes that split exists and was measured: read in cells, g50t is the only one of the
+three with a colour whose regions come in exactly two of DIFFERENT sizes — `colour 5, sizes (1, 879)`.
+**It was refused.** Colour 5 is g50t's FLOOR, so the pair is a floor and a one-cell island of floor;
+it separates the three boards while standing for nothing the mechanic requires. Shipping it would
+be the exact move this round has twice recorded as the mistake — a threshold that happens to
+separate, presented as a signature.
+
+What g50t's mechanic actually needs is not statically legible from one frame:
+
+```
+g50t colour 9:  6 regions, sizes [1, 3, 8, 19, 24, 64]
+```
+
+The player and the goal WEAR THE SAME COLOUR and are told apart by MOTION, not appearance — that is
+the perception root-cause that resolved this game's eight-lane saga, and it is exactly what a first
+frame cannot show. A probe could, but the probe in the dispatch contract is one shared horizontal
+action and g50t's identifying motion is the player's, which the frame does not yet distinguish.
+
+⛔ **PARKED, with the limit named and the difference from lp85 stated**: lp85's park was a
+single-feature verdict over a mechanism that WAS expressible, and it came free. This one is the
+other kind — the mechanism is a motion, and no amount of static conjunction reaches it. Recording
+which kind a park is, is what makes it re-examinable later instead of permanent.
