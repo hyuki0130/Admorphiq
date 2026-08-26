@@ -9911,3 +9911,35 @@ error; the correct order is to produce the state first, then fix what it breaks.
 can be inert at the consumer. Here it was worse — I measured the four GATES (all green) and read that
 as the change being safe, when green gates on an unreachable branch say nothing at all. The call that
 settled it took one wrapper and one walk.
+
+## Where the frontier actually is: idx3 is the first level with an EMITTER
+
+Reading board composition off every captured level:
+
+```
+level  pieces  sinks  emitters  falling  hazards  direction   outcome
+idx0     1       2       0         1        2      (1, 0)     cleared
+idx1     3       3       0         1        2      (-1, 0)    cleared
+idx2     4       3       0         3        3      (-1, 0)    cleared
+idx3     5       3       1         2-4      0      (1, 0)     NOT cleared
+```
+
+Two things separate idx3, and only one of them is a matter of degree. Piece count rises 1 -> 3 -> 4
+-> 5, a ladder the walk climbs three rungs of. **The emitter does not: idx0, idx1 and idx2 have ZERO,
+and idx3 has one.** It is the first level to introduce that entity class at all.
+
+That matters because of where the code branches. The commit-and-aim block runs `if emitters is not
+UNKNOWN and direction is not UNKNOWN` — so **the aiming loop has only ever executed on the single
+level that fails**, and there it reports `moved=False presses=0`: it decided the tracked piece already
+spans the emitter's lane and did nothing. Whatever aiming is for, it has no passing level to have been
+validated against.
+
+⚠️ **This also retires a stale burden.** `CLAUDE.md` records idx1's open item as *"multi-piece
+placement — 3 pieces / 3 targets, so single-piece placement satisfies nothing and the sink shortlist
+comes back empty"*. idx1 carries exactly that shape and the walk **clears it in 22 actions**. The
+burden was real when written and is not the frontier now; idx3 is.
+
+⚠️ Not yet measured, and deliberately not guessed: whether idx3 fails BECAUSE of the emitter, because
+of the fifth piece, or because `tracked_region()` aims one piece where five need placing. The
+distinguishing measurement is what the emitter does to a spill that the falling sources do not — and
+it needs the emitter's own transition observed, not the board described.
