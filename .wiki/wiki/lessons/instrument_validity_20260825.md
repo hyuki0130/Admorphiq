@@ -99,6 +99,19 @@ that flags everything each pass a one-sided test.
   archived version hashes and solve them. The probe is invalid as a transfer proxy and the
   conclusion had to be withdrawn. **A recorded rule that is not applied costs exactly what a
   missing rule costs**, and the order is the whole rule: validate FIRST, then read.
+- **A field means what it RECORDS, not what its name suggests.** Three conclusions this session
+  were built on data read as something it was not, and each was caught only by opening the raw
+  values:
+  * a run directory missing games was read as a run with zero-scoring games — an unfinished
+    measurement reported as a finished one, twice;
+  * `SUMMARY.txt` was quoted while its own `games/*.json` said otherwise — the live aggregator
+    never re-ran, so the file claimed 21/25 and 0.0650 where the data held 25/25 and 0.0566;
+  * `per_level` was summed as "actions spent" when it only records actions on levels that were
+    CLEARED — a game burning 56,000 actions and clearing nothing contributes 0, which turned
+    "our card CLEARED a level the old one never did" into "our card is 61% slower", the exact
+    opposite.
+  ⛔ Before a number becomes an argument, print the raw values for one case whose answer you
+  already know. All three took one command to expose and each had already been written up.
 - **Delete a probe when its question is answered.** Four of this session's nine diagnostics
   were retired the moment they had answered; keeping them hides the signal from the ones
   that still change with the code.
