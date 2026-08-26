@@ -520,6 +520,12 @@ What this leaves: **recolouring is not a stand-in for a version change**, measur
 against cases whose answer was already known — the check I should have run before reading its
 verdict on ft09 and ls20 at all.
 
+⛔ The script is DELETED rather than kept as a documented-invalid tool, applying the rule from the
+same page the earlier one came from: *delete a probe when its question is answered, because
+keeping it hides the signal from the ones that still change with the code.* Its question — is
+recolouring a transfer proxy? — is answered, and the answer is no. The numbers stay here; the
+script does not need to.
+
 Three defects had to be cleared to get a run at all, all in the build script and all found by
 pushing the KERNEL ONLY, without consuming a submission slot —
 [[../lessons/submission_build_defects_20260826]].
