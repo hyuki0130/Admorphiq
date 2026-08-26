@@ -1554,3 +1554,46 @@ the point is to end with ONE flow model, the exact one, rather than the two ther
 adapter imports means re-measuring sp80's levels 1 and 2, which currently clear SUPER-HUMAN (10
 actions vs 39 human, 16 vs 58). A fidelity improvement that costs either of those loses more than
 level 3 gains.
+
+## The escalation hook, verified in the code rather than asserted (2026-08-26)
+
+⚠️ The `codex exec` review gate could NOT be run — this account is refused for
+`gpt-5.3-codex`, `gpt-5.1-codex-max` and `gpt-5-codex` alike ("not supported when using Codex with a
+ChatGPT account"). The safety claim was checked by reading the code instead, which for this
+particular question is stronger than an opinion anyway.
+
+**The hook is `src/admorphiq/adapters25/sp80.py:661`**, in `_execute_step`:
+
+```python
+if self._exec_pos >= len(self._exec_plan):
+    if 5 in act_ids and not self._committed:
+        self._committed = True
+        return simple_action(5)        # commit the planned layout
+    self._phase = "graph"              # committed, and STILL on this level
+    return self._graph_step(grid, act_ids)
+```
+
+"Plan fully executed, committed, and we are still here" is exactly that second branch. It is the
+one place the flow path concedes after a plan RAN, as distinct from the twelve other
+`_phase = "graph"` sites, which are all "could not learn / could not plan".
+
+**The safety property holds, and the mechanism is visible.** A winning commit raises
+`levels_completed`, `_on_level_up` fires, and lines 375-385 reset `_phase` to `"learn"` — so the
+concede branch is never reached on a level that clears. The measured trace agrees independently:
+level 1 never entered `_execute_step` at all (learn 2, probe 4, plan 4), and level 2 executed 8
+actions and cleared without touching `graph`.
+
+⛔ **But one correction to my own reasoning, found in the same read.** `_on_level_up` restores the
+flow path only `if self._phase in ("learn", "probe", "plan", "classify", "execute")` — **`"graph"`
+is not in that set**. So once the adapter concedes to graph it never gets the flow path back, on
+this level or any deeper one. sp80's level-3 failure therefore poisons levels 4, 5 and 6 as well:
+the game is not "2 of 6 with four hard levels left", it is "2 of 6 and the pipeline is switched off
+from level 3 onward". That raises this work's value above the +0.0057 already computed, which
+assumed only level 3 was in play.
+
+⚠️ Residual risk, named rather than dismissed: if a winning commit's level-up registers a frame or
+two LATE, the concede branch could be reached before `_on_level_up` sees it — and because of the
+line-375 exclusion, that would switch the pipeline off permanently on a level it actually won. The
+measured trace shows this does not happen on levels 1-2 (level 2 ran `learn`/`probe` again, so the
+phase was still a flow phase at level-up). It is a cost-and-latch risk for any escalation inserted
+at line 661 and belongs in the acceptance gate.
