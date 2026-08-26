@@ -2156,3 +2156,47 @@ whole card's worth of confusion. Two guards: the run touches `~/GIVEUP_PATCH_ACT
 and removes it after restoring, and the restore (`tar xzf ~/admorphiq_sync.tgz src`) is chained
 INSIDE the same command as the run, so a normal exit always restores. ⛔ Before trusting any future
 measurement on this box, check that marker file is absent.
+
+## The second submission landed: 0.18 again — truncation EXCLUDED, and the reading was pre-fixed
+
+Submission `55784359` (detection dispatch, per-game budget **4,000**) scored **0.18** — identical to
+`55774529` at budget **100,000**. The reading was fixed on this page before the score arrived:
+
+> *"≈ 0.18 — neither truncation nor the cap matters, and all four explanations are then spent; the
+> cause is something not yet on the list."*
+
+That is the branch that happened.
+
+| explanation | status |
+| --- | --- |
+| ~~harness change~~ | ⛔ excluded — contributes 0 on the public 25 |
+| ~~run-to-run noise~~ | ⛔ excluded — the card is deterministic to six decimals |
+| ~~run truncated by the budget~~ | ⛔ **EXCLUDED — 4,000 and 100,000 give the SAME hidden score** |
+| detectors firing where they should not | **the only one left** |
+
+Budget is now closed on both scales at once: identical on the public 25 (0.3162 = 0.3162 at 4,000
+and 30,000) and identical on the hidden 110 (0.18 = 0.18 at 4,000 and 100,000).
+
+**And the public measurement makes the remaining explanation sharp rather than vague.** Detection
+versus the generic path, all 25 games:
+
+```
+GENERIC (no adapters)  0.0566
+DETECT  (adapters)     0.3162
+detect better on 13 games, worse on NONE
+```
+
+On every public board where a detector fires, dispatching is strictly better. So the 0.02 lost
+between v3 (0.20) and detection (0.18) cannot come from the games we can see. It has to come from
+private games where a detector fires and the adapter behind it does WORSE than the generic fallback
+would have — a mechanic that merely resembles ours, claimed and then failed, with the fallback that
+would have scored something never getting to run.
+
+⛔ **The 0/24 gate proves no false positive on the 24 boards we can see. The eval has 110 we cannot,
+and the score is now the only instrument reporting on them.** That is the gap the whole port
+campaign was built over, and this is the first measurement that puts a number on it: **-0.02**.
+
+⚠️ Not certain, and the honest caveat: v3 and the detection card differ by the harness commits as
+well as by dispatch, and the harness was measured at 0 only on the public 25. Two hidden points
+cannot separate two changes. But truncation and noise are gone, dispatch is the larger change, and
+the direction is against it.
