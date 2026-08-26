@@ -19,6 +19,41 @@ keywords: [sample-games, mechanics, stage-1, action-budget, source-read, generic
 > internals is an adapter; adapters are quarantined precisely because they cannot transfer; the
 > eval is 110 games whose source we will never see.
 
+## ⛔ THE FINDING: thirteen of twenty-five games carry an explicit per-level ACTION BUDGET
+
+Read straight out of the level data, no engine involved:
+
+```
+tu93  StepCounter     = 50,50,35,20,50,60,30,50,50      <- level 4 allows TWENTY actions
+lp85  StepCounter     = 13,60,80,150,80,80,80,80        <- level 1 allows THIRTEEN
+su15  steps           = 32,32,48,48,32,32,32,48,48
+ft09  kCv             = 32,32,96,96,128,128
+ar25  StepCounter     = 64,64,128,128,128,320,320,320
+vc33  StepCounter     = 50,50,75,50,200,50,200
+cn04  MaxSteps        = 75,100,125,125,150,200
+sp80  steps           = 30,45,100,120,100,120
+ka59  StepCounter     = 100,127,100,127,100,150,200
+re86  StepCounter     = 100,100,200,200,250,200,300,...
+s5i5  StepCounter     = 50,150,200,100,150,150,200,...
+wa30  StepCounter     = 200,70,100,100,125,75,125,150
+dc22  StepCounter     = 128,192,192,192,512,1024
+ls20  StepsDecrement / Steps
+```
+
+**This is why the generic tools score 0.0200 while the adapters score 0.3162.** The tools run at
+4,000-8,000 actions per GAME and open hundreds of states per level; the games allow **20 to 320
+actions per level** and LOSE on overrun. The stall diagnostic's "1,500 steps, 500 states, zero
+levels" was never a search-breadth problem — the game had been lost hundreds of actions earlier
+and the searcher was still expanding.
+
+It also explains why the metric is what it is: RHAE scores `(human/agent)²`, and these budgets are
+roughly the human envelope. A generic agent that treats the board as something to explore first
+and solve second is not slightly inefficient — it is **disqualified before it starts**.
+
+⛔ Consequence for stage one: a tool needs to READ the budget off the frame (it is drawn — a
+counter, a shrinking bar, a scrolling sprite) and plan inside it. "Explore, then act" has to
+become "act within N", and no amount of tool-by-tool strengthening changes that.
+
 ## The fact that changes how every tool must be written
 
 **Several games LOSE when an action budget runs out**, and the budget is drawn on screen:
