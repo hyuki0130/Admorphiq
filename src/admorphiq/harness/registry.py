@@ -26,6 +26,7 @@ The rule-recovery tools go FIRST because they are the most selective: it decline
     from admorphiq.tools.graph_search import GraphSearchTool
     from admorphiq.tools.haul import HaulDeliveryTool
     from admorphiq.tools.keymaze import KeyMazeTool
+    from admorphiq.tools.lattice_maze import LatticeMazeTool
     from admorphiq.tools.ledge import LedgeTool
     from admorphiq.tools.linkage import LinkageReachTool
     from admorphiq.tools.llm_goal import LLMGoalTool
@@ -34,12 +35,17 @@ The rule-recovery tools go FIRST because they are the most selective: it decline
     from admorphiq.tools.paint_flood import PaintFloodTool
     from admorphiq.tools.pattern_cast import PatternCastTool
     from admorphiq.tools.phase import PhaseGridTool
+    from admorphiq.tools.pillar_transfer import PillarTransferTool
+    from admorphiq.tools.progbits import ProgramBitsTool
     from admorphiq.tools.reflect_cover import ReflectCoverTool
     from admorphiq.tools.rewrite import RuleRewriteTool
     from admorphiq.tools.slotlaunch import SlotLaunchTool
     from admorphiq.tools.socketmerge import SocketMergeTool
+    from admorphiq.tools.spill import SpillRouteTool
+    from admorphiq.tools.stamppaint import StampPaintTool
     from admorphiq.tools.stencil import StencilTool
     from admorphiq.tools.subroutine import SubroutineProgramTool
+    from admorphiq.tools.tether import TetherCentroidTool
     from admorphiq.tools.toggle import ToggleTool
     from admorphiq.tools.track import TrackAlignTool
     from admorphiq.tools.tube import TubeOrderTool
@@ -63,6 +69,12 @@ The rule-recovery tools go FIRST because they are the most selective: it decline
         RuleRewriteTool(),
         SocketMergeTool(),
         SubroutineProgramTool(),
+        LatticeMazeTool(),
+        PillarTransferTool(),
+        ProgramBitsTool(),
+        SpillRouteTool(),
+        StampPaintTool(),
+        TetherCentroidTool(),
         LedgeTool(),
         MazeRunTool(),
         PhaseGridTool(),
