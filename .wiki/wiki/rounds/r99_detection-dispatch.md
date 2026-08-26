@@ -2252,5 +2252,24 @@ instead of on the public games alone. It has not run because both machines are b
 mid-`NOGIVEUP` with a patched tree and the Mac is verifying the bail itself — and running it on a
 loaded box would measure the load.
 
-⛔ Until that runs, the threshold is justified only on boards the detectors were tuned against,
-which is exactly the weakness this whole entry is about.
+**IT RAN, and it comes back clean.** First-clear action counts on the archived re-renders against
+the live boards:
+
+```
+game   archived   live
+m0r0     19        19
+su15     15        15
+sk48     14        14
+r11l      7         7
+re86     25        25
+sp80     10        10
+tn36      7         7
+```
+
+**Identical, 7 of 7.** A re-render costs NOTHING in time-to-first-clear — not 2x, not 10x, nothing.
+The slowest of them is 25 actions, so the 1,000 threshold carries a 40x margin over every board where
+this can be checked, and the bail's risk is bounded by evidence rather than by the public games alone.
+
+⚠️ The one gap that remains: **sc25 (461 actions, the slowest dispatched first clear) has no archived
+version**, so the game that comes closest to the threshold is the one this check cannot cover. The
+margin there is 2.2x on a single board, measured once.
