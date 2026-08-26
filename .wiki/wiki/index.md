@@ -164,7 +164,7 @@ category, drill into specific pages.
 
 ## Top-level dispatch (architecture, selector, log, schema) (115)
 
-- [[memory/MEMORY.md]] — (no description)
+- [[memory/MEMORY.md]] — The machine-local memory index, mirrored; each line points at one durable fact.
 - [[rounds/r05_planning-override.md]] — Goal-directed planning that overrode novelty exploration regressed 4 stable games (AR25/FT09/LP85/M0R0) — first proof that overriding novelty breaks the learner.
 - [[rounds/r06_depth-boost.md]] — Depth-boost / keep-learning-after-levelup regressed LP85's depth — perturbing exploration regresses.
 - [[rounds/r07_deploy-online-rl.md]] — Decided to deploy online-RL solo (not world-model, not ensemble) — world-model is sample-specific and ensemble is metric-negative under squared efficiency.

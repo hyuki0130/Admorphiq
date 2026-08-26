@@ -1,3 +1,8 @@
+---
+type: index
+description: The machine-local memory index, mirrored; each line points at one durable fact.
+---
+
 - [Dev/Test Environment (GCP Kaggle-matched)](project_dev_test_env.md) — GCP VM ewm-bench (96GB, asia-east1-a) = Kaggle-identical dev box; how to run score_efficiency + orchestrator_probe; gemma4-31b/gpt-oss-120b loaded; Mac is edit/lint only. KEEP CURRENT across sessions.
 - [Self-improving agent north-star](../../../../Workspace/Admorphiq/.wiki/wiki/architecture_self_improving_agent.md) — 3-layer harness: LLM=brain, Claude-built generic tools=hands, wiki=knowledge (tool_selector→perfect first pick); dev-time Claude multi-agent builds tools / runtime single model orchestrates; Duck/M1=baselines to BEAT not copy; goal 25/25
 - [Kaggle Hardware (corrected)](project_kaggle_hardware.md) — Eval machine is g4-standard-48 (RTX PRO 6000 Blackwell, 96GB VRAM, ~9h, ~32GB disk), NOT T4 16GB/6h; reopens model selection (R17)
