@@ -496,3 +496,32 @@ smoothed away.
 game, because ft09's counter MARCHES — a different pixel each action — so no single cell reaches
 the 80% threshold. The band filter that `tools/induce.py` already carries is what is needed here;
 until then `resp` is inflated wherever a game has a moving counter.
+
+
+## A guard that was preserving a counter and calling it a rule (2026-08-27)
+
+`tools/induce.py` carried a "the filter never empties a board" guard, justified in its own
+docstring as protecting ka59, which "answers with a single cell and nothing else ... a genuine
+one-cell rule". **Measured: those cells are (63,63), (63,62), (63,61), (63,60) — one per probe,
+marching right to left along the bottom row.** ka59 is inert to clicks at those positions and
+the only thing moving is the action counter. The guard was protecting a HUD.
+
+It cost exactly what a wrong guard costs: on vc33, where all 50 probes changed row 0 alone, the
+sweep reported **50 responders on a board that answers nothing**, and that number was on its way
+into a tool-selection decision.
+
+Replaced by the counter's real signature — it MARCHES: its position advances monotonically with
+probe order along one edge line, which no rule of a board does. After the fix:
+
+| game | responders | pitch | footprint |
+|---|---|---|---|
+| ft09 | 8 | 8 | 36 (its 6x6 tile) |
+| cd82 | 2 | 8 | 94 |
+| s5i5 | 2 | 8 | 10 |
+| vc33 | 0 | — | — |
+| ka59 | 0 | — | — |
+
+⛔ The lesson is the one already on `lessons/instrument_validity_20260825`, in a new guise: the
+justification for a guard is a CLAIM about the data, and it decays. This one had been written
+down, believed, and never re-measured. Pinned in both directions now — a sweep that is all
+counter reports zero, and a real block response survives with its counter pixel stripped.

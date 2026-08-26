@@ -101,8 +101,17 @@ def _hud_cells(raw: dict[Cell, list[Cell]], probes: int, size: int = 64) -> set[
     rows or columns — the same "edge-pinned, deliberately TINY" reasoning sp80's own HUD test
     records, after an earlier version there excused real board content as overlay.
 
-    The filter never empties a board: `ka59` answers with a single cell and nothing else, and that
-    is a genuine one-cell rule.
+    ⛔ **The "never empty a board" guard this filter used to carry was built on a MISREADING and
+    has been removed.** It was justified as protecting `ka59`, which "answers with a single cell
+    and nothing else ... a genuine one-cell rule". Measured 2026-08-27: those single cells are
+    (63, 63), (63, 62), (63, 61), (63, 60) ... one per probe, marching right to left along the
+    bottom row. ka59 is INERT to clicks at those positions and the only thing moving is the action
+    counter. The guard was preserving a counter and calling it a rule, and on vc33 — where every
+    one of 50 probes changed row 0 alone — it reported 50 responders on a board that answers
+    nothing.
+
+    What replaces it is the counter's actual signature: it MARCHES. Its position advances
+    monotonically with probe order along one edge line, which no rule of a board does.
     """
     if probes < 5 or not raw:
         return set()
@@ -132,7 +141,24 @@ def _hud_cells(raw: dict[Cell, list[Cell]], probes: int, size: int = 64) -> set[
             hud |= band_cells
 
     survivors = {cell for cell, d in raw.items() if any(c not in hud for c in d)}
-    return hud if survivors else set()
+    if survivors:
+        return hud
+    # Everything responded inside the band, so the "never empty a board" guard would hand back
+    # every probe as a responder. ⛔ MEASURED on vc33: all 50 of its probes changed row 0 alone —
+    # a bar shrinking one cell per action — and the guard reported 50 responders on a board that
+    # answers nothing. The counter's real signature is that it MARCHES: its position advances
+    # monotonically with probe order, which no rule of the board does.
+    walk = [sorted(c for c in d if in_band(c)) for d in raw.values()]
+    heads = [w[0] for w in walk if w]
+    if len(heads) >= 5 and len({h[1] for h in heads}) >= 3:
+        cols = [h[1] for h in heads]
+        rows = [h[0] for h in heads]
+        marching = (
+            all(a >= b for a, b in zip(cols, cols[1:])) or all(a <= b for a, b in zip(cols, cols[1:]))
+        ) and len(set(rows)) <= margin
+        if marching:
+            return hud
+    return set()
 
 
 def _infer_pitch(cells: list[Cell]) -> int | None:

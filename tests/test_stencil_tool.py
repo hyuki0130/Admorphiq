@@ -141,3 +141,36 @@ def test_tool_stops_on_a_revisited_tile_map() -> None:
     scene = _scene()
     assert tool.propose([], _Obs(scene)) != []
     assert tool.propose([], _Obs(scene)) == []
+
+
+def test_a_marching_counter_is_not_a_board_response() -> None:
+    """Purpose: pin that a progress bar cannot masquerade as the board answering.
+
+    Passing means a probe sweep whose every response is one cell advancing along an edge reports
+    ZERO responders. Failing means the tool reads a HUD as a lattice — measured on vc33 (50 of 50
+    probes changed row 0 alone) and on ka59, whose "genuine one-cell rule" turned out to be the
+    action counter walking backwards along row 63.
+    """
+    from admorphiq.tools.induce import _hud_cells
+
+    raw = {(4, 8 * i): [(63, 63 - i)] for i in range(12)}
+    hud = _hud_cells(raw, probes=12, size=64)
+    assert all(cell in hud for delta in raw.values() for cell in delta)
+
+
+def test_a_real_response_survives_the_counter_filter() -> None:
+    """Purpose: pin the other direction, so the filter is not simply deleting everything.
+
+    Passing means a probe whose delta is a block of board cells keeps that delta while the
+    counter pixel riding along with it is removed. Failing means the filter is one-sided, which
+    is how every checker in this repo has been wrong on its first run.
+    """
+    from admorphiq.tools.induce import _hud_cells
+
+    raw = {
+        (20 + 8 * i, 20): [(30 + i, 30), (30 + i, 31), (63, 63 - i)]
+        for i in range(6)
+    }
+    hud = _hud_cells(raw, probes=6, size=64)
+    assert (63, 63) in hud
+    assert (30, 30) not in hud
