@@ -2522,3 +2522,32 @@ it would apply to whatever the private 110 present.
 agent cannot express?** Eleven games is a big enough sample to look for one shared answer rather than
 eleven separate ones — and if there is no shared answer, that is itself worth knowing before any
 effort is spent.
+
+## What changes at level 2 — and an instrument fix that INVERTED the answer
+
+First probe on two of the eleven games that wall at level 2: describe the board at level 1 and at
+level 2 and compare.
+
+The first version described the level-2 frame the instant `levels_completed` rose. That frame is
+still ANIMATING — `len(frame) == 2` — so it measured the transition overlay, not the new board:
+
+```
+                    animating frame        settled board
+ls20   L1 18 regions -> 17 regions     ->  23 regions
+wa30   L1 11 regions -> 9 regions      ->  17 regions, and colours 6 -> 7
+```
+
+**The fix inverted the sign of the finding.** Read on the animating frame, level 2 looked SMALLER
+than level 1 on both games; read one action later, it is substantially bigger on both, and wa30 gains
+a whole colour — a new kind of entity appearing at level 2. Waiting for `len(frame) == 1` costs one
+action and is the difference between two opposite conclusions.
+
+⚠️ Two games is not a pattern, and this is recorded as a probe rather than a result. The sweep over
+all eleven level-2 wallers is running; the question it answers is whether they share one thing — a
+new colour, a bigger board, a new action — or whether there are eleven separate answers, which would
+itself be worth knowing before any effort goes into a general fix.
+
+⛔ Noted for the box: this ran LOCALLY although ceph-build had capacity, because ceph-build's tree is
+still patched for `NOGIVEUP` (24 of 25 done). The sweep uses `build_chained()` and would not have
+touched the patched constants — but running a fresh measurement on a knowingly contaminated tree is
+how the contamination stops being tracked.
