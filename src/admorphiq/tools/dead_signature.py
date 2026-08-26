@@ -41,6 +41,9 @@ class DeadSignatureTool:
     """Tracks (state_signature, action_class) -> (tried, changed) counters."""
 
     name = "deadsig"
+    # Fed every transition, not only the ones it chose: it records action-class statistics and
+    # holds no model another tool's action could corrupt. See `harness/loop.py`.
+    augmenter = True
 
     def __init__(self, threshold: int = _DEFAULT_THRESHOLD, block: int = _DEFAULT_BLOCK) -> None:
         self.threshold = threshold
@@ -48,6 +51,15 @@ class DeadSignatureTool:
         # key: (state_sig, action_class) -> count
         self._tried: dict[tuple[Any, Any], int] = {}
         self._changed: dict[tuple[Any, Any], int] = {}
+        # ... and the same counters keyed on the action class ALONE, across every state it has
+        # been tried from. The per-state view cannot express "this click does nothing ANYWHERE",
+        # which is the fact that matters on a board where most of the surface is scenery:
+        # measured 2026-08-27 across the sample set, one board spends 94% of its transitions
+        # (1016 of 1071) changing nothing and another 100%, because the searcher learns inertness
+        # per state and then meets the same dead click again at the next state.
+        self._tried_any: dict[Any, int] = {}
+        self._changed_any: dict[Any, int] = {}
+        self._states_any: dict[Any, set[Any]] = {}
 
     def detect(self, frames: list[Any], obs: Any) -> float:
         """Modest positive confidence: a frame-only efficiency augmentation.
@@ -67,6 +79,9 @@ class DeadSignatureTool:
         """
         self._tried.clear()
         self._changed.clear()
+        self._tried_any.clear()
+        self._changed_any.clear()
+        self._states_any.clear()
 
     def observe(self, prev: np.ndarray, action: Step, changed: bool) -> None:
         """Record whether ``action`` changed the frame when taken from ``prev``.
@@ -77,10 +92,15 @@ class DeadSignatureTool:
         queried against a state that has not been observed FROM yet (e.g. the
         current live state, before any action from it has been tried).
         """
-        key = (base_hash(prev), self._action_class(action))
+        sig = base_hash(prev)
+        cls = self._action_class(action)
+        key = (sig, cls)
         self._tried[key] = self._tried.get(key, 0) + 1
+        self._tried_any[cls] = self._tried_any.get(cls, 0) + 1
+        self._states_any.setdefault(cls, set()).add(sig)
         if changed:
             self._changed[key] = self._changed.get(key, 0) + 1
+            self._changed_any[cls] = self._changed_any.get(cls, 0) + 1
 
     def propose(self, frames: list[Any], obs: Any) -> list[Step]:
         """Always empty: this tool augments candidate lists, it proposes nothing.
@@ -105,6 +125,32 @@ class DeadSignatureTool:
             self._tried.get(key, 0) >= self.threshold
             and self._changed.get(key, 0) == 0
         )
+
+    def globally_dead(self, action: Step) -> bool:
+        """True once this action CLASS has been tried widely and never once changed anything.
+
+        Deliberately stricter than :meth:`is_dead`: it needs the class to have been tried at
+        least ``2 * threshold`` times from at least three DISTINCT states, because an action
+        that is inert until a switch is thrown is common and must not be written off from one
+        board. One observed change anywhere revives it permanently.
+
+        This is a RANKING signal, not a veto — see :meth:`rank`. A veto would be the same
+        mistake as `live_actions`' "never return empty" clause, one layer up.
+        """
+        cls = self._action_class(action)
+        return (
+            self._changed_any.get(cls, 0) == 0
+            and self._tried_any.get(cls, 0) >= 2 * self.threshold
+            and len(self._states_any.get(cls, ())) >= 3
+        )
+
+    def rank(self, state_sig: Any, candidate_actions: list[Step]) -> list[Step]:
+        """``candidate_actions`` reordered: anything proven inert everywhere goes LAST.
+
+        Nothing is removed. A searcher still reaches every candidate; it just reaches the ones
+        with a track record first, which is the whole of the efficiency claim here.
+        """
+        return sorted(candidate_actions, key=lambda a: (self.globally_dead(a), self.is_dead(state_sig, a)))
 
     def live_actions(self, state_sig: Any, candidate_actions: list[Step]) -> list[Step]:
         """``candidate_actions`` with proven-dead classes filtered out.

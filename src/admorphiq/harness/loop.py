@@ -71,6 +71,24 @@ _DECIDE_SYS = (
 )
 
 
+def _board_changed(prev: np.ndarray, cur: np.ndarray, margin_div: int = 16) -> bool:
+    """Did the BOARD change, ignoring an edge-pinned counter or timer?
+
+    A frequency test cannot see these: a bar that shrinks or a counter that marches touches each
+    cell once, so no cell reaches a "changes under most actions" threshold. Position is what
+    identifies them — they sit pinned to the frame edge — so only changes strictly inside the
+    outer band count. The band is deliberately tiny (`size // 16`), the same reasoning the flow
+    grounding records after an earlier version there excused real board content as overlay.
+    """
+    diff = prev != cur
+    if not diff.any():
+        return False
+    h, w = diff.shape
+    margin = max(1, min(h, w) // margin_div)
+    inner = diff[margin:h - margin, margin:w - margin]
+    return bool(inner.any())
+
+
 class UnifiedAgent:
     """Harness-contract agent (is_done/choose_action) built on the tool loop."""
 
@@ -451,13 +469,35 @@ class UnifiedAgent:
             # world-model's table) with actions ANOTHER tool picked — measured to
             # break the graph tool inside the harness even though it clears the
             # same game when run alone. Each tool now sees only its own actions.
+            fed: set[str] = set()
             if self._current is not None and self._current != "code":
                 active = self.tools.get(self._current)
                 if active is not None:
+                    fed.add(self._current)
                     try:
                         active.observe(self._prev_frame, self._prev_step, changed)
                     except Exception:  # noqa: BLE001
                         pass
+            # ⛔ And they are fed a BOARD-level changed flag, not `changed`. Measured
+            # 2026-08-27: a board whose action counter sits at the frame edge makes
+            # `(prev != frame).any()` true for EVERY action, so an augmenter counting inert
+            # actions found none on a board that is 94% inert. `_board_changed` ignores changes
+            # confined to the outer band.
+            #
+            # AUGMENTERS are the exception, and they have to be: a tool that records only
+            # "this action class changed nothing" holds no model that another tool's action can
+            # pollute, and starving it of transitions is what made it inert. Measured
+            # 2026-08-27: one such tool had accumulated ZERO counters after 400 steps because it
+            # is never the active tool, and nothing in the repository called its pruning API
+            # either. The rule above is right for stateful tools and wrong for these.
+            board_changed = _board_changed(self._prev_frame, frame)
+            for name, tool in self.tools.items():
+                if name in fed or not getattr(tool, "augmenter", False):
+                    continue
+                try:
+                    tool.observe(self._prev_frame, self._prev_step, board_changed)
+                except Exception:  # noqa: BLE001
+                    pass
             # Progress = reaching a NOVEL state, not merely "the frame changed".
             # A tool that keeps mutating a small set of frames (e.g. paint clicks
             # toggling regions) changes the frame every step yet makes no progress

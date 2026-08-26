@@ -632,3 +632,51 @@ Two extremes surfaced in the same run and are worth their own line:
   where all 50 responders were the row-0 counter and the board answers nothing at stride 8;
 * **lp85: 3 states, 100% inert, 1 level** — it clears a level and then every transition is a
   self-loop. Its adapter clears 8/8, so this is the widest generic-vs-adapter gap on the board.
+
+
+## The inert-action tool was registered, unfed, unread, and lied to (2026-08-27)
+
+`DeadSignatureTool` exists to stop the searcher spending budget on actions that do nothing. It
+had **three independent defects, each of which alone made it a no-op**, and all three had to be
+fixed before anything moved:
+
+1. **Nothing ever called its pruning API.** `is_dead` / `live_actions` are referenced by exactly
+   one line in the repository — inside the tool itself. Its own docstring says "the orchestrator
+   ... consults [them] before spending an action". No orchestrator did.
+2. **It was never fed a transition.** `harness/loop.py` feeds `observe` to the ACTIVE tool only,
+   with a comment recording why (feeding every tool pollutes a graph's edges — a real
+   measurement). An always-on augmenter is never the active tool, so after 400 steps it held
+   **zero counters**. The rule is right for stateful tools and wrong for these.
+3. **Its `changed` flag counted the HUD.** `changed = (prev != frame).any()` is true for every
+   action on a board whose counter sits at the frame edge, so a board that is 94% inert reported
+   **zero** inert action classes.
+
+Fixes: an `augmenter` flag on the tool and a second `observe` pass in the loop; a `_board_changed`
+helper that ignores changes confined to the outer band; and global `(action_class -> tried,
+changed, distinct states)` counters exposed as `globally_dead`, consumed by the graph tool's
+candidate list.
+
+⛔ **Reordering was tried first and measured to change NOTHING** — byte-identical output on all
+twelve games. With a budget that exhausts a state's candidates anyway, order decides when an
+inert action is spent, not whether. Withholding is the lever.
+
+⛔ **And one self-inflicted defect worth its own line**: the `deadsig` reference was assigned in
+`GraphSearchTool.reset()` instead of `__init__`, so it was wiped on construction and on every
+level-up. The wiring measured as PRESENT when the registry was called on its own and ABSENT in
+every real run — two full measurement cycles produced byte-identical results before that was
+found.
+
+**Measured at 1500 steps, before -> after, no game lost a level:**
+
+| game | states | inert | levels |
+|---|---|---|---|
+| g50t | **18 -> 562** | 42% -> 33% | 0 |
+| tu93 | 250 -> 360 | 10% -> 9% | 0 |
+| **cd82** | 190 -> 143 | 67% -> 74% | **0 -> 1** |
+| **vc33** | 57 -> 59 | 94% -> 93% | **0 -> 1** |
+| ar25 | 507 -> 517 | 43% -> 44% | 0 |
+| re86 / tr87 / wa30 / ls20 / su15 / sk48 / lp85 | unchanged | unchanged | unchanged |
+
+g50t's frontier no longer dries — the expansion failure diagnosed above was the searcher
+re-learning the same dead clicks at every state. **lp85 remains the outlier**: 3 states, every
+transition a self-loop, while its adapter clears 8/8.

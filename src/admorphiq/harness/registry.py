@@ -26,15 +26,21 @@ def default_tools() -> list[Tool]:
     from admorphiq.tools.toggle import ToggleTool
     from admorphiq.tools.world_model import WorldModelTool
 
+    graph = GraphSearchTool()
+    deadsig = DeadSignatureTool()
+    # `deadsig` was registered but never consulted by anything — wire it into the searcher's
+    # candidate ordering so its counters actually reach a decision.
+    graph.deadsig = deadsig
+
     return [
         StencilTool(),
-        GraphSearchTool(),
+        graph,
         WorldModelTool(),
         PaintFloodTool(),
         ToggleTool(),
         LLMGoalTool(),
         DealiasTool(),
-        DeadSignatureTool(),
+        deadsig,
     ]
 
 

@@ -294,6 +294,11 @@ class GraphSearchTool:
     def __init__(self, max_clicks: int = _MAX_CLICKS) -> None:
         self.max_clicks = max_clicks
         self._rng = random.Random(0)
+        # Optional efficiency augmenter (`DeadSignatureTool`), wired by the registry.
+        # ⛔ Set HERE and not in `reset()`: the reference is not per-level state, and putting it
+        # there wiped it on every level-up AND on construction, so the wiring measured as absent
+        # in every real run while being present when the registry was called on its own.
+        self.deadsig: Any = None
         self.reset()
 
     # ── lifecycle ────────────────────────────────────────────────────────────
@@ -840,9 +845,41 @@ class GraphSearchTool:
         measured: gating starved a proven drawn-target pursuit (the click the
         target needed was tier-gated out, regressing a reliable clear to 0)."""
         untried = self._untried.get(state) or []
-        if self._target_grid is not None or self._scorer is not None:
-            return list(untried)
-        return [k for k in untried if self._in_gate(state, k)]
+        if self._target_grid is None and self._scorer is None:
+            untried = [k for k in untried if self._in_gate(state, k)]
+        return self._drop_dead(state, list(untried))
+
+    def _drop_dead(self, state: str, keys: list[Any]) -> list[Any]:
+        """Withhold action classes proven inert EVERYWHERE from this state's candidate list.
+
+        This tool already avoids repeating an action at the same state. What it cannot express
+        on its own is "this click does nothing anywhere", so on a board that is mostly scenery it
+        re-learns the same dead click at every new state. Measured 2026-08-27 across the sample
+        set: two boards spend 94% and 100% of their transitions changing nothing.
+
+        ⛔ Reordering was tried FIRST and measured to change nothing: with a budget that
+        exhausts a state's candidates anyway, order only decides when an inert action is spent,
+        not whether. Withholding is the lever, and the evidence bar behind `globally_dead` is
+        what makes it safe — a class must have been tried at least twelve times from three
+        distinct states with no board change at all, and one change anywhere revives it forever.
+
+        Never returns empty: if every candidate looks dead the original list comes back, so the
+        searcher can always act.
+
+        ⛔ `DeadSignatureTool` has had `is_dead`/`live_actions` for exactly this job and NOTHING
+        IN THE REPOSITORY EVER CALLED THEM — it was registered, and its pruning was consumed by
+        no one. Read the consumer, not the guard.
+        """
+        if self.deadsig is None or len(keys) < 2:
+            return keys
+
+        def step(key: Any) -> tuple[int, tuple[int, int] | None]:
+            if isinstance(key, tuple) and key and key[0] == "click":
+                return (6, (int(key[1]), int(key[2])))
+            return (int(key), None)
+
+        live = [k for k in keys if not self.deadsig.globally_dead(step(k))]
+        return live if live else keys
 
     def _bfs_path_to_frontier(self, start: str) -> list[Any] | None:
         """Shortest action path from ``start`` to the nearest frontier state.
