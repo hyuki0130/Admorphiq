@@ -1863,3 +1863,33 @@ which is what made the difference legible at all.
 interior-hit test replaced by one that predicts colour 12 rather than mere entry. That is a change
 to `simulate_flow`'s satisfaction predicate alone — the propagation it already gets right — which is
 a far smaller thing than relocating R98's 3,738 lines.
+
+## Two wins, two losses, and a staleness bug caught in between
+
+The previous entry rested on ONE win against ONE loss. Widening it to every commit exposed an
+instrument fault first: the spy kept the last planner call's targets in a variable that outlived the
+level, so the SACRIFICIAL spill fired during `learn` was scored against the PREVIOUS level's target
+cells. Those rows looked spectacular and meant nothing — a "level 2 lost" commit whose target 0 read
+`{12: 1760}`, 100% of the very colour under investigation, on cells belonging to level 1.
+
+Guarding the capture so a commit is scored only when a planner call has run on THAT level leaves
+four valid commits:
+
+```
+WON   level 1, 2 targets   {11:1360, 13:160, 12:80}   {11:1200, 13:320, 12:64, 6:16}
+WON   level 2, 3 targets   {11:1552, 13:160, 12:48}  x2   {11:1232, 13:480, 12:48}
+lost  level 3, step 127    {11:1200, 13:720}  {11:1280, 13:640}  {11:1600, 0:320}
+lost  level 3, step 138    {11:1200, 13:960}  {11:1280, 13:880}  {11:1600, 13:560}
+```
+
+**Colour 12 appears in every target of both wins and in no target of either loss** — five target
+instances on the winning side, six on the losing side. The reading survives the widening, which the
+single pair could not have established.
+
+So: `13` is water passing through a target, `12` is the target satisfied, and on level 3 the engine
+runs water through all three targets without filling any. The kernel's `simulate_flow` counts an
+"interior hit" as satisfaction; the engine does not.
+
+⚠️ The staleness fault is worth keeping in mind beyond this measurement: **a spy variable that
+outlives the thing it describes reports the previous subject with full confidence.** It produced the
+most striking number in the whole run (`{12: 1760}`) and that number was pure contamination.
