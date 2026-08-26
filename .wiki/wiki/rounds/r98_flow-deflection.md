@@ -9727,6 +9727,7 @@ games.
 | `gated_enum_test.py` | is the model faithful on every reachable placement, and does each slot discriminate? | no |
 | `feasibility_probe.py` | does a winning layout exist at all under the verified model? | no |
 | `reference_propagator.py` | the colour-reading fixture the certifications replay through; imports the one propagator so there is a single implementation | no |
+| `per_target_predicate.py` | does the sink predicate CHANGE the replay on any captured board, i.e. is per-target falsifiable here? | no |
 | `static_shortlist_check.py` | does the STATIC notch shortlist name the same targets the spill grounds? (20/20 named, 20/20 exact after `_by_mouth`) — needs REST captures, see its docstring | no |
 
 Eight more are single-question probes from the round's opening — `discovery_probe_idx0.py`,
@@ -9943,3 +9944,36 @@ burden was real when written and is not the frontier now; idx3 is.
 of the fifth piece, or because `tracked_region()` aims one piece where five need placing. The
 distinguishing measurement is what the emitter does to a spill that the falling sources do not — and
 it needs the emitter's own transition observed, not the board described.
+
+## Open item: per-target sink predicates — NOT SUPPORTED by the evidence
+
+The round's closing note read: *"`sink_response_predicate` is GLOBAL where one board needs it
+PER-TARGET (`contact` wins 14033 layouts, CONTRADICTED on idx0)"*. Replaying every fixed capture
+under each predicate, scored as the verifier scores — invented cells plus missed cells:
+
+```
+capture         sinks   same_sink_flanks   contact
+walk_idx0_1       2            0              0
+walk_idx1_1       3            0              0
+walk_idx2_1       3            0              0
+walk_idx3_1       3            3              7    <-- differ
+walk_idx3_2       3            3              7
+walk_idx3_3       3            3              7
+walk_idx3_4       3            3              7
+```
+
+**On idx0/idx1/idx2 the two are data-indistinguishable — both exact.** On idx3, the only board where
+the predicate changes anything, `contact` is **worse**: error 7 against 3. Combined with `contact`
+being CONTRADICTED on idx0, **there is no captured board on which `contact` wins**, so a per-target
+assignment has nothing to assign it to.
+
+⛔ **Per-target is therefore not the shape of this gap**, and adding it would be adding a degree of
+freedom the evidence cannot constrain — unfalsifiable by construction. The "14033 layouts" figure was
+about how many PLACEMENTS a layout search would judge winning under `contact`, which is a different
+question from whether `contact` reproduces what the engine did; on that question it loses everywhere
+it is testable.
+
+⚠️ **What this does not close.** idx3 still carries **3 cells of replay error under the better
+predicate**, so something on that board is unmodelled — the per-target hypothesis is refuted as the
+explanation, not the error. That residual is the open item now, and it is the same board the depth
+walk stops on and the first level to carry an emitter.
