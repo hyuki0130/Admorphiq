@@ -332,3 +332,35 @@ recovered rather than one written into it.
 — ft09's compass is one target encoding, and sb26, sk48, tr87, lf52, cn04 and vc33 will each display
 their target differently. The next step is deeper levels of ft09 (do the glyphs change?) and then the
 same chain against a second class-D game.
+
+## The stencil chain, measured to 4 of 6 levels on ft09 (2026-08-27)
+
+`scripts/glyph_stencil_probe.py` clears **ft09 levels 1-4 in 62 actions** with no game id, no
+coordinate constant, no tile size and no pitch written down. Every one of those is derived, and
+each derivation below was WRONG first and fixed by a measurement, so the failures are the
+content of this section.
+
+| # | What broke | The measurement that named it | The rule that replaced it |
+|---|---|---|---|
+| 1 | probing the whole 64x64 | the first probe changed 3,140 cells and nothing responded after | a click outside the board is fatal; probe inside the board |
+| 2 | "the panels are a recap screen" | ACTION1 (illegal — `available_actions == [6]`) produced the SAME 3,556-cell change | it is a reset screen, not a panel switch. WITHDRAWN |
+| 3 | "the tiles are a magnified copy of the glyph, so the rule is a tautology" | level 1's board is UNIFORM colour 9 before any click | the rule is real: paint the stencil onto the lattice. WITHDRAWN |
+| 4 | connected components find 36 tiles at pitch 2 | the live board is ONE 900-cell component — its colour-4 frame touches every tile | `_peel`: a component far larger than its siblings is a CONTAINER, not a tile |
+| 5 | pitch taken as the smallest gap | two unrelated panels sit 2 pixels apart, so every neighbour lookup missed | pitch is the COMMONEST gap, never the smallest |
+| 6 | the plan clicked panel tiles | a panel click is an out-of-board click, i.e. #1, i.e. fatal | the container marks the LIVE region — a frame is the game saying which panel is live |
+| 7 | ink role inferred from frequency | both inks appear exactly four times on level 1 | read the code off the WORKED EXAMPLES on screen; a panel counts only if its ink->colour map is one-to-one |
+| 8 | the code stored as ink -> absolute colour | level 1 paints in colour 8 and level 2 in colour 12, so the code was dead one level on | store ink -> ROLE (marker / not-marker) and CARRY it: level 2 ships no worked example at all |
+| 9 | only the "paint this" half of the stencil was acted on | level 3 starts MIXED, and two of its four stencils demand cells that must NOT carry the marker | a stencil states both halves; target = marker or the other palette colour |
+| 10 | a batch plan executed across a level boundary | the frame after a level-up still shows the board just finished, so level 2's plan ran level 1's board | replan after EVERY click |
+
+⛔ Two of these (#2, #3) were stated here as findings and then withdrawn by the next
+measurement. Both were reached by reading a board and reasoning; both died to one probe.
+
+**Where it stops.** Level 5 is a different size of problem: 38 tiles, 11 stencils, four inks
+(0/2/3/6) where levels 1-4 used two, markers 14 and 15 side by side, stencils whose neighbours
+run off the board (`None`), and several tiles that are themselves 14/6 checkerboards rather
+than plain. The two-colour target model cannot express it. Open, not failed.
+
+**Level 5's shape, banked** — the stencils at (12,22), (28,22) and (44,38) are IDENTICAL
+`[[14,6,14],[6,14,6],[14,6,14]]` checkerboards, which is not a stencil alphabet, so the
+tile/stencil split ("more than one colour means it instructs") is the next thing to falsify.
