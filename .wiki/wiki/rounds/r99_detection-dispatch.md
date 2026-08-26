@@ -2059,3 +2059,41 @@ winning ones (1024 and 1216 cells against 624 and 800). If retention requires a 
 TERMINUS of the flow rather than a way-station, that surplus is the signature — water continuing
 past the targets instead of stopping in them. Measurable as whether the spill extends beyond the
 targets in the fall direction on level 3 and not on levels 1-2, on boards whose outcome is known.
+
+## Terminus refuted too — eight eliminations, and what structurally remains
+
+```
+WON  level 1  fall (1, 0)    spill  624 cells   beyond the targets: 0
+WON  level 2  fall (-1, 0)   spill  800 cells   beyond the targets: 0
+lost level 3  fall (-1, 0)   spill 1216 cells   beyond the targets: 0
+```
+
+Water never runs past a target in the fall direction, on wins or losses. The surplus wetting on the
+failing commit is spread elsewhere on the board, not downstream of the targets, so "the target must
+be the terminus" does not separate them either.
+
+**Eight candidates eliminated by measurement**: hazard contact (twice, the second time with the
+instrument validated), missing static obstacles, target miscounting, stale fall direction,
+misdirected propagation, execution drift, basin closure, flow terminus.
+
+What still differs structurally between the levels that win and the one that does not is the SOURCE:
+
+```
+level 1   16 source cells   WON
+level 2   16 source cells   WON
+level 3   48 source cells   lost      = 3x, and the multi-piece planner returned exactly 3 moves
+```
+
+Three sources rather than one. `simulate_flow` runs a single BFS over wetted cells and has no
+representation of separate streams, so stream-on-stream interaction is something it cannot express
+at all — and R98's schema has an axis for exactly that (`own_flow: advance_front | overwrite |
+terminate`), which R98 measured INERT on its own board, a SINGLE-piece level where it could not
+matter.
+
+⚠️ Candidate, not a finding. It fits what is left, and it is also the only structural difference
+still standing, which is a reason to test it and not a reason to believe it.
+
+⚠️ **Worth stating plainly for whoever picks this up**: this is eight eliminations deep on a target
+worth **+0.0057** of card. The diagnostic chain has been the valuable part — six instrument faults
+caught, several of them after they had produced a confident conclusion — but the sp80 level-3 clear
+itself is a small prize, and continuing is a choice rather than an obligation.
