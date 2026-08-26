@@ -9728,6 +9728,7 @@ games.
 | `feasibility_probe.py` | does a winning layout exist at all under the verified model? | no |
 | `reference_propagator.py` | the colour-reading fixture the certifications replay through; imports the one propagator so there is a single implementation | no |
 | `per_target_predicate.py` | does the sink predicate CHANGE the replay on any captured board, i.e. is per-target falsifiable here? | no |
+| `spread_extent.py` | does bounding the spread — by obstacle extent or by `WALK_REACH` — remove idx3's residual? | no |
 | `static_shortlist_check.py` | does the STATIC notch shortlist name the same targets the spill grounds? (20/20 named, 20/20 exact after `_by_mouth`) — needs REST captures, see its docstring | no |
 
 Eight more are single-question probes from the round's opening — `discovery_probe_idx0.py`,
@@ -10086,3 +10087,33 @@ not to write it.
 ⛔ Three inferences about these cells were refuted before this one: hazard contact, spreading off
 `piece1` (right object, wrong mechanism), and the step-4 timing lag. Each was discarded by reading one
 level deeper into data already on disk.
+
+## Three obvious fixes for idx3's overstep, all REFUTED
+
+The residual is three invented cells from one overstep past `piece1`'s edge. Three fixes suggest
+themselves and all three are measured wrong:
+
+```
+fix                                        idx0/1/2        idx3
+1. clamp `_beside` to the blocker's extent   0 0 0        3  (unchanged)
+2. WALK_REACH 2 -> 1                         worse        33 (much worse)
+   WALK_REACH 2 -> 3                         0 0 0        3  (unchanged)
+3. bound the walk for EVERY stream          11 18 23      32 (worse everywhere)
+```
+
+**1 does nothing because `_beside` is not on that path.** The spread that produces `(4,12)` comes from
+the piece-blocked branch's `spawn(f, direction, onward)`, not from `_beside`. Patching a function
+without checking it is on the path is the same mistake this round has already recorded twice.
+
+**2 reproduces the round's own finding** — `WALK_REACH` is supported only as "at least 2", and 2
+versus 3 is indistinguishable. The overstep is not a walk-length question.
+
+**3 is decisive in the other direction.** The limit reads `if 0 <= walked >= WALK_REACH`, and `walked`
+is `-1` for any stream that did not start at a landing cell, so those walk unbounded. Making them
+bounded (`onward = walked + 1 if walked >= 0 else 1`) breaks **every capture**, including the three
+that were exact. **The unbounded walk is load-bearing, not an oversight.**
+
+⛔ So the overstep is real, its cause is not any of the three cheap levers, and the three cells stand.
+What this buys is that those levers are now closed rather than untried — the next attempt has to
+explain why the engine stops at the obstacle's edge in THIS spread while our unbounded walk is
+correct everywhere else.
