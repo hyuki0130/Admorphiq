@@ -2300,3 +2300,25 @@ Raised to **2,000**. It still recovers half the 4,000 budget from a wrong dispat
 demonstrated 1,379, and no public game clears its first level between 461 and 2,000 so the card stays
 byte-identical either way. The test now pins BOTH bounds — above the slowest first clear AND above
 the costliest single level — so lowering it back would fail on the second.
+
+## The stragglers came in, and they are the strongest form of the result
+
+`NOGIVEUP` is at 23 of 25, and two of the four games that most obviously hit the give-up have
+finished:
+
+```
+r11l   4,064 actions -> 100,000 actions    score 0.259423 -> 0.259423    levels 4 -> 4
+re86   4,009 actions -> 100,000 actions    score 0.727294 -> 0.727294    levels 7 -> 7
+```
+
+They did not merely fail to improve — **they SPENT the twenty-five-fold budget and gained nothing at
+all**, to six decimal places. That is a stronger statement than "0 of 21 changed", because these two
+are the cases where the give-up was visibly binding: they stopped AT 4,000 before, and given 100,000
+they use every action and clear exactly the same levels.
+
+Changed across all 23 compared: **0**.
+
+⛔ So "the adapter was cut off early" is dead as an explanation anywhere it could plausibly have
+applied. What stops these adapters is what they can do, and no amount of patience changes it. Only
+`sc25` and `sk48` remain unfinished, and both are already covered by the same conclusion on their
+DEPTH30 runs.
