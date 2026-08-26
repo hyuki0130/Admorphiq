@@ -111,3 +111,14 @@ both. That is a one-line fix to a wiki claim, not a lever.
 zero under EVERY tool at 3000 actions — no selection policy reaches them, and no budget does either
 (`NOGIVEUP`, 25x the give-up, 0 of 23 games changed). That is the same conclusion the card work
 reached from the other direction, and it is a capability statement about `graph` and its siblings.
+
+## The one correction applied to `tool_selector.md`
+
+The `toggle` row claimed *"NONE of the 25 dev games is one"* and *"measured 0 elsewhere"*. The full
+sweep refutes both on vc33, so the row now carries the measurement instead of the exclusion, with the
+scope kept honest — `toggle` still scores 0 on the other nineteen.
+
+⚠️ **This is a wiki fix, not a lever.** It is worth about +0.00005 of card. It is here because the
+harness reads this table as its knowledge and a false exclusion in it is a false belief the model then
+acts on faithfully — which is exactly what "the model is following the table" meant. Leaving a refuted
+claim in the source of truth is worse than the score it costs.
