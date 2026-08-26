@@ -1251,3 +1251,23 @@ implementation by identity, with R98's guards and 331 flow/kernel/grounding test
 ⛔ Also measured, and it closes a shortcut: **lp85 was the only adapter carrying its own
 solvability predicate.** All fourteen remaining unported adapters have no `_detect`, so each needs
 its conjunction written by hand rather than lifted.
+
+## Card with sp80 in: 0.3051 -> 0.3108 (2026-08-26)
+
+Full 25 on the deployed agent, `scripts/rounds/R99CARD2`. Exactly **one** game moves:
+sp80, `1.3e-05 -> 0.142857`. Zero collateral, for the second port running.
+
+```
+0.0566  ->  0.2772  ->  0.3051  ->  0.3108
+ card       9 ports    +lp85      +sp80
+```
+
+⚠️ **The runner that produced both of the last two cards had a defect, and it was in the
+throttle rather than the measurement.** `wait -n` is an INVALID OPTION in bash 3.2, which is what
+macOS ships, so `while [ jobs >= PAR ]; do wait -n; done` never blocked and all 25 games launched
+at once. The second run was killed under the load at 17 of 25. Scores are per-process and
+deterministic, so no NUMBER is affected — R99CARD's per-game values match the previous full-25
+everywhere but lp85 — but the machine was, and a killed run could not resume. Fixed by throttling
+with `xargs -P` and skipping games that already have a result, so a kill resumes instead of
+restarting. ⛔ A guard that fails OPEN reports success while protecting nothing; this one had to be
+run on the platform that ships the old shell to show it.
