@@ -423,6 +423,20 @@ left for the next session to re-derive:
 So the thing that consumes the five bits has not been found. That is the open question, and it
 is a question about the board, not about the strip.
 
+**Correction, measured the same day: the disc IS the submit button, and submitting a wrong
+answer ENDS THE GAME.** A sweep of the 32 bit patterns — set the bits, press, read
+`levels_completed` — died after the THIRD press with an empty frame. So the earlier reading
+("pressing it moved nothing, therefore it is not a run trigger") was right about the frame and
+wrong about the button: nothing moves because the answer is wrong, and the game is counting.
+
+⛔ **tn36 cannot be brute-forced.** Roughly three attempts exist per game. The five bits have to
+be DERIVED from the board — most likely from the 30 colour-11 cells, which is where a tool
+should look next — and a tool that guesses here does not lose a level, it loses the game.
+
+This is the second sample game measured to punish a wrong action (ft09 charges a level). Worth
+treating as the default assumption rather than the exception: **a generic tool needs a reason
+to act, not merely the absence of a reason not to.**
+
 
 ## ft09 level 5 is a WALL, and the wall cost levels before it was recognised (2026-08-27)
 
