@@ -85,7 +85,10 @@ from admorphiq.adapters25.base import (
 )
 from admorphiq.kernels import (
     canonical_key,
+    cellify,
+    colour_regions,
     find_regions,
+    infer_board_scale,
     learn_flow_operators,
     plan_flow_coverage,
     plan_flow_coverage_multi,
@@ -179,12 +182,66 @@ def _detect_translated_color(before: Grid, after: Grid, background: int) -> tupl
     return None, (0, 0)
 
 
+def _has_notch(region: frozenset[Cell]) -> bool:
+    """Whether the region has a notch: a cell it does NOT hold whose LEFT and RIGHT
+    neighbours it does. The flow-family's satisfaction runs through exactly such a
+    cell, so a region without one is an obstacle rather than a receptacle."""
+    held = set(region)
+    return any(
+        (r, c) not in held and (r, c - 1) in held and (r, c + 1) in held
+        for r in {row for row, _ in region}
+        for c in range(
+            min(x for y, x in region if y == r), max(x for y, x in region if y == r) + 1
+        )
+    )
+
+
 class Adapter(GameAdapter):
     """Learn SP80's flow from a sacrificial spill, then plan a target-covering
     piece layout; fall back to generic transition-graph frontier exploration
     when the flow model is unavailable. Composed from admorphiq.kernels."""
 
     GAME_ID = GAME_ID
+
+    @classmethod
+    def _detect_mechanic(cls, latest_frame: Any) -> bool:
+        """A place-then-propagate flow board: a piece is steered and committed, and
+        the spill it releases has to fill notched receptacles.
+
+        Two conditions, both the mechanic's own.
+
+        1. **Steer-and-commit with selection.** The piece is moved by the four
+           directions and released by a fifth action, and clicking selects which piece.
+           MEASURED across the 25 public games: exactly four expose that scheme
+           (sp80, m0r0, cd82, cn04), so it narrows and does not decide.
+        2. **At least one notched receptacle.** This family's satisfaction runs
+           through a notch — the flow occupies the cell in a target's edge whose two
+           flanking neighbours belong to that same target — and the grounding's own
+           rule is that a region WITHOUT a notch is an obstacle, not a target. So a
+           board of this family cannot lack one. MEASURED on the four boards above,
+           read in CELLS: sp80 has 2, and m0r0, cd82 and cn04 have 0.
+
+        ⚠️ Reading in cells is load-bearing and was measured, not assumed. The same
+        notch test relaxed to be scale-free — any interior gap in a region's row, so
+        that a multi-pixel notch still registers on raw pixels — fires on ALL FOUR
+        (cd82 4, sp80 2, m0r0 2, cn04 2) and separates nothing. The scale comes from
+        ``infer_board_scale``, the one implementation this and R98's flow grounding
+        both call.
+        """
+        simple_ids, has_click = available_action_ids(latest_frame)
+        if set(simple_ids) != {1, 2, 3, 4, 5} or not has_click:
+            return False
+        grid = canonical_layer(latest_frame)
+        scale = infer_board_scale(grid)
+        if scale is None:
+            return False
+        cells = cellify(grid, scale)
+        background = most_common_color(grid)
+        return any(
+            _has_notch(region)
+            for colour in set(cells.values()) - {background}
+            for region in colour_regions(cells, colour)
+        )
 
     def __init__(self, giveup: int = _GIVEUP_DEFAULT) -> None:
         self.restart_on_game_over = True

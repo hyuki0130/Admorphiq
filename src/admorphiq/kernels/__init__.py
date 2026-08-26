@@ -6,6 +6,11 @@ Kernels never touch the environment, never infer goals, and contain no
 game-specific constants. See docs/r56_codex_toolbase_verdict_20260715.md.
 """
 
+from admorphiq.kernels.board_scale import (
+    cellify,
+    colour_regions,
+    infer_board_scale,
+)
 from admorphiq.kernels.canonical import (
     canonical_key,
     choose_canonicalization,
@@ -131,7 +136,10 @@ __all__ = [
     "separate_by_motion",
     "simulate_flow",
     "track_objects",
+    "cellify",
+    "colour_regions",
     "find_regions",
+    "infer_board_scale",
     "region_relations",
     "group_by_axis",
     "multiset_signature",
