@@ -558,3 +558,42 @@ Two corrections follow, and the second is the useful one:
   coverage gap for stage 1 is movement games walling at level 2** — which is exactly what the
   2026-08-26 measurement already said (`median 1.3x human on level 1, then stop`) and what this
   round had drifted away from.
+
+
+## Why `graph` stops, named per game — and g50t taken apart (2026-08-27)
+
+`scripts/tool_stall_diag.py` at 1500 steps on the move-driven games:
+
+| game | states | transitions | inert | goal drawn | reading |
+|---|---|---|---|---|---|
+| re86 | 318 | 554 | 26% | yes | search / goal problem |
+| tr87 | 266 | 596 | 18% | yes | search / goal problem |
+| tu93 | 250 | 584 | 10% | yes | search / goal problem |
+| **g50t** | **18** | 57 | **42%** | yes | **expansion problem — the frontier dries** |
+
+g50t is the outlier by an order of magnitude, so it got taken apart. What is now MEASURED:
+
+* **the player is a 24-cell colour-9 blob at (8,14)**, and there are THREE colour-9 regions —
+  the player plus a 19-cell and a 1-cell piece at (49,43)/(52,46) that form the goal;
+* **the move quantum is 6 rows**, one corridor cell;
+* **the first action after a reset changes nothing.** Every sequence tried begins with a
+  zero-delta action whatever that action is;
+* **ACTION4 and ACTION5 never moved the player** in any probe.
+
+⛔ **The action -> direction map is NOT fixed, and I could not identify the rule.** The
+measurements contradict each other and are recorded as such rather than smoothed:
+`A3` repeated from reset never moves; `A3` after `A2` moves down; `A1` moved down once and up
+later from the same board; `A4` moved the player down in one episode and never in another.
+Whatever governs it is not "action k is direction d", and the next attempt should start from
+these traces, not from a story built on top of them.
+
+⛔ **I walked straight into the trap this repository already records.** CLAUDE.md says g50t's
+2/7 came from "ONE perception root-cause — two colour-9 blobs, diagnostics tracked the static
+GOAL". My first three measurements tracked `min(row)` over all colour-9 cells and produced
+displacement figures that mixed the player with the goal, and I reasoned on them for two rounds
+before separating the components. **A recorded trap costs exactly what an unrecorded one costs
+if the record is not read before the probe is written.**
+
+⛔ Also: a probe that calls `arcade.make()` per trial measures only the absorbed first action.
+Three sweeps reported g50t inert for that reason, including a BFS that concluded the game has
+ONE reachable state.
