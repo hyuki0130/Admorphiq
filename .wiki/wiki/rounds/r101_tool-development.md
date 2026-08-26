@@ -680,3 +680,24 @@ found.
 g50t's frontier no longer dries — the expansion failure diagnosed above was the searcher
 re-learning the same dead clicks at every state. **lp85 remains the outlier**: 3 states, every
 transition a self-loop, while its adapter clears 8/8.
+
+
+## The card after the harness change: 0.3162, UNCHANGED (2026-08-27, ceph-build, full 25)
+
+The repository's rule is that a change to the harness is a change to the card, so the shipped
+configuration was re-measured: `scripts/rounds/R101CARD`, `--agent kaggle_detect`, budget 4000,
+all 25 games, PAR=20 (load peaked at 11.8 against the 60 cap).
+
+**Mean = 0.3162, exactly the recorded current card. No game moved.** The three deltas against
+`R99CARD` (sc25 +0.0427, sp80 +0.1428, tn36 +0.0919) are the adapter ports landed after that
+round was measured, not this change.
+
+⛔ **So the bench gains did NOT reach the card, and that is the honest headline.** cd82 and vc33
+each newly clear a level under the bare `UnifiedAgent`, and g50t's state count went 18 -> 562 —
+but the shipped path runs `KaggleChainedAgent` (WorldModelAgent first, then the unified member,
+at the deployed budget), and under it cd82 is already adapter-handled at 0.9463 while vc33 still
+scores 0.0000. A number measured on the bare harness is not a number about the card, and the two
+were being read as one thing until this run.
+
+What the run does establish: **the harness change is card-neutral — zero regression across 25
+games**, which is the gate that had to be passed before any of it could stay.
