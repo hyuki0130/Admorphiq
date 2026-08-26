@@ -1621,7 +1621,13 @@ directory `ARC-AGI-3-Agents/` on the box — MEASURED, a sync that carried only 
 notebooks kaggle` produced `No module named 'agents'` and **0.0000 on all 25 games**, which reads
 exactly like a broken card and is not one. Include it when syncing.
 
-**Measurement runs ALL 25 GAMES IN PARALLEL on `ceph-build` (64 cores), never serially on the Mac.**
+⛔ **PARALLELISM IS CAPPED AT 60 CORES on ceph-build (user directive, restated 2026-08-26 after
+being forgotten twice).** The box has 64; saturating them locks out SSH, so the round becomes
+unreachable while it runs and cannot even be checked on. Leave 4 for the shell. The cap is CLAMPED
+in `scripts/rounds/R99CARD/run.sh` (and the round runners copied from it) rather than left to
+whoever sets `PAR` — a rule that has been forgotten with the runner in hand belongs in the runner.
+
+**Measurement runs ALL 25 GAMES IN PARALLEL on `ceph-build` (64 cores, USE AT MOST 60), never serially on the Mac.**
 The Mac is edit/lint/pytest only. Sync first — ceph-build's `~/admorphiq` is a tarball extract, is
 BEHIND the repo, and is not a git repo:
 
