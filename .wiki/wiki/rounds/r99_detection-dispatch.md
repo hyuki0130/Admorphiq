@@ -1342,3 +1342,27 @@ and came free; g50t's mechanism is a MOTION no static conjunction reaches; wa30'
 and static but **the discriminating evidence belongs to another adapter**. Naming which kind is
 what keeps a park re-examinable — this one reopens the moment the probe contract carries an
 ACTION5 transition, since select-versus-interact is exactly what one such press would show.
+
+## Do the NEW ports transfer? Measured on archived version hashes (2026-08-26)
+
+The public 25 cannot answer the only question that matters — whether a detector reads the MECHANIC
+or the board it was written against. The archived version hashes can, because they are the same
+game re-rendered, which is the nearest thing available to an unseen private game.
+
+```
+sp80   archived sp80-589a99af   detector fires: True
+tn36   archived tn36-ef4dde99   detector fires: True
+lp85   no archived version — untested, and recorded as untested
+
+sp80   fallback 0.0000 (1 lvl)  ->  dispatch 0.1429 (2 lvl)
+tn36   fallback 0.0152 (1 lvl)  ->  dispatch 0.1071 (2 lvl)
+```
+
+Both fire, and both deliver on the archived board **exactly the gain they deliver on the current
+one** — the detector recognises the mechanic through a re-render, and the adapter behind it solves
+what it recognised. That is the evidence the 0/24 gate cannot give: the gate proves a detector does
+not fire where it should not, and this proves it fires where it should on a board it was never
+written against.
+
+⚠️ lp85 has no archived hash, so its transfer is **not measured**. That is a gap in the evidence,
+not a negative result, and it is recorded as such rather than assumed from the other two.
