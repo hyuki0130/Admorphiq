@@ -10008,3 +10008,38 @@ it is a read rather than a new run.
 
 ⛔ Recorded before inferring further, because the last two explanations built for this level (hazard
 contact, then per-target predicates) were both refuted, and both were built on less than this.
+
+## ⛔ Correction: the three cells are a ONE-COLUMN OFFSET, not a spread
+
+The previous entry read the invented run as flow "spreading sideways off `piece1` and then falling".
+Reading the frontier step by step refutes that:
+
+```
+step | ours                        | engine
+  10 | (4,12)  (6,1)  (6,5)        | (4,11)  (6,4)
+  11 | (5,12)  (6,6)  (7,1)        | (6,2)   (6,5)
+  12 | (6,7)   (6,12) (8,1)        | (6,1)
+  13 | (7,7)   (7,12) (9,1)        | (6,6)   (7,1)
+
+our replay 25 steps, engine 27
+```
+
+At step 10 the engine is at **(4,11)** and we are at **(4,12)** — the same stream, **one column
+apart**, and it stays one column apart as both descend. Nothing spreads; a stream runs down the wrong
+column.
+
+**And `piece1` sits at (5,11) — directly in the engine's column, not ours.** So the engine's stream
+runs INTO `piece1` while our copy of it runs down the empty column beside it. The divergence is
+where that stream is placed relative to the piece, one step before either of them reaches it.
+
+⚠️ This is the second inference about these three cells to be refuted by looking one level deeper —
+first "hazard contact", then "spreads off piece1". Both were built from cell POSITIONS; the step
+index was what settled it, and it was already in the propagator's output.
+
+⚠️ Not yet measured: why the stream is one column right. It could be where the source emits, or a
+deflection at an earlier obstacle. The step-10 frontier is the first place they differ, so the answer
+is at step 9 or earlier — the same read, further back.
+
+⛔ **This step needed no parallelism and none was invented for it.** ceph is idle because a fixed
+capture replays in under a second; manufacturing a sweep to keep the box busy is exactly what
+produced the tool detour earlier today.
