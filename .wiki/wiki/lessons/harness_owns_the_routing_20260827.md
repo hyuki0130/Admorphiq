@@ -37,6 +37,32 @@ across 9,600 frames** of foreign games and still saw one of them change hands wh
 
 With nobody claiming the board, the general searcher is now the deliberate fallback.
 
+## Root Cause 3 and 4 — the model's menu was hardcoded, twice
+
+Found only when the LLM path was finally exercised on a GPU-less box, at the user's insistence.
+Everything above was measured on the **LLM-free fallback**, where routing is by signature; the
+deployed path asks a model to name a tool.
+
+* `context.py` listed **eight tool names as literals** to slice `tool_selector.md` into per-tool
+  blocks. The eighteen rule-recovery tools built the same day were not among them, so the model
+  was never told they exist.
+* `_relevant_tools` then scored **the same eight literals** to decide which blocks fit the board.
+  After `tool_selector.md` gained an entry per tool the parser found **26 blocks and the ranker
+  still passed 8**.
+
+Between them the model was structurally unable to name the tool that clears a game 8/8 — on ar25
+it picked the general searcher and the code path and scored one level, while the signature fallback
+picked the right tool and scored 1.0000.
+
+**Fix**: the menu is `default_tools()`, and the ranking is each tool's OWN `detect` — the same
+number the fallback routes on, so the model is ranked by evidence the harness already trusts.
+Verified: ar25's menu now leads with the right tool and its block is in the 5,849-char context.
+The fallback path is byte-identical (0.2143, all 25 games unchanged).
+
+⛔ **A tool that is registered must be NAMEABLE.** Two menus in one file drifted from the registry
+without anything failing, because the fallback never reads them. Any list of tool names that is
+not derived from the registry is a defect waiting for the day someone runs the model.
+
 ## What it was worth
 
 ```
