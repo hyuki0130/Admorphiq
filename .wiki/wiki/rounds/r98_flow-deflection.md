@@ -10043,3 +10043,46 @@ is at step 9 or earlier — the same read, further back.
 ⛔ **This step needed no parallelism and none was invented for it.** ceph is idle because a fixed
 capture replays in under a second; manufacturing a sweep to keep the box busy is exactly what
 produced the tool detour earlier today.
+
+## idx3's residual RESOLVED: the spread runs one cell past the obstacle's edge
+
+Following the divergence back cell by cell, with two false leads discarded on the way.
+
+**False lead 1 — the step-4 difference.** The first frontier mismatch is at step 4: ours has `(12,4)`,
+the engine does not. But the engine reaches `(12,4)` at **step 5** — a one-tick lag, not a path
+difference, and invisible to a set comparison. Discarded.
+
+**Where the paths actually differ**, by column:
+
+```
+col 10   engine and ours IDENTICAL
+col 11   engine and ours IDENTICAL
+col 13   engine and ours IDENTICAL
+col 12   engine [(7,12)]        ours [(4,12), (5,12), (6,12), (7,12)]
+```
+
+Three columns match cell for cell; only column 12 differs, and only ABOVE row 7, which is upstream of
+the shared cell.
+
+**The cause, read off the board.** `piece1` is a horizontal bar at row 5, columns **9-11**:
+
+```
+row 4    9 .    10 .    11 .    12 .      <- the row the flow spreads along
+row 5    9 p1   10 p1   11 p1   12 .      <- the obstacle, columns 9-11
+```
+
+Flow descending onto `piece1` is blocked and spreads along its top face. **The engine's spread ends at
+column 11 — the obstacle's own extent.** Ours continues to `(4,12)`, one cell past the edge, and from
+there falls down the empty column to `(5,12)`, `(6,12)` and into the shared `(7,12)`.
+
+**All three invented cells come from that single overstep.**
+
+⚠️ Measured on one obstacle on one board, four captures. What it licenses is a specific check — does
+the engine's spread stay within an obstacle's span everywhere it spreads? — not yet a rule change.
+`_beside` spreads perpendicular whenever the cell ahead is blocked, with no notion of the blocker's
+extent, so the fix has an obvious shape; that is a reason to measure it on the other captures first,
+not to write it.
+
+⛔ Three inferences about these cells were refuted before this one: hazard contact, spreading off
+`piece1` (right object, wrong mechanism), and the step-4 timing lag. Each was discarded by reading one
+level deeper into data already on disk.
