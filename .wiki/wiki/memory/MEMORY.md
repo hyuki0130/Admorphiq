@@ -41,3 +41,4 @@
 - [Top policy: tools to 25/25, then the LLM](policy_two_stage_tools_then_llm.md) — I build the tools; the LLM patches them on hidden games; ceph verifies at width; Kaggle GPU measures hidden
 - [Stage 1 tool build](project_stage1_tool_build.md) — read the game DATA first; 13 of 25 games have per-level action budgets; generic tools 0.0230 vs card 0.3162; 16 of 25 clear nothing
 - [Measure the full 25 before keeping](feedback_measure_full_25.md) — a single-game probe cannot see a 20x net loss; selectivity beats solving; no Kaggle submission until the samples clear
+- [Fan out, then integrate](feedback_parallel_build.md) — one background agent per game, exclusive file ownership, central integration, keep only on a full-25 measurement

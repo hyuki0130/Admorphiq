@@ -894,3 +894,22 @@ ft09 0.4762 (stencil) · m0r0 0.0476 (mirror) · lp85 0.0278 (track) · the rest
 
 ⛔ **No Kaggle submission until the sample games are cleared** (user directive, 2026-08-27,
 recorded in `OPERATING_RULES.md` above rule 6).
+
+
+## How the build runs from here: fan out, then integrate (2026-08-27, user-set)
+
+Serial tool work was stopped by directive — it leaves the 64-core box idle and spends a session on
+one game, and this round measured what that costs: six or seven iterations on ONE level of ONE game
+before the full-25 run revealed a net loss.
+
+The protocol is now `OPERATING_RULES.md` rule 8 and [[../parallel_build_protocol]]: one background
+agent per GAME, all launched together, each owning exactly two NEW files and forbidden to touch the
+registry, the loop, the shared segmentation module, another agent's tool, or the git index. The
+parent registers one tool at a time and runs the full 25 on ceph-build at PAR=25, keeping a tool
+only when no game regressed.
+
+**The load-bearing reason integration stays central**: selectivity is a property of the TOOL SET,
+not of any one tool. No agent can see the cost its `detect` imposes on the other twenty-four games,
+so no agent may decide whether its own work is kept.
+
+First fan-out: **nine games at once** — ls20, tr87, su15, sb26, g50t, cn04, s5i5, sc25, re86.

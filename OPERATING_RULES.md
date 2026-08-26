@@ -143,6 +143,37 @@ adapters into the shipped card (no LLM in that path, and it conflicts with the n
 dual-scoreboard doctrine), and treating "the tools cannot clear these" as a verdict rather than as
 stage one's work list.
 
+## 8. FAN OUT, THEN INTEGRATE — the parallel build protocol (user directive, 2026-08-27)
+
+⛔ **Do not improve tools one at a time.** The user's words: *"언제까지 하나씩 개선할거야? 그러니깐
+ceph 인스턴스 최대로 활용을 못하잖아."* Serial tool work leaves a 64-core box idle and spends a
+session on one game. It was measured: six or seven iterations went into ONE level of ONE game
+before the full-25 run revealed the change was a net loss.
+
+**The protocol, in order.**
+
+1. **FAN OUT.** One background agent per GAME, launched together in a single message so they run
+   concurrently. Each agent owns exactly two NEW files — `src/admorphiq/tools/<name>.py` and
+   `scripts/<name>_probe.py` — and is forbidden to touch `registry.py`, `loop.py`, `segment.py` or
+   another agent's tool. That ownership rule is what makes the fan-out conflict-free; without it
+   the merges cost more than the parallelism saves.
+2. **BRIEF EACH ONE with what has already been paid for**, or they will re-learn it: read the
+   game's own source and level data FIRST (`scripts/read_sample_games.py`,
+   `scripts/dump_sample_levels.py`); thirteen of the twenty-five games declare a per-level ACTION
+   BUDGET and END when it is exceeded, so plan rather than explore; `detect` returns **0.0** when
+   the tool has no plan; segmentation comes from `tools/segment.py` and is never re-invented;
+   actions are SWALLOWED during animations; an edge-pinned counter is not board content.
+3. **INTEGRATE CENTRALLY.** Only the parent edits `registry.py`. Take one tool at a time, register
+   it, and run the **full 25** on ceph-build at `PAR=25` — about two minutes — comparing per game
+   against the previous round.
+4. **KEEP OR REVERT ON THE MEASUREMENT, never on the agent's own report.** A tool that clears its
+   game and steals another's turn is a loss. A tool is kept only when no game regressed.
+5. **RECORD** the outcome in the round page and pull every artefact back off the box (rule 2).
+
+**Why integration stays central**: selectivity is a property of the TOOL SET, not of any one tool.
+No agent can see the cost its `detect` imposes on the other twenty-four games, so no agent may
+decide whether its own work is kept.
+
 ## 7a. THE CURRENT AXIS — what a tick should find you doing (2026-08-27, user-set)
 
 **Clear the sample games.** Nothing else. Not the leaderboard, not a submission, not the card.
