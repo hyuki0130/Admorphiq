@@ -1583,17 +1583,31 @@ concede branch is never reached on a level that clears. The measured trace agree
 level 1 never entered `_execute_step` at all (learn 2, probe 4, plan 4), and level 2 executed 8
 actions and cleared without touching `graph`.
 
-⛔ **But one correction to my own reasoning, found in the same read.** `_on_level_up` restores the
-flow path only `if self._phase in ("learn", "probe", "plan", "classify", "execute")` — **`"graph"`
-is not in that set**. So once the adapter concedes to graph it never gets the flow path back, on
-this level or any deeper one. sp80's level-3 failure therefore poisons levels 4, 5 and 6 as well:
-the game is not "2 of 6 with four hard levels left", it is "2 of 6 and the pipeline is switched off
-from level 3 onward". That raises this work's value above the +0.0057 already computed, which
-assumed only level 3 was in play.
+⛔ **The "correction" recorded here an hour ago was itself WRONG, and it is withdrawn.** It claimed
+`_on_level_up` restores the flow path only `if self._phase in ("learn", "probe", "plan", "classify",
+"execute")`, so a concede to graph would latch the pipeline off for every deeper level, and that
+sp80 is therefore "2 of 6 with the pipeline switched off from level 3 onward".
 
-⚠️ Residual risk, named rather than dismissed: if a winning commit's level-up registers a frame or
-two LATE, the concede branch could be reached before `_on_level_up` sees it — and because of the
-line-375 exclusion, that would switch the pipeline off permanently on a level it actually won. The
-measured trace shows this does not happen on levels 1-2 (level 2 ran `learn`/`probe` again, so the
-phase was still a flow phase at level-up). It is a cost-and-latch risk for any escalation inserted
-at line 661 and belongs in the acceptance gate.
+That conditional belongs to **`_on_restart`** (sp80.py:368, the GAME_OVER handler), not to
+`_on_level_up`. `_on_level_up` resets `_phase = "learn"` **unconditionally**, with no test at all.
+Two methods with adjacent bodies were read as one, and the whole inference was built on the wrong
+one.
+
+What that changes:
+
+* **The latch does not exist across levels.** Every level-up restarts the flow pipeline whatever
+  phase the previous level ended in, so the value of this work stays the **+0.0057** computed on
+  level 3 — it was not raised, as claimed.
+* **The safety property is STRONGER, not weaker.** An unconditional reset cannot fail to restore the
+  path, so the "late level-up latches the pipeline off on a level actually won" risk written here is
+  also withdrawn: a late level-up costs actions and nothing more.
+* **The one real latch is narrower and deliberate.** On GAME_OVER, a phase of `"graph"` is kept —
+  and `_on_restart`'s own docstring says why: *"Restart the flow pipeline from scratch; keep the
+  fallback graph (same board)."* The board is unchanged across a game-over, so keeping the learned
+  graph is the intended behaviour, not an oversight.
+
+⚠️ This is the fifth time this round a claim came from something read rather than measured, and the
+first where the misread was of CODE rather than of a number. The rule that has been on this page
+since the morning — *print the raw value before a difference becomes a claim* — applies verbatim to
+source: **print the enclosing definition before attributing a line to a method.** One `awk` over
+thirty lines exposed it, after the conclusion had already been written up and reported.
