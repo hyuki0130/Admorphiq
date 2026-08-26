@@ -364,3 +364,26 @@ than plain. The two-colour target model cannot express it. Open, not failed.
 **Level 5's shape, banked** — the stencils at (12,22), (28,22) and (44,38) are IDENTICAL
 `[[14,6,14],[6,14,6],[14,6,14]]` checkerboards, which is not a stencil alphabet, so the
 tile/stencil split ("more than one colour means it instructs") is the next thing to falsify.
+
+
+## What the stencil tool transfers to: ft09 and nothing else (measured 2026-08-27)
+
+Swept over all 25 sample games. ft09 4 levels / 62 actions; **every other game 0 levels in 3
+actions** — the tool finds no plan, spends three idle clicks and withdraws. So it is not a
+general tool; it is one MECHANISM's tool with a 0/24 false-positive rate, which it earns by
+recovering the rule rather than by recognising the game.
+
+That is the honest scale of stage 1: covering 25 sample games means roughly this much work per
+mechanic, and the harness needs the tool to be cheap when it does not apply. Three actions is
+cheap.
+
+**Lattice census** (`scripts/lattice_census.py`, one frame per game, zero actions): only
+**ft09 (36 tiles, side 6, pitch 8)**, **tn36 (33 tiles, side 4, pitch 4)** and **lp85 (20
+tiles, side 4, pitch 6)** present equal square tiles on frame 1. ⛔ The other 22 score zero
+because the DETECTOR wants a solid square single-colour block — a sokoban grid whose walls run
+together reads as one component. The census is evidence only in the positive direction; its
+zeros say nothing about the games.
+
+Next target: **tn36** — a genuine 4x4-tile lattice at pitch 4 with one marked tile, and the
+game whose brittle solver drove a bit-encoded program straight into the engine, so a rule
+recovered from frames is exactly what it has been missing.
