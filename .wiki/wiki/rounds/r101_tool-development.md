@@ -570,6 +570,20 @@ Two corrections follow, and the second is the useful one:
 | tr87 | 266 | 596 | 18% | yes | search / goal problem |
 | tu93 | 250 | 584 | 10% | yes | search / goal problem |
 | **g50t** | **18** | 57 | **42%** | yes | **expansion problem — the frontier dries** |
+| ar25 | 507 | 1215 | 43% | yes | search / goal problem |
+| sk48 | 578 | 1356 | 44% | yes | search / goal problem |
+| ls20 | 501 | 1174 | 9% | yes | search / goal problem |
+| wa30 | 209 | 408 | 15% | yes | search / goal problem |
+
+**The unified reading: seven of the eight open hundreds of states, draw a goal, and still clear
+nothing.** That is not a perception failure and not an expansion failure — it is that the goal
+being drawn is not the objective, or the search never heads for it. ls20 is the sharpest case:
+9% inert, 501 states, and its hand-written adapter clears 7/7 at efficiency 1.0, so the game is
+comfortably solvable and the generic tool is looking in the wrong direction, not looking too
+narrowly.
+
+Two of them (ar25 43%, sk48 44%) spend nearly half their actions on transitions that change
+NOTHING, which is a second, independent and much cheaper defect.
 
 g50t is the outlier by an order of magnitude, so it got taken apart. What is now MEASURED:
 
