@@ -1,5 +1,34 @@
 # CLAUDE.md — Admorphiq
 
+> ## ⛔ TOP POLICY — the two stages, and who does what (2026-08-26, user-set)
+>
+> **Full text: [`OPERATING_RULES.md`](OPERATING_RULES.md) rule 0. This block is the pointer that
+> survives a context compaction; the rules file is the source of truth.**
+>
+> **Stage 1 — build the generic TOOLS until they clear all 25 sample games.** `"Goal: 25/25 generic
+> clears"` (`.wiki/wiki/architecture_self_improving_agent.md:15`), `"continuation = per-tool
+> strengthening"` (`memory/project_unified_harness_r53.md`). **I do the tool development** — read each
+> sample game, diagnose where its tool stops (`scripts/tool_stall_diag.py`), and write the code.
+> The LLM does not build the tools; it uses them later.
+>
+> **Stage 2 — the LLM patches and combines those tools on HIDDEN games, through the harness.** This is
+> the only part that generalises: a game never seen cannot have a tool hand-written for it. It needs
+> stage 1 as its foundation, because a model patching tools that clear nothing has nothing to patch
+> from.
+>
+> **The loop, in order:** (1) understand each sample game and BUILD the tools — local, per-game, by me;
+> (2) push to `ceph-build` and verify IN PARALLEL that the sample games clear — that box verifies at
+> width, it does not author; (3) then cut the harness down onto a **Kaggle GPU kernel** and measure how
+> much of the HIDDEN set it completes.
+>
+> **Distance to stage 1** (measured 2026-08-26, `scripts/rounds/ALTFULL`, every tool forced alone at
+> 3000 actions): **20 of 25 games sit at 0 or 1 level; 15 score zero under every tool.**
+>
+> ⛔ **Not the plan**, each having cost a day: porting hand-written per-game adapters into the shipped
+> card (no LLM in that path, and it conflicts with the non-negotiable dual-scoreboard doctrine), and
+> reading "the tools cannot clear these" as a verdict instead of as stage 1's work list.
+
+
 > ⛔ **READ [`OPERATING_RULES.md`](OPERATING_RULES.md) FIRST.** Six rules that have each been broken
 > more than once after being stated — ceph-build at 60-core parallelism, pulling work back off the
 > boxes, memory not carrying continuity, reading `rounds/index.md` before choosing a direction, which
