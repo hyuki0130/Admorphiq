@@ -10214,3 +10214,39 @@ re-measuring before it directs work** — which is cheap here: each of these too
 
 **What remains genuinely open**: a second family member needing a scale-1 spill extractor. That is
 the only item on the list not measured stale.
+
+## The fourth family's CANDIDATE POOL — recovered from a session transcript, 2026-08-26
+
+⛔ This existed as a measurement and lived **only in a session transcript**. It is the thing a fourth
+family expansion would draw from, and it was one context-compaction away from being lost.
+
+Per-action multi-layer BURST — how many frame layers one action produces — measured across the 25:
+
+```
+sb26   42        sp80 (the oracle)  22
+lf52   27        sc25               22
+cd82   15        g50t                9
+tu93    8        bp35                5
+ft09    5        su15                5
+r11l    3        sk48                2
+re86, ls20, wa30, tn36, cn04         1
+```
+
+> *"These produce a scripted multi-tick consequence from one action, so an agent could plausibly reach
+> for this family and be wrong on the mechanics — the near-OOD property."*
+
+**A high burst is not membership.** It says an agent could reach for a place-then-propagate model
+here, not that the model would be right. It is the observable PRECONDITION, and it exists on nine
+games besides sp80.
+
+⚠️ **And it carries its own correction, which the round page never recorded.** R98's near-OOD control
+was chosen from too small a list: *"tu93 was picked as the nearest confusable game at burst 8, when
+sb26 (42) and lf52 (27) are far nearer on the same measure and were never considered. The control
+still does its job — it declines, and the family boundary holds — but 'nearest' was asserted over
+eight games and is measured over twenty-five to be wrong."*
+
+**So the fourth family's shortlist, ordered by the precondition, is `sb26, lf52, sc25, cd82, g50t`** —
+and the first two are exactly the games R98 never looked at when it called tu93 nearest.
+
+⛔ The lesson is the one this session has now paid for four times: **a measurement that lives only in
+a transcript does not exist.** This one was recovered by grepping the JSONL; the next one may not be.
