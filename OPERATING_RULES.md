@@ -93,6 +93,22 @@ repo unread (`.wiki/wiki/architecture_self_improving_agent.md`, `.wiki/wiki/memo
 alone at budget 3000): twenty of twenty-five games sit at 0 or 1 level under every generic tool.
 Fifteen score zero under all of them.
 
+**The working loop, in the order the user set it (2026-08-26):**
+
+```
+1. UNDERSTAND each sample game and BUILD the tools — done here, game by game, by me.
+   Diagnose why a tool stops (scripts/tool_stall_diag.py names it: states opened,
+   transitions taken, whether a goal was ever drawn), then develop past that.
+2. PUSH the tools to ceph-build and check IN PARALLEL whether the sample games clear.
+   That box is for verification at width, not for authoring.
+3. THEN cut the harness down and put it on a Kaggle GPU kernel to measure how much
+   of the HIDDEN set it completes.
+```
+
+⛔ Steps 1 and 2 are different activities on different machines and must not be confused: authoring is
+local and per-game, verification is parallel and on ceph. Step 3 only starts when step 2 says the
+tools carry the sample set.
+
 ⛔ **Two things that are NOT the plan**, both of which consumed a day: porting hand-written per-game
 adapters into the shipped card (no LLM in that path, and it conflicts with the non-negotiable
 dual-scoreboard doctrine), and treating "the tools cannot clear these" as a verdict rather than as
