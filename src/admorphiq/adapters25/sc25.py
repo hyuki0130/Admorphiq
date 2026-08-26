@@ -120,6 +120,7 @@ from typing import Any
 from admorphiq.adapters25.base import (
     GameAction,
     GameAdapter,
+    available_action_ids,
     canonical_layer,
     click_action,
     has_frame,
@@ -190,6 +191,48 @@ class Adapter(GameAdapter):
     """Frame-keyed transition-graph BFS-from-start with toggle-click + move actions."""
 
     GAME_ID = GAME_ID
+
+    @classmethod
+    def _detect_mechanic(cls, latest_frame: Any) -> bool:
+        """A spell-pattern board: enter a pattern on a toggle lattice that matches the
+        one previewed beside it, then walk out.
+
+        Two conditions, and they are the two halves of one mechanic.
+
+        1. **Walk plus a pointer.** The pattern is entered by clicking and the exit is
+           reached by walking, so the board offers the four directions AND a click, and
+           no fifth action. MEASURED across the 25 public games: three expose that scheme
+           (sc25, ka59, dc22), so it narrows and does not decide.
+        2. **A COMPLETE toggle lattice AND the target previewed beside it.** A lattice
+           with nothing to match is not this mechanic, and a preview with no lattice
+           cannot be entered — both members of the pair are required. The preview is mark
+           regions SMALLER than a lattice cell, in a colour the lattice does not use,
+           sitting in its own block beside the lattice within its row band.
+
+           "Complete" is the load-bearing word, and it is the DEFINITION of a grid rather
+           than a size chosen to fit: a pattern you enter cell by cell occupies every
+           row-column intersection, so ``rows * cols == cells``. MEASURED — without it
+           this fires on dc22, whose 13 marks span 13 distinct rows and 3 distinct
+           columns and so clear a ">=3 rows and >=3 columns" bar while forming no grid at
+           all (13 != 39). sc25's own lattice is 9 cells in 3 rows and 3 columns.
+
+        ⛔ Not "the parser returned something": the two structures are demanded
+        explicitly, and separately. A detector that asks its own solver whether it copes
+        inherits the solver's permissiveness — measured in this round, where sb26's
+        parser accepted s5i5 and sc25.
+        """
+        simple_ids, has_click = available_action_ids(latest_frame)
+        if set(simple_ids) != {1, 2, 3, 4} or not has_click:
+            return False
+        grid = canonical_layer(latest_frame)
+        probe = cls()
+        cells = probe._click_targets(grid)
+        rows = len({y for _x, y in cells})
+        cols = len({x for x, _y in cells})
+        if len(cells) < 9 or rows * cols != len(cells):
+            return False
+        probe._grid_pos = probe._grid_index()
+        return bool(probe._read_target(grid))
 
     def __init__(self, giveup: int = _GIVEUP_DEFAULT) -> None:
         self.restart_on_game_over = True
