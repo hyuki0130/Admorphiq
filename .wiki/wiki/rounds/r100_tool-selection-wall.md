@@ -153,3 +153,37 @@ choice, not a model's**.
 ⚠️ And this is the day's larger finding in miniature: **there is no LLM anywhere in the deployed
 path.** The card dispatches on hand-written detectors, and the harness beneath it runs `_no_llm`. The
 question *"what is the LLM for, then"* is not rhetorical — on the current card, nothing.
+
+## ⛔ FRAMING CORRECTION: the zero-set is a WORK LIST, not a dead end
+
+This round wrote *"depth has to come from the tools themselves"* as if it were a terminus. It is the
+project's stated plan, and the plan is in the repo where I did not look:
+
+```
+.wiki/wiki/architecture_self_improving_agent.md:15    "Goal: 25/25 generic clears."
+.wiki/wiki/architecture_self_improving_agent.md:117   "iterate toward 25/25"
+.wiki/wiki/memory/project_unified_harness_r53.md:3    "continuation = per-tool strengthening"
+```
+
+**The two-stage design, as recorded:** first strengthen the generic TOOLS until they clear all 25
+sample games; then the LLM, on hidden games, patches and combines those tools through the harness.
+Stage two is what generalises — you cannot hand-write a tool for a game you have never seen — and it
+needs stage one as its foundation, because a model patching tools that clear nothing has nothing to
+patch from.
+
+**So the sweep did not produce a verdict. It produced the work list for stage one:**
+
+```
+every tool scores 0        bp35 cn04 dc22 ft09 g50t ka59 ls20 m0r0 s5i5
+(15 games)                 sc25 sk48 sp80 tr87 tu93 wa30
+graph reaches 1 level      lf52 lp85 r11l tn36
+toggle beats graph         vc33
+```
+
+Twenty of twenty-five sit at 0 or 1 level under every generic tool. That is the distance to 25/25.
+
+⚠️ **And one structural fact this round measured makes stage two impossible today**: of the six tools,
+only `toggle` (8,022 chars) and `paint` (4,555) have a `source_card`. **`graph` has none** — and
+`graph` is the only tool that clears anything on 19 of 20 boards. The LLM can currently patch two tools
+that score zero almost everywhere, and cannot touch the one that works. R93's single success
+(`paint x cd82`) was on one of the two patchable tools, on a game outside the zero-set.

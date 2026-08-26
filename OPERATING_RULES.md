@@ -74,6 +74,30 @@ must be measured AS SHIPPED (`--agent kaggle_detect`, not `--agent detect`) befo
 submission whose build is not committed is not reproducible — kernel source, `kernel-metadata.json`,
 the push command and the dataset-version-to-commit mapping all go in with it.
 
+## 0. What the project is actually building — read before choosing any axis
+
+⛔ Recorded here because it was lost twice on 2026-08-26 and both times the plan was sitting in the
+repo unread (`.wiki/wiki/architecture_self_improving_agent.md`, `.wiki/wiki/memory/project_unified_harness_r53.md`).
+
+**Two stages, in order:**
+
+1. **Strengthen the generic TOOLS until they clear all 25 sample games.** `"Goal: 25/25 generic
+   clears"` / `"iterate toward 25/25"` / `"continuation = per-tool strengthening"`. This is done by
+   intervening game by game — measure where a tool stops, develop it past that, re-measure.
+2. **Then the LLM patches and combines those tools on HIDDEN games, through the harness.** Stage two
+   is the only part that generalises, because a game never seen cannot have a tool hand-written for
+   it — and it needs stage one as its foundation, since a model patching tools that clear nothing has
+   nothing to patch from.
+
+**Current distance to stage one** (measured 2026-08-26, `scripts/rounds/ALTFULL`, every tool forced
+alone at budget 3000): twenty of twenty-five games sit at 0 or 1 level under every generic tool.
+Fifteen score zero under all of them.
+
+⛔ **Two things that are NOT the plan**, both of which consumed a day: porting hand-written per-game
+adapters into the shipped card (no LLM in that path, and it conflicts with the non-negotiable
+dual-scoreboard doctrine), and treating "the tools cannot clear these" as a verdict rather than as
+stage one's work list.
+
 ## 7. The watchdog contract — what to do when a tick fires
 
 ⛔ **The wiki and this file are the single source of truth. The cron prompt must stay a POINTER**, not
