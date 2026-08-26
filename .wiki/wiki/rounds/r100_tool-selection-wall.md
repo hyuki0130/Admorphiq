@@ -3,7 +3,7 @@ type: reasoning
 round: R100
 axis: does the harness's tool-selection collapse explain the generic path's level-1/2 wall?
 keywords: [tool-selection, tool_selector, graph-collapse, alt-sweep, generic-path, depth-wall, vc33-toggle, harness, agent25, near-human-level-1]
-verdict: OPEN — opened 2026-08-26 on three measurements from that day; nothing decided yet.
+verdict: **ANSWERED 2026-08-26 — the wall is a PLANNING limit, not a SELECTION one.** The sweep completed 100/100: exactly ONE game of twenty (vc33) has a non-graph tool that beats graph, and its gain is 0.0000 -> 0.0013. Perfect tool selection would leave 19 of 20 games exactly where they are.
 date: 2026-08-26
 ---
 
@@ -73,3 +73,41 @@ grounding PASS, mutant frozen table PASS, `depth_walk` 3/3 at 107 actions).
 - [[r98_flow-deflection]] — the exhausted round, and where the burst pool and its correction were recovered to
 - [[r99_detection-dispatch]] — the dispatch axis, its doctrine conflict, and the generic-path measurements quoted here
 - [[r93_tool-fork-patch]] — the LLM-patches-its-own-tool design this axis feeds
+
+
+## ANSWERED: the wall is PLANNING, not SELECTION
+
+The sweep finished — 100 of 100 combinations, every tool 20/20, at budget 3000:
+
+```
+game    graph   best non-graph
+vc33      1     toggle=2        <-- the only game where anything beats graph
+tn36      1     toggle=1
+lf52      1     dealias=0
+lp85      1     dealias=0
+r11l      1     dealias=0
+the other fifteen: graph 0, every alternative 0
+```
+
+**One game of twenty.** And vc33's win is worth `0.0000 -> 0.0013` on the game, about **+0.00005** of
+card. Perfect tool selection — an oracle that always picked the best tool — would leave nineteen of
+twenty games exactly where they are.
+
+⛔ **So the level-1/2 wall is not the harness choosing wrongly.** `tool_selector.md`'s `graph`-as-default
+guidance is right on 19 of 20 games; it is wrong about exactly one entry (`toggle`, refuted by vc33),
+and fixing that entry buys five hundred-thousandths of a card.
+
+**What this closes**: the selection hypothesis, which was the reason this round opened. The three
+measurements that motivated it stand — the proxy does not track the score, the generic path is
+near-human on level 1 and walls at 1-2, the harness picks `graph` everywhere — but the third is now
+explained by the second rather than causing it. **`graph` is picked everywhere because it is the only
+tool that clears anything on nineteen of twenty boards.**
+
+⚠️ The one correction the sweep does license: `tool_selector.md` excludes `toggle` with *"true
+lights-out — NONE of the 25 dev games is one"* and *"measured 0 elsewhere"*, and vc33 contradicts
+both. That is a one-line fix to a wiki claim, not a lever.
+
+**Where the depth actually has to come from**: the tools themselves. Fifteen of twenty games score
+zero under EVERY tool at 3000 actions — no selection policy reaches them, and no budget does either
+(`NOGIVEUP`, 25x the give-up, 0 of 23 games changed). That is the same conclusion the card work
+reached from the other direction, and it is a capability statement about `graph` and its siblings.

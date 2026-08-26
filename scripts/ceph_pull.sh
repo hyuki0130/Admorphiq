@@ -28,7 +28,10 @@ ssh -i "$KEY" "$HOST" 'cd ~ && tar czf /tmp/_pull_home.tgz $(ls *_run.sh *_paral
 mkdir -p scripts/ceph_home
 scp -q -i "$KEY" "$HOST":/tmp/_pull_home.tgz /tmp/ && tar xzf /tmp/_pull_home.tgz -C scripts/ceph_home
 
-echo "[2/3] round directories the repo does not have"
+echo "[2/3] round directories — MISSING ones, and REFRESH of ones we already have"
+# ⛔ The first version only pulled directories the repo lacked, so a round that exists
+# locally never got its newer results back. Measured: ALTFULL sat at 89 lines locally while
+# ceph had 97, and the missing-combination list computed from the stale copy was wrong.
 ssh -i "$KEY" "$HOST" 'cd ~/admorphiq && ls scripts/rounds' | LC_ALL=C sort > /tmp/_pull_remote.txt
 ls scripts/rounds | LC_ALL=C sort > /tmp/_pull_local.txt
 MISSING=$(comm -23 /tmp/_pull_remote.txt /tmp/_pull_local.txt | tr '\n' ' ')
@@ -37,8 +40,12 @@ if [ -n "${MISSING// /}" ]; then
   ssh -i "$KEY" "$HOST" "cd ~/admorphiq && tar czf /tmp/_pull_rounds.tgz $(for m in $MISSING; do printf 'scripts/rounds/%s ' "$m"; done) 2>/dev/null"
   scp -q -i "$KEY" "$HOST":/tmp/_pull_rounds.tgz /tmp/ && tar xzf /tmp/_pull_rounds.tgz
 else
-  echo "    none"
+  echo "    none missing"
 fi
+# refresh the ones both sides have — newest wins, so a resumed run's extra results land
+ssh -i "$KEY" "$HOST" 'cd ~/admorphiq && tar czf /tmp/_pull_all_rounds.tgz scripts/rounds 2>/dev/null'
+scp -q -i "$KEY" "$HOST":/tmp/_pull_all_rounds.tgz /tmp/ && tar xzf /tmp/_pull_all_rounds.tgz --keep-newer-files 2>/dev/null
+echo "    refreshed shared round dirs (newer files only)"
 
 echo "[3/3] diagnostic logs sitting in /tmp — these die on reboot"
 mkdir -p scripts/rounds/R99/morning_logs
