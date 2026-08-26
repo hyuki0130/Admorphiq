@@ -131,7 +131,9 @@ property of the game; both were the limits of black-box probing, and both were o
 | **lf52** | internal | simulation like bp35; loses on a frame count that scales with level index |
 | **lp85** | 6 only | buttons tagged `button_<ring>_<L\|R>` ROTATE a ring; win = every `bghvgbtwcb` has a `goal` at (x+1, y+1) |
 | **ls20** | 1-4 | queued animations must drain before the next action registers |
-| **m0r0 / r11l / s5i5 / su15 / sk48 / tn36 / sb26 / sp80 / tr87 / tu93 / re86 / dc22 / wa30** | see the table `scripts/read_sample_games.py` prints | regenerate; each is one command |
+| **m0r0** | 6 selects, 1-4 move | click a `sys_click` marker to SELECT it (it recolours; the others recolour too, so selection is VISIBLE); 1-4 then move that one marker a cell. Click empty space and it flips to ALL mode, where 1-4 move every marker together with per-name MIRRORING. Budget 150 |
+| **s5i5** | 6 only | click a button and read its centre pixel: every piece whose own centre pixel is that colour ROTATES. Colour-keyed rotation |
+| **r11l / su15 / sk48 / tn36 / sb26 / sp80 / tr87 / tu93 / re86 / dc22 / wa30** | see the table `scripts/read_sample_games.py` prints | regenerate; each is one command |
 
 ## What this says about the tools
 
