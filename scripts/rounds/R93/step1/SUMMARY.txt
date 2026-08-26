@@ -1,0 +1,80 @@
+[2026-07-21 22:28:33] R93 step1 start
+[2026-07-21 22:28:39] graph x ls20 done rc=0
+    2026-07-21 22:28:35 | INFO | Successfully loaded game class Ls20 from environment_files/ls20/9607627b/ls20.py
+    [graph] REGION mask: 68 cells
+    TOOL=graph GAME=ls20 levels=0 steps=300
+[2026-07-21 22:28:39] graph x vc33 done rc=0
+    2026-07-21 22:28:35 | INFO | Successfully loaded game class Vc33 from environment_files/vc33/5430563c/vc33.py
+    [graph] REGION mask: 41 cells
+    TOOL=graph GAME=vc33 levels=0 steps=300
+[2026-07-21 22:28:39] graph x cd82 done rc=0
+    2026-07-21 22:28:35 | INFO | Successfully loaded game class Cd82 from environment_files/cd82/fb555c5d/cd82.py
+    [graph] REGION mask: 42 cells
+    TOOL=graph GAME=cd82 levels=0 steps=300
+[2026-07-21 22:28:43] graph x m0r0 done rc=0
+    2026-07-21 22:28:35 | INFO | Successfully loaded game class M0r0 from environment_files/m0r0/492f87ba/m0r0.py
+    [graph] REGION mask: 56 cells
+    TOOL=graph GAME=m0r0 levels=0 steps=300
+[2026-07-21 22:28:44] world_model x cd82 done rc=0
+    2026-07-21 22:28:42 | INFO | Created new scorecard: 8881ea79-ced1-4663-9c5d-01e1a7e8eac3
+    2026-07-21 22:28:42 | INFO | Successfully loaded game class Cd82 from environment_files/cd82/fb555c5d/cd82.py
+    TOOL=world_model GAME=cd82 levels=0 steps=300
+[2026-07-21 22:28:45] world_model x vc33 done rc=0
+    2026-07-21 22:28:42 | INFO | Created new scorecard: 206a2931-65be-404b-b4ba-6d666c609c04
+    2026-07-21 22:28:42 | INFO | Successfully loaded game class Vc33 from environment_files/vc33/5430563c/vc33.py
+    TOOL=world_model GAME=vc33 levels=0 steps=300
+[2026-07-21 22:28:45] world_model x m0r0 done rc=0
+    2026-07-21 22:28:41 | INFO | Created new scorecard: ea2c1714-046e-42d9-9dc1-a79043e41648
+    2026-07-21 22:28:41 | INFO | Successfully loaded game class M0r0 from environment_files/m0r0/492f87ba/m0r0.py
+    TOOL=world_model GAME=m0r0 levels=0 steps=300
+[2026-07-21 22:28:48] paint x m0r0 done rc=0
+    2026-07-21 22:28:47 | INFO | Created new scorecard: 5577bee0-1ee3-4e77-bcdf-3ed8ed584999
+    2026-07-21 22:28:47 | INFO | Successfully loaded game class M0r0 from environment_files/m0r0/492f87ba/m0r0.py
+    TOOL=paint GAME=m0r0 levels=0 steps=300
+[2026-07-21 22:28:49] paint x vc33 done rc=0
+    2026-07-21 22:28:47 | INFO | Created new scorecard: adacb9cb-bf6e-44cb-8e1c-d5afdb6611b5
+    2026-07-21 22:28:47 | INFO | Successfully loaded game class Vc33 from environment_files/vc33/5430563c/vc33.py
+    TOOL=paint GAME=vc33 levels=0 steps=300
+[2026-07-21 22:28:49] paint x cd82 done rc=0
+    2026-07-21 22:28:48 | INFO | Created new scorecard: 4d02f59b-90c8-448c-b0aa-e2f47ca8b6cb
+    2026-07-21 22:28:48 | INFO | Successfully loaded game class Cd82 from environment_files/cd82/fb555c5d/cd82.py
+    TOOL=paint GAME=cd82 levels=0 steps=300
+[2026-07-21 22:28:50] world_model x ls20 done rc=0
+    2026-07-21 22:28:45 | INFO | Created new scorecard: d36e4d59-0ffe-40f0-bf64-9fc26f084f5a
+    2026-07-21 22:28:45 | INFO | Successfully loaded game class Ls20 from environment_files/ls20/9607627b/ls20.py
+    TOOL=world_model GAME=ls20 levels=0 steps=300
+[2026-07-21 22:28:53] paint x ls20 done rc=0
+    2026-07-21 22:28:50 | INFO | Created new scorecard: 1dcec037-6f6a-4706-979c-c86ac960d599
+    2026-07-21 22:28:50 | INFO | Successfully loaded game class Ls20 from environment_files/ls20/9607627b/ls20.py
+    TOOL=paint GAME=ls20 levels=0 steps=300
+[2026-07-21 22:28:54] toggle x cd82 done rc=0
+    2026-07-21 22:28:53 | INFO | Created new scorecard: 2868cc6e-08b2-471a-a0a0-39f81e2c8a57
+    2026-07-21 22:28:53 | INFO | Successfully loaded game class Cd82 from environment_files/cd82/fb555c5d/cd82.py
+    TOOL=toggle GAME=cd82 levels=0 steps=300
+[2026-07-21 22:28:57] toggle x ls20 done rc=0
+    2026-07-21 22:28:55 | INFO | Created new scorecard: 89c1c04d-38d7-43db-be60-06ac7f9c8f3c
+    2026-07-21 22:28:55 | INFO | Successfully loaded game class Ls20 from environment_files/ls20/9607627b/ls20.py
+    TOOL=toggle GAME=ls20 levels=0 steps=300
+[2026-07-21 22:29:10] toggle x vc33 done rc=0
+    2026-07-21 22:28:51 | INFO | Created new scorecard: 3456bd84-4f5c-4c04-bbc3-aa4dabf6eb47
+    2026-07-21 22:28:52 | INFO | Successfully loaded game class Vc33 from environment_files/vc33/5430563c/vc33.py
+    TOOL=toggle GAME=vc33 levels=2 steps=300
+[2026-07-21 22:29:18] toggle x m0r0 done rc=0
+    2026-07-21 22:28:51 | INFO | Created new scorecard: 3e3ac7c5-49cb-40e2-a759-f866615ce010
+    2026-07-21 22:28:51 | INFO | Successfully loaded game class M0r0 from environment_files/m0r0/492f87ba/m0r0.py
+    TOOL=toggle GAME=m0r0 levels=0 steps=300
+[2026-07-21 22:29:18] R93 step1 COMPLETE
+[2026-07-21 22:30:15] step1b @2000 start
+[2026-07-21 22:30:38] @2000 graph x vc33 rc=0
+    TOOL=graph GAME=vc33 levels=0 steps=2000
+[2026-07-21 22:30:43] @2000 paint x cd82 rc=0
+    TOOL=paint GAME=cd82 levels=0 steps=2000
+[2026-07-21 22:30:59] @2000 graph x m0r0 rc=0
+    TOOL=graph GAME=m0r0 levels=0 steps=2000
+[2026-07-21 22:31:14] @2000 world_model x ls20 rc=0
+    TOOL=world_model GAME=ls20 levels=0 steps=2000
+[2026-07-21 22:31:19] @2000 graph x ls20 rc=0
+    TOOL=graph GAME=ls20 levels=0 steps=2000
+[2026-07-21 22:36:32] @2000 toggle x vc33 rc=0
+    TOOL=toggle GAME=vc33 levels=2 steps=2000
+[2026-07-21 22:36:32] step1b COMPLETE

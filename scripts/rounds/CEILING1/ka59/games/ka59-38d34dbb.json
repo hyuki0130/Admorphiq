@@ -1,0 +1,20 @@
+{
+  "game_id": "ka59-38d34dbb",
+  "win_levels": 7,
+  "levels_completed": 1,
+  "elapsed_s": 139.6,
+  "total_actions": 4031,
+  "per_level": [
+    {
+      "level": 1,
+      "agent_actions": 37,
+      "human_actions": 28,
+      "score": 0.572681
+    }
+  ],
+  "game_score": 0.020453,
+  "has_baseline": true,
+  "llm_hypothesis": null,
+  "title": "KA59",
+  "adapter": "ka59"
+}

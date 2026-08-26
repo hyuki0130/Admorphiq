@@ -387,3 +387,38 @@ zeros say nothing about the games.
 Next target: **tn36** — a genuine 4x4-tile lattice at pitch 4 with one marked tile, and the
 game whose brittle solver drove a bit-encoded program straight into the engine, so a rule
 recovered from frames is exactly what it has been missing.
+
+
+## Promoted to a harness tool (2026-08-27)
+
+`src/admorphiq/tools/stencil.py` — `StencilTool` on the `base.Tool` contract, so the mechanic
+is something the runtime model can be handed rather than a script only I can run. The probe
+script now imports from it: ONE implementation, and the ft09 walk is byte-identical after the
+move (4 levels, same per-level tile counts and pitch).
+
+`detect` is the load-bearing half for the harness. It returns 0 on a frame with no lattice,
+0.4 when a lattice with a marked tile exists but yields no plan, and 0.9 when it has clicks to
+make. That is what makes it cheap on the 24 games it does not fit — measured, three actions to
+withdraw.
+
+Pins in `tests/test_stencil_tool.py`, engine-free (frames built in the test), covering the two
+traps that cost the most: the frame that merges the board into one component, and the pitch
+read off two unrelated panels sitting 2 pixels apart. 1760 tests pass.
+
+## tn36's interaction surface, decoded but NOT solved (2026-08-27)
+
+The lattice census pointed here and the frame reading was cheap, so it is banked rather than
+left for the next session to re-derive:
+
+* the board is a brick-offset lattice of 4x4 tiles (even rows at cols 14/22/30/38/46, odd rows
+  offset by 4), inside a bordered box at rows 8-47;
+* **clicking a tile does nothing at all** — the only cell that changes is one pixel at row 1,
+  which marches left by one per action. That is an action counter, i.e. a HUD;
+* the input is a row of **five bit slots** at cols 21/26/31/36/41, rows 44-46, pitch 5. Colour
+  5 is off and colour 1 is on, and a click on a slot toggles it. Initial value off/on/off/on/on;
+* a large colour-9 disc sits at rows 51-59. Clicking it lights it (69 cells 9 -> 10) and the
+  next click elsewhere unlights it. ⛔ It is NOT a run trigger — pressing it moved none of the
+  30 colour-11 cells, and four following ticks moved nothing either.
+
+So the thing that consumes the five bits has not been found. That is the open question, and it
+is a question about the board, not about the strip.

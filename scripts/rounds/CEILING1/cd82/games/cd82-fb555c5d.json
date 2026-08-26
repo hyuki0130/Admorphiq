@@ -1,0 +1,50 @@
+{
+  "game_id": "cd82-fb555c5d",
+  "win_levels": 6,
+  "levels_completed": 6,
+  "elapsed_s": 21.36,
+  "total_actions": 97,
+  "per_level": [
+    {
+      "level": 1,
+      "agent_actions": 6,
+      "human_actions": 55,
+      "score": 1.0
+    },
+    {
+      "level": 2,
+      "agent_actions": 9,
+      "human_actions": 8,
+      "score": 0.790123
+    },
+    {
+      "level": 3,
+      "agent_actions": 21,
+      "human_actions": 41,
+      "score": 1.0
+    },
+    {
+      "level": 4,
+      "agent_actions": 19,
+      "human_actions": 21,
+      "score": 1.0
+    },
+    {
+      "level": 5,
+      "agent_actions": 21,
+      "human_actions": 23,
+      "score": 1.0
+    },
+    {
+      "level": 6,
+      "agent_actions": 21,
+      "human_actions": 23,
+      "score": 1.0
+    }
+  ],
+  "game_score": 0.980012,
+  "has_baseline": true,
+  "llm_hypothesis": null,
+  "title": "CD82",
+  "adapter": "cd82"
+}
